@@ -48,39 +48,74 @@ const LICENSES: &[&str] = &[
 
 type ExceptionList = &'static [(&'static str, &'static str)];
 
+pub(crate) struct WorkspaceInfo<'a> {
+    /// Path to the directory containing the workspace root Cargo.toml file.
+    pub(crate) path: &'a str,
+    /// The list of license exceptions.
+    pub(crate) exceptions: ExceptionList,
+    /// Optionally:
+    /// * A list of crates for which dependencies need to be explicitly allowed.
+    /// * The list of allowed dependencies.
+    pub(crate) crates_and_deps: Option<(&'a [&'a str], &'a [&'a str])>,
+    /// Submodules required for the workspace
+    pub(crate) submodules: &'a [&'a str],
+}
+
+impl<'a> WorkspaceInfo<'a> {
+    const fn new(
+        path: &'a str,
+        exceptions: ExceptionList,
+        crates_and_deps: Option<(&'a [&str], &'a [&str])>,
+        submodules: &'a [&str],
+    ) -> Self {
+        Self { path, exceptions, crates_and_deps, submodules }
+    }
+}
+
 /// The workspaces to check for licensing and optionally permitted dependencies.
-///
-/// Each entry consists of a tuple with the following elements:
-///
-/// * The path to the workspace root Cargo.toml file.
-/// * The list of license exceptions.
-/// * Optionally a tuple of:
-///     * A list of crates for which dependencies need to be explicitly allowed.
-///     * The list of allowed dependencies.
-/// * Submodules required for the workspace.
 // FIXME auto detect all cargo workspaces
-pub(crate) const WORKSPACES: &[(&str, ExceptionList, Option<(&[&str], &[&str])>, &[&str])] = &[
+pub(crate) const WORKSPACES: &[WorkspaceInfo<'static>] = &[
     // The root workspace has to be first for check_rustfix to work.
-    (".", EXCEPTIONS, Some((&["rustc-main"], PERMITTED_RUSTC_DEPENDENCIES)), &[]),
-    ("library", EXCEPTIONS_STDLIB, Some((&["sysroot"], PERMITTED_STDLIB_DEPENDENCIES)), &[]),
+    WorkspaceInfo::new(".", EXCEPTIONS, Some((&["rustc-main"], PERMITTED_RUSTC_DEPENDENCIES)), &[]),
+    WorkspaceInfo::new(
+        "library",
+        EXCEPTIONS_STDLIB,
+        Some((&["sysroot"], PERMITTED_STDLIB_DEPENDENCIES)),
+        &[],
+    ),
     // Outside of the alphabetical section because rustfmt formats it using multiple lines.
-    (
+    WorkspaceInfo::new(
         "compiler/rustc_codegen_cranelift",
         EXCEPTIONS_CRANELIFT,
         Some((&["rustc_codegen_cranelift"], PERMITTED_CRANELIFT_DEPENDENCIES)),
         &[],
     ),
     // tidy-alphabetical-start
-    ("compiler/rustc_codegen_gcc", EXCEPTIONS_GCC, None, &[]),
-    ("src/bootstrap", EXCEPTIONS_BOOTSTRAP, None, &[]),
-    ("src/tools/cargo", EXCEPTIONS_CARGO, None, &["src/tools/cargo"]),
-    //("src/tools/miri/test-cargo-miri", &[], None), // FIXME uncomment once all deps are vendored
-    //("src/tools/miri/test_dependencies", &[], None), // FIXME uncomment once all deps are vendored
-    ("src/tools/rust-analyzer", EXCEPTIONS_RUST_ANALYZER, None, &[]),
-    ("src/tools/rustbook", EXCEPTIONS_RUSTBOOK, None, &["src/doc/book", "src/doc/reference"]),
-    ("src/tools/rustc-perf", EXCEPTIONS_RUSTC_PERF, None, &["src/tools/rustc-perf"]),
-    ("src/tools/test-float-parse", EXCEPTIONS, None, &[]),
-    ("tests/run-make-cargo/uefi-qemu/uefi_qemu_test", EXCEPTIONS_UEFI_QEMU_TEST, None, &[]),
+    WorkspaceInfo::new("compiler/rustc_codegen_gcc", EXCEPTIONS_GCC, None, &[]),
+    WorkspaceInfo::new("src/bootstrap", EXCEPTIONS_BOOTSTRAP, None, &[]),
+    WorkspaceInfo::new("src/tools/cargo", EXCEPTIONS_CARGO, None, &["src/tools/cargo"]),
+    //WorkspaceInfo::new("src/tools/miri/test-cargo-miri", &[], None), // FIXME uncomment once all deps are vendored
+    //WorkspaceInfo::new("src/tools/miri/test_dependencies", &[], None), // FIXME uncomment once all deps are vendored
+    WorkspaceInfo::new("src/tools/rust-analyzer", EXCEPTIONS_RUST_ANALYZER, None, &[]),
+    WorkspaceInfo::new(
+        "src/tools/rustbook",
+        EXCEPTIONS_RUSTBOOK,
+        None,
+        &["src/doc/book", "src/doc/reference"],
+    ),
+    WorkspaceInfo::new(
+        "src/tools/rustc-perf",
+        EXCEPTIONS_RUSTC_PERF,
+        None,
+        &["src/tools/rustc-perf"],
+    ),
+    WorkspaceInfo::new("src/tools/test-float-parse", EXCEPTIONS, None, &[]),
+    WorkspaceInfo::new(
+        "tests/run-make-cargo/uefi-qemu/uefi_qemu_test",
+        EXCEPTIONS_UEFI_QEMU_TEST,
+        None,
+        &[],
+    ),
     // tidy-alphabetical-end
 ];
 
@@ -567,29 +602,29 @@ pub fn check(root: &Path, cargo: &Path, bless: bool, bad: &mut bool) {
 
     check_proc_macro_dep_list(root, cargo, bless, bad);
 
-    for &(workspace, exceptions, permitted_deps, submodules) in WORKSPACES {
+    for &WorkspaceInfo { path, exceptions, crates_and_deps, submodules } in WORKSPACES {
         if has_missing_submodule(root, submodules) {
             continue;
         }
 
-        if !root.join(workspace).join("Cargo.lock").exists() {
-            tidy_error!(bad, "the `{workspace}` workspace doesn't have a Cargo.lock");
+        if !root.join(path).join("Cargo.lock").exists() {
+            tidy_error!(bad, "the `{path}` workspace doesn't have a Cargo.lock");
             continue;
         }
 
         let mut cmd = cargo_metadata::MetadataCommand::new();
         cmd.cargo_path(cargo)
-            .manifest_path(root.join(workspace).join("Cargo.toml"))
+            .manifest_path(root.join(path).join("Cargo.toml"))
             .features(cargo_metadata::CargoOpt::AllFeatures)
             .other_options(vec!["--locked".to_owned()]);
         let metadata = t!(cmd.exec());
 
-        check_license_exceptions(&metadata, workspace, exceptions, bad);
-        if let Some((crates, permitted_deps)) = permitted_deps {
-            check_permitted_dependencies(&metadata, workspace, permitted_deps, crates, bad);
+        check_license_exceptions(&metadata, path, exceptions, bad);
+        if let Some((crates, permitted_deps)) = crates_and_deps {
+            check_permitted_dependencies(&metadata, path, permitted_deps, crates, bad);
         }
 
-        if workspace == "library" {
+        if path == "library" {
             check_runtime_license_exceptions(&metadata, bad);
             check_runtime_no_duplicate_dependencies(&metadata, bad);
             check_runtime_no_proc_macros(&metadata, bad);
