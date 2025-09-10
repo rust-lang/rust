@@ -329,6 +329,8 @@ struct VisitorState {
     persistent_flags: PersistentStateFlags,
     /// Flags describing both the immediate and overall context in which the current mir::Ty is
     ephemeral_flags: EphemeralStateFlags,
+    /// Type recursion depth, to prevent infinite recursion
+    depth: usize,
 }
 
 impl PersistentStateFlags {
@@ -383,6 +385,7 @@ impl VisitorState {
         Self {
             persistent_flags: self.persistent_flags,
             ephemeral_flags: EphemeralStateFlags::from_outer_ty(current_ty),
+            depth: self.depth + 1,
         }
     }
     fn get_next_in_fnptr<'tcx>(&self, current_ty: Ty<'tcx>, is_ret: bool) -> Self {
@@ -394,12 +397,13 @@ impl VisitorState {
                 PersistentStateFlags::ARGUMENT_TY_IN_FNPTR
             },
             ephemeral_flags: EphemeralStateFlags::from_outer_ty(current_ty),
+            depth: self.depth + 1,
         }
     }
 
     /// Generate the state for an "outermost" type that needs to be checked
     fn entry_point(persistent_flags: PersistentStateFlags) -> Self {
-        Self { persistent_flags, ephemeral_flags: EphemeralStateFlags::NO_OUTER_TY }
+        Self { persistent_flags, ephemeral_flags: EphemeralStateFlags::NO_OUTER_TY, depth: 0 }
     }
 
     /// Get the proper visitor state for a given function's arguments.
@@ -733,9 +737,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
         // Protect against infinite recursion, for example
         // `struct S(*mut S);`.
-        // FIXME: A recursion limit is necessary as well, for irregular
-        // recursive types.
-        if !self.cache.insert(ty) {
+        if !(self.cache.insert(ty) && self.cx.tcx.recursion_limit().value_within_limit(state.depth))
+        {
             return FfiSafe;
         }
 
@@ -956,6 +959,8 @@ impl<'tcx> ImproperCTypesLint {
         fn_mode: CItemKind,
     ) {
         struct FnPtrFinder<'tcx> {
+            current_depth: usize,
+            depths: Vec<usize>,
             spans: Vec<Span>,
             tys: Vec<Ty<'tcx>>,
         }
@@ -963,13 +968,16 @@ impl<'tcx> ImproperCTypesLint {
         impl<'tcx> hir::intravisit::Visitor<'_> for FnPtrFinder<'tcx> {
             fn visit_ty(&mut self, ty: &'_ hir::Ty<'_, AmbigArg>) {
                 debug!(?ty);
+                self.current_depth += 1;
                 if let hir::TyKind::FnPtr(hir::FnPtrTy { abi, .. }) = ty.kind
                     && !abi.is_rustic_abi()
                 {
+                    self.depths.push(self.current_depth);
                     self.spans.push(ty.span);
                 }
 
                 hir::intravisit::walk_ty(self, ty);
+                self.current_depth -= 1;
             }
         }
 
@@ -987,15 +995,24 @@ impl<'tcx> ImproperCTypesLint {
             }
         }
 
-        let mut visitor = FnPtrFinder { spans: Vec::new(), tys: Vec::new() };
+        let mut visitor = FnPtrFinder {
+            spans: Vec::new(),
+            tys: Vec::new(),
+            depths: Vec::new(),
+            current_depth: 0,
+        };
         ty.visit_with(&mut visitor);
         visitor.visit_ty_unambig(hir_ty);
 
-        let all_types = iter::zip(visitor.tys.drain(..), visitor.spans.drain(..));
-        for (fn_ptr_ty, span) in all_types {
+        let all_types = iter::zip(
+            visitor.depths.drain(..),
+            iter::zip(visitor.tys.drain(..), visitor.spans.drain(..)),
+        );
+        for (depth, (fn_ptr_ty, span)) in all_types {
             let mut visitor = ImproperCTypesVisitor::new(cx, fn_ptr_ty, fn_mode);
+            let bridge_state = VisitorState { depth, ..state };
             // FIXME(ctypes): make a check_for_fnptr
-            let ffi_res = visitor.check_type(state, fn_ptr_ty);
+            let ffi_res = visitor.check_type(bridge_state, fn_ptr_ty);
 
             self.process_ffi_result(cx, span, ffi_res, fn_mode);
         }
