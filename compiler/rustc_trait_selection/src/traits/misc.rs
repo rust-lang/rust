@@ -154,7 +154,11 @@ pub fn type_allowed_to_implement_const_param_ty<'tcx>(
                 parent_cause.clone(),
                 param_env,
                 ty::ClauseKind::UnstableFeature(sym::unsized_const_params),
-            ))
+            ));
+
+            if !ocx.select_where_possible().is_empty() {
+                return Err(ConstParamTyImplementationError::UnsizedConstParamsFeatureRequired);
+            }
         }
 
         ocx.register_bound(
