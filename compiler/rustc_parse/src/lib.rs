@@ -54,29 +54,18 @@ pub fn unwrap_or_emit_fatal<T>(expr: Result<T, Vec<Diag<'_>>>) -> T {
     }
 }
 
-/// Creates a new parser from a source string. On failure, the errors must be consumed via
-/// `unwrap_or_emit_fatal`, `emit`, `cancel`, etc., otherwise a panic will occur when they are
-/// dropped.
+/// Creates a new parser from a source string.
+///
+/// On failure, the errors must be consumed via `unwrap_or_emit_fatal`, `emit`, `cancel`,
+/// etc., otherwise a panic will occur when they are dropped.
 pub fn new_parser_from_source_str(
     psess: &ParseSess,
     name: FileName,
     source: String,
+    strip_tokens: StripTokens,
 ) -> Result<Parser<'_>, Vec<Diag<'_>>> {
     let source_file = psess.source_map().new_source_file(name, source);
-    new_parser_from_source_file(psess, source_file, StripTokens::ShebangAndFrontmatter)
-}
-
-/// Creates a new parser from a simple (no shebang, no frontmatter) source string.
-///
-/// On failure, the errors must be consumed via `unwrap_or_emit_fatal`, `emit`, `cancel`,
-/// etc., otherwise a panic will occur when they are dropped.
-pub fn new_parser_from_simple_source_str(
-    psess: &ParseSess,
-    name: FileName,
-    source: String,
-) -> Result<Parser<'_>, Vec<Diag<'_>>> {
-    let source_file = psess.source_map().new_source_file(name, source);
-    new_parser_from_source_file(psess, source_file, StripTokens::Nothing)
+    new_parser_from_source_file(psess, source_file, strip_tokens)
 }
 
 /// Creates a new parser from a filename. On failure, the errors must be consumed via
@@ -87,6 +76,7 @@ pub fn new_parser_from_simple_source_str(
 pub fn new_parser_from_file<'a>(
     psess: &'a ParseSess,
     path: &Path,
+    strip_tokens: StripTokens,
     sp: Option<Span>,
 ) -> Result<Parser<'a>, Vec<Diag<'a>>> {
     let sm = psess.source_map();
@@ -110,7 +100,7 @@ pub fn new_parser_from_file<'a>(
         }
         err.emit();
     });
-    new_parser_from_source_file(psess, source_file, StripTokens::ShebangAndFrontmatter)
+    new_parser_from_source_file(psess, source_file, strip_tokens)
 }
 
 pub fn utf8_error<E: EmissionGuarantee>(
@@ -172,6 +162,9 @@ fn new_parser_from_source_file(
     Ok(parser)
 }
 
+/// Given a source string, produces a sequence of token trees.
+///
+/// NOTE: This only strips shebangs, not frontmatter!
 pub fn source_str_to_stream(
     psess: &ParseSess,
     name: FileName,
@@ -179,13 +172,16 @@ pub fn source_str_to_stream(
     override_span: Option<Span>,
 ) -> Result<TokenStream, Vec<Diag<'_>>> {
     let source_file = psess.source_map().new_source_file(name, source);
-    // used mainly for `proc_macro` and the likes, not for our parsing purposes, so don't parse
-    // frontmatters as frontmatters, but for compatibility reason still strip the shebang
+    // FIXME(frontmatter): Consider stripping frontmatter in a future edition. We can't strip them
+    // in the current edition since that would be breaking.
+    // See also <https://github.com/rust-lang/rust/issues/145520>.
+    // Alternatively, stop stripping shebangs here, too, if T-lang and crater approve.
     source_file_to_stream(psess, source_file, override_span, StripTokens::Shebang)
 }
 
-/// Given a source file, produces a sequence of token trees. Returns any buffered errors from
-/// parsing the token stream.
+/// Given a source file, produces a sequence of token trees.
+///
+/// Returns any buffered errors from parsing the token stream.
 fn source_file_to_stream<'psess>(
     psess: &'psess ParseSess,
     source_file: Arc<SourceFile>,
