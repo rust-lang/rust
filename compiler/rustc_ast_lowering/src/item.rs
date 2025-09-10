@@ -227,6 +227,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
             vis_span,
             span: self.lower_span(i.span),
             has_delayed_lints: !self.delayed_lints.is_empty(),
+            eii: find_attr!(
+                attrs,
+                AttributeKind::EiiImpls(..) | AttributeKind::EiiExternTarget(..)
+            ),
         };
         self.arena.alloc(item)
     }
@@ -670,6 +674,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             vis_span,
                             span: this.lower_span(use_tree.span),
                             has_delayed_lints: !this.delayed_lints.is_empty(),
+                            eii: find_attr!(
+                                attrs,
+                                AttributeKind::EiiImpls(..) | AttributeKind::EiiExternTarget(..)
+                            ),
                         };
                         hir::OwnerNode::Item(this.arena.alloc(item))
                     });
