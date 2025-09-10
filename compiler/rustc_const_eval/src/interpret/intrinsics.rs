@@ -10,7 +10,7 @@ use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, read_target_uint, write_targ
 use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic, NullOp};
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{Ty, TyCtxt};
-use rustc_middle::{bug, err_inval, span_bug, ty};
+use rustc_middle::{bug, span_bug, ty};
 use rustc_span::{Symbol, sym};
 use tracing::trace;
 
@@ -662,7 +662,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.write_immediate(*offset, dest)
             }
             ty::Alias(..) | ty::Param(..) | ty::Placeholder(..) | ty::Infer(..) => {
-                Err(err_inval!(TooGeneric)).into()
+                // This can happen in code which is generic over the field type.
+                throw_inval!(TooGeneric)
             }
             _ => span_bug!(self.cur_span(), "expected field representing type, found {ty}"),
         }
