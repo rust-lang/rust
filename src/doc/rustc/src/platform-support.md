@@ -149,8 +149,8 @@ target | std | notes
 [`aarch64-apple-ios-sim`](platform-support/apple-ios.md) | ✓ | Apple iOS Simulator on ARM64
 [`aarch64-linux-android`](platform-support/android.md) | ✓ | ARM64 Android
 [`aarch64-unknown-fuchsia`](platform-support/fuchsia.md) | ✓ | ARM64 Fuchsia
-`aarch64-unknown-none` | * | Bare ARM64, hardfloat
-`aarch64-unknown-none-softfloat` | * | Bare ARM64, softfloat
+[`aarch64-unknown-none`](platform-support/aarch64-unknown-none.md) | * | Bare ARM64, hardfloat
+[`aarch64-unknown-none-softfloat`](platform-support/aarch64-unknown-none.md) | * | Bare ARM64, softfloat
 [`aarch64-unknown-uefi`](platform-support/unknown-uefi.md) | ? | ARM64 UEFI
 [`arm-linux-androideabi`](platform-support/android.md) | ✓ | Armv6 Android
 `arm-unknown-linux-musleabi` | ✓ | Armv6 Linux with musl 1.2.3
