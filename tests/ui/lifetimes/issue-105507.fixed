@@ -31,7 +31,7 @@ impl<T> ProjectedMyTrait for T
 
 fn require_trait<T: MyTrait>(_: T) {}
 
-fn foo<T : MyTrait + 'static + 'static, U : MyTrait + 'static + 'static>(wrap: Wrapper<'_, Option<T>>, wrap1: Wrapper<'_, Option<U>>) {
+fn foo<T : MyTrait + 'static, U : MyTrait + 'static>(wrap: Wrapper<'_, Option<T>>, wrap1: Wrapper<'_, Option<U>>) {
     //~^ HELP consider restricting the type parameter to the `'static` lifetime
     //~| HELP consider restricting the type parameter to the `'static` lifetime
     require_trait(wrap);
