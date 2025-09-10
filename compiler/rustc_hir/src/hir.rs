@@ -4164,6 +4164,9 @@ pub struct Item<'hir> {
     pub span: Span,
     pub vis_span: Span,
     pub has_delayed_lints: bool,
+    /// hint to speed up collection: true if the item is a static or function and has
+    /// either an `EiiImpls` or `EiiExternTarget` attribute
+    pub eii: bool,
 }
 
 impl<'hir> Item<'hir> {
