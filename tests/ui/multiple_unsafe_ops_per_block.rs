@@ -1,6 +1,10 @@
 //@needs-asm-support
 //@aux-build:proc_macros.rs
-#![expect(clippy::unnecessary_operation, dropping_copy_types)]
+#![expect(
+    dropping_copy_types,
+    clippy::unnecessary_operation,
+    clippy::unnecessary_literal_unwrap
+)]
 #![warn(clippy::multiple_unsafe_ops_per_block)]
 
 extern crate proc_macros;
@@ -160,6 +164,49 @@ async fn issue11312() {
     async fn helper() {}
 
     helper().await;
+}
+
+async fn issue13879() {
+    async fn foo() {}
+
+    // no lint: nothing unsafe beyond the `await` which we ignore
+    unsafe {
+        foo().await;
+    }
+
+    // no lint: only one unsafe call beyond the `await`
+    unsafe {
+        not_very_safe();
+        foo().await;
+    }
+
+    // lint: two unsafe calls beyond the `await`
+    unsafe {
+        //~^ multiple_unsafe_ops_per_block
+        not_very_safe();
+        STATIC += 1;
+        foo().await;
+    }
+
+    async unsafe fn foo_unchecked() {}
+
+    // no lint: only one unsafe call in the `await`ed expr
+    unsafe {
+        foo_unchecked().await;
+    }
+
+    // lint: one unsafe call in the `await`ed expr, and one outside
+    unsafe {
+        //~^ multiple_unsafe_ops_per_block
+        not_very_safe();
+        foo_unchecked().await;
+    }
+
+    // lint: two unsafe calls in the `await`ed expr
+    unsafe {
+        //~^ multiple_unsafe_ops_per_block
+        Some(foo_unchecked()).unwrap_unchecked().await;
+    }
 }
 
 fn main() {}
