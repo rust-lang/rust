@@ -141,6 +141,9 @@ pr:
     <<: *job-linux-4c
   - name: x86_64-gnu-miri
     <<: *job-linux-4c
+  - name: x86_64-gnu-gcc
+    doc_url: https://rustc-dev-guide.rust-lang.org/tests/codegen-backend-tests/cg_gcc.html
+    <<: *job-linux-4c
 
 # Jobs that run when you perform a try build (@bors try)
 # These jobs automatically inherit envs.try, to avoid repeating
@@ -346,6 +349,10 @@ auto:
     <<: *job-linux-4c
 
   - name: x86_64-gnu
+    <<: *job-linux-4c
+
+  - name: x86_64-gnu-gcc
+    doc_url: https://rustc-dev-guide.rust-lang.org/tests/codegen-backend-tests/cg_gcc.html
     <<: *job-linux-4c
 
   # This job ensures commits landing on nightly still pass the full
