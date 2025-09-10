@@ -261,7 +261,19 @@ const EXCEPTIONS_UEFI_QEMU_TEST: ExceptionList = &[
     ("r-efi", "MIT OR Apache-2.0 OR LGPL-2.1-or-later"), // LGPL is not acceptable, but we use it under MIT OR Apache-2.0
 ];
 
-const PERMITTED_DEPS_LOCATION: &str = concat!(file!(), ":", line!());
+struct ListLocation {
+    path: &'static str,
+    line: u32,
+}
+
+/// Creates a [`ListLocation`] for the current location (with an additional offset to the actual list start);
+macro_rules! location {
+    (+ $offset:literal) => {
+        ListLocation { path: file!(), line: line!() + $offset }
+    };
+}
+
+const PERMITTED_RUSTC_DEPS_LOCATION: ListLocation = location!(+6);
 
 /// Crates rustc is allowed to depend on. Avoid adding to the list if possible.
 ///
@@ -930,7 +942,8 @@ fn check_permitted_dependencies(
     }
 
     if has_permitted_dep_error {
-        eprintln!("Go to `{PERMITTED_DEPS_LOCATION}` for the list.");
+        let ListLocation { path, line } = PERMITTED_RUSTC_DEPS_LOCATION;
+        eprintln!("Go to `{path}:{line}` for the list.");
     }
 }
 
