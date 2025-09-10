@@ -46,6 +46,7 @@ impl<'tcx> FieldPath<'tcx> {
         container: Ty<'tcx>,
         mut walker: impl FnMut(Ty<'tcx>, Symbol, Ty<'tcx>, bool) -> ControlFlow<T>,
     ) -> Option<T> {
+        assert!(!self.0.is_empty(), "tried walking empty field path");
         let mut cur = container;
         for (i, (variant, field)) in self.iter().enumerate() {
             let last = i == self.0.len() - 1;
