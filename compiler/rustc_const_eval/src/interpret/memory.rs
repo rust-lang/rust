@@ -953,6 +953,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         // # Global allocations
         if let Some(global_alloc) = self.tcx.try_get_global_alloc(id) {
+            // NOTE: `static` alignment from attributes has already been applied to the allocation.
             let (size, align) = global_alloc.size_and_align(*self.tcx, self.typing_env);
             let mutbl = global_alloc.mutability(*self.tcx, self.typing_env);
             let kind = match global_alloc {
