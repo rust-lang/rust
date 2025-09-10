@@ -37,12 +37,13 @@ pub(crate) fn detect_features() -> cache::Initializer {
     // Armv8.0 features not using the standard identifiers
     let fp = _sysctlbyname(c"hw.optional.floatingpoint");
     let asimd = _sysctlbyname(c"hw.optional.AdvSIMD");
-    let crc = _sysctlbyname(c"hw.optional.armv8_crc32");
+    let crc_old = _sysctlbyname(c"hw.optional.armv8_crc32");
 
     // Armv8 and Armv9 features using the standard identifiers
     let aes = _sysctlbyname(c"hw.optional.arm.FEAT_AES");
     let bf16 = _sysctlbyname(c"hw.optional.arm.FEAT_BF16");
     let bti = _sysctlbyname(c"hw.optional.arm.FEAT_BTI");
+    let crc = _sysctlbyname(c"hw.optional.arm.FEAT_CRC32");
     let cssc = _sysctlbyname(c"hw.optional.arm.FEAT_CSSC");
     let dit = _sysctlbyname(c"hw.optional.arm.FEAT_DIT");
     let dpb = _sysctlbyname(c"hw.optional.arm.FEAT_DPB");
@@ -111,7 +112,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
     enable_feature(Feature::asimd, asimd);
     enable_feature(Feature::bf16, bf16);
     enable_feature(Feature::bti, bti);
-    enable_feature(Feature::crc, crc);
+    enable_feature(Feature::crc, crc_old || crc);
     enable_feature(Feature::cssc, cssc);
     enable_feature(Feature::dit, dit);
     enable_feature(Feature::dotprod, dotprod);
