@@ -272,7 +272,7 @@ use crate::vec::Vec;
 
 type RefCounter = Cell<usize>;
 
-unsafe impl raw_rc::RefCounter for RefCounter {
+unsafe impl raw_rc::RefCounter for Cell<usize> {
     #[inline]
     fn increment(&self) {
         // NOTE: If you `mem::forget` `Rc`s (or `Weak`s), drop is skipped and the ref-count
