@@ -132,10 +132,7 @@ jobs:
         rustup default "$channel"
         rustup target add "${{ matrix.target }}"
 
-    # Our scripts use nextest if possible. This is skipped on the native ppc
-    # and s390x runners since install-action doesn't support them.
     - uses: taiki-e/install-action@nextest
-      if: "!(matrix.os == 'ubuntu-24.04-ppc64le' || matrix.os == 'ubuntu-24.04-s390x')"
 
     - uses: Swatinem/rust-cache@v2
       with:
