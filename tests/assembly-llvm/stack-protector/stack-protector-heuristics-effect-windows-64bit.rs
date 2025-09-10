@@ -113,7 +113,7 @@ pub fn local_var_addr_used_indirectly(f: fn(bool)) {
 
     // This function takes the address of a local variable taken. Although this
     // address is never used as a way to refer to stack memory, the `strong`
-    // heuristic adds stack smash protection. This is also the case in C++:
+    // heuristic adds stack smashing protection. This is also the case in C++:
     // ```
     // cat << EOF | clang++ -O2 -fstack-protector-strong -S -x c++ - -o - | grep stack_chk
     // #include <cstdint>
@@ -186,7 +186,7 @@ pub fn local_var_addr_taken_used_locally_only(factory: fn() -> i32, sink: fn(i32
 
     // Even though the local variable conceptually has its address taken, as
     // it's passed by reference to the trait function, the use of the reference
-    // is easily inlined. There is therefore no stack smash protection even with
+    // is easily inlined. There is therefore no stack smashing protection even with
     // the `strong` heuristic.
 
     // all: __security_check_cookie
