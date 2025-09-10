@@ -92,10 +92,10 @@ fn can_continue_type_after_non_fn_ident(t: &Token) -> bool {
 }
 
 fn can_begin_dyn_bound_in_edition_2015(t: &Token) -> bool {
-    // `Not`, `Tilde` & `Const` are deliberately not part of this list to
+    // `!`, `const`, `[`, `async` are deliberately not part of this list to
     // contain the number of potential regressions esp. in MBE code.
-    // `Const` would regress `rfc-2632-const-trait-impl/mbe-dyn-const-2015.rs`.
-    // `Not` would regress `dyn!(...)` macro calls in Rust 2015.
+    // `const` and `[` would regress UI test `macro-dyn-const-2015.rs`.
+    // `!` would regress `dyn!(...)` macro calls in Rust 2015.
     t.is_path_start()
         || t.is_lifetime()
         || t == &TokenKind::Question
