@@ -85,7 +85,7 @@ static URL_REGEX: LazyLock<Regex> = LazyLock::new(|| {
 
 fn find_raw_urls(
     cx: &DocContext<'_>,
-    whole_text: &str,
+    dox: &str,
     text: &str,
     range: Range<usize>,
     f: &impl Fn(&DocContext<'_>, &'static str, Range<usize>, Option<&str>),
@@ -93,26 +93,20 @@ fn find_raw_urls(
     trace!("looking for raw urls in {text}");
     // For now, we only check "full" URLs (meaning, starting with "http://" or "https://").
     for match_ in URL_REGEX.find_iter(text) {
-        let url_range = match_.range();
+        let mut url_range = match_.range();
+        url_range.start += range.start;
+        url_range.end += range.start;
         let mut without_brackets = None;
-        let mut extra_range = 0;
-        // If the whole text is contained inside `[]`, then we need to replace the brackets and
+        // If the link is contained inside `[]`, then we need to replace the brackets and
         // not just add `<>`.
-        if whole_text[..range.start + url_range.start].ends_with('[')
-            && range.start + url_range.end <= whole_text.len()
-            && whole_text[range.start + url_range.end..].starts_with(']')
+        if dox[..url_range.start].ends_with('[')
+            && url_range.end <= dox.len()
+            && dox[url_range.end..].starts_with(']')
         {
-            extra_range = 1;
+            url_range.start -= 1;
+            url_range.end += 1;
             without_brackets = Some(match_.as_str());
         }
-        f(
-            cx,
-            "this URL is not a hyperlink",
-            Range {
-                start: range.start + url_range.start - extra_range,
-                end: range.start + url_range.end + extra_range,
-            },
-            without_brackets,
-        );
+        f(cx, "this URL is not a hyperlink", url_range, without_brackets);
     }
 }
