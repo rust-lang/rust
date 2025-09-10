@@ -54,6 +54,8 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use stdx::{always, never};
 use triomphe::Arc;
 
+use crate::next_solver::DbInterner;
+use crate::next_solver::mapping::NextSolverToChalk;
 use crate::{
     AliasEq, AliasTy, Binders, ClosureId, Const, DomainGoal, GenericArg, ImplTraitId, ImplTraitIdx,
     IncorrectGenericsLenKind, Interner, Lifetime, OpaqueTyId, ParamLoweringMode,
@@ -922,13 +924,15 @@ impl<'db> InferenceContext<'db> {
         });
         diagnostics.shrink_to_fit();
         for (_, subst) in method_resolutions.values_mut() {
-            *subst = table.resolve_completely(subst.clone());
+            *subst =
+                table.resolve_completely::<_, crate::next_solver::GenericArgs<'db>>(subst.clone());
             *has_errors =
                 *has_errors || subst.type_parameters(Interner).any(|ty| ty.contains_unknown());
         }
         method_resolutions.shrink_to_fit();
         for (_, subst) in assoc_resolutions.values_mut() {
-            *subst = table.resolve_completely(subst.clone());
+            *subst =
+                table.resolve_completely::<_, crate::next_solver::GenericArgs<'db>>(subst.clone());
             *has_errors =
                 *has_errors || subst.type_parameters(Interner).any(|ty| ty.contains_unknown());
         }
@@ -946,7 +950,12 @@ impl<'db> InferenceContext<'db> {
         result.tuple_field_access_types = tuple_field_accesses_rev
             .into_iter()
             .enumerate()
-            .map(|(idx, subst)| (TupleId(idx as u32), table.resolve_completely(subst)))
+            .map(|(idx, subst)| {
+                (
+                    TupleId(idx as u32),
+                    table.resolve_completely::<_, crate::next_solver::GenericArgs<'db>>(subst),
+                )
+            })
             .inspect(|(_, subst)| {
                 *has_errors =
                     *has_errors || subst.type_parameters(Interner).any(|ty| ty.contains_unknown());
@@ -1015,14 +1024,12 @@ impl<'db> InferenceContext<'db> {
         if let Some(self_param) = self.body.self_param
             && let Some(ty) = param_tys.next()
         {
-            let ty = self.insert_type_vars(ty);
-            let ty = self.normalize_associated_types_in(ty);
+            let ty = self.process_user_written_ty(ty);
             self.write_binding_ty(self_param, ty);
         }
         let mut tait_candidates = FxHashSet::default();
         for (ty, pat) in param_tys.zip(&*self.body.params) {
-            let ty = self.insert_type_vars(ty);
-            let ty = self.normalize_associated_types_in(ty);
+            let ty = self.process_user_written_ty(ty);
 
             self.infer_top_pat(*pat, &ty, None);
             if ty
@@ -1073,7 +1080,7 @@ impl<'db> InferenceContext<'db> {
             None => self.result.standard_types.unit.clone(),
         };
 
-        self.return_ty = self.normalize_associated_types_in(return_ty);
+        self.return_ty = self.process_user_written_ty(return_ty);
         self.return_coercion = Some(CoerceMany::new(self.return_ty.clone()));
 
         // Functions might be defining usage sites of TAITs.
@@ -1415,8 +1422,7 @@ impl<'db> InferenceContext<'db> {
     ) -> Ty {
         let ty = self
             .with_ty_lowering(store, type_source, lifetime_elision, |ctx| ctx.lower_ty(type_ref));
-        let ty = self.insert_type_vars(ty);
-        self.normalize_associated_types_in(ty)
+        self.process_user_written_ty(ty)
     }
 
     fn make_body_ty(&mut self, type_ref: TypeRefId) -> Ty {
@@ -1562,15 +1568,35 @@ impl<'db> InferenceContext<'db> {
         ty
     }
 
+    /// Whenever you lower a user-written type, you should call this.
+    fn process_user_written_ty<T, U>(&mut self, ty: T) -> T
+    where
+        T: HasInterner<Interner = Interner> + TypeFoldable<Interner> + ChalkToNextSolver<'db, U>,
+        U: NextSolverToChalk<'db, T> + rustc_type_ir::TypeFoldable<DbInterner<'db>>,
+    {
+        self.table.process_user_written_ty(ty)
+    }
+
+    /// The difference of this method from `process_user_written_ty()` is that this method doesn't register a well-formed obligation,
+    /// while `process_user_written_ty()` should (but doesn't currently).
+    fn process_remote_user_written_ty<T, U>(&mut self, ty: T) -> T
+    where
+        T: HasInterner<Interner = Interner> + TypeFoldable<Interner> + ChalkToNextSolver<'db, U>,
+        U: NextSolverToChalk<'db, T> + rustc_type_ir::TypeFoldable<DbInterner<'db>>,
+    {
+        self.table.process_remote_user_written_ty(ty)
+    }
+
     /// Recurses through the given type, normalizing associated types mentioned
     /// in it by replacing them by type variables and registering obligations to
     /// resolve later. This should be done once for every type we get from some
     /// type annotation (e.g. from a let type annotation, field type or function
     /// call). `make_ty` handles this already, but e.g. for field types we need
     /// to do it as well.
-    fn normalize_associated_types_in<T>(&mut self, ty: T) -> T
+    fn normalize_associated_types_in<T, U>(&mut self, ty: T) -> T
     where
-        T: HasInterner<Interner = Interner> + TypeFoldable<Interner>,
+        T: HasInterner<Interner = Interner> + TypeFoldable<Interner> + ChalkToNextSolver<'db, U>,
+        U: NextSolverToChalk<'db, T> + rustc_type_ir::TypeFoldable<DbInterner<'db>>,
     {
         self.table.normalize_associated_types_in(ty)
     }

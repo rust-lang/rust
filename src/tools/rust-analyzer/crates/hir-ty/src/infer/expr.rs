@@ -1419,7 +1419,7 @@ impl InferenceContext<'_> {
             None => self.err_ty(),
         };
 
-        let ret_ty = self.normalize_associated_types_in(ret_ty);
+        let ret_ty = self.process_remote_user_written_ty(ret_ty);
 
         if self.is_builtin_binop(&lhs_ty, &rhs_ty, op) {
             // use knowledge of built-in binary ops, which can sometimes help inference
@@ -1630,8 +1630,7 @@ impl InferenceContext<'_> {
         Some(match res {
             Some((field_id, ty)) => {
                 let adjustments = auto_deref_adjust_steps(&autoderef);
-                let ty = self.insert_type_vars(ty);
-                let ty = self.normalize_associated_types_in(ty);
+                let ty = self.process_remote_user_written_ty(ty);
 
                 (ty, field_id, adjustments, true)
             }
@@ -1641,8 +1640,7 @@ impl InferenceContext<'_> {
                 let ty = self.db.field_types(field_id.parent)[field_id.local_id]
                     .clone()
                     .substitute(Interner, &subst);
-                let ty = self.insert_type_vars(ty);
-                let ty = self.normalize_associated_types_in(ty);
+                let ty = self.process_remote_user_written_ty(ty);
 
                 (ty, Either::Left(field_id), adjustments, false)
             }

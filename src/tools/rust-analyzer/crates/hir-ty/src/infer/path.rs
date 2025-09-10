@@ -23,7 +23,7 @@ use crate::{
 
 use super::{ExprOrPatId, InferenceContext, InferenceTyDiagnosticSource};
 
-impl InferenceContext<'_> {
+impl<'db> InferenceContext<'db> {
     pub(super) fn infer_path(&mut self, path: &Path, id: ExprOrPatId) -> Option<Ty> {
         let (value_def, generic_def, substs) = match self.resolve_value_path(path, id)? {
             ValuePathResolution::GenericDef(value_def, generic_def, substs) => {
@@ -31,13 +31,13 @@ impl InferenceContext<'_> {
             }
             ValuePathResolution::NonGeneric(ty) => return Some(ty),
         };
-        let substs = self.insert_type_vars(substs);
-        let substs = self.normalize_associated_types_in(substs);
+        let substs =
+            self.process_remote_user_written_ty::<_, crate::next_solver::GenericArgs<'db>>(substs);
 
         self.add_required_obligations_for_value_path(generic_def, &substs);
 
         let ty = self.db.value_ty(value_def)?.substitute(Interner, &substs);
-        let ty = self.normalize_associated_types_in(ty);
+        let ty = self.process_remote_user_written_ty(ty);
         Some(ty)
     }
 
@@ -173,14 +173,12 @@ impl InferenceContext<'_> {
             let last = path.segments().last()?;
 
             let (ty, orig_ns) = path_ctx.ty_ctx().lower_ty_ext(type_ref);
-            let ty = self.table.insert_type_vars(ty);
-            let ty = self.table.normalize_associated_types_in(ty);
+            let ty = self.table.process_user_written_ty(ty);
 
             path_ctx.ignore_last_segment();
             let (ty, _) = path_ctx.lower_ty_relative_path(ty, orig_ns, true);
             drop_ctx(ctx, no_diagnostics);
-            let ty = self.table.insert_type_vars(ty);
-            let ty = self.table.normalize_associated_types_in(ty);
+            let ty = self.table.process_user_written_ty(ty);
             self.resolve_ty_assoc_item(ty, last.name, id).map(|(it, substs)| (it, Some(substs)))?
         } else {
             let hygiene = self.body.expr_or_pat_path_hygiene(id);
@@ -223,8 +221,7 @@ impl InferenceContext<'_> {
                                 return None;
                             }
 
-                            let ty = self.insert_type_vars(ty);
-                            let ty = self.normalize_associated_types_in(ty);
+                            let ty = self.process_user_written_ty(ty);
 
                             self.resolve_ty_assoc_item(ty, last_segment.name, id)
                         }

@@ -1358,7 +1358,10 @@ pub(crate) fn convert_ty_for_result<'db>(interner: DbInterner<'db>, ty: Ty<'db>)
                 };
                 let associated_ty_id = to_assoc_type_id(assoc_ty_id);
                 let substitution = convert_args_for_result(interner, alias_ty.args.as_slice());
-                TyKind::AssociatedType(associated_ty_id, substitution)
+                TyKind::Alias(crate::AliasTy::Projection(crate::ProjectionTy {
+                    associated_ty_id,
+                    substitution,
+                }))
             }
             rustc_type_ir::AliasTyKind::Opaque => {
                 let opaque_ty_id = match alias_ty.def_id {

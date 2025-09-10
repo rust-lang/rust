@@ -76,7 +76,7 @@ use hir_expand::{
 };
 use hir_ty::{
     AliasTy, CallableSig, Canonical, CanonicalVarKinds, Cast, ClosureId, GenericArg,
-    GenericArgData, Interner, ParamKind, QuantifiedWhereClause, Scalar, Substitution,
+    GenericArgData, Interner, ParamKind, ProjectionTy, QuantifiedWhereClause, Scalar, Substitution,
     TraitEnvironment, TraitRefExt, Ty, TyBuilder, TyDefId, TyExt, TyKind, TyLoweringDiagnostic,
     ValueTyDefId, WhereClause, all_super_traits, autoderef, check_orphan_rules,
     consteval::{ConstExt, try_const_usize, unknown_const_as_generic},
@@ -4973,6 +4973,7 @@ impl<'db> Type<'db> {
                 | TyKind::Tuple(_, substitution)
                 | TyKind::OpaqueType(_, substitution)
                 | TyKind::AssociatedType(_, substitution)
+                | TyKind::Alias(AliasTy::Projection(ProjectionTy { substitution, .. }))
                 | TyKind::FnDef(_, substitution) => {
                     substitution.iter(Interner).filter_map(|x| x.ty(Interner)).any(|ty| go(db, ty))
                 }
@@ -5819,7 +5820,11 @@ impl<'db> Type<'db> {
                     cb(type_.derived(ty.clone()));
                     walk_substs(db, type_, substs, cb);
                 }
-                TyKind::AssociatedType(_, substs) => {
+                TyKind::AssociatedType(_, substs)
+                | TyKind::Alias(AliasTy::Projection(hir_ty::ProjectionTy {
+                    substitution: substs,
+                    ..
+                })) => {
                     if ty.associated_type_parent_trait(db).is_some() {
                         cb(type_.derived(ty.clone()));
                     }

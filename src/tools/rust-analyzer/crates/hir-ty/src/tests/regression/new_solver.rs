@@ -20,7 +20,7 @@ impl<'a> IntoIterator for &'a Grid {
     "#,
         expect![[r#"
             150..154 'self': &'a Grid
-            174..181 '{     }': impl Iterator<Item = &'? ()>
+            174..181 '{     }': impl Iterator<Item = &'a ()>
         "#]],
     );
 }
@@ -69,5 +69,32 @@ impl Foo for i32 {}
 fn main() {
     debug(&1);
 }"#,
+    );
+}
+
+#[test]
+fn projection_is_not_associated_type() {
+    check_no_mismatches(
+        r#"
+//- minicore: fn
+trait Iterator {
+    type Item;
+
+    fn partition<F>(self, f: F)
+    where
+        F: FnMut(&Self::Item) -> bool,
+    {
+    }
+}
+
+struct Iter;
+impl Iterator for Iter {
+    type Item = i32;
+}
+
+fn main() {
+    Iter.partition(|n| true);
+}
+    "#,
     );
 }

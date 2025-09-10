@@ -12,12 +12,14 @@ use hir_expand::name::Name;
 use intern::sym;
 use rustc_hash::{FxHashMap, FxHashSet};
 use rustc_next_trait_solver::solve::HasChanged;
+use rustc_type_ir::inherent::IntoKind;
 use rustc_type_ir::{
     AliasRelationDirection, FloatVid, IntVid, TyVid,
     inherent::{Span, Term as _},
     relate::{Relate, solver_relating::RelateExt},
     solve::{Certainty, NoSolution},
 };
+use rustc_type_ir::{TypeSuperFoldable, TypeVisitableExt};
 use smallvec::SmallVec;
 use triomphe::Arc;
 
@@ -31,11 +33,8 @@ use crate::{
     db::HirDatabase,
     fold_generic_args, fold_tys_and_consts,
     next_solver::{
-        self, Binder, DbInterner, ParamEnvAnd, Predicate, PredicateKind, SolverDefIds, Term,
-        infer::{
-            DbInternerInferExt, InferCtxt, canonical::canonicalizer::OriginalQueryValues,
-            snapshot::CombinedSnapshot,
-        },
+        self, Binder, DbInterner, Predicate, PredicateKind, SolverDefIds, Term,
+        infer::{DbInternerInferExt, InferCtxt, snapshot::CombinedSnapshot},
         mapping::{ChalkToNextSolver, InferenceVarExt, NextSolverToChalk},
     },
     to_chalk_trait_id,
@@ -305,116 +304,21 @@ impl<'a> InferenceTable<'a> {
     /// type annotation (e.g. from a let type annotation, field type or function
     /// call). `make_ty` handles this already, but e.g. for field types we need
     /// to do it as well.
-    #[tracing::instrument(skip(self), ret)]
-    pub(crate) fn normalize_associated_types_in<T>(&mut self, ty: T) -> T
+    pub(crate) fn normalize_associated_types_in<T, U>(&mut self, ty: T) -> T
     where
-        T: HasInterner<Interner = Interner> + TypeFoldable<Interner>,
+        T: ChalkToNextSolver<'a, U>,
+        U: NextSolverToChalk<'a, T> + rustc_type_ir::TypeFoldable<DbInterner<'a>>,
     {
-        fold_tys_and_consts(
-            ty,
-            |e, _| match e {
-                Either::Left(ty) => {
-                    let ty = self.resolve_ty_shallow(&ty);
-                    tracing::debug!(?ty);
-                    Either::Left(match ty.kind(Interner) {
-                        TyKind::Alias(AliasTy::Projection(proj_ty)) => {
-                            let ty = self.normalize_projection_ty(proj_ty.clone());
-                            self.resolve_ty_shallow(&ty)
-                        }
-                        TyKind::AssociatedType(id, subst) => {
-                            // return Either::Left(self.resolve_ty_shallow(&ty));
-                            if ty.data(Interner).flags.intersects(
-                                chalk_ir::TypeFlags::HAS_TY_INFER
-                                    | chalk_ir::TypeFlags::HAS_CT_INFER,
-                            ) {
-                                return Either::Left(ty);
-                            }
-                            let var = self.new_type_var();
-                            let proj_ty = chalk_ir::ProjectionTy {
-                                associated_ty_id: *id,
-                                substitution: subst.clone(),
-                            };
-                            let normalize = chalk_ir::Normalize {
-                                alias: AliasTy::Projection(proj_ty),
-                                ty: var.clone(),
-                            };
-                            let goal = chalk_ir::Goal::new(
-                                Interner,
-                                chalk_ir::GoalData::DomainGoal(chalk_ir::DomainGoal::Normalize(
-                                    normalize,
-                                )),
-                            );
-                            let in_env = InEnvironment::new(&self.trait_env.env, goal);
-                            let goal = in_env.to_nextsolver(self.interner);
-                            let goal =
-                                ParamEnvAnd { param_env: goal.param_env, value: goal.predicate };
+        self.normalize_associated_types_in_ns(ty.to_nextsolver(self.interner))
+            .to_chalk(self.interner)
+    }
 
-                            let (canonical_goal, orig_values) = {
-                                let mut orig_values = OriginalQueryValues::default();
-                                let result =
-                                    self.infer_ctxt.canonicalize_query(goal, &mut orig_values);
-                                (result.canonical, orig_values)
-                            };
-                            let canonical_goal = rustc_type_ir::Canonical {
-                                max_universe: canonical_goal.max_universe,
-                                variables: canonical_goal.variables,
-                                value: crate::next_solver::Goal {
-                                    param_env: canonical_goal.value.param_env,
-                                    predicate: canonical_goal.value.value,
-                                },
-                            };
-                            let solution = next_trait_solve_canonical_in_ctxt(
-                                &self.infer_ctxt,
-                                canonical_goal,
-                            );
-                            if let NextTraitSolveResult::Certain(canonical_subst) = solution {
-                                let subst = self.instantiate_canonical(canonical_subst).subst;
-                                if subst.len(Interner) != orig_values.var_values.len() {
-                                    ty
-                                } else {
-                                    let target_ty = var.to_nextsolver(self.interner);
-                                    subst
-                                        .iter(Interner)
-                                        .zip(orig_values.var_values.iter())
-                                        .find_map(|(new, orig)| {
-                                            if orig.ty() == Some(target_ty) {
-                                                Some(new.assert_ty_ref(Interner).clone())
-                                            } else {
-                                                None
-                                            }
-                                        })
-                                        .unwrap_or(ty)
-                                }
-                            } else {
-                                ty
-                            }
-                        }
-                        _ => ty,
-                    })
-                }
-                Either::Right(c) => Either::Right(match &c.data(Interner).value {
-                    chalk_ir::ConstValue::Concrete(cc) => match &cc.interned {
-                        crate::ConstScalar::UnevaluatedConst(c_id, subst) => {
-                            // FIXME: Ideally here we should do everything that we do with type alias, i.e. adding a variable
-                            // and registering an obligation. But it needs chalk support, so we handle the most basic
-                            // case (a non associated const without generic parameters) manually.
-                            if subst.len(Interner) == 0 {
-                                if let Ok(eval) = self.db.const_eval(*c_id, subst.clone(), None) {
-                                    eval
-                                } else {
-                                    unknown_const(c.data(Interner).ty.clone())
-                                }
-                            } else {
-                                unknown_const(c.data(Interner).ty.clone())
-                            }
-                        }
-                        _ => c,
-                    },
-                    _ => c,
-                }),
-            },
-            DebruijnIndex::INNERMOST,
-        )
+    pub(crate) fn normalize_associated_types_in_ns<T>(&mut self, ty: T) -> T
+    where
+        T: rustc_type_ir::TypeFoldable<DbInterner<'a>>,
+    {
+        let ty = self.resolve_vars_with_obligations(ty);
+        ty.fold_with(&mut Normalizer { table: self })
     }
 
     /// Works almost same as [`Self::normalize_associated_types_in`], but this also resolves shallow
@@ -476,11 +380,27 @@ impl<'a> InferenceTable<'a> {
     }
 
     pub(crate) fn normalize_projection_ty(&mut self, proj_ty: ProjectionTy) -> Ty {
-        let var = self.new_type_var();
-        let alias_eq = AliasEq { alias: AliasTy::Projection(proj_ty), ty: var.clone() };
-        let obligation: Goal = alias_eq.cast(Interner);
-        self.register_obligation(obligation.to_nextsolver(self.interner));
-        var
+        let ty = TyKind::Alias(chalk_ir::AliasTy::Projection(proj_ty))
+            .intern(Interner)
+            .to_nextsolver(self.interner);
+        self.normalize_alias_ty(ty).to_chalk(self.interner)
+    }
+
+    pub(crate) fn normalize_alias_ty(
+        &mut self,
+        alias: crate::next_solver::Ty<'a>,
+    ) -> crate::next_solver::Ty<'a> {
+        let infer_term = self.infer_ctxt.next_ty_var();
+        let obligation = crate::next_solver::Predicate::new(
+            self.interner,
+            crate::next_solver::Binder::dummy(crate::next_solver::PredicateKind::AliasRelate(
+                alias.into(),
+                infer_term.into(),
+                rustc_type_ir::AliasRelationDirection::Equate,
+            )),
+        );
+        self.register_obligation(obligation);
+        self.resolve_vars_with_obligations(infer_term)
     }
 
     fn new_var(&mut self, kind: TyVariableKind, diverging: bool) -> Ty {
@@ -591,9 +511,10 @@ impl<'a> InferenceTable<'a> {
         )
     }
 
-    pub(crate) fn resolve_completely<T>(&mut self, t: T) -> T
+    pub(crate) fn resolve_completely<T, U>(&mut self, t: T) -> T
     where
-        T: HasInterner<Interner = Interner> + TypeFoldable<Interner>,
+        T: HasInterner<Interner = Interner> + TypeFoldable<Interner> + ChalkToNextSolver<'a, U>,
+        U: NextSolverToChalk<'a, T> + rustc_type_ir::TypeFoldable<DbInterner<'a>>,
     {
         let t = self.resolve_with_fallback(t, &|_, _, d, _| d);
         let t = self.normalize_associated_types_in(t);
@@ -1045,6 +966,30 @@ impl<'a> InferenceTable<'a> {
         }
     }
 
+    /// Whenever you lower a user-written type, you should call this.
+    pub(crate) fn process_user_written_ty<T, U>(&mut self, ty: T) -> T
+    where
+        T: HasInterner<Interner = Interner> + TypeFoldable<Interner> + ChalkToNextSolver<'a, U>,
+        U: NextSolverToChalk<'a, T> + rustc_type_ir::TypeFoldable<DbInterner<'a>>,
+    {
+        self.process_remote_user_written_ty(ty)
+        // FIXME: Register a well-formed obligation.
+    }
+
+    /// The difference of this method from `process_user_written_ty()` is that this method doesn't register a well-formed obligation,
+    /// while `process_user_written_ty()` should (but doesn't currently).
+    pub(crate) fn process_remote_user_written_ty<T, U>(&mut self, ty: T) -> T
+    where
+        T: HasInterner<Interner = Interner> + TypeFoldable<Interner> + ChalkToNextSolver<'a, U>,
+        U: NextSolverToChalk<'a, T> + rustc_type_ir::TypeFoldable<DbInterner<'a>>,
+    {
+        let ty = self.insert_type_vars(ty);
+        // See https://github.com/rust-lang/rust/blob/cdb45c87e2cd43495379f7e867e3cc15dcee9f93/compiler/rustc_hir_typeck/src/fn_ctxt/mod.rs#L487-L495:
+        // Even though the new solver only lazily normalizes usually, here we eagerly normalize so that not everything needs
+        // to normalize before inspecting the `TyKind`.
+        self.normalize_associated_types_in(ty)
+    }
+
     /// Replaces ConstScalar::Unknown by a new type var, so we can maybe still infer it.
     pub(super) fn insert_const_vars_shallow(&mut self, c: Const) -> Const {
         let data = c.data(Interner);
@@ -1317,5 +1262,64 @@ mod resolve {
             // sure we don't leak them outside of inference
             crate::error_lifetime()
         }
+    }
+}
+
+/// This expects its input to be resolved.
+struct Normalizer<'a, 'b> {
+    table: &'a mut InferenceTable<'b>,
+}
+
+impl<'db> Normalizer<'_, 'db> {
+    fn normalize_alias_term(
+        &mut self,
+        alias_term: crate::next_solver::Term<'db>,
+    ) -> crate::next_solver::Term<'db> {
+        let infer_term = self.table.infer_ctxt.next_term_var_of_kind(alias_term);
+        let obligation = crate::next_solver::Predicate::new(
+            self.table.interner,
+            crate::next_solver::Binder::dummy(crate::next_solver::PredicateKind::AliasRelate(
+                alias_term,
+                infer_term,
+                rustc_type_ir::AliasRelationDirection::Equate,
+            )),
+        );
+        self.table.register_obligation(obligation);
+        let term = self.table.resolve_vars_with_obligations(infer_term);
+        // Now normalize the result, because maybe it contains more aliases.
+        match term {
+            Term::Ty(term) => term.super_fold_with(self).into(),
+            Term::Const(term) => term.super_fold_with(self).into(),
+        }
+    }
+}
+
+impl<'db> rustc_type_ir::TypeFolder<DbInterner<'db>> for Normalizer<'_, 'db> {
+    fn cx(&self) -> DbInterner<'db> {
+        self.table.interner
+    }
+
+    fn fold_ty(&mut self, ty: crate::next_solver::Ty<'db>) -> crate::next_solver::Ty<'db> {
+        if !ty.has_aliases() {
+            return ty;
+        }
+
+        let crate::next_solver::TyKind::Alias(..) = ty.kind() else {
+            return ty.super_fold_with(self);
+        };
+        // FIXME: Handle escaping bound vars by replacing them with placeholders (relevant to when we handle HRTB only).
+        self.normalize_alias_term(ty.into()).expect_type()
+    }
+
+    fn fold_const(&mut self, ct: crate::next_solver::Const<'db>) -> crate::next_solver::Const<'db> {
+        if !ct.has_aliases() {
+            return ct;
+        }
+
+        let crate::next_solver::ConstKind::Unevaluated(..) = ct.kind() else {
+            return ct.super_fold_with(self);
+        };
+        // FIXME: Handle escaping bound vars by replacing them with placeholders (relevant to when we handle HRTB only).
+        self.normalize_alias_term(ct.into()).expect_const()
     }
 }

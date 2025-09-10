@@ -2000,7 +2000,7 @@ fn test() {
             225..360 'match ...     }': ()
             231..239 'Pin::new': fn new<&'? mut |usize| yields i64 -> &'static str>(&'? mut |usize| yields i64 -> &'static str) -> Pin<&'? mut |usize| yields i64 -> &'static str>
             231..247 'Pin::n...mut g)': Pin<&'? mut |usize| yields i64 -> &'static str>
-            231..262 'Pin::n...usize)': CoroutineState<i64, &'? str>
+            231..262 'Pin::n...usize)': CoroutineState<i64, &'static str>
             240..246 '&mut g': &'? mut |usize| yields i64 -> &'static str
             245..246 'g': |usize| yields i64 -> &'static str
             255..261 '0usize': usize

@@ -88,7 +88,7 @@ impl InferenceContext<'_> {
                                     Some(substs) => f.substitute(Interner, substs),
                                     None => f.substitute(Interner, &Substitution::empty(Interner)),
                                 };
-                                self.normalize_associated_types_in(expected_ty)
+                                self.process_remote_user_written_ty(expected_ty)
                             }
                             None => self.err_ty(),
                         }
@@ -152,7 +152,7 @@ impl InferenceContext<'_> {
                                     Some(substs) => f.substitute(Interner, substs),
                                     None => f.substitute(Interner, &Substitution::empty(Interner)),
                                 };
-                                self.normalize_associated_types_in(expected_ty)
+                                self.process_remote_user_written_ty(expected_ty)
                             }
                             None => {
                                 self.push_diagnostic(InferenceDiagnostic::NoSuchField {

@@ -22,10 +22,9 @@ use stdx::never;
 use triomphe::Arc;
 
 use crate::{
-    AdtId, AliasTy, Canonical, CanonicalVarKinds, DebruijnIndex, DynTyExt, ForeignDefId,
-    GenericArgData, Goal, InEnvironment, Interner, Mutability, Scalar, Substitution,
-    TraitEnvironment, TraitRef, TraitRefExt, Ty, TyBuilder, TyExt, TyKind, TyVariableKind,
-    VariableKind, WhereClause,
+    AdtId, Canonical, CanonicalVarKinds, DebruijnIndex, DynTyExt, ForeignDefId, GenericArgData,
+    Goal, InEnvironment, Interner, Mutability, Scalar, Substitution, TraitEnvironment, TraitRef,
+    TraitRefExt, Ty, TyBuilder, TyExt, TyKind, TyVariableKind, VariableKind, WhereClause,
     autoderef::{self, AutoderefKind},
     db::HirDatabase,
     from_chalk_trait_id, from_foreign_def_id,
@@ -106,8 +105,12 @@ impl TyFingerprint {
                 }
             }
             TyKind::AssociatedType(_, _)
+            // FIXME(next-solver): Putting `Alias` here is *probably* incorrect, AFAIK it should return `None`. But this breaks
+            // flyimport, which uses an incorrect but fast method resolution algorithm. Therefore we put it here,
+            // because this function is only called by flyimport, and anyway we should get rid of `TyFingerprint`
+            // and switch to `rustc_type_ir`'s `SimplifiedType`.
+            | TyKind::Alias(_)
             | TyKind::OpaqueType(_, _)
-            | TyKind::Alias(AliasTy::Opaque(_))
             | TyKind::FnDef(_, _)
             | TyKind::Closure(_, _)
             | TyKind::Coroutine(..)
@@ -115,8 +118,7 @@ impl TyFingerprint {
             TyKind::Function(fn_ptr) => {
                 TyFingerprint::Function(fn_ptr.substitution.0.len(Interner) as u32)
             }
-            TyKind::Alias(_)
-            | TyKind::Placeholder(_)
+            TyKind::Placeholder(_)
             | TyKind::BoundVar(_)
             | TyKind::InferenceVar(_, _)
             | TyKind::Error => return None,
@@ -908,7 +910,10 @@ fn find_matching_impl(
                 }
                 table.register_obligation(goal.to_nextsolver(table.interner));
             }
-            Some((impl_.impl_items(db), table.resolve_completely(impl_substs)))
+            Some((
+                impl_.impl_items(db),
+                table.resolve_completely::<_, crate::next_solver::GenericArgs<'_>>(impl_substs),
+            ))
         })
     })
 }
