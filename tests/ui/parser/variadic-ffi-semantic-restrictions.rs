@@ -70,13 +70,13 @@ impl X {
 
 trait T {
     fn t_f1(x: isize, ...) {}
-    //~^ ERROR associated functions cannot have a C variable argument list
+    //~^ ERROR `...` is not supported for non-extern functions
     fn t_f2(x: isize, ...);
-    //~^ ERROR associated functions cannot have a C variable argument list
+    //~^ ERROR `...` is not supported for non-extern functions
     fn t_f3(...) {}
-    //~^ ERROR associated functions cannot have a C variable argument list
+    //~^ ERROR `...` is not supported for non-extern functions
     fn t_f4(...);
-    //~^ ERROR associated functions cannot have a C variable argument list
+    //~^ ERROR `...` is not supported for non-extern functions
     fn t_f5(..., x: isize) {}
     //~^ ERROR `...` must be the last argument of a C-variadic function
     fn t_f6(..., x: isize);
