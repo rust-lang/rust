@@ -38,10 +38,14 @@ fn check_all_outcomes<T: Eq + std::hash::Hash + fmt::Display>(
     let mut seen = HashSet::new();
     // Let's give it N times as many tries as we are expecting values.
     let tries = expected.len() * 12;
-    for _ in 0..tries {
+    for i in 0..tries {
         let val = generate();
         assert!(expected.contains(&val), "got an unexpected value: {val}");
         seen.insert(val);
+        if i > tries / 2 && expected.len() == seen.len() {
+            // We saw everything and we did quite a few tries, let's avoid wasting time.
+            return;
+        }
     }
     // Let's see if we saw them all.
     for val in expected {
