@@ -1,6 +1,5 @@
-use core::panic::RefUnwindSafe;
-
 use crate::fmt;
+use crate::panic::RefUnwindSafe;
 use crate::sync::nonpoison::{Condvar, Mutex};
 
 /// A barrier enables multiple threads to synchronize the beginning
@@ -33,7 +32,7 @@ pub struct Barrier {
     num_threads: usize,
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "unwind_safe_lock_refs", since = "1.12.0")]
 impl RefUnwindSafe for Barrier {}
 
 // The inner state of a double barrier
