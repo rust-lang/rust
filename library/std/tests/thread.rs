@@ -66,6 +66,8 @@ fn thread_local_hygeiene() {
     type Storage = ();
     type LazyStorage = ();
     type EagerStorage = ();
+    #[allow(non_camel_case_types)]
+    type usize = ();
     thread_local! {
         static A: LocalKey = const { () };
         static B: Storage = const { () };
