@@ -1,4 +1,4 @@
-FROM ubuntu:25.04
+FROM ubuntu:25.10
 
 ARG DEBIAN_FRONTEND=noninteractive
 
