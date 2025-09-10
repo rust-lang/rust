@@ -35,7 +35,7 @@ fn spin_until(loc: &AtomicUsize, val: usize) -> usize {
 
 /// Check that the function produces the intended set of outcomes.
 #[track_caller]
-fn check_all_outcomes<T: Eq + std::hash::Hash + std::fmt::Display>(
+fn check_all_outcomes<T: Eq + std::hash::Hash + std::fmt::Debug>(
     expected: impl IntoIterator<Item = T>,
     generate: impl Fn() -> T,
 ) {
@@ -47,7 +47,7 @@ fn check_all_outcomes<T: Eq + std::hash::Hash + std::fmt::Display>(
     let tries = expected.len() * 12;
     for i in 0..tries {
         let val = generate();
-        assert!(expected.contains(&val), "got an unexpected value: {val}");
+        assert!(expected.contains(&val), "got an unexpected value: {val:?}");
         seen.insert(val);
         if i > tries / 2 && expected.len() == seen.len() {
             // We saw everything and we did quite a few tries, let's avoid wasting time.
@@ -57,7 +57,7 @@ fn check_all_outcomes<T: Eq + std::hash::Hash + std::fmt::Display>(
     // Let's see if we saw them all.
     for val in expected {
         if !seen.contains(&val) {
-            panic!("did not get value that should be possible: {val}");
+            panic!("did not get value that should be possible: {val:?}");
         }
     }
 }
@@ -163,10 +163,46 @@ fn faa_replaced_by_load() {
     });
 }
 
+/// Checking that the weaker release sequence example from
+/// <https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0982r0.html> can actually produce the
+/// new behavior (`Some(0)` in our version).
+fn weaker_release_sequences() {
+    check_all_outcomes([None, Some(0), Some(1)], || {
+        let x = static_atomic(0);
+        let y = static_atomic(0);
+
+        let t1 = spawn(move || {
+            x.store(2, Relaxed);
+        });
+        let t2 = spawn(move || {
+            y.store(1, Relaxed);
+            x.store(1, Release);
+            x.store(3, Relaxed);
+        });
+        let t3 = spawn(move || {
+            if x.load(Acquire) == 3 {
+                // In C++11, if we read the 3 here, and if the store of 1 was just before the store
+                // of 3 in mo order (which it is because we fix the schedule), this forms a release
+                // sequence, meaning we acquire the release store of 1, and we can thus never see
+                // the value 0.
+                // In C++20, this is no longer a release sequence, so 0 can now be observed.
+                Some(y.load(Relaxed))
+            } else {
+                None
+            }
+        });
+
+        t1.join().unwrap();
+        t2.join().unwrap();
+        t3.join().unwrap()
+    });
+}
+
 pub fn main() {
     relaxed();
     seq_cst();
     initialization_write(false);
     initialization_write(true);
     faa_replaced_by_load();
+    weaker_release_sequences();
 }
