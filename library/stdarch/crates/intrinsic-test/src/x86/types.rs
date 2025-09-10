@@ -5,6 +5,7 @@ use regex::Regex;
 
 use super::intrinsic::X86IntrinsicType;
 use crate::common::cli::Language;
+use crate::common::indentation::Indentation;
 use crate::common::intrinsic_helpers::{IntrinsicType, IntrinsicTypeDefinition, Sign, TypeKind};
 use crate::x86::xml_parser::Parameter;
 
@@ -116,7 +117,83 @@ impl IntrinsicTypeDefinition for X86IntrinsicType {
             // then typecast it.
             format!("({type_value})")
         }
-        // Look for edge cases (constexpr, literal, etc)
+    }
+
+    /// Generates a std::cout for the intrinsics results that will match the
+    /// rust debug output format for the return type. The generated line assumes
+    /// there is an int i in scope which is the current pass number.
+    fn print_result_c(&self, indentation: Indentation, additional: &str) -> String {
+        let lanes = if self.num_vectors() > 1 {
+            (0..self.num_vectors())
+                .map(|vector| {
+                    format!(
+                        r#""{ty}(" << {lanes} << ")""#,
+                        ty = self.c_single_vector_type(),
+                        lanes = (0..self.num_lanes())
+                            .map(move |idx| -> std::string::String {
+                                format!(
+                                    "{cast}{lane_fn}(__return_value.val[{vector}], {lane})",
+                                    cast = self.c_promotion(),
+                                    lane_fn = self.get_lane_function(),
+                                    lane = idx,
+                                    vector = vector,
+                                )
+                            })
+                            .collect::<Vec<_>>()
+                            .join(r#" << ", " << "#)
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join(r#" << ", " << "#)
+        } else if self.num_lanes() > 1 {
+            (0..self.num_lanes())
+                .map(|idx| -> std::string::String {
+                    format!(
+                        "{cast}{lane_fn}(__return_value, {lane})",
+                        cast = self.c_promotion(),
+                        lane_fn = self.get_lane_function(),
+                        lane = idx
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join(r#" << ", " << "#)
+        } else {
+            format!(
+                "{promote}cast<{cast}>(__return_value)",
+                cast = match self.kind() {
+                    TypeKind::Void => "void".to_string(),
+                    TypeKind::Float if self.inner_size() == 64 => "double".to_string(),
+                    TypeKind::Float if self.inner_size() == 32 => "float".to_string(),
+                    TypeKind::Mask => format!(
+                        "__mmask{}",
+                        self.bit_len.expect(format!("self: {:#?}", self).as_str())
+                    ),
+                    TypeKind::Vector => format!(
+                        "__m{}i",
+                        self.bit_len.expect(format!("self: {:#?}", self).as_str())
+                    ),
+                    // TypeKind::Float if self.results().inner_size() == 16 => "float16_t".to_string(),
+                    // TypeKind::Int(true) if self.results().inner_size() == 64 => "long".to_string(),
+                    // TypeKind::Int(false) if self.results().inner_size() == 64 => "unsigned long".to_string(),
+                    // TypeKind::Int(true) if self.results().inner_size() == 32 => "int".to_string(),
+                    // TypeKind::Int(false) if self.results().inner_size() == 32 => "unsigned int".to_string(),
+                    // TypeKind::Int(true) if self.results().inner_size() == 16 => "short".to_string(),
+                    // TypeKind::Int(false) if self.results().inner_size() == 16 => "unsigned short".to_string(),
+                    _ => self.c_scalar_type(),
+                },
+                promote = self.c_promotion(),
+            )
+        };
+
+        format!(
+            r#"{indentation}std::cout << "Result {additional}-" << i+1 << ": {ty}" << std::fixed << std::setprecision(150) <<  {lanes} << "{close}" << std::endl;"#,
+            ty = if self.is_simd() {
+                format!("{}(", self.c_type())
+            } else {
+                String::from("")
+            },
+            close = if self.is_simd() { ")" } else { "" },
+        )
     }
 
     /// Determines the get lane function for this type.
