@@ -492,7 +492,7 @@ impl<'a> AstValidator<'a> {
         }
 
         if !spans.is_empty() {
-            let header_span = sig.header.span().unwrap_or(sig.span.shrink_to_lo());
+            let header_span = sig.header_span();
             let suggestion_span = header_span.shrink_to_hi().to(sig.decl.output.span());
             let padding = if header_span.is_empty() { "" } else { " " };
 
@@ -685,22 +685,53 @@ impl<'a> AstValidator<'a> {
             });
         }
 
+        if let Some(coroutine_kind) = sig.header.coroutine_kind {
+            self.dcx().emit_err(errors::CoroutineAndCVariadic {
+                spans: vec![coroutine_kind.span(), variadic_param.span],
+                coroutine_kind: coroutine_kind.as_str(),
+                coroutine_span: coroutine_kind.span(),
+                variadic_span: variadic_param.span,
+            });
+        }
+
         match fn_ctxt {
             FnCtxt::Foreign => return,
             FnCtxt::Free => match sig.header.ext {
-                Extern::Explicit(StrLit { symbol_unescaped: sym::C, .. }, _)
-                | Extern::Explicit(StrLit { symbol_unescaped: sym::C_dash_unwind, .. }, _)
-                | Extern::Implicit(_)
-                    if matches!(sig.header.safety, Safety::Unsafe(_)) =>
-                {
-                    return;
+                Extern::Implicit(_) => {
+                    if !matches!(sig.header.safety, Safety::Unsafe(_)) {
+                        self.dcx().emit_err(errors::CVariadicMustBeUnsafe {
+                            span: variadic_param.span,
+                            unsafe_span: sig.safety_span(),
+                        });
+                    }
                 }
-                _ => {}
-            },
-            FnCtxt::Assoc(_) => {}
-        };
+                Extern::Explicit(StrLit { symbol_unescaped, .. }, _) => {
+                    if !matches!(symbol_unescaped, sym::C | sym::C_dash_unwind) {
+                        self.dcx().emit_err(errors::CVariadicBadExtern {
+                            span: variadic_param.span,
+                            abi: symbol_unescaped,
+                            extern_span: sig.extern_span(),
+                        });
+                    }
 
-        self.dcx().emit_err(errors::BadCVariadic { span: variadic_param.span });
+                    if !matches!(sig.header.safety, Safety::Unsafe(_)) {
+                        self.dcx().emit_err(errors::CVariadicMustBeUnsafe {
+                            span: variadic_param.span,
+                            unsafe_span: sig.safety_span(),
+                        });
+                    }
+                }
+                Extern::None => {
+                    let err = errors::CVariadicNoExtern { span: variadic_param.span };
+                    self.dcx().emit_err(err);
+                }
+            },
+            FnCtxt::Assoc(_) => {
+                // For now, C variable argument lists are unsupported in associated functions.
+                let err = errors::CVariadicAssociatedFunction { span: variadic_param.span };
+                self.dcx().emit_err(err);
+            }
+        }
     }
 
     fn check_item_named(&self, ident: Ident, kind: &str) {
