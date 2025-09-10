@@ -1,4 +1,4 @@
-// MIR for `drop_in_place` after SimplifyCfg-make_shim
+// MIR for `std::ptr::drop_in_place` after SimplifyCfg-make_shim
 
 fn drop_in_place(_1: *mut Test) -> () {
     let mut _0: ();

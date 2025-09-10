@@ -78,8 +78,9 @@ impl<'dis, 'de, 'tcx> MirDumper<'dis, 'de, 'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, pass_name: &'static str, body: &Body<'tcx>) -> Option<Self> {
         let dump_enabled = if let Some(ref filters) = tcx.sess.opts.unstable_opts.dump_mir {
             // see notes on #41697 below
-            let node_path =
-                ty::print::with_forced_impl_filename_line!(tcx.def_path_str(body.source.def_id()));
+            let node_path = ty::print::with_no_trimmed_paths!(
+                ty::print::with_forced_impl_filename_line!(tcx.def_path_str(body.source.def_id()))
+            );
             filters.split('|').any(|or_filter| {
                 or_filter.split('&').all(|and_filter| {
                     let and_filter_trimmed = and_filter.trim();
@@ -173,9 +174,10 @@ impl<'dis, 'de, 'tcx> MirDumper<'dis, 'de, 'tcx> {
     // trigger `type_of`, and this can run while we are already attempting to evaluate `type_of`.
     pub fn dump_mir_to_writer(&self, body: &Body<'tcx>, w: &mut dyn io::Write) -> io::Result<()> {
         // see notes on #41697 above
-        let def_path = ty::print::with_forced_impl_filename_line!(
-            self.tcx().def_path_str(body.source.def_id())
-        );
+        let def_path =
+            ty::print::with_no_trimmed_paths!(ty::print::with_forced_impl_filename_line!(
+                self.tcx().def_path_str(body.source.def_id())
+            ));
         // ignore-tidy-odd-backticks the literal below is fine
         write!(w, "// MIR for `{def_path}")?;
         match body.source.promoted {
