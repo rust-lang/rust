@@ -53,7 +53,7 @@ pub(super) struct ClosureSignature {
     pub(super) expected_sig: FnPointer,
 }
 
-impl InferenceContext<'_> {
+impl<'db> InferenceContext<'db> {
     pub(super) fn infer_closure(
         &mut self,
         body: &ExprId,
@@ -71,9 +71,13 @@ impl InferenceContext<'_> {
             None => (None, None),
         };
 
-        let ClosureSignature { expected_sig: bound_sig, ret_ty: body_ret_ty } =
+        let ClosureSignature { expected_sig: mut bound_sig, ret_ty: body_ret_ty } =
             self.sig_of_closure(body, ret_type, arg_types, closure_kind, expected_sig);
-        let bound_sig = self.normalize_associated_types_in(bound_sig);
+        bound_sig.substitution.0 = self
+            .normalize_associated_types_in::<_, crate::next_solver::GenericArgs<'db>>(
+                bound_sig.substitution.0,
+            );
+        let bound_sig = bound_sig;
         let sig_ty = TyKind::Function(bound_sig.clone()).intern(Interner);
 
         let (id, ty, resume_yield_tys) = match closure_kind {

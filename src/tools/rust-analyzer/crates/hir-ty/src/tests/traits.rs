@@ -4190,8 +4190,6 @@ fn g<P: PointerFamily>(p: <P as PointerFamily>::Pointer<i32>) {
     );
 }
 
-// FIXME(next-solver): Was `&'a T` but now getting error lifetime.
-// This might be fixed once we migrate into next-solver fully without chalk-ir in lowering.
 #[test]
 fn gats_with_impl_trait() {
     // FIXME: the last function (`fn i()`) is not valid Rust as of this writing because you cannot
@@ -4215,21 +4213,21 @@ fn f<T>(v: impl Trait) {
 }
 fn g<'a, T: 'a>(v: impl Trait<Assoc<T> = &'a T>) {
     let a = v.get::<T>();
-      //^ &'? T
+      //^ &'a T
     let a = v.get::<()>();
       //^ <impl Trait<Assoc<T> = &'a T> as Trait>::Assoc<()>
 }
 fn h<'a>(v: impl Trait<Assoc<i32> = &'a i32> + Trait<Assoc<i64> = &'a i64>) {
     let a = v.get::<i32>();
-      //^ &'? i32
+      //^ &'a i32
     let a = v.get::<i64>();
-      //^ &'? i64
+      //^ &'a i64
 }
 fn i<'a>(v: impl Trait<Assoc<i32> = &'a i32, Assoc<i64> = &'a i64>) {
     let a = v.get::<i32>();
-      //^ &'? i32
+      //^ &'a i32
     let a = v.get::<i64>();
-      //^ &'? i64
+      //^ &'a i64
 }
     "#,
     );
@@ -4259,8 +4257,8 @@ fn f<'a>(v: &dyn Trait<Assoc<i32> = &'a i32>) {
             127..128 'v': &'? (dyn Trait<Assoc<i32> = &'a i32> + '?)
             164..195 '{     ...f(); }': ()
             170..171 'v': &'? (dyn Trait<Assoc<i32> = &'a i32> + '?)
-            170..184 'v.get::<i32>()': <dyn Trait<Assoc<i32> = &'a i32> + '? as Trait>::Assoc<i32>
-            170..192 'v.get:...eref()': {unknown}
+            170..184 'v.get::<i32>()': {unknown}
+            170..192 'v.get:...eref()': &'? {unknown}
         "#]],
     );
 }
@@ -4953,7 +4951,7 @@ where
 "#,
         expect![[r#"
             84..86 'de': D
-            135..138 '{ }': <D as Deserializer<'?>>::Error
+            135..138 '{ }': <D as Deserializer<'de>>::Error
         "#]],
     );
 }
