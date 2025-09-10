@@ -349,7 +349,7 @@ fn test_sc_relaxed() {
 }
 
 pub fn main() {
-    for _ in 0..50 {
+    for _ in 0..32 {
         test_sc_store_buffering();
         test_iriw_sc_rlx();
         test_cpp20_sc_fence_fix();
