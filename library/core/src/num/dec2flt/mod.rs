@@ -108,9 +108,9 @@ pub mod lemire;
 pub mod parse;
 
 macro_rules! from_str_float_impl {
-    ($t:ty) => {
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl FromStr for $t {
+    ($($ty:ty)*) => {
+        $(#[stable(feature = "rust1", since = "1.0.0")]
+        impl FromStr for $ty {
             type Err = ParseFloatError;
 
             /// Converts a string in base 10 to a float.
@@ -151,14 +151,14 @@ macro_rules! from_str_float_impl {
             ///
             /// # Arguments
             ///
-            /// * src - A string
+            /// * `s` - A string
             ///
             /// # Return value
             ///
             /// `Err(ParseFloatError)` if the string did not represent a valid
             /// number. Otherwise, `Ok(n)` where `n` is the closest
             /// representable floating-point number to the number represented
-            /// by `src` (following the same rules for rounding as for the
+            /// by `s` (following the same rules for rounding as for the
             /// results of primitive operations).
             // We add the `#[inline(never)]` attribute, since its content will
             // be filled with that of `dec2flt`, which has #[inline(always)].
@@ -167,10 +167,10 @@ macro_rules! from_str_float_impl {
             // generation of `dec2flt`, despite the fact only a maximum of 2
             // possible instances can ever exist. Adding #[inline(never)] avoids this.
             #[inline(never)]
-            fn from_str(src: &str) -> Result<Self, ParseFloatError> {
-                dec2flt(src)
+            fn from_str(s: &str) -> Result<Self, ParseFloatError> {
+                dec2flt(s)
             }
-        }
+        })*
     };
 }
 
@@ -178,6 +178,8 @@ macro_rules! from_str_float_impl {
 from_str_float_impl!(f16);
 from_str_float_impl!(f32);
 from_str_float_impl!(f64);
+#[cfg(target_has_reliable_f128)]
+from_str_float_impl!(f128);
 
 // FIXME(f16_f128): A fallback is used when the backend+target does not support f16 well, in order
 // to avoid ICEs.
@@ -187,8 +189,18 @@ impl FromStr for f16 {
     type Err = ParseFloatError;
 
     #[inline]
-    fn from_str(_src: &str) -> Result<Self, ParseFloatError> {
-        unimplemented!("requires target_has_reliable_f16")
+    fn from_str(_s: &str) -> Result<Self, ParseFloatError> {
+        unimplemented!("parsing strings as `f16` requires `target_has_reliable_f16`")
+    }
+}
+
+#[cfg(not(target_has_reliable_f128))]
+impl FromStr for f128 {
+    type Err = ParseFloatError;
+
+    #[inline]
+    fn from_str(_s: &str) -> Result<Self, ParseFloatError> {
+        unimplemented!("parsing strings as `f128` requires `target_has_reliable_f128`")
     }
 }
 
