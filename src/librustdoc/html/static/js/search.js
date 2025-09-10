@@ -4904,6 +4904,11 @@ async function addTab(results, query, display, finishedCallback, isTypeSearch) {
     let output = document.createElement("ul");
     output.className = "search-results " + extraClass;
 
+    const throbber = document.createElement("div");
+    throbber.className = "search-throbber";
+    throbber.innerHTML = "Loading...";
+    output.appendChild(throbber);
+
     let count = 0;
 
     /** @type {Promise<string|null>[]} */
@@ -5010,7 +5015,7 @@ ${obj.displayPath}<span class="${type}">${name}</span>\
         }
 
         link.appendChild(description);
-        output.appendChild(link);
+        output.insertBefore(link, throbber);
 
         results.next().then(async nextResult => {
             if (nextResult.value) {
@@ -5019,7 +5024,10 @@ ${obj.displayPath}<span class="${type}">${name}</span>\
                 await Promise.all(descList);
                 // need to make sure the element is shown before
                 // running this callback
-                yieldToBrowser().then(() => finishedCallback(count, output));
+                yieldToBrowser().then(() => {
+                    finishedCallback(count, output);
+                    throbber.remove();
+                });
             }
         });
     };
@@ -5215,9 +5223,14 @@ async function showResults(docSearch, results, goToFirst, filterCrates) {
     resultsElem.id = "results";
 
     search.innerHTML = "";
-    for (const [tab, output] of tabs) {
+    for (const [tabNb, [tab, output]] of tabs.entries()) {
         tabsElem.appendChild(tab);
+        const isCurrentTab = window.searchState.currentTab === tabNb;
         const placeholder = document.createElement("div");
+        placeholder.className = isCurrentTab ?
+            "search-throbber search-results active" :
+            "search-throbber search-results";
+        placeholder.innerHTML = "Loading...";
         output.then(output => {
             if (placeholder.parentElement) {
                 placeholder.parentElement.replaceChild(output, placeholder);

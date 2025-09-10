@@ -339,6 +339,7 @@ summary.hideme,
 .scraped-example-list,
 .rustdoc-breadcrumbs,
 .search-switcher,
+.search-throbber,
 /* This selector is for the items listed in the "all items" page. */
 ul.all-items {
 	font-family: "Fira Sans", Arial, NanumBarunGothic, sans-serif;
@@ -2004,6 +2005,57 @@ a.tooltip:hover::after {
 
 #search-tabs .count.loading {
 	color: transparent;
+}
+
+.search-throbber {
+	position: relative;
+	height: 34px;
+}
+
+.search-throbber::before,
+.search-form.loading::before
+{
+	width: 16px;
+	height: 16px;
+	border-radius: 16px;
+	background: radial-gradient(
+		var(--button-background-color) 0 50%,
+		transparent 50% 100%
+	), conic-gradient(
+		var(--code-highlight-kw-color) 0deg 30deg,
+		var(--code-highlight-prelude-color) 30deg 60deg,
+		var(--code-highlight-number-color) 90deg 120deg,
+		var(--code-highlight-lifetime-color ) 120deg 150deg,
+		var(--code-highlight-comment-color) 150deg 180deg,
+		var(--code-highlight-self-color) 180deg 210deg,
+		var(--code-highlight-attribute-color) 210deg 240deg,
+		var(--code-highlight-literal-color) 210deg 240deg,
+		var(--code-highlight-macro-color) 240deg 270deg,
+		var(--code-highlight-question-mark-color) 270deg 300deg,
+		var(--code-highlight-prelude-val-color) 300deg 330deg,
+		var(--code-highlight-doc-comment-color) 330deg 360deg
+	);
+	content: "";
+	position: absolute;
+	right: 9px;
+	top: 8px;
+	animation: rotating 1.25s linear infinite;
+}
+.search-throbber::after,
+.search-form.loading::after
+{
+	width: 18px;
+	height: 18px;
+	border-radius: 18px;
+	background: conic-gradient(
+		var(--button-background-color) 0deg 180deg,
+		transparent 270deg 360deg
+	);
+	content: "";
+	position: absolute;
+	right: 8px;
+	top: 8px;
+	animation: rotating 0.66s linear infinite;
 }
 
 #search .error code {
