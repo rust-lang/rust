@@ -662,7 +662,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.write_immediate(*offset, dest)
             }
             ty::Alias(..) | ty::Param(..) | ty::Placeholder(..) | ty::Infer(..) => {
-                Err(err_inval!(TooGeneric)).into()
+                // This can happen in code which is generic over the field type.
+                throw_inval!(TooGeneric)
             }
             _ => span_bug!(self.cur_span(), "expected field representing type, found {ty}"),
         }
