@@ -454,6 +454,9 @@ pub(crate) fn spanned_type_di_node<'ll, 'tcx>(
         ty::RawPtr(pointee_type, _) | ty::Ref(_, pointee_type, _) => {
             build_pointer_or_reference_di_node(cx, t, pointee_type, unique_type_id)
         }
+        // Some `Box` are newtyped pointers, make debuginfo aware of that.
+        // Only works if the allocator argument is a 1-ZST and hence irrelevant for layout
+        // (or if there is no allocator argument).
         ty::Adt(def, args)
             if def.is_box()
                 && args.get(1).is_none_or(|arg| cx.layout_of(arg.expect_ty()).is_1zst()) =>
