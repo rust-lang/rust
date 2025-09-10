@@ -622,7 +622,7 @@ pub enum AttributeKind {
     /// Represents [`#[recursion_limit]`](https://doc.rust-lang.org/reference/attributes/limits.html#the-recursion_limit-attribute)
     RecursionLimit { attr_span: Span, limit_span: Span, limit: Limit },
 
-    /// Represents `#[]`
+    /// Represents a removed or obsolete compiler or library feature (e.g., a previously allowed `#![feature(...)]`).
     RemovedFeature(RemovedFeature),
 
     /// Represents [`#[repr]`](https://doc.rust-lang.org/stable/reference/type-layout.html#representations).

@@ -937,7 +937,6 @@ symbols! {
         eq,
         ergonomic_clones,
         ermsb_target_feature,
-        err: "err",
         exact_div,
         except,
         exchange_malloc,
@@ -2096,6 +2095,7 @@ symbols! {
         sse,
         sse2,
         sse4a_target_feature,
+        stability_err: "stability_err",
         stable,
         staged_api,
         start,
@@ -2870,6 +2870,22 @@ impl Interner {
     // effectively pre-interning all these strings for both `Symbol` and
     // `ByteSymbol`.
     fn prefill(init: &[&'static str], extra: &[&'static str]) -> Self {
+        let mut seen = FxIndexSet::default();
+        let mut duplicates = Vec::new();
+
+        for s in init.iter().chain(extra.iter()) {
+            if !seen.insert(s.as_bytes()) {
+                duplicates.push(*s);
+            }
+        }
+
+        if !duplicates.is_empty() {
+            eprintln!("Duplicate symbols detected in Interner prefill:");
+            for d in &duplicates {
+                eprintln!("  {}", d);
+            }
+        }
+
         let byte_strs = FxIndexSet::from_iter(
             init.iter().copied().chain(extra.iter().copied()).map(|str| str.as_bytes()),
         );

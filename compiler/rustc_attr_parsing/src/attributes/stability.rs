@@ -597,7 +597,7 @@ impl<S: Stage> AttributeParser<S> for RemovedFeatureParser {
             let since_symbol = match since {
                 StableSince::Version(v) => Symbol::intern(&v.to_string()), // dynamic string — ok
                 StableSince::Current => sym::current,
-                StableSince::Err(_) => sym::err,
+                StableSince::Err(_) => sym::stability_err,
             };
 
             let removed = RemovedFeature {
