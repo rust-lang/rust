@@ -1,8 +1,8 @@
-# `aarch64-unknown-none`
+# `aarch64-unknown-none` and `aarch64-unknown-none-softfloat`
 
 **Tier: 2**
 
-Bare-metal target for CPUs in the Armv8-A architecture family, running in AArch64 mode.
+Bare-metal targets for CPUs in the Armv8-A architecture family, running in AArch64 mode.
 
 For the AArch32 mode carried over from Armv7-A, see
 [`armv7a-none-eabi`](armv7a-none-eabi.md) instead.
