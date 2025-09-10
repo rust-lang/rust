@@ -2368,10 +2368,7 @@ impl<'a, T> Iterator for RChunks<'a, T> {
         } else {
             // Can't underflow because of the check above
             let end = self.v.len() - end;
-            let start = match end.checked_sub(self.chunk_size) {
-                Some(sum) => sum,
-                None => 0,
-            };
+            let start = end.saturating_sub(self.chunk_size);
             let nth = &self.v[start..end];
             self.v = &self.v[0..start];
             Some(nth)
@@ -2391,10 +2388,7 @@ impl<'a, T> Iterator for RChunks<'a, T> {
 
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
         let end = self.v.len() - idx * self.chunk_size;
-        let start = match end.checked_sub(self.chunk_size) {
-            None => 0,
-            Some(start) => start,
-        };
+        let start = end.saturating_sub(self.chunk_size);
         // SAFETY: mostly identical to `Chunks::__iterator_get_unchecked`.
         unsafe { from_raw_parts(self.v.as_ptr().add(start), end - start) }
     }
@@ -2571,10 +2565,7 @@ impl<'a, T> Iterator for RChunksMut<'a, T> {
 
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
         let end = self.v.len() - idx * self.chunk_size;
-        let start = match end.checked_sub(self.chunk_size) {
-            None => 0,
-            Some(start) => start,
-        };
+        let start = end.saturating_sub(self.chunk_size);
         // SAFETY: see comments for `RChunks::__iterator_get_unchecked` and
         // `ChunksMut::__iterator_get_unchecked`, `self.v`.
         unsafe { from_raw_parts_mut(self.v.as_mut_ptr().add(start), end - start) }
