@@ -24,8 +24,7 @@ pub(crate) fn collect<'tcx>(tcx: TyCtxt<'tcx>, LocalCrate: LocalCrate) -> EiiMap
     let mut eiis = EiiMap::default();
 
     // iterate over all items in the current crate
-    // FIXME(speed up)
-    for id in tcx.hir_crate_items(()).definitions() {
+    for id in tcx.hir_crate_items(()).eiis() {
         for i in
             find_attr!(tcx.get_all_attrs(id), AttributeKind::EiiImpls(e) => e).into_iter().flatten()
         {
