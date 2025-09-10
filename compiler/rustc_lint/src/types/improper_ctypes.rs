@@ -255,10 +255,20 @@ fn check_struct_for_power_alignment<'tcx>(
     }
 }
 
+/// Annotates whether we are in the context of an item *defined* in rust
+/// and exposed to an FFI boundary,
+/// or the context of an item from elsewhere, whose interface is re-*declared* in rust.
 #[derive(Clone, Copy)]
 enum CItemKind {
     Declaration,
     Definition,
+}
+
+/// Annotates whether we are in the context of a function's argument types or return type.
+#[derive(Clone, Copy)]
+enum FnPos {
+    Arg,
+    Ret,
 }
 
 enum FfiResult<'tcx> {
@@ -284,8 +294,10 @@ enum IndirectionKind {
 }
 
 bitflags! {
+    /// VisitorState flags that are linked with the root type's use.
+    /// (These are the permanent part of the state, kept when visiting new mir::Ty.)
     #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-    struct VisitorState: u8 {
+    struct RootUseFlags: u16 {
         /// For use in (externally-linked) static variables.
         const STATIC = 0b000001;
         /// For use in functions in general.
@@ -300,7 +312,45 @@ bitflags! {
     }
 }
 
-impl VisitorState {
+/// Description of the relationship between current mir::Ty and
+/// the type (or lack thereof) immediately containing it
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum OuterTyKind {
+    None,
+    /// A variant that should not exist,
+    /// but is needed because we don't change the lint's behavior yet
+    NoneThroughFnPtr,
+    /// Placeholder for properties that will be used eventually
+    UnusedVariant,
+}
+
+impl OuterTyKind {
+    /// Computes the relationship by providing the containing mir::Ty itself
+    fn from_outer_ty<'tcx>(ty: Ty<'tcx>) -> Self {
+        match ty.kind() {
+            ty::FnPtr(..) => Self::NoneThroughFnPtr,
+            ty::RawPtr(..)
+            | ty::Ref(..)
+            | ty::Adt(..)
+            | ty::Tuple(..)
+            | ty::Array(..)
+            | ty::Slice(_) => Self::UnusedVariant,
+            k @ _ => bug!("Unexpected outer type {:?} of kind {:?}", ty, k),
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+struct VisitorState {
+    /// Flags describing both the overall context in which the current mir::Ty is,
+    /// linked to how the Visitor's original mir::Ty was used.
+    root_use_flags: RootUseFlags,
+    /// Flags describing both the immediate context in which the current mir::Ty is,
+    /// linked to how it relates to its parent mir::Ty (or lack thereof).
+    outer_ty_kind: OuterTyKind,
+}
+
+impl RootUseFlags {
     // The values that can be set.
     const STATIC_TY: Self = Self::STATIC;
     const ARGUMENT_TY_IN_DEFINITION: Self =
@@ -315,109 +365,100 @@ impl VisitorState {
     const RETURN_TY_IN_FNPTR: Self =
         Self::from_bits(Self::FUNC.bits() | Self::THEORETICAL.bits() | Self::FN_RETURN.bits())
             .unwrap();
+}
 
-    /// Get the proper visitor state for a given function's arguments.
-    fn argument_from_fnmode(fn_mode: CItemKind) -> Self {
-        match fn_mode {
-            CItemKind::Definition => VisitorState::ARGUMENT_TY_IN_DEFINITION,
-            CItemKind::Declaration => VisitorState::ARGUMENT_TY_IN_DECLARATION,
+impl VisitorState {
+    /// From an existing state, compute the state of any subtype of the current type.
+    /// (General case.)
+    fn get_next<'tcx>(&self, current_ty: Ty<'tcx>) -> Self {
+        assert!(!matches!(current_ty.kind(), ty::FnPtr(..)));
+        Self {
+            root_use_flags: self.root_use_flags,
+            outer_ty_kind: OuterTyKind::from_outer_ty(current_ty),
+        }
+    }
+    /// From an existing state, compute the state of any subtype of the current type.
+    /// (Case where the current type is a function pointer,
+    /// meaning we need to specify if the subtype is an argument or the return.)
+    fn get_next_in_fnptr<'tcx>(&self, current_ty: Ty<'tcx>, fn_pos: FnPos) -> Self {
+        assert!(matches!(current_ty.kind(), ty::FnPtr(..)));
+        Self {
+            root_use_flags: match fn_pos {
+                FnPos::Ret => RootUseFlags::RETURN_TY_IN_FNPTR,
+                FnPos::Arg => RootUseFlags::ARGUMENT_TY_IN_FNPTR,
+            },
+            outer_ty_kind: OuterTyKind::from_outer_ty(current_ty),
         }
     }
 
-    /// Get the proper visitor state for a given function's return type.
-    fn return_from_fnmode(fn_mode: CItemKind) -> Self {
-        match fn_mode {
-            CItemKind::Definition => VisitorState::RETURN_TY_IN_DEFINITION,
-            CItemKind::Declaration => VisitorState::RETURN_TY_IN_DECLARATION,
-        }
+    /// Generate the state for an "outermost" type that needs to be checked
+    fn entry_point(root_use_flags: RootUseFlags) -> Self {
+        Self { root_use_flags, outer_ty_kind: OuterTyKind::None }
+    }
+
+    /// Get the proper visitor state for a given function's arguments or return type.
+    fn entry_point_from_fnmode(fn_mode: CItemKind, fn_pos: FnPos) -> Self {
+        let p_flags = match (fn_mode, fn_pos) {
+            (CItemKind::Definition, FnPos::Ret) => RootUseFlags::RETURN_TY_IN_DEFINITION,
+            (CItemKind::Declaration, FnPos::Ret) => RootUseFlags::RETURN_TY_IN_DECLARATION,
+            (CItemKind::Definition, FnPos::Arg) => RootUseFlags::ARGUMENT_TY_IN_DEFINITION,
+            (CItemKind::Declaration, FnPos::Arg) => RootUseFlags::ARGUMENT_TY_IN_DECLARATION,
+        };
+        Self::entry_point(p_flags)
+    }
+
+    /// Get the proper visitor state for a static variable's type
+    fn static_var() -> Self {
+        Self::entry_point(RootUseFlags::STATIC_TY)
     }
 
     /// Whether the type is used in a function.
-    fn is_in_function(self) -> bool {
-        let ret = self.contains(Self::FUNC);
+    fn is_in_function(&self) -> bool {
+        let ret = self.root_use_flags.contains(RootUseFlags::FUNC);
         if ret {
-            debug_assert!(!self.contains(Self::STATIC));
+            debug_assert!(!self.root_use_flags.contains(RootUseFlags::STATIC));
         }
         ret
     }
     /// Whether the type is used (directly or not) in a function, in return position.
-    fn is_in_function_return(self) -> bool {
-        let ret = self.contains(Self::FN_RETURN);
+    fn is_in_function_return(&self) -> bool {
+        let ret = self.root_use_flags.contains(RootUseFlags::FN_RETURN);
         if ret {
             debug_assert!(self.is_in_function());
         }
         ret
     }
+
+    /// Whether the type is directly used in a function, in return position.
+    fn is_direct_function_return(&self) -> bool {
+        matches!(self.outer_ty_kind, OuterTyKind::None | OuterTyKind::NoneThroughFnPtr)
+            && self.is_in_function_return()
+    }
+
+    /// Whether the type itself is the type of a function argument or return type.
+    fn is_direct_in_function(&self) -> bool {
+        matches!(self.outer_ty_kind, OuterTyKind::None | OuterTyKind::NoneThroughFnPtr)
+            && self.is_in_function()
+    }
+
     /// Whether the type is used (directly or not) in a defined function.
     /// In other words, whether or not we allow non-FFI-safe types behind a C pointer,
     /// to be treated as an opaque type on the other side of the FFI boundary.
-    fn is_in_defined_function(self) -> bool {
-        self.contains(Self::DEFINED) && self.is_in_function()
+    fn is_in_defined_function(&self) -> bool {
+        self.root_use_flags.contains(RootUseFlags::DEFINED) && self.is_in_function()
     }
 
     /// Whether the type is used (directly or not) in a function pointer type.
     /// Here, we also allow non-FFI-safe types behind a C pointer,
     /// to be treated as an opaque type on the other side of the FFI boundary.
-    fn is_in_fnptr(self) -> bool {
-        self.contains(Self::THEORETICAL) && self.is_in_function()
+    fn is_in_fnptr(&self) -> bool {
+        self.root_use_flags.contains(RootUseFlags::THEORETICAL) && self.is_in_function()
     }
 
     /// Whether we can expect type parameters and co in a given type.
-    fn can_expect_ty_params(self) -> bool {
+    fn can_expect_ty_params(&self) -> bool {
         // rust-defined functions, as well as FnPtrs
-        self.contains(Self::THEORETICAL) || self.is_in_defined_function()
-    }
-}
-
-bitflags! {
-    /// Data that summarises how an "outer type" surrounds its inner type(s)
-    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-    struct OuterTyData: u8 {
-        /// To annotate pointees (through Ref,RawPtr,Box).
-        const IN_PTR = 0b000001;
-        /// For pointees, show pointer mutability-or-ownership.
-        const PTR_MUT = 0b000010;
-        /// For pointees, show the pointer is a raw one.
-        const PTR_RAW = 0b000100;
-        /// For types "directly contained" in the parent type's memory layout
-        /// (tuple, ADT, array, etc.)
-        const MEMORY_INLINED = 0b001000;
-        /// Show that the type is contained in an ADT field.
-        const IN_ADT = 0b010000;
-        /// To show that there is no outer type, the current type is directly used by a `static`
-        /// variable or a function/FnPtr
-        const NO_OUTER_TY = 0b100000;
-        /// For NO_OUTER_TY cases, show that we are being directly used by a FnPtr specifically
-        /// FIXME(ctypes): this is only used for "bad bahaviour" reproduced for compatibility's sake
-        const NOOUT_FNPTR = 0b1000000;
-    }
-}
-
-impl OuterTyData {
-    /// Get the proper data for a given outer type.
-    fn from_ty<'tcx>(ty: Ty<'tcx>) -> Self {
-        match ty.kind() {
-            ty::FnPtr(..) => Self::NO_OUTER_TY | Self::NOOUT_FNPTR,
-            k @ (ty::RawPtr(..) | ty::Ref(..)) => {
-                let mut ret = Self::IN_PTR;
-                if ty.is_mutable_ptr() {
-                    ret |= Self::PTR_MUT;
-                }
-                if matches!(k, ty::RawPtr(..)) {
-                    ret |= Self::PTR_RAW;
-                }
-                ret
-            }
-            ty::Adt(..) => {
-                if ty.boxed_ty().is_some() {
-                    Self::IN_PTR | Self::PTR_MUT
-                } else {
-                    Self::IN_ADT | Self::MEMORY_INLINED
-                }
-            }
-            ty::Tuple(..) | ty::Array(..) | ty::Slice(_) => Self::MEMORY_INLINED,
-            k @ _ => bug!("Unexpected outer type {:?} of kind {:?}", ty, k),
-        }
+        self.root_use_flags.contains(RootUseFlags::THEORETICAL) || self.is_in_defined_function()
     }
 }
 
@@ -506,7 +547,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 {
                     FfiSafe
                 } else {
-                    self.visit_type(state, OuterTyData::from_ty(ty), inner_ty)
+                    self.visit_type(state.get_next(ty), inner_ty)
                 }
             }
         }
@@ -527,7 +568,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             if let Some(field) = super::transparent_newtype_field(self.cx.tcx, variant) {
                 // Transparent newtypes have at most one non-ZST field which needs to be checked..
                 let field_ty = get_type_from_field(self.cx, field, args);
-                match self.visit_type(state, OuterTyData::from_ty(ty), field_ty) {
+                match self.visit_type(state.get_next(ty), field_ty) {
                     FfiUnsafe { ty, .. } if ty.is_unit() => (),
                     r => return r,
                 }
@@ -546,7 +587,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         let mut all_phantom = !variant.fields.is_empty();
         for field in &variant.fields {
             let field_ty = get_type_from_field(self.cx, field, args);
-            all_phantom &= match self.visit_type(state, OuterTyData::from_ty(ty), field_ty) {
+            all_phantom &= match self.visit_type(state.get_next(ty), field_ty) {
                 FfiSafe => false,
                 // `()` fields are FFI-safe!
                 FfiUnsafe { ty, .. } if ty.is_unit() => false,
@@ -585,7 +626,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 help: if def.is_struct() {
                     Some(fluent::lint_improper_ctypes_struct_layout_help)
                 } else {
-                    // FIXME(ctypes): confirm that this makes sense for unions once #60405 / RFC2645 stabilises
+                    // FIXME(#60405): confirm that this makes sense for unions once #60405 / RFC2645 stabilises
                     Some(fluent::lint_improper_ctypes_union_layout_help)
                 },
             };
@@ -641,7 +682,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         if !def.repr().c() && !def.repr().transparent() && def.repr().int.is_none() {
             // Special-case types like `Option<extern fn()>` and `Result<extern fn(), ()>`
             if let Some(inner_ty) = repr_nullable_ptr(self.cx.tcx, self.cx.typing_env(), ty) {
-                return self.visit_type(state, OuterTyData::from_ty(ty), inner_ty);
+                return self.visit_type(state.get_next(ty), inner_ty);
             }
 
             return FfiUnsafe {
@@ -671,12 +712,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
     /// Checks if the given type is "ffi-safe" (has a stable, well-defined
     /// representation which can be exported to C code).
-    fn visit_type(
-        &mut self,
-        state: VisitorState,
-        outer_ty: OuterTyData,
-        ty: Ty<'tcx>,
-    ) -> FfiResult<'tcx> {
+    fn visit_type(&mut self, state: VisitorState, ty: Ty<'tcx>) -> FfiResult<'tcx> {
         use FfiResult::*;
 
         let tcx = self.cx.tcx;
@@ -718,7 +754,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             // Pattern types are just extra invariants on the type that you need to uphold,
             // but only the base type is relevant for being representable in FFI.
             // (note: this lint was written when pattern types could only be integers constrained to ranges)
-            ty::Pat(pat_ty, _) => self.visit_type(state, outer_ty, pat_ty),
+            // (also note: the lack of ".get_next(ty)" on the state is on purpose)
+            ty::Pat(pat_ty, _) => self.visit_type(state, pat_ty),
 
             // types which likely have a stable representation, if the target architecture defines those
             // note: before rust 1.77, 128-bit ints were not FFI-safe on x86_64
@@ -749,14 +786,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             },
 
             ty::Tuple(tuple) => {
-                let empty_and_safe = if tuple.is_empty() {
+                if tuple.is_empty() && state.is_direct_function_return() {
                     // C functions can return void
-                    outer_ty.contains(OuterTyData::NO_OUTER_TY) && state.is_in_function_return()
-                } else {
-                    false
-                };
-
-                if empty_and_safe {
                     FfiSafe
                 } else {
                     FfiUnsafe {
@@ -784,10 +815,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             }
 
             ty::Array(inner_ty, _) => {
-                if state.is_in_function()
-                    && outer_ty.contains(OuterTyData::NO_OUTER_TY)
-                    // FIXME(ctypes): VVV-this-VVV shouldn't be the case
-                    && !outer_ty.contains(OuterTyData::NOOUT_FNPTR)
+                if state.is_direct_in_function()
+                    // FIXME(ctypes): VVV-this-VVV shouldn't be part of the check
+                    && !matches!(state.outer_ty_kind, OuterTyKind::NoneThroughFnPtr)
                 {
                     // C doesn't really support passing arrays by value - the only way to pass an array by value
                     // is through a struct.
@@ -799,7 +829,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 } else {
                     // let's allow phantoms to go through,
                     // since an array of 1-ZSTs is also a 1-ZST
-                    self.visit_type(state, OuterTyData::from_ty(ty), inner_ty)
+                    self.visit_type(state.get_next(ty), inner_ty)
                 }
             }
 
@@ -815,19 +845,14 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
                 let sig = tcx.instantiate_bound_regions_with_erased(sig);
                 for arg in sig.inputs() {
-                    match self.visit_type(
-                        VisitorState::ARGUMENT_TY_IN_FNPTR,
-                        OuterTyData::from_ty(ty),
-                        *arg,
-                    ) {
+                    match self.visit_type(state.get_next_in_fnptr(ty, FnPos::Arg), *arg) {
                         FfiSafe => {}
                         r => return r,
                     }
                 }
 
                 let ret_ty = sig.output();
-
-                self.visit_type(VisitorState::RETURN_TY_IN_FNPTR, OuterTyData::from_ty(ty), ret_ty)
+                self.visit_type(state.get_next_in_fnptr(ty, FnPos::Ret), ret_ty)
             }
 
             ty::Foreign(..) => FfiSafe,
@@ -897,7 +922,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             return res;
         }
 
-        self.visit_type(state, OuterTyData::NO_OUTER_TY, ty)
+        self.visit_type(state, ty)
     }
 }
 
@@ -926,7 +951,7 @@ impl<'tcx> ImproperCTypesLint {
                     self.spans.push(ty.span);
                 }
 
-                hir::intravisit::walk_ty(self, ty)
+                hir::intravisit::walk_ty(self, ty);
             }
         }
 
@@ -971,12 +996,12 @@ impl<'tcx> ImproperCTypesLint {
         let sig = cx.tcx.instantiate_bound_regions_with_erased(sig);
 
         for (input_ty, input_hir) in iter::zip(sig.inputs(), decl.inputs) {
-            let state = VisitorState::argument_from_fnmode(fn_mode);
+            let state = VisitorState::entry_point_from_fnmode(fn_mode, FnPos::Arg);
             self.check_type_for_external_abi_fnptr(cx, state, input_hir, *input_ty, fn_mode);
         }
 
         if let hir::FnRetTy::Return(ret_hir) = decl.output {
-            let state = VisitorState::return_from_fnmode(fn_mode);
+            let state = VisitorState::entry_point_from_fnmode(fn_mode, FnPos::Ret);
             self.check_type_for_external_abi_fnptr(cx, state, ret_hir, sig.output(), fn_mode);
         }
     }
@@ -1001,7 +1026,7 @@ impl<'tcx> ImproperCTypesLint {
     fn check_foreign_static(&mut self, cx: &LateContext<'tcx>, id: hir::OwnerId, span: Span) {
         let ty = cx.tcx.type_of(id).instantiate_identity();
         let mut visitor = ImproperCTypesVisitor::new(cx, ty, CItemKind::Declaration);
-        let ffi_res = visitor.check_type(VisitorState::STATIC_TY, ty);
+        let ffi_res = visitor.check_type(VisitorState::static_var(), ty);
         self.process_ffi_result(cx, span, ffi_res, CItemKind::Declaration);
     }
 
@@ -1017,14 +1042,14 @@ impl<'tcx> ImproperCTypesLint {
         let sig = cx.tcx.instantiate_bound_regions_with_erased(sig);
 
         for (input_ty, input_hir) in iter::zip(sig.inputs(), decl.inputs) {
-            let state = VisitorState::argument_from_fnmode(fn_mode);
+            let state = VisitorState::entry_point_from_fnmode(fn_mode, FnPos::Arg);
             let mut visitor = ImproperCTypesVisitor::new(cx, *input_ty, fn_mode);
             let ffi_res = visitor.check_type(state, *input_ty);
             self.process_ffi_result(cx, input_hir.span, ffi_res, fn_mode);
         }
 
         if let hir::FnRetTy::Return(ret_hir) = decl.output {
-            let state = VisitorState::return_from_fnmode(fn_mode);
+            let state = VisitorState::entry_point_from_fnmode(fn_mode, FnPos::Ret);
             let mut visitor = ImproperCTypesVisitor::new(cx, sig.output(), fn_mode);
             let ffi_res = visitor.check_type(state, sig.output());
             self.process_ffi_result(cx, ret_hir.span, ffi_res, fn_mode);
@@ -1125,7 +1150,7 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesLint {
             | hir::ItemKind::TyAlias(_, _, ty) => {
                 self.check_type_for_external_abi_fnptr(
                     cx,
-                    VisitorState::STATIC_TY,
+                    VisitorState::static_var(),
                     ty,
                     cx.tcx.type_of(item.owner_id).instantiate_identity(),
                     CItemKind::Definition,
@@ -1159,7 +1184,7 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesLint {
     fn check_field_def(&mut self, cx: &LateContext<'tcx>, field: &'tcx hir::FieldDef<'tcx>) {
         self.check_type_for_external_abi_fnptr(
             cx,
-            VisitorState::STATIC_TY,
+            VisitorState::static_var(),
             field.ty,
             cx.tcx.type_of(field.def_id).instantiate_identity(),
             CItemKind::Definition,
