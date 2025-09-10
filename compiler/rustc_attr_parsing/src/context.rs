@@ -6,7 +6,7 @@ use std::sync::LazyLock;
 use private::Sealed;
 use rustc_ast::{AttrStyle, CRATE_NODE_ID, MetaItemLit, NodeId};
 use rustc_errors::{Diag, Diagnostic, Level};
-use rustc_feature::{AttributeTemplate, AttributeType};
+use rustc_feature::AttributeTemplate;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::lints::{AttributeLint, AttributeLintKind};
 use rustc_hir::{AttrPath, CRATE_HIR_ID, HirId};
@@ -83,7 +83,6 @@ pub(super) struct GroupTypeInnerAccept<S: Stage> {
     pub(super) template: AttributeTemplate,
     pub(super) accept_fn: AcceptFn<S>,
     pub(super) allowed_targets: AllowedTargets,
-    pub(super) attribute_type: AttributeType,
 }
 
 type AcceptFn<S> =
@@ -133,7 +132,6 @@ macro_rules! attribute_parsers {
                                 })
                             }),
                             allowed_targets: <$names as crate::attributes::AttributeParser<$stage>>::ALLOWED_TARGETS,
-                            attribute_type: <$names as crate::attributes::AttributeParser<$stage>>::TYPE,
                         });
                     }
 

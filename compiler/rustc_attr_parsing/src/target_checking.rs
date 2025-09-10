@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use rustc_ast::AttrStyle;
 use rustc_errors::DiagArgValue;
-use rustc_feature::{AttributeType, Features};
+use rustc_feature::Features;
 use rustc_hir::lints::AttributeLintKind;
 use rustc_hir::{MethodKind, Target};
 
@@ -14,6 +14,11 @@ use crate::session_diagnostics::InvalidTarget;
 pub(crate) enum AllowedTargets {
     AllowList(&'static [Policy]),
     AllowListWarnRest(&'static [Policy]),
+    /// Special, and not the same as `AllowList(&[Allow(Target::Crate)])`.
+    /// For crate-level attributes we emit a specific set of lints to warn
+    /// people about accidentally not using them on the crate.
+    /// Only use this for attributes that are *exclusively* valid at the crate level.
+    CrateLevel,
 }
 
 pub(crate) enum AllowedResult {
@@ -43,6 +48,7 @@ impl AllowedTargets {
                     AllowedResult::Warn
                 }
             }
+            AllowedTargets::CrateLevel => AllowedResult::Allowed,
         }
     }
 
@@ -50,6 +56,7 @@ impl AllowedTargets {
         match self {
             AllowedTargets::AllowList(list) => list,
             AllowedTargets::AllowListWarnRest(list) => list,
+            AllowedTargets::CrateLevel => ALL_TARGETS,
         }
         .iter()
         .filter_map(|target| match target {
@@ -74,6 +81,8 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         target: Target,
         cx: &mut AcceptContext<'_, 'sess, S>,
     ) {
+        Self::check_type(matches!(allowed_targets, AllowedTargets::CrateLevel), target, cx);
+
         match allowed_targets.is_allowed(target) {
             AllowedResult::Allowed => {}
             AllowedResult::Warn => {
@@ -109,7 +118,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
     }
 
     pub(crate) fn check_type(
-        attribute_type: AttributeType,
+        crate_level: bool,
         target: Target,
         cx: &mut AcceptContext<'_, 'sess, S>,
     ) {
@@ -119,7 +128,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
             return;
         }
 
-        if attribute_type != AttributeType::CrateLevel {
+        if !crate_level {
             return;
         }
 
