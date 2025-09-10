@@ -1624,12 +1624,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 )
                 .unwrap();
             }
-            Rvalue::NullaryOp(NullOp::FieldOffset, ty) => match ty.kind() {
-                ty::Field(..) => {}
-                _ => bug!(
-                    "FIXME(field_projections): should we report an error here, or `span_mirbug!`?"
-                ),
-            },
 
             Rvalue::Use(_)
             | Rvalue::UnaryOp(_, _)
@@ -1638,7 +1632,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             | Rvalue::RawPtr(..)
             | Rvalue::ThreadLocalRef(..)
             | Rvalue::Len(..)
-            | Rvalue::Discriminant(..) => {}
+            | Rvalue::Discriminant(..)
+            | Rvalue::NullaryOp(NullOp::OffsetOf(..), _) => {}
         }
     }
 

@@ -625,15 +625,10 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 let val = match null_op {
                     NullOp::SizeOf => op_layout.size.bytes(),
                     NullOp::AlignOf => op_layout.align.abi.bytes(),
-                    NullOp::FieldOffset => {
-                        let &ty::Field(container, field_path) = ty.kind() else {
-                            return None;
-                        };
-                        let layout = self.ecx.layout_of(container).ok()?;
-                        self.tcx
-                            .offset_of_subfield(self.typing_env, layout, field_path.iter())
-                            .bytes()
-                    }
+                    NullOp::OffsetOf(fields) => self
+                        .tcx
+                        .offset_of_subfield(self.typing_env, op_layout, fields.iter())
+                        .bytes(),
                     NullOp::UbChecks => return None,
                     NullOp::ContractChecks => return None,
                 };

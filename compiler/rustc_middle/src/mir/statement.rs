@@ -751,7 +751,7 @@ impl<'tcx> Rvalue<'tcx> {
                 op.ty(tcx, arg_ty)
             }
             Rvalue::Discriminant(ref place) => place.ty(local_decls, tcx).ty.discriminant_ty(tcx),
-            Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::FieldOffset, _) => {
+            Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(..), _) => {
                 tcx.types.usize
             }
             Rvalue::NullaryOp(NullOp::ContractChecks, _)
@@ -819,10 +819,10 @@ impl BorrowKind {
     }
 }
 
-impl NullOp {
-    pub fn ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+impl<'tcx> NullOp<'tcx> {
+    pub fn ty(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match self {
-            NullOp::SizeOf | NullOp::AlignOf | NullOp::FieldOffset => tcx.types.usize,
+            NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(_) => tcx.types.usize,
             NullOp::UbChecks | NullOp::ContractChecks => tcx.types.bool,
         }
     }

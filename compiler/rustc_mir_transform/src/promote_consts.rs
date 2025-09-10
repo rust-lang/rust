@@ -455,7 +455,7 @@ impl<'tcx> Validator<'_, 'tcx> {
             Rvalue::NullaryOp(op, _) => match op {
                 NullOp::SizeOf => {}
                 NullOp::AlignOf => {}
-                NullOp::FieldOffset => {}
+                NullOp::OffsetOf(_) => {}
                 NullOp::UbChecks => {}
                 NullOp::ContractChecks => {}
             },

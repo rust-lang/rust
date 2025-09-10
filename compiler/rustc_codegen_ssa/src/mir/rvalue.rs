@@ -619,14 +619,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let val = layout.align.abi.bytes();
                         bx.cx().const_usize(val)
                     }
-                    mir::NullOp::FieldOffset => {
-                        let &ty::Field(container, field_path) = ty.kind() else {
-                            bug!("expected `ty::Field` for `NullOp::FieldOffset`, but got {ty:?}")
-                        };
-                        let layout = bx.cx().layout_of(container);
+                    mir::NullOp::OffsetOf(fields) => {
                         let val = bx
                             .tcx()
-                            .offset_of_subfield(bx.typing_env(), layout, field_path.iter())
+                            .offset_of_subfield(bx.typing_env(), layout, fields.iter())
                             .bytes();
                         bx.cx().const_usize(val)
                     }

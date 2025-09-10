@@ -642,7 +642,7 @@ impl Rvalue {
                     .discriminant_ty()
                     .ok_or_else(|| error!("Expected a `RigidTy` but found: {place_ty:?}"))
             }
-            Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::FieldOffset, _) => {
+            Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(..), _) => {
                 Ok(Ty::usize_ty())
             }
             Rvalue::NullaryOp(NullOp::ContractChecks, _)
@@ -1053,8 +1053,8 @@ pub enum NullOp {
     SizeOf,
     /// Returns the minimum alignment of a type.
     AlignOf,
-    /// Returns the offset of the field represented by the type.
-    FieldOffset,
+    /// Returns the offset of a field.
+    OffsetOf(Vec<(VariantIdx, FieldIdx)>),
     /// cfg!(ub_checks), but at codegen time
     UbChecks,
     /// cfg!(contract_checks), but at codegen time

@@ -649,7 +649,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             Rvalue::NullaryOp(
                 NullOp::SizeOf
                 | NullOp::AlignOf
-                | NullOp::FieldOffset
+                | NullOp::OffsetOf(_)
                 | NullOp::UbChecks
                 | NullOp::ContractChecks,
                 _,

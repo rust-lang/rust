@@ -508,7 +508,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
     pub fn nullary_op(
         &self,
-        null_op: NullOp,
+        null_op: NullOp<'tcx>,
         arg_ty: Ty<'tcx>,
     ) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
         use rustc_middle::mir::NullOp::*;
@@ -531,16 +531,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let val = layout.align.abi.bytes();
                 ImmTy::from_uint(val, usize_layout())
             }
-            FieldOffset => {
-                let &ty::Field(container, field_path) = arg_ty.kind() else {
-                    span_bug!(
-                        self.cur_span(),
-                        "expected `ty::Field` for `NullOp::FieldOffset`, but got {arg_ty:?}"
-                    )
-                };
-                let layout = self.layout_of(container)?;
+            OffsetOf(fields) => {
                 let val =
-                    self.tcx.offset_of_subfield(self.typing_env, layout, field_path.iter()).bytes();
+                    self.tcx.offset_of_subfield(self.typing_env, layout, fields.iter()).bytes();
                 ImmTy::from_uint(val, usize_layout())
             }
             UbChecks => ImmTy::from_bool(M::ub_checks(self)?, *self.tcx),

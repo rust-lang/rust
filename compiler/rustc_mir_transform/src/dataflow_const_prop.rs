@@ -481,16 +481,11 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 let val = match null_op {
                     NullOp::SizeOf if layout.is_sized() => layout.size.bytes(),
                     NullOp::AlignOf if layout.is_sized() => layout.align.abi.bytes(),
-                    NullOp::FieldOffset
-                        if let &ty::Field(container, field_path) = layout.ty.kind()
-                            && let Ok(layout) =
-                                self.tcx.layout_of(self.typing_env.as_query_input(container)) =>
-                    {
-                        self.ecx
-                            .tcx
-                            .offset_of_subfield(self.typing_env, layout, field_path.iter())
-                            .bytes()
-                    }
+                    NullOp::OffsetOf(fields) => self
+                        .ecx
+                        .tcx
+                        .offset_of_subfield(self.typing_env, layout, fields.iter())
+                        .bytes(),
                     _ => return ValueOrPlace::Value(FlatSet::Top),
                 };
                 FlatSet::Elem(Scalar::from_target_usize(val, &self.tcx))

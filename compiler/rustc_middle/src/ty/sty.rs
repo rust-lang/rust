@@ -673,6 +673,7 @@ impl<'tcx> Ty<'tcx> {
         container: Ty<'tcx>,
         field_path: FieldPath<'tcx>,
     ) -> Ty<'tcx> {
+        assert!(!field_path.0.is_empty());
         Ty::new(tcx, Field(container, field_path))
     }
 
