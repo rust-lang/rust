@@ -682,7 +682,7 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
         // was irrelevant.
         match goal.result() {
             Ok(Certainty::Yes) | Err(NoSolution) => return,
-            Ok(Certainty::Maybe(_)) => {}
+            Ok(Certainty::Maybe { .. }) => {}
         }
 
         // For bound predicates we simply call `infcx.enter_forall`

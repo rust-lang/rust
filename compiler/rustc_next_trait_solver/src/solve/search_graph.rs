@@ -93,7 +93,7 @@ where
     fn is_ambiguous_result(result: QueryResult<I>) -> bool {
         result.is_ok_and(|response| {
             has_no_inference_or_external_constraints(response)
-                && matches!(response.value.certainty, Certainty::Maybe(_))
+                && matches!(response.value.certainty, Certainty::Maybe { .. })
         })
     }
 

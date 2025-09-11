@@ -6,7 +6,7 @@ use crate::fold::TypeFoldable;
 use crate::inherent::*;
 use crate::relate::RelateResult;
 use crate::relate::combine::PredicateEmittingRelation;
-use crate::{self as ty, Interner};
+use crate::{self as ty, Interner, TyVid};
 
 /// The current typing mode of an inference context. We unfortunately have some
 /// slightly different typing rules depending on the current context. See the
@@ -271,6 +271,7 @@ pub trait InferCtxtLike: Sized {
         &self,
         prev_entries: Self::OpaqueTypeStorageEntries,
     ) -> Vec<(ty::OpaqueTypeKey<Self::Interner>, <Self::Interner as Interner>::Ty)>;
+    fn opaques_with_sub_unified_hidden_type(&self, ty: TyVid) -> Vec<ty::AliasTy<Self::Interner>>;
 
     fn register_hidden_type_in_storage(
         &self,

@@ -269,11 +269,42 @@ impl<I: Interner> NestedNormalizationGoals<I> {
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 pub enum Certainty {
     Yes,
-    Maybe(MaybeCause),
+    Maybe { cause: MaybeCause, opaque_types_jank: OpaqueTypesJank },
+}
+
+#[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
+#[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+pub enum OpaqueTypesJank {
+    AllGood,
+    ErrorIfRigidSelfTy,
+}
+impl OpaqueTypesJank {
+    fn and(self, other: OpaqueTypesJank) -> OpaqueTypesJank {
+        match (self, other) {
+            (OpaqueTypesJank::AllGood, OpaqueTypesJank::AllGood) => OpaqueTypesJank::AllGood,
+            (OpaqueTypesJank::ErrorIfRigidSelfTy, _) | (_, OpaqueTypesJank::ErrorIfRigidSelfTy) => {
+                OpaqueTypesJank::ErrorIfRigidSelfTy
+            }
+        }
+    }
+
+    pub fn or(self, other: OpaqueTypesJank) -> OpaqueTypesJank {
+        match (self, other) {
+            (OpaqueTypesJank::ErrorIfRigidSelfTy, OpaqueTypesJank::ErrorIfRigidSelfTy) => {
+                OpaqueTypesJank::ErrorIfRigidSelfTy
+            }
+            (OpaqueTypesJank::AllGood, _) | (_, OpaqueTypesJank::AllGood) => {
+                OpaqueTypesJank::AllGood
+            }
+        }
+    }
 }
 
 impl Certainty {
-    pub const AMBIGUOUS: Certainty = Certainty::Maybe(MaybeCause::Ambiguity);
+    pub const AMBIGUOUS: Certainty = Certainty::Maybe {
+        cause: MaybeCause::Ambiguity,
+        opaque_types_jank: OpaqueTypesJank::AllGood,
+    };
 
     /// Use this function to merge the certainty of multiple nested subgoals.
     ///
@@ -290,14 +321,23 @@ impl Certainty {
     pub fn and(self, other: Certainty) -> Certainty {
         match (self, other) {
             (Certainty::Yes, Certainty::Yes) => Certainty::Yes,
-            (Certainty::Yes, Certainty::Maybe(_)) => other,
-            (Certainty::Maybe(_), Certainty::Yes) => self,
-            (Certainty::Maybe(a), Certainty::Maybe(b)) => Certainty::Maybe(a.and(b)),
+            (Certainty::Yes, Certainty::Maybe { .. }) => other,
+            (Certainty::Maybe { .. }, Certainty::Yes) => self,
+            (
+                Certainty::Maybe { cause: a_cause, opaque_types_jank: a_jank },
+                Certainty::Maybe { cause: b_cause, opaque_types_jank: b_jank },
+            ) => Certainty::Maybe {
+                cause: a_cause.and(b_cause),
+                opaque_types_jank: a_jank.and(b_jank),
+            },
         }
     }
 
     pub const fn overflow(suggest_increasing_limit: bool) -> Certainty {
-        Certainty::Maybe(MaybeCause::Overflow { suggest_increasing_limit, keep_constraints: false })
+        Certainty::Maybe {
+            cause: MaybeCause::Overflow { suggest_increasing_limit, keep_constraints: false },
+            opaque_types_jank: OpaqueTypesJank::AllGood,
+        }
     }
 }
 
