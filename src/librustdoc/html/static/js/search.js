@@ -3639,7 +3639,7 @@ class DocSearch {
             if (contains.length === 0) {
                 return 0;
             }
-            const maxPathEditDistance = Math.floor(
+            const maxPathEditDistance = parsedQuery.literalSearch ? 0 : Math.floor(
                 contains.reduce((acc, next) => acc + next.length, 0) / 3,
             );
             let ret_dist = maxPathEditDistance + 1;
@@ -3650,7 +3650,9 @@ class DocSearch {
                 let dist_total = 0;
                 for (let x = 0; x < clength; ++x) {
                     const [p, c] = [path[i + x], contains[x]];
-                    if (Math.floor((p.length - c.length) / 3) <= maxPathEditDistance &&
+                    if (parsedQuery.literalSearch && p !== c) {
+                        continue pathiter;
+                    } else if (Math.floor((p.length - c.length) / 3) <= maxPathEditDistance &&
                         p.indexOf(c) !== -1
                     ) {
                         // discount distance on substring match
