@@ -4,6 +4,8 @@
 //! backwards-incompatible, and may need to be done over an edition boundary or limit editions for
 //! which the desguaring change impacts.
 
+//@ check-pass
+
 #[derive(Debug)]
 struct F {
     data: bool
@@ -18,5 +20,4 @@ fn main() {
   let f = F { data: true };
 
   assert!(f);
-  //~^ ERROR mismatched types
 }
