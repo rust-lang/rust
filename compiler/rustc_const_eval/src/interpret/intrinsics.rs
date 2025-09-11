@@ -10,7 +10,7 @@ use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, read_target_uint, write_targ
 use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic, NullOp};
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{Ty, TyCtxt};
-use rustc_middle::{bug, err_inval, span_bug, ty};
+use rustc_middle::{bug, span_bug, ty};
 use rustc_span::{Symbol, sym};
 use tracing::trace;
 
