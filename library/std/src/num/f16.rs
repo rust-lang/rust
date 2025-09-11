@@ -522,10 +522,10 @@ impl f16 {
 
     /// Computes the four quadrant arctangent of `self` (`y`) and `other` (`x`) in radians.
     ///
-    /// * `x = 0`, `y = 0`: `0`
-    /// * `x >= 0`: `arctan(y/x)` -> `[-pi/2, pi/2]`
-    /// * `y >= 0`: `arctan(y/x) + pi` -> `(pi/2, pi]`
-    /// * `y < 0`: `arctan(y/x) - pi` -> `(-pi, -pi/2)`
+    /// * `x >= +0`, `y >= +0`: `[0, π/2]`
+    /// * `x >= +0`, `y <= -0`: `[-π/2, 0]`
+    /// * `x <= -0`, `y >= +0`: `[π/2, π]`
+    /// * `x <= -0`, `y <= -0`: `[-π, -π/2]`
     ///
     /// # Unspecified precision
     ///
