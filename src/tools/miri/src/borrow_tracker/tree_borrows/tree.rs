@@ -756,6 +756,8 @@ impl<'tcx> Tree {
                             // Don't check for protector if it is a Cell (see `unsafe_cell_deallocate` in `interior_mutability.rs`).
                             // Related to https://github.com/rust-lang/rust/issues/55005.
                             && !perm.permission().is_cell()
+                            // Only trigger UB if the accessed bit is set, i.e. if the protector is actually protecting this offset. See #4579.
+                            && perm.is_accessed()
                         {
                             Err(TransitionError::ProtectedDealloc)
                         } else {
