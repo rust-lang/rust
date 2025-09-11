@@ -106,8 +106,8 @@ run your code on.
 ## Start-up and Low-Level Code
 
 The [Rust Embedded Devices Working Group Arm Team] maintain the
-[`aarch64-cpu`], which may be useful for writing bare-metal code using this
-target.
+[`aarch64-cpu`] crate, which may be useful for writing bare-metal code using
+this target.
 
 The *TrustedFirmware* group also maintain [Rust crates for this
 target](https://github.com/ArmFirmwareCrates).
