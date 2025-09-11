@@ -8,6 +8,7 @@ use rustc_type_ir::inherent::*;
 use rustc_type_ir::relate::Relate;
 use rustc_type_ir::relate::solver_relating::RelateExt;
 use rustc_type_ir::search_graph::{CandidateHeadUsages, PathKind};
+use rustc_type_ir::solve::OpaqueTypesJank;
 use rustc_type_ir::{
     self as ty, CanonicalVarValues, InferCtxtLike, Interner, TypeFoldable, TypeFolder,
     TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
@@ -151,6 +152,15 @@ pub trait SolverDelegateEvalExt: SolverDelegate {
         stalled_on: Option<GoalStalledOn<Self::Interner>>,
     ) -> Result<GoalEvaluation<Self::Interner>, NoSolution>;
 
+    /// Checks whether evaluating `goal` may hold while treating not-yet-defined
+    /// opaque types as being kind of rigid.
+    ///
+    /// See the comment on [OpaqueTypesJank] for more details.
+    fn root_goal_may_hold_opaque_types_jank(
+        &self,
+        goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
+    ) -> bool;
+
     /// Check whether evaluating `goal` with a depth of `root_depth` may
     /// succeed. This only returns `false` if the goal is guaranteed to
     /// not hold. In case evaluation overflows and fails with ambiguity this
@@ -190,6 +200,24 @@ where
     ) -> Result<GoalEvaluation<I>, NoSolution> {
         EvalCtxt::enter_root(self, self.cx().recursion_limit(), span, |ecx| {
             ecx.evaluate_goal(GoalSource::Misc, goal, stalled_on)
+        })
+    }
+
+    fn root_goal_may_hold_opaque_types_jank(
+        &self,
+        goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
+    ) -> bool {
+        self.probe(|| {
+            EvalCtxt::enter_root(self, self.cx().recursion_limit(), I::Span::dummy(), |ecx| {
+                ecx.evaluate_goal(GoalSource::Misc, goal, None)
+            })
+            .is_ok_and(|r| match r.certainty {
+                Certainty::Yes => true,
+                Certainty::Maybe { cause: _, opaque_types_jank } => match opaque_types_jank {
+                    OpaqueTypesJank::AllGood => true,
+                    OpaqueTypesJank::ErrorIfRigidSelfTy => false,
+                },
+            })
         })
     }
 
@@ -407,8 +435,12 @@ where
         // If we have run this goal before, and it was stalled, check that any of the goal's
         // args have changed. Otherwise, we don't need to re-run the goal because it'll remain
         // stalled, since it'll canonicalize the same way and evaluation is pure.
-        if let Some(GoalStalledOn { num_opaques, ref stalled_vars, ref sub_roots, stalled_cause }) =
-            stalled_on
+        if let Some(GoalStalledOn {
+            num_opaques,
+            ref stalled_vars,
+            ref sub_roots,
+            stalled_certainty,
+        }) = stalled_on
             && !stalled_vars.iter().any(|value| self.delegate.is_changed_arg(*value))
             && !sub_roots
                 .iter()
@@ -419,7 +451,7 @@ where
                 NestedNormalizationGoals::empty(),
                 GoalEvaluation {
                     goal,
-                    certainty: Certainty::Maybe(stalled_cause),
+                    certainty: stalled_certainty,
                     has_changed: HasChanged::No,
                     stalled_on,
                 },
@@ -468,7 +500,7 @@ where
 
         let stalled_on = match certainty {
             Certainty::Yes => None,
-            Certainty::Maybe(stalled_cause) => match has_changed {
+            Certainty::Maybe { .. } => match has_changed {
                 // FIXME: We could recompute a *new* set of stalled variables by walking
                 // through the orig values, resolving, and computing the root vars of anything
                 // that is not resolved. Only when *these* have changed is it meaningful
@@ -518,7 +550,7 @@ where
                             .len(),
                         stalled_vars,
                         sub_roots,
-                        stalled_cause,
+                        stalled_certainty: certainty,
                     })
                 }
             },
@@ -634,7 +666,7 @@ where
             if let Some(certainty) = self.delegate.compute_goal_fast_path(goal, self.origin_span) {
                 match certainty {
                     Certainty::Yes => {}
-                    Certainty::Maybe(_) => {
+                    Certainty::Maybe { .. } => {
                         self.nested_goals.push((source, goal, None));
                         unchanged_certainty = unchanged_certainty.map(|c| c.and(certainty));
                     }
@@ -710,7 +742,7 @@ where
 
                 match certainty {
                     Certainty::Yes => {}
-                    Certainty::Maybe(_) => {
+                    Certainty::Maybe { .. } => {
                         self.nested_goals.push((source, with_resolved_vars, stalled_on));
                         unchanged_certainty = unchanged_certainty.map(|c| c.and(certainty));
                     }
@@ -724,7 +756,7 @@ where
 
                 match certainty {
                     Certainty::Yes => {}
-                    Certainty::Maybe(_) => {
+                    Certainty::Maybe { .. } => {
                         self.nested_goals.push((source, goal, stalled_on));
                         unchanged_certainty = unchanged_certainty.map(|c| c.and(certainty));
                     }
@@ -1184,28 +1216,12 @@ where
     pub(crate) fn opaques_with_sub_unified_hidden_type(
         &self,
         self_ty: I::Ty,
-    ) -> impl Iterator<Item = ty::AliasTy<I>> + use<'a, D, I> {
-        let delegate = self.delegate;
-        delegate
-            .clone_opaque_types_lookup_table()
-            .into_iter()
-            .chain(delegate.clone_duplicate_opaque_types())
-            .filter_map(move |(key, hidden_ty)| {
-                if let ty::Infer(ty::TyVar(self_vid)) = self_ty.kind() {
-                    if let ty::Infer(ty::TyVar(hidden_vid)) = hidden_ty.kind() {
-                        if delegate.sub_unification_table_root_var(self_vid)
-                            == delegate.sub_unification_table_root_var(hidden_vid)
-                        {
-                            return Some(ty::AliasTy::new_from_args(
-                                delegate.cx(),
-                                key.def_id.into(),
-                                key.args,
-                            ));
-                        }
-                    }
-                }
-                None
-            })
+    ) -> Vec<ty::AliasTy<I>> {
+        if let ty::Infer(ty::TyVar(vid)) = self_ty.kind() {
+            self.delegate.opaques_with_sub_unified_hidden_type(vid)
+        } else {
+            vec![]
+        }
     }
 }
 

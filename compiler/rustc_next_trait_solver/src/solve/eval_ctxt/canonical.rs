@@ -15,6 +15,7 @@ use rustc_index::IndexVec;
 use rustc_type_ir::data_structures::HashSet;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::relate::solver_relating::RelateExt;
+use rustc_type_ir::solve::OpaqueTypesJank;
 use rustc_type_ir::{
     self as ty, Canonical, CanonicalVarKind, CanonicalVarValues, InferCtxtLike, Interner,
     TypeFoldable,
@@ -141,8 +142,10 @@ where
                 }
             };
 
-        if let Certainty::Maybe(cause @ MaybeCause::Overflow { keep_constraints: false, .. }) =
-            certainty
+        if let Certainty::Maybe {
+            cause: cause @ MaybeCause::Overflow { keep_constraints: false, .. },
+            opaque_types_jank,
+        } = certainty
         {
             // If we have overflow, it's probable that we're substituting a type
             // into itself infinitely and any partial substitutions in the query
@@ -155,7 +158,7 @@ where
             //
             // Changing this to retain some constraints in the future
             // won't be a breaking change, so this is good enough for now.
-            return Ok(self.make_ambiguous_response_no_constraints(cause));
+            return Ok(self.make_ambiguous_response_no_constraints(cause, opaque_types_jank));
         }
 
         let external_constraints =
@@ -199,10 +202,13 @@ where
                     .count();
                 if num_non_region_vars > self.cx().recursion_limit() {
                     debug!(?num_non_region_vars, "too many inference variables -> overflow");
-                    return Ok(self.make_ambiguous_response_no_constraints(MaybeCause::Overflow {
-                        suggest_increasing_limit: true,
-                        keep_constraints: false,
-                    }));
+                    return Ok(self.make_ambiguous_response_no_constraints(
+                        MaybeCause::Overflow {
+                            suggest_increasing_limit: true,
+                            keep_constraints: false,
+                        },
+                        OpaqueTypesJank::AllGood,
+                    ));
                 }
             }
         }
@@ -216,13 +222,14 @@ where
     /// ambiguity but return constrained variables to guide inference.
     pub(in crate::solve) fn make_ambiguous_response_no_constraints(
         &self,
-        maybe_cause: MaybeCause,
+        cause: MaybeCause,
+        opaque_types_jank: OpaqueTypesJank,
     ) -> CanonicalResponse<I> {
         response_no_constraints_raw(
             self.cx(),
             self.max_input_universe,
             self.variables,
-            Certainty::Maybe(maybe_cause),
+            Certainty::Maybe { cause, opaque_types_jank },
         )
     }
 
