@@ -17,7 +17,6 @@ pub mod os;
 pub mod pipe;
 pub mod stack_overflow;
 pub mod sync;
-pub mod thread;
 pub mod thread_parking;
 pub mod time;
 
@@ -55,7 +54,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
     // thread-id for the main thread and so renaming the main thread will rename the
     // process and we only want to enable this on platforms we've tested.
     if cfg!(target_vendor = "apple") {
-        thread::Thread::set_name(&c"main");
+        crate::sys::thread::set_name(c"main");
     }
 
     unsafe fn sanitize_standard_fds() {

@@ -1,16 +1,14 @@
 //! Thread implementation backed by μITRON tasks. Assumes `acre_tsk` and
 //! `exd_tsk` are available.
 
-use super::error::{ItronError, expect_success, expect_success_aborting};
-use super::time::dur2reltims;
-use super::{abi, task};
 use crate::cell::UnsafeCell;
-use crate::ffi::CStr;
 use crate::mem::ManuallyDrop;
-use crate::num::NonZero;
 use crate::ptr::NonNull;
 use crate::sync::atomic::{Atomic, AtomicUsize, Ordering};
-use crate::time::{Duration, Instant};
+use crate::sys::pal::itron::error::{ItronError, expect_success, expect_success_aborting};
+use crate::sys::pal::itron::time::dur2reltims;
+use crate::sys::pal::itron::{abi, task};
+use crate::time::Duration;
 use crate::{hint, io};
 
 pub struct Thread {
@@ -195,28 +193,6 @@ impl Thread {
         Ok(Self { p_inner, task: new_task })
     }
 
-    pub fn yield_now() {
-        expect_success(unsafe { abi::rot_rdq(abi::TPRI_SELF) }, &"rot_rdq");
-    }
-
-    pub fn set_name(_name: &CStr) {
-        // nope
-    }
-
-    pub fn sleep(dur: Duration) {
-        for timeout in dur2reltims(dur) {
-            expect_success(unsafe { abi::dly_tsk(timeout) }, &"dly_tsk");
-        }
-    }
-
-    pub fn sleep_until(deadline: Instant) {
-        let now = Instant::now();
-
-        if let Some(delay) = deadline.checked_duration_since(now) {
-            Self::sleep(delay);
-        }
-    }
-
     pub fn join(self) {
         // Safety: `ThreadInner` is alive at this point
         let inner = unsafe { self.p_inner.as_ref() };
@@ -361,10 +337,12 @@ unsafe fn terminate_and_delete_current_task() -> ! {
     unsafe { crate::hint::unreachable_unchecked() };
 }
 
-pub(crate) fn current_os_id() -> Option<u64> {
-    None
+pub fn yield_now() {
+    expect_success(unsafe { abi::rot_rdq(abi::TPRI_SELF) }, &"rot_rdq");
 }
 
-pub fn available_parallelism() -> io::Result<NonZero<usize>> {
-    super::unsupported()
+pub fn sleep(dur: Duration) {
+    for timeout in dur2reltims(dur) {
+        expect_success(unsafe { abi::dly_tsk(timeout) }, &"dly_tsk");
+    }
 }

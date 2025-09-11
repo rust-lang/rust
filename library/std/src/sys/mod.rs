@@ -31,6 +31,7 @@ pub mod process;
 pub mod random;
 pub mod stdio;
 pub mod sync;
+pub mod thread;
 pub mod thread_local;
 
 // FIXME(117276): remove this, move feature implementations into individual
