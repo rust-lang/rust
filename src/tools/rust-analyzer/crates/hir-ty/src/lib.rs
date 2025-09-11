@@ -940,10 +940,10 @@ where
     Canonical { value, binders: chalk_ir::CanonicalVarKinds::from_iter(Interner, kinds) }
 }
 
-pub fn callable_sig_from_fn_trait(
+pub fn callable_sig_from_fn_trait<'db>(
     self_ty: &Ty,
-    trait_env: Arc<TraitEnvironment>,
-    db: &dyn HirDatabase,
+    trait_env: Arc<TraitEnvironment<'db>>,
+    db: &'db dyn HirDatabase,
 ) -> Option<(FnTrait, CallableSig)> {
     let krate = trait_env.krate;
     let fn_once_trait = FnTrait::FnOnce.get_id(db, krate)?;

@@ -43,7 +43,11 @@ pub enum DropGlue {
     HasDropGlue,
 }
 
-pub(crate) fn has_drop_glue(db: &dyn HirDatabase, ty: Ty, env: Arc<TraitEnvironment>) -> DropGlue {
+pub(crate) fn has_drop_glue(
+    db: &dyn HirDatabase,
+    ty: Ty,
+    env: Arc<TraitEnvironment<'_>>,
+) -> DropGlue {
     match ty.kind(Interner) {
         TyKind::Adt(adt, subst) => {
             if has_destructor(db, adt.0) {
@@ -165,7 +169,7 @@ pub(crate) fn has_drop_glue(db: &dyn HirDatabase, ty: Ty, env: Arc<TraitEnvironm
 
 fn projection_has_drop_glue(
     db: &dyn HirDatabase,
-    env: Arc<TraitEnvironment>,
+    env: Arc<TraitEnvironment<'_>>,
     projection: ProjectionTy,
     ty: Ty,
 ) -> DropGlue {
@@ -178,7 +182,7 @@ fn projection_has_drop_glue(
     }
 }
 
-fn is_copy(db: &dyn HirDatabase, ty: Ty, env: Arc<TraitEnvironment>) -> bool {
+fn is_copy(db: &dyn HirDatabase, ty: Ty, env: Arc<TraitEnvironment<'_>>) -> bool {
     let Some(copy_trait) = LangItem::Copy.resolve_trait(db, env.krate) else {
         return false;
     };
@@ -193,7 +197,7 @@ fn is_copy(db: &dyn HirDatabase, ty: Ty, env: Arc<TraitEnvironment>) -> bool {
 pub(crate) fn has_drop_glue_cycle_result(
     _db: &dyn HirDatabase,
     _ty: Ty,
-    _env: Arc<TraitEnvironment>,
+    _env: Arc<TraitEnvironment<'_>>,
 ) -> DropGlue {
     DropGlue::None
 }

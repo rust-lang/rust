@@ -132,7 +132,7 @@ fn layout_of_simd_ty<'db>(
     id: StructId,
     repr_packed: bool,
     args: &GenericArgs<'db>,
-    env: Arc<TraitEnvironment>,
+    env: Arc<TraitEnvironment<'db>>,
     dl: &TargetDataLayout,
 ) -> Result<Arc<Layout>, LayoutError> {
     // Supported SIMD vectors are homogeneous ADTs with exactly one array field:
@@ -160,7 +160,7 @@ fn layout_of_simd_ty<'db>(
 pub fn layout_of_ty_query<'db>(
     db: &'db dyn HirDatabase,
     ty: Ty<'db>,
-    trait_env: Arc<TraitEnvironment>,
+    trait_env: Arc<TraitEnvironment<'db>>,
 ) -> Result<Arc<Layout>, LayoutError> {
     let krate = trait_env.krate;
     let interner = DbInterner::new_with(db, Some(krate), trait_env.block);
@@ -371,7 +371,7 @@ pub fn layout_of_ty_query<'db>(
 pub(crate) fn layout_of_ty_cycle_result<'db>(
     _: &dyn HirDatabase,
     _: Ty<'db>,
-    _: Arc<TraitEnvironment>,
+    _: Arc<TraitEnvironment<'db>>,
 ) -> Result<Arc<Layout>, LayoutError> {
     Err(LayoutError::RecursiveTypeWithoutIndirection)
 }

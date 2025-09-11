@@ -3808,12 +3808,12 @@ impl GenericDef {
 pub struct GenericSubstitution<'db> {
     def: GenericDefId,
     subst: Substitution,
-    env: Arc<TraitEnvironment>,
+    env: Arc<TraitEnvironment<'db>>,
     _pd: PhantomCovariantLifetime<'db>,
 }
 
 impl<'db> GenericSubstitution<'db> {
-    fn new(def: GenericDefId, subst: Substitution, env: Arc<TraitEnvironment>) -> Self {
+    fn new(def: GenericDefId, subst: Substitution, env: Arc<TraitEnvironment<'db>>) -> Self {
         Self { def, subst, env, _pd: PhantomCovariantLifetime::new() }
     }
 
@@ -4567,7 +4567,7 @@ impl Impl {
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct TraitRef<'db> {
-    env: Arc<TraitEnvironment>,
+    env: Arc<TraitEnvironment<'db>>,
     trait_ref: hir_ty::next_solver::TraitRef<'db>,
     _pd: PhantomCovariantLifetime<'db>,
 }
@@ -4790,7 +4790,7 @@ impl CaptureUsageSource {
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct Type<'db> {
-    env: Arc<TraitEnvironment>,
+    env: Arc<TraitEnvironment<'db>>,
     ty: Ty,
     _pd: PhantomCovariantLifetime<'db>,
 }
@@ -5945,7 +5945,7 @@ impl<'db> Type<'db> {
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct TypeNs<'db> {
-    env: Arc<TraitEnvironment>,
+    env: Arc<TraitEnvironment<'db>>,
     ty: hir_ty::next_solver::Ty<'db>,
     _pd: PhantomCovariantLifetime<'db>,
 }

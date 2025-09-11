@@ -39,21 +39,23 @@ use crate::{
 /// ```
 /// we assume that `T: Default`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TraitEnvironment {
+pub struct TraitEnvironment<'db> {
     pub krate: Crate,
     pub block: Option<BlockId>,
     // FIXME make this a BTreeMap
     traits_from_clauses: Box<[(Ty, TraitId)]>,
     pub env: chalk_ir::Environment<Interner>,
+    _db: std::marker::PhantomData<&'db ()>,
 }
 
-impl TraitEnvironment {
+impl<'db> TraitEnvironment<'db> {
     pub fn empty(krate: Crate) -> Arc<Self> {
         Arc::new(TraitEnvironment {
             krate,
             block: None,
             traits_from_clauses: Box::default(),
             env: chalk_ir::Environment::new(Interner),
+            _db: std::marker::PhantomData,
         })
     }
 
@@ -63,7 +65,13 @@ impl TraitEnvironment {
         traits_from_clauses: Box<[(Ty, TraitId)]>,
         env: chalk_ir::Environment<Interner>,
     ) -> Arc<Self> {
-        Arc::new(TraitEnvironment { krate, block, traits_from_clauses, env })
+        Arc::new(TraitEnvironment {
+            krate,
+            block,
+            traits_from_clauses,
+            env,
+            _db: std::marker::PhantomData,
+        })
     }
 
     // pub fn with_block(self: &mut Arc<Self>, block: BlockId) {
@@ -78,10 +86,10 @@ impl TraitEnvironment {
     }
 }
 
-pub(crate) fn normalize_projection_query(
-    db: &dyn HirDatabase,
+pub(crate) fn normalize_projection_query<'db>(
+    db: &'db dyn HirDatabase,
     projection: ProjectionTy,
-    env: Arc<TraitEnvironment>,
+    env: Arc<TraitEnvironment<'db>>,
 ) -> Ty {
     if projection.substitution.iter(Interner).any(|arg| {
         arg.ty(Interner)

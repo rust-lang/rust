@@ -121,7 +121,7 @@ impl<'a, 'db> ProofTreeVisitor<'db> for NestedObligationsForSelfTy<'a, 'db> {
 /// unresolved goal `T = U`.
 pub fn could_unify(
     db: &dyn HirDatabase,
-    env: Arc<TraitEnvironment>,
+    env: Arc<TraitEnvironment<'_>>,
     tys: &Canonical<(Ty, Ty)>,
 ) -> bool {
     unify(db, env, tys).is_some()
@@ -133,7 +133,7 @@ pub fn could_unify(
 /// them. For example `Option<T>` and `Option<U>` do not unify as we cannot show that `T = U`
 pub fn could_unify_deeply(
     db: &dyn HirDatabase,
-    env: Arc<TraitEnvironment>,
+    env: Arc<TraitEnvironment<'_>>,
     tys: &Canonical<(Ty, Ty)>,
 ) -> bool {
     let mut table = InferenceTable::new(db, env);
@@ -151,7 +151,7 @@ pub fn could_unify_deeply(
 
 pub(crate) fn unify(
     db: &dyn HirDatabase,
-    env: Arc<TraitEnvironment>,
+    env: Arc<TraitEnvironment<'_>>,
     tys: &Canonical<(Ty, Ty)>,
 ) -> Option<Substitution> {
     let mut table = InferenceTable::new(db, env);
@@ -212,7 +212,7 @@ bitflags::bitflags! {
 pub(crate) struct InferenceTable<'db> {
     pub(crate) db: &'db dyn HirDatabase,
     pub(crate) interner: DbInterner<'db>,
-    pub(crate) trait_env: Arc<TraitEnvironment>,
+    pub(crate) trait_env: Arc<TraitEnvironment<'db>>,
     pub(crate) param_env: ParamEnv<'db>,
     pub(crate) tait_coercion_table: Option<FxHashMap<OpaqueTyId, Ty>>,
     pub(crate) infer_ctxt: InferCtxt<'db>,
@@ -227,7 +227,7 @@ pub(crate) struct InferenceTableSnapshot<'db> {
 }
 
 impl<'db> InferenceTable<'db> {
-    pub(crate) fn new(db: &'db dyn HirDatabase, trait_env: Arc<TraitEnvironment>) -> Self {
+    pub(crate) fn new(db: &'db dyn HirDatabase, trait_env: Arc<TraitEnvironment<'db>>) -> Self {
         let interner = DbInterner::new_with(db, Some(trait_env.krate), trait_env.block);
         let infer_ctxt = interner.infer_ctxt().build(rustc_type_ir::TypingMode::Analysis {
             defining_opaque_types_and_generators: SolverDefIds::new_from_iter(interner, []),

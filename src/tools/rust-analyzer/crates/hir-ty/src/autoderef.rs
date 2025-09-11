@@ -32,11 +32,11 @@ const AUTODEREF_RECURSION_LIMIT: usize = 20;
 /// - the yielded types don't contain inference variables (but may contain `TyKind::Error`).
 /// - a type won't be yielded more than once; in other words, the returned iterator will stop if it
 ///   detects a cycle in the deref chain.
-pub fn autoderef(
-    db: &dyn HirDatabase,
-    env: Arc<TraitEnvironment>,
+pub fn autoderef<'db>(
+    db: &'db dyn HirDatabase,
+    env: Arc<TraitEnvironment<'db>>,
     ty: crate::Canonical<crate::Ty>,
-) -> impl Iterator<Item = crate::Ty> {
+) -> impl Iterator<Item = crate::Ty> + use<> {
     let mut table = InferenceTable::new(db, env);
     let interner = table.interner;
     let ty = table.instantiate_canonical(ty);

@@ -81,17 +81,17 @@ impl BodyValidationDiagnostic {
     }
 }
 
-struct ExprValidator {
+struct ExprValidator<'db> {
     owner: DefWithBodyId,
     body: Arc<Body>,
     infer: Arc<InferenceResult>,
-    env: Arc<TraitEnvironment>,
+    env: Arc<TraitEnvironment<'db>>,
     diagnostics: Vec<BodyValidationDiagnostic>,
     validate_lints: bool,
 }
 
-impl ExprValidator {
-    fn validate_body(&mut self, db: &dyn HirDatabase) {
+impl<'db> ExprValidator<'db> {
+    fn validate_body(&mut self, db: &'db dyn HirDatabase) {
         let mut filter_map_next_checker = None;
         // we'll pass &mut self while iterating over body.exprs, so they need to be disjoint
         let body = Arc::clone(&self.body);

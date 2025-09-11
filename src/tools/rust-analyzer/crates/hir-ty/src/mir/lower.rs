@@ -82,7 +82,7 @@ struct MirLowerCtx<'db> {
     infer: &'db InferenceResult,
     resolver: Resolver<'db>,
     drop_scopes: Vec<DropScope>,
-    env: Arc<TraitEnvironment>,
+    env: Arc<TraitEnvironment<'db>>,
 }
 
 // FIXME: Make this smaller, its stored in database queries

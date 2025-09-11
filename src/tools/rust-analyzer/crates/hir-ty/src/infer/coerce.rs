@@ -1564,9 +1564,9 @@ impl<'db, 'exprs> CoerceMany<'db, 'exprs> {
     }
 }
 
-pub fn could_coerce(
-    db: &dyn HirDatabase,
-    env: Arc<TraitEnvironment>,
+pub fn could_coerce<'db>(
+    db: &'db dyn HirDatabase,
+    env: Arc<TraitEnvironment<'db>>,
     tys: &crate::Canonical<(crate::Ty, crate::Ty)>,
 ) -> bool {
     coerce(db, env, tys).is_ok()
@@ -1574,7 +1574,7 @@ pub fn could_coerce(
 
 fn coerce<'db>(
     db: &'db dyn HirDatabase,
-    env: Arc<TraitEnvironment>,
+    env: Arc<TraitEnvironment<'db>>,
     tys: &crate::Canonical<(crate::Ty, crate::Ty)>,
 ) -> Result<(Vec<Adjustment>, crate::Ty), TypeError<DbInterner<'db>>> {
     let mut table = InferenceTable::new(db, env);

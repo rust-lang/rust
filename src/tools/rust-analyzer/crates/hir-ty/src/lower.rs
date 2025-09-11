@@ -1089,7 +1089,7 @@ pub(crate) fn generic_predicates_for_param_cycle_result(
 pub(crate) fn trait_environment_for_body_query(
     db: &dyn HirDatabase,
     def: DefWithBodyId,
-) -> Arc<TraitEnvironment> {
+) -> Arc<TraitEnvironment<'_>> {
     let Some(def) = def.as_generic_def_id(db) else {
         let krate = def.module(db).krate();
         return TraitEnvironment::empty(krate);
@@ -1097,10 +1097,10 @@ pub(crate) fn trait_environment_for_body_query(
     db.trait_environment(def)
 }
 
-pub(crate) fn trait_environment_query(
-    db: &dyn HirDatabase,
+pub(crate) fn trait_environment_query<'db>(
+    db: &'db dyn HirDatabase,
     def: GenericDefId,
-) -> Arc<TraitEnvironment> {
+) -> Arc<TraitEnvironment<'db>> {
     let generics = generics(db, def);
     if generics.has_no_predicates() && generics.is_empty() {
         return TraitEnvironment::empty(def.krate(db));
