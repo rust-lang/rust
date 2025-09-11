@@ -202,18 +202,23 @@ mod sealed {
     impl<T> Sealed for *const T {}
 }
 
-/// Trait which permits the allowed types to be used with [`VaListImpl::arg`].
+/// Types that are valid to read using [`VaListImpl::arg`].
 ///
 /// # Safety
 ///
-/// This trait must only be implemented for types that C passes as varargs without implicit promotion.
+/// The standard library implements this trait for primitive types that are
+/// expected to have a variable argument application-binary interface (ABI) on all
+/// platforms.
 ///
-/// In C varargs, integers smaller than [`c_int`] and floats smaller than [`c_double`]
-/// are implicitly promoted to [`c_int`] and [`c_double`] respectively. Implementing this trait for
-/// types that are subject to this promotion rule is invalid.
+/// When C passes variable arguments, integers smaller than [`c_int`] and floats smaller
+/// than [`c_double`] are implicitly promoted to [`c_int`] and [`c_double`] respectively.
+/// Implementing this trait for types that are subject to this promotion rule is invalid.
 ///
 /// [`c_int`]: core::ffi::c_int
 /// [`c_double`]: core::ffi::c_double
+// We may unseal this trait in the future, but currently our `va_arg` implementations don't support
+// types with an alignment larger than 8, or with a non-scalar layout. Inline assembly can be used
+// to accept unsupported types in the meantime.
 pub unsafe trait VaArgSafe: sealed::Sealed {}
 
 // i8 and i16 are implicitly promoted to c_int in C, and cannot implement `VaArgSafe`.
@@ -233,7 +238,19 @@ unsafe impl<T> VaArgSafe for *mut T {}
 unsafe impl<T> VaArgSafe for *const T {}
 
 impl<'f> VaListImpl<'f> {
-    /// Advance to the next arg.
+    /// Advance to and read the next variable argument.
+    ///
+    /// # Safety
+    ///
+    /// This function is only sound to call when the next variable argument:
+    ///
+    /// - has a type that is ABI-compatible with the type `T`
+    /// - has a value that is a properly initialized value of type `T`
+    ///
+    /// Calling this function with an incompatible type, an invalid value, or when there
+    /// are no more variable arguments, is unsound.
+    ///
+    /// [valid]: https://doc.rust-lang.org/nightly/nomicon/what-unsafe-does.html
     #[inline]
     pub unsafe fn arg<T: VaArgSafe>(&mut self) -> T {
         // SAFETY: the caller must uphold the safety contract for `va_arg`.
