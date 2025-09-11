@@ -224,14 +224,6 @@ static FloatABI::ABIType fromRust(LLVMRustFloatABI RustFloatAbi) {
   report_fatal_error("Bad FloatABI.");
 }
 
-/// getLongestEntryLength - Return the length of the longest entry in the table.
-template <typename KV> static size_t getLongestEntryLength(ArrayRef<KV> Table) {
-  size_t MaxLen = 0;
-  for (auto &I : Table)
-    MaxLen = std::max(MaxLen, std::strlen(I.Key));
-  return MaxLen;
-}
-
 extern "C" void LLVMRustPrintTargetCPUs(LLVMTargetMachineRef TM,
                                         RustStringRef OutStr) {
   ArrayRef<SubtargetSubTypeKV> CPUTable =
