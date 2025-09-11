@@ -2,6 +2,7 @@
 //! type inference-related queries.
 
 use base_db::Crate;
+use base_db::target::TargetLoadError;
 use hir_def::{
     AdtId, BlockId, CallableDefId, ConstParamId, DefWithBodyId, EnumVariantId, FunctionId,
     GeneralConstId, GenericDefId, ImplId, LifetimeParamId, LocalFieldId, StaticId, TraitId,
@@ -108,7 +109,7 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
     ) -> Result<Arc<Layout>, LayoutError>;
 
     #[salsa::invoke(crate::layout::target_data_layout_query)]
-    fn target_data_layout(&self, krate: Crate) -> Result<Arc<TargetDataLayout>, Arc<str>>;
+    fn target_data_layout(&self, krate: Crate) -> Result<Arc<TargetDataLayout>, TargetLoadError>;
 
     #[salsa::invoke(crate::dyn_compatibility::dyn_compatibility_of_trait_query)]
     fn dyn_compatibility_of_trait(&self, trait_: TraitId) -> Option<DynCompatibilityViolation>;

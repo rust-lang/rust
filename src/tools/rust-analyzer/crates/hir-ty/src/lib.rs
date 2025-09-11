@@ -132,7 +132,10 @@ pub use mapping::{
 pub use method_resolution::check_orphan_rules;
 pub use target_feature::TargetFeatures;
 pub use traits::TraitEnvironment;
-pub use utils::{Unsafety, all_super_traits, direct_super_traits, is_fn_unsafe_to_call};
+pub use utils::{
+    Unsafety, all_super_traits, direct_super_traits, is_fn_unsafe_to_call,
+    target_feature_is_safe_in_target,
+};
 pub use variance::Variance;
 
 pub use chalk_ir::{

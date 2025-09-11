@@ -1,3 +1,4 @@
+use base_db::target::TargetData;
 use chalk_ir::{AdtId, TyKind};
 use either::Either;
 use hir_def::db::DefDatabase;
@@ -18,8 +19,8 @@ use crate::{
 
 mod closure;
 
-fn current_machine_data_layout() -> String {
-    project_model::toolchain_info::target_data_layout::get(
+fn current_machine_target_data() -> TargetData {
+    project_model::toolchain_info::target_data::get(
         QueryConfig::Rustc(&Sysroot::empty(), &std::env::current_dir().unwrap()),
         None,
         &FxHashMap::default(),
@@ -32,7 +33,8 @@ fn eval_goal(
     minicore: &str,
 ) -> Result<Arc<Layout>, LayoutError> {
     let _tracing = setup_tracing();
-    let target_data_layout = current_machine_data_layout();
+    let target_data = current_machine_target_data();
+    let target_data_layout = target_data.data_layout;
     let ra_fixture = format!(
         "//- target_data_layout: {target_data_layout}\n{minicore}//- /main.rs crate:test\n{ra_fixture}",
     );
@@ -104,7 +106,8 @@ fn eval_expr(
     minicore: &str,
 ) -> Result<Arc<Layout>, LayoutError> {
     let _tracing = setup_tracing();
-    let target_data_layout = current_machine_data_layout();
+    let target_data = current_machine_target_data();
+    let target_data_layout = target_data.data_layout;
     let ra_fixture = format!(
         "//- target_data_layout: {target_data_layout}\n{minicore}//- /main.rs crate:test\nfn main(){{let goal = {{{ra_fixture}}};}}",
     );

@@ -263,7 +263,7 @@ impl Analysis {
             false,
             proc_macro_cwd,
             Arc::new(CrateWorkspaceData {
-                data_layout: Err("fixture has no layout".into()),
+                target: Err("fixture has no layout".into()),
                 toolchain: None,
             }),
         );

@@ -998,4 +998,20 @@ extern "C" fn naked() {
         "#,
         );
     }
+
+    #[test]
+    fn target_feature_safe_on_wasm() {
+        check_diagnostics(
+            r#"
+//- target_arch: wasm32
+
+#[target_feature(enable = "simd128")]
+fn requires_target_feature() {}
+
+fn main() {
+    requires_target_feature();
+}
+            "#,
+        );
+    }
 }
