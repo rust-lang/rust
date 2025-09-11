@@ -44,7 +44,7 @@ fn check_all_outcomes<T: Eq + std::hash::Hash + std::fmt::Debug>(
     let expected: HashSet<T> = HashSet::from_iter(expected);
     let mut seen = HashSet::new();
     // Let's give it N times as many tries as we are expecting values.
-    let tries = expected.len() * 12;
+    let tries = expected.len() * 16;
     for i in 0..tries {
         let val = generate();
         assert!(expected.contains(&val), "got an unexpected value: {val:?}");
@@ -205,19 +205,16 @@ fn release_sequence() {
         let y = static_atomic(0);
 
         let t1 = spawn(move || {
-            x.store(2, Relaxed);
-        });
-        let t2 = spawn(move || {
             y.store(1, Relaxed);
             x.store(1, Release);
             x.swap(3, Relaxed);
         });
-        let t3 = spawn(move || {
+        let t2 = spawn(move || {
             if x.load(Acquire) == 3 {
-                // If we read 3 here, we are seeing the result of the `x.swap` above, which
-                // was relaxed but forms a release sequence with the `x.store` (since we know
-                // `t1` will not be scheduled in between). This means there is a release sequence,
-                // so we acquire the `y.store` and cannot see the original value `0` any more.
+                // If we read 3 here, we are seeing the result of the `x.swap` above, which was
+                // relaxed but forms a release sequence with the `x.store`. This means there is a
+                // release sequence, so we acquire the `y.store` and cannot see the original value
+                // `0` any more.
                 Some(y.load(Relaxed))
             } else {
                 None
@@ -225,8 +222,32 @@ fn release_sequence() {
         });
 
         t1.join().unwrap();
-        t2.join().unwrap();
-        t3.join().unwrap()
+        t2.join().unwrap()
+    });
+}
+
+/// Ensure that when we read from an outdated release store, we acquire its clock.
+fn old_release_store() {
+    check_all_outcomes([None, Some(1)], || {
+        let x = static_atomic(0);
+        let y = static_atomic(0);
+
+        let t1 = spawn(move || {
+            y.store(1, Relaxed);
+            x.store(1, Release); // this is what we want to read from
+            x.store(3, Relaxed);
+        });
+        let t2 = spawn(move || {
+            if x.load(Acquire) == 1 {
+                // We must have acquired the `y.store` so we cannot see the initial value any more.
+                Some(y.load(Relaxed))
+            } else {
+                None
+            }
+        });
+
+        t1.join().unwrap();
+        t2.join().unwrap()
     });
 }
 
@@ -238,4 +259,5 @@ pub fn main() {
     faa_replaced_by_load();
     release_sequence();
     weaker_release_sequences();
+    old_release_store();
 }

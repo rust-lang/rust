@@ -183,6 +183,9 @@ struct AtomicMemoryCellClocks {
     /// contains the vector of timestamps that will
     /// happen-before a thread if an acquire-load is
     /// performed on the data.
+    ///
+    /// With weak memory emulation, this is the clock of the most recent write. It is then only used
+    /// for release sequences, to integrate the most recent clock into the next one for RMWs.
     sync_vector: VClock,
 
     /// The size of accesses to this atomic location.
@@ -504,10 +507,11 @@ impl MemoryCellClocks {
         thread_clocks: &mut ThreadClockSet,
         index: VectorIdx,
         access_size: Size,
+        sync_clock: Option<&VClock>,
     ) -> Result<(), DataRace> {
         self.atomic_read_detect(thread_clocks, index, access_size)?;
-        if let Some(atomic) = self.atomic() {
-            thread_clocks.clock.join(&atomic.sync_vector);
+        if let Some(sync_clock) = sync_clock.or_else(|| self.atomic().map(|a| &a.sync_vector)) {
+            thread_clocks.clock.join(sync_clock);
         }
         Ok(())
     }
@@ -520,10 +524,11 @@ impl MemoryCellClocks {
         thread_clocks: &mut ThreadClockSet,
         index: VectorIdx,
         access_size: Size,
+        sync_clock: Option<&VClock>,
     ) -> Result<(), DataRace> {
         self.atomic_read_detect(thread_clocks, index, access_size)?;
-        if let Some(atomic) = self.atomic() {
-            thread_clocks.fence_acquire.join(&atomic.sync_vector);
+        if let Some(sync_clock) = sync_clock.or_else(|| self.atomic().map(|a| &a.sync_vector)) {
+            thread_clocks.fence_acquire.join(sync_clock);
         }
         Ok(())
     }
@@ -736,8 +741,8 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         }
 
         let scalar = this.allow_data_races_ref(move |this| this.read_scalar(place))?;
-        let buffered_scalar = this.buffered_atomic_read(place, atomic, scalar, || {
-            this.validate_atomic_load(place, atomic)
+        let buffered_scalar = this.buffered_atomic_read(place, atomic, scalar, |sync_clock| {
+            this.validate_atomic_load(place, atomic, sync_clock)
         })?;
         interp_ok(buffered_scalar.ok_or_else(|| err_ub!(InvalidUninitBytes(None)))?)
     }
@@ -935,7 +940,7 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
             this.validate_atomic_rmw(place, success)?;
             this.buffered_atomic_rmw(new, place, success, old.to_scalar())?;
         } else {
-            this.validate_atomic_load(place, fail)?;
+            this.validate_atomic_load(place, fail, /* can use latest sync clock */ None)?;
             // A failed compare exchange is equivalent to a load, reading from the latest store
             // in the modification order.
             // Since `old` is only a value and not the store element, we need to separately
@@ -1175,6 +1180,18 @@ impl VClockAlloc {
                 span: active_clocks.clock.as_slice()[active_index.index()].span_data(),
             },
         }))?
+    }
+
+    /// Return the release/acquire synchronization clock for the given memory range.
+    pub(super) fn sync_clock(&self, access_range: AllocRange) -> VClock {
+        let alloc_ranges = self.alloc_ranges.borrow();
+        let mut clock = VClock::default();
+        for (_, mem_clocks) in alloc_ranges.iter(access_range.start, access_range.size) {
+            if let Some(atomic) = mem_clocks.atomic() {
+                clock.join(&atomic.sync_vector);
+            }
+        }
+        clock
     }
 
     /// Detect data-races for an unsynchronized read operation. It will not perform
@@ -1453,6 +1470,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
         &self,
         place: &MPlaceTy<'tcx>,
         atomic: AtomicReadOrd,
+        sync_clock: Option<&VClock>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_ref();
         this.validate_atomic_op(
@@ -1461,9 +1479,9 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
             AccessType::AtomicLoad,
             move |memory, clocks, index, atomic| {
                 if atomic == AtomicReadOrd::Relaxed {
-                    memory.load_relaxed(&mut *clocks, index, place.layout.size)
+                    memory.load_relaxed(&mut *clocks, index, place.layout.size, sync_clock)
                 } else {
-                    memory.load_acquire(&mut *clocks, index, place.layout.size)
+                    memory.load_acquire(&mut *clocks, index, place.layout.size, sync_clock)
                 }
             },
         )
@@ -1508,9 +1526,9 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
             AccessType::AtomicRmw,
             move |memory, clocks, index, _| {
                 if acquire {
-                    memory.load_acquire(clocks, index, place.layout.size)?;
+                    memory.load_acquire(clocks, index, place.layout.size, None)?;
                 } else {
-                    memory.load_relaxed(clocks, index, place.layout.size)?;
+                    memory.load_relaxed(clocks, index, place.layout.size, None)?;
                 }
                 if release {
                     memory.rmw_release(clocks, index, place.layout.size)
