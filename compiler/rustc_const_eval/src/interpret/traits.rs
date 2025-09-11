@@ -23,7 +23,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ) -> InterpResult<'tcx, Pointer<Option<M::Provenance>>> {
         trace!("get_vtable(ty={ty:?}, dyn_ty={dyn_ty:?})");
 
-        let (ty, dyn_ty) = self.tcx.erase_regions((ty, dyn_ty));
+        let (ty, dyn_ty) = self.tcx.erase_and_anonymize_regions((ty, dyn_ty));
 
         // All vtables must be monomorphic, bail out otherwise.
         ensure_monomorphic_enough(*self.tcx, ty)?;
@@ -53,8 +53,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ) -> &'tcx [VtblEntry<'tcx>] {
         if let Some(trait_) = trait_ {
             let trait_ref = trait_.with_self_ty(*self.tcx, dyn_ty);
-            let trait_ref =
-                self.tcx.erase_regions(self.tcx.instantiate_bound_regions_with_erased(trait_ref));
+            let trait_ref = self.tcx.erase_and_anonymize_regions(
+                self.tcx.instantiate_bound_regions_with_erased(trait_ref),
+            );
             self.tcx.vtable_entries(trait_ref)
         } else {
             TyCtxt::COMMON_VTABLE_ENTRIES

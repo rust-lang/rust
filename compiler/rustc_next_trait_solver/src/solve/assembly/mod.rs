@@ -186,7 +186,7 @@ where
     fn consider_impl_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
-        impl_def_id: I::DefId,
+        impl_def_id: I::ImplId,
     ) -> Result<Candidate<I>, NoSolution>;
 
     /// If the predicate contained an error, we want to avoid emitting unnecessary trait

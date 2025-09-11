@@ -184,10 +184,9 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
         R: Debug + TypeFoldable<TyCtxt<'tcx>>,
         Canonical<'tcx, QueryResponse<'tcx, R>>: ArenaAllocatable<'tcx>,
     {
-        let (infcx, key, canonical_inference_vars) =
-            self.build_with_canonical(DUMMY_SP, canonical_key);
+        let (infcx, key, var_values) = self.build_with_canonical(DUMMY_SP, canonical_key);
         let ocx = ObligationCtxt::new(&infcx);
         let value = operation(&ocx, key)?;
-        ocx.make_canonicalized_query_response(canonical_inference_vars, value)
+        ocx.make_canonicalized_query_response(var_values, value)
     }
 }

@@ -217,6 +217,7 @@ use rustc_hir::attrs::InlineAttr;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_hir::lang_items::LangItem;
+use rustc_hir::limit::Limit;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{AllocId, ErrorHandled, GlobalAlloc, Scalar};
 use rustc_middle::mir::mono::{CollectionMode, InstantiationMode, MonoItem};
@@ -231,7 +232,6 @@ use rustc_middle::ty::{
 };
 use rustc_middle::util::Providers;
 use rustc_middle::{bug, span_bug};
-use rustc_session::Limit;
 use rustc_session::config::{DebugInfo, EntryFnType};
 use rustc_span::source_map::{Spanned, dummy_spanned, respan};
 use rustc_span::{DUMMY_SP, Span};
@@ -1558,7 +1558,7 @@ impl<'v> RootCollector<'_, 'v> {
                         ty::Closure(def_id, args)
                         | ty::Coroutine(def_id, args)
                         | ty::CoroutineClosure(def_id, args) => {
-                            Instance::new_raw(def_id, self.tcx.erase_regions(args))
+                            Instance::new_raw(def_id, self.tcx.erase_and_anonymize_regions(args))
                         }
                         _ => unreachable!(),
                     };

@@ -103,16 +103,17 @@ fn build_fixed_size_array_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     unique_type_id: UniqueTypeId<'tcx>,
     array_type: Ty<'tcx>,
+    span: Span,
 ) -> DINodeCreationResult<'ll> {
     let ty::Array(element_type, len) = array_type.kind() else {
         bug!("build_fixed_size_array_di_node() called with non-ty::Array type `{:?}`", array_type)
     };
 
-    let element_type_di_node = type_di_node(cx, *element_type);
+    let element_type_di_node = spanned_type_di_node(cx, *element_type, span);
 
     return_if_di_node_created_in_meantime!(cx, unique_type_id);
 
-    let (size, align) = cx.size_and_align_of(array_type);
+    let (size, align) = cx.spanned_size_and_align_of(array_type, span);
 
     let upper_bound = len
         .try_to_target_usize(cx.tcx)
@@ -447,7 +448,7 @@ pub(crate) fn spanned_type_di_node<'ll, 'tcx>(
             build_basic_type_di_node(cx, t)
         }
         ty::Tuple(elements) if elements.is_empty() => build_basic_type_di_node(cx, t),
-        ty::Array(..) => build_fixed_size_array_di_node(cx, unique_type_id, t),
+        ty::Array(..) => build_fixed_size_array_di_node(cx, unique_type_id, t, span),
         ty::Slice(_) | ty::Str => build_slice_type_di_node(cx, t, unique_type_id),
         ty::Dynamic(..) => build_dyn_type_di_node(cx, t, unique_type_id),
         ty::Foreign(..) => build_foreign_type_di_node(cx, t, unique_type_id),
@@ -1435,7 +1436,7 @@ fn build_vtable_type_di_node<'ll, 'tcx>(
 
     let vtable_entries = if let Some(poly_trait_ref) = poly_trait_ref {
         let trait_ref = poly_trait_ref.with_self_ty(tcx, ty);
-        let trait_ref = tcx.erase_regions(trait_ref);
+        let trait_ref = tcx.erase_and_anonymize_regions(trait_ref);
 
         tcx.vtable_entries(trait_ref)
     } else {
@@ -1562,7 +1563,7 @@ pub(crate) fn apply_vcall_visibility_metadata<'ll, 'tcx>(
     // Unwrap potential addrspacecast
     let vtable = find_vtable_behind_cast(vtable);
     let trait_ref_self = trait_ref.with_self_ty(cx.tcx, ty);
-    let trait_ref_self = cx.tcx.erase_regions(trait_ref_self);
+    let trait_ref_self = cx.tcx.erase_and_anonymize_regions(trait_ref_self);
     let trait_def_id = trait_ref_self.def_id;
     let trait_vis = cx.tcx.visibility(trait_def_id);
 

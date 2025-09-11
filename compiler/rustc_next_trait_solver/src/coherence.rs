@@ -435,7 +435,21 @@ where
                 }
             }
             ty::Error(_) => ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty)),
-            ty::Closure(did, ..) | ty::CoroutineClosure(did, ..) | ty::Coroutine(did, ..) => {
+            ty::Closure(did, ..) => {
+                if self.def_id_is_local(did) {
+                    ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty))
+                } else {
+                    self.found_non_local_ty(ty)
+                }
+            }
+            ty::CoroutineClosure(did, ..) => {
+                if self.def_id_is_local(did) {
+                    ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty))
+                } else {
+                    self.found_non_local_ty(ty)
+                }
+            }
+            ty::Coroutine(did, ..) => {
                 if self.def_id_is_local(did) {
                     ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty))
                 } else {

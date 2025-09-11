@@ -405,7 +405,7 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
             Ok(if a_args.is_empty() {
                 a
             } else {
-                let args = relation.relate_item_args(a_def.def_id(), a_args, b_args)?;
+                let args = relation.relate_item_args(a_def.def_id().into(), a_args, b_args)?;
                 if args == a_args { a } else { Ty::new_adt(cx, a_def, args) }
             })
         }
@@ -524,7 +524,7 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
             Ok(if a_args.is_empty() {
                 a
             } else {
-                let args = relation.relate_item_args(a_def_id, a_args, b_args)?;
+                let args = relation.relate_item_args(a_def_id.into(), a_args, b_args)?;
                 if args == a_args { a } else { Ty::new_fn_def(cx, a_def_id, args) }
             })
         }

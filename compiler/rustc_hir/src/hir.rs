@@ -2616,6 +2616,18 @@ impl Expr<'_> {
             )
             | (
                 ExprKind::Struct(
+                    QPath::LangItem(LangItem::RangeToInclusiveCopy, _),
+                    [val1],
+                    StructTailExpr::None,
+                ),
+                ExprKind::Struct(
+                    QPath::LangItem(LangItem::RangeToInclusiveCopy, _),
+                    [val2],
+                    StructTailExpr::None,
+                ),
+            )
+            | (
+                ExprKind::Struct(
                     QPath::LangItem(LangItem::RangeFrom, _),
                     [val1],
                     StructTailExpr::None,
@@ -2705,7 +2717,8 @@ pub fn is_range_literal(expr: &Expr<'_>) -> bool {
                     | LangItem::RangeToInclusive
                     | LangItem::RangeCopy
                     | LangItem::RangeFromCopy
-                    | LangItem::RangeInclusiveCopy,
+                    | LangItem::RangeInclusiveCopy
+                    | LangItem::RangeToInclusiveCopy,
                 ..
             )
         ),

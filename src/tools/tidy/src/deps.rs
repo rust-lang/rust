@@ -477,7 +477,6 @@ const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
     "rustc-demangle",
     "rustc-literal-escaper",
     "shlex",
-    "unicode-width",
     "unwinding",
     "wasi",
     "windows-sys",

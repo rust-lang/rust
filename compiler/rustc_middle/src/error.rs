@@ -72,7 +72,7 @@ pub enum TypeMismatchReason {
 #[help]
 pub(crate) struct RecursionLimitReached<'tcx> {
     pub ty: Ty<'tcx>,
-    pub suggested_limit: rustc_session::Limit,
+    pub suggested_limit: rustc_hir::limit::Limit,
 }
 
 #[derive(Diagnostic)]

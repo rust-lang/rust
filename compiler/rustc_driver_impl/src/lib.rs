@@ -51,6 +51,7 @@ use rustc_lint::unerased_lint_store;
 use rustc_metadata::creader::MetadataLoader;
 use rustc_metadata::locator;
 use rustc_middle::ty::TyCtxt;
+use rustc_parse::lexer::StripTokens;
 use rustc_parse::{new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal};
 use rustc_session::config::{
     CG_OPTIONS, CrateType, ErrorOutputType, Input, OptionDesc, OutFileName, OutputType, Sysroot,
@@ -1288,10 +1289,15 @@ fn warn_on_confusing_output_filename_flag(
 
 fn parse_crate_attrs<'a>(sess: &'a Session) -> PResult<'a, ast::AttrVec> {
     let mut parser = unwrap_or_emit_fatal(match &sess.io.input {
-        Input::File(file) => new_parser_from_file(&sess.psess, file, None),
-        Input::Str { name, input } => {
-            new_parser_from_source_str(&sess.psess, name.clone(), input.clone())
+        Input::File(file) => {
+            new_parser_from_file(&sess.psess, file, StripTokens::ShebangAndFrontmatter, None)
         }
+        Input::Str { name, input } => new_parser_from_source_str(
+            &sess.psess,
+            name.clone(),
+            input.clone(),
+            StripTokens::ShebangAndFrontmatter,
+        ),
     });
     parser.parse_inner_attributes()
 }

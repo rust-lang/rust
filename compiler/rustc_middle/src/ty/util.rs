@@ -12,9 +12,9 @@ use rustc_hashes::Hash128;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
+use rustc_hir::limit::Limit;
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, extension};
-use rustc_session::Limit;
 use rustc_span::sym;
 use rustc_type_ir::solve::SizedTraitKind;
 use smallvec::{SmallVec, smallvec};
@@ -131,10 +131,9 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Creates a hash of the type `Ty` which will be the same no matter what crate
     /// context it's calculated within. This is used by the `type_id` intrinsic.
     pub fn type_id_hash(self, ty: Ty<'tcx>) -> Hash128 {
-        // We want the type_id be independent of the types free regions, so we
-        // erase them. The erase_regions() call will also anonymize bound
-        // regions, which is desirable too.
-        let ty = self.erase_regions(ty);
+        // We don't have region information, so we erase all free regions. Equal types
+        // must have the same `TypeId`, so we must anonymize all bound regions as well.
+        let ty = self.erase_and_anonymize_regions(ty);
 
         self.with_stable_hashing_context(|mut hcx| {
             let mut hasher = StableHasher::new();
@@ -1309,7 +1308,7 @@ impl<'tcx> Ty<'tcx> {
                 debug_assert!(!typing_env.param_env.has_infer());
                 let query_ty = tcx
                     .try_normalize_erasing_regions(typing_env, query_ty)
-                    .unwrap_or_else(|_| tcx.erase_regions(query_ty));
+                    .unwrap_or_else(|_| tcx.erase_and_anonymize_regions(query_ty));
 
                 tcx.needs_drop_raw(typing_env.as_query_input(query_ty))
             }
@@ -1346,7 +1345,7 @@ impl<'tcx> Ty<'tcx> {
                 debug_assert!(!typing_env.has_infer());
                 let query_ty = tcx
                     .try_normalize_erasing_regions(typing_env, query_ty)
-                    .unwrap_or_else(|_| tcx.erase_regions(query_ty));
+                    .unwrap_or_else(|_| tcx.erase_and_anonymize_regions(query_ty));
 
                 tcx.needs_async_drop_raw(typing_env.as_query_input(query_ty))
             }

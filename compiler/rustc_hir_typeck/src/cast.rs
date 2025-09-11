@@ -851,8 +851,8 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         debug!("check_ptr_ptr_cast m_src={m_src:?} m_dst={m_dst:?}");
         // ptr-ptr cast. metadata must match.
 
-        let src_kind = fcx.tcx.erase_regions(fcx.pointer_kind(m_src.ty, self.span)?);
-        let dst_kind = fcx.tcx.erase_regions(fcx.pointer_kind(m_dst.ty, self.span)?);
+        let src_kind = fcx.tcx.erase_and_anonymize_regions(fcx.pointer_kind(m_src.ty, self.span)?);
+        let dst_kind = fcx.tcx.erase_and_anonymize_regions(fcx.pointer_kind(m_dst.ty, self.span)?);
 
         // We can't cast if target pointer kind is unknown
         let Some(dst_kind) = dst_kind else {

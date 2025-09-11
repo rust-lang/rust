@@ -75,7 +75,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 {
                     if let Some(cause) = self
                         .tcx
-                        .diagnostic_hir_wf_check((tcx.erase_regions(obligation.predicate), *wf_loc))
+                        .diagnostic_hir_wf_check((tcx.erase_and_anonymize_regions(obligation.predicate), *wf_loc))
                     {
                         obligation.cause = cause.clone();
                         span = obligation.cause.span;
@@ -2612,8 +2612,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
 
             // Erase regions because layout code doesn't particularly care about regions.
-            let trait_pred =
-                self.tcx.erase_regions(self.tcx.instantiate_bound_regions_with_erased(trait_pred));
+            let trait_pred = self.tcx.erase_and_anonymize_regions(
+                self.tcx.instantiate_bound_regions_with_erased(trait_pred),
+            );
 
             let src_and_dst = rustc_transmute::Types {
                 dst: trait_pred.trait_ref.args.type_at(0),

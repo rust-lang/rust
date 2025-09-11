@@ -802,7 +802,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                         format!("unexpected inference variable after writeback: {predicate:?}"),
                     );
                 } else {
-                    let predicate = self.tcx().erase_regions(predicate);
+                    let predicate = self.tcx().erase_and_anonymize_regions(predicate);
                     if cause.has_infer() || cause.has_placeholders() {
                         // We can't use the the obligation cause as it references
                         // information local to this query.
@@ -984,8 +984,8 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
         // borrowck, and specifically region constraints will be populated during
         // MIR typeck which is run on the new body.
         //
-        // We're not using `tcx.erase_regions` as that also anonymizes bound variables,
-        // regressing borrowck diagnostics.
+        // We're not using `tcx.erase_and_anonymize_regions` as that also
+        // anonymizes bound variables, regressing borrowck diagnostics.
         value = fold_regions(tcx, value, |_, _| tcx.lifetimes.re_erased);
 
         // Normalize consts in writeback, because GCE doesn't normalize eagerly.

@@ -5,7 +5,7 @@
 Its goal is to enable a lot of trait system features and bug fixes
 that are hard to implement (e.g. GATs or specialization). If you would like to
 help in hacking on the new solver, drop by on the rust-lang Zulip in the [`#t-types`]
-stream and say hello!
+channel and say hello!
 
 [Types team]: https://github.com/rust-lang/types-team
 [`#t-types`]: https://rust-lang.zulipchat.com/#narrow/stream/144729-t-types

@@ -90,7 +90,6 @@ does not need reviews. You can request a review using `r? rustc-dev-guide` or \
 [assign.adhoc_groups]
 rustc-dev-guide = [
     "@BoxyUwU",
-    "@jieyouxu",
     "@jyn514",
     "@tshepang",
 ]

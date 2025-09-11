@@ -1335,7 +1335,10 @@ impl<'a> Parser<'a> {
         if let token::Literal(token::Lit { kind: token::Integer, symbol, suffix }) = self.token.kind
         {
             if let Some(suffix) = suffix {
-                self.expect_no_tuple_index_suffix(self.token.span, suffix);
+                self.dcx().emit_err(errors::InvalidLiteralSuffixOnTupleIndex {
+                    span: self.token.span,
+                    suffix,
+                });
             }
             self.bump();
             Ok(Ident::new(symbol, self.prev_token.span))

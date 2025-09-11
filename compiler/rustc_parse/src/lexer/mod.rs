@@ -45,7 +45,7 @@ pub(crate) struct UnmatchedDelim {
 }
 
 /// Which tokens should be stripped before lexing the tokens.
-pub(crate) enum StripTokens {
+pub enum StripTokens {
     /// Strip both shebang and frontmatter.
     ShebangAndFrontmatter,
     /// Strip the shebang but not frontmatter.

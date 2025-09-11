@@ -1017,10 +1017,6 @@ pub(crate) struct InvalidLiteralSuffixOnTupleIndex {
     #[label]
     pub span: Span,
     pub suffix: Symbol,
-    #[help(parse_tuple_exception_line_1)]
-    #[help(parse_tuple_exception_line_2)]
-    #[help(parse_tuple_exception_line_3)]
-    pub exception: bool,
 }
 
 #[derive(Diagnostic)]

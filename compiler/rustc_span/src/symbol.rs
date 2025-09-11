@@ -21,18 +21,17 @@ mod tests;
 
 // The proc macro code for this is in `compiler/rustc_macros/src/symbols.rs`.
 symbols! {
-    // This list includes things that are definitely keywords (e.g. `if`),
-    // a few things that are definitely not keywords (e.g. the empty symbol,
-    // `{{root}}`) and things where there is disagreement between people and/or
-    // documents (such as the Rust Reference) about whether it is a keyword
-    // (e.g. `_`).
+    // This list includes things that are definitely keywords (e.g. `if`), a
+    // few things that are definitely not keywords (e.g. `{{root}}`) and things
+    // where there is disagreement between people and/or documents (such as the
+    // Rust Reference) about whether it is a keyword (e.g. `_`).
     //
     // If you modify this list, adjust any relevant `Symbol::{is,can_be}_*`
     // predicates and `used_keywords`. Also consider adding new keywords to the
     // `ui/parser/raw/raw-idents.rs` test.
     Keywords {
-        // Special reserved identifiers used internally for elided lifetimes,
-        // unnamed method parameters, crate root module, error recovery etc.
+        // Special reserved identifiers used internally for unnamed method
+        // parameters, crate root module, etc.
         // Matching predicates: `is_special`/`is_reserved`
         //
         // tidy-alphabetical-start
@@ -326,6 +325,7 @@ symbols! {
         RangeSub,
         RangeTo,
         RangeToInclusive,
+        RangeToInclusiveCopy,
         Rc,
         RcWeak,
         Ready,
@@ -1280,6 +1280,7 @@ symbols! {
         lang,
         lang_items,
         large_assignments,
+        last,
         lateout,
         lazy_normalization_consts,
         lazy_type_alias,
@@ -1846,6 +1847,7 @@ symbols! {
         rustc_abi,
         // FIXME(#82232, #143834): temporary name to mitigate `#[align]` nameres ambiguity
         rustc_align,
+        rustc_align_static,
         rustc_allocator,
         rustc_allocator_zeroed,
         rustc_allocator_zeroed_variant,
@@ -2097,6 +2099,7 @@ symbols! {
         staged_api,
         start,
         state,
+        static_align,
         static_in_const,
         static_nobundle,
         static_recursion,

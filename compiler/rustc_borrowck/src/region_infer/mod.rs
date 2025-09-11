@@ -615,7 +615,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
 
             // Type-test failed. Report the error.
-            let erased_generic_kind = infcx.tcx.erase_regions(type_test.generic_kind);
+            let erased_generic_kind = infcx.tcx.erase_and_anonymize_regions(type_test.generic_kind);
 
             // Skip duplicate-ish errors.
             if deduplicate_errors.insert((

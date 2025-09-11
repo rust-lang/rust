@@ -1017,6 +1017,7 @@ pub(crate) mod builtin {
     )]
     #[allow_internal_unstable(fmt_internals)]
     #[rustc_builtin_macro]
+    #[doc(hidden)]
     #[macro_export]
     macro_rules! format_args_nl {
         ($fmt:expr) => {{ /* compiler built-in */ }};

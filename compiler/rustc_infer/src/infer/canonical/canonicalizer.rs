@@ -6,6 +6,7 @@
 //! [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::sso::SsoHashMap;
 use rustc_index::Idx;
 use rustc_middle::bug;
 use rustc_middle::ty::{
@@ -17,7 +18,7 @@ use tracing::debug;
 
 use crate::infer::InferCtxt;
 use crate::infer::canonical::{
-    Canonical, CanonicalQueryInput, CanonicalTyVarKind, CanonicalVarKind, OriginalQueryValues,
+    Canonical, CanonicalQueryInput, CanonicalVarKind, OriginalQueryValues,
 };
 
 impl<'tcx> InferCtxt<'tcx> {
@@ -293,6 +294,13 @@ struct Canonicalizer<'cx, 'tcx> {
     // Note that indices is only used once `var_values` is big enough to be
     // heap-allocated.
     indices: FxHashMap<GenericArg<'tcx>, BoundVar>,
+    /// Maps each `sub_unification_table_root_var` to the index of the first
+    /// variable which used it.
+    ///
+    /// This means in case two type variables have the same sub relations root,
+    /// we set the `sub_root` of the second variable to the position of the first.
+    /// Otherwise the `sub_root` of each type variable is just its own position.
+    sub_root_lookup_table: SsoHashMap<ty::TyVid, usize>,
     canonicalize_mode: &'cx dyn CanonicalizeMode,
     needs_canonical_flags: TypeFlags,
 
@@ -361,10 +369,8 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
                             // FIXME: perf problem described in #55921.
                             ui = ty::UniverseIndex::ROOT;
                         }
-                        self.canonicalize_ty_var(
-                            CanonicalVarKind::Ty(CanonicalTyVarKind::General(ui)),
-                            t,
-                        )
+                        let sub_root = self.get_or_insert_sub_root(vid);
+                        self.canonicalize_ty_var(CanonicalVarKind::Ty { ui, sub_root }, t)
                     }
                 }
             }
@@ -374,7 +380,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
                 if nt != t {
                     return self.fold_ty(nt);
                 } else {
-                    self.canonicalize_ty_var(CanonicalVarKind::Ty(CanonicalTyVarKind::Int), t)
+                    self.canonicalize_ty_var(CanonicalVarKind::Int, t)
                 }
             }
             ty::Infer(ty::FloatVar(vid)) => {
@@ -382,7 +388,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
                 if nt != t {
                     return self.fold_ty(nt);
                 } else {
-                    self.canonicalize_ty_var(CanonicalVarKind::Ty(CanonicalTyVarKind::Float), t)
+                    self.canonicalize_ty_var(CanonicalVarKind::Float, t)
                 }
             }
 
@@ -562,6 +568,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             variables: SmallVec::from_slice(base.variables),
             query_state,
             indices: FxHashMap::default(),
+            sub_root_lookup_table: Default::default(),
             binder_index: ty::INNERMOST,
         };
         if canonicalizer.query_state.var_values.spilled() {
@@ -660,6 +667,13 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
         }
     }
 
+    fn get_or_insert_sub_root(&mut self, vid: ty::TyVid) -> ty::BoundVar {
+        let root_vid = self.infcx.unwrap().sub_unification_table_root_var(vid);
+        let idx =
+            *self.sub_root_lookup_table.entry(root_vid).or_insert_with(|| self.variables.len());
+        ty::BoundVar::from(idx)
+    }
+
     /// Replaces the universe indexes used in `var_values` with their index in
     /// `query_state.universe_map`. This minimizes the maximum universe used in
     /// the canonicalized value.
@@ -679,11 +693,11 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
         self.variables
             .iter()
             .map(|&kind| match kind {
-                CanonicalVarKind::Ty(CanonicalTyVarKind::Int | CanonicalTyVarKind::Float) => {
+                CanonicalVarKind::Int | CanonicalVarKind::Float => {
                     return kind;
                 }
-                CanonicalVarKind::Ty(CanonicalTyVarKind::General(u)) => {
-                    CanonicalVarKind::Ty(CanonicalTyVarKind::General(reverse_universe_map[&u]))
+                CanonicalVarKind::Ty { ui, sub_root } => {
+                    CanonicalVarKind::Ty { ui: reverse_universe_map[&ui], sub_root }
                 }
                 CanonicalVarKind::Region(u) => CanonicalVarKind::Region(reverse_universe_map[&u]),
                 CanonicalVarKind::Const(u) => CanonicalVarKind::Const(reverse_universe_map[&u]),
