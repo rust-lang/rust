@@ -185,36 +185,30 @@ impl<'a, 'f: 'a> DerefMut for VaList<'a, 'f> {
     }
 }
 
-mod sealed {
-    pub trait Sealed {}
-
-    impl Sealed for i32 {}
-    impl Sealed for i64 {}
-    impl Sealed for isize {}
-
-    impl Sealed for u32 {}
-    impl Sealed for u64 {}
-    impl Sealed for usize {}
-
-    impl Sealed for f64 {}
-
-    impl<T> Sealed for *mut T {}
-    impl<T> Sealed for *const T {}
-}
-
-/// Trait which permits the allowed types to be used with [`VaListImpl::arg`].
+/// Types that are valid to read using [`VaListImpl::arg`].
 ///
 /// # Safety
 ///
-/// This trait must only be implemented for types that C passes as varargs without implicit promotion.
+/// By default the standard library implements this trait for primitive types that are
+/// expected to have a variable argument application-binary interface (ABI) on all
+/// platforms.
 ///
-/// In C varargs, integers smaller than [`c_int`] and floats smaller than [`c_double`]
-/// are implicitly promoted to [`c_int`] and [`c_double`] respectively. Implementing this trait for
-/// types that are subject to this promotion rule is invalid.
+/// When C passes variable arguments, integers smaller than [`c_int`] and floats smaller
+/// than [`c_double`] are implicitly promoted to [`c_int`] and [`c_double`] respectively.
+/// Implementing this trait for types that are subject to this promotion rule is invalid.
+///
+/// Other primitive types (e.g. 128-bit integers or SIMD vectors) have inconsistent
+/// platform support. This trait may be implemented on a wrapper around such types
+/// (the "newtype pattern"), when the implementation is only available on platforms
+/// with support (e.g. using `#[cfg(/* some predicate */)]`).
+///
+/// Composite data types (`struct`, `enum` and `union`) may implement this trait if their layout
+/// follows the C layout rules. This does not just mean that the type should use `#[repr(C)]` or
+/// similar, but additionally that all fields transitively also follow the C layout rules.
 ///
 /// [`c_int`]: core::ffi::c_int
 /// [`c_double`]: core::ffi::c_double
-pub unsafe trait VaArgSafe: sealed::Sealed {}
+pub unsafe trait VaArgSafe {}
 
 // i8 and i16 are implicitly promoted to c_int in C, and cannot implement `VaArgSafe`.
 unsafe impl VaArgSafe for i32 {}
@@ -233,7 +227,19 @@ unsafe impl<T> VaArgSafe for *mut T {}
 unsafe impl<T> VaArgSafe for *const T {}
 
 impl<'f> VaListImpl<'f> {
-    /// Advance to the next arg.
+    /// Advance to and read the next variable argument.
+    ///
+    /// # Safety
+    ///
+    /// This function is only sound to call when the next variable argument:
+    ///
+    /// - has a type that is ABI-compatible with the type `T`
+    /// - has a value that is a properly initialized value of type `T`
+    ///
+    /// Calling this function with an incompatible type, an invalid value, or when there
+    /// are no more variable arguments, is unsound.
+    ///
+    /// [valid]: https://doc.rust-lang.org/nightly/nomicon/what-unsafe-does.html
     #[inline]
     pub unsafe fn arg<T: VaArgSafe>(&mut self) -> T {
         // SAFETY: the caller must uphold the safety contract for `va_arg`.
