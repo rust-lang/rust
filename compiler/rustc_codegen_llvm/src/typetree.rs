@@ -39,11 +39,7 @@ fn process_typetree_recursive(
 
         let mut indices = parent_indices.to_vec();
         if !parent_indices.is_empty() {
-            if rust_type.offset == -1 {
-                indices.push(-1);
-            } else {
-                indices.push(rust_type.offset as i64);
-            }
+            indices.push(rust_type.offset as i64);
         } else if rust_type.offset == -1 {
             indices.push(-1);
         } else {
@@ -52,7 +48,9 @@ fn process_typetree_recursive(
 
         enzyme_tt.insert(&indices, concrete_type, llcx);
 
-        if rust_type.kind == rustc_ast::expand::typetree::Kind::Pointer && !rust_type.child.0.is_empty() {
+        if rust_type.kind == rustc_ast::expand::typetree::Kind::Pointer
+            && !rust_type.child.0.is_empty()
+        {
             process_typetree_recursive(enzyme_tt, &rust_type.child, &indices, llcx);
         }
     }
