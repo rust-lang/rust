@@ -58,6 +58,9 @@ fn result_unwrap<T, E: std::fmt::Debug>(x: Result<T, E>) -> T {
 /// a no-op (the identity function).
 ///
 /// The test names will be prefiex with `poison_` or `nonpoison_`.
+///
+/// Important: `cfg_attr()` will not apply attributes to both tests.
+/// See <https://github.com/rust-lang/rust/pull/146433> for more information.
 macro_rules! nonpoison_and_poison_unwrap_test {
     (
         name: $name:ident,
