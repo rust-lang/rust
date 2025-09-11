@@ -276,7 +276,7 @@ struct MemoryCellClocks {
     /// zero on each write operation.
     read: VClock,
 
-    /// Atomic access, acquire, release sequence tracking clocks.
+    /// Atomic access tracking clocks.
     /// For non-atomic memory this value is set to None.
     /// For atomic memory, each byte carries this information.
     atomic_ops: Option<Box<AtomicMemoryCellClocks>>,
@@ -555,7 +555,8 @@ impl MemoryCellClocks {
         // The handling of release sequences was changed in C++20 and so
         // the code here is different to the paper since now all relaxed
         // stores block release sequences. The exception for same-thread
-        // relaxed stores has been removed.
+        // relaxed stores has been removed. We always overwrite the `sync_vector`,
+        // meaning the previous release sequence is broken.
         let atomic = self.atomic_mut_unwrap();
         atomic.sync_vector.clone_from(&thread_clocks.fence_release);
         Ok(())
@@ -571,6 +572,8 @@ impl MemoryCellClocks {
     ) -> Result<(), DataRace> {
         self.atomic_write_detect(thread_clocks, index, access_size)?;
         let atomic = self.atomic_mut_unwrap();
+        // This *joining* of `sync_vector` implements release sequences: future
+        // reads of this location will acquire our clock *and* what was here before.
         atomic.sync_vector.join(&thread_clocks.clock);
         Ok(())
     }
@@ -585,6 +588,8 @@ impl MemoryCellClocks {
     ) -> Result<(), DataRace> {
         self.atomic_write_detect(thread_clocks, index, access_size)?;
         let atomic = self.atomic_mut_unwrap();
+        // This *joining* of `sync_vector` implements release sequences: future
+        // reads of this location will acquire our fence clock *and* what was here before.
         atomic.sync_vector.join(&thread_clocks.fence_release);
         Ok(())
     }

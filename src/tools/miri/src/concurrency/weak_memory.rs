@@ -159,9 +159,12 @@ struct StoreElement {
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 struct LoadInfo {
-    /// Timestamp of first loads from this store element by each thread
+    /// Timestamp of first loads from this store element by each thread.
     timestamps: FxHashMap<VectorIdx, VTimestamp>,
-    /// Whether this store element has been read by an SC load
+    /// Whether this store element has been read by an SC load.
+    /// This is crucial to ensure we respect coherence-ordered-before. Concretely we use
+    /// this to ensure that if a store element is seen by an SC load, then all later SC loads
+    /// cannot see `mo`-earlier store elements.
     sc_loaded: bool,
 }
 
@@ -476,6 +479,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             let range = alloc_range(base_offset, place.layout.size);
             let buffer = alloc_buffers.get_or_create_store_buffer_mut(range, Some(init))?;
+            // The RMW always reads from the most recent store.
             buffer.read_from_last_store(global, threads, atomic == AtomicRwOrd::SeqCst);
             buffer.buffered_write(new_val, global, threads, atomic == AtomicRwOrd::SeqCst)?;
         }

@@ -198,11 +198,44 @@ fn weaker_release_sequences() {
     });
 }
 
+/// Ensuring normal release sequences (with RMWs) still work correctly.
+fn release_sequence() {
+    check_all_outcomes([None, Some(1)], || {
+        let x = static_atomic(0);
+        let y = static_atomic(0);
+
+        let t1 = spawn(move || {
+            x.store(2, Relaxed);
+        });
+        let t2 = spawn(move || {
+            y.store(1, Relaxed);
+            x.store(1, Release);
+            x.swap(3, Relaxed);
+        });
+        let t3 = spawn(move || {
+            if x.load(Acquire) == 3 {
+                // If we read 3 here, we are seeing the result of the `x.swap` above, which
+                // was relaxed but forms a release sequence with the `x.store` (since we know
+                // `t1` will not be scheduled in between). This means there is a release sequence,
+                // so we acquire the `y.store` and cannot see the original value `0` any more.
+                Some(y.load(Relaxed))
+            } else {
+                None
+            }
+        });
+
+        t1.join().unwrap();
+        t2.join().unwrap();
+        t3.join().unwrap()
+    });
+}
+
 pub fn main() {
     relaxed();
     seq_cst();
     initialization_write(false);
     initialization_write(true);
     faa_replaced_by_load();
+    release_sequence();
     weaker_release_sequences();
 }
