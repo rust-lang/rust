@@ -2485,7 +2485,7 @@ fn add_order_independent_options(
     // Take care of the flavors and CLI options requesting the `lld` linker.
     add_lld_args(cmd, sess, flavor, self_contained_components);
 
-    add_wild_args(cmd, sess, flavor);
+    add_wild_args(cmd, sess, flavor, self_contained_components);
 
     add_apple_link_args(cmd, sess, flavor);
 
@@ -3408,8 +3408,37 @@ fn add_lld_args(
     }
 }
 
-fn add_wild_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
+fn add_wild_args(
+    cmd: &mut dyn Linker,
+    sess: &Session,
+    flavor: LinkerFlavor,
+    self_contained_components: LinkSelfContainedComponents,
+) {
+    // Either Wild or LLD to make it work with CI
     if flavor != LinkerFlavor::Wild || std::env::var_os("BUILDING_RUSTC").is_some() {
+        let self_contained_cli = sess.opts.cg.link_self_contained.is_linker_enabled();
+        let self_contained_target = self_contained_components.is_linker_enabled();
+
+        let self_contained_linker = self_contained_cli || self_contained_target;
+        if self_contained_linker && !sess.opts.cg.link_self_contained.is_linker_disabled() {
+            let mut linker_path_exists = false;
+            for path in sess.get_tools_search_paths(false) {
+                let linker_path = path.join("gcc-ld");
+                linker_path_exists |= linker_path.exists();
+                cmd.cc_arg({
+                    let mut arg = OsString::from("-B");
+                    arg.push(linker_path);
+                    arg
+                });
+            }
+            if !linker_path_exists {
+                sess.dcx().emit_fatal(errors::SelfContainedLinkerMissing);
+            }
+        }
+
+        if !sess.target.is_like_wasm {
+            cmd.cc_arg("-fuse-ld=lld");
+        }
         return ();
     }
 
