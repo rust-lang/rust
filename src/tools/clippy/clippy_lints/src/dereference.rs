@@ -364,7 +364,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                                 //   priority.
                                 if let Some(fn_id) = typeck.type_dependent_def_id(hir_id)
                                     && let Some(trait_id) = cx.tcx.trait_of_assoc(fn_id)
-                                    && let arg_ty = cx.tcx.erase_regions(adjusted_ty)
+                                    && let arg_ty = cx.tcx.erase_and_anonymize_regions(adjusted_ty)
                                     && let ty::Ref(_, sub_ty, _) = *arg_ty.kind()
                                     && let args =
                                         typeck.node_args_opt(hir_id).map(|args| &args[1..]).unwrap_or_default()

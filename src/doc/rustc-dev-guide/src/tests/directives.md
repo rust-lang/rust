@@ -36,9 +36,9 @@ directive.
 The following is a list of compiletest directives. Directives are linked to
 sections that describe the command in more detail if available. This list may
 not be exhaustive. Directives can generally be found by browsing the
-`TestProps` structure found in [`header.rs`] from the compiletest source.
+`TestProps` structure found in [`directives.rs`] from the compiletest source.
 
-[`header.rs`]: https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/header.rs
+[`directives.rs`]: https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/directives.rs
 
 ### Assembly
 
@@ -374,7 +374,7 @@ the directive's backing store (holds the command's current value) at runtime.
 To add a new directive property:
 
 1. Look for the `pub struct TestProps` declaration in
-   [`src/tools/compiletest/src/header.rs`] and add the new public property to
+   [`src/tools/compiletest/src/directives.rs`] and add the new public property to
    the end of the declaration.
 2. Look for the `impl TestProps` implementation block immediately following the
    struct declaration and initialize the new property to its default value.
@@ -383,7 +383,7 @@ To add a new directive property:
 
 When `compiletest` encounters a test file, it parses the file a line at a time
 by calling every parser defined in the `Config` struct's implementation block,
-also in [`src/tools/compiletest/src/header.rs`] (note that the `Config` struct's
+also in [`src/tools/compiletest/src/directives.rs`] (note that the `Config` struct's
 declaration block is found in [`src/tools/compiletest/src/common.rs`]).
 `TestProps`'s `load_from()` method will try passing the current line of text to
 each parser, which, in turn typically checks to see if the line begins with a
@@ -406,7 +406,7 @@ and their associated parsers immediately above to see how they are used to avoid
 writing additional parsing code unnecessarily.
 
 As a concrete example, here is the implementation for the
-`parse_failure_status()` parser, in [`src/tools/compiletest/src/header.rs`]:
+`parse_failure_status()` parser, in [`src/tools/compiletest/src/directives.rs`]:
 
 ```diff
 @@ -232,6 +232,7 @@ pub struct TestProps {
@@ -508,6 +508,6 @@ example, `//@ failure-status: 1`, `self.props.failure_status` will evaluate to
 1, as `parse_failure_status()` will have overridden the `TestProps` default
 value, for that test specifically.
 
-[`src/tools/compiletest/src/header.rs`]: https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/header.rs
+[`src/tools/compiletest/src/directives.rs`]: https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/directives.rs
 [`src/tools/compiletest/src/common.rs`]: https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/common.rs
 [`src/tools/compiletest/src/runtest.rs`]: https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/runtest.rs

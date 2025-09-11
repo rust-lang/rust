@@ -1644,6 +1644,11 @@ impl<'tcx> VnState<'_, 'tcx> {
                 let place =
                     Place { local, projection: self.tcx.mk_place_elems(projection.as_slice()) };
                 return Some(place);
+            } else if projection.last() == Some(&PlaceElem::Deref) {
+                // `Deref` can only be the first projection in a place.
+                // If we are here, we failed to find a local, and we already have a `Deref`.
+                // Trying to add projections will only result in an ill-formed place.
+                return None;
             } else if let Value::Projection(pointer, proj) = *self.get(index)
                 && (allow_complex_projection || proj.is_stable_offset())
                 && let Some(proj) = self.try_as_place_elem(self.ty(index), proj, loc)

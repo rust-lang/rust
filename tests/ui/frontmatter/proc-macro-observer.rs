@@ -2,10 +2,9 @@
 //@ proc-macro: makro.rs
 //@ edition: 2021
 
-makro::check!();
+// Check that a proc-macro doesn't try to parse frontmatter and instead treats
+// it as a regular Rust token sequence. See `auxiliary/makro.rs` for details.
 
-// checks that a proc-macro doesn't know or parse frontmatters at all and instead treats
-// it as normal Rust code.
-// see auxiliary/makro.rs for how it is tested.
+makro::check!();
 
 fn main() {}

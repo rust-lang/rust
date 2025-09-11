@@ -900,6 +900,10 @@ where
             && goal.param_env.visit_with(&mut visitor).is_continue()
     }
 
+    pub(super) fn sub_unify_ty_vids_raw(&self, a: ty::TyVid, b: ty::TyVid) {
+        self.delegate.sub_unify_ty_vids_raw(a, b)
+    }
+
     #[instrument(level = "trace", skip(self, param_env), ret)]
     pub(super) fn eq<T: Relate<I>>(
         &mut self,
@@ -1092,7 +1096,7 @@ where
         &self,
         goal_trait_ref: ty::TraitRef<I>,
         trait_assoc_def_id: I::DefId,
-        impl_def_id: I::DefId,
+        impl_def_id: I::ImplId,
     ) -> Result<Option<I::DefId>, I::ErrorGuaranteed> {
         self.delegate.fetch_eligible_assoc_item(goal_trait_ref, trait_assoc_def_id, impl_def_id)
     }

@@ -91,7 +91,6 @@ mod suggest;
 pub mod need_type_info;
 pub mod nice_region_error;
 pub mod region;
-pub mod sub_relations;
 
 /// Makes a valid string literal from a string by escaping special characters (" and \),
 /// unless they are already escaped.
@@ -1617,8 +1616,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             && let Some((e, f)) = values.ty()
             && let TypeError::ArgumentSorts(..) | TypeError::Sorts(_) = terr
         {
-            let e = self.tcx.erase_regions(e);
-            let f = self.tcx.erase_regions(f);
+            let e = self.tcx.erase_and_anonymize_regions(e);
+            let f = self.tcx.erase_and_anonymize_regions(f);
             let mut expected = with_forced_trimmed_paths!(e.sort_string(self.tcx));
             let mut found = with_forced_trimmed_paths!(f.sort_string(self.tcx));
             if let ObligationCauseCode::Pattern { span, .. } = cause.code()

@@ -270,6 +270,10 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::Linkage(..)
                     | AttributeKind::MustUse { .. }
                     | AttributeKind::CrateName { .. }
+                    | AttributeKind::RecursionLimit { .. }
+                    | AttributeKind::MoveSizeLimit { .. }
+                    | AttributeKind::TypeLengthLimit { .. }
+                    | AttributeKind::PatternComplexityLimit { .. }
                 ) => { /* do nothing  */ }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
@@ -1602,8 +1606,14 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 ReprAttr::ReprAlign(align) => {
                     match target {
                         Target::Struct | Target::Union | Target::Enum => {}
-                        Target::Fn | Target::Method(_) => {
+                        Target::Fn | Target::Method(_) if self.tcx.features().fn_align() => {
                             self.dcx().emit_err(errors::ReprAlignShouldBeAlign {
+                                span: *repr_span,
+                                item: target.plural_name(),
+                            });
+                        }
+                        Target::Static if self.tcx.features().static_align() => {
+                            self.dcx().emit_err(errors::ReprAlignShouldBeAlignStatic {
                                 span: *repr_span,
                                 item: target.plural_name(),
                             });

@@ -109,7 +109,6 @@ pub use self::typeck_results::{
     CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, IsIdentity,
     Rust2024IncompatiblePatInfo, TypeckResults, UserType, UserTypeAnnotationIndex, UserTypeKind,
 };
-pub use self::visit::*;
 use crate::error::{OpaqueHiddenTypeMismatch, TypeMismatchReason};
 use crate::metadata::ModChild;
 use crate::middle::privacy::EffectiveVisibilities;

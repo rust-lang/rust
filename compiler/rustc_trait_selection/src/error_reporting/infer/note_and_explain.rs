@@ -629,7 +629,11 @@ impl<T> Trait<T> for X {
         let tcx = self.tcx;
 
         // Don't suggest constraining a projection to something containing itself
-        if self.tcx.erase_regions(values.found).contains(self.tcx.erase_regions(values.expected)) {
+        if self
+            .tcx
+            .erase_and_anonymize_regions(values.found)
+            .contains(self.tcx.erase_and_anonymize_regions(values.expected))
+        {
             return;
         }
 

@@ -96,7 +96,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         &self,
         alias_ty: ty::AliasTy<'tcx>,
     ) -> Vec<ty::PolyTypeOutlivesPredicate<'tcx>> {
-        let erased_alias_ty = self.tcx.erase_regions(alias_ty.to_ty(self.tcx));
+        let erased_alias_ty = self.tcx.erase_and_anonymize_regions(alias_ty.to_ty(self.tcx));
         self.declared_generic_bounds_from_env_for_erased_ty(erased_alias_ty)
     }
 
@@ -241,7 +241,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
             }
 
             let p_ty = p.to_ty(tcx);
-            let erased_p_ty = self.tcx.erase_regions(p_ty);
+            let erased_p_ty = self.tcx.erase_and_anonymize_regions(p_ty);
             (erased_p_ty == erased_ty).then_some(ty::Binder::dummy(ty::OutlivesPredicate(p_ty, r)))
         }));
 

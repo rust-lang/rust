@@ -58,7 +58,7 @@ impl SymbolNamesTest<'_> {
             let def_id = def_id.to_def_id();
             let instance = Instance::new_raw(
                 def_id,
-                tcx.erase_regions(GenericArgs::identity_for_item(tcx, def_id)),
+                tcx.erase_and_anonymize_regions(GenericArgs::identity_for_item(tcx, def_id)),
             );
             let mangled = tcx.symbol_name(instance);
             tcx.dcx().emit_err(TestOutput {

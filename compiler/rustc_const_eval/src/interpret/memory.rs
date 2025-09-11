@@ -953,6 +953,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         // # Global allocations
         if let Some(global_alloc) = self.tcx.try_get_global_alloc(id) {
+            // NOTE: `static` alignment from attributes has already been applied to the allocation.
             let (size, align) = global_alloc.size_and_align(*self.tcx, self.typing_env);
             let mutbl = global_alloc.mutability(*self.tcx, self.typing_env);
             let kind = match global_alloc {
@@ -1501,8 +1502,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // `get_bytes_mut` will clear the provenance, which is correct,
         // since we don't want to keep any provenance at the target.
         // This will also error if copying partial provenance is not supported.
-        let provenance =
-            src_alloc.provenance().prepare_copy(src_range, dest_offset, num_copies, self);
+        let provenance = src_alloc
+            .provenance()
+            .prepare_copy(src_range, dest_offset, num_copies, self)
+            .map_err(|e| e.to_interp_error(src_alloc_id))?;
         // Prepare a copy of the initialization mask.
         let init = src_alloc.init_mask().prepare_copy(src_range);
 

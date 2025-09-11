@@ -1,6 +1,6 @@
 use rustc_errors::codes::*;
+use rustc_hir::limit::Limit;
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_session::Limit;
 use rustc_span::{Span, Symbol};
 
 #[derive(Subdiagnostic)]

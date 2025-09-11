@@ -2442,7 +2442,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         // Look for a type inside the coroutine interior that matches the target type to get
         // a span.
-        let target_ty_erased = self.tcx.erase_regions(target_ty);
+        let target_ty_erased = self.tcx.erase_and_anonymize_regions(target_ty);
         let ty_matches = |ty| -> bool {
             // Careful: the regions for types that appear in the
             // coroutine interior are not generally known, so we
@@ -2454,10 +2454,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // interior generally contain "bound regions" to
             // represent regions that are part of the suspended
             // coroutine frame. Bound regions are preserved by
-            // `erase_regions` and so we must also call
+            // `erase_and_anonymize_regions` and so we must also call
             // `instantiate_bound_regions_with_erased`.
             let ty_erased = self.tcx.instantiate_bound_regions_with_erased(ty);
-            let ty_erased = self.tcx.erase_regions(ty_erased);
+            let ty_erased = self.tcx.erase_and_anonymize_regions(ty_erased);
             let eq = ty_erased == target_ty_erased;
             debug!(?ty_erased, ?target_ty_erased, ?eq);
             eq

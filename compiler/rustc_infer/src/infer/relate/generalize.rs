@@ -6,8 +6,8 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::bug;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{
-    self, AliasRelationDirection, InferConst, MaxUniverse, Term, Ty, TyCtxt, TypeVisitable,
-    TypeVisitableExt, TypingMode,
+    self, AliasRelationDirection, InferConst, Term, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
+    TypeVisitableExt, TypeVisitor, TypingMode,
 };
 use rustc_span::Span;
 use tracing::{debug, instrument, warn};
@@ -290,6 +290,45 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 }
 
+/// Finds the max universe present
+struct MaxUniverse {
+    max_universe: ty::UniverseIndex,
+}
+
+impl MaxUniverse {
+    fn new() -> Self {
+        MaxUniverse { max_universe: ty::UniverseIndex::ROOT }
+    }
+
+    fn max_universe(self) -> ty::UniverseIndex {
+        self.max_universe
+    }
+}
+
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for MaxUniverse {
+    fn visit_ty(&mut self, t: Ty<'tcx>) {
+        if let ty::Placeholder(placeholder) = t.kind() {
+            self.max_universe = self.max_universe.max(placeholder.universe);
+        }
+
+        t.super_visit_with(self)
+    }
+
+    fn visit_const(&mut self, c: ty::Const<'tcx>) {
+        if let ty::ConstKind::Placeholder(placeholder) = c.kind() {
+            self.max_universe = self.max_universe.max(placeholder.universe);
+        }
+
+        c.super_visit_with(self)
+    }
+
+    fn visit_region(&mut self, r: ty::Region<'tcx>) {
+        if let ty::RePlaceholder(placeholder) = r.kind() {
+            self.max_universe = self.max_universe.max(placeholder.universe);
+        }
+    }
+}
+
 /// The "generalizer" is used when handling inference variables.
 ///
 /// The basic strategy for handling a constraint like `?A <: B` is to
@@ -519,6 +558,10 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
                             let origin = inner.type_variables().var_origin(vid);
                             let new_var_id =
                                 inner.type_variables().new_var(self.for_universe, origin);
+                            // Record that `vid` and `new_var_id` have to be subtypes
+                            // of each other. This is currently only used for diagnostics.
+                            // To see why, see the docs in the `type_variables` module.
+                            inner.type_variables().sub_unify(vid, new_var_id);
                             // If we're in the new solver and create a new inference
                             // variable inside of an alias we eagerly constrain that
                             // inference variable to prevent unexpected ambiguity errors.

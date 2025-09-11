@@ -123,7 +123,7 @@ where
     fn consider_impl_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
-        impl_def_id: I::DefId,
+        impl_def_id: I::ImplId,
     ) -> Result<Candidate<I>, NoSolution> {
         let cx = ecx.cx();
 
@@ -152,20 +152,20 @@ where
         }
 
         ecx.probe_trait_candidate(CandidateSource::Impl(impl_def_id)).enter(|ecx| {
-            let impl_args = ecx.fresh_args_for_item(impl_def_id);
+            let impl_args = ecx.fresh_args_for_item(impl_def_id.into());
             ecx.record_impl_args(impl_args);
             let impl_trait_ref = impl_trait_ref.instantiate(cx, impl_args);
 
             ecx.eq(goal.param_env, goal.predicate.trait_ref, impl_trait_ref)?;
             let where_clause_bounds = cx
-                .predicates_of(impl_def_id)
+                .predicates_of(impl_def_id.into())
                 .iter_instantiated(cx, impl_args)
                 .map(|pred| goal.with(cx, pred));
             ecx.add_goals(GoalSource::ImplWhereBound, where_clause_bounds);
 
             // For this impl to be `const`, we need to check its `[const]` bounds too.
             let const_conditions = cx
-                .const_conditions(impl_def_id)
+                .const_conditions(impl_def_id.into())
                 .iter_instantiated(cx, impl_args)
                 .map(|bound_trait_ref| {
                     goal.with(
@@ -240,7 +240,7 @@ where
             ty::TraitRef::new(cx, cx.require_trait_lang_item(SolverTraitLangItem::Sized), [output])
         });
         let requirements = cx
-            .const_conditions(def_id)
+            .const_conditions(def_id.into())
             .iter_instantiated(cx, args)
             .map(|trait_ref| {
                 (

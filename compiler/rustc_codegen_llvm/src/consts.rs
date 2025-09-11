@@ -452,6 +452,8 @@ impl<'ll> CodegenCx<'ll, '_> {
             self.statics_to_rauw.borrow_mut().push((g, new_g));
             new_g
         };
+
+        // NOTE: Alignment from attributes has already been applied to the allocation.
         set_global_alignment(self, g, alloc.align);
         llvm::set_initializer(g, v);
 

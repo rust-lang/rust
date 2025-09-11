@@ -22,6 +22,7 @@ use rustc_span::{
 };
 use termcolor::WriteColor;
 
+use crate::lexer::StripTokens;
 use crate::parser::{ForceCollect, Parser};
 use crate::{new_parser_from_source_str, source_str_to_stream, unwrap_or_emit_fatal};
 
@@ -35,6 +36,7 @@ fn string_to_parser(psess: &ParseSess, source_str: String) -> Parser<'_> {
         psess,
         PathBuf::from("bogofile").into(),
         source_str,
+        StripTokens::Nothing,
     ))
 }
 
@@ -2240,7 +2242,7 @@ fn parse_item_from_source_str(
     source: String,
     psess: &ParseSess,
 ) -> PResult<'_, Option<Box<ast::Item>>> {
-    unwrap_or_emit_fatal(new_parser_from_source_str(psess, name, source))
+    unwrap_or_emit_fatal(new_parser_from_source_str(psess, name, source, StripTokens::Nothing))
         .parse_item(ForceCollect::No)
 }
 
@@ -2520,7 +2522,8 @@ fn ttdelim_span() {
         source: String,
         psess: &ParseSess,
     ) -> PResult<'_, Box<ast::Expr>> {
-        unwrap_or_emit_fatal(new_parser_from_source_str(psess, name, source)).parse_expr()
+        unwrap_or_emit_fatal(new_parser_from_source_str(psess, name, source, StripTokens::Nothing))
+            .parse_expr()
     }
 
     create_default_session_globals_then(|| {
