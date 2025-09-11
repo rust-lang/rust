@@ -7,7 +7,7 @@ use std::ops::Deref;
 use std::{fmt, str};
 
 use rustc_arena::DroplessArena;
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_data_structures::stable_hasher::{
     HashStable, StableCompare, StableHasher, ToStableHashKey,
 };
@@ -2871,11 +2871,20 @@ impl Interner {
         let byte_strs = FxIndexSet::from_iter(
             init.iter().copied().chain(extra.iter().copied()).map(|str| str.as_bytes()),
         );
-        assert_eq!(
-            byte_strs.len(),
-            init.len() + extra.len(),
-            "duplicate symbols in the rustc symbol list and the extra symbols added by the driver",
-        );
+
+        // The order in which duplicates are reported is irrelevant.
+        #[expect(rustc::potential_query_instability)]
+        if byte_strs.len() != init.len() + extra.len() {
+            panic!(
+                "duplicate symbols in the rustc symbol list and the extra symbols added by the driver: {:?}",
+                FxHashSet::intersection(
+                    &init.iter().copied().collect(),
+                    &extra.iter().copied().collect(),
+                )
+                .collect::<Vec<_>>()
+            )
+        }
+
         Interner(Lock::new(InternerInner { arena: Default::default(), byte_strs }))
     }
 

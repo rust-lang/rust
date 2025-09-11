@@ -1618,18 +1618,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         {
             let e = self.tcx.erase_and_anonymize_regions(e);
             let f = self.tcx.erase_and_anonymize_regions(f);
-            let mut expected = with_forced_trimmed_paths!(e.sort_string(self.tcx));
-            let mut found = with_forced_trimmed_paths!(f.sort_string(self.tcx));
-            if let ObligationCauseCode::Pattern { span, .. } = cause.code()
-                && let Some(span) = span
-                && !span.from_expansion()
-                && cause.span.from_expansion()
-            {
-                // When the type error comes from a macro like `assert!()`, and we are pointing at
-                // code the user wrote the cause and effect are reversed as the expected value is
-                // what the macro expanded to.
-                (found, expected) = (expected, found);
-            }
+            let expected = with_forced_trimmed_paths!(e.sort_string(self.tcx));
+            let found = with_forced_trimmed_paths!(f.sort_string(self.tcx));
             if expected == found {
                 label_or_note(span, terr.to_string(self.tcx));
             } else {
@@ -2152,9 +2142,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     ) -> Option<(DiagStyledString, DiagStyledString)> {
         match values {
             ValuePairs::Regions(exp_found) => self.expected_found_str(exp_found),
-            ValuePairs::Terms(exp_found) => {
-                self.expected_found_str_term(cause, exp_found, long_ty_path)
-            }
+            ValuePairs::Terms(exp_found) => self.expected_found_str_term(exp_found, long_ty_path),
             ValuePairs::Aliases(exp_found) => self.expected_found_str(exp_found),
             ValuePairs::ExistentialTraitRef(exp_found) => self.expected_found_str(exp_found),
             ValuePairs::ExistentialProjection(exp_found) => self.expected_found_str(exp_found),
@@ -2193,7 +2181,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
     fn expected_found_str_term(
         &self,
-        cause: &ObligationCause<'tcx>,
         exp_found: ty::error::ExpectedFound<ty::Term<'tcx>>,
         long_ty_path: &mut Option<PathBuf>,
     ) -> Option<(DiagStyledString, DiagStyledString)> {
@@ -2201,27 +2188,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         if exp_found.references_error() {
             return None;
         }
-        let (mut expected, mut found) = (exp_found.expected, exp_found.found);
 
-        if let ObligationCauseCode::Pattern { span, .. } = cause.code()
-            && let Some(span) = span
-            && !span.from_expansion()
-            && cause.span.from_expansion()
-        {
-            // When the type error comes from a macro like `assert!()`, and we are pointing at
-            // code the user wrote, the cause and effect are reversed as the expected value is
-            // what the macro expanded to. So if the user provided a `Type` when the macro is
-            // written in such a way that a `bool` was expected, we want to print:
-            // = note: expected `bool`
-            //            found `Type`"
-            // but as far as the compiler is concerned, after expansion what was expected was `Type`
-            // = note: expected `Type`
-            //            found `bool`"
-            // so we reverse them here to match user expectation.
-            (expected, found) = (found, expected);
-        }
-
-        Some(match (expected.kind(), found.kind()) {
+        Some(match (exp_found.expected.kind(), exp_found.found.kind()) {
             (ty::TermKind::Ty(expected), ty::TermKind::Ty(found)) => {
                 let (mut exp, mut fnd) = self.cmp(expected, found);
                 // Use the terminal width as the basis to determine when to compress the printed
