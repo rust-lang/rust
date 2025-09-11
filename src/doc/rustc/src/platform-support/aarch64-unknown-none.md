@@ -71,8 +71,8 @@ from the [Arm Developer Website][arm-gnu-toolchain], or possibly from your OS's
 package manager. To use it, add the following to your `.cargo/config.toml`:
 
 ```toml
-[target.<your-target>]
-linker = "arm-none-eabi-ld"
+[target.aarch64-unknown-none]
+linker = "aarch64-none-ld"
 ```
 
 The GNU linker can also be used by specifying `aarch64-none-gcc` as the
@@ -92,8 +92,7 @@ When using the hardfloat targets, the minimum floating-point features assumed
 are those of the `fp-armv8`, which excludes NEON SIMD support. If your
 processor supports a different set of floating-point features than the default
 expectations of `fp-armv8`, then these should also be enabled or disabled as
-needed with `-C target-feature=(+/-)`. For example,
-`-Ctarget-feature=+neon-fp-armv8`.
+needed with `-C target-feature=(+/-)`.
 
 [arm-gnu-toolchain]: https://developer.arm.com/Tools%20and%20Software/GNU%20Toolchain
 
