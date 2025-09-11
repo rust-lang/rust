@@ -364,11 +364,13 @@ impl FunctionBuilder {
             Visibility::Crate => Some(make::visibility_pub_crate()),
             Visibility::Pub => Some(make::visibility_pub()),
         };
+        let type_params =
+            self.generic_param_list.filter(|list| list.generic_params().next().is_some());
         let fn_def = make::fn_(
             None,
             visibility,
             self.fn_name,
-            self.generic_param_list,
+            type_params,
             self.where_clause,
             self.params,
             self.fn_body,
@@ -2403,6 +2405,33 @@ impl Foo {
             r#"
 struct Foo;
 impl Foo {
+    fn foo(&self) {
+        self.bar();
+    }
+
+    fn bar(&self) ${0:-> _} {
+        todo!()
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn create_method_with_unused_generics() {
+        check_assist(
+            generate_function,
+            r#"
+struct Foo<S>(S);
+impl<S> Foo<S> {
+    fn foo(&self) {
+        self.bar()$0;
+    }
+}
+"#,
+            r#"
+struct Foo<S>(S);
+impl<S> Foo<S> {
     fn foo(&self) {
         self.bar();
     }
