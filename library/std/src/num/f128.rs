@@ -559,8 +559,17 @@ impl f128 {
     ///
     /// * `x = 0`, `y = 0`: `0`
     /// * `x >= 0`: `arctan(y/x)` -> `[-pi/2, pi/2]`
-    /// * `y >= 0`: `arctan(y/x) + pi` -> `(pi/2, pi]`
-    /// * `y < 0`: `arctan(y/x) - pi` -> `(-pi, -pi/2)`
+    /// * `x < 0`, `y >= 0`: `arctan(y/x) + pi` -> `(pi/2, pi]`
+    /// * `x <= 0`, `y < 0`: `arctan(y/x) - pi` -> `[-pi, -pi/2)`
+    ///
+    /// # Special cases involving zeros
+    ///
+    /// When one or both arguments are zero, the result depends on their signs:
+    ///
+    /// * `atan2(0.0, 0.0) = 0.0`
+    /// * `atan2(-0.0, 0.0) = -0.0`
+    /// * `atan2(0.0, -0.0) = pi`
+    /// * `atan2(-0.0, -0.0) = -pi`
     ///
     /// # Unspecified precision
     ///
