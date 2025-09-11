@@ -1537,13 +1537,13 @@ impl<'a, T> Iterator for Chunks<'a, T> {
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        let (start, overflow) = n.overflowing_mul(self.chunk_size);
-        // min(len) makes a wrong start harmless, but enables optimizing this to brachless code
-        let chunk_start = &self.v[start.min(self.v.len())..];
-        let (nth, remainder) = chunk_start.split_at(self.chunk_size.min(chunk_start.len()));
-        if !overflow && start < self.v.len() {
-            self.v = remainder;
-            Some(nth)
+        if let Some(start) = n.checked_mul(self.chunk_size)
+            && start < self.v.len()
+        {
+            let rest = &self.v[start..];
+            let (chunk, rest) = rest.split_at(self.chunk_size.min(rest.len()));
+            self.v = rest;
+            Some(chunk)
         } else {
             self.v = &self.v[..0]; // cheaper than &[]
             None
@@ -1613,10 +1613,7 @@ impl<'a, T> DoubleEndedIterator for Chunks<'a, T> {
             None
         } else {
             let start = (len - 1 - n) * self.chunk_size;
-            let end = match start.checked_add(self.chunk_size) {
-                Some(res) => cmp::min(self.v.len(), res),
-                None => self.v.len(),
-            };
+            let end = (start + self.chunk_size).min(self.v.len());
             let nth_back = &self.v[start..end];
             self.v = &self.v[..start];
             Some(nth_back)
@@ -1719,22 +1716,19 @@ impl<'a, T> Iterator for ChunksMut<'a, T> {
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<&'a mut [T]> {
-        let (start, overflow) = n.overflowing_mul(self.chunk_size);
-        if start >= self.v.len() || overflow {
+        if let Some(start) = n.checked_mul(self.chunk_size)
+            && start < self.v.len()
+        {
+            // SAFETY: `start < self.v.len()` ensures this is in bounds
+            let (_, rest) = unsafe { self.v.split_at_mut(start) };
+            // SAFETY: `.min(rest.len()` ensures this is in bounds
+            let (chunk, rest) = unsafe { rest.split_at_mut(self.chunk_size.min(rest.len())) };
+            self.v = rest;
+            // SAFETY: Nothing else points to or will point to the contents of this slice.
+            Some(unsafe { &mut *chunk })
+        } else {
             self.v = &mut [];
             None
-        } else {
-            let end = match start.checked_add(self.chunk_size) {
-                Some(sum) => cmp::min(self.v.len(), sum),
-                None => self.v.len(),
-            };
-            // SAFETY: The self.v contract ensures that any split_at_mut is valid.
-            let (head, tail) = unsafe { self.v.split_at_mut(end) };
-            // SAFETY: The self.v contract ensures that any split_at_mut is valid.
-            let (_, nth) = unsafe { head.split_at_mut(start) };
-            self.v = tail;
-            // SAFETY: Nothing else points to or will point to the contents of this slice.
-            Some(unsafe { &mut *nth })
         }
     }
 
