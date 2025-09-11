@@ -1415,26 +1415,21 @@ impl<'a, T> Iterator for Windows<'a, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> DoubleEndedIterator for Windows<'a, T> {
     #[inline]
-    fn next_back(&mut self) -> Option<&'a [T]> {
-        if self.size.get() > self.v.len() {
-            None
-        } else {
-            let ret = Some(&self.v[self.v.len() - self.size.get()..]);
-            self.v = &self.v[..self.v.len() - 1];
-            ret
-        }
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.nth_back(0)
     }
 
     #[inline]
     fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
-        let (end, overflow) = self.v.len().overflowing_sub(n);
-        if end < self.size.get() || overflow {
+        if let Some(end) = self.v.len().checked_sub(n)
+            && let Some(start) = end.checked_sub(self.size.get())
+        {
+            let res = &self.v[start..end];
+            self.v = &self.v[..end - 1];
+            Some(res)
+        } else {
             self.v = &self.v[..0]; // cheaper than &[]
             None
-        } else {
-            let ret = &self.v[end - self.size.get()..end];
-            self.v = &self.v[..end - 1];
-            Some(ret)
         }
     }
 }
@@ -1903,13 +1898,10 @@ impl<'a, T> Iterator for ChunksExact<'a, T> {
 
     #[inline]
     fn next(&mut self) -> Option<&'a [T]> {
-        if self.v.len() < self.chunk_size {
-            None
-        } else {
-            let (fst, snd) = self.v.split_at(self.chunk_size);
-            self.v = snd;
-            Some(fst)
-        }
+        self.v.split_at_checked(self.chunk_size).and_then(|(chunk, rest)| {
+            self.v = rest;
+            Some(chunk)
+        })
     }
 
     #[inline]
@@ -1925,14 +1917,14 @@ impl<'a, T> Iterator for ChunksExact<'a, T> {
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        let (start, overflow) = n.overflowing_mul(self.chunk_size);
-        if start >= self.v.len() || overflow {
+        if let Some(start) = n.checked_mul(self.chunk_size)
+            && start < self.v.len()
+        {
+            self.v = &self.v[start..];
+            self.next()
+        } else {
             self.v = &self.v[..0]; // cheaper than &[]
             None
-        } else {
-            let (_, snd) = self.v.split_at(start);
-            self.v = snd;
-            self.next()
         }
     }
 
@@ -2061,15 +2053,13 @@ impl<'a, T> Iterator for ChunksExactMut<'a, T> {
 
     #[inline]
     fn next(&mut self) -> Option<&'a mut [T]> {
-        if self.v.len() < self.chunk_size {
-            None
-        } else {
-            // SAFETY: self.chunk_size is inbounds because we compared above against self.v.len()
-            let (head, tail) = unsafe { self.v.split_at_mut(self.chunk_size) };
-            self.v = tail;
-            // SAFETY: Nothing else points to or will point to the contents of this slice.
-            Some(unsafe { &mut *head })
-        }
+        // SAFETY: we have `&mut self`, so are allowed to temporarily materialize a mut slice
+        unsafe { crate::slice::from_raw_parts_mut(self.v as *mut T, self.v.len()) }
+            .split_at_mut_checked(self.chunk_size)
+            .and_then(|(chunk, rest)| {
+                self.v = rest;
+                Some(chunk)
+            })
     }
 
     #[inline]
@@ -2085,15 +2075,15 @@ impl<'a, T> Iterator for ChunksExactMut<'a, T> {
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<&'a mut [T]> {
-        let (start, overflow) = n.overflowing_mul(self.chunk_size);
-        if start >= self.v.len() || overflow {
+        if let Some(start) = n.checked_mul(self.chunk_size)
+            && start < self.v.len()
+        {
+            // SAFETY: `start < self.v.len()`
+            self.v = unsafe { self.v.split_at_mut(start).1 };
+            self.next()
+        } else {
             self.v = &mut [];
             None
-        } else {
-            // SAFETY: The self.v contract ensures that any split_at_mut is valid.
-            let (_, snd) = unsafe { self.v.split_at_mut(start) };
-            self.v = snd;
-            self.next()
         }
     }
 
