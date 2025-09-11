@@ -70,6 +70,7 @@ pub mod intrinsic;
 mod region;
 pub mod wfcheck;
 
+use std::borrow::Cow;
 use std::num::NonZero;
 
 pub use check::{check_abi, check_custom_abi};
@@ -86,7 +87,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::print::with_types_for_signature;
 use rustc_middle::ty::{
-    self, GenericArgs, GenericArgsRef, GenericParamDefKind, Ty, TyCtxt, TypingMode,
+    self, GenericArgs, GenericArgsRef, OutlivesPredicate, Region, Ty, TyCtxt, TypingMode,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::parse::feature_err;
@@ -335,6 +336,7 @@ fn bounds_from_generic_predicates<'tcx>(
     assoc: ty::AssocItem,
 ) -> (String, String) {
     let mut types: FxIndexMap<Ty<'tcx>, Vec<DefId>> = FxIndexMap::default();
+    let mut regions: FxIndexMap<Region<'tcx>, Vec<Region<'tcx>>> = FxIndexMap::default();
     let mut projections = vec![];
     for (predicate, _) in predicates {
         debug!("predicate {:?}", predicate);
@@ -351,20 +353,23 @@ fn bounds_from_generic_predicates<'tcx>(
             ty::ClauseKind::Projection(projection_pred) => {
                 projections.push(bound_predicate.rebind(projection_pred));
             }
+            ty::ClauseKind::RegionOutlives(OutlivesPredicate(a, b)) => {
+                regions.entry(a).or_default().push(b);
+            }
             _ => {}
         }
     }
 
     let mut where_clauses = vec![];
     let generics = tcx.generics_of(assoc.def_id);
-    let types_str = generics
+    let params = generics
         .own_params
         .iter()
-        .filter(|p| matches!(p.kind, GenericParamDefKind::Type { synthetic: false, .. }))
-        .map(|p| {
-            // we just checked that it's a type, so the unwrap can't fail
-            let ty = tcx.mk_param_from_def(p).as_type().unwrap();
-            if let Some(bounds) = types.get(&ty) {
+        .filter(|p| !p.kind.is_synthetic())
+        .map(|p| match tcx.mk_param_from_def(p).kind() {
+            ty::GenericArgKind::Type(ty) => {
+                let bounds =
+                    types.get(&ty).map(Cow::Borrowed).unwrap_or_else(|| Cow::Owned(Vec::new()));
                 let mut bounds_str = vec![];
                 for bound in bounds.iter().copied() {
                     let mut projections_str = vec![];
@@ -377,7 +382,11 @@ fn bounds_from_generic_predicates<'tcx>(
                             projections_str.push(format!("{} = {}", name, p.term));
                         }
                     }
-                    let bound_def_path = tcx.def_path_str(bound);
+                    let bound_def_path = if tcx.is_lang_item(bound, LangItem::MetaSized) {
+                        String::from("?Sized")
+                    } else {
+                        tcx.def_path_str(bound)
+                    };
                     if projections_str.is_empty() {
                         where_clauses.push(format!("{}: {}", ty, bound_def_path));
                     } else {
@@ -393,8 +402,21 @@ fn bounds_from_generic_predicates<'tcx>(
                 } else {
                     format!("{}: {}", ty, bounds_str.join(" + "))
                 }
-            } else {
-                ty.to_string()
+            }
+            ty::GenericArgKind::Const(ct) => {
+                format!("const {ct}: {}", tcx.type_of(p.def_id).skip_binder())
+            }
+            ty::GenericArgKind::Lifetime(region) => {
+                if let Some(v) = regions.get(&region)
+                    && !v.is_empty()
+                {
+                    format!(
+                        "{region}: {}",
+                        v.into_iter().map(Region::to_string).collect::<Vec<_>>().join(" + ")
+                    )
+                } else {
+                    region.to_string()
+                }
             }
         })
         .collect::<Vec<_>>();
@@ -409,7 +431,7 @@ fn bounds_from_generic_predicates<'tcx>(
     }
 
     let generics =
-        if types_str.is_empty() { "".to_string() } else { format!("<{}>", types_str.join(", ")) };
+        if params.is_empty() { "".to_string() } else { format!("<{}>", params.join(", ")) };
 
     let where_clauses = if where_clauses.is_empty() {
         "".to_string()
