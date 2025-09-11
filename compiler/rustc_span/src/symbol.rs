@@ -938,6 +938,7 @@ symbols! {
         ermsb_target_feature,
         exact_div,
         except,
+        exception_handling: "exception-handling",
         exchange_malloc,
         exclusive_range_pattern,
         exhaustive_integer_patterns,
