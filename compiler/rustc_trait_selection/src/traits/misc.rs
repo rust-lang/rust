@@ -156,7 +156,7 @@ pub fn type_allowed_to_implement_const_param_ty<'tcx>(
                 ty::ClauseKind::UnstableFeature(sym::unsized_const_params),
             ));
 
-            if !ocx.select_where_possible().is_empty() {
+            if !ocx.select_all_or_error().is_empty() {
                 return Err(ConstParamTyImplementationError::UnsizedConstParamsFeatureRequired);
             }
         }
