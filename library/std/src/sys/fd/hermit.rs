@@ -38,7 +38,7 @@ impl FileDesc {
     }
 
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        let bufs = io::limit_slices_mut!(bufs, max_iov());
+        io::limit_slices_mut!(&mut bufs, max_iov());
         let ret = cvt(unsafe {
             hermit_abi::readv(
                 self.as_raw_fd(),
@@ -66,7 +66,7 @@ impl FileDesc {
     }
 
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        let bufs = io::limit_slices!(bufs, max_iov());
+        io::limit_slices!(&mut bufs, max_iov());
         let ret = cvt(unsafe {
             hermit_abi::writev(
                 self.as_raw_fd(),

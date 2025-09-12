@@ -223,7 +223,7 @@ impl Socket {
     }
 
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        let bufs = io::limit_slices_mut!(bufs, max_iov());
+        io::limit_slices_mut!(&mut bufs, max_iov());
         let ret = cvt(unsafe {
             netc::readv(self.as_raw_fd(), bufs.as_ptr() as *const netc::iovec, bufs.len() as c_int)
         })?;
@@ -265,7 +265,7 @@ impl Socket {
     }
 
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        let bufs = io::limit_slices!(bufs, max_iov());
+        io::limit_slices!(&mut bufs, max_iov());
         let ret = cvt(unsafe {
             netc::writev(self.as_raw_fd(), bufs.as_ptr() as *const netc::iovec, bufs.len() as c_int)
         })?;

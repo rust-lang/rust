@@ -1631,27 +1631,33 @@ impl<'a> Deref for IoSlice<'a> {
 ///
 /// When the slice contains over `n` buffers, ensure that at least one non-empty
 /// buffer is in the truncated slice, if there is one.
+///
+/// For example, [POSIX writev] requires that `bufs.len()` is in `1..=IOV_MAX`.
+///
+/// [POSIX writev]: https://pubs.opengroup.org/onlinepubs/9799919799/functions/writev.html
 #[allow(unused_macros)] // Not used on all platforms
-pub(crate) macro limit_slices($bufs:expr, $n:expr) {
-    'slices: {
-        let bufs: &[IoSlice<'_>] = $bufs;
-        let n: usize = $n;
-        super let empty = &[IoSlice::new(&[])];
-        if bufs.len() > n || bufs.is_empty() {
-            crate::hint::cold_path();
-            for (i, buf) in bufs.iter().enumerate() {
+pub(crate) macro limit_slices(&mut $bufs:ident, $n:expr) {
+    // Rebind $bufs, so the lifetime does not need to live as long as the
+    // function parameter, and shadow it so the macro caller gets the result.
+    let mut $bufs: &[IoSlice<'_>] = $bufs;
+    let n: usize = $n;
+
+    let empty = &[IoSlice::new(&[])];
+
+    if $bufs.len() > n || $bufs.is_empty() {
+        crate::hint::cold_path();
+        'fixup: {
+            // Find the first non-empty buffer and take up to `n` buffers after it.
+            for (i, buf) in $bufs.iter().enumerate() {
                 if !buf.is_empty() {
-                    // Take all buffers after the first non-empty buffer,
-                    // clamped to `n`.
-                    let len = cmp::min(bufs.len() - i, n);
-                    break 'slices &bufs[i..i + len];
+                    let len = cmp::min($bufs.len() - i, n);
+                    $bufs = &$bufs[i..i + len];
+                    break 'fixup;
                 }
             }
-            // POSIX requires at least one buffer for writev.
-            // https://pubs.opengroup.org/onlinepubs/9799919799/functions/writev.html
-            break 'slices empty;
+            // If no non-empty buffer is found, use a single empty buffer.
+            $bufs = empty;
         }
-        bufs
     }
 }
 
@@ -1660,27 +1666,33 @@ pub(crate) macro limit_slices($bufs:expr, $n:expr) {
 ///
 /// When the slice contains over `n` buffers, ensure that at least one non-empty
 /// buffer is in the truncated slice, if there is one.
+///
+/// For example, [POSIX readv] requires that `bufs.len()` is in `1..=IOV_MAX`.
+///
+/// [POSIX readv]: https://pubs.opengroup.org/onlinepubs/9799919799/functions/readv.html
 #[allow(unused_macros)] // Not used on all platforms
-pub(crate) macro limit_slices_mut($bufs:expr, $n:expr) {
-    'slices: {
-        let bufs: &mut [IoSliceMut<'_>] = $bufs;
-        let n: usize = $n;
-        super let empty = &mut [IoSliceMut::new(&mut [])];
-        if bufs.len() > n || bufs.is_empty() {
-            crate::hint::cold_path();
-            for (i, buf) in bufs.iter().enumerate() {
+pub(crate) macro limit_slices_mut(&mut $bufs:ident, $n:expr) {
+    // Rebind $bufs, so the lifetime does not need to live as long as the
+    // function parameter, and shadow it so the macro caller gets the result.
+    let mut $bufs: &mut [IoSliceMut<'_>] = $bufs;
+    let n: usize = $n;
+
+    let empty = &mut [IoSliceMut::new(&mut [])];
+
+    if $bufs.len() > n || $bufs.is_empty() {
+        crate::hint::cold_path();
+        'fixup: {
+            // Find the first non-empty buffer and take up to `n` buffers after it.
+            for (i, buf) in $bufs.iter().enumerate() {
                 if !buf.is_empty() {
-                    // Take all buffers after the first non-empty buffer,
-                    // clamped to `n`.
-                    let len = cmp::min(bufs.len() - i, n);
-                    break 'slices &mut bufs[i..i + len];
+                    let len = cmp::min($bufs.len() - i, n);
+                    $bufs = &mut $bufs[i..i + len];
+                    break 'fixup;
                 }
             }
-            // POSIX requires at least one buffer for readv.
-            // https://pubs.opengroup.org/onlinepubs/9799919799/functions/readv.html
-            break 'slices empty;
+            // If no non-empty buffer is found, use a single empty buffer.
+            $bufs = empty;
         }
-        bufs
     }
 }
 

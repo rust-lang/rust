@@ -126,7 +126,7 @@ impl FileDesc {
         target_os = "nuttx"
     )))]
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        let bufs = io::limit_slices_mut!(bufs, max_iov());
+        io::limit_slices_mut!(&mut bufs, max_iov());
         let ret = cvt(unsafe {
             libc::readv(
                 self.as_raw_fd(),
@@ -222,7 +222,7 @@ impl FileDesc {
         target_os = "openbsd", // OpenBSD 2.7
     ))]
     pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
-        let bufs = io::limit_slices_mut!(bufs, max_iov());
+        io::limit_slices_mut!(&mut bufs, max_iov());
         let ret = cvt(unsafe {
             libc::preadv(
                 self.as_raw_fd(),
@@ -269,7 +269,7 @@ impl FileDesc {
             ) -> isize;
         );
 
-        let bufs = io::limit_slices_mut!(bufs, max_iov());
+        io::limit_slices_mut!(&mut bufs, max_iov());
         let ret = cvt(unsafe {
             preadv(
                 self.as_raw_fd(),
@@ -294,7 +294,7 @@ impl FileDesc {
 
         match preadv64.get() {
             Some(preadv) => {
-                let bufs = io::limit_slices_mut!(bufs, max_iov());
+                io::limit_slices_mut!(&mut bufs, max_iov());
                 let ret = cvt(unsafe {
                     preadv(
                         self.as_raw_fd(),
@@ -331,7 +331,7 @@ impl FileDesc {
 
         match preadv.get() {
             Some(preadv) => {
-                let bufs = io::limit_slices_mut!(bufs, max_iov());
+                io::limit_slices_mut!(&mut bufs, max_iov());
                 let ret = cvt(unsafe {
                     preadv(
                         self.as_raw_fd(),
@@ -364,7 +364,7 @@ impl FileDesc {
         target_os = "nuttx"
     )))]
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        let bufs = io::limit_slices!(bufs, max_iov());
+        io::limit_slices!(&mut bufs, max_iov());
         let ret = cvt(unsafe {
             libc::writev(
                 self.as_raw_fd(),
@@ -433,7 +433,7 @@ impl FileDesc {
         target_os = "openbsd", // OpenBSD 2.7
     ))]
     pub fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
-        let bufs = io::limit_slices!(bufs, max_iov());
+        io::limit_slices!(&mut bufs, max_iov());
         let ret = cvt(unsafe {
             libc::pwritev(
                 self.as_raw_fd(),
@@ -480,7 +480,7 @@ impl FileDesc {
             ) -> isize;
         );
 
-        let bufs = io::limit_slices!(bufs, max_iov());
+        io::limit_slices!(&mut bufs, max_iov());
         let ret = cvt(unsafe {
             pwritev(
                 self.as_raw_fd(),
@@ -505,7 +505,7 @@ impl FileDesc {
 
         match pwritev64.get() {
             Some(pwritev) => {
-                let bufs = io::limit_slices!(bufs, max_iov());
+                io::limit_slices!(&mut bufs, max_iov());
                 let ret = cvt(unsafe {
                     pwritev(
                         self.as_raw_fd(),
@@ -542,7 +542,7 @@ impl FileDesc {
 
         match pwritev.get() {
             Some(pwritev) => {
-                let bufs = io::limit_slices!(bufs, max_iov());
+                io::limit_slices!(&mut bufs, max_iov());
                 let ret = cvt(unsafe {
                     pwritev(
                         self.as_raw_fd(),
