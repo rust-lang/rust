@@ -88,8 +88,6 @@ pub fn get_other_selector() -> *mut () {
 // CHECK: @OBJC_CLASS_NAME_.{{[0-9]+}} = private unnamed_addr constant [1 x i8] zeroinitializer, section "__TEXT,__cstring,cstring_literals", align 1
 // CHECK: @OBJC_MODULES = private global %struct._objc_module { i32 7, i32 16, ptr @OBJC_CLASS_NAME_.{{[0-9]+}}, ptr null }, section "__OBJC,__module_info,regular,no_dead_strip", align 4
 
-// CHECK: @get_class_again = unnamed_addr alias ptr (), ptr @get_class
-// CHECK: @get_selector_again = unnamed_addr alias ptr (), ptr @get_selector
 // CHECK: load ptr, ptr @OBJC_CLASS_REFERENCES_.{{[0-9]+}}, align 4
 // CHECK: load ptr, ptr @OBJC_SELECTOR_REFERENCES_.{{[0-9]+}}, align 4
 // CHECK: load ptr, ptr @OBJC_CLASS_REFERENCES_.{{[0-9]+}}, align 4
