@@ -127,7 +127,6 @@ pub(crate) mod Enzyme_AD {
         );
         pub(crate) fn EnzymeTypeTreeToString(arg1: CTypeTreeRef) -> *const c_char;
         pub(crate) fn EnzymeTypeTreeToStringFree(arg1: *const c_char);
-        pub(crate) fn EnzymeGetMaxTypeDepth() -> ::std::os::raw::c_uint;
     }
 
     unsafe extern "C" {

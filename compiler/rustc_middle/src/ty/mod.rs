@@ -2272,16 +2272,16 @@ fn typetree_from_ty_inner<'tcx>(
     #[cfg(llvm_enzyme)]
     {
         unsafe extern "C" {
-            fn EnzymeGetMaxTypeDepth() -> ::std::os::raw::c_uint;
+            fn LLVMRustEnzymeGetMaxTypeDepth() -> usize;
         }
-        let max_depth = unsafe { EnzymeGetMaxTypeDepth() } as usize;
-        if depth > max_depth {
+        let max_depth = unsafe { LLVMRustEnzymeGetMaxTypeDepth() };
+        if depth >= max_depth {
             return TypeTree::new();
         }
     }
 
     #[cfg(not(llvm_enzyme))]
-    if depth > 6 {
+    if depth >= 6 {
         return TypeTree::new();
     }
 
