@@ -437,8 +437,7 @@ where
                             // Tuples are the only exception.
                             ty::Tuple(..) => ControlFlow::Continue(()),
                             _ => {
-                                // FIXME(field_projections): no `bug!` available?
-                                panic!("field_path should only consist of tuples and structs for `ty::Field`, but found {base:?}")
+                                unreachable!("field_path should only consist of tuples and structs for `ty::Field`, but found {base:?}")
                             }
                         })
                         .unwrap_or(ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(container)))
