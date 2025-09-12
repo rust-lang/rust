@@ -334,9 +334,8 @@ pub macro PartialEq($item:item) {
 #[doc(alias = "!=")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "Eq"]
-#[const_trait]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-pub trait Eq: [const] PartialEq<Self> + PointeeSized {
+pub const trait Eq: [const] PartialEq<Self> + PointeeSized {
     // this method is used solely by `impl Eq or #[derive(Eq)]` to assert that every component of a
     // type implements `Eq` itself. The current deriving infrastructure means doing this assertion
     // without using a method on this trait is nearly impossible.
@@ -966,9 +965,8 @@ impl<T: Clone> Clone for Reverse<T> {
 #[doc(alias = ">=")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "Ord"]
-#[const_trait]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-pub trait Ord: [const] Eq + [const] PartialOrd<Self> + PointeeSized {
+pub const trait Ord: [const] Eq + [const] PartialOrd<Self> + PointeeSized {
     /// This method returns an [`Ordering`] between `self` and `other`.
     ///
     /// By convention, `self.cmp(&other)` returns the ordering matching the expression
@@ -1352,9 +1350,8 @@ pub macro Ord($item:item) {
 )]
 #[rustc_diagnostic_item = "PartialOrd"]
 #[allow(multiple_supertrait_upcastable)] // FIXME(sized_hierarchy): remove this
-#[const_trait]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-pub trait PartialOrd<Rhs: PointeeSized = Self>: PartialEq<Rhs> + PointeeSized {
+pub const trait PartialOrd<Rhs: PointeeSized = Self>: PartialEq<Rhs> + PointeeSized {
     /// This method returns an ordering between `self` and `other` values if one exists.
     ///
     /// # Examples
