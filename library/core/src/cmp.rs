@@ -29,7 +29,7 @@ mod bytewise;
 pub(crate) use bytewise::BytewiseEq;
 
 use self::Ordering::*;
-use crate::marker::PointeeSized;
+use crate::marker::{Destruct, PointeeSized};
 use crate::ops::ControlFlow;
 
 /// Trait for comparisons using the equality operator.
@@ -334,7 +334,9 @@ pub macro PartialEq($item:item) {
 #[doc(alias = "!=")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "Eq"]
-pub trait Eq: PartialEq<Self> + PointeeSized {
+#[const_trait]
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+pub trait Eq: [const] PartialEq<Self> + PointeeSized {
     // this method is used solely by `impl Eq or #[derive(Eq)]` to assert that every component of a
     // type implements `Eq` itself. The current deriving infrastructure means doing this assertion
     // without using a method on this trait is nearly impossible.
@@ -380,8 +382,8 @@ pub struct AssertParamIsEq<T: Eq + PointeeSized> {
 ///
 /// assert_eq!(2.cmp(&1), Ordering::Greater);
 /// ```
-#[derive(Clone, Copy, Eq, PartialOrd, Ord, Debug, Hash)]
-#[derive_const(PartialEq)]
+#[derive(Copy, Debug, Hash)]
+#[derive_const(Clone, Eq, PartialOrd, Ord, PartialEq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 // This is a lang item only so that `BinOp::Cmp` in MIR can return it.
 // It has no special behavior, but does require that the three variants
@@ -635,7 +637,11 @@ impl Ordering {
     #[inline]
     #[must_use]
     #[stable(feature = "ordering_chaining", since = "1.17.0")]
-    pub fn then_with<F: FnOnce() -> Ordering>(self, f: F) -> Ordering {
+    #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+    pub const fn then_with<F>(self, f: F) -> Ordering
+    where
+        F: [const] FnOnce() -> Ordering + [const] Destruct,
+    {
         match self {
             Equal => f(),
             _ => self,
@@ -659,13 +665,15 @@ impl Ordering {
 /// v.sort_by_key(|&num| (num > 3, Reverse(num)));
 /// assert_eq!(v, vec![3, 2, 1, 6, 5, 4]);
 /// ```
-#[derive(PartialEq, Eq, Debug, Copy, Default, Hash)]
+#[derive(Copy, Debug, Hash)]
+#[derive_const(PartialEq, Eq, Default)]
 #[stable(feature = "reverse_cmp_key", since = "1.19.0")]
 #[repr(transparent)]
 pub struct Reverse<T>(#[stable(feature = "reverse_cmp_key", since = "1.19.0")] pub T);
 
 #[stable(feature = "reverse_cmp_key", since = "1.19.0")]
-impl<T: PartialOrd> PartialOrd for Reverse<T> {
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+impl<T: [const] PartialOrd> const PartialOrd for Reverse<T> {
     #[inline]
     fn partial_cmp(&self, other: &Reverse<T>) -> Option<Ordering> {
         other.0.partial_cmp(&self.0)
@@ -690,7 +698,8 @@ impl<T: PartialOrd> PartialOrd for Reverse<T> {
 }
 
 #[stable(feature = "reverse_cmp_key", since = "1.19.0")]
-impl<T: Ord> Ord for Reverse<T> {
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+impl<T: [const] Ord> const Ord for Reverse<T> {
     #[inline]
     fn cmp(&self, other: &Reverse<T>) -> Ordering {
         other.0.cmp(&self.0)
@@ -957,7 +966,9 @@ impl<T: Clone> Clone for Reverse<T> {
 #[doc(alias = ">=")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "Ord"]
-pub trait Ord: Eq + PartialOrd<Self> + PointeeSized {
+#[const_trait]
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+pub trait Ord: [const] Eq + [const] PartialOrd<Self> + PointeeSized {
     /// This method returns an [`Ordering`] between `self` and `other`.
     ///
     /// By convention, `self.cmp(&other)` returns the ordering matching the expression
@@ -1011,7 +1022,7 @@ pub trait Ord: Eq + PartialOrd<Self> + PointeeSized {
     #[rustc_diagnostic_item = "cmp_ord_max"]
     fn max(self, other: Self) -> Self
     where
-        Self: Sized,
+        Self: Sized + [const] Destruct,
     {
         if other < self { self } else { other }
     }
@@ -1050,7 +1061,7 @@ pub trait Ord: Eq + PartialOrd<Self> + PointeeSized {
     #[rustc_diagnostic_item = "cmp_ord_min"]
     fn min(self, other: Self) -> Self
     where
-        Self: Sized,
+        Self: Sized + [const] Destruct,
     {
         if other < self { other } else { self }
     }
@@ -1076,7 +1087,7 @@ pub trait Ord: Eq + PartialOrd<Self> + PointeeSized {
     #[stable(feature = "clamp", since = "1.50.0")]
     fn clamp(self, min: Self, max: Self) -> Self
     where
-        Self: Sized,
+        Self: Sized + [const] Destruct,
     {
         assert!(min <= max);
         if self < min {
@@ -1341,6 +1352,8 @@ pub macro Ord($item:item) {
 )]
 #[rustc_diagnostic_item = "PartialOrd"]
 #[allow(multiple_supertrait_upcastable)] // FIXME(sized_hierarchy): remove this
+#[const_trait]
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 pub trait PartialOrd<Rhs: PointeeSized = Self>: PartialEq<Rhs> + PointeeSized {
     /// This method returns an ordering between `self` and `other` values if one exists.
     ///
@@ -1481,13 +1494,14 @@ pub trait PartialOrd<Rhs: PointeeSized = Self>: PartialEq<Rhs> + PointeeSized {
     }
 }
 
-fn default_chaining_impl<T, U>(
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+const fn default_chaining_impl<T, U>(
     lhs: &T,
     rhs: &U,
-    p: impl FnOnce(Ordering) -> bool,
+    p: impl [const] FnOnce(Ordering) -> bool + [const] Destruct,
 ) -> ControlFlow<bool>
 where
-    T: PartialOrd<U> + PointeeSized,
+    T: [const] PartialOrd<U> + PointeeSized,
     U: PointeeSized,
 {
     // It's important that this only call `partial_cmp` once, not call `eq` then
@@ -1545,7 +1559,8 @@ pub macro PartialOrd($item:item) {
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "cmp_min"]
-pub fn min<T: Ord>(v1: T, v2: T) -> T {
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+pub const fn min<T: [const] Ord + [const] Destruct>(v1: T, v2: T) -> T {
     v1.min(v2)
 }
 
@@ -1575,7 +1590,12 @@ pub fn min<T: Ord>(v1: T, v2: T) -> T {
 #[inline]
 #[must_use]
 #[stable(feature = "cmp_min_max_by", since = "1.53.0")]
-pub fn min_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+pub const fn min_by<T: [const] Destruct, F: [const] FnOnce(&T, &T) -> Ordering>(
+    v1: T,
+    v2: T,
+    compare: F,
+) -> T {
     if compare(&v1, &v2).is_le() { v1 } else { v2 }
 }
 
@@ -1600,7 +1620,13 @@ pub fn min_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
 #[inline]
 #[must_use]
 #[stable(feature = "cmp_min_max_by", since = "1.53.0")]
-pub fn min_by_key<T, F: FnMut(&T) -> K, K: Ord>(v1: T, v2: T, mut f: F) -> T {
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+pub const fn min_by_key<T, F, K>(v1: T, v2: T, mut f: F) -> T
+where
+    T: [const] Destruct,
+    F: [const] FnMut(&T) -> K + [const] Destruct,
+    K: [const] Ord + [const] Destruct,
+{
     if f(&v2) < f(&v1) { v2 } else { v1 }
 }
 
@@ -1640,7 +1666,8 @@ pub fn min_by_key<T, F: FnMut(&T) -> K, K: Ord>(v1: T, v2: T, mut f: F) -> T {
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "cmp_max"]
-pub fn max<T: Ord>(v1: T, v2: T) -> T {
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+pub const fn max<T: [const] Ord + [const] Destruct>(v1: T, v2: T) -> T {
     v1.max(v2)
 }
 
@@ -1670,7 +1697,12 @@ pub fn max<T: Ord>(v1: T, v2: T) -> T {
 #[inline]
 #[must_use]
 #[stable(feature = "cmp_min_max_by", since = "1.53.0")]
-pub fn max_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+pub const fn max_by<T: [const] Destruct, F: [const] FnOnce(&T, &T) -> Ordering>(
+    v1: T,
+    v2: T,
+    compare: F,
+) -> T {
     if compare(&v1, &v2).is_gt() { v1 } else { v2 }
 }
 
@@ -1695,7 +1727,13 @@ pub fn max_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
 #[inline]
 #[must_use]
 #[stable(feature = "cmp_min_max_by", since = "1.53.0")]
-pub fn max_by_key<T, F: FnMut(&T) -> K, K: Ord>(v1: T, v2: T, mut f: F) -> T {
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+pub const fn max_by_key<T, F, K>(v1: T, v2: T, mut f: F) -> T
+where
+    T: [const] Destruct,
+    F: [const] FnMut(&T) -> K + [const] Destruct,
+    K: [const] Ord + [const] Destruct,
+{
     if f(&v2) < f(&v1) { v1 } else { v2 }
 }
 
@@ -1739,9 +1777,10 @@ pub fn max_by_key<T, F: FnMut(&T) -> K, K: Ord>(v1: T, v2: T, mut f: F) -> T {
 #[inline]
 #[must_use]
 #[unstable(feature = "cmp_minmax", issue = "115939")]
-pub fn minmax<T>(v1: T, v2: T) -> [T; 2]
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+pub const fn minmax<T>(v1: T, v2: T) -> [T; 2]
 where
-    T: Ord,
+    T: [const] Ord,
 {
     if v2 < v1 { [v2, v1] } else { [v1, v2] }
 }
@@ -1773,9 +1812,10 @@ where
 #[inline]
 #[must_use]
 #[unstable(feature = "cmp_minmax", issue = "115939")]
-pub fn minmax_by<T, F>(v1: T, v2: T, compare: F) -> [T; 2]
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+pub const fn minmax_by<T, F>(v1: T, v2: T, compare: F) -> [T; 2]
 where
-    F: FnOnce(&T, &T) -> Ordering,
+    F: [const] FnOnce(&T, &T) -> Ordering,
 {
     if compare(&v1, &v2).is_le() { [v1, v2] } else { [v2, v1] }
 }
@@ -1801,10 +1841,11 @@ where
 #[inline]
 #[must_use]
 #[unstable(feature = "cmp_minmax", issue = "115939")]
-pub fn minmax_by_key<T, F, K>(v1: T, v2: T, mut f: F) -> [T; 2]
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+pub const fn minmax_by_key<T, F, K>(v1: T, v2: T, mut f: F) -> [T; 2]
 where
-    F: FnMut(&T) -> K,
-    K: Ord,
+    F: [const] FnMut(&T) -> K + [const] Destruct,
+    K: [const] Ord + [const] Destruct,
 {
     if f(&v2) < f(&v1) { [v2, v1] } else { [v1, v2] }
 }
@@ -1830,7 +1871,8 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl PartialEq for () {
+    #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+    impl const PartialEq for () {
         #[inline]
         fn eq(&self, _other: &()) -> bool {
             true
@@ -1848,7 +1890,8 @@ mod impls {
     macro_rules! eq_impl {
         ($($t:ty)*) => ($(
             #[stable(feature = "rust1", since = "1.0.0")]
-            impl Eq for $t {}
+            #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+            impl const Eq for $t {}
         )*)
     }
 
@@ -1896,7 +1939,8 @@ mod impls {
     macro_rules! partial_ord_impl {
         ($($t:ty)*) => ($(
             #[stable(feature = "rust1", since = "1.0.0")]
-            impl PartialOrd for $t {
+            #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+            impl const PartialOrd for $t {
                 #[inline]
                 fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
                     match (*self <= *other, *self >= *other) {
@@ -1913,7 +1957,8 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl PartialOrd for () {
+    #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+    impl const PartialOrd for () {
         #[inline]
         fn partial_cmp(&self, _: &()) -> Option<Ordering> {
             Some(Equal)
@@ -1921,7 +1966,8 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl PartialOrd for bool {
+    #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+    impl const PartialOrd for bool {
         #[inline]
         fn partial_cmp(&self, other: &bool) -> Option<Ordering> {
             Some(self.cmp(other))
@@ -1935,7 +1981,8 @@ mod impls {
     macro_rules! ord_impl {
         ($($t:ty)*) => ($(
             #[stable(feature = "rust1", since = "1.0.0")]
-            impl PartialOrd for $t {
+            #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+            impl const PartialOrd for $t {
                 #[inline]
                 fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
                     Some(crate::intrinsics::three_way_compare(*self, *other))
@@ -1945,7 +1992,8 @@ mod impls {
             }
 
             #[stable(feature = "rust1", since = "1.0.0")]
-            impl Ord for $t {
+            #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+            impl const Ord for $t {
                 #[inline]
                 fn cmp(&self, other: &Self) -> Ordering {
                     crate::intrinsics::three_way_compare(*self, *other)
@@ -1955,7 +2003,8 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl Ord for () {
+    #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+    impl const Ord for () {
         #[inline]
         fn cmp(&self, _other: &()) -> Ordering {
             Equal
@@ -1963,7 +2012,8 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl Ord for bool {
+    #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+    impl const Ord for bool {
         #[inline]
         fn cmp(&self, other: &bool) -> Ordering {
             // Casting to i8's and converting the difference to an Ordering generates
@@ -1998,7 +2048,8 @@ mod impls {
     ord_impl! { char usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 
     #[unstable(feature = "never_type", issue = "35121")]
-    impl PartialEq for ! {
+    #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+    impl const PartialEq for ! {
         #[inline]
         fn eq(&self, _: &!) -> bool {
             *self
@@ -2006,10 +2057,12 @@ mod impls {
     }
 
     #[unstable(feature = "never_type", issue = "35121")]
-    impl Eq for ! {}
+    #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+    impl const Eq for ! {}
 
     #[unstable(feature = "never_type", issue = "35121")]
-    impl PartialOrd for ! {
+    #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+    impl const PartialOrd for ! {
         #[inline]
         fn partial_cmp(&self, _: &!) -> Option<Ordering> {
             *self
@@ -2017,7 +2070,8 @@ mod impls {
     }
 
     #[unstable(feature = "never_type", issue = "35121")]
-    impl Ord for ! {
+    #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+    impl const Ord for ! {
         #[inline]
         fn cmp(&self, _: &!) -> Ordering {
             *self
@@ -2042,9 +2096,10 @@ mod impls {
         }
     }
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<A: PointeeSized, B: PointeeSized> PartialOrd<&B> for &A
+    #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+    impl<A: PointeeSized, B: PointeeSized> const PartialOrd<&B> for &A
     where
-        A: PartialOrd<B>,
+        A: [const] PartialOrd<B>,
     {
         #[inline]
         fn partial_cmp(&self, other: &&B) -> Option<Ordering> {
@@ -2084,9 +2139,10 @@ mod impls {
         }
     }
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<A: PointeeSized> Ord for &A
+    #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+    impl<A: PointeeSized> const Ord for &A
     where
-        A: Ord,
+        A: [const] Ord,
     {
         #[inline]
         fn cmp(&self, other: &Self) -> Ordering {
@@ -2094,7 +2150,8 @@ mod impls {
         }
     }
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<A: PointeeSized> Eq for &A where A: Eq {}
+    #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+    impl<A: PointeeSized> const Eq for &A where A: [const] Eq {}
 
     // &mut pointers
 
@@ -2114,9 +2171,10 @@ mod impls {
         }
     }
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<A: PointeeSized, B: PointeeSized> PartialOrd<&mut B> for &mut A
+    #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+    impl<A: PointeeSized, B: PointeeSized> const PartialOrd<&mut B> for &mut A
     where
-        A: PartialOrd<B>,
+        A: [const] PartialOrd<B>,
     {
         #[inline]
         fn partial_cmp(&self, other: &&mut B) -> Option<Ordering> {
@@ -2156,9 +2214,10 @@ mod impls {
         }
     }
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<A: PointeeSized> Ord for &mut A
+    #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+    impl<A: PointeeSized> const Ord for &mut A
     where
-        A: Ord,
+        A: [const] Ord,
     {
         #[inline]
         fn cmp(&self, other: &Self) -> Ordering {
@@ -2166,7 +2225,8 @@ mod impls {
         }
     }
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<A: PointeeSized> Eq for &mut A where A: Eq {}
+    #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+    impl<A: PointeeSized> const Eq for &mut A where A: [const] Eq {}
 
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]

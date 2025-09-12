@@ -4,7 +4,7 @@ use super::{IntErrorKind, ParseIntError};
 use crate::clone::UseCloned;
 use crate::cmp::Ordering;
 use crate::hash::{Hash, Hasher};
-use crate::marker::{Freeze, StructuralPartialEq};
+use crate::marker::{Destruct, Freeze, StructuralPartialEq};
 use crate::ops::{BitOr, BitOrAssign, Div, DivAssign, Neg, Rem, RemAssign};
 use crate::panic::{RefUnwindSafe, UnwindSafe};
 use crate::str::FromStr;
@@ -220,12 +220,14 @@ where
 impl<T> StructuralPartialEq for NonZero<T> where T: ZeroablePrimitive + StructuralPartialEq {}
 
 #[stable(feature = "nonzero", since = "1.28.0")]
-impl<T> Eq for NonZero<T> where T: ZeroablePrimitive + Eq {}
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+impl<T> const Eq for NonZero<T> where T: ZeroablePrimitive + [const] Eq {}
 
 #[stable(feature = "nonzero", since = "1.28.0")]
-impl<T> PartialOrd for NonZero<T>
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+impl<T> const PartialOrd for NonZero<T>
 where
-    T: ZeroablePrimitive + PartialOrd,
+    T: ZeroablePrimitive + [const] PartialOrd,
 {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
@@ -254,9 +256,12 @@ where
 }
 
 #[stable(feature = "nonzero", since = "1.28.0")]
-impl<T> Ord for NonZero<T>
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+impl<T> const Ord for NonZero<T>
 where
-    T: ZeroablePrimitive + Ord,
+    // FIXME(const_hack): the T: ~const Destruct should be inferred from the Self: ~const Destruct.
+    // See https://github.com/rust-lang/rust/issues/144207
+    T: ZeroablePrimitive + [const] Ord + [const] Destruct,
 {
     #[inline]
     fn cmp(&self, other: &Self) -> Ordering {
