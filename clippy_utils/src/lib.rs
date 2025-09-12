@@ -2380,15 +2380,12 @@ pub fn peel_hir_ty_refs<'a>(mut ty: &'a hir::Ty<'a>) -> (&'a hir::Ty<'a>, usize)
     }
 }
 
-/// Peels off all references on the type. Returns the underlying type and the number of references
-/// removed.
-pub fn peel_middle_ty_refs(mut ty: Ty<'_>) -> (Ty<'_>, usize) {
-    let mut count = 0;
-    while let rustc_ty::Ref(_, dest_ty, _) = ty.kind() {
-        ty = *dest_ty;
-        count += 1;
+/// Returns the base type for HIR references and pointers.
+pub fn peel_hir_ty_refs_and_ptrs<'tcx>(ty: &'tcx hir::Ty<'tcx>) -> &'tcx hir::Ty<'tcx> {
+    match &ty.kind {
+        TyKind::Ptr(mut_ty) | TyKind::Ref(_, mut_ty) => peel_hir_ty_refs_and_ptrs(mut_ty.ty),
+        _ => ty,
     }
-    (ty, count)
 }
 
 /// Removes `AddrOf` operators (`&`) or deref operators (`*`), but only if a reference type is
