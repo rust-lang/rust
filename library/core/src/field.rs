@@ -8,6 +8,8 @@
 /// byte offset `OFFSET`.
 #[lang = "UnalignedField"]
 #[unstable(feature = "field_projections", issue = "145383")]
+#[rustc_deny_explicit_impl]
+#[rustc_do_not_implement_via_object]
 pub unsafe trait UnalignedField: Sized {
     /// The type of the base where this field exists in.
     #[lang = "UnalignedFieldBase"]
@@ -30,6 +32,8 @@ pub unsafe trait UnalignedField: Sized {
 /// `Self::Type` is well-aligned.
 #[lang = "Field"]
 #[unstable(feature = "field_projections", issue = "145383")]
+#[rustc_deny_explicit_impl]
+#[rustc_do_not_implement_via_object]
 pub unsafe trait Field: UnalignedField {}
 
 /// Expands to the field representing type of the given field.
