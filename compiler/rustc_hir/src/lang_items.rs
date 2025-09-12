@@ -447,7 +447,6 @@ language_item_table! {
     UnalignedFieldBase,             sym::UnalignedFieldBase,            unaligned_field_base,             Target::AssocTy,                                      GenericRequirement::None;
     UnalignedFieldType,             sym::UnalignedFieldType,            unaligned_field_type,             Target::AssocTy,                                      GenericRequirement::None;
     UnalignedFieldOFFSET,           sym::UnalignedFieldOFFSET,          unaligned_field_offset,           Target::AssocConst,                                   GenericRequirement::None;
-    UnalignedFieldOffset,           sym::unaligned_field_offset,        unaligned_field_offset_getter,    Target::Fn,                                           GenericRequirement::Exact(1);
 }
 
 /// The requirement imposed on the generics of a lang item
