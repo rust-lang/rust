@@ -110,6 +110,7 @@ pub type StrictPointer = interpret::Pointer<machine::Provenance>;
 pub type Scalar = interpret::Scalar<machine::Provenance>;
 pub type ImmTy<'tcx> = interpret::ImmTy<'tcx, machine::Provenance>;
 pub type OpTy<'tcx> = interpret::OpTy<'tcx, machine::Provenance>;
+pub type FnArg<'tcx> = interpret::FnArg<'tcx, machine::Provenance>;
 pub type PlaceTy<'tcx> = interpret::PlaceTy<'tcx, machine::Provenance>;
 pub type MPlaceTy<'tcx> = interpret::MPlaceTy<'tcx, machine::Provenance>;
 

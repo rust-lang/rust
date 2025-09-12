@@ -31,7 +31,9 @@ use rustc_target::callconv::FnAbi;
 use crate::alloc_addresses::EvalContextExt;
 use crate::concurrency::cpu_affinity::{self, CpuAffinityMask};
 use crate::concurrency::data_race::{self, NaReadType, NaWriteType};
-use crate::concurrency::{AllocDataRaceHandler, GenmcCtx, GlobalDataRaceHandler, weak_memory};
+use crate::concurrency::{
+    AllocDataRaceHandler, GenmcCtx, GenmcEvalContextExt as _, GlobalDataRaceHandler, weak_memory,
+};
 use crate::*;
 
 /// First real-time signal.
@@ -1163,7 +1165,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         ecx: &mut MiriInterpCx<'tcx>,
         instance: ty::Instance<'tcx>,
         abi: &FnAbi<'tcx, Ty<'tcx>>,
-        args: &[FnArg<'tcx, Provenance>],
+        args: &[FnArg<'tcx>],
         dest: &PlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
@@ -1182,6 +1184,13 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             return ecx.emulate_foreign_item(link_name, abi, &args, dest, ret, unwind);
         }
 
+        if ecx.machine.data_race.as_genmc_ref().is_some()
+            && ecx.genmc_intercept_function(instance, args, dest)?
+        {
+            ecx.return_to_block(ret)?;
+            return interp_ok(None);
+        }
+
         // Otherwise, load the MIR.
         let _trace = enter_trace_span!("load_mir");
         interp_ok(Some((ecx.load_mir(instance.def, None)?, instance)))
@@ -1192,7 +1201,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         ecx: &mut MiriInterpCx<'tcx>,
         fn_val: DynSym,
         abi: &FnAbi<'tcx, Ty<'tcx>>,
-        args: &[FnArg<'tcx, Provenance>],
+        args: &[FnArg<'tcx>],
         dest: &PlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,

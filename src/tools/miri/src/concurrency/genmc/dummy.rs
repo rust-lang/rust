@@ -43,6 +43,15 @@ mod intercept {
 
     impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
     pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
+        fn genmc_intercept_function(
+            &mut self,
+            _instance: rustc_middle::ty::Instance<'tcx>,
+            _args: &[rustc_const_eval::interpret::FnArg<'tcx, crate::Provenance>],
+            _dest: &crate::PlaceTy<'tcx>,
+        ) -> InterpResult<'tcx, bool> {
+            unreachable!()
+        }
+
         fn handle_genmc_verifier_assume(&mut self, _condition: &OpTy<'tcx>) -> InterpResult<'tcx> {
             unreachable!();
         }

@@ -63,14 +63,24 @@ fn get_function_kind<'tcx>(
 ) -> InterpResult<'tcx, NextInstrKind> {
     use NextInstrKind::*;
     let callee_def_id = match func_ty.kind() {
-        ty::FnDef(def_id, _args) => def_id,
+        ty::FnDef(def_id, _args) => *def_id,
         _ => return interp_ok(MaybeAtomic(ActionKind::Load)), // we don't know the callee, might be pthread_join
     };
     let Some(intrinsic_def) = ecx.tcx.intrinsic(callee_def_id) else {
-        if ecx.tcx.is_foreign_item(*callee_def_id) {
+        if ecx.tcx.is_foreign_item(callee_def_id) {
             // Some shims, like pthread_join, must be considered loads. So just consider them all loads,
             // these calls are not *that* common.
             return interp_ok(MaybeAtomic(ActionKind::Load));
+        }
+        // NOTE: Functions intercepted by Miri in `concurrency/genmc/intercep.rs` must also be added here.
+        // Such intercepted functions, like `sys::Mutex::lock`, should be treated as atomics to ensure we call the scheduler when we encounter one of them.
+        // These functions must also be classified whether they may have load semantics.
+        if ecx.tcx.is_diagnostic_item(rustc_span::sym::sys_mutex_lock, callee_def_id)
+            || ecx.tcx.is_diagnostic_item(rustc_span::sym::sys_mutex_try_lock, callee_def_id)
+        {
+            return interp_ok(MaybeAtomic(ActionKind::Load));
+        } else if ecx.tcx.is_diagnostic_item(rustc_span::sym::sys_mutex_unlock, callee_def_id) {
+            return interp_ok(MaybeAtomic(ActionKind::NonLoad));
         }
         // The next step is a call to a regular Rust function.
         return interp_ok(NonAtomic);

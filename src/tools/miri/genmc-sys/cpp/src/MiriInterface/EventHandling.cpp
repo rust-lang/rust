@@ -32,8 +32,9 @@
 
 /**** Blocking instructions ****/
 
-void MiriGenmcShim::handle_assume_block(ThreadId thread_id) {
-    GenMCDriver::handleAssume(inc_pos(thread_id), AssumeType::User);
+void MiriGenmcShim::handle_assume_block(ThreadId thread_id, AssumeType assume_type) {
+    BUG_ON(getExec().getGraph().isThreadBlocked(thread_id));
+    GenMCDriver::handleAssume(inc_pos(thread_id), assume_type);
 }
 
 /**** Memory access handling ****/
@@ -59,6 +60,7 @@ void MiriGenmcShim::handle_assume_block(ThreadId thread_id) {
     if (const auto* err = std::get_if<VerificationError>(&ret))
         return LoadResultExt::from_error(format_error(*err));
     const auto* ret_val = std::get_if<SVal>(&ret);
+    // FIXME(genmc): handle `HandleResult::{Invalid, Reset}` return values.
     if (ret_val == nullptr)
         ERROR("Unimplemented: load returned unexpected result.");
     return LoadResultExt::from_value(*ret_val);
@@ -88,6 +90,7 @@ void MiriGenmcShim::handle_assume_block(ThreadId thread_id) {
         return StoreResultExt::from_error(format_error(*err));
 
     const bool* is_coherence_order_maximal_write = std::get_if<bool>(&ret);
+    // FIXME(genmc): handle `HandleResult::{Invalid, Reset}` return values.
     ERROR_ON(
         nullptr == is_coherence_order_maximal_write,
         "Unimplemented: Store returned unexpected result."
@@ -130,6 +133,7 @@ void MiriGenmcShim::handle_fence(ThreadId thread_id, MemOrdering ord) {
         return ReadModifyWriteResultExt::from_error(format_error(*err));
 
     const auto* ret_val = std::get_if<SVal>(&load_ret);
+    // FIXME(genmc): handle `HandleResult::{Invalid, Reset}` return values.
     if (nullptr == ret_val) {
         ERROR("Unimplemented: read-modify-write returned unexpected result.");
     }
@@ -151,6 +155,7 @@ void MiriGenmcShim::handle_fence(ThreadId thread_id, MemOrdering ord) {
         return ReadModifyWriteResultExt::from_error(format_error(*err));
 
     const bool* is_coherence_order_maximal_write = std::get_if<bool>(&store_ret);
+    // FIXME(genmc): handle `HandleResult::{Invalid, Reset}` return values.
     ERROR_ON(
         nullptr == is_coherence_order_maximal_write,
         "Unimplemented: RMW store returned unexpected result."
@@ -195,6 +200,7 @@ void MiriGenmcShim::handle_fence(ThreadId thread_id, MemOrdering ord) {
     if (const auto* err = std::get_if<VerificationError>(&load_ret))
         return CompareExchangeResultExt::from_error(format_error(*err));
     const auto* ret_val = std::get_if<SVal>(&load_ret);
+    // FIXME(genmc): handle `HandleResult::{Invalid, Reset}` return values.
     ERROR_ON(nullptr == ret_val, "Unimplemented: load returned unexpected result.");
     const auto read_old_val = *ret_val;
     if (read_old_val != expectedVal)
@@ -215,6 +221,7 @@ void MiriGenmcShim::handle_fence(ThreadId thread_id, MemOrdering ord) {
     if (const auto* err = std::get_if<VerificationError>(&store_ret))
         return CompareExchangeResultExt::from_error(format_error(*err));
     const bool* is_coherence_order_maximal_write = std::get_if<bool>(&store_ret);
+    // FIXME(genmc): handle `HandleResult::{Invalid, Reset}` return values.
     ERROR_ON(
         nullptr == is_coherence_order_maximal_write,
         "Unimplemented: compare-exchange store returned unexpected result."

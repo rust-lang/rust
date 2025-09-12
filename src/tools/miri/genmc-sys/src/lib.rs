@@ -254,6 +254,17 @@ mod ffi {
         is_coherence_order_maximal_write: bool,
     }
 
+    #[must_use]
+    #[derive(Debug)]
+    struct MutexLockResult {
+        /// If there was an error, it will be stored in `error`, otherwise it is `None`.
+        error: UniquePtr<CxxString>,
+        /// If true, GenMC determined that we should retry the mutex lock operation once the thread attempting to lock is scheduled again.
+        is_reset: bool,
+        /// Indicate whether the lock was acquired by this thread.
+        is_lock_acquired: bool,
+    }
+
     /**** These are GenMC types that we have to copy-paste here since cxx does not support
     "importing" externally defined C++ types. ****/
 
@@ -305,6 +316,13 @@ mod ffi {
         UMin = 10,
     }
 
+    #[derive(Debug)]
+    enum AssumeType {
+        User = 0,
+        Barrier = 1,
+        Spinloop = 2,
+    }
+
     // # Safety
     //
     // This block is unsafe to allow defining safe methods inside.
@@ -323,6 +341,7 @@ mod ffi {
         (This tells cxx that the enums defined above are already defined on the C++ side;
         it will emit assertions to ensure that the two definitions agree.) ****/
         type ActionKind;
+        type AssumeType;
         type MemOrdering;
         type RMWBinOp;
         type SchedulePolicy;
@@ -430,7 +449,31 @@ mod ffi {
         /// Inform GenMC that the thread should be blocked.
         /// Note: this function is currently hardcoded for `AssumeType::User`, corresponding to user supplied assume statements.
         /// This can become a parameter once more types of assumes are added.
-        fn handle_assume_block(self: Pin<&mut MiriGenmcShim>, thread_id: i32);
+        fn handle_assume_block(
+            self: Pin<&mut MiriGenmcShim>,
+            thread_id: i32,
+            assume_type: AssumeType,
+        );
+
+        /**** Mutex handling ****/
+        fn handle_mutex_lock(
+            self: Pin<&mut MiriGenmcShim>,
+            thread_id: i32,
+            address: u64,
+            size: u64,
+        ) -> MutexLockResult;
+        fn handle_mutex_try_lock(
+            self: Pin<&mut MiriGenmcShim>,
+            thread_id: i32,
+            address: u64,
+            size: u64,
+        ) -> MutexLockResult;
+        fn handle_mutex_unlock(
+            self: Pin<&mut MiriGenmcShim>,
+            thread_id: i32,
+            address: u64,
+            size: u64,
+        ) -> StoreResult;
 
         /***** Exploration related functionality *****/
 
