@@ -270,6 +270,46 @@ fn main() {
         );
 
         check_edit(
+            "else if",
+            r#"
+fn main() {
+    let x = if true {
+        ()
+    } $0 else {};
+}
+"#,
+            r#"
+fn main() {
+    let x = if true {
+        ()
+    } else if $1 {
+    $0
+} else {};
+}
+"#,
+        );
+
+        check_edit(
+            "else if",
+            r#"
+fn main() {
+    let x = if true {
+        ()
+    } $0 else if true {};
+}
+"#,
+            r#"
+fn main() {
+    let x = if true {
+        ()
+    } else if $1 {
+    $0
+} else if true {};
+}
+"#,
+        );
+
+        check_edit(
             "else",
             r#"
 fn main() {
