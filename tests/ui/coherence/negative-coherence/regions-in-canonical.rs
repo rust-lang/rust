@@ -1,6 +1,7 @@
 //@ check-pass
 
 #![feature(adt_const_params, unsized_const_params)]
+//~^ WARN the feature `unsized_const_params` is incomplete
 #![feature(with_negative_coherence, negative_impls)]
 
 pub trait A<const K: &'static str> {}

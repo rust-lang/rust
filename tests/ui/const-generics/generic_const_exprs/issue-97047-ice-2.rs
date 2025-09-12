@@ -2,6 +2,7 @@
 
 #![feature(adt_const_params, unsized_const_params, generic_const_exprs)]
 //~^ WARN the feature `generic_const_exprs` is incomplete and may not be safe to use and/or cause compiler crashes [incomplete_features]
+//~^^ WARN the feature `unsized_const_params` is incomplete
 
 pub struct Changes<const CHANGES: &'static [&'static str]>
 where

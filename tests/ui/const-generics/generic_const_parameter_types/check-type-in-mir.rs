@@ -2,6 +2,7 @@
 
 #![feature(unsized_const_params, adt_const_params, generic_const_parameter_types)]
 //~^ WARN the feature `generic_const_parameter_types` is incomplete
+//~^^ WARN the feature `unsized_const_params` is incomplete
 
 fn foo<'a, const N: &'a u32>() {
     let b: &'static u32 = N;
