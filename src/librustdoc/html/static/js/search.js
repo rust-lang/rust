@@ -1758,12 +1758,8 @@ class DocSearch {
         const l = crateNames.length;
         const names = [];
         for (let i = 0; i < l; ++i) {
-            names.push(crateNames.at(i).then(name => {
-                if (name === undefined) {
-                    return "";
-                }
-                return this.utf8decoder.decode(name);
-            }));
+            const name = await crateNames.at(i);
+            names.push(name === undefined ? "" : this.utf8decoder.decode(name));
         }
         return Promise.all(names);
     }
