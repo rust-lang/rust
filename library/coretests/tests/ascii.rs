@@ -508,5 +508,7 @@ fn test_escape_ascii_iter() {
 
 #[test]
 fn test_invalid_u8() {
-    assert_eq!(core::ascii::Char::from_u8(128), None);
+    for c in 128..=255 {
+        assert_eq!(core::ascii::Char::from_u8(c), None);
+    }
 }
