@@ -238,7 +238,8 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
             _ => (),
         }
         // Skip `AnonConst`s because we feed their `type_of`.
-        if !matches!(def_kind, DefKind::AnonConst) {
+        // Also skip items for which typeck forwards to parent typeck.
+        if !(matches!(def_kind, DefKind::AnonConst) || def_kind.is_typeck_child()) {
             tcx.ensure_ok().typeck(item_def_id);
         }
         // Ensure we generate the new `DefId` before finishing `check_crate`.
