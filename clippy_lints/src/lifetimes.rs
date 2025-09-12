@@ -745,7 +745,7 @@ fn report_elidable_impl_lifetimes<'tcx>(
     impl_: &'tcx Impl<'_>,
     map: &FxIndexMap<LocalDefId, Vec<Usage>>,
 ) {
-    let single_usages = map
+    let (elidable_lts, usages): (Vec<_>, Vec<_>) = map
         .iter()
         .filter_map(|(def_id, usages)| {
             if let [
@@ -762,13 +762,11 @@ fn report_elidable_impl_lifetimes<'tcx>(
                 None
             }
         })
-        .collect::<Vec<_>>();
+        .unzip();
 
-    if single_usages.is_empty() {
+    if elidable_lts.is_empty() {
         return;
     }
-
-    let (elidable_lts, usages): (Vec<_>, Vec<_>) = single_usages.into_iter().unzip();
 
     report_elidable_lifetimes(cx, impl_.generics, &elidable_lts, &usages, true);
 }
@@ -795,9 +793,7 @@ fn report_elidable_lifetimes(
         // In principle, the result of the call to `Node::ident` could be `unwrap`ped, as `DefId` should refer to a
         // `Node::GenericParam`.
         .filter_map(|&def_id| cx.tcx.hir_node_by_def_id(def_id).ident())
-        .map(|ident| ident.to_string())
-        .collect::<Vec<_>>()
-        .join(", ");
+        .format(", ");
 
     let elidable_usages: Vec<ElidableUsage> = usages
         .iter()
