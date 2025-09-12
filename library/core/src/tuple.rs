@@ -47,7 +47,7 @@ macro_rules! tuple_impls {
         maybe_tuple_doc! {
             $($T)+ @
             #[unstable(feature = "adt_const_params", issue = "95174")]
-            #[unstable_feature_bound(adt_const_params)]
+            #[unstable_feature_bound(unsized_const_params)]
             impl<$($T: ConstParamTy_),+> ConstParamTy_ for ($($T,)+)
             {}
         }
