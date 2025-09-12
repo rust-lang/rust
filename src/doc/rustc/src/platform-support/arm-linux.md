@@ -108,7 +108,7 @@ running this code on. For example, running `eabihf` code on an `eabi` system
 will not work correctly.
 
 The `gnueabi` ABI component indicates support for using the GNU C Library
-(glibc), and the Arm Embedded ABI (EABI). The EABI is a replacement of for the
+(glibc), and the Arm Embedded ABI (EABI). The EABI is a replacement for the
 original ABI (now called the Old ABI or OABI), and it is the standard ABI for
 32-bit Arm systems. With this ABI, function parameters that are `f32` or `f64`
 are passed as if they were integers, instead of being passed via in FPU
@@ -128,9 +128,9 @@ depending on whether your distribution is using 'soft-float' (EABI) or
 
 The `musleabi` and `musleabihf` ABI components offer support for the [musl C
 library](https://musl.libc.org/). This C library can be used to create 'static
-binaries' that have no run-time library requirements (a feature that that
-glibc does not support). There are soft-float (`eabi`) and hard-float
-(`eabihf`) variants, as per the `gnu*` targets above.
+binaries' that have no run-time library requirements (a feature that glibc
+does not support). There are soft-float (`eabi`) and hard-float (`eabihf`)
+variants, as per the `gnu*` targets above.
 
 The `uclibceabi` and `uclibceabihf` ABI components are for the [uClibc-ng C
 library](https://uclibc-ng.org/). This is sometimes used in light-weight
