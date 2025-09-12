@@ -19,44 +19,19 @@ Processors in this family include the [Arm Cortex-A35, 53, 76, etc][aarch64-cpus
 
 ## Target CPU and Target Feature options
 
-It is possible to tell Rust (or LLVM) that you have a specific model of Arm
-processor, using the [`-Ctarget-cpu`][target-cpu] option. You can also control
-whether Rust (or LLVM) will include instructions that target optional hardware
-features, e.g. hardware floating-point, or Advanced SIMD operations, using
-[`-Ctarget-feature`][target-feature].
+All AArch64 processors include an FPU. The difference between the `-none` and
+`-none-softfloat` targets is whether the FPU is used for passing function arguments.
+You may prefer the `-softfloat` target when writing a kernel or interfacing with
+pre-compiled binaries that use the soft-float ABI.
 
-It is important to note that selecting a *target-cpu* will typically enable
-*all* the optional features available from Arm on that model of CPU and your
-particular implementation of that CPU may not have those features available.
-In that case, you can use `-Ctarget-feature=-option` to turn off the specific
-CPU features you do not have available, leaving you with the optimized
-instruction scheduling and support for the features you do have. More details
-are available in the detailed target-specific documentation.
-
-<div class="warning">
-
-Many target-features are currently unstable and subject to change, and
-if you use them you should disassemble the compiler output and manually inspect
-it to ensure only appropriate instructions for your CPU have been generated.
-
-</div>
-
-If you wish to use the *target-cpu* and *target-feature* options, you can add
-them to your `.cargo/config.toml` file alongside any other flags your project
-uses (likely linker related ones):
-
-```toml
-rustflags = [
-  # Usual Arm bare-metal linker setup
-  "-Clink-arg=-Tlink.x",
-  "-Clink-arg=--nmagic",
-  # tell Rust we have a Cortex-A72
-  "-Ctarget-cpu=cortex-a72",
-]
-
-[build]
-target = "aarch64-unknown-none"
-```
+When using the hardfloat targets, the minimum floating-point features assumed
+are those of the `fp-armv8`, which excludes NEON SIMD support. If your
+processor supports a different set of floating-point features than the default
+expectations of `fp-armv8`, then these should also be enabled or disabled as
+needed with `-C target-feature=(+/-)`. It is also possible to tell Rust (or
+LLVM) that you have a specific model of Arm processor, using the
+[`-Ctarget-cpu`][target-cpu] option. Doing so may change the default set of
+target-features enabled.
 
 [target-cpu]: https://doc.rust-lang.org/rustc/codegen-options/index.html#target-cpu
 [target-feature]: https://doc.rust-lang.org/rustc/codegen-options/index.html#target-feature
@@ -72,10 +47,10 @@ package manager. To use it, add the following to your `.cargo/config.toml`:
 
 ```toml
 [target.aarch64-unknown-none]
-linker = "aarch64-none-ld"
+linker = "aarch64-none-elf-ld"
 ```
 
-The GNU linker can also be used by specifying `aarch64-none-gcc` as the
+The GNU linker can also be used by specifying `aarch64-none-elf-gcc` as the
 linker. This is needed when using GCC's link time optimization.
 
 These targets don't provide a linker script, so you'll need to bring your own
@@ -83,25 +58,12 @@ according to the specific device you are using. Pass
 `-Clink-arg=-Tyour_script.ld` as a rustc argument to make the linker use
 `your_script.ld` during linking.
 
-All AArch64 processors include an FPU. The difference between the `-none` and
-`-none-softfloat` targets is whether the FPU is used for passing function arguments.
-You may prefer the `-softfloat` target when writing a kernel or interfacing with
-pre-compiled binaries that use the soft-float ABI.
-
-When using the hardfloat targets, the minimum floating-point features assumed
-are those of the `fp-armv8`, which excludes NEON SIMD support. If your
-processor supports a different set of floating-point features than the default
-expectations of `fp-armv8`, then these should also be enabled or disabled as
-needed with `-C target-feature=(+/-)`.
-
 [arm-gnu-toolchain]: https://developer.arm.com/Tools%20and%20Software/GNU%20Toolchain
 
-## Testing
+## Cross-compilation toolchains and C code
 
-This is a cross-compiled target that you will need to emulate during testing.
-
-The exact emulator that you'll need depends on the specific device you want to
-run your code on.
+This target supports C code compiled with the `aarch64-none-elf` target
+triple and a suitable `-march` or `-mcpu` flag.
 
 ## Start-up and Low-Level Code
 
@@ -113,8 +75,3 @@ The *TrustedFirmware* group also maintain [Rust crates for this
 target](https://github.com/ArmFirmwareCrates).
 
 [`aarch64-cpu`]: https://docs.rs/aarch64-cpu
-
-## Cross-compilation toolchains and C code
-
-This target supports C code compiled with the `aarch64-unknown-none` target
-triple and a suitable `-march` or `-mcpu` flag.
