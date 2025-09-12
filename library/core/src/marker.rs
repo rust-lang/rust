@@ -1384,8 +1384,8 @@ pub unsafe auto trait Move {
 marker_impls! {
     #[unstable(feature = "move_trait", issue = "none")]
     unsafe Move for
-        {T: ?Sized + PointeeSized} *const T,
-        {T: ?Sized + PointeeSized} *mut T,
-        {T: ?Sized + PointeeSized} &T,
-        {T: ?Sized + PointeeSized} &mut T,
+        {T: ?Sized + PointeeSized + ?Move} *const T,
+        {T: ?Sized + PointeeSized + ?Move} *mut T,
+        {T: ?Sized + PointeeSized + ?Move} &T,
+        {T: ?Sized + PointeeSized + ?Move} &mut T,
 }

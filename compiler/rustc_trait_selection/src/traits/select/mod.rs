@@ -1884,6 +1884,20 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             break;
         }
 
+        if is_default_auto_trait {
+            // Need to prefer alias-bound over env candidates.
+            let alias_bound = candidates
+                .iter()
+                .filter_map(|c| if let ProjectionCandidate(i) = c.candidate { Some(i) } else { None })
+                .try_reduce(|c1, c2| if has_non_region_infer { None } else { Some(c1.min(c2)) });
+            match alias_bound {
+                Some(Some(index)) => return Some(ProjectionCandidate(index)),
+                Some(None) => {}
+                None => return None,
+            }
+
+        }
+
         // The next highest priority is for non-global where-bounds. However, while we don't
         // prefer global where-clauses here, we do bail with ambiguity when encountering both
         // a global and a non-global where-clause.
