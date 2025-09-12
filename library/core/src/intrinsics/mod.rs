@@ -3324,7 +3324,6 @@ pub unsafe fn va_end(ap: &mut VaListImpl<'_>);
 ///
 /// This is a `const`-only intrinsic that doesn't have any codegen.
 #[rustc_intrinsic]
-#[lang = "unaligned_field_offset"]
 #[unstable(feature = "field_projections", issue = "145383")]
 #[rustc_const_unstable(feature = "field_projections", issue = "145383")]
 pub const fn unaligned_field_offset<F: crate::field::UnalignedField>() -> usize;
