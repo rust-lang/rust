@@ -1,4 +1,4 @@
-//! Platform-specific extensions to `std` for Darwin / Apple platforms.
+//! Platform-specific extensions to `core` for Darwin / Apple platforms.
 //!
 //! This is available on the following operating systems:
 //! - macOS
@@ -13,13 +13,7 @@
 //! `aarch64-apple-darwin` target names, which are mostly named that way for
 //! legacy reasons.
 
-#![stable(feature = "os_darwin", since = "1.84.0")]
+#![unstable(feature = "darwin_objc", issue = "145496")]
 #![doc(cfg(target_vendor = "apple"))]
 
-pub mod fs;
 pub mod objc;
-
-// deprecated, but used for public reexport under `std::os::unix::raw`, as
-// well as `std::os::macos`/`std::os::ios`, because those modules precede the
-// decision to remove these.
-pub(super) mod raw;
