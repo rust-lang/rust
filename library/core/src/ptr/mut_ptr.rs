@@ -135,28 +135,9 @@ impl<T: PointeeSized> *mut T {
         self as _
     }
 
-    /// Gets the "address" portion of the pointer.
+    #[doc = include_str!("./docs/addr.md")]
     ///
-    /// This is similar to `self as usize`, except that the [provenance][crate::ptr#provenance] of
-    /// the pointer is discarded and not [exposed][crate::ptr#exposed-provenance]. This means that
-    /// casting the returned address back to a pointer yields a [pointer without
-    /// provenance][without_provenance_mut], which is undefined behavior to dereference. To properly
-    /// restore the lost information and obtain a dereferenceable pointer, use
-    /// [`with_addr`][pointer::with_addr] or [`map_addr`][pointer::map_addr].
-    ///
-    /// If using those APIs is not possible because there is no way to preserve a pointer with the
-    /// required provenance, then Strict Provenance might not be for you. Use pointer-integer casts
-    /// or [`expose_provenance`][pointer::expose_provenance] and [`with_exposed_provenance`][with_exposed_provenance]
-    /// instead. However, note that this makes your code less portable and less amenable to tools
-    /// that check for compliance with the Rust memory model.
-    ///
-    /// On most platforms this will produce a value with the same bytes as the original
-    /// pointer, because all the bytes are dedicated to describing the address.
-    /// Platforms which need to store additional information in the pointer may
-    /// perform a change of representation to produce a value containing only the address
-    /// portion of the pointer. What that means is up to the platform to define.
-    ///
-    /// This is a [Strict Provenance][crate::ptr#strict-provenance] API.
+    /// [without_provenance]: without_provenance_mut
     #[must_use]
     #[inline(always)]
     #[stable(feature = "strict_provenance", since = "1.84.0")]
@@ -243,26 +224,16 @@ impl<T: PointeeSized> *mut T {
         (self.cast(), super::metadata(self))
     }
 
-    /// Returns `None` if the pointer is null, or else returns a shared reference to
-    /// the value wrapped in `Some`. If the value may be uninitialized, [`as_uninit_ref`]
-    /// must be used instead.
+    #[doc = include_str!("./docs/as_ref.md")]
     ///
-    /// For the mutable counterpart see [`as_mut`].
+    /// ```
+    /// let ptr: *mut u8 = &mut 10u8 as *mut u8;
     ///
-    /// [`as_uninit_ref`]: pointer#method.as_uninit_ref-1
-    /// [`as_mut`]: #method.as_mut
-    ///
-    /// # Safety
-    ///
-    /// When calling this method, you have to ensure that *either* the pointer is null *or*
-    /// the pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
-    ///
-    /// # Panics during const evaluation
-    ///
-    /// This method will panic during const evaluation if the pointer cannot be
-    /// determined to be null or not. See [`is_null`] for more information.
-    ///
-    /// [`is_null`]: #method.is_null-1
+    /// unsafe {
+    ///     let val_back = &*ptr;
+    ///     println!("We got back the value: {val_back}!");
+    /// }
+    /// ```
     ///
     /// # Examples
     ///
@@ -276,20 +247,14 @@ impl<T: PointeeSized> *mut T {
     /// }
     /// ```
     ///
-    /// # Null-unchecked version
+    /// # See Also
     ///
-    /// If you are sure the pointer can never be null and are looking for some kind of
-    /// `as_ref_unchecked` that returns the `&T` instead of `Option<&T>`, know that you can
-    /// dereference the pointer directly.
+    /// For the mutable counterpart see [`as_mut`].
     ///
-    /// ```
-    /// let ptr: *mut u8 = &mut 10u8 as *mut u8;
-    ///
-    /// unsafe {
-    ///     let val_back = &*ptr;
-    ///     println!("We got back the value: {val_back}!");
-    /// }
-    /// ```
+    /// [`is_null`]: #method.is_null-1
+    /// [`as_uninit_ref`]: pointer#method.as_uninit_ref-1
+    /// [`as_mut`]: #method.as_mut
+
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
     #[rustc_const_stable(feature = "const_ptr_is_null", since = "1.84.0")]
     #[inline]
@@ -332,28 +297,15 @@ impl<T: PointeeSized> *mut T {
         unsafe { &*self }
     }
 
-    /// Returns `None` if the pointer is null, or else returns a shared reference to
-    /// the value wrapped in `Some`. In contrast to [`as_ref`], this does not require
-    /// that the value has to be initialized.
-    ///
-    /// For the mutable counterpart see [`as_uninit_mut`].
-    ///
-    /// [`as_ref`]: pointer#method.as_ref-1
-    /// [`as_uninit_mut`]: #method.as_uninit_mut
-    ///
-    /// # Safety
-    ///
-    /// When calling this method, you have to ensure that *either* the pointer is null *or*
-    /// the pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
-    /// Note that because the created reference is to `MaybeUninit<T>`, the
-    /// source pointer can point to uninitialized memory.
-    ///
-    /// # Panics during const evaluation
-    ///
-    /// This method will panic during const evaluation if the pointer cannot be
-    /// determined to be null or not. See [`is_null`] for more information.
+    #[doc = include_str!("./docs/as_uninit_ref.md")]
     ///
     /// [`is_null`]: #method.is_null-1
+    /// [`as_ref`]: pointer#method.as_ref-1
+    ///
+    /// # See Also
+    /// For the mutable counterpart see [`as_uninit_mut`].
+    ///
+    /// [`as_uninit_mut`]: #method.as_uninit_mut
     ///
     /// # Examples
     ///

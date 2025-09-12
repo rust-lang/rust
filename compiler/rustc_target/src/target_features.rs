@@ -849,6 +849,7 @@ const IBMZ_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("miscellaneous-extensions-3", Unstable(sym::s390x_target_feature), &[]),
     ("miscellaneous-extensions-4", Unstable(sym::s390x_target_feature), &[]),
     ("nnp-assist", Unstable(sym::s390x_target_feature), &["vector"]),
+    ("soft-float", Forbidden { reason: "currently unsupported ABI-configuration feature" }, &[]),
     ("transactional-execution", Unstable(sym::s390x_target_feature), &[]),
     ("vector", Unstable(sym::s390x_target_feature), &[]),
     ("vector-enhancements-1", Unstable(sym::s390x_target_feature), &["vector"]),
@@ -1176,6 +1177,13 @@ impl Target {
                     }
                     _ => unreachable!(),
                 }
+            }
+            "s390x" => {
+                // We don't currently support a softfloat target on this architecture.
+                // As usual, we have to reject swapping the `soft-float` target feature.
+                // The "vector" target feature does not affect the ABI for floats
+                // because the vector and float registers overlap.
+                FeatureConstraints { required: &[], incompatible: &["soft-float"] }
             }
             _ => NOTHING,
         }

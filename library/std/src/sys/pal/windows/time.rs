@@ -232,7 +232,7 @@ mod perf_counter {
 }
 
 /// A timer you can wait on.
-pub(super) struct WaitableTimer {
+pub(crate) struct WaitableTimer {
     handle: c::HANDLE,
 }
 impl WaitableTimer {

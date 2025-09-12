@@ -717,3 +717,10 @@ fn array_map_drops_unmapped_elements_on_panic() {
         assert_eq!(counter.load(Ordering::SeqCst), MAX);
     }
 }
+
+// This covers the `PartialEq::<[T]>::eq` impl for `[T; N]` when it returns false.
+#[test]
+fn array_eq() {
+    let not_true = [0u8] == [].as_slice();
+    assert!(!not_true);
+}
