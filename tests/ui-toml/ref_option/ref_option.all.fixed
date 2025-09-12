@@ -1,6 +1,6 @@
 //@revisions: private all
-//@[private] rustc-env:CLIPPY_CONF_DIR=tests/ui/ref_option/private
-//@[all] rustc-env:CLIPPY_CONF_DIR=tests/ui/ref_option/all
+//@[private] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/ref_option/private
+//@[all] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/ref_option/all
 
 #![allow(unused, clippy::needless_lifetimes, clippy::borrowed_box)]
 #![warn(clippy::ref_option)]
@@ -11,11 +11,11 @@ fn opt_gen<T>(a: Option<&T>) {}
 //~^ ref_option
 fn opt_string(a: std::option::Option<&String>) {}
 //~^ ref_option
-fn ret_string<'a>(p: &'a str) -> Option<&'a u8> {
+fn ret_u8<'a>(p: &'a str) -> Option<&'a u8> {
     //~^ ref_option
     panic!()
 }
-fn ret_string_static() -> Option<&'static u8> {
+fn ret_u8_static() -> Option<&'static u8> {
     //~^ ref_option
     panic!()
 }
@@ -26,31 +26,17 @@ fn ret_box<'a>() -> Option<&'a Box<u8>> {
     panic!()
 }
 
-pub fn pub_opt_string(a: &Option<String>) {}
+pub fn pub_opt_string(a: Option<&String>) {}
 //~[all]^ ref_option
-pub fn pub_mult_string(a: &Option<String>, b: &Option<Vec<u8>>) {}
+pub fn pub_mult_string(a: Option<&String>, b: Option<&Vec<u8>>) {}
 //~[all]^ ref_option
-
-pub trait PubTrait {
-    fn pub_trait_opt(&self, a: &Option<Vec<u8>>);
-    //~[all]^ ref_option
-    fn pub_trait_ret(&self) -> &Option<Vec<u8>>;
-    //~[all]^ ref_option
-}
-
-trait PrivateTrait {
-    fn trait_opt(&self, a: Option<&String>);
-    //~^ ref_option
-    fn trait_ret(&self) -> Option<&String>;
-    //~^ ref_option
-}
 
 pub struct PubStruct;
 
 impl PubStruct {
-    pub fn pub_opt_params(&self, a: &Option<()>) {}
+    pub fn pub_opt_params(&self, a: Option<&()>) {}
     //~[all]^ ref_option
-    pub fn pub_opt_ret(&self) -> &Option<String> {
+    pub fn pub_opt_ret(&self) -> Option<&String> {
         //~[all]^ ref_option
         panic!()
     }

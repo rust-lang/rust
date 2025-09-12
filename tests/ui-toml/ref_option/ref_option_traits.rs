@@ -1,7 +1,7 @@
 //@no-rustfix: fixes are only done to traits, not the impls
 //@revisions: private all
-//@[private] rustc-env:CLIPPY_CONF_DIR=tests/ui/ref_option/private
-//@[all] rustc-env:CLIPPY_CONF_DIR=tests/ui/ref_option/all
+//@[private] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/ref_option/private
+//@[all] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/ref_option/all
 
 #![warn(clippy::ref_option)]
 

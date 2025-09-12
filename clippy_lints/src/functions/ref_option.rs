@@ -2,22 +2,18 @@ use crate::functions::REF_OPTION;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_trait_impl_item;
 use clippy_utils::source::snippet;
-use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::ty::option_arg_ty;
 use rustc_errors::Applicability;
-use rustc_hir as hir;
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{FnDecl, HirId};
+use rustc_hir::{self as hir, FnDecl, HirId};
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, GenericArgKind, Mutability, Ty};
+use rustc_middle::ty::{self, Mutability, Ty};
+use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{Span, sym};
 
-fn check_ty<'a>(cx: &LateContext<'a>, param: &rustc_hir::Ty<'a>, param_ty: Ty<'a>, fixes: &mut Vec<(Span, String)>) {
+fn check_ty<'a>(cx: &LateContext<'a>, param: &hir::Ty<'a>, param_ty: Ty<'a>, fixes: &mut Vec<(Span, String)>) {
     if let ty::Ref(_, opt_ty, Mutability::Not) = param_ty.kind()
-        && is_type_diagnostic_item(cx, *opt_ty, sym::Option)
-        && let ty::Adt(_, opt_gen_args) = opt_ty.kind()
-        && let [gen_arg] = opt_gen_args.as_slice()
-        && let GenericArgKind::Type(gen_ty) = gen_arg.kind()
+        && let Some(gen_ty) = option_arg_ty(cx, *opt_ty)
         && !gen_ty.is_ref()
         // Need to gen the original spans, so first parsing mid, and hir parsing afterward
         && let hir::TyKind::Ref(lifetime, hir::MutTy { ty, .. }) = param.kind
