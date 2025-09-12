@@ -1,7 +1,7 @@
 use std::alloc::Allocator;
-use std::marker::PointeeSized;
 #[cfg(not(bootstrap))]
 use std::marker::Move;
+use std::marker::PointeeSized;
 
 #[diagnostic::on_unimplemented(message = "`{Self}` doesn't implement `DynSend`. \
             Add it to `rustc_data_structures::marker` or use `IntoDynSyncSend` if it's already `Send`")]

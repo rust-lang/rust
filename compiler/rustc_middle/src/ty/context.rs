@@ -1506,7 +1506,6 @@ unsafe impl DynSync for TyCtxt<'_> {}
 fn _assert_tcx_fields() {
     sync::assert_dyn_sync::<&'_ GlobalCtxt<'_>>();
     sync::assert_dyn_send::<&'_ GlobalCtxt<'_>>();
-
 }
 
 impl<'tcx> Deref for TyCtxt<'tcx> {
