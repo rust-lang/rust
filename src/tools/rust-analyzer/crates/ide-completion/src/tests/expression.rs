@@ -1869,6 +1869,298 @@ fn foo() { let x = if foo {} $0 else if true {} else {}; }
             sn ppd
         "#]],
     );
+    check(
+        r#"
+fn foo() { [if foo {} $0]}
+"#,
+        expect![[r#"
+            fn foo()  fn()
+            bt u32     u32
+            kw async
+            kw const
+            kw crate::
+            kw else
+            kw else if
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw impl for
+            kw let
+            kw letm
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
+        "#]],
+    );
+    check(
+        r#"
+fn foo() { [if foo {} el$0]}
+"#,
+        expect![[r#"
+            fn foo()  fn()
+            bt u32     u32
+            kw async
+            kw const
+            kw crate::
+            kw else
+            kw else if
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw impl for
+            kw let
+            kw letm
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
+        "#]],
+    );
+    check(
+        r#"
+fn foo() { 2 + if foo {} $0 }
+"#,
+        expect![[r#"
+            fn foo()  fn()
+            bt u32     u32
+            kw async
+            kw const
+            kw crate::
+            kw else
+            kw else if
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw impl for
+            kw let
+            kw letm
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
+        "#]],
+    );
+    check(
+        r#"
+fn foo() { -if foo {} $0 }
+"#,
+        expect![[r#"
+            fn foo()  fn()
+            bt u32     u32
+            kw async
+            kw const
+            kw crate::
+            kw else
+            kw else if
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw impl for
+            kw let
+            kw letm
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
+        "#]],
+    );
+    check(
+        r#"
+fn foo() { &mut if foo {} $0 }
+"#,
+        expect![[r#"
+            fn foo()  fn()
+            bt u32     u32
+            kw async
+            kw const
+            kw crate::
+            kw else
+            kw else if
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw impl for
+            kw let
+            kw letm
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
+        "#]],
+    );
+    check(
+        r#"
+fn foo() { return if foo {} $0 }
+"#,
+        expect![[r#"
+            fn foo()  fn()
+            bt u32     u32
+            kw async
+            kw const
+            kw crate::
+            kw else
+            kw else if
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw impl for
+            kw let
+            kw letm
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
+        "#]],
+    );
+    check(
+        r#"
+fn foo() { match () { () => if foo {} $0 } }
+"#,
+        expect![[r#"
+            kw else
+            kw else if
+            kw mut
+            kw ref
+        "#]],
+    );
+    check(
+        r#"
+fn foo() { match () { () => if foo {} $0, } }
+"#,
+        expect![[r#"
+            kw else
+            kw else if
+            kw mut
+            kw ref
+        "#]],
+    );
+    check(
+        r#"
+fn foo() { match () { () => if foo {} $0, _ => (), } }
+"#,
+        expect![[r#"
+            kw else
+            kw else if
+            kw mut
+            kw ref
+        "#]],
+    );
+    // FIXME: support else completion after ast::RecordExprField
 }
 
 #[test]
