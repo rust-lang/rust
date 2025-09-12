@@ -298,14 +298,9 @@ fn compare_method_predicate_entailment<'tcx>(
     // compatible with that of the trait method. We do this by
     // checking that `impl_fty <: trait_fty`.
     //
-    // FIXME. Unfortunately, this doesn't quite work right now because
-    // associated type normalization is not integrated into subtype
-    // checks. For the comparison to be valid, we need to
-    // normalize the associated types in the impl/trait methods
-    // first. However, because function types bind regions, just
-    // calling `FnCtxt::normalize` would have no effect on
-    // any associated types appearing in the fn arguments or return
-    // type.
+    // FIXME: We manually instantiate the trait method here as we need
+    // to manually compute its implied bounds. Otherwise this could just
+    // be `ocx.sub(impl_sig, trait_sig)`.
 
     let mut wf_tys = FxIndexSet::default();
 
