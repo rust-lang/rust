@@ -7,12 +7,12 @@ use std::field::{Field, UnalignedField, field_of};
 pub struct MyStruct(usize);
 
 unsafe impl UnalignedField for MyStruct {
-    //~^ ERROR: the `UnalignedField` trait may not be implemented manually [E0806]
+    //~^ ERROR: explicit impls for the `UnalignedField` trait are not permitted [E0322]
     type Base = ();
     type Type = ();
     const OFFSET: usize = 0;
 }
 
-unsafe impl Field for field_of!(MyStruct, 0) {} //~ ERROR: the `Field` trait may not be implemented manually [E0806]
+unsafe impl Field for field_of!(MyStruct, 0) {} //~ ERROR: explicit impls for the `Field` trait are not permitted [E0322]
 
 fn main() {}
