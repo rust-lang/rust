@@ -3449,6 +3449,7 @@ fn add_wild_args(
         cmd.cc_arg({
             let mut arg = OsString::from("-B");
             arg.push(linker_path);
+            arg.push("--no-fork");
             arg
         });
     }
