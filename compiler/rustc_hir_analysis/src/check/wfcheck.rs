@@ -1172,35 +1172,39 @@ fn check_item_fn(
     decl: &hir::FnDecl<'_>,
 ) -> Result<(), ErrorGuaranteed> {
     enter_wf_checking_ctxt(tcx, def_id, |wfcx| {
-        // does the function have an EiiImpl attribute? that contains the defid of a *macro*
-        // that was used to mark the implementation. This is a two step process.
-        for EiiImpl { eii_macro, span, .. } in
-            find_attr!(tcx.get_all_attrs(def_id), AttributeKind::EiiImpls(impls) => impls)
-                .into_iter()
-                .flatten()
-        {
-            // we expect this macro to have the `EiiMacroFor` attribute, that points to a function
-            // signature that we'd like to compare the function we're currently checking with
-            if let Some(eii_extern_target) = find_attr!(tcx.get_all_attrs(*eii_macro), AttributeKind::EiiExternTarget(EiiDecl {eii_extern_target, ..}) => *eii_extern_target)
-            {
-                let _ = compare_eii_function_types(
-                    tcx,
-                    def_id,
-                    eii_extern_target,
-                    tcx.item_name(*eii_macro),
-                    *span,
-                );
-            } else {
-                panic!(
-                    "EII impl macro {eii_macro:?} did not have an eii extern target attribute pointing to a foreign function"
-                )
-            }
-        }
+        check_eiis(tcx, def_id);
 
         let sig = tcx.fn_sig(def_id).instantiate_identity();
         check_fn_or_method(wfcx, sig, decl, def_id);
         Ok(())
     })
+}
+
+fn check_eiis(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+    // does the function have an EiiImpl attribute? that contains the defid of a *macro*
+    // that was used to mark the implementation. This is a two step process.
+    for EiiImpl { eii_macro, span, .. } in
+        find_attr!(tcx.get_all_attrs(def_id), AttributeKind::EiiImpls(impls) => impls)
+            .into_iter()
+            .flatten()
+    {
+        // we expect this macro to have the `EiiMacroFor` attribute, that points to a function
+        // signature that we'd like to compare the function we're currently checking with
+        if let Some(eii_extern_target) = find_attr!(tcx.get_all_attrs(*eii_macro), AttributeKind::EiiExternTarget(EiiDecl {eii_extern_target, ..}) => *eii_extern_target)
+        {
+            let _ = compare_eii_function_types(
+                tcx,
+                def_id,
+                eii_extern_target,
+                tcx.item_name(*eii_macro),
+                *span,
+            );
+        } else {
+            panic!(
+                "EII impl macro {eii_macro:?} did not have an eii extern target attribute pointing to a foreign function"
+            )
+        }
+    }
 }
 
 #[instrument(level = "debug", skip(tcx))]
