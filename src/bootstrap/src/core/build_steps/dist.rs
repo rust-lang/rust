@@ -570,6 +570,13 @@ impl Step for Rustc {
                     &self_contained_wild_dst_dir.join(&exe_name),
                     FileType::Executable,
                 );
+                // Pretend Wild is LD so the compiler can pick it up
+                let exe_name = exe("ld", target_compiler.host);
+                builder.copy_link(
+                    &self_contained_wild_src_dir.join(&exe_name),
+                    &self_contained_wild_dst_dir.join(&exe_name),
+                    FileType::Executable,
+                );
             }
 
             if builder.config.llvm_enabled(target_compiler.host)

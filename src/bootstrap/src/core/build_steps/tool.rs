@@ -1034,13 +1034,21 @@ pub(crate) fn copy_wild_artifacts(
     let libdir_bin = builder.sysroot_target_bindir(target_compiler, target);
     t!(fs::create_dir_all(&libdir_bin));
 
+    let dst_exe = exe("rust-wild", target);
+
+    // This seems wrong
+    builder.copy_link(
+        &wild_wrapper.tool.tool_path,
+        &libdir_bin.join(dst_exe),
+        FileType::Executable,
+    );
+
     let self_contained_wild_dir = libdir_bin.join("wild-gcc-ld");
     t!(fs::create_dir_all(&self_contained_wild_dir));
 
-    let wild_name = "wild";
     builder.copy_link(
         &wild_wrapper.tool.tool_path,
-        &self_contained_wild_dir.join(exe(wild_name, target)),
+        &self_contained_wild_dir.join(exe("wild", target)),
         FileType::Executable,
     );
     // Pretend it's `ld` binary so GCC picks it
