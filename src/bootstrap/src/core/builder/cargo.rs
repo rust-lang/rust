@@ -1227,6 +1227,11 @@ impl Builder<'_> {
             rustflags.arg("-Zehcont-guard");
         }
 
+        // Optionally override the rc.exe when compiling rustc on Windows.
+        if let Some(windows_rc) = &self.config.windows_rc {
+            cargo.env("RUSTC_WINDOWS_RC", windows_rc);
+        }
+
         // For `cargo doc` invocations, make rustdoc print the Rust version into the docs
         // This replaces spaces with tabs because RUSTDOCFLAGS does not
         // support arguments with regular spaces. Hopefully someday Cargo will
