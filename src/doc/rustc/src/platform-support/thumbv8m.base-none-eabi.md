@@ -22,7 +22,7 @@ only option because there is no FPU support in [Armv8-M] Baseline.
 
 ## Target maintainers
 
-* [Rust Embedded Devices Working Group Arm Team](https://github.com/rust-embedded/wg?tab=readme-ov-file#the-arm-team)
+[Rust Embedded Devices Working Group Arm Team](https://github.com/rust-embedded/wg?tab=readme-ov-file#the-arm-team)
 
 ## Target CPU and Target Feature options
 

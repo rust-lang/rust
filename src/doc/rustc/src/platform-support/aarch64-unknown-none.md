@@ -13,7 +13,7 @@ Processors in this family include the [Arm Cortex-A35, 53, 76, etc][aarch64-cpus
 
 ## Target maintainers
 
-* [Rust Embedded Devices Working Group Arm Team]
+[Rust Embedded Devices Working Group Arm Team]
 
 [Rust Embedded Devices Working Group Arm Team]: https://github.com/rust-embedded/wg?tab=readme-ov-file#the-arm-team
 
