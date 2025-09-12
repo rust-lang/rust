@@ -31,21 +31,22 @@ jobs:
             os: ubuntu-24.04-arm
             multiarch: armhf
             gcc_cross: arm-linux-gnueabihf
-          - host_target: riscv64gc-unknown-linux-gnu
-            os: ubuntu-latest
-            multiarch: riscv64
-            gcc_cross: riscv64-linux-gnu
-            qemu: true
-          - host_target: s390x-unknown-linux-gnu
-            os: ubuntu-latest
-            multiarch: s390x
-            gcc_cross: s390x-linux-gnu
-            qemu: true
-          - host_target: powerpc64le-unknown-linux-gnu
-            os: ubuntu-latest
-            multiarch: ppc64el
-            gcc_cross: powerpc64le-linux-gnu
-            qemu: true
+          # Disabled due to Ubuntu repo trouble
+          # - host_target: riscv64gc-unknown-linux-gnu
+          #   os: ubuntu-latest
+          #   multiarch: riscv64
+          #   gcc_cross: riscv64-linux-gnu
+          #   qemu: true
+          # - host_target: s390x-unknown-linux-gnu
+          #   os: ubuntu-latest
+          #   multiarch: s390x
+          #   gcc_cross: s390x-linux-gnu
+          #   qemu: true
+          # - host_target: powerpc64le-unknown-linux-gnu
+          #   os: ubuntu-latest
+          #   multiarch: ppc64el
+          #   gcc_cross: powerpc64le-linux-gnu
+          #   qemu: true
           - host_target: aarch64-apple-darwin
             os: macos-latest
           - host_target: i686-pc-windows-msvc
@@ -67,7 +68,7 @@ jobs:
       - name: install multiarch
         if: ${{ matrix.multiarch != '' }}
         run: |
-          # s390x, ppc64el need Ubuntu Ports to be in the mirror list
+          # s390x, ppc64el, riscv64 need Ubuntu Ports to be in the mirror list
           sudo bash -c "echo 'https://ports.ubuntu.com/	priority:4' >> /etc/apt/apt-mirrors.txt"
           # Add architecture
           sudo dpkg --add-architecture ${{ matrix.multiarch }}
