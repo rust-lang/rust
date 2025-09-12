@@ -541,4 +541,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "Added a new option `rust.break-on-ice` to control if internal compiler errors cause a debug break on Windows.",
     },
+    ChangeInfo {
+        change_id: 146435,
+        severity: ChangeSeverity::Info,
+        summary: "The default value of the `gcc.download-ci-gcc` option has been changed to `true`.",
+    },
 ];
