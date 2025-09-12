@@ -170,12 +170,6 @@ LL |             A::new::<submod::B>(submod::B {})
    |             ^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-  --> tests/ui/use_self.rs:533:13
-   |
-LL |             S2::new()
-   |             ^^ help: use the applicable keyword: `Self`
-
-error: unnecessary structure name repetition
   --> tests/ui/use_self.rs:571:17
    |
 LL |                 Foo::Bar => unimplemented!(),
@@ -259,5 +253,5 @@ error: unnecessary structure name repetition
 LL |                 E::A => {},
    |                 ^ help: use the applicable keyword: `Self`
 
-error: aborting due to 43 previous errors
+error: aborting due to 42 previous errors
 

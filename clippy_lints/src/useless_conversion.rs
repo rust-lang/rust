@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::{snippet, snippet_with_context};
 use clippy_utils::sugg::{DiagExt as _, Sugg};
-use clippy_utils::ty::{get_type_diagnostic_name, is_copy, is_type_diagnostic_item, same_type_and_consts};
+use clippy_utils::ty::{get_type_diagnostic_name, is_copy, is_type_diagnostic_item, same_type_modulo_regions};
 use clippy_utils::{
     get_parent_expr, is_inherent_method_call, is_trait_item, is_trait_method, is_ty_alias, path_to_local, sym,
 };
@@ -184,7 +184,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                     && (is_trait_item(cx, arg, sym::Into) || is_trait_item(cx, arg, sym::From))
                     && let ty::FnDef(_, args) = cx.typeck_results().expr_ty(arg).kind()
                     && let &[from_ty, to_ty] = args.into_type_list(cx.tcx).as_slice()
-                    && same_type_and_consts(from_ty, to_ty)
+                    && same_type_modulo_regions(from_ty, to_ty)
                 {
                     span_lint_and_then(
                         cx,
@@ -207,7 +207,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                 if is_trait_method(cx, e, sym::Into) && name.ident.name == sym::into {
                     let a = cx.typeck_results().expr_ty(e);
                     let b = cx.typeck_results().expr_ty(recv);
-                    if same_type_and_consts(a, b) {
+                    if same_type_modulo_regions(a, b) {
                         let mut app = Applicability::MachineApplicable;
                         let sugg = snippet_with_context(cx, recv.span, e.span.ctxt(), "<expr>", &mut app).0;
                         span_lint_and_sugg(
@@ -324,7 +324,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                     // If the types are identical then .into_iter() can be removed, unless the type
                     // implements Copy, in which case .into_iter() returns a copy of the receiver and
                     // cannot be safely omitted.
-                    if same_type_and_consts(a, b) && !is_copy(cx, b) {
+                    if same_type_modulo_regions(a, b) && !is_copy(cx, b) {
                         // Below we check if the parent method call meets the following conditions:
                         // 1. First parameter is `&mut self` (requires mutable reference)
                         // 2. Second parameter implements the `FnMut` trait (e.g., Iterator::any)
@@ -371,7 +371,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                     && is_type_diagnostic_item(cx, a, sym::Result)
                     && let ty::Adt(_, args) = a.kind()
                     && let Some(a_type) = args.types().next()
-                    && same_type_and_consts(a_type, b)
+                    && same_type_modulo_regions(a_type, b)
                 {
                     span_lint_and_help(
                         cx,
@@ -396,7 +396,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                         && is_type_diagnostic_item(cx, a, sym::Result)
                         && let ty::Adt(_, args) = a.kind()
                         && let Some(a_type) = args.types().next()
-                        && same_type_and_consts(a_type, b)
+                        && same_type_modulo_regions(a_type, b)
                     {
                         let hint = format!("consider removing `{}()`", snippet(cx, path.span, "TryFrom::try_from"));
                         span_lint_and_help(
@@ -407,7 +407,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                             None,
                             hint,
                         );
-                    } else if name == sym::from_fn && same_type_and_consts(a, b) {
+                    } else if name == sym::from_fn && same_type_modulo_regions(a, b) {
                         let mut app = Applicability::MachineApplicable;
                         let sugg = Sugg::hir_with_context(cx, arg, e.span.ctxt(), "<expr>", &mut app).maybe_paren();
                         let sugg_msg = format!("consider removing `{}()`", snippet(cx, path.span, "From::from"));
