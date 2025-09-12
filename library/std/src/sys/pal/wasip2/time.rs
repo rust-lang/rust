@@ -25,7 +25,7 @@ impl Instant {
         Some(Instant(self.0.checked_sub(*other)?))
     }
 
-    pub(super) fn as_duration(&self) -> &Duration {
+    pub(crate) fn as_duration(&self) -> &Duration {
         &self.0
     }
 }

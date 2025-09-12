@@ -30,6 +30,10 @@ trait TestableFloat: Sized {
     const EPS_ADD: Self;
     const EPS_MUL: Self;
     const EPS_DIV: Self;
+    const RAW_1: Self;
+    const RAW_12_DOT_5: Self;
+    const RAW_1337: Self;
+    const RAW_MINUS_14_DOT_25: Self;
 }
 
 impl TestableFloat for f16 {
@@ -50,6 +54,10 @@ impl TestableFloat for f16 {
     const EPS_ADD: Self = if cfg!(miri) { 1e1 } else { 0.0 };
     const EPS_MUL: Self = if cfg!(miri) { 1e3 } else { 0.0 };
     const EPS_DIV: Self = if cfg!(miri) { 1e0 } else { 0.0 };
+    const RAW_1: Self = Self::from_bits(0x3c00);
+    const RAW_12_DOT_5: Self = Self::from_bits(0x4a40);
+    const RAW_1337: Self = Self::from_bits(0x6539);
+    const RAW_MINUS_14_DOT_25: Self = Self::from_bits(0xcb20);
 }
 
 impl TestableFloat for f32 {
@@ -72,6 +80,10 @@ impl TestableFloat for f32 {
     const EPS_ADD: Self = if cfg!(miri) { 1e-3 } else { 0.0 };
     const EPS_MUL: Self = if cfg!(miri) { 1e-1 } else { 0.0 };
     const EPS_DIV: Self = if cfg!(miri) { 1e-4 } else { 0.0 };
+    const RAW_1: Self = Self::from_bits(0x3f800000);
+    const RAW_12_DOT_5: Self = Self::from_bits(0x41480000);
+    const RAW_1337: Self = Self::from_bits(0x44a72000);
+    const RAW_MINUS_14_DOT_25: Self = Self::from_bits(0xc1640000);
 }
 
 impl TestableFloat for f64 {
@@ -90,6 +102,10 @@ impl TestableFloat for f64 {
     const EPS_ADD: Self = if cfg!(miri) { 1e-6 } else { 0.0 };
     const EPS_MUL: Self = if cfg!(miri) { 1e-6 } else { 0.0 };
     const EPS_DIV: Self = if cfg!(miri) { 1e-6 } else { 0.0 };
+    const RAW_1: Self = Self::from_bits(0x3ff0000000000000);
+    const RAW_12_DOT_5: Self = Self::from_bits(0x4029000000000000);
+    const RAW_1337: Self = Self::from_bits(0x4094e40000000000);
+    const RAW_MINUS_14_DOT_25: Self = Self::from_bits(0xc02c800000000000);
 }
 
 impl TestableFloat for f128 {
@@ -108,6 +124,10 @@ impl TestableFloat for f128 {
     const EPS_ADD: Self = if cfg!(miri) { 1e-6 } else { 0.0 };
     const EPS_MUL: Self = if cfg!(miri) { 1e-6 } else { 0.0 };
     const EPS_DIV: Self = if cfg!(miri) { 1e-6 } else { 0.0 };
+    const RAW_1: Self = Self::from_bits(0x3fff0000000000000000000000000000);
+    const RAW_12_DOT_5: Self = Self::from_bits(0x40029000000000000000000000000000);
+    const RAW_1337: Self = Self::from_bits(0x40094e40000000000000000000000000);
+    const RAW_MINUS_14_DOT_25: Self = Self::from_bits(0xc002c800000000000000000000000000);
 }
 
 /// Determine the tolerance for values of the argument type.
@@ -250,6 +270,8 @@ macro_rules! float_test {
             $( $( #[$f16_meta] )+ )?
             fn test_f16() {
                 type $fty = f16;
+                #[allow(unused)]
+                const fn flt (x: $fty) -> $fty { x }
                 $test
             }
 
@@ -257,6 +279,8 @@ macro_rules! float_test {
             $( $( #[$f32_meta] )+ )?
             fn test_f32() {
                 type $fty = f32;
+                #[allow(unused)]
+                const fn flt (x: $fty) -> $fty { x }
                 $test
             }
 
@@ -264,6 +288,8 @@ macro_rules! float_test {
             $( $( #[$f64_meta] )+ )?
             fn test_f64() {
                 type $fty = f64;
+                #[allow(unused)]
+                const fn flt (x: $fty) -> $fty { x }
                 $test
             }
 
@@ -271,6 +297,8 @@ macro_rules! float_test {
             $( $( #[$f128_meta] )+ )?
             fn test_f128() {
                 type $fty = f128;
+                #[allow(unused)]
+                const fn flt (x: $fty) -> $fty { x }
                 $test
             }
 
@@ -293,6 +321,8 @@ macro_rules! float_test {
                 $( $( #[$f16_const_meta] )+ )?
                 fn test_f16() {
                     type $fty = f16;
+                    #[allow(unused)]
+                    const fn flt (x: $fty) -> $fty { x }
                     const { $test }
                 }
 
@@ -300,6 +330,8 @@ macro_rules! float_test {
                 $( $( #[$f32_const_meta] )+ )?
                 fn test_f32() {
                     type $fty = f32;
+                    #[allow(unused)]
+                    const fn flt (x: $fty) -> $fty { x }
                     const { $test }
                 }
 
@@ -307,6 +339,8 @@ macro_rules! float_test {
                 $( $( #[$f64_const_meta] )+ )?
                 fn test_f64() {
                     type $fty = f64;
+                    #[allow(unused)]
+                    const fn flt (x: $fty) -> $fty { x }
                     const { $test }
                 }
 
@@ -314,6 +348,8 @@ macro_rules! float_test {
                 $( $( #[$f128_const_meta] )+ )?
                 fn test_f128() {
                     type $fty = f128;
+                    #[allow(unused)]
+                    const fn flt (x: $fty) -> $fty { x }
                     const { $test }
                 }
             }
@@ -1477,5 +1513,32 @@ float_test! {
         assert_approx_eq!(a.algebraic_mul(b), a * b, Float::EPS_MUL);
         assert_approx_eq!(a.algebraic_div(b), a / b, Float::EPS_DIV);
         assert_approx_eq!(a.algebraic_rem(b), a % b, Float::EPS_DIV);
+    }
+}
+
+float_test! {
+    name: to_bits_conv,
+    attrs: {
+        f16: #[cfg(target_has_reliable_f16)],
+        f128: #[cfg(target_has_reliable_f128)],
+    },
+    test<Float> {
+        assert_biteq!(flt(1.0), Float::RAW_1);
+        assert_biteq!(flt(12.5), Float::RAW_12_DOT_5);
+        assert_biteq!(flt(1337.0), Float::RAW_1337);
+        assert_biteq!(flt(-14.25), Float::RAW_MINUS_14_DOT_25);
+        assert_biteq!(Float::RAW_1, 1.0);
+        assert_biteq!(Float::RAW_12_DOT_5, 12.5);
+        assert_biteq!(Float::RAW_1337, 1337.0);
+        assert_biteq!(Float::RAW_MINUS_14_DOT_25, -14.25);
+
+        // Check that NaNs roundtrip their bits regardless of signaling-ness
+        let masked_nan1 = Float::NAN.to_bits() ^ Float::NAN_MASK1;
+        let masked_nan2 = Float::NAN.to_bits() ^ Float::NAN_MASK2;
+        assert!(Float::from_bits(masked_nan1).is_nan());
+        assert!(Float::from_bits(masked_nan2).is_nan());
+
+        assert_biteq!(Float::from_bits(masked_nan1), Float::from_bits(masked_nan1));
+        assert_biteq!(Float::from_bits(masked_nan2), Float::from_bits(masked_nan2));
     }
 }

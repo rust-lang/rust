@@ -550,7 +550,7 @@ impl Builder {
             }
 
             if let Some(name) = their_thread.cname() {
-                imp::Thread::set_name(name);
+                imp::set_name(name);
             }
 
             let f = f.into_inner();
@@ -763,7 +763,7 @@ where
 /// [`Mutex`]: crate::sync::Mutex
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn yield_now() {
-    imp::Thread::yield_now()
+    imp::yield_now()
 }
 
 /// Determines whether the current thread is unwinding because of panic.
@@ -884,7 +884,7 @@ pub fn sleep_ms(ms: u32) {
 /// ```
 #[stable(feature = "thread_sleep", since = "1.4.0")]
 pub fn sleep(dur: Duration) {
-    imp::Thread::sleep(dur)
+    imp::sleep(dur)
 }
 
 /// Puts the current thread to sleep until the specified deadline has passed.
@@ -983,7 +983,7 @@ pub fn sleep(dur: Duration) {
 /// ```
 #[unstable(feature = "thread_sleep_until", issue = "113752")]
 pub fn sleep_until(deadline: Instant) {
-    imp::Thread::sleep_until(deadline)
+    imp::sleep_until(deadline)
 }
 
 /// Used to ensure that `park` and `park_timeout` do not unwind, as that can
