@@ -72,8 +72,7 @@ impl SystemTime {
         }
     }
 
-    #[rustc_const_unstable(feature = "const_system_time", issue = "144517")]
-    const fn from_intervals(intervals: i64) -> SystemTime {
+    fn from_intervals(intervals: i64) -> SystemTime {
         SystemTime {
             t: c::FILETIME {
                 dwLowDateTime: intervals as u32,
@@ -82,13 +81,11 @@ impl SystemTime {
         }
     }
 
-    #[rustc_const_unstable(feature = "const_system_time", issue = "144517")]
-    const fn intervals(&self) -> i64 {
+    fn intervals(&self) -> i64 {
         (self.t.dwLowDateTime as i64) | ((self.t.dwHighDateTime as i64) << 32)
     }
 
-    #[rustc_const_unstable(feature = "const_system_time", issue = "144517")]
-    pub const fn sub_time(&self, other: &SystemTime) -> Result<Duration, Duration> {
+    pub fn sub_time(&self, other: &SystemTime) -> Result<Duration, Duration> {
         let me = self.intervals();
         let other = other.intervals();
         if me >= other {
@@ -98,14 +95,12 @@ impl SystemTime {
         }
     }
 
-    #[rustc_const_unstable(feature = "const_system_time", issue = "144517")]
-    pub const fn checked_add_duration(&self, other: &Duration) -> Option<SystemTime> {
+    pub fn checked_add_duration(&self, other: &Duration) -> Option<SystemTime> {
         let intervals = self.intervals().checked_add(checked_dur2intervals(other)?)?;
         Some(SystemTime::from_intervals(intervals))
     }
 
-    #[rustc_const_unstable(feature = "const_system_time", issue = "144517")]
-    pub const fn checked_sub_duration(&self, other: &Duration) -> Option<SystemTime> {
+    pub fn checked_sub_duration(&self, other: &Duration) -> Option<SystemTime> {
         let intervals = self.intervals().checked_sub(checked_dur2intervals(other)?)?;
         Some(SystemTime::from_intervals(intervals))
     }
@@ -155,18 +150,15 @@ impl Hash for SystemTime {
     }
 }
 
-#[rustc_const_unstable(feature = "const_system_time", issue = "144517")]
-const fn checked_dur2intervals(dur: &Duration) -> Option<i64> {
-    // FIXME: const TryInto
-    let secs = dur
-        .as_secs()
+fn checked_dur2intervals(dur: &Duration) -> Option<i64> {
+    dur.as_secs()
         .checked_mul(INTERVALS_PER_SEC)?
-        .checked_add(dur.subsec_nanos() as u64 / 100)?;
-    if secs <= i64::MAX as u64 { Some(secs.cast_signed()) } else { None }
+        .checked_add(dur.subsec_nanos() as u64 / 100)?
+        .try_into()
+        .ok()
 }
 
-#[rustc_const_unstable(feature = "const_system_time", issue = "144517")]
-const fn intervals2dur(intervals: u64) -> Duration {
+fn intervals2dur(intervals: u64) -> Duration {
     Duration::new(intervals / INTERVALS_PER_SEC, ((intervals % INTERVALS_PER_SEC) * 100) as u32)
 }
 
