@@ -29,18 +29,6 @@ LL | #[no_link]
    | ^^^^^^^^^^
 
 error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:27:1
-   |
-LL | #![no_std]
-   | ^^^^^^^^^^ help: remove this attribute
-   |
-note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:26:1
-   |
-LL | #![no_std]
-   | ^^^^^^^^^^
-
-error: unused attribute
   --> $DIR/unused-attr-duplicate.rs:31:1
    |
 LL | #![windows_subsystem = "windows"]
@@ -303,6 +291,18 @@ note: attribute also specified here
 LL | #![type_length_limit = "1048576"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+error: unused attribute
+  --> $DIR/unused-attr-duplicate.rs:27:1
+   |
+LL | #![no_std]
+   | ^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/unused-attr-duplicate.rs:26:1
+   |
+LL | #![no_std]
+   | ^^^^^^^^^^
 
 error: unused attribute
   --> $DIR/unused-attr-duplicate.rs:29:1
