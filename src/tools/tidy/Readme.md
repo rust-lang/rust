@@ -4,13 +4,14 @@ Tidy is the Rust project's custom internal linter and a crucial part of our test
 This document will cover how to use tidy, the specific checks tidy performs, and using tidy directives to manage its behavior. By understanding and utilizing tidy, you can help us maintain the high standards of the Rust project.
 ## Tidy Checks
 ### Style and Code Quality
-These lints focus on enforcing consistent formatting, style, and general code health. They ensure the codebase is readable, maintainable, and follows established conventions.
+These lints focus on enforcing consistent formatting, style, and general code health.
 * [`alphabetical`](https://doc.rust-lang.org/nightly/nightly-rustc/tidy/alphabetical/index.html): Checks that lists are sorted alphabetically
 * [`style`](https://doc.rust-lang.org/nightly/nightly-rustc/tidy/style/index.html): Check to enforce various stylistic guidelines on the Rust codebase.
 * [`filenames`](https://doc.rust-lang.org/nightly/nightly-rustc/tidy/filenames/index.html): Check to prevent invalid characters in file names.
 * [`pal`](https://doc.rust-lang.org/nightly/nightly-rustc/tidy/pal/index.html): Check to enforce rules about platform-specific code in std.
 * [`target_policy`](https://doc.rust-lang.org/nightly/nightly-rustc/tidy/target_policy/index.html): Check for target tier policy compliance.
 * [`error_codes`](https://doc.rust-lang.org/nightly/nightly-rustc/tidy/error_codes/index.html): Check to ensure error codes are properly documented and tested.
+
 ### Infrastructure
 These checks focus on the integrity of the project's dependencies, internal tools, and documentation.
 * [`bins`](https://doc.rust-lang.org/nightly/nightly-rustc/tidy/bins/index.html): Prevent stray binaries from being checked into the source tree.
@@ -19,6 +20,7 @@ These checks focus on the integrity of the project's dependencies, internal tool
 * [`gcc_submodule`](https://doc.rust-lang.org/nightly/nightly-rustc/tidy/gcc_submodule/index.html): Check that the `src/gcc` submodule version is valid.
 * [`triagebot`](https://doc.rust-lang.org/nightly/nightly-rustc/tidy/triagebot/index.html): Check to ensure paths mentioned in `triagebot.toml` exist in the project.
 * [`x_version`](https://doc.rust-lang.org/nightly/nightly-rustc/tidy/x_version/index.html): Validates the current version of the `x` tool.
+
 * [`edition`](https://doc.rust-lang.org/nightly/nightly-rustc/tidy/edition/index.html) / [`features`](https://doc.rust-lang.org/nightly/nightly-rustc/tidy/features/index.html): Check for a valid Rust edition and proper ordering of unstable features.
 * [`rustdoc_css_themes`](https://doc.rust-lang.org/nightly/nightly-rustc/tidy/rustdoc_css_themes/index.html) / [`rustdoc_templates`](https://doc.rust-lang.org/nightly/nightly-rustc/tidy/rustdoc_templates/index.html): Verify that Rust documentation templates and themes are correct.
 * [`unstable_book`](https://doc.rust-lang.org/nightly/nightly-rustc/tidy/unstable_book/index.html): Synchronizes the unstable book with unstable features.
@@ -32,7 +34,12 @@ These checks ensure that tests are correctly structured, cleaned up, and free of
 * [`rustdoc_gui_tests`](https://doc.rust-lang.org/nightly/nightly-rustc/tidy/rustdoc_gui_tests/index.html): Checks that rustdoc gui tests start with a small description
 * [`rustdoc_json`](https://doc.rust-lang.org/nightly/nightly-rustc/tidy/rustdoc_json/index.html): Verify that `FORMAT_VERSION` is in sync with `rust-json-types`.
 ## Using Tidy
-Tidy will automatically run every time `./x test` is used and as part of the CI on every PR. So, it's a good idea to run it locally first and catch any errors before the CI fails.
+
+Tidy is used in a number of different ways.
+* Every time `./x test` is used tidy will run automatically.
+
+* On every pull request, tidy will run automatically during CI checks.
+* Optionally, with the use of git-hooks, tidy can run locally on every push. This can be setup with `./x setup`. See the [rustc-dev-guide](https://rustc-dev-guide.rust-lang.org/building/suggested.html#installing-a-pre-push-hook) for more information.
 
 You can run tidy manually with:
 
@@ -49,15 +56,18 @@ Example usage:
 `./x test tidy --extra-checks=py,cpp,js,spellcheck`
 
 All options for `--extra-checks`:
-* `cpp` `cpp:fmt`
-* `py` `py:lint` `py:fmt`
-* `js` `js:lint` `js:fmt` `js:typecheck`
-* `shell` `shell:lint`
+* `cpp`, `cpp:fmt`
+* `py`, `py:lint`, `py:fmt`
+* `js`, `js:lint`, `js:fmt`, `js:typecheck`
+* `shell`, `shell:lint`
 * `spellcheck`
+
+Default values for tidy's `extra-checks` can be set in `bootstrap.toml`. For example, `build.tidy-extra-checks = "js,py"`.
 
 Any argument without a suffix (eg. `py` or `js`) will include all possible checks. For example, `--extra-checks=js` is the same as `extra-checks=js:lint,js:fmt,js:typecheck`.
 
 Any argument can be prefixed with `auto:` to only run if relevant files are modified (eg. `--extra-checks=auto:py`).
+
 
 `extra-checks` always runs in addition to the base tidy run. Additionally, you can pass in a specific file or directory to check only those files with an `extra-check`. For example:
 
@@ -68,7 +78,6 @@ Any argument can be prefixed with `auto:` to only run if relevant files are modi
 ## Tidy Directives
 
 Tidy directives are special comments that help tidy operate.
-
 
 Tidy directives can be used in the following types of comments:
 * `// `
@@ -90,7 +99,6 @@ You might find yourself needing to ignore a specific tidy style check and can do
 * `ignore-tidy-dbg`
 * `ignore-tidy-odd-backticks`
 * `ignore-tidy-todo`
-
 
 Some checks, like `alphabetical`, require a tidy directive to use:
 ```
