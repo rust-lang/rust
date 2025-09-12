@@ -17,7 +17,7 @@ nonpoison_and_poison_unwrap_test!(
     }
 );
 
-#[cfg_attr(any(target_os = "emscripten", target_os = "wasi"), ignore)] // no threads
+#[cfg(not(any(target_os = "emscripten", target_os = "wasi")))] // No threads.
 nonpoison_and_poison_unwrap_test!(
     name: notify_one,
     test_body: {
@@ -38,7 +38,7 @@ nonpoison_and_poison_unwrap_test!(
     }
 );
 
-#[cfg_attr(any(target_os = "emscripten", target_os = "wasi"), ignore)] // no threads
+#[cfg(not(any(target_os = "emscripten", target_os = "wasi")))] // No threads.
 nonpoison_and_poison_unwrap_test!(
     name: notify_all,
     test_body: {
@@ -79,7 +79,7 @@ nonpoison_and_poison_unwrap_test!(
     }
 );
 
-#[cfg_attr(any(target_os = "emscripten", target_os = "wasi"), ignore)] // no threads
+#[cfg(not(any(target_os = "emscripten", target_os = "wasi")))] // No threads.
 nonpoison_and_poison_unwrap_test!(
     name: test_mutex_arc_condvar,
     test_body: {
@@ -116,7 +116,7 @@ nonpoison_and_poison_unwrap_test!(
     }
 );
 
-#[cfg_attr(any(target_os = "emscripten", target_os = "wasi"), ignore)] // no threads
+#[cfg(not(any(target_os = "emscripten", target_os = "wasi")))] // No threads.
 nonpoison_and_poison_unwrap_test!(
     name: wait_while,
     test_body: {
@@ -141,7 +141,7 @@ nonpoison_and_poison_unwrap_test!(
     }
 );
 
-#[cfg_attr(any(target_os = "emscripten", target_os = "wasi"), ignore)] // no threads
+#[cfg(not(any(target_os = "emscripten", target_os = "wasi")))] // No threads.
 nonpoison_and_poison_unwrap_test!(
     name: wait_timeout_wait,
     test_body: {
@@ -164,7 +164,7 @@ nonpoison_and_poison_unwrap_test!(
     }
 );
 
-#[cfg_attr(any(target_os = "emscripten", target_os = "wasi"), ignore)] // no threads
+#[cfg(not(any(target_os = "emscripten", target_os = "wasi")))] // No threads.
 nonpoison_and_poison_unwrap_test!(
     name: wait_timeout_while_wait,
     test_body: {
@@ -180,7 +180,7 @@ nonpoison_and_poison_unwrap_test!(
     }
 );
 
-#[cfg_attr(any(target_os = "emscripten", target_os = "wasi"), ignore)] // no threads
+#[cfg(not(any(target_os = "emscripten", target_os = "wasi")))] // No threads.
 nonpoison_and_poison_unwrap_test!(
     name: wait_timeout_while_instant_satisfy,
     test_body: {
@@ -197,7 +197,7 @@ nonpoison_and_poison_unwrap_test!(
     }
 );
 
-#[cfg_attr(any(target_os = "emscripten", target_os = "wasi"), ignore)] // no threads
+#[cfg(not(any(target_os = "emscripten", target_os = "wasi")))] // No threads.
 nonpoison_and_poison_unwrap_test!(
     name: wait_timeout_while_wake,
     test_body: {
@@ -226,7 +226,7 @@ nonpoison_and_poison_unwrap_test!(
     }
 );
 
-#[cfg_attr(any(target_os = "emscripten", target_os = "wasi"), ignore)] // no threads
+#[cfg(not(any(target_os = "emscripten", target_os = "wasi")))] // No threads.
 nonpoison_and_poison_unwrap_test!(
     name: wait_timeout_wake,
     test_body: {
