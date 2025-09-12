@@ -92,6 +92,12 @@ macro_rules! combinations {
     }};
 }
 
+macro_rules! int_struct {
+    ($n: literal) => {
+        struct ${concat(E, $n)};
+    }
+}
+
 fn main() {
     create_things!(behold);
     behold_separated_idents_in_a_fn();
@@ -112,4 +118,16 @@ fn main() {
     assert_eq!(VAR_123, 2);
 
     combinations!(_hello, "a", b, "b");
+
+    int_struct!(1_0);
+    int_struct!(2);
+    int_struct!(3___0);
+    int_struct!(7_);
+    int_struct!(08);
+
+    let _ = E1_0;
+    let _ = E2;
+    let _ = E3___0;
+    let _ = E7_;
+    let _ = E08;
 }
