@@ -1,4 +1,5 @@
 //@no-rustfix: fixes are only done to traits, not the impls
+//@aux-build:../../ui/auxiliary/proc_macros.rs
 //@revisions: private all
 //@[private] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/ref_option/private
 //@[all] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/ref_option/all
@@ -35,6 +36,36 @@ impl PrivateTrait for PrivateStruct {
     fn trait_ret(&self) -> &Option<String> {
         panic!()
     }
+}
+
+pub mod external {
+    proc_macros::external!(
+        pub trait PubTrait {
+            fn pub_trait_opt(&self, a: &Option<Vec<u8>>);
+            fn pub_trait_ret(&self) -> &Option<Vec<u8>>;
+        }
+
+        trait PrivateTrait {
+            fn trait_opt(&self, a: &Option<String>);
+            fn trait_ret(&self) -> &Option<String>;
+        }
+    );
+}
+
+pub mod proc_macros {
+    proc_macros::with_span!(
+        span
+
+        pub trait PubTrait {
+            fn pub_trait_opt(&self, a: &Option<Vec<u8>>);
+            fn pub_trait_ret(&self) -> &Option<Vec<u8>>;
+        }
+
+        trait PrivateTrait {
+            fn trait_opt(&self, a: &Option<String>);
+            fn trait_ret(&self) -> &Option<String>;
+        }
+    );
 }
 
 fn main() {}

@@ -1,3 +1,4 @@
+//@aux-build:../../ui/auxiliary/proc_macros.rs
 //@revisions: private all
 //@[private] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/ref_option/private
 //@[all] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/ref_option/all
@@ -60,6 +61,54 @@ fn lambdas() {
     // Not handled for now, not sure if we should
     let x = |a: &Option<String>| {};
     let x = |a: &Option<String>| -> &Option<String> { panic!() };
+}
+
+pub mod external {
+    proc_macros::external!(
+        fn opt_u8(a: &Option<u8>) {}
+        fn ret_u8<'a>(p: &'a str) -> &'a Option<u8> {
+            panic!()
+        }
+        pub fn pub_opt_u8(a: &Option<u8>) {}
+
+        pub struct PubStruct;
+        impl PubStruct {
+            pub fn pub_opt_params(&self, a: &Option<()>) {}
+            pub fn pub_opt_ret(&self) -> &Option<String> {
+                panic!()
+            }
+
+            fn private_opt_params(&self, a: &Option<()>) {}
+            fn private_opt_ret(&self) -> &Option<String> {
+                panic!()
+            }
+        }
+    );
+}
+
+pub mod proc_macros {
+    proc_macros::with_span!(
+        span
+
+        fn opt_u8(a: &Option<u8>) {}
+        fn ret_u8<'a>(p: &'a str) -> &'a Option<u8> {
+            panic!()
+        }
+        pub fn pub_opt_u8(a: &Option<u8>) {}
+
+        pub struct PubStruct;
+        impl PubStruct {
+            pub fn pub_opt_params(&self, a: &Option<()>) {}
+            pub fn pub_opt_ret(&self) -> &Option<String> {
+                panic!()
+            }
+
+            fn private_opt_params(&self, a: &Option<()>) {}
+            fn private_opt_ret(&self) -> &Option<String> {
+                panic!()
+            }
+        }
+    );
 }
 
 fn main() {}
