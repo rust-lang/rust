@@ -57,7 +57,7 @@ fn run_eslint(
             if exit_status.success() {
                 return Ok(());
             }
-            Err(super::Error::FailedCheck("eslint command failed"))
+            Err(super::Error::FailedCheck("eslint"))
         }
         Err(error) => Err(super::Error::Generic(format!("eslint command failed: {error:?}"))),
     }
@@ -94,7 +94,7 @@ pub(super) fn typecheck(outdir: &Path, librustdoc_path: &Path) -> Result<(), sup
             if exit_status.success() {
                 return Ok(());
             }
-            Err(super::Error::FailedCheck("tsc command failed"))
+            Err(super::Error::FailedCheck("tsc"))
         }
         Err(error) => Err(super::Error::Generic(format!("tsc command failed: {error:?}"))),
     }
@@ -112,7 +112,7 @@ pub(super) fn es_check(outdir: &Path, librustdoc_path: &Path) -> Result<(), supe
             if exit_status.success() {
                 return Ok(());
             }
-            Err(super::Error::FailedCheck("es-check command failed"))
+            Err(super::Error::FailedCheck("es-check"))
         }
         Err(error) => Err(super::Error::Generic(format!("es-check command failed: {error:?}"))),
     }
