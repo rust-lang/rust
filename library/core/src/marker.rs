@@ -1388,4 +1388,5 @@ marker_impls! {
         {T: ?Sized + PointeeSized + ?Move} *mut T,
         {T: ?Sized + PointeeSized + ?Move} &T,
         {T: ?Sized + PointeeSized + ?Move} &mut T,
+        {T: ?Sized + PointeeSized + ?Move} PhantomData<T>,
 }
