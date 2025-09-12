@@ -63,7 +63,7 @@ pub use rustc_type_ir::solve::SizedTraitKind;
 pub use rustc_type_ir::*;
 #[allow(hidden_glob_reexports, unused_imports)]
 use rustc_type_ir::{InferCtxtLike, Interner};
-use tracing::{debug, instrument};
+use tracing::{debug, instrument, trace};
 pub use vtable::*;
 use {rustc_ast as ast, rustc_hir as hir};
 
@@ -2256,6 +2256,10 @@ pub fn typetree_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> TypeTree {
     typetree_from_ty_inner(tcx, ty, 0, &mut visited)
 }
 
+/// Maximum recursion depth for TypeTree generation to prevent stack overflow
+/// from pathological deeply nested types. Combined with cycle detection.
+const MAX_TYPETREE_DEPTH: usize = 6;
+
 /// Internal recursive function for TypeTree generation with cycle detection and depth limiting.
 fn typetree_from_ty_inner<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -2263,19 +2267,8 @@ fn typetree_from_ty_inner<'tcx>(
     depth: usize,
     visited: &mut Vec<Ty<'tcx>>,
 ) -> TypeTree {
-    #[cfg(llvm_enzyme)]
-    {
-        unsafe extern "C" {
-            fn EnzymeGetMaxTypeDepth() -> ::std::os::raw::c_uint;
-        }
-        let max_depth = unsafe { EnzymeGetMaxTypeDepth() } as usize;
-        if depth > max_depth {
-            return TypeTree::new();
-        }
-    }
-
-    #[cfg(not(llvm_enzyme))]
-    if depth > 6 {
+    if depth >= MAX_TYPETREE_DEPTH {
+        trace!("typetree depth limit {} reached for type: {}", MAX_TYPETREE_DEPTH, ty);
         return TypeTree::new();
     }
 

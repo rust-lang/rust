@@ -1,5 +1,5 @@
 use rustc_ast::expand::typetree::FncTree;
-#[cfg(llvm_enzyme)]
+#[cfg(feature = "llvm_enzyme")]
 use {
     crate::attributes,
     rustc_ast::expand::typetree::TypeTree as RustTypeTree,
@@ -8,7 +8,7 @@ use {
 
 use crate::llvm::{self, Value};
 
-#[cfg(llvm_enzyme)]
+#[cfg(feature = "llvm_enzyme")]
 fn to_enzyme_typetree(
     rust_typetree: RustTypeTree,
     _data_layout: &str,
@@ -18,7 +18,7 @@ fn to_enzyme_typetree(
     process_typetree_recursive(&mut enzyme_tt, &rust_typetree, &[], llcx);
     enzyme_tt
 }
-#[cfg(llvm_enzyme)]
+#[cfg(feature = "llvm_enzyme")]
 fn process_typetree_recursive(
     enzyme_tt: &mut llvm::TypeTree,
     rust_typetree: &RustTypeTree,
@@ -56,7 +56,7 @@ fn process_typetree_recursive(
     }
 }
 
-#[cfg(llvm_enzyme)]
+#[cfg(feature = "llvm_enzyme")]
 pub(crate) fn add_tt<'ll>(
     llmod: &'ll llvm::Module,
     llcx: &'ll llvm::Context,
@@ -111,7 +111,7 @@ pub(crate) fn add_tt<'ll>(
     }
 }
 
-#[cfg(not(llvm_enzyme))]
+#[cfg(not(feature = "llvm_enzyme"))]
 pub(crate) fn add_tt<'ll>(
     _llmod: &'ll llvm::Module,
     _llcx: &'ll llvm::Context,
