@@ -2310,7 +2310,7 @@ function loadDatabase(hooks) {
                 } else {
                     const start = this.bucket_keys[idx];
                     const bucket = this.buckets[idx];
-                    let data = this.buckets[idx].data;
+                    const data = this.buckets[idx].data;
                     if (data === null) {
                         return this.atAsyncFetch(id, start, bucket);
                     } else {
