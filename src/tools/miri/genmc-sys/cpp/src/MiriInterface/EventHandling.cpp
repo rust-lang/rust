@@ -155,6 +155,71 @@ void MiriGenmcShim::handle_fence(ThreadId thread_id, MemOrdering ord) {
     );
 }
 
+[[nodiscard]] auto MiriGenmcShim::handle_compare_exchange(
+    ThreadId thread_id,
+    uint64_t address,
+    uint64_t size,
+    GenmcScalar expected_value,
+    GenmcScalar new_value,
+    GenmcScalar old_val,
+    MemOrdering success_ordering,
+    MemOrdering fail_load_ordering,
+    bool can_fail_spuriously
+) -> CompareExchangeResult {
+    // NOTE: Both the store and load events should get the same `ordering`, it should not be split
+    // into a load and a store component. This means we can have for example `AcqRel` loads and
+    // stores, but this is intended for CAS operations.
+
+    // FIXME(GenMC): properly handle failure memory ordering.
+
+    auto expectedVal = GenmcScalarExt::to_sval(expected_value);
+    auto new_val = GenmcScalarExt::to_sval(new_value);
+
+    const auto load_ret = handle_load_reset_if_none<EventLabel::EventLabelKind::CasRead>(
+        thread_id,
+        success_ordering,
+        SAddr(address),
+        ASize(size),
+        AType::Unsigned, // The type is only used for printing.
+        expectedVal,
+        new_val
+    );
+    if (const auto* err = std::get_if<VerificationError>(&load_ret))
+        return CompareExchangeResultExt::from_error(format_error(*err));
+    const auto* ret_val = std::get_if<SVal>(&load_ret);
+    ERROR_ON(nullptr == ret_val, "Unimplemented: load returned unexpected result.");
+    const auto read_old_val = *ret_val;
+    if (read_old_val != expectedVal)
+        return CompareExchangeResultExt::failure(read_old_val);
+
+    // FIXME(GenMC): Add support for modelling spurious failures.
+
+    const auto storePos = inc_pos(thread_id);
+    const auto store_ret = GenMCDriver::handleStore<EventLabel::EventLabelKind::CasWrite>(
+        storePos,
+        success_ordering,
+        SAddr(address),
+        ASize(size),
+        AType::Unsigned, // The type is only used for printing.
+        new_val
+    );
+    if (const auto* err = std::get_if<VerificationError>(&store_ret))
+        return CompareExchangeResultExt::from_error(format_error(*err));
+    const auto* store_ret_val = std::get_if<std::monostate>(&store_ret);
+    ERROR_ON(
+        nullptr == store_ret_val,
+        "Unimplemented: compare-exchange store returned unexpected result."
+    );
+
+    // FIXME(genmc,mixed-accesses): Use the value that GenMC returns from handleStore (once
+    // available).
+    const auto& g = getExec().getGraph();
+    return CompareExchangeResultExt::success(
+        read_old_val,
+        /* is_coherence_order_maximal_write */ g.co_max(SAddr(address))->getPos() == storePos
+    );
+}
+
 /**** Memory (de)allocation ****/
 
 auto MiriGenmcShim::handle_malloc(ThreadId thread_id, uint64_t size, uint64_t alignment)

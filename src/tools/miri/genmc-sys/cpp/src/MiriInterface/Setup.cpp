@@ -152,10 +152,10 @@ static auto to_genmc_verbosity_level(const LogLevel log_level) -> VerbosityLevel
         // Miri already ensures that memory accesses are valid, so this check doesn't matter.
         // We check that the address is static, but skip checking if it is part of an actual
         // allocation.
-        /* isStaticallyAllocated: */ [](SAddr addr) { return addr.isStatic(); },
+        .isStaticallyAllocated = [](SAddr addr) { return addr.isStatic(); },
         // FIXME(genmc,error reporting): Once a proper a proper API for passing such information is
         // implemented in GenMC, Miri should use it to improve the produced error messages.
-        /* getStaticName: */ [](SAddr addr) { return "[UNKNOWN STATIC]"; },
+        .getStaticName = [](SAddr addr) { return "[UNKNOWN STATIC]"; },
         // This function is called to get the initial value stored at the given address.
         //
         // From a Miri perspective, this API doesn't work very well: most memory starts out
@@ -177,10 +177,10 @@ static auto to_genmc_verbosity_level(const LogLevel log_level) -> VerbosityLevel
         // FIXME(genmc): implement proper support for uninitialized memory in GenMC. Ideally, the
         // initial value getter would return an `optional<SVal>`, since the memory location may be
         // uninitialized.
-        /* initValGetter: */ [](const AAccess& a) { return SVal(0xDEAD); },
+        .initValGetter = [](const AAccess& a) { return SVal(0xDEAD); },
         // Miri serves non-atomic loads from its own memory and these GenMC checks are wrong in
         // that case. This should no longer be required with proper mixed-size access support.
-        /* skipUninitLoadChecks: */ [](MemOrdering ord) { return ord == MemOrdering::NotAtomic; },
+        .skipUninitLoadChecks = [](MemOrdering ord) { return ord == MemOrdering::NotAtomic; },
     };
     driver->setInterpCallbacks(std::move(interpreter_callbacks));
 

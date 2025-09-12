@@ -141,6 +141,13 @@ pub enum NonHaltingDiagnostic {
         ptr: Pointer,
     },
     ExternTypeReborrow,
+    GenmcCompareExchangeWeak,
+    GenmcCompareExchangeOrderingMismatch {
+        success_ordering: AtomicRwOrd,
+        upgraded_success_ordering: AtomicRwOrd,
+        failure_ordering: AtomicReadOrd,
+        effective_failure_ordering: AtomicReadOrd,
+    },
 }
 
 /// Level of Miri specific diagnostics
@@ -637,6 +644,8 @@ impl<'tcx> MiriMachine<'tcx> {
                 ("sharing memory with a native function".to_string(), DiagLevel::Warning),
             ExternTypeReborrow =>
                 ("reborrow of reference to `extern type`".to_string(), DiagLevel::Warning),
+            GenmcCompareExchangeWeak | GenmcCompareExchangeOrderingMismatch { .. } =>
+                ("GenMC might miss possible behaviors of this code".to_string(), DiagLevel::Warning),
             CreatedPointerTag(..)
             | PoppedPointerTag(..)
             | CreatedAlloc(..)
@@ -675,6 +684,23 @@ impl<'tcx> MiriMachine<'tcx> {
                 format!("weak memory emulation: outdated value returned from load at {ptr}"),
             ExternTypeReborrow =>
                 format!("reborrow of a reference to `extern type` is not properly supported"),
+            GenmcCompareExchangeWeak =>
+                "GenMC currently does not model spurious failures of `compare_exchange_weak`. Miri with GenMC might miss bugs related to spurious failures."
+                    .to_string(),
+            GenmcCompareExchangeOrderingMismatch {
+                success_ordering,
+                upgraded_success_ordering,
+                failure_ordering,
+                effective_failure_ordering,
+            } => {
+                let was_upgraded_msg = if success_ordering != upgraded_success_ordering {
+                    format!("Success ordering '{success_ordering:?}' was upgraded to '{upgraded_success_ordering:?}' to match failure ordering '{failure_ordering:?}'")
+                } else {
+                    assert_ne!(failure_ordering, effective_failure_ordering);
+                    format!("Due to success ordering '{success_ordering:?}', the failure ordering '{failure_ordering:?}' is treated like '{effective_failure_ordering:?}'")
+                };
+                format!("GenMC currently does not model the failure ordering for `compare_exchange`. {was_upgraded_msg}. Miri with GenMC might miss bugs related to this memory access.")
+            }
         };
 
         let notes = match &e {
