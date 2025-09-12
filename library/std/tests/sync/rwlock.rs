@@ -124,7 +124,7 @@ nonpoison_and_poison_unwrap_test!(
     }
 );
 
-#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+#[cfg(panic = "unwind")] // Requires unwinding support.
 nonpoison_and_poison_unwrap_test!(
     name: test_rw_arc_access_in_unwind,
     test_body: {
