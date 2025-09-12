@@ -651,7 +651,11 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             | ty::Bound(_, _) => bug!("unexpected self type: {self_ty}"),
         }
 
-        let trait_impls = tcx.trait_impls_of(trait_def_id);
+        #[allow(rustc::usage_of_type_ir_traits)]
+        self.for_each_blanket_impl(trait_def_id, f)
+    }
+    fn for_each_blanket_impl(self, trait_def_id: DefId, mut f: impl FnMut(DefId)) {
+        let trait_impls = self.trait_impls_of(trait_def_id);
         for &impl_def_id in trait_impls.blanket_impls() {
             f(impl_def_id);
         }
