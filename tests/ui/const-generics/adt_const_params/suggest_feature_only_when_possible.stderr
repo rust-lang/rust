@@ -13,6 +13,14 @@ LL | fn owo_0<const N: &'static u32>() {}
    |                   ^^^^^^^^^^^^
    |
    = note: the only supported types are integers, `bool`, and `char`
+help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+   |
+LL + #![feature(adt_const_params)]
+   |
+help: add `#![feature(unsized_const_params)]` to the crate attributes to enable references to implement the `ConstParamTy` trait
+   |
+LL + #![feature(unsized_const_params)]
+   |
 
 error: `Meow` is forbidden as the type of a const generic parameter
   --> $DIR/suggest_feature_only_when_possible.rs:18:20
@@ -33,6 +41,14 @@ LL | fn meow_1<const N: &'static Meow>() {}
    |                    ^^^^^^^^^^^^^
    |
    = note: the only supported types are integers, `bool`, and `char`
+help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+   |
+LL + #![feature(adt_const_params)]
+   |
+help: add `#![feature(unsized_const_params)]` to the crate attributes to enable references to implement the `ConstParamTy` trait
+   |
+LL + #![feature(unsized_const_params)]
+   |
 
 error: `[Meow; 100]` is forbidden as the type of a const generic parameter
   --> $DIR/suggest_feature_only_when_possible.rs:22:20
