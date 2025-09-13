@@ -56,6 +56,30 @@ fn layout_array_edge_cases() {
 }
 
 #[test]
+fn layout_errors() {
+    let layout = Layout::new::<[u8; 2]>();
+    // Should error if the alignment is not a power of two.
+    assert!(layout.align_to(3).is_err());
+
+    // The remaining assertions ensure that the methods error on arithmetic overflow as the
+    // alignment cannot overflow `isize`.
+    let size = layout.size();
+    let size_max = isize::MAX as usize;
+    let align_max = size_max / size;
+
+    assert!(layout.align_to(size_max + 1).is_err());
+
+    assert!(layout.repeat(align_max).is_ok());
+    assert!(layout.repeat(align_max + 1).is_err());
+
+    assert!(layout.repeat_packed(align_max).is_ok());
+    assert!(layout.repeat_packed(align_max + 1).is_err());
+
+    let next = Layout::from_size_align(size_max, 1).unwrap();
+    assert!(layout.extend(next).is_err());
+}
+
+#[test]
 fn layout_debug_shows_log2_of_alignment() {
     // `Debug` is not stable, but here's what it does right now
     let layout = Layout::from_size_align(24576, 8192).unwrap();
