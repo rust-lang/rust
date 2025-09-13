@@ -56,14 +56,14 @@ enum DiagnosticOnEnum {
 #[derive(Diagnostic)]
 #[diag(no_crate_example, code = E0123)]
 #[diag = "E0123"]
-//~^ ERROR failed to resolve: you might be missing crate `core`
+//~^ ERROR cannot find `core` in the crate root
 struct WrongStructAttrStyle {}
 
 #[derive(Diagnostic)]
 #[nonsense(no_crate_example, code = E0123)]
 //~^ ERROR `#[nonsense(...)]` is not a valid attribute
-//~^^ ERROR diagnostic slug not specified
-//~^^^ ERROR cannot find attribute `nonsense` in this scope
+//~| ERROR diagnostic slug not specified
+//~| ERROR cannot find attribute `nonsense` in this scope
 struct InvalidStructAttr {}
 
 #[derive(Diagnostic)]
@@ -111,7 +111,7 @@ struct WrongPlaceField {
 #[diag(no_crate_example, code = E0123)]
 #[diag(no_crate_example, code = E0456)]
 //~^ ERROR specified multiple times
-//~^^ ERROR specified multiple times
+//~| ERROR specified multiple times
 struct DiagSpecifiedTwice {}
 
 #[derive(Diagnostic)]
@@ -149,7 +149,7 @@ struct MessageWrongType {
 struct InvalidPathFieldAttr {
     #[nonsense]
     //~^ ERROR `#[nonsense]` is not a valid attribute
-    //~^^ ERROR cannot find attribute `nonsense` in this scope
+    //~| ERROR cannot find attribute `nonsense` in this scope
     foo: String,
 }
 
@@ -801,7 +801,7 @@ struct SuggestionsNoItem {
 struct SuggestionsInvalidItem {
     #[suggestion(code(foo))]
     //~^ ERROR `code(...)` must contain only string literals
-    //~| ERROR failed to resolve: you might be missing crate `core`
+    //~| ERROR cannot find `core` in the crate root
     sub: Span,
 }
 
@@ -809,7 +809,7 @@ struct SuggestionsInvalidItem {
 #[diag(no_crate_example)]
 struct SuggestionsInvalidLiteral {
     #[suggestion(code = 3)]
-    //~^ ERROR failed to resolve: you might be missing crate `core`
+    //~^ ERROR cannot find `core` in the crate root
     sub: Span,
 }
 

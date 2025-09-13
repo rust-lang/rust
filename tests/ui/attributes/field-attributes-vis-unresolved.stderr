@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `nonexistent`
+error[E0433]: cannot find module or crate `nonexistent` in the crate root
   --> $DIR/field-attributes-vis-unresolved.rs:17:12
    |
 LL |     pub(in nonexistent) field: u8
@@ -9,7 +9,7 @@ help: you might be missing a crate named `nonexistent`, add it to your project a
 LL + extern crate nonexistent;
    |
 
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `nonexistent`
+error[E0433]: cannot find module or crate `nonexistent` in the crate root
   --> $DIR/field-attributes-vis-unresolved.rs:22:12
    |
 LL |     pub(in nonexistent) u8

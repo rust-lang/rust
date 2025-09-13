@@ -1,22 +1,22 @@
-error[E0433]: failed to resolve: global paths cannot start with `super`
+error[E0433]: global paths cannot start with `super`
   --> $DIR/use-super-global-path.rs:7:11
    |
 LL |     use ::super::{S, Z};
-   |           ^^^^^ global paths cannot start with `super`
+   |           ^^^^^ cannot start with this
 
-error[E0433]: failed to resolve: global paths cannot start with `super`
+error[E0433]: global paths cannot start with `super`
   --> $DIR/use-super-global-path.rs:7:11
    |
 LL |     use ::super::{S, Z};
-   |           ^^^^^ global paths cannot start with `super`
+   |           ^^^^^ cannot start with this
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error[E0433]: failed to resolve: global paths cannot start with `super`
-  --> $DIR/use-super-global-path.rs:11:15
+error[E0433]: global paths cannot start with `super`
+  --> $DIR/use-super-global-path.rs:12:15
    |
 LL |         use ::super::main;
-   |               ^^^^^ global paths cannot start with `super`
+   |               ^^^^^ cannot start with this
 
 error: aborting due to 3 previous errors
 
