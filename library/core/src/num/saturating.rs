@@ -32,7 +32,8 @@ use crate::ops::{
 /// assert_eq!(u32::MAX, (max + one).0);
 /// ```
 #[stable(feature = "saturating_int_impl", since = "1.74.0")]
-#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Default, Hash)]
+#[derive(Copy, Hash)]
+#[derive_const(Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
 #[repr(transparent)]
 #[rustc_diagnostic_item = "Saturating"]
 pub struct Saturating<T>(#[stable(feature = "saturating_int_impl", since = "1.74.0")] pub T);
