@@ -730,7 +730,7 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
         if self.is_sized_indirect() {
             OperandValue::Ref(PlaceValue::new_sized(val, self.layout.align.abi)).store(bx, dst)
         } else if self.is_unsized_indirect() {
-            bug!("unsized `ArgAbi` must be handled through `store_fn_arg`");
+            bug!("unsized `ArgAbi` cannot be stored");
         } else if let PassMode::Cast { ref cast, .. } = self.mode {
             // FIXME(eddyb): Figure out when the simpler Store is safe, clang
             // uses it for i16 -> {i8, i8}, but not for i24 -> {i8, i8, i8}.
@@ -797,12 +797,7 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 OperandValue::Pair(next(), next()).store(bx, dst);
             }
             PassMode::Indirect { meta_attrs: Some(_), .. } => {
-                let place_val = PlaceValue {
-                    llval: next(),
-                    llextra: Some(next()),
-                    align: self.layout.align.abi,
-                };
-                OperandValue::Ref(place_val).store(bx, dst);
+                bug!("unsized `ArgAbi` cannot be stored");
             }
             PassMode::Direct(_)
             | PassMode::Indirect { meta_attrs: None, .. }
