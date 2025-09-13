@@ -937,7 +937,7 @@ where
         // Additionally, we do not want to switch on the
         // discriminant after it is free-ed, because that
         // way lies only trouble.
-        let discr_ty = adt.repr().discr_type().to_ty(self.tcx());
+        let discr_ty = adt.repr().discr_type(&self.tcx()).to_ty(self.tcx());
         let discr = Place::from(self.new_temp(discr_ty));
         let discr_rv = Rvalue::Discriminant(self.place);
         let switch_block = BasicBlockData::new_stmts(

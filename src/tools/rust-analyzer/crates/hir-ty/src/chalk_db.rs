@@ -87,7 +87,8 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
             && let hir_def::AdtId::EnumId(e) = id.0
         {
             let enum_data = self.db.enum_signature(e);
-            let ty = enum_data.repr.unwrap_or_default().discr_type();
+            let dl = self.db.target_data_layout(self.krate).expect("FIXME");
+            let ty = enum_data.repr.unwrap_or_default().discr_type(&*dl);
             return chalk_ir::TyKind::Scalar(match ty {
                 hir_def::layout::IntegerType::Pointer(is_signed) => match is_signed {
                     true => chalk_ir::Scalar::Int(chalk_ir::IntTy::Isize),

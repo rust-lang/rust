@@ -1589,7 +1589,7 @@ impl<'tcx> Ty<'tcx> {
     /// Returns the type of the discriminant of this type.
     pub fn discriminant_ty(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match self.kind() {
-            ty::Adt(adt, _) if adt.is_enum() => adt.repr().discr_type().to_ty(tcx),
+            ty::Adt(adt, _) if adt.is_enum() => adt.repr().discr_type(&tcx).to_ty(tcx),
             ty::Coroutine(_, args) => args.as_coroutine().discr_ty(tcx),
 
             ty::Param(_) | ty::Alias(..) | ty::Infer(ty::TyVar(_)) => {

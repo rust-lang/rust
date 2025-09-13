@@ -526,7 +526,7 @@ impl<'tcx> AdtDef<'tcx> {
     ) -> Result<Discr<'tcx>, ErrorGuaranteed> {
         assert!(self.is_enum());
 
-        let repr_type = self.repr().discr_type();
+        let repr_type = self.repr().discr_type(&tcx);
         match tcx.const_eval_poly(expr_did) {
             Ok(val) => {
                 let typing_env = ty::TypingEnv::post_analysis(tcx, expr_did);
@@ -561,7 +561,7 @@ impl<'tcx> AdtDef<'tcx> {
         tcx: TyCtxt<'tcx>,
     ) -> impl Iterator<Item = (VariantIdx, Discr<'tcx>)> {
         assert!(self.is_enum());
-        let repr_type = self.repr().discr_type();
+        let repr_type = self.repr().discr_type(&tcx);
         let initial = repr_type.initial_discriminant(tcx);
         let mut prev_discr = None::<Discr<'tcx>>;
         self.variants().iter_enumerated().map(move |(i, v)| {
@@ -600,7 +600,7 @@ impl<'tcx> AdtDef<'tcx> {
         {
             val
         } else {
-            self.repr().discr_type().initial_discriminant(tcx)
+            self.repr().discr_type(&tcx).initial_discriminant(tcx)
         };
         explicit_value.checked_add(tcx, offset as u128).0
     }

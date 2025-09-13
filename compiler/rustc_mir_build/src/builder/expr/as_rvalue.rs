@@ -197,7 +197,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let (source, ty) = if let ty::Adt(adt_def, ..) = source_expr.ty.kind()
                     && adt_def.is_enum()
                 {
-                    let discr_ty = adt_def.repr().discr_type().to_ty(this.tcx);
+                    let discr_ty = adt_def.repr().discr_type(&this.tcx).to_ty(this.tcx);
                     let temp = unpack!(block = this.as_temp(block, scope, source, Mutability::Not));
                     let discr = this.temp(discr_ty, source_expr.span);
                     this.cfg.push_assign(
