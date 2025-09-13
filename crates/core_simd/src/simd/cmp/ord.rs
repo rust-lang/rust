@@ -1,5 +1,5 @@
 use crate::simd::{
-    LaneCount, Mask, Simd, SupportedLaneCount,
+    LaneCount, Mask, Select, Simd, SupportedLaneCount,
     cmp::SimdPartialEq,
     ptr::{SimdConstPtr, SimdMutPtr},
 };
@@ -194,12 +194,12 @@ macro_rules! impl_mask {
         {
             #[inline]
             fn simd_max(self, other: Self) -> Self {
-                self.simd_gt(other).select_mask(other, self)
+                self.simd_gt(other).select(other, self)
             }
 
             #[inline]
             fn simd_min(self, other: Self) -> Self {
-                self.simd_lt(other).select_mask(other, self)
+                self.simd_lt(other).select(other, self)
             }
 
             #[inline]

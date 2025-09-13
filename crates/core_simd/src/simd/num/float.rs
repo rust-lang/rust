@@ -1,6 +1,6 @@
 use super::sealed::Sealed;
 use crate::simd::{
-    LaneCount, Mask, Simd, SimdCast, SimdElement, SupportedLaneCount,
+    LaneCount, Mask, Select, Simd, SimdCast, SimdElement, SupportedLaneCount,
     cmp::{SimdPartialEq, SimdPartialOrd},
 };
 

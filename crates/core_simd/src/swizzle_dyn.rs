@@ -139,7 +139,7 @@ unsafe fn armv7_neon_swizzle_u8x16(bytes: Simd<u8, 16>, idxs: Simd<u8, 16>) -> S
 #[inline]
 #[allow(clippy::let_and_return)]
 unsafe fn avx2_pshufb(bytes: Simd<u8, 32>, idxs: Simd<u8, 32>) -> Simd<u8, 32> {
-    use crate::simd::cmp::SimdPartialOrd;
+    use crate::simd::{Select, cmp::SimdPartialOrd};
     #[cfg(target_arch = "x86")]
     use core::arch::x86;
     #[cfg(target_arch = "x86_64")]
@@ -200,7 +200,7 @@ fn zeroing_idxs<const N: usize>(idxs: Simd<u8, N>) -> Simd<u8, N>
 where
     LaneCount<N>: SupportedLaneCount,
 {
-    use crate::simd::cmp::SimdPartialOrd;
+    use crate::simd::{Select, cmp::SimdPartialOrd};
     idxs.simd_lt(Simd::splat(N as u8))
         .select(idxs, Simd::splat(u8::MAX))
 }
