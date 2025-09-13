@@ -437,6 +437,16 @@ static X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("fma", Stable, &["avx"]),
     ("fxsr", Stable, &[]),
     ("gfni", Stable, &["sse2"]),
+    (
+        "harden-sls-ijmp",
+        Stability::Forbidden { reason: "use `harden-sls` compiler flag instead" },
+        &[],
+    ),
+    (
+        "harden-sls-ret",
+        Stability::Forbidden { reason: "use `harden-sls` compiler flag instead" },
+        &[],
+    ),
     ("kl", Stable, &["sse2"]),
     ("lahfsahf", Unstable(sym::lahfsahf_target_feature), &[]),
     ("lzcnt", Stable, &[]),
