@@ -1014,6 +1014,12 @@ impl<A: Step> Iterator for ops::RangeFrom<A> {
 
     #[inline]
     fn next(&mut self) -> Option<A> {
+        #[cfg(not(bootstrap))]
+        if crate::intrinsics::overflow_checks() {
+            self.start = Step::forward(self.start.clone(), 1);
+            return Some(self.start.clone());
+        }
+
         let n = Step::forward(self.start.clone(), 1);
         Some(mem::replace(&mut self.start, n))
     }
@@ -1025,6 +1031,13 @@ impl<A: Step> Iterator for ops::RangeFrom<A> {
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<A> {
+        #[cfg(not(bootstrap))]
+        if crate::intrinsics::overflow_checks() {
+            let plus_n = Step::forward(self.start.clone(), n);
+            self.start = Step::forward(plus_n.clone(), 1);
+            return Some(self.start.clone());
+        }
+
         let plus_n = Step::forward(self.start.clone(), n);
         self.start = Step::forward(plus_n.clone(), 1);
         Some(plus_n)
