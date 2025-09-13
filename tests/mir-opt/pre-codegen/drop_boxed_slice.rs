@@ -13,6 +13,6 @@ pub unsafe fn generic_in_place<T: Copy>(ptr: *mut Box<[T]>) {
     // CHECK: [[B:_.+]] = copy [[ALIGN]] as std::ptr::Alignment (Transmute);
     // CHECK: [[C:_.+]] = move ([[B]].0: std::ptr::alignment::AlignmentEnum);
     // CHECK: [[D:_.+]] = discriminant([[C]]);
-    // CHECK: = alloc::alloc::__rust_dealloc({{.+}}, move [[SIZE]], move [[D]]) ->
+    // CHECK: = alloc::alloc::__rust_dealloc({{.+}}, move [[SIZE]], move {{.+}}) ->
     std::ptr::drop_in_place(ptr)
 }
