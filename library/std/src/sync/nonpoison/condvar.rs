@@ -198,11 +198,10 @@ impl Condvar {
     /// the system time. This function is susceptible to spurious wakeups.
     /// Condition variables normally have a boolean predicate associated with
     /// them, and the predicate must always be checked each time this function
-    /// returns to protect against spurious wakeups. Additionally, it is
-    /// typically desirable for the timeout to not exceed some duration in
-    /// spite of spurious wakes, thus the sleep-duration is decremented by the
-    /// amount slept. Alternatively, use the `wait_timeout_while` method
-    /// to wait with a timeout while a predicate is true.
+    /// returns to protect against spurious wakeups.  Furthermore, since the timeout
+    /// is given relative to the moment this function is called, it needs to be adjusted
+    /// when this function is called in a loop. The [`wait_timeout_while`] method
+    /// lets you wait with a timeout while a predicate is true, taking care of all these concerns.
     ///
     /// The returned [`WaitTimeoutResult`] value indicates if the timeout is
     /// known to have elapsed.
