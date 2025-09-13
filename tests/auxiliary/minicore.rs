@@ -162,6 +162,29 @@ macro_rules! stringify {
     };
 }
 
+#[lang = "neg"]
+pub trait Neg {
+    type Output;
+
+    fn neg(self) -> Self::Output;
+}
+
+impl Neg for i32 {
+    type Output = i32;
+
+    fn neg(self) -> i32 {
+        loop {} // Dummy impl, not actually used
+    }
+}
+
+impl Neg for isize {
+    type Output = isize;
+
+    fn neg(self) -> isize {
+        loop {} // Dummy impl, not actually used
+    }
+}
+
 #[lang = "add"]
 pub trait Add<Rhs = Self> {
     type Output;

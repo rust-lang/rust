@@ -11,5 +11,18 @@ note: the lint level is defined here
 LL | #[warn(overflowing_literals)]
    |        ^^^^^^^^^^^^^^^^^^^^
 
-warning: 1 warning emitted
+warning: literal out of range for `isize`
+  --> $DIR/repr-c-size.rs:43:9
+   |
+LL |     A = 4294967294, // u32::MAX - 1
+   |         ^^^^^^^^^^
+   |
+   = note: the literal `4294967294` does not fit into the type `isize` whose range is `-2147483648..=2147483647`
+note: the lint level is defined here
+  --> $DIR/repr-c-size.rs:41:8
+   |
+LL | #[warn(overflowing_literals)]
+   |        ^^^^^^^^^^^^^^^^^^^^
+
+warning: 2 warnings emitted
 
