@@ -644,12 +644,36 @@ impl StrExt for str {
 
     #[inline]
     fn to_ascii_lowercase_smolstr(&self) -> SmolStr {
-        from_char_iter(self.chars().map(|c| c.to_ascii_lowercase()))
+        let len = self.len();
+        if len <= INLINE_CAP {
+            let mut buf = [0u8; INLINE_CAP];
+            buf[..len].copy_from_slice(self.as_bytes());
+            buf[..len].make_ascii_lowercase();
+            SmolStr(Repr::Inline {
+                // SAFETY: `len` is in bounds
+                len: unsafe { InlineSize::transmute_from_u8(len as u8) },
+                buf,
+            })
+        } else {
+            self.to_ascii_lowercase().into()
+        }
     }
 
     #[inline]
     fn to_ascii_uppercase_smolstr(&self) -> SmolStr {
-        from_char_iter(self.chars().map(|c| c.to_ascii_uppercase()))
+        let len = self.len();
+        if len <= INLINE_CAP {
+            let mut buf = [0u8; INLINE_CAP];
+            buf[..len].copy_from_slice(self.as_bytes());
+            buf[..len].make_ascii_uppercase();
+            SmolStr(Repr::Inline {
+                // SAFETY: `len` is in bounds
+                len: unsafe { InlineSize::transmute_from_u8(len as u8) },
+                buf,
+            })
+        } else {
+            self.to_ascii_uppercase().into()
+        }
     }
 
     #[inline]
