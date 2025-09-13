@@ -422,7 +422,7 @@ impl<'a> Parser<'a> {
                                     span: param.attrs[0].span,
                                 });
                             }
-                            param.ty
+                            *param.ty
                         })
                     });
 
