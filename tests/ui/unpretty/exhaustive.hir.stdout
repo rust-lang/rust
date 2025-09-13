@@ -55,7 +55,7 @@ use self::prelude::*;
      */
 #[doc = "inner doc attribute"]
 #[allow(dead_code, unused_variables)]
-#[no_std]
+#[attr = NoStd]
 mod attributes {
 
     /// outer single-line doc comment
