@@ -5,6 +5,7 @@ LL |     let _: &[i8] = data.into();
    |                         ^^^^ the trait `From<&[u8]>` is not implemented for `&[i8]`
    |
    = help: the following other types implement trait `From<T>`:
+             `[MaybeUninit<T>; N]` implements `From<MaybeUninit<[T; N]>>`
              `[T; 10]` implements `From<(T, T, T, T, T, T, T, T, T, T)>`
              `[T; 11]` implements `From<(T, T, T, T, T, T, T, T, T, T, T)>`
              `[T; 12]` implements `From<(T, T, T, T, T, T, T, T, T, T, T, T)>`
@@ -12,8 +13,7 @@ LL |     let _: &[i8] = data.into();
              `[T; 2]` implements `From<(T, T)>`
              `[T; 3]` implements `From<(T, T, T)>`
              `[T; 4]` implements `From<(T, T, T, T)>`
-             `[T; 5]` implements `From<(T, T, T, T, T)>`
-           and 6 others
+           and 7 others
    = note: required for `&[u8]` to implement `Into<&[i8]>`
 
 error: aborting due to 1 previous error
