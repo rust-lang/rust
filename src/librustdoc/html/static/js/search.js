@@ -1190,17 +1190,6 @@ class DocSearch {
         this.rootPath = rootPath;
         this.database = database;
 
-        this.typeNameIdOfOutput = -1;
-        this.typeNameIdOfArray = -1;
-        this.typeNameIdOfSlice = -1;
-        this.typeNameIdOfArrayOrSlice = -1;
-        this.typeNameIdOfTuple = -1;
-        this.typeNameIdOfUnit = -1;
-        this.typeNameIdOfTupleOrUnit = -1;
-        this.typeNameIdOfReference = -1;
-        this.typeNameIdOfPointer = -1;
-        this.typeNameIdOfHof = -1;
-
         this.utf8decoder = new TextDecoder();
 
         /** @type {Map<number|null, rustdoc.FunctionType>} */
@@ -1208,14 +1197,49 @@ class DocSearch {
     }
 
     /**
-     * Load search index. If you do not call this function, `execQuery`
-     * will never fulfill.
+     * Load type name ID set.
+     *
+     * Each of these identifiers are used specially by
+     * type-driven search. Most of them are lang items
+     * in the compiler.
+     *
+     * Use this function, which caches the result, and not
+     * getTypeNameIdsAsync, which is an internal implementation
+     * detail for this.
+     *
+     * @return {Promise<rustdoc.TypeNameIds>|rustdoc.TypeNameIds}
      */
-    async buildIndex() {
+    getTypeNameIds() {
+        if (this.typeNameIds) {
+            return this.typeNameIds;
+        }
         const nn = this.database.getData("normalizedName");
         if (!nn) {
-            return;
+            return {
+                typeNameIdOfOutput: -1,
+                typeNameIdOfFnPtr: -1,
+                typeNameIdOfFn: -1,
+                typeNameIdOfFnMut: -1,
+                typeNameIdOfFnOnce: -1,
+                typeNameIdOfArray: -1,
+                typeNameIdOfSlice: -1,
+                typeNameIdOfArrayOrSlice: -1,
+                typeNameIdOfTuple: -1,
+                typeNameIdOfUnit: -1,
+                typeNameIdOfTupleOrUnit: -1,
+                typeNameIdOfReference: -1,
+                typeNameIdOfPointer: -1,
+                typeNameIdOfHof: -1,
+                typeNameIdOfNever: -1,
+            };
         }
+        return this.getTypeNameIdsAsync(nn);
+    }
+    /**
+     * @param {stringdex.DataColumn} nn
+     * @returns {Promise<rustdoc.TypeNameIds>}
+     */
+    async getTypeNameIdsAsync(nn) {
         // Each of these identifiers are used specially by
         // type-driven search.
         const [
@@ -1274,21 +1298,39 @@ class DocSearch {
             }
             return -1;
         };
-        this.typeNameIdOfOutput = await first(output, TY_ASSOCTYPE, "");
-        this.typeNameIdOfFnPtr = await first(fn, TY_PRIMITIVE, "");
-        this.typeNameIdOfFn = await first(fn, TY_TRAIT, "core::ops");
-        this.typeNameIdOfFnMut = await first(fnMut, TY_TRAIT, "core::ops");
-        this.typeNameIdOfFnOnce = await first(fnOnce, TY_TRAIT, "core::ops");
-        this.typeNameIdOfArray = await first(array, TY_PRIMITIVE, "");
-        this.typeNameIdOfSlice = await first(slice, TY_PRIMITIVE, "");
-        this.typeNameIdOfArrayOrSlice = await first(arrayOrSlice, TY_PRIMITIVE, "");
-        this.typeNameIdOfTuple = await first(tuple, TY_PRIMITIVE, "");
-        this.typeNameIdOfUnit = await first(unit, TY_PRIMITIVE, "");
-        this.typeNameIdOfTupleOrUnit = await first(tupleOrUnit, TY_PRIMITIVE, "");
-        this.typeNameIdOfReference = await first(reference, TY_PRIMITIVE, "");
-        this.typeNameIdOfPointer = await first(pointer, TY_PRIMITIVE, "");
-        this.typeNameIdOfHof = await first(hof, TY_PRIMITIVE, "");
-        this.typeNameIdOfNever = await first(never, TY_PRIMITIVE, "");
+        const typeNameIdOfOutput = await first(output, TY_ASSOCTYPE, "");
+        const typeNameIdOfFnPtr = await first(fn, TY_PRIMITIVE, "");
+        const typeNameIdOfFn = await first(fn, TY_TRAIT, "core::ops");
+        const typeNameIdOfFnMut = await first(fnMut, TY_TRAIT, "core::ops");
+        const typeNameIdOfFnOnce = await first(fnOnce, TY_TRAIT, "core::ops");
+        const typeNameIdOfArray = await first(array, TY_PRIMITIVE, "");
+        const typeNameIdOfSlice = await first(slice, TY_PRIMITIVE, "");
+        const typeNameIdOfArrayOrSlice = await first(arrayOrSlice, TY_PRIMITIVE, "");
+        const typeNameIdOfTuple = await first(tuple, TY_PRIMITIVE, "");
+        const typeNameIdOfUnit = await first(unit, TY_PRIMITIVE, "");
+        const typeNameIdOfTupleOrUnit = await first(tupleOrUnit, TY_PRIMITIVE, "");
+        const typeNameIdOfReference = await first(reference, TY_PRIMITIVE, "");
+        const typeNameIdOfPointer = await first(pointer, TY_PRIMITIVE, "");
+        const typeNameIdOfHof = await first(hof, TY_PRIMITIVE, "");
+        const typeNameIdOfNever = await first(never, TY_PRIMITIVE, "");
+        this.typeNameIds = {
+            typeNameIdOfOutput,
+            typeNameIdOfFnPtr,
+            typeNameIdOfFn,
+            typeNameIdOfFnMut,
+            typeNameIdOfFnOnce,
+            typeNameIdOfArray,
+            typeNameIdOfSlice,
+            typeNameIdOfArrayOrSlice,
+            typeNameIdOfTuple,
+            typeNameIdOfUnit,
+            typeNameIdOfTupleOrUnit,
+            typeNameIdOfReference,
+            typeNameIdOfPointer,
+            typeNameIdOfHof,
+            typeNameIdOfNever,
+        };
+        return this.typeNameIds;
     }
 
     /**
@@ -1758,12 +1800,8 @@ class DocSearch {
         const l = crateNames.length;
         const names = [];
         for (let i = 0; i < l; ++i) {
-            names.push(crateNames.at(i).then(name => {
-                if (name === undefined) {
-                    return "";
-                }
-                return this.utf8decoder.decode(name);
-            }));
+            const name = await crateNames.at(i);
+            names.push(name === undefined ? "" : this.utf8decoder.decode(name));
         }
         return Promise.all(names);
     }
@@ -1820,6 +1858,9 @@ class DocSearch {
             modulePathData,
             exactModuleName,
             exactModulePathData,
+            parentName,
+            parentPath,
+            crate,
         ] = await Promise.all([
             entry && entry.modulePath !== null ? this.getName(entry.modulePath) : null,
             entry && entry.modulePath !== null ? this.getPathData(entry.modulePath) : null,
@@ -1829,6 +1870,13 @@ class DocSearch {
             entry && entry.exactModulePath !== null ?
                 this.getPathData(entry.exactModulePath) :
                 null,
+            entry && entry.parent !== null ?
+                this.getName(entry.parent) :
+                null,
+            entry && entry.parent !== null ?
+                this.getPathData(entry.parent) :
+                null,
+            entry ? nonnull(await this.getName(entry.krate)) : "",
         ]);
         const name = name_ === null ? "" : name_;
         const normalizedName = (name.indexOf("_") === -1 ?
@@ -1838,12 +1886,9 @@ class DocSearch {
             (modulePathData.modulePath === "" ?
                 moduleName :
                 `${modulePathData.modulePath}::${moduleName}`);
-        const [parentName, parentPath] = entry !== null && entry.parent !== null ?
-            await Promise.all([this.getName(entry.parent), this.getPathData(entry.parent)]) :
-            [null, null];
         return {
             id,
-            crate: entry ? nonnull(await this.getName(entry.krate)) : "",
+            crate,
             ty: entry ? entry.ty : nonnull(path).ty,
             name,
             normalizedName,
@@ -2148,6 +2193,7 @@ class DocSearch {
          * @returns {Promise<rustdoc.DisplayTypeSignature>}
          */
         const formatDisplayTypeSignature = async(obj, typeInfo, elems, returned) => {
+            const typeNameIds = await this.getTypeNameIds();
             const objType = obj.type;
             if (!objType) {
                 return {type: [], mappedNames: new Map(), whereClause: new Map()};
@@ -2173,10 +2219,12 @@ class DocSearch {
                                 return true;
                             },
                             0,
+                            typeNameIds,
                         );
                         return !!fnOutput;
                     },
                     0,
+                    typeNameIds,
                 );
             } else {
                 const highlighted = unifyFunctionTypes(
@@ -2189,6 +2237,7 @@ class DocSearch {
                         return true;
                     },
                     0,
+                    typeNameIds,
                 );
                 if (typeInfo === "elems") {
                     fnInputs = highlighted;
@@ -2268,7 +2317,7 @@ class DocSearch {
              * @returns {Promise<void>}
              */
             const writeHof = async(fnType, result) => {
-                const hofOutput = fnType.bindings.get(this.typeNameIdOfOutput) || [];
+                const hofOutput = fnType.bindings.get(typeNameIds.typeNameIdOfOutput) || [];
                 const hofInputs = fnType.generics;
                 pushText(fnType, result);
                 pushText({name: " (", highlighted: false}, result);
@@ -2309,11 +2358,14 @@ class DocSearch {
              * @returns {Promise<boolean>}
              */
             const writeSpecialPrimitive = async(fnType, result) => {
-                if (fnType.id === this.typeNameIdOfArray || fnType.id === this.typeNameIdOfSlice ||
-                    fnType.id === this.typeNameIdOfTuple || fnType.id === this.typeNameIdOfUnit) {
+                if (fnType.id === typeNameIds.typeNameIdOfArray ||
+                    fnType.id === typeNameIds.typeNameIdOfSlice ||
+                    fnType.id === typeNameIds.typeNameIdOfTuple ||
+                    fnType.id === typeNameIds.typeNameIdOfUnit
+                ) {
                     const [ob, sb] =
-                        fnType.id === this.typeNameIdOfArray ||
-                            fnType.id === this.typeNameIdOfSlice ?
+                        fnType.id === typeNameIds.typeNameIdOfArray ||
+                            fnType.id === typeNameIds.typeNameIdOfSlice ?
                         ["[", "]"] :
                         ["(", ")"];
                     pushText({ name: ob, highlighted: fnType.highlighted }, result);
@@ -2325,7 +2377,7 @@ class DocSearch {
                     );
                     pushText({ name: sb, highlighted: fnType.highlighted }, result);
                     return true;
-                } else if (fnType.id === this.typeNameIdOfReference) {
+                } else if (fnType.id === typeNameIds.typeNameIdOfReference) {
                     pushText({ name: "&", highlighted: fnType.highlighted }, result);
                     let prevHighlighted = false;
                     await onEachBtwnAsync(
@@ -2341,7 +2393,7 @@ class DocSearch {
                         }, result),
                     );
                     return true;
-                } else if (fnType.id === this.typeNameIdOfPointer) {
+                } else if (fnType.id === typeNameIds.typeNameIdOfPointer) {
                     pushText({ name: "*", highlighted: fnType.highlighted }, result);
                     if (fnType.generics.length < 2) {
                         pushText({ name: "const ", highlighted: fnType.highlighted }, result);
@@ -2361,14 +2413,14 @@ class DocSearch {
                     );
                     return true;
                 } else if (
-                    fnType.id === this.typeNameIdOfFn ||
-                    fnType.id === this.typeNameIdOfFnMut ||
-                    fnType.id === this.typeNameIdOfFnOnce ||
-                    fnType.id === this.typeNameIdOfFnPtr
+                    fnType.id === typeNameIds.typeNameIdOfFn ||
+                    fnType.id === typeNameIds.typeNameIdOfFnMut ||
+                    fnType.id === typeNameIds.typeNameIdOfFnOnce ||
+                    fnType.id === typeNameIds.typeNameIdOfFnPtr
                 ) {
                     await writeHof(fnType, result);
                     return true;
-                } else if (fnType.id === this.typeNameIdOfNever) {
+                } else if (fnType.id === typeNameIds.typeNameIdOfNever) {
                     pushText({ name: "!", highlighted: fnType.highlighted }, result);
                     return true;
                 }
@@ -2426,10 +2478,10 @@ class DocSearch {
                             return;
                         }
                     } else if (fnType.ty === TY_TRAIT && (
-                        fnType.id === this.typeNameIdOfFn ||
-                        fnType.id === this.typeNameIdOfFnMut ||
-                        fnType.id === this.typeNameIdOfFnOnce ||
-                        fnType.id === this.typeNameIdOfFnPtr
+                        fnType.id === typeNameIds.typeNameIdOfFn ||
+                        fnType.id === typeNameIds.typeNameIdOfFnMut ||
+                        fnType.id === typeNameIds.typeNameIdOfFnOnce ||
+                        fnType.id === typeNameIds.typeNameIdOfFnPtr
                     )) {
                         await writeHof(fnType, result);
                         return;
@@ -2540,7 +2592,7 @@ class DocSearch {
          * Add extra data to result objects, and filter items that have been
          * marked for removal.
          *
-         * @param {[rustdoc.PlainResultObject, rustdoc.Row][]} results
+         * @param {rustdoc.PlainResultObject[]} results
          * @param {"sig"|"elems"|"returned"|null} typeInfo
          * @param {Set<string>} duplicates
          * @returns {rustdoc.ResultObject[]}
@@ -2548,7 +2600,8 @@ class DocSearch {
         const transformResults = (results, typeInfo, duplicates) => {
             const out = [];
 
-            for (const [result, item] of results) {
+            for (const result of results) {
+                const item = result.item;
                 if (item.id !== -1) {
                     const res = buildHrefAndPath(item);
                     // many of these properties don't strictly need to be
@@ -2633,7 +2686,7 @@ class DocSearch {
                 const normalizedUserQuery = parsedQuery.userQuery.toLowerCase();
                 const isMixedCase = normalizedUserQuery !== userQuery;
                 /**
-                 * @type {[rustdoc.PlainResultObject, rustdoc.Row][]}
+                 * @type {rustdoc.PlainResultObject[]}
                  */
                 const result_list = [];
                 for (const result of results.values()) {
@@ -2641,23 +2694,22 @@ class DocSearch {
                         continue;
                     }
                     /**
-                     * @type {rustdoc.Row?}
+                     * @type {rustdoc.Row}
                      */
-                    const item = await this.getRow(result.id, typeInfo !== null);
-                    if (!item) {
-                        continue;
-                    }
+                    const item = result.item;
                     if (filterCrates !== null && item.crate !== filterCrates) {
                         continue;
                     }
                     if (item) {
-                        result_list.push([result, item]);
+                        result_list.push(result);
                     } else {
                         continue;
                     }
                 }
 
-                result_list.sort(([aaa, aai], [bbb, bbi]) => {
+                result_list.sort((aaa, bbb) => {
+                    const aai = aaa.item;
+                    const bbi = bbb.item;
                     /** @type {number} */
                     let a;
                     /** @type {number} */
@@ -2804,6 +2856,7 @@ class DocSearch {
          * @param {number} unboxingDepth
          *     - Limit checks that Ty matches Vec<Ty>,
          *       but not Vec<ParamEnvAnd<WithInfcx<ConstTy<Interner<Ty=Ty>>>>>
+         * @param {rustdoc.TypeNameIds} typeNameIds
          *
          * @return {rustdoc.HighlightedFunctionType[]|null}
          *     - Returns highlighted results if a match, null otherwise.
@@ -2815,6 +2868,7 @@ class DocSearch {
             mgensIn,
             solutionCb,
             unboxingDepth,
+            typeNameIds,
         ) {
             if (unboxingDepth >= UNBOXING_LIMIT) {
                 return null;
@@ -2837,7 +2891,12 @@ class DocSearch {
                 && queryElems[0].bindings.size === 0) {
                 const queryElem = queryElems[0];
                 for (const [i, fnType] of fnTypesIn.entries()) {
-                    if (!unifyFunctionTypeIsMatchCandidate(fnType, queryElem, mgens)) {
+                    if (!unifyFunctionTypeIsMatchCandidate(
+                        fnType,
+                        queryElem,
+                        mgens,
+                        typeNameIds,
+                    )) {
                         continue;
                     }
                     if (fnType.id !== null &&
@@ -2873,6 +2932,7 @@ class DocSearch {
                                 mgens ? new Map(mgens) : null,
                                 solutionCb,
                                 unboxingDepth,
+                                typeNameIds,
                             ) || fnType.generics,
                         });
                         return highlighted;
@@ -2885,6 +2945,7 @@ class DocSearch {
                         whereClause,
                         mgens,
                         unboxingDepth + 1,
+                        typeNameIds,
                     )) {
                         continue;
                     }
@@ -2898,6 +2959,7 @@ class DocSearch {
                             mgens,
                             solutionCb,
                             unboxingDepth + 1,
+                            typeNameIds,
                         );
                         if (highlightedGenerics) {
                             const highlighted = [...fnTypesIn];
@@ -2916,6 +2978,7 @@ class DocSearch {
                             mgens ? new Map(mgens) : null,
                             solutionCb,
                             unboxingDepth + 1,
+                            typeNameIds,
                         );
                         if (highlightedGenerics) {
                             const highlighted = [...fnTypesIn];
@@ -2960,7 +3023,12 @@ class DocSearch {
             let queryElemsTmp = null;
             for (let i = flast; i >= 0; i -= 1) {
                 const fnType = fnTypes[i];
-                if (!unifyFunctionTypeIsMatchCandidate(fnType, queryElem, mgens)) {
+                if (!unifyFunctionTypeIsMatchCandidate(
+                    fnType,
+                    queryElem,
+                    mgens,
+                    typeNameIds,
+                )) {
                     continue;
                 }
                 let mgensScratch;
@@ -3004,6 +3072,7 @@ class DocSearch {
                             whereClause,
                             mgensScratch,
                             unboxingDepth,
+                            typeNameIds,
                         );
                         if (!solution) {
                             return false;
@@ -3017,6 +3086,7 @@ class DocSearch {
                                 simplifiedMgens,
                                 solutionCb,
                                 unboxingDepth,
+                                typeNameIds,
                             );
                             if (unifiedGenerics !== null) {
                                 unifiedGenericsMgens = simplifiedMgens;
@@ -3026,6 +3096,7 @@ class DocSearch {
                         return false;
                     },
                     unboxingDepth,
+                    typeNameIds,
                 );
                 if (passesUnification) {
                     passesUnification.length = fl;
@@ -3042,6 +3113,7 @@ class DocSearch {
                                 unifiedGenericsMgens,
                                 solutionCb,
                                 unboxingDepth,
+                                typeNameIds,
                             // @ts-expect-error
                             ) : unifiedGenerics.splice(0, v.length)];
                         })),
@@ -3061,6 +3133,7 @@ class DocSearch {
                     whereClause,
                     mgens,
                     unboxingDepth + 1,
+                    typeNameIds,
                 )) {
                     continue;
                 }
@@ -3077,6 +3150,7 @@ class DocSearch {
                     mgens,
                     solutionCb,
                     unboxingDepth + 1,
+                    typeNameIds,
                 );
                 if (passesUnification) {
                     const highlightedGenerics = passesUnification.slice(
@@ -3117,6 +3191,7 @@ class DocSearch {
          * @param {number} unboxingDepth
          *     - Limit checks that Ty matches Vec<Ty>,
          *       but not Vec<ParamEnvAnd<WithInfcx<ConstTy<Interner<Ty=Ty>>>>>
+         * @param {rustdoc.TypeNameIds} typeNameIds
          *
          * @return {rustdoc.HighlightedFunctionType[]|null}
          *     - Returns highlighted results if a match, null otherwise.
@@ -3128,6 +3203,7 @@ class DocSearch {
             mgensIn,
             solutionCb,
             unboxingDepth,
+            typeNameIds,
         ) {
             if (unboxingDepth >= UNBOXING_LIMIT) {
                 return null;
@@ -3145,7 +3221,12 @@ class DocSearch {
             }
             const fnType = fnTypesIn[0];
             const queryElem = queryElems[0];
-            if (unifyFunctionTypeIsMatchCandidate(fnType, queryElem, mgens)) {
+            if (unifyFunctionTypeIsMatchCandidate(
+                fnType,
+                queryElem,
+                mgens,
+                typeNameIds,
+            )) {
                 if (fnType.id !== null &&
                     fnType.id < 0 &&
                     queryElem.id !== null &&
@@ -3163,6 +3244,7 @@ class DocSearch {
                             mgensScratch,
                             solutionCb,
                             unboxingDepth,
+                            typeNameIds,
                         );
                         if (fnTypesRemaining) {
                             const highlighted = [fnType, ...fnTypesRemaining];
@@ -3189,6 +3271,7 @@ class DocSearch {
                                 whereClause,
                                 mgensScratch,
                                 unboxingDepth,
+                                typeNameIds,
                             );
                             if (!solution) {
                                 return false;
@@ -3202,6 +3285,7 @@ class DocSearch {
                                     simplifiedMgens,
                                     solutionCb,
                                     unboxingDepth,
+                                    typeNameIds,
                                 );
                                 if (unifiedGenerics !== null) {
                                     return true;
@@ -3209,6 +3293,7 @@ class DocSearch {
                             }
                         },
                         unboxingDepth,
+                        typeNameIds,
                     );
                     if (fnTypesRemaining) {
                         const highlighted = [fnType, ...fnTypesRemaining];
@@ -3227,6 +3312,7 @@ class DocSearch {
                 whereClause,
                 mgens,
                 unboxingDepth + 1,
+                typeNameIds,
             )) {
                 let highlightedRemaining;
                 if (fnType.id !== null && fnType.id < 0) {
@@ -3248,6 +3334,7 @@ class DocSearch {
                                 mgensScratch,
                                 solutionCb,
                                 unboxingDepth,
+                                typeNameIds,
                             );
                             if (hl) {
                                 highlightedRemaining = hl;
@@ -3255,6 +3342,7 @@ class DocSearch {
                             return hl;
                         },
                         unboxingDepth + 1,
+                        typeNameIds,
                     );
                     if (highlightedGenerics) {
                         return [Object.assign({
@@ -3282,6 +3370,7 @@ class DocSearch {
                                 mgensScratch,
                                 solutionCb,
                                 unboxingDepth,
+                                typeNameIds,
                             );
                             if (hl) {
                                 highlightedRemaining = hl;
@@ -3289,6 +3378,7 @@ class DocSearch {
                             return hl;
                         },
                         unboxingDepth + 1,
+                        typeNameIds,
                     );
                     if (highlightedGenerics) {
                         return [Object.assign({}, fnType, {
@@ -3314,10 +3404,11 @@ class DocSearch {
          *
          * @param {rustdoc.FunctionType} fnType
          * @param {rustdoc.QueryElement} queryElem
+         * @param {rustdoc.TypeNameIds} typeNameIds
          * @param {Map<number,number>|null} mgensIn - Map query generics to function generics.
          * @returns {boolean}
          */
-        const unifyFunctionTypeIsMatchCandidate = (fnType, queryElem, mgensIn) => {
+        const unifyFunctionTypeIsMatchCandidate = (fnType, queryElem, mgensIn, typeNameIds) => {
             // type filters look like `trait:Read` or `enum:Result`
             if (!typePassesFilter(queryElem.typeFilter, fnType.ty)) {
                 return false;
@@ -3336,21 +3427,23 @@ class DocSearch {
             } else {
                 // For these special cases, matching code need added to the inverted index.
                 // search_index.rs -> convert_render_type does this
-                if (queryElem.id === this.typeNameIdOfArrayOrSlice &&
-                    (fnType.id === this.typeNameIdOfSlice || fnType.id === this.typeNameIdOfArray)
+                if (queryElem.id === typeNameIds.typeNameIdOfArrayOrSlice &&
+                    (fnType.id === typeNameIds.typeNameIdOfSlice ||
+                        fnType.id === typeNameIds.typeNameIdOfArray)
                 ) {
                     // [] matches primitive:array or primitive:slice
                     // if it matches, then we're fine, and this is an appropriate match candidate
-                } else if (queryElem.id === this.typeNameIdOfTupleOrUnit &&
-                    (fnType.id === this.typeNameIdOfTuple || fnType.id === this.typeNameIdOfUnit)
+                } else if (queryElem.id === typeNameIds.typeNameIdOfTupleOrUnit &&
+                    (fnType.id === typeNameIds.typeNameIdOfTuple ||
+                        fnType.id === typeNameIds.typeNameIdOfUnit)
                 ) {
                     // () matches primitive:tuple or primitive:unit
                     // if it matches, then we're fine, and this is an appropriate match candidate
-                } else if (queryElem.id === this.typeNameIdOfHof && (
-                    fnType.id === this.typeNameIdOfFn ||
-                    fnType.id === this.typeNameIdOfFnMut ||
-                    fnType.id === this.typeNameIdOfFnOnce ||
-                    fnType.id === this.typeNameIdOfFnPtr
+                } else if (queryElem.id === typeNameIds.typeNameIdOfHof && (
+                    fnType.id === typeNameIds.typeNameIdOfFn ||
+                    fnType.id === typeNameIds.typeNameIdOfFnMut ||
+                    fnType.id === typeNameIds.typeNameIdOfFnOnce ||
+                    fnType.id === typeNameIds.typeNameIdOfFnPtr
                 )) {
                     // -> matches fn, fnonce, and fnmut
                     // if it matches, then we're fine, and this is an appropriate match candidate
@@ -3414,6 +3507,7 @@ class DocSearch {
          * @param {Map<number,number>|null} mgensIn - Map query generics to function generics.
          *                                            Never modified.
          * @param {number} unboxingDepth
+         * @param {rustdoc.TypeNameIds} typeNameIds
          * @returns {false|{
          *     mgens: [Map<number,number>|null], simplifiedGenerics: rustdoc.FunctionType[]
          * }}
@@ -3424,6 +3518,7 @@ class DocSearch {
             whereClause,
             mgensIn,
             unboxingDepth,
+            typeNameIds,
         ) {
             if (fnType.bindings.size < queryElem.bindings.size) {
                 return false;
@@ -3455,6 +3550,7 @@ class DocSearch {
                                 return false;
                             },
                             unboxingDepth,
+                            typeNameIds,
                         );
                         return newSolutions;
                     });
@@ -3486,6 +3582,7 @@ class DocSearch {
          * @param {rustdoc.FunctionType[][]} whereClause - Trait bounds for generic items.
          * @param {Map<number,number>|null} mgens - Map query generics to function generics.
          * @param {number} unboxingDepth
+         * @param {rustdoc.TypeNameIds} typeNameIds
          * @returns {boolean}
          */
         function unifyFunctionTypeIsUnboxCandidate(
@@ -3494,6 +3591,7 @@ class DocSearch {
             whereClause,
             mgens,
             unboxingDepth,
+            typeNameIds,
         ) {
             if (unboxingDepth >= UNBOXING_LIMIT) {
                 return false;
@@ -3512,6 +3610,7 @@ class DocSearch {
                     whereClause,
                     mgens,
                     unboxingDepth,
+                    typeNameIds,
                 );
             } else if (fnType.unboxFlag &&
                 (fnType.generics.length > 0 || fnType.bindings.size > 0)) {
@@ -3525,6 +3624,7 @@ class DocSearch {
                     whereClause,
                     mgens,
                     unboxingDepth,
+                    typeNameIds,
                 );
             }
             return false;
@@ -3537,14 +3637,15 @@ class DocSearch {
          * @param {rustdoc.QueryElement[]} elems
          * @param {rustdoc.FunctionType[]} list    - A list of function types.
          * @param {rustdoc.FunctionType[][]} where_clause - Trait bounds for generic items.
+         * @param {rustdoc.TypeNameIds} typeNameIds
          */
-        function containsTypeFromQuery(elems, list, where_clause) {
+        function containsTypeFromQuery(elems, list, where_clause, typeNameIds) {
             if (!list) return false;
             for (const ty of elems) {
                 if (ty.id !== null && ty.id < 0) {
                     continue;
                 }
-                if (checkIfInList(list, ty, where_clause, null, 0)) {
+                if (checkIfInList(list, ty, where_clause, null, 0, typeNameIds)) {
                     return true;
                 }
             }
@@ -3560,12 +3661,13 @@ class DocSearch {
          * @param {rustdoc.FunctionType[][]} whereClause - Trait bounds for generic items.
          * @param {Map<number,number>|null} mgens - Map functions generics to query generics.
          * @param {number} unboxingDepth
+         * @param {rustdoc.TypeNameIds} typeNameIds
          *
          * @return {boolean} - Returns true if found, false otherwise.
          */
-        function checkIfInList(list, elem, whereClause, mgens, unboxingDepth) {
+        function checkIfInList(list, elem, whereClause, mgens, unboxingDepth, typeNameIds) {
             for (const entry of list) {
-                if (checkType(entry, elem, whereClause, mgens, unboxingDepth)) {
+                if (checkType(entry, elem, whereClause, mgens, unboxingDepth, typeNameIds)) {
                     return true;
                 }
             }
@@ -3580,11 +3682,12 @@ class DocSearch {
          * @param {rustdoc.QueryElement} elem          - The element from the parsed query.
          * @param {rustdoc.FunctionType[][]} whereClause - Trait bounds for generic items.
          * @param {Map<number,number>|null} mgens - Map query generics to function generics.
+         * @param {number} unboxingDepth
+         * @param {rustdoc.TypeNameIds} typeNameIds
          *
          * @return {boolean} - Returns true if the type matches, false otherwise.
          */
-        // @ts-expect-error
-        const checkType = (row, elem, whereClause, mgens, unboxingDepth) => {
+        const checkType = (row, elem, whereClause, mgens, unboxingDepth, typeNameIds) => {
             if (unboxingDepth >= UNBOXING_LIMIT) {
                 return false;
             }
@@ -3593,9 +3696,9 @@ class DocSearch {
                 row.generics.length === 0 && elem.generics.length === 0 &&
                 row.bindings.size === 0 && elem.bindings.size === 0 &&
                 // special case
-                elem.id !== this.typeNameIdOfArrayOrSlice &&
-                elem.id !== this.typeNameIdOfHof &&
-                elem.id !== this.typeNameIdOfTupleOrUnit
+                elem.id !== typeNameIds.typeNameIdOfArrayOrSlice &&
+                elem.id !== typeNameIds.typeNameIdOfHof &&
+                elem.id !== typeNameIds.typeNameIdOfTupleOrUnit
             ) {
                 return row.id === elem.id && typePassesFilter(elem.typeFilter, row.ty);
             } else {
@@ -3607,6 +3710,7 @@ class DocSearch {
                     mgens,
                     () => true,
                     unboxingDepth,
+                    typeNameIds,
                 );
             }
         };
@@ -3673,7 +3777,10 @@ class DocSearch {
         /**
          * Compute an "edit distance" that ignores missing path elements.
          * @param {string[]} contains search query path
-         * @param {rustdoc.Row} row indexed item
+         * @param {{
+         *     modulePath: string,
+         *     parent: { path: rustdoc.PathData, name: string}?,
+         * }} row indexed item
          * @returns {null|number} edit distance
          */
         function checkRowPath(contains, row) {
@@ -3752,7 +3859,7 @@ class DocSearch {
                         is_alias: true,
                         elems: [], // only used in type-based queries
                         returned: [], // only used in type-based queries
-                        original: await this.getRow(alias, false),
+                        item: nonnull(await this.getRow(alias, false)),
                     };
                 };
                 /**
@@ -3834,6 +3941,7 @@ class DocSearch {
                             elems: [], // only used in type-based queries
                             returned: [], // only used in type-based queries
                             is_alias: false,
+                            item: row,
                         } : null;
                     } else {
                         return {
@@ -3848,6 +3956,7 @@ class DocSearch {
                             elems: [], // only used in type-based queries
                             returned: [], // only used in type-based queries
                             is_alias: false,
+                            item: row,
                         };
                     }
                 };
@@ -4359,9 +4468,10 @@ class DocSearch {
                 };
 
                 // finally, we can do the actual unification loop
-                const [allInputs, allOutput] = await Promise.all([
+                const [allInputs, allOutput, typeNameIds] = await Promise.all([
                     unpackPostingsListAll(inputs, "invertedFunctionInputsIndex"),
                     unpackPostingsListAll(output, "invertedFunctionOutputIndex"),
+                    this.getTypeNameIds(),
                 ]);
                 let checkCounter = 0;
                 /**
@@ -4430,10 +4540,16 @@ class DocSearch {
                                             mgens,
                                             checkTypeMgensForConflict,
                                             0, // unboxing depth
+                                            typeNameIds,
                                         );
                                     },
                                     0, // unboxing depth
+                                    typeNameIds,
                                 )) {
+                                    return null;
+                                }
+                                const item = await this.getRow(id, true);
+                                if (!item) {
                                     return null;
                                 }
                                 const result = {
@@ -4444,8 +4560,9 @@ class DocSearch {
                                     elems: inputs,
                                     returned: output,
                                     is_alias: false,
+                                    item,
                                 };
-                                const entry = await this.getEntryData(id);
+                                const entry = item.entry;
                                 if ((entry && !isFnLikeTy(entry.ty)) ||
                                     (isReturnTypeQuery &&
                                         functionSignature &&
@@ -4453,6 +4570,7 @@ class DocSearch {
                                             output,
                                             functionSignature.inputs,
                                             functionSignature.where_clause,
+                                            typeNameIds,
                                         )
                                     )
                                 ) {
@@ -5273,7 +5391,6 @@ if (ROOT_PATH === null) {
 const database = await Stringdex.loadDatabase(hooks);
 if (typeof window !== "undefined") {
     docSearch = new DocSearch(ROOT_PATH, database);
-    await docSearch.buildIndex();
     onEachLazy(document.querySelectorAll(
         ".search-form.loading",
     ), form => {
@@ -5286,7 +5403,6 @@ if (typeof window !== "undefined") {
     }
 } else if (typeof exports !== "undefined") {
     docSearch = new DocSearch(ROOT_PATH, database);
-    await docSearch.buildIndex();
     return { docSearch, DocSearch };
 }
 };
