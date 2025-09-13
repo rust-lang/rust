@@ -3449,9 +3449,9 @@ fn add_wild_args(
         cmd.cc_arg({
             let mut arg = OsString::from("-B");
             arg.push(linker_path);
-            arg.push("--no-fork");
             arg
         });
+        cmd.cc_arg("-Wl,--no-fork");
     }
     if !linker_path_exists {
         // As a sanity check, we emit an error if none of these paths exist: we want
