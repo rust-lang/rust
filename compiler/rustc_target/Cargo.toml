@@ -14,6 +14,7 @@ rustc_fs_util = { path = "../rustc_fs_util" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_span = { path = "../rustc_span" }
+schemars = "1.0.4"
 serde = "1.0.219"
 serde_derive = "1.0.219"
 serde_json = "1.0.59"

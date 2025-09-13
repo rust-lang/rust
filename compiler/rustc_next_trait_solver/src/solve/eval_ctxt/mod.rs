@@ -407,20 +407,21 @@ where
         // If we have run this goal before, and it was stalled, check that any of the goal's
         // args have changed. Otherwise, we don't need to re-run the goal because it'll remain
         // stalled, since it'll canonicalize the same way and evaluation is pure.
-        if let Some(stalled_on) = stalled_on
-            && !stalled_on.stalled_vars.iter().any(|value| self.delegate.is_changed_arg(*value))
-            && !self
-                .delegate
-                .opaque_types_storage_num_entries()
-                .needs_reevaluation(stalled_on.num_opaques)
+        if let Some(GoalStalledOn { num_opaques, ref stalled_vars, ref sub_roots, stalled_cause }) =
+            stalled_on
+            && !stalled_vars.iter().any(|value| self.delegate.is_changed_arg(*value))
+            && !sub_roots
+                .iter()
+                .any(|&vid| self.delegate.sub_unification_table_root_var(vid) != vid)
+            && !self.delegate.opaque_types_storage_num_entries().needs_reevaluation(num_opaques)
         {
             return Ok((
                 NestedNormalizationGoals::empty(),
                 GoalEvaluation {
                     goal,
-                    certainty: Certainty::Maybe(stalled_on.stalled_cause),
+                    certainty: Certainty::Maybe(stalled_cause),
                     has_changed: HasChanged::No,
-                    stalled_on: Some(stalled_on),
+                    stalled_on,
                 },
             ));
         }
@@ -476,16 +477,6 @@ where
                 HasChanged::No => {
                     let mut stalled_vars = orig_values;
 
-                    // Remove the canonicalized universal vars, since we only care about stalled existentials.
-                    stalled_vars.retain(|arg| match arg.kind() {
-                        ty::GenericArgKind::Type(ty) => matches!(ty.kind(), ty::Infer(_)),
-                        ty::GenericArgKind::Const(ct) => {
-                            matches!(ct.kind(), ty::ConstKind::Infer(_))
-                        }
-                        // Lifetimes can never stall goals.
-                        ty::GenericArgKind::Lifetime(_) => false,
-                    });
-
                     // Remove the unconstrained RHS arg, which is expected to have changed.
                     if let Some(normalizes_to) = goal.predicate.as_normalizes_to() {
                         let normalizes_to = normalizes_to.skip_binder();
@@ -497,6 +488,27 @@ where
                         stalled_vars.swap_remove(idx);
                     }
 
+                    // Remove the canonicalized universal vars, since we only care about stalled existentials.
+                    let mut sub_roots = Vec::new();
+                    stalled_vars.retain(|arg| match arg.kind() {
+                        // Lifetimes can never stall goals.
+                        ty::GenericArgKind::Lifetime(_) => false,
+                        ty::GenericArgKind::Type(ty) => match ty.kind() {
+                            ty::Infer(ty::TyVar(vid)) => {
+                                sub_roots.push(self.delegate.sub_unification_table_root_var(vid));
+                                true
+                            }
+                            ty::Infer(_) => true,
+                            ty::Param(_) | ty::Placeholder(_) => false,
+                            _ => unreachable!("unexpected orig_value: {ty:?}"),
+                        },
+                        ty::GenericArgKind::Const(ct) => match ct.kind() {
+                            ty::ConstKind::Infer(_) => true,
+                            ty::ConstKind::Param(_) | ty::ConstKind::Placeholder(_) => false,
+                            _ => unreachable!("unexpected orig_value: {ct:?}"),
+                        },
+                    });
+
                     Some(GoalStalledOn {
                         num_opaques: canonical_goal
                             .canonical
@@ -505,6 +517,7 @@ where
                             .opaque_types
                             .len(),
                         stalled_vars,
+                        sub_roots,
                         stalled_cause,
                     })
                 }
@@ -1047,6 +1060,10 @@ where
         self.delegate.resolve_vars_if_possible(value)
     }
 
+    pub(super) fn shallow_resolve(&self, ty: I::Ty) -> I::Ty {
+        self.delegate.shallow_resolve(ty)
+    }
+
     pub(super) fn eager_resolve_region(&self, r: I::Region) -> I::Region {
         if let ty::ReVar(vid) = r.kind() {
             self.delegate.opportunistic_resolve_lt_var(vid)
@@ -1162,6 +1179,33 @@ where
         symbol: I::Symbol,
     ) -> bool {
         may_use_unstable_feature(&**self.delegate, param_env, symbol)
+    }
+
+    pub(crate) fn opaques_with_sub_unified_hidden_type(
+        &self,
+        self_ty: I::Ty,
+    ) -> impl Iterator<Item = ty::AliasTy<I>> + use<'a, D, I> {
+        let delegate = self.delegate;
+        delegate
+            .clone_opaque_types_lookup_table()
+            .into_iter()
+            .chain(delegate.clone_duplicate_opaque_types())
+            .filter_map(move |(key, hidden_ty)| {
+                if let ty::Infer(ty::TyVar(self_vid)) = self_ty.kind() {
+                    if let ty::Infer(ty::TyVar(hidden_vid)) = hidden_ty.kind() {
+                        if delegate.sub_unification_table_root_var(self_vid)
+                            == delegate.sub_unification_table_root_var(hidden_vid)
+                        {
+                            return Some(ty::AliasTy::new_from_args(
+                                delegate.cx(),
+                                key.def_id.into(),
+                                key.args,
+                            ));
+                        }
+                    }
+                }
+                None
+            })
     }
 }
 

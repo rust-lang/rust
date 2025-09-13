@@ -32,6 +32,10 @@ pub struct GccOutput {
 impl GccOutput {
     /// Install the required libgccjit library file(s) to the specified `path`.
     pub fn install_to(&self, builder: &Builder<'_>, directory: &Path) {
+        if builder.config.dry_run() {
+            return;
+        }
+
         // At build time, cg_gcc has to link to libgccjit.so (the unversioned symbol).
         // However, at runtime, it will by default look for libgccjit.so.0.
         // So when we install the built libgccjit.so file to the target `directory`, we add it there
@@ -39,8 +43,16 @@ impl GccOutput {
         let mut target_filename = self.libgccjit.file_name().unwrap().to_str().unwrap().to_string();
         target_filename.push_str(".0");
 
+        // If we build libgccjit ourselves, then `self.libgccjit` can actually be a symlink.
+        // In that case, we have to resolve it first, otherwise we'd create a symlink to a symlink,
+        // which wouldn't work.
+        let actual_libgccjit_path = t!(
+            self.libgccjit.canonicalize(),
+            format!("Cannot find libgccjit at {}", self.libgccjit.display())
+        );
+
         let dst = directory.join(target_filename);
-        builder.copy_link(&self.libgccjit, &dst, FileType::NativeLibrary);
+        builder.copy_link(&actual_libgccjit_path, &dst, FileType::NativeLibrary);
     }
 }
 

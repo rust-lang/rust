@@ -124,6 +124,7 @@ where
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
         impl_def_id: I::ImplId,
+        then: impl FnOnce(&mut EvalCtxt<'_, D>, Certainty) -> QueryResult<I>,
     ) -> Result<Candidate<I>, NoSolution> {
         let cx = ecx.cx();
 
@@ -175,7 +176,7 @@ where
                 });
             ecx.add_goals(GoalSource::ImplWhereBound, const_conditions);
 
-            ecx.evaluate_added_goals_and_make_canonical_response(certainty)
+            then(ecx, certainty)
         })
     }
 

@@ -940,11 +940,27 @@ fn extract_symbol_from_pnr<'a>(
         {
             Ok(*symbol)
         }
+        ParseNtResult::Literal(expr)
+            if let ExprKind::Lit(lit @ Lit { kind: LitKind::Integer, symbol, suffix }) =
+                &expr.kind =>
+        {
+            if lit.is_semantic_float() {
+                Err(dcx
+                    .struct_err("floats are not supported as metavariables of `${concat(..)}`")
+                    .with_span(span_err))
+            } else if suffix.is_none() {
+                Ok(*symbol)
+            } else {
+                Err(dcx
+                    .struct_err("integer metavariables of `${concat(..)}` must not be suffixed")
+                    .with_span(span_err))
+            }
+        }
         _ => Err(dcx
             .struct_err(
                 "metavariables of `${concat(..)}` must be of type `ident`, `literal` or `tt`",
             )
-            .with_note("currently only string literals are supported")
+            .with_note("currently only string and integer literals are supported")
             .with_span(span_err)),
     }
 }

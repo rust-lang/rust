@@ -668,6 +668,10 @@ fn print_crate_info(
             TargetSpecJson => {
                 println_info!("{}", serde_json::to_string_pretty(&sess.target.to_json()).unwrap());
             }
+            TargetSpecJsonSchema => {
+                let schema = rustc_target::spec::json_schema();
+                println_info!("{}", serde_json::to_string_pretty(&schema).unwrap());
+            }
             AllTargetSpecsJson => {
                 let mut targets = BTreeMap::new();
                 for name in rustc_target::spec::TARGETS {

@@ -176,3 +176,27 @@ impl<S: Stage> SingleAttributeParser<S> for PatternComplexityLimitParser {
         })
     }
 }
+
+pub(crate) struct NoCoreParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for NoCoreParser {
+    const PATH: &[Symbol] = &[sym::no_core];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    // because it's a crate-level attribute, we already warn about it.
+    // Putting target limitations here would give duplicate warnings
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::NoCore;
+    const TYPE: AttributeType = AttributeType::CrateLevel;
+}
+
+pub(crate) struct NoStdParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for NoStdParser {
+    const PATH: &[Symbol] = &[sym::no_std];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    // because it's a crate-level attribute, we already warn about it.
+    // Putting target limitations here would give duplicate warnings
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::NoStd;
+    const TYPE: AttributeType = AttributeType::CrateLevel;
+}

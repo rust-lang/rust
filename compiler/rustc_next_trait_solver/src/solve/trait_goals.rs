@@ -55,6 +55,7 @@ where
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, TraitPredicate<I>>,
         impl_def_id: I::ImplId,
+        then: impl FnOnce(&mut EvalCtxt<'_, D>, Certainty) -> QueryResult<I>,
     ) -> Result<Candidate<I>, NoSolution> {
         let cx = ecx.cx();
 
@@ -112,7 +113,7 @@ where
                     .map(|pred| goal.with(cx, pred)),
             );
 
-            ecx.evaluate_added_goals_and_make_canonical_response(maximal_certainty)
+            then(ecx, maximal_certainty)
         })
     }
 
