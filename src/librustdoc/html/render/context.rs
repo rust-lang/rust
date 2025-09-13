@@ -39,10 +39,6 @@ use crate::{DOC_RUST_LANG_ORG_VERSION, try_err};
 /// Major driving force in all rustdoc rendering. This contains information
 /// about where in the tree-like hierarchy rendering is occurring and controls
 /// how the current page is being rendered.
-///
-/// It is intended that this context is a lightweight object which can be fairly
-/// easily cloned because it is cloned per work-job (about once per item in the
-/// rustdoc tree).
 pub(crate) struct Context<'tcx> {
     /// Current hierarchy of components leading down to what's currently being
     /// rendered
@@ -60,7 +56,7 @@ pub(crate) struct Context<'tcx> {
     /// Issue for improving the situation: [#82381][]
     ///
     /// [#82381]: https://github.com/rust-lang/rust/issues/82381
-    pub(crate) shared: SharedContext<'tcx>,
+    pub(crate) shared: Box<SharedContext<'tcx>>,
     /// Collection of all types with notable traits referenced in the current module.
     pub(crate) types_with_notable_traits: RefCell<FxIndexSet<clean::Type>>,
     /// Contains information that needs to be saved and reset after rendering an item which is
@@ -552,7 +548,7 @@ impl<'tcx> Context<'tcx> {
         );
 
         let (sender, receiver) = channel();
-        let scx = SharedContext {
+        let scx = Box::new(SharedContext {
             tcx,
             src_root,
             local_sources,
@@ -575,7 +571,7 @@ impl<'tcx> Context<'tcx> {
             call_locations,
             should_merge: options.should_merge,
             expanded_codes,
-        };
+        });
 
         let dst = output;
         scx.ensure_dir(&dst)?;
