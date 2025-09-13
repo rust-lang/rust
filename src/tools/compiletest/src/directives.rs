@@ -18,8 +18,8 @@ use crate::directives::directive_names::{
 use crate::directives::needs::CachedNeedsConditions;
 use crate::errors::ErrorKind;
 use crate::executor::{CollectedTestDesc, ShouldPanic};
-use crate::help;
 use crate::util::static_regex;
+use crate::{fatal, help};
 
 pub(crate) mod auxiliary;
 mod cfg;
@@ -432,10 +432,11 @@ impl TestProps {
                         panic!("`compiler-flags` directive should be spelled `compile-flags`");
                     }
 
-                    if let Some(edition) = config.parse_edition(ln, testfile, line_number) {
+                    if let Some(range) = parse_edition_range(config, ln, testfile, line_number) {
                         // The edition is added at the start, since flags from //@compile-flags must
                         // be passed to rustc last.
-                        self.compile_flags.insert(0, format!("--edition={}", edition.trim()));
+                        self.compile_flags
+                            .insert(0, format!("--edition={}", range.edition_to_test(config)));
                         has_edition = true;
                     }
 
@@ -1125,10 +1126,6 @@ impl Config {
         }
     }
 
-    fn parse_edition(&self, line: &str, testfile: &Utf8Path, line_number: usize) -> Option<String> {
-        self.parse_name_value_directive(line, "edition", testfile, line_number)
-    }
-
     fn set_name_directive(&self, line: &str, directive: &str, value: &mut bool) {
         match value {
             true => {
@@ -1783,4 +1780,120 @@ enum IgnoreDecision {
     Ignore { reason: String },
     Continue,
     Error { message: String },
+}
+
+fn parse_edition_range(
+    config: &Config,
+    line: &str,
+    testfile: &Utf8Path,
+    line_number: usize,
+) -> Option<EditionRange> {
+    let raw = config.parse_name_value_directive(line, "edition", testfile, line_number)?;
+
+    // Edition range is half-open: `[lower_bound, upper_bound)`
+    if let Some((lower_bound, upper_bound)) = raw.split_once("..") {
+        Some(match (maybe_parse_edition(lower_bound), maybe_parse_edition(upper_bound)) {
+            (Some(lower_bound), Some(upper_bound)) if upper_bound < lower_bound => {
+                panic!("the left side of `//@ edition` cannot be higher than the right side");
+            }
+            (Some(lower_bound), Some(upper_bound)) if upper_bound == lower_bound => {
+                panic!("the left side of `//@ edition` cannot be equal to the right side");
+            }
+            (Some(lower_bound), Some(upper_bound)) => {
+                EditionRange::Range { lower_bound, upper_bound }
+            }
+            (Some(lower_bound), None) => EditionRange::RangeFrom(lower_bound),
+            (None, Some(_)) => {
+                fatal!(
+                    "{testfile}:{line_number}: ..edition is not a supported range in //@ edition"
+                );
+            }
+            (None, None) => {
+                fatal!("{testfile}:{line_number}: '..' is not a supported range in //@ edition");
+            }
+        })
+    } else {
+        match maybe_parse_edition(&raw) {
+            Some(edition) => Some(EditionRange::Exact(edition)),
+            None => {
+                fatal!("{testfile}:{line_number}: empty value for //@ edition");
+            }
+        }
+    }
+}
+
+fn maybe_parse_edition(mut input: &str) -> Option<Edition> {
+    input = input.trim();
+    if input.is_empty() {
+        return None;
+    }
+    Some(parse_edition(input))
+}
+
+fn parse_edition(mut input: &str) -> Edition {
+    input = input.trim();
+    if input == "future" {
+        Edition::Future
+    } else {
+        Edition::Year(input.parse().expect(&format!("'{input}' doesn't look like an edition")))
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+enum Edition {
+    // Note that the ordering here is load-bearing, as we want the future edition to be last.
+    Year(u32),
+    Future,
+}
+
+impl std::fmt::Display for Edition {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Edition::Year(year) => write!(f, "{year}"),
+            Edition::Future => f.write_str("future"),
+        }
+    }
+}
+
+impl From<u32> for Edition {
+    fn from(value: u32) -> Self {
+        Edition::Year(value)
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+enum EditionRange {
+    Exact(Edition),
+    RangeFrom(Edition),
+    /// Half-open range: `[lower_bound, upper_bound)`
+    Range {
+        lower_bound: Edition,
+        upper_bound: Edition,
+    },
+}
+
+impl EditionRange {
+    fn edition_to_test(&self, config: &Config) -> Edition {
+        let min_edition = Edition::Year(2015);
+        let requested: Edition =
+            config.edition.as_deref().map(parse_edition).unwrap_or(min_edition);
+
+        match *self {
+            EditionRange::Exact(exact) => exact,
+            EditionRange::RangeFrom(lower_bound) => {
+                if requested >= lower_bound {
+                    requested
+                } else {
+                    lower_bound
+                }
+            }
+            EditionRange::Range { lower_bound, upper_bound } => {
+                if requested >= lower_bound && requested < upper_bound {
+                    requested
+                } else {
+                    lower_bound
+                }
+            }
+        }
+    }
 }
