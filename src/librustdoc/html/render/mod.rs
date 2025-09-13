@@ -2936,13 +2936,13 @@ fn render_attributes_in_code(
             prefix,
             match attr {
                 hir::Attribute::Parsed(AttributeKind::LinkSection { name, .. }) => {
-                    Cow::Owned(format!("#[unsafe(link_section = \"{name}\")]"))
+                    Cow::Owned(format!("#[unsafe(link_section = \"{}\")]", Escape(name.as_str())))
                 }
                 hir::Attribute::Parsed(AttributeKind::NoMangle(..)) => {
                     Cow::Borrowed("#[unsafe(no_mangle)]")
                 }
                 hir::Attribute::Parsed(AttributeKind::ExportName { name, .. }) => {
-                    Cow::Owned(format!("#[unsafe(export_name = \"{name}\")]"))
+                    Cow::Owned(format!("#[unsafe(export_name = \"{}\")]", Escape(name.as_str())))
                 }
                 hir::Attribute::Parsed(AttributeKind::NonExhaustive(..)) => {
                     Cow::Borrowed("#[non_exhaustive]")
