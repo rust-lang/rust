@@ -30,7 +30,7 @@ use rustc_session::lint::builtin::{UNUSED_ATTRIBUTES, UNUSED_DOC_COMMENTS};
 use rustc_session::parse::feature_err;
 use rustc_span::hygiene::SyntaxContext;
 use rustc_span::{ErrorGuaranteed, FileName, Ident, LocalExpnId, Span, Symbol, sym};
-use smallvec::SmallVec;
+use smallvec::{SmallVec, smallvec};
 
 use crate::base::*;
 use crate::config::{StripUnconfigured, attr_into_trace};
@@ -46,6 +46,22 @@ use crate::module::{
 };
 use crate::placeholders::{PlaceholderExpander, placeholder};
 use crate::stats::*;
+
+/// Visitor to apply diagnostic attributes to expanded AST fragments
+struct DiagnosticAttrApplier {
+    attrs: Vec<ast::Attribute>,
+}
+
+impl MutVisitor for DiagnosticAttrApplier {
+    fn flat_map_item(&mut self, item: Box<ast::Item>) -> SmallVec<[Box<ast::Item>; 1]> {
+        let mut new_item = item;
+        // Prepend diagnostic attributes to preserve their position
+        let mut new_attrs = self.attrs.clone();
+        new_attrs.extend(new_item.attrs);
+        new_item.attrs = new_attrs.into();
+        smallvec![new_item]
+    }
+}
 
 macro_rules! ast_fragments {
     (
@@ -819,12 +835,43 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     let inner_tokens = attr_item.args.inner_tokens();
                     match expander.expand(self.cx, span, inner_tokens, tokens) {
                         Ok(tok_result) => {
-                            let fragment = self.parse_ast_fragment(
+                            // Extract diagnostic attributes from the original item before parsing
+                            let diagnostic_attrs = {
+                                match &item {
+                                    Annotatable::Item(item) => item
+                                        .attrs
+                                        .iter()
+                                        .filter(|attr| {
+                                            attr.name().map_or(false, |name| {
+                                                matches!(
+                                                    name,
+                                                    sym::expect
+                                                        | sym::allow
+                                                        | sym::warn
+                                                        | sym::deny
+                                                        | sym::forbid
+                                                )
+                                            })
+                                        })
+                                        .cloned()
+                                        .collect::<Vec<_>>(),
+                                    _ => Vec::new(),
+                                }
+                            };
+
+                            let mut fragment = self.parse_ast_fragment(
                                 tok_result,
                                 fragment_kind,
                                 &attr_item.path,
                                 span,
                             );
+
+                            // Apply diagnostic attributes to the expanded fragment
+                            if !diagnostic_attrs.is_empty() {
+                                fragment.mut_visit_with(&mut DiagnosticAttrApplier {
+                                    attrs: diagnostic_attrs,
+                                });
+                            }
                             if macro_stats {
                                 update_attr_macro_stats(
                                     self.cx,
