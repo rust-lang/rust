@@ -88,7 +88,10 @@ fn defaultness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Defaultness {
                 }),
             ..
         })
-        | hir::Node::ImplItem(hir::ImplItem { defaultness, .. })
+        | hir::Node::ImplItem(hir::ImplItem {
+            impl_kind: hir::ImplItemImplKind::Trait { defaultness, .. },
+            ..
+        })
         | hir::Node::TraitItem(hir::TraitItem { defaultness, .. }) => *defaultness,
         node => {
             bug!("`defaultness` called on {:?}", node);
@@ -165,7 +168,7 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
 
     if tcx.def_kind(def_id) == DefKind::AssocFn
         && let assoc_item = tcx.associated_item(def_id)
-        && assoc_item.container == ty::AssocItemContainer::Trait
+        && assoc_item.container == ty::AssocContainer::Trait
         && assoc_item.defaultness(tcx).has_value()
     {
         let sig = tcx.fn_sig(def_id).instantiate_identity();
