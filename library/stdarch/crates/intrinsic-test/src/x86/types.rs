@@ -225,6 +225,20 @@ impl IntrinsicTypeDefinition for X86IntrinsicType {
             ),
         }
     }
+
+    fn rust_scalar_type(&self) -> String {
+        let re = Regex::new(r"\__m\d+[a-z]*").unwrap();
+        if let Some(match_type) = re.find(self.param.type_data.as_str()) {
+            match_type.as_str().to_string()
+        } else {
+            let prefix = match self.data.kind {
+                TypeKind::Mask => String::from("__mmask"),
+                _ => self.kind().rust_prefix().to_string(),
+            };
+
+            format!("{prefix}{bits}", bits = self.inner_size())
+        }
+    }
 }
 
 impl X86IntrinsicType {
@@ -334,6 +348,12 @@ impl X86IntrinsicType {
                 if data.kind == TypeKind::Void && data.ptr {
                     data.kind = TypeKind::Int(Sign::Unsigned);
                     data.bit_len = Some(8);
+                }
+
+                // default settings for "void *" parameters
+                // often used by intrinsics to denote memory address or so.
+                if data.kind == TypeKind::Mask && data.bit_len.is_none() {
+                    data.bit_len = Some(32);
                 }
 
                 // if param.etype == IMM, then it is a constant.

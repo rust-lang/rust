@@ -7,7 +7,6 @@ mod xml_parser;
 
 use crate::common::SupportedArchitectureTest;
 use crate::common::cli::ProcessedCli;
-use crate::common::compare::compare_outputs;
 use crate::common::compile_c::CppCompilation;
 use crate::common::intrinsic::Intrinsic;
 use crate::common::intrinsic_helpers::TypeKind;
@@ -65,24 +64,6 @@ impl SupportedArchitectureTest for X86ArchitectureTest {
         Self {
             intrinsics: intrinsics,
             cli_options: cli_options,
-        }
-    }
-
-    fn compare_outputs(&self) -> bool {
-        if self.cli_options.toolchain.is_some() {
-            let intrinsics_name_list = self
-                .intrinsics
-                .iter()
-                .map(|i| i.name.clone())
-                .collect::<Vec<_>>();
-
-            compare_outputs(
-                &intrinsics_name_list,
-                &self.cli_options.runner,
-                &self.cli_options.target,
-            )
-        } else {
-            true
         }
     }
 }
