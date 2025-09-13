@@ -295,21 +295,24 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
             let container = self.structurally_resolve_type(span, current_container);
 
             match container.kind() {
-                ty::Adt(container_def, args)
-                    if container_def.is_enum() && field_path_kind == FieldPathKind::OffsetOf =>
-                {
+                ty::Adt(container_def, args) if container_def.is_enum() => {
                     let block = self.tcx.local_def_id_to_hir_id(self.body_id);
                     let (ident, _def_scope) =
                         self.tcx.adjust_ident_and_get_scope(field, container_def.did(), block);
 
-                    if !self.tcx.features().offset_of_enum() {
-                        rustc_session::parse::feature_err(
-                            &self.tcx.sess,
-                            sym::offset_of_enum,
-                            ident.span,
-                            "using enums in offset_of is experimental",
-                        )
-                        .emit();
+                    match field_path_kind {
+                        FieldPathKind::OffsetOf => {
+                            if !self.tcx.features().offset_of_enum() {
+                                rustc_session::parse::feature_err(
+                                    &self.tcx.sess,
+                                    sym::offset_of_enum,
+                                    ident.span,
+                                    "using enums in offset_of is experimental",
+                                )
+                                .emit();
+                            }
+                        }
+                        FieldPathKind::FieldOf => {}
                     }
 
                     let Some((index, variant)) = container_def
