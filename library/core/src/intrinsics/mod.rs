@@ -3293,6 +3293,23 @@ pub(crate) const fn miri_promise_symbolic_alignment(ptr: *const (), align: usize
     )
 }
 
+/// Returns a pointer to dynamic shared memory.
+///
+/// The returned pointer is the start of the dynamic shared memory region.
+/// All pointers returned by `dynamic_shared_memory` point to the same address,
+/// so alias the same memory.
+/// The returned pointer is aligned by at least the alignment of `T`.
+///
+/// # Other APIs
+///
+/// CUDA and HIP call this shared memory.
+/// OpenCL and SYCL call this local memory.
+#[rustc_intrinsic]
+#[rustc_nounwind]
+#[unstable(feature = "dynamic_shared_memory", issue = "135513")]
+#[cfg(any(target_arch = "amdgpu", target_arch = "nvptx64"))]
+pub fn dynamic_shared_memory<T: ?Sized>() -> *mut T;
+
 /// Copies the current location of arglist `src` to the arglist `dst`.
 ///
 /// FIXME: document safety requirements
