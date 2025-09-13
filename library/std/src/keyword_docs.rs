@@ -1257,6 +1257,108 @@ mod ref_keyword {}
 /// [`async`]: ../std/keyword.async.html
 mod return_keyword {}
 
+#[doc(keyword = "become")]
+//
+/// Perform a tail-call of a function.
+///
+/// <div class="warning">
+///
+/// `feature(explicit_tail_calls)` is currently incomplete and may not work properly.
+/// </div>
+///
+/// When tail calling a function, instead of its stack frame being added to the
+/// stack, the stack frame of the caller is directly replaced with the callee's.
+/// This means that as long as a loop in a call graph only uses tail calls, the
+/// stack growth will be bounded.
+///
+/// This is useful for writing functional-style code (since it prevents recursion
+/// from exhausting resources) or for code optimization (since a tail call
+/// *might* be cheaper than a normal call, tail calls can be used in a similar
+/// manner to computed goto).
+///
+/// Example of using `become` to implement functional-style `fold`:
+/// ```
+/// #![feature(explicit_tail_calls)]
+/// #![expect(incomplete_features)]
+///
+/// fn fold<T: Copy, S>(slice: &[T], init: S, f: impl Fn(S, T) -> S) -> S {
+///     match slice {
+///         // without `become`, on big inputs this could easily overflow the
+///         // stack. using a tail call guarantees that the stack will not grow unboundedly
+///         [first, rest @ ..] => become fold(rest, f(init, *first), f),
+///         [] => init,
+///     }
+/// }
+/// ```
+///
+/// Compilers can already perform "tail call optimization" -- they can replace normal
+/// calls with tail calls, although there are no guarantees that this will be done.
+/// However, to perform TCO, the call needs to be the last thing that happens
+/// in the functions and be returned from it. This requirement is often broken
+/// by drop code for locals, which is run after computing the return expression:
+///
+/// ```
+/// fn example() {
+///     let string = "meow".to_owned();
+///     println!("{string}");
+///     return help(); // this is *not* the last thing that happens in `example`...
+/// }
+///
+/// // ... because it is desugared to this:
+/// fn example_desugared() {
+///     let string = "meow".to_owned();
+///     println!("{string}");
+///     let tmp = help();
+///     drop(string);
+///     return tmp;
+/// }
+///
+/// fn help() {}
+/// ```
+///
+/// For this reason, `become` also changes the drop order, such that locals are
+/// dropped *before* evaluating the call.
+///
+/// In order to guarantee that the compiler can perform a tail call, `become`
+/// currently has these requirements:
+/// 1. callee and caller must have the same ABI, arguments, and return type
+/// 2. callee and caller must not have varargs
+/// 3. caller must not be marked with `#[track_caller]`
+///    - callee is allowed to be marked with `#[track_caller]` as otherwise
+///      adding `#[track_caller]` would be a breaking change. if callee is
+///      marked with `#[track_caller]` a tail call is not guaranteed.
+/// 4. callee and caller cannot be a closure
+///    (unless it's coerced to a function pointer)
+///
+/// It is possible to tail-call a function pointer:
+/// ```
+/// #![feature(explicit_tail_calls)]
+/// #![expect(incomplete_features)]
+///
+/// #[derive(Copy, Clone)]
+/// enum Inst { Inc, Dec }
+///
+/// fn dispatch(stream: &[Inst], state: u32) -> u32 {
+///     const TABLE: &[fn(&[Inst], u32) -> u32] = &[increment, decrement];
+///     match stream {
+///         [inst, rest @ ..] => become TABLE[*inst as usize](rest, state),
+///         [] => state,
+///     }
+/// }
+///
+/// fn increment(stream: &[Inst], state: u32) -> u32 {
+///     become dispatch(stream, state + 1)
+/// }
+///
+/// fn decrement(stream: &[Inst], state: u32) -> u32 {
+///     become dispatch(stream, state - 1)
+/// }
+///
+/// let program = &[Inst::Inc, Inst::Inc, Inst::Dec, Inst::Inc];
+/// assert_eq!(dispatch(program, 0), 2);
+/// ```
+mod become_keyword {}
+
 #[doc(keyword = "self")]
 //
 /// The receiver of a method, or the current module.
