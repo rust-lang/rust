@@ -305,7 +305,7 @@ impl CodegenBackend for LlvmCodegenBackend {
         buffer overflow (even in the presence of undefined behavior).
 
         This provides similar security guarantees to Clang's
-        `-fstack-protector=strong`.
+        `-fstack-protector-strong`.
 
         The exact rules are unstable and subject to change, but
         currently, it generates stack protectors for functions that,
