@@ -48,7 +48,6 @@ mod errors;
 mod expect;
 mod for_loops_over_fallibles;
 mod foreign_modules;
-mod fundamental_functions;
 mod if_let_rescope;
 mod impl_trait_overcaptures;
 mod internal;
@@ -71,6 +70,7 @@ mod pass_by_value;
 mod passes;
 mod precedence;
 mod ptr_nulls;
+mod redefining_runtime_symbols;
 mod redundant_semicolon;
 mod reference_casting;
 mod shadowed_into_iter;
@@ -93,7 +93,6 @@ use deref_into_dyn_supertrait::*;
 use drop_forget_useless::*;
 use enum_intrinsics_non_enums::EnumIntrinsicsNonEnums;
 use for_loops_over_fallibles::*;
-use fundamental_functions::*;
 use if_let_rescope::IfLetRescope;
 use impl_trait_overcaptures::ImplTraitOvercaptures;
 use internal::*;
@@ -112,6 +111,7 @@ use opaque_hidden_inferred_bound::*;
 use pass_by_value::*;
 use precedence::*;
 use ptr_nulls::*;
+use redefining_runtime_symbols::*;
 use redundant_semicolon::*;
 use reference_casting::*;
 use rustc_hir::def_id::LocalModDefId;
@@ -242,7 +242,7 @@ late_lint_methods!(
             AsyncClosureUsage: AsyncClosureUsage,
             AsyncFnInTrait: AsyncFnInTrait,
             NonLocalDefinitions: NonLocalDefinitions::default(),
-            FundamentalFunctions: FundamentalFunctions,
+            RedefiningRuntimeSymbols: RedefiningRuntimeSymbols,
             ImplTraitOvercaptures: ImplTraitOvercaptures,
             IfLetRescope: IfLetRescope::default(),
             StaticMutRefs: StaticMutRefs,

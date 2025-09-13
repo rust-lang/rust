@@ -705,13 +705,13 @@ pub(crate) enum UseLetUnderscoreIgnoreSuggestion {
     },
 }
 
-// fundamental_functions.rs
+// redefining_runtime_symbols.rs
 #[derive(LintDiagnostic)]
-#[diag(lint_clashing_function_names_with_fundamental_functions)]
+#[diag(lint_redefining_runtime_symbols)]
 #[note(lint_match_exactly)]
 #[note(lint_learn_more)]
 #[help]
-pub(crate) struct ClashingFunctionNamesWithFundamentalFunctions {
+pub(crate) struct RedefiningRuntimeSymbolsDiag {
     pub symbol_name: String,
 }
 

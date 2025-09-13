@@ -11,45 +11,45 @@ pub extern "C" fn memcpy(
     src: *const c_void,
     n: i64,
 ) -> *mut c_void { std::ptr::null_mut() }
-//~^^^^^ WARN `memcpy` clashes
+//~^^^^^ WARN redefinition of the runtime `memcpy` symbol
 
 #[no_mangle]
 pub fn memmove() {}
-//~^ WARN `memmove` clashes
+//~^ WARN redefinition of the runtime `memmove` symbol
 
 #[no_mangle]
 pub fn memset() {}
-//~^ WARN `memset` clashes
+//~^ WARN redefinition of the runtime `memset` symbol
 
 #[no_mangle]
 pub fn memcmp() {}
-//~^ WARN `memcmp` clashes
+//~^ WARN redefinition of the runtime `memcmp` symbol
 
 #[export_name = "bcmp"]
 pub fn bcmp_() {}
-//~^ WARN `bcmp` clashes
+//~^ WARN redefinition of the runtime `bcmp` symbol
 
 #[no_mangle]
-pub fn strlen() {}
-//~^ WARN `strlen` clashes
+pub static strlen: () = ();
+//~^ WARN redefinition of the runtime `strlen` symbol
 
 // From std
 
 #[no_mangle]
 pub fn open() {}
-//~^ WARN `open` clashes
+//~^ WARN redefinition of the runtime `open` symbol
 
 #[export_name = "read"]
 pub async fn read1() {}
-//~^ WARN `read` clashes
+//~^ WARN redefinition of the runtime `read` symbol
 
 #[export_name = "write"]
 pub fn write1() {}
-//~^ WARN `write` clashes
+//~^ WARN redefinition of the runtime `write` symbol
 
 #[export_name = "close"]
 pub fn close_() {}
-//~^ WARN `close` clashes
+//~^ WARN redefinition of the runtime `close` symbol
 
 extern "C" {
     // No warning, not a body.
