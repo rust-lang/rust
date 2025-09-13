@@ -360,7 +360,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         // Now we want to know if this can be matched
-        if !self.predicate_may_hold(&obligation) {
+        if !self.predicate_may_hold_opaque_types_jank(&obligation) {
             debug!("--> Cannot match obligation");
             // Cannot be matched, no such method resolution is possible.
             return None;

@@ -204,7 +204,7 @@ where
                         //
                         // Only goals proven via the trait solver should be region dependent.
                         Certainty::Yes => {}
-                        Certainty::Maybe(_) => {
+                        Certainty::Maybe { .. } => {
                             self.obligations.register(obligation, None);
                         }
                     }
@@ -258,7 +258,7 @@ where
                             infcx.push_hir_typeck_potentially_region_dependent_goal(obligation);
                         }
                     }
-                    Certainty::Maybe(_) => self.obligations.register(obligation, stalled_on),
+                    Certainty::Maybe { .. } => self.obligations.register(obligation, stalled_on),
                 }
             }
 

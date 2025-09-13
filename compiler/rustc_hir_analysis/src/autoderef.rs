@@ -68,7 +68,9 @@ impl<'a, 'tcx> Iterator for Autoderef<'a, 'tcx> {
             return None;
         }
 
-        if self.state.cur_ty.is_ty_var() {
+        if let &ty::Infer(ty::TyVar(vid)) = self.state.cur_ty.kind()
+            && !self.infcx.has_opaques_with_sub_unified_hidden_type(vid)
+        {
             return None;
         }
 
@@ -160,7 +162,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             self.param_env,
             ty::Binder::dummy(trait_ref),
         );
-        if !self.infcx.next_trait_solver() && !self.infcx.predicate_may_hold(&obligation) {
+        if !self.infcx.predicate_may_hold_opaque_types_jank(&obligation) {
             debug!("overloaded_deref_ty: cannot match obligation");
             return None;
         }

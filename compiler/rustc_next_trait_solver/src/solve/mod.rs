@@ -158,9 +158,10 @@ where
         if self.may_use_unstable_feature(param_env, symbol) {
             self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         } else {
-            self.evaluate_added_goals_and_make_canonical_response(Certainty::Maybe(
-                MaybeCause::Ambiguity,
-            ))
+            self.evaluate_added_goals_and_make_canonical_response(Certainty::Maybe {
+                cause: MaybeCause::Ambiguity,
+                opaque_types_jank: OpaqueTypesJank::AllGood,
+            })
         }
     }
 
@@ -278,18 +279,21 @@ where
 
     fn bail_with_ambiguity(&mut self, candidates: &[Candidate<I>]) -> CanonicalResponse<I> {
         debug_assert!(candidates.len() > 1);
-        let maybe_cause =
-            candidates.iter().fold(MaybeCause::Ambiguity, |maybe_cause, candidates| {
-                // Pull down the certainty of `Certainty::Yes` to ambiguity when combining
+        let (cause, opaque_types_jank) = candidates.iter().fold(
+            (MaybeCause::Ambiguity, OpaqueTypesJank::AllGood),
+            |(c, jank), candidates| {
+                // We pull down the certainty of `Certainty::Yes` to ambiguity when combining
                 // these responses, b/c we're combining more than one response and this we
                 // don't know which one applies.
-                let candidate = match candidates.result.value.certainty {
-                    Certainty::Yes => MaybeCause::Ambiguity,
-                    Certainty::Maybe(candidate) => candidate,
-                };
-                maybe_cause.or(candidate)
-            });
-        self.make_ambiguous_response_no_constraints(maybe_cause)
+                match candidates.result.value.certainty {
+                    Certainty::Yes => (c, jank),
+                    Certainty::Maybe { cause, opaque_types_jank } => {
+                        (c.or(cause), jank.or(opaque_types_jank))
+                    }
+                }
+            },
+        );
+        self.make_ambiguous_response_no_constraints(cause, opaque_types_jank)
     }
 
     /// If we fail to merge responses we flounder and return overflow or ambiguity.
@@ -427,6 +431,7 @@ pub struct GoalStalledOn<I: Interner> {
     pub num_opaques: usize,
     pub stalled_vars: Vec<I::GenericArg>,
     pub sub_roots: Vec<TyVid>,
-    /// The cause that will be returned on subsequent evaluations if this goal remains stalled.
-    pub stalled_cause: MaybeCause,
+    /// The certainty that will be returned on subsequent evaluations if this
+    /// goal remains stalled.
+    pub stalled_certainty: Certainty,
 }
