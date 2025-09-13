@@ -187,14 +187,18 @@ impl<T: Idx> DenseBitSet<T> {
     /// Insert `elem`. Returns whether the set has changed.
     #[inline]
     pub fn insert(&mut self, elem: T) -> bool {
-        assert!(
+        debug_assert!(
             elem.index() < self.domain_size,
             "inserting element at index {} but domain size is {}",
             elem.index(),
             self.domain_size,
         );
         let (word_index, mask) = word_index_and_mask(elem);
-        let word_ref = &mut self.words[word_index];
+        // SAFETY:
+        // The number of words we have is the domain size divided by word size (rounded up). We have
+        // asserted above that the element is contained within the domain size. Therefore,
+        // word_index is in bounds.
+        let word_ref = unsafe { self.words.get_unchecked_mut(word_index) };
         let word = *word_ref;
         let new_word = word | mask;
         *word_ref = new_word;
