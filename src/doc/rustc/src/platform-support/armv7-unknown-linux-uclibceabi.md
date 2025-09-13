@@ -4,6 +4,9 @@
 
 This target supports Armv7-A softfloat CPUs and uses the uclibc-ng standard library. This is a common configuration on many consumer routers (e.g., Netgear R7000, Asus RT-AC68U).
 
+See [`arm-linux`](arm-linux.md) for information applicable to all Arm Linux
+targets.
+
 ## Target maintainers
 
 [@lancethepants](https://github.com/lancethepants)
