@@ -696,7 +696,7 @@ impl<'a> AstValidator<'a> {
 
         match fn_ctxt {
             FnCtxt::Foreign => return,
-            FnCtxt::Free => match sig.header.ext {
+            FnCtxt::Free | FnCtxt::Assoc(_) => match sig.header.ext {
                 Extern::Implicit(_) => {
                     if !matches!(sig.header.safety, Safety::Unsafe(_)) {
                         self.dcx().emit_err(errors::CVariadicMustBeUnsafe {
@@ -726,11 +726,6 @@ impl<'a> AstValidator<'a> {
                     self.dcx().emit_err(err);
                 }
             },
-            FnCtxt::Assoc(_) => {
-                // For now, C variable argument lists are unsupported in associated functions.
-                let err = errors::CVariadicAssociatedFunction { span: variadic_param.span };
-                self.dcx().emit_err(err);
-            }
         }
     }
 

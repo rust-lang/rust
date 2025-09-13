@@ -1,0 +1,345 @@
+error: `...` is not supported for non-extern functions
+  --> $DIR/unsupported-abi.rs:33:21
+   |
+LL | unsafe fn rust_free(_: ...) {}
+   |                     ^^^^^^
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+error: `...` is not supported for `extern "Rust"` functions
+  --> $DIR/unsupported-abi.rs:35:44
+   |
+LL | unsafe extern "Rust" fn rust_free_explicit(_: ...) {}
+   |        -------------                       ^^^^^^
+   |        |
+   |        `extern "Rust"` because of this
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+error: `...` is not supported for `extern "cdecl"` functions
+  --> $DIR/unsupported-abi.rs:41:37
+   |
+LL | unsafe extern "cdecl" fn cdecl_free(_: ...) {}
+   |        --------------               ^^^^^^
+   |        |
+   |        `extern "cdecl"` because of this
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+error: `...` is not supported for `extern "cdecl-unwind"` functions
+  --> $DIR/unsupported-abi.rs:43:51
+   |
+LL | unsafe extern "cdecl-unwind" fn cdecl_unwind_free(_: ...) {}
+   |        ---------------------                      ^^^^^^
+   |        |
+   |        `extern "cdecl-unwind"` because of this
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+error: `...` is not supported for `extern "stdcall"` functions
+  --> $DIR/unsupported-abi.rs:45:41
+   |
+LL | unsafe extern "stdcall" fn stdcall_free(_: ...) {}
+   |        ----------------                 ^^^^^^
+   |        |
+   |        `extern "stdcall"` because of this
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+error: `...` is not supported for `extern "stdcall-unwind"` functions
+  --> $DIR/unsupported-abi.rs:47:55
+   |
+LL | unsafe extern "stdcall-unwind" fn stdcall_unwind_free(_: ...) {}
+   |        -----------------------                        ^^^^^^
+   |        |
+   |        `extern "stdcall-unwind"` because of this
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+error: `...` is not supported for `extern "thiscall"` functions
+  --> $DIR/unsupported-abi.rs:49:43
+   |
+LL | unsafe extern "thiscall" fn thiscall_free(_: ...) {}
+   |        -----------------                  ^^^^^^
+   |        |
+   |        `extern "thiscall"` because of this
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+error: `...` is not supported for `extern "thiscall-unwind"` functions
+  --> $DIR/unsupported-abi.rs:51:57
+   |
+LL | unsafe extern "thiscall-unwind" fn thiscall_unwind_free(_: ...) {}
+   |        ------------------------                         ^^^^^^
+   |        |
+   |        `extern "thiscall-unwind"` because of this
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+error: `...` is not supported for non-extern functions
+  --> $DIR/unsupported-abi.rs:57:27
+   |
+LL |     unsafe fn rust_method(_: ...) {}
+   |                           ^^^^^^
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+error: `...` is not supported for `extern "Rust"` functions
+  --> $DIR/unsupported-abi.rs:59:50
+   |
+LL |     unsafe extern "Rust" fn rust_method_explicit(_: ...) {}
+   |            -------------                         ^^^^^^
+   |            |
+   |            `extern "Rust"` because of this
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+error: `...` is not supported for `extern "cdecl"` functions
+  --> $DIR/unsupported-abi.rs:65:43
+   |
+LL |     unsafe extern "cdecl" fn cdecl_method(_: ...) {}
+   |            --------------                 ^^^^^^
+   |            |
+   |            `extern "cdecl"` because of this
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+error: `...` is not supported for `extern "cdecl-unwind"` functions
+  --> $DIR/unsupported-abi.rs:67:57
+   |
+LL |     unsafe extern "cdecl-unwind" fn cdecl_unwind_method(_: ...) {}
+   |            ---------------------                        ^^^^^^
+   |            |
+   |            `extern "cdecl-unwind"` because of this
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+error: `...` is not supported for `extern "stdcall"` functions
+  --> $DIR/unsupported-abi.rs:69:47
+   |
+LL |     unsafe extern "stdcall" fn stdcall_method(_: ...) {}
+   |            ----------------                   ^^^^^^
+   |            |
+   |            `extern "stdcall"` because of this
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+error: `...` is not supported for `extern "stdcall-unwind"` functions
+  --> $DIR/unsupported-abi.rs:71:61
+   |
+LL |     unsafe extern "stdcall-unwind" fn stdcall_unwind_method(_: ...) {}
+   |            -----------------------                          ^^^^^^
+   |            |
+   |            `extern "stdcall-unwind"` because of this
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+error: `...` is not supported for `extern "thiscall"` functions
+  --> $DIR/unsupported-abi.rs:73:49
+   |
+LL |     unsafe extern "thiscall" fn thiscall_method(_: ...) {}
+   |            -----------------                    ^^^^^^
+   |            |
+   |            `extern "thiscall"` because of this
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+error: `...` is not supported for `extern "thiscall-unwind"` functions
+  --> $DIR/unsupported-abi.rs:75:63
+   |
+LL |     unsafe extern "thiscall-unwind" fn thiscall_unwind_method(_: ...) {}
+   |            ------------------------                           ^^^^^^
+   |            |
+   |            `extern "thiscall-unwind"` because of this
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+error: `...` is not supported for non-extern functions
+  --> $DIR/unsupported-abi.rs:80:33
+   |
+LL |     unsafe fn rust_trait_method(_: ...) {}
+   |                                 ^^^^^^
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+error: `...` is not supported for `extern "Rust"` functions
+  --> $DIR/unsupported-abi.rs:82:56
+   |
+LL |     unsafe extern "Rust" fn rust_trait_method_explicit(_: ...) {}
+   |            -------------                               ^^^^^^
+   |            |
+   |            `extern "Rust"` because of this
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+error: `...` is not supported for `extern "cdecl"` functions
+  --> $DIR/unsupported-abi.rs:88:49
+   |
+LL |     unsafe extern "cdecl" fn cdecl_trait_method(_: ...) {}
+   |            --------------                       ^^^^^^
+   |            |
+   |            `extern "cdecl"` because of this
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+error: `...` is not supported for `extern "cdecl-unwind"` functions
+  --> $DIR/unsupported-abi.rs:90:63
+   |
+LL |     unsafe extern "cdecl-unwind" fn cdecl_unwind_trait_method(_: ...) {}
+   |            ---------------------                              ^^^^^^
+   |            |
+   |            `extern "cdecl-unwind"` because of this
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+error: `...` is not supported for `extern "stdcall"` functions
+  --> $DIR/unsupported-abi.rs:92:53
+   |
+LL |     unsafe extern "stdcall" fn stdcall_trait_method(_: ...) {}
+   |            ----------------                         ^^^^^^
+   |            |
+   |            `extern "stdcall"` because of this
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+error: `...` is not supported for `extern "stdcall-unwind"` functions
+  --> $DIR/unsupported-abi.rs:94:67
+   |
+LL |     unsafe extern "stdcall-unwind" fn stdcall_unwind_trait_method(_: ...) {}
+   |            -----------------------                                ^^^^^^
+   |            |
+   |            `extern "stdcall-unwind"` because of this
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+error: `...` is not supported for `extern "thiscall"` functions
+  --> $DIR/unsupported-abi.rs:96:55
+   |
+LL |     unsafe extern "thiscall" fn thiscall_trait_method(_: ...) {}
+   |            -----------------                          ^^^^^^
+   |            |
+   |            `extern "thiscall"` because of this
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+error: `...` is not supported for `extern "thiscall-unwind"` functions
+  --> $DIR/unsupported-abi.rs:98:69
+   |
+LL |     unsafe extern "thiscall-unwind" fn thiscall_unwind_trait_method(_: ...) {}
+   |            ------------------------                                 ^^^^^^
+   |            |
+   |            `extern "thiscall-unwind"` because of this
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+error: `...` is not supported for non-extern functions
+  --> $DIR/unsupported-abi.rs:103:33
+   |
+LL |     unsafe fn rust_trait_method(_: ...) {}
+   |                                 ^^^^^^
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+error: `...` is not supported for `extern "Rust"` functions
+  --> $DIR/unsupported-abi.rs:105:56
+   |
+LL |     unsafe extern "Rust" fn rust_trait_method_explicit(_: ...) {}
+   |            -------------                               ^^^^^^
+   |            |
+   |            `extern "Rust"` because of this
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+error: `...` is not supported for `extern "cdecl"` functions
+  --> $DIR/unsupported-abi.rs:111:49
+   |
+LL |     unsafe extern "cdecl" fn cdecl_trait_method(_: ...) {}
+   |            --------------                       ^^^^^^
+   |            |
+   |            `extern "cdecl"` because of this
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+error: `...` is not supported for `extern "cdecl-unwind"` functions
+  --> $DIR/unsupported-abi.rs:113:63
+   |
+LL |     unsafe extern "cdecl-unwind" fn cdecl_unwind_trait_method(_: ...) {}
+   |            ---------------------                              ^^^^^^
+   |            |
+   |            `extern "cdecl-unwind"` because of this
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+error: `...` is not supported for `extern "stdcall"` functions
+  --> $DIR/unsupported-abi.rs:115:53
+   |
+LL |     unsafe extern "stdcall" fn stdcall_trait_method(_: ...) {}
+   |            ----------------                         ^^^^^^
+   |            |
+   |            `extern "stdcall"` because of this
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+error: `...` is not supported for `extern "stdcall-unwind"` functions
+  --> $DIR/unsupported-abi.rs:117:67
+   |
+LL |     unsafe extern "stdcall-unwind" fn stdcall_unwind_trait_method(_: ...) {}
+   |            -----------------------                                ^^^^^^
+   |            |
+   |            `extern "stdcall-unwind"` because of this
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+error: `...` is not supported for `extern "thiscall"` functions
+  --> $DIR/unsupported-abi.rs:119:55
+   |
+LL |     unsafe extern "thiscall" fn thiscall_trait_method(_: ...) {}
+   |            -----------------                          ^^^^^^
+   |            |
+   |            `extern "thiscall"` because of this
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+error: `...` is not supported for `extern "thiscall-unwind"` functions
+  --> $DIR/unsupported-abi.rs:121:69
+   |
+LL |     unsafe extern "thiscall-unwind" fn thiscall_unwind_trait_method(_: ...) {}
+   |            ------------------------                                 ^^^^^^
+   |            |
+   |            `extern "thiscall-unwind"` because of this
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+error[E0045]: C-variadic functions with the "Rust" calling convention are not supported
+  --> $DIR/unsupported-abi.rs:14:22
+   |
+LL |     extern "Rust"  { fn rust_foreign_explicit(_: ...); }
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ C-variadic function must have a compatible calling convention
+
+error[E0045]: C-variadic functions with the "stdcall" calling convention are not supported
+  --> $DIR/unsupported-abi.rs:20:25
+   |
+LL |     extern "stdcall"  { fn stdcall_foreign(_: ...); }
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ C-variadic function must have a compatible calling convention
+
+error[E0045]: C-variadic functions with the "stdcall-unwind" calling convention are not supported
+  --> $DIR/unsupported-abi.rs:22:32
+   |
+LL |     extern "stdcall-unwind"  { fn stdcall_unwind_foreign(_: ...); }
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ C-variadic function must have a compatible calling convention
+
+error[E0045]: C-variadic functions with the "thiscall" calling convention are not supported
+  --> $DIR/unsupported-abi.rs:24:26
+   |
+LL |     extern "thiscall"  { fn thiscall_foreign(_: ...); }
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ C-variadic function must have a compatible calling convention
+
+error[E0045]: C-variadic functions with the "thiscall-unwind" calling convention are not supported
+  --> $DIR/unsupported-abi.rs:26:33
+   |
+LL |     extern "thiscall-unwind"  { fn thiscall_unwind_foreign(_: ...); }
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ C-variadic function must have a compatible calling convention
+
+error: aborting due to 37 previous errors
+
+For more information about this error, try `rustc --explain E0045`.
