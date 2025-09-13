@@ -19,7 +19,7 @@ use rustc_abi::{ExternAbi, FieldIdx, Layout, LayoutData, TargetDataLayout, Varia
 use rustc_ast as ast;
 use rustc_data_structures::defer;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::jobserver::Proxy;
 use rustc_data_structures::profiling::SelfProfilerRef;
@@ -1589,6 +1589,8 @@ pub struct GlobalCtxt<'tcx> {
     /// Stores memory for globals (statics/consts).
     pub(crate) alloc_map: interpret::AllocMap<'tcx>,
 
+    pub stack_protector: Lock<FxHashSet<DefId>>,
+
     current_gcx: CurrentGcx,
 
     /// A jobserver reference used to release then acquire a token while waiting on a query.
@@ -1816,6 +1818,7 @@ impl<'tcx> TyCtxt<'tcx> {
             clauses_cache: Default::default(),
             data_layout,
             alloc_map: interpret::AllocMap::new(),
+            stack_protector: Default::default(),
             current_gcx,
             jobserver_proxy,
         });

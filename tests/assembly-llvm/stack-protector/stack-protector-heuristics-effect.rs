@@ -1,10 +1,11 @@
-//@ revisions: all strong basic none missing
+//@ revisions: all rusty strong basic none missing
 //@ assembly-output: emit-asm
 //@ ignore-apple slightly different policy on stack protection of arrays
 //@ ignore-msvc stack check code uses different function names
 //@ ignore-nvptx64 stack protector is not supported
 //@ ignore-wasm32-bare
 //@ [all] compile-flags: -Z stack-protector=all
+//@ [rusty] compile-flags: -Z stack-protector=rusty
 //@ [strong] compile-flags: -Z stack-protector=strong
 //@ [basic] compile-flags: -Z stack-protector=basic
 //@ [none] compile-flags: -Z stack-protector=none
@@ -23,6 +24,7 @@
 #[no_mangle]
 pub fn emptyfn() {
     // all: __stack_chk_fail
+    // rusty-NOT: __stack_chk_fail
     // strong-NOT: __stack_chk_fail
     // basic-NOT: __stack_chk_fail
     // none-NOT: __stack_chk_fail
@@ -41,6 +43,7 @@ pub fn array_char(f: fn(*const char)) {
     f(&c as *const _);
 
     // all: __stack_chk_fail
+    // rusty: __stack_chk_fail
     // strong: __stack_chk_fail
     // basic: __stack_chk_fail
     // none-NOT: __stack_chk_fail
@@ -57,6 +60,7 @@ pub fn array_u8_1(f: fn(*const u8)) {
     // array variables regardless of their size.
 
     // all: __stack_chk_fail
+    // rusty: __stack_chk_fail
     // strong: __stack_chk_fail
     // basic-NOT: __stack_chk_fail
     // none-NOT: __stack_chk_fail
@@ -74,6 +78,7 @@ pub fn array_u8_small(f: fn(*const u8)) {
     // Small arrays do not lead to stack protection by the 'basic' heuristic.
 
     // all: __stack_chk_fail
+    // rusty: __stack_chk_fail
     // strong: __stack_chk_fail
     // basic-NOT: __stack_chk_fail
     // none-NOT: __stack_chk_fail
@@ -90,6 +95,7 @@ pub fn array_u8_large(f: fn(*const u8)) {
     // will also protect this function.
 
     // all: __stack_chk_fail
+    // rusty: __stack_chk_fail
     // strong: __stack_chk_fail
     // basic: __stack_chk_fail
     // none-NOT: __stack_chk_fail
@@ -109,6 +115,7 @@ pub fn array_bytesizednewtype_9(f: fn(*const ByteSizedNewtype)) {
     // also protect this function.
 
     // all: __stack_chk_fail
+    // rusty: __stack_chk_fail
     // strong: __stack_chk_fail
     // basic: __stack_chk_fail
     // none-NOT: __stack_chk_fail
@@ -136,6 +143,7 @@ pub fn local_var_addr_used_indirectly(f: fn(bool)) {
     // ```
 
     // all: __stack_chk_fail
+    // rusty: __stack_chk_fail
     // strong: __stack_chk_fail
     // basic-NOT: __stack_chk_fail
     // none-NOT: __stack_chk_fail
@@ -152,6 +160,7 @@ pub fn local_string_addr_taken(f: fn(&String)) {
     // protection. It does not matter that the reference is not mut.
 
     // all: __stack_chk_fail
+    // rusty: __stack_chk_fail
     // strong: __stack_chk_fail
     // basic: __stack_chk_fail
     // none-NOT: __stack_chk_fail
@@ -181,6 +190,10 @@ pub fn local_var_addr_taken_used_locally_only(factory: fn() -> i32, sink: fn(i32
     // the `strong` heuristic.
 
     // all: __stack_chk_fail
+
+    // FIXME: rusty stack smash protection needs to support inline scenario detection
+    // rusty-NOT: __stack_chk_fail
+
     // strong-NOT: __stack_chk_fail
     // basic-NOT: __stack_chk_fail
     // none-NOT: __stack_chk_fail
@@ -218,6 +231,10 @@ pub fn local_large_var_moved(f: fn(Gigastruct)) {
     // ```
 
     // all: __stack_chk_fail
+
+    // FIXME: How does the rust compiler handle moves of large structures?
+    // rusty-NOT: __stack_chk_fail
+
     // strong: __stack_chk_fail
     // basic: __stack_chk_fail
     // none-NOT: __stack_chk_fail
@@ -247,6 +264,10 @@ pub fn local_large_var_cloned(f: fn(Gigastruct)) {
     // ```
 
     // all: __stack_chk_fail
+
+    // FIXME: How does the rust compiler handle moves of large structures?
+    // rusty-NOT: __stack_chk_fail
+
     // strong: __stack_chk_fail
     // basic: __stack_chk_fail
     // none-NOT: __stack_chk_fail
@@ -287,6 +308,12 @@ pub fn alloca_small_compile_time_constant_arg(f: fn(*mut ())) {
     f(unsafe { alloca(8) });
 
     // all: __stack_chk_fail
+
+    // FIXME: Rusty thinks a function that returns a mutable raw pointer may
+    // be a stack memory allocation function, so it performs stack smash protection.
+    // Is it possible to optimize the heuristics?
+    // rusty-NOT: __stack_chk_fail
+
     // strong-NOT: __stack_chk_fail
     // basic-NOT: __stack_chk_fail
     // none-NOT: __stack_chk_fail
@@ -299,6 +326,7 @@ pub fn alloca_large_compile_time_constant_arg(f: fn(*mut ())) {
     f(unsafe { alloca(9) });
 
     // all: __stack_chk_fail
+    // rusty-NOT: __stack_chk_fail
     // strong-NOT: __stack_chk_fail
     // basic-NOT: __stack_chk_fail
     // none-NOT: __stack_chk_fail
@@ -311,6 +339,7 @@ pub fn alloca_dynamic_arg(f: fn(*mut ()), n: usize) {
     f(unsafe { alloca(n) });
 
     // all: __stack_chk_fail
+    // rusty-NOT: __stack_chk_fail
     // strong-NOT: __stack_chk_fail
     // basic-NOT: __stack_chk_fail
     // none-NOT: __stack_chk_fail
@@ -338,6 +367,10 @@ pub fn unsized_fn_param(s: [u8], l: bool, f: fn([u8])) {
     // heuristics.
 
     // all: __stack_chk_fail
+
+    // FIXME: Does Rusty need to handle this type of optimization?
+    // rusty-NOT: __stack_chk_fail
+
     // strong-NOT: __stack_chk_fail
     // basic-NOT: __stack_chk_fail
     // none-NOT: __stack_chk_fail
