@@ -27,8 +27,8 @@ use rustc_middle::ty::print::{
     with_forced_trimmed_paths,
 };
 use rustc_middle::ty::{
-    self, TraitRef, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
-    Upcast,
+    self, GenericArgKind, TraitRef, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeVisitableExt, Upcast,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{BytePos, DUMMY_SP, STDLIB_STABLE_CRATES, Span, Symbol, sym};
@@ -2316,7 +2316,19 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 cand
             })
             .collect();
-        impl_candidates.sort_by_key(|cand| (cand.similarity, cand.trait_ref.to_string()));
+        impl_candidates.sort_by_key(|cand| {
+            // When suggesting array types, sort them by the length of the array, not lexicographically (#135098)
+            let len = if let GenericArgKind::Type(ty) = cand.trait_ref.args[0].kind()
+                && let ty::Array(_, len) = ty.kind()
+            {
+                // Deprioritize suggestions for parameterized arrays.
+                len.try_to_target_usize(self.tcx).unwrap_or(u64::MAX)
+            } else {
+                0
+            };
+
+            (cand.similarity, len, cand.trait_ref.to_string())
+        });
         let mut impl_candidates: Vec<_> =
             impl_candidates.into_iter().map(|cand| cand.trait_ref).collect();
         impl_candidates.dedup();
