@@ -27,6 +27,8 @@ pub(crate) fn target() -> Target {
         base.link_self_contained = crate::spec::LinkSelfContainedDefault::with_linker();
     }
 
+    base.linker_flavor = LinkerFlavor::Wild;
+
     Target {
         llvm_target: "x86_64-unknown-linux-gnu".into(),
         metadata: TargetMetadata {
