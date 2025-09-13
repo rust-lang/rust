@@ -14,7 +14,8 @@ fn dump_var<T>(_: T) {}
 fn rewrap() -> (u8,) {
     // CHECK-LABEL: fn rewrap(
     // CHECK: (_0.0: u8) = const 0_u8;
-    // CHECK: _0 = (copy (_0.0: u8),);
+    // CHECK: _2 = (copy (_0.0: u8),);
+    // CHECK: _0 = copy _2;
     mir! {
         let _1: (u8,);
         let _2: (u8,);
@@ -33,7 +34,8 @@ fn rewrap() -> (u8,) {
 fn swap() -> (MaybeUninit<[u8; 10]>, MaybeUninit<[u8; 10]>) {
     // CHECK-LABEL: fn swap(
     // CHECK: _0 = const
-    // CHECK: _0 = (copy (_0.1: {{.*}}), copy (_0.0: {{.*}}));
+    // CHECK: _2 = copy _0;
+    // CHECK: _0 = (copy (_2.1: {{.*}}), copy (_2.0: {{.*}}));
     mir! {
         let _1: (MaybeUninit<[u8; 10]>, MaybeUninit<[u8; 10]>);
         let _2: (MaybeUninit<[u8; 10]>, MaybeUninit<[u8; 10]>);

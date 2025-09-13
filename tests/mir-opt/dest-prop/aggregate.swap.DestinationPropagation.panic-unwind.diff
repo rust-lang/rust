@@ -13,8 +13,8 @@
 -         _1 = (copy (_2.1: std::mem::MaybeUninit<[u8; 10]>), copy (_2.0: std::mem::MaybeUninit<[u8; 10]>));
 -         _0 = copy _1;
 +         _0 = const swap::{constant#6};
-+         nop;
-+         _0 = (copy (_0.1: std::mem::MaybeUninit<[u8; 10]>), copy (_0.0: std::mem::MaybeUninit<[u8; 10]>));
++         _2 = copy _0;
++         _0 = (copy (_2.1: std::mem::MaybeUninit<[u8; 10]>), copy (_2.0: std::mem::MaybeUninit<[u8; 10]>));
 +         nop;
           return;
       }

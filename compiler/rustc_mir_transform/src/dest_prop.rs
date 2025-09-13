@@ -567,13 +567,15 @@ fn save_as_intervals<'tcx>(
         // the written-to locals as live in the second half of the statement.
         // We also ensure that operands read by terminators conflict with writes by that terminator.
         // For instance a function call may read args after having written to the destination.
-        VisitPlacesWith(|place, ctxt| match DefUse::for_place(place, ctxt) {
-            DefUse::Def | DefUse::Use | DefUse::PartialWrite => {
-                if let Some(relevant) = relevant.shrink[place.local] {
-                    values.insert(relevant, twostep);
+        VisitPlacesWith(|place: Place<'tcx>, ctxt| {
+            if let Some(relevant) = relevant.shrink[place.local] {
+                match DefUse::for_place(place, ctxt) {
+                    DefUse::Def | DefUse::Use | DefUse::PartialWrite => {
+                        values.insert(relevant, twostep);
+                    }
+                    DefUse::NonUse => {}
                 }
             }
-            DefUse::NonUse => {}
         })
         .visit_terminator(term, loc);
 
@@ -590,13 +592,20 @@ fn save_as_intervals<'tcx>(
             append_at(&mut values, &state, twostep);
             // Ensure we have a non-zero live range even for dead stores. This is done by marking
             // all the written-to locals as live in the second half of the statement.
-            VisitPlacesWith(|place, ctxt| match DefUse::for_place(place, ctxt) {
-                DefUse::Def | DefUse::PartialWrite => {
-                    if let Some(relevant) = relevant.shrink[place.local] {
-                        values.insert(relevant, twostep);
+            let is_simple_assignment =
+                matches!(stmt.kind, StatementKind::Assign(box (_, Rvalue::Use(_))));
+            VisitPlacesWith(|place: Place<'tcx>, ctxt| {
+                if let Some(relevant) = relevant.shrink[place.local] {
+                    match DefUse::for_place(place, ctxt) {
+                        DefUse::Def | DefUse::PartialWrite => {
+                            values.insert(relevant, twostep);
+                        }
+                        DefUse::Use if !is_simple_assignment => {
+                            values.insert(relevant, twostep);
+                        }
+                        DefUse::Use | DefUse::NonUse => {}
                     }
                 }
-                DefUse::Use | DefUse::NonUse => {}
             })
             .visit_statement(stmt, loc);
 
