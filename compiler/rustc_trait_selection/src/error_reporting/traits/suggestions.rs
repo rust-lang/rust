@@ -392,12 +392,16 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     );
 
                     if let Some((name, term)) = associated_ty {
-                        // FIXME: this case overlaps with code in TyCtxt::note_and_explain_type_err.
-                        // That should be extracted into a helper function.
-                        if let Some(stripped) = constraint.strip_suffix('>') {
-                            constraint = format!("{stripped}, {name} = {term}>");
+                        if self.tcx.is_fn_trait(trait_pred.skip_binder().trait_ref.def_id) {
+                            constraint.push_str(&format!(" -> {term}"));
                         } else {
-                            constraint.push_str(&format!("<{name} = {term}>"));
+                            // FIXME: this case overlaps with code in TyCtxt::note_and_explain_type_err.
+                            // That should be extracted into a helper function.
+                            if let Some(stripped) = constraint.strip_suffix('>') {
+                                constraint = format!("{stripped}, {name} = {term}>");
+                            } else {
+                                constraint.push_str(&format!("<{name} = {term}>"));
+                            }
                         }
                     }
 

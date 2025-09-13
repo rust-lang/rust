@@ -25,6 +25,7 @@ use tracing::{debug, instrument};
 use super::method::MethodCallee;
 use super::method::probe::ProbeScope;
 use super::{Expectation, FnCtxt, TupleArgumentsFlag};
+use crate::expr_use_visitor::TypeInformationCtxt;
 use crate::{errors, fluent_generated};
 
 /// Checks that it is legal to call methods of the trait corresponding
@@ -122,7 +123,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
                 }
 
-                let guar = self.report_invalid_callee(call_expr, callee_expr, expr_ty, arg_exprs);
+                let guar = self.report_invalid_callee(
+                    call_expr,
+                    callee_expr,
+                    expr_ty,
+                    arg_exprs,
+                    expected,
+                );
                 Ty::new_error(self.tcx, guar)
             }
 
@@ -678,6 +685,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         callee_expr: &'tcx hir::Expr<'tcx>,
         callee_ty: Ty<'tcx>,
         arg_exprs: &'tcx [hir::Expr<'tcx>],
+        expected: Expectation<'tcx>,
     ) -> ErrorGuaranteed {
         // Callee probe fails when APIT references errors, so suppress those
         // errors here.
@@ -807,6 +815,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     err.span_label(def_span, "the callable type is defined here");
                 }
             } else {
+                // Suggest adding <Param>: Fn(...) [-> RetType]
+                if callee_ty.has_non_region_param() {
+                    let arg_types: Vec<Ty<'tcx>> = arg_exprs
+                        .iter()
+                        .map(|arg| self.typeck_results.borrow().expr_ty(arg))
+                        .collect();
+                    let args_tuple = Ty::new_tup(self.tcx(), &arg_types);
+
+                    let fn_def_id = self.tcx().require_lang_item(LangItem::Fn, callee_expr.span);
+                    let trait_ref =
+                        ty::TraitRef::new(self.tcx(), fn_def_id, [callee_ty, args_tuple]);
+
+                    let trait_pred =
+                        ty::TraitPredicate { trait_ref, polarity: ty::PredicatePolarity::Positive };
+
+                    let associated_ty = expected
+                        .to_option(self)
+                        // We do not want to suggest e.g. `-> _`
+                        .filter(|ty| !ty.has_infer())
+                        .map(|ty| ("Output", ty));
+                    self.err_ctxt().suggest_restricting_param_bound(
+                        &mut err,
+                        ty::Binder::dummy(trait_pred),
+                        associated_ty,
+                        self.body_id,
+                    );
+                }
                 err.span_label(call_expr.span, "call expression requires function");
             }
         }
