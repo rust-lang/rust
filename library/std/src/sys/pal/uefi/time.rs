@@ -95,7 +95,7 @@ impl SystemTime {
 
         // Check if can be represented in UEFI
         // FIXME: const PartialOrd
-        let mut cmp = temp.as_secs() - MAX_UEFI_TIME.0.as_secs();
+        let mut cmp = temp.as_secs().saturating_sub(MAX_UEFI_TIME.0.as_secs());
         if cmp == 0 {
             cmp = temp.subsec_nanos() as u64 - MAX_UEFI_TIME.0.subsec_nanos() as u64;
         }
