@@ -34,6 +34,7 @@
 #![feature(sized_hierarchy)]
 #![feature(test)]
 #![feature(thread_id_value)]
+#![feature(trusted_len)]
 #![feature(type_alias_impl_trait)]
 #![feature(unwrap_infallible)]
 // tidy-alphabetical-end
