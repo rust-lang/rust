@@ -167,7 +167,7 @@ pub(crate) fn get_linker<'a>(
             target_cpu,
             hinted_static: None,
             is_ld: false,
-            is_gnu: flavor.is_gnu(),
+            is_gnu: true,
             uses_lld: flavor.uses_lld(),
         }),
     }
