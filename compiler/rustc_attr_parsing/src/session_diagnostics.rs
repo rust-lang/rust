@@ -460,6 +460,34 @@ pub(crate) struct NullOnLinkSection {
 }
 
 #[derive(Diagnostic)]
+#[diag(attr_parsing_null_on_objc_class)]
+pub(crate) struct NullOnObjcClass {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_null_on_objc_selector)]
+pub(crate) struct NullOnObjcSelector {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_objc_class_expected_string_literal)]
+pub(crate) struct ObjcClassExpectedStringLiteral {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_objc_selector_expected_string_literal)]
+pub(crate) struct ObjcSelectorExpectedStringLiteral {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(attr_parsing_stability_outside_std, code = E0734)]
 pub(crate) struct StabilityOutsideStd {
     #[primary_span]
