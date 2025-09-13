@@ -1323,7 +1323,10 @@ mod return_keyword {}
 /// currently has these requirements:
 /// 1. callee and caller must have the same ABI, arguments, and return type
 /// 2. callee and caller must not have varargs
-/// 3. callee and caller must not be marked with `#[track_caller]`
+/// 3. caller must not be marked with `#[track_caller]`
+///    - callee is allowed to be marked with `#[track_caller]` as otherwise
+///      adding `#[track_caller]` would be a breaking change. if callee is
+///      marked with `#[track_caller]` a tail call is not guaranteed.
 /// 4. callee and caller cannot be a closure
 ///    (unless it's coerced to a function pointer)
 ///
