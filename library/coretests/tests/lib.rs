@@ -13,6 +13,7 @@
 #![feature(bool_to_result)]
 #![feature(bstr)]
 #![feature(cfg_target_has_reliable_f16_f128)]
+#![feature(char_internals)]
 #![feature(char_max_len)]
 #![feature(clone_to_uninit)]
 #![feature(const_cmp)]
