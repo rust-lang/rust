@@ -16,7 +16,7 @@ trait Bar {
 
 impl Bar for usize {
     type Item = &usize;
-    //~^ ERROR in the trait associated type is declared without lifetime parameters, so using a borrowed type for them requires that lifetime to come from the implemented type
+    //~^ ERROR missing lifetime in associated type
 
     fn poke(&mut self, item: Self::Item) {
         self += *item;
