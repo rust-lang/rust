@@ -8,6 +8,7 @@ use super::mir::{Body, Mutability, Safety};
 use super::{DefId, Error, Symbol, with};
 use crate::abi::{FnAbi, Layout};
 use crate::crate_def::{CrateDef, CrateDefItems, CrateDefType};
+use crate::mir::FieldIdx;
 use crate::mir::alloc::{AllocId, read_target_int, read_target_uint};
 use crate::mir::mono::StaticDef;
 use crate::target::MachineInfo;
@@ -550,6 +551,7 @@ pub enum RigidTy {
     Uint(UintTy),
     Float(FloatTy),
     Adt(AdtDef, GenericArgs),
+    Field(Ty, FieldPath),
     Foreign(ForeignDef),
     Str,
     Array(Ty, TyConst),
@@ -1052,6 +1054,9 @@ impl GenericArgKind {
         }
     }
 }
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
+pub struct FieldPath(pub Vec<(VariantIdx, FieldIdx)>);
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum TermKind {

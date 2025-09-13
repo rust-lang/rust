@@ -507,6 +507,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 | ty::Closure(..)
                 | ty::CoroutineClosure(..)
                 | ty::Never
+                | ty::Field(..)
                 | ty::Error(_) => true,
 
                 ty::Str | ty::Slice(_) | ty::Dynamic(_, _, ty::Dyn) | ty::Foreign(..) => false,

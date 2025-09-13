@@ -871,7 +871,24 @@ pub const RETURN_LOCAL: Local = 0;
 /// `b`'s `FieldIdx` is `1`,
 /// `c`'s `FieldIdx` is `0`, and
 /// `g`'s `FieldIdx` is `2`.
-pub type FieldIdx = usize;
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
+pub struct FieldIdx(pub usize);
+
+impl crate::IndexedVal for FieldIdx {
+    fn to_val(index: usize) -> Self {
+        FieldIdx(index)
+    }
+
+    fn to_index(&self) -> usize {
+        self.0
+    }
+}
+
+impl From<FieldIdx> for rustc_abi::FieldIdx {
+    fn from(value: FieldIdx) -> Self {
+        value.0.into()
+    }
+}
 
 type UserTypeAnnotationIndex = usize;
 

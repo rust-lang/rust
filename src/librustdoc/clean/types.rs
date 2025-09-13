@@ -30,7 +30,7 @@ use {rustc_ast as ast, rustc_hir as hir};
 
 pub(crate) use self::ItemKind::*;
 pub(crate) use self::Type::{
-    Array, BareFunction, BorrowedRef, DynTrait, Generic, ImplTrait, Infer, Primitive, QPath,
+    Array, BareFunction, BorrowedRef, DynTrait, Field, Generic, ImplTrait, Infer, Primitive, QPath,
     RawPointer, SelfTy, Slice, Tuple, UnsafeBinder,
 };
 use crate::clean::cfg::Cfg;
@@ -1561,6 +1561,9 @@ pub(crate) enum Type {
     ImplTrait(Vec<GenericBound>),
 
     UnsafeBinder(Box<UnsafeBinderTy>),
+
+    /// Field representing type `field_of!(container, field_path)`
+    Field(Box<Type>, Box<str>),
 }
 
 impl Type {
@@ -1757,7 +1760,9 @@ impl Type {
             Type::Pat(..) => PrimitiveType::Pat,
             RawPointer(..) => PrimitiveType::RawPointer,
             QPath(box QPathData { self_type, .. }) => return self_type.def_id(cache),
-            Generic(_) | SelfTy | Infer | ImplTrait(_) | UnsafeBinder(_) => return None,
+            Field(..) | Generic(_) | SelfTy | Infer | ImplTrait(_) | UnsafeBinder(_) => {
+                return None;
+            }
         };
         Primitive(t).def_id(cache)
     }

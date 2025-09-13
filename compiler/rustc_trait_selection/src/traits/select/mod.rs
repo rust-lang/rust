@@ -2119,6 +2119,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Never
+            | ty::Field(..)
             | ty::Error(_) => ty::Binder::dummy(vec![]),
 
             ty::Str | ty::Slice(_) | ty::Dynamic(..) => match sizedness {
@@ -2221,6 +2222,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::Slice(_)
             | ty::Dynamic(..)
             | ty::Adt(..)
+            | ty::Field(..)
             | ty::Alias(..)
             | ty::Param(..)
             | ty::Placeholder(..)
@@ -2263,6 +2265,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::Error(_)
             | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
             | ty::Never
+            | ty::Field(..)
             | ty::Char => {
                 ty::Binder::dummy(AutoImplConstituents { types: vec![], assumptions: vec![] })
             }

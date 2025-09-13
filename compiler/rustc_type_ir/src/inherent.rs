@@ -5,6 +5,7 @@
 
 use std::fmt::Debug;
 use std::hash::Hash;
+use std::ops::ControlFlow;
 
 use rustc_ast_ir::Mutability;
 
@@ -73,6 +74,8 @@ pub trait Ty<I: Interner<Ty = Self>>:
     fn new_error(interner: I, guar: I::ErrorGuaranteed) -> Self;
 
     fn new_adt(interner: I, adt_def: I::AdtDef, args: I::GenericArgs) -> Self;
+
+    fn new_field_type(interner: I, container: I::Ty, field_path: I::FieldPath) -> Self;
 
     fn new_foreign(interner: I, def_id: I::ForeignId) -> Self;
 
@@ -174,6 +177,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
             | ty::Uint(_)
             | ty::Float(_)
             | ty::Adt(_, _)
+            | ty::Field(_, _)
             | ty::Foreign(_)
             | ty::Array(_, _)
             | ty::Pat(_, _)
@@ -628,6 +632,17 @@ pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
     fn is_fundamental(self) -> bool;
 
     fn destructor(self, interner: I) -> Option<AdtDestructorKind>;
+}
+
+pub trait FieldPath<I: Interner>: Copy + Debug + Hash + Eq {
+    fn walk<T>(
+        self,
+        interner: I,
+        container: I::Ty,
+        walker: impl FnMut(I::Ty, I::Symbol, I::Ty, bool) -> ControlFlow<T>,
+    ) -> Option<T>;
+
+    fn field_ty(self, interner: I, container: I::Ty) -> I::Ty;
 }
 
 pub trait ParamEnv<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {

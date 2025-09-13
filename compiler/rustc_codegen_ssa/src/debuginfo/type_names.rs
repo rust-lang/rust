@@ -119,6 +119,19 @@ fn push_debuginfo_type_name<'tcx>(
                 push_generic_params_internal(tcx, args, output, visited);
             }
         }
+        ty::Field(container, field_path) => {
+            output.push_str("field_of!(");
+            push_debuginfo_type_name(tcx, container, qualified, output, visited);
+            output.push_str(", ");
+            field_path.walk(tcx, container, |_, name, _, last| {
+                output.push_str(name.as_str());
+                if !last {
+                    output.push('.');
+                }
+                std::ops::ControlFlow::<()>::Continue(())
+            });
+            output.push(')');
+        }
         ty::Tuple(component_types) => {
             if cpp_like_debuginfo {
                 output.push_str("tuple$<");

@@ -554,7 +554,7 @@ impl FromClean<rustc_hir::TraitBoundModifiers> for TraitBoundModifier {
 impl FromClean<clean::Type> for Type {
     fn from_clean(ty: &clean::Type, renderer: &JsonRenderer<'_>) -> Self {
         use clean::Type::{
-            Array, BareFunction, BorrowedRef, Generic, ImplTrait, Infer, Primitive, QPath,
+            Array, BareFunction, BorrowedRef, Field, Generic, ImplTrait, Infer, Primitive, QPath,
             RawPointer, SelfTy, Slice, Tuple, UnsafeBinder,
         };
 
@@ -592,6 +592,8 @@ impl FromClean<clean::Type> for Type {
             QPath(qpath) => qpath.into_json(renderer),
             // FIXME(unsafe_binder): Implement rustdoc-json.
             UnsafeBinder(_) => todo!(),
+            // FIXME(field_projections): Implement
+            Field(..) => todo!(),
         }
     }
 }

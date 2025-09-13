@@ -61,6 +61,9 @@ pub fn type_allowed_to_implement_copy<'tcx>(
         | ty::Ref(_, _, hir::Mutability::Not)
         | ty::Array(..) => return Ok(()),
 
+        // Field types are uninhabited and thus user-impls of `Copy` are allowed.
+        ty::Field(..) => return Ok(()),
+
         &ty::Adt(adt, args) => (adt, args),
 
         _ => return Err(CopyImplementationError::NotAnAdt),

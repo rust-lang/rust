@@ -2050,6 +2050,7 @@ fn get_index_type_id(
         }
         // Not supported yet
         clean::Type::Pat(..)
+        | clean::Field(..)
         | clean::Generic(_)
         | clean::SelfTy
         | clean::ImplTrait(_)

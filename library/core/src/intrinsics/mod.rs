@@ -3314,3 +3314,16 @@ pub unsafe fn va_arg<T: VaArgSafe>(ap: &mut VaListImpl<'_>) -> T;
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub unsafe fn va_end(ap: &mut VaListImpl<'_>);
+
+/// `offset_of!` for field representing types.
+///
+/// Returns the offset of the field represented by `F`.
+///
+/// Expects the generic `F` to be a field representing type expressed using
+/// [`field_of!`](core::field::field_of).
+///
+/// This is a `const`-only intrinsic that doesn't have any codegen.
+#[rustc_intrinsic]
+#[unstable(feature = "field_projections", issue = "145383")]
+#[rustc_const_unstable(feature = "field_projections", issue = "145383")]
+pub const fn unaligned_field_offset<F: crate::field::UnalignedField>() -> usize;

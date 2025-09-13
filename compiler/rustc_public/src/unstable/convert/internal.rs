@@ -12,10 +12,10 @@ use crate::abi::Layout;
 use crate::compiler_interface::BridgeTys;
 use crate::mir::alloc::AllocId;
 use crate::mir::mono::{Instance, MonoItem, StaticDef};
-use crate::mir::{BinOp, Mutability, Place, ProjectionElem, RawPtrKind, Safety, UnOp};
+use crate::mir::{BinOp, FieldIdx, Mutability, Place, ProjectionElem, RawPtrKind, Safety, UnOp};
 use crate::ty::{
     Abi, AdtDef, Binder, BoundRegionKind, BoundTyKind, BoundVariableKind, ClosureKind, DynKind,
-    ExistentialPredicate, ExistentialProjection, ExistentialTraitRef, FloatTy, FnSig,
+    ExistentialPredicate, ExistentialProjection, ExistentialTraitRef, FieldPath, FloatTy, FnSig,
     GenericArgKind, GenericArgs, IntTy, MirConst, Movability, Pattern, Region, RigidTy, Span,
     TermKind, TraitRef, Ty, TyConst, UintTy, VariantDef, VariantIdx,
 };
@@ -79,6 +79,21 @@ impl RustcInternal for GenericArgKind {
             GenericArgKind::Const(cnst) => cnst.internal(tables, tcx).into(),
         };
         tcx.lift(arg).unwrap()
+    }
+}
+
+impl RustcInternal for FieldPath {
+    type T<'tcx> = rustc_ty::FieldPath<'tcx>;
+    fn internal<'tcx>(
+        &self,
+        tables: &mut Tables<'_, BridgeTys>,
+        tcx: impl InternalCx<'tcx>,
+    ) -> Self::T<'tcx> {
+        tcx.tcx().mk_field_path_from_iter(
+            self.0
+                .iter()
+                .map(|(var, field)| (var.internal(tables, tcx), field.internal(tables, tcx))),
+        )
     }
 }
 
@@ -155,6 +170,9 @@ impl RustcInternal for RigidTy {
             }
             RigidTy::Adt(def, args) => {
                 rustc_ty::TyKind::Adt(def.internal(tables, tcx), args.internal(tables, tcx))
+            }
+            RigidTy::Field(ty, field_path) => {
+                rustc_ty::TyKind::Field(ty.internal(tables, tcx), field_path.internal(tables, tcx))
             }
             RigidTy::Str => rustc_ty::TyKind::Str,
             RigidTy::Slice(ty) => rustc_ty::TyKind::Slice(ty.internal(tables, tcx)),
@@ -340,6 +358,18 @@ impl RustcInternal for VariantDef {
         tcx: impl InternalCx<'tcx>,
     ) -> Self::T<'tcx> {
         self.adt_def.internal(tables, tcx).variant(self.idx.internal(tables, tcx))
+    }
+}
+
+impl RustcInternal for FieldIdx {
+    type T<'tcx> = rustc_abi::FieldIdx;
+
+    fn internal<'tcx>(
+        &self,
+        _tables: &mut Tables<'_, BridgeTys>,
+        _tcx: impl InternalCx<'tcx>,
+    ) -> Self::T<'tcx> {
+        rustc_abi::FieldIdx::from(self.to_index())
     }
 }
 

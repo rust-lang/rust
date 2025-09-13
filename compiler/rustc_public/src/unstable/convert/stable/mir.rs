@@ -7,10 +7,10 @@ use rustc_public_bridge::{Tables, bridge};
 
 use crate::compiler_interface::BridgeTys;
 use crate::mir::alloc::GlobalAlloc;
-use crate::mir::{ConstOperand, Statement, UserTypeProjection, VarDebugInfoFragment};
+use crate::mir::{ConstOperand, FieldIdx, Statement, UserTypeProjection, VarDebugInfoFragment};
 use crate::ty::{Allocation, ConstantKind, MirConst};
 use crate::unstable::Stable;
-use crate::{Error, alloc, opaque};
+use crate::{Error, IndexedVal, alloc, opaque};
 
 impl<'tcx> Stable<'tcx> for mir::Body<'tcx> {
     type T = crate::mir::Body;
@@ -642,7 +642,7 @@ impl<'tcx> Stable<'tcx> for mir::AggregateKind<'tcx> {
                     var_idx.stable(tables, cx),
                     generic_arg.stable(tables, cx),
                     user_ty_index.map(|idx| idx.index()),
-                    field_idx.map(|idx| idx.index()),
+                    field_idx.map(|idx| FieldIdx::to_val(idx.index())),
                 )
             }
             mir::AggregateKind::Closure(def_id, generic_arg) => crate::mir::AggregateKind::Closure(

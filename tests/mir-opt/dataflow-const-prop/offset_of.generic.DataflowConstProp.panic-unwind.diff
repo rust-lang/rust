@@ -22,14 +22,14 @@
   
       bb0: {
           StorageLive(_1);
-          _1 = OffsetOf(Gamma<T>, [(0, 0)]);
+          _1 = OffsetOf(Gamma<T>, FieldPath([(0, 0)]));
           StorageLive(_2);
-          _2 = OffsetOf(Gamma<T>, [(0, 1)]);
+          _2 = OffsetOf(Gamma<T>, FieldPath([(0, 1)]));
           StorageLive(_3);
--         _3 = OffsetOf(Delta<T>, [(0, 1)]);
+-         _3 = OffsetOf(Delta<T>, FieldPath([(0, 1)]));
 +         _3 = const 0_usize;
           StorageLive(_4);
--         _4 = OffsetOf(Delta<T>, [(0, 2)]);
+-         _4 = OffsetOf(Delta<T>, FieldPath([(0, 2)]));
 +         _4 = const 2_usize;
           _0 = const ();
           StorageDead(_4);

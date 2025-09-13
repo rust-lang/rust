@@ -8,7 +8,7 @@ use crate::compiler_interface::with;
 use crate::mir::FieldIdx;
 use crate::target::{MachineInfo, MachineSize as Size};
 use crate::ty::{Align, Ty, VariantIdx};
-use crate::{Error, Opaque, error};
+use crate::{Error, IndexedVal, Opaque, error};
 
 /// A function ABI definition.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
@@ -159,10 +159,13 @@ impl FieldsShape {
     pub fn fields_by_offset_order(&self) -> Vec<FieldIdx> {
         match self {
             FieldsShape::Primitive => vec![],
-            FieldsShape::Union(_) | FieldsShape::Array { .. } => (0..self.count()).collect(),
+            FieldsShape::Union(_) | FieldsShape::Array { .. } => {
+                (0..self.count()).map(IndexedVal::to_val).collect()
+            }
             FieldsShape::Arbitrary { offsets, .. } => {
-                let mut indices = (0..offsets.len()).collect::<Vec<_>>();
-                indices.sort_by_key(|idx| offsets[*idx]);
+                let mut indices: Vec<FieldIdx> =
+                    (0..offsets.len()).map(IndexedVal::to_val).collect::<Vec<_>>();
+                indices.sort_by_key(|idx| offsets[idx.to_index()]);
                 indices
             }
         }
@@ -195,7 +198,7 @@ pub enum VariantsShape {
     Multiple {
         tag: Scalar,
         tag_encoding: TagEncoding,
-        tag_field: usize,
+        tag_field: FieldIdx,
         variants: Vec<LayoutShape>,
     },
 }
