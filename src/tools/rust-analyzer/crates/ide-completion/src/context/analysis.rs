@@ -970,6 +970,16 @@ fn classify_name_ref<'db>(
     let after_incomplete_let = |node: SyntaxNode| {
         prev_expr(node).and_then(|it| it.syntax().parent()).and_then(ast::LetStmt::cast)
     };
+    let before_else_kw = |node: &SyntaxNode| {
+        node.parent()
+            .and_then(ast::ExprStmt::cast)
+            .filter(|stmt| stmt.semicolon_token().is_none())
+            .and_then(|stmt| non_trivia_sibling(stmt.syntax().clone().into(), Direction::Next))
+            .and_then(NodeOrToken::into_node)
+            .filter(|next| next.kind() == SyntaxKind::ERROR)
+            .and_then(|next| next.first_token())
+            .is_some_and(|token| token.kind() == SyntaxKind::ELSE_KW)
+    };
 
     // We do not want to generate path completions when we are sandwiched between an item decl signature and its body.
     // ex. trait Foo $0 {}
@@ -1276,7 +1286,7 @@ fn classify_name_ref<'db>(
             .parent()
             .and_then(ast::LetStmt::cast)
             .is_some_and(|it| it.semicolon_token().is_none())
-            || after_incomplete_let && incomplete_expr_stmt.unwrap_or(true);
+            || after_incomplete_let && incomplete_expr_stmt.unwrap_or(true) && !before_else_kw(it);
         let in_value = it.parent().and_then(Either::<ast::LetStmt, ast::ArgList>::cast).is_some();
         let impl_ = fetch_immediate_impl(sema, original_file, expr.syntax());
 
