@@ -19,7 +19,6 @@ use std::ptr;
 
 use bitflags::bitflags;
 use libc::{c_char, c_int, c_uchar, c_uint, c_ulonglong, c_void, size_t};
-use rustc_macros::TryFromU32;
 use rustc_target::spec::SymbolVisibility;
 
 use super::RustString;
@@ -159,7 +158,7 @@ pub(crate) enum TailCallKind {
 /// LLVM CallingConv::ID. Should we wrap this?
 ///
 /// See <https://github.com/llvm/llvm-project/blob/main/llvm/include/llvm/IR/CallingConv.h>
-#[derive(Copy, Clone, PartialEq, Debug, TryFromU32)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 #[repr(C)]
 pub(crate) enum CallConv {
     CCallConv = 0,
@@ -183,8 +182,32 @@ pub(crate) enum CallConv {
     AmdgpuKernel = 91,
 }
 
+crate::impl_try_from_u32! {
+    CallConv {
+        CCallConv,
+        FastCallConv,
+        ColdCallConv,
+        PreserveMost,
+        PreserveAll,
+        Tail,
+        X86StdcallCallConv,
+        X86FastcallCallConv,
+        ArmAapcsCallConv,
+        Msp430Intr,
+        X86_ThisCall,
+        PtxKernel,
+        X86_64_SysV,
+        X86_64_Win64,
+        X86_VectorCall,
+        X86_Intr,
+        AvrNonBlockingInterrupt,
+        AvrInterrupt,
+        AmdgpuKernel,
+    }
+}
+
 /// Must match the layout of `LLVMLinkage`.
-#[derive(Copy, Clone, PartialEq, TryFromU32)]
+#[derive(Copy, Clone, PartialEq)]
 #[repr(C)]
 pub(crate) enum Linkage {
     ExternalLinkage = 0,
@@ -210,13 +233,39 @@ pub(crate) enum Linkage {
     LinkerPrivateWeakLinkage = 16,
 }
 
+crate::impl_try_from_u32! {
+    Linkage {
+        ExternalLinkage,
+        AvailableExternallyLinkage,
+        LinkOnceAnyLinkage,
+        LinkOnceODRLinkage,
+        LinkOnceODRAutoHideLinkage,
+        WeakAnyLinkage,
+        WeakODRLinkage,
+        AppendingLinkage,
+        InternalLinkage,
+        PrivateLinkage,
+        DLLImportLinkage,
+        DLLExportLinkage,
+        ExternalWeakLinkage,
+        GhostLinkage,
+        CommonLinkage,
+        LinkerPrivateLinkage,
+        LinkerPrivateWeakLinkage,
+    }
+}
+
 /// Must match the layout of `LLVMVisibility`.
 #[repr(C)]
-#[derive(Copy, Clone, PartialEq, TryFromU32)]
+#[derive(Copy, Clone, PartialEq)]
 pub(crate) enum Visibility {
     Default = 0,
     Hidden = 1,
     Protected = 2,
+}
+
+crate::impl_try_from_u32! {
+    Visibility { Default, Hidden, Protected }
 }
 
 impl Visibility {
