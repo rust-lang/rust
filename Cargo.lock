@@ -4235,6 +4235,7 @@ name = "rustc_mir_transform"
 version = "0.0.0"
 dependencies = [
  "either",
+ "hashbrown",
  "itertools",
  "rustc_abi",
  "rustc_arena",
