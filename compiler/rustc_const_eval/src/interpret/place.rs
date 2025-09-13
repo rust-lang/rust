@@ -858,7 +858,7 @@ where
     /// Also, if you use this you are responsible for validating that things get copied at the
     /// right type.
     #[instrument(skip(self), level = "trace")]
-    fn copy_op_no_validate(
+    pub(super) fn copy_op_no_validate(
         &mut self,
         src: &impl Projectable<'tcx, M::Provenance>,
         dest: &impl Writeable<'tcx, M::Provenance>,

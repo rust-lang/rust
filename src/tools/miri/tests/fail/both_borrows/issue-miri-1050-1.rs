@@ -1,4 +1,6 @@
 //@revisions: stack tree
+// Ensure this even hits the aliasing model
+//@compile-flags: -Zmiri-disable-validation
 //@[tree]compile-flags: -Zmiri-tree-borrows
 //@error-in-other-file: pointer not dereferenceable
 
