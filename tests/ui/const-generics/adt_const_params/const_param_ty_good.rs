@@ -3,7 +3,7 @@
 #![feature(adt_const_params, unsized_const_params)]
 #![allow(incomplete_features)]
 
-use std::marker::UnsizedConstParamTy;
+use std::marker::{ConstParamTy, ConstParamTy_};
 
 #[derive(PartialEq, Eq)]
 struct S<T> {
@@ -11,15 +11,15 @@ struct S<T> {
     gen: T,
 }
 
-impl<T: UnsizedConstParamTy> UnsizedConstParamTy for S<T> {}
+impl<T: ConstParamTy_> ConstParamTy_ for S<T> {}
 
-#[derive(PartialEq, Eq, UnsizedConstParamTy)]
+#[derive(PartialEq, Eq, ConstParamTy)]
 struct D<T> {
     field: u8,
     gen: T,
 }
 
-fn check<T: UnsizedConstParamTy + ?Sized>() {}
+fn check<T: ConstParamTy_ + ?Sized>() {}
 
 fn main() {
     check::<u8>();

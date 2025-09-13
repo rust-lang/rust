@@ -1083,30 +1083,13 @@ pub trait Tuple {}
 // We name this differently than the derive macro so that the `adt_const_params` can
 // be used independently of `unsized_const_params` without requiring a full path
 // to the derive macro every time it is used. This should be renamed on stabilization.
-pub trait ConstParamTy_: UnsizedConstParamTy + StructuralPartialEq + Eq {}
+pub trait ConstParamTy_: StructuralPartialEq + Eq {}
 
 /// Derive macro generating an impl of the trait `ConstParamTy`.
 #[rustc_builtin_macro]
 #[allow_internal_unstable(unsized_const_params)]
 #[unstable(feature = "adt_const_params", issue = "95174")]
 pub macro ConstParamTy($item:item) {
-    /* compiler built-in */
-}
-
-#[lang = "unsized_const_param_ty"]
-#[unstable(feature = "unsized_const_params", issue = "95174")]
-#[diagnostic::on_unimplemented(message = "`{Self}` can't be used as a const parameter type")]
-/// A marker for types which can be used as types of `const` generic parameters.
-///
-/// Equivalent to [`ConstParamTy_`] except that this is used by
-/// the `unsized_const_params` to allow for fake unstable impls.
-pub trait UnsizedConstParamTy: StructuralPartialEq + Eq {}
-
-/// Derive macro generating an impl of the trait `ConstParamTy`.
-#[rustc_builtin_macro]
-#[allow_internal_unstable(unsized_const_params)]
-#[unstable(feature = "unsized_const_params", issue = "95174")]
-pub macro UnsizedConstParamTy($item:item) {
     /* compiler built-in */
 }
 
@@ -1124,17 +1107,11 @@ marker_impls! {
 
 marker_impls! {
     #[unstable(feature = "unsized_const_params", issue = "95174")]
-    UnsizedConstParamTy for
-        usize, u8, u16, u32, u64, u128,
-        isize, i8, i16, i32, i64, i128,
-        bool,
-        char,
-        (),
-        {T: UnsizedConstParamTy, const N: usize} [T; N],
-
+    #[unstable_feature_bound(unsized_const_params)]
+    ConstParamTy_ for
         str,
-        {T: UnsizedConstParamTy} [T],
-        {T: UnsizedConstParamTy + ?Sized} &T,
+        {T: ConstParamTy_} [T],
+        {T: ConstParamTy_ + ?Sized} &T,
 }
 
 /// A common trait implemented by all function pointers.
