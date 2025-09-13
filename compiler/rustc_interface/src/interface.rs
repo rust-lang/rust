@@ -482,6 +482,10 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                 config.using_internal_features,
                 config.expanded_args,
             );
+            // Forces lto="fat" if autodiff is enabled.
+			if sess.opts.unstable_opts.autodiff.contains(&config::AutoDiff::Enable) {
+				sess.opts.cg.lto = config::LtoCli::Fat;
+			}
 
             codegen_backend.init(&sess);
 
