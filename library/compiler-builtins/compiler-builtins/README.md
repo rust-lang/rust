@@ -374,7 +374,7 @@ Miscellaneous functionality that is not used by Rust.
 - ~~i386/fp_mode.c~~
 - ~~int_util.c~~
 - ~~loongarch/fp_mode.c~~
-- ~~os_version_check.c~~
+- ~~os_version_check.c~~ (implemented in `std` instead)
 - ~~riscv/fp_mode.c~~
 - ~~riscv/restore.S~~ (callee-saved registers)
 - ~~riscv/save.S~~ (callee-saved registers)
