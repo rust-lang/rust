@@ -600,6 +600,11 @@ impl Session {
 
     /// Calculates the flavor of LTO to use for this compilation.
     pub fn lto(&self) -> config::Lto {
+        // if autodiff is enabled, use fat lto
+        if self.opts.autodiff_enabled() {
+            return config::Lto::Fat;
+        }
+
         // If our target has codegen requirements ignore the command line
         if self.target.requires_lto {
             return config::Lto::Fat;

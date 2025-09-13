@@ -1509,6 +1509,11 @@ impl Options {
     pub fn get_symbol_mangling_version(&self) -> SymbolManglingVersion {
         self.cg.symbol_mangling_version.unwrap_or(SymbolManglingVersion::Legacy)
     }
+
+    #[inline]
+    pub fn autodiff_enabled(&self) -> bool {
+        self.unstable_opts.autodiff.contains(&AutoDiff::Enable)
+    }
 }
 
 impl UnstableOptions {
