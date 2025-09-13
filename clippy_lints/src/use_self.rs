@@ -151,8 +151,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             // trait, not in the impl of the trait.
             let trait_method = cx
                 .tcx
-                .associated_item(impl_item.owner_id)
-                .trait_item_def_id
+                .trait_item_of(impl_item.owner_id)
                 .expect("impl method matches a trait method");
             let trait_method_sig = cx.tcx.fn_sig(trait_method).instantiate_identity();
             let trait_method_sig = cx.tcx.instantiate_bound_regions_with_erased(trait_method_sig);
