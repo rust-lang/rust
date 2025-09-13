@@ -2346,6 +2346,10 @@ options! {
         "allow deducing higher-ranked outlives assumptions from coroutines when proving auto traits"),
     hint_mostly_unused: bool = (false, parse_bool, [TRACKED],
         "hint that most of this crate will go unused, to minimize work for uncalled functions"),
+    hotpatch: bool = (false, parse_bool, [TRACKED],
+        "ensures hotpatching is always possible by ensuring that the first instruction of \
+        each function is at least two bytes, and no jump within the function goes to the first instruction. \
+        Should be combined with link-arg passing -functionpadmin to the linker. Currently only supported for x86 (default: false)"),
     human_readable_cgu_names: bool = (false, parse_bool, [TRACKED],
         "generate human-readable, predictable names for codegen units (default: no)"),
     identify_regions: bool = (false, parse_bool, [UNTRACKED],
