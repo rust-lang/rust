@@ -1,5 +1,5 @@
-warning: never type fallback affects this call to an `unsafe` function
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:12:18
+error: never type fallback affects this call to an `unsafe` function
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:10:18
    |
 LL |         unsafe { mem::zeroed() }
    |                  ^^^^^^^^^^^^^
@@ -7,14 +7,14 @@ LL |         unsafe { mem::zeroed() }
    = warning: this changes meaning in Rust 2024 and in a future release in all editions!
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the type explicitly
-   = note: `#[warn(never_type_fallback_flowing_into_unsafe)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
+   = note: `#[deny(never_type_fallback_flowing_into_unsafe)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
 help: use `()` annotations to avoid fallback changes
    |
 LL |         unsafe { mem::zeroed::<()>() }
    |                             ++++++
 
-warning: never type fallback affects this call to an `unsafe` function
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:29:13
+error: never type fallback affects this call to an `unsafe` function
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:27:13
    |
 LL |             core::mem::transmute(Zst)
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -27,8 +27,8 @@ help: use `()` annotations to avoid fallback changes
 LL |             core::mem::transmute::<_, ()>(Zst)
    |                                 +++++++++
 
-warning: never type fallback affects this union access
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:46:18
+error: never type fallback affects this union access
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:44:18
    |
 LL |         unsafe { Union { a: () }.b }
    |                  ^^^^^^^^^^^^^^^^^
@@ -37,8 +37,8 @@ LL |         unsafe { Union { a: () }.b }
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the type explicitly
 
-warning: never type fallback affects this raw pointer dereference
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:57:18
+error: never type fallback affects this raw pointer dereference
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:55:18
    |
 LL |         unsafe { *ptr::from_ref(&()).cast() }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -51,8 +51,8 @@ help: use `()` annotations to avoid fallback changes
 LL |         unsafe { *ptr::from_ref(&()).cast::<()>() }
    |                                          ++++++
 
-warning: never type fallback affects this call to an `unsafe` function
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:78:18
+error: never type fallback affects this call to an `unsafe` function
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:76:18
    |
 LL |         unsafe { internally_create(x) }
    |                  ^^^^^^^^^^^^^^^^^^^^
@@ -65,8 +65,8 @@ help: use `()` annotations to avoid fallback changes
 LL |         unsafe { internally_create::<()>(x) }
    |                                   ++++++
 
-warning: never type fallback affects this call to an `unsafe` function
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:96:18
+error: never type fallback affects this call to an `unsafe` function
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:94:18
    |
 LL |         unsafe { zeroed() }
    |                  ^^^^^^^^
@@ -79,8 +79,8 @@ help: use `()` annotations to avoid fallback changes
 LL |         let zeroed = mem::zeroed::<()>;
    |                                 ++++++
 
-warning: never type fallback affects this `unsafe` function
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:91:22
+error: never type fallback affects this `unsafe` function
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:89:22
    |
 LL |         let zeroed = mem::zeroed;
    |                      ^^^^^^^^^^^
@@ -93,8 +93,8 @@ help: use `()` annotations to avoid fallback changes
 LL |         let zeroed = mem::zeroed::<()>;
    |                                 ++++++
 
-warning: never type fallback affects this `unsafe` function
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:114:17
+error: never type fallback affects this `unsafe` function
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:112:17
    |
 LL |         let f = internally_create;
    |                 ^^^^^^^^^^^^^^^^^
@@ -107,8 +107,8 @@ help: use `()` annotations to avoid fallback changes
 LL |         let f = internally_create::<()>;
    |                                  ++++++
 
-warning: never type fallback affects this call to an `unsafe` method
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:139:13
+error: never type fallback affects this call to an `unsafe` method
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:137:13
    |
 LL |             S(marker::PhantomData).create_out_of_thin_air()
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -117,8 +117,8 @@ LL |             S(marker::PhantomData).create_out_of_thin_air()
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the type explicitly
 
-warning: never type fallback affects this call to an `unsafe` function
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:157:19
+error: never type fallback affects this call to an `unsafe` function
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:155:19
    |
 LL |             match send_message::<_ /* ?0 */>() {
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -129,13 +129,13 @@ LL |         msg_send!();
    = warning: this changes meaning in Rust 2024 and in a future release in all editions!
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the type explicitly
-   = note: this warning originates in the macro `msg_send` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `msg_send` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-warning: 10 warnings emitted
+error: aborting due to 10 previous errors
 
 Future incompatibility report: Future breakage diagnostic:
-warning: never type fallback affects this call to an `unsafe` function
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:12:18
+error: never type fallback affects this call to an `unsafe` function
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:10:18
    |
 LL |         unsafe { mem::zeroed() }
    |                  ^^^^^^^^^^^^^
@@ -143,15 +143,15 @@ LL |         unsafe { mem::zeroed() }
    = warning: this changes meaning in Rust 2024 and in a future release in all editions!
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the type explicitly
-   = note: `#[warn(never_type_fallback_flowing_into_unsafe)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
+   = note: `#[deny(never_type_fallback_flowing_into_unsafe)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
 help: use `()` annotations to avoid fallback changes
    |
 LL |         unsafe { mem::zeroed::<()>() }
    |                             ++++++
 
 Future breakage diagnostic:
-warning: never type fallback affects this call to an `unsafe` function
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:29:13
+error: never type fallback affects this call to an `unsafe` function
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:27:13
    |
 LL |             core::mem::transmute(Zst)
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -159,15 +159,15 @@ LL |             core::mem::transmute(Zst)
    = warning: this changes meaning in Rust 2024 and in a future release in all editions!
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the type explicitly
-   = note: `#[warn(never_type_fallback_flowing_into_unsafe)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
+   = note: `#[deny(never_type_fallback_flowing_into_unsafe)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
 help: use `()` annotations to avoid fallback changes
    |
 LL |             core::mem::transmute::<_, ()>(Zst)
    |                                 +++++++++
 
 Future breakage diagnostic:
-warning: never type fallback affects this union access
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:46:18
+error: never type fallback affects this union access
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:44:18
    |
 LL |         unsafe { Union { a: () }.b }
    |                  ^^^^^^^^^^^^^^^^^
@@ -175,11 +175,11 @@ LL |         unsafe { Union { a: () }.b }
    = warning: this changes meaning in Rust 2024 and in a future release in all editions!
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the type explicitly
-   = note: `#[warn(never_type_fallback_flowing_into_unsafe)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
+   = note: `#[deny(never_type_fallback_flowing_into_unsafe)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
 
 Future breakage diagnostic:
-warning: never type fallback affects this raw pointer dereference
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:57:18
+error: never type fallback affects this raw pointer dereference
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:55:18
    |
 LL |         unsafe { *ptr::from_ref(&()).cast() }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -187,15 +187,15 @@ LL |         unsafe { *ptr::from_ref(&()).cast() }
    = warning: this changes meaning in Rust 2024 and in a future release in all editions!
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the type explicitly
-   = note: `#[warn(never_type_fallback_flowing_into_unsafe)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
+   = note: `#[deny(never_type_fallback_flowing_into_unsafe)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
 help: use `()` annotations to avoid fallback changes
    |
 LL |         unsafe { *ptr::from_ref(&()).cast::<()>() }
    |                                          ++++++
 
 Future breakage diagnostic:
-warning: never type fallback affects this call to an `unsafe` function
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:78:18
+error: never type fallback affects this call to an `unsafe` function
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:76:18
    |
 LL |         unsafe { internally_create(x) }
    |                  ^^^^^^^^^^^^^^^^^^^^
@@ -203,15 +203,15 @@ LL |         unsafe { internally_create(x) }
    = warning: this changes meaning in Rust 2024 and in a future release in all editions!
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the type explicitly
-   = note: `#[warn(never_type_fallback_flowing_into_unsafe)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
+   = note: `#[deny(never_type_fallback_flowing_into_unsafe)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
 help: use `()` annotations to avoid fallback changes
    |
 LL |         unsafe { internally_create::<()>(x) }
    |                                   ++++++
 
 Future breakage diagnostic:
-warning: never type fallback affects this call to an `unsafe` function
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:96:18
+error: never type fallback affects this call to an `unsafe` function
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:94:18
    |
 LL |         unsafe { zeroed() }
    |                  ^^^^^^^^
@@ -219,15 +219,15 @@ LL |         unsafe { zeroed() }
    = warning: this changes meaning in Rust 2024 and in a future release in all editions!
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the type explicitly
-   = note: `#[warn(never_type_fallback_flowing_into_unsafe)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
+   = note: `#[deny(never_type_fallback_flowing_into_unsafe)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
 help: use `()` annotations to avoid fallback changes
    |
 LL |         let zeroed = mem::zeroed::<()>;
    |                                 ++++++
 
 Future breakage diagnostic:
-warning: never type fallback affects this `unsafe` function
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:91:22
+error: never type fallback affects this `unsafe` function
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:89:22
    |
 LL |         let zeroed = mem::zeroed;
    |                      ^^^^^^^^^^^
@@ -235,15 +235,15 @@ LL |         let zeroed = mem::zeroed;
    = warning: this changes meaning in Rust 2024 and in a future release in all editions!
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the type explicitly
-   = note: `#[warn(never_type_fallback_flowing_into_unsafe)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
+   = note: `#[deny(never_type_fallback_flowing_into_unsafe)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
 help: use `()` annotations to avoid fallback changes
    |
 LL |         let zeroed = mem::zeroed::<()>;
    |                                 ++++++
 
 Future breakage diagnostic:
-warning: never type fallback affects this `unsafe` function
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:114:17
+error: never type fallback affects this `unsafe` function
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:112:17
    |
 LL |         let f = internally_create;
    |                 ^^^^^^^^^^^^^^^^^
@@ -251,15 +251,15 @@ LL |         let f = internally_create;
    = warning: this changes meaning in Rust 2024 and in a future release in all editions!
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the type explicitly
-   = note: `#[warn(never_type_fallback_flowing_into_unsafe)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
+   = note: `#[deny(never_type_fallback_flowing_into_unsafe)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
 help: use `()` annotations to avoid fallback changes
    |
 LL |         let f = internally_create::<()>;
    |                                  ++++++
 
 Future breakage diagnostic:
-warning: never type fallback affects this call to an `unsafe` method
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:139:13
+error: never type fallback affects this call to an `unsafe` method
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:137:13
    |
 LL |             S(marker::PhantomData).create_out_of_thin_air()
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -267,11 +267,11 @@ LL |             S(marker::PhantomData).create_out_of_thin_air()
    = warning: this changes meaning in Rust 2024 and in a future release in all editions!
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the type explicitly
-   = note: `#[warn(never_type_fallback_flowing_into_unsafe)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
+   = note: `#[deny(never_type_fallback_flowing_into_unsafe)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
 
 Future breakage diagnostic:
-warning: never type fallback affects this call to an `unsafe` function
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:157:19
+error: never type fallback affects this call to an `unsafe` function
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:155:19
    |
 LL |             match send_message::<_ /* ?0 */>() {
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -282,6 +282,6 @@ LL |         msg_send!();
    = warning: this changes meaning in Rust 2024 and in a future release in all editions!
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the type explicitly
-   = note: `#[warn(never_type_fallback_flowing_into_unsafe)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
-   = note: this warning originates in the macro `msg_send` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: `#[deny(never_type_fallback_flowing_into_unsafe)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
+   = note: this error originates in the macro `msg_send` (in Nightly builds, run with -Z macro-backtrace for more info)
 
