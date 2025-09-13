@@ -1212,6 +1212,9 @@ fn codegen_autodiff<'ll, 'tcx>(
         &mut diff_attrs.input_activity,
     );
 
+    let fnc_tree =
+        rustc_middle::ty::fnc_typetrees(tcx, fn_source.ty(tcx, TypingEnv::fully_monomorphized()));
+
     // Build body
     generate_enzyme_call(
         bx,
@@ -1222,6 +1225,7 @@ fn codegen_autodiff<'ll, 'tcx>(
         &val_arr,
         diff_attrs.clone(),
         result,
+        fnc_tree,
     );
 }
 
