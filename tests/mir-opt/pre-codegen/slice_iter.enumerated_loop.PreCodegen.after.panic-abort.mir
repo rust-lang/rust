@@ -225,12 +225,6 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
 
     bb7: {
         StorageDead(_19);
-        StorageDead(_26);
-        StorageDead(_16);
-        StorageDead(_24);
-        StorageDead(_23);
-        StorageDead(_15);
-        StorageDead(_14);
         goto -> bb10;
     }
 
@@ -240,16 +234,16 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     }
 
     bb9: {
+        goto -> bb10;
+    }
+
+    bb10: {
         StorageDead(_26);
         StorageDead(_16);
         StorageDead(_24);
         StorageDead(_23);
         StorageDead(_15);
         StorageDead(_14);
-        goto -> bb10;
-    }
-
-    bb10: {
         StorageDead(_27);
         StorageDead(_30);
         StorageDead(_29);
