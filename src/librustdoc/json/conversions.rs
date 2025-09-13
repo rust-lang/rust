@@ -52,7 +52,12 @@ impl JsonRenderer<'_> {
         let clean::ItemInner { name, item_id, .. } = *item.inner;
         let id = self.id_from_item(item);
         let inner = match item.kind {
-            clean::KeywordItem | clean::AttributeItem => return None,
+            clean::KeywordItem
+            | clean::AttributeItem
+            // Placeholder so no need to handle it.
+            | clean::AttrMacroItem
+            // Placeholder so no need to handle it.
+            | clean::DeriveMacroItem => return None,
             clean::StrippedItem(ref inner) => {
                 match &**inner {
                     // We document stripped modules as with `Module::is_stripped` set to
@@ -308,7 +313,7 @@ fn from_clean_item(item: &clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum 
             type_: ci.type_.into_json(renderer),
             const_: ci.kind.into_json(renderer),
         },
-        MacroItem(m) => ItemEnum::Macro(m.source.clone()),
+        MacroItem(m, _) => ItemEnum::Macro(m.source.clone()),
         ProcMacroItem(m) => ItemEnum::ProcMacro(m.into_json(renderer)),
         PrimitiveItem(p) => {
             ItemEnum::Primitive(Primitive {
@@ -335,8 +340,9 @@ fn from_clean_item(item: &clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum 
             bounds: b.into_json(renderer),
             type_: Some(t.item_type.as_ref().unwrap_or(&t.type_).into_json(renderer)),
         },
-        // `convert_item` early returns `None` for stripped items, keywords and attributes.
-        KeywordItem | AttributeItem => unreachable!(),
+        // `convert_item` early returns `None` for stripped items, keywords, attributes and
+        // "special" macro rules.
+        KeywordItem | AttributeItem | AttrMacroItem | DeriveMacroItem => unreachable!(),
         StrippedItem(inner) => {
             match inner.as_ref() {
                 ModuleItem(m) => ItemEnum::Module(Module {
