@@ -53,6 +53,7 @@ use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir as hir;
 use rustc_hir::attrs::{AttributeKind, DeprecatedSince, Deprecation};
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_hir::{ConstStability, Mutability, RustcVersion, StabilityLevel, StableSince};
 use rustc_middle::ty::print::PrintTraitRefExt;
@@ -2924,99 +2925,56 @@ fn render_call_locations<W: fmt::Write>(
     w.write_str("</div>")
 }
 
-struct CodeAttribute(String);
-
-fn render_code_attribute(prefix: &str, code_attr: CodeAttribute, w: &mut impl fmt::Write) {
-    write!(
-        w,
-        "<div class=\"code-attribute\">{prefix}{attr}</div>",
-        prefix = prefix,
-        attr = code_attr.0
-    )
-    .unwrap();
-}
-
-// When an attribute is rendered inside a <code> tag, it is formatted using
-// a div to produce a newline after it.
 fn render_attributes_in_code(
     w: &mut impl fmt::Write,
     item: &clean::Item,
     prefix: &str,
     cx: &Context<'_>,
 ) {
-    for attr in attributes(item, cx.tcx(), cx.cache()) {
-        render_code_attribute(prefix, CodeAttribute(attr), w);
+    for attr in &item.attrs.other_attrs {
+        let hir::Attribute::Parsed(kind) = attr else { continue };
+        let attr = match kind {
+            AttributeKind::LinkSection { name, .. } => {
+                Cow::Owned(format!("#[unsafe(link_section = \"{name}\")]"))
+            }
+            AttributeKind::NoMangle(..) => Cow::Borrowed("#[unsafe(no_mangle)]"),
+            AttributeKind::ExportName { name, .. } => {
+                Cow::Owned(format!("#[unsafe(export_name = \"{name}\")]"))
+            }
+            AttributeKind::NonExhaustive(..) => Cow::Borrowed("#[non_exhaustive]"),
+            _ => continue,
+        };
+        render_code_attribute(prefix, attr.as_ref(), w);
+    }
+
+    if let Some(def_id) = item.def_id()
+        && let Some(repr) = repr_attribute(cx.tcx(), cx.cache(), def_id)
+    {
+        render_code_attribute(prefix, &repr, w);
     }
 }
 
-/// used for type aliases to only render their `repr` attribute.
-fn render_repr_attributes_in_code(
-    w: &mut impl fmt::Write,
-    cx: &Context<'_>,
-    def_id: DefId,
-    item_type: ItemType,
-) {
-    if let Some(repr) = repr_attributes(cx.tcx(), cx.cache(), def_id, item_type) {
-        render_code_attribute("", CodeAttribute(repr), w);
+fn render_repr_attribute_in_code(w: &mut impl fmt::Write, cx: &Context<'_>, def_id: DefId) {
+    if let Some(repr) = repr_attribute(cx.tcx(), cx.cache(), def_id) {
+        render_code_attribute("", &repr, w);
     }
 }
 
-/// Get a list of attributes excluding `#[repr]` to display.
-fn attributes_without_repr(item: &clean::Item) -> Vec<String> {
-    item.attrs
-        .other_attrs
-        .iter()
-        .filter_map(|attr| match attr {
-            hir::Attribute::Parsed(AttributeKind::LinkSection { name, .. }) => {
-                Some(format!("#[unsafe(link_section = \"{name}\")]"))
-            }
-            hir::Attribute::Parsed(AttributeKind::NoMangle(..)) => {
-                Some("#[unsafe(no_mangle)]".to_string())
-            }
-            hir::Attribute::Parsed(AttributeKind::ExportName { name, .. }) => {
-                Some(format!("#[unsafe(export_name = \"{name}\")]"))
-            }
-            hir::Attribute::Parsed(AttributeKind::NonExhaustive(..)) => {
-                Some("#[non_exhaustive]".to_string())
-            }
-            _ => None,
-        })
-        .collect()
+fn render_code_attribute(prefix: &str, attr: &str, w: &mut impl fmt::Write) {
+    write!(w, "<div class=\"code-attribute\">{prefix}{attr}</div>").unwrap();
 }
 
-/// Get a list of attributes to display on this item.
-fn attributes(item: &clean::Item, tcx: TyCtxt<'_>, cache: &Cache) -> Vec<String> {
-    let mut attrs = attributes_without_repr(item);
-
-    if let Some(repr_attr) = repr(item, tcx, cache) {
-        attrs.push(repr_attr);
-    }
-    attrs
-}
-
-/// Returns a stringified `#[repr(...)]` attribute.
-fn repr(item: &clean::Item, tcx: TyCtxt<'_>, cache: &Cache) -> Option<String> {
-    repr_attributes(tcx, cache, item.def_id()?, item.type_())
-}
-
-/// Return a string representing the `#[repr]` attribute if present.
-pub(crate) fn repr_attributes(
-    tcx: TyCtxt<'_>,
+fn repr_attribute<'tcx>(
+    tcx: TyCtxt<'tcx>,
     cache: &Cache,
     def_id: DefId,
-    item_type: ItemType,
-) -> Option<String> {
-    use rustc_abi::IntegerType;
-
-    if !matches!(item_type, ItemType::Struct | ItemType::Enum | ItemType::Union) {
-        return None;
-    }
-    let adt = tcx.adt_def(def_id);
+) -> Option<Cow<'static, str>> {
+    let adt = match tcx.def_kind(def_id) {
+        DefKind::Struct | DefKind::Enum | DefKind::Union => tcx.adt_def(def_id),
+        _ => return None,
+    };
     let repr = adt.repr();
-    let mut out = Vec::new();
-    if repr.c() {
-        out.push("C");
-    }
+
     if repr.transparent() {
         // Render `repr(transparent)` iff the non-1-ZST field is public or at least one
         // field is public in case all fields are 1-ZST fields.
@@ -3033,34 +2991,35 @@ pub(crate) fn repr_attributes(
                     |field| field.vis.is_public(),
                 );
 
-        if render_transparent {
-            out.push("transparent");
-        }
+        // Since the transparent repr can't have any other reprs or
+        // repr modifiers beside it, we can safely return early here.
+        return render_transparent.then(|| "#[repr(transparent)]".into());
+    }
+
+    let mut result = Vec::<Cow<'_, _>>::new();
+
+    if repr.c() {
+        result.push("C".into());
     }
     if repr.simd() {
-        out.push("simd");
+        result.push("simd".into());
     }
-    let pack_s;
     if let Some(pack) = repr.pack {
-        pack_s = format!("packed({})", pack.bytes());
-        out.push(&pack_s);
+        result.push(format!("packed({})", pack.bytes()).into());
     }
-    let align_s;
     if let Some(align) = repr.align {
-        align_s = format!("align({})", align.bytes());
-        out.push(&align_s);
+        result.push(format!("align({})", align.bytes()).into());
     }
-    let int_s;
     if let Some(int) = repr.int {
-        int_s = match int {
-            IntegerType::Pointer(is_signed) => {
-                format!("{}size", if is_signed { 'i' } else { 'u' })
-            }
-            IntegerType::Fixed(size, is_signed) => {
-                format!("{}{}", if is_signed { 'i' } else { 'u' }, size.size().bytes() * 8)
+        let prefix = if int.is_signed() { 'i' } else { 'u' };
+        let int = match int {
+            rustc_abi::IntegerType::Pointer(_) => format!("{prefix}size"),
+            rustc_abi::IntegerType::Fixed(int, _) => {
+                format!("{prefix}{}", int.size().bytes() * 8)
             }
         };
-        out.push(&int_s);
+        result.push(int.into());
     }
-    if !out.is_empty() { Some(format!("#[repr({})]", out.join(", "))) } else { None }
+
+    (!result.is_empty()).then(|| format!("#[repr({})]", result.join(", ")).into())
 }
