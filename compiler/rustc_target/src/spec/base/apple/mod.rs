@@ -158,12 +158,22 @@ pub(crate) fn base(
             SplitDebuginfo::Off,
         ]),
 
+        // Tell the linker that we would like it to avoid irreproducible binaries.
+        //
         // This environment variable is pretty magical but is intended for
         // producing deterministic builds. This was first discovered to be used
         // by the `ar` tool as a way to control whether or not mtime entries in
-        // the archive headers were set to zero or not. It appears that
-        // eventually the linker got updated to do the same thing and now reads
-        // this environment variable too in recent versions.
+        // the archive headers were set to zero or not.
+        //
+        // In `ld64-351.8`, shipped with Xcode 9.3, the linker was updated to
+        // read this flag too. Linker versions that don't support this flag
+        // may embed modification timestamps in binaries (especially in debug
+        // information).
+        //
+        // A cleaner alternative would be to pass the `-reproducible` flag,
+        // though that is only supported since `ld64-819.6` shipped with Xcode
+        // 14, which is too new for our minimum supported version:
+        // https://doc.rust-lang.org/rustc/platform-support/apple-darwin.html#host-tooling
         //
         // For some more info see the commentary on #47086
         link_env: Cow::Borrowed(&[(Cow::Borrowed("ZERO_AR_DATE"), Cow::Borrowed("1"))]),
