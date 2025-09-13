@@ -9,9 +9,14 @@ help: the trait `VisitorResult` is not implemented for `NotAValidResultType`
    |
 LL | struct NotAValidResultType;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = help: the following other types implement trait `VisitorResult`:
-             ()
-             ControlFlow<T>
+help: the following other types implement trait `VisitorResult`
+  --> $COMPILER_DIR_REAL/rustc_ast_ir/src/visit.rs:LL:COL
+   |
+LL | impl VisitorResult for () {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ `()`
+...
+LL | impl<T> VisitorResult for ControlFlow<T> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `ControlFlow<T>`
 note: required by a bound in `rustc_ast::visit::Visitor::Result`
   --> $COMPILER_DIR_REAL/rustc_ast/src/visit.rs:LL:COL
    |

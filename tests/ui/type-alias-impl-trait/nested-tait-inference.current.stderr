@@ -7,8 +7,12 @@ LL | fn foo() -> impl Foo<FooX> {
 LL |     ()
    |     -- return type was inferred to be `()` here
    |
-   = help: the trait `Foo<FooX>` is not implemented for `()`
-           but trait `Foo<()>` is implemented for it
+help: the trait `Foo<FooX>` is not implemented for `()`
+      but trait `Foo<()>` is implemented for it
+  --> $DIR/nested-tait-inference.rs:15:1
+   |
+LL | impl Foo<()> for () {}
+   | ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 

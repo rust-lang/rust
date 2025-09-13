@@ -6,7 +6,11 @@ LL |     check(());
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `Foo` is implemented for `i32`
+help: the trait `Foo` is implemented for `i32`
+  --> $DIR/supress_suggestions_in_help.rs:17:1
+   |
+LL | impl Foo for i32 {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
   --> $DIR/supress_suggestions_in_help.rs:19:18
    |
