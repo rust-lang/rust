@@ -710,7 +710,7 @@ Supported values for this option are:
   buffer overflow (even in the presence of undefined behavior).
 
   This provides similar security guarantees to Clang's
-  `-fstack-protector=strong`.
+  `-fstack-protector-strong`.
 
   The exact rules are unstable and subject to change, but
   currently, it generates stack protectors for functions that,
@@ -719,6 +719,15 @@ Supported values for this option are:
   allocations - that are used in a way that is not completely
   determined by static control flow).
  - `all`: Generate stack canaries in all functions
+
+rustc does not have a mode equivalent to Clang's (or GCC's)
+plain `-fstack-protector` - `-fstack-protector` is an older heuristic
+designed for C, that only protects functions that allocate a
+`char buf[N];` buffer on the stack, making it prone to buffer overflows
+from length miscalculations. This heuristic is poorly suited for Rust
+code. Even in C codebases, `-fstack-protector-strong` is nowadays
+preferred because plain `-fstack-protector` misses many stack
+buffer overflows.
 
 Stack protectors are not supported on many GPU targets, use of stack
 protectors on these targets is an error.
