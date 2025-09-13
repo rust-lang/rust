@@ -79,122 +79,6 @@ extern "C" void LLVMRustTimeTraceProfilerFinish(const char *FileName) {
   timeTraceProfilerCleanup();
 }
 
-#ifdef LLVM_COMPONENT_X86
-#define SUBTARGET_X86 SUBTARGET(X86)
-#else
-#define SUBTARGET_X86
-#endif
-
-#ifdef LLVM_COMPONENT_ARM
-#define SUBTARGET_ARM SUBTARGET(ARM)
-#else
-#define SUBTARGET_ARM
-#endif
-
-#ifdef LLVM_COMPONENT_AARCH64
-#define SUBTARGET_AARCH64 SUBTARGET(AArch64)
-#else
-#define SUBTARGET_AARCH64
-#endif
-
-#ifdef LLVM_COMPONENT_AVR
-#define SUBTARGET_AVR SUBTARGET(AVR)
-#else
-#define SUBTARGET_AVR
-#endif
-
-#ifdef LLVM_COMPONENT_M68k
-#define SUBTARGET_M68K SUBTARGET(M68k)
-#else
-#define SUBTARGET_M68K
-#endif
-
-#ifdef LLVM_COMPONENT_CSKY
-#define SUBTARGET_CSKY SUBTARGET(CSKY)
-#else
-#define SUBTARGET_CSKY
-#endif
-
-#ifdef LLVM_COMPONENT_MIPS
-#define SUBTARGET_MIPS SUBTARGET(Mips)
-#else
-#define SUBTARGET_MIPS
-#endif
-
-#ifdef LLVM_COMPONENT_POWERPC
-#define SUBTARGET_PPC SUBTARGET(PPC)
-#else
-#define SUBTARGET_PPC
-#endif
-
-#ifdef LLVM_COMPONENT_SYSTEMZ
-#define SUBTARGET_SYSTEMZ SUBTARGET(SystemZ)
-#else
-#define SUBTARGET_SYSTEMZ
-#endif
-
-#ifdef LLVM_COMPONENT_MSP430
-#define SUBTARGET_MSP430 SUBTARGET(MSP430)
-#else
-#define SUBTARGET_MSP430
-#endif
-
-#ifdef LLVM_COMPONENT_RISCV
-#define SUBTARGET_RISCV SUBTARGET(RISCV)
-#else
-#define SUBTARGET_RISCV
-#endif
-
-#ifdef LLVM_COMPONENT_SPARC
-#define SUBTARGET_SPARC SUBTARGET(Sparc)
-#else
-#define SUBTARGET_SPARC
-#endif
-
-#ifdef LLVM_COMPONENT_XTENSA
-#define SUBTARGET_XTENSA SUBTARGET(XTENSA)
-#else
-#define SUBTARGET_XTENSA
-#endif
-
-#ifdef LLVM_COMPONENT_HEXAGON
-#define SUBTARGET_HEXAGON SUBTARGET(Hexagon)
-#else
-#define SUBTARGET_HEXAGON
-#endif
-
-#ifdef LLVM_COMPONENT_LOONGARCH
-#define SUBTARGET_LOONGARCH SUBTARGET(LoongArch)
-#else
-#define SUBTARGET_LOONGARCH
-#endif
-
-#define GEN_SUBTARGETS                                                         \
-  SUBTARGET_X86                                                                \
-  SUBTARGET_ARM                                                                \
-  SUBTARGET_AARCH64                                                            \
-  SUBTARGET_AVR                                                                \
-  SUBTARGET_M68K                                                               \
-  SUBTARGET_CSKY                                                               \
-  SUBTARGET_MIPS                                                               \
-  SUBTARGET_PPC                                                                \
-  SUBTARGET_SYSTEMZ                                                            \
-  SUBTARGET_MSP430                                                             \
-  SUBTARGET_SPARC                                                              \
-  SUBTARGET_HEXAGON                                                            \
-  SUBTARGET_XTENSA                                                             \
-  SUBTARGET_RISCV                                                              \
-  SUBTARGET_LOONGARCH
-
-#define SUBTARGET(x)                                                           \
-  namespace llvm {                                                             \
-  extern const SubtargetFeatureKV x##FeatureKV[];                              \
-  extern const SubtargetFeatureKV x##SubTypeKV[];                              \
-  }
-
-GEN_SUBTARGETS
-#undef SUBTARGET
-
 // This struct and various functions are sort of a hack right now, but the
 // problem is that we've got in-memory LLVM modules after we generate and
 // optimize all codegen-units for one compilation in rustc. To be compatible
@@ -338,14 +222,6 @@ static FloatABI::ABIType fromRust(LLVMRustFloatABI RustFloatAbi) {
     return FloatABI::Hard;
   }
   report_fatal_error("Bad FloatABI.");
-}
-
-/// getLongestEntryLength - Return the length of the longest entry in the table.
-template <typename KV> static size_t getLongestEntryLength(ArrayRef<KV> Table) {
-  size_t MaxLen = 0;
-  for (auto &I : Table)
-    MaxLen = std::max(MaxLen, std::strlen(I.Key));
-  return MaxLen;
 }
 
 extern "C" void LLVMRustPrintTargetCPUs(LLVMTargetMachineRef TM,

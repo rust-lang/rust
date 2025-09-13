@@ -180,12 +180,6 @@ pub fn initialize_available_targets() {
         LLVMInitializeSystemZAsmParser
     );
     init_target!(
-        llvm_component = "jsbackend",
-        LLVMInitializeJSBackendTargetInfo,
-        LLVMInitializeJSBackendTarget,
-        LLVMInitializeJSBackendTargetMC
-    );
-    init_target!(
         llvm_component = "msp430",
         LLVMInitializeMSP430TargetInfo,
         LLVMInitializeMSP430Target,
