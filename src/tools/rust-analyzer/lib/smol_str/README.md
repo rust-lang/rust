@@ -22,6 +22,12 @@ languages. Strings consisting of a series of newlines, followed by a series of
 whitespace are a typical pattern in computer programs because of indentation.
 Note that a specialized interner might be a better solution for some use cases.
 
+## Benchmarks
+Run criterion benches with
+```sh
+cargo bench --bench \* -- --quick
+```
+
 ## MSRV Policy
 
 Minimal Supported Rust Version: latest stable.
