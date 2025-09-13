@@ -16,7 +16,7 @@
       }
   
       bb1: {
-          _4 = deref_copy (((*_1) as Some).0: &E<'_>);
+          _4 = copy (((*_1) as Some).0: &E<'_>);
           _2 = discriminant((*_4));
           switchInt(move _2) -> [1: bb2, 0: bb3, otherwise: bb5];
       }

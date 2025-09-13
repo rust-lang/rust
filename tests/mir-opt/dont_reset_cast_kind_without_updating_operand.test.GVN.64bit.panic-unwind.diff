@@ -8,14 +8,14 @@
       let _3: std::boxed::Box<()>;
       let mut _6: *const ();
       let mut _8: *const [()];
-      let mut _9: std::boxed::Box<()>;
-      let mut _10: *const ();
-      let mut _11: usize;
+      let mut _9: *const ();
+      let mut _10: usize;
+      let mut _11: std::ptr::NonNull<()>;
       scope 1 {
           debug vp_ctx => _1;
           let _4: *const ();
           scope 2 {
-              debug slf => _10;
+              debug slf => _9;
               let _5: *const [()];
               scope 3 {
                   debug bytes => _5;
@@ -45,26 +45,25 @@
           _1 = copy _2;
           StorageDead(_2);
           StorageLive(_4);
--         _9 = deref_copy _3;
-+         _9 = copy _3;
-          _10 = copy ((_9.0: std::ptr::Unique<()>).0: std::ptr::NonNull<()>) as *const () (Transmute);
-          _4 = copy _10;
+          _11 = copy ((_3.0: std::ptr::Unique<()>).0: std::ptr::NonNull<()>);
+          _9 = copy _11 as *const () (Transmute);
+          _4 = copy _9;
 -         StorageLive(_5);
 +         nop;
           StorageLive(_6);
 -         _6 = copy _4;
-+         _6 = copy _10;
-          StorageLive(_11);
-          _11 = const 1_usize;
--         _5 = *const [()] from (copy _6, copy _11);
-+         _5 = *const [()] from (copy _10, const 1_usize);
-          StorageDead(_11);
++         _6 = copy _9;
+          StorageLive(_10);
+          _10 = const 1_usize;
+-         _5 = *const [()] from (copy _6, copy _10);
++         _5 = *const [()] from (copy _9, const 1_usize);
+          StorageDead(_10);
           StorageDead(_6);
           StorageLive(_7);
           StorageLive(_8);
           _8 = copy _5;
 -         _7 = copy _8 as *mut () (PtrToPtr);
-+         _7 = copy ((_9.0: std::ptr::Unique<()>).0: std::ptr::NonNull<()>) as *mut () (Transmute);
++         _7 = copy _11 as *mut () (Transmute);
           StorageDead(_8);
           StorageDead(_7);
 -         StorageDead(_5);
