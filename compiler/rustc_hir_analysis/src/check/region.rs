@@ -467,8 +467,12 @@ fn resolve_local<'tcx>(
     // A, but the inner rvalues `a()` and `b()` have an extended lifetime
     // due to rule C.
 
-    if let_kind == LetKind::Super {
-        if let Some(scope) = visitor.extended_super_lets.remove(&pat.unwrap().hir_id.local_id) {
+    let extend_initializer = match let_kind {
+        LetKind::Regular => true,
+        LetKind::Super
+            if let Some(scope) =
+                visitor.extended_super_lets.remove(&pat.unwrap().hir_id.local_id) =>
+        {
             // This expression was lifetime-extended by a parent let binding. E.g.
             //
             //     let a = {
@@ -481,7 +485,10 @@ fn resolve_local<'tcx>(
             // Processing of `let a` will have already decided to extend the lifetime of this
             // `super let` to its own var_scope. We use that scope.
             visitor.cx.var_parent = scope;
-        } else {
+            // Extend temporaries to live in the same scope as the parent `let`'s bindings.
+            true
+        }
+        LetKind::Super => {
             // This `super let` is not subject to lifetime extension from a parent let binding. E.g.
             //
             //     identity({ super let x = temp(); &x }).method();
@@ -493,10 +500,17 @@ fn resolve_local<'tcx>(
             if let Some(inner_scope) = visitor.cx.var_parent {
                 (visitor.cx.var_parent, _) = visitor.scope_tree.default_temporary_scope(inner_scope)
             }
+            // Don't lifetime-extend child `super let`s or block tail expressions' temporaries in
+            // the initializer when this `super let` is not itself extended by a parent `let`
+            // (#145784). Block tail expressions are temporary drop scopes in Editions 2024 and
+            // later, their temps shouldn't outlive the block in e.g. `f(pin!({ &temp() }))`.
+            false
         }
-    }
+    };
 
-    if let Some(expr) = init {
+    if let Some(expr) = init
+        && extend_initializer
+    {
         record_rvalue_scope_if_borrow_expr(visitor, expr, visitor.cx.var_parent);
 
         if let Some(pat) = pat {
