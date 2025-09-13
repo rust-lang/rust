@@ -330,14 +330,12 @@ pub(super) fn elf_e_flags(architecture: Architecture, sess: &Session) -> u32 {
             let mut e_flags: u32 = 0x0;
 
             // Check if compression is enabled
-            // `unstable_target_features` is used here because "zca" is gated behind riscv_target_feature.
-            if sess.unstable_target_features.contains(&sym::zca) {
+            if sess.target_features.contains(&sym::zca) {
                 e_flags |= elf::EF_RISCV_RVC;
             }
 
             // Check if RVTSO is enabled
-            // `unstable_target_features` is used here because "ztso" is gated behind riscv_target_feature.
-            if sess.unstable_target_features.contains(&sym::ztso) {
+            if sess.target_features.contains(&sym::ztso) {
                 e_flags |= elf::EF_RISCV_TSO;
             }
 
