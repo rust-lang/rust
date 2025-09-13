@@ -132,10 +132,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 self.dcx()
                     .struct_span_err(
                         span,
-                        format!(
-                            "conflicting associated type bounds for `{item}` when \
-                            expanding trait alias"
-                        ),
+                        format!("conflicting associated type bounds for `{item}`"),
                     )
                     .with_span_label(
                         old_proj_span,
