@@ -48,6 +48,7 @@ mod errors;
 mod expect;
 mod for_loops_over_fallibles;
 mod foreign_modules;
+mod fundamental_functions;
 mod if_let_rescope;
 mod impl_trait_overcaptures;
 mod internal;
@@ -92,6 +93,7 @@ use deref_into_dyn_supertrait::*;
 use drop_forget_useless::*;
 use enum_intrinsics_non_enums::EnumIntrinsicsNonEnums;
 use for_loops_over_fallibles::*;
+use fundamental_functions::*;
 use if_let_rescope::IfLetRescope;
 use impl_trait_overcaptures::ImplTraitOvercaptures;
 use internal::*;
@@ -240,6 +242,7 @@ late_lint_methods!(
             AsyncClosureUsage: AsyncClosureUsage,
             AsyncFnInTrait: AsyncFnInTrait,
             NonLocalDefinitions: NonLocalDefinitions::default(),
+            FundamentalFunctions: FundamentalFunctions,
             ImplTraitOvercaptures: ImplTraitOvercaptures,
             IfLetRescope: IfLetRescope::default(),
             StaticMutRefs: StaticMutRefs,

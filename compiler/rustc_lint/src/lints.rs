@@ -705,6 +705,16 @@ pub(crate) enum UseLetUnderscoreIgnoreSuggestion {
     },
 }
 
+// fundamental_functions.rs
+#[derive(LintDiagnostic)]
+#[diag(lint_clashing_function_names_with_fundamental_functions)]
+#[note(lint_match_exactly)]
+#[note(lint_learn_more)]
+#[help]
+pub(crate) struct ClashingFunctionNamesWithFundamentalFunctions {
+    pub symbol_name: String,
+}
+
 // drop_forget_useless.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_dropping_references)]

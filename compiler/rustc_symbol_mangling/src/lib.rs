@@ -100,7 +100,7 @@ use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, Instance, TyCtxt};
+use rustc_middle::ty::{self, Instance, InstanceKind, TyCtxt};
 use rustc_session::config::SymbolManglingVersion;
 use tracing::debug;
 
@@ -158,29 +158,22 @@ pub fn typeid_for_trait_ref<'tcx>(
     v0::mangle_typeid_for_trait_ref(tcx, trait_ref)
 }
 
-/// Computes the symbol name for the given instance. This function will call
-/// `compute_instantiating_crate` if it needs to factor the instantiating crate
-/// into the symbol name.
-fn compute_symbol_name<'tcx>(
+pub fn symbol_name_without_mangling<'tcx>(
     tcx: TyCtxt<'tcx>,
-    instance: Instance<'tcx>,
-    compute_instantiating_crate: impl FnOnce() -> CrateNum,
-) -> String {
-    let def_id = instance.def_id();
-    let args = instance.args;
-
-    debug!("symbol_name(def_id={:?}, args={:?})", def_id, args);
+    instance_kind: InstanceKind<'tcx>,
+) -> Option<String> {
+    let def_id = instance_kind.def_id();
 
     if let Some(def_id) = def_id.as_local() {
         if tcx.proc_macro_decls_static(()) == Some(def_id) {
             let stable_crate_id = tcx.stable_crate_id(LOCAL_CRATE);
-            return tcx.sess.generate_proc_macro_decls_symbol(stable_crate_id);
+            return Some(tcx.sess.generate_proc_macro_decls_symbol(stable_crate_id));
         }
     }
 
     // FIXME(eddyb) Precompute a custom symbol name based on attributes.
     let attrs = if tcx.def_kind(def_id).has_codegen_attrs() {
-        &tcx.codegen_instance_attrs(instance.def)
+        &tcx.codegen_instance_attrs(instance_kind)
     } else {
         CodegenFnAttrs::EMPTY
     };
@@ -206,7 +199,7 @@ fn compute_symbol_name<'tcx>(
         // legacy symbol mangling scheme.
         let name = if let Some(name) = attrs.symbol_name { name } else { tcx.item_name(def_id) };
 
-        return v0::mangle_internal_symbol(tcx, name.as_str());
+        return Some(v0::mangle_internal_symbol(tcx, name.as_str()));
     }
 
     let wasm_import_module_exception_force_mangling = {
@@ -234,13 +227,33 @@ fn compute_symbol_name<'tcx>(
     if !wasm_import_module_exception_force_mangling {
         if let Some(name) = attrs.symbol_name {
             // Use provided name
-            return name.to_string();
+            return Some(name.to_string());
         }
 
         if attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE) {
             // Don't mangle
-            return tcx.item_name(def_id).to_string();
+            return Some(tcx.item_name(def_id).to_string());
         }
+    }
+
+    None
+}
+
+/// Computes the symbol name for the given instance. This function will call
+/// `compute_instantiating_crate` if it needs to factor the instantiating crate
+/// into the symbol name.
+fn compute_symbol_name<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    instance: Instance<'tcx>,
+    compute_instantiating_crate: impl FnOnce() -> CrateNum,
+) -> String {
+    let def_id = instance.def_id();
+    let args = instance.args;
+
+    debug!("symbol_name(def_id={:?}, args={:?})", def_id, args);
+
+    if let Some(symbol) = symbol_name_without_mangling(tcx, instance.def) {
+        return symbol;
     }
 
     // If we're dealing with an instance of a function that's inlined from

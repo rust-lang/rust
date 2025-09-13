@@ -1,0 +1,107 @@
+warning: this function symbol name `memcpy` clashes with the fundamental functions expected with `core` and `std`
+  --> $DIR/clashing-fn-names-with-fundamental-functions.rs:9:1
+   |
+LL | / pub extern "C" fn memcpy(
+LL | |     dest: *mut c_void,
+LL | |     src: *const c_void,
+LL | |     n: i64,
+LL | | ) -> *mut c_void { std::ptr::null_mut() }
+   | |_________________________________________^
+   |
+   = note: extra care must be taken when exposing a function with those symbol names, they must match exactly (ABI, function arguments, function return type, behavior, ...)
+   = note: see <https://doc.rust-lang.org/core/index.html#how-to-use-the-core-library> for the more details
+   = help: either allow this lint or remove any `#[unsafe(no_mangle)]` or `#[unsafe(export_name = "memcpy")]` if present
+   = note: `#[warn(clashing_function_names_with_fundamental_functions)]` on by default
+
+warning: this function symbol name `memmove` clashes with the fundamental functions expected with `core` and `std`
+  --> $DIR/clashing-fn-names-with-fundamental-functions.rs:17:1
+   |
+LL | pub fn memmove() {}
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: extra care must be taken when exposing a function with those symbol names, they must match exactly (ABI, function arguments, function return type, behavior, ...)
+   = note: see <https://doc.rust-lang.org/core/index.html#how-to-use-the-core-library> for the more details
+   = help: either allow this lint or remove any `#[unsafe(no_mangle)]` or `#[unsafe(export_name = "memmove")]` if present
+
+warning: this function symbol name `memset` clashes with the fundamental functions expected with `core` and `std`
+  --> $DIR/clashing-fn-names-with-fundamental-functions.rs:21:1
+   |
+LL | pub fn memset() {}
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = note: extra care must be taken when exposing a function with those symbol names, they must match exactly (ABI, function arguments, function return type, behavior, ...)
+   = note: see <https://doc.rust-lang.org/core/index.html#how-to-use-the-core-library> for the more details
+   = help: either allow this lint or remove any `#[unsafe(no_mangle)]` or `#[unsafe(export_name = "memset")]` if present
+
+warning: this function symbol name `memcmp` clashes with the fundamental functions expected with `core` and `std`
+  --> $DIR/clashing-fn-names-with-fundamental-functions.rs:25:1
+   |
+LL | pub fn memcmp() {}
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = note: extra care must be taken when exposing a function with those symbol names, they must match exactly (ABI, function arguments, function return type, behavior, ...)
+   = note: see <https://doc.rust-lang.org/core/index.html#how-to-use-the-core-library> for the more details
+   = help: either allow this lint or remove any `#[unsafe(no_mangle)]` or `#[unsafe(export_name = "memcmp")]` if present
+
+warning: this function symbol name `bcmp` clashes with the fundamental functions expected with `core` and `std`
+  --> $DIR/clashing-fn-names-with-fundamental-functions.rs:29:1
+   |
+LL | pub fn bcmp_() {}
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = note: extra care must be taken when exposing a function with those symbol names, they must match exactly (ABI, function arguments, function return type, behavior, ...)
+   = note: see <https://doc.rust-lang.org/core/index.html#how-to-use-the-core-library> for the more details
+   = help: either allow this lint or remove any `#[unsafe(no_mangle)]` or `#[unsafe(export_name = "bcmp")]` if present
+
+warning: this function symbol name `strlen` clashes with the fundamental functions expected with `core` and `std`
+  --> $DIR/clashing-fn-names-with-fundamental-functions.rs:33:1
+   |
+LL | pub fn strlen() {}
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = note: extra care must be taken when exposing a function with those symbol names, they must match exactly (ABI, function arguments, function return type, behavior, ...)
+   = note: see <https://doc.rust-lang.org/core/index.html#how-to-use-the-core-library> for the more details
+   = help: either allow this lint or remove any `#[unsafe(no_mangle)]` or `#[unsafe(export_name = "strlen")]` if present
+
+warning: this function symbol name `open` clashes with the fundamental functions expected with `core` and `std`
+  --> $DIR/clashing-fn-names-with-fundamental-functions.rs:39:1
+   |
+LL | pub fn open() {}
+   | ^^^^^^^^^^^^^^^^
+   |
+   = note: extra care must be taken when exposing a function with those symbol names, they must match exactly (ABI, function arguments, function return type, behavior, ...)
+   = note: see <https://doc.rust-lang.org/core/index.html#how-to-use-the-core-library> for the more details
+   = help: either allow this lint or remove any `#[unsafe(no_mangle)]` or `#[unsafe(export_name = "open")]` if present
+
+warning: this function symbol name `read` clashes with the fundamental functions expected with `core` and `std`
+  --> $DIR/clashing-fn-names-with-fundamental-functions.rs:43:1
+   |
+LL | pub async fn read1() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: extra care must be taken when exposing a function with those symbol names, they must match exactly (ABI, function arguments, function return type, behavior, ...)
+   = note: see <https://doc.rust-lang.org/core/index.html#how-to-use-the-core-library> for the more details
+   = help: either allow this lint or remove any `#[unsafe(no_mangle)]` or `#[unsafe(export_name = "read")]` if present
+
+warning: this function symbol name `write` clashes with the fundamental functions expected with `core` and `std`
+  --> $DIR/clashing-fn-names-with-fundamental-functions.rs:47:1
+   |
+LL | pub fn write1() {}
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = note: extra care must be taken when exposing a function with those symbol names, they must match exactly (ABI, function arguments, function return type, behavior, ...)
+   = note: see <https://doc.rust-lang.org/core/index.html#how-to-use-the-core-library> for the more details
+   = help: either allow this lint or remove any `#[unsafe(no_mangle)]` or `#[unsafe(export_name = "write")]` if present
+
+warning: this function symbol name `close` clashes with the fundamental functions expected with `core` and `std`
+  --> $DIR/clashing-fn-names-with-fundamental-functions.rs:51:1
+   |
+LL | pub fn close_() {}
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = note: extra care must be taken when exposing a function with those symbol names, they must match exactly (ABI, function arguments, function return type, behavior, ...)
+   = note: see <https://doc.rust-lang.org/core/index.html#how-to-use-the-core-library> for the more details
+   = help: either allow this lint or remove any `#[unsafe(no_mangle)]` or `#[unsafe(export_name = "close")]` if present
+
+warning: 10 warnings emitted
+
