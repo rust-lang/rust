@@ -1073,6 +1073,7 @@ symbols! {
         format_args_capture,
         format_args_macro,
         format_args_nl,
+        format_args_nl_macro,
         format_argument,
         format_arguments,
         format_count,

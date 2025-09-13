@@ -1015,6 +1015,7 @@ pub(crate) mod builtin {
         reason = "`format_args_nl` is only for internal \
                   language use and is subject to change"
     )]
+    #[rustc_diagnostic_item = "format_args_nl_macro"]
     #[allow_internal_unstable(fmt_internals)]
     #[rustc_builtin_macro]
     #[doc(hidden)]
