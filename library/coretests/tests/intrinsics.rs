@@ -193,3 +193,12 @@ fn carrying_mul_add_fallback_i128() {
         (u128::MAX - 1, -(i128::MIN / 2)),
     );
 }
+
+#[test]
+fn disjoint_bitor_fallback_u32() {
+    use std::intrinsics::fallback::DisjointBitOr;
+
+    let right_mask = u16::MAX as u32;
+    let left_mask = u32::MAX ^ right_mask;
+    assert_eq!(unsafe { (u32::MAX & right_mask).disjoint_bitor(u32::MAX & left_mask) }, u32::MAX);
+}
