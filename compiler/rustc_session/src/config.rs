@@ -2821,6 +2821,10 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         early_dcx.early_fatal("can't dump dependency graph without `-Z query-dep-graph`");
     }
 
+    if target_triple.tuple().ends_with("fuchsia") {
+        unstable_opts.experimental_relative_rust_abi_vtables = true;
+    }
+
     let logical_env = parse_logical_env(early_dcx, matches);
 
     let sysroot = Sysroot::new(matches.opt_str("sysroot").map(PathBuf::from));
