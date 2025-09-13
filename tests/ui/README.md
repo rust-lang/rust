@@ -1285,7 +1285,7 @@ Stability attributes used internally by the standard library: `#[stable()]` and 
 
 Some tests for pretty printing of rustc_public's IR.
 
-## `tests/ui/stack-protector/`: `-Z stack-protector` command line flag
+## `tests/ui/stack-protector/`: `-C stack-protector` command line flag
 
 See [Tracking Issue for stabilizing stack smashing protection (i.e., `-Z stack-protector`) #114903](https://github.com/rust-lang/rust/issues/114903).
 
