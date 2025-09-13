@@ -10,10 +10,11 @@ use std::iter::{self, once};
 use crate::{
     Adt, AssocItem, BindingMode, BuiltinAttr, BuiltinType, Callable, Const, DeriveHelper, Field,
     Function, GenericSubstitution, Local, Macro, ModuleDef, Static, Struct, ToolModule, Trait,
-    TraitAlias, TupleField, Type, TypeAlias, Variant,
+    TupleField, Type, TypeAlias, Variant,
     db::HirDatabase,
     semantics::{PathResolution, PathResolutionPerNs},
 };
+use base_db::salsa;
 use either::Either;
 use hir_def::{
     AdtId, AssocItemId, CallableDefId, ConstId, DefWithBodyId, FieldId, FunctionId, GenericDefId,
@@ -1282,7 +1283,7 @@ impl<'db> SourceAnalyzer<'db> {
         {
             let mut is_unsafe = false;
             let mut walk_expr = |expr_id| {
-                unsafe_operations(db, infer, def, body, expr_id, &mut |inside_unsafe_block| {
+                unsafe_operations(db, infer, def, body, expr_id, &mut |_, inside_unsafe_block| {
                     is_unsafe |= inside_unsafe_block == InsideUnsafeBlock::No
                 })
             };
@@ -1587,19 +1588,20 @@ fn resolve_hir_path_(
             TypeNs::TypeAliasId(it) => PathResolution::Def(TypeAlias::from(it).into()),
             TypeNs::BuiltinType(it) => PathResolution::Def(BuiltinType::from(it).into()),
             TypeNs::TraitId(it) => PathResolution::Def(Trait::from(it).into()),
-            TypeNs::TraitAliasId(it) => PathResolution::Def(TraitAlias::from(it).into()),
             TypeNs::ModuleId(it) => PathResolution::Def(ModuleDef::Module(it.into())),
         };
         match unresolved {
             Some(unresolved) => resolver
                 .generic_def()
                 .and_then(|def| {
-                    hir_ty::associated_type_shorthand_candidates(
-                        db,
-                        def,
-                        res.in_type_ns()?,
-                        |name, id| (name == unresolved.name).then_some(id),
-                    )
+                    salsa::attach(db, || {
+                        hir_ty::associated_type_shorthand_candidates(
+                            db,
+                            def,
+                            res.in_type_ns()?,
+                            |name, _| name == unresolved.name,
+                        )
+                    })
                 })
                 .map(TypeAlias::from)
                 .map(Into::into)
@@ -1737,7 +1739,6 @@ fn resolve_hir_path_qualifier(
             TypeNs::TypeAliasId(it) => PathResolution::Def(TypeAlias::from(it).into()),
             TypeNs::BuiltinType(it) => PathResolution::Def(BuiltinType::from(it).into()),
             TypeNs::TraitId(it) => PathResolution::Def(Trait::from(it).into()),
-            TypeNs::TraitAliasId(it) => PathResolution::Def(TraitAlias::from(it).into()),
             TypeNs::ModuleId(it) => PathResolution::Def(ModuleDef::Module(it.into())),
         };
         match unresolved {
@@ -1748,7 +1749,7 @@ fn resolve_hir_path_qualifier(
                         db,
                         def,
                         res.in_type_ns()?,
-                        |name, id| (name == unresolved.name).then_some(id),
+                        |name, _| name == unresolved.name,
                     )
                 })
                 .map(TypeAlias::from)

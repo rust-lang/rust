@@ -619,6 +619,7 @@ mod tests {
     fn test_replace_token_in_parent() {
         let parent_fn = make::fn_(
             None,
+            None,
             make::name("it"),
             None,
             None,

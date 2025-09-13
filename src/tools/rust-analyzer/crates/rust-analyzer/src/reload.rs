@@ -152,7 +152,9 @@ impl GlobalState {
         if self.fetch_build_data_error().is_err() {
             status.health |= lsp_ext::Health::Warning;
             message.push_str("Failed to run build scripts of some packages.\n\n");
-            message.push_str("Please refer to the logs for more details on the errors.");
+            message.push_str(
+                "Please refer to the language server logs for more details on the errors.",
+            );
         }
         if let Some(err) = &self.config_errors {
             status.health |= lsp_ext::Health::Warning;
@@ -855,11 +857,13 @@ impl GlobalState {
                 invocation_strategy.clone()
             }
         };
+        let next_gen = self.flycheck.iter().map(|f| f.generation() + 1).max().unwrap_or_default();
 
         self.flycheck = match invocation_strategy {
             crate::flycheck::InvocationStrategy::Once => {
                 vec![FlycheckHandle::spawn(
                     0,
+                    next_gen,
                     sender,
                     config,
                     None,
@@ -898,6 +902,7 @@ impl GlobalState {
                     .map(|(id, (root, manifest_path), sysroot_root)| {
                         FlycheckHandle::spawn(
                             id,
+                            next_gen,
                             sender.clone(),
                             config.clone(),
                             sysroot_root,

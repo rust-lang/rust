@@ -236,6 +236,7 @@ pub(crate) fn convert_closure_to_fn(acc: &mut Assists, ctx: &AssistContext<'_>) 
             };
             let mut fn_ = make::fn_(
                 None,
+                None,
                 closure_name_or_default.clone(),
                 closure_type_params,
                 closure_where_clause,

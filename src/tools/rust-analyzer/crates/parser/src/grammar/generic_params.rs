@@ -182,12 +182,6 @@ fn type_bound(p: &mut Parser<'_>) -> bool {
             );
             m.complete(p, USE_BOUND_GENERIC_ARGS);
         }
-        T![?] if p.nth_at(1, T![for]) => {
-            // test question_for_type_trait_bound
-            // fn f<T>() where T: ?for<> Sized {}
-            p.bump_any();
-            types::for_type(p, false)
-        }
         _ => {
             if path_type_bound(p).is_err() {
                 m.abandon(p);
@@ -219,7 +213,12 @@ fn path_type_bound(p: &mut Parser<'_>) -> Result<(), ()> {
     // test async_trait_bound
     // fn async_foo(_: impl async Fn(&i32)) {}
     p.eat(T![async]);
+    // test question_for_type_trait_bound
+    // fn f<T>() where T: for<> ?Sized {}
     p.eat(T![?]);
+
+    // test_err invalid_question_for_type_trait_bound
+    // fn f<T>() where T: ?for<> Sized {}
 
     if paths::is_use_path_start(p) {
         types::path_type_bounds(p, false);

@@ -187,7 +187,7 @@ fn is_copy(db: &dyn HirDatabase, ty: Ty, env: Arc<TraitEnvironment>) -> bool {
         value: InEnvironment::new(&env.env, trait_ref.cast(Interner)),
         binders: CanonicalVarKinds::empty(Interner),
     };
-    db.trait_solve(env.krate, env.block, goal).is_some()
+    db.trait_solve(env.krate, env.block, goal).certain()
 }
 
 pub(crate) fn has_drop_glue_cycle_result(

@@ -1,3 +1,4 @@
+use base_db::salsa;
 use expect_test::{Expect, expect};
 use hir::HirDisplay;
 
@@ -13,7 +14,11 @@ fn check_expected_type_and_name(#[rust_analyzer::rust_fixture] ra_fixture: &str,
 
     let ty = completion_context
         .expected_type
-        .map(|t| t.display_test(&db, completion_context.krate.to_display_target(&db)).to_string())
+        .map(|t| {
+            salsa::attach(&db, || {
+                t.display_test(&db, completion_context.krate.to_display_target(&db)).to_string()
+            })
+        })
         .unwrap_or("?".to_owned());
 
     let name =
@@ -432,5 +437,91 @@ fn f(thing: u32) -> &u32 {
 }
 "#,
         expect!["ty: u32, name: ?"],
+    );
+}
+
+#[test]
+fn expected_type_assign() {
+    check_expected_type_and_name(
+        r#"
+enum State { Stop }
+fn foo() {
+    let x: &mut State = &mut State::Stop;
+    x = $0;
+}
+"#,
+        expect![[r#"ty: &'_ mut State, name: ?"#]],
+    );
+}
+
+#[test]
+fn expected_type_deref_assign() {
+    check_expected_type_and_name(
+        r#"
+enum State { Stop }
+fn foo() {
+    let x: &mut State = &mut State::Stop;
+    match x {
+        State::Stop => {
+            *x = $0;
+        },
+    }
+}
+"#,
+        expect![[r#"ty: State, name: ?"#]],
+    );
+}
+
+#[test]
+fn expected_type_deref_assign_at_block_end() {
+    check_expected_type_and_name(
+        r#"
+enum State { Stop }
+fn foo() {
+    let x: &mut State = &mut State::Stop;
+    match x {
+        State::Stop => {
+            *x = $0
+        },
+    }
+}
+"#,
+        expect![[r#"ty: State, name: ?"#]],
+    );
+}
+
+#[test]
+fn expected_type_return_expr() {
+    check_expected_type_and_name(
+        r#"
+enum State { Stop }
+fn foo() -> State {
+    let _: i32 = if true {
+        8
+    } else {
+        return $0;
+    };
+}
+"#,
+        expect![[r#"ty: State, name: ?"#]],
+    );
+}
+
+#[test]
+fn expected_type_return_expr_in_closure() {
+    check_expected_type_and_name(
+        r#"
+enum State { Stop }
+fn foo() {
+    let _f: fn() -> State = || {
+        let _: i32 = if true {
+            8
+        } else {
+            return $0;
+        };
+    };
+}
+"#,
+        expect![[r#"ty: State, name: ?"#]],
     );
 }

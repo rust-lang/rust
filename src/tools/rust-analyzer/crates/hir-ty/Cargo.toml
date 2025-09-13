@@ -40,7 +40,14 @@ salsa-macros.workspace = true
 ra-ap-rustc_abi.workspace = true
 ra-ap-rustc_index.workspace = true
 ra-ap-rustc_pattern_analysis.workspace = true
+ra-ap-rustc_ast_ir.workspace = true
+ra-ap-rustc_type_ir.workspace = true
+ra-ap-rustc_next_trait_solver.workspace = true
 
+# These moved to dev deps if `setup_tracing` was a macro and dependents also
+# included these
+tracing-subscriber.workspace = true
+tracing-tree.workspace = true
 
 # local deps
 stdx.workspace = true
@@ -53,9 +60,6 @@ span.workspace = true
 
 [dev-dependencies]
 expect-test = "1.5.1"
-tracing.workspace = true
-tracing-subscriber.workspace = true
-tracing-tree.workspace = true
 project-model.workspace = true
 
 # local deps

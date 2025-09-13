@@ -7,7 +7,7 @@
 use std::iter::zip;
 
 use either::Either;
-use hir::Semantics;
+use hir::{EditionedFileId, Semantics};
 use ide_db::{RootDatabase, famous_defs::FamousDefs};
 
 use stdx::to_lower_snake_case;
@@ -19,6 +19,7 @@ pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     FamousDefs(sema, krate): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
+    file_id: EditionedFileId,
     expr: ast::Expr,
 ) -> Option<()> {
     if !config.parameter_hints {
@@ -39,6 +40,9 @@ pub(super) fn hints(
         .filter_map(|(p, arg)| {
             // Only annotate hints for expressions that exist in the original file
             let range = sema.original_range_opt(arg.syntax())?;
+            if range.file_id != file_id {
+                return None;
+            }
             let param_name = p.name(sema.db)?;
             Some((p, param_name, arg, range))
         })

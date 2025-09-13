@@ -195,8 +195,7 @@ macro_rules! impl_has_docs {
 }
 
 impl_has_docs![
-    Variant, Field, Static, Const, Trait, TraitAlias, TypeAlias, Macro, Function, Adt, Module,
-    Impl, Crate,
+    Variant, Field, Static, Const, Trait, TypeAlias, Macro, Function, Adt, Module, Impl, Crate,
 ];
 
 macro_rules! impl_has_docs_enum {

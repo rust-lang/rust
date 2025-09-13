@@ -7,7 +7,12 @@ pub use salsa_macros;
 mod change;
 mod input;
 
-use std::{cell::RefCell, hash::BuildHasherDefault, panic, sync::Once};
+use std::{
+    cell::RefCell,
+    hash::BuildHasherDefault,
+    panic,
+    sync::{Once, atomic::AtomicUsize},
+};
 
 pub use crate::{
     change::FileChange,
@@ -30,6 +35,8 @@ use triomphe::Arc;
 pub use vfs::{AnchoredPath, AnchoredPathBuf, FileId, VfsPath, file_set::FileSet};
 
 pub type FxIndexSet<T> = indexmap::IndexSet<T, rustc_hash::FxBuildHasher>;
+pub type FxIndexMap<K, V> =
+    indexmap::IndexMap<K, V, std::hash::BuildHasherDefault<rustc_hash::FxHasher>>;
 
 #[macro_export]
 macro_rules! impl_intern_key {
@@ -326,6 +333,27 @@ pub trait SourceDatabase: salsa::Database {
 
     #[doc(hidden)]
     fn crates_map(&self) -> Arc<CratesMap>;
+
+    fn nonce_and_revision(&self) -> (Nonce, salsa::Revision);
+}
+
+static NEXT_NONCE: AtomicUsize = AtomicUsize::new(0);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Nonce(usize);
+
+impl Default for Nonce {
+    #[inline]
+    fn default() -> Self {
+        Nonce::new()
+    }
+}
+
+impl Nonce {
+    #[inline]
+    pub fn new() -> Nonce {
+        Nonce(NEXT_NONCE.fetch_add(1, std::sync::atomic::Ordering::SeqCst))
+    }
 }
 
 /// Crate related data shared by the whole workspace.

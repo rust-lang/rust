@@ -3,7 +3,7 @@
 use std::{cmp, convert::Infallible, mem, ops::ControlFlow};
 
 use chalk_ir::{
-    BoundVar, DebruijnIndex, FnSubst, Mutability, TyKind,
+    BoundVar, DebruijnIndex, FnSubst, GenericArg, Mutability, TyKind,
     cast::Cast,
     fold::{FallibleTypeFolder, Shift, TypeFoldable},
     visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor},
@@ -19,8 +19,9 @@ use hir_def::{
     item_tree::FieldsShape,
     lang_item::LangItem,
     resolver::ValueNs,
+    type_ref::TypeRefId,
 };
-use hir_def::{Lookup, type_ref::TypeRefId};
+use hir_def::{ItemContainerId, Lookup, TraitId};
 use hir_expand::name::Name;
 use intern::sym;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -29,16 +30,16 @@ use stdx::{format_to, never};
 use syntax::utils::is_raw_identifier;
 
 use crate::{
-    Adjust, Adjustment, AliasEq, AliasTy, Binders, BindingMode, ChalkTraitId, ClosureId, DynTy,
-    DynTyExt, FnAbi, FnPointer, FnSig, GenericArg, Interner, OpaqueTy, ProjectionTy,
-    ProjectionTyExt, Substitution, Ty, TyBuilder, TyExt, WhereClause,
+    Adjust, Adjustment, AliasEq, AliasTy, Binders, BindingMode, ClosureId, DynTy, DynTyExt, FnAbi,
+    FnPointer, FnSig, Interner, OpaqueTy, ProjectionTy, ProjectionTyExt, Substitution, Ty,
+    TyBuilder, TyExt, WhereClause,
     db::{HirDatabase, InternedClosure, InternedCoroutine},
     error_lifetime, from_assoc_type_id, from_chalk_trait_id, from_placeholder_idx,
     generics::Generics,
     infer::{BreakableKind, CoerceMany, Diverges, coerce::CoerceNever},
     make_binders,
     mir::{BorrowKind, MirSpan, MutBorrowKind, ProjectionElem},
-    to_assoc_type_id, to_chalk_trait_id,
+    to_assoc_type_id,
     traits::FnTrait,
     utils::{self, elaborate_clause_supertraits},
 };
@@ -320,10 +321,8 @@ impl InferenceContext<'_> {
     fn deduce_sig_from_dyn_ty(&self, dyn_ty: &DynTy) -> Option<FnPointer> {
         // Search for a predicate like `<$self as FnX<Args>>::Output == Ret`
 
-        let fn_traits: SmallVec<[ChalkTraitId; 3]> =
-            utils::fn_traits(self.db, self.owner.module(self.db).krate())
-                .map(to_chalk_trait_id)
-                .collect();
+        let fn_traits: SmallVec<[TraitId; 3]> =
+            utils::fn_traits(self.db, self.owner.module(self.db).krate()).collect();
 
         let self_ty = self.result.standard_types.unknown.clone();
         let bounds = dyn_ty.bounds.clone().substitute(Interner, &[self_ty.cast(Interner)]);
@@ -332,9 +331,13 @@ impl InferenceContext<'_> {
             if let WhereClause::AliasEq(AliasEq { alias: AliasTy::Projection(projection), ty }) =
                 bound.skip_binders()
             {
-                let assoc_data =
-                    self.db.associated_ty_data(from_assoc_type_id(projection.associated_ty_id));
-                if !fn_traits.contains(&assoc_data.trait_id) {
+                let trait_ =
+                    match from_assoc_type_id(projection.associated_ty_id).lookup(self.db).container
+                    {
+                        ItemContainerId::TraitId(t) => t,
+                        _ => panic!("associated type not in trait"),
+                    };
+                if !fn_traits.contains(&trait_) {
                     return None;
                 }
 
@@ -863,7 +866,7 @@ impl CapturedItemWithoutTy {
                     idx: chalk_ir::PlaceholderIndex,
                     outer_binder: DebruijnIndex,
                 ) -> Result<chalk_ir::Const<Interner>, Self::Error> {
-                    let x = from_placeholder_idx(self.db, idx);
+                    let x = from_placeholder_idx(self.db, idx).0;
                     let Some(idx) = self.generics.type_or_const_param_idx(x) else {
                         return Err(());
                     };
@@ -875,7 +878,7 @@ impl CapturedItemWithoutTy {
                     idx: chalk_ir::PlaceholderIndex,
                     outer_binder: DebruijnIndex,
                 ) -> std::result::Result<Ty, Self::Error> {
-                    let x = from_placeholder_idx(self.db, idx);
+                    let x = from_placeholder_idx(self.db, idx).0;
                     let Some(idx) = self.generics.type_or_const_param_idx(x) else {
                         return Err(());
                     };

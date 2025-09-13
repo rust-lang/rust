@@ -4,26 +4,25 @@ use std::{cmp, ops::Bound};
 
 use hir_def::{
     AdtId, VariantId,
-    layout::{Integer, ReprOptions, TargetDataLayout},
     signatures::{StructFlags, VariantFields},
 };
 use intern::sym;
+use rustc_abi::{Integer, ReprOptions, TargetDataLayout};
 use rustc_index::IndexVec;
 use smallvec::SmallVec;
 use triomphe::Arc;
 
 use crate::{
-    Substitution, TraitEnvironment,
+    TraitEnvironment,
     db::HirDatabase,
-    layout::{Layout, LayoutError, field_ty},
+    layout::{Layout, LayoutCx, LayoutError, field_ty},
+    next_solver::GenericArgs,
 };
 
-use super::LayoutCx;
-
-pub fn layout_of_adt_query(
-    db: &dyn HirDatabase,
+pub fn layout_of_adt_query<'db>(
+    db: &'db dyn HirDatabase,
     def: AdtId,
-    subst: Substitution,
+    args: GenericArgs<'db>,
     trait_env: Arc<TraitEnvironment>,
 ) -> Result<Arc<Layout>, LayoutError> {
     let krate = trait_env.krate;
@@ -35,7 +34,7 @@ pub fn layout_of_adt_query(
     let handle_variant = |def: VariantId, var: &VariantFields| {
         var.fields()
             .iter()
-            .map(|(fd, _)| db.layout_of_ty(field_ty(db, def, fd, &subst), trait_env.clone()))
+            .map(|(fd, _)| db.layout_of_ty(field_ty(db, def, fd, &args), trait_env.clone()))
             .collect::<Result<Vec<_>, _>>()
     };
     let (variants, repr, is_special_no_niche) = match def {
@@ -96,6 +95,15 @@ pub fn layout_of_adt_query(
     Ok(Arc::new(result))
 }
 
+pub(crate) fn layout_of_adt_cycle_result<'db>(
+    _: &'db dyn HirDatabase,
+    _def: AdtId,
+    _args: GenericArgs<'db>,
+    _trait_env: Arc<TraitEnvironment>,
+) -> Result<Arc<Layout>, LayoutError> {
+    Err(LayoutError::RecursiveTypeWithoutIndirection)
+}
+
 fn layout_scalar_valid_range(db: &dyn HirDatabase, def: AdtId) -> (Bound<u128>, Bound<u128>) {
     let attrs = db.attrs(def.into());
     let get = |name| {
@@ -118,15 +126,6 @@ fn layout_scalar_valid_range(db: &dyn HirDatabase, def: AdtId) -> (Bound<u128>, 
         Bound::Unbounded
     };
     (get(sym::rustc_layout_scalar_valid_range_start), get(sym::rustc_layout_scalar_valid_range_end))
-}
-
-pub(crate) fn layout_of_adt_cycle_result(
-    _: &dyn HirDatabase,
-    _: AdtId,
-    _: Substitution,
-    _: Arc<TraitEnvironment>,
-) -> Result<Arc<Layout>, LayoutError> {
-    Err(LayoutError::RecursiveTypeWithoutIndirection)
 }
 
 /// Finds the appropriate Integer type and signedness for the given

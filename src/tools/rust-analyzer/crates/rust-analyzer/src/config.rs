@@ -226,6 +226,14 @@ config_data! {
         inlayHints_discriminantHints_enable: DiscriminantHintsDef =
             DiscriminantHintsDef::Never,
 
+        /// Disable reborrows in expression adjustments inlay hints.
+        ///
+        /// Reborrows are a pair of a builtin deref then borrow, i.e. `&*`. They are inserted by the compiler but are mostly useless to the programmer.
+        ///
+        /// Note: if the deref is not builtin (an overloaded deref), or the borrow is `&raw const`/`&raw mut`, they are not removed.
+        inlayHints_expressionAdjustmentHints_disableReborrows: bool =
+            true,
+
         /// Show inlay hints for type adjustments.
         inlayHints_expressionAdjustmentHints_enable: AdjustmentHintsDef =
             AdjustmentHintsDef::Never,
@@ -858,6 +866,9 @@ config_data! {
         /// check will be performed.
         check_workspace: bool = true,
 
+        /// Exclude all locals from document symbol search.
+        document_symbol_search_excludeLocals: bool = true,
+
         /// These proc-macros will be ignored when trying to expand them.
         ///
         /// This config takes a map of crate names with the exported proc-macro names to ignore as values.
@@ -1481,6 +1492,13 @@ pub enum FilesWatcher {
     Server,
 }
 
+/// Configuration for document symbol search requests.
+#[derive(Debug, Clone)]
+pub struct DocumentSymbolConfig {
+    /// Should locals be excluded.
+    pub search_exclude_locals: bool,
+}
+
 #[derive(Debug, Clone)]
 pub struct NotificationsConfig {
     pub cargo_toml_not_found: bool,
@@ -1878,12 +1896,14 @@ impl Config {
                 AdjustmentHintsDef::Always => ide::AdjustmentHints::Always,
                 AdjustmentHintsDef::Never => match self.inlayHints_reborrowHints_enable() {
                     ReborrowHintsDef::Always | ReborrowHintsDef::Mutable => {
-                        ide::AdjustmentHints::ReborrowOnly
+                        ide::AdjustmentHints::BorrowsOnly
                     }
                     ReborrowHintsDef::Never => ide::AdjustmentHints::Never,
                 },
-                AdjustmentHintsDef::Reborrow => ide::AdjustmentHints::ReborrowOnly,
+                AdjustmentHintsDef::Borrows => ide::AdjustmentHints::BorrowsOnly,
             },
+            adjustment_hints_disable_reborrows: *self
+                .inlayHints_expressionAdjustmentHints_disableReborrows(),
             adjustment_hints_mode: match self.inlayHints_expressionAdjustmentHints_mode() {
                 AdjustmentHintsModeDef::Prefix => ide::AdjustmentHintsMode::Prefix,
                 AdjustmentHintsModeDef::Postfix => ide::AdjustmentHintsMode::Postfix,
@@ -2438,6 +2458,12 @@ impl Config {
         }
     }
 
+    pub fn document_symbol(&self, source_root: Option<SourceRootId>) -> DocumentSymbolConfig {
+        DocumentSymbolConfig {
+            search_exclude_locals: *self.document_symbol_search_excludeLocals(source_root),
+        }
+    }
+
     pub fn workspace_symbol(&self, source_root: Option<SourceRootId>) -> WorkspaceSymbolConfig {
         WorkspaceSymbolConfig {
             search_exclude_imports: *self.workspace_symbol_search_excludeImports(source_root),
@@ -2806,7 +2832,8 @@ enum ReborrowHintsDef {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
 enum AdjustmentHintsDef {
-    Reborrow,
+    #[serde(alias = "reborrow")]
+    Borrows,
     #[serde(with = "true_or_always")]
     #[serde(untagged)]
     Always,
@@ -3067,7 +3094,7 @@ macro_rules! _config_data {
     }) => {
         /// Default config values for this grouping.
         #[allow(non_snake_case)]
-        #[derive(Debug, Clone )]
+        #[derive(Debug, Clone)]
         struct $name { $($field: $ty,)* }
 
         impl_for_config_data!{

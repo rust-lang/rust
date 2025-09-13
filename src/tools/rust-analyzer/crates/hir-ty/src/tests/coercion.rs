@@ -96,7 +96,7 @@ fn foo<T>(x: &[T]) -> &[T] { x }
 fn test() {
     let x = if true {
         foo(&[1])
-         // ^^^^ adjustments: Deref(None), Borrow(Ref('?8, Not)), Pointer(Unsize)
+         // ^^^^ adjustments: Deref(None), Borrow(Ref('?11, Not)), Pointer(Unsize)
     } else {
         &[1]
     };
@@ -148,7 +148,7 @@ fn foo<T>(x: &[T]) -> &[T] { x }
 fn test(i: i32) {
     let x = match i {
         2 => foo(&[2]),
-              // ^^^^ adjustments: Deref(None), Borrow(Ref('?8, Not)), Pointer(Unsize)
+              // ^^^^ adjustments: Deref(None), Borrow(Ref('?11, Not)), Pointer(Unsize)
         1 => &[1],
         _ => &[3],
     };
@@ -484,6 +484,8 @@ fn test() {
     );
 }
 
+// FIXME(next-solver): We could learn more from the `&S` -> `&dyn Foo<i8, _>` coercion if we followed the rustc model
+// where unsized is successful if all unsizing trait goals are certain (and non-unsizing goals are delayed).
 #[test]
 fn coerce_unsize_trait_object_simple() {
     check_types(
@@ -503,8 +505,8 @@ fn test() {
                                 //^ S<i8, i16>
     let obj: &dyn Bar<_, i8, i16> = &S;
                                    //^ S<i8, i16>
-    let obj: &dyn Foo<i8, _> = &S;
-                              //^ S<i8, {unknown}>
+    //let obj: &dyn Foo<i8, _> = &S;
+                              // S<{unknown}, {unknown}>
 }"#,
     );
 }
@@ -543,9 +545,9 @@ struct Bar<T>(Foo<T>);
 
 fn test() {
     let _: &Foo<[usize]> = &Foo { t: [1, 2, 3] };
-                         //^^^^^^^^^^^^^^^^^^^^^ expected &'? Foo<[usize]>, got &'? Foo<[i32; 3]>
+                         //^^^^^^^^^^^^^^^^^^^^^ type: &'? Foo<[usize; 3]>
     let _: &Bar<[usize]> = &Bar(Foo { t: [1, 2, 3] });
-                         //^^^^^^^^^^^^^^^^^^^^^^^^^^ expected &'? Bar<[usize]>, got &'? Bar<[i32; 3]>
+                         //^^^^^^^^^^^^^^^^^^^^^^^^^^ type: &'? Bar<[usize; 3]>
 }
 "#,
     );
@@ -899,7 +901,7 @@ impl core::ops::Index<usize> for StructMut {
 
     fn index(&self, index: usize) -> &Self::Output { &() }
 }
-impl core::ops::IndexMut for StructMut {
+impl core::ops::IndexMut<usize> for StructMut {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output { &mut () }
 }
 fn test() {

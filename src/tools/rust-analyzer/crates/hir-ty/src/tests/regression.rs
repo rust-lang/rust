@@ -1,3 +1,5 @@
+mod new_solver;
+
 use expect_test::expect;
 
 use super::{check_infer, check_no_mismatches, check_types};
@@ -773,7 +775,7 @@ fn issue_4800() {
         "#,
         expect![[r#"
             379..383 'self': &'? mut PeerSet<D>
-            401..424 '{     ...     }': dyn Future<Output = ()> + '?
+            401..424 '{     ...     }': dyn Future<Output = ()> + 'static
             411..418 'loop {}': !
             416..418 '{}': ()
             575..579 'self': &'? mut Self
@@ -781,6 +783,9 @@ fn issue_4800() {
     );
 }
 
+// FIXME(next-solver): Though `Repeat: IntoIterator` does not hold here, we
+// should be able to do better at given type hints (with Chalk, we did `IntoIterator::Item<Repeat<...>>`)
+// From what I can tell, the point of this test is to not panic though.
 #[test]
 fn issue_4966() {
     check_infer(
@@ -824,11 +829,11 @@ fn issue_4966() {
             311..317 'repeat': Repeat<Map<impl Fn(&'? f64) -> f64>>
             320..345 'Repeat...nner }': Repeat<Map<impl Fn(&'? f64) -> f64>>
             338..343 'inner': Map<impl Fn(&'? f64) -> f64>
-            356..359 'vec': Vec<IntoIterator::Item<Repeat<Map<impl Fn(&'? f64) -> f64>>>>
-            362..371 'from_iter': fn from_iter<IntoIterator::Item<Repeat<Map<impl Fn(&'? f64) -> f64>>>, Repeat<Map<impl Fn(&'? f64) -> f64>>>(Repeat<Map<impl Fn(&'? f64) -> f64>>) -> Vec<IntoIterator::Item<Repeat<Map<impl Fn(&'? f64) -> f64>>>>
-            362..379 'from_i...epeat)': Vec<IntoIterator::Item<Repeat<Map<impl Fn(&'? f64) -> f64>>>>
+            356..359 'vec': Vec<{unknown}>
+            362..371 'from_iter': fn from_iter<{unknown}, Repeat<Map<impl Fn(&'? f64) -> f64>>>(Repeat<Map<impl Fn(&'? f64) -> f64>>) -> Vec<{unknown}>
+            362..379 'from_i...epeat)': Vec<{unknown}>
             372..378 'repeat': Repeat<Map<impl Fn(&'? f64) -> f64>>
-            386..389 'vec': Vec<IntoIterator::Item<Repeat<Map<impl Fn(&'? f64) -> f64>>>>
+            386..389 'vec': Vec<{unknown}>
             386..399 'vec.foo_bar()': {unknown}
         "#]],
     );
@@ -1224,6 +1229,8 @@ fn mamba(a: U32!(), p: u32) -> u32 {
 
 #[test]
 fn for_loop_block_expr_iterable() {
+    // FIXME(next-solver): it would be nice to be able to hint `IntoIterator::IntoIter<()>` instead of just `{unknown}`
+    // (even though `(): IntoIterator` does not hold)
     check_infer(
         r#"
 //- minicore: iterator
@@ -1236,17 +1243,17 @@ fn test() {
         expect![[r#"
             10..68 '{     ...   } }': ()
             16..66 'for _ ...     }': fn into_iter<()>(()) -> <() as IntoIterator>::IntoIter
-            16..66 'for _ ...     }': IntoIterator::IntoIter<()>
+            16..66 'for _ ...     }': {unknown}
             16..66 'for _ ...     }': !
-            16..66 'for _ ...     }': IntoIterator::IntoIter<()>
-            16..66 'for _ ...     }': &'? mut IntoIterator::IntoIter<()>
-            16..66 'for _ ...     }': fn next<IntoIterator::IntoIter<()>>(&'? mut IntoIterator::IntoIter<()>) -> Option<<IntoIterator::IntoIter<()> as Iterator>::Item>
-            16..66 'for _ ...     }': Option<IntoIterator::Item<()>>
+            16..66 'for _ ...     }': {unknown}
+            16..66 'for _ ...     }': &'? mut {unknown}
+            16..66 'for _ ...     }': fn next<{unknown}>(&'? mut {unknown}) -> Option<<{unknown} as Iterator>::Item>
+            16..66 'for _ ...     }': Option<{unknown}>
             16..66 'for _ ...     }': ()
             16..66 'for _ ...     }': ()
             16..66 'for _ ...     }': ()
             16..66 'for _ ...     }': ()
-            20..21 '_': IntoIterator::Item<()>
+            20..21 '_': {unknown}
             25..39 '{ let x = 0; }': ()
             31..32 'x': i32
             35..36 '0': i32
@@ -1283,7 +1290,6 @@ fn test() {
 
 #[test]
 fn bug_11242() {
-    // FIXME: wrong, should be u32
     check_types(
         r#"
 fn foo<A, B>()
@@ -1292,7 +1298,7 @@ where
     B: IntoIterator<Item = usize>,
 {
     let _x: <A as IntoIterator>::Item;
-     // ^^ {unknown}
+     // ^^ u32
 }
 
 pub trait Iterator {
@@ -1495,7 +1501,7 @@ fn regression_11688_2() {
 fn regression_11688_3() {
     check_types(
         r#"
-        //- minicore: iterator
+        //- minicore: iterator, dispatch_from_dyn
         struct Ar<T, const N: u8>(T);
         fn f<const LEN: usize, T, const BASE: u8>(
             num_zeros: usize,
@@ -1514,6 +1520,7 @@ fn regression_11688_3() {
 fn regression_11688_4() {
     check_types(
         r#"
+        //- minicore: dispatch_from_dyn
         trait Bar<const C: usize> {
             fn baz(&self) -> [i32; C];
         }
@@ -2035,11 +2042,11 @@ fn issue_17734() {
         r#"
 fn test() {
     let x = S::foo::<'static, &()>(&S);
-     // ^ Wrap<'?, ()>
+     // ^ Wrap<'static, ()>
     let x = S::foo::<&()>(&S);
      // ^ Wrap<'?, ()>
     let x = S.foo::<'static, &()>();
-     // ^ Wrap<'?, ()>
+     // ^ Wrap<'static, ()>
     let x = S.foo::<&()>();
      // ^ Wrap<'?, ()>
 }
@@ -2294,10 +2301,10 @@ trait Foo {
 }
 "#,
         expect![[r#"
-            83..86 'bar': Foo::Bar<Self, A, B>
+            83..86 'bar': <Self as Foo>::Bar<A, B>
             105..133 '{     ...     }': ()
-            119..120 '_': Foo::Bar<Self, A, B>
-            123..126 'bar': Foo::Bar<Self, A, B>
+            119..120 '_': <Self as Foo>::Bar<A, B>
+            123..126 'bar': <Self as Foo>::Bar<A, B>
         "#]],
     );
 }
@@ -2380,6 +2387,110 @@ impl const MyClone for i32 {
 }
 #[lang = "destruct"]
 pub trait Destruct {}
+"#,
+    );
+}
+
+#[test]
+fn no_duplicated_lang_item_metadata() {
+    check_types(
+        r#"
+//- minicore: pointee
+//- /main.rs crate:main deps:std,core
+use std::AtomicPtr;
+use std::null_mut;
+
+fn main() {
+    let x: AtomicPtr<()> = AtomicPtr::new(null_mut());
+      //^ AtomicPtr<()>
+}
+
+//- /lib.rs crate:r#std deps:core
+#![no_std]
+pub use core::*;
+
+//- /lib.rs crate:r#core
+#![no_core]
+
+#[lang = "pointee_trait"]
+pub trait Pointee {
+    #[lang = "metadata_type"]
+    type Metadata;
+}
+
+pub struct AtomicPtr<T>(T);
+
+impl<T> AtomicPtr<T> {
+    pub fn new(p: *mut T) -> AtomicPtr<T> {
+        loop {}
+    }
+}
+
+#[lang = "pointee_sized"]
+pub trait PointeeSized {}
+#[lang = "meta_sized"]
+pub trait MetaSized: PointeeSized {}
+#[lang = "sized"]
+pub trait Sized: MetaSized {}
+
+pub trait Thin = Pointee<Metadata = ()> + PointeeSized;
+
+pub fn null_mut<T: PointeeSized + Thin>() -> *mut T {
+    loop {}
+}
+"#,
+    );
+}
+
+#[test]
+fn issue_20484() {
+    check_no_mismatches(
+        r#"
+struct Eth;
+
+trait FullBlockBody {
+    type Transaction;
+}
+
+impl FullBlockBody for () {
+    type Transaction = ();
+}
+
+trait NodePrimitives {
+    type BlockBody;
+    type SignedTx;
+}
+
+impl NodePrimitives for () {
+    type BlockBody = ();
+    type SignedTx = ();
+}
+
+impl NodePrimitives for Eth {
+    type BlockBody = ();
+    type SignedTx = ();
+}
+
+trait FullNodePrimitives
+where
+    Self: NodePrimitives<BlockBody: FullBlockBody<Transaction = Self::SignedTx>>,
+{
+}
+
+impl<T> FullNodePrimitives for T where
+    T: NodePrimitives<BlockBody: FullBlockBody<Transaction = Self::SignedTx>>,
+{
+}
+
+fn node<N>(_: N)
+where
+    N: FullNodePrimitives,
+{
+}
+
+fn main() {
+    node(Eth);
+}
 "#,
     );
 }

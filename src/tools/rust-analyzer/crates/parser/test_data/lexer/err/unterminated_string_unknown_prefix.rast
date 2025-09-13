@@ -1,0 +1,15 @@
+FN_KW "fn"
+WHITESPACE " "
+IDENT "main"
+L_PAREN "("
+R_PAREN ")"
+WHITESPACE " "
+L_CURLY "{"
+WHITESPACE "\n    "
+IDENT "hello"
+L_PAREN "("
+STRING "\"world);\n    // a bunch of code was here\n    env(\"FLAGS"
+STRING "\", \""
+MINUS "-"
+IDENT "help" error: unknown literal prefix `help` (note: check for unterminated string literal)
+STRING "\")\n}" error: Missing trailing `"` symbol to terminate the string literal
