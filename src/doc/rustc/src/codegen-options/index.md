@@ -471,11 +471,13 @@ If not specified, overflow checks are enabled if
 This option lets you control what happens when the code panics.
 
 * `abort`: terminate the process upon panic
+* `immediate-abort`: terminate the process upon panic, and do not call any panic hooks
 * `unwind`: unwind the stack upon panic
 
 If not specified, the default depends on the target.
 
 If any crate in the crate graph uses `abort`, the final binary (`bin`, `dylib`, `cdylib`, `staticlib`) must also use `abort`.
+If any crate in the crate graph uses `immediate-abort`, every crate in the graph must use `immediate-abort`.
 If `std` is used as a `dylib` with `unwind`, the final binary must also use `unwind`.
 
 ## passes
