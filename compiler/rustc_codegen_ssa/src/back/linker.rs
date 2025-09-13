@@ -6,9 +6,7 @@ use std::{env, io, iter, mem, str};
 
 use cc::windows_registry;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
-use rustc_metadata::{
-    find_native_static_library, try_find_native_dynamic_library, try_find_native_static_library,
-};
+use rustc_metadata::{try_find_native_dynamic_library, try_find_native_static_library};
 use rustc_middle::bug;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::{
@@ -622,15 +620,15 @@ impl<'a> Linker for GccLinker<'a> {
     }
 
     fn link_staticlib_by_name(&mut self, name: &str, verbatim: bool, whole_archive: bool) {
+        if let Some(path) = try_find_native_static_library(self.sess, name, verbatim) {
+            return self.link_staticlib_by_path(&path, whole_archive);
+        }
         self.hint_static();
         let colon = if verbatim && self.is_gnu { ":" } else { "" };
         if !whole_archive {
             self.link_or_cc_arg(format!("-l{colon}{name}"));
         } else if self.sess.target.is_like_darwin {
-            // -force_load is the macOS equivalent of --whole-archive, but it
-            // involves passing the full path to the library to link.
-            self.link_arg("-force_load");
-            self.link_arg(find_native_static_library(name, verbatim, self.sess));
+            self.link_args(&["-force_load", name]);
         } else {
             self.link_arg("--whole-archive")
                 .link_or_cc_arg(format!("-l{colon}{name}"))
@@ -972,15 +970,12 @@ impl<'a> Linker for MsvcLinker<'a> {
     }
 
     fn link_staticlib_by_name(&mut self, name: &str, verbatim: bool, whole_archive: bool) {
-        // On MSVC-like targets rustc supports static libraries using alternative naming
-        // scheme (`libfoo.a`) unsupported by linker, search for such libraries manually.
         if let Some(path) = try_find_native_static_library(self.sess, name, verbatim) {
-            self.link_staticlib_by_path(&path, whole_archive);
-        } else {
-            let opts = if whole_archive { "/WHOLEARCHIVE:" } else { "" };
-            let (prefix, suffix) = self.sess.staticlib_components(verbatim);
-            self.link_arg(format!("{opts}{prefix}{name}{suffix}"));
+            return self.link_staticlib_by_path(&path, whole_archive);
         }
+        let opts = if whole_archive { "/WHOLEARCHIVE:" } else { "" };
+        let (prefix, suffix) = self.sess.staticlib_components(verbatim);
+        self.link_arg(format!("{opts}{prefix}{name}{suffix}"));
     }
 
     fn link_staticlib_by_path(&mut self, path: &Path, whole_archive: bool) {
@@ -1211,7 +1206,10 @@ impl<'a> Linker for EmLinker<'a> {
         self.link_or_cc_arg(path);
     }
 
-    fn link_staticlib_by_name(&mut self, name: &str, _verbatim: bool, _whole_archive: bool) {
+    fn link_staticlib_by_name(&mut self, name: &str, verbatim: bool, whole_archive: bool) {
+        if let Some(path) = try_find_native_static_library(self.sess, name, verbatim) {
+            return self.link_staticlib_by_path(&path, whole_archive);
+        }
         self.link_or_cc_args(&["-l", name]);
     }
 
@@ -1378,7 +1376,10 @@ impl<'a> Linker for WasmLd<'a> {
         self.link_or_cc_arg(path);
     }
 
-    fn link_staticlib_by_name(&mut self, name: &str, _verbatim: bool, whole_archive: bool) {
+    fn link_staticlib_by_name(&mut self, name: &str, verbatim: bool, whole_archive: bool) {
+        if let Some(path) = try_find_native_static_library(self.sess, name, verbatim) {
+            return self.link_staticlib_by_path(&path, whole_archive);
+        }
         if !whole_archive {
             self.link_or_cc_args(&["-l", name]);
         } else {
@@ -1513,7 +1514,10 @@ impl<'a> Linker for L4Bender<'a> {
     ) {
     }
 
-    fn link_staticlib_by_name(&mut self, name: &str, _verbatim: bool, whole_archive: bool) {
+    fn link_staticlib_by_name(&mut self, name: &str, verbatim: bool, whole_archive: bool) {
+        if let Some(path) = try_find_native_static_library(self.sess, name, verbatim) {
+            return self.link_staticlib_by_path(&path, whole_archive);
+        }
         self.hint_static();
         if !whole_archive {
             self.link_arg(format!("-PC{name}"));
@@ -1683,12 +1687,15 @@ impl<'a> Linker for AixLinker<'a> {
     }
 
     fn link_staticlib_by_name(&mut self, name: &str, verbatim: bool, whole_archive: bool) {
+        if let Some(path) = try_find_native_static_library(self.sess, name, verbatim) {
+            return self.link_staticlib_by_path(&path, whole_archive);
+        }
         self.hint_static();
         if !whole_archive {
             self.link_or_cc_arg(if verbatim { String::from(name) } else { format!("-l{name}") });
         } else {
             let mut arg = OsString::from("-bkeepfile:");
-            arg.push(find_native_static_library(name, verbatim, self.sess));
+            arg.push(name);
             self.link_or_cc_arg(arg);
         }
     }
