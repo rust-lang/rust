@@ -437,7 +437,7 @@ auto:
   #  macOS Builders  #
   ####################
 
-  - name: dist-x86_64-apple
+  - name: dist-x86_64-apple-alt
     env:
       SCRIPT: >-
         ./x.py dist bootstrap
@@ -460,7 +460,7 @@ auto:
       CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-macos
 
-  - name: dist-apple-various
+  - name: dist-apple-various-alt
     env:
       SCRIPT: ./x.py dist bootstrap --include-default-paths --host='' --target=aarch64-apple-ios,x86_64-apple-ios,aarch64-apple-ios-sim,aarch64-apple-ios-macabi,x86_64-apple-ios-macabi
       # Mac Catalyst cannot currently compile the sanitizer:
@@ -473,7 +473,7 @@ auto:
       SELECT_XCODE: /Applications/Xcode_15.2.app
     <<: *job-macos
 
-  - name: dist-aarch64-apple
+  - name: dist-aarch64-apple-alt
     env:
       SCRIPT: ./x.py dist bootstrap --include-default-paths --host=aarch64-apple-darwin --target=aarch64-apple-darwin
       RUST_CONFIGURE_ARGS: >-
@@ -494,7 +494,7 @@ auto:
       CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-macos
 
-  - name: aarch64-apple
+  - name: aarch64-apple-alt
     env:
       SCRIPT: >
         ./x.py --stage 2 test --host=aarch64-apple-darwin --target=aarch64-apple-darwin &&
