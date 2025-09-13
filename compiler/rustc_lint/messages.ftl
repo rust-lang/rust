@@ -195,6 +195,11 @@ lint_cfg_attr_no_attributes =
 
 lint_check_name_unknown_tool = unknown lint tool: `{$tool_name}`
 
+lint_clashing_function_names_with_fundamental_functions = this function symbol name `{$symbol_name}` clashes with the fundamental functions expected with `core` and `std`
+    .match_exactly = extra care must be taken when exposing a function with those symbol names, they must match exactly (ABI, function arguments, function return type, behavior, ...)
+    .learn_more = see <https://doc.rust-lang.org/core/index.html#how-to-use-the-core-library> for the more details
+    .help = either allow this lint or remove any `#[unsafe(no_mangle)]` or `#[unsafe(export_name = "{$symbol_name}")]` if present
+
 lint_closure_returning_async_block = closure returning async block can be made into an async closure
     .label = this async block can be removed, and the closure can be turned into an async closure
     .suggestion = turn this into an async closure
