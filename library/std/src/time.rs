@@ -551,13 +551,8 @@ impl SystemTime {
     /// println!("{difference:?}");
     /// ```
     #[stable(feature = "time2", since = "1.8.0")]
-    #[rustc_const_unstable(feature = "const_system_time", issue = "144517")]
-    pub const fn duration_since(&self, earlier: SystemTime) -> Result<Duration, SystemTimeError> {
-        // FIXME: map_err in const
-        match self.0.sub_time(&earlier.0) {
-            Ok(time) => Ok(time),
-            Err(err) => Err(SystemTimeError(err)),
-        }
+    pub fn duration_since(&self, earlier: SystemTime) -> Result<Duration, SystemTimeError> {
+        self.0.sub_time(&earlier.0).map_err(SystemTimeError)
     }
 
     /// Returns the difference from this system time to the
@@ -594,8 +589,7 @@ impl SystemTime {
     /// `SystemTime` (which means it's inside the bounds of the underlying data structure), `None`
     /// otherwise.
     #[stable(feature = "time_checked_add", since = "1.34.0")]
-    #[rustc_const_unstable(feature = "const_system_time", issue = "144517")]
-    pub const fn checked_add(&self, duration: Duration) -> Option<SystemTime> {
+    pub fn checked_add(&self, duration: Duration) -> Option<SystemTime> {
         self.0.checked_add_duration(&duration).map(SystemTime)
     }
 
@@ -603,15 +597,13 @@ impl SystemTime {
     /// `SystemTime` (which means it's inside the bounds of the underlying data structure), `None`
     /// otherwise.
     #[stable(feature = "time_checked_add", since = "1.34.0")]
-    #[rustc_const_unstable(feature = "const_system_time", issue = "144517")]
-    pub const fn checked_sub(&self, duration: Duration) -> Option<SystemTime> {
+    pub fn checked_sub(&self, duration: Duration) -> Option<SystemTime> {
         self.0.checked_sub_duration(&duration).map(SystemTime)
     }
 }
 
 #[stable(feature = "time2", since = "1.8.0")]
-#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-impl const Add<Duration> for SystemTime {
+impl Add<Duration> for SystemTime {
     type Output = SystemTime;
 
     /// # Panics
@@ -624,16 +616,14 @@ impl const Add<Duration> for SystemTime {
 }
 
 #[stable(feature = "time_augmented_assignment", since = "1.9.0")]
-#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-impl const AddAssign<Duration> for SystemTime {
+impl AddAssign<Duration> for SystemTime {
     fn add_assign(&mut self, other: Duration) {
         *self = *self + other;
     }
 }
 
 #[stable(feature = "time2", since = "1.8.0")]
-#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-impl const Sub<Duration> for SystemTime {
+impl Sub<Duration> for SystemTime {
     type Output = SystemTime;
 
     fn sub(self, dur: Duration) -> SystemTime {
@@ -642,8 +632,7 @@ impl const Sub<Duration> for SystemTime {
 }
 
 #[stable(feature = "time_augmented_assignment", since = "1.9.0")]
-#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-impl const SubAssign<Duration> for SystemTime {
+impl SubAssign<Duration> for SystemTime {
     fn sub_assign(&mut self, other: Duration) {
         *self = *self - other;
     }
@@ -710,8 +699,7 @@ impl SystemTimeError {
     /// ```
     #[must_use]
     #[stable(feature = "time2", since = "1.8.0")]
-    #[rustc_const_unstable(feature = "const_system_time", issue = "144517")]
-    pub const fn duration(&self) -> Duration {
+    pub fn duration(&self) -> Duration {
         self.0
     }
 }
