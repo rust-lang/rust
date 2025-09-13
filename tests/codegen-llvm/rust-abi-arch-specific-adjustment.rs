@@ -1,15 +1,19 @@
+//@ add-core-stubs
 //@ compile-flags: -Copt-level=3 -C no-prepopulate-passes
 //@ revisions: riscv64 loongarch64
 
-//@[riscv64] only-riscv64
 //@[riscv64] compile-flags: --target riscv64gc-unknown-linux-gnu
 //@[riscv64] needs-llvm-components: riscv
 
-//@[loongarch64] only-loongarch64
 //@[loongarch64] compile-flags: --target loongarch64-unknown-linux-gnu
 //@[loongarch64] needs-llvm-components: loongarch
 
 #![crate_type = "lib"]
+#![feature(no_core)]
+#![no_core]
+
+extern crate minicore;
+use minicore::*;
 
 #[no_mangle]
 // riscv64:     define noundef i8 @arg_attr_u8(i8 noundef zeroext %x)
