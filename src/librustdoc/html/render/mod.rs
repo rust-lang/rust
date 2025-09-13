@@ -2935,11 +2935,11 @@ fn render_attributes_in_code(
         let hir::Attribute::Parsed(kind) = attr else { continue };
         let attr = match kind {
             AttributeKind::LinkSection { name, .. } => {
-                Cow::Owned(format!("#[unsafe(link_section = \"{name}\")]"))
+                Cow::Owned(format!("#[unsafe(link_section = {})]", Escape(&format!("{name:?}"))))
             }
             AttributeKind::NoMangle(..) => Cow::Borrowed("#[unsafe(no_mangle)]"),
             AttributeKind::ExportName { name, .. } => {
-                Cow::Owned(format!("#[unsafe(export_name = \"{name}\")]"))
+                Cow::Owned(format!("#[unsafe(export_name = {})]", Escape(&format!("{name:?}"))))
             }
             AttributeKind::NonExhaustive(..) => Cow::Borrowed("#[non_exhaustive]"),
             _ => continue,
