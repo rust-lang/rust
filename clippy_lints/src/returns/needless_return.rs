@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::{
     binary_expr_needs_parentheses, is_from_proc_macro, leaks_droppable_temporary_with_limited_lifetime,
-    span_find_starting_semi, sym,
+    span_contains_cfg, span_find_starting_semi, sym,
 };
 use rustc_ast::MetaItemInner;
 use rustc_errors::Applicability;
@@ -83,6 +83,15 @@ fn check_block_return<'tcx>(cx: &LateContext<'tcx>, expr_kind: &ExprKind<'tcx>, 
         if let Some(block_expr) = block.expr {
             check_final_expr(cx, block_expr, semi_spans, RetReplacement::Empty, None);
         } else if let Some(stmt) = block.stmts.last() {
+            if span_contains_cfg(
+                cx,
+                Span::between(
+                    stmt.span,
+                    cx.sess().source_map().end_point(block.span), // the closing brace of the block
+                ),
+            ) {
+                return;
+            }
             match stmt.kind {
                 StmtKind::Expr(expr) => {
                     check_final_expr(cx, expr, semi_spans, RetReplacement::Empty, None);
