@@ -3451,7 +3451,7 @@ fn add_wild_args(
             arg.push(linker_path);
             arg
         });
-        cmd.cc_arg("-Wl,--no-fork");
+        // cmd.cc_arg("-Wl,--no-fork");
     }
     if !linker_path_exists {
         // As a sanity check, we emit an error if none of these paths exist: we want
