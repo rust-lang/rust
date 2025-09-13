@@ -607,7 +607,7 @@ pub(super) fn lower_variant_ctor(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 
 pub(super) fn lower_enum_variant_types(tcx: TyCtxt<'_>, def_id: DefId) {
     let def = tcx.adt_def(def_id);
-    let repr_type = def.repr().discr_type();
+    let repr_type = def.repr().discr_type(&tcx);
     let initial = repr_type.initial_discriminant(tcx);
     let mut prev_discr = None::<Discr<'_>>;
 

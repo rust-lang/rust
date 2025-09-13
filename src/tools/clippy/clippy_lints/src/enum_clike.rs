@@ -52,7 +52,7 @@ impl<'tcx> LateLintPass<'tcx> for UnportableVariant {
                         if let ty::Adt(adt, _) = ty.kind()
                             && adt.is_enum()
                         {
-                            ty = adt.repr().discr_type().to_ty(cx.tcx);
+                            ty = adt.repr().discr_type(&cx.tcx).to_ty(cx.tcx);
                         }
                         match ty.kind() {
                             ty::Int(IntTy::Isize) => {

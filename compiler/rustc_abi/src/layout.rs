@@ -757,7 +757,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
 
         let niche_filling_layout = calculate_niche_filling_layout();
 
-        let discr_type = repr.discr_type();
+        let discr_type = repr.discr_type(dl);
         let discr_int = Integer::from_attr(dl, discr_type);
         // Because we can only represent one range of valid values, we'll look for the
         // largest range of invalid values and pick everything else as the range of valid
@@ -875,7 +875,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             return Err(LayoutCalculatorError::SizeOverflow);
         }
 
-        let typeck_ity = Integer::from_attr(dl, repr.discr_type());
+        let typeck_ity = Integer::from_attr(dl, repr.discr_type(dl));
         if typeck_ity < min_ity {
             // It is a bug if Layout decided on a greater discriminant size than typeck for
             // some reason at this point (based on values discriminant can take on). Mostly

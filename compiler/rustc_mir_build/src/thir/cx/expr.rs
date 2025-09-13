@@ -292,7 +292,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
             let (discr_did, discr_offset) = adt_def.discriminant_def_for_variant(idx);
 
             use rustc_middle::ty::util::IntTypeExt;
-            let ty = adt_def.repr().discr_type();
+            let ty = adt_def.repr().discr_type(&tcx);
             let discr_ty = ty.to_ty(tcx);
 
             let size = tcx

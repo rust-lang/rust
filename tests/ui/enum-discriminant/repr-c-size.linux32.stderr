@@ -1,0 +1,15 @@
+warning: literal out of range for `isize`
+  --> $DIR/repr-c-size.rs:24:9
+   |
+LL |     A = 9223372036854775807, // i64::MAX
+   |         ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the literal `9223372036854775807` does not fit into the type `isize` whose range is `-2147483648..=2147483647`
+note: the lint level is defined here
+  --> $DIR/repr-c-size.rs:22:8
+   |
+LL | #[warn(overflowing_literals)]
+   |        ^^^^^^^^^^^^^^^^^^^^
+
+warning: 1 warning emitted
+

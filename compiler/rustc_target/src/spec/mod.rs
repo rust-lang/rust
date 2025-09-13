@@ -2386,6 +2386,13 @@ impl Target {
             self.c_enum_min_bits.unwrap_or(self.c_int_width as _),
         ))
         .map_err(|err| TargetDataLayoutErrors::InvalidBitsSize { err })?;
+        dl.c_enum_max_size = match self.c_enum_max_bits {
+            None => None,
+            Some(max_bits) => Some(
+                Integer::from_size(Size::from_bits(max_bits))
+                    .map_err(|err| TargetDataLayoutErrors::InvalidBitsSize { err })?,
+            ),
+        };
 
         Ok(dl)
     }
@@ -2797,6 +2804,8 @@ pub struct TargetOptions {
 
     /// Minimum number of bits in #[repr(C)] enum. Defaults to the size of c_int
     pub c_enum_min_bits: Option<u64>,
+    /// Maximum number of bits in #[repr(C)] enum. Defaults to the pointer size.
+    pub c_enum_max_bits: Option<u64>,
 
     /// Whether or not the DWARF `.debug_aranges` section should be generated.
     pub generate_arange_section: bool,
@@ -3044,6 +3053,7 @@ impl Default for TargetOptions {
             supported_split_debuginfo: Cow::Borrowed(&[SplitDebuginfo::Off]),
             supported_sanitizers: SanitizerSet::empty(),
             c_enum_min_bits: None,
+            c_enum_max_bits: None,
             generate_arange_section: true,
             supports_stack_protector: true,
             entry_name: "main".into(),

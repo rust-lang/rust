@@ -169,11 +169,29 @@ pub trait Add<Rhs = Self> {
     fn add(self, _: Rhs) -> Self::Output;
 }
 
-impl Add<isize> for isize {
+impl Add for isize {
     type Output = isize;
 
     fn add(self, other: isize) -> isize {
-        7 // avoid needing to add all of the overflow handling and panic language items
+        loop {} // Dummy impl, not actually used
+    }
+}
+
+#[lang = "eq"]
+pub trait PartialEq<Rhs = Self> {
+    fn eq(&self, other: &Rhs) -> bool;
+
+    fn ne(&self, other: &Rhs) -> bool {
+        match self.eq(other) {
+            true => false,
+            false => true,
+        }
+    }
+}
+
+impl PartialEq for usize {
+    fn eq(&self, other: &Self) -> bool {
+        loop {} // Dummy impl, not actually used
     }
 }
 
@@ -231,6 +249,19 @@ pub mod mem {
     #[rustc_nounwind]
     #[rustc_intrinsic]
     pub unsafe fn transmute<Src, Dst>(src: Src) -> Dst;
+
+    #[rustc_nounwind]
+    #[rustc_intrinsic]
+    pub const fn size_of<T>() -> usize;
+    #[rustc_nounwind]
+    #[rustc_intrinsic]
+    pub const fn align_of<T>() -> usize;
+}
+
+pub mod hint {
+    #[rustc_nounwind]
+    #[rustc_intrinsic]
+    pub const unsafe fn unreachable() -> !;
 }
 
 #[lang = "c_void"]
