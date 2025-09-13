@@ -569,6 +569,7 @@ fn make_format_args(
             detect_foreign_fmt,
             str_style,
             fmt_str,
+            uncooked_fmt_str.1.as_str(),
             fmt_span,
         );
     }
@@ -650,6 +651,7 @@ fn report_missing_placeholders(
     detect_foreign_fmt: bool,
     str_style: Option<usize>,
     fmt_str: &str,
+    uncooked_fmt_str: &str,
     fmt_span: Span,
 ) {
     let mut diag = if let &[(span, named)] = &unused[..] {
@@ -773,16 +775,20 @@ fn report_missing_placeholders(
                 diag.note(format!("consider adding {} format specifiers", unused.len()));
             }
         } else {
-            let original_fmt_str =
-                if fmt_str.len() >= 1 { &fmt_str[..fmt_str.len() - 1] } else { "" };
-
             let msg = if unused.len() == 1 {
                 "a format specifier".to_string()
             } else {
                 format!("{} format specifiers", unused.len())
             };
 
-            let sugg = format!("\"{}{}\"", original_fmt_str, "{}".repeat(unused.len()));
+            let sugg = match str_style {
+                None => format!("\"{}{}\"", uncooked_fmt_str, "{}".repeat(unused.len())),
+                Some(n_hashes) => format!(
+                    "r{hashes}\"{uncooked_fmt_str}{fmt_specifiers}\"{hashes}",
+                    hashes = "#".repeat(n_hashes),
+                    fmt_specifiers = "{}".repeat(unused.len())
+                ),
+            };
             let msg = format!("format specifiers use curly braces, consider adding {msg}");
 
             diag.span_suggestion_verbose(fmt_span, msg, sugg, Applicability::MaybeIncorrect);

@@ -32,4 +32,33 @@ fn missing_format_specifiers_multiple_unused_args() {
     //~| NOTE consider adding 2 format specifiers
 }
 
+fn unicode_unused_args() {
+    panic!("👆", "👆", 1);
+    //~^ ERROR multiple unused formatting arguments
+    //~| NOTE multiple missing formatting specifiers
+    //~| NOTE argument never used
+    //~| NOTE argument never used
+    //~| HELP format specifiers use curly braces, consider adding 2 format specifiers
+}
+
+fn raw_str_unused_arg() {
+    format_args!(r##"lJ𐏿Æ�.𐏿�"##, r#"r}J𐏿Æ" {}"#, 1);
+    //~^ ERROR multiple unused formatting arguments
+    //~| NOTE multiple missing formatting specifiers
+    //~| NOTE argument never used
+    //~| NOTE argument never used
+    //~| HELP format specifiers use curly braces, consider adding 2 format specifiers
+}
+
+fn valid_new_lines_unused_args() {
+    panic!("Expect 2 newlines
+
+", "👆", 1);
+    //~^ ERROR multiple unused formatting arguments
+    //~| NOTE argument never used
+    //~| NOTE argument never used
+    //~^^^^^^ NOTE multiple missing formatting specifiers
+    //~| HELP format specifiers use curly braces, consider adding 2 format specifiers
+}
+
 fn main() { }
