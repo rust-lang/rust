@@ -440,6 +440,43 @@ impl DefKind {
             | DefKind::ExternCrate => false,
         }
     }
+
+    /// Returns `true` if `self` is a kind of definition that does not have its own
+    /// type-checking context, i.e. closure, coroutine or inline const.
+    #[inline]
+    pub fn is_typeck_child(self) -> bool {
+        match self {
+            DefKind::Closure | DefKind::InlineConst | DefKind::SyntheticCoroutineBody => true,
+            DefKind::Mod
+            | DefKind::Struct
+            | DefKind::Union
+            | DefKind::Enum
+            | DefKind::Variant
+            | DefKind::Trait
+            | DefKind::TyAlias
+            | DefKind::ForeignTy
+            | DefKind::TraitAlias
+            | DefKind::AssocTy
+            | DefKind::TyParam
+            | DefKind::Fn
+            | DefKind::Const
+            | DefKind::ConstParam
+            | DefKind::Static { .. }
+            | DefKind::Ctor(_, _)
+            | DefKind::AssocFn
+            | DefKind::AssocConst
+            | DefKind::Macro(_)
+            | DefKind::ExternCrate
+            | DefKind::Use
+            | DefKind::ForeignMod
+            | DefKind::AnonConst
+            | DefKind::OpaqueTy
+            | DefKind::Field
+            | DefKind::LifetimeParam
+            | DefKind::GlobalAsm
+            | DefKind::Impl { .. } => false,
+        }
+    }
 }
 
 /// The resolution of a path or export.

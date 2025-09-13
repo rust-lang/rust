@@ -209,17 +209,6 @@ help: add a `!`
 LL | #![reexport_test_harness_main = "2900"]
    |  +
 
-warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:540:1
-   |
-LL | #[no_std]
-   | ^^^^^^^^^
-   |
-help: add a `!`
-   |
-LL | #![no_std]
-   |  +
-
 warning: attribute should be applied to an `extern` block with non-Rust ABI
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:695:1
    |
@@ -385,56 +374,6 @@ LL |     #[reexport_test_harness_main = "2900"] impl S { }
 help: add a `!`
    |
 LL |     #![reexport_test_harness_main = "2900"] impl S { }
-   |      +
-
-warning: crate-level attribute should be in the root module
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:544:17
-   |
-LL |     mod inner { #![no_std] }
-   |                 ^^^^^^^^^^
-
-warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:547:5
-   |
-LL |     #[no_std] fn f() { }
-   |     ^^^^^^^^^
-   |
-help: add a `!`
-   |
-LL |     #![no_std] fn f() { }
-   |      +
-
-warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:551:5
-   |
-LL |     #[no_std] struct S;
-   |     ^^^^^^^^^
-   |
-help: add a `!`
-   |
-LL |     #![no_std] struct S;
-   |      +
-
-warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:555:5
-   |
-LL |     #[no_std] type T = S;
-   |     ^^^^^^^^^
-   |
-help: add a `!`
-   |
-LL |     #![no_std] type T = S;
-   |      +
-
-warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:559:5
-   |
-LL |     #[no_std] impl S { }
-   |     ^^^^^^^^^
-   |
-help: add a `!`
-   |
-LL |     #![no_std] impl S { }
    |      +
 
 warning: attribute should be applied to an `extern` block with non-Rust ABI
@@ -1094,6 +1033,76 @@ LL |     #[macro_escape] impl S { }
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[macro_escape]` can be applied to modules, extern crates, and crates
+
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![no_std]`
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:540:1
+   |
+LL | #[no_std]
+   | ^^^^^^^^^
+   |
+note: This attribute does not have an `!`, which means it is applied to this module
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:542:1
+   |
+LL | / mod no_std {
+LL | |
+LL | |     mod inner { #![no_std] }
+...  |
+LL | | }
+   | |_^
+
+warning: the `#![no_std]` attribute can only be used at the crate root
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:544:17
+   |
+LL |     mod inner { #![no_std] }
+   |                 ^^^^^^^^^^
+
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![no_std]`
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:547:5
+   |
+LL |     #[no_std] fn f() { }
+   |     ^^^^^^^^^
+   |
+note: This attribute does not have an `!`, which means it is applied to this function
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:547:15
+   |
+LL |     #[no_std] fn f() { }
+   |               ^^^^^^^^^^
+
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![no_std]`
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:551:5
+   |
+LL |     #[no_std] struct S;
+   |     ^^^^^^^^^
+   |
+note: This attribute does not have an `!`, which means it is applied to this struct
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:551:15
+   |
+LL |     #[no_std] struct S;
+   |               ^^^^^^^^^
+
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![no_std]`
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:555:5
+   |
+LL |     #[no_std] type T = S;
+   |     ^^^^^^^^^
+   |
+note: This attribute does not have an `!`, which means it is applied to this type alias
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:555:15
+   |
+LL |     #[no_std] type T = S;
+   |               ^^^^^^^^^^^
+
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![no_std]`
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:559:5
+   |
+LL |     #[no_std] impl S { }
+   |     ^^^^^^^^^
+   |
+note: This attribute does not have an `!`, which means it is applied to this implementation block
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:559:15
+   |
+LL |     #[no_std] impl S { }
+   |               ^^^^^^^^^^
 
 warning: `#[cold]` attribute cannot be used on modules
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:581:1

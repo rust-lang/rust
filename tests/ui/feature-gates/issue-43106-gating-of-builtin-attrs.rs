@@ -539,26 +539,26 @@ mod macro_escape {
 
 #[no_std]
 //~^ WARN crate-level attribute should be an inner attribute
-//~| HELP add a `!`
 mod no_std {
+    //~^ NOTE This attribute does not have an `!`, which means it is applied to this module
     mod inner { #![no_std] }
-//~^ WARN crate-level attribute should be in the root module
+//~^ WARN the `#![no_std]` attribute can only be used at the crate root
 
     #[no_std] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this function
 
     #[no_std] struct S;
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this struct
 
     #[no_std] type T = S;
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this type alias
 
     #[no_std] impl S { }
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this implementation block
 }
 
 // At time of authorship, #[proc_macro_derive = "2500"] signals error

@@ -228,12 +228,18 @@ pub fn prepare_tool_cargo(
     // own copy
     cargo.env("LZMA_API_STATIC", "1");
 
-    // Build jemalloc on AArch64 with support for page sizes up to 64K
-    // See: https://github.com/rust-lang/rust/pull/135081
     // Note that `miri` always uses jemalloc. As such, there is no checking of the jemalloc build flag.
     // See also the "JEMALLOC_SYS_WITH_LG_PAGE" setting in the compile build step.
-    if target.starts_with("aarch64") && env::var_os("JEMALLOC_SYS_WITH_LG_PAGE").is_none() {
-        cargo.env("JEMALLOC_SYS_WITH_LG_PAGE", "16");
+    if env::var_os("JEMALLOC_SYS_WITH_LG_PAGE").is_none() {
+        // Build jemalloc on AArch64 with support for page sizes up to 64K
+        // See: https://github.com/rust-lang/rust/pull/135081
+        if target.starts_with("aarch64") {
+            cargo.env("JEMALLOC_SYS_WITH_LG_PAGE", "16");
+        }
+        // Build jemalloc on LoongArch with support for page sizes up to 16K
+        else if target.starts_with("loongarch") {
+            cargo.env("JEMALLOC_SYS_WITH_LG_PAGE", "14");
+        }
     }
 
     // CFG_RELEASE is needed by rustfmt (and possibly other tools) which

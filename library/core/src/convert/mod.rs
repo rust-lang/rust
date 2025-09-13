@@ -963,17 +963,20 @@ impl const PartialEq for Infallible {
 }
 
 #[stable(feature = "convert_infallible", since = "1.34.0")]
-impl Eq for Infallible {}
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+impl const Eq for Infallible {}
 
 #[stable(feature = "convert_infallible", since = "1.34.0")]
-impl PartialOrd for Infallible {
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+impl const PartialOrd for Infallible {
     fn partial_cmp(&self, _other: &Self) -> Option<crate::cmp::Ordering> {
         match *self {}
     }
 }
 
 #[stable(feature = "convert_infallible", since = "1.34.0")]
-impl Ord for Infallible {
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+impl const Ord for Infallible {
     fn cmp(&self, _other: &Self) -> crate::cmp::Ordering {
         match *self {}
     }

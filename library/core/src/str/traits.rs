@@ -32,7 +32,8 @@ impl const PartialEq for str {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl Eq for str {}
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+impl const Eq for str {}
 
 /// Implements comparison operations on strings.
 ///
