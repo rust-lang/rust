@@ -1446,6 +1446,7 @@ pub(crate) fn make_test_description<R: Read>(
     cache: &DirectivesCache,
     name: String,
     path: &Utf8Path,
+    filterable_path: &Utf8Path,
     src: R,
     test_revision: Option<&str>,
     poisoned: &mut bool,
@@ -1520,7 +1521,13 @@ pub(crate) fn make_test_description<R: Read>(
         _ => ShouldPanic::No,
     };
 
-    CollectedTestDesc { name, ignore, ignore_message, should_panic }
+    CollectedTestDesc {
+        name,
+        filterable_path: filterable_path.to_owned(),
+        ignore,
+        ignore_message,
+        should_panic,
+    }
 }
 
 fn ignore_cdb(config: &Config, line: &str) -> IgnoreDecision {

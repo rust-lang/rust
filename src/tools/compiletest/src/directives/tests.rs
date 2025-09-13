@@ -14,6 +14,7 @@ fn make_test_description<R: Read>(
     config: &Config,
     name: String,
     path: &Utf8Path,
+    filterable_path: &Utf8Path,
     src: R,
     revision: Option<&str>,
 ) -> CollectedTestDesc {
@@ -24,6 +25,7 @@ fn make_test_description<R: Read>(
         &cache,
         name,
         path,
+        filterable_path,
         src,
         revision,
         &mut poisoned,
@@ -221,7 +223,7 @@ fn parse_rs(config: &Config, contents: &str) -> EarlyProps {
 fn check_ignore(config: &Config, contents: &str) -> bool {
     let tn = String::new();
     let p = Utf8Path::new("a.rs");
-    let d = make_test_description(&config, tn, p, std::io::Cursor::new(contents), None);
+    let d = make_test_description(&config, tn, p, p, std::io::Cursor::new(contents), None);
     d.ignore
 }
 
@@ -231,9 +233,9 @@ fn should_fail() {
     let tn = String::new();
     let p = Utf8Path::new("a.rs");
 
-    let d = make_test_description(&config, tn.clone(), p, std::io::Cursor::new(""), None);
+    let d = make_test_description(&config, tn.clone(), p, p, std::io::Cursor::new(""), None);
     assert_eq!(d.should_panic, ShouldPanic::No);
-    let d = make_test_description(&config, tn, p, std::io::Cursor::new("//@ should-fail"), None);
+    let d = make_test_description(&config, tn, p, p, std::io::Cursor::new("//@ should-fail"), None);
     assert_eq!(d.should_panic, ShouldPanic::Yes);
 }
 
