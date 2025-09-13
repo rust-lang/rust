@@ -232,20 +232,16 @@
 //!
 //! In some cases, [`Result<T, E>`] comes with size, alignment, and ABI guarantees.
 //! Specifically, one of either the `T` or `E` type must be a type that qualifies for the `Option`
-//! [representation guarantees][opt-rep] (let's call that type `I`), and the *other* type must meet
-//! all of the following conditions:
-//! * Is a zero-sized type with alignment 1 (a "1-ZST").
-//! * Is either a struct/tuple with no fields, or an enum with no variants.
-//! * Does not have the `#[non_exhaustive]` attribute.
+//! [representation guarantees][opt-rep] (let's call that type `I`), and the *other* type
+//! is a zero-sized type with alignment 1 (a "1-ZST").
 //!
 //! If that is the case, then `Result<T, E>` has the same size, alignment, and [function call ABI]
 //! as `I` (and therefore, as `Option<I>`). If `I` is `T`, it is therefore sound to transmute `t: I`
 //! to `Result<T, E>` (which will produce `Ok(t)`), and to transmute `Ok(t): Result<T, E>` to `I`
 //! (which will produce `t`). If `I` is `E`, the same applies with `Ok` replaced by `Err`.
 //!
-//! For example, `NonZeroI32` qualifies for the `Option` representation
-//! guarantees, and `()` is a zero-sized type with alignment 1, no fields, and
-//! it isn't `non_exhaustive`. This means that both `Result<NonZeroI32, ()>` and
+//! For example, `NonZeroI32` qualifies for the `Option` representation guarantees, and `()` is a
+//! zero-sized type with alignment 1. This means that both `Result<NonZeroI32, ()>` and
 //! `Result<(), NonZeroI32>` have the same size, alignment, and ABI
 //! as `NonZeroI32` (and `Option<NonZeroI32>`). The only difference is the implied semantics:
 //! * `Option<NonZeroI32>` is "a non-zero i32 might be present"
