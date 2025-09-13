@@ -10,9 +10,11 @@ enum State {
 }
 
 #[allow(missing_debug_implementations)]
+#[repr(C)]
 pub struct Storage<T> {
-    state: Cell<State>,
+    // This field must be first, for correctness of `#[rustc_align_static]`
     val: UnsafeCell<T>,
+    state: Cell<State>,
 }
 
 impl<T> Storage<T> {

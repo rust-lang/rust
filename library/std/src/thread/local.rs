@@ -132,6 +132,103 @@ impl<T: 'static> fmt::Debug for LocalKey<T> {
     }
 }
 
+#[doc(hidden)]
+#[allow_internal_unstable(thread_local_internals)]
+#[unstable(feature = "thread_local_internals", issue = "none")]
+#[rustc_macro_transparency = "semitransparent"]
+pub macro thread_local_process_attrs {
+    // Separate attributes into `rustc_align_static` and everything else:
+
+    // `rustc_align_static` attribute
+    ([$($prev_align_attrs:tt)*] [$($prev_other_attrs:tt)*]; #[rustc_align_static $($attr_rest:tt)*] $($rest:tt)*) => (
+        $crate::thread::local_impl::thread_local_process_attrs!(
+            [$($prev_align_attrs)* #[rustc_align_static $($attr_rest)*]] [$($prev_other_attrs)*];
+            $($rest)*
+        );
+    ),
+
+    // `cfg_attr` attribute; parse it to determine whether the RHS is `rustc_align_static`
+    ([$($prev_align_attrs:tt)*] [$($prev_other_attrs:tt)*]; #[cfg_attr $($attr_rest:tt)*] $($rest:tt)*) => (
+        $crate::thread::local_impl::thread_local_process_attrs!(
+            @processing_cfg_attr #[cfg_attr $($attr_rest)*] at [cfg_attr $($attr_rest)*];
+            [$($prev_align_attrs)*] [$($prev_other_attrs)*];
+            $($rest)*
+        );
+    ),
+
+    // doc comment not followed by any other attributes; process it all at once to avoid blowing recursion limit
+    ([$($prev_align_attrs:tt)*] [$($prev_other_attrs:tt)*]; $(#[doc $($doc_rhs:tt)*])+ $vis:vis static $($rest:tt)*) => (
+        $crate::thread::local_impl::thread_local_process_attrs!(
+            [$($prev_align_attrs)*] [$($prev_other_attrs)* $(#[doc $($doc_rhs)*])+];
+            $vis static $($rest)*
+        );
+    ),
+
+    // 8 lines of doc comment; process them all at once to avoid blowing recursion limit
+    ([$($prev_align_attrs:tt)*] [$($prev_other_attrs:tt)*];
+     #[doc $($doc_rhs_1:tt)*] #[doc $($doc_rhs_2:tt)*] #[doc $($doc_rhs_3:tt)*] #[doc $($doc_rhs_4:tt)*]
+     #[doc $($doc_rhs_5:tt)*] #[doc $($doc_rhs_6:tt)*] #[doc $($doc_rhs_7:tt)*] #[doc $($doc_rhs_8:tt)*]
+     $($rest:tt)*) => (
+        $crate::thread::local_impl::thread_local_process_attrs!(
+            [$($prev_align_attrs)*] [$($prev_other_attrs)*
+            #[doc $($doc_rhs_1)*] #[doc $($doc_rhs_2)*] #[doc $($doc_rhs_3)*] #[doc $($doc_rhs_4)*]
+            #[doc $($doc_rhs_5)*] #[doc $($doc_rhs_6)*] #[doc $($doc_rhs_7)*] #[doc $($doc_rhs_8)*]];
+            $($rest)*
+        );
+    ),
+
+    // other attribute
+    ([$($prev_align_attrs:tt)*] [$($prev_other_attrs:tt)*]; #[$($attr:tt)*] $($rest:tt)*) => (
+        $crate::thread::local_impl::thread_local_process_attrs!(
+            [$($prev_align_attrs)*] [$($prev_other_attrs)* #[$($attr)*]];
+            $($rest)*
+        );
+    ),
+
+
+    // Parse `cfg_attr` to figure out whether it's a `rustc_align_static`:
+
+    // yes, it's a `rustc_align_static`
+    (@processing_cfg_attr #[$($full_attr:tt)*] at [rustc_align_static $($attr_rest:tt)*]; [$($prev_align_attrs:tt)*] [$($prev_other_attrs:tt)*]; $($rest:tt)*) => (
+        $crate::thread::local_impl::thread_local_process_attrs!(
+            [$($prev_align_attrs)* #[$($full_attr)*]] [$($prev_other_attrs)*];
+            $($rest)*
+        );
+    ),
+
+    // it's a nested `cfg_attr`; recurse into RHS
+    (@processing_cfg_attr #[$($full_attr:tt)*] at [cfg_attr($cfg_lhs:expr, $($cfg_rhs:tt)*)]; [$($prev_align_attrs:tt)*] [$($prev_other_attrs:tt)*]; $($rest:tt)*) => (
+        $crate::thread::local_impl::thread_local_process_attrs!(
+            @processing_cfg_attr #[$($full_attr)*] at [$($cfg_rhs)*];
+            [$($prev_align_attrs)*] [$($prev_other_attrs)*];
+            $($rest)*
+        );
+    ),
+
+    // it's neither of the two
+    (@processing_cfg_attr #[$($full_attr:tt)*] at [$($remaining_attr:tt)*]; [$($prev_align_attrs:tt)*] [$($prev_other_attrs:tt)*]; $($rest:tt)*) => (
+        $crate::thread::local_impl::thread_local_process_attrs!(
+            [$($prev_align_attrs)*] [$($prev_other_attrs)* #[$($full_attr)*]];
+            $($rest)*
+        );
+    ),
+
+
+    // Delegate to `thread_local_inner` once attributes are fully categorized:
+
+    // process `const` declaration and recurse
+    ([$($align_attrs:tt)*] [$($other_attrs:tt)*]; $vis:vis static $name:ident: $t:ty = const $init:block $(; $($($rest:tt)+)?)?) => (
+        $crate::thread::local_impl::thread_local_inner!($($other_attrs)* $vis $name, $t, $($align_attrs)*, const $init);
+        $($($crate::thread::local_impl::thread_local_process_attrs!([] []; $($rest)+);)?)?
+    ),
+
+    // process non-`const` declaration and recurse
+    ([$($align_attrs:tt)*] [$($other_attrs:tt)*]; $vis:vis static $name:ident: $t:ty = $init:expr $(; $($($rest:tt)+)?)?) => (
+        $crate::thread::local_impl::thread_local_inner!($($other_attrs)* $vis $name, $t, $($align_attrs)*, $init);
+        $($($crate::thread::local_impl::thread_local_process_attrs!([] []; $($rest)+);)?)?
+    ),
+}
+
 /// Declare a new thread local storage key of type [`std::thread::LocalKey`].
 ///
 /// # Syntax
@@ -182,28 +279,11 @@ impl<T: 'static> fmt::Debug for LocalKey<T> {
 #[cfg_attr(not(test), rustc_diagnostic_item = "thread_local_macro")]
 #[allow_internal_unstable(thread_local_internals)]
 macro_rules! thread_local {
-    // empty (base case for the recursion)
     () => {};
 
-    ($(#[$attr:meta])* $vis:vis static $name:ident: $t:ty = const $init:block; $($rest:tt)*) => (
-        $crate::thread::local_impl::thread_local_inner!($(#[$attr])* $vis $name, $t, const $init);
-        $crate::thread_local!($($rest)*);
-    );
-
-    ($(#[$attr:meta])* $vis:vis static $name:ident: $t:ty = const $init:block) => (
-        $crate::thread::local_impl::thread_local_inner!($(#[$attr])* $vis $name, $t, const $init);
-    );
-
-    // process multiple declarations
-    ($(#[$attr:meta])* $vis:vis static $name:ident: $t:ty = $init:expr; $($rest:tt)*) => (
-        $crate::thread::local_impl::thread_local_inner!($(#[$attr])* $vis $name, $t, $init);
-        $crate::thread_local!($($rest)*);
-    );
-
-    // handle a single declaration
-    ($(#[$attr:meta])* $vis:vis static $name:ident: $t:ty = $init:expr) => (
-        $crate::thread::local_impl::thread_local_inner!($(#[$attr])* $vis $name, $t, $init);
-    );
+    ($($tt:tt)+) => {
+        $crate::thread::local_impl::thread_local_process_attrs!([] []; $($tt)+);
+    };
 }
 
 /// An error returned by [`LocalKey::try_with`](struct.LocalKey.html#method.try_with).
