@@ -294,3 +294,10 @@ builtin_macros_unexpected_lit = expected path to a trait, found literal
     .label = not a trait
     .str_lit = try using `#[derive({$sym})]`
     .other = for example, write `#[derive(Debug)]` for `Debug`
+
+builtin_macros_eii_shared_macro_expected_function = `#[{$name}]` is only valid on functions
+builtin_macros_eii_extern_target_expected_list = `#[eii_extern_target(...)]` expects a list of one or two elements
+builtin_macros_eii_extern_target_expected_macro = `#[eii_extern_target(...)]` is only valid on macros
+builtin_macros_eii_shared_macro_expected_max_one_argument = `#[{$name}]` expected no arguments or a single argument: `#[{$name}(default)]`
+builtin_macros_eii_extern_target_expected_unsafe = expected this argument to be "unsafe"
+    .note = the second argument is optional

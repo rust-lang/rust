@@ -3781,6 +3781,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     "unsized values must be place expressions and cannot be put in temporaries",
                 );
             }
+            ObligationCauseCode::CompareEii { .. } => {
+                panic!("trait bounds on EII not yet supported ")
+            }
         }
     }
 
