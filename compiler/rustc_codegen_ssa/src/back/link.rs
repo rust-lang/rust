@@ -3415,7 +3415,7 @@ fn add_wild_args(
     self_contained_components: LinkSelfContainedComponents,
 ) {
     // Either Wild or LLD to make it work with CI
-    if flavor != LinkerFlavor::Wild || std::env::var_os("BUILDING_RUSTC").is_some() {
+    if flavor != LinkerFlavor::Wild || std::env::var_os("CI_JOB_NAME").is_some() {
         let self_contained_cli = sess.opts.cg.link_self_contained.is_linker_enabled();
         let self_contained_target = self_contained_components.is_linker_enabled();
 
