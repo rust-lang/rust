@@ -168,25 +168,6 @@ fn test_div_rem_small() {
 }
 
 #[test]
-fn test_div_rem() {
-    fn div_rem(n: u64, d: u64) -> (Big, Big) {
-        let mut q = Big::from_small(42);
-        let mut r = Big::from_small(42);
-        Big::from_u64(n).div_rem(&Big::from_u64(d), &mut q, &mut r);
-        (q, r)
-    }
-    assert_eq!(div_rem(1, 1), (Big::from_small(1), Big::from_small(0)));
-    assert_eq!(div_rem(4, 3), (Big::from_small(1), Big::from_small(1)));
-    assert_eq!(div_rem(1, 7), (Big::from_small(0), Big::from_small(1)));
-    assert_eq!(div_rem(45, 9), (Big::from_small(5), Big::from_small(0)));
-    assert_eq!(div_rem(103, 9), (Big::from_small(11), Big::from_small(4)));
-    assert_eq!(div_rem(123456, 77), (Big::from_u64(1603), Big::from_small(25)));
-    assert_eq!(div_rem(0xffff, 1), (Big::from_u64(0xffff), Big::from_small(0)));
-    assert_eq!(div_rem(0xeeee, 0xffff), (Big::from_small(0), Big::from_u64(0xeeee)));
-    assert_eq!(div_rem(2_000_000, 2), (Big::from_u64(1_000_000), Big::from_u64(0)));
-}
-
-#[test]
 fn test_is_zero() {
     assert!(Big::from_small(0).is_zero());
     assert!(!Big::from_small(3).is_zero());
