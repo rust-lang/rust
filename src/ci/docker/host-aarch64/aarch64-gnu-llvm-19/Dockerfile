@@ -4,7 +4,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
   bzip2 \
-  g++ \
+  g++-15 \
   make \
   ninja-build \
   file \
