@@ -1,4 +1,3 @@
-//! SmolStr vs String benchmarks.
 use criterion::{criterion_group, criterion_main, Criterion};
 use rand::distr::{Alphanumeric, SampleString};
 use smol_str::{format_smolstr, SmolStr, StrExt, ToSmolStr};
@@ -15,14 +14,9 @@ fn format_bench(c: &mut Criterion) {
         let str_len = len.checked_sub(n.to_smolstr().len()).unwrap();
         let str = Alphanumeric.sample_string(&mut rand::rng(), str_len);
 
-        c.bench_function(&format!("SmolStr format_smolstr! len={len}"), |b| {
+        c.bench_function(&format!("format_smolstr! len={len}"), |b| {
             let mut v = <_>::default();
             b.iter(|| v = format_smolstr!("{str}-{n}"));
-            assert_eq!(v, format!("{str}-{n}"));
-        });
-        c.bench_function(&format!("std format! len={len}"), |b| {
-            let mut v = <_>::default();
-            b.iter(|| v = format!("{str}-{n}"));
             assert_eq!(v, format!("{str}-{n}"));
         });
     }
@@ -35,11 +29,6 @@ fn from_str_bench(c: &mut Criterion) {
         c.bench_function(&format!("SmolStr::from len={len}"), |b| {
             let mut v = <_>::default();
             b.iter(|| v = SmolStr::from(black_box(&str)));
-            assert_eq!(v, str);
-        });
-        c.bench_function(&format!("std String::from len={len}"), |b| {
-            let mut v = <_>::default();
-            b.iter(|| v = String::from(black_box(&str)));
             assert_eq!(v, str);
         });
     }
@@ -55,11 +44,6 @@ fn clone_bench(c: &mut Criterion) {
             b.iter(|| v = smolstr.clone());
             assert_eq!(v, str);
         });
-        c.bench_function(&format!("std String::clone len={len}"), |b| {
-            let mut v = <_>::default();
-            b.iter(|| v = str.clone());
-            assert_eq!(v, str);
-        });
     }
 }
 
@@ -71,11 +55,6 @@ fn eq_bench(c: &mut Criterion) {
         c.bench_function(&format!("SmolStr::eq len={len}"), |b| {
             let mut v = false;
             b.iter(|| v = smolstr == black_box(&str));
-            assert!(v);
-        });
-        c.bench_function(&format!("std String::eq len={len}"), |b| {
-            let mut v = false;
-            b.iter(|| v = &str == black_box(&str));
             assert!(v);
         });
     }
@@ -90,14 +69,9 @@ fn to_lowercase_bench(c: &mut Criterion) {
         str.push(END_CHAR);
         let str = str.as_str();
 
-        c.bench_function(&format!("SmolStr to_lowercase_smolstr len={len}"), |b| {
+        c.bench_function(&format!("to_lowercase_smolstr len={len}"), |b| {
             let mut v = <_>::default();
             b.iter(|| v = str.to_lowercase_smolstr());
-            assert_eq!(v, str.to_lowercase());
-        });
-        c.bench_function(&format!("std to_lowercase len={len}"), |b| {
-            let mut v = <_>::default();
-            b.iter(|| v = str.to_lowercase());
             assert_eq!(v, str.to_lowercase());
         });
     }
@@ -108,17 +82,9 @@ fn to_ascii_lowercase_bench(c: &mut Criterion) {
         let str = Alphanumeric.sample_string(&mut rand::rng(), len);
         let str = str.as_str();
 
-        c.bench_function(
-            &format!("SmolStr to_ascii_lowercase_smolstr len={len}"),
-            |b| {
-                let mut v = <_>::default();
-                b.iter(|| v = str.to_ascii_lowercase_smolstr());
-                assert_eq!(v, str.to_ascii_lowercase());
-            },
-        );
-        c.bench_function(&format!("std to_ascii_lowercase len={len}"), |b| {
+        c.bench_function(&format!("to_ascii_lowercase_smolstr len={len}"), |b| {
             let mut v = <_>::default();
-            b.iter(|| v = str.to_ascii_lowercase());
+            b.iter(|| v = str.to_ascii_lowercase_smolstr());
             assert_eq!(v, str.to_ascii_lowercase());
         });
     }
@@ -131,14 +97,9 @@ fn replace_bench(c: &mut Criterion) {
             + &Alphanumeric.sample_string(&mut rand::rng(), len - 1 - len / 2);
         let str = s_dash_s.as_str();
 
-        c.bench_function(&format!("SmolStr replace_smolstr len={len}"), |b| {
+        c.bench_function(&format!("replace_smolstr len={len}"), |b| {
             let mut v = <_>::default();
             b.iter(|| v = str.replace_smolstr("-", "_"));
-            assert_eq!(v, str.replace("-", "_"));
-        });
-        c.bench_function(&format!("std replace len={len}"), |b| {
-            let mut v = <_>::default();
-            b.iter(|| v = str.replace("-", "_"));
             assert_eq!(v, str.replace("-", "_"));
         });
     }
