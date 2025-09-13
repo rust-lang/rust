@@ -51,7 +51,8 @@ use askama::Template;
 use itertools::Either;
 use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
-use rustc_hir::attrs::{DeprecatedSince, Deprecation};
+use rustc_hir as hir;
+use rustc_hir::attrs::{AttributeKind, DeprecatedSince, Deprecation};
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_hir::{ConstStability, Mutability, RustcVersion, StabilityLevel, StableSince};
 use rustc_middle::ty::print::PrintTraitRefExt;
@@ -1308,43 +1309,6 @@ fn render_assoc_item(
         .fmt(f),
         _ => panic!("render_assoc_item called on non-associated-item"),
     })
-}
-
-struct CodeAttribute(String);
-
-fn render_code_attribute(prefix: &str, code_attr: CodeAttribute, w: &mut impl fmt::Write) {
-    write!(
-        w,
-        "<div class=\"code-attribute\">{prefix}{attr}</div>",
-        prefix = prefix,
-        attr = code_attr.0
-    )
-    .unwrap();
-}
-
-// When an attribute is rendered inside a <code> tag, it is formatted using
-// a div to produce a newline after it.
-fn render_attributes_in_code(
-    w: &mut impl fmt::Write,
-    it: &clean::Item,
-    prefix: &str,
-    cx: &Context<'_>,
-) {
-    for attr in it.attributes(cx.tcx(), cx.cache()) {
-        render_code_attribute(prefix, CodeAttribute(attr), w);
-    }
-}
-
-/// used for type aliases to only render their `repr` attribute.
-fn render_repr_attributes_in_code(
-    w: &mut impl fmt::Write,
-    cx: &Context<'_>,
-    def_id: DefId,
-    item_type: ItemType,
-) {
-    if let Some(repr) = clean::repr_attributes(cx.tcx(), cx.cache(), def_id, item_type) {
-        render_code_attribute("", CodeAttribute(repr), w);
-    }
 }
 
 #[derive(Copy, Clone)]
@@ -2958,4 +2922,145 @@ fn render_call_locations<W: fmt::Write>(
     }
 
     w.write_str("</div>")
+}
+
+struct CodeAttribute(String);
+
+fn render_code_attribute(prefix: &str, code_attr: CodeAttribute, w: &mut impl fmt::Write) {
+    write!(
+        w,
+        "<div class=\"code-attribute\">{prefix}{attr}</div>",
+        prefix = prefix,
+        attr = code_attr.0
+    )
+    .unwrap();
+}
+
+// When an attribute is rendered inside a <code> tag, it is formatted using
+// a div to produce a newline after it.
+fn render_attributes_in_code(
+    w: &mut impl fmt::Write,
+    item: &clean::Item,
+    prefix: &str,
+    cx: &Context<'_>,
+) {
+    for attr in attributes(item, cx.tcx(), cx.cache()) {
+        render_code_attribute(prefix, CodeAttribute(attr), w);
+    }
+}
+
+/// used for type aliases to only render their `repr` attribute.
+fn render_repr_attributes_in_code(
+    w: &mut impl fmt::Write,
+    cx: &Context<'_>,
+    def_id: DefId,
+    item_type: ItemType,
+) {
+    if let Some(repr) = repr_attributes(cx.tcx(), cx.cache(), def_id, item_type) {
+        render_code_attribute("", CodeAttribute(repr), w);
+    }
+}
+
+/// Get a list of attributes excluding `#[repr]` to display.
+fn attributes_without_repr(item: &clean::Item) -> Vec<String> {
+    item.attrs
+        .other_attrs
+        .iter()
+        .filter_map(|attr| match attr {
+            hir::Attribute::Parsed(AttributeKind::LinkSection { name, .. }) => {
+                Some(format!("#[unsafe(link_section = \"{name}\")]"))
+            }
+            hir::Attribute::Parsed(AttributeKind::NoMangle(..)) => {
+                Some("#[unsafe(no_mangle)]".to_string())
+            }
+            hir::Attribute::Parsed(AttributeKind::ExportName { name, .. }) => {
+                Some(format!("#[unsafe(export_name = \"{name}\")]"))
+            }
+            hir::Attribute::Parsed(AttributeKind::NonExhaustive(..)) => {
+                Some("#[non_exhaustive]".to_string())
+            }
+            _ => None,
+        })
+        .collect()
+}
+
+/// Get a list of attributes to display on this item.
+fn attributes(item: &clean::Item, tcx: TyCtxt<'_>, cache: &Cache) -> Vec<String> {
+    let mut attrs = attributes_without_repr(item);
+
+    if let Some(repr_attr) = repr(item, tcx, cache) {
+        attrs.push(repr_attr);
+    }
+    attrs
+}
+
+/// Returns a stringified `#[repr(...)]` attribute.
+fn repr(item: &clean::Item, tcx: TyCtxt<'_>, cache: &Cache) -> Option<String> {
+    repr_attributes(tcx, cache, item.def_id()?, item.type_())
+}
+
+/// Return a string representing the `#[repr]` attribute if present.
+pub(crate) fn repr_attributes(
+    tcx: TyCtxt<'_>,
+    cache: &Cache,
+    def_id: DefId,
+    item_type: ItemType,
+) -> Option<String> {
+    use rustc_abi::IntegerType;
+
+    if !matches!(item_type, ItemType::Struct | ItemType::Enum | ItemType::Union) {
+        return None;
+    }
+    let adt = tcx.adt_def(def_id);
+    let repr = adt.repr();
+    let mut out = Vec::new();
+    if repr.c() {
+        out.push("C");
+    }
+    if repr.transparent() {
+        // Render `repr(transparent)` iff the non-1-ZST field is public or at least one
+        // field is public in case all fields are 1-ZST fields.
+        let render_transparent = cache.document_private
+            || adt
+                .all_fields()
+                .find(|field| {
+                    let ty = field.ty(tcx, ty::GenericArgs::identity_for_item(tcx, field.did));
+                    tcx.layout_of(ty::TypingEnv::post_analysis(tcx, field.did).as_query_input(ty))
+                        .is_ok_and(|layout| !layout.is_1zst())
+                })
+                .map_or_else(
+                    || adt.all_fields().any(|field| field.vis.is_public()),
+                    |field| field.vis.is_public(),
+                );
+
+        if render_transparent {
+            out.push("transparent");
+        }
+    }
+    if repr.simd() {
+        out.push("simd");
+    }
+    let pack_s;
+    if let Some(pack) = repr.pack {
+        pack_s = format!("packed({})", pack.bytes());
+        out.push(&pack_s);
+    }
+    let align_s;
+    if let Some(align) = repr.align {
+        align_s = format!("align({})", align.bytes());
+        out.push(&align_s);
+    }
+    let int_s;
+    if let Some(int) = repr.int {
+        int_s = match int {
+            IntegerType::Pointer(is_signed) => {
+                format!("{}size", if is_signed { 'i' } else { 'u' })
+            }
+            IntegerType::Fixed(size, is_signed) => {
+                format!("{}{}", if is_signed { 'i' } else { 'u' }, size.size().bytes() * 8)
+            }
+        };
+        out.push(&int_s);
+    }
+    if !out.is_empty() { Some(format!("#[repr({})]", out.join(", "))) } else { None }
 }
