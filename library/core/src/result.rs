@@ -235,7 +235,7 @@
 //! [representation guarantees][opt-rep] (let's call that type `I`), and the *other* type must meet
 //! all of the following conditions:
 //! * Is a zero-sized type with alignment 1 (a "1-ZST").
-//! * Has no fields.
+//! * Is either a struct/tuple with no fields, or an enum with no variants.
 //! * Does not have the `#[non_exhaustive]` attribute.
 //!
 //! If that is the case, then `Result<T, E>` has the same size, alignment, and [function call ABI]
