@@ -1202,10 +1202,10 @@ rustc_queries! {
     /// Return the live symbols in the crate for dead code check.
     ///
     /// The second return value maps from ADTs to ignored derived traits (e.g. Debug and Clone).
-    query live_symbols_and_ignored_derived_traits(_: ()) -> &'tcx (
+    query live_symbols_and_ignored_derived_traits(_: ()) -> &'tcx Result<(
         LocalDefIdSet,
         LocalDefIdMap<FxIndexSet<DefId>>,
-    ) {
+    ), ErrorGuaranteed> {
         arena_cache
         desc { "finding live symbols in crate" }
     }
