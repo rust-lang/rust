@@ -3,11 +3,6 @@ error[E0412]: cannot find type `Subset` in this scope
    |
 LL |     assert::is_transmutable::<Superset, Subset>();
    |                                         ^^^^^^ not found in this scope
-   |
-help: you might be missing a type parameter
-   |
-LL | fn test<Subset>() {
-   |        ++++++++
 
 error[E0517]: attribute should be applied to a struct or union
   --> $DIR/thaw-transmute-invalid-enum.rs:21:11

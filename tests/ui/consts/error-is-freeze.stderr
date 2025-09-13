@@ -3,11 +3,6 @@ error[E0412]: cannot find type `UndefinedType` in this scope
    |
 LL |     foo: Option<UndefinedType>,
    |                 ^^^^^^^^^^^^^ not found in this scope
-   |
-help: you might be missing a type parameter
-   |
-LL | struct MyStruct<UndefinedType> {
-   |                +++++++++++++++
 
 error: aborting due to 1 previous error
 
