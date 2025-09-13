@@ -1,6 +1,7 @@
 # `aarch64-unknown-none` and `aarch64-unknown-none-softfloat`
 
-**Tier: 2**
+* **Tier: 2**
+* **Library Support:** core and alloc (bare-metal, `#![no_std]`)
 
 Bare-metal targets for CPUs in the Armv8-A architecture family, running in AArch64 mode.
 
