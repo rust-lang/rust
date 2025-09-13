@@ -75,7 +75,8 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
 
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, _location: Location) {
         match rvalue {
-            Rvalue::NullaryOp(NullOp::UbChecks, ..)
+            // FIXME: Should we do the same for `OverflowChecks`?
+            Rvalue::NullaryOp(NullOp::RuntimeChecks(RuntimeChecks::UbChecks), ..)
                 if !self
                     .tcx
                     .sess
