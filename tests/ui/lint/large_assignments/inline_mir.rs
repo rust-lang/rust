@@ -20,5 +20,6 @@
 pub fn main() {
     let data = [10u8; 9999];
     let cell = std::cell::UnsafeCell::new(data); //~ ERROR large_assignments
+    #[allow(large_assignments)]
     std::hint::black_box(cell);
 }

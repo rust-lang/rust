@@ -9,7 +9,6 @@ use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::Session;
 
 /// Rearranges the basic blocks into a *reverse post-order*.
 ///
@@ -18,7 +17,7 @@ use rustc_session::Session;
 pub(super) struct ReorderBasicBlocks;
 
 impl<'tcx> crate::MirPass<'tcx> for ReorderBasicBlocks {
-    fn is_enabled(&self, _session: &Session) -> bool {
+    fn is_enabled(&self, _tcx: TyCtxt<'tcx>) -> bool {
         false
     }
 
@@ -50,7 +49,7 @@ impl<'tcx> crate::MirPass<'tcx> for ReorderBasicBlocks {
 pub(super) struct ReorderLocals;
 
 impl<'tcx> crate::MirPass<'tcx> for ReorderLocals {
-    fn is_enabled(&self, _session: &Session) -> bool {
+    fn is_enabled(&self, _tcx: TyCtxt<'tcx>) -> bool {
         false
     }
 
