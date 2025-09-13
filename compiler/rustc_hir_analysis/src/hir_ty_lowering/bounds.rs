@@ -231,7 +231,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
     }
 
-    /// Adds `experimental_default_bounds` bounds to the supertrait bounds.
+    /// Sets `experimental_default_bounds` to true on trait super bounds.
     pub(crate) fn add_default_super_traits(
         &self,
         trait_def_id: LocalDefId,
@@ -242,8 +242,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ) {
         assert_matches!(self.tcx().def_kind(trait_def_id), DefKind::Trait | DefKind::TraitAlias);
 
-        // Supertraits for auto trait are unsound according to the unstable book:
-        // https://doc.rust-lang.org/beta/unstable-book/language-features/auto-traits.html#supertraits
         if self.tcx().trait_is_auto(trait_def_id.to_def_id()) {
             return;
         }

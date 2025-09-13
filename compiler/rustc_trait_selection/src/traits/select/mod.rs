@@ -474,7 +474,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
         } else {
             let has_non_region_infer = stack.obligation.predicate.has_non_region_infer();
-            if let Some(candidate) = self.winnow_candidates(has_non_region_infer, candidates) {
+            let is_default_auto_trait = self
+                .tcx()
+                .as_lang_item(stack.obligation.predicate.def_id())
+                .is_some_and(|lang_item| matches!(lang_item, LangItem::DefaultTrait1));
+            if let Some(candidate) =
+                self.winnow_candidates(has_non_region_infer, is_default_auto_trait, candidates)
+            {
                 self.filter_reservation_impls(candidate)
             } else {
                 Ok(None)
@@ -1821,6 +1827,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
     fn winnow_candidates(
         &mut self,
         has_non_region_infer: bool,
+        is_default_auto_trait: bool,
         mut candidates: Vec<EvaluatedCandidate<'tcx>>,
     ) -> Option<SelectionCandidate<'tcx>> {
         if candidates.len() == 1 {
@@ -1828,8 +1835,11 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         }
 
         // We prefer `Sized` candidates over everything.
-        let mut sized_candidates =
-            candidates.iter().filter(|c| matches!(c.candidate, SizedCandidate));
+        let mut sized_candidates = candidates.iter().filter(|c| {
+            matches!(c.candidate, SizedCandidate)
+                || (is_default_auto_trait
+                    && matches!(c.candidate, AutoImplCandidate | ImplCandidate(..)))
+        });
         if let Some(sized_candidate) = sized_candidates.next() {
             // There should only ever be a single sized candidate
             // as they would otherwise overlap.
@@ -1872,6 +1882,21 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             }
 
             break;
+        }
+
+        if is_default_auto_trait {
+            // Need to prefer alias-bound over env candidates.
+            let alias_bound = candidates
+                .iter()
+                .filter_map(
+                    |c| if let ProjectionCandidate(i) = c.candidate { Some(i) } else { None },
+                )
+                .try_reduce(|c1, c2| if has_non_region_infer { None } else { Some(c1.min(c2)) });
+            match alias_bound {
+                Some(Some(index)) => return Some(ProjectionCandidate(index)),
+                Some(None) => {}
+                None => return None,
+            }
         }
 
         // The next highest priority is for non-global where-bounds. However, while we don't

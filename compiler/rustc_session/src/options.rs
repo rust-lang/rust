@@ -2307,7 +2307,7 @@ options! {
         "Use WebAssembly error handling for wasm32-unknown-emscripten"),
     enforce_type_length_limit: bool = (false, parse_bool, [TRACKED],
         "enforce the type length limit when monomorphizing instances in codegen"),
-    experimental_default_bounds: bool = (false, parse_bool, [TRACKED],
+    experimental_default_bounds: bool = (true, parse_bool, [TRACKED],
         "enable default bounds for experimental group of auto traits"),
     export_executable_symbols: bool = (false, parse_bool, [TRACKED],
         "export symbols from executables, as if they were dynamic libraries"),
