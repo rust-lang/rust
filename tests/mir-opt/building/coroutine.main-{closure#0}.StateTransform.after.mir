@@ -4,7 +4,7 @@
         _s0: CoroutineSavedTy {
             ty: std::string::String,
             source_info: SourceInfo {
-                span: $DIR/coroutine.rs:17:32: 17:35 (#0),
+                span: $DIR/coroutine.rs:18:6: 18:9 (#0),
                 scope: scope[0],
             },
             ignore_for_traits: false,
@@ -22,8 +22,8 @@
     },
 } */
 
-fn main::{closure#0}(_1: Pin<&mut {coroutine@$DIR/coroutine.rs:17:31: 17:44}>, _2: String) -> CoroutineState<(&str, String, &Location<'_>), ()> {
-    debug arg => (((*(_1.0: &mut {coroutine@$DIR/coroutine.rs:17:31: 17:44})) as variant#4).0: std::string::String);
+fn main::{closure#0}(_1: Pin<&mut {coroutine@$DIR/coroutine.rs:18:5: 18:18}>, _2: String) -> CoroutineState<(&str, String, &Location<'_>), ()> {
+    debug arg => (((*(_1.0: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18})) as variant#4).0: std::string::String);
     let mut _0: std::ops::CoroutineState<(&str, std::string::String, &std::panic::Location<'_>), ()>;
     let _3: std::string::String;
     let mut _4: (&str, std::string::String, &std::panic::Location<'_>);
@@ -39,32 +39,31 @@ fn main::{closure#0}(_1: Pin<&mut {coroutine@$DIR/coroutine.rs:17:31: 17:44}>, _
     let mut _14: &std::panic::Location<'_>;
     let _15: &std::panic::Location<'_>;
     let mut _16: ();
-    let _17: std::string::String;
-    let mut _18: u32;
-    let mut _19: &mut {coroutine@$DIR/coroutine.rs:17:31: 17:44};
-    let mut _20: &mut {coroutine@$DIR/coroutine.rs:17:31: 17:44};
-    let mut _21: &mut {coroutine@$DIR/coroutine.rs:17:31: 17:44};
-    let mut _22: &mut {coroutine@$DIR/coroutine.rs:17:31: 17:44};
-    let mut _23: &mut {coroutine@$DIR/coroutine.rs:17:31: 17:44};
-    let mut _24: &mut {coroutine@$DIR/coroutine.rs:17:31: 17:44};
-    let mut _25: &mut {coroutine@$DIR/coroutine.rs:17:31: 17:44};
-    let mut _26: &mut {coroutine@$DIR/coroutine.rs:17:31: 17:44};
+    let mut _17: u32;
+    let mut _18: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18};
+    let mut _19: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18};
+    let mut _20: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18};
+    let mut _21: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18};
+    let mut _22: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18};
+    let mut _23: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18};
+    let mut _24: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18};
+    let mut _25: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18};
 
     bb0: {
-        _19 = deref_copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:17:31: 17:44});
-        _18 = discriminant((*_19));
-        switchInt(move _18) -> [0: bb1, 1: bb19, 3: bb17, 4: bb18, otherwise: bb20];
+        _18 = deref_copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18});
+        _17 = discriminant((*_18));
+        switchInt(move _17) -> [0: bb1, 1: bb19, 3: bb17, 4: bb18, otherwise: bb20];
     }
 
     bb1: {
-        _20 = deref_copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:17:31: 17:44});
-        (((*_20) as variant#4).0: std::string::String) = move _2;
+        _19 = deref_copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18});
+        (((*_19) as variant#4).0: std::string::String) = move _2;
         StorageLive(_3);
         StorageLive(_4);
         StorageLive(_5);
         StorageLive(_6);
-        _21 = deref_copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:17:31: 17:44});
-        _6 = &(((*_21) as variant#4).0: std::string::String);
+        _20 = deref_copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18});
+        _6 = &(((*_20) as variant#4).0: std::string::String);
         _5 = <String as Clone>::clone(move _6) -> [return: bb2, unwind unreachable];
     }
 
@@ -85,8 +84,8 @@ fn main::{closure#0}(_1: Pin<&mut {coroutine@$DIR/coroutine.rs:17:31: 17:44}>, _
         _0 = CoroutineState::<(&str, String, &Location<'_>), ()>::Yielded(move _4);
         StorageDead(_3);
         StorageDead(_4);
-        _22 = deref_copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:17:31: 17:44});
-        discriminant((*_22)) = 3;
+        _21 = deref_copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18});
+        discriminant((*_21)) = 3;
         return;
     }
 
@@ -109,8 +108,8 @@ fn main::{closure#0}(_1: Pin<&mut {coroutine@$DIR/coroutine.rs:17:31: 17:44}>, _
         _10 = &(*_11);
         StorageLive(_12);
         StorageLive(_13);
-        _23 = deref_copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:17:31: 17:44});
-        _13 = &(((*_23) as variant#4).0: std::string::String);
+        _22 = deref_copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18});
+        _13 = &(((*_22) as variant#4).0: std::string::String);
         _12 = <String as Clone>::clone(move _13) -> [return: bb8, unwind unreachable];
     }
 
@@ -136,8 +135,8 @@ fn main::{closure#0}(_1: Pin<&mut {coroutine@$DIR/coroutine.rs:17:31: 17:44}>, _
         StorageDead(_9);
         StorageDead(_11);
         StorageDead(_15);
-        _24 = deref_copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:17:31: 17:44});
-        discriminant((*_24)) = 4;
+        _23 = deref_copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18});
+        discriminant((*_23)) = 4;
         return;
     }
 
@@ -155,8 +154,8 @@ fn main::{closure#0}(_1: Pin<&mut {coroutine@$DIR/coroutine.rs:17:31: 17:44}>, _
         StorageDead(_11);
         StorageDead(_8);
         _16 = const ();
-        _25 = deref_copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:17:31: 17:44});
-        drop((((*_25) as variant#4).0: std::string::String)) -> [return: bb14, unwind unreachable];
+        _24 = deref_copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18});
+        drop((((*_24) as variant#4).0: std::string::String)) -> [return: bb14, unwind unreachable];
     }
 
     bb14: {
@@ -165,8 +164,8 @@ fn main::{closure#0}(_1: Pin<&mut {coroutine@$DIR/coroutine.rs:17:31: 17:44}>, _
 
     bb15: {
         _0 = CoroutineState::<(&str, String, &Location<'_>), ()>::Complete(move _16);
-        _26 = deref_copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:17:31: 17:44});
-        discriminant((*_26)) = 1;
+        _25 = deref_copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18});
+        discriminant((*_25)) = 1;
         return;
     }
 
