@@ -12,8 +12,7 @@ use crate::clean::*;
 use crate::core::DocContext;
 use crate::visit::DocVisitor;
 
-pub(crate) const RUN_LINTS: Pass =
-    Pass { name: "run-lints", run: Some(run_lints), description: "runs some of rustdoc's lints" };
+pub(crate) const RUN_LINTS: Pass = Pass { name: "run-lints", run: Some(run_lints) };
 
 struct Linter<'a, 'tcx> {
     cx: &'a mut DocContext<'tcx>,
