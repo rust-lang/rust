@@ -1,7 +1,7 @@
 // MIR for `b::{closure#0}` 0 coroutine_resume
 /* coroutine_layout = CoroutineLayout {
     field_tys: {
-        _0: CoroutineSavedTy {
+        _s0: CoroutineSavedTy {
             ty: Coroutine(
                 DefId(0:5 ~ async_await[ccf8]::a::{closure#0}),
                 [
@@ -18,7 +18,7 @@
             },
             ignore_for_traits: false,
         },
-        _1: CoroutineSavedTy {
+        _s1: CoroutineSavedTy {
             ty: Coroutine(
                 DefId(0:5 ~ async_await[ccf8]::a::{closure#0}),
                 [
@@ -40,12 +40,12 @@
         Unresumed(0): [],
         Returned (1): [],
         Panicked (2): [],
-        Suspend0 (3): [_0],
-        Suspend1 (4): [_1],
+        Suspend0 (3): [_s0],
+        Suspend1 (4): [_s1],
     },
     storage_conflicts: BitMatrix(2x2) {
-        (_0, _0),
-        (_1, _1),
+        (_s0, _s0),
+        (_s1, _s1),
     },
 } */
 
