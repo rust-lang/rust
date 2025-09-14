@@ -1,4 +1,7 @@
-//! Calculates information used for the --show-coverage flag.
+//! Calculates information used for the `--show-coverage` flag.
+//!
+//! More specifically, it counts the number of items with documentation, ones with
+//! "examples" (i.e., non-ignored Rust code blocks) and various totals.
 
 use std::collections::BTreeMap;
 use std::ops;
@@ -18,11 +21,8 @@ use crate::passes::Pass;
 use crate::passes::check_doc_test_visibility::{Tests, should_have_doc_example};
 use crate::visit::DocVisitor;
 
-pub(crate) const CALCULATE_DOC_COVERAGE: Pass = Pass {
-    name: "calculate-doc-coverage",
-    run: Some(calculate_doc_coverage),
-    description: "counts the number of items with and without documentation",
-};
+pub(crate) const CALCULATE_DOC_COVERAGE: Pass =
+    Pass { name: "calculate-doc-coverage", run: Some(calculate_doc_coverage) };
 
 fn calculate_doc_coverage(krate: clean::Crate, ctx: &mut DocContext<'_>) -> clean::Crate {
     let mut calc = CoverageCalculator { items: Default::default(), ctx };

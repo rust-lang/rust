@@ -1,6 +1,6 @@
-//! This module implements [RFC 1946]: Intra-rustdoc-links
+//! Resolves intra-doc links ([RFC 1946]).
 //!
-//! [RFC 1946]: https://github.com/rust-lang/rfcs/blob/master/text/1946-intra-rustdoc-links.md
+//! [RFC 1946]: https://rust-lang.github.io/rfcs/1946-intra-rustdoc-links.html
 
 use std::borrow::Cow;
 use std::fmt::Display;
@@ -38,7 +38,7 @@ use crate::passes::Pass;
 use crate::visit::DocVisitor;
 
 pub(crate) const COLLECT_INTRA_DOC_LINKS: Pass =
-    Pass { name: "collect-intra-doc-links", run: None, description: "resolves intra-doc links" };
+    Pass { name: "collect-intra-doc-links", run: None };
 
 pub(crate) fn collect_intra_doc_links<'a, 'tcx>(
     krate: Crate,
