@@ -29,18 +29,20 @@ fn main::{closure#0}(_1: Pin<&mut {coroutine@$DIR/coroutine_tiny.rs:21:5: 21:13}
     let _5: ();
     let mut _6: ();
     let mut _7: u32;
+    let mut _8: &mut {coroutine@$DIR/coroutine_tiny.rs:21:5: 21:13};
     scope 1 {
-        debug _d => (((*(_1.0: &mut {coroutine@$DIR/coroutine_tiny.rs:21:5: 21:13})) as variant#3).0: HasDrop);
+        debug _d => (((*_8) as variant#3).0: HasDrop);
     }
 
     bb0: {
-        _7 = discriminant((*(_1.0: &mut {coroutine@$DIR/coroutine_tiny.rs:21:5: 21:13})));
+        _8 = deref_copy (_1.0: &mut {coroutine@$DIR/coroutine_tiny.rs:21:5: 21:13});
+        _7 = discriminant((*_8));
         switchInt(move _7) -> [0: bb1, 3: bb14, otherwise: bb15];
     }
 
     bb1: {
         nop;
-        (((*(_1.0: &mut {coroutine@$DIR/coroutine_tiny.rs:21:5: 21:13})) as variant#3).0: HasDrop) = const HasDrop;
+        (((*_8) as variant#3).0: HasDrop) = const HasDrop;
         goto -> bb2;
     }
 
@@ -48,7 +50,7 @@ fn main::{closure#0}(_1: Pin<&mut {coroutine@$DIR/coroutine_tiny.rs:21:5: 21:13}
         StorageLive(_4);
         _0 = CoroutineState::<(), ()>::Yielded(const ());
         StorageDead(_4);
-        discriminant((*(_1.0: &mut {coroutine@$DIR/coroutine_tiny.rs:21:5: 21:13}))) = 3;
+        discriminant((*_8)) = 3;
         return;
     }
 
@@ -65,7 +67,7 @@ fn main::{closure#0}(_1: Pin<&mut {coroutine@$DIR/coroutine_tiny.rs:21:5: 21:13}
 
     bb5: {
         StorageDead(_4);
-        drop((((*(_1.0: &mut {coroutine@$DIR/coroutine_tiny.rs:21:5: 21:13})) as variant#3).0: HasDrop)) -> [return: bb6, unwind unreachable];
+        drop((((*_8) as variant#3).0: HasDrop)) -> [return: bb6, unwind unreachable];
     }
 
     bb6: {
