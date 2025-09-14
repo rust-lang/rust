@@ -105,7 +105,7 @@ fn b::{closure#0}(_1: Pin<&mut {async fn body of b()}>, _2: &mut Context<'_>) ->
     bb0: {
         _39 = copy (_1.0: &mut {async fn body of b()});
         _38 = discriminant((*_39));
-        switchInt(move _38) -> [0: bb1, 1: bb27, 3: bb25, 4: bb26, otherwise: bb8];
+        switchInt(move _38) -> [0: bb1, 1: bb39, 3: bb37, 4: bb38, otherwise: bb40];
     }
 
     bb1: {
@@ -296,7 +296,7 @@ fn b::{closure#0}(_1: Pin<&mut {async fn body of b()}>, _2: &mut Context<'_>) ->
     bb22: {
         nop;
         StorageDead(_21);
-        goto -> bb24;
+        goto -> bb33;
     }
 
     bb23: {
@@ -306,10 +306,67 @@ fn b::{closure#0}(_1: Pin<&mut {async fn body of b()}>, _2: &mut Context<'_>) ->
     }
 
     bb24: {
-        goto -> bb23;
+        StorageDead(_36);
+        StorageDead(_35);
+        drop((((*_39) as variant#4).0: {async fn body of a()})) -> [return: bb25, unwind unreachable];
     }
 
     bb25: {
+        nop;
+        StorageDead(_21);
+        goto -> bb28;
+    }
+
+    bb26: {
+        StorageDead(_20);
+        StorageDead(_19);
+        drop((((*_39) as variant#3).0: {async fn body of a()})) -> [return: bb27, unwind unreachable];
+    }
+
+    bb27: {
+        nop;
+        StorageDead(_4);
+        StorageDead(_3);
+        goto -> bb28;
+    }
+
+    bb28: {
+        goto -> bb34;
+    }
+
+    bb29: {
+        coroutine_drop;
+    }
+
+    bb30: {
+        return;
+    }
+
+    bb31: {
+        goto -> bb36;
+    }
+
+    bb32 (cleanup): {
+        unreachable;
+    }
+
+    bb33: {
+        goto -> bb23;
+    }
+
+    bb34: {
+        goto -> bb29;
+    }
+
+    bb35 (cleanup): {
+        resume;
+    }
+
+    bb36: {
+        goto -> bb30;
+    }
+
+    bb37: {
         StorageLive(_3);
         StorageLive(_4);
         StorageLive(_19);
@@ -318,7 +375,7 @@ fn b::{closure#0}(_1: Pin<&mut {async fn body of b()}>, _2: &mut Context<'_>) ->
         goto -> bb11;
     }
 
-    bb26: {
+    bb38: {
         StorageLive(_21);
         StorageLive(_35);
         StorageLive(_36);
@@ -326,7 +383,11 @@ fn b::{closure#0}(_1: Pin<&mut {async fn body of b()}>, _2: &mut Context<'_>) ->
         goto -> bb21;
     }
 
-    bb27: {
-        assert(const false, "`async fn` resumed after completion") -> [success: bb27, unwind unreachable];
+    bb39: {
+        assert(const false, "`async fn` resumed after completion") -> [success: bb39, unwind continue];
+    }
+
+    bb40: {
+        unreachable;
     }
 }
