@@ -63,71 +63,101 @@ pub(crate) struct WorkspaceInfo<'a> {
     pub(crate) submodules: &'a [&'a str],
 }
 
-impl<'a> WorkspaceInfo<'a> {
-    const fn new(
-        path: &'a str,
-        exceptions: ExceptionList,
-        crates_and_deps: Option<(&'a [&str], &'a [&str], ListLocation)>,
-        submodules: &'a [&str],
-    ) -> Self {
-        Self { path, exceptions, crates_and_deps, submodules }
-    }
-}
-
 /// The workspaces to check for licensing and optionally permitted dependencies.
 // FIXME auto detect all cargo workspaces
 pub(crate) const WORKSPACES: &[WorkspaceInfo<'static>] = &[
     // The root workspace has to be first for check_rustfix to work.
-    WorkspaceInfo::new(
-        ".",
-        EXCEPTIONS,
-        Some((&["rustc-main"], PERMITTED_RUSTC_DEPENDENCIES, PERMITTED_RUSTC_DEPS_LOCATION)),
-        &[],
-    ),
-    WorkspaceInfo::new(
-        "library",
-        EXCEPTIONS_STDLIB,
-        Some((&["sysroot"], PERMITTED_STDLIB_DEPENDENCIES, PERMITTED_STDLIB_DEPS_LOCATION)),
-        &[],
-    ),
-    // Outside of the alphabetical section because rustfmt formats it using multiple lines.
-    WorkspaceInfo::new(
-        "compiler/rustc_codegen_cranelift",
-        EXCEPTIONS_CRANELIFT,
-        Some((
-            &["rustc_codegen_cranelift"],
-            PERMITTED_CRANELIFT_DEPENDENCIES,
-            PERMITTED_CRANELIFT_DEPS_LOCATION,
+    WorkspaceInfo {
+        path: ".",
+        exceptions: EXCEPTIONS,
+        crates_and_deps: Some((
+            &["rustc-main"],
+            PERMITTED_RUSTC_DEPENDENCIES,
+            PERMITTED_RUSTC_DEPS_LOCATION,
         )),
-        &[],
-    ),
-    // tidy-alphabetical-start
-    WorkspaceInfo::new("compiler/rustc_codegen_gcc", EXCEPTIONS_GCC, None, &[]),
-    WorkspaceInfo::new("src/bootstrap", EXCEPTIONS_BOOTSTRAP, None, &[]),
-    WorkspaceInfo::new("src/tools/cargo", EXCEPTIONS_CARGO, None, &["src/tools/cargo"]),
-    //WorkspaceInfo::new("src/tools/miri/test-cargo-miri", &[], None), // FIXME uncomment once all deps are vendored
-    //WorkspaceInfo::new("src/tools/miri/test_dependencies", &[], None), // FIXME uncomment once all deps are vendored
-    WorkspaceInfo::new("src/tools/rust-analyzer", EXCEPTIONS_RUST_ANALYZER, None, &[]),
-    WorkspaceInfo::new(
-        "src/tools/rustbook",
-        EXCEPTIONS_RUSTBOOK,
-        None,
-        &["src/doc/book", "src/doc/reference"],
-    ),
-    WorkspaceInfo::new(
-        "src/tools/rustc-perf",
-        EXCEPTIONS_RUSTC_PERF,
-        None,
-        &["src/tools/rustc-perf"],
-    ),
-    WorkspaceInfo::new("src/tools/test-float-parse", EXCEPTIONS, None, &[]),
-    WorkspaceInfo::new(
-        "tests/run-make-cargo/uefi-qemu/uefi_qemu_test",
-        EXCEPTIONS_UEFI_QEMU_TEST,
-        None,
-        &[],
-    ),
-    // tidy-alphabetical-end
+        submodules: &[],
+    },
+    WorkspaceInfo {
+        path: "library",
+        exceptions: EXCEPTIONS_STDLIB,
+        crates_and_deps: Some((
+            &["sysroot"],
+            PERMITTED_STDLIB_DEPENDENCIES,
+            PERMITTED_STDLIB_DEPS_LOCATION,
+        )),
+        submodules: &[],
+    },
+    {
+        WorkspaceInfo {
+            path: "compiler/rustc_codegen_cranelift",
+            exceptions: EXCEPTIONS_CRANELIFT,
+            crates_and_deps: Some((
+                &["rustc_codegen_cranelift"],
+                PERMITTED_CRANELIFT_DEPENDENCIES,
+                PERMITTED_CRANELIFT_DEPS_LOCATION,
+            )),
+            submodules: &[],
+        }
+    },
+    WorkspaceInfo {
+        path: "compiler/rustc_codegen_gcc",
+        exceptions: EXCEPTIONS_GCC,
+        crates_and_deps: None,
+        submodules: &[],
+    },
+    WorkspaceInfo {
+        path: "src/bootstrap",
+        exceptions: EXCEPTIONS_BOOTSTRAP,
+        crates_and_deps: None,
+        submodules: &[],
+    },
+    WorkspaceInfo {
+        path: "src/tools/cargo",
+        exceptions: EXCEPTIONS_CARGO,
+        crates_and_deps: None,
+        submodules: &["src/tools/cargo"],
+    },
+    // FIXME uncomment once all deps are vendored
+    //  WorkspaceInfo {
+    //      path: "src/tools/miri/test-cargo-miri",
+    //      crates_and_deps: None
+    //      submodules: &[],
+    //  },
+    // WorkspaceInfo {
+    //      path: "src/tools/miri/test_dependencies",
+    //      crates_and_deps: None,
+    //      submodules: &[],
+    //  }
+    WorkspaceInfo {
+        path: "src/tools/rust-analyzer",
+        exceptions: EXCEPTIONS_RUST_ANALYZER,
+        crates_and_deps: None,
+        submodules: &[],
+    },
+    WorkspaceInfo {
+        path: "src/tools/rustbook",
+        exceptions: EXCEPTIONS_RUSTBOOK,
+        crates_and_deps: None,
+        submodules: &["src/doc/book", "src/doc/reference"],
+    },
+    WorkspaceInfo {
+        path: "src/tools/rustc-perf",
+        exceptions: EXCEPTIONS_RUSTC_PERF,
+        crates_and_deps: None,
+        submodules: &["src/tools/rustc-perf"],
+    },
+    WorkspaceInfo {
+        path: "src/tools/test-float-parse",
+        exceptions: EXCEPTIONS,
+        crates_and_deps: None,
+        submodules: &[],
+    },
+    WorkspaceInfo {
+        path: "tests/run-make-cargo/uefi-qemu/uefi_qemu_test",
+        exceptions: EXCEPTIONS_UEFI_QEMU_TEST,
+        crates_and_deps: None,
+        submodules: &[],
+    },
 ];
 
 /// These are exceptions to Rust's permissive licensing policy, and
