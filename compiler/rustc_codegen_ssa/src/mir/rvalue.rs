@@ -737,6 +737,27 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let layout = bx.cx().layout_of(binder_ty);
                 OperandRef { val: operand.val, layout }
             }
+            mir::Rvalue::StaticallyKnown(ref operand) => {
+                let operand = self.codegen_operand(bx, operand);
+                let val = match operand.val {
+                    // This would need to insert some loads for the type. That's
+                    // unlikely to be profitable, so just collapse to `false`.
+                    OperandValue::Ref(..) => bx.const_bool(false),
+                    OperandValue::Immediate(val) => bx.is_constant(val),
+                    OperandValue::Pair(lval, rval) => {
+                        let l = bx.is_constant(lval);
+                        let r = bx.is_constant(rval);
+                        bx.and(l, r)
+                    }
+                    // A zero-sized value is always constant, so the backend
+                    // knows everything there is to know about it.
+                    OperandValue::ZeroSized => bx.const_bool(true),
+                };
+                OperandRef {
+                    val: OperandValue::Immediate(val),
+                    layout: bx.cx().layout_of(bx.tcx().types.bool),
+                }
+            }
         }
     }
 

@@ -252,6 +252,7 @@ impl<'tcx> Stable<'tcx> for mir::Rvalue<'tcx> {
             }
             CopyForDeref(place) => crate::mir::Rvalue::CopyForDeref(place.stable(tables, cx)),
             WrapUnsafeBinder(..) => todo!("FIXME(unsafe_binders):"),
+            StaticallyKnown(..) => todo!(),
         }
     }
 }

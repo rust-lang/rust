@@ -548,12 +548,6 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 ecx.write_pointer(ptr, dest)?;
             }
 
-            // The intrinsic represents whether the value is known to the optimizer (LLVM).
-            // We're not doing any optimizations here, so there is no optimizer that could know the value.
-            // (We know the value here in the machine of course, but this is the runtime of that code,
-            // not the optimization stage.)
-            sym::is_val_statically_known => ecx.write_scalar(Scalar::from_bool(false), dest)?,
-
             // We handle these here since Miri does not want to have them.
             sym::assert_inhabited
             | sym::assert_zero_valid

@@ -381,12 +381,6 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                     &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
                 )
             }
-            sym::is_val_statically_known => {
-                let a = args[0].immediate();
-                let builtin = self.context.get_builtin_function("__builtin_constant_p");
-                let res = self.context.new_call(None, builtin, &[a]);
-                self.icmp(IntPredicate::IntEQ, res, self.const_i32(0))
-            }
             sym::catch_unwind => {
                 try_intrinsic(
                     self,

@@ -858,6 +858,9 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 }
                 Value::Discriminant(place)
             }
+            Rvalue::StaticallyKnown(ref mut arg_op) => {
+                return self.simplify_statically_known(arg_op, location);
+            }
 
             // Unsupported values.
             Rvalue::ThreadLocalRef(..) | Rvalue::ShallowInitBox(..) => return None,
@@ -1438,6 +1441,26 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
         // Fallback: a symbolic `Len`.
         Some(self.insert(self.tcx.types.usize, Value::Len(inner)))
+    }
+
+    fn simplify_statically_known(
+        &mut self,
+        arg_op: &mut Operand<'tcx>,
+        location: Location,
+    ) -> Option<VnIndex> {
+        let value = self.simplify_operand(arg_op, location)?;
+        match self.evaluated[value] {
+            // `Rvalue::StaticallyKnown` intentionally does not have a
+            // corresponding `Value` variant in order to preserve as many
+            // distinct `StaticallyKnown`s as possible – other passes may
+            // learn more information that allows them to optimize patterns
+            // that this pass does not recognize.
+            None => None,
+            // This pass knows the constant value of the argument and can use
+            // that for further optimizations. Thus collapsing this to `true`
+            // is likely to be profitable.
+            Some(_) => Some(self.insert_bool(true)),
+        }
     }
 
     fn pointers_have_same_metadata(&self, left_ptr_ty: Ty<'tcx>, right_ptr_ty: Ty<'tcx>) -> bool {

@@ -602,6 +602,10 @@ impl<'tcx> Validator<'_, 'tcx> {
                     self.validate_operand(o)?;
                 }
             }
+
+            Rvalue::StaticallyKnown(operand) => {
+                self.validate_operand(operand)?;
+            }
         }
 
         Ok(())

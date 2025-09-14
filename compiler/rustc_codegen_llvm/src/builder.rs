@@ -1103,6 +1103,10 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         Some(self.call_intrinsic(name, &[self.type_i8(), self.type_ix(size.bits())], &[lhs, rhs]))
     }
 
+    fn is_constant(&mut self, val: Self::Value) -> Self::Value {
+        self.call_intrinsic("llvm.is.constant", &[self.cx.val_ty(val)], &[val])
+    }
+
     /* Miscellaneous instructions */
     fn memcpy(
         &mut self,

@@ -295,6 +295,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let op = self.eval_operand(op, None)?;
                 self.copy_op_allow_transmute(&op, &dest)?;
             }
+
+            StaticallyKnown(ref op) => {
+                let op = self.eval_operand(op, None)?;
+                let known = M::is_val_statically_known(self, &op)?;
+                self.write_scalar(Scalar::from_bool(known), &dest)?;
+            }
         }
 
         trace!("{:?}", self.dump_place(&dest));

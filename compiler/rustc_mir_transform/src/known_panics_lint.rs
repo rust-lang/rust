@@ -446,7 +446,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             | Rvalue::ShallowInitBox(..)
             | Rvalue::Discriminant(..)
             | Rvalue::NullaryOp(..)
-            | Rvalue::WrapUnsafeBinder(..) => {}
+            | Rvalue::WrapUnsafeBinder(..)
+            | Rvalue::StaticallyKnown(..) => {}
         }
 
         // FIXME we need to revisit this for #67176
@@ -685,6 +686,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 })?;
                 imm.into()
             }
+
+            StaticallyKnown(..) => return None,
         };
         trace!(?val);
 

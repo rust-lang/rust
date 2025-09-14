@@ -934,6 +934,15 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
                     let operand = codegen_operand(fx, operand);
                     lval.write_cvalue_transmute(fx, operand);
                 }
+                Rvalue::StaticallyKnown(_) => {
+                    // Cranelift doesn't have an exquivalent for this. Just
+                    // return `false` unconditionally.
+                    let val = CValue::by_val(
+                        fx.bcx.ins().iconst(types::I8, i64::from(false)),
+                        fx.layout_of(fx.tcx.types.bool),
+                    );
+                    lval.write_cvalue(fx, val);
+                }
             }
         }
         StatementKind::StorageLive(_)

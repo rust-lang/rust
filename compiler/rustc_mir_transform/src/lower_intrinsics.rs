@@ -374,6 +374,23 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                         ));
                         terminator.kind = TerminatorKind::Goto { target };
                     }
+                    sym::is_val_statically_known => {
+                        let Ok([arg]) = take_array(args) else {
+                            span_bug!(
+                                terminator.source_info.span,
+                                "Wrong number of arguments for is_val_statically_known intrinsic",
+                            );
+                        };
+                        let target = target.unwrap();
+                        block.statements.push(Statement::new(
+                            terminator.source_info,
+                            StatementKind::Assign(Box::new((
+                                *destination,
+                                Rvalue::StaticallyKnown(arg.node),
+                            ))),
+                        ));
+                        terminator.kind = TerminatorKind::Goto { target };
+                    }
                     _ => {}
                 }
             }

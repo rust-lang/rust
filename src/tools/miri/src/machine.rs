@@ -1291,6 +1291,15 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         ecx.equal_float_min_max(a, b)
     }
 
+    // We want to return either `true` or `false` at random, or else something like
+    // ```
+    // if !is_val_statically_known(0) { unreachable_unchecked(); }
+    // ```
+    // Would not be considered UB, or the other way around (`is_val_statically_known(0)`).
+    fn is_val_statically_known(ecx: &InterpCx<'tcx, Self>, _val: &OpTy<'tcx>) -> InterpResult<'tcx, bool> {
+        interp_ok(ecx.machine.rng.borrow_mut().random())
+    }
+
     #[inline(always)]
     fn ub_checks(ecx: &InterpCx<'tcx, Self>) -> InterpResult<'tcx, bool> {
         interp_ok(ecx.tcx.sess.ub_checks())

@@ -293,6 +293,15 @@ pub trait BuilderMethods<'a, 'tcx>:
         self.assume(is_null);
     }
 
+    /// Returns whether `val` has a value known at compile-time.
+    ///
+    /// Defaults to always returning `false`, since returning `true` might trick
+    /// the program into performing costly checks that only make sense at
+    /// compile-time.
+    fn is_constant(&mut self, _val: Self::Value) -> Self::Value {
+        self.const_bool(false)
+    }
+
     fn range_metadata(&mut self, load: Self::Value, range: WrappingRange);
     fn nonnull_metadata(&mut self, load: Self::Value);
 

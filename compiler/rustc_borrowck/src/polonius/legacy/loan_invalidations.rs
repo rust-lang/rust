@@ -299,7 +299,8 @@ impl<'a, 'tcx> LoanInvalidationsGenerator<'a, 'tcx> {
             | Rvalue::Repeat(operand, _)
             | Rvalue::UnaryOp(_ /*un_op*/, operand)
             | Rvalue::Cast(_ /*cast_kind*/, operand, _ /*ty*/)
-            | Rvalue::ShallowInitBox(operand, _ /*ty*/) => self.consume_operand(location, operand),
+            | Rvalue::ShallowInitBox(operand, _ /*ty*/)
+            | Rvalue::StaticallyKnown(operand) => self.consume_operand(location, operand),
 
             &Rvalue::CopyForDeref(place) => {
                 let op = &Operand::Copy(place);
