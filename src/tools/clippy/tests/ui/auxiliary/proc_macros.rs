@@ -465,7 +465,7 @@ impl Expander {
             } else if let TT::Punct(p) = &input.tt
                 && p.as_char() == '!'
                 && let TT::Ident(name) = &tt
-                && name.to_string() == "inline"
+                && *name == "inline"
             {
                 let g = expect_tt(
                     input.iter.next(),
