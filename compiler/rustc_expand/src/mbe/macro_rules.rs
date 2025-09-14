@@ -8,7 +8,7 @@ use rustc_ast::token::NtPatKind::*;
 use rustc_ast::token::TokenKind::*;
 use rustc_ast::token::{self, Delimiter, NonterminalKind, Token, TokenKind};
 use rustc_ast::tokenstream::{self, DelimSpan, TokenStream};
-use rustc_ast::{self as ast, DUMMY_NODE_ID, NodeId};
+use rustc_ast::{self as ast, DUMMY_NODE_ID, NodeId, Safety};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan};
@@ -132,6 +132,7 @@ pub(super) enum MacroRule {
     Func { lhs: Vec<MatcherLoc>, lhs_span: Span, rhs: mbe::TokenTree },
     /// An attr rule, for use with `#[m]`
     Attr {
+        unsafe_rule: bool,
         args: Vec<MatcherLoc>,
         args_span: Span,
         body: Vec<MatcherLoc>,
@@ -261,6 +262,29 @@ impl AttrProcMacro for MacroRulesMacroExpander {
             self.node_id,
             self.name,
             self.transparency,
+            Safety::Default,
+            args,
+            body,
+            &self.rules,
+        )
+    }
+
+    fn expand_with_safety(
+        &self,
+        cx: &mut ExtCtxt<'_>,
+        safety: Safety,
+        sp: Span,
+        args: TokenStream,
+        body: TokenStream,
+    ) -> Result<TokenStream, ErrorGuaranteed> {
+        expand_macro_attr(
+            cx,
+            sp,
+            self.span,
+            self.node_id,
+            self.name,
+            self.transparency,
+            safety,
             args,
             body,
             &self.rules,
@@ -409,6 +433,7 @@ fn expand_macro_attr(
     node_id: NodeId,
     name: Ident,
     transparency: Transparency,
+    safety: Safety,
     args: TokenStream,
     body: TokenStream,
     rules: &[MacroRule],
@@ -430,12 +455,25 @@ fn expand_macro_attr(
     // Track nothing for the best performance.
     match try_match_macro_attr(psess, name, &args, &body, rules, &mut NoopTracker) {
         Ok((i, rule, named_matches)) => {
-            let MacroRule::Attr { rhs, .. } = rule else {
+            let MacroRule::Attr { rhs, unsafe_rule, .. } = rule else {
                 panic!("try_macro_match_attr returned non-attr rule");
             };
             let mbe::TokenTree::Delimited(rhs_span, _, rhs) = rhs else {
                 cx.dcx().span_bug(sp, "malformed macro rhs");
             };
+
+            match (safety, unsafe_rule) {
+                (Safety::Default, false) | (Safety::Unsafe(_), true) => {}
+                (Safety::Default, true) => {
+                    cx.dcx().span_err(sp, "unsafe attribute invocation requires `unsafe`");
+                }
+                (Safety::Unsafe(span), false) => {
+                    cx.dcx().span_err(span, "unnecessary `unsafe` on safe attribute invocation");
+                }
+                (Safety::Safe(span), _) => {
+                    cx.dcx().span_bug(span, "unexpected `safe` keyword");
+                }
+            }
 
             let id = cx.current_expansion.id;
             let tts = transcribe(psess, &named_matches, rhs, *rhs_span, transparency, id)
@@ -682,6 +720,11 @@ pub fn compile_declarative_macro(
     let mut rules = Vec::new();
 
     while p.token != token::Eof {
+        let unsafe_rule = p.eat_keyword_noexpect(kw::Unsafe);
+        let unsafe_keyword_span = p.prev_token.span;
+        if unsafe_rule && let Some(guar) = check_no_eof(sess, &p, "expected `attr`") {
+            return dummy_syn_ext(guar);
+        }
         let (args, is_derive) = if p.eat_keyword_noexpect(sym::attr) {
             kinds |= MacroKinds::ATTR;
             if !features.macro_attr() {
@@ -705,6 +748,13 @@ pub fn compile_declarative_macro(
             if !features.macro_derive() {
                 feature_err(sess, sym::macro_attr, span, "`macro_rules!` derives are unstable")
                     .emit();
+            }
+            if unsafe_rule {
+                let err = sess.dcx().struct_span_err(
+                    unsafe_keyword_span,
+                    "`unsafe` is only supported on `attr` rules",
+                );
+                return dummy_syn_ext(err.emit());
             }
             if let Some(guar) = check_no_eof(sess, &p, "expected `()` after `derive`") {
                 return dummy_syn_ext(guar);
@@ -731,6 +781,13 @@ pub fn compile_declarative_macro(
             (None, true)
         } else {
             kinds |= MacroKinds::BANG;
+            if unsafe_rule {
+                let err = sess.dcx().struct_span_err(
+                    unsafe_keyword_span,
+                    "`unsafe` is only supported on `attr` rules",
+                );
+                return dummy_syn_ext(err.emit());
+            }
             (None, false)
         };
         let lhs_tt = p.parse_token_tree();
@@ -761,7 +818,7 @@ pub fn compile_declarative_macro(
             };
             let args = mbe::macro_parser::compute_locs(&delimited.tts);
             let body_span = lhs_span;
-            rules.push(MacroRule::Attr { args, args_span, body: lhs, body_span, rhs });
+            rules.push(MacroRule::Attr { unsafe_rule, args, args_span, body: lhs, body_span, rhs });
         } else if is_derive {
             rules.push(MacroRule::Derive { body: lhs, body_span: lhs_span, rhs });
         } else {
