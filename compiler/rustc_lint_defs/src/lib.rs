@@ -11,7 +11,7 @@ use rustc_hir_id::{HashStableContext, HirId, ItemLocalId};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::def_id::DefPathHash;
 pub use rustc_span::edition::Edition;
-use rustc_span::{Ident, MacroRulesNormalizedIdent, Span, Symbol, sym};
+use rustc_span::{Ident, Span, Symbol, sym};
 use serde::{Deserialize, Serialize};
 
 pub use self::Level::*;
@@ -620,17 +620,7 @@ pub enum DeprecatedSinceKind {
 #[derive(Debug)]
 pub enum BuiltinLintDiag {
     AbsPathWithModule(Span),
-    ProcMacroDeriveResolutionFallback {
-        span: Span,
-        ns_descr: &'static str,
-        ident: Ident,
-    },
-    MacroExpandedMacroExportsAccessedByAbsolutePaths(Span),
     ElidedLifetimesInPaths(usize, Span, bool, Span),
-    UnknownCrateTypes {
-        span: Span,
-        candidate: Option<Symbol>,
-    },
     UnusedImports {
         remove_whole_use: bool,
         num_to_remove: usize,
@@ -646,20 +636,11 @@ pub enum BuiltinLintDiag {
         path: String,
         since_kind: DeprecatedSinceKind,
     },
-    UnusedDocComment(Span),
-    UnusedBuiltinAttribute {
-        attr_name: Symbol,
-        macro_name: String,
-        invoc_span: Span,
-        attr_span: Span,
-    },
     PatternsInFnsWithoutBody {
         span: Span,
         ident: Ident,
         is_foreign: bool,
     },
-    LegacyDeriveHelpers(Span),
-    OrPatternsBackCompat(Span, String),
     ReservedPrefix(Span, String),
     /// `'r#` in edition < 2021.
     RawPrefix(Span),
@@ -668,15 +649,11 @@ pub enum BuiltinLintDiag {
         is_string: bool,
         suggestion: Span,
     },
-    TrailingMacro(bool, Ident),
     BreakWithLabelAndLoop(Span),
     UnicodeTextFlow(Span, String),
     UnexpectedCfgName((Symbol, Span), Option<(Symbol, Span)>),
     UnexpectedCfgValue((Symbol, Span), Option<(Symbol, Span)>),
     DeprecatedWhereclauseLocation(Span, Option<(Span, String)>),
-    MissingUnsafeOnExtern {
-        suggestion: Span,
-    },
     SingleUseLifetime {
         /// Span of the parameter which declares this lifetime.
         param_span: Span,
@@ -700,14 +677,6 @@ pub enum BuiltinLintDiag {
         named_arg_name: String,
         /// Indicates if the named argument is used as a width/precision for formatting
         is_formatting_arg: bool,
-    },
-    ByteSliceInPackedStructWithDerive {
-        // FIXME: enum of byte/string
-        ty: String,
-    },
-    UnusedExternCrate {
-        span: Span,
-        removal_span: Span,
     },
     ExternCrateNotIdiomatic {
         vis_span: Span,
@@ -736,11 +705,6 @@ pub enum BuiltinLintDiag {
         /// The local binding that shadows the glob reexport.
         private_item_span: Span,
     },
-    ReexportPrivateDependency {
-        name: String,
-        kind: String,
-        krate: Symbol,
-    },
     UnusedQualifications {
         /// The span of the unnecessarily-qualified path to remove.
         removal_span: Span,
@@ -763,27 +727,14 @@ pub enum BuiltinLintDiag {
         span: Span,
         typo_name: Option<Symbol>,
     },
-    MacroUseDeprecated,
-    UnusedMacroUse,
     PrivateExternCrateReexport {
         source: Ident,
         extern_crate_span: Span,
     },
-    UnusedLabel,
     MacroIsPrivate(Ident),
     UnusedMacroDefinition(Symbol),
     MacroRuleNeverUsed(usize, Symbol),
     UnstableFeature(DiagMessage),
-    AvoidUsingIntelSyntax,
-    AvoidUsingAttSyntax,
-    IncompleteInclude,
-    UnnameableTestItems,
-    DuplicateMacroAttribute,
-    CfgAttrNoAttributes,
-    MetaVariableStillRepeating(MacroRulesNormalizedIdent),
-    MetaVariableWrongOperator,
-    DuplicateMatcherBinding,
-    UnknownMacroVariable(MacroRulesNormalizedIdent),
     UnusedCrateDependency {
         extern_crate: Symbol,
         local_crate: Symbol,
