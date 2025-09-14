@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased 
+
+- Optimise `StrExt::to_ascii_lowercase_smolstr`, `StrExt::to_ascii_uppercase_smolstr` 
+  ~2x speedup inline, ~4-22x for heap.
+
 ## 0.3.2 - 2024-10-23
 
 - Fix `SmolStrBuilder::push` incorrectly padding null bytes when spilling onto the heap on a
