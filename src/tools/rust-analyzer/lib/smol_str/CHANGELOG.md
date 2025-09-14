@@ -4,6 +4,7 @@
 
 - Optimise `StrExt::to_ascii_lowercase_smolstr`, `StrExt::to_ascii_uppercase_smolstr` 
   ~2x speedup inline, ~4-22x for heap.
+- Optimise `StrExt::to_lowercase_smolstr`, `StrExt::to_uppercase_smolstr` ~2x speedup inline, ~5-50x for heap.
 
 ## 0.3.2 - 2024-10-23
 
