@@ -1305,16 +1305,6 @@ fn create_coroutine_resume_function<'tcx>(
         // unlike for all other coroutine kinds.
         CoroutineKind::Desugared(CoroutineDesugaring::Gen, _) => {}
     }
-
-    // Make sure we remove dead blocks to remove
-    // unrelated code from the drop part of the function
-    simplify::remove_dead_blocks(body);
-
-    pm::run_passes_no_validate(tcx, body, &[&abort_unwinding_calls::AbortUnwindingCalls], None);
-
-    if let Some(dumper) = MirDumper::new(tcx, "coroutine_resume", body) {
-        dumper.dump_mir(body);
-    }
 }
 
 /// An operation that can be performed on a coroutine.
@@ -1669,6 +1659,21 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
 
         // Create the Coroutine::resume / Future::poll function
         create_coroutine_resume_function(tcx, transform, body, can_return, can_unwind);
+
+        if let Some(dumper) = MirDumper::new(tcx, "coroutine_resume", body) {
+            dumper.dump_mir(body);
+        }
+
+        pm::run_passes_no_validate(
+            tcx,
+            body,
+            &[
+                &crate::abort_unwinding_calls::AbortUnwindingCalls,
+                &crate::simplify::SimplifyCfg::PostStateTransform,
+                &crate::simplify::SimplifyLocals::PostStateTransform,
+            ],
+            None,
+        );
 
         // Run derefer to fix Derefs that are not in the first place
         deref_finder(tcx, body);
