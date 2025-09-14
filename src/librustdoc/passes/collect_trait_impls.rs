@@ -1,6 +1,7 @@
-//! Collects trait impls for each item in the crate. For example, if a crate
-//! defines a struct that implements a trait, this pass will note that the
-//! struct implements that trait.
+//! Collects trait impls for each item in the crate.
+//!
+//! For example, if a crate defines a struct that implements a trait,
+//! this pass will note that the struct implements that trait.
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LOCAL_CRATE};
@@ -14,11 +15,8 @@ use crate::core::DocContext;
 use crate::formats::cache::Cache;
 use crate::visit::DocVisitor;
 
-pub(crate) const COLLECT_TRAIT_IMPLS: Pass = Pass {
-    name: "collect-trait-impls",
-    run: Some(collect_trait_impls),
-    description: "retrieves trait impls for items in the crate",
-};
+pub(crate) const COLLECT_TRAIT_IMPLS: Pass =
+    Pass { name: "collect-trait-impls", run: Some(collect_trait_impls) };
 
 pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate {
     let tcx = cx.tcx;
