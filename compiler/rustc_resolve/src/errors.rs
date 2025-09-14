@@ -1276,3 +1276,13 @@ pub(crate) struct TraitImplMismatch {
     #[label(resolve_trait_impl_mismatch_label_item)]
     pub(crate) trait_item_span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(resolve_cannot_access_the_local_binding)]
+pub(crate) struct CannotAccessTheLocalBinding {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) name: Symbol,
+    #[note]
+    pub(crate) local_binding_def_span: Span,
+}

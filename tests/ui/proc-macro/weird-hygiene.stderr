@@ -4,6 +4,8 @@ error[E0425]: cannot find value `hidden_ident` in this scope
 LL |             Value = (stringify!($tokens + hidden_ident), 1).1
    |                                           ^^^^^^^^^^^^ not found in this scope
 ...
+LL |     let hidden_ident = "Hello1";
+   |         ------------ `hidden_ident` is defined here
 LL |     other!(50);
    |     ---------- in this macro invocation
    |

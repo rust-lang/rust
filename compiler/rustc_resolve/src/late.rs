@@ -15,7 +15,7 @@ use rustc_ast::visit::{
     AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor, try_visit, visit_opt, walk_list,
 };
 use rustc_ast::*;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::codes::*;
 use rustc_errors::{
@@ -38,9 +38,9 @@ use thin_vec::ThinVec;
 use tracing::{debug, instrument, trace};
 
 use crate::{
-    BindingError, BindingKey, Finalize, LexicalScopeBinding, Module, ModuleOrUniformRoot,
-    NameBinding, ParentScope, PathResult, ResolutionError, Resolver, Segment, TyCtxt, UseError,
-    Used, errors, path_names_to_string, rustdoc,
+    BindingError, BindingKey, Finalize, LexicalScopeBinding, LookaheadItemInBlock, Module,
+    ModuleOrUniformRoot, NameBinding, ParentScope, PathResult, ResolutionError, Resolver, Segment,
+    TyCtxt, UseError, Used, errors, path_names_to_string, rustdoc,
 };
 
 mod diagnostics;
@@ -101,7 +101,7 @@ impl IntoDiagArg for PatternSource {
 /// Denotes whether the context for the set of already bound bindings is a `Product`
 /// or `Or` context. This is used in e.g., `fresh_binding` and `resolve_pattern_inner`.
 /// See those functions for more information.
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 enum PatBoundCtx {
     /// A product pattern context, e.g., `Variant(a, b)`.
     Product,
@@ -196,7 +196,29 @@ pub(crate) enum RibKind<'ra> {
     /// `Block(None)` must be always processed in the same way as `Block(Some(module))`
     /// with empty `module`. The module can be `None` only because creation of some definitely
     /// empty modules is skipped as an optimization.
-    Block(Option<Module<'ra>>),
+    Block {
+        module: Option<Module<'ra>>,
+        /// The node id of block kind, which stores all bindings defined in
+        /// this local scope, for these features:
+        ///
+        /// - Forward reference detection:
+        ///
+        /// ```ignore (illustrative)
+        /// let a = b;  // displays '`b` is defined at <span>' instead of ''b' not found'
+        /// let b = 42;
+        /// ```
+        ///
+        /// - Correctly resolves the hoisting bindings within macro expand:
+        ///
+        /// ```ignore (illustrative)
+        /// fn f() {}
+        /// let a: i16 = m!();        // throw error because it should use the local `f` rather than `fn f`
+        /// let f = || -> i16 { 42 };
+        /// macro_rules! m {() => ( f() )}
+        /// use m;
+        /// ```
+        id: NodeId,
+    },
 
     /// We passed through an impl or trait and are now in one of its
     /// methods or associated types. Allow references to ty params that impl or trait
@@ -218,9 +240,6 @@ pub(crate) enum RibKind<'ra> {
 
     /// We passed through a module item.
     Module(Module<'ra>),
-
-    /// We passed through a `macro_rules!` statement
-    MacroDefinition(DefId),
 
     /// All bindings in this rib are generic parameters that can't be used
     /// from the default of a generic parameter because they're not declared
@@ -248,11 +267,10 @@ impl RibKind<'_> {
     pub(crate) fn contains_params(&self) -> bool {
         match self {
             RibKind::Normal
-            | RibKind::Block(..)
+            | RibKind::Block { .. }
             | RibKind::FnOrCoroutine
             | RibKind::ConstantItem(..)
             | RibKind::Module(_)
-            | RibKind::MacroDefinition(_)
             | RibKind::InlineAsmSym => false,
             RibKind::ConstParamTy
             | RibKind::AssocItem
@@ -264,7 +282,7 @@ impl RibKind<'_> {
     /// This rib forbids referring to labels defined in upwards ribs.
     fn is_label_barrier(self) -> bool {
         match self {
-            RibKind::Normal | RibKind::MacroDefinition(..) => false,
+            RibKind::Normal | RibKind::Block { .. } => false,
             RibKind::FnOrCoroutine | RibKind::ConstantItem(..) => true,
             kind => bug!("unexpected rib kind: {kind:?}"),
         }
@@ -2464,12 +2482,16 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         for i in (0..self.label_ribs.len()).rev() {
             let rib = &self.label_ribs[i];
 
-            if let RibKind::MacroDefinition(def) = rib.kind
-                // If an invocation of this macro created `ident`, give up on `ident`
-                // and switch to `ident`'s source from the macro definition.
-                && def == self.r.macro_def(label.span.ctxt())
+            if let RibKind::Block { id, .. } = rib.kind
+                && let Some(seen_macro_def_list) = self.r.seen_macro_def_in_block.get(&id)
             {
-                label.span.remove_mark();
+                for def in seen_macro_def_list.iter().rev() {
+                    if *def == self.r.macro_def(label.span.ctxt()) {
+                        // If an invocation of this macro created `ident`, give up on `ident`
+                        // and switch to `ident`'s source from the macro definition.
+                        label.span.remove_mark();
+                    }
+                }
             }
 
             let ident = label.normalize_to_macro_rules();
@@ -2815,7 +2837,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 for parent_rib in self.ribs[ns].iter().rev() {
                     // Break at module or block level, to account for nested items which are
                     // allowed to shadow generic param names.
-                    if matches!(parent_rib.kind, RibKind::Module(..) | RibKind::Block(..)) {
+                    if matches!(parent_rib.kind, RibKind::Module(..) | RibKind::Block { .. }) {
                         break;
                     }
 
@@ -3763,10 +3785,102 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         });
     }
 
+    fn feed_macro_bindings_for_sub_block(
+        &self,
+        block_id: NodeId,
+        start: usize,
+        bindings: &PatternBindings,
+        // `need_removed` used for avoid injecting masked names into macro definition bindings:
+        //
+        // ```
+        // let x = 0;
+        // macro_rules! m0 {() => { x; }}       // Injects `let x = 0` into `m0`
+        // {
+        //     let x = 1;
+        //     macro_rules! m1 {() => { x; }}   // Should NOT inject `let x = 0` into `m1`
+        // }
+        // macro_rules! m2 {() => { x; }}       // Injects `let x = 0` into `m2`
+        // ```
+        need_removed: &mut FxIndexSet<Ident>,
+        macro_bindings: &mut FxHashMap<(NodeId, NodeId, Ident), Res>, // (block_id, macro_def_id, Ident) -> Res
+    ) {
+        let Some(items) = self.r.lookahead_items_in_block.get(&block_id) else {
+            return;
+        };
+        for (node_id, item) in items.iter().skip(start) {
+            match item {
+                LookaheadItemInBlock::Binding { name } => {
+                    need_removed.insert(*name);
+                }
+                LookaheadItemInBlock::MacroDef { .. } => {
+                    let bindings = bindings.last().unwrap().1.iter().filter_map(|(name, res)| {
+                        if !need_removed.contains(name) { Some((*name, *res)) } else { None }
+                    });
+                    for (name, res) in bindings {
+                        let key = (block_id, *node_id, name);
+                        macro_bindings.insert(key, res);
+                    }
+                }
+                LookaheadItemInBlock::Block => {
+                    let saved_len = need_removed.len();
+                    self.feed_macro_bindings_for_sub_block(
+                        *node_id,
+                        0,
+                        bindings,
+                        need_removed,
+                        macro_bindings,
+                    );
+                    need_removed.truncate(saved_len);
+                }
+            }
+        }
+    }
+
     /// Arising from `source`, resolve a top level pattern.
     fn resolve_pattern_top(&mut self, pat: &'ast Pat, pat_src: PatternSource) {
         let mut bindings = smallvec![(PatBoundCtx::Product, Default::default())];
         self.resolve_pattern(pat, pat_src, &mut bindings);
+
+        let mut last_pat_id = None;
+        pat.walk(&mut |pat| {
+            if let PatKind::Ident(..) = pat.kind {
+                last_pat_id = Some(pat.id);
+            }
+            true
+        });
+
+        if let Some(last_pat_id) = last_pat_id
+            && let RibKind::Block { id, .. } = self.ribs[ValueNS].last_mut().unwrap().kind
+            && let Some(items) = self.r.lookahead_items_in_block.get(&id)
+        {
+            let start = items.get_index_of(&last_pat_id).unwrap_or_else(|| {
+                panic!("pattern({pat:#?}) not found in lookahead items");
+            });
+            let mut need_removed = FxIndexSet::default();
+            let mut extend_bindings = FxHashMap::default();
+            self.feed_macro_bindings_for_sub_block(
+                id,
+                start + 1,
+                &bindings,
+                &mut need_removed,
+                &mut extend_bindings,
+            );
+            // We don't care the order here
+            #[allow(rustc::potential_query_instability)]
+            for ((block_id, macro_id, ident), res) in extend_bindings {
+                let Some(LookaheadItemInBlock::MacroDef { def_id }) = self
+                    .r
+                    .lookahead_items_in_block
+                    .get(&block_id)
+                    .and_then(|block| block.get(&macro_id))
+                else {
+                    unreachable!()
+                };
+                let macro_bindings = self.r.bindings_of_macro_def.get_mut(def_id).unwrap();
+                macro_bindings.insert(ident, (self.parent_scope.module, res, ident.span));
+            }
+        }
+
         self.apply_pattern_bindings(bindings);
     }
 
@@ -4645,14 +4759,17 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         let orig_module = self.parent_scope.module;
         let anonymous_module = self.r.block_map.get(&block.id).copied();
 
-        let mut num_macro_definition_ribs = 0;
         if let Some(anonymous_module) = anonymous_module {
             debug!("(resolving block) found anonymous module, moving down");
-            self.ribs[ValueNS].push(Rib::new(RibKind::Block(Some(anonymous_module))));
-            self.ribs[TypeNS].push(Rib::new(RibKind::Block(Some(anonymous_module))));
+            let rib_kind = RibKind::Block { module: Some(anonymous_module), id: block.id };
+            self.ribs[ValueNS].push(Rib::new(rib_kind));
+            self.ribs[TypeNS].push(Rib::new(rib_kind));
+            self.label_ribs.push(Rib::new(rib_kind));
             self.parent_scope.module = anonymous_module;
         } else {
-            self.ribs[ValueNS].push(Rib::new(RibKind::Block(None)));
+            let rib_kind = RibKind::Block { module: None, id: block.id };
+            self.ribs[ValueNS].push(Rib::new(rib_kind));
+            self.label_ribs.push(Rib::new(rib_kind));
         }
 
         // Descend into the block.
@@ -4660,10 +4777,9 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             if let StmtKind::Item(ref item) = stmt.kind
                 && let ItemKind::MacroDef(..) = item.kind
             {
-                num_macro_definition_ribs += 1;
                 let res = self.r.local_def_id(item.id).to_def_id();
-                self.ribs[ValueNS].push(Rib::new(RibKind::MacroDefinition(res)));
-                self.label_ribs.push(Rib::new(RibKind::MacroDefinition(res)));
+                let seen = self.r.seen_macro_def_in_block.entry(block.id).or_default();
+                seen.insert(res);
             }
 
             self.visit_stmt(stmt);
@@ -4671,10 +4787,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
         // Move back up.
         self.parent_scope.module = orig_module;
-        for _ in 0..num_macro_definition_ribs {
-            self.ribs[ValueNS].pop();
-            self.label_ribs.pop();
-        }
+        self.label_ribs.pop();
         self.last_block_rib = self.ribs[ValueNS].pop();
         if anonymous_module.is_some() {
             self.ribs[TypeNS].pop();
@@ -5132,6 +5245,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 /// lifetime generic parameters and function parameters.
 struct ItemInfoCollector<'a, 'ra, 'tcx> {
     r: &'a mut Resolver<'ra, 'tcx>,
+    current_block: Option<NodeId>,
 }
 
 impl ItemInfoCollector<'_, '_, '_> {
@@ -5187,12 +5301,18 @@ impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, '_, '_> {
                     }
                 }
             }
-
+            ItemKind::MacroDef(_, _) => {
+                if let Some(current_block) = self.current_block {
+                    let def_id = self.r.local_def_id(item.id).to_def_id();
+                    let items = self.r.lookahead_items_in_block.entry(current_block).or_default();
+                    items.insert(item.id, LookaheadItemInBlock::MacroDef { def_id });
+                    self.r.bindings_of_macro_def.insert(def_id, Default::default());
+                }
+            }
             ItemKind::Mod(..)
             | ItemKind::Static(..)
             | ItemKind::Use(..)
             | ItemKind::ExternCrate(..)
-            | ItemKind::MacroDef(..)
             | ItemKind::GlobalAsm(..)
             | ItemKind::MacCall(..)
             | ItemKind::DelegationMac(..) => {}
@@ -5203,7 +5323,9 @@ impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, '_, '_> {
                 // but for delegation items we are never actually retrieving that count in practice.
             }
         }
-        visit::walk_item(self, item)
+        let old_block = self.current_block.take();
+        visit::walk_item(self, item);
+        self.current_block = old_block;
     }
 
     fn visit_assoc_item(&mut self, item: &'ast AssocItem, ctxt: AssocCtxt) {
@@ -5212,11 +5334,86 @@ impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, '_, '_> {
         }
         visit::walk_assoc_item(self, item, ctxt);
     }
+
+    fn visit_local(&mut self, node: &'ast Local) -> Self::Result {
+        // collect local bindings into block
+        node.pat.walk(&mut |pat| {
+            if let PatKind::Ident(_, name, _) = &pat.kind {
+                let current_block = self.current_block.unwrap();
+                let items = self.r.lookahead_items_in_block.entry(current_block).or_default();
+                items.insert(pat.id, LookaheadItemInBlock::Binding { name: *name });
+            }
+            true
+        });
+        visit::walk_local(self, node)
+    }
+
+    fn visit_block(&mut self, node: &'ast Block) -> Self::Result {
+        if let Some(current_block) = self.current_block {
+            let items = self.r.lookahead_items_in_block.entry(current_block).or_default();
+            items.insert(node.id, LookaheadItemInBlock::Block);
+        }
+        let saved_block_id = self.current_block.replace(node.id);
+        visit::walk_block(self, node);
+        self.current_block = saved_block_id;
+    }
+}
+
+struct FreshBindingInMacroExpandChecker<'a, 'ra, 'tcx> {
+    r: &'a Resolver<'ra, 'tcx>,
+    blocks: Vec<NodeId>,
+}
+
+impl<'ast> Visitor<'ast> for FreshBindingInMacroExpandChecker<'_, '_, '_> {
+    fn visit_block(&mut self, node: &'ast Block) -> Self::Result {
+        self.blocks.push(node.id);
+        visit::walk_block(self, node);
+        self.blocks.pop();
+    }
+
+    fn visit_ident(&mut self, node: &'ast Ident) -> Self::Result {
+        let macro_def = self.r.macro_def(node.span.ctxt());
+        if let Some(bindings) = self.r.bindings_of_macro_def.get(&macro_def)
+            && let mut ident = node.clone()
+            && let Some((_, res, local_binding_def_span)) = bindings
+                .get({
+                    ident.span.remove_mark();
+                    &ident
+                })
+                .copied()
+            && let Res::Local(_) = res
+            && let macro_def_scope = self.r.macro_def_scope(macro_def)
+            && !self
+                .blocks
+                .iter()
+                .filter_map(|b| self.r.block_map.get(b))
+                .any(|m| m.is_ancestor_of(macro_def_scope))
+        {
+            // throw error for this case:
+            // ```
+            // fn f() {
+            //   let a = 42;
+            //   #[macro_export]
+            //   macro_rules! m { () => { a }}
+            // }
+            //
+            // fn g() {
+            //   fn a() {}
+            //   crate::a!(); // ERROR: cannot access the local binding `a`
+            // }
+            // ```
+            self.r.dcx().emit_err(errors::CannotAccessTheLocalBinding {
+                span: node.span,
+                name: node.name,
+                local_binding_def_span,
+            });
+        }
+    }
 }
 
 impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     pub(crate) fn late_resolve_crate(&mut self, krate: &Crate) {
-        visit::walk_crate(&mut ItemInfoCollector { r: self }, krate);
+        visit::walk_crate(&mut ItemInfoCollector { r: self, current_block: None }, krate);
         let mut late_resolution_visitor = LateResolutionVisitor::new(self);
         late_resolution_visitor.resolve_doc_links(&krate.attrs, MaybeExported::Ok(CRATE_NODE_ID));
         visit::walk_crate(&mut late_resolution_visitor, krate);
@@ -5228,6 +5425,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 BuiltinLintDiag::UnusedLabel,
             );
         }
+        let mut fresh_binding_in_macro_expand_checker =
+            FreshBindingInMacroExpandChecker { r: self, blocks: vec![] };
+        visit::walk_crate(&mut fresh_binding_in_macro_expand_checker, krate);
     }
 }
 
