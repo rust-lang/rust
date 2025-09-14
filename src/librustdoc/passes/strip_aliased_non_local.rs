@@ -1,3 +1,5 @@
+//! Strips all non-local private aliases items from the output.
+
 use rustc_middle::ty::{TyCtxt, Visibility};
 
 use crate::clean;
@@ -6,11 +8,8 @@ use crate::core::DocContext;
 use crate::fold::{DocFolder, strip_item};
 use crate::passes::Pass;
 
-pub(crate) const STRIP_ALIASED_NON_LOCAL: Pass = Pass {
-    name: "strip-aliased-non-local",
-    run: Some(strip_aliased_non_local),
-    description: "strips all non-local private aliased items from the output",
-};
+pub(crate) const STRIP_ALIASED_NON_LOCAL: Pass =
+    Pass { name: "strip-aliased-non-local", run: Some(strip_aliased_non_local) };
 
 fn strip_aliased_non_local(krate: clean::Crate, cx: &mut DocContext<'_>) -> clean::Crate {
     let mut stripper = AliasedNonLocalStripper { tcx: cx.tcx };
