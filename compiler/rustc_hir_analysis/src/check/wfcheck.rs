@@ -944,12 +944,11 @@ pub(crate) fn check_associated_item(
 
         // Avoid bogus "type annotations needed `Foo: Bar`" errors on `impl Bar for Foo` in case
         // other `Foo` impls are incoherent.
-        tcx.ensure_ok()
-            .coherent_trait(tcx.parent(item.trait_item_def_id.unwrap_or(item_id.into())))?;
+        tcx.ensure_ok().coherent_trait(tcx.parent(item.trait_item_or_self()?))?;
 
         let self_ty = match item.container {
-            ty::AssocItemContainer::Trait => tcx.types.self_param,
-            ty::AssocItemContainer::Impl => {
+            ty::AssocContainer::Trait => tcx.types.self_param,
+            ty::AssocContainer::InherentImpl | ty::AssocContainer::TraitImpl(_) => {
                 tcx.type_of(item.container_id(tcx)).instantiate_identity()
             }
         };
@@ -978,7 +977,7 @@ pub(crate) fn check_associated_item(
                 check_method_receiver(wfcx, hir_sig, item, self_ty)
             }
             ty::AssocKind::Type { .. } => {
-                if let ty::AssocItemContainer::Trait = item.container {
+                if let ty::AssocContainer::Trait = item.container {
                     check_associated_type_bounds(wfcx, item, span)
                 }
                 if item.defaultness(tcx).has_value() {

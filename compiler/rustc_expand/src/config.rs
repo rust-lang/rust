@@ -21,7 +21,6 @@ use rustc_feature::{
     ACCEPTED_LANG_FEATURES, AttributeSafety, EnabledLangFeature, EnabledLibFeature, Features,
     REMOVED_LANG_FEATURES, UNSTABLE_LANG_FEATURES,
 };
-use rustc_lint_defs::BuiltinLintDiag;
 use rustc_session::Session;
 use rustc_session::parse::feature_err;
 use rustc_span::{STDLIB_STABLE_CRATES, Span, Symbol, sym};
@@ -315,7 +314,7 @@ impl<'a> StripUnconfigured<'a> {
                 rustc_lint_defs::builtin::UNUSED_ATTRIBUTES,
                 cfg_attr.span,
                 ast::CRATE_NODE_ID,
-                BuiltinLintDiag::CfgAttrNoAttributes,
+                crate::errors::CfgAttrNoAttributes,
             );
         }
 

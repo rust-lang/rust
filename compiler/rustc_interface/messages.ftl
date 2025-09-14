@@ -30,6 +30,9 @@ interface_ignoring_out_dir = ignoring --out-dir flag due to -o flag
 interface_input_file_would_be_overwritten =
     the input file "{$path}" would be overwritten by the generated executable
 
+interface_invalid_crate_type_value = invalid `crate_type` value
+    .suggestion = did you mean
+
 interface_mixed_bin_crate =
     cannot mix `bin` crate type with others
 

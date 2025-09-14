@@ -373,31 +373,27 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     /// Automatically generated items marked with `rustc_trivial_field_reads`
     /// will be ignored for the purposes of dead code analysis (see PR #85200
     /// for discussion).
-    fn should_ignore_item(&mut self, def_id: DefId) -> bool {
-        if let Some(impl_of) = self.tcx.trait_impl_of_assoc(def_id) {
-            if !self.tcx.is_automatically_derived(impl_of) {
-                return false;
-            }
-
-            if let Some(trait_of) = self.tcx.trait_id_of_impl(impl_of)
-                && self.tcx.has_attr(trait_of, sym::rustc_trivial_field_reads)
+    fn should_ignore_impl_item(&mut self, impl_item: &hir::ImplItem<'_>) -> bool {
+        if let hir::ImplItemImplKind::Trait { .. } = impl_item.impl_kind
+            && let impl_of = self.tcx.parent(impl_item.owner_id.to_def_id())
+            && self.tcx.is_automatically_derived(impl_of)
+            && let trait_ref = self.tcx.impl_trait_ref(impl_of).unwrap().instantiate_identity()
+            && self.tcx.has_attr(trait_ref.def_id, sym::rustc_trivial_field_reads)
+        {
+            if let ty::Adt(adt_def, _) = trait_ref.self_ty().kind()
+                && let Some(adt_def_id) = adt_def.did().as_local()
             {
-                let trait_ref = self.tcx.impl_trait_ref(impl_of).unwrap().instantiate_identity();
-                if let ty::Adt(adt_def, _) = trait_ref.self_ty().kind()
-                    && let Some(adt_def_id) = adt_def.did().as_local()
-                {
-                    self.ignored_derived_traits.entry(adt_def_id).or_default().insert(trait_of);
-                }
-                return true;
+                self.ignored_derived_traits.entry(adt_def_id).or_default().insert(trait_ref.def_id);
             }
+            return true;
         }
 
         false
     }
 
     fn visit_node(&mut self, node: Node<'tcx>) {
-        if let Node::ImplItem(hir::ImplItem { owner_id, .. }) = node
-            && self.should_ignore_item(owner_id.to_def_id())
+        if let Node::ImplItem(impl_item) = node
+            && self.should_ignore_impl_item(impl_item)
         {
             return;
         }
@@ -439,7 +435,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             }
             Node::ImplItem(impl_item) => {
                 let item = self.tcx.local_parent(impl_item.owner_id.def_id);
-                if self.tcx.impl_trait_ref(item).is_none() {
+                if let hir::ImplItemImplKind::Inherent { .. } = impl_item.impl_kind {
                     //// If it's a type whose items are live, then it's live, too.
                     //// This is done to handle the case where, for example, the static
                     //// method of a private type is used, but the type itself is never
@@ -484,13 +480,11 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     fn check_impl_or_impl_item_live(&mut self, local_def_id: LocalDefId) -> bool {
         let (impl_block_id, trait_def_id) = match self.tcx.def_kind(local_def_id) {
             // assoc impl items of traits are live if the corresponding trait items are live
-            DefKind::AssocConst | DefKind::AssocTy | DefKind::AssocFn => (
-                self.tcx.local_parent(local_def_id),
-                self.tcx
-                    .associated_item(local_def_id)
-                    .trait_item_def_id
-                    .and_then(|def_id| def_id.as_local()),
-            ),
+            DefKind::AssocConst | DefKind::AssocTy | DefKind::AssocFn => {
+                let trait_item_id =
+                    self.tcx.trait_item_of(local_def_id).and_then(|def_id| def_id.as_local());
+                (self.tcx.local_parent(local_def_id), trait_item_id)
+            }
             // impl items are live if the corresponding traits are live
             DefKind::Impl { of_trait: true } => (
                 local_def_id,

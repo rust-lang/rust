@@ -272,7 +272,6 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
 
                             (accept.accept_fn)(&mut cx, args);
                             if !matches!(cx.stage.should_emit(), ShouldEmit::Nothing) {
-                                Self::check_type(accept.attribute_type, target, &mut cx);
                                 Self::check_target(&accept.allowed_targets, target, &mut cx);
                             }
                         }

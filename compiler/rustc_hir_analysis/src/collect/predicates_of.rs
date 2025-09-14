@@ -111,9 +111,8 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
         }
 
         Some(ImplTraitInTraitData::Impl { fn_def_id }) => {
-            let assoc_item = tcx.associated_item(def_id);
-            let trait_assoc_predicates =
-                tcx.explicit_predicates_of(assoc_item.trait_item_def_id.unwrap());
+            let trait_item_def_id = tcx.trait_item_of(def_id).unwrap();
+            let trait_assoc_predicates = tcx.explicit_predicates_of(trait_item_def_id);
 
             let impl_assoc_identity_args = ty::GenericArgs::identity_for_item(tcx, def_id);
             let impl_def_id = tcx.parent(fn_def_id);

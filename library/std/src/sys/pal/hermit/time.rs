@@ -25,15 +25,8 @@ impl Timespec {
         Timespec { t: timespec { tv_sec, tv_nsec } }
     }
 
-    #[rustc_const_unstable(feature = "const_system_time", issue = "144517")]
-    const fn sub_timespec(&self, other: &Timespec) -> Result<Duration, Duration> {
-        // FIXME: const PartialOrd
-        let mut cmp = self.t.tv_sec - other.t.tv_sec;
-        if cmp == 0 {
-            cmp = self.t.tv_nsec as i64 - other.t.tv_nsec as i64;
-        }
-
-        if cmp >= 0 {
+    fn sub_timespec(&self, other: &Timespec) -> Result<Duration, Duration> {
+        if self >= other {
             Ok(if self.t.tv_nsec >= other.t.tv_nsec {
                 Duration::new(
                     (self.t.tv_sec - other.t.tv_sec) as u64,
@@ -53,22 +46,20 @@ impl Timespec {
         }
     }
 
-    #[rustc_const_unstable(feature = "const_system_time", issue = "144517")]
-    const fn checked_add_duration(&self, other: &Duration) -> Option<Timespec> {
+    fn checked_add_duration(&self, other: &Duration) -> Option<Timespec> {
         let mut secs = self.t.tv_sec.checked_add_unsigned(other.as_secs())?;
 
         // Nano calculations can't overflow because nanos are <1B which fit
         // in a u32.
-        let mut nsec = other.subsec_nanos() + self.t.tv_nsec as u32;
-        if nsec >= NSEC_PER_SEC as u32 {
-            nsec -= NSEC_PER_SEC as u32;
+        let mut nsec = other.subsec_nanos() + u32::try_from(self.t.tv_nsec).unwrap();
+        if nsec >= NSEC_PER_SEC.try_into().unwrap() {
+            nsec -= u32::try_from(NSEC_PER_SEC).unwrap();
             secs = secs.checked_add(1)?;
         }
         Some(Timespec { t: timespec { tv_sec: secs, tv_nsec: nsec as _ } })
     }
 
-    #[rustc_const_unstable(feature = "const_system_time", issue = "144517")]
-    const fn checked_sub_duration(&self, other: &Duration) -> Option<Timespec> {
+    fn checked_sub_duration(&self, other: &Duration) -> Option<Timespec> {
         let mut secs = self.t.tv_sec.checked_sub_unsigned(other.as_secs())?;
 
         // Similar to above, nanos can't overflow.
@@ -222,18 +213,15 @@ impl SystemTime {
         SystemTime(time)
     }
 
-    #[rustc_const_unstable(feature = "const_system_time", issue = "144517")]
-    pub const fn sub_time(&self, other: &SystemTime) -> Result<Duration, Duration> {
+    pub fn sub_time(&self, other: &SystemTime) -> Result<Duration, Duration> {
         self.0.sub_timespec(&other.0)
     }
 
-    #[rustc_const_unstable(feature = "const_system_time", issue = "144517")]
-    pub const fn checked_add_duration(&self, other: &Duration) -> Option<SystemTime> {
+    pub fn checked_add_duration(&self, other: &Duration) -> Option<SystemTime> {
         Some(SystemTime(self.0.checked_add_duration(other)?))
     }
 
-    #[rustc_const_unstable(feature = "const_system_time", issue = "144517")]
-    pub const fn checked_sub_duration(&self, other: &Duration) -> Option<SystemTime> {
+    pub fn checked_sub_duration(&self, other: &Duration) -> Option<SystemTime> {
         Some(SystemTime(self.0.checked_sub_duration(other)?))
     }
 }
