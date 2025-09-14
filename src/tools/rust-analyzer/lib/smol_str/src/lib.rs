@@ -161,7 +161,7 @@ impl<'a> PartialEq<&'a str> for SmolStr {
     }
 }
 
-impl<'a> PartialEq<SmolStr> for &'a str {
+impl PartialEq<SmolStr> for &str {
     #[inline(always)]
     fn eq(&self, other: &SmolStr) -> bool {
         *self == other
@@ -189,7 +189,7 @@ impl<'a> PartialEq<&'a String> for SmolStr {
     }
 }
 
-impl<'a> PartialEq<SmolStr> for &'a String {
+impl PartialEq<SmolStr> for &String {
     #[inline(always)]
     fn eq(&self, other: &SmolStr) -> bool {
         *self == other
@@ -380,7 +380,7 @@ impl From<Box<str>> for SmolStr {
 impl From<Arc<str>> for SmolStr {
     #[inline]
     fn from(s: Arc<str>) -> SmolStr {
-        let repr = Repr::new_on_stack(s.as_ref()).unwrap_or_else(|| Repr::Heap(s));
+        let repr = Repr::new_on_stack(s.as_ref()).unwrap_or(Repr::Heap(s));
         Self(repr)
     }
 }

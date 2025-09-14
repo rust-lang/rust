@@ -390,8 +390,8 @@ mod test_str_ext {
         assert!(!result.is_heap_allocated());
     }
 }
-#[cfg(feature = "borsh")]
 
+#[cfg(feature = "borsh")]
 mod borsh_tests {
     use borsh::BorshDeserialize;
     use smol_str::{SmolStr, ToSmolStr};
