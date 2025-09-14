@@ -741,10 +741,10 @@ pub fn compile_declarative_macro(
         if let Some(guar) = check_no_eof(sess, &p, "expected right-hand side of macro rule") {
             return dummy_syn_ext(guar);
         }
-        let rhs_tt = p.parse_token_tree();
-        let rhs_tt = parse_one_tt(rhs_tt, RulePart::Body, sess, node_id, features, edition);
-        check_emission(check_rhs(sess, &rhs_tt));
-        check_emission(check_meta_variables(&sess.psess, node_id, args.as_ref(), &lhs_tt, &rhs_tt));
+        let rhs = p.parse_token_tree();
+        let rhs = parse_one_tt(rhs, RulePart::Body, sess, node_id, features, edition);
+        check_emission(check_rhs(sess, &rhs));
+        check_emission(check_meta_variables(&sess.psess, node_id, args.as_ref(), &lhs_tt, &rhs));
         let lhs_span = lhs_tt.span();
         // Convert the lhs into `MatcherLoc` form, which is better for doing the
         // actual matching.
@@ -760,11 +760,11 @@ pub fn compile_declarative_macro(
             };
             let args = mbe::macro_parser::compute_locs(&delimited.tts);
             let body_span = lhs_span;
-            rules.push(MacroRule::Attr { args, args_span, body: lhs, body_span, rhs: rhs_tt });
+            rules.push(MacroRule::Attr { args, args_span, body: lhs, body_span, rhs });
         } else if is_derive {
-            rules.push(MacroRule::Derive { body: lhs, body_span: lhs_span, rhs: rhs_tt });
+            rules.push(MacroRule::Derive { body: lhs, body_span: lhs_span, rhs });
         } else {
-            rules.push(MacroRule::Func { lhs, lhs_span, rhs: rhs_tt });
+            rules.push(MacroRule::Func { lhs, lhs_span, rhs });
         }
         if p.token == token::Eof {
             break;
