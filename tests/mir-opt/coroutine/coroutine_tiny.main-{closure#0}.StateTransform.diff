@@ -17,66 +17,65 @@
 +     }
       debug _x => _2;
 -     let mut _0: ();
+-     let _3: HasDrop;
+-     let _4: u8;
+-     let _5: ();
 +     coroutine debug _d => _s0;
 +     let mut _0: std::ops::CoroutineState<(), ()>;
-      let _3: HasDrop;
-      let _4: u8;
-      let _5: ();
-+     let mut _6: ();
-+     let mut _7: u32;
-+     let mut _8: &mut {coroutine@$DIR/coroutine_tiny.rs:20:5: 20:13};
++     let _3: ();
++     let mut _4: u32;
++     let mut _5: &mut {coroutine@$DIR/coroutine_tiny.rs:20:5: 20:13};
       scope 1 {
 -         debug _d => _3;
-+         debug _d => (((*_8) as variant#3).0: HasDrop);
++         debug _d => (((*_5) as variant#3).0: HasDrop);
       }
   
       bb0: {
 -         StorageLive(_3);
 -         _3 = const HasDrop;
 -         goto -> bb1;
-+         _8 = copy (_1.0: &mut {coroutine@$DIR/coroutine_tiny.rs:20:5: 20:13});
-+         _7 = discriminant((*_8));
-+         switchInt(move _7) -> [0: bb6, 3: bb4, otherwise: bb5];
++         _5 = copy (_1.0: &mut {coroutine@$DIR/coroutine_tiny.rs:20:5: 20:13});
++         _4 = discriminant((*_5));
++         switchInt(move _4) -> [0: bb5, 3: bb3, otherwise: bb4];
       }
   
       bb1: {
-          StorageLive(_4);
+-         StorageLive(_4);
 -         _4 = yield(const ()) -> [resume: bb2, drop: bb4];
 +         _0 = CoroutineState::<(), ()>::Yielded(const ());
-+         StorageDead(_4);
-+         discriminant((*_8)) = 3;
++         discriminant((*_5)) = 3;
 +         return;
       }
   
       bb2: {
-          StorageDead(_4);
-          StorageLive(_5);
-          _5 = callee() -> [return: bb3, unwind unreachable];
+-         StorageDead(_4);
+-         StorageLive(_5);
+-         _5 = callee() -> [return: bb3, unwind unreachable];
++         StorageDead(_3);
++         goto -> bb1;
       }
   
       bb3: {
-          StorageDead(_5);
-          goto -> bb1;
+-         StorageDead(_5);
+-         goto -> bb1;
++         StorageLive(_3);
++         _3 = callee() -> [return: bb2, unwind unreachable];
       }
   
       bb4: {
 -         StorageDead(_4);
 -         drop(_3) -> [return: bb5, unwind unreachable];
-+         StorageLive(_4);
-+         _4 = move _2;
-+         goto -> bb2;
++         unreachable;
       }
   
       bb5: {
 -         StorageDead(_3);
 -         drop(_1) -> [return: bb6, unwind unreachable];
-+         unreachable;
-      }
-  
-      bb6: {
+-     }
+- 
+-     bb6: {
 -         coroutine_drop;
-+         nop;
-+         (((*_8) as variant#3).0: HasDrop) = const HasDrop;
++         (((*_5) as variant#3).0: HasDrop) = const HasDrop;
 +         goto -> bb1;
       }
   }

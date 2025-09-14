@@ -79,7 +79,7 @@ pub use shim::build_drop_shim;
 macro_rules! declare_passes {
     (
         $(
-            $vis:vis mod $mod_name:ident : $($pass_name:ident $( { $($ident:ident),* } )?),+ $(,)?;
+            $vis:vis mod $mod_name:ident : $($pass_name:ident $( { $($ident:ident),* $(,)? } )?),+ $(,)?;
         )*
     ) => {
         $(
@@ -186,12 +186,14 @@ declare_passes! {
             PreOptimizations,
             Final,
             MakeShim,
-            AfterUnreachableEnumBranching
+            AfterUnreachableEnumBranching,
+            PostStateTransform,
         },
         SimplifyLocals {
             BeforeConstProp,
             AfterGVN,
-            Final
+            Final,
+            PostStateTransform,
         };
     mod simplify_branches : SimplifyConstCondition {
         AfterInstSimplify,

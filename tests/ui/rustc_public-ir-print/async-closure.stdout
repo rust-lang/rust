@@ -52,29 +52,23 @@ fn foo::{closure#0}::{closure#0}(_1: Pin<&mut {async closure body@$DIR/async-clo
         _8 = ResumeTy(move _9);
         _7 = (_1.0: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6});
         _6 = discriminant((*_7));
-        switchInt(move _6) -> [0: bb5, 1: bb3, otherwise: bb4];
+        switchInt(move _6) -> [0: bb3, 1: bb1, otherwise: bb2];
     }
     bb1: {
-        _0 = Poll::Ready(move _5);
-        discriminant((*_7)) = 1;
-        return;
+        assert(false, `async fn` resumed after completion) -> [success: bb1, unwind unreachable];
     }
     bb2: {
-        goto -> bb1;
-    }
-    bb3: {
-        assert(false, `async fn` resumed after completion) -> [success: bb3, unwind unreachable];
-    }
-    bb4: {
         unreachable;
     }
-    bb5: {
+    bb3: {
         StorageLive(_3);
         _4 = no_retag ((*_7).0: &i32);
         _3 = (*_4);
         _5 = ();
         StorageDead(_3);
-        goto -> bb2;
+        _0 = Poll::Ready(move _5);
+        discriminant((*_7)) = 1;
+        return;
     }
 }
 fn foo::{closure#0}::{synthetic#0}(_1: Pin<&mut {async closure body@$DIR/async-closure.rs:9:22: 11:6}>, _2: &mut Context<'_>) -> Poll<()> {
@@ -94,28 +88,22 @@ fn foo::{closure#0}::{synthetic#0}(_1: Pin<&mut {async closure body@$DIR/async-c
         _8 = ResumeTy(move _9);
         _7 = (_1.0: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6});
         _6 = discriminant((*_7));
-        switchInt(move _6) -> [0: bb5, 1: bb3, otherwise: bb4];
+        switchInt(move _6) -> [0: bb3, 1: bb1, otherwise: bb2];
     }
     bb1: {
-        _0 = Poll::Ready(move _5);
-        discriminant((*_7)) = 1;
-        return;
+        assert(false, `async fn` resumed after completion) -> [success: bb1, unwind unreachable];
     }
     bb2: {
-        goto -> bb1;
-    }
-    bb3: {
-        assert(false, `async fn` resumed after completion) -> [success: bb3, unwind unreachable];
-    }
-    bb4: {
         unreachable;
     }
-    bb5: {
+    bb3: {
         StorageLive(_3);
         _4 = no_retag ((*_7).0: &i32);
         _3 = (*_4);
         _5 = ();
         StorageDead(_3);
-        goto -> bb2;
+        _0 = Poll::Ready(move _5);
+        discriminant((*_7)) = 1;
+        return;
     }
 }
