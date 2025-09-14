@@ -63,6 +63,8 @@ pub(crate) fn detect_features() -> cache::Initializer {
     let rcpc2 = _sysctlbyname(c"hw.optional.arm.FEAT_LRCPC2");
     let lse = _sysctlbyname(c"hw.optional.arm.FEAT_LSE");
     let lse2 = _sysctlbyname(c"hw.optional.arm.FEAT_LSE2");
+    let mte = _sysctlbyname(c"hw.optional.arm.FEAT_MTE");
+    let mte2 = _sysctlbyname(c"hw.optional.arm.FEAT_MTE2");
     let pauth = _sysctlbyname(c"hw.optional.arm.FEAT_PAuth");
     let pmull = _sysctlbyname(c"hw.optional.arm.FEAT_PMULL");
     let rdm = _sysctlbyname(c"hw.optional.arm.FEAT_RDM");
@@ -73,6 +75,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
     let sha512 = _sysctlbyname(c"hw.optional.arm.FEAT_SHA512");
     let sme = _sysctlbyname(c"hw.optional.arm.FEAT_SME");
     let sme2 = _sysctlbyname(c"hw.optional.arm.FEAT_SME2");
+    let sme2p1 = _sysctlbyname(c"hw.optional.arm.FEAT_SME2p1");
     let sme_f64f64 = _sysctlbyname(c"hw.optional.arm.FEAT_SME_F64F64");
     let sme_i16i64 = _sysctlbyname(c"hw.optional.arm.FEAT_SME_I16I64");
     let ssbs = _sysctlbyname(c"hw.optional.arm.FEAT_SSBS");
@@ -88,6 +91,12 @@ pub(crate) fn detect_features() -> cache::Initializer {
     let ebf16 = _sysctlbyname(c"hw.optional.arm.FEAT_EBF16");
     let fpac = _sysctlbyname(c"hw.optional.arm.FEAT_FPAC");
     let fpaccombine = _sysctlbyname(c"hw.optional.arm.FEAT_FPACCOMBINE");
+    let mte_async = _sysctlbyname(c"hw.optional.arm.FEAT_MTE_ASYNC");
+    let mte_canonical_tags = _sysctlbyname(c"hw.optional.arm.FEAT_MTE_CANONICAL_TAGS");
+    let mte_no_address_tags = _sysctlbyname(c"hw.optional.arm.FEAT_MTE_NO_ADDRESS_TAGS");
+    let mte_store_only = _sysctlbyname(c"hw.optional.arm.FEAT_MTE_STORE_ONLY");
+    let mte3 = _sysctlbyname(c"hw.optional.arm.FEAT_MTE3");
+    let mte4 = _sysctlbyname(c"hw.optional.arm.FEAT_MTE4");
     let pacimp = _sysctlbyname(c"hw.optional.arm.FEAT_PACIMP");
     let pauth2 = _sysctlbyname(c"hw.optional.arm.FEAT_PAuth2");
     let rpres = _sysctlbyname(c"hw.optional.arm.FEAT_RPRES");
@@ -131,6 +140,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
     enable_feature(Feature::jsconv, jsconv);
     enable_feature(Feature::lse, lse);
     enable_feature(Feature::lse2, lse2);
+    enable_feature(Feature::mte, mte && mte2);
     enable_feature(Feature::paca, pauth);
     enable_feature(Feature::pacg, pauth);
     enable_feature(Feature::pmull, aes && pmull);
@@ -142,6 +152,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
     enable_feature(Feature::sha3, sha512 && sha3 && asimd);
     enable_feature(Feature::sme, sme);
     enable_feature(Feature::sme2, sme2);
+    enable_feature(Feature::sme2p1, sme2p1);
     enable_feature(Feature::sme_f64f64, sme_f64f64);
     enable_feature(Feature::sme_i16i64, sme_i16i64);
     enable_feature(Feature::ssbs, ssbs);
