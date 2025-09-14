@@ -151,6 +151,7 @@ mod closure;
 mod fxhash;
 #[forbid(unsafe_code)]
 mod handle;
+mod ident;
 #[macro_use]
 #[forbid(unsafe_code)]
 mod rpc;
@@ -162,6 +163,7 @@ pub mod server;
 mod symbol;
 
 use buffer::Buffer;
+pub use ident::Ident;
 pub use rpc::PanicMessage;
 use rpc::{Decode, DecodeMut, Encode, Reader, Writer};
 
@@ -470,13 +472,6 @@ pub struct Punct<Span> {
 }
 
 compound_traits!(struct Punct<Span> { ch, joint, span });
-
-#[derive(Copy, Clone, Eq, PartialEq)]
-pub struct Ident<Span, Symbol> {
-    pub sym: Symbol,
-    pub is_raw: bool,
-    pub span: Span,
-}
 
 compound_traits!(struct Ident<Span, Symbol> { sym, is_raw, span });
 
