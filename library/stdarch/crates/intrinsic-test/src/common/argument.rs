@@ -108,7 +108,7 @@ where
         for arg in self.iter().filter(|&arg| !arg.has_constraint()) {
             writeln!(
                 w,
-                "{indentation}const {ty} {name}_vals[] = {values};",
+                "{indentation}alignas(64) const {ty} {name}_vals[] = {values};",
                 ty = arg.ty.c_scalar_type(),
                 name = arg.name,
                 values = arg.ty.populate_random(indentation, loads, &Language::C)

@@ -6,21 +6,7 @@ pub fn build_cpp_compilation(config: &ProcessedCli) -> Option<CppCompilation> {
 
     // -ffp-contract=off emulates Rust's approach of not fusing separate mul-add operations
     let mut command = CompilationCommandBuilder::new()
-        .add_arch_flags([
-            "avx",
-            "avx2",
-            "avx512f",
-            "avx512cd",
-            "avx512dq",
-            "avx512vl",
-            "avx512bw",
-            "avx512bf16",
-            "avx512bitalg",
-            "lzcnt",
-            "popcnt",
-            "adx",
-            "aes",
-        ])
+        .add_arch_flags(["icelake-client"])
         .set_compiler(cpp_compiler)
         .set_target(&config.target)
         .set_opt_level("2")

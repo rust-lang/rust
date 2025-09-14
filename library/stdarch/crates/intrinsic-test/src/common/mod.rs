@@ -97,6 +97,7 @@ pub trait SupportedArchitectureTest {
         write_main_cpp(
             &mut file,
             Self::PLATFORM_C_DEFINITIONS,
+            Self::PLATFORM_C_HEADERS,
             self.intrinsics().iter().map(|i| i.name.as_str()),
         )
         .unwrap();

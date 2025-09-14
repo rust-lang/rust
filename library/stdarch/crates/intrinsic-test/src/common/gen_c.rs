@@ -47,7 +47,7 @@ pub fn generate_c_constraint_blocks<'a, T: IntrinsicTypeDefinition + 'a>(
         let ty = current.ty.c_type();
 
         writeln!(w, "{indentation}{{")?;
-        writeln!(w, "{body_indentation}{ty} {} = {i};", current.name)?;
+        writeln!(w, "{body_indentation}const {ty} {} = {i};", current.name)?;
 
         generate_c_constraint_blocks(
             w,
@@ -103,14 +103,11 @@ pub fn write_mod_cpp<T: IntrinsicTypeDefinition>(
         writeln!(w, "#include <{header}>")?;
     }
 
+    writeln!(w, "{}", forward_declarations)?;
+
     writeln!(
         w,
         r#"
-#include <iostream>
-#include <cstring>
-#include <iomanip>
-#include <sstream>
-
 template<typename T1, typename T2> T1 cast(T2 x) {{
   static_assert(sizeof(T1) == sizeof(T2), "sizeof T1 and T2 must be the same");
   T1 ret{{}};
@@ -120,12 +117,8 @@ template<typename T1, typename T2> T1 cast(T2 x) {{
 
 std::ostream& operator<<(std::ostream& os, float16_t value);
 
-
-
 "#
     )?;
-
-    writeln!(w, "{}", forward_declarations)?;
 
     for intrinsic in intrinsics {
         create_c_test_function(w, intrinsic)?;
@@ -137,12 +130,13 @@ std::ostream& operator<<(std::ostream& os, float16_t value);
 pub fn write_main_cpp<'a>(
     w: &mut impl std::io::Write,
     arch_specific_definitions: &str,
+    arch_specific_headers: &[&str],
     intrinsics: impl Iterator<Item = &'a str> + Clone,
 ) -> std::io::Result<()> {
     writeln!(w, "#include <iostream>")?;
     writeln!(w, "#include <string>")?;
 
-    for header in ["arm_neon.h", "arm_acle.h", "arm_fp16.h"] {
+    for header in arch_specific_headers {
         writeln!(w, "#include <{header}>")?;
     }
 

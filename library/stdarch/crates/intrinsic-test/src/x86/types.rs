@@ -110,7 +110,17 @@ impl IntrinsicTypeDefinition for X86IntrinsicType {
                 .filter(|c| c.is_numeric())
                 .join("")
                 .replace("128", "");
-            format!("_mm{type_val_filtered}_set1_epi64")
+            {
+                if type_value.ends_with("d") {
+                    format!("_mm{type_val_filtered}_loadu_pd")
+                } else if type_value.ends_with("h") {
+                    format!("_mm{type_val_filtered}_loadu_ph")
+                } else if type_value.ends_with("i") {
+                    format!("_mm{type_val_filtered}_loadu_epi16")
+                } else {
+                    format!("_mm{type_val_filtered}_loadu_ps")
+                }
+            }
         } else {
             // if it is a pointer, then rely on type conversion
             // If it is not any of the above type (__int<num>, __bfloat16, unsigned short, etc)
@@ -216,9 +226,9 @@ impl IntrinsicTypeDefinition for X86IntrinsicType {
             (Some(16), Some(512)) => String::from("_mm512_extract_intrinsic_test_epi16"),
             (Some(32), Some(512)) => String::from("_mm512_extract_intrinsic_test_epi32"),
             (Some(64), Some(512)) => String::from("_mm512_extract_intrinsic_test_epi64"),
-            (Some(8), Some(64)) => String::from("mm64_extract_intrinsic_test_epi8"),
+            (Some(8), Some(64)) => String::from("_mm64_extract_intrinsic_test_epi8"),
             (Some(16), Some(64)) => String::from("_mm_extract_pi16"),
-            (Some(32), Some(64)) => String::from("mm64_extract_intrinsic_test_epi32"),
+            (Some(32), Some(64)) => String::from("_mm64_extract_intrinsic_test_epi32"),
             _ => unreachable!(
                 "invalid length for vector argument: {:?}, {:?}",
                 self.bit_len, self.vec_len
