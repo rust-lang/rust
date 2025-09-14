@@ -7,18 +7,19 @@
       let mut _3: u8;
   
       bb0: {
--         switchInt(copy _1) -> [3: bb1, otherwise: bb2];
-+         switchInt(copy _1) -> [3: bb9, otherwise: bb10];
+          switchInt(copy _1) -> [3: bb1, otherwise: bb2];
       }
   
       bb1: {
           _2 = copy _1;
-          switchInt(copy _2) -> [3: bb3, otherwise: bb4];
+-         switchInt(copy _2) -> [3: bb3, otherwise: bb4];
++         goto -> bb3;
       }
   
       bb2: {
           _3 = copy _1;
-          switchInt(copy _3) -> [3: bb5, otherwise: bb6];
+-         switchInt(copy _3) -> [3: bb5, otherwise: bb6];
++         goto -> bb6;
       }
   
       bb3: {
@@ -48,16 +49,6 @@
       bb8: {
           _0 = const 11_u8;
           return;
-+     }
-+ 
-+     bb9: {
-+         _2 = copy _1;
-+         goto -> bb3;
-+     }
-+ 
-+     bb10: {
-+         _3 = copy _1;
-+         goto -> bb6;
       }
   }
   

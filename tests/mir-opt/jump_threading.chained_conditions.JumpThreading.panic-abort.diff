@@ -61,8 +61,7 @@
           _22 = const true;
           _23 = const true;
           _4 = discriminant(_2);
--         switchInt(move _4) -> [0: bb3, 1: bb4, otherwise: bb2];
-+         switchInt(move _4) -> [0: bb21, 1: bb4, otherwise: bb2];
+          switchInt(move _4) -> [0: bb3, 1: bb4, otherwise: bb2];
       }
   
       bb2: {
@@ -71,7 +70,8 @@
   
       bb3: {
           _1 = chained_conditions::BacktraceStyle::Off;
-          goto -> bb18;
+-         goto -> bb18;
++         goto -> bb37;
       }
   
       bb4: {
@@ -102,7 +102,7 @@
           _5 = move ((_2 as Some).0: std::string::String);
           _1 = chained_conditions::BacktraceStyle::Full;
 -         drop(_5) -> [return: bb7, unwind unreachable];
-+         drop(_5) -> [return: bb23, unwind unreachable];
++         drop(_5) -> [return: bb21, unwind unreachable];
       }
   
       bb6: {
@@ -144,7 +144,7 @@
           _12 = move ((_2 as Some).0: std::string::String);
           _1 = chained_conditions::BacktraceStyle::Off;
 -         drop(_12) -> [return: bb10, unwind unreachable];
-+         drop(_12) -> [return: bb30, unwind unreachable];
++         drop(_12) -> [return: bb27, unwind unreachable];
       }
   
       bb9: {
@@ -155,7 +155,7 @@
           StorageDead(_13);
           _1 = chained_conditions::BacktraceStyle::Short;
 -         goto -> bb18;
-+         goto -> bb36;
++         goto -> bb33;
       }
   
       bb10: {
@@ -218,33 +218,22 @@
 +     }
 + 
 +     bb21: {
-+         _1 = chained_conditions::BacktraceStyle::Off;
-+         goto -> bb40;
++         StorageDead(_5);
++         StorageDead(_6);
++         goto -> bb23;
 +     }
 + 
 +     bb22: {
-+         StorageDead(_5);
-+         StorageDead(_6);
-+         goto -> bb18;
-+     }
-+ 
-+     bb23: {
-+         StorageDead(_5);
-+         StorageDead(_6);
-+         goto -> bb25;
-+     }
-+ 
-+     bb24: {
 +         _24 = discriminant(_2);
 +         switchInt(move _24) -> [1: bb16, otherwise: bb15];
 +     }
 + 
-+     bb25: {
++     bb23: {
 +         _24 = discriminant(_2);
-+         switchInt(move _24) -> [1: bb28, otherwise: bb26];
++         switchInt(move _24) -> [1: bb26, otherwise: bb24];
 +     }
 + 
-+     bb26: {
++     bb24: {
 +         _22 = const false;
 +         _23 = const false;
 +         StorageDead(_2);
@@ -252,37 +241,31 @@
 +         goto -> bb11;
 +     }
 + 
-+     bb27: {
++     bb25: {
 +         switchInt(copy _23) -> [0: bb15, otherwise: bb17];
 +     }
 + 
++     bb26: {
++         goto -> bb24;
++     }
++ 
++     bb27: {
++         StorageDead(_12);
++         StorageDead(_13);
++         goto -> bb29;
++     }
++ 
 +     bb28: {
-+         goto -> bb26;
-+     }
-+ 
-+     bb29: {
-+         StorageDead(_12);
-+         StorageDead(_13);
-+         goto -> bb18;
-+     }
-+ 
-+     bb30: {
-+         StorageDead(_12);
-+         StorageDead(_13);
-+         goto -> bb32;
-+     }
-+ 
-+     bb31: {
 +         _24 = discriminant(_2);
 +         switchInt(move _24) -> [1: bb16, otherwise: bb15];
 +     }
 + 
-+     bb32: {
++     bb29: {
 +         _24 = discriminant(_2);
-+         switchInt(move _24) -> [1: bb35, otherwise: bb33];
++         switchInt(move _24) -> [1: bb32, otherwise: bb30];
 +     }
 + 
-+     bb33: {
++     bb30: {
 +         _22 = const false;
 +         _23 = const false;
 +         StorageDead(_2);
@@ -290,20 +273,20 @@
 +         goto -> bb13;
 +     }
 + 
-+     bb34: {
++     bb31: {
 +         switchInt(copy _23) -> [0: bb15, otherwise: bb17];
 +     }
 + 
-+     bb35: {
-+         goto -> bb33;
++     bb32: {
++         goto -> bb30;
 +     }
 + 
-+     bb36: {
++     bb33: {
 +         _24 = discriminant(_2);
-+         switchInt(move _24) -> [1: bb38, otherwise: bb37];
++         switchInt(move _24) -> [1: bb35, otherwise: bb34];
 +     }
 + 
-+     bb37: {
++     bb34: {
 +         _22 = const false;
 +         _23 = const false;
 +         StorageDead(_2);
@@ -311,25 +294,25 @@
 +         goto -> bb12;
 +     }
 + 
++     bb35: {
++         switchInt(copy _23) -> [0: bb34, otherwise: bb36];
++     }
++ 
++     bb36: {
++         drop(((_2 as Some).0: std::string::String)) -> [return: bb34, unwind unreachable];
++     }
++ 
++     bb37: {
++         _24 = discriminant(_2);
++         switchInt(move _24) -> [1: bb38, otherwise: bb30];
++     }
++ 
 +     bb38: {
-+         switchInt(copy _23) -> [0: bb37, otherwise: bb39];
++         goto -> bb39;
 +     }
 + 
 +     bb39: {
-+         drop(((_2 as Some).0: std::string::String)) -> [return: bb37, unwind unreachable];
-+     }
-+ 
-+     bb40: {
-+         _24 = discriminant(_2);
-+         switchInt(move _24) -> [1: bb41, otherwise: bb33];
-+     }
-+ 
-+     bb41: {
-+         goto -> bb42;
-+     }
-+ 
-+     bb42: {
-+         drop(((_2 as Some).0: std::string::String)) -> [return: bb33, unwind unreachable];
++         drop(((_2 as Some).0: std::string::String)) -> [return: bb30, unwind unreachable];
       }
   }
   

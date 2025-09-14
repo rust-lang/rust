@@ -165,18 +165,22 @@ fn multiple_match(x: u8) -> u8 {
     mir! {
         {
             // CHECK: bb0: {
-            // CHECK:     switchInt(copy [[x:_.*]]) -> [3: bb9, otherwise: bb10];
+            // CHECK:     switchInt(copy [[x:_.*]]) -> [3: bb1, otherwise: bb2];
             match x { 3 => bb1, _ => bb2 }
         }
         bb1 = {
             // We know `x == 3`, so we can take `bb3`.
             // CHECK: bb1: {
+            // CHECK:     {{_.*}} = copy [[x]];
+            // CHECK:     goto -> bb3;
             let y = x;
             match y { 3 => bb3, _ => bb4 }
         }
         bb2 = {
             // We know `x != 3`, so we can take `bb6`.
             // CHECK: bb2: {
+            // CHECK:     [[z:_.*]] = copy [[x]];
+            // CHECK:     goto -> bb6;
             let z = x;
             match z { 3 => bb5, _ => bb6 }
         }
@@ -204,7 +208,7 @@ fn multiple_match(x: u8) -> u8 {
         bb6 = {
             // We know `z != 3`, so we CANNOT take `bb7`.
             // CHECK: bb6: {
-            // CHECK:     switchInt(copy [[z:_.*]]) -> [1: bb7, otherwise: bb8];
+            // CHECK:     switchInt(copy [[z]]) -> [1: bb7, otherwise: bb8];
             match z { 1 => bb7, _ => bb8 }
         }
         bb7 = {
@@ -221,14 +225,6 @@ fn multiple_match(x: u8) -> u8 {
             RET = 11;
             Return()
         }
-        // We know `x == 3`, so we can take `bb3`.
-        // CHECK: bb9: {
-        // CHECK:     {{_.*}} = copy [[x]];
-        // CHECK:     goto -> bb3;
-        // We know `x != 3`, so we can take `bb6`.
-        // CHECK: bb10: {
-        // CHECK:     [[z]] = copy [[x]];
-        // CHECK:     goto -> bb6;
     }
 }
 
@@ -357,13 +353,13 @@ fn renumbered_bb(x: bool) -> u8 {
         let b: bool;
         {
             // CHECK: bb0: {
-            // CHECK:     switchInt({{.*}}) -> [1: bb8, otherwise: bb2];
+            // CHECK:     switchInt({{.*}}) -> [1: bb1, otherwise: bb2];
             b = false;
             match x { true => bb1, _ => bb2 }
         }
         bb1 = {
             // CHECK: bb1: {
-            // CHECK:     goto -> bb3;
+            // CHECK:     goto -> bb9;
             a = false;
             Goto(bb3)
         }
@@ -402,17 +398,14 @@ fn renumbered_bb(x: bool) -> u8 {
             RET = 11;
             Return()
         }
-        // Duplicate of bb1.
-        // CHECK: bb8: {
-        // CHECK:     goto -> bb10;
         // Duplicate of bb3.
-        // CHECK: bb9: {
+        // CHECK: bb8: {
         // CHECK:     switchInt(copy _2) -> [0: bb4, otherwise: bb5];
-        // Duplicate of bb9.
-        // CHECK: bb10: {
-        // CHECK:     goto -> bb11;
+        // Duplicate of bb8.
+        // CHECK: bb9: {
+        // CHECK:     goto -> bb10;
         // Duplicate of bb4.
-        // CHECK: bb11: {
+        // CHECK: bb10: {
         // CHECK:     goto -> bb6;
     }
 }
@@ -431,12 +424,12 @@ fn disappearing_bb(x: u8) -> u8 {
             // CHECK: bb0: {
             a = true;
             b = true;
-            // CHECK:     switchInt({{.*}}) -> [0: bb10, 1: bb10, 2: bb9, otherwise: bb2];
+            // CHECK:     switchInt({{.*}}) -> [0: bb3, 1: bb3, 2: bb1, otherwise: bb2];
             match x { 0 => bb3, 1 => bb3, 2 => bb1, _ => bb2 }
         }
         bb1 = {
             // CHECK: bb1: {
-            // CHECK:     goto -> bb4;
+            // CHECK:     goto -> bb10;
             b = false;
             Goto(bb4)
         }
@@ -447,7 +440,7 @@ fn disappearing_bb(x: u8) -> u8 {
         }
         bb3 = {
             // CHECK: bb3: {
-            // CHECK:     goto -> bb4;
+            // CHECK:     goto -> bb13;
             a = false;
             Goto(bb4)
         }
@@ -467,22 +460,18 @@ fn disappearing_bb(x: u8) -> u8 {
             Goto(bb6)
         }
         // CHECK: bb9: {
-        // CHECK:     goto -> bb12;
+        // CHECK:     switchInt(copy _3) -> [0: bb5, otherwise: bb7];
         // CHECK: bb10: {
-        // CHECK:     goto -> bb15;
+        // CHECK:     goto -> bb11;
         // CHECK: bb11: {
-        // CHECK:     switchInt(copy _3) -> [0: bb5, otherwise: bb7];
-        // CHECK: bb12: {
-        // CHECK:     goto -> bb13;
-        // CHECK: bb13: {
         // CHECK:     goto -> bb8;
-        // CHECK: bb14: {
+        // CHECK: bb12: {
         // CHECK:     switchInt(copy _3) -> [0: bb5, otherwise: bb7];
+        // CHECK: bb13: {
+        // CHECK:     goto -> bb14;
+        // CHECK: bb14: {
+        // CHECK:     goto -> bb15;
         // CHECK: bb15: {
-        // CHECK:     goto -> bb16;
-        // CHECK: bb16: {
-        // CHECK:     goto -> bb17;
-        // CHECK: bb17: {
         // CHECK:     goto -> bb6;
     }
 }

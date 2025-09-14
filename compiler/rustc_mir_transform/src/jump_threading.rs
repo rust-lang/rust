@@ -134,7 +134,8 @@ impl<'tcx> crate::MirPass<'tcx> for JumpThreading {
             finder.entry_states[bb] = state;
         }
 
-        if let Some(opportunities) = OpportunitySet::new(body, finder.entry_states) {
+        if let Some(mut opportunities) = OpportunitySet::new(body, finder.entry_states) {
+            opportunities.simplify();
             opportunities.apply();
         }
     }
@@ -794,6 +795,88 @@ impl<'a, 'tcx> OpportunitySet<'a, 'tcx> {
         let duplicates = Default::default();
         let basic_blocks = body.basic_blocks.as_mut();
         Some(OpportunitySet { basic_blocks, entry_states, duplicates })
+    }
+
+    /// Propagate fulfilled conditions forward in the CFG to reduce the amount of duplication.
+    #[instrument(level = "debug", skip(self))]
+    fn simplify(&mut self) {
+        let mut worklist = Vec::with_capacity(self.basic_blocks.len());
+        worklist.push(START_BLOCK);
+        let mut visited =
+            FxHashSet::with_capacity_and_hasher(self.basic_blocks.len(), Default::default());
+
+        // Start by computing the number of reachable predecessors for each block.
+        let mut predecessors = IndexVec::from_elem(0, &self.entry_states);
+        predecessors[START_BLOCK] = 1; // Account for the implicit entry edge.
+        while let Some(bb) = worklist.pop() {
+            if visited.insert(bb) {
+                let term = self.basic_blocks[bb].terminator();
+                for s in term.successors() {
+                    predecessors[s] += 1;
+                    worklist.push(s);
+                }
+            }
+        }
+
+        // Compute the number of edges into each block that carry each condition.
+        let mut fulfill_in_pred_count = IndexVec::from_fn_n(
+            |bb: BasicBlock| IndexVec::from_elem_n(0, self.entry_states[bb].targets.len()),
+            self.entry_states.len(),
+        );
+
+        visited.clear();
+        worklist.push(START_BLOCK);
+        while let Some(bb) = worklist.pop() {
+            if !visited.insert(bb) {
+                continue;
+            }
+
+            trace!(?bb, preds = ?predecessors[bb]);
+            debug_assert_ne!(predecessors[bb], 0);
+
+            if let Some((condition, _)) =
+                fulfill_in_pred_count[bb].iter_enumerated().find(|&(_, &p)| p == predecessors[bb])
+            {
+                trace!(?condition);
+                self.entry_states[bb].fulfilled.push(condition);
+            }
+
+            let state = &self.entry_states[bb];
+            trace!(?state);
+
+            let mut targets: Vec<_> = state
+                .fulfilled
+                .iter()
+                .flat_map(|&index| state.targets[index].iter().copied())
+                .collect();
+            targets.sort();
+            targets.dedup();
+            trace!(?targets);
+
+            let mut successors =
+                self.basic_blocks[bb].terminator().successors().collect::<Vec<_>>();
+
+            targets.reverse();
+            while let Some(target) = targets.pop() {
+                match target {
+                    ConditionTarget::Goto(target) => {
+                        predecessors[target] += 1;
+                        for &s in successors.iter() {
+                            predecessors[s] -= 1;
+                        }
+                        targets.retain(|t| t.block() == target);
+                        successors.clear();
+                        successors.push(target);
+                    }
+                    ConditionTarget::Chain(target, condition) => {
+                        let count = successors.iter().filter(|&&s| s == target).count();
+                        fulfill_in_pred_count[target][condition] += count;
+                    }
+                }
+            }
+
+            worklist.extend(successors);
+        }
     }
 
     /// Apply the opportunities on the graph.
