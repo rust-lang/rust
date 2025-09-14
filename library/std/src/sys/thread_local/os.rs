@@ -172,6 +172,9 @@ impl<T: 'static> Storage<T> {
         // Manually allocate with the requested alignment
         let layout = Layout::new::<Value<T>>().align_to(align).unwrap();
         let ptr: *mut Value<T> = (unsafe { crate::alloc::alloc(layout) }).cast();
+        if ptr.is_null() {
+            crate::alloc::handle_alloc_error(layout);
+        }
         unsafe {
             ptr.write(Value {
                 value: i.and_then(Option::take).unwrap_or_else(f),
