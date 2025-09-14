@@ -472,6 +472,11 @@ impl<T: Copy> SpecArrayClone for T {
 // The Default impls cannot be done with const generics because `[T; 0]` doesn't
 // require Default to be implemented, and having different impl blocks for
 // different numbers isn't supported yet.
+//
+// Trying to improve the `[T; 0]` situation has proven to be difficult.
+// Please see these issues for more context on past attempts and crater runs:
+// - https://github.com/rust-lang/rust/issues/61415
+// - https://github.com/rust-lang/rust/pull/145457
 
 macro_rules! array_impl_default {
     {$n:expr, $t:ident $($ts:ident)*} => {
