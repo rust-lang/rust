@@ -19,12 +19,12 @@ fn a::{closure#0}(_1: Pin<&mut {async fn body of a()}>, _2: &mut Context<'_>) ->
     bb0: {
         _5 = copy (_1.0: &mut {async fn body of a()});
         _4 = discriminant((*_5));
-        switchInt(move _4) -> [0: bb1, 1: bb4, otherwise: bb5];
+        switchInt(move _4) -> [0: bb1, 1: bb9, otherwise: bb10];
     }
 
     bb1: {
         _3 = const ();
-        goto -> bb3;
+        goto -> bb6;
     }
 
     bb2: {
@@ -34,14 +34,34 @@ fn a::{closure#0}(_1: Pin<&mut {async fn body of a()}>, _2: &mut Context<'_>) ->
     }
 
     bb3: {
-        goto -> bb2;
+        return;
     }
 
     bb4: {
-        assert(const false, "`async fn` resumed after completion") -> [success: bb4, unwind unreachable];
+        goto -> bb8;
     }
 
-    bb5: {
+    bb5 (cleanup): {
+        unreachable;
+    }
+
+    bb6: {
+        goto -> bb2;
+    }
+
+    bb7 (cleanup): {
+        resume;
+    }
+
+    bb8: {
+        goto -> bb3;
+    }
+
+    bb9: {
+        assert(const false, "`async fn` resumed after completion") -> [success: bb9, unwind continue];
+    }
+
+    bb10: {
         unreachable;
     }
 }
