@@ -406,7 +406,6 @@ impl<'a, K: Ord, V, A: Allocator + Clone> VacantEntry<'a, K, V, A> {
                 }
             }
             Some(handle) => handle.insert_recursing(self.key, value, self.alloc.clone(), |ins| {
-                drop(ins.left);
                 // SAFETY: Pushing a new root node doesn't invalidate
                 // handles to existing nodes.
                 let map = unsafe { self.dormant_map.reborrow() };

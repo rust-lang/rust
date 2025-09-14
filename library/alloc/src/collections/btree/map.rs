@@ -3257,7 +3257,6 @@ impl<'a, K: Ord, V, A: Allocator + Clone> CursorMutKey<'a, K, V, A> {
         };
 
         let handle = edge.insert_recursing(key, value, self.alloc.clone(), |ins| {
-            drop(ins.left);
             // SAFETY: The handle to the newly inserted value is always on a
             // leaf node, so adding a new root node doesn't invalidate it.
             let root = unsafe { self.root.reborrow().as_mut().unwrap() };
@@ -3303,7 +3302,6 @@ impl<'a, K: Ord, V, A: Allocator + Clone> CursorMutKey<'a, K, V, A> {
         };
 
         let handle = edge.insert_recursing(key, value, self.alloc.clone(), |ins| {
-            drop(ins.left);
             // SAFETY: The handle to the newly inserted value is always on a
             // leaf node, so adding a new root node doesn't invalidate it.
             let root = unsafe { self.root.reborrow().as_mut().unwrap() };
