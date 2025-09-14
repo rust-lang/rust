@@ -13,9 +13,8 @@ use rustc_errors::LintBuffer;
 use rustc_metadata::{DylibError, load_symbol_from_dylib};
 use rustc_middle::ty::CurrentGcx;
 use rustc_session::config::{Cfg, OutFileName, OutputFilenames, OutputTypes, Sysroot, host_tuple};
-use rustc_session::lint::{self, BuiltinLintDiag};
 use rustc_session::output::{CRATE_TYPES, categorize_crate_type};
-use rustc_session::{EarlyDiagCtxt, Session, filesearch};
+use rustc_session::{EarlyDiagCtxt, Session, filesearch, lint};
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMapInputs;
@@ -468,7 +467,10 @@ pub(crate) fn check_attr_crate_type(
                         lint::builtin::UNKNOWN_CRATE_TYPES,
                         ast::CRATE_NODE_ID,
                         span,
-                        BuiltinLintDiag::UnknownCrateTypes { span, candidate },
+                        errors::UnknownCrateTypes {
+                            sugg: candidate
+                                .map(|cand| errors::UnknownCrateTypesSub { span, snippet: cand }),
+                        },
                     );
                 }
             } else {

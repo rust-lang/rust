@@ -2086,11 +2086,25 @@ HELP: You can add it into `bootstrap.toml` in `rust.codegen-backends = [{name:?}
         }
 
         // Get paths from cmd args
-        let paths = match &builder.config.cmd {
+        let mut paths = match &builder.config.cmd {
             Subcommand::Test { .. } => &builder.config.paths[..],
             _ => &[],
         };
 
+        // in rustdoc-js mode, allow filters to be rs files or js files.
+        // use a late-initialized Vec to avoid cloning for other modes.
+        let mut paths_v;
+        if mode == "rustdoc-js" {
+            paths_v = paths.to_vec();
+            for p in &mut paths_v {
+                if let Some(ext) = p.extension()
+                    && ext == "js"
+                {
+                    p.set_extension("rs");
+                }
+            }
+            paths = &paths_v;
+        }
         // Get test-args by striping suite path
         let mut test_args: Vec<&str> = paths
             .iter()

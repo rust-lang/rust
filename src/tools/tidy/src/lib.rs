@@ -257,6 +257,7 @@ pub mod extra_checks;
 pub mod features;
 pub mod filenames;
 pub mod fluent_alphabetical;
+pub mod fluent_lowercase;
 pub mod fluent_period;
 mod fluent_used;
 pub mod gcc_submodule;

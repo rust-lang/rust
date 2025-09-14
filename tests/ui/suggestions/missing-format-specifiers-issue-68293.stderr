@@ -45,5 +45,52 @@ LL |     println!("list: {}", 1, 2, 3);
    |
    = note: consider adding 2 format specifiers
 
-error: aborting due to 4 previous errors
+error: multiple unused formatting arguments
+  --> $DIR/missing-format-specifiers-issue-68293.rs:36:17
+   |
+LL |     panic!("👆", "👆", 1);
+   |            ----  ^^^^  ^ argument never used
+   |            |     |
+   |            |     argument never used
+   |            multiple missing formatting specifiers
+   |
+help: format specifiers use curly braces, consider adding 2 format specifiers
+   |
+LL |     panic!("👆{}{}", "👆", 1);
+   |               ++++
+
+error: multiple unused formatting arguments
+  --> $DIR/missing-format-specifiers-issue-68293.rs:45:35
+   |
+LL |     format_args!(r##"lJ𐏿Æ�.𐏿�"##, r#"r}J𐏿Æ" {}"#, 1);
+   |                  ---------------  ^^^^^^^^^^^^^^  ^ argument never used
+   |                  |                |
+   |                  |                argument never used
+   |                  multiple missing formatting specifiers
+   |
+help: format specifiers use curly braces, consider adding 2 format specifiers
+   |
+LL |     format_args!(r##"lJ𐏿Æ�.𐏿�{}{}"##, r#"r}J𐏿Æ" {}"#, 1);
+   |                              ++++
+
+error: multiple unused formatting arguments
+  --> $DIR/missing-format-specifiers-issue-68293.rs:56:4
+   |
+LL |       panic!("Expect 2 newlines
+   |  ____________-
+LL | |
+LL | | ", "👆", 1);
+   | | -  ^^^^  ^ argument never used
+   | | |  |
+   | |_|  argument never used
+   |   multiple missing formatting specifiers
+   |
+help: format specifiers use curly braces, consider adding 2 format specifiers
+   |
+LL |     panic!("Expect 2 newlines
+LL |
+LL ~ {}{}", "👆", 1);
+   |
+
+error: aborting due to 7 previous errors
 

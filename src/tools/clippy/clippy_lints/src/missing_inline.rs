@@ -3,7 +3,7 @@ use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, Attribute, find_attr};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::ty::AssocItemContainer;
+use rustc_middle::ty::AssocContainer;
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 
@@ -166,8 +166,9 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
         let assoc_item = cx.tcx.associated_item(impl_item.owner_id);
         let container_id = assoc_item.container_id(cx.tcx);
         let trait_def_id = match assoc_item.container {
-            AssocItemContainer::Trait => Some(container_id),
-            AssocItemContainer::Impl => cx.tcx.impl_trait_ref(container_id).map(|t| t.skip_binder().def_id),
+            AssocContainer::Trait => Some(container_id),
+            AssocContainer::TraitImpl(_) => cx.tcx.impl_trait_ref(container_id).map(|t| t.skip_binder().def_id),
+            AssocContainer::InherentImpl => None,
         };
 
         if let Some(trait_def_id) = trait_def_id

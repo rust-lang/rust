@@ -421,7 +421,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 })
                 | hir::Node::ImplItem(hir::ImplItem {
                     generics,
-                    trait_item_def_id: None,
+                    impl_kind: hir::ImplItemImplKind::Inherent { .. },
                     kind: hir::ImplItemKind::Fn(..),
                     ..
                 }) if finder.can_suggest_bound(generics) => {

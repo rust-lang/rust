@@ -1,6 +1,8 @@
 //@revisions: noopt opt
 //@ build-fail
 //@[noopt] compile-flags: -Copt-level=0
+// FIXME(#61117): Respect debuginfo-level-tests, do not force debuginfo=0
+//@[opt] compile-flags: -C debuginfo=0
 //@[opt] compile-flags: -O
 //! Make sure we error on erroneous consts even if they get promoted.
 

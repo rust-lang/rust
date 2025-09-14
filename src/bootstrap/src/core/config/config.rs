@@ -1853,13 +1853,7 @@ fn load_toml_config(
         } else {
             toml_path.clone()
         });
-        (
-            get_toml(&toml_path).unwrap_or_else(|e| {
-                eprintln!("ERROR: Failed to parse '{}': {e}", toml_path.display());
-                exit!(2);
-            }),
-            path,
-        )
+        (get_toml(&toml_path).unwrap_or_else(|e| bad_config(&toml_path, e)), path)
     } else {
         (TomlConfig::default(), None)
     }
@@ -1892,10 +1886,8 @@ fn postprocess_toml(
             .unwrap()
             .join(include_path);
 
-        let included_toml = get_toml(&include_path).unwrap_or_else(|e| {
-            eprintln!("ERROR: Failed to parse '{}': {e}", include_path.display());
-            exit!(2);
-        });
+        let included_toml =
+            get_toml(&include_path).unwrap_or_else(|e| bad_config(&include_path, e));
         toml.merge(
             Some(include_path),
             &mut Default::default(),
@@ -2397,4 +2389,99 @@ pub(crate) fn read_file_by_commit<'a>(
     let mut git = helpers::git(Some(dwn_ctx.src));
     git.arg("show").arg(format!("{commit}:{}", file.to_str().unwrap()));
     git.run_capture_stdout(dwn_ctx.exec_ctx).stdout()
+}
+
+fn bad_config(toml_path: &Path, e: toml::de::Error) -> ! {
+    eprintln!("ERROR: Failed to parse '{}': {e}", toml_path.display());
+    let e_s = e.to_string();
+    if e_s.contains("unknown field")
+        && let Some(field_name) = e_s.split("`").nth(1)
+        && let sections = find_correct_section_for_field(field_name)
+        && !sections.is_empty()
+    {
+        if sections.len() == 1 {
+            match sections[0] {
+                WouldBeValidFor::TopLevel { is_section } => {
+                    if is_section {
+                        eprintln!(
+                            "hint: section name `{field_name}` used as a key within a section"
+                        );
+                    } else {
+                        eprintln!("hint: try using `{field_name}` as a top level key");
+                    }
+                }
+                WouldBeValidFor::Section(section) => {
+                    eprintln!("hint: try moving `{field_name}` to the `{section}` section")
+                }
+            }
+        } else {
+            eprintln!(
+                "hint: `{field_name}` would be valid {}",
+                join_oxford_comma(sections.iter(), "or"),
+            );
+        }
+    }
+
+    exit!(2);
+}
+
+#[derive(Copy, Clone, Debug)]
+enum WouldBeValidFor {
+    TopLevel { is_section: bool },
+    Section(&'static str),
+}
+
+fn join_oxford_comma(
+    mut parts: impl ExactSizeIterator<Item = impl std::fmt::Display>,
+    conj: &str,
+) -> String {
+    use std::fmt::Write;
+    let mut out = String::new();
+
+    assert!(parts.len() > 1);
+    while let Some(part) = parts.next() {
+        if parts.len() == 0 {
+            write!(&mut out, "{conj} {part}")
+        } else {
+            write!(&mut out, "{part}, ")
+        }
+        .unwrap();
+    }
+    out
+}
+
+impl std::fmt::Display for WouldBeValidFor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::TopLevel { .. } => write!(f, "at top level"),
+            Self::Section(section_name) => write!(f, "in section `{section_name}`"),
+        }
+    }
+}
+
+fn find_correct_section_for_field(field_name: &str) -> Vec<WouldBeValidFor> {
+    let sections = ["build", "install", "llvm", "gcc", "rust", "dist"];
+    sections
+        .iter()
+        .map(Some)
+        .chain([None])
+        .filter_map(|section_name| {
+            let dummy_config_str = if let Some(section_name) = section_name {
+                format!("{section_name}.{field_name} = 0\n")
+            } else {
+                format!("{field_name} = 0\n")
+            };
+            let is_unknown_field = toml::from_str::<toml::Value>(&dummy_config_str)
+                .and_then(TomlConfig::deserialize)
+                .err()
+                .is_some_and(|e| e.to_string().contains("unknown field"));
+            if is_unknown_field {
+                None
+            } else {
+                Some(section_name.copied().map(WouldBeValidFor::Section).unwrap_or_else(|| {
+                    WouldBeValidFor::TopLevel { is_section: sections.contains(&field_name) }
+                }))
+            }
+        })
+        .collect()
 }

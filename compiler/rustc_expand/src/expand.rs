@@ -25,7 +25,6 @@ use rustc_parse::parser::{
     token_descr,
 };
 use rustc_session::Session;
-use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{UNUSED_ATTRIBUTES, UNUSED_DOC_COMMENTS};
 use rustc_session::parse::feature_err;
 use rustc_span::hygiene::SyntaxContext;
@@ -2183,7 +2182,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                     UNUSED_DOC_COMMENTS,
                     current_span,
                     self.cx.current_expansion.lint_node_id,
-                    BuiltinLintDiag::UnusedDocComment(attr.span),
+                    crate::errors::MacroCallUnusedDocComment { span: attr.span },
                 );
             } else if rustc_attr_parsing::is_builtin_attr(attr)
                 && !AttributeParser::<Early>::is_parsed_attribute(&attr.path())
@@ -2196,7 +2195,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                         UNUSED_ATTRIBUTES,
                         attr.span,
                         self.cx.current_expansion.lint_node_id,
-                        BuiltinLintDiag::UnusedBuiltinAttribute {
+                        crate::errors::UnusedBuiltinAttribute {
                             attr_name,
                             macro_name: pprust::path_to_string(&call.path),
                             invoc_span: call.path.span,

@@ -1131,7 +1131,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                             MISSING_UNSAFE_ON_EXTERN,
                             item.id,
                             item.span,
-                            BuiltinLintDiag::MissingUnsafeOnExtern {
+                            errors::MissingUnsafeOnExternLint {
                                 suggestion: item.span.shrink_to_lo(),
                             },
                         );
