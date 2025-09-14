@@ -393,9 +393,8 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// assert_eq!(Some(&5), set.range(4..).next());
     /// ```
     #[stable(feature = "btree_range", since = "1.17.0")]
-    pub fn range<K: ?Sized, R>(&self, range: R) -> Range<'_, T>
+    pub fn range<K: ?Sized + Ord, R>(&self, range: R) -> Range<'_, T>
     where
-        K: Ord,
         T: Borrow<K> + Ord,
         R: RangeBounds<K>,
     {
@@ -609,10 +608,9 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// assert_eq!(set.contains(&4), false);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn contains<Q: ?Sized>(&self, value: &Q) -> bool
+    pub fn contains<Q: ?Sized + Ord>(&self, value: &Q) -> bool
     where
         T: Borrow<Q> + Ord,
-        Q: Ord,
     {
         self.map.contains_key(value)
     }
@@ -634,10 +632,9 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// assert_eq!(set.get(&4), None);
     /// ```
     #[stable(feature = "set_recovery", since = "1.9.0")]
-    pub fn get<Q: ?Sized>(&self, value: &Q) -> Option<&T>
+    pub fn get<Q: ?Sized + Ord>(&self, value: &Q) -> Option<&T>
     where
         T: Borrow<Q> + Ord,
-        Q: Ord,
     {
         self.map.get_key_value(value).map(|(k, _)| k)
     }
@@ -980,11 +977,9 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// ```
     #[inline]
     #[unstable(feature = "btree_set_entry", issue = "133549")]
-    pub fn get_or_insert_with<Q: ?Sized, F>(&mut self, value: &Q, f: F) -> &T
+    pub fn get_or_insert_with<Q: ?Sized + Ord>(&mut self, value: &Q, f: impl FnOnce(&Q) -> T) -> &T
     where
         T: Borrow<Q> + Ord,
-        Q: Ord,
-        F: FnOnce(&Q) -> T,
     {
         self.map.get_or_insert_with(value, f)
     }
@@ -1055,10 +1050,9 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// assert_eq!(set.remove(&2), false);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn remove<Q: ?Sized>(&mut self, value: &Q) -> bool
+    pub fn remove<Q: ?Sized + Ord>(&mut self, value: &Q) -> bool
     where
         T: Borrow<Q> + Ord,
-        Q: Ord,
     {
         self.map.remove(value).is_some()
     }
@@ -1080,10 +1074,9 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// assert_eq!(set.take(&2), None);
     /// ```
     #[stable(feature = "set_recovery", since = "1.9.0")]
-    pub fn take<Q: ?Sized>(&mut self, value: &Q) -> Option<T>
+    pub fn take<Q: ?Sized + Ord>(&mut self, value: &Q) -> Option<T>
     where
         T: Borrow<Q> + Ord,
-        Q: Ord,
     {
         self.map.remove_entry(value).map(|(k, _)| k)
     }
@@ -1104,10 +1097,9 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// assert!(set.iter().eq([2, 4, 6].iter()));
     /// ```
     #[stable(feature = "btree_retain", since = "1.53.0")]
-    pub fn retain<F>(&mut self, mut f: F)
+    pub fn retain(&mut self, mut f: impl FnMut(&T) -> bool)
     where
         T: Ord,
-        F: FnMut(&T) -> bool,
     {
         self.extract_if(.., |v| !f(v)).for_each(drop);
     }
@@ -1332,10 +1324,9 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// assert_eq!(cursor.peek_next(), Some(&1));
     /// ```
     #[unstable(feature = "btree_cursors", issue = "107540")]
-    pub fn lower_bound<Q: ?Sized>(&self, bound: Bound<&Q>) -> Cursor<'_, T>
+    pub fn lower_bound<Q: ?Sized + Ord>(&self, bound: Bound<&Q>) -> Cursor<'_, T>
     where
         T: Borrow<Q> + Ord,
-        Q: Ord,
     {
         Cursor { inner: self.map.lower_bound(bound) }
     }
@@ -1375,10 +1366,9 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// assert_eq!(cursor.peek_next(), Some(&1));
     /// ```
     #[unstable(feature = "btree_cursors", issue = "107540")]
-    pub fn lower_bound_mut<Q: ?Sized>(&mut self, bound: Bound<&Q>) -> CursorMut<'_, T, A>
+    pub fn lower_bound_mut<Q: ?Sized + Ord>(&mut self, bound: Bound<&Q>) -> CursorMut<'_, T, A>
     where
         T: Borrow<Q> + Ord,
-        Q: Ord,
     {
         CursorMut { inner: self.map.lower_bound_mut(bound) }
     }
@@ -1418,10 +1408,9 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// assert_eq!(cursor.peek_next(), None);
     /// ```
     #[unstable(feature = "btree_cursors", issue = "107540")]
-    pub fn upper_bound<Q: ?Sized>(&self, bound: Bound<&Q>) -> Cursor<'_, T>
+    pub fn upper_bound<Q: ?Sized + Ord>(&self, bound: Bound<&Q>) -> Cursor<'_, T>
     where
         T: Borrow<Q> + Ord,
-        Q: Ord,
     {
         Cursor { inner: self.map.upper_bound(bound) }
     }
@@ -1461,10 +1450,9 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// assert_eq!(cursor.peek_next(), None);
     /// ```
     #[unstable(feature = "btree_cursors", issue = "107540")]
-    pub fn upper_bound_mut<Q: ?Sized>(&mut self, bound: Bound<&Q>) -> CursorMut<'_, T, A>
+    pub fn upper_bound_mut<Q: ?Sized + Ord>(&mut self, bound: Bound<&Q>) -> CursorMut<'_, T, A>
     where
         T: Borrow<Q> + Ord,
-        Q: Ord,
     {
         CursorMut { inner: self.map.upper_bound_mut(bound) }
     }

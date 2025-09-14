@@ -222,14 +222,10 @@ where
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Clone, V: Clone, A: Allocator + Clone> Clone for BTreeMap<K, V, A> {
     fn clone(&self) -> BTreeMap<K, V, A> {
-        fn clone_subtree<'a, K: Clone, V: Clone, A: Allocator + Clone>(
+        fn clone_subtree<'a, K: Clone + 'a, V: Clone + 'a, A: Allocator + Clone>(
             node: NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal>,
             alloc: A,
-        ) -> BTreeMap<K, V, A>
-        where
-            K: 'a,
-            V: 'a,
-        {
+        ) -> BTreeMap<K, V, A> {
             match node.force() {
                 Leaf(leaf) => {
                     let mut out_tree = BTreeMap {
@@ -330,11 +326,13 @@ impl<K, A: Allocator + Clone> BTreeMap<K, SetValZST, A> {
         }
     }
 
-    pub(super) fn get_or_insert_with<Q: ?Sized, F>(&mut self, q: &Q, f: F) -> &K
+    pub(super) fn get_or_insert_with<Q: ?Sized + Ord>(
+        &mut self,
+        q: &Q,
+        f: impl FnOnce(&Q) -> K,
+    ) -> &K
     where
         K: Borrow<Q> + Ord,
-        Q: Ord,
-        F: FnOnce(&Q) -> K,
     {
         let (map, dormant_map) = DormantMutRef::new(self);
         let root_node =
@@ -708,10 +706,10 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// assert_eq!(map.get(&2), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn get<Q: ?Sized>(&self, key: &Q) -> Option<&V>
+    pub fn get<Q>(&self, key: &Q) -> Option<&V>
     where
+        Q: ?Sized + Ord,
         K: Borrow<Q> + Ord,
-        Q: Ord,
     {
         let root_node = self.root.as_ref()?.reborrow();
         match root_node.search_tree(key) {
@@ -774,10 +772,10 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// assert_eq!(map.get_key_value(&p), None);
     /// ```
     #[stable(feature = "map_get_key_value", since = "1.40.0")]
-    pub fn get_key_value<Q: ?Sized>(&self, k: &Q) -> Option<(&K, &V)>
+    pub fn get_key_value<Q>(&self, k: &Q) -> Option<(&K, &V)>
     where
+        Q: ?Sized + Ord,
         K: Borrow<Q> + Ord,
-        Q: Ord,
     {
         let root_node = self.root.as_ref()?.reborrow();
         match root_node.search_tree(k) {
@@ -970,10 +968,9 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg_attr(not(test), rustc_diagnostic_item = "btreemap_contains_key")]
-    pub fn contains_key<Q: ?Sized>(&self, key: &Q) -> bool
+    pub fn contains_key<Q: ?Sized + Ord>(&self, key: &Q) -> bool
     where
         K: Borrow<Q> + Ord,
-        Q: Ord,
     {
         self.get(key).is_some()
     }
@@ -997,10 +994,9 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// ```
     // See `get` for implementation notes, this is basically a copy-paste with mut's added
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn get_mut<Q: ?Sized>(&mut self, key: &Q) -> Option<&mut V>
+    pub fn get_mut<Q: ?Sized + Ord>(&mut self, key: &Q) -> Option<&mut V>
     where
         K: Borrow<Q> + Ord,
-        Q: Ord,
     {
         let root_node = self.root.as_mut()?.borrow_mut();
         match root_node.search_tree(key) {
@@ -1099,10 +1095,9 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_confusables("delete", "take")]
-    pub fn remove<Q: ?Sized>(&mut self, key: &Q) -> Option<V>
+    pub fn remove<Q: ?Sized + Ord>(&mut self, key: &Q) -> Option<V>
     where
         K: Borrow<Q> + Ord,
-        Q: Ord,
     {
         self.remove_entry(key).map(|(_, v)| v)
     }
@@ -1124,10 +1119,9 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// assert_eq!(map.remove_entry(&1), None);
     /// ```
     #[stable(feature = "btreemap_remove_entry", since = "1.45.0")]
-    pub fn remove_entry<Q: ?Sized>(&mut self, key: &Q) -> Option<(K, V)>
+    pub fn remove_entry<Q: ?Sized + Ord>(&mut self, key: &Q) -> Option<(K, V)>
     where
         K: Borrow<Q> + Ord,
-        Q: Ord,
     {
         let (map, dormant_map) = DormantMutRef::new(self);
         let root_node = map.root.as_mut()?.borrow_mut();
@@ -1257,9 +1251,8 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// assert_eq!(Some((&5, &"b")), map.range(4..).next());
     /// ```
     #[stable(feature = "btree_range", since = "1.17.0")]
-    pub fn range<T: ?Sized, R>(&self, range: R) -> Range<'_, K, V>
+    pub fn range<T: ?Sized + Ord, R>(&self, range: R) -> Range<'_, K, V>
     where
-        T: Ord,
         K: Borrow<T> + Ord,
         R: RangeBounds<T>,
     {
@@ -1297,9 +1290,8 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// }
     /// ```
     #[stable(feature = "btree_range", since = "1.17.0")]
-    pub fn range_mut<T: ?Sized, R>(&mut self, range: R) -> RangeMut<'_, K, V>
+    pub fn range_mut<T: ?Sized + Ord, R>(&mut self, range: R) -> RangeMut<'_, K, V>
     where
-        T: Ord,
         K: Borrow<T> + Ord,
         R: RangeBounds<T>,
     {
@@ -2691,10 +2683,9 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// assert_eq!(cursor.peek_next(), Some((&1, &"a")));
     /// ```
     #[unstable(feature = "btree_cursors", issue = "107540")]
-    pub fn lower_bound<Q: ?Sized>(&self, bound: Bound<&Q>) -> Cursor<'_, K, V>
+    pub fn lower_bound<Q: ?Sized + Ord>(&self, bound: Bound<&Q>) -> Cursor<'_, K, V>
     where
         K: Borrow<Q> + Ord,
-        Q: Ord,
     {
         let root_node = match self.root.as_ref() {
             None => return Cursor { current: None, root: None },
@@ -2744,10 +2735,9 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// assert_eq!(cursor.peek_next(), Some((&1, &mut "a")));
     /// ```
     #[unstable(feature = "btree_cursors", issue = "107540")]
-    pub fn lower_bound_mut<Q: ?Sized>(&mut self, bound: Bound<&Q>) -> CursorMut<'_, K, V, A>
+    pub fn lower_bound_mut<Q: ?Sized + Ord>(&mut self, bound: Bound<&Q>) -> CursorMut<'_, K, V, A>
     where
         K: Borrow<Q> + Ord,
-        Q: Ord,
     {
         let (root, dormant_root) = DormantMutRef::new(&mut self.root);
         let root_node = match root.as_mut() {
@@ -2814,10 +2804,9 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// assert_eq!(cursor.peek_next(), None);
     /// ```
     #[unstable(feature = "btree_cursors", issue = "107540")]
-    pub fn upper_bound<Q: ?Sized>(&self, bound: Bound<&Q>) -> Cursor<'_, K, V>
+    pub fn upper_bound<Q: ?Sized + Ord>(&self, bound: Bound<&Q>) -> Cursor<'_, K, V>
     where
         K: Borrow<Q> + Ord,
-        Q: Ord,
     {
         let root_node = match self.root.as_ref() {
             None => return Cursor { current: None, root: None },
@@ -2867,10 +2856,9 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// assert_eq!(cursor.peek_next(), None);
     /// ```
     #[unstable(feature = "btree_cursors", issue = "107540")]
-    pub fn upper_bound_mut<Q: ?Sized>(&mut self, bound: Bound<&Q>) -> CursorMut<'_, K, V, A>
+    pub fn upper_bound_mut<Q: ?Sized + Ord>(&mut self, bound: Bound<&Q>) -> CursorMut<'_, K, V, A>
     where
         K: Borrow<Q> + Ord,
-        Q: Ord,
     {
         let (root, dormant_root) = DormantMutRef::new(&mut self.root);
         let root_node = match root.as_mut() {

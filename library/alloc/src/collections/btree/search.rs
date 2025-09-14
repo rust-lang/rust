@@ -46,12 +46,11 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
     ///
     /// The result is meaningful only if the tree is ordered by key, like the tree
     /// in a `BTreeMap` is.
-    pub(super) fn search_tree<Q: ?Sized>(
+    pub(super) fn search_tree<Q: ?Sized + Ord>(
         mut self,
         key: &Q,
     ) -> SearchResult<BorrowType, K, V, marker::LeafOrInternal, marker::Leaf>
     where
-        Q: Ord,
         K: Borrow<Q>,
     {
         loop {
@@ -80,7 +79,7 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
     /// As a diagnostic service, panics if the range specifies impossible bounds.
     ///
     /// The result is meaningful only if the tree is ordered by key.
-    pub(super) fn search_tree_for_bifurcation<'r, Q: ?Sized, R>(
+    pub(super) fn search_tree_for_bifurcation<'r, Q: ?Sized + Ord, R>(
         mut self,
         range: &'r R,
     ) -> Result<
@@ -94,7 +93,6 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
         Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>,
     >
     where
-        Q: Ord,
         K: Borrow<Q>,
         R: RangeBounds<Q>,
     {
@@ -192,12 +190,11 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     ///
     /// The result is meaningful only if the tree is ordered by key, like the tree
     /// in a `BTreeMap` is.
-    pub(super) fn search_node<Q: ?Sized>(
+    pub(super) fn search_node<Q: ?Sized + Ord>(
         self,
         key: &Q,
     ) -> SearchResult<BorrowType, K, V, Type, Type>
     where
-        Q: Ord,
         K: Borrow<Q>,
     {
         match unsafe { self.find_key_index(key, 0) } {
@@ -214,9 +211,8 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     ///
     /// # Safety
     /// `start_index` must be a valid edge index for the node.
-    unsafe fn find_key_index<Q: ?Sized>(&self, key: &Q, start_index: usize) -> IndexResult
+    unsafe fn find_key_index<Q: ?Sized + Ord>(&self, key: &Q, start_index: usize) -> IndexResult
     where
-        Q: Ord,
         K: Borrow<Q>,
     {
         let node = self.reborrow();
