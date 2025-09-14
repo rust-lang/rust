@@ -37,7 +37,7 @@ fn main::{closure#0}(_1: Pin<&mut {coroutine@$DIR/coroutine_tiny.rs:21:5: 21:13}
     bb0: {
         _8 = copy (_1.0: &mut {coroutine@$DIR/coroutine_tiny.rs:21:5: 21:13});
         _7 = discriminant((*_8));
-        switchInt(move _7) -> [0: bb1, 3: bb5, otherwise: bb6];
+        switchInt(move _7) -> [0: bb1, 3: bb14, otherwise: bb15];
     }
 
     bb1: {
@@ -66,12 +66,50 @@ fn main::{closure#0}(_1: Pin<&mut {coroutine@$DIR/coroutine_tiny.rs:21:5: 21:13}
     }
 
     bb5: {
+        StorageDead(_4);
+        drop((((*_8) as variant#3).0: HasDrop)) -> [return: bb6, unwind unreachable];
+    }
+
+    bb6: {
+        nop;
+        goto -> bb11;
+    }
+
+    bb7: {
+        coroutine_drop;
+    }
+
+    bb8: {
+        return;
+    }
+
+    bb9: {
+        goto -> bb13;
+    }
+
+    bb10 (cleanup): {
+        unreachable;
+    }
+
+    bb11: {
+        goto -> bb7;
+    }
+
+    bb12 (cleanup): {
+        resume;
+    }
+
+    bb13: {
+        goto -> bb8;
+    }
+
+    bb14: {
         StorageLive(_4);
         _4 = move _2;
         goto -> bb3;
     }
 
-    bb6: {
+    bb15: {
         unreachable;
     }
 }

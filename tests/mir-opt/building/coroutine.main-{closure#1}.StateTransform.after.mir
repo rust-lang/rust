@@ -45,7 +45,7 @@ fn main::{closure#1}(_1: Pin<&mut {coroutine@$DIR/coroutine.rs:25:5: 25:18}>, _2
     bb0: {
         _18 = copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:25:5: 25:18});
         _17 = discriminant((*_18));
-        switchInt(move _17) -> [0: bb1, 1: bb15, 3: bb13, 4: bb14, otherwise: bb16];
+        switchInt(move _17) -> [0: bb1, 1: bb11, 3: bb9, 4: bb10, otherwise: bb12];
     }
 
     bb1: {
@@ -76,11 +76,6 @@ fn main::{closure#1}(_1: Pin<&mut {coroutine@$DIR/coroutine.rs:25:5: 25:18}>, _2
     }
 
     bb4: {
-        StorageDead(_4);
-        drop(_3) -> [return: bb5, unwind unreachable];
-    }
-
-    bb5: {
         StorageDead(_3);
         StorageLive(_8);
         StorageLive(_9);
@@ -91,17 +86,17 @@ fn main::{closure#1}(_1: Pin<&mut {coroutine@$DIR/coroutine.rs:25:5: 25:18}>, _2
         StorageLive(_12);
         StorageLive(_13);
         _13 = &(((*_18) as variant#4).0: std::string::String);
-        _12 = <String as Clone>::clone(move _13) -> [return: bb6, unwind unreachable];
+        _12 = <String as Clone>::clone(move _13) -> [return: bb5, unwind unreachable];
     }
 
-    bb6: {
+    bb5: {
         StorageDead(_13);
         StorageLive(_14);
         StorageLive(_15);
-        _15 = Location::<'_>::caller() -> [return: bb7, unwind unreachable];
+        _15 = Location::<'_>::caller() -> [return: bb6, unwind unreachable];
     }
 
-    bb7: {
+    bb6: {
         _14 = &(*_15);
         _9 = (move _10, move _12, move _14);
         StorageDead(_14);
@@ -116,54 +111,43 @@ fn main::{closure#1}(_1: Pin<&mut {coroutine@$DIR/coroutine.rs:25:5: 25:18}>, _2
         return;
     }
 
-    bb8: {
-        StorageDead(_9);
-        drop(_8) -> [return: bb9, unwind unreachable];
-    }
-
-    bb9: {
+    bb7: {
         StorageDead(_15);
         StorageDead(_11);
         StorageDead(_8);
         _16 = const ();
-        drop((((*_18) as variant#4).0: std::string::String)) -> [return: bb10, unwind unreachable];
+        drop((((*_18) as variant#4).0: std::string::String)) -> [return: bb8, unwind unreachable];
     }
 
-    bb10: {
-        goto -> bb12;
-    }
-
-    bb11: {
+    bb8: {
         _0 = CoroutineState::<(&str, String, &Location<'_>), ()>::Complete(move _16);
         discriminant((*_18)) = 1;
         return;
     }
 
-    bb12: {
-        goto -> bb11;
-    }
-
-    bb13: {
+    bb9: {
         StorageLive(_3);
         StorageLive(_4);
         _3 = move _2;
-        goto -> bb4;
+        StorageDead(_4);
+        drop(_3) -> [return: bb4, unwind unreachable];
     }
 
-    bb14: {
+    bb10: {
         StorageLive(_8);
         StorageLive(_9);
         StorageLive(_11);
         StorageLive(_15);
         _8 = move _2;
-        goto -> bb8;
+        StorageDead(_9);
+        drop(_8) -> [return: bb7, unwind unreachable];
     }
 
-    bb15: {
-        assert(const false, "coroutine resumed after completion") -> [success: bb15, unwind unreachable];
+    bb11: {
+        assert(const false, "coroutine resumed after completion") -> [success: bb11, unwind unreachable];
     }
 
-    bb16: {
+    bb12: {
         unreachable;
     }
 }
