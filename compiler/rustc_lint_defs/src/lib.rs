@@ -621,10 +621,6 @@ pub enum DeprecatedSinceKind {
 pub enum BuiltinLintDiag {
     AbsPathWithModule(Span),
     ElidedLifetimesInPaths(usize, Span, bool, Span),
-    UnknownCrateTypes {
-        span: Span,
-        candidate: Option<Symbol>,
-    },
     UnusedImports {
         remove_whole_use: bool,
         num_to_remove: usize,
@@ -640,18 +636,11 @@ pub enum BuiltinLintDiag {
         path: String,
         since_kind: DeprecatedSinceKind,
     },
-    UnusedBuiltinAttribute {
-        attr_name: Symbol,
-        macro_name: String,
-        invoc_span: Span,
-        attr_span: Span,
-    },
     PatternsInFnsWithoutBody {
         span: Span,
         ident: Ident,
         is_foreign: bool,
     },
-    OrPatternsBackCompat(Span, String),
     ReservedPrefix(Span, String),
     /// `'r#` in edition < 2021.
     RawPrefix(Span),
@@ -660,7 +649,6 @@ pub enum BuiltinLintDiag {
         is_string: bool,
         suggestion: Span,
     },
-    TrailingMacro(bool, Ident),
     BreakWithLabelAndLoop(Span),
     UnicodeTextFlow(Span, String),
     UnexpectedCfgName((Symbol, Span), Option<(Symbol, Span)>),

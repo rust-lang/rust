@@ -160,6 +160,9 @@ expand_mve_unrecognized_var =
 expand_non_inline_modules_in_proc_macro_input_are_unstable =
     non-inline modules in proc macro input are unstable
 
+expand_or_patterns_back_compat = the meaning of the `pat` fragment specifier is changing in Rust 2021, which may affect this macro
+    .suggestion = use pat_param to preserve semantics
+
 expand_proc_macro_back_compat = using an old version of `{$crate_name}`
     .note = older versions of the `{$crate_name}` crate no longer compile; please update to `{$crate_name}` v{$fixed_version}, or switch to one of the `{$crate_name}` alternatives
 
@@ -189,7 +192,15 @@ expand_resolve_relative_path =
 
 expand_trace_macro = trace_macro
 
+expand_trailing_semi_macro = trailing semicolon in macro used in expression position
+    .note1 = macro invocations at the end of a block are treated as expressions
+    .note2 = to ignore the value produced by the macro, add a semicolon after the invocation of `{$name}`
+
 expand_unknown_macro_variable = unknown macro variable `{$name}`
+
+expand_unused_builtin_attribute = unused attribute `{$attr_name}`
+    .note = the built-in attribute `{$attr_name}` will be ignored, since it's applied to the macro invocation `{$macro_name}`
+    .suggestion = remove the attribute
 
 expand_unsupported_key_value =
     key-value macro attributes are not supported

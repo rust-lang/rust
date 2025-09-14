@@ -76,10 +76,6 @@ pub fn decorate_builtin_lint(
             }
             .decorate_lint(diag);
         }
-        BuiltinLintDiag::UnknownCrateTypes { span, candidate } => {
-            let sugg = candidate.map(|candidate| lints::UnknownCrateTypesSub { span, candidate });
-            lints::UnknownCrateTypes { sugg }.decorate_lint(diag);
-        }
         BuiltinLintDiag::UnusedImports {
             remove_whole_use,
             num_to_remove,
@@ -144,9 +140,6 @@ pub fn decorate_builtin_lint(
             }
             .decorate_lint(diag);
         }
-        BuiltinLintDiag::OrPatternsBackCompat(suggestion_span, suggestion) => {
-            lints::OrPatternsBackCompat { span: suggestion_span, suggestion }.decorate_lint(diag);
-        }
         BuiltinLintDiag::ReservedPrefix(label_span, prefix) => {
             lints::ReservedPrefix {
                 label: label_span,
@@ -165,18 +158,6 @@ pub fn decorate_builtin_lint(
             } else {
                 lints::ReservedMultihash { suggestion }.decorate_lint(diag);
             }
-        }
-        BuiltinLintDiag::UnusedBuiltinAttribute {
-            attr_name,
-            macro_name,
-            invoc_span,
-            attr_span,
-        } => {
-            lints::UnusedBuiltinAttribute { invoc_span, attr_name, macro_name, attr_span }
-                .decorate_lint(diag);
-        }
-        BuiltinLintDiag::TrailingMacro(is_trailing, name) => {
-            lints::TrailingMacro { is_trailing, name }.decorate_lint(diag);
         }
         BuiltinLintDiag::BreakWithLabelAndLoop(sugg_span) => {
             lints::BreakWithLabelAndLoop {

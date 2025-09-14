@@ -545,3 +545,31 @@ pub(crate) struct MacroCallUnusedDocComment {
     #[label]
     pub span: Span,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(expand_or_patterns_back_compat)]
+pub(crate) struct OrPatternsBackCompat {
+    #[suggestion(code = "{suggestion}", applicability = "machine-applicable")]
+    pub span: Span,
+    pub suggestion: String,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(expand_trailing_semi_macro)]
+pub(crate) struct TrailingMacro {
+    #[note(expand_note1)]
+    #[note(expand_note2)]
+    pub is_trailing: bool,
+    pub name: Ident,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(expand_unused_builtin_attribute)]
+pub(crate) struct UnusedBuiltinAttribute {
+    #[note]
+    pub invoc_span: Span,
+    pub attr_name: Symbol,
+    pub macro_name: String,
+    #[suggestion(code = "", applicability = "machine-applicable", style = "tool-only")]
+    pub attr_span: Span,
+}

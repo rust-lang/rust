@@ -407,9 +407,6 @@ lint_invalid_asm_label_named = avoid using named labels in inline assembly
     .note = see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information
 lint_invalid_asm_label_no_span = the label may be declared in the expansion of a macro
 
-lint_invalid_crate_type_value = invalid `crate_type` value
-    .suggestion = did you mean
-
 # FIXME: we should ordinalize $valid_up_to when we add support for doing so
 lint_invalid_from_utf8_checked = calls to `{$method}` with an invalid literal always return an error
     .label = the literal was valid UTF-8 up to the {$valid_up_to} bytes
@@ -637,9 +634,6 @@ lint_opaque_hidden_inferred_bound = opaque type `{$ty}` does not satisfy its ass
 
 lint_opaque_hidden_inferred_bound_sugg = add this bound
 
-lint_or_patterns_back_compat = the meaning of the `pat` fragment specifier is changing in Rust 2021, which may affect this macro
-    .suggestion = use pat_param to preserve semantics
-
 lint_out_of_scope_macro_calls = cannot find macro `{$path}` in the current scope when looking from {$location}
     .label = not found from {$location}
     .help = import `macro_rules` with `use` to make it callable above its definition
@@ -783,10 +777,6 @@ lint_symbol_intern_string_literal = using `Symbol::intern` on a string literal
 lint_too_large_char_cast = value exceeds maximum `char` value
     .note = maximum valid `char` value is `0x10FFFF`
 
-lint_trailing_semi_macro = trailing semicolon in macro used in expression position
-    .note1 = macro invocations at the end of a block are treated as expressions
-    .note2 = to ignore the value produced by the macro, add a semicolon after the invocation of `{$name}`
-
 lint_ty_qualified = usage of qualified `ty::{$ty}`
     .suggestion = try importing it and using it unqualified
 
@@ -916,10 +906,6 @@ lint_untranslatable_diag = diagnostics should be created using translatable mess
 
 lint_unused_allocation = unnecessary allocation, use `&` instead
 lint_unused_allocation_mut = unnecessary allocation, use `&mut` instead
-
-lint_unused_builtin_attribute = unused attribute `{$attr_name}`
-    .note = the built-in attribute `{$attr_name}` will be ignored, since it's applied to the macro invocation `{$macro_name}`
-    .suggestion = remove the attribute
 
 lint_unused_closure =
     unused {$pre}{$count ->

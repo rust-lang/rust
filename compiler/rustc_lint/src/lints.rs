@@ -2665,21 +2665,6 @@ pub(crate) struct ElidedLifetimesInPaths {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_invalid_crate_type_value)]
-pub(crate) struct UnknownCrateTypes {
-    #[subdiagnostic]
-    pub sugg: Option<UnknownCrateTypesSub>,
-}
-
-#[derive(Subdiagnostic)]
-#[suggestion(lint_suggestion, code = r#""{candidate}""#, applicability = "maybe-incorrect")]
-pub(crate) struct UnknownCrateTypesSub {
-    #[primary_span]
-    pub span: Span,
-    pub candidate: Symbol,
-}
-
-#[derive(LintDiagnostic)]
 #[diag(lint_unused_imports)]
 pub(crate) struct UnusedImports {
     #[subdiagnostic]
@@ -2760,14 +2745,6 @@ pub(crate) struct PatternsInFnsWithoutBodySub {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_or_patterns_back_compat)]
-pub(crate) struct OrPatternsBackCompat {
-    #[suggestion(code = "{suggestion}", applicability = "machine-applicable")]
-    pub span: Span,
-    pub suggestion: String,
-}
-
-#[derive(LintDiagnostic)]
 #[diag(lint_reserved_prefix)]
 pub(crate) struct ReservedPrefix {
     #[label]
@@ -2785,27 +2762,6 @@ pub(crate) struct RawPrefix {
     pub label: Span,
     #[suggestion(code = " ", applicability = "machine-applicable")]
     pub suggestion: Span,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_unused_builtin_attribute)]
-pub(crate) struct UnusedBuiltinAttribute {
-    #[note]
-    pub invoc_span: Span,
-    pub attr_name: Symbol,
-    pub macro_name: String,
-    #[suggestion(code = "", applicability = "machine-applicable", style = "tool-only")]
-    pub attr_span: Span,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_trailing_semi_macro)]
-pub(crate) struct TrailingMacro {
-    #[note(lint_note1)]
-    #[note(lint_note2)]
-    pub is_trailing: bool,
-
-    pub name: Ident,
 }
 
 #[derive(LintDiagnostic)]
