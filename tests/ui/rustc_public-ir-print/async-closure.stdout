@@ -48,7 +48,7 @@ fn foo::{closure#0}::{closure#0}(_1: Pin<&mut {async closure body@$DIR/async-clo
     bb0: {
         _7 = (_1.0: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6});
         _6 = discriminant((*_7));
-        switchInt(move _6) -> [0: bb1, 1: bb4, otherwise: bb5];
+        switchInt(move _6) -> [0: bb1, 1: bb2, otherwise: bb3];
     }
     bb1: {
         StorageLive(_3);
@@ -56,20 +56,14 @@ fn foo::{closure#0}::{closure#0}(_1: Pin<&mut {async closure body@$DIR/async-clo
         _3 = (*_4);
         _5 = ();
         StorageDead(_3);
-        goto -> bb3;
-    }
-    bb2: {
         _0 = std::task::Poll::Ready(move _5);
         discriminant((*_7)) = 1;
         return;
     }
+    bb2: {
+        assert(false, `async fn` resumed after completion) -> [success: bb2, unwind unreachable];
+    }
     bb3: {
-        goto -> bb2;
-    }
-    bb4: {
-        assert(false, `async fn` resumed after completion) -> [success: bb4, unwind unreachable];
-    }
-    bb5: {
         unreachable;
     }
 }
@@ -86,7 +80,7 @@ fn foo::{closure#0}::{synthetic#0}(_1: Pin<&mut {async closure body@$DIR/async-c
     bb0: {
         _7 = (_1.0: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6});
         _6 = discriminant((*_7));
-        switchInt(move _6) -> [0: bb1, 1: bb4, otherwise: bb5];
+        switchInt(move _6) -> [0: bb1, 1: bb2, otherwise: bb3];
     }
     bb1: {
         StorageLive(_3);
@@ -94,20 +88,14 @@ fn foo::{closure#0}::{synthetic#0}(_1: Pin<&mut {async closure body@$DIR/async-c
         _3 = (*_4);
         _5 = ();
         StorageDead(_3);
-        goto -> bb3;
-    }
-    bb2: {
         _0 = std::task::Poll::Ready(move _5);
         discriminant((*_7)) = 1;
         return;
     }
+    bb2: {
+        assert(false, `async fn` resumed after completion) -> [success: bb2, unwind unreachable];
+    }
     bb3: {
-        goto -> bb2;
-    }
-    bb4: {
-        assert(false, `async fn` resumed after completion) -> [success: bb4, unwind unreachable];
-    }
-    bb5: {
         unreachable;
     }
 }
