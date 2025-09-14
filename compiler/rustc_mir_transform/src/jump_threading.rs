@@ -7,7 +7,7 @@
 //! ------------/      \--------              ------------
 //!
 //!
-//! This implementation is heavily inspired by the work outlined in [1].
+//! This implementation is heavily inspired by the work outlined in [libfirm].
 //!
 //! The general algorithm proceeds in two phases: (1) walk the CFG backwards to construct a
 //! graph of threading conditions, and (2) propagate fulfilled conditions forward by duplicating
@@ -49,7 +49,7 @@
 //! conditions and also fulfills `cond`. This is made efficient by maintaining a map of duplicates,
 //! `duplicate[(target, cond)]` to avoid cloning blocks multiple times.
 //!
-//! [1] https://pp.ipd.kit.edu/uploads/publikationen/priesner17masterarbeit.pdf
+//! [libfirm]: <https://pp.ipd.kit.edu/uploads/publikationen/priesner17masterarbeit.pdf>
 
 use std::cell::OnceCell;
 
