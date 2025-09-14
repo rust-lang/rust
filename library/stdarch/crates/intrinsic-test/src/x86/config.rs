@@ -15,6 +15,7 @@ typedef float float32_t;
 typedef double float64_t;
 
 #define __int64 long long
+#define __int32 int
 
 #define _mm512_extract_intrinsic_test_epi8(m, lane) \
     _mm_extract_epi8(_mm512_extracti64x2_epi64((m), (lane) / 16), (lane) % 16)

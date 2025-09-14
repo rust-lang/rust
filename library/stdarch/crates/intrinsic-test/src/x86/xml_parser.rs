@@ -106,7 +106,7 @@ fn xml_to_intrinsic(
     let mut args_test = args.iter();
 
     // if one of the args has etype="MASK" and type="__m<int>d",
-    // then set the bit_len and vec_len accordingly
+    // then set the bit_len and simd_len accordingly
     let re = Regex::new(r"__m\d+").unwrap();
     let is_mask = |arg: &Argument<X86IntrinsicType>| arg.ty.param.etype.as_str() == "MASK";
     let is_vector = |arg: &Argument<X86IntrinsicType>| re.is_match(arg.ty.param.type_data.as_str());

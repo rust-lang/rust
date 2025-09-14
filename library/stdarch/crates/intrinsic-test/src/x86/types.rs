@@ -209,9 +209,9 @@ impl IntrinsicTypeDefinition for X86IntrinsicType {
     /// Determines the get lane function for this type.
     fn get_lane_function(&self) -> String {
         let total_vector_bits: Option<u32> = self
-            .vec_len
+            .simd_len
             .zip(self.bit_len)
-            .and_then(|(vec_len, bit_len)| Some(vec_len * bit_len));
+            .and_then(|(simd_len, bit_len)| Some(simd_len * bit_len));
 
         match (self.bit_len, total_vector_bits) {
             (Some(8), Some(128)) => String::from("_mm_extract_epi8"),
@@ -231,7 +231,7 @@ impl IntrinsicTypeDefinition for X86IntrinsicType {
             (Some(32), Some(64)) => String::from("_mm64_extract_intrinsic_test_epi32"),
             _ => unreachable!(
                 "invalid length for vector argument: {:?}, {:?}",
-                self.bit_len, self.vec_len
+                self.bit_len, self.simd_len
             ),
         }
     }
@@ -345,9 +345,9 @@ impl X86IntrinsicType {
                 if param.type_data.matches("__m").next().is_some()
                     && param.type_data.matches("__mmask").next().is_none()
                 {
-                    data.vec_len = match str::parse::<u32>(type_processed.as_str()) {
-                        // If bit_len is None, vec_len will be None.
-                        // Else vec_len will be (num_bits / bit_len).
+                    data.simd_len = match str::parse::<u32>(type_processed.as_str()) {
+                        // If bit_len is None, simd_len will be None.
+                        // Else simd_len will be (num_bits / bit_len).
                         Ok(num_bits) => data.bit_len.and_then(|bit_len| Some(num_bits / bit_len)),
                         Err(_) => None,
                     };
