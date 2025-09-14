@@ -401,7 +401,6 @@ define!("mir_storage_dead", fn StorageDead<T>(local: T));
 define!("mir_assume", fn Assume(operand: bool));
 define!("mir_deinit", fn Deinit<T>(place: T));
 define!("mir_checked", fn Checked<T>(binop: T) -> (T, bool));
-define!("mir_len", fn Len<T>(place: T) -> usize);
 define!(
     "mir_ptr_metadata",
     fn PtrMetadata<P: ?Sized>(place: *const P) -> <P as ::core::ptr::Pointee>::Metadata
@@ -490,6 +489,13 @@ define!(
     ///
     /// This allows bypassing normal validation to generate strange casts.
     fn CastPtrToPtr<T, U>(operand: T) -> U
+);
+define!(
+    "mir_cast_unsize",
+    /// Emits a `CastKind::PointerCoercion(Unsize)` cast.
+    ///
+    /// This allows bypassing normal validation to generate strange casts.
+    fn CastUnsize<T, U>(operand: T) -> U
 );
 define!(
     "mir_make_place",

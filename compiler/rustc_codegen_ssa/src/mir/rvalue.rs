@@ -7,9 +7,9 @@ use rustc_middle::{bug, mir, span_bug};
 use rustc_session::config::OptLevel;
 use tracing::{debug, instrument};
 
+use super::FunctionCx;
 use super::operand::{OperandRef, OperandRefBuilder, OperandValue};
 use super::place::{PlaceRef, PlaceValue, codegen_tag_value};
-use super::{FunctionCx, LocalRef};
 use crate::common::{IntPredicate, TypeKind};
 use crate::traits::*;
 use crate::{MemFlags, base};
@@ -510,14 +510,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 self.codegen_place_to_pointer(bx, place, mk_ptr)
             }
 
-            mir::Rvalue::Len(place) => {
-                let size = self.evaluate_array_len(bx, place);
-                OperandRef {
-                    val: OperandValue::Immediate(size),
-                    layout: bx.cx().layout_of(bx.tcx().types.usize),
-                }
-            }
-
             mir::Rvalue::BinaryOp(op_with_overflow, box (ref lhs, ref rhs))
                 if let Some(op) = op_with_overflow.overflowing_to_wrapping() =>
             {
@@ -747,21 +739,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 OperandRef { val: operand.val, layout }
             }
         }
-    }
-
-    fn evaluate_array_len(&mut self, bx: &mut Bx, place: mir::Place<'tcx>) -> Bx::Value {
-        // ZST are passed as operands and require special handling
-        // because codegen_place() panics if Local is operand.
-        if let Some(index) = place.as_local()
-            && let LocalRef::Operand(op) = self.locals[index]
-            && let ty::Array(_, n) = op.layout.ty.kind()
-        {
-            let n = n.try_to_target_usize(bx.tcx()).expect("expected monomorphic const in codegen");
-            return bx.cx().const_usize(n);
-        }
-        // use common size calculation for non zero-sized types
-        let cg_value = self.codegen_place(bx, place.as_ref());
-        cg_value.len(bx.cx())
     }
 
     /// Codegen an `Rvalue::RawPtr` or `Rvalue::Ref`

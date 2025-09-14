@@ -1413,6 +1413,7 @@ symbols! {
         mir_call,
         mir_cast_ptr_to_ptr,
         mir_cast_transmute,
+        mir_cast_unsize,
         mir_checked,
         mir_copy_for_deref,
         mir_debuginfo,

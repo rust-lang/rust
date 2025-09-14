@@ -229,6 +229,11 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
                 let source = self.parse_operand(args[0])?;
                 Ok(Rvalue::Cast(CastKind::PtrToPtr, source, expr.ty))
             },
+            @call(mir_cast_unsize, args) => {
+                let source = self.parse_operand(args[0])?;
+                let kind = CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize, CoercionSource::AsCast);
+                Ok(Rvalue::Cast(kind, source, expr.ty))
+            },
             @call(mir_checked, args) => {
                 parse_by_kind!(self, args[0], _, "binary op",
                     ExprKind::Binary { op, lhs, rhs } => {
@@ -247,7 +252,6 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
                 let offset = self.parse_operand(args[1])?;
                 Ok(Rvalue::BinaryOp(BinOp::Offset, Box::new((ptr, offset))))
             },
-            @call(mir_len, args) => Ok(Rvalue::Len(self.parse_place(args[0])?)),
             @call(mir_ptr_metadata, args) => Ok(Rvalue::UnaryOp(UnOp::PtrMetadata, self.parse_operand(args[0])?)),
             @call(mir_copy_for_deref, args) => Ok(Rvalue::CopyForDeref(self.parse_place(args[0])?)),
             ExprKind::Borrow { borrow_kind, arg } => Ok(
