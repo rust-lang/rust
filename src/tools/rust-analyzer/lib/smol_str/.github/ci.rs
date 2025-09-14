@@ -39,6 +39,11 @@ fn try_main() -> Result<()> {
         shell("cargo test --no-default-features --workspace")?;
     }
 
+    {
+        let _s = Section::new("TEST_BENCHES");
+        shell("cargo test --benches --all-features")?;
+    }
+
     let current_branch = shell_output("git branch --show-current")?;
     if &current_branch == "master" {
         let _s = Section::new("PUBLISH");
