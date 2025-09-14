@@ -590,8 +590,12 @@ fn save_as_intervals<'tcx>(
             twostep = TwoStepIndex::from_u32(twostep.as_u32() + 1);
             debug_assert_eq!(twostep, two_step_loc(loc, Effect::After));
             append_at(&mut values, &state, twostep);
-            // Ensure we have a non-zero live range even for dead stores. This is done by marking
-            // all the written-to locals as live in the second half of the statement.
+            // Like terminators, ensure we have a non-zero live range even for dead stores.
+            // Some rvalues interleave reads and writes, for instance `Rvalue::Aggregate`, see
+            // https://github.com/rust-lang/rust/issues/146383. By precaution, treat statements
+            // as behaving so by default.
+            // We make an exception for simple assignments `_a.stuff = {copy|move} _b.stuff`,
+            // as marking `_b` live here would prevent unification.
             let is_simple_assignment =
                 matches!(stmt.kind, StatementKind::Assign(box (_, Rvalue::Use(_))));
             VisitPlacesWith(|place: Place<'tcx>, ctxt| {
