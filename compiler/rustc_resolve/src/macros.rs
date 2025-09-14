@@ -1025,39 +1025,55 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         node_id: NodeId,
     ) {
         let span = path.span;
-        if let Some(stability) = &ext.stability
-            && let StabilityLevel::Unstable { reason, issue, is_soft, implied_by, .. } =
-                stability.level
-        {
-            let feature = stability.feature;
+        if let Some(stability) = &ext.stability {
+            match &stability.level {
+                StabilityLevel::Unstable { reason, issue, is_soft, implied_by, .. } => {
+                    let feature = stability.feature;
 
-            let is_allowed =
-                |feature| self.tcx.features().enabled(feature) || span.allows_unstable(feature);
-            let allowed_by_implication = implied_by.is_some_and(|feature| is_allowed(feature));
-            if !is_allowed(feature) && !allowed_by_implication {
-                let lint_buffer = &mut self.lint_buffer;
-                let soft_handler = |lint, span, msg: String| {
-                    lint_buffer.buffer_lint(
-                        lint,
-                        node_id,
+                    let is_allowed = |feature| {
+                        self.tcx.features().enabled(feature) || span.allows_unstable(feature)
+                    };
+                    let allowed_by_implication =
+                        implied_by.is_some_and(|feature| is_allowed(feature));
+                    if !is_allowed(feature) && !allowed_by_implication {
+                        let lint_buffer = &mut self.lint_buffer;
+                        let soft_handler = |lint, span, msg: String| {
+                            lint_buffer.buffer_lint(
+                                lint,
+                                node_id,
+                                span,
+                                BuiltinLintDiag::UnstableFeature(
+                                    // FIXME make this translatable
+                                    msg.into(),
+                                ),
+                            )
+                        };
+                        stability::report_unstable(
+                            self.tcx.sess,
+                            feature,
+                            reason.to_opt_reason(),
+                            *issue,
+                            None,
+                            *is_soft,
+                            span,
+                            soft_handler,
+                            stability::UnstableKind::Regular,
+                        );
+                    }
+                }
+                StabilityLevel::Removed { reason, issue, since } => {
+                    let feature = stability.feature;
+
+                    stability::report_removed(
+                        self.tcx.sess,
+                        feature,
+                        *since,
+                        reason.to_opt_reason(),
+                        *issue,
                         span,
-                        BuiltinLintDiag::UnstableFeature(
-                            // FIXME make this translatable
-                            msg.into(),
-                        ),
-                    )
-                };
-                stability::report_unstable(
-                    self.tcx.sess,
-                    feature,
-                    reason.to_opt_reason(),
-                    issue,
-                    None,
-                    is_soft,
-                    span,
-                    soft_handler,
-                    stability::UnstableKind::Regular,
-                );
+                    );
+                }
+                _ => {}
             }
         }
         if let Some(depr) = &ext.deprecation {

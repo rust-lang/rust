@@ -1,0 +1,110 @@
+error[E0658]: use of removed library feature `removed_macro_item`
+  --> $DIR/removed_lib_features.rs:14:5
+   |
+LL |     removed_macro!();
+   |     ^^^^^^^^^^^^^
+   |
+   = note: see issue #123456 <https://github.com/rust-lang/rust/issues/123456> for more information
+   = help: add `#![feature(removed_macro_item)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: since: removed since 1.89.0
+   = note: reason: testing removed macro
+
+error[E0658]: use of removed library feature `removed_lib_features`
+  --> $DIR/removed_lib_features.rs:9:5
+   |
+LL | use core::removed_lib_features::*;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #123456 <https://github.com/rust-lang/rust/issues/123456> for more information
+   = help: add `#![feature(removed_lib_features)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: since: removed since 1.89.0
+   = note: reason: testing removed features
+
+error[E0658]: use of removed library feature `removed_macro_item`
+  --> $DIR/removed_lib_features.rs:10:5
+   |
+LL | use core::removed_macro;
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #123456 <https://github.com/rust-lang/rust/issues/123456> for more information
+   = help: add `#![feature(removed_macro_item)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: since: removed since 1.89.0
+   = note: reason: testing removed macro
+
+error[E0658]: use of removed library feature `removed_trait_impl`
+  --> $DIR/removed_lib_features.rs:18:5
+   |
+LL |     Impl::removed_fn();
+   |     ^^^^
+   |
+   = note: see issue #123456 <https://github.com/rust-lang/rust/issues/123456> for more information
+   = help: add `#![feature(removed_trait_impl)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: since: removed since 1.89.0
+   = note: reason: testing removed trait impl
+
+error[E0658]: use of removed library feature `removed_trait_impl`
+  --> $DIR/removed_lib_features.rs:22:13
+   |
+LL |     let _ = Impl::REMOVED_TRAIT_CONST;
+   |             ^^^^
+   |
+   = note: see issue #123456 <https://github.com/rust-lang/rust/issues/123456> for more information
+   = help: add `#![feature(removed_trait_impl)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: since: removed since 1.89.0
+   = note: reason: testing removed trait impl
+
+error[E0658]: use of removed library feature `removed_const_item`
+  --> $DIR/removed_lib_features.rs:26:13
+   |
+LL |     let _ = const_removed::use_removed_const();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #123456 <https://github.com/rust-lang/rust/issues/123456> for more information
+   = help: add `#![feature(removed_const_item)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: since: removed since 1.89.0
+   = note: reason: testing removed const
+
+error[E0658]: use of removed library feature `removed_no_reason`
+  --> $DIR/removed_lib_features.rs:30:5
+   |
+LL |     removed_no_reason();
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #123456 <https://github.com/rust-lang/rust/issues/123456> for more information
+   = help: add `#![feature(removed_no_reason)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: since: removed since 1.89.0
+
+error[E0658]: use of removed library feature `removed_trait_fn`
+  --> $DIR/removed_lib_features.rs:18:5
+   |
+LL |     Impl::removed_fn();
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #123456 <https://github.com/rust-lang/rust/issues/123456> for more information
+   = help: add `#![feature(removed_trait_fn)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: since: removed since 1.89.0
+   = note: reason: testing removed trait fn
+
+error[E0658]: use of removed library feature `removed_trait_fn`
+  --> $DIR/removed_lib_features.rs:22:13
+   |
+LL |     let _ = Impl::REMOVED_TRAIT_CONST;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #123456 <https://github.com/rust-lang/rust/issues/123456> for more information
+   = help: add `#![feature(removed_trait_fn)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: since: removed since 1.89.0
+   = note: reason: testing removed trait fn
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

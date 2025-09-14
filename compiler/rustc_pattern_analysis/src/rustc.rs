@@ -370,10 +370,10 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                             .apply_revealing_opaque(cx.tcx, cx.typing_env, cx.module, &|key| {
                                 cx.reveal_opaque_key(key)
                             });
-                        // Variants that depend on a disabled unstable feature.
+                        // Variants that depend on a disabled unstable or removed feature.
                         let is_unstable = matches!(
                             cx.tcx.eval_stability(variant_def_id, None, DUMMY_SP, None),
-                            EvalResult::Deny { .. }
+                            EvalResult::Deny { .. } | EvalResult::Removed { .. }
                         );
                         // Foreign `#[doc(hidden)]` variants.
                         let is_doc_hidden =

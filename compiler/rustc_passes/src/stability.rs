@@ -1015,6 +1015,12 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
                 tcx.dcx().emit_err(errors::RenamedFeature { span, feature, alias });
             }
 
+            if let FeatureStability::Removed(_since) = stability
+                && let Some(span) = remaining_lib_features.swap_remove(&feature)
+            {
+                tcx.dcx().emit_err(errors::RemovedFeature { span, feature });
+            }
+
             if remaining_lib_features.is_empty() && remaining_implications.is_empty() {
                 break;
             }

@@ -17,7 +17,7 @@ use rustc_lint_defs::builtin::{
 };
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
-use rustc_middle::middle::stability::EvalResult;
+use rustc_middle::middle::stability::{EvalResult, report_removed};
 use rustc_middle::ty::error::TypeErrorToStringExt;
 use rustc_middle::ty::layout::{LayoutError, MAX_SIMD_LANES};
 use rustc_middle::ty::util::Discr;
@@ -1259,7 +1259,11 @@ fn check_impl_items_against_trait<'tcx>(
                         reason,
                         issue,
                     ),
-
+                    EvalResult::Removed { feature, since, reason, issue } => {
+                        // Removed will always give error
+                        // Use report_removed to emit the error
+                        report_removed(tcx.sess, feature, since, reason, issue, full_impl_span);
+                    }
                     // Unmarked default bodies are considered stable (at least for now).
                     EvalResult::Allow | EvalResult::Unmarked => {}
                 }

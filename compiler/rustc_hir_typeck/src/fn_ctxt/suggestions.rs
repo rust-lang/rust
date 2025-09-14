@@ -2045,10 +2045,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> bool {
         // The field must be visible in the containing module.
         field.vis.is_accessible_from(self.tcx.parent_module(hir_id), self.tcx)
-            // The field must not be unstable.
+            // The field must not be unstable or removed.
             && !matches!(
                 self.tcx.eval_stability(field.did, None, rustc_span::DUMMY_SP, None),
                 rustc_middle::middle::stability::EvalResult::Deny { .. }
+                | rustc_middle::middle::stability::EvalResult::Removed { .. }
             )
             // If the field is from an external crate it must not be `doc(hidden)`.
             && (field.did.is_local() || !self.tcx.is_doc_hidden(field.did))

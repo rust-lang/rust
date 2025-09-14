@@ -153,6 +153,10 @@ const_eval_intern_kind = {$kind ->
 }
 
 const_eval_interrupted = compilation was interrupted
+const_eval_intrinsic_cannot_be_removed =
+    The intrinsic `{ $def_path }` cannot be marked as `#[unstable_removed]`
+    .note = Intrinsics are language features, not library features, so `Removed` is invalid
+
 
 const_eval_invalid_align_details =
     invalid align passed to `{$name}`: {$align} is {$err_kind ->
@@ -364,6 +368,8 @@ const_eval_remainder_by_zero =
     calculating the remainder with a divisor of zero
 const_eval_remainder_overflow =
     overflow in signed remainder (dividing MIN by -1)
+const_eval_removed_const_item =
+    use of removed const item `{$def_path}`
 const_eval_scalar_size_mismatch =
     scalar size mismatch: expected {$target_size} bytes but got {$data_size} bytes instead
 const_eval_size_overflow =

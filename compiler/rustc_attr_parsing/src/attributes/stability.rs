@@ -110,6 +110,18 @@ impl<S: Stage> AttributeParser<S> for StabilityParser {
                 this.allowed_through_unstable_modules = Some(value_str);
             },
         ),
+        (
+            &[sym::unstable_removed],
+            template!(List: &[r#"feature = "name", since = "version", reason = "...", issue = "N""#]),
+            |this, cx, args| {
+                reject_outside_std!(cx);
+                if !this.check_duplicate(cx)
+                    && let Some((feature, level)) = parse_unstable_removed(cx, args)
+                {
+                    this.stability = Some((Stability { level, feature }, cx.attr_span));
+                }
+            },
+        ),
     ];
     const ALLOWED_TARGETS: AllowedTargets = ALLOWED_TARGETS;
 
@@ -465,6 +477,117 @@ pub(crate) fn parse_unstability<S: Stage>(
                 is_soft,
                 implied_by,
                 old_name,
+            };
+            Some((feature, level))
+        }
+        (Err(ErrorGuaranteed { .. }), _) | (_, Err(ErrorGuaranteed { .. })) => None,
+    }
+}
+
+/// attribute, and return the feature name and its stability information.
+pub(crate) fn parse_unstable_removed<S: Stage>(
+    cx: &AcceptContext<'_, '_, S>,
+    args: &ArgParser<'_>,
+) -> Option<(Symbol, StabilityLevel)> {
+    let mut feature = None;
+    let mut reason = None;
+    let mut issue = None;
+    let mut issue_num = None;
+    let mut since = None;
+
+    let ArgParser::List(list) = args else {
+        cx.expected_list(cx.attr_span);
+        return None;
+    };
+
+    for param in list.mixed() {
+        let Some(param) = param.meta_item() else {
+            cx.emit_err(session_diagnostics::UnsupportedLiteral {
+                span: param.span(),
+                reason: UnsupportedLiteralReason::Generic,
+                is_bytestr: false,
+                start_point_span: cx.sess().source_map().start_point(param.span()),
+            });
+            return None;
+        };
+
+        let word = param.path().word();
+        match word.map(|i| i.name) {
+            Some(sym::feature) => {
+                insert_value_into_option_or_error(cx, &param, &mut feature, word.unwrap())?
+            }
+            Some(sym::reason) => {
+                insert_value_into_option_or_error(cx, &param, &mut reason, word.unwrap())?
+            }
+            Some(sym::since) => {
+                insert_value_into_option_or_error(cx, &param, &mut since, word.unwrap())?
+            }
+            Some(sym::issue) => {
+                insert_value_into_option_or_error(cx, &param, &mut issue, word.unwrap())?;
+
+                // These unwraps are safe because `insert_value_into_option_or_error` ensures the meta item
+                // is a name/value pair string literal.
+                issue_num = match issue.unwrap().as_str() {
+                    "none" => None,
+                    issue_str => match issue_str.parse::<NonZero<u32>>() {
+                        Ok(num) => Some(num),
+                        Err(err) => {
+                            cx.emit_err(
+                                session_diagnostics::InvalidIssueString {
+                                    span: param.span(),
+                                    cause: session_diagnostics::InvalidIssueStringCause::from_int_error_kind(
+                                        param.args().name_value().unwrap().value_span,
+                                        err.kind(),
+                                    ),
+                                },
+                            );
+                            return None;
+                        }
+                    },
+                };
+            }
+            _ => {
+                cx.emit_err(session_diagnostics::UnknownMetaItem {
+                    span: param.span(),
+                    item: param.path().to_string(),
+                    expected: &["feature", "reason", "issue", "since"],
+                });
+                return None;
+            }
+        }
+    }
+
+    let feature = match feature {
+        Some(feature) if rustc_lexer::is_ident(feature.as_str()) => Ok(feature),
+        Some(_bad_feature) => {
+            Err(cx.emit_err(session_diagnostics::NonIdentFeature { span: cx.attr_span }))
+        }
+        None => Err(cx.emit_err(session_diagnostics::MissingFeature { span: cx.attr_span })),
+    };
+
+    let since = if let Some(since) = since {
+        if since.as_str() == VERSION_PLACEHOLDER {
+            StableSince::Current
+        } else if let Some(version) = parse_version(since) {
+            StableSince::Version(version)
+        } else {
+            let err = cx.emit_err(session_diagnostics::InvalidSince { span: cx.attr_span });
+            StableSince::Err(err)
+        }
+    } else {
+        let err = cx.emit_err(session_diagnostics::MissingSince { span: cx.attr_span });
+        StableSince::Err(err)
+    };
+
+    let issue =
+        issue.ok_or_else(|| cx.emit_err(session_diagnostics::MissingIssue { span: cx.attr_span }));
+
+    match (feature, issue) {
+        (Ok(feature), Ok(_)) => {
+            let level = StabilityLevel::Removed {
+                reason: UnstableReason::from_opt_reason(reason),
+                issue: issue_num,
+                since,
             };
             Some((feature, level))
         }

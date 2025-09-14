@@ -398,3 +398,12 @@ pub mod simd {
 }
 
 include!("primitive_docs.rs");
+
+// For testing `#[unstable_removed]`
+#[unstable_removed(
+    feature = "removed_lib_features",
+    reason = "testing removed features",
+    issue = "123456",
+    since = "1.89.0"
+)]
+pub mod removed_lib_features;

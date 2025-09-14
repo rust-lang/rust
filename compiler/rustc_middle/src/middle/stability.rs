@@ -8,7 +8,7 @@ use rustc_errors::{Applicability, Diag, EmissionGuarantee, LintBuffer};
 use rustc_feature::GateIssue;
 use rustc_hir::attrs::{DeprecatedSince, Deprecation};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{self as hir, ConstStability, DefaultBodyStability, HirId, Stability};
+use rustc_hir::{self as hir, ConstStability, DefaultBodyStability, HirId, Stability, StableSince};
 use rustc_macros::{Decodable, Encodable, HashStable, Subdiagnostic};
 use rustc_session::Session;
 use rustc_session::lint::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE, SOFT_UNSTABLE};
@@ -25,6 +25,7 @@ use crate::ty::print::with_no_trimmed_paths;
 pub enum StabilityLevel {
     Unstable,
     Stable,
+    Removed,
 }
 
 #[derive(Copy, Clone)]
@@ -95,6 +96,39 @@ pub fn report_unstable(
         }
         err.emit();
     }
+}
+
+// FIXME: still uses error code of report_unstable, code needed (todo)
+pub fn report_removed(
+    sess: &Session,
+    feature: Symbol,
+    since: StableSince,
+    reason: Option<Symbol>,
+    issue: Option<NonZero<u32>>,
+    span: Span,
+) {
+    let msg = format!("use of removed library feature `{feature}`");
+    let mut err = feature_err_issue(sess, feature, span, GateIssue::Library(issue), msg);
+
+    match since {
+        StableSince::Current => {
+            err.note("since: removed since current");
+        }
+        StableSince::Version(ver) => {
+            err.note(format!("since: removed since {ver}"));
+        }
+        StableSince::Err(_) => {
+            err.note("since: removed with invalid version");
+        }
+    }
+
+    if let Some(r) = reason {
+        if r != sym::empty {
+            err.note(format!("reason: {r}"));
+        }
+    }
+
+    err.emit();
 }
 
 fn deprecation_lint(is_in_effect: bool) -> &'static Lint {
@@ -250,6 +284,14 @@ pub enum EvalResult {
     },
     /// The item does not have the `#[stable]` or `#[unstable]` marker assigned.
     Unmarked,
+    /// We cannot use the item because it is removed and we did not provide the
+    /// corresponding feature gate.
+    Removed {
+        feature: Symbol,
+        reason: Option<Symbol>,
+        since: StableSince,
+        issue: Option<NonZero<u32>>,
+    },
 }
 
 // See issue #83250.
@@ -416,6 +458,14 @@ impl<'tcx> TyCtxt<'tcx> {
                     is_soft,
                 }
             }
+            Some(Stability {
+                level: hir::StabilityLevel::Removed { reason, issue, since, .. },
+                feature,
+                ..
+            }) => {
+                // Always deny(Removed here) removed features
+                EvalResult::Removed { feature, since, reason: reason.to_opt_reason(), issue }
+            }
             Some(_) => {
                 // Stable APIs are always ok to call and deprecated APIs are
                 // handled by the lint emitting logic above.
@@ -468,6 +518,10 @@ impl<'tcx> TyCtxt<'tcx> {
                     is_soft,
                 }
             }
+            Some(DefaultBodyStability {
+                level: hir::StabilityLevel::Removed { reason, issue, since, .. },
+                feature,
+            }) => EvalResult::Removed { feature, since, reason: reason.to_opt_reason(), issue },
             Some(_) => {
                 // Stable APIs are always ok to call
                 EvalResult::Allow
@@ -564,6 +618,9 @@ impl<'tcx> TyCtxt<'tcx> {
                 soft_handler,
                 UnstableKind::Regular,
             ),
+            EvalResult::Removed { feature, reason, since, issue } => {
+                report_removed(self.sess, feature, since, reason, issue, span)
+            }
             EvalResult::Unmarked => unmarked(span, def_id),
         }
 

@@ -540,6 +540,15 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
                     });
                 }
             }
+            Some(rustc_hir::ConstStability {
+                level: rustc_hir::StabilityLevel::Removed { .. },
+                ..
+            }) => {
+                self.dcx().emit_err(errors::RemovedConstItem {
+                    span: self.span,
+                    def_path: self.tcx.def_path_str(def_id),
+                });
+            }
         }
     }
 }
@@ -909,6 +918,16 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             // can be *directly* invoked from stable const code) does not always
                             // have the `#[rustc_intrinsic_const_stable_indirect]` attribute (which controls
                             // exposing an intrinsic indirectly); we accept this call anyway.
+                        }
+                        Some(hir::ConstStability {
+                            level: hir::StabilityLevel::Removed { .. },
+                            ..
+                        }) => {
+                            // emit error as unstable_removed is only for lib features
+                            self.dcx().emit_err(errors::IntrinsicCannotBeRemoved {
+                                span: self.span,
+                                def_path: self.tcx.def_path_str(callee),
+                            });
                         }
                     }
                     // This completes the checks for intrinsics.

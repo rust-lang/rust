@@ -1063,13 +1063,13 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     true
                 }
             })
-            // ensure that we don't suggest unstable methods
+            // ensure that we don't suggest unstable or removed methods
             .filter(|candidate| {
                 // note that `DUMMY_SP` is ok here because it is only used for
                 // suggestions and macro stuff which isn't applicable here.
                 !matches!(
                     self.tcx.eval_stability(candidate.item.def_id, None, DUMMY_SP, None),
-                    stability::EvalResult::Deny { .. }
+                    stability::EvalResult::Deny { .. } | stability::EvalResult::Removed { .. }
                 )
             })
             .map(|candidate| candidate.item.ident(self.tcx))
@@ -1615,13 +1615,14 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
         if let Some(uc) = &mut pick_diag_hints.unstable_candidates {
             applicable_candidates.retain(|&(candidate, _)| {
-                if let stability::EvalResult::Deny { feature, .. } =
-                    self.tcx.eval_stability(candidate.item.def_id, None, self.span, None)
-                {
-                    uc.push((candidate.clone(), feature));
-                    return false;
+                match self.tcx.eval_stability(candidate.item.def_id, None, self.span, None) {
+                    stability::EvalResult::Deny { feature, .. }
+                    | stability::EvalResult::Removed { feature, .. } => {
+                        uc.push((candidate.clone(), feature));
+                        false
+                    }
+                    _ => true,
                 }
-                true
             });
         }
 

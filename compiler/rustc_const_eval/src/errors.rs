@@ -79,6 +79,23 @@ pub(crate) struct UnstableInStableExposed {
 }
 
 #[derive(Diagnostic)]
+#[diag(const_eval_removed_const_item)] // FIXME: code needed (todo)
+pub(crate) struct RemovedConstItem {
+    #[primary_span]
+    pub span: Span,
+    pub def_path: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(const_eval_intrinsic_cannot_be_removed)] // FIXME: code needed (todo)
+#[note]
+pub(crate) struct IntrinsicCannotBeRemoved {
+    #[primary_span]
+    pub span: Span,
+    pub def_path: String,
+}
+
+#[derive(Diagnostic)]
 #[diag(const_eval_thread_local_access, code = E0625)]
 pub(crate) struct ThreadLocalAccessErr {
     #[primary_span]

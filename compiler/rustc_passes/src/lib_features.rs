@@ -13,7 +13,7 @@ use rustc_middle::query::{LocalCrate, Providers};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::{Span, Symbol, sym};
 
-use crate::errors::{FeaturePreviouslyDeclared, FeatureStableTwice};
+use crate::errors::{FeaturePreviouslyDeclared, FeatureRemovedTwice, FeatureStableTwice};
 
 struct LibFeatureCollector<'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -42,6 +42,11 @@ impl<'tcx> LibFeatureCollector<'tcx> {
         let feature_stability = match level {
             StabilityLevel::Unstable { old_name, .. } => FeatureStability::Unstable { old_name },
             StabilityLevel::Stable { since, .. } => FeatureStability::AcceptedSince(match since {
+                StableSince::Version(v) => Symbol::intern(&v.to_string()),
+                StableSince::Current => sym::env_CFG_RELEASE,
+                StableSince::Err(_) => return None,
+            }),
+            StabilityLevel::Removed { since, .. } => FeatureStability::Removed(match since {
                 StableSince::Version(v) => Symbol::intern(&v.to_string()),
                 StableSince::Current => sym::env_CFG_RELEASE,
                 StableSince::Err(_) => return None,
@@ -89,6 +94,51 @@ impl<'tcx> LibFeatureCollector<'tcx> {
             }
             // duplicate `unstable` feature is ok.
             (FeatureStability::Unstable { .. }, Some((FeatureStability::Unstable { .. }, _))) => {}
+            (
+                FeatureStability::Removed(since),
+                Some((FeatureStability::Removed(prev_since), _)),
+            ) => {
+                if prev_since != since {
+                    self.tcx.dcx().emit_err(FeatureRemovedTwice {
+                        span,
+                        feature,
+                        since,
+                        prev_since,
+                    });
+                }
+            }
+            (FeatureStability::Removed(_), Some((FeatureStability::AcceptedSince(_), _))) => {
+                self.tcx.dcx().emit_err(FeaturePreviouslyDeclared {
+                    span,
+                    feature,
+                    declared: "removed",
+                    prev_declared: "stable",
+                });
+            }
+            (FeatureStability::Removed(_), Some((FeatureStability::Unstable { .. }, _))) => {
+                self.tcx.dcx().emit_err(FeaturePreviouslyDeclared {
+                    span,
+                    feature,
+                    declared: "removed",
+                    prev_declared: "unstable",
+                });
+            }
+            (FeatureStability::AcceptedSince(_), Some((FeatureStability::Removed(_), _))) => {
+                self.tcx.dcx().emit_err(FeaturePreviouslyDeclared {
+                    span,
+                    feature,
+                    declared: "stable",
+                    prev_declared: "removed",
+                });
+            }
+            (FeatureStability::Unstable { .. }, Some((FeatureStability::Removed(_), _))) => {
+                self.tcx.dcx().emit_err(FeaturePreviouslyDeclared {
+                    span,
+                    feature,
+                    declared: "unstable",
+                    prev_declared: "removed",
+                });
+            }
         }
     }
 }

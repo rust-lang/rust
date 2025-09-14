@@ -844,6 +844,16 @@ pub(crate) struct FeatureStableTwice {
 }
 
 #[derive(Diagnostic)]
+#[diag(passes_feature_removed_twice)] // FIXME: code needed (todo)
+pub(crate) struct FeatureRemovedTwice {
+    #[primary_span]
+    pub span: Span,
+    pub feature: Symbol,
+    pub since: Symbol,
+    pub prev_since: Symbol,
+}
+
+#[derive(Diagnostic)]
 #[diag(passes_feature_previously_declared, code = E0711)]
 pub(crate) struct FeaturePreviouslyDeclared<'a> {
     #[primary_span]
@@ -1199,6 +1209,14 @@ pub(crate) struct RenamedFeature {
     pub span: Span,
     pub feature: Symbol,
     pub alias: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_removed_feature)] // FIXME: code needed (todo)
+pub(crate) struct RemovedFeature {
+    #[primary_span]
+    pub span: Span,
+    pub feature: Symbol,
 }
 
 #[derive(Diagnostic)]

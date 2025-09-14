@@ -907,6 +907,11 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::Yes
     ),
     ungated!(
+        unstable_removed, Normal,
+        template!(List: &[r#"feature = "name", reason = "...", issue = "N", since = "version""#]),
+        DuplicatesOk, EncodeCrossCrate::No
+    ),
+    ungated!(
         unstable_feature_bound, Normal, template!(Word, List: &["feat1, feat2, ..."]),
         DuplicatesOk, EncodeCrossCrate::No,
     ),

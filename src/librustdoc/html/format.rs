@@ -1504,6 +1504,11 @@ pub(crate) fn print_constness_with_space(
             }
             // const unstable (and overall stable)
             (Some(_), Some(ConstStability { level: StabilityLevel::Unstable { .. }, .. })) => "",
+            // const removed
+            (None, Some(ConstStability { level: StabilityLevel::Removed { .. }, .. }))
+            | (Some(_), Some(ConstStability { level: StabilityLevel::Removed { .. }, .. })) => {
+                "removed "
+            }
         },
         // not const
         hir::Constness::NotConst => "",

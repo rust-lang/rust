@@ -287,6 +287,9 @@ passes_extern_main =
 passes_feature_previously_declared =
     feature `{$feature}` is declared {$declared}, but was previously declared {$prev_declared}
 
+passes_feature_removed_twice =
+    feature `{$feature}` was removed in {$since}, but was previously removed in {$prev_since}
+
 passes_feature_stable_twice =
     feature `{$feature}` is declared stable since {$since}, but was previously declared stable since {$prev_since}
 
@@ -492,6 +495,9 @@ passes_remove_fields =
       [one] field
      *[other] fields
     }
+
+passes_removed_feature =
+    feature `{$feature}` has been removed and can no longer be used
 
 passes_repr_align_greater_than_target_max =
     alignment must not be greater than `isize::MAX` bytes

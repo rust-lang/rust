@@ -1508,6 +1508,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     false
                 }
             }
+            Some(Stability { level: StabilityLevel::Removed { .. }, .. }) => false, // explicitly deny removed features
             Some(_) => true,
             None => false,
         }

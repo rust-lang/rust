@@ -13,6 +13,7 @@ pub mod lib_features {
     pub enum FeatureStability {
         AcceptedSince(Symbol),
         Unstable { old_name: Option<Symbol> },
+        Removed(Symbol),
     }
 
     #[derive(HashStable, Debug, Default)]

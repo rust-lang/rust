@@ -143,6 +143,13 @@ pub enum StabilityLevel {
         /// the `Symbol` is the deprecation message printed in that case.
         allowed_through_unstable_modules: Option<Symbol>,
     },
+    /// `#[unstable_removed]`
+    Removed {
+        /// Rust release which removed this feature.
+        since: StableSince,
+        issue: Option<NonZero<u32>>,
+        reason: UnstableReason,
+    },
 }
 
 /// Rust release in which a feature is stabilized.
@@ -164,10 +171,14 @@ impl StabilityLevel {
     pub fn is_stable(&self) -> bool {
         matches!(self, StabilityLevel::Stable { .. })
     }
+    pub fn is_removed(&self) -> bool {
+        matches!(self, StabilityLevel::Removed { .. })
+    }
     pub fn stable_since(&self) -> Option<StableSince> {
         match *self {
             StabilityLevel::Stable { since, .. } => Some(since),
             StabilityLevel::Unstable { .. } => None,
+            StabilityLevel::Removed { since, .. } => Some(since),
         }
     }
 }
