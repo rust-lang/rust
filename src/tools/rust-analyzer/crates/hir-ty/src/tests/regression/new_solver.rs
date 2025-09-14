@@ -116,3 +116,34 @@ fn main() {
         "#]],
     );
 }
+
+#[test]
+fn no_infinite_loop_on_super_predicates_elaboration() {
+    check_infer(
+        r#"
+//- minicore: sized
+trait DimMax<Other: Dimension> {
+    type Output: Dimension;
+}
+
+trait Dimension: DimMax<<Self as Dimension>:: Smaller, Output = Self> {
+    type Smaller: Dimension;
+}
+
+fn test<T, U>(t: T)
+where
+    T: DimMax<U>,
+    U: Dimension,
+{
+    let t: <T as DimMax<U>>::Output = loop {};
+}
+"#,
+        expect![[r#"
+            182..183 't': T
+            230..280 '{     ... {}; }': ()
+            240..241 't': <T as DimMax<U>>::Output
+            270..277 'loop {}': !
+            275..277 '{}': ()
+        "#]],
+    )
+}

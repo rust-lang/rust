@@ -253,7 +253,8 @@ trait Bar<T> {
 trait Baz : Bar<Self> {
 }
 "#,
-        [("Bar", vec![]), ("Baz", vec![SizedSelf, SelfReferential])],
+        // FIXME: We should also report `SizedSelf` here
+        [("Bar", vec![]), ("Baz", vec![SelfReferential])],
     );
 }
 

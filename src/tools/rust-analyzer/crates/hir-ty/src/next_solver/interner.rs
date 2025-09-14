@@ -5,7 +5,7 @@ use base_db::Crate;
 use chalk_ir::{ProgramClauseImplication, SeparatorTraitRef, Variances};
 use hir_def::lang_item::LangItem;
 use hir_def::signatures::{FieldData, FnFlags, ImplFlags, StructFlags, TraitFlags};
-use hir_def::{AdtId, BlockId, TypeAliasId, VariantId};
+use hir_def::{AdtId, BlockId, GenericDefId, TypeAliasId, VariantId};
 use hir_def::{AttrDefId, Lookup};
 use hir_def::{CallableDefId, EnumVariantId, ItemContainerId, StructId, UnionId};
 use intern::sym::non_exhaustive;
@@ -1334,6 +1334,13 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
             .db()
             .generic_predicates_ns(def_id.0.into())
             .iter()
+            .filter(|p| match p.kind().skip_binder() {
+                rustc_type_ir::ClauseKind::Trait(tr) => match tr.self_ty().kind() {
+                    rustc_type_ir::TyKind::Param(param) => param.index == 0,
+                    _ => false,
+                },
+                _ => true,
+            })
             .cloned()
             .map(|p| (p, Span::dummy()))
             .collect();
@@ -1345,10 +1352,24 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
         self,
         def_id: Self::DefId,
     ) -> EarlyBinder<Self, impl IntoIterator<Item = (Self::Clause, Self::Span)>> {
+        fn is_self_or_assoc(ty: Ty<'_>) -> bool {
+            match ty.kind() {
+                rustc_type_ir::TyKind::Param(param) => param.index == 0,
+                rustc_type_ir::TyKind::Alias(rustc_type_ir::AliasTyKind::Projection, alias) => {
+                    is_self_or_assoc(alias.self_ty())
+                }
+                _ => false,
+            }
+        }
+
         let predicates: Vec<(Clause<'db>, Span)> = self
             .db()
             .generic_predicates_ns(def_id.try_into().unwrap())
             .iter()
+            .filter(|p| match p.kind().skip_binder() {
+                rustc_type_ir::ClauseKind::Trait(tr) => is_self_or_assoc(tr.self_ty()),
+                _ => true,
+            })
             .cloned()
             .map(|p| (p, Span::dummy()))
             .collect();
