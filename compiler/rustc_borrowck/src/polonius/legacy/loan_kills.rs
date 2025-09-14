@@ -67,14 +67,12 @@ impl<'a, 'tcx> Visitor<'tcx> for LoanKillsGenerator<'a, 'tcx> {
             self.location_table.mid_index(location),
         ));
 
-        let successor_blocks = terminator.successors();
-        self.facts.cfg_edge.reserve(successor_blocks.size_hint().0);
-        for successor_block in successor_blocks {
-            self.facts.cfg_edge.push((
+        self.facts.cfg_edge.extend(terminator.successors().map(|successor_block| {
+            (
                 self.location_table.mid_index(location),
                 self.location_table.start_index(successor_block.start_location()),
-            ));
-        }
+            )
+        }));
 
         // A `Call` terminator's return value can be a local which has borrows,
         // so we need to record those as `killed` as well.

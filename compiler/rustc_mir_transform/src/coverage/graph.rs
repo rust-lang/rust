@@ -2,13 +2,14 @@ use std::cmp::Ordering;
 use std::ops::{Index, IndexMut};
 use std::{mem, slice};
 
+use either::Either;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_data_structures::graph::{self, DirectedGraph, StartNode};
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 pub(crate) use rustc_middle::mir::coverage::{BasicCoverageBlock, START_BCB};
-use rustc_middle::mir::{self, BasicBlock, Terminator, TerminatorKind};
+use rustc_middle::mir::{self, AllSwitchTargets, BasicBlock, Terminator, TerminatorKind};
 use tracing::debug;
 
 /// A coverage-specific simplification of the MIR control flow graph (CFG). The `CoverageGraph`s
@@ -322,29 +323,35 @@ impl BasicCoverageBlockData {
 /// Holds the coverage-relevant successors of a basic block's terminator, and
 /// indicates whether that block can potentially be combined into the same BCB
 /// as its sole successor.
-#[derive(Clone, Copy, Debug)]
 struct CoverageSuccessors<'a> {
     /// Coverage-relevant successors of the corresponding terminator.
     /// There might be 0, 1, or multiple targets.
-    targets: &'a [BasicBlock],
+    targets: Either<AllSwitchTargets<'a>, &'a [BasicBlock]>,
     /// `Yield` terminators are not chainable, because their sole out-edge is
     /// only followed if/when the generator is resumed after the yield.
     is_yield: bool,
 }
 
 impl CoverageSuccessors<'_> {
+    fn targets_len(&self) -> usize {
+        match &self.targets {
+            Either::Left(targets) => targets.size_hint().0,
+            Either::Right(targets) => targets.len(),
+        }
+    }
+
     /// If `false`, this terminator cannot be chained into another block when
     /// building the coverage graph.
     fn is_out_chainable(&self) -> bool {
         // If a terminator is out-summable and has exactly one out-edge, then
         // it is eligible to be chained into its successor block.
-        self.is_out_summable() && self.targets.len() == 1
+        self.is_out_summable() && self.targets_len() == 1
     }
 
     /// Returns true if the terminator itself is assumed to have the same
     /// execution count as the sum of its out-edges (assuming no panics).
     fn is_out_summable(&self) -> bool {
-        !self.is_yield && !self.targets.is_empty()
+        !self.is_yield && self.targets_len() != 0
     }
 }
 
@@ -353,7 +360,7 @@ impl IntoIterator for CoverageSuccessors<'_> {
     type IntoIter = impl DoubleEndedIterator<Item = Self::Item>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.targets.iter().copied()
+        self.targets.map_right(|targets| targets.iter().copied())
     }
 }
 
@@ -366,13 +373,13 @@ fn bcb_filtered_successors<'a, 'tcx>(terminator: &'a Terminator<'tcx>) -> Covera
     let mut is_yield = false;
     let targets = match &terminator.kind {
         // A switch terminator can have many coverage-relevant successors.
-        SwitchInt { targets, .. } => targets.all_targets(),
+        SwitchInt { targets, .. } => Either::Left(targets.all_targets()),
 
         // A yield terminator has exactly 1 successor, but should not be chained,
         // because its resume edge has a different execution count.
         Yield { resume, .. } => {
             is_yield = true;
-            slice::from_ref(resume)
+            Either::Right(slice::from_ref(resume))
         }
 
         // These terminators have exactly one coverage-relevant successor,
@@ -381,15 +388,15 @@ fn bcb_filtered_successors<'a, 'tcx>(terminator: &'a Terminator<'tcx>) -> Covera
         | Drop { target, .. }
         | FalseEdge { real_target: target, .. }
         | FalseUnwind { real_target: target, .. }
-        | Goto { target } => slice::from_ref(target),
+        | Goto { target } => Either::Right(slice::from_ref(target)),
 
         // A call terminator can normally be chained, except when it has no
         // successor because it is known to diverge.
-        Call { target: maybe_target, .. } => maybe_target.as_slice(),
+        Call { target: maybe_target, .. } => Either::Right(maybe_target.as_slice()),
 
         // An inline asm terminator can normally be chained, except when it
         // diverges or uses asm goto.
-        InlineAsm { targets, .. } => &targets,
+        InlineAsm { targets, .. } => Either::Right(targets.as_ref()),
 
         // These terminators have no coverage-relevant successors.
         CoroutineDrop
@@ -397,7 +404,7 @@ fn bcb_filtered_successors<'a, 'tcx>(terminator: &'a Terminator<'tcx>) -> Covera
         | TailCall { .. }
         | Unreachable
         | UnwindResume
-        | UnwindTerminate(_) => &[],
+        | UnwindTerminate(_) => Either::Right(&[][..]),
     };
 
     CoverageSuccessors { targets, is_yield }

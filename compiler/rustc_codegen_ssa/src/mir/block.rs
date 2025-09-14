@@ -1,5 +1,6 @@
 use std::cmp;
 
+use itertools::Itertools as _;
 use rustc_abi::{Align, BackendRepr, ExternAbi, HasDataLayout, Reg, Size, WrappingRange};
 use rustc_ast as ast;
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};

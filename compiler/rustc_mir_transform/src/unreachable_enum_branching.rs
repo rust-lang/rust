@@ -181,7 +181,7 @@ impl<'tcx> crate::MirPass<'tcx> for UnreachableEnumBranching {
                 && allowed_variants.len() == 1
                 // Despite the LLVM issue, we hope that small enum can still be transformed.
                 // This is valuable for both `a <= b` and `if let Some/Ok(v)`.
-                && (targets.all_targets().len() <= 3
+                && (targets.normal().len() <= 2
                     || check_successors(&body.basic_blocks, targets.otherwise()));
             let replace_otherwise_to_unreachable = otherwise_is_last_variant
                 || (!otherwise_is_empty_unreachable && allowed_variants.is_empty());
@@ -199,10 +199,10 @@ impl<'tcx> crate::MirPass<'tcx> for UnreachableEnumBranching {
                     let last_variant = *allowed_variants.iter().next().unwrap();
                     targets.add_target(last_variant, targets.otherwise());
                 }
-                unreachable_targets.push(targets.iter().count());
+                *targets.otherwise_mut() = unreachable_block;
             }
             for index in unreachable_targets.iter() {
-                targets.all_targets_mut()[*index] = unreachable_block;
+                targets.normal_mut()[*index].1 = unreachable_block;
             }
             patch.patch_terminator(bb, TerminatorKind::SwitchInt { targets, discr: discr.clone() });
         }

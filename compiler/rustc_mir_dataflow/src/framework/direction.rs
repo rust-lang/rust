@@ -304,7 +304,7 @@ impl Direction for Forward {
                     propagate(targets.otherwise(), exit_state);
                 } else {
                     for target in targets.all_targets() {
-                        propagate(*target, exit_state);
+                        propagate(target, exit_state);
                     }
                 }
             }

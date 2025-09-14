@@ -1,5 +1,6 @@
 use std::iter;
 
+use itertools::Itertools as _;
 use rustc_abi::Integer;
 use rustc_index::IndexSlice;
 use rustc_middle::mir::*;
@@ -162,9 +163,11 @@ impl<'tcx> SimplifyMatch<'tcx> for SimplifyToIf {
         bbs: &IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
         _discr_ty: Ty<'tcx>,
     ) -> Option<()> {
-        let (first, second) = match targets.all_targets() {
-            &[first, otherwise] => (first, otherwise),
-            &[first, second, otherwise] if bbs[otherwise].is_empty_unreachable() => (first, second),
+        let (first, second) = match (targets.normal(), targets.otherwise()) {
+            (&[(_, first)], otherwise) => (first, otherwise),
+            (&[(_, first), (_, second)], otherwise) if bbs[otherwise].is_empty_unreachable() => {
+                (first, second)
+            }
             _ => {
                 return None;
             }
@@ -219,9 +222,9 @@ impl<'tcx> SimplifyMatch<'tcx> for SimplifyToIf {
         discr_local: Local,
         discr_ty: Ty<'tcx>,
     ) {
-        let ((val, first), second) = match (targets.all_targets(), targets.all_values()) {
-            (&[first, otherwise], &[val]) => ((val, first), otherwise),
-            (&[first, second, otherwise], &[val, _]) if bbs[otherwise].is_empty_unreachable() => {
+        let ((val, first), second) = match (targets.normal(), targets.otherwise()) {
+            (&[(val, first)], otherwise) => ((val, first), otherwise),
+            (&[(val, first), (_, second)], otherwise) if bbs[otherwise].is_empty_unreachable() => {
                 ((val, first), second)
             }
             _ => unreachable!(),

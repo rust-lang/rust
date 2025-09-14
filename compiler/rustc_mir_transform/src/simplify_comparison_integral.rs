@@ -1,4 +1,5 @@
 use std::iter;
+use std::mem::swap;
 
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::Scalar;
@@ -57,19 +58,14 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyComparisonIntegral {
             let mut new_targets = opt.targets;
             let first_value = new_targets.iter().next().unwrap().0;
             let first_is_false_target = first_value == FALSE;
-            match opt.op {
-                BinOp::Eq => {
-                    // if the assignment was Eq we want the true case to be first
-                    if first_is_false_target {
-                        new_targets.all_targets_mut().swap(0, 1);
-                    }
-                }
-                BinOp::Ne => {
+            match (opt.op, first_is_false_target) {
+                (BinOp::Eq, true) | (BinOp::Ne, false) => {
+                    // if the assignment was Eq we want the true case to be first,
                     // if the assignment was Ne we want the false case to be first
-                    if !first_is_false_target {
-                        new_targets.all_targets_mut().swap(0, 1);
-                    }
+                    let (normal, otherwise) = new_targets.parts_mut();
+                    swap(&mut normal[0].1, otherwise);
                 }
+                (BinOp::Eq | BinOp::Ne, _) => {}
                 _ => unreachable!(),
             }
 
@@ -114,7 +110,7 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyComparisonIntegral {
                 // each target
                 for bb_idx in new_targets.all_targets() {
                     storage_deads_to_insert.push((
-                        *bb_idx,
+                        bb_idx,
                         Statement::new(
                             terminator.source_info,
                             StatementKind::StorageDead(opt.to_switch_on.local),
@@ -123,9 +119,9 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyComparisonIntegral {
                 }
             }
 
-            let [bb_cond, bb_otherwise] = match new_targets.all_targets() {
-                [a, b] => [*a, *b],
-                e => bug!("expected 2 switch targets, got: {:?}", e),
+            let [bb_cond, bb_otherwise] = match (new_targets.normal(), new_targets.otherwise()) {
+                ([(_, a)], b) => [*a, b],
+                (e, _) => bug!("expected 1 switch target, got: {}", e.len()),
             };
 
             let targets = SwitchTargets::new(iter::once((new_value, bb_cond)), bb_otherwise);

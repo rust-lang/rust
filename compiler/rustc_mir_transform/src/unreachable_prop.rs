@@ -129,7 +129,7 @@ fn remove_successors_from_switch<'tcx>(
 
     let new_targets = SwitchTargets::new(reachable_iter, otherwise);
 
-    let num_targets = new_targets.all_targets().len();
+    let num_targets = new_targets.normal().len() + 1;
     let fully_unreachable = num_targets == 1 && otherwise_unreachable;
 
     let terminator = match (num_targets, otherwise_unreachable) {
@@ -142,7 +142,7 @@ fn remove_successors_from_switch<'tcx>(
             add_assumption(BinOp::Eq, value);
             TerminatorKind::Goto { target }
         }
-        _ if num_targets == targets.all_targets().len() => {
+        _ if num_targets == targets.normal().len() + 1 => {
             // Nothing has changed.
             return false;
         }

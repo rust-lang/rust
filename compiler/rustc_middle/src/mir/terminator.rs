@@ -1,5 +1,6 @@
 //! Functionality for terminators and helper types that appear in terminators.
 
+use std::iter::TrustedLen;
 use std::slice;
 
 use rustc_ast::InlineAsmOptions;
@@ -10,31 +11,28 @@ use smallvec::{SmallVec, smallvec};
 
 use super::*;
 
+pub type AllSwitchTargets<'a> = impl DoubleEndedIterator<Item = BasicBlock> + TrustedLen + 'a;
+
 impl SwitchTargets {
     /// Creates switch targets from an iterator of values and target blocks.
     ///
     /// The iterator may be empty, in which case the `SwitchInt` instruction is equivalent to
     /// `goto otherwise;`.
     pub fn new(targets: impl Iterator<Item = (u128, BasicBlock)>, otherwise: BasicBlock) -> Self {
-        let (values, mut targets): (SmallVec<_>, SmallVec<_>) =
-            targets.map(|(v, t)| (Pu128(v), t)).unzip();
-        targets.push(otherwise);
-        Self { values, targets }
+        Self { normal: targets.map(|(value, target)| (Pu128(value), target)).collect(), otherwise }
     }
 
     /// Builds a switch targets definition that jumps to `then` if the tested value equals `value`,
     /// and to `else_` if not.
     pub fn static_if(value: u128, then: BasicBlock, else_: BasicBlock) -> Self {
-        Self { values: smallvec![Pu128(value)], targets: smallvec![then, else_] }
+        Self { normal: smallvec![(Pu128(value), then)], otherwise: else_ }
     }
 
     /// Inverse of `SwitchTargets::static_if`.
     #[inline]
     pub fn as_static_if(&self) -> Option<(u128, BasicBlock, BasicBlock)> {
-        if let &[value] = &self.values[..]
-            && let &[then, else_] = &self.targets[..]
-        {
-            Some((value.get(), then, else_))
+        if let [(value, then)] = self.normal[..] {
+            Some((value.get(), then, self.otherwise))
         } else {
             None
         }
@@ -43,7 +41,26 @@ impl SwitchTargets {
     /// Returns the fallback target that is jumped to when none of the values match the operand.
     #[inline]
     pub fn otherwise(&self) -> BasicBlock {
-        *self.targets.last().unwrap()
+        self.otherwise
+    }
+
+    #[inline]
+    pub fn otherwise_mut(&mut self) -> &mut BasicBlock {
+        &mut self.otherwise
+    }
+
+    #[inline]
+    pub fn normal(&self) -> &[(Pu128, BasicBlock)] {
+        &self.normal
+    }
+
+    #[inline]
+    pub fn normal_mut(&mut self) -> &mut [(Pu128, BasicBlock)] {
+        &mut self.normal
+    }
+
+    pub fn parts_mut(&mut self) -> (&mut [(Pu128, BasicBlock)], &mut BasicBlock) {
+        (&mut self.normal, &mut self.otherwise)
     }
 
     /// Returns an iterator over the switch targets.
@@ -53,30 +70,26 @@ impl SwitchTargets {
     ///
     /// Note that this may yield 0 elements. Only the `otherwise` branch is mandatory.
     #[inline]
-    pub fn iter(&self) -> SwitchTargetsIter<'_> {
-        SwitchTargetsIter { inner: iter::zip(&self.values, &self.targets) }
+    pub fn iter(&self) -> impl Iterator<Item = (u128, BasicBlock)> + ExactSizeIterator + '_ {
+        self.normal.iter().map(|&(value, target)| (value.get(), target))
     }
 
-    /// Returns a slice with all possible jump targets (including the fallback target).
+    /// Returns an iterator over all possible jump targets (including the fallback target).
     #[inline]
-    pub fn all_targets(&self) -> &[BasicBlock] {
-        &self.targets
-    }
-
-    #[inline]
-    pub fn all_targets_mut(&mut self) -> &mut [BasicBlock] {
-        &mut self.targets
-    }
-
-    /// Returns a slice with all considered values (not including the fallback).
-    #[inline]
-    pub fn all_values(&self) -> &[Pu128] {
-        &self.values
+    #[define_opaque(AllSwitchTargets)]
+    pub fn all_targets(&self) -> AllSwitchTargets<'_> {
+        self.normal.iter().map(|&(_, target)| target).chain(iter::once(self.otherwise))
     }
 
     #[inline]
-    pub fn all_values_mut(&mut self) -> &mut [Pu128] {
-        &mut self.values
+    pub fn all_targets_mut(&mut self) -> impl Iterator<Item = &'_ mut BasicBlock> + '_ {
+        self.normal.iter_mut().map(|(_, target)| target).chain(iter::once(&mut self.otherwise))
+    }
+
+    /// Returns an iterator over all considered values (not including the fallback).
+    #[inline]
+    pub fn all_values(&self) -> impl Iterator<Item = Pu128> + '_ {
+        self.normal.iter().map(|&(value, _)| value)
     }
 
     /// Finds the `BasicBlock` to which this `SwitchInt` will branch given the
@@ -84,24 +97,33 @@ impl SwitchTargets {
     /// branch if there's not a specific match for the value.
     #[inline]
     pub fn target_for_value(&self, value: u128) -> BasicBlock {
-        self.iter().find_map(|(v, t)| (v == value).then_some(t)).unwrap_or_else(|| self.otherwise())
+        self.normal
+            .iter()
+            .find_map(|&(v, t)| (v == value).then_some(t))
+            .unwrap_or_else(|| self.otherwise())
     }
 
     /// Adds a new target to the switch. Panics if you add an already present value.
     #[inline]
     pub fn add_target(&mut self, value: u128, bb: BasicBlock) {
         let value = Pu128(value);
-        if self.values.contains(&value) {
-            bug!("target value {:?} already present", value);
+        if self.all_values().any(|v| v == value) {
+            bug!("target value {value:?} already present");
         }
-        self.values.push(value);
-        self.targets.insert(self.targets.len() - 1, bb);
+        self.normal.push((value, bb));
     }
 
     /// Returns true if all targets (including the fallback target) are distinct.
     #[inline]
     pub fn is_distinct(&self) -> bool {
-        self.targets.iter().collect::<FxHashSet<_>>().len() == self.targets.len()
+        let mut targets =
+            FxHashSet::with_capacity_and_hasher(self.normal.len() + 1, Default::default());
+        for target in self.all_targets() {
+            if !targets.insert(target) {
+                return false;
+            }
+        }
+        true
     }
 }
 
@@ -492,52 +514,128 @@ impl<'tcx> TerminatorKind<'tcx> {
 pub use helper::*;
 
 mod helper {
+    use std::iter::TrustedLen;
+    use std::num::NonZeroUsize;
+    use std::option;
+
     use super::*;
-    pub type Successors<'a> = impl DoubleEndedIterator<Item = BasicBlock> + 'a;
+
+    pub enum Successors<'a> {
+        Fixed(smallvec::IntoIter<[BasicBlock; 3]>),
+        Slice(iter::Chain<iter::Copied<slice::Iter<'a, BasicBlock>>, option::IntoIter<BasicBlock>>),
+        SwitchTargets(AllSwitchTargets<'a>),
+    }
+
+    impl<'a> From<SmallVec<[BasicBlock; 3]>> for Successors<'a> {
+        fn from(v: SmallVec<[BasicBlock; 3]>) -> Self {
+            Self::Fixed(v.into_iter())
+        }
+    }
+
+    macro_rules! delegate {
+        ($self:ident.$fn:ident($($arg:ident),*)) => {
+            match $self {
+                Successors::Fixed(fixed) => fixed.$fn($($arg),*),
+                Successors::Slice(chain) => chain.$fn($($arg),*),
+                Successors::SwitchTargets(targets) => targets.$fn($($arg),*),
+            }
+        };
+    }
+
+    impl<'a> Iterator for Successors<'a> {
+        type Item = BasicBlock;
+
+        #[inline]
+        fn next(&mut self) -> Option<Self::Item> {
+            delegate!(self.next())
+        }
+
+        #[inline]
+        fn size_hint(&self) -> (usize, Option<usize>) {
+            delegate!(self.size_hint())
+        }
+
+        #[inline]
+        fn fold<B, F>(self, init: B, f: F) -> B
+        where
+            Self: Sized,
+            F: FnMut(B, Self::Item) -> B,
+        {
+            delegate!(self.fold(init, f))
+        }
+
+        #[inline]
+        fn try_fold<B, F, R>(&mut self, init: B, f: F) -> R
+        where
+            Self: Sized,
+            F: FnMut(B, Self::Item) -> R,
+            R: std::ops::Try<Output = B>,
+        {
+            delegate!(self.try_fold(init, f))
+        }
+
+        #[inline]
+        fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+            delegate!(self.advance_by(n))
+        }
+
+        #[inline]
+        fn nth(&mut self, n: usize) -> Option<Self::Item> {
+            delegate!(self.nth(n))
+        }
+    }
+
+    impl<'a> DoubleEndedIterator for Successors<'a> {
+        #[inline]
+        fn next_back(&mut self) -> Option<Self::Item> {
+            delegate!(self.next_back())
+        }
+    }
+
+    unsafe impl<'a> TrustedLen for Successors<'a>
+    where
+        for<'b> iter::Chain<iter::Copied<slice::Iter<'b, BasicBlock>>, option::IntoIter<BasicBlock>>:
+            TrustedLen,
+        for<'b> AllSwitchTargets<'b>: TrustedLen,
+    {
+    }
 
     impl SwitchTargets {
         /// Like [`SwitchTargets::target_for_value`], but returning the same type as
         /// [`Terminator::successors`].
         #[inline]
-        #[define_opaque(Successors)]
         pub fn successors_for_value(&self, value: u128) -> Successors<'_> {
             let target = self.target_for_value(value);
-            (&[]).into_iter().copied().chain(Some(target).into_iter().chain(None))
+            Successors::Fixed(smallvec![target].into_iter())
         }
     }
 
     impl<'tcx> TerminatorKind<'tcx> {
         #[inline]
-        #[define_opaque(Successors)]
         pub fn successors(&self) -> Successors<'_> {
             use self::TerminatorKind::*;
             match *self {
                 // 3-successors for async drop: target, unwind, dropline (parent coroutine drop)
-                Drop { target: ref t, unwind: UnwindAction::Cleanup(u), drop: Some(d), .. } => {
-                    slice::from_ref(t)
-                        .into_iter()
-                        .copied()
-                        .chain(Some(u).into_iter().chain(Some(d)))
+                Drop { target: t, unwind: UnwindAction::Cleanup(u), drop: Some(d), .. } => {
+                    smallvec![t, u, d].into()
                 }
                 // 2-successors
-                Call { target: Some(ref t), unwind: UnwindAction::Cleanup(u), .. }
-                | Yield { resume: ref t, drop: Some(u), .. }
-                | Drop { target: ref t, unwind: UnwindAction::Cleanup(u), drop: None, .. }
-                | Drop { target: ref t, unwind: _, drop: Some(u), .. }
-                | Assert { target: ref t, unwind: UnwindAction::Cleanup(u), .. }
-                | FalseUnwind { real_target: ref t, unwind: UnwindAction::Cleanup(u) } => {
-                    slice::from_ref(t).into_iter().copied().chain(Some(u).into_iter().chain(None))
+                Call { target: Some(t), unwind: UnwindAction::Cleanup(u), .. }
+                | Yield { resume: t, drop: Some(u), .. }
+                | Drop { target: t, unwind: UnwindAction::Cleanup(u), drop: None, .. }
+                | Drop { target: t, unwind: _, drop: Some(u), .. }
+                | Assert { target: t, unwind: UnwindAction::Cleanup(u), .. }
+                | FalseUnwind { real_target: t, unwind: UnwindAction::Cleanup(u) } => {
+                    smallvec![t, u].into()
                 }
                 // single successor
-                Goto { target: ref t }
-                | Call { target: None, unwind: UnwindAction::Cleanup(ref t), .. }
-                | Call { target: Some(ref t), unwind: _, .. }
-                | Yield { resume: ref t, drop: None, .. }
-                | Drop { target: ref t, unwind: _, .. }
-                | Assert { target: ref t, unwind: _, .. }
-                | FalseUnwind { real_target: ref t, unwind: _ } => {
-                    slice::from_ref(t).into_iter().copied().chain(None.into_iter().chain(None))
-                }
+                Goto { target: t }
+                | Call { target: None, unwind: UnwindAction::Cleanup(t), .. }
+                | Call { target: Some(t), unwind: _, .. }
+                | Yield { resume: t, drop: None, .. }
+                | Drop { target: t, unwind: _, .. }
+                | Assert { target: t, unwind: _, .. }
+                | FalseUnwind { real_target: t, unwind: _ } => smallvec![t].into(),
                 // No successors
                 UnwindResume
                 | UnwindTerminate(_)
@@ -545,24 +643,19 @@ mod helper {
                 | Return
                 | Unreachable
                 | TailCall { .. }
-                | Call { target: None, unwind: _, .. } => {
-                    (&[]).into_iter().copied().chain(None.into_iter().chain(None))
-                }
+                | Call { target: None, unwind: _, .. } => smallvec![].into(),
                 // Multiple successors
                 InlineAsm { ref targets, unwind: UnwindAction::Cleanup(u), .. } => {
-                    targets.iter().copied().chain(Some(u).into_iter().chain(None))
+                    Successors::Slice(targets.iter().copied().chain(Some(u)))
                 }
                 InlineAsm { ref targets, unwind: _, .. } => {
-                    targets.iter().copied().chain(None.into_iter().chain(None))
+                    Successors::Slice(targets.iter().copied().chain(None))
                 }
-                SwitchInt { ref targets, .. } => {
-                    targets.targets.iter().copied().chain(None.into_iter().chain(None))
-                }
+                SwitchInt { ref targets, .. } => Successors::SwitchTargets(targets.all_targets()),
                 // FalseEdge
-                FalseEdge { ref real_target, imaginary_target } => slice::from_ref(real_target)
-                    .into_iter()
-                    .copied()
-                    .chain(Some(imaginary_target).into_iter().chain(None)),
+                FalseEdge { real_target, imaginary_target } => {
+                    smallvec![real_target, imaginary_target].into()
+                }
             }
         }
 
@@ -617,7 +710,7 @@ mod helper {
                     }
                 }
                 SwitchInt { targets, .. } => {
-                    for target in &mut targets.targets {
+                    for target in targets.all_targets_mut() {
                         f(target);
                     }
                 }

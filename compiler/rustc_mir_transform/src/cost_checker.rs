@@ -129,7 +129,7 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
                     // Not only will this become a `Goto`, but likely other
                     // things will be removable as unreachable.
                     self.bonus += CONST_SWITCH_BONUS;
-                } else if targets.all_targets().len() > 3 {
+                } else if targets.normal().len() > 2 {
                     // More than false/true/unreachable gets extra cost.
                     self.penalty += LARGE_SWITCH_PENALTY;
                 } else {

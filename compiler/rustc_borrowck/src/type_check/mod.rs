@@ -2016,7 +2016,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
             TerminatorKind::SwitchInt { ref targets, .. } => {
                 for target in targets.all_targets() {
-                    self.assert_iscleanup(block_data, *target, is_cleanup);
+                    self.assert_iscleanup(block_data, target, is_cleanup);
                 }
             }
             TerminatorKind::UnwindResume => {
