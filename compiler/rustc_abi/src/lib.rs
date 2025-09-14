@@ -190,15 +190,11 @@ impl ReprOptions {
     /// `c_enum_min_size` along the way) and that will work just fine, it just induces casts when
     /// getting/setting the discriminant.
     pub fn discr_type(&self, cx: &impl HasDataLayout) -> IntegerType {
-        self.int.unwrap_or(
-            if self.c()
-                && let Some(max_size) = cx.data_layout().c_enum_max_size
-            {
-                IntegerType::Fixed(max_size, true)
-            } else {
-                IntegerType::Pointer(true)
-            },
-        )
+        self.int.unwrap_or(if self.c() {
+            IntegerType::Fixed(cx.data_layout().c_enum_max_size, true)
+        } else {
+            IntegerType::Pointer(true)
+        })
     }
 
     /// Returns `true` if this `#[repr()]` should inhabit "smart enum
@@ -288,8 +284,8 @@ pub struct TargetDataLayout {
     /// Note: This isn't in LLVM's data layout string, it is `short_enum`
     /// so the only valid spec for LLVM is c_int::BITS or 8
     pub c_enum_min_size: Integer,
-    /// Maximum size of #[repr(C)] enums (defaults to pointer size).
-    pub c_enum_max_size: Option<Integer>,
+    /// Maximum size of #[repr(C)] enums (defaults to c_longlong::BITS, which is always 64).
+    pub c_enum_max_size: Integer,
 }
 
 impl Default for TargetDataLayout {
@@ -323,7 +319,10 @@ impl Default for TargetDataLayout {
             address_space_info: vec![],
             instruction_address_space: AddressSpace::ZERO,
             c_enum_min_size: Integer::I32,
-            c_enum_max_size: None,
+            // C23 allows enums to have any integer type. The largest integer type in the standard
+            // is `long long`, which is always 64bits (judging from our own definition in
+            // `library/core/src/ffi/primitives.rs`).
+            c_enum_max_size: Integer::I64,
         }
     }
 }

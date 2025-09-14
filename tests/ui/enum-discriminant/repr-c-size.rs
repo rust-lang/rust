@@ -17,40 +17,38 @@ use minicore::*;
 
 // Fits in i64 but not i32.
 // C compiler demo: <https://godbolt.org/z/6v941G3x5>
-// FIXME: This seems to be wrong for linux32?
 #[repr(C)]
 #[warn(overflowing_literals)]
 enum OverflowingEnum {
     A = 9223372036854775807, // i64::MAX
-    //[linux32,msvc32,msvc64]~^ WARN: literal out of range
+    //[msvc32,msvc64]~^ WARN: literal out of range
 }
 
-#[cfg(not(linux64))]
+#[cfg(any(msvc32,msvc64))]
 const _: () = if mem::size_of::<OverflowingEnum>() != 4 {
     unsafe { hint::unreachable() }
 };
-#[cfg(linux64)]
+#[cfg(any(linux32,linux64))]
 const _: () = if mem::size_of::<OverflowingEnum>() != 8 {
     unsafe { hint::unreachable() }
 };
 
 // Each value fits in i32 or u32, but not all values fit into the same type.
 // C compiler demo: <https://godbolt.org/z/GPYafPhjK>
-// FIXME: This seems to do the wrong thing for 32bit Linux?
 #[repr(C)]
 #[warn(overflowing_literals)]
 enum OverflowingEnum2 {
     A = 4294967294, // u32::MAX - 1
-    //[linux32,msvc32,msvc64]~^ WARN: literal out of range
+    //[msvc32,msvc64]~^ WARN: literal out of range
     B = -1,
 }
 
-#[cfg(not(linux64))]
-const _: () = if mem::size_of::<OverflowingEnum2>() != 4 {
+#[cfg(any(msvc32,msvc64))]
+const _: () = if mem::size_of::<OverflowingEnum>() != 4 {
     unsafe { hint::unreachable() }
 };
-#[cfg(linux64)]
-const _: () = if mem::size_of::<OverflowingEnum2>() != 8 {
+#[cfg(any(linux32,linux64))]
+const _: () = if mem::size_of::<OverflowingEnum>() != 8 {
     unsafe { hint::unreachable() }
 };
 

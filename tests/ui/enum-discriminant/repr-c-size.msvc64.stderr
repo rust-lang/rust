@@ -1,5 +1,5 @@
 warning: literal out of range for `i32`
-  --> $DIR/repr-c-size.rs:24:9
+  --> $DIR/repr-c-size.rs:23:9
    |
 LL |     A = 9223372036854775807, // i64::MAX
    |         ^^^^^^^^^^^^^^^^^^^
@@ -7,13 +7,13 @@ LL |     A = 9223372036854775807, // i64::MAX
    = note: the literal `9223372036854775807` does not fit into the type `i32` whose range is `-2147483648..=2147483647`
    = help: consider using the type `i64` instead
 note: the lint level is defined here
-  --> $DIR/repr-c-size.rs:22:8
+  --> $DIR/repr-c-size.rs:21:8
    |
 LL | #[warn(overflowing_literals)]
    |        ^^^^^^^^^^^^^^^^^^^^
 
 warning: literal out of range for `i32`
-  --> $DIR/repr-c-size.rs:43:9
+  --> $DIR/repr-c-size.rs:41:9
    |
 LL |     A = 4294967294, // u32::MAX - 1
    |         ^^^^^^^^^^
@@ -21,7 +21,7 @@ LL |     A = 4294967294, // u32::MAX - 1
    = note: the literal `4294967294` does not fit into the type `i32` whose range is `-2147483648..=2147483647`
    = help: consider using the type `u32` instead
 note: the lint level is defined here
-  --> $DIR/repr-c-size.rs:41:8
+  --> $DIR/repr-c-size.rs:39:8
    |
 LL | #[warn(overflowing_literals)]
    |        ^^^^^^^^^^^^^^^^^^^^

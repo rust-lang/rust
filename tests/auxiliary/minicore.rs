@@ -177,6 +177,14 @@ impl Neg for i32 {
     }
 }
 
+impl Neg for i64 {
+    type Output = i64;
+
+    fn neg(self) -> i64 {
+        loop {} // Dummy impl, not actually used
+    }
+}
+
 impl Neg for isize {
     type Output = isize;
 

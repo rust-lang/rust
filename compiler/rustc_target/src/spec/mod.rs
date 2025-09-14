@@ -2386,13 +2386,13 @@ impl Target {
             self.c_enum_min_bits.unwrap_or(self.c_int_width as _),
         ))
         .map_err(|err| TargetDataLayoutErrors::InvalidBitsSize { err })?;
-        dl.c_enum_max_size = match self.c_enum_max_bits {
-            None => None,
-            Some(max_bits) => Some(
-                Integer::from_size(Size::from_bits(max_bits))
-                    .map_err(|err| TargetDataLayoutErrors::InvalidBitsSize { err })?,
-            ),
-        };
+        dl.c_enum_max_size = Integer::from_size(Size::from_bits(
+            // C23 allows enums to have any integer type. The largest integer type in the standard
+            // is `long long`, which is always 64bits (judging from our own definition in
+            // `library/core/src/ffi/primitives.rs`). Hence we default to 64.
+            self.c_enum_max_bits.unwrap_or(64),
+        ))
+        .map_err(|err| TargetDataLayoutErrors::InvalidBitsSize { err })?;
 
         Ok(dl)
     }
