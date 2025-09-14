@@ -690,8 +690,9 @@ static RISCV_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("zimop", Unstable(sym::riscv_target_feature), &[]),
     ("zk", Stable, &["zkn", "zkr", "zkt"]),
     ("zkn", Stable, &["zbkb", "zbkc", "zbkx", "zkne", "zknd", "zknh"]),
-    ("zknd", Stable, &[]),
-    ("zkne", Stable, &[]),
+    ("zknd", Stable, &["zkne_or_zknd"]),
+    ("zkne", Stable, &["zkne_or_zknd"]),
+    ("zkne_or_zknd", Unstable(sym::riscv_target_feature), &[]), // Not an extension
     ("zknh", Stable, &[]),
     ("zkr", Stable, &[]),
     ("zks", Stable, &["zbkb", "zbkc", "zbkx", "zksed", "zksh"]),
