@@ -134,7 +134,10 @@ impl<'tcx> crate::MirPass<'tcx> for JumpThreading {
             finder.entry_states[bb] = state;
         }
 
-        if let Some(opportunities) = OpportunitySet::new(body, finder.entry_states) {
+        let mut entry_states = finder.entry_states;
+        simplify_conditions(body, &mut entry_states);
+
+        if let Some(opportunities) = OpportunitySet::new(body, entry_states) {
             opportunities.apply();
         }
     }
@@ -771,6 +774,91 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
             for (value, target) in targets.iter() {
                 if let Some(value) = ScalarInt::try_from_uint(value, discr_layout.size) {
                     mk_condition(value, Polarity::Eq, target);
+                }
+            }
+        }
+    }
+}
+
+/// Propagate fulfilled conditions forward in the CFG to reduce the amount of duplication.
+#[instrument(level = "debug", skip(body, entry_states))]
+fn simplify_conditions(body: &Body<'_>, entry_states: &mut IndexVec<BasicBlock, ConditionSet>) {
+    let basic_blocks = &body.basic_blocks;
+    let reverse_postorder = basic_blocks.reverse_postorder();
+
+    // Start by computing the number of *incoming edges* for each block.
+    // We do not use the cached `basic_blocks.predecessors` as we only want reachable predecessors.
+    let mut predecessors = IndexVec::from_elem(0, &entry_states);
+    predecessors[START_BLOCK] = 1; // Account for the implicit entry edge.
+    for &bb in reverse_postorder {
+        let term = basic_blocks[bb].terminator();
+        for s in term.successors() {
+            predecessors[s] += 1;
+        }
+    }
+
+    // Compute the number of edges into each block that carry each condition.
+    let mut fulfill_in_pred_count = IndexVec::from_fn_n(
+        |bb: BasicBlock| IndexVec::from_elem_n(0, entry_states[bb].targets.len()),
+        entry_states.len(),
+    );
+
+    // By traversing in RPO, we increase the likelihood to visit predecessors before successors.
+    for &bb in reverse_postorder {
+        let preds = predecessors[bb];
+        trace!(?bb, ?preds);
+
+        // We have removed all the input edges towards this block. Just skip visiting it.
+        if preds == 0 {
+            continue;
+        }
+
+        let state = &mut entry_states[bb];
+        trace!(?state);
+
+        // Conditions that are fulfilled in all the predecessors, are fulfilled in `bb`.
+        trace!(fulfilled_count = ?fulfill_in_pred_count[bb]);
+        for (condition, &cond_preds) in fulfill_in_pred_count[bb].iter_enumerated() {
+            if cond_preds == preds {
+                trace!(?condition);
+                state.fulfilled.push(condition);
+            }
+        }
+
+        // We want to count how many times each condition is fulfilled,
+        // so ensure we are not counting the same edge twice.
+        let mut targets: Vec<_> = state
+            .fulfilled
+            .iter()
+            .flat_map(|&index| state.targets[index].iter().copied())
+            .collect();
+        targets.sort();
+        targets.dedup();
+        trace!(?targets);
+
+        // We may modify the set of successors by applying edges, so track them here.
+        let mut successors = basic_blocks[bb].terminator().successors().collect::<Vec<_>>();
+
+        targets.reverse();
+        while let Some(target) = targets.pop() {
+            match target {
+                EdgeEffect::Goto { target } => {
+                    // We update the count of predecessors. If target or any successor has not been
+                    // processed yet, this increases the likelihood we find something relevant.
+                    predecessors[target] += 1;
+                    for &s in successors.iter() {
+                        predecessors[s] -= 1;
+                    }
+                    // Only process edges that still exist.
+                    targets.retain(|t| t.block() == target);
+                    successors.clear();
+                    successors.push(target);
+                }
+                EdgeEffect::Chain { succ_block, succ_condition } => {
+                    // `predecessors` is the number of incoming *edges* in each block.
+                    // Count the number of edges that apply `succ_condition` into `succ_block`.
+                    let count = successors.iter().filter(|&&s| s == succ_block).count();
+                    fulfill_in_pred_count[succ_block][succ_condition] += count;
                 }
             }
         }

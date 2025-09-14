@@ -8,13 +8,13 @@
   
       bb0: {
           _3 = const false;
--         switchInt(copy _1) -> [1: bb1, otherwise: bb2];
-+         switchInt(copy _1) -> [1: bb8, otherwise: bb2];
+          switchInt(copy _1) -> [1: bb1, otherwise: bb2];
       }
   
       bb1: {
           _2 = const false;
-          goto -> bb3;
+-         goto -> bb3;
++         goto -> bb9;
       }
   
       bb2: {
@@ -47,19 +47,14 @@
 +     }
 + 
 +     bb8: {
-+         _2 = const false;
-+         goto -> bb10;
-+     }
-+ 
-+     bb9: {
 +         switchInt(copy _2) -> [0: bb4, otherwise: bb5];
 +     }
 + 
-+     bb10: {
-+         goto -> bb11;
++     bb9: {
++         goto -> bb10;
 +     }
 + 
-+     bb11: {
++     bb10: {
 +         goto -> bb6;
       }
   }
