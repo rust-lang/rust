@@ -154,19 +154,25 @@ impl<'tcx> crate::MirPass<'tcx> for GVN {
 }
 
 newtype_index! {
+    /// This represents a `Value` in the symbolic execution.
     #[debug_format = "_v{}"]
     struct VnIndex {}
 }
 
+/// Marker type to forbid hashing and comparing opaque values.
+/// This struct should only be constructed by `ValueSet::insert_unique` to ensure we use that
+/// method to create non-unifiable values. It will ICE if used in `ValueSet::insert`.
 #[derive(Copy, Clone, Debug, Eq)]
 struct VnOpaque;
 impl PartialEq for VnOpaque {
     fn eq(&self, _: &VnOpaque) -> bool {
+        // ICE if we try to compare unique values
         unreachable!()
     }
 }
 impl Hash for VnOpaque {
     fn hash<T: Hasher>(&self, _: &mut T) {
+        // ICE if we try to hash unique values
         unreachable!()
     }
 }
@@ -191,6 +197,8 @@ enum Value<'tcx> {
         // `disambiguator` is `None` iff the constant is deterministic.
         disambiguator: Option<VnOpaque>,
     },
+
+    // Aggregates.
     /// An aggregate value, either tuple/closure/struct/enum.
     /// This does not contain unions, as we cannot reason with the value.
     Aggregate(VariantIdx, Vec<VnIndex>),
@@ -252,6 +260,7 @@ impl<'tcx> ValueSet<'tcx> {
     }
 
     /// Insert a `(Value, Ty)` pair without hashing or deduplication.
+    /// This always creates a new `VnIndex`.
     #[inline]
     fn insert_unique(
         &mut self,
