@@ -520,14 +520,14 @@ macro_rules! as_transmute {
     ($from:ty => $as_from:ident, $($as_to:ident -> $to:ident),* $(,)?) => {
         impl $from {$(
             #[inline]
-            pub(crate) fn $as_to(self) -> crate::core_arch::simd::$to {
+            pub(crate) const fn $as_to(self) -> crate::core_arch::simd::$to {
                 unsafe { transmute(self) }
             }
         )*}
         $(
             impl crate::core_arch::simd::$to {
                 #[inline]
-                pub(crate) fn $as_from(self) -> $from {
+                pub(crate) const fn $as_from(self) -> $from {
                     unsafe { transmute(self) }
                 }
             }

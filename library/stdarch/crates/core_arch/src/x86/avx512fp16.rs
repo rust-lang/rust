@@ -16714,19 +16714,22 @@ mod tests {
     use stdarch_test::simd_test;
 
     #[target_feature(enable = "avx512fp16")]
-    unsafe fn _mm_set1_pch(re: f16, im: f16) -> __m128h {
+    #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+    const fn _mm_set1_pch(re: f16, im: f16) -> __m128h {
         _mm_setr_ph(re, im, re, im, re, im, re, im)
     }
 
     #[target_feature(enable = "avx512fp16")]
-    unsafe fn _mm256_set1_pch(re: f16, im: f16) -> __m256h {
+    #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+    const fn _mm256_set1_pch(re: f16, im: f16) -> __m256h {
         _mm256_setr_ph(
             re, im, re, im, re, im, re, im, re, im, re, im, re, im, re, im,
         )
     }
 
     #[target_feature(enable = "avx512fp16")]
-    unsafe fn _mm512_set1_pch(re: f16, im: f16) -> __m512h {
+    #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+    const fn _mm512_set1_pch(re: f16, im: f16) -> __m512h {
         _mm512_setr_ph(
             re, im, re, im, re, im, re, im, re, im, re, im, re, im, re, im, re, im, re, im, re, im,
             re, im, re, im, re, im, re, im, re, im,
