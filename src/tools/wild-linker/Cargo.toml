@@ -4,4 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-libwild = { git = "https://github.com/davidlattimore/wild", rev = "35f1e6e" }
+libwild = { git = "https://github.com/davidlattimore/wild", rev = "90d0b4f" }
+
+[profile.release]
+lto = "thin"

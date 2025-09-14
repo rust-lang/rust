@@ -441,7 +441,7 @@ checksum = "6a82ae493e598baaea5209805c49bbf2ea7de956d50d7da0da1164f9c6d28543"
 [[package]]
 name = "libwild"
 version = "0.5.0"
-source = "git+https://github.com/davidlattimore/wild?rev=35f1e6e#35f1e6ee7ee8859a8829a13daae81d2480958ac3"
+source = "git+https://github.com/davidlattimore/wild?rev=90d0b4f#90d0b4fc03c23af2cd446df44f73d056418827bd"
 dependencies = [
  "anyhow",
  "atomic-take",
@@ -498,7 +498,7 @@ dependencies = [
 [[package]]
 name = "linker-layout"
 version = "0.5.0"
-source = "git+https://github.com/davidlattimore/wild?rev=35f1e6e#35f1e6ee7ee8859a8829a13daae81d2480958ac3"
+source = "git+https://github.com/davidlattimore/wild?rev=90d0b4f#90d0b4fc03c23af2cd446df44f73d056418827bd"
 dependencies = [
  "anyhow",
  "postcard",
@@ -508,7 +508,7 @@ dependencies = [
 [[package]]
 name = "linker-trace"
 version = "0.5.0"
-source = "git+https://github.com/davidlattimore/wild?rev=35f1e6e#35f1e6ee7ee8859a8829a13daae81d2480958ac3"
+source = "git+https://github.com/davidlattimore/wild?rev=90d0b4f#90d0b4fc03c23af2cd446df44f73d056418827bd"
 dependencies = [
  "anyhow",
  "postcard",
@@ -518,7 +518,7 @@ dependencies = [
 [[package]]
 name = "linker-utils"
 version = "0.5.0"
-source = "git+https://github.com/davidlattimore/wild?rev=35f1e6e#35f1e6ee7ee8859a8829a13daae81d2480958ac3"
+source = "git+https://github.com/davidlattimore/wild?rev=90d0b4f#90d0b4fc03c23af2cd446df44f73d056418827bd"
 dependencies = [
  "anyhow",
  "leb128",
