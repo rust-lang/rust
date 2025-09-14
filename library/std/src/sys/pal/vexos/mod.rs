@@ -6,7 +6,7 @@ pub mod thread;
 pub mod time;
 
 use crate::arch::global_asm;
-use crate::ptr::{self, addr_of_mut};
+use crate::ptr;
 use crate::sys::stdio;
 use crate::time::{Duration, Instant};
 

@@ -54,16 +54,13 @@ impl io::Write for Stdout {
                 self.flush().unwrap();
             }
 
-            let count = unsafe {
+            let count: usize = unsafe {
                 vex_sdk::vexSerialWriteBuffer(STDIO_CHANNEL, chunk.as_ptr(), chunk.len() as u32)
-            } as usize;
-
-            if count < 0 {
-                return Err(io::Error::new(
-                    io::ErrorKind::Uncategorized,
-                    "Internal write error occurred.",
-                ));
             }
+            .try_into()
+            .map_err(|_| {
+                io::Error::new(io::ErrorKind::Uncategorized, "Internal write error occurred.")
+            })?;
 
             written += count;
 

@@ -1,7 +1,6 @@
 use super::unsupported;
 use crate::ffi::CStr;
 use crate::io;
-use crate::num::NonZero;
 use crate::time::{Duration, Instant};
 
 #[expect(dead_code)]

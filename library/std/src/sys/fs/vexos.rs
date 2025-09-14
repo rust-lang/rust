@@ -1,4 +1,4 @@
-use crate::ffi::{CString, OsString};
+use crate::ffi::OsString;
 use crate::fmt;
 use crate::fs::TryLockError;
 use crate::hash::Hash;
@@ -277,7 +277,7 @@ impl File {
                     }
 
                     if *truncate {
-                        unsafe { vex_sdk::vexFileOpenCreate(path.as_ptr()) }
+                        vex_sdk::vexFileOpenCreate(path.as_ptr())
                     } else {
                         // Open in append, but jump to the start of the file.
                         let fd = vex_sdk::vexFileOpenWrite(path.as_ptr());
