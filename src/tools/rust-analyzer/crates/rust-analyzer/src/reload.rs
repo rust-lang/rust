@@ -318,7 +318,7 @@ impl GlobalState {
                     }
                 }
 
-                let mut workspaces = linked_projects
+                let mut workspaces: Vec<_> = linked_projects
                     .iter()
                     .map(|project| match project {
                         LinkedProject::ProjectManifest(manifest) => {
@@ -339,7 +339,7 @@ impl GlobalState {
                             Ok(workspace)
                         }
                     })
-                    .collect::<Vec<_>>();
+                    .collect();
 
                 let mut i = 0;
                 while i < workspaces.len() {
@@ -848,23 +848,17 @@ impl GlobalState {
     fn reload_flycheck(&mut self) {
         let _p = tracing::info_span!("GlobalState::reload_flycheck").entered();
         let config = self.config.flycheck(None);
-        let sender = self.flycheck_sender.clone();
-        let invocation_strategy = match config {
-            FlycheckConfig::CargoCommand { .. } => {
-                crate::flycheck::InvocationStrategy::PerWorkspace
-            }
-            FlycheckConfig::CustomCommand { ref invocation_strategy, .. } => {
-                invocation_strategy.clone()
-            }
-        };
-        let next_gen = self.flycheck.iter().map(|f| f.generation() + 1).max().unwrap_or_default();
+        let sender = &self.flycheck_sender;
+        let invocation_strategy = config.invocation_strategy();
+        let next_gen =
+            self.flycheck.iter().map(FlycheckHandle::generation).max().unwrap_or_default() + 1;
 
         self.flycheck = match invocation_strategy {
             crate::flycheck::InvocationStrategy::Once => {
                 vec![FlycheckHandle::spawn(
                     0,
                     next_gen,
-                    sender,
+                    sender.clone(),
                     config,
                     None,
                     self.config.root_path().clone(),

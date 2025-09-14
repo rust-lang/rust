@@ -104,11 +104,11 @@ pub(crate) enum FlycheckConfig {
 }
 
 impl FlycheckConfig {
-    pub(crate) fn invocation_strategy_once(&self) -> bool {
+    pub(crate) fn invocation_strategy(&self) -> InvocationStrategy {
         match self {
-            FlycheckConfig::CargoCommand { .. } => false,
+            FlycheckConfig::CargoCommand { .. } => InvocationStrategy::PerWorkspace,
             FlycheckConfig::CustomCommand { invocation_strategy, .. } => {
-                *invocation_strategy == InvocationStrategy::Once
+                invocation_strategy.clone()
             }
         }
     }
@@ -529,7 +529,7 @@ impl FlycheckActor {
         if let Some(command_handle) = self.command_handle.take() {
             tracing::debug!(
                 command = ?command_handle,
-                "did  cancel flycheck"
+                "did cancel flycheck"
             );
             command_handle.cancel();
             self.command_receiver.take();
