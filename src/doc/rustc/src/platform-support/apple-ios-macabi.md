@@ -57,7 +57,7 @@ $ rustc --target aarch64-apple-ios-macabi your-code.rs
 ```
 
 The target can be differentiated from the iOS targets with the
-`target_env = "macabi"` cfg (or `target_abi = "macabi"` before Rust CURRENT_RUSTC_VERSION).
+`target_env = "macabi"` cfg (or `target_abi = "macabi"` before Rust 1.91.0).
 
 ```rust
 if cfg!(target_env = "macabi") {
