@@ -133,8 +133,8 @@ struct SelfArgVisitor<'tcx> {
 }
 
 impl<'tcx> SelfArgVisitor<'tcx> {
-    fn new(tcx: TyCtxt<'tcx>, elem: ProjectionElem<Local, Ty<'tcx>>) -> Self {
-        Self { tcx, new_base: Place { local: SELF_ARG, projection: tcx.mk_place_elems(&[elem]) } }
+    fn new(tcx: TyCtxt<'tcx>, new_base: Place<'tcx>) -> Self {
+        Self { tcx, new_base }
     }
 }
 
@@ -147,16 +147,14 @@ impl<'tcx> MutVisitor<'tcx> for SelfArgVisitor<'tcx> {
         assert_ne!(*local, SELF_ARG);
     }
 
-    fn visit_place(&mut self, place: &mut Place<'tcx>, context: PlaceContext, location: Location) {
+    fn visit_place(&mut self, place: &mut Place<'tcx>, _: PlaceContext, _: Location) {
         if place.local == SELF_ARG {
             replace_base(place, self.new_base, self.tcx);
-        } else {
-            self.visit_local(&mut place.local, context, location);
+        }
 
-            for elem in place.projection.iter() {
-                if let PlaceElem::Index(local) = elem {
-                    assert_ne!(local, SELF_ARG);
-                }
+        for elem in place.projection.iter() {
+            if let PlaceElem::Index(local) = elem {
+                assert_ne!(local, SELF_ARG);
             }
         }
     }
@@ -516,20 +514,22 @@ fn make_aggregate_adt<'tcx>(
 
 #[tracing::instrument(level = "trace", skip(tcx, body))]
 fn make_coroutine_state_argument_indirect<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let coroutine_ty = body.local_decls.raw[1].ty;
+    let coroutine_ty = body.local_decls[SELF_ARG].ty;
 
     let ref_coroutine_ty = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, coroutine_ty);
 
     // Replace the by value coroutine argument
-    body.local_decls.raw[1].ty = ref_coroutine_ty;
+    body.local_decls[SELF_ARG].ty = ref_coroutine_ty;
 
     // Add a deref to accesses of the coroutine state
-    SelfArgVisitor::new(tcx, ProjectionElem::Deref).visit_body(body);
+    SelfArgVisitor::new(tcx, tcx.mk_place_deref(SELF_ARG.into())).visit_body(body);
 }
 
 #[tracing::instrument(level = "trace", skip(tcx, body))]
 fn make_coroutine_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let ref_coroutine_ty = body.local_decls.raw[1].ty;
+    let coroutine_ty = body.local_decls[SELF_ARG].ty;
+
+    let ref_coroutine_ty = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, coroutine_ty);
 
     let pin_did = tcx.require_lang_item(LangItem::Pin, body.span);
     let pin_adt_ref = tcx.adt_def(pin_did);
@@ -537,11 +537,28 @@ fn make_coroutine_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body
     let pin_ref_coroutine_ty = Ty::new_adt(tcx, pin_adt_ref, args);
 
     // Replace the by ref coroutine argument
-    body.local_decls.raw[1].ty = pin_ref_coroutine_ty;
+    body.local_decls[SELF_ARG].ty = pin_ref_coroutine_ty;
+
+    let unpinned_local = body.local_decls.push(LocalDecl::new(ref_coroutine_ty, body.span));
 
     // Add the Pin field access to accesses of the coroutine state
-    SelfArgVisitor::new(tcx, ProjectionElem::Field(FieldIdx::ZERO, ref_coroutine_ty))
-        .visit_body(body);
+    SelfArgVisitor::new(tcx, tcx.mk_place_deref(unpinned_local.into())).visit_body(body);
+
+    let source_info = SourceInfo::outermost(body.span);
+    body.basic_blocks_mut()[START_BLOCK].statements.insert(
+        0,
+        Statement::new(
+            source_info,
+            StatementKind::Assign(Box::new((
+                unpinned_local.into(),
+                Rvalue::CopyForDeref(tcx.mk_place_field(
+                    SELF_ARG.into(),
+                    FieldIdx::ZERO,
+                    ref_coroutine_ty,
+                )),
+            ))),
+        ),
+    );
 }
 
 /// Transforms the `body` of the coroutine applying the following transforms:
@@ -1293,8 +1310,6 @@ fn create_coroutine_resume_function<'tcx>(
     let default_block = insert_term_block(body, TerminatorKind::Unreachable);
     insert_switch(body, cases, &transform, default_block);
 
-    make_coroutine_state_argument_indirect(tcx, body);
-
     match transform.coroutine_kind {
         CoroutineKind::Coroutine(_)
         | CoroutineKind::Desugared(CoroutineDesugaring::Async | CoroutineDesugaring::AsyncGen, _) =>
@@ -1303,7 +1318,9 @@ fn create_coroutine_resume_function<'tcx>(
         }
         // Iterator::next doesn't accept a pinned argument,
         // unlike for all other coroutine kinds.
-        CoroutineKind::Desugared(CoroutineDesugaring::Gen, _) => {}
+        CoroutineKind::Desugared(CoroutineDesugaring::Gen, _) => {
+            make_coroutine_state_argument_indirect(tcx, body);
+        }
     }
 }
 
