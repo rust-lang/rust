@@ -6,6 +6,7 @@ use crate::utils::helpers::{
     check_cfg_arg, extract_beta_rev, hex_encode, make, set_file_times, submodule_path_of,
     symlink_dir,
 };
+use crate::utils::tests::TestCtx;
 use crate::{Config, Flags};
 
 #[test]
@@ -80,8 +81,7 @@ fn test_symlink_dir() {
 
 #[test]
 fn test_set_file_times_sanity_check() {
-    let config =
-        Config::parse(Flags::parse(&["check".to_owned(), "--config=/does/not/exist".to_owned()]));
+    let config = TestCtx::new().config("check").create_config();
     let tempfile = config.tempdir().join(".tmp-file");
 
     {
