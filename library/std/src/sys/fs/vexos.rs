@@ -19,6 +19,12 @@ pub use unsupported_fs::{
 #[derive(Debug)]
 struct FileDesc(*mut vex_sdk::FIL);
 
+// SAFETY: VEXos's FDs can be used on a thread other than the one they were created on.
+unsafe impl Send for FileDesc {}
+// SAFETY: We assume an environment without threads (i.e. no RTOS).
+// (If there were threads, it is possible that a mutex would be required.)
+unsafe impl Sync for FileDesc {}
+
 pub struct File {
     fd: FileDesc,
 }
