@@ -1,8 +1,9 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{is_path_diagnostic_item, ty};
+use clippy_utils::ty;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -146,7 +147,7 @@ impl LateLintPass<'_> for UncheckedTimeSubtraction {
 
 fn is_instant_now_call(cx: &LateContext<'_>, expr_block: &'_ Expr<'_>) -> bool {
     if let ExprKind::Call(fn_expr, []) = expr_block.kind
-        && is_path_diagnostic_item(cx, fn_expr, sym::instant_now)
+        && cx.ty_based_def(fn_expr).is_diag_item(cx, sym::instant_now)
     {
         true
     } else {

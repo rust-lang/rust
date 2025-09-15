@@ -298,7 +298,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
             if let Some(lang) = self.cx.tcx.lang_items().from_def_id(id) {
                 chain!(self, "{path}.res(cx).is_lang_item(cx, LangItem::{}", lang.name());
             } else if let Some(name) = self.cx.tcx.get_diagnostic_name(id) {
-                chain!(self, "is_path_diagnostic_item(cx, {path}, sym::{name})");
+                chain!(self, "{path}.res(cx).is_diag_item(cx, sym::{name})");
             } else {
                 chain!(
                     self,

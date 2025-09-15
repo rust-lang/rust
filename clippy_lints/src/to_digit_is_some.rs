@@ -1,8 +1,9 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::res::{MaybeDef, MaybeQPath};
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{is_in_const_context, is_path_diagnostic_item, sym};
+use clippy_utils::{is_in_const_context, sym};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
@@ -62,7 +63,7 @@ impl<'tcx> LateLintPass<'tcx> for ToDigitIsSome {
                     }
                 },
                 hir::ExprKind::Call(to_digits_call, [char_arg, radix_arg]) => {
-                    if is_path_diagnostic_item(cx, to_digits_call, sym::char_to_digit) {
+                    if to_digits_call.ty_rel_def(cx).is_diag_item(cx, sym::char_to_digit) {
                         Some((false, char_arg, radix_arg))
                     } else {
                         None

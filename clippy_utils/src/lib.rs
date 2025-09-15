@@ -438,16 +438,6 @@ pub fn qpath_generic_tys<'tcx>(qpath: &QPath<'tcx>) -> impl Iterator<Item = &'tc
         })
 }
 
-/// If `maybe_path` is a path node which resolves to an item, resolves it to a `DefId` and checks if
-/// it matches the given diagnostic item.
-pub fn is_path_diagnostic_item<'tcx>(
-    cx: &LateContext<'_>,
-    maybe_path: &impl MaybePath<'tcx>,
-    diag_item: Symbol,
-) -> bool {
-    path_def_id(cx, maybe_path).is_some_and(|id| cx.tcx.is_diagnostic_item(diag_item, id))
-}
-
 /// If the expression is a path to a local, returns the canonical `HirId` of the local.
 pub fn path_to_local(expr: &Expr<'_>) -> Option<HirId> {
     if let ExprKind::Path(QPath::Resolved(None, path)) = expr.kind
@@ -784,13 +774,13 @@ fn is_default_equivalent_from(cx: &LateContext<'_>, from_func: &Expr<'_>, arg: &
                 node: LitKind::Str(sym, _),
                 ..
             }) => return sym.is_empty() && ty.basic_res().is_lang_item(cx, LangItem::String),
-            ExprKind::Array([]) => return is_path_diagnostic_item(cx, ty, sym::Vec),
+            ExprKind::Array([]) => return ty.basic_res().is_diag_item(cx, sym::Vec),
             ExprKind::Repeat(_, len) => {
                 if let ConstArgKind::Anon(anon_const) = len.kind
                     && let ExprKind::Lit(const_lit) = cx.tcx.hir_body(anon_const.body).value.kind
                     && let LitKind::Int(v, _) = const_lit.node
                 {
-                    return v == 0 && is_path_diagnostic_item(cx, ty, sym::Vec);
+                    return v == 0 && ty.basic_res().is_diag_item(cx, sym::Vec);
                 }
             },
             _ => (),

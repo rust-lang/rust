@@ -1,9 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::macros::matching_root_macro_call;
+use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{
-    SpanlessEq, get_enclosing_block, is_integer_literal, is_path_diagnostic_item, path_to_local, path_to_local_id,
-    span_contains_comment, sym,
+    SpanlessEq, get_enclosing_block, is_integer_literal, path_to_local, path_to_local_id, span_contains_comment, sym,
 };
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{Visitor, walk_block, walk_expr, walk_stmt};
@@ -149,10 +149,10 @@ impl SlowVectorInit {
         }
 
         if let ExprKind::Call(func, [len_expr]) = expr.kind
-            && is_path_diagnostic_item(cx, func, sym::vec_with_capacity)
+            && func.ty_rel_def(cx).is_diag_item(cx, sym::vec_with_capacity)
         {
             Some(InitializedSize::Initialized(len_expr))
-        } else if matches!(expr.kind, ExprKind::Call(func, []) if is_path_diagnostic_item(cx, func, sym::vec_new)) {
+        } else if matches!(expr.kind, ExprKind::Call(func, []) if func.ty_rel_def(cx).is_diag_item(cx, sym::vec_new)) {
             Some(InitializedSize::Uninitialized)
         } else {
             None
@@ -301,7 +301,7 @@ impl<'tcx> VectorInitializationVisitor<'_, 'tcx> {
     /// Returns `true` if given expression is `repeat(0)`
     fn is_repeat_zero(&self, expr: &Expr<'_>) -> bool {
         if let ExprKind::Call(fn_expr, [repeat_arg]) = expr.kind
-            && is_path_diagnostic_item(self.cx, fn_expr, sym::iter_repeat)
+            && fn_expr.basic_res().is_diag_item(self.cx, sym::iter_repeat)
             && is_integer_literal(repeat_arg, 0)
         {
             true
