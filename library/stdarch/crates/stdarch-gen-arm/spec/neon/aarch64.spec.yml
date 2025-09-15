@@ -8781,6 +8781,7 @@ intrinsics:
       - [float64x1_t, float32x2_t]
       - [float32x4_t, float64x2_t]
       - [float64x2_t, float32x4_t]
+    big_endian_inverse: false
     compose:
       - FnCall: [transmute, [a]]
 
@@ -8801,6 +8802,7 @@ intrinsics:
       # q
       - [float64x2_t, float16x8_t]
       - [float16x8_t, float64x2_t]
+    big_endian_inverse: false
     compose:
       - FnCall: [transmute, [a]]
 
