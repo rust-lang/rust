@@ -1,9 +1,9 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::res::{MaybeDef, MaybeResPath, MaybeTypeckRes};
+use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath, MaybeTypeckRes};
 use clippy_utils::source::{snippet, snippet_with_context};
 use clippy_utils::sugg::{DiagExt as _, Sugg};
 use clippy_utils::ty::{is_copy, same_type_modulo_regions};
-use clippy_utils::{get_parent_expr, is_trait_item, is_ty_alias, sym};
+use clippy_utils::{get_parent_expr, is_ty_alias, sym};
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BindingMode, Expr, ExprKind, HirId, MatchSource, Mutability, Node, PatKind};
@@ -180,7 +180,10 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                     path.ident.name,
                     sym::map | sym::map_err | sym::map_break | sym::map_continue
                 ) && has_eligible_receiver(cx, recv, e)
-                    && (is_trait_item(cx, arg, sym::Into) || is_trait_item(cx, arg, sym::From))
+                    && matches!(
+                        arg.res(cx).assoc_parent(cx).opt_diag_name(cx),
+                        Some(sym::Into | sym::From)
+                    )
                     && let ty::FnDef(_, args) = cx.typeck_results().expr_ty(arg).kind()
                     && let &[from_ty, to_ty] = args.into_type_list(cx.tcx).as_slice()
                     && same_type_modulo_regions(from_ty, to_ty)
