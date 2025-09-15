@@ -1,11 +1,11 @@
 use super::MANUAL_FIND;
 use super::utils::make_iterator_snippet;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::res::{MaybeQPath, MaybeResPath};
+use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::usage::contains_return_break_continue_macro;
-use clippy_utils::{higher, is_res_lang_ctor, peel_blocks_with_stmt};
+use clippy_utils::{higher, peel_blocks_with_stmt};
 use rustc_errors::Applicability;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{BindingMode, Block, Expr, ExprKind, HirId, Node, Pat, PatKind, Stmt, StmtKind};
@@ -34,7 +34,7 @@ pub(super) fn check<'tcx>(
         && let StmtKind::Semi(semi) = stmt.kind
         && let ExprKind::Ret(Some(ret_value)) = semi.kind
         && let ExprKind::Call(ctor, [inner_ret]) = ret_value.kind
-        && is_res_lang_ctor(cx, ctor.res(cx), LangItem::OptionSome)
+        && ctor.res(cx).ctor_parent(cx).is_lang_item(cx, LangItem::OptionSome)
         && inner_ret.res_local_id() == Some(binding_id)
         && !contains_return_break_continue_macro(cond)
         && let Some((last_stmt, last_ret)) = last_stmt_and_ret(cx, expr)
@@ -150,7 +150,7 @@ fn last_stmt_and_ret<'tcx>(
         && let Some((_, Node::Block(block))) = parent_iter.next()
         && let Some((last_stmt, last_ret)) = extract(block)
         && last_stmt.hir_id == node_hir
-        && is_res_lang_ctor(cx, last_ret.res(cx), LangItem::OptionNone)
+        && last_ret.res(cx).ctor_parent(cx).is_lang_item(cx, LangItem::OptionNone)
         && let Some((_, Node::Expr(_block))) = parent_iter.next()
         // This includes the function header
         && let Some((_, func)) = parent_iter.next()

@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::res::MaybeQPath;
+use clippy_utils::res::{MaybeDef, MaybeQPath};
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{is_diag_trait_item, is_from_proc_macro, is_res_lang_ctor, last_path_segment, std_or_core};
+use clippy_utils::{is_diag_trait_item, is_from_proc_macro, last_path_segment, std_or_core};
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Body, Expr, ExprKind, ImplItem, ImplItemKind, Item, LangItem, Node, UnOp};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -269,7 +269,7 @@ fn expr_is_cmp<'tcx>(
             },
             [cmp_expr],
         ) => {
-            is_res_lang_ctor(cx, typeck.qpath_res(some_path, *some_hir_id), LangItem::OptionSome)
+            typeck.qpath_res(some_path, *some_hir_id).ctor_parent(cx).is_lang_item(cx, LangItem::OptionSome)
                 // Fix #11178, allow `Self::cmp(self, ..)`
                 && self_cmp_call(cx, typeck, cmp_expr, needs_fully_qualified)
         },

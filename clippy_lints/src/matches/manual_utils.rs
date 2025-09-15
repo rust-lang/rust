@@ -5,8 +5,8 @@ use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{is_copy, is_unsafe_fn, peel_and_count_ty_refs};
 use clippy_utils::{
-    CaptureKind, can_move_expr_to_closure, expr_requires_coercion, is_else_clause, is_lint_allowed, is_res_lang_ctor,
-    path_to_local_id, peel_blocks, peel_hir_expr_refs, peel_hir_expr_while,
+    CaptureKind, can_move_expr_to_closure, expr_requires_coercion, is_else_clause, is_lint_allowed, path_to_local_id,
+    peel_blocks, peel_hir_expr_refs, peel_hir_expr_while,
 };
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_errors::Applicability;
@@ -259,9 +259,19 @@ pub(super) fn try_parse_pattern<'tcx>(
                 kind: PatExprKind::Path(qpath),
                 hir_id,
                 ..
-            }) if is_res_lang_ctor(cx, cx.qpath_res(qpath, *hir_id), OptionNone) => Some(OptionPat::None),
+            }) if cx
+                .qpath_res(qpath, *hir_id)
+                .ctor_parent(cx)
+                .is_lang_item(cx, OptionNone) =>
+            {
+                Some(OptionPat::None)
+            },
             PatKind::TupleStruct(ref qpath, [pattern], _)
-                if is_res_lang_ctor(cx, cx.qpath_res(qpath, pat.hir_id), OptionSome) && pat.span.ctxt() == ctxt =>
+                if cx
+                    .qpath_res(qpath, pat.hir_id)
+                    .ctor_parent(cx)
+                    .is_lang_item(cx, OptionSome)
+                    && pat.span.ctxt() == ctxt =>
             {
                 Some(OptionPat::Some { pattern, ref_count })
             },
@@ -273,5 +283,5 @@ pub(super) fn try_parse_pattern<'tcx>(
 
 // Checks for the `None` value.
 fn is_none_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    is_res_lang_ctor(cx, peel_blocks(expr).res(cx), OptionNone)
+    peel_blocks(expr).res(cx).ctor_parent(cx).is_lang_item(cx, OptionNone)
 }

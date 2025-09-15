@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::res::MaybeQPath;
+use clippy_utils::res::{MaybeDef, MaybeQPath};
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{is_none_arm, is_res_lang_ctor, peel_blocks};
+use clippy_utils::{is_none_arm, peel_blocks};
 use rustc_errors::Applicability;
 use rustc_hir::{Arm, BindingMode, ByRef, Expr, ExprKind, LangItem, Mutability, PatKind, QPath};
 use rustc_lint::LateContext;
@@ -59,10 +59,13 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr:
 // Checks if arm has the form `Some(ref v) => Some(v)` (checks for `ref` and `ref mut`)
 fn is_ref_some_arm(cx: &LateContext<'_>, arm: &Arm<'_>) -> Option<Mutability> {
     if let PatKind::TupleStruct(ref qpath, [first_pat, ..], _) = arm.pat.kind
-        && is_res_lang_ctor(cx, cx.qpath_res(qpath, arm.pat.hir_id), LangItem::OptionSome)
+        && cx
+            .qpath_res(qpath, arm.pat.hir_id)
+            .ctor_parent(cx)
+            .is_lang_item(cx, LangItem::OptionSome)
         && let PatKind::Binding(BindingMode(ByRef::Yes(mutabl), _), .., ident, _) = first_pat.kind
         && let ExprKind::Call(e, [arg]) = peel_blocks(arm.body).kind
-        && is_res_lang_ctor(cx, e.res(cx), LangItem::OptionSome)
+        && e.res(cx).ctor_parent(cx).is_lang_item(cx, LangItem::OptionSome)
         && let ExprKind::Path(QPath::Resolved(_, path2)) = arg.kind
         && path2.segments.len() == 1
         && ident.name == path2.segments[0].ident.name

@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::res::MaybeQPath;
-use clippy_utils::{is_from_proc_macro, is_inside_let_else, is_res_lang_ctor};
+use clippy_utils::res::{MaybeDef, MaybeQPath};
+use clippy_utils::{is_from_proc_macro, is_inside_let_else};
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::ResultErr;
 use rustc_hir::{ExprKind, HirId, ItemKind, MatchSource, Node, OwnerNode, Stmt, StmtKind};
@@ -20,7 +20,7 @@ pub(super) fn check_stmt<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         && let ExprKind::Match(maybe_cons, _, MatchSource::TryDesugar(_)) = ret.kind
         && let ExprKind::Call(_, [maybe_result_err]) = maybe_cons.kind
         && let ExprKind::Call(maybe_constr, _) = maybe_result_err.kind
-        && is_res_lang_ctor(cx, maybe_constr.res(cx), ResultErr)
+        && maybe_constr.res(cx).ctor_parent(cx).is_lang_item(cx, ResultErr)
 
         // Ensure this is not the final stmt, otherwise removing it would cause a compile error
         && let OwnerNode::Item(item) = cx.tcx.hir_owner_node(cx.tcx.hir_get_parent_item(expr.hir_id))

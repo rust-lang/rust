@@ -2,10 +2,10 @@ use std::borrow::Cow;
 
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::res::MaybeQPath;
+use clippy_utils::res::{MaybeDef, MaybeQPath};
 use clippy_utils::source::snippet;
 use clippy_utils::visitors::find_all_ret_expressions;
-use clippy_utils::{contains_return, is_res_lang_ctor, return_ty};
+use clippy_utils::{contains_return, return_ty};
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{OptionSome, ResultOk};
 use rustc_hir::intravisit::FnKind;
@@ -123,7 +123,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
             if !ret_expr.span.from_expansion()
                 // Check if a function call.
                 && let ExprKind::Call(func, [arg]) = ret_expr.kind
-                && is_res_lang_ctor(cx, func.res(cx), lang_item)
+                && func.res(cx).ctor_parent(cx).is_lang_item(cx, lang_item)
                 // Make sure the function argument does not contain a return expression.
                 && !contains_return(arg)
             {

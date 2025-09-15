@@ -2,12 +2,11 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::eager_or_lazy::switch_to_eager_eval;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::MaybeQPath;
+use clippy_utils::res::{MaybeDef, MaybeQPath};
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context, walk_span_to_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{
-    contains_return, expr_adjustment_requires_coercion, higher, is_else_clause, is_in_const_context, is_res_lang_ctor,
-    peel_blocks, sym,
+    contains_return, expr_adjustment_requires_coercion, higher, is_else_clause, is_in_const_context, peel_blocks, sym,
 };
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{OptionNone, OptionSome};
@@ -74,8 +73,8 @@ impl<'tcx> LateLintPass<'tcx> for IfThenSomeElseNone {
             && let ExprKind::Call(then_call, [then_arg]) = then_expr.kind
             && !expr.span.from_expansion()
             && !then_expr.span.from_expansion()
-            && is_res_lang_ctor(cx, then_call.res(cx), OptionSome)
-            && is_res_lang_ctor(cx, peel_blocks(els).res(cx), OptionNone)
+            && then_call.res(cx).ctor_parent(cx).is_lang_item(cx, OptionSome)
+            && peel_blocks(els).res(cx).ctor_parent(cx).is_lang_item(cx, OptionNone)
             && !is_else_clause(cx.tcx, expr)
             && !is_in_const_context(cx)
             && self.msrv.meets(cx, msrvs::BOOL_THEN)

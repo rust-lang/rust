@@ -1,11 +1,11 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::higher::IfLetOrMatch;
 use clippy_utils::msrvs::Msrv;
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet;
 use clippy_utils::visitors::is_local_used;
 use clippy_utils::{
-    SpanlessEq, get_ref_operators, is_res_lang_ctor, is_unit_expr, path_to_local, peel_blocks_with_stmt,
-    peel_ref_operators,
+    SpanlessEq, get_ref_operators, is_unit_expr, path_to_local, peel_blocks_with_stmt, peel_ref_operators,
 };
 use rustc_ast::BorrowKind;
 use rustc_errors::MultiSpan;
@@ -136,7 +136,10 @@ fn arm_is_wild_like(cx: &LateContext<'_>, arm: &Arm<'_>) -> bool {
             kind: PatExprKind::Path(qpath),
             hir_id,
             ..
-        }) => is_res_lang_ctor(cx, cx.qpath_res(qpath, *hir_id), OptionNone),
+        }) => cx
+            .qpath_res(qpath, *hir_id)
+            .ctor_parent(cx)
+            .is_lang_item(cx, OptionNone),
         _ => false,
     }
 }

@@ -11,8 +11,8 @@ use clippy_utils::ty::{implements_trait, is_copy};
 use clippy_utils::usage::local_used_after_expr;
 use clippy_utils::{
     eq_expr_value, fn_def_id_with_node_args, higher, is_else_clause, is_in_const_context, is_lint_allowed,
-    is_res_lang_ctor, pat_and_expr_can_be_question_mark, path_to_local, path_to_local_id, peel_blocks,
-    peel_blocks_with_stmt, span_contains_cfg, span_contains_comment, sym,
+    pat_and_expr_can_be_question_mark, path_to_local, path_to_local_id, peel_blocks, peel_blocks_with_stmt,
+    span_contains_cfg, span_contains_comment, sym,
 };
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{self, OptionNone, OptionSome, ResultErr, ResultOk};
@@ -220,15 +220,15 @@ fn is_early_return(smbl: Symbol, cx: &LateContext<'_>, if_block: &IfBlockType<'_
                     sym::Option => {
                         // We only need to check `if let Some(x) = option` not `if let None = option`,
                         // because the later one will be suggested as `if option.is_none()` thus causing conflict.
-                        is_res_lang_ctor(cx, res, OptionSome)
+                        res.ctor_parent(cx).is_lang_item(cx, OptionSome)
                             && if_else.is_some()
                             && expr_return_none_or_err(smbl, cx, if_else.unwrap(), let_expr, None)
                     },
                     sym::Result => {
-                        (is_res_lang_ctor(cx, res, ResultOk)
+                        (res.ctor_parent(cx).is_lang_item(cx, ResultOk)
                             && if_else.is_some()
                             && expr_return_none_or_err(smbl, cx, if_else.unwrap(), let_expr, Some(let_pat_sym)))
-                            || is_res_lang_ctor(cx, res, ResultErr)
+                            || res.ctor_parent(cx).is_lang_item(cx, ResultErr)
                                 && expr_return_none_or_err(smbl, cx, if_then, let_expr, Some(let_pat_sym))
                                 && if_else.is_none()
                     },
@@ -248,7 +248,10 @@ fn expr_return_none_or_err(
     match peel_blocks_with_stmt(expr).kind {
         ExprKind::Ret(Some(ret_expr)) => expr_return_none_or_err(smbl, cx, ret_expr, cond_expr, err_sym),
         ExprKind::Path(ref qpath) => match smbl {
-            sym::Option => is_res_lang_ctor(cx, cx.qpath_res(qpath, expr.hir_id), OptionNone),
+            sym::Option => cx
+                .qpath_res(qpath, expr.hir_id)
+                .ctor_parent(cx)
+                .is_lang_item(cx, OptionNone),
             sym::Result => path_to_local(expr).is_some() && path_to_local(expr) == path_to_local(cond_expr),
             _ => false,
         },
@@ -343,7 +346,10 @@ fn extract_ctor_call<'a, 'tcx>(
     pat: &'a Pat<'tcx>,
 ) -> Option<&'a Pat<'tcx>> {
     if let PatKind::TupleStruct(variant_path, [val_binding], _) = &pat.kind
-        && is_res_lang_ctor(cx, cx.qpath_res(variant_path, pat.hir_id), expected_ctor)
+        && cx
+            .qpath_res(variant_path, pat.hir_id)
+            .ctor_parent(cx)
+            .is_lang_item(cx, expected_ctor)
     {
         Some(val_binding)
     } else {
@@ -394,7 +400,7 @@ fn check_arm_is_none_or_err<'tcx>(cx: &LateContext<'tcx>, mode: TryMode, arm: &A
                 // check `=> return Err(...)`
                 && let ExprKind::Ret(Some(wrapped_ret_expr)) = arm_body.kind
                 && let ExprKind::Call(ok_ctor, [ret_expr]) = wrapped_ret_expr.kind
-                && is_res_lang_ctor(cx, ok_ctor.res(cx), ResultErr)
+                && ok_ctor.res(cx).ctor_parent(cx).is_lang_item(cx, ResultErr)
                 // check if `...` is `val` from binding or `val.into()`
                 && is_local_or_local_into(cx, ret_expr, ok_val)
             {
@@ -405,10 +411,10 @@ fn check_arm_is_none_or_err<'tcx>(cx: &LateContext<'tcx>, mode: TryMode, arm: &A
         },
         TryMode::Option => {
             // Check the pat is `None`
-            if is_res_lang_ctor(cx, arm.pat.res(cx), OptionNone)
+            if arm.pat.res(cx).ctor_parent(cx).is_lang_item(cx, OptionNone)
                 // Check `=> return None`
                 && let ExprKind::Ret(Some(ret_expr)) = arm_body.kind
-                && is_res_lang_ctor(cx, ret_expr.res(cx), OptionNone)
+                && ret_expr.res(cx).ctor_parent(cx).is_lang_item(cx, OptionNone)
                 && !ret_expr.span.from_expansion()
             {
                 true
