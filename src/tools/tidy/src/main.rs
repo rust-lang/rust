@@ -107,7 +107,7 @@ fn main() {
 
         // Checks over tests.
         check!(tests_placement, &root_path);
-        // check!(tests_revision_unpaired_stdout_stderr, &tests_path);
+        check!(tests_revision_unpaired_stdout_stderr, &tests_path);
         // check!(debug_artifacts, &tests_path);
         // check!(ui_tests, &root_path, bless);
         // check!(mir_opt_tests, &tests_path, bless);
