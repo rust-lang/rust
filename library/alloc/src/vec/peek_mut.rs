@@ -29,9 +29,9 @@ impl<'a, T> PeekMut<'a, T> {
 
     /// Removes the peeked value from the vector and returns it.
     #[unstable(feature = "vec_peek_mut", issue = "122742")]
-    pub fn pop(self) -> T {
+    pub fn pop(this: Self) -> T {
         // SAFETY: PeekMut is only constructed if the vec is non-empty
-        unsafe { self.vec.pop().unwrap_unchecked() }
+        unsafe { this.vec.pop().unwrap_unchecked() }
     }
 }
 
