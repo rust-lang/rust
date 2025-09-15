@@ -111,7 +111,7 @@ fn main() {
         check!(ui_tests, &root_path, bless);
         check!(mir_opt_tests, &tests_path, bless);
         check!(rustdoc_gui_tests, &tests_path);
-        // check!(rustdoc_css_themes, &librustdoc_path);
+        check!(rustdoc_css_themes, &librustdoc_path);
         // check!(rustdoc_templates, &librustdoc_path);
         // check!(rustdoc_json, &src_path, &ci_info);
         check!(known_bug, &crashes_path);
@@ -160,19 +160,14 @@ fn main() {
         let collected = {
             drain_handles(&mut handles);
 
-            let mut flag = false;
-            let r = features::check(
+            features::check(
                 &src_path,
                 &tests_path,
                 &compiler_path,
                 &library_path,
-                &mut flag,
+                diag_ctx.clone(),
                 verbose,
-            );
-            if flag {
-                bad.store(true, Ordering::Relaxed);
-            }
-            r
+            )
         };
         // check!(unstable_book, &src_path, collected);
         //
