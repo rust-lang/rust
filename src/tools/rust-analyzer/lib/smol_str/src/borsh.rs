@@ -1,8 +1,10 @@
 use crate::{Repr, SmolStr, INLINE_CAP};
 use alloc::string::{String, ToString};
-use borsh::io::{Error, ErrorKind, Read, Write};
-use borsh::{BorshDeserialize, BorshSerialize};
-use core::intrinsics::transmute;
+use borsh::{
+    io::{Error, ErrorKind, Read, Write},
+    BorshDeserialize, BorshSerialize,
+};
+use core::mem::transmute;
 
 impl BorshSerialize for SmolStr {
     fn serialize<W: Write>(&self, writer: &mut W) -> borsh::io::Result<()> {
@@ -27,12 +29,8 @@ impl BorshDeserialize for SmolStr {
             }))
         } else {
             // u8::vec_from_reader always returns Some on success in current implementation
-            let vec = u8::vec_from_reader(len, reader)?.ok_or_else(|| {
-                Error::new(
-                    ErrorKind::Other,
-                    "u8::vec_from_reader unexpectedly returned None".to_string(),
-                )
-            })?;
+            let vec = u8::vec_from_reader(len, reader)?
+                .ok_or_else(|| Error::other("u8::vec_from_reader unexpectedly returned None"))?;
             Ok(SmolStr::from(String::from_utf8(vec).map_err(|err| {
                 let msg = err.to_string();
                 Error::new(ErrorKind::InvalidData, msg)
