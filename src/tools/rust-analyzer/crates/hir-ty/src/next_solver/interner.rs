@@ -1330,16 +1330,23 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
         self,
         def_id: Self::TraitId,
     ) -> EarlyBinder<Self, impl IntoIterator<Item = (Self::Clause, Self::Span)>> {
+        let is_self = |ty: Ty<'db>| match ty.kind() {
+            rustc_type_ir::TyKind::Param(param) => param.index == 0,
+            _ => false,
+        };
+
         let predicates: Vec<(Clause<'db>, Span)> = self
             .db()
             .generic_predicates_ns(def_id.0.into())
             .iter()
             .filter(|p| match p.kind().skip_binder() {
-                rustc_type_ir::ClauseKind::Trait(tr) => match tr.self_ty().kind() {
-                    rustc_type_ir::TyKind::Param(param) => param.index == 0,
-                    _ => false,
-                },
-                _ => true,
+                // rustc has the following assertion:
+                // https://github.com/rust-lang/rust/blob/52618eb338609df44978b0ca4451ab7941fd1c7a/compiler/rustc_hir_analysis/src/hir_ty_lowering/bounds.rs#L525-L608
+                rustc_type_ir::ClauseKind::Trait(it) => is_self(it.self_ty()),
+                rustc_type_ir::ClauseKind::TypeOutlives(it) => is_self(it.0),
+                rustc_type_ir::ClauseKind::Projection(it) => is_self(it.self_ty()),
+                rustc_type_ir::ClauseKind::HostEffect(it) => is_self(it.self_ty()),
+                _ => false,
             })
             .cloned()
             .map(|p| (p, Span::dummy()))
@@ -1367,7 +1374,14 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
             .generic_predicates_ns(def_id.try_into().unwrap())
             .iter()
             .filter(|p| match p.kind().skip_binder() {
-                rustc_type_ir::ClauseKind::Trait(tr) => is_self_or_assoc(tr.self_ty()),
+                rustc_type_ir::ClauseKind::Trait(it) => is_self_or_assoc(it.self_ty()),
+                rustc_type_ir::ClauseKind::TypeOutlives(it) => is_self_or_assoc(it.0),
+                rustc_type_ir::ClauseKind::Projection(it) => is_self_or_assoc(it.self_ty()),
+                rustc_type_ir::ClauseKind::HostEffect(it) => is_self_or_assoc(it.self_ty()),
+                // FIXME: Not sure is this correct to allow other clauses but we might replace
+                // `generic_predicates_ns` query here with something closer to rustc's
+                // `implied_bounds_with_filter`, which is more granular lowering than this
+                // "lower at once and then filter" implementation.
                 _ => true,
             })
             .cloned()
