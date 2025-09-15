@@ -151,7 +151,7 @@ which can be used in one of two ways:
 
 Each job pattern can either be an exact name of a job or a glob pattern that matches multiple jobs,
 for example `*msvc*` or `*-alt`. You can start at most 20 jobs in a single try build. When using
-glob patterns in the PR description, you can wrap them in backticks (`` ` ``) to avoid GitHub rendering
+glob patterns in the PR description, you can (but do not have to) wrap them in backticks (`` ` ``) to avoid GitHub rendering
 the pattern as Markdown if it contains e.g. an asterisk. Note that this escaping will not work when using
 the `@bors jobs=` parameter.
 
