@@ -240,6 +240,7 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 }
                 InlineAsmArch::RiscV32 | InlineAsmArch::RiscV64 => {
                     constraints.extend_from_slice(&[
+                        "~{fflags}".to_string(),
                         "~{vtype}".to_string(),
                         "~{vl}".to_string(),
                         "~{vxsat}".to_string(),
