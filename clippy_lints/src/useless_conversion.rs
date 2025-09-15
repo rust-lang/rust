@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg, span_lin
 use clippy_utils::res::MaybeDef;
 use clippy_utils::source::{snippet, snippet_with_context};
 use clippy_utils::sugg::{DiagExt as _, Sugg};
-use clippy_utils::ty::{get_type_diagnostic_name, is_copy, same_type_modulo_regions};
+use clippy_utils::ty::{is_copy, same_type_modulo_regions};
 use clippy_utils::{
     get_parent_expr, is_inherent_method_call, is_trait_item, is_trait_method, is_ty_alias, path_to_local, sym,
 };
@@ -442,7 +442,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
 fn has_eligible_receiver(cx: &LateContext<'_>, recv: &Expr<'_>, expr: &Expr<'_>) -> bool {
     if is_inherent_method_call(cx, expr) {
         matches!(
-            get_type_diagnostic_name(cx, cx.typeck_results().expr_ty(recv)),
+            cx.typeck_results().expr_ty(recv).opt_diag_name(cx),
             Some(sym::Option | sym::Result | sym::ControlFlow)
         )
     } else {

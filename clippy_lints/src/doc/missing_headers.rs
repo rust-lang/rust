@@ -2,7 +2,7 @@ use super::{DocHeaders, MISSING_ERRORS_DOC, MISSING_PANICS_DOC, MISSING_SAFETY_D
 use clippy_utils::diagnostics::{span_lint, span_lint_and_note};
 use clippy_utils::macros::{is_panic, root_macro_call_first_node};
 use clippy_utils::res::MaybeDef;
-use clippy_utils::ty::{get_type_diagnostic_name, implements_trait_with_env};
+use clippy_utils::ty::implements_trait_with_env;
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{fulfill_or_allowed, is_doc_hidden, is_inside_always_const_context, method_chain_args, return_ty};
 use rustc_hir::{BodyId, FnSig, OwnerId, Safety};
@@ -120,10 +120,7 @@ fn find_panic(cx: &LateContext<'_>, body_id: BodyId) -> Option<Span> {
         if let Some(arglists) =
             method_chain_args(expr, &[sym::unwrap]).or_else(|| method_chain_args(expr, &[sym::expect]))
             && let receiver_ty = typeck.expr_ty(arglists[0].0).peel_refs()
-            && matches!(
-                get_type_diagnostic_name(cx, receiver_ty),
-                Some(sym::Option | sym::Result)
-            )
+            && matches!(receiver_ty.opt_diag_name(cx), Some(sym::Option | sym::Result))
             && !fulfill_or_allowed(cx, MISSING_PANICS_DOC, [expr.hir_id])
             && panic_span.is_none()
         {

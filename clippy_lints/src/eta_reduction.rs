@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::higher::VecArgs;
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::{snippet_opt, snippet_with_applicability};
-use clippy_utils::ty::get_type_diagnostic_name;
 use clippy_utils::usage::{local_used_after_expr, local_used_in};
 use clippy_utils::{
     get_path_from_caller_to_method_type, is_adjusted, is_no_std_crate, path_to_local, path_to_local_id,
@@ -144,7 +144,7 @@ fn check_closure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tcx
         {
             let callee_ty_raw = typeck.expr_ty(callee);
             let callee_ty = callee_ty_raw.peel_refs();
-            if matches!(get_type_diagnostic_name(cx, callee_ty), Some(sym::Arc | sym::Rc))
+            if matches!(callee_ty.opt_diag_name(cx), Some(sym::Arc | sym::Rc))
                 || !check_inputs(typeck, body.params, None, args)
             {
                 return;

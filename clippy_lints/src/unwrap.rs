@@ -1,7 +1,7 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::msrvs::Msrv;
-use clippy_utils::ty::get_type_diagnostic_name;
+use clippy_utils::res::MaybeDef;
 use clippy_utils::usage::is_potentially_local_place;
 use clippy_utils::{can_use_if_let_chains, higher, path_to_local, sym};
 use rustc_errors::Applicability;
@@ -147,7 +147,7 @@ fn collect_unwrap_info<'tcx>(
     is_entire_condition: bool,
 ) -> Vec<UnwrapInfo<'tcx>> {
     fn option_or_result_call(cx: &LateContext<'_>, ty: Ty<'_>, method_name: Symbol) -> Option<(UnwrappableKind, bool)> {
-        match (get_type_diagnostic_name(cx, ty)?, method_name) {
+        match (ty.opt_diag_name(cx)?, method_name) {
             (sym::Option, sym::is_some) => Some((UnwrappableKind::Option, true)),
             (sym::Option, sym::is_none) => Some((UnwrappableKind::Option, false)),
             (sym::Result, sym::is_ok) => Some((UnwrappableKind::Result, true)),

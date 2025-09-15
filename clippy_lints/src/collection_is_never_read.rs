@@ -1,6 +1,5 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::res::MaybeDef;
-use clippy_utils::ty::get_type_diagnostic_name;
 use clippy_utils::visitors::{Visitable, for_each_expr};
 use clippy_utils::{get_enclosing_block, path_to_local_id};
 use core::ops::ControlFlow;
@@ -60,7 +59,7 @@ impl<'tcx> LateLintPass<'tcx> for CollectionIsNeverRead {
 fn match_acceptable_type(cx: &LateContext<'_>, local: &LetStmt<'_>) -> bool {
     let ty = cx.typeck_results().pat_ty(local.pat);
     matches!(
-        get_type_diagnostic_name(cx, ty),
+        ty.opt_diag_name(cx),
         Some(
             sym::BTreeMap
                 | sym::BTreeSet

@@ -3,7 +3,6 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sym;
-use clippy_utils::ty::get_type_diagnostic_name;
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::ExprKind::{Binary, Lit, MethodCall};
@@ -59,7 +58,7 @@ fn get_ascii_type<'a>(cx: &LateContext<'a>, kind: rustc_hir::ExprKind<'_>) -> Op
         if needs_ref_to_cmp(cx, ty)
             || ty.is_str()
             || ty.is_slice()
-            || matches!(get_type_diagnostic_name(cx, ty), Some(sym::OsStr | sym::OsString))
+            || matches!(ty.opt_diag_name(cx), Some(sym::OsStr | sym::OsString))
         {
             return Some((expr.span, ToAscii(is_lower, ty_raw)));
         }

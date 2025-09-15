@@ -158,20 +158,6 @@ pub fn get_iterator_item_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Optio
         .and_then(|iter_did| cx.get_associated_type(ty, iter_did, sym::Item))
 }
 
-/// Get the diagnostic name of a type, e.g. `sym::HashMap`. To check if a type
-/// implements a trait marked with a diagnostic item use [`implements_trait`].
-///
-/// For a further exploitation what diagnostic items are see [diagnostic items] in
-/// rustc-dev-guide.
-///
-/// [Diagnostic Items]: https://rustc-dev-guide.rust-lang.org/diagnostics/diagnostic-items.html
-pub fn get_type_diagnostic_name(cx: &LateContext<'_>, ty: Ty<'_>) -> Option<Symbol> {
-    match ty.kind() {
-        ty::Adt(adt, _) => cx.tcx.get_diagnostic_name(adt.did()),
-        _ => None,
-    }
-}
-
 /// Returns true if `ty` is a type on which calling `Clone` through a function instead of
 /// as a method, such as `Arc::clone()` is considered idiomatic.
 ///
@@ -179,7 +165,7 @@ pub fn get_type_diagnostic_name(cx: &LateContext<'_>, ty: Ty<'_>) -> Option<Symb
 /// of those types.
 pub fn should_call_clone_as_function(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
     matches!(
-        get_type_diagnostic_name(cx, ty),
+        ty.opt_diag_name(cx),
         Some(sym::Arc | sym::ArcWeak | sym::Rc | sym::RcWeak)
     )
 }
@@ -400,7 +386,7 @@ pub fn needs_ordered_drop<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
         // Check for std types which implement drop, but only for memory allocation.
         else if ty.is_lang_item(cx, LangItem::OwnedBox)
             || matches!(
-                get_type_diagnostic_name(cx, ty),
+                ty.opt_diag_name(cx),
                 Some(sym::HashSet | sym::Rc | sym::Arc | sym::cstring_type | sym::RcWeak | sym::ArcWeak)
             )
         {

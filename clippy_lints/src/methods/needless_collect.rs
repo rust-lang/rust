@@ -2,11 +2,10 @@ use std::ops::ControlFlow;
 
 use super::NEEDLESS_COLLECT;
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::ty::{
-    get_type_diagnostic_name, has_non_owning_mutable_access, make_normalized_projection, make_projection,
-};
+use clippy_utils::ty::{has_non_owning_mutable_access, make_normalized_projection, make_projection};
 use clippy_utils::{
     CaptureKind, can_move_expr_to_closure, fn_def_id, get_enclosing_block, higher, is_trait_method, path_to_local,
     path_to_local_id, sym,
@@ -98,7 +97,7 @@ pub(super) fn check<'tcx>(
             if let PatKind::Binding(BindingMode::NONE | BindingMode::MUT, id, _, None) = l.pat.kind
                 && let ty = cx.typeck_results().expr_ty(collect_expr)
                 && matches!(
-                    get_type_diagnostic_name(cx, ty),
+                    ty.opt_diag_name(cx),
                     Some(sym::Vec | sym::VecDeque | sym::BinaryHeap | sym::LinkedList)
                 )
                 && let iter_ty = cx.typeck_results().expr_ty(iter_expr)
