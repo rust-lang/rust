@@ -132,6 +132,7 @@ use crate::ast_utils::unordered_over;
 use crate::consts::{ConstEvalCtxt, Constant};
 use crate::higher::Range;
 use crate::msrvs::Msrv;
+use crate::res::{MaybeDef, MaybeResPath};
 use crate::ty::{adt_and_variant_of_res, can_partially_move_ty, expr_sig, is_copy, is_recursively_primitive_type};
 use crate::visitors::for_each_expr_without_closures;
 
@@ -435,12 +436,6 @@ pub fn qpath_generic_tys<'tcx>(qpath: &QPath<'tcx>) -> impl Iterator<Item = &'tc
             GenericArg::Type(ty) => Some(ty.as_unambig_ty()),
             _ => None,
         })
-}
-
-/// If `maybe_path` is a path node which resolves to an item, resolves it to a `DefId` and checks if
-/// it matches the given lang item.
-pub fn is_path_lang_item<'tcx>(cx: &LateContext<'_>, maybe_path: &impl MaybePath<'tcx>, lang_item: LangItem) -> bool {
-    path_def_id(cx, maybe_path).is_some_and(|id| cx.tcx.lang_items().get(lang_item) == Some(id))
 }
 
 /// If `maybe_path` is a path node which resolves to an item, resolves it to a `DefId` and checks if
@@ -788,7 +783,7 @@ fn is_default_equivalent_from(cx: &LateContext<'_>, from_func: &Expr<'_>, arg: &
             ExprKind::Lit(hir::Lit {
                 node: LitKind::Str(sym, _),
                 ..
-            }) => return sym.is_empty() && is_path_lang_item(cx, ty, LangItem::String),
+            }) => return sym.is_empty() && ty.basic_res().is_lang_item(cx, LangItem::String),
             ExprKind::Array([]) => return is_path_diagnostic_item(cx, ty, sym::Vec),
             ExprKind::Repeat(_, len) => {
                 if let ConstArgKind::Anon(anon_const) = len.kind

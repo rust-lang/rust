@@ -4,14 +4,15 @@ use clippy_config::Conf;
 use clippy_config::types::MatchLintBehaviour;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::res::MaybeQPath;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{implements_trait, is_copy, is_type_diagnostic_item};
 use clippy_utils::usage::local_used_after_expr;
 use clippy_utils::{
     eq_expr_value, fn_def_id_with_node_args, higher, is_else_clause, is_in_const_context, is_lint_allowed,
-    is_path_lang_item, is_res_lang_ctor, pat_and_expr_can_be_question_mark, path_res, path_to_local, path_to_local_id,
-    peel_blocks, peel_blocks_with_stmt, span_contains_cfg, span_contains_comment, sym,
+    is_res_lang_ctor, pat_and_expr_can_be_question_mark, path_res, path_to_local, path_to_local_id, peel_blocks,
+    peel_blocks_with_stmt, span_contains_cfg, span_contains_comment, sym,
 };
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{self, OptionNone, OptionSome, ResultErr, ResultOk};
@@ -521,11 +522,11 @@ impl QuestionMark {
     }
 }
 
-fn is_try_block(cx: &LateContext<'_>, bl: &Block<'_>) -> bool {
+fn is_try_block(bl: &Block<'_>) -> bool {
     if let Some(expr) = bl.expr
         && let ExprKind::Call(callee, [_]) = expr.kind
     {
-        is_path_lang_item(cx, callee, LangItem::TryTraitFromOutput)
+        callee.opt_lang_path() == Some(LangItem::TryTraitFromOutput)
     } else {
         false
     }
@@ -581,8 +582,8 @@ impl<'tcx> LateLintPass<'tcx> for QuestionMark {
         }
     }
 
-    fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
-        if is_try_block(cx, block) {
+    fn check_block(&mut self, _: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
+        if is_try_block(block) {
             *self
                 .try_block_depth_stack
                 .last_mut()
@@ -598,8 +599,8 @@ impl<'tcx> LateLintPass<'tcx> for QuestionMark {
         self.try_block_depth_stack.pop();
     }
 
-    fn check_block_post(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
-        if is_try_block(cx, block) {
+    fn check_block_post(&mut self, _: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
+        if is_try_block(block) {
             *self
                 .try_block_depth_stack
                 .last_mut()

@@ -1,9 +1,10 @@
 use std::ops::ControlFlow;
 
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::res::{MaybeDef, MaybeResPath};
+use clippy_utils::sym;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::{Visitable, for_each_expr};
-use clippy_utils::{is_path_lang_item, sym};
 use rustc_ast::LitKind;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::{DefKind, Res};
@@ -180,7 +181,9 @@ fn check_struct<'tcx>(
         .fields()
         .iter()
         .filter_map(|field| {
-            if field_accesses.contains(&field.ident.name) || is_path_lang_item(cx, field.ty, LangItem::PhantomData) {
+            if field_accesses.contains(&field.ident.name)
+                || field.ty.basic_res().is_lang_item(cx, LangItem::PhantomData)
+            {
                 None
             } else {
                 Some((field.span, "this field is unused"))

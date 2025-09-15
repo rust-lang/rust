@@ -2,12 +2,12 @@ use clippy_config::Conf;
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::res::MaybeQPath;
 use clippy_utils::source::{SpanRangeExt, snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{
-    expr_use_ctxt, fn_def_id, get_parent_expr, higher, is_in_const_context, is_integer_const, is_path_lang_item,
-    path_to_local,
+    expr_use_ctxt, fn_def_id, get_parent_expr, higher, is_in_const_context, is_integer_const, path_to_local,
 };
 use rustc_ast::Mutability;
 use rustc_ast::ast::RangeLimits;
@@ -370,7 +370,7 @@ fn can_switch_ranges<'tcx>(
     // Check if `expr` is the argument of a compiler-generated `IntoIter::into_iter(expr)`
     if let ExprKind::Call(func, [arg]) = parent_expr.kind
         && arg.hir_id == use_ctxt.child_id
-        && is_path_lang_item(cx, func, LangItem::IntoIterIntoIter)
+        && func.opt_lang_path() == Some(LangItem::IntoIterIntoIter)
     {
         return true;
     }

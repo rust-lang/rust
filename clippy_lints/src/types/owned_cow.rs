@@ -1,4 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::source::snippet_opt;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
@@ -30,7 +31,7 @@ pub(super) fn check(cx: &LateContext<'_>, qpath: &hir::QPath<'_>, def_id: DefId)
 }
 
 fn replacement(cx: &LateContext<'_>, cty: &hir::Ty<'_>) -> Option<(Span, String)> {
-    if clippy_utils::is_path_lang_item(cx, cty, hir::LangItem::String) {
+    if cty.basic_res().is_lang_item(cx, hir::LangItem::String) {
         return Some((cty.span, "str".into()));
     }
     if clippy_utils::is_path_diagnostic_item(cx, cty, sym::Vec) {
