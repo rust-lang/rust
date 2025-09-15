@@ -389,6 +389,13 @@ mod test_str_ext {
         assert_eq!(result, "foo_dor_baz");
         assert!(!result.is_heap_allocated());
     }
+
+    #[test]
+    fn replacen_1_ascii() {
+        let result = "foo_bar_baz".replacen_smolstr("o", "u", 1);
+        assert_eq!(result, "fuo_bar_baz");
+        assert!(!result.is_heap_allocated());
+    }
 }
 
 #[cfg(feature = "borsh")]

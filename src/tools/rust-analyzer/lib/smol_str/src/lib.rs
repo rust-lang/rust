@@ -715,6 +715,13 @@ impl StrExt for str {
 
     #[inline]
     fn replacen_smolstr(&self, from: &str, to: &str, count: usize) -> SmolStr {
+        // Fast path for replacing a single ASCII character with another inline.
+        if let [from_u8] = from.as_bytes() {
+            if let [to_u8] = to.as_bytes() {
+                return replacen_1_ascii(self, *from_u8, *to_u8, count);
+            }
+        }
+
         let mut result = SmolStrBuilder::new();
         let mut last_end = 0;
         for (start, part) in self.match_indices(from).take(count) {
@@ -728,6 +735,34 @@ impl StrExt for str {
         // always less than or equal to `self.len()`
         result.push_str(unsafe { self.get_unchecked(last_end..self.len()) });
         SmolStr::from(result)
+    }
+}
+
+#[inline]
+fn replacen_1_ascii(src: &str, from: u8, to: u8, count: usize) -> SmolStr {
+    let mut replaced = 0;
+    let mut ascii_replace = |b: &u8| {
+        if *b == from && replaced != count {
+            replaced += 1;
+            to
+        } else {
+            *b
+        }
+    };
+    if src.len() <= INLINE_CAP {
+        let mut buf = [0u8; INLINE_CAP];
+        for (idx, b) in src.as_bytes().iter().enumerate() {
+            buf[idx] = ascii_replace(b);
+        }
+        SmolStr(Repr::Inline {
+            // SAFETY: `len` is in bounds
+            len: unsafe { InlineSize::transmute_from_u8(src.len() as u8) },
+            buf,
+        })
+    } else {
+        let out = src.as_bytes().iter().map(ascii_replace).collect();
+        // SAFETY: We replaced ascii with ascii on valid utf8 strings.
+        unsafe { String::from_utf8_unchecked(out).into() }
     }
 }
 
