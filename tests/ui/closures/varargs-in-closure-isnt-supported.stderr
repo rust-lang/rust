@@ -1,0 +1,22 @@
+error: unexpected `...`
+  --> $DIR/varargs-in-closure-isnt-supported.rs:5:20
+   |
+LL |     let mut lol = |...| ();
+   |                    ^^^ not a valid pattern
+   |
+   = note: C-variadic type `...` is not allowed here
+
+error[E0282]: type annotations needed
+  --> $DIR/varargs-in-closure-isnt-supported.rs:5:20
+   |
+LL |     let mut lol = |...| ();
+   |                    ^^^
+   |
+help: consider giving this closure parameter an explicit type
+   |
+LL |     let mut lol = |...: /* Type */| ();
+   |                       ++++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0282`.

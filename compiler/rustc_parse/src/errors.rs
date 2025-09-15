@@ -2723,7 +2723,9 @@ pub(crate) struct DotDotDotRestPattern {
     #[label]
     pub span: Span,
     #[suggestion(style = "verbose", code = "", applicability = "machine-applicable")]
-    pub suggestion: Span,
+    pub suggestion: Option<Span>,
+    #[note]
+    pub var_args: Option<()>,
 }
 
 #[derive(Diagnostic)]

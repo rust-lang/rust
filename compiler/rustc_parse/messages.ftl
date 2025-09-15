@@ -189,6 +189,7 @@ parse_dotdotdot = unexpected token: `...`
 parse_dotdotdot_rest_pattern = unexpected `...`
     .label = not a valid pattern
     .suggestion = for a rest pattern, use `..` instead of `...`
+    .note = C-variadic type `...` is not allowed here
 
 parse_double_colon_in_bound = expected `:` followed by trait or lifetime
     .suggestion = use single colon
