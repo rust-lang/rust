@@ -13,7 +13,7 @@ use rustc_ast_pretty::pprust;
 use rustc_errors::{Diag, PResult};
 use rustc_hir::{self as hir, AttrPath};
 use rustc_parse::exp;
-use rustc_parse::parser::{Parser, PathStyle, token_descr};
+use rustc_parse::parser::{ForceCollect, Parser, PathStyle, token_descr};
 use rustc_session::errors::{create_lit_error, report_lit_error};
 use rustc_session::parse::ParseSess;
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, sym};
@@ -488,6 +488,7 @@ impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
             descr: token_descr(&self.parser.token),
             quote_ident_sugg: None,
             remove_neg_sugg: None,
+            macro_call: None,
         };
 
         // Suggest quoting idents, e.g. in `#[cfg(key = value)]`. We don't use `Token::ident` and
@@ -496,20 +497,37 @@ impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
         if self.parser.prev_token == token::Eq
             && let token::Ident(..) = self.parser.token.kind
         {
-            let before = self.parser.token.span.shrink_to_lo();
-            while let token::Ident(..) = self.parser.token.kind {
-                self.parser.bump();
+            if self.parser.look_ahead(1, |t| matches!(t.kind, token::TokenKind::Bang)) {
+                let snapshot = self.parser.create_snapshot_for_diagnostic();
+                let stmt = self.parser.parse_stmt_without_recovery(false, ForceCollect::No, false);
+                match stmt {
+                    Ok(Some(stmt)) => {
+                        // The user tried to write something like
+                        // `#[deprecated(note = concat!("a", "b"))]`.
+                        err.descr = format!("macro {}", err.descr);
+                        err.macro_call = Some(stmt.span);
+                        err.span = stmt.span;
+                    }
+                    Ok(None) => {}
+                    Err(err) => {
+                        err.cancel();
+                        self.parser.restore_snapshot(snapshot);
+                    }
+                }
+            } else {
+                let before = self.parser.token.span.shrink_to_lo();
+                while let token::Ident(..) = self.parser.token.kind {
+                    self.parser.bump();
+                }
+                err.quote_ident_sugg = Some(InvalidMetaItemQuoteIdentSugg {
+                    before,
+                    after: self.parser.prev_token.span.shrink_to_hi(),
+                });
             }
-            err.quote_ident_sugg = Some(InvalidMetaItemQuoteIdentSugg {
-                before,
-                after: self.parser.prev_token.span.shrink_to_hi(),
-            });
         }
 
         if self.parser.token == token::Minus
-            && self
-                .parser
-                .look_ahead(1, |t| matches!(t.kind, rustc_ast::token::TokenKind::Literal { .. }))
+            && self.parser.look_ahead(1, |t| matches!(t.kind, token::TokenKind::Literal { .. }))
         {
             err.remove_neg_sugg =
                 Some(InvalidMetaItemRemoveNegSugg { negative_sign: self.parser.token.span });
