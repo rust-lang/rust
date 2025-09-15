@@ -380,14 +380,6 @@ pub fn is_recursively_primitive_type(ty: Ty<'_>) -> bool {
     }
 }
 
-/// Checks if the type is a reference equals to a diagnostic item
-pub fn is_type_ref_to_diagnostic_item(cx: &LateContext<'_>, ty: Ty<'_>, diag_item: Symbol) -> bool {
-    match *ty.kind() {
-        ty::Ref(_, ref_ty, _) => ref_ty.is_diag_item(cx, diag_item),
-        _ => false,
-    }
-}
-
 /// Checks if the type is equal to a lang item.
 ///
 /// Returns `false` if the `LangItem` is not defined.
