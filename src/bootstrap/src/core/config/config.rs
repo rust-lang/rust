@@ -683,14 +683,15 @@ impl Config {
         };
 
         let initial_rustc = build_rustc.unwrap_or_else(|| {
-            let out = if cfg!(test) { Path::new("../../build").to_path_buf() } else { out.clone() };
-
+            let out = if cfg!(test) {
+                std::env::current_dir().unwrap().ancestors().nth(2).unwrap().join("build")
+            } else {
+                out.clone()
+            };
             download_beta_toolchain(&dwn_ctx, &out);
+            let target = if cfg!(test) { get_host_target() } else { host_target };
 
-            out.join(if cfg!(test) { get_host_target() } else { host_target })
-                .join("stage0")
-                .join("bin")
-                .join(exe("rustc", host_target))
+            out.join(target).join("stage0").join("bin").join(exe("rustc", host_target))
         });
 
         let initial_sysroot = t!(PathBuf::from_str(
