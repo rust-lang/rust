@@ -133,9 +133,9 @@ fn main() {
         check!(unit_tests, &compiler_path, false);
         check!(unit_tests, &library_path, true);
 
-        // if bins::check_filesystem_support(&[&root_path], &output_directory) {
-        //     check!(bins, &root_path);
-        // }
+        if bins::check_filesystem_support(&[&root_path], &output_directory) {
+            check!(bins, &root_path);
+        }
 
         check!(style, &src_path);
         check!(style, &tests_path);
