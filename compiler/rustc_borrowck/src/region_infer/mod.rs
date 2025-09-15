@@ -1566,7 +1566,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         from_region_origin: NllRegionVariableOrigin,
         to_region: RegionVid,
     ) -> (BlameConstraint<'tcx>, Vec<OutlivesConstraint<'tcx>>) {
-        assert!(from_region != to_region, "Trying to blame a region for itself!");
+        if from_region == to_region {
+            bug!("Trying to blame {from_region:?} for itself!");
+        }
 
         let path = self.constraint_path_between_regions(from_region, to_region).unwrap();
 
@@ -1736,8 +1738,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // specific, and are not used for relations that would make sense to blame.
                 ConstraintCategory::BoringNoLocation => 6,
                 // Do not blame internal constraints.
-                ConstraintCategory::OutlivesUnnameablePlaceholder(_) => 7,
-                ConstraintCategory::Internal => 8,
+                ConstraintCategory::OutlivesUnnameablePlaceholder(_) => 8,
+                ConstraintCategory::Internal => 7,
             };
 
             debug!("constraint {constraint:?} category: {category:?}, interest: {interest:?}");
