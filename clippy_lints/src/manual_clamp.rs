@@ -3,13 +3,11 @@ use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::higher::If;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::MaybeResPath;
+use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::visitors::is_const_evaluatable;
-use clippy_utils::{
-    eq_expr_value, is_diag_trait_item, is_in_const_context, is_trait_method, peel_blocks, peel_blocks_with_stmt, sym,
-};
+use clippy_utils::{eq_expr_value, is_in_const_context, is_trait_method, peel_blocks, peel_blocks_with_stmt, sym};
 use itertools::Itertools;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::def::Res;
@@ -331,11 +329,11 @@ fn is_call_max_min_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>)
     fn segment<'tcx>(cx: &LateContext<'_>, func: &Expr<'tcx>) -> Option<FunctionType<'tcx>> {
         match func.kind {
             ExprKind::Path(QPath::Resolved(None, path)) => {
-                let id = path.res.opt_def_id()?;
-                match cx.tcx.get_diagnostic_name(id) {
+                let def = path.res.opt_def(cx)?;
+                match cx.tcx.get_diagnostic_name(def.1) {
                     Some(sym::cmp_min) => Some(FunctionType::CmpMin),
                     Some(sym::cmp_max) => Some(FunctionType::CmpMax),
-                    _ if is_diag_trait_item(cx, id, sym::Ord) => {
+                    _ if def.assoc_fn_parent(cx).is_diag_item(cx, sym::Ord) => {
                         Some(FunctionType::OrdOrFloat(path.segments.last().expect("infallible")))
                     },
                     _ => None,

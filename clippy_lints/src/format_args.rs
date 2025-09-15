@@ -12,7 +12,7 @@ use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::MaybeDef;
 use clippy_utils::source::{SpanRangeExt, snippet};
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{is_diag_trait_item, is_from_proc_macro, is_in_test, trait_ref_of_method};
+use clippy_utils::{is_from_proc_macro, is_in_test, trait_ref_of_method};
 use itertools::Itertools;
 use rustc_ast::{
     FormatArgPosition, FormatArgPositionKind, FormatArgsPiece, FormatArgumentKind, FormatCount, FormatOptions,
@@ -498,8 +498,11 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
         let cx = self.cx;
         if !value.span.from_expansion()
             && let ExprKind::MethodCall(_, receiver, [], to_string_span) = value.kind
-            && let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(value.hir_id)
-            && is_diag_trait_item(cx, method_def_id, sym::ToString)
+            && cx
+                .typeck_results()
+                .type_dependent_def_id(value.hir_id)
+                .opt_parent(cx)
+                .is_diag_item(cx, sym::ToString)
             && let receiver_ty = cx.typeck_results().expr_ty(receiver)
             && let Some(display_trait_id) = cx.tcx.get_diagnostic_item(sym::Display)
             && let (n_needed_derefs, target) =

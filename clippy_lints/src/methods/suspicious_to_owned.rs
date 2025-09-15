@@ -1,5 +1,4 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::is_diag_trait_item;
 use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet_with_context;
 use rustc_errors::Applicability;
@@ -11,8 +10,11 @@ use rustc_span::sym;
 use super::SUSPICIOUS_TO_OWNED;
 
 pub fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr<'_>) -> bool {
-    if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
-        && is_diag_trait_item(cx, method_def_id, sym::ToOwned)
+    if cx
+        .typeck_results()
+        .type_dependent_def_id(expr.hir_id)
+        .opt_parent(cx)
+        .is_diag_item(cx, sym::ToOwned)
         && let input_type = cx.typeck_results().expr_ty(expr)
         && input_type.is_diag_item(cx, sym::Cow)
     {

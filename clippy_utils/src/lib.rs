@@ -366,19 +366,12 @@ pub fn is_diag_item_method(cx: &LateContext<'_>, def_id: DefId, diag_item: Symbo
     false
 }
 
-/// Checks if a method is in a diagnostic item trait
-pub fn is_diag_trait_item(cx: &LateContext<'_>, def_id: DefId, diag_item: Symbol) -> bool {
-    if let Some(trait_did) = cx.tcx.trait_of_assoc(def_id) {
-        return cx.tcx.is_diagnostic_item(diag_item, trait_did);
-    }
-    false
-}
-
 /// Checks if the method call given in `expr` belongs to the given trait.
 pub fn is_trait_method(cx: &LateContext<'_>, expr: &Expr<'_>, diag_item: Symbol) -> bool {
     cx.typeck_results()
-        .type_dependent_def_id(expr.hir_id)
-        .is_some_and(|did| is_diag_trait_item(cx, did, diag_item))
+        .type_dependent_def(expr.hir_id)
+        .assoc_fn_parent(cx)
+        .is_diag_item(cx, diag_item)
 }
 
 /// Checks if the `def_id` belongs to a function that is part of a trait impl.
@@ -404,8 +397,8 @@ pub fn is_def_id_trait_method(cx: &LateContext<'_>, def_id: LocalDefId) -> bool 
 pub fn is_trait_item(cx: &LateContext<'_>, expr: &Expr<'_>, diag_item: Symbol) -> bool {
     if let ExprKind::Path(ref qpath) = expr.kind {
         cx.qpath_res(qpath, expr.hir_id)
-            .opt_def_id()
-            .is_some_and(|def_id| is_diag_trait_item(cx, def_id, diag_item))
+            .assoc_parent(cx)
+            .is_diag_item(cx, diag_item)
     } else {
         false
     }
@@ -573,9 +566,9 @@ pub fn is_default_equivalent_call(
     whole_call_expr: Option<&Expr<'_>>,
 ) -> bool {
     if let ExprKind::Path(ref repl_func_qpath) = repl_func.kind
-        && let Some(repl_def_id) = cx.qpath_res(repl_func_qpath, repl_func.hir_id).opt_def_id()
-        && (is_diag_trait_item(cx, repl_def_id, sym::Default)
-            || is_default_equivalent_ctor(cx, repl_def_id, repl_func_qpath))
+        && let Some(repl_def) = cx.qpath_res(repl_func_qpath, repl_func.hir_id).opt_def(cx)
+        && (repl_def.assoc_fn_parent(cx).is_diag_item(cx, sym::Default)
+            || is_default_equivalent_ctor(cx, repl_def.1, repl_func_qpath))
     {
         return true;
     }

@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::MaybeResPath;
+use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::source::{IntoSpan, SpanRangeExt};
 use clippy_utils::ty::get_field_by_name;
 use clippy_utils::visitors::{for_each_expr, for_each_expr_without_closures};
-use clippy_utils::{ExprUseNode, expr_use_ctxt, is_diag_item_method, is_diag_trait_item, sym};
+use clippy_utils::{ExprUseNode, expr_use_ctxt, is_diag_item_method, sym};
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
 use rustc_hir::{BindingMode, BorrowKind, ByRef, ClosureKind, Expr, ExprKind, Mutability, Node, PatKind};
@@ -19,9 +19,9 @@ pub(crate) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>, name:
     if let ExprKind::Closure(c) = arg.kind
         && matches!(c.kind, ClosureKind::Closure)
         && let typeck = cx.typeck_results()
-        && let Some(fn_id) = typeck.type_dependent_def_id(expr.hir_id)
-        && (is_diag_trait_item(cx, fn_id, sym::Iterator)
-            || ((is_diag_item_method(cx, fn_id, sym::Option) || is_diag_item_method(cx, fn_id, sym::Result))
+        && let Some(fn_def) = typeck.type_dependent_def(expr.hir_id)
+        && (fn_def.assoc_fn_parent(cx).is_diag_item(cx, sym::Iterator)
+            || ((is_diag_item_method(cx, fn_def.1, sym::Option) || is_diag_item_method(cx, fn_def.1, sym::Result))
                 && msrv.meets(cx, msrvs::OPTION_RESULT_INSPECT)))
         && let body = cx.tcx.hir_body(c.body)
         && let [param] = body.params

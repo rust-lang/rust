@@ -6,9 +6,7 @@ use clippy_utils::res::MaybeDef;
 use clippy_utils::source::{SpanRangeExt, snippet};
 use clippy_utils::ty::{get_iterator_item_ty, implements_trait, is_copy, peel_and_count_ty_refs};
 use clippy_utils::visitors::find_all_ret_expressions;
-use clippy_utils::{
-    fn_def_id, get_parent_expr, is_diag_item_method, is_diag_trait_item, is_expr_temporary_value, return_ty, sym,
-};
+use clippy_utils::{fn_def_id, get_parent_expr, is_expr_temporary_value, return_ty, sym};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -34,12 +32,12 @@ pub fn check<'tcx>(
     args: &'tcx [Expr<'_>],
     msrv: Msrv,
 ) {
-    if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
+    if let Some(method_parent_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id).opt_parent(cx)
         && args.is_empty()
     {
-        if is_cloned_or_copied(cx, method_name, method_def_id) {
+        if is_cloned_or_copied(cx, method_name, method_parent_id) {
             unnecessary_iter_cloned::check(cx, expr, method_name, receiver);
-        } else if is_to_owned_like(cx, expr, method_name, method_def_id) {
+        } else if is_to_owned_like(cx, expr, method_name, method_parent_id) {
             if check_split_call_arg(cx, expr, method_name, receiver) {
                 return;
             }
@@ -47,7 +45,7 @@ pub fn check<'tcx>(
             // `check_addr_of_expr` and `check_into_iter_call_arg` determine whether the call is unnecessary
             // based on its context, that is, whether it is a referent in an `AddrOf` expression, an
             // argument in a `into_iter` call, or an argument in the call of some other function.
-            if check_addr_of_expr(cx, expr, method_name, method_def_id, receiver) {
+            if check_addr_of_expr(cx, expr, method_name, method_parent_id, receiver) {
                 return;
             }
             if check_into_iter_call_arg(cx, expr, method_name, receiver, msrv) {
@@ -70,7 +68,7 @@ fn check_addr_of_expr(
     cx: &LateContext<'_>,
     expr: &Expr<'_>,
     method_name: Symbol,
-    method_def_id: DefId,
+    method_parent_id: DefId,
     receiver: &Expr<'_>,
 ) -> bool {
     if let Some(parent) = get_parent_expr(cx, expr)
@@ -132,7 +130,7 @@ fn check_addr_of_expr(
         // `redundant_clone`, but copyable arrays are not.
         && (*referent_ty != receiver_ty
             || (matches!(referent_ty.kind(), ty::Array(..)) && is_copy(cx, *referent_ty))
-            || is_cow_into_owned(cx, method_name, method_def_id))
+            || is_cow_into_owned(cx, method_name, method_parent_id))
         && let Some(receiver_snippet) = receiver.span.get_source_text(cx)
     {
         if receiver_ty == target_ty && n_target_refs >= n_receiver_refs {
@@ -158,7 +156,7 @@ fn check_addr_of_expr(
             // *or* this is a `Cow::into_owned()` call (which would be the wrong into_owned receiver (str != Cow)
             // but that's ok for Cow::into_owned specifically)
             && (cx.typeck_results().expr_ty_adjusted(receiver).peel_refs() == target_ty
-                || is_cow_into_owned(cx, method_name, method_def_id))
+                || is_cow_into_owned(cx, method_name, method_parent_id))
         {
             if n_receiver_refs > 0 {
                 span_lint_and_sugg(
@@ -614,21 +612,26 @@ fn has_lifetime(ty: Ty<'_>) -> bool {
 }
 
 /// Returns true if the named method is `Iterator::cloned` or `Iterator::copied`.
-fn is_cloned_or_copied(cx: &LateContext<'_>, method_name: Symbol, method_def_id: DefId) -> bool {
-    matches!(method_name, sym::cloned | sym::copied) && is_diag_trait_item(cx, method_def_id, sym::Iterator)
+fn is_cloned_or_copied(cx: &LateContext<'_>, method_name: Symbol, method_parent_id: DefId) -> bool {
+    matches!(method_name, sym::cloned | sym::copied) && method_parent_id.is_diag_item(cx, sym::Iterator)
 }
 
 /// Returns true if the named method can be used to convert the receiver to its "owned"
 /// representation.
-fn is_to_owned_like<'a>(cx: &LateContext<'a>, call_expr: &Expr<'a>, method_name: Symbol, method_def_id: DefId) -> bool {
-    is_cow_into_owned(cx, method_name, method_def_id)
-        || (method_name != sym::to_string && is_clone_like(cx, method_name, method_def_id))
-        || is_to_string_on_string_like(cx, call_expr, method_name, method_def_id)
+fn is_to_owned_like<'a>(
+    cx: &LateContext<'a>,
+    call_expr: &Expr<'a>,
+    method_name: Symbol,
+    method_parent_id: DefId,
+) -> bool {
+    is_cow_into_owned(cx, method_name, method_parent_id)
+        || (method_name != sym::to_string && is_clone_like(cx, method_name, method_parent_id))
+        || is_to_string_on_string_like(cx, call_expr, method_name, method_parent_id)
 }
 
 /// Returns true if the named method is `Cow::into_owned`.
-fn is_cow_into_owned(cx: &LateContext<'_>, method_name: Symbol, method_def_id: DefId) -> bool {
-    method_name == sym::into_owned && is_diag_item_method(cx, method_def_id, sym::Cow)
+fn is_cow_into_owned(cx: &LateContext<'_>, method_name: Symbol, method_parent_id: DefId) -> bool {
+    method_name == sym::into_owned && method_parent_id.opt_impl_ty(cx).is_diag_item(cx, sym::Cow)
 }
 
 /// Returns true if the named method is `ToString::to_string` and it's called on a type that
@@ -637,9 +640,9 @@ fn is_to_string_on_string_like<'a>(
     cx: &LateContext<'_>,
     call_expr: &'a Expr<'a>,
     method_name: Symbol,
-    method_def_id: DefId,
+    method_parent_id: DefId,
 ) -> bool {
-    if method_name != sym::to_string || !is_diag_trait_item(cx, method_def_id, sym::ToString) {
+    if method_name != sym::to_string || !method_parent_id.is_diag_item(cx, sym::ToString) {
         return false;
     }
 
