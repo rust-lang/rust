@@ -404,8 +404,8 @@ impl str {
     /// assert_eq!(closest, 10);
     /// assert_eq!(&s[..closest], "❤️🧡");
     /// ```
-    #[stable(feature = "round_char_boundary", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "round_char_boundary", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "round_char_boundary", since = "1.91.0")]
+    #[rustc_const_stable(feature = "round_char_boundary", since = "1.91.0")]
     #[inline]
     pub const fn floor_char_boundary(&self, index: usize) -> usize {
         if index >= self.len() {
@@ -447,8 +447,8 @@ impl str {
     /// assert_eq!(closest, 14);
     /// assert_eq!(&s[..closest], "❤️🧡💛");
     /// ```
-    #[stable(feature = "round_char_boundary", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "round_char_boundary", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "round_char_boundary", since = "1.91.0")]
+    #[rustc_const_stable(feature = "round_char_boundary", since = "1.91.0")]
     #[inline]
     pub const fn ceil_char_boundary(&self, index: usize) -> usize {
         if index >= self.len() {
