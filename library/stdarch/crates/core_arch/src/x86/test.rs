@@ -117,14 +117,14 @@ mod x86_polyfill {
     use crate::core_arch::x86::*;
     use crate::intrinsics::simd::*;
 
-    #[rustc_legacy_const_generics(2)]
+    #[rustc_deprecated_legacy_const_generics(2)]
     pub unsafe fn _mm_insert_epi64<const INDEX: i32>(a: __m128i, val: i64) -> __m128i {
         static_assert_uimm_bits!(INDEX, 1);
         transmute(simd_insert!(a.as_i64x2(), INDEX as u32, val))
     }
 
     #[target_feature(enable = "avx2")]
-    #[rustc_legacy_const_generics(2)]
+    #[rustc_deprecated_legacy_const_generics(2)]
     pub unsafe fn _mm256_insert_epi64<const INDEX: i32>(a: __m256i, val: i64) -> __m256i {
         static_assert_uimm_bits!(INDEX, 2);
         transmute(simd_insert!(a.as_i64x4(), INDEX as u32, val))

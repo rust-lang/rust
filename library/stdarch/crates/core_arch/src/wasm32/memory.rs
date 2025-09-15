@@ -22,7 +22,7 @@ unsafe extern "unadjusted" {
 /// [instr]: http://webassembly.github.io/spec/core/exec/instructions.html#exec-memory-size
 #[inline]
 #[cfg_attr(test, assert_instr("memory.size", MEM = 0))]
-#[rustc_legacy_const_generics(0)]
+#[rustc_deprecated_legacy_const_generics(0)]
 #[stable(feature = "simd_wasm32", since = "1.33.0")]
 #[doc(alias("memory.size"))]
 pub fn memory_size<const MEM: u32>() -> usize {
@@ -47,7 +47,7 @@ pub fn memory_size<const MEM: u32>() -> usize {
 /// [instr]: http://webassembly.github.io/spec/core/exec/instructions.html#exec-memory-grow
 #[inline]
 #[cfg_attr(test, assert_instr("memory.grow", MEM = 0))]
-#[rustc_legacy_const_generics(0)]
+#[rustc_deprecated_legacy_const_generics(0)]
 #[stable(feature = "simd_wasm32", since = "1.33.0")]
 #[doc(alias("memory.grow"))]
 pub fn memory_grow<const MEM: u32>(delta: usize) -> usize {

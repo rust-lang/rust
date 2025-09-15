@@ -86,7 +86,7 @@ pub unsafe fn _xend() {
 #[inline]
 #[target_feature(enable = "rtm")]
 #[cfg_attr(test, assert_instr(xabort, IMM8 = 0x0))]
-#[rustc_legacy_const_generics(0)]
+#[rustc_deprecated_legacy_const_generics(0)]
 #[unstable(feature = "stdarch_x86_rtm", issue = "111138")]
 pub unsafe fn _xabort<const IMM8: u32>() {
     static_assert_uimm_bits!(IMM8, 8);

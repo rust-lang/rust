@@ -1019,7 +1019,7 @@ pub const fn _MM_SHUFFLE(z: u32, y: u32, x: u32, w: u32) -> i32 {
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(shufps, MASK = 3))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_shuffle_ps<const MASK: i32>(a: __m128, b: __m128) -> __m128 {
     static_assert_uimm_bits!(MASK, 8);
@@ -1895,7 +1895,7 @@ pub const _MM_HINT_ET1: i32 = 6;
 #[cfg_attr(test, assert_instr(prefetcht1, STRATEGY = _MM_HINT_T1))]
 #[cfg_attr(test, assert_instr(prefetcht2, STRATEGY = _MM_HINT_T2))]
 #[cfg_attr(test, assert_instr(prefetchnta, STRATEGY = _MM_HINT_NTA))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_prefetch<const STRATEGY: i32>(p: *const i8) {
     static_assert_uimm_bits!(STRATEGY, 3);

@@ -237,7 +237,7 @@ pub fn _mm_maskz_gf2p8mul_epi8(k: __mmask16, a: __m128i, b: __m128i) -> __m128i 
 #[target_feature(enable = "gfni,avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vgf2p8affineqb, B = 0))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 pub fn _mm512_gf2p8affine_epi64_epi8<const B: i32>(x: __m512i, a: __m512i) -> __m512i {
     static_assert_uimm_bits!(B, 8);
     let b = B as u8;
@@ -262,7 +262,7 @@ pub fn _mm512_gf2p8affine_epi64_epi8<const B: i32>(x: __m512i, a: __m512i) -> __
 #[target_feature(enable = "gfni,avx512bw,avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vgf2p8affineqb, B = 0))]
-#[rustc_legacy_const_generics(3)]
+#[rustc_deprecated_legacy_const_generics(3)]
 pub fn _mm512_maskz_gf2p8affine_epi64_epi8<const B: i32>(
     k: __mmask64,
     x: __m512i,
@@ -292,7 +292,7 @@ pub fn _mm512_maskz_gf2p8affine_epi64_epi8<const B: i32>(
 #[target_feature(enable = "gfni,avx512bw,avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vgf2p8affineqb, B = 0))]
-#[rustc_legacy_const_generics(4)]
+#[rustc_deprecated_legacy_const_generics(4)]
 pub fn _mm512_mask_gf2p8affine_epi64_epi8<const B: i32>(
     src: __m512i,
     k: __mmask64,
@@ -319,7 +319,7 @@ pub fn _mm512_mask_gf2p8affine_epi64_epi8<const B: i32>(
 #[target_feature(enable = "gfni,avx")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vgf2p8affineqb, B = 0))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 pub fn _mm256_gf2p8affine_epi64_epi8<const B: i32>(x: __m256i, a: __m256i) -> __m256i {
     static_assert_uimm_bits!(B, 8);
     let b = B as u8;
@@ -344,7 +344,7 @@ pub fn _mm256_gf2p8affine_epi64_epi8<const B: i32>(x: __m256i, a: __m256i) -> __
 #[target_feature(enable = "gfni,avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vgf2p8affineqb, B = 0))]
-#[rustc_legacy_const_generics(3)]
+#[rustc_deprecated_legacy_const_generics(3)]
 pub fn _mm256_maskz_gf2p8affine_epi64_epi8<const B: i32>(
     k: __mmask32,
     x: __m256i,
@@ -374,7 +374,7 @@ pub fn _mm256_maskz_gf2p8affine_epi64_epi8<const B: i32>(
 #[target_feature(enable = "gfni,avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vgf2p8affineqb, B = 0))]
-#[rustc_legacy_const_generics(4)]
+#[rustc_deprecated_legacy_const_generics(4)]
 pub fn _mm256_mask_gf2p8affine_epi64_epi8<const B: i32>(
     src: __m256i,
     k: __mmask32,
@@ -401,7 +401,7 @@ pub fn _mm256_mask_gf2p8affine_epi64_epi8<const B: i32>(
 #[target_feature(enable = "gfni")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(gf2p8affineqb, B = 0))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 pub fn _mm_gf2p8affine_epi64_epi8<const B: i32>(x: __m128i, a: __m128i) -> __m128i {
     static_assert_uimm_bits!(B, 8);
     let b = B as u8;
@@ -426,7 +426,7 @@ pub fn _mm_gf2p8affine_epi64_epi8<const B: i32>(x: __m128i, a: __m128i) -> __m12
 #[target_feature(enable = "gfni,avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vgf2p8affineqb, B = 0))]
-#[rustc_legacy_const_generics(3)]
+#[rustc_deprecated_legacy_const_generics(3)]
 pub fn _mm_maskz_gf2p8affine_epi64_epi8<const B: i32>(
     k: __mmask16,
     x: __m128i,
@@ -456,7 +456,7 @@ pub fn _mm_maskz_gf2p8affine_epi64_epi8<const B: i32>(
 #[target_feature(enable = "gfni,avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vgf2p8affineqb, B = 0))]
-#[rustc_legacy_const_generics(4)]
+#[rustc_deprecated_legacy_const_generics(4)]
 pub fn _mm_mask_gf2p8affine_epi64_epi8<const B: i32>(
     src: __m128i,
     k: __mmask16,
@@ -485,7 +485,7 @@ pub fn _mm_mask_gf2p8affine_epi64_epi8<const B: i32>(
 #[target_feature(enable = "gfni,avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vgf2p8affineinvqb, B = 0))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 pub fn _mm512_gf2p8affineinv_epi64_epi8<const B: i32>(x: __m512i, a: __m512i) -> __m512i {
     static_assert_uimm_bits!(B, 8);
     let b = B as u8;
@@ -512,7 +512,7 @@ pub fn _mm512_gf2p8affineinv_epi64_epi8<const B: i32>(x: __m512i, a: __m512i) ->
 #[target_feature(enable = "gfni,avx512bw,avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vgf2p8affineinvqb, B = 0))]
-#[rustc_legacy_const_generics(3)]
+#[rustc_deprecated_legacy_const_generics(3)]
 pub fn _mm512_maskz_gf2p8affineinv_epi64_epi8<const B: i32>(
     k: __mmask64,
     x: __m512i,
@@ -544,7 +544,7 @@ pub fn _mm512_maskz_gf2p8affineinv_epi64_epi8<const B: i32>(
 #[target_feature(enable = "gfni,avx512bw,avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vgf2p8affineinvqb, B = 0))]
-#[rustc_legacy_const_generics(4)]
+#[rustc_deprecated_legacy_const_generics(4)]
 pub fn _mm512_mask_gf2p8affineinv_epi64_epi8<const B: i32>(
     src: __m512i,
     k: __mmask64,
@@ -573,7 +573,7 @@ pub fn _mm512_mask_gf2p8affineinv_epi64_epi8<const B: i32>(
 #[target_feature(enable = "gfni,avx")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vgf2p8affineinvqb, B = 0))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 pub fn _mm256_gf2p8affineinv_epi64_epi8<const B: i32>(x: __m256i, a: __m256i) -> __m256i {
     static_assert_uimm_bits!(B, 8);
     let b = B as u8;
@@ -600,7 +600,7 @@ pub fn _mm256_gf2p8affineinv_epi64_epi8<const B: i32>(x: __m256i, a: __m256i) ->
 #[target_feature(enable = "gfni,avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vgf2p8affineinvqb, B = 0))]
-#[rustc_legacy_const_generics(3)]
+#[rustc_deprecated_legacy_const_generics(3)]
 pub fn _mm256_maskz_gf2p8affineinv_epi64_epi8<const B: i32>(
     k: __mmask32,
     x: __m256i,
@@ -632,7 +632,7 @@ pub fn _mm256_maskz_gf2p8affineinv_epi64_epi8<const B: i32>(
 #[target_feature(enable = "gfni,avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vgf2p8affineinvqb, B = 0))]
-#[rustc_legacy_const_generics(4)]
+#[rustc_deprecated_legacy_const_generics(4)]
 pub fn _mm256_mask_gf2p8affineinv_epi64_epi8<const B: i32>(
     src: __m256i,
     k: __mmask32,
@@ -661,7 +661,7 @@ pub fn _mm256_mask_gf2p8affineinv_epi64_epi8<const B: i32>(
 #[target_feature(enable = "gfni")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(gf2p8affineinvqb, B = 0))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 pub fn _mm_gf2p8affineinv_epi64_epi8<const B: i32>(x: __m128i, a: __m128i) -> __m128i {
     static_assert_uimm_bits!(B, 8);
     let b = B as u8;
@@ -688,7 +688,7 @@ pub fn _mm_gf2p8affineinv_epi64_epi8<const B: i32>(x: __m128i, a: __m128i) -> __
 #[target_feature(enable = "gfni,avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vgf2p8affineinvqb, B = 0))]
-#[rustc_legacy_const_generics(3)]
+#[rustc_deprecated_legacy_const_generics(3)]
 pub fn _mm_maskz_gf2p8affineinv_epi64_epi8<const B: i32>(
     k: __mmask16,
     x: __m128i,
@@ -720,7 +720,7 @@ pub fn _mm_maskz_gf2p8affineinv_epi64_epi8<const B: i32>(
 #[target_feature(enable = "gfni,avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vgf2p8affineinvqb, B = 0))]
-#[rustc_legacy_const_generics(4)]
+#[rustc_deprecated_legacy_const_generics(4)]
 pub fn _mm_mask_gf2p8affineinv_epi64_epi8<const B: i32>(
     src: __m128i,
     k: __mmask16,

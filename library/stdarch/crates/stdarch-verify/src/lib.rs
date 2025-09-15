@@ -112,16 +112,16 @@ fn functions(input: TokenStream, dirs: &[&str]) -> TokenStream {
 
             let required_const = find_required_const("rustc_args_required_const", &f.attrs);
             let mut legacy_const_generics =
-                find_required_const("rustc_legacy_const_generics", &f.attrs);
+                find_required_const("rustc_deprecated_legacy_const_generics", &f.attrs);
             if !required_const.is_empty() && !legacy_const_generics.is_empty() {
                 panic!(
                     "Can't have both #[rustc_args_required_const] and \
-                     #[rustc_legacy_const_generics]"
+                     #[rustc_deprecated_legacy_const_generics]"
                 );
             }
 
             // The list of required consts, used to verify the arguments, comes from either the
-            // `rustc_args_required_const` or the `rustc_legacy_const_generics` attribute.
+            // `rustc_args_required_const` or the `rustc_deprecated_legacy_const_generics` attribute.
             let required_const = if required_const.is_empty() {
                 legacy_const_generics.clone()
             } else {

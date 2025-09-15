@@ -90,7 +90,7 @@ pub fn _mm_sha1nexte_epu32(a: __m128i, b: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "sha")]
 #[cfg_attr(test, assert_instr(sha1rnds4, FUNC = 0))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_sha1rnds4_epu32<const FUNC: i32>(a: __m128i, b: __m128i) -> __m128i {
     static_assert_uimm_bits!(FUNC, 2);
@@ -218,7 +218,7 @@ pub fn _mm_sm3msg2_epi32(a: __m128i, b: __m128i, c: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "sm3,avx")]
 #[cfg_attr(test, assert_instr(vsm3rnds2, IMM8 = 0))]
-#[rustc_legacy_const_generics(3)]
+#[rustc_deprecated_legacy_const_generics(3)]
 #[stable(feature = "sha512_sm_x86", since = "1.89.0")]
 pub fn _mm_sm3rnds2_epi32<const IMM8: i32>(a: __m128i, b: __m128i, c: __m128i) -> __m128i {
     static_assert!(

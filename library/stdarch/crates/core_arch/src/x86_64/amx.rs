@@ -33,7 +33,7 @@ pub unsafe fn _tile_storeconfig(mem_addr: *mut u8) {
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_tile_loadd&ig_expand=6877)
 #[inline]
-#[rustc_legacy_const_generics(0)]
+#[rustc_deprecated_legacy_const_generics(0)]
 #[target_feature(enable = "amx-tile")]
 #[cfg_attr(test, assert_instr(tileloadd, DST = 0))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
@@ -57,7 +57,7 @@ pub unsafe fn _tile_release() {
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_tile_stored&ig_expand=6881)
 #[inline]
-#[rustc_legacy_const_generics(0)]
+#[rustc_deprecated_legacy_const_generics(0)]
 #[target_feature(enable = "amx-tile")]
 #[cfg_attr(test, assert_instr(tilestored, DST = 0))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
@@ -72,7 +72,7 @@ pub unsafe fn _tile_stored<const DST: i32>(base: *mut u8, stride: usize) {
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_tile_stream_loadd&ig_expand=6883)
 #[inline]
-#[rustc_legacy_const_generics(0)]
+#[rustc_deprecated_legacy_const_generics(0)]
 #[target_feature(enable = "amx-tile")]
 #[cfg_attr(test, assert_instr(tileloaddt1, DST = 0))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
@@ -85,7 +85,7 @@ pub unsafe fn _tile_stream_loadd<const DST: i32>(base: *const u8, stride: usize)
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_tile_zero&ig_expand=6885)
 #[inline]
-#[rustc_legacy_const_generics(0)]
+#[rustc_deprecated_legacy_const_generics(0)]
 #[target_feature(enable = "amx-tile")]
 #[cfg_attr(test, assert_instr(tilezero, DST = 0))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
@@ -100,7 +100,7 @@ pub unsafe fn _tile_zero<const DST: i32>() {
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_tile_dpbf16ps&ig_expand=6864)
 #[inline]
-#[rustc_legacy_const_generics(0, 1, 2)]
+#[rustc_deprecated_legacy_const_generics(0, 1, 2)]
 #[target_feature(enable = "amx-bf16")]
 #[cfg_attr(test, assert_instr(tdpbf16ps, DST = 0, A = 1, B = 2))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
@@ -118,7 +118,7 @@ pub unsafe fn _tile_dpbf16ps<const DST: i32, const A: i32, const B: i32>() {
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_tile_dpbssd&ig_expand=6866)
 #[inline]
-#[rustc_legacy_const_generics(0, 1, 2)]
+#[rustc_deprecated_legacy_const_generics(0, 1, 2)]
 #[target_feature(enable = "amx-int8")]
 #[cfg_attr(test, assert_instr(tdpbssd, DST = 0, A = 1, B = 2))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
@@ -136,7 +136,7 @@ pub unsafe fn _tile_dpbssd<const DST: i32, const A: i32, const B: i32>() {
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_tile_dpbsud&ig_expand=6868)
 #[inline]
-#[rustc_legacy_const_generics(0, 1, 2)]
+#[rustc_deprecated_legacy_const_generics(0, 1, 2)]
 #[target_feature(enable = "amx-int8")]
 #[cfg_attr(test, assert_instr(tdpbsud, DST = 0, A = 1, B = 2))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
@@ -154,7 +154,7 @@ pub unsafe fn _tile_dpbsud<const DST: i32, const A: i32, const B: i32>() {
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_tile_dpbusd&ig_expand=6870)
 #[inline]
-#[rustc_legacy_const_generics(0, 1, 2)]
+#[rustc_deprecated_legacy_const_generics(0, 1, 2)]
 #[target_feature(enable = "amx-int8")]
 #[cfg_attr(test, assert_instr(tdpbusd, DST = 0, A = 1, B = 2))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
@@ -172,7 +172,7 @@ pub unsafe fn _tile_dpbusd<const DST: i32, const A: i32, const B: i32>() {
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_tile_dpbuud&ig_expand=6872)
 #[inline]
-#[rustc_legacy_const_generics(0, 1, 2)]
+#[rustc_deprecated_legacy_const_generics(0, 1, 2)]
 #[target_feature(enable = "amx-int8")]
 #[cfg_attr(test, assert_instr(tdpbuud, DST = 0, A = 1, B = 2))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
@@ -189,7 +189,7 @@ pub unsafe fn _tile_dpbuud<const DST: i32, const A: i32, const B: i32>() {
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_tile_dpfp16ps&ig_expand=6874)
 #[inline]
-#[rustc_legacy_const_generics(0, 1, 2)]
+#[rustc_deprecated_legacy_const_generics(0, 1, 2)]
 #[target_feature(enable = "amx-fp16")]
 #[cfg_attr(test, assert_instr(tdpfp16ps, DST = 0, A = 1, B = 2))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
@@ -210,7 +210,7 @@ pub unsafe fn _tile_dpfp16ps<const DST: i32, const A: i32, const B: i32>() {
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_tile_cmmimfp16ps&ig_expand=6860)
 #[inline]
-#[rustc_legacy_const_generics(0, 1, 2)]
+#[rustc_deprecated_legacy_const_generics(0, 1, 2)]
 #[target_feature(enable = "amx-complex")]
 #[cfg_attr(test, assert_instr(tcmmimfp16ps, DST = 0, A = 1, B = 2))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
@@ -231,7 +231,7 @@ pub unsafe fn _tile_cmmimfp16ps<const DST: i32, const A: i32, const B: i32>() {
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_tile_cmmrlfp16ps&ig_expand=6862)
 #[inline]
-#[rustc_legacy_const_generics(0, 1, 2)]
+#[rustc_deprecated_legacy_const_generics(0, 1, 2)]
 #[target_feature(enable = "amx-complex")]
 #[cfg_attr(test, assert_instr(tcmmrlfp16ps, DST = 0, A = 1, B = 2))]
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]

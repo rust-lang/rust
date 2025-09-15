@@ -260,7 +260,7 @@ pub fn sha256sum1(rs1: u32) -> u32 {
 /// ```
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 #[target_feature(enable = "zksed")]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(sm4ed, BS = 0))]
 #[inline]
 pub fn sm4ed<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
@@ -336,7 +336,7 @@ pub fn sm4ed<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
 /// ```
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 #[target_feature(enable = "zksed")]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(sm4ks, BS = 0))]
 #[inline]
 pub fn sm4ks<const BS: u8>(rs1: u32, rs2: u32) -> u32 {

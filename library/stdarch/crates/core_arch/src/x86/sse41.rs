@@ -76,7 +76,7 @@ pub fn _mm_blendv_epi8(a: __m128i, b: __m128i, mask: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(pblendw, IMM8 = 0xB1))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_blend_epi16<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
     static_assert_uimm_bits!(IMM8, 8);
@@ -138,7 +138,7 @@ pub fn _mm_blendv_ps(a: __m128, b: __m128, mask: __m128) -> __m128 {
 // see https://bugs.llvm.org/show_bug.cgi?id=38195
 // #[cfg_attr(test, assert_instr(blendpd, IMM2 = 0b10))]
 #[cfg_attr(test, assert_instr(blendps, IMM2 = 0b10))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_blend_pd<const IMM2: i32>(a: __m128d, b: __m128d) -> __m128d {
     static_assert_uimm_bits!(IMM2, 2);
@@ -158,7 +158,7 @@ pub fn _mm_blend_pd<const IMM2: i32>(a: __m128d, b: __m128d) -> __m128d {
 #[inline]
 #[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(blendps, IMM4 = 0b0101))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_blend_ps<const IMM4: i32>(a: __m128, b: __m128) -> __m128 {
     static_assert_uimm_bits!(IMM4, 4);
@@ -205,7 +205,7 @@ pub fn _mm_blend_ps<const IMM4: i32>(a: __m128, b: __m128) -> __m128 {
 #[inline]
 #[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(extractps, IMM8 = 0))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_extract_ps<const IMM8: i32>(a: __m128) -> i32 {
     static_assert_uimm_bits!(IMM8, 2);
@@ -221,7 +221,7 @@ pub fn _mm_extract_ps<const IMM8: i32>(a: __m128) -> i32 {
 #[inline]
 #[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(pextrb, IMM8 = 0))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_extract_epi8<const IMM8: i32>(a: __m128i) -> i32 {
     static_assert_uimm_bits!(IMM8, 4);
@@ -234,7 +234,7 @@ pub fn _mm_extract_epi8<const IMM8: i32>(a: __m128i) -> i32 {
 #[inline]
 #[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(extractps, IMM8 = 1))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_extract_epi32<const IMM8: i32>(a: __m128i) -> i32 {
     static_assert_uimm_bits!(IMM8, 2);
@@ -268,7 +268,7 @@ pub fn _mm_extract_epi32<const IMM8: i32>(a: __m128i) -> i32 {
 #[inline]
 #[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(insertps, IMM8 = 0b1010))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_insert_ps<const IMM8: i32>(a: __m128, b: __m128) -> __m128 {
     static_assert_uimm_bits!(IMM8, 8);
@@ -282,7 +282,7 @@ pub fn _mm_insert_ps<const IMM8: i32>(a: __m128, b: __m128) -> __m128 {
 #[inline]
 #[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(pinsrb, IMM8 = 0))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_insert_epi8<const IMM8: i32>(a: __m128i, i: i32) -> __m128i {
     static_assert_uimm_bits!(IMM8, 4);
@@ -296,7 +296,7 @@ pub fn _mm_insert_epi8<const IMM8: i32>(a: __m128i, i: i32) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(pinsrd, IMM8 = 0))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_insert_epi32<const IMM8: i32>(a: __m128i, i: i32) -> __m128i {
     static_assert_uimm_bits!(IMM8, 2);
@@ -650,7 +650,7 @@ pub fn _mm_cvtepu32_epi64(a: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(dppd, IMM8 = 0))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_dp_pd<const IMM8: i32>(a: __m128d, b: __m128d) -> __m128d {
     unsafe {
@@ -671,7 +671,7 @@ pub fn _mm_dp_pd<const IMM8: i32>(a: __m128d, b: __m128d) -> __m128d {
 #[inline]
 #[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(dpps, IMM8 = 0))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_dp_ps<const IMM8: i32>(a: __m128, b: __m128) -> __m128 {
     static_assert_uimm_bits!(IMM8, 8);
@@ -805,7 +805,7 @@ pub fn _mm_ceil_ss(a: __m128, b: __m128) -> __m128 {
 #[inline]
 #[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(roundpd, ROUNDING = 0))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_round_pd<const ROUNDING: i32>(a: __m128d) -> __m128d {
     static_assert_uimm_bits!(ROUNDING, 4);
@@ -827,7 +827,7 @@ pub fn _mm_round_pd<const ROUNDING: i32>(a: __m128d) -> __m128d {
 #[inline]
 #[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(roundps, ROUNDING = 0))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_round_ps<const ROUNDING: i32>(a: __m128) -> __m128 {
     static_assert_uimm_bits!(ROUNDING, 4);
@@ -851,7 +851,7 @@ pub fn _mm_round_ps<const ROUNDING: i32>(a: __m128) -> __m128 {
 #[inline]
 #[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(roundsd, ROUNDING = 0))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_round_sd<const ROUNDING: i32>(a: __m128d, b: __m128d) -> __m128d {
     static_assert_uimm_bits!(ROUNDING, 4);
@@ -875,7 +875,7 @@ pub fn _mm_round_sd<const ROUNDING: i32>(a: __m128d, b: __m128d) -> __m128d {
 #[inline]
 #[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(roundss, ROUNDING = 0))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_round_ss<const ROUNDING: i32>(a: __m128, b: __m128) -> __m128 {
     static_assert_uimm_bits!(ROUNDING, 4);
@@ -979,7 +979,7 @@ pub fn _mm_mullo_epi32(a: __m128i, b: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(mpsadbw, IMM8 = 0))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_mpsadbw_epu8<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
     static_assert_uimm_bits!(IMM8, 3);

@@ -1201,7 +1201,7 @@ pub fn _mm_maskz_shrdv_epi16(k: __mmask8, a: __m128i, b: __m128i, c: __m128i) ->
 #[target_feature(enable = "avx512vbmi2")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 pub fn _mm512_shldi_epi64<const IMM8: i32>(a: __m512i, b: __m512i) -> __m512i {
     static_assert_uimm_bits!(IMM8, 8);
     _mm512_shldv_epi64(a, b, _mm512_set1_epi64(IMM8 as i64))
@@ -1214,7 +1214,7 @@ pub fn _mm512_shldi_epi64<const IMM8: i32>(a: __m512i, b: __m512i) -> __m512i {
 #[target_feature(enable = "avx512vbmi2")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))]
-#[rustc_legacy_const_generics(4)]
+#[rustc_deprecated_legacy_const_generics(4)]
 pub fn _mm512_mask_shldi_epi64<const IMM8: i32>(
     src: __m512i,
     k: __mmask8,
@@ -1235,7 +1235,7 @@ pub fn _mm512_mask_shldi_epi64<const IMM8: i32>(
 #[target_feature(enable = "avx512vbmi2")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))]
-#[rustc_legacy_const_generics(3)]
+#[rustc_deprecated_legacy_const_generics(3)]
 pub fn _mm512_maskz_shldi_epi64<const IMM8: i32>(k: __mmask8, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
@@ -1251,7 +1251,7 @@ pub fn _mm512_maskz_shldi_epi64<const IMM8: i32>(k: __mmask8, a: __m512i, b: __m
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 pub fn _mm256_shldi_epi64<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
     static_assert_uimm_bits!(IMM8, 8);
     _mm256_shldv_epi64(a, b, _mm256_set1_epi64x(IMM8 as i64))
@@ -1264,7 +1264,7 @@ pub fn _mm256_shldi_epi64<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))]
-#[rustc_legacy_const_generics(4)]
+#[rustc_deprecated_legacy_const_generics(4)]
 pub fn _mm256_mask_shldi_epi64<const IMM8: i32>(
     src: __m256i,
     k: __mmask8,
@@ -1285,7 +1285,7 @@ pub fn _mm256_mask_shldi_epi64<const IMM8: i32>(
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))]
-#[rustc_legacy_const_generics(3)]
+#[rustc_deprecated_legacy_const_generics(3)]
 pub fn _mm256_maskz_shldi_epi64<const IMM8: i32>(k: __mmask8, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
@@ -1301,7 +1301,7 @@ pub fn _mm256_maskz_shldi_epi64<const IMM8: i32>(k: __mmask8, a: __m256i, b: __m
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 pub fn _mm_shldi_epi64<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
     static_assert_uimm_bits!(IMM8, 8);
     _mm_shldv_epi64(a, b, _mm_set1_epi64x(IMM8 as i64))
@@ -1314,7 +1314,7 @@ pub fn _mm_shldi_epi64<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))]
-#[rustc_legacy_const_generics(4)]
+#[rustc_deprecated_legacy_const_generics(4)]
 pub fn _mm_mask_shldi_epi64<const IMM8: i32>(
     src: __m128i,
     k: __mmask8,
@@ -1335,7 +1335,7 @@ pub fn _mm_mask_shldi_epi64<const IMM8: i32>(
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))]
-#[rustc_legacy_const_generics(3)]
+#[rustc_deprecated_legacy_const_generics(3)]
 pub fn _mm_maskz_shldi_epi64<const IMM8: i32>(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
@@ -1351,7 +1351,7 @@ pub fn _mm_maskz_shldi_epi64<const IMM8: i32>(k: __mmask8, a: __m128i, b: __m128
 #[target_feature(enable = "avx512vbmi2")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 pub fn _mm512_shldi_epi32<const IMM8: i32>(a: __m512i, b: __m512i) -> __m512i {
     static_assert_uimm_bits!(IMM8, 8);
     _mm512_shldv_epi32(a, b, _mm512_set1_epi32(IMM8))
@@ -1364,7 +1364,7 @@ pub fn _mm512_shldi_epi32<const IMM8: i32>(a: __m512i, b: __m512i) -> __m512i {
 #[target_feature(enable = "avx512vbmi2")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))]
-#[rustc_legacy_const_generics(4)]
+#[rustc_deprecated_legacy_const_generics(4)]
 pub fn _mm512_mask_shldi_epi32<const IMM8: i32>(
     src: __m512i,
     k: __mmask16,
@@ -1385,7 +1385,7 @@ pub fn _mm512_mask_shldi_epi32<const IMM8: i32>(
 #[target_feature(enable = "avx512vbmi2")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))]
-#[rustc_legacy_const_generics(3)]
+#[rustc_deprecated_legacy_const_generics(3)]
 pub fn _mm512_maskz_shldi_epi32<const IMM8: i32>(k: __mmask16, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
@@ -1401,7 +1401,7 @@ pub fn _mm512_maskz_shldi_epi32<const IMM8: i32>(k: __mmask16, a: __m512i, b: __
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 pub fn _mm256_shldi_epi32<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
     static_assert_uimm_bits!(IMM8, 8);
     _mm256_shldv_epi32(a, b, _mm256_set1_epi32(IMM8))
@@ -1414,7 +1414,7 @@ pub fn _mm256_shldi_epi32<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))]
-#[rustc_legacy_const_generics(4)]
+#[rustc_deprecated_legacy_const_generics(4)]
 pub fn _mm256_mask_shldi_epi32<const IMM8: i32>(
     src: __m256i,
     k: __mmask8,
@@ -1435,7 +1435,7 @@ pub fn _mm256_mask_shldi_epi32<const IMM8: i32>(
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))]
-#[rustc_legacy_const_generics(3)]
+#[rustc_deprecated_legacy_const_generics(3)]
 pub fn _mm256_maskz_shldi_epi32<const IMM8: i32>(k: __mmask8, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
@@ -1451,7 +1451,7 @@ pub fn _mm256_maskz_shldi_epi32<const IMM8: i32>(k: __mmask8, a: __m256i, b: __m
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 pub fn _mm_shldi_epi32<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
     static_assert_uimm_bits!(IMM8, 8);
     _mm_shldv_epi32(a, b, _mm_set1_epi32(IMM8))
@@ -1464,7 +1464,7 @@ pub fn _mm_shldi_epi32<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))]
-#[rustc_legacy_const_generics(4)]
+#[rustc_deprecated_legacy_const_generics(4)]
 pub fn _mm_mask_shldi_epi32<const IMM8: i32>(
     src: __m128i,
     k: __mmask8,
@@ -1485,7 +1485,7 @@ pub fn _mm_mask_shldi_epi32<const IMM8: i32>(
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))]
-#[rustc_legacy_const_generics(3)]
+#[rustc_deprecated_legacy_const_generics(3)]
 pub fn _mm_maskz_shldi_epi32<const IMM8: i32>(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
@@ -1501,7 +1501,7 @@ pub fn _mm_maskz_shldi_epi32<const IMM8: i32>(k: __mmask8, a: __m128i, b: __m128
 #[target_feature(enable = "avx512vbmi2")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 pub fn _mm512_shldi_epi16<const IMM8: i32>(a: __m512i, b: __m512i) -> __m512i {
     static_assert_uimm_bits!(IMM8, 8);
     _mm512_shldv_epi16(a, b, _mm512_set1_epi16(IMM8 as i16))
@@ -1514,7 +1514,7 @@ pub fn _mm512_shldi_epi16<const IMM8: i32>(a: __m512i, b: __m512i) -> __m512i {
 #[target_feature(enable = "avx512vbmi2")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))]
-#[rustc_legacy_const_generics(4)]
+#[rustc_deprecated_legacy_const_generics(4)]
 pub fn _mm512_mask_shldi_epi16<const IMM8: i32>(
     src: __m512i,
     k: __mmask32,
@@ -1535,7 +1535,7 @@ pub fn _mm512_mask_shldi_epi16<const IMM8: i32>(
 #[target_feature(enable = "avx512vbmi2")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))]
-#[rustc_legacy_const_generics(3)]
+#[rustc_deprecated_legacy_const_generics(3)]
 pub fn _mm512_maskz_shldi_epi16<const IMM8: i32>(k: __mmask32, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
@@ -1551,7 +1551,7 @@ pub fn _mm512_maskz_shldi_epi16<const IMM8: i32>(k: __mmask32, a: __m512i, b: __
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 pub fn _mm256_shldi_epi16<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
     static_assert_uimm_bits!(IMM8, 8);
     _mm256_shldv_epi16(a, b, _mm256_set1_epi16(IMM8 as i16))
@@ -1564,7 +1564,7 @@ pub fn _mm256_shldi_epi16<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))]
-#[rustc_legacy_const_generics(4)]
+#[rustc_deprecated_legacy_const_generics(4)]
 pub fn _mm256_mask_shldi_epi16<const IMM8: i32>(
     src: __m256i,
     k: __mmask16,
@@ -1585,7 +1585,7 @@ pub fn _mm256_mask_shldi_epi16<const IMM8: i32>(
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))]
-#[rustc_legacy_const_generics(3)]
+#[rustc_deprecated_legacy_const_generics(3)]
 pub fn _mm256_maskz_shldi_epi16<const IMM8: i32>(k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
@@ -1601,7 +1601,7 @@ pub fn _mm256_maskz_shldi_epi16<const IMM8: i32>(k: __mmask16, a: __m256i, b: __
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 pub fn _mm_shldi_epi16<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
     static_assert_uimm_bits!(IMM8, 8);
     _mm_shldv_epi16(a, b, _mm_set1_epi16(IMM8 as i16))
@@ -1614,7 +1614,7 @@ pub fn _mm_shldi_epi16<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))]
-#[rustc_legacy_const_generics(4)]
+#[rustc_deprecated_legacy_const_generics(4)]
 pub fn _mm_mask_shldi_epi16<const IMM8: i32>(
     src: __m128i,
     k: __mmask8,
@@ -1635,7 +1635,7 @@ pub fn _mm_mask_shldi_epi16<const IMM8: i32>(
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))]
-#[rustc_legacy_const_generics(3)]
+#[rustc_deprecated_legacy_const_generics(3)]
 pub fn _mm_maskz_shldi_epi16<const IMM8: i32>(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
@@ -1651,7 +1651,7 @@ pub fn _mm_maskz_shldi_epi16<const IMM8: i32>(k: __mmask8, a: __m128i, b: __m128
 #[target_feature(enable = "avx512vbmi2")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))] //should be vpshrdq
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 pub fn _mm512_shrdi_epi64<const IMM8: i32>(a: __m512i, b: __m512i) -> __m512i {
     static_assert_uimm_bits!(IMM8, 8);
     _mm512_shrdv_epi64(a, b, _mm512_set1_epi64(IMM8 as i64))
@@ -1664,7 +1664,7 @@ pub fn _mm512_shrdi_epi64<const IMM8: i32>(a: __m512i, b: __m512i) -> __m512i {
 #[target_feature(enable = "avx512vbmi2")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))] //should be vpshrdq
-#[rustc_legacy_const_generics(4)]
+#[rustc_deprecated_legacy_const_generics(4)]
 pub fn _mm512_mask_shrdi_epi64<const IMM8: i32>(
     src: __m512i,
     k: __mmask8,
@@ -1685,7 +1685,7 @@ pub fn _mm512_mask_shrdi_epi64<const IMM8: i32>(
 #[target_feature(enable = "avx512vbmi2")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldq, IMM8 = 255))] //should be vpshrdq
-#[rustc_legacy_const_generics(3)]
+#[rustc_deprecated_legacy_const_generics(3)]
 pub fn _mm512_maskz_shrdi_epi64<const IMM8: i32>(k: __mmask8, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
@@ -1701,7 +1701,7 @@ pub fn _mm512_maskz_shrdi_epi64<const IMM8: i32>(k: __mmask8, a: __m512i, b: __m
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))] //should be vpshrdq
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 pub fn _mm256_shrdi_epi64<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
     static_assert_uimm_bits!(IMM8, 8);
     _mm256_shrdv_epi64(a, b, _mm256_set1_epi64x(IMM8 as i64))
@@ -1714,7 +1714,7 @@ pub fn _mm256_shrdi_epi64<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))] //should be vpshrdq
-#[rustc_legacy_const_generics(4)]
+#[rustc_deprecated_legacy_const_generics(4)]
 pub fn _mm256_mask_shrdi_epi64<const IMM8: i32>(
     src: __m256i,
     k: __mmask8,
@@ -1735,7 +1735,7 @@ pub fn _mm256_mask_shrdi_epi64<const IMM8: i32>(
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))] //should be vpshrdq
-#[rustc_legacy_const_generics(3)]
+#[rustc_deprecated_legacy_const_generics(3)]
 pub fn _mm256_maskz_shrdi_epi64<const IMM8: i32>(k: __mmask8, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
@@ -1751,7 +1751,7 @@ pub fn _mm256_maskz_shrdi_epi64<const IMM8: i32>(k: __mmask8, a: __m256i, b: __m
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))] //should be vpshrdq
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 pub fn _mm_shrdi_epi64<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
     static_assert_uimm_bits!(IMM8, 8);
     _mm_shrdv_epi64(a, b, _mm_set1_epi64x(IMM8 as i64))
@@ -1764,7 +1764,7 @@ pub fn _mm_shrdi_epi64<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))] //should be vpshrdq
-#[rustc_legacy_const_generics(4)]
+#[rustc_deprecated_legacy_const_generics(4)]
 pub fn _mm_mask_shrdi_epi64<const IMM8: i32>(
     src: __m128i,
     k: __mmask8,
@@ -1785,7 +1785,7 @@ pub fn _mm_mask_shrdi_epi64<const IMM8: i32>(
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))] //should be vpshrdq
-#[rustc_legacy_const_generics(3)]
+#[rustc_deprecated_legacy_const_generics(3)]
 pub fn _mm_maskz_shrdi_epi64<const IMM8: i32>(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
@@ -1801,7 +1801,7 @@ pub fn _mm_maskz_shrdi_epi64<const IMM8: i32>(k: __mmask8, a: __m128i, b: __m128
 #[target_feature(enable = "avx512vbmi2")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))] //should be vpshldd
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 pub fn _mm512_shrdi_epi32<const IMM8: i32>(a: __m512i, b: __m512i) -> __m512i {
     static_assert_uimm_bits!(IMM8, 8);
     _mm512_shrdv_epi32(a, b, _mm512_set1_epi32(IMM8))
@@ -1814,7 +1814,7 @@ pub fn _mm512_shrdi_epi32<const IMM8: i32>(a: __m512i, b: __m512i) -> __m512i {
 #[target_feature(enable = "avx512vbmi2")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))] //should be vpshldd
-#[rustc_legacy_const_generics(4)]
+#[rustc_deprecated_legacy_const_generics(4)]
 pub fn _mm512_mask_shrdi_epi32<const IMM8: i32>(
     src: __m512i,
     k: __mmask16,
@@ -1835,7 +1835,7 @@ pub fn _mm512_mask_shrdi_epi32<const IMM8: i32>(
 #[target_feature(enable = "avx512vbmi2")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))] //should be vpshldd
-#[rustc_legacy_const_generics(3)]
+#[rustc_deprecated_legacy_const_generics(3)]
 pub fn _mm512_maskz_shrdi_epi32<const IMM8: i32>(k: __mmask16, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
@@ -1851,7 +1851,7 @@ pub fn _mm512_maskz_shrdi_epi32<const IMM8: i32>(k: __mmask16, a: __m512i, b: __
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))] //should be vpshldd
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 pub fn _mm256_shrdi_epi32<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
     static_assert_uimm_bits!(IMM8, 8);
     _mm256_shrdv_epi32(a, b, _mm256_set1_epi32(IMM8))
@@ -1864,7 +1864,7 @@ pub fn _mm256_shrdi_epi32<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))] //should be vpshldd
-#[rustc_legacy_const_generics(4)]
+#[rustc_deprecated_legacy_const_generics(4)]
 pub fn _mm256_mask_shrdi_epi32<const IMM8: i32>(
     src: __m256i,
     k: __mmask8,
@@ -1885,7 +1885,7 @@ pub fn _mm256_mask_shrdi_epi32<const IMM8: i32>(
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))] //should be vpshldd
-#[rustc_legacy_const_generics(3)]
+#[rustc_deprecated_legacy_const_generics(3)]
 pub fn _mm256_maskz_shrdi_epi32<const IMM8: i32>(k: __mmask8, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
@@ -1901,7 +1901,7 @@ pub fn _mm256_maskz_shrdi_epi32<const IMM8: i32>(k: __mmask8, a: __m256i, b: __m
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))] //should be vpshldd
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 pub fn _mm_shrdi_epi32<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
     static_assert_uimm_bits!(IMM8, 8);
     _mm_shrdv_epi32(a, b, _mm_set1_epi32(IMM8))
@@ -1914,7 +1914,7 @@ pub fn _mm_shrdi_epi32<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))] //should be vpshldd
-#[rustc_legacy_const_generics(4)]
+#[rustc_deprecated_legacy_const_generics(4)]
 pub fn _mm_mask_shrdi_epi32<const IMM8: i32>(
     src: __m128i,
     k: __mmask8,
@@ -1935,7 +1935,7 @@ pub fn _mm_mask_shrdi_epi32<const IMM8: i32>(
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))] //should be vpshldd
-#[rustc_legacy_const_generics(3)]
+#[rustc_deprecated_legacy_const_generics(3)]
 pub fn _mm_maskz_shrdi_epi32<const IMM8: i32>(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
@@ -1951,7 +1951,7 @@ pub fn _mm_maskz_shrdi_epi32<const IMM8: i32>(k: __mmask8, a: __m128i, b: __m128
 #[target_feature(enable = "avx512vbmi2")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))] //should be vpshrdw
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 pub fn _mm512_shrdi_epi16<const IMM8: i32>(a: __m512i, b: __m512i) -> __m512i {
     static_assert_uimm_bits!(IMM8, 8);
     _mm512_shrdv_epi16(a, b, _mm512_set1_epi16(IMM8 as i16))
@@ -1964,7 +1964,7 @@ pub fn _mm512_shrdi_epi16<const IMM8: i32>(a: __m512i, b: __m512i) -> __m512i {
 #[target_feature(enable = "avx512vbmi2")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))] //should be vpshrdw
-#[rustc_legacy_const_generics(4)]
+#[rustc_deprecated_legacy_const_generics(4)]
 pub fn _mm512_mask_shrdi_epi16<const IMM8: i32>(
     src: __m512i,
     k: __mmask32,
@@ -1985,7 +1985,7 @@ pub fn _mm512_mask_shrdi_epi16<const IMM8: i32>(
 #[target_feature(enable = "avx512vbmi2")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))] //should be vpshrdw
-#[rustc_legacy_const_generics(3)]
+#[rustc_deprecated_legacy_const_generics(3)]
 pub fn _mm512_maskz_shrdi_epi16<const IMM8: i32>(k: __mmask32, a: __m512i, b: __m512i) -> __m512i {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
@@ -2001,7 +2001,7 @@ pub fn _mm512_maskz_shrdi_epi16<const IMM8: i32>(k: __mmask32, a: __m512i, b: __
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))] //should be vpshrdw
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 pub fn _mm256_shrdi_epi16<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
     static_assert_uimm_bits!(IMM8, 8);
     _mm256_shrdv_epi16(a, b, _mm256_set1_epi16(IMM8 as i16))
@@ -2014,7 +2014,7 @@ pub fn _mm256_shrdi_epi16<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))] //should be vpshrdw
-#[rustc_legacy_const_generics(4)]
+#[rustc_deprecated_legacy_const_generics(4)]
 pub fn _mm256_mask_shrdi_epi16<const IMM8: i32>(
     src: __m256i,
     k: __mmask16,
@@ -2035,7 +2035,7 @@ pub fn _mm256_mask_shrdi_epi16<const IMM8: i32>(
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))] //should be vpshrdw
-#[rustc_legacy_const_generics(3)]
+#[rustc_deprecated_legacy_const_generics(3)]
 pub fn _mm256_maskz_shrdi_epi16<const IMM8: i32>(k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
@@ -2051,7 +2051,7 @@ pub fn _mm256_maskz_shrdi_epi16<const IMM8: i32>(k: __mmask16, a: __m256i, b: __
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))] //should be vpshrdw
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 pub fn _mm_shrdi_epi16<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
     static_assert_uimm_bits!(IMM8, 8);
     _mm_shrdv_epi16(a, b, _mm_set1_epi16(IMM8 as i16))
@@ -2064,7 +2064,7 @@ pub fn _mm_shrdi_epi16<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))] //should be vpshrdw
-#[rustc_legacy_const_generics(4)]
+#[rustc_deprecated_legacy_const_generics(4)]
 pub fn _mm_mask_shrdi_epi16<const IMM8: i32>(
     src: __m128i,
     k: __mmask8,
@@ -2085,7 +2085,7 @@ pub fn _mm_mask_shrdi_epi16<const IMM8: i32>(
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))] //should be vpshrdw
-#[rustc_legacy_const_generics(3)]
+#[rustc_deprecated_legacy_const_generics(3)]
 pub fn _mm_maskz_shrdi_epi16<const IMM8: i32>(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);

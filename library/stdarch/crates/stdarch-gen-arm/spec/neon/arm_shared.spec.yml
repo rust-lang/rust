@@ -1053,7 +1053,7 @@ intrinsics:
       - *target-is-arm
       - *enable-v7
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [vcvt, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-arm-unstable
     static_defs: ['const N: i32']
     safety: safe
@@ -1079,7 +1079,7 @@ intrinsics:
     attr:
       - FnCall: [cfg, [{FnCall: [not, ['target_arch = "arm"']]}]]
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [ucvtf, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
@@ -1106,7 +1106,7 @@ intrinsics:
       - *neon-v8
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vcvt"', 'N = 1']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ucvtf, 'N = 1']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-fp16
       - *neon-unstable-f16
     static_defs: ['const N: i32']
@@ -1137,7 +1137,7 @@ intrinsics:
       - *neon-v8
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vcvt"', 'N = 1']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fcvtzs, 'N = 1']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-fp16
       - *neon-unstable-f16
     static_defs: ['const N: i32']
@@ -1168,7 +1168,7 @@ intrinsics:
       - *neon-v8
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vcvt"', 'N = 1']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fcvtzu, 'N = 1']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-fp16
       - *neon-unstable-f16
     static_defs: ['const N: i32']
@@ -1198,7 +1198,7 @@ intrinsics:
       - *target-is-arm
       - *enable-v7
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [vcvt, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-arm-unstable
     static_defs: ['const N: i32']
     safety: safe
@@ -1226,7 +1226,7 @@ intrinsics:
       - *neon-v8
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vcvt"', 'N = 1']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [scvtf, 'N = 1']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-fp16
       - *neon-unstable-f16
     static_defs: ['const N: i32']
@@ -1255,7 +1255,7 @@ intrinsics:
     attr:
       - FnCall: [cfg, [{FnCall: [not, ['target_arch = "arm"']]}]]
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [scvtf, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
@@ -1282,7 +1282,7 @@ intrinsics:
       - *target-is-arm
       - *enable-v7
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [vcvt, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-arm-unstable
     static_defs: ['const N: i32']
     safety: safe
@@ -1307,7 +1307,7 @@ intrinsics:
       - *target-is-arm
       - *enable-v7
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [vcvt, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-arm-unstable
     static_defs: ['const N: i32']
     safety: safe
@@ -1331,7 +1331,7 @@ intrinsics:
     attr:
       - FnCall: [cfg, [{FnCall: [not, ['target_arch = "arm"']]}]]
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtzs, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
@@ -1355,7 +1355,7 @@ intrinsics:
     attr:
       - FnCall: [cfg, [{FnCall: [not, ['target_arch = "arm"']]}]]
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtzu, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
@@ -1382,7 +1382,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vdup.8"', 'N = 4']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [dup, 'N = 4']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
@@ -1406,7 +1406,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vdup.8"', 'N = 8']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [dup, 'N = 8']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
@@ -1430,7 +1430,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vdup.16"', 'N = 2']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [dup, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
@@ -1454,7 +1454,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vdup.16"', 'N = 4']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [dup, 'N = 4']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
@@ -1479,7 +1479,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vdup.16"', 'N = 4']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [dup, 'N = 4']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-fp16
       - *neon-unstable-f16
     static_defs: ['const N: i32']
@@ -1516,7 +1516,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vdup.16"', 'N = 2']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [dup, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-fp16
       - *neon-unstable-f16
     static_defs: ['const N: i32']
@@ -1537,7 +1537,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vdup.32"', 'N = 1']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [dup, 'N = 1']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
@@ -1561,7 +1561,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vdup.32"', 'N = 2']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [dup, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
@@ -1585,7 +1585,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vmov, 'N = 1']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [dup, 'N = 1']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
@@ -1605,7 +1605,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vmov, 'N = 0']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [dup, 'N = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
@@ -1625,7 +1625,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [nop, 'N = 0']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [nop, 'N = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
@@ -1645,7 +1645,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vmov, 'N = 1']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [nop, 'N = 1']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
@@ -1667,7 +1667,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vext.8"', 'N = 7']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ext, 'N = 7']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
@@ -1691,7 +1691,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vext.8"', 'N = 15']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ext, 'N = 15']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
@@ -1712,7 +1712,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vext.8"', 'N = 3']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ext, 'N = 3']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
@@ -1737,7 +1737,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vext.8"', 'N = 3']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ext, 'N = 3']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - *neon-fp16
       - *neon-unstable-f16
     static_defs: ['const N: i32']
@@ -1755,7 +1755,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vext.8"', 'N = 7']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ext, 'N = 7']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - *neon-fp16
       - *neon-unstable-f16
     static_defs: ['const N: i32']
@@ -1775,7 +1775,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vext.8"', 'N = 1']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ext, 'N = 1']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
@@ -1796,7 +1796,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vmov, 'N = 1']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ext, 'N = 1']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
@@ -1920,7 +1920,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vmlal.{neon_type[1]}"', 'LANE = 1']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [smlal, 'LANE = 1']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['3']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['3']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const LANE: i32']
@@ -1946,7 +1946,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vmlal.{neon_type[1]}"', 'LANE = 1']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [umlal, 'LANE = 1']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['3']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['3']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const LANE: i32']
@@ -2075,7 +2075,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vmlsl.{neon_type[1]}"', 'LANE = 1']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [smlsl, 'LANE = 1']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['3']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['3']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const LANE: i32']
@@ -2099,7 +2099,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vmlsl.{neon_type[1]}"', 'LANE = 1']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [smlsl, 'LANE = 1']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['3']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['3']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const LANE: i32']
@@ -2123,7 +2123,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vmlsl.{neon_type[1]}"', 'LANE = 1']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [umlsl, 'LANE = 1']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['3']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['3']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const LANE: i32']
@@ -2770,7 +2770,7 @@ intrinsics:
 
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vld1, 'LANE = 0']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ld1, 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ["2"]]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ["2"]]
       - *neon-fp16
       - *neon-unstable-f16
     static_defs: ['const LANE: i32']
@@ -3007,7 +3007,7 @@ intrinsics:
                 - - vld2
                   - "LANE = 0"
       - FnCall:
-          - rustc_legacy_const_generics
+          - rustc_deprecated_legacy_const_generics
           - - "2"
       - *neon-arm-unstable
     static_defs:
@@ -3050,7 +3050,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vld2, 'LANE = 0']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ld2, 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ["2"]]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ["2"]]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs:
@@ -3091,7 +3091,7 @@ intrinsics:
                 - assert_instr
                 - - ld2
                   - "LANE = 0"
-      - FnCall: [rustc_legacy_const_generics, ["2"]]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ["2"]]
       - *neon-stable
     static_defs:
       - "const LANE: i32"
@@ -3141,7 +3141,7 @@ intrinsics:
                 - assert_instr
                 - - vld2
                   - "LANE = 0"
-      - FnCall: [rustc_legacy_const_generics, ["2"]]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ["2"]]
       - *neon-arm-unstable
     static_defs:
       - "const LANE: i32"
@@ -3495,7 +3495,7 @@ intrinsics:
       - *enable-v7
       - *target-is-arm
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['vld2', 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ["2"]]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ["2"]]
       - *neon-fp16
       - *neon-unstable-f16
     static_defs:
@@ -3537,7 +3537,7 @@ intrinsics:
     attr:
       - *target-not-arm
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ld2, 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ["2"]]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ["2"]]
       - *neon-fp16
       - *neon-unstable-f16
     static_defs:
@@ -3690,7 +3690,7 @@ intrinsics:
       - *enable-v7
       - *target-is-arm
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['vld3', 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ["2"]]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ["2"]]
       - *neon-fp16
       - *neon-unstable-f16
     static_defs:
@@ -3734,7 +3734,7 @@ intrinsics:
     attr:
       - *target-not-arm
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ld3, 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ["2"]]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ["2"]]
       - *neon-fp16
       - *neon-unstable-f16
     static_defs:
@@ -3775,7 +3775,7 @@ intrinsics:
     attr:
       - *target-not-arm
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [ld3, 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ["2"]]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ["2"]]
       - *neon-stable
     static_defs:
       - "const LANE: i32"
@@ -3915,7 +3915,7 @@ intrinsics:
     attr:
       - *target-not-arm
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [ld3, 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ["2"]]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ["2"]]
       - *neon-stable
     static_defs: ['const LANE: i32']
     safety:
@@ -3946,7 +3946,7 @@ intrinsics:
       - *target-is-arm
       - *enable-v7
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [vld3, 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ["2"]]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ["2"]]
       - *neon-arm-unstable
     static_defs: ['const LANE: i32']
     safety:
@@ -3977,7 +3977,7 @@ intrinsics:
       - *target-is-arm
       - *enable-v7
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [vld3, 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ["2"]]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ["2"]]
       - *neon-arm-unstable
     static_defs: ['const LANE: i32']
     safety:
@@ -4012,7 +4012,7 @@ intrinsics:
       - *target-is-arm
       - *enable-v7
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [vld3, 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ["2"]]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ["2"]]
       - *neon-arm-unstable
     static_defs: ['const LANE: i32']
     safety:
@@ -4043,7 +4043,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vld3, 'LANE = 0']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ld3, 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ["2"]]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ["2"]]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const LANE: i32']
@@ -4354,7 +4354,7 @@ intrinsics:
     attr:
       - *target-not-arm
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [ld4, 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ["2"]]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ["2"]]
       - *neon-stable
     static_defs:
       - "const LANE: i32"
@@ -4528,7 +4528,7 @@ intrinsics:
       - *enable-v7
       - *target-is-arm
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [vld4, 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ["2"]]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ["2"]]
       - *neon-arm-unstable
     static_defs: ["const LANE: i32"]
     safety:
@@ -4566,7 +4566,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vld4, 'LANE = 0']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ld4, 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ["2"]]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ["2"]]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ["const LANE: i32"]
@@ -4600,7 +4600,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [nop, 'LANE = 0']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [nop, 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ["2"]]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ["2"]]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     types:
@@ -4626,7 +4626,7 @@ intrinsics:
           - - 'enable = "neon,aes"'
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [nop, 'LANE = 0']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [nop, 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ["2"]]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ["2"]]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     types:
@@ -4651,7 +4651,7 @@ intrinsics:
           - - 'enable = "neon,aes"'
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [nop, 'LANE = 0']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [nop, 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ["2"]]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ["2"]]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     types:
@@ -4673,7 +4673,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [nop, 'LANE = 0']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [nop, 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ["2"]]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ["2"]]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     types:
@@ -4715,7 +4715,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [nop, 'LANE = 0']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [nop, 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ["2"]]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ["2"]]
       - *neon-fp16
       - *neon-unstable-f16
     types:
@@ -5150,7 +5150,7 @@ intrinsics:
     arguments: ["a: *mut {type[0]}", "b: {neon_type[1]}"]
     attr:
       - *target-not-arm
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [st2, 'LANE = 0']]}]]
       - *neon-stable
     static_defs: ['const LANE: i32']
@@ -5184,7 +5184,7 @@ intrinsics:
     arguments: ["a: *mut {type[0]}", "b: {neon_type[1]}"]
     attr:
       - *target-not-arm
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [st2, 'LANE = 0']]}]]
       - *neon-fp16
       - *neon-unstable-f16
@@ -5216,7 +5216,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vst2, 'LANE = 0']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [st2, 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const LANE: i32']
@@ -5306,7 +5306,7 @@ intrinsics:
       - *target-is-arm
       - *enable-v7
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [vst2, 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - *neon-arm-unstable
     static_defs: ['const LANE: i32']
     safety:
@@ -5342,7 +5342,7 @@ intrinsics:
       - *target-is-arm
       - *neon-v7
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [vst2, 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - *neon-fp16
       - *neon-unstable-f16
     static_defs: ['const LANE: i32']
@@ -5463,7 +5463,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vst3, 'LANE = 0']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [st3, 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ["const LANE: i32"]
@@ -5583,7 +5583,7 @@ intrinsics:
       - *target-is-arm
       - *enable-v7
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [vst3, 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - *neon-arm-unstable
     static_defs: ['const LANE: i32']
     safety:
@@ -5620,7 +5620,7 @@ intrinsics:
       - *target-is-arm
       - *neon-v7
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [vst3, 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - *neon-fp16
       - *neon-unstable-f16
     static_defs: ['const LANE: i32']
@@ -5708,7 +5708,7 @@ intrinsics:
     arguments: ["a: *mut {type[0]}", "b: {neon_type[1]}"]
     attr:
       - *target-not-arm
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [st3, 'LANE = 0']]}]]
       - *neon-stable
     static_defs: ['const LANE: i32']
@@ -5743,7 +5743,7 @@ intrinsics:
     arguments: ["a: *mut {type[0]}", "b: {neon_type[1]}"]
     attr:
       - *target-not-arm
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [st3, 'LANE = 0']]}]]
       - *neon-fp16
       - *neon-unstable-f16
@@ -5867,7 +5867,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vst4, 'LANE = 0']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [st4, 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ["const LANE: i32"]
@@ -5989,7 +5989,7 @@ intrinsics:
       - *target-is-arm
       - *enable-v7
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [vst4, 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - *neon-arm-unstable
     static_defs: ['const LANE: i32']
     safety:
@@ -6026,7 +6026,7 @@ intrinsics:
       - *target-is-arm
       - *neon-v7
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [vst4, 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - *neon-fp16
       - *neon-unstable-f16
     static_defs: ['const LANE: i32']
@@ -6117,7 +6117,7 @@ intrinsics:
     arguments: ["a: *mut {type[0]}", "b: {neon_type[1]}"]
     attr:
       - *target-not-arm
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [st4, 'LANE = 0']]}]]
       - *neon-stable
     static_defs: ['const LANE: i32']
@@ -6153,7 +6153,7 @@ intrinsics:
     arguments: ["a: *mut {type[0]}", "b: {neon_type[1]}"]
     attr:
       - *target-not-arm
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [st4, 'LANE = 0']]}]]
       - *neon-fp16
       - *neon-unstable-f16
@@ -6213,7 +6213,7 @@ intrinsics:
       - *neon-v8
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vusdot, 'LANE = 0']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [usdot, 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['3']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['3']]
       - *neon-unstable-i8mm
       - *neon-cfg-arm-unstable
     static_defs: ["const LANE: i32"]
@@ -6242,7 +6242,7 @@ intrinsics:
       - *neon-v8
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vsudot, 'LANE = 0']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [sudot, 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['3']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['3']]
       - *neon-unstable-i8mm
       - *neon-cfg-arm-unstable
     static_defs: ["const LANE: i32"]
@@ -6333,7 +6333,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vmul, 'LANE = 1']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [mul, 'LANE = 1']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ["const LANE: i32"]
@@ -6363,7 +6363,7 @@ intrinsics:
       - *neon-v8
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vmul, 'LANE = 1']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fmul, 'LANE = 1']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - *neon-fp16
       - *neon-unstable-f16
     static_defs: ["const LANE: i32"]
@@ -6387,7 +6387,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vmul, 'LANE = 1']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [mul, 'LANE = 1']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ["const LANE: i32"]
@@ -7060,7 +7060,7 @@ intrinsics:
       - FnCall: [target_feature, ['enable = "neon,dotprod"']]
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vsdot, 'LANE = 0']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [sdot, 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['3']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['3']]
       - FnCall: [cfg_attr, [{FnCall: [not, ['target_arch = "arm"']]}, {FnCall: [unstable, ['feature = "stdarch_neon_dotprod"', 'issue = "117224"']]}]]
       - *neon-cfg-arm-unstable
     safety: safe
@@ -7093,7 +7093,7 @@ intrinsics:
       - FnCall: [target_feature, ['enable = "neon,dotprod"']]
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vudot, 'LANE = 0']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [udot, 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['3']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['3']]
       - FnCall: [cfg_attr, [{FnCall: [not, ['target_arch = "arm"']]}, {FnCall: [unstable, ['feature = "stdarch_neon_dotprod"', 'issue = "117224"']]}]]
       - *neon-cfg-arm-unstable
     safety: safe
@@ -7465,7 +7465,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vqdmull, 'N = 2']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [sqdmull, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
@@ -7485,7 +7485,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vqdmull, 'N = 1']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [sqdmull, 'N = 1']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
@@ -7539,7 +7539,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vqdmlal, N = 2]]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [sqdmlal, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['3']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['3']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
@@ -7558,7 +7558,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vqdmlal, N = 1]]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [sqdmlal, 'N = 1']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['3']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['3']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
@@ -7611,7 +7611,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vqdmlsl, N = 2]]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [sqdmlsl, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['3']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['3']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
@@ -7630,7 +7630,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vqdmlsl, N = 1]]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [sqdmlsl, 'N = 1']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['3']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['3']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
@@ -7825,7 +7825,7 @@ intrinsics:
       - *target-is-arm
       - *enable-v7
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [vqrshrn, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-arm-unstable
     static_defs: ['const N: i32']
     safety: safe
@@ -7852,7 +7852,7 @@ intrinsics:
     attr:
       - FnCall: [cfg, [{FnCall: [not, ['target_arch = "arm"']]}]]
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqrshrn, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
@@ -7880,7 +7880,7 @@ intrinsics:
       - *target-is-arm
       - *enable-v7
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [vqrshrun, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-arm-unstable
     static_defs: ['const N: i32']
     safety: safe
@@ -7912,7 +7912,7 @@ intrinsics:
     attr:
       - FnCall: [cfg, [{FnCall: [not, ['target_arch = "arm"']]}]]
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqrshrun, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
@@ -7969,7 +7969,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vqshl, 'N = 2']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [sqshl, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
@@ -8027,7 +8027,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vqshl, N = 2]]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [uqshl, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
@@ -8056,7 +8056,7 @@ intrinsics:
       - *target-is-arm
       - *enable-v7
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [vqshrn, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-arm-unstable
     static_defs: ['const N: i32']
     safety: safe
@@ -8083,7 +8083,7 @@ intrinsics:
     attr:
       - FnCall: [cfg, [{FnCall: [not, ['target_arch = "arm"']]}]]
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqshrn, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
@@ -8111,7 +8111,7 @@ intrinsics:
       - *target-is-arm
       - *enable-v7
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [vqshrn, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-arm-unstable
     static_defs: ['const N: i32']
     safety: safe
@@ -8138,7 +8138,7 @@ intrinsics:
     attr:
       - FnCall: [cfg, [{FnCall: [not, ['target_arch = "arm"']]}]]
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [uqshrn, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
@@ -8166,7 +8166,7 @@ intrinsics:
       - *target-is-arm
       - *enable-v7
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [vqshrun, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-arm-unstable
     static_defs: ['const N: i32']
     safety: safe
@@ -8193,7 +8193,7 @@ intrinsics:
     attr:
       - FnCall: [cfg, [{FnCall: [not, ['target_arch = "arm"']]}]]
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqshrun, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
@@ -8832,7 +8832,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vrshr, 'N = 2']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [srshr, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
@@ -8861,7 +8861,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vrshr, N = 2]]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [urshr, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
@@ -8890,7 +8890,7 @@ intrinsics:
       - *target-is-arm
       - *enable-v7
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [vrshrn, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-arm-unstable
     static_defs: ['const N: i32']
     safety: safe
@@ -8917,7 +8917,7 @@ intrinsics:
     attr:
       - FnCall: [cfg, [{FnCall: [not, ['target_arch = "arm"']]}]]
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [rshrn, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
@@ -8945,7 +8945,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vrshrn, N = 2]]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [rshrn, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
@@ -8970,7 +8970,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vrsra, 'N = 2']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [srsra, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
@@ -9105,7 +9105,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [nop, LANE = 0]]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [nop, 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const LANE: i32']
@@ -9144,7 +9144,7 @@ intrinsics:
       - *neon-v8
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [nop, LANE = 0]]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [nop, 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - *neon-fp16
       - *neon-unstable-f16
     static_defs: ['const LANE: i32']
@@ -9165,7 +9165,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [nop, 'LANE = 0']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [nop, 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const LANE: i32']
@@ -9186,7 +9186,7 @@ intrinsics:
       - *neon-v8
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [nop, 'LANE = 0']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [nop, 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const LANE: i32']
@@ -9206,7 +9206,7 @@ intrinsics:
       - *neon-v8
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [nop, 'LANE = 0']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [nop, 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const LANE: i32']
@@ -9283,7 +9283,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vshll.s8"', 'N = 2']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [sshll, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
@@ -9305,7 +9305,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vshll.s16"', 'N = 2']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [sshll, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
@@ -9327,7 +9327,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vshll.s32"', 'N = 2']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [sshll, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
@@ -9349,7 +9349,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vshll.u8"', 'N = 2']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ushll, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
@@ -9371,7 +9371,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vshll.u16"', 'N = 2']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ushll, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
@@ -9393,7 +9393,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vshll.u32"', 'N = 2']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ushll, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
@@ -9415,7 +9415,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vshr.{neon_type[0]}"', 'N = 2']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [sshr, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
@@ -9445,7 +9445,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vshr.{neon_type[0]}"', 'N = 2']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ushr, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
@@ -9475,7 +9475,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vshrn{type[2]}"', 'N = 2']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [shrn, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
@@ -9504,7 +9504,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vsra, 'N = 2']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ssra, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
@@ -10457,7 +10457,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vshl, 'N = 2']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [shl, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
@@ -10494,7 +10494,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vsra, 'N = 2']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [usra, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
@@ -10523,7 +10523,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vrsra, 'N = 2']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ursra, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
@@ -10552,7 +10552,7 @@ intrinsics:
       - *target-is-arm
       - *enable-v7
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [vqrshrn, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-arm-unstable
     static_defs: ['const N: i32']
     safety: safe
@@ -10579,7 +10579,7 @@ intrinsics:
     attr:
       - *target-not-arm
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [uqrshrn, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
@@ -10745,7 +10745,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vmla.i16"', 'LANE = 1']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [mla, 'LANE = 1']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['3']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['3']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const LANE: i32']
@@ -10775,7 +10775,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vmla.i32"', 'LANE = 1']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [mla, 'LANE = 1']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['3']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['3']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const LANE: i32']
@@ -10805,7 +10805,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vmla.f32"', 'LANE = 1']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fmul, 'LANE = 1']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['3']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['3']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const LANE: i32']
@@ -10894,7 +10894,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vmls.i16"', 'LANE = 1']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [mls, 'LANE = 1']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['3']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['3']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const LANE: i32']
@@ -10924,7 +10924,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vmls.i32"', 'LANE = 1']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [mls, 'LANE = 1']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['3']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['3']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const LANE: i32']
@@ -10954,7 +10954,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vmls.f32"', 'LANE = 1']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fmul, 'LANE = 1']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['3']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['3']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const LANE: i32']
@@ -11048,7 +11048,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vmul, 'LANE = 0']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fmul, 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const LANE: i32']
@@ -11073,7 +11073,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vqrdmulh, 'LANE = 1']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [sqrdmulh, 'LANE = 1']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const LANE: i32']
@@ -11196,7 +11196,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vmull, 'LANE = 1']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [smull, 'LANE = 1']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const LANE: i32']
@@ -11221,7 +11221,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vmull, 'LANE = 1']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [umull, 'LANE = 1']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const LANE: i32']
@@ -11287,7 +11287,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vqdmulh, 'LANE = 0']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [sqdmulh, 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const LANE: i32']
@@ -11408,7 +11408,7 @@ intrinsics:
       - *target-is-arm
       - *enable-v7
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [vqshlu, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-arm-unstable
     static_defs: ['const N: i32']
     safety: safe
@@ -11440,7 +11440,7 @@ intrinsics:
     attr:
       - FnCall: [cfg, [{FnCall: [not, ['target_arch = "arm"']]}]]
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqshlu, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
@@ -12227,7 +12227,7 @@ intrinsics:
       - *enable-v7
       - *target-is-arm
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['vld4', 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ["2"]]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ["2"]]
       - *neon-fp16
       - *neon-unstable-f16
     static_defs:
@@ -12273,7 +12273,7 @@ intrinsics:
     attr:
       - *target-not-arm
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ld4, 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ["2"]]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ["2"]]
       - *neon-fp16
       - *neon-unstable-f16
     static_defs:
@@ -13786,7 +13786,7 @@ intrinsics:
       - FnCall: [target_feature, ['enable = "{type[1]}"']]
       - *neon-arm-unstable
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vsri.{type[2]}"', 'N = 1']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
     static_defs: ['const N: i32']
     types:
       - [uint8x8_t,  "neon,v7",  '8', '1 <= N && N <= 8',   'v8i8', 'int8x8_t::splat',  '-N as i8']
@@ -13824,7 +13824,7 @@ intrinsics:
       - *target-is-arm
       - *neon-arm-unstable
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vsri.{type[1]}"', 'N = 1']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
     safety: safe
     types:
       - [int8x8_t,  '8',  '1 <= N && N <= 8',  'v8i8',  'int8x8_t::splat',  '-N as i8']
@@ -13853,7 +13853,7 @@ intrinsics:
       - FnCall: [target_feature, ['enable = "{type[1]}"']]
       - *neon-arm-unstable
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vsli.{type[2]}"', 'N = 1']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
     static_defs: ['const N: i32']
     types:
       - [uint8x8_t,  "neon,v7", '8',  'static_assert_uimm_bits!', 'N, 3',    'v8i8',  'int8x8_t::splat',  'N as i8']
@@ -13891,7 +13891,7 @@ intrinsics:
       - *enable-v7
       - *neon-arm-unstable
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vsli.{type[1]}"', 'N = 1']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
     static_defs: ['const N: i32']
     types:
       - [int8x8_t,  '8',  'static_assert_uimm_bits!', 'N, 3',     'v8i8', 'int8x8_t::splat',  'N as i8']
@@ -13950,7 +13950,7 @@ intrinsics:
       - *neon-fp16
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [nop, 'LANE = 0']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [nop, 'LANE = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ["1"]]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ["1"]]
       - *neon-unstable-f16
     static_defs: ['const LANE: i32']
     safety: safe
@@ -13985,7 +13985,7 @@ intrinsics:
     static_defs: ['const LANE: i32']
     attr:
       - *neon-v7
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - FnCall: [cfg_attr, [*test-is-arm, { FnCall: [assert_instr, ["{type[3]}", 'LANE = {type[4]}']] }  ]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, { FnCall: [assert_instr, ['{type[5]}', 'LANE = {type[4]}']]}] ]
       - *neon-not-arm-stable
@@ -14026,7 +14026,7 @@ intrinsics:
     attr:
       - *neon-aes
       - *neon-v7
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - FnCall: [cfg_attr, [*test-is-arm, { FnCall: [assert_instr, ["{type[3]}", 'LANE = {type[4]}']] }  ]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, { FnCall: [assert_instr, ['{type[5]}', 'LANE = {type[4]}']]}] ]
       - *neon-not-arm-stable
@@ -14707,7 +14707,7 @@ intrinsics:
     static_defs: ['const IMM5: i32']
     attr:
       - *neon-v7
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [nop, 'IMM5 = {type[3]}']]}]]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
@@ -14745,7 +14745,7 @@ intrinsics:
     static_defs: ['const IMM5: i32']
     attr:
       - *neon-v7
-      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['1']]
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [nop, 'IMM5 = 0']]}]]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
@@ -14972,7 +14972,7 @@ intrinsics:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['nop', 'N = 0']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, ['nop', 'N = 0']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [rustc_deprecated_legacy_const_generics, ['2']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']

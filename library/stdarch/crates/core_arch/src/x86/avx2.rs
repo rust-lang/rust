@@ -164,7 +164,7 @@ pub fn _mm256_adds_epu16(a: __m256i, b: __m256i) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpalignr, IMM8 = 7))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_alignr_epi8<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
     static_assert_uimm_bits!(IMM8, 8);
@@ -307,7 +307,7 @@ pub fn _mm256_avg_epu8(a: __m256i, b: __m256i) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vblendps, IMM4 = 9))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_blend_epi32<const IMM4: i32>(a: __m128i, b: __m128i) -> __m128i {
     static_assert_uimm_bits!(IMM4, 4);
@@ -334,7 +334,7 @@ pub fn _mm_blend_epi32<const IMM4: i32>(a: __m128i, b: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vblendps, IMM8 = 9))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_blend_epi32<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
     static_assert_uimm_bits!(IMM8, 8);
@@ -365,7 +365,7 @@ pub fn _mm256_blend_epi32<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpblendw, IMM8 = 9))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_blend_epi16<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
     static_assert_uimm_bits!(IMM8, 8);
@@ -871,7 +871,7 @@ pub fn _mm256_cvtepu8_epi64(a: __m128i) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vextractf128, IMM1 = 1))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_extracti128_si256<const IMM1: i32>(a: __m256i) -> __m128i {
     static_assert_uimm_bits!(IMM1, 1);
@@ -959,7 +959,7 @@ pub fn _mm256_hsubs_epi16(a: __m256i, b: __m256i) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherdd, SCALE = 1))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_i32gather_epi32<const SCALE: i32>(
     slice: *const i32,
@@ -983,7 +983,7 @@ pub unsafe fn _mm_i32gather_epi32<const SCALE: i32>(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherdd, SCALE = 1))]
-#[rustc_legacy_const_generics(4)]
+#[rustc_deprecated_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_mask_i32gather_epi32<const SCALE: i32>(
     src: __m128i,
@@ -1008,7 +1008,7 @@ pub unsafe fn _mm_mask_i32gather_epi32<const SCALE: i32>(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherdd, SCALE = 1))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_i32gather_epi32<const SCALE: i32>(
     slice: *const i32,
@@ -1032,7 +1032,7 @@ pub unsafe fn _mm256_i32gather_epi32<const SCALE: i32>(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherdd, SCALE = 1))]
-#[rustc_legacy_const_generics(4)]
+#[rustc_deprecated_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_mask_i32gather_epi32<const SCALE: i32>(
     src: __m256i,
@@ -1057,7 +1057,7 @@ pub unsafe fn _mm256_mask_i32gather_epi32<const SCALE: i32>(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherdps, SCALE = 1))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_i32gather_ps<const SCALE: i32>(slice: *const f32, offsets: __m128i) -> __m128 {
     static_assert_imm8_scale!(SCALE);
@@ -1077,7 +1077,7 @@ pub unsafe fn _mm_i32gather_ps<const SCALE: i32>(slice: *const f32, offsets: __m
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherdps, SCALE = 1))]
-#[rustc_legacy_const_generics(4)]
+#[rustc_deprecated_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_mask_i32gather_ps<const SCALE: i32>(
     src: __m128,
@@ -1099,7 +1099,7 @@ pub unsafe fn _mm_mask_i32gather_ps<const SCALE: i32>(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherdps, SCALE = 1))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_i32gather_ps<const SCALE: i32>(slice: *const f32, offsets: __m256i) -> __m256 {
     static_assert_imm8_scale!(SCALE);
@@ -1119,7 +1119,7 @@ pub unsafe fn _mm256_i32gather_ps<const SCALE: i32>(slice: *const f32, offsets: 
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherdps, SCALE = 1))]
-#[rustc_legacy_const_generics(4)]
+#[rustc_deprecated_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_mask_i32gather_ps<const SCALE: i32>(
     src: __m256,
@@ -1141,7 +1141,7 @@ pub unsafe fn _mm256_mask_i32gather_ps<const SCALE: i32>(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherdq, SCALE = 1))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_i32gather_epi64<const SCALE: i32>(
     slice: *const i64,
@@ -1165,7 +1165,7 @@ pub unsafe fn _mm_i32gather_epi64<const SCALE: i32>(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherdq, SCALE = 1))]
-#[rustc_legacy_const_generics(4)]
+#[rustc_deprecated_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_mask_i32gather_epi64<const SCALE: i32>(
     src: __m128i,
@@ -1190,7 +1190,7 @@ pub unsafe fn _mm_mask_i32gather_epi64<const SCALE: i32>(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherdq, SCALE = 1))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_i32gather_epi64<const SCALE: i32>(
     slice: *const i64,
@@ -1214,7 +1214,7 @@ pub unsafe fn _mm256_i32gather_epi64<const SCALE: i32>(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherdq, SCALE = 1))]
-#[rustc_legacy_const_generics(4)]
+#[rustc_deprecated_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_mask_i32gather_epi64<const SCALE: i32>(
     src: __m256i,
@@ -1239,7 +1239,7 @@ pub unsafe fn _mm256_mask_i32gather_epi64<const SCALE: i32>(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherdpd, SCALE = 1))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_i32gather_pd<const SCALE: i32>(slice: *const f64, offsets: __m128i) -> __m128d {
     static_assert_imm8_scale!(SCALE);
@@ -1259,7 +1259,7 @@ pub unsafe fn _mm_i32gather_pd<const SCALE: i32>(slice: *const f64, offsets: __m
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherdpd, SCALE = 1))]
-#[rustc_legacy_const_generics(4)]
+#[rustc_deprecated_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_mask_i32gather_pd<const SCALE: i32>(
     src: __m128d,
@@ -1281,7 +1281,7 @@ pub unsafe fn _mm_mask_i32gather_pd<const SCALE: i32>(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherdpd, SCALE = 1))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_i32gather_pd<const SCALE: i32>(
     slice: *const f64,
@@ -1304,7 +1304,7 @@ pub unsafe fn _mm256_i32gather_pd<const SCALE: i32>(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherdpd, SCALE = 1))]
-#[rustc_legacy_const_generics(4)]
+#[rustc_deprecated_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_mask_i32gather_pd<const SCALE: i32>(
     src: __m256d,
@@ -1326,7 +1326,7 @@ pub unsafe fn _mm256_mask_i32gather_pd<const SCALE: i32>(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherqd, SCALE = 1))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_i64gather_epi32<const SCALE: i32>(
     slice: *const i32,
@@ -1350,7 +1350,7 @@ pub unsafe fn _mm_i64gather_epi32<const SCALE: i32>(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherqd, SCALE = 1))]
-#[rustc_legacy_const_generics(4)]
+#[rustc_deprecated_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_mask_i64gather_epi32<const SCALE: i32>(
     src: __m128i,
@@ -1375,7 +1375,7 @@ pub unsafe fn _mm_mask_i64gather_epi32<const SCALE: i32>(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherqd, SCALE = 1))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_i64gather_epi32<const SCALE: i32>(
     slice: *const i32,
@@ -1399,7 +1399,7 @@ pub unsafe fn _mm256_i64gather_epi32<const SCALE: i32>(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherqd, SCALE = 1))]
-#[rustc_legacy_const_generics(4)]
+#[rustc_deprecated_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_mask_i64gather_epi32<const SCALE: i32>(
     src: __m128i,
@@ -1424,7 +1424,7 @@ pub unsafe fn _mm256_mask_i64gather_epi32<const SCALE: i32>(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherqps, SCALE = 1))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_i64gather_ps<const SCALE: i32>(slice: *const f32, offsets: __m128i) -> __m128 {
     static_assert_imm8_scale!(SCALE);
@@ -1444,7 +1444,7 @@ pub unsafe fn _mm_i64gather_ps<const SCALE: i32>(slice: *const f32, offsets: __m
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherqps, SCALE = 1))]
-#[rustc_legacy_const_generics(4)]
+#[rustc_deprecated_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_mask_i64gather_ps<const SCALE: i32>(
     src: __m128,
@@ -1466,7 +1466,7 @@ pub unsafe fn _mm_mask_i64gather_ps<const SCALE: i32>(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherqps, SCALE = 1))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_i64gather_ps<const SCALE: i32>(slice: *const f32, offsets: __m256i) -> __m128 {
     static_assert_imm8_scale!(SCALE);
@@ -1486,7 +1486,7 @@ pub unsafe fn _mm256_i64gather_ps<const SCALE: i32>(slice: *const f32, offsets: 
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherqps, SCALE = 1))]
-#[rustc_legacy_const_generics(4)]
+#[rustc_deprecated_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_mask_i64gather_ps<const SCALE: i32>(
     src: __m128,
@@ -1508,7 +1508,7 @@ pub unsafe fn _mm256_mask_i64gather_ps<const SCALE: i32>(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherqq, SCALE = 1))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_i64gather_epi64<const SCALE: i32>(
     slice: *const i64,
@@ -1532,7 +1532,7 @@ pub unsafe fn _mm_i64gather_epi64<const SCALE: i32>(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherqq, SCALE = 1))]
-#[rustc_legacy_const_generics(4)]
+#[rustc_deprecated_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_mask_i64gather_epi64<const SCALE: i32>(
     src: __m128i,
@@ -1557,7 +1557,7 @@ pub unsafe fn _mm_mask_i64gather_epi64<const SCALE: i32>(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherqq, SCALE = 1))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_i64gather_epi64<const SCALE: i32>(
     slice: *const i64,
@@ -1581,7 +1581,7 @@ pub unsafe fn _mm256_i64gather_epi64<const SCALE: i32>(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherqq, SCALE = 1))]
-#[rustc_legacy_const_generics(4)]
+#[rustc_deprecated_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_mask_i64gather_epi64<const SCALE: i32>(
     src: __m256i,
@@ -1606,7 +1606,7 @@ pub unsafe fn _mm256_mask_i64gather_epi64<const SCALE: i32>(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherqpd, SCALE = 1))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_i64gather_pd<const SCALE: i32>(slice: *const f64, offsets: __m128i) -> __m128d {
     static_assert_imm8_scale!(SCALE);
@@ -1626,7 +1626,7 @@ pub unsafe fn _mm_i64gather_pd<const SCALE: i32>(slice: *const f64, offsets: __m
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherqpd, SCALE = 1))]
-#[rustc_legacy_const_generics(4)]
+#[rustc_deprecated_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_mask_i64gather_pd<const SCALE: i32>(
     src: __m128d,
@@ -1648,7 +1648,7 @@ pub unsafe fn _mm_mask_i64gather_pd<const SCALE: i32>(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherqpd, SCALE = 1))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_i64gather_pd<const SCALE: i32>(
     slice: *const f64,
@@ -1671,7 +1671,7 @@ pub unsafe fn _mm256_i64gather_pd<const SCALE: i32>(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherqpd, SCALE = 1))]
-#[rustc_legacy_const_generics(4)]
+#[rustc_deprecated_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_mask_i64gather_pd<const SCALE: i32>(
     src: __m256d,
@@ -1692,7 +1692,7 @@ pub unsafe fn _mm256_mask_i64gather_pd<const SCALE: i32>(
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vinsertf128, IMM1 = 1))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_inserti128_si256<const IMM1: i32>(a: __m256i, b: __m128i) -> __m256i {
     static_assert_uimm_bits!(IMM1, 1);
@@ -2055,7 +2055,7 @@ pub fn _mm256_movemask_epi8(a: __m256i) -> i32 {
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vmpsadbw, IMM8 = 0))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_mpsadbw_epu8<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
     static_assert_uimm_bits!(IMM8, 8);
@@ -2255,7 +2255,7 @@ pub fn _mm256_permutevar8x32_epi32(a: __m256i, b: __m256i) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpermpd, IMM8 = 9))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_permute4x64_epi64<const IMM8: i32>(a: __m256i) -> __m256i {
     static_assert_uimm_bits!(IMM8, 8);
@@ -2281,7 +2281,7 @@ pub fn _mm256_permute4x64_epi64<const IMM8: i32>(a: __m256i) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vperm2f128, IMM8 = 9))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_permute2x128_si256<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
     static_assert_uimm_bits!(IMM8, 8);
@@ -2295,7 +2295,7 @@ pub fn _mm256_permute2x128_si256<const IMM8: i32>(a: __m256i, b: __m256i) -> __m
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpermpd, IMM8 = 1))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_permute4x64_pd<const IMM8: i32>(a: __m256d) -> __m256d {
     static_assert_uimm_bits!(IMM8, 8);
@@ -2410,7 +2410,7 @@ pub fn _mm256_shuffle_epi8(a: __m256i, b: __m256i) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vshufps, MASK = 9))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_shuffle_epi32<const MASK: i32>(a: __m256i) -> __m256i {
     static_assert_uimm_bits!(MASK, 8);
@@ -2441,7 +2441,7 @@ pub fn _mm256_shuffle_epi32<const MASK: i32>(a: __m256i) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpshufhw, IMM8 = 9))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_shufflehi_epi16<const IMM8: i32>(a: __m256i) -> __m256i {
     static_assert_uimm_bits!(IMM8, 8);
@@ -2481,7 +2481,7 @@ pub fn _mm256_shufflehi_epi16<const IMM8: i32>(a: __m256i) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpshuflw, IMM8 = 9))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_shufflelo_epi16<const IMM8: i32>(a: __m256i) -> __m256i {
     static_assert_uimm_bits!(IMM8, 8);
@@ -2595,7 +2595,7 @@ pub fn _mm256_sll_epi64(a: __m256i, count: __m128i) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsllw, IMM8 = 7))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_slli_epi16<const IMM8: i32>(a: __m256i) -> __m256i {
     static_assert_uimm_bits!(IMM8, 8);
@@ -2615,7 +2615,7 @@ pub fn _mm256_slli_epi16<const IMM8: i32>(a: __m256i) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpslld, IMM8 = 7))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_slli_epi32<const IMM8: i32>(a: __m256i) -> __m256i {
     unsafe {
@@ -2635,7 +2635,7 @@ pub fn _mm256_slli_epi32<const IMM8: i32>(a: __m256i) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsllq, IMM8 = 7))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_slli_epi64<const IMM8: i32>(a: __m256i) -> __m256i {
     unsafe {
@@ -2654,7 +2654,7 @@ pub fn _mm256_slli_epi64<const IMM8: i32>(a: __m256i) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpslldq, IMM8 = 3))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_slli_si256<const IMM8: i32>(a: __m256i) -> __m256i {
     static_assert_uimm_bits!(IMM8, 8);
@@ -2667,7 +2667,7 @@ pub fn _mm256_slli_si256<const IMM8: i32>(a: __m256i) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpslldq, IMM8 = 3))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_bslli_epi128<const IMM8: i32>(a: __m256i) -> __m256i {
     static_assert_uimm_bits!(IMM8, 8);
@@ -2806,7 +2806,7 @@ pub fn _mm256_sra_epi32(a: __m256i, count: __m128i) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsraw, IMM8 = 7))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_srai_epi16<const IMM8: i32>(a: __m256i) -> __m256i {
     static_assert_uimm_bits!(IMM8, 8);
@@ -2820,7 +2820,7 @@ pub fn _mm256_srai_epi16<const IMM8: i32>(a: __m256i) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsrad, IMM8 = 7))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_srai_epi32<const IMM8: i32>(a: __m256i) -> __m256i {
     static_assert_uimm_bits!(IMM8, 8);
@@ -2857,7 +2857,7 @@ pub fn _mm256_srav_epi32(a: __m256i, count: __m256i) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsrldq, IMM8 = 1))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_srli_si256<const IMM8: i32>(a: __m256i) -> __m256i {
     static_assert_uimm_bits!(IMM8, 8);
@@ -2870,7 +2870,7 @@ pub fn _mm256_srli_si256<const IMM8: i32>(a: __m256i) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsrldq, IMM8 = 1))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_bsrli_epi128<const IMM8: i32>(a: __m256i) -> __m256i {
     static_assert_uimm_bits!(IMM8, 8);
@@ -2969,7 +2969,7 @@ pub fn _mm256_srl_epi64(a: __m256i, count: __m128i) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsrlw, IMM8 = 7))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_srli_epi16<const IMM8: i32>(a: __m256i) -> __m256i {
     static_assert_uimm_bits!(IMM8, 8);
@@ -2989,7 +2989,7 @@ pub fn _mm256_srli_epi16<const IMM8: i32>(a: __m256i) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsrld, IMM8 = 7))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_srli_epi32<const IMM8: i32>(a: __m256i) -> __m256i {
     static_assert_uimm_bits!(IMM8, 8);
@@ -3009,7 +3009,7 @@ pub fn _mm256_srli_epi32<const IMM8: i32>(a: __m256i) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsrlq, IMM8 = 7))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_srli_epi64<const IMM8: i32>(a: __m256i) -> __m256i {
     static_assert_uimm_bits!(IMM8, 8);
@@ -3569,7 +3569,7 @@ pub fn _mm256_xor_si256(a: __m256i, b: __m256i) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx2")]
 // This intrinsic has no corresponding instruction.
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_extract_epi8<const INDEX: i32>(a: __m256i) -> i32 {
     static_assert_uimm_bits!(INDEX, 5);
@@ -3585,7 +3585,7 @@ pub fn _mm256_extract_epi8<const INDEX: i32>(a: __m256i) -> i32 {
 #[inline]
 #[target_feature(enable = "avx2")]
 // This intrinsic has no corresponding instruction.
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_extract_epi16<const INDEX: i32>(a: __m256i) -> i32 {
     static_assert_uimm_bits!(INDEX, 4);
