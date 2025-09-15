@@ -546,4 +546,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "The default value of the `gcc.download-ci-gcc` option has been changed to `true`.",
     },
+    ChangeInfo {
+        change_id: 146604,
+        severity: ChangeSeverity::Info,
+        summary: "Setting `rust.lld = true` when building rustc for the `aarch64-unknown-linux-gnu` target will now also cause that rustc to use the LLD linker by default.",
+    },
 ];
