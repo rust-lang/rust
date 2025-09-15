@@ -146,6 +146,15 @@ pub struct RunningCheck {
 }
 
 impl RunningCheck {
+    /// Creates a new instance of a running check without going through the diag
+    /// context.
+    /// Useful if you want to run some functions from tidy without configuring
+    /// diagnostics.
+    pub fn new_noop() -> Self {
+        let ctx = DiagCtx::new(Path::new(""), false);
+        ctx.start_check("noop")
+    }
+
     /// Immediately output an error and mark the check as failed.
     pub fn error<T: Display>(&mut self, msg: T) {
         self.mark_as_bad();
