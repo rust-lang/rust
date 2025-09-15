@@ -353,6 +353,7 @@ fn impl_self_is_guaranteed_unsized<'tcx>(tcx: TyCtxt<'tcx>, impl_def_id: DefId) 
 
     let tail = tcx.struct_tail_raw(
         tcx.type_of(impl_def_id).instantiate_identity(),
+        &cause,
         |ty| {
             ocx.structurally_normalize_ty(&cause, param_env, ty).unwrap_or_else(|_| {
                 Ty::new_error_with_message(
