@@ -18,7 +18,7 @@ foldhash = { version = "0.2.0", default-features = false, optional = true }
 
 # For external trait impls
 rayon = { version = "1.2", optional = true }
-serde = { version = "1.0.25", default-features = false, optional = true }
+serde_core = { version = "1.0.221", default-features = false, optional = true }
 
 # When built as part of libstd
 core = { version = "1.0.0", optional = true, package = "rustc-std-workspace-core" }
@@ -32,6 +32,11 @@ allocator-api2 = { version = "0.2.9", optional = true, default-features = false,
 # Equivalent trait which can be shared with other hash table implementations.
 # NB: this is a public dependency because `Equivalent` is re-exported!
 equivalent = { version = "1.0", optional = true, default-features = false }
+
+# serde v1.0.220 is the first version that released with `serde_core`.
+# This is required to avoid conflict with other `serde` users which may require an older version.
+[target.'cfg(any())'.dependencies]
+serde = { version = "1.0.220", default-features = false, optional = true }
 
 [dev-dependencies]
 lazy_static = "1.4"
@@ -59,6 +64,9 @@ rustc-dep-of-std = [
     "alloc",
     "rustc-internal-api",
 ]
+
+# Enables serde support.
+serde = ["dep:serde_core", "dep:serde"]
 
 # Enables the deprecated RawEntry API.
 raw-entry = []

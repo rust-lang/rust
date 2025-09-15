@@ -15,8 +15,8 @@ mod map {
     use core::fmt;
     use core::hash::{BuildHasher, Hash};
     use core::marker::PhantomData;
-    use serde::de::{Deserialize, Deserializer, MapAccess, Visitor};
-    use serde::ser::{Serialize, Serializer};
+    use serde_core::de::{Deserialize, Deserializer, MapAccess, Visitor};
+    use serde_core::ser::{Serialize, Serializer};
 
     use crate::hash_map::HashMap;
 
@@ -101,8 +101,8 @@ mod set {
     use core::fmt;
     use core::hash::{BuildHasher, Hash};
     use core::marker::PhantomData;
-    use serde::de::{Deserialize, Deserializer, SeqAccess, Visitor};
-    use serde::ser::{Serialize, Serializer};
+    use serde_core::de::{Deserialize, Deserializer, SeqAccess, Visitor};
+    use serde_core::ser::{Serialize, Serializer};
 
     use crate::hash_set::HashSet;
 
