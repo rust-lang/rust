@@ -35,7 +35,13 @@ impl DiagCtx {
         };
 
         ctx.start_check(id.clone());
-        RunningCheck { id, bad: false, ctx: self.0.clone() }
+        RunningCheck {
+            id,
+            bad: false,
+            ctx: self.0.clone(),
+            #[cfg(test)]
+            errors: vec![],
+        }
     }
 
     pub fn into_failed_checks(self) -> Vec<FinishedCheck> {
@@ -135,13 +141,18 @@ pub struct RunningCheck {
     id: CheckId,
     bad: bool,
     ctx: Arc<Mutex<DiagCtxInner>>,
+    #[cfg(test)]
+    errors: Vec<String>,
 }
 
 impl RunningCheck {
     /// Immediately output an error and mark the check as failed.
     pub fn error<T: Display>(&mut self, msg: T) {
         self.mark_as_bad();
-        output_message(&msg.to_string(), Some(&self.id), Some(COLOR_ERROR));
+        let msg = msg.to_string();
+        output_message(&msg, Some(&self.id), Some(COLOR_ERROR));
+        #[cfg(test)]
+        self.errors.push(msg);
     }
 
     /// Immediately output a warning.
@@ -169,6 +180,11 @@ impl RunningCheck {
     /// Is verbose output enabled?
     pub fn is_verbose_enabled(&self) -> bool {
         self.ctx.lock().unwrap().verbose
+    }
+
+    #[cfg(test)]
+    pub fn get_errors(&self) -> Vec<String> {
+        self.errors.clone()
     }
 
     fn mark_as_bad(&mut self) {
