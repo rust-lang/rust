@@ -73,8 +73,18 @@ LL | pub fn open() {}
    = note: see <https://doc.rust-lang.org/core/index.html#how-to-use-the-core-library> for the more details
    = help: either allow this lint or remove any `#[unsafe(no_mangle)]` or `#[unsafe(export_name = "open")]`
 
-warning: redefinition of the runtime `read` symbol used by the standard library
+warning: redefinition of the runtime `open64` symbol used by the standard library
   --> $DIR/redefining-runtime-symbols.rs:43:1
+   |
+LL | pub fn open64() {}
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = note: extra care must be taken when redefining those symbols, they must match exactly (ABI, function arguments, function return type, behavior, ...)
+   = note: see <https://doc.rust-lang.org/core/index.html#how-to-use-the-core-library> for the more details
+   = help: either allow this lint or remove any `#[unsafe(no_mangle)]` or `#[unsafe(export_name = "open64")]`
+
+warning: redefinition of the runtime `read` symbol used by the standard library
+  --> $DIR/redefining-runtime-symbols.rs:47:1
    |
 LL | pub async fn read1() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^
@@ -84,7 +94,7 @@ LL | pub async fn read1() {}
    = help: either allow this lint or remove any `#[unsafe(no_mangle)]` or `#[unsafe(export_name = "read")]`
 
 warning: redefinition of the runtime `write` symbol used by the standard library
-  --> $DIR/redefining-runtime-symbols.rs:47:1
+  --> $DIR/redefining-runtime-symbols.rs:51:1
    |
 LL | pub fn write1() {}
    | ^^^^^^^^^^^^^^^^^^
@@ -94,7 +104,7 @@ LL | pub fn write1() {}
    = help: either allow this lint or remove any `#[unsafe(no_mangle)]` or `#[unsafe(export_name = "write")]`
 
 warning: redefinition of the runtime `close` symbol used by the standard library
-  --> $DIR/redefining-runtime-symbols.rs:51:1
+  --> $DIR/redefining-runtime-symbols.rs:55:1
    |
 LL | pub fn close_() {}
    | ^^^^^^^^^^^^^^^^^^
@@ -103,5 +113,5 @@ LL | pub fn close_() {}
    = note: see <https://doc.rust-lang.org/core/index.html#how-to-use-the-core-library> for the more details
    = help: either allow this lint or remove any `#[unsafe(no_mangle)]` or `#[unsafe(export_name = "close")]`
 
-warning: 10 warnings emitted
+warning: 11 warnings emitted
 

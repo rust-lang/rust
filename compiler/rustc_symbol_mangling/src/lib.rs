@@ -158,7 +158,7 @@ pub fn typeid_for_trait_ref<'tcx>(
     v0::mangle_typeid_for_trait_ref(tcx, trait_ref)
 }
 
-pub fn symbol_name_without_mangling<'tcx>(
+pub fn symbol_name_from_attrs<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance_kind: InstanceKind<'tcx>,
 ) -> Option<String> {
@@ -252,7 +252,7 @@ fn compute_symbol_name<'tcx>(
 
     debug!("symbol_name(def_id={:?}, args={:?})", def_id, args);
 
-    if let Some(symbol) = symbol_name_without_mangling(tcx, instance.def) {
+    if let Some(symbol) = symbol_name_from_attrs(tcx, instance.def) {
         return symbol;
     }
 

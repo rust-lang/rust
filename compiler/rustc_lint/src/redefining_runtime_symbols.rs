@@ -27,7 +27,7 @@ declare_lint! {
     ///
     /// The symbols currently checked are respectively:
     ///  - from `core`[^1]: `memcpy`, `memmove`, `memset`, `memcmp`, `bcmp`, `strlen`
-    ///  - from `std`: `read`, `write`, `open`, `close`
+    ///  - from `std`: `open`/`open64`, `read`, `write`, `close`
     ///
     /// [^1]: https://doc.rust-lang.org/core/index.html#how-to-use-the-core-library
     pub REDEFINING_RUNTIME_SYMBOLS,
@@ -39,7 +39,7 @@ declare_lint_pass!(RedefiningRuntimeSymbols => [REDEFINING_RUNTIME_SYMBOLS]);
 
 static CORE_RUNTIME_SYMBOLS: &[&str] = &["memcpy", "memmove", "memset", "memcmp", "bcmp", "strlen"];
 
-static STD_RUNTIME_SYMBOLS: &[&str] = &["open", "read", "write", "close"];
+static STD_RUNTIME_SYMBOLS: &[&str] = &["open", "open64", "read", "write", "close"];
 
 impl<'tcx> LateLintPass<'tcx> for RedefiningRuntimeSymbols {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
@@ -52,7 +52,7 @@ impl<'tcx> LateLintPass<'tcx> for RedefiningRuntimeSymbols {
 
         // Compute the symbol name of our item (without mangling, as our mangling cannot ever
         // conflict with runtime symbols).
-        let Some(symbol_name) = rustc_symbol_mangling::symbol_name_without_mangling(
+        let Some(symbol_name) = rustc_symbol_mangling::symbol_name_from_attrs(
             cx.tcx,
             rustc_middle::ty::InstanceKind::Item(item.owner_id.to_def_id()),
         ) else {

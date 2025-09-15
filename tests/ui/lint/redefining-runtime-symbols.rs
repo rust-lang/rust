@@ -39,6 +39,10 @@ pub static strlen: () = ();
 pub fn open() {}
 //~^ WARN redefinition of the runtime `open` symbol
 
+#[no_mangle]
+pub fn open64() {}
+//~^ WARN redefinition of the runtime `open64` symbol
+
 #[export_name = "read"]
 pub async fn read1() {}
 //~^ WARN redefinition of the runtime `read` symbol
