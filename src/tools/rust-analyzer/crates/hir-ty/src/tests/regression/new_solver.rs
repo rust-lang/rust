@@ -3,6 +3,132 @@ use expect_test::expect;
 use crate::tests::{check_infer, check_no_mismatches};
 
 #[test]
+fn regression_20365() {
+    check_infer(
+        r#"
+//- minicore: iterator
+struct Vec<T>(T);
+struct IntoIter<T>(T);
+impl<T> IntoIterator for Vec<T> {
+    type IntoIter = IntoIter<T>;
+    type Item = T;
+}
+impl<T> Iterator for IntoIter<T> {
+    type Item = T;
+}
+
+fn f<T: Space>(a: Vec<u8>) {
+    let iter = a.into_iter();
+}
+
+pub trait Space: IntoIterator {
+    type Ty: Space;
+}
+impl Space for [u8; 1] {
+    type Ty = Self;
+}
+    "#,
+        expect![[r#"
+            201..202 'a': Vec<u8>
+            213..246 '{     ...r(); }': ()
+            223..227 'iter': IntoIter<u8>
+            230..231 'a': Vec<u8>
+            230..243 'a.into_iter()': IntoIter<u8>
+        "#]],
+    );
+}
+
+#[test]
+fn regression_19971() {
+    check_infer(
+        r#"
+//- minicore: pointee
+fn make<T>(_thin: *const (), _meta: core::ptr::DynMetadata<T>) -> *const T
+where
+    T: core::ptr::Pointee<Metadata = core::ptr::DynMetadata<T>> + ?Sized,
+{
+    loop {}
+}
+trait Foo {
+    fn foo(&self) -> i32 {
+        loop {}
+    }
+}
+
+fn test() -> i32 {
+    struct F {}
+    impl Foo for F {}
+    let meta = core::ptr::metadata(0 as *const F as *const dyn Foo);
+
+    let f = F {};
+    let fat_ptr = make(&f as *const F as *const (), meta); // <-- infers type as `*const {unknown}`
+
+    let fat_ref = unsafe { &*fat_ptr }; // <-- infers type as `&{unknown}`
+    fat_ref.foo() // cannot 'go to definition' on `foo`
+}
+
+    "#,
+        expect![[r#"
+            11..16 '_thin': *const ()
+            29..34 '_meta': DynMetadata<T>
+            155..170 '{     loop {} }': *const T
+            161..168 'loop {}': !
+            166..168 '{}': ()
+            195..199 'self': &'? Self
+            208..231 '{     ...     }': i32
+            218..225 'loop {}': !
+            223..225 '{}': ()
+            252..613 '{     ...foo` }': i32
+            300..304 'meta': DynMetadata<dyn Foo + '?>
+            307..326 'core::...tadata': fn metadata<dyn Foo + '?>(*const (dyn Foo + '?)) -> <dyn Foo + '? as Pointee>::Metadata
+            307..359 'core::...n Foo)': DynMetadata<dyn Foo + '?>
+            327..328 '0': usize
+            327..340 '0 as *const F': *const F
+            327..358 '0 as *...yn Foo': *const (dyn Foo + '?)
+            370..371 'f': F
+            374..378 'F {}': F
+            388..395 'fat_ptr': *const (dyn Foo + '?)
+            398..402 'make': fn make<dyn Foo + '?>(*const (), DynMetadata<dyn Foo + '?>) -> *const (dyn Foo + '?)
+            398..437 'make(&... meta)': *const (dyn Foo + '?)
+            403..405 '&f': &'? F
+            403..417 '&f as *const F': *const F
+            403..430 '&f as ...nst ()': *const ()
+            404..405 'f': F
+            432..436 'meta': DynMetadata<dyn Foo + '?>
+            489..496 'fat_ref': &'? (dyn Foo + '?)
+            499..519 'unsafe..._ptr }': &'? (dyn Foo + '?)
+            508..517 '&*fat_ptr': &'? (dyn Foo + '?)
+            509..517 '*fat_ptr': dyn Foo + '?
+            510..517 'fat_ptr': *const (dyn Foo + '?)
+            560..567 'fat_ref': &'? (dyn Foo + '?)
+            560..573 'fat_ref.foo()': i32
+        "#]],
+    );
+}
+
+#[test]
+fn regression_19752() {
+    check_no_mismatches(
+        r#"
+//- minicore: sized, copy
+trait T1<T: T2>: Sized + Copy {
+    fn a(self, other: Self) -> Self {
+        other
+    }
+
+    fn b(&mut self, other: Self) {
+        *self = self.a(other);
+    }
+}
+
+trait T2: Sized {
+    type T1: T1<Self>;
+}
+    "#,
+    );
+}
+
+#[test]
 fn opaque_generics() {
     check_infer(
         r#"
