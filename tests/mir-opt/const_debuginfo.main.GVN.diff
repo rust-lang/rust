@@ -1,5 +1,5 @@
-- // MIR for `main` before SingleUseConsts
-+ // MIR for `main` after SingleUseConsts
+- // MIR for `main` before GVN
++ // MIR for `main` after GVN
   
   fn main() -> () {
       let mut _0: ();
@@ -55,56 +55,57 @@
       }
   
       bb0: {
-          nop;
--         _1 = const 1_u8;
-          nop;
--         _2 = const 2_u8;
-          nop;
--         _3 = const 3_u8;
+-         StorageLive(_1);
 +         nop;
+          _1 = const 1_u8;
+-         StorageLive(_2);
 +         nop;
+          _2 = const 2_u8;
+-         StorageLive(_3);
 +         nop;
+          _3 = const 3_u8;
           StorageLive(_4);
           StorageLive(_5);
           StorageLive(_6);
--         _6 = const 1_u8;
-+         nop;
+-         _6 = copy _1;
++         _6 = const 1_u8;
           StorageLive(_7);
--         _7 = const 2_u8;
--         _5 = const 3_u8;
-+         nop;
-+         nop;
+-         _7 = copy _2;
+-         _5 = Add(move _6, move _7);
++         _7 = const 2_u8;
++         _5 = const 3_u8;
           StorageDead(_7);
           StorageDead(_6);
           StorageLive(_8);
--         _8 = const 3_u8;
--         _4 = const 6_u8;
-+         nop;
-+         nop;
+-         _8 = copy _3;
+-         _4 = Add(move _5, move _8);
++         _8 = const 3_u8;
++         _4 = const 6_u8;
           StorageDead(_8);
           StorageDead(_5);
           StorageLive(_9);
--         _9 = const "hello, world!";
-+         nop;
+          _9 = const "hello, world!";
           StorageLive(_10);
           _10 = (const true, const false, const 123_u32);
           StorageLive(_11);
--         _11 = const Option::<u16>::Some(99_u16);
-+         nop;
+-         _11 = Option::<u16>::Some(const 99_u16);
++         _11 = const Option::<u16>::Some(99_u16);
           StorageLive(_12);
--         _12 = const Point {{ x: 32_u32, y: 32_u32 }};
-+         nop;
+-         _12 = Point { x: const 32_u32, y: const 32_u32 };
++         _12 = const Point {{ x: 32_u32, y: 32_u32 }};
           StorageLive(_13);
-          nop;
--         _14 = const 32_u32;
+-         StorageLive(_14);
+-         _14 = copy (_12.0: u32);
 +         nop;
++         _14 = const 32_u32;
           StorageLive(_15);
--         _15 = const 32_u32;
--         _13 = const 64_u32;
-+         nop;
-+         nop;
+-         _15 = copy (_12.1: u32);
+-         _13 = Add(move _14, move _15);
++         _15 = const 32_u32;
++         _13 = const 64_u32;
           StorageDead(_15);
-          nop;
+-         StorageDead(_14);
++         nop;
           _0 = const ();
           StorageDead(_13);
           StorageDead(_12);
@@ -112,16 +113,20 @@
           StorageDead(_10);
           StorageDead(_9);
           StorageDead(_4);
-          nop;
-          nop;
-          nop;
+-         StorageDead(_3);
+-         StorageDead(_2);
+-         StorageDead(_1);
++         nop;
++         nop;
++         nop;
           return;
       }
   }
   
-  ALLOC0 (size: 8, align: 4) { .. }
-  
-  ALLOC1 (size: 4, align: 2) { .. }
-  
-  ALLOC2 (size: 13, align: 1) { .. }
+- ALLOC0 (size: 13, align: 1) { .. }
++ ALLOC0 (size: 8, align: 4) { .. }
++ 
++ ALLOC1 (size: 4, align: 2) { .. }
++ 
++ ALLOC2 (size: 13, align: 1) { .. }
   

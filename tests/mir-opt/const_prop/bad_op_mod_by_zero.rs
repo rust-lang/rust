@@ -5,7 +5,7 @@
 #[allow(unconditional_panic)]
 fn main() {
     // CHECK-LABEL: fn main(
-    // CHECK: debug y => [[y:_.*]];
+    // CHECK: debug y => const 0_i32;
     // CHECK: debug _z => [[z:_.*]];
     // CHECK: assert(!const true, "attempt to calculate the remainder of `{}` with a divisor of
     // zero", const 1_i32)

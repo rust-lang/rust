@@ -10,7 +10,7 @@ extern crate minicore;
 
 // CHECK-LABEL: @ref_of_local
 // CHECK: [[alloca:%[0-9]]] = alloca
-// CHECK: %i = addrspacecast ptr addrspace(5) [[alloca]] to ptr
+// CHECK: {{%.*}} = addrspacecast ptr addrspace(5) [[alloca]] to ptr
 #[no_mangle]
 pub fn ref_of_local(f: fn(&i32)) {
     let i = 0;

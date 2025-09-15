@@ -1,5 +1,5 @@
-- // MIR for `never_used_debug` before SingleUseConsts
-+ // MIR for `never_used_debug` after SingleUseConsts
+- // MIR for `never_used_debug` before GVN
++ // MIR for `never_used_debug` after GVN
   
   fn never_used_debug() -> () {
       let mut _0: ();
@@ -11,8 +11,7 @@
   
       bb0: {
           StorageLive(_1);
--         _1 = const <T as MyTrait>::ASSOC_INT;
-+         nop;
+          _1 = const <T as MyTrait>::ASSOC_INT;
           _0 = const ();
           StorageDead(_1);
           return;

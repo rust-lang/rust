@@ -92,13 +92,16 @@
       let _89: ();
       let mut _90: f64;
       scope 1 {
-          debug i => _1;
+-         debug i => _1;
++         debug i => const 1_i64;
           let _2: u64;
           scope 2 {
-              debug u => _2;
+-             debug u => _2;
++             debug u => const 1_u64;
               let _3: f64;
               scope 3 {
-                  debug f => _3;
+-                 debug f => _3;
++                 debug f => const 1f64;
               }
           }
       }

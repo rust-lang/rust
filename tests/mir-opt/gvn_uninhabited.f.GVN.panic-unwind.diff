@@ -9,7 +9,8 @@
       let _4: U;
       let mut _5: &U;
       scope 1 {
-          debug i => _1;
+-         debug i => _1;
++         debug i => const 0_u32;
       }
   
       bb0: {
