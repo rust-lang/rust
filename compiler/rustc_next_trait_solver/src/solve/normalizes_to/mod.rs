@@ -396,9 +396,17 @@ where
     /// Fail to normalize if the predicate contains an error, alternatively, we could normalize to `ty::Error`
     /// and succeed. Can experiment with this to figure out what results in better error messages.
     fn consider_error_guaranteed_candidate(
-        _ecx: &mut EvalCtxt<'_, D>,
-        _guar: I::ErrorGuaranteed,
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+        guar: I::ErrorGuaranteed,
     ) -> Result<Candidate<I>, NoSolution> {
+        let cx = ecx.cx();
+        let error_term = match goal.predicate.alias.kind(cx) {
+            ty::AliasTermKind::ProjectionTy => Ty::new_error(cx, guar).into(),
+            ty::AliasTermKind::ProjectionConst => Const::new_error(cx, guar).into(),
+            kind => panic!("expected projection, found {kind:?}"),
+        };
+        ecx.instantiate_normalizes_to_term(goal, error_term);
         Err(NoSolution)
     }
 

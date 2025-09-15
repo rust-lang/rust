@@ -9,6 +9,12 @@ help: make the `impl` of trait `Bar` `const`
 LL | impl const Bar for () {
    |      +++++
 
-error: aborting due to 1 previous error
+error[E0277]: the trait bound `{closure@$DIR/call-const-closure.rs:17:6: 17:14}: [const] Fn()` is not satisfied
+  --> $DIR/call-const-closure.rs:17:5
+   |
+LL |     (const || ().foo())();
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

@@ -462,6 +462,15 @@ impl<I: Interner> CoroutineClosureSignature<I> {
         coroutine_captures_by_ref_ty: I::Ty,
         env_region: I::Region,
     ) -> I::Ty {
+        // If either of the tupled capture types are constrained to error
+        // (e.g. during typeck when the infcx is tainted), then just return
+        // the error type directly.
+        if let ty::Error(_) = tupled_inputs_ty.kind() {
+            return tupled_inputs_ty;
+        } else if let ty::Error(_) = coroutine_captures_by_ref_ty.kind() {
+            return coroutine_captures_by_ref_ty;
+        }
+
         match kind {
             ty::ClosureKind::Fn | ty::ClosureKind::FnMut => {
                 let ty::FnPtr(sig_tys, _) = coroutine_captures_by_ref_ty.kind() else {
