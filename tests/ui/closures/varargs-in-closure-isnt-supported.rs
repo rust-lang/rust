@@ -4,7 +4,6 @@
 unsafe extern "C" fn thats_not_a_pattern(mut ap: ...) -> u32 {
     let mut lol = |...| (); //~ ERROR: unexpected `...`
     unsafe { ap.arg::<u32>() } //~^ NOTE: C-variadic type `...` is not allowed here
-    //~| ERROR: type annotations needed
     //~| NOTE: not a valid pattern
 }
 

@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use rustc_errors::codes::*;
 use rustc_errors::{Diag, IntoDiagArg};
-use rustc_hir as hir;
+use rustc_hir::{self as hir, PatKind};
 use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
@@ -512,7 +512,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     type_name: ty_to_string(self, ty, def_id),
                 });
             }
-            InferSourceKind::ClosureArg { insert_span, ty } => {
+            InferSourceKind::ClosureArg { insert_span, ty, .. } => {
                 infer_subdiags.push(SourceKindSubdiag::LetLike {
                     span: insert_span,
                     name: String::new(),
@@ -652,6 +652,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }),
         };
         *err.long_ty_path() = long_ty_path;
+        if let InferSourceKind::ClosureArg { kind: PatKind::Err(_), .. } = kind {
+            // We will have already emitted an error about this pattern.
+            err.downgrade_to_delayed_bug();
+        }
         err
     }
 }
@@ -673,6 +677,7 @@ enum InferSourceKind<'tcx> {
     ClosureArg {
         insert_span: Span,
         ty: Ty<'tcx>,
+        kind: PatKind<'tcx>,
     },
     GenericArg {
         insert_span: Span,
@@ -1197,6 +1202,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
                     kind: InferSourceKind::ClosureArg {
                         insert_span: param.pat.span.shrink_to_hi(),
                         ty: param_ty,
+                        kind: param.pat.kind,
                     },
                 })
             }
