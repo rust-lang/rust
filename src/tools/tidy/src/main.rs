@@ -147,11 +147,11 @@ fn main() {
         // check!(edition, &compiler_path);
         // check!(edition, &library_path);
         //
-        // check!(alphabetical, &root_manifest);
-        // check!(alphabetical, &src_path);
-        // check!(alphabetical, &tests_path);
-        // check!(alphabetical, &compiler_path);
-        // check!(alphabetical, &library_path);
+        check!(alphabetical, &root_manifest);
+        check!(alphabetical, &src_path);
+        check!(alphabetical, &tests_path);
+        check!(alphabetical, &compiler_path);
+        check!(alphabetical, &library_path);
         //
         // check!(x_version, &root_path, &cargo);
         //
