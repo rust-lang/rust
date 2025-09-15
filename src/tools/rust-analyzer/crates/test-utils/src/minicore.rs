@@ -55,7 +55,7 @@
 //!     panic: fmt
 //!     phantom_data:
 //!     pin:
-//!     pointee: copy, send, sync, ord, hash, unpin
+//!     pointee: copy, send, sync, ord, hash, unpin, phantom_data
 //!     range:
 //!     receiver: deref
 //!     result:
@@ -504,6 +504,16 @@ pub mod ptr {
         #[lang = "metadata_type"]
         type Metadata: Copy + Send + Sync + Ord + Hash + Unpin;
     }
+
+    #[lang = "dyn_metadata"]
+    pub struct DynMetadata<Dyn: PointeeSized> {
+        _phantom: crate::marker::PhantomData<Dyn>,
+    }
+
+    pub const fn metadata<T: PointeeSized>(ptr: *const T) -> <T as Pointee>::Metadata {
+        loop {}
+    }
+
     // endregion:pointee
     // region:non_null
     #[rustc_layout_scalar_valid_range_start(1)]
