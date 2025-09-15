@@ -43,13 +43,6 @@ macro_rules! t {
     };
 }
 
-macro_rules! tidy_error {
-    ($bad:expr, $($fmt:tt)*) => ({
-        $crate::tidy_error(&format_args!($($fmt)*).to_string()).expect("failed to output error");
-        *$bad = true;
-    });
-}
-
 fn tidy_error(args: &str) -> std::io::Result<()> {
     use std::io::Write;
 
