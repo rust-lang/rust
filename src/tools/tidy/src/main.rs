@@ -170,20 +170,20 @@ fn main() {
             )
         };
         check!(unstable_book, &src_path, collected);
-        //
-        // check!(
-        //     extra_checks,
-        //     &root_path,
-        //     &output_directory,
-        //     &ci_info,
-        //     &librustdoc_path,
-        //     &tools_path,
-        //     &npm,
-        //     &cargo,
-        //     bless,
-        //     extra_checks,
-        //     pos_args
-        // );
+
+        check!(
+            extra_checks,
+            &root_path,
+            &output_directory,
+            &ci_info,
+            &librustdoc_path,
+            &tools_path,
+            &npm,
+            &cargo,
+            bless,
+            extra_checks,
+            pos_args
+        );
     });
 
     if diag_ctx.into_conclusion() {
