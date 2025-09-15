@@ -718,16 +718,20 @@ impl StrExt for str {
         // Fast path for replacing a single ASCII character with another inline.
         if let [from_u8] = from.as_bytes() {
             if let [to_u8] = to.as_bytes() {
-                return match self.len() <= count {
-                    true => replacen_1_ascii(self, |b| if b == *from_u8 { *to_u8 } else { b }),
-                    _ => replacen_1_ascii(self, |b| {
-                        if b == *from_u8 && count != 0 {
-                            count -= 1;
-                            *to_u8
-                        } else {
-                            b
-                        }
-                    }),
+                return if self.len() <= count {
+                    // SAFETY: `from_u8` & `to_u8` are ascii
+                    unsafe { replacen_1_ascii(self, |b| if b == from_u8 { *to_u8 } else { *b }) }
+                } else {
+                    unsafe {
+                        replacen_1_ascii(self, |b| {
+                            if b == from_u8 && count != 0 {
+                                count -= 1;
+                                *to_u8
+                            } else {
+                                *b
+                            }
+                        })
+                    }
                 };
             }
         }
@@ -748,12 +752,13 @@ impl StrExt for str {
     }
 }
 
+/// SAFETY: `map` fn must only replace ascii with ascii or return unchanged bytes.
 #[inline]
-fn replacen_1_ascii(src: &str, mut map: impl FnMut(u8) -> u8) -> SmolStr {
+unsafe fn replacen_1_ascii(src: &str, mut map: impl FnMut(&u8) -> u8) -> SmolStr {
     if src.len() <= INLINE_CAP {
         let mut buf = [0u8; INLINE_CAP];
         for (idx, b) in src.as_bytes().iter().enumerate() {
-            buf[idx] = map(*b);
+            buf[idx] = map(b);
         }
         SmolStr(Repr::Inline {
             // SAFETY: `len` is in bounds
@@ -761,7 +766,7 @@ fn replacen_1_ascii(src: &str, mut map: impl FnMut(u8) -> u8) -> SmolStr {
             buf,
         })
     } else {
-        let out = src.as_bytes().iter().map(|b| map(*b)).collect();
+        let out = src.as_bytes().iter().map(map).collect();
         // SAFETY: We replaced ascii with ascii on valid utf8 strings.
         unsafe { String::from_utf8_unchecked(out).into() }
     }
