@@ -9,8 +9,9 @@ use clippy_utils::macros::{
     root_macro_call_first_node,
 };
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::{SpanRangeExt, snippet};
-use clippy_utils::ty::{implements_trait, is_type_lang_item};
+use clippy_utils::ty::implements_trait;
 use clippy_utils::{is_diag_trait_item, is_from_proc_macro, is_in_test, trait_ref_of_method};
 use itertools::Itertools;
 use rustc_ast::{
@@ -344,7 +345,7 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
         if let Some(placeholder_span) = placeholder.span
             && *options != FormatOptions::default()
             && let ty = self.cx.typeck_results().expr_ty(arg).peel_refs()
-            && is_type_lang_item(self.cx, ty, LangItem::FormatArguments)
+            && ty.is_lang_item(self.cx, LangItem::FormatArguments)
         {
             span_lint_and_then(
                 self.cx,

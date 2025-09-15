@@ -1,7 +1,7 @@
 use std::ops::ControlFlow;
 
 use clippy_utils::diagnostics::span_lint_hir_and_then;
-use clippy_utils::ty::is_type_lang_item;
+use clippy_utils::res::MaybeDef;
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{eq_expr_value, higher, path_to_local_id, sym};
 use rustc_errors::{Applicability, MultiSpan};
@@ -81,7 +81,7 @@ fn check_index_usage<'tcx>(
         return;
     };
 
-    let is_string_like = |ty: Ty<'_>| ty.is_str() || is_type_lang_item(cx, ty, LangItem::String);
+    let is_string_like = |ty: Ty<'_>| ty.is_str() || ty.is_lang_item(cx, LangItem::String);
     let message = match parent_expr.kind {
         ExprKind::MethodCall(segment, recv, ..)
             // We currently only lint `str` methods (which `String` can deref to), so a `.is_str()` check is sufficient here

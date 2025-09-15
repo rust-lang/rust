@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::ty::{get_type_diagnostic_name, is_type_lang_item};
+use clippy_utils::res::MaybeDef;
+use clippy_utils::ty::get_type_diagnostic_name;
 use clippy_utils::visitors::{Visitable, for_each_expr};
 use clippy_utils::{get_enclosing_block, path_to_local_id};
 use core::ops::ControlFlow;
@@ -71,7 +72,7 @@ fn match_acceptable_type(cx: &LateContext<'_>, local: &LetStmt<'_>) -> bool {
                 | sym::Vec
                 | sym::VecDeque
         )
-    ) || is_type_lang_item(cx, ty, LangItem::String)
+    ) || ty.is_lang_item(cx, LangItem::String)
 }
 
 fn has_no_read_access<'tcx, T: Visitable<'tcx>>(cx: &LateContext<'tcx>, id: HirId, block: T) -> bool {

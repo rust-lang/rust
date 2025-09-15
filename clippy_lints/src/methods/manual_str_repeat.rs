@@ -2,7 +2,6 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::ty::is_type_lang_item;
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, LangItem};
@@ -35,14 +34,14 @@ fn parse_repeat_arg(cx: &LateContext<'_>, e: &Expr<'_>) -> Option<RepeatKind> {
         }
     } else {
         let ty = cx.typeck_results().expr_ty(e);
-        if is_type_lang_item(cx, ty, LangItem::String)
-            || (is_type_lang_item(cx, ty, LangItem::OwnedBox) && get_ty_param(ty).is_some_and(Ty::is_str))
+        if ty.is_lang_item(cx, LangItem::String)
+            || (ty.is_lang_item(cx, LangItem::OwnedBox) && get_ty_param(ty).is_some_and(Ty::is_str))
             || (ty.is_diag_item(cx, sym::Cow) && get_ty_param(ty).is_some_and(Ty::is_str))
         {
             Some(RepeatKind::String)
         } else {
             let ty = ty.peel_refs();
-            (ty.is_str() || is_type_lang_item(cx, ty, LangItem::String)).then_some(RepeatKind::String)
+            (ty.is_str() || ty.is_lang_item(cx, LangItem::String)).then_some(RepeatKind::String)
         }
     }
 }
@@ -56,7 +55,10 @@ pub(super) fn check(
 ) {
     if let ExprKind::Call(repeat_fn, [repeat_arg]) = take_self_arg.kind
         && repeat_fn.basic_res().is_diag_item(cx, sym::iter_repeat)
-        && is_type_lang_item(cx, cx.typeck_results().expr_ty(collect_expr), LangItem::String)
+        && cx
+            .typeck_results()
+            .expr_ty(collect_expr)
+            .is_lang_item(cx, LangItem::String)
         && let Some(take_id) = cx.typeck_results().type_dependent_def_id(take_expr.hir_id)
         && let Some(iter_trait_id) = cx.tcx.get_diagnostic_item(sym::Iterator)
         && cx.tcx.trait_of_assoc(take_id) == Some(iter_trait_id)

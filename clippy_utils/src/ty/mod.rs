@@ -380,16 +380,6 @@ pub fn is_recursively_primitive_type(ty: Ty<'_>) -> bool {
     }
 }
 
-/// Checks if the type is equal to a lang item.
-///
-/// Returns `false` if the `LangItem` is not defined.
-pub fn is_type_lang_item(cx: &LateContext<'_>, ty: Ty<'_>, lang_item: LangItem) -> bool {
-    match ty.kind() {
-        ty::Adt(adt, _) => cx.tcx.lang_items().get(lang_item) == Some(adt.did()),
-        _ => false,
-    }
-}
-
 /// Return `true` if the passed `typ` is `isize` or `usize`.
 pub fn is_isize_or_usize(typ: Ty<'_>) -> bool {
     matches!(typ.kind(), ty::Int(IntTy::Isize) | ty::Uint(UintTy::Usize))
@@ -408,7 +398,7 @@ pub fn needs_ordered_drop<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
             false
         }
         // Check for std types which implement drop, but only for memory allocation.
-        else if is_type_lang_item(cx, ty, LangItem::OwnedBox)
+        else if ty.is_lang_item(cx, LangItem::OwnedBox)
             || matches!(
                 get_type_diagnostic_name(cx, ty),
                 Some(sym::HashSet | sym::Rc | sym::Arc | sym::cstring_type | sym::RcWeak | sym::ArcWeak)

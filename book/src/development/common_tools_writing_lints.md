@@ -161,7 +161,7 @@ paths for Clippy can be found in [paths.rs][paths]
 To check if our type defines a method called `some_method`:
 
 ```rust
-use clippy_utils::res::MaybeDef;
+use clippy_utils::ty::is_type_lang_item;
 use clippy_utils::{sym, return_ty};
 
 impl<'tcx> LateLintPass<'tcx> for MyTypeImpl {

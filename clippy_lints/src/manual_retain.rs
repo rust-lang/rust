@@ -2,8 +2,9 @@ use clippy_config::Conf;
 use clippy_utils::SpanlessEq;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet;
-use clippy_utils::ty::{get_type_diagnostic_name, is_type_lang_item};
+use clippy_utils::ty::get_type_diagnostic_name;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::ExprKind::Assign;
@@ -189,7 +190,7 @@ fn check_to_owned(
         && let Some(chars_expr_def_id) = cx.typeck_results().type_dependent_def_id(chars_expr.hir_id)
         && cx.tcx.is_diagnostic_item(sym::str_chars, chars_expr_def_id)
         && let ty = cx.typeck_results().expr_ty(str_expr).peel_refs()
-        && is_type_lang_item(cx, ty, hir::LangItem::String)
+        && ty.is_lang_item(cx, hir::LangItem::String)
         && SpanlessEq::new(cx).eq_expr(left_expr, str_expr)
         && let hir::ExprKind::MethodCall(_, _, [closure_expr], _) = filter_expr.kind
         && let hir::ExprKind::Closure(closure) = closure_expr.kind

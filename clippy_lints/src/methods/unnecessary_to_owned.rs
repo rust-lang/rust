@@ -4,7 +4,7 @@ use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::MaybeDef;
 use clippy_utils::source::{SpanRangeExt, snippet};
-use clippy_utils::ty::{get_iterator_item_ty, implements_trait, is_copy, is_type_lang_item, peel_and_count_ty_refs};
+use clippy_utils::ty::{get_iterator_item_ty, implements_trait, is_copy, peel_and_count_ty_refs};
 use clippy_utils::visitors::find_all_ret_expressions;
 use clippy_utils::{
     fn_def_id, get_parent_expr, is_diag_item_method, is_diag_trait_item, is_expr_temporary_value, return_ty, sym,
@@ -319,7 +319,7 @@ fn check_split_call_arg(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: Symb
         // We may end-up here because of an expression like `x.to_string().split(…)` where the type of `x`
         // implements `AsRef<str>` but does not implement `Deref<Target = str>`. In this case, we have to
         // add `.as_ref()` to the suggestion.
-        let as_ref = if is_type_lang_item(cx, cx.typeck_results().expr_ty(expr), LangItem::String)
+        let as_ref = if cx.typeck_results().expr_ty(expr).is_lang_item(cx, LangItem::String)
             && let Some(deref_trait_id) = cx.tcx.get_diagnostic_item(sym::Deref)
             && cx.get_associated_type(cx.typeck_results().expr_ty(receiver), deref_trait_id, sym::Target)
                 != Some(cx.tcx.types.str_)
@@ -672,7 +672,7 @@ fn std_map_key<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
 }
 
 fn is_str_and_string(cx: &LateContext<'_>, arg_ty: Ty<'_>, original_arg_ty: Ty<'_>) -> bool {
-    original_arg_ty.is_str() && is_type_lang_item(cx, arg_ty, LangItem::String)
+    original_arg_ty.is_str() && arg_ty.is_lang_item(cx, LangItem::String)
 }
 
 fn is_slice_and_vec(cx: &LateContext<'_>, arg_ty: Ty<'_>, original_arg_ty: Ty<'_>) -> bool {
