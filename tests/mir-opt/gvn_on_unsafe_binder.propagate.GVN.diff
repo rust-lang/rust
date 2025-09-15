@@ -6,10 +6,12 @@
       let _1: i32;
       let mut _3: i32;
       scope 1 {
-          debug x => _1;
+-         debug x => _1;
++         debug x => const 1_i32;
           let _2: unsafe<> i32;
           scope 2 {
-              debug binder => _2;
+-             debug binder => _2;
++             debug binder => const {transmute(0x00000001): unsafe<> i32};
           }
       }
   

@@ -13,7 +13,8 @@
       let mut _8: bool;
       let mut _9: &[u32; 3];
       scope 1 {
-          debug a => _1;
+-         debug a => _1;
++         debug a => const 2_u32;
       }
   
       bb0: {

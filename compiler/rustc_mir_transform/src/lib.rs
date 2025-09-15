@@ -191,7 +191,6 @@ declare_passes! {
         Final
     };
     mod simplify_comparison_integral : SimplifyComparisonIntegral;
-    mod single_use_consts : SingleUseConsts;
     mod sroa : ScalarReplacementOfAggregates;
     mod strip_debuginfo : StripDebugInfo;
     mod unreachable_enum_branching : UnreachableEnumBranching;
@@ -709,7 +708,6 @@ pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
             &simplify::SimplifyLocals::AfterGVN,
             &match_branches::MatchBranchSimplification,
             &dataflow_const_prop::DataflowConstProp,
-            &single_use_consts::SingleUseConsts,
             &o1(simplify_branches::SimplifyConstCondition::AfterConstProp),
             &jump_threading::JumpThreading,
             &early_otherwise_branch::EarlyOtherwiseBranch,
