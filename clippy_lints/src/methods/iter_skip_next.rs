@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::is_trait_method;
+use clippy_utils::res::MaybeResPath;
 use clippy_utils::source::snippet;
-use clippy_utils::{is_trait_method, path_to_local};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::{BindingMode, Node, PatKind};
@@ -19,7 +20,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr
             expr.span.trim_start(recv.span).unwrap(),
             "called `skip(..).next()` on an iterator",
             |diag| {
-                if let Some(id) = path_to_local(recv)
+                if let Some(id) = recv.res_local_id()
                     && let Node::Pat(pat) = cx.tcx.hir_node(id)
                     && let PatKind::Binding(ann, _, _, _) = pat.kind
                     && ann != BindingMode::MUT

@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::res::MaybeQPath;
-use clippy_utils::{get_expr_use_or_unification_node, path_to_local, path_to_local_id};
+use clippy_utils::res::{MaybeQPath, MaybeResPath};
+use clippy_utils::{get_expr_use_or_unification_node, path_to_local_id};
 use core::cell::Cell;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
@@ -359,7 +359,7 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
     }
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) {
-        if let Some(id) = path_to_local(e)
+        if let Some(id) = e.res_local_id()
             && let Some(param) = self.params.get_by_id_mut(id)
         {
             let typeck = cx.typeck_results();

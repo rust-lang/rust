@@ -2,8 +2,9 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::matching_root_macro_call;
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::res::MaybeResPath;
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{higher, is_in_const_context, path_to_local, peel_ref_operators, sym};
+use clippy_utils::{higher, is_in_const_context, peel_ref_operators, sym};
 use rustc_ast::LitKind::{Byte, Char};
 use rustc_ast::ast::RangeLimits;
 use rustc_errors::Applicability;
@@ -125,7 +126,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualIsAsciiCheck {
 }
 
 fn get_ty_sugg<'tcx>(cx: &LateContext<'tcx>, arg: &Expr<'_>) -> Option<(Span, Ty<'tcx>)> {
-    let local_hid = path_to_local(arg)?;
+    let local_hid = arg.res_local_id()?;
     if let Node::Param(Param { ty_span, span, .. }) = cx.tcx.parent_hir_node(local_hid)
         // `ty_span` and `span` are the same for inferred type, thus a type suggestion must be given
         && ty_span == span

@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{is_default_equivalent_call, local_is_initialized, path_to_local};
+use clippy_utils::{is_default_equivalent_call, local_is_initialized};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, LangItem, QPath};
 use rustc_lint::{LateContext, LateLintPass};
@@ -42,7 +42,7 @@ impl LateLintPass<'_> for ReplaceBox {
             && !rhs.span.from_expansion()
             && let lhs_ty = cx.typeck_results().expr_ty(lhs)
             // No diagnostic for late-initialized locals
-            && path_to_local(lhs).is_none_or(|local| local_is_initialized(cx, local))
+            && lhs.res_local_id().is_none_or(|local| local_is_initialized(cx, local))
             && let Some(inner_ty) = lhs_ty.boxed_ty()
         {
             if let Some(default_trait_id) = cx.tcx.get_diagnostic_item(sym::Default)

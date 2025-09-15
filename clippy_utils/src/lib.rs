@@ -174,7 +174,8 @@ macro_rules! extract_msrv_attr {
 /// //   ^^^ input
 /// ```
 pub fn expr_or_init<'a, 'b, 'tcx: 'b>(cx: &LateContext<'tcx>, mut expr: &'a Expr<'b>) -> &'a Expr<'b> {
-    while let Some(init) = path_to_local(expr)
+    while let Some(init) = expr
+        .res_local_id()
         .and_then(|id| find_binding_init(cx, id))
         .filter(|init| cx.typeck_results().expr_adjustments(init).is_empty())
     {
@@ -429,20 +430,10 @@ pub fn qpath_generic_tys<'tcx>(qpath: &QPath<'tcx>) -> impl Iterator<Item = &'tc
         })
 }
 
-/// If the expression is a path to a local, returns the canonical `HirId` of the local.
-pub fn path_to_local(expr: &Expr<'_>) -> Option<HirId> {
-    if let ExprKind::Path(QPath::Resolved(None, path)) = expr.kind
-        && let Res::Local(id) = path.res
-    {
-        return Some(id);
-    }
-    None
-}
-
 /// Returns true if the expression is a path to a local with the specified `HirId`.
 /// Use this function to see if an expression matches a function argument or a match binding.
 pub fn path_to_local_id(expr: &Expr<'_>, id: HirId) -> bool {
-    path_to_local(expr) == Some(id)
+    expr.res_local_id() == Some(id)
 }
 
 /// If the expression is a path to a local (with optional projections),
@@ -3438,7 +3429,7 @@ pub fn expr_requires_coercion<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -
 /// Returns `true` if `expr` designates a mutable static, a mutable local binding, or an expression
 /// that can be owned.
 pub fn is_mutable(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    if let Some(hir_id) = path_to_local(expr)
+    if let Some(hir_id) = expr.res_local_id()
         && let Node::Pat(pat) = cx.tcx.hir_node(hir_id)
     {
         matches!(pat.kind, PatKind::Binding(BindingMode::MUT, ..))

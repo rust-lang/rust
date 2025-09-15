@@ -1,12 +1,10 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::higher::IfLetOrMatch;
 use clippy_utils::msrvs::Msrv;
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::source::snippet;
 use clippy_utils::visitors::is_local_used;
-use clippy_utils::{
-    SpanlessEq, get_ref_operators, is_unit_expr, path_to_local, peel_blocks_with_stmt, peel_ref_operators,
-};
+use clippy_utils::{SpanlessEq, get_ref_operators, is_unit_expr, peel_blocks_with_stmt, peel_ref_operators};
 use rustc_ast::BorrowKind;
 use rustc_errors::MultiSpan;
 use rustc_hir::LangItem::OptionNone;
@@ -67,7 +65,7 @@ fn check_arm<'tcx>(
         && outer_pat.span.eq_ctxt(inner_scrutinee.span)
         // match expression must be a local binding
         // match <local> { .. }
-        && let Some(binding_id) = path_to_local(peel_ref_operators(cx, inner_scrutinee))
+        && let Some(binding_id) = peel_ref_operators(cx, inner_scrutinee).res_local_id()
         && !pat_contains_disallowed_or(cx, inner_then_pat, msrv)
         // the binding must come from the pattern of the containing match arm
         // ..<local>.. => match <local> { .. }

@@ -4,15 +4,15 @@ use clippy_config::Conf;
 use clippy_config::types::MatchLintBehaviour;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::{MaybeDef, MaybeQPath};
+use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{implements_trait, is_copy};
 use clippy_utils::usage::local_used_after_expr;
 use clippy_utils::{
     eq_expr_value, fn_def_id_with_node_args, higher, is_else_clause, is_in_const_context, is_lint_allowed,
-    pat_and_expr_can_be_question_mark, path_to_local, path_to_local_id, peel_blocks, peel_blocks_with_stmt,
-    span_contains_cfg, span_contains_comment, sym,
+    pat_and_expr_can_be_question_mark, path_to_local_id, peel_blocks, peel_blocks_with_stmt, span_contains_cfg,
+    span_contains_comment, sym,
 };
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{self, OptionNone, OptionSome, ResultErr, ResultOk};
@@ -252,7 +252,7 @@ fn expr_return_none_or_err(
                 .qpath_res(qpath, expr.hir_id)
                 .ctor_parent(cx)
                 .is_lang_item(cx, OptionNone),
-            sym::Result => path_to_local(expr).is_some() && path_to_local(expr) == path_to_local(cond_expr),
+            sym::Result => expr.res_local_id().is_some() && expr.res_local_id() == cond_expr.res_local_id(),
             _ => false,
         },
         ExprKind::Call(call_expr, [arg]) => {
@@ -492,7 +492,7 @@ fn check_if_let_some_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr:
             .is_none()
     {
         if !is_copy(cx, caller_ty)
-            && let Some(hir_id) = path_to_local(let_expr)
+            && let Some(hir_id) = let_expr.res_local_id()
             && local_used_after_expr(cx, hir_id, expr)
         {
             return;

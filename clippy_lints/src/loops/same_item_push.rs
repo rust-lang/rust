@@ -1,10 +1,10 @@
 use super::SAME_ITEM_PUSH;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::Msrv;
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{msrvs, path_to_local, std_or_core, sym};
+use clippy_utils::{msrvs, std_or_core, sym};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
@@ -126,7 +126,7 @@ impl<'a, 'tcx> SameItemPushVisitor<'a, 'tcx> {
         if !self.non_deterministic_expr
             && !self.multiple_pushes
             && let Some((vec, _, _)) = self.vec_push
-            && let Some(hir_id) = path_to_local(vec)
+            && let Some(hir_id) = vec.res_local_id()
         {
             !self.used_locals.contains(&hir_id)
         } else {
@@ -142,7 +142,7 @@ impl<'tcx> Visitor<'tcx> for SameItemPushVisitor<'_, 'tcx> {
             ExprKind::Loop(..) | ExprKind::Match(..) | ExprKind::If(..) => self.non_deterministic_expr = true,
             ExprKind::Block(block, _) => self.visit_block(block),
             _ => {
-                if let Some(hir_id) = path_to_local(expr) {
+                if let Some(hir_id) = expr.res_local_id() {
                     self.used_locals.insert(hir_id);
                 }
                 walk_expr(self, expr);

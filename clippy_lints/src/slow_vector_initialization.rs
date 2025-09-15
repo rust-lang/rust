@@ -2,9 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::macros::matching_root_macro_call;
 use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{
-    SpanlessEq, get_enclosing_block, is_integer_literal, path_to_local, path_to_local_id, span_contains_comment, sym,
-};
+use clippy_utils::{SpanlessEq, get_enclosing_block, is_integer_literal, path_to_local_id, span_contains_comment, sym};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{Visitor, walk_block, walk_expr, walk_stmt};
 use rustc_hir::{BindingMode, Block, Expr, ExprKind, HirId, PatKind, Stmt, StmtKind};
@@ -102,7 +100,7 @@ impl<'tcx> LateLintPass<'tcx> for SlowVectorInit {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // Matches initialization on reassignments. For example: `vec = Vec::with_capacity(100)`
         if let ExprKind::Assign(left, right, _) = expr.kind
-            && let Some(local_id) = path_to_local(left)
+            && let Some(local_id) = left.res_local_id()
             && let Some(size_expr) = Self::as_vec_initializer(cx, right)
         {
             let vi = VecAllocation {

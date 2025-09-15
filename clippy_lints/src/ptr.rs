@@ -3,7 +3,7 @@ use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::visitors::contains_unsafe_block;
-use clippy_utils::{get_expr_use_or_unification_node, is_lint_allowed, path_to_local, std_or_core, sym};
+use clippy_utils::{get_expr_use_or_unification_node, is_lint_allowed, std_or_core, sym};
 use hir::LifetimeKind;
 use rustc_abi::ExternAbi;
 use rustc_errors::{Applicability, MultiSpan};
@@ -562,7 +562,7 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &Body<'tcx>, args: &[
             }
 
             // Check if this is local we care about
-            let Some(&args_idx) = path_to_local(e).and_then(|id| self.bindings.get(&id)) else {
+            let Some(&args_idx) = e.res_local_id().and_then(|id| self.bindings.get(&id)) else {
                 return walk_expr(self, e);
             };
             let args = &self.args[args_idx];

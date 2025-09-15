@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
 use clippy_utils::macros::{FormatArgsStorage, find_format_arg_expr, is_format_macro, root_macro_call_first_node};
-use clippy_utils::{get_parent_as_impl, is_diag_trait_item, path_to_local, peel_ref_operators, sym};
+use clippy_utils::res::MaybeResPath;
+use clippy_utils::{get_parent_as_impl, is_diag_trait_item, peel_ref_operators, sym};
 use rustc_ast::{FormatArgsPiece, FormatTrait};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Impl, ImplItem, ImplItemKind, QPath};
@@ -210,7 +211,7 @@ impl FormatImplExpr<'_, '_> {
         // Since the argument to fmt is itself a reference: &self
         let reference = peel_ref_operators(self.cx, arg);
         // Is the reference self?
-        if path_to_local(reference).map(|x| self.cx.tcx.hir_name(x)) == Some(kw::SelfLower) {
+        if reference.res_local_id().map(|x| self.cx.tcx.hir_name(x)) == Some(kw::SelfLower) {
             let FormatTraitNames { name, .. } = self.format_trait_impl;
             span_lint(
                 self.cx,
