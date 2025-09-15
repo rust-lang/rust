@@ -129,6 +129,40 @@ trait T2: Sized {
 }
 
 #[test]
+fn regression_type_checker_does_not_eagerly_select_predicates_from_where_clauses() {
+    // This was a very long standing issue (#5514) with a lot of duplicates, that was
+    // fixed by the switch to the new trait solver, so it deserves a long name and a
+    // honorable mention.
+    check_infer(
+        r#"
+//- minicore: from
+
+struct Foo;
+impl Foo {
+    fn method(self) -> i32 { 0 }
+}
+
+fn f<T: Into<Foo>>(u: T) {
+    let x = u.into();
+    x.method();
+}
+    "#,
+        expect![[r#"
+            38..42 'self': Foo
+            51..56 '{ 0 }': i32
+            53..54 '0': i32
+            79..80 'u': T
+            85..126 '{     ...d(); }': ()
+            95..96 'x': Foo
+            99..100 'u': T
+            99..107 'u.into()': Foo
+            113..114 'x': Foo
+            113..123 'x.method()': i32
+        "#]],
+    );
+}
+
+#[test]
 fn opaque_generics() {
     check_infer(
         r#"
