@@ -4,7 +4,7 @@ use std::fs;
 use std::path::Path;
 
 use crate::deps::WorkspaceInfo;
-use crate::diagnostics::{CheckId, DiagCtx};
+use crate::diagnostics::DiagCtx;
 
 /// List of allowed sources for packages.
 const ALLOWED_SOURCES: &[&str] = &[
@@ -16,7 +16,7 @@ const ALLOWED_SOURCES: &[&str] = &[
 /// Checks for external package sources. `root` is the path to the directory that contains the
 /// workspace `Cargo.toml`.
 pub fn check(root: &Path, diag_ctx: DiagCtx) {
-    let mut check = diag_ctx.start_check(CheckId::new("extdeps").path(root));
+    let mut check = diag_ctx.start_check("extdeps");
 
     for &WorkspaceInfo { path, submodules, .. } in crate::deps::WORKSPACES {
         if crate::deps::has_missing_submodule(root, submodules) {

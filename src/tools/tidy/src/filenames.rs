@@ -10,10 +10,10 @@
 use std::path::Path;
 use std::process::Command;
 
-use crate::diagnostics::{CheckId, DiagCtx};
+use crate::diagnostics::DiagCtx;
 
 pub fn check(root_path: &Path, diag_ctx: DiagCtx) {
-    let mut check = diag_ctx.start_check(CheckId::new("filenames").path(root_path));
+    let mut check = diag_ctx.start_check("filenames");
     let stat_output = Command::new("git")
         .arg("-C")
         .arg(root_path)
