@@ -11097,3 +11097,26 @@ impl Enum<'_, Borrowed> {
         "#]],
     );
 }
+
+#[test]
+fn unknown_should_not_implement_notable_traits() {
+    check(
+        r#"
+//- minicore: future, iterator
+fn foo() {
+    let x$0;
+}
+    "#,
+        expect![[r#"
+            *x*
+
+            ```rust
+            let x: {unknown}
+            ```
+
+            ---
+
+            no Drop
+        "#]],
+    );
+}

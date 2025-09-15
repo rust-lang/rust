@@ -483,6 +483,12 @@ fn notable_traits<'db>(
     db: &'db RootDatabase,
     ty: &hir::Type<'db>,
 ) -> Vec<(hir::Trait, Vec<(Option<hir::Type<'db>>, hir::Name)>)> {
+    if ty.is_unknown() {
+        // The trait solver returns "yes" to the question whether the error type
+        // impls any trait, and we don't want to show it as having any notable trait.
+        return Vec::new();
+    }
+
     db.notable_traits_in_deps(ty.krate(db).into())
         .iter()
         .flat_map(|it| &**it)
