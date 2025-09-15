@@ -116,6 +116,13 @@ impl RunningCheck {
         eprintln!("{t}");
     }
 
+    /// Output a message only if verbose output is enabled.
+    pub fn verbose_msg<T: Display>(&mut self, t: T) {
+        if self.ctx.lock().unwrap().verbose {
+            self.message(t);
+        }
+    }
+
     fn mark_as_bad(&mut self) {
         self.bad = true;
     }
