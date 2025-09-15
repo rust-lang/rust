@@ -1039,6 +1039,9 @@ class RustBuild(object):
         # See also: <https://github.com/rust-lang/rust/issues/70208>.
         if "CARGO_BUILD_TARGET" in env:
             del env["CARGO_BUILD_TARGET"]
+        # if in CI, don't use incremental build when building bootstrap.
+        if "GITHUB_ACTIONS" in env:
+            env["CARGO_INCREMENTAL"] = "0"
         env["CARGO_TARGET_DIR"] = build_dir
         env["RUSTC"] = self.rustc()
         env["LD_LIBRARY_PATH"] = (
