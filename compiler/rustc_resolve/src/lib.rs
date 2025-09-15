@@ -2352,7 +2352,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     /// Checks if an expression refers to a function marked with
-    /// `#[rustc_legacy_const_generics]` and returns the argument index list
+    /// `#[rustc_deprecated_legacy_const_generics]` and returns the argument index list
     /// from the attribute.
     fn legacy_const_generic_args(&mut self, expr: &Expr) -> Option<Vec<usize>> {
         if let ExprKind::Path(None, path) = &expr.kind {
@@ -2375,7 +2375,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     return v.clone();
                 }
 
-                let attr = self.tcx.get_attr(def_id, sym::rustc_legacy_const_generics)?;
+                let attr =
+                    self.tcx.get_attr(def_id, sym::rustc_deprecated_legacy_const_generics)?;
                 let mut ret = Vec::new();
                 for meta in attr.meta_item_list()? {
                     match meta.lit()?.kind {

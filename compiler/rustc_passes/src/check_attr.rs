@@ -303,8 +303,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         [sym::rustc_never_returns_null_ptr, ..] => {
                             self.check_applied_to_fn_or_method(hir_id, attr.span(), span, target)
                         }
-                        [sym::rustc_legacy_const_generics, ..] => {
-                            self.check_rustc_legacy_const_generics(hir_id, attr, span, target, item)
+                        [sym::rustc_deprecated_legacy_const_generics, ..] => {
+                            self.check_rustc_deprecated_legacy_const_generics(hir_id, attr, span, target, item)
                         }
                         [sym::rustc_lint_query_instability, ..] => {
                             self.check_applied_to_fn_or_method(hir_id, attr.span(), span, target)
@@ -1423,8 +1423,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    /// Checks if `#[rustc_legacy_const_generics]` is applied to a function and has a valid argument.
-    fn check_rustc_legacy_const_generics(
+    /// Checks if `#[rustc_deprecated_legacy_const_generics]` is applied to a function and has a valid argument.
+    fn check_rustc_deprecated_legacy_const_generics(
         &self,
         hir_id: HirId,
         attr: &Attribute,

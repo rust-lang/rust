@@ -1162,7 +1162,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_promotable, Normal, template!(Word), WarnFollowing,
         EncodeCrossCrate::No, ),
     rustc_attr!(
-        rustc_legacy_const_generics, Normal, template!(List: &["N"]), ErrorFollowing,
+        rustc_deprecated_legacy_const_generics, Normal, template!(List: &["N"]), ErrorFollowing,
         EncodeCrossCrate::Yes,
     ),
     // Do not const-check this function's body. It will always get replaced during CTFE via `hook_special_const_fn`.
