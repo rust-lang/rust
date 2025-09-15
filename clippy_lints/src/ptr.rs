@@ -1,8 +1,9 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then, span_lint_hir_and_then};
+use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::visitors::contains_unsafe_block;
-use clippy_utils::{get_expr_use_or_unification_node, is_lint_allowed, path_def_id, path_to_local, std_or_core, sym};
+use clippy_utils::{get_expr_use_or_unification_node, is_lint_allowed, path_to_local, std_or_core, sym};
 use hir::LifetimeKind;
 use rustc_abi::ExternAbi;
 use rustc_errors::{Applicability, MultiSpan};
@@ -742,8 +743,10 @@ fn get_lifetimes<'tcx>(ty: &'tcx hir::Ty<'tcx>) -> Vec<(&'tcx Lifetime, Option<M
 
 fn is_null_path(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     if let ExprKind::Call(pathexp, []) = expr.kind {
-        path_def_id(cx, pathexp)
-            .is_some_and(|id| matches!(cx.tcx.get_diagnostic_name(id), Some(sym::ptr_null | sym::ptr_null_mut)))
+        matches!(
+            pathexp.basic_res().opt_diag_name(cx),
+            Some(sym::ptr_null | sym::ptr_null_mut)
+        )
     } else {
         false
     }

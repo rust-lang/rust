@@ -1,5 +1,5 @@
 use clippy_utils::res::MaybeQPath;
-use clippy_utils::{get_attr, higher, path_def_id, sym};
+use clippy_utils::{get_attr, higher, sym};
 use itertools::Itertools;
 use rustc_ast::LitIntType;
 use rustc_ast::ast::{LitFloatType, LitKind};
@@ -293,7 +293,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
     }
 
     fn maybe_path<'p>(&self, path: &Binding<impl MaybeQPath<'p>>) {
-        if let Some(id) = path_def_id(self.cx, path.value)
+        if let Some(id) = path.value.res(self.cx).opt_def_id()
             && !id.is_local()
         {
             if let Some(lang) = self.cx.tcx.lang_items().from_def_id(id) {

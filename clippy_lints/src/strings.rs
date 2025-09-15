@@ -1,9 +1,8 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::{MaybeDef, MaybeQPath};
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::{
-    SpanlessEq, get_expr_use_or_unification_node, get_parent_expr, is_lint_allowed, method_calls, path_def_id,
-    peel_blocks, sym,
+    SpanlessEq, get_expr_use_or_unification_node, get_parent_expr, is_lint_allowed, method_calls, peel_blocks, sym,
 };
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
@@ -256,7 +255,7 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
         if let ExprKind::Call(fun, [bytes_arg]) = e.kind
             // Find `std::str::converts::from_utf8` or `std::primitive::str::from_utf8`
             && let Some(sym::str_from_utf8 | sym::str_inherent_from_utf8) =
-                path_def_id(cx, fun).and_then(|id| cx.tcx.get_diagnostic_name(id))
+                fun.res(cx).opt_diag_name(cx)
 
             // Find string::as_bytes
             && let ExprKind::AddrOf(BorrowKind::Ref, _, args) = bytes_arg.kind

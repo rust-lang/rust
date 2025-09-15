@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::is_res_lang_ctor;
 use clippy_utils::res::{MaybeDef, MaybeQPath};
 use clippy_utils::source::snippet;
-use clippy_utils::{is_res_lang_ctor, path_def_id};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::LangItem::{OptionNone, OptionSome};
@@ -62,7 +62,7 @@ pub(super) fn check<'tcx>(
             && let arg_snippet = snippet(cx, fn_decl_span, "..")
             && let body = cx.tcx.hir_body(body)
             && let Some((func, [arg_char])) = reduce_unit_expression(body.value)
-            && let Some(id) = path_def_id(cx, func).map(|ctor_id| cx.tcx.parent(ctor_id))
+            && let Some(id) = func.res(cx).opt_def_id().map(|ctor_id| cx.tcx.parent(ctor_id))
             && Some(id) == cx.tcx.lang_items().option_some_variant()
         {
             let func_snippet = snippet(cx, arg_char.span, "..");

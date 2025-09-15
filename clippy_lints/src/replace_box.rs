@@ -1,9 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{is_default_equivalent_call, local_is_initialized, path_def_id, path_to_local};
+use clippy_utils::{is_default_equivalent_call, local_is_initialized, path_to_local};
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, QPath};
+use rustc_hir::{Expr, ExprKind, LangItem, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::sym;
@@ -101,7 +102,7 @@ fn get_box_new_payload<'tcx>(cx: &LateContext<'_>, expr: &Expr<'tcx>) -> Option<
     if let ExprKind::Call(box_new, [arg]) = expr.kind
         && let ExprKind::Path(QPath::TypeRelative(ty, seg)) = box_new.kind
         && seg.ident.name == sym::new
-        && path_def_id(cx, ty).is_some_and(|id| Some(id) == cx.tcx.lang_items().owned_box())
+        && ty.basic_res().is_lang_item(cx, LangItem::OwnedBox)
     {
         Some(arg)
     } else {

@@ -132,7 +132,7 @@ use crate::ast_utils::unordered_over;
 use crate::consts::{ConstEvalCtxt, Constant};
 use crate::higher::Range;
 use crate::msrvs::Msrv;
-use crate::res::{MaybeDef, MaybeQPath, MaybeResPath};
+use crate::res::{MaybeDef, MaybeResPath};
 use crate::ty::{adt_and_variant_of_res, can_partially_move_ty, expr_sig, is_copy, is_recursively_primitive_type};
 use crate::visitors::for_each_expr_without_closures;
 
@@ -469,13 +469,6 @@ pub fn path_to_local_with_projections(expr: &Expr<'_>) -> Option<HirId> {
         )) => Some(*local),
         _ => None,
     }
-}
-
-/// If `maybe_path` is a path node which resolves to an item, retrieves the item ID
-pub fn path_def_id<'tcx>(cx: &LateContext<'_>, maybe_path: impl MaybeQPath<'tcx>) -> Option<DefId> {
-    maybe_path
-        .opt_qpath()
-        .and_then(|(qpath, id)| cx.qpath_res(qpath, id).opt_def_id())
 }
 
 /// Gets the `hir::TraitRef` of the trait the given method is implemented for.
@@ -1994,7 +1987,7 @@ pub fn is_expr_untyped_identity_function(cx: &LateContext<'_>, expr: &Expr<'_>) 
 pub fn is_expr_identity_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     match expr.kind {
         ExprKind::Closure(&Closure { body, .. }) => is_body_identity_function(cx, cx.tcx.hir_body(body)),
-        _ => path_def_id(cx, expr).is_some_and(|id| cx.tcx.is_diagnostic_item(sym::convert_identity, id)),
+        _ => expr.basic_res().is_diag_item(cx, sym::convert_identity),
     }
 }
 

@@ -1,7 +1,8 @@
 use crate::internal_paths;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::paths::{PathNS, lookup_path};
-use clippy_utils::{path_def_id, peel_ref_operators};
+use clippy_utils::peel_ref_operators;
+use clippy_utils::res::MaybeQPath;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -53,7 +54,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryDefPath {
             let path: Vec<Symbol> = segments
                 .iter()
                 .map(|segment| {
-                    if let Some(const_def_id) = path_def_id(cx, segment)
+                    if let Some(const_def_id) = segment.res(cx).opt_def_id()
                         && let Ok(ConstValue::Scalar(value)) = cx.tcx.const_eval_poly(const_def_id)
                         && let Some(value) = value.to_u32().discard_err()
                     {
