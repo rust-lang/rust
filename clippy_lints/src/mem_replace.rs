@@ -1,12 +1,11 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::res::MaybeQPath;
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_non_aggregate_primitive_type;
-use clippy_utils::{
-    is_default_equivalent, is_expr_used_or_unified, is_res_lang_ctor, path_res, peel_ref_operators, std_or_core,
-};
+use clippy_utils::{is_default_equivalent, is_expr_used_or_unified, is_res_lang_ctor, peel_ref_operators, std_or_core};
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_hir::{Expr, ExprKind};
@@ -129,7 +128,7 @@ impl_lint_pass!(MemReplace =>
     [MEM_REPLACE_OPTION_WITH_NONE, MEM_REPLACE_OPTION_WITH_SOME, MEM_REPLACE_WITH_UNINIT, MEM_REPLACE_WITH_DEFAULT]);
 
 fn check_replace_option_with_none(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'_>, expr_span: Span) -> bool {
-    if is_res_lang_ctor(cx, path_res(cx, src), OptionNone) {
+    if is_res_lang_ctor(cx, src.res(cx), OptionNone) {
         // Since this is a late pass (already type-checked),
         // and we already know that the second argument is an
         // `Option`, we do not need to check the first
@@ -163,7 +162,7 @@ fn check_replace_option_with_some(
     msrv: Msrv,
 ) -> bool {
     if let ExprKind::Call(src_func, [src_arg]) = src.kind
-        && is_res_lang_ctor(cx, path_res(cx, src_func), OptionSome)
+        && is_res_lang_ctor(cx, src_func.res(cx), OptionSome)
         && msrv.meets(cx, msrvs::OPTION_REPLACE)
     {
         // We do not have to check for a `const` context here, because `core::mem::replace()` and

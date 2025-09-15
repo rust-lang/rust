@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::{MaybeDef, MaybeQPath};
 use clippy_utils::visitors::contains_unsafe_block;
-use clippy_utils::{is_res_lang_ctor, path_res, path_to_local_id};
+use clippy_utils::{is_res_lang_ctor, path_to_local_id};
 
 use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_hir::{Arm, Expr, ExprKind, HirId, Pat, PatKind};
@@ -66,7 +66,7 @@ fn is_some_expr(cx: &LateContext<'_>, target: HirId, ctxt: SyntaxContext, expr: 
         && let ExprKind::Call(callee, [arg]) = inner_expr.kind
     {
         return ctxt == expr.span.ctxt()
-            && is_res_lang_ctor(cx, path_res(cx, callee), OptionSome)
+            && is_res_lang_ctor(cx, callee.res(cx), OptionSome)
             && path_to_local_id(arg, target);
     }
     false
@@ -74,7 +74,7 @@ fn is_some_expr(cx: &LateContext<'_>, target: HirId, ctxt: SyntaxContext, expr: 
 
 fn is_none_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     if let Some(inner_expr) = peels_blocks_incl_unsafe_opt(expr) {
-        return is_res_lang_ctor(cx, path_res(cx, inner_expr), OptionNone);
+        return is_res_lang_ctor(cx, inner_expr.res(cx), OptionNone);
     }
     false
 }

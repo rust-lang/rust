@@ -1,12 +1,12 @@
 use crate::map_unit_fn::OPTION_MAP_UNIT_FN;
 use crate::matches::MATCH_AS_REF;
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::{MaybeDef, MaybeQPath};
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{is_copy, is_unsafe_fn, peel_and_count_ty_refs};
 use clippy_utils::{
     CaptureKind, can_move_expr_to_closure, expr_requires_coercion, is_else_clause, is_lint_allowed, is_res_lang_ctor,
-    path_res, path_to_local_id, peel_blocks, peel_hir_expr_refs, peel_hir_expr_while,
+    path_to_local_id, peel_blocks, peel_hir_expr_refs, peel_hir_expr_while,
 };
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_errors::Applicability;
@@ -273,5 +273,5 @@ pub(super) fn try_parse_pattern<'tcx>(
 
 // Checks for the `None` value.
 fn is_none_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    is_res_lang_ctor(cx, path_res(cx, peel_blocks(expr)), OptionNone)
+    is_res_lang_ctor(cx, peel_blocks(expr).res(cx), OptionNone)
 }

@@ -3,11 +3,12 @@ use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::higher::If;
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::res::MaybeResPath;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::visitors::is_const_evaluatable;
 use clippy_utils::{
-    eq_expr_value, is_diag_trait_item, is_in_const_context, is_trait_method, path_res, path_to_local_id, peel_blocks,
+    eq_expr_value, is_diag_trait_item, is_in_const_context, is_trait_method, path_to_local_id, peel_blocks,
     peel_blocks_with_stmt, sym,
 };
 use itertools::Itertools;
@@ -342,7 +343,7 @@ fn is_call_max_min_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>)
                 }
             },
             ExprKind::Path(QPath::TypeRelative(ty, seg)) => {
-                matches!(path_res(cx, ty), Res::PrimTy(PrimTy::Float(_))).then(|| FunctionType::OrdOrFloat(seg))
+                matches!(ty.basic_res(), Res::PrimTy(PrimTy::Float(_))).then(|| FunctionType::OrdOrFloat(seg))
             },
             _ => None,
         }

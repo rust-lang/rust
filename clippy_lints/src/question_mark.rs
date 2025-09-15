@@ -11,7 +11,7 @@ use clippy_utils::ty::{implements_trait, is_copy};
 use clippy_utils::usage::local_used_after_expr;
 use clippy_utils::{
     eq_expr_value, fn_def_id_with_node_args, higher, is_else_clause, is_in_const_context, is_lint_allowed,
-    is_res_lang_ctor, pat_and_expr_can_be_question_mark, path_res, path_to_local, path_to_local_id, peel_blocks,
+    is_res_lang_ctor, pat_and_expr_can_be_question_mark, path_to_local, path_to_local_id, peel_blocks,
     peel_blocks_with_stmt, span_contains_cfg, span_contains_comment, sym,
 };
 use rustc_errors::Applicability;
@@ -394,7 +394,7 @@ fn check_arm_is_none_or_err<'tcx>(cx: &LateContext<'tcx>, mode: TryMode, arm: &A
                 // check `=> return Err(...)`
                 && let ExprKind::Ret(Some(wrapped_ret_expr)) = arm_body.kind
                 && let ExprKind::Call(ok_ctor, [ret_expr]) = wrapped_ret_expr.kind
-                && is_res_lang_ctor(cx, path_res(cx, ok_ctor), ResultErr)
+                && is_res_lang_ctor(cx, ok_ctor.res(cx), ResultErr)
                 // check if `...` is `val` from binding or `val.into()`
                 && is_local_or_local_into(cx, ret_expr, ok_val)
             {
@@ -405,10 +405,10 @@ fn check_arm_is_none_or_err<'tcx>(cx: &LateContext<'tcx>, mode: TryMode, arm: &A
         },
         TryMode::Option => {
             // Check the pat is `None`
-            if is_res_lang_ctor(cx, path_res(cx, arm.pat), OptionNone)
+            if is_res_lang_ctor(cx, arm.pat.res(cx), OptionNone)
                 // Check `=> return None`
                 && let ExprKind::Ret(Some(ret_expr)) = arm_body.kind
-                && is_res_lang_ctor(cx, path_res(cx, ret_expr), OptionNone)
+                && is_res_lang_ctor(cx, ret_expr.res(cx), OptionNone)
                 && !ret_expr.span.from_expansion()
             {
                 true

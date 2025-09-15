@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::{MaybeDef, MaybeQPath};
 use clippy_utils::source::{SpanRangeExt, indent_of, reindent_multiline};
-use clippy_utils::{is_res_lang_ctor, path_res, path_to_local_id};
+use clippy_utils::{is_res_lang_ctor, path_to_local_id};
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{ResultErr, ResultOk};
 use rustc_hir::{Expr, ExprKind, PatKind};
@@ -25,7 +25,7 @@ pub(super) fn check<'tcx>(
             .instantiate_identity()
             .is_diag_item(cx, sym::Option)
         && let ExprKind::Call(err_path, [err_arg]) = or_expr.kind
-        && is_res_lang_ctor(cx, path_res(cx, err_path), ResultErr)
+        && is_res_lang_ctor(cx, err_path.res(cx), ResultErr)
         && is_ok_wrapping(cx, map_expr)
         && let Some(recv_snippet) = recv.span.get_source_text(cx)
         && let Some(err_arg_snippet) = err_arg.span.get_source_text(cx)
@@ -51,7 +51,7 @@ fn is_ok_wrapping(cx: &LateContext<'_>, map_expr: &Expr<'_>) -> bool {
             let body = cx.tcx.hir_body(closure.body);
             if let PatKind::Binding(_, param_id, ..) = body.params[0].pat.kind
                 && let ExprKind::Call(callee, [ok_arg]) = body.value.kind
-                && is_res_lang_ctor(cx, path_res(cx, callee), ResultOk)
+                && is_res_lang_ctor(cx, callee.res(cx), ResultOk)
             {
                 path_to_local_id(ok_arg, param_id)
             } else {

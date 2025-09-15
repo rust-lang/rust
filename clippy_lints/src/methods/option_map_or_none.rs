@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::{MaybeDef, MaybeQPath};
 use clippy_utils::source::snippet;
-use clippy_utils::{is_res_lang_ctor, path_def_id, path_res};
+use clippy_utils::{is_res_lang_ctor, path_def_id};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::LangItem::{OptionNone, OptionSome};
@@ -49,12 +49,12 @@ pub(super) fn check<'tcx>(
         return;
     }
 
-    if !is_res_lang_ctor(cx, path_res(cx, def_arg), OptionNone) {
+    if !is_res_lang_ctor(cx, def_arg.res(cx), OptionNone) {
         // nothing to lint!
         return;
     }
 
-    let f_arg_is_some = is_res_lang_ctor(cx, path_res(cx, map_arg), OptionSome);
+    let f_arg_is_some = is_res_lang_ctor(cx, map_arg.res(cx), OptionSome);
 
     if is_option {
         let self_snippet = snippet(cx, recv.span, "..");

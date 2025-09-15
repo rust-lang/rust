@@ -1,5 +1,5 @@
 use clippy_utils::consts::ConstEvalCtxt;
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::{MaybeDef, MaybeQPath};
 use clippy_utils::source::{SpanRangeExt as _, indent_of, reindent_multiline};
 use rustc_ast::{BindingMode, ByRef};
 use rustc_errors::Applicability;
@@ -12,7 +12,7 @@ use rustc_span::sym;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{expr_type_is_certain, implements_trait};
-use clippy_utils::{is_default_equivalent, is_lint_allowed, path_res, peel_blocks, span_contains_comment};
+use clippy_utils::{is_default_equivalent, is_lint_allowed, peel_blocks, span_contains_comment};
 
 use super::{MANUAL_UNWRAP_OR, MANUAL_UNWRAP_OR_DEFAULT};
 
@@ -115,7 +115,8 @@ fn handle(
             && is_default_equivalent(cx, peel_blocks(body_none))
         {
             // We now check if the condition is a None variant, in which case we need to specify the type
-            if path_res(cx, condition)
+            if condition
+                .res(cx)
                 .opt_def_id()
                 .is_some_and(|id| Some(cx.tcx.parent(id)) == cx.tcx.lang_items().option_none_variant())
             {

@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::source::SpanRangeExt;
+use clippy_utils::sym;
 use clippy_utils::usage::local_used_after_expr;
-use clippy_utils::{path_res, sym};
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
 use rustc_hir::def::Res;
@@ -17,7 +17,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, name
 
     if outer_ty.is_diag_item(cx, sym::Option) && outer_ty == typeck.expr_ty(recv) {
         if name == sym::as_deref_mut && recv.is_syntactic_place_expr() {
-            let Res::Local(binding_id) = path_res(cx, recv) else {
+            let Res::Local(binding_id) = *recv.basic_res() else {
                 return;
             };
 

@@ -471,17 +471,11 @@ pub fn path_to_local_with_projections(expr: &Expr<'_>) -> Option<HirId> {
     }
 }
 
-/// If `maybe_path` is a path node, resolves it, otherwise returns `Res::Err`
-pub fn path_res<'tcx>(cx: &LateContext<'_>, maybe_path: impl MaybeQPath<'tcx>) -> Res {
-    match maybe_path.opt_qpath() {
-        None => Res::Err,
-        Some((qpath, id)) => cx.qpath_res(qpath, id),
-    }
-}
-
 /// If `maybe_path` is a path node which resolves to an item, retrieves the item ID
 pub fn path_def_id<'tcx>(cx: &LateContext<'_>, maybe_path: impl MaybeQPath<'tcx>) -> Option<DefId> {
-    path_res(cx, maybe_path).opt_def_id()
+    maybe_path
+        .opt_qpath()
+        .and_then(|(qpath, id)| cx.qpath_res(qpath, id).opt_def_id())
 }
 
 /// Gets the `hir::TraitRef` of the trait the given method is implemented for.

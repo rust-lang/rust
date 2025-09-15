@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::{MaybeDef, MaybeQPath};
 use clippy_utils::source::snippet;
-use clippy_utils::{is_res_lang_ctor, path_res, peel_blocks};
+use clippy_utils::{is_res_lang_ctor, peel_blocks};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::LangItem::{OptionNone, OptionSome};
@@ -21,11 +21,11 @@ pub(super) fn check<'tcx>(
     // lint if the caller of `map_or_else()` is a `Result`
     if cx.typeck_results().expr_ty(recv).is_diag_item(cx, sym::Result)
         // We check that it is mapped as `Some`.
-        && is_res_lang_ctor(cx, path_res(cx, map_arg), OptionSome)
+        && is_res_lang_ctor(cx, map_arg.res(cx), OptionSome)
         && let hir::ExprKind::Closure(&hir::Closure { body, .. }) = def_arg.kind
         && let body = cx.tcx.hir_body(body)
         // And finally we check that we return a `None` in the "else case".
-        && is_res_lang_ctor(cx, path_res(cx, peel_blocks(body.value)), OptionNone)
+        && is_res_lang_ctor(cx, peel_blocks(body.value).res(cx), OptionNone)
     {
         let msg = "called `map_or_else(|_| None, Some)` on a `Result` value";
         let self_snippet = snippet(cx, recv.span, "..");

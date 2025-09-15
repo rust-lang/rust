@@ -1,7 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::res::MaybeQPath;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::option_arg_ty;
-use clippy_utils::{get_parent_expr, is_res_lang_ctor, path_res};
+use clippy_utils::{get_parent_expr, is_res_lang_ctor};
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::ResultErr;
 use rustc_hir::{Expr, ExprKind, LangItem, MatchSource, QPath};
@@ -25,7 +26,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, scrutine
         && let ExprKind::Path(ref match_fun_path) = match_fun.kind
         && matches!(match_fun_path, QPath::LangItem(LangItem::TryTraitBranch, ..))
         && let ExprKind::Call(err_fun, [err_arg]) = try_arg.kind
-        && is_res_lang_ctor(cx, path_res(cx, err_fun), ResultErr)
+        && is_res_lang_ctor(cx, err_fun.res(cx), ResultErr)
         && let Some(return_ty) = find_return_type(cx, &expr.kind)
     {
         let (prefix, suffix, err_ty) = if let Some(ty) = result_error_type(cx, return_ty) {
