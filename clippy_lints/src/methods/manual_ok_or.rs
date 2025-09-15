@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::{SpanRangeExt, indent_of, reindent_multiline};
-use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{is_res_lang_ctor, path_res, path_to_local_id};
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{ResultErr, ResultOk};
@@ -19,7 +19,11 @@ pub(super) fn check<'tcx>(
 ) {
     if let Some(method_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
         && let Some(impl_id) = cx.tcx.impl_of_assoc(method_id)
-        && is_type_diagnostic_item(cx, cx.tcx.type_of(impl_id).instantiate_identity(), sym::Option)
+        && cx
+            .tcx
+            .type_of(impl_id)
+            .instantiate_identity()
+            .is_diag_item(cx, sym::Option)
         && let ExprKind::Call(err_path, [err_arg]) = or_expr.kind
         && is_res_lang_ctor(cx, path_res(cx, err_path), ResultErr)
         && is_ok_wrapping(cx, map_expr)

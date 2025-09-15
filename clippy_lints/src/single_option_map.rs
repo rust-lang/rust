@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::res::MaybeDef;
 use clippy_utils::{path_res, peel_blocks};
 use rustc_hir::def::Res;
 use rustc_hir::def_id::LocalDefId;
@@ -55,7 +55,7 @@ impl<'tcx> LateLintPass<'tcx> for SingleOptionMap {
             if let ExprKind::MethodCall(method_name, callee, args, _span) = func_body.kind
                 && method_name.ident.name == sym::map
                 && let callee_type = cx.typeck_results().expr_ty(callee)
-                && is_type_diagnostic_item(cx, callee_type, sym::Option)
+                && callee_type.is_diag_item(cx, sym::Option)
                 && let ExprKind::Path(_path) = callee.kind
                 && let Res::Local(_id) = path_res(cx, callee)
                 && matches!(path_res(cx, callee), Res::Local(_id))

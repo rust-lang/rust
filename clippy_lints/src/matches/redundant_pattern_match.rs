@@ -1,8 +1,9 @@
 use super::REDUNDANT_PATTERN_MATCHING;
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::walk_span_to_context;
 use clippy_utils::sugg::{Sugg, make_unop};
-use clippy_utils::ty::{is_type_diagnostic_item, needs_ordered_drop};
+use clippy_utils::ty::needs_ordered_drop;
 use clippy_utils::visitors::{any_temporaries_need_ordered_drop, for_each_expr_without_closures};
 use clippy_utils::{higher, is_expn_of, is_trait_method, sym};
 use rustc_ast::ast::LitKind;
@@ -460,7 +461,7 @@ fn is_pat_variant(cx: &LateContext<'_>, pat: &Pat<'_>, path: &QPath<'_>, expecte
         Item::Diag(expected_ty, expected_variant) => {
             let ty = cx.typeck_results().pat_ty(pat);
 
-            if is_type_diagnostic_item(cx, ty, expected_ty) {
+            if ty.is_diag_item(cx, expected_ty) {
                 let variant = ty
                     .ty_adt_def()
                     .expect("struct pattern type is not an ADT")

@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::{snippet_indent, snippet_with_context};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::ty::is_type_diagnostic_item;
 
 use clippy_utils::{can_mut_borrow_both, eq_expr_value, is_in_const_context, path_to_local, std_or_core};
 use itertools::Itertools;
@@ -110,8 +110,8 @@ fn generate_swap_warning<'tcx>(
 
             if matches!(ty.kind(), ty::Slice(_))
                 || matches!(ty.kind(), ty::Array(_, _))
-                || is_type_diagnostic_item(cx, ty, sym::Vec)
-                || is_type_diagnostic_item(cx, ty, sym::VecDeque)
+                || ty.is_diag_item(cx, sym::Vec)
+                || ty.is_diag_item(cx, sym::VecDeque)
             {
                 let slice = Sugg::hir_with_applicability(cx, lhs1, "<slice>", &mut applicability);
 

@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::res::MaybeDef;
 use clippy_utils::{is_res_lang_ctor, path_res, peel_hir_expr_refs, peel_ref_operators, sugg};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, LangItem};
@@ -47,8 +47,12 @@ impl<'tcx> LateLintPass<'tcx> for PartialeqToNone {
         }
 
         // If the expression is of type `Option`
-        let is_ty_option =
-            |expr: &Expr<'_>| is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(expr).peel_refs(), sym::Option);
+        let is_ty_option = |expr: &Expr<'_>| {
+            cx.typeck_results()
+                .expr_ty(expr)
+                .peel_refs()
+                .is_diag_item(cx, sym::Option)
+        };
 
         // If the expression is a literal `Option::None`
         let is_none_ctor = |expr: &Expr<'_>| {

@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet;
-use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{path_to_local_id, peel_blocks};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -23,7 +23,7 @@ pub(super) fn check(
     let same_mutability = |m| (is_mut && m == &hir::Mutability::Mut) || (!is_mut && m == &hir::Mutability::Not);
 
     let option_ty = cx.typeck_results().expr_ty(as_ref_recv);
-    if !is_type_diagnostic_item(cx, option_ty, sym::Option) {
+    if !option_ty.is_diag_item(cx, sym::Option) {
         return;
     }
 

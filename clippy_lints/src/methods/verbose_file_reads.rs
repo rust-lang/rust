@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_trait_method;
-use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::res::MaybeDef;
 use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::LateContext;
 use rustc_span::sym;
@@ -21,7 +21,11 @@ pub(super) fn check<'tcx>(
 ) {
     if is_trait_method(cx, expr, sym::IoRead)
         && matches!(recv.kind, ExprKind::Path(QPath::Resolved(None, _)))
-        && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty_adjusted(recv).peel_refs(), sym::File)
+        && cx
+            .typeck_results()
+            .expr_ty_adjusted(recv)
+            .peel_refs()
+            .is_diag_item(cx, sym::File)
     {
         #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
         span_lint_and_then(cx, VERBOSE_FILE_READS, expr.span, msg, |diag| {

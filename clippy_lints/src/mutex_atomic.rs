@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::res::MaybeDef;
 use rustc_hir::Expr;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, IntTy, Ty, UintTy};
@@ -92,7 +92,7 @@ impl<'tcx> LateLintPass<'tcx> for Mutex {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         let ty = cx.typeck_results().expr_ty(expr);
         if let ty::Adt(_, subst) = ty.kind()
-            && is_type_diagnostic_item(cx, ty, sym::Mutex)
+            && ty.is_diag_item(cx, sym::Mutex)
         {
             let mutex_param = subst.type_at(0);
             if let Some(atomic_name) = get_atomic_name(mutex_param) {

@@ -26,7 +26,7 @@ declare_tool_lint! {
     ///
     /// Use instead:
     /// ```rust,ignore
-    /// is_type_diagnostic_item(cx, ty, sym::Vec)
+    /// ty.is_diag_item(cx, sym::Vec)
     /// ```
     pub clippy::UNNECESSARY_DEF_PATH,
     Warn,

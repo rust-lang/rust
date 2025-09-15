@@ -1,7 +1,7 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::res::MaybeDef;
 use clippy_utils::{is_diag_item_method, is_trait_method, path_to_local_id, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{Body, Closure, Expr, ExprKind};
@@ -76,7 +76,10 @@ impl LateLintPass<'_> for LinesFilterMapOk {
             && is_trait_method(cx, expr, sym::Iterator)
             && let fm_method_name = fm_method.ident.name
             && matches!(fm_method_name, sym::filter_map | sym::flat_map | sym::flatten)
-            && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty_adjusted(fm_receiver), sym::IoLines)
+            && cx
+                .typeck_results()
+                .expr_ty_adjusted(fm_receiver)
+                .is_diag_item(cx, sym::IoLines)
             && should_lint(cx, fm_args, fm_method_name)
             && self.msrv.meets(cx, msrvs::MAP_WHILE)
         {

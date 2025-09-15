@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{is_trait_method, span_contains_comment};
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
@@ -69,7 +69,7 @@ fn is_map_to_option(cx: &LateContext<'_>, map_arg: &Expr<'_>) -> bool {
                 _ => map_closure_ty.fn_sig(cx.tcx),
             };
             let map_closure_return_ty = cx.tcx.instantiate_bound_regions_with_erased(map_closure_sig.output());
-            is_type_diagnostic_item(cx, map_closure_return_ty, sym::Option)
+            map_closure_return_ty.is_diag_item(cx, sym::Option)
         },
         _ => false,
     }

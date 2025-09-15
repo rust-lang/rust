@@ -2,8 +2,8 @@ use crate::question_mark::{QUESTION_MARK, QuestionMark};
 use clippy_config::types::MatchLintBehaviour;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::IfLetOrMatch;
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet_with_context;
-use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{
     MaybePath, is_lint_allowed, is_never_expr, is_wild, msrvs, pat_and_expr_can_be_question_mark, path_res, peel_blocks,
 };
@@ -384,7 +384,7 @@ fn pat_allowed_for_else(cx: &LateContext<'_>, pat: &'_ Pat<'_>, check_types: boo
         }
         let ty = typeck_results.pat_ty(pat);
         // Option and Result are allowed, everything else isn't.
-        if !(is_type_diagnostic_item(cx, ty, sym::Option) || is_type_diagnostic_item(cx, ty, sym::Result)) {
+        if !(ty.is_diag_item(cx, sym::Option) || ty.is_diag_item(cx, sym::Result)) {
             has_disallowed = true;
         }
     });

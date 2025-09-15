@@ -2,10 +2,9 @@ use super::implicit_clone::is_clone_like;
 use super::unnecessary_iter_cloned::{self, is_into_iter};
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::{SpanRangeExt, snippet};
-use clippy_utils::ty::{
-    get_iterator_item_ty, implements_trait, is_copy, is_type_diagnostic_item, is_type_lang_item, peel_and_count_ty_refs,
-};
+use clippy_utils::ty::{get_iterator_item_ty, implements_trait, is_copy, is_type_lang_item, peel_and_count_ty_refs};
 use clippy_utils::visitors::find_all_ret_expressions;
 use clippy_utils::{
     fn_def_id, get_parent_expr, is_diag_item_method, is_diag_trait_item, is_expr_temporary_value, return_ty, sym,
@@ -220,7 +219,7 @@ fn check_into_iter_call_arg(
         && let Some(item_ty) = get_iterator_item_ty(cx, parent_ty)
         && let Some(receiver_snippet) = receiver.span.get_source_text(cx)
         // If the receiver is a `Cow`, we can't remove the `into_owned` generally, see https://github.com/rust-lang/rust-clippy/issues/13624.
-        && !is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(receiver), sym::Cow)
+        && !cx.typeck_results().expr_ty(receiver).is_diag_item(cx, sym::Cow)
         // Calling `iter()` on a temporary object can lead to false positives. #14242
         && !is_expr_temporary_value(cx, receiver)
     {
@@ -678,7 +677,7 @@ fn is_str_and_string(cx: &LateContext<'_>, arg_ty: Ty<'_>, original_arg_ty: Ty<'
 
 fn is_slice_and_vec(cx: &LateContext<'_>, arg_ty: Ty<'_>, original_arg_ty: Ty<'_>) -> bool {
     (original_arg_ty.is_slice() || original_arg_ty.is_array() || original_arg_ty.is_array_slice())
-        && is_type_diagnostic_item(cx, arg_ty, sym::Vec)
+        && arg_ty.is_diag_item(cx, sym::Vec)
 }
 
 // This function will check the following:

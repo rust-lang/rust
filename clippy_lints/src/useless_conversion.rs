@@ -1,7 +1,8 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::{snippet, snippet_with_context};
 use clippy_utils::sugg::{DiagExt as _, Sugg};
-use clippy_utils::ty::{get_type_diagnostic_name, is_copy, is_type_diagnostic_item, same_type_modulo_regions};
+use clippy_utils::ty::{get_type_diagnostic_name, is_copy, same_type_modulo_regions};
 use clippy_utils::{
     get_parent_expr, is_inherent_method_call, is_trait_item, is_trait_method, is_ty_alias, path_to_local, sym,
 };
@@ -368,7 +369,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                     && name.ident.name == sym::try_into
                     && let a = cx.typeck_results().expr_ty(e)
                     && let b = cx.typeck_results().expr_ty(recv)
-                    && is_type_diagnostic_item(cx, a, sym::Result)
+                    && a.is_diag_item(cx, sym::Result)
                     && let ty::Adt(_, args) = a.kind()
                     && let Some(a_type) = args.types().next()
                     && same_type_modulo_regions(a_type, b)
@@ -393,7 +394,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                     let a = cx.typeck_results().expr_ty(e);
                     let b = cx.typeck_results().expr_ty(arg);
                     if name == sym::try_from_fn
-                        && is_type_diagnostic_item(cx, a, sym::Result)
+                        && a.is_diag_item(cx, sym::Result)
                         && let ty::Adt(_, args) = a.kind()
                         && let Some(a_type) = args.types().next()
                         && same_type_modulo_regions(a_type, b)

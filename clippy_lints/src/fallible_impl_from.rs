@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::{is_panic, root_macro_call_first_node};
 use clippy_utils::method_chain_args;
-use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::res::MaybeDef;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
@@ -84,9 +84,7 @@ fn lint_impl_body(cx: &LateContext<'_>, item_def_id: hir::OwnerId, impl_span: Sp
             // check for `unwrap`
             if let Some(arglists) = method_chain_args(expr, &[sym::unwrap]) {
                 let receiver_ty = self.typeck_results.expr_ty(arglists[0].0).peel_refs();
-                if is_type_diagnostic_item(self.lcx, receiver_ty, sym::Option)
-                    || is_type_diagnostic_item(self.lcx, receiver_ty, sym::Result)
-                {
+                if receiver_ty.is_diag_item(self.lcx, sym::Option) || receiver_ty.is_diag_item(self.lcx, sym::Result) {
                     self.result.push(expr.span);
                 }
             }

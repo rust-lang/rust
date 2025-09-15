@@ -1,7 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::ty::{is_copy, is_type_diagnostic_item, should_call_clone_as_function};
+use clippy_utils::ty::{is_copy, should_call_clone_as_function};
 use clippy_utils::{is_diag_trait_item, peel_blocks};
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
@@ -25,7 +26,7 @@ fn should_run_lint(cx: &LateContext<'_>, e: &hir::Expr<'_>, method_id: DefId) ->
     // We check if it's an `Option` or a `Result`.
     if let Some(id) = cx.tcx.impl_of_assoc(method_id) {
         let identity = cx.tcx.type_of(id).instantiate_identity();
-        if !is_type_diagnostic_item(cx, identity, sym::Option) && !is_type_diagnostic_item(cx, identity, sym::Result) {
+        if !identity.is_diag_item(cx, sym::Option) && !identity.is_diag_item(cx, sym::Result) {
             return false;
         }
     } else {

@@ -4,10 +4,10 @@ use clippy_config::Conf;
 use clippy_config::types::MatchLintBehaviour;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::MaybeQPath;
+use clippy_utils::res::{MaybeDef, MaybeQPath};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
-use clippy_utils::ty::{implements_trait, is_copy, is_type_diagnostic_item};
+use clippy_utils::ty::{implements_trait, is_copy};
 use clippy_utils::usage::local_used_after_expr;
 use clippy_utils::{
     eq_expr_value, fn_def_id_with_node_args, higher, is_else_clause, is_in_const_context, is_lint_allowed,
@@ -206,7 +206,7 @@ fn is_early_return(smbl: Symbol, cx: &LateContext<'_>, if_block: &IfBlockType<'_
         IfBlockType::IfIs(caller, caller_ty, call_sym, if_then) => {
             // If the block could be identified as `if x.is_none()/is_err()`,
             // we then only need to check the if_then return to see if it is none/err.
-            is_type_diagnostic_item(cx, caller_ty, smbl)
+            caller_ty.is_diag_item(cx, smbl)
                 && expr_return_none_or_err(smbl, cx, if_then, caller, None)
                 && match smbl {
                     sym::Option => call_sym == sym::is_none,
@@ -215,7 +215,7 @@ fn is_early_return(smbl: Symbol, cx: &LateContext<'_>, if_block: &IfBlockType<'_
                 }
         },
         IfBlockType::IfLet(res, let_expr_ty, let_pat_sym, let_expr, if_then, if_else) => {
-            is_type_diagnostic_item(cx, let_expr_ty, smbl)
+            let_expr_ty.is_diag_item(cx, smbl)
                 && match smbl {
                     sym::Option => {
                         // We only need to check `if let Some(x) = option` not `if let None = option`,

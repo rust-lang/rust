@@ -63,7 +63,7 @@ impl<'tcx> LateLintPass<'tcx> for ToDigitIsSome {
                     }
                 },
                 hir::ExprKind::Call(to_digits_call, [char_arg, radix_arg]) => {
-                    if to_digits_call.ty_rel_def(cx).is_diag_item(cx, sym::char_to_digit) {
+                    if to_digits_call.res(cx).is_diag_item(cx, sym::char_to_digit) {
                         Some((false, char_arg, radix_arg))
                     } else {
                         None

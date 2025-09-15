@@ -1,8 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::{SpanRangeExt, snippet};
-use clippy_utils::ty::{
-    implements_trait, implements_trait_with_env_from_iter, is_copy, is_type_diagnostic_item, is_type_lang_item,
-};
+use clippy_utils::ty::{implements_trait, implements_trait_with_env_from_iter, is_copy, is_type_lang_item};
 use clippy_utils::visitors::{Descend, for_each_expr_without_closures};
 use clippy_utils::{is_self, path_to_local_id, peel_hir_ty_options, strip_pat_refs, sym};
 use rustc_abi::ExternAbi;
@@ -219,7 +218,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                         diag.span_help(span, "or consider marking this type as `Copy`");
                     }
 
-                    if is_type_diagnostic_item(cx, ty, sym::Vec)
+                    if ty.is_diag_item(cx, sym::Vec)
                         && let Some(clone_spans) = get_spans(cx, body, idx, &[(sym::clone, ".to_owned()")])
                         && let TyKind::Path(QPath::Resolved(_, path)) = input.kind
                         && let Some(elem_ty) = path

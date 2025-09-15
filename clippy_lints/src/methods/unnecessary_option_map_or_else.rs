@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{expr_or_init, find_binding_init, peel_blocks};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
@@ -75,7 +75,7 @@ fn handle_fn_body(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, def_ar
 /// lint use of `_.map_or_else(|err| err, |n| n)` for `Option`s.
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, def_arg: &Expr<'_>, map_arg: &Expr<'_>) {
     // lint if the caller of `map_or_else()` is an `Option`
-    if !is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::Option) {
+    if !cx.typeck_results().expr_ty(recv).is_diag_item(cx, sym::Option) {
         return;
     }
     match map_arg.kind {

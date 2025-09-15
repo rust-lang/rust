@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::macros::{is_panic, matching_root_macro_call, root_macro_call};
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::{indent_of, reindent_multiline, snippet};
-use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{SpanlessEq, higher, is_trait_method, path_to_local_id, peel_blocks, sym};
 use hir::{Body, HirId, MatchSource, Pat};
 use rustc_errors::Applicability;
@@ -267,7 +267,7 @@ fn is_filter_some_map_unwrap(
     map_arg: &Expr<'_>,
 ) -> bool {
     let iterator = is_trait_method(cx, expr, sym::Iterator);
-    let option = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(filter_recv), sym::Option);
+    let option = cx.typeck_results().expr_ty(filter_recv).is_diag_item(cx, sym::Option);
 
     (iterator || option) && is_option_filter_map(cx, filter_arg, map_arg)
 }

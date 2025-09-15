@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint;
+use clippy_utils::res::MaybeDef;
 use clippy_utils::sym;
-use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::layout::LayoutOf;
@@ -154,7 +154,7 @@ impl<'tcx> LateLintPass<'tcx> for VolatileComposites {
                     // Raw pointers
                     ty::RawPtr(innerty, _) => report_volatile_safe(cx, expr, *innerty),
                     // std::ptr::NonNull
-                    ty::Adt(_, args) if is_type_diagnostic_item(cx, self_ty, sym::NonNull) => {
+                    ty::Adt(_, args) if self_ty.is_diag_item(cx, sym::NonNull) => {
                         report_volatile_safe(cx, expr, args.type_at(0));
                     },
                     _ => (),

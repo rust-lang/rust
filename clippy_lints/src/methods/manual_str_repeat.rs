@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::ty::{is_type_diagnostic_item, is_type_lang_item};
+use clippy_utils::ty::is_type_lang_item;
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, LangItem};
@@ -37,7 +37,7 @@ fn parse_repeat_arg(cx: &LateContext<'_>, e: &Expr<'_>) -> Option<RepeatKind> {
         let ty = cx.typeck_results().expr_ty(e);
         if is_type_lang_item(cx, ty, LangItem::String)
             || (is_type_lang_item(cx, ty, LangItem::OwnedBox) && get_ty_param(ty).is_some_and(Ty::is_str))
-            || (is_type_diagnostic_item(cx, ty, sym::Cow) && get_ty_param(ty).is_some_and(Ty::is_str))
+            || (ty.is_diag_item(cx, sym::Cow) && get_ty_param(ty).is_some_and(Ty::is_str))
         {
             Some(RepeatKind::String)
         } else {

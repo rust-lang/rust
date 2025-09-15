@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::is_trait_method;
+use clippy_utils::res::MaybeDef;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
@@ -7,7 +8,6 @@ use rustc_middle::ty;
 use rustc_span::{Span, sym};
 
 use super::FLAT_MAP_OPTION;
-use clippy_utils::ty::is_type_diagnostic_item;
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, arg: &'tcx hir::Expr<'_>, span: Span) {
     if !is_trait_method(cx, expr, sym::Iterator) {
@@ -19,7 +19,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, arg
         _ if arg_ty.is_fn() => arg_ty.fn_sig(cx.tcx),
         _ => return,
     };
-    if !is_type_diagnostic_item(cx, sig.output().skip_binder(), sym::Option) {
+    if !sig.output().skip_binder().is_diag_item(cx, sym::Option) {
         return;
     }
     span_lint_and_sugg(

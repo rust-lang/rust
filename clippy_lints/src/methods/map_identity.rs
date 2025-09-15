@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::ty::{is_copy, is_type_diagnostic_item};
+use clippy_utils::ty::is_copy;
 use clippy_utils::{is_expr_untyped_identity_function, is_mutable, is_trait_method, path_to_local_with_projections};
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, ExprKind, Node, PatKind};
@@ -22,8 +23,8 @@ pub(super) fn check(
     let caller_ty = cx.typeck_results().expr_ty(caller);
 
     if (is_trait_method(cx, expr, sym::Iterator)
-        || is_type_diagnostic_item(cx, caller_ty, sym::Result)
-        || is_type_diagnostic_item(cx, caller_ty, sym::Option))
+        || caller_ty.is_diag_item(cx, sym::Result)
+        || caller_ty.is_diag_item(cx, sym::Option))
         && is_expr_untyped_identity_function(cx, map_arg)
         && let Some(call_span) = expr.span.trim_start(caller.span)
     {
