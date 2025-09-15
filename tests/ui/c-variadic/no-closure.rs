@@ -8,8 +8,7 @@ const F: extern "C" fn(...) = |_: ...| {};
 
 fn foo() {
     let f = |...| {};
-    //~^ ERROR: `..` patterns are not allowed here
-    //~| ERROR: unexpected `...`
+    //~^ ERROR: unexpected `...`
 
     let f = |_: ...| {};
     //~^ ERROR C-variadic type `...` may not be nested inside another type
