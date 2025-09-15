@@ -26,7 +26,7 @@
 //! things. (That system should probably be refactored.)
 
 use rustc_type_ir::{
-    FnSig, GenericArgKind, TypingMode, Variance,
+    FnSig, GenericArgKind, TypeFoldable, TypingMode, Variance,
     error::ExpectedFound,
     inherent::{IntoKind, Span as _},
     relate::{Relate, TypeRelation, solver_relating::RelateExt},
@@ -36,6 +36,8 @@ use crate::next_solver::{
     AliasTerm, AliasTy, Binder, Const, DbInterner, GenericArg, Goal, ParamEnv,
     PolyExistentialProjection, PolyExistentialTraitRef, PolyFnSig, Predicate, Region, Span, Term,
     TraitRef, Ty,
+    fulfill::{FulfillmentCtxt, NextSolverError},
+    infer::relate::lattice::{LatticeOp, LatticeOpKind},
 };
 
 use super::{
@@ -208,6 +210,34 @@ impl<'a, 'db> At<'a, 'db> {
             // "modulo variance" basically.
             Variance::Bivariant => panic!("Bivariant given to `relate()`"),
         }
+    }
+
+    /// Deeply normalizes `value`, replacing all aliases which can by normalized in
+    /// the current environment. This errors in case normalization fails or is ambiguous.
+    pub fn deeply_normalize<T>(self, value: T) -> Result<T, Vec<NextSolverError<'db>>>
+    where
+        T: TypeFoldable<DbInterner<'db>>,
+    {
+        crate::next_solver::normalize::deeply_normalize(self, value)
+    }
+
+    /// Computes the least-upper-bound, or mutual supertype, of two
+    /// values. The order of the arguments doesn't matter, but since
+    /// this can result in an error (e.g., if asked to compute LUB of
+    /// u32 and i32), it is meaningful to call one of them the
+    /// "expected type".
+    pub fn lub<T>(self, expected: T, actual: T) -> InferResult<'db, T>
+    where
+        T: ToTrace<'db>,
+    {
+        let mut op = LatticeOp::new(
+            self.infcx,
+            ToTrace::to_trace(self.cause, expected, actual),
+            self.param_env,
+            LatticeOpKind::Lub,
+        );
+        let value = op.relate(expected, actual)?;
+        Ok(InferOk { value, obligations: op.into_obligations() })
     }
 
     fn goals_to_obligations(&self, goals: Vec<Goal<'db, Predicate<'db>>>) -> InferOk<'db, ()> {

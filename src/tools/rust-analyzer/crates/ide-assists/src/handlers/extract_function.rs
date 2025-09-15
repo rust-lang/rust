@@ -5043,7 +5043,7 @@ fn main() {
     fun_name(bar);
 }
 
-fn $0fun_name(bar: &'static str) {
+fn $0fun_name(bar: &str) {
     m!(bar);
 }
 "#,

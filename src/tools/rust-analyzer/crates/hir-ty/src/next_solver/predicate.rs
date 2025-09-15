@@ -262,28 +262,6 @@ impl<'db> Predicate<'db> {
 
         Some(Predicate::new(DbInterner::conjure(), kind))
     }
-
-    pub fn as_trait_clause(self) -> Option<PolyTraitPredicate<'db>> {
-        let predicate = self.kind();
-        match predicate.skip_binder() {
-            PredicateKind::Clause(ClauseKind::Trait(t)) => Some(predicate.rebind(t)),
-            PredicateKind::Clause(ClauseKind::Projection(..))
-            | PredicateKind::Clause(ClauseKind::HostEffect(..))
-            | PredicateKind::Clause(ClauseKind::ConstArgHasType(..))
-            | PredicateKind::Clause(ClauseKind::UnstableFeature(_))
-            | PredicateKind::NormalizesTo(..)
-            | PredicateKind::AliasRelate(..)
-            | PredicateKind::Subtype(..)
-            | PredicateKind::Coerce(..)
-            | PredicateKind::Clause(ClauseKind::RegionOutlives(..))
-            | PredicateKind::Clause(ClauseKind::WellFormed(..))
-            | PredicateKind::DynCompatible(..)
-            | PredicateKind::Clause(ClauseKind::TypeOutlives(..))
-            | PredicateKind::Clause(ClauseKind::ConstEvaluatable(..))
-            | PredicateKind::ConstEquate(..)
-            | PredicateKind::Ambiguous => None,
-        }
-    }
 }
 
 // FIXME: should make a "header" in interned_vec
@@ -693,6 +671,12 @@ impl<'db> UpcastFrom<DbInterner<'db>, ty::OutlivesPredicate<DbInterner<'db>, Reg
     }
 }
 
+impl<'db> UpcastFrom<DbInterner<'db>, PolyRegionOutlivesPredicate<'db>> for Predicate<'db> {
+    fn upcast_from(from: PolyRegionOutlivesPredicate<'db>, tcx: DbInterner<'db>) -> Self {
+        from.map_bound(|p| PredicateKind::Clause(ClauseKind::RegionOutlives(p))).upcast(tcx)
+    }
+}
+
 impl<'db> rustc_type_ir::inherent::Predicate<DbInterner<'db>> for Predicate<'db> {
     fn as_clause(self) -> Option<<DbInterner<'db> as rustc_type_ir::Interner>::Clause> {
         match self.kind().skip_binder() {
@@ -730,6 +714,30 @@ impl<'db> rustc_type_ir::inherent::Predicate<DbInterner<'db>> for Predicate<'db>
 }
 
 impl<'db> Predicate<'db> {
+    pub fn as_trait_clause(self) -> Option<PolyTraitPredicate<'db>> {
+        let predicate = self.kind();
+        match predicate.skip_binder() {
+            PredicateKind::Clause(ClauseKind::Trait(t)) => Some(predicate.rebind(t)),
+            _ => None,
+        }
+    }
+
+    pub fn as_projection_clause(self) -> Option<PolyProjectionPredicate<'db>> {
+        let predicate = self.kind();
+        match predicate.skip_binder() {
+            PredicateKind::Clause(ClauseKind::Projection(t)) => Some(predicate.rebind(t)),
+            _ => None,
+        }
+    }
+
+    /// Matches a `PredicateKind::Clause` and turns it into a `Clause`, otherwise returns `None`.
+    pub fn as_clause(self) -> Option<Clause<'db>> {
+        match self.kind().skip_binder() {
+            PredicateKind::Clause(..) => Some(self.expect_clause()),
+            _ => None,
+        }
+    }
+
     /// Assert that the predicate is a clause.
     pub fn expect_clause(self) -> Clause<'db> {
         match self.kind().skip_binder() {

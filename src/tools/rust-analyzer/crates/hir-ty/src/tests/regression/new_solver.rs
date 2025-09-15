@@ -307,3 +307,114 @@ where
         "#]],
     )
 }
+
+#[test]
+fn fn_coercion() {
+    check_no_mismatches(
+        r#"
+fn foo() {
+    let _is_suffix_start: fn(&(usize, char)) -> bool = match true {
+        true => |(_, c)| *c == ' ',
+        _ => |(_, c)| *c == 'v',
+    };
+}
+    "#,
+    );
+}
+
+#[test]
+fn coercion_with_errors() {
+    check_no_mismatches(
+        r#"
+//- minicore: unsize, coerce_unsized
+fn foo(_v: i32) -> [u8; _] { loop {} }
+fn bar(_v: &[u8]) {}
+
+fn main() {
+    bar(&foo());
+}
+    "#,
+    );
+}
+
+#[test]
+fn another_20654_case() {
+    check_no_mismatches(
+        r#"
+//- minicore: sized, unsize, coerce_unsized, dispatch_from_dyn, fn
+struct Region<'db>(&'db ());
+
+trait TypeFoldable<I: Interner> {}
+
+trait Interner {
+    type Region;
+    type GenericArg;
+}
+
+struct DbInterner<'db>(&'db ());
+impl<'db> Interner for DbInterner<'db> {
+    type Region = Region<'db>;
+    type GenericArg = GenericArg<'db>;
+}
+
+trait GenericArgExt<I: Interner<GenericArg = Self>> {
+    fn expect_region(&self) -> I::Region {
+        loop {}
+    }
+}
+impl<'db> GenericArgExt<DbInterner<'db>> for GenericArg<'db> {}
+
+enum GenericArg<'db> {
+    Region(Region<'db>),
+}
+
+fn foo<'db, T: TypeFoldable<DbInterner<'db>>>(arg: GenericArg<'db>) {
+    let regions = &mut || arg.expect_region();
+    let f: &'_ mut (dyn FnMut() -> Region<'db> + '_) = regions;
+}
+    "#,
+    );
+}
+
+#[test]
+fn trait_solving_with_error() {
+    check_infer(
+        r#"
+//- minicore: size_of
+struct Vec<T>(T);
+
+trait Foo {
+    type Item;
+    fn to_vec(self) -> Vec<Self::Item> {
+        loop {}
+    }
+}
+
+impl<'a, T, const N: usize> Foo for &'a [T; N] {
+    type Item = T;
+}
+
+fn to_bytes() -> [u8; _] {
+    loop {}
+}
+
+fn foo() {
+    let _x = to_bytes().to_vec();
+}
+    "#,
+        expect![[r#"
+            60..64 'self': Self
+            85..108 '{     ...     }': Vec<<Self as Foo>::Item>
+            95..102 'loop {}': !
+            100..102 '{}': ()
+            208..223 '{     loop {} }': [u8; _]
+            214..221 'loop {}': !
+            219..221 '{}': ()
+            234..271 '{     ...c(); }': ()
+            244..246 '_x': {unknown}
+            249..257 'to_bytes': fn to_bytes() -> [u8; _]
+            249..259 'to_bytes()': [u8; _]
+            249..268 'to_byt..._vec()': Vec<<[u8; _] as Foo>::Item>
+        "#]],
+    );
+}

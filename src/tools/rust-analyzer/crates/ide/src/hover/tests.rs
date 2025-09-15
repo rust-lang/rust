@@ -7195,7 +7195,7 @@ fn foo() {
 "#,
         expect![[r#"
             ```rust
-            &'static str
+            &str
             ```"#]],
     );
 }
@@ -8459,7 +8459,7 @@ format_args!("{aaaaa$0}");
             *aaaaa*
 
             ```rust
-            let aaaaa: &'static str
+            let aaaaa: &str
             ```
         "#]],
     );
@@ -8479,7 +8479,7 @@ format_args!("{$0aaaaa}");
             *aaaaa*
 
             ```rust
-            let aaaaa: &'static str
+            let aaaaa: &str
             ```
         "#]],
     );
@@ -8499,7 +8499,7 @@ format_args!(r"{$0aaaaa}");
             *aaaaa*
 
             ```rust
-            let aaaaa: &'static str
+            let aaaaa: &str
             ```
         "#]],
     );
@@ -8524,7 +8524,7 @@ foo!(r"{$0aaaaa}");
             *aaaaa*
 
             ```rust
-            let aaaaa: &'static str
+            let aaaaa: &str
             ```
         "#]],
     );
@@ -10168,7 +10168,7 @@ fn baz() {
 
             ---
 
-            `U` = `i32`, `T` = `&'static str`
+            `U` = `i32`, `T` = `&str`
         "#]],
     );
 }
@@ -10261,7 +10261,7 @@ fn bar() {
 
             ---
 
-            `T` = `i8`, `U` = `&'static str`
+            `T` = `i8`, `U` = `&str`
         "#]],
     );
 }

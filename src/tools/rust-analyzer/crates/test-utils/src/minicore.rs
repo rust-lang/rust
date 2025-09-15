@@ -169,6 +169,17 @@ pub mod marker {
     // region:phantom_data
     #[lang = "phantom_data"]
     pub struct PhantomData<T: PointeeSized>;
+
+    // region:clone
+    impl<T: PointeeSized> Clone for PhantomData<T> {
+        fn clone(&self) -> Self { Self }
+    }
+    // endregion:clone
+
+    // region:copy
+    impl<T: PointeeSized> Copy for PhantomData<T> {}
+    // endregion:copy
+
     // endregion:phantom_data
 
     // region:discriminant
@@ -1147,7 +1158,7 @@ pub mod fmt {
 
     pub struct Error;
     pub type Result = crate::result::Result<(), Error>;
-    pub struct Formatter<'a>;
+    pub struct Formatter<'a>(&'a ());
     pub struct DebugTuple;
     pub struct DebugStruct;
     impl Formatter<'_> {
@@ -1620,6 +1631,12 @@ pub mod iter {
                 {
                     loop {}
                 }
+                fn collect<B: FromIterator<Self::Item>>(self) -> B
+                where
+                    Self: Sized,
+                {
+                    loop {}
+                }
                 // endregion:iterators
             }
             impl<I: Iterator + PointeeSized> Iterator for &mut I {
@@ -1689,10 +1706,13 @@ pub mod iter {
                     loop {}
                 }
             }
+            pub trait FromIterator<A>: Sized {
+                fn from_iter<T: IntoIterator<Item = A>>(iter: T) -> Self;
+            }
         }
-        pub use self::collect::IntoIterator;
+        pub use self::collect::{IntoIterator, FromIterator};
     }
-    pub use self::traits::{IntoIterator, Iterator};
+    pub use self::traits::{IntoIterator, FromIterator, Iterator};
 }
 // endregion:iterator
 
@@ -1988,7 +2008,7 @@ pub mod prelude {
             convert::AsRef,                          // :as_ref
             convert::{From, Into, TryFrom, TryInto}, // :from
             default::Default,                        // :default
-            iter::{IntoIterator, Iterator},          // :iterator
+            iter::{IntoIterator, Iterator, FromIterator}, // :iterator
             macros::builtin::{derive, derive_const}, // :derive
             marker::Copy,                            // :copy
             marker::Send,                            // :send

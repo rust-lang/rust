@@ -13,6 +13,7 @@
 //! to certain types. To record this, we use the union-find implementation from
 //! the `ena` crate, which is extracted from rustc.
 
+mod autoderef;
 pub(crate) mod cast;
 pub(crate) mod closure;
 mod coerce;
@@ -25,6 +26,7 @@ pub(crate) mod unify;
 
 use std::{cell::OnceCell, convert::identity, iter, ops::Index};
 
+use base_db::Crate;
 use chalk_ir::{
     DebruijnIndex, Mutability, Safety, Scalar, TyKind, TypeFlags, Variance,
     cast::Cast,
@@ -54,27 +56,30 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use stdx::{always, never};
 use triomphe::Arc;
 
-use crate::next_solver::DbInterner;
-use crate::next_solver::mapping::NextSolverToChalk;
+use crate::db::InternedClosureId;
 use crate::{
     AliasEq, AliasTy, Binders, ClosureId, Const, DomainGoal, GenericArg, ImplTraitId, ImplTraitIdx,
     IncorrectGenericsLenKind, Interner, Lifetime, OpaqueTyId, ParamLoweringMode,
-    PathLoweringDiagnostic, ProjectionTy, Substitution, TraitEnvironment, Ty, TyBuilder, TyExt,
+    PathLoweringDiagnostic, ProjectionTy, Substitution, TargetFeatures, TraitEnvironment, Ty,
+    TyBuilder, TyExt,
     db::HirDatabase,
     fold_tys,
     generics::Generics,
     infer::{
-        coerce::CoerceMany,
+        coerce::{CoerceMany, DynamicCoerceMany},
         diagnostics::{Diagnostics, InferenceTyLoweringContext as TyLoweringContext},
         expr::ExprIsRead,
         unify::InferenceTable,
     },
     lower::{ImplTraitLoweringMode, LifetimeElisionKind, diagnostics::TyLoweringDiagnostic},
     mir::MirSpan,
-    next_solver::{self, mapping::ChalkToNextSolver},
+    next_solver::{
+        self, DbInterner,
+        mapping::{ChalkToNextSolver, NextSolverToChalk},
+    },
     static_lifetime, to_assoc_type_id,
     traits::FnTrait,
-    utils::UnevaluatedConstEvaluatorFolder,
+    utils::{TargetFeatureIsSafeInTarget, UnevaluatedConstEvaluatorFolder},
 };
 
 // This lint has a false positive here. See the link below for details.
@@ -86,7 +91,7 @@ pub use coerce::could_coerce;
 pub use unify::{could_unify, could_unify_deeply};
 
 use cast::{CastCheck, CastError};
-pub(crate) use closure::{CaptureKind, CapturedItem, CapturedItemWithoutTy};
+pub(crate) use closure::analysis::{CaptureKind, CapturedItem, CapturedItemWithoutTy};
 
 /// The entry point of type inference.
 pub(crate) fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<InferenceResult> {
@@ -159,7 +164,7 @@ pub(crate) fn normalize(db: &dyn HirDatabase, trait_env: Arc<TraitEnvironment>, 
     let mut table = unify::InferenceTable::new(db, trait_env);
 
     let ty_with_vars = table.normalize_associated_types_in(ty);
-    table.resolve_obligations_as_possible();
+    table.select_obligations_where_possible();
     table.propagate_diverging_flag();
     table.resolve_completely(ty_with_vars)
 }
@@ -183,16 +188,12 @@ impl BindingMode {
     }
 }
 
+// FIXME: Remove this `InferOk`, switch all code to the second one, that uses `Obligation` instead of `Goal`.
 #[derive(Debug)]
 pub(crate) struct InferOk<'db, T> {
+    #[allow(dead_code)]
     value: T,
     goals: Vec<next_solver::Goal<'db, next_solver::Predicate<'db>>>,
-}
-
-impl<'db, T> InferOk<'db, T> {
-    fn map<U>(self, f: impl FnOnce(T) -> U) -> InferOk<'db, U> {
-        InferOk { value: f(self.value), goals: self.goals }
-    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -378,6 +379,26 @@ impl Adjustment {
     }
 }
 
+/// At least for initial deployment, we want to limit two-phase borrows to
+/// only a few specific cases. Right now, those are mostly "things that desugar"
+/// into method calls:
+/// - using `x.some_method()` syntax, where some_method takes `&mut self`,
+/// - using `Foo::some_method(&mut x, ...)` syntax,
+/// - binary assignment operators (`+=`, `-=`, `*=`, etc.).
+///
+/// Anything else should be rejected until generalized two-phase borrow support
+/// is implemented. Right now, dataflow can't handle the general case where there
+/// is more than one use of a mutable borrow, and we don't want to accept too much
+/// new code via two-phase borrows, so we try to limit where we create two-phase
+/// capable mutable borrows.
+/// See #49434 for tracking.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub(crate) enum AllowTwoPhase {
+    // FIXME: We should use this when appropriate.
+    Yes,
+    No,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Adjust {
     /// Go from ! to any type.
@@ -393,8 +414,6 @@ pub enum Adjust {
 /// call, with the signature `&'a T -> &'a U` or `&'a mut T -> &'a mut U`.
 /// The target type is `U` in both cases, with the region and mutability
 /// being those shared by both the receiver and the returned reference.
-///
-/// Mutability is `None` when we are not sure.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct OverloadedDeref(pub Option<Mutability>);
 
@@ -656,6 +675,7 @@ pub(crate) struct InferenceContext<'db> {
     /// Generally you should not resolve things via this resolver. Instead create a TyLoweringContext
     /// and resolve the path via its methods. This will ensure proper error reporting.
     pub(crate) resolver: Resolver<'db>,
+    target_features: OnceCell<(TargetFeatures, TargetFeatureIsSafeInTarget)>,
     generic_def: GenericDefId,
     generics: OnceCell<Generics>,
     table: unify::InferenceTable<'db>,
@@ -673,11 +693,11 @@ pub(crate) struct InferenceContext<'db> {
     /// If `Some`, this stores coercion information for returned
     /// expressions. If `None`, this is in a context where return is
     /// inappropriate, such as a const expression.
-    return_coercion: Option<CoerceMany>,
+    return_coercion: Option<DynamicCoerceMany<'db>>,
     /// The resume type and the yield type, respectively, of the coroutine being inferred.
     resume_yield_tys: Option<(Ty, Ty)>,
     diverges: Diverges,
-    breakables: Vec<BreakableContext>,
+    breakables: Vec<BreakableContext<'db>>,
 
     /// Whether we are inside the pattern of a destructuring assignment.
     inside_assignment: bool,
@@ -692,21 +712,21 @@ pub(crate) struct InferenceContext<'db> {
     /// We do that because sometimes we truncate projections (when a closure captures
     /// both `a.b` and `a.b.c`), and we want to provide accurate spans in this case.
     current_capture_span_stack: Vec<MirSpan>,
-    current_closure: Option<ClosureId>,
+    current_closure: Option<InternedClosureId>,
     /// Stores the list of closure ids that need to be analyzed before this closure. See the
     /// comment on `InferenceContext::sort_closures`
-    closure_dependencies: FxHashMap<ClosureId, Vec<ClosureId>>,
-    deferred_closures: FxHashMap<ClosureId, Vec<(Ty, Ty, Vec<Ty>, ExprId)>>,
+    closure_dependencies: FxHashMap<InternedClosureId, Vec<InternedClosureId>>,
+    deferred_closures: FxHashMap<InternedClosureId, Vec<(Ty, Ty, Vec<Ty>, ExprId)>>,
 
     diagnostics: Diagnostics,
 }
 
 #[derive(Clone, Debug)]
-struct BreakableContext {
+struct BreakableContext<'db> {
     /// Whether this context contains at least one break expression.
     may_break: bool,
     /// The coercion target of the context.
-    coerce: Option<CoerceMany>,
+    coerce: Option<DynamicCoerceMany<'db>>,
     /// The optional label of the context.
     label: Option<LabelId>,
     kind: BreakableKind,
@@ -721,10 +741,10 @@ enum BreakableKind {
     Border,
 }
 
-fn find_breakable(
-    ctxs: &mut [BreakableContext],
+fn find_breakable<'a, 'db>(
+    ctxs: &'a mut [BreakableContext<'db>],
     label: Option<LabelId>,
-) -> Option<&mut BreakableContext> {
+) -> Option<&'a mut BreakableContext<'db>> {
     let mut ctxs = ctxs
         .iter_mut()
         .rev()
@@ -735,10 +755,10 @@ fn find_breakable(
     }
 }
 
-fn find_continuable(
-    ctxs: &mut [BreakableContext],
+fn find_continuable<'a, 'db>(
+    ctxs: &'a mut [BreakableContext<'db>],
     label: Option<LabelId>,
-) -> Option<&mut BreakableContext> {
+) -> Option<&'a mut BreakableContext<'db>> {
     match label {
         Some(_) => find_breakable(ctxs, label).filter(|it| matches!(it.kind, BreakableKind::Loop)),
         None => find_breakable(ctxs, label),
@@ -759,6 +779,7 @@ impl<'db> InferenceContext<'db> {
     ) -> Self {
         let trait_env = db.trait_environment_for_body(owner);
         InferenceContext {
+            target_features: OnceCell::new(),
             generics: OnceCell::new(),
             result: InferenceResult::default(),
             table: unify::InferenceTable::new(db, trait_env),
@@ -794,18 +815,56 @@ impl<'db> InferenceContext<'db> {
         self.generics.get_or_init(|| crate::generics::generics(self.db, self.generic_def))
     }
 
+    #[inline]
+    fn krate(&self) -> Crate {
+        self.resolver.krate()
+    }
+
+    fn target_features<'a>(
+        db: &dyn HirDatabase,
+        target_features: &'a OnceCell<(TargetFeatures, TargetFeatureIsSafeInTarget)>,
+        owner: DefWithBodyId,
+        krate: Crate,
+    ) -> (&'a TargetFeatures, TargetFeatureIsSafeInTarget) {
+        let (target_features, target_feature_is_safe) = target_features.get_or_init(|| {
+            let target_features = match owner {
+                DefWithBodyId::FunctionId(id) => TargetFeatures::from_attrs(&db.attrs(id.into())),
+                _ => TargetFeatures::default(),
+            };
+            let target_feature_is_safe = match &krate.workspace_data(db).target {
+                Ok(target) => crate::utils::target_feature_is_safe_in_target(target),
+                Err(_) => TargetFeatureIsSafeInTarget::No,
+            };
+            (target_features, target_feature_is_safe)
+        });
+        (target_features, *target_feature_is_safe)
+    }
+
+    #[inline]
+    pub(crate) fn set_tainted_by_errors(&mut self) {
+        self.result.has_errors = true;
+    }
+
     // FIXME: This function should be private in module. It is currently only used in the consteval, since we need
     // `InferenceResult` in the middle of inference. See the fixme comment in `consteval::eval_to_const`. If you
     // used this function for another workaround, mention it here. If you really need this function and believe that
     // there is no problem in it being `pub(crate)`, remove this comment.
-    pub(crate) fn resolve_all(self) -> InferenceResult {
+    pub(crate) fn resolve_all(mut self) -> InferenceResult {
+        self.table.select_obligations_where_possible();
+        self.table.fallback_if_possible();
+
+        // Comment from rustc:
+        // Even though coercion casts provide type hints, we check casts after fallback for
+        // backwards compatibility. This makes fallback a stronger type hint than a cast coercion.
+        let cast_checks = std::mem::take(&mut self.deferred_cast_checks);
+        for mut cast in cast_checks.into_iter() {
+            if let Err(diag) = cast.check(&mut self) {
+                self.diagnostics.push(diag);
+            }
+        }
+
         let InferenceContext {
-            mut table,
-            mut result,
-            mut deferred_cast_checks,
-            tuple_field_accesses_rev,
-            diagnostics,
-            ..
+            mut table, mut result, tuple_field_accesses_rev, diagnostics, ..
         } = self;
         let mut diagnostics = diagnostics.finish();
         // Destructure every single field so whenever new fields are added to `InferenceResult` we
@@ -831,31 +890,12 @@ impl<'db> InferenceContext<'db> {
             closure_info: _,
             mutated_bindings_in_closure: _,
             tuple_field_access_types: _,
-            coercion_casts,
+            coercion_casts: _,
             diagnostics: _,
         } = &mut result;
-        table.resolve_obligations_as_possible();
-        table.fallback_if_possible();
-
-        // Comment from rustc:
-        // Even though coercion casts provide type hints, we check casts after fallback for
-        // backwards compatibility. This makes fallback a stronger type hint than a cast coercion.
-        let mut apply_adjustments = |expr, adj: Vec<_>| {
-            expr_adjustments.insert(expr, adj.into_boxed_slice());
-        };
-        let mut set_coercion_cast = |expr| {
-            coercion_casts.insert(expr);
-        };
-        for cast in deferred_cast_checks.iter_mut() {
-            if let Err(diag) =
-                cast.check(&mut table, &mut apply_adjustments, &mut set_coercion_cast)
-            {
-                diagnostics.push(diag);
-            }
-        }
 
         // FIXME resolve obligations as well (use Guidance if necessary)
-        table.resolve_obligations_as_possible();
+        table.select_obligations_where_possible();
 
         // make sure diverging type variables are marked as such
         table.propagate_diverging_flag();
@@ -1081,7 +1121,8 @@ impl<'db> InferenceContext<'db> {
         };
 
         self.return_ty = self.process_user_written_ty(return_ty);
-        self.return_coercion = Some(CoerceMany::new(self.return_ty.clone()));
+        self.return_coercion =
+            Some(CoerceMany::new(self.return_ty.to_nextsolver(self.table.interner)));
 
         // Functions might be defining usage sites of TAITs.
         // To define an TAITs, that TAIT must appear in the function's signatures.
@@ -1117,8 +1158,12 @@ impl<'db> InferenceContext<'db> {
         fold_tys(
             t,
             |ty, _| {
+                let ty = self.table.structurally_resolve_type(&ty);
                 let opaque_ty_id = match ty.kind(Interner) {
-                    TyKind::OpaqueType(opaque_ty_id, _) => *opaque_ty_id,
+                    TyKind::OpaqueType(opaque_ty_id, _)
+                    | TyKind::Alias(AliasTy::Opaque(crate::OpaqueTy { opaque_ty_id, .. })) => {
+                        *opaque_ty_id
+                    }
                     _ => return ty,
                 };
                 let (impl_traits, idx) =
@@ -1214,9 +1259,11 @@ impl<'db> InferenceContext<'db> {
                 ty: &chalk_ir::Ty<Interner>,
                 outer_binder: DebruijnIndex,
             ) -> std::ops::ControlFlow<Self::BreakTy> {
-                let ty = self.table.resolve_ty_shallow(ty);
+                let ty = self.table.structurally_resolve_type(ty);
 
-                if let TyKind::OpaqueType(id, _) = ty.kind(Interner)
+                if let TyKind::OpaqueType(id, _)
+                | TyKind::Alias(AliasTy::Opaque(crate::OpaqueTy { opaque_ty_id: id, .. })) =
+                    ty.kind(Interner)
                     && let ImplTraitId::TypeAliasImplTrait(alias_id, _) =
                         self.db.lookup_intern_impl_trait_id((*id).into())
                 {
@@ -1359,6 +1406,13 @@ impl<'db> InferenceContext<'db> {
                 entry.insert(adjustments);
             }
         }
+    }
+
+    fn write_pat_adj(&mut self, pat: PatId, adjustments: Box<[Ty]>) {
+        if adjustments.is_empty() {
+            return;
+        }
+        self.result.pat_adjustments.entry(pat).or_default().extend(adjustments);
     }
 
     fn write_method_resolution(&mut self, expr: ExprId, func: FunctionId, subst: Substitution) {
@@ -1587,22 +1641,12 @@ impl<'db> InferenceContext<'db> {
         self.table.process_remote_user_written_ty(ty)
     }
 
-    /// Recurses through the given type, normalizing associated types mentioned
-    /// in it by replacing them by type variables and registering obligations to
-    /// resolve later. This should be done once for every type we get from some
-    /// type annotation (e.g. from a let type annotation, field type or function
-    /// call). `make_ty` handles this already, but e.g. for field types we need
-    /// to do it as well.
-    fn normalize_associated_types_in<T, U>(&mut self, ty: T) -> T
-    where
-        T: HasInterner<Interner = Interner> + TypeFoldable<Interner> + ChalkToNextSolver<'db, U>,
-        U: NextSolverToChalk<'db, T> + rustc_type_ir::TypeFoldable<DbInterner<'db>>,
-    {
-        self.table.normalize_associated_types_in(ty)
-    }
-
     fn resolve_ty_shallow(&mut self, ty: &Ty) -> Ty {
         self.table.resolve_ty_shallow(ty)
+    }
+
+    fn shallow_resolve(&self, ty: crate::next_solver::Ty<'db>) -> crate::next_solver::Ty<'db> {
+        self.table.shallow_resolve(ty)
     }
 
     fn resolve_associated_type(&mut self, inner_ty: Ty, assoc_ty: Option<TypeAliasId>) -> Ty {

@@ -409,8 +409,7 @@ pub(crate) fn for_trait_impls(
     // Note: Since we're using `impls_for_trait` and `impl_provided_for`,
     // only impls where the trait can be resolved should ever reach Chalk.
     // `impl_datum` relies on that and will panic if the trait can't be resolved.
-    let in_deps = db.trait_impls_in_deps(krate);
-    let in_self = db.trait_impls_in_crate(krate);
+    let in_self_and_deps = db.trait_impls_in_deps(krate);
     let trait_module = trait_id.module(db);
     let type_module = match self_ty_fp {
         Some(TyFingerprint::Adt(adt_id)) => Some(adt_id.module(db)),
@@ -435,8 +434,7 @@ pub(crate) fn for_trait_impls(
         });
     })
     .filter_map(|block_id| db.trait_impls_in_block(block_id));
-    f(&in_self)?;
-    for it in in_deps.iter().map(ops::Deref::deref) {
+    for it in in_self_and_deps.iter().map(ops::Deref::deref) {
         f(it)?;
     }
     for it in block_impls {

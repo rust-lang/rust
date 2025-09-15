@@ -14,6 +14,7 @@ use hir_def::{
 };
 use span::Edition;
 
+use crate::utils::TargetFeatureIsSafeInTarget;
 use crate::{
     InferenceResult, Interner, TargetFeatures, TyExt, TyKind,
     db::HirDatabase,
@@ -147,7 +148,7 @@ struct UnsafeVisitor<'db> {
     edition: Edition,
     /// On some targets (WASM), calling safe functions with `#[target_feature]` is always safe, even when
     /// the target feature is not enabled. This flag encodes that.
-    target_feature_is_safe: bool,
+    target_feature_is_safe: TargetFeatureIsSafeInTarget,
 }
 
 impl<'db> UnsafeVisitor<'db> {
@@ -167,7 +168,7 @@ impl<'db> UnsafeVisitor<'db> {
         let edition = krate.data(db).edition;
         let target_feature_is_safe = match &krate.workspace_data(db).target {
             Ok(target) => target_feature_is_safe_in_target(target),
-            Err(_) => false,
+            Err(_) => TargetFeatureIsSafeInTarget::No,
         };
         Self {
             db,

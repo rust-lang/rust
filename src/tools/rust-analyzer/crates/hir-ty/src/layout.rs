@@ -28,7 +28,6 @@ use crate::{
         DbInterner, GenericArgs, ParamEnv, Ty, TyKind, TypingMode,
         infer::{DbInternerInferExt, traits::ObligationCause},
         mapping::{ChalkToNextSolver, convert_args_for_result},
-        project::solve_normalize::deeply_normalize,
     },
 };
 
@@ -172,7 +171,7 @@ pub fn layout_of_ty_query<'db>(
     let cx = LayoutCx::new(dl);
     let infer_ctxt = interner.infer_ctxt().build(TypingMode::PostAnalysis);
     let cause = ObligationCause::dummy();
-    let ty = deeply_normalize(infer_ctxt.at(&cause, ParamEnv::empty()), ty).unwrap_or(ty);
+    let ty = infer_ctxt.at(&cause, ParamEnv::empty()).deeply_normalize(ty).unwrap_or(ty);
     let result = match ty.kind() {
         TyKind::Adt(def, args) => {
             match def.inner().id {
@@ -335,8 +334,8 @@ pub fn layout_of_ty_query<'db>(
                         .clone()
                         .substitute(
                             Interner,
-                            ClosureSubst(&convert_args_for_result(interner, args.inner()))
-                                .parent_subst(),
+                            &ClosureSubst(&convert_args_for_result(interner, args.inner()))
+                                .parent_subst(db),
                         )
                         .to_nextsolver(interner);
                     db.layout_of_ty(ty, trait_env.clone())

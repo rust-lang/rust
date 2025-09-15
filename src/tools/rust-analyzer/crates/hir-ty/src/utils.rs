@@ -20,14 +20,14 @@ use hir_expand::name::Name;
 use intern::sym;
 use rustc_abi::TargetDataLayout;
 use rustc_hash::FxHashSet;
-use rustc_type_ir::inherent::{IntoKind, SliceLike};
+use rustc_type_ir::inherent::{GenericArgs, IntoKind, SliceLike};
 use smallvec::{SmallVec, smallvec};
 use span::Edition;
-use stdx::never;
 
+use crate::next_solver::mapping::NextSolverToChalk;
 use crate::{
-    ChalkTraitId, Const, ConstScalar, GenericArg, Interner, Substitution, TargetFeatures, TraitRef,
-    TraitRefExt, Ty, WhereClause,
+    ChalkTraitId, Const, ConstScalar, Interner, Substitution, TargetFeatures, TraitRef,
+    TraitRefExt, Ty,
     consteval::unknown_const,
     db::HirDatabase,
     layout::{Layout, TagEncoding},
@@ -120,52 +120,6 @@ impl Iterator for SuperTraits<'_> {
     }
 }
 
-pub(super) fn elaborate_clause_supertraits(
-    db: &dyn HirDatabase,
-    clauses: impl Iterator<Item = WhereClause>,
-) -> ClauseElaborator<'_> {
-    let mut elaborator = ClauseElaborator { db, stack: Vec::new(), seen: FxHashSet::default() };
-    elaborator.extend_deduped(clauses);
-
-    elaborator
-}
-
-pub(super) struct ClauseElaborator<'a> {
-    db: &'a dyn HirDatabase,
-    stack: Vec<WhereClause>,
-    seen: FxHashSet<WhereClause>,
-}
-
-impl ClauseElaborator<'_> {
-    fn extend_deduped(&mut self, clauses: impl IntoIterator<Item = WhereClause>) {
-        self.stack.extend(clauses.into_iter().filter(|c| self.seen.insert(c.clone())))
-    }
-
-    fn elaborate_supertrait(&mut self, clause: &WhereClause) {
-        if let WhereClause::Implemented(trait_ref) = clause {
-            direct_super_trait_refs(self.db, trait_ref, |t| {
-                let clause = WhereClause::Implemented(t);
-                if self.seen.insert(clause.clone()) {
-                    self.stack.push(clause);
-                }
-            });
-        }
-    }
-}
-
-impl Iterator for ClauseElaborator<'_> {
-    type Item = WhereClause;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if let Some(next) = self.stack.pop() {
-            self.elaborate_supertrait(&next);
-            Some(next)
-        } else {
-            None
-        }
-    }
-}
-
 fn direct_super_traits_cb(db: &dyn DefDatabase, trait_: TraitId, cb: impl FnMut(TraitId)) {
     let resolver = LazyCell::new(|| trait_.resolver(db));
     let (generic_params, store) = db.generic_params_and_store(trait_.into());
@@ -239,34 +193,25 @@ pub(super) fn associated_type_by_name_including_super_traits(
     })
 }
 
-/// It is a bit different from the rustc equivalent. Currently it stores:
-/// - 0..n-1: generics of the parent
-/// - n: the function signature, encoded as a function pointer type
-///
-/// and it doesn't store the closure types and fields.
-///
-/// Codes should not assume this ordering, and should always use methods available
-/// on this struct for retrieving, and `TyBuilder::substs_for_closure` for creating.
 pub(crate) struct ClosureSubst<'a>(pub(crate) &'a Substitution);
 
 impl<'a> ClosureSubst<'a> {
-    pub(crate) fn parent_subst(&self) -> &'a [GenericArg] {
-        match self.0.as_slice(Interner) {
-            [x @ .., _] => x,
-            _ => {
-                never!("Closure missing parameter");
-                &[]
-            }
-        }
+    pub(crate) fn parent_subst(&self, db: &dyn HirDatabase) -> Substitution {
+        let interner = DbInterner::new_with(db, None, None);
+        let subst =
+            <Substitution as ChalkToNextSolver<crate::next_solver::GenericArgs<'_>>>::to_nextsolver(
+                self.0, interner,
+            );
+        subst.split_closure_args().parent_args.to_chalk(interner)
     }
 
-    pub(crate) fn sig_ty(&self) -> &'a Ty {
-        match self.0.as_slice(Interner) {
-            [.., x] => x.assert_ty_ref(Interner),
-            _ => {
-                unreachable!("Closure missing sig_ty parameter");
-            }
-        }
+    pub(crate) fn sig_ty(&self, db: &dyn HirDatabase) -> Ty {
+        let interner = DbInterner::new_with(db, None, None);
+        let subst =
+            <Substitution as ChalkToNextSolver<crate::next_solver::GenericArgs<'_>>>::to_nextsolver(
+                self.0, interner,
+            );
+        subst.split_closure_args_untupled().closure_sig_as_fn_ptr_ty.to_chalk(interner)
     }
 }
 
@@ -278,8 +223,17 @@ pub enum Unsafety {
     DeprecatedSafe2024,
 }
 
-pub fn target_feature_is_safe_in_target(target: &TargetData) -> bool {
-    matches!(target.arch, target::Arch::Wasm32 | target::Arch::Wasm64)
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TargetFeatureIsSafeInTarget {
+    No,
+    Yes,
+}
+
+pub fn target_feature_is_safe_in_target(target: &TargetData) -> TargetFeatureIsSafeInTarget {
+    match target.arch {
+        target::Arch::Wasm32 | target::Arch::Wasm64 => TargetFeatureIsSafeInTarget::Yes,
+        _ => TargetFeatureIsSafeInTarget::No,
+    }
 }
 
 pub fn is_fn_unsafe_to_call(
@@ -287,14 +241,14 @@ pub fn is_fn_unsafe_to_call(
     func: FunctionId,
     caller_target_features: &TargetFeatures,
     call_edition: Edition,
-    target_feature_is_safe: bool,
+    target_feature_is_safe: TargetFeatureIsSafeInTarget,
 ) -> Unsafety {
     let data = db.function_signature(func);
     if data.is_unsafe() {
         return Unsafety::Unsafe;
     }
 
-    if data.has_target_feature() && !target_feature_is_safe {
+    if data.has_target_feature() && target_feature_is_safe == TargetFeatureIsSafeInTarget::No {
         // RFC 2396 <https://rust-lang.github.io/rfcs/2396-target-feature-1.1.html>.
         let callee_target_features =
             TargetFeatures::from_attrs_no_implications(&db.attrs(func.into()));

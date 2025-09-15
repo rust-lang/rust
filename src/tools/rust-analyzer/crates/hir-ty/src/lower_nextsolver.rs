@@ -17,6 +17,7 @@ use std::{
 
 use base_db::Crate;
 use either::Either;
+use hir_def::item_tree::FieldsShape;
 use hir_def::{
     AdtId, AssocItemId, CallableDefId, ConstParamId, EnumVariantId, FunctionId, GenericDefId,
     GenericParamId, ImplId, ItemContainerId, LocalFieldId, Lookup, StructId, TraitId, TypeAliasId,
@@ -34,6 +35,7 @@ use hir_def::{
         TraitRef as HirTraitRef, TypeBound, TypeRef, TypeRefId,
     },
 };
+use hir_def::{ConstId, StaticId};
 use hir_expand::name::Name;
 use intern::sym;
 use la_arena::{Arena, ArenaMap, Idx};
@@ -53,6 +55,7 @@ use smallvec::{SmallVec, smallvec};
 use stdx::never;
 use triomphe::Arc;
 
+use crate::ValueTyDefId;
 use crate::{
     FnAbi, ImplTraitId, Interner, ParamKind, TyDefId, TyLoweringDiagnostic,
     TyLoweringDiagnosticKind,
@@ -204,6 +207,10 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
             diagnostics: Vec::new(),
             lifetime_elision,
         }
+    }
+
+    pub(crate) fn set_lifetime_elision(&mut self, lifetime_elision: LifetimeElisionKind<'db>) {
+        self.lifetime_elision = lifetime_elision;
     }
 
     pub(crate) fn with_debruijn<T>(
@@ -955,6 +962,105 @@ pub(crate) fn ty_query<'db>(db: &'db dyn HirDatabase, def: TyDefId) -> EarlyBind
             GenericArgs::identity_for_item(interner, it.into()),
         )),
         TyDefId::TypeAliasId(it) => db.type_for_type_alias_with_diagnostics_ns(it).0,
+    }
+}
+
+/// Build the declared type of a function. This should not need to look at the
+/// function body.
+fn type_for_fn<'db>(db: &'db dyn HirDatabase, def: FunctionId) -> EarlyBinder<'db, Ty<'db>> {
+    let interner = DbInterner::new_with(db, None, None);
+    EarlyBinder::bind(Ty::new_fn_def(
+        interner,
+        CallableDefId::FunctionId(def).into(),
+        GenericArgs::identity_for_item(interner, def.into()),
+    ))
+}
+
+/// Build the declared type of a const.
+fn type_for_const<'db>(db: &'db dyn HirDatabase, def: ConstId) -> EarlyBinder<'db, Ty<'db>> {
+    let resolver = def.resolver(db);
+    let data = db.const_signature(def);
+    let parent = def.loc(db).container;
+    let mut ctx = TyLoweringContext::new(
+        db,
+        &resolver,
+        &data.store,
+        def.into(),
+        LifetimeElisionKind::AnonymousReportError,
+    );
+    ctx.set_lifetime_elision(LifetimeElisionKind::for_const(ctx.interner, parent));
+    EarlyBinder::bind(ctx.lower_ty(data.type_ref))
+}
+
+/// Build the declared type of a static.
+fn type_for_static<'db>(db: &'db dyn HirDatabase, def: StaticId) -> EarlyBinder<'db, Ty<'db>> {
+    let resolver = def.resolver(db);
+    let module = resolver.module();
+    let interner = DbInterner::new_with(db, Some(module.krate()), module.containing_block());
+    let data = db.static_signature(def);
+    let parent = def.loc(db).container;
+    let mut ctx = TyLoweringContext::new(
+        db,
+        &resolver,
+        &data.store,
+        def.into(),
+        LifetimeElisionKind::AnonymousReportError,
+    );
+    ctx.set_lifetime_elision(LifetimeElisionKind::Elided(Region::new_static(ctx.interner)));
+    EarlyBinder::bind(ctx.lower_ty(data.type_ref))
+}
+
+/// Build the type of a tuple struct constructor.
+fn type_for_struct_constructor<'db>(
+    db: &'db dyn HirDatabase,
+    def: StructId,
+) -> Option<EarlyBinder<'db, Ty<'db>>> {
+    let struct_data = def.fields(db);
+    match struct_data.shape {
+        FieldsShape::Record => None,
+        FieldsShape::Unit => Some(type_for_adt(db, def.into())),
+        FieldsShape::Tuple => {
+            let interner = DbInterner::new_with(db, None, None);
+            Some(EarlyBinder::bind(Ty::new_fn_def(
+                interner,
+                CallableDefId::StructId(def).into(),
+                GenericArgs::identity_for_item(interner, def.into()),
+            )))
+        }
+    }
+}
+
+/// Build the type of a tuple enum variant constructor.
+fn type_for_enum_variant_constructor<'db>(
+    db: &'db dyn HirDatabase,
+    def: EnumVariantId,
+) -> Option<EarlyBinder<'db, Ty<'db>>> {
+    let struct_data = def.fields(db);
+    match struct_data.shape {
+        FieldsShape::Record => None,
+        FieldsShape::Unit => Some(type_for_adt(db, def.loc(db).parent.into())),
+        FieldsShape::Tuple => {
+            let interner = DbInterner::new_with(db, None, None);
+            Some(EarlyBinder::bind(Ty::new_fn_def(
+                interner,
+                CallableDefId::EnumVariantId(def).into(),
+                GenericArgs::identity_for_item(interner, def.loc(db).parent.into()),
+            )))
+        }
+    }
+}
+
+pub(crate) fn value_ty_query<'db>(
+    db: &'db dyn HirDatabase,
+    def: ValueTyDefId,
+) -> Option<EarlyBinder<'db, Ty<'db>>> {
+    match def {
+        ValueTyDefId::FunctionId(it) => Some(type_for_fn(db, it)),
+        ValueTyDefId::StructId(it) => type_for_struct_constructor(db, it),
+        ValueTyDefId::UnionId(it) => Some(type_for_adt(db, it.into())),
+        ValueTyDefId::EnumVariantId(it) => type_for_enum_variant_constructor(db, it),
+        ValueTyDefId::ConstId(it) => Some(type_for_const(db, it)),
+        ValueTyDefId::StaticId(it) => Some(type_for_static(db, it)),
     }
 }
 

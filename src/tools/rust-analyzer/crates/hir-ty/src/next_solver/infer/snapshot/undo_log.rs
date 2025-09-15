@@ -178,6 +178,10 @@ impl<'db> InferCtxtUndoLogs<'db> {
         })
     }
 
+    pub(crate) fn opaque_types_in_snapshot(&self, s: &Snapshot) -> bool {
+        self.logs[s.undo_len..].iter().any(|log| matches!(log, UndoLog::OpaqueTypes(..)))
+    }
+
     fn assert_open_snapshot(&self, snapshot: &Snapshot) {
         // Failures here may indicate a failure to follow a stack discipline.
         assert!(self.logs.len() >= snapshot.undo_len);

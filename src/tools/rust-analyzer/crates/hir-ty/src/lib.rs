@@ -115,7 +115,7 @@ pub use infer::{
     Adjust, Adjustment, AutoBorrow, BindingMode, InferenceDiagnostic, InferenceResult,
     InferenceTyDiagnosticSource, OverloadedDeref, PointerCast,
     cast::CastError,
-    closure::{CaptureKind, CapturedItem},
+    closure::analysis::{CaptureKind, CapturedItem},
     could_coerce, could_unify, could_unify_deeply,
 };
 pub use interner::Interner;
@@ -133,8 +133,8 @@ pub use method_resolution::check_orphan_rules;
 pub use target_feature::TargetFeatures;
 pub use traits::TraitEnvironment;
 pub use utils::{
-    Unsafety, all_super_traits, direct_super_traits, is_fn_unsafe_to_call,
-    target_feature_is_safe_in_target,
+    TargetFeatureIsSafeInTarget, Unsafety, all_super_traits, direct_super_traits,
+    is_fn_unsafe_to_call, target_feature_is_safe_in_target,
 };
 pub use variance::Variance;
 

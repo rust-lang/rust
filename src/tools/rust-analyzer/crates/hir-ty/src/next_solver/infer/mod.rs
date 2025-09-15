@@ -2,6 +2,7 @@
 
 use std::cell::{Cell, RefCell};
 use std::fmt;
+use std::ops::Range;
 use std::sync::Arc;
 
 pub use BoundRegionConversionTime::*;
@@ -55,6 +56,7 @@ mod opaque_types;
 pub mod region_constraints;
 pub mod relate;
 pub mod resolve;
+pub(crate) mod select;
 pub(crate) mod snapshot;
 pub(crate) mod traits;
 mod type_variable;
@@ -80,6 +82,10 @@ pub(crate) type FixupResult<T> = Result<T, FixupError>; // "fixup result"
 pub(crate) type UnificationTable<'a, 'db, T> = ut::UnificationTable<
     ut::InPlace<T, &'a mut ut::UnificationStorage<T>, &'a mut InferCtxtUndoLogs<'db>>,
 >;
+
+fn iter_idx_range<T: From<u32> + Into<u32>>(range: Range<T>) -> impl Iterator<Item = T> {
+    (range.start.into()..range.end.into()).map(Into::into)
+}
 
 /// This type contains all the things within `InferCtxt` that sit within a
 /// `RefCell` and are involved with taking/rolling back snapshots. Snapshot
