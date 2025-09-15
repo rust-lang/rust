@@ -714,11 +714,21 @@ impl StrExt for str {
     }
 
     #[inline]
-    fn replacen_smolstr(&self, from: &str, to: &str, count: usize) -> SmolStr {
+    fn replacen_smolstr(&self, from: &str, to: &str, mut count: usize) -> SmolStr {
         // Fast path for replacing a single ASCII character with another inline.
         if let [from_u8] = from.as_bytes() {
             if let [to_u8] = to.as_bytes() {
-                return replacen_1_ascii(self, *from_u8, *to_u8, count);
+                return match self.len() <= count {
+                    true => replacen_1_ascii(self, |b| if b == *from_u8 { *to_u8 } else { b }),
+                    _ => replacen_1_ascii(self, |b| {
+                        if b == *from_u8 && count != 0 {
+                            count -= 1;
+                            *to_u8
+                        } else {
+                            b
+                        }
+                    }),
+                };
             }
         }
 
@@ -739,20 +749,11 @@ impl StrExt for str {
 }
 
 #[inline]
-fn replacen_1_ascii(src: &str, from: u8, to: u8, count: usize) -> SmolStr {
-    let mut replaced = 0;
-    let mut ascii_replace = |b: &u8| {
-        if *b == from && replaced != count {
-            replaced += 1;
-            to
-        } else {
-            *b
-        }
-    };
+fn replacen_1_ascii(src: &str, mut map: impl FnMut(u8) -> u8) -> SmolStr {
     if src.len() <= INLINE_CAP {
         let mut buf = [0u8; INLINE_CAP];
         for (idx, b) in src.as_bytes().iter().enumerate() {
-            buf[idx] = ascii_replace(b);
+            buf[idx] = map(*b);
         }
         SmolStr(Repr::Inline {
             // SAFETY: `len` is in bounds
@@ -760,7 +761,7 @@ fn replacen_1_ascii(src: &str, from: u8, to: u8, count: usize) -> SmolStr {
             buf,
         })
     } else {
-        let out = src.as_bytes().iter().map(ascii_replace).collect();
+        let out = src.as_bytes().iter().map(|b| map(*b)).collect();
         // SAFETY: We replaced ascii with ascii on valid utf8 strings.
         unsafe { String::from_utf8_unchecked(out).into() }
     }
