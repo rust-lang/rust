@@ -3,7 +3,7 @@ use std::fmt::Display;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use crate::tidy_error;
+use termcolor::WriteColor;
 
 /// Collects diagnostics from all tidy steps, and contains shared information
 /// that determines how should message and logs be presented.
@@ -147,4 +147,19 @@ impl Drop for RunningCheck {
     fn drop(&mut self) {
         self.ctx.lock().unwrap().finish_check(FinishedCheck { id: self.id.clone(), bad: self.bad })
     }
+}
+
+fn tidy_error(args: &str) -> std::io::Result<()> {
+    use std::io::Write;
+
+    use termcolor::{Color, ColorChoice, ColorSpec, StandardStream};
+
+    let mut stderr = StandardStream::stdout(ColorChoice::Auto);
+    stderr.set_color(ColorSpec::new().set_fg(Some(Color::Red)))?;
+
+    write!(&mut stderr, "tidy error")?;
+    stderr.set_color(&ColorSpec::new())?;
+
+    writeln!(&mut stderr, ": {args}")?;
+    Ok(())
 }

@@ -11,7 +11,6 @@ use std::{env, io};
 use build_helper::ci::CiEnv;
 use build_helper::git::{GitConfig, get_closest_upstream_commit};
 use build_helper::stage0_parser::{Stage0Config, parse_stage0_file};
-use termcolor::WriteColor;
 
 use crate::diagnostics::{DiagCtx, RunningCheck};
 
@@ -43,21 +42,6 @@ macro_rules! t {
             Err(e) => panic!("{} failed with {}", stringify!($e), e),
         }
     };
-}
-
-fn tidy_error(args: &str) -> std::io::Result<()> {
-    use std::io::Write;
-
-    use termcolor::{Color, ColorChoice, ColorSpec, StandardStream};
-
-    let mut stderr = StandardStream::stdout(ColorChoice::Auto);
-    stderr.set_color(ColorSpec::new().set_fg(Some(Color::Red)))?;
-
-    write!(&mut stderr, "tidy error")?;
-    stderr.set_color(&ColorSpec::new())?;
-
-    writeln!(&mut stderr, ": {args}")?;
-    Ok(())
 }
 
 pub struct CiInfo {
