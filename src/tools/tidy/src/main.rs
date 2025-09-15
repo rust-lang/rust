@@ -99,7 +99,7 @@ fn main() {
             }
         }
 
-        // check!(target_specific_tests, &tests_path);
+        check!(target_specific_tests, &tests_path);
 
         // Checks that are done on the cargo workspace.
         // check!(deps, &root_path, &cargo, bless);
