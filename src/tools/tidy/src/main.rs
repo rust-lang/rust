@@ -8,7 +8,6 @@ use std::collections::VecDeque;
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::sync::atomic::AtomicBool;
 use std::thread::{self, ScopedJoinHandle, scope};
 use std::{env, process};
 
@@ -51,11 +50,8 @@ fn main() {
     let extra_checks =
         cfg_args.iter().find(|s| s.starts_with("--extra-checks=")).map(String::as_str);
 
-    let mut bad = false;
-    let ci_info = CiInfo::new(&mut bad);
-    let bad = std::sync::Arc::new(AtomicBool::new(bad));
-
-    let mut diag_ctx = DiagCtx::new(verbose);
+    let diag_ctx = DiagCtx::new(verbose);
+    let ci_info = CiInfo::new(diag_ctx.clone());
 
     let drain_handles = |handles: &mut VecDeque<ScopedJoinHandle<'_, ()>>| {
         // poll all threads for completion before awaiting the oldest one

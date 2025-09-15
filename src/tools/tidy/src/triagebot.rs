@@ -40,7 +40,7 @@ pub fn check(path: &Path, diag_ctx: DiagCtx) {
         }
     } else {
         check.error(
-            "triagebot.toml missing [mentions.*] section, this wrong for rust-lang/rust repo."
+            "triagebot.toml missing [mentions.*] section, this wrong for rust-lang/rust repo.",
         );
     }
 

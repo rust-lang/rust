@@ -14,7 +14,7 @@ pub fn check(root: &Path, cargo: &Path, diag_ctx: DiagCtx) {
         Err(e) => {
             check.error(format!("failed to run `cargo`: {e}"));
             return;
-        },
+        }
     };
 
     let cargo_list = child.wait_with_output().unwrap();
@@ -53,9 +53,7 @@ pub fn check(root: &Path, cargo: &Path, diag_ctx: DiagCtx) {
                 )
             }
         } else {
-            check.error(
-                "Unable to parse the latest version of `x` at `src/tools/x/Cargo.toml`"
-            )
+            check.error("Unable to parse the latest version of `x` at `src/tools/x/Cargo.toml`")
         }
     } else {
         check.error(format!("failed to check version of `x`: {}", cargo_list.status))

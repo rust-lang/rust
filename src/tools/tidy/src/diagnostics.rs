@@ -111,6 +111,11 @@ impl RunningCheck {
         tidy_error(&t.to_string()).expect("failed to output error");
     }
 
+    /// Immediately output a warning.
+    pub fn warning<T: Display>(&mut self, t: T) {
+        eprintln!("WARNING: {t}");
+    }
+
     /// Output an informational message
     pub fn message<T: Display>(&mut self, t: T) {
         eprintln!("{t}");
