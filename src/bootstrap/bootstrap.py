@@ -1145,7 +1145,8 @@ class RustBuild(object):
             os.path.join(self.rust_root, "src/bootstrap/Cargo.toml"),
             "-Zroot-dir=" + self.rust_root,
         ]
-        args.extend("--verbose" for _ in range(self.verbose))
+        # verbose cargo output is very noisy, so only enable it with -vv
+        args.extend("--verbose" for _ in range(self.verbose - 1))
 
         if "BOOTSTRAP_TRACING" in env:
             args.append("--features=tracing")
