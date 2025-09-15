@@ -9,7 +9,6 @@ use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
 use std::thread::{self, ScopedJoinHandle, scope};
 use std::{env, process};
 
@@ -130,10 +129,10 @@ fn main() {
         // check!(pal, &library_path);
 
         // Checks that need to be done for both the compiler and std libraries.
-        // check!(unit_tests, &src_path, false);
-        // check!(unit_tests, &compiler_path, false);
-        // check!(unit_tests, &library_path, true);
-        //
+        check!(unit_tests, &src_path, false);
+        check!(unit_tests, &compiler_path, false);
+        check!(unit_tests, &library_path, true);
+
         // if bins::check_filesystem_support(&[&root_path], &output_directory) {
         //     check!(bins, &root_path);
         // }
