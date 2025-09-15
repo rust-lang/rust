@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- The `get_many_mut` family of methods have been renamed to `get_disjoint_mut`
+  to match the standard library. The old names are still present for now, but
+  deprecated.
+
 ## [0.16.0](https://github.com/rust-lang/hashbrown/compare/v0.15.5...v0.16.0) - 2025-08-28
 
 ### Changed

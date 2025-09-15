@@ -994,7 +994,7 @@ where
     /// }
     ///
     /// let keys = ["Athenæum", "Library of Congress"];
-    /// let got = libraries.get_many_mut(keys.map(|k| hasher(&k)), |i, val| keys[i] == val.0);
+    /// let got = libraries.get_disjoint_mut(keys.map(|k| hasher(&k)), |i, val| keys[i] == val.0);
     /// assert_eq!(
     ///     got,
     ///     [Some(&mut ("Athenæum", 1807)), Some(&mut ("Library of Congress", 1800))],
@@ -1002,7 +1002,7 @@ where
     ///
     /// // Missing keys result in None
     /// let keys = ["Athenæum", "New York Public Library"];
-    /// let got = libraries.get_many_mut(keys.map(|k| hasher(&k)), |i, val| keys[i] == val.0);
+    /// let got = libraries.get_disjoint_mut(keys.map(|k| hasher(&k)), |i, val| keys[i] == val.0);
     /// assert_eq!(got, [Some(&mut ("Athenæum", 1807)), None]);
     /// # }
     /// # fn main() {
@@ -1029,7 +1029,7 @@ where
     ///
     /// // Duplicate keys result in a panic!
     /// let keys = ["Athenæum", "Athenæum"];
-    /// let got = libraries.get_many_mut(keys.map(|k| hasher(&k)), |i, val| keys[i] == val.0);
+    /// let got = libraries.get_disjoint_mut(keys.map(|k| hasher(&k)), |i, val| keys[i] == val.0);
     /// # }
     /// # fn main() {
     /// #     #[cfg(feature = "nightly")]
@@ -1038,12 +1038,22 @@ where
     /// #     panic!();
     /// # }
     /// ```
+    pub fn get_disjoint_mut<const N: usize>(
+        &mut self,
+        hashes: [u64; N],
+        eq: impl FnMut(usize, &T) -> bool,
+    ) -> [Option<&'_ mut T>; N] {
+        self.raw.get_disjoint_mut(hashes, eq)
+    }
+
+    /// Attempts to get mutable references to `N` values in the map at once.
+    #[deprecated(note = "use `get_disjoint_mut` instead")]
     pub fn get_many_mut<const N: usize>(
         &mut self,
         hashes: [u64; N],
         eq: impl FnMut(usize, &T) -> bool,
     ) -> [Option<&'_ mut T>; N] {
-        self.raw.get_many_mut(hashes, eq)
+        self.raw.get_disjoint_mut(hashes, eq)
     }
 
     /// Attempts to get mutable references to `N` values in the map at once, without validating that
@@ -1055,7 +1065,7 @@ where
     /// Returns an array of length `N` with the results of each query. `None` will be returned if
     /// any of the keys are missing.
     ///
-    /// For a safe alternative see [`get_many_mut`](`HashTable::get_many_mut`).
+    /// For a safe alternative see [`get_disjoint_mut`](`HashTable::get_disjoint_mut`).
     ///
     /// # Safety
     ///
@@ -1086,7 +1096,7 @@ where
     /// }
     ///
     /// let keys = ["Athenæum", "Library of Congress"];
-    /// let got = libraries.get_many_mut(keys.map(|k| hasher(&k)), |i, val| keys[i] == val.0);
+    /// let got = libraries.get_disjoint_mut(keys.map(|k| hasher(&k)), |i, val| keys[i] == val.0);
     /// assert_eq!(
     ///     got,
     ///     [Some(&mut ("Athenæum", 1807)), Some(&mut ("Library of Congress", 1800))],
@@ -1094,7 +1104,7 @@ where
     ///
     /// // Missing keys result in None
     /// let keys = ["Athenæum", "New York Public Library"];
-    /// let got = libraries.get_many_mut(keys.map(|k| hasher(&k)), |i, val| keys[i] == val.0);
+    /// let got = libraries.get_disjoint_mut(keys.map(|k| hasher(&k)), |i, val| keys[i] == val.0);
     /// assert_eq!(got, [Some(&mut ("Athenæum", 1807)), None]);
     /// # }
     /// # fn main() {
@@ -1102,12 +1112,23 @@ where
     /// #     test()
     /// # }
     /// ```
+    pub unsafe fn get_disjoint_unchecked_mut<const N: usize>(
+        &mut self,
+        hashes: [u64; N],
+        eq: impl FnMut(usize, &T) -> bool,
+    ) -> [Option<&'_ mut T>; N] {
+        self.raw.get_disjoint_unchecked_mut(hashes, eq)
+    }
+
+    /// Attempts to get mutable references to `N` values in the map at once, without validating that
+    /// the values are unique.
+    #[deprecated(note = "use `get_disjoint_unchecked_mut` instead")]
     pub unsafe fn get_many_unchecked_mut<const N: usize>(
         &mut self,
         hashes: [u64; N],
         eq: impl FnMut(usize, &T) -> bool,
     ) -> [Option<&'_ mut T>; N] {
-        self.raw.get_many_unchecked_mut(hashes, eq)
+        self.raw.get_disjoint_unchecked_mut(hashes, eq)
     }
 
     /// Returns the total amount of memory allocated internally by the hash
