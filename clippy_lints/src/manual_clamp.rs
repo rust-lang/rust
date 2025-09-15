@@ -7,8 +7,8 @@ use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::visitors::is_const_evaluatable;
 use clippy_utils::{
-    MaybePath, eq_expr_value, is_diag_trait_item, is_in_const_context, is_trait_method, path_res, path_to_local_id,
-    peel_blocks, peel_blocks_with_stmt, sym,
+    eq_expr_value, is_diag_trait_item, is_in_const_context, is_trait_method, path_res, path_to_local_id, peel_blocks,
+    peel_blocks_with_stmt, sym,
 };
 use itertools::Itertools;
 use rustc_errors::{Applicability, Diag};
@@ -516,7 +516,7 @@ fn is_two_if_pattern<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) -> 
                     },
                     span: first_expr.span.to(second_expr.span),
                     make_assignment: Some(maybe_input_first_path),
-                    hir_with_ignore_attr: Some(first_expr.hir_id()),
+                    hir_with_ignore_attr: Some(first_expr.hir_id),
                 })
             } else {
                 None

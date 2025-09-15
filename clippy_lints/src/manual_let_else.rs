@@ -2,16 +2,14 @@ use crate::question_mark::{QUESTION_MARK, QuestionMark};
 use clippy_config::types::MatchLintBehaviour;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::IfLetOrMatch;
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::{MaybeDef, MaybeQPath};
 use clippy_utils::source::snippet_with_context;
-use clippy_utils::{
-    MaybePath, is_lint_allowed, is_never_expr, is_wild, msrvs, pat_and_expr_can_be_question_mark, path_res, peel_blocks,
-};
+use clippy_utils::{is_lint_allowed, is_never_expr, is_wild, msrvs, pat_and_expr_can_be_question_mark, peel_blocks};
 use rustc_ast::BindingMode;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir::def::{CtorOf, DefKind, Res};
-use rustc_hir::{Arm, Expr, ExprKind, HirId, MatchSource, Pat, PatExpr, PatExprKind, PatKind, QPath, Stmt, StmtKind};
+use rustc_hir::{Arm, Expr, ExprKind, MatchSource, Pat, PatExpr, PatExprKind, PatKind, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LintContext};
 use rustc_span::Span;
 use rustc_span::symbol::{Symbol, sym};
@@ -131,39 +129,25 @@ fn is_arms_disjointed(cx: &LateContext<'_>, arm1: &Arm<'_>, arm2: &Arm<'_>) -> b
 
 /// Returns `true` if the given pattern is a variant of an enum.
 pub fn is_enum_variant(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
-    struct Pat<'hir>(&'hir rustc_hir::Pat<'hir>);
-
-    impl<'hir> MaybePath<'hir> for Pat<'hir> {
-        fn qpath_opt(&self) -> Option<&QPath<'hir>> {
-            match self.0.kind {
-                PatKind::Struct(ref qpath, fields, _)
-                    if fields
-                        .iter()
-                        .all(|field| is_wild(field.pat) || matches!(field.pat.kind, PatKind::Binding(..))) =>
-                {
-                    Some(qpath)
-                },
-                PatKind::TupleStruct(ref qpath, pats, _)
-                    if pats
-                        .iter()
-                        .all(|pat| is_wild(pat) || matches!(pat.kind, PatKind::Binding(..))) =>
-                {
-                    Some(qpath)
-                },
-                PatKind::Expr(&PatExpr {
-                    kind: PatExprKind::Path(ref qpath),
-                    ..
-                }) => Some(qpath),
-                _ => None,
-            }
-        }
-
-        fn hir_id(&self) -> HirId {
-            self.0.hir_id
-        }
-    }
-
-    let res = path_res(cx, &Pat(pat));
+    let path = match pat.kind {
+        PatKind::Struct(ref qpath, fields, _)
+            if fields
+                .iter()
+                .all(|field| is_wild(field.pat) || matches!(field.pat.kind, PatKind::Binding(..))) =>
+        {
+            (qpath, pat.hir_id)
+        },
+        PatKind::TupleStruct(ref qpath, pats, _)
+            if pats
+                .iter()
+                .all(|pat| is_wild(pat) || matches!(pat.kind, PatKind::Binding(..))) =>
+        {
+            (qpath, pat.hir_id)
+        },
+        PatKind::Expr(e) if let Some((qpath, id)) = e.opt_qpath() => (qpath, id),
+        _ => return false,
+    };
+    let res = path.res(cx);
     matches!(
         res,
         Res::Def(DefKind::Variant, ..) | Res::Def(DefKind::Ctor(CtorOf::Variant, _), _)

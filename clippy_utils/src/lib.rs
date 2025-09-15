@@ -132,7 +132,7 @@ use crate::ast_utils::unordered_over;
 use crate::consts::{ConstEvalCtxt, Constant};
 use crate::higher::Range;
 use crate::msrvs::Msrv;
-use crate::res::{MaybeDef, MaybeResPath};
+use crate::res::{MaybeDef, MaybeQPath, MaybeResPath};
 use crate::ty::{adt_and_variant_of_res, can_partially_move_ty, expr_sig, is_copy, is_recursively_primitive_type};
 use crate::visitors::for_each_expr_without_closures;
 
@@ -471,53 +471,16 @@ pub fn path_to_local_with_projections(expr: &Expr<'_>) -> Option<HirId> {
     }
 }
 
-pub trait MaybePath<'hir> {
-    fn hir_id(&self) -> HirId;
-    fn qpath_opt(&self) -> Option<&QPath<'hir>>;
-}
-
-macro_rules! maybe_path {
-    ($ty:ident, $kind:ident) => {
-        impl<'hir> MaybePath<'hir> for hir::$ty<'hir> {
-            fn hir_id(&self) -> HirId {
-                self.hir_id
-            }
-            fn qpath_opt(&self) -> Option<&QPath<'hir>> {
-                match &self.kind {
-                    hir::$kind::Path(qpath) => Some(qpath),
-                    _ => None,
-                }
-            }
-        }
-    };
-}
-maybe_path!(Expr, ExprKind);
-impl<'hir> MaybePath<'hir> for Pat<'hir> {
-    fn hir_id(&self) -> HirId {
-        self.hir_id
-    }
-    fn qpath_opt(&self) -> Option<&QPath<'hir>> {
-        match &self.kind {
-            PatKind::Expr(PatExpr {
-                kind: PatExprKind::Path(qpath),
-                ..
-            }) => Some(qpath),
-            _ => None,
-        }
-    }
-}
-maybe_path!(Ty, TyKind);
-
 /// If `maybe_path` is a path node, resolves it, otherwise returns `Res::Err`
-pub fn path_res<'tcx>(cx: &LateContext<'_>, maybe_path: &impl MaybePath<'tcx>) -> Res {
-    match maybe_path.qpath_opt() {
+pub fn path_res<'tcx>(cx: &LateContext<'_>, maybe_path: impl MaybeQPath<'tcx>) -> Res {
+    match maybe_path.opt_qpath() {
         None => Res::Err,
-        Some(qpath) => cx.qpath_res(qpath, maybe_path.hir_id()),
+        Some((qpath, id)) => cx.qpath_res(qpath, id),
     }
 }
 
 /// If `maybe_path` is a path node which resolves to an item, retrieves the item ID
-pub fn path_def_id<'tcx>(cx: &LateContext<'_>, maybe_path: &impl MaybePath<'tcx>) -> Option<DefId> {
+pub fn path_def_id<'tcx>(cx: &LateContext<'_>, maybe_path: impl MaybeQPath<'tcx>) -> Option<DefId> {
     path_res(cx, maybe_path).opt_def_id()
 }
 
