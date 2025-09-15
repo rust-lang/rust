@@ -169,7 +169,7 @@ fn main() {
                 verbose,
             )
         };
-        // check!(unstable_book, &src_path, collected);
+        check!(unstable_book, &src_path, collected);
         //
         // check!(
         //     extra_checks,
