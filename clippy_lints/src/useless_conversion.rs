@@ -3,7 +3,7 @@ use clippy_utils::res::{MaybeDef, MaybeResPath, MaybeTypeckRes};
 use clippy_utils::source::{snippet, snippet_with_context};
 use clippy_utils::sugg::{DiagExt as _, Sugg};
 use clippy_utils::ty::{is_copy, same_type_modulo_regions};
-use clippy_utils::{get_parent_expr, is_trait_item, is_trait_method, is_ty_alias, sym};
+use clippy_utils::{get_parent_expr, is_trait_item, is_ty_alias, sym};
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BindingMode, Expr, ExprKind, HirId, MatchSource, Mutability, Node, PatKind};
@@ -132,7 +132,7 @@ fn into_iter_bound<'tcx>(
 /// Extracts the receiver of a `.into_iter()` method call.
 fn into_iter_call<'hir>(cx: &LateContext<'_>, expr: &'hir Expr<'hir>) -> Option<&'hir Expr<'hir>> {
     if let ExprKind::MethodCall(name, recv, [], _) = expr.kind
-        && is_trait_method(cx, expr, sym::IntoIterator)
+        && cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::IntoIterator)
         && name.ident.name == sym::into_iter
     {
         Some(recv)
@@ -203,7 +203,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
             },
 
             ExprKind::MethodCall(name, recv, [], _) => {
-                if is_trait_method(cx, e, sym::Into) && name.ident.name == sym::into {
+                if cx.ty_based_def(e).opt_parent(cx).is_diag_item(cx, sym::Into) && name.ident.name == sym::into {
                     let a = cx.typeck_results().expr_ty(e);
                     let b = cx.typeck_results().expr_ty(recv);
                     if same_type_modulo_regions(a, b) {
@@ -363,7 +363,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                         );
                     }
                 }
-                if is_trait_method(cx, e, sym::TryInto)
+                if cx.ty_based_def(e).opt_parent(cx).is_diag_item(cx, sym::TryInto)
                     && name.ident.name == sym::try_into
                     && let a = cx.typeck_results().expr_ty(e)
                     && let b = cx.typeck_results().expr_ty(recv)
@@ -444,7 +444,7 @@ fn has_eligible_receiver(cx: &LateContext<'_>, recv: &Expr<'_>, expr: &Expr<'_>)
             Some(sym::Option | sym::Result | sym::ControlFlow)
         )
     } else {
-        is_trait_method(cx, expr, sym::Iterator)
+        cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Iterator)
     }
 }
 

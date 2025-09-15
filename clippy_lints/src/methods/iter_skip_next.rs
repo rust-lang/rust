@@ -1,6 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::is_trait_method;
-use clippy_utils::res::MaybeResPath;
+use clippy_utils::res::{MaybeDef, MaybeResPath, MaybeTypeckRes};
 use clippy_utils::source::snippet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -12,7 +11,7 @@ use super::ITER_SKIP_NEXT;
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr<'_>, arg: &hir::Expr<'_>) {
     // lint if caller of skip is an Iterator
-    if is_trait_method(cx, expr, sym::Iterator) {
+    if cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Iterator) {
         let mut application = Applicability::MachineApplicable;
         span_lint_and_then(
             cx,

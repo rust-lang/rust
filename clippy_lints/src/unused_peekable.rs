@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
-use clippy_utils::res::{MaybeDef, MaybeResPath};
+use clippy_utils::res::{MaybeDef, MaybeResPath, MaybeTypeckRes};
 use clippy_utils::ty::peel_and_count_ty_refs;
-use clippy_utils::{fn_def_id, is_trait_method, peel_ref_operators, sym};
+use clippy_utils::{fn_def_id, peel_ref_operators, sym};
 use rustc_ast::Mutability;
 use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{Block, Expr, ExprKind, HirId, LetStmt, Node, PatKind, PathSegment, StmtKind};
@@ -161,7 +161,11 @@ impl<'tcx> Visitor<'tcx> for PeekableVisitor<'_, 'tcx> {
 
                                 // foo.some_method() excluding Iterator methods
                                 if remaining_args.iter().any(|arg| arg_is_mut_peekable(self.cx, arg))
-                                    && !is_trait_method(self.cx, expr, sym::Iterator)
+                                    && !self
+                                        .cx
+                                        .ty_based_def(expr)
+                                        .opt_parent(self.cx)
+                                        .is_diag_item(self.cx, sym::Iterator)
                                 {
                                     return ControlFlow::Break(());
                                 }

@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::is_from_proc_macro;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::MaybeResPath;
+use clippy_utils::res::{MaybeDef, MaybeResPath, MaybeTypeckRes};
 use clippy_utils::source::SpanRangeExt;
-use clippy_utils::{is_from_proc_macro, is_trait_method};
 use itertools::Itertools;
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
@@ -20,7 +20,7 @@ pub(super) fn check<'tcx>(
     body: &Expr<'_>,
     msrv: Msrv,
 ) {
-    if is_trait_method(cx, expr, sym::Iterator)
+    if cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Iterator)
         && let PatKind::Binding(_, arg, _, _) = param.pat.kind
         && let ExprKind::Lit(lit_kind) = recv.kind
         && let LitKind::Str(val, _) = lit_kind.node

@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::macros::{is_panic, matching_root_macro_call, root_macro_call};
-use clippy_utils::res::{MaybeDef, MaybeResPath};
+use clippy_utils::res::{MaybeDef, MaybeResPath, MaybeTypeckRes};
 use clippy_utils::source::{indent_of, reindent_multiline, snippet};
-use clippy_utils::{SpanlessEq, higher, is_trait_method, peel_blocks, sym};
+use clippy_utils::{SpanlessEq, higher, peel_blocks, sym};
 use hir::{Body, HirId, MatchSource, Pat};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -266,7 +266,7 @@ fn is_filter_some_map_unwrap(
     filter_arg: &Expr<'_>,
     map_arg: &Expr<'_>,
 ) -> bool {
-    let iterator = is_trait_method(cx, expr, sym::Iterator);
+    let iterator = cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Iterator);
     let option = cx.typeck_results().expr_ty(filter_recv).is_diag_item(cx, sym::Option);
 
     (iterator || option) && is_option_filter_map(cx, filter_arg, map_arg)
@@ -275,7 +275,7 @@ fn is_filter_some_map_unwrap(
 /// is `filter(|x| x.is_ok()).map(|x| x.unwrap())`
 fn is_filter_ok_map_unwrap(cx: &LateContext<'_>, expr: &Expr<'_>, filter_arg: &Expr<'_>, map_arg: &Expr<'_>) -> bool {
     // result has no filter, so we only check for iterators
-    let iterator = is_trait_method(cx, expr, sym::Iterator);
+    let iterator = cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Iterator);
     iterator && is_ok_filter_map(cx, filter_arg, map_arg)
 }
 
@@ -398,7 +398,7 @@ fn is_find_or_filter<'a>(
     filter_arg: &Expr<'_>,
     map_arg: &Expr<'_>,
 ) -> Option<(Ident, CheckResult<'a>)> {
-    if is_trait_method(cx, map_recv, sym::Iterator)
+    if cx.ty_based_def(map_recv).opt_parent(cx).is_diag_item(cx, sym::Iterator)
         // filter(|x| ...is_some())...
         && let ExprKind::Closure(&Closure { body: filter_body_id, .. }) = filter_arg.kind
         && let filter_body = cx.tcx.hir_body(filter_body_id)

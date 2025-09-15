@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{is_trait_method, span_contains_comment};
+use clippy_utils::span_contains_comment;
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
@@ -40,7 +40,7 @@ fn try_get_caller_ty_name_and_method_name(
     caller_expr: &Expr<'_>,
     map_arg: &Expr<'_>,
 ) -> Option<(&'static str, &'static str)> {
-    if is_trait_method(cx, expr, sym::Iterator) {
+    if cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Iterator) {
         if is_map_to_option(cx, map_arg) {
             // `(...).map(...)` has type `impl Iterator<Item=Option<...>>
             Some(("Iterator", "filter_map"))

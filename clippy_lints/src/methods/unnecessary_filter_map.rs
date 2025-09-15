@@ -1,10 +1,10 @@
 use super::utils::clone_or_copy_needed;
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath};
+use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath, MaybeTypeckRes};
+use clippy_utils::sym;
 use clippy_utils::ty::is_copy;
 use clippy_utils::usage::mutated_variables;
 use clippy_utils::visitors::{Descend, for_each_expr_without_closures};
-use clippy_utils::{is_trait_method, sym};
 use core::ops::ControlFlow;
 use rustc_hir as hir;
 use rustc_hir::LangItem::{OptionNone, OptionSome};
@@ -20,7 +20,7 @@ pub(super) fn check<'tcx>(
     arg: &'tcx hir::Expr<'tcx>,
     name: Symbol,
 ) {
-    if !is_trait_method(cx, expr, sym::Iterator) {
+    if !cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Iterator) {
         return;
     }
 

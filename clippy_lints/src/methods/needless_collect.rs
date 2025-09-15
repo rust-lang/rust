@@ -2,13 +2,11 @@ use std::ops::ControlFlow;
 
 use super::NEEDLESS_COLLECT;
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
-use clippy_utils::res::{MaybeDef, MaybeResPath};
+use clippy_utils::res::{MaybeDef, MaybeResPath, MaybeTypeckRes};
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{has_non_owning_mutable_access, make_normalized_projection, make_projection};
-use clippy_utils::{
-    CaptureKind, can_move_expr_to_closure, fn_def_id, get_enclosing_block, higher, is_trait_method, sym,
-};
+use clippy_utils::{CaptureKind, can_move_expr_to_closure, fn_def_id, get_enclosing_block, higher, sym};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir::intravisit::{Visitor, walk_block, walk_expr, walk_stmt};
@@ -337,7 +335,11 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor<'_, 'tcx> {
         if let ExprKind::MethodCall(method_name, recv, args, _) = &expr.kind {
             if args.is_empty()
                 && method_name.ident.name == sym::collect
-                && is_trait_method(self.cx, expr, sym::Iterator)
+                && self
+                    .cx
+                    .ty_based_def(expr)
+                    .opt_parent(self.cx)
+                    .is_diag_item(self.cx, sym::Iterator)
             {
                 self.current_mutably_captured_ids = get_captured_ids(self.cx, self.cx.typeck_results().expr_ty(recv));
                 self.visit_expr(recv);
@@ -548,7 +550,11 @@ impl<'tcx> Visitor<'tcx> for IteratorMethodCheckVisitor<'_, 'tcx> {
                 || self
                     .hir_id_of_let_binding
                     .is_some_and(|hid| recv.res_local_id() == Some(hid)))
-            && !is_trait_method(self.cx, expr, sym::Iterator)
+            && !self
+                .cx
+                .ty_based_def(expr)
+                .opt_parent(self.cx)
+                .is_diag_item(self.cx, sym::Iterator)
         {
             return ControlFlow::Break(());
         } else if let ExprKind::Assign(place, value, _span) = &expr.kind

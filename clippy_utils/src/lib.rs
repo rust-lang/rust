@@ -347,14 +347,6 @@ pub fn is_ty_alias(qpath: &QPath<'_>) -> bool {
     }
 }
 
-/// Checks if the method call given in `expr` belongs to the given trait.
-pub fn is_trait_method(cx: &LateContext<'_>, expr: &Expr<'_>, diag_item: Symbol) -> bool {
-    cx.typeck_results()
-        .type_dependent_def(expr.hir_id)
-        .assoc_fn_parent(cx)
-        .is_diag_item(cx, diag_item)
-}
-
 /// Checks if the `def_id` belongs to a function that is part of a trait impl.
 pub fn is_def_id_trait_method(cx: &LateContext<'_>, def_id: LocalDefId) -> bool {
     if let Node::Item(item) = cx.tcx.parent_hir_node(cx.tcx.local_def_id_to_hir_id(def_id))

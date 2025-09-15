@@ -1,6 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::is_trait_method;
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::LateContext;
 use rustc_span::sym;
@@ -19,7 +18,7 @@ pub(super) fn check<'tcx>(
     recv: &'tcx Expr<'_>,
     (msg, help): (&'static str, &'static str),
 ) {
-    if is_trait_method(cx, expr, sym::IoRead)
+    if cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::IoRead)
         && matches!(recv.kind, ExprKind::Path(QPath::Resolved(None, _)))
         && cx
             .typeck_results()

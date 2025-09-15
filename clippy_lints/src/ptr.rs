@@ -618,7 +618,7 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &Body<'tcx>, args: &[
                         // Some methods exist on both `[T]` and `Vec<T>`, such as `len`, where the receiver type
                         // doesn't coerce to a slice and our adjusted type check below isn't enough,
                         // but it would still be valid to call with a slice
-                        if is_allowed_vec_method(self.cx, use_expr) {
+                        if is_allowed_vec_method(use_expr) {
                             return;
                         }
                     }

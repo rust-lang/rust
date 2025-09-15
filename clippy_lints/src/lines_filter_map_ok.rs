@@ -1,8 +1,8 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::{MaybeDef, MaybeResPath};
-use clippy_utils::{is_trait_method, sym};
+use clippy_utils::res::{MaybeDef, MaybeResPath, MaybeTypeckRes};
+use clippy_utils::sym;
 use rustc_errors::Applicability;
 use rustc_hir::{Body, Closure, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -73,7 +73,7 @@ impl_lint_pass!(LinesFilterMapOk => [LINES_FILTER_MAP_OK]);
 impl LateLintPass<'_> for LinesFilterMapOk {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         if let ExprKind::MethodCall(fm_method, fm_receiver, fm_args, fm_span) = expr.kind
-            && is_trait_method(cx, expr, sym::Iterator)
+            && cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Iterator)
             && let fm_method_name = fm_method.ident.name
             && matches!(fm_method_name, sym::filter_map | sym::flat_map | sym::flatten)
             && cx

@@ -20,9 +20,9 @@ pub(crate) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>, name:
         && matches!(c.kind, ClosureKind::Closure)
         && let typeck = cx.typeck_results()
         && let Some(fn_def) = typeck.type_dependent_def(expr.hir_id)
-        && (fn_def.assoc_fn_parent(cx).is_diag_item(cx, sym::Iterator)
-            || ((fn_def.assoc_fn_parent(cx).opt_impl_ty(cx).is_diag_item(cx, sym::Option)
-                || fn_def.assoc_fn_parent(cx).opt_impl_ty(cx).is_diag_item(cx, sym::Result))
+        && (fn_def.opt_parent(cx).is_diag_item(cx, sym::Iterator)
+            || ((fn_def.opt_parent(cx).opt_impl_ty(cx).is_diag_item(cx, sym::Option)
+                || fn_def.opt_parent(cx).opt_impl_ty(cx).is_diag_item(cx, sym::Result))
                 && msrv.meets(cx, msrvs::OPTION_RESULT_INSPECT)))
         && let body = cx.tcx.hir_body(c.body)
         && let [param] = body.params
