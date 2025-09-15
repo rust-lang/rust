@@ -152,9 +152,9 @@ fn main() {
         check!(alphabetical, &tests_path);
         check!(alphabetical, &compiler_path);
         check!(alphabetical, &library_path);
-        //
-        // check!(x_version, &root_path, &cargo);
-        //
+
+        check!(x_version, &root_path, &cargo);
+
         check!(triagebot, &root_path);
         check!(filenames, &root_path);
 
