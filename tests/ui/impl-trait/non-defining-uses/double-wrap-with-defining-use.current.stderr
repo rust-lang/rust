@@ -1,5 +1,5 @@
 error[E0792]: expected generic type parameter, found `impl Foo`
-  --> $DIR/double-wrap-with-defining-use.rs:12:26
+  --> $DIR/double-wrap-with-defining-use.rs:11:26
    |
 LL | fn a<T: Foo>(x: T) -> impl Foo {
    |      - this generic parameter must be used with a generic type parameter
@@ -7,7 +7,7 @@ LL |     if true { x } else { a(a(x)) }
    |                          ^^^^^^^
 
 error: type parameter `T` is part of concrete type but not used in parameter list for the `impl Trait` type alias
-  --> $DIR/double-wrap-with-defining-use.rs:12:26
+  --> $DIR/double-wrap-with-defining-use.rs:11:26
    |
 LL |     if true { x } else { a(a(x)) }
    |                          ^^^^^^^
