@@ -110,7 +110,7 @@ fn main() {
         check!(tests_revision_unpaired_stdout_stderr, &tests_path);
         check!(debug_artifacts, &tests_path);
         check!(ui_tests, &root_path, bless);
-        // check!(mir_opt_tests, &tests_path, bless);
+        check!(mir_opt_tests, &tests_path, bless);
         // check!(rustdoc_gui_tests, &tests_path);
         // check!(rustdoc_css_themes, &librustdoc_path);
         // check!(rustdoc_templates, &librustdoc_path);
@@ -143,10 +143,10 @@ fn main() {
         check!(style, &compiler_path);
         check!(style, &library_path);
 
-        // check!(edition, &src_path);
-        // check!(edition, &compiler_path);
-        // check!(edition, &library_path);
-        //
+        check!(edition, &src_path);
+        check!(edition, &compiler_path);
+        check!(edition, &library_path);
+
         check!(alphabetical, &root_manifest);
         check!(alphabetical, &src_path);
         check!(alphabetical, &tests_path);
