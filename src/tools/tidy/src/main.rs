@@ -118,7 +118,7 @@ fn main() {
         check!(unknown_revision, &tests_path);
 
         // Checks that only make sense for the compiler.
-        // check!(error_codes, &root_path, &[&compiler_path, &librustdoc_path], verbose, &ci_info);
+        check!(error_codes, &root_path, &[&compiler_path, &librustdoc_path], &ci_info);
         // check!(fluent_alphabetical, &compiler_path, bless);
         // check!(fluent_period, &compiler_path);
         // check!(fluent_lowercase, &compiler_path);
@@ -126,7 +126,7 @@ fn main() {
         // check!(gcc_submodule, &root_path, &compiler_path);
 
         // Checks that only make sense for the std libs.
-        // check!(pal, &library_path);
+        check!(pal, &library_path);
 
         // Checks that need to be done for both the compiler and std libraries.
         check!(unit_tests, &src_path, false);
