@@ -317,11 +317,17 @@ pub fn parse_config(args: Vec<String>) -> Config {
             .free
             .iter()
             .map(|f| {
+                // Here `f` is relative to `./tests/run-make`. So if you run
+                //
+                //   ./x test tests/run-make/crate-loading
+                //
+                //  then `f` is "crate-loading".
                 let path = Utf8Path::new(f);
                 let mut iter = path.iter().skip(1);
 
-                // We skip the test folder and check if the user passed `rmake.rs`.
                 if iter.next().is_some_and(|s| s == "rmake.rs") && iter.next().is_none() {
+                    // Strip the "rmake.rs" suffix. For example, if `f` is
+                    // "crate-loading/rmake.rs" then this gives us "crate-loading".
                     path.parent().unwrap().to_string()
                 } else {
                     f.to_string()
@@ -329,6 +335,12 @@ pub fn parse_config(args: Vec<String>) -> Config {
             })
             .collect::<Vec<_>>()
     } else {
+        // Note that the filters are relative to the root dir of the different test
+        // suites. For example, with:
+        //
+        //   ./x test tests/ui/lint/unused
+        //
+        // the filter is "lint/unused".
         matches.free.clone()
     };
     let compare_mode = matches.opt_str("compare-mode").map(|s| {
@@ -911,7 +923,8 @@ fn make_test(cx: &TestCollectorCx, collector: &mut TestCollector, testpaths: &Te
     collector.tests.extend(revisions.into_iter().map(|revision| {
         // Create a test name and description to hand over to the executor.
         let src_file = fs::File::open(&test_path).expect("open test file to parse ignores");
-        let test_name = make_test_name(&cx.config, testpaths, revision);
+        let (test_name, filterable_path) =
+            make_test_name_and_filterable_path(&cx.config, testpaths, revision);
         // Create a description struct for the test/revision.
         // This is where `ignore-*`/`only-*`/`needs-*` directives are handled,
         // because they historically needed to set the libtest ignored flag.
@@ -920,6 +933,7 @@ fn make_test(cx: &TestCollectorCx, collector: &mut TestCollector, testpaths: &Te
             &cx.cache,
             test_name,
             &test_path,
+            &filterable_path,
             src_file,
             revision,
             &mut collector.poisoned,
@@ -1072,7 +1086,11 @@ impl Stamp {
 }
 
 /// Creates a name for this test/revision that can be handed over to the executor.
-fn make_test_name(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> String {
+fn make_test_name_and_filterable_path(
+    config: &Config,
+    testpaths: &TestPaths,
+    revision: Option<&str>,
+) -> (String, Utf8PathBuf) {
     // Print the name of the file, relative to the sources root.
     let path = testpaths.file.strip_prefix(&config.src_root).unwrap();
     let debugger = match config.debugger {
@@ -1084,14 +1102,23 @@ fn make_test_name(config: &Config, testpaths: &TestPaths, revision: Option<&str>
         None => String::new(),
     };
 
-    format!(
+    let name = format!(
         "[{}{}{}] {}{}",
         config.mode,
         debugger,
         mode_suffix,
         path,
         revision.map_or("".to_string(), |rev| format!("#{}", rev))
-    )
+    );
+
+    // `path` is the full path from the repo root like, `tests/ui/foo/bar.rs`.
+    // Filtering is applied without the `tests/ui/` part, so strip that off.
+    // First strip off "tests" to make sure we don't have some unexpected path.
+    let mut filterable_path = path.strip_prefix("tests").unwrap().to_owned();
+    // Now strip off e.g. "ui" or "run-make" component.
+    filterable_path = filterable_path.components().skip(1).collect();
+
+    (name, filterable_path)
 }
 
 /// Checks that test discovery didn't find any tests whose name stem is a prefix
