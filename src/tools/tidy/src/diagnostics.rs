@@ -118,9 +118,19 @@ impl RunningCheck {
 
     /// Output a message only if verbose output is enabled.
     pub fn verbose_msg<T: Display>(&mut self, t: T) {
-        if self.ctx.lock().unwrap().verbose {
+        if self.is_verbose_enabled() {
             self.message(t);
         }
+    }
+
+    /// Has an error already occured for this check?
+    pub fn is_bad(&self) -> bool {
+        self.bad
+    }
+
+    /// Is verbose output enabled?
+    pub fn is_verbose_enabled(&self) -> bool {
+        self.ctx.lock().unwrap().verbose
     }
 
     fn mark_as_bad(&mut self) {

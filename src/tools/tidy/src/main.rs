@@ -8,7 +8,7 @@ use std::collections::VecDeque;
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::AtomicBool;
 use std::thread::{self, ScopedJoinHandle, scope};
 use std::{env, process};
 
@@ -160,14 +160,7 @@ fn main() {
         let collected = {
             drain_handles(&mut handles);
 
-            features::check(
-                &src_path,
-                &tests_path,
-                &compiler_path,
-                &library_path,
-                diag_ctx.clone(),
-                verbose,
-            )
+            features::check(&src_path, &tests_path, &compiler_path, &library_path, diag_ctx.clone())
         };
         check!(unstable_book, &src_path, collected);
 
