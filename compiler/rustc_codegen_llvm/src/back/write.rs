@@ -574,7 +574,8 @@ pub(crate) unsafe fn llvm_optimize(
     // FIXME(ZuseZ4): In a future update we could figure out how to only optimize individual functions getting
     // differentiated.
 
-    let consider_ad = cfg!(llvm_enzyme) && config.autodiff.contains(&config::AutoDiff::Enable);
+    let consider_ad =
+        cfg!(feature = "llvm_enzyme") && config.autodiff.contains(&config::AutoDiff::Enable);
     let run_enzyme = autodiff_stage == AutodiffStage::DuringAD;
     let print_before_enzyme = config.autodiff.contains(&config::AutoDiff::PrintModBefore);
     let print_after_enzyme = config.autodiff.contains(&config::AutoDiff::PrintModAfter);
@@ -740,7 +741,8 @@ pub(crate) fn optimize(
 
         // If we know that we will later run AD, then we disable vectorization and loop unrolling.
         // Otherwise we pretend AD is already done and run the normal opt pipeline (=PostAD).
-        let consider_ad = cfg!(llvm_enzyme) && config.autodiff.contains(&config::AutoDiff::Enable);
+        let consider_ad =
+            cfg!(feature = "llvm_enzyme") && config.autodiff.contains(&config::AutoDiff::Enable);
         let autodiff_stage = if consider_ad { AutodiffStage::PreAD } else { AutodiffStage::PostAD };
         // The embedded bitcode is used to run LTO/ThinLTO.
         // The bitcode obtained during the `codegen` phase is no longer suitable for performing LTO.
