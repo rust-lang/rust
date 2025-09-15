@@ -122,7 +122,7 @@ fn main() {
         check!(fluent_alphabetical, &compiler_path, bless);
         check!(fluent_period, &compiler_path);
         check!(fluent_lowercase, &compiler_path);
-        // check!(target_policy, &root_path);
+        check!(target_policy, &root_path);
         // check!(gcc_submodule, &root_path, &compiler_path);
 
         // Checks that only make sense for the std libs.
