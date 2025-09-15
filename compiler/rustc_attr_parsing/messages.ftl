@@ -192,6 +192,7 @@ attr_parsing_invalid_attr_unsafe = `{$name}` is not an unsafe attribute
 attr_parsing_invalid_meta_item = expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found {$descr}
     .remove_neg_sugg = negative numbers are not literals, try removing the `-` sign
     .quote_ident_sugg = surround the identifier with quotation marks to make it into a string literal
+    .label = macros are not allowed here
 
 attr_parsing_suffixed_literal_in_attribute = suffixed literals are not allowed in attributes
     .help = instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), use an unsuffixed version (`1`, `1.0`, etc.)
