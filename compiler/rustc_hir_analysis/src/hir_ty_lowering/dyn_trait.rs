@@ -60,6 +60,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 dummy_self,
                 &mut user_written_bounds,
                 PredicateFilter::SelfOnly,
+                true,
             );
             if let Err(GenericArgCountMismatch { invalid_args, .. }) = result.correct {
                 potential_assoc_types.extend(invalid_args);
@@ -157,10 +158,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 self.dcx()
                     .struct_span_err(
                         span,
-                        format!(
-                            "conflicting associated type bounds for `{item}` when \
-                            expanding trait alias"
-                        ),
+                        format!("conflicting associated type bounds for `{item}`"),
                     )
                     .with_span_label(
                         old_proj_span,
