@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/custom_mut_coerce_shared.rs:23:12
+  --> $DIR/custom_mut_coerce_shared.rs:24:12
    |
 LL |     method(a);
    |     ------ ^ expected `CustomRef<'_, ()>`, found `CustomMut<'_, ()>`
@@ -9,7 +9,7 @@ LL |     method(a);
    = note: expected struct `CustomRef<'_, ()>`
               found struct `CustomMut<'_, ()>`
 note: function defined here
-  --> $DIR/custom_mut_coerce_shared.rs:19:4
+  --> $DIR/custom_mut_coerce_shared.rs:20:4
    |
 LL | fn method(a: CustomRef<'_, ()>) {}
    |    ^^^^^^ --------------------
