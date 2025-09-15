@@ -50,13 +50,6 @@ macro_rules! tidy_error {
     });
 }
 
-macro_rules! tidy_error_ext {
-    ($tidy_error:path, $bad:expr, $($fmt:tt)*) => ({
-        $tidy_error(&format_args!($($fmt)*).to_string()).expect("failed to output error");
-        *$bad = true;
-    });
-}
-
 fn tidy_error(args: &str) -> std::io::Result<()> {
     use std::io::Write;
 
@@ -250,6 +243,7 @@ pub mod alphabetical;
 pub mod bins;
 pub mod debug_artifacts;
 pub mod deps;
+pub mod diagnostics;
 pub mod edition;
 pub mod error_codes;
 pub mod extdeps;
