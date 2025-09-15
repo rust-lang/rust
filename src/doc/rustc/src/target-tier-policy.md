@@ -701,4 +701,4 @@ RFC process, with approval by the compiler and infra teams. Any such proposal
 will be communicated widely to the Rust community, both when initially proposed
 and before being dropped from a stable release.
 
-[MCP]: https://forge.rust-lang.org/compiler/mcp.html
+[MCP]: https://forge.rust-lang.org/compiler/proposals-and-stabilization.html#how-do-i-submit-an-mcp
