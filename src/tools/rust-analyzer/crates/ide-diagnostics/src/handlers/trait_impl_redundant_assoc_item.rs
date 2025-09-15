@@ -6,6 +6,7 @@ use ide_db::{
     source_change::SourceChangeBuilder,
 };
 use syntax::ToSmolStr;
+use syntax::ast::edit::AstNodeEdit;
 
 use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 
@@ -23,6 +24,7 @@ pub(crate) fn trait_impl_redundant_assoc_item(
 
     let default_range = d.impl_.syntax_node_ptr().text_range();
     let trait_name = d.trait_.name(db).display_no_db(ctx.edition).to_smolstr();
+    let indent_level = d.trait_.source(db).map_or(0, |it| it.value.indent_level().0) + 1;
 
     let (redundant_item_name, diagnostic_range, redundant_item_def) = match assoc_item {
         hir::AssocItem::Function(id) => {
@@ -30,7 +32,7 @@ pub(crate) fn trait_impl_redundant_assoc_item(
             (
                 format!("`fn {redundant_assoc_item_name}`"),
                 function.source(db).map(|it| it.syntax().text_range()).unwrap_or(default_range),
-                format!("\n    {};", function.display(db, ctx.display_target)),
+                format!("\n{};", function.display(db, ctx.display_target)),
             )
         }
         hir::AssocItem::Const(id) => {
@@ -38,7 +40,7 @@ pub(crate) fn trait_impl_redundant_assoc_item(
             (
                 format!("`const {redundant_assoc_item_name}`"),
                 constant.source(db).map(|it| it.syntax().text_range()).unwrap_or(default_range),
-                format!("\n    {};", constant.display(db, ctx.display_target)),
+                format!("\n{};", constant.display(db, ctx.display_target)),
             )
         }
         hir::AssocItem::TypeAlias(id) => {
@@ -46,10 +48,8 @@ pub(crate) fn trait_impl_redundant_assoc_item(
             (
                 format!("`type {redundant_assoc_item_name}`"),
                 type_alias.source(db).map(|it| it.syntax().text_range()).unwrap_or(default_range),
-                format!(
-                    "\n    type {};",
-                    type_alias.name(ctx.sema.db).display_no_db(ctx.edition).to_smolstr()
-                ),
+                // FIXME cannot generate generic parameter and bounds
+                format!("\ntype {};", type_alias.name(ctx.sema.db).display_no_db(ctx.edition)),
             )
         }
     };
@@ -65,7 +65,7 @@ pub(crate) fn trait_impl_redundant_assoc_item(
     .with_fixes(quickfix_for_redundant_assoc_item(
         ctx,
         d,
-        redundant_item_def,
+        stdx::indent_string(&redundant_item_def, indent_level),
         diagnostic_range,
     ))
 }
@@ -189,6 +189,89 @@ impl Marker for Foo {
 }
             "#,
         )
+    }
+
+    #[test]
+    fn quickfix_indentations() {
+        check_fix(
+            r#"
+mod indent {
+    trait Marker {
+        fn boo();
+    }
+    struct Foo;
+    impl Marker for Foo {
+        fn$0 bar<T: Copy>(_a: i32, _b: T) -> String {}
+        fn boo() {}
+    }
+}
+            "#,
+            r#"
+mod indent {
+    trait Marker {
+        fn bar<T>(_a: i32, _b: T) -> String
+        where
+            T: Copy,;
+        fn boo();
+    }
+    struct Foo;
+    impl Marker for Foo {
+        fn bar<T: Copy>(_a: i32, _b: T) -> String {}
+        fn boo() {}
+    }
+}
+            "#,
+        );
+
+        check_fix(
+            r#"
+mod indent {
+    trait Marker {
+        fn foo () {}
+    }
+    struct Foo;
+    impl Marker for Foo {
+        const FLAG: bool$0 = false;
+    }
+}
+            "#,
+            r#"
+mod indent {
+    trait Marker {
+        const FLAG: bool;
+        fn foo () {}
+    }
+    struct Foo;
+    impl Marker for Foo {
+        const FLAG: bool = false;
+    }
+}
+            "#,
+        );
+
+        check_fix(
+            r#"
+mod indent {
+    trait Marker {
+    }
+    struct Foo;
+    impl Marker for Foo {
+        type T = i32;$0
+    }
+}
+            "#,
+            r#"
+mod indent {
+    trait Marker {
+        type T;
+    }
+    struct Foo;
+    impl Marker for Foo {
+        type T = i32;
+    }
+}
+            "#,
+        );
     }
 
     #[test]
