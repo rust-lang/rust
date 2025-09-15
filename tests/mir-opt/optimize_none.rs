@@ -15,7 +15,8 @@ pub fn add_noopt() -> i32 {
 #[optimize(none)]
 pub fn const_branch() -> i32 {
     // CHECK-LABEL: fn const_branch(
-    // CHECK: switchInt(const true) -> [0: [[FALSE:bb[0-9]+]], otherwise: [[TRUE:bb[0-9]+]]];
+    // CHECK: _1 = const true;
+    // CHECK: switchInt(move _1) -> [0: [[FALSE:bb[0-9]+]], otherwise: [[TRUE:bb[0-9]+]]];
     // CHECK-NEXT: }
     // CHECK: [[FALSE]]: {
     // CHECK-NEXT: _0 = const 0

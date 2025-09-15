@@ -5,7 +5,6 @@
 // EMIT_MIR indirect.main.GVN.diff
 fn main() {
     // CHECK-LABEL: fn main(
-    // CHECK: debug x => [[x:_.*]];
-    // CHECK: [[x]] = const 3_u8;
+    // CHECK: debug x => const 3_u8;
     let x = (2u32 as u8) + 1;
 }

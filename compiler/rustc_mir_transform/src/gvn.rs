@@ -145,6 +145,10 @@ impl<'tcx> crate::MirPass<'tcx> for GVN {
             state.visit_basic_block_data(bb, data);
         }
 
+        for var_debug_info in body.var_debug_info.iter_mut() {
+            state.visit_var_debug_info(var_debug_info);
+        }
+
         // For each local that is reused (`y` above), we remove its storage statements do avoid any
         // difficulty. Those locals are SSA, so should be easy to optimize by LLVM without storage
         // statements.
@@ -866,10 +870,11 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
 
     /// Simplify the projection chain if we know better.
     #[instrument(level = "trace", skip(self))]
-    fn simplify_place_projection(&mut self, place: &mut Place<'tcx>, location: Location) {
+    fn simplify_place_projection(&mut self, place: &mut Place<'tcx>, location: Option<Location>) {
         // If the projection is indirect, we treat the local as a value, so can replace it with
         // another local.
-        if place.is_indirect_first_projection()
+        if let Some(location) = location
+            && place.is_indirect_first_projection()
             && let Some(base) = self.locals[place.local]
             && let Some(new_local) = self.try_as_local(base, location)
             && place.local != new_local
@@ -891,7 +896,8 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 {
                     projection.to_mut()[i] =
                         ProjectionElem::ConstantIndex { offset, min_length, from_end: false };
-                } else if let Some(new_idx_local) = self.try_as_local(idx, location)
+                } else if let Some(location) = location
+                    && let Some(new_idx_local) = self.try_as_local(idx, location)
                     && idx_local != new_idx_local
                 {
                     projection.to_mut()[i] = ProjectionElem::Index(new_idx_local);
@@ -913,7 +919,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
     fn compute_place_value(
         &mut self,
         place: Place<'tcx>,
-        location: Location,
+        location: Option<Location>,
     ) -> Result<VnIndex, PlaceRef<'tcx>> {
         // Invariant: `place` and `place_ref` point to the same value, even if they point to
         // different memory locations.
@@ -924,7 +930,9 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         // Invariant: `value` has type `place_ty`, with optional downcast variant if needed.
         let mut place_ty = PlaceTy::from_ty(self.local_decls[place.local].ty);
         for (index, proj) in place.projection.iter().enumerate() {
-            if let Some(local) = self.try_as_local(value, location) {
+            if let Some(location) = location
+                && let Some(local) = self.try_as_local(value, location)
+            {
                 // Both `local` and `Place { local: place.local, projection: projection[..index] }`
                 // hold the same value. Therefore, following place holds the value in the original
                 // `place`.
@@ -949,13 +957,14 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
     fn simplify_place_value(
         &mut self,
         place: &mut Place<'tcx>,
-        location: Location,
+        location: Option<Location>,
     ) -> Option<VnIndex> {
         self.simplify_place_projection(place, location);
 
         match self.compute_place_value(*place, location) {
             Ok(value) => {
-                if let Some(new_place) = self.try_as_place(value, location, true)
+                if let Some(location) = location
+                    && let Some(new_place) = self.try_as_place(value, location, true)
                     && (new_place.local != place.local
                         || new_place.projection.len() < place.projection.len())
                 {
@@ -986,7 +995,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         let value = match *operand {
             Operand::Constant(ref constant) => self.insert_constant(constant.const_),
             Operand::Copy(ref mut place) | Operand::Move(ref mut place) => {
-                self.simplify_place_value(place, location)?
+                self.simplify_place_value(place, Some(location))?
             }
         };
         if let Some(const_) = self.try_as_constant(value) {
@@ -1020,11 +1029,11 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             Rvalue::NullaryOp(op, ty) => Value::NullaryOp(op, ty),
             Rvalue::Aggregate(..) => return self.simplify_aggregate(lhs, rvalue, location),
             Rvalue::Ref(_, borrow_kind, ref mut place) => {
-                self.simplify_place_projection(place, location);
+                self.simplify_place_projection(place, Some(location));
                 return self.new_pointer(*place, AddressKind::Ref(borrow_kind));
             }
             Rvalue::RawPtr(mutbl, ref mut place) => {
-                self.simplify_place_projection(place, location);
+                self.simplify_place_projection(place, Some(location));
                 return self.new_pointer(*place, AddressKind::Address(mutbl));
             }
             Rvalue::WrapUnsafeBinder(ref mut op, _) => {
@@ -1043,7 +1052,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 return self.simplify_unary(op, arg_op, location);
             }
             Rvalue::Discriminant(ref mut place) => {
-                let place = self.simplify_place_value(place, location)?;
+                let place = self.simplify_place_value(place, Some(location))?;
                 if let Some(discr) = self.simplify_discriminant(place) {
                     return Some(discr);
                 }
@@ -1853,8 +1862,21 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, '_, 'tcx> {
         self.tcx
     }
 
+    fn visit_var_debug_info(&mut self, var_debug_info: &mut VarDebugInfo<'tcx>) {
+        match &mut var_debug_info.value {
+            VarDebugInfoContents::Const(_) => {}
+            VarDebugInfoContents::Place(place) => {
+                if let Some(value) = self.simplify_place_value(place, None)
+                    && let Some(constant) = self.try_as_constant(value)
+                {
+                    var_debug_info.value = VarDebugInfoContents::Const(constant);
+                }
+            }
+        }
+    }
+
     fn visit_place(&mut self, place: &mut Place<'tcx>, context: PlaceContext, location: Location) {
-        self.simplify_place_projection(place, location);
+        self.simplify_place_projection(place, Some(location));
         if context.is_mutating_use() && place.is_indirect() {
             // Non-local mutation maybe invalidate deref.
             self.invalidate_derefs();
@@ -1873,7 +1895,7 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, '_, 'tcx> {
         rvalue: &mut Rvalue<'tcx>,
         location: Location,
     ) {
-        self.simplify_place_projection(lhs, location);
+        self.simplify_place_projection(lhs, Some(location));
 
         let value = self.simplify_rvalue(lhs, rvalue, location);
         if let Some(value) = value {

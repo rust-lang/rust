@@ -8,7 +8,8 @@
       let _3: usize;
       let mut _4: bool;
       scope 1 {
-          debug x => _1;
+-         debug x => _1;
++         debug x => const 0_u8;
       }
   
       bb0: {

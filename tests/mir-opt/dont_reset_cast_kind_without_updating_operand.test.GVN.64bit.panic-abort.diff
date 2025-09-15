@@ -10,7 +10,7 @@
       let mut _8: *const [()];
       let mut _9: std::boxed::Box<()>;
       let mut _10: *const ();
-      let mut _23: usize;
+      let mut _24: usize;
       scope 1 {
           debug vp_ctx => _1;
           let _4: *const ();
@@ -43,11 +43,12 @@
               let mut _18: !;
               scope 7 {
                   let _17: std::ptr::NonNull<[u8]>;
+                  let mut _19: &std::alloc::Global;
                   scope 8 {
                       scope 11 (inlined NonNull::<[u8]>::as_mut_ptr) {
                           scope 12 (inlined NonNull::<[u8]>::as_non_null_ptr) {
                               scope 13 (inlined NonNull::<[u8]>::cast::<u8>) {
-                                  let mut _22: *mut [u8];
+                                  let mut _23: *mut [u8];
                                   scope 14 (inlined NonNull::<[u8]>::as_ptr) {
                                   }
                               }
@@ -60,9 +61,9 @@
                   }
               }
               scope 9 (inlined #[track_caller] Layout::from_size_align_unchecked) {
-                  let mut _19: bool;
-                  let _20: ();
-                  let mut _21: std::ptr::Alignment;
+                  let mut _20: bool;
+                  let _21: ();
+                  let mut _22: std::ptr::Alignment;
               }
           }
       }
@@ -82,8 +83,9 @@
           StorageLive(_16);
           StorageLive(_17);
           StorageLive(_19);
-          _19 = const false;
--         switchInt(move _19) -> [0: bb6, otherwise: bb5];
+          StorageLive(_20);
+          _20 = const false;
+-         switchInt(move _20) -> [0: bb6, otherwise: bb5];
 +         switchInt(const false) -> [0: bb6, otherwise: bb5];
       }
   
@@ -104,11 +106,12 @@
   
       bb4: {
           _17 = copy ((_15 as Ok).0: std::ptr::NonNull<[u8]>);
-          StorageLive(_22);
-          _22 = copy _17 as *mut [u8] (Transmute);
-          _13 = copy _22 as *mut u8 (PtrToPtr);
-          StorageDead(_22);
+          StorageLive(_23);
+          _23 = copy _17 as *mut [u8] (Transmute);
+          _13 = copy _23 as *mut u8 (PtrToPtr);
+          StorageDead(_23);
           StorageDead(_15);
+          StorageDead(_19);
           StorageDead(_17);
           StorageDead(_16);
           StorageDead(_14);
@@ -129,11 +132,11 @@
           StorageLive(_6);
 -         _6 = copy _4;
 +         _6 = copy _10;
-          StorageLive(_23);
-          _23 = const 1_usize;
--         _5 = *const [()] from (copy _6, copy _23);
+          StorageLive(_24);
+          _24 = const 1_usize;
+-         _5 = *const [()] from (copy _6, copy _24);
 +         _5 = *const [()] from (copy _10, const 1_usize);
-          StorageDead(_23);
+          StorageDead(_24);
           StorageDead(_6);
           StorageLive(_7);
           StorageLive(_8);
@@ -149,21 +152,22 @@
       }
   
       bb5: {
--         _20 = Layout::from_size_align_unchecked::precondition_check(copy _11, copy _12) -> [return: bb6, unwind unreachable];
-+         _20 = Layout::from_size_align_unchecked::precondition_check(const 0_usize, const 1_usize) -> [return: bb6, unwind unreachable];
+-         _21 = Layout::from_size_align_unchecked::precondition_check(copy _11, copy _12) -> [return: bb6, unwind unreachable];
++         _21 = Layout::from_size_align_unchecked::precondition_check(const 0_usize, const 1_usize) -> [return: bb6, unwind unreachable];
       }
   
       bb6: {
-          StorageDead(_19);
-          StorageLive(_21);
--         _21 = copy _12 as std::ptr::Alignment (Transmute);
--         _14 = Layout { size: copy _11, align: move _21 };
-+         _21 = const std::ptr::Alignment(std::ptr::alignment::AlignmentEnum::_Align1Shl0);
+          StorageDead(_20);
+          StorageLive(_22);
+-         _22 = copy _12 as std::ptr::Alignment (Transmute);
+-         _14 = Layout { size: copy _11, align: move _22 };
++         _22 = const std::ptr::Alignment(std::ptr::alignment::AlignmentEnum::_Align1Shl0);
 +         _14 = const Layout {{ size: 0_usize, align: std::ptr::Alignment(std::ptr::alignment::AlignmentEnum::_Align1Shl0) }};
-          StorageDead(_21);
+          StorageDead(_22);
           StorageLive(_15);
--         _15 = std::alloc::Global::alloc_impl(const alloc::alloc::exchange_malloc::promoted[0], copy _14, const false) -> [return: bb7, unwind unreachable];
-+         _15 = std::alloc::Global::alloc_impl(const alloc::alloc::exchange_malloc::promoted[0], const Layout {{ size: 0_usize, align: std::ptr::Alignment(std::ptr::alignment::AlignmentEnum::_Align1Shl0) }}, const false) -> [return: bb7, unwind unreachable];
+          _19 = const alloc::alloc::exchange_malloc::promoted[0];
+-         _15 = std::alloc::Global::alloc_impl(move _19, copy _14, const false) -> [return: bb7, unwind unreachable];
++         _15 = std::alloc::Global::alloc_impl(move _19, const Layout {{ size: 0_usize, align: std::ptr::Alignment(std::ptr::alignment::AlignmentEnum::_Align1Shl0) }}, const false) -> [return: bb7, unwind unreachable];
       }
   
       bb7: {

@@ -12,7 +12,8 @@
           debug ptr => _2;
           let _4: usize;
           scope 2 {
-              debug len => _4;
+-             debug len => _4;
++             debug len => const 123_usize;
           }
       }
   
