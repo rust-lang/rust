@@ -1,9 +1,9 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::res::{MaybeDef, MaybeResPath};
+use clippy_utils::res::{MaybeDef, MaybeResPath, MaybeTypeckRes};
 use clippy_utils::source::{snippet, snippet_with_context};
 use clippy_utils::sugg::{DiagExt as _, Sugg};
 use clippy_utils::ty::{is_copy, same_type_modulo_regions};
-use clippy_utils::{get_parent_expr, is_inherent_method_call, is_trait_item, is_trait_method, is_ty_alias, sym};
+use clippy_utils::{get_parent_expr, is_trait_item, is_trait_method, is_ty_alias, sym};
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BindingMode, Expr, ExprKind, HirId, MatchSource, Mutability, Node, PatKind};
@@ -438,7 +438,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
 }
 
 fn has_eligible_receiver(cx: &LateContext<'_>, recv: &Expr<'_>, expr: &Expr<'_>) -> bool {
-    if is_inherent_method_call(cx, expr) {
+    if cx.ty_based_def(expr).opt_parent(cx).is_impl(cx) {
         matches!(
             cx.typeck_results().expr_ty(recv).opt_diag_name(cx),
             Some(sym::Option | sym::Result | sym::ControlFlow)
