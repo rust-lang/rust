@@ -630,19 +630,9 @@ impl Config {
         let llvm_assertions = llvm_assertions.unwrap_or(false);
         let mut target_config = HashMap::new();
         let mut channel = "dev".to_string();
-        let out = flags_build_dir.or(build_build_dir.map(PathBuf::from)).unwrap_or_else(|| {
-            if cfg!(test) {
-                // Use the build directory of the original x.py invocation, so that we can set `initial_rustc` properly.
-                Path::new(
-                    &env::var_os("CARGO_TARGET_DIR").expect("cargo test directly is not supported"),
-                )
-                .parent()
-                .unwrap()
-                .to_path_buf()
-            } else {
-                PathBuf::from("build")
-            }
-        });
+        let out = flags_build_dir
+            .or(build_build_dir.map(PathBuf::from))
+            .unwrap_or_else(|| PathBuf::from("build"));
 
         // NOTE: Bootstrap spawns various commands with different working directories.
         // To avoid writing to random places on the file system, `config.out` needs to be an absolute path.
@@ -693,8 +683,14 @@ impl Config {
         };
 
         let initial_rustc = build_rustc.unwrap_or_else(|| {
+            let out = if cfg!(test) { Path::new("../../build").to_path_buf() } else { out.clone() };
+
             download_beta_toolchain(&dwn_ctx, &out);
-            out.join(host_target).join("stage0").join("bin").join(exe("rustc", host_target))
+
+            out.join(if cfg!(test) { get_host_target() } else { host_target })
+                .join("stage0")
+                .join("bin")
+                .join(exe("rustc", host_target))
         });
 
         let initial_sysroot = t!(PathBuf::from_str(
