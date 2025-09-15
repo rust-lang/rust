@@ -155,8 +155,8 @@ fn main() {
         //
         // check!(x_version, &root_path, &cargo);
         //
-        // check!(triagebot, &root_path);
-        //
+        check!(triagebot, &root_path);
+
         // check!(filenames, &root_path);
 
         let collected = {
