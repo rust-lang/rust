@@ -3,7 +3,7 @@ use clippy_utils::higher::VecArgs;
 use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::source::{snippet_opt, snippet_with_applicability};
 use clippy_utils::usage::{local_used_after_expr, local_used_in};
-use clippy_utils::{get_path_from_caller_to_method_type, is_adjusted, is_no_std_crate, path_to_local_id};
+use clippy_utils::{get_path_from_caller_to_method_type, is_adjusted, is_no_std_crate};
 use rustc_abi::ExternAbi;
 use rustc_errors::Applicability;
 use rustc_hir::attrs::AttributeKind;
@@ -305,7 +305,7 @@ fn check_inputs(
             matches!(
                 p.pat.kind,
                 PatKind::Binding(BindingMode::NONE, id, _, None)
-                if path_to_local_id(arg, id)
+                if arg.res_local_id() == Some(id)
             )
             // Only allow adjustments which change regions (i.e. re-borrowing).
             && typeck

@@ -7,8 +7,7 @@ use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{has_non_owning_mutable_access, make_normalized_projection, make_projection};
 use clippy_utils::{
-    CaptureKind, can_move_expr_to_closure, fn_def_id, get_enclosing_block, higher, is_trait_method, path_to_local_id,
-    sym,
+    CaptureKind, can_move_expr_to_closure, fn_def_id, get_enclosing_block, higher, is_trait_method, sym,
 };
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, MultiSpan};
@@ -345,7 +344,7 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor<'_, 'tcx> {
                 return;
             }
 
-            if path_to_local_id(recv, self.target) {
+            if recv.res_local_id() == Some(self.target) {
                 if self
                     .illegal_mutable_capture_ids
                     .intersection(&self.current_mutably_captured_ids)
@@ -401,7 +400,7 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor<'_, 'tcx> {
             }
         }
         // Check if the collection is used for anything else
-        if path_to_local_id(expr, self.target) {
+        if expr.res_local_id() == Some(self.target) {
             self.seen_other = true;
         } else {
             walk_expr(self, expr);
@@ -463,7 +462,7 @@ impl<'tcx> Visitor<'tcx> for UsedCountVisitor<'_, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-        if path_to_local_id(expr, self.id) {
+        if expr.res_local_id() == Some(self.id) {
             self.count += 1;
         } else {
             walk_expr(self, expr);
@@ -548,7 +547,7 @@ impl<'tcx> Visitor<'tcx> for IteratorMethodCheckVisitor<'_, 'tcx> {
             && (recv.hir_id == self.hir_id_of_expr
                 || self
                     .hir_id_of_let_binding
-                    .is_some_and(|hid| path_to_local_id(recv, hid)))
+                    .is_some_and(|hid| recv.res_local_id() == Some(hid)))
             && !is_trait_method(self.cx, expr, sym::Iterator)
         {
             return ControlFlow::Break(());

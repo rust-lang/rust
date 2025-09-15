@@ -1,10 +1,10 @@
 use super::utils::clone_or_copy_needed;
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::res::{MaybeDef, MaybeQPath};
+use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath};
 use clippy_utils::ty::is_copy;
 use clippy_utils::usage::mutated_variables;
 use clippy_utils::visitors::{Descend, for_each_expr_without_closures};
-use clippy_utils::{is_trait_method, path_to_local_id, sym};
+use clippy_utils::{is_trait_method, sym};
 use core::ops::ControlFlow;
 use rustc_hir as hir;
 use rustc_hir::LangItem::{OptionNone, OptionSome};
@@ -97,7 +97,7 @@ fn check_expression<'tcx>(cx: &LateContext<'tcx>, arg_id: hir::HirId, expr: &'tc
     match expr.kind {
         hir::ExprKind::Call(func, args) => {
             if func.res(cx).ctor_parent(cx).is_lang_item(cx, OptionSome) {
-                if path_to_local_id(&args[0], arg_id) {
+                if args[0].res_local_id() == Some(arg_id) {
                     return (false, false);
                 }
                 return (true, false);
@@ -107,7 +107,7 @@ fn check_expression<'tcx>(cx: &LateContext<'tcx>, arg_id: hir::HirId, expr: &'tc
         hir::ExprKind::MethodCall(segment, recv, [arg], _) => {
             if segment.ident.name == sym::then_some
                 && cx.typeck_results().expr_ty(recv).is_bool()
-                && path_to_local_id(arg, arg_id)
+                && arg.res_local_id() == Some(arg_id)
             {
                 (false, true)
             } else {

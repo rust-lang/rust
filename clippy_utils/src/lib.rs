@@ -430,12 +430,6 @@ pub fn qpath_generic_tys<'tcx>(qpath: &QPath<'tcx>) -> impl Iterator<Item = &'tc
         })
 }
 
-/// Returns true if the expression is a path to a local with the specified `HirId`.
-/// Use this function to see if an expression matches a function argument or a match binding.
-pub fn path_to_local_id(expr: &Expr<'_>, id: HirId) -> bool {
-    expr.res_local_id() == Some(id)
-}
-
 /// If the expression is a path to a local (with optional projections),
 /// returns the canonical `HirId` of the local.
 ///
@@ -1599,7 +1593,7 @@ pub fn is_try<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'tcx>) -> Option<&'tc
                 .ctor_parent(cx)
                 .is_lang_item(cx, ResultOk)
             && let PatKind::Binding(_, hir_id, _, None) = pat[0].kind
-            && path_to_local_id(arm.body, hir_id)
+            && arm.body.res_local_id() == Some(hir_id)
         {
             return true;
         }
@@ -1904,7 +1898,7 @@ pub fn is_expr_identity_of_pat(cx: &LateContext<'_>, pat: &Pat<'_>, expr: &Expr<
 
     match (pat.kind, expr.kind) {
         (PatKind::Binding(_, id, _, _), _) if by_hir => {
-            path_to_local_id(expr, id) && cx.typeck_results().expr_adjustments(expr).is_empty()
+            expr.res_local_id() == Some(id) && cx.typeck_results().expr_adjustments(expr).is_empty()
         },
         (PatKind::Binding(_, _, ident, _), ExprKind::Path(QPath::Resolved(_, path))) => {
             matches!(path.segments, [ segment] if segment.ident.name == ident.name)

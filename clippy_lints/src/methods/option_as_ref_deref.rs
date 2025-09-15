@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::MaybeDef;
+use clippy_utils::peel_blocks;
+use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::source::snippet;
-use clippy_utils::{path_to_local_id, peel_blocks};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
@@ -51,7 +51,7 @@ pub(super) fn check(
 
             match &closure_expr.kind {
                 hir::ExprKind::MethodCall(_, receiver, [], _) => {
-                    if path_to_local_id(receiver, closure_body.params[0].pat.hir_id)
+                    if receiver.res_local_id() == Some(closure_body.params[0].pat.hir_id)
                         && let adj = cx
                             .typeck_results()
                             .expr_adjustments(receiver)
@@ -72,7 +72,7 @@ pub(super) fn check(
                     if let hir::ExprKind::Unary(hir::UnOp::Deref, inner1) = inner.kind
                         && let hir::ExprKind::Unary(hir::UnOp::Deref, inner2) = inner1.kind
                     {
-                        path_to_local_id(inner2, closure_body.params[0].pat.hir_id)
+                        inner2.res_local_id() == Some(closure_body.params[0].pat.hir_id)
                     } else {
                         false
                     }

@@ -1,7 +1,7 @@
 use ControlFlow::{Break, Continue};
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::res::MaybeDef;
-use clippy_utils::{fn_def_id, get_enclosing_block, path_to_local_id};
+use clippy_utils::res::{MaybeDef, MaybeResPath};
+use clippy_utils::{fn_def_id, get_enclosing_block};
 use rustc_ast::Mutability;
 use rustc_ast::visit::visit_opt;
 use rustc_errors::Applicability;
@@ -168,7 +168,7 @@ impl<'tcx> Visitor<'tcx> for WaitFinder<'_, 'tcx> {
             return walk_expr(self, ex);
         }
 
-        if path_to_local_id(ex, self.local_id) {
+        if ex.res_local_id() == Some(self.local_id) {
             match self.cx.tcx.parent_hir_node(ex.hir_id) {
                 Node::Stmt(Stmt {
                     kind: StmtKind::Semi(_),

@@ -1,9 +1,10 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::res::MaybeResPath;
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::visitors::{is_local_used, local_used_once};
-use clippy_utils::{is_trait_method, path_to_local_id, sym};
+use clippy_utils::{is_trait_method, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{BindingMode, ExprKind, LetStmt, Node, PatKind, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -82,7 +83,7 @@ impl LateLintPass<'_> for ManualHashOne {
             && let ExprKind::MethodCall(seg, hashed_value, [ref_to_hasher], _) = hash_expr.kind
             && seg.ident.name == sym::hash
             && is_trait_method(cx, hash_expr, sym::Hash)
-            && path_to_local_id(ref_to_hasher.peel_borrows(), hasher)
+            && ref_to_hasher.peel_borrows().res_local_id() == Some(hasher)
 
             && let maybe_finish_stmt = stmts.next()
             // There should be no more statements referencing `hasher`

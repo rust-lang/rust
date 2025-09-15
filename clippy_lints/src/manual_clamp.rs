@@ -8,8 +8,7 @@ use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::visitors::is_const_evaluatable;
 use clippy_utils::{
-    eq_expr_value, is_diag_trait_item, is_in_const_context, is_trait_method, path_to_local_id, peel_blocks,
-    peel_blocks_with_stmt, sym,
+    eq_expr_value, is_diag_trait_item, is_in_const_context, is_trait_method, peel_blocks, peel_blocks_with_stmt, sym,
 };
 use itertools::Itertools;
 use rustc_errors::{Applicability, Diag};
@@ -436,7 +435,7 @@ fn is_match_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Opt
         let first = BinaryOp::new(first)?;
         let second = BinaryOp::new(second)?;
         if let PatKind::Binding(_, binding, _, None) = &last_arm.pat.kind
-            && path_to_local_id(peel_blocks_with_stmt(last_arm.body), *binding)
+            && peel_blocks_with_stmt(last_arm.body).res_local_id() == Some(*binding)
             && last_arm.guard.is_none()
         {
             // Proceed as normal
@@ -656,8 +655,8 @@ fn is_clamp_meta_pattern<'tcx>(
                 let (min, max) = (second_expr, first_expr);
                 let refers_to_input = match input_hir_ids {
                     Some((first_hir_id, second_hir_id)) => {
-                        path_to_local_id(peel_blocks(first_bin.left), first_hir_id)
-                            && path_to_local_id(peel_blocks(second_bin.left), second_hir_id)
+                        peel_blocks(first_bin.left).res_local_id() == Some(first_hir_id)
+                            && peel_blocks(second_bin.left).res_local_id() == Some(second_hir_id)
                     },
                     None => eq_expr_value(cx, first_bin.left, second_bin.left),
                 };

@@ -1,6 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::path_to_local_id;
-use clippy_utils::res::{MaybeDef, MaybeQPath};
+use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath};
 use clippy_utils::visitors::contains_unsafe_block;
 
 use rustc_hir::LangItem::{OptionNone, OptionSome};
@@ -67,7 +66,7 @@ fn is_some_expr(cx: &LateContext<'_>, target: HirId, ctxt: SyntaxContext, expr: 
     {
         return ctxt == expr.span.ctxt()
             && callee.res(cx).ctor_parent(cx).is_lang_item(cx, OptionSome)
-            && path_to_local_id(arg, target);
+            && arg.res_local_id() == Some(target);
     }
     false
 }

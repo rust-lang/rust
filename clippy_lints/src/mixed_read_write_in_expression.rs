@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::res::MaybeResPath;
-use clippy_utils::{get_parent_expr, path_to_local_id, sym};
+use clippy_utils::{get_parent_expr, sym};
 use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{BinOpKind, Block, Expr, ExprKind, HirId, LetStmt, Node, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -326,7 +326,7 @@ impl<'tcx> Visitor<'tcx> for ReadVisitor<'_, 'tcx> {
             return;
         }
 
-        if path_to_local_id(expr, self.var)
+        if expr.res_local_id() == Some(self.var)
             // Check that this is a read, not a write.
             && !is_in_assignment_position(self.cx, expr)
         {

@@ -1,9 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::source::{SpanRangeExt, snippet};
 use clippy_utils::ty::{implements_trait, implements_trait_with_env_from_iter, is_copy};
 use clippy_utils::visitors::{Descend, for_each_expr_without_closures};
-use clippy_utils::{is_self, path_to_local_id, peel_hir_ty_options, strip_pat_refs, sym};
+use clippy_utils::{is_self, peel_hir_ty_options, strip_pat_refs, sym};
 use rustc_abi::ExternAbi;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::intravisit::FnKind;
@@ -361,7 +361,7 @@ fn extract_clone_suggestions<'tcx>(
     let mut spans = Vec::new();
     for_each_expr_without_closures(body, |e| {
         if let ExprKind::MethodCall(seg, recv, [], _) = e.kind
-            && path_to_local_id(recv, id)
+            && recv.res_local_id() == Some(id)
         {
             if seg.ident.name == sym::capacity {
                 return ControlFlow::Break(());

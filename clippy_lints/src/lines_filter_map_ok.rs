@@ -1,8 +1,8 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::MaybeDef;
-use clippy_utils::{is_diag_item_method, is_trait_method, path_to_local_id, sym};
+use clippy_utils::res::{MaybeDef, MaybeResPath};
+use clippy_utils::{is_diag_item_method, is_trait_method, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{Body, Closure, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -120,7 +120,7 @@ fn should_lint(cx: &LateContext<'_>, args: &[Expr<'_>], method_name: Symbol) -> 
                         params: [param], value, ..
                     } = cx.tcx.hir_body(*body)
                         && let ExprKind::MethodCall(method, receiver, [], _) = value.kind
-                        && path_to_local_id(receiver, param.pat.hir_id)
+                        && receiver.res_local_id() == Some(param.pat.hir_id)
                         && let Some(method_did) = cx.typeck_results().type_dependent_def_id(value.hir_id)
                     {
                         is_diag_item_method(cx, method_did, sym::Result) && method.ident.name == sym::ok

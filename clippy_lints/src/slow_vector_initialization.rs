@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::macros::matching_root_macro_call;
 use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{SpanlessEq, get_enclosing_block, is_integer_literal, path_to_local_id, span_contains_comment, sym};
+use clippy_utils::{SpanlessEq, get_enclosing_block, is_integer_literal, span_contains_comment, sym};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{Visitor, walk_block, walk_expr, walk_stmt};
 use rustc_hir::{BindingMode, Block, Expr, ExprKind, HirId, PatKind, Stmt, StmtKind};
@@ -244,7 +244,7 @@ impl<'tcx> VectorInitializationVisitor<'_, 'tcx> {
     fn search_slow_extend_filling(&mut self, expr: &'tcx Expr<'_>) {
         if self.initialization_found
             && let ExprKind::MethodCall(path, self_arg, [extend_arg], _) = expr.kind
-            && path_to_local_id(self_arg, self.vec_alloc.local_id)
+            && self_arg.res_local_id() == Some(self.vec_alloc.local_id)
             && path.ident.name == sym::extend
             && self.is_repeat_take(extend_arg)
         {
@@ -256,7 +256,7 @@ impl<'tcx> VectorInitializationVisitor<'_, 'tcx> {
     fn search_slow_resize_filling(&mut self, expr: &'tcx Expr<'tcx>) {
         if self.initialization_found
             && let ExprKind::MethodCall(path, self_arg, [len_arg, fill_arg], _) = expr.kind
-            && path_to_local_id(self_arg, self.vec_alloc.local_id)
+            && self_arg.res_local_id() == Some(self.vec_alloc.local_id)
             && path.ident.name == sym::resize
             // Check that is filled with 0
             && is_integer_literal(fill_arg, 0)

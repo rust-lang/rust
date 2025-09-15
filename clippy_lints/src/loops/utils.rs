@@ -1,6 +1,6 @@
 use clippy_utils::res::MaybeResPath;
 use clippy_utils::ty::{has_iter_method, implements_trait};
-use clippy_utils::{get_parent_expr, is_integer_const, path_to_local_id, sugg};
+use clippy_utils::{get_parent_expr, is_integer_const, sugg};
 use rustc_ast::ast::{LitIntType, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{Visitor, walk_expr, walk_local};
@@ -176,7 +176,7 @@ impl<'tcx> Visitor<'tcx> for InitializeVisitor<'_, 'tcx> {
         }
 
         // If node is the desired variable, see how it's used
-        if path_to_local_id(expr, self.var_id) {
+        if expr.res_local_id() == Some(self.var_id) {
             if self.past_loop {
                 self.state = InitializeVisitorState::DontWarn;
                 return;

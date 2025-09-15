@@ -1,7 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::res::MaybeResPath;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{implements_trait, peel_and_count_ty_refs, should_call_clone_as_function};
-use clippy_utils::{get_parent_expr, is_diag_trait_item, path_to_local_id, peel_blocks, strip_pat_refs};
+use clippy_utils::{get_parent_expr, is_diag_trait_item, peel_blocks, strip_pat_refs};
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, LangItem};
 use rustc_lint::LateContext;
@@ -137,7 +138,7 @@ fn is_calling_clone(cx: &LateContext<'_>, arg: &hir::Expr<'_>) -> bool {
                         // no autoderefs
                         && !cx.typeck_results().expr_adjustments(obj).iter()
                             .any(|a| matches!(a.kind, Adjust::Deref(Some(..))))
-                        && path_to_local_id(obj, local_id)
+                        && obj.res_local_id() == Some(local_id)
                     {
                         true
                     } else {
@@ -146,7 +147,7 @@ fn is_calling_clone(cx: &LateContext<'_>, arg: &hir::Expr<'_>) -> bool {
                 },
                 hir::ExprKind::Call(call, [recv]) => {
                     if let hir::ExprKind::Path(qpath) = call.kind
-                        && path_to_local_id(recv, local_id)
+                        && recv.res_local_id() == Some(local_id)
                     {
                         check_qpath(cx, qpath, call.hir_id)
                     } else {

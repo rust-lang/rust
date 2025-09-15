@@ -11,8 +11,8 @@ use clippy_utils::ty::{implements_trait, is_copy};
 use clippy_utils::usage::local_used_after_expr;
 use clippy_utils::{
     eq_expr_value, fn_def_id_with_node_args, higher, is_else_clause, is_in_const_context, is_lint_allowed,
-    pat_and_expr_can_be_question_mark, path_to_local_id, peel_blocks, peel_blocks_with_stmt, span_contains_cfg,
-    span_contains_comment, sym,
+    pat_and_expr_can_be_question_mark, peel_blocks, peel_blocks_with_stmt, span_contains_cfg, span_contains_comment,
+    sym,
 };
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{self, OptionNone, OptionSome, ResultErr, ResultOk};
@@ -378,7 +378,7 @@ fn check_arm_is_some_or_ok<'tcx>(cx: &LateContext<'tcx>, mode: TryMode, arm: &Ar
         // Extract out `val`
         && let Some(binding) = extract_binding_pat(val_binding)
         // Check body is just `=> val`
-        && path_to_local_id(peel_blocks(arm.body), binding)
+        && peel_blocks(arm.body).res_local_id() == Some(binding)
     {
         true
     } else {
@@ -431,8 +431,10 @@ fn is_local_or_local_into(cx: &LateContext<'_>, expr: &Expr<'_>, val: HirId) -> 
         .and_then(|(fn_def_id, _)| cx.tcx.trait_of_assoc(fn_def_id))
         .is_some_and(|trait_def_id| cx.tcx.is_diagnostic_item(sym::Into, trait_def_id));
     match expr.kind {
-        ExprKind::MethodCall(_, recv, [], _) | ExprKind::Call(_, [recv]) => is_into_call && path_to_local_id(recv, val),
-        _ => path_to_local_id(expr, val),
+        ExprKind::MethodCall(_, recv, [], _) | ExprKind::Call(_, [recv]) => {
+            is_into_call && recv.res_local_id() == Some(val)
+        },
+        _ => expr.res_local_id() == Some(val),
     }
 }
 
@@ -484,7 +486,7 @@ fn check_if_let_some_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr:
             if_then,
             if_else,
         )
-        && ((is_early_return(sym::Option, cx, &if_block) && path_to_local_id(peel_blocks(if_then), bind_id))
+        && ((is_early_return(sym::Option, cx, &if_block) && peel_blocks(if_then).res_local_id() == Some(bind_id))
             || is_early_return(sym::Result, cx, &if_block))
         && if_else
             .map(|e| eq_expr_value(cx, let_expr, peel_blocks(e)))

@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::ty::peel_and_count_ty_refs;
-use clippy_utils::{fn_def_id, is_trait_method, path_to_local_id, peel_ref_operators, sym};
+use clippy_utils::{fn_def_id, is_trait_method, peel_ref_operators, sym};
 use rustc_ast::Mutability;
 use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{Block, Expr, ExprKind, HirId, LetStmt, Node, PatKind, PathSegment, StmtKind};
@@ -117,7 +117,7 @@ impl<'tcx> Visitor<'tcx> for PeekableVisitor<'_, 'tcx> {
     }
 
     fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) -> ControlFlow<()> {
-        if path_to_local_id(ex, self.expected_hir_id) {
+        if ex.res_local_id() == Some(self.expected_hir_id) {
             for (_, node) in self.cx.tcx.hir_parent_iter(ex.hir_id) {
                 match node {
                     Node::Expr(expr) => {
