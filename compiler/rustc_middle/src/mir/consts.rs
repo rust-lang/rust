@@ -495,6 +495,11 @@ impl<'tcx> Const<'tcx> {
     /// Return true if any evaluation of this constant always returns the same value,
     /// taking into account even pointer identity tests.
     pub fn is_deterministic(&self) -> bool {
+        if self.ty().is_primitive() {
+            // Primitive types hold no provenance, so their result is deterministic.
+            return true;
+        }
+
         // Some constants may generate fresh allocations for pointers they contain,
         // so using the same constant twice can yield two different results.
         // Notably, valtrees purposefully generate new allocations.
