@@ -3,7 +3,7 @@ use std::fmt::Display;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use crate::tidy_error;
+use termcolor::WriteColor;
 
 /// Collects diagnostics from all tidy steps, and contains shared information
 /// that determines how should message and logs be presented.
@@ -111,6 +111,33 @@ impl RunningCheck {
         tidy_error(&t.to_string()).expect("failed to output error");
     }
 
+    /// Immediately output a warning.
+    pub fn warning<T: Display>(&mut self, t: T) {
+        eprintln!("WARNING: {t}");
+    }
+
+    /// Output an informational message
+    pub fn message<T: Display>(&mut self, t: T) {
+        eprintln!("{t}");
+    }
+
+    /// Output a message only if verbose output is enabled.
+    pub fn verbose_msg<T: Display>(&mut self, t: T) {
+        if self.is_verbose_enabled() {
+            self.message(t);
+        }
+    }
+
+    /// Has an error already occured for this check?
+    pub fn is_bad(&self) -> bool {
+        self.bad
+    }
+
+    /// Is verbose output enabled?
+    pub fn is_verbose_enabled(&self) -> bool {
+        self.ctx.lock().unwrap().verbose
+    }
+
     fn mark_as_bad(&mut self) {
         self.bad = true;
     }
@@ -120,4 +147,19 @@ impl Drop for RunningCheck {
     fn drop(&mut self) {
         self.ctx.lock().unwrap().finish_check(FinishedCheck { id: self.id.clone(), bad: self.bad })
     }
+}
+
+fn tidy_error(args: &str) -> std::io::Result<()> {
+    use std::io::Write;
+
+    use termcolor::{Color, ColorChoice, ColorSpec, StandardStream};
+
+    let mut stderr = StandardStream::stdout(ColorChoice::Auto);
+    stderr.set_color(ColorSpec::new().set_fg(Some(Color::Red)))?;
+
+    write!(&mut stderr, "tidy error")?;
+    stderr.set_color(&ColorSpec::new())?;
+
+    writeln!(&mut stderr, ": {args}")?;
+    Ok(())
 }

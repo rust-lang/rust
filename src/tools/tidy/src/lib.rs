@@ -11,7 +11,8 @@ use std::{env, io};
 use build_helper::ci::CiEnv;
 use build_helper::git::{GitConfig, get_closest_upstream_commit};
 use build_helper::stage0_parser::{Stage0Config, parse_stage0_file};
-use termcolor::WriteColor;
+
+use crate::diagnostics::{DiagCtx, RunningCheck};
 
 macro_rules! static_regex {
     ($re:literal) => {{
@@ -43,28 +44,6 @@ macro_rules! t {
     };
 }
 
-macro_rules! tidy_error {
-    ($bad:expr, $($fmt:tt)*) => ({
-        $crate::tidy_error(&format_args!($($fmt)*).to_string()).expect("failed to output error");
-        *$bad = true;
-    });
-}
-
-fn tidy_error(args: &str) -> std::io::Result<()> {
-    use std::io::Write;
-
-    use termcolor::{Color, ColorChoice, ColorSpec, StandardStream};
-
-    let mut stderr = StandardStream::stdout(ColorChoice::Auto);
-    stderr.set_color(ColorSpec::new().set_fg(Some(Color::Red)))?;
-
-    write!(&mut stderr, "tidy error")?;
-    stderr.set_color(&ColorSpec::new())?;
-
-    writeln!(&mut stderr, ": {args}")?;
-    Ok(())
-}
-
 pub struct CiInfo {
     pub git_merge_commit_email: String,
     pub nightly_branch: String,
@@ -73,7 +52,9 @@ pub struct CiInfo {
 }
 
 impl CiInfo {
-    pub fn new(bad: &mut bool) -> Self {
+    pub fn new(diag_ctx: DiagCtx) -> Self {
+        let mut check = diag_ctx.start_check("CI history");
+
         let stage0 = parse_stage0_file();
         let Stage0Config { nightly_branch, git_merge_commit_email, .. } = stage0.config;
 
@@ -86,11 +67,14 @@ impl CiInfo {
         let base_commit = match get_closest_upstream_commit(None, &info.git_config(), info.ci_env) {
             Ok(Some(commit)) => Some(commit),
             Ok(None) => {
-                info.error_if_in_ci("no base commit found", bad);
+                info.error_if_in_ci("no base commit found", &mut check);
                 None
             }
             Err(error) => {
-                info.error_if_in_ci(&format!("failed to retrieve base commit: {error}"), bad);
+                info.error_if_in_ci(
+                    &format!("failed to retrieve base commit: {error}"),
+                    &mut check,
+                );
                 None
             }
         };
@@ -105,12 +89,11 @@ impl CiInfo {
         }
     }
 
-    pub fn error_if_in_ci(&self, msg: &str, bad: &mut bool) {
+    pub fn error_if_in_ci(&self, msg: &str, check: &mut RunningCheck) {
         if self.ci_env.is_running_in_ci() {
-            *bad = true;
-            eprintln!("tidy check error: {msg}");
+            check.error(msg);
         } else {
-            eprintln!("tidy check warning: {msg}. Some checks will be skipped.");
+            check.warning(format!("{msg}. Some checks will be skipped."));
         }
     }
 }
