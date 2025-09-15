@@ -245,7 +245,11 @@ fn from_buf_and_chars(
 ) -> SmolStr {
     let min_size = iter.size_hint().0 + buf_len;
     if min_size > INLINE_CAP {
-        let heap: String = iter.collect();
+        let heap: String = core::str::from_utf8(&buf[..buf_len])
+            .unwrap()
+            .chars()
+            .chain(iter)
+            .collect();
         if heap.len() <= INLINE_CAP {
             // size hint lied
             return SmolStr::new_inline(&heap);
@@ -940,3 +944,14 @@ impl<'a> arbitrary::Arbitrary<'a> for SmolStr {
 mod borsh;
 #[cfg(feature = "serde")]
 mod serde;
+
+#[test]
+fn from_buf_and_chars_size_hinted_heap() {
+    let str = from_buf_and_chars(
+        *b"abcdefghijklmnopqr00000",
+        18,
+        "_0x1x2x3x4x5x6x7x8x9x10x11x12x13".chars(),
+    );
+
+    assert_eq!(str, "abcdefghijklmnopqr_0x1x2x3x4x5x6x7x8x9x10x11x12x13");
+}
