@@ -12,10 +12,10 @@ impl PartialEq for Union {
 }
 impl Eq for Union {}
 
-impl std::marker::UnsizedConstParamTy for Union {}
+impl std::marker::ConstParamTy_ for Union {}
 //~^ ERROR the trait `ConstParamTy` may not be implemented for this type
 
-#[derive(std::marker::UnsizedConstParamTy)]
+#[derive(std::marker::ConstParamTy)]
 //~^ ERROR this trait cannot be derived for unions
 union UnionDerive {
     a: u8,
