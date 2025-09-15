@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 use std::fmt::Display;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use crate::tidy_error;
@@ -21,12 +22,12 @@ impl DiagCtx {
         })))
     }
 
-    pub fn start_check<T: Display>(&self, name: T) -> RunningCheck {
-        let name = name.to_string();
+    pub fn start_check<Id: Into<CheckId>>(&self, id: Id) -> RunningCheck {
+        let id = id.into();
 
         let mut ctx = self.0.lock().unwrap();
-        ctx.start_check(&name);
-        RunningCheck { name, bad: false, ctx: self.0.clone() }
+        ctx.start_check(id.clone());
+        RunningCheck { id, bad: false, ctx: self.0.clone() }
     }
 
     pub fn into_conclusion(self) -> bool {
@@ -37,45 +38,68 @@ impl DiagCtx {
 }
 
 struct DiagCtxInner {
-    running_checks: HashSet<String>,
+    running_checks: HashSet<CheckId>,
     finished_checks: HashSet<FinishedCheck>,
     verbose: bool,
 }
 
 impl DiagCtxInner {
-    fn start_check(&mut self, name: &str) {
-        if self.has_check(name) {
-            panic!("Starting a check named {name} for the second time");
+    fn start_check(&mut self, id: CheckId) {
+        if self.has_check_id(&id) {
+            panic!("Starting a check named `{id:?}` for the second time");
         }
-        self.running_checks.insert(name.to_string());
+        self.running_checks.insert(id);
     }
 
     fn finish_check(&mut self, check: FinishedCheck) {
         assert!(
-            self.running_checks.remove(&check.name),
-            "Finishing check {} that was not started",
-            check.name
+            self.running_checks.remove(&check.id),
+            "Finishing check `{:?}` that was not started",
+            check.id
         );
         self.finished_checks.insert(check);
     }
 
-    fn has_check(&self, name: &str) -> bool {
+    fn has_check_id(&self, id: &CheckId) -> bool {
         self.running_checks
             .iter()
-            .chain(self.finished_checks.iter().map(|c| &c.name))
-            .any(|c| c == name)
+            .chain(self.finished_checks.iter().map(|c| &c.id))
+            .any(|c| c == id)
+    }
+}
+
+/// Identifies a single step
+#[derive(PartialEq, Eq, Hash, Clone, Debug)]
+pub struct CheckId {
+    name: String,
+    path: Option<PathBuf>,
+}
+
+impl CheckId {
+    pub fn new(name: &'static str) -> Self {
+        Self { name: name.to_string(), path: None }
+    }
+
+    pub fn path(self, path: &Path) -> Self {
+        Self { path: Some(path.to_path_buf()), ..self }
+    }
+}
+
+impl From<&'static str> for CheckId {
+    fn from(name: &'static str) -> Self {
+        Self::new(name)
     }
 }
 
 #[derive(PartialEq, Eq, Hash, Debug)]
 struct FinishedCheck {
-    name: String,
+    id: CheckId,
     bad: bool,
 }
 
 /// Represents a single tidy check, identified by its `name`, running.
 pub struct RunningCheck {
-    name: String,
+    id: CheckId,
     bad: bool,
     ctx: Arc<Mutex<DiagCtxInner>>,
 }
@@ -94,9 +118,6 @@ impl RunningCheck {
 
 impl Drop for RunningCheck {
     fn drop(&mut self) {
-        self.ctx
-            .lock()
-            .unwrap()
-            .finish_check(FinishedCheck { name: self.name.clone(), bad: self.bad })
+        self.ctx.lock().unwrap().finish_check(FinishedCheck { id: self.id.clone(), bad: self.bad })
     }
 }

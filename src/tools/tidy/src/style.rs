@@ -24,7 +24,7 @@ use std::sync::LazyLock;
 use regex::RegexSetBuilder;
 use rustc_hash::FxHashMap;
 
-use crate::diagnostics::DiagCtx;
+use crate::diagnostics::{CheckId, DiagCtx};
 use crate::walk::{filter_dirs, walk};
 
 #[cfg(test)]
@@ -340,7 +340,7 @@ fn is_unexplained_ignore(extension: &str, line: &str) -> bool {
 }
 
 pub fn check(path: &Path, diag_ctx: DiagCtx) {
-    let mut check = diag_ctx.start_check(format!("style {}", path.display()));
+    let mut check = diag_ctx.start_check(CheckId::new("style").path(path));
 
     fn skip(path: &Path, is_dir: bool) -> bool {
         if path.file_name().is_some_and(|name| name.to_string_lossy().starts_with(".#")) {
