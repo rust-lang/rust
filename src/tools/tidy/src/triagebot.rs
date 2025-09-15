@@ -4,10 +4,10 @@ use std::path::Path;
 
 use toml::Value;
 
-use crate::diagnostics::{CheckId, DiagCtx};
+use crate::diagnostics::DiagCtx;
 
 pub fn check(path: &Path, diag_ctx: DiagCtx) {
-    let mut check = diag_ctx.start_check(CheckId::new("triagebot").path(path));
+    let mut check = diag_ctx.start_check("triagebot");
     let triagebot_path = path.join("triagebot.toml");
 
     // This check is mostly to catch broken path filters *within* `triagebot.toml`, and not enforce

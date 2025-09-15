@@ -1,9 +1,9 @@
 use std::collections::HashSet;
-use std::fmt::Display;
+use std::fmt::{Display, Formatter};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use termcolor::WriteColor;
+use termcolor::{Color, WriteColor};
 
 /// Collects diagnostics from all tidy steps, and contains shared information
 /// that determines how should message and logs be presented.
@@ -14,26 +14,40 @@ use termcolor::WriteColor;
 pub struct DiagCtx(Arc<Mutex<DiagCtxInner>>);
 
 impl DiagCtx {
-    pub fn new(verbose: bool) -> Self {
+    pub fn new(root_path: &Path, verbose: bool) -> Self {
         Self(Arc::new(Mutex::new(DiagCtxInner {
             running_checks: Default::default(),
             finished_checks: Default::default(),
+            root_path: root_path.to_path_buf(),
             verbose,
         })))
     }
 
     pub fn start_check<Id: Into<CheckId>>(&self, id: Id) -> RunningCheck {
-        let id = id.into();
+        let mut id = id.into();
 
         let mut ctx = self.0.lock().unwrap();
+
+        // Shorten path for shorter diagnostics
+        id.path = match id.path {
+            Some(path) => Some(path.strip_prefix(&ctx.root_path).unwrap_or(&path).to_path_buf()),
+            None => None,
+        };
+
         ctx.start_check(id.clone());
-        RunningCheck { id, bad: false, ctx: self.0.clone() }
+        RunningCheck {
+            id,
+            bad: false,
+            ctx: self.0.clone(),
+            #[cfg(test)]
+            errors: vec![],
+        }
     }
 
-    pub fn into_conclusion(self) -> bool {
-        let ctx = self.0.lock().unwrap();
+    pub fn into_failed_checks(self) -> Vec<FinishedCheck> {
+        let ctx = Arc::into_inner(self.0).unwrap().into_inner().unwrap();
         assert!(ctx.running_checks.is_empty(), "Some checks are still running");
-        ctx.finished_checks.iter().any(|c| c.bad)
+        ctx.finished_checks.into_iter().filter(|c| c.bad).collect()
     }
 }
 
@@ -41,6 +55,7 @@ struct DiagCtxInner {
     running_checks: HashSet<CheckId>,
     finished_checks: HashSet<FinishedCheck>,
     verbose: bool,
+    root_path: PathBuf,
 }
 
 impl DiagCtxInner {
@@ -48,6 +63,7 @@ impl DiagCtxInner {
         if self.has_check_id(&id) {
             panic!("Starting a check named `{id:?}` for the second time");
         }
+
         self.running_checks.insert(id);
     }
 
@@ -57,6 +73,13 @@ impl DiagCtxInner {
             "Finishing check `{:?}` that was not started",
             check.id
         );
+
+        if check.bad {
+            output_message("FAIL", Some(&check.id), Some(COLOR_ERROR));
+        } else if self.verbose {
+            output_message("OK", Some(&check.id), Some(COLOR_SUCCESS));
+        }
+
         self.finished_checks.insert(check);
     }
 
@@ -71,8 +94,8 @@ impl DiagCtxInner {
 /// Identifies a single step
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
 pub struct CheckId {
-    name: String,
-    path: Option<PathBuf>,
+    pub name: String,
+    pub path: Option<PathBuf>,
 }
 
 impl CheckId {
@@ -91,10 +114,26 @@ impl From<&'static str> for CheckId {
     }
 }
 
+impl Display for CheckId {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name)?;
+        if let Some(path) = &self.path {
+            write!(f, " ({})", path.display())?;
+        }
+        Ok(())
+    }
+}
+
 #[derive(PartialEq, Eq, Hash, Debug)]
-struct FinishedCheck {
+pub struct FinishedCheck {
     id: CheckId,
     bad: bool,
+}
+
+impl FinishedCheck {
+    pub fn id(&self) -> &CheckId {
+        &self.id
+    }
 }
 
 /// Represents a single tidy check, identified by its `name`, running.
@@ -102,29 +141,43 @@ pub struct RunningCheck {
     id: CheckId,
     bad: bool,
     ctx: Arc<Mutex<DiagCtxInner>>,
+    #[cfg(test)]
+    errors: Vec<String>,
 }
 
 impl RunningCheck {
+    /// Creates a new instance of a running check without going through the diag
+    /// context.
+    /// Useful if you want to run some functions from tidy without configuring
+    /// diagnostics.
+    pub fn new_noop() -> Self {
+        let ctx = DiagCtx::new(Path::new(""), false);
+        ctx.start_check("noop")
+    }
+
     /// Immediately output an error and mark the check as failed.
-    pub fn error<T: Display>(&mut self, t: T) {
+    pub fn error<T: Display>(&mut self, msg: T) {
         self.mark_as_bad();
-        tidy_error(&t.to_string()).expect("failed to output error");
+        let msg = msg.to_string();
+        output_message(&msg, Some(&self.id), Some(COLOR_ERROR));
+        #[cfg(test)]
+        self.errors.push(msg);
     }
 
     /// Immediately output a warning.
-    pub fn warning<T: Display>(&mut self, t: T) {
-        eprintln!("WARNING: {t}");
+    pub fn warning<T: Display>(&mut self, msg: T) {
+        output_message(&msg.to_string(), Some(&self.id), Some(COLOR_WARNING));
     }
 
     /// Output an informational message
-    pub fn message<T: Display>(&mut self, t: T) {
-        eprintln!("{t}");
+    pub fn message<T: Display>(&mut self, msg: T) {
+        output_message(&msg.to_string(), Some(&self.id), None);
     }
 
     /// Output a message only if verbose output is enabled.
-    pub fn verbose_msg<T: Display>(&mut self, t: T) {
+    pub fn verbose_msg<T: Display>(&mut self, msg: T) {
         if self.is_verbose_enabled() {
-            self.message(t);
+            self.message(msg);
         }
     }
 
@@ -138,6 +191,11 @@ impl RunningCheck {
         self.ctx.lock().unwrap().verbose
     }
 
+    #[cfg(test)]
+    pub fn get_errors(&self) -> Vec<String> {
+        self.errors.clone()
+    }
+
     fn mark_as_bad(&mut self) {
         self.bad = true;
     }
@@ -149,17 +207,37 @@ impl Drop for RunningCheck {
     }
 }
 
-fn tidy_error(args: &str) -> std::io::Result<()> {
+pub const COLOR_SUCCESS: Color = Color::Green;
+pub const COLOR_ERROR: Color = Color::Red;
+pub const COLOR_WARNING: Color = Color::Yellow;
+
+/// Output a message to stderr.
+/// The message can be optionally scoped to a certain check, and it can also have a certain color.
+pub fn output_message(msg: &str, id: Option<&CheckId>, color: Option<Color>) {
     use std::io::Write;
 
-    use termcolor::{Color, ColorChoice, ColorSpec, StandardStream};
+    use termcolor::{ColorChoice, ColorSpec, StandardStream};
 
-    let mut stderr = StandardStream::stdout(ColorChoice::Auto);
-    stderr.set_color(ColorSpec::new().set_fg(Some(Color::Red)))?;
+    let mut stderr = StandardStream::stderr(ColorChoice::Auto);
+    if let Some(color) = &color {
+        stderr.set_color(ColorSpec::new().set_fg(Some(*color))).unwrap();
+    }
 
-    write!(&mut stderr, "tidy error")?;
-    stderr.set_color(&ColorSpec::new())?;
+    match id {
+        Some(id) => {
+            write!(&mut stderr, "tidy [{}", id.name).unwrap();
+            if let Some(path) = &id.path {
+                write!(&mut stderr, " ({})", path.display()).unwrap();
+            }
+            write!(&mut stderr, "]").unwrap();
+        }
+        None => {
+            write!(&mut stderr, "tidy").unwrap();
+        }
+    }
+    if color.is_some() {
+        stderr.set_color(&ColorSpec::new()).unwrap();
+    }
 
-    writeln!(&mut stderr, ": {args}")?;
-    Ok(())
+    writeln!(&mut stderr, ": {msg}").unwrap();
 }

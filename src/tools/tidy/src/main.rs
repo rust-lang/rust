@@ -11,7 +11,7 @@ use std::str::FromStr;
 use std::thread::{self, ScopedJoinHandle, scope};
 use std::{env, process};
 
-use tidy::diagnostics::DiagCtx;
+use tidy::diagnostics::{COLOR_ERROR, COLOR_SUCCESS, DiagCtx, output_message};
 use tidy::*;
 
 fn main() {
@@ -50,7 +50,7 @@ fn main() {
     let extra_checks =
         cfg_args.iter().find(|s| s.starts_with("--extra-checks=")).map(String::as_str);
 
-    let diag_ctx = DiagCtx::new(verbose);
+    let diag_ctx = DiagCtx::new(&root_path, verbose);
     let ci_info = CiInfo::new(diag_ctx.clone());
 
     let drain_handles = |handles: &mut VecDeque<ScopedJoinHandle<'_, ()>>| {
@@ -175,8 +175,22 @@ fn main() {
         );
     });
 
-    if diag_ctx.into_conclusion() {
-        eprintln!("some tidy checks failed");
+    let failed_checks = diag_ctx.into_failed_checks();
+    if !failed_checks.is_empty() {
+        let mut failed: Vec<String> =
+            failed_checks.into_iter().map(|c| c.id().to_string()).collect();
+        failed.sort();
+        output_message(
+            &format!(
+                "The following check{} failed: {}",
+                if failed.len() > 1 { "s" } else { "" },
+                failed.join(", ")
+            ),
+            None,
+            Some(COLOR_ERROR),
+        );
         process::exit(1);
+    } else {
+        output_message("All tidy checks succeeded", None, Some(COLOR_SUCCESS));
     }
 }
