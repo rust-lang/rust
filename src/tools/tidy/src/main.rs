@@ -103,7 +103,7 @@ fn main() {
 
         // Checks that are done on the cargo workspace.
         check!(deps, &root_path, &cargo, bless);
-        // check!(extdeps, &root_path);
+        check!(extdeps, &root_path);
 
         // Checks over tests.
         // check!(tests_placement, &root_path);
