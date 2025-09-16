@@ -9,6 +9,7 @@ attr_parsing_deprecated_item_suggestion =
 attr_parsing_empty_attribute =
     unused attribute
     .suggestion = remove this attribute
+    .note = attribute `{$attr_path}` with an empty list has no effect
 
 attr_parsing_invalid_target = `#[{$name}]` attribute cannot be used on {$target}
     .help = `#[{$name}]` can {$only}be applied to {$applied}
