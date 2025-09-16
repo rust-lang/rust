@@ -100,7 +100,7 @@ impl TrackAmbiguityCauses {
 /// with a suitably-freshened `ImplHeader` with those types
 /// instantiated. Otherwise, returns `None`.
 #[instrument(skip(tcx, skip_leak_check), level = "debug")]
-pub fn overlapping_impls(
+pub fn overlapping_inherent_impls(
     tcx: TyCtxt<'_>,
     impl1_def_id: DefId,
     impl2_def_id: DefId,
@@ -110,18 +110,37 @@ pub fn overlapping_impls(
     // Before doing expensive operations like entering an inference context, do
     // a quick check via fast_reject to tell if the impl headers could possibly
     // unify.
-    let drcx = DeepRejectCtxt::relate_infer_infer(tcx);
-    let impl1_ref = tcx.impl_trait_ref(impl1_def_id);
-    let impl2_ref = tcx.impl_trait_ref(impl2_def_id);
-    let may_overlap = match (impl1_ref, impl2_ref) {
-        (Some(a), Some(b)) => drcx.args_may_unify(a.skip_binder().args, b.skip_binder().args),
-        (None, None) => {
-            let self_ty1 = tcx.type_of(impl1_def_id).skip_binder();
-            let self_ty2 = tcx.type_of(impl2_def_id).skip_binder();
-            drcx.types_may_unify(self_ty1, self_ty2)
-        }
-        _ => bug!("unexpected impls: {impl1_def_id:?} {impl2_def_id:?}"),
-    };
+    let self_ty1 = tcx.type_of(impl1_def_id).skip_binder();
+    let self_ty2 = tcx.type_of(impl2_def_id).skip_binder();
+    let may_overlap = DeepRejectCtxt::relate_infer_infer(tcx).types_may_unify(self_ty1, self_ty2);
+
+    if !may_overlap {
+        // Some types involved are definitely different, so the impls couldn't possibly overlap.
+        debug!("overlapping_inherent_impls: fast_reject early-exit");
+        return None;
+    }
+
+    overlapping_impls(tcx, impl1_def_id, impl2_def_id, skip_leak_check, overlap_mode, false)
+}
+
+/// If there are types that satisfy both impls, returns `Some`
+/// with a suitably-freshened `ImplHeader` with those types
+/// instantiated. Otherwise, returns `None`.
+#[instrument(skip(tcx, skip_leak_check), level = "debug")]
+pub fn overlapping_trait_impls(
+    tcx: TyCtxt<'_>,
+    impl1_def_id: DefId,
+    impl2_def_id: DefId,
+    skip_leak_check: SkipLeakCheck,
+    overlap_mode: OverlapMode,
+) -> Option<OverlapResult<'_>> {
+    // Before doing expensive operations like entering an inference context, do
+    // a quick check via fast_reject to tell if the impl headers could possibly
+    // unify.
+    let impl1_args = tcx.impl_trait_ref(impl1_def_id).unwrap().skip_binder().args;
+    let impl2_args = tcx.impl_trait_ref(impl2_def_id).unwrap().skip_binder().args;
+    let may_overlap =
+        DeepRejectCtxt::relate_infer_infer(tcx).args_may_unify(impl1_args, impl2_args);
 
     if !may_overlap {
         // Some types involved are definitely different, so the impls couldn't possibly overlap.
@@ -129,6 +148,17 @@ pub fn overlapping_impls(
         return None;
     }
 
+    overlapping_impls(tcx, impl1_def_id, impl2_def_id, skip_leak_check, overlap_mode, true)
+}
+
+fn overlapping_impls(
+    tcx: TyCtxt<'_>,
+    impl1_def_id: DefId,
+    impl2_def_id: DefId,
+    skip_leak_check: SkipLeakCheck,
+    overlap_mode: OverlapMode,
+    is_of_trait: bool,
+) -> Option<OverlapResult<'_>> {
     if tcx.next_trait_solver_in_coherence() {
         overlap(
             tcx,
@@ -137,6 +167,7 @@ pub fn overlapping_impls(
             impl1_def_id,
             impl2_def_id,
             overlap_mode,
+            is_of_trait,
         )
     } else {
         let _overlap_with_bad_diagnostics = overlap(
@@ -146,6 +177,7 @@ pub fn overlapping_impls(
             impl1_def_id,
             impl2_def_id,
             overlap_mode,
+            is_of_trait,
         )?;
 
         // In the case where we detect an error, run the check again, but
@@ -158,13 +190,18 @@ pub fn overlapping_impls(
             impl1_def_id,
             impl2_def_id,
             overlap_mode,
+            is_of_trait,
         )
         .unwrap();
         Some(overlap)
     }
 }
 
-fn fresh_impl_header<'tcx>(infcx: &InferCtxt<'tcx>, impl_def_id: DefId) -> ImplHeader<'tcx> {
+fn fresh_impl_header<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    impl_def_id: DefId,
+    is_of_trait: bool,
+) -> ImplHeader<'tcx> {
     let tcx = infcx.tcx;
     let impl_args = infcx.fresh_args_for_item(DUMMY_SP, impl_def_id);
 
@@ -172,7 +209,8 @@ fn fresh_impl_header<'tcx>(infcx: &InferCtxt<'tcx>, impl_def_id: DefId) -> ImplH
         impl_def_id,
         impl_args,
         self_ty: tcx.type_of(impl_def_id).instantiate(tcx, impl_args),
-        trait_ref: tcx.impl_trait_ref(impl_def_id).map(|i| i.instantiate(tcx, impl_args)),
+        trait_ref: is_of_trait
+            .then(|| tcx.impl_trait_ref(impl_def_id).unwrap().instantiate(tcx, impl_args)),
         predicates: tcx
             .predicates_of(impl_def_id)
             .instantiate(tcx, impl_args)
@@ -186,8 +224,9 @@ fn fresh_impl_header_normalized<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     impl_def_id: DefId,
+    is_of_trait: bool,
 ) -> ImplHeader<'tcx> {
-    let header = fresh_impl_header(infcx, impl_def_id);
+    let header = fresh_impl_header(infcx, impl_def_id, is_of_trait);
 
     let InferOk { value: mut header, obligations } =
         infcx.at(&ObligationCause::dummy(), param_env).normalize(header);
@@ -206,10 +245,16 @@ fn overlap<'tcx>(
     impl1_def_id: DefId,
     impl2_def_id: DefId,
     overlap_mode: OverlapMode,
+    is_of_trait: bool,
 ) -> Option<OverlapResult<'tcx>> {
     if overlap_mode.use_negative_impl() {
-        if impl_intersection_has_negative_obligation(tcx, impl1_def_id, impl2_def_id)
-            || impl_intersection_has_negative_obligation(tcx, impl2_def_id, impl1_def_id)
+        if impl_intersection_has_negative_obligation(tcx, impl1_def_id, impl2_def_id, is_of_trait)
+            || impl_intersection_has_negative_obligation(
+                tcx,
+                impl2_def_id,
+                impl1_def_id,
+                is_of_trait,
+            )
         {
             return None;
         }
@@ -231,8 +276,10 @@ fn overlap<'tcx>(
     // empty environment.
     let param_env = ty::ParamEnv::empty();
 
-    let impl1_header = fresh_impl_header_normalized(selcx.infcx, param_env, impl1_def_id);
-    let impl2_header = fresh_impl_header_normalized(selcx.infcx, param_env, impl2_def_id);
+    let impl1_header =
+        fresh_impl_header_normalized(selcx.infcx, param_env, impl1_def_id, is_of_trait);
+    let impl2_header =
+        fresh_impl_header_normalized(selcx.infcx, param_env, impl2_def_id, is_of_trait);
 
     // Equate the headers to find their intersection (the general type, with infer vars,
     // that may apply both impls).
@@ -446,6 +493,7 @@ fn impl_intersection_has_negative_obligation(
     tcx: TyCtxt<'_>,
     impl1_def_id: DefId,
     impl2_def_id: DefId,
+    is_of_trait: bool,
 ) -> bool {
     debug!("negative_impl(impl1_def_id={:?}, impl2_def_id={:?})", impl1_def_id, impl2_def_id);
 
@@ -455,11 +503,11 @@ fn impl_intersection_has_negative_obligation(
     let root_universe = infcx.universe();
     assert_eq!(root_universe, ty::UniverseIndex::ROOT);
 
-    let impl1_header = fresh_impl_header(infcx, impl1_def_id);
+    let impl1_header = fresh_impl_header(infcx, impl1_def_id, is_of_trait);
     let param_env =
         ty::EarlyBinder::bind(tcx.param_env(impl1_def_id)).instantiate(tcx, impl1_header.impl_args);
 
-    let impl2_header = fresh_impl_header(infcx, impl2_def_id);
+    let impl2_header = fresh_impl_header(infcx, impl2_def_id, is_of_trait);
 
     // Equate the headers to find their intersection (the general type, with infer vars,
     // that may apply both impls).
