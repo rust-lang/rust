@@ -6,6 +6,11 @@ use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::{fs, io, mem, str, thread};
 
+use tracing::info;
+use rustc_session::filesearch;
+use rustc_session::config::host_tuple;
+use std::sync::Mutex;
+
 use rustc_abi::Size;
 use rustc_ast::attr;
 use rustc_data_structures::fx::FxIndexMap;
@@ -28,7 +33,7 @@ use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::{
-    self, CrateType, Lto, OutFileName, OutputFilenames, OutputType, Passes, SwitchWithOptPath,
+    self, CrateType, Lto, OutFileName, OutputFilenames, OutputType, Passes, SwitchWithOptPath, Sysroot,
 };
 use rustc_span::source_map::SourceMap;
 use rustc_span::{FileName, InnerSpan, Span, SpanData, sym};
@@ -344,6 +349,7 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     pub split_debuginfo: rustc_target::spec::SplitDebuginfo,
     pub split_dwarf_kind: rustc_session::config::SplitDwarfKind,
     pub pointer_size: Size,
+    pub sysroot: Sysroot,
 
     /// All commandline args used to invoke the compiler, with @file args fully expanded.
     /// This will only be used within debug info, e.g. in the pdb file on windows
@@ -1072,6 +1078,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
 ) -> thread::JoinHandle<Result<CompiledModules, ()>> {
     let coordinator_send = tx_to_llvm_workers;
     let sess = tcx.sess;
+    let sysroot = sess.opts.sysroot.clone();
 
     let mut each_linked_rlib_for_lto = Vec::new();
     let mut each_linked_rlib_file_for_lto = Vec::new();
@@ -1145,6 +1152,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         parallel: backend.supports_parallel() && !sess.opts.unstable_opts.no_parallel_backend,
         pointer_size: tcx.data_layout.pointer_size(),
         invocation_temp: sess.invocation_temp.clone(),
+        sysroot,
     };
 
     let compiled_allocator_module = allocator_module.map(|mut allocator_module| {
@@ -1287,6 +1295,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
     // Each LLVM module is automatically sent back to the coordinator for LTO if
     // necessary. There's already optimizations in place to avoid sending work
     // back to the coordinator if LTO isn't requested.
+    let sysroot = sess.opts.sysroot.clone();
     return B::spawn_named_thread(cgcx.time_trace, "coordinator".to_string(), move || {
         // This is where we collect codegen units that have gone all the way
         // through codegen and LLVM.
@@ -1366,7 +1375,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                         let (item, _) =
                             work_items.pop().expect("queue empty - queue_full_enough() broken?");
                         main_thread_state = MainThreadState::Lending;
-                        spawn_work(&cgcx, coordinator_send.clone(), &mut llvm_start_time, item);
+                        spawn_work(sysroot.clone(), &cgcx, coordinator_send.clone(), &mut llvm_start_time, item);
                     }
                 }
             } else if codegen_state == Completed {
@@ -1439,7 +1448,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     MainThreadState::Idle => {
                         if let Some((item, _)) = work_items.pop() {
                             main_thread_state = MainThreadState::Lending;
-                            spawn_work(&cgcx, coordinator_send.clone(), &mut llvm_start_time, item);
+                            spawn_work(sysroot.clone(), &cgcx, coordinator_send.clone(), &mut llvm_start_time, item);
                         } else {
                             // There is no unstarted work, so let the main thread
                             // take over for a running worker. Otherwise the
@@ -1475,7 +1484,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                 while running_with_own_token < tokens.len()
                     && let Some((item, _)) = work_items.pop()
                 {
-                    spawn_work(&cgcx, coordinator_send.clone(), &mut llvm_start_time, item);
+                    spawn_work(sysroot.clone(), &cgcx, coordinator_send.clone(), &mut llvm_start_time, item);
                     running_with_own_token += 1;
                 }
             }
@@ -1679,7 +1688,185 @@ fn start_executing_work<B: ExtraBackendMethods>(
 #[must_use]
 pub(crate) struct WorkerFatalError;
 
+use std::ffi::CString;
+use libc::c_void;
+
+type SetFlag = unsafe extern "C" fn(*mut c_void, u8);
+
+#[derive(Debug)]
+pub(crate) struct EnzymeFns {
+    pub set_cl: SetFlag,
+}
+
+#[derive(Debug)]
+#[allow(non_snake_case)]
+pub struct EnzymeWrapper {
+    EnzymePrintPerf: *mut c_void,
+    EnzymePrintActivity: *mut c_void,
+    EnzymePrintType: *mut c_void,
+    EnzymeFunctionToAnalyze: *mut c_void,
+    EnzymePrint: *mut c_void,
+    EnzymeStrictAliasing: *mut c_void,
+    looseTypeAnalysis: *mut c_void,
+    EnzymeInline: *mut c_void,
+    RustTypeRules: *mut c_void,
+
+    EnzymeSetCLBool: EnzymeFns,
+    EnzymeSetCLString: EnzymeFns,
+    pub registerEnzymeAndPassPipeline: *const c_void,
+    lib: libloading::Library,
+}
+unsafe impl Sync for EnzymeWrapper {}
+unsafe impl Send for EnzymeWrapper {}
+        #[allow(non_snake_case)]
+        fn call_dynamic<'a, B: WriteBackendMethods>(cgcx: &'a CodegenContext<B>) -> Result<EnzymeWrapper, Box<dyn std::error::Error>> {
+            fn load_ptr(lib: &libloading::Library, bytes: &[u8]) -> Result<*mut c_void, Box<dyn std::error::Error>> {
+                // Safety: symbol lookup from a loaded shared object.
+                unsafe {
+                    let s: libloading::Symbol<'_, *mut c_void> = lib.get(bytes)?;
+                    let s = s.try_as_raw_ptr().unwrap();
+                    Ok(s as *mut c_void)
+                }
+            }
+            dbg!("Loading Enzyme");
+            let mypath = EnzymeWrapper::get_enzyme_path(&cgcx.sysroot);
+            let lib = unsafe {libloading::Library::new(mypath)?};
+            let EnzymeSetCLBool: libloading::Symbol<'_, SetFlag> = unsafe{lib.get(b"EnzymeSetCLBool")?};
+            let registerEnzymeAndPassPipeline =
+                load_ptr(&lib, b"registerEnzymeAndPassPipeline").unwrap() as *const c_void;
+            let EnzymeSetCLString: libloading::Symbol<'_, SetFlag> = unsafe{ lib.get(b"EnzymeSetCLString")?};
+
+            let EnzymePrintPerf = load_ptr(&lib, b"EnzymePrintPerf").unwrap();
+            let EnzymePrintActivity = load_ptr(&lib, b"EnzymePrintActivity").unwrap();
+            let EnzymePrintType = load_ptr(&lib, b"EnzymePrintType").unwrap();
+            let EnzymeFunctionToAnalyze = load_ptr(&lib, b"EnzymeFunctionToAnalyze").unwrap();
+            let EnzymePrint = load_ptr(&lib, b"EnzymePrint").unwrap();
+
+            let EnzymeStrictAliasing = load_ptr(&lib, b"EnzymeStrictAliasing").unwrap();
+            let looseTypeAnalysis = load_ptr(&lib, b"looseTypeAnalysis").unwrap();
+            let EnzymeInline = load_ptr(&lib, b"EnzymeInline").unwrap();
+            let RustTypeRules = load_ptr(&lib, b"RustTypeRules").unwrap();
+
+            let wrap = EnzymeWrapper {
+                EnzymePrintPerf,
+                EnzymePrintActivity,
+                EnzymePrintType,
+                EnzymeFunctionToAnalyze,
+                EnzymePrint,
+                EnzymeStrictAliasing,
+                looseTypeAnalysis,
+                EnzymeInline,
+                RustTypeRules,
+                EnzymeSetCLBool: EnzymeFns {set_cl: *EnzymeSetCLBool},
+                EnzymeSetCLString: EnzymeFns {set_cl: *EnzymeSetCLString},
+                registerEnzymeAndPassPipeline,
+                lib
+            };
+            Ok(wrap)
+        }
+    impl EnzymeWrapper {
+        pub fn current<'a, B: WriteBackendMethods>(cgcx: &'a CodegenContext<B>) -> &'static Mutex<EnzymeWrapper> {
+            use std::sync::OnceLock;
+            static CELL: OnceLock<Mutex<EnzymeWrapper>> = OnceLock::new();
+            fn init_enzyme<'a, B: WriteBackendMethods>(cgcx: &'a CodegenContext<B>) -> Mutex<EnzymeWrapper> {
+                call_dynamic(cgcx).unwrap().into()
+            }
+            CELL.get_or_init(|| init_enzyme(cgcx))
+        }
+            fn get_enzyme_path(sysroot: &Sysroot) -> String {
+                let target = host_tuple();
+                let lib_ext = std::env::consts::DLL_EXTENSION;
+
+                let sysroot = sysroot
+                    .all_paths()
+                    .map(|sysroot| {
+                        filesearch::make_target_lib_path(sysroot, target).join("lib").with_file_name("libEnzyme-21").with_extension(lib_ext)
+                    })
+                    .find(|f| {
+                        info!("Enzyme candidate: {}", f.display());
+                        f.exists()
+                    })
+                    .unwrap_or_else(|| {
+                        let candidates = sysroot
+                            .all_paths()
+                            .map(|p| p.join("lib").display().to_string())
+                            .collect::<Vec<_>>()
+                            .join("\n* ");
+                        let err = format!(
+                            "failed to find a `libEnzyme` folder \
+                                       in the sysroot candidates:\n* {candidates}"
+                        );
+                        dbg!(&err);
+                        bug!("asdf");
+                        //early_dcx.early_fatal(err);
+                    });
+
+                info!("probing {} for a codegen backend", sysroot.display());
+                let enzyme_path = sysroot.to_str().unwrap().to_string();
+                enzyme_path
+            }
+        pub fn set_print_perf(&mut self, print: bool) {
+            unsafe {
+                (self.EnzymeSetCLBool.set_cl)(self.EnzymePrintPerf, print as u8);
+            }
+        }
+
+        pub fn set_print_activity(&mut self, print: bool) {
+            unsafe {
+                (self.EnzymeSetCLBool.set_cl)(self.EnzymePrintActivity, print as u8);
+                //(self.EnzymeSetCLBool)(std::ptr::addr_of_mut!(self.EnzymePrintActivity), print as u8);
+            }
+        }
+
+        pub fn set_print_type(&mut self, print: bool) {
+            unsafe {
+                (self.EnzymeSetCLBool.set_cl)(self.EnzymePrintType, print as u8);
+            }
+        }
+
+        pub fn set_print_type_fun(&mut self, fun_name: &str) {
+            let _c_fun_name = CString::new(fun_name).unwrap();
+            //unsafe {
+            //    (self.EnzymeSetCLString.set_cl)(
+            //        self.EnzymeFunctionToAnalyze,
+            //        c_fun_name.as_ptr() as *const c_char,
+            //    );
+            //}
+        }
+
+        pub fn set_print(&mut self, print: bool) {
+            unsafe {
+                (self.EnzymeSetCLBool.set_cl)(self.EnzymePrint, print as u8);
+            }
+        }
+
+        pub fn set_strict_aliasing(&mut self, strict: bool) {
+            unsafe {
+                (self.EnzymeSetCLBool.set_cl)(self.EnzymeStrictAliasing, strict as u8);
+            }
+        }
+
+        pub fn set_loose_types(&mut self, loose: bool) {
+            unsafe {
+                (self.EnzymeSetCLBool.set_cl)(self.looseTypeAnalysis, loose as u8);
+            }
+        }
+
+        pub fn set_inline(&mut self, val: bool) {
+            unsafe {
+                (self.EnzymeSetCLBool.set_cl)(self.EnzymeInline, val as u8);
+            }
+        }
+
+        pub fn set_rust_rules(&mut self, val: bool) {
+            unsafe {
+                (self.EnzymeSetCLBool.set_cl)(self.RustTypeRules, val as u8);
+            }
+        }
+    }
+
 fn spawn_work<'a, B: ExtraBackendMethods>(
+    sysroot: Sysroot,
     cgcx: &'a CodegenContext<B>,
     coordinator_send: Sender<Message<B>>,
     llvm_start_time: &mut Option<VerboseTimingGuard<'a>>,

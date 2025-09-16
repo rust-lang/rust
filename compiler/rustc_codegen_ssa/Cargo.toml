@@ -12,6 +12,7 @@ bstr = "1.11.3"
 # per crate", so if you change this, you need to also change it in `rustc_llvm`.
 cc = "=1.2.16"
 itertools = "0.12"
+libloading = "0.8.9"
 pathdiff = "0.2.0"
 regex = "1.4"
 rustc_abi = { path = "../rustc_abi" }

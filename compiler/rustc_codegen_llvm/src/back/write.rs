@@ -665,6 +665,18 @@ pub(crate) unsafe fn llvm_optimize(
 
     let llvm_plugins = config.llvm_plugins.join(",");
 
+    let enzyme_fn = if consider_ad {
+        let wrapper = rustc_codegen_ssa::back::write::EnzymeWrapper::current(cgcx);
+        wrapper.lock().unwrap().registerEnzymeAndPassPipeline
+    } else {
+        //dbg!(run_enzyme);
+        //dbg!(consider_ad);
+        std::ptr::null()
+    };
+
+    dbg!(&enzyme_fn);
+
+
     let result = unsafe {
         llvm::LLVMRustOptimize(
             module.module_llvm.llmod(),
@@ -684,7 +696,8 @@ pub(crate) unsafe fn llvm_optimize(
             vectorize_loop,
             config.no_builtins,
             config.emit_lifetime_markers,
-            run_enzyme,
+            enzyme_fn,
+            //run_enzyme,
             print_before_enzyme,
             print_after_enzyme,
             print_passes,
