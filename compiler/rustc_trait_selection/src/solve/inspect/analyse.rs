@@ -18,9 +18,9 @@ use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::solve::{Certainty, Goal, GoalSource, NoSolution, QueryResult};
 use rustc_middle::ty::{TyCtxt, VisitorResult, try_visit};
 use rustc_middle::{bug, ty};
+use rustc_next_trait_solver::canonical::instantiate_canonical_state;
 use rustc_next_trait_solver::resolve::eager_resolve_vars;
-use rustc_next_trait_solver::solve::inspect::{self, instantiate_canonical_state};
-use rustc_next_trait_solver::solve::{MaybeCause, SolverDelegateEvalExt as _};
+use rustc_next_trait_solver::solve::{MaybeCause, SolverDelegateEvalExt as _, inspect};
 use rustc_span::Span;
 use tracing::instrument;
 
