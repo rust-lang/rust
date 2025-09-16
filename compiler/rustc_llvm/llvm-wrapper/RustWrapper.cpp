@@ -1074,15 +1074,6 @@ LLVMRustDIBuilderCreateTypedef(LLVMDIBuilderRef Builder, LLVMMetadataRef Type,
       LineNo, unwrapDIPtr<DIScope>(Scope)));
 }
 
-extern "C" LLVMMetadataRef LLVMRustDIBuilderCreatePointerType(
-    LLVMDIBuilderRef Builder, LLVMMetadataRef PointeeTy, uint64_t SizeInBits,
-    uint32_t AlignInBits, unsigned AddressSpace, const char *Name,
-    size_t NameLen) {
-  return wrap(unwrap(Builder)->createPointerType(
-      unwrapDI<DIType>(PointeeTy), SizeInBits, AlignInBits, AddressSpace,
-      StringRef(Name, NameLen)));
-}
-
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateStructType(
     LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
     size_t NameLen, LLVMMetadataRef File, unsigned LineNumber,
