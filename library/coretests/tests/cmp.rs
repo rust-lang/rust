@@ -119,6 +119,13 @@ fn test_user_defined_eq() {
 }
 
 #[test]
+fn test_clamp() {
+    assert_eq!((-3).clamp(-2, 1), -2);
+    assert_eq!(0.clamp(-2, 1), 0);
+    assert_eq!(2.clamp(-2, 1), 1);
+}
+
+#[test]
 fn ordering_const() {
     // test that the methods of `Ordering` are usable in a const context
 
