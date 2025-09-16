@@ -190,10 +190,7 @@ impl<S: Stage> CombineAttributeParser<S> for FeatureParser {
     const PATH: &[Symbol] = &[sym::feature];
     type Item = Ident;
     const CONVERT: ConvertFn<Self::Item> = AttributeKind::Feature;
-
-    // FIXME: recursion limit is allowed on all targets and ignored,
-    //        even though it should only be valid on crates of course
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::CrateLevel;
     const TEMPLATE: AttributeTemplate = template!(List: &["feature1, feature2, ..."]);
 
     fn extend<'c>(

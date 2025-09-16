@@ -1,12 +1,12 @@
-//@ pretty-compare-only
-//@ pretty-mode:hir
-//@ pp-exact:hir-fn-variadic.pp
-
-#![feature(c_variadic)]
+#![attr = Feature([c_variadic#0])]
 #[attr = MacroUse {arguments: UseAll}]
 extern crate std;
 #[prelude_import]
 use ::std::prelude::rust_2015::*;
+//@ pretty-compare-only
+//@ pretty-mode:hir
+//@ pp-exact:hir-fn-variadic.pp
+
 
 extern "C" {
     unsafe fn foo(x: i32, va1: ...);
