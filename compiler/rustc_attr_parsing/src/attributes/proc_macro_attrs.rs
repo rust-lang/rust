@@ -92,9 +92,15 @@ fn parse_derive_like<S: Stage>(
         return None;
     };
 
+    // updated if we see `attributes(...)` to keep track of the last
+    // argument we did accept for the final diagnostic
+    let mut last = trait_ident.span;
+
     // Parse optional attributes
     let mut attributes = ThinVec::new();
     if let Some(attrs) = items.next() {
+        last = attrs.span();
+
         let Some(attr_list) = attrs.meta_item() else {
             cx.expected_list(attrs.span());
             return None;
@@ -132,7 +138,7 @@ fn parse_derive_like<S: Stage>(
 
     // If anything else is specified, we should reject it
     if let Some(next) = items.next() {
-        cx.expected_no_args(next.span());
+        cx.expected_end_of_list(last, next.span());
     }
 
     Some((Some(trait_ident.name), attributes))
