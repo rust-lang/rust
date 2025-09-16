@@ -88,7 +88,7 @@ fn parse_derive_like<S: Stage>(
         return None;
     }
     if let Err(e) = trait_attr.args().no_args() {
-        cx.expected_no_args(e);
+        cx.expected_no_args(&trait_attr.path().get_attribute_path(), e);
         return None;
     };
 
@@ -121,7 +121,7 @@ fn parse_derive_like<S: Stage>(
                 return None;
             };
             if let Err(e) = attr.args().no_args() {
-                cx.expected_no_args(e);
+                cx.expected_no_args(&attr.path().get_attribute_path(), e);
                 return None;
             };
             let Some(ident) = attr.path().word() else {

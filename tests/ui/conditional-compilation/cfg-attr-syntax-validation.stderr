@@ -80,9 +80,10 @@ LL | #[cfg(a = b"hi")]
    |           help: consider removing the prefix
    |
    = note: expected a normal string literal, not a byte string literal
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 
 error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found `expr` metavariable
-  --> $DIR/cfg-attr-syntax-validation.rs:45:25
+  --> $DIR/cfg-attr-syntax-validation.rs:46:25
    |
 LL |         #[cfg(feature = $expr)]
    |                         ^^^^^

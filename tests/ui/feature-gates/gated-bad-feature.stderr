@@ -11,18 +11,38 @@ error[E0565]: malformed `feature` attribute input
    |
 LL | #![feature(foo_bar_baz, foo(bar), foo = "baz", foo)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^-----^^^^^^^^^^^^^^^^^^^^
-   | |                          |
-   | |                          didn't expect any arguments here
-   | help: must be of the form: `#![feature(feature1, feature2, ...)]`
+   |                            |
+   |                            didn't expect any arguments here
+   |
+help: remove this argument
+   |
+LL - #![feature(foo_bar_baz, foo(bar), foo = "baz", foo)]
+LL + #![feature(foo_bar_baz, foo, foo = "baz", foo)]
+   |
+help: the only valid form of the attribute is
+   |
+LL - #![feature(foo_bar_baz, foo(bar), foo = "baz", foo)]
+LL + #![feature(feature1, feature2, ...)]
+   |
 
 error[E0565]: malformed `feature` attribute input
   --> $DIR/gated-bad-feature.rs:1:1
    |
 LL | #![feature(foo_bar_baz, foo(bar), foo = "baz", foo)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-------^^^^^^^
-   | |                                     |
-   | |                                     didn't expect any arguments here
-   | help: must be of the form: `#![feature(feature1, feature2, ...)]`
+   |                                       |
+   |                                       didn't expect any arguments here
+   |
+help: remove this argument
+   |
+LL - #![feature(foo_bar_baz, foo(bar), foo = "baz", foo)]
+LL + #![feature(foo_bar_baz, foo(bar), foo, foo)]
+   |
+help: the only valid form of the attribute is
+   |
+LL - #![feature(foo_bar_baz, foo(bar), foo = "baz", foo)]
+LL + #![feature(feature1, feature2, ...)]
+   |
 
 error[E0539]: malformed `feature` attribute input
   --> $DIR/gated-bad-feature.rs:6:1

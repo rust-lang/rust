@@ -179,7 +179,7 @@ impl<S: Stage> CombineAttributeParser<S> for FeatureParser {
                 continue;
             };
             if let Err(arg_span) = elem.args().no_args() {
-                cx.expected_no_args(arg_span);
+                cx.expected_no_args(&elem.path().get_attribute_path(), arg_span);
                 continue;
             }
 

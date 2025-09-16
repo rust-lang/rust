@@ -587,7 +587,9 @@ pub(crate) struct LinkOrdinalOutOfRange {
 }
 
 pub(crate) enum AttributeParseErrorReason<'a> {
-    ExpectedNoArgs,
+    ExpectedNoArgs {
+        path: &'a AttrPath,
+    },
     ExpectedStringLiteral {
         byte_string: Option<Span>,
     },
@@ -619,6 +621,18 @@ pub(crate) struct AttributeParseError<'a> {
     pub(crate) reason: AttributeParseErrorReason<'a>,
 }
 
+/// based on the attribute's template we add relevant suggestions to the error automatically.
+enum DefaultSuggestionStyle {
+    /// give a hint about the valid forms of the attribute.
+    /// Useful if there's already a better suggestion given than the automatic ones can provide
+    /// but we'd still like to show which syntax forms are valid.
+    Hint,
+    /// Use the template to suggest changes to the attribute
+    Suggestion,
+    /// Don't show any default suggestions
+    None,
+}
+
 impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
         let name = self.attribute.to_string();
@@ -626,6 +640,9 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
         let mut diag = Diag::new(dcx, level, format!("malformed `{name}` attribute input"));
         diag.span(self.attr_span);
         diag.code(E0539);
+
+        let mut show_default_suggestions = DefaultSuggestionStyle::Suggestion;
+
         match self.reason {
             AttributeParseErrorReason::ExpectedStringLiteral { byte_string } => {
                 if let Some(start_point_span) = byte_string {
@@ -637,7 +654,7 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
                     );
                     diag.note("expected a normal string literal, not a byte string literal");
 
-                    return diag;
+                    show_default_suggestions = DefaultSuggestionStyle::None;
                 } else {
                     diag.span_label(self.span, "expected a string literal here");
                 }
@@ -663,9 +680,19 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
                 diag.span_label(self.span, "didn't expect a literal here");
                 diag.code(E0565);
             }
-            AttributeParseErrorReason::ExpectedNoArgs => {
+            AttributeParseErrorReason::ExpectedNoArgs { path } => {
                 diag.span_label(self.span, "didn't expect any arguments here");
                 diag.code(E0565);
+
+                if path.span != self.attribute.span {
+                    diag.span_suggestion(
+                        path.span.to(self.span),
+                        "remove this argument",
+                        path,
+                        Applicability::MachineApplicable,
+                    );
+                    show_default_suggestions = DefaultSuggestionStyle::Hint;
+                }
             }
             AttributeParseErrorReason::ExpectedNameValue(None) => {
                 // If the span is the entire attribute, the suggestion we add below this match already contains enough information
@@ -756,18 +783,27 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
         if let Some(link) = self.template.docs {
             diag.note(format!("for more information, visit <{link}>"));
         }
-        let suggestions = self.template.suggestions(self.attr_style, &name);
 
-        diag.span_suggestions(
-            self.attr_span,
-            if suggestions.len() == 1 {
-                "must be of the form"
-            } else {
-                "try changing it to one of the following valid forms of the attribute"
-            },
-            suggestions,
-            Applicability::HasPlaceholders,
-        );
+        let suggestions = self.template.suggestions(self.attr_style, &name);
+        let text = match show_default_suggestions {
+            DefaultSuggestionStyle::Hint => {
+                if suggestions.len() == 1 {
+                    "the only valid form of the attribute is"
+                } else {
+                    "these are the valid forms of the attribute"
+                }
+            }
+            DefaultSuggestionStyle::Suggestion => {
+                if suggestions.len() == 1 {
+                    "must be of the form"
+                } else {
+                    "try changing it to one of the following valid forms of the attribute"
+                }
+            }
+            DefaultSuggestionStyle::None => return diag,
+        };
+
+        diag.span_suggestions(self.attr_span, text, suggestions, Applicability::HasPlaceholders);
 
         diag
     }

@@ -92,7 +92,12 @@ LL | #[proc_macro_derive(d6 = "")]
    |                        didn't expect any arguments here
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/procedural-macros.html#derive-macros>
-help: try changing it to one of the following valid forms of the attribute
+help: remove this argument
+   |
+LL - #[proc_macro_derive(d6 = "")]
+LL + #[proc_macro_derive(d6)]
+   |
+help: these are the valid forms of the attribute
    |
 LL - #[proc_macro_derive(d6 = "")]
 LL + #[proc_macro_derive(TraitName)]
@@ -128,7 +133,12 @@ LL | #[proc_macro_derive(d8(a))]
    |                       didn't expect any arguments here
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/procedural-macros.html#derive-macros>
-help: try changing it to one of the following valid forms of the attribute
+help: remove this argument
+   |
+LL - #[proc_macro_derive(d8(a))]
+LL + #[proc_macro_derive(d8)]
+   |
+help: these are the valid forms of the attribute
    |
 LL - #[proc_macro_derive(d8(a))]
 LL + #[proc_macro_derive(TraitName)]
@@ -218,7 +228,12 @@ LL | #[proc_macro_derive(d14, attributes(a = ""))]
    |                                       didn't expect any arguments here
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/procedural-macros.html#derive-macros>
-help: try changing it to one of the following valid forms of the attribute
+help: remove this argument
+   |
+LL - #[proc_macro_derive(d14, attributes(a = ""))]
+LL + #[proc_macro_derive(d14, attributes(a))]
+   |
+help: these are the valid forms of the attribute
    |
 LL - #[proc_macro_derive(d14, attributes(a = ""))]
 LL + #[proc_macro_derive(TraitName)]
@@ -254,7 +269,12 @@ LL | #[proc_macro_derive(d16, attributes(a(b)))]
    |                                      didn't expect any arguments here
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/procedural-macros.html#derive-macros>
-help: try changing it to one of the following valid forms of the attribute
+help: remove this argument
+   |
+LL - #[proc_macro_derive(d16, attributes(a(b)))]
+LL + #[proc_macro_derive(d16, attributes(a))]
+   |
+help: these are the valid forms of the attribute
    |
 LL - #[proc_macro_derive(d16, attributes(a(b)))]
 LL + #[proc_macro_derive(TraitName)]

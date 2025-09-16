@@ -48,9 +48,19 @@ error[E0565]: malformed `rustc_skip_during_method_dispatch` attribute input
    |
 LL | #[rustc_skip_during_method_dispatch(array = true)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^------^^
-   | |                                         |
-   | |                                         didn't expect any arguments here
-   | help: must be of the form: `#[rustc_skip_during_method_dispatch(array, boxed_slice)]`
+   |                                           |
+   |                                           didn't expect any arguments here
+   |
+help: remove this argument
+   |
+LL - #[rustc_skip_during_method_dispatch(array = true)]
+LL + #[rustc_skip_during_method_dispatch(array)]
+   |
+help: the only valid form of the attribute is
+   |
+LL - #[rustc_skip_during_method_dispatch(array = true)]
+LL + #[rustc_skip_during_method_dispatch(array, boxed_slice)]
+   |
 
 error[E0565]: malformed `rustc_skip_during_method_dispatch` attribute input
   --> $DIR/rustc_skip_during_method_dispatch.rs:27:1
