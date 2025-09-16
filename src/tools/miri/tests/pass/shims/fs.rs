@@ -28,8 +28,7 @@ fn main() {
     test_from_raw_os_error();
     test_file_clone();
     // Windows file handling is very incomplete.
-    // FIXME: read_dir broken on FreeBSD (https://github.com/rust-lang/miri/issues/4587)
-    if cfg!(not(windows)) && !cfg!(target_os = "freebsd") {
+    if cfg!(not(windows)) {
         test_file_set_len();
         test_file_sync();
         test_rename();
