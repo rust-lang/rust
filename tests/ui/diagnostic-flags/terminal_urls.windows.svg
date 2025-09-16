@@ -1,0 +1,49 @@
+<svg width="740px" height="236px" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .fg { fill: #AAAAAA }
+    .bg { fill: #000000 }
+    .fg-ansi256-009 { fill: #FF5555 }
+    .fg-ansi256-014 { fill: #55FFFF }
+    .fg-ansi256-015 { fill: #FFFFFF }
+    .container {
+      padding: 0 10px;
+      line-height: 18px;
+    }
+    .bold { font-weight: bold; }
+    tspan {
+      font: 14px SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace;
+      white-space: pre;
+      line-height: 18px;
+    }
+  </style>
+
+  <rect width="100%" height="100%" y="0" rx="4.5" class="bg" />
+
+  <text xml:space="preserve" class="container fg">
+    <tspan x="10px" y="28px"><tspan class="fg-ansi256-009 bold">error[</tspan><tspan class="fg-ansi256-009 bold"><a href="https://doc.rust-lang.org/error_codes/E0308.html">E0308</a></tspan><tspan class="fg-ansi256-009 bold">]</tspan><tspan class="fg-ansi256-015 bold">: mismatched types</tspan>
+</tspan>
+    <tspan x="10px" y="46px"><tspan>  </tspan><tspan class="fg-ansi256-014 bold">--&gt; </tspan><tspan>$DIR/terminal_urls.rs:3:9</tspan>
+</tspan>
+    <tspan x="10px" y="64px"><tspan>   </tspan><tspan class="fg-ansi256-014 bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="82px"><tspan class="fg-ansi256-014 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-014 bold">|</tspan><tspan>     let () = 4;</tspan>
+</tspan>
+    <tspan x="10px" y="100px"><tspan>   </tspan><tspan class="fg-ansi256-014 bold">|</tspan><tspan>         </tspan><tspan class="fg-ansi256-009 bold">^^</tspan><tspan>   </tspan><tspan class="fg-ansi256-014 bold">-</tspan><tspan> </tspan><tspan class="fg-ansi256-014 bold">this expression has type `{integer}`</tspan>
+</tspan>
+    <tspan x="10px" y="118px"><tspan>   </tspan><tspan class="fg-ansi256-014 bold">|</tspan><tspan>         </tspan><tspan class="fg-ansi256-009 bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="136px"><tspan>   </tspan><tspan class="fg-ansi256-014 bold">|</tspan><tspan>         </tspan><tspan class="fg-ansi256-009 bold">expected integer, found `()`</tspan>
+</tspan>
+    <tspan x="10px" y="154px">
+</tspan>
+    <tspan x="10px" y="172px"><tspan class="fg-ansi256-009 bold">error</tspan><tspan class="fg-ansi256-015 bold">: aborting due to 1 previous error</tspan>
+</tspan>
+    <tspan x="10px" y="190px">
+</tspan>
+    <tspan x="10px" y="208px"><tspan class="fg-ansi256-015 bold">For more information about this error, try `rustc --explain E0308`.</tspan>
+</tspan>
+    <tspan x="10px" y="226px">
+</tspan>
+  </text>
+
+</svg>
