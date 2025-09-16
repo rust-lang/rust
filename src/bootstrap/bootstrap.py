@@ -1193,8 +1193,6 @@ class RustBuild(object):
             return "<commit>"
         cmd = [
             "git",
-            "-C",
-            repo_path,
             "rev-list",
             "--author",
             author_email,
@@ -1202,7 +1200,9 @@ class RustBuild(object):
             "HEAD",
         ]
         try:
-            commit = subprocess.check_output(cmd, universal_newlines=True).strip()
+            commit = subprocess.check_output(
+                cmd, universal_newlines=True, cwd=repo_path
+            ).strip()
             return commit or "<commit>"
         except subprocess.CalledProcessError:
             return "<commit>"
