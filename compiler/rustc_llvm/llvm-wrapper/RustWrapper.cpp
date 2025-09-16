@@ -1065,14 +1065,6 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateMethod(
 }
 
 extern "C" LLVMMetadataRef
-LLVMRustDIBuilderCreateBasicType(LLVMDIBuilderRef Builder, const char *Name,
-                                 size_t NameLen, uint64_t SizeInBits,
-                                 unsigned Encoding) {
-  return wrap(unwrap(Builder)->createBasicType(StringRef(Name, NameLen),
-                                               SizeInBits, Encoding));
-}
-
-extern "C" LLVMMetadataRef
 LLVMRustDIBuilderCreateTypedef(LLVMDIBuilderRef Builder, LLVMMetadataRef Type,
                                const char *Name, size_t NameLen,
                                LLVMMetadataRef File, unsigned LineNo,

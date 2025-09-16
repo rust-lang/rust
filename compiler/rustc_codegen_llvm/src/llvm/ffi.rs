@@ -1904,6 +1904,15 @@ unsafe extern "C" {
         Subscripts: *const &'ll Metadata,
         NumSubscripts: c_uint,
     ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderCreateBasicType<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
+        NameLen: size_t,
+        SizeInBits: u64,
+        Encoding: c_uint, // (`LLVMDWARFTypeEncoding`)
+        Flags: DIFlags,   // (default is `DIFlags::DIFlagZero`)
+    ) -> &'ll Metadata;
 }
 
 #[link(name = "llvm-wrapper", kind = "static")]
@@ -2238,14 +2247,6 @@ unsafe extern "C" {
         SPFlags: DISPFlags,
         TParam: &'a DIArray,
     ) -> &'a DISubprogram;
-
-    pub(crate) fn LLVMRustDIBuilderCreateBasicType<'a>(
-        Builder: &DIBuilder<'a>,
-        Name: *const c_char,
-        NameLen: size_t,
-        SizeInBits: u64,
-        Encoding: c_uint,
-    ) -> &'a DIBasicType;
 
     pub(crate) fn LLVMRustDIBuilderCreateTypedef<'a>(
         Builder: &DIBuilder<'a>,

@@ -840,12 +840,13 @@ fn create_basic_type<'ll, 'tcx>(
     encoding: u32,
 ) -> &'ll DIBasicType {
     unsafe {
-        llvm::LLVMRustDIBuilderCreateBasicType(
+        llvm::LLVMDIBuilderCreateBasicType(
             DIB(cx),
-            name.as_c_char_ptr(),
+            name.as_ptr(),
             name.len(),
             size.bits(),
             encoding,
+            DIFlags::FlagZero,
         )
     }
 }
