@@ -605,6 +605,9 @@ pub(crate) enum AttributeParseErrorReason<'a> {
         list: bool,
     },
     ExpectedIdentifier,
+    ExpectedEnd {
+        last: Span,
+    },
 }
 
 pub(crate) struct AttributeParseError<'a> {
@@ -743,6 +746,10 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
             }
             AttributeParseErrorReason::ExpectedIdentifier => {
                 diag.span_label(self.span, "expected a valid identifier here");
+            }
+            AttributeParseErrorReason::ExpectedEnd { last } => {
+                diag.span_label(last, "expected no more arguments after this");
+                diag.span_label(self.span, "remove this argument");
             }
         }
 
