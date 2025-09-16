@@ -45,6 +45,18 @@ fn test_or_else() {
 }
 
 #[test]
+fn test_map_or() {
+    assert_eq!(op1().map_or(667, |x| x), 666);
+    assert_eq!(op2().map_or(666, |_| panic!()), 666);
+}
+
+#[test]
+fn test_copied() {
+    assert!(Ok::<&isize, isize>(&1).copied() == Ok(1));
+    assert!(Err::<&isize, isize>(1).copied() == Err(1));
+}
+
+#[test]
 fn test_impl_map() {
     assert!(Ok::<isize, isize>(1).map(|x| x + 1) == Ok(2));
     assert!(Err::<isize, isize>(1).map(|x| x + 1) == Err(1));
