@@ -39,6 +39,9 @@ extern crate rustc_next_trait_solver;
 #[cfg(not(feature = "in-rust-tree"))]
 extern crate ra_ap_rustc_next_trait_solver as rustc_next_trait_solver;
 
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_data_structures as ena;
+
 mod builder;
 mod chalk_db;
 mod chalk_ext;
