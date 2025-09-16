@@ -665,20 +665,16 @@ pub(crate) unsafe fn llvm_optimize(
 
     let llvm_plugins = config.llvm_plugins.join(",");
 
-    fn call_dynamic() -> Result<*const c_void, Box<dyn std::error::Error>> {
-        unsafe {
-            let lib = libloading::Library::new("/home/manuel/prog/rust/build/x86_64-unknown-linux-gnu/enzyme/lib/libEnzyme-21.so")?;
-            let func: libloading::Symbol<'_, c_void> = lib.get(b"registerEnzymeAndPassPipeline")?;
-            let func = func.try_as_raw_ptr().unwrap();
-            dbg!(func);
-            Ok(func as *const c_void)
-        }
-    }
-    let enzyme_fn = if cfg!(llvm_enzyme) && run_enzyme {
-        call_dynamic().unwrap_or(std::ptr::null())
+    let enzyme_fn = if run_enzyme {
+        let wrapper = crate::llvm::EnzymeWrapper::current();
+        wrapper.lock().unwrap().registerEnzymeAndPassPipeline
     } else {
-       std::ptr::null()
+        //dbg!(run_enzyme);
+        //dbg!(consider_ad);
+        std::ptr::null()
     };
+
+    dbg!(&enzyme_fn);
 
 
     let result = unsafe {
