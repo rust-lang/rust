@@ -1,5 +1,5 @@
 use crate::iter::adapters::SourceIter;
-use crate::iter::{FusedIterator, TrustedLen};
+use crate::iter::{FusedIterator, InfiniteIterator, TrustedLen};
 use crate::ops::{ControlFlow, Try};
 
 /// An iterator with a `peek()` that returns an optional reference to the next
@@ -437,3 +437,9 @@ where
         unsafe { SourceIter::as_inner(&mut self.iter) }
     }
 }
+
+#[stable(feature = "infinite_iterator_trait", since = "CURRENT_RUSTC_VERSION")]
+impl<I: !ExactSizeIterator> !ExactSizeIterator for Peekable<I> {}
+
+#[stable(feature = "infinite_iterator_trait", since = "CURRENT_RUSTC_VERSION")]
+impl<I: InfiniteIterator> InfiniteIterator for Peekable<I> {}

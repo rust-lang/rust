@@ -1,5 +1,5 @@
 use crate::intrinsics;
-use crate::iter::{TrustedLen, TrustedRandomAccess, from_fn};
+use crate::iter::{InfiniteIterator, TrustedLen, TrustedRandomAccess, from_fn};
 use crate::num::NonZero;
 use crate::ops::{Range, Try};
 
@@ -142,6 +142,12 @@ impl<I> ExactSizeIterator for StepBy<I> where I: ExactSizeIterator {}
 // This also covers the Range specializations since the ranges also implement TRA
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<I> TrustedLen for StepBy<I> where I: Iterator + TrustedRandomAccess {}
+
+#[stable(feature = "infinite_iterator_trait", since = "CURRENT_RUSTC_VERSION")]
+impl<I: !ExactSizeIterator> !ExactSizeIterator for StepBy<I> {}
+
+#[stable(feature = "infinite_iterator_trait", since = "CURRENT_RUSTC_VERSION")]
+impl<I: InfiniteIterator> InfiniteIterator for StepBy<I> {}
 
 trait SpecRangeSetup<T> {
     fn setup(inner: T, step: usize) -> T;

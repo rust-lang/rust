@@ -1,3 +1,4 @@
+use crate::iter::traits::InfiniteIterator;
 use crate::iter::{FusedIterator, TrustedLen};
 use crate::num::NonZero;
 
@@ -132,3 +133,9 @@ impl<A: Clone> FusedIterator for Repeat<A> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<A: Clone> TrustedLen for Repeat<A> {}
+
+#[stable(feature = "infinite_iterator_trait", since = "CURRENT_RUSTC_VERSION")]
+impl<A> !ExactSizeIterator for Repeat<A> {}
+
+#[stable(feature = "infinite_iterator_trait", since = "CURRENT_RUSTC_VERSION")]
+impl<A: Clone> InfiniteIterator for Repeat<A> {}

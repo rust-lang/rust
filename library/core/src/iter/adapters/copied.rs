@@ -1,6 +1,6 @@
 use crate::iter::adapters::zip::try_get_unchecked;
 use crate::iter::adapters::{SourceIter, TrustedRandomAccess, TrustedRandomAccessNoCoerce};
-use crate::iter::{FusedIterator, InPlaceIterable, TrustedLen};
+use crate::iter::{FusedIterator, InPlaceIterable, InfiniteIterator, TrustedLen};
 use crate::mem::{MaybeUninit, SizedTypeProperties};
 use crate::num::NonZero;
 use crate::ops::Try;
@@ -272,4 +272,15 @@ where
 unsafe impl<I: InPlaceIterable> InPlaceIterable for Copied<I> {
     const EXPAND_BY: Option<NonZero<usize>> = I::EXPAND_BY;
     const MERGE_BY: Option<NonZero<usize>> = I::MERGE_BY;
+}
+
+#[stable(feature = "infinite_iterator_trait", since = "CURRENT_RUSTC_VERSION")]
+impl<I: !ExactSizeIterator> !ExactSizeIterator for Copied<I> {}
+
+#[stable(feature = "infinite_iterator_trait", since = "CURRENT_RUSTC_VERSION")]
+impl<'a, I, T> InfiniteIterator for Copied<I>
+where
+    I: InfiniteIterator<Item = &'a T>,
+    T: Copy + 'a,
+{
 }

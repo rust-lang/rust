@@ -1,6 +1,6 @@
 use crate::iter::adapters::zip::try_get_unchecked;
 use crate::iter::adapters::{SourceIter, TrustedRandomAccess, TrustedRandomAccessNoCoerce};
-use crate::iter::{FusedIterator, InPlaceIterable, TrustedFused, TrustedLen};
+use crate::iter::{FusedIterator, InPlaceIterable, InfiniteIterator, TrustedFused, TrustedLen};
 use crate::num::NonZero;
 use crate::ops::Try;
 
@@ -315,3 +315,9 @@ impl<I: Default> Default for Enumerate<I> {
         Enumerate::new(Default::default())
     }
 }
+
+#[stable(feature = "infinite_iterator_trait", since = "CURRENT_RUSTC_VERSION")]
+impl<I: !ExactSizeIterator> !ExactSizeIterator for Enumerate<I> {}
+
+#[stable(feature = "infinite_iterator_trait", since = "CURRENT_RUSTC_VERSION")]
+impl<I: InfiniteIterator> InfiniteIterator for Enumerate<I> {}

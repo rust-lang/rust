@@ -1,4 +1,4 @@
-use crate::iter::{FusedIterator, TrustedLen};
+use crate::iter::{FusedIterator, InfiniteIterator, TrustedLen};
 use crate::num::NonZero;
 use crate::ops::Try;
 
@@ -334,4 +334,16 @@ fn and_then_or_clear<T, U>(opt: &mut Option<T>, f: impl FnOnce(&mut T) -> Option
         *opt = None;
     }
     x
+}
+
+#[stable(feature = "infinite_iterator_trait", since = "CURRENT_RUSTC_VERSION")]
+impl<A, B> !ExactSizeIterator for Chain<A, B> {}
+
+// FIXME: Get this working with the symmetrical variant
+#[stable(feature = "infinite_iterator_trait", since = "CURRENT_RUSTC_VERSION")]
+impl<A, B> InfiniteIterator for Chain<A, B>
+where
+    A: Iterator,
+    B: InfiniteIterator<Item = A::Item>,
+{
 }
