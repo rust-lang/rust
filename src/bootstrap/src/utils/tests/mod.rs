@@ -98,6 +98,14 @@ impl ConfigBuilder {
         self
     }
 
+    pub fn config_toml(mut self, config_toml: &str) -> Self {
+        let toml_path = self.directory.join("bootstrap.toml");
+        std::fs::write(&toml_path, config_toml).unwrap();
+        self.args.push("--config".to_string());
+        self.args.push(toml_path.display().to_string());
+        self
+    }
+
     pub fn create_config(mut self) -> Config {
         // Run in dry-check, otherwise the test would be too slow
         self.args.push("--dry-run".to_string());
