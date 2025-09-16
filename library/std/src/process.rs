@@ -268,8 +268,8 @@ impl AsInner<imp::Process> for Child {
     }
 }
 
-impl FromInner<(imp::Process, imp::StdioPipes)> for Child {
-    fn from_inner((handle, io): (imp::Process, imp::StdioPipes)) -> Child {
+impl FromInner<(imp::Process, StdioPipes)> for Child {
+    fn from_inner((handle, io): (imp::Process, StdioPipes)) -> Child {
         Child {
             handle,
             stdin: io.stdin.map(ChildStdin::from_inner),
@@ -294,6 +294,15 @@ impl fmt::Debug for Child {
             .field("stderr", &self.stderr)
             .finish_non_exhaustive()
     }
+}
+
+/// The pipes connected to a spawned process.
+///
+/// Used to pass pipe handles between this module and [`imp`].
+pub(crate) struct StdioPipes {
+    pub stdin: Option<AnonPipe>,
+    pub stdout: Option<AnonPipe>,
+    pub stderr: Option<AnonPipe>,
 }
 
 /// A handle to a child process's standard input (stdin).

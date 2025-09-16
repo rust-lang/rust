@@ -24,7 +24,7 @@ mod env;
 
 pub use env::CommandEnvs;
 pub use imp::{
-    Command, CommandArgs, EnvKey, ExitCode, ExitStatus, ExitStatusError, Process, Stdio, StdioPipes,
+    Command, CommandArgs, EnvKey, ExitCode, ExitStatus, ExitStatusError, Process, Stdio,
 };
 
 #[cfg(any(
