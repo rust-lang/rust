@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 
+use libc::c_uint;
 use rustc_abi::{Align, Size, VariantIdx};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
@@ -191,6 +192,7 @@ pub(super) fn stub<'ll, 'tcx>(
     containing_scope: Option<&'ll DIScope>,
     flags: DIFlags,
 ) -> StubInfo<'ll, 'tcx> {
+    let no_elements: &[Option<&llvm::Metadata>] = &[];
     let empty_array = create_DIArray(DIB(cx), &[]);
     let unique_type_id_str = unique_type_id.generate_unique_id_string(cx.tcx);
 
@@ -227,19 +229,20 @@ pub(super) fn stub<'ll, 'tcx>(
             }
         }
         Stub::Union => unsafe {
-            llvm::LLVMRustDIBuilderCreateUnionType(
+            llvm::LLVMDIBuilderCreateUnionType(
                 DIB(cx),
                 containing_scope,
-                name.as_c_char_ptr(),
+                name.as_ptr(),
                 name.len(),
                 file_metadata,
                 line_number,
                 size.bits(),
                 align.bits() as u32,
                 flags,
-                Some(empty_array),
-                0,
-                unique_type_id_str.as_c_char_ptr(),
+                no_elements.as_ptr(),
+                no_elements.len() as c_uint,
+                0u32, // (Objective-C runtime version; default is 0)
+                unique_type_id_str.as_ptr(),
                 unique_type_id_str.len(),
             )
         },
