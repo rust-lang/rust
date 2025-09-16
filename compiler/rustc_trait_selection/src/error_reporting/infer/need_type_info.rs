@@ -4,11 +4,12 @@ use std::path::PathBuf;
 
 use rustc_errors::codes::*;
 use rustc_errors::{Diag, IntoDiagArg};
-use rustc_hir::{self as hir, PatKind};
 use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{Body, Closure, Expr, ExprKind, FnRetTy, HirId, LetStmt, LocalSource};
+use rustc_hir::{
+    self as hir, Body, Closure, Expr, ExprKind, FnRetTy, HirId, LetStmt, LocalSource, PatKind,
+};
 use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
