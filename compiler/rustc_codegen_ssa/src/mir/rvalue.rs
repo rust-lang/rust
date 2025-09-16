@@ -1,5 +1,5 @@
 use itertools::Itertools as _;
-use rustc_abi::{self as abi, FIRST_VARIANT};
+use rustc_abi::{self as abi, BackendRepr, FIRST_VARIANT};
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
@@ -25,6 +25,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         match *rvalue {
             mir::Rvalue::Use(ref operand) => {
                 let cg_operand = self.codegen_operand(bx, operand);
+                // Crucially, we do *not* use `OperandValue::Ref` for types with
+                // `BackendRepr::Scalar | BackendRepr::ScalarPair`. This ensures we match the MIR
+                // semantics regarding when assignment operators allow overlap of LHS and RHS.
+                if matches!(
+                    cg_operand.layout.backend_repr,
+                    BackendRepr::Scalar(..) | BackendRepr::ScalarPair(..),
+                ) {
+                    debug_assert!(!matches!(cg_operand.val, OperandValue::Ref(..)));
+                }
                 // FIXME: consider not copying constants through stack. (Fixable by codegen'ing
                 // constants into `OperandValue::Ref`; why don’t we do that yet if we don’t?)
                 cg_operand.val.store(bx, dest);

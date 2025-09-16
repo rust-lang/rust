@@ -327,9 +327,11 @@ pub enum StatementKind<'tcx> {
     /// interesting for optimizations? Do we want to allow such optimizations?
     ///
     /// **Needs clarification**: We currently require that the LHS place not overlap with any place
-    /// read as part of computation of the RHS for some rvalues (generally those not producing
-    /// primitives). This requirement is under discussion in [#68364]. As a part of this discussion,
-    /// it is also unclear in what order the components are evaluated.
+    /// read as part of computation of the RHS for some rvalues. This requirement is under
+    /// discussion in [#68364]. Specifically, overlap is permitted only for assignments of a type
+    /// with `BackendRepr::Scalar | BackendRepr::ScalarPair` where all the scalar fields are
+    /// [`Scalar::Initialized`][rustc_abi::Scalar::Initialized]. As a part of this discussion, it is
+    /// also unclear in what order the components are evaluated.
     ///
     /// [#68364]: https://github.com/rust-lang/rust/issues/68364
     ///

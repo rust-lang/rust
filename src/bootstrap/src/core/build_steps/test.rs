@@ -3418,9 +3418,6 @@ impl Step for TierCheck {
         );
         cargo.arg(builder.src.join("src/doc/rustc/src/platform-support.md"));
         cargo.arg(builder.rustc(self.test_compiler));
-        if builder.is_verbose() {
-            cargo.arg("--verbose");
-        }
 
         let _guard = builder.msg_test(
             "platform support check",

@@ -1133,7 +1133,7 @@ impl Builder<'_> {
             cargo.env("RUSTC_BACKTRACE_ON_ICE", "1");
         }
 
-        if self.is_verbose() {
+        if self.is_verbose_than(1) {
             // This provides very useful logs especially when debugging build cache-related stuff.
             cargo.env("CARGO_LOG", "cargo::core::compiler::fingerprint=info");
         }
@@ -1275,8 +1275,9 @@ impl Builder<'_> {
             cargo.env("WINAPI_NO_BUNDLED_LIBRARIES", "1");
         }
 
-        for _ in 0..self.verbosity {
-            cargo.arg("-v");
+        // verbose cargo output is very noisy, so only enable it with -vv
+        for _ in 0..self.verbosity.saturating_sub(1) {
+            cargo.arg("--verbose");
         }
 
         match (mode, self.config.rust_codegen_units_std, self.config.rust_codegen_units) {

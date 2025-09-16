@@ -1,7 +1,7 @@
 #![allow(incomplete_features)]
 #![feature(adt_const_params, unsized_const_params)]
 
-fn check(_: impl std::marker::UnsizedConstParamTy) {}
+fn check(_: impl std::marker::ConstParamTy_) {}
 
 fn main() {
     check(main); //~ error: `fn() {main}` can't be used as a const parameter type

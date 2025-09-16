@@ -295,11 +295,14 @@ fn filter_tests(opts: &Config, tests: Vec<CollectedTest>) -> Vec<CollectedTest> 
     let mut filtered = tests;
 
     let matches_filter = |test: &CollectedTest, filter_str: &str| {
-        let filterable_path = test.desc.filterable_path.as_str();
         if opts.filter_exact {
-            filterable_path == filter_str
+            // When `--exact` is used we must use `filterable_path` to get
+            // reasonable filtering behavior.
+            test.desc.filterable_path.as_str() == filter_str
         } else {
-            filterable_path.contains(filter_str)
+            // For compatibility we use the name (which includes the full path)
+            // if `--exact` is not used.
+            test.desc.name.contains(filter_str)
         }
     };
 

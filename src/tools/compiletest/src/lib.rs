@@ -484,7 +484,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
             let value = matches
                 .opt_str("new-output-capture")
                 .or_else(|| env::var("COMPILETEST_NEW_OUTPUT_CAPTURE").ok())
-                .unwrap_or_else(|| "off".to_owned());
+                .unwrap_or_else(|| "on".to_owned());
             parse_bool_option(&value)
                 .unwrap_or_else(|| panic!("unknown `--new-output-capture` value `{value}` given"))
         },
