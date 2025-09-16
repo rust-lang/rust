@@ -9,11 +9,6 @@
 // and we don't even get a regular panic; rustc aborts with a different exit code instead.
 //@ignore-host: windows
 
-// FIXME: this tests a crash in rustc. For stage1, rustc is built with the downloaded standard
-// library which doesn't yet print the thread ID. Normalization can be removed at the stage bump.
-// For the grep: cfg(bootstrap)
-//@normalize-stderr-test: "thread 'rustc' panicked" -> "thread 'rustc' ($$TID) panicked"
-
 #![feature(custom_mir, core_intrinsics)]
 use core::intrinsics::mir::*;
 
