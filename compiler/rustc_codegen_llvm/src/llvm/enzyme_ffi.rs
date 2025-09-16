@@ -59,10 +59,10 @@ pub(crate) enum LLVMRustVerifierFailureAction {
     LLVMReturnStatusAction = 2,
 }
 
-#[cfg(llvm_enzyme)]
+#[cfg(not(llvm_enzyme))]
 pub(crate) use self::Enzyme_AD::*;
 
-#[cfg(llvm_enzyme)]
+#[cfg(not(llvm_enzyme))]
 pub(crate) mod Enzyme_AD {
     use std::ffi::{CString, c_char};
 
@@ -134,38 +134,38 @@ pub(crate) mod Enzyme_AD {
     }
 }
 
-#[cfg(not(llvm_enzyme))]
+#[cfg(llvm_enzyme)]
 pub(crate) use self::Fallback_AD::*;
 
-#[cfg(not(llvm_enzyme))]
+#[cfg(llvm_enzyme)]
 pub(crate) mod Fallback_AD {
     #![allow(unused_variables)]
 
     pub(crate) fn set_inline(val: bool) {
-        unimplemented!()
+        //unimplemented!()
     }
     pub(crate) fn set_print_perf(print: bool) {
-        unimplemented!()
+        //unimplemented!()
     }
     pub(crate) fn set_print_activity(print: bool) {
-        unimplemented!()
+        //unimplemented!()
     }
     pub(crate) fn set_print_type(print: bool) {
-        unimplemented!()
+        //unimplemented!()
     }
     pub(crate) fn set_print_type_fun(fun_name: &str) {
-        unimplemented!()
+        //unimplemented!()
     }
     pub(crate) fn set_print(print: bool) {
-        unimplemented!()
+        //unimplemented!()
     }
     pub(crate) fn set_strict_aliasing(strict: bool) {
-        unimplemented!()
+        //unimplemented!()
     }
     pub(crate) fn set_loose_types(loose: bool) {
-        unimplemented!()
+        //unimplemented!()
     }
     pub(crate) fn set_rust_rules(val: bool) {
-        unimplemented!()
+        //unimplemented!()
     }
 }
