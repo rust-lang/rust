@@ -88,3 +88,4 @@ tests/ui/linkage-attr/raw-dylib/elf/glibc-x86_64.rs
 tests/ui/explicit-tail-calls/recursion-etc.rs
 tests/ui/explicit-tail-calls/indexer.rs
 tests/ui/explicit-tail-calls/drop-order.rs
+tests/ui/c-variadic/valid.rs
