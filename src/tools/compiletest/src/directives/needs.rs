@@ -81,8 +81,8 @@ pub(super) fn handle_needs(
         },
         Need {
             name: "needs-enzyme",
-            condition: config.has_enzyme,
-            ignore_reason: "ignored when LLVM Enzyme is disabled",
+            condition: config.has_enzyme && config.default_codegen_backend.is_llvm(),
+            ignore_reason: "ignored when LLVM Enzyme is disabled or LLVM is not the default codegen backend",
         },
         Need {
             name: "needs-run-enabled",
@@ -161,8 +161,8 @@ pub(super) fn handle_needs(
         },
         Need {
             name: "needs-llvm-zstd",
-            condition: cache.llvm_zstd,
-            ignore_reason: "ignored if LLVM wasn't build with zstd for ELF section compression",
+            condition: cache.llvm_zstd && config.default_codegen_backend.is_llvm(),
+            ignore_reason: "ignored if LLVM wasn't build with zstd for ELF section compression or LLVM is not the default codegen backend",
         },
         Need {
             name: "needs-rustc-debug-assertions",
@@ -279,7 +279,10 @@ pub(super) fn handle_needs(
 
     // Handled elsewhere.
     if name == "needs-llvm-components" {
-        return IgnoreDecision::Continue;
+        if config.default_codegen_backend.is_llvm() {
+            return IgnoreDecision::Continue;
+        }
+        return IgnoreDecision::Ignore { reason: "LLVM specific test".into() };
     }
 
     let mut found_valid = false;
