@@ -208,12 +208,23 @@ fn run_server() -> anyhow::Result<()> {
     tracing::info!("InitializeParams: {}", initialize_params);
     let lsp_types::InitializeParams {
         root_uri,
-        capabilities,
+        mut capabilities,
         workspace_folders,
         initialization_options,
         client_info,
         ..
     } = from_json::<lsp_types::InitializeParams>("InitializeParams", &initialize_params)?;
+
+    // lsp-types has a typo in the `/capabilities/workspace/diagnostics` field, its typoed as `diagnostic`
+    if let Some(val) = initialize_params.pointer("/capabilities/workspace/diagnostics")
+        && let Ok(diag_caps) = from_json::<lsp_types::DiagnosticWorkspaceClientCapabilities>(
+            "DiagnosticWorkspaceClientCapabilities",
+            val,
+        )
+    {
+        tracing::info!("Patching lsp-types workspace diagnostics capabilities: {diag_caps:#?}");
+        capabilities.workspace.get_or_insert_default().diagnostic.get_or_insert(diag_caps);
+    }
 
     let root_path = match root_uri
         .and_then(|it| it.to_file_path().ok())
