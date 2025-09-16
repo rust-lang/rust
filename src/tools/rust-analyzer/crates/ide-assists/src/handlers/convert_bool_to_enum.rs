@@ -329,8 +329,6 @@ fn augment_references_with_imports(
 ) -> Vec<FileReferenceWithImport> {
     let mut visited_modules = FxHashSet::default();
 
-    let cfg = ctx.config.import_path_config();
-
     let edition = target_module.krate().edition(ctx.db());
     references
         .into_iter()
@@ -345,22 +343,27 @@ fn augment_references_with_imports(
             {
                 visited_modules.insert(ref_module);
 
-                let import_scope = ImportScope::find_insert_use_container(name.syntax(), &ctx.sema);
-                let path = ref_module
-                    .find_use_path(
-                        ctx.sema.db,
-                        ModuleDef::Module(*target_module),
-                        ctx.config.insert_use.prefix_kind,
-                        cfg,
-                    )
-                    .map(|mod_path| {
-                        make::path_concat(
-                            mod_path_to_ast(&mod_path, edition),
-                            make::path_from_text("Bool"),
-                        )
-                    });
+                ImportScope::find_insert_use_container(name.syntax(), &ctx.sema).and_then(
+                    |import_scope| {
+                        let cfg =
+                            ctx.config.find_path_confg(ctx.sema.is_nightly(target_module.krate()));
+                        let path = ref_module
+                            .find_use_path(
+                                ctx.sema.db,
+                                ModuleDef::Module(*target_module),
+                                ctx.config.insert_use.prefix_kind,
+                                cfg,
+                            )
+                            .map(|mod_path| {
+                                make::path_concat(
+                                    mod_path_to_ast(&mod_path, edition),
+                                    make::path_from_text("Bool"),
+                                )
+                            })?;
 
-                import_scope.zip(path)
+                        Some((import_scope, path))
+                    },
+                )
             } else {
                 None
             };

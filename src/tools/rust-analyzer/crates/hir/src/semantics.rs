@@ -302,6 +302,13 @@ impl<DB: HirDatabase + ?Sized> Semantics<'_, DB> {
         self.imp.hir_file_to_module_defs(file.into())
     }
 
+    pub fn is_nightly(&self, krate: Crate) -> bool {
+        let toolchain = self.db.toolchain_channel(krate.into());
+        // `toolchain == None` means we're in some detached files. Since we have no information on
+        // the toolchain being used, let's just allow unstable items to be listed.
+        matches!(toolchain, Some(base_db::ReleaseChannel::Nightly) | None)
+    }
+
     pub fn to_adt_def(&self, a: &ast::Adt) -> Option<Adt> {
         self.imp.to_def(a)
     }

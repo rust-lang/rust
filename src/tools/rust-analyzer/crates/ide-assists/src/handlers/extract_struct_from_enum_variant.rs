@@ -400,11 +400,12 @@ fn process_references(
             let segment = builder.make_mut(segment);
             let scope_node = builder.make_syntax_mut(scope_node);
             if !visited_modules.contains(&module) {
+                let cfg = ctx.config.find_path_confg(ctx.sema.is_nightly(module.krate()));
                 let mod_path = module.find_use_path(
                     ctx.sema.db,
                     *enum_module_def,
                     ctx.config.insert_use.prefix_kind,
-                    ctx.config.import_path_config(),
+                    cfg,
                 );
                 if let Some(mut mod_path) = mod_path {
                     mod_path.pop_segment();

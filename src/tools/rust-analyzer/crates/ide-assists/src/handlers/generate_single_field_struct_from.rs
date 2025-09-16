@@ -169,6 +169,7 @@ fn make_constructors(
     types: &[ast::Type],
 ) -> Vec<Option<ast::Expr>> {
     let (db, sema) = (ctx.db(), &ctx.sema);
+    let cfg = ctx.config.find_path_confg(ctx.sema.is_nightly(module.krate()));
     types
         .iter()
         .map(|ty| {
@@ -179,11 +180,7 @@ fn make_constructors(
             let item_in_ns = ModuleDef::Adt(ty.as_adt()?).into();
             let edition = module.krate().edition(db);
 
-            let ty_path = module.find_path(
-                db,
-                item_for_path_search(db, item_in_ns)?,
-                ctx.config.import_path_config(),
-            )?;
+            let ty_path = module.find_path(db, item_for_path_search(db, item_in_ns)?, cfg)?;
 
             use_trivial_constructor(db, mod_path_to_ast(&ty_path, edition), &ty, edition)
         })

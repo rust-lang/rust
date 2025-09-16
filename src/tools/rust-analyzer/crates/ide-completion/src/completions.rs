@@ -654,7 +654,7 @@ fn enum_variants_with_paths(
         if let Some(path) = ctx.module.find_path(
             ctx.db,
             hir::ModuleDef::from(variant),
-            ctx.config.import_path_config(ctx.is_nightly),
+            ctx.config.find_path_config(ctx.is_nightly),
         ) {
             // Variants with trivial paths are already added by the existing completion logic,
             // so we should avoid adding these twice

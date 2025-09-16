@@ -1,7 +1,7 @@
 use std::iter::{self, Peekable};
 
 use either::Either;
-use hir::{Adt, AsAssocItem, Crate, HasAttrs, ImportPathConfig, ModuleDef, Semantics, sym};
+use hir::{Adt, AsAssocItem, Crate, FindPathConfig, HasAttrs, ModuleDef, Semantics, sym};
 use ide_db::RootDatabase;
 use ide_db::assists::ExprFillDefaultMode;
 use ide_db::syntax_helpers::suggest_name;
@@ -76,12 +76,11 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
         .filter(|pat| !matches!(pat, Pat::WildcardPat(_)))
         .collect();
 
-    let cfg = ctx.config.import_path_config();
-
     let make = SyntaxFactory::with_mappings();
 
     let scope = ctx.sema.scope(expr.syntax())?;
     let module = scope.module();
+    let cfg = ctx.config.find_path_confg(ctx.sema.is_nightly(scope.krate()));
     let self_ty = if ctx.config.prefer_self_ty {
         scope
             .containing_function()
@@ -498,7 +497,7 @@ fn build_pat(
     make: &SyntaxFactory,
     module: hir::Module,
     var: ExtendedVariant,
-    cfg: ImportPathConfig,
+    cfg: FindPathConfig,
 ) -> Option<ast::Pat> {
     let db = ctx.db();
     match var {
