@@ -40,5 +40,8 @@ pub type AliasTy<'db> = rustc_type_ir::AliasTy<DbInterner<'db>>;
 pub type PolyFnSig<'db> = Binder<'db, rustc_type_ir::FnSig<DbInterner<'db>>>;
 pub type TypingMode<'db> = rustc_type_ir::TypingMode<DbInterner<'db>>;
 
+#[cfg(feature = "in-rust-tree")]
+use rustc_data_structure::sorted_map::index_map as indexmap;
+
 pub type FxIndexMap<K, V> =
     indexmap::IndexMap<K, V, std::hash::BuildHasherDefault<rustc_hash::FxHasher>>;
