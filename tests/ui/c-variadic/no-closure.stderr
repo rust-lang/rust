@@ -10,7 +10,7 @@ error: unexpected `...`
 LL |     let f = |...| {};
    |              ^^^ not a valid pattern
    |
-   = note: C-variadic type `...` is not allowed here
+   = note: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
 
 error[E0743]: C-variadic type `...` may not be nested inside another type
   --> $DIR/no-closure.rs:13:17
