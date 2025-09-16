@@ -370,3 +370,18 @@ fn test_issue_82291() {
     zip.next();
     assert_eq!(called.get(), 1);
 }
+
+#[test]
+fn zip_repeat_bounds() {
+    let iter = [1, 2, 3].into_iter().zip(repeat(2));
+    let (lower, upper) = iter.size_hint();
+    assert_eq!(lower, 3);
+    assert_eq!(upper, Some(3));
+    assert_eq!(iter.len(), 3);
+
+    let iter = repeat(2).zip([1, 2, 3].into_iter());
+    let (lower, upper) = iter.size_hint();
+    assert_eq!(lower, 3);
+    assert_eq!(upper, Some(3));
+    assert_eq!(iter.len(), 3);
+}
