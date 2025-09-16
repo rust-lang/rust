@@ -1026,13 +1026,6 @@ LLVMRustDIBuilderCreateFile(LLVMDIBuilderRef Builder, const char *Filename,
                                           CSInfo, oSource));
 }
 
-extern "C" LLVMMetadataRef
-LLVMRustDIBuilderCreateSubroutineType(LLVMDIBuilderRef Builder,
-                                      LLVMMetadataRef ParameterTypes) {
-  return wrap(unwrap(Builder)->createSubroutineType(
-      DITypeRefArray(unwrap<MDTuple>(ParameterTypes))));
-}
-
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateFunction(
     LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
     size_t NameLen, const char *LinkageName, size_t LinkageNameLen,
