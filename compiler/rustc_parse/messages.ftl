@@ -191,6 +191,9 @@ parse_dotdotdot_rest_pattern = unexpected `...`
     .suggestion = for a rest pattern, use `..` instead of `...`
     .note = only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
 
+parse_dotdotdot_rest_type = unexpected `...`
+    .note = only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
 parse_double_colon_in_bound = expected `:` followed by trait or lifetime
     .suggestion = use single colon
 

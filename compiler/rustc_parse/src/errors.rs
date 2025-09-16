@@ -3033,6 +3033,14 @@ pub(crate) struct NestedCVariadicType {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_dotdotdot_rest_type)]
+#[note]
+pub(crate) struct InvalidCVariadicType {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_invalid_dyn_keyword)]
 #[help]
 pub(crate) struct InvalidDynKeyword {
