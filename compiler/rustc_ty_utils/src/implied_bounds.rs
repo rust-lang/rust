@@ -42,12 +42,14 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
             ));
             tcx.arena.alloc_slice(&assumed_wf_types)
         }
-        DefKind::Impl { .. } => {
+        DefKind::Impl { of_trait } => {
             // Trait arguments and the self type for trait impls or only the self type for
             // inherent impls.
-            let tys = match tcx.impl_trait_ref(def_id) {
-                Some(trait_ref) => trait_ref.skip_binder().args.types().collect(),
-                None => vec![tcx.type_of(def_id).instantiate_identity()],
+            let tys = if of_trait {
+                let trait_ref = tcx.impl_trait_ref(def_id).unwrap();
+                trait_ref.skip_binder().args.types().collect()
+            } else {
+                vec![tcx.type_of(def_id).instantiate_identity()]
             };
 
             let mut impl_spans = impl_spans(tcx, def_id);

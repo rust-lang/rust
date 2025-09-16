@@ -245,7 +245,7 @@ pub(super) fn check_item<'tcx>(
         // won't be allowed unless there's an *explicit* implementation of `Send`
         // for `T`
         hir::ItemKind::Impl(ref impl_) => {
-            crate::impl_wf_check::check_impl_wf(tcx, def_id)?;
+            crate::impl_wf_check::check_impl_wf(tcx, def_id, impl_.of_trait.is_some())?;
             let mut res = Ok(());
             if let Some(of_trait) = impl_.of_trait {
                 let header = tcx.impl_trait_header(def_id).unwrap();

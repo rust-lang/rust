@@ -350,9 +350,12 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     // before uses of `U`. This avoids false ambiguity errors
     // in trait checking. See `setup_constraining_predicates`
     // for details.
-    if let Node::Item(&Item { kind: ItemKind::Impl { .. }, .. }) = node {
+    if let Node::Item(&Item { kind: ItemKind::Impl(impl_), .. }) = node {
         let self_ty = tcx.type_of(def_id).instantiate_identity();
-        let trait_ref = tcx.impl_trait_ref(def_id).map(ty::EarlyBinder::instantiate_identity);
+        let trait_ref = impl_
+            .of_trait
+            .is_some()
+            .then(|| tcx.impl_trait_ref(def_id).unwrap().instantiate_identity());
         cgp::setup_constraining_predicates(
             tcx,
             &mut predicates,
@@ -460,11 +463,12 @@ fn const_evaluatable_predicates_of<'tcx>(
     }
 
     if let hir::Node::Item(item) = node
-        && let hir::ItemKind::Impl(_) = item.kind
+        && let hir::ItemKind::Impl(impl_) = item.kind
     {
-        if let Some(of_trait) = tcx.impl_trait_ref(def_id) {
+        if impl_.of_trait.is_some() {
             debug!("visit impl trait_ref");
-            of_trait.instantiate_identity().visit_with(&mut collector);
+            let trait_ref = tcx.impl_trait_ref(def_id).unwrap();
+            trait_ref.instantiate_identity().visit_with(&mut collector);
         }
 
         debug!("visit self_ty");
