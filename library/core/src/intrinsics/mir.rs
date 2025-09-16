@@ -233,7 +233,8 @@
 //!
 //!  - Operands implicitly convert to `Use` rvalues.
 //!  - `&`, `&mut`, `addr_of!`, and `addr_of_mut!` all work to create their associated rvalue.
-//!  - [`Discriminant`], [`Len`], and [`CopyForDeref`] have associated functions.
+//!  - [`CopyForDeref`], [`CastTransmute`], [`CastPtrToPtr`], [`CastUnsize`], and [`Discriminant`]
+//!    have associated functions.
 //!  - Unary and binary operations use their normal Rust syntax - `a * b`, `!c`, etc.
 //!  - The binary operation `Offset` can be created via [`Offset`].
 //!  - Checked binary operations are represented by wrapping the associated binop in [`Checked`].
