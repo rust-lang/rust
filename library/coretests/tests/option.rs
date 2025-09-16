@@ -249,6 +249,12 @@ fn test_unwrap_or_else() {
 }
 
 #[test]
+fn test_unwrap_or_default() {
+    assert_eq!(Some(666u32).unwrap_or_default(), 666);
+    assert_eq!(None::<u32>.unwrap_or_default(), 0);
+}
+
+#[test]
 fn test_unwrap_unchecked() {
     assert_eq!(unsafe { Some(1).unwrap_unchecked() }, 1);
     let s = unsafe { Some("hello".to_string()).unwrap_unchecked() };
