@@ -125,4 +125,19 @@ impl ConfigBuilder {
 
         Config::parse(Flags::parse(&self.args))
     }
+
+    pub fn create_config_without_ci_llvm_override(mut self) -> Config {
+        // Run in dry-check, otherwise the test would be too slow
+        self.args.push("--dry-run".to_string());
+
+        // Ignore submodules
+        self.args.push("--set".to_string());
+        self.args.push("build.submodules=false".to_string());
+
+        // Do not mess with the local rustc checkout build directory
+        self.args.push("--build-dir".to_string());
+        self.args.push(self.directory.join("build").display().to_string());
+
+        Config::parse(Flags::parse(&self.args))
+    }
 }
