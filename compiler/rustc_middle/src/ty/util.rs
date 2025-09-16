@@ -1359,6 +1359,7 @@ impl<'tcx> Ty<'tcx> {
     /// 2229 drop reorder migration analysis.
     #[inline]
     pub fn has_significant_drop(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool {
+        assert!(!self.has_non_region_infer());
         // Avoid querying in simple cases.
         match needs_drop_components(tcx, self) {
             Err(AlwaysRequiresDrop) => true,
@@ -1370,14 +1371,6 @@ impl<'tcx> Ty<'tcx> {
                     [component_ty] => component_ty,
                     _ => self,
                 };
-
-                // FIXME(#86868): We should be canonicalizing, or else moving this to a method of inference
-                // context, or *something* like that, but for now just avoid passing inference
-                // variables to queries that can't cope with them. Instead, conservatively
-                // return "true" (may change drop order).
-                if query_ty.has_infer() {
-                    return true;
-                }
 
                 // This doesn't depend on regions, so try to minimize distinct
                 // query keys used.
