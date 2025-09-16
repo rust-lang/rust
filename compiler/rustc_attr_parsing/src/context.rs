@@ -515,6 +515,21 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
         })
     }
 
+    /// Expected the end of an argument list.
+    ///
+    /// Note: only useful when arguments in an attribute are ordered and we've seen the last one we expected.
+    /// Most attributes shouldn't care about their argument order.
+    pub(crate) fn expected_end_of_list(&self, last_item_span: Span, span: Span) -> ErrorGuaranteed {
+        self.emit_err(AttributeParseError {
+            span,
+            attr_span: self.attr_span,
+            template: self.template.clone(),
+            attribute: self.attr_path.clone(),
+            reason: AttributeParseErrorReason::ExpectedEnd { last: last_item_span },
+            attr_style: self.attr_style,
+        })
+    }
+
     pub(crate) fn expected_single_argument(&self, span: Span) -> ErrorGuaranteed {
         self.emit_err(AttributeParseError {
             span,
