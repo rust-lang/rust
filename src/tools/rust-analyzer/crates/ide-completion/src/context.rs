@@ -143,7 +143,7 @@ pub(crate) struct AttrCtx {
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) struct PathExprCtx<'db> {
     pub(crate) in_block_expr: bool,
-    pub(crate) in_breakable: BreakableKind,
+    pub(crate) in_breakable: Option<BreakableKind>,
     pub(crate) after_if_expr: bool,
     pub(crate) before_else_kw: bool,
     /// Whether this expression is the direct condition of an if or while expression
@@ -157,6 +157,7 @@ pub(crate) struct PathExprCtx<'db> {
     pub(crate) is_func_update: Option<ast::RecordExpr>,
     pub(crate) self_param: Option<hir::SelfParam>,
     pub(crate) innermost_ret_ty: Option<hir::Type<'db>>,
+    pub(crate) innermost_breakable_ty: Option<hir::Type<'db>>,
     pub(crate) impl_: Option<ast::Impl>,
     /// Whether this expression occurs in match arm guard position: before the
     /// fat arrow token
@@ -412,12 +413,11 @@ pub(crate) enum DotAccessKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct DotAccessExprCtx {
     pub(crate) in_block_expr: bool,
-    pub(crate) in_breakable: BreakableKind,
+    pub(crate) in_breakable: Option<BreakableKind>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) enum BreakableKind {
-    None,
     Loop,
     For,
     While,

@@ -291,7 +291,7 @@ pub(crate) fn complete_postfix(
     )
     .add_to(acc, ctx.db);
 
-    if let BreakableKind::Block | BreakableKind::Loop = expr_ctx.in_breakable {
+    if let Some(BreakableKind::Block | BreakableKind::Loop) = expr_ctx.in_breakable {
         postfix_snippet(
             "break",
             "break expr",
