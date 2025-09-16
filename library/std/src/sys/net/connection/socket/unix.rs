@@ -486,9 +486,7 @@ impl Socket {
     // bionic libc makes no use of this flag
     #[cfg(target_os = "linux")]
     pub fn set_deferaccept(&self, accept: Duration) -> io::Result<()> {
-        let Ok(val) = c_int::try_from(accept.as_secs()) else {
-            return Err(io::const_error!(io::ErrorKind::InvalidInput, "awakening time overflow"));
-        };
+        let val = cmp::min(accept.as_secs(), c_int::MAX as u64) as c_int;
         setsockopt(self, libc::IPPROTO_TCP, libc::TCP_DEFER_ACCEPT, val)
     }
 

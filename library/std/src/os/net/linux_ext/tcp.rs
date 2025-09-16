@@ -60,7 +60,7 @@ pub trait TcpStreamExt: Sealed {
 
     /// A socket listener will be awakened solely when data arrives.
     ///
-    /// The `accept` argument set the delay in seconds until the
+    /// The `accept` argument set the maximum delay until the
     /// data is available to read, reducing the number of short lived
     /// connections without data to process.
     /// Contrary to other platforms `SO_ACCEPTFILTER` feature equivalent, there is
@@ -86,7 +86,7 @@ pub trait TcpStreamExt: Sealed {
     #[cfg(target_os = "linux")]
     fn set_deferaccept(&self, accept: Duration) -> io::Result<()>;
 
-    /// Gets the accept delay value (in seconds) of the `TCP_DEFER_ACCEPT` option.
+    /// Gets the accept delay value of the `TCP_DEFER_ACCEPT` option.
     ///
     /// For more information about this option, see [`TcpStreamExt::set_deferaccept`].
     ///
