@@ -2115,13 +2115,17 @@ unsafe extern "C" {
         NumBytes: size_t,
     ) -> u64;
 
-    pub(crate) fn LLVMRustCoverageWriteCovmapSectionNameToString(M: &Module, OutStr: &RustString);
+    pub(crate) safe fn LLVMRustCoverageWriteCovmapSectionNameToString(
+        M: &Module,
+        OutStr: &RustString,
+    );
+    pub(crate) safe fn LLVMRustCoverageWriteCovfunSectionNameToString(
+        M: &Module,
+        OutStr: &RustString,
+    );
+    pub(crate) safe fn LLVMRustCoverageWriteCovmapVarNameToString(OutStr: &RustString);
 
-    pub(crate) fn LLVMRustCoverageWriteCovfunSectionNameToString(M: &Module, OutStr: &RustString);
-
-    pub(crate) fn LLVMRustCoverageWriteCovmapVarNameToString(OutStr: &RustString);
-
-    pub(crate) fn LLVMRustCoverageMappingVersion() -> u32;
+    pub(crate) safe fn LLVMRustCoverageMappingVersion() -> u32;
     pub(crate) fn LLVMRustDebugMetadataVersion() -> u32;
     pub(crate) fn LLVMRustVersionMajor() -> u32;
     pub(crate) fn LLVMRustVersionMinor() -> u32;
