@@ -596,8 +596,14 @@ fn save_as_intervals<'tcx>(
             // as behaving so by default.
             // We make an exception for simple assignments `_a.stuff = {copy|move} _b.stuff`,
             // as marking `_b` live here would prevent unification.
-            let is_simple_assignment =
-                matches!(stmt.kind, StatementKind::Assign(box (_, Rvalue::Use(_))));
+            let is_simple_assignment = match stmt.kind {
+                StatementKind::Assign(box (
+                    lhs,
+                    Rvalue::CopyForDeref(rhs)
+                    | Rvalue::Use(Operand::Copy(rhs) | Operand::Move(rhs)),
+                )) => lhs.projection == rhs.projection,
+                _ => false,
+            };
             VisitPlacesWith(|place: Place<'tcx>, ctxt| {
                 if let Some(relevant) = relevant.shrink[place.local] {
                     match DefUse::for_place(place, ctxt) {
