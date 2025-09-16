@@ -1,11 +1,15 @@
+use std::num::IntErrorKind;
+
 use rustc_ast::LitKind;
 use rustc_ast::attr::AttributeExt;
 use rustc_feature::is_builtin_attr_name;
 use rustc_hir::RustcVersion;
+use rustc_hir::limit::Limit;
 use rustc_span::{Symbol, sym};
 
 use crate::context::{AcceptContext, Stage};
-use crate::parser::ArgParser;
+use crate::parser::{ArgParser, NameValueParser};
+use crate::session_diagnostics::LimitInvalid;
 
 /// Parse a rustc version number written inside string literal in an attribute,
 /// like appears in `since = "1.0.0"`. Suffixes like "-dev" and "-nightly" are
@@ -84,4 +88,35 @@ pub(crate) fn parse_single_integer<S: Stage>(
         return None;
     };
     Some(num.0)
+}
+
+impl<S: Stage> AcceptContext<'_, '_, S> {
+    pub(crate) fn parse_limit_int(&self, nv: &NameValueParser) -> Option<Limit> {
+        let Some(limit) = nv.value_as_str() else {
+            self.expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
+            return None;
+        };
+
+        let error_str = match limit.as_str().parse() {
+            Ok(i) => return Some(Limit::new(i)),
+            Err(e) => match e.kind() {
+                IntErrorKind::PosOverflow => "`limit` is too large",
+                IntErrorKind::Empty => "`limit` must be a non-negative integer",
+                IntErrorKind::InvalidDigit => "not a valid integer",
+                IntErrorKind::NegOverflow => {
+                    panic!(
+                        "`limit` should never negatively overflow since we're parsing into a usize and we'd get Empty instead"
+                    )
+                }
+                IntErrorKind::Zero => {
+                    panic!("zero is a valid `limit` so should have returned Ok() when parsing")
+                }
+                kind => panic!("unimplemented IntErrorKind variant: {:?}", kind),
+            },
+        };
+
+        self.emit_err(LimitInvalid { span: self.attr_span, value_span: nv.value_span, error_str });
+
+        None
+    }
 }
