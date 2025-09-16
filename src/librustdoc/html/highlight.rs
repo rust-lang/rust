@@ -5,7 +5,6 @@
 //!
 //! Use the `render_with_highlighting` to highlight some rust code.
 
-use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::fmt::{self, Display, Write};
 use std::{cmp, iter};
@@ -134,151 +133,341 @@ fn can_merge(class1: Option<Class>, class2: Option<Class>, text: &str) -> bool {
     }
 }
 
+#[derive(Debug)]
+struct Content {
+    text: String,
+    /// If `Some` and the `span` is different from the parent, then it might generate a link so we
+    /// need to keep this information.
+    class: Option<Class>,
+    needs_escape: bool,
+}
+
+#[derive(Debug)]
+struct Element {
+    /// If `class` is `None`, then it's just plain text with no HTML tag.
+    class: Option<Class>,
+    /// Content for the current element.
+    content: Vec<Content>,
+}
+
+impl Element {
+    fn new(class: Option<Class>, text: String, needs_escape: bool) -> Self {
+        Self { class, content: vec![Content { text, class, needs_escape }] }
+    }
+
+    fn can_merge(&self, other: &Self) -> bool {
+        other.content.iter().all(|c| can_merge(self.class, other.class, &c.text))
+    }
+
+    fn write_elem_to<W: Write>(&self, out: &mut W, href_context: &Option<HrefContext<'_, '_>>, parent_class: Option<Class>) {
+        let mut prev = parent_class;
+        let mut closing_tag = None;
+        for part in &self.content {
+            let text: &dyn Display = if part.needs_escape { &EscapeBodyText(&part.text) } else { &part.text };
+            if part.class.is_some() {
+                // We only try to generate links as the `<span>` should have already be generated
+                // by the caller of `write_elem_to`.
+                if let Some(new_closing_tag) = string_without_closing_tag(
+                    out,
+                    text,
+                    part.class,
+                    href_context,
+                    prev != part.class,
+                ) {
+                    if new_closing_tag == "</a>" {
+                        out.write_str(new_closing_tag).unwrap();
+                        closing_tag = None;
+                    } else {
+                        closing_tag = Some(new_closing_tag);
+                    }
+                }
+                prev = part.class;
+            } else {
+                write!(out, "{text}").unwrap();
+            }
+        }
+        if let Some(closing_tag) = closing_tag {
+            out.write_str(closing_tag).unwrap();
+        }
+    }
+}
+
+#[derive(Debug)]
+enum ElementOrStack {
+    Element(Element),
+    Stack(ElementStack),
+}
+
+#[derive(Debug)]
+struct ElementStack {
+    elements: Vec<ElementOrStack>,
+    parent: Option<Box<ElementStack>>,
+    class: Option<Class>,
+}
+
+impl ElementStack {
+    fn new() -> Self {
+        Self::new_with_class(None)
+    }
+
+    fn new_with_class(class: Option<Class>) -> Self {
+        Self { elements: Vec::new(), parent: None, class }
+    }
+
+    fn push_element(&mut self, mut elem: Element) {
+        if let Some(ElementOrStack::Element(last)) = self.elements.last_mut()
+            && last.can_merge(&elem)
+        {
+            for part in elem.content.drain(..) {
+                last.content.push(part);
+            }
+        } else {
+            self.elements.push(ElementOrStack::Element(elem));
+        }
+    }
+
+    fn empty_stack_and_set_new_heads(&mut self, class: Class, element: Element) {
+        self.elements.clear();
+        if let Some(parent) = &mut self.parent {
+            parent.empty_stack_and_set_new_heads(class, element);
+        } else {
+            let mut new_stack = ElementStack::new_with_class(Some(class));
+            new_stack.elements.push(ElementOrStack::Element(element));
+            self.parent.replace(Box::new(new_stack));
+        }
+    }
+
+    fn enter_stack(&mut self, ElementStack { elements, parent, class }: ElementStack) {
+        assert!(parent.is_none(), "`enter_stack` used with a non empty parent");
+        let parent_elements = std::mem::take(&mut self.elements);
+        let parent_parent = std::mem::take(&mut self.parent);
+        self.parent = Some(Box::new(ElementStack {
+            elements: parent_elements,
+            parent: parent_parent,
+            class: self.class,
+        }));
+        self.class = class;
+        self.elements = elements;
+    }
+
+    fn enter_elem(&mut self, class: Class) {
+        let elements = std::mem::take(&mut self.elements);
+        let parent = std::mem::take(&mut self.parent);
+        self.parent = Some(Box::new(ElementStack { elements, parent, class: self.class }));
+        self.class = Some(class);
+    }
+
+    fn exit_elem(&mut self) {
+        let Some(element) = std::mem::take(&mut self.parent) else {
+            panic!("exiting an element where there is no parent");
+        };
+        let ElementStack { elements, parent, class } = Box::into_inner(element);
+
+        let old_elements = std::mem::take(&mut self.elements);
+        self.elements = elements;
+        self.elements.push(ElementOrStack::Stack(ElementStack {
+            elements: old_elements,
+            class: self.class,
+            parent: None,
+        }));
+        self.parent = parent;
+        self.class = class;
+    }
+
+    fn write_content<W: Write>(&self, out: &mut W, href_context: &Option<HrefContext<'_, '_>>) {
+        let mut elem = self;
+
+        // We get the top most item.
+        while let Some(parent) = &elem.parent {
+            elem = parent;
+        }
+        // Now we can output the whole content.
+        elem.write_to(out, href_context, None);
+    }
+
+    fn write_to<W: Write>(
+        &self,
+        out: &mut W,
+        href_context: &Option<HrefContext<'_, '_>>,
+        parent_class: Option<Class>,
+    ) {
+        // If it only contains stack, it means it has no content of its own so no need to generate
+        // a tag.
+        let closing_tag = if let Some(Class::Expansion) = self.class {
+            out.write_str("<span class=expansion>").unwrap();
+            "</span>"
+        } else if let Some(class) = self.class
+            // `PreludeTy` can never include more than an ident so it should not generate
+            // a wrapping `span`.
+            && !matches!(class, Class::PreludeTy(_))
+        {
+            // Macro is the only `ElementStack` that can generate a link to definition to its
+            // whole content, so to prevent having `<span class="macro"><a class="macro">`,
+            // we generate the `<a>` directly here.
+            //
+            // For other elements, the links will be generated in `write_elem_to`.
+            let href_context = if matches!(class, Class::Macro(_)) {
+                href_context
+            } else {
+                &None
+            };
+            string_without_closing_tag(out, "", Some(class), href_context, self.class != parent_class)
+                .expect(
+                    "internal error: enter_span was called with Some(class) but did not \
+                    return a closing HTML tag",
+                )
+        } else {
+            ""
+        };
+
+        for child_elem in self.elements.iter() {
+            let child_elem = match child_elem {
+                ElementOrStack::Element(elem) => elem,
+                ElementOrStack::Stack(stack) => {
+                    stack.write_to(out, href_context, parent_class);
+                    continue;
+                }
+            };
+            if child_elem.content.is_empty() {
+                continue;
+            }
+            child_elem.write_elem_to(out, href_context, parent_class);
+        }
+
+        out.write_str(closing_tag).unwrap();
+    }
+}
+
 /// This type is used as a conveniency to prevent having to pass all its fields as arguments into
 /// the various functions (which became its methods).
 struct TokenHandler<'a, 'tcx, F: Write> {
     out: &'a mut F,
-    /// It contains the closing tag and the associated `Class`.
-    closing_tags: Vec<(&'static str, Class)>,
-    /// This is used because we don't automatically generate the closing tag on `ExitSpan` in
-    /// case an `EnterSpan` event with the same class follows.
-    pending_exit_span: Option<Class>,
-    /// `current_class` and `pending_elems` are used to group HTML elements with same `class`
-    /// attributes to reduce the DOM size.
-    current_class: Option<Class>,
+    element_stack: ElementStack,
     /// We need to keep the `Class` for each element because it could contain a `Span` which is
     /// used to generate links.
-    pending_elems: Vec<(Cow<'a, str>, Option<Class>)>,
     href_context: Option<HrefContext<'a, 'tcx>>,
-    write_line_number: fn(&mut F, u32, &'static str),
+    write_line_number: fn(u32) -> String,
+    line: u32,
+    max_lines: u32,
 }
 
 impl<F: Write> std::fmt::Debug for TokenHandler<'_, '_, F> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("TokenHandler")
-            .field("closing_tags", &self.closing_tags)
-            .field("pending_exit_span", &self.pending_exit_span)
-            .field("current_class", &self.current_class)
-            .field("pending_elems", &self.pending_elems)
-            .finish()
+        f.debug_struct("TokenHandler").field("element_stack", &self.element_stack).finish()
     }
 }
 
 impl<F: Write> TokenHandler<'_, '_, F> {
-    fn handle_exit_span(&mut self) {
-        // We can't get the last `closing_tags` element using `pop()` because `closing_tags` is
-        // being used in `write_pending_elems`.
-        let class = self.closing_tags.last().expect("ExitSpan without EnterSpan").1;
-        // We flush everything just in case...
-        self.write_pending_elems(Some(class));
-
-        exit_span(self.out, self.closing_tags.pop().expect("ExitSpan without EnterSpan").0);
-        self.pending_exit_span = None;
+    fn handle_backline(&mut self) -> Option<String> {
+        self.line += 1;
+        if self.line < self.max_lines {
+            return Some((self.write_line_number)(self.line));
+        }
+        None
     }
 
-    /// Write all the pending elements sharing a same (or at mergeable) `Class`.
-    ///
-    /// If there is a "parent" (if a `EnterSpan` event was encountered) and the parent can be merged
-    /// with the elements' class, then we simply write the elements since the `ExitSpan` event will
-    /// close the tag.
-    ///
-    /// Otherwise, if there is only one pending element, we let the `string` function handle both
-    /// opening and closing the tag, otherwise we do it into this function.
-    ///
-    /// It returns `true` if `current_class` must be set to `None` afterwards.
-    fn write_pending_elems(&mut self, current_class: Option<Class>) -> bool {
-        if self.pending_elems.is_empty() {
-            return false;
-        }
-        if let Some((_, parent_class)) = self.closing_tags.last()
-            && can_merge(current_class, Some(*parent_class), "")
+    fn push_element_without_backline_check(
+        &mut self,
+        class: Option<Class>,
+        text: String,
+        needs_escape: bool,
+    ) {
+        self.element_stack.push_element(Element::new(class, text, needs_escape))
+    }
+
+    fn push_element(&mut self, class: Option<Class>, mut text: String) {
+        let needs_escape = if text == "\n"
+            && let Some(backline) = self.handle_backline()
         {
-            for (text, class) in self.pending_elems.iter() {
-                string(
-                    self.out,
-                    EscapeBodyText(text),
-                    *class,
-                    &self.href_context,
-                    false,
-                    self.write_line_number,
-                );
-            }
+            text.push_str(&backline);
+            false
         } else {
-            // We only want to "open" the tag ourselves if we have more than one pending and if the
-            // current parent tag is not the same as our pending content.
-            let close_tag = if self.pending_elems.len() > 1
-                && let Some(current_class) = current_class
-                // `PreludeTy` can never include more than an ident so it should not generate
-                // a wrapping `span`.
-                && !matches!(current_class, Class::PreludeTy(_))
-            {
-                Some(enter_span(self.out, current_class, &self.href_context))
-            } else {
-                None
-            };
-            // To prevent opening a macro expansion span being closed right away because
-            // the currently open item is replaced by a new class.
-            let last_pending =
-                self.pending_elems.pop_if(|(_, class)| *class == Some(Class::Expansion));
-            for (text, class) in self.pending_elems.iter() {
-                string(
-                    self.out,
-                    EscapeBodyText(text),
-                    *class,
-                    &self.href_context,
-                    close_tag.is_none(),
-                    self.write_line_number,
-                );
-            }
-            if let Some(close_tag) = close_tag {
-                exit_span(self.out, close_tag);
-            }
-            if let Some((text, class)) = last_pending {
-                string(
-                    self.out,
-                    EscapeBodyText(&text),
-                    class,
-                    &self.href_context,
-                    close_tag.is_none(),
-                    self.write_line_number,
-                );
-            }
-        }
-        self.pending_elems.clear();
-        true
+            true
+        };
+
+        self.push_element_without_backline_check(class, text, needs_escape);
     }
 
-    #[inline]
-    fn write_line_number(&mut self, line: u32, extra: &'static str) {
-        (self.write_line_number)(self.out, line, extra);
+    fn start_expansion(&mut self) {
+        // We display everything.
+        self.element_stack.write_content(self.out, &self.href_context);
+
+        // We remove everything and recreate the stack with the expansion at its head.
+        self.element_stack.empty_stack_and_set_new_heads(
+            Class::Expansion,
+            Element {
+                class: None,
+                content: vec![Content {
+                    text: format!(
+                        "<input id=expand-{} \
+                     tabindex=0 \
+                     type=checkbox \
+                     aria-label=\"Collapse/expand macro\" \
+                     title=\"Collapse/expand macro\">",
+                        self.line,
+                    ),
+                    class: None,
+                    needs_escape: false,
+                }],
+            },
+        );
+    }
+
+    fn add_expanded_code(&mut self, expanded_code: &ExpandedCode) {
+        self.element_stack.push_element(Element::new(
+            None,
+            format!("<span class=expanded>{}</span>", expanded_code.code),
+            false,
+        ));
+        self.element_stack.enter_stack(ElementStack::new_with_class(Some(Class::Original)));
+    }
+
+    fn close_expansion(&mut self) {
+        let mut old_stack = Vec::new();
+
+        // We inline everything into the top-most element.
+        while self.element_stack.parent.is_some() {
+            self.element_stack.exit_elem();
+            if let Some(ElementOrStack::Stack(stack)) = self.element_stack.elements.last()
+                && let Some(class) = stack.class
+                && class != Class::Original
+            {
+                old_stack.push(class);
+            }
+        }
+        // We display everything.
+        self.element_stack.write_content(self.out, &self.href_context);
+
+        // We recreate the tree but without the expansion node.
+        self.element_stack.elements.clear();
+        self.element_stack.class = None;
+        for class in old_stack.iter().rev() {
+            self.element_stack.enter_stack(ElementStack::new_with_class(Some(*class)));
+        }
     }
 }
 
 impl<F: Write> Drop for TokenHandler<'_, '_, F> {
     /// When leaving, we need to flush all pending data to not have missing content.
     fn drop(&mut self) {
-        if self.pending_exit_span.is_some() {
-            self.handle_exit_span();
-        } else {
-            self.write_pending_elems(self.current_class);
-        }
+        self.element_stack.write_content(self.out, &self.href_context);
     }
 }
 
-fn write_scraped_line_number(out: &mut impl Write, line: u32, extra: &'static str) {
+fn scraped_line_number(line: u32) -> String {
     // https://developers.google.com/search/docs/crawling-indexing/robots-meta-tag#data-nosnippet-attr
     // Do not show "1 2 3 4 5 ..." in web search results.
-    write!(out, "{extra}<span data-nosnippet>{line}</span>",).unwrap();
+    format!("<span data-nosnippet>{line}</span>")
 }
 
-fn write_line_number(out: &mut impl Write, line: u32, extra: &'static str) {
+fn line_number(line: u32) -> String {
     // https://developers.google.com/search/docs/crawling-indexing/robots-meta-tag#data-nosnippet-attr
     // Do not show "1 2 3 4 5 ..." in web search results.
-    write!(out, "{extra}<a href=#{line} id={line} data-nosnippet>{line}</a>",).unwrap();
+    format!("<a href=#{line} id={line} data-nosnippet>{line}</a>")
 }
 
-fn empty_line_number(out: &mut impl Write, _: u32, extra: &'static str) {
-    out.write_str(extra).unwrap();
+fn empty_line_number(_: u32) -> String {
+    String::new()
 }
 
 fn get_next_expansion(
@@ -292,80 +481,24 @@ fn get_next_expansion(
 fn get_expansion<'a, W: Write>(
     token_handler: &mut TokenHandler<'_, '_, W>,
     expanded_codes: &'a [ExpandedCode],
-    line: u32,
     span: Span,
 ) -> Option<&'a ExpandedCode> {
-    if let Some(expanded_code) = get_next_expansion(expanded_codes, line, span) {
-        let (closing, reopening) = if let Some(current_class) = token_handler.current_class
-            && let class = current_class.as_html()
-            && !class.is_empty()
-        {
-            ("</span>", format!("<span class=\"{class}\">"))
-        } else {
-            ("", String::new())
-        };
-        let id = format!("expand-{line}");
-        token_handler.pending_elems.push((
-            Cow::Owned(format!(
-                "{closing}\
-<span class=expansion>\
-    <input id={id} \
-           tabindex=0 \
-           type=checkbox \
-           aria-label=\"Collapse/expand macro\" \
-           title=\"\"Collapse/expand macro\">{reopening}",
-            )),
-            Some(Class::Expansion),
-        ));
-        Some(expanded_code)
-    } else {
-        None
-    }
-}
-
-fn start_expansion(out: &mut Vec<(Cow<'_, str>, Option<Class>)>, expanded_code: &ExpandedCode) {
-    out.push((
-        Cow::Owned(format!(
-            "<span class=expanded>{}</span><span class=original>",
-            expanded_code.code,
-        )),
-        Some(Class::Expansion),
-    ));
+    let expanded_code = get_next_expansion(expanded_codes, token_handler.line, span)?;
+    token_handler.start_expansion();
+    Some(expanded_code)
 }
 
 fn end_expansion<'a, W: Write>(
     token_handler: &mut TokenHandler<'_, '_, W>,
     expanded_codes: &'a [ExpandedCode],
-    expansion_start_tags: &[(&'static str, Class)],
-    line: u32,
     span: Span,
 ) -> Option<&'a ExpandedCode> {
-    if let Some(expanded_code) = get_next_expansion(expanded_codes, line, span) {
-        // We close the current "original" content.
-        token_handler.pending_elems.push((Cow::Borrowed("</span>"), Some(Class::Expansion)));
-        return Some(expanded_code);
+    token_handler.element_stack.exit_elem();
+    let expansion = get_next_expansion(expanded_codes, token_handler.line, span);
+    if expansion.is_none() {
+        token_handler.close_expansion();
     }
-
-    let skip = iter::zip(token_handler.closing_tags.as_slice(), expansion_start_tags)
-        .position(|(tag, start_tag)| tag != start_tag)
-        .unwrap_or_else(|| cmp::min(token_handler.closing_tags.len(), expansion_start_tags.len()));
-
-    let tags = iter::chain(
-        expansion_start_tags.iter().skip(skip),
-        token_handler.closing_tags.iter().skip(skip),
-    );
-
-    let mut elem = Cow::Borrowed("</span></span>");
-
-    for (tag, _) in tags.clone() {
-        elem.to_mut().push_str(tag);
-    }
-    for (_, class) in tags {
-        write!(elem.to_mut(), "<span class=\"{}\">", class.as_html()).unwrap();
-    }
-
-    token_handler.pending_elems.push((elem, Some(Class::Expansion)));
-    None
+    expansion
 }
 
 #[derive(Clone, Copy)]
@@ -417,29 +550,29 @@ pub(super) fn write_code(
         if src.contains('\r') { src.replace("\r\n", "\n").into() } else { Cow::Borrowed(src) };
     let mut token_handler = TokenHandler {
         out,
-        closing_tags: Vec::new(),
-        pending_exit_span: None,
-        current_class: None,
-        pending_elems: Vec::with_capacity(20),
         href_context,
         write_line_number: match line_info {
             Some(line_info) => {
                 if line_info.is_scraped_example {
-                    write_scraped_line_number
+                    scraped_line_number
                 } else {
-                    write_line_number
+                    line_number
                 }
             }
             None => empty_line_number,
         },
+        line: 0,
+        max_lines: u32::MAX,
+        element_stack: ElementStack::new(),
     };
 
-    let (mut line, max_lines) = if let Some(line_info) = line_info {
-        token_handler.write_line_number(line_info.start_line, "");
-        (line_info.start_line, line_info.max_lines)
-    } else {
-        (0, u32::MAX)
-    };
+    if let Some(line_info) = line_info {
+        token_handler.line = line_info.start_line - 1;
+        token_handler.max_lines = line_info.max_lines;
+        if let Some(text) = token_handler.handle_backline() {
+            token_handler.push_element_without_backline_check(None, text, false);
+        }
+    }
 
     let (expanded_codes, file_span) = match token_handler.href_context.as_ref().and_then(|c| {
         let expanded_codes = c.context.shared.expanded_codes.get(&c.file_span.lo())?;
@@ -448,114 +581,44 @@ pub(super) fn write_code(
         Some((expanded_codes, file_span)) => (expanded_codes.as_slice(), file_span),
         None => (&[] as &[ExpandedCode], DUMMY_SP),
     };
-    let mut current_expansion = get_expansion(&mut token_handler, expanded_codes, line, file_span);
-    token_handler.write_pending_elems(None);
-    let mut expansion_start_tags = Vec::new();
+    let mut current_expansion = get_expansion(&mut token_handler, expanded_codes, file_span);
 
     Classifier::new(
         &src,
         token_handler.href_context.as_ref().map(|c| c.file_span).unwrap_or(DUMMY_SP),
         decoration_info,
     )
-    .highlight(&mut |span, highlight| {
-        match highlight {
-            Highlight::Token { text, class } => {
-                // If we received a `ExitSpan` event and then have a non-compatible `Class`, we
-                // need to close the `<span>`.
-                let need_current_class_update = if let Some(pending) =
-                    token_handler.pending_exit_span
-                    && !can_merge(Some(pending), class, text)
+    .highlight(&mut |span, highlight| match highlight {
+        Highlight::Token { text, class } => {
+            token_handler.push_element(class, text.to_string());
+
+            if text == "\n" {
+                if current_expansion.is_none() {
+                    current_expansion = get_expansion(&mut token_handler, expanded_codes, span);
+                }
+                if let Some(ref current_expansion) = current_expansion
+                    && current_expansion.span.lo() == span.hi()
                 {
-                    token_handler.handle_exit_span();
-                    true
-                // If the two `Class` are different, time to flush the current content and start
-                // a new one.
-                } else if !can_merge(token_handler.current_class, class, text) {
-                    token_handler.write_pending_elems(token_handler.current_class);
-                    true
-                } else {
-                    token_handler.current_class.is_none()
-                };
-
-                if need_current_class_update {
-                    token_handler.current_class = class.map(Class::dummy);
+                    token_handler.add_expanded_code(current_expansion);
                 }
-                if text == "\n" {
-                    line += 1;
-                    if line < max_lines {
-                        token_handler
-                            .pending_elems
-                            .push((Cow::Borrowed(text), Some(Class::Backline(line))));
-                    }
-                    if current_expansion.is_none() {
-                        current_expansion =
-                            get_expansion(&mut token_handler, expanded_codes, line, span);
-                        expansion_start_tags = token_handler.closing_tags.clone();
-                    }
-                    if let Some(ref current_expansion) = current_expansion
-                        && current_expansion.span.lo() == span.hi()
+            } else {
+                let mut need_end = false;
+                if let Some(ref current_expansion) = current_expansion {
+                    if current_expansion.span.lo() == span.hi() {
+                        token_handler.add_expanded_code(current_expansion);
+                    } else if current_expansion.end_line == token_handler.line
+                        && span.hi() >= current_expansion.span.hi()
                     {
-                        start_expansion(&mut token_handler.pending_elems, current_expansion);
-                    }
-                } else {
-                    token_handler.pending_elems.push((Cow::Borrowed(text), class));
-
-                    let mut need_end = false;
-                    if let Some(ref current_expansion) = current_expansion {
-                        if current_expansion.span.lo() == span.hi() {
-                            start_expansion(&mut token_handler.pending_elems, current_expansion);
-                        } else if current_expansion.end_line == line
-                            && span.hi() >= current_expansion.span.hi()
-                        {
-                            need_end = true;
-                        }
-                    }
-                    if need_end {
-                        current_expansion = end_expansion(
-                            &mut token_handler,
-                            expanded_codes,
-                            &expansion_start_tags,
-                            line,
-                            span,
-                        );
+                        need_end = true;
                     }
                 }
-            }
-            Highlight::EnterSpan { class } => {
-                let mut should_add = true;
-                if let Some(pending_exit_span) = token_handler.pending_exit_span {
-                    if class.is_equal_to(pending_exit_span) {
-                        should_add = false;
-                    } else {
-                        token_handler.handle_exit_span();
-                    }
-                } else {
-                    // We flush everything just in case...
-                    if token_handler.write_pending_elems(token_handler.current_class) {
-                        token_handler.current_class = None;
-                    }
+                if need_end {
+                    current_expansion = end_expansion(&mut token_handler, expanded_codes, span);
                 }
-                if should_add {
-                    let closing_tag =
-                        enter_span(token_handler.out, class, &token_handler.href_context);
-                    token_handler.closing_tags.push((closing_tag, class));
-                }
-
-                token_handler.current_class = None;
-                token_handler.pending_exit_span = None;
             }
-            Highlight::ExitSpan => {
-                token_handler.current_class = None;
-                token_handler.pending_exit_span = Some(
-                    token_handler
-                        .closing_tags
-                        .last()
-                        .as_ref()
-                        .expect("ExitSpan without EnterSpan")
-                        .1,
-                );
-            }
-        };
+        }
+        Highlight::EnterSpan { class } => token_handler.element_stack.enter_elem(class),
+        Highlight::ExitSpan => token_handler.element_stack.exit_elem(),
     });
 }
 
@@ -585,9 +648,10 @@ enum Class {
     PreludeVal(Span),
     QuestionMark,
     Decoration(&'static str),
-    Backline(u32),
     /// Macro expansion.
     Expansion,
+    /// "original" code without macro expansion.
+    Original,
 }
 
 impl Class {
@@ -602,17 +666,6 @@ impl Class {
             | (Self::Ident(_), Self::Ident(_)) => true,
             (Self::Decoration(c1), Self::Decoration(c2)) => c1 == c2,
             (x, y) => x == y,
-        }
-    }
-
-    /// If `self` contains a `Span`, it'll be replaced with `DUMMY_SP` to prevent creating links
-    /// on "empty content" (because of the attributes merge).
-    fn dummy(self) -> Self {
-        match self {
-            Self::Self_(_) => Self::Self_(DUMMY_SP),
-            Self::Macro(_) => Self::Macro(DUMMY_SP),
-            Self::Ident(_) => Self::Ident(DUMMY_SP),
-            s => s,
         }
     }
 
@@ -636,8 +689,8 @@ impl Class {
             Class::PreludeVal(_) => "prelude-val",
             Class::QuestionMark => "question-mark",
             Class::Decoration(kind) => kind,
-            Class::Backline(_) => "",
-            Class::Expansion => "",
+            Class::Expansion => "expansion",
+            Class::Original => "original",
         }
     }
 
@@ -662,9 +715,20 @@ impl Class {
             | Self::Lifetime
             | Self::QuestionMark
             | Self::Decoration(_)
-            | Self::Backline(_)
+            // | Self::Backline(_)
+            | Self::Original
             | Self::Expansion => None,
         }
+    }
+}
+
+impl fmt::Display for Class {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let html = self.as_html();
+        if html.is_empty() {
+            return Ok(());
+        }
+        write!(f, " class=\"{html}\"")
     }
 }
 
@@ -1187,60 +1251,6 @@ impl<'src> Classifier<'src> {
             return *kind == TokenKind::Ident;
         }
         false
-    }
-}
-
-/// Called when we start processing a span of text that should be highlighted.
-/// The `Class` argument specifies how it should be highlighted.
-fn enter_span(
-    out: &mut impl Write,
-    klass: Class,
-    href_context: &Option<HrefContext<'_, '_>>,
-) -> &'static str {
-    string_without_closing_tag(out, "", Some(klass), href_context, true).expect(
-        "internal error: enter_span was called with Some(klass) but did not return a \
-            closing HTML tag",
-    )
-}
-
-/// Called at the end of a span of highlighted text.
-fn exit_span(out: &mut impl Write, closing_tag: &str) {
-    out.write_str(closing_tag).unwrap();
-}
-
-/// Called for a span of text. If the text should be highlighted differently
-/// from the surrounding text, then the `Class` argument will be a value other
-/// than `None`.
-///
-/// The following sequences of callbacks are equivalent:
-/// ```plain
-///     enter_span(Foo), string("text", None), exit_span()
-///     string("text", Foo)
-/// ```
-///
-/// The latter can be thought of as a shorthand for the former, which is more
-/// flexible.
-///
-/// Note that if `context` is not `None` and that the given `klass` contains a `Span`, the function
-/// will then try to find this `span` in the `span_correspondence_map`. If found, it'll then
-/// generate a link for this element (which corresponds to where its definition is located).
-fn string<W: Write>(
-    out: &mut W,
-    text: EscapeBodyText<'_>,
-    klass: Option<Class>,
-    href_context: &Option<HrefContext<'_, '_>>,
-    open_tag: bool,
-    write_line_number_callback: fn(&mut W, u32, &'static str),
-) {
-    if let Some(Class::Backline(line)) = klass {
-        write_line_number_callback(out, line, "\n");
-    } else if let Some(Class::Expansion) = klass {
-        // This has already been escaped so we get the text to write it directly.
-        out.write_str(text.0).unwrap();
-    } else if let Some(closing_tag) =
-        string_without_closing_tag(out, text, klass, href_context, open_tag)
-    {
-        out.write_str(closing_tag).unwrap();
     }
 }
 
