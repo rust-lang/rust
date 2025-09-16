@@ -17,8 +17,10 @@ use rustc_type_ir::{
 use tracing::{debug, instrument, trace};
 
 use super::has_only_region_constraints;
-use crate::canonical::canonicalizer::Canonicalizer;
-use crate::canonical::response_no_constraints_raw;
+use crate::canonical::{
+    canonicalize_goal, canonicalize_response, instantiate_and_apply_query_response,
+    response_no_constraints_raw,
+};
 use crate::coherence;
 use crate::delegate::SolverDelegate;
 use crate::placeholder::BoundVarReplacer;
@@ -465,8 +467,7 @@ where
         let opaque_types = self.delegate.clone_opaque_types_lookup_table();
         let (goal, opaque_types) = eager_resolve_vars(self.delegate, (goal, opaque_types));
 
-        let (orig_values, canonical_goal) =
-            Self::canonicalize_goal(self.delegate, goal, opaque_types);
+        let (orig_values, canonical_goal) = canonicalize_goal(self.delegate, goal, opaque_types);
         let canonical_result = self.search_graph.evaluate_goal(
             self.cx(),
             canonical_goal,
@@ -481,7 +482,7 @@ where
         let has_changed =
             if !has_only_region_constraints(response) { HasChanged::Yes } else { HasChanged::No };
 
-        let (normalization_nested_goals, certainty) = Self::instantiate_and_apply_query_response(
+        let (normalization_nested_goals, certainty) = instantiate_and_apply_query_response(
             self.delegate,
             goal.param_env,
             &orig_values,
@@ -1319,10 +1320,9 @@ where
             outlives.0.as_region().is_none_or(|re| re != outlives.1) && unique.insert(*outlives)
         });
 
-        let canonical = Canonicalizer::canonicalize_response(
+        let canonical = canonicalize_response(
             self.delegate,
             self.max_input_universe,
-            &mut Default::default(),
             Response {
                 var_values,
                 certainty,
@@ -1557,7 +1557,7 @@ pub(super) fn evaluate_root_goal_for_proof_tree<D: SolverDelegate<Interner = I>,
     let opaque_types = delegate.clone_opaque_types_lookup_table();
     let (goal, opaque_types) = eager_resolve_vars(delegate, (goal, opaque_types));
 
-    let (orig_values, canonical_goal) = EvalCtxt::canonicalize_goal(delegate, goal, opaque_types);
+    let (orig_values, canonical_goal) = canonicalize_goal(delegate, goal, opaque_types);
 
     let (canonical_result, final_revision) =
         delegate.cx().evaluate_root_goal_for_proof_tree_raw(canonical_goal);
@@ -1574,7 +1574,7 @@ pub(super) fn evaluate_root_goal_for_proof_tree<D: SolverDelegate<Interner = I>,
         Ok(response) => response,
     };
 
-    let (normalization_nested_goals, _certainty) = EvalCtxt::instantiate_and_apply_query_response(
+    let (normalization_nested_goals, _certainty) = instantiate_and_apply_query_response(
         delegate,
         goal.param_env,
         &proof_tree.orig_values,
