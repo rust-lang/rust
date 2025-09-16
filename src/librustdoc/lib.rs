@@ -6,6 +6,7 @@
 #![feature(ascii_char)]
 #![feature(ascii_char_variants)]
 #![feature(assert_matches)]
+#![feature(box_into_inner)]
 #![feature(box_patterns)]
 #![feature(debug_closure_helpers)]
 #![feature(file_buffered)]
