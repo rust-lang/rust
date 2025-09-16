@@ -1212,15 +1212,6 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariable(
 }
 
 extern "C" LLVMMetadataRef
-LLVMRustDIBuilderCreateArrayType(LLVMDIBuilderRef Builder, uint64_t Size,
-                                 uint32_t AlignInBits, LLVMMetadataRef Ty,
-                                 LLVMMetadataRef Subscripts) {
-  return wrap(unwrap(Builder)->createArrayType(
-      Size, AlignInBits, unwrapDI<DIType>(Ty),
-      DINodeArray(unwrapDI<MDTuple>(Subscripts))));
-}
-
-extern "C" LLVMMetadataRef
 LLVMRustDIBuilderGetOrCreateSubrange(LLVMDIBuilderRef Builder, int64_t Lo,
                                      int64_t Count) {
   return wrap(unwrap(Builder)->getOrCreateSubrange(Lo, Count));
