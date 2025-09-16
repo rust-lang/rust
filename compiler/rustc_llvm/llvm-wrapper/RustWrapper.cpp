@@ -1074,20 +1074,6 @@ LLVMRustDIBuilderCreateTypedef(LLVMDIBuilderRef Builder, LLVMMetadataRef Type,
       LineNo, unwrapDIPtr<DIScope>(Scope)));
 }
 
-extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateStructType(
-    LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
-    size_t NameLen, LLVMMetadataRef File, unsigned LineNumber,
-    uint64_t SizeInBits, uint32_t AlignInBits, LLVMDIFlags Flags,
-    LLVMMetadataRef DerivedFrom, LLVMMetadataRef Elements, unsigned RunTimeLang,
-    LLVMMetadataRef VTableHolder, const char *UniqueId, size_t UniqueIdLen) {
-  return wrap(unwrap(Builder)->createStructType(
-      unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen),
-      unwrapDI<DIFile>(File), LineNumber, SizeInBits, AlignInBits,
-      fromRust(Flags), unwrapDI<DIType>(DerivedFrom),
-      DINodeArray(unwrapDI<MDTuple>(Elements)), RunTimeLang,
-      unwrapDI<DIType>(VTableHolder), StringRef(UniqueId, UniqueIdLen)));
-}
-
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariantPart(
     LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
     size_t NameLen, LLVMMetadataRef File, unsigned LineNumber,
