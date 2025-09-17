@@ -15,10 +15,9 @@
 
 mod bounds;
 mod cmse;
-mod dyn_compatibility;
+mod dyn_trait;
 pub mod errors;
 pub mod generics;
-mod lint;
 
 use std::assert_matches::assert_matches;
 use std::slice;
@@ -2427,15 +2426,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             ),
             hir::TyKind::TraitObject(bounds, tagged_ptr) => {
                 let lifetime = tagged_ptr.pointer();
-
-                if let Some(guar) = self.prohibit_or_lint_bare_trait_object_ty(hir_ty) {
-                    // Don't continue with type analysis if the `dyn` keyword is missing
-                    // It generates confusing errors, especially if the user meant to use another
-                    // keyword like `impl`
-                    Ty::new_error(tcx, guar)
-                } else {
-                    self.lower_trait_object_ty(hir_ty.span, hir_ty.hir_id, bounds, lifetime)
-                }
+                let syntax = tagged_ptr.tag();
+                self.lower_trait_object_ty(hir_ty.span, hir_ty.hir_id, bounds, lifetime, syntax)
             }
             // If we encounter a fully qualified path with RTN generics, then it must have
             // *not* gone through `lower_ty_maybe_return_type_notation`, and therefore
