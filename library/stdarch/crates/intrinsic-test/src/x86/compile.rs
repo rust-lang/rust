@@ -12,7 +12,14 @@ pub fn build_cpp_compilation(config: &ProcessedCli) -> Option<CppCompilation> {
         .set_opt_level("2")
         .set_cxx_toolchain_dir(config.cxx_toolchain_dir.as_deref())
         .set_project_root("c_programs")
-        .add_extra_flags(vec!["-ffp-contract=off", "-Wno-narrowing"]);
+        .add_extra_flags(vec![
+            "-ffp-contract=off",
+            "-Wno-narrowing",
+            "-mavx",
+            "-mavx2",
+            "-mavx512f",
+            "-msse2",
+        ]);
 
     if !cpp_compiler.contains("clang") {
         command = command.add_extra_flag("-flax-vector-conversions");
