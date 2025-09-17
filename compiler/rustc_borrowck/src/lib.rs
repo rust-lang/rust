@@ -1557,9 +1557,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 );
             }
 
-            &(Rvalue::Len(place) | Rvalue::Discriminant(place)) => {
+            &Rvalue::Discriminant(place) => {
                 let af = match *rvalue {
-                    Rvalue::Len(..) => Some(ArtificialField::ArrayLength),
                     Rvalue::Discriminant(..) => None,
                     _ => unreachable!(),
                 };

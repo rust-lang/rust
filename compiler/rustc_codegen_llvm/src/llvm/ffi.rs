@@ -24,9 +24,9 @@ use rustc_target::spec::SymbolVisibility;
 
 use super::RustString;
 use super::debuginfo::{
-    DIArray, DIBasicType, DIBuilder, DICompositeType, DIDerivedType, DIDescriptor, DIEnumerator,
-    DIFile, DIFlags, DIGlobalVariableExpression, DILocation, DISPFlags, DIScope, DISubprogram,
-    DISubrange, DITemplateTypeParameter, DIType, DIVariable, DebugEmissionKind, DebugNameTableKind,
+    DIArray, DIBasicType, DIBuilder, DIDerivedType, DIDescriptor, DIEnumerator, DIFile, DIFlags,
+    DIGlobalVariableExpression, DILocation, DISPFlags, DIScope, DISubprogram, DISubrange,
+    DITemplateTypeParameter, DIType, DIVariable, DebugEmissionKind, DebugNameTableKind,
 };
 use crate::llvm;
 
@@ -1237,6 +1237,7 @@ unsafe extern "C" {
     pub(crate) safe fn LLVMSetGlobalConstant(GlobalVar: &Value, IsConstant: Bool);
     pub(crate) safe fn LLVMSetTailCall(CallInst: &Value, IsTailCall: Bool);
     pub(crate) safe fn LLVMSetTailCallKind(CallInst: &Value, kind: TailCallKind);
+    pub(crate) safe fn LLVMSetExternallyInitialized(GlobalVar: &Value, IsExtInit: Bool);
 
     // Operations on attributes
     pub(crate) fn LLVMCreateStringAttribute(
@@ -1870,6 +1871,78 @@ unsafe extern "C" {
         Scope: &'ll Metadata,
         InlinedAt: Option<&'ll Metadata>,
     ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderCreateSubroutineType<'ll>(
+        Builder: &DIBuilder<'ll>,
+        File: Option<&'ll Metadata>, // (ignored and has no effect)
+        ParameterTypes: *const Option<&'ll Metadata>,
+        NumParameterTypes: c_uint,
+        Flags: DIFlags, // (default is `DIFlags::DIFlagZero`)
+    ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderCreateUnionType<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Scope: Option<&'ll Metadata>,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
+        NameLen: size_t,
+        File: &'ll Metadata,
+        LineNumber: c_uint,
+        SizeInBits: u64,
+        AlignInBits: u32,
+        Flags: DIFlags,
+        Elements: *const Option<&'ll Metadata>,
+        NumElements: c_uint,
+        RunTimeLang: c_uint, // (optional Objective-C runtime version; default is 0)
+        UniqueId: *const c_uchar, // See "PTR_LEN_STR".
+        UniqueIdLen: size_t,
+    ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderCreateArrayType<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Size: u64,
+        Align: u32,
+        Ty: &'ll Metadata,
+        Subscripts: *const &'ll Metadata,
+        NumSubscripts: c_uint,
+    ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderCreateBasicType<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
+        NameLen: size_t,
+        SizeInBits: u64,
+        Encoding: c_uint, // (`LLVMDWARFTypeEncoding`)
+        Flags: DIFlags,   // (default is `DIFlags::DIFlagZero`)
+    ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderCreatePointerType<'ll>(
+        Builder: &DIBuilder<'ll>,
+        PointeeTy: &'ll Metadata,
+        SizeInBits: u64,
+        AlignInBits: u32,
+        AddressSpace: c_uint, // (optional DWARF address space; default is 0)
+        Name: *const c_uchar, // See "PTR_LEN_STR".
+        NameLen: size_t,
+    ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderCreateStructType<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Scope: Option<&'ll Metadata>,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
+        NameLen: size_t,
+        File: &'ll Metadata,
+        LineNumber: c_uint,
+        SizeInBits: u64,
+        AlignInBits: u32,
+        Flags: DIFlags,
+        DerivedFrom: Option<&'ll Metadata>,
+        Elements: *const Option<&'ll Metadata>,
+        NumElements: c_uint,
+        RunTimeLang: c_uint, // (optional Objective-C runtime version; default is 0)
+        VTableHolder: Option<&'ll Metadata>,
+        UniqueId: *const c_uchar, // See "PTR_LEN_STR".
+        UniqueIdLen: size_t,
+    ) -> &'ll Metadata;
 }
 
 #[link(name = "llvm-wrapper", kind = "static")]
@@ -2172,11 +2245,6 @@ unsafe extern "C" {
         SourceLen: size_t,
     ) -> &'a DIFile;
 
-    pub(crate) fn LLVMRustDIBuilderCreateSubroutineType<'a>(
-        Builder: &DIBuilder<'a>,
-        ParameterTypes: &'a DIArray,
-    ) -> &'a DICompositeType;
-
     pub(crate) fn LLVMRustDIBuilderCreateFunction<'a>(
         Builder: &DIBuilder<'a>,
         Scope: &'a DIDescriptor,
@@ -2210,14 +2278,6 @@ unsafe extern "C" {
         TParam: &'a DIArray,
     ) -> &'a DISubprogram;
 
-    pub(crate) fn LLVMRustDIBuilderCreateBasicType<'a>(
-        Builder: &DIBuilder<'a>,
-        Name: *const c_char,
-        NameLen: size_t,
-        SizeInBits: u64,
-        Encoding: c_uint,
-    ) -> &'a DIBasicType;
-
     pub(crate) fn LLVMRustDIBuilderCreateTypedef<'a>(
         Builder: &DIBuilder<'a>,
         Type: &'a DIBasicType,
@@ -2227,34 +2287,6 @@ unsafe extern "C" {
         LineNo: c_uint,
         Scope: Option<&'a DIScope>,
     ) -> &'a DIDerivedType;
-
-    pub(crate) fn LLVMRustDIBuilderCreatePointerType<'a>(
-        Builder: &DIBuilder<'a>,
-        PointeeTy: &'a DIType,
-        SizeInBits: u64,
-        AlignInBits: u32,
-        AddressSpace: c_uint,
-        Name: *const c_char,
-        NameLen: size_t,
-    ) -> &'a DIDerivedType;
-
-    pub(crate) fn LLVMRustDIBuilderCreateStructType<'a>(
-        Builder: &DIBuilder<'a>,
-        Scope: Option<&'a DIDescriptor>,
-        Name: *const c_char,
-        NameLen: size_t,
-        File: &'a DIFile,
-        LineNumber: c_uint,
-        SizeInBits: u64,
-        AlignInBits: u32,
-        Flags: DIFlags,
-        DerivedFrom: Option<&'a DIType>,
-        Elements: &'a DIArray,
-        RunTimeLang: c_uint,
-        VTableHolder: Option<&'a DIType>,
-        UniqueId: *const c_char,
-        UniqueIdLen: size_t,
-    ) -> &'a DICompositeType;
 
     pub(crate) fn LLVMRustDIBuilderCreateMemberType<'a>(
         Builder: &DIBuilder<'a>,
@@ -2335,14 +2367,6 @@ unsafe extern "C" {
         AlignInBits: u32,
     ) -> &'a DIVariable;
 
-    pub(crate) fn LLVMRustDIBuilderCreateArrayType<'a>(
-        Builder: &DIBuilder<'a>,
-        Size: u64,
-        AlignInBits: u32,
-        Ty: &'a DIType,
-        Subscripts: &'a DIArray,
-    ) -> &'a DIType;
-
     pub(crate) fn LLVMRustDIBuilderGetOrCreateSubrange<'a>(
         Builder: &DIBuilder<'a>,
         Lo: i64,
@@ -2386,22 +2410,6 @@ unsafe extern "C" {
         Elements: &'a DIArray,
         ClassType: &'a DIType,
         IsScoped: bool,
-    ) -> &'a DIType;
-
-    pub(crate) fn LLVMRustDIBuilderCreateUnionType<'a>(
-        Builder: &DIBuilder<'a>,
-        Scope: Option<&'a DIScope>,
-        Name: *const c_char,
-        NameLen: size_t,
-        File: &'a DIFile,
-        LineNumber: c_uint,
-        SizeInBits: u64,
-        AlignInBits: u32,
-        Flags: DIFlags,
-        Elements: Option<&'a DIArray>,
-        RunTimeLang: c_uint,
-        UniqueId: *const c_char,
-        UniqueIdLen: size_t,
     ) -> &'a DIType;
 
     pub(crate) fn LLVMRustDIBuilderCreateVariantPart<'a>(

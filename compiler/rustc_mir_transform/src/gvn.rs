@@ -200,8 +200,6 @@ enum Value<'tcx> {
     Projection(VnIndex, ProjectionElem<VnIndex, ()>),
     /// Discriminant of the given value.
     Discriminant(VnIndex),
-    /// Length of an array or slice.
-    Len(VnIndex),
 
     // Operations.
     NullaryOp(NullOp<'tcx>, Ty<'tcx>),
@@ -476,11 +474,6 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 let discr_value =
                     self.ecx.discriminant_for_variant(base.layout.ty, variant).discard_err()?;
                 discr_value.into()
-            }
-            Len(slice) => {
-                let slice = self.evaluated[slice].as_ref()?;
-                let len = slice.len(&self.ecx).discard_err()?;
-                ImmTy::from_uint(len, ty).into()
             }
             NullaryOp(null_op, arg_ty) => {
                 let arg_layout = self.ecx.layout_of(arg_ty).ok()?;
@@ -841,7 +834,6 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
 
             // Operations.
-            Rvalue::Len(ref mut place) => return self.simplify_len(place, location),
             Rvalue::Cast(ref mut kind, ref mut value, to) => {
                 return self.simplify_cast(kind, value, to, location);
             }
@@ -1049,7 +1041,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         if op == UnOp::PtrMetadata {
             let mut was_updated = false;
             loop {
-                match self.get(arg_index) {
+                arg_index = match self.get(arg_index) {
                     // Pointer casts that preserve metadata, such as
                     // `*const [i32]` <-> `*mut [i32]` <-> `*mut [f32]`.
                     // It's critical that this not eliminate cases like
@@ -1061,9 +1053,19 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     Value::Cast { kind: CastKind::PtrToPtr, value: inner }
                         if self.pointers_have_same_metadata(self.ty(*inner), arg_ty) =>
                     {
-                        arg_index = *inner;
-                        was_updated = true;
-                        continue;
+                        *inner
+                    }
+
+                    // We have an unsizing cast, which assigns the length to wide pointer metadata.
+                    Value::Cast {
+                        kind: CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize, _),
+                        value: from,
+                    } if let Some(from) = self.ty(*from).builtin_deref(true)
+                        && let ty::Array(_, len) = from.kind()
+                        && let Some(to) = self.ty(arg_index).builtin_deref(true)
+                        && let ty::Slice(..) = to.kind() =>
+                    {
+                        return Some(self.insert_constant(Const::Ty(self.tcx.types.usize, *len)));
                     }
 
                     // `&mut *p`, `&raw *p`, etc don't change metadata.
@@ -1072,18 +1074,16 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                             place.as_ref()
                             && let Some(local_index) = self.locals[local] =>
                     {
-                        arg_index = local_index;
-                        was_updated = true;
-                        continue;
+                        local_index
                     }
 
-                    _ => {
-                        if was_updated && let Some(op) = self.try_as_operand(arg_index, location) {
-                            *arg_op = op;
-                        }
-                        break;
-                    }
-                }
+                    _ => break,
+                };
+                was_updated = true;
+            }
+
+            if was_updated && let Some(op) = self.try_as_operand(arg_index, location) {
+                *arg_op = op;
             }
         }
 
@@ -1405,39 +1405,6 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         }
 
         Some(self.insert(to, Value::Cast { kind, value }))
-    }
-
-    fn simplify_len(&mut self, place: &mut Place<'tcx>, location: Location) -> Option<VnIndex> {
-        // Trivial case: we are fetching a statically known length.
-        let place_ty = place.ty(self.local_decls, self.tcx).ty;
-        if let ty::Array(_, len) = place_ty.kind() {
-            return Some(self.insert_constant(Const::Ty(self.tcx.types.usize, *len)));
-        }
-
-        let mut inner = self.simplify_place_value(place, location)?;
-
-        // The length information is stored in the wide pointer.
-        // Reborrowing copies length information from one pointer to the other.
-        while let Value::Address { place: borrowed, .. } = self.get(inner)
-            && let [PlaceElem::Deref] = borrowed.projection[..]
-            && let Some(borrowed) = self.locals[borrowed.local]
-        {
-            inner = borrowed;
-        }
-
-        // We have an unsizing cast, which assigns the length to wide pointer metadata.
-        if let Value::Cast { kind, value: from } = self.get(inner)
-            && let CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize, _) = kind
-            && let Some(from) = self.ty(*from).builtin_deref(true)
-            && let ty::Array(_, len) = from.kind()
-            && let Some(to) = self.ty(inner).builtin_deref(true)
-            && let ty::Slice(..) = to.kind()
-        {
-            return Some(self.insert_constant(Const::Ty(self.tcx.types.usize, *len)));
-        }
-
-        // Fallback: a symbolic `Len`.
-        Some(self.insert(self.tcx.types.usize, Value::Len(inner)))
     }
 
     fn pointers_have_same_metadata(&self, left_ptr_ty: Ty<'tcx>, right_ptr_ty: Ty<'tcx>) -> bool {
