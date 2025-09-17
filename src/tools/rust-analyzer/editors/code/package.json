@@ -2853,6 +2853,16 @@
             {
                 "title": "Semantic Highlighting",
                 "properties": {
+                    "rust-analyzer.semanticHighlighting.comments.enable": {
+                        "markdownDescription": "Use semantic tokens for comments.\n\nIn some editors (e.g. vscode) semantic tokens override other highlighting grammars.\nBy disabling semantic tokens for comments, other grammars can be used to highlight\ntheir contents.",
+                        "default": true,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "Semantic Highlighting",
+                "properties": {
                     "rust-analyzer.semanticHighlighting.doc.comment.inject.enable": {
                         "markdownDescription": "Inject additional highlighting into doc comments.\n\nWhen enabled, rust-analyzer will highlight rust source in doc comments as well as intra\ndoc links.",
                         "default": true,

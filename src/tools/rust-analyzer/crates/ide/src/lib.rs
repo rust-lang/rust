@@ -704,6 +704,20 @@ impl Analysis {
     }
 
     /// Computes syntax highlighting for the given file.
+    pub fn highlight_as_html_with_config(
+        &self,
+        config: HighlightConfig,
+        file_id: FileId,
+        rainbow: bool,
+    ) -> Cancellable<String> {
+        // highlighting may construct a new database for "speculative" execution, so we can't currently attach the database
+        // highlighting instead sets up the attach hook where neceesary for the trait solver
+        Cancelled::catch(|| {
+            syntax_highlighting::highlight_as_html_with_config(&self.db, config, file_id, rainbow)
+        })
+    }
+
+    /// Computes syntax highlighting for the given file.
     pub fn highlight_as_html(&self, file_id: FileId, rainbow: bool) -> Cancellable<String> {
         // highlighting may construct a new database for "speculative" execution, so we can't currently attach the database
         // highlighting instead sets up the attach hook where neceesary for the trait solver
