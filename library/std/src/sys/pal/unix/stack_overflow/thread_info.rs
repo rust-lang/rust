@@ -32,8 +32,9 @@ use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::sys::os::errno_location;
 
 pub struct ThreadInfo {
+    pub tid: u64,
+    pub name: Option<Box<str>>,
     pub guard_page_range: Range<usize>,
-    pub thread_name: Option<Box<str>>,
 }
 
 static LOCK: Mutex<()> = Mutex::new(());
@@ -108,14 +109,17 @@ fn spin_lock_in_setup(this: usize) -> UnlockOnDrop {
     }
 }
 
-pub fn set_current_info(guard_page_range: Range<usize>, thread_name: Option<Box<str>>) {
+pub fn set_current_info(guard_page_range: Range<usize>) {
+    let tid = crate::thread::current_os_id();
+    let name = crate::thread::with_current_name(|name| name.map(Box::from));
+
     let this = errno_location().addr();
     let _lock_guard = LOCK.lock();
     let _spin_guard = spin_lock_in_setup(this);
 
     // SAFETY: we own the spin lock, so `THREAD_INFO` cannot be aliased.
     let thread_info = unsafe { &mut *(&raw mut THREAD_INFO) };
-    thread_info.insert(this, ThreadInfo { guard_page_range, thread_name });
+    thread_info.insert(this, ThreadInfo { tid, name, guard_page_range });
 }
 
 pub fn delete_current_info() {
