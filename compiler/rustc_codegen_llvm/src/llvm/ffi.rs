@@ -1957,6 +1957,19 @@ unsafe extern "C" {
         Flags: DIFlags,
         Ty: &'ll Metadata,
     ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderCreateStaticMemberType<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Scope: &'ll Metadata,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
+        NameLen: size_t,
+        File: &'ll Metadata,
+        LineNumber: c_uint,
+        Type: &'ll Metadata,
+        Flags: DIFlags,
+        ConstantVal: Option<&'ll Value>,
+        AlignInBits: u32,
+    ) -> &'ll Metadata;
 }
 
 #[link(name = "llvm-wrapper", kind = "static")]
@@ -2316,19 +2329,6 @@ unsafe extern "C" {
         Flags: DIFlags,
         Ty: &'a DIType,
     ) -> &'a DIType;
-
-    pub(crate) fn LLVMRustDIBuilderCreateStaticMemberType<'a>(
-        Builder: &DIBuilder<'a>,
-        Scope: &'a DIDescriptor,
-        Name: *const c_char,
-        NameLen: size_t,
-        File: &'a DIFile,
-        LineNo: c_uint,
-        Ty: &'a DIType,
-        Flags: DIFlags,
-        val: Option<&'a Value>,
-        AlignInBits: u32,
-    ) -> &'a DIDerivedType;
 
     pub(crate) fn LLVMRustDIBuilderCreateQualifiedType<'a>(
         Builder: &DIBuilder<'a>,
