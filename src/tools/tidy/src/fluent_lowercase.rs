@@ -18,7 +18,6 @@ const ALLOWED_CAPITALIZED_WORDS: &[&str] = &[
     "MIR",
     "OK",
     "Rust",
-    "SIMD",
     "VS", // VS Code
     // tidy-alphabetical-end
 ];

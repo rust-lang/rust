@@ -561,6 +561,25 @@ fn layout_of_uncached<'tcx>(
 
             let e_ly = cx.layout_of(e_ty)?;
 
+            // Check for the rustc_simd_monomorphize_lane_limit attribute and check the lane limit
+            if let Some(attr) =
+                tcx.get_attrs_by_path(def.did(), &[sym::rustc_simd_monomorphize_lane_limit]).next()
+            {
+                if let Some(lit) = attr.value_lit() {
+                    if let Ok(limit) = lit.symbol.as_str().parse::<u64>() {
+                        if e_len > limit {
+                            return Err(map_error(
+                                &cx,
+                                ty,
+                                rustc_abi::LayoutCalculatorError::OversizedSimdType {
+                                    max_lanes: limit,
+                                },
+                            ));
+                        }
+                    }
+                }
+            }
+
             map_layout(cx.calc.simd_type(e_ly, e_len, def.repr().packed()))?
         }
 

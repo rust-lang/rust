@@ -62,6 +62,3 @@ monomorphize_start_not_found = using `fn main` requires the standard library
     .help = use `#![no_main]` to bypass the Rust generated entrypoint and declare a platform specific entrypoint yourself, usually with `#[no_mangle]`
 
 monomorphize_symbol_already_defined = symbol `{$symbol}` is already defined
-
-monomorphize_simd_lane_limit_exceeded =
-    SIMD vector `{$ty}` has {$lanes} elements, exceeding the limit {$limit}

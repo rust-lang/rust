@@ -7,13 +7,11 @@ use rustc_middle::ty::{Instance, TyCtxt};
 
 mod abi_check;
 mod move_check;
-mod simd_lane_limit;
 
 fn check_mono_item<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
     let body = tcx.instance_mir(instance.def);
     abi_check::check_feature_dependent_abi(tcx, instance, body);
     move_check::check_moves(tcx, instance, body);
-    simd_lane_limit::check_simd_lane_limits(tcx, instance, body);
 }
 
 pub(super) fn provide(providers: &mut Providers) {

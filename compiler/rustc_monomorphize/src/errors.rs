@@ -103,13 +103,3 @@ pub(crate) struct AbiRequiredTargetFeature<'a> {
     /// Whether this is a problem at a call site or at a declaration.
     pub is_call: bool,
 }
-
-#[derive(Diagnostic)]
-#[diag(monomorphize_simd_lane_limit_exceeded)]
-pub(crate) struct SimdMonoLaneLimitExceeded<'tcx> {
-    #[primary_span]
-    pub span: Span,
-    pub ty: Ty<'tcx>,
-    pub lanes: u64,
-    pub limit: u64,
-}
