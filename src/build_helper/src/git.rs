@@ -274,14 +274,14 @@ pub fn get_git_modified_files(
     let files = output_result(git.args(["diff-index", "--name-status", merge_base.trim()]))?
         .lines()
         .filter_map(|f| {
-            let (status, name) = f.trim().split_once(char::is_whitespace).unwrap();
+            let (status, name) = f.trim().split_once(char::is_whitespace)?
             if status == "D" {
                 None
             } else if Path::new(name).extension().map_or(extensions.is_empty(), |ext| {
                 // If there is no extension, we allow the path if `extensions` is empty
                 // If there is an extension, we allow it if `extension` is empty or it contains the
                 // extension.
-                extensions.is_empty() || extensions.contains(&ext.to_str().unwrap())
+                extensions.is_empty() || ext.to_str().map_or(false, |ext_str| extensions.contains(&ext_str))
             }) {
                 Some(name.to_owned())
             } else {

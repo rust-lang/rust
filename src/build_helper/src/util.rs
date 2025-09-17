@@ -64,7 +64,13 @@ pub fn parse_gitmodules(target_dir: &Path) -> Vec<String> {
     let gitmodules = target_dir.join(".gitmodules");
     assert!(gitmodules.exists(), "'{}' file is missing.", gitmodules.display());
 
-    let file = File::open(gitmodules).unwrap();
+    let file = match File::open(&gitmodules) {
+        Ok(f) => f,
+        Err(_) => {
+            eprintln!("Warning: Could not open .gitmodules file at {}", gitmodules.display());
+            return Vec::new();
+        }
+    };
 
     let mut submodules_paths = vec![];
     for line in BufReader::new(file).lines().map_while(Result::ok) {
