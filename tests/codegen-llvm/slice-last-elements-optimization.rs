@@ -1,5 +1,4 @@
 //@ compile-flags: -Copt-level=3
-//@ min-llvm-version: 20
 #![crate_type = "lib"]
 
 // This test verifies that LLVM 20 properly optimizes the bounds check
