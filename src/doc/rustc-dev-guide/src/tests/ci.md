@@ -1,7 +1,7 @@
 # Testing with CI
 
 The primary goal of our CI system is to ensure that the `master` branch of
-`rust-lang/rust` is always in a valid state and passes our test suite.
+`rust-lang/rust` is always in a valid state by passing our test suite.
 
 From a high-level point of view, when you open a pull request at
 `rust-lang/rust`, the following will happen:
