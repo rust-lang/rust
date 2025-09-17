@@ -20,7 +20,7 @@ use crate::{
     config::Config,
     diagnostics::{DiagnosticsGeneration, NativeDiagnosticsFetchKind, fetch_native_diagnostics},
     discover::{DiscoverArgument, DiscoverCommand, DiscoverProjectMessage},
-    flycheck::{self, ClearDiagnosticsKind, FlycheckMessage},
+    flycheck::{self, ClearDiagnosticsKind, ClearScope, FlycheckMessage},
     global_state::{
         FetchBuildDataResponse, FetchWorkspaceRequest, FetchWorkspaceResponse, GlobalState,
         file_id_to_url, url_to_file_id,
@@ -1042,17 +1042,22 @@ impl GlobalState {
                     };
                 }
             }
-            FlycheckMessage::ClearDiagnostics { id, kind: ClearDiagnosticsKind::All } => {
-                self.diagnostics.clear_check(id)
-            }
             FlycheckMessage::ClearDiagnostics {
                 id,
-                kind: ClearDiagnosticsKind::OlderThan(generation),
+                kind: ClearDiagnosticsKind::All(ClearScope::Workspace),
+            } => self.diagnostics.clear_check(id),
+            FlycheckMessage::ClearDiagnostics {
+                id,
+                kind: ClearDiagnosticsKind::All(ClearScope::Package(package_id)),
+            } => self.diagnostics.clear_check_for_package(id, package_id),
+            FlycheckMessage::ClearDiagnostics {
+                id,
+                kind: ClearDiagnosticsKind::OlderThan(generation, ClearScope::Workspace),
             } => self.diagnostics.clear_check_older_than(id, generation),
             FlycheckMessage::ClearDiagnostics {
                 id,
-                kind: ClearDiagnosticsKind::Package(package_id),
-            } => self.diagnostics.clear_check_for_package(id, package_id),
+                kind: ClearDiagnosticsKind::OlderThan(generation, ClearScope::Package(package_id)),
+            } => self.diagnostics.clear_check_older_than_for_package(id, package_id, generation),
             FlycheckMessage::Progress { id, progress } => {
                 let (state, message) = match progress {
                     flycheck::Progress::DidStart => (Progress::Begin, None),
