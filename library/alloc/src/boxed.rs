@@ -463,12 +463,9 @@ impl<T> Box<T> {
                 let allocation = Box::from_raw(ptr.cast::<MaybeUninit<R::Output>>());
                 (allocation, value)
             };
-            <R::Residual as Residual<Box<R::Output>>>::TryType::from_output(Box::write(
-                allocation,
-                f(value)?,
-            ))
+            try { Box::write(allocation, f(value)?) }
         } else {
-            <R::Residual as Residual<Box<R::Output>>>::TryType::from_output(Box::new(f(*this)?))
+            try { Box::new(f(*this)?) }
         }
     }
 }
