@@ -1034,10 +1034,10 @@ fn create_member_type<'ll, 'tcx>(
     type_di_node: &'ll DIType,
 ) -> &'ll DIType {
     unsafe {
-        llvm::LLVMRustDIBuilderCreateMemberType(
+        llvm::LLVMDIBuilderCreateMemberType(
             DIB(cx),
             owner,
-            name.as_c_char_ptr(),
+            name.as_ptr(),
             name.len(),
             file_metadata,
             line_number,

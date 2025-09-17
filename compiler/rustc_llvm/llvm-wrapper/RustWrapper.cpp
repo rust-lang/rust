@@ -1088,17 +1088,6 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariantPart(
       StringRef(UniqueId, UniqueIdLen)));
 }
 
-extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateMemberType(
-    LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
-    size_t NameLen, LLVMMetadataRef File, unsigned LineNo, uint64_t SizeInBits,
-    uint32_t AlignInBits, uint64_t OffsetInBits, LLVMDIFlags Flags,
-    LLVMMetadataRef Ty) {
-  return wrap(unwrap(Builder)->createMemberType(
-      unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen),
-      unwrapDI<DIFile>(File), LineNo, SizeInBits, AlignInBits, OffsetInBits,
-      fromRust(Flags), unwrapDI<DIType>(Ty)));
-}
-
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariantMemberType(
     LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
     size_t NameLen, LLVMMetadataRef File, unsigned LineNo, uint64_t SizeInBits,
