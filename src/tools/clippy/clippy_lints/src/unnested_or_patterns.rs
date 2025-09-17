@@ -223,7 +223,7 @@ macro_rules! always_pat {
 /// Focus on `focus_idx` in `alternatives`,
 /// attempting to extend it with elements of the same constructor `C`
 /// in `alternatives[focus_idx + 1..]`.
-fn transform_with_focus_on_idx(alternatives: &mut ThinVec<Box<Pat>>, focus_idx: usize) -> bool {
+fn transform_with_focus_on_idx(alternatives: &mut ThinVec<Pat>, focus_idx: usize) -> bool {
     // Extract the kind; we'll need to make some changes in it.
     let mut focus_kind = mem::replace(&mut alternatives[focus_idx].kind, Wild);
     // We'll focus on `alternatives[focus_idx]`,
@@ -251,20 +251,20 @@ fn transform_with_focus_on_idx(alternatives: &mut ThinVec<Box<Pat>>, focus_idx: 
         Box(target) => extend_with_matching(
             target, start, alternatives,
             |k| matches!(k, Box(_)),
-            |k| always_pat!(k, Box(p) => p),
+            |k| always_pat!(k, Box(p) => *p),
         ),
         // Transform `&mut x | ... | &mut y` into `&mut (x | y)`.
         Ref(target, Mutability::Mut) => extend_with_matching(
             target, start, alternatives,
             |k| matches!(k, Ref(_, Mutability::Mut)),
-            |k| always_pat!(k, Ref(p, _) => p),
+            |k| always_pat!(k, Ref(p, _) => *p),
         ),
         // Transform `b @ p0 | ... b @ p1` into `b @ (p0 | p1)`.
         Ident(b1, i1, Some(target)) => extend_with_matching(
             target, start, alternatives,
             // Binding names must match.
             |k| matches!(k, Ident(b2, i2, Some(_)) if b1 == b2 && eq_id(*i1, *i2)),
-            |k| always_pat!(k, Ident(_, _, Some(p)) => p),
+            |k| always_pat!(k, Ident(_, _, Some(p)) => *p),
         ),
         // Transform `[pre, x, post] | ... | [pre, y, post]` into `[pre, x | y, post]`.
         Slice(ps1) => extend_with_matching_product(
@@ -309,7 +309,7 @@ fn extend_with_struct_pat(
     fps1: &mut [ast::PatField],
     rest1: ast::PatFieldsRest,
     start: usize,
-    alternatives: &mut ThinVec<Box<Pat>>,
+    alternatives: &mut ThinVec<Pat>,
 ) -> bool {
     (0..fps1.len()).any(|idx| {
         let pos_in_2 = Cell::new(None); // The element `k`.
@@ -339,7 +339,7 @@ fn extend_with_struct_pat(
                 }))
             },
             // Extract `p2_k`.
-            |k| always_pat!(k, Struct(_, _, mut fps, _) => fps.swap_remove(pos_in_2.take().unwrap()).pat),
+            |k| always_pat!(k, Struct(_, _, mut fps, _) => *fps.swap_remove(pos_in_2.take().unwrap()).pat),
         );
         extend_with_tail_or(&mut fps1[idx].pat, tail_or)
     })
@@ -351,11 +351,11 @@ fn extend_with_struct_pat(
 /// while also requiring `ps1[..n] ~ ps2[..n]` (pre) and `ps1[n + 1..] ~ ps2[n + 1..]` (post),
 /// where `~` denotes semantic equality.
 fn extend_with_matching_product(
-    targets: &mut [Box<Pat>],
+    targets: &mut [Pat],
     start: usize,
-    alternatives: &mut ThinVec<Box<Pat>>,
-    predicate: impl Fn(&PatKind, &[Box<Pat>], usize) -> bool,
-    extract: impl Fn(PatKind) -> ThinVec<Box<Pat>>,
+    alternatives: &mut ThinVec<Pat>,
+    predicate: impl Fn(&PatKind, &[Pat], usize) -> bool,
+    extract: impl Fn(PatKind) -> ThinVec<Pat>,
 ) -> bool {
     (0..targets.len()).any(|idx| {
         let tail_or = drain_matching(
@@ -382,14 +382,14 @@ fn take_pat(from: &mut Pat) -> Pat {
 
 /// Extend `target` as an or-pattern with the alternatives
 /// in `tail_or` if there are any and return if there were.
-fn extend_with_tail_or(target: &mut Pat, tail_or: ThinVec<Box<Pat>>) -> bool {
-    fn extend(target: &mut Pat, mut tail_or: ThinVec<Box<Pat>>) {
+fn extend_with_tail_or(target: &mut Pat, tail_or: ThinVec<Pat>) -> bool {
+    fn extend(target: &mut Pat, mut tail_or: ThinVec<Pat>) {
         match target {
             // On an existing or-pattern in the target, append to it.
             Pat { kind: Or(ps), .. } => ps.append(&mut tail_or),
             // Otherwise convert the target to an or-pattern.
             target => {
-                let mut init_or = thin_vec![Box::new(take_pat(target))];
+                let mut init_or = thin_vec![take_pat(target)];
                 init_or.append(&mut tail_or);
                 target.kind = Or(init_or);
             },
@@ -408,10 +408,10 @@ fn extend_with_tail_or(target: &mut Pat, tail_or: ThinVec<Box<Pat>>) -> bool {
 // Only elements beginning with `start` are considered for extraction.
 fn drain_matching(
     start: usize,
-    alternatives: &mut ThinVec<Box<Pat>>,
+    alternatives: &mut ThinVec<Pat>,
     predicate: impl Fn(&PatKind) -> bool,
-    extract: impl Fn(PatKind) -> Box<Pat>,
-) -> ThinVec<Box<Pat>> {
+    extract: impl Fn(PatKind) -> Pat,
+) -> ThinVec<Pat> {
     let mut tail_or = ThinVec::new();
     let mut idx = 0;
 
@@ -443,15 +443,15 @@ fn drain_matching(
 fn extend_with_matching(
     target: &mut Pat,
     start: usize,
-    alternatives: &mut ThinVec<Box<Pat>>,
+    alternatives: &mut ThinVec<Pat>,
     predicate: impl Fn(&PatKind) -> bool,
-    extract: impl Fn(PatKind) -> Box<Pat>,
+    extract: impl Fn(PatKind) -> Pat,
 ) -> bool {
     extend_with_tail_or(target, drain_matching(start, alternatives, predicate, extract))
 }
 
 /// Are the patterns in `ps1` and `ps2` equal save for `ps1[idx]` compared to `ps2[idx]`?
-fn eq_pre_post(ps1: &[Box<Pat>], ps2: &[Box<Pat>], idx: usize) -> bool {
+fn eq_pre_post(ps1: &[Pat], ps2: &[Pat], idx: usize) -> bool {
     ps1.len() == ps2.len()
         && ps1[idx].is_rest() == ps2[idx].is_rest() // Avoid `[x, ..] | [x, 0]` => `[x, .. | 0]`.
         && over(&ps1[..idx], &ps2[..idx], |l, r| eq_pat(l, r))

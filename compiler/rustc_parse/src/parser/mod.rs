@@ -159,6 +159,7 @@ macro_rules! maybe_recover_from_interpolated_ty_qpath {
             let ty = $self
                 .eat_metavar_seq(mv_kind, |this| this.parse_ty_no_question_mark_recover())
                 .expect("metavar seq ty");
+            let ty = Box::new(ty);
 
             return $self.maybe_recover_from_bad_qpath_stage_2($self.prev_token.span, ty);
         }

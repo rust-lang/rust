@@ -73,6 +73,16 @@ pub(super) trait RecoverQPath: Sized + 'static {
     fn recovered(qself: Option<Box<QSelf>>, path: ast::Path) -> Self;
 }
 
+impl<T: RecoverQPath> RecoverQPath for Box<T> {
+    const PATH_STYLE: PathStyle = T::PATH_STYLE;
+    fn to_ty(&self) -> Option<Box<Ty>> {
+        T::to_ty(self)
+    }
+    fn recovered(qself: Option<Box<QSelf>>, path: ast::Path) -> Self {
+        Box::new(T::recovered(qself, path))
+    }
+}
+
 impl RecoverQPath for Ty {
     const PATH_STYLE: PathStyle = PathStyle::Type;
     fn to_ty(&self) -> Option<Box<Ty>> {
@@ -91,7 +101,7 @@ impl RecoverQPath for Ty {
 impl RecoverQPath for Pat {
     const PATH_STYLE: PathStyle = PathStyle::Pat;
     fn to_ty(&self) -> Option<Box<Ty>> {
-        self.to_ty()
+        self.to_ty().map(Box::new)
     }
     fn recovered(qself: Option<Box<QSelf>>, path: ast::Path) -> Self {
         Self {
@@ -105,7 +115,7 @@ impl RecoverQPath for Pat {
 
 impl RecoverQPath for Expr {
     fn to_ty(&self) -> Option<Box<Ty>> {
-        self.to_ty()
+        self.to_ty().map(Box::new)
     }
     fn recovered(qself: Option<Box<QSelf>>, path: ast::Path) -> Self {
         Self {
@@ -1595,7 +1605,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Swift lets users write `Ty?` to mean `Option<Ty>`. Parse the construct and recover from it.
-    pub(super) fn maybe_recover_from_question_mark(&mut self, ty: Box<Ty>) -> Box<Ty> {
+    pub(super) fn maybe_recover_from_question_mark(&mut self, ty: Ty) -> Ty {
         if self.token == token::Question {
             self.bump();
             let guar = self.dcx().emit_err(QuestionMarkInType {
@@ -1605,7 +1615,7 @@ impl<'a> Parser<'a> {
                     right: self.prev_token.span,
                 },
             });
-            self.mk_ty(ty.span.to(self.prev_token.span), TyKind::Err(guar))
+            self.mk_ty_mut(ty.span.to(self.prev_token.span), TyKind::Err(guar))
         } else {
             ty
         }
@@ -1833,8 +1843,8 @@ impl<'a> Parser<'a> {
     /// tail, and combines them into a `<Ty>::AssocItem` expression/pattern/type.
     pub(super) fn maybe_recover_from_bad_qpath<T: RecoverQPath>(
         &mut self,
-        base: Box<T>,
-    ) -> PResult<'a, Box<T>> {
+        base: T,
+    ) -> PResult<'a, T> {
         if !self.may_recover() {
             return Ok(base);
         }
@@ -1854,7 +1864,7 @@ impl<'a> Parser<'a> {
         &mut self,
         ty_span: Span,
         ty: Box<Ty>,
-    ) -> PResult<'a, Box<T>> {
+    ) -> PResult<'a, T> {
         self.expect(exp!(PathSep))?;
 
         let mut path = ast::Path { segments: ThinVec::new(), span: DUMMY_SP, tokens: None };
@@ -1867,7 +1877,7 @@ impl<'a> Parser<'a> {
         });
 
         let path_span = ty_span.shrink_to_hi(); // Use an empty path since `position == 0`.
-        Ok(Box::new(T::recovered(Some(Box::new(QSelf { ty, path_span, position: 0 })), path)))
+        Ok(T::recovered(Some(Box::new(QSelf { ty, path_span, position: 0 })), path))
     }
 
     /// This function gets called in places where a semicolon is NOT expected and if there's a
@@ -2742,9 +2752,9 @@ impl<'a> Parser<'a> {
     /// `for` loop, `let`, &c. (in contrast to subpatterns within such).
     pub(crate) fn maybe_recover_colon_colon_in_pat_typo(
         &mut self,
-        mut first_pat: Box<Pat>,
+        mut first_pat: Pat,
         expected: Option<Expected>,
-    ) -> Box<Pat> {
+    ) -> Pat {
         if token::Colon != self.token.kind {
             return first_pat;
         }
