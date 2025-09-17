@@ -2071,8 +2071,8 @@ mod impls {
 
     // reference types
 
-    macro_rules! partial_eq_impl {
-        ($(($ref_A:ty => $A:ident, $ref_B:ty => $B:ident))*) => ($(
+    macro_rules! impl_partial_eq {
+        (<$A:ident, $B:ident> for $(($ref_A:ty, $ref_B:ty))*) => ($(
             #[stable(feature = "rust1", since = "1.0.0")]
             #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
             impl<$A, $B> const PartialEq<$ref_B> for $ref_A
@@ -2094,10 +2094,10 @@ mod impls {
         )*)
     }
 
-    partial_eq_impl!((&A => A, &B => B) (&A => A, &mut B => B) (&mut A => A, &B => B) (&mut A => A, &mut B => B));
+    impl_partial_eq!(<A, B> for (&A, &B) (&A, &mut B) (&mut A, &B) (&mut A, &mut B));
 
-    macro_rules! partial_ord_impl {
-        ($(($ref_A:ty => $A:ident, $ref_B:ty => $B:ident))*) => ($(
+    macro_rules! impl_partial_ord {
+        (<$A:ident, $B:ident> for $(($ref_A:ty, $ref_B:ty))*) => ($(
             #[stable(feature = "rust1", since = "1.0.0")]
             #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
             impl<$A, $B> const PartialOrd<$ref_B> for $ref_A
@@ -2145,10 +2145,10 @@ mod impls {
         )*)
     }
 
-    partial_ord_impl!((&A => A, &B => B) /*(&A => A, &mut B => B) (&mut A => A, &B => B)*/ (&mut A => A, &mut B => B));
+    impl_partial_ord!(<A, B> for (&A, &B) /*(&A, &mut B) (&mut A, &B)*/ (&mut A, &mut B));
 
-    macro_rules! ord_eq_impl {
-        ($($ref_A:ty => $A:ident),*) => ($(
+    macro_rules! impl_ord_eq {
+        (<$A:ident> for $($ref_A:ty),*) => ($(
             #[stable(feature = "rust1", since = "1.0.0")]
             #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
             impl<$A: [const] Ord + PointeeSized> const Ord for $ref_A
@@ -2165,5 +2165,5 @@ mod impls {
         )*)
     }
 
-    ord_eq_impl!(&A => A, &mut A => A);
+    impl_ord_eq!(<A> for &A, &mut A);
 }
