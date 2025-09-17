@@ -310,7 +310,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         operands: &IndexSlice<FieldIdx, mir::Operand<'tcx>>,
         dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
-        self.write_uninit(dest)?; // make sure all the padding ends up as uninit
         let (variant_index, variant_dest, active_field_index) = match *kind {
             mir::AggregateKind::Adt(_, variant_index, _, _, active_field_index) => {
                 let variant_dest = self.project_downcast(dest, variant_index)?;
@@ -346,9 +345,20 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             let field_index = active_field_index.unwrap_or(field_index);
             let field_dest = self.project_field(&variant_dest, field_index)?;
             let op = self.eval_operand(operand, Some(field_dest.layout))?;
-            self.copy_op(&op, &field_dest)?;
+            // We validate manually below so we don't have to do it here.
+            self.copy_op_no_validate(&op, &field_dest, /*allow_transmute*/ false)?;
         }
-        self.write_discriminant(variant_index, dest)
+        self.write_discriminant(variant_index, dest)?;
+        // Validate that the entire thing is valid, and reset padding that might be in between the
+        // fields.
+        if M::enforce_validity(self, dest.layout()) {
+            self.validate_operand(
+                dest,
+                M::enforce_validity_recursively(self, dest.layout()),
+                /*reset_provenance_and_padding*/ true,
+            )?;
+        }
+        interp_ok(())
     }
 
     /// Repeats `operand` into the destination. `dest` must have array type, and that type

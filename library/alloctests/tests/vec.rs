@@ -15,7 +15,7 @@ use std::ops::Bound::*;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::rc::Rc;
 use std::sync::atomic::{AtomicU32, Ordering};
-use std::vec::{Drain, IntoIter};
+use std::vec::{Drain, IntoIter, PeekMut};
 
 use crate::testing::macros::struct_with_counted_drop;
 
@@ -2647,7 +2647,7 @@ fn test_peek_mut() {
         assert_eq!(*p, 2);
         *p = 0;
         assert_eq!(*p, 0);
-        p.pop();
+        PeekMut::pop(p);
         assert_eq!(vec.len(), 1);
     } else {
         unreachable!()

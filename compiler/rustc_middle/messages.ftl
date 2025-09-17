@@ -84,7 +84,7 @@ middle_failed_writing_file =
 # Note: We only mention patterns here since the error can only occur with references, and those
 # are forbidden in const generics.
 middle_invalid_const_in_valtree = constant {$global_const_id} cannot be used as pattern
-    .note = constants that reference mutable or external memory cannot be used as pattern
+    .note = constants that reference mutable or external memory cannot be used as patterns
 
 middle_layout_cycle =
     a cycle occurred during layout computation

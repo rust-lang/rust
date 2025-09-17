@@ -394,6 +394,9 @@ macro_rules! bootstrap_tool {
         }
 
         impl<'a> Builder<'a> {
+            /// Ensure a tool is built, then get the path to its executable.
+            ///
+            /// The actual building, if any, will be handled via [`ToolBuild`].
             pub fn tool_exe(&self, tool: Tool) -> PathBuf {
                 match tool {
                     $(Tool::$name =>
@@ -1552,6 +1555,8 @@ pub const TEST_FLOAT_PARSE_ALLOW_FEATURES: &str = "f16,cfg_target_has_reliable_f
 impl Builder<'_> {
     /// Gets a `BootstrapCommand` which is ready to run `tool` in `stage` built for
     /// `host`.
+    ///
+    /// This also ensures that the given tool is built (using [`ToolBuild`]).
     pub fn tool_cmd(&self, tool: Tool) -> BootstrapCommand {
         let mut cmd = command(self.tool_exe(tool));
         let compiler = self.compiler(0, self.config.host_target);
