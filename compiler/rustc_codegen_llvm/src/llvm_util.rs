@@ -217,16 +217,13 @@ impl<'a> IntoIterator for LLVMFeature<'a> {
 /// Rust can also be build with an external precompiled version of LLVM which might lead to failures
 /// if the oldest tested / supported LLVM version doesn't yet support the relevant intrinsics.
 pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFeature<'a>> {
-    let arch = if sess.target.arch == "x86_64" {
-        "x86"
-    } else if sess.target.arch == "arm64ec" {
-        "aarch64"
-    } else if sess.target.arch == "sparc64" {
-        "sparc"
-    } else if sess.target.arch == "powerpc64" {
-        "powerpc"
-    } else {
-        &*sess.target.arch
+    let raw_arch = &*sess.target.arch;
+    let arch = match raw_arch {
+        "x86_64" => "x86",
+        "arm64ec" => "aarch64",
+        "sparc64" => "sparc",
+        "powerpc64" => "powerpc",
+        _ => raw_arch,
     };
     let (major, _, _) = get_version();
     match (arch, s) {
