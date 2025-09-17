@@ -252,10 +252,11 @@ pub(super) fn has_expandable_async_drops<'tcx>(
 pub(super) fn expand_async_drops<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &mut Body<'tcx>,
-    context_mut_ref: Ty<'tcx>,
     coroutine_kind: hir::CoroutineKind,
     coroutine_ty: Ty<'tcx>,
 ) {
+    let resume_ty = Ty::new_resume_ty(tcx);
+    let context_mut_ref = Ty::new_task_context(tcx);
     let dropline = gather_dropline_blocks(body);
     // Clean drop and async_fut fields if potentially async drop is not expanded (stays sync)
     let remove_asyncness = |block: &mut BasicBlockData<'tcx>| {
@@ -323,8 +324,8 @@ pub(super) fn expand_async_drops<'tcx>(
 
         // First state-loop yield for mainline
         let context_ref_place =
-            Place::from(body.local_decls.push(LocalDecl::new(context_mut_ref, source_info.span)));
-        let arg = Rvalue::Use(Operand::Move(Place::from(CTX_ARG)));
+            Place::from(body.local_decls.push(LocalDecl::new(resume_ty, source_info.span)));
+        let arg = Rvalue::Use(Operand::Move(CTX_ARG.into()));
         body[bb].statements.push(Statement::new(
             source_info,
             StatementKind::Assign(Box::new((context_ref_place, arg))),
@@ -358,8 +359,11 @@ pub(super) fn expand_async_drops<'tcx>(
         let mut dropline_context_ref: Option<Place<'_>> = None;
         let mut dropline_call_bb: Option<BasicBlock> = None;
         if !is_dropline_bb {
-            let context_ref_place2: Place<'_> = Place::from(
-                body.local_decls.push(LocalDecl::new(context_mut_ref, source_info.span)),
+            let context_ref_local2 =
+                body.local_decls.push(LocalDecl::new(resume_ty, source_info.span));
+            let context_ref_place2 = tcx.mk_place_elem(
+                context_ref_local2.into(),
+                PlaceElem::UnwrapUnsafeBinder(context_mut_ref),
             );
             let drop_yield_block = insert_term_block(body, TerminatorKind::Unreachable); // `kind` replaced later to yield
             let (pin_bb2, fut_pin_place2) =
@@ -385,7 +389,7 @@ pub(super) fn expand_async_drops<'tcx>(
             );
             dropline_transition_bb = Some(pin_bb2);
             dropline_yield_bb = Some(drop_yield_block);
-            dropline_context_ref = Some(context_ref_place2);
+            dropline_context_ref = Some(context_ref_local2.into());
             dropline_call_bb = Some(drop_call_bb);
         }
 

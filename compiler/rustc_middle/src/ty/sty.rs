@@ -909,6 +909,29 @@ impl<'tcx> Ty<'tcx> {
         Ty::new_generic_adt(tcx, def_id, ty)
     }
 
+    /// Creates a `unsafe<'a, 'b> &'a mut Context<'b>` [`Ty`].
+    pub fn new_resume_ty(tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+        let context_did = tcx.require_lang_item(LangItem::Context, DUMMY_SP);
+        let context_adt_ref = tcx.adt_def(context_did);
+
+        let lt = |n| {
+            ty::Region::new_bound(
+                tcx,
+                ty::INNERMOST,
+                ty::BoundRegion { var: ty::BoundVar::from_u32(n), kind: BoundRegionKind::Anon },
+            )
+        };
+
+        let context_args = tcx.mk_args(&[lt(1).into()]);
+        let context_ty = Ty::new_adt(tcx, context_adt_ref, context_args);
+        let context_mut_ref = Ty::new_mut_ref(tcx, lt(0), context_ty);
+        let bound_vars = tcx.mk_bound_variable_kinds(&[
+            BoundVariableKind::Region(BoundRegionKind::Anon),
+            BoundVariableKind::Region(BoundRegionKind::Anon),
+        ]);
+        Ty::new_unsafe_binder(tcx, ty::Binder::bind_with_vars(context_mut_ref, bound_vars))
+    }
+
     /// Creates a `&mut Context<'_>` [`Ty`] with erased lifetimes.
     pub fn new_task_context(tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         let context_did = tcx.require_lang_item(LangItem::Context, DUMMY_SP);

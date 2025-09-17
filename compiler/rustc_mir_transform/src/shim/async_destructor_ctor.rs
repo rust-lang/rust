@@ -64,8 +64,7 @@ pub(super) fn build_async_drop_shim<'tcx>(
     let needs_async_drop = drop_ty.needs_async_drop(tcx, typing_env);
     let needs_sync_drop = !needs_async_drop && drop_ty.needs_drop(tcx, typing_env);
 
-    let resume_adt = tcx.adt_def(tcx.require_lang_item(LangItem::ResumeTy, DUMMY_SP));
-    let resume_ty = Ty::new_adt(tcx, resume_adt, ty::List::empty());
+    let resume_ty = Ty::new_resume_ty(tcx);
 
     let fn_sig = ty::Binder::dummy(tcx.mk_fn_sig(
         [ty, resume_ty],
