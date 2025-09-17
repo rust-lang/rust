@@ -1,5 +1,5 @@
 error[E0191]: the value of the associated type `Output` in `Add` must be specified
-  --> $DIR/issue-21950.rs:10:25
+  --> $DIR/cast-as-dyn-trait-wo-assoc-type-issue-21950.rs:17:25
    |
 LL |     type Output;
    |     ----------- `Output` defined here
