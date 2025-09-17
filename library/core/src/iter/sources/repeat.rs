@@ -9,7 +9,7 @@ use crate::num::NonZero;
 /// [`Iterator::take()`], in order to make them finite.
 ///
 /// Use [`str::repeat()`] instead of this function if you just want to repeat
-/// a char/string `n`th times.
+/// a char/string `n` times.
 ///
 /// If the element type of the iterator you need does not implement `Clone`,
 /// or if you do not want to keep the repeated element in memory, you can
@@ -98,11 +98,12 @@ impl<A: Clone> Iterator for Repeat<A> {
     }
 
     fn last(self) -> Option<A> {
-        loop {}
+        Some(self.element)
     }
 
+    #[track_caller]
     fn count(self) -> usize {
-        loop {}
+        panic!("iterator is infinite");
     }
 }
 
