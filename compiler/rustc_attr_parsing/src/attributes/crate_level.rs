@@ -174,3 +174,12 @@ impl<S: Stage> NoArgsAttributeParser<S> for NoStdParser {
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::CrateLevel;
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::NoStd;
 }
+
+pub(crate) struct RustcCoherenceIsCoreParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcCoherenceIsCoreParser {
+    const PATH: &[Symbol] = &[sym::rustc_coherence_is_core];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::CrateLevel;
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcCoherenceIsCore;
+}

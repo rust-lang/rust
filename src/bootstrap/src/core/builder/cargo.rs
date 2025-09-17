@@ -679,6 +679,12 @@ impl Builder<'_> {
         // cargo would implicitly add it, it was discover that sometimes bootstrap only use
         // `rustflags` without `cargo` making it required.
         rustflags.arg("-Zunstable-options");
+
+        // Add parallel frontend threads configuration
+        if let Some(threads) = self.config.rust_parallel_frontend_threads {
+            rustflags.arg(&format!("-Zthreads={threads}"));
+        }
+
         for (restricted_mode, name, values) in EXTRA_CHECK_CFGS {
             if restricted_mode.is_none() || *restricted_mode == Some(mode) {
                 rustflags.arg(&check_cfg_arg(name, *values));

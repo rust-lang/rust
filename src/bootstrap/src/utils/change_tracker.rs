@@ -546,4 +546,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "The default value of the `gcc.download-ci-gcc` option has been changed to `true`.",
     },
+    ChangeInfo {
+        change_id: 146458,
+        severity: ChangeSeverity::Info,
+        summary: "There is now a bootstrap option called `rust.parallel-frontend-threads`, which can be used to set the number of threads for the compiler frontend used during compilation of Rust code.",
+    },
 ];
