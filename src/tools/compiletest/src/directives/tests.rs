@@ -8,6 +8,7 @@ use super::{
     extract_version_range, iter_directives, parse_normalize_rule,
 };
 use crate::common::{Config, Debugger, TestMode};
+use crate::directives::parse_edition;
 use crate::executor::{CollectedTestDesc, ShouldPanic};
 
 fn make_test_description<R: Read>(
@@ -950,10 +951,6 @@ fn test_needs_target_std() {
     assert!(!check_ignore(&config, "//@ needs-target-std"));
 }
 
-fn y(year: u32) -> Edition {
-    Edition::Year(year)
-}
-
 fn parse_edition_range(line: &str) -> Option<EditionRange> {
     let config = cfg().build();
     super::parse_edition_range(&config, line, "tmp.rs".into(), 0)
@@ -964,33 +961,36 @@ fn test_parse_edition_range() {
     assert_eq!(None, parse_edition_range("hello-world"));
     assert_eq!(None, parse_edition_range("edition"));
 
-    assert_eq!(Some(EditionRange::Exact(y(2018))), parse_edition_range("edition: 2018"));
-    assert_eq!(Some(EditionRange::Exact(y(2021))), parse_edition_range("edition:2021"));
-    assert_eq!(Some(EditionRange::Exact(y(2024))), parse_edition_range("edition: 2024 "));
+    assert_eq!(Some(EditionRange::Exact(2018.into())), parse_edition_range("edition: 2018"));
+    assert_eq!(Some(EditionRange::Exact(2021.into())), parse_edition_range("edition:2021"));
+    assert_eq!(Some(EditionRange::Exact(2024.into())), parse_edition_range("edition: 2024 "));
     assert_eq!(Some(EditionRange::Exact(Edition::Future)), parse_edition_range("edition: future"));
 
-    assert_eq!(Some(EditionRange::RangeFrom(y(2018))), parse_edition_range("edition: 2018.."));
-    assert_eq!(Some(EditionRange::RangeFrom(y(2021))), parse_edition_range("edition:2021 .."));
-    assert_eq!(Some(EditionRange::RangeFrom(y(2024))), parse_edition_range("edition: 2024 .. "));
+    assert_eq!(Some(EditionRange::RangeFrom(2018.into())), parse_edition_range("edition: 2018.."));
+    assert_eq!(Some(EditionRange::RangeFrom(2021.into())), parse_edition_range("edition:2021 .."));
+    assert_eq!(
+        Some(EditionRange::RangeFrom(2024.into())),
+        parse_edition_range("edition: 2024 .. ")
+    );
     assert_eq!(
         Some(EditionRange::RangeFrom(Edition::Future)),
         parse_edition_range("edition: future.. ")
     );
 
     assert_eq!(
-        Some(EditionRange::Range { lower_bound: y(2018), upper_bound: y(2024) }),
+        Some(EditionRange::Range { lower_bound: 2018.into(), upper_bound: 2024.into() }),
         parse_edition_range("edition: 2018..2024")
     );
     assert_eq!(
-        Some(EditionRange::Range { lower_bound: y(2015), upper_bound: y(2021) }),
+        Some(EditionRange::Range { lower_bound: 2015.into(), upper_bound: 2021.into() }),
         parse_edition_range("edition:2015 .. 2021 ")
     );
     assert_eq!(
-        Some(EditionRange::Range { lower_bound: y(2021), upper_bound: y(2027) }),
+        Some(EditionRange::Range { lower_bound: 2021.into(), upper_bound: 2027.into() }),
         parse_edition_range("edition: 2021 .. 2027 ")
     );
     assert_eq!(
-        Some(EditionRange::Range { lower_bound: y(2021), upper_bound: Edition::Future }),
+        Some(EditionRange::Range { lower_bound: 2021.into(), upper_bound: Edition::Future }),
         parse_edition_range("edition: 2021..future")
     );
 }
@@ -1041,19 +1041,22 @@ fn assert_edition_to_test(
     if let Some(default) = default {
         cfg.edition(default);
     }
-    assert_eq!(expected.into(), range.edition_to_test(&cfg.build()));
+    assert_eq!(
+        expected.into(),
+        range.edition_to_test(cfg.build().edition.as_deref().map(parse_edition))
+    );
 }
 
 #[test]
 fn test_edition_range_edition_to_test() {
-    let exact = EditionRange::Exact(y(2021));
+    let exact = EditionRange::Exact(2021.into());
     assert_edition_to_test(2021, exact, None);
     assert_edition_to_test(2021, exact, Some("2018"));
     assert_edition_to_test(2021, exact, Some("future"));
 
     assert_edition_to_test(Edition::Future, EditionRange::Exact(Edition::Future), None);
 
-    let greater_equal_than = EditionRange::RangeFrom(y(2021));
+    let greater_equal_than = EditionRange::RangeFrom(2021.into());
     assert_edition_to_test(2021, greater_equal_than, None);
     assert_edition_to_test(2021, greater_equal_than, Some("2015"));
     assert_edition_to_test(2021, greater_equal_than, Some("2018"));
@@ -1061,7 +1064,7 @@ fn test_edition_range_edition_to_test() {
     assert_edition_to_test(2024, greater_equal_than, Some("2024"));
     assert_edition_to_test(Edition::Future, greater_equal_than, Some("future"));
 
-    let range = EditionRange::Range { lower_bound: y(2018), upper_bound: y(2024) };
+    let range = EditionRange::Range { lower_bound: 2018.into(), upper_bound: 2024.into() };
     assert_edition_to_test(2018, range, None);
     assert_edition_to_test(2018, range, Some("2015"));
     assert_edition_to_test(2018, range, Some("2018"));
@@ -1073,5 +1076,5 @@ fn test_edition_range_edition_to_test() {
 #[test]
 #[should_panic]
 fn test_edition_range_edition_to_test_bad_cli() {
-    assert_edition_to_test(2021, EditionRange::Exact(y(2021)), Some("not an edition"));
+    assert_edition_to_test(2021, EditionRange::Exact(2021.into()), Some("not an edition"));
 }

@@ -435,8 +435,13 @@ impl TestProps {
                     if let Some(range) = parse_edition_range(config, ln, testfile, line_number) {
                         // The edition is added at the start, since flags from //@compile-flags must
                         // be passed to rustc last.
-                        self.compile_flags
-                            .insert(0, format!("--edition={}", range.edition_to_test(config)));
+                        self.compile_flags.insert(
+                            0,
+                            format!(
+                                "--edition={}",
+                                range.edition_to_test(config.edition.as_deref().map(parse_edition))
+                            ),
+                        );
                         has_edition = true;
                     }
 
@@ -1793,11 +1798,10 @@ fn parse_edition_range(
     // Edition range is half-open: `[lower_bound, upper_bound)`
     if let Some((lower_bound, upper_bound)) = raw.split_once("..") {
         Some(match (maybe_parse_edition(lower_bound), maybe_parse_edition(upper_bound)) {
-            (Some(lower_bound), Some(upper_bound)) if upper_bound < lower_bound => {
-                panic!("the left side of `//@ edition` cannot be higher than the right side");
-            }
-            (Some(lower_bound), Some(upper_bound)) if upper_bound == lower_bound => {
-                panic!("the left side of `//@ edition` cannot be equal to the right side");
+            (Some(lower_bound), Some(upper_bound)) if upper_bound <= lower_bound => {
+                fatal!(
+                    "the left side of `//@ edition` cannot be greater than or equal to the right side"
+                );
             }
             (Some(lower_bound), Some(upper_bound)) => {
                 EditionRange::Range { lower_bound, upper_bound }
@@ -1805,18 +1809,18 @@ fn parse_edition_range(
             (Some(lower_bound), None) => EditionRange::RangeFrom(lower_bound),
             (None, Some(_)) => {
                 fatal!(
-                    "{testfile}:{line_number}: ..edition is not a supported range in //@ edition"
+                    "{testfile}:{line_number}: `..edition` is not a supported range in `//@ edition`"
                 );
             }
             (None, None) => {
-                fatal!("{testfile}:{line_number}: '..' is not a supported range in //@ edition");
+                fatal!("{testfile}:{line_number}: `..` is not a supported range in `//@ edition`");
             }
         })
     } else {
         match maybe_parse_edition(&raw) {
             Some(edition) => Some(EditionRange::Exact(edition)),
             None => {
-                fatal!("{testfile}:{line_number}: empty value for //@ edition");
+                fatal!("{testfile}:{line_number}: empty value for `//@ edition`");
             }
         }
     }
@@ -1835,13 +1839,16 @@ fn parse_edition(mut input: &str) -> Edition {
     if input == "future" {
         Edition::Future
     } else {
-        Edition::Year(input.parse().expect(&format!("'{input}' doesn't look like an edition")))
+        Edition::Year(input.parse().unwrap_or_else(|_| {
+            fatal!("`{input}` doesn't look like an edition");
+        }))
     }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 enum Edition {
-    // Note that the ordering here is load-bearing, as we want the future edition to be last.
+    // Note that the ordering here is load-bearing, as we want the future edition to be grater than
+    // any year-based edition.
     Year(u32),
     Future,
 }
@@ -1873,10 +1880,9 @@ enum EditionRange {
 }
 
 impl EditionRange {
-    fn edition_to_test(&self, config: &Config) -> Edition {
+    fn edition_to_test(&self, requested: impl Into<Option<Edition>>) -> Edition {
         let min_edition = Edition::Year(2015);
-        let requested: Edition =
-            config.edition.as_deref().map(parse_edition).unwrap_or(min_edition);
+        let requested = requested.into().unwrap_or(min_edition);
 
         match *self {
             EditionRange::Exact(exact) => exact,
