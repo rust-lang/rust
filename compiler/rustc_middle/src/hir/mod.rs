@@ -37,6 +37,9 @@ pub struct ModuleItems {
     nested_bodies: Box<[LocalDefId]>,
     // only filled with hir_crate_items, not with hir_module_items
     delayed_lint_items: Box<[OwnerId]>,
+
+    /// Statics and functions with an `EiiImpls` or `EiiExternTarget` attribute
+    eiis: Box<[LocalDefId]>,
 }
 
 impl ModuleItems {
@@ -56,6 +59,10 @@ impl ModuleItems {
 
     pub fn delayed_lint_items(&self) -> impl Iterator<Item = OwnerId> {
         self.delayed_lint_items.iter().copied()
+    }
+
+    pub fn eiis(&self) -> impl Iterator<Item = LocalDefId> {
+        self.eiis.iter().copied()
     }
 
     /// Returns all items that are associated with some `impl` block (both inherent and trait impl

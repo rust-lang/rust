@@ -852,6 +852,17 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         sp: Span,
         print_visibility: impl FnOnce(&mut Self),
     ) {
+        if let Some(eii_extern_target) = &macro_def.eii_extern_target {
+            self.word("#[eii_extern_target(");
+            self.print_path(&eii_extern_target.extern_item_path, false, 0);
+            if eii_extern_target.impl_unsafe {
+                self.word(",");
+                self.space();
+                self.word("unsafe");
+            }
+            self.word(")]");
+            self.hardbreak();
+        }
         let (kw, has_bang) = if macro_def.macro_rules {
             ("macro_rules", true)
         } else {
@@ -2141,6 +2152,15 @@ impl<'a> State<'a> {
 
     fn print_meta_item(&mut self, item: &ast::MetaItem) {
         let ib = self.ibox(INDENT_UNIT);
+
+        match item.unsafety {
+            ast::Safety::Unsafe(_) => {
+                self.word("unsafe");
+                self.popen();
+            }
+            ast::Safety::Default | ast::Safety::Safe(_) => {}
+        }
+
         match &item.kind {
             ast::MetaItemKind::Word => self.print_path(&item.path, false, 0),
             ast::MetaItemKind::NameValue(value) => {
@@ -2156,6 +2176,12 @@ impl<'a> State<'a> {
                 self.pclose();
             }
         }
+
+        match item.unsafety {
+            ast::Safety::Unsafe(_) => self.pclose(),
+            ast::Safety::Default | ast::Safety::Safe(_) => {}
+        }
+
         self.end(ib);
     }
 
