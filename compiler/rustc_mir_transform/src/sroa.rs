@@ -15,8 +15,8 @@ use crate::patch::MirPatch;
 pub(super) struct ScalarReplacementOfAggregates;
 
 impl<'tcx> crate::MirPass<'tcx> for ScalarReplacementOfAggregates {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 2
+    fn is_enabled(&self, tcx: TyCtxt<'tcx>) -> bool {
+        tcx.sess.mir_opt_level() >= 2
     }
 
     #[instrument(level = "debug", skip(self, tcx, body))]
