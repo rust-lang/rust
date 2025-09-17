@@ -258,6 +258,10 @@ pub(crate) fn set_alignment(llglobal: &Value, align: Align) {
     }
 }
 
+pub(crate) fn set_externally_initialized(llglobal: &Value, is_ext_init: bool) {
+    LLVMSetExternallyInitialized(llglobal, is_ext_init.to_llvm_bool());
+}
+
 /// Get the `name`d comdat from `llmod` and assign it to `llglobal`.
 ///
 /// Inserts the comdat into `llmod` if it does not exist.

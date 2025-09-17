@@ -594,6 +594,12 @@ pub enum AttributeKind {
     /// Represents `#[non_exhaustive]`
     NonExhaustive(Span),
 
+    /// Represents `#[rustc_objc_class]`
+    ObjcClass { classname: Symbol, span: Span },
+
+    /// Represents `#[rustc_objc_selector]`
+    ObjcSelector { methname: Symbol, span: Span },
+
     /// Represents `#[optimize(size|speed)]`
     Optimize(OptimizeAttr, Span),
 
