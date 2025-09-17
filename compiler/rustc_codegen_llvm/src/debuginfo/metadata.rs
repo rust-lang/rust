@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::{iter, ptr};
 
-use libc::{c_longlong, c_uint};
+use libc::c_uint;
 use rustc_abi::{Align, Size};
 use rustc_codegen_ssa::debuginfo::type_names::{VTableNameKind, cpp_like_debuginfo};
 use rustc_codegen_ssa::traits::*;
@@ -115,12 +115,10 @@ fn build_fixed_size_array_di_node<'ll, 'tcx>(
 
     let (size, align) = cx.spanned_size_and_align_of(array_type, span);
 
-    let upper_bound = len
-        .try_to_target_usize(cx.tcx)
-        .expect("expected monomorphic const in codegen") as c_longlong;
+    let count =
+        len.try_to_target_usize(cx.tcx).expect("expected monomorphic const in codegen") as i64;
 
-    let subrange =
-        unsafe { Some(llvm::LLVMRustDIBuilderGetOrCreateSubrange(DIB(cx), 0, upper_bound)) };
+    let subrange = unsafe { Some(llvm::LLVMDIBuilderGetOrCreateSubrange(DIB(cx), 0, count)) };
 
     let subscripts = create_DIArray(DIB(cx), &[subrange]);
     let di_node = unsafe {
@@ -176,7 +174,7 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
             );
 
             let di_node = unsafe {
-                llvm::LLVMRustDIBuilderCreatePointerType(
+                llvm::LLVMDIBuilderCreatePointerType(
                     DIB(cx),
                     pointee_type_di_node,
                     pointer_size.bits(),
@@ -234,7 +232,7 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                     // The data pointer type is a regular, thin pointer, regardless of whether this
                     // is a slice or a trait object.
                     let data_ptr_type_di_node = unsafe {
-                        llvm::LLVMRustDIBuilderCreatePointerType(
+                        llvm::LLVMDIBuilderCreatePointerType(
                             DIB(cx),
                             pointee_type_di_node,
                             addr_field.size.bits(),
@@ -330,7 +328,7 @@ fn build_subroutine_type_di_node<'ll, 'tcx>(
         _ => unreachable!(),
     };
     let di_node = unsafe {
-        llvm::LLVMRustDIBuilderCreatePointerType(
+        llvm::LLVMDIBuilderCreatePointerType(
             DIB(cx),
             fn_di_node,
             size.bits(),

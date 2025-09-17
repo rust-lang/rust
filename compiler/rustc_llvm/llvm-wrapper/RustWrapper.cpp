@@ -1089,15 +1089,6 @@ LLVMRustDIBuilderCreateTypedef(LLVMDIBuilderRef Builder, LLVMMetadataRef Type,
       LineNo, unwrapDIPtr<DIScope>(Scope)));
 }
 
-extern "C" LLVMMetadataRef LLVMRustDIBuilderCreatePointerType(
-    LLVMDIBuilderRef Builder, LLVMMetadataRef PointeeTy, uint64_t SizeInBits,
-    uint32_t AlignInBits, unsigned AddressSpace, const char *Name,
-    size_t NameLen) {
-  return wrap(unwrap(Builder)->createPointerType(
-      unwrapDI<DIType>(PointeeTy), SizeInBits, AlignInBits, AddressSpace,
-      StringRef(Name, NameLen)));
-}
-
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateStructType(
     LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
     size_t NameLen, LLVMMetadataRef File, unsigned LineNumber,
@@ -1162,13 +1153,6 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateStaticMemberType(
       unwrap<llvm::ConstantInt>(val), llvm::dwarf::DW_TAG_member, AlignInBits));
 }
 
-extern "C" LLVMMetadataRef
-LLVMRustDIBuilderCreateQualifiedType(LLVMDIBuilderRef Builder, unsigned Tag,
-                                     LLVMMetadataRef Type) {
-  return wrap(
-      unwrap(Builder)->createQualifiedType(Tag, unwrapDI<DIType>(Type)));
-}
-
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateStaticVariable(
     LLVMDIBuilderRef Builder, LLVMMetadataRef Context, const char *Name,
     size_t NameLen, const char *LinkageName, size_t LinkageNameLen,
@@ -1225,21 +1209,6 @@ LLVMRustDIBuilderCreateArrayType(LLVMDIBuilderRef Builder, uint64_t Size,
   return wrap(unwrap(Builder)->createArrayType(
       Size, AlignInBits, unwrapDI<DIType>(Ty),
       DINodeArray(unwrapDI<MDTuple>(Subscripts))));
-}
-
-extern "C" LLVMMetadataRef
-LLVMRustDIBuilderGetOrCreateSubrange(LLVMDIBuilderRef Builder, int64_t Lo,
-                                     int64_t Count) {
-  return wrap(unwrap(Builder)->getOrCreateSubrange(Lo, Count));
-}
-
-extern "C" LLVMMetadataRef
-LLVMRustDIBuilderGetOrCreateArray(LLVMDIBuilderRef Builder,
-                                  LLVMMetadataRef *Ptr, unsigned Count) {
-  Metadata **DataValue = unwrap(Ptr);
-  return wrap(unwrap(Builder)
-                  ->getOrCreateArray(ArrayRef<Metadata *>(DataValue, Count))
-                  .get());
 }
 
 extern "C" void
