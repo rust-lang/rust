@@ -153,15 +153,7 @@ pub(super) struct DestinationPropagation;
 
 impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        // For now, only run at MIR opt level 3. Two things need to be changed before this can be
-        // turned on by default:
-        //  1. Because of the overeager removal of storage statements, this can cause stack space
-        //     regressions. This opt is not the place to fix this though, it's a more general
-        //     problem in MIR.
-        //  2. Despite being an overall perf improvement, this still causes a 30% regression in
-        //     keccak. We can temporarily fix this by bounding function size, but in the long term
-        //     we should fix this by being smarter about invalidating analysis results.
-        sess.mir_opt_level() >= 3
+        sess.mir_opt_level() >= 2
     }
 
     #[tracing::instrument(level = "trace", skip(self, tcx, body))]
