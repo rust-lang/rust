@@ -859,6 +859,14 @@
 # Trigger a `DebugBreak` after an internal compiler error during bootstrap on Windows
 #rust.break-on-ice = true
 
+# Set the number of threads for the compiler frontend used during compilation of Rust code (passed to `-Zthreads`).
+# The valid options are:
+# 0 - Set the number of threads according to the detected number of threads of the host system
+# 1 - Use a single thread for compilation of Rust code (the default)
+# N - Number of threads used for compilation of Rust code
+#
+#rust.parallel-frontend-threads = 1
+
 # =============================================================================
 # Distribution options
 #
