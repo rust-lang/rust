@@ -1,35 +1,26 @@
-error[E0743]: C-variadic type `...` may not be nested inside another type
+error: unexpected `...`
   --> $DIR/no-closure.rs:6:35
    |
 LL | const F: extern "C" fn(...) = |_: ...| {};
    |                                   ^^^
+   |
+   = note: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
 
 error: unexpected `...`
-  --> $DIR/no-closure.rs:10:14
+  --> $DIR/no-closure.rs:11:14
    |
 LL |     let f = |...| {};
    |              ^^^ not a valid pattern
    |
-help: for a rest pattern, use `..` instead of `...`
-   |
-LL -     let f = |...| {};
-LL +     let f = |..| {};
-   |
+   = note: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
 
-error[E0743]: C-variadic type `...` may not be nested inside another type
-  --> $DIR/no-closure.rs:14:17
+error: unexpected `...`
+  --> $DIR/no-closure.rs:16:17
    |
 LL |     let f = |_: ...| {};
    |                 ^^^
-
-error: `..` patterns are not allowed here
-  --> $DIR/no-closure.rs:10:14
    |
-LL |     let f = |...| {};
-   |              ^^^
-   |
-   = note: only allowed in tuple, tuple struct, and slice patterns
+   = note: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
 
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0743`.
