@@ -399,6 +399,25 @@ fn foo($0) {}
 }
 
 #[test]
+fn completes_in_fn_param_in_nested_pattern() {
+    check(
+        r#"
+struct Foo { num: u32 }
+struct Bar(Foo);
+fn foo(Bar($0)) {}
+"#,
+        expect![[r#"
+            st Bar
+            st Foo
+            bn Bar(…)        Bar($1)$0
+            bn Foo {…} Foo { num$1 }$0
+            kw mut
+            kw ref
+        "#]],
+    )
+}
+
+#[test]
 fn completes_in_closure_param() {
     check(
         r#"
