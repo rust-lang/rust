@@ -526,30 +526,32 @@ fn thin_lto(
 }
 
 fn enable_autodiff_settings(ad: &[config::AutoDiff]) {
+    use crate::llvm::EnzymeWrapper;
+    let enzyme = EnzymeWrapper::current();
     for val in ad {
         // We intentionally don't use a wildcard, to not forget handling anything new.
         match val {
             config::AutoDiff::PrintPerf => {
-                llvm::set_print_perf(true);
+                enzyme.lock().unwrap().set_print_perf(true);
             }
             config::AutoDiff::PrintAA => {
-                llvm::set_print_activity(true);
+                enzyme.lock().unwrap().set_print_activity(true);
             }
             config::AutoDiff::PrintTA => {
-                llvm::set_print_type(true);
+                enzyme.lock().unwrap().set_print_type(true);
             }
             config::AutoDiff::PrintTAFn(fun) => {
-                llvm::set_print_type(true); // Enable general type printing
-                llvm::set_print_type_fun(&fun); // Set specific function to analyze
+                enzyme.lock().unwrap().set_print_type(true); // Enable general type printing
+                enzyme.lock().unwrap().set_print_type_fun(&fun); // Set specific function to analyze
             }
             config::AutoDiff::Inline => {
-                llvm::set_inline(true);
+                enzyme.lock().unwrap().set_inline(true);
             }
             config::AutoDiff::LooseTypes => {
-                llvm::set_loose_types(true);
+                enzyme.lock().unwrap().set_loose_types(true);
             }
             config::AutoDiff::PrintSteps => {
-                llvm::set_print(true);
+                enzyme.lock().unwrap().set_print(true);
             }
             // We handle this in the PassWrapper.cpp
             config::AutoDiff::PrintPasses => {}
@@ -566,9 +568,9 @@ fn enable_autodiff_settings(ad: &[config::AutoDiff]) {
         }
     }
     // This helps with handling enums for now.
-    llvm::set_strict_aliasing(false);
+    enzyme.lock().unwrap().set_strict_aliasing(false);
     // FIXME(ZuseZ4): Test this, since it was added a long time ago.
-    llvm::set_rust_rules(true);
+    enzyme.lock().unwrap().set_rust_rules(true);
 }
 
 pub(crate) fn run_pass_manager(

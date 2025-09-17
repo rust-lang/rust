@@ -546,10 +546,12 @@ struct LLVMRustSanitizerOptions {
 extern "C" void registerEnzymeAndPassPipeline(llvm::PassBuilder &PB,
                                               /* augmentPassBuilder */ bool);
 
-extern "C" {
-extern llvm::cl::opt<std::string> EnzymeFunctionToAnalyze;
-}
+//extern "C" {
+//extern llvm::cl::opt<std::string> EnzymeFunctionToAnalyze;
+//}
 #endif
+
+extern "C" typedef void (*registerEnzymeAndPassPipelineFn)(llvm::PassBuilder &PB, bool augment);
 
 extern "C" LLVMRustResult LLVMRustOptimize(
     LLVMModuleRef ModuleRef, LLVMTargetMachineRef TMRef,
@@ -558,7 +560,7 @@ extern "C" LLVMRustResult LLVMRustOptimize(
     bool LintIR, LLVMRustThinLTOBuffer **ThinLTOBufferRef, bool EmitThinLTO,
     bool EmitThinLTOSummary, bool MergeFunctions, bool UnrollLoops,
     bool SLPVectorize, bool LoopVectorize, bool DisableSimplifyLibCalls,
-    bool EmitLifetimeMarkers, bool RunEnzyme, bool PrintBeforeEnzyme,
+    bool EmitLifetimeMarkers, registerEnzymeAndPassPipelineFn EnzymePtr, bool PrintBeforeEnzyme,
     bool PrintAfterEnzyme, bool PrintPasses,
     LLVMRustSanitizerOptions *SanitizerOptions, const char *PGOGenPath,
     const char *PGOUsePath, bool InstrumentCoverage,
@@ -872,7 +874,7 @@ extern "C" LLVMRustResult LLVMRustOptimize(
 
   // now load "-enzyme" pass:
 #ifdef ENZYME
-  if (RunEnzyme) {
+  if (EnzymePtr) {
 
     if (PrintBeforeEnzyme) {
       // Handle the Rust flag `-Zautodiff=PrintModBefore`.
@@ -880,7 +882,8 @@ extern "C" LLVMRustResult LLVMRustOptimize(
       MPM.addPass(PrintModulePass(outs(), Banner, true, false));
     }
 
-    registerEnzymeAndPassPipeline(PB, false);
+    EnzymePtr(PB, false);
+    //registerEnzymeAndPassPipeline(PB, false);
     if (auto Err = PB.parsePassPipeline(MPM, "enzyme")) {
       std::string ErrMsg = toString(std::move(Err));
       LLVMRustSetLastError(ErrMsg.c_str());
@@ -888,13 +891,13 @@ extern "C" LLVMRustResult LLVMRustOptimize(
     }
 
     // Check if PrintTAFn was used and add type analysis pass if needed
-    if (!EnzymeFunctionToAnalyze.empty()) {
-      if (auto Err = PB.parsePassPipeline(MPM, "print-type-analysis")) {
-        std::string ErrMsg = toString(std::move(Err));
-        LLVMRustSetLastError(ErrMsg.c_str());
-        return LLVMRustResult::Failure;
-      }
-    }
+    //if (!EnzymeFunctionToAnalyze.empty()) {
+    //  if (auto Err = PB.parsePassPipeline(MPM, "print-type-analysis")) {
+    //    std::string ErrMsg = toString(std::move(Err));
+    //    LLVMRustSetLastError(ErrMsg.c_str());
+    //    return LLVMRustResult::Failure;
+    //  }
+    //}
 
     if (PrintAfterEnzyme) {
       // Handle the Rust flag `-Zautodiff=PrintModAfter`.
