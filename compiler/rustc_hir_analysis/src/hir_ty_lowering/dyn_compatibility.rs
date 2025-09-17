@@ -6,7 +6,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_lint_defs::builtin::UNUSED_ASSOCIATED_TYPE_BOUNDS;
 use rustc_middle::ty::elaborate::ClauseWithSupertraitSpan;
 use rustc_middle::ty::{
-    self, BottomUpFolder, DynKind, ExistentialPredicateStableCmpExt as _, Ty, TyCtxt, TypeFoldable,
+    self, BottomUpFolder, ExistentialPredicateStableCmpExt as _, Ty, TyCtxt, TypeFoldable,
     TypeVisitableExt, Upcast,
 };
 use rustc_span::{ErrorGuaranteed, Span};
@@ -28,7 +28,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         hir_id: hir::HirId,
         hir_bounds: &[hir::PolyTraitRef<'tcx>],
         lifetime: &hir::Lifetime,
-        representation: DynKind,
     ) -> Ty<'tcx> {
         let tcx = self.tcx();
         let dummy_self = tcx.types.trait_object_dummy_self;
@@ -431,7 +430,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         };
         debug!(?region_bound);
 
-        Ty::new_dynamic(tcx, existential_predicates, region_bound, representation)
+        Ty::new_dynamic(tcx, existential_predicates, region_bound)
     }
 
     /// Check that elaborating the principal of a trait ref doesn't lead to projections

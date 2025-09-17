@@ -333,7 +333,7 @@ impl TyKind {
 
     #[inline]
     pub fn is_trait(&self) -> bool {
-        matches!(self, TyKind::RigidTy(RigidTy::Dynamic(_, _, DynKind::Dyn)))
+        matches!(self, TyKind::RigidTy(RigidTy::Dynamic(_, _)))
     }
 
     #[inline]
@@ -472,7 +472,7 @@ impl TyKind {
     }
 
     pub fn trait_principal(&self) -> Option<Binder<ExistentialTraitRef>> {
-        if let TyKind::RigidTy(RigidTy::Dynamic(predicates, _, _)) = self {
+        if let TyKind::RigidTy(RigidTy::Dynamic(predicates, _)) = self {
             if let Some(Binder { value: ExistentialPredicate::Trait(trait_ref), bound_vars }) =
                 predicates.first()
             {
@@ -562,7 +562,7 @@ pub enum RigidTy {
     Closure(ClosureDef, GenericArgs),
     Coroutine(CoroutineDef, GenericArgs),
     CoroutineClosure(CoroutineClosureDef, GenericArgs),
-    Dynamic(Vec<Binder<ExistentialPredicate>>, Region, DynKind),
+    Dynamic(Vec<Binder<ExistentialPredicate>>, Region),
     Never,
     Tuple(Vec<Ty>),
     CoroutineWitness(CoroutineWitnessDef, GenericArgs),
@@ -1204,11 +1204,6 @@ pub enum BoundRegionKind {
     BrAnon,
     BrNamed(BrNamedDef, String),
     BrEnv,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
-pub enum DynKind {
-    Dyn,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]

@@ -23,7 +23,6 @@ mod lint;
 use std::assert_matches::assert_matches;
 use std::slice;
 
-use rustc_ast::TraitObjectSyntax;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{
@@ -2428,7 +2427,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             ),
             hir::TyKind::TraitObject(bounds, tagged_ptr) => {
                 let lifetime = tagged_ptr.pointer();
-                let repr = tagged_ptr.tag();
 
                 if let Some(guar) = self.prohibit_or_lint_bare_trait_object_ty(hir_ty) {
                     // Don't continue with type analysis if the `dyn` keyword is missing
@@ -2436,10 +2434,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     // keyword like `impl`
                     Ty::new_error(tcx, guar)
                 } else {
-                    let repr = match repr {
-                        TraitObjectSyntax::Dyn | TraitObjectSyntax::None => ty::Dyn,
-                    };
-                    self.lower_trait_object_ty(hir_ty.span, hir_ty.hir_id, bounds, lifetime, repr)
+                    self.lower_trait_object_ty(hir_ty.span, hir_ty.hir_id, bounds, lifetime)
                 }
             }
             // If we encounter a fully qualified path with RTN generics, then it must have

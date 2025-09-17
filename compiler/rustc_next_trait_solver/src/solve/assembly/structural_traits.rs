@@ -383,7 +383,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<I: Intern
         | ty::Slice(_)
         | ty::RawPtr(_, _)
         | ty::Ref(_, _, _)
-        | ty::Dynamic(_, _, _)
+        | ty::Dynamic(_, _)
         | ty::Coroutine(_, _)
         | ty::CoroutineWitness(..)
         | ty::Never
@@ -557,7 +557,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
         | ty::Slice(_)
         | ty::RawPtr(_, _)
         | ty::Ref(_, _, _)
-        | ty::Dynamic(_, _, _)
+        | ty::Dynamic(_, _)
         | ty::Coroutine(_, _)
         | ty::CoroutineWitness(..)
         | ty::Never
@@ -706,7 +706,7 @@ pub(in crate::solve) fn extract_fn_def_from_const_callable<I: Interner>(
         | ty::Slice(_)
         | ty::RawPtr(_, _)
         | ty::Ref(_, _, _)
-        | ty::Dynamic(_, _, _)
+        | ty::Dynamic(_, _)
         | ty::Coroutine(_, _)
         | ty::CoroutineWitness(..)
         | ty::Never

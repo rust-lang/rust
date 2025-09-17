@@ -476,7 +476,7 @@ fn layout_of_uncached<'tcx>(
         }
 
         // Odd unit types.
-        ty::FnDef(..) | ty::Dynamic(_, _, ty::Dyn) | ty::Foreign(..) => {
+        ty::FnDef(..) | ty::Dynamic(_, _) | ty::Foreign(..) => {
             let sized = matches!(ty.kind(), ty::FnDef(..));
             tcx.mk_layout(LayoutData::unit(cx, sized))
         }

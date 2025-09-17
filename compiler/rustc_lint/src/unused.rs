@@ -312,7 +312,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                         })
                         .map(|inner| MustUsePath::Opaque(Box::new(inner)))
                 }
-                ty::Dynamic(binders, _, _) => binders.iter().find_map(|predicate| {
+                ty::Dynamic(binders, _) => binders.iter().find_map(|predicate| {
                     if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate.skip_binder()
                     {
                         let def_id = trait_ref.def_id;
