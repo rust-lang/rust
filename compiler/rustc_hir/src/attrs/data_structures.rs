@@ -642,7 +642,7 @@ pub enum AttributeKind {
     /// Represents `#[rustc_object_lifetime_default]`.
     RustcObjectLifetimeDefault,
 
-    /// Represents `#[rustc_simd_monomorphize_lane_limit(N)]`.
+    /// Represents `#[rustc_simd_monomorphize_lane_limit = "N"]`.
     RustcSimdMonomorphizeLaneLimit(Limit),
 
     /// Represents `#[sanitize]`

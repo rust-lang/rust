@@ -3,7 +3,7 @@
 //@ build-fail
 
 #[repr(simd, packed)]
-#[rustc_simd_monomorphize_lane_limit(4)]
+#[rustc_simd_monomorphize_lane_limit = "4"]
 struct V<T, const N: usize>([T; N]);
 
 fn main() {
