@@ -106,6 +106,8 @@ where
         loads: u32,
     ) -> std::io::Result<()> {
         for arg in self.iter().filter(|&arg| !arg.has_constraint()) {
+            // Setting the variables on an aligned boundary to make it easier to pick
+            // functions (of a specific architecture) that would help load the values.
             writeln!(
                 w,
                 "{indentation}alignas(64) const {ty} {name}_vals[] = {values};",

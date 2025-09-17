@@ -1,5 +1,4 @@
 use std::fs::File;
-use std::io::{self, Write};
 
 use rayon::prelude::*;
 
@@ -77,14 +76,6 @@ pub trait SupportedArchitectureTest {
                 if let Some(cpp_compiler) = cpp_compiler_wrapped.as_ref() {
                     let output = cpp_compiler
                         .compile_object_file(&format!("mod_{i}.cpp"), &format!("mod_{i}.o"))?;
-                    if !output.status.success() {
-                        io::stdout()
-                            .write_all(&output.stdout)
-                            .expect("Failed to write to stdout!");
-                        io::stderr()
-                            .write_all(&output.stderr)
-                            .expect("Failed to write to stderr!");
-                    }
                     assert!(output.status.success(), "{output:?}");
                 }
 

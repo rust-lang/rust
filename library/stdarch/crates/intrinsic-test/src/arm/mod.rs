@@ -36,8 +36,6 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
         "cstring",
         "iomanip",
         "sstream",
-        "cstddef",
-        "cstdint",
         "arm_neon.h",
         "arm_acle.h",
         "arm_fp16.h",
