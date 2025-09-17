@@ -701,3 +701,9 @@ pub fn get_completion(shell: &dyn Generator, path: &Path) -> Option<String> {
     }
     Some(String::from_utf8(buf).expect("completion script should be UTF-8"))
 }
+
+/// Return the top level help of the bootstrap.
+pub fn top_level_help() -> String {
+    let mut cmd = Flags::command();
+    cmd.render_help().to_string()
+}
