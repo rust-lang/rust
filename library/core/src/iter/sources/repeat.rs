@@ -102,7 +102,11 @@ impl<A: Clone> Iterator for Repeat<A> {
     }
 
     #[track_caller]
-    fn count(self) -> usize {
+    fn fold<B, F>(self, _init: B, _f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
         panic!("iterator is infinite");
     }
 }
