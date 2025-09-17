@@ -1103,13 +1103,6 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariantMemberType(
       fromRust(Flags), unwrapDI<DIType>(Ty)));
 }
 
-extern "C" LLVMMetadataRef
-LLVMRustDIBuilderCreateQualifiedType(LLVMDIBuilderRef Builder, unsigned Tag,
-                                     LLVMMetadataRef Type) {
-  return wrap(
-      unwrap(Builder)->createQualifiedType(Tag, unwrapDI<DIType>(Type)));
-}
-
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateStaticVariable(
     LLVMDIBuilderRef Builder, LLVMMetadataRef Context, const char *Name,
     size_t NameLen, const char *LinkageName, size_t LinkageNameLen,

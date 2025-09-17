@@ -567,7 +567,8 @@ fn build_variant_struct_wrapper_type_di_node<'ll, 'tcx>(
             let build_assoc_const = |name: &str,
                                      type_di_node_: &'ll DIType,
                                      value: u64,
-                                     align: Align| unsafe {
+                                     align: Align|
+             -> &'ll llvm::Metadata {
                 // FIXME: Currently we force all DISCR_* values to be u64's as LLDB seems to have
                 // problems inspecting other value types. Since DISCR_* is typically only going to be
                 // directly inspected via the debugger visualizer - which compares it to the `tag` value
@@ -580,8 +581,9 @@ fn build_variant_struct_wrapper_type_di_node<'ll, 'tcx>(
                 };
 
                 // must wrap type in a `const` modifier for LLDB to be able to inspect the value of the member
-                let field_type =
-                    llvm::LLVMRustDIBuilderCreateQualifiedType(DIB(cx), DW_TAG_const_type, t_di);
+                let field_type = unsafe {
+                    llvm::LLVMDIBuilderCreateQualifiedType(DIB(cx), DW_TAG_const_type, t_di)
+                };
 
                 create_static_member_type(
                     cx,

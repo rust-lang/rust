@@ -1970,6 +1970,14 @@ unsafe extern "C" {
         ConstantVal: Option<&'ll Value>,
         AlignInBits: u32,
     ) -> &'ll Metadata;
+
+    /// Creates a "qualified type" in the C/C++ sense, by adding modifiers
+    /// like `const` or `volatile`.
+    pub(crate) fn LLVMDIBuilderCreateQualifiedType<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Tag: c_uint, // (DWARF tag, e.g. `DW_TAG_const_type`)
+        Type: &'ll Metadata,
+    ) -> &'ll Metadata;
 }
 
 #[link(name = "llvm-wrapper", kind = "static")]
@@ -2329,12 +2337,6 @@ unsafe extern "C" {
         Flags: DIFlags,
         Ty: &'a DIType,
     ) -> &'a DIType;
-
-    pub(crate) fn LLVMRustDIBuilderCreateQualifiedType<'a>(
-        Builder: &DIBuilder<'a>,
-        Tag: c_uint,
-        Type: &'a DIType,
-    ) -> &'a DIDerivedType;
 
     pub(crate) fn LLVMRustDIBuilderCreateStaticVariable<'a>(
         Builder: &DIBuilder<'a>,
