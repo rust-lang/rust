@@ -1,0 +1,14 @@
+error[E0119]: conflicting implementations of trait `DerefMut` for type `Pin<&dyn SomeTrait<'_, _>>`
+  --> $DIR/pin-unsound-issue-85099-derefmut.rs:44:1
+   |
+LL | impl<'b, 'a, Fut> DerefMut for Pin<&'b dyn SomeTrait<'a, Fut>> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: conflicting implementation in crate `core`:
+           - impl<Ptr> DerefMut for Pin<Ptr>
+             where <pin::helper::Pin<Ptr> as pin::helper::DerefMut>::Target == <Pin<Ptr> as Deref>::Target, Ptr: Deref, pin::helper::Pin<Ptr>: pin::helper::DerefMut, pin::helper::Pin<Ptr>: ?Sized;
+   = note: upstream crates may add a new impl of trait `std::pin::helper::DerefMut` for type `std::pin::helper::Pin<&dyn SomeTrait<'_, _>>` in future versions
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.
