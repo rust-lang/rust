@@ -361,7 +361,7 @@ pub(super) fn try_for_lint(attr: &ast::Attr, token: &SyntaxToken) -> Option<Hove
     let lint =
         lints.binary_search_by_key(&needle, |lint| lint.label).ok().map(|idx| &lints[idx])?;
     Some(HoverResult {
-        markup: Markup::from(format!("```\n{}\n```\n___\n\n{}", lint.label, lint.description)),
+        markup: Markup::from(format!("```\n{}\n```\n---\n\n{}", lint.label, lint.description)),
         ..Default::default()
     })
 }
@@ -911,7 +911,7 @@ pub(super) fn literal(
     };
     let ty = ty.display(sema.db, display_target);
 
-    let mut s = format!("```rust\n{ty}\n```\n___\n\n");
+    let mut s = format!("```rust\n{ty}\n```\n---\n\n");
     match value {
         Ok(value) => {
             let backtick_len = value.chars().filter(|c| *c == '`').count();
@@ -1025,7 +1025,7 @@ fn type_info(
         if let Some(extra) =
             render_notable_trait(db, &notable_traits(db, &original), edition, display_target)
         {
-            desc.push_str("\n___\n");
+            desc.push_str("\n---\n");
             desc.push_str(&extra);
         };
         desc.into()
@@ -1093,7 +1093,7 @@ fn closure_ty(
         |_| None,
         |_| None,
     ) {
-        format_to!(markup, "\n___\n{layout}");
+        format_to!(markup, "\n---\n{layout}");
     }
     format_to!(markup, "{adjusted}\n\n## Captures\n{}", captures_rendered,);
 

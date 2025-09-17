@@ -360,7 +360,7 @@ fn main() {
             ```rust
             impl Fn(i32) -> i32
             ```
-            ___
+            ---
             size = 8, align = 8, niches = 1
 
             ## Captures
@@ -383,7 +383,7 @@ fn main() {
             ```rust
             impl Fn(i32) -> i32
             ```
-            ___
+            ---
             size = 0, align = 1
 
             ## Captures
@@ -417,7 +417,7 @@ fn main() {
             ```rust
             impl FnOnce()
             ```
-            ___
+            ---
             size = 16 (0x10), align = 8, niches = 1
 
             ## Captures
@@ -446,7 +446,7 @@ fn main() {
             ```rust
             impl FnMut()
             ```
-            ___
+            ---
             size = 8, align = 8, niches = 1
 
             ## Captures
@@ -471,7 +471,7 @@ fn main() {
             ```rust
             impl FnOnce() -> S2
             ```
-            ___
+            ---
             size = 8, align = 8, niches = 1
             Coerced to: &impl FnOnce() -> S2
 
@@ -6832,7 +6832,7 @@ fn hover_lint() {
                 ```
                 arithmetic_overflow
                 ```
-                ___
+                ---
 
                 arithmetic operation overflows
             "#]],
@@ -6844,7 +6844,7 @@ fn hover_lint() {
                 ```
                 arithmetic_overflow
                 ```
-                ___
+                ---
 
                 arithmetic operation overflows
             "#]],
@@ -6860,7 +6860,7 @@ fn hover_clippy_lint() {
                 ```
                 clippy::almost_swapped
                 ```
-                ___
+                ---
 
                 Checks for `foo = bar; bar = foo` sequences.
             "#]],
@@ -6872,7 +6872,7 @@ fn hover_clippy_lint() {
                 ```
                 clippy::almost_swapped
                 ```
-                ___
+                ---
 
                 Checks for `foo = bar; bar = foo` sequences.
             "#]],
@@ -8570,7 +8570,7 @@ fn main() {
             ```rust
             &'static str
             ```
-            ___
+            ---
 
             value of literal: ` 🦀🦀\A `
         "#]],
@@ -8586,7 +8586,7 @@ fn main() {
             ```rust
             &'static str
             ```
-            ___
+            ---
 
             value of literal: ` 🦀\u{1f980}\\\x41 `
         "#]],
@@ -8608,7 +8608,7 @@ fsdghs";
             ```rust
             &'static str
             ```
-            ___
+            ---
 
             value of literal (truncated up to newline): ` 🦀\u{1f980}\\\x41 `
         "#]],
@@ -8628,7 +8628,7 @@ fn main() {
             ```rust
             &'static {unknown}
             ```
-            ___
+            ---
 
             value of literal: ` 🦀🦀\A `
         "#]],
@@ -8647,7 +8647,7 @@ fn main() {
             ```rust
             &'static str
             ```
-            ___
+            ---
 
             value of literal: ```` `[^`]*` ````
         "#]],
@@ -8662,7 +8662,7 @@ fn main() {
             ```rust
             &'static str
             ```
-            ___
+            ---
 
             value of literal: `` ` ``
         "#]],
@@ -8677,7 +8677,7 @@ fn main() {
             ```rust
             &'static str
             ```
-            ___
+            ---
 
             value of literal: `    `
         "#]],
@@ -8693,7 +8693,7 @@ fn main() {
             ```rust
             &'static str
             ```
-            ___
+            ---
 
             value of literal: `  Hello World  `
         "#]],
@@ -8713,7 +8713,7 @@ fn main() {
             ```rust
             &'static [u8; 5]
             ```
-            ___
+            ---
 
             value of literal: ` [240, 159, 166, 128, 92] `
         "#]],
@@ -8729,7 +8729,7 @@ fn main() {
             ```rust
             &'static [u8; 18]
             ```
-            ___
+            ---
 
             value of literal: ` [92, 120, 70, 48, 92, 120, 57, 70, 92, 120, 65, 54, 92, 120, 56, 48, 92, 92] `
         "#]],
@@ -8749,7 +8749,7 @@ fn main() {
             ```rust
             u8
             ```
-            ___
+            ---
 
             value of literal: ` 0xF0 `
         "#]],
@@ -8765,7 +8765,7 @@ fn main() {
             ```rust
             u8
             ```
-            ___
+            ---
 
             value of literal: ` 0x5C `
         "#]],
@@ -8785,7 +8785,7 @@ fn main() {
             ```rust
             char
             ```
-            ___
+            ---
 
             value of literal: ` A `
         "#]],
@@ -8801,7 +8801,7 @@ fn main() {
             ```rust
             char
             ```
-            ___
+            ---
 
             value of literal: ` \ `
         "#]],
@@ -8817,7 +8817,7 @@ fn main() {
             ```rust
             char
             ```
-            ___
+            ---
 
             value of literal: ` 🦀 `
         "#]],
@@ -8837,7 +8837,7 @@ fn main() {
             ```rust
             f64
             ```
-            ___
+            ---
 
             value of literal: ` 1 (bits: 0x3FF0000000000000) `
         "#]],
@@ -8853,7 +8853,7 @@ fn main() {
             ```rust
             f16
             ```
-            ___
+            ---
 
             value of literal: ` 1 (bits: 0x3C00) `
         "#]],
@@ -8869,7 +8869,7 @@ fn main() {
             ```rust
             f32
             ```
-            ___
+            ---
 
             value of literal: ` 1 (bits: 0x3F800000) `
         "#]],
@@ -8885,7 +8885,7 @@ fn main() {
             ```rust
             f128
             ```
-            ___
+            ---
 
             value of literal: ` 1 (bits: 0x3FFF0000000000000000000000000000) `
         "#]],
@@ -8901,7 +8901,7 @@ fn main() {
             ```rust
             f64
             ```
-            ___
+            ---
 
             value of literal: ` 134000000000000 (bits: 0x42DE77D399980000) `
         "#]],
@@ -8917,7 +8917,7 @@ fn main() {
             ```rust
             f64
             ```
-            ___
+            ---
 
             value of literal: ` 1523527134274733600000000 (bits: 0x44F429E9249F629B) `
         "#]],
@@ -8933,7 +8933,7 @@ fn main() {
             ```rust
             f64
             ```
-            ___
+            ---
 
             invalid literal: invalid float literal
         "#]],
@@ -8953,7 +8953,7 @@ fn main() {
             ```rust
             i32
             ```
-            ___
+            ---
 
             value of literal: ` 34325236457856836345234 (0x744C659178614489D92|0b111010001001100011001011001000101111000011000010100010010001001110110010010) `
         "#]],
@@ -8969,7 +8969,7 @@ fn main() {
             ```rust
             i32
             ```
-            ___
+            ---
 
             value of literal: ` 13412342421 (0x31F701A95|0b1100011111011100000001101010010101) `
         "#]],
@@ -8985,7 +8985,7 @@ fn main() {
             ```rust
             i32
             ```
-            ___
+            ---
 
             value of literal: ` 306328611 (0x12423423|0b10010010000100011010000100011) `
         "#]],
@@ -9001,7 +9001,7 @@ fn main() {
             ```rust
             i32
             ```
-            ___
+            ---
 
             value of literal: ` 255 (0xFF|0b11111111) `
         "#]],
@@ -9017,7 +9017,7 @@ fn main() {
             ```rust
             i32
             ```
-            ___
+            ---
 
             value of literal: ` 5349 (0x14E5|0b1010011100101) `
         "#]],
@@ -9033,7 +9033,7 @@ fn main() {
             ```rust
             i32
             ```
-            ___
+            ---
 
             invalid literal: number too large to fit in target type
         "#]],
@@ -9189,7 +9189,7 @@ fn main() {
             ```rust
             S
             ```
-            ___
+            ---
             Implements notable traits: `Future<Output = u32>`, `Iterator<Item = S>`, `Notable`"#]],
     );
 }
