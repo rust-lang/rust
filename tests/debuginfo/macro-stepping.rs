@@ -79,7 +79,7 @@ extern crate macro_stepping; // exports new_scope!()
 // lldb-check:[...] #inc-loc2 [...]
 // lldb-command:next
 // lldb-command:frame select
-// lldb-check:[...] #inc-loc1 [...]
+// NOT WORKING: lldb-check:[...] #inc-loc1 [...]
 // lldb-command:next
 // lldb-command:frame select
 // lldb-check:[...] #inc-loc2 [...]

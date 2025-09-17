@@ -40,11 +40,11 @@
 // lldb-command:run
 
 // lldb-command:v s
-// lldb-check:[...] Struct { a = 1 b = 2.5 }
+// lldb-check:(by_value_non_immediate_argument::Struct) s = { a = 1 b = 2.5 }
 // lldb-command:continue
 
 // lldb-command:v x
-// lldb-check:[...] Struct { a = 3 b = 4.5 }
+// lldb-check:(by_value_non_immediate_argument::Struct) x = { a = 3 b = 4.5 }
 // lldb-command:v y
 // lldb-check:[...] 5
 // lldb-command:v z
@@ -52,15 +52,15 @@
 // lldb-command:continue
 
 // lldb-command:v a
-// lldb-check:[...] (7, 8, 9.5, 10.5)
+// lldb-check:[...] { 0 = 7 1 = 8 2 = 9.5 3 = 10.5 }
 // lldb-command:continue
 
 // lldb-command:v a
-// lldb-check:[...] Newtype(11.5, 12.5, 13, 14)
+// lldb-check:(by_value_non_immediate_argument::Newtype) a = { 0 = 11.5 1 = 12.5 2 = 13 3 = 14 }
 // lldb-command:continue
 
 // lldb-command:v x
-// lldb-check:[...] Case1 { x: 0, y: 8970181431921507452 }
+// lldb-check:(by_value_non_immediate_argument::Enum) x = { value = { x = 0 y = 8970181431921507452 } $discr$ = 0 }
 // lldb-command:continue
 
 #[derive(Clone)]

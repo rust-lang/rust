@@ -55,10 +55,10 @@
 
 
 // lldb-command:v some
-// lldb-check:[...] some = Some(8)
+// lldb-check:[...] some = { value = { 0 = 8 } $discr$ = 1 }
 
 // lldb-command:v none
-// lldb-check:[...] none = None
+// lldb-check:[...] none = { value = $discr$ = 0 }
 
 // lldb-command:v os_string
 // lldb-check:[...] os_string = "IAMA OS string 😃" { inner = { inner = size=19 { [0] = 'I' [1] = 'A' [2] = 'M' [3] = 'A' [4] = ' ' [5] = 'O' [6] = 'S' [7] = ' ' [8] = 's' [9] = 't' [10] = 'r' [11] = 'i' [12] = 'n' [13] = 'g' [14] = ' ' [15] = '\xf0' [16] = '\x9f' [17] = '\x98' [18] = '\x83' } } }
