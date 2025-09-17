@@ -210,6 +210,7 @@ impl DefUse {
 /// All of the caveats of `MaybeLiveLocals` apply.
 pub struct MaybeTransitiveLiveLocals<'a> {
     always_live: &'a DenseBitSet<Local>,
+    debuginfo_locals: &'a DenseBitSet<Local>,
 }
 
 impl<'a> MaybeTransitiveLiveLocals<'a> {
@@ -217,8 +218,48 @@ impl<'a> MaybeTransitiveLiveLocals<'a> {
     /// considered live.
     ///
     /// This should include at least all locals that are ever borrowed.
-    pub fn new(always_live: &'a DenseBitSet<Local>) -> Self {
-        MaybeTransitiveLiveLocals { always_live }
+    pub fn new(
+        always_live: &'a DenseBitSet<Local>,
+        debuginfo_locals: &'a DenseBitSet<Local>,
+    ) -> Self {
+        MaybeTransitiveLiveLocals { always_live, debuginfo_locals }
+    }
+
+    pub fn can_be_removed_if_dead<'tcx>(
+        stmt_kind: &StatementKind<'tcx>,
+        always_live: &DenseBitSet<Local>,
+        debuginfo_locals: &'a DenseBitSet<Local>,
+    ) -> Option<Place<'tcx>> {
+        // Compute the place that we are storing to, if any
+        let destination = match stmt_kind {
+            StatementKind::Assign(box (place, rvalue)) => (rvalue.is_safe_to_remove()
+                // FIXME: We are not sure how we should represent this debugging information for some statements,
+                // keep it for now.
+                && (!debuginfo_locals.contains(place.local)
+                    || (place.as_local().is_some() && stmt_kind.as_debuginfo().is_some())))
+            .then_some(*place),
+            StatementKind::SetDiscriminant { place, .. } | StatementKind::Deinit(place) => {
+                (!debuginfo_locals.contains(place.local)).then_some(**place)
+            }
+            StatementKind::FakeRead(_)
+            | StatementKind::StorageLive(_)
+            | StatementKind::StorageDead(_)
+            | StatementKind::Retag(..)
+            | StatementKind::AscribeUserType(..)
+            | StatementKind::PlaceMention(..)
+            | StatementKind::Coverage(..)
+            | StatementKind::Intrinsic(..)
+            | StatementKind::ConstEvalCounter
+            | StatementKind::BackwardIncompatibleDropHint { .. }
+            | StatementKind::Nop => None,
+        };
+        if let Some(destination) = destination
+            && !destination.is_indirect()
+            && !always_live.contains(destination.local)
+        {
+            return Some(destination);
+        }
+        None
     }
 }
 
@@ -243,32 +284,12 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
         statement: &mir::Statement<'tcx>,
         location: Location,
     ) {
-        // Compute the place that we are storing to, if any
-        let destination = match &statement.kind {
-            StatementKind::Assign(assign) => assign.1.is_safe_to_remove().then_some(assign.0),
-            StatementKind::SetDiscriminant { place, .. } | StatementKind::Deinit(place) => {
-                Some(**place)
-            }
-            StatementKind::FakeRead(_)
-            | StatementKind::StorageLive(_)
-            | StatementKind::StorageDead(_)
-            | StatementKind::Retag(..)
-            | StatementKind::AscribeUserType(..)
-            | StatementKind::PlaceMention(..)
-            | StatementKind::Coverage(..)
-            | StatementKind::Intrinsic(..)
-            | StatementKind::ConstEvalCounter
-            | StatementKind::BackwardIncompatibleDropHint { .. }
-            | StatementKind::Nop => None,
-        };
-        if let Some(destination) = destination {
-            if !destination.is_indirect()
-                && !state.contains(destination.local)
-                && !self.always_live.contains(destination.local)
-            {
-                // This store is dead
-                return;
-            }
+        if let Some(destination) =
+            Self::can_be_removed_if_dead(&statement.kind, &self.always_live, &self.debuginfo_locals)
+            && !state.contains(destination.local)
+        {
+            // This store is dead
+            return;
         }
         TransferFunction(state).visit_statement(statement, location);
     }
