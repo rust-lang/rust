@@ -19,9 +19,9 @@ fn too_complex(x: Result<i32, usize>) -> Option<i32> {
     // CHECK:     goto -> bb8;
     // CHECK: bb3: {
     // CHECK:     [[controlflow]] = ControlFlow::<usize, i32>::Continue(
-    // CHECK:     goto -> bb4;
+    // CHECK:     goto -> bb9;
     // CHECK: bb4: {
-    // CHECK:     goto -> bb6;
+    // CHECK:     switchInt(move _8) -> [0: bb6, 1: bb5, otherwise: bb1];
     // CHECK: bb5: {
     // CHECK:     {{_.*}} = copy (([[controlflow]] as Break).0: usize);
     // CHECK:     _0 = Option::<i32>::None;
@@ -34,6 +34,8 @@ fn too_complex(x: Result<i32, usize>) -> Option<i32> {
     // CHECK:     return;
     // CHECK: bb8: {
     // CHECK:     goto -> bb5;
+    // CHECK: bb9: {
+    // CHECK:     goto -> bb6;
     match {
         match x {
             Ok(v) => ControlFlow::Continue(v),
@@ -63,7 +65,7 @@ fn identity(x: Result<i32, i32>) -> Result<i32, i32> {
     // CHECK: bb4: {
     // CHECK:     return;
     // CHECK: bb5: {
-    // CHECK:     goto -> bb2;
+    // CHECK:     switchInt(move _5) -> [0: bb2, 1: bb3, otherwise: bb1];
     // CHECK: bb6: {
     // CHECK:     {{_.*}} = move (([[x]] as Err).0: i32);
     // CHECK:     [[controlflow]] = ControlFlow::<Result<Infallible, i32>, i32>::Break(
@@ -71,9 +73,11 @@ fn identity(x: Result<i32, i32>) -> Result<i32, i32> {
     // CHECK: bb7: {
     // CHECK:     {{_.*}} = move (([[x]] as Ok).0: i32);
     // CHECK:     [[controlflow]] = ControlFlow::<Result<Infallible, i32>, i32>::Continue(
-    // CHECK:     goto -> bb5;
+    // CHECK:     goto -> bb9;
     // CHECK: bb8: {
     // CHECK:     goto -> bb3;
+    // CHECK: bb9: {
+    // CHECK:     goto -> bb2;
     Ok(x?)
 }
 
@@ -134,9 +138,9 @@ fn custom_discr(x: bool) -> u8 {
     // CHECK:     goto -> bb7;
     // CHECK: bb2: {
     // CHECK:     {{_.*}} = CustomDiscr::B;
-    // CHECK:     goto -> bb3;
+    // CHECK:     goto -> bb8;
     // CHECK: bb3: {
-    // CHECK:     goto -> bb4;
+    // CHECK:     switchInt(move _4) -> [35: bb5, otherwise: bb4];
     // CHECK: bb4: {
     // CHECK:     _0 = const 13_u8;
     // CHECK:     goto -> bb6;
@@ -147,6 +151,8 @@ fn custom_discr(x: bool) -> u8 {
     // CHECK:     return;
     // CHECK: bb7: {
     // CHECK:     goto -> bb5;
+    // CHECK: bb8: {
+    // CHECK:     goto -> bb4;
     match if x { CustomDiscr::A } else { CustomDiscr::B } {
         CustomDiscr::A => 5,
         _ => 13,
@@ -237,14 +243,14 @@ fn duplicate_chain(x: bool) -> u8 {
         bb1 = {
             // CHECK: bb1: {
             // CHECK:     [[a:_.*]] = const 5_u8;
-            // CHECK:     goto -> bb3;
+            // CHECK:     goto -> bb7;
             a = 5;
             Goto(bb3)
         }
         bb2 = {
             // CHECK: bb2: {
             // CHECK:     [[a]] = const 5_u8;
-            // CHECK:     goto -> bb3;
+            // CHECK:     goto -> bb7;
             a = 5;
             Goto(bb3)
         }
@@ -258,8 +264,7 @@ fn duplicate_chain(x: bool) -> u8 {
         bb4 = {
             // CHECK: bb4: {
             // CHECK:     {{_.*}} = const 15_i32;
-            // CHECK-NOT: switchInt(
-            // CHECK:     goto -> bb5;
+            // CHECK:     switchInt(copy _2) -> [5: bb5, otherwise: bb6];
             let c = 15;
             match a { 5 => bb5, _ => bb6 }
         }
@@ -277,6 +282,12 @@ fn duplicate_chain(x: bool) -> u8 {
             RET = 9;
             Return()
         }
+        // CHECK: bb7: {
+        // CHECK-NEXT:     {{_.*}} = const 13_i32;
+        // CHECK-NEXT:     goto -> bb8;
+        // CHECK: bb8: {
+        // CHECK-NEXT:     {{_.*}} = const 15_i32;
+        // CHECK-NEXT:     goto -> bb5;
     }
 }
 
@@ -348,7 +359,7 @@ fn renumbered_bb(x: bool) -> u8 {
         }
         bb1 = {
             // CHECK: bb1: {
-            // CHECK:     goto -> bb8;
+            // CHECK:     goto -> bb9;
             a = false;
             Goto(bb3)
         }
@@ -389,10 +400,13 @@ fn renumbered_bb(x: bool) -> u8 {
         }
         // Duplicate of bb3.
         // CHECK: bb8: {
-        // CHECK-NEXT: goto -> bb9;
-        // Duplicate of bb4.
+        // CHECK:     switchInt(copy _2) -> [0: bb4, otherwise: bb5];
+        // Duplicate of bb8.
         // CHECK: bb9: {
-        // CHECK-NEXT: goto -> bb6;
+        // CHECK:     goto -> bb10;
+        // Duplicate of bb4.
+        // CHECK: bb10: {
+        // CHECK:     goto -> bb6;
     }
 }
 
@@ -407,22 +421,26 @@ fn disappearing_bb(x: u8) -> u8 {
         let a: bool;
         let b: bool;
         {
+            // CHECK: bb0: {
             a = true;
             b = true;
+            // CHECK:     switchInt({{.*}}) -> [0: bb3, 1: bb3, 2: bb1, otherwise: bb2];
             match x { 0 => bb3, 1 => bb3, 2 => bb1, _ => bb2 }
         }
         bb1 = {
             // CHECK: bb1: {
-            // CHECK: goto -> bb9;
+            // CHECK:     goto -> bb10;
             b = false;
             Goto(bb4)
         }
         bb2 = {
+            // CHECK: bb2: {
+            // CHECK:     unreachable;
             Unreachable()
         }
         bb3 = {
             // CHECK: bb3: {
-            // CHECK: goto -> bb10;
+            // CHECK:     goto -> bb13;
             a = false;
             Goto(bb4)
         }
@@ -442,16 +460,34 @@ fn disappearing_bb(x: u8) -> u8 {
             Goto(bb6)
         }
         // CHECK: bb9: {
-        // CHECK: goto -> bb5;
+        // CHECK:     switchInt(copy _3) -> [0: bb5, otherwise: bb7];
         // CHECK: bb10: {
-        // CHECK: goto -> bb6;
+        // CHECK:     goto -> bb11;
+        // CHECK: bb11: {
+        // CHECK:     goto -> bb8;
+        // CHECK: bb12: {
+        // CHECK:     switchInt(copy _3) -> [0: bb5, otherwise: bb7];
+        // CHECK: bb13: {
+        // CHECK:     goto -> bb14;
+        // CHECK: bb14: {
+        // CHECK:     goto -> bb15;
+        // CHECK: bb15: {
+        // CHECK:     goto -> bb6;
     }
 }
 
 /// Verify that we can thread jumps when we assign from an aggregate constant.
-fn aggregate(x: u8) -> u8 {
+fn aggregate() -> u8 {
     // CHECK-LABEL: fn aggregate(
+    // CHECK: debug a => [[a:_.*]];
+    // CHECK: debug b => [[b:_.*]];
     // CHECK-NOT: switchInt(
+    // CHECK: [[a2:_.*]] = copy [[a]];
+    // CHECK: {{_.*}} = Eq(move [[a2]], const 7_u8);
+    // CHECK-NEXT: goto -> [[bb:bb.*]];
+    // CHECK: [[bb]]: {
+    // CHECK-NOT: }
+    // CHECK: _0 = copy [[a]];
 
     const FOO: (u8, u8) = (5, 13);
 
@@ -508,7 +544,16 @@ fn assume(a: u8, b: bool) -> u8 {
 /// Verify that jump threading succeeds seeing through copies of aggregates.
 fn aggregate_copy() -> u32 {
     // CHECK-LABEL: fn aggregate_copy(
+    // CHECK: debug a => [[a:_.*]];
+    // CHECK: debug b => [[b:_.*]];
+    // CHECK: debug c => [[c:_.*]];
     // CHECK-NOT: switchInt(
+    // CHECK: [[c2:_.*]] = copy [[c]];
+    // CHECK: {{_.*}} = Eq(move [[c2]], const 2_u32);
+    // CHECK-NEXT: goto -> [[bb:bb.*]];
+    // CHECK: [[bb]]: {
+    // CHECK-NOT: }
+    // CHECK: _0 = const 13_u32;
 
     const Foo: (u32, u32) = (5, 3);
 
@@ -532,6 +577,14 @@ fn floats() -> u32 {
 
 pub fn bitwise_not() -> i32 {
     // CHECK-LABEL: fn bitwise_not(
+    // CHECK: debug a => [[a:_.*]];
+    // CHECK: [[a2:_.*]] = copy [[a]];
+    // CHECK: [[not:_.*]] = Not(move [[a2]]);
+    // CHECK: {{_.*}} = Eq(move [[not]], const 0_i32);
+    // CHECK-NEXT: goto -> [[bb:bb.*]];
+    // CHECK: [[bb]]: {
+    // CHECK-NOT: }
+    // CHECK: _0 = const 0_i32;
 
     // Test for #131195, which was optimizing `!a == b` into `a != b`.
     let a = 1;
@@ -540,9 +593,47 @@ pub fn bitwise_not() -> i32 {
 
 pub fn logical_not() -> i32 {
     // CHECK-LABEL: fn logical_not(
+    // CHECK: debug a => [[a:_.*]];
+    // CHECK: [[a2:_.*]] = copy [[a]];
+    // CHECK: [[not:_.*]] = Not(move [[a2]]);
+    // CHECK: {{_.*}} = Eq(move [[not]], const true);
+    // CHECK-NEXT: goto -> [[bb:bb.*]];
+    // CHECK: [[bb]]: {
+    // CHECK-NOT: }
+    // CHECK: _0 = const 1_i32;
 
     let a = false;
     if !a == true { 1 } else { 0 }
+}
+
+/// Verify that we correctly handle threading multiple conditions on the same bb.
+/// One version of the implementation was buggy and mutated a bb that would be duplicated later.
+fn chained_conditions() -> u8 {
+    // CHECK-LABEL: fn chained_conditions(
+
+    #[inline(never)]
+    fn env_var() -> Option<String> {
+        None
+    }
+
+    enum BacktraceStyle {
+        Off,
+        Short,
+        Full,
+    };
+
+    let format = match env_var() {
+        Some(x) if &x == "full" => BacktraceStyle::Full,
+        Some(x) if &x == "0" => BacktraceStyle::Off,
+        Some(_) => BacktraceStyle::Short,
+        None => BacktraceStyle::Off,
+    };
+
+    match format {
+        BacktraceStyle::Off => 1,
+        BacktraceStyle::Short => 2,
+        BacktraceStyle::Full => 3,
+    }
 }
 
 fn main() {
@@ -557,7 +648,7 @@ fn main() {
     mutable_ref();
     renumbered_bb(true);
     disappearing_bb(7);
-    aggregate(7);
+    aggregate();
     assume(7, false);
     floats();
     bitwise_not();
@@ -580,3 +671,4 @@ fn main() {
 // EMIT_MIR jump_threading.floats.JumpThreading.diff
 // EMIT_MIR jump_threading.bitwise_not.JumpThreading.diff
 // EMIT_MIR jump_threading.logical_not.JumpThreading.diff
+// EMIT_MIR jump_threading.chained_conditions.JumpThreading.diff
