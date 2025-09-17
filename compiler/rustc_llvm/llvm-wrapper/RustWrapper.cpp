@@ -1064,16 +1064,6 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateMethod(
   return wrap(Sub);
 }
 
-extern "C" LLVMMetadataRef
-LLVMRustDIBuilderCreateTypedef(LLVMDIBuilderRef Builder, LLVMMetadataRef Type,
-                               const char *Name, size_t NameLen,
-                               LLVMMetadataRef File, unsigned LineNo,
-                               LLVMMetadataRef Scope) {
-  return wrap(unwrap(Builder)->createTypedef(
-      unwrap<DIType>(Type), StringRef(Name, NameLen), unwrap<DIFile>(File),
-      LineNo, unwrapDIPtr<DIScope>(Scope)));
-}
-
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariantPart(
     LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
     size_t NameLen, LLVMMetadataRef File, unsigned LineNumber,

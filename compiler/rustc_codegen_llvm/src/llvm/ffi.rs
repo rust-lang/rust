@@ -24,7 +24,7 @@ use rustc_target::spec::SymbolVisibility;
 
 use super::RustString;
 use super::debuginfo::{
-    DIArray, DIBasicType, DIBuilder, DIDerivedType, DIDescriptor, DIEnumerator, DIFile, DIFlags,
+    DIArray, DIBuilder, DIDerivedType, DIDescriptor, DIEnumerator, DIFile, DIFlags,
     DIGlobalVariableExpression, DILocation, DISPFlags, DIScope, DISubprogram, DISubrange,
     DITemplateTypeParameter, DIType, DIVariable, DebugEmissionKind, DebugNameTableKind,
 };
@@ -1978,6 +1978,17 @@ unsafe extern "C" {
         Tag: c_uint, // (DWARF tag, e.g. `DW_TAG_const_type`)
         Type: &'ll Metadata,
     ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderCreateTypedef<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Type: &'ll Metadata,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
+        NameLen: size_t,
+        File: &'ll Metadata,
+        LineNo: c_uint,
+        Scope: Option<&'ll Metadata>,
+        AlignInBits: u32, // (optional; default is 0)
+    ) -> &'ll Metadata;
 }
 
 #[link(name = "llvm-wrapper", kind = "static")]
@@ -2312,16 +2323,6 @@ unsafe extern "C" {
         SPFlags: DISPFlags,
         TParam: &'a DIArray,
     ) -> &'a DISubprogram;
-
-    pub(crate) fn LLVMRustDIBuilderCreateTypedef<'a>(
-        Builder: &DIBuilder<'a>,
-        Type: &'a DIBasicType,
-        Name: *const c_char,
-        NameLen: size_t,
-        File: &'a DIFile,
-        LineNo: c_uint,
-        Scope: Option<&'a DIScope>,
-    ) -> &'a DIDerivedType;
 
     pub(crate) fn LLVMRustDIBuilderCreateVariantMemberType<'a>(
         Builder: &DIBuilder<'a>,
