@@ -20,8 +20,8 @@ use crate::attributes::allow_unstable::{
 use crate::attributes::body::CoroutineParser;
 use crate::attributes::codegen_attrs::{
     ColdParser, CoverageParser, ExportNameParser, ForceTargetFeatureParser, NakedParser,
-    NoMangleParser, OptimizeParser, SanitizeParser, TargetFeatureParser, TrackCallerParser,
-    UsedParser,
+    NoMangleParser, ObjcClassParser, ObjcSelectorParser, OptimizeParser, SanitizeParser,
+    TargetFeatureParser, TrackCallerParser, UsedParser,
 };
 use crate::attributes::confusables::ConfusablesParser;
 use crate::attributes::crate_level::{
@@ -185,6 +185,8 @@ attribute_parsers!(
         Single<LinkageParser>,
         Single<MoveSizeLimitParser>,
         Single<MustUseParser>,
+        Single<ObjcClassParser>,
+        Single<ObjcSelectorParser>,
         Single<OptimizeParser>,
         Single<PathAttributeParser>,
         Single<PatternComplexityLimitParser>,
