@@ -228,6 +228,7 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
     } else {
         &*sess.target.arch
     };
+    let (major, _, _) = get_version();
     match (arch, s) {
         ("x86", "sse4.2") => Some(LLVMFeature::with_dependencies(
             "sse4.2",
@@ -260,7 +261,7 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         ("aarch64", "fpmr") => None, // only existed in 18
         ("arm", "fp16") => Some(LLVMFeature::new("fullfp16")),
         // Filter out features that are not supported by the current LLVM version
-        ("loongarch32" | "loongarch64", "32s") if get_version().0 < 21 => None,
+        ("loongarch32" | "loongarch64", "32s") if major < 21 => None,
         // Enable the evex512 target feature if an avx512 target feature is enabled.
         ("x86", s) if s.starts_with("avx512") => Some(LLVMFeature::with_dependencies(
             s,
