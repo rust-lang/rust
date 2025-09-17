@@ -81,22 +81,62 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::bswap
         | sym::caller_location
         | sym::carrying_mul_add
+        | sym::ceilf16
+        | sym::ceilf32
+        | sym::ceilf64
+        | sym::ceilf128
         | sym::cold_path
         | sym::const_eval_select
         | sym::contract_check_ensures
         | sym::contract_check_requires
         | sym::contract_checks
+        | sym::cosf16
+        | sym::cosf32
+        | sym::cosf64
+        | sym::cosf128
         | sym::ctlz
         | sym::ctpop
         | sym::cttz
         | sym::discriminant_value
+        | sym::exp2f16
+        | sym::exp2f32
+        | sym::exp2f64
+        | sym::exp2f128
+        | sym::expf16
+        | sym::expf32
+        | sym::expf64
+        | sym::expf128
         | sym::fadd_algebraic
         | sym::fdiv_algebraic
+        | sym::floorf16
+        | sym::floorf32
+        | sym::floorf64
+        | sym::floorf128
+        | sym::fmaf16
+        | sym::fmaf32
+        | sym::fmaf64
+        | sym::fmaf128
         | sym::fmul_algebraic
+        | sym::fmuladdf16
+        | sym::fmuladdf32
+        | sym::fmuladdf64
+        | sym::fmuladdf128
         | sym::forget
         | sym::frem_algebraic
         | sym::fsub_algebraic
         | sym::is_val_statically_known
+        | sym::log2f16
+        | sym::log2f32
+        | sym::log2f64
+        | sym::log2f128
+        | sym::log10f16
+        | sym::log10f32
+        | sym::log10f64
+        | sym::log10f128
+        | sym::logf16
+        | sym::logf32
+        | sym::logf64
+        | sym::logf128
         | sym::maximumf16
         | sym::maximumf32
         | sym::maximumf64
@@ -115,6 +155,14 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::minnumf128
         | sym::mul_with_overflow
         | sym::needs_drop
+        | sym::powf16
+        | sym::powf32
+        | sym::powf64
+        | sym::powf128
+        | sym::powif16
+        | sym::powif32
+        | sym::powif64
+        | sym::powif128
         | sym::prefetch_read_data
         | sym::prefetch_read_instruction
         | sym::prefetch_write_data
@@ -128,13 +176,29 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::round_ties_even_f32
         | sym::round_ties_even_f64
         | sym::round_ties_even_f128
+        | sym::roundf16
+        | sym::roundf32
+        | sym::roundf64
+        | sym::roundf128
         | sym::rustc_peek
         | sym::saturating_add
         | sym::saturating_sub
         | sym::select_unpredictable
+        | sym::sinf16
+        | sym::sinf32
+        | sym::sinf64
+        | sym::sinf128
         | sym::size_of
+        | sym::sqrtf16
+        | sym::sqrtf32
+        | sym::sqrtf64
+        | sym::sqrtf128
         | sym::sub_with_overflow
         | sym::three_way_compare
+        | sym::truncf16
+        | sym::truncf32
+        | sym::truncf64
+        | sym::truncf128
         | sym::type_id
         | sym::type_id_eq
         | sym::type_name

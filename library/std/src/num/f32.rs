@@ -338,7 +338,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn powf(self, n: f32) -> f32 {
-        unsafe { intrinsics::powf32(self, n) }
+        intrinsics::powf32(self, n)
     }
 
     /// Returns the square root of a number.
@@ -395,7 +395,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn exp(self) -> f32 {
-        unsafe { intrinsics::expf32(self) }
+        intrinsics::expf32(self)
     }
 
     /// Returns `2^(self)`.
@@ -420,7 +420,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn exp2(self) -> f32 {
-        unsafe { intrinsics::exp2f32(self) }
+        intrinsics::exp2f32(self)
     }
 
     /// Returns the natural logarithm of the number.
@@ -455,7 +455,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn ln(self) -> f32 {
-        unsafe { intrinsics::logf32(self) }
+        intrinsics::logf32(self)
     }
 
     /// Returns the logarithm of the number with respect to an arbitrary base.
@@ -525,7 +525,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn log2(self) -> f32 {
-        unsafe { intrinsics::log2f32(self) }
+        intrinsics::log2f32(self)
     }
 
     /// Returns the base 10 logarithm of the number.
@@ -558,7 +558,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn log10(self) -> f32 {
-        unsafe { intrinsics::log10f32(self) }
+        intrinsics::log10f32(self)
     }
 
     /// The positive difference of two numbers.
@@ -683,7 +683,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn sin(self) -> f32 {
-        unsafe { intrinsics::sinf32(self) }
+        intrinsics::sinf32(self)
     }
 
     /// Computes the cosine of a number (in radians).
@@ -707,7 +707,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn cos(self) -> f32 {
-        unsafe { intrinsics::cosf32(self) }
+        intrinsics::cosf32(self)
     }
 
     /// Computes the tangent of a number (in radians).
