@@ -31,6 +31,22 @@ fn test_repeat_take_collect() {
 }
 
 #[test]
+#[should_panic = "iterator is infinite"]
+fn test_repeat_count() {
+    repeat(42).count();
+}
+
+#[test]
+fn test_repeat_last() {
+    assert_eq!(repeat(42).last(), Some(42));
+}
+
+#[test]
+fn test_repeat_map_double_last() {
+    assert_eq!(repeat(42).map(|e| 2 * e).last(), Some(2 * 42));
+}
+
+#[test]
 fn test_repeat_with() {
     #[derive(PartialEq, Debug)]
     struct NotClone(usize);
