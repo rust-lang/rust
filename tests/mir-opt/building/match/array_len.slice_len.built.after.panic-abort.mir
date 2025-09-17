@@ -1,0 +1,115 @@
+// MIR for `slice_len` after built
+
+fn slice_len(_1: &[T]) -> () {
+    debug x => _1;
+    let mut _0: ();
+    let mut _2: usize;
+    let mut _3: usize;
+    let mut _4: usize;
+    let mut _5: bool;
+    let _10: ();
+    let mut _11: &T;
+    let _12: ();
+    let mut _13: &T;
+    let _14: ();
+    let mut _15: &[T];
+    let _16: ();
+    let mut _17: &T;
+    scope 1 {
+        debug a => _6;
+        debug b => _7;
+        debug rest => _8;
+        debug e => _9;
+        let _6: &T;
+        let _7: &T;
+        let _8: &[T];
+        let _9: &T;
+    }
+
+    bb0: {
+        PlaceMention(_1);
+        _3 = PtrMetadata(copy _1);
+        _2 = move _3;
+        _4 = const 3_usize;
+        _5 = Ge(move _2, move _4);
+        switchInt(move _5) -> [0: bb1, otherwise: bb2];
+    }
+
+    bb1: {
+        goto -> bb9;
+    }
+
+    bb2: {
+        falseEdge -> [real: bb4, imaginary: bb1];
+    }
+
+    bb3: {
+        goto -> bb1;
+    }
+
+    bb4: {
+        StorageLive(_6);
+        _6 = &(*_1)[0 of 3];
+        StorageLive(_7);
+        _7 = &(*_1)[1 of 3];
+        StorageLive(_8);
+        _8 = &(*_1)[2:-1];
+        StorageLive(_9);
+        _9 = &(*_1)[-1 of 3];
+        StorageLive(_10);
+        StorageLive(_11);
+        _11 = copy _6;
+        _10 = opaque::<&T>(move _11) -> [return: bb5, unwind: bb11];
+    }
+
+    bb5: {
+        StorageDead(_11);
+        StorageDead(_10);
+        StorageLive(_12);
+        StorageLive(_13);
+        _13 = copy _7;
+        _12 = opaque::<&T>(move _13) -> [return: bb6, unwind: bb11];
+    }
+
+    bb6: {
+        StorageDead(_13);
+        StorageDead(_12);
+        StorageLive(_14);
+        StorageLive(_15);
+        _15 = copy _8;
+        _14 = opaque::<&[T]>(move _15) -> [return: bb7, unwind: bb11];
+    }
+
+    bb7: {
+        StorageDead(_15);
+        StorageDead(_14);
+        StorageLive(_16);
+        StorageLive(_17);
+        _17 = copy _9;
+        _16 = opaque::<&T>(move _17) -> [return: bb8, unwind: bb11];
+    }
+
+    bb8: {
+        StorageDead(_17);
+        StorageDead(_16);
+        _0 = const ();
+        StorageDead(_9);
+        StorageDead(_8);
+        StorageDead(_7);
+        StorageDead(_6);
+        goto -> bb10;
+    }
+
+    bb9: {
+        _0 = const ();
+        goto -> bb10;
+    }
+
+    bb10: {
+        return;
+    }
+
+    bb11 (cleanup): {
+        resume;
+    }
+}
