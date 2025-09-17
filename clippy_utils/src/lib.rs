@@ -329,13 +329,17 @@ pub fn is_wild(pat: &Pat<'_>) -> bool {
     matches!(pat.kind, PatKind::Wild)
 }
 
-// Checks if arm has the form `None => None`
-pub fn is_none_arm(cx: &LateContext<'_>, arm: &Arm<'_>) -> bool {
-    matches!(
-        arm.pat.kind,
+/// Checks if the `pat` is `None`.
+pub fn is_none_pattern(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
+    matches!(pat.kind,
         PatKind::Expr(PatExpr { kind: PatExprKind::Path(qpath), .. })
-            if is_res_lang_ctor(cx, cx.qpath_res(qpath, arm.pat.hir_id), OptionNone)
-    )
+            if is_res_lang_ctor(cx, cx.qpath_res(qpath, pat.hir_id), OptionNone))
+}
+
+/// Checks if `arm` has the form `None => None`.
+pub fn is_none_arm(cx: &LateContext<'_>, arm: &Arm<'_>) -> bool {
+    is_none_pattern(cx, arm.pat)
+        && matches!(peel_blocks(arm.body).kind, ExprKind::Path(qpath) if is_res_lang_ctor(cx, cx.qpath_res(&qpath, arm.body.hir_id), OptionNone))
 }
 
 /// Checks if the given `QPath` belongs to a type alias.
