@@ -4,7 +4,7 @@ error[E0741]: `[T; N]` can't be used as a const parameter type
 LL | struct UsesType<T, const N: usize, const M: [T; N]>(PhantomData<T>);
    |                                             ^^^^^^
    |
-   = note: `T` must implement `UnsizedConstParamTy`, but it does not
+   = note: `T` must implement `ConstParamTy_`, but it does not
 
 error: aborting due to 1 previous error
 

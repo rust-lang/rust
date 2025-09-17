@@ -203,6 +203,10 @@ impl CodegenBackend {
             Self::Llvm => "llvm",
         }
     }
+
+    pub fn is_llvm(self) -> bool {
+        matches!(self, Self::Llvm)
+    }
 }
 
 /// Configuration for `compiletest` *per invocation*.
