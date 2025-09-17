@@ -322,6 +322,40 @@ LL |         if x.is_some() {
 LL |             _ = x.unwrap();
    |                 ^^^^^^^^^^
 
+error: called `unwrap` on `option` after checking its variant with `is_some`
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:280:26
+   |
+LL |     if option.is_some() {
+   |     ------------------- help: try: `if let Some(<item>) = option`
+LL |         println!("{:?}", option.unwrap());
+   |                          ^^^^^^^^^^^^^^^
+
+error: this call to `unwrap()` will always panic
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:283:26
+   |
+LL |     if option.is_some() {
+   |        ---------------- because of this check
+...
+LL |         println!("{:?}", option.unwrap());
+   |                          ^^^^^^^^^^^^^^^
+
+error: called `unwrap` on `result` after checking its variant with `is_ok`
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:290:26
+   |
+LL |     if result.is_ok() {
+   |     ----------------- help: try: `if let Ok(<item>) = result`
+LL |         println!("{:?}", result.unwrap());
+   |                          ^^^^^^^^^^^^^^^
+
+error: this call to `unwrap()` will always panic
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:293:26
+   |
+LL |     if result.is_ok() {
+   |        -------------- because of this check
+...
+LL |         println!("{:?}", result.unwrap());
+   |                          ^^^^^^^^^^^^^^^
+
 error: creating a shared reference to mutable static
   --> tests/ui/checked_unwrap/simple_conditionals.rs:183:12
    |
@@ -332,5 +366,5 @@ LL |         if X.is_some() {
    = note: shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
    = note: `#[deny(static_mut_refs)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
 
-error: aborting due to 36 previous errors
+error: aborting due to 40 previous errors
 
