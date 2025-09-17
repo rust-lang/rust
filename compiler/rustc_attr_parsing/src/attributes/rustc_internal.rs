@@ -1,3 +1,5 @@
+use rustc_hir::limit::Limit;
+
 use super::prelude::*;
 use super::util::parse_single_integer;
 
@@ -47,5 +49,20 @@ impl<S: Stage> SingleAttributeParser<S> for RustcObjectLifetimeDefaultParser {
         }
 
         Some(AttributeKind::RustcObjectLifetimeDefault)
+    }
+}
+
+pub(crate) struct RustcSimdMonomorphizeLaneLimitParser;
+
+impl<S: Stage> SingleAttributeParser<S> for RustcSimdMonomorphizeLaneLimitParser {
+    const PATH: &[Symbol] = &[sym::rustc_simd_monomorphize_lane_limit];
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
+    const TEMPLATE: AttributeTemplate = template!(List: &["N"]);
+
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+        parse_single_integer(cx, args)
+            .map(|n| AttributeKind::RustcSimdMonomorphizeLaneLimit(Limit::new(n as usize)))
     }
 }

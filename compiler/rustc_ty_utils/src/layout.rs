@@ -7,6 +7,8 @@ use rustc_abi::{
     VariantIdx, Variants, WrappingRange,
 };
 use rustc_hashes::Hash64;
+use rustc_hir::attrs::AttributeKind;
+use rustc_hir::find_attr;
 use rustc_index::IndexVec;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
@@ -562,21 +564,18 @@ fn layout_of_uncached<'tcx>(
             let e_ly = cx.layout_of(e_ty)?;
 
             // Check for the rustc_simd_monomorphize_lane_limit attribute and check the lane limit
-            if let Some(attr) =
-                tcx.get_attrs_by_path(def.did(), &[sym::rustc_simd_monomorphize_lane_limit]).next()
-            {
-                if let Some(lit) = attr.value_lit() {
-                    if let Ok(limit) = lit.symbol.as_str().parse::<u64>() {
-                        if e_len > limit {
-                            return Err(map_error(
-                                &cx,
-                                ty,
-                                rustc_abi::LayoutCalculatorError::OversizedSimdType {
-                                    max_lanes: limit,
-                                },
-                            ));
-                        }
-                    }
+            if let Some(limit) = find_attr!(
+                tcx.get_all_attrs(def.did()),
+                AttributeKind::RustcSimdMonomorphizeLaneLimit(limit) => limit
+            ) {
+                if !limit.value_within_limit(e_len as usize) {
+                    return Err(map_error(
+                        &cx,
+                        ty,
+                        rustc_abi::LayoutCalculatorError::OversizedSimdType {
+                            max_lanes: limit.0 as u64,
+                        },
+                    ));
                 }
             }
 

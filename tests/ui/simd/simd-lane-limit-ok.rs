@@ -3,7 +3,7 @@
 //@ build-pass
 
 #[repr(simd, packed)]
-#[rustc_simd_monomorphize_lane_limit = "8"]
+#[rustc_simd_monomorphize_lane_limit(8)]
 struct V<T, const N: usize>([T; N]);
 
 const LANES: usize = 4;
