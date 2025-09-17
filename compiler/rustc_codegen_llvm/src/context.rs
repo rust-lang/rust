@@ -172,35 +172,6 @@ pub(crate) unsafe fn create_module<'ll>(
     let mut target_data_layout = sess.target.data_layout.to_string();
     let llvm_version = llvm_util::get_version();
 
-    if llvm_version < (20, 0, 0) {
-        if sess.target.arch == "aarch64" || sess.target.arch.starts_with("arm64") {
-            // LLVM 20 defines three additional address spaces for alternate
-            // pointer kinds used in Windows.
-            // See https://github.com/llvm/llvm-project/pull/111879
-            target_data_layout =
-                target_data_layout.replace("-p270:32:32-p271:32:32-p272:64:64", "");
-        }
-        if sess.target.arch.starts_with("sparc") {
-            // LLVM 20 updates the sparc layout to correctly align 128 bit integers to 128 bit.
-            // See https://github.com/llvm/llvm-project/pull/106951
-            target_data_layout = target_data_layout.replace("-i128:128", "");
-        }
-        if sess.target.arch.starts_with("mips64") {
-            // LLVM 20 updates the mips64 layout to correctly align 128 bit integers to 128 bit.
-            // See https://github.com/llvm/llvm-project/pull/112084
-            target_data_layout = target_data_layout.replace("-i128:128", "");
-        }
-        if sess.target.arch.starts_with("powerpc64") {
-            // LLVM 20 updates the powerpc64 layout to correctly align 128 bit integers to 128 bit.
-            // See https://github.com/llvm/llvm-project/pull/118004
-            target_data_layout = target_data_layout.replace("-i128:128", "");
-        }
-        if sess.target.arch.starts_with("wasm32") || sess.target.arch.starts_with("wasm64") {
-            // LLVM 20 updates the wasm(32|64) layout to correctly align 128 bit integers to 128 bit.
-            // See https://github.com/llvm/llvm-project/pull/119204
-            target_data_layout = target_data_layout.replace("-i128:128", "");
-        }
-    }
     if llvm_version < (21, 0, 0) {
         if sess.target.arch == "nvptx64" {
             // LLVM 21 updated the default layout on nvptx: https://github.com/llvm/llvm-project/pull/124961
