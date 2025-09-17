@@ -17,14 +17,19 @@ pub const DEFAULT_MIN_STACK_SIZE: usize = 131072;
 const MIN_STACK_SIZE: usize = 4096;
 pub const GUARD_PAGE_SIZE: usize = 4096;
 
+struct ThreadData {
+    handle: crate::thread::Thread,
+    main: Box<dyn FnOnce()>,
+}
+
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
     pub unsafe fn new(
         stack: usize,
-        _name: Option<&str>,
-        p: Box<dyn FnOnce()>,
+        handle: crate::thread::Thread,
+        main: Box<dyn FnOnce()>,
     ) -> io::Result<Thread> {
-        let p = Box::into_raw(Box::new(p));
+        let data = Box::into_raw(Box::new(ThreadData { handle, main }));
         let mut stack_size = crate::cmp::max(stack, MIN_STACK_SIZE);
 
         if (stack_size & 4095) != 0 {
@@ -62,25 +67,31 @@ impl Thread {
         };
 
         let guard_page_pre = stack_plus_guard_pages.as_ptr() as usize;
-        let tid = create_thread(
+        match create_thread(
             thread_start as *mut usize,
             &mut stack_plus_guard_pages[GUARD_PAGE_SIZE..(stack_size + GUARD_PAGE_SIZE)],
-            p as usize,
+            data.expose_provenance(),
             guard_page_pre,
             stack_size,
             0,
-        )
-        .map_err(|code| io::Error::from_raw_os_error(code as i32))?;
+        ) {
+            Ok(tid) => return Ok(Thread { tid }),
+            Err(code) => {
+                drop(unsafe { Box::from_raw(data) });
+                return Err(io::Error::from_raw_os_error(code as i32));
+            }
+        }
 
         extern "C" fn thread_start(
-            main: *mut usize,
+            data: *mut usize,
             guard_page_pre: usize,
             stack_size: usize,
         ) -> ! {
-            unsafe {
-                // Run the contents of the new thread.
-                Box::from_raw(main as *mut Box<dyn FnOnce()>)();
-            }
+            let data = unsafe { Box::from_raw(data as *mut ThreadData) };
+            crate::thread::set_current(data.handle);
+
+            // Run the contents of the new thread.
+            (data.main)();
 
             // Destroy TLS, which will free the TLS page and call the destructor for
             // any thread local storage (if any).
@@ -105,8 +116,6 @@ impl Thread {
                 );
             }
         }
-
-        Ok(Thread { tid })
     }
 
     pub fn join(self) {

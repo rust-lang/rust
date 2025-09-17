@@ -22,14 +22,19 @@ pub struct Thread {
 unsafe impl Send for Thread {}
 unsafe impl Sync for Thread {}
 
+struct ThreadData {
+    handle: crate::thread::Thread,
+    main: Box<dyn FnOnce()>,
+}
+
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
     pub unsafe fn new(
         stack: usize,
-        _name: Option<&str>,
-        p: Box<dyn FnOnce()>,
+        handle: crate::thread::Thread,
+        main: Box<dyn FnOnce()>,
     ) -> io::Result<Thread> {
-        let p = Box::into_raw(Box::new(p));
+        let data = Box::into_raw(Box::new(ThreadData { handle, main }));
         let mut native: libc::pthread_t = unsafe { mem::zeroed() };
         let mut attr: libc::pthread_attr_t = unsafe { mem::zeroed() };
         assert_eq!(unsafe { libc::pthread_attr_init(&mut attr) }, 0);
@@ -62,16 +67,17 @@ impl Thread {
             }
         };
 
-        let ret = unsafe { libc::pthread_create(&mut native, &attr, thread_start, p as *mut _) };
-        // Note: if the thread creation fails and this assert fails, then p will
-        // be leaked. However, an alternative design could cause double-free
+        let ret = unsafe { libc::pthread_create(&mut native, &attr, thread_start, data as *mut _) };
+        // Note: if the thread creation fails and this assert fails, then data
+        // will be leaked. However, an alternative design could cause double-free
         // which is clearly worse.
         assert_eq!(unsafe { libc::pthread_attr_destroy(&mut attr) }, 0);
 
         return if ret != 0 {
-            // The thread failed to start and as a result p was not consumed. Therefore, it is
-            // safe to reconstruct the box so that it gets deallocated.
-            drop(unsafe { Box::from_raw(p) });
+            // The thread failed to start and as a result data was not consumed.
+            // Therefore, it is safe to reconstruct the box so that it gets
+            // deallocated.
+            drop(unsafe { Box::from_raw(data) });
             Err(io::Error::from_raw_os_error(ret))
         } else {
             // The new thread will start running earliest after the next yield.
@@ -80,15 +86,10 @@ impl Thread {
             Ok(Thread { id: native })
         };
 
-        extern "C" fn thread_start(main: *mut libc::c_void) -> *mut libc::c_void {
-            unsafe {
-                // Next, set up our stack overflow handler which may get triggered if we run
-                // out of stack.
-                // this is not necessary in TEE.
-                //let _handler = stack_overflow::Handler::new();
-                // Finally, let's run some code.
-                Box::from_raw(main as *mut Box<dyn FnOnce()>)();
-            }
+        extern "C" fn thread_start(data: *mut libc::c_void) -> *mut libc::c_void {
+            let data = unsafe { Box::from_raw(data as *mut ThreadData) };
+            crate::thread::set_current(data.handle);
+            (data.main)();
             ptr::null_mut()
         }
     }

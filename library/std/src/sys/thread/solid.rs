@@ -27,9 +27,9 @@ unsafe impl Sync for Thread {}
 /// State data shared between a parent thread and child thread. It's dropped on
 /// a transition to one of the final states.
 struct ThreadInner {
-    /// This field is used on thread creation to pass a closure from
-    /// `Thread::new` to the created task.
-    start: UnsafeCell<ManuallyDrop<Box<dyn FnOnce()>>>,
+    /// This field is used on thread creation to pass the thread handle and closure
+    /// to the newly created thread.
+    data: UnsafeCell<ManuallyDrop<(crate::thread::Thread, Box<dyn FnOnce()>)>>,
 
     /// A state machine. Each transition is annotated with `[...]` in the
     /// source code.
@@ -65,7 +65,7 @@ struct ThreadInner {
     lifecycle: Atomic<usize>,
 }
 
-// Safety: The only `!Sync` field, `ThreadInner::start`, is only touched by
+// Safety: The only `!Sync` field, `ThreadInner::data`, is only touched by
 //         the task represented by `ThreadInner`.
 unsafe impl Sync for ThreadInner {}
 
@@ -86,11 +86,11 @@ impl Thread {
     /// See `thread::Builder::spawn_unchecked` for safety requirements.
     pub unsafe fn new(
         stack: usize,
-        _name: Option<&str>,
-        p: Box<dyn FnOnce()>,
+        handle: crate::thread::Thread,
+        main: Box<dyn FnOnce()>,
     ) -> io::Result<Thread> {
         let inner = Box::new(ThreadInner {
-            start: UnsafeCell::new(ManuallyDrop::new(p)),
+            data: UnsafeCell::new(ManuallyDrop::new((handle, main))),
             lifecycle: AtomicUsize::new(LIFECYCLE_INIT),
         });
 
@@ -100,10 +100,11 @@ impl Thread {
             let inner = unsafe { &*p_inner };
 
             // Safety: Since `trampoline` is called only once for each
-            //         `ThreadInner` and only `trampoline` touches `start`,
-            //         `start` contains contents and is safe to mutably borrow.
-            let p = unsafe { ManuallyDrop::take(&mut *inner.start.get()) };
-            p();
+            //         `ThreadInner` and only `trampoline` touches `data`,
+            //         `data` contains contents and is safe to mutably borrow.
+            let (handle, main) = unsafe { ManuallyDrop::take(&mut *inner.data.get()) };
+            crate::thread::set_current(handle);
+            main();
 
             // Fix the current thread's state just in case, so that the
             // destructors won't abort

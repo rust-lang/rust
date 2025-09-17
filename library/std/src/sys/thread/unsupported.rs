@@ -1,4 +1,3 @@
-use crate::ffi::CStr;
 use crate::io;
 use crate::num::NonZero;
 use crate::time::Duration;
@@ -11,7 +10,7 @@ impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
     pub unsafe fn new(
         _stack: usize,
-        _name: Option<&str>,
+        _handle: crate::thread::Thread,
         _p: Box<dyn FnOnce()>,
     ) -> io::Result<Thread> {
         Err(io::Error::UNSUPPORTED_PLATFORM)
@@ -32,10 +31,6 @@ pub fn current_os_id() -> Option<u64> {
 
 pub fn yield_now() {
     // do nothing
-}
-
-pub fn set_name(_name: &CStr) {
-    // nope
 }
 
 pub fn sleep(_dur: Duration) {
