@@ -1,5 +1,5 @@
 #![feature(never_type)]
-#![deny(unconstructible_pub_struct)]
+#![deny(unconstructable_pub_struct)]
 
 pub struct T1(!);
 pub struct T2(());
@@ -27,7 +27,7 @@ pub struct T8<X> {
     _x: std::marker::PhantomData<X>,
 }
 
-pub struct T9<X> { //~ ERROR: pub struct `T9` is unconstructible externally and never constructed locally
+pub struct T9<X> { //~ ERROR: pub struct `T9` is unconstructable externally and never constructed locally
     _x: std::marker::PhantomData<X>,
     _y: i32,
 }
@@ -38,7 +38,7 @@ mod pri {
     pub struct Unreachable(i32);
 }
 
-pub struct NeverConstructed(i32); //~ ERROR: pub struct `NeverConstructed` is unconstructible externally and never constructed locally
+pub struct NeverConstructed(i32); //~ ERROR: pub struct `NeverConstructed` is unconstructable externally and never constructed locally
 
 impl NeverConstructed {
     pub fn not_construct_self(&self) {}

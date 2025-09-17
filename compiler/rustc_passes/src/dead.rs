@@ -18,12 +18,12 @@ use rustc_middle::middle::privacy::Level;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, AssocTag, TyCtxt};
 use rustc_middle::{bug, span_bug};
-use rustc_session::lint::builtin::{DEAD_CODE, UNCONSTRUCTIBLE_PUB_STRUCT};
+use rustc_session::lint::builtin::{DEAD_CODE, UNCONSTRUCTABLE_PUB_STRUCT};
 use rustc_session::lint::{self, LintExpectationId};
 use rustc_span::{Symbol, kw, sym};
 
 use crate::errors::{
-    ChangeFields, IgnoredDerivedImpls, MultipleDeadCodes, ParentInfo, UnconstructiblePubStruct,
+    ChangeFields, IgnoredDerivedImpls, MultipleDeadCodes, ParentInfo, UnconstructablePubStruct,
     UselessAssignment,
 };
 
@@ -739,9 +739,9 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
     }
 }
 
-fn has_allow_unconstructible_pub_struct(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
+fn has_allow_unconstructable_pub_struct(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
-    let lint_level = tcx.lint_level_at_node(UNCONSTRUCTIBLE_PUB_STRUCT, hir_id).level;
+    let lint_level = tcx.lint_level_at_node(UNCONSTRUCTABLE_PUB_STRUCT, hir_id).level;
     matches!(lint_level, lint::Allow | lint::Expect)
 }
 
@@ -879,12 +879,12 @@ fn create_and_seed_worklist(
                             true,
                         ),
                         DefKind::Struct => (
-                            has_allow_unconstructible_pub_struct(tcx, *id)
+                            has_allow_unconstructable_pub_struct(tcx, *id)
                                 || struct_can_be_constructed_directly(tcx, *id),
                             false,
                         ),
                         DefKind::Ctor(CtorOf::Struct, CtorKind::Fn) => (
-                            has_allow_unconstructible_pub_struct(tcx, tcx.local_parent(*id))
+                            has_allow_unconstructable_pub_struct(tcx, tcx.local_parent(*id))
                                 || struct_can_be_constructed_directly(tcx, tcx.local_parent(*id)),
                             false,
                         ),
@@ -1339,8 +1339,8 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModDefId) {
 
         let hir_id = tcx.local_def_id_to_hir_id(def_id);
         let vis_span = tcx.hir_node(hir_id).expect_item().vis_span;
-        let diag = UnconstructiblePubStruct { name, vis_span };
-        tcx.emit_node_span_lint(UNCONSTRUCTIBLE_PUB_STRUCT, hir_id, tcx.hir_span(hir_id), diag);
+        let diag = UnconstructablePubStruct { name, vis_span };
+        tcx.emit_node_span_lint(UNCONSTRUCTABLE_PUB_STRUCT, hir_id, tcx.hir_span(hir_id), diag);
     }
 }
 

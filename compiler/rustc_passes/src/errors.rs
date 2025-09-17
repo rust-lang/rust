@@ -1269,8 +1269,8 @@ pub(crate) enum MultipleDeadCodes<'tcx> {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(passes_unconstructible_pub_struct)]
-pub(crate) struct UnconstructiblePubStruct {
+#[diag(passes_unconstructable_pub_struct)]
+pub(crate) struct UnconstructablePubStruct {
     pub name: Symbol,
     #[help]
     pub vis_span: Span,
