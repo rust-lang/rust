@@ -708,6 +708,10 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             Rvalue::WrapUnsafeBinder(..) => {
                 // Unsafe binders are always trivial to create.
             }
+
+            Rvalue::StaticallyKnown(..) => {
+                // We can always choose a value for this.
+            }
         }
     }
 

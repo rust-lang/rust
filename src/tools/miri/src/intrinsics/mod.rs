@@ -162,20 +162,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_pointer(Pointer::new(ptr.provenance, masked_addr), dest)?;
             }
 
-            // We want to return either `true` or `false` at random, or else something like
-            // ```
-            // if !is_val_statically_known(0) { unreachable_unchecked(); }
-            // ```
-            // Would not be considered UB, or the other way around (`is_val_statically_known(0)`).
-            "is_val_statically_known" => {
-                let [_arg] = check_intrinsic_arg_count(args)?;
-                // FIXME: should we check for validity here? It's tricky because we do not have a
-                // place. Codegen does not seem to set any attributes like `noundef` for intrinsic
-                // calls, so we don't *have* to do anything.
-                let branch: bool = this.machine.rng.get_mut().random();
-                this.write_scalar(Scalar::from_bool(branch), dest)?;
-            }
-
             "sqrtf32" => {
                 let [f] = check_intrinsic_arg_count(args)?;
                 let f = this.read_scalar(f)?.to_f32()?;

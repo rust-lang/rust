@@ -1410,6 +1410,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
             }
+            Rvalue::StaticallyKnown(_) => {
+                // All operand types are allowed.
+            }
         }
         self.super_rvalue(rvalue, location);
     }

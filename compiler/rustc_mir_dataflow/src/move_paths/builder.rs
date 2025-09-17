@@ -399,7 +399,8 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
             | Rvalue::Cast(_, ref operand, _)
             | Rvalue::ShallowInitBox(ref operand, _)
             | Rvalue::UnaryOp(_, ref operand)
-            | Rvalue::WrapUnsafeBinder(ref operand, _) => self.gather_operand(operand),
+            | Rvalue::WrapUnsafeBinder(ref operand, _)
+            | Rvalue::StaticallyKnown(ref operand) => self.gather_operand(operand),
             Rvalue::BinaryOp(ref _binop, box (ref lhs, ref rhs)) => {
                 self.gather_operand(lhs);
                 self.gather_operand(rhs);

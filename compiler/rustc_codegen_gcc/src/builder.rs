@@ -925,6 +925,12 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.gcc_checked_binop(oop, typ, lhs, rhs)
     }
 
+    fn is_constant(&mut self, val: Self::Value) -> Self::Value {
+        let builtin = self.context.get_builtin_function("__builtin_constant_p");
+        let res = self.context.new_call(None, builtin, &[val]);
+        self.icmp(IntPredicate::IntEQ, res, self.const_i32(0))
+    }
+
     fn alloca(&mut self, size: Size, align: Align) -> RValue<'gcc> {
         let ty = self.cx.type_array(self.cx.type_i8(), size.bytes()).get_aligned(align.bytes());
         // TODO(antoyo): It might be better to return a LValue, but fixing the rustc API is non-trivial.

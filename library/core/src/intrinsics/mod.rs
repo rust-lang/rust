@@ -2527,13 +2527,10 @@ pub(crate) macro const_eval_select {
 /// # _ = foo(&5_i32);
 /// # _ = bar(&5_i32);
 /// ```
-#[rustc_const_stable_indirect]
 #[rustc_nounwind]
-#[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
-pub const fn is_val_statically_known<T: Copy>(_arg: T) -> bool {
-    false
-}
+#[rustc_intrinsic_const_stable_indirect]
+pub const fn is_val_statically_known<T: Copy>(arg: T) -> bool;
 
 /// Non-overlapping *typed* swap of a single value.
 ///

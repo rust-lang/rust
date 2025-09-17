@@ -1226,6 +1226,10 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             WrapUnsafeBinder(ref op, ty) => {
                 with_no_trimmed_paths!(write!(fmt, "wrap_binder!({op:?}; {ty})"))
             }
+
+            StaticallyKnown(ref op) => {
+                write!(fmt, "StaticallyKnown({op:?})")
+            }
         }
     }
 }

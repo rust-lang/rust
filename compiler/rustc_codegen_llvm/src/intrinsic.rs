@@ -198,17 +198,6 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 codegen_autodiff(self, tcx, instance, args, result);
                 return Ok(());
             }
-            sym::is_val_statically_known => {
-                if let OperandValue::Immediate(imm) = args[0].val {
-                    self.call_intrinsic(
-                        "llvm.is.constant",
-                        &[args[0].layout.immediate_llvm_type(self.cx)],
-                        &[imm],
-                    )
-                } else {
-                    self.const_bool(false)
-                }
-            }
             sym::select_unpredictable => {
                 let cond = args[0].immediate();
                 assert_eq!(args[1].layout, args[2].layout);

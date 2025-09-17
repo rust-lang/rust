@@ -491,6 +491,16 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 FlatSet::Elem(Scalar::from_target_usize(val, &self.tcx))
             }
             Rvalue::Discriminant(place) => state.get_discr(place.as_ref(), &self.map),
+            Rvalue::StaticallyKnown(op) => {
+                match self.eval_operand(op, state) {
+                    // The constant value of the argument is known to this pass
+                    // and can be used for further optimizations. Collapsing to
+                    // `true` is thus likely to be profitable.
+                    FlatSet::Elem(_) => FlatSet::Elem(Scalar::from_bool(true)),
+                    FlatSet::Bottom => FlatSet::Bottom,
+                    FlatSet::Top => FlatSet::Top,
+                }
+            }
             Rvalue::Use(operand) => return self.handle_operand(operand, state),
             Rvalue::CopyForDeref(place) => {
                 return self.handle_operand(&Operand::Copy(*place), state);

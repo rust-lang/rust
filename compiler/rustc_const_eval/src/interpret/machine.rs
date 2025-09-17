@@ -289,6 +289,18 @@ pub trait Machine<'tcx>: Sized {
         a
     }
 
+    /// Computes the result of `is_val_statically_known`.
+    ///
+    /// The default implementation always returns `false`, but this could also
+    /// non-deterministically choose a value (miri does that to fully explore
+    /// the possible AM executions).
+    fn is_val_statically_known(
+        _ecx: &InterpCx<'tcx, Self>,
+        _val: &OpTy<'tcx, Self::Provenance>,
+    ) -> InterpResult<'tcx, bool> {
+        interp_ok(false)
+    }
+
     /// Called before a basic block terminator is executed.
     #[inline]
     fn before_terminator(_ecx: &mut InterpCx<'tcx, Self>) -> InterpResult<'tcx> {

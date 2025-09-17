@@ -284,3 +284,9 @@ pub unsafe fn slice_get<'a, 'b>(
         slice_get_unchecked(pm, i),
     )
 }
+
+pub fn statically_known_primitive(i: i32) -> bool {
+    // CHECK-LABEL: fn statically_known_primitive(
+    // CHECK: = StaticallyKnown(
+    std::intrinsics::is_val_statically_known(i)
+}

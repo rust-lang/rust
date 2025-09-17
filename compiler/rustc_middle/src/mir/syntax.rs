@@ -1491,6 +1491,13 @@ pub enum Rvalue<'tcx> {
 
     /// Wraps a value in an unsafe binder.
     WrapUnsafeBinder(Operand<'tcx>, Ty<'tcx>),
+
+    /// Yields a boolean that indicates whether the value of the operand is
+    /// known during optimization.
+    ///
+    /// From an operational semantics perspective, the result is
+    /// non-deterministically chosen.
+    StaticallyKnown(Operand<'tcx>),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
