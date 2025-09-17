@@ -17,6 +17,9 @@ fn no_profile_in_cargo_toml() {
     // keep it fast and simple.
     for entry in WalkDir::new(".")
         .into_iter()
+        // Do not recurse into `target` as lintcheck might put some sources (and their
+        //  `Cargo.toml`) there.
+        .filter_entry(|e| e.file_name() != "target")
         .filter_map(Result::ok)
         .filter(|e| e.file_name().to_str() == Some("Cargo.toml"))
     {
