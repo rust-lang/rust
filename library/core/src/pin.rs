@@ -1689,9 +1689,66 @@ impl<Ptr: [const] Deref> const Deref for Pin<Ptr> {
     }
 }
 
+mod helper {
+    /// Helper that prevents downstream crates from implementing `DerefMut` for `Pin`.
+    ///
+    /// This type is not `#[fundamental]`, so it's possible to relax its `DerefMut` impl bounds in
+    /// the future, so the orphan rules reject downstream impls of `DerefMut` of `Pin`.
+    #[repr(transparent)]
+    #[unstable(feature = "pin_derefmut_internals", issue = "none")]
+    #[allow(missing_debug_implementations)]
+    pub struct Pin<Ptr> {
+        pointer: Ptr,
+    }
+
+    #[unstable(feature = "pin_derefmut_internals", issue = "none")]
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    pub const trait DerefMut {
+        type Target: ?Sized;
+        fn deref_mut(&mut self) -> &mut Self::Target;
+    }
+
+    #[unstable(feature = "pin_derefmut_internals", issue = "none")]
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    impl<Ptr: [const] super::DerefMut> const DerefMut for Pin<Ptr>
+    where
+        Ptr::Target: crate::marker::Unpin,
+    {
+        type Target = Ptr::Target;
+
+        #[inline(always)]
+        fn deref_mut(&mut self) -> &mut Ptr::Target {
+            &mut self.pointer
+        }
+    }
+}
+
 #[stable(feature = "pin", since = "1.33.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<Ptr: [const] DerefMut<Target: Unpin>> const DerefMut for Pin<Ptr> {
+#[cfg(not(doc))]
+impl<Ptr> const DerefMut for Pin<Ptr>
+where
+    Ptr: [const] Deref,
+    helper::Pin<Ptr>: [const] helper::DerefMut<Target = Self::Target>,
+{
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Ptr::Target {
+        // SAFETY: Pin and helper::Pin have the same layout, so this is equivalent to
+        // `&mut self.pointer` which is safe because `Target: Unpin`.
+        helper::DerefMut::deref_mut(unsafe {
+            &mut *(self as *mut Pin<Ptr> as *mut helper::Pin<Ptr>)
+        })
+    }
+}
+
+#[stable(feature = "pin", since = "1.33.0")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[cfg(doc)]
+impl<Ptr> const DerefMut for Pin<Ptr>
+where
+    Ptr: [const] DerefMut,
+    Ptr::Target: Unpin,
+{
     fn deref_mut(&mut self) -> &mut Ptr::Target {
         Pin::get_mut(Pin::as_mut(self))
     }

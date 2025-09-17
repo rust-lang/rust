@@ -22,7 +22,7 @@ impl MyPinType {
 fn impl_deref_mut(_: impl DerefMut) {}
 fn unpin_impl_ref(r_unpin: Pin<&MyUnpinType>) {
     impl_deref_mut(r_unpin)
-    //~^ ERROR: the trait bound `Pin<&MyUnpinType>: DerefMut` is not satisfied
+    //~^ ERROR: the trait bound `&MyUnpinType: DerefMut` is not satisfied
 }
 fn unpin_impl_mut(r_unpin: Pin<&mut MyUnpinType>) {
     impl_deref_mut(r_unpin)
@@ -30,7 +30,7 @@ fn unpin_impl_mut(r_unpin: Pin<&mut MyUnpinType>) {
 fn pin_impl_ref(r_pin: Pin<&MyPinType>) {
     impl_deref_mut(r_pin)
     //~^ ERROR: `PhantomPinned` cannot be unpinned
-    //~| ERROR: the trait bound `Pin<&MyPinType>: DerefMut` is not satisfied
+    //~| ERROR: the trait bound `&MyPinType: DerefMut` is not satisfied
 }
 fn pin_impl_mut(r_pin: Pin<&mut MyPinType>) {
     impl_deref_mut(r_pin)
