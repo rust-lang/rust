@@ -20,6 +20,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         match intrinsic_name {
             // Operations we can do with soft-floats.
+            "sqrtf16" => {
+                let [f] = check_intrinsic_arg_count(args)?;
+                let f = this.read_scalar(f)?.to_f16()?;
+                // Sqrt is specified to be fully precise.
+                let res = math::sqrt(f);
+                let res = this.adjust_nan(res, &[f]);
+                this.write_scalar(res, dest)?;
+            }
             "sqrtf32" => {
                 let [f] = check_intrinsic_arg_count(args)?;
                 let f = this.read_scalar(f)?.to_f32()?;
@@ -31,6 +39,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "sqrtf64" => {
                 let [f] = check_intrinsic_arg_count(args)?;
                 let f = this.read_scalar(f)?.to_f64()?;
+                // Sqrt is specified to be fully precise.
+                let res = math::sqrt(f);
+                let res = this.adjust_nan(res, &[f]);
+                this.write_scalar(res, dest)?;
+            }
+            "sqrtf128" => {
+                let [f] = check_intrinsic_arg_count(args)?;
+                let f = this.read_scalar(f)?.to_f128()?;
                 // Sqrt is specified to be fully precise.
                 let res = math::sqrt(f);
                 let res = this.adjust_nan(res, &[f]);
