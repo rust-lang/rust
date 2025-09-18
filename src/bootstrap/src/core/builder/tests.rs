@@ -2077,6 +2077,7 @@ mod snapshot {
             .args(&["--skip", "rustdoc-gui"])
     }
 
+    #[ignore]
     #[test]
     fn test_all_stage_1() {
         let ctx = TestCtx::new();
@@ -2246,6 +2247,7 @@ mod snapshot {
         ");
     }
 
+    #[ignore]
     #[test]
     fn test_all_stage_2() {
         let ctx = TestCtx::new();

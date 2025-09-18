@@ -1074,6 +1074,7 @@ impl<'a> Builder<'a> {
             Kind::Test => describe!(
                 crate::core::build_steps::toolstate::ToolStateCheck,
                 test::Tidy,
+                test::RunMake,
                 test::Bootstrap,
                 test::Ui,
                 test::Crashes,
@@ -1129,7 +1130,6 @@ impl<'a> Builder<'a> {
                 test::RustInstaller,
                 test::TestFloatParse,
                 test::CollectLicenseMetadata,
-                test::RunMake,
                 test::RunMakeCargo,
             ),
             Kind::Miri => describe!(test::Crate),
