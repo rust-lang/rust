@@ -1,3 +1,4 @@
+Running GenMC Verification...
 error: Undefined Behavior: Non-atomic race
   --> tests/genmc/fail/data_race/mpu2_rels_rlx.rs:LL:CC
    |
@@ -14,6 +15,8 @@ note: inside `genmc::spawn_pthread_closure::thread_func::<{closure@tests/genmc/f
    |
 LL |         f();
    |         ^^^
+
+note: add `-Zmiri-genmc-print-genmc-output` to MIRIFLAGS to see the detailed GenMC error report
 
 error: aborting due to 1 previous error
 

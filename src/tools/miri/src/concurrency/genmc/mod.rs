@@ -2,8 +2,8 @@ use std::cell::{Cell, RefCell};
 use std::sync::Arc;
 
 use genmc_sys::{
-    GENMC_GLOBAL_ADDRESSES_MASK, GenmcScalar, MemOrdering, MiriGenmcShim, RMWBinOp, UniquePtr,
-    create_genmc_driver_handle,
+    EstimationResult, GENMC_GLOBAL_ADDRESSES_MASK, GenmcScalar, MemOrdering, MiriGenmcShim,
+    RMWBinOp, UniquePtr, create_genmc_driver_handle,
 };
 use rustc_abi::{Align, Size};
 use rustc_const_eval::interpret::{AllocId, InterpCx, InterpResult, interp_ok};
@@ -16,6 +16,7 @@ use self::helper::{
     MAX_ACCESS_SIZE, Warnings, emit_warning, genmc_scalar_to_scalar,
     maybe_upgrade_compare_exchange_success_orderings, scalar_to_genmc_scalar, to_genmc_rmw_op,
 };
+use self::run::GenmcMode;
 use self::thread_id_map::ThreadIdMap;
 use crate::concurrency::genmc::helper::split_access;
 use crate::intrinsics::AtomicRmwOp;
@@ -36,6 +37,16 @@ pub use genmc_sys::GenmcParams;
 
 pub use self::config::GenmcConfig;
 pub use self::run::run_genmc_mode;
+
+#[derive(Debug)]
+pub enum ExecutionEndResult {
+    /// An error occurred at the end of the execution.
+    Error(String),
+    /// No errors occurred, and there are more executions to explore.
+    Continue,
+    /// No errors occurred and we are finished.
+    Stop,
+}
 
 #[derive(Clone, Copy, Debug)]
 pub enum ExitType {
@@ -128,26 +139,33 @@ pub struct GenmcCtx {
 /// GenMC Context creation and administrative / query actions
 impl GenmcCtx {
     /// Create a new `GenmcCtx` from a given config.
-    fn new(miri_config: &MiriConfig, global_state: Arc<GlobalState>) -> Self {
+    fn new(miri_config: &MiriConfig, global_state: Arc<GlobalState>, mode: GenmcMode) -> Self {
         let genmc_config = miri_config.genmc_config.as_ref().unwrap();
-        let handle =
-            RefCell::new(create_genmc_driver_handle(&genmc_config.params, genmc_config.log_level));
+        let handle = RefCell::new(create_genmc_driver_handle(
+            &genmc_config.params,
+            genmc_config.log_level,
+            /* do_estimation: */ mode == GenmcMode::Estimation,
+        ));
         Self { handle, exec_state: Default::default(), global_state }
     }
 
+    fn get_estimation_results(&self) -> EstimationResult {
+        self.handle.borrow().get_estimation_results()
+    }
+
     /// Get the number of blocked executions encountered by GenMC.
-    pub fn get_blocked_execution_count(&self) -> u64 {
+    fn get_blocked_execution_count(&self) -> u64 {
         self.handle.borrow().get_blocked_execution_count()
     }
 
     /// Get the number of explored executions encountered by GenMC.
-    pub fn get_explored_execution_count(&self) -> u64 {
+    fn get_explored_execution_count(&self) -> u64 {
         self.handle.borrow().get_explored_execution_count()
     }
 
     /// Check if GenMC encountered an error that wasn't immediately returned during execution.
     /// Returns a string representation of the error if one occurred.
-    pub fn try_get_error(&self) -> Option<String> {
+    fn try_get_error(&self) -> Option<String> {
         self.handle
             .borrow()
             .get_error_string()
@@ -157,20 +175,13 @@ impl GenmcCtx {
 
     /// Check if GenMC encountered an error that wasn't immediately returned during execution.
     /// Returns a string representation of the error if one occurred.
-    pub fn get_result_message(&self) -> String {
+    fn get_result_message(&self) -> String {
         self.handle
             .borrow()
             .get_result_message()
             .as_ref()
             .map(|error| error.to_string_lossy().to_string())
             .expect("there should always be a message")
-    }
-
-    /// This function determines if we should continue exploring executions or if we are done.
-    ///
-    /// In GenMC mode, the input program should be repeatedly executed until this function returns `true` or an error is found.
-    pub fn is_exploration_done(&self) -> bool {
-        self.handle.borrow_mut().pin_mut().is_exploration_done()
     }
 
     /// Select whether data race free actions should be allowed. This function should be used carefully!
@@ -218,13 +229,25 @@ impl GenmcCtx {
     /// This function will also check for those, and return their error description.
     ///
     /// To get the all messages (warnings, errors) that GenMC produces, use the `get_result_message` method.
-    fn handle_execution_end(&self) -> Option<String> {
+    fn handle_execution_end(&self) -> ExecutionEndResult {
         let result = self.handle.borrow_mut().pin_mut().handle_execution_end();
-        result.as_ref().map(|msg| msg.to_string_lossy().to_string())?;
+        if let Some(error) = result.as_ref() {
+            return ExecutionEndResult::Error(error.to_string_lossy().to_string());
+        }
+
+        // GenMC decides if there is more to explore:
+        let exploration_done = self.handle.borrow_mut().pin_mut().is_exploration_done();
 
         // GenMC currently does not return an error value immediately in all cases.
+        // Both `handle_execution_end` and `is_exploration_done` can produce such errors.
         // We manually query for any errors here to ensure we don't miss any.
-        self.try_get_error()
+        if let Some(error) = self.try_get_error() {
+            ExecutionEndResult::Error(error)
+        } else if exploration_done {
+            ExecutionEndResult::Stop
+        } else {
+            ExecutionEndResult::Continue
+        }
     }
 
     /**** Memory access handling ****/

@@ -10,7 +10,9 @@
 #include "Support/Verbosity.hpp"
 
 // C++ headers:
+#include <cmath>
 #include <cstdint>
+#include <limits>
 
 auto MiriGenmcShim::schedule_next(
     const int curr_thread_id,
@@ -39,4 +41,16 @@ auto MiriGenmcShim::handle_execution_end() -> std::unique_ptr<std::string> {
     // FIXME(genmc): add error handling once GenMC returns an error here.
     GenMCDriver::handleExecutionEnd();
     return {};
+}
+
+/**** Estimation mode result ****/
+
+auto MiriGenmcShim::get_estimation_results() const -> EstimationResult {
+    const auto& res = getResult();
+    return EstimationResult {
+        .mean = static_cast<double>(res.estimationMean),
+        .sd = static_cast<double>(std::sqrt(res.estimationVariance)),
+        .explored_execs = static_cast<uint64_t>(res.explored),
+        .blocked_execs = static_cast<uint64_t>(res.exploredBlocked),
+    };
 }

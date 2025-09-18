@@ -10,11 +10,15 @@ use crate::{IsolatedOp, MiriConfig, RejectOpWith};
 pub struct GenmcConfig {
     /// Parameters sent to the C++ side to create a new handle to the GenMC model checker.
     pub(super) params: GenmcParams,
+    pub(super) do_estimation: bool,
     /// Print the output message that GenMC generates when an error occurs.
     /// This error message is currently hard to use, since there is no clear mapping between the events that GenMC sees and the Rust code location where this event was produced.
     pub(super) print_genmc_output: bool,
     /// The log level for GenMC.
     pub(super) log_level: LogLevel,
+    /// Enable more verbose output, such as number of executions estimate
+    /// and time to completion of verification step.
+    pub(super) verbose_output: bool,
 }
 
 impl GenmcConfig {
@@ -57,8 +61,21 @@ impl GenmcConfig {
                         "Invalid suffix to GenMC argument '-Zmiri-genmc-print-exec-graphs', expected '', '=none', '=explored', '=blocked' or '=all'"
                     )),
             }
+        } else if trimmed_arg == "estimate" {
+            // FIXME(genmc): should this be on by default (like for GenMC)?
+            // Enable estimating the execution space and require time before running the actual verification.
+            genmc_config.do_estimation = true;
+        } else if let Some(estimation_max_str) = trimmed_arg.strip_prefix("estimation-max=") {
+            // Set the maximum number of executions to explore during estimation.
+            genmc_config.params.estimation_max = estimation_max_str.parse().ok().filter(|estimation_max| *estimation_max > 0).ok_or_else(|| {
+                format!(
+                    "'-Zmiri-genmc-estimation-max=...' expects a positive integer argument, but got '{estimation_max_str}'"
+                )
+            })?;
         } else if trimmed_arg == "print-genmc-output" {
             genmc_config.print_genmc_output = true;
+        } else if trimmed_arg == "verbose" {
+            genmc_config.verbose_output = true;
         } else {
             return Err(format!("Invalid GenMC argument: \"-Zmiri-genmc-{trimmed_arg}\""));
         }

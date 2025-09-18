@@ -39,18 +39,6 @@ mod run {
 impl GenmcCtx {
     // We don't provide the `new` function in the dummy module.
 
-    pub fn get_blocked_execution_count(&self) -> usize {
-        unreachable!()
-    }
-
-    pub fn get_explored_execution_count(&self) -> usize {
-        unreachable!()
-    }
-
-    pub fn is_exploration_done(&self) -> bool {
-        unreachable!()
-    }
-
     /**** Memory access handling ****/
 
     pub(super) fn set_ongoing_action_data_race_free(&self, _enable: bool) {

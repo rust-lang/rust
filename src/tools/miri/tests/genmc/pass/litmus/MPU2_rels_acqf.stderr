@@ -1,3 +1,4 @@
+Running GenMC Verification...
 X=1, Y=2, a=Err(1), b=Ok(1), c=2
 X=1, Y=2, a=Err(1), b=Ok(1), c=1
 X=1, Y=2, a=Err(1), b=Ok(1), c=0
@@ -34,5 +35,4 @@ X=1, Y=1, a=Err(0), b=Err(0), c=0
 X=1, Y=1, a=Err(0), b=Err(0), c=1
 X=1, Y=1, a=Err(0), b=Err(0), c=0
 X=1, Y=1, a=Err(0), b=Err(0), c=0
-(GenMC) Verification complete. No errors were detected.
-Number of complete executions explored: 36
+Verification complete with 36 executions. No errors found.

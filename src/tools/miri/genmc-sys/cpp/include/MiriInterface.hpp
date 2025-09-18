@@ -31,6 +31,7 @@ enum class LogLevel : std::uint8_t;
 
 struct GenmcScalar;
 struct SchedulingResult;
+struct EstimationResult;
 struct LoadResult;
 struct StoreResult;
 struct ReadModifyWriteResult;
@@ -66,7 +67,7 @@ struct MiriGenmcShim : private GenMCDriver {
     /// `logLevel`, causing a data race. The safest way to use these functions is to call
     /// `set_log_level_raw` once, and only then start creating handles. There should not be any
     /// other (safe) way to create a `MiriGenmcShim`.
-    /* unsafe */ static auto create_handle(const GenmcParams& params)
+    /* unsafe */ static auto create_handle(const GenmcParams& params, bool estimation_mode)
         -> std::unique_ptr<MiriGenmcShim>;
 
     virtual ~MiriGenmcShim() {}
@@ -182,6 +183,11 @@ struct MiriGenmcShim : private GenMCDriver {
             return format_error(result.status.value());
         return nullptr;
     }
+
+    /**** Printing and estimation mode functionality. ****/
+
+    /// Get the results of a run in estimation mode.
+    auto get_estimation_results() const -> EstimationResult;
 
   private:
     /** Increment the event index in the given thread by 1 and return the new event. */
