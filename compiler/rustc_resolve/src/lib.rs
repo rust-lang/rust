@@ -2506,6 +2506,8 @@ pub fn provide(providers: &mut Providers) {
 
 mod ref_mut {
     use std::ops::Deref;
+    #[cfg(not(bootstrap))]
+    use std::ops::Receiver;
 
     /// A wrapper around a mutable reference that conditionally allows mutable access.
     pub(crate) struct RefOrMut<'a, T> {
@@ -2519,6 +2521,10 @@ mod ref_mut {
         fn deref(&self) -> &Self::Target {
             self.p
         }
+    }
+    #[cfg(not(bootstrap))]
+    impl<'a, T> Receiver for RefOrMut<'a, T> {
+        type Target = T;
     }
 
     impl<'a, T> AsRef<T> for RefOrMut<'a, T> {
