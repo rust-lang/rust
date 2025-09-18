@@ -50,7 +50,6 @@ pub enum SolverTraitLangItem {
     Sized,
     TransmuteTrait,
     Tuple,
-    UnalignedField,
     Unpin,
     Unsize,
     // tidy-alphabetical-end

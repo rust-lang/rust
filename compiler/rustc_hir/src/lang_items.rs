@@ -442,11 +442,10 @@ language_item_table! {
     Reborrow,                sym::reborrow,            reborrow,                   Target::Trait,          GenericRequirement::Exact(0);
 
     // Experimental lang items for field projections.
-    Field,                          sym::Field,                         field_trait,                      Target::Trait,                                        GenericRequirement::None;
-    UnalignedField,                 sym::UnalignedField,                unaligned_field_trait,            Target::Trait,                                        GenericRequirement::None;
-    UnalignedFieldBase,             sym::UnalignedFieldBase,            unaligned_field_base,             Target::AssocTy,                                      GenericRequirement::None;
-    UnalignedFieldType,             sym::UnalignedFieldType,            unaligned_field_type,             Target::AssocTy,                                      GenericRequirement::None;
-    UnalignedFieldOFFSET,           sym::UnalignedFieldOFFSET,          unaligned_field_offset,           Target::AssocConst,                                   GenericRequirement::None;
+    Field,                 sym::Field,                field_trait,            Target::Trait,               GenericRequirement::None;
+    FieldBase,             sym::FieldBase,            field_base,             Target::AssocTy,             GenericRequirement::None;
+    FieldType,             sym::FieldType,            field_type,             Target::AssocTy,             GenericRequirement::None;
+    FieldOffset,           sym::FieldOffset,          field_offset,           Target::AssocConst,          GenericRequirement::None;
 }
 
 /// The requirement imposed on the generics of a lang item

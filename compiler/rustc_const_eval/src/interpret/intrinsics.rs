@@ -638,7 +638,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 rustc_apfloat::Round::NearestTiesToEven,
             )?,
 
-            sym::unaligned_field_offset => self.unaligned_field_offset(instance, dest)?,
+            sym::field_offset => self.field_offset(instance, dest)?,
 
             // Unsupported intrinsic: skip the return_to_block below.
             _ => return interp_ok(false),
@@ -649,7 +649,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         interp_ok(true)
     }
 
-    fn unaligned_field_offset(
+    fn field_offset(
         &mut self,
         instance: ty::Instance<'tcx>,
         dest: &PlaceTy<'tcx, M::Provenance>,

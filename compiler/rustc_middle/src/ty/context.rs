@@ -852,7 +852,6 @@ bidirectional_lang_item_map! {
     Sized,
     TransmuteTrait,
     Tuple,
-    UnalignedField,
     Unpin,
     Unsize,
 // tidy-alphabetical-end

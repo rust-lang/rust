@@ -141,7 +141,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::prefetch_read_instruction
         | sym::prefetch_write_instruction
         | sym::const_eval_select
-        | sym::unaligned_field_offset => hir::Safety::Safe,
+        | sym::field_offset => hir::Safety::Safe,
         _ => hir::Safety::Unsafe,
     };
 
@@ -674,7 +674,7 @@ pub(crate) fn check_intrinsic_type(
         | sym::atomic_xor => (2, 1, vec![Ty::new_mut_ptr(tcx, param(0)), param(1)], param(0)),
         sym::atomic_fence | sym::atomic_singlethreadfence => (0, 1, Vec::new(), tcx.types.unit),
 
-        sym::unaligned_field_offset => (1, 0, Vec::new(), tcx.types.usize),
+        sym::field_offset => (1, 0, Vec::new(), tcx.types.usize),
 
         other => {
             tcx.dcx().emit_err(UnrecognizedIntrinsicFunction { span, name: other });

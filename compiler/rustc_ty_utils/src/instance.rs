@@ -256,8 +256,8 @@ fn resolve_associated_item<'tcx>(
             }
         }
         traits::ImplSource::Builtin(BuiltinImplSource::Misc | BuiltinImplSource::Trivial, _) => {
-            if tcx.is_lang_item(trait_ref.def_id, LangItem::UnalignedField) {
-                if tcx.is_lang_item(trait_item_id, LangItem::UnalignedFieldOFFSET) {
+            if tcx.is_lang_item(trait_ref.def_id, LangItem::Field) {
+                if tcx.is_lang_item(trait_item_id, LangItem::FieldOffset) {
                     let self_ty = trait_ref.self_ty();
                     match self_ty.kind() {
                         ty::Field(_, _) => {}
@@ -265,7 +265,7 @@ fn resolve_associated_item<'tcx>(
                     }
                     Some(Instance {
                         def: ty::InstanceKind::Item(
-                            tcx.lang_items().get(LangItem::UnalignedFieldOFFSET).unwrap(),
+                            tcx.lang_items().get(LangItem::FieldOffset).unwrap(),
                         ),
                         args: rcvr_args,
                     })

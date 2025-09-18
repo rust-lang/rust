@@ -3326,4 +3326,4 @@ pub unsafe fn va_end(ap: &mut VaListImpl<'_>);
 #[rustc_intrinsic]
 #[unstable(feature = "field_projections", issue = "145383")]
 #[rustc_const_unstable(feature = "field_projections", issue = "145383")]
-pub const fn unaligned_field_offset<F: crate::field::UnalignedField>() -> usize;
+pub const fn field_offset<F: crate::field::Field>() -> usize;

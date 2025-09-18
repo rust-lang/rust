@@ -3,7 +3,7 @@
 #![allow(incomplete_features)]
 #![feature(field_projections)]
 
-use std::field::{Field, UnalignedField, field_of};
+use std::field::{Field, field_of};
 use std::mem::offset_of;
 use std::ptr;
 
