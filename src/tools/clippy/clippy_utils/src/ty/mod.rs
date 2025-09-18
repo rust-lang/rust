@@ -349,7 +349,7 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
             }
             false
         },
-        ty::Dynamic(binder, _, _) => {
+        ty::Dynamic(binder, _) => {
             for predicate in *binder {
                 if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate.skip_binder()
                     && find_attr!(cx.tcx.get_all_attrs(trait_ref.def_id), AttributeKind::MustUse { .. })
@@ -673,7 +673,7 @@ pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'t
             cx.tcx.opt_parent(def_id),
         ),
         ty::FnPtr(sig_tys, hdr) => Some(ExprFnSig::Sig(sig_tys.with(hdr), None)),
-        ty::Dynamic(bounds, _, _) => {
+        ty::Dynamic(bounds, _) => {
             let lang_items = cx.tcx.lang_items();
             match bounds.principal() {
                 Some(bound)

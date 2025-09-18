@@ -817,15 +817,13 @@ where
                 }
 
                 // Trait upcasting, or `dyn Trait + Auto + 'a` -> `dyn Trait + 'b`.
-                (
-                    ty::Dynamic(a_data, a_region, ty::Dyn),
-                    ty::Dynamic(b_data, b_region, ty::Dyn),
-                ) => ecx.consider_builtin_dyn_upcast_candidates(
-                    goal, a_data, a_region, b_data, b_region,
-                ),
+                (ty::Dynamic(a_data, a_region), ty::Dynamic(b_data, b_region)) => ecx
+                    .consider_builtin_dyn_upcast_candidates(
+                        goal, a_data, a_region, b_data, b_region,
+                    ),
 
                 // `T` -> `dyn Trait` unsizing.
-                (_, ty::Dynamic(b_region, b_data, ty::Dyn)) => result_to_single(
+                (_, ty::Dynamic(b_region, b_data)) => result_to_single(
                     ecx.consider_builtin_unsize_to_dyn_candidate(goal, b_region, b_data),
                 ),
 

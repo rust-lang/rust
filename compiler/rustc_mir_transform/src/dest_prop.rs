@@ -141,7 +141,7 @@ use rustc_data_structures::union_find::UnionFind;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_index::interval::SparseIntervalMatrix;
 use rustc_index::{IndexVec, newtype_index};
-use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
+use rustc_middle::mir::visit::{MutVisitor, PlaceContext, VisitPlacesWith, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::impls::{DefUse, MaybeLiveLocals};
@@ -500,22 +500,6 @@ impl TwoStepIndex {
         let index = 2 * point.as_u32() + (effect as u32);
         // Reverse the indexing to use more efficient `IntervalSet::append`.
         TwoStepIndex::from_u32(max_index - index)
-    }
-}
-
-struct VisitPlacesWith<F>(F);
-
-impl<'tcx, F> Visitor<'tcx> for VisitPlacesWith<F>
-where
-    F: FnMut(Place<'tcx>, PlaceContext),
-{
-    fn visit_local(&mut self, local: Local, ctxt: PlaceContext, _: Location) {
-        (self.0)(local.into(), ctxt);
-    }
-
-    fn visit_place(&mut self, place: &Place<'tcx>, ctxt: PlaceContext, location: Location) {
-        (self.0)(*place, ctxt);
-        self.visit_projection(place.as_ref(), ctxt, location);
     }
 }
 

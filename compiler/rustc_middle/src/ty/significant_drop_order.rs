@@ -132,7 +132,7 @@ pub fn ty_dtor_span<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Span> {
         | ty::Ref(_, _, _)
         | ty::FnPtr(_, _)
         | ty::Tuple(_)
-        | ty::Dynamic(_, _, _)
+        | ty::Dynamic(_, _)
         | ty::Alias(_, _)
         | ty::Bound(_, _)
         | ty::Pat(_, _)

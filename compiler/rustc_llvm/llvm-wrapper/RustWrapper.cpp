@@ -1064,16 +1064,6 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateMethod(
   return wrap(Sub);
 }
 
-extern "C" LLVMMetadataRef
-LLVMRustDIBuilderCreateTypedef(LLVMDIBuilderRef Builder, LLVMMetadataRef Type,
-                               const char *Name, size_t NameLen,
-                               LLVMMetadataRef File, unsigned LineNo,
-                               LLVMMetadataRef Scope) {
-  return wrap(unwrap(Builder)->createTypedef(
-      unwrap<DIType>(Type), StringRef(Name, NameLen), unwrap<DIFile>(File),
-      LineNo, unwrapDIPtr<DIScope>(Scope)));
-}
-
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariantPart(
     LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
     size_t NameLen, LLVMMetadataRef File, unsigned LineNumber,
@@ -1086,17 +1076,6 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariantPart(
       fromRust(Flags), unwrapDI<DIDerivedType>(Discriminator),
       DINodeArray(unwrapDI<MDTuple>(Elements)),
       StringRef(UniqueId, UniqueIdLen)));
-}
-
-extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateMemberType(
-    LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
-    size_t NameLen, LLVMMetadataRef File, unsigned LineNo, uint64_t SizeInBits,
-    uint32_t AlignInBits, uint64_t OffsetInBits, LLVMDIFlags Flags,
-    LLVMMetadataRef Ty) {
-  return wrap(unwrap(Builder)->createMemberType(
-      unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen),
-      unwrapDI<DIFile>(File), LineNo, SizeInBits, AlignInBits, OffsetInBits,
-      fromRust(Flags), unwrapDI<DIType>(Ty)));
 }
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariantMemberType(
@@ -1112,23 +1091,6 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariantMemberType(
       unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen),
       unwrapDI<DIFile>(File), LineNo, SizeInBits, AlignInBits, OffsetInBits, D,
       fromRust(Flags), unwrapDI<DIType>(Ty)));
-}
-
-extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateStaticMemberType(
-    LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
-    size_t NameLen, LLVMMetadataRef File, unsigned LineNo, LLVMMetadataRef Ty,
-    LLVMDIFlags Flags, LLVMValueRef val, uint32_t AlignInBits) {
-  return wrap(unwrap(Builder)->createStaticMemberType(
-      unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen),
-      unwrapDI<DIFile>(File), LineNo, unwrapDI<DIType>(Ty), fromRust(Flags),
-      unwrap<llvm::ConstantInt>(val), llvm::dwarf::DW_TAG_member, AlignInBits));
-}
-
-extern "C" LLVMMetadataRef
-LLVMRustDIBuilderCreateQualifiedType(LLVMDIBuilderRef Builder, unsigned Tag,
-                                     LLVMMetadataRef Type) {
-  return wrap(
-      unwrap(Builder)->createQualifiedType(Tag, unwrapDI<DIType>(Type)));
 }
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateStaticVariable(

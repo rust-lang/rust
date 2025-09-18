@@ -2454,11 +2454,11 @@ fn get_id_for_impl(tcx: TyCtxt<'_>, impl_id: ItemId) -> String {
             (ty, Some(ty::TraitRef::new(tcx, trait_, [ty])))
         }
         ItemId::Blanket { impl_id, .. } | ItemId::DefId(impl_id) => {
-            match tcx.impl_subject(impl_id).skip_binder() {
-                ty::ImplSubject::Trait(trait_ref) => {
-                    (trait_ref.args[0].expect_ty(), Some(trait_ref))
-                }
-                ty::ImplSubject::Inherent(ty) => (ty, None),
+            if let Some(trait_ref) = tcx.impl_trait_ref(impl_id) {
+                let trait_ref = trait_ref.skip_binder();
+                (trait_ref.self_ty(), Some(trait_ref))
+            } else {
+                (tcx.type_of(impl_id).skip_binder(), None)
             }
         }
     };
