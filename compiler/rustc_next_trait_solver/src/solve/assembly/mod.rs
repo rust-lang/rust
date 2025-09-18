@@ -86,7 +86,7 @@ where
     ) -> Result<Candidate<I>, NoSolution> {
         Self::probe_and_match_goal_against_assumption(ecx, source, goal, assumption, |ecx| {
             let cx = ecx.cx();
-            let ty::Dynamic(bounds, _, _) = goal.predicate.self_ty().kind() else {
+            let ty::Dynamic(bounds, _) = goal.predicate.self_ty().kind() else {
                 panic!("expected object type in `probe_and_consider_object_bound_candidate`");
             };
             match structural_traits::predicates_for_object_candidate(

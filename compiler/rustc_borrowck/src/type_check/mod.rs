@@ -1487,9 +1487,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                     unsize_to: None,
                                 },
                             );
-                        } else if let ty::Dynamic(src_tty, _src_lt, ty::Dyn) =
+                        } else if let ty::Dynamic(src_tty, _src_lt) =
                             *self.struct_tail(src.ty, location).kind()
-                            && let ty::Dynamic(dst_tty, dst_lt, ty::Dyn) =
+                            && let ty::Dynamic(dst_tty, dst_lt) =
                                 *self.struct_tail(dst.ty, location).kind()
                             && src_tty.principal().is_some()
                             && dst_tty.principal().is_some()
@@ -1511,7 +1511,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                 // FIXME: Once we disallow casting `*const dyn Trait + 'short`
                                 // to `*const dyn Trait + 'long`, then this can just be `src_lt`.
                                 dst_lt,
-                                ty::Dyn,
                             );
                             let dst_obj = Ty::new_dynamic(
                                 tcx,
@@ -1519,7 +1518,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                     &dst_tty.without_auto_traits().collect::<Vec<_>>(),
                                 ),
                                 dst_lt,
-                                ty::Dyn,
                             );
 
                             debug!(?src_tty, ?dst_tty, ?src_obj, ?dst_obj);

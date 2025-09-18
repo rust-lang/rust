@@ -19,20 +19,6 @@ use crate::{self as ty, DebruijnIndex, FloatTy, IntTy, Interner, UintTy};
 
 mod closure;
 
-/// Specifies how a trait object is represented.
-///
-/// This used to have a variant `DynStar`, but that variant has been removed,
-/// and it's likely this whole enum will be removed soon.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-#[cfg_attr(
-    feature = "nightly",
-    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
-)]
-pub enum DynKind {
-    /// An unsized `dyn Trait` object
-    Dyn,
-}
-
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[cfg_attr(
     feature = "nightly",
@@ -165,7 +151,7 @@ pub enum TyKind<I: Interner> {
     UnsafeBinder(UnsafeBinderInner<I>),
 
     /// A trait object. Written as `dyn for<'b> Trait<'b, Assoc = u32> + Send + 'a`.
-    Dynamic(I::BoundExistentialPredicates, I::Region, DynKind),
+    Dynamic(I::BoundExistentialPredicates, I::Region),
 
     /// The anonymous type of a closure. Used to represent the type of `|a| a`.
     ///
@@ -314,7 +300,7 @@ impl<I: Interner> TyKind<I> {
             | ty::FnDef(_, _)
             | ty::FnPtr(..)
             | ty::UnsafeBinder(_)
-            | ty::Dynamic(_, _, _)
+            | ty::Dynamic(_, _)
             | ty::Closure(_, _)
             | ty::CoroutineClosure(_, _)
             | ty::Coroutine(_, _)
@@ -367,9 +353,7 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
             FnPtr(sig_tys, hdr) => write!(f, "{:?}", sig_tys.with(*hdr)),
             // FIXME(unsafe_binder): print this like `unsafe<'a> T<'a>`.
             UnsafeBinder(binder) => write!(f, "{:?}", binder),
-            Dynamic(p, r, repr) => match repr {
-                DynKind::Dyn => write!(f, "dyn {p:?} + {r:?}"),
-            },
+            Dynamic(p, r) => write!(f, "dyn {p:?} + {r:?}"),
             Closure(d, s) => f.debug_tuple("Closure").field(d).field(&s).finish(),
             CoroutineClosure(d, s) => f.debug_tuple("CoroutineClosure").field(d).field(&s).finish(),
             Coroutine(d, s) => f.debug_tuple("Coroutine").field(d).field(&s).finish(),

@@ -1903,7 +1903,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     | ty::Slice(_)
                     | ty::FnDef(_, _)
                     | ty::FnPtr(..)
-                    | ty::Dynamic(_, _, _)
+                    | ty::Dynamic(_, _)
                     | ty::Closure(_, _)
                     | ty::CoroutineClosure(_, _)
                     | ty::Coroutine(_, _)
@@ -1949,7 +1949,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     | ty::Ref(_, _, _)
                     | ty::FnDef(_, _)
                     | ty::FnPtr(..)
-                    | ty::Dynamic(_, _, _)
+                    | ty::Dynamic(_, _)
                     | ty::CoroutineWitness(..)
                     | ty::Never
                     | ty::UnsafeBinder(_)

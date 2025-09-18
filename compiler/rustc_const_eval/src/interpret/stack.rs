@@ -509,7 +509,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 | ty::Never
                 | ty::Error(_) => true,
 
-                ty::Str | ty::Slice(_) | ty::Dynamic(_, _, ty::Dyn) | ty::Foreign(..) => false,
+                ty::Str | ty::Slice(_) | ty::Dynamic(_, _) | ty::Foreign(..) => false,
 
                 ty::Tuple(tys) => tys.last().is_none_or(|ty| is_very_trivially_sized(*ty)),
 

@@ -812,7 +812,7 @@ where
                 | ty::CoroutineWitness(..)
                 | ty::Foreign(..)
                 | ty::Pat(_, _)
-                | ty::Dynamic(_, _, ty::Dyn) => {
+                | ty::Dynamic(_, _) => {
                     bug!("TyAndLayout::field({:?}): not applicable", this)
                 }
 
@@ -878,7 +878,7 @@ where
                         // `std::mem::uninitialized::<&dyn Trait>()`, for example.
                         if let ty::Adt(def, args) = metadata.kind()
                             && tcx.is_lang_item(def.did(), LangItem::DynMetadata)
-                            && let ty::Dynamic(data, _, ty::Dyn) = args.type_at(0).kind()
+                            && let ty::Dynamic(data, _) = args.type_at(0).kind()
                         {
                             mk_dyn_vtable(data.principal())
                         } else {
@@ -887,7 +887,7 @@ where
                     } else {
                         match tcx.struct_tail_for_codegen(pointee, cx.typing_env()).kind() {
                             ty::Slice(_) | ty::Str => tcx.types.usize,
-                            ty::Dynamic(data, _, ty::Dyn) => mk_dyn_vtable(data.principal()),
+                            ty::Dynamic(data, _) => mk_dyn_vtable(data.principal()),
                             _ => bug!("TyAndLayout::field({:?}): not applicable", this),
                         }
                     };
