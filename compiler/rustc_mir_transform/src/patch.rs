@@ -244,7 +244,7 @@ impl<'tcx> MirPatch<'tcx> {
             self.new_blocks.len(),
             body.basic_blocks.len()
         );
-        let bbs = if self.term_patch_map.is_empty() && self.new_blocks.is_empty() {
+        let bbs = if self.term_patch_map.iter().all(Option::is_none) && self.new_blocks.is_empty() {
             body.basic_blocks.as_mut_preserves_cfg()
         } else {
             body.basic_blocks.as_mut()
@@ -273,8 +273,8 @@ impl<'tcx> MirPatch<'tcx> {
             }
             debug!("MirPatch: adding statement {:?} at loc {:?}+{}", stmt, loc, delta);
             loc.statement_index += delta;
-            let source_info = Self::source_info_for_index(&body[loc.block], loc);
-            body[loc.block]
+            let source_info = Self::source_info_for_index(&bbs[loc.block], loc);
+            bbs[loc.block]
                 .statements
                 .insert(loc.statement_index, Statement::new(source_info, stmt));
             delta += 1;
