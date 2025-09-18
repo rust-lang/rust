@@ -1,4 +1,4 @@
-pub use ra_ap_rustc_next_trait_solver::solve::inspect::*;
+pub use rustc_next_trait_solver::solve::inspect::*;
 
 use rustc_ast_ir::try_visit;
 use rustc_next_trait_solver::{
