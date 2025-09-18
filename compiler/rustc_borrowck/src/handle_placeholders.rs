@@ -166,13 +166,9 @@ impl RegionTracker {
         }
     }
 
-    /// Determine if the tracked universes of the two SCCs are compatible.
-    pub(crate) fn universe_compatible_with(&self, other: Self) -> bool {
-        // HACK: We first check whether we can name the highest existential universe
-        // of `other`. This only exists to avoid errors in case that scc already
-        // depends on a placeholder it cannot name itself.
-        self.max_nameable_universe().can_name(other.max_nameable_universe())
-            || other.reachable_placeholders.can_be_named_by(self.max_nameable_universe())
+    /// Determine if we can name all the placeholders in `other`.
+    pub(crate) fn can_name_all_placeholders(&self, other: Self) -> bool {
+        other.reachable_placeholders.can_be_named_by(self.max_nameable_universe.0)
     }
 
     /// If this SCC reaches a placeholder it can't name, return it.

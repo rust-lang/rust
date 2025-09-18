@@ -1,3 +1,6 @@
+//~ ERROR reached the recursion limit finding the struct tail for `K`
+//~| ERROR reached the recursion limit finding the struct tail for `Bottom`
+
 // Test that the recursion limit can be changed and that the compiler
 // suggests a fix. In this case, we have a long chain of Deref impls
 // which will cause an overflow during the autoderef loop.
@@ -9,6 +12,7 @@
 macro_rules! link {
     ($outer:ident, $inner:ident) => {
         struct $outer($inner);
+        //~^ ERROR reached the recursion limit finding the struct tail for `Bottom`
 
         impl $outer {
             fn new() -> $outer {
@@ -51,6 +55,3 @@ fn main() {
     let x: &Bottom = &t; //~ ERROR mismatched types
     //~^ error recursion limit
 }
-
-//~? ERROR reached the recursion limit finding the struct tail for `K`
-//~? ERROR reached the recursion limit finding the struct tail for `Bottom`
