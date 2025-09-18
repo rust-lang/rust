@@ -371,9 +371,9 @@ fn parse_len_output<'tcx>(cx: &LateContext<'tcx>, sig: FnSig<'tcx>) -> Option<Le
 
     match *sig.output().kind() {
         ty::Int(_) | ty::Uint(_) => Some(LenOutput::Integral),
-        ty::Adt(adt, subs) if subs.type_at(0).is_integral() => match cx.tcx.get_diagnostic_name(adt.did()) {
-            Some(sym::Option) => Some(LenOutput::Option(adt.did())),
-            Some(sym::Result) => Some(LenOutput::Result(adt.did())),
+        ty::Adt(adt, subs) => match cx.tcx.get_diagnostic_name(adt.did()) {
+            Some(sym::Option) => subs.type_at(0).is_integral().then(|| LenOutput::Option(adt.did())),
+            Some(sym::Result) => subs.type_at(0).is_integral().then(|| LenOutput::Result(adt.did())),
             _ => None,
         },
         _ => None,

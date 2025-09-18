@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{indent_of, reindent_multiline};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::ty::{option_arg_ty, peel_mid_ty_refs_is_mutable};
+use clippy_utils::ty::{option_arg_ty, peel_and_count_ty_refs};
 use clippy_utils::{get_parent_expr, is_res_lang_ctor, path_res, peel_blocks, span_contains_comment};
 use rustc_ast::{BindingMode, Mutability};
 use rustc_errors::Applicability;
@@ -135,15 +135,11 @@ fn apply_lint(cx: &LateContext<'_>, expr: &Expr<'_>, scrutinee: &Expr<'_>, is_ok
     let scrut = Sugg::hir_with_applicability(cx, scrutinee, "..", &mut app).maybe_paren();
 
     let scrutinee_ty = cx.typeck_results().expr_ty(scrutinee);
-    let (_, n_ref, mutability) = peel_mid_ty_refs_is_mutable(scrutinee_ty);
-    let prefix = if n_ref > 0 {
-        if mutability == Mutability::Mut {
-            ".as_mut()"
-        } else {
-            ".as_ref()"
-        }
-    } else {
-        ""
+    let (_, _, mutability) = peel_and_count_ty_refs(scrutinee_ty);
+    let prefix = match mutability {
+        Some(Mutability::Mut) => ".as_mut()",
+        Some(Mutability::Not) => ".as_ref()",
+        None => "",
     };
 
     let sugg = format!("{scrut}{prefix}.{method}()");
