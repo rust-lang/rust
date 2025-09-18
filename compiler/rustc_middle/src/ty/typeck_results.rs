@@ -11,6 +11,7 @@ use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap};
 use rustc_hir::hir_id::OwnerId;
 use rustc_hir::{
     self as hir, BindingMode, ByRef, HirId, ItemLocalId, ItemLocalMap, ItemLocalSet, Mutability,
+    Pinnedness,
 };
 use rustc_index::IndexVec;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
@@ -479,7 +480,7 @@ impl<'tcx> TypeckResults<'tcx> {
         let mut has_ref_mut = false;
         pat.walk(|pat| {
             if let hir::PatKind::Binding(_, id, _, _) = pat.kind
-                && let Some(BindingMode(ByRef::Yes(Mutability::Mut), _)) =
+                && let Some(BindingMode(ByRef::Yes(_, Mutability::Mut), _)) =
                     self.pat_binding_modes().get(id)
             {
                 has_ref_mut = true;
@@ -490,6 +491,32 @@ impl<'tcx> TypeckResults<'tcx> {
             }
         });
         has_ref_mut
+    }
+
+    /// Visits the pattern recursively whether it contains a `ref pin` binding
+    /// of non-`Unpin` type in it.
+    ///
+    /// This is used to determined whether a `&pin` pattern should emit a `!Unpin`
+    /// call for its pattern scrutinee.
+    ///
+    /// This is computed from the typeck results since we want to make
+    /// sure to apply any match-ergonomics adjustments, which we cannot
+    /// determine from the HIR alone.
+    pub fn pat_walk_ref_pin_binding_of_non_unpin_type<'a>(
+        &self,
+        pat: &hir::Pat<'_>,
+        mut ty_visitor: impl FnMut(Ty<'tcx>) + 'a,
+    ) {
+        pat.walk(|pat| {
+            if let hir::PatKind::Binding(_, id, _, _) = pat.kind
+                && let Some(BindingMode(ByRef::Yes(Pinnedness::Pinned, _), _)) =
+                    self.pat_binding_modes().get(id)
+            {
+                let ty = self.pat_ty(pat);
+                ty_visitor(ty);
+            }
+            true
+        });
     }
 
     /// How should a deref pattern find the place for its inner pattern to match on?
@@ -503,7 +530,7 @@ impl<'tcx> TypeckResults<'tcx> {
             ByRef::No
         } else {
             let mutable = self.pat_has_ref_mut_binding(inner);
-            ByRef::Yes(if mutable { Mutability::Mut } else { Mutability::Not })
+            ByRef::Yes(Pinnedness::Not, if mutable { Mutability::Mut } else { Mutability::Not })
         }
     }
 

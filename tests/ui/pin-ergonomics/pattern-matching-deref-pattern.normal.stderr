@@ -1,0 +1,155 @@
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/pattern-matching-deref-pattern.rs:45:28
+   |
+LL |         let Foo { x, y } = foo.as_mut();
+   |                   -  -     ^^^^^^^^^^^^
+   |                   |  |
+   |                   |  ...and here
+   |                   data moved here
+   |
+   = note: move occurs because these variables have types that don't implement the `Copy` trait
+help: consider borrowing the pattern binding
+   |
+LL |         let Foo { ref x, y } = foo.as_mut();
+   |                   +++
+help: consider borrowing the pattern binding
+   |
+LL |         let Foo { x, ref y } = foo.as_mut();
+   |                      +++
+
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/pattern-matching-deref-pattern.rs:35:24
+   |
+LL |     let Foo { x, y } = foo.as_mut();
+   |               -  -     ^^^^^^^^^^^^
+   |               |  |
+   |               |  ...and here
+   |               data moved here
+   |
+   = note: move occurs because these variables have types that don't implement the `Copy` trait
+help: consider borrowing the pattern binding
+   |
+LL |     let Foo { ref x, y } = foo.as_mut();
+   |               +++
+help: consider borrowing the pattern binding
+   |
+LL |     let Foo { x, ref y } = foo.as_mut();
+   |                  +++
+
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/pattern-matching-deref-pattern.rs:67:28
+   |
+LL |         let Foo { x, y } = foo.as_ref();
+   |                   -  -     ^^^^^^^^^^^^
+   |                   |  |
+   |                   |  ...and here
+   |                   data moved here
+   |
+   = note: move occurs because these variables have types that don't implement the `Copy` trait
+help: consider borrowing the pattern binding
+   |
+LL |         let Foo { ref x, y } = foo.as_ref();
+   |                   +++
+help: consider borrowing the pattern binding
+   |
+LL |         let Foo { x, ref y } = foo.as_ref();
+   |                      +++
+
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/pattern-matching-deref-pattern.rs:57:24
+   |
+LL |     let Foo { x, y } = foo.as_ref();
+   |               -  -     ^^^^^^^^^^^^
+   |               |  |
+   |               |  ...and here
+   |               data moved here
+   |
+   = note: move occurs because these variables have types that don't implement the `Copy` trait
+help: consider borrowing the pattern binding
+   |
+LL |     let Foo { ref x, y } = foo.as_ref();
+   |               +++
+help: consider borrowing the pattern binding
+   |
+LL |     let Foo { x, ref y } = foo.as_ref();
+   |                  +++
+
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/pattern-matching-deref-pattern.rs:89:25
+   |
+LL |         let Bar(x, y) = bar.as_mut();
+   |                 -  -    ^^^^^^^^^^^^
+   |                 |  |
+   |                 |  ...and here
+   |                 data moved here
+   |
+   = note: move occurs because these variables have types that don't implement the `Copy` trait
+help: consider borrowing the pattern binding
+   |
+LL |         let Bar(ref x, y) = bar.as_mut();
+   |                 +++
+help: consider borrowing the pattern binding
+   |
+LL |         let Bar(x, ref y) = bar.as_mut();
+   |                    +++
+
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/pattern-matching-deref-pattern.rs:79:21
+   |
+LL |     let Bar(x, y) = bar.as_mut();
+   |             -  -    ^^^^^^^^^^^^
+   |             |  |
+   |             |  ...and here
+   |             data moved here
+   |
+   = note: move occurs because these variables have types that don't implement the `Copy` trait
+help: consider borrowing the pattern binding
+   |
+LL |     let Bar(ref x, y) = bar.as_mut();
+   |             +++
+help: consider borrowing the pattern binding
+   |
+LL |     let Bar(x, ref y) = bar.as_mut();
+   |                +++
+
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/pattern-matching-deref-pattern.rs:111:25
+   |
+LL |         let Bar(x, y) = bar.as_ref();
+   |                 -  -    ^^^^^^^^^^^^
+   |                 |  |
+   |                 |  ...and here
+   |                 data moved here
+   |
+   = note: move occurs because these variables have types that don't implement the `Copy` trait
+help: consider borrowing the pattern binding
+   |
+LL |         let Bar(ref x, y) = bar.as_ref();
+   |                 +++
+help: consider borrowing the pattern binding
+   |
+LL |         let Bar(x, ref y) = bar.as_ref();
+   |                    +++
+
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/pattern-matching-deref-pattern.rs:101:21
+   |
+LL |     let Bar(x, y) = bar.as_ref();
+   |             -  -    ^^^^^^^^^^^^
+   |             |  |
+   |             |  ...and here
+   |             data moved here
+   |
+   = note: move occurs because these variables have types that don't implement the `Copy` trait
+help: consider borrowing the pattern binding
+   |
+LL |     let Bar(ref x, y) = bar.as_ref();
+   |             +++
+help: consider borrowing the pattern binding
+   |
+LL |     let Bar(x, ref y) = bar.as_ref();
+   |                +++
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0507`.
