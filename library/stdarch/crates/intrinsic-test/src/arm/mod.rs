@@ -31,15 +31,7 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
 
     const NOTICE: &str = config::NOTICE;
 
-    const PLATFORM_C_HEADERS: &[&str] = &[
-        "iostream",
-        "cstring",
-        "iomanip",
-        "sstream",
-        "arm_neon.h",
-        "arm_acle.h",
-        "arm_fp16.h",
-    ];
+    const PLATFORM_C_HEADERS: &[&str] = &["arm_neon.h", "arm_acle.h", "arm_fp16.h"];
     const PLATFORM_C_DEFINITIONS: &str = config::POLY128_OSTREAM_DEF;
     const PLATFORM_C_FORWARD_DECLARATIONS: &str = config::POLY128_OSTREAM_DECL;
 

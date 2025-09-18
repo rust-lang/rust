@@ -35,15 +35,7 @@ impl SupportedArchitectureTest for X86ArchitectureTest {
 
     const NOTICE: &str = config::NOTICE;
 
-    const PLATFORM_C_HEADERS: &[&str] = &[
-        "immintrin.h",
-        "iostream",
-        "cstring",
-        "iomanip",
-        "sstream",
-        "cstddef",
-        "cstdint",
-    ];
+    const PLATFORM_C_HEADERS: &[&str] = &["immintrin.h", "cstddef", "cstdint"];
     const PLATFORM_C_DEFINITIONS: &str = config::LANE_FUNCTION_HELPERS;
     const PLATFORM_C_FORWARD_DECLARATIONS: &str = config::LANE_FUNCTION_HELPERS;
 

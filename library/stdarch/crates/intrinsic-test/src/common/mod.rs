@@ -60,28 +60,34 @@ pub trait SupportedArchitectureTest {
             .map(|(i, chunk)| {
                 let c_filename = format!("c_programs/mod_{i}.cpp");
                 let mut file = File::create(&c_filename).unwrap();
-                write_mod_cpp(
+                let mod_file_write_result = write_mod_cpp(
                     &mut file,
                     Self::NOTICE,
                     Self::PLATFORM_C_HEADERS,
                     Self::PLATFORM_C_FORWARD_DECLARATIONS,
                     chunk,
-                )
-                .unwrap();
+                );
+
+                if let Err(error) = mod_file_write_result {
+                    return Err(format!("Error writing to mod_{i}.cpp: {error:?}"));
+                }
 
                 // compile this cpp file into a .o file.
                 //
                 // This is done because `cpp_compiler_wrapped` is None when
                 // the --generate-only flag is passed
                 if let Some(cpp_compiler) = cpp_compiler_wrapped.as_ref() {
-                    let output = cpp_compiler
-                        .compile_object_file(&format!("mod_{i}.cpp"), &format!("mod_{i}.o"))?;
-                    assert!(output.status.success(), "{output:?}");
+                    let compile_output = cpp_compiler
+                        .compile_object_file(&format!("mod_{i}.cpp"), &format!("mod_{i}.o"));
+
+                    if let Err(compile_error) = compile_output {
+                        return Err(format!("Error compiling mod_{i}.cpp: {compile_error:?}"));
+                    }
                 }
 
                 Ok(())
             })
-            .collect::<Result<(), std::io::Error>>()
+            .collect::<Result<(), String>>()
             .unwrap();
 
         let mut file = File::create("c_programs/main.cpp").unwrap();

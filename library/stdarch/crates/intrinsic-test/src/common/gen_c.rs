@@ -6,6 +6,7 @@ use super::intrinsic_helpers::IntrinsicTypeDefinition;
 
 // The number of times each intrinsic will be called.
 const PASSES: u32 = 20;
+const COMMON_HEADERS: [&str; 5] = ["iostream", "string", "cstring", "iomanip", "sstream"];
 
 pub fn generate_c_test_loop<T: IntrinsicTypeDefinition + Sized>(
     w: &mut impl std::io::Write,
@@ -99,7 +100,7 @@ pub fn write_mod_cpp<T: IntrinsicTypeDefinition>(
 ) -> std::io::Result<()> {
     write!(w, "{notice}")?;
 
-    for header in platform_headers {
+    for header in COMMON_HEADERS.iter().chain(platform_headers.iter()) {
         writeln!(w, "#include <{header}>")?;
     }
 
@@ -133,20 +134,13 @@ pub fn write_main_cpp<'a>(
     arch_specific_headers: &[&str],
     intrinsics: impl Iterator<Item = &'a str> + Clone,
 ) -> std::io::Result<()> {
-    writeln!(w, "#include <iostream>")?;
-    writeln!(w, "#include <string>")?;
-
-    for header in arch_specific_headers {
+    for header in COMMON_HEADERS.iter().chain(arch_specific_headers.iter()) {
         writeln!(w, "#include <{header}>")?;
     }
 
     writeln!(
         w,
         r#"
-#include <cstring>
-#include <iomanip>
-#include <sstream>
-
 std::ostream& operator<<(std::ostream& os, float16_t value) {{
     uint16_t temp = 0;
     memcpy(&temp, &value, sizeof(float16_t));
