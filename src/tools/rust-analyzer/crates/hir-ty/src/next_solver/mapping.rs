@@ -370,8 +370,7 @@ impl<'db> ChalkToNextSolver<'db, Ty<'db>> for chalk_ir::Ty<Interner> {
                         }),
                     );
                     let region = dyn_ty.lifetime.to_nextsolver(interner);
-                    let kind = rustc_type_ir::DynKind::Dyn;
-                    rustc_type_ir::TyKind::Dynamic(bounds, region, kind)
+                    rustc_type_ir::TyKind::Dynamic(bounds, region)
                 }
                 chalk_ir::TyKind::Alias(alias_ty) => match alias_ty {
                     chalk_ir::AliasTy::Projection(projection_ty) => {
@@ -1445,8 +1444,7 @@ pub(crate) fn convert_ty_for_result<'db>(interner: DbInterner<'db>, ty: Ty<'db>)
             TyKind::Function(fnptr)
         }
 
-        rustc_type_ir::TyKind::Dynamic(preds, region, dyn_kind) => {
-            assert!(matches!(dyn_kind, rustc_type_ir::DynKind::Dyn));
+        rustc_type_ir::TyKind::Dynamic(preds, region) => {
             let self_ty = Ty::new_bound(
                 interner,
                 DebruijnIndex::from_u32(1),

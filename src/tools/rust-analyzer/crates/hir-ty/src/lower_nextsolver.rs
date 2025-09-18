@@ -790,7 +790,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                 },
                 None => Region::new_static(self.interner),
             };
-            Ty::new_dynamic(self.interner, bounds, region, rustc_type_ir::DynKind::Dyn)
+            Ty::new_dynamic(self.interner, bounds, region)
         } else {
             // FIXME: report error
             // (additional non-auto traits, associated type rebound, or no resolved trait)

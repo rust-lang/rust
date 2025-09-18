@@ -611,7 +611,7 @@ impl<'a, 'b, 'db> Coerce<'a, 'b, 'db> {
             | TyKind::Slice(_)
             | TyKind::FnDef(_, _)
             | TyKind::FnPtr(_, _)
-            | TyKind::Dynamic(_, _, _)
+            | TyKind::Dynamic(_, _)
             | TyKind::Closure(_, _)
             | TyKind::CoroutineClosure(_, _)
             | TyKind::Coroutine(_, _)

@@ -178,7 +178,7 @@ impl<'db> Ty<'db> {
             | TyKind::Never
             | TyKind::Error(_) => true,
 
-            TyKind::Str | TyKind::Slice(_) | TyKind::Dynamic(_, _, _) => match sizedness {
+            TyKind::Str | TyKind::Slice(_) | TyKind::Dynamic(_, _) => match sizedness {
                 SizedTraitKind::Sized => false,
                 SizedTraitKind::MetaSized => true,
             },
@@ -421,7 +421,7 @@ impl<'db> TypeSuperVisitable<DbInterner<'db>> for Ty<'db> {
             }
             TyKind::Slice(typ) => typ.visit_with(visitor),
             TyKind::Adt(_, args) => args.visit_with(visitor),
-            TyKind::Dynamic(ref trait_ty, ref reg, _) => {
+            TyKind::Dynamic(ref trait_ty, ref reg) => {
                 try_visit!(trait_ty.visit_with(visitor));
                 reg.visit_with(visitor)
             }
@@ -486,11 +486,9 @@ impl<'db> TypeSuperFoldable<DbInterner<'db>> for Ty<'db> {
             }
             TyKind::Slice(typ) => TyKind::Slice(typ.try_fold_with(folder)?),
             TyKind::Adt(tid, args) => TyKind::Adt(tid, args.try_fold_with(folder)?),
-            TyKind::Dynamic(trait_ty, region, representation) => TyKind::Dynamic(
-                trait_ty.try_fold_with(folder)?,
-                region.try_fold_with(folder)?,
-                representation,
-            ),
+            TyKind::Dynamic(trait_ty, region) => {
+                TyKind::Dynamic(trait_ty.try_fold_with(folder)?, region.try_fold_with(folder)?)
+            }
             TyKind::Tuple(ts) => TyKind::Tuple(ts.try_fold_with(folder)?),
             TyKind::FnDef(def_id, args) => TyKind::FnDef(def_id, args.try_fold_with(folder)?),
             TyKind::FnPtr(sig_tys, hdr) => TyKind::FnPtr(sig_tys.try_fold_with(folder)?, hdr),
@@ -537,11 +535,9 @@ impl<'db> TypeSuperFoldable<DbInterner<'db>> for Ty<'db> {
             TyKind::Array(typ, sz) => TyKind::Array(typ.fold_with(folder), sz.fold_with(folder)),
             TyKind::Slice(typ) => TyKind::Slice(typ.fold_with(folder)),
             TyKind::Adt(tid, args) => TyKind::Adt(tid, args.fold_with(folder)),
-            TyKind::Dynamic(trait_ty, region, representation) => TyKind::Dynamic(
-                trait_ty.fold_with(folder),
-                region.fold_with(folder),
-                representation,
-            ),
+            TyKind::Dynamic(trait_ty, region) => {
+                TyKind::Dynamic(trait_ty.fold_with(folder), region.fold_with(folder))
+            }
             TyKind::Tuple(ts) => TyKind::Tuple(ts.fold_with(folder)),
             TyKind::FnDef(def_id, args) => TyKind::FnDef(def_id, args.fold_with(folder)),
             TyKind::FnPtr(sig_tys, hdr) => TyKind::FnPtr(sig_tys.fold_with(folder), hdr),
@@ -676,9 +672,8 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
         interner: DbInterner<'db>,
         preds: <DbInterner<'db> as rustc_type_ir::Interner>::BoundExistentialPredicates,
         region: <DbInterner<'db> as rustc_type_ir::Interner>::Region,
-        kind: rustc_type_ir::DynKind,
     ) -> Self {
-        Ty::new(interner, TyKind::Dynamic(preds, region, kind))
+        Ty::new(interner, TyKind::Dynamic(preds, region))
     }
 
     fn new_coroutine(

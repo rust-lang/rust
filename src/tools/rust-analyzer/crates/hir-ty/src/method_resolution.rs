@@ -164,7 +164,7 @@ impl TyFingerprint {
                 rustc_ast_ir::Mutability::Not => TyFingerprint::RawPtr(Mutability::Not),
             },
             TyKind::Foreign(def) => TyFingerprint::ForeignType(crate::to_foreign_def_id(def.0)),
-            TyKind::Dynamic(bounds, _, _) => {
+            TyKind::Dynamic(bounds, _) => {
                 let trait_ref = bounds
                     .as_slice()
                     .iter()
