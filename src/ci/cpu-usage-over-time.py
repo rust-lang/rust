@@ -117,7 +117,7 @@ elif sys.platform == "win32":
             idle = self.idle - prev.idle
             user = self.user - prev.user
             kernel = self.kernel - prev.kernel
-            return float(idle) / float(user + kernel - idle) * 100 if (user + kernel - idle) != 0 else 0.0
+            return float(idle) / float(user + kernel - idle) * 100 if user + kernel - idle != 0 else 0.0
 
 elif sys.platform == "darwin":
     from ctypes import *
