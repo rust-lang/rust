@@ -208,7 +208,7 @@ impl<'db> ProofTreeVisitor<'db> for Select {
 
         // Don't winnow until `Certainty::Yes` -- we don't need to winnow until
         // codegen, and only on the good path.
-        if matches!(goal.result().unwrap(), Certainty::Maybe(..)) {
+        if matches!(goal.result().unwrap(), Certainty::Maybe { .. }) {
             return ControlFlow::Break(Ok(None));
         }
 
@@ -241,7 +241,7 @@ fn candidate_should_be_dropped_in_favor_of<'db>(
 ) -> bool {
     // Don't winnow until `Certainty::Yes` -- we don't need to winnow until
     // codegen, and only on the good path.
-    if matches!(other.result().unwrap(), Certainty::Maybe(..)) {
+    if matches!(other.result().unwrap(), Certainty::Maybe { .. }) {
         return false;
     }
 
@@ -284,13 +284,13 @@ fn candidate_should_be_dropped_in_favor_of<'db>(
 }
 
 fn to_selection<'db>(cand: InspectCandidate<'_, 'db>) -> Option<Selection<'db>> {
-    if let Certainty::Maybe(..) = cand.shallow_certainty() {
+    if let Certainty::Maybe { .. } = cand.shallow_certainty() {
         return None;
     }
 
     let nested = match cand.result().expect("expected positive result") {
         Certainty::Yes => Vec::new(),
-        Certainty::Maybe(_) => cand
+        Certainty::Maybe { .. } => cand
             .instantiate_nested_goals()
             .into_iter()
             .map(|nested| {

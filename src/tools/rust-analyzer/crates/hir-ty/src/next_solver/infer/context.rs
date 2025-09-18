@@ -321,4 +321,13 @@ impl<'db> rustc_type_ir::InferCtxtLike for InferCtxt<'db> {
     fn sub_unify_ty_vids_raw(&self, a: rustc_type_ir::TyVid, b: rustc_type_ir::TyVid) {
         self.sub_unify_ty_vids_raw(a, b);
     }
+
+    fn opaques_with_sub_unified_hidden_type(
+        &self,
+        _ty: TyVid,
+    ) -> Vec<rustc_type_ir::AliasTy<Self::Interner>> {
+        // FIXME: I guess we are okay without this for now since currently r-a lacks of
+        // detailed checks over opaque types. Might need to implement this in future.
+        vec![]
+    }
 }
