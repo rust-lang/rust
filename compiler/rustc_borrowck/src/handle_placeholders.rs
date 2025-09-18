@@ -433,34 +433,44 @@ fn rewrite_placeholder_outlives<'tcx>(
 
         let annotation = annotations[scc];
 
-        let Some((max_u, max_u_rvid)) = annotation.unnameable_placeholder() else {
+        let Some((unnameable_u, unnameable_placeholder)) = annotation.unnameable_placeholder()
+        else {
             continue;
         };
 
         debug!(
-            "Placeholder universe {max_u:?} is too large for its SCC, represented by {:?}",
+            "Placeholder {unnameable_placeholder:?} with universe {unnameable_u:?} unnameable from {scc:?} represented by {:?}",
             annotation.representative
         );
 
-        // We only add one `r: 'static` constraint per SCC, where `r` is the SCC representative.
-        // That constraint is annotated with some placeholder `unnameable` where
-        // `unnameable` is unnameable from `r` and there is a path in the constraint graph
-        // between them.
-        if annotation.representative.rvid() != max_u_rvid {
-            // FIXME: if we can extract a useful blame span here, future error
-            // reporting and constraint search can be simplified.
+        let representative_rvid = annotation.representative.rvid();
 
-            added_constraints = true;
-            outlives_constraints.push(OutlivesConstraint {
-                sup: annotation.representative.rvid(),
-                sub: fr_static,
-                category: ConstraintCategory::OutlivesUnnameablePlaceholder(max_u_rvid),
-                locations: Locations::All(rustc_span::DUMMY_SP),
-                span: rustc_span::DUMMY_SP,
-                variance_info: VarianceDiagInfo::None,
-                from_closure: false,
-            });
+        // If we got here, our representative is a placeholder and it reaches some
+        // region that can't name it. That's a separate error!
+        if representative_rvid == unnameable_placeholder {
+            debug!(
+                "No need to add constraints for a placeholder reaching an existential that can't name it; that's a separate error."
+            );
+            assert!(
+                matches!(annotation.representative, Representative::Placeholder(_)),
+                "Representative wasn't a placeholder, which should not be possible!"
+            );
+            continue;
         }
+
+        // FIXME: if we can extract a useful blame span here, future error
+        // reporting and constraint search can be simplified.
+
+        added_constraints = true;
+        outlives_constraints.push(OutlivesConstraint {
+            sup: representative_rvid,
+            sub: fr_static,
+            category: ConstraintCategory::OutlivesUnnameablePlaceholder(unnameable_placeholder),
+            locations: Locations::All(rustc_span::DUMMY_SP),
+            span: rustc_span::DUMMY_SP,
+            variance_info: VarianceDiagInfo::None,
+            from_closure: false,
+        });
     }
     added_constraints
 }
