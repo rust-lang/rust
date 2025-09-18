@@ -408,12 +408,12 @@ pub const fn handle_alloc_error(layout: Layout) -> ! {
         }
     }
 
-    #[cfg(not(panic = "immediate_abort"))]
+    #[cfg(not(panic = "immediate-abort"))]
     {
         core::intrinsics::const_eval_select((layout,), ct_error, rt_error)
     }
 
-    #[cfg(panic = "immediate_abort")]
+    #[cfg(panic = "immediate-abort")]
     ct_error(layout)
 }
 
