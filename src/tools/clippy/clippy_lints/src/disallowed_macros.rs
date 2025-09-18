@@ -1,4 +1,3 @@
-
 use clippy_config::Conf;
 use clippy_config::types::{DisallowedPath, create_disallowed_map};
 use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
@@ -8,7 +7,8 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefIdMap;
 use rustc_hir::{
-    AmbigArg, Expr, ExprKind, ForeignItem, HirId, ImplItem, ImplItemImplKind, Item, ItemKind, OwnerId, Pat, Path, Stmt, TraitItem, Ty,
+    AmbigArg, Expr, ExprKind, ForeignItem, HirId, ImplItem, ImplItemImplKind, Item, ItemKind, OwnerId, Pat, Path, Stmt,
+    TraitItem, Ty,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::TyCtxt;

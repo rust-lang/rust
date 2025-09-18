@@ -125,6 +125,7 @@ generate! {
     cycle,
     cyclomatic_complexity,
     de,
+    deprecated_in_future,
     diagnostics,
     disallowed_types,
     drain,
