@@ -9,7 +9,7 @@ use gccjit::Type;
 use gccjit::{ComparisonOp, Function, FunctionType, RValue, ToRValue, UnaryOp};
 #[cfg(feature = "master")]
 use rustc_abi::ExternAbi;
-use rustc_abi::{BackendRepr, HasDataLayout};
+use rustc_abi::{BackendRepr, HasDataLayout, WrappingRange};
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::common::IntPredicate;
@@ -20,7 +20,7 @@ use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
 use rustc_codegen_ssa::traits::MiscCodegenMethods;
 use rustc_codegen_ssa::traits::{
     ArgAbiBuilderMethods, BaseTypeCodegenMethods, BuilderMethods, ConstCodegenMethods,
-    IntrinsicCallBuilderMethods,
+    IntrinsicCallBuilderMethods, LayoutTypeCodegenMethods,
 };
 use rustc_middle::bug;
 #[cfg(feature = "master")]
@@ -607,6 +607,54 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             self.store_to_place(value, result.val);
         }
         Ok(())
+    }
+
+    fn codegen_llvm_intrinsic_call(
+        &mut self,
+        instance: ty::Instance<'tcx>,
+        args: &[OperandRef<'tcx, Self::Value>],
+        is_cleanup: bool,
+    ) -> Self::Value {
+        let fn_ptr = self.get_fn_addr(instance);
+        let fn_ty = fn_ptr.get_type();
+
+        let mut llargs = vec![];
+
+        for arg in args {
+            match arg.val {
+                OperandValue::ZeroSized => {}
+                OperandValue::Immediate(_) => llargs.push(arg.immediate()),
+                OperandValue::Pair(a, b) => {
+                    llargs.push(a);
+                    llargs.push(b);
+                }
+                OperandValue::Ref(op_place_val) => {
+                    let mut llval = op_place_val.llval;
+                    // We can't use `PlaceRef::load` here because the argument
+                    // may have a type we don't treat as immediate, but the ABI
+                    // used for this call is passing it by-value. In that case,
+                    // the load would just produce `OperandValue::Ref` instead
+                    // of the `OperandValue::Immediate` we need for the call.
+                    llval = self.load(self.backend_type(arg.layout), llval, op_place_val.align);
+                    if let BackendRepr::Scalar(scalar) = arg.layout.backend_repr {
+                        if scalar.is_bool() {
+                            self.range_metadata(llval, WrappingRange { start: 0, end: 1 });
+                        }
+                        // We store bools as `i8` so we need to truncate to `i1`.
+                        llval = self.to_immediate_scalar(llval, scalar);
+                    }
+                    llargs.push(llval);
+                }
+            }
+        }
+
+        // FIXME directly use the llvm intrinsic adjustment functions here
+        let llret = self.call(fn_ty, None, None, fn_ptr, &llargs, None, None);
+        if is_cleanup {
+            self.apply_attrs_to_cleanup_callsite(llret);
+        }
+
+        llret
     }
 
     fn abort(&mut self) {
