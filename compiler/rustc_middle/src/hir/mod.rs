@@ -18,7 +18,7 @@ use rustc_macros::{Decodable, Encodable, HashStable};
 use rustc_span::{ErrorGuaranteed, ExpnId, Span};
 
 use crate::query::Providers;
-use crate::ty::{EarlyBinder, ImplSubject, TyCtxt};
+use crate::ty::TyCtxt;
 
 /// Gather the LocalDefId for each item-like within a module, including items contained within
 /// bodies. The Ids are in visitor order. This is used to partition a pass between modules.
@@ -152,13 +152,6 @@ impl<'tcx> TyCtxt<'tcx> {
             }
         }
         LocalModDefId::new_unchecked(id)
-    }
-
-    pub fn impl_subject(self, def_id: DefId) -> EarlyBinder<'tcx, ImplSubject<'tcx>> {
-        match self.impl_trait_ref(def_id) {
-            Some(t) => t.map_bound(ImplSubject::Trait),
-            None => self.type_of(def_id).map_bound(ImplSubject::Inherent),
-        }
     }
 
     /// Returns `true` if this is a foreign item (i.e., linked via `extern { ... }`).
