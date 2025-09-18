@@ -1040,8 +1040,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             && let Some(name) = bx.tcx().codegen_fn_attrs(instance.def_id()).symbol_name
             && name.as_str().starts_with("llvm.")
         {
-            let mut llargs = Vec::with_capacity(args.len());
-
             let dest_ty = destination.ty(&self.mir.local_decls, bx.tcx()).ty;
             let return_dest = if dest_ty.is_unit() {
                 ReturnDest::Nothing
@@ -1060,48 +1058,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 ReturnDest::Store(self.codegen_place(bx, destination.as_ref()))
             };
 
-            for arg in args {
-                let op = self.codegen_operand(bx, &arg.node);
+            let args =
+                args.into_iter().map(|arg| self.codegen_operand(bx, &arg.node)).collect::<Vec<_>>();
 
-                match op.val {
-                    ZeroSized => {}
-                    Immediate(_) => llargs.push(op.immediate()),
-                    Pair(a, b) => {
-                        llargs.push(a);
-                        llargs.push(b);
-                    }
-                    Ref(op_place_val) => {
-                        let mut llval = op_place_val.llval;
-                        // We can't use `PlaceRef::load` here because the argument
-                        // may have a type we don't treat as immediate, but the ABI
-                        // used for this call is passing it by-value. In that case,
-                        // the load would just produce `OperandValue::Ref` instead
-                        // of the `OperandValue::Immediate` we need for the call.
-                        llval = bx.load(bx.backend_type(op.layout), llval, op_place_val.align);
-                        if let BackendRepr::Scalar(scalar) = op.layout.backend_repr {
-                            if scalar.is_bool() {
-                                bx.range_metadata(llval, WrappingRange { start: 0, end: 1 });
-                            }
-                            // We store bools as `i8` so we need to truncate to `i1`.
-                            llval = bx.to_immediate_scalar(llval, scalar);
-                        }
-                        llargs.push(llval);
-                    }
-                }
-            }
-
-            let fn_ptr = bx.get_fn_addr(instance);
             self.set_debug_loc(bx, source_info);
 
-            // FIXME remove usage of fn_abi
-            let fn_abi = bx.fn_abi_of_instance(instance, ty::List::empty());
-            assert!(!fn_abi.ret.is_indirect());
-            let fn_ty = bx.fn_decl_backend_type(fn_abi);
-
-            let llret = bx.call(fn_ty, None, None, fn_ptr, &llargs, None, None);
-            if self.mir[helper.bb].is_cleanup {
-                bx.apply_attrs_to_cleanup_callsite(llret);
-            }
+            let llret =
+                bx.codegen_llvm_intrinsic_call(instance, &args, self.mir[helper.bb].is_cleanup);
 
             if let Some(target) = target {
                 self.store_return(
