@@ -1,0 +1,49 @@
+error[E0282]: type annotations needed
+  --> $DIR/span-format_args-issue-140578.rs:2:3
+   |
+LL |   print!("{:?} {a} {a:?}", [], a = 1 + 1);
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
+   |
+   = note: this error originates in the macro `print` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0282]: type annotations needed
+  --> $DIR/span-format_args-issue-140578.rs:7:3
+   |
+LL |   println!("{:?} {a} {a:?}", [], a = 1 + 1);
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
+   |
+   = note: this error originates in the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0282]: type annotations needed
+  --> $DIR/span-format_args-issue-140578.rs:12:3
+   |
+LL |   println!("{:?} {:?} {a} {a:?}", [], [], a = 1 + 1);
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
+   |
+   = note: this error originates in the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0282]: type annotations needed
+  --> $DIR/span-format_args-issue-140578.rs:17:3
+   |
+LL |   println!("{:?} {:?} {a} {a:?} {b:?}", [], [], a = 1 + 1, b = []);
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
+   |
+   = note: this error originates in the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0282]: type annotations needed
+  --> $DIR/span-format_args-issue-140578.rs:22:3
+   |
+LL | /   println!("
+LL | |   {:?} {:?}
+LL | | {a}
+LL | | {a:?}",
+LL | |         [],
+LL | |  [],
+LL | | a = 1 + 1);
+   | |__________^ cannot infer type
+   |
+   = note: this error originates in the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0282`.
