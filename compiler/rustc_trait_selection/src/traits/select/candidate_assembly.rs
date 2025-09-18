@@ -131,12 +131,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Some(LangItem::Field) => {
                     self.assemble_builtin_candidates_for_field(obligation, &mut candidates);
                 }
-                Some(LangItem::UnalignedField) => {
-                    self.assemble_builtin_candidates_for_unaligned_field(
-                        obligation,
-                        &mut candidates,
-                    );
-                }
                 _ => {
                     // We re-match here for traits that can have both builtin impls and user written impls.
                     // After the builtin impls we need to also add user written impls, which we do not want to
@@ -1473,17 +1467,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            _ => {}
-        }
-    }
-
-    fn assemble_builtin_candidates_for_unaligned_field(
-        &mut self,
-        obligation: &PolyTraitObligation<'tcx>,
-        candidates: &mut SelectionCandidateSet<'tcx>,
-    ) {
-        match obligation.predicate.self_ty().skip_binder().kind() {
-            ty::Field(_, _) => candidates.vec.push(BuiltinCandidate),
             _ => {}
         }
     }

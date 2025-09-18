@@ -646,7 +646,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             sym::fmuladdf64 => self.float_muladd_intrinsic::<Double>(args, dest)?,
             sym::fmuladdf128 => self.float_muladd_intrinsic::<Quad>(args, dest)?,
 
-            sym::unaligned_field_offset => self.unaligned_field_offset(instance, dest)?,
+            sym::field_offset => self.field_offset(instance, dest)?,
 
             // Unsupported intrinsic: skip the return_to_block below.
             _ => return interp_ok(false),
@@ -657,7 +657,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         interp_ok(true)
     }
 
-    fn unaligned_field_offset(
+    fn field_offset(
         &mut self,
         instance: ty::Instance<'tcx>,
         dest: &PlaceTy<'tcx, M::Provenance>,

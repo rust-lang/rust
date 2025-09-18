@@ -4,7 +4,7 @@
 #![allow(incomplete_features, dead_code)]
 #![feature(field_projections)]
 
-use std::field::{UnalignedField, field_of};
+use std::field::{Field, field_of};
 
 pub union Foo {
     a: isize,

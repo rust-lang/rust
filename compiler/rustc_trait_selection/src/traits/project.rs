@@ -997,8 +997,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         | LangItem::AsyncFn
                         | LangItem::AsyncFnMut
                         | LangItem::AsyncFnOnce
-                        | LangItem::Field
-                        | LangItem::UnalignedField,
+                        | LangItem::Field,
                     ) => true,
                     Some(LangItem::AsyncFnKindHelper) => {
                         // FIXME(async_closures): Validity constraints here could be cleaned up.
@@ -1556,16 +1555,16 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
             }
         });
         (metadata_ty.into(), obligations)
-    } else if tcx.is_lang_item(trait_def_id, LangItem::UnalignedField) {
+    } else if tcx.is_lang_item(trait_def_id, LangItem::Field) {
         let &ty::Field(container, field_path) = self_ty.kind() else {
-            bug!("only `field_of!()` can implement `UnalignedField`")
+            bug!("only `field_of!()` can implement `Field`")
         };
-        if tcx.is_lang_item(item_def_id, LangItem::UnalignedFieldBase) {
+        if tcx.is_lang_item(item_def_id, LangItem::FieldBase) {
             (container.into(), PredicateObligations::new())
-        } else if tcx.is_lang_item(item_def_id, LangItem::UnalignedFieldType) {
+        } else if tcx.is_lang_item(item_def_id, LangItem::FieldType) {
             (field_path.field_ty(tcx, container).into(), PredicateObligations::new())
         } else {
-            bug!("unexpected associated type {:?} in `UnalignedField`", obligation.predicate);
+            bug!("unexpected associated type {:?} in `Field`", obligation.predicate);
         }
     } else {
         bug!("unexpected builtin trait with associated type: {:?}", obligation.predicate);
