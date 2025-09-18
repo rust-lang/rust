@@ -385,6 +385,13 @@ where
     ) -> Vec<Candidate<I>> {
         unreachable!("Unsize is not const")
     }
+
+    fn consider_builtin_field_candidate(
+        _ecx: &mut EvalCtxt<'_, D>,
+        _goal: Goal<I, Self>,
+    ) -> Result<Candidate<I>, NoSolution> {
+        unreachable!("Field is not const")
+    }
 }
 
 impl<D, I> EvalCtxt<'_, D>
