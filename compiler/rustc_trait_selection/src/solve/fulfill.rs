@@ -2,6 +2,7 @@ use std::marker::PhantomData;
 use std::mem;
 use std::ops::ControlFlow;
 
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::thinvec::ExtractIf;
 use rustc_hir::def_id::LocalDefId;
 use rustc_infer::infer::InferCtxt;
@@ -19,7 +20,7 @@ use rustc_next_trait_solver::solve::{
 };
 use rustc_span::Span;
 use thin_vec::ThinVec;
-use tracing::instrument;
+use tracing::{debug, instrument};
 
 use self::derive_errors::*;
 use super::Certainty;
@@ -57,6 +58,7 @@ pub struct FulfillmentCtxt<'tcx, E: 'tcx> {
 
 #[derive(Default, Debug)]
 struct ObligationStorage<'tcx> {
+    dedup: FxHashSet<(ty::ParamEnv<'tcx>, ty::Predicate<'tcx>)>,
     /// Obligations which resulted in an overflow in fulfillment itself.
     ///
     /// We cannot eagerly return these as error so we instead store them here
@@ -67,7 +69,14 @@ struct ObligationStorage<'tcx> {
 }
 
 impl<'tcx> ObligationStorage<'tcx> {
-    fn register(
+    fn register(&mut self, obligation: PredicateObligation<'tcx>) {
+        if self.dedup.insert((obligation.param_env, obligation.predicate)) {
+            self.pending.push((obligation, None));
+        } else {
+            debug!("skipping already registered obligation: {obligation:?}");
+        }
+    }
+    fn readd_pending(
         &mut self,
         obligation: PredicateObligation<'tcx>,
         stalled_on: Option<GoalStalledOn<TyCtxt<'tcx>>>,
@@ -161,7 +170,7 @@ where
         obligation: PredicateObligation<'tcx>,
     ) {
         assert_eq!(self.usable_in_snapshot, infcx.num_open_snapshots());
-        self.obligations.register(obligation, None);
+        self.obligations.register(obligation);
     }
 
     fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E> {
@@ -205,7 +214,7 @@ where
                         // Only goals proven via the trait solver should be region dependent.
                         Certainty::Yes => {}
                         Certainty::Maybe(_) => {
-                            self.obligations.register(obligation, None);
+                            self.obligations.readd_pending(obligation, None);
                         }
                     }
                     continue;
@@ -258,7 +267,7 @@ where
                             infcx.push_hir_typeck_potentially_region_dependent_goal(obligation);
                         }
                     }
-                    Certainty::Maybe(_) => self.obligations.register(obligation, stalled_on),
+                    Certainty::Maybe(_) => self.obligations.readd_pending(obligation, stalled_on),
                 }
             }
 
