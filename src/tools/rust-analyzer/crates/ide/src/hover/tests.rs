@@ -4738,7 +4738,7 @@ fn main() {
             *value*
 
             ```rust
-            let value: Const<_>
+            let value: Const<-1>
             ```
 
             ---
