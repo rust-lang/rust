@@ -197,6 +197,18 @@ fn check_closure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tcx
                 // in a type which is `'static`.
                 // For now ignore all callee types which reference a type parameter.
                 && !generic_args.types().any(|t| matches!(t.kind(), ty::Param(_)))
+                // Rule out `AsyncFn*`s, because while they can be called as `|x| f(x)`,
+                // they can't be passed directly into a place expecting an `Fn*` (#13892)
+                && let Ok((closure_kind, _)) = cx
+                    .tcx
+                    .infer_ctxt()
+                    .build(cx.typing_mode())
+                    .err_ctxt()
+                    .type_implements_fn_trait(
+                        cx.param_env,
+                        Binder::bind_with_vars(callee_ty_adjusted, List::empty()),
+                        ty::PredicatePolarity::Positive,
+                    )
             {
                 span_lint_hir_and_then(
                     cx,
@@ -213,19 +225,10 @@ fn check_closure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tcx
                                 // 'cuz currently nothing changes after deleting this check.
                                 local_used_in(cx, l, args) || local_used_after_expr(cx, l, expr)
                             }) {
-                                match cx
-                                    .tcx
-                                    .infer_ctxt()
-                                    .build(cx.typing_mode())
-                                    .err_ctxt()
-                                    .type_implements_fn_trait(
-                                        cx.param_env,
-                                        Binder::bind_with_vars(callee_ty_adjusted, List::empty()),
-                                        ty::PredicatePolarity::Positive,
-                                    ) {
+                                match closure_kind {
                                     // Mutable closure is used after current expr; we cannot consume it.
-                                    Ok((ClosureKind::FnMut, _)) => snippet = format!("&mut {snippet}"),
-                                    Ok((ClosureKind::Fn, _)) if !callee_ty_raw.is_ref() => {
+                                    ClosureKind::FnMut => snippet = format!("&mut {snippet}"),
+                                    ClosureKind::Fn if !callee_ty_raw.is_ref() => {
                                         snippet = format!("&{snippet}");
                                     },
                                     _ => (),

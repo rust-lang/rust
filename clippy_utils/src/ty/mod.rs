@@ -11,7 +11,7 @@ use rustc_hir as hir;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{Expr, FnDecl, LangItem, TyKind, find_attr};
+use rustc_hir::{Expr, FnDecl, LangItem, find_attr};
 use rustc_hir_analysis::lower_ty;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
@@ -43,13 +43,8 @@ pub use type_certainty::expr_type_is_certain;
 /// Lower a [`hir::Ty`] to a [`rustc_middle::ty::Ty`].
 pub fn ty_from_hir_ty<'tcx>(cx: &LateContext<'tcx>, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
     cx.maybe_typeck_results()
-        .and_then(|results| {
-            if results.hir_owner == hir_ty.hir_id.owner {
-                results.node_type_opt(hir_ty.hir_id)
-            } else {
-                None
-            }
-        })
+        .filter(|results| results.hir_owner == hir_ty.hir_id.owner)
+        .and_then(|results| results.node_type_opt(hir_ty.hir_id))
         .unwrap_or_else(|| lower_ty(cx.tcx, hir_ty))
 }
 
@@ -475,63 +470,50 @@ pub fn needs_ordered_drop<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
     needs_ordered_drop_inner(cx, ty, &mut FxHashSet::default())
 }
 
-/// Peels off all references on the type. Returns the underlying type, the number of references
-/// removed, and whether the pointer is ultimately mutable or not.
-pub fn peel_mid_ty_refs_is_mutable(ty: Ty<'_>) -> (Ty<'_>, usize, Mutability) {
-    fn f(ty: Ty<'_>, count: usize, mutability: Mutability) -> (Ty<'_>, usize, Mutability) {
-        match ty.kind() {
-            ty::Ref(_, ty, Mutability::Mut) => f(*ty, count + 1, mutability),
-            ty::Ref(_, ty, Mutability::Not) => f(*ty, count + 1, Mutability::Not),
-            _ => (ty, count, mutability),
-        }
-    }
-    f(ty, 0, Mutability::Mut)
-}
-
-/// Returns `true` if the given type is an `unsafe` function.
-pub fn type_is_unsafe_function<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+/// Returns `true` if `ty` denotes an `unsafe fn`.
+pub fn is_unsafe_fn<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
     ty.is_fn() && ty.fn_sig(cx.tcx).safety().is_unsafe()
 }
 
-/// Returns the base type for HIR references and pointers.
-pub fn walk_ptrs_hir_ty<'tcx>(ty: &'tcx hir::Ty<'tcx>) -> &'tcx hir::Ty<'tcx> {
-    match ty.kind {
-        TyKind::Ptr(ref mut_ty) | TyKind::Ref(_, ref mut_ty) => walk_ptrs_hir_ty(mut_ty.ty),
-        _ => ty,
+/// Peels off all references on the type. Returns the underlying type, the number of references
+/// removed, and, if there were any such references, whether the pointer is ultimately mutable or
+/// not.
+pub fn peel_and_count_ty_refs(mut ty: Ty<'_>) -> (Ty<'_>, usize, Option<Mutability>) {
+    let mut count = 0;
+    let mut mutbl = None;
+    while let ty::Ref(_, dest_ty, m) = ty.kind() {
+        ty = *dest_ty;
+        count += 1;
+        mutbl.replace(mutbl.map_or(*m, |mutbl: Mutability| mutbl.min(*m)));
     }
+    (ty, count, mutbl)
 }
 
-/// Returns the base type for references and raw pointers, and count reference
-/// depth.
-pub fn walk_ptrs_ty_depth(ty: Ty<'_>) -> (Ty<'_>, usize) {
-    fn inner(ty: Ty<'_>, depth: usize) -> (Ty<'_>, usize) {
-        match ty.kind() {
-            ty::Ref(_, ty, _) => inner(*ty, depth + 1),
-            _ => (ty, depth),
-        }
-    }
-    inner(ty, 0)
-}
-
-/// Returns `true` if types `a` and `b` are same types having same `Const` generic args,
-/// otherwise returns `false`
-pub fn same_type_and_consts<'tcx>(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
+/// Checks whether `a` and `b` are same types having same `Const` generic args, but ignores
+/// lifetimes.
+///
+/// For example, the function would return `true` for
+/// - `u32` and `u32`
+/// - `[u8; N]` and `[u8; M]`, if `N=M`
+/// - `Option<T>` and `Option<U>`, if `same_type_modulo_regions(T, U)` holds
+/// - `&'a str` and `&'b str`
+///
+/// and `false` for:
+/// - `Result<u32, String>` and `Result<usize, String>`
+pub fn same_type_modulo_regions<'tcx>(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
     match (&a.kind(), &b.kind()) {
         (&ty::Adt(did_a, args_a), &ty::Adt(did_b, args_b)) => {
             if did_a != did_b {
                 return false;
             }
 
-            args_a
-                .iter()
-                .zip(args_b.iter())
-                .all(|(arg_a, arg_b)| match (arg_a.kind(), arg_b.kind()) {
-                    (GenericArgKind::Const(inner_a), GenericArgKind::Const(inner_b)) => inner_a == inner_b,
-                    (GenericArgKind::Type(type_a), GenericArgKind::Type(type_b)) => {
-                        same_type_and_consts(type_a, type_b)
-                    },
-                    _ => true,
-                })
+            iter::zip(*args_a, *args_b).all(|(arg_a, arg_b)| match (arg_a.kind(), arg_b.kind()) {
+                (GenericArgKind::Const(inner_a), GenericArgKind::Const(inner_b)) => inner_a == inner_b,
+                (GenericArgKind::Type(type_a), GenericArgKind::Type(type_b)) => {
+                    same_type_modulo_regions(type_a, type_b)
+                },
+                _ => true,
+            })
         },
         _ => a == b,
     }

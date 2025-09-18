@@ -1,5 +1,6 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::source::SpanRangeExt;
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, ExprKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -81,6 +82,19 @@ impl SemicolonBlock {
     fn semicolon_inside_block(&self, cx: &LateContext<'_>, block: &Block<'_>, tail: &Expr<'_>, semi_span: Span) {
         let insert_span = tail.span.source_callsite().shrink_to_hi();
         let remove_span = semi_span.with_lo(block.span.hi());
+
+        // If the block is surrounded by parens (`({ 0 });`), the author probably knows what
+        // they're doing and why, so don't get in their way.
+        //
+        // This has the additional benefit of stopping the block being parsed as a function call:
+        // ```
+        // fn foo() {
+        //     ({ 0 }); // if we remove this `;`, this will parse as a `({ 0 })(5);` function call
+        //     (5);
+        // }
+        if remove_span.check_source_text(cx, |src| src.contains(')')) {
+            return;
+        }
 
         if self.semicolon_inside_block_ignore_singleline && get_line(cx, remove_span) == get_line(cx, insert_span) {
             return;

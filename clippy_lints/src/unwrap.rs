@@ -292,6 +292,7 @@ impl<'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'_, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         // Shouldn't lint when `expr` is in macro.
         if expr.span.in_external_macro(self.cx.tcx.sess.source_map()) {
+            walk_expr(self, expr);
             return;
         }
         // Skip checking inside closures since they are visited through `Unwrap::check_fn()` already.

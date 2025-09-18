@@ -2,10 +2,8 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::{
     SpanRangeExt, expr_block, snippet, snippet_block_with_context, snippet_with_applicability, snippet_with_context,
 };
-use clippy_utils::ty::implements_trait;
-use clippy_utils::{
-    is_lint_allowed, is_unit_expr, peel_blocks, peel_hir_pat_refs, peel_middle_ty_refs, peel_n_hir_expr_refs,
-};
+use clippy_utils::ty::{implements_trait, peel_and_count_ty_refs};
+use clippy_utils::{is_lint_allowed, is_unit_expr, peel_blocks, peel_hir_pat_refs, peel_n_hir_expr_refs};
 use core::ops::ControlFlow;
 use rustc_arena::DroplessArena;
 use rustc_errors::{Applicability, Diag};
@@ -133,7 +131,7 @@ fn report_single_pattern(
 
     let (pat, pat_ref_count) = peel_hir_pat_refs(arm.pat);
     let (msg, sugg) = if let PatKind::Expr(_) = pat.kind
-        && let (ty, ty_ref_count) = peel_middle_ty_refs(cx.typeck_results().expr_ty(ex))
+        && let (ty, ty_ref_count, _) = peel_and_count_ty_refs(cx.typeck_results().expr_ty(ex))
         && let Some(spe_trait_id) = cx.tcx.lang_items().structural_peq_trait()
         && let Some(pe_trait_id) = cx.tcx.lang_items().eq_trait()
         && (ty.is_integral()

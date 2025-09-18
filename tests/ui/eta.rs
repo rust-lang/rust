@@ -635,3 +635,11 @@ fn issue8817() {
         //~| HELP: replace the closure with the tuple variant itself
         .unwrap(); // just for nicer formatting
 }
+
+async fn issue13892<'a, T, F>(maybe: Option<&'a T>, visitor: F)
+where
+    F: AsyncFn(&'a T),
+    T: 'a,
+{
+    maybe.map(|x| visitor(x));
+}
