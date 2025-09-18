@@ -1264,6 +1264,7 @@ impl std::fmt::Write for WriteCounter {
 }
 
 // Implements Display by emitting the given number of spaces.
+#[derive(Clone, Copy)]
 struct Indent(usize);
 
 impl Display for Indent {
@@ -1272,6 +1273,37 @@ impl Display for Indent {
             f.write_char(' ').unwrap();
         });
         Ok(())
+    }
+}
+
+impl clean::Parameter {
+    fn print(&self, cx: &Context<'_>) -> impl fmt::Display {
+        fmt::from_fn(move |f| {
+            if let Some(self_ty) = self.to_receiver() {
+                match self_ty {
+                    clean::SelfTy => f.write_str("self"),
+                    clean::BorrowedRef { lifetime, mutability, type_: box clean::SelfTy } => {
+                        f.write_str(if f.alternate() { "&" } else { "&amp;" })?;
+                        if let Some(lt) = lifetime {
+                            write!(f, "{lt} ", lt = lt.print())?;
+                        }
+                        write!(f, "{mutability}self", mutability = mutability.print_with_space())
+                    }
+                    _ => {
+                        f.write_str("self: ")?;
+                        self_ty.print(cx).fmt(f)
+                    }
+                }
+            } else {
+                if self.is_const {
+                    write!(f, "const ")?;
+                }
+                if let Some(name) = self.name {
+                    write!(f, "{name}: ")?;
+                }
+                self.type_.print(cx).fmt(f)
+            }
+        })
     }
 }
 
@@ -1333,63 +1365,42 @@ impl clean::FnDecl {
         f: &mut fmt::Formatter<'_>,
         cx: &Context<'_>,
     ) -> fmt::Result {
-        let amp = if f.alternate() { "&" } else { "&amp;" };
+        f.write_char('(')?;
 
-        write!(f, "(")?;
-        if let Some(n) = line_wrapping_indent
-            && !self.inputs.is_empty()
-        {
-            write!(f, "\n{}", Indent(n + 4))?;
-        }
+        if !self.inputs.is_empty() {
+            let line_wrapping_indent = line_wrapping_indent.map(|n| Indent(n + 4));
 
-        let last_input_index = self.inputs.len().checked_sub(1);
-        for (i, param) in self.inputs.iter().enumerate() {
-            if let Some(selfty) = param.to_receiver() {
-                match selfty {
-                    clean::SelfTy => {
-                        write!(f, "self")?;
-                    }
-                    clean::BorrowedRef { lifetime, mutability, type_: box clean::SelfTy } => {
-                        write!(f, "{amp}")?;
-                        if let Some(lt) = lifetime {
-                            write!(f, "{lt} ", lt = lt.print())?;
-                        }
-                        write!(f, "{mutability}self", mutability = mutability.print_with_space())?;
-                    }
-                    _ => {
-                        write!(f, "self: ")?;
-                        selfty.print(cx).fmt(f)?;
-                    }
-                }
-            } else {
-                if param.is_const {
-                    write!(f, "const ")?;
-                }
-                if let Some(name) = param.name {
-                    write!(f, "{name}: ")?;
-                }
-                param.type_.print(cx).fmt(f)?;
+            if let Some(indent) = line_wrapping_indent {
+                write!(f, "\n{indent}")?;
             }
-            match (line_wrapping_indent, last_input_index) {
-                (_, None) => (),
-                (None, Some(last_i)) if i != last_i => write!(f, ", ")?,
-                (None, Some(_)) => (),
-                (Some(n), Some(last_i)) if i != last_i => write!(f, ",\n{}", Indent(n + 4))?,
-                (Some(_), Some(_)) => writeln!(f, ",")?,
+
+            let sep = fmt::from_fn(|f| {
+                if let Some(indent) = line_wrapping_indent {
+                    write!(f, ",\n{indent}")
+                } else {
+                    f.write_str(", ")
+                }
+            });
+
+            self.inputs.iter().map(|param| param.print(cx)).joined(sep, f)?;
+
+            if line_wrapping_indent.is_some() {
+                writeln!(f, ",")?
+            }
+
+            if self.c_variadic {
+                match line_wrapping_indent {
+                    None => write!(f, ", ...")?,
+                    Some(indent) => writeln!(f, "{indent}...")?,
+                };
             }
         }
 
-        if self.c_variadic {
-            match line_wrapping_indent {
-                None => write!(f, ", ...")?,
-                Some(n) => writeln!(f, "{}...", Indent(n + 4))?,
-            };
+        if let Some(n) = line_wrapping_indent {
+            write!(f, "{}", Indent(n))?
         }
 
-        match line_wrapping_indent {
-            None => write!(f, ")")?,
-            Some(n) => write!(f, "{})", Indent(n))?,
-        };
+        f.write_char(')')?;
 
         self.print_output(cx).fmt(f)
     }
