@@ -2047,7 +2047,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn swap_remove(&mut self, index: usize) -> T {
         #[cold]
-        #[cfg_attr(not(panic = "immediate_abort"), inline(never))]
+        #[cfg_attr(not(panic = "immediate-abort"), inline(never))]
         #[track_caller]
         #[optimize(size)]
         fn assert_failed(index: usize, len: usize) -> ! {
@@ -2129,7 +2129,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[must_use = "if you don't need a reference to the value, use `Vec::insert` instead"]
     pub fn insert_mut(&mut self, index: usize, element: T) -> &mut T {
         #[cold]
-        #[cfg_attr(not(panic = "immediate_abort"), inline(never))]
+        #[cfg_attr(not(panic = "immediate-abort"), inline(never))]
         #[track_caller]
         #[optimize(size)]
         fn assert_failed(index: usize, len: usize) -> ! {
@@ -2193,7 +2193,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[rustc_confusables("delete", "take")]
     pub fn remove(&mut self, index: usize) -> T {
         #[cold]
-        #[cfg_attr(not(panic = "immediate_abort"), inline(never))]
+        #[cfg_attr(not(panic = "immediate-abort"), inline(never))]
         #[track_caller]
         #[optimize(size)]
         fn assert_failed(index: usize, len: usize) -> ! {
@@ -2955,7 +2955,7 @@ impl<T, A: Allocator> Vec<T, A> {
         A: Clone,
     {
         #[cold]
-        #[cfg_attr(not(panic = "immediate_abort"), inline(never))]
+        #[cfg_attr(not(panic = "immediate-abort"), inline(never))]
         #[track_caller]
         #[optimize(size)]
         fn assert_failed(at: usize, len: usize) -> ! {
