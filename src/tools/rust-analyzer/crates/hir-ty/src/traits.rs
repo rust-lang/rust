@@ -277,7 +277,7 @@ pub fn next_trait_solve(
         Ok((_, Certainty::Yes, args)) => NextTraitSolveResult::Certain(
             convert_canonical_args_for_result(DbInterner::new_with(db, Some(krate), block), args),
         ),
-        Ok((_, Certainty::Maybe(_), args)) => {
+        Ok((_, Certainty::Maybe { .. }, args)) => {
             let subst = convert_canonical_args_for_result(
                 DbInterner::new_with(db, Some(krate), block),
                 args,
@@ -316,7 +316,7 @@ pub fn next_trait_solve_canonical_in_ctxt<'db>(
         Ok((_, Certainty::Yes, args)) => NextTraitSolveResult::Certain(
             convert_canonical_args_for_result(infer_ctxt.interner, args),
         ),
-        Ok((_, Certainty::Maybe(_), args)) => {
+        Ok((_, Certainty::Maybe { .. }, args)) => {
             let subst = convert_canonical_args_for_result(infer_ctxt.interner, args);
             NextTraitSolveResult::Uncertain(chalk_ir::Canonical {
                 binders: subst.binders,

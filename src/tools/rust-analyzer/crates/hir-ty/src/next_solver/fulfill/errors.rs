@@ -153,15 +153,17 @@ pub(super) fn fulfillment_error_for_stalled<'db>(
             Span::dummy(),
             None,
         ) {
-            Ok(GoalEvaluation { certainty: Certainty::Maybe(MaybeCause::Ambiguity), .. }) => {
-                (FulfillmentErrorCode::Ambiguity { overflow: None }, true)
-            }
+            Ok(GoalEvaluation {
+                certainty: Certainty::Maybe { cause: MaybeCause::Ambiguity, .. },
+                ..
+            }) => (FulfillmentErrorCode::Ambiguity { overflow: None }, true),
             Ok(GoalEvaluation {
                 certainty:
-                    Certainty::Maybe(MaybeCause::Overflow {
-                        suggest_increasing_limit,
-                        keep_constraints: _,
-                    }),
+                    Certainty::Maybe {
+                        cause:
+                            MaybeCause::Overflow { suggest_increasing_limit, keep_constraints: _ },
+                        ..
+                    },
                 ..
             }) => (
                 FulfillmentErrorCode::Ambiguity { overflow: Some(suggest_increasing_limit) },
@@ -314,7 +316,8 @@ impl<'db> BestObligation<'db> {
                 .instantiate_proof_tree_for_nested_goal(GoalSource::Misc, obligation.as_goal());
             // Skip nested goals that aren't the *reason* for our goal's failure.
             match (self.consider_ambiguities, nested_goal.result()) {
-                (true, Ok(Certainty::Maybe(MaybeCause::Ambiguity))) | (false, Err(_)) => {}
+                (true, Ok(Certainty::Maybe { cause: MaybeCause::Ambiguity, .. }))
+                | (false, Err(_)) => {}
                 _ => continue,
             }
 
@@ -456,7 +459,8 @@ impl<'db> ProofTreeVisitor<'db> for BestObligation<'db> {
         let interner = goal.infcx().interner;
         // Skip goals that aren't the *reason* for our goal's failure.
         match (self.consider_ambiguities, goal.result()) {
-            (true, Ok(Certainty::Maybe(MaybeCause::Ambiguity))) | (false, Err(_)) => {}
+            (true, Ok(Certainty::Maybe { cause: MaybeCause::Ambiguity, .. })) | (false, Err(_)) => {
+            }
             _ => return ControlFlow::Continue(()),
         }
 

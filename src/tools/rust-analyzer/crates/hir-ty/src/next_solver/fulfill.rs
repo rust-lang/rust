@@ -182,7 +182,7 @@ impl<'db> FulfillmentCtxt<'db> {
                 if let Some(certainty) = delegate.compute_goal_fast_path(goal, Span::dummy()) {
                     match certainty {
                         Certainty::Yes => {}
-                        Certainty::Maybe(_) => {
+                        Certainty::Maybe { .. } => {
                             self.obligations.register(obligation, None);
                         }
                     }
@@ -211,7 +211,7 @@ impl<'db> FulfillmentCtxt<'db> {
 
                 match certainty {
                     Certainty::Yes => {}
-                    Certainty::Maybe(_) => self.obligations.register(obligation, stalled_on),
+                    Certainty::Maybe { .. } => self.obligations.register(obligation, stalled_on),
                 }
             }
 

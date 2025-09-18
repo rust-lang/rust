@@ -910,7 +910,7 @@ impl<'db> InferenceTable<'db> {
         match result {
             Ok((_, Certainty::Yes)) => {}
             Err(rustc_type_ir::solve::NoSolution) => {}
-            Ok((_, Certainty::Maybe(_))) => {
+            Ok((_, Certainty::Maybe { .. })) => {
                 self.fulfillment_cx.register_predicate_obligation(
                     &self.infer_ctxt,
                     Obligation::new(
