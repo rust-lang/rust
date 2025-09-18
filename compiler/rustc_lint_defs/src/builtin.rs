@@ -142,6 +142,7 @@ declare_lint_pass! {
         UNUSED_UNSAFE,
         UNUSED_VARIABLES,
         USELESS_DEPRECATED,
+        VARARGS_WITHOUT_PATTERN,
         WARNINGS,
         // tidy-alphabetical-end
     ]
@@ -5194,4 +5195,51 @@ declare_lint! {
     pub INLINE_ALWAYS_MISMATCHING_TARGET_FEATURES,
     Warn,
     r#"detects when a function annotated with `#[inline(always)]` and `#[target_feature(enable = "..")]` is inlined into a caller without the required target feature"#,
+}
+
+declare_lint! {
+    /// The `varargs_without_pattern` lint detects when `...` is used as an argument to a
+    /// non-foreign function without any pattern being specified.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// // Using `...` in non-foreign function definitions is unstable, however stability is
+    /// // currently only checked after attributes are expanded, so using `#[cfg(false)]` here will
+    /// // allow this to compile on stable Rust.
+    /// #[cfg(false)]
+    /// fn foo(...) {
+    ///
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Patterns are currently required for all non-`...` arguments in function definitions (with
+    /// some exceptions in the 2015 edition). Requiring `...` arguments to have patterns in
+    /// non-foreign function definitions makes the language more consistent, and removes a source of
+    /// confusion for the unstable C variadic feature. `...` arguments without a pattern are already
+    /// stable and widely used in foreign function definitions; this lint only affects non-foreign
+    /// function definitions.
+    ///
+    /// Using `...` (C varargs) in a non-foreign function definition is currently unstable. However,
+    /// stability checking for the `...` syntax in non-foreign function definitions is currently
+    /// implemented after attributes have been expanded, meaning that if the attribute removes the
+    /// use of the unstable syntax (e.g. `#[cfg(false)]`, or a procedural macro), the code will
+    /// compile on stable Rust; this is the only situation where this lint affects code that
+    /// compiles on stable Rust.
+    ///
+    /// This is a [future-incompatible] lint to transition this to a hard error in the future.
+    ///
+    /// [future-incompatible]: ../index.md#future-incompatible-lints
+    pub VARARGS_WITHOUT_PATTERN,
+    Warn,
+    "detects usage of `...` arguments without a pattern in non-foreign items",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::FutureReleaseError,
+        reference: "issue #145544 <https://github.com/rust-lang/rust/issues/145544>",
+        report_in_deps: false,
+    };
 }

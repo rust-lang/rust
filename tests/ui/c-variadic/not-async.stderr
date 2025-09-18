@@ -1,14 +1,14 @@
 error: functions cannot be both `async` and C-variadic
   --> $DIR/not-async.rs:5:1
    |
-LL | async unsafe extern "C" fn cannot_be_async(x: isize, ...) {}
-   | ^^^^^ `async` because of this                        ^^^ C-variadic because of this
+LL | async unsafe extern "C" fn cannot_be_async(x: isize, _: ...) {}
+   | ^^^^^ `async` because of this                        ^^^^^^ C-variadic because of this
 
 error[E0700]: hidden type for `impl Future<Output = ()>` captures lifetime that does not appear in bounds
-  --> $DIR/not-async.rs:5:59
+  --> $DIR/not-async.rs:5:62
    |
-LL | async unsafe extern "C" fn cannot_be_async(x: isize, ...) {}
-   | --------------------------------------------------------- ^^
+LL | async unsafe extern "C" fn cannot_be_async(x: isize, _: ...) {}
+   | ------------------------------------------------------------ ^^
    | |
    | opaque type defined here
    |
