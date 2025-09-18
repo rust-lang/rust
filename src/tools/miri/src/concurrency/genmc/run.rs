@@ -70,7 +70,7 @@ fn run_genmc_mode_impl<'tcx>(
 
         // Execute the program until completion to get the return value, or return if an error happens:
         let Some(return_code) = eval_entry(genmc_ctx.clone()) else {
-            genmc_ctx.print_genmc_output(genmc_config);
+            genmc_ctx.print_genmc_output(genmc_config, tcx);
             return None;
         };
 
@@ -97,7 +97,7 @@ fn run_genmc_mode_impl<'tcx>(
                 // Since we don't have any span information for the error at this point,
                 // we just print GenMC's error string, and the full GenMC output if requested.
                 eprintln!("(GenMC) Error detected: {error}");
-                genmc_ctx.print_genmc_output(genmc_config);
+                genmc_ctx.print_genmc_output(genmc_config, tcx);
                 return None;
             }
         }
@@ -110,13 +110,13 @@ impl GenmcCtx {
     ///
     /// This message can be very verbose and is likely not useful for the average user.
     /// This function should be called *after* Miri has printed all of its output.
-    fn print_genmc_output(&self, genmc_config: &GenmcConfig) {
+    fn print_genmc_output(&self, genmc_config: &GenmcConfig, tcx: TyCtxt<'_>) {
         if genmc_config.print_genmc_output {
             eprintln!("GenMC error report:");
             eprintln!("{}", self.get_result_message());
         } else {
-            eprintln!(
-                "(Add `-Zmiri-genmc-print-genmc-output` to MIRIFLAGS to see the detailed GenMC error report.)"
+            tcx.dcx().note(
+                "add `-Zmiri-genmc-print-genmc-output` to MIRIFLAGS to see the detailed GenMC error report"
             );
         }
     }

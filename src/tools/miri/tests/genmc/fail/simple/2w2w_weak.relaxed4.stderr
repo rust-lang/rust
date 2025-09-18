@@ -10,6 +10,7 @@ LL |             std::process::abort();
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 
-(Add `-Zmiri-genmc-print-genmc-output` to MIRIFLAGS to see the detailed GenMC error report.)
+note: add `-Zmiri-genmc-print-genmc-output` to MIRIFLAGS to see the detailed GenMC error report
+
 error: aborting due to 1 previous error
 
