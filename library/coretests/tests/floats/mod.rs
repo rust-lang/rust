@@ -34,6 +34,10 @@ trait TestableFloat: Sized {
     const RAW_12_DOT_5: Self;
     const RAW_1337: Self;
     const RAW_MINUS_14_DOT_25: Self;
+    /// The result of 12.3.mul_add(4.5, 6.7)
+    const MUL_ADD_RESULT: Self;
+    /// The result of (-12.3).mul_add(-4.5, -6.7)
+    const NEG_MUL_ADD_RESULT: Self;
 }
 
 impl TestableFloat for f16 {
@@ -58,6 +62,8 @@ impl TestableFloat for f16 {
     const RAW_12_DOT_5: Self = Self::from_bits(0x4a40);
     const RAW_1337: Self = Self::from_bits(0x6539);
     const RAW_MINUS_14_DOT_25: Self = Self::from_bits(0xcb20);
+    const MUL_ADD_RESULT: Self = 62.031;
+    const NEG_MUL_ADD_RESULT: Self = 48.625;
 }
 
 impl TestableFloat for f32 {
@@ -84,6 +90,8 @@ impl TestableFloat for f32 {
     const RAW_12_DOT_5: Self = Self::from_bits(0x41480000);
     const RAW_1337: Self = Self::from_bits(0x44a72000);
     const RAW_MINUS_14_DOT_25: Self = Self::from_bits(0xc1640000);
+    const MUL_ADD_RESULT: Self = 62.05;
+    const NEG_MUL_ADD_RESULT: Self = 48.65;
 }
 
 impl TestableFloat for f64 {
@@ -106,6 +114,8 @@ impl TestableFloat for f64 {
     const RAW_12_DOT_5: Self = Self::from_bits(0x4029000000000000);
     const RAW_1337: Self = Self::from_bits(0x4094e40000000000);
     const RAW_MINUS_14_DOT_25: Self = Self::from_bits(0xc02c800000000000);
+    const MUL_ADD_RESULT: Self = 62.050000000000004;
+    const NEG_MUL_ADD_RESULT: Self = 48.650000000000006;
 }
 
 impl TestableFloat for f128 {
@@ -128,6 +138,8 @@ impl TestableFloat for f128 {
     const RAW_12_DOT_5: Self = Self::from_bits(0x40029000000000000000000000000000);
     const RAW_1337: Self = Self::from_bits(0x40094e40000000000000000000000000);
     const RAW_MINUS_14_DOT_25: Self = Self::from_bits(0xc002c800000000000000000000000000);
+    const MUL_ADD_RESULT: Self = 62.0500000000000000000000000000000037;
+    const NEG_MUL_ADD_RESULT: Self = 48.6500000000000000000000000000000049;
 }
 
 /// Determine the tolerance for values of the argument type.
@@ -359,8 +371,6 @@ macro_rules! float_test {
 
 mod f128;
 mod f16;
-mod f32;
-mod f64;
 
 float_test! {
     name: num,
@@ -1540,5 +1550,30 @@ float_test! {
 
         assert_biteq!(Float::from_bits(masked_nan1), Float::from_bits(masked_nan1));
         assert_biteq!(Float::from_bits(masked_nan2), Float::from_bits(masked_nan2));
+    }
+}
+
+float_test! {
+    name: mul_add,
+    attrs: {
+        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        // FIXME(#140515): mingw has an incorrect fma https://sourceforge.net/p/mingw-w64/bugs/848/
+        f32: #[cfg_attr(all(target_os = "windows", target_env = "gnu", not(target_abi = "llvm")), ignore)],
+        f64: #[cfg_attr(all(target_os = "windows", target_env = "gnu", not(target_abi = "llvm")), ignore)],
+        f128: #[cfg(any(miri, target_has_reliable_f128))],
+    },
+    test<Float> {
+        let nan: Float = Float::NAN;
+        let inf: Float = Float::INFINITY;
+        let neg_inf: Float = Float::NEG_INFINITY;
+        assert_biteq!(flt(12.3).mul_add(4.5, 6.7), Float::MUL_ADD_RESULT);
+        assert_biteq!((flt(-12.3)).mul_add(-4.5, -6.7), Float::NEG_MUL_ADD_RESULT);
+        assert_biteq!(flt(0.0).mul_add(8.9, 1.2), 1.2);
+        assert_biteq!(flt(3.4).mul_add(-0.0, 5.6), 5.6);
+        assert!(nan.mul_add(7.8, 9.0).is_nan());
+        assert_biteq!(inf.mul_add(7.8, 9.0), inf);
+        assert_biteq!(neg_inf.mul_add(7.8, 9.0), neg_inf);
+        assert_biteq!(flt(8.9).mul_add(inf, 3.2), inf);
+        assert_biteq!((flt(-3.2)).mul_add(2.4, neg_inf), neg_inf);
     }
 }
