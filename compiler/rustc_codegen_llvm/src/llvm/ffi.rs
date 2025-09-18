@@ -24,7 +24,7 @@ use rustc_target::spec::SymbolVisibility;
 
 use super::RustString;
 use super::debuginfo::{
-    DIArray, DIBasicType, DIBuilder, DIDerivedType, DIDescriptor, DIEnumerator, DIFile, DIFlags,
+    DIArray, DIBuilder, DIDerivedType, DIDescriptor, DIEnumerator, DIFile, DIFlags,
     DIGlobalVariableExpression, DILocation, DISPFlags, DIScope, DISubprogram, DISubrange,
     DITemplateTypeParameter, DIType, DIVariable, DebugEmissionKind, DebugNameTableKind,
 };
@@ -1943,6 +1943,52 @@ unsafe extern "C" {
         UniqueId: *const c_uchar, // See "PTR_LEN_STR".
         UniqueIdLen: size_t,
     ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderCreateMemberType<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Scope: &'ll Metadata,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
+        NameLen: size_t,
+        File: &'ll Metadata,
+        LineNo: c_uint,
+        SizeInBits: u64,
+        AlignInBits: u32,
+        OffsetInBits: u64,
+        Flags: DIFlags,
+        Ty: &'ll Metadata,
+    ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderCreateStaticMemberType<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Scope: &'ll Metadata,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
+        NameLen: size_t,
+        File: &'ll Metadata,
+        LineNumber: c_uint,
+        Type: &'ll Metadata,
+        Flags: DIFlags,
+        ConstantVal: Option<&'ll Value>,
+        AlignInBits: u32,
+    ) -> &'ll Metadata;
+
+    /// Creates a "qualified type" in the C/C++ sense, by adding modifiers
+    /// like `const` or `volatile`.
+    pub(crate) fn LLVMDIBuilderCreateQualifiedType<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Tag: c_uint, // (DWARF tag, e.g. `DW_TAG_const_type`)
+        Type: &'ll Metadata,
+    ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderCreateTypedef<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Type: &'ll Metadata,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
+        NameLen: size_t,
+        File: &'ll Metadata,
+        LineNo: c_uint,
+        Scope: Option<&'ll Metadata>,
+        AlignInBits: u32, // (optional; default is 0)
+    ) -> &'ll Metadata;
 }
 
 #[link(name = "llvm-wrapper", kind = "static")]
@@ -2278,30 +2324,6 @@ unsafe extern "C" {
         TParam: &'a DIArray,
     ) -> &'a DISubprogram;
 
-    pub(crate) fn LLVMRustDIBuilderCreateTypedef<'a>(
-        Builder: &DIBuilder<'a>,
-        Type: &'a DIBasicType,
-        Name: *const c_char,
-        NameLen: size_t,
-        File: &'a DIFile,
-        LineNo: c_uint,
-        Scope: Option<&'a DIScope>,
-    ) -> &'a DIDerivedType;
-
-    pub(crate) fn LLVMRustDIBuilderCreateMemberType<'a>(
-        Builder: &DIBuilder<'a>,
-        Scope: &'a DIDescriptor,
-        Name: *const c_char,
-        NameLen: size_t,
-        File: &'a DIFile,
-        LineNo: c_uint,
-        SizeInBits: u64,
-        AlignInBits: u32,
-        OffsetInBits: u64,
-        Flags: DIFlags,
-        Ty: &'a DIType,
-    ) -> &'a DIDerivedType;
-
     pub(crate) fn LLVMRustDIBuilderCreateVariantMemberType<'a>(
         Builder: &DIBuilder<'a>,
         Scope: &'a DIScope,
@@ -2316,25 +2338,6 @@ unsafe extern "C" {
         Flags: DIFlags,
         Ty: &'a DIType,
     ) -> &'a DIType;
-
-    pub(crate) fn LLVMRustDIBuilderCreateStaticMemberType<'a>(
-        Builder: &DIBuilder<'a>,
-        Scope: &'a DIDescriptor,
-        Name: *const c_char,
-        NameLen: size_t,
-        File: &'a DIFile,
-        LineNo: c_uint,
-        Ty: &'a DIType,
-        Flags: DIFlags,
-        val: Option<&'a Value>,
-        AlignInBits: u32,
-    ) -> &'a DIDerivedType;
-
-    pub(crate) fn LLVMRustDIBuilderCreateQualifiedType<'a>(
-        Builder: &DIBuilder<'a>,
-        Tag: c_uint,
-        Type: &'a DIType,
-    ) -> &'a DIDerivedType;
 
     pub(crate) fn LLVMRustDIBuilderCreateStaticVariable<'a>(
         Builder: &DIBuilder<'a>,
