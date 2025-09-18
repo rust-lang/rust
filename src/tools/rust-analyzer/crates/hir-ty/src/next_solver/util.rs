@@ -1062,3 +1062,11 @@ pub fn sizedness_fast_path<'db>(
 
     false
 }
+
+/// This is a copy of [`rustc_data_structures::fingerprint::Fingerprint`], which we can't construct on stable.
+#[repr(C)]
+pub struct Fingerprint(u64, u64);
+
+impl Fingerprint {
+    pub const ZERO: Fingerprint = Fingerprint(0, 0);
+}
