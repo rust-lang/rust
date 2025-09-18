@@ -1,5 +1,5 @@
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/incoherent-impl.rs:14:1
+  --> $DIR/incoherent-impl.rs:16:1
    |
 LL | impl extern_crate::ForeignTrait for field_of!(Point, x) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-------------------
@@ -11,7 +11,7 @@ LL | impl extern_crate::ForeignTrait for field_of!(Point, x) {}
    = note: define and implement a trait or new type instead
 
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/incoherent-impl.rs:24:1
+  --> $DIR/incoherent-impl.rs:26:1
    |
 LL | impl ForeignTrait for field_of!(Player, pos.x) {}
    | ^^^^^^^^^^^^^^^^^^^^^^------------------------
@@ -23,7 +23,7 @@ LL | impl ForeignTrait for field_of!(Player, pos.x) {}
    = note: define and implement a trait or new type instead
 
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/incoherent-impl.rs:33:1
+  --> $DIR/incoherent-impl.rs:35:1
    |
 LL | impl ForeignTrait for field_of!((usize, usize), 0) {}
    | ^^^^^^^^^^^^^^^^^^^^^^----------------------------
