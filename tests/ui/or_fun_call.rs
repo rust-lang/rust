@@ -77,6 +77,18 @@ fn or_fun_call() {
     with_default_type.unwrap_or(u64::default());
     //~^ unwrap_or_default
 
+    let with_default_literal = Some(1);
+    with_default_literal.unwrap_or(0);
+    // Do not lint because `.unwrap_or_default()` wouldn't be simpler
+
+    let with_default_literal = Some(1.0);
+    with_default_literal.unwrap_or(0.0);
+    // Do not lint because `.unwrap_or_default()` wouldn't be simpler
+
+    let with_default_literal = Some("foo");
+    with_default_literal.unwrap_or("");
+    // Do not lint because `.unwrap_or_default()` wouldn't be simpler
+
     let self_default = None::<FakeDefault>;
     self_default.unwrap_or(<FakeDefault>::default());
     //~^ or_fun_call
