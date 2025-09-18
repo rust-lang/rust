@@ -15,7 +15,7 @@
 //! crate as a kind of pass. This should eventually be factored away.
 
 use std::assert_matches::assert_matches;
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::iter;
 use std::ops::Bound;
 
@@ -33,19 +33,21 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt};
 use rustc_hir::{self as hir, GenericParamKind, HirId, Node, PreciseCapturingArgKind, find_attr};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
-use rustc_infer::traits::{DynCompatibilityViolation, ObligationCause};
+use rustc_infer::traits::{DynCompatibilityViolation, ObligationCause, TraitEngine};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
 use rustc_middle::ty::{
-    self, AdtKind, Const, FieldPath, FieldPathKind, IsSuggestable, Ty, TyCtxt, TypeVisitableExt,
-    TypingMode, fold_regions,
+    self, AdtKind, Const, FieldPath, FieldPathKind, IsSuggestable, ParamEnv, Ty, TyCtxt,
+    TypeVisitableExt, TypingMode, fold_regions,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
+use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::traits::suggestions::NextTypeParamName;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{
-    FulfillmentError, ObligationCtxt, hir_ty_lowering_dyn_compatibility_violations,
+    FulfillmentError, ObligationCtxt, StructurallyNormalizeExt, TraitEngineExt,
+    hir_ty_lowering_dyn_compatibility_violations,
 };
 use tracing::{debug, instrument};
 
@@ -368,9 +370,17 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
             infcx = Some(self.tcx().infer_ctxt().build(ty::TypingMode::non_body_analysis()));
             infcx.as_ref().unwrap()
         });
+        let cause = ObligationCause::misc(span, self.item_def_id);
+        let at = infcx.at(&cause, ParamEnv::empty());
+        let ty_ch_cx = RefCell::new(<dyn TraitEngine<'_, FulfillmentError<'tcx>>>::new(&infcx));
 
         while let Some(&field) = fields.next() {
-            let container = infcx.shallow_resolve(current_container);
+            let result =
+                at.structurally_normalize_ty(current_container, &mut **ty_ch_cx.borrow_mut());
+            let container = match result {
+                Ok(normalized_ty) => normalized_ty,
+                Err(errors) => return Err(infcx.err_ctxt().report_fulfillment_errors(errors)),
+            };
             match container.kind() {
                 ty::Adt(def, args) if !def.is_enum() => {
                     let block = self.tcx.local_def_id_to_hir_id(self.item_def_id);
