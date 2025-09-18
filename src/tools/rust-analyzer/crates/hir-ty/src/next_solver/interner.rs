@@ -1674,6 +1674,20 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
         }
     }
 
+    fn for_each_blanket_impl(self, trait_def_id: Self::TraitId, mut f: impl FnMut(Self::ImplId)) {
+        let Some(krate) = self.krate else { return };
+
+        for impls in self.db.trait_impls_in_deps(krate).iter() {
+            for impl_id in impls.for_trait(trait_def_id.0) {
+                let impl_data = self.db.impl_signature(impl_id);
+                let self_ty_ref = &impl_data.store[impl_data.self_ty];
+                if matches!(self_ty_ref, hir_def::type_ref::TypeRef::TypeParam(_)) {
+                    f(impl_id.into());
+                }
+            }
+        }
+    }
+
     fn has_item_definition(self, def_id: Self::DefId) -> bool {
         // FIXME(next-solver): should check if the associated item has a value.
         true
