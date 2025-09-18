@@ -17,6 +17,15 @@ error: this loop could be written as a `while let` loop
    |
 LL | /     loop {
 LL | |
+LL | |         let Some(_x) = y else { break };
+LL | |     }
+   | |_____^ help: try: `while let Some(_x) = y { .. }`
+
+error: this loop could be written as a `while let` loop
+  --> tests/ui/while_let_loop.rs:38:5
+   |
+LL | /     loop {
+LL | |
 LL | |
 LL | |         match y {
 ...  |
@@ -25,7 +34,7 @@ LL | |     }
    | |_____^ help: try: `while let Some(_x) = y { .. }`
 
 error: this loop could be written as a `while let` loop
-  --> tests/ui/while_let_loop.rs:34:5
+  --> tests/ui/while_let_loop.rs:47:5
    |
 LL | /     loop {
 LL | |
@@ -37,7 +46,7 @@ LL | |     }
    | |_____^ help: try: `while let Some(x) = y { .. }`
 
 error: this loop could be written as a `while let` loop
-  --> tests/ui/while_let_loop.rs:45:5
+  --> tests/ui/while_let_loop.rs:58:5
    |
 LL | /     loop {
 LL | |
@@ -48,7 +57,7 @@ LL | |     }
    | |_____^ help: try: `while let Some(x) = y { .. }`
 
 error: this loop could be written as a `while let` loop
-  --> tests/ui/while_let_loop.rs:77:5
+  --> tests/ui/while_let_loop.rs:90:5
    |
 LL | /     loop {
 LL | |
@@ -68,7 +77,7 @@ LL +     }
    |
 
 error: this loop could be written as a `while let` loop
-  --> tests/ui/while_let_loop.rs:167:9
+  --> tests/ui/while_let_loop.rs:180:9
    |
 LL | /         loop {
 LL | |
@@ -88,7 +97,7 @@ LL +         }
    |
 
 error: this loop could be written as a `while let` loop
-  --> tests/ui/while_let_loop.rs:182:5
+  --> tests/ui/while_let_loop.rs:195:5
    |
 LL | /     loop {
 LL | |
@@ -107,7 +116,7 @@ LL +     }
    |
 
 error: this loop could be written as a `while let` loop
-  --> tests/ui/while_let_loop.rs:194:5
+  --> tests/ui/while_let_loop.rs:207:5
    |
 LL | /     loop {
 LL | |
@@ -126,7 +135,7 @@ LL +     }
    |
 
 error: this loop could be written as a `while let` loop
-  --> tests/ui/while_let_loop.rs:206:5
+  --> tests/ui/while_let_loop.rs:219:5
    |
 LL | /     loop {
 LL | |
@@ -137,7 +146,7 @@ LL | |     }
    | |_____^ help: try: `while let Some(x) = Some(3) { .. }`
 
 error: this loop could be written as a `while let` loop
-  --> tests/ui/while_let_loop.rs:218:5
+  --> tests/ui/while_let_loop.rs:231:5
    |
 LL | /     loop {
 LL | |
@@ -156,7 +165,7 @@ LL +     }
    |
 
 error: this loop could be written as a `while let` loop
-  --> tests/ui/while_let_loop.rs:230:5
+  --> tests/ui/while_let_loop.rs:243:5
    |
 LL | /     loop {
 LL | |
@@ -177,5 +186,5 @@ LL +         ..
 LL +     }
    |
 
-error: aborting due to 11 previous errors
+error: aborting due to 12 previous errors
 

@@ -1,7 +1,7 @@
 //@no-rustfix: multiple suggestions add `-> !` to the same fn
 //@aux-build:proc_macros.rs
 
-#![allow(clippy::never_loop)]
+#![allow(clippy::never_loop, clippy::while_let_loop)]
 #![warn(clippy::infinite_loop)]
 
 extern crate proc_macros;
