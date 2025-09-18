@@ -5,7 +5,6 @@ use std::{cmp, iter};
 use rand::RngCore;
 use rustc_abi::{Align, ExternAbi, FieldIdx, FieldsShape, Size, Variants};
 use rustc_apfloat::Float;
-use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_hir::Safety;
 use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::{CRATE_DEF_INDEX, CrateNum, DefId, LOCAL_CRATE};
@@ -14,7 +13,7 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::ty::layout::{LayoutOf, MaybeResult, TyAndLayout};
-use rustc_middle::ty::{self, FloatTy, IntTy, Ty, TyCtxt, UintTy};
+use rustc_middle::ty::{self, IntTy, Ty, TyCtxt, UintTy};
 use rustc_session::config::CrateType;
 use rustc_span::{Span, Symbol};
 use rustc_symbol_mangling::mangle_internal_symbol;
@@ -961,75 +960,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         this.alloc_mark_immutable(provenance.get_alloc_id().unwrap()).unwrap();
     }
 
-    /// Converts `src` from floating point to integer type `dest_ty`
-    /// after rounding with mode `round`.
-    /// Returns `None` if `f` is NaN or out of range.
-    fn float_to_int_checked(
-        &self,
-        src: &ImmTy<'tcx>,
-        cast_to: TyAndLayout<'tcx>,
-        round: rustc_apfloat::Round,
-    ) -> InterpResult<'tcx, Option<ImmTy<'tcx>>> {
-        let this = self.eval_context_ref();
-
-        fn float_to_int_inner<'tcx, F: rustc_apfloat::Float>(
-            ecx: &MiriInterpCx<'tcx>,
-            src: F,
-            cast_to: TyAndLayout<'tcx>,
-            round: rustc_apfloat::Round,
-        ) -> (Scalar, rustc_apfloat::Status) {
-            let int_size = cast_to.layout.size;
-            match cast_to.ty.kind() {
-                // Unsigned
-                ty::Uint(_) => {
-                    let res = src.to_u128_r(int_size.bits_usize(), round, &mut false);
-                    (Scalar::from_uint(res.value, int_size), res.status)
-                }
-                // Signed
-                ty::Int(_) => {
-                    let res = src.to_i128_r(int_size.bits_usize(), round, &mut false);
-                    (Scalar::from_int(res.value, int_size), res.status)
-                }
-                // Nothing else
-                _ =>
-                    span_bug!(
-                        ecx.cur_span(),
-                        "attempted float-to-int conversion with non-int output type {}",
-                        cast_to.ty,
-                    ),
-            }
-        }
-
-        let ty::Float(fty) = src.layout.ty.kind() else {
-            bug!("float_to_int_checked: non-float input type {}", src.layout.ty)
-        };
-
-        let (val, status) = match fty {
-            FloatTy::F16 =>
-                float_to_int_inner::<Half>(this, src.to_scalar().to_f16()?, cast_to, round),
-            FloatTy::F32 =>
-                float_to_int_inner::<Single>(this, src.to_scalar().to_f32()?, cast_to, round),
-            FloatTy::F64 =>
-                float_to_int_inner::<Double>(this, src.to_scalar().to_f64()?, cast_to, round),
-            FloatTy::F128 =>
-                float_to_int_inner::<Quad>(this, src.to_scalar().to_f128()?, cast_to, round),
-        };
-
-        if status.intersects(
-            rustc_apfloat::Status::INVALID_OP
-                | rustc_apfloat::Status::OVERFLOW
-                | rustc_apfloat::Status::UNDERFLOW,
-        ) {
-            // Floating point value is NaN (flagged with INVALID_OP) or outside the range
-            // of values of the integer type (flagged with OVERFLOW or UNDERFLOW).
-            interp_ok(None)
-        } else {
-            // Floating point value can be represented by the integer type after rounding.
-            // The INEXACT flag is ignored on purpose to allow rounding.
-            interp_ok(Some(ImmTy::from_scalar(val, cast_to)))
-        }
-    }
-
     /// Returns an integer type that is twice wide as `ty`
     fn get_twice_wide_int_ty(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
         let this = self.eval_context_ref();
@@ -1192,20 +1122,6 @@ pub(crate) fn bool_to_simd_element(b: bool, size: Size) -> Scalar {
     // sign-extend it to `size` as required.
     let val = if b { -1 } else { 0 };
     Scalar::from_int(val, size)
-}
-
-pub(crate) fn simd_element_to_bool(elem: ImmTy<'_>) -> InterpResult<'_, bool> {
-    assert!(
-        matches!(elem.layout.ty.kind(), ty::Int(_) | ty::Uint(_)),
-        "SIMD mask element type must be an integer, but this is `{}`",
-        elem.layout.ty
-    );
-    let val = elem.to_scalar().to_int(elem.layout.size)?;
-    interp_ok(match val {
-        0 => false,
-        -1 => true,
-        _ => throw_ub_format!("each element of a SIMD mask must be all-0-bits or all-1-bits"),
-    })
 }
 
 /// Check whether an operation that writes to a target buffer was successful.

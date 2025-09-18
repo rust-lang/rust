@@ -2,6 +2,8 @@
 //! looking at their MIR. Intrinsics/functions supported here are shared by CTFE
 //! and miri.
 
+mod simd;
+
 use std::assert_matches::assert_matches;
 
 use rustc_abi::{FieldIdx, HasDataLayout, Size};
@@ -9,8 +11,8 @@ use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, read_target_uint, write_target_uint};
 use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::ty::{Ty, TyCtxt};
-use rustc_middle::{bug, ty};
+use rustc_middle::ty::{FloatTy, Ty, TyCtxt};
+use rustc_middle::{bug, span_bug, ty};
 use rustc_span::{Symbol, sym};
 use tracing::trace;
 
@@ -121,6 +123,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ) -> InterpResult<'tcx, bool> {
         let instance_args = instance.args;
         let intrinsic_name = self.tcx.item_name(instance.def_id());
+
+        if intrinsic_name.as_str().starts_with("simd_") {
+            return self.eval_simd_intrinsic(intrinsic_name, instance_args, args, dest, ret);
+        }
+
         let tcx = self.tcx.tcx;
 
         match intrinsic_name {
@@ -454,37 +461,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.exact_div(&val, &size, dest)?;
             }
 
-            sym::simd_insert => {
-                let index = u64::from(self.read_scalar(&args[1])?.to_u32()?);
-                let elem = &args[2];
-                let (input, input_len) = self.project_to_simd(&args[0])?;
-                let (dest, dest_len) = self.project_to_simd(dest)?;
-                assert_eq!(input_len, dest_len, "Return vector length must match input length");
-                // Bounds are not checked by typeck so we have to do it ourselves.
-                if index >= input_len {
-                    throw_ub_format!(
-                        "`simd_insert` index {index} is out-of-bounds of vector with length {input_len}"
-                    );
-                }
-
-                for i in 0..dest_len {
-                    let place = self.project_index(&dest, i)?;
-                    let value =
-                        if i == index { elem.clone() } else { self.project_index(&input, i)? };
-                    self.copy_op(&value, &place)?;
-                }
-            }
-            sym::simd_extract => {
-                let index = u64::from(self.read_scalar(&args[1])?.to_u32()?);
-                let (input, input_len) = self.project_to_simd(&args[0])?;
-                // Bounds are not checked by typeck so we have to do it ourselves.
-                if index >= input_len {
-                    throw_ub_format!(
-                        "`simd_extract` index {index} is out-of-bounds of vector with length {input_len}"
-                    );
-                }
-                self.copy_op(&self.project_index(&input, index)?, dest)?;
-            }
             sym::black_box => {
                 // These just return their argument
                 self.copy_op(&args[0], dest)?;
@@ -1080,5 +1056,67 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let res = self.adjust_nan(res, &[a, b, c]);
         self.write_scalar(res, dest)?;
         interp_ok(())
+    }
+
+    /// Converts `src` from floating point to integer type `dest_ty`
+    /// after rounding with mode `round`.
+    /// Returns `None` if `f` is NaN or out of range.
+    pub fn float_to_int_checked(
+        &self,
+        src: &ImmTy<'tcx, M::Provenance>,
+        cast_to: TyAndLayout<'tcx>,
+        round: rustc_apfloat::Round,
+    ) -> InterpResult<'tcx, Option<ImmTy<'tcx, M::Provenance>>> {
+        fn float_to_int_inner<'tcx, F: rustc_apfloat::Float, M: Machine<'tcx>>(
+            ecx: &InterpCx<'tcx, M>,
+            src: F,
+            cast_to: TyAndLayout<'tcx>,
+            round: rustc_apfloat::Round,
+        ) -> (Scalar<M::Provenance>, rustc_apfloat::Status) {
+            let int_size = cast_to.layout.size;
+            match cast_to.ty.kind() {
+                // Unsigned
+                ty::Uint(_) => {
+                    let res = src.to_u128_r(int_size.bits_usize(), round, &mut false);
+                    (Scalar::from_uint(res.value, int_size), res.status)
+                }
+                // Signed
+                ty::Int(_) => {
+                    let res = src.to_i128_r(int_size.bits_usize(), round, &mut false);
+                    (Scalar::from_int(res.value, int_size), res.status)
+                }
+                // Nothing else
+                _ => span_bug!(
+                    ecx.cur_span(),
+                    "attempted float-to-int conversion with non-int output type {}",
+                    cast_to.ty,
+                ),
+            }
+        }
+
+        let ty::Float(fty) = src.layout.ty.kind() else {
+            bug!("float_to_int_checked: non-float input type {}", src.layout.ty)
+        };
+
+        let (val, status) = match fty {
+            FloatTy::F16 => float_to_int_inner(self, src.to_scalar().to_f16()?, cast_to, round),
+            FloatTy::F32 => float_to_int_inner(self, src.to_scalar().to_f32()?, cast_to, round),
+            FloatTy::F64 => float_to_int_inner(self, src.to_scalar().to_f64()?, cast_to, round),
+            FloatTy::F128 => float_to_int_inner(self, src.to_scalar().to_f128()?, cast_to, round),
+        };
+
+        if status.intersects(
+            rustc_apfloat::Status::INVALID_OP
+                | rustc_apfloat::Status::OVERFLOW
+                | rustc_apfloat::Status::UNDERFLOW,
+        ) {
+            // Floating point value is NaN (flagged with INVALID_OP) or outside the range
+            // of values of the integer type (flagged with OVERFLOW or UNDERFLOW).
+            interp_ok(None)
+        } else {
+            // Floating point value can be represented by the integer type after rounding.
+            // The INEXACT flag is ignored on purpose to allow rounding.
+            interp_ok(Some(ImmTy::from_scalar(val, cast_to)))
+        }
     }
 }
