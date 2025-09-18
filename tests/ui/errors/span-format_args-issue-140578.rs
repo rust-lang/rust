@@ -19,11 +19,12 @@ fn check_multi2() {
 }
 
 fn check_unformatted() {
-  println!(" //~ ERROR type annotations needed
+  println!("
   {:?} {:?}
 {a}
 {a:?}",
         [],
+        //~^ ERROR type annotations needed
  [],
 a = 1 + 1);
 }
