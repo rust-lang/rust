@@ -282,9 +282,10 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
 
         let mut field_indices = Vec::with_capacity(fields.len());
         let mut current_container = container;
-        let mut fields = fields.into_iter();
+        let mut fields = fields.into_iter().peekable();
 
         while let Some(&field) = fields.next() {
+            let last = fields.peek().is_none();
             let container = self.structurally_resolve_type(span, current_container);
 
             match container.kind() {
@@ -351,30 +352,33 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
                             .emit_unless_delay(container.references_error()));
                     };
 
-                    let field_ty = self.field_ty(span, field, args);
-
-                    // Enums are anyway always sized. But just to safeguard against future
-                    // language extensions, let's double-check.
-                    self.require_type_is_sized(
-                        field_ty,
-                        span,
-                        ObligationCauseCode::FieldSized {
-                            adt_kind: AdtKind::Enum,
-                            span: self.tcx.def_span(field.did),
-                            last: false,
-                        },
-                    );
-
-                    if field.vis.is_accessible_from(sub_def_scope, self.tcx) {
-                        self.tcx.check_stability(field.did, Some(hir_id), span, None);
-                    } else {
-                        self.private_field_err(ident, container_def.did()).emit();
-                    }
-
                     // Save the index of all fields regardless of their visibility in case
                     // of error recovery.
                     field_indices.push((index, subindex));
-                    current_container = field_ty;
+
+                    if !last {
+                        let field_ty = self.field_ty(span, field, args);
+
+                        // Enums are anyway always sized. But just to safeguard against future
+                        // language extensions, let's double-check.
+                        self.require_type_is_sized(
+                            field_ty,
+                            span,
+                            ObligationCauseCode::FieldSized {
+                                adt_kind: AdtKind::Enum,
+                                span: self.tcx.def_span(field.did),
+                                last: false,
+                            },
+                        );
+
+                        if field.vis.is_accessible_from(sub_def_scope, self.tcx) {
+                            self.tcx.check_stability(field.did, Some(hir_id), span, None);
+                        } else {
+                            self.private_field_err(ident, container_def.did()).emit();
+                        }
+
+                        current_container = field_ty;
+                    }
 
                     continue;
                 }
@@ -388,36 +392,39 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
                         .iter_enumerated()
                         .find(|(_, f)| f.ident(self.tcx).normalize_to_macros_2_0() == ident)
                     {
-                        let field_ty = self.field_ty(span, field, args);
-
-                        match field_path_kind {
-                            FieldPathKind::OffsetOf => {
-                                if self.tcx.features().offset_of_slice() {
-                                    self.require_type_has_static_alignment(field_ty, span);
-                                } else {
-                                    self.require_type_is_sized(
-                                        field_ty,
-                                        span,
-                                        ObligationCauseCode::Misc,
-                                    );
-                                }
-                            }
-                            FieldPathKind::FieldOf => {
-                                // A field type always exists regardless of weather it is aligned or
-                                // not.
-                            }
-                        }
-
-                        if field.vis.is_accessible_from(def_scope, self.tcx) {
-                            self.tcx.check_stability(field.did, Some(hir_id), span, None);
-                        } else {
-                            self.private_field_err(ident, container_def.did()).emit();
-                        }
-
                         // Save the index of all fields regardless of their visibility in case
                         // of error recovery.
                         field_indices.push((FIRST_VARIANT, index));
-                        current_container = field_ty;
+
+                        if !last {
+                            let field_ty = self.field_ty(span, field, args);
+
+                            match field_path_kind {
+                                FieldPathKind::OffsetOf => {
+                                    if self.tcx.features().offset_of_slice() {
+                                        self.require_type_has_static_alignment(field_ty, span);
+                                    } else {
+                                        self.require_type_is_sized(
+                                            field_ty,
+                                            span,
+                                            ObligationCauseCode::Misc,
+                                        );
+                                    }
+                                }
+                                FieldPathKind::FieldOf => {
+                                    // A field type always exists regardless of weather it is aligned or
+                                    // not.
+                                }
+                            }
+
+                            if field.vis.is_accessible_from(def_scope, self.tcx) {
+                                self.tcx.check_stability(field.did, Some(hir_id), span, None);
+                            } else {
+                                self.private_field_err(ident, container_def.did()).emit();
+                            }
+
+                            current_container = field_ty;
+                        }
 
                         continue;
                     }

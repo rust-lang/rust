@@ -363,7 +363,7 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
 
         let mut field_indices = Vec::with_capacity(fields.len());
         let mut current_container = container;
-        let mut fields = fields.into_iter();
+        let mut fields = fields.into_iter().peekable();
         let mut infcx = None;
         let infcx = self.infcx().unwrap_or_else(|| {
             assert!(!container.has_infer());
@@ -375,6 +375,7 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
         let ty_ch_cx = RefCell::new(<dyn TraitEngine<'_, FulfillmentError<'tcx>>>::new(&infcx));
 
         while let Some(&field) = fields.next() {
+            let last = fields.peek().is_none();
             let result =
                 at.structurally_normalize_ty(current_container, &mut **ty_ch_cx.borrow_mut());
             let container = match result {
@@ -392,8 +393,6 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
                         .iter_enumerated()
                         .find(|(_, f)| f.ident(self.tcx).normalize_to_macros_2_0() == ident)
                     {
-                        let field_ty = field.ty(self.tcx, args);
-
                         if field.vis.is_accessible_from(def_scope, self.tcx) {
                             self.tcx.check_stability(field.did, Some(hir_id), span, None);
                         } else {
@@ -411,7 +410,10 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
                         }
 
                         field_indices.push((FIRST_VARIANT, index));
-                        current_container = field_ty;
+                        if !last {
+                            let field_ty = field.ty(self.tcx, args);
+                            current_container = field_ty;
+                        }
 
                         continue;
                     }
