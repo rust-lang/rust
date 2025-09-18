@@ -268,7 +268,7 @@ fn trait_object_ty<'tcx>(tcx: TyCtxt<'tcx>, poly_trait_ref: ty::PolyTraitRef<'tc
     let preds = tcx.mk_poly_existential_predicates_from_iter(
         iter::once(principal_pred).chain(assoc_preds.into_iter()),
     );
-    Ty::new_dynamic(tcx, preds, tcx.lifetimes.re_erased, ty::Dyn)
+    Ty::new_dynamic(tcx, preds, tcx.lifetimes.re_erased)
 }
 
 /// Transforms an instance for LLVM CFI and cross-language LLVM CFI support using Itanium C++ ABI
@@ -334,7 +334,7 @@ pub(crate) fn transform_instance<'tcx>(
             ty::List::empty(),
         ));
         let predicates = tcx.mk_poly_existential_predicates(&[ty::Binder::dummy(predicate)]);
-        let self_ty = Ty::new_dynamic(tcx, predicates, tcx.lifetimes.re_erased, ty::Dyn);
+        let self_ty = Ty::new_dynamic(tcx, predicates, tcx.lifetimes.re_erased);
         instance.args = tcx.mk_args_trait(self_ty, List::empty());
     } else if let ty::InstanceKind::Virtual(def_id, _) = instance.def {
         // Transform self into a trait object of the trait that defines the method for virtual
@@ -347,7 +347,7 @@ pub(crate) fn transform_instance<'tcx>(
             // drop_in_place won't have a defining trait, skip the upcast
             None => instance.args.type_at(0),
         };
-        let ty::Dynamic(preds, lifetime, kind) = upcast_ty.kind() else {
+        let ty::Dynamic(preds, lifetime) = upcast_ty.kind() else {
             bug!("Tried to remove autotraits from non-dynamic type {upcast_ty}");
         };
         let self_ty = if preds.principal().is_some() {
@@ -355,7 +355,7 @@ pub(crate) fn transform_instance<'tcx>(
                 tcx.mk_poly_existential_predicates_from_iter(preds.into_iter().filter(|pred| {
                     !matches!(pred.skip_binder(), ty::ExistentialPredicate::AutoTrait(..))
                 }));
-            Ty::new_dynamic(tcx, filtered_preds, *lifetime, *kind)
+            Ty::new_dynamic(tcx, filtered_preds, *lifetime)
         } else {
             // If there's no principal type, re-encode it as a unit, since we don't know anything
             // about it. This technically discards the knowledge that it was a type that was made

@@ -558,7 +558,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             | ty::Slice(_)
             | ty::FnDef(_, _)
             | ty::FnPtr(_, _)
-            | ty::Dynamic(_, _, _)
+            | ty::Dynamic(_, _)
             | ty::Closure(_, _)
             | ty::CoroutineClosure(_, _)
             | ty::Coroutine(_, _)

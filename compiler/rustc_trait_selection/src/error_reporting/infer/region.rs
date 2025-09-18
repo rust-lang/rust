@@ -430,7 +430,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let mut alt_span = None;
                 if let Some(ty) = ty
                     && sub.is_static()
-                    && let ty::Dynamic(preds, _, ty::DynKind::Dyn) = ty.kind()
+                    && let ty::Dynamic(preds, _) = ty.kind()
                     && let Some(def_id) = preds.principal_def_id()
                 {
                     for (clause, span) in

@@ -295,7 +295,7 @@ impl<'tcx, 'a> TypeVisitor<TyCtxt<'tcx>> for ExportableItemsChecker<'tcx, 'a> {
             | ty::Ref(_, _, _)
             | ty::Param(_)
             | ty::Closure(_, _)
-            | ty::Dynamic(_, _, _)
+            | ty::Dynamic(_, _)
             | ty::Coroutine(_, _)
             | ty::Foreign(_)
             | ty::Str

@@ -859,7 +859,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     bound_spans.get_mut_or_insert_default(tcx.def_span(def.did())).push(msg)
                 }
                 // Point at the trait object that couldn't satisfy the bound.
-                ty::Dynamic(preds, _, _) => {
+                ty::Dynamic(preds, _) => {
                     for pred in preds.iter() {
                         match pred.skip_binder() {
                             ty::ExistentialPredicate::Trait(tr) => {

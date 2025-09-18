@@ -658,7 +658,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                             let val = self.read_immediate(&receiver)?;
                             break self.ref_to_mplace(&val)?;
                         }
-                        ty::Dynamic(.., ty::Dyn) => break receiver.assert_mem_place(), // no immediate unsized values
+                        ty::Dynamic(..) => break receiver.assert_mem_place(), // no immediate unsized values
                         _ => {
                             // Not there yet, search for the only non-ZST field.
                             // (The rules for `DispatchFromDyn` ensure there's exactly one such field.)
@@ -675,7 +675,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // (For that reason we also cannot use `unpack_dyn_trait`.)
                 let receiver_tail =
                     self.tcx.struct_tail_for_codegen(receiver_place.layout.ty, self.typing_env);
-                let ty::Dynamic(receiver_trait, _, ty::Dyn) = receiver_tail.kind() else {
+                let ty::Dynamic(receiver_trait, _) = receiver_tail.kind() else {
                     span_bug!(self.cur_span(), "dynamic call on non-`dyn` type {}", receiver_tail)
                 };
                 assert!(receiver_place.layout.is_unsized());
@@ -822,7 +822,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // instead we do the virtual call stuff ourselves. It's easier here than in `eval_fn_call`
         // since we can just get a place of the underlying type and use `mplace_to_ref`.
         let place = match place.layout.ty.kind() {
-            ty::Dynamic(data, _, ty::Dyn) => {
+            ty::Dynamic(data, _) => {
                 // Dropping a trait object. Need to find actual drop fn.
                 self.unpack_dyn_trait(&place, data)?
             }
