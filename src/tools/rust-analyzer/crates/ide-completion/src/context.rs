@@ -405,9 +405,7 @@ pub(crate) enum DotAccessKind {
         /// like `0.$0`
         receiver_is_ambiguous_float_literal: bool,
     },
-    Method {
-        has_parens: bool,
-    },
+    Method,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

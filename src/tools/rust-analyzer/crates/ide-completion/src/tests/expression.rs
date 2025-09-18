@@ -2937,6 +2937,43 @@ fn foo() {
 }
 
 #[test]
+fn ambiguous_float_literal_in_ambiguous_method_call() {
+    check(
+        r#"
+#![rustc_coherence_is_core]
+
+impl i32 {
+    pub fn int_method(self) {}
+}
+impl f64 {
+    pub fn float_method(self) {}
+}
+
+fn foo() -> (i32, i32) {
+    1.$0
+    (2, 3)
+}
+    "#,
+        expect![[r#"
+            me int_method() fn(self)
+            sn box    Box::new(expr)
+            sn call   function(expr)
+            sn const        const {}
+            sn dbg        dbg!(expr)
+            sn dbgr      dbg!(&expr)
+            sn deref           *expr
+            sn let               let
+            sn letm          let mut
+            sn match   match expr {}
+            sn ref             &expr
+            sn refm        &mut expr
+            sn return    return expr
+            sn unsafe      unsafe {}
+        "#]],
+    );
+}
+
+#[test]
 fn let_in_condition() {
     check_edit("let", r#"fn f() { if $0 {} }"#, r#"fn f() { if let $1 = $0 {} }"#);
 }
@@ -3110,6 +3147,126 @@ fn let_in_previous_line_of_ambiguous_expr() {
             kw while
             kw while let
         "#]],
+    );
+}
+
+#[test]
+fn field_in_previous_line_of_ambiguous_expr() {
+    check(
+        r#"
+        struct Foo { field: i32 }
+        impl Foo {
+            fn method(&self) {}
+        }
+        fn foo() -> (i32, i32) {
+            let foo = Foo { field: 4 };
+            foo.$0
+            (2, 3)
+        }"#,
+        expect![[r#"
+            fd field           i32
+            me method()  fn(&self)
+            sn box  Box::new(expr)
+            sn call function(expr)
+            sn const      const {}
+            sn dbg      dbg!(expr)
+            sn dbgr    dbg!(&expr)
+            sn deref         *expr
+            sn let             let
+            sn letm        let mut
+            sn match match expr {}
+            sn ref           &expr
+            sn refm      &mut expr
+            sn return  return expr
+            sn unsafe    unsafe {}
+        "#]],
+    );
+
+    check(
+        r#"
+        struct Foo { field: i32 }
+        impl Foo {
+            fn method(&self) {}
+        }
+        fn foo() -> (i32, i32) {
+            let foo = Foo { field: 4 };
+            foo.a$0
+            (2, 3)
+        }"#,
+        expect![[r#"
+            fd field           i32
+            me method()  fn(&self)
+            sn box  Box::new(expr)
+            sn call function(expr)
+            sn const      const {}
+            sn dbg      dbg!(expr)
+            sn dbgr    dbg!(&expr)
+            sn deref         *expr
+            sn let             let
+            sn letm        let mut
+            sn match match expr {}
+            sn ref           &expr
+            sn refm      &mut expr
+            sn return  return expr
+            sn unsafe    unsafe {}
+        "#]],
+    );
+}
+
+#[test]
+fn fn_field_in_previous_line_of_ambiguous_expr() {
+    check(
+        r#"
+        struct Foo { field: fn() }
+        impl Foo {
+            fn method(&self) {}
+        }
+        fn foo() -> (i32, i32) {
+            let foo = Foo { field: || () };
+            foo.$0
+            (2, 3)
+        }"#,
+        expect![[r#"
+            fd field          fn()
+            me method()  fn(&self)
+            sn box  Box::new(expr)
+            sn call function(expr)
+            sn const      const {}
+            sn dbg      dbg!(expr)
+            sn dbgr    dbg!(&expr)
+            sn deref         *expr
+            sn let             let
+            sn letm        let mut
+            sn match match expr {}
+            sn ref           &expr
+            sn refm      &mut expr
+            sn return  return expr
+            sn unsafe    unsafe {}
+        "#]],
+    );
+
+    check_edit(
+        "field",
+        r#"
+        struct Foo { field: fn() }
+        impl Foo {
+            fn method(&self) {}
+        }
+        fn foo() -> (i32, i32) {
+            let foo = Foo { field: || () };
+            foo.a$0
+            (2, 3)
+        }"#,
+        r#"
+        struct Foo { field: fn() }
+        impl Foo {
+            fn method(&self) {}
+        }
+        fn foo() -> (i32, i32) {
+            let foo = Foo { field: || () };
+            (foo.field)()
+            (2, 3)
+        }"#,
     );
 }
 
