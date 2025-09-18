@@ -2,7 +2,7 @@ use std::ops::Neg;
 use std::{f32, f64};
 
 use rand::Rng as _;
-use rustc_apfloat::Float as _;
+use rustc_apfloat::Float;
 use rustc_apfloat::ieee::{DoubleS, IeeeFloat, Semantics, SingleS};
 use rustc_middle::ty::{self, FloatTy, ScalarInt};
 
@@ -317,19 +317,19 @@ where
     }
 }
 
-pub(crate) fn sqrt<S: rustc_apfloat::ieee::Semantics>(x: IeeeFloat<S>) -> IeeeFloat<S> {
+pub(crate) fn sqrt<F: Float>(x: F) -> F {
     match x.category() {
         // preserve zero sign
         rustc_apfloat::Category::Zero => x,
         // propagate NaN
         rustc_apfloat::Category::NaN => x,
         // sqrt of negative number is NaN
-        _ if x.is_negative() => IeeeFloat::NAN,
+        _ if x.is_negative() => F::NAN,
         // sqrt(∞) = ∞
-        rustc_apfloat::Category::Infinity => IeeeFloat::INFINITY,
+        rustc_apfloat::Category::Infinity => F::INFINITY,
         rustc_apfloat::Category::Normal => {
             // Floating point precision, excluding the integer bit
-            let prec = i32::try_from(S::PRECISION).unwrap() - 1;
+            let prec = i32::try_from(F::PRECISION).unwrap() - 1;
 
             // x = 2^(exp - prec) * mant
             // where mant is an integer with prec+1 bits
@@ -394,7 +394,7 @@ pub(crate) fn sqrt<S: rustc_apfloat::ieee::Semantics>(x: IeeeFloat<S>) -> IeeeFl
             res = (res + 1) >> 1;
 
             // Build resulting value with res as mantissa and exp/2 as exponent
-            IeeeFloat::from_u128(res).value.scalbn(exp / 2 - prec)
+            F::from_u128(res).value.scalbn(exp / 2 - prec)
         }
     }
 }
