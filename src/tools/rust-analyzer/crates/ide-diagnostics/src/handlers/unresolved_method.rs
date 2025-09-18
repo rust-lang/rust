@@ -268,7 +268,7 @@ impl<T, U> A<T, U> {
 }
 fn main() {
     let a = A {a: 0, b: ""};
-    A::<i32, &'static str>::foo();
+    A::<i32, &str>::foo();
 }
 "#,
         );
@@ -349,6 +349,28 @@ fn foo() {
     (Foo { bar: foo }.bar)();
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn iter_collect() {
+        check_diagnostics(
+            r#"
+//- minicore: unsize, coerce_unsized, iterator, iterators, sized
+struct Map<K, V>(K, V);
+impl<K, V> FromIterator<(K, V)> for Map<K, V> {
+    fn from_iter<T: IntoIterator<Item = (K, V)>>(_iter: T) -> Self {
+        loop {}
+    }
+}
+
+fn foo() -> Map<i32, &'static [&'static str]> {
+    [
+        (123, &["abc", "def"] as _),
+        (456, &["ghi"] as _),
+    ].into_iter().collect()
+}
+        "#,
         );
     }
 }

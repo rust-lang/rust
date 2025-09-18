@@ -15,7 +15,7 @@ use tracing::debug;
 
 use crate::next_solver::SolverDefId;
 use crate::next_solver::Ty;
-use crate::next_solver::infer::InferCtxtUndoLogs;
+use crate::next_solver::infer::{InferCtxtUndoLogs, iter_idx_range};
 
 /// Represents a single undo-able action that affects a type inference variable.
 #[derive(Clone)]
@@ -59,7 +59,7 @@ impl<'tcx> Rollback<UndoLog<'tcx>> for TypeVariableStorage<'tcx> {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Debug, Clone, Default)]
 pub(crate) struct TypeVariableStorage<'db> {
     /// The origins of each type variable.
     values: IndexVec<TyVid, TypeVariableData>,
@@ -102,7 +102,7 @@ pub struct TypeVariableOrigin {
     pub param_def_id: Option<SolverDefId>,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub(crate) struct TypeVariableData {
     origin: TypeVariableOrigin,
 }
@@ -265,6 +265,15 @@ impl<'db> TypeVariableTable<'_, 'db> {
     #[inline]
     fn sub_unification_table(&mut self) -> super::UnificationTable<'_, 'db, TyVidSubKey> {
         self.storage.sub_unification_table.with_log(self.undo_log)
+    }
+
+    /// Returns a range of the type variables created during the snapshot.
+    pub(crate) fn vars_since_snapshot(
+        &mut self,
+        value_count: usize,
+    ) -> (Range<TyVid>, Vec<TypeVariableOrigin>) {
+        let range = TyVid::from_usize(value_count)..TyVid::from_usize(self.num_vars());
+        (range.clone(), iter_idx_range(range).map(|index| self.var_origin(index)).collect())
     }
 
     /// Returns indices of all variables that are not yet

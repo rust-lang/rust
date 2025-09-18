@@ -24,7 +24,7 @@ use triomphe::Arc;
 use crate::{
     AdtId, Canonical, CanonicalVarKinds, DebruijnIndex, DynTyExt, ForeignDefId, GenericArgData,
     Goal, InEnvironment, Interner, Mutability, Scalar, Substitution, TraitEnvironment, TraitRef,
-    TraitRefExt, Ty, TyBuilder, TyExt, TyKind, TyVariableKind, VariableKind, WhereClause,
+    TraitRefExt, Ty, TyBuilder, TyExt, TyKind, VariableKind, WhereClause,
     autoderef::{self, AutoderefKind},
     db::HirDatabase,
     from_chalk_trait_id, from_foreign_def_id,
@@ -622,18 +622,23 @@ pub struct ReceiverAdjustments {
 }
 
 impl ReceiverAdjustments {
-    pub(crate) fn apply(&self, table: &mut InferenceTable<'_>, ty: Ty) -> (Ty, Vec<Adjustment>) {
-        let mut ty = table.structurally_resolve_type(&ty);
+    pub(crate) fn apply(
+        &self,
+        table: &mut InferenceTable<'_>,
+        mut ty: Ty,
+    ) -> (Ty, Vec<Adjustment>) {
         let mut adjust = Vec::new();
+        let mut autoderef = table.autoderef(ty.to_nextsolver(table.interner));
+        autoderef.next();
         for _ in 0..self.autoderefs {
-            match autoderef::autoderef_step(table, ty.clone(), true, false) {
+            match autoderef.next() {
                 None => {
                     never!("autoderef not possible for {:?}", ty);
                     ty = TyKind::Error.intern(Interner);
                     break;
                 }
-                Some((kind, new_ty)) => {
-                    ty = new_ty.clone();
+                Some((new_ty, _)) => {
+                    ty = new_ty.to_chalk(autoderef.table.interner);
                     let mutbl = match self.autoref {
                         Some(AutorefOrPtrAdjustment::Autoref(m)) => Some(m),
                         Some(AutorefOrPtrAdjustment::ToConstPtr) => Some(Mutability::Not),
@@ -641,11 +646,11 @@ impl ReceiverAdjustments {
                         None => None,
                     };
                     adjust.push(Adjustment {
-                        kind: Adjust::Deref(match kind {
+                        kind: Adjust::Deref(match autoderef.steps().last().unwrap().1 {
                             AutoderefKind::Overloaded => Some(OverloadedDeref(mutbl)),
                             AutoderefKind::Builtin => None,
                         }),
-                        target: new_ty,
+                        target: ty.clone(),
                     });
                 }
             }
@@ -1282,17 +1287,20 @@ fn iterate_method_candidates_by_receiver<'db>(
     name: Option<&Name>,
     callback: &mut dyn MethodCandidateCallback,
 ) -> ControlFlow<()> {
+    let interner = table.interner;
     let receiver_ty = table.instantiate_canonical_ns(receiver_ty);
-    let receiver_ty: crate::Ty = receiver_ty.to_chalk(table.interner);
+    let receiver_ty: crate::Ty = receiver_ty.to_chalk(interner);
     // We're looking for methods with *receiver* type receiver_ty. These could
     // be found in any of the derefs of receiver_ty, so we have to go through
     // that, including raw derefs.
     table.run_in_snapshot(|table| {
         let mut autoderef =
-            autoderef::Autoderef::new_no_tracking(table, receiver_ty.clone(), true, true);
+            autoderef::Autoderef::new_no_tracking(table, receiver_ty.to_nextsolver(interner))
+                .include_raw_pointers()
+                .use_receiver_trait();
         while let Some((self_ty, _)) = autoderef.next() {
             iterate_inherent_methods(
-                &self_ty,
+                &self_ty.to_chalk(interner),
                 autoderef.table,
                 name,
                 Some(&receiver_ty),
@@ -1308,15 +1316,18 @@ fn iterate_method_candidates_by_receiver<'db>(
     })?;
     table.run_in_snapshot(|table| {
         let mut autoderef =
-            autoderef::Autoderef::new_no_tracking(table, receiver_ty.clone(), true, true);
+            autoderef::Autoderef::new_no_tracking(table, receiver_ty.to_nextsolver(interner))
+                .include_raw_pointers()
+                .use_receiver_trait();
         while let Some((self_ty, _)) = autoderef.next() {
-            if matches!(self_ty.kind(Interner), TyKind::InferenceVar(_, TyVariableKind::General)) {
+            if matches!(self_ty.kind(), crate::next_solver::TyKind::Infer(rustc_type_ir::TyVar(_)))
+            {
                 // don't try to resolve methods on unknown types
                 return ControlFlow::Continue(());
             }
 
             iterate_trait_method_candidates(
-                &self_ty,
+                &self_ty.to_chalk(interner),
                 autoderef.table,
                 traits_in_scope,
                 name,
@@ -1760,7 +1771,8 @@ fn is_valid_trait_method_candidate(
                         for pred in infer_ok.into_obligations() {
                             ctxt.register_predicate_obligation(&table.infer_ctxt, pred);
                         }
-                        check_that!(ctxt.select_all_or_error(&table.infer_ctxt).is_empty());
+                        // FIXME: Are we doing this correctly? Probably better to follow rustc more closely.
+                        check_that!(ctxt.select_where_possible(&table.infer_ctxt).is_empty());
                     }
 
                     check_that!(table.unify(receiver_ty, &expected_receiver));
@@ -1937,11 +1949,10 @@ fn autoderef_method_receiver<'db>(
 ) -> Vec<(next_solver::Canonical<'db, crate::next_solver::Ty<'db>>, ReceiverAdjustments)> {
     let interner = table.interner;
     let mut deref_chain = Vec::new();
-    let mut autoderef =
-        autoderef::Autoderef::new_no_tracking(table, ty.to_chalk(interner), false, true);
+    let mut autoderef = autoderef::Autoderef::new_no_tracking(table, ty).use_receiver_trait();
     while let Some((ty, derefs)) = autoderef.next() {
         deref_chain.push((
-            autoderef.table.canonicalize(ty.to_nextsolver(interner)),
+            autoderef.table.canonicalize(ty),
             ReceiverAdjustments { autoref: None, autoderefs: derefs, unsize_array: false },
         ));
     }

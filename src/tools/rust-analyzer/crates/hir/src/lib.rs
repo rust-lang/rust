@@ -2549,11 +2549,13 @@ impl Function {
                 let target_feature_is_safe_in_target =
                     match &caller.krate(db).id.workspace_data(db).target {
                         Ok(target) => hir_ty::target_feature_is_safe_in_target(target),
-                        Err(_) => false,
+                        Err(_) => hir_ty::TargetFeatureIsSafeInTarget::No,
                     };
                 (target_features, target_feature_is_safe_in_target)
             })
-            .unwrap_or_else(|| (hir_ty::TargetFeatures::default(), false));
+            .unwrap_or_else(|| {
+                (hir_ty::TargetFeatures::default(), hir_ty::TargetFeatureIsSafeInTarget::No)
+            });
         matches!(
             hir_ty::is_fn_unsafe_to_call(
                 db,
@@ -4660,7 +4662,7 @@ impl Closure {
             .iter()
             .map(|capture| Type {
                 env: db.trait_environment_for_body(owner),
-                ty: capture.ty(&self.subst),
+                ty: capture.ty(db, &self.subst),
                 _pd: PhantomCovariantLifetime::new(),
             })
             .collect()

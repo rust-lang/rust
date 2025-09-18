@@ -48,7 +48,6 @@ fn foo() -> i32 {
                 "expr_scopes_shim",
                 "lang_item",
                 "crate_lang_items",
-                "lang_item",
             ]
         "#]],
     );
@@ -138,7 +137,6 @@ fn baz() -> i32 {
                 "crate_lang_items",
                 "attrs_shim",
                 "attrs_shim",
-                "lang_item",
                 "infer_shim",
                 "function_signature_shim",
                 "function_signature_with_source_map_shim",
@@ -588,8 +586,8 @@ fn main() {
                 "crate_lang_items",
                 "attrs_shim",
                 "attrs_shim",
-                "return_type_impl_traits_shim",
                 "generic_predicates_ns_shim",
+                "return_type_impl_traits_shim",
                 "infer_shim",
                 "function_signature_shim",
                 "function_signature_with_source_map_shim",
@@ -601,6 +599,7 @@ fn main() {
                 "value_ty_shim",
                 "VariantFields::firewall_",
                 "VariantFields::query_",
+                "lang_item",
                 "lang_item",
                 "inherent_impls_in_crate_shim",
                 "impl_signature_shim",
@@ -616,7 +615,6 @@ fn main() {
                 "generic_predicates_ns_shim",
                 "value_ty_shim",
                 "generic_predicates_shim",
-                "lang_item",
             ]
         "#]],
     );
@@ -688,8 +686,8 @@ fn main() {
                 "attrs_shim",
                 "attrs_shim",
                 "attrs_shim",
-                "return_type_impl_traits_shim",
                 "generic_predicates_ns_shim",
+                "return_type_impl_traits_shim",
                 "infer_shim",
                 "function_signature_with_source_map_shim",
                 "expr_scopes_shim",

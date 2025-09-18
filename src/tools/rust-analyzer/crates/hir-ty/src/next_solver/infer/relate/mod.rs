@@ -9,5 +9,6 @@ use crate::next_solver::DbInterner;
 
 mod generalize;
 mod higher_ranked;
+pub(crate) mod lattice;
 
 pub type RelateResult<'db, T> = rustc_type_ir::relate::RelateResult<DbInterner<'db>, T>;

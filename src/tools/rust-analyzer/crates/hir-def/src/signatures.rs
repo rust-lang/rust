@@ -489,6 +489,7 @@ bitflags! {
         const HAS_TARGET_FEATURE = 1 << 9;
         const DEPRECATED_SAFE_2024 = 1 << 10;
         const EXPLICIT_SAFE = 1 << 11;
+        const RUSTC_INTRINSIC = 1 << 12;
     }
 }
 
@@ -521,6 +522,9 @@ impl FunctionSignature {
 
         if attrs.by_key(sym::target_feature).exists() {
             flags.insert(FnFlags::HAS_TARGET_FEATURE);
+        }
+        if attrs.by_key(sym::rustc_intrinsic).exists() {
+            flags.insert(FnFlags::RUSTC_INTRINSIC);
         }
         let legacy_const_generics_indices = attrs.rustc_legacy_const_generics();
 
@@ -616,6 +620,21 @@ impl FunctionSignature {
 
     pub fn has_target_feature(&self) -> bool {
         self.flags.contains(FnFlags::HAS_TARGET_FEATURE)
+    }
+
+    pub fn is_intrinsic(db: &dyn DefDatabase, id: FunctionId) -> bool {
+        let data = db.function_signature(id);
+        data.flags.contains(FnFlags::RUSTC_INTRINSIC)
+            // Keep this around for a bit until extern "rustc-intrinsic" abis are no longer used
+            || match &data.abi {
+                Some(abi) => *abi == sym::rust_dash_intrinsic,
+                None => match id.lookup(db).container {
+                    ItemContainerId::ExternBlockId(block) => {
+                        block.abi(db) == Some(sym::rust_dash_intrinsic)
+                    }
+                    _ => false,
+                },
+            }
     }
 }
 

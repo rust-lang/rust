@@ -9,14 +9,17 @@ pub mod fulfill;
 mod generic_arg;
 pub mod generics;
 pub mod infer;
+pub(crate) mod inspect;
 pub mod interner;
 mod ir_print;
 pub mod mapping;
+mod normalize;
+pub mod obligation_ctxt;
 mod opaques;
 pub mod predicate;
-pub(crate) mod project;
 mod region;
 mod solver;
+mod structural_normalize;
 mod ty;
 pub mod util;
 
@@ -37,8 +40,11 @@ pub type CanonicalVarValues<'db> = rustc_type_ir::CanonicalVarValues<DbInterner<
 pub type CanonicalVarKind<'db> = rustc_type_ir::CanonicalVarKind<DbInterner<'db>>;
 pub type CanonicalQueryInput<'db, V> = rustc_type_ir::CanonicalQueryInput<DbInterner<'db>, V>;
 pub type AliasTy<'db> = rustc_type_ir::AliasTy<DbInterner<'db>>;
+pub type FnSig<'db> = rustc_type_ir::FnSig<DbInterner<'db>>;
 pub type PolyFnSig<'db> = Binder<'db, rustc_type_ir::FnSig<DbInterner<'db>>>;
 pub type TypingMode<'db> = rustc_type_ir::TypingMode<DbInterner<'db>>;
+pub type TypeError<'db> = rustc_type_ir::error::TypeError<DbInterner<'db>>;
+pub type QueryResult<'db> = rustc_type_ir::solve::QueryResult<DbInterner<'db>>;
 
 #[cfg(feature = "in-rust-tree")]
 use rustc_data_structure::sorted_map::index_map as indexmap;

@@ -578,17 +578,17 @@ fn infer_trait_assoc_method_generics_3() {
         trait Trait<T> {
             fn make() -> (Self, T);
         }
-        struct S<T>;
+        struct S<T>(T);
         impl Trait<i64> for S<i32> {}
         fn test() {
             let a = S::make();
         }
         "#,
         expect![[r#"
-            100..126 '{     ...e(); }': ()
-            110..111 'a': (S<i32>, i64)
-            114..121 'S::make': fn make<S<i32>, i64>() -> (S<i32>, i64)
-            114..123 'S::make()': (S<i32>, i64)
+            103..129 '{     ...e(); }': ()
+            113..114 'a': (S<i32>, i64)
+            117..124 'S::make': fn make<S<i32>, i64>() -> (S<i32>, i64)
+            117..126 'S::make()': (S<i32>, i64)
         "#]],
     );
 }
@@ -600,7 +600,7 @@ fn infer_trait_assoc_method_generics_4() {
         trait Trait<T> {
             fn make() -> (Self, T);
         }
-        struct S<T>;
+        struct S<T>(T);
         impl Trait<i64> for S<u64> {}
         impl Trait<i32> for S<u32> {}
         fn test() {
@@ -609,13 +609,13 @@ fn infer_trait_assoc_method_generics_4() {
         }
         "#,
         expect![[r#"
-            130..202 '{     ...e(); }': ()
-            140..141 'a': (S<u64>, i64)
-            157..164 'S::make': fn make<S<u64>, i64>() -> (S<u64>, i64)
-            157..166 'S::make()': (S<u64>, i64)
-            176..177 'b': (S<u32>, i32)
-            190..197 'S::make': fn make<S<u32>, i32>() -> (S<u32>, i32)
-            190..199 'S::make()': (S<u32>, i32)
+            133..205 '{     ...e(); }': ()
+            143..144 'a': (S<u64>, i64)
+            160..167 'S::make': fn make<S<u64>, i64>() -> (S<u64>, i64)
+            160..169 'S::make()': (S<u64>, i64)
+            179..180 'b': (S<u32>, i32)
+            193..200 'S::make': fn make<S<u32>, i32>() -> (S<u32>, i32)
+            193..202 'S::make()': (S<u32>, i32)
         "#]],
     );
 }
@@ -627,7 +627,7 @@ fn infer_trait_assoc_method_generics_5() {
         trait Trait<T> {
             fn make<U>() -> (Self, T, U);
         }
-        struct S<T>;
+        struct S<T>(T);
         impl Trait<i64> for S<u64> {}
         fn test() {
             let a = <S as Trait<i64>>::make::<u8>();
@@ -635,13 +635,13 @@ fn infer_trait_assoc_method_generics_5() {
         }
         "#,
         expect![[r#"
-            106..210 '{     ...>(); }': ()
-            116..117 'a': (S<u64>, i64, u8)
-            120..149 '<S as ...::<u8>': fn make<S<u64>, i64, u8>() -> (S<u64>, i64, u8)
-            120..151 '<S as ...<u8>()': (S<u64>, i64, u8)
-            161..162 'b': (S<u64>, i64, u8)
-            181..205 'Trait:...::<u8>': fn make<S<u64>, i64, u8>() -> (S<u64>, i64, u8)
-            181..207 'Trait:...<u8>()': (S<u64>, i64, u8)
+            109..213 '{     ...>(); }': ()
+            119..120 'a': (S<u64>, i64, u8)
+            123..152 '<S as ...::<u8>': fn make<S<u64>, i64, u8>() -> (S<u64>, i64, u8)
+            123..154 '<S as ...<u8>()': (S<u64>, i64, u8)
+            164..165 'b': (S<u64>, i64, u8)
+            184..208 'Trait:...::<u8>': fn make<S<u64>, i64, u8>() -> (S<u64>, i64, u8)
+            184..210 'Trait:...<u8>()': (S<u64>, i64, u8)
         "#]],
     );
 }
@@ -1107,6 +1107,9 @@ fn method_resolution_slow() {
     // this can get quite slow if we set the solver size limit too high
     check_types(
         r#"
+//- minicore: phantom_data
+use core::marker::PhantomData;
+
 trait SendX {}
 
 struct S1; impl SendX for S1 {}
@@ -1115,17 +1118,17 @@ struct U1;
 
 trait Trait { fn method(self); }
 
-struct X1<A, B> {}
+struct X1<A, B>(PhantomData<(A, B)>);
 impl<A, B> SendX for X1<A, B> where A: SendX, B: SendX {}
 
-struct S<B, C> {}
+struct S<B, C>(PhantomData<(B, C)>);
 
 trait FnX {}
 
 impl<B, C> Trait for S<B, C> where C: FnX, B: SendX {}
 
-fn test() { (S {}).method(); }
-          //^^^^^^^^^^^^^^^ ()
+fn test() { (S(PhantomData)).method(); }
+          //^^^^^^^^^^^^^^^^^^^^^^^^^ ()
 "#,
     );
 }
@@ -1187,11 +1190,11 @@ fn test() {
             89..109 '{     ...     }': bool
             99..103 'true': bool
             123..167 '{     ...o(); }': ()
-            133..134 's': &'static S
-            137..151 'unsafe { f() }': &'static S
+            133..134 's': &'? S
+            137..151 'unsafe { f() }': &'? S
             146..147 'f': fn f() -> &'static S
             146..149 'f()': &'static S
-            157..158 's': &'static S
+            157..158 's': &'? S
             157..164 's.foo()': bool
         "#]],
     );
@@ -2191,9 +2194,9 @@ impl Receiver for Bar {
 fn main() {
     let bar = Bar;
     let _v1 = bar.foo1();
-      //^^^ type: {unknown}
+      //^^^ type: i32
     let _v2 = bar.foo2();
-      //^^^ type: {unknown}
+      //^^^ type: bool
 }
 "#,
     );

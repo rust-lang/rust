@@ -38,14 +38,16 @@ use rustc_apfloat::{
 };
 use rustc_hash::FxHashSet;
 use rustc_type_ir::{
-    AliasTyKind, RegionKind,
-    inherent::{AdtDef, IntoKind, SliceLike},
+    AliasTyKind, CoroutineArgsParts, RegionKind,
+    inherent::{AdtDef, GenericArgs as _, IntoKind, SliceLike},
 };
 use smallvec::SmallVec;
 use span::Edition;
 use stdx::never;
 use triomphe::Arc;
 
+use crate::next_solver::infer::DbInternerInferExt;
+use crate::next_solver::infer::traits::ObligationCause;
 use crate::{
     AliasEq, AliasTy, Binders, CallableDefId, CallableSig, ConcreteConst, Const, ConstScalar,
     ConstValue, DomainGoal, FnAbi, GenericArg, ImplTraitId, Interner, Lifetime, LifetimeData,
@@ -789,11 +791,11 @@ fn render_const_scalar_ns(
 ) -> Result<(), HirDisplayError> {
     let trait_env = TraitEnvironment::empty(f.krate());
     let interner = DbInterner::new_with(f.db, Some(trait_env.krate), trait_env.block);
-    let ty = crate::next_solver::project::solve_normalize::normalize(
-        interner,
-        trait_env.env.to_nextsolver(interner),
-        ty,
-    );
+    let infcx = interner.infer_ctxt().build(rustc_type_ir::TypingMode::PostAnalysis);
+    let ty = infcx
+        .at(&ObligationCause::new(), trait_env.env.to_nextsolver(interner))
+        .deeply_normalize(ty)
+        .unwrap_or(ty);
     render_const_scalar_inner(f, b, memory_map, ty, trait_env)
 }
 
@@ -1556,7 +1558,7 @@ impl<'db> HirDisplay for crate::next_solver::Ty<'db> {
                     }
                     _ => (),
                 }
-                let sig = ClosureSubst(&substs).sig_ty().callable_sig(db);
+                let sig = ClosureSubst(&substs).sig_ty(db).callable_sig(db);
                 if let Some(sig) = sig {
                     let InternedClosure(def, _) = db.lookup_intern_closure(id);
                     let infer = db.infer(def);
@@ -1696,26 +1698,17 @@ impl<'db> HirDisplay for crate::next_solver::Ty<'db> {
                         DisplaySourceCodeError::Coroutine,
                     ));
                 }
-                let subst = convert_args_for_result(interner, subst.as_slice());
-                let subst = subst.as_slice(Interner);
-                let a: Option<SmallVec<[&Ty; 3]>> = subst
-                    .get(subst.len() - 3..)
-                    .and_then(|args| args.iter().map(|arg| arg.ty(Interner)).collect());
+                let CoroutineArgsParts { resume_ty, yield_ty, return_ty, .. } =
+                    subst.split_coroutine_args();
+                write!(f, "|")?;
+                resume_ty.hir_fmt(f)?;
+                write!(f, "|")?;
 
-                if let Some([resume_ty, yield_ty, ret_ty]) = a.as_deref() {
-                    write!(f, "|")?;
-                    resume_ty.hir_fmt(f)?;
-                    write!(f, "|")?;
+                write!(f, " yields ")?;
+                yield_ty.hir_fmt(f)?;
 
-                    write!(f, " yields ")?;
-                    yield_ty.hir_fmt(f)?;
-
-                    write!(f, " -> ")?;
-                    ret_ty.hir_fmt(f)?;
-                } else {
-                    // This *should* be unreachable, but fallback just in case.
-                    write!(f, "{{coroutine}}")?;
-                }
+                write!(f, " -> ")?;
+                return_ty.hir_fmt(f)?;
             }
             TyKind::CoroutineWitness(..) => write!(f, "{{coroutine witness}}")?,
             TyKind::Pat(_, _) => write!(f, "{{pat}}")?,

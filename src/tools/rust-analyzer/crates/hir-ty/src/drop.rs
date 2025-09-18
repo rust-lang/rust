@@ -120,7 +120,7 @@ pub(crate) fn has_drop_glue(db: &dyn HirDatabase, ty: Ty, env: Arc<TraitEnvironm
             let env = db.trait_environment_for_body(owner);
             captures
                 .iter()
-                .map(|capture| db.has_drop_glue(capture.ty(subst), env.clone()))
+                .map(|capture| db.has_drop_glue(capture.ty(db, subst), env.clone()))
                 .max()
                 .unwrap_or(DropGlue::None)
         }

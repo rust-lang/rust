@@ -350,7 +350,7 @@ impl<'db> Generalizer<'_, 'db> {
         // with inference variables can cause incorrect ambiguity.
         //
         // cc trait-system-refactor-initiative#110
-        if self.infcx.next_trait_solver() && !alias.has_escaping_bound_vars() && !self.in_alias {
+        if !alias.has_escaping_bound_vars() && !self.in_alias {
             return Ok(self.next_ty_var_for_alias());
         }
 

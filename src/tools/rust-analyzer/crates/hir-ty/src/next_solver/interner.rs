@@ -48,8 +48,8 @@ use crate::next_solver::infer::InferCtxt;
 use crate::next_solver::util::{ContainsTypeErrors, explicit_item_bounds, for_trait_impls};
 use crate::next_solver::{
     AdtIdWrapper, BoundConst, CallableIdWrapper, CanonicalVarKind, ClosureIdWrapper,
-    CoroutineIdWrapper, FxIndexMap, ImplIdWrapper, InternedWrapperNoDebug, RegionAssumptions,
-    SolverContext, SolverDefIds, TraitIdWrapper, TypeAliasIdWrapper,
+    CoroutineIdWrapper, Ctor, FnSig, FxIndexMap, ImplIdWrapper, InternedWrapperNoDebug,
+    RegionAssumptions, SolverContext, SolverDefIds, TraitIdWrapper, TypeAliasIdWrapper,
 };
 use crate::{ConstScalar, FnAbi, Interner, db::HirDatabase};
 
@@ -1055,60 +1055,62 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
     }
 
     fn variances_of(self, def_id: Self::DefId) -> Self::VariancesOf {
-        match def_id {
-            SolverDefId::FunctionId(def_id) => VariancesOf::new_from_iter(
-                self,
-                self.db()
-                    .variances_of(hir_def::GenericDefId::FunctionId(def_id))
-                    .as_deref()
-                    .unwrap_or_default()
-                    .iter()
-                    .map(|v| v.to_nextsolver(self)),
-            ),
-            SolverDefId::AdtId(def_id) => VariancesOf::new_from_iter(
-                self,
-                self.db()
-                    .variances_of(hir_def::GenericDefId::AdtId(def_id))
-                    .as_deref()
-                    .unwrap_or_default()
-                    .iter()
-                    .map(|v| v.to_nextsolver(self)),
-            ),
+        let generic_def = match def_id {
+            SolverDefId::FunctionId(def_id) => def_id.into(),
+            SolverDefId::AdtId(def_id) => def_id.into(),
+            SolverDefId::Ctor(Ctor::Struct(def_id)) => def_id.into(),
+            SolverDefId::Ctor(Ctor::Enum(def_id)) => def_id.loc(self.db).parent.into(),
             SolverDefId::InternedOpaqueTyId(_def_id) => {
                 // FIXME(next-solver): track variances
                 //
                 // We compute them based on the only `Ty` level info in rustc,
                 // move `variances_of_opaque` into `rustc_next_trait_solver` for reuse.
-                VariancesOf::new_from_iter(
+                return VariancesOf::new_from_iter(
                     self,
                     (0..self.generics_of(def_id).count()).map(|_| Variance::Invariant),
-                )
+                );
             }
-            _ => VariancesOf::new_from_iter(self, []),
-        }
+            _ => return VariancesOf::new_from_iter(self, []),
+        };
+        VariancesOf::new_from_iter(
+            self,
+            self.db()
+                .variances_of(generic_def)
+                .as_deref()
+                .unwrap_or_default()
+                .iter()
+                .map(|v| v.to_nextsolver(self)),
+        )
     }
 
     fn type_of(self, def_id: Self::DefId) -> EarlyBinder<Self, Self::Ty> {
-        let def_id = match def_id {
+        match def_id {
             SolverDefId::TypeAliasId(id) => {
                 use hir_def::Lookup;
                 match id.lookup(self.db()).container {
                     ItemContainerId::ImplId(it) => it,
                     _ => panic!("assoc ty value should be in impl"),
                 };
-                crate::TyDefId::TypeAliasId(id)
+                self.db().ty_ns(id.into())
             }
-            SolverDefId::AdtId(id) => crate::TyDefId::AdtId(id),
+            SolverDefId::AdtId(id) => self.db().ty_ns(id.into()),
             // FIXME(next-solver): This uses the types of `query mir_borrowck` in rustc.
             //
             // We currently always use the type from HIR typeck which ignores regions. This
             // should be fine.
-            SolverDefId::InternedOpaqueTyId(_) => {
-                return self.type_of_opaque_hir_typeck(def_id);
+            SolverDefId::InternedOpaqueTyId(_) => self.type_of_opaque_hir_typeck(def_id),
+            SolverDefId::FunctionId(id) => self.db.value_ty_ns(id.into()).unwrap(),
+            SolverDefId::Ctor(id) => {
+                let id = match id {
+                    Ctor::Struct(id) => id.into(),
+                    Ctor::Enum(id) => id.into(),
+                };
+                self.db
+                    .value_ty_ns(id)
+                    .expect("`SolverDefId::Ctor` should have a function-like ctor")
             }
             _ => panic!("Unexpected def_id `{def_id:?}` provided for `type_of`"),
-        };
-        self.db().ty_ns(def_id)
+        }
     }
 
     fn adt_def(self, def_id: Self::AdtId) -> Self::AdtDef {
@@ -2011,6 +2013,28 @@ impl<'db> DbInterner<'db> {
         delegate: impl BoundVarReplacerDelegate<'db>,
     ) -> T {
         self.replace_escaping_bound_vars_uncached(value.skip_binder(), delegate)
+    }
+
+    pub fn mk_fn_sig<I>(
+        self,
+        inputs: I,
+        output: Ty<'db>,
+        c_variadic: bool,
+        safety: Safety,
+        abi: FnAbi,
+    ) -> FnSig<'db>
+    where
+        I: IntoIterator<Item = Ty<'db>>,
+    {
+        FnSig {
+            inputs_and_output: Tys::new_from_iter(
+                self,
+                inputs.into_iter().chain(std::iter::once(output)),
+            ),
+            c_variadic,
+            safety,
+            abi,
+        }
     }
 }
 

@@ -283,6 +283,14 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
         def: TyDefId,
     ) -> crate::next_solver::EarlyBinder<'db, crate::next_solver::Ty<'db>>;
 
+    /// Returns the type of the value of the given constant, or `None` if the `ValueTyDefId` is
+    /// a `StructId` or `EnumVariantId` with a record constructor.
+    #[salsa::invoke(crate::lower_nextsolver::value_ty_query)]
+    fn value_ty_ns<'db>(
+        &'db self,
+        def: ValueTyDefId,
+    ) -> Option<crate::next_solver::EarlyBinder<'db, crate::next_solver::Ty<'db>>>;
+
     #[salsa::invoke(crate::lower_nextsolver::type_for_type_alias_with_diagnostics_query)]
     #[salsa::cycle(cycle_result = crate::lower_nextsolver::type_for_type_alias_with_diagnostics_cycle_result)]
     fn type_for_type_alias_with_diagnostics_ns<'db>(

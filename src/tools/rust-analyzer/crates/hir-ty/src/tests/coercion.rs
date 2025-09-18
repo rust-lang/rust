@@ -177,21 +177,23 @@ fn test(i: i32) {
 
 #[test]
 fn coerce_merge_one_by_one1() {
-    cov_mark::check!(coerce_merge_fail_fallback);
-
     check(
         r"
 fn test() {
     let t = &mut 1;
     let x = match 1 {
         1 => t as *mut i32,
-           //^^^^^^^^^^^^^ adjustments: Pointer(MutToConstPointer)
+           //^ adjustments: Deref(None), Borrow(RawPtr(Mut))
+        _ => t as *const i32,
+    };
+    x;
+ // ^ type: *const i32
+    let x = match 1 {
+        1 => t as *mut i32,
         2 => t as &i32,
            //^^^^^^^^^ expected *mut i32, got &'? i32
         _ => t as *const i32,
     };
-    x;
-  //^ type: *const i32
 
 }
         ",
@@ -276,17 +278,19 @@ fn test() {
 fn coerce_autoderef_implication_1() {
     check_no_mismatches(
         r"
-//- minicore: deref
-struct Foo<T>;
+//- minicore: deref, phantom_data
+use core::marker::PhantomData;
+
+struct Foo<T>(PhantomData<T>);
 impl core::ops::Deref for Foo<u32> { type Target = (); }
 
 fn takes_ref_foo<T>(x: &Foo<T>) {}
 fn test() {
-    let foo = Foo;
+    let foo = Foo(PhantomData);
       //^^^ type: Foo<{unknown}>
     takes_ref_foo(&foo);
 
-    let foo = Foo;
+    let foo = Foo(PhantomData);
       //^^^ type: Foo<u32>
     let _: &() = &foo;
 }",
@@ -297,16 +301,18 @@ fn test() {
 fn coerce_autoderef_implication_2() {
     check(
         r"
-//- minicore: deref
-struct Foo<T>;
+//- minicore: deref, phantom_data
+use core::marker::PhantomData;
+
+struct Foo<T>(PhantomData<T>);
 impl core::ops::Deref for Foo<u32> { type Target = (); }
 
 fn takes_ref_foo<T>(x: &Foo<T>) {}
 fn test() {
-    let foo = Foo;
+    let foo = Foo(PhantomData);
       //^^^ type: Foo<{unknown}>
-    let _: &u32 = &Foo;
-                //^^^^ expected &'? u32, got &'? Foo<{unknown}>
+    let _: &u32 = &Foo(PhantomData);
+                //^^^^^^^^^^^^^^^^^ expected &'? u32, got &'? Foo<{unknown}>
 }",
     );
 }
@@ -409,8 +415,6 @@ fn test() {
 
 #[test]
 fn coerce_fn_items_in_match_arms() {
-    cov_mark::check!(coerce_fn_reification);
-
     check_no_mismatches(
         r"
 fn foo1(x: u32) -> isize { 1 }
@@ -683,9 +687,9 @@ fn coerce_unsize_expected_type_2() {
     check_no_mismatches(
         r#"
 //- minicore: coerce_unsized
-struct InFile<T>;
+struct InFile<T>(T);
 impl<T> InFile<T> {
-    fn with_value<U>(self, value: U) -> InFile<U> { InFile }
+    fn with_value<U>(self, value: U) -> InFile<U> { InFile(loop {}) }
 }
 struct RecordField;
 trait AstNode {}
@@ -694,7 +698,7 @@ impl AstNode for RecordField {}
 fn takes_dyn(it: InFile<&dyn AstNode>) {}
 
 fn test() {
-    let x: InFile<()> = InFile;
+    let x: InFile<()> = InFile(());
     let n = &RecordField;
     takes_dyn(x.with_value(n));
 }

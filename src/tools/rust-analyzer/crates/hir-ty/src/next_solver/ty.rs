@@ -1,17 +1,19 @@
 //! Things related to tys in the next-trait-solver.
 
+use std::iter;
+use std::ops::ControlFlow;
+
 use hir_def::{GenericDefId, TypeOrConstParamId, TypeParamId};
 use intern::{Interned, Symbol, sym};
 use rustc_abi::{Float, Integer, Size};
 use rustc_ast_ir::{Mutability, try_visit, visit::VisitorResult};
-use rustc_type_ir::Interner;
 use rustc_type_ir::{
-    BoundVar, ClosureKind, FlagComputation, Flags, FloatTy, FloatVid, InferTy, IntTy, IntVid,
-    TypeFoldable, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, UintTy,
-    WithCachedTypeInfo,
+    BoundVar, ClosureKind, CollectAndApply, FlagComputation, Flags, FloatTy, FloatVid, InferTy,
+    IntTy, IntVid, Interner, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable,
+    TypeVisitableExt, TypeVisitor, UintTy, WithCachedTypeInfo,
     inherent::{
-        AdtDef, BoundVarLike, GenericArgs as _, IntoKind, ParamLike, PlaceholderLike, SliceLike,
-        Ty as _,
+        Abi, AdtDef, BoundVarLike, Const as _, GenericArgs as _, IntoKind, ParamLike,
+        PlaceholderLike, Safety as _, SliceLike, Ty as _,
     },
     relate::Relate,
     solve::SizedTraitKind,
@@ -20,13 +22,16 @@ use rustc_type_ir::{
 use salsa::plumbing::{AsId, FromId};
 use smallvec::SmallVec;
 
-use crate::next_solver::{
-    CallableIdWrapper, ClosureIdWrapper, CoroutineIdWrapper, GenericArg, TypeAliasIdWrapper,
-};
 use crate::{
+    FnAbi,
     db::HirDatabase,
     interner::InternedWrapperNoDebug,
-    next_solver::util::{CoroutineArgsExt, IntegerTypeExt},
+    next_solver::{
+        CallableIdWrapper, ClosureIdWrapper, Const, CoroutineIdWrapper, FnSig, GenericArg,
+        PolyFnSig, TypeAliasIdWrapper,
+        abi::Safety,
+        util::{CoroutineArgsExt, IntegerTypeExt},
+    },
 };
 
 use super::{
@@ -309,6 +314,68 @@ impl<'db> Ty<'db> {
             | TyKind::Alias(..)
             | TyKind::Error(_) => false,
         }
+    }
+
+    #[inline]
+    pub fn is_never(self) -> bool {
+        matches!(self.kind(), TyKind::Never)
+    }
+
+    #[inline]
+    pub fn is_infer(self) -> bool {
+        matches!(self.kind(), TyKind::Infer(..))
+    }
+
+    #[inline]
+    pub fn is_str(self) -> bool {
+        matches!(self.kind(), TyKind::Str)
+    }
+
+    #[inline]
+    pub fn is_unit(self) -> bool {
+        matches!(self.kind(), TyKind::Tuple(tys) if tys.inner().is_empty())
+    }
+
+    /// Given a `fn` type, returns an equivalent `unsafe fn` type;
+    /// that is, a `fn` type that is equivalent in every way for being
+    /// unsafe.
+    pub fn safe_to_unsafe_fn_ty(interner: DbInterner<'db>, sig: PolyFnSig<'db>) -> Ty<'db> {
+        assert!(sig.safety().is_safe());
+        Ty::new_fn_ptr(interner, sig.map_bound(|sig| FnSig { safety: Safety::Unsafe, ..sig }))
+    }
+
+    /// Returns the type of `*ty`.
+    ///
+    /// The parameter `explicit` indicates if this is an *explicit* dereference.
+    /// Some types -- notably raw ptrs -- can only be dereferenced explicitly.
+    pub fn builtin_deref(self, db: &dyn HirDatabase, explicit: bool) -> Option<Ty<'db>> {
+        match self.kind() {
+            TyKind::Adt(adt, substs) if crate::lang_items::is_box(db, adt.def_id().0) => {
+                Some(substs.as_slice()[0].expect_ty())
+            }
+            TyKind::Ref(_, ty, _) => Some(ty),
+            TyKind::RawPtr(ty, _) if explicit => Some(ty),
+            _ => None,
+        }
+    }
+
+    /// Whether the type contains some non-lifetime, aka. type or const, error type.
+    pub fn references_non_lt_error(self) -> bool {
+        self.references_error() && self.visit_with(&mut ReferencesNonLifetimeError).is_break()
+    }
+}
+
+struct ReferencesNonLifetimeError;
+
+impl<'db> TypeVisitor<DbInterner<'db>> for ReferencesNonLifetimeError {
+    type Result = ControlFlow<()>;
+
+    fn visit_ty(&mut self, ty: Ty<'db>) -> Self::Result {
+        if ty.is_ty_error() { ControlFlow::Break(()) } else { ty.super_visit_with(self) }
+    }
+
+    fn visit_const(&mut self, c: Const<'db>) -> Self::Result {
+        if c.is_ct_error() { ControlFlow::Break(()) } else { c.super_visit_with(self) }
     }
 }
 

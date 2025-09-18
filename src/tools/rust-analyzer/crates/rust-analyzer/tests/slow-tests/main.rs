@@ -1061,7 +1061,7 @@ fn main() {
         ),
         work_done_progress_params: Default::default(),
     });
-    assert!(res.to_string().contains("&'static str"));
+    assert!(res.to_string().contains("&str"));
 
     let res = server.send_request::<HoverRequest>(HoverParams {
         text_document_position_params: TextDocumentPositionParams::new(
@@ -1070,7 +1070,7 @@ fn main() {
         ),
         work_done_progress_params: Default::default(),
     });
-    assert!(res.to_string().contains("&'static str"));
+    assert!(res.to_string().contains("&str"));
 
     server.request::<GotoTypeDefinition>(
         GotoDefinitionParams {

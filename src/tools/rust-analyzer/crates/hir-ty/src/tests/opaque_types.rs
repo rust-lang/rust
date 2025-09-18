@@ -158,6 +158,7 @@ static ALIAS: i32 = {
             191..193 '_a': impl Trait + ?Sized
             205..211 'Struct': Struct
             217..218 '5': i32
+            205..211: expected impl Trait + ?Sized, got Struct
         "#]],
     )
 }

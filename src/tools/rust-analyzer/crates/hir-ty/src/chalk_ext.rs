@@ -210,7 +210,7 @@ impl TyExt for Ty {
         match self.kind(Interner) {
             TyKind::Function(fn_ptr) => Some(CallableSig::from_fn_ptr(fn_ptr)),
             TyKind::FnDef(def, parameters) => Some(CallableSig::from_def(db, *def, parameters)),
-            TyKind::Closure(.., substs) => ClosureSubst(substs).sig_ty().callable_sig(db),
+            TyKind::Closure(.., substs) => ClosureSubst(substs).sig_ty(db).callable_sig(db),
             _ => None,
         }
     }

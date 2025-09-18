@@ -2011,7 +2011,7 @@ fn main() {
             en Enum                      Enum
             fn function()                fn()
             fn main()                    fn()
-            lc variable          &'static str
+            lc variable                  &str
             ma helper!(…) macro_rules! helper
             ma m!(…)           macro_rules! m
             ma makro!(…)   macro_rules! makro
@@ -2486,6 +2486,7 @@ fn bar() {
             md rust_2024 (use core::prelude::rust_2024)
             tt Clone
             tt Copy
+            tt FromIterator
             tt IntoIterator
             tt Iterator
             ta Result (use core::fmt::Result)

@@ -2,6 +2,7 @@
 
 use hir_def::{AssocItemId, GeneralConstId, TypeAliasId};
 use rustc_next_trait_solver::delegate::SolverDelegate;
+use rustc_type_ir::GenericArgKind;
 use rustc_type_ir::lang_items::SolverTraitLangItem;
 use rustc_type_ir::{
     InferCtxtLike, Interner, PredicatePolarity, TypeFlags, TypeVisitableExt, UniverseIndex,
@@ -65,12 +66,12 @@ impl<'db> SolverDelegate for SolverContext<'db> {
         (SolverContext(infcx), value, vars)
     }
 
-    fn fresh_var_for_kind_with_span(
-        &self,
-        arg: <Self::Interner as rustc_type_ir::Interner>::GenericArg,
-        span: <Self::Interner as rustc_type_ir::Interner>::Span,
-    ) -> <Self::Interner as rustc_type_ir::Interner>::GenericArg {
-        unimplemented!()
+    fn fresh_var_for_kind_with_span(&self, arg: GenericArg<'db>, span: Span) -> GenericArg<'db> {
+        match arg.kind() {
+            GenericArgKind::Lifetime(_) => self.next_region_var().into(),
+            GenericArgKind::Type(_) => self.next_ty_var().into(),
+            GenericArgKind::Const(_) => self.next_const_var().into(),
+        }
     }
 
     fn leak_check(
@@ -92,7 +93,8 @@ impl<'db> SolverDelegate for SolverContext<'db> {
             >,
         >,
     > {
-        unimplemented!()
+        // FIXME(next-solver):
+        None
     }
 
     fn make_deduplicated_outlives_constraints(

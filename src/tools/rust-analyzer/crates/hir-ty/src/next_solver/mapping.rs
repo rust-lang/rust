@@ -147,6 +147,24 @@ pub trait NextSolverToChalk<'db, Out> {
     fn to_chalk(self, interner: DbInterner<'db>) -> Out;
 }
 
+impl NextSolverToChalk<'_, chalk_ir::Mutability> for rustc_ast_ir::Mutability {
+    fn to_chalk(self, interner: DbInterner<'_>) -> chalk_ir::Mutability {
+        match self {
+            rustc_ast_ir::Mutability::Not => chalk_ir::Mutability::Not,
+            rustc_ast_ir::Mutability::Mut => chalk_ir::Mutability::Mut,
+        }
+    }
+}
+
+impl NextSolverToChalk<'_, chalk_ir::Safety> for crate::next_solver::abi::Safety {
+    fn to_chalk(self, interner: DbInterner<'_>) -> chalk_ir::Safety {
+        match self {
+            crate::next_solver::abi::Safety::Unsafe => chalk_ir::Safety::Unsafe,
+            crate::next_solver::abi::Safety::Safe => chalk_ir::Safety::Safe,
+        }
+    }
+}
+
 impl<'db> ChalkToNextSolver<'db, Ty<'db>> for chalk_ir::Ty<Interner> {
     fn to_nextsolver(&self, interner: DbInterner<'db>) -> Ty<'db> {
         Ty::new(
@@ -617,6 +635,15 @@ impl<'db> ChalkToNextSolver<'db, Tys<'db>> for chalk_ir::Substitution<Interner> 
     }
 }
 
+impl<'db> NextSolverToChalk<'db, crate::Substitution> for Tys<'db> {
+    fn to_chalk(self, interner: DbInterner<'db>) -> crate::Substitution {
+        Substitution::from_iter(
+            Interner,
+            self.inner().iter().map(|ty| ty.to_chalk(interner).cast(Interner)),
+        )
+    }
+}
+
 impl<'db> ChalkToNextSolver<'db, rustc_type_ir::DebruijnIndex> for chalk_ir::DebruijnIndex {
     fn to_nextsolver(&self, _interner: DbInterner<'db>) -> rustc_type_ir::DebruijnIndex {
         rustc_type_ir::DebruijnIndex::from_u32(self.depth())
@@ -856,6 +883,16 @@ impl<'db> ChalkToNextSolver<'db, Predicate<'db>> for chalk_ir::Goal<Interner> {
 impl<'db> NextSolverToChalk<'db, chalk_ir::Goal<Interner>> for Predicate<'db> {
     fn to_chalk(self, interner: DbInterner<'db>) -> chalk_ir::Goal<Interner> {
         chalk_ir::Goal::new(Interner, self.kind().skip_binder().to_chalk(interner))
+    }
+}
+
+impl<'db> NextSolverToChalk<'db, crate::ProjectionTy> for crate::next_solver::AliasTy<'db> {
+    fn to_chalk(self, interner: DbInterner<'db>) -> crate::ProjectionTy {
+        let SolverDefId::TypeAliasId(assoc_id) = self.def_id else { unreachable!() };
+        crate::ProjectionTy {
+            associated_ty_id: to_assoc_type_id(assoc_id),
+            substitution: self.args.to_chalk(interner),
+        }
     }
 }
 

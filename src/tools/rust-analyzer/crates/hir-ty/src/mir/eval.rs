@@ -712,13 +712,13 @@ impl<'db> Evaluator<'db> {
                 let InternedClosure(def, _) = self.db.lookup_intern_closure(c.into());
                 let infer = self.db.infer(def);
                 let (captures, _) = infer.closure_info(&c);
-                let parent_subst = ClosureSubst(subst).parent_subst();
+                let parent_subst = ClosureSubst(subst).parent_subst(self.db);
                 captures
                     .get(f)
                     .expect("broken closure field")
                     .ty
                     .clone()
-                    .substitute(Interner, parent_subst)
+                    .substitute(Interner, &parent_subst)
             },
             self.crate_id,
         );
@@ -2772,7 +2772,7 @@ impl<'db> Evaluator<'db> {
             TyKind::Closure(closure, subst) => self.exec_closure(
                 *closure,
                 func_data,
-                &Substitution::from_iter(Interner, ClosureSubst(subst).parent_subst()),
+                &ClosureSubst(subst).parent_subst(self.db),
                 destination,
                 &args[1..],
                 locals,

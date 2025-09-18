@@ -10,6 +10,8 @@ use hir_def::{
 use hir_expand::name::Name;
 use stdx::TupleExt;
 
+use crate::infer::AllowTwoPhase;
+use crate::next_solver::mapping::{ChalkToNextSolver, NextSolverToChalk};
 use crate::{
     DeclContext, DeclOrigin, InferenceDiagnostic, Interner, Mutability, Scalar, Substitution, Ty,
     TyBuilder, TyExt, TyKind,
@@ -303,16 +305,15 @@ impl InferenceContext<'_> {
             Pat::Path(path) => {
                 let ty = self.infer_path(path, pat.into()).unwrap_or_else(|| self.err_ty());
                 let ty_inserted_vars = self.insert_type_vars_shallow(ty.clone());
-                match self.table.coerce(&expected, &ty_inserted_vars, CoerceNever::Yes) {
-                    Ok((adjustments, coerced_ty)) => {
-                        if !adjustments.is_empty() {
-                            self.result
-                                .pat_adjustments
-                                .entry(pat)
-                                .or_default()
-                                .extend(adjustments.into_iter().map(|adjust| adjust.target));
-                        }
-                        self.write_pat_ty(pat, coerced_ty);
+                match self.coerce(
+                    pat.into(),
+                    expected.to_nextsolver(self.table.interner),
+                    ty_inserted_vars.to_nextsolver(self.table.interner),
+                    AllowTwoPhase::No,
+                    CoerceNever::Yes,
+                ) {
+                    Ok(coerced_ty) => {
+                        self.write_pat_ty(pat, coerced_ty.to_chalk(self.table.interner));
                         return self.pat_ty_after_adjustment(pat);
                     }
                     Err(_) => {
@@ -387,8 +388,14 @@ impl InferenceContext<'_> {
                 );
                 // We are returning early to avoid the unifiability check below.
                 let lhs_ty = self.insert_type_vars_shallow(result);
-                let ty = match self.coerce(None, &expected, &lhs_ty, CoerceNever::Yes) {
-                    Ok(ty) => ty,
+                let ty = match self.coerce(
+                    pat.into(),
+                    expected.to_nextsolver(self.table.interner),
+                    lhs_ty.to_nextsolver(self.table.interner),
+                    AllowTwoPhase::No,
+                    CoerceNever::Yes,
+                ) {
+                    Ok(ty) => ty.to_chalk(self.table.interner),
                     Err(_) => {
                         self.result.type_mismatches.insert(
                             pat.into(),

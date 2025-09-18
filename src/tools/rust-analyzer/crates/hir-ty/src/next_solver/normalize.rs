@@ -1,34 +1,22 @@
-//! Normalization within a next-solver infer context.
-
-use std::fmt::Debug;
-
 use rustc_next_trait_solver::placeholder::BoundVarReplacer;
 use rustc_type_ir::{
     AliasRelationDirection, FallibleTypeFolder, Flags, Interner, TermKind, TypeFoldable,
     TypeFolder, TypeSuperFoldable, TypeVisitableExt, UniverseIndex,
-    inherent::{IntoKind, Span as _, Term as _},
+    inherent::{IntoKind, Term as _},
 };
 
+use crate::next_solver::SolverDefId;
 use crate::next_solver::{
-    Binder, Const, ConstKind, DbInterner, Goal, ParamEnv, Predicate, PredicateKind, Span, Term, Ty,
-    TyKind, TypingMode,
+    Binder, Const, ConstKind, DbInterner, Goal, ParamEnv, Predicate, PredicateKind, Term, Ty,
+    TyKind,
     fulfill::{FulfillmentCtxt, NextSolverError},
     infer::{
-        DbInternerInferExt, InferCtxt,
+        InferCtxt,
         at::At,
         traits::{Obligation, ObligationCause},
     },
     util::PlaceholderReplacer,
 };
-
-pub fn normalize<'db, T>(interner: DbInterner<'db>, param_env: ParamEnv<'db>, value: T) -> T
-where
-    T: TypeFoldable<DbInterner<'db>>,
-{
-    let infer_ctxt = interner.infer_ctxt().build(TypingMode::non_body_analysis());
-    let cause = ObligationCause::dummy();
-    deeply_normalize(infer_ctxt.at(&cause, param_env), value.clone()).unwrap_or(value)
-}
 
 /// Deeply normalize all aliases in `value`. This does not handle inference and expects
 /// its input to be already fully resolved.
@@ -81,10 +69,16 @@ where
     T: TypeFoldable<DbInterner<'db>>,
 {
     let fulfill_cx = FulfillmentCtxt::new(at.infcx);
-    let mut folder = NormalizationFolder { at, fulfill_cx, depth: 0, universes };
+    let mut folder = NormalizationFolder {
+        at,
+        fulfill_cx,
+        depth: 0,
+        universes,
+        stalled_coroutine_goals: vec![],
+    };
     let value = value.try_fold_with(&mut folder)?;
     let errors = folder.fulfill_cx.select_all_or_error(at.infcx);
-    if errors.is_empty() { Ok((value, vec![])) } else { Err(errors) }
+    if errors.is_empty() { Ok((value, folder.stalled_coroutine_goals)) } else { Err(errors) }
 }
 
 struct NormalizationFolder<'me, 'db> {
@@ -92,6 +86,7 @@ struct NormalizationFolder<'me, 'db> {
     fulfill_cx: FulfillmentCtxt<'db>,
     depth: usize,
     universes: Vec<Option<UniverseIndex>>,
+    stalled_coroutine_goals: Vec<Goal<'db, Predicate<'db>>>,
 }
 
 impl<'db> NormalizationFolder<'_, 'db> {
@@ -100,21 +95,29 @@ impl<'db> NormalizationFolder<'_, 'db> {
         alias_term: Term<'db>,
     ) -> Result<Term<'db>, Vec<NextSolverError<'db>>> {
         let infcx = self.at.infcx;
-        let tcx = infcx.interner;
-        let recursion_limit = tcx.recursion_limit();
-        if self.depth > recursion_limit {
-            return Err(vec![]);
-        }
+        let interner = infcx.interner;
+        let recursion_limit = interner.recursion_limit();
 
         self.depth += 1;
 
         let infer_term = infcx.next_term_var_of_kind(alias_term);
         let obligation = Obligation::new(
-            tcx,
+            interner,
             self.at.cause.clone(),
             self.at.param_env,
             PredicateKind::AliasRelate(alias_term, infer_term, AliasRelationDirection::Equate),
         );
+
+        if self.depth > recursion_limit {
+            //     let term = alias_term.to_alias_term().unwrap();
+            //     self.at.infcx.err_ctxt().report_overflow_error(
+            //         OverflowCause::DeeplyNormalize(term),
+            //         self.at.cause.span,
+            //         true,
+            //         |_| {},
+            //     );
+            return Err(vec![NextSolverError::Overflow(obligation)]);
+        }
 
         self.fulfill_cx.register_predicate_obligation(infcx, obligation);
         self.select_all_and_stall_coroutine_predicates()?;
@@ -139,6 +142,13 @@ impl<'db> NormalizationFolder<'_, 'db> {
         if !errors.is_empty() {
             return Err(errors);
         }
+
+        self.stalled_coroutine_goals.extend(
+            self.fulfill_cx
+                .drain_stalled_obligations_for_coroutines(self.at.infcx)
+                .into_iter()
+                .map(|obl| obl.as_goal()),
+        );
 
         let errors = self.fulfill_cx.collect_remaining_errors(self.at.infcx);
         if !errors.is_empty() {
@@ -166,7 +176,6 @@ impl<'db> FallibleTypeFolder<DbInterner<'db>> for NormalizationFolder<'_, 'db> {
         Ok(t)
     }
 
-    #[tracing::instrument(level = "trace", skip(self), ret)]
     fn try_fold_ty(&mut self, ty: Ty<'db>) -> Result<Ty<'db>, Self::Error> {
         let infcx = self.at.infcx;
         debug_assert_eq!(ty, infcx.shallow_resolve(ty));
@@ -193,7 +202,6 @@ impl<'db> FallibleTypeFolder<DbInterner<'db>> for NormalizationFolder<'_, 'db> {
         }
     }
 
-    #[tracing::instrument(level = "trace", skip(self), ret)]
     fn try_fold_const(&mut self, ct: Const<'db>) -> Result<Const<'db>, Self::Error> {
         let infcx = self.at.infcx;
         debug_assert_eq!(ct, infcx.shallow_resolve_const(ct));
@@ -232,8 +240,8 @@ pub(crate) fn deeply_normalize_for_diagnostics<'db, T: TypeFoldable<DbInterner<'
     })
 }
 
-struct DeeplyNormalizeForDiagnosticsFolder<'a, 'db> {
-    at: At<'a, 'db>,
+struct DeeplyNormalizeForDiagnosticsFolder<'a, 'tcx> {
+    at: At<'a, 'tcx>,
 }
 
 impl<'db> TypeFolder<DbInterner<'db>> for DeeplyNormalizeForDiagnosticsFolder<'_, 'db> {

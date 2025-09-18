@@ -6,12 +6,15 @@ use rustc_type_ir::{
     ClosureArgs, CollectAndApply, ConstVid, CoroutineArgs, CoroutineClosureArgs, FnSig, FnSigTys,
     GenericArgKind, IntTy, Interner, TermKind, TyKind, TyVid, TypeFoldable, TypeVisitable,
     Variance,
-    inherent::{GenericArg as _, GenericsOf, IntoKind, SliceLike, Term as _, Ty as _},
+    inherent::{
+        GenericArg as _, GenericArgs as _, GenericsOf, IntoKind, SliceLike, Term as _, Ty as _,
+    },
     relate::{Relate, VarianceDiagInfo},
 };
 use smallvec::SmallVec;
 
 use crate::db::HirDatabase;
+use crate::next_solver::{Binder, PolyFnSig};
 
 use super::{
     Const, DbInterner, EarlyParamRegion, ErrorGuaranteed, ParamConst, Region, SolverDefId, Ty, Tys,
@@ -240,6 +243,34 @@ impl<'db> GenericArgs<'db> {
             args.push(kind);
         }
     }
+
+    pub fn closure_sig_untupled(self) -> PolyFnSig<'db> {
+        let TyKind::FnPtr(inputs_and_output, hdr) =
+            self.split_closure_args_untupled().closure_sig_as_fn_ptr_ty.kind()
+        else {
+            unreachable!("not a function pointer")
+        };
+        inputs_and_output.with(hdr)
+    }
+
+    /// A "sensible" `.split_closure_args()`, where the arguments are not in a tuple.
+    pub fn split_closure_args_untupled(self) -> rustc_type_ir::ClosureArgsParts<DbInterner<'db>> {
+        // FIXME: should use `ClosureSubst` when possible
+        match self.inner().as_slice() {
+            [parent_args @ .., closure_kind_ty, sig_ty, tupled_upvars_ty] => {
+                let interner = DbInterner::conjure();
+                rustc_type_ir::ClosureArgsParts {
+                    parent_args: GenericArgs::new_from_iter(interner, parent_args.iter().cloned()),
+                    closure_sig_as_fn_ptr_ty: sig_ty.expect_ty(),
+                    closure_kind_ty: closure_kind_ty.expect_ty(),
+                    tupled_upvars_ty: tupled_upvars_ty.expect_ty(),
+                }
+            }
+            _ => {
+                unreachable!("unexpected closure sig");
+            }
+        }
+    }
 }
 
 impl<'db> rustc_type_ir::relate::Relate<DbInterner<'db>> for GenericArgs<'db> {
@@ -329,7 +360,7 @@ impl<'db> rustc_type_ir::inherent::GenericArgs<DbInterner<'db>> for GenericArgs<
     fn split_closure_args(self) -> rustc_type_ir::ClosureArgsParts<DbInterner<'db>> {
         // FIXME: should use `ClosureSubst` when possible
         match self.inner().as_slice() {
-            [parent_args @ .., sig_ty] => {
+            [parent_args @ .., closure_kind_ty, sig_ty, tupled_upvars_ty] => {
                 let interner = DbInterner::conjure();
                 // This is stupid, but the next solver expects the first input to actually be a tuple
                 let sig_ty = match sig_ty.expect_ty().kind() {
@@ -354,8 +385,8 @@ impl<'db> rustc_type_ir::inherent::GenericArgs<DbInterner<'db>> for GenericArgs<
                 rustc_type_ir::ClosureArgsParts {
                     parent_args: GenericArgs::new_from_iter(interner, parent_args.iter().cloned()),
                     closure_sig_as_fn_ptr_ty: sig_ty,
-                    closure_kind_ty: Ty::new(interner, TyKind::Int(IntTy::I8)),
-                    tupled_upvars_ty: Ty::new_unit(interner),
+                    closure_kind_ty: closure_kind_ty.expect_ty(),
+                    tupled_upvars_ty: tupled_upvars_ty.expect_ty(),
                 }
             }
             _ => {
@@ -392,14 +423,14 @@ impl<'db> rustc_type_ir::inherent::GenericArgs<DbInterner<'db>> for GenericArgs<
     fn split_coroutine_args(self) -> rustc_type_ir::CoroutineArgsParts<DbInterner<'db>> {
         let interner = DbInterner::conjure();
         match self.inner().as_slice() {
-            [parent_args @ .., resume_ty, yield_ty, return_ty] => {
+            [parent_args @ .., kind_ty, resume_ty, yield_ty, return_ty, tupled_upvars_ty] => {
                 rustc_type_ir::CoroutineArgsParts {
                     parent_args: GenericArgs::new_from_iter(interner, parent_args.iter().cloned()),
-                    kind_ty: Ty::new_unit(interner),
+                    kind_ty: kind_ty.expect_ty(),
                     resume_ty: resume_ty.expect_ty(),
                     yield_ty: yield_ty.expect_ty(),
                     return_ty: return_ty.expect_ty(),
-                    tupled_upvars_ty: Ty::new_unit(interner),
+                    tupled_upvars_ty: tupled_upvars_ty.expect_ty(),
                 }
             }
             _ => panic!("GenericArgs were likely not for a Coroutine."),

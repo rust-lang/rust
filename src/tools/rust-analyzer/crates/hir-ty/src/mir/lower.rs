@@ -2065,7 +2065,7 @@ pub fn mir_body_for_closure_query(
         },
     });
     ctx.result.param_locals.push(closure_local);
-    let Some(sig) = ClosureSubst(substs).sig_ty().callable_sig(db) else {
+    let Some(sig) = ClosureSubst(substs).sig_ty(db).callable_sig(db) else {
         implementation_error!("closure has not callable sig");
     };
     let resolver_guard = ctx.resolver.update_to_inner_scope(db, owner, expr);

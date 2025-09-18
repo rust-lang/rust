@@ -4,6 +4,7 @@
 use std::cmp::{self, Ordering};
 
 use chalk_ir::TyKind;
+use hir_def::signatures::FunctionSignature;
 use hir_def::{
     CrateRootModuleId,
     builtin_type::{BuiltinInt, BuiltinUint},
@@ -63,17 +64,7 @@ impl Evaluator<'_> {
 
         let function_data = self.db.function_signature(def);
         let attrs = self.db.attrs(def.into());
-        let is_intrinsic = attrs.by_key(sym::rustc_intrinsic).exists()
-            // Keep this around for a bit until extern "rustc-intrinsic" abis are no longer used
-            || (match &function_data.abi {
-                Some(abi) => *abi == sym::rust_dash_intrinsic,
-                None => match def.lookup(self.db).container {
-                    hir_def::ItemContainerId::ExternBlockId(block) => {
-                        block.abi(self.db) == Some(sym::rust_dash_intrinsic)
-                    }
-                    _ => false,
-                },
-            });
+        let is_intrinsic = FunctionSignature::is_intrinsic(self.db, def);
 
         if is_intrinsic {
             return self.exec_intrinsic(
@@ -194,7 +185,7 @@ impl Evaluator<'_> {
                 let infer = self.db.infer(closure_owner);
                 let (captures, _) = infer.closure_info(id);
                 let layout = self.layout(self_ty.to_nextsolver(interner))?;
-                let ty_iter = captures.iter().map(|c| c.ty(subst));
+                let ty_iter = captures.iter().map(|c| c.ty(self.db, subst));
                 self.exec_clone_for_fields(ty_iter, layout, addr, def, locals, destination, span)?;
             }
             TyKind::Tuple(_, subst) => {
