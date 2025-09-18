@@ -22,8 +22,9 @@ use rustc_ast::token::CommentKind;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
     Block, BlockCheckMode, Body, Closure, Destination, Expr, ExprKind, FieldDef, FnHeader, FnRetTy, HirId, Impl,
-    ImplItem, ImplItemKind, IsAuto, Item, ItemKind, Lit, LoopSource, MatchSource, MutTy, Node, Path, QPath, Safety,
-    TraitImplHeader, TraitItem, TraitItemKind, Ty, TyKind, UnOp, UnsafeSource, Variant, VariantData, YieldSource,
+    ImplItem, ImplItemImplKind, ImplItemKind, IsAuto, Item, ItemKind, Lit, LoopSource, MatchSource, MutTy, Node, Path,
+    QPath, Safety, TraitImplHeader, TraitItem, TraitItemKind, Ty, TyKind, UnOp, UnsafeSource, Variant, VariantData,
+    YieldSource,
 };
 use rustc_lint::{EarlyContext, LateContext, LintContext};
 use rustc_middle::ty::TyCtxt;
@@ -283,16 +284,17 @@ fn trait_item_search_pat(item: &TraitItem<'_>) -> (Pat, Pat) {
 }
 
 fn impl_item_search_pat(item: &ImplItem<'_>) -> (Pat, Pat) {
-    let (start_pat, end_pat) = match &item.kind {
+    let (mut start_pat, end_pat) = match &item.kind {
         ImplItemKind::Const(..) => (Pat::Str("const"), Pat::Str(";")),
         ImplItemKind::Type(..) => (Pat::Str("type"), Pat::Str(";")),
         ImplItemKind::Fn(sig, ..) => (fn_header_search_pat(sig.header), Pat::Str("")),
     };
-    if item.vis_span.is_empty() {
-        (start_pat, end_pat)
-    } else {
-        (Pat::Str("pub"), end_pat)
+    if let ImplItemImplKind::Inherent { vis_span, .. } = item.impl_kind
+        && !vis_span.is_empty()
+    {
+        start_pat = Pat::Str("pub");
     }
+    (start_pat, end_pat)
 }
 
 fn field_def_search_pat(def: &FieldDef<'_>) -> (Pat, Pat) {
@@ -316,22 +318,24 @@ fn variant_search_pat(v: &Variant<'_>) -> (Pat, Pat) {
 }
 
 fn fn_kind_pat(tcx: TyCtxt<'_>, kind: &FnKind<'_>, body: &Body<'_>, hir_id: HirId) -> (Pat, Pat) {
-    let (start_pat, end_pat) = match kind {
+    let (mut start_pat, end_pat) = match kind {
         FnKind::ItemFn(.., header) => (fn_header_search_pat(*header), Pat::Str("")),
         FnKind::Method(.., sig) => (fn_header_search_pat(sig.header), Pat::Str("")),
         FnKind::Closure => return (Pat::Str(""), expr_search_pat(tcx, body.value).1),
     };
-    let start_pat = match tcx.hir_node(hir_id) {
-        Node::Item(Item { vis_span, .. }) | Node::ImplItem(ImplItem { vis_span, .. }) => {
-            if vis_span.is_empty() {
-                start_pat
-            } else {
-                Pat::Str("pub")
+    match tcx.hir_node(hir_id) {
+        Node::Item(Item { vis_span, .. })
+        | Node::ImplItem(ImplItem {
+            impl_kind: ImplItemImplKind::Inherent { vis_span, .. },
+            ..
+        }) => {
+            if !vis_span.is_empty() {
+                start_pat = Pat::Str("pub");
             }
         },
-        Node::TraitItem(_) => start_pat,
-        _ => Pat::Str(""),
-    };
+        Node::ImplItem(_) | Node::TraitItem(_) => {},
+        _ => start_pat = Pat::Str(""),
+    }
     (start_pat, end_pat)
 }
 

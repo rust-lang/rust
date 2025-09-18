@@ -98,7 +98,7 @@ fn into_iter_bound<'tcx>(
             if tr.def_id() == into_iter_did {
                 into_iter_span = Some(*span);
             } else {
-                let tr = cx.tcx.erase_regions(tr);
+                let tr = cx.tcx.erase_and_anonymize_regions(tr);
                 if tr.has_escaping_bound_vars() {
                     return None;
                 }

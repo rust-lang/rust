@@ -195,7 +195,6 @@ generate! {
     itertools,
     join,
     kw,
-    last,
     lazy_static,
     lint_vec,
     ln,

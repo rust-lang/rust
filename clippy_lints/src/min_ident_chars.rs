@@ -5,8 +5,8 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{Visitor, walk_item, walk_trait_item};
 use rustc_hir::{
-    GenericParamKind, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, ItemLocalId, Node, Pat, PatKind, TraitItem,
-    UsePath,
+    GenericParamKind, HirId, Impl, ImplItem, ImplItemImplKind, ImplItemKind, Item, ItemKind, ItemLocalId, Node, Pat,
+    PatKind, TraitItem, UsePath,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::impl_lint_pass;
@@ -256,7 +256,11 @@ fn is_not_in_trait_impl(cx: &LateContext<'_>, pat: &Pat<'_>, ident: Ident) -> bo
 }
 
 fn get_param_name(impl_item: &ImplItem<'_>, cx: &LateContext<'_>, ident: Ident) -> Option<Symbol> {
-    if let Some(trait_item_def_id) = impl_item.trait_item_def_id {
+    if let ImplItemImplKind::Trait {
+        trait_item_def_id: Ok(trait_item_def_id),
+        ..
+    } = impl_item.impl_kind
+    {
         let trait_param_names = cx.tcx.fn_arg_idents(trait_item_def_id);
 
         let ImplItemKind::Fn(_, body_id) = impl_item.kind else {
