@@ -424,6 +424,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if !ty.references_error() {
             let tail = self.tcx.struct_tail_raw(
                 ty,
+                &self.misc(span),
                 |ty| {
                     if self.next_trait_solver() {
                         self.try_structurally_resolve_type(span, ty)
