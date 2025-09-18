@@ -1,14 +1,8 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use rustc_hir::attrs::DebuggerVisualizerType;
 use rustc_macros::{Decodable, Encodable, HashStable};
-
-#[derive(HashStable)]
-#[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Debug, Encodable, Decodable)]
-pub enum DebuggerVisualizerType {
-    Natvis,
-    GdbPrettyPrinter,
-}
 
 /// A single debugger visualizer file.
 #[derive(HashStable)]
