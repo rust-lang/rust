@@ -2446,7 +2446,7 @@ impl<'db> Evaluator<'db> {
             | TyKind::Foreign(_)
             | TyKind::Error(_)
             | TyKind::Placeholder(_)
-            | TyKind::Dynamic(_, _, _)
+            | TyKind::Dynamic(_, _)
             | TyKind::Alias(_, _)
             | TyKind::Bound(_, _)
             | TyKind::Infer(_)

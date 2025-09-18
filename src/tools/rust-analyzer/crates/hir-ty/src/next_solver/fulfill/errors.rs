@@ -1146,7 +1146,7 @@ mod wf {
                 }
                 TyKind::UnsafeBinder(ty) => {}
 
-                TyKind::Dynamic(data, r, _) => {
+                TyKind::Dynamic(data, r) => {
                     // WfObject
                     //
                     // Here, we defer WF checking due to higher-ranked

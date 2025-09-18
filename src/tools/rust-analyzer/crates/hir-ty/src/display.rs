@@ -897,7 +897,7 @@ fn render_const_scalar_inner(
                 }
                 f.write_str("]")
             }
-            TyKind::Dynamic(_, _, _) => {
+            TyKind::Dynamic(_, _) => {
                 let addr = usize::from_le_bytes(b[0..b.len() / 2].try_into().unwrap());
                 let ty_id = usize::from_le_bytes(b[b.len() / 2..].try_into().unwrap());
                 let Ok(t) = memory_map.vtable_ty(ty_id) else {
@@ -1064,7 +1064,7 @@ fn render_const_scalar_inner(
         | TyKind::Bound(_, _)
         | TyKind::Infer(_) => f.write_str("<placeholder-or-unknown-type>"),
         // The below arms are unreachable, since we handled them in ref case.
-        TyKind::Slice(_) | TyKind::Str | TyKind::Dynamic(_, _, _) => f.write_str("<unsized-value>"),
+        TyKind::Slice(_) | TyKind::Str | TyKind::Dynamic(_, _) => f.write_str("<unsized-value>"),
     }
 }
 
@@ -1213,7 +1213,7 @@ impl<'db> HirDisplay for crate::next_solver::Ty<'db> {
                     })
                 };
                 let (preds_to_print, has_impl_fn_pred) = match t.kind() {
-                    TyKind::Dynamic(bounds, region, _) => {
+                    TyKind::Dynamic(bounds, region) => {
                         let render_lifetime = f.render_region(region);
                         (
                             bounds.len() + render_lifetime as usize,

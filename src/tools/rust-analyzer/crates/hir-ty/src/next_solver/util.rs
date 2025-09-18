@@ -461,7 +461,7 @@ pub fn sizedness_constraint_for_ty<'db>(
         | CoroutineWitness(..) | Never => None,
 
         // these are never sized
-        Str | Slice(..) | Dynamic(_, _, rustc_type_ir::DynKind::Dyn) => match sizedness {
+        Str | Slice(..) | Dynamic(_, _) => match sizedness {
             // Never `Sized`
             SizedTraitKind::Sized => Some(ty),
             // Always `MetaSized`
