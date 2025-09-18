@@ -6553,6 +6553,7 @@ Released 2018-09-13
 [`redundant_feature_names`]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_feature_names
 [`redundant_field_names`]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_field_names
 [`redundant_guards`]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_guards
+[`redundant_iter_cloned`]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_iter_cloned
 [`redundant_locals`]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_locals
 [`redundant_pattern`]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_pattern
 [`redundant_pattern_matching`]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_pattern_matching
