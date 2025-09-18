@@ -252,7 +252,9 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
                 {
                     (
                         trait_item_id,
-                        FnKind::ImplTraitFn(std::ptr::from_ref(cx.tcx.erase_and_anonymize_regions(trait_ref.args)) as usize),
+                        FnKind::ImplTraitFn(
+                            std::ptr::from_ref(cx.tcx.erase_and_anonymize_regions(trait_ref.args)) as usize
+                        ),
                         usize::from(sig.decl.implicit_self.has_implicit_self()),
                     )
                 } else {

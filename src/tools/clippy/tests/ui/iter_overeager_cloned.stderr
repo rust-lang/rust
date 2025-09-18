@@ -25,8 +25,8 @@ LL |     let _: usize = vec.iter().filter(|x| x == &"2").cloned().count();
    |                                                    |
    |                                                    help: try: `.count()`
    |
-   = note: `-D clippy::redundant-clone` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::redundant_clone)]`
+   = note: `-D clippy::redundant-iter-cloned` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_iter_cloned)]`
 
 error: unnecessarily eager cloning of iterator items
   --> tests/ui/iter_overeager_cloned.rs:21:21

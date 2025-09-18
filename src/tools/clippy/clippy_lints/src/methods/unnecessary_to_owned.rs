@@ -3,11 +3,12 @@ use super::unnecessary_iter_cloned::{self, is_into_iter};
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{SpanRangeExt, snippet};
-use clippy_utils::ty::{get_iterator_item_ty, implements_trait, is_copy, is_type_diagnostic_item, is_type_lang_item};
+use clippy_utils::ty::{
+    get_iterator_item_ty, implements_trait, is_copy, is_type_diagnostic_item, is_type_lang_item, peel_and_count_ty_refs,
+};
 use clippy_utils::visitors::find_all_ret_expressions;
 use clippy_utils::{
-    fn_def_id, get_parent_expr, is_diag_item_method, is_diag_trait_item, is_expr_temporary_value, peel_middle_ty_refs,
-    return_ty, sym,
+    fn_def_id, get_parent_expr, is_diag_item_method, is_diag_trait_item, is_expr_temporary_value, return_ty, sym,
 };
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
@@ -119,8 +120,8 @@ fn check_addr_of_expr(
                 },
             ] = adjustments[..]
         && let receiver_ty = cx.typeck_results().expr_ty(receiver)
-        && let (target_ty, n_target_refs) = peel_middle_ty_refs(*target_ty)
-        && let (receiver_ty, n_receiver_refs) = peel_middle_ty_refs(receiver_ty)
+        && let (target_ty, n_target_refs, _) = peel_and_count_ty_refs(*target_ty)
+        && let (receiver_ty, n_receiver_refs, _) = peel_and_count_ty_refs(receiver_ty)
         // Only flag cases satisfying at least one of the following three conditions:
         // * the referent and receiver types are distinct
         // * the referent/receiver type is a copyable array
@@ -385,7 +386,7 @@ fn check_other_call_arg<'tcx>(
         && let fn_sig = cx.tcx.fn_sig(callee_def_id).instantiate_identity().skip_binder()
         && let Some(i) = recv.into_iter().chain(call_args).position(|arg| arg.hir_id == maybe_arg.hir_id)
         && let Some(input) = fn_sig.inputs().get(i)
-        && let (input, n_refs) = peel_middle_ty_refs(*input)
+        && let (input, n_refs, _) = peel_and_count_ty_refs(*input)
         && let (trait_predicates, _) = get_input_traits_and_projections(cx, callee_def_id, input)
         && let Some(sized_def_id) = cx.tcx.lang_items().sized_trait()
         && let Some(meta_sized_def_id) = cx.tcx.lang_items().meta_sized_trait()
