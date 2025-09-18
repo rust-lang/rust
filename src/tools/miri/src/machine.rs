@@ -1294,6 +1294,11 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     }
 
     #[inline(always)]
+    fn float_fuse_mul_add(ecx: &mut InterpCx<'tcx, Self>) -> bool {
+        ecx.machine.float_nondet && ecx.machine.rng.get_mut().random()
+    }
+
+    #[inline(always)]
     fn ub_checks(ecx: &InterpCx<'tcx, Self>) -> InterpResult<'tcx, bool> {
         interp_ok(ecx.tcx.sess.ub_checks())
     }

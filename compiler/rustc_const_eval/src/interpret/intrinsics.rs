@@ -636,6 +636,14 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 dest,
                 rustc_apfloat::Round::NearestTiesToEven,
             )?,
+            sym::fmaf16 => self.fma_intrinsic::<Half>(args, dest)?,
+            sym::fmaf32 => self.fma_intrinsic::<Single>(args, dest)?,
+            sym::fmaf64 => self.fma_intrinsic::<Double>(args, dest)?,
+            sym::fmaf128 => self.fma_intrinsic::<Quad>(args, dest)?,
+            sym::fmuladdf16 => self.float_muladd_intrinsic::<Half>(args, dest)?,
+            sym::fmuladdf32 => self.float_muladd_intrinsic::<Single>(args, dest)?,
+            sym::fmuladdf64 => self.float_muladd_intrinsic::<Double>(args, dest)?,
+            sym::fmuladdf128 => self.float_muladd_intrinsic::<Quad>(args, dest)?,
 
             // Unsupported intrinsic: skip the return_to_block below.
             _ => return interp_ok(false),
@@ -1032,6 +1040,44 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let x: F = self.read_scalar(&args[0])?.to_float()?;
         let res = x.round_to_integral(mode).value;
         let res = self.adjust_nan(res, &[x]);
+        self.write_scalar(res, dest)?;
+        interp_ok(())
+    }
+
+    fn fma_intrinsic<F>(
+        &mut self,
+        args: &[OpTy<'tcx, M::Provenance>],
+        dest: &PlaceTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, ()>
+    where
+        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
+    {
+        let a: F = self.read_scalar(&args[0])?.to_float()?;
+        let b: F = self.read_scalar(&args[1])?.to_float()?;
+        let c: F = self.read_scalar(&args[2])?.to_float()?;
+
+        let res = a.mul_add(b, c).value;
+        let res = self.adjust_nan(res, &[a, b, c]);
+        self.write_scalar(res, dest)?;
+        interp_ok(())
+    }
+
+    fn float_muladd_intrinsic<F>(
+        &mut self,
+        args: &[OpTy<'tcx, M::Provenance>],
+        dest: &PlaceTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, ()>
+    where
+        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
+    {
+        let a: F = self.read_scalar(&args[0])?.to_float()?;
+        let b: F = self.read_scalar(&args[1])?.to_float()?;
+        let c: F = self.read_scalar(&args[2])?.to_float()?;
+
+        let fuse = M::float_fuse_mul_add(self);
+
+        let res = if fuse { a.mul_add(b, c).value } else { ((a * b).value + c).value };
+        let res = self.adjust_nan(res, &[a, b, c]);
         self.write_scalar(res, dest)?;
         interp_ok(())
     }

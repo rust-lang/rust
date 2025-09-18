@@ -1312,28 +1312,28 @@ pub unsafe fn log2f128(x: f128) -> f128;
 /// [`f16::mul_add`](../../std/primitive.f16.html#method.mul_add)
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn fmaf16(a: f16, b: f16, c: f16) -> f16;
+pub const unsafe fn fmaf16(a: f16, b: f16, c: f16) -> f16;
 /// Returns `a * b + c` for `f32` values.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f32::mul_add`](../../std/primitive.f32.html#method.mul_add)
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn fmaf32(a: f32, b: f32, c: f32) -> f32;
+pub const unsafe fn fmaf32(a: f32, b: f32, c: f32) -> f32;
 /// Returns `a * b + c` for `f64` values.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f64::mul_add`](../../std/primitive.f64.html#method.mul_add)
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn fmaf64(a: f64, b: f64, c: f64) -> f64;
+pub const unsafe fn fmaf64(a: f64, b: f64, c: f64) -> f64;
 /// Returns `a * b + c` for `f128` values.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f128::mul_add`](../../std/primitive.f128.html#method.mul_add)
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn fmaf128(a: f128, b: f128, c: f128) -> f128;
+pub const unsafe fn fmaf128(a: f128, b: f128, c: f128) -> f128;
 
 /// Returns `a * b + c` for `f16` values, non-deterministically executing
 /// either a fused multiply-add or two operations with rounding of the
@@ -1347,7 +1347,7 @@ pub unsafe fn fmaf128(a: f128, b: f128, c: f128) -> f128;
 /// example.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn fmuladdf16(a: f16, b: f16, c: f16) -> f16;
+pub const unsafe fn fmuladdf16(a: f16, b: f16, c: f16) -> f16;
 /// Returns `a * b + c` for `f32` values, non-deterministically executing
 /// either a fused multiply-add or two operations with rounding of the
 /// intermediate result.
@@ -1360,7 +1360,7 @@ pub unsafe fn fmuladdf16(a: f16, b: f16, c: f16) -> f16;
 /// example.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn fmuladdf32(a: f32, b: f32, c: f32) -> f32;
+pub const unsafe fn fmuladdf32(a: f32, b: f32, c: f32) -> f32;
 /// Returns `a * b + c` for `f64` values, non-deterministically executing
 /// either a fused multiply-add or two operations with rounding of the
 /// intermediate result.
@@ -1373,7 +1373,7 @@ pub unsafe fn fmuladdf32(a: f32, b: f32, c: f32) -> f32;
 /// example.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn fmuladdf64(a: f64, b: f64, c: f64) -> f64;
+pub const unsafe fn fmuladdf64(a: f64, b: f64, c: f64) -> f64;
 /// Returns `a * b + c` for `f128` values, non-deterministically executing
 /// either a fused multiply-add or two operations with rounding of the
 /// intermediate result.
@@ -1386,7 +1386,7 @@ pub unsafe fn fmuladdf64(a: f64, b: f64, c: f64) -> f64;
 /// example.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn fmuladdf128(a: f128, b: f128, c: f128) -> f128;
+pub const unsafe fn fmuladdf128(a: f128, b: f128, c: f128) -> f128;
 
 /// Returns the largest integer less than or equal to an `f16`.
 ///

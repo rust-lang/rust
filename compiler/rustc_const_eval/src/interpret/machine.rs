@@ -289,6 +289,9 @@ pub trait Machine<'tcx>: Sized {
         a
     }
 
+    /// Determines whether floating-point operations can behave non-deterministically.
+    fn float_fuse_mul_add(_ecx: &mut InterpCx<'tcx, Self>) -> bool;
+
     /// Called before a basic block terminator is executed.
     #[inline]
     fn before_terminator(_ecx: &mut InterpCx<'tcx, Self>) -> InterpResult<'tcx> {
@@ -670,6 +673,11 @@ pub macro compile_time_machine(<$tcx: lifetime>) {
         _unwind: mir::UnwindAction,
     ) -> InterpResult<$tcx> {
         match fn_val {}
+    }
+
+    #[inline(always)]
+    fn float_fuse_mul_add(_ecx: &mut InterpCx<$tcx, Self>) -> bool {
+        true
     }
 
     #[inline(always)]
