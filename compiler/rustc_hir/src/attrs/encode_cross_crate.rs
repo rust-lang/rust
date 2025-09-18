@@ -37,6 +37,7 @@ impl AttributeKind {
             Coverage(..) => No,
             CrateName { .. } => No,
             CustomMir(_, _, _) => Yes,
+            DebuggerVisualizer(..) => No,
             DenyExplicitImpl(..) => No,
             Deprecation { .. } => Yes,
             DoNotImplementViaObject(..) => No,
