@@ -1,5 +1,5 @@
 error[E0120]: the `Drop` trait may only be implemented for local structs, enums, and unions
-  --> $DIR/deny-drop-impl.rs:8:15
+  --> $DIR/deny-drop-impl.rs:10:15
    |
 LL | impl Drop for field_of!(MyStruct, 0) {
    |               ^^^^^^^^^^^^^^^^^^^^^^ must be a struct, enum, or union in the current crate

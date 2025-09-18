@@ -1,3 +1,5 @@
+//@ revisions: old next
+//@ [next] compile-flags: -Znext-solver
 #![allow(incomplete_features)]
 #![feature(field_projections)]
 

@@ -1,11 +1,11 @@
 error[E0322]: explicit impls for the `UnalignedField` trait are not permitted
-  --> $DIR/deny-manual-impl.rs:9:1
+  --> $DIR/deny-manual-impl.rs:11:1
    |
 LL | unsafe impl UnalignedField for MyStruct {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl of `UnalignedField` not allowed
 
 error[E0322]: explicit impls for the `Field` trait are not permitted
-  --> $DIR/deny-manual-impl.rs:16:1
+  --> $DIR/deny-manual-impl.rs:18:1
    |
 LL | unsafe impl Field for field_of!(MyStruct, 0) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl of `Field` not allowed
