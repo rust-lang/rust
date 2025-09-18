@@ -112,6 +112,13 @@ where
         self.iter.size_hint()
     }
 
+    fn last(mut self) -> Option<Self::Item>
+    where
+        Self: Sized,
+    {
+        self.iter.last().map(&mut self.f)
+    }
+
     fn try_fold<Acc, G, R>(&mut self, init: Acc, g: G) -> R
     where
         Self: Sized,
