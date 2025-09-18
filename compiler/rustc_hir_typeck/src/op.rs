@@ -21,6 +21,7 @@ use {rustc_ast as ast, rustc_hir as hir};
 use super::FnCtxt;
 use super::method::MethodCallee;
 use crate::Expectation;
+use crate::method::TreatNotYetDefinedOpaques;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Checks a `a <op>= b`
@@ -974,8 +975,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             },
         );
 
-        let method =
-            self.lookup_method_for_operator(cause.clone(), opname, trait_did, lhs_ty, opt_rhs_ty);
+        // We don't consider any other candidates if this lookup fails
+        // so we can freely treat opaque types as inference variables here
+        // to allow more code to compile.
+        let treat_opaques = TreatNotYetDefinedOpaques::AsInfer;
+        let method = self.lookup_method_for_operator(
+            cause.clone(),
+            opname,
+            trait_did,
+            lhs_ty,
+            opt_rhs_ty,
+            treat_opaques,
+        );
         match method {
             Some(ok) => {
                 let method = self.register_infer_ok_obligations(ok);

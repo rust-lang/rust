@@ -332,7 +332,7 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
                 inspect::ProbeStep::MakeCanonicalResponse { shallow_certainty: c } => {
                     assert_matches!(
                         shallow_certainty.replace(c),
-                        None | Some(Certainty::Maybe(MaybeCause::Ambiguity))
+                        None | Some(Certainty::Maybe { cause: MaybeCause::Ambiguity, .. })
                     );
                 }
                 inspect::ProbeStep::NestedProbe(ref probe) => {
