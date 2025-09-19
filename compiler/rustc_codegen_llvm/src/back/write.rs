@@ -31,6 +31,7 @@ use rustc_span::{BytePos, InnerSpan, Pos, SpanData, SyntaxContext, sym};
 use rustc_target::spec::{CodeModel, FloatAbi, RelocModel, SanitizerSet, SplitDebuginfo, TlsModel};
 use tracing::{debug, trace};
 
+use crate::back::command_line_args::quote_command_line_args;
 use crate::back::lto::ThinBuffer;
 use crate::back::owned_target_machine::OwnedTargetMachine;
 use crate::back::profiling::{
@@ -249,23 +250,15 @@ pub(crate) fn target_machine_factory(
 
     let use_emulated_tls = matches!(sess.tls_model(), TlsModel::Emulated);
 
-    // copy the exe path, followed by path all into one buffer
-    // null terminating them so we can use them as null terminated strings
-    let args_cstr_buff = {
-        let mut args_cstr_buff: Vec<u8> = Vec::new();
-        let exe_path = std::env::current_exe().unwrap_or_default();
-        let exe_path_str = exe_path.into_os_string().into_string().unwrap_or_default();
-
-        args_cstr_buff.extend_from_slice(exe_path_str.as_bytes());
-        args_cstr_buff.push(0);
-
-        for arg in sess.expanded_args.iter() {
-            args_cstr_buff.extend_from_slice(arg.as_bytes());
-            args_cstr_buff.push(0);
-        }
-
-        args_cstr_buff
-    };
+    // Command-line information to be included in the target machine.
+    // This seems to only be used for embedding in PDB debuginfo files.
+    // FIXME(Zalathar): Maybe skip this for non-PDB targets?
+    let argv0 = std::env::current_exe()
+        .unwrap_or_default()
+        .into_os_string()
+        .into_string()
+        .unwrap_or_default();
+    let command_line_args = quote_command_line_args(&sess.expanded_args);
 
     let debuginfo_compression = sess.opts.debuginfo_compression.to_string();
     match sess.opts.debuginfo_compression {
@@ -323,7 +316,8 @@ pub(crate) fn target_machine_factory(
             &output_obj_file,
             &debuginfo_compression,
             use_emulated_tls,
-            &args_cstr_buff,
+            &argv0,
+            &command_line_args,
             use_wasm_eh,
         )
     })
