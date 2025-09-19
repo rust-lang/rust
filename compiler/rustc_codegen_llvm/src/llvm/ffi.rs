@@ -710,6 +710,7 @@ pub(crate) enum MemoryEffects {
     None,
     ReadOnly,
     InaccessibleMemOnly,
+    ReadOnlyNotPure,
 }
 
 /// LLVMOpcode
