@@ -1236,9 +1236,7 @@ pub fn from_fn<F: Fn(&mut fmt::Formatter<'_>) -> fmt::Result>(f: F) -> FromFn<F>
 ///
 /// Created with [`from_fn`].
 #[stable(feature = "fmt_from_fn", since = "CURRENT_RUSTC_VERSION")]
-pub struct FromFn<F>(F)
-where
-    F: Fn(&mut fmt::Formatter<'_>) -> fmt::Result;
+pub struct FromFn<F>(F);
 
 #[stable(feature = "fmt_from_fn", since = "CURRENT_RUSTC_VERSION")]
 impl<F> fmt::Debug for FromFn<F>
