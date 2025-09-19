@@ -374,11 +374,13 @@ impl CheckCfg {
 
         ins!(sym::overflow_checks, no_values);
 
-        ins!(sym::panic, empty_values).extend(&PanicStrategy::all());
+        ins!(sym::panic, empty_values)
+            .extend(PanicStrategy::ALL.iter().map(PanicStrategy::desc_symbol));
 
         ins!(sym::proc_macro, no_values);
 
-        ins!(sym::relocation_model, empty_values).extend(RelocModel::all());
+        ins!(sym::relocation_model, empty_values)
+            .extend(RelocModel::ALL.iter().map(RelocModel::desc_symbol));
 
         let sanitize_values = SanitizerSet::all()
             .into_iter()
