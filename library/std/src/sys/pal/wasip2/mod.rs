@@ -12,8 +12,6 @@ pub mod futex;
 
 #[path = "../wasip1/os.rs"]
 pub mod os;
-#[path = "../unsupported/pipe.rs"]
-pub mod pipe;
 pub mod time;
 
 #[path = "../unsupported/common.rs"]

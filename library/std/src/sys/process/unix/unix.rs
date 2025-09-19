@@ -78,7 +78,7 @@ impl Command {
         let (input, output) = sys::net::Socket::new_pair(libc::AF_UNIX, libc::SOCK_SEQPACKET)?;
 
         #[cfg(not(target_os = "linux"))]
-        let (input, output) = sys::pipe::anon_pipe()?;
+        let (input, output) = sys::pipe::pipe()?;
 
         // Whatever happens after the fork is almost for sure going to touch or
         // look at the environment in one way or another (PATH in `execvp` or
