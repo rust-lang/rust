@@ -191,18 +191,21 @@ impl<'ll> DebugInfoBuilderMethods for Builder<'_, 'll, '_> {
             addr_ops.push((fragment.end - fragment.start).bits() as u64);
         }
 
+        let di_builder = DIB(self.cx());
+        let addr_expr = unsafe {
+            llvm::LLVMDIBuilderCreateExpression(di_builder, addr_ops.as_ptr(), addr_ops.len())
+        };
         unsafe {
             // FIXME(eddyb) replace `llvm.dbg.declare` with `llvm.dbg.addr`.
-            llvm::LLVMRustDIBuilderInsertDeclareAtEnd(
-                DIB(self.cx()),
+            llvm::LLVMDIBuilderInsertDeclareRecordAtEnd(
+                di_builder,
                 variable_alloca,
                 dbg_var,
-                addr_ops.as_ptr(),
-                addr_ops.len() as c_uint,
+                addr_expr,
                 dbg_loc,
                 self.llbb(),
-            );
-        }
+            )
+        };
     }
 
     fn set_dbg_loc(&mut self, dbg_loc: &'ll DILocation) {

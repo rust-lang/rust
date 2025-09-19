@@ -806,6 +806,8 @@ unsafe extern "C" {
     pub(crate) type Metadata;
     pub(crate) type BasicBlock;
     pub(crate) type Comdat;
+    /// `&'ll DbgRecord` represents `LLVMDbgRecordRef`.
+    pub(crate) type DbgRecord;
 }
 #[repr(C)]
 pub(crate) struct Builder<'a>(InvariantOpaque<'a>);
@@ -2000,6 +2002,21 @@ unsafe extern "C" {
         Data: *const Option<&'ll Metadata>,
         NumElements: size_t,
     ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderCreateExpression<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Addr: *const u64,
+        Length: size_t,
+    ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderInsertDeclareRecordAtEnd<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Storage: &'ll Value,
+        VarInfo: &'ll Metadata,
+        Expr: &'ll Metadata,
+        DebugLoc: &'ll Metadata,
+        Block: &'ll BasicBlock,
+    ) -> &'ll DbgRecord;
 }
 
 #[link(name = "llvm-wrapper", kind = "static")]
@@ -2380,16 +2397,6 @@ unsafe extern "C" {
         ArgNo: c_uint,
         AlignInBits: u32,
     ) -> &'a DIVariable;
-
-    pub(crate) fn LLVMRustDIBuilderInsertDeclareAtEnd<'a>(
-        Builder: &DIBuilder<'a>,
-        Val: &'a Value,
-        VarInfo: &'a DIVariable,
-        AddrOps: *const u64,
-        AddrOpsCount: c_uint,
-        DL: &'a DILocation,
-        InsertAtEnd: &'a BasicBlock,
-    );
 
     pub(crate) fn LLVMRustDIBuilderCreateEnumerator<'a>(
         Builder: &DIBuilder<'a>,
