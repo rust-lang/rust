@@ -1,1 +1,9 @@
-Couldn't create directory for doctest executables: Permission denied (os error 13)
+error[E0463]: can't find crate for `foo`
+  --> $DIR/issue-98690.rs:3:1
+   |
+LL | extern crate r#foo;
+   | ^^^^^^^^^^^^^^^^^^^ can't find crate
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0463`.
