@@ -854,7 +854,7 @@ declare_clippy_lint! {
     ///     println!("{a} is divisible by {b}");
     /// }
     /// ```
-    #[clippy::version = "1.89.0"]
+    #[clippy::version = "1.90.0"]
     pub MANUAL_IS_MULTIPLE_OF,
     complexity,
     "manual implementation of `.is_multiple_of()`"
