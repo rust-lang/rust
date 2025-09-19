@@ -28,13 +28,13 @@ use hir_expand::{
     mod_path::{ModPath, PathKind},
     name::AsName,
 };
-use hir_ty::diagnostics::unsafe_operations_for_body;
+use hir_ty::diagnostics::{unsafe_operations, unsafe_operations_for_body};
 use intern::{Interned, Symbol, sym};
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::{SmallVec, smallvec};
 use span::{Edition, FileId, SyntaxContext};
-use stdx::TupleExt;
+use stdx::{TupleExt, always};
 use syntax::{
     AstNode, AstToken, Direction, SyntaxKind, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange,
     TextSize,
@@ -46,8 +46,8 @@ use crate::{
     Adjust, Adjustment, Adt, AutoBorrow, BindingMode, BuiltinAttr, Callable, Const, ConstParam,
     Crate, DefWithBody, DeriveHelper, Enum, Field, Function, GenericSubstitution, HasSource, Impl,
     InFile, InlineAsmOperand, ItemInNs, Label, LifetimeParam, Local, Macro, Module, ModuleDef,
-    Name, OverloadedDeref, ScopeDef, Static, Struct, ToolModule, Trait, TraitAlias, TupleField,
-    Type, TypeAlias, TypeParam, Union, Variant, VariantDef,
+    Name, OverloadedDeref, ScopeDef, Static, Struct, ToolModule, Trait, TupleField, Type,
+    TypeAlias, TypeParam, Union, Variant, VariantDef,
     db::HirDatabase,
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
     source_analyzer::{SourceAnalyzer, name_hygiene, resolve_hir_path},
@@ -85,8 +85,7 @@ impl PathResolution {
                 | ModuleDef::Function(_)
                 | ModuleDef::Module(_)
                 | ModuleDef::Static(_)
-                | ModuleDef::Trait(_)
-                | ModuleDef::TraitAlias(_),
+                | ModuleDef::Trait(_),
             ) => None,
             PathResolution::Def(ModuleDef::TypeAlias(alias)) => {
                 Some(TypeNs::TypeAliasId((*alias).into()))
@@ -303,6 +302,13 @@ impl<DB: HirDatabase + ?Sized> Semantics<'_, DB> {
         self.imp.hir_file_to_module_defs(file.into())
     }
 
+    pub fn is_nightly(&self, krate: Crate) -> bool {
+        let toolchain = self.db.toolchain_channel(krate.into());
+        // `toolchain == None` means we're in some detached files. Since we have no information on
+        // the toolchain being used, let's just allow unstable items to be listed.
+        matches!(toolchain, Some(base_db::ReleaseChannel::Nightly) | None)
+    }
+
     pub fn to_adt_def(&self, a: &ast::Adt) -> Option<Adt> {
         self.imp.to_def(a)
     }
@@ -341,10 +347,6 @@ impl<DB: HirDatabase + ?Sized> Semantics<'_, DB> {
 
     pub fn to_struct_def(&self, s: &ast::Struct) -> Option<Struct> {
         self.imp.to_def(s)
-    }
-
-    pub fn to_trait_alias_def(&self, t: &ast::TraitAlias) -> Option<TraitAlias> {
-        self.imp.to_def(t)
     }
 
     pub fn to_trait_def(&self, t: &ast::Trait) -> Option<Trait> {
@@ -1241,29 +1243,27 @@ impl<'db> SemanticsImpl<'db> {
                                         adt,
                                     ))
                                 })?;
-                            let mut res = None;
                             for (_, derive_attr, derives) in derives {
                                 // as there may be multiple derives registering the same helper
                                 // name, we gotta make sure to call this for all of them!
                                 // FIXME: We need to call `f` for all of them as well though!
-                                res = res.or(process_expansion_for_token(
-                                    ctx,
-                                    &mut stack,
-                                    derive_attr,
-                                ));
+                                process_expansion_for_token(ctx, &mut stack, derive_attr);
                                 for derive in derives.into_iter().flatten() {
-                                    res = res
-                                        .or(process_expansion_for_token(ctx, &mut stack, derive));
+                                    process_expansion_for_token(ctx, &mut stack, derive);
                                 }
                             }
                             // remove all tokens that are within the derives expansion
                             filter_duplicates(tokens, adt.syntax().text_range());
-                            Some(res)
+                            Some(())
                         });
                         // if we found derives, we can early exit. There is no way we can be in any
                         // macro call at this point given we are not in a token tree
-                        if let Some(res) = res {
-                            return res;
+                        if let Some(()) = res {
+                            // Note: derives do not remap the original token. Furthermore, we want
+                            // the original token to be before the derives in the list, because if they
+                            // upmap to the same token and we deduplicate them (e.g. in rename), we
+                            // want the original token to remain, not the derive.
+                            return None;
                         }
                     }
                     // Then check for token trees, that means we are either in a function-like macro or
@@ -1772,6 +1772,25 @@ impl<'db> SemanticsImpl<'db> {
         res
     }
 
+    pub fn get_unsafe_ops_for_unsafe_block(&self, block: ast::BlockExpr) -> Vec<ExprOrPatSource> {
+        always!(block.unsafe_token().is_some());
+        let block = self.wrap_node_infile(ast::Expr::from(block));
+        let Some(def) = self.body_for(block.syntax()) else { return Vec::new() };
+        let def = def.into();
+        let (body, source_map) = self.db.body_with_source_map(def);
+        let infer = self.db.infer(def);
+        let Some(ExprOrPatId::ExprId(block)) = source_map.node_expr(block.as_ref()) else {
+            return Vec::new();
+        };
+        let mut res = Vec::default();
+        unsafe_operations(self.db, &infer, def, &body, block, &mut |node, _| {
+            if let Ok(node) = source_map.expr_or_pat_syntax(node) {
+                res.push(node);
+            }
+        });
+        res
+    }
+
     pub fn is_unsafe_macro_call(&self, macro_call: &ast::MacroCall) -> bool {
         let Some(mac) = self.resolve_macro_call(macro_call) else { return false };
         if mac.is_asm_like(self.db) {
@@ -2140,7 +2159,6 @@ to_def_impls![
     (crate::Enum, ast::Enum, enum_to_def),
     (crate::Union, ast::Union, union_to_def),
     (crate::Trait, ast::Trait, trait_to_def),
-    (crate::TraitAlias, ast::TraitAlias, trait_alias_to_def),
     (crate::Impl, ast::Impl, impl_to_def),
     (crate::TypeAlias, ast::TypeAlias, type_alias_to_def),
     (crate::Const, ast::Const, const_to_def),
@@ -2249,6 +2267,11 @@ impl<'db> SemanticsScope<'db> {
         }
     }
 
+    /// Checks if a trait is in scope, either because of an import or because we're in an impl of it.
+    pub fn can_use_trait_methods(&self, t: Trait) -> bool {
+        self.resolver.traits_in_scope(self.db).contains(&t.id)
+    }
+
     /// Resolve a path as-if it was written at the given scope. This is
     /// necessary a heuristic, as it doesn't take hygiene into account.
     pub fn speculative_resolve(&self, ast_path: &ast::Path) -> Option<PathResolution> {
@@ -2296,18 +2319,19 @@ impl<'db> SemanticsScope<'db> {
 
     /// Iterates over associated types that may be specified after the given path (using
     /// `Ty::Assoc` syntax).
-    pub fn assoc_type_shorthand_candidates<R>(
+    pub fn assoc_type_shorthand_candidates(
         &self,
         resolution: &PathResolution,
-        mut cb: impl FnMut(&Name, TypeAlias) -> Option<R>,
-    ) -> Option<R> {
-        let def = self.resolver.generic_def()?;
-        hir_ty::associated_type_shorthand_candidates(
-            self.db,
-            def,
-            resolution.in_type_ns()?,
-            |name, id| cb(name, id.into()),
-        )
+        mut cb: impl FnMut(TypeAlias),
+    ) {
+        let (Some(def), Some(resolution)) = (self.resolver.generic_def(), resolution.in_type_ns())
+        else {
+            return;
+        };
+        hir_ty::associated_type_shorthand_candidates(self.db, def, resolution, |_, id| {
+            cb(id.into());
+            false
+        });
     }
 
     pub fn generic_def(&self) -> Option<crate::GenericDef> {

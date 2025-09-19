@@ -34,6 +34,40 @@ pub fn float_ty_to_string(ty: FloatTy) -> &'static str {
     }
 }
 
+pub fn int_ty_to_string_ns(ty: rustc_type_ir::IntTy) -> &'static str {
+    use rustc_type_ir::IntTy;
+    match ty {
+        IntTy::Isize => "isize",
+        IntTy::I8 => "i8",
+        IntTy::I16 => "i16",
+        IntTy::I32 => "i32",
+        IntTy::I64 => "i64",
+        IntTy::I128 => "i128",
+    }
+}
+
+pub fn uint_ty_to_string_ns(ty: rustc_type_ir::UintTy) -> &'static str {
+    use rustc_type_ir::UintTy;
+    match ty {
+        UintTy::Usize => "usize",
+        UintTy::U8 => "u8",
+        UintTy::U16 => "u16",
+        UintTy::U32 => "u32",
+        UintTy::U64 => "u64",
+        UintTy::U128 => "u128",
+    }
+}
+
+pub fn float_ty_to_string_ns(ty: rustc_type_ir::FloatTy) -> &'static str {
+    use rustc_type_ir::FloatTy;
+    match ty {
+        FloatTy::F16 => "f16",
+        FloatTy::F32 => "f32",
+        FloatTy::F64 => "f64",
+        FloatTy::F128 => "f128",
+    }
+}
+
 pub(super) fn int_ty_from_builtin(t: BuiltinInt) -> IntTy {
     match t {
         BuiltinInt::Isize => IntTy::Isize,

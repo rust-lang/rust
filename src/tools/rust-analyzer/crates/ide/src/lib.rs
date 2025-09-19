@@ -62,12 +62,12 @@ use std::panic::{AssertUnwindSafe, UnwindSafe};
 
 use cfg::CfgOptions;
 use fetch_crates::CrateInfo;
-use hir::{ChangeWithProcMacros, EditionedFileId, crate_def_map, sym};
+use hir::{ChangeWithProcMacros, EditionedFileId, crate_def_map, db::HirDatabase, sym};
 use ide_db::{
     FxHashMap, FxIndexSet, LineIndexDatabase,
     base_db::{
         CrateOrigin, CrateWorkspaceData, Env, FileSet, RootQueryDb, SourceDatabase, VfsPath,
-        salsa::Cancelled,
+        salsa::{self, Cancelled},
     },
     prime_caches, symbol_index,
 };
@@ -81,7 +81,7 @@ pub use crate::{
     annotations::{Annotation, AnnotationConfig, AnnotationKind, AnnotationLocation},
     call_hierarchy::{CallHierarchyConfig, CallItem},
     expand_macro::ExpandedMacro,
-    file_structure::{StructureNode, StructureNodeKind},
+    file_structure::{FileStructureConfig, StructureNode, StructureNodeKind},
     folding_ranges::{Fold, FoldKind},
     highlight_related::{HighlightRelatedConfig, HighlightedRange},
     hover::{
@@ -263,7 +263,7 @@ impl Analysis {
             false,
             proc_macro_cwd,
             Arc::new(CrateWorkspaceData {
-                data_layout: Err("fixture has no layout".into()),
+                target: Err("fixture has no layout".into()),
                 toolchain: None,
             }),
         );
@@ -430,12 +430,16 @@ impl Analysis {
 
     /// Returns a tree representation of symbols in the file. Useful to draw a
     /// file outline.
-    pub fn file_structure(&self, file_id: FileId) -> Cancellable<Vec<StructureNode>> {
+    pub fn file_structure(
+        &self,
+        config: &FileStructureConfig,
+        file_id: FileId,
+    ) -> Cancellable<Vec<StructureNode>> {
         // FIXME: Edition
         self.with_db(|db| {
             let editioned_file_id_wrapper = EditionedFileId::current_edition(&self.db, file_id);
-
-            file_structure::file_structure(&db.parse(editioned_file_id_wrapper).tree())
+            let source_file = db.parse(editioned_file_id_wrapper).tree();
+            file_structure::file_structure(&source_file, config)
         })
     }
 
@@ -472,13 +476,18 @@ impl Analysis {
 
     /// Fuzzy searches for a symbol.
     pub fn symbol_search(&self, query: Query, limit: usize) -> Cancellable<Vec<NavigationTarget>> {
-        self.with_db(|db| {
-            symbol_index::world_symbols(db, query)
-                .into_iter() // xx: should we make this a par iter?
-                .filter_map(|s| s.try_to_nav(db))
-                .take(limit)
-                .map(UpmappingResult::call_site)
-                .collect::<Vec<_>>()
+        // `world_symbols` currently clones the database to run stuff in parallel, which will make any query panic
+        // if we were to attach it here.
+        Cancelled::catch(|| {
+            let symbols = symbol_index::world_symbols(&self.db, query);
+            salsa::attach(&self.db, || {
+                symbols
+                    .into_iter()
+                    .filter_map(|s| s.try_to_nav(&Semantics::new(&self.db)))
+                    .take(limit)
+                    .map(UpmappingResult::call_site)
+                    .collect::<Vec<_>>()
+            })
         })
     }
 
@@ -652,15 +661,6 @@ impl Analysis {
         })
     }
 
-    /// Computes syntax highlighting for the given file
-    pub fn highlight(
-        &self,
-        highlight_config: HighlightConfig,
-        file_id: FileId,
-    ) -> Cancellable<Vec<HlRange>> {
-        self.with_db(|db| syntax_highlighting::highlight(db, highlight_config, file_id, None))
-    }
-
     /// Computes all ranges to highlight for a given item in a file.
     pub fn highlight_related(
         &self,
@@ -672,20 +672,56 @@ impl Analysis {
         })
     }
 
+    /// Computes syntax highlighting for the given file
+    pub fn highlight(
+        &self,
+        highlight_config: HighlightConfig,
+        file_id: FileId,
+    ) -> Cancellable<Vec<HlRange>> {
+        // highlighting may construct a new database for "speculative" execution, so we can't currently attach the database
+        // highlighting instead sets up the attach hook where neceesary for the trait solver
+        Cancelled::catch(|| {
+            syntax_highlighting::highlight(&self.db, highlight_config, file_id, None)
+        })
+    }
+
     /// Computes syntax highlighting for the given file range.
     pub fn highlight_range(
         &self,
         highlight_config: HighlightConfig,
         frange: FileRange,
     ) -> Cancellable<Vec<HlRange>> {
-        self.with_db(|db| {
-            syntax_highlighting::highlight(db, highlight_config, frange.file_id, Some(frange.range))
+        // highlighting may construct a new database for "speculative" execution, so we can't currently attach the database
+        // highlighting instead sets up the attach hook where neceesary for the trait solver
+        Cancelled::catch(|| {
+            syntax_highlighting::highlight(
+                &self.db,
+                highlight_config,
+                frange.file_id,
+                Some(frange.range),
+            )
+        })
+    }
+
+    /// Computes syntax highlighting for the given file.
+    pub fn highlight_as_html_with_config(
+        &self,
+        config: HighlightConfig,
+        file_id: FileId,
+        rainbow: bool,
+    ) -> Cancellable<String> {
+        // highlighting may construct a new database for "speculative" execution, so we can't currently attach the database
+        // highlighting instead sets up the attach hook where neceesary for the trait solver
+        Cancelled::catch(|| {
+            syntax_highlighting::highlight_as_html_with_config(&self.db, config, file_id, rainbow)
         })
     }
 
     /// Computes syntax highlighting for the given file.
     pub fn highlight_as_html(&self, file_id: FileId, rainbow: bool) -> Cancellable<String> {
-        self.with_db(|db| syntax_highlighting::highlight_as_html(db, file_id, rainbow))
+        // highlighting may construct a new database for "speculative" execution, so we can't currently attach the database
+        // highlighting instead sets up the attach hook where neceesary for the trait solver
+        Cancelled::catch(|| syntax_highlighting::highlight_as_html(&self.db, file_id, rainbow))
     }
 
     /// Computes completions at the given position.
@@ -863,8 +899,12 @@ impl Analysis {
     where
         F: FnOnce(&RootDatabase) -> T + std::panic::UnwindSafe,
     {
-        let snap = self.db.clone();
-        Cancelled::catch(|| f(&snap))
+        salsa::attach(&self.db, || {
+            // the trait solver code may invoke `as_view<HirDatabase>` outside of queries,
+            // so technically we might run into a panic in salsa if the downcaster has not yet been registered.
+            HirDatabase::zalsa_register_downcaster(&self.db);
+            Cancelled::catch(|| f(&self.db))
+        })
     }
 }
 

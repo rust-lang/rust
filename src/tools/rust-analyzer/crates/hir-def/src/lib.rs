@@ -101,7 +101,7 @@ use crate::{
 type FxIndexMap<K, V> = indexmap::IndexMap<K, V, rustc_hash::FxBuildHasher>;
 /// A wrapper around three booleans
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
-pub struct ImportPathConfig {
+pub struct FindPathConfig {
     /// If true, prefer to unconditionally use imports of the `core` and `alloc` crate
     /// over the std.
     pub prefer_no_std: bool,
@@ -317,9 +317,6 @@ impl TraitId {
         TraitItems::query(db, self)
     }
 }
-
-pub type TraitAliasLoc = ItemLoc<ast::TraitAlias>;
-impl_intern!(TraitAliasId, TraitAliasLoc, intern_trait_alias, lookup_intern_trait_alias);
 
 type TypeAliasLoc = AssocItemLoc<ast::TypeAlias>;
 impl_intern!(TypeAliasId, TypeAliasLoc, intern_type_alias, lookup_intern_type_alias);
@@ -742,7 +739,6 @@ pub enum ModuleDefId {
     ConstId(ConstId),
     StaticId(StaticId),
     TraitId(TraitId),
-    TraitAliasId(TraitAliasId),
     TypeAliasId(TypeAliasId),
     BuiltinType(BuiltinType),
     MacroId(MacroId),
@@ -756,7 +752,6 @@ impl_from!(
     ConstId,
     StaticId,
     TraitId,
-    TraitAliasId,
     TypeAliasId,
     BuiltinType
     for ModuleDefId
@@ -862,7 +857,6 @@ pub enum GenericDefId {
     // More importantly, this completes the set of items that contain type references
     // which is to be used by the signature expression store in the future.
     StaticId(StaticId),
-    TraitAliasId(TraitAliasId),
     TraitId(TraitId),
     TypeAliasId(TypeAliasId),
 }
@@ -872,7 +866,6 @@ impl_from!(
     FunctionId,
     ImplId,
     StaticId,
-    TraitAliasId,
     TraitId,
     TypeAliasId
     for GenericDefId
@@ -902,7 +895,6 @@ impl GenericDefId {
             GenericDefId::AdtId(AdtId::UnionId(it)) => file_id_and_params_of_item_loc(db, it),
             GenericDefId::AdtId(AdtId::EnumId(it)) => file_id_and_params_of_item_loc(db, it),
             GenericDefId::TraitId(it) => file_id_and_params_of_item_loc(db, it),
-            GenericDefId::TraitAliasId(it) => file_id_and_params_of_item_loc(db, it),
             GenericDefId::ImplId(it) => file_id_and_params_of_item_loc(db, it),
             GenericDefId::ConstId(it) => (it.lookup(db).id.file_id, None),
             GenericDefId::StaticId(it) => (it.lookup(db).id.file_id, None),
@@ -978,7 +970,6 @@ pub enum AttrDefId {
     StaticId(StaticId),
     ConstId(ConstId),
     TraitId(TraitId),
-    TraitAliasId(TraitAliasId),
     TypeAliasId(TypeAliasId),
     MacroId(MacroId),
     ImplId(ImplId),
@@ -997,7 +988,6 @@ impl_from!(
     ConstId,
     FunctionId,
     TraitId,
-    TraitAliasId,
     TypeAliasId,
     MacroId(Macro2Id, MacroRulesId, ProcMacroId),
     ImplId,
@@ -1020,7 +1010,6 @@ impl TryFrom<ModuleDefId> for AttrDefId {
             ModuleDefId::StaticId(it) => Ok(it.into()),
             ModuleDefId::TraitId(it) => Ok(it.into()),
             ModuleDefId::TypeAliasId(it) => Ok(it.into()),
-            ModuleDefId::TraitAliasId(id) => Ok(id.into()),
             ModuleDefId::MacroId(id) => Ok(id.into()),
             ModuleDefId::BuiltinType(_) => Err(()),
         }
@@ -1266,7 +1255,6 @@ impl HasModule for GenericDefId {
             GenericDefId::FunctionId(it) => it.module(db),
             GenericDefId::AdtId(it) => it.module(db),
             GenericDefId::TraitId(it) => it.module(db),
-            GenericDefId::TraitAliasId(it) => it.module(db),
             GenericDefId::TypeAliasId(it) => it.module(db),
             GenericDefId::ImplId(it) => it.module(db),
             GenericDefId::ConstId(it) => it.module(db),
@@ -1286,7 +1274,6 @@ impl HasModule for AttrDefId {
             AttrDefId::StaticId(it) => it.module(db),
             AttrDefId::ConstId(it) => it.module(db),
             AttrDefId::TraitId(it) => it.module(db),
-            AttrDefId::TraitAliasId(it) => it.module(db),
             AttrDefId::TypeAliasId(it) => it.module(db),
             AttrDefId::ImplId(it) => it.module(db),
             AttrDefId::ExternBlockId(it) => it.module(db),
@@ -1316,7 +1303,6 @@ impl ModuleDefId {
             ModuleDefId::ConstId(id) => id.module(db),
             ModuleDefId::StaticId(id) => id.module(db),
             ModuleDefId::TraitId(id) => id.module(db),
-            ModuleDefId::TraitAliasId(id) => id.module(db),
             ModuleDefId::TypeAliasId(id) => id.module(db),
             ModuleDefId::MacroId(id) => id.module(db),
             ModuleDefId::BuiltinType(_) => return None,

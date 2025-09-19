@@ -5,7 +5,7 @@ use arrayvec::ArrayVec;
 use hir::{Crate, Module, Semantics, db::HirDatabase};
 use ide_db::{
     FileId, FileRange, FxHashMap, FxHashSet, RootDatabase,
-    base_db::{RootQueryDb, SourceDatabase, VfsPath},
+    base_db::{RootQueryDb, SourceDatabase, VfsPath, salsa},
     defs::{Definition, IdentClass},
     documentation::Documentation,
     famous_defs::FamousDefs,
@@ -169,6 +169,7 @@ impl StaticIndex<'_> {
                     closure_return_type_hints: crate::ClosureReturnTypeHints::WithBlock,
                     lifetime_elision_hints: crate::LifetimeElisionHints::Never,
                     adjustment_hints: crate::AdjustmentHints::Never,
+                    adjustment_hints_disable_reborrows: true,
                     adjustment_hints_mode: AdjustmentHintsMode::Prefix,
                     adjustment_hints_hide_outside_unsafe: false,
                     implicit_drop_hints: false,
@@ -227,30 +228,32 @@ impl StaticIndex<'_> {
             let id = if let Some(it) = self.def_map.get(&def) {
                 *it
             } else {
-                let it = self.tokens.insert(TokenStaticData {
-                    documentation: documentation_for_definition(&sema, def, scope_node),
-                    hover: Some(hover_for_definition(
-                        &sema,
-                        file_id,
-                        def,
-                        None,
-                        scope_node,
-                        None,
-                        false,
-                        &hover_config,
-                        edition,
-                        display_target,
-                    )),
-                    definition: def.try_to_nav(self.db).map(UpmappingResult::call_site).map(|it| {
-                        FileRange { file_id: it.file_id, range: it.focus_or_full_range() }
-                    }),
-                    references: vec![],
-                    moniker: current_crate.and_then(|cc| def_to_moniker(self.db, def, cc)),
-                    display_name: def
-                        .name(self.db)
-                        .map(|name| name.display(self.db, edition).to_string()),
-                    signature: Some(def.label(self.db, display_target)),
-                    kind: def_to_kind(self.db, def),
+                let it = salsa::attach(sema.db, || {
+                    self.tokens.insert(TokenStaticData {
+                        documentation: documentation_for_definition(&sema, def, scope_node),
+                        hover: Some(hover_for_definition(
+                            &sema,
+                            file_id,
+                            def,
+                            None,
+                            scope_node,
+                            None,
+                            false,
+                            &hover_config,
+                            edition,
+                            display_target,
+                        )),
+                        definition: def.try_to_nav(&sema).map(UpmappingResult::call_site).map(
+                            |it| FileRange { file_id: it.file_id, range: it.focus_or_full_range() },
+                        ),
+                        references: vec![],
+                        moniker: current_crate.and_then(|cc| def_to_moniker(self.db, def, cc)),
+                        display_name: def
+                            .name(self.db)
+                            .map(|name| name.display(self.db, edition).to_string()),
+                        signature: Some(def.label(self.db, display_target)),
+                        kind: def_to_kind(self.db, def),
+                    })
                 });
                 self.def_map.insert(def, it);
                 it
@@ -258,7 +261,7 @@ impl StaticIndex<'_> {
             let token = self.tokens.get_mut(id).unwrap();
             token.references.push(ReferenceData {
                 range: FileRange { range, file_id },
-                is_definition: match def.try_to_nav(self.db).map(UpmappingResult::call_site) {
+                is_definition: match def.try_to_nav(&sema).map(UpmappingResult::call_site) {
                     Some(it) => it.file_id == file_id && it.focus_or_full_range() == range,
                     None => false,
                 },

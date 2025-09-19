@@ -88,7 +88,7 @@ pub(crate) fn promote_local_to_const(acc: &mut Assists, ctx: &AssistContext<'_>)
                 }
             }
 
-            let item = make.item_const(None, make.name(&name), make.ty(&ty), initializer);
+            let item = make.item_const(None, None, make.name(&name), make.ty(&ty), initializer);
 
             if let Some((cap, name)) = ctx.config.snippet_cap.zip(item.name()) {
                 let tabstop = edit.make_tabstop_before(cap);

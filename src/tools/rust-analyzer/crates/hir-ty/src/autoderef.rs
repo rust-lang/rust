@@ -3,26 +3,27 @@
 //! reference to a type with the field `bar`. This is an approximation of the
 //! logic in rustc (which lives in rustc_hir_analysis/check/autoderef.rs).
 
-use std::mem;
+use std::fmt;
 
-use chalk_ir::cast::Cast;
-use hir_def::lang_item::LangItem;
-use hir_expand::name::Name;
-use intern::sym;
+use hir_def::{TypeAliasId, lang_item::LangItem};
+use rustc_type_ir::inherent::{IntoKind, Ty as _};
+use tracing::debug;
 use triomphe::Arc;
 
+use crate::next_solver::infer::InferOk;
 use crate::{
-    Canonical, Goal, Interner, ProjectionTyExt, TraitEnvironment, Ty, TyBuilder, TyKind,
-    db::HirDatabase, infer::unify::InferenceTable,
+    TraitEnvironment,
+    db::HirDatabase,
+    infer::unify::InferenceTable,
+    next_solver::{
+        Ty, TyKind,
+        infer::traits::{ObligationCause, PredicateObligations},
+        mapping::{ChalkToNextSolver, NextSolverToChalk},
+        obligation_ctxt::ObligationCtxt,
+    },
 };
 
 const AUTODEREF_RECURSION_LIMIT: usize = 20;
-
-#[derive(Debug)]
-pub(crate) enum AutoderefKind {
-    Builtin,
-    Overloaded,
-}
 
 /// Returns types that `ty` transitively dereferences to. This function is only meant to be used
 /// outside `hir-ty`.
@@ -34,16 +35,17 @@ pub(crate) enum AutoderefKind {
 pub fn autoderef(
     db: &dyn HirDatabase,
     env: Arc<TraitEnvironment>,
-    ty: Canonical<Ty>,
-) -> impl Iterator<Item = Ty> {
+    ty: crate::Canonical<crate::Ty>,
+) -> impl Iterator<Item = crate::Ty> {
     let mut table = InferenceTable::new(db, env);
+    let interner = table.interner;
     let ty = table.instantiate_canonical(ty);
-    let mut autoderef = Autoderef::new_no_tracking(&mut table, ty, false, false);
+    let mut autoderef = Autoderef::new_no_tracking(&mut table, ty.to_nextsolver(interner));
     let mut v = Vec::new();
     while let Some((ty, _steps)) = autoderef.next() {
         // `ty` may contain unresolved inference variables. Since there's no chance they would be
         // resolved, just replace with fallback type.
-        let resolved = autoderef.table.resolve_completely(ty);
+        let resolved = autoderef.table.resolve_completely(ty.to_chalk(interner));
 
         // If the deref chain contains a cycle (e.g. `A` derefs to `B` and `B` derefs to `A`), we
         // would revisit some already visited types. Stop here to avoid duplication.
@@ -59,176 +61,267 @@ pub fn autoderef(
     v.into_iter()
 }
 
-trait TrackAutoderefSteps {
+pub(crate) trait TrackAutoderefSteps<'db>: Default + fmt::Debug {
     fn len(&self) -> usize;
-    fn push(&mut self, kind: AutoderefKind, ty: &Ty);
+    fn push(&mut self, ty: Ty<'db>, kind: AutoderefKind);
 }
 
-impl TrackAutoderefSteps for usize {
+impl<'db> TrackAutoderefSteps<'db> for usize {
     fn len(&self) -> usize {
         *self
     }
-    fn push(&mut self, _: AutoderefKind, _: &Ty) {
+    fn push(&mut self, _: Ty<'db>, _: AutoderefKind) {
         *self += 1;
     }
 }
-impl TrackAutoderefSteps for Vec<(AutoderefKind, Ty)> {
+impl<'db> TrackAutoderefSteps<'db> for Vec<(Ty<'db>, AutoderefKind)> {
     fn len(&self) -> usize {
         self.len()
     }
-    fn push(&mut self, kind: AutoderefKind, ty: &Ty) {
-        self.push((kind, ty.clone()));
+    fn push(&mut self, ty: Ty<'db>, kind: AutoderefKind) {
+        self.push((ty, kind));
     }
 }
 
-#[derive(Debug)]
-pub(crate) struct Autoderef<'table, 'db, T = Vec<(AutoderefKind, Ty)>> {
-    pub(crate) table: &'table mut InferenceTable<'db>,
-    ty: Ty,
+#[derive(Copy, Clone, Debug)]
+pub(crate) enum AutoderefKind {
+    /// A true pointer type, such as `&T` and `*mut T`.
+    Builtin,
+    /// A type which must dispatch to a `Deref` implementation.
+    Overloaded,
+}
+
+struct AutoderefSnapshot<'db, Steps> {
     at_start: bool,
-    steps: T,
-    explicit: bool,
+    reached_recursion_limit: bool,
+    steps: Steps,
+    cur_ty: Ty<'db>,
+    obligations: PredicateObligations<'db>,
+}
+
+#[derive(Clone, Copy)]
+struct AutoderefTraits {
+    trait_target: TypeAliasId,
+}
+
+/// Recursively dereference a type, considering both built-in
+/// dereferences (`*`) and the `Deref` trait.
+/// Although called `Autoderef` it can be configured to use the
+/// `Receiver` trait instead of the `Deref` trait.
+pub(crate) struct Autoderef<'a, 'db, Steps = Vec<(Ty<'db>, AutoderefKind)>> {
+    // Meta infos:
+    pub(crate) table: &'a mut InferenceTable<'db>,
+    traits: Option<AutoderefTraits>,
+
+    // Current state:
+    state: AutoderefSnapshot<'db, Steps>,
+
+    // Configurations:
+    include_raw_pointers: bool,
     use_receiver_trait: bool,
 }
 
-impl<'table, 'db> Autoderef<'table, 'db> {
-    pub(crate) fn new(
-        table: &'table mut InferenceTable<'db>,
-        ty: Ty,
-        explicit: bool,
-        use_receiver_trait: bool,
-    ) -> Self {
-        let ty = table.resolve_ty_shallow(&ty);
-        Autoderef { table, ty, at_start: true, steps: Vec::new(), explicit, use_receiver_trait }
-    }
+impl<'a, 'db, Steps: TrackAutoderefSteps<'db>> Iterator for Autoderef<'a, 'db, Steps> {
+    type Item = (Ty<'db>, usize);
 
-    pub(crate) fn steps(&self) -> &[(AutoderefKind, Ty)] {
-        &self.steps
-    }
-}
-
-impl<'table, 'db> Autoderef<'table, 'db, usize> {
-    pub(crate) fn new_no_tracking(
-        table: &'table mut InferenceTable<'db>,
-        ty: Ty,
-        explicit: bool,
-        use_receiver_trait: bool,
-    ) -> Self {
-        let ty = table.resolve_ty_shallow(&ty);
-        Autoderef { table, ty, at_start: true, steps: 0, explicit, use_receiver_trait }
-    }
-}
-
-#[allow(private_bounds)]
-impl<T: TrackAutoderefSteps> Autoderef<'_, '_, T> {
-    pub(crate) fn step_count(&self) -> usize {
-        self.steps.len()
-    }
-
-    pub(crate) fn final_ty(&self) -> Ty {
-        self.ty.clone()
-    }
-}
-
-impl<T: TrackAutoderefSteps> Iterator for Autoderef<'_, '_, T> {
-    type Item = (Ty, usize);
-
-    #[tracing::instrument(skip_all)]
     fn next(&mut self) -> Option<Self::Item> {
-        if mem::take(&mut self.at_start) {
-            return Some((self.ty.clone(), 0));
+        debug!("autoderef: steps={:?}, cur_ty={:?}", self.state.steps, self.state.cur_ty);
+        if self.state.at_start {
+            self.state.at_start = false;
+            debug!("autoderef stage #0 is {:?}", self.state.cur_ty);
+            return Some((self.state.cur_ty, 0));
         }
 
-        if self.steps.len() > AUTODEREF_RECURSION_LIMIT {
+        // If we have reached the recursion limit, error gracefully.
+        if self.state.steps.len() >= AUTODEREF_RECURSION_LIMIT {
+            self.state.reached_recursion_limit = true;
             return None;
         }
 
-        let (kind, new_ty) =
-            autoderef_step(self.table, self.ty.clone(), self.explicit, self.use_receiver_trait)?;
-
-        self.steps.push(kind, &self.ty);
-        self.ty = new_ty;
-
-        Some((self.ty.clone(), self.step_count()))
-    }
-}
-
-pub(crate) fn autoderef_step(
-    table: &mut InferenceTable<'_>,
-    ty: Ty,
-    explicit: bool,
-    use_receiver_trait: bool,
-) -> Option<(AutoderefKind, Ty)> {
-    if let Some(derefed) = builtin_deref(table.db, &ty, explicit) {
-        Some((AutoderefKind::Builtin, table.resolve_ty_shallow(derefed)))
-    } else {
-        Some((AutoderefKind::Overloaded, deref_by_trait(table, ty, use_receiver_trait)?))
-    }
-}
-
-pub(crate) fn builtin_deref<'ty>(
-    db: &dyn HirDatabase,
-    ty: &'ty Ty,
-    explicit: bool,
-) -> Option<&'ty Ty> {
-    match ty.kind(Interner) {
-        TyKind::Ref(.., ty) => Some(ty),
-        TyKind::Raw(.., ty) if explicit => Some(ty),
-        &TyKind::Adt(chalk_ir::AdtId(adt), ref substs) if crate::lang_items::is_box(db, adt) => {
-            substs.at(Interner, 0).ty(Interner)
+        if self.state.cur_ty.is_ty_var() {
+            return None;
         }
-        _ => None,
-    }
-}
 
-pub(crate) fn deref_by_trait(
-    table @ &mut InferenceTable { db, .. }: &mut InferenceTable<'_>,
-    ty: Ty,
-    use_receiver_trait: bool,
-) -> Option<Ty> {
-    let _p = tracing::info_span!("deref_by_trait").entered();
-    if table.resolve_ty_shallow(&ty).inference_var(Interner).is_some() {
-        // don't try to deref unknown variables
-        return None;
-    }
-
-    let trait_id = || {
-        // FIXME: Remove the `false` once `Receiver` needs to be stabilized, doing so will
-        // effectively bump the MSRV of rust-analyzer to 1.84 due to 1.83 and below lacking the
-        // blanked impl on `Deref`.
-        #[expect(clippy::overly_complex_bool_expr)]
-        if use_receiver_trait
-            && false
-            && let Some(receiver) = LangItem::Receiver.resolve_trait(db, table.trait_env.krate)
+        // Otherwise, deref if type is derefable:
+        // NOTE: in the case of self.use_receiver_trait = true, you might think it would
+        // be better to skip this clause and use the Overloaded case only, since &T
+        // and &mut T implement Receiver. But built-in derefs apply equally to Receiver
+        // and Deref, and this has benefits for const and the emitted MIR.
+        let (kind, new_ty) = if let Some(ty) =
+            self.state.cur_ty.builtin_deref(self.table.db, self.include_raw_pointers)
         {
-            return Some(receiver);
-        }
-        // Old rustc versions might not have `Receiver` trait.
-        // Fallback to `Deref` if they don't
-        LangItem::Deref.resolve_trait(db, table.trait_env.krate)
-    };
-    let trait_id = trait_id()?;
-    let target =
-        trait_id.trait_items(db).associated_type_by_name(&Name::new_symbol_root(sym::Target))?;
-
-    let projection = {
-        let b = TyBuilder::subst_for_def(db, trait_id, None);
-        if b.remaining() != 1 {
-            // the Target type + Deref trait should only have one generic parameter,
-            // namely Deref's Self type
+            debug_assert_eq!(ty, self.table.infer_ctxt.resolve_vars_if_possible(ty));
+            // NOTE: we may still need to normalize the built-in deref in case
+            // we have some type like `&<Ty as Trait>::Assoc`, since users of
+            // autoderef expect this type to have been structurally normalized.
+            if let TyKind::Alias(..) = ty.kind() {
+                let (normalized_ty, obligations) = structurally_normalize_ty(self.table, ty)?;
+                self.state.obligations.extend(obligations);
+                (AutoderefKind::Builtin, normalized_ty)
+            } else {
+                (AutoderefKind::Builtin, ty)
+            }
+        } else if let Some(ty) = self.overloaded_deref_ty(self.state.cur_ty) {
+            // The overloaded deref check already normalizes the pointee type.
+            (AutoderefKind::Overloaded, ty)
+        } else {
             return None;
+        };
+
+        self.state.steps.push(self.state.cur_ty, kind);
+        debug!(
+            "autoderef stage #{:?} is {:?} from {:?}",
+            self.step_count(),
+            new_ty,
+            (self.state.cur_ty, kind)
+        );
+        self.state.cur_ty = new_ty;
+
+        Some((self.state.cur_ty, self.step_count()))
+    }
+}
+
+impl<'a, 'db> Autoderef<'a, 'db> {
+    pub(crate) fn new(table: &'a mut InferenceTable<'db>, base_ty: Ty<'db>) -> Self {
+        Self::new_impl(table, base_ty)
+    }
+}
+
+impl<'a, 'db> Autoderef<'a, 'db, usize> {
+    pub(crate) fn new_no_tracking(table: &'a mut InferenceTable<'db>, base_ty: Ty<'db>) -> Self {
+        Self::new_impl(table, base_ty)
+    }
+}
+
+impl<'a, 'db, Steps: TrackAutoderefSteps<'db>> Autoderef<'a, 'db, Steps> {
+    fn new_impl(table: &'a mut InferenceTable<'db>, base_ty: Ty<'db>) -> Self {
+        Autoderef {
+            state: AutoderefSnapshot {
+                steps: Steps::default(),
+                cur_ty: table.infer_ctxt.resolve_vars_if_possible(base_ty),
+                obligations: PredicateObligations::new(),
+                at_start: true,
+                reached_recursion_limit: false,
+            },
+            table,
+            traits: None,
+            include_raw_pointers: false,
+            use_receiver_trait: false,
         }
-        let deref_subst = b.push(ty).build();
-        TyBuilder::assoc_type_projection(db, target, Some(deref_subst)).build()
+    }
+
+    fn autoderef_traits(&mut self) -> Option<AutoderefTraits> {
+        match &mut self.traits {
+            Some(it) => Some(*it),
+            None => {
+                let traits = if self.use_receiver_trait {
+                    AutoderefTraits {
+                        trait_target: LangItem::ReceiverTarget
+                            .resolve_type_alias(self.table.db, self.table.trait_env.krate)
+                            .or_else(|| {
+                                LangItem::DerefTarget
+                                    .resolve_type_alias(self.table.db, self.table.trait_env.krate)
+                            })?,
+                    }
+                } else {
+                    AutoderefTraits {
+                        trait_target: LangItem::DerefTarget
+                            .resolve_type_alias(self.table.db, self.table.trait_env.krate)?,
+                    }
+                };
+                Some(*self.traits.insert(traits))
+            }
+        }
+    }
+
+    fn overloaded_deref_ty(&mut self, ty: Ty<'db>) -> Option<Ty<'db>> {
+        debug!("overloaded_deref_ty({:?})", ty);
+        let interner = self.table.interner;
+
+        // <ty as Deref>, or whatever the equivalent trait is that we've been asked to walk.
+        let AutoderefTraits { trait_target } = self.autoderef_traits()?;
+
+        let (normalized_ty, obligations) = structurally_normalize_ty(
+            self.table,
+            Ty::new_projection(interner, trait_target.into(), [ty]),
+        )?;
+        debug!("overloaded_deref_ty({:?}) = ({:?}, {:?})", ty, normalized_ty, obligations);
+        self.state.obligations.extend(obligations);
+
+        Some(self.table.infer_ctxt.resolve_vars_if_possible(normalized_ty))
+    }
+
+    /// Returns the final type we ended up with, which may be an unresolved
+    /// inference variable.
+    pub(crate) fn final_ty(&self) -> Ty<'db> {
+        self.state.cur_ty
+    }
+
+    pub(crate) fn step_count(&self) -> usize {
+        self.state.steps.len()
+    }
+
+    pub(crate) fn take_obligations(&mut self) -> PredicateObligations<'db> {
+        std::mem::take(&mut self.state.obligations)
+    }
+
+    pub(crate) fn steps(&self) -> &Steps {
+        &self.state.steps
+    }
+
+    #[expect(dead_code)]
+    pub(crate) fn reached_recursion_limit(&self) -> bool {
+        self.state.reached_recursion_limit
+    }
+
+    /// also dereference through raw pointer types
+    /// e.g., assuming ptr_to_Foo is the type `*const Foo`
+    /// fcx.autoderef(span, ptr_to_Foo)  => [*const Foo]
+    /// fcx.autoderef(span, ptr_to_Foo).include_raw_ptrs() => [*const Foo, Foo]
+    pub(crate) fn include_raw_pointers(mut self) -> Self {
+        self.include_raw_pointers = true;
+        self
+    }
+
+    /// Use `core::ops::Receiver` and `core::ops::Receiver::Target` as
+    /// the trait and associated type to iterate, instead of
+    /// `core::ops::Deref` and `core::ops::Deref::Target`
+    pub(crate) fn use_receiver_trait(mut self) -> Self {
+        self.use_receiver_trait = true;
+        self
+    }
+}
+
+fn structurally_normalize_ty<'db>(
+    table: &InferenceTable<'db>,
+    ty: Ty<'db>,
+) -> Option<(Ty<'db>, PredicateObligations<'db>)> {
+    let mut ocx = ObligationCtxt::new(&table.infer_ctxt);
+    let Ok(normalized_ty) =
+        ocx.structurally_normalize_ty(&ObligationCause::misc(), table.param_env, ty)
+    else {
+        // We shouldn't have errors here in the old solver, except for
+        // evaluate/fulfill mismatches, but that's not a reason for an ICE.
+        return None;
     };
+    let errors = ocx.select_where_possible();
+    if !errors.is_empty() {
+        unreachable!();
+    }
 
-    // Check that the type implements Deref at all
-    let trait_ref = projection.trait_ref(db);
-    let implements_goal: Goal = trait_ref.cast(Interner);
-    table.try_obligation(implements_goal.clone())?;
+    Some((normalized_ty, ocx.into_pending_obligations()))
+}
 
-    table.register_obligation(implements_goal);
+pub(crate) fn overloaded_deref_ty<'db>(
+    table: &InferenceTable<'db>,
+    ty: Ty<'db>,
+) -> Option<InferOk<'db, Ty<'db>>> {
+    let interner = table.interner;
 
-    let result = table.normalize_projection_ty(projection);
-    Some(table.resolve_ty_shallow(&result))
+    let trait_target = LangItem::DerefTarget.resolve_type_alias(table.db, table.trait_env.krate)?;
+
+    let (normalized_ty, obligations) =
+        structurally_normalize_ty(table, Ty::new_projection(interner, trait_target.into(), [ty]))?;
+
+    Some(InferOk { value: normalized_ty, obligations })
 }

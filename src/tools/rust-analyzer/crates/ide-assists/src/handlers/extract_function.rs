@@ -209,11 +209,12 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                     FamousDefs(&ctx.sema, module.krate()).core_ops_ControlFlow();
 
                 if let Some(control_flow_enum) = control_flow_enum {
+                    let cfg = ctx.config.find_path_confg(ctx.sema.is_nightly(module.krate()));
                     let mod_path = module.find_use_path(
                         ctx.sema.db,
                         ModuleDef::from(control_flow_enum),
                         ctx.config.insert_use.prefix_kind,
-                        ctx.config.import_path_config(),
+                        cfg,
                     );
 
                     if let Some(mod_path) = mod_path {
@@ -1641,6 +1642,7 @@ fn format_function(
     let (generic_params, where_clause) = make_generic_params_and_where_clause(ctx, fun);
 
     make::fn_(
+        None,
         None,
         fun_name,
         generic_params,
@@ -5042,7 +5044,7 @@ fn main() {
     fun_name(bar);
 }
 
-fn $0fun_name(bar: &'static str) {
+fn $0fun_name(bar: &str) {
     m!(bar);
 }
 "#,

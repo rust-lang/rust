@@ -1,16 +1,12 @@
 //! `TyBuilder`, a helper for building instances of `Ty` and related types.
 
-use std::iter;
-
 use chalk_ir::{
     AdtId, DebruijnIndex, Scalar,
     cast::{Cast, CastTo, Caster},
     fold::TypeFoldable,
     interner::HasInterner,
 };
-use hir_def::{
-    DefWithBodyId, GenericDefId, GenericParamId, TraitId, TypeAliasId, builtin_type::BuiltinType,
-};
+use hir_def::{GenericDefId, GenericParamId, TraitId, TypeAliasId, builtin_type::BuiltinType};
 use smallvec::SmallVec;
 
 use crate::{
@@ -244,47 +240,6 @@ impl TyBuilder<()> {
             })
             .collect();
         TyBuilder::new((), params, parent_subst)
-    }
-
-    /// Creates a `TyBuilder` to build `Substitution` for a coroutine defined in `parent`.
-    ///
-    /// A coroutine's substitution consists of:
-    /// - resume type of coroutine
-    /// - yield type of coroutine ([`Coroutine::Yield`](std::ops::Coroutine::Yield))
-    /// - return type of coroutine ([`Coroutine::Return`](std::ops::Coroutine::Return))
-    /// - generic parameters in scope on `parent`
-    ///
-    /// in this order.
-    ///
-    /// This method prepopulates the builder with placeholder substitution of `parent`, so you
-    /// should only push exactly 3 `GenericArg`s before building.
-    pub fn subst_for_coroutine(db: &dyn HirDatabase, parent: DefWithBodyId) -> TyBuilder<()> {
-        let parent_subst =
-            parent.as_generic_def_id(db).map(|p| generics(db, p).placeholder_subst(db));
-        // These represent resume type, yield type, and return type of coroutine.
-        let params = std::iter::repeat_n(ParamKind::Type, 3).collect();
-        TyBuilder::new((), params, parent_subst)
-    }
-
-    pub fn subst_for_closure(
-        db: &dyn HirDatabase,
-        parent: DefWithBodyId,
-        sig_ty: Ty,
-    ) -> Substitution {
-        let sig_ty = sig_ty.cast(Interner);
-        let self_subst = iter::once(&sig_ty);
-        let Some(parent) = parent.as_generic_def_id(db) else {
-            return Substitution::from_iter(Interner, self_subst);
-        };
-        Substitution::from_iter(
-            Interner,
-            generics(db, parent)
-                .placeholder_subst(db)
-                .iter(Interner)
-                .chain(self_subst)
-                .cloned()
-                .collect::<Vec<_>>(),
-        )
     }
 
     pub fn build(self) -> Substitution {

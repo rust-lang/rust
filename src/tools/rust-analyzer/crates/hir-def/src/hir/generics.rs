@@ -203,9 +203,6 @@ impl GenericParams {
             }
             GenericDefId::ImplId(impl_id) => db.impl_signature(impl_id).generic_params.clone(),
             GenericDefId::StaticId(_) => EMPTY.clone(),
-            GenericDefId::TraitAliasId(trait_alias_id) => {
-                db.trait_alias_signature(trait_alias_id).generic_params.clone()
-            }
             GenericDefId::TraitId(trait_id) => db.trait_signature(trait_id).generic_params.clone(),
             GenericDefId::TypeAliasId(type_alias_id) => {
                 db.type_alias_signature(type_alias_id).generic_params.clone()
@@ -245,10 +242,6 @@ impl GenericParams {
             GenericDefId::StaticId(id) => {
                 let sig = db.static_signature(id);
                 (EMPTY.clone(), sig.store.clone())
-            }
-            GenericDefId::TraitAliasId(id) => {
-                let sig = db.trait_alias_signature(id);
-                (sig.generic_params.clone(), sig.store.clone())
             }
             GenericDefId::TraitId(id) => {
                 let sig = db.trait_signature(id);
@@ -293,10 +286,6 @@ impl GenericParams {
             GenericDefId::StaticId(id) => {
                 let (sig, sm) = db.static_signature_with_source_map(id);
                 (EMPTY.clone(), sig.store.clone(), sm)
-            }
-            GenericDefId::TraitAliasId(id) => {
-                let (sig, sm) = db.trait_alias_signature_with_source_map(id);
-                (sig.generic_params.clone(), sig.store.clone(), sm)
             }
             GenericDefId::TraitId(id) => {
                 let (sig, sm) = db.trait_signature_with_source_map(id);

@@ -133,23 +133,27 @@ pub trait SymbolsDatabase: HirDatabase + SourceDatabase {
 fn library_symbols(db: &dyn SymbolsDatabase, source_root_id: SourceRootId) -> Arc<SymbolIndex> {
     let _p = tracing::info_span!("library_symbols").entered();
 
-    let mut symbol_collector = SymbolCollector::new(db);
+    // We call this without attaching because this runs in parallel, so we need to attach here.
+    salsa::attach(db, || {
+        let mut symbol_collector = SymbolCollector::new(db);
 
-    db.source_root_crates(source_root_id)
-        .iter()
-        .flat_map(|&krate| Crate::from(krate).modules(db))
-        // we specifically avoid calling other SymbolsDatabase queries here, even though they do the same thing,
-        // as the index for a library is not going to really ever change, and we do not want to store each
-        // the module or crate indices for those in salsa unless we need to.
-        .for_each(|module| symbol_collector.collect(module));
+        db.source_root_crates(source_root_id)
+            .iter()
+            .flat_map(|&krate| Crate::from(krate).modules(db))
+            // we specifically avoid calling other SymbolsDatabase queries here, even though they do the same thing,
+            // as the index for a library is not going to really ever change, and we do not want to store each
+            // the module or crate indices for those in salsa unless we need to.
+            .for_each(|module| symbol_collector.collect(module));
 
-    Arc::new(SymbolIndex::new(symbol_collector.finish()))
+        Arc::new(SymbolIndex::new(symbol_collector.finish()))
+    })
 }
 
 fn module_symbols(db: &dyn SymbolsDatabase, module: Module) -> Arc<SymbolIndex> {
     let _p = tracing::info_span!("module_symbols").entered();
 
-    Arc::new(SymbolIndex::new(SymbolCollector::new_module(db, module)))
+    // We call this without attaching because this runs in parallel, so we need to attach here.
+    salsa::attach(db, || Arc::new(SymbolIndex::new(SymbolCollector::new_module(db, module))))
 }
 
 pub fn crate_symbols(db: &dyn SymbolsDatabase, krate: Crate) -> Box<[Arc<SymbolIndex>]> {
@@ -357,7 +361,6 @@ impl Query {
                             hir::ModuleDef::Adt(..)
                                 | hir::ModuleDef::TypeAlias(..)
                                 | hir::ModuleDef::BuiltinType(..)
-                                | hir::ModuleDef::TraitAlias(..)
                                 | hir::ModuleDef::Trait(..)
                         );
                     if non_type_for_type_only_query || !self.matches_assoc_mode(symbol.is_assoc) {

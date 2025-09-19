@@ -192,8 +192,6 @@ struct DefMapCrateData {
     exported_derives: FxHashMap<MacroId, Box<[Name]>>,
     fn_proc_macro_mapping: FxHashMap<FunctionId, ProcMacroId>,
 
-    /// Custom attributes registered with `#![register_attr]`.
-    registered_attrs: Vec<Symbol>,
     /// Custom tool modules registered with `#![register_tool]`.
     registered_tools: Vec<Symbol>,
     /// Unstable features of Rust enabled with `#![feature(A, B)]`.
@@ -212,7 +210,6 @@ impl DefMapCrateData {
         Self {
             exported_derives: FxHashMap::default(),
             fn_proc_macro_mapping: FxHashMap::default(),
-            registered_attrs: Vec::new(),
             registered_tools: PREDEFINED_TOOLS.iter().map(|it| Symbol::intern(it)).collect(),
             unstable_features: FxHashSet::default(),
             rustc_coherence_is_core: false,
@@ -227,7 +224,6 @@ impl DefMapCrateData {
         let Self {
             exported_derives,
             fn_proc_macro_mapping,
-            registered_attrs,
             registered_tools,
             unstable_features,
             rustc_coherence_is_core: _,
@@ -238,7 +234,6 @@ impl DefMapCrateData {
         } = self;
         exported_derives.shrink_to_fit();
         fn_proc_macro_mapping.shrink_to_fit();
-        registered_attrs.shrink_to_fit();
         registered_tools.shrink_to_fit();
         unstable_features.shrink_to_fit();
     }
@@ -529,10 +524,6 @@ impl DefMap {
         &self.data.registered_tools
     }
 
-    pub fn registered_attrs(&self) -> &[Symbol] {
-        &self.data.registered_attrs
-    }
-
     pub fn is_unstable_feature_enabled(&self, feature: &Symbol) -> bool {
         self.data.unstable_features.contains(feature)
     }
@@ -543,6 +534,10 @@ impl DefMap {
 
     pub fn is_no_std(&self) -> bool {
         self.data.no_std || self.data.no_core
+    }
+
+    pub fn is_no_core(&self) -> bool {
+        self.data.no_core
     }
 
     pub fn fn_as_proc_macro(&self, id: FunctionId) -> Option<ProcMacroId> {
