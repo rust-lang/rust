@@ -280,35 +280,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "chalk-recursive"
-version = "0.104.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "882959c242558cc686de7ff0aa59860295598d119e84a4b100215f44c3d606c4"
-dependencies = [
- "chalk-derive",
- "chalk-ir",
- "chalk-solve",
- "rustc-hash 1.1.0",
- "tracing",
-]
-
-[[package]]
-name = "chalk-solve"
-version = "0.104.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72860086494ccfa05bbd3779a74babb8ace27da9a0cbabffa1315223c7290927"
-dependencies = [
- "chalk-derive",
- "chalk-ir",
- "ena",
- "indexmap",
- "itertools 0.12.1",
- "petgraph",
- "rustc-hash 1.1.0",
- "tracing",
-]
-
-[[package]]
 name = "clap"
 version = "4.5.42"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -575,12 +546,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fixedbitset"
-version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ce7134b9999ecaf8bcd65542e436736ef32ddca1b3e06094cb6ec5755203b80"
-
-[[package]]
 name = "flate2"
 version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -706,7 +671,7 @@ dependencies = [
  "hir-ty",
  "indexmap",
  "intern",
- "itertools 0.14.0",
+ "itertools",
  "ra-ap-rustc_type_ir",
  "rustc-hash 2.1.1",
  "smallvec",
@@ -739,7 +704,7 @@ dependencies = [
  "hir-expand",
  "indexmap",
  "intern",
- "itertools 0.14.0",
+ "itertools",
  "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "mbe",
  "query-group-macro",
@@ -773,7 +738,7 @@ dependencies = [
  "either",
  "expect-test",
  "intern",
- "itertools 0.14.0",
+ "itertools",
  "mbe",
  "parser",
  "query-group-macro",
@@ -799,8 +764,6 @@ dependencies = [
  "bitflags 2.9.1",
  "chalk-derive",
  "chalk-ir",
- "chalk-recursive",
- "chalk-solve",
  "cov-mark",
  "either",
  "ena",
@@ -809,7 +772,7 @@ dependencies = [
  "hir-expand",
  "indexmap",
  "intern",
- "itertools 0.14.0",
+ "itertools",
  "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "oorandom",
  "project-model",
@@ -949,7 +912,7 @@ dependencies = [
  "ide-db",
  "ide-diagnostics",
  "ide-ssr",
- "itertools 0.14.0",
+ "itertools",
  "nohash-hasher",
  "oorandom",
  "profile",
@@ -977,7 +940,7 @@ dependencies = [
  "expect-test",
  "hir",
  "ide-db",
- "itertools 0.14.0",
+ "itertools",
  "smallvec",
  "stdx",
  "syntax",
@@ -995,7 +958,7 @@ dependencies = [
  "expect-test",
  "hir",
  "ide-db",
- "itertools 0.14.0",
+ "itertools",
  "smallvec",
  "stdx",
  "syntax",
@@ -1018,7 +981,7 @@ dependencies = [
  "fst",
  "hir",
  "indexmap",
- "itertools 0.14.0",
+ "itertools",
  "line-index 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "memchr",
  "nohash-hasher",
@@ -1049,7 +1012,7 @@ dependencies = [
  "expect-test",
  "hir",
  "ide-db",
- "itertools 0.14.0",
+ "itertools",
  "paths",
  "serde_json",
  "stdx",
@@ -1067,7 +1030,7 @@ dependencies = [
  "expect-test",
  "hir",
  "ide-db",
- "itertools 0.14.0",
+ "itertools",
  "parser",
  "syntax",
  "test-fixture",
@@ -1144,15 +1107,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "189d0897e4cbe8c75efedf3502c18c887b05046e59d28404d4d8e46cbc4d1e86"
 dependencies = [
  "memoffset",
-]
-
-[[package]]
-name = "itertools"
-version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ba291022dbbd398a455acf126c1e341954079855bc60dfdda641363bd6922569"
-dependencies = [
- "either",
 ]
 
 [[package]]
@@ -1283,7 +1237,7 @@ dependencies = [
  "hir-expand",
  "ide-db",
  "intern",
- "itertools 0.14.0",
+ "itertools",
  "proc-macro-api",
  "project-model",
  "span",
@@ -1641,16 +1595,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "petgraph"
-version = "0.6.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4c5cc86750666a3ed20bdaf5ca2a0344f9c67674cae0515bec2da16fbaa47db"
-dependencies = [
- "fixedbitset",
- "indexmap",
-]
-
-[[package]]
 name = "pin-project-lite"
 version = "0.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1784,7 +1728,7 @@ dependencies = [
  "cfg",
  "expect-test",
  "intern",
- "itertools 0.14.0",
+ "itertools",
  "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "paths",
  "rustc-hash 2.1.1",
@@ -2062,7 +2006,7 @@ dependencies = [
  "ide-ssr",
  "indexmap",
  "intern",
- "itertools 0.14.0",
+ "itertools",
  "load-cargo",
  "lsp-server 0.7.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "lsp-types",
@@ -2400,7 +2344,7 @@ dependencies = [
  "backtrace",
  "crossbeam-channel",
  "crossbeam-utils",
- "itertools 0.14.0",
+ "itertools",
  "jod-thread",
  "libc",
  "miow",
@@ -2436,7 +2380,7 @@ version = "0.0.0"
 dependencies = [
  "either",
  "expect-test",
- "itertools 0.14.0",
+ "itertools",
  "parser",
  "rayon",
  "rowan",
@@ -3285,7 +3229,7 @@ dependencies = [
  "edition",
  "either",
  "flate2",
- "itertools 0.14.0",
+ "itertools",
  "proc-macro2",
  "quote",
  "stdx",
