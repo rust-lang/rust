@@ -37,9 +37,7 @@ debug = 2
 [patch.'crates-io']
 # rowan = { path = "../rowan" }
 
-# chalk-solve = { path = "../chalk/chalk-solve" }
 # chalk-ir = { path = "../chalk/chalk-ir" }
-# chalk-recursive = { path = "../chalk/chalk-recursive" }
 # chalk-derive = { path = "../chalk/chalk-derive" }
 # line-index = { path = "lib/line-index" }
 # la-arena = { path = "lib/la-arena" }
@@ -111,9 +109,7 @@ arrayvec = "0.7.6"
 bitflags = "2.9.1"
 cargo_metadata = "0.21.0"
 camino = "1.1.10"
-chalk-solve = { version = "0.104.0", default-features = false }
 chalk-ir = "0.104.0"
-chalk-recursive = { version = "0.104.0", default-features = false }
 chalk-derive = "0.104.0"
 crossbeam-channel = "0.5.15"
 dissimilar = "1.0.10"

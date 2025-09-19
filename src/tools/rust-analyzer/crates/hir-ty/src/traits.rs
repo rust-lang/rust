@@ -4,7 +4,6 @@ use core::fmt;
 use std::hash::Hash;
 
 use chalk_ir::{DebruijnIndex, GoalData, fold::TypeFoldable};
-use chalk_solve::rust_ir;
 
 use base_db::Crate;
 use hir_def::{BlockId, TraitId, lang_item::LangItem};
@@ -402,15 +401,6 @@ impl FnTrait {
             LangItem::AsyncFnMut => Some(FnTrait::AsyncFnMut),
             LangItem::AsyncFn => Some(FnTrait::AsyncFn),
             _ => None,
-        }
-    }
-
-    pub const fn to_chalk_ir(self) -> rust_ir::ClosureKind {
-        // Chalk doesn't support async fn traits.
-        match self {
-            FnTrait::AsyncFnOnce | FnTrait::FnOnce => rust_ir::ClosureKind::FnOnce,
-            FnTrait::AsyncFnMut | FnTrait::FnMut => rust_ir::ClosureKind::FnMut,
-            FnTrait::AsyncFn | FnTrait::Fn => rust_ir::ClosureKind::Fn,
         }
     }
 
