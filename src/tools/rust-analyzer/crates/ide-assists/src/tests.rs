@@ -180,6 +180,7 @@ pub(crate) fn check_assist_import_one(
 
 // There is no way to choose what assist within a group you want to test against,
 // so this is here to allow you choose.
+#[track_caller]
 pub(crate) fn check_assist_by_label(
     assist: Handler,
     #[rust_analyzer::rust_fixture] ra_fixture_before: &str,
