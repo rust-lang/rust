@@ -29,12 +29,14 @@ impl Timespec {
         if self >= other {
             Ok(if self.t.tv_nsec >= other.t.tv_nsec {
                 Duration::new(
-                    (self.t.tv_sec - other.t.tv_sec) as u64,
+                    self.t.tv_sec.wrapping_sub(other.t.tv_sec) as u64,
                     (self.t.tv_nsec - other.t.tv_nsec) as u32,
                 )
             } else {
+                // Logic here is identical to Unix version of `Timestamp::sub_timspec`,
+                // check comments there why `- 1` does not underflow.
                 Duration::new(
-                    (self.t.tv_sec - 1 - other.t.tv_sec) as u64,
+                    (self.t.tv_sec - 1).wrapping_sub(other.t.tv_sec) as u64,
                     (self.t.tv_nsec + NSEC_PER_SEC - other.t.tv_nsec) as u32,
                 )
             })
