@@ -284,11 +284,10 @@ use crate::{fmt, intrinsics, ptr, slice};
 /// and back will always produce the original value `t` again. This is true even if `t` contains [provenance]:
 /// the resulting value will have the same provenance as the original `t`.
 ///
-/// Note a potential footgun: if `t` contains a reference, then there may be implicit reborrows of the
-/// reference any time it is copied, which may alter its provenance. In that case, while the value returned
-/// by `identity` is exactly the same as its argument, that value may immediately be reborrowed upon return,
-/// altering its provenance. This may make this call to `identity` behave as though it does *not* exactly
-/// preserve provenance.
+/// Note a potential footgun: if `t` contains a reference, then there may be implicit reborrows of the reference
+/// any time it is copied, which may alter its provenance. In that case, the value returned by `identity` may
+/// not be exactly the same as its argument. However, even in this case, it remains true that `identity` behaves
+/// the same as a function that just returns `t` immediately (i.e., `fn identity<T>(t: T) -> T { t }`).
 ///
 /// [provenance]: crate::ptr#provenance
 ///
