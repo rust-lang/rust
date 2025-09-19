@@ -209,6 +209,11 @@ impl<'tcx> Thread<'tcx> {
         self.thread_name.as_deref()
     }
 
+    /// Return whether this thread is enabled or not.
+    pub fn is_enabled(&self) -> bool {
+        self.state.is_enabled()
+    }
+
     /// Get the name of the current thread for display purposes; will include thread ID if not set.
     fn thread_display_name(&self, id: ThreadId) -> String {
         if let Some(ref thread_name) = self.thread_name {
@@ -404,6 +409,7 @@ pub struct ThreadManager<'tcx> {
     /// A mapping from a thread-local static to the thread specific allocation.
     thread_local_allocs: FxHashMap<(DefId, ThreadId), StrictPointer>,
     /// A flag that indicates that we should change the active thread.
+    /// Completely ignored in GenMC mode.
     yield_active_thread: bool,
     /// A flag that indicates that we should do round robin scheduling of threads else randomized scheduling is used.
     fixed_scheduling: bool,
@@ -676,13 +682,6 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
     #[inline]
     fn run_on_stack_empty(&mut self) -> InterpResult<'tcx, Poll<()>> {
         let this = self.eval_context_mut();
-        // Inform GenMC that a thread has finished all user code. GenMC needs to know this for scheduling.
-        // FIXME(GenMC): Thread-local destructors *are* user code, so this is odd. Also now that we
-        // support pre-main constructors, it can get called there as well.
-        if let Some(genmc_ctx) = this.machine.data_race.as_genmc_ref() {
-            let thread_id = this.active_thread();
-            genmc_ctx.handle_thread_stack_empty(thread_id);
-        }
         let mut callback = this
             .active_thread_mut()
             .on_stack_empty
@@ -703,19 +702,19 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
     /// If GenMC mode is active, the scheduling is instead handled by GenMC.
     fn schedule(&mut self) -> InterpResult<'tcx, SchedulingAction> {
         let this = self.eval_context_mut();
-        // In GenMC mode, we let GenMC do the scheduling
+
+        // In GenMC mode, we let GenMC do the scheduling.
         if let Some(genmc_ctx) = this.machine.data_race.as_genmc_ref() {
             let next_thread_id = genmc_ctx.schedule_thread(this)?;
 
             let thread_manager = &mut this.machine.threads;
             thread_manager.active_thread = next_thread_id;
-            thread_manager.yield_active_thread = false;
 
             assert!(thread_manager.threads[thread_manager.active_thread].state.is_enabled());
             return interp_ok(SchedulingAction::ExecuteStep);
         }
 
-        // We are not in GenMC mode, so we control the schedule
+        // We are not in GenMC mode, so we control the scheduling.
         let thread_manager = &mut this.machine.threads;
         let clock = &this.machine.monotonic_clock;
         let rng = this.machine.rng.get_mut();
@@ -863,7 +862,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             GlobalDataRaceHandler::Vclocks(data_race) =>
                 data_race.thread_created(&this.machine.threads, new_thread_id, current_span),
             GlobalDataRaceHandler::Genmc(genmc_ctx) =>
-                genmc_ctx.handle_thread_create(&this.machine.threads, new_thread_id)?,
+                genmc_ctx.handle_thread_create(
+                    &this.machine.threads,
+                    start_routine,
+                    &func_arg,
+                    new_thread_id,
+                )?,
         }
         // Write the current thread-id, switch to the next thread later
         // to treat this write operation as occurring on the current thread.
@@ -916,13 +920,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let thread = this.active_thread_mut();
         assert!(thread.stack.is_empty(), "only threads with an empty stack can be terminated");
         thread.state = ThreadState::Terminated;
-        match &mut this.machine.data_race {
-            GlobalDataRaceHandler::None => {}
-            GlobalDataRaceHandler::Vclocks(data_race) =>
-                data_race.thread_terminated(&this.machine.threads),
-            GlobalDataRaceHandler::Genmc(genmc_ctx) =>
-                genmc_ctx.handle_thread_finish(&this.machine.threads)?,
-        }
+
         // Deallocate TLS.
         let gone_thread = this.active_thread();
         {
@@ -953,6 +951,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
             }
         }
+
+        match &mut this.machine.data_race {
+            GlobalDataRaceHandler::None => {}
+            GlobalDataRaceHandler::Vclocks(data_race) =>
+                data_race.thread_terminated(&this.machine.threads),
+            GlobalDataRaceHandler::Genmc(genmc_ctx) => {
+                // Inform GenMC that the thread finished.
+                // This needs to happen once all accesses to the thread are done, including freeing any TLS statics.
+                genmc_ctx.handle_thread_finish(&this.machine.threads)
+            }
+        }
+
         // Unblock joining threads.
         let unblock_reason = BlockReason::Join(gone_thread);
         let threads = &this.machine.threads.threads;
@@ -978,6 +988,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         callback: DynUnblockCallback<'tcx>,
     ) {
         let this = self.eval_context_mut();
+        if timeout.is_some() && this.machine.data_race.as_genmc_ref().is_some() {
+            panic!("Unimplemented: Timeouts not yet supported in GenMC mode.");
+        }
         let timeout = timeout.map(|(clock, anchor, duration)| {
             let anchor = match clock {
                 TimeoutClock::RealTime => {
@@ -1076,6 +1089,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 "{:?} blocked on {:?} when trying to join",
                 thread_mgr.active_thread, joined_thread_id
             );
+            if let Some(genmc_ctx) = this.machine.data_race.as_genmc_ref() {
+                genmc_ctx.handle_thread_join(thread_mgr.active_thread, joined_thread_id)?;
+            }
+
             // The joined thread is still running, we need to wait for it.
             // Once we get unblocked, perform the appropriate synchronization and write the return value.
             let dest = return_dest.clone();

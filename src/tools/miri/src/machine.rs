@@ -747,11 +747,13 @@ impl<'tcx> MiriMachine<'tcx> {
             thread_cpu_affinity
                 .insert(threads.active_thread(), CpuAffinityMask::new(&layout_cx, config.num_cpus));
         }
+        let alloc_addresses =
+            RefCell::new(alloc_addresses::GlobalStateInner::new(config, stack_addr, tcx));
         MiriMachine {
             tcx,
             borrow_tracker,
             data_race,
-            alloc_addresses: RefCell::new(alloc_addresses::GlobalStateInner::new(config, stack_addr)),
+            alloc_addresses,
             // `env_vars` depends on a full interpreter so we cannot properly initialize it yet.
             env_vars: EnvVars::default(),
             main_fn_ret_place: None,
@@ -1504,9 +1506,8 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         }
         match &machine.data_race {
             GlobalDataRaceHandler::None => {}
-            GlobalDataRaceHandler::Genmc(genmc_ctx) => {
-                genmc_ctx.memory_store(machine, ptr.addr(), range.size)?;
-            }
+            GlobalDataRaceHandler::Genmc(genmc_ctx) =>
+                genmc_ctx.memory_store(machine, ptr.addr(), range.size)?,
             GlobalDataRaceHandler::Vclocks(_global_state) => {
                 let _trace = enter_trace_span!(data_race::before_memory_write);
                 let AllocDataRaceHandler::Vclocks(data_race, weak_memory) =
@@ -1543,7 +1544,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         match &machine.data_race {
             GlobalDataRaceHandler::None => {}
             GlobalDataRaceHandler::Genmc(genmc_ctx) =>
-                genmc_ctx.handle_dealloc(machine, ptr.addr(), size, align, kind)?,
+                genmc_ctx.handle_dealloc(machine, alloc_id, ptr.addr(), kind)?,
             GlobalDataRaceHandler::Vclocks(_global_state) => {
                 let _trace = enter_trace_span!(data_race::before_memory_deallocation);
                 let data_race = alloc_extra.data_race.as_vclocks_mut().unwrap();
