@@ -213,7 +213,7 @@ fn should_emit_generic_error<'tcx>(abi: ExternAbi, layout_err: &'tcx LayoutError
         }
         Unknown(..)
         | SizeOverflow(..)
-        | OversizedSimd(..)
+        | InvalidSimd { .. }
         | NormalizationFailure(..)
         | ReferencesError(..)
         | Cycle(..) => {

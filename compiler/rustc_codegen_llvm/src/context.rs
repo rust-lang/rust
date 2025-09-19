@@ -993,7 +993,7 @@ impl<'tcx> LayoutOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
     fn handle_layout_err(&self, err: LayoutError<'tcx>, span: Span, ty: Ty<'tcx>) -> ! {
         if let LayoutError::SizeOverflow(_)
         | LayoutError::ReferencesError(_)
-        | LayoutError::OversizedSimd(_, _) = err
+        | LayoutError::InvalidSimd { .. } = err
         {
             self.tcx.dcx().emit_fatal(Spanned { span, node: err.into_diagnostic() })
         } else {
@@ -1014,7 +1014,7 @@ impl<'tcx> FnAbiOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
             FnAbiError::Layout(
                 LayoutError::SizeOverflow(_)
                 | LayoutError::Cycle(_)
-                | LayoutError::OversizedSimd(_, _),
+                | LayoutError::InvalidSimd { .. },
             ) => {
                 self.tcx.dcx().emit_fatal(Spanned { span, node: err });
             }

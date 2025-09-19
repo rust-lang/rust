@@ -79,12 +79,6 @@ pub(crate) struct UnexpectedFnPtrAssociatedItem {
 }
 
 #[derive(Diagnostic)]
-#[diag(ty_utils_zero_length_simd_type)]
-pub(crate) struct ZeroLengthSimdType<'tcx> {
-    pub ty: Ty<'tcx>,
-}
-
-#[derive(Diagnostic)]
 #[diag(ty_utils_non_primitive_simd_type)]
 pub(crate) struct NonPrimitiveSimdType<'tcx> {
     pub ty: Ty<'tcx>,

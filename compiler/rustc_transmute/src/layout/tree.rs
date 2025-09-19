@@ -279,8 +279,8 @@ pub(crate) mod rustc {
                 LayoutError::Unknown(..)
                 | LayoutError::ReferencesError(..)
                 | LayoutError::TooGeneric(..)
+                | LayoutError::InvalidSimd { .. }
                 | LayoutError::NormalizationFailure(..) => Self::UnknownLayout,
-                LayoutError::OversizedSimd(..) => Self::UnknownLayout,
                 LayoutError::SizeOverflow(..) => Self::SizeOverflow,
                 LayoutError::Cycle(err) => Self::TypeError(*err),
             }

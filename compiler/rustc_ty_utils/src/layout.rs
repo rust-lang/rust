@@ -13,7 +13,7 @@ use rustc_index::IndexVec;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{
-    FloatExt, HasTyCtxt, IntegerExt, LayoutCx, LayoutError, LayoutOf, TyAndLayout,
+    FloatExt, HasTyCtxt, IntegerExt, LayoutCx, LayoutError, LayoutOf, SimdLayoutError, TyAndLayout,
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
@@ -24,7 +24,7 @@ use rustc_span::{Symbol, sym};
 use tracing::{debug, instrument};
 use {rustc_abi as abi, rustc_hir as hir};
 
-use crate::errors::{NonPrimitiveSimdType, ZeroLengthSimdType};
+use crate::errors::NonPrimitiveSimdType;
 
 mod invariant;
 
@@ -122,11 +122,11 @@ fn map_error<'tcx>(
         }
         LayoutCalculatorError::ZeroLengthSimdType => {
             // Can't be caught in typeck if the array length is generic.
-            cx.tcx().dcx().emit_fatal(ZeroLengthSimdType { ty })
+            LayoutError::InvalidSimd { ty, kind: SimdLayoutError::ZeroLength }
         }
         LayoutCalculatorError::OversizedSimdType { max_lanes } => {
             // Can't be caught in typeck if the array length is generic.
-            LayoutError::OversizedSimd(ty, max_lanes)
+            LayoutError::InvalidSimd { ty, kind: SimdLayoutError::TooManyLanes(max_lanes) }
         }
         LayoutCalculatorError::NonPrimitiveSimdType(field) => {
             // This error isn't caught in typeck, e.g., if

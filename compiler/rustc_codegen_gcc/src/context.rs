@@ -530,7 +530,7 @@ impl<'gcc, 'tcx> LayoutOfHelpers<'tcx> for CodegenCx<'gcc, 'tcx> {
     #[inline]
     fn handle_layout_err(&self, err: LayoutError<'tcx>, span: Span, ty: Ty<'tcx>) -> ! {
         if let LayoutError::SizeOverflow(_)
-        | LayoutError::OversizedSimd(_)
+        | LayoutError::InvalidSimd { .. }
         | LayoutError::ReferencesError(_) = err
         {
             self.tcx.dcx().emit_fatal(respan(span, err.into_diagnostic()))
@@ -548,7 +548,7 @@ impl<'gcc, 'tcx> FnAbiOfHelpers<'tcx> for CodegenCx<'gcc, 'tcx> {
         span: Span,
         fn_abi_request: FnAbiRequest<'tcx>,
     ) -> ! {
-        if let FnAbiError::Layout(LayoutError::SizeOverflow(_) | LayoutError::OversizedSimd(_, _)) =
+        if let FnAbiError::Layout(LayoutError::SizeOverflow(_) | LayoutError::InvalidSimd { .. }) =
             err
         {
             self.tcx.dcx().emit_fatal(respan(span, err))
