@@ -72,7 +72,7 @@ fn test_parse_normalize_rule() {
 struct ConfigBuilder {
     mode: Option<String>,
     channel: Option<String>,
-    edition: Option<String>,
+    edition: Option<Edition>,
     host: Option<String>,
     target: Option<String>,
     stage: Option<u32>,
@@ -96,8 +96,8 @@ impl ConfigBuilder {
         self
     }
 
-    fn edition(&mut self, s: &str) -> &mut Self {
-        self.edition = Some(s.to_owned());
+    fn edition(&mut self, e: Edition) -> &mut Self {
+        self.edition = Some(e);
         self
     }
 
@@ -1035,46 +1035,43 @@ fn test_parse_edition_range_empty_range() {
 fn assert_edition_to_test(
     expected: impl Into<Edition>,
     range: EditionRange,
-    default: Option<&str>,
+    default: Option<Edition>,
 ) {
     let mut cfg = cfg();
     if let Some(default) = default {
         cfg.edition(default);
     }
-    assert_eq!(
-        expected.into(),
-        range.edition_to_test(cfg.build().edition.as_deref().map(parse_edition))
-    );
+    assert_eq!(expected.into(), range.edition_to_test(cfg.build().edition));
 }
 
 #[test]
 fn test_edition_range_edition_to_test() {
+    let e2015 = parse_edition("2015");
+    let e2018 = parse_edition("2018");
+    let e2021 = parse_edition("2021");
+    let e2024 = parse_edition("2024");
+    let efuture = parse_edition("future");
+
     let exact = EditionRange::Exact(2021.into());
     assert_edition_to_test(2021, exact, None);
-    assert_edition_to_test(2021, exact, Some("2018"));
-    assert_edition_to_test(2021, exact, Some("future"));
+    assert_edition_to_test(2021, exact, Some(e2018));
+    assert_edition_to_test(2021, exact, Some(efuture));
 
     assert_edition_to_test(Edition::Future, EditionRange::Exact(Edition::Future), None);
 
     let greater_equal_than = EditionRange::RangeFrom(2021.into());
     assert_edition_to_test(2021, greater_equal_than, None);
-    assert_edition_to_test(2021, greater_equal_than, Some("2015"));
-    assert_edition_to_test(2021, greater_equal_than, Some("2018"));
-    assert_edition_to_test(2021, greater_equal_than, Some("2021"));
-    assert_edition_to_test(2024, greater_equal_than, Some("2024"));
-    assert_edition_to_test(Edition::Future, greater_equal_than, Some("future"));
+    assert_edition_to_test(2021, greater_equal_than, Some(e2015));
+    assert_edition_to_test(2021, greater_equal_than, Some(e2018));
+    assert_edition_to_test(2021, greater_equal_than, Some(e2021));
+    assert_edition_to_test(2024, greater_equal_than, Some(e2024));
+    assert_edition_to_test(Edition::Future, greater_equal_than, Some(efuture));
 
     let range = EditionRange::Range { lower_bound: 2018.into(), upper_bound: 2024.into() };
     assert_edition_to_test(2018, range, None);
-    assert_edition_to_test(2018, range, Some("2015"));
-    assert_edition_to_test(2018, range, Some("2018"));
-    assert_edition_to_test(2021, range, Some("2021"));
-    assert_edition_to_test(2018, range, Some("2024"));
-    assert_edition_to_test(2018, range, Some("future"));
-}
-
-#[test]
-#[should_panic]
-fn test_edition_range_edition_to_test_bad_cli() {
-    assert_edition_to_test(2021, EditionRange::Exact(2021.into()), Some("not an edition"));
+    assert_edition_to_test(2018, range, Some(e2015));
+    assert_edition_to_test(2018, range, Some(e2018));
+    assert_edition_to_test(2021, range, Some(e2021));
+    assert_edition_to_test(2018, range, Some(e2024));
+    assert_edition_to_test(2018, range, Some(efuture));
 }

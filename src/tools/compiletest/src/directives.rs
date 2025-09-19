@@ -16,6 +16,7 @@ use crate::directives::directive_names::{
     KNOWN_DIRECTIVE_NAMES, KNOWN_HTMLDOCCK_DIRECTIVE_NAMES, KNOWN_JSONDOCCK_DIRECTIVE_NAMES,
 };
 use crate::directives::needs::CachedNeedsConditions;
+use crate::edition::{Edition, parse_edition};
 use crate::errors::ErrorKind;
 use crate::executor::{CollectedTestDesc, ShouldPanic};
 use crate::util::static_regex;
@@ -437,10 +438,7 @@ impl TestProps {
                         // be passed to rustc last.
                         self.compile_flags.insert(
                             0,
-                            format!(
-                                "--edition={}",
-                                range.edition_to_test(config.edition.as_deref().map(parse_edition))
-                            ),
+                            format!("--edition={}", range.edition_to_test(config.edition)),
                         );
                         has_edition = true;
                     }
@@ -1832,40 +1830,6 @@ fn maybe_parse_edition(mut input: &str) -> Option<Edition> {
         return None;
     }
     Some(parse_edition(input))
-}
-
-fn parse_edition(mut input: &str) -> Edition {
-    input = input.trim();
-    if input == "future" {
-        Edition::Future
-    } else {
-        Edition::Year(input.parse().unwrap_or_else(|_| {
-            fatal!("`{input}` doesn't look like an edition");
-        }))
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-enum Edition {
-    // Note that the ordering here is load-bearing, as we want the future edition to be grater than
-    // any year-based edition.
-    Year(u32),
-    Future,
-}
-
-impl std::fmt::Display for Edition {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Edition::Year(year) => write!(f, "{year}"),
-            Edition::Future => f.write_str("future"),
-        }
-    }
-}
-
-impl From<u32> for Edition {
-    fn from(value: u32) -> Self {
-        Edition::Year(value)
-    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
