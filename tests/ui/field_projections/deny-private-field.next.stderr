@@ -1,35 +1,35 @@
 error[E0616]: field `a` of struct `A` is private
-  --> $DIR/deny-private-field.rs:43:25
+  --> $DIR/deny-private-field.rs:45:25
    |
 LL |     let _: field_of!(A, a);
    |                         ^ private field
 
 error[E0616]: field `b` of struct `B` is private
-  --> $DIR/deny-private-field.rs:45:27
+  --> $DIR/deny-private-field.rs:47:27
    |
 LL |     let _: field_of!(A, b.b);
    |                           ^ private field
 
 error[E0616]: field `c` of struct `C` is private
-  --> $DIR/deny-private-field.rs:47:29
+  --> $DIR/deny-private-field.rs:49:29
    |
 LL |     let _: field_of!(A, b.c.c);
    |                             ^ private field
 
 error[E0616]: field `d` of struct `D` is private
-  --> $DIR/deny-private-field.rs:49:31
+  --> $DIR/deny-private-field.rs:51:31
    |
 LL |     let _: field_of!(A, b.c.d.d);
    |                               ^ private field
 
 error[E0616]: field `e` of struct `E` is private
-  --> $DIR/deny-private-field.rs:51:33
+  --> $DIR/deny-private-field.rs:53:33
    |
 LL |     let _: field_of!(A, b.c.d.e.e);
    |                                 ^ private field
 
 error[E0616]: field `f` of struct `F` is private
-  --> $DIR/deny-private-field.rs:53:35
+  --> $DIR/deny-private-field.rs:55:35
    |
 LL |     let _: field_of!(A, b.c.d.e.f.f);
    |                                   ^ private field
