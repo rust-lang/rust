@@ -52,15 +52,6 @@ mod utils;
 use self::create_scope_map::compute_mir_scopes;
 pub(crate) use self::metadata::build_global_var_di_node;
 
-// FIXME(Zalathar): These `DW_TAG_*` constants are fake values that were
-// removed from LLVM in 2015, and are only used by our own `RustWrapper.cpp`
-// to decide which C++ API to call. Instead, we should just have two separate
-// FFI functions and choose the correct one on the Rust side.
-#[allow(non_upper_case_globals)]
-const DW_TAG_auto_variable: c_uint = 0x100;
-#[allow(non_upper_case_globals)]
-const DW_TAG_arg_variable: c_uint = 0x101;
-
 /// A context object for maintaining all state needed by the debuginfo module.
 pub(crate) struct CodegenUnitDebugContext<'ll, 'tcx> {
     llmod: &'ll llvm::Module,
@@ -633,28 +624,39 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
         let type_metadata = spanned_type_di_node(self, variable_type, span);
 
-        let (argument_index, dwarf_tag) = match variable_kind {
-            ArgumentVariable(index) => (index as c_uint, DW_TAG_arg_variable),
-            LocalVariable => (0, DW_TAG_auto_variable),
-        };
         let align = self.align_of(variable_type);
 
         let name = variable_name.as_str();
-        unsafe {
-            llvm::LLVMRustDIBuilderCreateVariable(
-                DIB(self),
-                dwarf_tag,
-                scope_metadata,
-                name.as_c_char_ptr(),
-                name.len(),
-                file_metadata,
-                loc.line,
-                type_metadata,
-                true,
-                DIFlags::FlagZero,
-                argument_index,
-                align.bits() as u32,
-            )
+
+        match variable_kind {
+            ArgumentVariable(arg_index) => unsafe {
+                llvm::LLVMDIBuilderCreateParameterVariable(
+                    DIB(self),
+                    scope_metadata,
+                    name.as_ptr(),
+                    name.len(),
+                    arg_index as c_uint,
+                    file_metadata,
+                    loc.line,
+                    type_metadata,
+                    llvm::Bool::TRUE, // (preserve descriptor during optimizations)
+                    DIFlags::FlagZero,
+                )
+            },
+            LocalVariable => unsafe {
+                llvm::LLVMDIBuilderCreateAutoVariable(
+                    DIB(self),
+                    scope_metadata,
+                    name.as_ptr(),
+                    name.len(),
+                    file_metadata,
+                    loc.line,
+                    type_metadata,
+                    llvm::Bool::TRUE, // (preserve descriptor during optimizations)
+                    DIFlags::FlagZero,
+                    align.bits() as u32,
+                )
+            },
         }
     }
 }
