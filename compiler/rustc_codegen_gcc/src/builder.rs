@@ -1753,7 +1753,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             None => args.to_vec(),
             Some(sret_ptr) => {
                 let mut args = args.to_vec();
-                // Preappend the indirect return pointer
+                // Prepend the indirect return pointer
                 args.insert(0, sret_ptr);
                 args
             }

@@ -75,7 +75,7 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 /* fn_attrs */ None,
                 Some(fn_abi),
                 llfn,
-                None,/*We know the ABI of this intrinc, and we know it does not require an indirect return pointer*/
+                None, // we know the ABI here
                 &[msg.0, msg.1],
                 None,
                 None,

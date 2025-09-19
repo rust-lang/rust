@@ -568,7 +568,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                 None,
                 None,
                 builtin_unreachable,
-                None, /* Assembly can't return indirectly. */
+                None, // it said "noreturn"
                 &[],
                 None,
                 None,
