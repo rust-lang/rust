@@ -51,3 +51,19 @@ fn main() {
     option_methods();
     result_methods();
 }
+
+fn issue15714() {
+    let o: Option<i32> = Some(3);
+    let r: Result<i32, ()> = Ok(3);
+    println!("{}", o.map_or(3, |y| y + 1));
+    //~^ map_unwrap_or
+    println!("{}", o.map_or_else(|| 3, |y| y + 1));
+    //~^ map_unwrap_or
+    println!("{}", r.map_or(3, |y| y + 1));
+    //~^ map_unwrap_or
+    println!("{}", r.map_or_else(|()| 3, |y| y + 1));
+    //~^ map_unwrap_or
+
+    println!("{}", r.is_ok_and(|y| y == 1));
+    //~^ map_unwrap_or
+}

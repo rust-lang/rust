@@ -19,5 +19,53 @@ LL |       let _ = res.map(|x| x + 1)
 LL | |         .unwrap_or_else(|_e| 0);
    | |_______________________________^ help: try: `res.map_or_else(|_e| 0, |x| x + 1)`
 
-error: aborting due to 2 previous errors
+error: called `map(<f>).unwrap_or(<a>)` on an `Option` value
+  --> tests/ui/map_unwrap_or_fixable.rs:64:20
+   |
+LL |     println!("{}", o.map(|y| y + 1).unwrap_or(3));
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `map_or(<a>, <f>)` instead
+   |
+LL -     println!("{}", o.map(|y| y + 1).unwrap_or(3));
+LL +     println!("{}", o.map_or(3, |y| y + 1));
+   |
+
+error: called `map(<f>).unwrap_or_else(<g>)` on an `Option` value
+  --> tests/ui/map_unwrap_or_fixable.rs:66:20
+   |
+LL |     println!("{}", o.map(|y| y + 1).unwrap_or_else(|| 3));
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `o.map_or_else(|| 3, |y| y + 1)`
+
+error: called `map(<f>).unwrap_or(<a>)` on an `Result` value
+  --> tests/ui/map_unwrap_or_fixable.rs:68:20
+   |
+LL |     println!("{}", r.map(|y| y + 1).unwrap_or(3));
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `map_or(<a>, <f>)` instead
+   |
+LL -     println!("{}", r.map(|y| y + 1).unwrap_or(3));
+LL +     println!("{}", r.map_or(3, |y| y + 1));
+   |
+
+error: called `map(<f>).unwrap_or_else(<g>)` on a `Result` value
+  --> tests/ui/map_unwrap_or_fixable.rs:70:20
+   |
+LL |     println!("{}", r.map(|y| y + 1).unwrap_or_else(|()| 3));
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `r.map_or_else(|()| 3, |y| y + 1)`
+
+error: called `map(<f>).unwrap_or(false)` on an `Result` value
+  --> tests/ui/map_unwrap_or_fixable.rs:73:20
+   |
+LL |     println!("{}", r.map(|y| y == 1).unwrap_or(false));
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `is_ok_and(<f>)` instead
+   |
+LL -     println!("{}", r.map(|y| y == 1).unwrap_or(false));
+LL +     println!("{}", r.is_ok_and(|y| y == 1));
+   |
+
+error: aborting due to 7 previous errors
 
