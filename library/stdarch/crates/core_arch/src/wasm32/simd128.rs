@@ -141,16 +141,6 @@ unsafe extern "unadjusted" {
     fn llvm_f64x2_max(x: simd::f64x2, y: simd::f64x2) -> simd::f64x2;
 }
 
-#[repr(C, packed)]
-#[derive(Copy)]
-struct Unaligned<T>(T);
-
-impl<T: Copy> Clone for Unaligned<T> {
-    fn clone(&self) -> Unaligned<T> {
-        *self
-    }
-}
-
 /// Loads a `v128` vector from the given heap address.
 ///
 /// This intrinsic will emit a load with an alignment of 1. While this is
@@ -179,7 +169,7 @@ impl<T: Copy> Clone for Unaligned<T> {
 #[doc(alias("v128.load"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub unsafe fn v128_load(m: *const v128) -> v128 {
-    (*(m as *const Unaligned<v128>)).0
+    m.read_unaligned()
 }
 
 /// Load eight 8-bit integers and sign extend each one to a 16-bit lane
@@ -196,8 +186,8 @@ pub unsafe fn v128_load(m: *const v128) -> v128 {
 #[doc(alias("v128.load8x8_s"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub unsafe fn i16x8_load_extend_i8x8(m: *const i8) -> v128 {
-    let m = *(m as *const Unaligned<simd::i8x8>);
-    simd_cast::<_, simd::i16x8>(m.0).v128()
+    let m = m.cast::<simd::i8x8>().read_unaligned();
+    simd_cast::<_, simd::i16x8>(m).v128()
 }
 
 /// Load eight 8-bit integers and zero extend each one to a 16-bit lane
@@ -214,8 +204,8 @@ pub unsafe fn i16x8_load_extend_i8x8(m: *const i8) -> v128 {
 #[doc(alias("v128.load8x8_u"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub unsafe fn i16x8_load_extend_u8x8(m: *const u8) -> v128 {
-    let m = *(m as *const Unaligned<simd::u8x8>);
-    simd_cast::<_, simd::u16x8>(m.0).v128()
+    let m = m.cast::<simd::u8x8>().read_unaligned();
+    simd_cast::<_, simd::u16x8>(m).v128()
 }
 
 #[stable(feature = "wasm_simd", since = "1.54.0")]
@@ -235,8 +225,8 @@ pub use i16x8_load_extend_u8x8 as u16x8_load_extend_u8x8;
 #[doc(alias("v128.load16x4_s"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub unsafe fn i32x4_load_extend_i16x4(m: *const i16) -> v128 {
-    let m = *(m as *const Unaligned<simd::i16x4>);
-    simd_cast::<_, simd::i32x4>(m.0).v128()
+    let m = m.cast::<simd::i16x4>().read_unaligned();
+    simd_cast::<_, simd::i32x4>(m).v128()
 }
 
 /// Load four 16-bit integers and zero extend each one to a 32-bit lane
@@ -253,8 +243,8 @@ pub unsafe fn i32x4_load_extend_i16x4(m: *const i16) -> v128 {
 #[doc(alias("v128.load16x4_u"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub unsafe fn i32x4_load_extend_u16x4(m: *const u16) -> v128 {
-    let m = *(m as *const Unaligned<simd::u16x4>);
-    simd_cast::<_, simd::u32x4>(m.0).v128()
+    let m = m.cast::<simd::u16x4>().read_unaligned();
+    simd_cast::<_, simd::u32x4>(m).v128()
 }
 
 #[stable(feature = "wasm_simd", since = "1.54.0")]
@@ -274,8 +264,8 @@ pub use i32x4_load_extend_u16x4 as u32x4_load_extend_u16x4;
 #[doc(alias("v128.load32x2_s"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub unsafe fn i64x2_load_extend_i32x2(m: *const i32) -> v128 {
-    let m = *(m as *const Unaligned<simd::i32x2>);
-    simd_cast::<_, simd::i64x2>(m.0).v128()
+    let m = m.cast::<simd::i32x2>().read_unaligned();
+    simd_cast::<_, simd::i64x2>(m).v128()
 }
 
 /// Load two 32-bit integers and zero extend each one to a 64-bit lane
@@ -292,8 +282,8 @@ pub unsafe fn i64x2_load_extend_i32x2(m: *const i32) -> v128 {
 #[doc(alias("v128.load32x2_u"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub unsafe fn i64x2_load_extend_u32x2(m: *const u32) -> v128 {
-    let m = *(m as *const Unaligned<simd::u32x2>);
-    simd_cast::<_, simd::u64x2>(m.0).v128()
+    let m = m.cast::<simd::u32x2>().read_unaligned();
+    simd_cast::<_, simd::u64x2>(m).v128()
 }
 
 #[stable(feature = "wasm_simd", since = "1.54.0")]
@@ -453,7 +443,7 @@ pub unsafe fn v128_load64_zero(m: *const u64) -> v128 {
 #[doc(alias("v128.store"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub unsafe fn v128_store(m: *mut v128, a: v128) {
-    *(m as *mut Unaligned<v128>) = Unaligned(a);
+    m.write_unaligned(a)
 }
 
 /// Loads an 8-bit value from `m` and sets lane `L` of `v` to that value.

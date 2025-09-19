@@ -117,6 +117,8 @@ jobs:
           os: windows-2025
         - tuple: aarch64-pc-windows-msvc
           os: windows-11-arm
+        - tuple: arm64ec-pc-windows-msvc
+          os: windows-11-arm
         - tuple: x86_64-pc-windows-gnu
           os: windows-2025
         # - tuple: i686-pc-windows-gnu
@@ -207,14 +209,6 @@ jobs:
         rustup update nightly --no-self-update
         rustup default nightly
       shell: bash
-      if: matrix.target.os != 'windows-11-arm'
-    - name: Install Rust for `windows-11-arm` runners
-      # The arm runners don't have Rust pre-installed (https://github.com/actions/partner-runner-images/issues/77)
-      run: |
-        curl https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly
-        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-      shell: bash
-      if: matrix.target.os == 'windows-11-arm'
 
     - run: rustup target add ${{ matrix.target.tuple }}
       shell: bash
