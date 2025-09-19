@@ -1282,11 +1282,12 @@ fn classify_name_ref<'db>(
         let after_incomplete_let = after_incomplete_let(it.clone()).is_some();
         let incomplete_expr_stmt =
             it.parent().and_then(ast::ExprStmt::cast).map(|it| it.semicolon_token().is_none());
+        let before_else_kw = before_else_kw(it);
         let incomplete_let = it
             .parent()
             .and_then(ast::LetStmt::cast)
             .is_some_and(|it| it.semicolon_token().is_none())
-            || after_incomplete_let && incomplete_expr_stmt.unwrap_or(true) && !before_else_kw(it);
+            || after_incomplete_let && incomplete_expr_stmt.unwrap_or(true) && !before_else_kw;
         let in_value = it.parent().and_then(Either::<ast::LetStmt, ast::ArgList>::cast).is_some();
         let impl_ = fetch_immediate_impl(sema, original_file, expr.syntax());
 
@@ -1302,6 +1303,7 @@ fn classify_name_ref<'db>(
                 in_block_expr,
                 in_breakable: in_loop_body,
                 after_if_expr,
+                before_else_kw,
                 in_condition,
                 ref_expr_parent,
                 after_amp,

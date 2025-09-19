@@ -144,6 +144,7 @@ pub(crate) struct PathExprCtx<'db> {
     pub(crate) in_block_expr: bool,
     pub(crate) in_breakable: BreakableKind,
     pub(crate) after_if_expr: bool,
+    pub(crate) before_else_kw: bool,
     /// Whether this expression is the direct condition of an if or while expression
     pub(crate) in_condition: bool,
     pub(crate) incomplete_let: bool,

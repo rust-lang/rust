@@ -1673,7 +1673,133 @@ fn foo() { let x = if foo {} $0 else {}; }
             kw async
             kw const
             kw crate::
-            kw else
+            kw else if
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw impl for
+            kw let
+            kw letm
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
+        "#]],
+    );
+    check(
+        r#"
+fn foo() { let x = if foo {} $0 else if true {}; }
+"#,
+        expect![[r#"
+            fn foo    fn()
+            bt u32     u32
+            kw async
+            kw const
+            kw crate::
+            kw else if
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw impl for
+            kw let
+            kw letm
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
+        "#]],
+    );
+    check(
+        r#"
+fn foo() { let x = if foo {} el$0 else if true {} else {}; }
+"#,
+        expect![[r#"
+            fn foo()  fn()
+            lc x        ()
+            bt u32     u32
+            kw async
+            kw const
+            kw crate::
+            kw else if
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw impl for
+            kw let
+            kw letm
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
+        "#]],
+    );
+    check(
+        r#"
+fn foo() { let x = if foo {} $0 else if true {} else {}; }
+"#,
+        expect![[r#"
+            fn foo    fn()
+            bt u32     u32
+            kw async
+            kw const
+            kw crate::
             kw else if
             kw enum
             kw extern
