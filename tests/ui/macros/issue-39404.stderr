@@ -5,7 +5,7 @@ LL |     ($i) => {};
    |      ^^
    |
    = note: fragment specifiers must be provided
-   = help: valid fragment specifiers are `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, `item` and `vis`, along with `expr_2021` and `pat_param` for edition compatibility
+   = help: valid fragment specifiers are `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, `item`, `fn`, and `vis`, along with `expr_2021` and `pat_param` for edition compatibility
 help: try adding a specifier here
    |
 LL |     ($i:spec) => {};

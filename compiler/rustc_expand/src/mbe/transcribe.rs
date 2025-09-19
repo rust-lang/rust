@@ -437,7 +437,7 @@ fn transcribe_pnr<'tx>(
             let kind = token::NtLifetime(*ident, *is_raw);
             TokenTree::token_alone(kind, sp)
         }
-        ParseNtResult::Item(item) => {
+        ParseNtResult::Item(item) | ParseNtResult::Fn(item) => {
             mk_delimited(item.span, MetaVarKind::Item, TokenStream::from_ast(item))
         }
         ParseNtResult::Block(block) => {
