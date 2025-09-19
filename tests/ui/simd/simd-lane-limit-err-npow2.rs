@@ -1,11 +1,12 @@
-#![feature(rustc_attrs, repr_simd)]
-
 //@ build-fail
+//@ aux-crate:simd=simd-lane-limit.rs
 
-#[repr(simd, packed)]
-#[rustc_simd_monomorphize_lane_limit = "4"]
-struct V<T, const N: usize>([T; N]);
+extern crate simd;
+
+use simd::Simd;
 
 fn main() {
-    let _a: V<i32, 6> = V([0; 6]); //~ ERROR the SIMD type `V<i32, 6>` has more elements than the limit 4
+    // test non-power-of-two, since #[repr(simd, packed)] has unusual layout
+    let _x: Simd<i32, 24> = Simd([0; 24]);
+    //~^ ERROR the SIMD type `simd::Simd<i32, 24>` has more elements than the limit 8
 }

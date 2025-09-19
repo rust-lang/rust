@@ -1,13 +1,14 @@
-#![feature(rustc_attrs, repr_simd)]
-
 //@ build-pass
+//@ aux-crate:simd=simd-lane-limit.rs
 
-#[repr(simd, packed)]
-#[rustc_simd_monomorphize_lane_limit = "8"]
-struct V<T, const N: usize>([T; N]);
+extern crate simd;
 
-const LANES: usize = 4;
+use simd::Simd;
 
 fn main() {
-    let _x: V<i32, LANES> = V([0; LANES]);
+    let _x: Simd<i32, 4> = Simd([0; 4]);
+    let _y: Simd<i32, 8> = Simd([0; 8]);
+
+    // test non-power-of-two, since #[repr(simd, packed)] has unusual layout
+    let _z: Simd<i32, 6> = Simd([0; 6]);
 }
