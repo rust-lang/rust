@@ -217,27 +217,16 @@ impl<'a> IntoIterator for LLVMFeature<'a> {
 /// Rust can also be build with an external precompiled version of LLVM which might lead to failures
 /// if the oldest tested / supported LLVM version doesn't yet support the relevant intrinsics.
 pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFeature<'a>> {
-    let arch = if sess.target.arch == "x86_64" {
-        "x86"
-    } else if sess.target.arch == "arm64ec" {
-        "aarch64"
-    } else if sess.target.arch == "sparc64" {
-        "sparc"
-    } else if sess.target.arch == "powerpc64" {
-        "powerpc"
-    } else {
-        &*sess.target.arch
+    let raw_arch = &*sess.target.arch;
+    let arch = match raw_arch {
+        "x86_64" => "x86",
+        "arm64ec" => "aarch64",
+        "sparc64" => "sparc",
+        "powerpc64" => "powerpc",
+        _ => raw_arch,
     };
+    let (major, _, _) = get_version();
     match (arch, s) {
-        ("x86", "sse4.2") => Some(LLVMFeature::with_dependencies(
-            "sse4.2",
-            smallvec![TargetFeatureFoldStrength::EnableOnly("crc32")],
-        )),
-        ("x86", "pclmulqdq") => Some(LLVMFeature::new("pclmul")),
-        ("x86", "rdrand") => Some(LLVMFeature::new("rdrnd")),
-        ("x86", "bmi1") => Some(LLVMFeature::new("bmi")),
-        ("x86", "cmpxchg16b") => Some(LLVMFeature::new("cx16")),
-        ("x86", "lahfsahf") => Some(LLVMFeature::new("sahf")),
         ("aarch64", "rcpc2") => Some(LLVMFeature::new("rcpc-immo")),
         ("aarch64", "dpb") => Some(LLVMFeature::new("ccpp")),
         ("aarch64", "dpb2") => Some(LLVMFeature::new("ccdp")),
@@ -260,14 +249,23 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         ("aarch64", "fpmr") => None, // only existed in 18
         ("arm", "fp16") => Some(LLVMFeature::new("fullfp16")),
         // Filter out features that are not supported by the current LLVM version
-        ("loongarch32" | "loongarch64", "32s") if get_version().0 < 21 => None,
+        ("loongarch32" | "loongarch64", "32s") if major < 21 => None,
+        ("powerpc", "power8-crypto") => Some(LLVMFeature::new("crypto")),
+        ("sparc", "leoncasa") => Some(LLVMFeature::new("hasleoncasa")),
+        ("x86", "sse4.2") => Some(LLVMFeature::with_dependencies(
+            "sse4.2",
+            smallvec![TargetFeatureFoldStrength::EnableOnly("crc32")],
+        )),
+        ("x86", "pclmulqdq") => Some(LLVMFeature::new("pclmul")),
+        ("x86", "rdrand") => Some(LLVMFeature::new("rdrnd")),
+        ("x86", "bmi1") => Some(LLVMFeature::new("bmi")),
+        ("x86", "cmpxchg16b") => Some(LLVMFeature::new("cx16")),
+        ("x86", "lahfsahf") => Some(LLVMFeature::new("sahf")),
         // Enable the evex512 target feature if an avx512 target feature is enabled.
         ("x86", s) if s.starts_with("avx512") => Some(LLVMFeature::with_dependencies(
             s,
             smallvec![TargetFeatureFoldStrength::EnableOnly("evex512")],
         )),
-        ("sparc", "leoncasa") => Some(LLVMFeature::new("hasleoncasa")),
-        ("powerpc", "power8-crypto") => Some(LLVMFeature::new("crypto")),
         ("x86", "avx10.1") => Some(LLVMFeature::new("avx10.1-512")),
         ("x86", "avx10.2") => Some(LLVMFeature::new("avx10.2-512")),
         ("x86", "apxf") => Some(LLVMFeature::with_dependencies(
