@@ -12,8 +12,6 @@ pub const WORD_SIZE: usize = size_of::<u32>();
 
 pub mod abi;
 pub mod os;
-#[path = "../unsupported/pipe.rs"]
-pub mod pipe;
 #[path = "../unsupported/time.rs"]
 pub mod time;
 

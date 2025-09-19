@@ -10,14 +10,15 @@ use crate::ffi::{CStr, CString, OsStr, OsString};
 use crate::os::unix::prelude::*;
 use crate::path::Path;
 use crate::process::StdioPipes;
+use crate::sys::cvt_r;
 use crate::sys::fd::FileDesc;
 use crate::sys::fs::File;
 #[cfg(not(target_os = "fuchsia"))]
 use crate::sys::fs::OpenOptions;
-use crate::sys::pipe::{self, AnonPipe};
+use crate::sys::pipe::pipe;
 use crate::sys::process::env::{CommandEnv, CommandEnvs};
 use crate::sys_common::{FromInner, IntoInner};
-use crate::{fmt, io};
+use crate::{fmt, io, mem};
 
 mod cstring_array;
 
@@ -393,7 +394,7 @@ fn construct_envp(env: BTreeMap<OsString, OsString>, saw_nul: &mut bool) -> CStr
 }
 
 impl Stdio {
-    pub fn to_child_stdio(&self, readable: bool) -> io::Result<(ChildStdio, Option<AnonPipe>)> {
+    pub fn to_child_stdio(&self, readable: bool) -> io::Result<(ChildStdio, Option<ChildPipe>)> {
         match *self {
             Stdio::Inherit => Ok((ChildStdio::Inherit, None)),
 
@@ -418,9 +419,9 @@ impl Stdio {
             }
 
             Stdio::MakePipe => {
-                let (reader, writer) = pipe::anon_pipe()?;
+                let (reader, writer) = pipe()?;
                 let (ours, theirs) = if readable { (writer, reader) } else { (reader, writer) };
-                Ok((ChildStdio::Owned(theirs.into_inner()), Some(ours)))
+                Ok((ChildStdio::Owned(theirs), Some(ours)))
             }
 
             #[cfg(not(target_os = "fuchsia"))]
@@ -435,12 +436,6 @@ impl Stdio {
             #[cfg(target_os = "fuchsia")]
             Stdio::Null => Ok((ChildStdio::Null, None)),
         }
-    }
-}
-
-impl From<AnonPipe> for Stdio {
-    fn from(pipe: AnonPipe) -> Stdio {
-        Stdio::Fd(pipe.into_inner())
     }
 }
 
@@ -630,5 +625,58 @@ impl<'a> ExactSizeIterator for CommandArgs<'a> {
 impl<'a> fmt::Debug for CommandArgs<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.iter.clone()).finish()
+    }
+}
+
+pub type ChildPipe = crate::sys::pipe::Pipe;
+
+pub fn read_output(
+    out: ChildPipe,
+    stdout: &mut Vec<u8>,
+    err: ChildPipe,
+    stderr: &mut Vec<u8>,
+) -> io::Result<()> {
+    // Set both pipes into nonblocking mode as we're gonna be reading from both
+    // in the `select` loop below, and we wouldn't want one to block the other!
+    out.set_nonblocking(true)?;
+    err.set_nonblocking(true)?;
+
+    let mut fds: [libc::pollfd; 2] = unsafe { mem::zeroed() };
+    fds[0].fd = out.as_raw_fd();
+    fds[0].events = libc::POLLIN;
+    fds[1].fd = err.as_raw_fd();
+    fds[1].events = libc::POLLIN;
+    loop {
+        // wait for either pipe to become readable using `poll`
+        cvt_r(|| unsafe { libc::poll(fds.as_mut_ptr(), 2, -1) })?;
+
+        if fds[0].revents != 0 && read(&out, stdout)? {
+            err.set_nonblocking(false)?;
+            return err.read_to_end(stderr).map(drop);
+        }
+        if fds[1].revents != 0 && read(&err, stderr)? {
+            out.set_nonblocking(false)?;
+            return out.read_to_end(stdout).map(drop);
+        }
+    }
+
+    // Read as much as we can from each pipe, ignoring EWOULDBLOCK or
+    // EAGAIN. If we hit EOF, then this will happen because the underlying
+    // reader will return Ok(0), in which case we'll see `Ok` ourselves. In
+    // this case we flip the other fd back into blocking mode and read
+    // whatever's leftover on that file descriptor.
+    fn read(fd: &FileDesc, dst: &mut Vec<u8>) -> Result<bool, io::Error> {
+        match fd.read_to_end(dst) {
+            Ok(_) => Ok(true),
+            Err(e) => {
+                if e.raw_os_error() == Some(libc::EWOULDBLOCK)
+                    || e.raw_os_error() == Some(libc::EAGAIN)
+                {
+                    Ok(false)
+                } else {
+                    Err(e)
+                }
+            }
+        }
     }
 }

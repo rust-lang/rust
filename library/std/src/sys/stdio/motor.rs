@@ -166,7 +166,7 @@ impl From<crate::process::ChildStdin> for OwnedFd {
 impl From<OwnedFd> for process::ChildStdin {
     #[inline]
     fn from(fd: OwnedFd) -> process::ChildStdin {
-        let pipe = sys::pipe::AnonPipe::from_inner(fd);
+        let pipe = sys::process::ChildPipe::from_inner(fd);
         process::ChildStdin::from_inner(pipe)
     }
 }
@@ -196,7 +196,7 @@ impl From<crate::process::ChildStdout> for OwnedFd {
 impl From<OwnedFd> for process::ChildStdout {
     #[inline]
     fn from(fd: OwnedFd) -> process::ChildStdout {
-        let pipe = sys::pipe::AnonPipe::from_inner(fd);
+        let pipe = sys::process::ChildPipe::from_inner(fd);
         process::ChildStdout::from_inner(pipe)
     }
 }
@@ -226,7 +226,7 @@ impl From<crate::process::ChildStderr> for OwnedFd {
 impl From<OwnedFd> for process::ChildStderr {
     #[inline]
     fn from(fd: OwnedFd) -> process::ChildStderr {
-        let pipe = sys::pipe::AnonPipe::from_inner(fd);
+        let pipe = sys::process::ChildPipe::from_inner(fd);
         process::ChildStderr::from_inner(pipe)
     }
 }
