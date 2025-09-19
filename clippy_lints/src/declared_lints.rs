@@ -576,6 +576,7 @@ pub static LINTS: &[&::declare_clippy_lint::LintInfo] = &[
     crate::nonstandard_macro_braces::NONSTANDARD_MACRO_BRACES_INFO,
     crate::octal_escapes::OCTAL_ESCAPES_INFO,
     crate::only_used_in_recursion::ONLY_USED_IN_RECURSION_INFO,
+    crate::only_used_in_recursion::SELF_ONLY_USED_IN_RECURSION_INFO,
     crate::operators::ABSURD_EXTREME_COMPARISONS_INFO,
     crate::operators::ARITHMETIC_SIDE_EFFECTS_INFO,
     crate::operators::ASSIGN_OP_PATTERN_INFO,

@@ -1,4 +1,5 @@
 #![warn(clippy::only_used_in_recursion)]
+#![warn(clippy::self_only_used_in_recursion)]
 //@no-rustfix
 fn _simple(x: u32) -> u32 {
     x
@@ -74,7 +75,7 @@ impl A {
     }
 
     fn _method_self(&self, flag: usize, a: usize) -> usize {
-        //~^ only_used_in_recursion
+        //~^ self_only_used_in_recursion
         //~| only_used_in_recursion
 
         if flag == 0 { 0 } else { self._method_self(flag - 1, a) }
