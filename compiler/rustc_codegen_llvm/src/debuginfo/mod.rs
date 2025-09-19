@@ -165,21 +165,21 @@ impl<'ll> DebugInfoBuilderMethods for Builder<'_, 'll, '_> {
 
         if direct_offset.bytes() > 0 {
             addr_ops.push(DW_OP_plus_uconst);
-            addr_ops.push(direct_offset.bytes() as u64);
+            addr_ops.push(direct_offset.bytes());
         }
         for &offset in indirect_offsets {
             addr_ops.push(DW_OP_deref);
             if offset.bytes() > 0 {
                 addr_ops.push(DW_OP_plus_uconst);
-                addr_ops.push(offset.bytes() as u64);
+                addr_ops.push(offset.bytes());
             }
         }
         if let Some(fragment) = fragment {
             // `DW_OP_LLVM_fragment` takes as arguments the fragment's
             // offset and size, both of them in bits.
             addr_ops.push(DW_OP_LLVM_fragment);
-            addr_ops.push(fragment.start.bits() as u64);
-            addr_ops.push((fragment.end - fragment.start).bits() as u64);
+            addr_ops.push(fragment.start.bits());
+            addr_ops.push((fragment.end - fragment.start).bits());
         }
 
         let di_builder = DIB(self.cx());
