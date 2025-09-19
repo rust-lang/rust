@@ -2194,7 +2194,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn suggest_associated_call_syntax(
         &self,
         err: &mut Diag<'_>,
-        static_candidates: &Vec<CandidateSource>,
+        static_candidates: &[CandidateSource],
         rcvr_ty: Ty<'tcx>,
         source: SelfSource<'tcx>,
         item_name: Ident,
@@ -2422,7 +2422,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     let span_included = match parent_expr.kind {
                         hir::ExprKind::Struct(_, eps, _) => {
-                            eps.len() > 0 && eps.last().is_some_and(|ep| ep.span.contains(span))
+                            eps.last().is_some_and(|ep| ep.span.contains(span))
                         }
                         // `..=` desugars into `::std::ops::RangeInclusive::new(...)`.
                         hir::ExprKind::Call(func, ..) => func.span.contains(span),
@@ -2484,7 +2484,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             simplify_type(tcx, ty, TreatParams::InstantiateWithInfer)
                 .and_then(|simp| {
                     tcx.incoherent_impls(simp)
-                        .into_iter()
+                        .iter()
                         .find_map(|&id| self.associated_value(id, item_name))
                 })
                 .is_some()
@@ -2617,7 +2617,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 if let Node::Expr(call_expr) = self.tcx.parent_hir_node(seg1.hir_id)
                     && let ControlFlow::Break(Some(expr)) =
-                        (LetVisitor { ident_name: seg1.ident.name }).visit_body(&body)
+                        (LetVisitor { ident_name: seg1.ident.name }).visit_body(body)
                     && let Some(self_ty) = self.node_ty_opt(expr.hir_id)
                 {
                     let probe = self.lookup_probe_for_diagnostic(
@@ -2960,14 +2960,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .collect::<Vec<_>>()
             .into();
         for pred in &local_preds {
-            match pred.self_ty().kind() {
-                ty::Adt(def, _) => {
-                    local_spans.push_span_label(
-                        self.tcx.def_span(def.did()),
-                        format!("must implement `{}`", pred.trait_ref.print_trait_sugared()),
-                    );
-                }
-                _ => {}
+            if let ty::Adt(def, _) = pred.self_ty().kind() {
+                local_spans.push_span_label(
+                    self.tcx.def_span(def.did()),
+                    format!("must implement `{}`", pred.trait_ref.print_trait_sugared()),
+                );
             }
         }
         if local_spans.primary_span().is_some() {
@@ -3006,14 +3003,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .collect::<Vec<_>>()
             .into();
         for pred in &foreign_preds {
-            match pred.self_ty().kind() {
-                ty::Adt(def, _) => {
-                    foreign_spans.push_span_label(
-                        self.tcx.def_span(def.did()),
-                        format!("not implement `{}`", pred.trait_ref.print_trait_sugared()),
-                    );
-                }
-                _ => {}
+            if let ty::Adt(def, _) = pred.self_ty().kind() {
+                foreign_spans.push_span_label(
+                    self.tcx.def_span(def.did()),
+                    format!("not implement `{}`", pred.trait_ref.print_trait_sugared()),
+                );
             }
         }
         if foreign_spans.primary_span().is_some() {
@@ -3595,7 +3589,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // would take care of them.
                     && !skippable.contains(&Some(pick.item.container_id(self.tcx)))
                     // Do not suggest pinning when the method is directly on `Pin`.
-                    && pick.item.impl_container(self.tcx).map_or(true, |did| {
+                    && pick.item.impl_container(self.tcx).is_none_or(|did| {
                         match self.tcx.type_of(did).skip_binder().kind() {
                             ty::Adt(def, _) => Some(def.did()) != self.tcx.lang_items().pin_type(),
                             _ => true,
@@ -3653,7 +3647,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 vec![
                                     (
                                         rcvr.span.shrink_to_lo(),
-                                        format!("let mut pinned = std::pin::pin!("),
+                                        "let mut pinned = std::pin::pin!(".to_string(),
                                     ),
                                     (
                                         rcvr.span.shrink_to_hi(),
@@ -4128,7 +4122,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
         let trait_span = self.tcx.def_span(trait_def_id);
         let mut multi_span: MultiSpan = trait_span.into();
-        multi_span.push_span_label(trait_span, format!("this is the trait that is needed"));
+        multi_span.push_span_label(trait_span, "this is the trait that is needed".to_string());
         let descr = self.tcx.associated_item(item_def_id).descr();
         let rcvr_ty =
             rcvr_ty.map(|t| format!("`{t}`")).unwrap_or_else(|| "the receiver".to_string());
@@ -4146,7 +4140,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             multi_span.push_span_label(
                 self.tcx.def_span(def_id),
-                format!("this is the trait that was imported"),
+                "this is the trait that was imported".to_string(),
             );
         }
         err.span_note(multi_span, msg);
