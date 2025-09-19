@@ -10,8 +10,8 @@ use rustc_infer::traits::{
     FromSolverError, PredicateObligation, PredicateObligations, TraitEngine,
 };
 use rustc_middle::ty::{
-    self, DelayedSet, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
-    TypingMode,
+    self, DelayedSet, Ty, TyCtxt, TyVid, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
+    TypeVisitor, TypingMode,
 };
 use rustc_next_trait_solver::delegate::SolverDelegate as _;
 use rustc_next_trait_solver::solve::{
@@ -85,8 +85,30 @@ impl<'tcx> ObligationStorage<'tcx> {
         obligations.extend(self.overflowed.iter().cloned());
         obligations
     }
+    fn clone_pending_potentially_referencing_sub_root(
+        &self,
+        vid: TyVid,
+    ) -> PredicateObligations<'tcx> {
+        let mut obligations: PredicateObligations<'tcx> = self
+            .pending
+            .iter()
+            .filter(|(_, stalled_on)| {
+                // This may incorrectly return `false` in case we've made
+                // inference progress since the last time we tried to evaluate
+                // this obligation.
+                if let Some(stalled_on) = stalled_on {
+                    stalled_on.sub_roots.iter().any(|&r| r == vid)
+                } else {
+                    true
+                }
+            })
+            .map(|(o, _)| o.clone())
+            .collect();
+        obligations.extend(self.overflowed.iter().cloned());
+        obligations
+    }
 
-    fn drain_pending(
+    fn drain_pending_ignoring_overflowed(
         &mut self,
         cond: impl Fn(&PredicateObligation<'tcx>) -> bool,
     ) -> PendingObligations<'tcx> {
@@ -184,7 +206,9 @@ where
         let mut errors = Vec::new();
         loop {
             let mut any_changed = false;
-            for (mut obligation, stalled_on) in self.obligations.drain_pending(|_| true) {
+            for (mut obligation, stalled_on) in
+                self.obligations.drain_pending_ignoring_overflowed(|_| true)
+            {
                 if !infcx.tcx.recursion_limit().value_within_limit(obligation.recursion_depth) {
                     self.obligations.on_fulfillment_overflow(infcx);
                     // Only return true errors that we have accumulated while processing.
@@ -277,6 +301,12 @@ where
     fn pending_obligations(&self) -> PredicateObligations<'tcx> {
         self.obligations.clone_pending()
     }
+    fn pending_obligations_potentially_referencing_sub_root(
+        &self,
+        vid: ty::TyVid,
+    ) -> PredicateObligations<'tcx> {
+        self.obligations.clone_pending_potentially_referencing_sub_root(vid)
+    }
 
     fn drain_stalled_obligations_for_coroutines(
         &mut self,
@@ -297,7 +327,7 @@ where
         }
 
         self.obligations
-            .drain_pending(|obl| {
+            .drain_pending_ignoring_overflowed(|obl| {
                 infcx.probe(|_| {
                     infcx
                         .visit_proof_tree(

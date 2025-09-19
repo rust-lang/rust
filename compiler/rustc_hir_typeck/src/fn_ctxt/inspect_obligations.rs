@@ -76,7 +76,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         self_ty: ty::TyVid,
     ) -> PredicateObligations<'tcx> {
-        let obligations = self.fulfillment_cx.borrow().pending_obligations();
+        // We only look at obligations which may reference the self type.
+        // This lookup uses the `sub_root` instead of the inference variable
+        // itself as that's slightly nicer to implement. It shouldn't really
+        // matter.
+        //
+        // This is really impactful when typechecking functions with a lot of
+        // stalled obligations, e.g. in the `wg-grammar` benchmark.
+        let sub_root_var = self.sub_unification_table_root_var(self_ty);
+        let obligations = self
+            .fulfillment_cx
+            .borrow()
+            .pending_obligations_potentially_referencing_sub_root(sub_root_var);
         debug!(?obligations);
         let mut obligations_for_self_ty = PredicateObligations::new();
         for obligation in obligations {
