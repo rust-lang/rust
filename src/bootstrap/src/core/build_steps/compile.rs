@@ -895,6 +895,8 @@ impl Step for StartupObjects {
     fn run(self, builder: &Builder<'_>) -> Vec<(PathBuf, DependencyType)> {
         let for_compiler = self.compiler;
         let target = self.target;
+        // Even though no longer necessary on x86_64, they are kept for now to
+        // avoid potential issues in downstream crates.
         if !target.is_windows_gnu() {
             return vec![];
         }
