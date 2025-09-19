@@ -364,13 +364,13 @@ fn update_target_reliable_float_cfg(sess: &Session, cfg: &mut TargetConfig) {
     };
 
     cfg.has_reliable_f128 = match (target_arch, target_os) {
+        // Unsupported https://github.com/llvm/llvm-project/issues/121122
+        ("amdgpu", _) => false,
         // Unsupported <https://github.com/llvm/llvm-project/issues/94434>
         ("arm64ec", _) => false,
         // Selection bug <https://github.com/llvm/llvm-project/issues/95471>. This issue is closed
         // but basic math still does not work.
         ("nvptx64", _) => false,
-        // Unsupported https://github.com/llvm/llvm-project/issues/121122
-        ("amdgpu", _) => false,
         // ABI bugs <https://github.com/rust-lang/rust/issues/125109> et al. (full
         // list at <https://github.com/rust-lang/rust/issues/116909>)
         ("powerpc" | "powerpc64", _) => false,
