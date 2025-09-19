@@ -275,7 +275,7 @@ use crate::{fmt, intrinsics, ptr, slice};
 /// ```
 ///
 /// If the representation of `t` contains initialized bytes at byte offsets where `U` contains padding bytes, these
-/// may not be preserved in `MaybeUninit<U>`. Interpreting the representation of `u` at type `T` again (i.e., `transmute(u)` above) may thus
+/// may not be preserved in `MaybeUninit<U>`. Transmuting `u` back to `T` (i.e., `transmute(u)` above) may thus
 /// be undefined behavior or yield a value different from `t` due to those bytes being lost. This is an active area of discussion, and this code
 /// may become sound in the future.
 ///
