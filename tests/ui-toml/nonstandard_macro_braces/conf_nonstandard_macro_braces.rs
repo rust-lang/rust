@@ -67,3 +67,11 @@ fn main() {
 
     printlnfoo!["test if printlnfoo is triggered by println"];
 }
+
+#[rustfmt::skip]
+#[expect(clippy::no_effect)]
+fn issue9913() {
+    println! {"hello world"}
+    [0]; // separate statement, not indexing into the result of println.
+    //~^^ nonstandard_macro_braces
+}
