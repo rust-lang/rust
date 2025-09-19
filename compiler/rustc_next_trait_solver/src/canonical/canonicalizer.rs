@@ -57,7 +57,7 @@ enum CanonicalizeMode {
     },
 }
 
-pub struct Canonicalizer<'a, D: SolverDelegate<Interner = I>, I: Interner> {
+pub(super) struct Canonicalizer<'a, D: SolverDelegate<Interner = I>, I: Interner> {
     delegate: &'a D,
 
     // Immutable field.
@@ -83,7 +83,7 @@ pub struct Canonicalizer<'a, D: SolverDelegate<Interner = I>, I: Interner> {
 }
 
 impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
-    pub fn canonicalize_response<T: TypeFoldable<I>>(
+    pub(super) fn canonicalize_response<T: TypeFoldable<I>>(
         delegate: &'a D,
         max_input_universe: ty::UniverseIndex,
         variables: &'a mut Vec<I::GenericArg>,
@@ -112,7 +112,6 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         let (max_universe, variables) = canonicalizer.finalize();
         Canonical { max_universe, variables, value }
     }
-
     fn canonicalize_param_env(
         delegate: &'a D,
         variables: &'a mut Vec<I::GenericArg>,
@@ -195,7 +194,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
     ///
     /// We want to keep the option of canonicalizing `'static` to an existential
     /// variable in the future by changing the way we detect global where-bounds.
-    pub fn canonicalize_input<P: TypeFoldable<I>>(
+    pub(super) fn canonicalize_input<P: TypeFoldable<I>>(
         delegate: &'a D,
         variables: &'a mut Vec<I::GenericArg>,
         input: QueryInput<I, P>,
