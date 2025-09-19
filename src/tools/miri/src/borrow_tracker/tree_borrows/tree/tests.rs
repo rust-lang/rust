@@ -420,7 +420,7 @@ mod spurious_read {
     /// `(LocStateProt, LocStateProt)` where the two states are not guaranteed
     /// to be updated at the same time.
     /// Some `LocStateProtPair` may be unreachable through normal means
-    /// such as `x: Active, y: Active` in the case of mutually foreign pointers.
+    /// such as `x: Unique, y: Unique` in the case of mutually foreign pointers.
     struct LocStateProtPair {
         xy_rel: RelPosXY,
         x: LocStateProt,
@@ -709,7 +709,7 @@ mod spurious_read {
         let mut err = 0;
         for pat in Pattern::exhaustive() {
             let Ok(initial_source) = pat.initial_state() else {
-                // Failed to retag `x` in the source (e.g. `y` was protected Active)
+                // Failed to retag `x` in the source (e.g. `y` was protected Unique)
                 continue;
             };
             // `x` must stay protected, but the function protecting `y` might return here

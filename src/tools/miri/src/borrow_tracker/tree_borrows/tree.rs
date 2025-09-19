@@ -57,7 +57,7 @@ pub(super) struct LocationState {
 impl LocationState {
     /// Constructs a new initial state. It has neither been accessed, nor been subjected
     /// to any foreign access yet.
-    /// The permission is not allowed to be `Active`.
+    /// The permission is not allowed to be `Unique`.
     /// `sifa` is the (strongest) idempotent foreign access, see `foreign_access_skipping.rs`
     pub fn new_non_accessed(permission: Permission, sifa: IdempotentForeignAccess) -> Self {
         assert!(permission.is_initial() || permission.is_disabled());
@@ -80,7 +80,7 @@ impl LocationState {
     /// Check if the state can exist as the initial permission of a pointer.
     ///
     /// Do not confuse with `is_accessed`, the two are almost orthogonal
-    /// as apart from `Active` which is not initial and must be accessed,
+    /// as apart from `Unique` which is not initial and must be accessed,
     /// any other permission can have an arbitrary combination of being
     /// initial/accessed.
     /// FIXME: when the corresponding `assert` in `tree_borrows/mod.rs` finally
@@ -170,7 +170,7 @@ impl LocationState {
             }
             if self.permission.is_frozen() && access_kind == AccessKind::Read {
                 // A foreign read to a `Frozen` tag will have almost no observable effect.
-                // It's a theorem that `Frozen` nodes have no active children, so all children
+                // It's a theorem that `Frozen` nodes have no `Unique` children, so all children
                 // already survive foreign reads. Foreign reads in general have almost no
                 // effect, the only further thing they could do is make protected `Reserved`
                 // nodes become conflicted, i.e. make them reject child writes for the further
@@ -265,7 +265,7 @@ pub(super) struct Node {
     pub children: SmallVec<[UniIndex; 4]>,
     /// Either `Reserved`,  `Frozen`, or `Disabled`, it is the permission this tag will
     /// lazily be initialized to on the first access.
-    /// It is only ever `Disabled` for a tree root, since the root is initialized to `Active` by
+    /// It is only ever `Disabled` for a tree root, since the root is initialized to `Unique` by
     /// its own separate mechanism.
     default_initial_perm: Permission,
     /// The default initial (strongest) idempotent foreign access.
@@ -598,14 +598,14 @@ impl Tree {
         };
         let rperms = {
             let mut perms = UniValMap::default();
-            // We manually set it to `Active` on all in-bounds positions.
-            // We also ensure that it is accessed, so that no `Active` but
+            // We manually set it to `Unique` on all in-bounds positions.
+            // We also ensure that it is accessed, so that no `Unique` but
             // not yet accessed nodes exist. Essentially, we pretend there
-            // was a write that initialized these to `Active`.
+            // was a write that initialized these to `Unique`.
             perms.insert(
                 root_idx,
                 LocationState::new_accessed(
-                    Permission::new_active(),
+                    Permission::new_unique(),
                     IdempotentForeignAccess::None,
                 ),
             );
@@ -790,7 +790,7 @@ impl<'tcx> Tree {
     /// - the access will be applied only to accessed locations of the allocation,
     /// - it will not be visible to children,
     /// - it will be recorded as a `FnExit` diagnostic access
-    /// - and it will be a read except if the location is `Active`, i.e. has been written to,
+    /// - and it will be a read except if the location is `Unique`, i.e. has been written to,
     ///   in which case it will be a write.
     ///
     /// `LocationState::perform_access` will take care of raising transition

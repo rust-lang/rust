@@ -12,7 +12,7 @@ help: the accessed tag <TAG> was created here, in the initial state Reserved
    |
 LL |     let z = &mut x as *mut i32;
    |             ^^^^^^
-help: the accessed tag <TAG> later transitioned to Active due to a child write access at offsets [0x0..0x4]
+help: the accessed tag <TAG> later transitioned to Unique due to a child write access at offsets [0x0..0x4]
   --> tests/fail/tree_borrows/fnentry_invalidation.rs:LL:CC
    |
 LL |         *z = 1;

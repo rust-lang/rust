@@ -7,7 +7,7 @@ LL |     *y
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/tree-borrows.md for further information
    = help: the accessed tag <TAG> is foreign to the protected tag <TAG> (i.e., it is not a child)
-   = help: this foreign read access would cause the protected tag <TAG> (currently Active) to become Disabled
+   = help: this foreign read access would cause the protected tag <TAG> (currently Unique) to become Disabled
    = help: protected tags must never be Disabled
 help: the accessed tag <TAG> was created here
   --> tests/fail/both_borrows/box_noalias_violation.rs:LL:CC
@@ -19,7 +19,7 @@ help: the protected tag <TAG> was created here, in the initial state Reserved
    |
 LL | unsafe fn test(mut x: Box<i32>, y: *const i32) -> i32 {
    |                ^^^^^
-help: the protected tag <TAG> later transitioned to Active due to a child write access at offsets [0x0..0x4]
+help: the protected tag <TAG> later transitioned to Unique due to a child write access at offsets [0x0..0x4]
   --> tests/fail/both_borrows/box_noalias_violation.rs:LL:CC
    |
 LL |     *x = 5;
