@@ -806,6 +806,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(function_return, FunctionReturn::ThunkExtern);
     tracked!(function_sections, Some(false));
     tracked!(hint_mostly_unused, true);
+    tracked!(hotpatch, true);
     tracked!(human_readable_cgu_names, true);
     tracked!(incremental_ignore_spans, true);
     tracked!(indirect_branch_cs_prefix, true);
