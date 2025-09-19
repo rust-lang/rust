@@ -23,8 +23,6 @@ use crate::sys::env;
 
 pub mod futex;
 pub mod os;
-#[path = "../unsupported/pipe.rs"]
-pub mod pipe;
 pub mod time;
 
 pub fn unsupported<T>() -> crate::io::Result<T> {
