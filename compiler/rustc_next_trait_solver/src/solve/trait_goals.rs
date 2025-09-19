@@ -1,5 +1,7 @@
 //! Dealing with trait goals, i.e. `T: Trait<'a, U>`.
 
+use std::ops::ControlFlow;
+
 use rustc_type_ir::data_structures::IndexSet;
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
@@ -856,9 +858,23 @@ where
         }
 
         match goal.predicate.self_ty().kind() {
-            ty::Field(..) => ecx
-                .probe_builtin_trait_candidate(BuiltinImplSource::Misc)
-                .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)),
+            ty::Field(container, field_path)
+                if field_path
+                    .walk(ecx.cx(), container, |base, _, _, _| {
+                        if let ty::Adt(def, _) = base.kind()
+                            && def.is_packed()
+                        {
+                            ControlFlow::Break(())
+                        } else {
+                            ControlFlow::Continue(())
+                        }
+                    })
+                    .is_none() =>
+            {
+                ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
+                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                })
+            }
             _ => Err(NoSolution),
         }
     }

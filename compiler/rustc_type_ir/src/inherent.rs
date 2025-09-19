@@ -627,6 +627,8 @@ pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
     fn is_fundamental(self) -> bool;
 
     fn destructor(self, interner: I) -> Option<AdtDestructorKind>;
+
+    fn is_packed(self) -> bool;
 }
 
 pub trait FieldPath<I: Interner>: Copy + Debug + Hash + Eq {
