@@ -335,11 +335,12 @@ fn update_target_reliable_float_cfg(sess: &Session, cfg: &mut TargetConfig) {
     let target_abi = sess.target.options.abi.as_ref();
     let target_pointer_width = sess.target.pointer_width;
     let version = get_version();
+    let lt_20_1_0 = version < (20, 1, 0);
     let lt_20_1_1 = version < (20, 1, 1);
     let lt_21_0_0 = version < (21, 0, 0);
 
     cfg.has_reliable_f16 = match (target_arch, target_os) {
-        // LLVM crash without neon <https://github.com/llvm/llvm-project/issues/129394> (fixed in llvm20)
+        // LLVM crash without neon <https://github.com/llvm/llvm-project/issues/129394> (fixed in LLVM 20.1.1)
         ("aarch64", _)
             if !cfg.target_features.iter().any(|f| f.as_str() == "neon") && lt_20_1_1 =>
         {
@@ -367,7 +368,7 @@ fn update_target_reliable_float_cfg(sess: &Session, cfg: &mut TargetConfig) {
         // Unsupported <https://github.com/llvm/llvm-project/issues/94434>
         ("arm64ec", _) => false,
         // Selection bug <https://github.com/llvm/llvm-project/issues/96432> (fixed in llvm20)
-        ("mips64" | "mips64r6", _) if lt_20_1_1 => false,
+        ("mips64" | "mips64r6", _) if lt_20_1_0 => false,
         // Selection bug <https://github.com/llvm/llvm-project/issues/95471>. This issue is closed
         // but basic math still does not work.
         ("nvptx64", _) => false,
