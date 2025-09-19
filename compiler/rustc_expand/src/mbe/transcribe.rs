@@ -380,6 +380,14 @@ fn transcribe_metavar<'tx>(
         return Err(dcx.create_err(MacroVarStillRepeating { span: sp, ident }));
     };
 
+    transcribe_pnr(tscx, sp, pnr)
+}
+
+fn transcribe_pnr<'tx>(
+    tscx: &mut TranscrCtx<'tx, '_>,
+    mut sp: Span,
+    pnr: &ParseNtResult,
+) -> PResult<'tx, ()> {
     // We wrap the tokens in invisible delimiters, unless they are already wrapped
     // in invisible delimiters with the same `MetaVarKind`. Because some proc
     // macros can't handle multiple layers of invisible delimiters of the same
