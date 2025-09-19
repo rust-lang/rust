@@ -1347,6 +1347,7 @@ symbols! {
         macro_derive,
         macro_escape,
         macro_export,
+        macro_fragments_more,
         macro_lifetime_matcher,
         macro_literal_matcher,
         macro_metavar_expr,

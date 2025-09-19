@@ -1,3 +1,4 @@
+use rustc_ast::ItemKind;
 use rustc_ast::token::NtExprKind::*;
 use rustc_ast::token::NtPatKind::*;
 use rustc_ast::token::{self, InvisibleOrigin, MetaVarKind, NonterminalKind, Token};
@@ -101,9 +102,10 @@ impl<'a> Parser<'a> {
                 token::Lifetime(..) | token::NtLifetime(..) => true,
                 _ => false,
             },
-            NonterminalKind::TT | NonterminalKind::Item | NonterminalKind::Stmt => {
-                token.kind.close_delim().is_none()
-            }
+            NonterminalKind::TT
+            | NonterminalKind::Item
+            | NonterminalKind::Stmt
+            | NonterminalKind::Fn => token.kind.close_delim().is_none(),
         }
     }
 
@@ -122,6 +124,15 @@ impl<'a> Parser<'a> {
                 Some(item) => Ok(ParseNtResult::Item(item)),
                 None => Err(self.dcx().create_err(UnexpectedNonterminal::Item(self.token.span))),
             },
+            NonterminalKind::Fn => {
+                if let Some(item) = self.parse_item(ForceCollect::Yes)?
+                    && let ItemKind::Fn(_) = item.kind
+                {
+                    Ok(ParseNtResult::Fn(item))
+                } else {
+                    Err(self.dcx().create_err(UnexpectedNonterminal::Fn(self.token.span)))
+                }
+            }
             NonterminalKind::Block => {
                 // While a block *expression* may have attributes (e.g. `#[my_attr] { ... }`),
                 // the ':block' matcher does not support them
