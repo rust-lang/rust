@@ -380,25 +380,6 @@ where
     }
 }
 
-fn response_no_constraints_raw<I: Interner>(
-    cx: I,
-    max_universe: ty::UniverseIndex,
-    variables: I::CanonicalVarKinds,
-    certainty: Certainty,
-) -> CanonicalResponse<I> {
-    ty::Canonical {
-        max_universe,
-        variables,
-        value: Response {
-            var_values: ty::CanonicalVarValues::make_identity(cx, variables),
-            // FIXME: maybe we should store the "no response" version in cx, like
-            // we do for cx.types and stuff.
-            external_constraints: cx.mk_external_constraints(ExternalConstraintsData::default()),
-            certainty,
-        },
-    }
-}
-
 /// The result of evaluating a goal.
 pub struct GoalEvaluation<I: Interner> {
     /// The goal we've evaluated. This is the input goal, but potentially with its
