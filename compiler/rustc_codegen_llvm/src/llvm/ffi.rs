@@ -1994,6 +1994,12 @@ unsafe extern "C" {
         LowerBound: i64,
         Count: i64,
     ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderGetOrCreateArray<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Data: *const Option<&'ll Metadata>,
+        NumElements: size_t,
+    ) -> &'ll Metadata;
 }
 
 #[link(name = "llvm-wrapper", kind = "static")]
@@ -2374,12 +2380,6 @@ unsafe extern "C" {
         ArgNo: c_uint,
         AlignInBits: u32,
     ) -> &'a DIVariable;
-
-    pub(crate) fn LLVMRustDIBuilderGetOrCreateArray<'a>(
-        Builder: &DIBuilder<'a>,
-        Ptr: *const Option<&'a DIDescriptor>,
-        Count: c_uint,
-    ) -> &'a DIArray;
 
     pub(crate) fn LLVMRustDIBuilderInsertDeclareAtEnd<'a>(
         Builder: &DIBuilder<'a>,
