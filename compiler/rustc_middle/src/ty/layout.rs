@@ -222,7 +222,7 @@ pub enum SimdLayoutError {
     /// The vector has 0 lanes.
     ZeroLength,
     /// The vector has more lanes than supported or permitted by
-    /// #[rustc_simd_monomorphize_lane_limit].
+    /// #\[rustc_simd_monomorphize_lane_limit\].
     TooManyLanes(u64),
 }
 
