@@ -325,6 +325,9 @@
 # Defaults to the Python interpreter used to execute x.py.
 #build.python = "python"
 
+# The path to (or name of) the resource compiler executable to use on Windows.
+#build.windows-rc = "rc.exe"
+
 # The path to the REUSE executable to use. Note that REUSE is not required in
 # most cases, as our tooling relies on a cached (and shrunk) copy of the
 # REUSE output present in the git repository and in our source tarballs.

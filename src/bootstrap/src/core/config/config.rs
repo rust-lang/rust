@@ -273,6 +273,7 @@ pub struct Config {
     pub gdb: Option<PathBuf>,
     pub lldb: Option<PathBuf>,
     pub python: Option<PathBuf>,
+    pub windows_rc: Option<PathBuf>,
     pub reuse: Option<PathBuf>,
     pub cargo_native_static: bool,
     pub configure_args: Vec<String>,
@@ -450,6 +451,7 @@ impl Config {
             nodejs: build_nodejs,
             npm: build_npm,
             python: build_python,
+            windows_rc: build_windows_rc,
             reuse: build_reuse,
             locked_deps: build_locked_deps,
             vendor: build_vendor,
@@ -1342,6 +1344,7 @@ impl Config {
                 .unwrap_or(rust_debug == Some(true)),
             vendor,
             verbose_tests,
+            windows_rc: build_windows_rc.map(PathBuf::from),
             // tidy-alphabetical-end
         }
     }

@@ -296,7 +296,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             this.mutex_enqueue_and_block(mutex_ref, None);
         } else {
-            this.mutex_lock(&mutex_ref);
+            this.mutex_lock(&mutex_ref)?;
         }
 
         interp_ok(())
@@ -321,7 +321,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // reentrancy.
             this.write_scalar(Scalar::from_bool(false), dest)?;
         } else {
-            this.mutex_lock(&mutex_ref);
+            this.mutex_lock(&mutex_ref)?;
             this.write_scalar(Scalar::from_bool(true), dest)?;
         }
 
