@@ -174,5 +174,84 @@ LL +     }
 LL + }
    |
 
-error: aborting due to 9 previous errors
+error: you should consider adding a `Default` implementation for `NewWithCfg`
+  --> tests/ui/new_without_default.rs:273:5
+   |
+LL | /     pub fn new() -> Self {
+LL | |
+LL | |         unimplemented!()
+LL | |     }
+   | |_____^
+   |
+help: try adding this
+   |
+LL + #[cfg(not(test))]
+LL + impl Default for NewWithCfg {
+LL +     fn default() -> Self {
+LL +         Self::new()
+LL +     }
+LL + }
+LL | impl NewWithCfg {
+   |
+
+error: you should consider adding a `Default` implementation for `NewWith2Cfgs`
+  --> tests/ui/new_without_default.rs:283:5
+   |
+LL | /     pub fn new() -> Self {
+LL | |
+LL | |         unimplemented!()
+LL | |     }
+   | |_____^
+   |
+help: try adding this
+   |
+LL + #[cfg(not(test))]
+LL + #[cfg(panic = "unwind")]
+LL + impl Default for NewWith2Cfgs {
+LL +     fn default() -> Self {
+LL +         Self::new()
+LL +     }
+LL + }
+LL | impl NewWith2Cfgs {
+   |
+
+error: you should consider adding a `Default` implementation for `NewWithExtraneous`
+  --> tests/ui/new_without_default.rs:292:5
+   |
+LL | /     pub fn new() -> Self {
+LL | |
+LL | |         unimplemented!()
+LL | |     }
+   | |_____^
+   |
+help: try adding this
+   |
+LL + impl Default for NewWithExtraneous {
+LL +     fn default() -> Self {
+LL +         Self::new()
+LL +     }
+LL + }
+   |
+
+error: you should consider adding a `Default` implementation for `NewWithCfgAndExtraneous`
+  --> tests/ui/new_without_default.rs:302:5
+   |
+LL | /     pub fn new() -> Self {
+LL | |
+LL | |         unimplemented!()
+LL | |     }
+   | |_____^
+   |
+help: try adding this
+   |
+LL + #[cfg(not(test))]
+LL + impl Default for NewWithCfgAndExtraneous {
+LL +     fn default() -> Self {
+LL +         Self::new()
+LL +     }
+LL + }
+LL | impl NewWithCfgAndExtraneous {
+   |
+
+error: aborting due to 13 previous errors
 

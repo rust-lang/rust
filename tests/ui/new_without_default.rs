@@ -265,6 +265,46 @@ where
     }
 }
 
+// From issue #14552, but with `#[cfg]`s that are actually `true` in the uitest context
+
+pub struct NewWithCfg;
+impl NewWithCfg {
+    #[cfg(not(test))]
+    pub fn new() -> Self {
+        //~^ new_without_default
+        unimplemented!()
+    }
+}
+
+pub struct NewWith2Cfgs;
+impl NewWith2Cfgs {
+    #[cfg(not(test))]
+    #[cfg(panic = "unwind")]
+    pub fn new() -> Self {
+        //~^ new_without_default
+        unimplemented!()
+    }
+}
+
+pub struct NewWithExtraneous;
+impl NewWithExtraneous {
+    #[inline]
+    pub fn new() -> Self {
+        //~^ new_without_default
+        unimplemented!()
+    }
+}
+
+pub struct NewWithCfgAndExtraneous;
+impl NewWithCfgAndExtraneous {
+    #[cfg(not(test))]
+    #[inline]
+    pub fn new() -> Self {
+        //~^ new_without_default
+        unimplemented!()
+    }
+}
+
 mod issue15778 {
     pub struct Foo(Vec<i32>);
 
