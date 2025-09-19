@@ -3275,7 +3275,6 @@ dependencies = [
  "rustc_driver_impl",
  "rustc_public",
  "rustc_public_bridge",
- "rustc_windows_rc",
  "tikv-jemalloc-sys",
 ]
 
@@ -3651,7 +3650,6 @@ name = "rustc_driver"
 version = "0.0.0"
 dependencies = [
  "rustc_driver_impl",
- "rustc_windows_rc",
 ]
 
 [[package]]
@@ -4746,13 +4744,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cfcb3a22ef46e85b45de6ee7e79d063319ebb6594faafcf1c225ea92ab6e9b92"
 dependencies = [
  "semver",
-]
-
-[[package]]
-name = "rustc_windows_rc"
-version = "0.0.0"
-dependencies = [
- "cc",
 ]
 
 [[package]]
