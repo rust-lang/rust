@@ -35,8 +35,11 @@ pub fn compile_windows_resource_file(
     resources_dir.push("resources");
     fs::create_dir_all(&resources_dir).unwrap();
 
-    let resource_compiler =
-        find_resource_compiler(&env::var("CARGO_CFG_TARGET_ARCH").unwrap()).expect("found rc.exe");
+    let resource_compiler = if let Ok(path) = env::var("RUSTC_WINDOWS_RC") {
+        path.into()
+    } else {
+        find_resource_compiler(&env::var("CARGO_CFG_TARGET_ARCH").unwrap()).expect("found rc.exe")
+    };
 
     let rc_path = resources_dir.join(file_stem.with_extension("rc"));
 
