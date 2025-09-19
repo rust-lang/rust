@@ -1,20 +1,21 @@
 //! Set and unset common attributes on LLVM values.
-use rustc_codegen_ssa::traits::*;
 use rustc_hir::attrs::{InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_hir::def_id::DefId;
-use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, PatchableFunctionEntry};
+use rustc_middle::middle::codegen_fn_attrs::{
+    CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry,
+};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::config::{BranchProtection, FunctionReturn, OptLevel, PAuthKey, PacRet};
 use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::spec::{FramePointer, SanitizerSet, StackProbeType, StackProtector};
 use smallvec::SmallVec;
 
-use crate::context::CodegenCx;
+use crate::context::SimpleCx;
 use crate::errors::SanitizerMemtagRequiresMte;
 use crate::llvm::AttributePlace::Function;
 use crate::llvm::{self, AllocKindFlags, Attribute, AttributeKind, AttributePlace, MemoryEffects};
 use crate::value::Value;
-use crate::{attributes, llvm_util};
+use crate::{Session, attributes, llvm_util};
 
 pub(crate) fn apply_to_llfn(llfn: &Value, idx: AttributePlace, attrs: &[&Attribute]) {
     if !attrs.is_empty() {
@@ -30,18 +31,19 @@ pub(crate) fn apply_to_callsite(callsite: &Value, idx: AttributePlace, attrs: &[
 
 /// Get LLVM attribute for the provided inline heuristic.
 pub(crate) fn inline_attr<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: &SimpleCx<'ll>,
+    tcx: TyCtxt<'tcx>,
     instance: ty::Instance<'tcx>,
 ) -> Option<&'ll Attribute> {
     // `optnone` requires `noinline`
-    let codegen_fn_attrs = cx.tcx.codegen_fn_attrs(instance.def_id());
+    let codegen_fn_attrs = tcx.codegen_fn_attrs(instance.def_id());
     let inline = match (codegen_fn_attrs.inline, &codegen_fn_attrs.optimize) {
         (_, OptimizeAttr::DoNotOptimize) => InlineAttr::Never,
-        (InlineAttr::None, _) if instance.def.requires_inline(cx.tcx) => InlineAttr::Hint,
+        (InlineAttr::None, _) if instance.def.requires_inline(tcx) => InlineAttr::Hint,
         (inline, _) => inline,
     };
 
-    if !cx.tcx.sess.opts.unstable_opts.inline_llvm {
+    if !tcx.sess.opts.unstable_opts.inline_llvm {
         // disable LLVM inlining
         return Some(AttributeKind::NoInline.create_attr(cx.llcx));
     }
@@ -51,7 +53,7 @@ pub(crate) fn inline_attr<'ll, 'tcx>(
             Some(AttributeKind::AlwaysInline.create_attr(cx.llcx))
         }
         InlineAttr::Never => {
-            if cx.sess().target.arch != "amdgpu" {
+            if tcx.sess.target.arch != "amdgpu" {
                 Some(AttributeKind::NoInline.create_attr(cx.llcx))
             } else {
                 None
@@ -63,12 +65,13 @@ pub(crate) fn inline_attr<'ll, 'tcx>(
 
 #[inline]
 fn patchable_function_entry_attrs<'ll>(
-    cx: &CodegenCx<'ll, '_>,
+    cx: &SimpleCx<'ll>,
+    sess: &Session,
     attr: Option<PatchableFunctionEntry>,
 ) -> SmallVec<[&'ll Attribute; 2]> {
     let mut attrs = SmallVec::new();
     let patchable_spec = attr.unwrap_or_else(|| {
-        PatchableFunctionEntry::from_config(cx.tcx.sess.opts.unstable_opts.patchable_function_entry)
+        PatchableFunctionEntry::from_config(sess.opts.unstable_opts.patchable_function_entry)
     });
     let entry = patchable_spec.entry();
     let prefix = patchable_spec.prefix();
@@ -91,12 +94,13 @@ fn patchable_function_entry_attrs<'ll>(
 
 /// Get LLVM sanitize attributes.
 #[inline]
-pub(crate) fn sanitize_attrs<'ll>(
-    cx: &CodegenCx<'ll, '_>,
+pub(crate) fn sanitize_attrs<'ll, 'tcx>(
+    cx: &SimpleCx<'ll>,
+    tcx: TyCtxt<'tcx>,
     no_sanitize: SanitizerSet,
 ) -> SmallVec<[&'ll Attribute; 4]> {
     let mut attrs = SmallVec::new();
-    let enabled = cx.tcx.sess.opts.unstable_opts.sanitizer - no_sanitize;
+    let enabled = tcx.sess.opts.unstable_opts.sanitizer - no_sanitize;
     if enabled.contains(SanitizerSet::ADDRESS) || enabled.contains(SanitizerSet::KERNELADDRESS) {
         attrs.push(llvm::AttributeKind::SanitizeAddress.create_attr(cx.llcx));
     }
@@ -114,11 +118,11 @@ pub(crate) fn sanitize_attrs<'ll>(
     }
     if enabled.contains(SanitizerSet::MEMTAG) {
         // Check to make sure the mte target feature is actually enabled.
-        let features = cx.tcx.global_backend_features(());
+        let features = tcx.global_backend_features(());
         let mte_feature =
             features.iter().map(|s| &s[..]).rfind(|n| ["+mte", "-mte"].contains(&&n[..]));
         if let None | Some("-mte") = mte_feature {
-            cx.tcx.dcx().emit_err(SanitizerMemtagRequiresMte);
+            tcx.dcx().emit_err(SanitizerMemtagRequiresMte);
         }
 
         attrs.push(llvm::AttributeKind::SanitizeMemTag.create_attr(cx.llcx));
@@ -139,9 +143,12 @@ pub(crate) fn uwtable_attr(llcx: &llvm::Context, use_sync_unwind: Option<bool>) 
     llvm::CreateUWTableAttr(llcx, async_unwind)
 }
 
-pub(crate) fn frame_pointer_type_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
-    let mut fp = cx.sess().target.frame_pointer;
-    let opts = &cx.sess().opts;
+pub(crate) fn frame_pointer_type_attr<'ll>(
+    cx: &SimpleCx<'ll>,
+    sess: &Session,
+) -> Option<&'ll Attribute> {
+    let mut fp = sess.target.frame_pointer;
+    let opts = &sess.opts;
     // "mcount" function relies on stack pointer.
     // See <https://sourceware.org/binutils/docs/gprof/Implementation.html>.
     if opts.unstable_opts.instrument_mcount {
@@ -156,8 +163,8 @@ pub(crate) fn frame_pointer_type_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'
     Some(llvm::CreateAttrStringValue(cx.llcx, "frame-pointer", attr_value))
 }
 
-fn function_return_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
-    let function_return_attr = match cx.sess().opts.unstable_opts.function_return {
+fn function_return_attr<'ll>(cx: &SimpleCx<'ll>, sess: &Session) -> Option<&'ll Attribute> {
+    let function_return_attr = match sess.opts.unstable_opts.function_return {
         FunctionReturn::Keep => return None,
         FunctionReturn::ThunkExtern => AttributeKind::FnRetThunkExtern,
     };
@@ -167,17 +174,20 @@ fn function_return_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> 
 
 /// Tell LLVM what instrument function to insert.
 #[inline]
-fn instrument_function_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> SmallVec<[&'ll Attribute; 4]> {
+fn instrument_function_attr<'ll>(
+    cx: &SimpleCx<'ll>,
+    sess: &Session,
+) -> SmallVec<[&'ll Attribute; 4]> {
     let mut attrs = SmallVec::new();
-    if cx.sess().opts.unstable_opts.instrument_mcount {
+    if sess.opts.unstable_opts.instrument_mcount {
         // Similar to `clang -pg` behavior. Handled by the
         // `post-inline-ee-instrument` LLVM pass.
 
         // The function name varies on platforms.
         // See test/CodeGen/mcount.c in clang.
-        let mcount_name = match &cx.sess().target.llvm_mcount_intrinsic {
+        let mcount_name = match &sess.target.llvm_mcount_intrinsic {
             Some(llvm_mcount_intrinsic) => llvm_mcount_intrinsic.as_ref(),
-            None => cx.sess().target.mcount.as_ref(),
+            None => sess.target.mcount.as_ref(),
         };
 
         attrs.push(llvm::CreateAttrStringValue(
@@ -186,7 +196,7 @@ fn instrument_function_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> SmallVec<[&'ll Attr
             mcount_name,
         ));
     }
-    if let Some(options) = &cx.sess().opts.unstable_opts.instrument_xray {
+    if let Some(options) = &sess.opts.unstable_opts.instrument_xray {
         // XRay instrumentation is similar to __cyg_profile_func_{enter,exit}.
         // Function prologue and epilogue are instrumented with NOP sleds,
         // a runtime library later replaces them with detours into tracing code.
@@ -217,20 +227,20 @@ fn instrument_function_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> SmallVec<[&'ll Attr
     attrs
 }
 
-fn nojumptables_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
-    if !cx.sess().opts.unstable_opts.no_jump_tables {
+fn nojumptables_attr<'ll>(cx: &SimpleCx<'ll>, sess: &Session) -> Option<&'ll Attribute> {
+    if !sess.opts.unstable_opts.no_jump_tables {
         return None;
     }
 
     Some(llvm::CreateAttrStringValue(cx.llcx, "no-jump-tables", "true"))
 }
 
-fn probestack_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
+fn probestack_attr<'ll, 'tcx>(cx: &SimpleCx<'ll>, tcx: TyCtxt<'tcx>) -> Option<&'ll Attribute> {
     // Currently stack probes seem somewhat incompatible with the address
     // sanitizer and thread sanitizer. With asan we're already protected from
     // stack overflow anyway so we don't really need stack probes regardless.
-    if cx
-        .sess()
+    if tcx
+        .sess
         .opts
         .unstable_opts
         .sanitizer
@@ -240,22 +250,22 @@ fn probestack_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
     }
 
     // probestack doesn't play nice either with `-C profile-generate`.
-    if cx.sess().opts.cg.profile_generate.enabled() {
+    if tcx.sess.opts.cg.profile_generate.enabled() {
         return None;
     }
 
-    let attr_value = match cx.sess().target.stack_probes {
+    let attr_value = match tcx.sess.target.stack_probes {
         StackProbeType::None => return None,
         // Request LLVM to generate the probes inline. If the given LLVM version does not support
         // this, no probe is generated at all (even if the attribute is specified).
         StackProbeType::Inline => "inline-asm",
         // Flag our internal `__rust_probestack` function as the stack probe symbol.
         // This is defined in the `compiler-builtins` crate for each architecture.
-        StackProbeType::Call => &mangle_internal_symbol(cx.tcx, "__rust_probestack"),
+        StackProbeType::Call => &mangle_internal_symbol(tcx, "__rust_probestack"),
         // Pick from the two above based on the LLVM version.
         StackProbeType::InlineOrCall { min_llvm_version_for_inline } => {
             if llvm_util::get_version() < min_llvm_version_for_inline {
-                &mangle_internal_symbol(cx.tcx, "__rust_probestack")
+                &mangle_internal_symbol(tcx, "__rust_probestack")
             } else {
                 "inline-asm"
             }
@@ -264,8 +274,8 @@ fn probestack_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
     Some(llvm::CreateAttrStringValue(cx.llcx, "probe-stack", attr_value))
 }
 
-fn stackprotector_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
-    let sspattr = match cx.sess().stack_protector() {
+fn stackprotector_attr<'ll>(cx: &SimpleCx<'ll>, sess: &Session) -> Option<&'ll Attribute> {
+    let sspattr = match sess.stack_protector() {
         StackProtector::None => return None,
         StackProtector::All => AttributeKind::StackProtectReq,
         StackProtector::Strong => AttributeKind::StackProtectStrong,
@@ -275,33 +285,34 @@ fn stackprotector_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
     Some(sspattr.create_attr(cx.llcx))
 }
 
-fn backchain_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
-    if cx.sess().target.arch != "s390x" {
+fn backchain_attr<'ll>(cx: &SimpleCx<'ll>, sess: &Session) -> Option<&'ll Attribute> {
+    if sess.target.arch != "s390x" {
         return None;
     }
 
-    let requested_features = cx.sess().opts.cg.target_feature.split(',');
+    let requested_features = sess.opts.cg.target_feature.split(',');
     let found_positive = requested_features.clone().any(|r| r == "+backchain");
 
     if found_positive { Some(llvm::CreateAttrString(cx.llcx, "backchain")) } else { None }
 }
 
-pub(crate) fn target_cpu_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> &'ll Attribute {
-    let target_cpu = llvm_util::target_cpu(cx.tcx.sess);
+pub(crate) fn target_cpu_attr<'ll>(cx: &SimpleCx<'ll>, sess: &Session) -> &'ll Attribute {
+    let target_cpu = llvm_util::target_cpu(sess);
     llvm::CreateAttrStringValue(cx.llcx, "target-cpu", target_cpu)
 }
 
-pub(crate) fn tune_cpu_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
-    llvm_util::tune_cpu(cx.tcx.sess)
+pub(crate) fn tune_cpu_attr<'ll>(cx: &SimpleCx<'ll>, sess: &Session) -> Option<&'ll Attribute> {
+    llvm_util::tune_cpu(sess)
         .map(|tune_cpu| llvm::CreateAttrStringValue(cx.llcx, "tune-cpu", tune_cpu))
 }
 
 /// Get the `target-features` LLVM attribute.
-pub(crate) fn target_features_attr<'ll>(
-    cx: &CodegenCx<'ll, '_>,
+pub(crate) fn target_features_attr<'ll, 'tcx>(
+    cx: &SimpleCx<'ll>,
+    tcx: TyCtxt<'tcx>,
     function_features: Vec<String>,
 ) -> Option<&'ll Attribute> {
-    let global_features = cx.tcx.global_backend_features(()).iter().map(String::as_str);
+    let global_features = tcx.global_backend_features(()).iter().map(String::as_str);
     let function_features = function_features.iter().map(String::as_str);
     let target_features =
         global_features.chain(function_features).intersperse(",").collect::<String>();
@@ -311,22 +322,22 @@ pub(crate) fn target_features_attr<'ll>(
 
 /// Get the `NonLazyBind` LLVM attribute,
 /// if the codegen options allow skipping the PLT.
-pub(crate) fn non_lazy_bind_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
+pub(crate) fn non_lazy_bind_attr<'ll>(
+    cx: &SimpleCx<'ll>,
+    sess: &Session,
+) -> Option<&'ll Attribute> {
     // Don't generate calls through PLT if it's not necessary
-    if !cx.sess().needs_plt() {
-        Some(AttributeKind::NonLazyBind.create_attr(cx.llcx))
-    } else {
-        None
-    }
+    if !sess.needs_plt() { Some(AttributeKind::NonLazyBind.create_attr(cx.llcx)) } else { None }
 }
 
 /// Get the default optimizations attrs for a function.
 #[inline]
 pub(crate) fn default_optimisation_attrs<'ll>(
-    cx: &CodegenCx<'ll, '_>,
+    cx: &SimpleCx<'ll>,
+    sess: &Session,
 ) -> SmallVec<[&'ll Attribute; 2]> {
     let mut attrs = SmallVec::new();
-    match cx.sess().opts.optimize {
+    match sess.opts.optimize {
         OptLevel::Size => {
             attrs.push(llvm::AttributeKind::OptimizeForSize.create_attr(cx.llcx));
         }
@@ -347,17 +358,18 @@ fn create_alloc_family_attr(llcx: &llvm::Context) -> &llvm::Attribute {
 /// Composite function which sets LLVM attributes for function depending on its AST (`#[attribute]`)
 /// attributes.
 pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: &SimpleCx<'ll>,
+    tcx: TyCtxt<'tcx>,
     llfn: &'ll Value,
-    instance: ty::Instance<'tcx>,
+    codegen_fn_attrs: &CodegenFnAttrs,
+    instance: Option<ty::Instance<'tcx>>,
 ) {
-    let codegen_fn_attrs = cx.tcx.codegen_instance_attrs(instance.def);
-
+    let sess = tcx.sess;
     let mut to_add = SmallVec::<[_; 16]>::new();
 
     match codegen_fn_attrs.optimize {
         OptimizeAttr::Default => {
-            to_add.extend(default_optimisation_attrs(cx));
+            to_add.extend(default_optimisation_attrs(cx, sess));
         }
         OptimizeAttr::DoNotOptimize => {
             to_add.push(llvm::AttributeKind::OptimizeNone.create_attr(cx.llcx));
@@ -369,21 +381,21 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
         OptimizeAttr::Speed => {}
     }
 
-    if cx.sess().must_emit_unwind_tables() {
-        to_add.push(uwtable_attr(cx.llcx, cx.sess().opts.unstable_opts.use_sync_unwind));
+    if sess.must_emit_unwind_tables() {
+        to_add.push(uwtable_attr(cx.llcx, sess.opts.unstable_opts.use_sync_unwind));
     }
 
-    if cx.sess().opts.unstable_opts.profile_sample_use.is_some() {
+    if sess.opts.unstable_opts.profile_sample_use.is_some() {
         to_add.push(llvm::CreateAttrString(cx.llcx, "use-sample-profile"));
     }
 
     // FIXME: none of these functions interact with source level attributes.
-    to_add.extend(frame_pointer_type_attr(cx));
-    to_add.extend(function_return_attr(cx));
-    to_add.extend(instrument_function_attr(cx));
-    to_add.extend(nojumptables_attr(cx));
-    to_add.extend(probestack_attr(cx));
-    to_add.extend(stackprotector_attr(cx));
+    to_add.extend(frame_pointer_type_attr(cx, sess));
+    to_add.extend(function_return_attr(cx, sess));
+    to_add.extend(instrument_function_attr(cx, sess));
+    to_add.extend(nojumptables_attr(cx, sess));
+    to_add.extend(probestack_attr(cx, tcx));
+    to_add.extend(stackprotector_attr(cx, sess));
 
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NO_BUILTINS) {
         to_add.push(llvm::CreateAttrString(cx.llcx, "no-builtins"));
@@ -404,13 +416,13 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
         // not used.
     } else {
         // Do not set sanitizer attributes for naked functions.
-        to_add.extend(sanitize_attrs(cx, codegen_fn_attrs.no_sanitize));
+        to_add.extend(sanitize_attrs(cx, tcx, codegen_fn_attrs.no_sanitize));
 
         // For non-naked functions, set branch protection attributes on aarch64.
         if let Some(BranchProtection { bti, pac_ret, gcs }) =
-            cx.sess().opts.unstable_opts.branch_protection
+            sess.opts.unstable_opts.branch_protection
         {
-            assert!(cx.sess().target.arch == "aarch64");
+            assert!(sess.target.arch == "aarch64");
             if bti {
                 to_add.push(llvm::CreateAttrString(cx.llcx, "branch-target-enforcement"));
             }
@@ -438,14 +450,15 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
         || codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::ALLOCATOR_ZEROED)
     {
         to_add.push(create_alloc_family_attr(cx.llcx));
-        if let Some(zv) =
-            cx.tcx.get_attr(instance.def_id(), rustc_span::sym::rustc_allocator_zeroed_variant)
+        if let Some(instance) = instance
+            && let Some(zv) =
+                tcx.get_attr(instance.def_id(), rustc_span::sym::rustc_allocator_zeroed_variant)
             && let Some(name) = zv.value_str()
         {
             to_add.push(llvm::CreateAttrStringValue(
                 cx.llcx,
                 "alloc-variant-zeroed",
-                &mangle_internal_symbol(cx.tcx, name.as_str()),
+                &mangle_internal_symbol(tcx, name.as_str()),
             ));
         }
         // apply to argument place instead of function
@@ -490,18 +503,22 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
     if let Some(align) = codegen_fn_attrs.alignment {
         llvm::set_alignment(llfn, align);
     }
-    if let Some(backchain) = backchain_attr(cx) {
+    if let Some(backchain) = backchain_attr(cx, sess) {
         to_add.push(backchain);
     }
-    to_add.extend(patchable_function_entry_attrs(cx, codegen_fn_attrs.patchable_function_entry));
+    to_add.extend(patchable_function_entry_attrs(
+        cx,
+        sess,
+        codegen_fn_attrs.patchable_function_entry,
+    ));
 
     // Always annotate functions with the target-cpu they are compiled for.
     // Without this, ThinLTO won't inline Rust functions into Clang generated
     // functions (because Clang annotates functions this way too).
-    to_add.push(target_cpu_attr(cx));
+    to_add.push(target_cpu_attr(cx, sess));
     // tune-cpu is only conveyed through the attribute for our purpose.
     // The target doesn't care; the subtarget reads our attribute.
-    to_add.extend(tune_cpu_attr(cx));
+    to_add.extend(tune_cpu_attr(cx, sess));
 
     let function_features =
         codegen_fn_attrs.target_features.iter().map(|f| f.name.as_str()).collect::<Vec<&str>>();
@@ -509,7 +526,9 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
     // Apply function attributes as per usual if there are no user defined
     // target features otherwise this will get applied at the callsite.
     if function_features.is_empty() {
-        if let Some(inline_attr) = inline_attr(cx, instance) {
+        if let Some(instance) = instance
+            && let Some(inline_attr) = inline_attr(cx, tcx, instance)
+        {
             to_add.push(inline_attr);
         }
     }
@@ -517,7 +536,7 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
     let function_features = function_features
         .iter()
         // Convert to LLVMFeatures and filter out unavailable ones
-        .flat_map(|feat| llvm_util::to_llvm_features(cx.tcx.sess, feat))
+        .flat_map(|feat| llvm_util::to_llvm_features(sess, feat))
         // Convert LLVMFeatures & dependencies to +<feats>s
         .flat_map(|feat| feat.into_iter().map(|f| format!("+{f}")))
         .chain(codegen_fn_attrs.instruction_set.iter().map(|x| match x {
@@ -526,20 +545,22 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
         }))
         .collect::<Vec<String>>();
 
-    if cx.tcx.sess.target.is_like_wasm {
+    if sess.target.is_like_wasm {
         // If this function is an import from the environment but the wasm
         // import has a specific module/name, apply them here.
-        if let Some(module) = wasm_import_module(cx.tcx, instance.def_id()) {
+        if let Some(instance) = instance
+            && let Some(module) = wasm_import_module(tcx, instance.def_id())
+        {
             to_add.push(llvm::CreateAttrStringValue(cx.llcx, "wasm-import-module", module));
 
             let name =
-                codegen_fn_attrs.symbol_name.unwrap_or_else(|| cx.tcx.item_name(instance.def_id()));
+                codegen_fn_attrs.symbol_name.unwrap_or_else(|| tcx.item_name(instance.def_id()));
             let name = name.as_str();
             to_add.push(llvm::CreateAttrStringValue(cx.llcx, "wasm-import-name", name));
         }
     }
 
-    to_add.extend(target_features_attr(cx, function_features));
+    to_add.extend(target_features_attr(cx, tcx, function_features));
 
     attributes::apply_to_llfn(llfn, Function, &to_add);
 }
