@@ -1,5 +1,5 @@
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/format-args-temporary-scopes.rs:13:25
+  --> $DIR/format-args-temporary-scopes.rs:12:25
    |
 LL |     println!("{:?}", { &temp() });
    |                      ---^^^^^---
@@ -11,7 +11,19 @@ LL |     println!("{:?}", { &temp() });
    = note: consider using a `let` binding to create a longer lived value
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/format-args-temporary-scopes.rs:19:29
+  --> $DIR/format-args-temporary-scopes.rs:17:48
+   |
+LL |     println!("{:?}", { std::convert::identity(&temp()) });
+   |                      --------------------------^^^^^^---
+   |                      |                         |     |
+   |                      |                         |     temporary value is freed at the end of this statement
+   |                      |                         creates a temporary value which is freed while still in use
+   |                      borrow later used here
+   |
+   = note: consider using a `let` binding to create a longer lived value
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/format-args-temporary-scopes.rs:23:29
    |
 LL |     println!("{:?}{:?}", { &temp() }, ());
    |                          ---^^^^^---
@@ -22,6 +34,56 @@ LL |     println!("{:?}{:?}", { &temp() }, ());
    |
    = note: consider using a `let` binding to create a longer lived value
 
-error: aborting due to 2 previous errors
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/format-args-temporary-scopes.rs:26:52
+   |
+LL |     println!("{:?}{:?}", { std::convert::identity(&temp()) }, ());
+   |                          --------------------------^^^^^^---
+   |                          |                         |     |
+   |                          |                         |     temporary value is freed at the end of this statement
+   |                          |                         creates a temporary value which is freed while still in use
+   |                          borrow later used here
+   |
+   = note: consider using a `let` binding to create a longer lived value
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/format-args-temporary-scopes.rs:40:90
+   |
+LL |     println!("{:?}{:?}", (), match true { true => &"" as &dyn std::fmt::Debug, false => &temp() });
+   |                              ------------------------------------------------------------^^^^^---
+   |                              |                                                           |    |
+   |                              |                                                           |    temporary value is freed at the end of this statement
+   |                              |                                                           creates a temporary value which is freed while still in use
+   |                              borrow later used here
+   |
+   = note: consider using a `let` binding to create a longer lived value
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/format-args-temporary-scopes.rs:33:41
+   |
+LL |     println!("{:?}{:?}", (), if true { &format!("") } else { "" });
+   |                                        -^^^^^^^^^^-
+   |                                        ||         |
+   |                                        ||         temporary value is freed at the end of this statement
+   |                                        |creates a temporary value which is freed while still in use
+   |                                        borrow later used here
+   |
+   = note: consider using a `let` binding to create a longer lived value
+   = note: this error originates in the macro `format` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/format-args-temporary-scopes.rs:36:64
+   |
+LL |     println!("{:?}{:?}", (), if true { std::convert::identity(&format!("")) } else { "" });
+   |                                        ------------------------^^^^^^^^^^^-
+   |                                        |                       |          |
+   |                                        |                       |          temporary value is freed at the end of this statement
+   |                                        |                       creates a temporary value which is freed while still in use
+   |                                        borrow later used here
+   |
+   = note: consider using a `let` binding to create a longer lived value
+   = note: this error originates in the macro `format` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 7 previous errors
 
 For more information about this error, try `rustc --explain E0716`.
