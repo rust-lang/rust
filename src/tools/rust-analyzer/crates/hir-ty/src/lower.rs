@@ -299,6 +299,29 @@ impl<'a> TyLoweringContext<'a> {
                 const_type,
                 self.resolver.krate(),
             ),
+            hir_def::hir::Expr::UnaryOp { expr: inner_expr, op: hir_def::hir::UnaryOp::Neg } => {
+                if let hir_def::hir::Expr::Literal(literal) = &self.store[*inner_expr] {
+                    // Only handle negation for signed integers and floats
+                    match literal {
+                        hir_def::hir::Literal::Int(_, _) | hir_def::hir::Literal::Float(_, _) => {
+                            if let Some(negated_literal) = literal.clone().negate() {
+                                intern_const_ref(
+                                    self.db,
+                                    &negated_literal.into(),
+                                    const_type,
+                                    self.resolver.krate(),
+                                )
+                            } else {
+                                unknown_const(const_type)
+                            }
+                        }
+                        // For unsigned integers, chars, bools, etc., negation is not meaningful
+                        _ => unknown_const(const_type),
+                    }
+                } else {
+                    unknown_const(const_type)
+                }
+            }
             _ => unknown_const(const_type),
         }
     }
