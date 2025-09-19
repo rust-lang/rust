@@ -137,6 +137,122 @@ impl<T: 'static> fmt::Debug for LocalKey<T> {
 #[unstable(feature = "thread_local_internals", issue = "none")]
 #[rustc_macro_transparency = "semitransparent"]
 pub macro thread_local_process_attrs {
+
+    // Parse `cfg_attr` to figure out whether it's a `rustc_align_static`.
+    // Each `cfg_attr` can have zero or more attributes on the RHS, and can be nested.
+
+    // finished parsing the `cfg_attr`, it had no `rustc_align_static`
+    (
+        [] [$(#[$($prev_other_attrs:tt)*])*];
+        @processing_cfg_attr { pred: ($($predicate:tt)*), rhs: [] };
+        [$($prev_align_attrs_ret:tt)*] [$($prev_other_attrs_ret:tt)*];
+        $($rest:tt)*
+    ) => (
+        $crate::thread::local_impl::thread_local_process_attrs!(
+            [$($prev_align_attrs_ret)*] [$($prev_other_attrs_ret)* #[cfg_attr($($predicate)*, $($($prev_other_attrs)*),*)]];
+            $($rest)*
+        );
+    ),
+
+    // finished parsing the `cfg_attr`, it had nothing but `rustc_align_static`
+    (
+        [$(#[$($prev_align_attrs:tt)*])+] [];
+        @processing_cfg_attr { pred: ($($predicate:tt)*), rhs: [] };
+        [$($prev_align_attrs_ret:tt)*] [$($prev_other_attrs_ret:tt)*];
+        $($rest:tt)*
+    ) => (
+        $crate::thread::local_impl::thread_local_process_attrs!(
+            [$($prev_align_attrs_ret)*  #[cfg_attr($($predicate)*, $($($prev_align_attrs)*),+)]] [$($prev_other_attrs_ret)*];
+            $($rest)*
+        );
+    ),
+
+    // finished parsing the `cfg_attr`, it had a mix of `rustc_align_static` and other attrs
+    (
+        [$(#[$($prev_align_attrs:tt)*])+] [$(#[$($prev_other_attrs:tt)*])+];
+        @processing_cfg_attr { pred: ($($predicate:tt)*), rhs: [] };
+        [$($prev_align_attrs_ret:tt)*] [$($prev_other_attrs_ret:tt)*];
+        $($rest:tt)*
+    ) => (
+        $crate::thread::local_impl::thread_local_process_attrs!(
+            [$($prev_align_attrs_ret)*  #[cfg_attr($($predicate)*, $($($prev_align_attrs)*),+)]] [$($prev_other_attrs_ret)* #[cfg_attr($($predicate)*, $($($prev_other_attrs)*),+)]];
+            $($rest)*
+        );
+    ),
+
+    // it's a `rustc_align_static`
+    (
+        [$($prev_align_attrs:tt)*] [$($prev_other_attrs:tt)*];
+        @processing_cfg_attr { pred: ($($predicate:tt)*), rhs: [rustc_align_static($($align_static_args:tt)*) $(, $($attr_rhs:tt)*)?] };
+        $($rest:tt)*
+    ) => (
+        $crate::thread::local_impl::thread_local_process_attrs!(
+            [$($prev_align_attrs)* #[rustc_align_static($($align_static_args)*)]] [$($prev_other_attrs)*];
+            @processing_cfg_attr { pred: ($($predicate)*), rhs: [$($($attr_rhs)*)?] };
+            $($rest)*
+        );
+    ),
+
+    // it's a nested `cfg_attr(true, ...)`; recurse into RHS
+    (
+        [$($prev_align_attrs:tt)*] [$($prev_other_attrs:tt)*];
+        @processing_cfg_attr { pred: ($($predicate:tt)*), rhs: [cfg_attr(true, $($cfg_rhs:tt)*) $(, $($attr_rhs:tt)*)?] };
+        $($rest:tt)*
+    ) => (
+        $crate::thread::local_impl::thread_local_process_attrs!(
+            [] [];
+            @processing_cfg_attr { pred: (true), rhs: [$($cfg_rhs)*] };
+            [$($prev_align_attrs)*] [$($prev_other_attrs)*];
+            @processing_cfg_attr { pred: ($($predicate)*), rhs: [$($($attr_rhs)*)?] };
+            $($rest)*
+        );
+    ),
+
+    // it's a nested `cfg_attr(false, ...)`; recurse into RHS
+    (
+        [$($prev_align_attrs:tt)*] [$($prev_other_attrs:tt)*];
+        @processing_cfg_attr { pred: ($($predicate:tt)*), rhs: [cfg_attr(false, $($cfg_rhs:tt)*) $(, $($attr_rhs:tt)*)?] };
+        $($rest:tt)*
+    ) => (
+        $crate::thread::local_impl::thread_local_process_attrs!(
+            [] [];
+            @processing_cfg_attr { pred: (false), rhs: [$($cfg_rhs)*] };
+            [$($prev_align_attrs)*] [$($prev_other_attrs)*];
+            @processing_cfg_attr { pred: ($($predicate)*), rhs: [$($($attr_rhs)*)?] };
+            $($rest)*
+        );
+    ),
+
+
+    // it's a nested `cfg_attr(..., ...)`; recurse into RHS
+    (
+        [$($prev_align_attrs:tt)*] [$($prev_other_attrs:tt)*];
+        @processing_cfg_attr { pred: ($($predicate:tt)*), rhs: [cfg_attr($cfg_lhs:meta, $($cfg_rhs:tt)*) $(, $($attr_rhs:tt)*)?] };
+        $($rest:tt)*
+    ) => (
+        $crate::thread::local_impl::thread_local_process_attrs!(
+            [] [];
+            @processing_cfg_attr { pred: ($cfg_lhs), rhs: [$($cfg_rhs)*] };
+            [$($prev_align_attrs)*] [$($prev_other_attrs)*];
+            @processing_cfg_attr { pred: ($($predicate)*), rhs: [$($($attr_rhs)*)?] };
+            $($rest)*
+        );
+    ),
+
+    // it's some other attribute
+    (
+        [$($prev_align_attrs:tt)*] [$($prev_other_attrs:tt)*];
+        @processing_cfg_attr { pred: ($($predicate:tt)*), rhs: [$meta:meta $(, $($attr_rhs:tt)*)?] };
+        $($rest:tt)*
+    ) => (
+        $crate::thread::local_impl::thread_local_process_attrs!(
+            [$($prev_align_attrs)*] [$($prev_other_attrs)* #[$meta]];
+            @processing_cfg_attr { pred: ($($predicate)*), rhs: [$($($attr_rhs)*)?] };
+            $($rest)*
+        );
+    ),
+
+
     // Separate attributes into `rustc_align_static` and everything else:
 
     // `rustc_align_static` attribute
@@ -147,10 +263,31 @@ pub macro thread_local_process_attrs {
         );
     ),
 
-    // `cfg_attr` attribute; parse it to determine whether the RHS is `rustc_align_static`
-    ([$($prev_align_attrs:tt)*] [$($prev_other_attrs:tt)*]; #[cfg_attr $($attr_rest:tt)*] $($rest:tt)*) => (
+    // `cfg_attr(true, ...)` attribute; parse it
+    ([$($prev_align_attrs:tt)*] [$($prev_other_attrs:tt)*]; #[cfg_attr(true, $($cfg_rhs:tt)*)] $($rest:tt)*) => (
         $crate::thread::local_impl::thread_local_process_attrs!(
-            @processing_cfg_attr #[cfg_attr $($attr_rest)*] at [cfg_attr $($attr_rest)*];
+            [] [];
+            @processing_cfg_attr { pred: (true), rhs: [$($cfg_rhs)*] };
+            [$($prev_align_attrs)*] [$($prev_other_attrs)*];
+            $($rest)*
+        );
+    ),
+
+    // `cfg_attr(false, ...)` attribute; parse it
+    ([$($prev_align_attrs:tt)*] [$($prev_other_attrs:tt)*]; #[cfg_attr(false, $($cfg_rhs:tt)*)] $($rest:tt)*) => (
+        $crate::thread::local_impl::thread_local_process_attrs!(
+            [] [];
+            @processing_cfg_attr { pred: (false), rhs: [$($cfg_rhs)*] };
+            [$($prev_align_attrs)*] [$($prev_other_attrs)*];
+            $($rest)*
+        );
+    ),
+
+    // `cfg_attr(..., ...)` attribute; parse it
+    ([$($prev_align_attrs:tt)*] [$($prev_other_attrs:tt)*]; #[cfg_attr($cfg_pred:meta, $($cfg_rhs:tt)*)] $($rest:tt)*) => (
+        $crate::thread::local_impl::thread_local_process_attrs!(
+            [] [];
+            @processing_cfg_attr { pred: ($cfg_pred), rhs: [$($cfg_rhs)*] };
             [$($prev_align_attrs)*] [$($prev_other_attrs)*];
             $($rest)*
         );
@@ -181,34 +318,6 @@ pub macro thread_local_process_attrs {
     ([$($prev_align_attrs:tt)*] [$($prev_other_attrs:tt)*]; #[$($attr:tt)*] $($rest:tt)*) => (
         $crate::thread::local_impl::thread_local_process_attrs!(
             [$($prev_align_attrs)*] [$($prev_other_attrs)* #[$($attr)*]];
-            $($rest)*
-        );
-    ),
-
-
-    // Parse `cfg_attr` to figure out whether it's a `rustc_align_static`:
-
-    // yes, it's a `rustc_align_static`
-    (@processing_cfg_attr #[$($full_attr:tt)*] at [rustc_align_static $($attr_rest:tt)*]; [$($prev_align_attrs:tt)*] [$($prev_other_attrs:tt)*]; $($rest:tt)*) => (
-        $crate::thread::local_impl::thread_local_process_attrs!(
-            [$($prev_align_attrs)* #[$($full_attr)*]] [$($prev_other_attrs)*];
-            $($rest)*
-        );
-    ),
-
-    // it's a nested `cfg_attr`; recurse into RHS
-    (@processing_cfg_attr #[$($full_attr:tt)*] at [cfg_attr($cfg_lhs:expr, $($cfg_rhs:tt)*)]; [$($prev_align_attrs:tt)*] [$($prev_other_attrs:tt)*]; $($rest:tt)*) => (
-        $crate::thread::local_impl::thread_local_process_attrs!(
-            @processing_cfg_attr #[$($full_attr)*] at [$($cfg_rhs)*];
-            [$($prev_align_attrs)*] [$($prev_other_attrs)*];
-            $($rest)*
-        );
-    ),
-
-    // it's neither of the two
-    (@processing_cfg_attr #[$($full_attr:tt)*] at [$($remaining_attr:tt)*]; [$($prev_align_attrs:tt)*] [$($prev_other_attrs:tt)*]; $($rest:tt)*) => (
-        $crate::thread::local_impl::thread_local_process_attrs!(
-            [$($prev_align_attrs)*] [$($prev_other_attrs)* #[$($full_attr)*]];
             $($rest)*
         );
     ),

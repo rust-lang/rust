@@ -1,6 +1,7 @@
 //@ run-pass
 //@ compile-flags: --cfg FOURTY_TWO="42" --cfg TRUE --check-cfg=cfg(FOURTY_TWO,values("42")) --check-cfg=cfg(TRUE)
 #![feature(static_align)]
+#![deny(non_upper_case_globals)]
 
 use std::cell::Cell;
 
@@ -66,6 +67,18 @@ thread_local! {
     /// I love doc comments.
     /// I love doc comments.
     static HASDROP_CONST_LOCAL: Cell<HasDrop> = const { Cell::new(HasDrop(core::ptr::null())) };
+
+    #[cfg_attr(TRUE,)]
+    #[cfg_attr(true,)]
+    #[cfg_attr(false,)]
+    #[cfg_attr(
+        TRUE,
+        rustc_align_static(32),
+        cfg_attr(true, allow(non_upper_case_globals, reason = "test attribute handling")),
+        cfg_attr(false,)
+    )]
+    #[cfg_attr(false, rustc_align_static(0))]
+    static more_attr_testing: u64 = 0;
 }
 
 fn thread_local_ptr<T>(key: &'static std::thread::LocalKey<T>) -> *const T {
@@ -83,6 +96,7 @@ fn main() {
     assert!(thread_local_ptr(&CONST_LOCAL).addr().is_multiple_of(4096));
     assert!(thread_local_ptr(&HASDROP_LOCAL).addr().is_multiple_of(4096));
     assert!(thread_local_ptr(&HASDROP_CONST_LOCAL).addr().is_multiple_of(4096));
+    assert!(thread_local_ptr(&more_attr_testing).addr().is_multiple_of(32));
 
     // Test that address (and therefore alignment) is maintained during drop
     let hasdrop_ptr = thread_local_ptr(&HASDROP_LOCAL);

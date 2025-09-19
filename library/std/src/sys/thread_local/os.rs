@@ -59,46 +59,45 @@ pub macro thread_local_inner {
     },
 
     // process a single `rustc_align_static` attribute
-    (@align_single $final_align:ident, rustc_align_static $($attr_rest:tt)*) => {
-        #[allow(unused_parens)]
-        let new_align: usize = $($attr_rest)*;
+    (@align_single $final_align:ident, rustc_align_static($($align:tt)*) $(, $($attr_rest:tt)+)?) => {
+        let new_align: $crate::primitive::usize = $($align)*;
         if new_align > $final_align {
             $final_align = new_align;
         }
+
+        $($crate::thread::local_impl::thread_local_inner!(@align_single $final_align, $($attr_rest)+);)?
     },
 
     // process a single `cfg_attr` attribute
     // by translating it into a `cfg`ed block and recursing.
     // https://doc.rust-lang.org/reference/conditional-compilation.html#railroad-ConfigurationPredicate
 
-    (@align_single $final_align:ident, cfg_attr(true, $($cfg_rhs:tt)*)) => {
+    (@align_single $final_align:ident, cfg_attr(true, $($cfg_rhs:tt)*) $(, $($attr_rest:tt)+)?) => {
         #[cfg(true)]
         {
             $crate::thread::local_impl::thread_local_inner!(@align_single $final_align, $($cfg_rhs)*);
         }
+
+        $($crate::thread::local_impl::thread_local_inner!(@align_single $final_align, $($attr_rest)+);)?
     },
 
-    (@align_single $final_align:ident, cfg_attr(false, $($cfg_rhs:tt)*)) => {
+    (@align_single $final_align:ident, cfg_attr(false, $($cfg_rhs:tt)*) $(, $($attr_rest:tt)+)?) => {
         #[cfg(false)]
         {
             $crate::thread::local_impl::thread_local_inner!(@align_single $final_align, $($cfg_rhs)*);
         }
+
+        $($crate::thread::local_impl::thread_local_inner!(@align_single $final_align, $($attr_rest)+);)?
     },
 
-    (@align_single $final_align:ident, cfg_attr($cfg_op:ident ($($cfg_preds:tt)*), $($cfg_rhs:tt)*)) => {
-        #[cfg($cfg_op ($($cfg_preds)*))]
+    (@align_single $final_align:ident, cfg_attr($cfg_pred:meta, $($cfg_rhs:tt)*) $(, $($attr_rest:tt)+)?) => {
+        #[cfg($cfg_pred)]
         {
             $crate::thread::local_impl::thread_local_inner!(@align_single $final_align, $($cfg_rhs)*);
         }
-    },
 
-    (@align_single $final_align:ident, cfg_attr($cfg_ident:ident $(= $cfg_val:expr)?, $($cfg_rhs:tt)*)) => {
-        #[cfg($cfg_ident $(= $cfg_val)?)]
-        {
-            $crate::thread::local_impl::thread_local_inner!(@align_single $final_align, $($cfg_rhs)*);
-        }
+        $($crate::thread::local_impl::thread_local_inner!(@align_single $final_align, $($attr_rest)+);)?
     },
-
 
     ($(#[$attr:meta])* $vis:vis $name:ident, $t:ty, $(#[$($align_attr:tt)*])*, $($init:tt)*) => {
         $(#[$attr])* $vis const $name: $crate::thread::LocalKey<$t> =
