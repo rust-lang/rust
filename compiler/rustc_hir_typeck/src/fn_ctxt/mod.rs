@@ -356,6 +356,12 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
                     // of error recovery.
                     field_indices.push((index, subindex));
 
+                    if field.vis.is_accessible_from(sub_def_scope, self.tcx) {
+                        self.tcx.check_stability(field.did, Some(hir_id), span, None);
+                    } else {
+                        self.private_field_err(ident, container_def.did()).emit();
+                    }
+
                     if !last {
                         let field_ty = self.field_ty(span, field, args);
 
@@ -370,12 +376,6 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
                                 last: false,
                             },
                         );
-
-                        if field.vis.is_accessible_from(sub_def_scope, self.tcx) {
-                            self.tcx.check_stability(field.did, Some(hir_id), span, None);
-                        } else {
-                            self.private_field_err(ident, container_def.did()).emit();
-                        }
 
                         current_container = field_ty;
                     }
@@ -395,6 +395,12 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
                         // Save the index of all fields regardless of their visibility in case
                         // of error recovery.
                         field_indices.push((FIRST_VARIANT, index));
+
+                        if field.vis.is_accessible_from(def_scope, self.tcx) {
+                            self.tcx.check_stability(field.did, Some(hir_id), span, None);
+                        } else {
+                            self.private_field_err(ident, container_def.did()).emit();
+                        }
 
                         if !last {
                             let field_ty = self.field_ty(span, field, args);
@@ -416,13 +422,6 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
                                     // not.
                                 }
                             }
-
-                            if field.vis.is_accessible_from(def_scope, self.tcx) {
-                                self.tcx.check_stability(field.did, Some(hir_id), span, None);
-                            } else {
-                                self.private_field_err(ident, container_def.did()).emit();
-                            }
-
                             current_container = field_ty;
                         }
 
