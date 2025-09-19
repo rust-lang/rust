@@ -31,7 +31,7 @@ pub fn _mm_cvti64_sh(a: __m128h, b: i64) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtsi2sh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_cvt_roundi64_sh<const ROUNDING: i32>(a: __m128h, b: i64) -> __m128h {
     unsafe {
@@ -69,7 +69,7 @@ pub fn _mm_cvtu64_sh(a: __m128h, b: u64) -> __m128h {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtusi2sh, ROUNDING = 8))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_cvt_roundu64_sh<const ROUNDING: i32>(a: __m128h, b: u64) -> __m128h {
     unsafe {
@@ -105,7 +105,7 @@ pub fn _mm_cvtsh_i64(a: __m128h) -> i64 {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtsh2si, ROUNDING = 8))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_cvt_roundsh_i64<const ROUNDING: i32>(a: __m128h) -> i64 {
     unsafe {
@@ -141,7 +141,7 @@ pub fn _mm_cvtsh_u64(a: __m128h) -> u64 {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtsh2usi, ROUNDING = 8))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_cvt_roundsh_u64<const ROUNDING: i32>(a: __m128h) -> u64 {
     unsafe {
@@ -171,7 +171,7 @@ pub fn _mm_cvttsh_i64(a: __m128h) -> i64 {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvttsh2si, SAE = 8))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_cvtt_roundsh_i64<const SAE: i32>(a: __m128h) -> i64 {
     unsafe {
@@ -201,7 +201,7 @@ pub fn _mm_cvttsh_u64(a: __m128h) -> u64 {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvttsh2usi, SAE = 8))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_cvtt_roundsh_u64<const SAE: i32>(a: __m128h) -> u64 {
     unsafe {

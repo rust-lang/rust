@@ -51,7 +51,7 @@ pub fn _mm_extract_si64(x: __m128i, y: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse4a")]
 #[cfg_attr(test, assert_instr(extrq, LEN = 5, IDX = 5))]
-#[rustc_legacy_const_generics(1, 2)]
+#[rustc_deprecated_legacy_const_generics(1, 2)]
 #[stable(feature = "simd_x86_updates", since = "1.82.0")]
 pub fn _mm_extracti_si64<const LEN: i32, const IDX: i32>(x: __m128i) -> __m128i {
     // LLVM mentions that it is UB if these are not satisfied
@@ -87,7 +87,7 @@ pub fn _mm_insert_si64(x: __m128i, y: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse4a")]
 #[cfg_attr(test, assert_instr(insertq, LEN = 5, IDX = 5))]
-#[rustc_legacy_const_generics(2, 3)]
+#[rustc_deprecated_legacy_const_generics(2, 3)]
 #[stable(feature = "simd_x86_updates", since = "1.82.0")]
 pub fn _mm_inserti_si64<const LEN: i32, const IDX: i32>(x: __m128i, y: __m128i) -> __m128i {
     // LLVM mentions that it is UB if these are not satisfied

@@ -160,7 +160,7 @@ mod sealed {
 /// Vector permute.
 #[inline]
 #[target_feature(enable = "vsx")]
-//#[rustc_legacy_const_generics(2)]
+//#[rustc_deprecated_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_powerpc", issue = "111145")]
 pub unsafe fn vec_xxpermdi<T, const DM: i32>(a: T, b: T) -> T
 where

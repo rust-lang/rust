@@ -1408,7 +1408,7 @@ pub unsafe fn __msa_addv_d(a: v2i64, b: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(addvi.b, imm5 = 0b10111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_addvi_b<const IMM5: i32>(a: v16i8) -> v16i8 {
     static_assert_uimm_bits!(IMM5, 5);
@@ -1424,7 +1424,7 @@ pub unsafe fn __msa_addvi_b<const IMM5: i32>(a: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(addvi.h, imm5 = 0b10111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_addvi_h<const IMM5: i32>(a: v8i16) -> v8i16 {
     static_assert_uimm_bits!(IMM5, 5);
@@ -1440,7 +1440,7 @@ pub unsafe fn __msa_addvi_h<const IMM5: i32>(a: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(addvi.w, imm5 = 0b10111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_addvi_w<const IMM5: i32>(a: v4i32) -> v4i32 {
     static_assert_uimm_bits!(IMM5, 5);
@@ -1456,7 +1456,7 @@ pub unsafe fn __msa_addvi_w<const IMM5: i32>(a: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(addvi.d, imm5 = 0b10111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_addvi_d<const IMM5: i32>(a: v2i64) -> v2i64 {
     static_assert_uimm_bits!(IMM5, 5);
@@ -1487,7 +1487,7 @@ pub unsafe fn __msa_and_v(a: v16u8, b: v16u8) -> v16u8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(andi.b, imm8 = 0b10010111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_andi_b<const IMM8: i32>(a: v16u8) -> v16u8 {
     static_assert_uimm_bits!(IMM8, 8);
@@ -1939,7 +1939,7 @@ pub unsafe fn __msa_bclr_d(a: v2u64, b: v2u64) -> v2u64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bclri.b, imm3 = 0b111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_bclri_b<const IMM3: i32>(a: v16u8) -> v16u8 {
     static_assert_uimm_bits!(IMM3, 3);
@@ -1955,7 +1955,7 @@ pub unsafe fn __msa_bclri_b<const IMM3: i32>(a: v16u8) -> v16u8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bclri.h, imm4 = 0b1111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_bclri_h<const IMM4: i32>(a: v8u16) -> v8u16 {
     static_assert_uimm_bits!(IMM4, 4);
@@ -1971,7 +1971,7 @@ pub unsafe fn __msa_bclri_h<const IMM4: i32>(a: v8u16) -> v8u16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bclri.w, imm5 = 0b11111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_bclri_w<const IMM5: i32>(a: v4u32) -> v4u32 {
     static_assert_uimm_bits!(IMM5, 5);
@@ -1987,7 +1987,7 @@ pub unsafe fn __msa_bclri_w<const IMM5: i32>(a: v4u32) -> v4u32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bclri.d, imm6 = 0b111111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_bclri_d<const IMM6: i32>(a: v2u64) -> v2u64 {
     static_assert_uimm_bits!(IMM6, 6);
@@ -2063,7 +2063,7 @@ pub unsafe fn __msa_binsl_d(a: v2u64, b: v2u64, c: v2u64) -> v2u64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(binsli.b, imm3 = 0b111))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_binsli_b<const IMM3: i32>(a: v16u8, b: v16u8) -> v16u8 {
     static_assert_uimm_bits!(IMM3, 3);
@@ -2079,7 +2079,7 @@ pub unsafe fn __msa_binsli_b<const IMM3: i32>(a: v16u8, b: v16u8) -> v16u8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(binsli.h, imm4 = 0b1111))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_binsli_h<const IMM4: i32>(a: v8u16, b: v8u16) -> v8u16 {
     static_assert_uimm_bits!(IMM4, 4);
@@ -2095,7 +2095,7 @@ pub unsafe fn __msa_binsli_h<const IMM4: i32>(a: v8u16, b: v8u16) -> v8u16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(binsli.w, imm5 = 0b11111))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_binsli_w<const IMM5: i32>(a: v4u32, b: v4u32) -> v4u32 {
     static_assert_uimm_bits!(IMM5, 5);
@@ -2111,7 +2111,7 @@ pub unsafe fn __msa_binsli_w<const IMM5: i32>(a: v4u32, b: v4u32) -> v4u32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(binsli.d, imm6 = 0b111111))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_binsli_d<const IMM6: i32>(a: v2u64, b: v2u64) -> v2u64 {
     static_assert_uimm_bits!(IMM6, 6);
@@ -2187,7 +2187,7 @@ pub unsafe fn __msa_binsr_d(a: v2u64, b: v2u64, c: v2u64) -> v2u64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(binsri.b, imm3 = 0b111))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_binsri_b<const IMM3: i32>(a: v16u8, b: v16u8) -> v16u8 {
     static_assert_uimm_bits!(IMM3, 3);
@@ -2203,7 +2203,7 @@ pub unsafe fn __msa_binsri_b<const IMM3: i32>(a: v16u8, b: v16u8) -> v16u8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(binsri.h, imm4 = 0b1111))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_binsri_h<const IMM4: i32>(a: v8u16, b: v8u16) -> v8u16 {
     static_assert_uimm_bits!(IMM4, 4);
@@ -2219,7 +2219,7 @@ pub unsafe fn __msa_binsri_h<const IMM4: i32>(a: v8u16, b: v8u16) -> v8u16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(binsri.w, imm5 = 0b11111))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_binsri_w<const IMM5: i32>(a: v4u32, b: v4u32) -> v4u32 {
     static_assert_uimm_bits!(IMM5, 5);
@@ -2235,7 +2235,7 @@ pub unsafe fn __msa_binsri_w<const IMM5: i32>(a: v4u32, b: v4u32) -> v4u32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(binsri.d, imm6 = 0b111111))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_binsri_d<const IMM6: i32>(a: v2u64, b: v2u64) -> v2u64 {
     static_assert_uimm_bits!(IMM6, 6);
@@ -2266,7 +2266,7 @@ pub unsafe fn __msa_bmnz_v(a: v16u8, b: v16u8, c: v16u8) -> v16u8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bmnzi.b, imm8 = 0b11111111))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_bmnzi_b<const IMM8: i32>(a: v16u8, b: v16u8) -> v16u8 {
     static_assert_uimm_bits!(IMM8, 8);
@@ -2297,7 +2297,7 @@ pub unsafe fn __msa_bmz_v(a: v16u8, b: v16u8, c: v16u8) -> v16u8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bmzi.b, imm8 = 0b11111111))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_bmzi_b<const IMM8: i32>(a: v16u8, b: v16u8) -> v16u8 {
     static_assert_uimm_bits!(IMM8, 8);
@@ -2373,7 +2373,7 @@ pub unsafe fn __msa_bneg_d(a: v2u64, b: v2u64) -> v2u64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bnegi.b, imm3 = 0b111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_bnegi_b<const IMM3: i32>(a: v16u8) -> v16u8 {
     static_assert_uimm_bits!(IMM3, 3);
@@ -2389,7 +2389,7 @@ pub unsafe fn __msa_bnegi_b<const IMM3: i32>(a: v16u8) -> v16u8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bnegi.h, imm4 = 0b1111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_bnegi_h<const IMM4: i32>(a: v8u16) -> v8u16 {
     static_assert_uimm_bits!(IMM4, 4);
@@ -2405,7 +2405,7 @@ pub unsafe fn __msa_bnegi_h<const IMM4: i32>(a: v8u16) -> v8u16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bnegi.w, imm5 = 0b11111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_bnegi_w<const IMM5: i32>(a: v4u32) -> v4u32 {
     static_assert_uimm_bits!(IMM5, 5);
@@ -2421,7 +2421,7 @@ pub unsafe fn __msa_bnegi_w<const IMM5: i32>(a: v4u32) -> v4u32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bnegi.d, imm6 = 0b111111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_bnegi_d<const IMM6: i32>(a: v2u64) -> v2u64 {
     static_assert_uimm_bits!(IMM6, 6);
@@ -2513,7 +2513,7 @@ pub unsafe fn __msa_bsel_v(a: v16u8, b: v16u8, c: v16u8) -> v16u8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bseli.b, imm8 = 0b11111111))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_bseli_b<const IMM8: i32>(a: v16u8, b: v16u8) -> v16u8 {
     static_assert_uimm_bits!(IMM8, 8);
@@ -2589,7 +2589,7 @@ pub unsafe fn __msa_bset_d(a: v2u64, b: v2u64) -> v2u64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bseti.b, imm3 = 0b111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_bseti_b<const IMM3: i32>(a: v16u8) -> v16u8 {
     static_assert_uimm_bits!(IMM3, 3);
@@ -2605,7 +2605,7 @@ pub unsafe fn __msa_bseti_b<const IMM3: i32>(a: v16u8) -> v16u8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bseti.h, imm4 = 0b1111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_bseti_h<const IMM4: i32>(a: v8u16) -> v8u16 {
     static_assert_uimm_bits!(IMM4, 4);
@@ -2621,7 +2621,7 @@ pub unsafe fn __msa_bseti_h<const IMM4: i32>(a: v8u16) -> v8u16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bseti.w, imm5 = 0b11111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_bseti_w<const IMM5: i32>(a: v4u32) -> v4u32 {
     static_assert_uimm_bits!(IMM5, 5);
@@ -2637,7 +2637,7 @@ pub unsafe fn __msa_bseti_w<const IMM5: i32>(a: v4u32) -> v4u32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bseti.d, imm6 = 0b111111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_bseti_d<const IMM6: i32>(a: v2u64) -> v2u64 {
     static_assert_uimm_bits!(IMM6, 6);
@@ -2770,7 +2770,7 @@ pub unsafe fn __msa_ceq_d(a: v2i64, b: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ceqi.b, imm_s5 = 0b11111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_ceqi_b<const IMM_S5: i32>(a: v16i8) -> v16i8 {
     static_assert_simm_bits!(IMM_S5, 5);
@@ -2786,7 +2786,7 @@ pub unsafe fn __msa_ceqi_b<const IMM_S5: i32>(a: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ceqi.h, imm_s5 = 0b11111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_ceqi_h<const IMM_S5: i32>(a: v8i16) -> v8i16 {
     static_assert_simm_bits!(IMM_S5, 5);
@@ -2802,7 +2802,7 @@ pub unsafe fn __msa_ceqi_h<const IMM_S5: i32>(a: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ceqi.w, imm_s5 = 0b11111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_ceqi_w<const IMM_S5: i32>(a: v4i32) -> v4i32 {
     static_assert_simm_bits!(IMM_S5, 5);
@@ -2818,7 +2818,7 @@ pub unsafe fn __msa_ceqi_w<const IMM_S5: i32>(a: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ceqi.d, imm_s5 = 0b11111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_ceqi_d<const IMM_S5: i32>(a: v2i64) -> v2i64 {
     static_assert_simm_bits!(IMM_S5, 5);
@@ -2833,7 +2833,7 @@ pub unsafe fn __msa_ceqi_d<const IMM_S5: i32>(a: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(cfcmsa, imm5 = 0b11111))]
-#[rustc_legacy_const_generics(0)]
+#[rustc_deprecated_legacy_const_generics(0)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_cfcmsa<const IMM5: i32>() -> i32 {
     static_assert_uimm_bits!(IMM5, 5);
@@ -2970,7 +2970,7 @@ pub unsafe fn __msa_cle_u_d(a: v2u64, b: v2u64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clei_s.b, imm_s5 = 0b11111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_clei_s_b<const IMM_S5: i32>(a: v16i8) -> v16i8 {
     static_assert_simm_bits!(IMM_S5, 5);
@@ -2987,7 +2987,7 @@ pub unsafe fn __msa_clei_s_b<const IMM_S5: i32>(a: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clei_s.h, imm_s5 = 0b11111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_clei_s_h<const IMM_S5: i32>(a: v8i16) -> v8i16 {
     static_assert_simm_bits!(IMM_S5, 5);
@@ -3004,7 +3004,7 @@ pub unsafe fn __msa_clei_s_h<const IMM_S5: i32>(a: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clei_s.w, imm_s5 = 0b11111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_clei_s_w<const IMM_S5: i32>(a: v4i32) -> v4i32 {
     static_assert_simm_bits!(IMM_S5, 5);
@@ -3021,7 +3021,7 @@ pub unsafe fn __msa_clei_s_w<const IMM_S5: i32>(a: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clei_s.d, imm_s5 = 0b11111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_clei_s_d<const IMM_S5: i32>(a: v2i64) -> v2i64 {
     static_assert_simm_bits!(IMM_S5, 5);
@@ -3038,7 +3038,7 @@ pub unsafe fn __msa_clei_s_d<const IMM_S5: i32>(a: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clei_u.b, imm5 = 0b111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_clei_u_b<const IMM5: i32>(a: v16u8) -> v16i8 {
     static_assert_uimm_bits!(IMM5, 5);
@@ -3055,7 +3055,7 @@ pub unsafe fn __msa_clei_u_b<const IMM5: i32>(a: v16u8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clei_u.h, imm5 = 0b11111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_clei_u_h<const IMM5: i32>(a: v8u16) -> v8i16 {
     static_assert_uimm_bits!(IMM5, 5);
@@ -3072,7 +3072,7 @@ pub unsafe fn __msa_clei_u_h<const IMM5: i32>(a: v8u16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clei_u.w, imm5 = 0b11111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_clei_u_w<const IMM5: i32>(a: v4u32) -> v4i32 {
     static_assert_uimm_bits!(IMM5, 5);
@@ -3089,7 +3089,7 @@ pub unsafe fn __msa_clei_u_w<const IMM5: i32>(a: v4u32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clei_u.d, imm5 = 0b11111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_clei_u_d<const IMM5: i32>(a: v2u64) -> v2i64 {
     static_assert_uimm_bits!(IMM5, 5);
@@ -3226,7 +3226,7 @@ pub unsafe fn __msa_clt_u_d(a: v2u64, b: v2u64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clti_s.b, imm_s5 = 0b111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_clti_s_b<const IMM_S5: i32>(a: v16i8) -> v16i8 {
     static_assert_simm_bits!(IMM_S5, 5);
@@ -3243,7 +3243,7 @@ pub unsafe fn __msa_clti_s_b<const IMM_S5: i32>(a: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clti_s.h, imm_s5 = 0b11111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_clti_s_h<const IMM_S5: i32>(a: v8i16) -> v8i16 {
     static_assert_simm_bits!(IMM_S5, 5);
@@ -3260,7 +3260,7 @@ pub unsafe fn __msa_clti_s_h<const IMM_S5: i32>(a: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clti_s.w, imm_s5 = 0b11111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_clti_s_w<const IMM_S5: i32>(a: v4i32) -> v4i32 {
     static_assert_simm_bits!(IMM_S5, 5);
@@ -3277,7 +3277,7 @@ pub unsafe fn __msa_clti_s_w<const IMM_S5: i32>(a: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clti_s.d, imm_s5 = 0b11111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_clti_s_d<const IMM_S5: i32>(a: v2i64) -> v2i64 {
     static_assert_simm_bits!(IMM_S5, 5);
@@ -3294,7 +3294,7 @@ pub unsafe fn __msa_clti_s_d<const IMM_S5: i32>(a: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clti_u.b, imm5 = 0b111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_clti_u_b<const IMM5: i32>(a: v16u8) -> v16i8 {
     static_assert_uimm_bits!(IMM5, 5);
@@ -3311,7 +3311,7 @@ pub unsafe fn __msa_clti_u_b<const IMM5: i32>(a: v16u8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clti_u.h, imm5 = 0b11111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_clti_u_h<const IMM5: i32>(a: v8u16) -> v8i16 {
     static_assert_uimm_bits!(IMM5, 5);
@@ -3328,7 +3328,7 @@ pub unsafe fn __msa_clti_u_h<const IMM5: i32>(a: v8u16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clti_u.w, imm5 = 0b11111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_clti_u_w<const IMM5: i32>(a: v4u32) -> v4i32 {
     static_assert_uimm_bits!(IMM5, 5);
@@ -3345,7 +3345,7 @@ pub unsafe fn __msa_clti_u_w<const IMM5: i32>(a: v4u32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clti_u.d, imm5 = 0b11111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_clti_u_d<const IMM5: i32>(a: v2u64) -> v2i64 {
     static_assert_uimm_bits!(IMM5, 5);
@@ -3360,7 +3360,7 @@ pub unsafe fn __msa_clti_u_d<const IMM5: i32>(a: v2u64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(copy_s.b, imm4 = 0b1111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_copy_s_b<const IMM4: i32>(a: v16i8) -> i32 {
     static_assert_uimm_bits!(IMM4, 4);
@@ -3375,7 +3375,7 @@ pub unsafe fn __msa_copy_s_b<const IMM4: i32>(a: v16i8) -> i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(copy_s.h, imm3 = 0b111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_copy_s_h<const IMM3: i32>(a: v8i16) -> i32 {
     static_assert_uimm_bits!(IMM3, 3);
@@ -3390,7 +3390,7 @@ pub unsafe fn __msa_copy_s_h<const IMM3: i32>(a: v8i16) -> i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(copy_s.w, imm2 = 0b11))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_copy_s_w<const IMM2: i32>(a: v4i32) -> i32 {
     static_assert_uimm_bits!(IMM2, 2);
@@ -3405,7 +3405,7 @@ pub unsafe fn __msa_copy_s_w<const IMM2: i32>(a: v4i32) -> i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(copy_s.d, imm1 = 0b1))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_copy_s_d<const IMM1: i32>(a: v2i64) -> i64 {
     static_assert_uimm_bits!(IMM1, 1);
@@ -3420,7 +3420,7 @@ pub unsafe fn __msa_copy_s_d<const IMM1: i32>(a: v2i64) -> i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(copy_u.b, imm4 = 0b1111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_copy_u_b<const IMM4: i32>(a: v16i8) -> u32 {
     static_assert_uimm_bits!(IMM4, 4);
@@ -3435,7 +3435,7 @@ pub unsafe fn __msa_copy_u_b<const IMM4: i32>(a: v16i8) -> u32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(copy_u.h, imm3 = 0b111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_copy_u_h<const IMM3: i32>(a: v8i16) -> u32 {
     static_assert_uimm_bits!(IMM3, 3);
@@ -3450,7 +3450,7 @@ pub unsafe fn __msa_copy_u_h<const IMM3: i32>(a: v8i16) -> u32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(copy_u.w, imm2 = 0b11))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_copy_u_w<const IMM2: i32>(a: v4i32) -> u32 {
     static_assert_uimm_bits!(IMM2, 2);
@@ -3465,7 +3465,7 @@ pub unsafe fn __msa_copy_u_w<const IMM2: i32>(a: v4i32) -> u32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(copy_u.d, imm1 = 0b1))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_copy_u_d<const IMM1: i32>(a: v2i64) -> u64 {
     static_assert_uimm_bits!(IMM1, 1);
@@ -3482,7 +3482,7 @@ pub unsafe fn __msa_copy_u_d<const IMM1: i32>(a: v2i64) -> u64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ctcmsa, imm1 = 0b1))]
-#[rustc_legacy_const_generics(0)]
+#[rustc_deprecated_legacy_const_generics(0)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_ctcmsa<const IMM5: i32>(a: i32) -> () {
     static_assert_uimm_bits!(IMM5, 5);
@@ -5856,7 +5856,7 @@ pub unsafe fn __msa_ilvr_d(a: v2i64, b: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(insert.b, imm4 = 0b1111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_insert_b<const IMM4: i32>(a: v16i8, c: i32) -> v16i8 {
     static_assert_uimm_bits!(IMM4, 4);
@@ -5872,7 +5872,7 @@ pub unsafe fn __msa_insert_b<const IMM4: i32>(a: v16i8, c: i32) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(insert.h, imm3 = 0b111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_insert_h<const IMM3: i32>(a: v8i16, c: i32) -> v8i16 {
     static_assert_uimm_bits!(IMM3, 3);
@@ -5888,7 +5888,7 @@ pub unsafe fn __msa_insert_h<const IMM3: i32>(a: v8i16, c: i32) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(insert.w, imm2 = 0b11))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_insert_w<const IMM2: i32>(a: v4i32, c: i32) -> v4i32 {
     static_assert_uimm_bits!(IMM2, 2);
@@ -5904,7 +5904,7 @@ pub unsafe fn __msa_insert_w<const IMM2: i32>(a: v4i32, c: i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(insert.d, imm1 = 0b1))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_insert_d<const IMM1: i32>(a: v2i64, c: i64) -> v2i64 {
     static_assert_uimm_bits!(IMM1, 1);
@@ -5920,7 +5920,7 @@ pub unsafe fn __msa_insert_d<const IMM1: i32>(a: v2i64, c: i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(insve.b, imm4 = 0b1111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_insve_b<const IMM4: i32>(a: v16i8, c: v16i8) -> v16i8 {
     static_assert_uimm_bits!(IMM4, 4);
@@ -5936,7 +5936,7 @@ pub unsafe fn __msa_insve_b<const IMM4: i32>(a: v16i8, c: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(insve.h, imm3 = 0b111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_insve_h<const IMM3: i32>(a: v8i16, c: v8i16) -> v8i16 {
     static_assert_uimm_bits!(IMM3, 3);
@@ -5952,7 +5952,7 @@ pub unsafe fn __msa_insve_h<const IMM3: i32>(a: v8i16, c: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(insve.w, imm2 = 0b11))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_insve_w<const IMM2: i32>(a: v4i32, c: v4i32) -> v4i32 {
     static_assert_uimm_bits!(IMM2, 2);
@@ -5968,7 +5968,7 @@ pub unsafe fn __msa_insve_w<const IMM2: i32>(a: v4i32, c: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(insve.d, imm1 = 0b1))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_insve_d<const IMM1: i32>(a: v2i64, c: v2i64) -> v2i64 {
     static_assert_uimm_bits!(IMM1, 1);
@@ -5984,7 +5984,7 @@ pub unsafe fn __msa_insve_d<const IMM1: i32>(a: v2i64, c: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ld.b, imm_s10 = 0b1111111111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_ld_b<const IMM_S10: i32>(mem_addr: *mut u8) -> v16i8 {
     static_assert_simm_bits!(IMM_S10, 10);
@@ -6000,7 +6000,7 @@ pub unsafe fn __msa_ld_b<const IMM_S10: i32>(mem_addr: *mut u8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ld.h, imm_s11 = 0b11111111111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_ld_h<const IMM_S11: i32>(mem_addr: *mut u8) -> v8i16 {
     static_assert_simm_bits!(IMM_S11, 11);
@@ -6017,7 +6017,7 @@ pub unsafe fn __msa_ld_h<const IMM_S11: i32>(mem_addr: *mut u8) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ld.w, imm_s12 = 0b111111111111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_ld_w<const IMM_S12: i32>(mem_addr: *mut u8) -> v4i32 {
     static_assert_simm_bits!(IMM_S12, 12);
@@ -6034,7 +6034,7 @@ pub unsafe fn __msa_ld_w<const IMM_S12: i32>(mem_addr: *mut u8) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ld.d, imm_s13 = 0b1111111111111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_ld_d<const IMM_S13: i32>(mem_addr: *mut u8) -> v2i64 {
     static_assert_simm_bits!(IMM_S13, 13);
@@ -6051,7 +6051,7 @@ pub unsafe fn __msa_ld_d<const IMM_S13: i32>(mem_addr: *mut u8) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ldi.b, imm_s10 = 0b1111111111))]
-#[rustc_legacy_const_generics(0)]
+#[rustc_deprecated_legacy_const_generics(0)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_ldi_b<const IMM_S10: i32>() -> v16i8 {
     static_assert_simm_bits!(IMM_S10, 10);
@@ -6067,7 +6067,7 @@ pub unsafe fn __msa_ldi_b<const IMM_S10: i32>() -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ldi.h, imm_s10 = 0b1111111111))]
-#[rustc_legacy_const_generics(0)]
+#[rustc_deprecated_legacy_const_generics(0)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_ldi_h<const IMM_S10: i32>() -> v8i16 {
     static_assert_simm_bits!(IMM_S10, 10);
@@ -6083,7 +6083,7 @@ pub unsafe fn __msa_ldi_h<const IMM_S10: i32>() -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ldi.w, imm_s10 = 0b1111111111))]
-#[rustc_legacy_const_generics(0)]
+#[rustc_deprecated_legacy_const_generics(0)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_ldi_w<const IMM_S10: i32>() -> v4i32 {
     static_assert_simm_bits!(IMM_S10, 10);
@@ -6099,7 +6099,7 @@ pub unsafe fn __msa_ldi_w<const IMM_S10: i32>() -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ldi.d, imm_s10 = 0b1111111111))]
-#[rustc_legacy_const_generics(0)]
+#[rustc_deprecated_legacy_const_generics(0)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_ldi_d<const IMM_S10: i32>() -> v2i64 {
     static_assert_simm_bits!(IMM_S10, 10);
@@ -6411,7 +6411,7 @@ pub unsafe fn __msa_max_u_d(a: v2u64, b: v2u64) -> v2u64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(maxi_s.b, imm5 = 0b11111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_maxi_s_b<const IMM_S5: i32>(a: v16i8) -> v16i8 {
     static_assert_simm_bits!(IMM_S5, 5);
@@ -6427,7 +6427,7 @@ pub unsafe fn __msa_maxi_s_b<const IMM_S5: i32>(a: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(maxi_s.h, imm_s5 = 0b11111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_maxi_s_h<const IMM_S5: i32>(a: v8i16) -> v8i16 {
     static_assert_simm_bits!(IMM_S5, 5);
@@ -6443,7 +6443,7 @@ pub unsafe fn __msa_maxi_s_h<const IMM_S5: i32>(a: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(maxi_s.w, imm_s5 = 0b11111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_maxi_s_w<const IMM_S5: i32>(a: v4i32) -> v4i32 {
     static_assert_simm_bits!(IMM_S5, 5);
@@ -6459,7 +6459,7 @@ pub unsafe fn __msa_maxi_s_w<const IMM_S5: i32>(a: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(maxi_s.d, imm_s5 = 0b11111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_maxi_s_d<const IMM_S5: i32>(a: v2i64) -> v2i64 {
     static_assert_simm_bits!(IMM_S5, 5);
@@ -6475,7 +6475,7 @@ pub unsafe fn __msa_maxi_s_d<const IMM_S5: i32>(a: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(maxi_u.b, imm5 = 0b11111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_maxi_u_b<const IMM5: i32>(a: v16u8) -> v16u8 {
     static_assert_uimm_bits!(IMM5, 5);
@@ -6491,7 +6491,7 @@ pub unsafe fn __msa_maxi_u_b<const IMM5: i32>(a: v16u8) -> v16u8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(maxi_u.h, imm5 = 0b11111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_maxi_u_h<const IMM5: i32>(a: v8u16) -> v8u16 {
     static_assert_uimm_bits!(IMM5, 5);
@@ -6507,7 +6507,7 @@ pub unsafe fn __msa_maxi_u_h<const IMM5: i32>(a: v8u16) -> v8u16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(maxi_u.w, imm5 = 0b11111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_maxi_u_w<const IMM5: i32>(a: v4u32) -> v4u32 {
     static_assert_uimm_bits!(IMM5, 5);
@@ -6523,7 +6523,7 @@ pub unsafe fn __msa_maxi_u_w<const IMM5: i32>(a: v4u32) -> v4u32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(maxi_u.d, imm5 = 0b11111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_maxi_u_d<const IMM5: i32>(a: v2u64) -> v2u64 {
     static_assert_uimm_bits!(IMM5, 5);
@@ -6655,7 +6655,7 @@ pub unsafe fn __msa_min_s_d(a: v2i64, b: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mini_s.b, imm_s5 = 0b11111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_mini_s_b<const IMM_S5: i32>(a: v16i8) -> v16i8 {
     static_assert_simm_bits!(IMM_S5, 5);
@@ -6671,7 +6671,7 @@ pub unsafe fn __msa_mini_s_b<const IMM_S5: i32>(a: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mini_s.h, imm_s5 = 0b11111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_mini_s_h<const IMM_S5: i32>(a: v8i16) -> v8i16 {
     static_assert_simm_bits!(IMM_S5, 5);
@@ -6687,7 +6687,7 @@ pub unsafe fn __msa_mini_s_h<const IMM_S5: i32>(a: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mini_s.w, imm_s5 = 0b11111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_mini_s_w<const IMM_S5: i32>(a: v4i32) -> v4i32 {
     static_assert_simm_bits!(IMM_S5, 5);
@@ -6703,7 +6703,7 @@ pub unsafe fn __msa_mini_s_w<const IMM_S5: i32>(a: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mini_s.d, imm_s5 = 0b11111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_mini_s_d<const IMM_S5: i32>(a: v2i64) -> v2i64 {
     static_assert_simm_bits!(IMM_S5, 5);
@@ -6775,7 +6775,7 @@ pub unsafe fn __msa_min_u_d(a: v2u64, b: v2u64) -> v2u64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mini_u.b, imm5 = 0b11111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_mini_u_b<const IMM5: i32>(a: v16u8) -> v16u8 {
     static_assert_uimm_bits!(IMM5, 5);
@@ -6791,7 +6791,7 @@ pub unsafe fn __msa_mini_u_b<const IMM5: i32>(a: v16u8) -> v16u8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mini_u.h, imm5 = 0b11111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_mini_u_h<const IMM5: i32>(a: v8u16) -> v8u16 {
     static_assert_uimm_bits!(IMM5, 5);
@@ -6807,7 +6807,7 @@ pub unsafe fn __msa_mini_u_h<const IMM5: i32>(a: v8u16) -> v8u16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mini_u.w, imm5 = 0b11111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_mini_u_w<const IMM5: i32>(a: v4u32) -> v4u32 {
     static_assert_uimm_bits!(IMM5, 5);
@@ -6823,7 +6823,7 @@ pub unsafe fn __msa_mini_u_w<const IMM5: i32>(a: v4u32) -> v4u32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mini_u.d, imm5 = 0b11111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_mini_u_d<const IMM5: i32>(a: v2u64) -> v2u64 {
     static_assert_uimm_bits!(IMM5, 5);
@@ -7344,7 +7344,7 @@ pub unsafe fn __msa_nor_v(a: v16u8, b: v16u8) -> v16u8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(nori.b, imm8 = 0b11111111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_nori_b<const IMM8: i32>(a: v16u8) -> v16u8 {
     static_assert_uimm_bits!(IMM8, 8);
@@ -7376,7 +7376,7 @@ pub unsafe fn __msa_or_v(a: v16u8, b: v16u8) -> v16u8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ori.b, imm8 = 0b11111111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_ori_b<const IMM8: i32>(a: v16u8) -> v16u8 {
     static_assert_uimm_bits!(IMM8, 8);
@@ -7556,7 +7556,7 @@ pub unsafe fn __msa_pcnt_d(a: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sat_s.b, imm4 = 0b111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_sat_s_b<const IMM3: i32>(a: v16i8) -> v16i8 {
     static_assert_uimm_bits!(IMM3, 3);
@@ -7572,7 +7572,7 @@ pub unsafe fn __msa_sat_s_b<const IMM3: i32>(a: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sat_s.h, imm3 = 0b1111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_sat_s_h<const IMM4: i32>(a: v8i16) -> v8i16 {
     static_assert_uimm_bits!(IMM4, 4);
@@ -7588,7 +7588,7 @@ pub unsafe fn __msa_sat_s_h<const IMM4: i32>(a: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sat_s.w, imm2 = 0b11111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_sat_s_w<const IMM5: i32>(a: v4i32) -> v4i32 {
     static_assert_uimm_bits!(IMM5, 5);
@@ -7604,7 +7604,7 @@ pub unsafe fn __msa_sat_s_w<const IMM5: i32>(a: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sat_s.d, imm1 = 0b111111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_sat_s_d<const IMM6: i32>(a: v2i64) -> v2i64 {
     static_assert_uimm_bits!(IMM6, 6);
@@ -7620,7 +7620,7 @@ pub unsafe fn __msa_sat_s_d<const IMM6: i32>(a: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sat_u.b, imm4 = 0b111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_sat_u_b<const IMM3: i32>(a: v16u8) -> v16u8 {
     static_assert_uimm_bits!(IMM3, 3);
@@ -7636,7 +7636,7 @@ pub unsafe fn __msa_sat_u_b<const IMM3: i32>(a: v16u8) -> v16u8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sat_u.h, imm3 = 0b1111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_sat_u_h<const IMM4: i32>(a: v8u16) -> v8u16 {
     static_assert_uimm_bits!(IMM4, 4);
@@ -7652,7 +7652,7 @@ pub unsafe fn __msa_sat_u_h<const IMM4: i32>(a: v8u16) -> v8u16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sat_u.w, imm2 = 0b11111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_sat_u_w<const IMM5: i32>(a: v4u32) -> v4u32 {
     static_assert_uimm_bits!(IMM5, 5);
@@ -7668,7 +7668,7 @@ pub unsafe fn __msa_sat_u_w<const IMM5: i32>(a: v4u32) -> v4u32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sat_u.d, imm1 = 0b111111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_sat_u_d<const IMM6: i32>(a: v2u64) -> v2u64 {
     static_assert_uimm_bits!(IMM6, 6);
@@ -7685,7 +7685,7 @@ pub unsafe fn __msa_sat_u_d<const IMM6: i32>(a: v2u64) -> v2u64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(shf.b, imm8 = 0b11111111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_shf_b<const IMM8: i32>(a: v16i8) -> v16i8 {
     static_assert_uimm_bits!(IMM8, 8);
@@ -7702,7 +7702,7 @@ pub unsafe fn __msa_shf_b<const IMM8: i32>(a: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(shf.h, imm8 = 0b11111111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_shf_h<const IMM8: i32>(a: v8i16) -> v8i16 {
     static_assert_uimm_bits!(IMM8, 8);
@@ -7719,7 +7719,7 @@ pub unsafe fn __msa_shf_h<const IMM8: i32>(a: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(shf.w, imm8 = 0b11111111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_shf_w<const IMM8: i32>(a: v4i32) -> v4i32 {
     static_assert_uimm_bits!(IMM8, 8);
@@ -7824,7 +7824,7 @@ pub unsafe fn __msa_sld_d(a: v2i64, b: v2i64, c: i32) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sldi.b, imm4 = 0b1111))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_sldi_b<const IMM4: i32>(a: v16i8, b: v16i8) -> v16i8 {
     static_assert_uimm_bits!(IMM4, 4);
@@ -7845,7 +7845,7 @@ pub unsafe fn __msa_sldi_b<const IMM4: i32>(a: v16i8, b: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sldi.h, imm3 = 0b111))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_sldi_h<const IMM3: i32>(a: v8i16, b: v8i16) -> v8i16 {
     static_assert_uimm_bits!(IMM3, 3);
@@ -7866,7 +7866,7 @@ pub unsafe fn __msa_sldi_h<const IMM3: i32>(a: v8i16, b: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sldi.w, imm2 = 0b11))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_sldi_w<const IMM2: i32>(a: v4i32, b: v4i32) -> v4i32 {
     static_assert_uimm_bits!(IMM2, 2);
@@ -7887,7 +7887,7 @@ pub unsafe fn __msa_sldi_w<const IMM2: i32>(a: v4i32, b: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sldi.d, imm1 = 0b1))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_sldi_d<const IMM1: i32>(a: v2i64, b: v2i64) -> v2i64 {
     static_assert_uimm_bits!(IMM1, 1);
@@ -7963,7 +7963,7 @@ pub unsafe fn __msa_sll_d(a: v2i64, b: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(slli.b, imm4 = 0b1111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_slli_b<const IMM4: i32>(a: v16i8) -> v16i8 {
     static_assert_uimm_bits!(IMM4, 4);
@@ -7979,7 +7979,7 @@ pub unsafe fn __msa_slli_b<const IMM4: i32>(a: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(slli.h, imm3 = 0b111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_slli_h<const IMM3: i32>(a: v8i16) -> v8i16 {
     static_assert_uimm_bits!(IMM3, 3);
@@ -7995,7 +7995,7 @@ pub unsafe fn __msa_slli_h<const IMM3: i32>(a: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(slli.w, imm2 = 0b11))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_slli_w<const IMM2: i32>(a: v4i32) -> v4i32 {
     static_assert_uimm_bits!(IMM2, 2);
@@ -8011,7 +8011,7 @@ pub unsafe fn __msa_slli_w<const IMM2: i32>(a: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(slli.d, imm1 = 0b1))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_slli_d<const IMM1: i32>(a: v2i64) -> v2i64 {
     static_assert_uimm_bits!(IMM1, 1);
@@ -8086,7 +8086,7 @@ pub unsafe fn __msa_splat_d(a: v2i64, b: i32) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(splati.b, imm4 = 0b1111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_splati_b<const IMM4: i32>(a: v16i8) -> v16i8 {
     static_assert_uimm_bits!(IMM4, 4);
@@ -8101,7 +8101,7 @@ pub unsafe fn __msa_splati_b<const IMM4: i32>(a: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(splati.h, imm3 = 0b111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_splati_h<const IMM3: i32>(a: v8i16) -> v8i16 {
     static_assert_uimm_bits!(IMM3, 3);
@@ -8116,7 +8116,7 @@ pub unsafe fn __msa_splati_h<const IMM3: i32>(a: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(splati.w, imm2 = 0b11))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_splati_w<const IMM2: i32>(a: v4i32) -> v4i32 {
     static_assert_uimm_bits!(IMM2, 2);
@@ -8131,7 +8131,7 @@ pub unsafe fn __msa_splati_w<const IMM2: i32>(a: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(splati.d, imm1 = 0b1))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_splati_d<const IMM1: i32>(a: v2i64) -> v2i64 {
     static_assert_uimm_bits!(IMM1, 1);
@@ -8207,7 +8207,7 @@ pub unsafe fn __msa_sra_d(a: v2i64, b: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srai.b, imm3 = 0b111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_srai_b<const IMM3: i32>(a: v16i8) -> v16i8 {
     static_assert_uimm_bits!(IMM3, 3);
@@ -8223,7 +8223,7 @@ pub unsafe fn __msa_srai_b<const IMM3: i32>(a: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srai.h, imm4 = 0b1111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_srai_h<const IMM4: i32>(a: v8i16) -> v8i16 {
     static_assert_uimm_bits!(IMM4, 4);
@@ -8239,7 +8239,7 @@ pub unsafe fn __msa_srai_h<const IMM4: i32>(a: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srai.w, imm5 = 0b11111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_srai_w<const IMM5: i32>(a: v4i32) -> v4i32 {
     static_assert_uimm_bits!(IMM5, 5);
@@ -8255,7 +8255,7 @@ pub unsafe fn __msa_srai_w<const IMM5: i32>(a: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srai.d, imm6 = 0b111111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_srai_d<const IMM6: i32>(a: v2i64) -> v2i64 {
     static_assert_uimm_bits!(IMM6, 6);
@@ -8336,7 +8336,7 @@ pub unsafe fn __msa_srar_d(a: v2i64, b: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srari.b, imm3 = 0b111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_srari_b<const IMM3: i32>(a: v16i8) -> v16i8 {
     static_assert_uimm_bits!(IMM3, 3);
@@ -8353,7 +8353,7 @@ pub unsafe fn __msa_srari_b<const IMM3: i32>(a: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srari.h, imm4 = 0b1111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_srari_h<const IMM4: i32>(a: v8i16) -> v8i16 {
     static_assert_uimm_bits!(IMM4, 4);
@@ -8370,7 +8370,7 @@ pub unsafe fn __msa_srari_h<const IMM4: i32>(a: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srari.w, imm5 = 0b11111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_srari_w<const IMM5: i32>(a: v4i32) -> v4i32 {
     static_assert_uimm_bits!(IMM5, 5);
@@ -8387,7 +8387,7 @@ pub unsafe fn __msa_srari_w<const IMM5: i32>(a: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srari.d, imm6 = 0b111111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_srari_d<const IMM6: i32>(a: v2i64) -> v2i64 {
     static_assert_uimm_bits!(IMM6, 6);
@@ -8463,7 +8463,7 @@ pub unsafe fn __msa_srl_d(a: v2i64, b: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srli.b, imm4 = 0b1111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_srli_b<const IMM4: i32>(a: v16i8) -> v16i8 {
     static_assert_uimm_bits!(IMM4, 4);
@@ -8479,7 +8479,7 @@ pub unsafe fn __msa_srli_b<const IMM4: i32>(a: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srli.h, imm3 = 0b111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_srli_h<const IMM3: i32>(a: v8i16) -> v8i16 {
     static_assert_uimm_bits!(IMM3, 3);
@@ -8495,7 +8495,7 @@ pub unsafe fn __msa_srli_h<const IMM3: i32>(a: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srli.w, imm2 = 0b11))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_srli_w<const IMM2: i32>(a: v4i32) -> v4i32 {
     static_assert_uimm_bits!(IMM2, 2);
@@ -8511,7 +8511,7 @@ pub unsafe fn __msa_srli_w<const IMM2: i32>(a: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srli.d, imm1 = 0b1))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_srli_d<const IMM1: i32>(a: v2i64) -> v2i64 {
     static_assert_uimm_bits!(IMM1, 1);
@@ -8592,7 +8592,7 @@ pub unsafe fn __msa_srlr_d(a: v2i64, b: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srlri.b, imm3 = 0b111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_srlri_b<const IMM3: i32>(a: v16i8) -> v16i8 {
     static_assert_uimm_bits!(IMM3, 3);
@@ -8609,7 +8609,7 @@ pub unsafe fn __msa_srlri_b<const IMM3: i32>(a: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srlri.h, imm4 = 0b1111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_srlri_h<const IMM4: i32>(a: v8i16) -> v8i16 {
     static_assert_uimm_bits!(IMM4, 4);
@@ -8626,7 +8626,7 @@ pub unsafe fn __msa_srlri_h<const IMM4: i32>(a: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srlri.w, imm5 = 0b11111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_srlri_w<const IMM5: i32>(a: v4i32) -> v4i32 {
     static_assert_uimm_bits!(IMM5, 5);
@@ -8643,7 +8643,7 @@ pub unsafe fn __msa_srlri_w<const IMM5: i32>(a: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srlri.d, imm6 = 0b111111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_srlri_d<const IMM6: i32>(a: v2i64) -> v2i64 {
     static_assert_uimm_bits!(IMM6, 6);
@@ -8659,7 +8659,7 @@ pub unsafe fn __msa_srlri_d<const IMM6: i32>(a: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(st.b, imm_s10 = 0b1111111111))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_st_b<const IMM_S10: i32>(a: v16i8, mem_addr: *mut u8) -> () {
     static_assert_simm_bits!(IMM_S10, 10);
@@ -8675,7 +8675,7 @@ pub unsafe fn __msa_st_b<const IMM_S10: i32>(a: v16i8, mem_addr: *mut u8) -> () 
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(st.h, imm_s11 = 0b11111111111))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_st_h<const IMM_S11: i32>(a: v8i16, mem_addr: *mut u8) -> () {
     static_assert_simm_bits!(IMM_S11, 11);
@@ -8692,7 +8692,7 @@ pub unsafe fn __msa_st_h<const IMM_S11: i32>(a: v8i16, mem_addr: *mut u8) -> () 
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(st.w, imm_s12 = 0b111111111111))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_st_w<const IMM_S12: i32>(a: v4i32, mem_addr: *mut u8) -> () {
     static_assert_simm_bits!(IMM_S12, 12);
@@ -8709,7 +8709,7 @@ pub unsafe fn __msa_st_w<const IMM_S12: i32>(a: v4i32, mem_addr: *mut u8) -> () 
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(st.d, imm_s13 = 0b1111111111111))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_st_d<const IMM_S13: i32>(a: v2i64, mem_addr: *mut u8) -> () {
     static_assert_simm_bits!(IMM_S13, 13);
@@ -9022,7 +9022,7 @@ pub unsafe fn __msa_subv_d(a: v2i64, b: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subvi.b, imm5 = 0b10111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_subvi_b<const IMM5: i32>(a: v16i8) -> v16i8 {
     static_assert_uimm_bits!(IMM5, 5);
@@ -9038,7 +9038,7 @@ pub unsafe fn __msa_subvi_b<const IMM5: i32>(a: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subvi.h, imm5 = 0b10111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_subvi_h<const IMM5: i32>(a: v8i16) -> v8i16 {
     static_assert_uimm_bits!(IMM5, 5);
@@ -9054,7 +9054,7 @@ pub unsafe fn __msa_subvi_h<const IMM5: i32>(a: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subvi.w, imm5 = 0b10111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_subvi_w<const IMM5: i32>(a: v4i32) -> v4i32 {
     static_assert_uimm_bits!(IMM5, 5);
@@ -9070,7 +9070,7 @@ pub unsafe fn __msa_subvi_w<const IMM5: i32>(a: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subvi.d, imm5 = 0b10111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_subvi_d<const IMM5: i32>(a: v2i64) -> v2i64 {
     static_assert_uimm_bits!(IMM5, 5);
@@ -9174,7 +9174,7 @@ pub unsafe fn __msa_xor_v(a: v16u8, b: v16u8) -> v16u8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(xori.b, imm8 = 0b11111111))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_xori_b<const IMM8: i32>(a: v16u8) -> v16u8 {
     static_assert_uimm_bits!(IMM8, 8);

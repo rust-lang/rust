@@ -406,7 +406,7 @@ pub(crate) struct NoLink {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_rustc_legacy_const_generics_only)]
+#[diag(passes_rustc_deprecated_legacy_const_generics_only)]
 pub(crate) struct RustcLegacyConstGenericsOnly {
     #[primary_span]
     pub attr_span: Span,
@@ -415,7 +415,7 @@ pub(crate) struct RustcLegacyConstGenericsOnly {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_rustc_legacy_const_generics_index)]
+#[diag(passes_rustc_deprecated_legacy_const_generics_index)]
 pub(crate) struct RustcLegacyConstGenericsIndex {
     #[primary_span]
     pub attr_span: Span,
@@ -424,7 +424,7 @@ pub(crate) struct RustcLegacyConstGenericsIndex {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_rustc_legacy_const_generics_index_exceed)]
+#[diag(passes_rustc_deprecated_legacy_const_generics_index_exceed)]
 pub(crate) struct RustcLegacyConstGenericsIndexExceed {
     #[primary_span]
     #[label]
@@ -433,7 +433,7 @@ pub(crate) struct RustcLegacyConstGenericsIndexExceed {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_rustc_legacy_const_generics_index_negative)]
+#[diag(passes_rustc_deprecated_legacy_const_generics_index_negative)]
 pub(crate) struct RustcLegacyConstGenericsIndexNegative {
     #[primary_span]
     pub invalid_args: Vec<Span>,

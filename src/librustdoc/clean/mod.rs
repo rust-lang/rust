@@ -1035,7 +1035,7 @@ fn clean_fn_or_proc_macro<'tcx>(
 fn clean_fn_decl_legacy_const_generics(func: &mut Function, attrs: &[hir::Attribute]) {
     for meta_item_list in attrs
         .iter()
-        .filter(|a| a.has_name(sym::rustc_legacy_const_generics))
+        .filter(|a| a.has_name(sym::rustc_deprecated_legacy_const_generics))
         .filter_map(|a| a.meta_item_list())
     {
         for (pos, literal) in meta_item_list.iter().filter_map(|meta| meta.lit()).enumerate() {

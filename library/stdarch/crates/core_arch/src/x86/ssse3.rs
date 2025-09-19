@@ -102,7 +102,7 @@ pub fn _mm_shuffle_epi8(a: __m128i, b: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "ssse3")]
 #[cfg_attr(test, assert_instr(palignr, IMM8 = 15))]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_alignr_epi8<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
     static_assert_uimm_bits!(IMM8, 8);

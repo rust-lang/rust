@@ -10,7 +10,7 @@ use stdarch_test::assert_instr;
 #[unstable(feature = "stdarch_arm_sat", issue = "none")]
 #[inline]
 #[cfg_attr(test, assert_instr("ssat", WIDTH = 8))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 pub unsafe fn __ssat<const WIDTH: u32>(x: i32) -> i32 {
     static_assert!(matches!(WIDTH, 1..=32));
     arm_ssat(x, WIDTH as i32)
@@ -21,7 +21,7 @@ pub unsafe fn __ssat<const WIDTH: u32>(x: i32) -> i32 {
 #[unstable(feature = "stdarch_arm_sat", issue = "none")]
 #[inline]
 #[cfg_attr(test, assert_instr("usat", WIDTH = 8))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 pub unsafe fn __usat<const WIDTH: u32>(x: i32) -> u32 {
     static_assert!(matches!(WIDTH, 1..=32));
     arm_usat(x, WIDTH as i32)

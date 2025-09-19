@@ -114,7 +114,7 @@ pub unsafe fn __tcommit() {
     all(test, not(target_env = "msvc")),
     assert_instr(tcancel, IMM16 = 0x0)
 )]
-#[rustc_legacy_const_generics(0)]
+#[rustc_deprecated_legacy_const_generics(0)]
 #[unstable(feature = "stdarch_aarch64_tme", issue = "117216")]
 pub unsafe fn __tcancel<const IMM16: u64>() {
     static_assert!(IMM16 <= 65535);

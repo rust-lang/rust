@@ -521,11 +521,11 @@ passes_rustc_force_inline_coro =
     attribute cannot be applied to a `async`, `gen` or `async gen` function
     .label = `async`, `gen` or `async gen` function
 
-passes_rustc_legacy_const_generics_index =
-    #[rustc_legacy_const_generics] must have one index for each generic parameter
+passes_rustc_deprecated_legacy_const_generics_index =
+    #[rustc_deprecated_legacy_const_generics] must have one index for each generic parameter
     .label = generic parameters
 
-passes_rustc_legacy_const_generics_index_exceed =
+passes_rustc_deprecated_legacy_const_generics_index_exceed =
     index exceeds number of arguments
     .label = there {$arg_count ->
         [one] is
@@ -535,11 +535,11 @@ passes_rustc_legacy_const_generics_index_exceed =
         *[other] arguments
     }
 
-passes_rustc_legacy_const_generics_index_negative =
+passes_rustc_deprecated_legacy_const_generics_index_negative =
     arguments should be non-negative integers
 
-passes_rustc_legacy_const_generics_only =
-    #[rustc_legacy_const_generics] functions must only have const generics
+passes_rustc_deprecated_legacy_const_generics_only =
+    #[rustc_deprecated_legacy_const_generics] functions must only have const generics
     .label = non-const generic parameter
 
 passes_rustc_lint_opt_deny_field_access =

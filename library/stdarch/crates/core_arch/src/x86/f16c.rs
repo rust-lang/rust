@@ -60,7 +60,7 @@ pub fn _mm256_cvtph_ps(a: __m128i) -> __m256 {
 #[inline]
 #[target_feature(enable = "f16c")]
 #[cfg_attr(test, assert_instr("vcvtps2ph", IMM_ROUNDING = 0))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[stable(feature = "x86_f16c_intrinsics", since = "1.68.0")]
 pub fn _mm_cvtps_ph<const IMM_ROUNDING: i32>(a: __m128) -> __m128i {
     static_assert_uimm_bits!(IMM_ROUNDING, 3);
@@ -86,7 +86,7 @@ pub fn _mm_cvtps_ph<const IMM_ROUNDING: i32>(a: __m128) -> __m128i {
 #[inline]
 #[target_feature(enable = "f16c")]
 #[cfg_attr(test, assert_instr("vcvtps2ph", IMM_ROUNDING = 0))]
-#[rustc_legacy_const_generics(1)]
+#[rustc_deprecated_legacy_const_generics(1)]
 #[stable(feature = "x86_f16c_intrinsics", since = "1.68.0")]
 pub fn _mm256_cvtps_ph<const IMM_ROUNDING: i32>(a: __m256) -> __m128i {
     static_assert_uimm_bits!(IMM_ROUNDING, 3);

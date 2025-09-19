@@ -69,7 +69,7 @@ pub const _PREFETCH_LOCALITY3: i32 = 3;
 #[cfg_attr(test, assert_instr("prfm pstl3keep", RW = _PREFETCH_WRITE, LOCALITY = _PREFETCH_LOCALITY1))]
 #[cfg_attr(test, assert_instr("prfm pstl2keep", RW = _PREFETCH_WRITE, LOCALITY = _PREFETCH_LOCALITY2))]
 #[cfg_attr(test, assert_instr("prfm pstl1keep", RW = _PREFETCH_WRITE, LOCALITY = _PREFETCH_LOCALITY3))]
-#[rustc_legacy_const_generics(1, 2)]
+#[rustc_deprecated_legacy_const_generics(1, 2)]
 #[unstable(feature = "stdarch_aarch64_prefetch", issue = "117217")]
 // FIXME: Replace this with the standard ACLE __pld/__pldx/__pli/__plix intrinsics
 pub unsafe fn _prefetch<const RW: i32, const LOCALITY: i32>(p: *const i8) {

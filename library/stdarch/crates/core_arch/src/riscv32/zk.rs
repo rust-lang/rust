@@ -57,7 +57,7 @@ unsafe extern "unadjusted" {
 /// The `BS` parameter is expected to be a constant value and only the bottom 2 bits of `bs` are
 /// used.
 #[target_feature(enable = "zkne")]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 // See #1464
 // #[cfg_attr(test, assert_instr(aes32esi, BS = 0))]
 #[inline]
@@ -86,7 +86,7 @@ pub fn aes32esi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
 /// The `bs` parameter is expected to be a constant value and only the bottom 2 bits of `bs` are
 /// used.
 #[target_feature(enable = "zkne")]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 // See #1464
 // #[cfg_attr(test, assert_instr(aes32esmi, BS = 0))]
 #[inline]
@@ -114,7 +114,7 @@ pub fn aes32esmi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
 /// The `BS` parameter is expected to be a constant value and only the bottom 2 bits of `bs` are
 /// used.
 #[target_feature(enable = "zknd")]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 // See #1464
 // #[cfg_attr(test, assert_instr(aes32dsi, BS = 0))]
 #[inline]
@@ -143,7 +143,7 @@ pub fn aes32dsi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
 /// The `BS` parameter is expected to be a constant value and only the bottom 2 bits of `bs` are
 /// used.
 #[target_feature(enable = "zknd")]
-#[rustc_legacy_const_generics(2)]
+#[rustc_deprecated_legacy_const_generics(2)]
 // See #1464
 // #[cfg_attr(test, assert_instr(aes32dsmi, BS = 0))]
 #[inline]
