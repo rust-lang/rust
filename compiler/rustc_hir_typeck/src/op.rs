@@ -566,7 +566,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     rhs_ty,
                     lhs_expr,
                     lhs_ty,
-                    |lhs_ty, rhs_ty| is_compatible_after_call(lhs_ty, rhs_ty),
+                    is_compatible_after_call,
                 ) {
                     // Cool
                 }
@@ -1170,8 +1170,8 @@ fn deref_ty_if_possible(ty: Ty<'_>) -> Ty<'_> {
     }
 }
 
-/// Returns `true` if this is a built-in arithmetic operation (e.g., u32
-/// + u32, i16x4 == i16x4) and false if these types would have to be
+/// Returns `true` if this is a built-in arithmetic operation (e.g.,
+/// u32 + u32, i16x4 == i16x4) and false if these types would have to be
 /// overloaded to be legal. There are two reasons that we distinguish
 /// builtin operations from overloaded ones (vs trying to drive
 /// everything uniformly through the trait system and intrinsics or
@@ -1191,7 +1191,7 @@ fn is_builtin_binop<'tcx>(lhs: Ty<'tcx>, rhs: Ty<'tcx>, category: BinOpCategory)
     // (See https://github.com/rust-lang/rust/issues/57447.)
     let (lhs, rhs) = (deref_ty_if_possible(lhs), deref_ty_if_possible(rhs));
 
-    match category.into() {
+    match category {
         BinOpCategory::Shortcircuit => true,
         BinOpCategory::Shift => {
             lhs.references_error()
