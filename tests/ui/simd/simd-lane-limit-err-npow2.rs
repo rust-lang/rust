@@ -7,7 +7,5 @@
 struct V<T, const N: usize>([T; N]);
 
 fn main() {
-    let _a: V<i32, 6> = V([0; 6]);
+    let _a: V<i32, 6> = V([0; 6]); //~ ERROR the SIMD type `V<i32, 6>` has more elements than the limit 4
 }
-
-//~? ERROR monomorphising SIMD type `V<i32, 6>` of length greater than 4

@@ -1,4 +1,8 @@
-error: monomorphising SIMD type `V<i32, 8>` of length greater than 4
+error: the SIMD type `V<i32, 8>` has more elements than the limit 4
+  --> $DIR/simd-lane-limit-err.rs:10:9
+   |
+LL |     let _a: V<i32, 8> = V([0; 8]);
+   |         ^^
 
 error: aborting due to 1 previous error
 

@@ -24,7 +24,7 @@ use rustc_span::{Symbol, sym};
 use tracing::{debug, instrument};
 use {rustc_abi as abi, rustc_hir as hir};
 
-use crate::errors::{NonPrimitiveSimdType, OversizedSimdType, ZeroLengthSimdType};
+use crate::errors::{NonPrimitiveSimdType, ZeroLengthSimdType};
 
 mod invariant;
 
@@ -126,7 +126,7 @@ fn map_error<'tcx>(
         }
         LayoutCalculatorError::OversizedSimdType { max_lanes } => {
             // Can't be caught in typeck if the array length is generic.
-            cx.tcx().dcx().emit_fatal(OversizedSimdType { ty, max_lanes })
+            LayoutError::OversizedSimd(ty, max_lanes)
         }
         LayoutCalculatorError::NonPrimitiveSimdType(field) => {
             // This error isn't caught in typeck, e.g., if

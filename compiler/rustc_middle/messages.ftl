@@ -98,6 +98,9 @@ middle_layout_references_error =
 middle_layout_size_overflow =
     values of the type `{$ty}` are too big for the target architecture
 
+middle_layout_oversized_simd =
+    the SIMD type `{$ty}` has more elements than the limit {$max_lanes}
+
 middle_layout_too_generic = the type `{$ty}` does not have a fixed layout
 
 middle_layout_unknown =

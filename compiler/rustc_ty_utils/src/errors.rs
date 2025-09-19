@@ -85,13 +85,6 @@ pub(crate) struct ZeroLengthSimdType<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(ty_utils_oversized_simd_type)]
-pub(crate) struct OversizedSimdType<'tcx> {
-    pub ty: Ty<'tcx>,
-    pub max_lanes: u64,
-}
-
-#[derive(Diagnostic)]
 #[diag(ty_utils_non_primitive_simd_type)]
 pub(crate) struct NonPrimitiveSimdType<'tcx> {
     pub ty: Ty<'tcx>,

@@ -229,6 +229,9 @@ pub enum LayoutError<'tcx> {
     Unknown(Ty<'tcx>),
     /// The size of a type exceeds [`TargetDataLayout::obj_size_bound`].
     SizeOverflow(Ty<'tcx>),
+    /// The size of a SIMD type exceeds either the max SIMD size, or the limit
+    /// configured by #[rustc_simd_monomorphize_lane_limit].
+    OversizedSimd(Ty<'tcx>, u64),
     /// The layout can vary due to a generic parameter.
     ///
     /// Unlike `Unknown`, this variant is a "soft" error and indicates that the layout
@@ -256,6 +259,7 @@ impl<'tcx> LayoutError<'tcx> {
         match self {
             Unknown(_) => middle_layout_unknown,
             SizeOverflow(_) => middle_layout_size_overflow,
+            OversizedSimd(_, _) => middle_layout_oversized_simd,
             TooGeneric(_) => middle_layout_too_generic,
             NormalizationFailure(_, _) => middle_layout_normalization_failure,
             Cycle(_) => middle_layout_cycle,
@@ -270,6 +274,7 @@ impl<'tcx> LayoutError<'tcx> {
         match self {
             Unknown(ty) => E::Unknown { ty },
             SizeOverflow(ty) => E::Overflow { ty },
+            OversizedSimd(ty, max_lanes) => E::OversizedSimd { ty, max_lanes },
             TooGeneric(ty) => E::TooGeneric { ty },
             NormalizationFailure(ty, e) => {
                 E::NormalizationFailure { ty, failure_ty: e.get_type_for_failure() }
@@ -291,6 +296,9 @@ impl<'tcx> fmt::Display for LayoutError<'tcx> {
             }
             LayoutError::SizeOverflow(ty) => {
                 write!(f, "values of the type `{ty}` are too big for the target architecture")
+            }
+            LayoutError::OversizedSimd(ty, max_lanes) => {
+                write!(f, "the SIMD type `{ty}` has more elements than the limit {max_lanes}")
             }
             LayoutError::NormalizationFailure(t, e) => write!(
                 f,
@@ -373,6 +381,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 e @ LayoutError::Cycle(_)
                 | e @ LayoutError::Unknown(_)
                 | e @ LayoutError::SizeOverflow(_)
+                | e @ LayoutError::OversizedSimd(_, _)
                 | e @ LayoutError::NormalizationFailure(..)
                 | e @ LayoutError::ReferencesError(_),
             ) => return Err(e),
