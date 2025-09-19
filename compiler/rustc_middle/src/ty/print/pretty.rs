@@ -3177,8 +3177,9 @@ define_print! {
                 write!(p, "` can be evaluated")?;
             }
             ty::ClauseKind::UnstableFeature(symbol) => {
-                write!(p, "unstable feature: ")?;
+                write!(p, "unstable feature ")?;
                 write!(p, "`{symbol}`")?;
+                write!(p, " is enabled")?;
             }
         }
     }
