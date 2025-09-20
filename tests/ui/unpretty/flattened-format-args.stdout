@@ -11,7 +11,8 @@ fn main() {
     // Should flatten to println!("a 123 b {x} xyz\n"):
     {
         ::std::io::_print({
-                super let args = [format_argument::new_display(&x)];
+                super let args = (&x,);
+                super let args = [format_argument::new_display(args.0)];
                 format_arguments::new_v1(&["a 123 b ", " xyz\n"], &args)
             });
     };
