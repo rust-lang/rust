@@ -15,7 +15,7 @@
 #![feature(pointer_is_aligned_to)]
 #![feature(ptr_metadata)]
 #![feature(unqualified_local_imports)]
-#![feature(derive_coerce_pointee)]
+#![cfg_attr(bootstrap, feature(derive_coerce_pointee))]
 #![feature(arbitrary_self_types)]
 #![feature(iter_advance_by)]
 #![cfg_attr(not(bootstrap), feature(duration_from_nanos_u128))]
