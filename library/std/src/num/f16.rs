@@ -44,7 +44,7 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn powf(self, n: f16) -> f16 {
-        unsafe { intrinsics::powf16(self, n) }
+        intrinsics::powf16(self, n)
     }
 
     /// Returns `e^(self)`, (the exponential function).
@@ -76,7 +76,7 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn exp(self) -> f16 {
-        unsafe { intrinsics::expf16(self) }
+        intrinsics::expf16(self)
     }
 
     /// Returns `2^(self)`.
@@ -106,7 +106,7 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn exp2(self) -> f16 {
-        unsafe { intrinsics::exp2f16(self) }
+        intrinsics::exp2f16(self)
     }
 
     /// Returns the natural logarithm of the number.
@@ -151,7 +151,7 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn ln(self) -> f16 {
-        unsafe { intrinsics::logf16(self) }
+        intrinsics::logf16(self)
     }
 
     /// Returns the logarithm of the number with respect to an arbitrary base.
@@ -241,7 +241,7 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn log2(self) -> f16 {
-        unsafe { intrinsics::log2f16(self) }
+        intrinsics::log2f16(self)
     }
 
     /// Returns the base 10 logarithm of the number.
@@ -284,7 +284,7 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn log10(self) -> f16 {
-        unsafe { intrinsics::log10f16(self) }
+        intrinsics::log10f16(self)
     }
 
     /// Compute the distance between the origin and a point (`x`, `y`) on the
@@ -350,7 +350,7 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn sin(self) -> f16 {
-        unsafe { intrinsics::sinf16(self) }
+        intrinsics::sinf16(self)
     }
 
     /// Computes the cosine of a number (in radians).
@@ -379,7 +379,7 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn cos(self) -> f16 {
-        unsafe { intrinsics::cosf16(self) }
+        intrinsics::cosf16(self)
     }
 
     /// Computes the tangent of a number (in radians).
