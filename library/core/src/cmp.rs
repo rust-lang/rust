@@ -1351,7 +1351,9 @@ pub macro Ord($item:item) {
 #[rustc_diagnostic_item = "PartialOrd"]
 #[allow(multiple_supertrait_upcastable)] // FIXME(sized_hierarchy): remove this
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-pub const trait PartialOrd<Rhs: PointeeSized = Self>: PartialEq<Rhs> + PointeeSized {
+pub const trait PartialOrd<Rhs: PointeeSized = Self>:
+    [const] PartialEq<Rhs> + PointeeSized
+{
     /// This method returns an ordering between `self` and `other` values if one exists.
     ///
     /// # Examples
