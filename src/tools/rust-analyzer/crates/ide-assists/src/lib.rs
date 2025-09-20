@@ -283,6 +283,7 @@ mod handlers {
             extract_type_alias::extract_type_alias,
             fix_visibility::fix_visibility,
             flip_binexpr::flip_binexpr,
+            flip_binexpr::flip_range_expr,
             flip_comma::flip_comma,
             flip_or_pattern::flip_or_pattern,
             flip_trait_bound::flip_trait_bound,
