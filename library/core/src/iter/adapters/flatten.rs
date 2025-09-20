@@ -779,7 +779,7 @@ impl<T> OneShot for result::IterMut<'_, T> {}
 impl<T> OneShot for Empty<T> {}
 impl<T> OneShot for array::IntoIter<T, 0> {}
 
-// These adaptors never increase the number of items.
+// These adapters never increase the number of items.
 // (There are more possible, but for now this matches BoundedSize above.)
 impl<I: OneShot> OneShot for Cloned<I> {}
 impl<I: OneShot> OneShot for Copied<I> {}
