@@ -410,6 +410,16 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
             })
         }
 
+        (ty::Field(lcontainer, lpath), ty::Field(rcontainer, rpath)) => {
+            let t = relation.relate(lcontainer, rcontainer)?;
+            if lpath == rpath {
+                Ok(Ty::new_field_type(cx, t, lpath))
+            } else {
+                // FIXME(field_projections): improve error
+                Err(TypeError::Mismatch)
+            }
+        }
+
         (ty::Foreign(a_id), ty::Foreign(b_id)) if a_id == b_id => Ok(Ty::new_foreign(cx, a_id)),
 
         (ty::Dynamic(a_obj, a_region), ty::Dynamic(b_obj, b_region)) => Ok(Ty::new_dynamic(

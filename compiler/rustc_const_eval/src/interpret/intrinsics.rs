@@ -7,10 +7,10 @@ use std::assert_matches::assert_matches;
 use rustc_abi::{FieldIdx, HasDataLayout, Size};
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, read_target_uint, write_target_uint};
-use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
+use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic, NullOp};
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{Ty, TyCtxt};
-use rustc_middle::{bug, ty};
+use rustc_middle::{bug, span_bug, ty};
 use rustc_span::{Symbol, sym};
 use tracing::trace;
 
@@ -188,6 +188,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     | ty::CoroutineWitness(..)
                     | ty::UnsafeBinder(_)
                     | ty::Never
+                    | ty::Field(..)
                     | ty::Tuple(_)
                     | ty::Error(_) => ConstValue::from_target_usize(0u64, &tcx),
                 };
@@ -637,6 +638,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 rustc_apfloat::Round::NearestTiesToEven,
             )?,
 
+            sym::field_offset => self.field_offset(instance, dest)?,
+
             // Unsupported intrinsic: skip the return_to_block below.
             _ => return interp_ok(false),
         }
@@ -644,6 +647,26 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         trace!("{:?}", self.dump_place(&dest.clone().into()));
         self.return_to_block(ret)?;
         interp_ok(true)
+    }
+
+    fn field_offset(
+        &mut self,
+        instance: ty::Instance<'tcx>,
+        dest: &PlaceTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, ()> {
+        assert_eq!(instance.args.len(), 1);
+        let ty = instance.args.type_at(0);
+        match ty.kind() {
+            &ty::Field(container, field_path) => {
+                let offset = self.nullary_op(NullOp::OffsetOf(field_path), container)?;
+                self.write_immediate(*offset, dest)
+            }
+            ty::Alias(..) | ty::Param(..) | ty::Placeholder(..) | ty::Infer(..) => {
+                // This can happen in code which is generic over the field type.
+                throw_inval!(TooGeneric)
+            }
+            _ => span_bug!(self.cur_span(), "expected field representing type, found {ty}"),
+        }
     }
 
     pub(super) fn eval_nondiverging_intrinsic(

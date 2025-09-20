@@ -523,6 +523,7 @@ fn ast_ty_search_pat(ty: &ast::Ty) -> (Pat, Pat) {
             };
             (start, Pat::Str(""))
         },
+        TyKind::FieldOf(..) => (Pat::Str("field_of!"), Pat::Str("")),
 
         // implicit, so has no contents to match against
         TyKind::ImplicitSelf

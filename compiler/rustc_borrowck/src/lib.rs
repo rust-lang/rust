@@ -1892,6 +1892,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                         }
                     }
                     ty::Bool
+                    | ty::Field(..)
                     | ty::Char
                     | ty::Int(_)
                     | ty::Uint(_)
@@ -1936,6 +1937,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     | ty::Coroutine(_, _)
                     | ty::Tuple(_) => (),
                     ty::Bool
+                    | ty::Field(..)
                     | ty::Char
                     | ty::Int(_)
                     | ty::Uint(_)

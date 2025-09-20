@@ -366,6 +366,7 @@ fn evaluate_host_effect_for_destruct_goal<'tcx>(
         | ty::FnDef(..)
         | ty::FnPtr(..)
         | ty::Never
+        | ty::Field(_, _)
         | ty::Infer(ty::InferTy::FloatVar(_) | ty::InferTy::IntVar(_))
         | ty::Error(_) => thin_vec![],
 

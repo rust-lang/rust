@@ -277,6 +277,10 @@ impl<I: Interner> FlagComputation<I> {
                 self.add_args(args.as_slice());
             }
 
+            ty::Field(ty, _) => {
+                self.add_kind(&ty.kind());
+            }
+
             ty::Alias(kind, data) => {
                 self.add_flags(match kind {
                     ty::Projection => TypeFlags::HAS_TY_PROJECTION,

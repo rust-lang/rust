@@ -440,6 +440,12 @@ language_item_table! {
 
     // Reborrowing related lang-items
     Reborrow,                sym::reborrow,            reborrow,                   Target::Trait,          GenericRequirement::Exact(0);
+
+    // Experimental lang items for field projections.
+    Field,                 sym::Field,                field_trait,            Target::Trait,               GenericRequirement::None;
+    FieldBase,             sym::FieldBase,            field_base,             Target::AssocTy,             GenericRequirement::None;
+    FieldType,             sym::FieldType,            field_type,             Target::AssocTy,             GenericRequirement::None;
+    FieldOffset,           sym::FieldOffset,          field_offset,           Target::AssocConst,          GenericRequirement::None;
 }
 
 /// The requirement imposed on the generics of a lang item

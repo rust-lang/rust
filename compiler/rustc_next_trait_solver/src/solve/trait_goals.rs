@@ -1,5 +1,7 @@
 //! Dealing with trait goals, i.e. `T: Trait<'a, U>`.
 
+use std::ops::ControlFlow;
+
 use rustc_type_ir::data_structures::IndexSet;
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
@@ -744,6 +746,7 @@ where
                 | ty::Slice(_)
                 | ty::Foreign(..)
                 | ty::Adt(..)
+                | ty::Field(..)
                 | ty::Alias(..)
                 | ty::Param(_)
                 | ty::Placeholder(..)
@@ -844,6 +847,36 @@ where
                 _ => vec![],
             }
         })
+    }
+
+    fn consider_builtin_field_candidate(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+    ) -> Result<Candidate<I>, NoSolution> {
+        if goal.predicate.polarity != ty::PredicatePolarity::Positive {
+            return Err(NoSolution);
+        }
+
+        match goal.predicate.self_ty().kind() {
+            ty::Field(container, field_path)
+                if field_path
+                    .walk(ecx.cx(), container, |base, _, _, _| {
+                        if let ty::Adt(def, _) = base.kind()
+                            && def.is_packed()
+                        {
+                            ControlFlow::Break(())
+                        } else {
+                            ControlFlow::Continue(())
+                        }
+                    })
+                    .is_none() =>
+            {
+                ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
+                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                })
+            }
+            _ => Err(NoSolution),
+        }
     }
 }
 
@@ -1257,6 +1290,7 @@ where
             | ty::Never
             | ty::Tuple(_)
             | ty::Adt(_, _)
+            | ty::Field(_, _)
             | ty::UnsafeBinder(_) => check_impls(),
             ty::Error(_) => None,
         }

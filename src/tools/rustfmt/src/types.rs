@@ -1031,6 +1031,8 @@ impl Rewrite for ast::Ty {
             }
             ast::TyKind::CVarArgs => Ok("...".to_owned()),
             ast::TyKind::Dummy | ast::TyKind::Err(_) => Ok(context.snippet(self.span).to_owned()),
+            // Builtin type expression, cannot be written by users.
+            ast::TyKind::FieldOf(..) => Err(RewriteError::Unknown),
             ast::TyKind::Typeof(ref anon_const) => rewrite_call(
                 context,
                 "typeof",
