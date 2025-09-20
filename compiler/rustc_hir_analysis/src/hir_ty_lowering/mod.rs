@@ -752,6 +752,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         self_ty: Ty<'tcx>,
         bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
         predicate_filter: PredicateFilter,
+        for_dyn: bool,
     ) -> GenericArgCountResult {
         let tcx = self.tcx();
 
@@ -927,7 +928,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 poly_trait_ref,
                 constraint,
                 bounds,
-                &mut dup_constraints,
+                for_dyn.then_some(&mut dup_constraints),
                 constraint.span,
                 predicate_filter,
             );
