@@ -220,7 +220,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     // to use builtin indexing because the index type is known to be
     // usize-ish
     fn fix_index_builtin_expr(&mut self, e: &hir::Expr<'_>) {
-        if let hir::ExprKind::Index(ref base, ref index, _) = e.kind {
+        if let hir::ExprKind::Index(base, index, _) = e.kind {
             // All valid indexing looks like this; might encounter non-valid indexes at this point.
             let base_ty = self.typeck_results.expr_ty_adjusted(base);
             if let ty::Ref(_, base_ty_inner, _) = *base_ty.kind() {
@@ -583,7 +583,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             }
 
             if let Err(err) = opaque_type_has_defining_use_args(
-                &self.fcx,
+                self.fcx,
                 opaque_type_key,
                 hidden_type.span,
                 DefiningScopeKind::HirTypeck,
@@ -792,7 +792,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
     fn visit_potentially_region_dependent_goals(&mut self) {
         let obligations = self.fcx.take_hir_typeck_potentially_region_dependent_goals();
-        if let None = self.fcx.tainted_by_errors() {
+        if self.fcx.tainted_by_errors().is_none() {
             for obligation in obligations {
                 let (predicate, mut cause) =
                     self.fcx.resolve_vars_if_possible((obligation.predicate, obligation.cause));

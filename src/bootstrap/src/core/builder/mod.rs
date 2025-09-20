@@ -590,18 +590,30 @@ impl StepDescription {
         // Attempt to resolve paths to be relative to the builder source directory.
         let mut paths: Vec<PathBuf> = paths
             .iter()
-            .map(|p| {
+            .map(|original_path| {
+                let mut path = original_path.clone();
+
+                // Someone could run `x <cmd> <path>` from a different repository than the source
+                // directory.
+                // In that case, we should not try to resolve the paths relative to the working
+                // directory, but rather relative to the source directory.
+                // So we forcefully "relocate" the path to the source directory here.
+                if !path.is_absolute() {
+                    path = builder.src.join(path);
+                }
+
                 // If the path does not exist, it may represent the name of a Step, such as `tidy` in `x test tidy`
-                if !p.exists() {
-                    return p.clone();
+                if !path.exists() {
+                    // Use the original path here
+                    return original_path.clone();
                 }
 
                 // Make the path absolute, strip the prefix, and convert to a PathBuf.
-                match std::path::absolute(p) {
+                match std::path::absolute(&path) {
                     Ok(p) => p.strip_prefix(&builder.src).unwrap_or(&p).to_path_buf(),
                     Err(e) => {
                         eprintln!("ERROR: {e:?}");
-                        panic!("Due to the above error, failed to resolve path: {p:?}");
+                        panic!("Due to the above error, failed to resolve path: {path:?}");
                     }
                 }
             })

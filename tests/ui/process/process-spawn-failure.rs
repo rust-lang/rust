@@ -9,6 +9,10 @@
 //@ ignore-vxworks no 'ps'
 //@ ignore-fuchsia no 'ps'
 //@ ignore-nto no 'ps'
+//@ ignore-ios no 'ps'
+//@ ignore-tvos no 'ps'
+//@ ignore-watchos no 'ps'
+//@ ignore-visionos no 'ps'
 
 #![feature(rustc_private)]
 

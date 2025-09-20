@@ -192,7 +192,7 @@ fn configure_and_expand(
             unsafe {
                 env::set_var(
                     "PATH",
-                    &env::join_paths(
+                    env::join_paths(
                         new_path.iter().filter(|p| env::join_paths(iter::once(p)).is_ok()),
                     )
                     .unwrap(),
@@ -446,7 +446,7 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
                 let prev_source = sess.psess.source_map().span_to_prev_source(first_span);
                 let ferris_fix = prev_source
                     .map_or(FerrisFix::SnakeCase, |source| {
-                        let mut source_before_ferris = source.trim_end().split_whitespace().rev();
+                        let mut source_before_ferris = source.split_whitespace().rev();
                         match source_before_ferris.next() {
                             Some("struct" | "trait" | "mod" | "union" | "type" | "enum") => {
                                 FerrisFix::PascalCase
@@ -500,7 +500,7 @@ fn env_var_os<'tcx>(tcx: TyCtxt<'tcx>, key: &'tcx OsStr) -> Option<&'tcx OsStr> 
     // properly change-tracked.
     tcx.sess.psess.env_depinfo.borrow_mut().insert((
         Symbol::intern(&key.to_string_lossy()),
-        value.as_ref().and_then(|value| value.to_str()).map(|value| Symbol::intern(&value)),
+        value.as_ref().and_then(|value| value.to_str()).map(|value| Symbol::intern(value)),
     ));
 
     value_tcx
@@ -824,7 +824,7 @@ pub fn write_dep_info(tcx: TyCtxt<'_>) {
 
     let outputs = tcx.output_filenames(());
     let output_paths =
-        generated_output_paths(tcx, &outputs, sess.io.output_file.is_some(), crate_name);
+        generated_output_paths(tcx, outputs, sess.io.output_file.is_some(), crate_name);
 
     // Ensure the source file isn't accidentally overwritten during compilation.
     if let Some(input_path) = sess.io.input.opt_path() {
@@ -847,7 +847,7 @@ pub fn write_dep_info(tcx: TyCtxt<'_>) {
         }
     }
 
-    write_out_deps(tcx, &outputs, &output_paths);
+    write_out_deps(tcx, outputs, &output_paths);
 
     let only_dep_info = sess.opts.output_types.contains_key(&OutputType::DepInfo)
         && sess.opts.output_types.len() == 1;
@@ -1303,7 +1303,7 @@ pub(crate) fn parse_crate_name(
     let rustc_hir::Attribute::Parsed(AttributeKind::CrateName { name, name_span, .. }) =
         AttributeParser::parse_limited_should_emit(
             sess,
-            &attrs,
+            attrs,
             sym::crate_name,
             DUMMY_SP,
             rustc_ast::node_id::CRATE_NODE_ID,

@@ -421,7 +421,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // Not all upvars are captured by ref, so use
                         // `apply_capture_kind_on_capture_ty` to ensure that we
                         // compute the right captured type.
-                        return apply_capture_kind_on_capture_ty(
+                        apply_capture_kind_on_capture_ty(
                             self.tcx,
                             upvar_ty,
                             capture,
@@ -430,7 +430,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             } else {
                                 self.tcx.lifetimes.re_erased
                             },
-                        );
+                        )
                     },
                 ),
             );
@@ -529,11 +529,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // process any deferred resolutions.
         let deferred_call_resolutions = self.remove_deferred_call_resolutions(closure_def_id);
         for deferred_call_resolution in deferred_call_resolutions {
-            deferred_call_resolution.resolve(&mut FnCtxt::new(
-                self,
-                self.param_env,
-                closure_def_id,
-            ));
+            deferred_call_resolution.resolve(&FnCtxt::new(self, self.param_env, closure_def_id));
         }
     }
 
@@ -1493,7 +1489,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Notation:
     /// - Ty(place): Type of place
     /// - `(a, b)`: Represents the function parameters `base_path_ty` and `captured_by_move_projs`
-    /// respectively.
+    ///   respectively.
     /// ```ignore (illustrative)
     ///                  (Ty(w), [ &[p, x], &[c] ])
     /// //                              |
@@ -2179,9 +2175,10 @@ fn restrict_precision_for_unsafe(
     (place, curr_mode)
 }
 
-/// Truncate projections so that following rules are obeyed by the captured `place`:
+/// Truncate projections so that the following rules are obeyed by the captured `place`:
 /// - No Index projections are captured, since arrays are captured completely.
-/// - No unsafe block is required to capture `place`
+/// - No unsafe block is required to capture `place`.
+///
 /// Returns the truncated place and updated capture mode.
 fn restrict_capture_precision(
     place: Place<'_>,
