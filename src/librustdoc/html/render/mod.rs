@@ -51,7 +51,9 @@ use askama::Template;
 use itertools::Either;
 use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
-use rustc_hir::attrs::{DeprecatedSince, Deprecation};
+use rustc_hir as hir;
+use rustc_hir::attrs::{AttributeKind, DeprecatedSince, Deprecation};
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_hir::{ConstStability, Mutability, RustcVersion, StabilityLevel, StableSince};
 use rustc_middle::ty::print::PrintTraitRefExt;
@@ -1308,43 +1310,6 @@ fn render_assoc_item(
         .fmt(f),
         _ => panic!("render_assoc_item called on non-associated-item"),
     })
-}
-
-struct CodeAttribute(String);
-
-fn render_code_attribute(prefix: &str, code_attr: CodeAttribute, w: &mut impl fmt::Write) {
-    write!(
-        w,
-        "<div class=\"code-attribute\">{prefix}{attr}</div>",
-        prefix = prefix,
-        attr = code_attr.0
-    )
-    .unwrap();
-}
-
-// When an attribute is rendered inside a <code> tag, it is formatted using
-// a div to produce a newline after it.
-fn render_attributes_in_code(
-    w: &mut impl fmt::Write,
-    it: &clean::Item,
-    prefix: &str,
-    cx: &Context<'_>,
-) {
-    for attr in it.attributes(cx.tcx(), cx.cache()) {
-        render_code_attribute(prefix, CodeAttribute(attr), w);
-    }
-}
-
-/// used for type aliases to only render their `repr` attribute.
-fn render_repr_attributes_in_code(
-    w: &mut impl fmt::Write,
-    cx: &Context<'_>,
-    def_id: DefId,
-    item_type: ItemType,
-) {
-    if let Some(repr) = clean::repr_attributes(cx.tcx(), cx.cache(), def_id, item_type) {
-        render_code_attribute("", CodeAttribute(repr), w);
-    }
 }
 
 #[derive(Copy, Clone)]
@@ -2958,4 +2923,110 @@ fn render_call_locations<W: fmt::Write>(
     }
 
     w.write_str("</div>")
+}
+
+fn render_attributes_in_code(
+    w: &mut impl fmt::Write,
+    item: &clean::Item,
+    prefix: &str,
+    cx: &Context<'_>,
+) {
+    for attr in &item.attrs.other_attrs {
+        render_code_attribute(
+            prefix,
+            match attr {
+                hir::Attribute::Parsed(AttributeKind::LinkSection { name, .. }) => {
+                    Cow::Owned(format!("#[unsafe(link_section = \"{}\")]", Escape(name.as_str())))
+                }
+                hir::Attribute::Parsed(AttributeKind::NoMangle(..)) => {
+                    Cow::Borrowed("#[unsafe(no_mangle)]")
+                }
+                hir::Attribute::Parsed(AttributeKind::ExportName { name, .. }) => {
+                    Cow::Owned(format!("#[unsafe(export_name = \"{}\")]", Escape(name.as_str())))
+                }
+                hir::Attribute::Parsed(AttributeKind::NonExhaustive(..)) => {
+                    Cow::Borrowed("#[non_exhaustive]")
+                }
+                _ => continue,
+            }
+            .as_ref(),
+            w,
+        );
+    }
+
+    if let Some(def_id) = item.def_id()
+        && let Some(repr) = repr_attribute(cx.tcx(), cx.cache(), def_id)
+    {
+        render_code_attribute(prefix, &repr, w);
+    }
+}
+
+fn render_repr_attribute_in_code(w: &mut impl fmt::Write, cx: &Context<'_>, def_id: DefId) {
+    if let Some(repr) = repr_attribute(cx.tcx(), cx.cache(), def_id) {
+        render_code_attribute("", &repr, w);
+    }
+}
+
+fn render_code_attribute(prefix: &str, attr: &str, w: &mut impl fmt::Write) {
+    write!(w, "<div class=\"code-attribute\">{prefix}{attr}</div>").unwrap();
+}
+
+fn repr_attribute<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    cache: &Cache,
+    def_id: DefId,
+) -> Option<Cow<'static, str>> {
+    let adt = match tcx.def_kind(def_id) {
+        DefKind::Struct | DefKind::Enum | DefKind::Union => tcx.adt_def(def_id),
+        _ => return None,
+    };
+    let repr = adt.repr();
+
+    if repr.transparent() {
+        // Render `repr(transparent)` iff the non-1-ZST field is public or at least one
+        // field is public in case all fields are 1-ZST fields.
+        let render_transparent = cache.document_private
+            || adt
+                .all_fields()
+                .find(|field| {
+                    let ty = field.ty(tcx, ty::GenericArgs::identity_for_item(tcx, field.did));
+                    tcx.layout_of(ty::TypingEnv::post_analysis(tcx, field.did).as_query_input(ty))
+                        .is_ok_and(|layout| !layout.is_1zst())
+                })
+                .map_or_else(
+                    || adt.all_fields().any(|field| field.vis.is_public()),
+                    |field| field.vis.is_public(),
+                );
+
+        // Since the transparent repr can't have any other reprs or
+        // repr modifiers beside it, we can safely return early here.
+        return render_transparent.then(|| "#[repr(transparent)]".into());
+    }
+
+    let mut result = Vec::<Cow<'_, _>>::new();
+
+    if repr.c() {
+        result.push("C".into());
+    }
+    if repr.simd() {
+        result.push("simd".into());
+    }
+    if let Some(pack) = repr.pack {
+        result.push(format!("packed({})", pack.bytes()).into());
+    }
+    if let Some(align) = repr.align {
+        result.push(format!("align({})", align.bytes()).into());
+    }
+    if let Some(int) = repr.int {
+        let prefix = if int.is_signed() { 'i' } else { 'u' };
+        let int = match int {
+            rustc_abi::IntegerType::Pointer(_) => format!("{prefix}size"),
+            rustc_abi::IntegerType::Fixed(int, _) => {
+                format!("{prefix}{}", int.size().bytes() * 8)
+            }
+        };
+        result.push(int.into());
+    }
+
+    (!result.is_empty()).then(|| format!("#[repr({})]", result.join(", ")).into())
 }
