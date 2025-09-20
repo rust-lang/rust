@@ -13,8 +13,8 @@ use rustc_index::{IndexSlice, IndexVec};
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
 use rustc_middle::bug;
 use rustc_middle::mir::{
-    self, BasicBlock, Body, ClearCrossCrate, Local, Location, MirDumper, Place, StatementKind,
-    TerminatorKind,
+    self, BackwardIncompatibleDropReason, BasicBlock, Body, ClearCrossCrate, Local, Location,
+    MirDumper, Place, StatementKind, TerminatorKind,
 };
 use rustc_middle::ty::significant_drop_order::{
     extract_component_with_significant_dtor, ty_dtor_span,
@@ -207,7 +207,11 @@ pub(crate) fn run_lint<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &Body<
     let mut ty_dropped_components = UnordMap::default();
     for (block, data) in body.basic_blocks.iter_enumerated() {
         for (statement_index, stmt) in data.statements.iter().enumerate() {
-            if let StatementKind::BackwardIncompatibleDropHint { place, reason: _ } = &stmt.kind {
+            if let StatementKind::BackwardIncompatibleDropHint {
+                place,
+                reason: BackwardIncompatibleDropReason::Edition2024,
+            } = &stmt.kind
+            {
                 let ty = place.ty(body, tcx).ty;
                 if ty_dropped_components
                     .entry(ty)
