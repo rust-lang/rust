@@ -37,15 +37,15 @@ LL +     for i in (0..MAX_LEN).rev() {
    |
 
 error: this range is empty so it will yield no values
-  --> tests/ui/reversed_empty_ranges_loops_fixable.rs:37:14
+  --> tests/ui/reversed_empty_ranges_loops_fixable.rs:37:15
    |
 LL |     for i in (10..0).map(|x| x * 2) {
-   |              ^^^^^^^
+   |               ^^^^^
    |
 help: consider using the following if you are attempting to iterate over this range in reverse
    |
 LL -     for i in (10..0).map(|x| x * 2) {
-LL +     for i in (0..10).rev().map(|x| x * 2) {
+LL +     for i in ((0..10).rev()).map(|x| x * 2) {
    |
 
 error: this range is empty so it will yield no values
