@@ -4,7 +4,7 @@ cfg_select! {
         pub use hermit::{Thread, available_parallelism, sleep, yield_now, DEFAULT_MIN_STACK_SIZE};
         #[expect(dead_code)]
         mod unsupported;
-        pub use unsupported::{current_os_id, set_name};
+        pub use unsupported::current_os_id;
     }
     all(target_vendor = "fortanix", target_env = "sgx") => {
         mod sgx;
@@ -21,41 +21,32 @@ cfg_select! {
         // as-is with the SGX target.
         #[expect(dead_code)]
         mod unsupported;
-        pub use unsupported::{available_parallelism, set_name};
+        pub use unsupported::available_parallelism;
     }
     target_os = "solid_asp3" => {
         mod solid;
         pub use solid::{Thread, sleep, yield_now, DEFAULT_MIN_STACK_SIZE};
         #[expect(dead_code)]
         mod unsupported;
-        pub use unsupported::{available_parallelism, current_os_id, set_name};
+        pub use unsupported::{available_parallelism, current_os_id};
     }
     target_os = "teeos" => {
         mod teeos;
         pub use teeos::{Thread, sleep, yield_now, DEFAULT_MIN_STACK_SIZE};
         #[expect(dead_code)]
         mod unsupported;
-        pub use unsupported::{available_parallelism, current_os_id, set_name};
+        pub use unsupported::{available_parallelism, current_os_id};
     }
     target_os = "uefi" => {
         mod uefi;
         pub use uefi::{available_parallelism, sleep};
         #[expect(dead_code)]
         mod unsupported;
-        pub use unsupported::{Thread, current_os_id, set_name, yield_now, DEFAULT_MIN_STACK_SIZE};
+        pub use unsupported::{Thread, current_os_id, yield_now, DEFAULT_MIN_STACK_SIZE};
     }
     target_family = "unix" => {
         mod unix;
         pub use unix::{Thread, available_parallelism, current_os_id, sleep, yield_now, DEFAULT_MIN_STACK_SIZE};
-        #[cfg(not(any(
-            target_env = "newlib",
-            target_os = "l4re",
-            target_os = "emscripten",
-            target_os = "redox",
-            target_os = "hurd",
-            target_os = "aix",
-        )))]
-        pub use unix::set_name;
         #[cfg(any(
             target_os = "freebsd",
             target_os = "netbsd",
@@ -69,17 +60,8 @@ cfg_select! {
             target_os = "vxworks",
         ))]
         pub use unix::sleep_until;
-        #[expect(dead_code)]
-        mod unsupported;
-        #[cfg(any(
-            target_env = "newlib",
-            target_os = "l4re",
-            target_os = "emscripten",
-            target_os = "redox",
-            target_os = "hurd",
-            target_os = "aix",
-        ))]
-        pub use unsupported::set_name;
+        // This is used to name the main thread in the platform init function.
+        pub(super) use unix::set_name;
     }
     all(target_os = "wasi", target_env = "p1") => {
         mod wasip1;
@@ -88,7 +70,7 @@ cfg_select! {
         pub use wasip1::{Thread, available_parallelism};
         #[expect(dead_code)]
         mod unsupported;
-        pub use unsupported::{current_os_id, set_name};
+        pub use unsupported::current_os_id;
         #[cfg(not(target_feature = "atomics"))]
         pub use unsupported::{Thread, available_parallelism};
     }
@@ -100,7 +82,7 @@ cfg_select! {
         // Note that unlike WASIp1 even if the wasm `atomics` feature is enabled
         // there is no support for threads, not even experimentally, not even in
         // wasi-libc. Thus this is unconditionally unsupported.
-        pub use unsupported::{Thread, available_parallelism, current_os_id, set_name, yield_now, DEFAULT_MIN_STACK_SIZE};
+        pub use unsupported::{Thread, available_parallelism, current_os_id, yield_now, DEFAULT_MIN_STACK_SIZE};
     }
     all(target_family = "wasm", target_feature = "atomics") => {
         mod wasm;
@@ -108,11 +90,11 @@ cfg_select! {
 
         #[expect(dead_code)]
         mod unsupported;
-        pub use unsupported::{Thread, available_parallelism, current_os_id, set_name, yield_now, DEFAULT_MIN_STACK_SIZE};
+        pub use unsupported::{Thread, available_parallelism, current_os_id, yield_now, DEFAULT_MIN_STACK_SIZE};
     }
     target_os = "windows" => {
         mod windows;
-        pub use windows::{Thread, available_parallelism, current_os_id, set_name, set_name_wide, sleep, yield_now, DEFAULT_MIN_STACK_SIZE};
+        pub use windows::{Thread, available_parallelism, current_os_id, set_name_wide, sleep, yield_now, DEFAULT_MIN_STACK_SIZE};
     }
     target_os = "xous" => {
         mod xous;
@@ -120,11 +102,11 @@ cfg_select! {
 
         #[expect(dead_code)]
         mod unsupported;
-        pub use unsupported::{current_os_id, set_name};
+        pub use unsupported::current_os_id;
     }
     _ => {
         mod unsupported;
-        pub use unsupported::{Thread, available_parallelism, current_os_id, set_name, sleep, yield_now, DEFAULT_MIN_STACK_SIZE};
+        pub use unsupported::{Thread, available_parallelism, current_os_id, sleep, yield_now, DEFAULT_MIN_STACK_SIZE};
     }
 }
 

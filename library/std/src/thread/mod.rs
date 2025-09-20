@@ -183,8 +183,10 @@ mod current;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use current::current;
+#[allow(unused)] // Unused on platforms without threads.
+pub(crate) use current::set_current;
+use current::try_with_current;
 pub(crate) use current::{current_id, current_or_unnamed, current_os_id, drop_current};
-use current::{set_current, try_with_current};
 
 mod spawnhook;
 
@@ -541,18 +543,6 @@ impl Builder {
 
         let f = MaybeDangling::new(f);
         let main = move || {
-            if let Err(_thread) = set_current(their_thread.clone()) {
-                // Both the current thread handle and the ID should not be
-                // initialized yet. Since only the C runtime and some of our
-                // platform code run before this, this point shouldn't be
-                // reachable. Use an abort to save binary size (see #123356).
-                rtabort!("something here is badly broken!");
-            }
-
-            if let Some(name) = their_thread.cname() {
-                imp::set_name(name);
-            }
-
             let f = f.into_inner();
             let try_result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
                 crate::sys::backtrace::__rust_begin_short_backtrace(|| hooks.run());
@@ -595,7 +585,7 @@ impl Builder {
             // Similarly, the `sys` implementation must guarantee that no references to the closure
             // exist after the thread has terminated, which is signaled by `Thread::join`
             // returning.
-            native: unsafe { imp::Thread::new(stack_size, my_thread.name(), main)? },
+            native: unsafe { imp::Thread::new(stack_size, their_thread, main)? },
             thread: my_thread,
             packet: my_packet,
         })
@@ -1672,7 +1662,9 @@ impl Thread {
         unsafe { Thread { inner: Pin::new_unchecked(Arc::from_raw(ptr as *const Inner)) } }
     }
 
-    fn cname(&self) -> Option<&CStr> {
+    // This isn't used on platforms without an API to name threads.
+    #[allow(unused)]
+    pub(crate) fn cname(&self) -> Option<&CStr> {
         if let Some(name) = &self.inner.name {
             Some(name.as_cstr())
         } else if main_thread::get() == Some(self.inner.id) {

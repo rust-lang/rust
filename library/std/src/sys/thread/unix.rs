@@ -31,8 +31,8 @@ pub const DEFAULT_MIN_STACK_SIZE: usize = 256 * 1024;
 pub const DEFAULT_MIN_STACK_SIZE: usize = 0; // 0 indicates that the stack size configured in the ESP-IDF/NuttX menuconfig system should be used
 
 struct ThreadData {
-    name: Option<Box<str>>,
-    f: Box<dyn FnOnce()>,
+    handle: crate::thread::Thread,
+    main: Box<dyn FnOnce()>,
 }
 
 pub struct Thread {
@@ -49,10 +49,10 @@ impl Thread {
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub unsafe fn new(
         stack: usize,
-        name: Option<&str>,
-        f: Box<dyn FnOnce()>,
+        handle: crate::thread::Thread,
+        main: Box<dyn FnOnce()>,
     ) -> io::Result<Thread> {
-        let data = Box::into_raw(Box::new(ThreadData { name: name.map(Box::from), f }));
+        let data = Box::into_raw(Box::new(ThreadData { handle, main }));
         let mut native: libc::pthread_t = mem::zeroed();
         let mut attr: mem::MaybeUninit<libc::pthread_attr_t> = mem::MaybeUninit::uninit();
         assert_eq!(libc::pthread_attr_init(attr.as_mut_ptr()), 0);
@@ -102,9 +102,10 @@ impl Thread {
         }
 
         let ret = libc::pthread_create(&mut native, attr.as_ptr(), thread_start, data as *mut _);
-        // Note: if the thread creation fails and this assert fails, then p will
-        // be leaked. However, an alternative design could cause double-free
+        // Note: if the thread creation fails and this assert fails, then data
+        // will be leaked. However, an alternative design could cause double-free
         // which is clearly worse.
+        // FIXME(joboet): AAAaaaAAhh! Just use a `DropGuard` for the attributes!
         assert_eq!(libc::pthread_attr_destroy(attr.as_mut_ptr()), 0);
 
         return if ret != 0 {
@@ -119,11 +120,20 @@ impl Thread {
         extern "C" fn thread_start(data: *mut libc::c_void) -> *mut libc::c_void {
             unsafe {
                 let data = Box::from_raw(data as *mut ThreadData);
+
+                if let Some(name) = data.handle.cname() {
+                    set_name(name);
+                }
+
+                // `set_name` will not initialize the thread handle, so this
+                // will not abort.
+                crate::thread::set_current(data.handle);
+
                 // Next, set up our stack overflow handler which may get triggered if we run
                 // out of stack.
-                let _handler = stack_overflow::Handler::new(data.name);
+                let _handler = stack_overflow::Handler::new();
                 // Finally, let's run some code.
-                (data.f)();
+                (data.main)();
             }
             ptr::null_mut()
         }
@@ -528,6 +538,16 @@ pub fn set_name(name: &CStr) {
     let res = unsafe { libc::taskNameSet(libc::taskIdSelf(), name.as_mut_ptr()) };
     debug_assert_eq!(res, libc::OK);
 }
+
+#[cfg(any(
+    target_env = "newlib",
+    target_os = "l4re",
+    target_os = "emscripten",
+    target_os = "redox",
+    target_os = "hurd",
+    target_os = "aix",
+))]
+pub fn set_name(_name: &CStr) {}
 
 #[cfg(not(target_os = "espidf"))]
 pub fn sleep(dur: Duration) {
