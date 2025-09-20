@@ -1,5 +1,6 @@
 // See core/src/primitive_docs.rs for documentation.
 
+use crate::cell::CloneFromCell;
 use crate::cmp::Ordering::{self, *};
 use crate::marker::{ConstParamTy_, StructuralPartialEq};
 use crate::ops::ControlFlow::{self, Break, Continue};
@@ -154,6 +155,15 @@ macro_rules! tuple_impls {
                     [$($T,)+]
                 }
             }
+        }
+
+        maybe_tuple_doc! {
+            $($T)+ @
+            // SAFETY: tuples introduce no additional indirection, so they can be copied whenever T
+            // can.
+            #[unstable(feature = "cell_get_cloned", issue = "145329")]
+            unsafe impl<$($T: CloneFromCell),+> CloneFromCell for ($($T,)+)
+            {}
         }
     }
 }
