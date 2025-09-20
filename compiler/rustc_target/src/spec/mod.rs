@@ -1347,12 +1347,6 @@ crate::target_spec_enum! {
         /// Disable stack canary generation.
         None = "none",
 
-        /// On LLVM, mark all generated LLVM functions with the `ssp` attribute (see
-        /// llvm/docs/LangRef.rst). This triggers stack canary generation in
-        /// functions which contain an array of a byte-sized type with more than
-        /// eight elements.
-        Basic = "basic",
-
         /// On LLVM, mark all generated LLVM functions with the `sspstrong`
         /// attribute (see llvm/docs/LangRef.rst). This triggers stack canary
         /// generation in functions which either contain an array, or which take

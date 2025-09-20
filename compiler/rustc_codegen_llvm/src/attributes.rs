@@ -269,7 +269,6 @@ fn stackprotector_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
         StackProtector::None => return None,
         StackProtector::All => AttributeKind::StackProtectReq,
         StackProtector::Strong => AttributeKind::StackProtectStrong,
-        StackProtector::Basic => AttributeKind::StackProtect,
     };
 
     Some(sspattr.create_attr(cx.llcx))

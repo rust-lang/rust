@@ -1,0 +1,2 @@
+error: incorrect value `basic` for codegen option `stack-protector` - one of (`none` (default), `basic`, `strong`, or `all`) was expected
+
