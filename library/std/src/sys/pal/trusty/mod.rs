@@ -5,10 +5,6 @@
 mod common;
 #[path = "../unsupported/os.rs"]
 pub mod os;
-#[path = "../unsupported/pipe.rs"]
-pub mod pipe;
-#[path = "../unsupported/thread.rs"]
-pub mod thread;
 #[path = "../unsupported/time.rs"]
 pub mod time;
 

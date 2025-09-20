@@ -3,14 +3,14 @@
 cfg_select! {
     unix => {
         mod unix;
-        pub use unix::{AnonPipe, pipe};
+        pub use unix::{Pipe, pipe};
     }
     windows => {
         mod windows;
-        pub use windows::{AnonPipe, pipe};
+        pub use windows::{Pipe, pipe};
     }
     _ => {
         mod unsupported;
-        pub use unsupported::{AnonPipe, pipe};
+        pub use unsupported::{Pipe, pipe};
     }
 }

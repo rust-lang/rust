@@ -166,7 +166,6 @@ use crate::io::prelude::*;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::num::NonZero;
 use crate::path::Path;
-use crate::sys::pipe::{AnonPipe, read2};
 use crate::sys::process as imp;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 use crate::{fmt, fs, str};
@@ -268,8 +267,8 @@ impl AsInner<imp::Process> for Child {
     }
 }
 
-impl FromInner<(imp::Process, imp::StdioPipes)> for Child {
-    fn from_inner((handle, io): (imp::Process, imp::StdioPipes)) -> Child {
+impl FromInner<(imp::Process, StdioPipes)> for Child {
+    fn from_inner((handle, io): (imp::Process, StdioPipes)) -> Child {
         Child {
             handle,
             stdin: io.stdin.map(ChildStdin::from_inner),
@@ -296,6 +295,15 @@ impl fmt::Debug for Child {
     }
 }
 
+/// The pipes connected to a spawned process.
+///
+/// Used to pass pipe handles between this module and [`imp`].
+pub(crate) struct StdioPipes {
+    pub stdin: Option<imp::ChildPipe>,
+    pub stdout: Option<imp::ChildPipe>,
+    pub stderr: Option<imp::ChildPipe>,
+}
+
 /// A handle to a child process's standard input (stdin).
 ///
 /// This struct is used in the [`stdin`] field on [`Child`].
@@ -308,7 +316,7 @@ impl fmt::Debug for Child {
 /// [dropped]: Drop
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ChildStdin {
-    inner: AnonPipe,
+    inner: imp::ChildPipe,
 }
 
 // In addition to the `impl`s here, `ChildStdin` also has `impl`s for
@@ -357,21 +365,21 @@ impl Write for &ChildStdin {
     }
 }
 
-impl AsInner<AnonPipe> for ChildStdin {
+impl AsInner<imp::ChildPipe> for ChildStdin {
     #[inline]
-    fn as_inner(&self) -> &AnonPipe {
+    fn as_inner(&self) -> &imp::ChildPipe {
         &self.inner
     }
 }
 
-impl IntoInner<AnonPipe> for ChildStdin {
-    fn into_inner(self) -> AnonPipe {
+impl IntoInner<imp::ChildPipe> for ChildStdin {
+    fn into_inner(self) -> imp::ChildPipe {
         self.inner
     }
 }
 
-impl FromInner<AnonPipe> for ChildStdin {
-    fn from_inner(pipe: AnonPipe) -> ChildStdin {
+impl FromInner<imp::ChildPipe> for ChildStdin {
+    fn from_inner(pipe: imp::ChildPipe) -> ChildStdin {
         ChildStdin { inner: pipe }
     }
 }
@@ -394,7 +402,7 @@ impl fmt::Debug for ChildStdin {
 /// [dropped]: Drop
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ChildStdout {
-    inner: AnonPipe,
+    inner: imp::ChildPipe,
 }
 
 // In addition to the `impl`s here, `ChildStdout` also has `impl`s for
@@ -427,21 +435,21 @@ impl Read for ChildStdout {
     }
 }
 
-impl AsInner<AnonPipe> for ChildStdout {
+impl AsInner<imp::ChildPipe> for ChildStdout {
     #[inline]
-    fn as_inner(&self) -> &AnonPipe {
+    fn as_inner(&self) -> &imp::ChildPipe {
         &self.inner
     }
 }
 
-impl IntoInner<AnonPipe> for ChildStdout {
-    fn into_inner(self) -> AnonPipe {
+impl IntoInner<imp::ChildPipe> for ChildStdout {
+    fn into_inner(self) -> imp::ChildPipe {
         self.inner
     }
 }
 
-impl FromInner<AnonPipe> for ChildStdout {
-    fn from_inner(pipe: AnonPipe) -> ChildStdout {
+impl FromInner<imp::ChildPipe> for ChildStdout {
+    fn from_inner(pipe: imp::ChildPipe) -> ChildStdout {
         ChildStdout { inner: pipe }
     }
 }
@@ -464,7 +472,7 @@ impl fmt::Debug for ChildStdout {
 /// [dropped]: Drop
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ChildStderr {
-    inner: AnonPipe,
+    inner: imp::ChildPipe,
 }
 
 // In addition to the `impl`s here, `ChildStderr` also has `impl`s for
@@ -497,21 +505,21 @@ impl Read for ChildStderr {
     }
 }
 
-impl AsInner<AnonPipe> for ChildStderr {
+impl AsInner<imp::ChildPipe> for ChildStderr {
     #[inline]
-    fn as_inner(&self) -> &AnonPipe {
+    fn as_inner(&self) -> &imp::ChildPipe {
         &self.inner
     }
 }
 
-impl IntoInner<AnonPipe> for ChildStderr {
-    fn into_inner(self) -> AnonPipe {
+impl IntoInner<imp::ChildPipe> for ChildStderr {
+    fn into_inner(self) -> imp::ChildPipe {
         self.inner
     }
 }
 
-impl FromInner<AnonPipe> for ChildStderr {
-    fn from_inner(pipe: AnonPipe) -> ChildStderr {
+impl FromInner<imp::ChildPipe> for ChildStderr {
+    fn from_inner(pipe: imp::ChildPipe) -> ChildStderr {
         ChildStderr { inner: pipe }
     }
 }
@@ -2345,7 +2353,7 @@ impl Child {
                 res.unwrap();
             }
             (Some(out), Some(err)) => {
-                let res = read2(out.inner, &mut stdout, err.inner, &mut stderr);
+                let res = imp::read_output(out.inner, &mut stdout, err.inner, &mut stderr);
                 res.unwrap();
             }
         }

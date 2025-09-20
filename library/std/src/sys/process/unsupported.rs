@@ -3,8 +3,8 @@ pub use crate::ffi::OsString as EnvKey;
 use crate::ffi::{OsStr, OsString};
 use crate::num::NonZero;
 use crate::path::Path;
+use crate::process::StdioPipes;
 use crate::sys::fs::File;
-use crate::sys::pipe::AnonPipe;
 use crate::sys::unsupported;
 use crate::{fmt, io};
 
@@ -21,14 +21,6 @@ pub struct Command {
     stdin: Option<Stdio>,
     stdout: Option<Stdio>,
     stderr: Option<Stdio>,
-}
-
-// passed back to std::process with the pipes connected to the child, if any
-// were requested
-pub struct StdioPipes {
-    pub stdin: Option<AnonPipe>,
-    pub stdout: Option<AnonPipe>,
-    pub stderr: Option<AnonPipe>,
 }
 
 #[derive(Debug)]
@@ -110,8 +102,8 @@ pub fn output(_cmd: &mut Command) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>)> 
     unsupported()
 }
 
-impl From<AnonPipe> for Stdio {
-    fn from(pipe: AnonPipe) -> Stdio {
+impl From<ChildPipe> for Stdio {
+    fn from(pipe: ChildPipe) -> Stdio {
         pipe.diverge()
     }
 }
@@ -319,4 +311,15 @@ impl<'a> fmt::Debug for CommandArgs<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.iter.clone()).finish()
     }
+}
+
+pub type ChildPipe = crate::sys::pipe::Pipe;
+
+pub fn read_output(
+    out: ChildPipe,
+    _stdout: &mut Vec<u8>,
+    _err: ChildPipe,
+    _stderr: &mut Vec<u8>,
+) -> io::Result<()> {
+    match out.diverge() {}
 }

@@ -7,8 +7,6 @@
 #![allow(dead_code)]
 
 pub mod os;
-#[path = "../unsupported/pipe.rs"]
-pub mod pipe;
 #[allow(non_upper_case_globals)]
 #[path = "../unix/time.rs"]
 pub mod time;
