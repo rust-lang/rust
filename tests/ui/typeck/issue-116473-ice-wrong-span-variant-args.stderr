@@ -9,9 +9,9 @@ LL |     ($variant:tt) => (if let EnumUnit::$variant::<i32, u32> {} = 5 { true }
 LL |     recursive_tt!();
    |     --------------- in this macro invocation
    |
-   = note: enum variants can't have type parameters
+   = note: variants of type-aliased enum can't have type parameters
    = note: this error originates in the macro `recursive_tt` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: you might have meant to specify type parameters on enum `Enum`
+help: you might have meant to specify type parameters on the enum
    |
 LL -     ($variant:tt) => (if let EnumUnit::$variant::<i32, u32> {} = 5 { true } else { false });
 LL +     ($variant:tt) => (if let EnumUnit::<i32, u32>::$variant {} = 5 { true } else { false });
@@ -43,9 +43,9 @@ LL |     ($variant:ident) => (if let EnumUnit::$variant::<i32, u32> {} = 5 { tru
 LL |     recursive_ident!();
    |     ------------------ in this macro invocation
    |
-   = note: enum variants can't have type parameters
+   = note: variants of type-aliased enum can't have type parameters
    = note: this error originates in the macro `recursive_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: you might have meant to specify type parameters on enum `Enum`
+help: you might have meant to specify type parameters on the enum
    |
 LL -     ($variant:ident) => (if let EnumUnit::$variant::<i32, u32> {} = 5 { true } else { false });
 LL +     ($variant:ident) => (if let EnumUnit::<i32, u32>::$variant {} = 5 { true } else { false });
@@ -78,9 +78,9 @@ LL |     ($variant:tt) => (if let EnumUnit::$variant::<i32, u32> {} = 5 { true }
 LL |     nested1_tt!();
    |     ------------- in this macro invocation
    |
-   = note: enum variants can't have type parameters
+   = note: variants of type-aliased enum can't have type parameters
    = note: this error originates in the macro `nested2_tt` which comes from the expansion of the macro `nested1_tt` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: you might have meant to specify type parameters on enum `Enum`
+help: you might have meant to specify type parameters on the enum
    |
 LL -     ($variant:tt) => (if let EnumUnit::$variant::<i32, u32> {} = 5 { true } else { false });
 LL +     ($variant:tt) => (if let EnumUnit::<i32, u32>::$variant {} = 5 { true } else { false });
@@ -113,9 +113,9 @@ LL |     ($variant:ident) => (if let EnumUnit::$variant::<i32, u32> {} = 5 { tru
 LL |     nested1_ident!();
    |     ---------------- in this macro invocation
    |
-   = note: enum variants can't have type parameters
+   = note: variants of type-aliased enum can't have type parameters
    = note: this error originates in the macro `nested2_ident` which comes from the expansion of the macro `nested1_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: you might have meant to specify type parameters on enum `Enum`
+help: you might have meant to specify type parameters on the enum
    |
 LL -     ($variant:ident) => (if let EnumUnit::$variant::<i32, u32> {} = 5 { true } else { false });
 LL +     ($variant:ident) => (if let EnumUnit::<i32, u32>::$variant {} = 5 { true } else { false });
@@ -148,9 +148,9 @@ LL |     ($arg1:tt, $arg2:tt) => (if let EnumUnit::VariantB::<$arg1, $arg2> {}
 LL |     nested1_tt_args_in_first_macro!();
    |     --------------------------------- in this macro invocation
    |
-   = note: enum variants can't have type parameters
+   = note: variants of type-aliased enum can't have type parameters
    = note: this error originates in the macro `nested1_tt_args_in_first_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: you might have meant to specify type parameters on enum `Enum`
+help: you might have meant to specify type parameters on the enum
    |
 LL -     ($arg1:tt, $arg2:tt) => (if let EnumUnit::VariantB::<$arg1, $arg2> {}
 LL +     ($arg1:tt, $arg2:tt) => (if let EnumUnit::<$arg1, $arg2>::VariantB {}
@@ -183,9 +183,9 @@ LL |     ($arg1:ident, $arg2:ident) => (if let EnumUnit::VariantB::<$arg1, $arg2
 LL |     nested1_ident_args_in_first_macro!();
    |     ------------------------------------ in this macro invocation
    |
-   = note: enum variants can't have type parameters
+   = note: variants of type-aliased enum can't have type parameters
    = note: this error originates in the macro `nested2_ident_args_in_first_macro` which comes from the expansion of the macro `nested1_ident_args_in_first_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: you might have meant to specify type parameters on enum `Enum`
+help: you might have meant to specify type parameters on the enum
    |
 LL -     ($arg1:ident, $arg2:ident) => (if let EnumUnit::VariantB::<$arg1, $arg2> {}
 LL +     ($arg1:ident, $arg2:ident) => (if let EnumUnit::<$arg1, $arg2>::VariantB {}
@@ -215,8 +215,8 @@ LL |     if let EnumUnit::VariantB::<i32, u32> {} = 5 { true } else { false };
    |                      |
    |                      not allowed on this type
    |
-   = note: enum variants can't have type parameters
-help: you might have meant to specify type parameters on enum `Enum`
+   = note: variants of type-aliased enum can't have type parameters
+help: you might have meant to specify type parameters on the enum
    |
 LL -     if let EnumUnit::VariantB::<i32, u32> {} = 5 { true } else { false };
 LL +     if let EnumUnit::<i32, u32>::VariantB {} = 5 { true } else { false };
