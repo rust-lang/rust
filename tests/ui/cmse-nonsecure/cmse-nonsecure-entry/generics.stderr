@@ -1,13 +1,3 @@
-error: `...` is not supported for `extern "cmse-nonsecure-entry"` functions
-  --> $DIR/generics.rs:69:60
-   |
-LL | unsafe extern "cmse-nonsecure-entry" fn c_variadic(_: u32, _: ...) {
-   |        -----------------------------                       ^^^^^^
-   |        |
-   |        `extern "cmse-nonsecure-entry"` because of this
-   |
-   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
-
 error[E0798]: functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
   --> $DIR/generics.rs:30:1
    |
@@ -71,12 +61,6 @@ LL | extern "cmse-nonsecure-entry" fn wrapped_trait_object(x: WrapperTransparent
    = note: functions with the `"cmse-nonsecure-entry"` ABI must pass their result via the available return registers
    = note: the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
 
-error: requires `va_list` lang_item
-  --> $DIR/generics.rs:69:60
-   |
-LL | unsafe extern "cmse-nonsecure-entry" fn c_variadic(_: u32, _: ...) {
-   |                                                            ^^^^^^
-
-error: aborting due to 9 previous errors
+error: aborting due to 7 previous errors
 
 For more information about this error, try `rustc --explain E0798`.

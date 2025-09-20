@@ -85,6 +85,12 @@ pub(crate) fn validate_cmse_abi<'tcx>(
                 return;
             };
 
+            // An `extern "cmse-nonsecure-entry"` function cannot be c-variadic. We run
+            // into https://github.com/rust-lang/rust/issues/132142 if we don't explicitly bail.
+            if decl.c_variadic {
+                return;
+            }
+
             match is_valid_cmse_inputs(tcx, fn_sig) {
                 Ok(Ok(())) => {}
                 Ok(Err(index)) => {
