@@ -503,9 +503,11 @@ pub(crate) struct EmptyConfusables {
 
 #[derive(LintDiagnostic)]
 #[diag(attr_parsing_empty_attribute)]
+#[note]
 pub(crate) struct EmptyAttributeList {
     #[suggestion(code = "", applicability = "machine-applicable")]
     pub attr_span: Span,
+    pub attr_path: AttrPath,
 }
 
 #[derive(LintDiagnostic)]

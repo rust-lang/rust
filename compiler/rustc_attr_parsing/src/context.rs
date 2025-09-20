@@ -593,7 +593,8 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
     }
 
     pub(crate) fn warn_empty_attribute(&mut self, span: Span) {
-        self.emit_lint(AttributeLintKind::EmptyAttribute { first_span: span }, span);
+        let attr_path = self.attr_path.clone();
+        self.emit_lint(AttributeLintKind::EmptyAttribute { first_span: span, attr_path }, span);
     }
 }
 

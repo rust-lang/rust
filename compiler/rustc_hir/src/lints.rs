@@ -33,7 +33,7 @@ pub struct AttributeLint<Id> {
 pub enum AttributeLintKind {
     UnusedDuplicate { this: Span, other: Span, warning: bool },
     IllFormedAttributeInput { suggestions: Vec<String> },
-    EmptyAttribute { first_span: Span },
+    EmptyAttribute { first_span: Span, attr_path: AttrPath },
     InvalidTarget { name: AttrPath, target: Target, applied: Vec<String>, only: &'static str },
     InvalidStyle { name: AttrPath, is_used_as_inner: bool, target: Target, target_span: Span },
 }
