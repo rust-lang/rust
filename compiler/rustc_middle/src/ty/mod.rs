@@ -77,8 +77,7 @@ pub use self::consts::{
     ExprKind, ScalarInt, UnevaluatedConst, ValTree, ValTreeKind, Value,
 };
 pub use self::context::{
-    CtxtInterners, CurrentGcx, DeducedParamAttrs, Feed, FreeRegionInfo, GlobalCtxt, Lift, TyCtxt,
-    TyCtxtFeed, tls,
+    CtxtInterners, CurrentGcx, Feed, FreeRegionInfo, GlobalCtxt, Lift, TyCtxt, TyCtxtFeed, tls,
 };
 pub use self::fold::*;
 pub use self::instance::{Instance, InstanceKind, ReifyReason, UnusedGenericParams};
