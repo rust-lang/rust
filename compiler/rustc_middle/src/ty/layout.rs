@@ -219,6 +219,15 @@ impl fmt::Display for ValidityRequirement {
 }
 
 #[derive(Copy, Clone, Debug, HashStable, TyEncodable, TyDecodable)]
+pub enum SimdLayoutError {
+    /// The vector has 0 lanes.
+    ZeroLength,
+    /// The vector has more lanes than supported or permitted by
+    /// #\[rustc_simd_monomorphize_lane_limit\].
+    TooManyLanes(u64),
+}
+
+#[derive(Copy, Clone, Debug, HashStable, TyEncodable, TyDecodable)]
 pub enum LayoutError<'tcx> {
     /// A type doesn't have a sensible layout.
     ///
@@ -230,6 +239,8 @@ pub enum LayoutError<'tcx> {
     Unknown(Ty<'tcx>),
     /// The size of a type exceeds [`TargetDataLayout::obj_size_bound`].
     SizeOverflow(Ty<'tcx>),
+    /// A SIMD vector has invalid layout, such as zero-length or too many lanes.
+    InvalidSimd { ty: Ty<'tcx>, kind: SimdLayoutError },
     /// The layout can vary due to a generic parameter.
     ///
     /// Unlike `Unknown`, this variant is a "soft" error and indicates that the layout
@@ -257,6 +268,10 @@ impl<'tcx> LayoutError<'tcx> {
         match self {
             Unknown(_) => middle_layout_unknown,
             SizeOverflow(_) => middle_layout_size_overflow,
+            InvalidSimd { kind: SimdLayoutError::TooManyLanes(_), .. } => {
+                middle_layout_simd_too_many
+            }
+            InvalidSimd { kind: SimdLayoutError::ZeroLength, .. } => middle_layout_simd_zero_length,
             TooGeneric(_) => middle_layout_too_generic,
             NormalizationFailure(_, _) => middle_layout_normalization_failure,
             Cycle(_) => middle_layout_cycle,
@@ -271,6 +286,10 @@ impl<'tcx> LayoutError<'tcx> {
         match self {
             Unknown(ty) => E::Unknown { ty },
             SizeOverflow(ty) => E::Overflow { ty },
+            InvalidSimd { ty, kind: SimdLayoutError::TooManyLanes(max_lanes) } => {
+                E::SimdTooManyLanes { ty, max_lanes }
+            }
+            InvalidSimd { ty, kind: SimdLayoutError::ZeroLength } => E::SimdZeroLength { ty },
             TooGeneric(ty) => E::TooGeneric { ty },
             NormalizationFailure(ty, e) => {
                 E::NormalizationFailure { ty, failure_ty: e.get_type_for_failure() }
@@ -292,6 +311,12 @@ impl<'tcx> fmt::Display for LayoutError<'tcx> {
             }
             LayoutError::SizeOverflow(ty) => {
                 write!(f, "values of the type `{ty}` are too big for the target architecture")
+            }
+            LayoutError::InvalidSimd { ty, kind: SimdLayoutError::TooManyLanes(max_lanes) } => {
+                write!(f, "the SIMD type `{ty}` has more elements than the limit {max_lanes}")
+            }
+            LayoutError::InvalidSimd { ty, kind: SimdLayoutError::ZeroLength } => {
+                write!(f, "the SIMD type `{ty}` has zero elements")
             }
             LayoutError::NormalizationFailure(t, e) => write!(
                 f,
@@ -374,6 +399,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 e @ LayoutError::Cycle(_)
                 | e @ LayoutError::Unknown(_)
                 | e @ LayoutError::SizeOverflow(_)
+                | e @ LayoutError::InvalidSimd { .. }
                 | e @ LayoutError::NormalizationFailure(..)
                 | e @ LayoutError::ReferencesError(_),
             ) => return Err(e),

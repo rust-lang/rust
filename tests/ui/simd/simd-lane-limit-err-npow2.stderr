@@ -1,0 +1,8 @@
+error: the SIMD type `simd::Simd<i32, 24>` has more elements than the limit 8
+  --> $DIR/simd-lane-limit-err-npow2.rs:10:9
+   |
+LL |     let _x: Simd<i32, 24> = Simd([0; 24]);
+   |         ^^
+
+error: aborting due to 1 previous error
+
