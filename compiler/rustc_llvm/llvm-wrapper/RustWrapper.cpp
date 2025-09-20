@@ -553,6 +553,7 @@ enum class LLVMRustMemoryEffects {
   None,
   ReadOnly,
   InaccessibleMemOnly,
+  ReadOnlyNotPure,
 };
 
 extern "C" LLVMAttributeRef
@@ -568,6 +569,10 @@ LLVMRustCreateMemoryEffectsAttr(LLVMContextRef C,
   case LLVMRustMemoryEffects::InaccessibleMemOnly:
     return wrap(Attribute::getWithMemoryEffects(
         *unwrap(C), MemoryEffects::inaccessibleMemOnly()));
+  case LLVMRustMemoryEffects::ReadOnlyNotPure:
+    return wrap(Attribute::getWithMemoryEffects(
+        *unwrap(C),
+        MemoryEffects::readOnly() | MemoryEffects::inaccessibleMemOnly()));
   default:
     report_fatal_error("bad MemoryEffects.");
   }

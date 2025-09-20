@@ -340,8 +340,8 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             attrs.push(llvm::AttributeKind::WillReturn.create_attr(self.cx.llcx));
         } else if options.contains(InlineAsmOptions::NOMEM) {
             attrs.push(llvm::MemoryEffects::InaccessibleMemOnly.create_attr(self.cx.llcx));
-        } else {
-            // LLVM doesn't have an attribute to represent ReadOnly + SideEffect
+        } else if options.contains(InlineAsmOptions::READONLY) {
+            attrs.push(llvm::MemoryEffects::ReadOnlyNotPure.create_attr(self.cx.llcx));
         }
         attributes::apply_to_callsite(result, llvm::AttributePlace::Function, &{ attrs });
 
