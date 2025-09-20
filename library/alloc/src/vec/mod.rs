@@ -760,33 +760,6 @@ impl<T> Vec<T> {
         unsafe { Self::from_parts_in(ptr, length, capacity, Global) }
     }
 
-    /// Returns a mutable reference to the last item in the vector, or
-    /// `None` if it is empty.
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// #![feature(vec_peek_mut)]
-    /// let mut vec = Vec::new();
-    /// assert!(vec.peek_mut().is_none());
-    ///
-    /// vec.push(1);
-    /// vec.push(5);
-    /// vec.push(2);
-    /// assert_eq!(vec.last(), Some(&2));
-    /// if let Some(mut val) = vec.peek_mut() {
-    ///     *val = 0;
-    /// }
-    /// assert_eq!(vec.last(), Some(&0));
-    /// ```
-    #[inline]
-    #[unstable(feature = "vec_peek_mut", issue = "122742")]
-    pub fn peek_mut(&mut self) -> Option<PeekMut<'_, T>> {
-        PeekMut::new(self)
-    }
-
     /// Decomposes a `Vec<T>` into its raw components: `(pointer, length, capacity)`.
     ///
     /// Returns the raw pointer to the underlying data, the length of
@@ -2745,6 +2718,33 @@ impl<T, A: Allocator> Vec<T, A> {
     pub fn pop_if(&mut self, predicate: impl FnOnce(&mut T) -> bool) -> Option<T> {
         let last = self.last_mut()?;
         if predicate(last) { self.pop() } else { None }
+    }
+
+    /// Returns a mutable reference to the last item in the vector, or
+    /// `None` if it is empty.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(vec_peek_mut)]
+    /// let mut vec = Vec::new();
+    /// assert!(vec.peek_mut().is_none());
+    ///
+    /// vec.push(1);
+    /// vec.push(5);
+    /// vec.push(2);
+    /// assert_eq!(vec.last(), Some(&2));
+    /// if let Some(mut val) = vec.peek_mut() {
+    ///     *val = 0;
+    /// }
+    /// assert_eq!(vec.last(), Some(&0));
+    /// ```
+    #[inline]
+    #[unstable(feature = "vec_peek_mut", issue = "122742")]
+    pub fn peek_mut(&mut self) -> Option<PeekMut<'_, T, A>> {
+        PeekMut::new(self)
     }
 
     /// Moves all the elements of `other` into `self`, leaving `other` empty.
