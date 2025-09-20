@@ -13,7 +13,17 @@ impl IntrinsicTypeDefinition for X86IntrinsicType {
     /// Gets a string containing the type in C format.
     /// This function assumes that this value is present in the metadata hashmap.
     fn c_type(&self) -> String {
-        self.param.type_data.clone()
+        self.param
+            .type_data
+            .replace("unsigned __int64", "uint64_t")
+            .replace("unsigned __int32", "uint32_t")
+            .replace("unsigned __int16", "uint16_t")
+            .replace("unsigned __int8", "uint8_t")
+            .replace("__int64", "int64_t")
+            .replace("__int32", "int32_t")
+            .replace("__int16", "int16_t")
+            .replace("__int8", "int8_t")
+            .replace("const ", "")
     }
 
     fn c_single_vector_type(&self) -> String {
@@ -109,17 +119,22 @@ impl IntrinsicTypeDefinition for X86IntrinsicType {
                 .chars()
                 .filter(|c| c.is_numeric())
                 .join("")
-                .replace("128", "");
+                .replace("128", "")
+                .replace("64", "");
             {
-                if type_value.ends_with("d") {
-                    format!("_mm{type_val_filtered}_loadu_pd")
-                } else if type_value.ends_with("h") {
-                    format!("_mm{type_val_filtered}_loadu_ph")
-                } else if type_value.ends_with("i") {
-                    format!("_mm{type_val_filtered}_loadu_epi16")
-                } else {
-                    format!("_mm{type_val_filtered}_loadu_ps")
-                }
+                let suffix = match (self.bit_len, self.kind) {
+                    (Some(bit_len @ (8 | 16 | 32 | 64)), TypeKind::Int(_)) => {
+                        format!("epi{bit_len}")
+                    }
+                    (Some(16), TypeKind::Float) => format!("ph"),
+                    (Some(32), TypeKind::Float) => format!("ps"),
+                    (Some(64), TypeKind::Float) => format!("pd"),
+                    (Some(128), TypeKind::Vector) => format!("si128"),
+                    (Some(256), TypeKind::Vector) => format!("si256"),
+                    (Some(512), TypeKind::Vector) => format!("si512"),
+                    _ => unreachable!("Invalid element type for a vector type! {:?}", self.param),
+                };
+                format!("_mm{type_val_filtered}_loadu_{suffix}")
             }
         } else {
             // if it is a pointer, then rely on type conversion
@@ -364,6 +379,15 @@ impl X86IntrinsicType {
                 // often used by intrinsics to denote memory address or so.
                 if data.kind == TypeKind::Mask && data.bit_len.is_none() {
                     data.bit_len = Some(32);
+                }
+
+                // default settings for IMM parameters
+                if param.etype == "IMM" && param.imm_width > 0 {
+                    data.bit_len = Some(param.imm_width);
+                }
+
+                if param.etype == "IMM" || param.imm_width > 0 || param.imm_type.len() > 0 {
+                    data.constant = true;
                 }
 
                 // if param.etype == IMM, then it is a constant.

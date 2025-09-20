@@ -48,7 +48,11 @@ pub fn generate_c_constraint_blocks<'a, T: IntrinsicTypeDefinition + 'a>(
         let ty = current.ty.c_type();
 
         writeln!(w, "{indentation}{{")?;
-        writeln!(w, "{body_indentation}const {ty} {} = {i};", current.name)?;
+        writeln!(
+            w,
+            "{body_indentation}const {ty} {} = {i};",
+            current.generate_name()
+        )?;
 
         generate_c_constraint_blocks(
             w,
@@ -115,9 +119,6 @@ template<typename T1, typename T2> T1 cast(T2 x) {{
   memcpy(&ret, &x, sizeof(T1));
   return ret;
 }}
-
-std::ostream& operator<<(std::ostream& os, float16_t value);
-
 "#
     )?;
 
@@ -137,20 +138,6 @@ pub fn write_main_cpp<'a>(
     for header in COMMON_HEADERS.iter().chain(arch_specific_headers.iter()) {
         writeln!(w, "#include <{header}>")?;
     }
-
-    writeln!(
-        w,
-        r#"
-std::ostream& operator<<(std::ostream& os, float16_t value) {{
-    uint16_t temp = 0;
-    memcpy(&temp, &value, sizeof(float16_t));
-    std::stringstream ss;
-    ss << "0x" << std::setfill('0') << std::setw(4) << std::hex << temp;
-    os << ss.str();
-    return os;
-}}
-"#
-    )?;
 
     // NOTE: It's assumed that this value contains the required `ifdef`s.
     writeln!(w, "{arch_specific_definitions }")?;

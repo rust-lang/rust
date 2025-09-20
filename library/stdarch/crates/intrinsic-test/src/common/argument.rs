@@ -33,6 +33,10 @@ where
         self.ty.c_type()
     }
 
+    pub fn generate_name(&self) -> String {
+        format!("{}_val", self.name)
+    }
+
     pub fn is_simd(&self) -> bool {
         self.ty.is_simd()
     }
@@ -64,7 +68,7 @@ where
     }
 
     fn as_call_param_c(&self) -> String {
-        self.ty.as_call_param_c(&self.name)
+        self.ty.as_call_param_c(&self.generate_name())
     }
 }
 
@@ -91,7 +95,7 @@ where
     pub fn as_call_param_rust(&self) -> String {
         self.iter()
             .filter(|a| !a.has_constraint())
-            .map(|arg| arg.name.clone())
+            .map(|arg| arg.generate_name())
             .collect::<Vec<String>>()
             .join(", ")
     }
@@ -112,7 +116,7 @@ where
                 w,
                 "{indentation}alignas(64) const {ty} {name}_vals[] = {values};",
                 ty = arg.ty.c_scalar_type(),
-                name = arg.name,
+                name = arg.generate_name(),
                 values = arg.ty.populate_random(indentation, loads, &Language::C)
             )?
         }
@@ -155,7 +159,7 @@ where
                 format!(
                     "{indentation}{ty} {name} = cast<{ty}>({load}(&{name}_vals[i]));\n",
                     ty = arg.to_c_type(),
-                    name = arg.name,
+                    name = arg.generate_name(),
                     load = if arg.is_simd() {
                         arg.ty.get_load_function(Language::C)
                     } else {
@@ -175,7 +179,7 @@ where
             .map(|arg| {
                 format!(
                     "{indentation}let {name} = {load}({vals_name}.as_ptr().offset(i));\n",
-                    name = arg.name,
+                    name = arg.generate_name(),
                     vals_name = arg.rust_vals_array_name(),
                     load = if arg.is_simd() {
                         arg.ty.get_load_function(Language::Rust)

@@ -1,3 +1,4 @@
+use std::cmp;
 use std::fmt;
 use std::ops::Deref;
 use std::str::FromStr;
@@ -131,7 +132,7 @@ impl IntrinsicType {
 
     pub fn inner_size(&self) -> u32 {
         if let Some(bl) = self.bit_len {
-            bl
+            cmp::max(bl, 8)
         } else {
             unreachable!("{:#?}", self)
         }
@@ -216,7 +217,7 @@ impl IntrinsicType {
     ) -> String {
         match self {
             IntrinsicType {
-                bit_len: Some(bit_len @ (8 | 16 | 32 | 64)),
+                bit_len: Some(bit_len @ (1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 16 | 32 | 64)),
                 kind:
                     kind @ (TypeKind::Int(_) | TypeKind::Poly | TypeKind::Char(_) | TypeKind::Mask),
                 simd_len,

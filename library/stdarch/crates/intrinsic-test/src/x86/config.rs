@@ -10,12 +10,23 @@ struct Hex<T>(T);
  "#;
 
 pub const LANE_FUNCTION_HELPERS: &str = r#"
-typedef float float16_t;
+typedef _Float16 float16_t;
 typedef float float32_t;
 typedef double float64_t;
 
 #define __int64 long long
 #define __int32 int
+
+std::ostream& operator<<(std::ostream& os, _Float16 value);
+
+std::ostream& operator<<(std::ostream& os, _Float16 value) {
+    uint16_t temp = 0;
+    memcpy(&temp, &value, sizeof(_Float16));
+    std::stringstream ss;
+    ss << "0x" << std::setfill('0') << std::setw(4) << std::hex << temp;
+    os << ss.str();
+    return os;
+}
 
 #define _mm512_extract_intrinsic_test_epi8(m, lane) \
     _mm_extract_epi8(_mm512_extracti64x2_epi64((m), (lane) / 16), (lane) % 16)

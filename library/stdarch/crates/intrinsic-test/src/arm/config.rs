@@ -6,6 +6,7 @@ pub const NOTICE: &str = "\
 pub const POLY128_OSTREAM_DECL: &str = r#"
 #ifdef __aarch64__
 std::ostream& operator<<(std::ostream& os, poly128_t value);
+std::ostream& operator<<(std::ostream& os, float16_t value);
 #endif
 "#;
 
@@ -21,6 +22,15 @@ std::ostream& operator<<(std::ostream& os, poly128_t value) {
     std::string tempstr(temp.str());
     std::string res(tempstr.rbegin(), tempstr.rend());
     os << res;
+    return os;
+}
+
+std::ostream& operator<<(std::ostream& os, float16_t value) {
+    uint16_t temp = 0;
+    memcpy(&temp, &value, sizeof(float16_t));
+    std::stringstream ss;
+    ss << "0x" << std::setfill('0') << std::setw(4) << std::hex << temp;
+    os << ss.str();
     return os;
 }
 #endif

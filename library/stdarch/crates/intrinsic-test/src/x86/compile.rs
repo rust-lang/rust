@@ -19,6 +19,12 @@ pub fn build_cpp_compilation(config: &ProcessedCli) -> Option<CppCompilation> {
             "-mavx2",
             "-mavx512f",
             "-msse2",
+            "-mavx512vl",
+            "-mavx512bw",
+            "-mavx512dq",
+            "-mavx512cd",
+            "-mavx512fp16",
+            "-ferror-limit=1000",
         ]);
 
     if !cpp_compiler.contains("clang") {

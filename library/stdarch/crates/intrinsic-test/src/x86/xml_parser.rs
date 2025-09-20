@@ -48,6 +48,8 @@ pub struct Parameter {
     pub etype: String,
     #[serde(rename = "@memwidth", default, deserialize_with = "string_to_u32")]
     pub memwidth: u32,
+    #[serde(rename = "@immwidth", default, deserialize_with = "string_to_u32")]
+    pub imm_width: u32,
     #[serde(rename = "@immtype", default)]
     pub imm_type: String,
 }
