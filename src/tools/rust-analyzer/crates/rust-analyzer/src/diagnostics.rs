@@ -120,6 +120,29 @@ impl DiagnosticCollection {
         }
     }
 
+    pub(crate) fn clear_check_older_than_for_package(
+        &mut self,
+        flycheck_id: usize,
+        package_id: Arc<PackageId>,
+        generation: DiagnosticsGeneration,
+    ) {
+        let Some(check) = self.check.get_mut(flycheck_id) else {
+            return;
+        };
+        let package_id = Some(package_id);
+        let Some((_, checks)) = check
+            .per_package
+            .extract_if(|k, v| *k == package_id && v.generation < generation)
+            .next()
+        else {
+            return;
+        };
+        self.changes.extend(checks.per_file.into_keys());
+        if let Some(fixes) = Arc::make_mut(&mut self.check_fixes).get_mut(flycheck_id) {
+            fixes.remove(&package_id);
+        }
+    }
+
     pub(crate) fn clear_native_for(&mut self, file_id: FileId) {
         self.native_syntax.remove(&file_id);
         self.native_semantic.remove(&file_id);

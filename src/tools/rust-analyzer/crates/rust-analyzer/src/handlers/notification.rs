@@ -331,7 +331,7 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
                         let target = TargetSpec::for_file(&world, file_id)?.and_then(|it| {
                             let tgt_kind = it.target_kind();
                             let (tgt_name, root, package) = match it {
-                                TargetSpec::Cargo(c) => (c.target, c.workspace_root, c.package),
+                                TargetSpec::Cargo(c) => (c.target, c.workspace_root, c.package_id),
                                 _ => return None,
                             };
 
@@ -368,7 +368,13 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
                                         _ => false,
                                     });
                                 if let Some(idx) = package_workspace_idx {
-                                    world.flycheck[idx].restart_for_package(package, target);
+                                    let workspace_deps =
+                                        world.all_workspace_dependencies_for_package(&package);
+                                    world.flycheck[idx].restart_for_package(
+                                        package,
+                                        target,
+                                        workspace_deps,
+                                    );
                                 }
                             }
                         }

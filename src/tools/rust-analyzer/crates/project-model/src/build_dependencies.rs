@@ -9,7 +9,7 @@
 use std::{cell::RefCell, io, mem, process::Command};
 
 use base_db::Env;
-use cargo_metadata::{Message, camino::Utf8Path};
+use cargo_metadata::{Message, PackageId, camino::Utf8Path};
 use cfg::CfgAtom;
 use itertools::Itertools;
 use la_arena::ArenaMap;
@@ -18,6 +18,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use serde::Deserialize as _;
 use stdx::never;
 use toolchain::Tool;
+use triomphe::Arc;
 
 use crate::{
     CargoConfig, CargoFeatures, CargoWorkspace, InvocationStrategy, ManifestPath, Package, Sysroot,
@@ -284,7 +285,7 @@ impl WorkspaceBuildScripts {
         // NB: Cargo.toml could have been modified between `cargo metadata` and
         // `cargo check`. We shouldn't assume that package ids we see here are
         // exactly those from `config`.
-        let mut by_id: FxHashMap<String, Package> = FxHashMap::default();
+        let mut by_id: FxHashMap<Arc<PackageId>, Package> = FxHashMap::default();
         for package in workspace.packages() {
             outputs.insert(package, BuildScriptOutput::default());
             by_id.insert(workspace[package].id.clone(), package);
@@ -323,7 +324,7 @@ impl WorkspaceBuildScripts {
         // ideally this would be something like:
         // with_output_for: impl FnMut(&str, dyn FnOnce(&mut BuildScriptOutput)),
         // but owned trait objects aren't a thing
-        mut with_output_for: impl FnMut(&str, &mut dyn FnMut(&str, &mut BuildScriptOutput)),
+        mut with_output_for: impl FnMut(&PackageId, &mut dyn FnMut(&str, &mut BuildScriptOutput)),
         progress: &dyn Fn(String),
     ) -> io::Result<Option<String>> {
         let errors = RefCell::new(String::new());
@@ -346,7 +347,7 @@ impl WorkspaceBuildScripts {
 
                 match message {
                     Message::BuildScriptExecuted(mut message) => {
-                        with_output_for(&message.package_id.repr, &mut |name, data| {
+                        with_output_for(&message.package_id, &mut |name, data| {
                             progress(format!("build script {name} run"));
                             let cfgs = {
                                 let mut acc = Vec::new();
@@ -377,7 +378,7 @@ impl WorkspaceBuildScripts {
                         });
                     }
                     Message::CompilerArtifact(message) => {
-                        with_output_for(&message.package_id.repr, &mut |name, data| {
+                        with_output_for(&message.package_id, &mut |name, data| {
                             progress(format!("proc-macro {name} built"));
                             if data.proc_macro_dylib_path == ProcMacroDylibPath::NotBuilt {
                                 data.proc_macro_dylib_path = ProcMacroDylibPath::NotProcMacro;
