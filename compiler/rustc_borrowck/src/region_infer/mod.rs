@@ -1736,9 +1736,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // `BoringNoLocation` constraints can point to user-written code, but are less
                 // specific, and are not used for relations that would make sense to blame.
                 ConstraintCategory::BoringNoLocation => 6,
-                // Do not blame internal constraints.
-                ConstraintCategory::OutlivesUnnameablePlaceholder(_) => 7,
-                ConstraintCategory::Internal => 8,
+                // Do not blame internal constraints if we can avoid it. Never blame
+                // the `'region: 'static` constraints introduced by placeholder outlives.
+                ConstraintCategory::Internal => 7,
+                ConstraintCategory::OutlivesUnnameablePlaceholder(_) => 8,
             };
 
             debug!("constraint {constraint:?} category: {category:?}, interest: {interest:?}");
