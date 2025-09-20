@@ -46,20 +46,11 @@ be fixed in [#124560](https://github.com/rust-lang/rust/pull/124560).
 
 ## Building Rust programs
 
-Rust programs can be built for these targets by specifying `--target`, if
-`rustc` has been built with support for them. For example:
-
-```console
-$ rustc --target aarch64-apple-visionos-sim your-code.rs
-```
+See [the instructions for iOS](./apple-ios.md#building-rust-programs).
 
 ## Testing
 
-There is no support for running the Rust or standard library testsuite at the
-moment. Testing has mostly been done manually with builds of static libraries
-embedded into applications called from Xcode or a simulator.
-
-It hopefully will be possible to improve this in the future.
+See [the instructions for iOS](./apple-ios.md#testing).
 
 ## Cross-compilation toolchains and C code
 
