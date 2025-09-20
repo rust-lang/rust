@@ -2,6 +2,7 @@ use std::borrow::{Borrow, Cow};
 use std::ops::Deref;
 use std::{iter, ptr};
 
+use rustc_ast::expand::typetree::FncTree;
 pub(crate) mod autodiff;
 pub(crate) mod gpu_offload;
 
@@ -1107,11 +1108,12 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         src_align: Align,
         size: &'ll Value,
         flags: MemFlags,
+        tt: Option<FncTree>,
     ) {
         assert!(!flags.contains(MemFlags::NONTEMPORAL), "non-temporal memcpy not supported");
         let size = self.intcast(size, self.type_isize(), false);
         let is_volatile = flags.contains(MemFlags::VOLATILE);
-        unsafe {
+        let memcpy = unsafe {
             llvm::LLVMRustBuildMemCpy(
                 self.llbuilder,
                 dst,
@@ -1120,7 +1122,16 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 src_align.bytes() as c_uint,
                 size,
                 is_volatile,
-            );
+            )
+        };
+
+        // TypeTree metadata for memcpy is especially important: when Enzyme encounters
+        // a memcpy during autodiff, it needs to know the structure of the data being
+        // copied to properly track derivatives. For example, copying an array of floats
+        // vs. copying a struct with mixed types requires different derivative handling.
+        // The TypeTree tells Enzyme exactly what memory layout to expect.
+        if let Some(tt) = tt {
+            crate::typetree::add_tt(self.cx().llmod, self.cx().llcx, memcpy, tt);
         }
     }
 
