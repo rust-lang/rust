@@ -404,7 +404,7 @@ pub use self::adapters::StepBy;
 pub use self::adapters::TrustedRandomAccess;
 #[unstable(feature = "trusted_random_access", issue = "none")]
 pub use self::adapters::TrustedRandomAccessNoCoerce;
-#[stable(feature = "iter_chain", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "iter_chain", since = "1.91.0")]
 pub use self::adapters::chain;
 pub(crate) use self::adapters::try_process;
 #[stable(feature = "iter_zip", since = "1.59.0")]
