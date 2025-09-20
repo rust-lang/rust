@@ -19,14 +19,15 @@
 #![feature(default_field_values)]
 #![feature(if_let_guard)]
 #![feature(iter_intersperse)]
+#![feature(ptr_as_ref_unchecked)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
 
-use std::cell::{Cell, Ref, RefCell};
+use std::cell::{BorrowMutError, Cell, Ref, RefCell, RefMut};
 use std::collections::BTreeSet;
-use std::fmt;
+use std::fmt::{self, Formatter};
 use std::sync::Arc;
 
 use diagnostics::{ImportSuggestion, LabelSuggestion, Suggestion};
@@ -592,22 +593,22 @@ struct ModuleData<'ra> {
     /// Resolutions in modules from other crates are not populated until accessed.
     lazy_resolutions: Resolutions<'ra>,
     /// True if this is a module from other crate that needs to be populated on access.
-    populate_on_access: Cell<bool>,
+    populate_on_access: CmCell<bool>, // FIXME(batched): Use an atomic in batched import resolution?
     /// Used to disambiguate underscore items (`const _: T = ...`) in the module.
-    underscore_disambiguator: Cell<u32>,
+    underscore_disambiguator: CmCell<u32>, // FIXME(batched): Use an atomic in batched import resolution?
 
     /// Macro invocations that can expand into items in this module.
-    unexpanded_invocations: RefCell<FxHashSet<LocalExpnId>>,
+    unexpanded_invocations: CmRefCell<FxHashSet<LocalExpnId>>,
 
     /// Whether `#[no_implicit_prelude]` is active.
     no_implicit_prelude: bool,
 
-    glob_importers: RefCell<Vec<Import<'ra>>>,
-    globs: RefCell<Vec<Import<'ra>>>,
+    glob_importers: CmRefCell<Vec<Import<'ra>>>,
+    globs: CmRefCell<Vec<Import<'ra>>>,
 
     /// Used to memoize the traits in this module for faster searches through all traits in scope.
     traits:
-        RefCell<Option<Box<[(Macros20NormalizedIdent, NameBinding<'ra>, Option<Module<'ra>>)]>>>,
+        CmRefCell<Option<Box<[(Macros20NormalizedIdent, NameBinding<'ra>, Option<Module<'ra>>)]>>>,
 
     /// Span of the module itself. Used for error reporting.
     span: Span,
@@ -655,13 +656,13 @@ impl<'ra> ModuleData<'ra> {
             parent,
             kind,
             lazy_resolutions: Default::default(),
-            populate_on_access: Cell::new(is_foreign),
-            underscore_disambiguator: Cell::new(0),
+            populate_on_access: CmCell::new(is_foreign),
+            underscore_disambiguator: CmCell::new(0),
             unexpanded_invocations: Default::default(),
             no_implicit_prelude,
-            glob_importers: RefCell::new(Vec::new()),
-            globs: RefCell::new(Vec::new()),
-            traits: RefCell::new(None),
+            glob_importers: CmRefCell::new(Vec::new()),
+            globs: CmRefCell::new(Vec::new()),
+            traits: CmRefCell::new(None),
             span,
             expansion,
             self_binding,
@@ -696,7 +697,7 @@ impl<'ra> Module<'ra> {
 
     /// This modifies `self` in place. The traits will be stored in `self.traits`.
     fn ensure_traits<'tcx>(self, resolver: &impl AsRef<Resolver<'ra, 'tcx>>) {
-        let mut traits = self.traits.borrow_mut();
+        let mut traits = self.traits.borrow_mut_unchecked();
         if traits.is_none() {
             let mut collected_traits = Vec::new();
             self.for_each_child(resolver, |r, name, ns, binding| {
@@ -1974,7 +1975,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     fn resolutions(&self, module: Module<'ra>) -> &'ra Resolutions<'ra> {
         if module.populate_on_access.get() {
-            module.populate_on_access.set(false);
+            // FIXME(batched): Will be fixed in batched import resolution.
+            module.populate_on_access.set_unchecked(false);
             self.build_reduced_graph_external(module);
         }
         &module.0.0.lazy_resolutions
@@ -2563,3 +2565,109 @@ mod ref_mut {
 ///
 /// Prefer constructing it through [`Resolver::cm`] to ensure correctness.
 type CmResolver<'r, 'ra, 'tcx> = ref_mut::RefOrMut<'r, Resolver<'ra, 'tcx>>;
+
+#[derive(Default)]
+struct CmCell<T> {
+    value: Cell<T>,
+}
+
+impl<T: Copy + fmt::Debug> fmt::Debug for CmCell<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.debug_struct("CmCell").field("value", &self.get()).finish()
+    }
+}
+
+impl<T: Copy> Clone for CmCell<T> {
+    #[inline]
+    fn clone(&self) -> CmCell<T> {
+        CmCell::new(self.get())
+    }
+}
+
+impl<T: Copy> CmCell<T> {
+    const fn get(&self) -> T {
+        self.value.get()
+    }
+
+    fn update_unchecked(&self, f: impl FnOnce(T) -> T)
+    where
+        T: Copy,
+    {
+        let old = self.get();
+        self.set_unchecked(f(old));
+    }
+}
+
+impl<T> CmCell<T> {
+    const fn new(value: T) -> CmCell<T> {
+        CmCell { value: Cell::new(value) }
+    }
+
+    #[track_caller]
+    #[allow(dead_code)]
+    fn set<'ra, 'tcx>(&self, val: T, r: &Resolver<'ra, 'tcx>) {
+        if r.assert_speculative {
+            panic!("Not allowed to mutate CmCell during speculative resolution");
+        }
+        self.value.set(val);
+    }
+
+    fn set_unchecked(&self, val: T) {
+        self.value.set(val);
+    }
+
+    fn into_inner(self) -> T {
+        self.value.into_inner()
+    }
+}
+#[derive(Default)]
+struct CmRefCell<T> {
+    ref_cell: RefCell<T>,
+}
+
+impl<T> CmRefCell<T> {
+    const fn new(value: T) -> CmRefCell<T> {
+        CmRefCell { ref_cell: RefCell::new(value) }
+    }
+
+    #[inline]
+    #[track_caller]
+    #[allow(dead_code)]
+    fn borrow_mut<'ra, 'tcx>(&self, r: &Resolver<'ra, 'tcx>) -> RefMut<'_, T> {
+        if r.assert_speculative {
+            panic!("Not allowed to mutably borrow a CmRefCell during speculative resolution");
+        }
+        self.ref_cell.borrow_mut()
+    }
+
+    #[inline]
+    #[track_caller]
+    fn borrow_mut_unchecked(&self) -> RefMut<'_, T> {
+        self.ref_cell.borrow_mut()
+    }
+
+    #[inline]
+    #[track_caller]
+    fn try_borrow_mut_unchecked(&self) -> Result<RefMut<'_, T>, BorrowMutError> {
+        self.ref_cell.try_borrow_mut()
+    }
+
+    #[inline]
+    #[track_caller]
+    #[allow(dead_code)]
+    fn try_borrow_mut<'ra, 'tcx>(
+        &self,
+        r: Resolver<'ra, 'tcx>,
+    ) -> Result<RefMut<'_, T>, BorrowMutError> {
+        if r.assert_speculative {
+            panic!("Not allowed to mutably borrow a CmRefCell during speculative resolution");
+        }
+        self.ref_cell.try_borrow_mut()
+    }
+
+    #[inline]
+    #[track_caller]
+    fn borrow(&self) -> Ref<'_, T> {
+        self.ref_cell.borrow()
+    }
+}
