@@ -86,7 +86,6 @@ use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::source_map::dummy_spanned;
 use rustc_span::symbol::sym;
 use rustc_span::{DUMMY_SP, Span};
-use rustc_target::spec::PanicStrategy;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::TyCtxtInferExt as _;
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode, ObligationCtxt};
@@ -1149,7 +1148,7 @@ fn can_return<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, typing_env: ty::Typing
 
 fn can_unwind<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> bool {
     // Nothing can unwind when landing pads are off.
-    if tcx.sess.panic_strategy() == PanicStrategy::Abort {
+    if !tcx.sess.panic_strategy().unwinds() {
         return false;
     }
 

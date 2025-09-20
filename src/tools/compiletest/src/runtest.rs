@@ -1322,6 +1322,7 @@ impl<'test> TestCx<'test> {
 
         rustc.args(&["--crate-type", "rlib"]);
         rustc.arg("-Cpanic=abort");
+        rustc.args(self.props.core_stubs_compile_flags.clone());
 
         let res = self.compose_and_run(rustc, self.config.compile_lib_path.as_path(), None, None);
         if !res.status.success() {
@@ -1431,6 +1432,12 @@ impl<'test> TestCx<'test> {
         }
 
         aux_rustc.arg("-L").arg(&aux_dir);
+
+        if aux_props.add_core_stubs {
+            let minicore_path = self.build_minicore();
+            aux_rustc.arg("--extern");
+            aux_rustc.arg(&format!("minicore={}", minicore_path));
+        }
 
         let auxres = aux_cx.compose_and_run(
             aux_rustc,
@@ -1858,20 +1865,21 @@ impl<'test> TestCx<'test> {
             }
         }
 
-        rustc.args(&self.props.compile_flags);
-
         // FIXME(jieyouxu): we should report a fatal error or warning if user wrote `-Cpanic=` with
-        // something that's not `abort` and `-Cforce-unwind-tables` with a value that is not `yes`,
-        // however, by moving this last we should override previous `-Cpanic`s and
-        // `-Cforce-unwind-tables`s. Note that checking here is very fragile, because we'd have to
-        // account for all possible compile flag splittings (they have some... intricacies and are
-        // not yet normalized).
+        // something that's not `abort` and `-Cforce-unwind-tables` with a value that is not `yes`.
+        //
+        // We could apply these last and override any provided flags. That would ensure that the
+        // build works, but some tests want to exercise that mixing panic modes in specific ways is
+        // rejected. So we enable aborting panics and unwind tables before adding flags, just to
+        // change the default.
         //
         // `minicore` requires `#![no_std]` and `#![no_core]`, which means no unwinding panics.
         if self.props.add_core_stubs {
             rustc.arg("-Cpanic=abort");
             rustc.arg("-Cforce-unwind-tables=yes");
         }
+
+        rustc.args(&self.props.compile_flags);
 
         rustc
     }

@@ -33,7 +33,10 @@ use crate::intrinsics::const_eval_select;
 use crate::panic::{Location, PanicInfo};
 
 #[cfg(feature = "panic_immediate_abort")]
-const _: () = assert!(cfg!(panic = "abort"), "panic_immediate_abort requires -C panic=abort");
+compile_error!(
+    "panic_immediate_abort is now a real panic strategy! \
+    Enable it with the compiler flags `-Zunstable-options -Cpanic=immediate-abort`"
+);
 
 // First we define the two main entry points that all panics go through.
 // In the end both are just convenience wrappers around `panic_impl`.
@@ -44,16 +47,16 @@ const _: () = assert!(cfg!(panic = "abort"), "panic_immediate_abort requires -C 
 /// site as much as possible (so that `panic!()` has as low an impact
 /// on (e.g.) the inlining of other functions as possible), by moving
 /// the actual formatting into this shared place.
-// If panic_immediate_abort, inline the abort call,
+// If panic=immediate-abort, inline the abort call,
 // otherwise avoid inlining because of it is cold path.
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
-#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[cfg_attr(not(panic = "immediate-abort"), inline(never), cold)]
+#[cfg_attr(panic = "immediate-abort", inline)]
 #[track_caller]
 #[lang = "panic_fmt"] // needed for const-evaluated panics
 #[rustc_do_not_const_check] // hooked by const-eval
 #[rustc_const_stable_indirect] // must follow stable const rules since it is exposed to stable
 pub const fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
-    if cfg!(feature = "panic_immediate_abort") {
+    if cfg!(panic = "immediate-abort") {
         super::intrinsics::abort()
     }
 
@@ -78,8 +81,8 @@ pub const fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
 /// Like `panic_fmt`, but for non-unwinding panics.
 ///
 /// Has to be a separate function so that it can carry the `rustc_nounwind` attribute.
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
-#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[cfg_attr(not(panic = "immediate-abort"), inline(never), cold)]
+#[cfg_attr(panic = "immediate-abort", inline)]
 #[track_caller]
 // This attribute has the key side-effect that if the panic handler ignores `can_unwind`
 // and unwinds anyway, we will hit the "unwinding out of nounwind function" guard,
@@ -94,7 +97,7 @@ pub const fn panic_nounwind_fmt(fmt: fmt::Arguments<'_>, force_no_backtrace: boo
             // We don't unwind anyway at compile-time so we can call the regular `panic_fmt`.
             panic_fmt(fmt)
         } else #[track_caller] {
-            if cfg!(feature = "panic_immediate_abort") {
+            if cfg!(panic = "immediate-abort") {
                 super::intrinsics::abort()
             }
 
@@ -123,10 +126,10 @@ pub const fn panic_nounwind_fmt(fmt: fmt::Arguments<'_>, force_no_backtrace: boo
 // above.
 
 /// The underlying implementation of core's `panic!` macro when no formatting is used.
-// Never inline unless panic_immediate_abort to avoid code
+// Never inline unless panic=immediate-abort to avoid code
 // bloat at the call sites as much as possible.
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
-#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[cfg_attr(not(panic = "immediate-abort"), inline(never), cold)]
+#[cfg_attr(panic = "immediate-abort", inline)]
 #[track_caller]
 #[rustc_const_stable_indirect] // must follow stable const rules since it is exposed to stable
 #[lang = "panic"] // used by lints and miri for panics
@@ -158,10 +161,10 @@ macro_rules! panic_const {
         $(
             /// This is a panic called with a message that's a result of a MIR-produced Assert.
             //
-            // never inline unless panic_immediate_abort to avoid code
+            // never inline unless panic=immediate-abort to avoid code
             // bloat at the call sites as much as possible
-            #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
-            #[cfg_attr(feature = "panic_immediate_abort", inline)]
+            #[cfg_attr(not(panic = "immediate-abort"), inline(never), cold)]
+            #[cfg_attr(panic = "immediate-abort", inline)]
             #[track_caller]
             #[rustc_const_stable_indirect] // must follow stable const rules since it is exposed to stable
             #[lang = stringify!($lang)]
@@ -216,8 +219,8 @@ pub mod panic_const {
 
 /// Like `panic`, but without unwinding and track_caller to reduce the impact on codesize on the caller.
 /// If you want `#[track_caller]` for nicer errors, call `panic_nounwind_fmt` directly.
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
-#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[cfg_attr(not(panic = "immediate-abort"), inline(never), cold)]
+#[cfg_attr(panic = "immediate-abort", inline)]
 #[lang = "panic_nounwind"] // needed by codegen for non-unwinding panics
 #[rustc_nounwind]
 #[rustc_const_stable_indirect] // must follow stable const rules since it is exposed to stable
@@ -226,8 +229,8 @@ pub const fn panic_nounwind(expr: &'static str) -> ! {
 }
 
 /// Like `panic_nounwind`, but also inhibits showing a backtrace.
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
-#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[cfg_attr(not(panic = "immediate-abort"), inline(never), cold)]
+#[cfg_attr(panic = "immediate-abort", inline)]
 #[rustc_nounwind]
 pub fn panic_nounwind_nobacktrace(expr: &'static str) -> ! {
     panic_nounwind_fmt(fmt::Arguments::new_const(&[expr]), /* force_no_backtrace */ true);
@@ -259,25 +262,25 @@ pub const fn panic_display<T: fmt::Display>(x: &T) -> ! {
     panic_fmt(format_args!("{}", *x));
 }
 
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold, optimize(size))]
-#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[cfg_attr(not(panic = "immediate-abort"), inline(never), cold, optimize(size))]
+#[cfg_attr(panic = "immediate-abort", inline)]
 #[track_caller]
 #[lang = "panic_bounds_check"] // needed by codegen for panic on OOB array/slice access
 fn panic_bounds_check(index: usize, len: usize) -> ! {
-    if cfg!(feature = "panic_immediate_abort") {
+    if cfg!(panic = "immediate-abort") {
         super::intrinsics::abort()
     }
 
     panic!("index out of bounds: the len is {len} but the index is {index}")
 }
 
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold, optimize(size))]
-#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[cfg_attr(not(panic = "immediate-abort"), inline(never), cold, optimize(size))]
+#[cfg_attr(panic = "immediate-abort", inline)]
 #[track_caller]
 #[lang = "panic_misaligned_pointer_dereference"] // needed by codegen for panic on misaligned pointer deref
 #[rustc_nounwind] // `CheckAlignment` MIR pass requires this function to never unwind
 fn panic_misaligned_pointer_dereference(required: usize, found: usize) -> ! {
-    if cfg!(feature = "panic_immediate_abort") {
+    if cfg!(panic = "immediate-abort") {
         super::intrinsics::abort()
     }
 
@@ -289,13 +292,13 @@ fn panic_misaligned_pointer_dereference(required: usize, found: usize) -> ! {
     )
 }
 
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold, optimize(size))]
-#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[cfg_attr(not(panic = "immediate-abort"), inline(never), cold, optimize(size))]
+#[cfg_attr(panic = "immediate-abort", inline)]
 #[track_caller]
 #[lang = "panic_null_pointer_dereference"] // needed by codegen for panic on null pointer deref
 #[rustc_nounwind] // `CheckNull` MIR pass requires this function to never unwind
 fn panic_null_pointer_dereference() -> ! {
-    if cfg!(feature = "panic_immediate_abort") {
+    if cfg!(panic = "immediate-abort") {
         super::intrinsics::abort()
     }
 
@@ -305,13 +308,13 @@ fn panic_null_pointer_dereference() -> ! {
     )
 }
 
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold, optimize(size))]
-#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[cfg_attr(not(panic = "immediate-abort"), inline(never), cold, optimize(size))]
+#[cfg_attr(panic = "immediate-abort", inline)]
 #[track_caller]
 #[lang = "panic_invalid_enum_construction"] // needed by codegen for panic on invalid enum construction.
 #[rustc_nounwind] // `CheckEnums` MIR pass requires this function to never unwind
 fn panic_invalid_enum_construction(source: u128) -> ! {
-    if cfg!(feature = "panic_immediate_abort") {
+    if cfg!(panic = "immediate-abort") {
         super::intrinsics::abort()
     }
 
@@ -328,8 +331,8 @@ fn panic_invalid_enum_construction(source: u128) -> ! {
 ///
 /// This function is called directly by the codegen backend, and must not have
 /// any extra arguments (including those synthesized by track_caller).
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold, optimize(size))]
-#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[cfg_attr(not(panic = "immediate-abort"), inline(never), cold, optimize(size))]
+#[cfg_attr(panic = "immediate-abort", inline)]
 #[lang = "panic_cannot_unwind"] // needed by codegen for panic in nounwind function
 #[rustc_nounwind]
 fn panic_cannot_unwind() -> ! {
@@ -344,8 +347,8 @@ fn panic_cannot_unwind() -> ! {
 ///
 /// This function is called directly by the codegen backend, and must not have
 /// any extra arguments (including those synthesized by track_caller).
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold, optimize(size))]
-#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[cfg_attr(not(panic = "immediate-abort"), inline(never), cold, optimize(size))]
+#[cfg_attr(panic = "immediate-abort", inline)]
 #[lang = "panic_in_cleanup"] // needed by codegen for panic in nounwind function
 #[rustc_nounwind]
 fn panic_in_cleanup() -> ! {
@@ -377,8 +380,8 @@ pub enum AssertKind {
 }
 
 /// Internal function for `assert_eq!` and `assert_ne!` macros
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold, optimize(size))]
-#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[cfg_attr(not(panic = "immediate-abort"), inline(never), cold, optimize(size))]
+#[cfg_attr(panic = "immediate-abort", inline)]
 #[track_caller]
 #[doc(hidden)]
 pub fn assert_failed<T, U>(
@@ -395,8 +398,8 @@ where
 }
 
 /// Internal function for `assert_match!`
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold, optimize(size))]
-#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[cfg_attr(not(panic = "immediate-abort"), inline(never), cold, optimize(size))]
+#[cfg_attr(panic = "immediate-abort", inline)]
 #[track_caller]
 #[doc(hidden)]
 pub fn assert_matches_failed<T: fmt::Debug + ?Sized>(
@@ -415,8 +418,8 @@ pub fn assert_matches_failed<T: fmt::Debug + ?Sized>(
 }
 
 /// Non-generic version of the above functions, to avoid code bloat.
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold, optimize(size))]
-#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[cfg_attr(not(panic = "immediate-abort"), inline(never), cold, optimize(size))]
+#[cfg_attr(panic = "immediate-abort", inline)]
 #[track_caller]
 fn assert_failed_inner(
     kind: AssertKind,
