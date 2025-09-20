@@ -532,6 +532,7 @@ impl fmt::Debug for ChildStderr {
 /// to be changed (for example, by adding arguments) prior to spawning:
 ///
 /// ```
+/// # if cfg!(not(all(target_vendor = "apple", not(target_os = "macos")))) {
 /// use std::process::Command;
 ///
 /// let output = if cfg!(target_os = "windows") {
@@ -548,6 +549,7 @@ impl fmt::Debug for ChildStderr {
 /// };
 ///
 /// let hello = output.stdout;
+/// # }
 /// ```
 ///
 /// `Command` can be reused to spawn multiple processes. The builder methods
@@ -1348,7 +1350,7 @@ impl Output {
     ///
     /// ```
     /// #![feature(exit_status_error)]
-    /// # #[cfg(all(unix, not(target_os = "android")))] {
+    /// # #[cfg(all(unix, not(target_os = "android"), not(all(target_vendor = "apple", not(target_os = "macos")))))] {
     /// use std::process::Command;
     /// assert!(Command::new("false").output().unwrap().exit_ok().is_err());
     /// # }
@@ -1695,7 +1697,7 @@ impl From<io::Stdout> for Stdio {
     /// # Ok(())
     /// # }
     /// #
-    /// # if cfg!(all(unix, not(target_os = "android"))) {
+    /// # if cfg!(all(unix, not(target_os = "android"), not(all(target_vendor = "apple", not(target_os = "macos"))))) {
     /// #     test().unwrap();
     /// # }
     /// ```
@@ -1724,7 +1726,7 @@ impl From<io::Stderr> for Stdio {
     /// # Ok(())
     /// # }
     /// #
-    /// # if cfg!(all(unix, not(target_os = "android"))) {
+    /// # if cfg!(all(unix, not(target_os = "android"), not(all(target_vendor = "apple", not(target_os = "macos"))))) {
     /// #     test().unwrap();
     /// # }
     /// ```
@@ -1800,7 +1802,7 @@ impl ExitStatus {
     ///
     /// ```
     /// #![feature(exit_status_error)]
-    /// # if cfg!(unix) {
+    /// # if cfg!(all(unix, not(all(target_vendor = "apple", not(target_os = "macos"))))) {
     /// use std::process::Command;
     ///
     /// let status = Command::new("ls")
@@ -1907,7 +1909,7 @@ impl crate::sealed::Sealed for ExitStatusError {}
 ///
 /// ```
 /// #![feature(exit_status_error)]
-/// # if cfg!(all(unix, not(target_os = "android"))) {
+/// # if cfg!(all(unix, not(target_os = "android"), not(all(target_vendor = "apple", not(target_os = "macos"))))) {
 /// use std::process::{Command, ExitStatusError};
 ///
 /// fn run(cmd: &str) -> Result<(), ExitStatusError> {
@@ -1950,7 +1952,7 @@ impl ExitStatusError {
     ///
     /// ```
     /// #![feature(exit_status_error)]
-    /// # #[cfg(all(unix, not(target_os = "android")))] {
+    /// # #[cfg(all(unix, not(target_os = "android"), not(all(target_vendor = "apple", not(target_os = "macos")))))] {
     /// use std::process::Command;
     ///
     /// let bad = Command::new("false").status().unwrap().exit_ok().unwrap_err();
@@ -1975,7 +1977,7 @@ impl ExitStatusError {
     /// ```
     /// #![feature(exit_status_error)]
     ///
-    /// # if cfg!(all(unix, not(target_os = "android"))) {
+    /// # if cfg!(all(unix, not(target_os = "android"), not(all(target_vendor = "apple", not(target_os = "macos"))))) {
     /// use std::num::NonZero;
     /// use std::process::Command;
     ///
