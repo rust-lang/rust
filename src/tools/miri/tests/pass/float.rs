@@ -1415,12 +1415,12 @@ fn test_fmuladd() {
 
     #[inline(never)]
     pub fn test_operations_f32(a: f32, b: f32, c: f32) {
-        assert_approx_eq!(unsafe { fmuladdf32(a, b, c) }, a * b + c);
+        assert_approx_eq!(fmuladdf32(a, b, c), a * b + c);
     }
 
     #[inline(never)]
     pub fn test_operations_f64(a: f64, b: f64, c: f64) {
-        assert_approx_eq!(unsafe { fmuladdf64(a, b, c) }, a * b + c);
+        assert_approx_eq!(fmuladdf64(a, b, c), a * b + c);
     }
 
     test_operations_f32(0.1, 0.2, 0.3);

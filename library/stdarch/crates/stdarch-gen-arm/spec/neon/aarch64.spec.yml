@@ -3108,7 +3108,7 @@ intrinsics:
     types:
       - [f16, 'h_']
     compose:
-      - FnCall: [roundf16, [a], [], true]
+      - FnCall: [roundf16, [a], []]
 
   - name: "vrndn{neon_type.no}"
     doc: "Floating-point round to integral, to nearest with ties to even"
@@ -3208,7 +3208,7 @@ intrinsics:
     types:
       - [f16, 'h_']
     compose:
-      - FnCall: [floorf16, [a], [], true]
+      - FnCall: [floorf16, [a], []]
 
 
 
@@ -3257,7 +3257,7 @@ intrinsics:
     types:
       - [f16, 'h_']
     compose:
-      - FnCall: [ceilf16, [a], [], true]
+      - FnCall: [ceilf16, [a], []]
 
   - name: "vrnd{neon_type.no}"
     doc: "Floating-point round to integral, toward zero"
@@ -3304,7 +3304,7 @@ intrinsics:
     types:
       - [f16, 'h_']
     compose:
-      - FnCall: [truncf16, [a], [], true]
+      - FnCall: [truncf16, [a], []]
 
 
   - name: "vrndi{neon_type.no}"
@@ -8499,7 +8499,7 @@ intrinsics:
     types:
       - [f16, 'h_']
     compose:
-      - FnCall: [sqrtf16, [a], [], true]
+      - FnCall: [sqrtf16, [a], []]
 
   - name: "vrsqrts{type[0]}"
     doc: "Floating-point reciprocal square root step"
@@ -10464,7 +10464,7 @@ intrinsics:
     types:
       - ["f16", "h_f16"]
     compose:
-      - FnCall: [fmaf16, [b, c, a], [], true]
+      - FnCall: [fmaf16, [b, c, a], []]
 
 
   - name: "vfmah_lane{type[2]}"
