@@ -37,7 +37,8 @@ use crate::ops::{
 ///
 /// `Wrapping<T>` is guaranteed to have the same layout and ABI as `T`.
 #[stable(feature = "rust1", since = "1.0.0")]
-#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Default, Hash)]
+#[derive(Copy, Hash)]
+#[derive_const(Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
 #[repr(transparent)]
 #[rustc_diagnostic_item = "Wrapping"]
 pub struct Wrapping<T>(#[stable(feature = "rust1", since = "1.0.0")] pub T);
