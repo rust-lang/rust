@@ -7,7 +7,6 @@ fn demo_ge_partial(_1: &(f32, f32), _2: &(f32, f32)) -> bool {
     scope 1 (inlined std::cmp::impls::<impl PartialOrd for &(f32, f32)>::ge) {
         scope 2 (inlined core::tuple::<impl PartialOrd for (f32, f32)>::ge) {
             let mut _7: std::ops::ControlFlow<bool>;
-            let _8: bool;
             scope 3 {
             }
             scope 4 (inlined std::cmp::impls::<impl PartialOrd for f32>::__chaining_ge) {
@@ -19,8 +18,8 @@ fn demo_ge_partial(_1: &(f32, f32), _2: &(f32, f32)) -> bool {
                 }
             }
             scope 6 (inlined std::cmp::impls::<impl PartialOrd for f32>::ge) {
+                let mut _8: f32;
                 let mut _9: f32;
-                let mut _10: f32;
             }
         }
     }
@@ -44,10 +43,7 @@ fn demo_ge_partial(_1: &(f32, f32), _2: &(f32, f32)) -> bool {
         StorageDead(_5);
         StorageDead(_4);
         StorageDead(_3);
-        StorageLive(_8);
-        _8 = copy ((_7 as Break).0: bool);
-        _0 = copy _8;
-        StorageDead(_8);
+        _0 = copy ((_7 as Break).0: bool);
         goto -> bb3;
     }
 
@@ -55,13 +51,13 @@ fn demo_ge_partial(_1: &(f32, f32), _2: &(f32, f32)) -> bool {
         StorageDead(_5);
         StorageDead(_4);
         StorageDead(_3);
+        StorageLive(_8);
+        _8 = copy ((*_1).1: f32);
         StorageLive(_9);
-        _9 = copy ((*_1).1: f32);
-        StorageLive(_10);
-        _10 = copy ((*_2).1: f32);
-        _0 = Ge(move _9, move _10);
-        StorageDead(_10);
+        _9 = copy ((*_2).1: f32);
+        _0 = Ge(move _8, move _9);
         StorageDead(_9);
+        StorageDead(_8);
         goto -> bb3;
     }
 

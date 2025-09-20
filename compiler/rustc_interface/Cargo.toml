@@ -58,4 +58,5 @@ rustc_abi = { path = "../rustc_abi" }
 # tidy-alphabetical-start
 check_only = ['rustc_codegen_llvm?/check_only']
 llvm = ['dep:rustc_codegen_llvm']
+llvm_enzyme = ['rustc_builtin_macros/llvm_enzyme', 'rustc_codegen_llvm/llvm_enzyme']
 # tidy-alphabetical-end

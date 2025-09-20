@@ -15,8 +15,8 @@ use super::{Parser, PathStyle, SeqSep, TokenType, Trailing};
 use crate::errors::{
     self, AttributeOnEmptyType, AttributeOnType, DynAfterMut, ExpectedFnPathFoundFnKeyword,
     ExpectedMutOrConstInRawPointerType, FnPtrWithGenerics, FnPtrWithGenericsSugg,
-    HelpUseLatestEdition, InvalidDynKeyword, LifetimeAfterMut, NeedPlusAfterTraitObjectLifetime,
-    NestedCVariadicType, ReturnTypesUseThinArrow,
+    HelpUseLatestEdition, InvalidCVariadicType, InvalidDynKeyword, LifetimeAfterMut,
+    NeedPlusAfterTraitObjectLifetime, NestedCVariadicType, ReturnTypesUseThinArrow,
 };
 use crate::parser::item::FrontMatterParsingMode;
 use crate::parser::{FnContext, FnParseMode};
@@ -106,6 +106,15 @@ fn can_begin_dyn_bound_in_edition_2015(t: &Token) -> bool {
 impl<'a> Parser<'a> {
     /// Parses a type.
     pub fn parse_ty(&mut self) -> PResult<'a, Box<Ty>> {
+        if self.token == token::DotDotDot {
+            // We special case this so that we don't talk about "nested C-variadics" in types.
+            // We still pass in `AllowCVariadic::No` so that `parse_ty_common` can complain about
+            // things like `Vec<...>`.
+            let span = self.token.span;
+            self.bump();
+            let kind = TyKind::Err(self.dcx().emit_err(InvalidCVariadicType { span }));
+            return Ok(self.mk_ty(span, kind));
+        }
         // Make sure deeply nested types don't overflow the stack.
         ensure_sufficient_stack(|| {
             self.parse_ty_common(

@@ -20,13 +20,13 @@ use crate::attributes::allow_unstable::{
 use crate::attributes::body::CoroutineParser;
 use crate::attributes::codegen_attrs::{
     ColdParser, CoverageParser, ExportNameParser, ForceTargetFeatureParser, NakedParser,
-    NoMangleParser, OptimizeParser, SanitizeParser, TargetFeatureParser, TrackCallerParser,
-    UsedParser,
+    NoMangleParser, ObjcClassParser, ObjcSelectorParser, OptimizeParser, SanitizeParser,
+    TargetFeatureParser, TrackCallerParser, UsedParser,
 };
 use crate::attributes::confusables::ConfusablesParser;
 use crate::attributes::crate_level::{
     CrateNameParser, MoveSizeLimitParser, NoCoreParser, NoStdParser, PatternComplexityLimitParser,
-    RecursionLimitParser, TypeLengthLimitParser,
+    RecursionLimitParser, RustcCoherenceIsCoreParser, TypeLengthLimitParser,
 };
 use crate::attributes::deprecation::DeprecationParser;
 use crate::attributes::dummy::DummyParser;
@@ -61,10 +61,10 @@ use crate::attributes::stability::{
 };
 use crate::attributes::test_attrs::{IgnoreParser, ShouldPanicParser};
 use crate::attributes::traits::{
-    AllowIncoherentImplParser, CoherenceIsCoreParser, CoinductiveParser, ConstTraitParser,
-    DenyExplicitImplParser, DoNotImplementViaObjectParser, FundamentalParser, MarkerParser,
-    ParenSugarParser, PointeeParser, SkipDuringMethodDispatchParser, SpecializationTraitParser,
-    TypeConstParser, UnsafeSpecializationMarkerParser,
+    AllowIncoherentImplParser, CoinductiveParser, ConstTraitParser, DenyExplicitImplParser,
+    DoNotImplementViaObjectParser, FundamentalParser, MarkerParser, ParenSugarParser,
+    PointeeParser, SkipDuringMethodDispatchParser, SpecializationTraitParser, TypeConstParser,
+    UnsafeSpecializationMarkerParser,
 };
 use crate::attributes::transparency::TransparencyParser;
 use crate::attributes::{AttributeParser as _, Combine, Single, WithoutArgs};
@@ -185,6 +185,8 @@ attribute_parsers!(
         Single<LinkageParser>,
         Single<MoveSizeLimitParser>,
         Single<MustUseParser>,
+        Single<ObjcClassParser>,
+        Single<ObjcSelectorParser>,
         Single<OptimizeParser>,
         Single<PathAttributeParser>,
         Single<PatternComplexityLimitParser>,
@@ -204,7 +206,6 @@ attribute_parsers!(
         Single<WithoutArgs<AllowInternalUnsafeParser>>,
         Single<WithoutArgs<AsPtrParser>>,
         Single<WithoutArgs<AutomaticallyDerivedParser>>,
-        Single<WithoutArgs<CoherenceIsCoreParser>>,
         Single<WithoutArgs<CoinductiveParser>>,
         Single<WithoutArgs<ColdParser>>,
         Single<WithoutArgs<ConstContinueParser>>,
@@ -232,6 +233,7 @@ attribute_parsers!(
         Single<WithoutArgs<ProcMacroAttributeParser>>,
         Single<WithoutArgs<ProcMacroParser>>,
         Single<WithoutArgs<PubTransparentParser>>,
+        Single<WithoutArgs<RustcCoherenceIsCoreParser>>,
         Single<WithoutArgs<SpecializationTraitParser>>,
         Single<WithoutArgs<StdInternalSymbolParser>>,
         Single<WithoutArgs<TrackCallerParser>>,

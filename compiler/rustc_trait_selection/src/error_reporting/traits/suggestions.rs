@@ -1131,7 +1131,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         },
                     )
                 }
-                ty::Dynamic(data, _, ty::Dyn) => data.iter().find_map(|pred| {
+                ty::Dynamic(data, _) => data.iter().find_map(|pred| {
                     if let ty::ExistentialPredicate::Projection(proj) = pred.skip_binder()
                         && self.tcx.is_lang_item(proj.def_id, LangItem::FnOnceOutput)
                         // for existential projection, args are shifted over by 1
@@ -1520,7 +1520,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let ty::Ref(_, object_ty, hir::Mutability::Not) = target_ty.kind() else {
             return;
         };
-        let ty::Dynamic(predicates, _, ty::Dyn) = object_ty.kind() else {
+        let ty::Dynamic(predicates, _) = object_ty.kind() else {
             return;
         };
         let self_ref_ty = Ty::new_imm_ref(self.tcx, self.tcx.lifetimes.re_erased, self_ty);
@@ -1883,7 +1883,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let ObligationCauseCode::SizedReturnType = obligation.cause.code() else {
             return false;
         };
-        let ty::Dynamic(_, _, ty::Dyn) = trait_pred.self_ty().skip_binder().kind() else {
+        let ty::Dynamic(_, _) = trait_pred.self_ty().skip_binder().kind() else {
             return false;
         };
 

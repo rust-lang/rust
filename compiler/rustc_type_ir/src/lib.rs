@@ -57,7 +57,6 @@ mod upcast;
 mod visit;
 
 pub use AliasTyKind::*;
-pub use DynKind::*;
 pub use InferTy::*;
 pub use RegionKind::*;
 pub use TyKind::*;

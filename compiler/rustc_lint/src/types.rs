@@ -320,7 +320,7 @@ fn lint_wide_pointer<'tcx>(
         };
 
         (!ty.is_sized(cx.tcx, cx.typing_env()))
-            .then(|| (refs, modifiers, matches!(ty.kind(), ty::Dynamic(_, _, ty::Dyn))))
+            .then(|| (refs, modifiers, matches!(ty.kind(), ty::Dynamic(_, _))))
     };
 
     // the left and right operands can have references, remove any explicit references

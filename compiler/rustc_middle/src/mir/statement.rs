@@ -697,7 +697,6 @@ impl<'tcx> Rvalue<'tcx> {
             | Rvalue::Ref(_, _, _)
             | Rvalue::ThreadLocalRef(_)
             | Rvalue::RawPtr(_, _)
-            | Rvalue::Len(_)
             | Rvalue::Cast(
                 CastKind::IntToInt
                 | CastKind::FloatToInt
@@ -739,7 +738,6 @@ impl<'tcx> Rvalue<'tcx> {
                 let place_ty = place.ty(local_decls, tcx).ty;
                 Ty::new_ptr(tcx, place_ty, kind.to_mutbl_lossy())
             }
-            Rvalue::Len(..) => tcx.types.usize,
             Rvalue::Cast(.., ty) => ty,
             Rvalue::BinaryOp(op, box (ref lhs, ref rhs)) => {
                 let lhs_ty = lhs.ty(local_decls, tcx);

@@ -86,7 +86,7 @@ fn check_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, span: Span, msrv: Msrv) 
             ty::FnPtr(..) => {
                 return Err((span, "function pointers in const fn are unstable".into()));
             },
-            ty::Dynamic(preds, _, _) => {
+            ty::Dynamic(preds, _) => {
                 for pred in *preds {
                     match pred.skip_binder() {
                         ty::ExistentialPredicate::AutoTrait(_) | ty::ExistentialPredicate::Projection(_) => {
@@ -126,7 +126,7 @@ fn check_rvalue<'tcx>(
 ) -> McfResult {
     match rvalue {
         Rvalue::ThreadLocalRef(_) => Err((span, "cannot access thread local storage in const fn".into())),
-        Rvalue::Len(place) | Rvalue::Discriminant(place) | Rvalue::Ref(_, _, place) | Rvalue::RawPtr(_, place) => {
+        Rvalue::Discriminant(place) | Rvalue::Ref(_, _, place) | Rvalue::RawPtr(_, place) => {
             check_place(cx, *place, span, body, msrv)
         },
         Rvalue::CopyForDeref(place) => check_place(cx, *place, span, body, msrv),

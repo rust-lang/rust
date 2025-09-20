@@ -45,7 +45,9 @@ pub(super) fn check<'tcx>(
                 Applicability::MaybeIncorrect,
             );
             triggered = true;
-        } else if (cx.tcx.erase_and_anonymize_regions(from_ty) != cx.tcx.erase_and_anonymize_regions(to_ty)) && !const_context {
+        } else if (cx.tcx.erase_and_anonymize_regions(from_ty) != cx.tcx.erase_and_anonymize_regions(to_ty))
+            && !const_context
+        {
             span_lint_and_then(
                 cx,
                 TRANSMUTE_PTR_TO_PTR,

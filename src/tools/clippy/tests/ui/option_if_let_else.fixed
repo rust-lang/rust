@@ -125,6 +125,16 @@ fn complex_subpat() -> DummyEnum {
     DummyEnum::Two
 }
 
+// #10335
+pub fn test_result_err_ignored_1(r: Result<&[u8], &[u8]>) -> Vec<u8> {
+    r.map_or_else(|_| Vec::new(), |s| s.to_owned())
+}
+
+// #10335
+pub fn test_result_err_ignored_2(r: Result<&[u8], &[u8]>) -> Vec<u8> {
+    r.map_or_else(|_| Vec::new(), |s| s.to_owned())
+}
+
 fn main() {
     let optional = Some(5);
     let _ = optional.map_or(5, |x| x + 2);

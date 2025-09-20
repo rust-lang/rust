@@ -669,7 +669,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 // These may potentially implement `FnPtr`
                 ty::Placeholder(..)
-                | ty::Dynamic(_, _, _)
+                | ty::Dynamic(_, _)
                 | ty::Alias(_, _)
                 | ty::Infer(_)
                 | ty::Param(..)
@@ -991,7 +991,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         match (source.kind(), target.kind()) {
             // Trait+Kx+'a -> Trait+Ky+'b (upcasts).
-            (&ty::Dynamic(a_data, a_region, ty::Dyn), &ty::Dynamic(b_data, b_region, ty::Dyn)) => {
+            (&ty::Dynamic(a_data, a_region), &ty::Dynamic(b_data, b_region)) => {
                 // Upcast coercions permit several things:
                 //
                 // 1. Dropping auto traits, e.g., `Foo + Send` to `Foo`
@@ -1054,7 +1054,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // `T` -> `Trait`
-            (_, &ty::Dynamic(_, _, ty::Dyn)) => {
+            (_, &ty::Dynamic(_, _)) => {
                 candidates.vec.push(BuiltinUnsizeCandidate);
             }
 
@@ -1327,7 +1327,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Pat(_, _)
             | ty::FnPtr(..)
             | ty::UnsafeBinder(_)
-            | ty::Dynamic(_, _, _)
+            | ty::Dynamic(_, _)
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(_, _)

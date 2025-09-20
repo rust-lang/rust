@@ -6,7 +6,152 @@ document.
 
 ## Unreleased / Beta / In Rust Nightly
 
-[4ef75291...master](https://github.com/rust-lang/rust-clippy/compare/4ef75291...master)
+[e9b7045...master](https://github.com/rust-lang/rust-clippy/compare/e9b7045...master)
+
+## Rust 1.90
+
+Current stable, released 2025-09-18
+
+[View all 118 merged pull requests](https://github.com/rust-lang/rust-clippy/pulls?q=merged%3A2025-06-13T15%3A55%3A04Z..2025-07-25T13%3A24%3A00Z+base%3Amaster)
+
+Note: This Clippy release does not introduce many new lints and is focused entirely on bug fixes — see
+[#15086](https://github.com/rust-lang/rust-clippy/issues/15086) for more details.
+
+## New Lints
+
+* Added [`manual_is_multiple_of`] to `complexity` [#14292](https://github.com/rust-lang/rust-clippy/pull/14292)
+* Added [`doc_broken_link`] to `pedantic` [#13696](https://github.com/rust-lang/rust-clippy/pull/13696)
+
+### Moves and Deprecations
+
+* Move [`uninlined_format_args`] to `pedantic` (from `style`, now allow-by-default) [#15287](https://github.com/rust-lang/rust-clippy/pull/15287)
+
+### Enhancements
+
+* [`or_fun_call`] now lints `Option::get_or_insert`, `Result::map_or`, `Option/Result::and` methods 
+  [#15071](https://github.com/rust-lang/rust-clippy/pull/15071) 
+  [#15073](https://github.com/rust-lang/rust-clippy/pull/15073) 
+  [#15074](https://github.com/rust-lang/rust-clippy/pull/15074)
+* [`incompatible_msrv`] now recognizes types exceeding MSRV 
+  [#15296](https://github.com/rust-lang/rust-clippy/pull/15296)
+* [`incompatible_msrv`] now checks the right MSRV when in a `const` context 
+  [#15297](https://github.com/rust-lang/rust-clippy/pull/15297)
+* [`zero_ptr`] now lints in `const` context as well 
+  [#15152](https://github.com/rust-lang/rust-clippy/pull/15152)
+* [`map_identity`],[`flat_map_identity`] now recognizes `|[x, y]| [x, y]` as an identity function
+  [#15229](https://github.com/rust-lang/rust-clippy/pull/15229)
+* [`exit`] no longer fails on the main function when using `--test` or `--all-targets` flag 
+  [#15222](https://github.com/rust-lang/rust-clippy/pull/15222)
+
+### False Positive Fixes
+
+* [`if_then_some_else_none`] fixed FP when require type coercion
+  [#15267](https://github.com/rust-lang/rust-clippy/pull/15267)
+* [`module_name_repetitions`] fixed FP on exported macros
+  [#15319](https://github.com/rust-lang/rust-clippy/pull/15319)
+* [`unused_async`] fixed FP on function with `todo!`
+  [#15308](https://github.com/rust-lang/rust-clippy/pull/15308)
+* [`useless_attribute`] fixed FP when using `#[expect(redundant_imports)]` and similar lint attributes 
+  on `use` statements
+  [#15318](https://github.com/rust-lang/rust-clippy/pull/15318)
+* [`pattern_type_mismatch`] fixed FP in external macro
+  [#15306](https://github.com/rust-lang/rust-clippy/pull/15306)
+* [`large_enum_variant`] fixed FP by not suggesting `Box` in `no_std` mode
+  [#15241](https://github.com/rust-lang/rust-clippy/pull/15241)
+* [`missing_inline_in_public_items`] fixed FP on functions with `extern`
+  [#15313](https://github.com/rust-lang/rust-clippy/pull/15313)
+* [`needless_range_loop`] fixed FP on array literals
+  [#15314](https://github.com/rust-lang/rust-clippy/pull/15314)
+* [`ptr_as_ptr`] fixed wrong suggestions with turbo fish
+  [#15289](https://github.com/rust-lang/rust-clippy/pull/15289)
+* [`range_plus_one`], [`range_minus_one`] fixed FP by restricting lint to cases where it is safe 
+  to switch the range type
+  [#14432](https://github.com/rust-lang/rust-clippy/pull/14432)
+* [`ptr_arg`] fixed FP with underscore binding to `&T` or `&mut T` argument
+  [#15105](https://github.com/rust-lang/rust-clippy/pull/15105)
+* [`unsafe_derive_deserialize`] fixed FP caused by the standard library's `pin!()` macro
+  [#15137](https://github.com/rust-lang/rust-clippy/pull/15137)
+* [`unused_trait_names`] fixed FP in macros
+  [#14947](https://github.com/rust-lang/rust-clippy/pull/14947)
+* [`expect_fun_call`] fixed invalid suggestions
+  [#15122](https://github.com/rust-lang/rust-clippy/pull/15122)
+* [`manual_is_multiple_of`] fixed various false positives
+  [#15205](https://github.com/rust-lang/rust-clippy/pull/15205)
+* [`manual_assert`] fixed wrong suggestions for macros
+  [#15264](https://github.com/rust-lang/rust-clippy/pull/15264)
+* [`expect_used`] fixed false negative when meeting `Option::ok().expect`
+  [#15253](https://github.com/rust-lang/rust-clippy/pull/15253)
+* [`manual_abs_diff`] fixed wrong suggestions behind refs
+  [#15265](https://github.com/rust-lang/rust-clippy/pull/15265)
+* [`approx_constant`] fixed FP with overly precise literals and non trivially formatted numerals
+  [#15236](https://github.com/rust-lang/rust-clippy/pull/15236)
+* [`arithmetic_side_effects`] fixed FP on `NonZeroU*.get() - 1`
+  [#15238](https://github.com/rust-lang/rust-clippy/pull/15238)
+* [`legacy_numeric_constants`] fixed suggestion when call is inside parentheses
+  [#15191](https://github.com/rust-lang/rust-clippy/pull/15191)
+* [`manual_is_variant_and`] fixed inverted suggestions that could lead to code with different semantics
+  [#15206](https://github.com/rust-lang/rust-clippy/pull/15206)
+* [`unnecessary_map_or`] fixed FP by not proposing to replace `map_or` call when types wouldn't be correct
+  [#15181](https://github.com/rust-lang/rust-clippy/pull/15181)
+* [`return_and_then`] fixed FP in case of a partially used expression
+  [#15115](https://github.com/rust-lang/rust-clippy/pull/15115)
+* [`manual_let_else`] fixed FP with binding subpattern with unused name
+  [#15118](https://github.com/rust-lang/rust-clippy/pull/15118)
+* [`suboptimal_flops`] fixed FP with ambiguous float types in mul_add suggestions
+  [#15133](https://github.com/rust-lang/rust-clippy/pull/15133)
+* [`borrow_as_ptr`] fixed FP by not removing cast to trait object pointer
+  [#15145](https://github.com/rust-lang/rust-clippy/pull/15145)
+* [`unnecessary_operation`] fixed FP by not removing casts if they are useful to type the expression
+  [#15182](https://github.com/rust-lang/rust-clippy/pull/15182)
+* [`empty_loop`] fixed FP on intrinsic function declaration
+  [#15201](https://github.com/rust-lang/rust-clippy/pull/15201)
+* [`doc_nested_refdefs`] fixed FP where task lists are reported as refdefs
+  [#15146](https://github.com/rust-lang/rust-clippy/pull/15146)
+* [`std_instead_of_core`] fixed FP when not all items come from the new crate
+  [#15165](https://github.com/rust-lang/rust-clippy/pull/15165)
+* [`swap_with_temporary`] fixed FP leading to different semantics being suggested
+  [#15172](https://github.com/rust-lang/rust-clippy/pull/15172)
+* [`cast_possible_truncation`] fixed FP by not giving suggestions inside const context
+  [#15164](https://github.com/rust-lang/rust-clippy/pull/15164)
+* [`missing_panics_doc`] fixed FP by allowing unwrap() and expect()s in const-only contexts
+  [#15170](https://github.com/rust-lang/rust-clippy/pull/15170)
+* [`disallowed_script_idents`] fixed FP on identifiers with `_`
+  [#15123](https://github.com/rust-lang/rust-clippy/pull/15123)
+* [`wildcard_enum_match_arm`] fixed wrong suggestions with raw identifiers
+  [#15093](https://github.com/rust-lang/rust-clippy/pull/15093)
+* [`borrow_deref_ref`] fixed FP by not proposing replacing a reborrow when the reborrow is itself mutably borrowed
+  [#14967](https://github.com/rust-lang/rust-clippy/pull/14967)
+* [`manual_ok_err`] fixed wrong suggestions with references
+  [#15053](https://github.com/rust-lang/rust-clippy/pull/15053)
+* [`identity_op`] fixed FP when encountering `Default::default()`
+  [#15028](https://github.com/rust-lang/rust-clippy/pull/15028)
+* [`exhaustive_structs`] fixed FP on structs with default valued field
+  [#15022](https://github.com/rust-lang/rust-clippy/pull/15022)
+* [`collapsible_else_if`] fixed FP on conditionally compiled stmt
+  [#14906](https://github.com/rust-lang/rust-clippy/pull/14906)
+* [`missing_const_for_fn`] fixed FP by checking MSRV before emitting lint on function containing 
+  non-`Sized` trait bounds
+  [#15080](https://github.com/rust-lang/rust-clippy/pull/15080)
+* [`question_mark`] fixed FP when else branch of let-else contains `#[cfg]`
+  [#15082](https://github.com/rust-lang/rust-clippy/pull/15082)
+
+### ICE Fixes
+
+* [`single_match`] fixed ICE with deref patterns and string literals 
+  [#15124](https://github.com/rust-lang/rust-clippy/pull/15124)
+* [`needless_doctest_main`] fixed panic when doctest is invalid
+  [#15052](https://github.com/rust-lang/rust-clippy/pull/15052)
+* [`zero_sized_map_values`] do not attempt to compute size of a type with escaping lifetimes
+  [#15434](https://github.com/rust-lang/rust-clippy/pull/15434)
+
+### Documentation Improvements
+
+* [`manual_is_variant_and`] improved documentation to include equality comparison patterns 
+  [#15239](https://github.com/rust-lang/rust-clippy/pull/15239)
+* [`uninlined_format_args`] improved documentation with example of how to fix a `{:?}` parameter
+  [#15228](https://github.com/rust-lang/rust-clippy/pull/15228)
+* [`undocumented_unsafe_blocks`] improved documentation wording 
+  [#15213](https://github.com/rust-lang/rust-clippy/pull/15213)
 
 ## Rust 1.89
 
@@ -6408,6 +6553,7 @@ Released 2018-09-13
 [`redundant_feature_names`]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_feature_names
 [`redundant_field_names`]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_field_names
 [`redundant_guards`]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_guards
+[`redundant_iter_cloned`]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_iter_cloned
 [`redundant_locals`]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_locals
 [`redundant_pattern`]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_pattern
 [`redundant_pattern_matching`]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_pattern_matching

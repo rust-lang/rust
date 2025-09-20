@@ -132,17 +132,21 @@ error: `...` must be the last argument of a C-variadic function
 LL |     fn e_f2(..., x: isize);
    |             ^^^
 
-error: associated functions cannot have a C variable argument list
+error: `...` is not supported for non-extern functions
   --> $DIR/variadic-ffi-semantic-restrictions.rs:55:23
    |
 LL |     fn i_f1(x: isize, ...) {}
    |                       ^^^
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
 
-error: associated functions cannot have a C variable argument list
+error: `...` is not supported for non-extern functions
   --> $DIR/variadic-ffi-semantic-restrictions.rs:57:13
    |
 LL |     fn i_f2(...) {}
    |             ^^^
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
 
 error: `...` must be the last argument of a C-variadic function
   --> $DIR/variadic-ffi-semantic-restrictions.rs:59:13
@@ -150,11 +154,13 @@ error: `...` must be the last argument of a C-variadic function
 LL |     fn i_f3(..., x: isize, ...) {}
    |             ^^^
 
-error: associated functions cannot have a C variable argument list
+error: `...` is not supported for non-extern functions
   --> $DIR/variadic-ffi-semantic-restrictions.rs:59:28
    |
 LL |     fn i_f3(..., x: isize, ...) {}
    |                            ^^^
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
 
 error: `...` must be the last argument of a C-variadic function
   --> $DIR/variadic-ffi-semantic-restrictions.rs:62:13
@@ -162,11 +168,13 @@ error: `...` must be the last argument of a C-variadic function
 LL |     fn i_f4(..., x: isize, ...) {}
    |             ^^^
 
-error: associated functions cannot have a C variable argument list
+error: `...` is not supported for non-extern functions
   --> $DIR/variadic-ffi-semantic-restrictions.rs:62:28
    |
 LL |     fn i_f4(..., x: isize, ...) {}
    |                            ^^^
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
 
 error: functions cannot be both `const` and C-variadic
   --> $DIR/variadic-ffi-semantic-restrictions.rs:65:5
@@ -176,35 +184,45 @@ LL |     const fn i_f5(x: isize, ...) {}
    |     |
    |     `const` because of this
 
-error: associated functions cannot have a C variable argument list
+error: `...` is not supported for non-extern functions
   --> $DIR/variadic-ffi-semantic-restrictions.rs:65:29
    |
 LL |     const fn i_f5(x: isize, ...) {}
    |                             ^^^
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
 
-error: associated functions cannot have a C variable argument list
+error: `...` is not supported for non-extern functions
   --> $DIR/variadic-ffi-semantic-restrictions.rs:72:23
    |
 LL |     fn t_f1(x: isize, ...) {}
    |                       ^^^
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
 
-error: associated functions cannot have a C variable argument list
+error: `...` is not supported for non-extern functions
   --> $DIR/variadic-ffi-semantic-restrictions.rs:74:23
    |
 LL |     fn t_f2(x: isize, ...);
    |                       ^^^
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
 
-error: associated functions cannot have a C variable argument list
+error: `...` is not supported for non-extern functions
   --> $DIR/variadic-ffi-semantic-restrictions.rs:76:13
    |
 LL |     fn t_f3(...) {}
    |             ^^^
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
 
-error: associated functions cannot have a C variable argument list
+error: `...` is not supported for non-extern functions
   --> $DIR/variadic-ffi-semantic-restrictions.rs:78:13
    |
 LL |     fn t_f4(...);
    |             ^^^
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
 
 error: `...` must be the last argument of a C-variadic function
   --> $DIR/variadic-ffi-semantic-restrictions.rs:80:13

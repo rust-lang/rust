@@ -1,7 +1,7 @@
 use super::NEEDLESS_MATCH;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::ty::{is_type_diagnostic_item, same_type_and_consts};
+use clippy_utils::ty::{is_type_diagnostic_item, same_type_modulo_regions};
 use clippy_utils::{
     SpanlessEq, eq_expr_value, get_parent_expr_for_hir, higher, is_else_clause, is_res_lang_ctor, over, path_res,
     peel_blocks_with_stmt,
@@ -122,7 +122,7 @@ fn expr_ty_matches_p_ty(cx: &LateContext<'_>, expr: &Expr<'_>, p_expr: &Expr<'_>
         // Compare match_expr ty with local in `let local = match match_expr {..}`
         Node::LetStmt(local) => {
             let results = cx.typeck_results();
-            return same_type_and_consts(results.node_type(local.hir_id), results.expr_ty(expr));
+            return same_type_modulo_regions(results.node_type(local.hir_id), results.expr_ty(expr));
         },
         // compare match_expr ty with RetTy in `fn foo() -> RetTy`
         Node::Item(item) => {
@@ -133,7 +133,7 @@ fn expr_ty_matches_p_ty(cx: &LateContext<'_>, expr: &Expr<'_>, p_expr: &Expr<'_>
                     .instantiate_identity()
                     .output()
                     .skip_binder();
-                return same_type_and_consts(output, cx.typeck_results().expr_ty(expr));
+                return same_type_modulo_regions(output, cx.typeck_results().expr_ty(expr));
             }
         },
         // check the parent expr for this whole block `{ match match_expr {..} }`

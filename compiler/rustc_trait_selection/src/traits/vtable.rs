@@ -317,7 +317,7 @@ pub(crate) fn first_method_vtable_slot<'tcx>(tcx: TyCtxt<'tcx>, key: ty::TraitRe
         "vtable trait ref should be normalized"
     );
 
-    let ty::Dynamic(source, _, _) = *key.self_ty().kind() else {
+    let ty::Dynamic(source, _) = *key.self_ty().kind() else {
         bug!();
     };
     let source_principal = tcx.instantiate_bound_regions_with_erased(
@@ -384,13 +384,13 @@ pub(crate) fn supertrait_vtable_slot<'tcx>(
     let (source, target) = key;
 
     // If the target principal is `None`, we can just return `None`.
-    let ty::Dynamic(target_data, _, _) = *target.kind() else {
+    let ty::Dynamic(target_data, _) = *target.kind() else {
         bug!();
     };
     let target_principal = tcx.instantiate_bound_regions_with_erased(target_data.principal()?);
 
     // Given that we have a target principal, it is a bug for there not to be a source principal.
-    let ty::Dynamic(source_data, _, _) = *source.kind() else {
+    let ty::Dynamic(source_data, _) = *source.kind() else {
         bug!();
     };
     let source_principal = tcx.instantiate_bound_regions_with_erased(

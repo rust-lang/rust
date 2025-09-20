@@ -471,7 +471,7 @@ impl<'tcx> Body<'tcx> {
 
     /// Returns an iterator over all function arguments.
     #[inline]
-    pub fn args_iter(&self) -> impl Iterator<Item = Local> + ExactSizeIterator {
+    pub fn args_iter(&self) -> impl Iterator<Item = Local> + ExactSizeIterator + use<> {
         (1..self.arg_count + 1).map(Local::new)
     }
 

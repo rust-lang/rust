@@ -717,14 +717,6 @@ macro_rules! make_mir_visitor {
                         self.visit_place(path, ctx, location);
                     }
 
-                    Rvalue::Len(path) => {
-                        self.visit_place(
-                            path,
-                            PlaceContext::NonMutatingUse(NonMutatingUseContext::Inspect),
-                            location
-                        );
-                    }
-
                     Rvalue::Cast(_cast_kind, operand, ty) => {
                         self.visit_operand(operand, location);
                         self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
@@ -1481,5 +1473,22 @@ impl PlaceContext {
             ) => ty::Covariant,
             PlaceContext::NonUse(AscribeUserTy(variance)) => variance,
         }
+    }
+}
+
+/// Small utility to visit places and locals without manually implementing a full visitor.
+pub struct VisitPlacesWith<F>(pub F);
+
+impl<'tcx, F> Visitor<'tcx> for VisitPlacesWith<F>
+where
+    F: FnMut(Place<'tcx>, PlaceContext),
+{
+    fn visit_local(&mut self, local: Local, ctxt: PlaceContext, _: Location) {
+        (self.0)(local.into(), ctxt);
+    }
+
+    fn visit_place(&mut self, place: &Place<'tcx>, ctxt: PlaceContext, location: Location) {
+        (self.0)(*place, ctxt);
+        self.visit_projection(place.as_ref(), ctxt, location);
     }
 }
