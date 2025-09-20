@@ -1018,7 +1018,7 @@ impl PartialEq<Punct> for char {
 }
 
 /// An identifier (`ident`).
-#[derive(Clone)]
+#[derive(Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 pub struct Ident(bridge::Ident<bridge::client::Span, bridge::client::Symbol>);
 
@@ -1097,6 +1097,13 @@ impl fmt::Debug for Ident {
             .field("ident", &self.to_string())
             .field("span", &self.span())
             .finish()
+    }
+}
+
+#[stable(feature = "proc_macro_ident_impls", since = "CURRENT_RUSTC_VERSION")]
+impl<T: AsRef<str> + ?Sized> PartialEq<T> for Ident {
+    fn eq(&self, other: &T) -> bool {
+        self.0 == other
     }
 }
 
