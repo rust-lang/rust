@@ -677,6 +677,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 {
                     if binding.res() != Res::Err
                         && glob_binding.res() != Res::Err
+                        && binding.res() != glob_binding.res()  // Only warn if they're different items
                         && let NameBindingKind::Import { import: glob_import, .. } =
                             glob_binding.kind
                         && let Some(glob_import_id) = glob_import.id()
