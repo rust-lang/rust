@@ -185,8 +185,7 @@ extern "C" {
 #[forbid]
 //~^ ERROR malformed
 #[debugger_visualizer]
-//~^ ERROR invalid argument
-//~| ERROR malformed `debugger_visualizer` attribute input
+//~^ ERROR malformed `debugger_visualizer` attribute input
 #[automatically_derived = 18]
 //~^ ERROR malformed
 mod yooo {

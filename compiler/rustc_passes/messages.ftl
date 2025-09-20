@@ -93,15 +93,6 @@ passes_dead_codes =
        }
     } never {$participle}
 
-passes_debug_visualizer_invalid =
-    invalid argument
-    .note_1 = expected: `natvis_file = "..."`
-    .note_2 = OR
-    .note_3 = expected: `gdb_script_file = "..."`
-
-passes_debug_visualizer_placement =
-    attribute should be applied to a module
-
 passes_debug_visualizer_unreadable =
     couldn't read {$file}: {$error}
 
