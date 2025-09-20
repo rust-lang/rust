@@ -3,7 +3,7 @@
 //@ pp-exact:hir-delegation.pp
 
 #![allow(incomplete_features)]
-#![feature(fn_delegation)]
+#![attr = Feature([fn_delegation#0])]
 #[attr = MacroUse {arguments: UseAll}]
 extern crate std;
 #[prelude_import]
