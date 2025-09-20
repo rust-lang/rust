@@ -1,4 +1,4 @@
-//@ known-bug: rust-lang/rust#125185
+//! Regression test for #125185
 //@ compile-flags: -Zvalidate-mir
 
 #![feature(type_alias_impl_trait)]
@@ -10,6 +10,7 @@ struct A;
 #[define_opaque(Foo)]
 const fn foo() -> Foo {
     value()
+    //~^ ERROR: cannot find function `value` in this scope
 }
 
 const VALUE: Foo = foo();
