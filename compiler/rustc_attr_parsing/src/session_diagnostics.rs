@@ -968,3 +968,14 @@ pub(crate) struct LimitInvalid<'a> {
     pub value_span: Span,
     pub error_str: &'a str,
 }
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_feature_single_word)]
+pub(crate) struct FeatureExpectedSingleWord {
+    #[primary_span]
+    pub span: Span,
+
+    #[help]
+    pub first_segment_span: Span,
+    pub first_segment: Symbol,
+}
