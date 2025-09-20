@@ -857,7 +857,7 @@ pub(crate) fn verify(exec_ctx: &ExecutionContext, path: &Path, expected: &str) -
         println!("verifying {}", path.display());
     });
 
-    if exec_ctx.dry_run() {
+    if exec_ctx.dry_run() && !cfg!(test) {
         return false;
     }
 

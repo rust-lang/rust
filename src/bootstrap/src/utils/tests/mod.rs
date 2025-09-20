@@ -98,6 +98,14 @@ impl ConfigBuilder {
         self
     }
 
+    pub fn config_toml(mut self, config_toml: &str) -> Self {
+        let toml_path = self.directory.join("bootstrap.toml");
+        std::fs::write(&toml_path, config_toml).unwrap();
+        self.args.push("--config".to_string());
+        self.args.push(toml_path.display().to_string());
+        self
+    }
+
     pub fn create_config(mut self) -> Config {
         // Run in dry-check, otherwise the test would be too slow
         self.args.push("--dry-run".to_string());
@@ -110,6 +118,21 @@ impl ConfigBuilder {
         // in-tree LLVM from sources.
         self.args.push("--set".to_string());
         self.args.push("llvm.download-ci-llvm=false".to_string());
+
+        // Do not mess with the local rustc checkout build directory
+        self.args.push("--build-dir".to_string());
+        self.args.push(self.directory.join("build").display().to_string());
+
+        Config::parse(Flags::parse(&self.args))
+    }
+
+    pub fn create_config_without_ci_llvm_override(mut self) -> Config {
+        // Run in dry-check, otherwise the test would be too slow
+        self.args.push("--dry-run".to_string());
+
+        // Ignore submodules
+        self.args.push("--set".to_string());
+        self.args.push("build.submodules=false".to_string());
 
         // Do not mess with the local rustc checkout build directory
         self.args.push("--build-dir".to_string());

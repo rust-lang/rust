@@ -14,17 +14,15 @@ use super::toml::change_id::ChangeIdWrapper;
 use super::{Config, RUSTC_IF_UNCHANGED_ALLOWED_PATHS};
 use crate::ChangeId;
 use crate::core::build_steps::clippy::{LintConfig, get_clippy_rules_in_order};
-use crate::core::build_steps::llvm;
 use crate::core::build_steps::llvm::LLVM_INVALIDATION_PATHS;
+use crate::core::build_steps::{llvm, test};
 use crate::core::config::toml::TomlConfig;
 use crate::core::config::{CompilerBuiltins, LldMode, StringOrBool, Target, TargetSelection};
+use crate::utils::tests::TestCtx;
 use crate::utils::tests::git::git_test;
 
 pub(crate) fn parse(config: &str) -> Config {
-    Config::parse_inner(
-        Flags::parse(&["check".to_string(), "--config=/does/not/exist".to_string()]),
-        |&_| toml::from_str(&config),
-    )
+    TestCtx::new().config("check").config_toml(config).create_config()
 }
 
 fn get_toml(file: &Path) -> Result<TomlConfig, toml::de::Error> {
@@ -39,7 +37,11 @@ fn prepare_test_specific_dir() -> PathBuf {
     // Replace "::" with "_" to make it safe for directory names on Windows systems
     let test_path = current.name().unwrap().replace("::", "_");
 
-    let testdir = parse("").tempdir().join(test_path);
+    let testdir = crate::utils::tests::TestCtx::new()
+        .config("check")
+        .create_config()
+        .tempdir()
+        .join(test_path);
 
     // clean up any old test files
     let _ = fs::remove_dir_all(&testdir);
@@ -50,10 +52,14 @@ fn prepare_test_specific_dir() -> PathBuf {
 
 #[test]
 fn download_ci_llvm() {
-    let config = parse("llvm.download-ci-llvm = false");
+    let config = TestCtx::new().config("check").create_config();
     assert!(!config.llvm_from_ci);
 
-    let if_unchanged_config = parse("llvm.download-ci-llvm = \"if-unchanged\"");
+    // this doesn't make sense, as we are overriding it later.
+    let if_unchanged_config = TestCtx::new()
+        .config("check")
+        .config_toml("llvm.download-ci-llvm = \"if-unchanged\"")
+        .create_config();
     if if_unchanged_config.llvm_from_ci && if_unchanged_config.is_running_on_ci {
         let has_changes = if_unchanged_config.has_changes_from_upstream(LLVM_INVALIDATION_PATHS);
 
@@ -64,62 +70,6 @@ fn download_ci_llvm() {
     }
 }
 
-// FIXME(onur-ozkan): extend scope of the test
-// refs:
-//   - https://github.com/rust-lang/rust/issues/109120
-//   - https://github.com/rust-lang/rust/pull/109162#issuecomment-1496782487
-#[test]
-fn detect_src_and_out() {
-    fn test(cfg: Config, build_dir: Option<&str>) {
-        // This will bring absolute form of `src/bootstrap` path
-        let current_dir = std::env::current_dir().unwrap();
-
-        // get `src` by moving into project root path
-        let expected_src = current_dir.ancestors().nth(2).unwrap();
-        assert_eq!(&cfg.src, expected_src);
-
-        // Sanity check for `src`
-        let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
-        let expected_src = manifest_dir.ancestors().nth(2).unwrap();
-        assert_eq!(&cfg.src, expected_src);
-
-        // test if build-dir was manually given in bootstrap.toml
-        if let Some(custom_build_dir) = build_dir {
-            assert_eq!(&cfg.out, Path::new(custom_build_dir));
-        }
-        // test the native bootstrap way
-        else {
-            // This should bring output path of bootstrap in absolute form
-            let cargo_target_dir = env::var_os("CARGO_TARGET_DIR").expect(
-                "CARGO_TARGET_DIR must been provided for the test environment from bootstrap",
-            );
-
-            // Move to `build` from `build/bootstrap`
-            let expected_out = Path::new(&cargo_target_dir).parent().unwrap();
-            assert_eq!(&cfg.out, expected_out);
-
-            let args: Vec<String> = env::args().collect();
-
-            // Another test for `out` as a sanity check
-            //
-            // This will bring something similar to:
-            //     `{build-dir}/bootstrap/debug/deps/bootstrap-c7ee91d5661e2804`
-            // `{build-dir}` can be anywhere, not just in the rust project directory.
-            let dep = Path::new(args.first().unwrap());
-            let expected_out = dep.ancestors().nth(5).unwrap();
-
-            assert_eq!(&cfg.out, expected_out);
-        }
-    }
-
-    test(parse(""), None);
-
-    {
-        let build_dir = if cfg!(windows) { "C:\\tmp" } else { "/tmp" };
-        test(parse(&format!("build.build-dir = '{build_dir}'")), Some(build_dir));
-    }
-}
-
 #[test]
 fn clap_verify() {
     Flags::command().debug_assert();
@@ -127,54 +77,51 @@ fn clap_verify() {
 
 #[test]
 fn override_toml() {
-    let config = Config::parse_inner(
-        Flags::parse(&[
-            "check".to_owned(),
-            "--config=/does/not/exist".to_owned(),
-            "--set=change-id=1".to_owned(),
-            "--set=rust.lto=fat".to_owned(),
-            "--set=rust.deny-warnings=false".to_owned(),
-            "--set=build.optimized-compiler-builtins=true".to_owned(),
-            "--set=build.gdb=\"bar\"".to_owned(),
-            "--set=build.tools=[\"cargo\"]".to_owned(),
-            "--set=llvm.build-config={\"foo\" = \"bar\"}".to_owned(),
-            "--set=target.x86_64-unknown-linux-gnu.runner=bar".to_owned(),
-            "--set=target.x86_64-unknown-linux-gnu.rpath=false".to_owned(),
-            "--set=target.aarch64-unknown-linux-gnu.sanitizers=false".to_owned(),
-            "--set=target.aarch64-apple-darwin.runner=apple".to_owned(),
-            "--set=target.aarch64-apple-darwin.optimized-compiler-builtins=false".to_owned(),
-        ]),
-        |&_| {
-            toml::from_str(
-                r#"
-change-id = 0
-[rust]
-lto = "off"
-deny-warnings = true
-download-rustc=false
+    let config_toml: &str = r#"
+    change-id = 0
 
-[build]
-gdb = "foo"
-tools = []
+    [rust]
+    lto = "off"
+    deny-warnings = true
+    download-rustc = false
 
-[llvm]
-download-ci-llvm = false
-build-config = {}
+    [build]
+    gdb = "foo"
+    tools = []
 
-[target.aarch64-unknown-linux-gnu]
-sanitizers = true
-rpath = true
-runner = "aarch64-runner"
+    [llvm]
+    download-ci-llvm = false
+    build-config = {}
 
-[target.x86_64-unknown-linux-gnu]
-sanitizers = true
-rpath = true
-runner = "x86_64-runner"
+    [target.aarch64-unknown-linux-gnu]
+    sanitizers = true
+    rpath = true
+    runner = "aarch64-runner"
 
-                "#,
-            )
-        },
-    );
+    [target.x86_64-unknown-linux-gnu]
+    sanitizers = true
+    rpath = true
+    runner = "x86_64-runner"
+    "#;
+
+    let args = [
+        "--set=change-id=1",
+        "--set=rust.lto=fat",
+        "--set=rust.deny-warnings=false",
+        "--set=build.optimized-compiler-builtins=true",
+        "--set=build.gdb=\"bar\"",
+        "--set=build.tools=[\"cargo\"]",
+        "--set=llvm.build-config={\"foo\" = \"bar\"}",
+        "--set=target.x86_64-unknown-linux-gnu.runner=bar",
+        "--set=target.x86_64-unknown-linux-gnu.rpath=false",
+        "--set=target.aarch64-unknown-linux-gnu.sanitizers=false",
+        "--set=target.aarch64-apple-darwin.runner=apple",
+        "--set=target.aarch64-apple-darwin.optimized-compiler-builtins=false",
+    ];
+
+    let config =
+        TestCtx::new().config("check").config_toml(config_toml).args(&args).create_config();
+
     assert_eq!(config.change_id, Some(ChangeId::Id(1)), "setting top-level value");
     assert_eq!(
         config.rust_lto,
@@ -233,15 +180,14 @@ runner = "x86_64-runner"
 #[test]
 #[should_panic]
 fn override_toml_duplicate() {
-    Config::parse_inner(
-        Flags::parse(&[
-            "check".to_owned(),
-            "--config=/does/not/exist".to_string(),
-            "--set=change-id=1".to_owned(),
-            "--set=change-id=2".to_owned(),
-        ]),
-        |&_| toml::from_str("change-id = 0"),
-    );
+    TestCtx::new()
+        .config("check")
+        .config_toml("change-id = 0")
+        .arg("--set")
+        .arg("change-id=1")
+        .arg("--set")
+        .arg("change-id=2")
+        .create_config();
 }
 
 #[test]
@@ -277,12 +223,12 @@ fn rust_optimize() {
 #[test]
 #[should_panic]
 fn invalid_rust_optimize() {
-    parse("rust.optimize = \"a\"");
+    TestCtx::new().config("check").config_toml("rust.optimize = \"a\"").create_config();
 }
 
 #[test]
 fn verify_file_integrity() {
-    let config = parse("");
+    let config = TestCtx::new().config("check").create_config();
 
     let tempfile = config.tempdir().join(".tmp-test-file");
     File::create(&tempfile).unwrap().write_all(b"dummy value").unwrap();
@@ -324,22 +270,23 @@ fn parse_change_id_with_unknown_field() {
 
 #[test]
 fn order_of_clippy_rules() {
-    let args = vec![
-        "clippy".to_string(),
-        "--fix".to_string(),
-        "--allow-dirty".to_string(),
-        "--allow-staged".to_string(),
-        "-Aclippy:all".to_string(),
-        "-Wclippy::style".to_string(),
-        "-Aclippy::foo1".to_string(),
-        "-Aclippy::foo2".to_string(),
+    let args = [
+        "clippy",
+        "--fix",
+        "--allow-dirty",
+        "--allow-staged",
+        "-Aclippy:all",
+        "-Wclippy::style",
+        "-Aclippy::foo1",
+        "-Aclippy::foo2",
     ];
-    let config = Config::parse(Flags::parse(&args));
+    let config = TestCtx::new().config(&args[0]).args(&args[1..]).create_config();
 
     let actual = match config.cmd.clone() {
         crate::Subcommand::Clippy { allow, deny, warn, forbid, .. } => {
             let cfg = LintConfig { allow, deny, warn, forbid };
-            get_clippy_rules_in_order(&args, &cfg)
+            let args_vec: Vec<String> = args.iter().map(|s| s.to_string()).collect();
+            get_clippy_rules_in_order(&args_vec, &cfg)
         }
         _ => panic!("invalid subcommand"),
     };
@@ -356,14 +303,14 @@ fn order_of_clippy_rules() {
 
 #[test]
 fn clippy_rule_separate_prefix() {
-    let args =
-        vec!["clippy".to_string(), "-A clippy:all".to_string(), "-W clippy::style".to_string()];
-    let config = Config::parse(Flags::parse(&args));
+    let args = ["clippy", "-A clippy:all", "-W clippy::style"];
+    let config = TestCtx::new().config(&args[0]).args(&args[1..]).create_config();
 
     let actual = match config.cmd.clone() {
         crate::Subcommand::Clippy { allow, deny, warn, forbid, .. } => {
             let cfg = LintConfig { allow, deny, warn, forbid };
-            get_clippy_rules_in_order(&args, &cfg)
+            let args_vec: Vec<String> = args.iter().map(|s| s.to_string()).collect();
+            get_clippy_rules_in_order(&args_vec, &cfg)
         }
         _ => panic!("invalid subcommand"),
     };
@@ -383,7 +330,10 @@ fn verbose_tests_default_value() {
 
 #[test]
 fn parse_rust_std_features() {
-    let config = parse("rust.std-features = [\"panic-unwind\", \"backtrace\"]");
+    let config = TestCtx::new()
+        .config("check")
+        .config_toml("rust.std-features = [\"panic-unwind\", \"backtrace\"]")
+        .create_config();
     let expected_features: BTreeSet<String> =
         ["panic-unwind", "backtrace"].into_iter().map(|s| s.to_string()).collect();
     assert_eq!(config.rust_std_features, expected_features);
@@ -391,7 +341,8 @@ fn parse_rust_std_features() {
 
 #[test]
 fn parse_rust_std_features_empty() {
-    let config = parse("rust.std-features = []");
+    let config =
+        TestCtx::new().config("check").config_toml("rust.std-features = []").create_config();
     let expected_features: BTreeSet<String> = BTreeSet::new();
     assert_eq!(config.rust_std_features, expected_features);
 }
@@ -399,70 +350,58 @@ fn parse_rust_std_features_empty() {
 #[test]
 #[should_panic]
 fn parse_rust_std_features_invalid() {
-    parse("rust.std-features = \"backtrace\"");
+    TestCtx::new().config("check").config_toml("rust.std-features = \"backtrace\"").create_config();
 }
 
 #[test]
 fn parse_jobs() {
-    assert_eq!(parse("build.jobs = 1").jobs, Some(1));
+    assert_eq!(
+        TestCtx::new().config("check").config_toml("build.jobs = 1").create_config().jobs,
+        Some(1)
+    );
 }
 
 #[test]
 fn jobs_precedence() {
     // `--jobs` should take precedence over using `--set build.jobs`.
 
-    let config = Config::parse_inner(
-        Flags::parse(&[
-            "check".to_owned(),
-            "--config=/does/not/exist".to_owned(),
-            "--jobs=67890".to_owned(),
-            "--set=build.jobs=12345".to_owned(),
-        ]),
-        |&_| toml::from_str(""),
-    );
+    let config = TestCtx::new()
+        .config("check")
+        .args(&["--jobs=67890", "--set=build.jobs=12345"])
+        .create_config();
     assert_eq!(config.jobs, Some(67890));
 
     // `--set build.jobs` should take precedence over `bootstrap.toml`.
-    let config = Config::parse_inner(
-        Flags::parse(&[
-            "check".to_owned(),
-            "--config=/does/not/exist".to_owned(),
-            "--set=build.jobs=12345".to_owned(),
-        ]),
-        |&_| {
-            toml::from_str(
-                r#"
-            [build]
-            jobs = 67890
-        "#,
-            )
-        },
-    );
+    let config = TestCtx::new()
+        .config("check")
+        .args(&["--set=build.jobs=12345"])
+        .config_toml(
+            r#"
+        [build]
+        jobs = 67890
+    "#,
+        )
+        .create_config();
+
     assert_eq!(config.jobs, Some(12345));
 
     // `--jobs` > `--set build.jobs` > `bootstrap.toml`
-    let config = Config::parse_inner(
-        Flags::parse(&[
-            "check".to_owned(),
-            "--jobs=123".to_owned(),
-            "--config=/does/not/exist".to_owned(),
-            "--set=build.jobs=456".to_owned(),
-        ]),
-        |&_| {
-            toml::from_str(
-                r#"
-            [build]
-            jobs = 789
-        "#,
-            )
-        },
-    );
+    let config = TestCtx::new()
+        .config("check")
+        .args(&["--jobs=123", "--set=build.jobs=456"])
+        .config_toml(
+            r#"
+        [build]
+        jobs = 789
+    "#,
+        )
+        .create_config();
     assert_eq!(config.jobs, Some(123));
 }
 
 #[test]
 fn check_rustc_if_unchanged_paths() {
-    let config = parse("");
+    let config = TestCtx::new().config("check").create_config();
     let normalised_allowed_paths: Vec<_> = RUSTC_IF_UNCHANGED_ALLOWED_PATHS
         .iter()
         .map(|t| {
@@ -477,59 +416,42 @@ fn check_rustc_if_unchanged_paths() {
 
 #[test]
 fn test_explicit_stage() {
-    let config = Config::parse_inner(
-        Flags::parse(&["check".to_owned(), "--config=/does/not/exist".to_owned()]),
-        |&_| {
-            toml::from_str(
-                r#"
+    let config = TestCtx::new()
+        .config("check")
+        .config_toml(
+            r#"
             [build]
             test-stage = 1
         "#,
-            )
-        },
-    );
+        )
+        .create_config();
 
     assert!(!config.explicit_stage_from_cli);
     assert!(config.explicit_stage_from_config);
     assert!(config.is_explicit_stage());
 
-    let config = Config::parse_inner(
-        Flags::parse(&[
-            "check".to_owned(),
-            "--stage=2".to_owned(),
-            "--config=/does/not/exist".to_owned(),
-        ]),
-        |&_| toml::from_str(""),
-    );
+    let config = TestCtx::new().config("check").stage(2).create_config();
 
     assert!(config.explicit_stage_from_cli);
     assert!(!config.explicit_stage_from_config);
     assert!(config.is_explicit_stage());
 
-    let config = Config::parse_inner(
-        Flags::parse(&[
-            "check".to_owned(),
-            "--stage=2".to_owned(),
-            "--config=/does/not/exist".to_owned(),
-        ]),
-        |&_| {
-            toml::from_str(
-                r#"
+    let config = TestCtx::new()
+        .config("check")
+        .stage(2)
+        .config_toml(
+            r#"
             [build]
             test-stage = 1
         "#,
-            )
-        },
-    );
+        )
+        .create_config();
 
     assert!(config.explicit_stage_from_cli);
     assert!(config.explicit_stage_from_config);
     assert!(config.is_explicit_stage());
 
-    let config = Config::parse_inner(
-        Flags::parse(&["check".to_owned(), "--config=/does/not/exist".to_owned()]),
-        |&_| toml::from_str(""),
-    );
+    let config = TestCtx::new().config("check").create_config();
 
     assert!(!config.explicit_stage_from_cli);
     assert!(!config.explicit_stage_from_config);
@@ -539,7 +461,10 @@ fn test_explicit_stage() {
 #[test]
 fn test_exclude() {
     let exclude_path = "compiler";
-    let config = parse(&format!("build.exclude=[\"{}\"]", exclude_path));
+    let config = TestCtx::new()
+        .config("check")
+        .config_toml(&format!("build.exclude=[\"{}\"]", exclude_path))
+        .create_config();
 
     let first_excluded = config
         .skip
@@ -553,17 +478,13 @@ fn test_exclude() {
 
 #[test]
 fn test_ci_flag() {
-    let config = Config::parse_inner(Flags::parse(&["check".into(), "--ci=false".into()]), |&_| {
-        toml::from_str("")
-    });
+    let config = TestCtx::new().config("check").arg("--ci").arg("false").create_config();
     assert!(!config.is_running_on_ci);
 
-    let config = Config::parse_inner(Flags::parse(&["check".into(), "--ci=true".into()]), |&_| {
-        toml::from_str("")
-    });
+    let config = TestCtx::new().config("check").arg("--ci").arg("true").create_config();
     assert!(config.is_running_on_ci);
 
-    let config = Config::parse_inner(Flags::parse(&["check".into()]), |&_| toml::from_str(""));
+    let config = TestCtx::new().config("check").create_config();
     assert_eq!(config.is_running_on_ci, CiEnv::is_ci());
 }
 

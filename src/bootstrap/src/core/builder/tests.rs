@@ -218,18 +218,16 @@ fn prepare_rustc_checkout(ctx: &mut GitCtx) {
 
 /// Parses a Config directory from `path`, with the given value of `download_rustc`.
 fn parse_config_download_rustc_at(path: &Path, download_rustc: &str, ci: bool) -> Config {
-    Config::parse_inner(
-        Flags::parse(&[
-            "build".to_owned(),
-            "--dry-run".to_owned(),
-            "--ci".to_owned(),
-            if ci { "true" } else { "false" }.to_owned(),
-            format!("--set=rust.download-rustc='{download_rustc}'"),
-            "--src".to_owned(),
-            path.to_str().unwrap().to_owned(),
-        ]),
-        |&_| Ok(Default::default()),
-    )
+    TestCtx::new()
+        .config("build")
+        .args(&[
+            "--ci",
+            if ci { "true" } else { "false" },
+            format!("--set=rust.download-rustc='{download_rustc}'").as_str(),
+            "--src",
+            path.to_str().unwrap(),
+        ])
+        .create_config_without_ci_llvm_override()
 }
 
 mod dist {
@@ -359,14 +357,7 @@ fn test_test_coverage() {
 #[test]
 fn test_prebuilt_llvm_config_path_resolution() {
     fn configure(config: &str) -> Config {
-        Config::parse_inner(
-            Flags::parse(&[
-                "build".to_string(),
-                "--dry-run".to_string(),
-                "--config=/does/not/exist".to_string(),
-            ]),
-            |&_| toml::from_str(&config),
-        )
+        TestCtx::new().config("build").config_toml(config).create_config()
     }
 
     // Removes Windows disk prefix if present
