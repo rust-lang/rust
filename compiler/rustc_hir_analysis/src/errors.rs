@@ -1707,3 +1707,14 @@ pub(crate) struct AsyncDropWithoutSyncDrop {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_conflict_impl_drop_and_pin_drop)]
+pub(crate) struct ConflictImplDropAndPinDrop {
+    #[primary_span]
+    pub span: Span,
+    #[label(hir_analysis_drop_label)]
+    pub drop_span: Span,
+    #[label(hir_analysis_pin_drop_label)]
+    pub pin_drop_span: Span,
+}

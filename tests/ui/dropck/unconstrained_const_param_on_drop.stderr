@@ -10,13 +10,11 @@ note: the implementor must specify the same requirement
 LL | struct Foo {}
    | ^^^^^^^^^^
 
-error[E0046]: not all trait items implemented, missing: `drop`
+error[E0046]: not all trait items implemented, missing one of: `drop`, `pin_drop`
   --> $DIR/unconstrained_const_param_on_drop.rs:3:1
    |
 LL | impl<const UNUSED: usize> Drop for Foo {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `drop` in implementation
-   |
-   = help: implement the missing item: `fn drop(&mut self) { todo!() }`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing one of `drop`, `pin_drop` in implementation
 
 error[E0207]: the const parameter `UNUSED` is not constrained by the impl trait, self type, or predicates
   --> $DIR/unconstrained_const_param_on_drop.rs:3:6
