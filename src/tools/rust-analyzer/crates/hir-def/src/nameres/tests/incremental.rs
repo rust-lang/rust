@@ -84,7 +84,7 @@ pub const BAZ: u32 = 0;
                     )
                     .unwrap(),
                 ),
-                Arc::new(CrateWorkspaceData { data_layout: Err("".into()), toolchain: None }),
+                Arc::new(CrateWorkspaceData { target: Err("".into()), toolchain: None }),
             )
         };
         let a = add_crate("a", 0);

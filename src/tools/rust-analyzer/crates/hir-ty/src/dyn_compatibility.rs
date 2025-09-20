@@ -2,27 +2,29 @@
 
 use std::ops::ControlFlow;
 
-use chalk_ir::{
-    DebruijnIndex,
-    cast::Cast,
-    visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor},
-};
-use chalk_solve::rust_ir::InlineBound;
 use hir_def::{
     AssocItemId, ConstId, CrateRootModuleId, FunctionId, GenericDefId, HasModule, TraitId,
-    TypeAliasId, lang_item::LangItem, signatures::TraitFlags,
+    TypeAliasId, TypeOrConstParamId, TypeParamId, hir::generics::LocalTypeOrConstParamId,
+    lang_item::LangItem, signatures::TraitFlags,
 };
+use intern::Symbol;
 use rustc_hash::FxHashSet;
+use rustc_type_ir::{
+    AliasTyKind, ClauseKind, PredicatePolarity, TypeSuperVisitable as _, TypeVisitable as _,
+    Upcast, elaborate,
+    inherent::{IntoKind, SliceLike},
+};
 use smallvec::SmallVec;
 
 use crate::{
-    AliasEq, AliasTy, Binders, BoundVar, CallableSig, GoalData, ImplTraitId, Interner, OpaqueTyId,
-    ProjectionTyExt, Solution, Substitution, TraitRef, Ty, TyKind, WhereClause, all_super_traits,
-    db::HirDatabase,
-    from_assoc_type_id, from_chalk_trait_id,
-    generics::{generics, trait_self_param_idx},
-    to_chalk_trait_id,
-    utils::elaborate_clause_supertraits,
+    ImplTraitId,
+    db::{HirDatabase, InternedOpaqueTyId},
+    lower_nextsolver::associated_ty_item_bounds,
+    next_solver::{
+        Clause, Clauses, DbInterner, GenericArgs, ParamEnv, SolverDefId, TraitPredicate, TraitRef,
+        TypingMode, infer::DbInternerInferExt, mk_param,
+    },
+    traits::next_trait_solve_in_ctxt,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -52,13 +54,18 @@ pub fn dyn_compatibility(
     db: &dyn HirDatabase,
     trait_: TraitId,
 ) -> Option<DynCompatibilityViolation> {
-    for super_trait in all_super_traits(db, trait_).into_iter().skip(1).rev() {
-        if db.dyn_compatibility_of_trait(super_trait).is_some() {
-            return Some(DynCompatibilityViolation::HasNonCompatibleSuperTrait(super_trait));
+    let interner = DbInterner::new_with(db, Some(trait_.krate(db)), None);
+    for super_trait in elaborate::supertrait_def_ids(interner, trait_.into()) {
+        if let Some(v) = db.dyn_compatibility_of_trait(super_trait.0) {
+            return if super_trait.0 == trait_ {
+                Some(v)
+            } else {
+                Some(DynCompatibilityViolation::HasNonCompatibleSuperTrait(super_trait.0))
+            };
         }
     }
 
-    db.dyn_compatibility_of_trait(trait_)
+    None
 }
 
 pub fn dyn_compatibility_with_callback<F>(
@@ -69,8 +76,9 @@ pub fn dyn_compatibility_with_callback<F>(
 where
     F: FnMut(DynCompatibilityViolation) -> ControlFlow<()>,
 {
-    for super_trait in all_super_traits(db, trait_).into_iter().skip(1).rev() {
-        if db.dyn_compatibility_of_trait(super_trait).is_some() {
+    let interner = DbInterner::new_with(db, Some(trait_.krate(db)), None);
+    for super_trait in elaborate::supertrait_def_ids(interner, trait_.into()).skip(1) {
+        if db.dyn_compatibility_of_trait(super_trait.0).is_some() {
             cb(DynCompatibilityViolation::HasNonCompatibleSuperTrait(trait_))?;
         }
     }
@@ -128,27 +136,26 @@ pub fn generics_require_sized_self(db: &dyn HirDatabase, def: GenericDefId) -> b
         return false;
     };
 
-    let Some(trait_self_param_idx) = trait_self_param_idx(db, def) else {
-        return false;
-    };
-
-    let predicates = &*db.generic_predicates(def);
-    let predicates = predicates.iter().map(|p| p.skip_binders().skip_binders().clone());
-    elaborate_clause_supertraits(db, predicates).any(|pred| match pred {
-        WhereClause::Implemented(trait_ref) => {
-            if from_chalk_trait_id(trait_ref.trait_id) == sized
-                && let TyKind::BoundVar(it) =
-                    *trait_ref.self_type_parameter(Interner).kind(Interner)
-            {
-                // Since `generic_predicates` is `Binder<Binder<..>>`, the `DebrujinIndex` of
-                // self-parameter is `1`
-                return it
-                    .index_if_bound_at(DebruijnIndex::ONE)
-                    .is_some_and(|idx| idx == trait_self_param_idx);
+    let interner = DbInterner::new_with(db, Some(krate), None);
+    let predicates = db.generic_predicates_ns(def);
+    // FIXME: We should use `explicit_predicates_of` here, which hasn't been implemented to
+    // rust-analyzer yet
+    // https://github.com/rust-lang/rust/blob/ddaf12390d3ffb7d5ba74491a48f3cd528e5d777/compiler/rustc_hir_analysis/src/collect/predicates_of.rs#L490
+    elaborate::elaborate(interner, predicates.iter().copied()).any(|pred| {
+        match pred.kind().skip_binder() {
+            ClauseKind::Trait(trait_pred) => {
+                if sized == trait_pred.def_id().0
+                    && let rustc_type_ir::TyKind::Param(param_ty) =
+                        trait_pred.trait_ref.self_ty().kind()
+                    && param_ty.index == 0
+                {
+                    true
+                } else {
+                    false
+                }
             }
-            false
+            _ => false,
         }
-        _ => false,
     })
 }
 
@@ -156,7 +163,7 @@ pub fn generics_require_sized_self(db: &dyn HirDatabase, def: GenericDefId) -> b
 // but we don't have good way to render such locations.
 // So, just return single boolean value for existence of such `Self` reference
 fn predicates_reference_self(db: &dyn HirDatabase, trait_: TraitId) -> bool {
-    db.generic_predicates(trait_.into())
+    db.generic_predicates_ns(trait_.into())
         .iter()
         .any(|pred| predicate_references_self(db, trait_, pred, AllowSelfProjection::No))
 }
@@ -168,37 +175,18 @@ fn bounds_reference_self(db: &dyn HirDatabase, trait_: TraitId) -> bool {
         .items
         .iter()
         .filter_map(|(_, it)| match *it {
-            AssocItemId::TypeAliasId(id) => {
-                let assoc_ty_data = db.associated_ty_data(id);
-                Some(assoc_ty_data)
-            }
+            AssocItemId::TypeAliasId(id) => Some(associated_ty_item_bounds(db, id)),
             _ => None,
         })
-        .any(|assoc_ty_data| {
-            assoc_ty_data.binders.skip_binders().bounds.iter().any(|bound| {
-                let def = from_assoc_type_id(assoc_ty_data.id).into();
-                match bound.skip_binders() {
-                    InlineBound::TraitBound(it) => it.args_no_self.iter().any(|arg| {
-                        contains_illegal_self_type_reference(
-                            db,
-                            def,
-                            trait_,
-                            arg,
-                            DebruijnIndex::ONE,
-                            AllowSelfProjection::Yes,
-                        )
-                    }),
-                    InlineBound::AliasEqBound(it) => it.parameters.iter().any(|arg| {
-                        contains_illegal_self_type_reference(
-                            db,
-                            def,
-                            trait_,
-                            arg,
-                            DebruijnIndex::ONE,
-                            AllowSelfProjection::Yes,
-                        )
-                    }),
-                }
+        .any(|bounds| {
+            bounds.skip_binder().iter().any(|pred| match pred.skip_binder() {
+                rustc_type_ir::ExistentialPredicate::Trait(it) => it.args.iter().any(|arg| {
+                    contains_illegal_self_type_reference(db, trait_, &arg, AllowSelfProjection::Yes)
+                }),
+                rustc_type_ir::ExistentialPredicate::Projection(it) => it.args.iter().any(|arg| {
+                    contains_illegal_self_type_reference(db, trait_, &arg, AllowSelfProjection::Yes)
+                }),
+                rustc_type_ir::ExistentialPredicate::AutoTrait(_) => false,
             })
         })
 }
@@ -209,114 +197,80 @@ enum AllowSelfProjection {
     No,
 }
 
-fn predicate_references_self(
-    db: &dyn HirDatabase,
+fn predicate_references_self<'db>(
+    db: &'db dyn HirDatabase,
     trait_: TraitId,
-    predicate: &Binders<Binders<WhereClause>>,
+    predicate: &Clause<'db>,
     allow_self_projection: AllowSelfProjection,
 ) -> bool {
-    match predicate.skip_binders().skip_binders() {
-        WhereClause::Implemented(trait_ref) => {
-            trait_ref.substitution.iter(Interner).skip(1).any(|arg| {
-                contains_illegal_self_type_reference(
-                    db,
-                    trait_.into(),
-                    trait_,
-                    arg,
-                    DebruijnIndex::ONE,
-                    allow_self_projection,
-                )
-            })
-        }
-        WhereClause::AliasEq(AliasEq { alias: AliasTy::Projection(proj), .. }) => {
-            proj.substitution.iter(Interner).skip(1).any(|arg| {
-                contains_illegal_self_type_reference(
-                    db,
-                    trait_.into(),
-                    trait_,
-                    arg,
-                    DebruijnIndex::ONE,
-                    allow_self_projection,
-                )
+    match predicate.kind().skip_binder() {
+        ClauseKind::Trait(trait_pred) => trait_pred.trait_ref.args.iter().skip(1).any(|arg| {
+            contains_illegal_self_type_reference(db, trait_, &arg, allow_self_projection)
+        }),
+        ClauseKind::Projection(proj_pred) => {
+            proj_pred.projection_term.args.iter().skip(1).any(|arg| {
+                contains_illegal_self_type_reference(db, trait_, &arg, allow_self_projection)
             })
         }
         _ => false,
     }
 }
 
-fn contains_illegal_self_type_reference<T: TypeVisitable<Interner>>(
-    db: &dyn HirDatabase,
-    def: GenericDefId,
+fn contains_illegal_self_type_reference<'db, T: rustc_type_ir::TypeVisitable<DbInterner<'db>>>(
+    db: &'db dyn HirDatabase,
     trait_: TraitId,
     t: &T,
-    outer_binder: DebruijnIndex,
     allow_self_projection: AllowSelfProjection,
 ) -> bool {
-    let Some(trait_self_param_idx) = trait_self_param_idx(db, def) else {
-        return false;
-    };
-    struct IllegalSelfTypeVisitor<'a> {
-        db: &'a dyn HirDatabase,
+    struct IllegalSelfTypeVisitor<'db> {
+        db: &'db dyn HirDatabase,
         trait_: TraitId,
         super_traits: Option<SmallVec<[TraitId; 4]>>,
-        trait_self_param_idx: usize,
         allow_self_projection: AllowSelfProjection,
     }
-    impl TypeVisitor<Interner> for IllegalSelfTypeVisitor<'_> {
-        type BreakTy = ();
+    impl<'db> rustc_type_ir::TypeVisitor<DbInterner<'db>> for IllegalSelfTypeVisitor<'db> {
+        type Result = ControlFlow<()>;
 
-        fn as_dyn(&mut self) -> &mut dyn TypeVisitor<Interner, BreakTy = Self::BreakTy> {
-            self
-        }
-
-        fn interner(&self) -> Interner {
-            Interner
-        }
-
-        fn visit_ty(&mut self, ty: &Ty, outer_binder: DebruijnIndex) -> ControlFlow<Self::BreakTy> {
-            match ty.kind(Interner) {
-                TyKind::BoundVar(BoundVar { debruijn, index }) => {
-                    if *debruijn == outer_binder && *index == self.trait_self_param_idx {
-                        ControlFlow::Break(())
-                    } else {
-                        ty.super_visit_with(self.as_dyn(), outer_binder)
-                    }
-                }
-                TyKind::Alias(AliasTy::Projection(proj)) => match self.allow_self_projection {
+        fn visit_ty(
+            &mut self,
+            ty: <DbInterner<'db> as rustc_type_ir::Interner>::Ty,
+        ) -> Self::Result {
+            let interner = DbInterner::new_with(self.db, None, None);
+            match ty.kind() {
+                rustc_type_ir::TyKind::Param(param) if param.index == 0 => ControlFlow::Break(()),
+                rustc_type_ir::TyKind::Param(_) => ControlFlow::Continue(()),
+                rustc_type_ir::TyKind::Alias(AliasTyKind::Projection, proj) => match self
+                    .allow_self_projection
+                {
                     AllowSelfProjection::Yes => {
-                        let trait_ = proj.trait_(self.db);
+                        let trait_ = proj.trait_def_id(DbInterner::new_with(self.db, None, None));
+                        let trait_ = match trait_ {
+                            SolverDefId::TraitId(id) => id,
+                            _ => unreachable!(),
+                        };
                         if self.super_traits.is_none() {
-                            self.super_traits = Some(all_super_traits(self.db, self.trait_));
+                            self.super_traits = Some(
+                                elaborate::supertrait_def_ids(interner, self.trait_.into())
+                                    .map(|super_trait| super_trait.0)
+                                    .collect(),
+                            )
                         }
                         if self.super_traits.as_ref().is_some_and(|s| s.contains(&trait_)) {
                             ControlFlow::Continue(())
                         } else {
-                            ty.super_visit_with(self.as_dyn(), outer_binder)
+                            ty.super_visit_with(self)
                         }
                     }
-                    AllowSelfProjection::No => ty.super_visit_with(self.as_dyn(), outer_binder),
+                    AllowSelfProjection::No => ty.super_visit_with(self),
                 },
-                _ => ty.super_visit_with(self.as_dyn(), outer_binder),
+                _ => ty.super_visit_with(self),
             }
-        }
-
-        fn visit_const(
-            &mut self,
-            constant: &chalk_ir::Const<Interner>,
-            outer_binder: DebruijnIndex,
-        ) -> std::ops::ControlFlow<Self::BreakTy> {
-            constant.data(Interner).ty.super_visit_with(self.as_dyn(), outer_binder)
         }
     }
 
-    let mut visitor = IllegalSelfTypeVisitor {
-        db,
-        trait_,
-        super_traits: None,
-        trait_self_param_idx,
-        allow_self_projection,
-    };
-    t.visit_with(visitor.as_dyn(), outer_binder).is_break()
+    let mut visitor =
+        IllegalSelfTypeVisitor { db, trait_, super_traits: None, allow_self_projection };
+    t.visit_with(&mut visitor).is_break()
 }
 
 fn dyn_compatibility_violation_for_assoc_item<F>(
@@ -375,26 +329,21 @@ where
         cb(MethodViolationCode::AsyncFn)?;
     }
 
-    let sig = db.callable_item_signature(func.into());
-    if sig.skip_binders().params().iter().skip(1).any(|ty| {
-        contains_illegal_self_type_reference(
-            db,
-            func.into(),
-            trait_,
-            ty,
-            DebruijnIndex::INNERMOST,
-            AllowSelfProjection::Yes,
-        )
-    }) {
+    let sig = db.callable_item_signature_ns(func.into());
+    if sig
+        .skip_binder()
+        .inputs()
+        .iter()
+        .skip(1)
+        .any(|ty| contains_illegal_self_type_reference(db, trait_, &ty, AllowSelfProjection::Yes))
+    {
         cb(MethodViolationCode::ReferencesSelfInput)?;
     }
 
     if contains_illegal_self_type_reference(
         db,
-        func.into(),
         trait_,
-        sig.skip_binders().ret(),
-        DebruijnIndex::INNERMOST,
+        &sig.skip_binder().output(),
         AllowSelfProjection::Yes,
     ) {
         cb(MethodViolationCode::ReferencesSelfOutput)?;
@@ -415,40 +364,28 @@ where
         cb(MethodViolationCode::UndispatchableReceiver)?;
     }
 
-    let predicates = &*db.generic_predicates_without_parent(func.into());
-    let trait_self_idx = trait_self_param_idx(db, func.into());
+    let predicates = &*db.generic_predicates_without_parent_ns(func.into());
     for pred in predicates {
-        let pred = pred.skip_binders().skip_binders();
+        let pred = pred.kind().skip_binder();
 
-        if matches!(pred, WhereClause::TypeOutlives(_)) {
+        if matches!(pred, ClauseKind::TypeOutlives(_)) {
             continue;
         }
 
         // Allow `impl AutoTrait` predicates
-        if let WhereClause::Implemented(TraitRef { trait_id, substitution }) = pred {
-            let trait_data = db.trait_signature(from_chalk_trait_id(*trait_id));
-            if trait_data.flags.contains(TraitFlags::AUTO)
-                && substitution
-                    .as_slice(Interner)
-                    .first()
-                    .and_then(|arg| arg.ty(Interner))
-                    .and_then(|ty| ty.bound_var(Interner))
-                    .is_some_and(|b| {
-                        b.debruijn == DebruijnIndex::ONE && Some(b.index) == trait_self_idx
-                    })
-            {
-                continue;
-            }
+        if let ClauseKind::Trait(TraitPredicate {
+            trait_ref: pred_trait_ref,
+            polarity: PredicatePolarity::Positive,
+        }) = pred
+            && let trait_data = db.trait_signature(pred_trait_ref.def_id.0)
+            && trait_data.flags.contains(TraitFlags::AUTO)
+            && let rustc_type_ir::TyKind::Param(crate::next_solver::ParamTy { index: 0, .. }) =
+                pred_trait_ref.self_ty().kind()
+        {
+            continue;
         }
 
-        if contains_illegal_self_type_reference(
-            db,
-            func.into(),
-            trait_,
-            pred,
-            DebruijnIndex::ONE,
-            AllowSelfProjection::Yes,
-        ) {
+        if contains_illegal_self_type_reference(db, trait_, &pred, AllowSelfProjection::Yes) {
             cb(MethodViolationCode::WhereClauseReferencesSelf)?;
             break;
         }
@@ -457,34 +394,34 @@ where
     ControlFlow::Continue(())
 }
 
-fn receiver_is_dispatchable(
+fn receiver_is_dispatchable<'db>(
     db: &dyn HirDatabase,
     trait_: TraitId,
     func: FunctionId,
-    sig: &Binders<CallableSig>,
+    sig: &crate::next_solver::EarlyBinder<
+        'db,
+        crate::next_solver::Binder<'db, rustc_type_ir::FnSig<DbInterner<'db>>>,
+    >,
 ) -> bool {
-    let Some(trait_self_idx) = trait_self_param_idx(db, func.into()) else {
-        return false;
-    };
+    let sig = sig.instantiate_identity();
+
+    let interner: DbInterner<'_> = DbInterner::new_with(db, Some(trait_.krate(db)), None);
+    let self_param_id = TypeParamId::from_unchecked(TypeOrConstParamId {
+        parent: trait_.into(),
+        local_id: LocalTypeOrConstParamId::from_raw(la_arena::RawIdx::from_u32(0)),
+    });
+    let self_param_ty = crate::next_solver::Ty::new(
+        interner,
+        rustc_type_ir::TyKind::Param(crate::next_solver::ParamTy { index: 0, id: self_param_id }),
+    );
 
     // `self: Self` can't be dispatched on, but this is already considered dyn-compatible
     // See rustc's comment on https://github.com/rust-lang/rust/blob/3f121b9461cce02a703a0e7e450568849dfaa074/compiler/rustc_trait_selection/src/traits/object_safety.rs#L433-L437
-    if sig
-        .skip_binders()
-        .params()
-        .first()
-        .and_then(|receiver| receiver.bound_var(Interner))
-        .is_some_and(|b| {
-            b == BoundVar { debruijn: DebruijnIndex::INNERMOST, index: trait_self_idx }
-        })
-    {
+    if sig.inputs().iter().next().is_some_and(|p| p.skip_binder() == self_param_ty) {
         return true;
     }
 
-    let placeholder_subst = generics(db, func.into()).placeholder_subst(db);
-
-    let substituted_sig = sig.clone().substitute(Interner, &placeholder_subst);
-    let Some(receiver_ty) = substituted_sig.params().first() else {
+    let Some(&receiver_ty) = sig.inputs().skip_binder().as_slice().first() else {
         return false;
     };
 
@@ -497,103 +434,109 @@ fn receiver_is_dispatchable(
         return false;
     };
 
-    // Type `U`
-    let unsized_self_ty =
-        TyKind::Scalar(chalk_ir::Scalar::Uint(chalk_ir::UintTy::U32)).intern(Interner);
-    // `Receiver[Self => U]`
-    let Some(unsized_receiver_ty) = receiver_for_self_ty(db, func, unsized_self_ty.clone()) else {
+    let meta_sized_did = LangItem::MetaSized.resolve_trait(db, krate);
+    let Some(meta_sized_did) = meta_sized_did else {
         return false;
     };
 
-    let self_ty = placeholder_subst.as_slice(Interner)[trait_self_idx].assert_ty_ref(Interner);
-    let unsized_predicate = WhereClause::Implemented(TraitRef {
-        trait_id: to_chalk_trait_id(unsize_did),
-        substitution: Substitution::from_iter(Interner, [self_ty.clone(), unsized_self_ty.clone()]),
-    });
-    let trait_predicate = WhereClause::Implemented(TraitRef {
-        trait_id: to_chalk_trait_id(trait_),
-        substitution: Substitution::from_iter(
-            Interner,
-            std::iter::once(unsized_self_ty.cast(Interner))
-                .chain(placeholder_subst.iter(Interner).skip(1).cloned()),
-        ),
-    });
+    // Type `U`
+    // FIXME: That seems problematic to fake a generic param like that?
+    let unsized_self_ty =
+        crate::next_solver::Ty::new_param(interner, self_param_id, u32::MAX, Symbol::empty());
+    // `Receiver[Self => U]`
+    let unsized_receiver_ty = receiver_for_self_ty(interner, func, receiver_ty, unsized_self_ty);
 
-    let generic_predicates = &*db.generic_predicates(func.into());
+    let param_env = {
+        let generic_predicates = &*db.generic_predicates_ns(func.into());
 
-    let clauses = std::iter::once(unsized_predicate)
-        .chain(std::iter::once(trait_predicate))
-        .chain(generic_predicates.iter().map(|pred| {
-            pred.clone().substitute(Interner, &placeholder_subst).into_value_and_skipped_binders().0
-        }))
-        .map(|pred| {
-            pred.cast::<chalk_ir::ProgramClause<Interner>>(Interner).into_from_env_clause(Interner)
+        // Self: Unsize<U>
+        let unsize_predicate =
+            TraitRef::new(interner, unsize_did.into(), [self_param_ty, unsized_self_ty]);
+
+        // U: Trait<Arg1, ..., ArgN>
+        let args = GenericArgs::for_item(interner, trait_.into(), |name, index, kind, _| {
+            if index == 0 { unsized_self_ty.into() } else { mk_param(interner, index, name, kind) }
         });
-    let env = chalk_ir::Environment::new(Interner).add_clauses(Interner, clauses);
+        let trait_predicate = TraitRef::new_from_args(interner, trait_.into(), args);
 
-    let obligation = WhereClause::Implemented(TraitRef {
-        trait_id: to_chalk_trait_id(dispatch_from_dyn_did),
-        substitution: Substitution::from_iter(Interner, [receiver_ty.clone(), unsized_receiver_ty]),
-    });
-    let goal = GoalData::DomainGoal(chalk_ir::DomainGoal::Holds(obligation)).intern(Interner);
+        let meta_sized_predicate =
+            TraitRef::new(interner, meta_sized_did.into(), [unsized_self_ty]);
 
-    let in_env = chalk_ir::InEnvironment::new(&env, goal);
+        ParamEnv {
+            clauses: Clauses::new_from_iter(
+                interner,
+                generic_predicates.iter().copied().chain([
+                    unsize_predicate.upcast(interner),
+                    trait_predicate.upcast(interner),
+                    meta_sized_predicate.upcast(interner),
+                ]),
+            ),
+        }
+    };
 
-    let mut table = chalk_solve::infer::InferenceTable::<Interner>::new();
-    let canonicalized = table.canonicalize(Interner, in_env);
-    let solution = db.trait_solve(krate, None, canonicalized.quantified);
+    // Receiver: DispatchFromDyn<Receiver[Self => U]>
+    let predicate =
+        TraitRef::new(interner, dispatch_from_dyn_did.into(), [receiver_ty, unsized_receiver_ty]);
+    let goal = crate::next_solver::Goal::new(interner, param_env, predicate);
 
-    matches!(solution, Some(Solution::Unique(_)))
+    let infcx = interner.infer_ctxt().build(TypingMode::non_body_analysis());
+    // the receiver is dispatchable iff the obligation holds
+    let res = next_trait_solve_in_ctxt(&infcx, goal);
+    res.map_or(false, |res| matches!(res.1, rustc_type_ir::solve::Certainty::Yes))
 }
 
-fn receiver_for_self_ty(db: &dyn HirDatabase, func: FunctionId, ty: Ty) -> Option<Ty> {
-    let generics = generics(db, func.into());
-    let trait_self_idx = trait_self_param_idx(db, func.into())?;
-    let subst = generics.placeholder_subst(db);
-    let subst = Substitution::from_iter(
-        Interner,
-        subst.iter(Interner).enumerate().map(|(idx, arg)| {
-            if idx == trait_self_idx { ty.clone().cast(Interner) } else { arg.clone() }
-        }),
+fn receiver_for_self_ty<'db>(
+    interner: DbInterner<'db>,
+    func: FunctionId,
+    receiver_ty: crate::next_solver::Ty<'db>,
+    self_ty: crate::next_solver::Ty<'db>,
+) -> crate::next_solver::Ty<'db> {
+    let args = crate::next_solver::GenericArgs::for_item(
+        interner,
+        SolverDefId::FunctionId(func),
+        |name, index, kind, _| {
+            if index == 0 { self_ty.into() } else { mk_param(interner, index, name, kind) }
+        },
     );
-    let sig = db.callable_item_signature(func.into());
-    let sig = sig.substitute(Interner, &subst);
-    sig.params_and_return.first().cloned()
+
+    crate::next_solver::EarlyBinder::bind(receiver_ty).instantiate(interner, args)
 }
 
-fn contains_illegal_impl_trait_in_trait(
-    db: &dyn HirDatabase,
-    sig: &Binders<CallableSig>,
+fn contains_illegal_impl_trait_in_trait<'db>(
+    db: &'db dyn HirDatabase,
+    sig: &crate::next_solver::EarlyBinder<
+        'db,
+        crate::next_solver::Binder<'db, rustc_type_ir::FnSig<DbInterner<'db>>>,
+    >,
 ) -> Option<MethodViolationCode> {
-    struct OpaqueTypeCollector(FxHashSet<OpaqueTyId>);
+    struct OpaqueTypeCollector(FxHashSet<InternedOpaqueTyId>);
 
-    impl TypeVisitor<Interner> for OpaqueTypeCollector {
-        type BreakTy = ();
+    impl<'db> rustc_type_ir::TypeVisitor<DbInterner<'db>> for OpaqueTypeCollector {
+        type Result = ControlFlow<()>;
 
-        fn as_dyn(&mut self) -> &mut dyn TypeVisitor<Interner, BreakTy = Self::BreakTy> {
-            self
-        }
-
-        fn interner(&self) -> Interner {
-            Interner
-        }
-
-        fn visit_ty(&mut self, ty: &Ty, outer_binder: DebruijnIndex) -> ControlFlow<Self::BreakTy> {
-            if let TyKind::OpaqueType(opaque_ty_id, _) = ty.kind(Interner) {
-                self.0.insert(*opaque_ty_id);
+        fn visit_ty(
+            &mut self,
+            ty: <DbInterner<'db> as rustc_type_ir::Interner>::Ty,
+        ) -> Self::Result {
+            if let rustc_type_ir::TyKind::Alias(AliasTyKind::Opaque, op) = ty.kind() {
+                let id = match op.def_id {
+                    SolverDefId::InternedOpaqueTyId(id) => id,
+                    _ => unreachable!(),
+                };
+                self.0.insert(id);
             }
-            ty.super_visit_with(self.as_dyn(), outer_binder)
+            ty.super_visit_with(self)
         }
     }
 
-    let ret = sig.skip_binders().ret();
+    let ret = sig.skip_binder().output();
     let mut visitor = OpaqueTypeCollector(FxHashSet::default());
-    _ = ret.visit_with(visitor.as_dyn(), DebruijnIndex::INNERMOST);
+    _ = ret.visit_with(&mut visitor);
 
     // Since we haven't implemented RPITIT in proper way like rustc yet,
     // just check whether `ret` contains RPIT for now
     for opaque_ty in visitor.0 {
-        let impl_trait_id = db.lookup_intern_impl_trait_id(opaque_ty.into());
+        let impl_trait_id = db.lookup_intern_impl_trait_id(opaque_ty);
         if matches!(impl_trait_id, ImplTraitId::ReturnTypeImplTrait(..)) {
             return Some(MethodViolationCode::ReferencesImplTraitInTrait);
         }

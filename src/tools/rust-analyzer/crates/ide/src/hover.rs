@@ -85,10 +85,11 @@ pub enum HoverAction {
 
 impl HoverAction {
     fn goto_type_from_targets(
-        db: &RootDatabase,
+        sema: &Semantics<'_, RootDatabase>,
         targets: Vec<hir::ModuleDef>,
         edition: Edition,
     ) -> Option<Self> {
+        let db = sema.db;
         let targets = targets
             .into_iter()
             .filter_map(|it| {
@@ -99,7 +100,7 @@ impl HoverAction {
                         it.name(db).map(|name| name.display(db, edition).to_string()),
                         edition,
                     ),
-                    nav: it.try_to_nav(db)?.call_site(),
+                    nav: it.try_to_nav(sema)?.call_site(),
                 })
             })
             .collect::<Vec<_>>();
@@ -467,10 +468,10 @@ pub(crate) fn hover_for_definition(
     HoverResult {
         markup: render::process_markup(sema.db, def, &markup, range_map, config),
         actions: [
-            show_fn_references_action(sema.db, def),
-            show_implementations_action(sema.db, def),
+            show_fn_references_action(sema, def),
+            show_implementations_action(sema, def),
             runnable_action(sema, def, file_id),
-            goto_type_action_for_def(sema.db, def, &notable_traits, subst_types, edition),
+            goto_type_action_for_def(sema, def, &notable_traits, subst_types, edition),
         ]
         .into_iter()
         .flatten()
@@ -482,6 +483,12 @@ fn notable_traits<'db>(
     db: &'db RootDatabase,
     ty: &hir::Type<'db>,
 ) -> Vec<(hir::Trait, Vec<(Option<hir::Type<'db>>, hir::Name)>)> {
+    if ty.is_unknown() {
+        // The trait solver returns "yes" to the question whether the error type
+        // impls any trait, and we don't want to show it as having any notable trait.
+        return Vec::new();
+    }
+
     db.notable_traits_in_deps(ty.krate(db).into())
         .iter()
         .flat_map(|it| &**it)
@@ -505,7 +512,10 @@ fn notable_traits<'db>(
         .collect::<Vec<_>>()
 }
 
-fn show_implementations_action(db: &RootDatabase, def: Definition) -> Option<HoverAction> {
+fn show_implementations_action(
+    sema: &Semantics<'_, RootDatabase>,
+    def: Definition,
+) -> Option<HoverAction> {
     fn to_action(nav_target: NavigationTarget) -> HoverAction {
         HoverAction::Implementation(FilePosition {
             file_id: nav_target.file_id,
@@ -515,19 +525,22 @@ fn show_implementations_action(db: &RootDatabase, def: Definition) -> Option<Hov
 
     let adt = match def {
         Definition::Trait(it) => {
-            return it.try_to_nav(db).map(UpmappingResult::call_site).map(to_action);
+            return it.try_to_nav(sema).map(UpmappingResult::call_site).map(to_action);
         }
         Definition::Adt(it) => Some(it),
-        Definition::SelfType(it) => it.self_ty(db).as_adt(),
+        Definition::SelfType(it) => it.self_ty(sema.db).as_adt(),
         _ => None,
     }?;
-    adt.try_to_nav(db).map(UpmappingResult::call_site).map(to_action)
+    adt.try_to_nav(sema).map(UpmappingResult::call_site).map(to_action)
 }
 
-fn show_fn_references_action(db: &RootDatabase, def: Definition) -> Option<HoverAction> {
+fn show_fn_references_action(
+    sema: &Semantics<'_, RootDatabase>,
+    def: Definition,
+) -> Option<HoverAction> {
     match def {
         Definition::Function(it) => {
-            it.try_to_nav(db).map(UpmappingResult::call_site).map(|nav_target| {
+            it.try_to_nav(sema).map(UpmappingResult::call_site).map(|nav_target| {
                 HoverAction::Reference(FilePosition {
                     file_id: nav_target.file_id,
                     offset: nav_target.focus_or_full_range().start(),
@@ -560,12 +573,13 @@ fn runnable_action(
 }
 
 fn goto_type_action_for_def(
-    db: &RootDatabase,
+    sema: &Semantics<'_, RootDatabase>,
     def: Definition,
     notable_traits: &[(hir::Trait, Vec<(Option<hir::Type<'_>>, hir::Name)>)],
     subst_types: Option<Vec<(hir::Symbol, hir::Type<'_>)>>,
     edition: Edition,
 ) -> Option<HoverAction> {
+    let db = sema.db;
     let mut targets: Vec<hir::ModuleDef> = Vec::new();
     let mut push_new_def = |item: hir::ModuleDef| {
         if !targets.contains(&item) {
@@ -612,7 +626,7 @@ fn goto_type_action_for_def(
         }
     }
 
-    HoverAction::goto_type_from_targets(db, targets, edition)
+    HoverAction::goto_type_from_targets(sema, targets, edition)
 }
 
 fn walk_and_push_ty(

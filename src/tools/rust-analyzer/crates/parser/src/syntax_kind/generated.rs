@@ -284,7 +284,6 @@ pub enum SyntaxKind {
     STRUCT,
     TOKEN_TREE,
     TRAIT,
-    TRAIT_ALIAS,
     TRY_EXPR,
     TUPLE_EXPR,
     TUPLE_FIELD,
@@ -457,7 +456,6 @@ impl SyntaxKind {
             | STRUCT
             | TOKEN_TREE
             | TRAIT
-            | TRAIT_ALIAS
             | TRY_EXPR
             | TUPLE_EXPR
             | TUPLE_FIELD

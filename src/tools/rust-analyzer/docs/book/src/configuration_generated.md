@@ -610,6 +610,13 @@ The warnings will be indicated by a blue squiggly underline in code and a blue i
 the `Problems Panel`.
 
 
+## rust-analyzer.document.symbol.search.excludeLocals {#document.symbol.search.excludeLocals}
+
+Default: `true`
+
+Exclude all locals from document symbol search.
+
+
 ## rust-analyzer.files.exclude {#files.exclude}
 
 Default: `[]`
@@ -950,6 +957,17 @@ Closure notation in type and chaining inlay hints.
 Default: `"never"`
 
 Show enum variant discriminant hints.
+
+
+## rust-analyzer.inlayHints.expressionAdjustmentHints.disableReborrows {#inlayHints.expressionAdjustmentHints.disableReborrows}
+
+Default: `true`
+
+Disable reborrows in expression adjustments inlay hints.
+
+Reborrows are a pair of a builtin deref then borrow, i.e. `&*`. They are inserted by the compiler but are mostly useless to the programmer.
+
+Note: if the deref is not builtin (an overloaded deref), or the borrow is `&raw const`/`&raw mut`, they are not removed.
 
 
 ## rust-analyzer.inlayHints.expressionAdjustmentHints.enable {#inlayHints.expressionAdjustmentHints.enable}
@@ -1358,6 +1376,17 @@ Default: `false`
 Enables the use of rustfmt's unstable range formatting command for the
 `textDocument/rangeFormatting` request. The rustfmt option is unstable and only
 available on a nightly build.
+
+
+## rust-analyzer.semanticHighlighting.comments.enable {#semanticHighlighting.comments.enable}
+
+Default: `true`
+
+Use semantic tokens for comments.
+
+In some editors (e.g. vscode) semantic tokens override other highlighting grammars.
+By disabling semantic tokens for comments, other grammars can be used to highlight
+their contents.
 
 
 ## rust-analyzer.semanticHighlighting.doc.comment.inject.enable {#semanticHighlighting.doc.comment.inject.enable}

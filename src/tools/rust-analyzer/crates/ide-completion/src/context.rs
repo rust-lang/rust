@@ -147,6 +147,8 @@ pub(crate) struct PathExprCtx<'db> {
     /// Whether this expression is the direct condition of an if or while expression
     pub(crate) in_condition: bool,
     pub(crate) incomplete_let: bool,
+    pub(crate) after_incomplete_let: bool,
+    pub(crate) in_value: bool,
     pub(crate) ref_expr_parent: Option<ast::RefExpr>,
     pub(crate) after_amp: bool,
     /// The surrounding RecordExpression we are completing a functional update
@@ -525,7 +527,6 @@ impl CompletionContext<'_> {
                 hir::ModuleDef::Const(it) => self.is_visible(it),
                 hir::ModuleDef::Static(it) => self.is_visible(it),
                 hir::ModuleDef::Trait(it) => self.is_visible(it),
-                hir::ModuleDef::TraitAlias(it) => self.is_visible(it),
                 hir::ModuleDef::TypeAlias(it) => self.is_visible(it),
                 hir::ModuleDef::Macro(it) => self.is_visible(it),
                 hir::ModuleDef::BuiltinType(_) => Visible::Yes,

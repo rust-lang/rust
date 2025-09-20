@@ -378,9 +378,9 @@ fn main() {
     let foo = foo3();
      // ^^^ impl Fn(f64, f64) -> u32
     let foo = foo4();
-     // ^^^ &'static dyn Fn(f64, f64) -> u32
+     // ^^^ &dyn Fn(f64, f64) -> u32
     let foo = foo5();
-     // ^^^ &'static dyn Fn(&dyn Fn(f64, f64) -> u32, f64) -> u32
+     // ^^^ &dyn Fn(&dyn Fn(f64, f64) -> u32, f64) -> u32
     let foo = foo6();
      // ^^^ impl Fn(f64, f64) -> u32
     let foo = foo7();
@@ -411,7 +411,7 @@ fn main() {
     let foo = foo3();
      // ^^^ impl Fn(f64, f64) -> u32
     let foo = foo4();
-     // ^^^ &'static dyn Fn(f64, f64) -> u32
+     // ^^^ &dyn Fn(f64, f64) -> u32
     let foo = foo5();
     let foo = foo6();
     let foo = foo7();
@@ -526,7 +526,7 @@ fn main() {
           //^^^^ i32
     let _ = 22;
     let test = "test";
-      //^^^^ &'static str
+      //^^^^ &str
     let test = InnerStruct {};
       //^^^^ InnerStruct
 
@@ -616,12 +616,12 @@ impl<T> Iterator for IntoIter<T> {
 
 fn main() {
     let mut data = Vec::new();
-          //^^^^ Vec<&'static str>
+          //^^^^ Vec<&str>
     data.push("foo");
     for i in data {
-      //^ &'static str
+      //^ &str
       let z = i;
-        //^ &'static str
+        //^ &str
     }
 }
 "#,
@@ -909,7 +909,7 @@ fn main() {
     foo(plus_one);
 
     let add_mul = bar(|x: u8| { x + 1 });
-    //  ^^^^^^^ impl FnOnce(u8) -> u8 + ?Sized
+    //  ^^^^^^^ impl FnOnce(u8) -> u8
 
     let closure = if let Some(6) = add_mul(2).checked_sub(1) {
     //  ^^^^^^^ fn(i32) -> i32
@@ -1015,7 +1015,7 @@ fn test<T>(t: T) {
 "#,
             expect![[r#"
                 fn test<T>(t: T) {
-                    let f = |a: i32, b: &'static str, c: T| {};
+                    let f = |a: i32, b: &str, c: T| {};
                     let result: () = f(42, "", t);
                 }
             "#]],
