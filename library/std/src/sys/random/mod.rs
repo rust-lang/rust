@@ -101,6 +101,7 @@ cfg_select! {
     any(
         all(target_family = "wasm", target_os = "unknown"),
         target_os = "xous",
+        target_os = "vexos",
     ) => {
         // FIXME: finally remove std support for wasm32-unknown-unknown
         // FIXME: add random data generation to xous
@@ -116,6 +117,7 @@ cfg_select! {
     all(target_family = "wasm", target_os = "unknown"),
     all(target_os = "wasi", target_env = "p2"),
     target_os = "xous",
+    target_os = "vexos",
 )))]
 pub fn hashmap_random_keys() -> (u64, u64) {
     let mut buf = [0; 16];
