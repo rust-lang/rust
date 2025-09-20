@@ -51,8 +51,6 @@
 //!
 //! [libfirm]: <https://pp.ipd.kit.edu/uploads/publikationen/priesner17masterarbeit.pdf>
 
-use std::cell::OnceCell;
-
 use itertools::Itertools as _;
 use rustc_const_eval::const_eval::DummyMachine;
 use rustc_const_eval::interpret::{ImmTy, Immediate, InterpCx, OpTy, Projectable};
@@ -100,7 +98,6 @@ impl<'tcx> crate::MirPass<'tcx> for JumpThreading {
             map: Map::new(tcx, body, Some(MAX_PLACES)),
             maybe_loop_headers: loops::maybe_loop_headers(body),
             entry_states: IndexVec::from_elem(ConditionSet::default(), &body.basic_blocks),
-            costs: IndexVec::from_elem(OnceCell::new(), &body.basic_blocks),
         };
 
         for (bb, bbdata) in traversal::postorder(body) {
@@ -136,6 +133,7 @@ impl<'tcx> crate::MirPass<'tcx> for JumpThreading {
 
         let mut entry_states = finder.entry_states;
         simplify_conditions(body, &mut entry_states);
+        remove_costly_conditions(tcx, typing_env, body, &mut entry_states);
 
         if let Some(opportunities) = OpportunitySet::new(body, entry_states) {
             opportunities.apply();
@@ -159,8 +157,6 @@ struct TOFinder<'a, 'tcx> {
     // Invariant: for each `bb`, each condition in `entry_states[bb]` has a `chain` that
     // starts with `bb`.
     entry_states: IndexVec<BasicBlock, ConditionSet>,
-    /// Pre-computed cost of duplicating each block.
-    costs: IndexVec<BasicBlock, OnceCell<usize>>,
 }
 
 rustc_index::newtype_index! {
@@ -222,7 +218,6 @@ struct ConditionSet {
     active: Vec<(ConditionIndex, Condition)>,
     fulfilled: Vec<ConditionIndex>,
     targets: IndexVec<ConditionIndex, Vec<EdgeEffect>>,
-    costs: IndexVec<ConditionIndex, u8>,
 }
 
 impl ConditionSet {
@@ -233,7 +228,6 @@ impl ConditionSet {
     #[tracing::instrument(level = "trace", skip(self))]
     fn push_condition(&mut self, c: Condition, target: BasicBlock) {
         let index = self.targets.push(vec![EdgeEffect::Goto { target }]);
-        self.costs.push(0);
         self.active.push((index, c));
     }
 
@@ -293,20 +287,17 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
             active: Vec::with_capacity(state_len),
             targets: IndexVec::with_capacity(state_len),
             fulfilled: Vec::new(),
-            costs: IndexVec::with_capacity(state_len),
         };
 
         // Use an index-set to deduplicate conditions coming from different successor blocks.
         let mut known_conditions =
             FxIndexSet::with_capacity_and_hasher(state_len, Default::default());
-        let mut insert = |condition, succ_block, succ_condition, cost| {
+        let mut insert = |condition, succ_block, succ_condition| {
             let (index, new) = known_conditions.insert_full(condition);
             let index = ConditionIndex::from_usize(index);
             if new {
                 state.active.push((index, condition));
                 let _index = state.targets.push(Vec::new());
-                debug_assert_eq!(_index, index);
-                let _index = state.costs.push(u8::MAX);
                 debug_assert_eq!(_index, index);
             }
             let target = EdgeEffect::Chain { succ_block, succ_condition };
@@ -316,7 +307,6 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
                 &state.targets[index],
             );
             state.targets[index].push(target);
-            state.costs[index] = std::cmp::min(state.costs[index], cost);
         };
 
         // A given block may have several times the same successor.
@@ -331,33 +321,17 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
                 continue;
             }
 
-            let succ_cost = self.cost(succ);
             for &(succ_index, cond) in self.entry_states[succ].active.iter() {
-                let cost = self.entry_states[succ].costs[succ_index];
-                if let Ok(cost) = ((cost as usize) + succ_cost).try_into()
-                    && cost < MAX_COST
-                {
-                    insert(cond, succ, succ_index, cost);
-                }
+                insert(cond, succ, succ_index);
             }
         }
 
         let num_conditions = known_conditions.len();
         debug_assert_eq!(num_conditions, state.active.len());
         debug_assert_eq!(num_conditions, state.targets.len());
-        debug_assert_eq!(num_conditions, state.costs.len());
         state.fulfilled.reserve(num_conditions);
 
         state
-    }
-
-    fn cost(&self, bb: BasicBlock) -> usize {
-        *self.costs[bb].get_or_init(|| {
-            let bbdata = &self.body[bb];
-            let mut cost = CostChecker::new(self.tcx, self.typing_env, None, self.body);
-            cost.visit_basic_block_data(bb, bbdata);
-            cost.cost()
-        })
     }
 
     /// Remove all conditions in the state that alias given place.
@@ -751,8 +725,6 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
                     // Fulfilling `index` may thread conditions that we do not want,
                     // so create a brand new index to immediately mark fulfilled.
                     let index = state.targets.push(new_edges);
-                    let _index = state.costs.push(0);
-                    debug_assert_eq!(_index, index);
                     state.fulfilled.push(index);
                 }
             }
@@ -865,6 +837,82 @@ fn simplify_conditions(body: &Body<'_>, entry_states: &mut IndexVec<BasicBlock, 
     }
 }
 
+#[instrument(level = "debug", skip(tcx, typing_env, body, entry_states))]
+fn remove_costly_conditions<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
+    body: &Body<'tcx>,
+    entry_states: &mut IndexVec<BasicBlock, ConditionSet>,
+) {
+    let basic_blocks = &body.basic_blocks;
+
+    let mut costs = IndexVec::from_elem(None, basic_blocks);
+    let mut cost = |bb: BasicBlock| -> u8 {
+        let c = *costs[bb].get_or_insert_with(|| {
+            let bbdata = &basic_blocks[bb];
+            let mut cost = CostChecker::new(tcx, typing_env, None, body);
+            cost.visit_basic_block_data(bb, bbdata);
+            cost.cost().try_into().unwrap_or(MAX_COST)
+        });
+        trace!("cost[{bb:?}] = {c}");
+        c
+    };
+
+    // Initialize costs with `MAX_COST`: if we have a cycle, the cyclic `bb` has infinite costs.
+    let mut condition_cost = IndexVec::from_fn_n(
+        |bb: BasicBlock| IndexVec::from_elem_n(MAX_COST, entry_states[bb].targets.len()),
+        entry_states.len(),
+    );
+
+    let reverse_postorder = basic_blocks.reverse_postorder();
+
+    for &bb in reverse_postorder.iter().rev() {
+        let state = &entry_states[bb];
+        trace!(?bb, ?state);
+
+        let mut current_costs = IndexVec::from_elem(0u8, &state.targets);
+
+        for (condition, targets) in state.targets.iter_enumerated() {
+            for &target in targets {
+                match target {
+                    // A `Goto` has cost 0.
+                    EdgeEffect::Goto { .. } => {}
+                    // Chaining into an already-fulfilled condition is nop.
+                    EdgeEffect::Chain { succ_block, succ_condition }
+                        if entry_states[succ_block].fulfilled.contains(&succ_condition) => {}
+                    // When chaining, use `cost[succ_block][succ_condition] + cost(succ_block)`.
+                    EdgeEffect::Chain { succ_block, succ_condition } => {
+                        // Cost associated with duplicating `succ_block`.
+                        let duplication_cost = cost(succ_block);
+                        // Cost associated with the rest of the chain.
+                        let target_cost =
+                            *condition_cost[succ_block].get(succ_condition).unwrap_or(&MAX_COST);
+                        let cost = current_costs[condition]
+                            .saturating_add(duplication_cost)
+                            .saturating_add(target_cost);
+                        trace!(?condition, ?succ_block, ?duplication_cost, ?target_cost);
+                        current_costs[condition] = cost;
+                    }
+                }
+            }
+        }
+
+        trace!("condition_cost[{bb:?}] = {:?}", current_costs);
+        condition_cost[bb] = current_costs;
+    }
+
+    trace!(?condition_cost);
+
+    for &bb in reverse_postorder {
+        for (index, targets) in entry_states[bb].targets.iter_enumerated_mut() {
+            if condition_cost[bb][index] >= MAX_COST {
+                trace!(?bb, ?index, ?targets, c = ?condition_cost[bb][index], "remove");
+                targets.clear()
+            }
+        }
+    }
+}
+
 struct OpportunitySet<'a, 'tcx> {
     basic_blocks: &'a mut IndexVec<BasicBlock, BasicBlockData<'tcx>>,
     entry_states: IndexVec<BasicBlock, ConditionSet>,
@@ -887,7 +935,6 @@ impl<'a, 'tcx> OpportunitySet<'a, 'tcx> {
         // Free some memory, because we will need to clone condition sets.
         for state in entry_states.iter_mut() {
             state.active = Default::default();
-            state.costs = Default::default();
         }
         let duplicates = Default::default();
         let basic_blocks = body.basic_blocks.as_mut();
