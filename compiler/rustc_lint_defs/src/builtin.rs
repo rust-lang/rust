@@ -62,6 +62,7 @@ declare_lint_pass! {
         LONG_RUNNING_CONST_EVAL,
         LOSSY_PROVENANCE_CASTS,
         MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
+        MACRO_EXTENDED_TEMPORARY_SCOPES,
         MACRO_USE_EXTERN_CRATE,
         MALFORMED_DIAGNOSTIC_ATTRIBUTES,
         MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
@@ -5194,4 +5195,55 @@ declare_lint! {
     pub INLINE_ALWAYS_MISMATCHING_TARGET_FEATURES,
     Warn,
     r#"detects when a function annotated with `#[inline(always)]` and `#[target_feature(enable = "..")]` is inlined into a caller without the required target feature"#,
+}
+
+declare_lint! {
+    /// The `macro_extended_temporary_scopes` lint detects borrowed temporary
+    /// values in arguments to `pin!` and formatting macros which have longer
+    /// lifetimes than intended due to a bug in the compiler. For more
+    /// information on temporary scopes and lifetime extension, see the
+    /// [Rust Reference].
+    ///
+    /// [Rust Reference]: https://doc.rust-lang.org/reference/destructors.html#temporary-scopes
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// # fn cond() -> bool { true }
+    /// # fn build_string() -> String { String::new() }
+    /// fn main() {
+    ///     println!("{:?}{}", (), if cond() { &build_string() } else { "" });
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Recommended fix
+    ///
+    /// To extend the lifetimes of temporaries borrowed in macro arguments,
+    /// create separate definitions for them with `let` statements.
+    ///
+    /// ```rust
+    /// # fn cond() -> bool { true }
+    /// # fn build_string() -> String { String::new() }
+    /// fn main() {
+    ///     let string = if cond() { &build_string() } else { "" };
+    ///     println!("{:?}{}", (), string);
+    /// }
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// Due to a compiler bug, `pin!` and formatting macros were able to extend
+    /// the lifetimes of temporaries borrowed in their arguments past their
+    /// usual scopes. The bug is fixed in future Rust versions, so we issue this
+    /// future-incompatibility warning for code that may stop compiling or may
+    /// change in behavior thereafter.
+    pub MACRO_EXTENDED_TEMPORARY_SCOPES,
+    Warn,
+    "detects when a lifetime-extended temporary borrowed in a macro argument has a future-incompatible scope.",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::FutureReleaseError,
+        reference: "<https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#macro-extended-temporary-scopes>",
+    };
 }

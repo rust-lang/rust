@@ -38,7 +38,20 @@ struct ScopeResolutionVisitor<'tcx> {
 
     cx: Context,
 
-    extended_super_lets: FxHashMap<hir::ItemLocalId, Option<Scope>>,
+    extended_super_lets: FxHashMap<hir::ItemLocalId, ExtendedTemporaryScope>,
+}
+
+#[derive(Copy, Clone)]
+struct ExtendedTemporaryScope {
+    /// The scope of extended temporaries.
+    scope: Option<Scope>,
+    /// Whether this lifetime originated from a regular `let` or a `super let` initializer. In the
+    /// latter case, this scope may shorten after #145838 if applied to temporaries within block
+    /// tail expressions.
+    let_kind: LetKind,
+    /// Whether this scope will shorten after #145838. If this is applied to a temporary value,
+    /// we'll emit the `macro_extended_temporary_scopes` lint.
+    compat: ScopeCompatibility,
 }
 
 /// Records the lifetime of a local variable as `cx.var_parent`
@@ -467,37 +480,55 @@ fn resolve_local<'tcx>(
     // A, but the inner rvalues `a()` and `b()` have an extended lifetime
     // due to rule C.
 
-    if let_kind == LetKind::Super {
-        if let Some(scope) = visitor.extended_super_lets.remove(&pat.unwrap().hir_id.local_id) {
-            // This expression was lifetime-extended by a parent let binding. E.g.
-            //
-            //     let a = {
-            //         super let b = temp();
-            //         &b
-            //     };
-            //
-            // (Which needs to behave exactly as: let a = &temp();)
-            //
-            // Processing of `let a` will have already decided to extend the lifetime of this
-            // `super let` to its own var_scope. We use that scope.
-            visitor.cx.var_parent = scope;
-        } else {
-            // This `super let` is not subject to lifetime extension from a parent let binding. E.g.
-            //
-            //     identity({ super let x = temp(); &x }).method();
-            //
-            // (Which needs to behave exactly as: identity(&temp()).method();)
-            //
-            // Iterate up to the enclosing destruction scope to find the same scope that will also
-            // be used for the result of the block itself.
-            if let Some(inner_scope) = visitor.cx.var_parent {
-                (visitor.cx.var_parent, _) = visitor.scope_tree.default_temporary_scope(inner_scope)
+    let (source_let_kind, compat) = match let_kind {
+        // Normal `let` initializers are unaffected by #145838.
+        LetKind::Regular => {
+            (LetKind::Regular, ScopeCompatibility::FutureCompatible)
+        }
+        LetKind::Super => {
+            if let Some(scope) = visitor.extended_super_lets.remove(&pat.unwrap().hir_id.local_id) {
+                // This expression was lifetime-extended by a parent let binding. E.g.
+                //
+                //     let a = {
+                //         super let b = temp();
+                //         &b
+                //     };
+                //
+                // (Which needs to behave exactly as: let a = &temp();)
+                //
+                // Processing of `let a` will have already decided to extend the lifetime of this
+                // `super let` to its own var_scope. We use that scope.
+                visitor.cx.var_parent = scope.scope;
+                // Inherit compatibility from the original `let` statement. If the original `let`
+                // was regular, lifetime extension should apply as normal. If the original `let` was
+                // `super`, blocks within the initializer will be affected by #145838.
+                (scope.let_kind, scope.compat)
+            } else {
+                // This `super let` is not subject to lifetime extension from a parent let binding. E.g.
+                //
+                //     identity({ super let x = temp(); &x }).method();
+                //
+                // (Which needs to behave exactly as: identity(&temp()).method();)
+                //
+                // Iterate up to the enclosing destruction scope to find the same scope that will also
+                // be used for the result of the block itself.
+                if let Some(inner_scope) = visitor.cx.var_parent {
+                    (visitor.cx.var_parent, _) =
+                        visitor.scope_tree.default_temporary_scope(inner_scope)
+                }
+                // Blocks within the initializer will be affected by #145838.
+                (LetKind::Super, ScopeCompatibility::FutureCompatible)
             }
         }
-    }
+    };
 
     if let Some(expr) = init {
-        record_rvalue_scope_if_borrow_expr(visitor, expr, visitor.cx.var_parent);
+        let scope = ExtendedTemporaryScope {
+            scope: visitor.cx.var_parent,
+            let_kind: source_let_kind,
+            compat,
+        };
+        record_rvalue_scope_if_borrow_expr(visitor, expr, scope);
 
         if let Some(pat) = pat {
             if is_binding_pat(pat) {
@@ -506,6 +537,7 @@ fn resolve_local<'tcx>(
                     RvalueCandidate {
                         target: expr.hir_id.local_id,
                         lifetime: visitor.cx.var_parent,
+                        compat: ScopeCompatibility::FutureCompatible,
                     },
                 );
             }
@@ -607,50 +639,106 @@ fn resolve_local<'tcx>(
     fn record_rvalue_scope_if_borrow_expr<'tcx>(
         visitor: &mut ScopeResolutionVisitor<'tcx>,
         expr: &hir::Expr<'_>,
-        blk_id: Option<Scope>,
+        scope: ExtendedTemporaryScope,
     ) {
         match expr.kind {
             hir::ExprKind::AddrOf(_, _, subexpr) => {
-                record_rvalue_scope_if_borrow_expr(visitor, subexpr, blk_id);
+                record_rvalue_scope_if_borrow_expr(visitor, subexpr, scope);
                 visitor.scope_tree.record_rvalue_candidate(
                     subexpr.hir_id,
-                    RvalueCandidate { target: subexpr.hir_id.local_id, lifetime: blk_id },
+                    RvalueCandidate {
+                        target: subexpr.hir_id.local_id,
+                        lifetime: scope.scope,
+                        compat: scope.compat,
+                    },
                 );
             }
             hir::ExprKind::Struct(_, fields, _) => {
                 for field in fields {
-                    record_rvalue_scope_if_borrow_expr(visitor, field.expr, blk_id);
+                    record_rvalue_scope_if_borrow_expr(visitor, field.expr, scope);
                 }
             }
             hir::ExprKind::Array(subexprs) | hir::ExprKind::Tup(subexprs) => {
                 for subexpr in subexprs {
-                    record_rvalue_scope_if_borrow_expr(visitor, subexpr, blk_id);
+                    record_rvalue_scope_if_borrow_expr(visitor, subexpr, scope);
                 }
             }
             hir::ExprKind::Cast(subexpr, _) => {
-                record_rvalue_scope_if_borrow_expr(visitor, subexpr, blk_id)
+                record_rvalue_scope_if_borrow_expr(visitor, subexpr, scope)
             }
             hir::ExprKind::Block(block, _) => {
                 if let Some(subexpr) = block.expr {
-                    record_rvalue_scope_if_borrow_expr(visitor, subexpr, blk_id);
+                    let tail_expr_scope =
+                        if scope.let_kind == LetKind::Super && block.span.at_least_rust_2024() {
+                            // The tail expression will no longer be extending after #145838.
+                            // Since tail expressions are temporary scopes in Rust 2024, lint on
+                            // temporaries that acquire this (longer) lifetime.
+                            ExtendedTemporaryScope {
+                                compat: ScopeCompatibility::FutureIncompatible {
+                                    shortens_to: Scope {
+                                        local_id: subexpr.hir_id.local_id,
+                                        data: ScopeData::Node,
+                                    },
+                                },
+                                ..scope
+                            }
+                        } else {
+                            // This is extended by a regular `let`, so it won't be changed.
+                            scope
+                        };
+                    record_rvalue_scope_if_borrow_expr(visitor, subexpr, tail_expr_scope);
                 }
                 for stmt in block.stmts {
                     if let hir::StmtKind::Let(local) = stmt.kind
                         && let Some(_) = local.super_
                     {
-                        visitor.extended_super_lets.insert(local.pat.hir_id.local_id, blk_id);
+                        visitor.extended_super_lets.insert(local.pat.hir_id.local_id, scope);
                     }
                 }
             }
             hir::ExprKind::If(_, then_block, else_block) => {
-                record_rvalue_scope_if_borrow_expr(visitor, then_block, blk_id);
+                let then_scope = if scope.let_kind == LetKind::Super {
+                    // The then and else blocks will no longer be extending after #145838.
+                    // Since `if` blocks are temporary scopes in all editions, lint on temporaries
+                    // that acquire this (longer) lifetime.
+                    ExtendedTemporaryScope {
+                        compat: ScopeCompatibility::FutureIncompatible {
+                            shortens_to: Scope {
+                                local_id: then_block.hir_id.local_id,
+                                data: ScopeData::Node,
+                            },
+                        },
+                        ..scope
+                    }
+                } else {
+                    // This is extended by a regular `let`, so it won't be changed.
+                    scope
+                };
+                record_rvalue_scope_if_borrow_expr(visitor, then_block, then_scope);
                 if let Some(else_block) = else_block {
-                    record_rvalue_scope_if_borrow_expr(visitor, else_block, blk_id);
+                    let else_scope = if scope.let_kind == LetKind::Super {
+                        // The then and else blocks will no longer be extending after #145838.
+                        // Since `if` blocks are temporary scopes in all editions, lint on temporaries
+                        // that acquire this (longer) lifetime.
+                        ExtendedTemporaryScope {
+                            compat: ScopeCompatibility::FutureIncompatible {
+                                shortens_to: Scope {
+                                    local_id: else_block.hir_id.local_id,
+                                    data: ScopeData::Node,
+                                },
+                            },
+                            ..scope
+                        }
+                    } else {
+                        // This is extended by a regular `let`, so it won't be changed.
+                        scope
+                    };
+                    record_rvalue_scope_if_borrow_expr(visitor, else_block, else_scope);
                 }
             }
             hir::ExprKind::Match(_, arms, _) => {
                 for arm in arms {
-                    record_rvalue_scope_if_borrow_expr(visitor, arm.body, blk_id);
+                    record_rvalue_scope_if_borrow_expr(visitor, arm.body, scope);
                 }
             }
             hir::ExprKind::Call(func, args) => {
@@ -663,7 +751,7 @@ fn resolve_local<'tcx>(
                     && let Res::SelfCtor(_) | Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) = path.res
                 {
                     for arg in args {
-                        record_rvalue_scope_if_borrow_expr(visitor, arg, blk_id);
+                        record_rvalue_scope_if_borrow_expr(visitor, arg, scope);
                     }
                 }
             }

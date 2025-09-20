@@ -1,6 +1,6 @@
 //! Test that `macro_extended_temporary_scopes` doesn't warn on non-extended temporaries.
 //@ edition: 2024
-#![deny(macro_extended_temporary_scopes)] //~ WARN unknown lint
+#![deny(macro_extended_temporary_scopes)]
 
 fn temp() {}
 
