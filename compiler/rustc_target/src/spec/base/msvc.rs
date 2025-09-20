@@ -18,6 +18,11 @@ pub(crate) fn opts() -> TargetOptions {
         emit_debug_gdb_scripts: false,
         archive_format: "coff".into(),
 
+        // MSVC does not seem to ever automatically increase enums beyond their default size (see
+        // <https://github.com/rust-lang/rust/issues/124403>, <https://godbolt.org/z/1Pdb3hP9E>).
+        c_enum_min_bits: Some(32),
+        c_enum_max_bits: Some(32),
+
         // Currently this is the only supported method of debuginfo on MSVC
         // where `*.pdb` files show up next to the final artifact.
         split_debuginfo: SplitDebuginfo::Packed,

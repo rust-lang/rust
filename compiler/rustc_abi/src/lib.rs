@@ -183,8 +183,18 @@ impl ReprOptions {
 
     /// Returns the discriminant type, given these `repr` options.
     /// This must only be called on enums!
-    pub fn discr_type(&self) -> IntegerType {
-        self.int.unwrap_or(IntegerType::Pointer(true))
+    ///
+    /// This is the "typeck type" of the discriminant, which is effectively the maximum size:
+    /// discriminant values will be wrapped to fit (with a lint). Layout can later decide to use a
+    /// smaller type (which it will do depending on the actual discriminant values, also enforcing
+    /// `c_enum_min_size` along the way) and that will work just fine, it just induces casts when
+    /// getting/setting the discriminant.
+    pub fn discr_type(&self, cx: &impl HasDataLayout) -> IntegerType {
+        self.int.unwrap_or(if self.c() {
+            IntegerType::Fixed(cx.data_layout().c_enum_max_size, true)
+        } else {
+            IntegerType::Pointer(true)
+        })
     }
 
     /// Returns `true` if this `#[repr()]` should inhabit "smart enum
@@ -274,6 +284,8 @@ pub struct TargetDataLayout {
     /// Note: This isn't in LLVM's data layout string, it is `short_enum`
     /// so the only valid spec for LLVM is c_int::BITS or 8
     pub c_enum_min_size: Integer,
+    /// Maximum size of #[repr(C)] enums (defaults to c_longlong::BITS, which is always 64).
+    pub c_enum_max_size: Integer,
 }
 
 impl Default for TargetDataLayout {
@@ -307,6 +319,10 @@ impl Default for TargetDataLayout {
             address_space_info: vec![],
             instruction_address_space: AddressSpace::ZERO,
             c_enum_min_size: Integer::I32,
+            // C23 allows enums to have any integer type. The largest integer type in the standard
+            // is `long long`, which is always 64bits (judging from our own definition in
+            // `library/core/src/ffi/primitives.rs`).
+            c_enum_max_size: Integer::I64,
         }
     }
 }
@@ -327,7 +343,7 @@ impl TargetDataLayout {
     /// [llvm data layout string](https://llvm.org/docs/LangRef.html#data-layout)
     ///
     /// This function doesn't fill `c_enum_min_size` and it will always be `I32` since it can not be
-    /// determined from llvm string.
+    /// determined from llvm string. Likewise, it does not fill in `c_enum_max_size`.
     pub fn parse_from_llvm_datalayout_string<'a>(
         input: &'a str,
         default_address_space: AddressSpace,

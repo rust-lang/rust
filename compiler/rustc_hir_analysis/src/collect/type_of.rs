@@ -46,7 +46,7 @@ fn anon_const_type_of<'tcx>(icx: &ItemCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx
         }) if anon_hir_id == hir_id => const_arg_anon_type_of(icx, arg_hir_id, span),
 
         Node::Variant(Variant { disr_expr: Some(e), .. }) if e.hir_id == hir_id => {
-            tcx.adt_def(tcx.hir_get_parent_item(hir_id)).repr().discr_type().to_ty(tcx)
+            tcx.adt_def(tcx.hir_get_parent_item(hir_id)).repr().discr_type(&tcx).to_ty(tcx)
         }
         // Sort of affects the type system, but only for the purpose of diagnostics
         // so no need for ConstArg.

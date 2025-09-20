@@ -89,7 +89,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     otherwise_block,
                 );
                 debug!("num_enum_variants: {}", adt_def.variants().len());
-                let discr_ty = adt_def.repr().discr_type().to_ty(self.tcx);
+                let discr_ty = adt_def.repr().discr_type(&self.tcx).to_ty(self.tcx);
                 let discr = self.temp(discr_ty, test.span);
                 self.cfg.push_assign(
                     block,

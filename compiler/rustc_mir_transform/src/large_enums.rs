@@ -85,7 +85,7 @@ impl<'tcx> crate::MirPass<'tcx> for EnumSizeOpt {
                 let const_assign = StatementKind::Assign(Box::new((place, rval)));
 
                 let discr_place =
-                    Place::from(patch.new_temp(adt_def.repr().discr_type().to_ty(tcx), span));
+                    Place::from(patch.new_temp(adt_def.repr().discr_type(&tcx).to_ty(tcx), span));
                 let store_discr =
                     StatementKind::Assign(Box::new((discr_place, Rvalue::Discriminant(*rhs))));
 
