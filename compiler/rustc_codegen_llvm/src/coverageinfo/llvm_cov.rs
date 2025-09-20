@@ -2,26 +2,25 @@
 
 use std::ffi::CString;
 
-use crate::common::AsCCharPtr;
 use crate::coverageinfo::ffi;
 use crate::llvm;
 
 pub(crate) fn covmap_var_name() -> CString {
-    CString::new(llvm::build_byte_buffer(|s| unsafe {
+    CString::new(llvm::build_byte_buffer(|s| {
         llvm::LLVMRustCoverageWriteCovmapVarNameToString(s);
     }))
     .expect("covmap variable name should not contain NUL")
 }
 
 pub(crate) fn covmap_section_name(llmod: &llvm::Module) -> CString {
-    CString::new(llvm::build_byte_buffer(|s| unsafe {
+    CString::new(llvm::build_byte_buffer(|s| {
         llvm::LLVMRustCoverageWriteCovmapSectionNameToString(llmod, s);
     }))
     .expect("covmap section name should not contain NUL")
 }
 
 pub(crate) fn covfun_section_name(llmod: &llvm::Module) -> CString {
-    CString::new(llvm::build_byte_buffer(|s| unsafe {
+    CString::new(llvm::build_byte_buffer(|s| {
         llvm::LLVMRustCoverageWriteCovfunSectionNameToString(llmod, s);
     }))
     .expect("covfun section name should not contain NUL")
@@ -34,7 +33,7 @@ pub(crate) fn create_pgo_func_name_var<'ll>(
     unsafe {
         llvm::LLVMRustCoverageCreatePGOFuncNameVar(
             llfn,
-            mangled_fn_name.as_c_char_ptr(),
+            mangled_fn_name.as_ptr(),
             mangled_fn_name.len(),
         )
     }
@@ -44,7 +43,7 @@ pub(crate) fn write_filenames_to_buffer(filenames: &[impl AsRef<str>]) -> Vec<u8
     let (pointers, lengths) = filenames
         .into_iter()
         .map(AsRef::as_ref)
-        .map(|s: &str| (s.as_c_char_ptr(), s.len()))
+        .map(|s: &str| (s.as_ptr(), s.len()))
         .unzip::<_, _, Vec<_>, Vec<_>>();
 
     llvm::build_byte_buffer(|buffer| unsafe {
@@ -89,12 +88,12 @@ pub(crate) fn write_function_mappings_to_buffer(
 /// Hashes some bytes into a 64-bit hash, via LLVM's `IndexedInstrProf::ComputeHash`,
 /// as required for parts of the LLVM coverage mapping format.
 pub(crate) fn hash_bytes(bytes: &[u8]) -> u64 {
-    unsafe { llvm::LLVMRustCoverageHashBytes(bytes.as_c_char_ptr(), bytes.len()) }
+    unsafe { llvm::LLVMRustCoverageHashBytes(bytes.as_ptr(), bytes.len()) }
 }
 
 /// Returns LLVM's `coverage::CovMapVersion::CurrentVersion` (CoverageMapping.h)
 /// as a raw numeric value. For historical reasons, the numeric value is 1 less
 /// than the number in the version's name, so `Version7` is actually `6u32`.
 pub(crate) fn mapping_version() -> u32 {
-    unsafe { llvm::LLVMRustCoverageMappingVersion() }
+    llvm::LLVMRustCoverageMappingVersion()
 }
