@@ -390,18 +390,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         args,
                         unwind: UnwindAction::Continue,
                         destination,
-                        // The presence or absence of a return edge affects control-flow sensitive
-                        // MIR checks and ultimately whether code is accepted or not. We can only
-                        // omit the return edge if a return type is visibly uninhabited to a module
-                        // that makes the call.
-                        target: expr
-                            .ty
-                            .is_inhabited_from(
-                                this.tcx,
-                                this.parent_module,
-                                this.infcx.typing_env(this.param_env),
-                            )
-                            .then_some(success),
+                        target: Some(success),
                         call_source: if from_hir_call {
                             CallSource::Normal
                         } else {

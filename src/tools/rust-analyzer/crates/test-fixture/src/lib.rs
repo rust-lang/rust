@@ -383,6 +383,8 @@ impl ChangeFixture {
             }
         }
 
+        let _ = file_id;
+
         let root = match current_source_root_kind {
             SourceRootKind::Local => SourceRoot::new_local(mem::take(&mut file_set)),
             SourceRootKind::Library => SourceRoot::new_library(mem::take(&mut file_set)),

@@ -16,8 +16,8 @@ fn foo(x: (Lol, Lol)) {
         //~| HELP: you might have meant to use the similarly named previously used binding `Bar`
         //~| NOTE: pattern doesn't bind `Ban`
         //~| NOTE: variable not in all patterns
-        //~| ERROR: variable `Ban` is assigned to, but never used
-        //~| NOTE: consider using `_Ban` instead
+        //~| ERROR: unused variable: `Ban`
+        //~| HELP: if this is intentional, prefix it with an underscore
         //~| HELP: you might have meant to pattern match on the similarly named
         _ => {}
     }
@@ -27,8 +27,8 @@ fn foo(x: (Lol, Lol)) {
         //~| HELP: you might have meant to use the similarly named unit variant `Bar`
         //~| NOTE: pattern doesn't bind `Ban`
         //~| NOTE: variable not in all patterns
-        //~| ERROR: variable `Ban` is assigned to, but never used
-        //~| NOTE: consider using `_Ban` instead
+        //~| ERROR: unused variable: `Ban`
+        //~| HELP: if this is intentional, prefix it with an underscore
         //~| HELP: you might have meant to pattern match on the similarly named
         _ => {}
     }
@@ -73,8 +73,8 @@ fn bar(x: (Lol, Lol)) {
         //~| HELP: you might have meant to use the similarly named constant `Bat`
         //~| NOTE: pattern doesn't bind `Ban`
         //~| NOTE: variable not in all patterns
-        //~| ERROR: variable `Ban` is assigned to, but never used
-        //~| NOTE: consider using `_Ban` instead
+        //~| ERROR: unused variable: `Ban`
+        //~| HELP: if this is intentional, prefix it with an underscore
         //~| HELP: you might have meant to pattern match on the similarly named
         _ => {}
     }
@@ -89,8 +89,8 @@ fn baz(x: (Lol, Lol)) {
         //~| HELP: you might have meant to use the similarly named constant `Bat`
         //~| NOTE: pattern doesn't bind `Ban`
         //~| NOTE: variable not in all patterns
-        //~| ERROR: variable `Ban` is assigned to, but never used
-        //~| NOTE: consider using `_Ban` instead
+        //~| ERROR: unused variable: `Ban`
+        //~| HELP: if this is intentional, prefix it with an underscore
         //~| HELP: you might have meant to pattern match on the similarly named
         _ => {}
     }
