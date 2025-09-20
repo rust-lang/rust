@@ -186,10 +186,11 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl Borrow<str> for String {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const Borrow<str> for String {
     #[inline]
     fn borrow(&self) -> &str {
-        &self[..]
+        self.as_str()
     }
 }
 
