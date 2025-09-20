@@ -51,6 +51,7 @@ fn exitstatus_display_tests() {
 
 #[test]
 #[cfg_attr(target_os = "emscripten", ignore)]
+#[cfg_attr(any(target_os = "tvos", target_os = "watchos"), ignore = "fork is prohibited")]
 fn test_command_fork_no_unwind() {
     let got = catch_unwind(|| {
         let mut c = Command::new("echo");
