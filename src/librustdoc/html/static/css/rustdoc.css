@@ -339,6 +339,7 @@ summary.hideme,
 .scraped-example-list,
 .rustdoc-breadcrumbs,
 .search-switcher,
+.search-throbber,
 /* This selector is for the items listed in the "all items" page. */
 ul.all-items {
 	font-family: "Fira Sans", Arial, NanumBarunGothic, sans-serif;
@@ -1987,12 +1988,10 @@ a.tooltip:hover::after {
 	color: inherit;
 }
 #search-tabs button:not(.selected) {
-	--search-tab-button-background: var(--search-tab-button-not-selected-background);
 	background-color: var(--search-tab-button-not-selected-background);
 	border-top-color: var(--search-tab-button-not-selected-border-top-color);
 }
 #search-tabs button:hover, #search-tabs button.selected {
-	--search-tab-button-background: var(--search-tab-button-selected-background);
 	background-color: var(--search-tab-button-selected-background);
 	border-top-color: var(--search-tab-button-selected-border-top-color);
 }
@@ -2008,18 +2007,19 @@ a.tooltip:hover::after {
 	color: transparent;
 }
 
-.search-form.loading {
-	--search-tab-button-background: var(--button-background-color);
+.search-throbber {
+	position: relative;
+	height: 34px;
 }
 
-#search-tabs .count.loading::before,
+.search-throbber::before,
 .search-form.loading::before
 {
 	width: 16px;
 	height: 16px;
 	border-radius: 16px;
 	background: radial-gradient(
-		var(--search-tab-button-background) 0 50%,
+		var(--button-background-color) 0 50%,
 		transparent 50% 100%
 	), conic-gradient(
 		var(--code-highlight-kw-color) 0deg 30deg,
@@ -2037,37 +2037,25 @@ a.tooltip:hover::after {
 	);
 	content: "";
 	position: absolute;
-	left: 2px;
-	top: 2px;
+	right: 9px;
+	top: 8px;
 	animation: rotating 1.25s linear infinite;
 }
-#search-tabs .count.loading::after,
+.search-throbber::after,
 .search-form.loading::after
 {
 	width: 18px;
 	height: 18px;
 	border-radius: 18px;
 	background: conic-gradient(
-		var(--search-tab-button-background) 0deg 180deg,
+		var(--button-background-color) 0deg 180deg,
 		transparent 270deg 360deg
 	);
 	content: "";
 	position: absolute;
-	left: 1px;
-	top: 1px;
-	animation: rotating 0.66s linear infinite;
-}
-
-.search-form.loading::before {
-	left: auto;
-	right: 9px;
-	top: 8px;
-}
-
-.search-form.loading::after {
-	left: auto;
 	right: 8px;
 	top: 8px;
+	animation: rotating 0.66s linear infinite;
 }
 
 #search .error code {
