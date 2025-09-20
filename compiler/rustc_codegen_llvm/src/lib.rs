@@ -46,6 +46,8 @@ use rustc_session::Session;
 use rustc_session::config::{OptLevel, OutputFilenames, PrintKind, PrintRequest};
 use rustc_span::Symbol;
 
+use crate::back::write::TargetMachineRole;
+
 mod abi;
 mod allocator;
 mod asm;
@@ -125,7 +127,12 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
         optlvl: OptLevel,
         target_features: &[String],
     ) -> TargetMachineFactoryFn<Self> {
-        back::write::target_machine_factory(sess, optlvl, target_features)
+        back::write::target_machine_factory(
+            sess,
+            optlvl,
+            target_features,
+            TargetMachineRole::Codegen,
+        )
     }
 
     fn spawn_named_thread<F, T>(

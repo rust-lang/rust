@@ -112,8 +112,10 @@ pub(crate) fn create_informational_target_machine(
     // Can't use query system here quite yet because this function is invoked before the query
     // system/tcx is set up.
     let features = llvm_util::global_llvm_features(sess, false, only_base_features);
-    target_machine_factory(sess, config::OptLevel::No, &features)(config)
-        .unwrap_or_else(|err| llvm_err(sess.dcx(), err))
+    target_machine_factory(sess, config::OptLevel::No, &features, TargetMachineRole::Informational)(
+        config,
+    )
+    .unwrap_or_else(|err| llvm_err(sess.dcx(), err))
 }
 
 pub(crate) fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> OwnedTargetMachine {
@@ -139,6 +141,7 @@ pub(crate) fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> OwnedTar
         tcx.sess,
         tcx.backend_optimization_level(()),
         tcx.global_backend_features(()),
+        TargetMachineRole::Codegen,
     )(config)
     .unwrap_or_else(|err| llvm_err(tcx.dcx(), err))
 }
@@ -199,10 +202,17 @@ fn to_llvm_float_abi(float_abi: Option<FloatAbi>) -> llvm::FloatAbi {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum TargetMachineRole {
+    Informational,
+    Codegen,
+}
+
 pub(crate) fn target_machine_factory(
     sess: &Session,
     optlvl: config::OptLevel,
     target_features: &[String],
+    tm_role: TargetMachineRole,
 ) -> TargetMachineFactoryFn<LlvmCodegenBackend> {
     let reloc_model = to_llvm_relocation_model(sess.relocation_model());
 
@@ -253,12 +263,21 @@ pub(crate) fn target_machine_factory(
     // Command-line information to be included in the target machine.
     // This seems to only be used for embedding in PDB debuginfo files.
     // FIXME(Zalathar): Maybe skip this for non-PDB targets?
-    let argv0 = std::env::current_exe()
-        .unwrap_or_default()
-        .into_os_string()
-        .into_string()
-        .unwrap_or_default();
-    let command_line_args = quote_command_line_args(&sess.expanded_args);
+    let (argv0, command_line_args);
+    match tm_role {
+        TargetMachineRole::Informational => {
+            argv0 = String::new();
+            command_line_args = String::new()
+        }
+        TargetMachineRole::Codegen => {
+            argv0 = std::env::current_exe()
+                .unwrap_or_default()
+                .into_os_string()
+                .into_string()
+                .unwrap_or_default();
+            command_line_args = quote_command_line_args(&sess.expanded_args);
+        }
+    }
 
     let debuginfo_compression = sess.opts.debuginfo_compression.to_string();
     match sess.opts.debuginfo_compression {
