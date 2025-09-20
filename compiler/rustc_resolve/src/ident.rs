@@ -1549,7 +1549,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         finalize.is_some(),
                         module_had_parse_errors,
                         module,
-                        || ("there are too many leading `super` keywords".to_string(), None),
+                        || {
+                            (
+                                "too many leading `super` keywords".to_string(),
+                                "there are too many leading `super` keywords".to_string(),
+                                None,
+                            )
+                        },
                     );
                 }
                 if segment_idx == 0 {
@@ -1597,16 +1603,24 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     module,
                     || {
                         let name_str = if name == kw::PathRoot {
-                            "crate root".to_string()
+                            "the crate root".to_string()
                         } else {
                             format!("`{name}`")
                         };
-                        let label = if segment_idx == 1 && path[0].ident.name == kw::PathRoot {
-                            format!("global paths cannot start with {name_str}")
+                        let (message, label) = if segment_idx == 1
+                            && path[0].ident.name == kw::PathRoot
+                        {
+                            (
+                                format!("global paths cannot start with {name_str}"),
+                                "cannot start with this".to_string(),
+                            )
                         } else {
-                            format!("{name_str} in paths can only be used in start position")
+                            (
+                                format!("{name_str} in paths can only be used in start position"),
+                                "can only be used in path start position".to_string(),
+                            )
                         };
-                        (label, None)
+                        (message, label, None)
                     },
                 );
             }
@@ -1724,7 +1738,20 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                     res.article(),
                                     res.descr()
                                 );
-                                (label, None)
+                                let scope = match &path[..segment_idx] {
+                                    [.., prev] => {
+                                        if prev.ident.name == kw::PathRoot {
+                                            format!("the crate root")
+                                        } else {
+                                            format!("`{}`", prev.ident)
+                                        }
+                                    }
+                                    _ => format!("this scope"),
+                                };
+                                // FIXME: reword, as the reason we expected a module is because of
+                                // the following path segment.
+                                let message = format!("cannot find module `{ident}` in {scope}");
+                                (message, label, None)
                             },
                         );
                     }

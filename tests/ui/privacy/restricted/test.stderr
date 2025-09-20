@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `bad`
+error[E0433]: cannot find module or crate `bad` in the crate root
   --> $DIR/test.rs:50:12
    |
 LL |     pub(in bad::path) mod m1 {}

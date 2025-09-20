@@ -1,8 +1,8 @@
-error[E0433]: failed to resolve: partially resolved path in a macro
+error[E0433]: cannot find macro `bar` in enum `Foo`
   --> $DIR/extern-macro.rs:5:13
    |
 LL |     let _ = Foo::bar!();
-   |             ^^^^^^^^ partially resolved path in a macro
+   |             ^^^^^^^^ a macro can't exist within an enum
 
 error: aborting due to 1 previous error
 
