@@ -24,6 +24,7 @@ use std::str::FromStr;
 use std::{fmt, fs, io};
 
 use crate::CiInfo;
+use crate::diagnostics::DiagCtx;
 
 mod rustdoc_js;
 
@@ -54,8 +55,10 @@ pub fn check(
     bless: bool,
     extra_checks: Option<&str>,
     pos_args: &[String],
-    bad: &mut bool,
+    diag_ctx: DiagCtx,
 ) {
+    let mut check = diag_ctx.start_check("extra_checks");
+
     if let Err(e) = check_impl(
         root_path,
         outdir,
@@ -68,7 +71,7 @@ pub fn check(
         extra_checks,
         pos_args,
     ) {
-        tidy_error!(bad, "{e}");
+        check.error(e);
     }
 }
 

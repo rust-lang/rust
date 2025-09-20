@@ -9,6 +9,8 @@ use build_helper::ci::CiEnv;
 use cargo_metadata::semver::Version;
 use cargo_metadata::{Metadata, Package, PackageId};
 
+use crate::diagnostics::{DiagCtx, RunningCheck};
+
 #[path = "../../../bootstrap/src/utils/proc_macro_deps.rs"]
 mod proc_macro_deps;
 
@@ -661,10 +663,12 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
 ///
 /// `root` is path to the directory with the root `Cargo.toml` (for the workspace). `cargo` is path
 /// to the cargo executable.
-pub fn check(root: &Path, cargo: &Path, bless: bool, bad: &mut bool) {
+pub fn check(root: &Path, cargo: &Path, bless: bool, diag_ctx: DiagCtx) {
+    let mut check = diag_ctx.start_check("deps");
+
     let mut checked_runtime_licenses = false;
 
-    check_proc_macro_dep_list(root, cargo, bless, bad);
+    check_proc_macro_dep_list(root, cargo, bless, &mut check);
 
     for &WorkspaceInfo { path, exceptions, crates_and_deps, submodules } in WORKSPACES {
         if has_missing_submodule(root, submodules) {
@@ -672,7 +676,7 @@ pub fn check(root: &Path, cargo: &Path, bless: bool, bad: &mut bool) {
         }
 
         if !root.join(path).join("Cargo.lock").exists() {
-            tidy_error!(bad, "the `{path}` workspace doesn't have a Cargo.lock");
+            check.error(format!("the `{path}` workspace doesn't have a Cargo.lock"));
             continue;
         }
 
@@ -683,16 +687,23 @@ pub fn check(root: &Path, cargo: &Path, bless: bool, bad: &mut bool) {
             .other_options(vec!["--locked".to_owned()]);
         let metadata = t!(cmd.exec());
 
-        check_license_exceptions(&metadata, path, exceptions, bad);
+        check_license_exceptions(&metadata, path, exceptions, &mut check);
         if let Some((crates, permitted_deps, location)) = crates_and_deps {
             let descr = crates.get(0).unwrap_or(&path);
-            check_permitted_dependencies(&metadata, descr, permitted_deps, crates, location, bad);
+            check_permitted_dependencies(
+                &metadata,
+                descr,
+                permitted_deps,
+                crates,
+                location,
+                &mut check,
+            );
         }
 
         if path == "library" {
-            check_runtime_license_exceptions(&metadata, bad);
-            check_runtime_no_duplicate_dependencies(&metadata, bad);
-            check_runtime_no_proc_macros(&metadata, bad);
+            check_runtime_license_exceptions(&metadata, &mut check);
+            check_runtime_no_duplicate_dependencies(&metadata, &mut check);
+            check_runtime_no_proc_macros(&metadata, &mut check);
             checked_runtime_licenses = true;
         }
     }
@@ -703,7 +714,7 @@ pub fn check(root: &Path, cargo: &Path, bless: bool, bad: &mut bool) {
 }
 
 /// Ensure the list of proc-macro crate transitive dependencies is up to date
-fn check_proc_macro_dep_list(root: &Path, cargo: &Path, bless: bool, bad: &mut bool) {
+fn check_proc_macro_dep_list(root: &Path, cargo: &Path, bless: bool, check: &mut RunningCheck) {
     let mut cmd = cargo_metadata::MetadataCommand::new();
     cmd.cargo_path(cargo)
         .manifest_path(root.join("Cargo.toml"))
@@ -750,22 +761,22 @@ pub static CRATES: &[&str] = &[
         )
         .unwrap();
     } else {
-        let old_bad = *bad;
+        let mut error_found = false;
 
         for missing in proc_macro_deps.difference(&expected) {
-            tidy_error!(
-                bad,
+            error_found = true;
+            check.error(format!(
                 "proc-macro crate dependency `{missing}` is not registered in `src/bootstrap/src/utils/proc_macro_deps.rs`",
-            );
+            ));
         }
         for extra in expected.difference(&proc_macro_deps) {
-            tidy_error!(
-                bad,
+            error_found = true;
+            check.error(format!(
                 "`{extra}` is registered in `src/bootstrap/src/utils/proc_macro_deps.rs`, but is not a proc-macro crate dependency",
-            );
+            ));
         }
-        if *bad != old_bad {
-            eprintln!("Run `./x.py test tidy --bless` to regenerate the list");
+        if error_found {
+            check.message("Run `./x.py test tidy --bless` to regenerate the list");
         }
     }
 }
@@ -787,7 +798,7 @@ pub fn has_missing_submodule(root: &Path, submodules: &[&str]) -> bool {
 ///
 /// Unlike for tools we don't allow exceptions to the `LICENSES` list for the runtime with the sole
 /// exception of `fortanix-sgx-abi` which is only used on x86_64-fortanix-unknown-sgx.
-fn check_runtime_license_exceptions(metadata: &Metadata, bad: &mut bool) {
+fn check_runtime_license_exceptions(metadata: &Metadata, check: &mut RunningCheck) {
     for pkg in &metadata.packages {
         if pkg.source.is_none() {
             // No need to check local packages.
@@ -796,7 +807,8 @@ fn check_runtime_license_exceptions(metadata: &Metadata, bad: &mut bool) {
         let license = match &pkg.license {
             Some(license) => license,
             None => {
-                tidy_error!(bad, "dependency `{}` does not define a license expression", pkg.id);
+                check
+                    .error(format!("dependency `{}` does not define a license expression", pkg.id));
                 continue;
             }
         };
@@ -809,7 +821,7 @@ fn check_runtime_license_exceptions(metadata: &Metadata, bad: &mut bool) {
                 continue;
             }
 
-            tidy_error!(bad, "invalid license `{}` in `{}`", license, pkg.id);
+            check.error(format!("invalid license `{}` in `{}`", license, pkg.id));
         }
     }
 }
@@ -821,37 +833,32 @@ fn check_license_exceptions(
     metadata: &Metadata,
     workspace: &str,
     exceptions: &[(&str, &str)],
-    bad: &mut bool,
+    check: &mut RunningCheck,
 ) {
     // Validate the EXCEPTIONS list hasn't changed.
     for (name, license) in exceptions {
         // Check that the package actually exists.
         if !metadata.packages.iter().any(|p| *p.name == *name) {
-            tidy_error!(
-                bad,
-                "could not find exception package `{}` in workspace `{workspace}`\n\
+            check.error(format!(
+                "could not find exception package `{name}` in workspace `{workspace}`\n\
                 Remove from EXCEPTIONS list if it is no longer used.",
-                name
-            );
+            ));
         }
         // Check that the license hasn't changed.
         for pkg in metadata.packages.iter().filter(|p| *p.name == *name) {
             match &pkg.license {
                 None => {
-                    tidy_error!(
-                        bad,
+                    check.error(format!(
                         "dependency exception `{}` in workspace `{workspace}` does not declare a license expression",
                         pkg.id
-                    );
+                    ));
                 }
                 Some(pkg_license) => {
                     if pkg_license.as_str() != *license {
-                        println!(
-                            "dependency exception `{name}` license in workspace `{workspace}` has changed"
-                        );
-                        println!("    previously `{license}` now `{pkg_license}`");
-                        println!("    update EXCEPTIONS for the new license");
-                        *bad = true;
+                        check.error(format!(r#"dependency exception `{name}` license in workspace `{workspace}` has changed
+    previously `{license}` now `{pkg_license}`
+    update EXCEPTIONS for the new license
+"#));
                     }
                 }
             }
@@ -872,26 +879,23 @@ fn check_license_exceptions(
         let license = match &pkg.license {
             Some(license) => license,
             None => {
-                tidy_error!(
-                    bad,
+                check.error(format!(
                     "dependency `{}` in workspace `{workspace}` does not define a license expression",
                     pkg.id
-                );
+                ));
                 continue;
             }
         };
         if !LICENSES.contains(&license.as_str()) {
-            tidy_error!(
-                bad,
+            check.error(format!(
                 "invalid license `{}` for package `{}` in workspace `{workspace}`",
-                license,
-                pkg.id
-            );
+                license, pkg.id
+            ));
         }
     }
 }
 
-fn check_runtime_no_duplicate_dependencies(metadata: &Metadata, bad: &mut bool) {
+fn check_runtime_no_duplicate_dependencies(metadata: &Metadata, check: &mut RunningCheck) {
     let mut seen_pkgs = HashSet::new();
     for pkg in &metadata.packages {
         if pkg.source.is_none() {
@@ -902,25 +906,23 @@ fn check_runtime_no_duplicate_dependencies(metadata: &Metadata, bad: &mut bool) 
         // depends on two version of (one for the `wasm32-wasip1` target and
         // another for the `wasm32-wasip2` target).
         if pkg.name.to_string() != "wasi" && !seen_pkgs.insert(&*pkg.name) {
-            tidy_error!(
-                bad,
+            check.error(format!(
                 "duplicate package `{}` is not allowed for the standard library",
                 pkg.name
-            );
+            ));
         }
     }
 }
 
-fn check_runtime_no_proc_macros(metadata: &Metadata, bad: &mut bool) {
+fn check_runtime_no_proc_macros(metadata: &Metadata, check: &mut RunningCheck) {
     for pkg in &metadata.packages {
         if pkg.targets.iter().any(|target| target.is_proc_macro()) {
-            tidy_error!(
-                bad,
+            check.error(format!(
                 "proc macro `{}` is not allowed as standard library dependency.\n\
                 Using proc macros in the standard library would break cross-compilation \
                 as proc-macros don't get shipped for the host tuple.",
                 pkg.name
-            );
+            ));
         }
     }
 }
@@ -935,7 +937,7 @@ fn check_permitted_dependencies(
     permitted_dependencies: &[&'static str],
     restricted_dependency_crates: &[&'static str],
     permitted_location: ListLocation,
-    bad: &mut bool,
+    check: &mut RunningCheck,
 ) {
     let mut has_permitted_dep_error = false;
     let mut deps = HashSet::new();
@@ -957,11 +959,10 @@ fn check_permitted_dependencies(
             }
         }
         if !deps.iter().any(|dep_id| compare(pkg_from_id(metadata, dep_id), permitted)) {
-            tidy_error!(
-                bad,
+            check.error(format!(
                 "could not find allowed package `{permitted}`\n\
                 Remove from PERMITTED_DEPENDENCIES list if it is no longer used.",
-            );
+            ));
             has_permitted_dep_error = true;
         }
     }
@@ -988,7 +989,7 @@ fn check_permitted_dependencies(
                 false
             };
             if !is_eq {
-                tidy_error!(bad, "Dependency for {descr} not explicitly permitted: {}", dep.id);
+                check.error(format!("Dependency for {descr} not explicitly permitted: {}", dep.id));
                 has_permitted_dep_error = true;
             }
         }

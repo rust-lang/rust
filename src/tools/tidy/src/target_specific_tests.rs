@@ -4,6 +4,7 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
+use crate::diagnostics::{CheckId, DiagCtx};
 use crate::iter_header::{HeaderLine, iter_header};
 use crate::walk::filter_not_rust;
 
@@ -16,7 +17,9 @@ struct RevisionInfo<'a> {
     llvm_components: Option<Vec<&'a str>>,
 }
 
-pub fn check(tests_path: &Path, bad: &mut bool) {
+pub fn check(tests_path: &Path, diag_ctx: DiagCtx) {
+    let mut check = diag_ctx.start_check(CheckId::new("target-specific-tests").path(tests_path));
+
     crate::walk::walk(tests_path, |path, _is_dir| filter_not_rust(path), &mut |entry, content| {
         if content.contains("// ignore-tidy-target-specific-tests") {
             return;
@@ -44,8 +47,7 @@ pub fn check(tests_path: &Path, bad: &mut bool) {
                 } else if let Some((arch, _)) = v.split_once("-") {
                     info.target_arch.replace(Some(arch));
                 } else {
-                    eprintln!("{file}: seems to have a malformed --target value");
-                    *bad = true;
+                    check.error(format!("{file}: seems to have a malformed --target value"));
                 }
             }
         });
@@ -62,25 +64,22 @@ pub fn check(tests_path: &Path, bad: &mut bool) {
                 (Some(target_arch), None) => {
                     let llvm_component =
                         target_arch.map_or_else(|| "<arch>".to_string(), arch_to_llvm_component);
-                    eprintln!(
+                    check.error(format!(
                         "{file}: revision {rev} should specify `{LLVM_COMPONENTS_HEADER} {llvm_component}` as it has `--target` set"
-                    );
-                    *bad = true;
+                    ));
                 }
                 (None, Some(_)) => {
-                    eprintln!(
+                    check.error(format!(
                         "{file}: revision {rev} should not specify `{LLVM_COMPONENTS_HEADER}` as it doesn't need `--target`"
-                    );
-                    *bad = true;
+                    ));
                 }
                 (Some(target_arch), Some(llvm_components)) => {
                     if let Some(target_arch) = target_arch {
                         let llvm_component = arch_to_llvm_component(target_arch);
                         if !llvm_components.contains(&llvm_component.as_str()) {
-                            eprintln!(
+                            check.error(format!(
                                 "{file}: revision {rev} should specify `{LLVM_COMPONENTS_HEADER} {llvm_component}` as it has `--target` set"
-                            );
-                            *bad = true;
+                            ));
                         }
                     }
                 }

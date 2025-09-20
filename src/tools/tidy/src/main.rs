@@ -8,10 +8,10 @@ use std::collections::VecDeque;
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::{self, ScopedJoinHandle, scope};
 use std::{env, process};
 
+use tidy::diagnostics::{COLOR_ERROR, COLOR_SUCCESS, DiagCtx, output_message};
 use tidy::*;
 
 fn main() {
@@ -50,9 +50,8 @@ fn main() {
     let extra_checks =
         cfg_args.iter().find(|s| s.starts_with("--extra-checks=")).map(String::as_str);
 
-    let mut bad = false;
-    let ci_info = CiInfo::new(&mut bad);
-    let bad = std::sync::Arc::new(AtomicBool::new(bad));
+    let diag_ctx = DiagCtx::new(&root_path, verbose);
+    let ci_info = CiInfo::new(diag_ctx.clone());
 
     let drain_handles = |handles: &mut VecDeque<ScopedJoinHandle<'_, ()>>| {
         // poll all threads for completion before awaiting the oldest one
@@ -87,12 +86,9 @@ fn main() {
             (@ $p:ident, name=$name:expr $(, $args:expr)* ) => {
                 drain_handles(&mut handles);
 
+                let diag_ctx = diag_ctx.clone();
                 let handle = thread::Builder::new().name($name).spawn_scoped(s, || {
-                    let mut flag = false;
-                    $p::check($($args, )* &mut flag);
-                    if (flag) {
-                        bad.store(true, Ordering::Relaxed);
-                    }
+                    $p::check($($args, )* diag_ctx);
                 }).unwrap();
                 handles.push_back(handle);
             }
@@ -118,7 +114,7 @@ fn main() {
         check!(unknown_revision, &tests_path);
 
         // Checks that only make sense for the compiler.
-        check!(error_codes, &root_path, &[&compiler_path, &librustdoc_path], verbose, &ci_info);
+        check!(error_codes, &root_path, &[&compiler_path, &librustdoc_path], &ci_info);
         check!(fluent_alphabetical, &compiler_path, bless);
         check!(fluent_period, &compiler_path);
         check!(fluent_lowercase, &compiler_path);
@@ -155,25 +151,12 @@ fn main() {
         check!(x_version, &root_path, &cargo);
 
         check!(triagebot, &root_path);
-
         check!(filenames, &root_path);
 
         let collected = {
             drain_handles(&mut handles);
 
-            let mut flag = false;
-            let r = features::check(
-                &src_path,
-                &tests_path,
-                &compiler_path,
-                &library_path,
-                &mut flag,
-                verbose,
-            );
-            if flag {
-                bad.store(true, Ordering::Relaxed);
-            }
-            r
+            features::check(&src_path, &tests_path, &compiler_path, &library_path, diag_ctx.clone())
         };
         check!(unstable_book, &src_path, collected);
 
@@ -192,8 +175,22 @@ fn main() {
         );
     });
 
-    if bad.load(Ordering::Relaxed) {
-        eprintln!("some tidy checks failed");
+    let failed_checks = diag_ctx.into_failed_checks();
+    if !failed_checks.is_empty() {
+        let mut failed: Vec<String> =
+            failed_checks.into_iter().map(|c| c.id().to_string()).collect();
+        failed.sort();
+        output_message(
+            &format!(
+                "The following check{} failed: {}",
+                if failed.len() > 1 { "s" } else { "" },
+                failed.join(", ")
+            ),
+            None,
+            Some(COLOR_ERROR),
+        );
         process::exit(1);
+    } else {
+        output_message("All tidy checks succeeded", None, Some(COLOR_SUCCESS));
     }
 }
