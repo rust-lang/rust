@@ -216,6 +216,7 @@ fn build_adrop_for_coroutine_shim<'tcx>(
     body.source.instance = instance;
     body.phase = MirPhase::Runtime(RuntimePhase::Initial);
     body.var_debug_info.clear();
+    body.mentioned_items = None;
     let pin_adt_ref = tcx.adt_def(tcx.require_lang_item(LangItem::Pin, span));
     let args = tcx.mk_args(&[proxy_ref.into()]);
     let pin_proxy_ref = Ty::new_adt(tcx, pin_adt_ref, args);
