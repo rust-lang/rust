@@ -85,7 +85,7 @@ impl AllocFnFactory<'_, '_> {
             body,
             define_opaque: None,
         }));
-        let item = self.cx.item(self.span, self.attrs(), kind);
+        let item = self.cx.item(self.span, self.attrs(method), kind);
         self.cx.stmt_item(self.ty_span, item)
     }
 
@@ -100,8 +100,18 @@ impl AllocFnFactory<'_, '_> {
         self.cx.expr_call(self.ty_span, method, args)
     }
 
-    fn attrs(&self) -> AttrVec {
-        thin_vec![self.cx.attr_word(sym::rustc_std_internal_symbol, self.span)]
+    fn attrs(&self, method: &AllocatorMethod) -> AttrVec {
+        let alloc_attr = match method.name {
+            sym::alloc => sym::rustc_allocator,
+            sym::dealloc => sym::rustc_deallocator,
+            sym::realloc => sym::rustc_reallocator,
+            sym::alloc_zeroed => sym::rustc_allocator_zeroed,
+            _ => unreachable!("Unknown allocator method!"),
+        };
+        thin_vec![
+            self.cx.attr_word(sym::rustc_std_internal_symbol, self.span),
+            self.cx.attr_word(alloc_attr, self.span)
+        ]
     }
 
     fn arg_ty(&self, input: &AllocatorMethodInput, args: &mut ThinVec<Param>) -> Box<Expr> {
