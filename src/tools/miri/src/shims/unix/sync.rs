@@ -834,8 +834,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         cond_op: &OpTy<'tcx>,
         mutex_op: &OpTy<'tcx>,
-        abstime_op: &OpTy<'tcx>,
+        timeout_op: &OpTy<'tcx>,
         dest: &MPlaceTy<'tcx>,
+        macos_relative_np: bool,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
@@ -844,7 +845,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Extract the timeout.
         let duration = match this
-            .read_timespec(&this.deref_pointer_as(abstime_op, this.libc_ty_layout("timespec"))?)?
+            .read_timespec(&this.deref_pointer_as(timeout_op, this.libc_ty_layout("timespec"))?)?
         {
             Some(duration) => duration,
             None => {
@@ -853,14 +854,23 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 return interp_ok(());
             }
         };
-        if data.clock == TimeoutClock::RealTime {
-            this.check_no_isolation("`pthread_cond_timedwait` with `CLOCK_REALTIME`")?;
-        }
+
+        let (clock, anchor) = if macos_relative_np {
+            // `pthread_cond_timedwait_relative_np` always measures time against the
+            // monotonic clock, regardless of the condvar clock.
+            (TimeoutClock::Monotonic, TimeoutAnchor::Relative)
+        } else {
+            if data.clock == TimeoutClock::RealTime {
+                this.check_no_isolation("`pthread_cond_timedwait` with `CLOCK_REALTIME`")?;
+            }
+
+            (data.clock, TimeoutAnchor::Absolute)
+        };
 
         this.condvar_wait(
             data.condvar_ref,
             mutex_ref,
-            Some((data.clock, TimeoutAnchor::Absolute, duration)),
+            Some((clock, anchor, duration)),
             Scalar::from_i32(0),
             this.eval_libc("ETIMEDOUT"), // retval_timeout
             dest.clone(),
