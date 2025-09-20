@@ -6,6 +6,7 @@
 //@ ignore-arm
 //@ ignore-aarch64
 //@ needs-asm-support
+//@ ignore-backends: gcc
 
 #[cfg(target_arch = "x86_64")]
 pub extern "sysv64" fn all_the_registers(
