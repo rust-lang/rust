@@ -55,8 +55,9 @@ use itertools::Itertools as _;
 use rustc_const_eval::const_eval::DummyMachine;
 use rustc_const_eval::interpret::{ImmTy, Immediate, InterpCx, OpTy, Projectable};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
+use rustc_data_structures::work_queue::WorkQueue;
 use rustc_index::IndexVec;
-use rustc_index::bit_set::{DenseBitSet, GrowableBitSet};
+use rustc_index::bit_set::GrowableBitSet;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::visit::Visitor;
@@ -125,11 +126,17 @@ fn compute_entry_states<'tcx>(
         ecx: InterpCx::new(tcx, DUMMY_SP, typing_env, DummyMachine),
         body,
         map: Map::new(tcx, body, PlaceCollectionMode::OnDemand),
-        maybe_loop_headers: maybe_loop_headers(body),
         entry_states: IndexVec::from_elem(ConditionSet::default(), &body.basic_blocks),
     };
 
-    for (bb, bbdata) in traversal::postorder(body) {
+    let mut dirty_queue: WorkQueue<BasicBlock> = WorkQueue::with_none(body.basic_blocks.len());
+    for (bb, _) in traversal::postorder(body) {
+        dirty_queue.insert(bb);
+    }
+
+    let predecessors = body.basic_blocks.predecessors();
+    while let Some(bb) = dirty_queue.pop() {
+        let bbdata = &body.basic_blocks[bb];
         if bbdata.is_cleanup {
             continue;
         }
@@ -146,6 +153,7 @@ fn compute_entry_states<'tcx>(
             }
 
             finder.process_statement(stmt, &mut state);
+            trace!(?state);
 
             // When a statement mutates a place, assignments to that place that happen
             // above the mutation cannot fulfill a condition.
@@ -153,10 +161,33 @@ fn compute_entry_states<'tcx>(
             //   _1 = 6
             if let Some((lhs, tail)) = finder.mutated_statement(stmt) {
                 finder.flood_state(lhs, tail, &mut state);
+                trace!(?state);
             }
         }
 
         trace!("entry_states[{bb:?}] = {state:?}");
+
+        // Assert the fixpoint iteration is monotonic. All conditions in the "old" set must be in
+        // the new one, *in the same order*. But we could have some new conditions interspersed, so
+        // we cannot use `starts_with`.
+        if cfg!(debug_assertions) {
+            let mut new = state.active.iter();
+            for (_, c) in finder.entry_states[bb].active.iter() {
+                let pos = new.find(|(_, c2)| c2 == c);
+                debug_assert!(
+                    pos.is_some(),
+                    "condition {c:?} vanished from state={:?} old={:?}",
+                    state.active,
+                    finder.entry_states[bb].active,
+                );
+            }
+        }
+
+        if state.active.len() > finder.entry_states[bb].active.len() {
+            for &pred in predecessors[bb].iter() {
+                dirty_queue.insert(pred);
+            }
+        }
         finder.entry_states[bb] = state;
     }
 
@@ -169,7 +200,6 @@ struct TOFinder<'a, 'tcx> {
     ecx: InterpCx<'tcx, DummyMachine>,
     body: &'a Body<'tcx>,
     map: Map<'tcx>,
-    maybe_loop_headers: DenseBitSet<BasicBlock>,
     /// This stores the state of each visited block on entry,
     /// and the current state of the block being visited.
     // Invariant: for each `bb`, each condition in `entry_states[bb]` has a `chain` that
@@ -309,9 +339,6 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
     fn populate_from_outgoing_edges(&mut self, bb: BasicBlock) -> ConditionSet {
         let bbdata = &self.body[bb];
 
-        // This should be the first time we populate `entry_states[bb]`.
-        debug_assert!(self.entry_states[bb].is_empty());
-
         let state_len =
             bbdata.terminator().successors().map(|succ| self.entry_states[succ].active.len()).sum();
 
@@ -324,12 +351,7 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
         // A given block may have several times the same successor.
         let mut seen = FxHashSet::default();
         for succ in bbdata.terminator().successors() {
-            if !seen.insert(succ) {
-                continue;
-            }
-
-            // Do not thread through loop headers.
-            if self.maybe_loop_headers.contains(succ) {
+            if succ == bb || !seen.insert(succ) {
                 continue;
             }
 
@@ -896,9 +918,13 @@ fn remove_costly_conditions<'tcx>(
         entry_states.len(),
     );
 
-    let reverse_postorder = basic_blocks.reverse_postorder();
+    let mut dirty_queue: WorkQueue<BasicBlock> = WorkQueue::with_none(body.basic_blocks.len());
+    for (bb, _) in traversal::postorder(body) {
+        dirty_queue.insert(bb);
+    }
 
-    for &bb in reverse_postorder.iter().rev() {
+    let predecessors = body.basic_blocks.predecessors();
+    while let Some(bb) = dirty_queue.pop() {
         let state = &entry_states[bb];
         trace!(?bb, ?state);
 
@@ -930,12 +956,17 @@ fn remove_costly_conditions<'tcx>(
         }
 
         trace!("condition_cost[{bb:?}] = {:?}", current_costs);
+        if current_costs != condition_cost[bb] {
+            for &pred in predecessors[bb].iter() {
+                dirty_queue.insert(pred);
+            }
+        }
         condition_cost[bb] = current_costs;
     }
 
     trace!(?condition_cost);
 
-    for &bb in reverse_postorder {
+    for bb in entry_states.indices() {
         for (index, targets) in entry_states[bb].targets.iter_enumerated_mut() {
             if condition_cost[bb][index] >= MAX_COST {
                 trace!(?bb, ?index, ?targets, c = ?condition_cost[bb][index], "remove");
@@ -1110,30 +1141,4 @@ impl<'a, 'tcx> OpportunitySet<'a, 'tcx> {
 
         Some(new_target)
     }
-}
-
-/// Compute the set of loop headers in the given body. A loop header is usually defined as a block
-/// which dominates one of its predecessors. This definition is only correct for reducible CFGs.
-/// However, computing dominators is expensive, so we approximate according to the post-order
-/// traversal order. A loop header for us is a block which is visited after its predecessor in
-/// post-order. This is ok as we mostly need a heuristic.
-fn maybe_loop_headers(body: &Body<'_>) -> DenseBitSet<BasicBlock> {
-    let mut maybe_loop_headers = DenseBitSet::new_empty(body.basic_blocks.len());
-    let mut visited = DenseBitSet::new_empty(body.basic_blocks.len());
-    for (bb, bbdata) in traversal::postorder(body) {
-        // Post-order means we visit successors before the block for acyclic CFGs.
-        // If the successor is not visited yet, consider it a loop header.
-        for succ in bbdata.terminator().successors() {
-            if !visited.contains(succ) {
-                maybe_loop_headers.insert(succ);
-            }
-        }
-
-        // Only mark `bb` as visited after we checked the successors, in case we have a self-loop.
-        //     bb1: goto -> bb1;
-        let _new = visited.insert(bb);
-        debug_assert!(_new);
-    }
-
-    maybe_loop_headers
 }
