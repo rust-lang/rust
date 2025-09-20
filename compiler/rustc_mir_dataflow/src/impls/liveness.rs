@@ -1,7 +1,9 @@
 use rustc_index::bit_set::DenseBitSet;
-use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
+use rustc_middle::mir::visit::{
+    MutatingUseContext, NonMutatingUseContext, PlaceContext, VisitPlacesWith, Visitor,
+};
 use rustc_middle::mir::{
-    self, CallReturnPlaces, Local, Location, Place, StatementKind, TerminatorEdges,
+    self, CallReturnPlaces, Local, Location, Place, StatementKind, TerminatorEdges, TerminatorKind,
 };
 
 use crate::{Analysis, Backward, GenKill};
@@ -23,9 +25,13 @@ use crate::{Analysis, Backward, GenKill};
 /// [`MaybeBorrowedLocals`]: super::MaybeBorrowedLocals
 /// [flow-test]: https://github.com/rust-lang/rust/blob/a08c47310c7d49cbdc5d7afb38408ba519967ecd/src/test/ui/mir-dataflow/liveness-ptr.rs
 /// [liveness]: https://en.wikipedia.org/wiki/Live_variable_analysis
-pub struct MaybeLiveLocals;
+pub struct MaybeLiveLocals<F>(pub F);
 
-impl<'tcx> Analysis<'tcx> for MaybeLiveLocals {
+impl<'tcx, F, I> Analysis<'tcx> for MaybeLiveLocals<F>
+where
+    F: Fn(Location) -> I,
+    I: Iterator<Item = Local>,
+{
     type Domain = DenseBitSet<Local>;
     type Direction = Backward;
 
@@ -40,6 +46,26 @@ impl<'tcx> Analysis<'tcx> for MaybeLiveLocals {
         // No variables are live until we observe a use
     }
 
+    fn apply_early_statement_effect(
+        &mut self,
+        state: &mut Self::Domain,
+        statement: &mir::Statement<'tcx>,
+        location: Location,
+    ) {
+        let mut accesses_indirect = false;
+        VisitPlacesWith(|place: Place<'tcx>, _: PlaceContext| {
+            accesses_indirect |= place.is_indirect();
+        })
+        .visit_statement(statement, location);
+        if accesses_indirect {
+            // We do not track what happens to the addresses of borrowed locals. This means
+            // that this indirect read/write may be to any borrowed local.
+            for local in (self.0)(location) {
+                state.gen_(local);
+            }
+        }
+    }
+
     fn apply_primary_statement_effect(
         &mut self,
         state: &mut Self::Domain,
@@ -47,6 +73,44 @@ impl<'tcx> Analysis<'tcx> for MaybeLiveLocals {
         location: Location,
     ) {
         TransferFunction(state).visit_statement(statement, location);
+    }
+
+    fn apply_early_terminator_effect<'mir>(
+        &mut self,
+        state: &mut Self::Domain,
+        terminator: &'mir mir::Terminator<'tcx>,
+        location: Location,
+    ) {
+        let may_access_borrowed_locals = match terminator.kind {
+            TerminatorKind::CoroutineDrop
+            | TerminatorKind::FalseEdge { .. }
+            | TerminatorKind::FalseUnwind { .. }
+            | TerminatorKind::Goto { .. }
+            | TerminatorKind::Return
+            | TerminatorKind::Unreachable
+            | TerminatorKind::UnwindResume
+            | TerminatorKind::UnwindTerminate(_) => false,
+
+            TerminatorKind::Assert { cond: ref operand, .. }
+            | TerminatorKind::SwitchInt { discr: ref operand, .. } => {
+                operand.place().is_some_and(|place| place.is_indirect())
+            }
+
+            // Those terminators may call arbitrary code.
+            TerminatorKind::Call { .. }
+            | TerminatorKind::Drop { .. }
+            | TerminatorKind::InlineAsm { .. }
+            | TerminatorKind::TailCall { .. }
+            | TerminatorKind::Yield { .. } => true,
+        };
+        if may_access_borrowed_locals {
+            // We do not track what happens to the addresses of borrowed locals. This means that this
+            // terminator may know the address of any borrowed local. And it may do anything with it
+            // including reading and writing to it.
+            for local in (self.0)(location) {
+                state.gen_(local);
+            }
+        }
     }
 
     fn apply_primary_terminator_effect<'mir>(
@@ -155,6 +219,9 @@ impl DefUse {
         match context {
             PlaceContext::NonUse(_) => DefUse::NonUse,
 
+            // Treat derefs as a use of the base local. `*p = 4` is not a def of `p` but a use.
+            _ if place.is_indirect() => DefUse::Use,
+
             PlaceContext::MutatingUse(
                 MutatingUseContext::Call
                 | MutatingUseContext::Yield
@@ -162,10 +229,7 @@ impl DefUse {
                 | MutatingUseContext::Store
                 | MutatingUseContext::Deinit,
             ) => {
-                // Treat derefs as a use of the base local. `*p = 4` is not a def of `p` but a use.
-                if place.is_indirect() {
-                    DefUse::Use
-                } else if place.projection.is_empty() {
+                if place.projection.is_empty() {
                     DefUse::Def
                 } else {
                     DefUse::PartialWrite
@@ -174,9 +238,7 @@ impl DefUse {
 
             // Setting the discriminant is not a use because it does no reading, but it is also not
             // a def because it does not overwrite the whole place
-            PlaceContext::MutatingUse(MutatingUseContext::SetDiscriminant) => {
-                if place.is_indirect() { DefUse::Use } else { DefUse::PartialWrite }
-            }
+            PlaceContext::MutatingUse(MutatingUseContext::SetDiscriminant) => DefUse::PartialWrite,
 
             // All other contexts are uses...
             PlaceContext::MutatingUse(

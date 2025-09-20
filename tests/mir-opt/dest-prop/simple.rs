@@ -5,11 +5,11 @@
 fn nrvo(init: fn(&mut [u8; 1024])) -> [u8; 1024] {
     // CHECK-LABEL: fn nrvo(
     // CHECK: debug init => [[init:_.*]];
-    // CHECK: debug buf => [[buf:_.*]];
-    // CHECK: [[buf]] = [const 0_u8; 1024];
+    // CHECK: debug buf => _0;
+    // CHECK: _0 = [const 0_u8; 1024];
     // CHECK-NOT: {{_.*}} = copy [[init]];
+    // CHECK: {{_.*}} = &mut _0;
     // CHECK: move [[init]](move {{_.*}})
-    // CHECK: {{_.*}} = copy [[buf]]
     let mut buf = [0; 1024];
     init(&mut buf);
     buf
