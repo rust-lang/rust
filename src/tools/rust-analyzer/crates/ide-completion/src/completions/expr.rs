@@ -59,6 +59,7 @@ pub(crate) fn complete_expr_path(
         in_block_expr,
         in_breakable,
         after_if_expr,
+        before_else_kw,
         in_condition,
         incomplete_let,
         after_incomplete_let,
@@ -386,7 +387,7 @@ pub(crate) fn complete_expr_path(
                         add_keyword("let", "let $1 = $0;");
                     }
 
-                    if after_if_expr || after_incomplete_let {
+                    if !before_else_kw && (after_if_expr || after_incomplete_let) {
                         add_keyword("else", "else {\n    $0\n}");
                     }
 
