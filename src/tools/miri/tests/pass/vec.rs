@@ -169,6 +169,8 @@ fn miri_issue_2759() {
     input.replace_range(0..0, "0");
 }
 
+/// This was skirting the edge of UB, let's make sure it remains on the sound side.
+/// Context: <https://github.com/rust-lang/rust/pull/141032>.
 fn extract_if() {
     let mut v = vec![Box::new(0u64), Box::new(1u64)];
     for item in v.extract_if(.., |x| **x == 0) {
