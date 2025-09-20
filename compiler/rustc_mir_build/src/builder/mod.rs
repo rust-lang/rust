@@ -840,9 +840,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let Some(closure_arg) = self.local_decls.get(ty::CAPTURE_STRUCT_LOCAL) else { return };
 
         let mut closure_ty = closure_arg.ty;
-        let mut closure_env_projs = vec![];
+        let mut closure_env_projs: &[_] = &[];
         if let ty::Ref(_, ty, _) = closure_ty.kind() {
-            closure_env_projs.push(ProjectionElem::Deref);
+            closure_env_projs = &[ProjectionElem::Deref];
             closure_ty = *ty;
         }
 
@@ -881,7 +881,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 let mutability = captured_place.mutability;
 
-                let mut projs = closure_env_projs.clone();
+                let mut projs = closure_env_projs.to_vec();
                 projs.push(ProjectionElem::Field(FieldIdx::new(i), ty));
                 match capture {
                     ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse => {}
@@ -897,7 +897,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.var_debug_info.push(VarDebugInfo {
                     name,
                     source_info: SourceInfo::outermost(captured_place.var_ident.span),
-                    value: VarDebugInfoContents::Place(use_place),
+                    value: VarDebugInfoContents::Place(CompoundPlace::from_place(use_place, tcx)),
                     composite: None,
                     argument_index: None,
                 });

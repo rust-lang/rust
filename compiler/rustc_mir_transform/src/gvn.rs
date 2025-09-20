@@ -1780,7 +1780,7 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
 
     fn visit_place(&mut self, place: &mut Place<'tcx>, context: PlaceContext, location: Location) {
         self.simplify_place_projection(place, location);
-        if context.is_mutating_use() && place.is_indirect() {
+        if context.is_mutating_use() && place.is_indirect_first_projection() {
             // Non-local mutation maybe invalidate deref.
             self.invalidate_derefs();
         }

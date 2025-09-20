@@ -326,6 +326,71 @@ impl<'tcx> MutVisitor<'tcx> for MakeByMoveBody<'tcx> {
         self.super_place(place, context, location);
     }
 
+    fn visit_compound_place(
+        &mut self,
+        place: &mut mir::CompoundPlace<'tcx>,
+        context: mir::visit::PlaceContext,
+        location: mir::Location,
+    ) {
+        // See comments above in visit_place
+        if place.local == ty::CAPTURE_STRUCT_LOCAL
+            && let Some((&mir::ProjectionElem::Field(idx, _), direct_projection)) =
+                place.direct_projection.split_first()
+            && let Some(&(remapped_idx, remapped_ty, peel_deref, ref bridging_projections)) =
+                self.field_remapping.get(&idx)
+        {
+            // equivalent to `final_projections` above
+            let (next, tail) = if peel_deref {
+                assert!(direct_projection.is_empty());
+                let Some((next_projection, rest)) = place.projection_chain.split_first() else {
+                    bug!(
+                        "There should be at least a single deref for an upvar local initialization, found {direct_projection:#?}"
+                    );
+                };
+
+                let Some((mir::ProjectionElem::Deref, projection)) = next_projection.split_first()
+                else {
+                    bug!(
+                        "There should be at least a single deref for an upvar local initialization, found {next_projection:#?}"
+                    );
+                };
+
+                (projection, rest)
+            } else {
+                (direct_projection, place.projection_chain.as_slice())
+            };
+
+            // it might be good to use smallvec here
+            let mut new_projection_chain = vec![];
+            let mut last_projection = vec![mir::ProjectionElem::Field(remapped_idx, remapped_ty)];
+
+            for elem in bridging_projections {
+                match elem.kind {
+                    ProjectionKind::Deref => {
+                        new_projection_chain
+                            .push(self.tcx.mk_place_elems(last_projection.drain(..).as_slice()));
+                        last_projection.push(mir::ProjectionElem::Deref);
+                    }
+                    ProjectionKind::Field(idx, VariantIdx::ZERO) => {
+                        last_projection.push(mir::ProjectionElem::Field(idx, elem.ty));
+                    }
+                    _ => unreachable!("precise captures only through fields and derefs"),
+                }
+            }
+
+            last_projection.extend_from_slice(next);
+            new_projection_chain.push(self.tcx.mk_place_elems(&last_projection));
+            new_projection_chain.extend_from_slice(tail);
+
+            *place = mir::CompoundPlace {
+                local: place.local,
+                direct_projection: new_projection_chain[0],
+                projection_chain: self.tcx.mk_place_elem_chain(&new_projection_chain[1..]),
+            };
+        }
+        self.super_compound_place(place, context, location);
+    }
+
     fn visit_statement(&mut self, statement: &mut mir::Statement<'tcx>, location: mir::Location) {
         // Remove fake borrows of closure captures if that capture has been
         // replaced with a by-move version of that capture.
