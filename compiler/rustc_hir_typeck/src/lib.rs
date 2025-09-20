@@ -422,10 +422,10 @@ fn report_unexpected_variant_res(
             let mut suggestion = vec![];
             match tcx.parent_hir_node(expr.hir_id) {
                 hir::Node::Expr(hir::Expr {
-                    kind: hir::ExprKind::Call(..),
+                    kind: hir::ExprKind::Call(callee, ..),
                     span: call_span,
                     ..
-                }) => {
+                }) if callee.hir_id == expr.hir_id => {
                     suggestion.push((span.shrink_to_hi().with_hi(call_span.hi()), sugg));
                 }
                 hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Binary(..), hir_id, .. }) => {
