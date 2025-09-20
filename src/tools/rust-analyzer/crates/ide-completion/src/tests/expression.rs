@@ -271,8 +271,6 @@ fn complete_in_block() {
             sn macro_rules
             sn pd
             sn ppd
-            ex false
-            ex true
         "#]],
     )
 }
@@ -1668,7 +1666,7 @@ fn foo() { let x = if foo {} $0; let y = 92; }
 fn foo() { let x = if foo {} $0 else {}; }
 "#,
         expect![[r#"
-            fn foo    fn()
+            fn foo()  fn()
             bt u32     u32
             kw async
             kw const
@@ -1710,7 +1708,7 @@ fn foo() { let x = if foo {} $0 else {}; }
 fn foo() { let x = if foo {} $0 else if true {}; }
 "#,
         expect![[r#"
-            fn foo    fn()
+            fn foo()  fn()
             bt u32     u32
             kw async
             kw const
@@ -1795,7 +1793,7 @@ fn foo() { let x = if foo {} el$0 else if true {} else {}; }
 fn foo() { let x = if foo {} $0 else if true {} else {}; }
 "#,
         expect![[r#"
-            fn foo    fn()
+            fn foo()  fn()
             bt u32     u32
             kw async
             kw const

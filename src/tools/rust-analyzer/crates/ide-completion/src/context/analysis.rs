@@ -637,6 +637,9 @@ fn expected_type_and_name<'db>(
                             .or_else(|| it.rhs().and_then(|rhs| sema.type_of_expr(&rhs)))
                             .map(TypeInfo::original);
                         (ty, None)
+                    } else if let Some(ast::BinaryOp::LogicOp(_)) = it.op_kind() {
+                        let ty = sema.type_of_expr(&it.clone().into()).map(TypeInfo::original);
+                        (ty, None)
                     } else {
                         (None, None)
                     }
@@ -707,9 +710,13 @@ fn expected_type_and_name<'db>(
                     (ty, None)
                 },
                 ast::IfExpr(it) => {
-                    let ty = it.condition()
-                        .and_then(|e| sema.type_of_expr(&e))
-                        .map(TypeInfo::original);
+                    let ty = if let Some(body) = it.then_branch()
+                        && token.text_range().end() > body.syntax().text_range().start()
+                    {
+                        sema.type_of_expr(&body.into())
+                    } else {
+                        it.condition().and_then(|e| sema.type_of_expr(&e))
+                    }.map(TypeInfo::original);
                     (ty, None)
                 },
                 ast::IdentPat(it) => {

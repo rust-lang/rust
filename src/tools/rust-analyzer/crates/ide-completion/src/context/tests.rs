@@ -279,6 +279,62 @@ fn foo() {
 }
 
 #[test]
+fn expected_type_if_let_chain_bool() {
+    check_expected_type_and_name(
+        r#"
+fn foo() {
+    let f = Foo::Quux;
+    if let c = f && $0 { }
+}
+"#,
+        expect![[r#"ty: bool, name: ?"#]],
+    );
+}
+
+#[test]
+fn expected_type_if_condition() {
+    check_expected_type_and_name(
+        r#"
+fn foo() {
+    if a$0 { }
+}
+"#,
+        expect![[r#"ty: bool, name: ?"#]],
+    );
+}
+
+#[test]
+fn expected_type_if_body() {
+    check_expected_type_and_name(
+        r#"
+enum Foo { Bar, Baz, Quux }
+
+fn foo() {
+    let _: Foo = if true {
+        $0
+    };
+}
+"#,
+        expect![[r#"ty: Foo, name: ?"#]],
+    );
+
+    check_expected_type_and_name(
+        r#"
+enum Foo { Bar, Baz, Quux }
+
+fn foo() {
+    let _: Foo = if true {
+        Foo::Bar
+    } else {
+        $0
+    };
+}
+"#,
+        expect![[r#"ty: Foo, name: ?"#]],
+    );
+}
+
+#[test]
 fn expected_type_fn_ret_without_leading_char() {
     cov_mark::check!(expected_type_fn_ret_without_leading_char);
     check_expected_type_and_name(
@@ -524,5 +580,18 @@ fn foo() {
 }
 "#,
         expect![[r#"ty: State, name: ?"#]],
+    );
+}
+
+#[test]
+fn expected_type_logic_op() {
+    check_expected_type_and_name(
+        r#"
+enum State { Stop }
+fn foo() {
+    true && $0;
+}
+"#,
+        expect![[r#"ty: bool, name: ?"#]],
     );
 }
