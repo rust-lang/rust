@@ -12,7 +12,9 @@ use rustc_hir::HirId;
 use rustc_hir::def::DefKind;
 use rustc_hir_analysis::autoderef::{self, Autoderef};
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
-use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk, TyCtxtInferExt};
+use rustc_infer::infer::{
+    BoundRegionConversionTime, DefineOpaqueTypes, InferCtxt, InferOk, TyCtxtInferExt,
+};
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::middle::stability;
 use rustc_middle::ty::elaborate::supertrait_def_ids;
@@ -441,7 +443,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // If we encountered an `_` type or an error type during autoderef, this is
         // ambiguous.
         if let Some(bad_ty) = &steps.opt_bad_ty {
-            if is_suggestion.0 {
+            // Ended up encountering a type variable when doing autoderef,
+            // but it may not be a type variable after processing obligations
+            // in our local `FnCtxt`, so don't call `structurally_resolve_type`.
+            let ty = &bad_ty.ty;
+            let ty = self
+                .probe_instantiate_query_response(span, &orig_values, ty)
+                .unwrap_or_else(|_| span_bug!(span, "instantiating {:?} failed?", ty));
+            if bad_ty.is_opaque_type || final_ty_is_opaque(&self.infcx, ty.value) {
+                // FIXME(-Znext-solver): This isn't really what we want :<
+                assert!(self.tcx.next_trait_solver_globally());
+            } else if is_suggestion.0 {
                 // Ambiguity was encountered during a suggestion. There's really
                 // not much use in suggesting methods in this case.
                 return Err(MethodError::NoMatch(NoMatchData {
@@ -467,13 +479,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     },
                 );
             } else {
-                // Ended up encountering a type variable when doing autoderef,
-                // but it may not be a type variable after processing obligations
-                // in our local `FnCtxt`, so don't call `structurally_resolve_type`.
-                let ty = &bad_ty.ty;
-                let ty = self
-                    .probe_instantiate_query_response(span, &orig_values, ty)
-                    .unwrap_or_else(|_| span_bug!(span, "instantiating {:?} failed?", ty));
                 let ty = self.resolve_vars_if_possible(ty.value);
                 let guar = match *ty.kind() {
                     ty::Infer(ty::TyVar(_)) => {
@@ -629,8 +634,14 @@ pub(crate) fn method_autoderef_steps<'tcx>(
     };
     let final_ty = autoderef_via_deref.final_ty();
     let opt_bad_ty = match final_ty.kind() {
-        ty::Infer(ty::TyVar(_)) | ty::Error(_) => Some(MethodAutoderefBadTy {
+        ty::Infer(ty::TyVar(_)) => Some(MethodAutoderefBadTy {
             reached_raw_pointer,
+            is_opaque_type: final_ty_is_opaque(infcx, final_ty),
+            ty: infcx.make_query_response_ignoring_pending_obligations(inference_vars, final_ty),
+        }),
+        ty::Error(_) => Some(MethodAutoderefBadTy {
+            reached_raw_pointer,
+            is_opaque_type: false,
             ty: infcx.make_query_response_ignoring_pending_obligations(inference_vars, final_ty),
         }),
         ty::Array(elem_ty, _) => {
@@ -661,6 +672,15 @@ pub(crate) fn method_autoderef_steps<'tcx>(
         opt_bad_ty: opt_bad_ty.map(|ty| &*tcx.arena.alloc(ty)),
         reached_recursion_limit,
     }
+}
+
+/// Returns `true` in case the final type is the hidden type of an opaque.
+#[instrument(level = "debug", skip(infcx), ret)]
+fn final_ty_is_opaque<'tcx>(infcx: &InferCtxt<'tcx>, final_ty: Ty<'tcx>) -> bool {
+    let &ty::Infer(ty::TyVar(vid)) = final_ty.kind() else {
+        return false;
+    };
+    infcx.has_opaques_with_sub_unified_hidden_type(vid)
 }
 
 impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
@@ -1871,31 +1891,39 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     (xform_self_ty, xform_ret_ty) =
                         self.xform_self_ty(probe.item, trait_ref.self_ty(), trait_ref.args);
                     xform_self_ty = ocx.normalize(cause, self.param_env, xform_self_ty);
-                    match self_ty.kind() {
-                        // HACK: opaque types will match anything for which their bounds hold.
-                        // Thus we need to prevent them from trying to match the `&_` autoref
-                        // candidates that get created for `&self` trait methods.
-                        ty::Alias(ty::Opaque, alias_ty)
-                            if !self.next_trait_solver()
-                                && self.infcx.can_define_opaque_ty(alias_ty.def_id)
-                                && !xform_self_ty.is_ty_var() =>
-                        {
-                            return ProbeResult::NoMatch;
-                        }
-                        _ => match ocx.relate(
-                            cause,
-                            self.param_env,
-                            self.variance(),
-                            self_ty,
-                            xform_self_ty,
-                        ) {
-                            Ok(()) => {}
-                            Err(err) => {
-                                debug!("--> cannot relate self-types {:?}", err);
+
+                    // HACK: opaque types will match anything for which their bounds hold.
+                    // Thus we need to prevent them from trying to match the `&_` autoref
+                    // candidates that get created for `&self` trait methods.
+                    if self.mode == Mode::MethodCall {
+                        match self_ty.kind() {
+                            ty::Infer(ty::TyVar(_)) => {
+                                assert!(self.infcx.next_trait_solver());
+                                if !xform_self_ty.is_ty_var() {
+                                    return ProbeResult::NoMatch;
+                                }
+                            }
+                            ty::Alias(ty::Opaque, alias_ty)
+                                if !self.infcx.next_trait_solver()
+                                    && self.infcx.can_define_opaque_ty(alias_ty.def_id)
+                                    && !xform_self_ty.is_ty_var() =>
+                            {
+                                assert!(!self.infcx.next_trait_solver());
                                 return ProbeResult::NoMatch;
                             }
-                        },
+                            _ => {}
+                        }
                     }
+
+                    match ocx.relate(cause, self.param_env, self.variance(), self_ty, xform_self_ty)
+                    {
+                        Ok(()) => {}
+                        Err(err) => {
+                            debug!("--> cannot relate self-types {:?}", err);
+                            return ProbeResult::NoMatch;
+                        }
+                    }
+
                     let obligation = traits::Obligation::new(
                         self.tcx,
                         cause.clone(),

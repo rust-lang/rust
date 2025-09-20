@@ -1,4 +1,5 @@
 //@ revisions: next current
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 
 // cc #119820 the behavior is inconsistent as we discard the where-bound
@@ -20,13 +21,12 @@ fn projection_bound<T: for<'a> Trait<'a, Assoc = usize>>() {}
 // We use a function with a trivial where-bound which is more
 // restrictive than the impl.
 fn function1<T: Trait<'static>>() {
-    // err
+    // ok
     //
     // Proving `for<'a> T: Trait<'a>` using the where-bound does not
     // result in a leak check failure even though it does not apply.
     // We prefer env candidates over impl candidatescausing this to succeed.
     trait_bound::<T>();
-    //[next]~^ ERROR the trait bound `for<'a> T: Trait<'a>` is not satisfied
 }
 
 fn function2<T: Trait<'static, Assoc = usize>>() {
@@ -36,7 +36,7 @@ fn function2<T: Trait<'static, Assoc = usize>>() {
     // does not use the leak check when trying the where-bound, causing us
     // to prefer it over the impl, resulting in a placeholder error.
     projection_bound::<T>();
-    //[next]~^ ERROR the trait bound `for<'a> T: Trait<'a>` is not satisfied
+    //[next]~^ ERROR type mismatch resolving `<T as Trait<'a>>::Assoc == usize`
     //[current]~^^ ERROR mismatched types
 }
 
