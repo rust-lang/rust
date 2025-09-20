@@ -1415,7 +1415,6 @@ symbols! {
         mir_cast_transmute,
         mir_cast_unsize,
         mir_checked,
-        mir_copy_for_deref,
         mir_debuginfo,
         mir_deinit,
         mir_discriminant,
