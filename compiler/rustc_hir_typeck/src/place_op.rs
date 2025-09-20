@@ -67,12 +67,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         result
     }
 
-    fn negative_index(
+    fn negative_index_err(
         &self,
         ty: Ty<'tcx>,
         span: Span,
         base_expr: &hir::Expr<'_>,
-    ) -> Option<(Ty<'tcx>, Ty<'tcx>)> {
+    ) -> (Ty<'tcx>, Ty<'tcx>) {
         let ty = self.resolve_vars_if_possible(ty);
         let mut err = self.dcx().struct_span_err(
             span,
@@ -92,8 +92,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Applicability::MachineApplicable,
             );
         }
-        let reported = err.emit();
-        Some((Ty::new_error(self.tcx, reported), Ty::new_error(self.tcx, reported)))
+        let guar = err.emit();
+        (Ty::new_error(self.tcx, guar), Ty::new_error(self.tcx, guar))
     }
 
     /// To type-check `base_expr[index_expr]`, we progressively autoderef
@@ -109,7 +109,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         index_ty: Ty<'tcx>,
         index_expr: &hir::Expr<'_>,
     ) -> Option<(/*index type*/ Ty<'tcx>, /*element type*/ Ty<'tcx>)> {
-        let adjusted_ty = self.structurally_resolve_type(autoderef.span(), autoderef.final_ty());
+        let adjusted_ty = autoderef.final_ty();
         debug!(
             "try_index_step(expr={:?}, base_expr={:?}, adjusted_ty={:?}, \
              index_ty={:?})",
@@ -126,10 +126,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             match adjusted_ty.kind() {
                 ty::Adt(def, _) if self.tcx.is_diagnostic_item(sym::Vec, def.did()) => {
-                    return self.negative_index(adjusted_ty, index_expr.span, base_expr);
+                    return Some(self.negative_index_err(adjusted_ty, index_expr.span, base_expr));
                 }
                 ty::Slice(_) | ty::Array(_, _) => {
-                    return self.negative_index(adjusted_ty, index_expr.span, base_expr);
+                    return Some(self.negative_index_err(adjusted_ty, index_expr.span, base_expr));
                 }
                 _ => {}
             }
