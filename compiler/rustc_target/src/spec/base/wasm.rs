@@ -81,11 +81,6 @@ pub(crate) fn options() -> TargetOptions {
         // threaded model which will legalize atomics to normal operations.
         singlethread: true,
 
-        // Symbol visibility takes care of this for the WebAssembly.
-        // Additionally the only known linker, LLD, doesn't support the script
-        // arguments just yet
-        limit_rdylib_exports: false,
-
         // we use the LLD shipped with the Rust toolchain by default
         linker: Some("rust-lld".into()),
         linker_flavor: LinkerFlavor::WasmLld(Cc::No),
