@@ -918,7 +918,8 @@ where
             TypingMode::Analysis { .. }
             | TypingMode::Borrowck { .. }
             | TypingMode::PostBorrowckAnalysis { .. }
-            | TypingMode::PostAnalysis => {}
+            | TypingMode::PostAnalysis
+            | TypingMode::Codegen => {}
         }
 
         let mut i = 0;

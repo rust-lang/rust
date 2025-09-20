@@ -1,3 +1,4 @@
+use std::assert_matches::debug_assert_matches;
 use std::{fmt, iter, mem};
 
 use rustc_abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
@@ -510,7 +511,10 @@ where
                 let subpath = self.elaborator.field_subpath(variant_path, field_idx);
                 let tcx = self.tcx();
 
-                assert_eq!(self.elaborator.typing_env().typing_mode, ty::TypingMode::PostAnalysis);
+                debug_assert_matches!(
+                    self.elaborator.typing_env().typing_mode,
+                    ty::TypingMode::PostAnalysis | ty::TypingMode::Codegen
+                );
                 let field_ty = match tcx.try_normalize_erasing_regions(
                     self.elaborator.typing_env(),
                     field.ty(tcx, args),
