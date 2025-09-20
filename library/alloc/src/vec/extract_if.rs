@@ -66,7 +66,15 @@ where
     fn next(&mut self) -> Option<T> {
         while self.idx < self.end {
             let i = self.idx;
-            // SAFETY: Unchecked element must be valid.
+            // SAFETY:
+            //  We know that `i < self.end` from the if guard and that `self.end <= self.old_len` from
+            //  the validity of `Self`. Therefore `i` points to an element within `vec`.
+            //
+            //  Additionally, the i-th element is valid because each element is visited at most once
+            //  and it is the first time we access vec[i].
+            //
+            //  Note: we can't use `vec.get_unchecked_mut(i)` here since the precondition for that
+            //  function is that i < vec.len(), but we've set vec's length to zero.
             let cur = unsafe { &mut *self.vec.as_mut_ptr().add(i) };
             let drained = (self.pred)(cur);
             // Update the index *after* the predicate is called. If the index
