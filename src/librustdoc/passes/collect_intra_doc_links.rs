@@ -38,7 +38,7 @@ use crate::passes::Pass;
 use crate::visit::DocVisitor;
 
 pub(crate) const COLLECT_INTRA_DOC_LINKS: Pass =
-    Pass { name: "collect-intra-doc-links", run: None, description: "resolves intra-doc links" };
+    Pass { name: "collect-intra-doc-links", run: None };
 
 pub(crate) fn collect_intra_doc_links<'a, 'tcx>(
     krate: Crate,

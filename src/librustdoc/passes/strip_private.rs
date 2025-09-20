@@ -6,12 +6,7 @@ use crate::core::DocContext;
 use crate::fold::DocFolder;
 use crate::passes::{ImplStripper, ImportStripper, Pass, Stripper};
 
-pub(crate) const STRIP_PRIVATE: Pass = Pass {
-    name: "strip-private",
-    run: Some(strip_private),
-    description: "strips all private items from a crate which cannot be seen externally, \
-                  implies strip-priv-imports",
-};
+pub(crate) const STRIP_PRIVATE: Pass = Pass { name: "strip-private", run: Some(strip_private) };
 
 /// Strip private items from the point of view of a crate or externally from a
 /// crate, specified by the `xcrate` flag.

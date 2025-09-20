@@ -8,11 +8,7 @@ use crate::clean::{Attributes, Crate, Item};
 use crate::core::DocContext;
 use crate::visit::DocVisitor;
 
-pub(crate) const CHECK_DOC_CFG: Pass = Pass {
-    name: "check-doc-cfg",
-    run: Some(check_doc_cfg),
-    description: "checks `#[doc(cfg(...))]` for stability feature and unexpected cfgs",
-};
+pub(crate) const CHECK_DOC_CFG: Pass = Pass { name: "check-doc-cfg", run: Some(check_doc_cfg) };
 
 pub(crate) fn check_doc_cfg(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
     let mut checker = DocCfgChecker { cx };
