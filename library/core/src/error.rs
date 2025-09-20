@@ -19,9 +19,12 @@ use crate::fmt::{self, Debug, Display, Formatter};
 /// Errors may provide cause information. [`Error::source()`] is generally
 /// used when errors cross "abstraction boundaries". If one module must report
 /// an error that is caused by an error from a lower-level module, it can allow
-/// accessing that error via [`Error::source()`]. This makes it possible for the
+/// accessing that error via `Error::source()`. This makes it possible for the
 /// high-level module to provide its own errors while also revealing some of the
 /// implementation for debugging.
+///
+/// `Display` for an error should not typically include information from `Error::source()`:
+/// error stack can be printed by external utilities.
 ///
 /// # Example
 ///
