@@ -194,6 +194,9 @@ pub struct BTreeMap<
     root: Option<Root<K, V>>,
     length: usize,
     /// `ManuallyDrop` to control drop order (needs to be dropped after all the nodes).
+    // Although some of the accessory types store a copy of the allocator, the nodes do not.
+    // Because allocations will remain live as long as any copy (like this one) of the allocator
+    // is live, it's unnecessary to store the allocator in each node.
     pub(super) alloc: ManuallyDrop<A>,
     // For dropck; the `Box` avoids making the `Unpin` impl more strict than before
     _marker: PhantomData<crate::boxed::Box<(K, V), A>>,
