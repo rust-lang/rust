@@ -8,6 +8,10 @@
 //@ needs-subprocess
 //@ ignore-vxworks no 'cat' and 'sleep'
 //@ ignore-fuchsia no 'cat'
+//@ ignore-ios no 'cat' and 'sleep'
+//@ ignore-tvos no 'cat' and 'sleep'
+//@ ignore-watchos no 'cat' and 'sleep'
+//@ ignore-visionos no 'cat' and 'sleep'
 
 // N.B., these tests kill child processes. Valgrind sees these children as leaking
 // memory, which makes for some *confusing* logs. That's why these are here
