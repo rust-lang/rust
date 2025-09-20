@@ -1275,12 +1275,12 @@ fn report_non_exhaustive_match<'p, 'tcx>(
             if ty.is_ptr_sized_integral() {
                 if ty.inner() == cx.tcx.types.usize {
                     err.note(format!(
-                        "`{ty}` does not have a fixed maximum value, so half-open ranges are \
+                        "`{ty}::MAX` is not accessible as a fixed value, so half-open ranges are \
                          necessary to match exhaustively",
                     ));
                 } else if ty.inner() == cx.tcx.types.isize {
                     err.note(format!(
-                        "`{ty}` does not have fixed minimum and maximum values, so half-open \
+                        "`{ty}::MIN` and `{ty}::MAX` are not accessible as fixed values, so half-open \
                          ranges are necessary to match exhaustively",
                     ));
                 }
