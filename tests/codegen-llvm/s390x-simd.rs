@@ -6,7 +6,7 @@
 
 #![crate_type = "rlib"]
 #![feature(no_core, asm_experimental_arch)]
-#![feature(s390x_target_feature, simd_ffi, intrinsics, repr_simd)]
+#![feature(simd_ffi, intrinsics, repr_simd)]
 #![no_core]
 
 extern crate minicore;
