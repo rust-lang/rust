@@ -2,7 +2,7 @@
 
 // Replaces the #[else] gate with #[cfg(not(any(…)))] of all the other gates.
 // This ensures that they must be mutually exclusive and do not have precedence
-// like cfg_if!.
+// like cfg_select!.
 macro cfg_unordered(
     $(#[cfg($cfg:meta)] $os:item)*
     #[else] $fallback:item
