@@ -15,9 +15,9 @@ mod inner {
     use core::ptr::NonNull;
 
     #[allow(clippy::map_err_ignore)]
-    pub(crate) fn do_alloc<A: Allocator>(alloc: &A, layout: Layout) -> Result<NonNull<u8>, ()> {
+    pub(crate) fn do_alloc<A: Allocator>(alloc: &A, layout: Layout) -> Result<NonNull<[u8]>, ()> {
         match alloc.allocate(layout) {
-            Ok(ptr) => Ok(ptr.as_non_null_ptr()),
+            Ok(ptr) => Ok(ptr),
             Err(_) => Err(()),
         }
     }
@@ -38,9 +38,9 @@ mod inner {
     use core::ptr::NonNull;
 
     #[allow(clippy::map_err_ignore)]
-    pub(crate) fn do_alloc<A: Allocator>(alloc: &A, layout: Layout) -> Result<NonNull<u8>, ()> {
+    pub(crate) fn do_alloc<A: Allocator>(alloc: &A, layout: Layout) -> Result<NonNull<[u8]>, ()> {
         match alloc.allocate(layout) {
-            Ok(ptr) => Ok(ptr.cast()),
+            Ok(ptr) => Ok(ptr),
             Err(_) => Err(()),
         }
     }
@@ -61,7 +61,7 @@ mod inner {
 
     #[allow(clippy::missing_safety_doc)] // not exposed outside of this crate
     pub unsafe trait Allocator {
-        fn allocate(&self, layout: Layout) -> Result<NonNull<u8>, ()>;
+        fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, ()>;
         unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout);
     }
 
@@ -70,8 +70,19 @@ mod inner {
 
     unsafe impl Allocator for Global {
         #[inline]
-        fn allocate(&self, layout: Layout) -> Result<NonNull<u8>, ()> {
-            unsafe { NonNull::new(alloc(layout)).ok_or(()) }
+        fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, ()> {
+            match unsafe { NonNull::new(alloc(layout)) } {
+                Some(data) => {
+                    // SAFETY: this is NonNull::slice_from_raw_parts.
+                    Ok(unsafe {
+                        NonNull::new_unchecked(core::ptr::slice_from_raw_parts_mut(
+                            data.as_ptr(),
+                            layout.size(),
+                        ))
+                    })
+                }
+                None => Err(()),
+            }
         }
         #[inline]
         unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
@@ -86,7 +97,7 @@ mod inner {
         }
     }
 
-    pub(crate) fn do_alloc<A: Allocator>(alloc: &A, layout: Layout) -> Result<NonNull<u8>, ()> {
+    pub(crate) fn do_alloc<A: Allocator>(alloc: &A, layout: Layout) -> Result<NonNull<[u8]>, ()> {
         alloc.allocate(layout)
     }
 }

@@ -1442,6 +1442,40 @@ impl RawTableInner {
     }
 }
 
+/// Find the previous power of 2. If it's already a power of 2, it's unchanged.
+/// Passing zero is undefined behavior.
+pub(crate) fn prev_pow2(z: usize) -> usize {
+    let shift = mem::size_of::<usize>() * 8 - 1;
+    1 << (shift - (z.leading_zeros() as usize))
+}
+
+fn maximum_buckets_in(
+    allocation_size: usize,
+    table_layout: TableLayout,
+    group_width: usize,
+) -> usize {
+    // Given an equation like:
+    //   z >= x * y + x + g
+    // x can be maximized by doing:
+    //   x = (z - g) / (y + 1)
+    // If you squint:
+    //   x is the number of buckets
+    //   y is the table_layout.size
+    //   z is the size of the allocation
+    //   g is the group width
+    // But this is ignoring the padding needed for ctrl_align.
+    // If we remember these restrictions:
+    //   x is always a power of 2
+    //   Layout size for T must always be a multiple of T
+    // Then the alignment can be ignored if we add the constraint:
+    //   x * y >= table_layout.ctrl_align
+    // This is taken care of by `capacity_to_buckets`.
+    let numerator = allocation_size - group_width;
+    let denominator = table_layout.size + 1; // todo: ZSTs?
+    let quotient = numerator / denominator;
+    prev_pow2(quotient)
+}
+
 impl RawTableInner {
     /// Allocates a new [`RawTableInner`] with the given number of buckets.
     /// The control bytes and buckets are left uninitialized.
@@ -1459,7 +1493,7 @@ impl RawTableInner {
     unsafe fn new_uninitialized<A>(
         alloc: &A,
         table_layout: TableLayout,
-        buckets: usize,
+        mut buckets: usize,
         fallibility: Fallibility,
     ) -> Result<Self, TryReserveError>
     where
@@ -1468,13 +1502,29 @@ impl RawTableInner {
         debug_assert!(buckets.is_power_of_two());
 
         // Avoid `Option::ok_or_else` because it bloats LLVM IR.
-        let (layout, ctrl_offset) = match table_layout.calculate_layout_for(buckets) {
+        let (layout, mut ctrl_offset) = match table_layout.calculate_layout_for(buckets) {
             Some(lco) => lco,
             None => return Err(fallibility.capacity_overflow()),
         };
 
         let ptr: NonNull<u8> = match do_alloc(alloc, layout) {
-            Ok(block) => block.cast(),
+            Ok(block) => {
+                // Utilize over-sized allocations.
+                let x = maximum_buckets_in(block.len(), table_layout, Group::WIDTH);
+                debug_assert!(x >= buckets);
+                // Calculate the new ctrl_offset.
+                let (_oversized_layout, oversized_ctrl_offset) =
+                    match table_layout.calculate_layout_for(x) {
+                        Some(lco) => lco,
+                        None => unsafe { hint::unreachable_unchecked() },
+                    };
+                debug_assert!(_oversized_layout.size() <= block.len());
+                debug_assert!(oversized_ctrl_offset >= ctrl_offset);
+                ctrl_offset = oversized_ctrl_offset;
+                buckets = x;
+
+                block.cast()
+            }
             Err(_) => return Err(fallibility.alloc_err(layout)),
         };
 
@@ -4167,6 +4217,23 @@ impl<T, A: Allocator> RawExtractIf<'_, T, A> {
 #[cfg(test)]
 mod test_map {
     use super::*;
+
+    #[test]
+    fn test_prev_pow2() {
+        // Skip 0, not defined for that input.
+        let mut pow2: usize = 1;
+        while (pow2 << 1) > 0 {
+            let next_pow2 = pow2 << 1;
+            assert_eq!(pow2, prev_pow2(pow2));
+            // Need to skip 2, because it's also a power of 2, so it doesn't
+            // return the previous power of 2.
+            if next_pow2 > 2 {
+                assert_eq!(pow2, prev_pow2(pow2 + 1));
+                assert_eq!(pow2, prev_pow2(next_pow2 - 1));
+            }
+            pow2 = next_pow2;
+        }
+    }
 
     #[test]
     fn test_minimum_capacity_for_small_types() {
