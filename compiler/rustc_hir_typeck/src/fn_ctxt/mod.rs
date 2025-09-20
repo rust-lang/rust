@@ -362,7 +362,7 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
                         self.private_field_err(ident, container_def.did()).emit();
                     }
 
-                    if !last {
+                    if field_path_kind == FieldPathKind::OffsetOf || !last {
                         let field_ty = self.field_ty(span, field, args);
 
                         // Enums are anyway always sized. But just to safeguard against future
@@ -402,7 +402,7 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
                             self.private_field_err(ident, container_def.did()).emit();
                         }
 
-                        if !last {
+                        if field_path_kind == FieldPathKind::OffsetOf || !last {
                             let field_ty = self.field_ty(span, field, args);
 
                             match field_path_kind {

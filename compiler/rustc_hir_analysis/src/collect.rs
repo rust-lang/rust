@@ -410,7 +410,7 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
                         }
 
                         field_indices.push((FIRST_VARIANT, index));
-                        if !last {
+                        if field_path_kind == FieldPathKind::OffsetOf || !last {
                             let field_ty = field.ty(self.tcx, args);
                             current_container = field_ty;
                         }
