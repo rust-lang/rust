@@ -251,6 +251,8 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         // Filter out features that are not supported by the current LLVM version
         ("loongarch32" | "loongarch64", "32s") if major < 21 => None,
         ("powerpc", "power8-crypto") => Some(LLVMFeature::new("crypto")),
+        // Filter out Rust-specific *virtual* target features
+        ("riscv32" | "riscv64", "zkne_or_zknd") => None,
         ("sparc", "leoncasa") => Some(LLVMFeature::new("hasleoncasa")),
         ("x86", "sse4.2") => Some(LLVMFeature::with_dependencies(
             "sse4.2",

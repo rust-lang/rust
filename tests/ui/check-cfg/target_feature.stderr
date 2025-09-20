@@ -424,6 +424,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `zkn`
 `zknd`
 `zkne`
+`zkne_or_zknd`
 `zknh`
 `zkr`
 `zks`
