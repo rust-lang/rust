@@ -7,7 +7,7 @@
 
 #[no_mangle]
 pub fn iota() -> [u8; 16] {
-    // OPT-NOT: core..array..Guard
-    // NORMAL: core..array..Guard
+    // OPT-NOT: core::array::Guard
+    // NORMAL: core::array::Guard
     std::array::from_fn(|i| i as _)
 }
