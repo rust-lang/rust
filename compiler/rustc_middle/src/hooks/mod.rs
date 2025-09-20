@@ -88,6 +88,8 @@ declare_hooks! {
 
     hook alloc_self_profile_query_strings() -> ();
 
+    hook after_register_builtin_macros(resolver: &mut dyn rustc_expand::base::ResolverExpand) -> ();
+
     /// Saves and writes the DepGraph to the file system.
     ///
     /// This function saves both the dep-graph and the query result cache,
