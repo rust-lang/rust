@@ -39,7 +39,13 @@ pub fn parse_stage0_file() -> Stage0 {
             continue;
         }
 
-        let (key, value) = line.split_once('=').unwrap();
+        let (key, value) = match line.split_once('=') {
+            Some((k, v)) => (k, v),
+            None => {
+                println!("Warning: Skipping malformed config line {}", line);
+                continue;
+            }
+        };
 
         match key {
             "dist_server" => stage0.config.dist_server = value.to_owned(),
