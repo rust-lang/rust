@@ -295,7 +295,7 @@ fn build_usage_edit(
         Some(field_expr) => Some({
             let field_name: SmolStr = field_expr.name_ref()?.to_string().into();
             let new_field_name = field_names.get(&field_name)?;
-            let new_expr = make.expr_path(ast::make::ext::ident_path(new_field_name));
+            let new_expr = ast::make::expr_path(ast::make::ext::ident_path(new_field_name));
 
             // If struct binding is a reference, we might need to deref field usages
             if data.is_ref {
@@ -305,7 +305,7 @@ fn build_usage_edit(
                     ref_data.wrap_expr(new_expr).syntax().clone_for_update(),
                 )
             } else {
-                (field_expr.syntax().clone(), new_expr.syntax().clone())
+                (field_expr.syntax().clone(), new_expr.syntax().clone_for_update())
             }
         }),
         None => Some((
@@ -692,6 +692,52 @@ mod tests {
             fn main() {
                 let Foo { bar, baz } = &mut Foo { bar: 1, baz: 2 };
                 *bar = 5;
+            }
+            "#,
+        )
+    }
+
+    #[test]
+    fn ref_not_add_parenthesis_and_deref_record() {
+        check_assist(
+            destructure_struct_binding,
+            r#"
+            struct Foo { bar: i32, baz: i32 }
+
+            fn main() {
+                let $0foo = &Foo { bar: 1, baz: 2 };
+                let _ = &foo.bar;
+            }
+            "#,
+            r#"
+            struct Foo { bar: i32, baz: i32 }
+
+            fn main() {
+                let Foo { bar, baz } = &Foo { bar: 1, baz: 2 };
+                let _ = bar;
+            }
+            "#,
+        )
+    }
+
+    #[test]
+    fn ref_not_add_parenthesis_and_deref_tuple() {
+        check_assist(
+            destructure_struct_binding,
+            r#"
+            struct Foo(i32, i32);
+
+            fn main() {
+                let $0foo = &Foo(1, 2);
+                let _ = &foo.0;
+            }
+            "#,
+            r#"
+            struct Foo(i32, i32);
+
+            fn main() {
+                let Foo(_0, _1) = &Foo(1, 2);
+                let _ = _0;
             }
             "#,
         )
