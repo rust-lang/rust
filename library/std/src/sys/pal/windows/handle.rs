@@ -1,8 +1,5 @@
 #![unstable(issue = "none", feature = "windows_handle")]
 
-#[cfg(test)]
-mod tests;
-
 use core::ffi::c_void;
 use core::{cmp, mem, ptr};
 
