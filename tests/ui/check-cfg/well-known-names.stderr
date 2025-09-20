@@ -5,7 +5,6 @@ LL | #[cfg(list_all_well_known_cfgs)]
    |       ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: expected names are: `clippy`
-`contract_checks`
 `debug_assertions`
 `doc`
 `doctest`

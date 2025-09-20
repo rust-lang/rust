@@ -13,7 +13,7 @@ warning: unexpected `cfg` condition name: `bootstrap`
 1 | #[cfg(bootstrap)]
   |       ^^^^^^^^^
   |
-  = help: expected names are: `docsrs`, `feature`, and `test` and 31 more
+  = help: expected names are: `docsrs`, `feature`, and `test` and 30 more
   = help: consider using a Cargo feature instead
   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
            [lints.rust]
