@@ -13,6 +13,8 @@ macro_rules! wrap {
 
 macro_rules! print_with_internal_wrap {
     () => { println!("{:?}{}", (), wrap!(String::new())) }
+    //~^ WARN temporary lifetime will be shortened in Rust 1.92
+    //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 }
 
 fn main() {
@@ -27,12 +29,13 @@ fn main() {
 
             // This does not promote; warn.
             wrap!(String::new())
-            // TODO: warn
+            //~^ WARN temporary lifetime will be shortened in Rust 1.92
+            //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
         )
     );
 
     print_with_internal_wrap!();
-    // TODO: warn
+    //~^ NOTE in this expansion of print_with_internal_wrap!
 
     print!(
         "{:?}{:?}",
@@ -42,9 +45,11 @@ fn main() {
 
         // This does not promote; warn.
         external_macros::wrap!(String::new())
-        // TODO: warn
+        //~^ WARN temporary lifetime will be shortened in Rust 1.92
+        //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
     );
 
     external_macros::print_with_internal_wrap!();
-    // TODO: warn
+    //~^ WARN temporary lifetime will be shortened in Rust 1.92
+    //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 }

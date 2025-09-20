@@ -24,38 +24,47 @@ fn main() {
 
     // #145880 doesn't apply here, so this `temp()`'s lifetime is reduced by #145838 in Rust 2024.
     println!("{:?}{:?}", { &temp() }, ());
-    // TODO: warn in Rust 2024
+    //[e2024]~^ WARN temporary lifetime will be shortened in Rust 1.92
+    //[e2024]~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
     // In real-world projects, this breakage typically appeared in `if` expressions with a reference
     // to a `String` temporary in one branch's tail expression. This is edition-independent since
     // `if` expressions' blocks are temporary scopes in all editions.
     println!("{:?}{:?}", (), if cond() { &format!("") } else { "" });
-    // TODO: warn in all editions
+    //~^ WARN temporary lifetime will be shortened in Rust 1.92
+    //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
     println!("{:?}{:?}", (), if cond() { &"".to_string() } else { "" });
-    // TODO: warn in all editions
+    //~^ WARN temporary lifetime will be shortened in Rust 1.92
+    //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
     println!("{:?}{:?}", (), if cond() { &("string".to_owned() + "string") } else { "" });
-    // TODO: warn in all editions
+    //~^ WARN temporary lifetime will be shortened in Rust 1.92
+    //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
     // Make sure we catch indexed and dereferenced temporaries.
     pin!(
         if cond() {
             &array_temp()[0]
-            // TODO: warn in all editions
+            //~^ WARN temporary lifetime will be shortened in Rust 1.92
+            //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
         } else if cond() {
             &tuple_temp().0
-            // TODO: warn in all editions
+            //~^ WARN temporary lifetime will be shortened in Rust 1.92
+            //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
         } else if cond() {
             &struct_temp().field
-            // TODO: warn in all editions
+            //~^ WARN temporary lifetime will be shortened in Rust 1.92
+            //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
         } else {
             &*&*smart_ptr_temp()
-            // TODO: warn in all editions
+            //~^ WARN temporary lifetime will be shortened in Rust 1.92
+            //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
         }
     );
 
     // Test that `super let` extended by parent `super let`s in non-extending blocks are caught.
     pin!(pin!({ &temp() }));
-    // TODO: warn in Rust 2024
+    //[e2024]~^ WARN temporary lifetime will be shortened in Rust 1.92
+    //[e2024]~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
     // We shouldn't warn when lifetime extension applies.
     let _ = format_args!("{:?}{:?}", { &temp() }, if cond() { &temp() } else { &temp() });
@@ -85,17 +94,23 @@ fn main() {
 
     // But we do warn on these temporaries, since they aren't promoted.
     pin!({ &(1 / 0) });
-    // TODO: warn in Rust 2024
+    //[e2024]~^ WARN temporary lifetime will be shortened in Rust 1.92
+    //[e2024]~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
     pin!({ &mut [()] });
-    // TODO: warn in Rust 2024
+    //[e2024]~^ WARN temporary lifetime will be shortened in Rust 1.92
+    //[e2024]~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
     pin!({ &Some(String::new()) });
-    // TODO: warn in Rust 2024
+    //[e2024]~^ WARN temporary lifetime will be shortened in Rust 1.92
+    //[e2024]~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
     pin!({ &(|| ())() });
-    // TODO: warn in Rust 2024
+    //[e2024]~^ WARN temporary lifetime will be shortened in Rust 1.92
+    //[e2024]~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
     pin!({ &|| &local });
-    // TODO: warn in Rust 2024
+    //[e2024]~^ WARN temporary lifetime will be shortened in Rust 1.92
+    //[e2024]~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
     pin!({ &CONST_STRING });
-    // TODO: warn in Rust 2024
+    //[e2024]~^ WARN temporary lifetime will be shortened in Rust 1.92
+    //[e2024]~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
     // This lint only catches future errors. Future dangling pointers do not produce warnings.
     pin!({ &raw const *&temp() });

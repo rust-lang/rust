@@ -1,11 +1,3 @@
-warning: unknown lint: `macro_extended_temporary_scopes`
-  --> $DIR/non-extended.rs:3:9
-   |
-LL | #![deny(macro_extended_temporary_scopes)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `#[warn(unknown_lints)]` on by default
-
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/non-extended.rs:9:25
    |
@@ -30,6 +22,6 @@ LL |     println!("{:?}{:?}", (), { std::convert::identity(&temp()) });
    |
    = note: consider using a `let` binding to create a longer lived value
 
-error: aborting due to 2 previous errors; 1 warning emitted
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0716`.
