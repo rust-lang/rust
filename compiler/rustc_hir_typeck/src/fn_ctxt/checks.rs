@@ -246,7 +246,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let expected_input_tys: Option<Vec<_>> = expectation
             .only_has_type(self)
             .and_then(|expected_output| {
-                self.fudge_inference_if_ok(|| {
+                self.fudge_inference_if_ok(|_| {
                     let ocx = ObligationCtxt::new(self);
 
                     // Attempt to apply a subtyping relationship between the formal

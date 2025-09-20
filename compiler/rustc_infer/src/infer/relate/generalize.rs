@@ -6,8 +6,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::bug;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{
-    self, AliasRelationDirection, InferConst, Term, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt, TypeVisitor, TypingMode,
+    self, AliasRelationDirection, InferConst, Term, Ty, TyCtxt, TypeVisitableExt, TypingMode,
 };
 use rustc_span::Span;
 use tracing::{debug, instrument, warn};
@@ -290,45 +289,6 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 }
 
-/// Finds the max universe present
-struct MaxUniverse {
-    max_universe: ty::UniverseIndex,
-}
-
-impl MaxUniverse {
-    fn new() -> Self {
-        MaxUniverse { max_universe: ty::UniverseIndex::ROOT }
-    }
-
-    fn max_universe(self) -> ty::UniverseIndex {
-        self.max_universe
-    }
-}
-
-impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for MaxUniverse {
-    fn visit_ty(&mut self, t: Ty<'tcx>) {
-        if let ty::Placeholder(placeholder) = t.kind() {
-            self.max_universe = self.max_universe.max(placeholder.universe);
-        }
-
-        t.super_visit_with(self)
-    }
-
-    fn visit_const(&mut self, c: ty::Const<'tcx>) {
-        if let ty::ConstKind::Placeholder(placeholder) = c.kind() {
-            self.max_universe = self.max_universe.max(placeholder.universe);
-        }
-
-        c.super_visit_with(self)
-    }
-
-    fn visit_region(&mut self, r: ty::Region<'tcx>) {
-        if let ty::RePlaceholder(placeholder) = r.kind() {
-            self.max_universe = self.max_universe.max(placeholder.universe);
-        }
-    }
-}
-
 /// The "generalizer" is used when handling inference variables.
 ///
 /// The basic strategy for handling a constraint like `?A <: B` is to
@@ -437,15 +397,8 @@ impl<'tcx> Generalizer<'_, 'tcx> {
                 if is_nested_alias {
                     return Err(e);
                 } else {
-                    let mut visitor = MaxUniverse::new();
-                    alias.visit_with(&mut visitor);
-                    let infer_replacement_is_complete =
-                        self.for_universe.can_name(visitor.max_universe())
-                            && !alias.has_escaping_bound_vars();
-                    if !infer_replacement_is_complete {
-                        warn!("may incompletely handle alias type: {alias:?}");
-                    }
-
+                    // FIXME(trait-system-refactor-initiative#8): This is incomplete
+                    // in case the alias has escaping bound vars.
                     debug!("generalization failure in alias");
                     Ok(self.next_ty_var_for_alias())
                 }

@@ -2015,7 +2015,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let adt_ty = self.try_structurally_resolve_type(path_span, adt_ty);
         let adt_ty_hint = expected.only_has_type(self).and_then(|expected| {
-            self.fudge_inference_if_ok(|| {
+            self.fudge_inference_if_ok(|_| {
                 let ocx = ObligationCtxt::new(self);
                 ocx.sup(&self.misc(path_span), self.param_env, expected, adt_ty)?;
                 if !ocx.select_where_possible().is_empty() {
