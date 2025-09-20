@@ -848,7 +848,14 @@ fn remove_dir_all_recursive(parent: &WasiFd, path: &Path) -> io::Result<()> {
 
     // Iterate over all the entries in this directory, and travel recursively if
     // necessary
-    for entry in ReadDir::new(fd, dummy_root) {
+    //
+    // Note that all directory entries for this directory are read first before
+    // any removal is done. This works around the fact that the WASIp1 API for
+    // reading directories is not well-designed for handling mutations between
+    // invocations of reading a directory. By reading all the entries at once
+    // this ensures that, at least without concurrent modifications, it should
+    // be possible to delete everything.
+    for entry in ReadDir::new(fd, dummy_root).collect::<Vec<_>>() {
         let entry = entry?;
         let path = crate::str::from_utf8(&entry.name).map_err(|_| {
             io::const_error!(io::ErrorKind::Uncategorized, "invalid utf-8 file name found")

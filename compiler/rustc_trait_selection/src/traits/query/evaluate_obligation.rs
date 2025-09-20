@@ -1,8 +1,11 @@
+use rustc_infer::traits::solve::Goal;
 use rustc_macros::extension;
 use rustc_middle::span_bug;
+use rustc_next_trait_solver::solve::SolverDelegateEvalExt;
 
 use crate::infer::InferCtxt;
 use crate::infer::canonical::OriginalQueryValues;
+use crate::solve::SolverDelegate;
 use crate::traits::{
     EvaluationResult, ObligationCtxt, OverflowError, PredicateObligation, SelectionContext,
 };
@@ -13,6 +16,20 @@ impl<'tcx> InferCtxt<'tcx> {
     /// in the given `ParamEnv`.
     fn predicate_may_hold(&self, obligation: &PredicateObligation<'tcx>) -> bool {
         self.evaluate_obligation_no_overflow(obligation).may_apply()
+    }
+
+    /// See the comment on [OpaqueTypesJank](crate::solve::OpaqueTypesJank)
+    /// for more details.
+    fn predicate_may_hold_opaque_types_jank(&self, obligation: &PredicateObligation<'tcx>) -> bool {
+        if self.next_trait_solver() {
+            <&SolverDelegate<'tcx>>::from(self).root_goal_may_hold_opaque_types_jank(Goal::new(
+                self.tcx,
+                obligation.param_env,
+                obligation.predicate,
+            ))
+        } else {
+            self.predicate_may_hold(obligation)
+        }
     }
 
     /// Evaluates whether the predicate can be satisfied in the given

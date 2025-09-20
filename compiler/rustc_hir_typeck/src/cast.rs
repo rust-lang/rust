@@ -103,7 +103,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         Ok(match *t.kind() {
             ty::Slice(_) | ty::Str => Some(PointerKind::Length),
-            ty::Dynamic(tty, _, ty::Dyn) => Some(PointerKind::VTable(tty)),
+            ty::Dynamic(tty, _) => Some(PointerKind::VTable(tty)),
             ty::Adt(def, args) if def.is_struct() => match def.non_enum_variant().tail_opt() {
                 None => Some(PointerKind::Thin),
                 Some(f) => {
@@ -250,9 +250,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         // cases now. We do a more thorough check at the end, once
         // inference is more completely known.
         match cast_ty.kind() {
-            ty::Dynamic(_, _, ty::Dyn) | ty::Slice(..) => {
-                Err(check.report_cast_to_unsized_type(fcx))
-            }
+            ty::Dynamic(_, _) | ty::Slice(..) => Err(check.report_cast_to_unsized_type(fcx)),
             _ => Ok(check),
         }
     }
@@ -900,7 +898,6 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                                 &src_tty.without_auto_traits().collect::<Vec<_>>(),
                             ),
                             tcx.lifetimes.re_erased,
-                            ty::Dyn,
                         );
                         let dst_obj = Ty::new_dynamic(
                             tcx,
@@ -908,7 +905,6 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                                 &dst_tty.without_auto_traits().collect::<Vec<_>>(),
                             ),
                             tcx.lifetimes.re_erased,
-                            ty::Dyn,
                         );
 
                         // `dyn Src = dyn Dst`, this checks for matching traits/generics/projections

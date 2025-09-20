@@ -30,9 +30,7 @@ pub(crate) fn unsized_info<'tcx>(
             fx.pointer_type,
             len.try_to_target_usize(fx.tcx).expect("expected monomorphic const in codegen") as i64,
         ),
-        (&ty::Dynamic(data_a, _, src_dyn_kind), &ty::Dynamic(data_b, _, target_dyn_kind))
-            if src_dyn_kind == target_dyn_kind =>
-        {
+        (&ty::Dynamic(data_a, _), &ty::Dynamic(data_b, _)) => {
             let old_info =
                 old_info.expect("unsized_info: missing old info for trait upcasting coercion");
             let b_principal_def_id = data_b.principal_def_id();

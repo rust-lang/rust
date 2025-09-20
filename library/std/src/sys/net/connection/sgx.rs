@@ -499,16 +499,6 @@ impl fmt::Display for NonIpSockAddr {
 
 pub struct LookupHost(!);
 
-impl LookupHost {
-    fn new(host: String) -> io::Result<LookupHost> {
-        Err(io::Error::new(io::ErrorKind::Uncategorized, NonIpSockAddr { host }))
-    }
-
-    pub fn port(&self) -> u16 {
-        self.0
-    }
-}
-
 impl Iterator for LookupHost {
     type Item = SocketAddr;
     fn next(&mut self) -> Option<SocketAddr> {
@@ -516,18 +506,9 @@ impl Iterator for LookupHost {
     }
 }
 
-impl TryFrom<&str> for LookupHost {
-    type Error = io::Error;
-
-    fn try_from(v: &str) -> io::Result<LookupHost> {
-        LookupHost::new(v.to_owned())
-    }
-}
-
-impl<'a> TryFrom<(&'a str, u16)> for LookupHost {
-    type Error = io::Error;
-
-    fn try_from((host, port): (&'a str, u16)) -> io::Result<LookupHost> {
-        LookupHost::new(format!("{host}:{port}"))
-    }
+pub fn lookup_host(host: &str, port: u16) -> io::Result<LookupHost> {
+    Err(io::Error::new(
+        io::ErrorKind::Uncategorized,
+        NonIpSockAddr { host: format!("{host}:{port}") },
+    ))
 }

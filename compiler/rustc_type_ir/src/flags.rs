@@ -288,7 +288,7 @@ impl<I: Interner> FlagComputation<I> {
                 self.add_alias_ty(data);
             }
 
-            ty::Dynamic(obj, r, _) => {
+            ty::Dynamic(obj, r) => {
                 for predicate in obj.iter() {
                     self.bound_computation(predicate, |computation, predicate| match predicate {
                         ty::ExistentialPredicate::Trait(tr) => {

@@ -10,7 +10,9 @@ fn arrays<const C: usize>() -> usize {
     mir! {
         {
             let x = [5_i32; C];
-            let c = Len(x);
+            let y = &raw const x;
+            let z = CastUnsize::<_, *const [i32]>(y);
+            let c = PtrMetadata(z);
             RET = c;
             Return()
         }

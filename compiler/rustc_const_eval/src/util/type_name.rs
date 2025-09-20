@@ -41,7 +41,7 @@ impl<'tcx> Printer<'tcx> for TypeNamePrinter<'tcx> {
             | ty::FnPtr(..)
             | ty::Never
             | ty::Tuple(_)
-            | ty::Dynamic(_, _, _)
+            | ty::Dynamic(_, _)
             | ty::UnsafeBinder(_) => self.pretty_print_type(ty),
 
             // Placeholders (all printed as `_` to uniformize them).

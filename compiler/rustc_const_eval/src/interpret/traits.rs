@@ -109,7 +109,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         expected_trait: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
         assert!(
-            matches!(mplace.layout.ty.kind(), ty::Dynamic(_, _, ty::Dyn)),
+            matches!(mplace.layout.ty.kind(), ty::Dynamic(_, _)),
             "`unpack_dyn_trait` only makes sense on `dyn*` types"
         );
         let vtable = mplace.meta().unwrap_meta().to_pointer(self)?;

@@ -2,16 +2,51 @@ error: use of `offset` with a `usize` casted to an `isize`
   --> tests/ui/ptr_offset_with_cast.rs:12:17
    |
 LL |         let _ = ptr.offset(offset_usize as isize);
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `ptr.add(offset_usize)`
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::ptr-offset-with-cast` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::ptr_offset_with_cast)]`
+help: use `add` instead
+   |
+LL -         let _ = ptr.offset(offset_usize as isize);
+LL +         let _ = ptr.add(offset_usize);
+   |
 
 error: use of `wrapping_offset` with a `usize` casted to an `isize`
   --> tests/ui/ptr_offset_with_cast.rs:17:17
    |
 LL |         let _ = ptr.wrapping_offset(offset_usize as isize);
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `ptr.wrapping_add(offset_usize)`
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `wrapping_add` instead
+   |
+LL -         let _ = ptr.wrapping_offset(offset_usize as isize);
+LL +         let _ = ptr.wrapping_add(offset_usize);
+   |
 
-error: aborting due to 2 previous errors
+error: use of `offset` with a `usize` casted to an `isize`
+  --> tests/ui/ptr_offset_with_cast.rs:25:17
+   |
+LL |         let _ = (&ptr).offset(offset_usize as isize);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `add` instead
+   |
+LL -         let _ = (&ptr).offset(offset_usize as isize);
+LL +         let _ = (&ptr).add(offset_usize);
+   |
+
+error: use of `wrapping_offset` with a `usize` casted to an `isize`
+  --> tests/ui/ptr_offset_with_cast.rs:27:17
+   |
+LL |         let _ = (&ptr).wrapping_offset(offset_usize as isize);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `wrapping_add` instead
+   |
+LL -         let _ = (&ptr).wrapping_offset(offset_usize as isize);
+LL +         let _ = (&ptr).wrapping_add(offset_usize);
+   |
+
+error: aborting due to 4 previous errors
 

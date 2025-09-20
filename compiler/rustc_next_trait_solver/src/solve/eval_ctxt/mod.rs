@@ -8,6 +8,7 @@ use rustc_type_ir::inherent::*;
 use rustc_type_ir::relate::Relate;
 use rustc_type_ir::relate::solver_relating::RelateExt;
 use rustc_type_ir::search_graph::{CandidateHeadUsages, PathKind};
+use rustc_type_ir::solve::OpaqueTypesJank;
 use rustc_type_ir::{
     self as ty, CanonicalVarValues, InferCtxtLike, Interner, TypeFoldable, TypeFolder,
     TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
@@ -16,6 +17,10 @@ use rustc_type_ir::{
 use tracing::{debug, instrument, trace};
 
 use super::has_only_region_constraints;
+use crate::canonical::{
+    canonicalize_goal, canonicalize_response, instantiate_and_apply_query_response,
+    response_no_constraints_raw,
+};
 use crate::coherence;
 use crate::delegate::SolverDelegate;
 use crate::placeholder::BoundVarReplacer;
@@ -23,12 +28,11 @@ use crate::resolve::eager_resolve_vars;
 use crate::solve::search_graph::SearchGraph;
 use crate::solve::ty::may_use_unstable_feature;
 use crate::solve::{
-    CanonicalInput, Certainty, FIXPOINT_STEP_LIMIT, Goal, GoalEvaluation, GoalSource,
-    GoalStalledOn, HasChanged, NestedNormalizationGoals, NoSolution, QueryInput, QueryResult,
-    inspect,
+    CanonicalInput, CanonicalResponse, Certainty, ExternalConstraintsData, FIXPOINT_STEP_LIMIT,
+    Goal, GoalEvaluation, GoalSource, GoalStalledOn, HasChanged, MaybeCause,
+    NestedNormalizationGoals, NoSolution, QueryInput, QueryResult, Response, inspect,
 };
 
-pub(super) mod canonical;
 mod probe;
 
 /// The kind of goal we're currently proving.
@@ -151,6 +155,15 @@ pub trait SolverDelegateEvalExt: SolverDelegate {
         stalled_on: Option<GoalStalledOn<Self::Interner>>,
     ) -> Result<GoalEvaluation<Self::Interner>, NoSolution>;
 
+    /// Checks whether evaluating `goal` may hold while treating not-yet-defined
+    /// opaque types as being kind of rigid.
+    ///
+    /// See the comment on [OpaqueTypesJank] for more details.
+    fn root_goal_may_hold_opaque_types_jank(
+        &self,
+        goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
+    ) -> bool;
+
     /// Check whether evaluating `goal` with a depth of `root_depth` may
     /// succeed. This only returns `false` if the goal is guaranteed to
     /// not hold. In case evaluation overflows and fails with ambiguity this
@@ -190,6 +203,24 @@ where
     ) -> Result<GoalEvaluation<I>, NoSolution> {
         EvalCtxt::enter_root(self, self.cx().recursion_limit(), span, |ecx| {
             ecx.evaluate_goal(GoalSource::Misc, goal, stalled_on)
+        })
+    }
+
+    fn root_goal_may_hold_opaque_types_jank(
+        &self,
+        goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
+    ) -> bool {
+        self.probe(|| {
+            EvalCtxt::enter_root(self, self.cx().recursion_limit(), I::Span::dummy(), |ecx| {
+                ecx.evaluate_goal(GoalSource::Misc, goal, None)
+            })
+            .is_ok_and(|r| match r.certainty {
+                Certainty::Yes => true,
+                Certainty::Maybe { cause: _, opaque_types_jank } => match opaque_types_jank {
+                    OpaqueTypesJank::AllGood => true,
+                    OpaqueTypesJank::ErrorIfRigidSelfTy => false,
+                },
+            })
         })
     }
 
@@ -407,8 +438,12 @@ where
         // If we have run this goal before, and it was stalled, check that any of the goal's
         // args have changed. Otherwise, we don't need to re-run the goal because it'll remain
         // stalled, since it'll canonicalize the same way and evaluation is pure.
-        if let Some(GoalStalledOn { num_opaques, ref stalled_vars, ref sub_roots, stalled_cause }) =
-            stalled_on
+        if let Some(GoalStalledOn {
+            num_opaques,
+            ref stalled_vars,
+            ref sub_roots,
+            stalled_certainty,
+        }) = stalled_on
             && !stalled_vars.iter().any(|value| self.delegate.is_changed_arg(*value))
             && !sub_roots
                 .iter()
@@ -419,7 +454,7 @@ where
                 NestedNormalizationGoals::empty(),
                 GoalEvaluation {
                     goal,
-                    certainty: Certainty::Maybe(stalled_cause),
+                    certainty: stalled_certainty,
                     has_changed: HasChanged::No,
                     stalled_on,
                 },
@@ -432,8 +467,7 @@ where
         let opaque_types = self.delegate.clone_opaque_types_lookup_table();
         let (goal, opaque_types) = eager_resolve_vars(self.delegate, (goal, opaque_types));
 
-        let (orig_values, canonical_goal) =
-            Self::canonicalize_goal(self.delegate, goal, opaque_types);
+        let (orig_values, canonical_goal) = canonicalize_goal(self.delegate, goal, opaque_types);
         let canonical_result = self.search_graph.evaluate_goal(
             self.cx(),
             canonical_goal,
@@ -448,7 +482,7 @@ where
         let has_changed =
             if !has_only_region_constraints(response) { HasChanged::Yes } else { HasChanged::No };
 
-        let (normalization_nested_goals, certainty) = Self::instantiate_and_apply_query_response(
+        let (normalization_nested_goals, certainty) = instantiate_and_apply_query_response(
             self.delegate,
             goal.param_env,
             &orig_values,
@@ -468,7 +502,7 @@ where
 
         let stalled_on = match certainty {
             Certainty::Yes => None,
-            Certainty::Maybe(stalled_cause) => match has_changed {
+            Certainty::Maybe { .. } => match has_changed {
                 // FIXME: We could recompute a *new* set of stalled variables by walking
                 // through the orig values, resolving, and computing the root vars of anything
                 // that is not resolved. Only when *these* have changed is it meaningful
@@ -518,7 +552,7 @@ where
                             .len(),
                         stalled_vars,
                         sub_roots,
-                        stalled_cause,
+                        stalled_certainty: certainty,
                     })
                 }
             },
@@ -634,7 +668,7 @@ where
             if let Some(certainty) = self.delegate.compute_goal_fast_path(goal, self.origin_span) {
                 match certainty {
                     Certainty::Yes => {}
-                    Certainty::Maybe(_) => {
+                    Certainty::Maybe { .. } => {
                         self.nested_goals.push((source, goal, None));
                         unchanged_certainty = unchanged_certainty.map(|c| c.and(certainty));
                     }
@@ -710,7 +744,7 @@ where
 
                 match certainty {
                     Certainty::Yes => {}
-                    Certainty::Maybe(_) => {
+                    Certainty::Maybe { .. } => {
                         self.nested_goals.push((source, with_resolved_vars, stalled_on));
                         unchanged_certainty = unchanged_certainty.map(|c| c.and(certainty));
                     }
@@ -724,7 +758,7 @@ where
 
                 match certainty {
                     Certainty::Yes => {}
-                    Certainty::Maybe(_) => {
+                    Certainty::Maybe { .. } => {
                         self.nested_goals.push((source, goal, stalled_on));
                         unchanged_certainty = unchanged_certainty.map(|c| c.and(certainty));
                     }
@@ -1184,28 +1218,204 @@ where
     pub(crate) fn opaques_with_sub_unified_hidden_type(
         &self,
         self_ty: I::Ty,
-    ) -> impl Iterator<Item = ty::AliasTy<I>> + use<'a, D, I> {
-        let delegate = self.delegate;
-        delegate
-            .clone_opaque_types_lookup_table()
-            .into_iter()
-            .chain(delegate.clone_duplicate_opaque_types())
-            .filter_map(move |(key, hidden_ty)| {
-                if let ty::Infer(ty::TyVar(self_vid)) = self_ty.kind() {
-                    if let ty::Infer(ty::TyVar(hidden_vid)) = hidden_ty.kind() {
-                        if delegate.sub_unification_table_root_var(self_vid)
-                            == delegate.sub_unification_table_root_var(hidden_vid)
-                        {
-                            return Some(ty::AliasTy::new_from_args(
-                                delegate.cx(),
-                                key.def_id.into(),
-                                key.args,
-                            ));
-                        }
+    ) -> Vec<ty::AliasTy<I>> {
+        if let ty::Infer(ty::TyVar(vid)) = self_ty.kind() {
+            self.delegate.opaques_with_sub_unified_hidden_type(vid)
+        } else {
+            vec![]
+        }
+    }
+
+    /// To return the constraints of a canonical query to the caller, we canonicalize:
+    ///
+    /// - `var_values`: a map from bound variables in the canonical goal to
+    ///   the values inferred while solving the instantiated goal.
+    /// - `external_constraints`: additional constraints which aren't expressible
+    ///   using simple unification of inference variables.
+    ///
+    /// This takes the `shallow_certainty` which represents whether we're confident
+    /// that the final result of the current goal only depends on the nested goals.
+    ///
+    /// In case this is `Certainty::Maybe`, there may still be additional nested goals
+    /// or inference constraints required for this candidate to be hold. The candidate
+    /// always requires all already added constraints and nested goals.
+    #[instrument(level = "trace", skip(self), ret)]
+    pub(in crate::solve) fn evaluate_added_goals_and_make_canonical_response(
+        &mut self,
+        shallow_certainty: Certainty,
+    ) -> QueryResult<I> {
+        self.inspect.make_canonical_response(shallow_certainty);
+
+        let goals_certainty = self.try_evaluate_added_goals()?;
+        assert_eq!(
+            self.tainted,
+            Ok(()),
+            "EvalCtxt is tainted -- nested goals may have been dropped in a \
+            previous call to `try_evaluate_added_goals!`"
+        );
+
+        // We only check for leaks from universes which were entered inside
+        // of the query.
+        self.delegate.leak_check(self.max_input_universe).map_err(|NoSolution| {
+            trace!("failed the leak check");
+            NoSolution
+        })?;
+
+        let (certainty, normalization_nested_goals) =
+            match (self.current_goal_kind, shallow_certainty) {
+                // When normalizing, we've replaced the expected term with an unconstrained
+                // inference variable. This means that we dropped information which could
+                // have been important. We handle this by instead returning the nested goals
+                // to the caller, where they are then handled. We only do so if we do not
+                // need to recompute the `NormalizesTo` goal afterwards to avoid repeatedly
+                // uplifting its nested goals. This is the case if the `shallow_certainty` is
+                // `Certainty::Yes`.
+                (CurrentGoalKind::NormalizesTo, Certainty::Yes) => {
+                    let goals = std::mem::take(&mut self.nested_goals);
+                    // As we return all ambiguous nested goals, we can ignore the certainty
+                    // returned by `self.try_evaluate_added_goals()`.
+                    if goals.is_empty() {
+                        assert!(matches!(goals_certainty, Certainty::Yes));
                     }
+                    (
+                        Certainty::Yes,
+                        NestedNormalizationGoals(
+                            goals.into_iter().map(|(s, g, _)| (s, g)).collect(),
+                        ),
+                    )
                 }
-                None
-            })
+                _ => {
+                    let certainty = shallow_certainty.and(goals_certainty);
+                    (certainty, NestedNormalizationGoals::empty())
+                }
+            };
+
+        if let Certainty::Maybe {
+            cause: cause @ MaybeCause::Overflow { keep_constraints: false, .. },
+            opaque_types_jank,
+        } = certainty
+        {
+            // If we have overflow, it's probable that we're substituting a type
+            // into itself infinitely and any partial substitutions in the query
+            // response are probably not useful anyways, so just return an empty
+            // query response.
+            //
+            // This may prevent us from potentially useful inference, e.g.
+            // 2 candidates, one ambiguous and one overflow, which both
+            // have the same inference constraints.
+            //
+            // Changing this to retain some constraints in the future
+            // won't be a breaking change, so this is good enough for now.
+            return Ok(self.make_ambiguous_response_no_constraints(cause, opaque_types_jank));
+        }
+
+        let external_constraints =
+            self.compute_external_query_constraints(certainty, normalization_nested_goals);
+        let (var_values, mut external_constraints) =
+            eager_resolve_vars(self.delegate, (self.var_values, external_constraints));
+
+        // Remove any trivial or duplicated region constraints once we've resolved regions
+        let mut unique = HashSet::default();
+        external_constraints.region_constraints.retain(|outlives| {
+            outlives.0.as_region().is_none_or(|re| re != outlives.1) && unique.insert(*outlives)
+        });
+
+        let canonical = canonicalize_response(
+            self.delegate,
+            self.max_input_universe,
+            Response {
+                var_values,
+                certainty,
+                external_constraints: self.cx().mk_external_constraints(external_constraints),
+            },
+        );
+
+        // HACK: We bail with overflow if the response would have too many non-region
+        // inference variables. This tends to only happen if we encounter a lot of
+        // ambiguous alias types which get replaced with fresh inference variables
+        // during generalization. This prevents hangs caused by an exponential blowup,
+        // see tests/ui/traits/next-solver/coherence-alias-hang.rs.
+        match self.current_goal_kind {
+            // We don't do so for `NormalizesTo` goals as we erased the expected term and
+            // bailing with overflow here would prevent us from detecting a type-mismatch,
+            // causing a coherence error in diesel, see #131969. We still bail with overflow
+            // when later returning from the parent AliasRelate goal.
+            CurrentGoalKind::NormalizesTo => {}
+            CurrentGoalKind::Misc | CurrentGoalKind::CoinductiveTrait => {
+                let num_non_region_vars = canonical
+                    .variables
+                    .iter()
+                    .filter(|c| !c.is_region() && c.is_existential())
+                    .count();
+                if num_non_region_vars > self.cx().recursion_limit() {
+                    debug!(?num_non_region_vars, "too many inference variables -> overflow");
+                    return Ok(self.make_ambiguous_response_no_constraints(
+                        MaybeCause::Overflow {
+                            suggest_increasing_limit: true,
+                            keep_constraints: false,
+                        },
+                        OpaqueTypesJank::AllGood,
+                    ));
+                }
+            }
+        }
+
+        Ok(canonical)
+    }
+
+    /// Constructs a totally unconstrained, ambiguous response to a goal.
+    ///
+    /// Take care when using this, since often it's useful to respond with
+    /// ambiguity but return constrained variables to guide inference.
+    pub(in crate::solve) fn make_ambiguous_response_no_constraints(
+        &self,
+        cause: MaybeCause,
+        opaque_types_jank: OpaqueTypesJank,
+    ) -> CanonicalResponse<I> {
+        response_no_constraints_raw(
+            self.cx(),
+            self.max_input_universe,
+            self.variables,
+            Certainty::Maybe { cause, opaque_types_jank },
+        )
+    }
+
+    /// Computes the region constraints and *new* opaque types registered when
+    /// proving a goal.
+    ///
+    /// If an opaque was already constrained before proving this goal, then the
+    /// external constraints do not need to record that opaque, since if it is
+    /// further constrained by inference, that will be passed back in the var
+    /// values.
+    #[instrument(level = "trace", skip(self), ret)]
+    fn compute_external_query_constraints(
+        &self,
+        certainty: Certainty,
+        normalization_nested_goals: NestedNormalizationGoals<I>,
+    ) -> ExternalConstraintsData<I> {
+        // We only return region constraints once the certainty is `Yes`. This
+        // is necessary as we may drop nested goals on ambiguity, which may result
+        // in unconstrained inference variables in the region constraints. It also
+        // prevents us from emitting duplicate region constraints, avoiding some
+        // unnecessary work. This slightly weakens the leak check in case it uses
+        // region constraints from an ambiguous nested goal. This is tested in both
+        // `tests/ui/higher-ranked/leak-check/leak-check-in-selection-5-ambig.rs` and
+        // `tests/ui/higher-ranked/leak-check/leak-check-in-selection-6-ambig-unify.rs`.
+        let region_constraints = if certainty == Certainty::Yes {
+            self.delegate.make_deduplicated_outlives_constraints()
+        } else {
+            Default::default()
+        };
+
+        // We only return *newly defined* opaque types from canonical queries.
+        //
+        // Constraints for any existing opaque types are already tracked by changes
+        // to the `var_values`.
+        let opaque_types = self
+            .delegate
+            .clone_opaque_types_added_since(self.initial_opaque_types_storage_num_entries);
+
+        ExternalConstraintsData { region_constraints, opaque_types, normalization_nested_goals }
     }
 }
 
@@ -1347,7 +1557,7 @@ pub(super) fn evaluate_root_goal_for_proof_tree<D: SolverDelegate<Interner = I>,
     let opaque_types = delegate.clone_opaque_types_lookup_table();
     let (goal, opaque_types) = eager_resolve_vars(delegate, (goal, opaque_types));
 
-    let (orig_values, canonical_goal) = EvalCtxt::canonicalize_goal(delegate, goal, opaque_types);
+    let (orig_values, canonical_goal) = canonicalize_goal(delegate, goal, opaque_types);
 
     let (canonical_result, final_revision) =
         delegate.cx().evaluate_root_goal_for_proof_tree_raw(canonical_goal);
@@ -1364,7 +1574,7 @@ pub(super) fn evaluate_root_goal_for_proof_tree<D: SolverDelegate<Interner = I>,
         Ok(response) => response,
     };
 
-    let (normalization_nested_goals, _certainty) = EvalCtxt::instantiate_and_apply_query_response(
+    let (normalization_nested_goals, _certainty) = instantiate_and_apply_query_response(
         delegate,
         goal.param_env,
         &proof_tree.orig_values,

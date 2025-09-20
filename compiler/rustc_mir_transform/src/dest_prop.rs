@@ -141,7 +141,7 @@ use rustc_data_structures::union_find::UnionFind;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_index::interval::SparseIntervalMatrix;
 use rustc_index::{IndexVec, newtype_index};
-use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
+use rustc_middle::mir::visit::{MutVisitor, PlaceContext, VisitPlacesWith, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::impls::{DefUse, MaybeLiveLocals};
@@ -153,15 +153,7 @@ pub(super) struct DestinationPropagation;
 
 impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        // For now, only run at MIR opt level 3. Two things need to be changed before this can be
-        // turned on by default:
-        //  1. Because of the overeager removal of storage statements, this can cause stack space
-        //     regressions. This opt is not the place to fix this though, it's a more general
-        //     problem in MIR.
-        //  2. Despite being an overall perf improvement, this still causes a 30% regression in
-        //     keccak. We can temporarily fix this by bounding function size, but in the long term
-        //     we should fix this by being smarter about invalidating analysis results.
-        sess.mir_opt_level() >= 3
+        sess.mir_opt_level() >= 2
     }
 
     #[tracing::instrument(level = "trace", skip(self, tcx, body))]
@@ -508,22 +500,6 @@ impl TwoStepIndex {
         let index = 2 * point.as_u32() + (effect as u32);
         // Reverse the indexing to use more efficient `IntervalSet::append`.
         TwoStepIndex::from_u32(max_index - index)
-    }
-}
-
-struct VisitPlacesWith<F>(F);
-
-impl<'tcx, F> Visitor<'tcx> for VisitPlacesWith<F>
-where
-    F: FnMut(Place<'tcx>, PlaceContext),
-{
-    fn visit_local(&mut self, local: Local, ctxt: PlaceContext, _: Location) {
-        (self.0)(local.into(), ctxt);
-    }
-
-    fn visit_place(&mut self, place: &Place<'tcx>, ctxt: PlaceContext, location: Location) {
-        (self.0)(*place, ctxt);
-        self.visit_projection(place.as_ref(), ctxt, location);
     }
 }
 

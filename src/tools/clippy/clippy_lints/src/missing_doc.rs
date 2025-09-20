@@ -250,7 +250,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
             AssocContainer::Trait | AssocContainer::TraitImpl(_) => {
                 note_prev_span_then_ret!(self.prev_span, impl_item.span);
             },
-            AssocContainer::InherentImpl => {}
+            AssocContainer::InherentImpl => {},
         }
 
         let (article, desc) = cx.tcx.article_and_description(impl_item.owner_id.to_def_id());

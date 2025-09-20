@@ -469,7 +469,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 }
                 interp_ok(Some((full_size, full_align)))
             }
-            ty::Dynamic(expected_trait, _, ty::Dyn) => {
+            ty::Dynamic(expected_trait, _) => {
                 let vtable = metadata.unwrap_meta().to_pointer(self)?;
                 // Read size and align from vtable (already checks size).
                 interp_ok(Some(self.get_vtable_size_and_align(vtable, Some(expected_trait))?))

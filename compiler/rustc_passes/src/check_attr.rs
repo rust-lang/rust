@@ -246,7 +246,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::Repr { .. }
                     | AttributeKind::Cold(..)
                     | AttributeKind::ExportName { .. }
-                    | AttributeKind::CoherenceIsCore
                     | AttributeKind::Fundamental
                     | AttributeKind::Optimize(..)
                     | AttributeKind::LinkSection { .. }
@@ -276,6 +275,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::PatternComplexityLimit { .. }
                     | AttributeKind::NoCore { .. }
                     | AttributeKind::NoStd { .. }
+                    | AttributeKind::ObjcClass { .. }
+                    | AttributeKind::ObjcSelector { .. }
+                    | AttributeKind::RustcCoherenceIsCore(..)
                 ) => { /* do nothing  */ }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
