@@ -254,7 +254,6 @@ impl<T: PointeeSized> *mut T {
     /// [`is_null`]: #method.is_null-1
     /// [`as_uninit_ref`]: pointer#method.as_uninit_ref-1
     /// [`as_mut`]: #method.as_mut
-
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
     #[rustc_const_stable(feature = "const_ptr_is_null", since = "1.84.0")]
     #[inline]
