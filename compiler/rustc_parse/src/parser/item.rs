@@ -989,11 +989,7 @@ impl<'a> Parser<'a> {
                 }
                 Ok(None) => {}
                 Err(mut err) => {
-                    self.consume_block(
-                        exp!(OpenBrace),
-                        exp!(CloseBrace),
-                        ConsumeClosingDelim::No,
-                    );
+                    self.consume_block(exp!(OpenBrace), exp!(CloseBrace), ConsumeClosingDelim::No);
                     err.span_label(ident.span, "while parsing this effect");
                     let _guar = err.emit();
                     break;
@@ -1002,19 +998,12 @@ impl<'a> Parser<'a> {
         }
         self.expect(exp!(CloseBrace))?;
 
-        Ok(ItemKind::Effect(Box::new(Effect {
-            ident,
-            generics,
-            operations,
-        })))
+        Ok(ItemKind::Effect(Box::new(Effect { ident, generics, operations })))
     }
 
     fn parse_effect_operation(&mut self) -> PResult<'a, Option<Box<FnSig>>> {
-        let fn_parse_mode = FnParseMode {
-            req_name: |_| true,
-            context: FnContext::Free,
-            req_body: false,
-        };
+        let fn_parse_mode =
+            FnParseMode { req_name: |_| true, context: FnContext::Free, req_body: false };
         let sig_lo = self.token.span;
         // Parse operation name (identifier)
         let _ident = self.parse_ident()?;

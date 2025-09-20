@@ -59,4 +59,8 @@ ignore = [
     # Rustfmt doesn't support use closures yet
     "tests/mir-opt/ergonomic-clones/closure.rs",
     "tests/codegen-llvm/ergonomic-clones/closure.rs",
+
+    # Temporary test files for new syntax that rustfmt doesn't understand yet
+    "test_effect.rs",
+    "test_simple.rs",
 ]

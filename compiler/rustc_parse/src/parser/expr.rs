@@ -1569,7 +1569,11 @@ impl<'a> Parser<'a> {
                                 is_placeholder: false,
                             });
                             let span = lo.to(this.prev_token.span);
-                            return Ok(this.mk_expr_with_attrs(span, ExprKind::Handle(expr, arms, span), attrs));
+                            return Ok(this.mk_expr_with_attrs(
+                                span,
+                                ExprKind::Handle(expr, arms, span),
+                                attrs,
+                            ));
                         }
                     }
                 }
