@@ -8,12 +8,12 @@
 
 // Test that the simd floating-point math intrinsics produce correct results.
 
-#![feature(repr_simd, intrinsics, core_intrinsics)]
+#![feature(repr_simd, core_intrinsics, const_trait_impl, const_cmp, const_index)]
 #![allow(non_camel_case_types)]
 
-#[path = "../../../auxiliary/minisimd.rs"]
-mod minisimd;
-use minisimd::*;
+#[path = "../auxiliary/minisimd_const.rs"]
+mod minisimd_const;
+use minisimd_const::*;
 
 use std::intrinsics::simd::*;
 
@@ -34,17 +34,44 @@ macro_rules! assert_approx_eq {
     }};
 }
 
-fn main() {
+make_runtime_and_compiletime! {
+    fn abs_and_rounding() {
+        let x = f32x4::from_array([1.0, 1.0, 1.0, 1.0]);
+        let y = f32x4::from_array([-1.0, -1.0, -1.0, -1.0]);
+        let z = f32x4::from_array([0.0, 0.0, 0.0, 0.0]);
+
+        let h = f32x4::from_array([0.5, 0.5, 0.5, 0.5]);
+
+        unsafe {
+            let r = simd_fabs(y);
+            assert_eq_const_safe!(x, r);
+
+            // rounding functions
+            let r = simd_floor(h);
+            assert_eq_const_safe!(z, r);
+
+            let r = simd_ceil(h);
+            assert_eq_const_safe!(x, r);
+
+            let r = simd_round(h);
+            assert_eq_const_safe!(x, r);
+
+            let r = simd_round_ties_even(h);
+            assert_eq_const_safe!(z, r);
+
+            let r = simd_trunc(h);
+            assert_eq_const_safe!(z, r);
+        }
+    }
+}
+
+fn math_functions() {
     let x = f32x4::from_array([1.0, 1.0, 1.0, 1.0]);
-    let y = f32x4::from_array([-1.0, -1.0, -1.0, -1.0]);
     let z = f32x4::from_array([0.0, 0.0, 0.0, 0.0]);
 
     let h = f32x4::from_array([0.5, 0.5, 0.5, 0.5]);
 
     unsafe {
-        let r = simd_fabs(y);
-        assert_approx_eq!(x, r);
-
         let r = simd_fcos(z);
         assert_approx_eq!(x, r);
 
@@ -74,21 +101,10 @@ fn main() {
 
         let r = simd_fsin(z);
         assert_approx_eq!(z, r);
-
-        // rounding functions
-        let r = simd_floor(h);
-        assert_eq!(z, r);
-
-        let r = simd_ceil(h);
-        assert_eq!(x, r);
-
-        let r = simd_round(h);
-        assert_eq!(x, r);
-
-        let r = simd_round_ties_even(h);
-        assert_eq!(z, r);
-
-        let r = simd_trunc(h);
-        assert_eq!(z, r);
     }
+}
+
+fn main() {
+    abs_and_rounding();
+    math_functions();
 }
