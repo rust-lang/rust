@@ -302,7 +302,6 @@ mod permissions_set_readonly_false;
 mod pointers_in_nomem_asm_block;
 mod precedence;
 mod ptr;
-mod ptr_offset_with_cast;
 mod pub_underscore_fields;
 mod pub_use;
 mod question_mark;
@@ -360,6 +359,7 @@ mod temporary_assignment;
 mod tests_outside_test_module;
 mod to_digit_is_some;
 mod to_string_trait_impl;
+mod toplevel_ref_arg;
 mod trailing_empty_array;
 mod trait_bounds;
 mod transmute;
@@ -592,7 +592,6 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
     store.register_late_pass(|_| Box::new(unwrap::Unwrap));
     store.register_late_pass(move |_| Box::new(indexing_slicing::IndexingSlicing::new(conf)));
     store.register_late_pass(move |tcx| Box::new(non_copy_const::NonCopyConst::new(tcx, conf)));
-    store.register_late_pass(|_| Box::new(ptr_offset_with_cast::PtrOffsetWithCast));
     store.register_late_pass(|_| Box::new(redundant_clone::RedundantClone));
     store.register_late_pass(|_| Box::new(slow_vector_initialization::SlowVectorInit));
     store.register_late_pass(move |_| Box::new(unnecessary_wraps::UnnecessaryWraps::new(conf)));
@@ -744,7 +743,7 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
     store.register_late_pass(|_| Box::new(missing_assert_message::MissingAssertMessage));
     store.register_late_pass(|_| Box::new(needless_maybe_sized::NeedlessMaybeSized));
     store.register_late_pass(|_| Box::new(redundant_async_block::RedundantAsyncBlock));
-    store.register_late_pass(|_| Box::new(let_with_type_underscore::UnderscoreTyped));
+    store.register_early_pass(|| Box::new(let_with_type_underscore::UnderscoreTyped));
     store.register_late_pass(move |_| Box::new(manual_main_separator_str::ManualMainSeparatorStr::new(conf)));
     store.register_late_pass(|_| Box::new(unnecessary_struct_initialization::UnnecessaryStruct));
     store.register_late_pass(move |_| Box::new(unnecessary_box_returns::UnnecessaryBoxReturns::new(conf)));
@@ -831,5 +830,6 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
     store.register_late_pass(|_| Box::new(cloned_ref_to_slice_refs::ClonedRefToSliceRefs::new(conf)));
     store.register_late_pass(|_| Box::new(infallible_try_from::InfallibleTryFrom));
     store.register_late_pass(|_| Box::new(coerce_container_to_any::CoerceContainerToAny));
+    store.register_late_pass(|_| Box::new(toplevel_ref_arg::ToplevelRefArg));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }

@@ -7,15 +7,14 @@ fn main::{closure#0}(_1: *mut {coroutine@$DIR/coroutine_drop_cleanup.rs:12:5: 12
     let _4: ();
     let mut _5: ();
     let mut _6: ();
-    let mut _7: ();
-    let mut _8: u32;
+    let mut _7: u32;
     scope 1 {
         debug _s => (((*_1) as variant#3).0: std::string::String);
     }
 
     bb0: {
-        _8 = discriminant((*_1));
-        switchInt(move _8) -> [0: bb5, 3: bb8, otherwise: bb9];
+        _7 = discriminant((*_1));
+        switchInt(move _7) -> [0: bb5, 3: bb8, otherwise: bb9];
     }
 
     bb1: {

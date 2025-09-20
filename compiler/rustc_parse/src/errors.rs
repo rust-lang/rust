@@ -2723,7 +2723,9 @@ pub(crate) struct DotDotDotRestPattern {
     #[label]
     pub span: Span,
     #[suggestion(style = "verbose", code = "", applicability = "machine-applicable")]
-    pub suggestion: Span,
+    pub suggestion: Option<Span>,
+    #[note]
+    pub var_args: Option<()>,
 }
 
 #[derive(Diagnostic)]
@@ -3026,6 +3028,14 @@ pub(crate) struct FnPointerCannotBeAsync {
 #[derive(Diagnostic)]
 #[diag(parse_nested_c_variadic_type, code = E0743)]
 pub(crate) struct NestedCVariadicType {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_dotdotdot_rest_type)]
+#[note]
+pub(crate) struct InvalidCVariadicType {
     #[primary_span]
     pub span: Span,
 }

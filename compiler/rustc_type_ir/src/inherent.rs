@@ -76,12 +76,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn new_foreign(interner: I, def_id: I::ForeignId) -> Self;
 
-    fn new_dynamic(
-        interner: I,
-        preds: I::BoundExistentialPredicates,
-        region: I::Region,
-        kind: ty::DynKind,
-    ) -> Self;
+    fn new_dynamic(interner: I, preds: I::BoundExistentialPredicates, region: I::Region) -> Self;
 
     fn new_coroutine(interner: I, def_id: I::CoroutineId, args: I::GenericArgs) -> Self;
 
@@ -167,7 +162,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn is_guaranteed_unsized_raw(self) -> bool {
         match self.kind() {
-            ty::Dynamic(_, _, ty::Dyn) | ty::Slice(_) | ty::Str => true,
+            ty::Dynamic(_, _) | ty::Slice(_) | ty::Str => true,
             ty::Bool
             | ty::Char
             | ty::Int(_)

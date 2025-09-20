@@ -230,8 +230,14 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         location: impl NormalizeLocation,
     ) -> Ty<'tcx> {
         let tcx = self.tcx();
+        let body = self.body;
+
+        let cause = ObligationCause::misc(
+            location.to_locations().span(body),
+            body.source.def_id().expect_local(),
+        );
+
         if self.infcx.next_trait_solver() {
-            let body = self.body;
             let param_env = self.infcx.param_env;
             // FIXME: Make this into a real type op?
             self.fully_perform_op(
@@ -241,10 +247,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     |ocx| {
                         let structurally_normalize = |ty| {
                             ocx.structurally_normalize_ty(
-                                &ObligationCause::misc(
-                                    location.to_locations().span(body),
-                                    body.source.def_id().expect_local(),
-                                ),
+                                &cause,
                                 param_env,
                                 ty,
                             )
@@ -253,6 +256,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                         let tail = tcx.struct_tail_raw(
                             ty,
+                            &cause,
                             structurally_normalize,
                             || {},
                         );
@@ -265,7 +269,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             .unwrap_or_else(|guar| Ty::new_error(tcx, guar))
         } else {
             let mut normalize = |ty| self.normalize(ty, location);
-            let tail = tcx.struct_tail_raw(ty, &mut normalize, || {});
+            let tail = tcx.struct_tail_raw(ty, &cause, &mut normalize, || {});
             normalize(tail)
         }
     }

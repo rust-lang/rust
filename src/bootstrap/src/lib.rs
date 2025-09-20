@@ -87,9 +87,6 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &str, Option<&[&'static str]>)] = &[
     (Some(Mode::Codegen), "bootstrap", None),
     (Some(Mode::ToolRustcPrivate), "bootstrap", None),
     (Some(Mode::ToolStd), "bootstrap", None),
-    (Some(Mode::Rustc), "llvm_enzyme", None),
-    (Some(Mode::Codegen), "llvm_enzyme", None),
-    (Some(Mode::ToolRustcPrivate), "llvm_enzyme", None),
     (Some(Mode::ToolRustcPrivate), "rust_analyzer", None),
     (Some(Mode::ToolStd), "rust_analyzer", None),
     // Any library specific cfgs like `target_os`, `target_arch` should be put in
@@ -868,6 +865,9 @@ impl Build {
         }
         if (self.config.llvm_enabled(target) || kind == Kind::Check) && check("llvm") {
             features.push("llvm");
+        }
+        if self.config.llvm_enzyme {
+            features.push("llvm_enzyme");
         }
         // keep in sync with `bootstrap/compile.rs:rustc_cargo_env`
         if self.config.rust_randomize_layout && check("rustc_randomized_layouts") {

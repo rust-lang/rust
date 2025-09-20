@@ -296,6 +296,12 @@ fn process_builtin_attrs(
                 AttributeKind::Sanitize { span, .. } => {
                     interesting_spans.sanitize = Some(*span);
                 }
+                AttributeKind::ObjcClass { classname, .. } => {
+                    codegen_fn_attrs.objc_class = Some(*classname);
+                }
+                AttributeKind::ObjcSelector { methname, .. } => {
+                    codegen_fn_attrs.objc_selector = Some(*methname);
+                }
                 _ => {}
             }
         }

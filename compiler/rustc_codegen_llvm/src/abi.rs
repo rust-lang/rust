@@ -215,9 +215,9 @@ impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 let align = attrs.pointee_align.unwrap_or(self.layout.align.abi);
                 OperandValue::Ref(PlaceValue::new_sized(val, align)).store(bx, dst);
             }
-            // Unsized indirect qrguments
+            // Unsized indirect arguments cannot be stored
             PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ } => {
-                bug!("unsized `ArgAbi` must be handled through `store_fn_arg`");
+                bug!("unsized `ArgAbi` cannot be stored");
             }
             PassMode::Cast { cast, pad_i32: _ } => {
                 // The ABI mandates that the value is passed as a different struct representation.
@@ -272,12 +272,7 @@ impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 OperandValue::Pair(next(), next()).store(bx, dst);
             }
             PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ } => {
-                let place_val = PlaceValue {
-                    llval: next(),
-                    llextra: Some(next()),
-                    align: self.layout.align.abi,
-                };
-                OperandValue::Ref(place_val).store(bx, dst);
+                bug!("unsized `ArgAbi` cannot be stored");
             }
             PassMode::Direct(_)
             | PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: _ }

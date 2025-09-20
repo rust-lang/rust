@@ -21,6 +21,7 @@ use {rustc_ast as ast, rustc_hir as hir};
 use super::FnCtxt;
 use super::method::MethodCallee;
 use crate::Expectation;
+use crate::method::TreatNotYetDefinedOpaques;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Checks a `a <op>= b`
@@ -565,7 +566,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     rhs_ty,
                     lhs_expr,
                     lhs_ty,
-                    |lhs_ty, rhs_ty| is_compatible_after_call(lhs_ty, rhs_ty),
+                    is_compatible_after_call,
                 ) {
                     // Cool
                 }
@@ -974,8 +975,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             },
         );
 
-        let method =
-            self.lookup_method_for_operator(cause.clone(), opname, trait_did, lhs_ty, opt_rhs_ty);
+        // We don't consider any other candidates if this lookup fails
+        // so we can freely treat opaque types as inference variables here
+        // to allow more code to compile.
+        let treat_opaques = TreatNotYetDefinedOpaques::AsInfer;
+        let method = self.lookup_method_for_operator(
+            cause.clone(),
+            opname,
+            trait_did,
+            lhs_ty,
+            opt_rhs_ty,
+            treat_opaques,
+        );
         match method {
             Some(ok) => {
                 let method = self.register_infer_ok_obligations(ok);
@@ -1159,8 +1170,8 @@ fn deref_ty_if_possible(ty: Ty<'_>) -> Ty<'_> {
     }
 }
 
-/// Returns `true` if this is a built-in arithmetic operation (e.g., u32
-/// + u32, i16x4 == i16x4) and false if these types would have to be
+/// Returns `true` if this is a built-in arithmetic operation (e.g.,
+/// u32 + u32, i16x4 == i16x4) and false if these types would have to be
 /// overloaded to be legal. There are two reasons that we distinguish
 /// builtin operations from overloaded ones (vs trying to drive
 /// everything uniformly through the trait system and intrinsics or
@@ -1180,7 +1191,7 @@ fn is_builtin_binop<'tcx>(lhs: Ty<'tcx>, rhs: Ty<'tcx>, category: BinOpCategory)
     // (See https://github.com/rust-lang/rust/issues/57447.)
     let (lhs, rhs) = (deref_ty_if_possible(lhs), deref_ty_if_possible(rhs));
 
-    match category.into() {
+    match category {
         BinOpCategory::Shortcircuit => true,
         BinOpCategory::Shift => {
             lhs.references_error()

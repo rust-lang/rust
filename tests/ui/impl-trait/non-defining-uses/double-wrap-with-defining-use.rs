@@ -1,7 +1,6 @@
 // Regression test for ICE from issue #140545
 // The error message is confusing and wrong, but that's a different problem (#139350)
 
-//@ edition:2018
 //@ revisions: current next
 //@[next] compile-flags: -Znext-solver
 //@ ignore-compare-mode-next-solver (explicit revisions)

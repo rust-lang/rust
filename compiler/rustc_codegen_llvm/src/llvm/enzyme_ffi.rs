@@ -59,10 +59,10 @@ pub(crate) enum LLVMRustVerifierFailureAction {
     LLVMReturnStatusAction = 2,
 }
 
-#[cfg(llvm_enzyme)]
+#[cfg(feature = "llvm_enzyme")]
 pub(crate) use self::Enzyme_AD::*;
 
-#[cfg(llvm_enzyme)]
+#[cfg(feature = "llvm_enzyme")]
 pub(crate) mod Enzyme_AD {
     use std::ffi::{CString, c_char};
 
@@ -134,10 +134,10 @@ pub(crate) mod Enzyme_AD {
     }
 }
 
-#[cfg(not(llvm_enzyme))]
+#[cfg(not(feature = "llvm_enzyme"))]
 pub(crate) use self::Fallback_AD::*;
 
-#[cfg(not(llvm_enzyme))]
+#[cfg(not(feature = "llvm_enzyme"))]
 pub(crate) mod Fallback_AD {
     #![allow(unused_variables)]
 

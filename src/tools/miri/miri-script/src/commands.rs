@@ -130,15 +130,15 @@ impl Command {
         let new_commit = sh.read_file("rust-version")?.trim().to_owned();
         let current_commit = {
             let rustc_info = cmd!(sh, "rustc +miri --version -v").read();
-            if rustc_info.is_err() {
-                None
-            } else {
-                let metadata = rustc_version::version_meta_for(&rustc_info.unwrap())?;
+            if let Ok(rustc_info) = rustc_info {
+                let metadata = rustc_version::version_meta_for(&rustc_info)?;
                 Some(
                     metadata
                         .commit_hash
                         .ok_or_else(|| anyhow!("rustc metadata did not contain commit hash"))?,
                 )
+            } else {
+                None
             }
         };
         // Check if we already are at that commit.

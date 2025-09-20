@@ -29,7 +29,7 @@ declare namespace stringdex {
      */
     interface DataColumn {
         isEmpty(id: number): boolean;
-        at(id: number): Promise<Uint8Array|undefined>;
+        at(id: number): Promise<Uint8Array>|Uint8Array|undefined;
         search(name: Uint8Array|string): Promise<Trie?>;
         searchLev(name: Uint8Array|string): AsyncGenerator<Trie>;
         length: number,

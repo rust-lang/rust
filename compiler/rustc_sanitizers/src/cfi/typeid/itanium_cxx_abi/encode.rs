@@ -626,12 +626,10 @@ pub(crate) fn encode_ty<'tcx>(
         }
 
         // Trait types
-        ty::Dynamic(predicates, region, kind) => {
+        ty::Dynamic(predicates, region) => {
             // u3dynI<element-type1[..element-typeN]>E, where <element-type> is <predicate>, as
             // vendor extended type.
-            let mut s = String::from(match kind {
-                ty::Dyn => "u3dynI",
-            });
+            let mut s = String::from("u3dynI");
             s.push_str(&encode_predicates(tcx, predicates, dict, options));
             s.push_str(&encode_region(*region, dict));
             s.push('E');

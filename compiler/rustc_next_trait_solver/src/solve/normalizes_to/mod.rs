@@ -665,7 +665,7 @@ where
 
             ty::Str | ty::Slice(_) => Ty::new_usize(cx),
 
-            ty::Dynamic(_, _, ty::Dyn) => {
+            ty::Dynamic(_, _) => {
                 let dyn_metadata = cx.require_lang_item(SolverLangItem::DynMetadata);
                 cx.type_of(dyn_metadata)
                     .instantiate(cx, &[I::GenericArg::from(goal.predicate.self_ty())])
@@ -916,7 +916,7 @@ where
             | ty::Adt(_, _)
             | ty::Str
             | ty::Slice(_)
-            | ty::Dynamic(_, _, _)
+            | ty::Dynamic(_, _)
             | ty::Tuple(_)
             | ty::Error(_) => self_ty.discriminant_ty(ecx.cx()),
 

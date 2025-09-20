@@ -254,12 +254,6 @@ pub struct ImplTraitHeader<'tcx> {
     pub constness: hir::Constness,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug, TypeFoldable, TypeVisitable)]
-pub enum ImplSubject<'tcx> {
-    Trait(TraitRef<'tcx>),
-    Inherent(Ty<'tcx>),
-}
-
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable, Debug)]
 #[derive(TypeFoldable, TypeVisitable)]
 pub enum Asyncness {
