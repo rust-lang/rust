@@ -1053,15 +1053,24 @@ unsafe extern "C" {
     ) -> MetadataKindId;
 
     // Create modules.
+    pub(crate) fn LLVMCloneModule(M: &Module) -> &Module;
     pub(crate) fn LLVMModuleCreateWithNameInContext(
         ModuleID: *const c_char,
         C: &Context,
     ) -> &Module;
-    pub(crate) safe fn LLVMCloneModule(M: &Module) -> &Module;
+    pub(crate) fn LLVMPrintModuleToFile(
+        M: &Module,
+        Name: *const c_char,
+        Error_message: *mut c_char,
+    );
+    pub(crate) fn LLVMCloneModule(M: &Module) -> &Module;
+    pub(crate) fn LLVMDisposeModule(M: &Module);
 
     /// Data layout. See Module::getDataLayout.
     pub(crate) fn LLVMGetDataLayoutStr(M: &Module) -> *const c_char;
     pub(crate) fn LLVMSetDataLayout(M: &Module, Triple: *const c_char);
+
+    pub(crate) fn LLVMSetTarget(M: &Module, Name: *const c_char);
 
     /// Append inline assembly to a module. See `Module::appendModuleInlineAsm`.
     pub(crate) fn LLVMAppendModuleInlineAsm(
@@ -1225,6 +1234,12 @@ unsafe extern "C" {
     // Operations on global variables
     pub(crate) safe fn LLVMIsAGlobalVariable(GlobalVar: &Value) -> Option<&Value>;
     pub(crate) fn LLVMAddGlobal<'a>(M: &'a Module, Ty: &'a Type, Name: *const c_char) -> &'a Value;
+    pub(crate) fn LLVMAddGlobalInAddressSpace<'a>(
+        M: &'a Module,
+        Ty: &'a Type,
+        Name: *const c_char,
+        addrspace: c_uint,
+    ) -> &'a Value;
     pub(crate) fn LLVMGetNamedGlobal(M: &Module, Name: *const c_char) -> Option<&Value>;
     pub(crate) fn LLVMGetFirstGlobal(M: &Module) -> Option<&Value>;
     pub(crate) fn LLVMGetNextGlobal(GlobalVar: &Value) -> Option<&Value>;
