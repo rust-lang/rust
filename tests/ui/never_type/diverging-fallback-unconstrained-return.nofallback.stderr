@@ -1,4 +1,4 @@
-warning: this function depends on never type fallback being `()`
+error: this function depends on never type fallback being `()`
   --> $DIR/diverging-fallback-unconstrained-return.rs:28:1
    |
 LL | fn main() {
@@ -12,16 +12,16 @@ note: in edition 2024, the requirement `!: UnitReturn` will fail
    |
 LL |     let _ = if true { unconstrained_return() } else { panic!() };
    |                       ^^^^^^^^^^^^^^^^^^^^^^
-   = note: `#[warn(dependency_on_unit_never_type_fallback)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
+   = note: `#[deny(dependency_on_unit_never_type_fallback)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
 help: use `()` annotations to avoid fallback changes
    |
 LL |     let _: () = if true { unconstrained_return() } else { panic!() };
    |          ++++
 
-warning: 1 warning emitted
+error: aborting due to 1 previous error
 
 Future incompatibility report: Future breakage diagnostic:
-warning: this function depends on never type fallback being `()`
+error: this function depends on never type fallback being `()`
   --> $DIR/diverging-fallback-unconstrained-return.rs:28:1
    |
 LL | fn main() {
@@ -35,7 +35,7 @@ note: in edition 2024, the requirement `!: UnitReturn` will fail
    |
 LL |     let _ = if true { unconstrained_return() } else { panic!() };
    |                       ^^^^^^^^^^^^^^^^^^^^^^
-   = note: `#[warn(dependency_on_unit_never_type_fallback)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
+   = note: `#[deny(dependency_on_unit_never_type_fallback)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
 help: use `()` annotations to avoid fallback changes
    |
 LL |     let _: () = if true { unconstrained_return() } else { panic!() };
