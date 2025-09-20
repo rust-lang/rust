@@ -1,3 +1,5 @@
+#![allow(nonstandard_style)]
+
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::ops::Neg;
 use crate::os::windows::prelude::*;

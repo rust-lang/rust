@@ -173,7 +173,7 @@ impl IntoRawFd for AnonPipe {
 
 impl FromRawFd for AnonPipe {
     unsafe fn from_raw_fd(raw_fd: RawFd) -> Self {
-        Self(FromRawFd::from_raw_fd(raw_fd))
+        Self(unsafe { FromRawFd::from_raw_fd(raw_fd) })
     }
 }
 

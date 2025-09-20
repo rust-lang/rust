@@ -19,7 +19,6 @@ pub mod c;
 pub mod futex;
 pub mod handle;
 pub mod os;
-pub mod pipe;
 pub mod time;
 cfg_select! {
     not(target_vendor = "uwp") => {
