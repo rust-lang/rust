@@ -254,7 +254,7 @@ fn typeck_with_inspect<'tcx>(
     }
 
     fcx.select_obligations_where_possible(|_| {});
-    if let None = fcx.infcx.tainted_by_errors() {
+    if fcx.infcx.tainted_by_errors().is_none() {
         fcx.report_ambiguity_errors();
     }
 
@@ -295,7 +295,7 @@ fn infer_type_if_missing<'tcx>(fcx: &FnCtxt<'_, 'tcx>, node: Node<'tcx>) -> Opti
     } else if let Node::AnonConst(_) = node {
         let id = tcx.local_def_id_to_hir_id(def_id);
         match tcx.parent_hir_node(id) {
-            Node::Ty(&hir::Ty { kind: hir::TyKind::Typeof(ref anon_const), span, .. })
+            Node::Ty(&hir::Ty { kind: hir::TyKind::Typeof(anon_const), span, .. })
                 if anon_const.hir_id == id =>
             {
                 Some(fcx.next_ty_var(span))
