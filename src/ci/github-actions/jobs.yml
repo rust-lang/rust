@@ -412,7 +412,7 @@ auto:
   #  macOS Builders  #
   ####################
 
-  - name: dist-x86_64-apple
+  - name: dist-x86_64-apple-alt
     env:
       SCRIPT: >-
         ./x.py dist bootstrap
@@ -431,14 +431,11 @@ auto:
       MACOSX_DEPLOYMENT_TARGET: 10.12
       MACOSX_STD_DEPLOYMENT_TARGET: 10.12
       SELECT_XCODE: /Applications/Xcode_15.2.app
-      NO_LLVM_ASSERTIONS: 1
-      NO_DEBUG_ASSERTIONS: 1
-      NO_OVERFLOW_CHECKS: 1
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-macos
 
-  - name: dist-apple-various
+  - name: dist-apple-various-alt
     env:
       SCRIPT: ./x.py dist bootstrap --include-default-paths --host='' --target=aarch64-apple-ios,x86_64-apple-ios,aarch64-apple-ios-sim,aarch64-apple-ios-macabi,x86_64-apple-ios-macabi
       # Mac Catalyst cannot currently compile the sanitizer:
@@ -449,12 +446,9 @@ auto:
       MACOSX_DEPLOYMENT_TARGET: 10.12
       MACOSX_STD_DEPLOYMENT_TARGET: 10.12
       SELECT_XCODE: /Applications/Xcode_15.2.app
-      NO_LLVM_ASSERTIONS: 1
-      NO_DEBUG_ASSERTIONS: 1
-      NO_OVERFLOW_CHECKS: 1
     <<: *job-macos
 
-  - name: dist-aarch64-apple
+  - name: dist-aarch64-apple-alt
     env:
       SCRIPT: ./x.py dist bootstrap --include-default-paths --host=aarch64-apple-darwin --target=aarch64-apple-darwin
       RUST_CONFIGURE_ARGS: >-
@@ -471,14 +465,11 @@ auto:
       # supports the hardware.
       MACOSX_DEPLOYMENT_TARGET: 11.0
       MACOSX_STD_DEPLOYMENT_TARGET: 11.0
-      NO_LLVM_ASSERTIONS: 1
-      NO_DEBUG_ASSERTIONS: 1
-      NO_OVERFLOW_CHECKS: 1
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-macos
 
-  - name: aarch64-apple
+  - name: aarch64-apple-alt
     env:
       SCRIPT: >
         ./x.py --stage 2 test --host=aarch64-apple-darwin --target=aarch64-apple-darwin &&
@@ -493,9 +484,6 @@ auto:
       # supports the hardware, so only need to test it there.
       MACOSX_DEPLOYMENT_TARGET: 11.0
       MACOSX_STD_DEPLOYMENT_TARGET: 11.0
-      NO_LLVM_ASSERTIONS: 1
-      NO_DEBUG_ASSERTIONS: 1
-      NO_OVERFLOW_CHECKS: 1
     <<: *job-macos
 
   ######################
