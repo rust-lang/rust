@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 use rustc_ast::visit::{self, AssocCtxt, Visitor, WalkItemKind};
 use rustc_ast::{
-    self as ast, AssocItem, AssocItemKind, Block, ConstItem, Delegation, Fn, ForeignItem,
+    self as ast, AssocItem, AssocItemKind, Block, ConstItem, Delegation, Effect, Fn, ForeignItem,
     ForeignItemKind, Inline, Item, ItemKind, NodeId, StaticItem, StmtKind, TyAlias,
 };
 use rustc_attr_parsing as attr;
@@ -843,6 +843,10 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
 
             // These items live in the type namespace.
             ItemKind::TyAlias(box TyAlias { ident, .. }) | ItemKind::TraitAlias(ident, ..) => {
+                self.r.define_local(parent, ident, TypeNS, res, vis, sp, expansion);
+            }
+
+            ItemKind::Effect(box Effect { ident, .. }) => {
                 self.r.define_local(parent, ident, TypeNS, res, vis, sp, expansion);
             }
 

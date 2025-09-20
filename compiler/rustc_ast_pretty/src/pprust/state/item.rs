@@ -429,6 +429,22 @@ impl<'a> State<'a> {
                 deleg.suffixes.as_ref().map_or(DelegationKind::Glob, |s| DelegationKind::List(s)),
                 &deleg.body,
             ),
+            ast::ItemKind::Effect(effect) => {
+                let (cb, ib) = self.head(visibility_qualified(&item.vis, "effect"));
+                self.print_ident(effect.ident);
+                self.print_generic_params(&effect.generics.params);
+                self.print_where_clause(&effect.generics.where_clause);
+                self.space();
+                self.bopen(ib);
+                self.print_inner_attributes(&item.attrs);
+                for sig in &effect.operations {
+                    self.hardbreak_if_not_bol();
+                    self.print_fn(&sig.decl, sig.header, None, &ast::Generics::default());
+                    self.word(";");
+                }
+                let empty = item.attrs.is_empty() && effect.operations.is_empty();
+                self.bclose(item.span, empty, cb);
+            }
         }
         self.ann.post(self, AnnNode::Item(item))
     }

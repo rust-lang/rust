@@ -377,6 +377,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
 
                 ExprKind::MacCall(_) => panic!("{:?} shouldn't exist here", e.span),
+
+                ExprKind::Perform(_, _) => todo!("Perform expression lowering"),
+                ExprKind::Handle(_, _, _) => todo!("Handle expression lowering"),
             };
 
             hir::Expr { hir_id: expr_hir_id, kind, span: self.lower_span(e.span) }

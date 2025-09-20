@@ -48,12 +48,14 @@ symbols! {
         Const:              "const",
         Continue:           "continue",
         Crate:              "crate",
+        Effect:             "effect",
         Else:               "else",
         Enum:               "enum",
         Extern:             "extern",
         False:              "false",
         Fn:                 "fn",
         For:                "for",
+        Handle:             "handle",
         If:                 "if",
         Impl:               "impl",
         In:                 "in",
@@ -63,6 +65,7 @@ symbols! {
         Mod:                "mod",
         Move:               "move",
         Mut:                "mut",
+        Perform:            "perform",
         Pub:                "pub",
         Ref:                "ref",
         Return:             "return",
@@ -78,6 +81,7 @@ symbols! {
         Use:                "use",
         Where:              "where",
         While:              "while",
+        With:               "with",
         // tidy-alphabetical-end
 
         // Keywords that are used in unstable Rust or reserved for future use.
@@ -2985,7 +2989,7 @@ impl Symbol {
     }
 
     fn is_used_keyword_always(self) -> bool {
-        self >= kw::As && self <= kw::While
+        self >= kw::As && self <= kw::With
     }
 
     fn is_unused_keyword_always(self) -> bool {

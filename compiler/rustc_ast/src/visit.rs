@@ -839,6 +839,8 @@ macro_rules! common_visitor_and_walkers {
                         visit_visitable!($($mut)? vis, ident, generics);
                         visit_visitable_with!($($mut)? vis, bounds, BoundKind::Bound)
                     }
+                    ItemKind::Effect(effect) =>
+                        visit_visitable!($($mut)? vis, effect),
                     ItemKind::MacCall(m) =>
                         visit_visitable!($($mut)? vis, m),
                     ItemKind::MacroDef(ident, def) =>
@@ -1051,11 +1053,25 @@ macro_rules! common_visitor_and_walkers {
                     visit_visitable!($($mut)? vis, bytes),
                 ExprKind::UnsafeBinderCast(kind, expr, ty) =>
                     visit_visitable!($($mut)? vis, kind, expr, ty),
+                ExprKind::Perform(expr, span) =>
+                    visit_visitable!($($mut)? vis, expr, span),
+                ExprKind::Handle(expr, arms, span) =>
+                    visit_visitable!($($mut)? vis, expr, arms, span),
                 ExprKind::Err(_guar) => {}
                 ExprKind::Dummy => {}
             }
 
             visit_span(vis, span)
+        });
+
+        impl_walkable!(|&$($mut)? $($lt)? self: Effect, vis: &mut V| {
+            let Effect { ident, generics, operations } = self;
+            try_visit!(vis.visit_ident(ident));
+            try_visit!(vis.visit_generics(generics));
+            for op in operations {
+                visit_visitable!($($mut)? vis, op);
+            }
+            V::Result::output()
         });
 
         define_named_walk!($(($mut))? $Visitor$(<$lt>)?
@@ -1112,6 +1128,26 @@ macro_rules! common_visitor_and_walkers {
             pub fn walk_where_predicate(WherePredicate);
         );
     };
+}
+
+impl<'a, V: Visitor<'a>> Visitable<'a, V> for FnSig {
+    type Extra = ();
+    fn visit(&'a self, visitor: &mut V, _extra: Self::Extra) -> V::Result {
+        try_visit!(self.header.visit(visitor, ()));
+        try_visit!(self.decl.visit(visitor, ()));
+        // span ignored
+        V::Result::output()
+    }
+}
+
+impl<'a, V: Visitor<'a>> Visitable<'a, V> for Effect {
+    type Extra = ();
+    fn visit(&'a self, visitor: &mut V, _extra: Self::Extra) -> V::Result {
+        try_visit!(self.ident.visit(visitor, ()));
+        try_visit!(self.generics.visit(visitor, ()));
+        // operations ignored
+        V::Result::output()
+    }
 }
 
 common_visitor_and_walkers!(Visitor<'a>);

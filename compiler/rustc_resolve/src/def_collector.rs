@@ -123,6 +123,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
             },
             ItemKind::Const(..) => DefKind::Const,
             ItemKind::Fn(..) | ItemKind::Delegation(..) => DefKind::Fn,
+            ItemKind::Effect(..) => DefKind::Trait,
             ItemKind::MacroDef(ident, def) => {
                 let edition = i.span.edition();
 

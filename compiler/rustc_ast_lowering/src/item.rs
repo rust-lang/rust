@@ -460,6 +460,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ItemKind::MacCall(..) | ItemKind::DelegationMac(..) => {
                 panic!("macros should have been expanded by now")
             }
+
+            ItemKind::Effect(_) => todo!("Effect item lowering"),
         }
     }
 

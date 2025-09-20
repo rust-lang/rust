@@ -813,6 +813,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             | Target::Union
             | Target::Trait
             | Target::TraitAlias
+            | Target::Effect
             | Target::Method(..)
             | Target::ForeignFn
             | Target::ForeignStatic

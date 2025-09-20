@@ -88,12 +88,14 @@ pub enum TokenType {
     KwCrate,
     KwDefault,
     KwDyn,
+    KwEffect,
     KwElse,
     KwEnum,
     KwExtern,
     KwFn,
     KwFor,
     KwGen,
+    KwHandle,
     KwIf,
     KwImpl,
     KwIn,
@@ -105,6 +107,7 @@ pub enum TokenType {
     KwMod,
     KwMove,
     KwMut,
+    KwPerform,
     KwPub,
     KwRaw,
     KwRef,
@@ -123,6 +126,7 @@ pub enum TokenType {
     KwUse,
     KwWhere,
     KwWhile,
+    KwWith,
     KwYield,
     // tidy-alphabetical-end
 
@@ -225,12 +229,14 @@ impl TokenType {
             KwCrate,
             KwDefault,
             KwDyn,
+            KwEffect,
             KwElse,
             KwEnum,
             KwExtern,
             KwFn,
             KwFor,
             KwGen,
+            KwHandle,
             KwIf,
             KwImpl,
             KwIn,
@@ -242,6 +248,7 @@ impl TokenType {
             KwMod,
             KwMove,
             KwMut,
+            KwPerform,
             KwPub,
             KwRaw,
             KwRef,
@@ -260,6 +267,7 @@ impl TokenType {
             KwUse,
             KwWhere,
             KwWhile,
+            KwWith,
             KwYield,
 
             SymAttSyntax,
@@ -300,12 +308,14 @@ impl TokenType {
             TokenType::KwCrate => Some(kw::Crate),
             TokenType::KwDefault => Some(kw::Default),
             TokenType::KwDyn => Some(kw::Dyn),
+            TokenType::KwEffect => Some(kw::Effect),
             TokenType::KwElse => Some(kw::Else),
             TokenType::KwEnum => Some(kw::Enum),
             TokenType::KwExtern => Some(kw::Extern),
             TokenType::KwFn => Some(kw::Fn),
             TokenType::KwFor => Some(kw::For),
             TokenType::KwGen => Some(kw::Gen),
+            TokenType::KwHandle => Some(kw::Handle),
             TokenType::KwIf => Some(kw::If),
             TokenType::KwImpl => Some(kw::Impl),
             TokenType::KwIn => Some(kw::In),
@@ -317,6 +327,7 @@ impl TokenType {
             TokenType::KwMod => Some(kw::Mod),
             TokenType::KwMove => Some(kw::Move),
             TokenType::KwMut => Some(kw::Mut),
+            TokenType::KwPerform => Some(kw::Perform),
             TokenType::KwPub => Some(kw::Pub),
             TokenType::KwRaw => Some(kw::Raw),
             TokenType::KwRef => Some(kw::Ref),
@@ -335,6 +346,7 @@ impl TokenType {
             TokenType::KwUse => Some(kw::Use),
             TokenType::KwWhere => Some(kw::Where),
             TokenType::KwWhile => Some(kw::While),
+            TokenType::KwWith => Some(kw::With),
             TokenType::KwYield => Some(kw::Yield),
 
             TokenType::SymAttSyntax => Some(sym::att_syntax),
@@ -514,12 +526,14 @@ macro_rules! exp {
     (Crate)          => { exp!(@kw, Crate,      KwCrate) };
     (Default)        => { exp!(@kw, Default,    KwDefault) };
     (Dyn)            => { exp!(@kw, Dyn,        KwDyn) };
+    (Effect)         => { exp!(@kw, Effect,     KwEffect) };
     (Else)           => { exp!(@kw, Else,       KwElse) };
     (Enum)           => { exp!(@kw, Enum,       KwEnum) };
     (Extern)         => { exp!(@kw, Extern,     KwExtern) };
     (Fn)             => { exp!(@kw, Fn,         KwFn) };
     (For)            => { exp!(@kw, For,        KwFor) };
     (Gen)            => { exp!(@kw, Gen,        KwGen) };
+    (Handle)         => { exp!(@kw, Handle,     KwHandle) };
     (If)             => { exp!(@kw, If,         KwIf) };
     (Impl)           => { exp!(@kw, Impl,       KwImpl) };
     (In)             => { exp!(@kw, In,         KwIn) };
@@ -531,6 +545,7 @@ macro_rules! exp {
     (Mod)            => { exp!(@kw, Mod,        KwMod) };
     (Move)           => { exp!(@kw, Move,       KwMove) };
     (Mut)            => { exp!(@kw, Mut,        KwMut) };
+    (Perform)        => { exp!(@kw, Perform,    KwPerform) };
     (Pub)            => { exp!(@kw, Pub,        KwPub) };
     (Raw)            => { exp!(@kw, Raw,        KwRaw) };
     (Ref)            => { exp!(@kw, Ref,        KwRef) };
@@ -549,6 +564,7 @@ macro_rules! exp {
     (Use)            => { exp!(@kw, Use,        KwUse) };
     (Where)          => { exp!(@kw, Where,      KwWhere) };
     (While)          => { exp!(@kw, While,      KwWhile) };
+    (With)           => { exp!(@kw, With,       KwWith) };
     (Yield)          => { exp!(@kw, Yield,      KwYield) };
 
     (AttSyntax)      => { exp!(@sym, att_syntax,      SymAttSyntax) };

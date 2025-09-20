@@ -52,6 +52,7 @@ pub enum Target {
     Union,
     Trait,
     TraitAlias,
+    Effect,
     Impl { of_trait: bool },
     Expression,
     Statement,
@@ -102,6 +103,7 @@ impl Target {
             | Target::Union
             | Target::Trait
             | Target::TraitAlias
+            | Target::Effect
             | Target::Impl { .. }
             | Target::Expression
             | Target::Statement
@@ -181,6 +183,7 @@ impl Target {
             ast::ItemKind::Union(..) => Target::Union,
             ast::ItemKind::Trait(..) => Target::Trait,
             ast::ItemKind::TraitAlias(..) => Target::TraitAlias,
+            ast::ItemKind::Effect(..) => Target::Effect,
             ast::ItemKind::Impl(ref i) => Target::Impl { of_trait: i.of_trait.is_some() },
             ast::ItemKind::MacCall(..) => Target::MacroCall,
             ast::ItemKind::MacroDef(..) => Target::MacroDef,
@@ -282,6 +285,7 @@ impl Target {
             Target::Union => "union",
             Target::Trait => "trait",
             Target::TraitAlias => "trait alias",
+            Target::Effect => "effect",
             Target::Impl { .. } => "implementation block",
             Target::Expression => "expression",
             Target::Statement => "statement",
@@ -332,6 +336,7 @@ impl Target {
             Target::Union => "unions",
             Target::Trait => "traits",
             Target::TraitAlias => "trait aliases",
+            Target::Effect => "effects",
             Target::Impl { of_trait: false } => "inherent impl blocks",
             Target::Impl { of_trait: true } => "trait impl blocks",
             Target::Expression => "expressions",

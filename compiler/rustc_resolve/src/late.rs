@@ -2645,6 +2645,20 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 );
             }
 
+            ItemKind::Effect(box Effect { ref generics, .. }) => {
+                // Create a new rib for the effect-wide type parameters.
+                self.with_generic_param_rib(
+                    &generics.params,
+                    RibKind::Item(HasGenericParams::Yes(generics.span), def_kind),
+                    item.id,
+                    LifetimeBinderKind::Item,
+                    generics.span,
+                    |this| {
+                        this.visit_generics(generics);
+                    },
+                );
+            }
+
             ItemKind::TraitAlias(_, ref generics, ref bounds) => {
                 // Create a new rib for the trait-wide type parameters.
                 self.with_generic_param_rib(
@@ -5195,7 +5209,8 @@ impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, '_, '_> {
             | ItemKind::MacroDef(..)
             | ItemKind::GlobalAsm(..)
             | ItemKind::MacCall(..)
-            | ItemKind::DelegationMac(..) => {}
+            | ItemKind::DelegationMac(..)
+            | ItemKind::Effect(..) => {}
             ItemKind::Delegation(..) => {
                 // Delegated functions have lifetimes, their count is not necessarily zero.
                 // But skipping the delegation items here doesn't mean that the count will be considered zero,

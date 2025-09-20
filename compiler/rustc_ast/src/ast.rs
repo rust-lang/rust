@@ -1583,6 +1583,8 @@ impl Expr {
             | ExprKind::Loop(..)
             | ExprKind::MacCall(..)
             | ExprKind::Match(..)
+            | ExprKind::Perform(..)
+            | ExprKind::Handle(..)
             | ExprKind::MethodCall(..)
             | ExprKind::OffsetOf(..)
             | ExprKind::Paren(..)
@@ -1767,6 +1769,10 @@ pub enum ExprKind {
     Loop(Box<Block>, Option<Label>, Span),
     /// A `match` block.
     Match(Box<Expr>, ThinVec<Arm>, MatchKind),
+    /// A `perform` expression (`perform op(args)`).
+    Perform(Box<Expr>, Span),
+    /// A `handle` expression (`handle expr with { pat => expr, ... }`).
+    Handle(Box<Expr>, ThinVec<Arm>, Span),
     /// A closure (e.g., `move |a, b, c| a + b + c`).
     Closure(Box<Closure>),
     /// A block (`'label: { ... }`).
@@ -3544,6 +3550,7 @@ impl Item {
             | ItemKind::Union(_, generics, _) => Some(&generics),
             ItemKind::Trait(i) => Some(&i.generics),
             ItemKind::Impl(i) => Some(&i.generics),
+            ItemKind::Effect(i) => Some(&i.generics),
         }
     }
 }
@@ -3758,7 +3765,13 @@ pub struct ConstItem {
     pub define_opaque: Option<ThinVec<(NodeId, Path)>>,
 }
 
-// Adding a new variant? Please update `test_item` in `tests/ui/macros/stringify.rs`.
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct Effect {
+    pub ident: Ident,
+    pub generics: Generics,
+    pub operations: ThinVec<Box<FnSig>>,
+}
+
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum ItemKind {
     /// An `extern crate` item, with the optional *original* crate name if the crate was renamed.
@@ -3817,6 +3830,10 @@ pub enum ItemKind {
     ///
     /// E.g., `trait Foo = Bar + Quux;`.
     TraitAlias(Ident, Generics, GenericBounds),
+    /// An effect declaration (`effect`).
+    ///
+    /// E.g., `effect E { fn op() -> (); }`.
+    Effect(Box<Effect>),
     /// An implementation.
     ///
     /// E.g., `impl<A> Foo<A> { .. }` or `impl<A> Trait for Foo<A> { .. }`.
@@ -3850,6 +3867,7 @@ impl ItemKind {
             | ItemKind::Union(ident, ..)
             | ItemKind::Trait(box Trait { ident, .. })
             | ItemKind::TraitAlias(ident, ..)
+            | ItemKind::Effect(box Effect { ident, .. })
             | ItemKind::MacroDef(ident, _)
             | ItemKind::Delegation(box Delegation { ident, .. }) => Some(ident),
 
@@ -3867,7 +3885,7 @@ impl ItemKind {
         use ItemKind::*;
         match self {
             Use(..) | Static(..) | Const(..) | Fn(..) | Mod(..) | GlobalAsm(..) | TyAlias(..)
-            | Struct(..) | Union(..) | Trait(..) | TraitAlias(..) | MacroDef(..)
+            | Struct(..) | Union(..) | Trait(..) | TraitAlias(..) | Effect(..) | MacroDef(..)
             | Delegation(..) | DelegationMac(..) => "a",
             ExternCrate(..) | ForeignMod(..) | MacCall(..) | Enum(..) | Impl { .. } => "an",
         }
@@ -3889,6 +3907,7 @@ impl ItemKind {
             ItemKind::Union(..) => "union",
             ItemKind::Trait(..) => "trait",
             ItemKind::TraitAlias(..) => "trait alias",
+            ItemKind::Effect(..) => "effect",
             ItemKind::MacCall(..) => "item macro invocation",
             ItemKind::MacroDef(..) => "macro definition",
             ItemKind::Impl { .. } => "implementation",
@@ -3907,6 +3926,7 @@ impl ItemKind {
             | Self::Union(_, generics, _)
             | Self::Trait(box Trait { generics, .. })
             | Self::TraitAlias(_, generics, _)
+            | Self::Effect(box Effect { generics, .. })
             | Self::Impl(Impl { generics, .. }) => Some(generics),
             _ => None,
         }

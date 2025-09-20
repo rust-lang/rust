@@ -115,6 +115,8 @@ pub fn leading_labeled_expr(mut expr: &ast::Expr) -> bool {
             | Field(e, _)
             | Index(e, _, _)
             | Match(e, _, MatchKind::Postfix)
+            | Perform(e, _)
+            | Handle(e, _, _)
             | Range(Some(e), _, _)
             | Try(e) => {
                 expr = e;
@@ -179,6 +181,8 @@ pub fn expr_trailing_brace(mut expr: &ast::Expr) -> Option<TrailingBrace<'_>> {
             | Binary(_, _, e)
             | Break(_, Some(e))
             | Let(_, e, _, _)
+            | Perform(e, _)
+            | Handle(e, _, _)
             | Range(_, Some(e), _)
             | Ret(Some(e))
             | Unary(_, e)

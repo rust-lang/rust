@@ -843,6 +843,25 @@ impl<'a> State<'a> {
                 self.end(ib);
                 self.pclose();
             }
+            ast::ExprKind::Perform(expr, _) => {
+                self.word_nbsp("perform");
+                self.print_expr(expr, fixup.rightmost_subexpression());
+            }
+            ast::ExprKind::Handle(expr, arms, _) => {
+                let cb = self.cbox(0);
+                let ib = self.ibox(0);
+                self.word_nbsp("handle");
+                self.print_expr_as_cond(expr);
+                self.space();
+                self.word_nbsp("with");
+                self.bopen(ib);
+                self.print_inner_attributes_no_trailing_hardbreak(attrs);
+                for arm in arms {
+                    self.print_arm(arm);
+                }
+                let empty = attrs.is_empty() && arms.is_empty();
+                self.bclose(expr.span, empty, cb);
+            }
             ast::ExprKind::Err(_) => {
                 self.popen();
                 self.word("/*ERROR*/");

@@ -247,6 +247,9 @@ impl<'a> Parser<'a> {
         } else if self.check_keyword(exp!(Trait)) || self.check_trait_front_matter() {
             // TRAIT ITEM
             self.parse_item_trait(attrs, lo)?
+        } else if self.eat_keyword(exp!(Effect)) {
+            // EFFECT ITEM
+            self.parse_item_effect(attrs, lo)?
         } else if let Const::Yes(const_span) = self.parse_constness(Case::Sensitive) {
             // CONST ITEM
             if self.token.is_keyword(kw::Impl) {
@@ -970,6 +973,66 @@ impl<'a> Parser<'a> {
                 items,
             })))
         }
+    }
+
+    fn parse_item_effect(&mut self, _attrs: &mut AttrVec, _lo: Span) -> PResult<'a, ItemKind> {
+        let ident = self.parse_ident()?;
+        let mut generics = self.parse_generics()?;
+        generics.where_clause = self.parse_where_clause()?;
+
+        let mut operations = ThinVec::new();
+        self.expect(exp!(OpenBrace))?;
+        while self.token != token::CloseBrace {
+            match self.parse_effect_operation() {
+                Ok(Some(operation)) => {
+                    operations.push(operation);
+                }
+                Ok(None) => {}
+                Err(mut err) => {
+                    self.consume_block(
+                        exp!(OpenBrace),
+                        exp!(CloseBrace),
+                        ConsumeClosingDelim::No,
+                    );
+                    err.span_label(ident.span, "while parsing this effect");
+                    let _guar = err.emit();
+                    break;
+                }
+            }
+        }
+        self.expect(exp!(CloseBrace))?;
+
+        Ok(ItemKind::Effect(Box::new(Effect {
+            ident,
+            generics,
+            operations,
+        })))
+    }
+
+    fn parse_effect_operation(&mut self) -> PResult<'a, Option<Box<FnSig>>> {
+        let fn_parse_mode = FnParseMode {
+            req_name: |_| true,
+            context: FnContext::Free,
+            req_body: false,
+        };
+        let sig_lo = self.token.span;
+        // Parse operation name (identifier)
+        let _ident = self.parse_ident()?;
+        // Parse function declaration (parameters and return type)
+        let decl = self.parse_fn_decl(&fn_parse_mode, AllowPlus::Yes, RecoverReturnSign::Yes)?;
+        // Expect semicolon
+        self.expect_semi()?;
+        let span = sig_lo.to(self.prev_token.span);
+        Ok(Some(Box::new(FnSig {
+            header: FnHeader {
+                constness: Const::No,
+                safety: Safety::Default,
+                coroutine_kind: None,
+                ext: Extern::None,
+            },
+            decl,
+            span,
+        })))
     }
 
     pub fn parse_impl_item(

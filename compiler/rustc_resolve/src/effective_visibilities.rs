@@ -279,7 +279,8 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> 
             | ast::ItemKind::MacroDef(..)
             | ast::ItemKind::ForeignMod(..)
             | ast::ItemKind::Fn(..)
-            | ast::ItemKind::Delegation(..) => return,
+            | ast::ItemKind::Delegation(..)
+            | ast::ItemKind::Effect(..) => return,
         }
     }
 }

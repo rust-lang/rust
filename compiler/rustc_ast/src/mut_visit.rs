@@ -259,6 +259,26 @@ macro_rules! define_named_walk {
     };
 }
 
+impl<V: MutVisitor> MutVisitable<V> for FnSig {
+    type Extra = ();
+    fn visit_mut(&mut self, visitor: &mut V, _extra: Self::Extra) {
+        self.header.visit_mut(visitor, ());
+        self.decl.visit_mut(visitor, ());
+        // span ignored
+    }
+}
+
+impl<V: MutVisitor> MutVisitable<V> for Effect {
+    type Extra = ();
+    fn visit_mut(&mut self, visitor: &mut V, _extra: Self::Extra) {
+        self.ident.visit_mut(visitor, ());
+        self.generics.visit_mut(visitor, ());
+        for op in &mut self.operations {
+            op.visit_mut(visitor, ());
+        }
+    }
+}
+
 super::common_visitor_and_walkers!((mut) MutVisitor);
 
 macro_rules! generate_flat_map_visitor_fns {

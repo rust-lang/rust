@@ -1535,6 +1535,48 @@ impl<'a> Parser<'a> {
                 this.parse_expr_let(restrictions)
             } else if this.eat_keyword(exp!(Underscore)) {
                 Ok(this.mk_expr(this.prev_token.span, ExprKind::Underscore))
+            } else if this.eat_keyword(exp!(Perform)) {
+                let lo = this.prev_token.span;
+                let expr = this.parse_expr()?;
+                let span = lo.to(expr.span);
+                Ok(this.mk_expr(span, ExprKind::Perform(expr, span)))
+            } else if this.eat_keyword(exp!(Handle)) {
+                let lo = this.prev_token.span;
+                let expr = this.parse_expr()?;
+                this.expect_keyword(exp!(With))?;
+                this.expect(exp!(OpenBrace))?;
+                let attrs = this.parse_inner_attributes()?;
+                let mut arms = ThinVec::new();
+                while this.token != token::CloseBrace {
+                    match this.parse_arm() {
+                        Ok(arm) => arms.push(arm),
+                        Err(e) => {
+                            // Recover by skipping to the end of the block.
+                            let guar = e.emit();
+                            this.recover_stmt();
+                            let span = lo.to(this.token.span);
+                            if this.token == token::CloseBrace {
+                                this.bump();
+                            }
+                            // Always push at least one arm to make the handle non-empty
+                            arms.push(Arm {
+                                attrs: Default::default(),
+                                pat: this.mk_pat(span, ast::PatKind::Err(guar)),
+                                guard: None,
+                                body: Some(this.mk_expr_err(span, guar)),
+                                span,
+                                id: DUMMY_NODE_ID,
+                                is_placeholder: false,
+                            });
+                            let span = lo.to(this.prev_token.span);
+                            return Ok(this.mk_expr_with_attrs(span, ExprKind::Handle(expr, arms, span), attrs));
+                        }
+                    }
+                }
+                let hi = this.token.span;
+                this.bump();
+                let span = lo.to(hi);
+                Ok(this.mk_expr_with_attrs(span, ExprKind::Handle(expr, arms, span), attrs))
             } else if this.token_uninterpolated_span().at_least_rust_2018() {
                 // `Span::at_least_rust_2018()` is somewhat expensive; don't get it repeatedly.
                 let at_async = this.check_keyword(exp!(Async));
@@ -4185,7 +4227,9 @@ impl MutVisitor for CondChecker<'_> {
             | ExprKind::Call(_, _)
             | ExprKind::MethodCall(_)
             | ExprKind::Tup(_)
-            | ExprKind::Paren(_) => {
+            | ExprKind::Paren(_)
+            | ExprKind::Perform(_, _)
+            | ExprKind::Handle(_, _, _) => {
                 let forbid_let_reason = self.forbid_let_reason;
                 self.forbid_let_reason = Some(OtherForbidden);
                 mut_visit::walk_expr(self, e);
