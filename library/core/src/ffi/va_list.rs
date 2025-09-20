@@ -2,6 +2,7 @@
 //!
 //! Better known as "varargs".
 
+#[cfg(not(target_arch = "xtensa"))]
 use crate::ffi::c_void;
 #[allow(unused_imports)]
 use crate::fmt;
