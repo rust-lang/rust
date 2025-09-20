@@ -9,6 +9,7 @@ use crate::collections::BTreeMap;
 use crate::ffi::{CStr, CString, OsStr, OsString};
 use crate::os::unix::prelude::*;
 use crate::path::Path;
+use crate::process::StdioPipes;
 use crate::sys::fd::FileDesc;
 use crate::sys::fs::File;
 #[cfg(not(target_os = "fuchsia"))]
@@ -102,14 +103,6 @@ pub struct Command {
     create_pidfd: bool,
     pgroup: Option<pid_t>,
     setsid: bool,
-}
-
-// passed back to std::process with the pipes connected to the child, if any
-// were requested
-pub struct StdioPipes {
-    pub stdin: Option<AnonPipe>,
-    pub stdout: Option<AnonPipe>,
-    pub stderr: Option<AnonPipe>,
 }
 
 // passed to do_exec() with configuration of what the child stdio should look
