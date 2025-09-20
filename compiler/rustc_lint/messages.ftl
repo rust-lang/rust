@@ -183,6 +183,11 @@ lint_builtin_while_true = denote infinite loops with `loop {"{"} ... {"}"}`
 
 lint_check_name_unknown_tool = unknown lint tool: `{$tool_name}`
 
+lint_redefining_runtime_symbols = redefinition of the runtime `{$symbol_name}` symbol used by the standard library
+    .match_exactly = extra care must be taken when redefining those symbols, they must match exactly (ABI, function arguments, function return type, behavior, ...)
+    .learn_more = see <https://doc.rust-lang.org/core/index.html#how-to-use-the-core-library> for the more details
+    .help = either allow this lint or remove any `#[unsafe(no_mangle)]` or `#[unsafe(export_name = "{$symbol_name}")]`
+
 lint_closure_returning_async_block = closure returning async block can be made into an async closure
     .label = this async block can be removed, and the closure can be turned into an async closure
     .suggestion = turn this into an async closure

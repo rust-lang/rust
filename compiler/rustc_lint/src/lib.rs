@@ -70,6 +70,7 @@ mod pass_by_value;
 mod passes;
 mod precedence;
 mod ptr_nulls;
+mod redefining_runtime_symbols;
 mod redundant_semicolon;
 mod reference_casting;
 mod shadowed_into_iter;
@@ -110,6 +111,7 @@ use opaque_hidden_inferred_bound::*;
 use pass_by_value::*;
 use precedence::*;
 use ptr_nulls::*;
+use redefining_runtime_symbols::*;
 use redundant_semicolon::*;
 use reference_casting::*;
 use rustc_hir::def_id::LocalModDefId;
@@ -240,6 +242,7 @@ late_lint_methods!(
             AsyncClosureUsage: AsyncClosureUsage,
             AsyncFnInTrait: AsyncFnInTrait,
             NonLocalDefinitions: NonLocalDefinitions::default(),
+            RedefiningRuntimeSymbols: RedefiningRuntimeSymbols,
             ImplTraitOvercaptures: ImplTraitOvercaptures,
             IfLetRescope: IfLetRescope::default(),
             StaticMutRefs: StaticMutRefs,
