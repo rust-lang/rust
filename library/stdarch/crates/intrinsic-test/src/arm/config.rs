@@ -125,8 +125,8 @@ pub const AARCH_CONFIGURATIONS: &str = r#"
 #![feature(stdarch_neon_f16)]
 
 #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
-use core::arch::aarch64::*;
+use core_arch::arch::aarch64::*;
 
 #[cfg(target_arch = "arm")]
-use core::arch::arm::*;
+use core_arch::arch::arm::*;
 "#;
