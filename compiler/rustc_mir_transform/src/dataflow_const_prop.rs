@@ -412,18 +412,6 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
         state: &mut State<FlatSet<Scalar>>,
     ) -> ValueOrPlace<FlatSet<Scalar>> {
         let val = match rvalue {
-            Rvalue::Len(place) => {
-                let place_ty = place.ty(self.local_decls, self.tcx);
-                if let ty::Array(_, len) = place_ty.ty.kind() {
-                    Const::Ty(self.tcx.types.usize, *len)
-                        .try_eval_scalar(self.tcx, self.typing_env)
-                        .map_or(FlatSet::Top, FlatSet::Elem)
-                } else if let [ProjectionElem::Deref] = place.projection[..] {
-                    state.get_len(place.local.into(), &self.map)
-                } else {
-                    FlatSet::Top
-                }
-            }
             Rvalue::Cast(CastKind::IntToInt | CastKind::IntToFloat, operand, ty) => {
                 let Ok(layout) = self.tcx.layout_of(self.typing_env.as_query_input(*ty)) else {
                     return ValueOrPlace::Value(FlatSet::Top);
@@ -465,15 +453,23 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 let (val, _overflow) = self.binary_op(state, *op, left, right);
                 val
             }
-            Rvalue::UnaryOp(op, operand) => match self.eval_operand(operand, state) {
-                FlatSet::Elem(value) => self
-                    .ecx
-                    .unary_op(*op, &value)
-                    .discard_err()
-                    .map_or(FlatSet::Top, |val| self.wrap_immediate(*val)),
-                FlatSet::Bottom => FlatSet::Bottom,
-                FlatSet::Top => FlatSet::Top,
-            },
+            Rvalue::UnaryOp(op, operand) => {
+                if let UnOp::PtrMetadata = op
+                    && let Some(place) = operand.place()
+                    && let Some(len) = self.map.find_len(place.as_ref())
+                {
+                    return ValueOrPlace::Place(len);
+                }
+                match self.eval_operand(operand, state) {
+                    FlatSet::Elem(value) => self
+                        .ecx
+                        .unary_op(*op, &value)
+                        .discard_err()
+                        .map_or(FlatSet::Top, |val| self.wrap_immediate(*val)),
+                    FlatSet::Bottom => FlatSet::Bottom,
+                    FlatSet::Top => FlatSet::Top,
+                }
+            }
             Rvalue::NullaryOp(null_op, ty) => {
                 let Ok(layout) = self.tcx.layout_of(self.typing_env.as_query_input(*ty)) else {
                     return ValueOrPlace::Value(FlatSet::Top);

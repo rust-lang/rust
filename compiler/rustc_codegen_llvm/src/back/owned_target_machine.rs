@@ -1,4 +1,3 @@
-use std::assert_matches::assert_matches;
 use std::ffi::CStr;
 use std::marker::PhantomData;
 use std::ptr::NonNull;
@@ -39,13 +38,10 @@ impl OwnedTargetMachine {
         output_obj_file: &CStr,
         debug_info_compression: &CStr,
         use_emulated_tls: bool,
-        args_cstr_buff: &[u8],
+        argv0: &str,
+        command_line_args: &str,
         use_wasm_eh: bool,
     ) -> Result<Self, LlvmError<'static>> {
-        // The argument list is passed as the concatenation of one or more C strings.
-        // This implies that there must be a last byte, and it must be 0.
-        assert_matches!(args_cstr_buff, [.., b'\0'], "the last byte must be a NUL terminator");
-
         // SAFETY: llvm::LLVMRustCreateTargetMachine copies pointed to data
         let tm_ptr = unsafe {
             llvm::LLVMRustCreateTargetMachine(
@@ -70,8 +66,10 @@ impl OwnedTargetMachine {
                 output_obj_file.as_ptr(),
                 debug_info_compression.as_ptr(),
                 use_emulated_tls,
-                args_cstr_buff.as_ptr(),
-                args_cstr_buff.len(),
+                argv0.as_ptr(),
+                argv0.len(),
+                command_line_args.as_ptr(),
+                command_line_args.len(),
                 use_wasm_eh,
             )
         };

@@ -10,6 +10,7 @@ use rustc_hashes::Hash64;
 use rustc_index::IndexVec;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
+use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::layout::{
     FloatExt, HasTyCtxt, IntegerExt, LayoutCx, LayoutError, LayoutOf, TyAndLayout,
 };
@@ -390,30 +391,31 @@ fn layout_of_uncached<'tcx>(
 
             let metadata = if let Some(metadata_def_id) = tcx.lang_items().metadata_type() {
                 let pointee_metadata = Ty::new_projection(tcx, metadata_def_id, [pointee]);
-                let metadata_ty =
-                    match tcx.try_normalize_erasing_regions(cx.typing_env, pointee_metadata) {
-                        Ok(metadata_ty) => metadata_ty,
-                        Err(mut err) => {
-                            // Usually `<Ty as Pointee>::Metadata` can't be normalized because
-                            // its struct tail cannot be normalized either, so try to get a
-                            // more descriptive layout error here, which will lead to less confusing
-                            // diagnostics.
-                            //
-                            // We use the raw struct tail function here to get the first tail
-                            // that is an alias, which is likely the cause of the normalization
-                            // error.
-                            match tcx.try_normalize_erasing_regions(
-                                cx.typing_env,
-                                tcx.struct_tail_raw(pointee, |ty| ty, || {}),
-                            ) {
-                                Ok(_) => {}
-                                Err(better_err) => {
-                                    err = better_err;
-                                }
+                let metadata_ty = match tcx
+                    .try_normalize_erasing_regions(cx.typing_env, pointee_metadata)
+                {
+                    Ok(metadata_ty) => metadata_ty,
+                    Err(mut err) => {
+                        // Usually `<Ty as Pointee>::Metadata` can't be normalized because
+                        // its struct tail cannot be normalized either, so try to get a
+                        // more descriptive layout error here, which will lead to less confusing
+                        // diagnostics.
+                        //
+                        // We use the raw struct tail function here to get the first tail
+                        // that is an alias, which is likely the cause of the normalization
+                        // error.
+                        match tcx.try_normalize_erasing_regions(
+                            cx.typing_env,
+                            tcx.struct_tail_raw(pointee, &ObligationCause::dummy(), |ty| ty, || {}),
+                        ) {
+                            Ok(_) => {}
+                            Err(better_err) => {
+                                err = better_err;
                             }
-                            return Err(error(cx, LayoutError::NormalizationFailure(pointee, err)));
                         }
-                    };
+                        return Err(error(cx, LayoutError::NormalizationFailure(pointee, err)));
+                    }
+                };
 
                 let metadata_layout = cx.layout_of(metadata_ty)?;
                 // If the metadata is a 1-zst, then the pointer is thin.
@@ -476,7 +478,7 @@ fn layout_of_uncached<'tcx>(
         }
 
         // Odd unit types.
-        ty::FnDef(..) | ty::Dynamic(_, _, ty::Dyn) | ty::Foreign(..) => {
+        ty::FnDef(..) | ty::Dynamic(_, _) | ty::Foreign(..) => {
             let sized = matches!(ty.kind(), ty::FnDef(..));
             tcx.mk_layout(LayoutData::unit(cx, sized))
         }

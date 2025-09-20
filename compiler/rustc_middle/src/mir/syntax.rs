@@ -1407,16 +1407,6 @@ pub enum Rvalue<'tcx> {
     /// model.
     RawPtr(RawPtrKind, Place<'tcx>),
 
-    /// Yields the length of the place, as a `usize`.
-    ///
-    /// If the type of the place is an array, this is the array length. For slices (`[T]`, not
-    /// `&[T]`) this accesses the place's metadata to determine the length. This rvalue is
-    /// ill-formed for places of other types.
-    ///
-    /// This cannot be a `UnOp(PtrMetadata, _)` because that expects a value, and we only
-    /// have a place, and `UnOp(PtrMetadata, RawPtr(place))` is not a thing.
-    Len(Place<'tcx>),
-
     /// Performs essentially all of the casts that can be performed via `as`.
     ///
     /// This allows for casts from/to a variety of types.

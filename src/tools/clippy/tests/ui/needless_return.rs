@@ -526,3 +526,10 @@ mod else_ifs {
         }
     }
 }
+
+fn issue14474() -> u64 {
+    return 456;
+
+    #[cfg(false)]
+    123
+}

@@ -237,7 +237,7 @@ pub fn ensure_version_or_cargo_install(
     if !cargo_exit_code.success() {
         return Err(io::Error::other("cargo install failed"));
     }
-    let bin_path = tool_bin_dir.join(bin_name);
+    let bin_path = tool_bin_dir.join(bin_name).with_extension(env::consts::EXE_EXTENSION);
     assert!(
         matches!(bin_path.try_exists(), Ok(true)),
         "cargo install did not produce the expected binary"

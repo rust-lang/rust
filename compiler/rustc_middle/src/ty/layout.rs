@@ -22,6 +22,7 @@ use {rustc_abi as abi, rustc_hir as hir};
 
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::query::TyCtxtAt;
+use crate::traits::ObligationCause;
 use crate::ty::normalize_erasing_regions::NormalizationError;
 use crate::ty::{self, CoroutineArgsExt, Ty, TyCtxt, TypeVisitableExt};
 
@@ -384,6 +385,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
 
                 let tail = tcx.struct_tail_raw(
                     pointee,
+                    &ObligationCause::dummy(),
                     |ty| match tcx.try_normalize_erasing_regions(typing_env, ty) {
                         Ok(ty) => ty,
                         Err(e) => Ty::new_error_with_message(
@@ -812,7 +814,7 @@ where
                 | ty::CoroutineWitness(..)
                 | ty::Foreign(..)
                 | ty::Pat(_, _)
-                | ty::Dynamic(_, _, ty::Dyn) => {
+                | ty::Dynamic(_, _) => {
                     bug!("TyAndLayout::field({:?}): not applicable", this)
                 }
 
@@ -878,7 +880,7 @@ where
                         // `std::mem::uninitialized::<&dyn Trait>()`, for example.
                         if let ty::Adt(def, args) = metadata.kind()
                             && tcx.is_lang_item(def.did(), LangItem::DynMetadata)
-                            && let ty::Dynamic(data, _, ty::Dyn) = args.type_at(0).kind()
+                            && let ty::Dynamic(data, _) = args.type_at(0).kind()
                         {
                             mk_dyn_vtable(data.principal())
                         } else {
@@ -887,7 +889,7 @@ where
                     } else {
                         match tcx.struct_tail_for_codegen(pointee, cx.typing_env()).kind() {
                             ty::Slice(_) | ty::Str => tcx.types.usize,
-                            ty::Dynamic(data, _, ty::Dyn) => mk_dyn_vtable(data.principal()),
+                            ty::Dynamic(data, _) => mk_dyn_vtable(data.principal()),
                             _ => bug!("TyAndLayout::field({:?}): not applicable", this),
                         }
                     };

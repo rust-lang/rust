@@ -617,7 +617,7 @@ pub(crate) fn run_pass_manager(
         crate::builder::gpu_offload::handle_gpu_code(cgcx, &cx);
     }
 
-    if cfg!(llvm_enzyme) && enable_ad && !thin {
+    if cfg!(feature = "llvm_enzyme") && enable_ad && !thin {
         let opt_stage = llvm::OptStage::FatLTO;
         let stage = write::AutodiffStage::PostAD;
         if !config.autodiff.contains(&config::AutoDiff::NoPostopt) {

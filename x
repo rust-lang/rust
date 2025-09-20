@@ -15,7 +15,8 @@ realpath() {
     if [ -L "$path" ]; then
         readlink -f "$path"
     elif [ -d "$path" ]; then
-        (cd -P "$path" && pwd)
+        # "cd" is not always silent (e.g. when CDPATH is set), so discard its output.
+        (cd -P "$path" >/dev/null && pwd)
     else
         echo "$(realpath "$(dirname "$path")")/$(basename "$path")"
     fi

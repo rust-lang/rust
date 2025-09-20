@@ -48,16 +48,6 @@ impl<'tcx> Stable<'tcx> for ty::AliasTerm<'tcx> {
     }
 }
 
-impl<'tcx> Stable<'tcx> for ty::DynKind {
-    type T = crate::ty::DynKind;
-
-    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &CompilerCtxt<'_, BridgeTys>) -> Self::T {
-        match self {
-            ty::Dyn => crate::ty::DynKind::Dyn,
-        }
-    }
-}
-
 impl<'tcx> Stable<'tcx> for ty::ExistentialPredicate<'tcx> {
     type T = crate::ty::ExistentialPredicate;
 
@@ -439,16 +429,13 @@ impl<'tcx> Stable<'tcx> for ty::TyKind<'tcx> {
             }
             // FIXME(unsafe_binders):
             ty::UnsafeBinder(_) => todo!(),
-            ty::Dynamic(existential_predicates, region, dyn_kind) => {
-                TyKind::RigidTy(RigidTy::Dynamic(
-                    existential_predicates
-                        .iter()
-                        .map(|existential_predicate| existential_predicate.stable(tables, cx))
-                        .collect(),
-                    region.stable(tables, cx),
-                    dyn_kind.stable(tables, cx),
-                ))
-            }
+            ty::Dynamic(existential_predicates, region) => TyKind::RigidTy(RigidTy::Dynamic(
+                existential_predicates
+                    .iter()
+                    .map(|existential_predicate| existential_predicate.stable(tables, cx))
+                    .collect(),
+                region.stable(tables, cx),
+            )),
             ty::Closure(def_id, generic_args) => TyKind::RigidTy(RigidTy::Closure(
                 tables.closure_def(*def_id),
                 generic_args.stable(tables, cx),

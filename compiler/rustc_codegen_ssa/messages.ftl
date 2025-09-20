@@ -8,8 +8,6 @@ codegen_ssa_aix_strip_not_used = using host's `strip` binary to cross-compile to
 
 codegen_ssa_archive_build_failure = failed to build archive at `{$path}`: {$error}
 
-codegen_ssa_autodiff_without_lto = using the autodiff feature requires using fat-lto
-
 codegen_ssa_bare_instruction_set = `#[instruction_set]` requires an argument
 
 codegen_ssa_binary_output_to_tty = option `-o` or `--emit` is used to write binary output type `{$shorthand}` to stdout, but stdout is a tty

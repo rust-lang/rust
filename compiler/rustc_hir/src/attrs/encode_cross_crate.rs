@@ -26,7 +26,6 @@ impl AttributeKind {
             AsPtr(..) => Yes,
             AutomaticallyDerived(..) => Yes,
             BodyStability { .. } => No,
-            CoherenceIsCore => No,
             Coinductive(..) => No,
             Cold(..) => No,
             Confusables { .. } => Yes,
@@ -69,6 +68,8 @@ impl AttributeKind {
             NoMangle(..) => Yes, // Needed for rustdoc
             NoStd(..) => No,
             NonExhaustive(..) => Yes, // Needed for rustdoc
+            ObjcClass { .. } => No,
+            ObjcSelector { .. } => No,
             Optimize(..) => No,
             ParenSugar(..) => No,
             PassByValue(..) => Yes,
@@ -82,6 +83,7 @@ impl AttributeKind {
             RecursionLimit { .. } => No,
             Repr { .. } => No,
             RustcBuiltinMacro { .. } => Yes,
+            RustcCoherenceIsCore(..) => No,
             RustcLayoutScalarValidRangeEnd(..) => Yes,
             RustcLayoutScalarValidRangeStart(..) => Yes,
             RustcObjectLifetimeDefault => No,

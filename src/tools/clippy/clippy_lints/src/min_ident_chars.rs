@@ -256,7 +256,11 @@ fn is_not_in_trait_impl(cx: &LateContext<'_>, pat: &Pat<'_>, ident: Ident) -> bo
 }
 
 fn get_param_name(impl_item: &ImplItem<'_>, cx: &LateContext<'_>, ident: Ident) -> Option<Symbol> {
-    if let ImplItemImplKind::Trait { trait_item_def_id: Ok(trait_item_def_id), .. } = impl_item.impl_kind {
+    if let ImplItemImplKind::Trait {
+        trait_item_def_id: Ok(trait_item_def_id),
+        ..
+    } = impl_item.impl_kind
+    {
         let trait_param_names = cx.tcx.fn_arg_idents(trait_item_def_id);
 
         let ImplItemKind::Fn(_, body_id) = impl_item.kind else {

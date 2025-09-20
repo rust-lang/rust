@@ -269,11 +269,70 @@ impl<I: Interner> NestedNormalizationGoals<I> {
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 pub enum Certainty {
     Yes,
-    Maybe(MaybeCause),
+    Maybe { cause: MaybeCause, opaque_types_jank: OpaqueTypesJank },
+}
+
+/// Supporting not-yet-defined opaque types in HIR typeck is somewhat
+/// challenging. Ideally we'd normalize them to a new inference variable
+/// and just defer type inference which relies on the opaque until we've
+/// constrained the hidden type.
+///
+/// This doesn't work for method and function calls as we need to guide type
+/// inference for the function arguments. We treat not-yet-defined opaque types
+/// as if they were rigid instead in these places.
+///
+/// When we encounter a `?hidden_type_of_opaque: Trait<?var>` goal, we use the
+/// item bounds and blanket impls to guide inference by constraining other type
+/// variables, see `EvalCtxt::try_assemble_bounds_via_registered_opaques`. We
+/// always keep the certainty as `Maybe` so that we properly prove these goals
+/// once the hidden type has been constrained.
+///
+/// If we fail to prove the trait goal via item bounds or blanket impls, the
+/// goal would have errored if the opaque type were rigid. In this case, we
+/// set `OpaqueTypesJank::ErrorIfRigidSelfTy` in the [Certainty].
+///
+/// Places in HIR typeck where we want to treat not-yet-defined opaque types as if
+/// they were kind of rigid then use `fn root_goal_may_hold_opaque_types_jank` which
+/// returns `false` if the goal doesn't hold or if `OpaqueTypesJank::ErrorIfRigidSelfTy`
+/// is set (i.e. proving it required relies on some `?hidden_ty: NotInItemBounds` goal).
+///
+/// This is subtly different from actually treating not-yet-defined opaque types as
+/// rigid, e.g. it allows constraining opaque types if they are not the self-type of
+/// a goal. It is good enough for now and only matters for very rare type inference
+/// edge cases. We can improve this later on if necessary.
+#[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
+#[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+pub enum OpaqueTypesJank {
+    AllGood,
+    ErrorIfRigidSelfTy,
+}
+impl OpaqueTypesJank {
+    fn and(self, other: OpaqueTypesJank) -> OpaqueTypesJank {
+        match (self, other) {
+            (OpaqueTypesJank::AllGood, OpaqueTypesJank::AllGood) => OpaqueTypesJank::AllGood,
+            (OpaqueTypesJank::ErrorIfRigidSelfTy, _) | (_, OpaqueTypesJank::ErrorIfRigidSelfTy) => {
+                OpaqueTypesJank::ErrorIfRigidSelfTy
+            }
+        }
+    }
+
+    pub fn or(self, other: OpaqueTypesJank) -> OpaqueTypesJank {
+        match (self, other) {
+            (OpaqueTypesJank::ErrorIfRigidSelfTy, OpaqueTypesJank::ErrorIfRigidSelfTy) => {
+                OpaqueTypesJank::ErrorIfRigidSelfTy
+            }
+            (OpaqueTypesJank::AllGood, _) | (_, OpaqueTypesJank::AllGood) => {
+                OpaqueTypesJank::AllGood
+            }
+        }
+    }
 }
 
 impl Certainty {
-    pub const AMBIGUOUS: Certainty = Certainty::Maybe(MaybeCause::Ambiguity);
+    pub const AMBIGUOUS: Certainty = Certainty::Maybe {
+        cause: MaybeCause::Ambiguity,
+        opaque_types_jank: OpaqueTypesJank::AllGood,
+    };
 
     /// Use this function to merge the certainty of multiple nested subgoals.
     ///
@@ -290,14 +349,23 @@ impl Certainty {
     pub fn and(self, other: Certainty) -> Certainty {
         match (self, other) {
             (Certainty::Yes, Certainty::Yes) => Certainty::Yes,
-            (Certainty::Yes, Certainty::Maybe(_)) => other,
-            (Certainty::Maybe(_), Certainty::Yes) => self,
-            (Certainty::Maybe(a), Certainty::Maybe(b)) => Certainty::Maybe(a.and(b)),
+            (Certainty::Yes, Certainty::Maybe { .. }) => other,
+            (Certainty::Maybe { .. }, Certainty::Yes) => self,
+            (
+                Certainty::Maybe { cause: a_cause, opaque_types_jank: a_jank },
+                Certainty::Maybe { cause: b_cause, opaque_types_jank: b_jank },
+            ) => Certainty::Maybe {
+                cause: a_cause.and(b_cause),
+                opaque_types_jank: a_jank.and(b_jank),
+            },
         }
     }
 
     pub const fn overflow(suggest_increasing_limit: bool) -> Certainty {
-        Certainty::Maybe(MaybeCause::Overflow { suggest_increasing_limit, keep_constraints: false })
+        Certainty::Maybe {
+            cause: MaybeCause::Overflow { suggest_increasing_limit, keep_constraints: false },
+            opaque_types_jank: OpaqueTypesJank::AllGood,
+        }
     }
 }
 

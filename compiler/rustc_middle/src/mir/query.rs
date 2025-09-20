@@ -17,7 +17,7 @@ use crate::ty::{self, CoroutineArgsExt, OpaqueHiddenType, Ty};
 rustc_index::newtype_index! {
     #[derive(HashStable)]
     #[encodable]
-    #[debug_format = "_{}"]
+    #[debug_format = "_s{}"]
     pub struct CoroutineSavedLocal {}
 }
 

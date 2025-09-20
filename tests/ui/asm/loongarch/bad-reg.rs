@@ -1,7 +1,6 @@
 //@ add-core-stubs
 //@ needs-asm-support
 //@ revisions: loongarch32_ilp32d loongarch32_ilp32s loongarch64_lp64d loongarch64_lp64s
-//@ min-llvm-version: 20
 //@[loongarch32_ilp32d] compile-flags: --target loongarch32-unknown-none
 //@[loongarch32_ilp32d] needs-llvm-components: loongarch
 //@[loongarch32_ilp32s] compile-flags: --target loongarch32-unknown-none-softfloat

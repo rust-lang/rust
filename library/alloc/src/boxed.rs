@@ -640,7 +640,7 @@ impl<T> Box<[T]> {
     /// values[0].write(1);
     /// values[1].write(2);
     /// values[2].write(3);
-    /// let values = unsafe {values.assume_init() };
+    /// let values = unsafe { values.assume_init() };
     ///
     /// assert_eq!(*values, [1, 2, 3])
     /// ```

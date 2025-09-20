@@ -702,7 +702,7 @@ pub fn compile_declarative_macro(
             kinds |= MacroKinds::DERIVE;
             let derive_keyword_span = p.prev_token.span;
             if !features.macro_derive() {
-                feature_err(sess, sym::macro_attr, span, "`macro_rules!` derives are unstable")
+                feature_err(sess, sym::macro_derive, span, "`macro_rules!` derives are unstable")
                     .emit();
             }
             if let Some(guar) = check_no_eof(sess, &p, "expected `()` after `derive`") {

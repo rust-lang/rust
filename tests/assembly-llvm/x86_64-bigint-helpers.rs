@@ -2,7 +2,6 @@
 //@ assembly-output: emit-asm
 //@ compile-flags: --crate-type=lib -Copt-level=3 -C target-cpu=x86-64-v4
 //@ compile-flags: -C llvm-args=-x86-asm-syntax=intel
-//@ min-llvm-version: 20
 
 #![no_std]
 #![feature(bigint_helper_methods)]

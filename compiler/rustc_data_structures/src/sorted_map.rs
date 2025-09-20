@@ -1,6 +1,7 @@
 use std::borrow::Borrow;
 use std::cmp::Ordering;
 use std::fmt::Debug;
+use std::iter::TrustedLen;
 use std::mem;
 use std::ops::{Bound, Index, IndexMut, RangeBounds};
 
@@ -215,36 +216,40 @@ impl<K: Ord, V> SortedMap<K, V> {
     /// It is up to the caller to make sure that the elements are sorted by key
     /// and that there are no duplicates.
     #[inline]
-    pub fn insert_presorted(&mut self, elements: Vec<(K, V)>) {
-        if elements.is_empty() {
+    pub fn insert_presorted(
+        &mut self,
+        // We require `TrustedLen` to ensure that the `splice` below is actually efficient.
+        mut elements: impl Iterator<Item = (K, V)> + DoubleEndedIterator + TrustedLen,
+    ) {
+        let Some(first) = elements.next() else {
             return;
-        }
+        };
 
-        debug_assert!(elements.array_windows().all(|[fst, snd]| fst.0 < snd.0));
-
-        let start_index = self.lookup_index_for(&elements[0].0);
+        let start_index = self.lookup_index_for(&first.0);
 
         let elements = match start_index {
             Ok(index) => {
-                let mut elements = elements.into_iter();
-                self.data[index] = elements.next().unwrap();
-                elements
+                self.data[index] = first; // overwrite first element
+                elements.chain(None) // insert the rest below
             }
             Err(index) => {
-                if index == self.data.len() || elements.last().unwrap().0 < self.data[index].0 {
+                let last = elements.next_back();
+                if index == self.data.len()
+                    || last.as_ref().is_none_or(|l| l.0 < self.data[index].0)
+                {
                     // We can copy the whole range without having to mix with
                     // existing elements.
-                    self.data.splice(index..index, elements);
+                    self.data
+                        .splice(index..index, std::iter::once(first).chain(elements).chain(last));
                     return;
                 }
 
-                let mut elements = elements.into_iter();
-                self.data.insert(index, elements.next().unwrap());
-                elements
+                self.data.insert(index, first);
+                elements.chain(last) // insert the rest below
             }
         };
 
-        // Insert the rest
+        // Insert the rest. This is super inefficicent since each insertion copies the entire tail.
         for (k, v) in elements {
             self.insert(k, v);
         }

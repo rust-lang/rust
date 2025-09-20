@@ -6,5 +6,4 @@ pub unsafe extern "C" fn test(_: i32, ap: ...) {}
 trait Trait {
     unsafe extern "C" fn trait_test(_: i32, ap: ...) {}
     //~^ ERROR C-variadic functions are unstable
-    //~| ERROR associated functions cannot have a C variable argument list
 }

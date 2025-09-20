@@ -71,6 +71,8 @@ pub enum TypeMismatchReason {
 #[diag(middle_recursion_limit_reached)]
 #[help]
 pub(crate) struct RecursionLimitReached<'tcx> {
+    #[primary_span]
+    pub span: Span,
     pub ty: Ty<'tcx>,
     pub suggested_limit: rustc_hir::limit::Limit,
 }

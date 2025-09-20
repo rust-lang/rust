@@ -444,9 +444,6 @@ pub enum AttributeKind {
         span: Span,
     },
 
-    /// Represents `#[rustc_coherence_is_core]`.
-    CoherenceIsCore,
-
     /// Represents `#[rustc_coinductive]`.
     Coinductive(Span),
 
@@ -594,6 +591,12 @@ pub enum AttributeKind {
     /// Represents `#[non_exhaustive]`
     NonExhaustive(Span),
 
+    /// Represents `#[rustc_objc_class]`
+    ObjcClass { classname: Symbol, span: Span },
+
+    /// Represents `#[rustc_objc_selector]`
+    ObjcSelector { methname: Symbol, span: Span },
+
     /// Represents `#[optimize(size|speed)]`
     Optimize(OptimizeAttr, Span),
 
@@ -632,6 +635,9 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_builtin_macro]`.
     RustcBuiltinMacro { builtin_name: Option<Symbol>, helper_attrs: ThinVec<Symbol>, span: Span },
+
+    /// Represents `#[rustc_coherence_is_core]`
+    RustcCoherenceIsCore(Span),
 
     /// Represents `#[rustc_layout_scalar_valid_range_end]`.
     RustcLayoutScalarValidRangeEnd(Box<u128>, Span),

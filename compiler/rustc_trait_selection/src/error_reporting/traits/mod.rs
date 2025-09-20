@@ -554,7 +554,7 @@ fn attempt_dyn_to_enum_suggestion(
             // defaults to assuming that things are *not* sized, whereas we want to
             // fall back to assuming that things may be sized.
             match impl_type.kind() {
-                ty::Str | ty::Slice(_) | ty::Dynamic(_, _, ty::DynKind::Dyn) => {
+                ty::Str | ty::Slice(_) | ty::Dynamic(_, _) => {
                     return None;
                 }
                 _ => {}

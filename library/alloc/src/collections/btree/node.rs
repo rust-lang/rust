@@ -67,6 +67,10 @@ struct LeafNode<K, V> {
 
 impl<K, V> LeafNode<K, V> {
     /// Initializes a new `LeafNode` in-place.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that `this` points to a (possibly uninitialized) `LeafNode`
     unsafe fn init(this: *mut Self) {
         // As a general policy, we leave fields uninitialized if they can be, as this should
         // be both slightly faster and easier to track in Valgrind.
@@ -79,9 +83,11 @@ impl<K, V> LeafNode<K, V> {
 
     /// Creates a new boxed `LeafNode`.
     fn new<A: Allocator + Clone>(alloc: A) -> Box<Self, A> {
+        let mut leaf = Box::new_uninit_in(alloc);
         unsafe {
-            let mut leaf = Box::new_uninit_in(alloc);
+            // SAFETY: `leaf` points to a `LeafNode`
             LeafNode::init(leaf.as_mut_ptr());
+            // SAFETY: `leaf` was just initialized
             leaf.assume_init()
         }
     }

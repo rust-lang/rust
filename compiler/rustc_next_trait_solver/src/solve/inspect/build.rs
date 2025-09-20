@@ -10,8 +10,8 @@ use derive_where::derive_where;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::{self as ty, Interner};
 
+use crate::canonical;
 use crate::delegate::SolverDelegate;
-use crate::solve::eval_ctxt::canonical;
 use crate::solve::{Certainty, Goal, GoalSource, QueryResult, inspect};
 
 /// We need to know whether to build a prove tree while evaluating. We

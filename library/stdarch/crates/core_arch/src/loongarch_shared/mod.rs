@@ -131,17 +131,17 @@ pub fn ibar<const IMM15: i32>() {
 /// Moves data from a GPR to the FCSR
 #[inline]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn movgr2fcsr<const IMM5: i32>(a: i32) {
-    static_assert_uimm_bits!(IMM5, 5);
-    __movgr2fcsr(IMM5, a);
+pub unsafe fn movgr2fcsr<const IMM2: i32>(a: i32) {
+    static_assert_uimm_bits!(IMM2, 2);
+    __movgr2fcsr(IMM2, a);
 }
 
 /// Moves data from a FCSR to the GPR
 #[inline]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn movfcsr2gr<const IMM5: i32>() -> i32 {
-    static_assert_uimm_bits!(IMM5, 5);
-    unsafe { __movfcsr2gr(IMM5) }
+pub fn movfcsr2gr<const IMM2: i32>() -> i32 {
+    static_assert_uimm_bits!(IMM2, 2);
+    unsafe { __movfcsr2gr(IMM2) }
 }
 
 /// Reads the 8-bit IO-CSR

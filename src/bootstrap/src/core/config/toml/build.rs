@@ -37,6 +37,7 @@ define_config! {
         nodejs: Option<String> = "nodejs",
         npm: Option<String> = "npm",
         python: Option<String> = "python",
+        windows_rc: Option<String> = "windows-rc",
         reuse: Option<String> = "reuse",
         locked_deps: Option<bool> = "locked-deps",
         vendor: Option<bool> = "vendor",

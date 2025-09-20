@@ -68,7 +68,14 @@ impl<'a, 'tcx> Iterator for Autoderef<'a, 'tcx> {
             return None;
         }
 
-        if self.state.cur_ty.is_ty_var() {
+        // We want to support method and function calls for `impl Deref<Target = ..>`.
+        //
+        // To do so we don't eagerly bail if the current type is the hidden type of an
+        // opaque type and instead return `None` in `fn overloaded_deref_ty` if the
+        // opaque does not have a `Deref` item-bound.
+        if let &ty::Infer(ty::TyVar(vid)) = self.state.cur_ty.kind()
+            && !self.infcx.has_opaques_with_sub_unified_hidden_type(vid)
+        {
             return None;
         }
 
@@ -160,7 +167,11 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             self.param_env,
             ty::Binder::dummy(trait_ref),
         );
-        if !self.infcx.next_trait_solver() && !self.infcx.predicate_may_hold(&obligation) {
+        // We detect whether the self type implements `Deref` before trying to
+        // structurally normalize. We use `predicate_may_hold_opaque_types_jank`
+        // to support not-yet-defined opaque types. It will succeed for `impl Deref`
+        // but fail for `impl OtherTrait`.
+        if !self.infcx.predicate_may_hold_opaque_types_jank(&obligation) {
             debug!("overloaded_deref_ty: cannot match obligation");
             return None;
         }
