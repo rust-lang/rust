@@ -1,5 +1,5 @@
 error: expected `{`, found `)`
-  --> $DIR/ice-in-tokenstream-for-contracts-issue-140683.rs:8:18
+  --> $DIR/ice-in-tokenstream-for-contracts-issue-140683.rs:10:18
    |
 LL |     fn b() {(loop)}
    |              ----^ expected `{`
@@ -7,7 +7,7 @@ LL |     fn b() {(loop)}
    |              while parsing this `loop` expression
 
 error: expected `{`, found `)`
-  --> $DIR/ice-in-tokenstream-for-contracts-issue-140683.rs:8:18
+  --> $DIR/ice-in-tokenstream-for-contracts-issue-140683.rs:10:18
    |
 LL |     fn b() {(loop)}
    |              ----^ expected `{`
@@ -17,7 +17,7 @@ LL |     fn b() {(loop)}
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: expected a `Fn(&_)` closure, found `()`
-  --> $DIR/ice-in-tokenstream-for-contracts-issue-140683.rs:7:5
+  --> $DIR/ice-in-tokenstream-for-contracts-issue-140683.rs:9:5
    |
 LL |     #[core::contracts::ensures]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
