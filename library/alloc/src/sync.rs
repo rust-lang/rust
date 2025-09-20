@@ -2754,6 +2754,9 @@ impl<A: Allocator> Arc<dyn Any + Send + Sync, A> {
     where
         T: Any + Send + Sync,
     {
+        if core::ub_checks::check_library_ub() {
+            assert!((*self).is::<T>());
+        }
         unsafe {
             let (ptr, alloc) = Arc::into_inner_with_allocator(self);
             Arc::from_inner_in(ptr.cast(), alloc)

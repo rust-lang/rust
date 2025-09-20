@@ -2042,6 +2042,9 @@ impl<A: Allocator> Rc<dyn Any, A> {
     #[inline]
     #[unstable(feature = "downcast_unchecked", issue = "90850")]
     pub unsafe fn downcast_unchecked<T: Any>(self) -> Rc<T, A> {
+        if core::ub_checks::check_library_ub() {
+            assert!((*self).is::<T>());
+        }
         unsafe {
             let (ptr, alloc) = Rc::into_inner_with_allocator(self);
             Rc::from_inner_in(ptr.cast(), alloc)
