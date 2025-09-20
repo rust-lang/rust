@@ -386,7 +386,8 @@ fn link_rlib<'a>(
 
     // On Windows, we add the raw-dylib import libraries to the rlibs already.
     // But on ELF, this is not possible, as a shared object cannot be a member of a static library.
-    // Instead, we add all raw-dylibs to the final link on ELF.
+    // Similarly on Mach-O, `.tbd` files cannot be members of static libraries.
+    // Instead, we add all raw-dylibs to the final link on ELF/Mach-O.
     if sess.target.is_like_windows {
         for output_path in raw_dylib::create_raw_dylib_dll_import_libs(
             sess,
@@ -2357,6 +2358,14 @@ fn linker_with_args(
         ) {
             cmd.add_object(&output_path);
         }
+    } else if sess.target.is_like_darwin {
+        for link_path in raw_dylib::create_raw_dylib_macho_tapi(
+            sess,
+            codegen_results.crate_info.used_libraries.iter(),
+            tmpdir,
+        ) {
+            cmd.link_dylib_by_path(&link_path, true);
+        }
     } else {
         for link_path in raw_dylib::create_raw_dylib_elf_stub_shared_objects(
             sess,
@@ -2403,6 +2412,12 @@ fn linker_with_args(
             false,
         ) {
             cmd.add_object(&output_path);
+        }
+    } else if sess.target.is_like_darwin {
+        for link_path in
+            raw_dylib::create_raw_dylib_macho_tapi(sess, native_libraries_from_nonstatics, tmpdir)
+        {
+            cmd.link_dylib_by_path(&link_path, true);
         }
     } else {
         for link_path in raw_dylib::create_raw_dylib_elf_stub_shared_objects(

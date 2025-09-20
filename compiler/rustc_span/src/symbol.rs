@@ -1753,6 +1753,7 @@ symbols! {
         raw_dash_dylib: "raw-dylib",
         raw_dylib,
         raw_dylib_elf,
+        raw_dylib_macho,
         raw_eq,
         raw_identifiers,
         raw_ref_op,
