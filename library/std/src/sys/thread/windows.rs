@@ -8,6 +8,7 @@ use crate::sys::pal::time::WaitableTimer;
 use crate::sys::pal::{dur2timeout, to_u16s};
 use crate::sys::{c, stack_overflow};
 use crate::sys_common::FromInner;
+use crate::thread::ThreadInit;
 use crate::time::Duration;
 use crate::{io, ptr};
 
@@ -20,23 +21,19 @@ pub struct Thread {
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-    pub unsafe fn new(
-        stack: usize,
-        _name: Option<&str>,
-        p: Box<dyn FnOnce()>,
-    ) -> io::Result<Thread> {
-        let p = Box::into_raw(Box::new(p));
+    pub unsafe fn new(stack: usize, init: Box<ThreadInit>) -> io::Result<Thread> {
+        let data = Box::into_raw(init);
 
         // CreateThread rounds up values for the stack size to the nearest page size (at least 4kb).
         // If a value of zero is given then the default stack size is used instead.
         // SAFETY: `thread_start` has the right ABI for a thread's entry point.
-        // `p` is simply passed through to the new thread without being touched.
+        // `data` is simply passed through to the new thread without being touched.
         let ret = unsafe {
             let ret = c::CreateThread(
                 ptr::null_mut(),
                 stack,
                 Some(thread_start),
-                p as *mut _,
+                data as *mut _,
                 c::STACK_SIZE_PARAM_IS_A_RESERVATION,
                 ptr::null_mut(),
             );
@@ -45,19 +42,21 @@ impl Thread {
         return if let Ok(handle) = ret.try_into() {
             Ok(Thread { handle: Handle::from_inner(handle) })
         } else {
-            // The thread failed to start and as a result p was not consumed. Therefore, it is
+            // The thread failed to start and as a result data was not consumed. Therefore, it is
             // safe to reconstruct the box so that it gets deallocated.
-            unsafe { drop(Box::from_raw(p)) };
+            unsafe { drop(Box::from_raw(data)) };
             Err(io::Error::last_os_error())
         };
 
-        unsafe extern "system" fn thread_start(main: *mut c_void) -> u32 {
-            // Next, reserve some stack space for if we otherwise run out of stack.
+        unsafe extern "system" fn thread_start(data: *mut c_void) -> u32 {
+            // SAFETY: we are simply recreating the box that was leaked earlier.
+            let init = unsafe { Box::from_raw(data as *mut ThreadInit) };
+            let rust_start = init.init();
+
+            // Reserve some stack space for if we otherwise run out of stack.
             stack_overflow::reserve_stack();
-            // Finally, let's run some code.
-            // SAFETY: We are simply recreating the box that was leaked earlier.
-            // It's the responsibility of the one who call `Thread::new` to ensure this is safe to call here.
-            unsafe { Box::from_raw(main as *mut Box<dyn FnOnce()>)() };
+
+            rust_start();
             0
         }
     }
