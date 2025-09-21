@@ -50,6 +50,7 @@ pub struct ConfigBuilder {
     directory: PathBuf,
     override_download_ci_llvm: bool,
     dry_run: bool,
+    explicit_config: bool,
 }
 
 impl ConfigBuilder {
@@ -59,6 +60,7 @@ impl ConfigBuilder {
             directory,
             override_download_ci_llvm: true,
             dry_run: true,
+            explicit_config: true,
         }
     }
 
@@ -108,6 +110,7 @@ impl ConfigBuilder {
     pub fn with_default_toml_config(mut self, config_toml: &str) -> Self {
         let toml_path = self.directory.join("bootstrap.toml");
         std::fs::write(&toml_path, config_toml).unwrap();
+        self.explicit_config = false;
         self.args.push("--config".to_string());
         self.args.push(toml_path.display().to_string());
         self
@@ -137,6 +140,12 @@ impl ConfigBuilder {
             // in-tree LLVM from sources.
             self.args.push("--set".to_string());
             self.args.push("llvm.download-ci-llvm=false".to_string());
+        }
+
+        // always use the bootstrap toml created in the
+        // temporary directory and not from the <src>
+        if self.explicit_config {
+            self = self.with_default_toml_config("");
         }
 
         // Do not mess with the local rustc checkout build directory
