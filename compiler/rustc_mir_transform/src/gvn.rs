@@ -364,7 +364,9 @@ struct VnState<'body, 'a, 'tcx> {
     local_decls: &'body LocalDecls<'tcx>,
     is_coroutine: bool,
     /// Value stored in each local.
-    locals: IndexVec<Local, Option<VnIndex>>,
+    locals_ssa: FxHashMap<Local, VnIndex>,
+    // Keep two separate maps to efficiently clear non-SSA locals.
+    locals_non_ssa: FxHashMap<Local, VnIndex>,
     /// Locals that are assigned that value.
     // This vector holds the locals that are SSA.
     rev_locals_ssa: IndexVec<VnIndex, SmallVec<[Local; 1]>>,
@@ -404,7 +406,11 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             ecx: InterpCx::new(tcx, DUMMY_SP, typing_env, DummyMachine),
             local_decls,
             is_coroutine: body.coroutine.is_some(),
-            locals: IndexVec::from_elem(None, local_decls),
+            locals_ssa: FxHashMap::with_capacity_and_hasher(local_decls.len(), Default::default()),
+            locals_non_ssa: FxHashMap::with_capacity_and_hasher(
+                local_decls.len(),
+                Default::default(),
+            ),
             rev_locals_ssa: IndexVec::with_capacity(num_values),
             rev_locals_non_ssa: FxHashMap::default(),
             values: ValueSet::new(num_values),
@@ -527,10 +533,11 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
     /// Record that `local` is assigned `value`.
     #[instrument(level = "trace", skip(self))]
     fn assign(&mut self, local: Local, value: VnIndex) {
-        self.locals[local] = Some(value);
         if self.ssa.is_ssa(local) {
+            self.locals_ssa.insert(local, value);
             self.rev_locals_ssa[value].push(local);
         } else {
+            self.locals_non_ssa.insert(local, value);
             self.rev_locals_non_ssa.entry(value).or_default().push(local);
         }
     }
@@ -538,11 +545,16 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
     /// Return the value assigned to a local, or assign an opaque value and return it.
     #[instrument(level = "trace", skip(self), ret)]
     fn local(&mut self, local: Local) -> VnIndex {
-        if let Some(value) = self.locals[local] {
-            return value;
+        if let Some(value) = self.locals_ssa.get(&local) {
+            return *value;
+        }
+        if let Some(value) = self.locals_non_ssa.get(&local) {
+            return *value;
         }
         let value = self.new_opaque(self.local_decls[local].ty);
-        self.locals[local] = Some(value);
+        // For SSA locals, the assignment dominates all uses.
+        // If we are here, this means the locals is not SSA.
+        self.locals_non_ssa.insert(local, value);
         self.rev_locals_non_ssa.entry(value).or_default().push(local);
         value
     }
@@ -553,7 +565,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             if this.ssa.is_ssa(local) {
                 return;
             }
-            if let Some(value) = this.locals[local].take() {
+            if let Some(value) = this.locals_non_ssa.remove(&local) {
                 this.rev_locals_non_ssa.entry(value).or_default().retain(|l| *l != local);
             }
         };
@@ -1879,12 +1891,8 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, '_, 'tcx> {
     }
 
     fn visit_basic_block_data(&mut self, block: BasicBlock, bbdata: &mut BasicBlockData<'tcx>) {
+        self.locals_non_ssa.clear();
         self.rev_locals_non_ssa.clear();
-        for local in self.locals.indices() {
-            if !self.ssa.is_ssa(local) {
-                self.locals[local] = None;
-            }
-        }
         self.super_basic_block_data(block, bbdata);
     }
 
