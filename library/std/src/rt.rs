@@ -161,7 +161,7 @@ fn lang_start_internal(
     // mechanism itself.
     //
     // There are a couple of instances where unwinding can begin. First is inside of the
-    // `rt::init`, `rt::cleanup` and similar functions controlled by bstd. In those instances a
+    // `rt::init`, `rt::cleanup` and similar functions controlled by std. In those instances a
     // panic is a std implementation bug. A quite likely one too, as there isn't any way to
     // prevent std from accidentally introducing a panic to these functions. Another is from
     // user code from `main` or, more nefariously, as described in e.g. issue #86030.
