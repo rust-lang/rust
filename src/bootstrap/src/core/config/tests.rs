@@ -234,7 +234,7 @@ fn invalid_rust_optimize() {
 
 #[test]
 fn verify_file_integrity() {
-    let config = TestCtx::new().config("check").create_config();
+    let config = TestCtx::new().config("check").no_dry_run().create_config();
 
     let tempfile = config.tempdir().join(".tmp-test-file");
     File::create(&tempfile).unwrap().write_all(b"dummy value").unwrap();

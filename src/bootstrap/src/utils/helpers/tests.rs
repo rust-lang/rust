@@ -60,7 +60,7 @@ fn test_check_cfg_arg() {
 
 #[test]
 fn test_symlink_dir() {
-    let config = TestCtx::new().config("check").create_config();
+    let config = TestCtx::new().config("check").no_dry_run().create_config();
     let tempdir = config.tempdir().join(".tmp-dir");
     let link_path = config.tempdir().join(".tmp-link");
 

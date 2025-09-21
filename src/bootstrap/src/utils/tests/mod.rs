@@ -49,6 +49,7 @@ pub struct ConfigBuilder {
     args: Vec<String>,
     directory: PathBuf,
     override_download_ci_llvm: bool,
+    dry_run: bool,
 }
 
 impl ConfigBuilder {
@@ -57,6 +58,7 @@ impl ConfigBuilder {
             args: args.iter().copied().map(String::from).collect(),
             directory,
             override_download_ci_llvm: true,
+            dry_run: true,
         }
     }
 
@@ -116,10 +118,16 @@ impl ConfigBuilder {
         self
     }
 
-    pub fn create_config(mut self) -> Config {
-        // Run in dry-check, otherwise the test would be too slow
-        self.args.push("--dry-run".to_string());
+    pub fn no_dry_run(mut self) -> Self {
+        self.dry_run = false;
+        self
+    }
 
+    pub fn create_config(mut self) -> Config {
+        if self.dry_run {
+            // Run in dry-check, otherwise the test would be too slow
+            self.args.push("--dry-run".to_string());
+        }
         // Ignore submodules
         self.args.push("--set".to_string());
         self.args.push("build.submodules=false".to_string());

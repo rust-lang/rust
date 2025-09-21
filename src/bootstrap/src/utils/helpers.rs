@@ -160,7 +160,7 @@ impl Drop for TimeIt {
 /// Symlinks two directories, using junctions on Windows and normal symlinks on
 /// Unix.
 pub fn symlink_dir(config: &Config, original: &Path, link: &Path) -> io::Result<()> {
-    if config.dry_run() && !cfg!(test) {
+    if config.dry_run() {
         return Ok(());
     }
     let _ = fs::remove_dir_all(link);
