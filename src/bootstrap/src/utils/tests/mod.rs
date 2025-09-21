@@ -48,11 +48,16 @@ impl TestCtx {
 pub struct ConfigBuilder {
     args: Vec<String>,
     directory: PathBuf,
+    override_download_ci_llvm: bool,
 }
 
 impl ConfigBuilder {
     fn from_args(args: &[&str], directory: PathBuf) -> Self {
-        Self { args: args.iter().copied().map(String::from).collect(), directory }
+        Self {
+            args: args.iter().copied().map(String::from).collect(),
+            directory,
+            override_download_ci_llvm: true,
+        }
     }
 
     pub fn path(mut self, path: &str) -> Self {
@@ -106,6 +111,11 @@ impl ConfigBuilder {
         self
     }
 
+    pub fn no_override_download_ci_llvm(mut self) -> Self {
+        self.override_download_ci_llvm = false;
+        self
+    }
+
     pub fn create_config(mut self) -> Config {
         // Run in dry-check, otherwise the test would be too slow
         self.args.push("--dry-run".to_string());
@@ -114,25 +124,12 @@ impl ConfigBuilder {
         self.args.push("--set".to_string());
         self.args.push("build.submodules=false".to_string());
 
-        // Override any external LLVM set and inhibit CI LLVM; pretend that we're always building
-        // in-tree LLVM from sources.
-        self.args.push("--set".to_string());
-        self.args.push("llvm.download-ci-llvm=false".to_string());
-
-        // Do not mess with the local rustc checkout build directory
-        self.args.push("--build-dir".to_string());
-        self.args.push(self.directory.join("build").display().to_string());
-
-        Config::parse(Flags::parse(&self.args))
-    }
-
-    pub fn create_config_without_ci_llvm_override(mut self) -> Config {
-        // Run in dry-check, otherwise the test would be too slow
-        self.args.push("--dry-run".to_string());
-
-        // Ignore submodules
-        self.args.push("--set".to_string());
-        self.args.push("build.submodules=false".to_string());
+        if self.override_download_ci_llvm {
+            // Override any external LLVM set and inhibit CI LLVM; pretend that we're always building
+            // in-tree LLVM from sources.
+            self.args.push("--set".to_string());
+            self.args.push("llvm.download-ci-llvm=false".to_string());
+        }
 
         // Do not mess with the local rustc checkout build directory
         self.args.push("--build-dir".to_string());

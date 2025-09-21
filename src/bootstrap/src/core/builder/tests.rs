@@ -227,7 +227,8 @@ fn parse_config_download_rustc_at(path: &Path, download_rustc: &str, ci: bool) -
             "--src",
             path.to_str().unwrap(),
         ])
-        .create_config_without_ci_llvm_override()
+        .no_override_download_ci_llvm()
+        .create_config()
 }
 
 mod dist {
