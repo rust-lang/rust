@@ -113,16 +113,18 @@ declare_lint_pass!(NonCanonicalImpls => [NON_CANONICAL_CLONE_IMPL, NON_CANONICAL
 
 impl LateLintPass<'_> for NonCanonicalImpls {
     fn check_impl_item<'tcx>(&mut self, cx: &LateContext<'tcx>, impl_item: &ImplItem<'tcx>) {
-        if let Node::Item(item) = cx.tcx.parent_hir_node(impl_item.hir_id())
+        if let ImplItemKind::Fn(_, impl_item_id) = impl_item.kind
+            && let Node::Item(item) = cx.tcx.parent_hir_node(impl_item.hir_id())
             && let Some(trait_impl) = cx.tcx.impl_trait_ref(item.owner_id).map(EarlyBinder::skip_binder)
+            && let trait_name = cx.tcx.get_diagnostic_name(trait_impl.def_id)
+            // NOTE: check this early to avoid expensive checks that come after this one
+            && matches!(trait_name, Some(sym::Clone | sym::PartialOrd))
             && !cx.tcx.is_automatically_derived(item.owner_id.to_def_id())
-            && let ImplItemKind::Fn(_, impl_item_id) = cx.tcx.hir_impl_item(impl_item.impl_item_id()).kind
             && let body = cx.tcx.hir_body(impl_item_id)
             && let ExprKind::Block(block, ..) = body.value.kind
             && !block.span.in_external_macro(cx.sess().source_map())
             && !is_from_proc_macro(cx, impl_item)
         {
-            let trait_name = cx.tcx.get_diagnostic_name(trait_impl.def_id);
             if trait_name == Some(sym::Clone)
                 && let Some(copy_def_id) = cx.tcx.get_diagnostic_item(sym::Copy)
                 && implements_trait(cx, trait_impl.self_ty(), copy_def_id, &[])
@@ -147,17 +149,19 @@ fn check_clone_on_copy(cx: &LateContext<'_>, impl_item: &ImplItem<'_>, block: &B
             && let ExprKind::Path(qpath) = deref.kind
             && last_path_segment(&qpath).ident.name == kw::SelfLower
         {
-        } else {
-            span_lint_and_sugg(
-                cx,
-                NON_CANONICAL_CLONE_IMPL,
-                block.span,
-                "non-canonical implementation of `clone` on a `Copy` type",
-                "change this to",
-                "{ *self }".to_owned(),
-                Applicability::MaybeIncorrect,
-            );
+            // this is the canonical implementation, `fn clone(&self) -> Self { *self }`
+            return;
         }
+
+        span_lint_and_sugg(
+            cx,
+            NON_CANONICAL_CLONE_IMPL,
+            block.span,
+            "non-canonical implementation of `clone` on a `Copy` type",
+            "change this to",
+            "{ *self }".to_owned(),
+            Applicability::MaybeIncorrect,
+        );
     }
 
     if impl_item.ident.name == sym::clone_from {
