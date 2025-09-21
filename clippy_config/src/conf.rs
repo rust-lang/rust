@@ -741,6 +741,7 @@ define_Conf! {
         from_over_into,
         if_then_some_else_none,
         index_refutable_slice,
+        inefficient_to_string,
         io_other_error,
         iter_kv_map,
         legacy_numeric_constants,
