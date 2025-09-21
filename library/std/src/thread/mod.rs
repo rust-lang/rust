@@ -212,6 +212,36 @@ pub mod local_impl {
     pub use crate::sys::thread_local::*;
 }
 
+/// The data passed to the spawned thread for thread initialization. Any thread
+/// implementation should start a new thread by calling .init() on this before
+/// doing anything else to ensure the current thread is properly initialized and
+/// the global allocator works.
+pub(crate) struct ThreadInit {
+    pub handle: Thread,
+    pub rust_start: Box<dyn FnOnce()>,
+}
+
+impl ThreadInit {
+    /// Initialize the 'current thread' mechanism on this thread, returning the
+    /// Rust entry point.
+    pub fn init(self: Box<Self>) -> Box<dyn FnOnce()> {
+        // Set the current thread before any (de)allocations on the global allocator occur,
+        // so that it may call std::thread::current() in its implementation. This is also
+        // why we take Box<Self>, to ensure the Box is not destroyed until after this point.
+        // Cloning the handle does not invoke the global allocator, it is an Arc.
+        if let Err(_thread) = set_current(self.handle.clone()) {
+            // The current thread should not have set yet. Use an abort to save binary size (see #123356).
+            rtabort!("current thread handle already set during thread spawn");
+        }
+
+        if let Some(name) = self.handle.cname() {
+            imp::set_name(name);
+        }
+
+        self.rust_start
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Builder
 ////////////////////////////////////////////////////////////////////////////////
@@ -503,15 +533,13 @@ impl Builder {
         });
 
         let id = ThreadId::new();
-        let my_thread = Thread::new(id, name);
+        let thread = Thread::new(id, name);
 
         let hooks = if no_hooks {
             spawnhook::ChildSpawnHooks::default()
         } else {
-            spawnhook::run_spawn_hooks(&my_thread)
+            spawnhook::run_spawn_hooks(&thread)
         };
-
-        let their_thread = my_thread.clone();
 
         let my_packet: Arc<Packet<'scope, T>> = Arc::new(Packet {
             scope: scope_data,
@@ -544,19 +572,10 @@ impl Builder {
         }
 
         let f = MaybeDangling::new(f);
-        let main = move || {
-            if let Err(_thread) = set_current(their_thread.clone()) {
-                // Both the current thread handle and the ID should not be
-                // initialized yet. Since only the C runtime and some of our
-                // platform code run before this, this point shouldn't be
-                // reachable. Use an abort to save binary size (see #123356).
-                rtabort!("something here is badly broken!");
-            }
 
-            if let Some(name) = their_thread.cname() {
-                imp::set_name(name);
-            }
-
+        // The entrypoint of the Rust thread, after platform-specific thread
+        // initialization is done.
+        let rust_start = move || {
             let f = f.into_inner();
             let try_result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
                 crate::sys::backtrace::__rust_begin_short_backtrace(|| hooks.run());
@@ -579,11 +598,15 @@ impl Builder {
             scope_data.increment_num_running_threads();
         }
 
-        let main = Box::new(main);
         // SAFETY: dynamic size and alignment of the Box remain the same. See below for why the
         // lifetime change is justified.
-        let main =
-            unsafe { Box::from_raw(Box::into_raw(main) as *mut (dyn FnOnce() + Send + 'static)) };
+        let rust_start = unsafe {
+            Box::from_raw(
+                Box::into_raw(Box::new(rust_start)) as *mut (dyn FnOnce() + Send + 'static)
+            )
+        };
+
+        let init = Box::new(ThreadInit { handle: thread.clone(), rust_start });
 
         Ok(JoinInner {
             // SAFETY:
@@ -599,8 +622,8 @@ impl Builder {
             // Similarly, the `sys` implementation must guarantee that no references to the closure
             // exist after the thread has terminated, which is signaled by `Thread::join`
             // returning.
-            native: unsafe { imp::Thread::new(stack_size, my_thread.name(), main)? },
-            thread: my_thread,
+            native: unsafe { imp::Thread::new(stack_size, init)? },
+            thread,
             packet: my_packet,
         })
     }
@@ -1704,7 +1727,7 @@ impl Thread {
         }
     }
 
-    fn cname(&self) -> Option<&CStr> {
+    pub(crate) fn cname(&self) -> Option<&CStr> {
         if let Some(name) = &self.inner.name {
             Some(name.as_cstr())
         } else if main_thread::get() == Some(self.inner.id) {
