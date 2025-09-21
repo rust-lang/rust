@@ -1,11 +1,8 @@
-use rustc_middle::mir::{self, NonDivergingIntrinsic, RETURN_PLACE, StmtDebugInfo};
-use rustc_middle::{bug, span_bug};
-use rustc_target::callconv::PassMode;
+use rustc_middle::mir::{self, NonDivergingIntrinsic, StmtDebugInfo};
+use rustc_middle::span_bug;
 use tracing::instrument;
 
 use super::{FunctionCx, LocalRef};
-use crate::common::TypeKind;
-use crate::mir::place::PlaceRef;
 use crate::traits::*;
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
@@ -110,48 +107,28 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         match debuginfo {
             StmtDebugInfo::AssignRef(dest, place) => {
                 let local_ref = match self.locals[place.local] {
-                    LocalRef::Place(place_ref) | LocalRef::UnsizedPlace(place_ref) => {
-                        Some(place_ref)
+                    // For an rvalue like `&(_1.1)`, when `BackendRepr` is `BackendRepr::Memory`, we allocate a block of memory to this place.
+                    // The place is an indirect pointer, we can refer to it directly.
+                    LocalRef::Place(place_ref) => Some((place_ref, place.projection.as_slice())),
+                    // For an rvalue like `&((*_1).1)`, we are calculating the address of `_1.1`.
+                    // The deref projection is no-op here.
+                    LocalRef::Operand(operand_ref) if place.is_indirect_first_projection() => {
+                        Some((operand_ref.deref(bx.cx()), &place.projection[1..]))
                     }
-                    LocalRef::Operand(operand_ref) => operand_ref
-                        .val
-                        .try_pointer_parts()
-                        .map(|(pointer, _)| PlaceRef::new_sized(pointer, operand_ref.layout)),
-                    LocalRef::PendingOperand => None,
+                    // For an rvalue like `&1`, when `BackendRepr` is `BackendRepr::Scalar`,
+                    // we cannot get the address.
+                    // N.B. `non_ssa_locals` returns that this is an SSA local.
+                    LocalRef::Operand(_) => None,
+                    LocalRef::UnsizedPlace(_) | LocalRef::PendingOperand => None,
                 }
-                .filter(|place_ref| {
-                    // For the reference of an argument (e.x. `&_1`), it's only valid if the pass mode is indirect, and its reference is
-                    // llval.
-                    let local_ref_pass_mode = place.as_local().and_then(|local| {
-                        if local == RETURN_PLACE {
-                            None
-                        } else {
-                            self.fn_abi.args.get(local.as_usize() - 1).map(|arg| &arg.mode)
-                        }
-                    });
-                    matches!(local_ref_pass_mode, Some(&PassMode::Indirect {..}) | None) &&
+                .filter(|(_, projection)| {
                     // Drop unsupported projections.
-                    place.projection.iter().all(|p| p.can_use_in_debuginfo()) &&
-                    // Only pointers can be calculated addresses.
-                    bx.type_kind(bx.val_ty(place_ref.val.llval)) == TypeKind::Pointer
+                    projection.iter().all(|p| p.can_use_in_debuginfo())
                 });
-                if let Some(local_ref) = local_ref {
-                    let (base_layout, projection) = if place.is_indirect_first_projection() {
-                        // For `_n = &((*_1).0: i32);`, we are calculating the address of `_1.0`, so
-                        // we should drop the deref projection.
-                        let projected_ty = local_ref
-                            .layout
-                            .ty
-                            .builtin_deref(true)
-                            .unwrap_or_else(|| bug!("deref of non-pointer {:?}", local_ref));
-                        let layout = bx.cx().layout_of(projected_ty);
-                        (layout, &place.projection[1..])
-                    } else {
-                        (local_ref.layout, place.projection.as_slice())
-                    };
-                    self.debug_new_val_to_local(bx, *dest, local_ref.val, base_layout, projection);
+                if let Some((base, projection)) = local_ref {
+                    self.debug_new_val_to_local(bx, *dest, base, projection);
                 } else {
-                    // If the address cannot be computed, use poison to indicate that the value has been optimized out.
+                    // If the address cannot be calculated, use poison to indicate that the value has been optimized out.
                     self.debug_poison_to_local(bx, *dest);
                 }
             }
