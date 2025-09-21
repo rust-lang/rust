@@ -324,16 +324,16 @@ pub trait BangProcMacro {
 
 impl<F> BangProcMacro for F
 where
-    F: Fn(TokenStream) -> TokenStream,
+    F: Fn(&mut ExtCtxt<'_>, Span, TokenStream) -> Result<TokenStream, ErrorGuaranteed>,
 {
     fn expand<'cx>(
         &self,
-        _ecx: &'cx mut ExtCtxt<'_>,
-        _span: Span,
+        ecx: &'cx mut ExtCtxt<'_>,
+        span: Span,
         ts: TokenStream,
     ) -> Result<TokenStream, ErrorGuaranteed> {
         // FIXME setup implicit context in TLS before calling self.
-        Ok(self(ts))
+        self(ecx, span, ts)
     }
 }
 
@@ -999,17 +999,14 @@ impl SyntaxExtension {
 
     /// A dummy bang macro `foo!()`.
     pub fn dummy_bang(edition: Edition) -> SyntaxExtension {
-        fn expander<'cx>(
-            cx: &'cx mut ExtCtxt<'_>,
+        fn expand(
+            ecx: &mut ExtCtxt<'_>,
             span: Span,
-            _: TokenStream,
-        ) -> MacroExpanderResult<'cx> {
-            ExpandResult::Ready(DummyResult::any(
-                span,
-                cx.dcx().span_delayed_bug(span, "expanded a dummy bang macro"),
-            ))
+            _ts: TokenStream,
+        ) -> Result<TokenStream, ErrorGuaranteed> {
+            Err(ecx.dcx().span_delayed_bug(span, "expanded a dummy bang macro"))
         }
-        SyntaxExtension::default(SyntaxExtensionKind::LegacyBang(Arc::new(expander)), edition)
+        SyntaxExtension::default(SyntaxExtensionKind::Bang(Arc::new(expand)), edition)
     }
 
     /// A dummy derive macro `#[derive(Foo)]`.
