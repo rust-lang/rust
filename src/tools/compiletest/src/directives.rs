@@ -1798,7 +1798,7 @@ fn parse_edition_range(
         Some(match (maybe_parse_edition(lower_bound), maybe_parse_edition(upper_bound)) {
             (Some(lower_bound), Some(upper_bound)) if upper_bound <= lower_bound => {
                 fatal!(
-                    "the left side of `//@ edition` cannot be greater than or equal to the right side"
+                    "{testfile}:{line_number}: the left side of `//@ edition` cannot be greater than or equal to the right side"
                 );
             }
             (Some(lower_bound), Some(upper_bound)) => {

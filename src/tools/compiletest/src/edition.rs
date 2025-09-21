@@ -2,7 +2,7 @@ use crate::fatal;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Edition {
-    // Note that the ordering here is load-bearing, as we want the future edition to be grater than
+    // Note that the ordering here is load-bearing, as we want the future edition to be greater than
     // any year-based edition.
     Year(u32),
     Future,
