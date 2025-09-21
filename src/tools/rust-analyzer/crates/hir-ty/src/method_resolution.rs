@@ -32,9 +32,12 @@ use crate::{
     lang_items::is_box,
     next_solver::{
         self, SolverDefId,
-        fulfill::FulfillmentCtxt,
-        infer::DefineOpaqueTypes,
+        infer::{
+            DefineOpaqueTypes,
+            traits::{ObligationCause, PredicateObligation},
+        },
         mapping::{ChalkToNextSolver, NextSolverToChalk},
+        obligation_ctxt::ObligationCtxt,
     },
     primitive::{FloatTy, IntTy, UintTy},
     to_chalk_trait_id,
@@ -907,10 +910,11 @@ fn find_matching_impl(
                 .into_iter()
                 .map(|b| -> Goal { b.cast(Interner) });
             for goal in wcs {
-                if table.try_obligation(goal.clone()).no_solution() {
+                let goal = goal.to_nextsolver(table.interner);
+                if table.try_obligation(goal).no_solution() {
                     return None;
                 }
-                table.register_obligation(goal.to_nextsolver(table.interner));
+                table.register_obligation(goal);
             }
             Some((
                 impl_.impl_items(db),
@@ -1395,7 +1399,7 @@ fn iterate_trait_method_candidates(
     let db = table.db;
 
     let canonical_self_ty = table.canonicalize(self_ty.clone().to_nextsolver(table.interner));
-    let TraitEnvironment { krate, .. } = *table.trait_env;
+    let krate = table.trait_env.krate;
 
     'traits: for &t in traits_in_scope {
         let data = db.trait_signature(t);
@@ -1635,7 +1639,6 @@ pub(crate) fn resolve_indexing_op<'db>(
     let ty = table.instantiate_canonical_ns(ty);
     let deref_chain = autoderef_method_receiver(table, ty);
     for (ty, adj) in deref_chain {
-        //let goal = generic_implements_goal_ns(db, &table.trait_env, index_trait, &ty);
         let goal = generic_implements_goal_ns(table, index_trait, ty);
         if !next_trait_solve_canonical_in_ctxt(&table.infer_ctxt, goal).no_solution() {
             return Some(adj);
@@ -1752,10 +1755,7 @@ fn is_valid_trait_method_candidate(
                     };
                     let res = table
                         .infer_ctxt
-                        .at(
-                            &next_solver::infer::traits::ObligationCause::dummy(),
-                            table.trait_env.env.to_nextsolver(table.interner),
-                        )
+                        .at(&next_solver::infer::traits::ObligationCause::dummy(), table.param_env)
                         .relate(
                             DefineOpaqueTypes::No,
                             expected_receiver.to_nextsolver(table.interner),
@@ -1767,12 +1767,10 @@ fn is_valid_trait_method_candidate(
                     };
 
                     if !infer_ok.obligations.is_empty() {
-                        let mut ctxt = FulfillmentCtxt::new(&table.infer_ctxt);
-                        for pred in infer_ok.into_obligations() {
-                            ctxt.register_predicate_obligation(&table.infer_ctxt, pred);
-                        }
+                        let mut ctxt = ObligationCtxt::new(&table.infer_ctxt);
+                        ctxt.register_obligations(infer_ok.into_obligations());
                         // FIXME: Are we doing this correctly? Probably better to follow rustc more closely.
-                        check_that!(ctxt.select_where_possible(&table.infer_ctxt).is_empty());
+                        check_that!(ctxt.select_where_possible().is_empty());
                     }
 
                     check_that!(table.unify(receiver_ty, &expected_receiver));
@@ -1815,9 +1813,11 @@ fn is_valid_impl_fn_candidate(
     }
     table.run_in_snapshot(|table| {
         let _p = tracing::info_span!("subst_for_def").entered();
-        let impl_subst =
-            TyBuilder::subst_for_def(db, impl_id, None).fill_with_inference_vars(table).build();
-        let expect_self_ty = db.impl_self_ty(impl_id).substitute(Interner, &impl_subst);
+        let impl_subst = table.infer_ctxt.fresh_args_for_item(impl_id.into());
+        let expect_self_ty = db
+            .impl_self_ty_ns(impl_id)
+            .instantiate(table.interner, &impl_subst)
+            .to_chalk(table.interner);
 
         check_that!(table.unify(&expect_self_ty, self_ty));
 
@@ -1825,9 +1825,8 @@ fn is_valid_impl_fn_candidate(
             let _p = tracing::info_span!("check_receiver_ty").entered();
             check_that!(data.has_self_param());
 
-            let fn_subst = TyBuilder::subst_for_def(db, fn_id, Some(impl_subst.clone()))
-                .fill_with_inference_vars(table)
-                .build();
+            let fn_subst: crate::Substitution =
+                table.infer_ctxt.fresh_args_for_item(fn_id.into()).to_chalk(table.interner);
 
             let sig = db.callable_item_signature(fn_id.into());
             let expected_receiver =
@@ -1838,46 +1837,23 @@ fn is_valid_impl_fn_candidate(
 
         // We need to consider the bounds on the impl to distinguish functions of the same name
         // for a type.
-        let predicates = db.generic_predicates(impl_id.into());
-        let goals = predicates.iter().map(|p| {
-            let (p, b) = p
-                .clone()
-                .substitute(Interner, &impl_subst)
-                // Skipping the inner binders is ok, as we don't handle quantified where
-                // clauses yet.
-                .into_value_and_skipped_binders();
-            stdx::always!(b.len(Interner) == 0);
+        let predicates = db.generic_predicates_ns(impl_id.into());
+        let Some(predicates) = predicates.instantiate(table.interner, impl_subst) else {
+            return IsValidCandidate::Yes;
+        };
 
-            p.cast::<Goal>(Interner)
-        });
+        let mut ctxt = ObligationCtxt::new(&table.infer_ctxt);
 
-        for goal in goals.clone() {
-            match table.solve_obligation(goal) {
-                Ok(_) => {}
-                Err(_) => {
-                    return IsValidCandidate::No;
-                }
-            }
+        ctxt.register_obligations(predicates.into_iter().map(|p| {
+            PredicateObligation::new(table.interner, ObligationCause::new(), table.param_env, p.0)
+        }));
+
+        if ctxt.select_where_possible().is_empty() {
+            IsValidCandidate::Yes
+        } else {
+            IsValidCandidate::No
         }
-
-        for goal in goals {
-            if table.try_obligation(goal).no_solution() {
-                return IsValidCandidate::No;
-            }
-        }
-
-        IsValidCandidate::Yes
     })
-}
-
-pub fn implements_trait(
-    ty: &Canonical<Ty>,
-    db: &dyn HirDatabase,
-    env: &TraitEnvironment,
-    trait_: TraitId,
-) -> bool {
-    let goal = generic_implements_goal(db, env, trait_, ty);
-    !db.trait_solve(env.krate, env.block, goal.cast(Interner)).no_solution()
 }
 
 pub fn implements_trait_unique(
@@ -1891,7 +1867,7 @@ pub fn implements_trait_unique(
 }
 
 /// This creates Substs for a trait with the given Self type and type variables
-/// for all other parameters, to query Chalk with it.
+/// for all other parameters, to query next solver with it.
 #[tracing::instrument(skip_all)]
 fn generic_implements_goal(
     db: &dyn HirDatabase,
@@ -1934,11 +1910,7 @@ fn generic_implements_goal_ns<'db>(
     let trait_ref =
         rustc_type_ir::TraitRef::new_from_args(table.infer_ctxt.interner, trait_.into(), args)
             .with_replaced_self_ty(table.infer_ctxt.interner, self_ty);
-    let goal = next_solver::Goal::new(
-        table.infer_ctxt.interner,
-        table.trait_env.env.to_nextsolver(table.infer_ctxt.interner),
-        trait_ref,
-    );
+    let goal = next_solver::Goal::new(table.infer_ctxt.interner, table.param_env, trait_ref);
 
     table.canonicalize(goal)
 }
