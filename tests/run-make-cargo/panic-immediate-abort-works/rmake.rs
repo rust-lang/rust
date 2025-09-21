@@ -1,3 +1,9 @@
+// This test ensures we are able to compile and link a simple binary with panic=immediate-abort.
+// The test panic-immediate-abort-codegen checks that panic strategy produces the desired codegen,
+// but is based on compiling a library crate (which is the norm for codegen tests because it is
+// cleaner and more portable). So this test ensures that we didn't mix up a cfg or a compiler
+// implementation detail in a way that makes panic=immediate-abort encounter errors at link time.
+
 //@ needs-target-std
 
 #![deny(warnings)]

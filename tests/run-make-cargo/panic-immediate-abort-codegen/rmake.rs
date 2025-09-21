@@ -1,3 +1,8 @@
+// This is a codegen test which checks that when code is compiled with panic=immediate-abort,
+// we get a `tail call void @llvm.trap()` in user code instead of a call into the standard
+// library's panic formatting code (such as panic_fmt) or one of the numerous panic outlining shims
+// (such as slice_index_fail).
+
 #![deny(warnings)]
 
 use run_make_support::{cargo, llvm_filecheck, path, rfs, target};

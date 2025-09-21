@@ -205,6 +205,10 @@ pub(crate) fn default_configuration(sess: &Session) -> Cfg {
         ins_none!(sym::overflow_checks);
     }
 
+    // We insert a cfg for the name of session's panic strategy.
+    // Since the ImmediateAbort strategy is new, it also sets cfg(panic="abort"), so that code
+    // which is trying to detect whether unwinding is enabled by checking for cfg(panic="abort")
+    // does not need to be updated.
     ins_sym!(sym::panic, sess.panic_strategy().desc_symbol());
     if sess.panic_strategy() == PanicStrategy::ImmediateAbort {
         ins_sym!(sym::panic, PanicStrategy::Abort.desc_symbol());
