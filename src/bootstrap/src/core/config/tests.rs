@@ -22,7 +22,7 @@ use crate::utils::tests::TestCtx;
 use crate::utils::tests::git::git_test;
 
 pub(crate) fn parse(config: &str) -> Config {
-    TestCtx::new().config("check").config_toml(config).create_config()
+    TestCtx::new().config("check").with_default_toml_config(config).create_config()
 }
 
 fn get_toml(file: &Path) -> Result<TomlConfig, toml::de::Error> {
@@ -58,7 +58,7 @@ fn download_ci_llvm() {
     // this doesn't make sense, as we are overriding it later.
     let if_unchanged_config = TestCtx::new()
         .config("check")
-        .config_toml("llvm.download-ci-llvm = \"if-unchanged\"")
+        .with_default_toml_config("llvm.download-ci-llvm = \"if-unchanged\"")
         .create_config();
     if if_unchanged_config.llvm_from_ci && if_unchanged_config.is_running_on_ci {
         let has_changes = if_unchanged_config.has_changes_from_upstream(LLVM_INVALIDATION_PATHS);
@@ -119,8 +119,11 @@ fn override_toml() {
         "--set=target.aarch64-apple-darwin.optimized-compiler-builtins=false",
     ];
 
-    let config =
-        TestCtx::new().config("check").config_toml(config_toml).args(&args).create_config();
+    let config = TestCtx::new()
+        .config("check")
+        .with_default_toml_config(config_toml)
+        .args(&args)
+        .create_config();
 
     assert_eq!(config.change_id, Some(ChangeId::Id(1)), "setting top-level value");
     assert_eq!(
@@ -182,7 +185,7 @@ fn override_toml() {
 fn override_toml_duplicate() {
     TestCtx::new()
         .config("check")
-        .config_toml("change-id = 0")
+        .with_default_toml_config("change-id = 0")
         .arg("--set")
         .arg("change-id=1")
         .arg("--set")
@@ -223,7 +226,10 @@ fn rust_optimize() {
 #[test]
 #[should_panic]
 fn invalid_rust_optimize() {
-    TestCtx::new().config("check").config_toml("rust.optimize = \"a\"").create_config();
+    TestCtx::new()
+        .config("check")
+        .with_default_toml_config("rust.optimize = \"a\"")
+        .create_config();
 }
 
 #[test]
@@ -332,7 +338,7 @@ fn verbose_tests_default_value() {
 fn parse_rust_std_features() {
     let config = TestCtx::new()
         .config("check")
-        .config_toml("rust.std-features = [\"panic-unwind\", \"backtrace\"]")
+        .with_default_toml_config("rust.std-features = [\"panic-unwind\", \"backtrace\"]")
         .create_config();
     let expected_features: BTreeSet<String> =
         ["panic-unwind", "backtrace"].into_iter().map(|s| s.to_string()).collect();
@@ -341,8 +347,10 @@ fn parse_rust_std_features() {
 
 #[test]
 fn parse_rust_std_features_empty() {
-    let config =
-        TestCtx::new().config("check").config_toml("rust.std-features = []").create_config();
+    let config = TestCtx::new()
+        .config("check")
+        .with_default_toml_config("rust.std-features = []")
+        .create_config();
     let expected_features: BTreeSet<String> = BTreeSet::new();
     assert_eq!(config.rust_std_features, expected_features);
 }
@@ -350,13 +358,20 @@ fn parse_rust_std_features_empty() {
 #[test]
 #[should_panic]
 fn parse_rust_std_features_invalid() {
-    TestCtx::new().config("check").config_toml("rust.std-features = \"backtrace\"").create_config();
+    TestCtx::new()
+        .config("check")
+        .with_default_toml_config("rust.std-features = \"backtrace\"")
+        .create_config();
 }
 
 #[test]
 fn parse_jobs() {
     assert_eq!(
-        TestCtx::new().config("check").config_toml("build.jobs = 1").create_config().jobs,
+        TestCtx::new()
+            .config("check")
+            .with_default_toml_config("build.jobs = 1")
+            .create_config()
+            .jobs,
         Some(1)
     );
 }
@@ -375,7 +390,7 @@ fn jobs_precedence() {
     let config = TestCtx::new()
         .config("check")
         .args(&["--set=build.jobs=12345"])
-        .config_toml(
+        .with_default_toml_config(
             r#"
         [build]
         jobs = 67890
@@ -389,7 +404,7 @@ fn jobs_precedence() {
     let config = TestCtx::new()
         .config("check")
         .args(&["--jobs=123", "--set=build.jobs=456"])
-        .config_toml(
+        .with_default_toml_config(
             r#"
         [build]
         jobs = 789
@@ -418,7 +433,7 @@ fn check_rustc_if_unchanged_paths() {
 fn test_explicit_stage() {
     let config = TestCtx::new()
         .config("check")
-        .config_toml(
+        .with_default_toml_config(
             r#"
             [build]
             test-stage = 1
@@ -439,7 +454,7 @@ fn test_explicit_stage() {
     let config = TestCtx::new()
         .config("check")
         .stage(2)
-        .config_toml(
+        .with_default_toml_config(
             r#"
             [build]
             test-stage = 1
@@ -463,7 +478,7 @@ fn test_exclude() {
     let exclude_path = "compiler";
     let config = TestCtx::new()
         .config("check")
-        .config_toml(&format!("build.exclude=[\"{}\"]", exclude_path))
+        .with_default_toml_config(&format!("build.exclude=[\"{}\"]", exclude_path))
         .create_config();
 
     let first_excluded = config

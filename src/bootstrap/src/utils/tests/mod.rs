@@ -98,7 +98,7 @@ impl ConfigBuilder {
         self
     }
 
-    pub fn config_toml(mut self, config_toml: &str) -> Self {
+    pub fn with_default_toml_config(mut self, config_toml: &str) -> Self {
         let toml_path = self.directory.join("bootstrap.toml");
         std::fs::write(&toml_path, config_toml).unwrap();
         self.args.push("--config".to_string());

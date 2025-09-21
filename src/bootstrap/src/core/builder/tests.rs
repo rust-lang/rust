@@ -357,7 +357,7 @@ fn test_test_coverage() {
 #[test]
 fn test_prebuilt_llvm_config_path_resolution() {
     fn configure(config: &str) -> Config {
-        TestCtx::new().config("build").config_toml(config).create_config()
+        TestCtx::new().config("build").with_default_toml_config(config).create_config()
     }
 
     // Removes Windows disk prefix if present
