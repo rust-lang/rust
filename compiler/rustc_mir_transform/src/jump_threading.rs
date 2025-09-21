@@ -99,48 +99,7 @@ impl<'tcx> crate::MirPass<'tcx> for JumpThreading {
         }
 
         let typing_env = body.typing_env(tcx);
-        let mut finder = TOFinder {
-            tcx,
-            typing_env,
-            ecx: InterpCx::new(tcx, DUMMY_SP, typing_env, DummyMachine),
-            body,
-            map: Map::new(tcx, body, PlaceCollectionMode::OnDemand),
-            maybe_loop_headers: maybe_loop_headers(body),
-            entry_states: IndexVec::from_elem(ConditionSet::default(), &body.basic_blocks),
-        };
-
-        for (bb, bbdata) in traversal::postorder(body) {
-            if bbdata.is_cleanup {
-                continue;
-            }
-
-            let mut state = finder.populate_from_outgoing_edges(bb);
-            trace!("output_states[{bb:?}] = {state:?}");
-
-            finder.process_terminator(bb, &mut state);
-            trace!("pre_terminator_states[{bb:?}] = {state:?}");
-
-            for stmt in bbdata.statements.iter().rev() {
-                if state.is_empty() {
-                    break;
-                }
-
-                finder.process_statement(stmt, &mut state);
-
-                // When a statement mutates a place, assignments to that place that happen
-                // above the mutation cannot fulfill a condition.
-                //   _1 = 5 // Whatever happens here, it won't change the result of a `SwitchInt`.
-                //   _1 = 6
-                if let Some((lhs, tail)) = finder.mutated_statement(stmt) {
-                    finder.flood_state(lhs, tail, &mut state);
-                }
-            }
-
-            trace!("entry_states[{bb:?}] = {state:?}");
-            finder.entry_states[bb] = state;
-        }
-
-        let mut entry_states = finder.entry_states;
+        let mut entry_states = compute_entry_states(tcx, typing_env, body);
         simplify_conditions(body, &mut entry_states);
         remove_costly_conditions(tcx, typing_env, body, &mut entry_states);
 
@@ -152,6 +111,56 @@ impl<'tcx> crate::MirPass<'tcx> for JumpThreading {
     fn is_required(&self) -> bool {
         false
     }
+}
+
+#[instrument(level = "debug", skip(tcx, typing_env, body))]
+fn compute_entry_states<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
+    body: &Body<'tcx>,
+) -> IndexVec<BasicBlock, ConditionSet> {
+    let mut finder = TOFinder {
+        tcx,
+        typing_env,
+        ecx: InterpCx::new(tcx, DUMMY_SP, typing_env, DummyMachine),
+        body,
+        map: Map::new(tcx, body, PlaceCollectionMode::OnDemand),
+        maybe_loop_headers: maybe_loop_headers(body),
+        entry_states: IndexVec::from_elem(ConditionSet::default(), &body.basic_blocks),
+    };
+
+    for (bb, bbdata) in traversal::postorder(body) {
+        if bbdata.is_cleanup {
+            continue;
+        }
+
+        let mut state = finder.populate_from_outgoing_edges(bb);
+        trace!("output_states[{bb:?}] = {state:?}");
+
+        finder.process_terminator(bb, &mut state);
+        trace!("pre_terminator_states[{bb:?}] = {state:?}");
+
+        for stmt in bbdata.statements.iter().rev() {
+            if state.is_empty() {
+                break;
+            }
+
+            finder.process_statement(stmt, &mut state);
+
+            // When a statement mutates a place, assignments to that place that happen
+            // above the mutation cannot fulfill a condition.
+            //   _1 = 5 // Whatever happens here, it won't change the result of a `SwitchInt`.
+            //   _1 = 6
+            if let Some((lhs, tail)) = finder.mutated_statement(stmt) {
+                finder.flood_state(lhs, tail, &mut state);
+            }
+        }
+
+        trace!("entry_states[{bb:?}] = {state:?}");
+        finder.entry_states[bb] = state;
+    }
+
+    finder.entry_states
 }
 
 struct TOFinder<'a, 'tcx> {
@@ -1009,7 +1018,7 @@ impl<'a, 'tcx> OpportunitySet<'a, 'tcx> {
         // Use a while-pop to allow modifying `targets` from inside the loop.
         targets.reverse();
         while let Some(target) = targets.pop() {
-            debug!(?target);
+            trace!(?target);
             trace!(term = ?self.basic_blocks[bb].terminator().kind);
 
             // By construction, `target.block()` is a successor of `bb`.
