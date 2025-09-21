@@ -214,22 +214,40 @@ mod macro_use {
 }
 
 #[macro_export]
-//~^ WARN `#[macro_export]` only has an effect on macro definitions
+//~^ WARN `#[macro_export]` attribute cannot be used on modules [unused_attributes]
+//~| WARN previously accepted
+//~| HELP can only be applied to
+//~| HELP remove the attribute
 mod macro_export {
     mod inner { #![macro_export] }
-    //~^ WARN `#[macro_export]` only has an effect on macro definitions
+    //~^ WARN `#[macro_export]` attribute cannot be used on modules
+    //~| WARN previously accepted
+    //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[macro_export] fn f() { }
-    //~^ WARN `#[macro_export]` only has an effect on macro definitions
+    //~^ WARN `#[macro_export]` attribute cannot be used on function
+    //~| WARN previously accepted
+    //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[macro_export] struct S;
-    //~^ WARN `#[macro_export]` only has an effect on macro definitions
+    //~^ WARN `#[macro_export]` attribute cannot be used on structs
+    //~| WARN previously accepted
+    //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[macro_export] type T = S;
-    //~^ WARN `#[macro_export]` only has an effect on macro definitions
+    //~^ WARN `#[macro_export]` attribute cannot be used on type aliases
+    //~| WARN previously accepted
+    //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[macro_export] impl S { }
-    //~^ WARN `#[macro_export]` only has an effect on macro definitions
+    //~^ WARN  `#[macro_export]` attribute cannot be used on inherent impl blocks
+    //~| WARN previously accepted
+    //~| HELP can only be applied to
+    //~| HELP remove the attribute
 }
 
 // At time of unit test authorship, if compiling without `--test` then

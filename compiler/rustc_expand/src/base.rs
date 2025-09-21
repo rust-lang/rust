@@ -942,9 +942,9 @@ impl SyntaxExtension {
                 .unwrap_or_default();
         let allow_internal_unsafe = find_attr!(attrs, AttributeKind::AllowInternalUnsafe(_));
 
-        let local_inner_macros = ast::attr::find_by_name(attrs, sym::macro_export)
-            .and_then(|macro_export| macro_export.meta_item_list())
-            .is_some_and(|l| ast::attr::list_contains_name(&l, sym::local_inner_macros));
+        let local_inner_macros =
+            *find_attr!(attrs, AttributeKind::MacroExport {local_inner_macros: l, ..} => l)
+                .unwrap_or(&false);
         let collapse_debuginfo = Self::get_collapse_debuginfo(sess, attrs, !is_local);
         tracing::debug!(?name, ?local_inner_macros, ?collapse_debuginfo, ?allow_internal_unsafe);
 
