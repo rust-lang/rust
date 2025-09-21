@@ -1,0 +1,57 @@
+warning: irrefutable `if let` pattern
+  --> $DIR/irrefutable-in-let-chains.rs:15:8
+   |
+LL |     if let first = &opt {}
+   |        ^^^^^^^^^^^^^^^^
+   |
+   = note: this pattern will always match, so the `if let` is useless
+   = help: consider replacing the `if let` with a `let`
+   = note: `#[warn(irrefutable_let_patterns)]` on by default
+
+warning: irrefutable `if let` pattern
+  --> $DIR/irrefutable-in-let-chains.rs:32:8
+   |
+LL |     if let Range { start: local_start, end: _ } = (None..Some(1)) {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this pattern will always match, so the `if let` is useless
+   = help: consider replacing the `if let` with a `let`
+
+warning: irrefutable `if let` pattern
+  --> $DIR/irrefutable-in-let-chains.rs:39:8
+   |
+LL |     if let (a, b, c) = (Some(1), Some(1), Some(1)) {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this pattern will always match, so the `if let` is useless
+   = help: consider replacing the `if let` with a `let`
+
+warning: irrefutable `if let` pattern
+  --> $DIR/irrefutable-in-let-chains.rs:51:15
+   |
+LL |     } else if let x = opt.clone().map(|_| 1) {
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this pattern will always match, so the `if let` is useless
+   = help: consider replacing the `if let` with a `let`
+
+warning: irrefutable `if let` guard pattern
+  --> $DIR/irrefutable-in-let-chains.rs:72:28
+   |
+LL |         Some(ref first) if let second = first => {}
+   |                            ^^^^^^^^^^^^^^^^^^
+   |
+   = note: this pattern will always match, so the guard is useless
+   = help: consider removing the guard and adding a `let` inside the match arm
+
+warning: irrefutable `while let` pattern
+  --> $DIR/irrefutable-in-let-chains.rs:101:11
+   |
+LL |     while let first = &opt {}
+   |           ^^^^^^^^^^^^^^^^
+   |
+   = note: this pattern will always match, so the loop will never exit
+   = help: consider instead using a `loop { ... }` with a `let` inside it
+
+warning: 6 warnings emitted
+
