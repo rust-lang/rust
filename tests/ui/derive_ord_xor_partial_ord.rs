@@ -76,3 +76,18 @@ mod use_ord {
 }
 
 fn main() {}
+
+mod issue15708 {
+    use std::cmp::{Ord, Ordering};
+
+    // Check that the lint posts on the type definition node
+    #[expect(clippy::derive_ord_xor_partial_ord)]
+    #[derive(PartialOrd, PartialEq, Eq)]
+    struct DerivePartialOrdInUseOrd;
+
+    impl Ord for DerivePartialOrdInUseOrd {
+        fn cmp(&self, other: &Self) -> Ordering {
+            Ordering::Less
+        }
+    }
+}

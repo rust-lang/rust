@@ -9,7 +9,7 @@ LL | |     fn clone(&self) -> Self {
 LL | | }
    | |_^
    |
-note: consider deriving `Clone` or removing `Copy`
+help: consider deriving `Clone` or removing `Copy`
   --> tests/ui/derive.rs:15:1
    |
 LL | / impl Clone for Qux {
@@ -33,7 +33,7 @@ LL | |     fn clone(&self) -> Self {
 LL | | }
    | |_^
    |
-note: consider deriving `Clone` or removing `Copy`
+help: consider deriving `Clone` or removing `Copy`
   --> tests/ui/derive.rs:41:1
    |
 LL | / impl<'a> Clone for Lt<'a> {
@@ -55,7 +55,7 @@ LL | |     fn clone(&self) -> Self {
 LL | | }
    | |_^
    |
-note: consider deriving `Clone` or removing `Copy`
+help: consider deriving `Clone` or removing `Copy`
   --> tests/ui/derive.rs:54:1
    |
 LL | / impl Clone for BigArray {
@@ -77,7 +77,7 @@ LL | |     fn clone(&self) -> Self {
 LL | | }
    | |_^
    |
-note: consider deriving `Clone` or removing `Copy`
+help: consider deriving `Clone` or removing `Copy`
   --> tests/ui/derive.rs:67:1
    |
 LL | / impl Clone for FnPtr {
@@ -99,7 +99,7 @@ LL | |     fn clone(&self) -> Self {
 LL | | }
    | |_^
    |
-note: consider deriving `Clone` or removing `Copy`
+help: consider deriving `Clone` or removing `Copy`
   --> tests/ui/derive.rs:89:1
    |
 LL | / impl<T: Clone> Clone for Generic2<T> {
