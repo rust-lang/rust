@@ -45,6 +45,7 @@ pub(crate) struct DebugContext {
     array_size_type: UnitEntryId,
 
     filename_display_preference: FileNameDisplayPreference,
+    embed_source: bool,
 }
 
 pub(crate) struct FunctionDebugContext {
@@ -67,20 +68,23 @@ impl DebugContext {
             return None;
         }
 
+        let mut requested_dwarf_version = tcx.sess.dwarf_version();
+        if tcx.sess.target.is_like_darwin && requested_dwarf_version > 4 {
+            // Apple’s shipped debuggers still expect DWARF <= 4 by default.
+            // Stay on v4 unless the user explicitly opts into a feature that
+            // only works with v5 (e.g. -Zembed-source).
+            if !tcx.sess.opts.unstable_opts.embed_source {
+                requested_dwarf_version = 4;
+            }
+        }
+
         let encoding = Encoding {
             format: Format::Dwarf32,
-            // FIXME this should be configurable
-            // macOS doesn't seem to support DWARF > 3
-            // 5 version is required for md5 file hash
-            version: if tcx.sess.target.is_like_darwin {
-                3
-            } else {
-                // FIXME change to version 5 once the gdb and lldb shipping with the latest debian
-                // support it.
-                4
-            },
+            version: requested_dwarf_version as u16,
             address_size: isa.frontend_config().pointer_bytes(),
         };
+
+        let embed_source = tcx.sess.opts.unstable_opts.embed_source && encoding.version >= 5;
 
         let endian = match isa.endianness() {
             Endianness::Little => RunTimeEndian::Little,
@@ -125,6 +129,9 @@ impl DebugContext {
             file_info,
         );
         line_program.file_has_md5 = file_has_md5;
+        if embed_source {
+            line_program.file_has_source = true;
+        }
 
         dwarf.unit.line_program = line_program;
 
@@ -169,6 +176,7 @@ impl DebugContext {
             namespace_map: DefIdMap::default(),
             array_size_type,
             filename_display_preference,
+            embed_source,
         })
     }
 
