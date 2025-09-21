@@ -64,8 +64,11 @@ rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
     let mut register = |name, kind| resolver.register_builtin_macro(name, kind);
-    macro register_bang($($name:ident: $f:expr,)*) {
+    macro register_legacy_bang($($name:ident: $f:expr,)*) {
         $(register(sym::$name, SyntaxExtensionKind::LegacyBang(Arc::new($f as MacroExpanderFn)));)*
+    }
+    macro register_bang($($name:ident: $f:expr,)*) {
+        $(register(sym::$name, SyntaxExtensionKind::Bang(Arc::new($f)));)*
     }
     macro register_attr($($name:ident: $f:expr,)*) {
         $(register(sym::$name, SyntaxExtensionKind::LegacyAttr(Arc::new($f)));)*
@@ -74,13 +77,12 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         $(register(sym::$name, SyntaxExtensionKind::LegacyDerive(Arc::new(BuiltinDerive($f))));)*
     }
 
-    register_bang! {
+    register_legacy_bang! {
         // tidy-alphabetical-start
         asm: asm::expand_asm,
         assert: assert::expand_assert,
         cfg: cfg::expand_cfg,
         cfg_select: cfg_select::expand_cfg_select,
-        column: source_util::expand_column,
         compile_error: compile_error::expand_compile_error,
         concat: concat::expand_concat,
         concat_bytes: concat_bytes::expand_concat_bytes,
@@ -95,7 +97,6 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         include_bytes: source_util::expand_include_bytes,
         include_str: source_util::expand_include_str,
         iter: iter::expand,
-        line: source_util::expand_line,
         log_syntax: log_syntax::expand_log_syntax,
         module_path: source_util::expand_mod,
         naked_asm: asm::expand_naked_asm,
@@ -105,6 +106,13 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         stringify: source_util::expand_stringify,
         trace_macros: trace_macros::expand_trace_macros,
         unreachable: edition_panic::expand_unreachable,
+        // tidy-alphabetical-end
+    }
+
+    register_bang! {
+        // tidy-alphabetical-start
+        column: source_util::expand_column,
+        line: source_util::expand_line,
         // tidy-alphabetical-end
     }
 

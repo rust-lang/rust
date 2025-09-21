@@ -5,6 +5,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use rustc_ast as ast;
+use rustc_ast::token::TokenKind;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{join_path_idents, token};
 use rustc_ast_pretty::pprust;
@@ -18,7 +19,7 @@ use rustc_parse::{new_parser_from_file, unwrap_or_emit_fatal, utf8_error};
 use rustc_session::lint::builtin::INCOMPLETE_INCLUDE;
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::SourceMap;
-use rustc_span::{ByteSymbol, Pos, Span, Symbol};
+use rustc_span::{ByteSymbol, ErrorGuaranteed, Pos, Span, Symbol, sym};
 use smallvec::SmallVec;
 
 use crate::errors;
@@ -31,14 +32,17 @@ pub(crate) fn expand_line(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
-) -> MacroExpanderResult<'static> {
+) -> Result<TokenStream, ErrorGuaranteed> {
     let sp = cx.with_def_site_ctxt(sp);
     check_zero_tts(cx, sp, tts, "line!");
 
     let topmost = cx.expansion_cause().unwrap_or(sp);
     let loc = cx.source_map().lookup_char_pos(topmost.lo());
 
-    ExpandResult::Ready(MacEager::expr(cx.expr_u32(topmost, loc.line as u32)))
+    Ok(TokenStream::token_alone(
+        TokenKind::lit(token::Integer, sym::integer(loc.line), Some(sym::u32)),
+        sp,
+    ))
 }
 
 /// Expand `column!()` to the current column number.
@@ -46,14 +50,17 @@ pub(crate) fn expand_column(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
-) -> MacroExpanderResult<'static> {
+) -> Result<TokenStream, ErrorGuaranteed> {
     let sp = cx.with_def_site_ctxt(sp);
     check_zero_tts(cx, sp, tts, "column!");
 
     let topmost = cx.expansion_cause().unwrap_or(sp);
     let loc = cx.source_map().lookup_char_pos(topmost.lo());
 
-    ExpandResult::Ready(MacEager::expr(cx.expr_u32(topmost, loc.col.to_usize() as u32 + 1)))
+    Ok(TokenStream::token_alone(
+        TokenKind::lit(token::Integer, sym::integer(loc.col.to_usize() + 1), Some(sym::u32)),
+        sp,
+    ))
 }
 
 /// Expand `file!()` to the current filename.
