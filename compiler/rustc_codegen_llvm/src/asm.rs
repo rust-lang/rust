@@ -662,7 +662,12 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
             PowerPC(PowerPCInlineAsmRegClass::reg_nonzero) => "b",
             PowerPC(PowerPCInlineAsmRegClass::freg) => "f",
             PowerPC(PowerPCInlineAsmRegClass::vreg) => "v",
-            PowerPC(PowerPCInlineAsmRegClass::cr) | PowerPC(PowerPCInlineAsmRegClass::xer) => {
+            PowerPC(
+                PowerPCInlineAsmRegClass::cr
+                | PowerPCInlineAsmRegClass::ctr
+                | PowerPCInlineAsmRegClass::lr
+                | PowerPCInlineAsmRegClass::xer,
+            ) => {
                 unreachable!("clobber-only")
             }
             RiscV(RiscVInlineAsmRegClass::reg) => "r",
@@ -830,7 +835,12 @@ fn dummy_output_type<'ll>(cx: &CodegenCx<'ll, '_>, reg: InlineAsmRegClass) -> &'
         PowerPC(PowerPCInlineAsmRegClass::reg_nonzero) => cx.type_i32(),
         PowerPC(PowerPCInlineAsmRegClass::freg) => cx.type_f64(),
         PowerPC(PowerPCInlineAsmRegClass::vreg) => cx.type_vector(cx.type_i32(), 4),
-        PowerPC(PowerPCInlineAsmRegClass::cr) | PowerPC(PowerPCInlineAsmRegClass::xer) => {
+        PowerPC(
+            PowerPCInlineAsmRegClass::cr
+            | PowerPCInlineAsmRegClass::ctr
+            | PowerPCInlineAsmRegClass::lr
+            | PowerPCInlineAsmRegClass::xer,
+        ) => {
             unreachable!("clobber-only")
         }
         RiscV(RiscVInlineAsmRegClass::reg) => cx.type_i32(),
