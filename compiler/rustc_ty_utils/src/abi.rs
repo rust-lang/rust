@@ -3,7 +3,6 @@ use std::iter;
 use rustc_abi::Primitive::Pointer;
 use rustc_abi::{BackendRepr, ExternAbi, PointerKind, Scalar, Size};
 use rustc_hir as hir;
-use rustc_hir::attrs::InlineAttr;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
@@ -276,7 +275,7 @@ fn arg_attrs_for_rust_scalar<'tcx>(
     offset: Size,
     is_return: bool,
     drop_target_pointee: Option<Ty<'tcx>>,
-    is_inline: bool,
+    involves_raw_ptr: bool,
 ) -> ArgAttributes {
     let mut attrs = ArgAttributes::new();
 
@@ -353,7 +352,7 @@ fn arg_attrs_for_rust_scalar<'tcx>(
 
             // We can never add `noalias` in return position; that LLVM attribute has some very surprising semantics
             // (see <https://github.com/rust-lang/unsafe-code-guidelines/issues/385#issuecomment-1368055745>).
-            if no_alias && !is_inline && !is_return {
+            if no_alias && !involves_raw_ptr && !is_return {
                 attrs.set(ArgAttribute::NoAlias);
             }
 
@@ -512,10 +511,13 @@ fn fn_abi_new_uncached<'tcx>(
         extra_args
     };
 
-    let is_inline = determined_fn_def_id.is_some_and(|def_id| {
-        let inline_attrs = tcx.codegen_fn_attrs(def_id).inline;
-        inline_attrs == InlineAttr::Always
-    });
+    let involves_raw_ptr = inputs
+        .iter()
+        .copied()
+        .chain(extra_args.iter().copied())
+        .chain(caller_location)
+        .chain(Some(sig.output()))
+        .any(|ty| matches!(ty.kind(), ty::RawPtr(_, _)));
 
     let is_drop_in_place = determined_fn_def_id.is_some_and(|def_id| {
         tcx.is_lang_item(def_id, LangItem::DropInPlace)
@@ -550,7 +552,7 @@ fn fn_abi_new_uncached<'tcx>(
                 offset,
                 is_return,
                 drop_target_pointee,
-                is_inline,
+                involves_raw_ptr,
             )
         });
 
