@@ -3,16 +3,16 @@
 // FIXME: Once the portability lint RFC is implemented (see tracking issue #41619),
 // switch to use those structures instead.
 
-use std::fmt::{self, Write};
-use std::{mem, ops};
+use std::{fmt, mem, ops};
 
+use itertools::Either;
 use rustc_ast::{LitKind, MetaItem, MetaItemInner, MetaItemKind, MetaItemLit};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_session::parse::ParseSess;
 use rustc_span::Span;
 use rustc_span::symbol::{Symbol, sym};
 
-use crate::display::Joined as _;
+use crate::display::{Joined as _, MaybeDisplay, Wrapped};
 use crate::html::escape::Escape;
 
 #[cfg(test)]
@@ -376,27 +376,20 @@ impl Format {
             Format::LongPlain => false,
         }
     }
+
+    fn escape(self, s: &str) -> impl fmt::Display {
+        if self.is_html() { Either::Left(Escape(s)) } else { Either::Right(s) }
+    }
 }
 
 /// Pretty-print wrapper for a `Cfg`. Also indicates what form of rendering should be used.
 struct Display<'a>(&'a Cfg, Format);
 
-fn write_with_opt_paren<T: fmt::Display>(
-    fmt: &mut fmt::Formatter<'_>,
-    has_paren: bool,
-    obj: T,
-) -> fmt::Result {
-    if has_paren {
-        fmt.write_char('(')?;
-    }
-    obj.fmt(fmt)?;
-    if has_paren {
-        fmt.write_char(')')?;
-    }
-    Ok(())
-}
-
 impl Display<'_> {
+    fn code_wrappers(&self) -> Wrapped<&'static str> {
+        if self.1.is_html() { Wrapped::with("<code>", "</code>") } else { Wrapped::with("`", "`") }
+    }
+
     fn display_sub_cfgs(
         &self,
         fmt: &mut fmt::Formatter<'_>,
@@ -427,20 +420,17 @@ impl Display<'_> {
             sub_cfgs
                 .iter()
                 .map(|sub_cfg| {
-                    fmt::from_fn(move |fmt| {
-                        if let Cfg::Cfg(_, Some(feat)) = sub_cfg
-                            && short_longhand
-                        {
-                            if self.1.is_html() {
-                                write!(fmt, "<code>{feat}</code>")?;
-                            } else {
-                                write!(fmt, "`{feat}`")?;
-                            }
-                        } else {
-                            write_with_opt_paren(fmt, !sub_cfg.is_all(), Display(sub_cfg, self.1))?;
-                        }
-                        Ok(())
-                    })
+                    if let Cfg::Cfg(_, Some(feat)) = sub_cfg
+                        && short_longhand
+                    {
+                        Either::Left(self.code_wrappers().wrap(feat))
+                    } else {
+                        Either::Right(
+                            Wrapped::with_parens()
+                                .when(!sub_cfg.is_all())
+                                .wrap(Display(sub_cfg, self.1)),
+                        )
+                    }
                 })
                 .joined(separator, f)
         })
@@ -461,9 +451,9 @@ impl fmt::Display for Display<'_> {
                 sub_cfgs
                     .iter()
                     .map(|sub_cfg| {
-                        fmt::from_fn(|fmt| {
-                            write_with_opt_paren(fmt, !sub_cfg.is_all(), Display(sub_cfg, self.1))
-                        })
+                        Wrapped::with_parens()
+                            .when(!sub_cfg.is_all())
+                            .wrap(Display(sub_cfg, self.1))
                     })
                     .joined(separator, fmt)
             }
@@ -568,21 +558,13 @@ impl fmt::Display for Display<'_> {
                 };
                 if !human_readable.is_empty() {
                     fmt.write_str(human_readable)
-                } else if let Some(v) = value {
-                    if self.1.is_html() {
-                        write!(
-                            fmt,
-                            r#"<code>{}="{}"</code>"#,
-                            Escape(name.as_str()),
-                            Escape(v.as_str())
-                        )
-                    } else {
-                        write!(fmt, r#"`{name}="{v}"`"#)
-                    }
-                } else if self.1.is_html() {
-                    write!(fmt, "<code>{}</code>", Escape(name.as_str()))
                 } else {
-                    write!(fmt, "`{name}`")
+                    let value = value
+                        .map(|v| fmt::from_fn(move |f| write!(f, "={}", self.1.escape(v.as_str()))))
+                        .maybe_display();
+                    self.code_wrappers()
+                        .wrap(format_args!("{}{value}", self.1.escape(name.as_str())))
+                        .fmt(fmt)
                 }
             }
         }
