@@ -54,7 +54,7 @@
 use itertools::Itertools as _;
 use rustc_const_eval::const_eval::DummyMachine;
 use rustc_const_eval::interpret::{ImmTy, Immediate, InterpCx, OpTy, Projectable};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_index::IndexVec;
 use rustc_index::bit_set::{DenseBitSet, GrowableBitSet};
 use rustc_middle::bug;
@@ -185,14 +185,14 @@ rustc_index::newtype_index! {
 
 /// Represent the following statement. If we can prove that the current local is equal/not-equal
 /// to `value`, jump to `target`.
-#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
 struct Condition {
     place: ValueIndex,
     value: ScalarInt,
     polarity: Polarity,
 }
 
-#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
 enum Polarity {
     Ne,
     Eq,
@@ -314,31 +314,12 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
 
         let state_len =
             bbdata.terminator().successors().map(|succ| self.entry_states[succ].active.len()).sum();
-        let mut state = ConditionSet {
-            active: Vec::with_capacity(state_len),
-            targets: IndexVec::with_capacity(state_len),
-            fulfilled: Vec::new(),
-        };
 
         // Use an index-set to deduplicate conditions coming from different successor blocks.
-        let mut known_conditions =
-            FxIndexSet::with_capacity_and_hasher(state_len, Default::default());
-        let mut insert = |condition, succ_block, succ_condition| {
-            let (index, new) = known_conditions.insert_full(condition);
-            let index = ConditionIndex::from_usize(index);
-            if new {
-                state.active.push((index, condition));
-                let _index = state.targets.push(Vec::new());
-                debug_assert_eq!(_index, index);
-            }
-            let target = EdgeEffect::Chain { succ_block, succ_condition };
-            debug_assert!(
-                !state.targets[index].contains(&target),
-                "duplicate targets for index={index:?} as {target:?} targets={:#?}",
-                &state.targets[index],
-            );
-            state.targets[index].push(target);
-        };
+        let mut known_conditions = FxIndexMap::<Condition, Vec<_>>::with_capacity_and_hasher(
+            state_len,
+            Default::default(),
+        );
 
         // A given block may have several times the same successor.
         let mut seen = FxHashSet::default();
@@ -353,14 +334,30 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
             }
 
             for &(succ_index, cond) in self.entry_states[succ].active.iter() {
-                insert(cond, succ, succ_index);
+                known_conditions
+                    .entry(cond)
+                    .or_default()
+                    .push(EdgeEffect::Chain { succ_block: succ, succ_condition: succ_index });
             }
         }
 
+        // If we just rely on the order in the successors, we may have a different order when
+        // re-propagating from dirtied successors. This will make us fail to converge. To avoid
+        // this, always use the same order by sorting conditions.
+        known_conditions.sort_keys();
+
         let num_conditions = known_conditions.len();
-        debug_assert_eq!(num_conditions, state.active.len());
-        debug_assert_eq!(num_conditions, state.targets.len());
-        state.fulfilled.reserve(num_conditions);
+        let mut state = ConditionSet {
+            active: Vec::with_capacity(num_conditions),
+            targets: IndexVec::with_capacity(num_conditions),
+            fulfilled: Vec::with_capacity(num_conditions),
+        };
+        for (index, (condition, targets)) in known_conditions.into_iter().enumerate() {
+            let index = ConditionIndex::from_usize(index);
+            state.active.push((index, condition));
+            let _index = state.targets.push(targets);
+            debug_assert_eq!(_index, index);
+        }
 
         state
     }
