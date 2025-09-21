@@ -1,0 +1,28 @@
+error: `...` is not supported for `extern "cmse-nonsecure-entry"` functions
+  --> $DIR/c-variadic.rs:14:60
+   |
+LL | unsafe extern "cmse-nonsecure-entry" fn c_variadic(_: u32, _: ...) {
+   |        -----------------------------                       ^^^^^^
+   |        |
+   |        `extern "cmse-nonsecure-entry"` because of this
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+error: functions cannot be both `async` and C-variadic
+  --> $DIR/c-variadic.rs:19:1
+   |
+LL | async unsafe extern "cmse-nonsecure-entry" fn async_and_c_variadic(_: ...) {
+   | ^^^^^ `async` because of this                                      ^^^^^^ C-variadic because of this
+
+error: `...` is not supported for `extern "cmse-nonsecure-entry"` functions
+  --> $DIR/c-variadic.rs:19:68
+   |
+LL | async unsafe extern "cmse-nonsecure-entry" fn async_and_c_variadic(_: ...) {
+   |              -----------------------------                         ^^^^^^
+   |              |
+   |              `extern "cmse-nonsecure-entry"` because of this
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+error: aborting due to 3 previous errors
+
