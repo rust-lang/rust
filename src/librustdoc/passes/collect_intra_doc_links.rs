@@ -1274,6 +1274,31 @@ impl LinkCollector<'_, '_> {
         }
     }
 
+    /// This method checks specifically if a primitive has a potential ambiguity with a local module.
+    /// Returns `true` if an error was emitted.
+    fn check_mod_primitive_ambiguity(
+        &self,
+        res: &mut Res,
+        path_str: &str,
+        disambiguator: Option<Disambiguator>,
+        diag_info: &DiagnosticInfo<'_>,
+    ) -> bool {
+        if !matches!(res, Res::Primitive(_))
+            && let Some(prim) = resolve_primitive(path_str, TypeNS)
+        {
+            // `prim@char`
+            if matches!(disambiguator, Some(Disambiguator::Primitive)) {
+                *res = prim;
+            } else {
+                // `[char]` when a `char` module is in scope
+                let candidates = &[(*res, res.def_id(self.cx.tcx)), (prim, None)];
+                ambiguity_error(self.cx, diag_info, path_str, candidates, true);
+                return true;
+            }
+        }
+        false
+    }
+
     fn compute_link(
         &mut self,
         mut res: Res,
@@ -1286,21 +1311,19 @@ impl LinkCollector<'_, '_> {
         // Check for a primitive which might conflict with a module
         // Report the ambiguity and require that the user specify which one they meant.
         // FIXME: could there ever be a primitive not in the type namespace?
-        if matches!(
-            disambiguator,
-            None | Some(Disambiguator::Namespace(Namespace::TypeNS) | Disambiguator::Primitive)
-        ) && !matches!(res, Res::Primitive(_))
-            && let Some(prim) = resolve_primitive(path_str, TypeNS)
-        {
-            // `prim@char`
-            if matches!(disambiguator, Some(Disambiguator::Primitive)) {
-                res = prim;
-            } else {
-                // `[char]` when a `char` module is in scope
-                let candidates = &[(res, res.def_id(self.cx.tcx)), (prim, None)];
-                ambiguity_error(self.cx, &diag_info, path_str, candidates, true);
-                return None;
+        let emitted_error = match disambiguator {
+            None | Some(Disambiguator::Primitive) => {
+                self.check_mod_primitive_ambiguity(&mut res, path_str, disambiguator, &diag_info)
             }
+            Some(Disambiguator::Namespace(Namespace::TypeNS))
+                if !matches!(res, Res::Def(DefKind::TyAlias, _)) =>
+            {
+                self.check_mod_primitive_ambiguity(&mut res, path_str, disambiguator, &diag_info)
+            }
+            _ => false,
+        };
+        if emitted_error {
+            return None;
         }
 
         match res {
