@@ -1077,6 +1077,34 @@ function isPathSeparator(c) {
 }
 
 /**
+ * Given an array and an ascending list of indices,
+ * efficiently removes each index in the array.
+ *
+ * @template T
+ * @param {Array<T>} a
+ * @param {Array<number>} idxList
+ */
+function removeIdxListAsc(a, idxList) {
+    if (idxList.length === 0) {
+        return;
+    }
+    let removed = 0;
+    let i = idxList[0];
+    let nextToRemove = idxList[0];
+    while (i < a.length - idxList.length) {
+        while (i === nextToRemove && removed < idxList.length) {
+            removed++;
+            i++;
+            nextToRemove = idxList[removed];
+        }
+        a[i] = a[i + removed];
+        i++;
+    }
+    // truncate array
+    a.length -= idxList.length;
+}
+
+/**
  * @template T
  */
 class VlqHexDecoder {
@@ -2615,7 +2643,7 @@ class DocSearch {
          */
         const transformResults = (results, typeInfo, duplicates) => {
             /** @type {rustdoc.ResultObject[]} */
-            let out = [];
+            const out = [];
 
             // if we match a trait-associated item, we want to go back and
             // remove all the items that are their equivalent but in an impl block.
@@ -2712,16 +2740,9 @@ class DocSearch {
                         list.push(out.length);
                         traitImplIdxMap.set(obj.traitPath, list);
                     } else {
-                        // FIXME: this is `O(n*m)` because we're repeatedly
-                        // shifting with Array.splice, but could be `O(n+m)` if
-                        // we did the shifting manually in a more clever way.
                         const toRemoveList = traitImplIdxMap.get(obj.fullPath);
                         if (toRemoveList) {
-                            // iterate in reverse order so we don't shift the indexes
-                            for (let i = toRemoveList.length - 1; i >= 0; i--) {
-                                const rmIdx = toRemoveList[i];
-                                out = out.splice(rmIdx, 1);
-                            }
+                            removeIdxListAsc(out, toRemoveList);
                         }
                         traitImplIdxMap.delete(obj.fullPath);
                     }
