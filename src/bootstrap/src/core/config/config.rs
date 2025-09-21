@@ -630,9 +630,13 @@ impl Config {
         let llvm_assertions = llvm_assertions.unwrap_or(false);
         let mut target_config = HashMap::new();
         let mut channel = "dev".to_string();
-        let out = flags_build_dir
-            .or(build_build_dir.map(PathBuf::from))
-            .unwrap_or_else(|| PathBuf::from("build"));
+        let out = if cfg!(test) {
+            test_build_dir()
+        } else {
+            flags_build_dir
+                .or_else(|| build_build_dir.map(PathBuf::from))
+                .unwrap_or_else(|| PathBuf::from("build"))
+        };
 
         // NOTE: Bootstrap spawns various commands with different working directories.
         // To avoid writing to random places on the file system, `config.out` needs to be an absolute path.
@@ -683,11 +687,6 @@ impl Config {
         };
 
         let initial_rustc = build_rustc.unwrap_or_else(|| {
-            let out = if cfg!(test) {
-                std::env::current_dir().unwrap().ancestors().nth(2).unwrap().join("build")
-            } else {
-                out.clone()
-            };
             download_beta_toolchain(&dwn_ctx, &out);
             let target = if cfg!(test) { get_host_target() } else { host_target };
 
@@ -2480,4 +2479,16 @@ fn find_correct_section_for_field(field_name: &str) -> Vec<WouldBeValidFor> {
             }
         })
         .collect()
+}
+
+fn test_build_dir() -> PathBuf {
+    env::var_os("CARGO_TARGET_DIR")
+        .map(|value| Path::new(&value).parent().unwrap().to_path_buf())
+        .unwrap_or_else(|| {
+            let base = option_env!("CARGO_MANIFEST_DIR")
+                .map(PathBuf::from)
+                .unwrap_or_else(|| std::env::current_dir().expect("failed to get current dir"));
+
+            base.ancestors().nth(2).unwrap_or_else(|| Path::new(".")).join("build")
+        })
 }
