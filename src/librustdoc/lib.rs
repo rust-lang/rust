@@ -835,8 +835,10 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
         config::InputMode::NoInputMergeFinalize => {
             return wrap_return(
                 dcx,
-                run_merge_finalize(render_options)
-                    .map_err(|e| format!("could not write merged cross-crate info: {e}")),
+                rustc_span::create_session_globals_then(options.edition, &[], None, || {
+                    run_merge_finalize(render_options)
+                        .map_err(|e| format!("could not write merged cross-crate info: {e}"))
+                }),
             );
         }
     };
