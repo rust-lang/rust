@@ -965,10 +965,7 @@ fn fmt_type(
             write!(f, "]")
         }
         clean::RawPointer(m, t) => {
-            let m = match m {
-                hir::Mutability::Mut => "mut",
-                hir::Mutability::Not => "const",
-            };
+            let m = m.ptr_str();
 
             if matches!(**t, clean::Generic(_)) || t.is_assoc_ty() {
                 let ty = t.print(cx);
@@ -1406,12 +1403,13 @@ impl clean::FnDecl {
     }
 
     fn print_output(&self, cx: &Context<'_>) -> impl Display {
-        fmt::from_fn(move |f| match &self.output {
-            clean::Tuple(tys) if tys.is_empty() => Ok(()),
-            ty if f.alternate() => {
-                write!(f, " -> {:#}", ty.print(cx))
+        fmt::from_fn(move |f| {
+            if self.output.is_unit() {
+                return Ok(());
             }
-            ty => write!(f, " -&gt; {}", ty.print(cx)),
+
+            f.write_str(if f.alternate() { " -> " } else { " -&gt; " })?;
+            self.output.print(cx).fmt(f)
         })
     }
 }
