@@ -514,7 +514,7 @@ fn fn_abi_new_uncached<'tcx>(
 
     let is_inline = determined_fn_def_id.is_some_and(|def_id| {
         let inline_attrs = tcx.codegen_fn_attrs(def_id).inline;
-        inline_attrs == InlineAttr::Hint || inline_attrs == InlineAttr::Always
+        inline_attrs == InlineAttr::Always
     });
 
     let is_drop_in_place = determined_fn_def_id.is_some_and(|def_id| {
