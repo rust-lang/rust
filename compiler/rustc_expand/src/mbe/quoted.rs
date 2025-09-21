@@ -190,6 +190,13 @@ fn maybe_emit_macro_metavar_expr_concat_feature(features: &Features, sess: &Sess
     }
 }
 
+fn maybe_emit_macro_fragment_fields_feature(features: &Features, sess: &Session, span: Span) {
+    if !features.macro_fragment_fields() {
+        let msg = "macro fragment fields are unstable";
+        feature_err(sess, sym::macro_fragment_fields, span, msg).emit();
+    }
+}
+
 /// Takes a `tokenstream::TokenTree` and returns a `self::TokenTree`. Specifically, this takes a
 /// generic `TokenTree`, such as is used in the rest of the compiler, and returns a `TokenTree`
 /// for use in parsing a macro.
@@ -257,18 +264,26 @@ fn parse_tree<'a>(
                                         return TokenTree::token(token::Dollar, dollar_span);
                                     }
                                     Ok(elem) => {
-                                        if let MetaVarExpr::Concat(_) = elem {
-                                            maybe_emit_macro_metavar_expr_concat_feature(
+                                        match elem {
+                                            MetaVarExpr::Concat(..) => {
+                                                maybe_emit_macro_metavar_expr_concat_feature(
+                                                    features,
+                                                    sess,
+                                                    delim_span.entire(),
+                                                )
+                                            }
+                                            MetaVarExpr::Recursive(..) => {
+                                                maybe_emit_macro_fragment_fields_feature(
+                                                    features,
+                                                    sess,
+                                                    delim_span.entire(),
+                                                )
+                                            }
+                                            _ => maybe_emit_macro_metavar_expr_feature(
                                                 features,
                                                 sess,
                                                 delim_span.entire(),
-                                            );
-                                        } else {
-                                            maybe_emit_macro_metavar_expr_feature(
-                                                features,
-                                                sess,
-                                                delim_span.entire(),
-                                            );
+                                            ),
                                         }
                                         return TokenTree::MetaVarExpr(delim_span, elem);
                                     }

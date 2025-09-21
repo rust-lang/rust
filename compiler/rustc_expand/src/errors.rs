@@ -488,16 +488,22 @@ mod metavar_exprs {
     }
 
     #[derive(Diagnostic)]
+    #[diag(expand_mve_extra_tokens_after_field)]
+    pub(crate) struct MveExtraTokensAfterField {
+        #[primary_span]
+        #[suggestion(code = "", applicability = "machine-applicable")]
+        pub span: Span,
+    }
+
+    #[derive(Diagnostic)]
     #[note]
-    #[diag(expand_mve_missing_paren)]
-    pub(crate) struct MveMissingParen {
+    #[diag(expand_mve_missing_paren_or_dot)]
+    pub(crate) struct MveMissingParenOrDot {
         #[primary_span]
         #[label]
         pub ident_span: Span,
         #[label(expand_unexpected)]
         pub unexpected_span: Option<Span>,
-        #[suggestion(code = "( /* ... */ )", applicability = "has-placeholders")]
-        pub insert_span: Option<Span>,
     }
 
     #[derive(Diagnostic)]
@@ -516,6 +522,15 @@ mod metavar_exprs {
         #[primary_span]
         pub span: Span,
         pub key: MacroRulesNormalizedIdent,
+    }
+
+    #[derive(Diagnostic)]
+    #[diag(expand_mve_expr_has_no_field)]
+    pub(crate) struct MveExprHasNoField {
+        #[primary_span]
+        pub span: Span,
+        pub pnr_type: &'static str,
+        pub field: Ident,
     }
 }
 

@@ -142,12 +142,13 @@ expand_mve_extra_tokens =
         *[other] these tokens
     }
 
-expand_mve_missing_paren =
-    expected `(`
-    .label = for this this metavariable expression
+expand_mve_extra_tokens_after_field = unexpected trailing tokens after field
+
+expand_mve_missing_paren_or_dot =
+    expected `(` or `.`
+    .label = after this metavariable expression
     .unexpected = unexpected token
-    .note = metavariable expressions use function-like parentheses syntax
-    .suggestion = try adding parentheses
+    .note = metavariable expressions use parentheses for functions or dot for fields
 
 expand_mve_unrecognized_expr =
     unrecognized metavariable expression
@@ -156,6 +157,8 @@ expand_mve_unrecognized_expr =
 
 expand_mve_unrecognized_var =
     variable `{$key}` is not recognized in meta-variable expression
+
+expand_mve_expr_has_no_field = expression of type `{$pnr_type}` has no field `{$field}`
 
 expand_non_inline_modules_in_proc_macro_input_are_unstable =
     non-inline modules in proc macro input are unstable
