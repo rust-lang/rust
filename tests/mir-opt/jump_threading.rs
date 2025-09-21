@@ -77,6 +77,32 @@ fn identity(x: Result<i32, i32>) -> Result<i32, i32> {
     Ok(x?)
 }
 
+fn two_reads() -> i32 {
+    // CHECK-LABEL: fn two_reads(
+    // CHECK: debug a => [[a:_.*]];
+    // CHECK: debug b => [[b:_.*]];
+    // CHECK: debug c => [[c:_.*]];
+    // CHECK: bb0: {
+    // CHECK:     [[a]] = const 2_i32;
+    // CHECK:     [[b]] = copy [[a]];
+    // CHECK:     [[c]] = copy [[a]];
+    // CHECK:     [[tmp:_.*]] = copy [[c]];
+    // CHECK:     [[eq:_.*]] = Eq(move [[tmp]], const 2_i32);
+    // CHECK:     switchInt(move [[eq]]) -> [0: bb2, otherwise: bb1];
+    // CHECK: bb1: {
+    // CHECK:     _0 = const 0_i32;
+    // CHECK:     goto -> bb3;
+    // CHECK: bb2: {
+    // CHECK:     _0 = const 1_i32;
+    // CHECK:     goto -> bb3;
+    // CHECK: bb3: {
+    // CHECK:     return;
+    let a = 2;
+    let b = a;
+    let c = a;
+    if c == 2 { 0 } else { 1 }
+}
+
 enum DFA {
     A,
     B,
@@ -599,6 +625,7 @@ fn main() {
 
 // EMIT_MIR jump_threading.too_complex.JumpThreading.diff
 // EMIT_MIR jump_threading.identity.JumpThreading.diff
+// EMIT_MIR jump_threading.two_reads.JumpThreading.diff
 // EMIT_MIR jump_threading.custom_discr.JumpThreading.diff
 // EMIT_MIR jump_threading.dfa.JumpThreading.diff
 // EMIT_MIR jump_threading.multiple_match.JumpThreading.diff
