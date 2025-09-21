@@ -1422,10 +1422,13 @@ pub(crate) fn visibility_print_with_space(item: &clean::Item, cx: &Context<'_>) 
             f.write_str("#[doc(hidden)] ")?;
         }
 
-        match item.visibility(cx.tcx()) {
-            None => {}
-            Some(ty::Visibility::Public) => f.write_str("pub ")?,
-            Some(ty::Visibility::Restricted(vis_did)) => {
+        let Some(vis) = item.visibility(cx.tcx()) else {
+            return Ok(());
+        };
+
+        match vis {
+            ty::Visibility::Public => f.write_str("pub ")?,
+            ty::Visibility::Restricted(vis_did) => {
                 // FIXME(camelid): This may not work correctly if `item_did` is a module.
                 //                 However, rustdoc currently never displays a module's
                 //                 visibility, so it shouldn't matter.
