@@ -255,51 +255,86 @@ use crate::{fmt, intrinsics, ptr, slice};
 ///
 /// # Validity
 ///
-/// A `MaybeUninit<T>` has no validity requirement – any sequence of
-/// [bytes][reference-byte] of the appropriate length, initialized or
-/// uninitialized, are a valid representation of `MaybeUninit<T>`.
+/// `MaybeUninit<T>` has no validity requirements –- any sequence of [bytes] of
+/// the appropriate length, initialized or uninitialized, are a valid
+/// representation.
 ///
-/// However, "round-tripping" via `MaybeUninit` does not always result in the
-/// original value. `MaybeUninit` can have padding, and the contents of that
-/// padding are not preserved. Concretely, given distinct `T` and `U` where
-/// `size_of::<T>() == size_of::<U>()`, the following code is not guaranteed to
-/// be sound:
+/// Moving or copying a value of type `MaybeUninit<T>` (i.e., performing a
+/// "typed copy") will exactly preserve the contents, including the
+/// [provenance], of all non-padding bytes of type `T` in the value's
+/// representation.
+///
+/// Therefore `MaybeUninit` can be used to perform a round trip of a value from
+/// type `T` to type `MaybeUninit<U>` then back to type `T`, while preserving
+/// the original value, if two conditions are met. One, type `U` must have the
+/// same size as type `T`. Two, for all byte offsets where type `U` has padding,
+/// the corresponding bytes in the representation of the value must be
+/// uninitialized.
+///
+/// For example, due to the fact that the type `[u8; size_of::<T>]` has no
+/// padding, the following is sound for any type `T` and will return the
+/// original value:
 ///
 /// ```rust,no_run
 /// # use core::mem::{MaybeUninit, transmute};
-/// # struct T; struct U;
+/// # struct T;
 /// fn identity(t: T) -> T {
 ///     unsafe {
+///         let u: MaybeUninit<[u8; size_of::<T>()]> = transmute(t);
+///         transmute(u) // OK.
+///     }
+/// }
+/// ```
+///
+/// Note: Copying a value that contains references may implicitly reborrow them
+/// causing the provenance of the returned value to differ from that of the
+/// original. This applies equally to the trivial identity function:
+///
+/// ```rust,no_run
+/// fn trivial_identity<T>(t: T) -> T { t }
+/// ```
+///
+/// Note: Moving or copying a value whose representation has initialized bytes
+/// at byte offsets where the type has padding may lose the value of those
+/// bytes, so while the original value will be preserved, the original
+/// *representation* of that value as bytes may not be. Again, this applies
+/// equally to `trivial_identity`.
+///
+/// Note: Performing this round trip when type `U` has padding at byte offsets
+/// where the representation of the original value has initialized bytes may
+/// produce undefined behavior or a different value. For example, the following
+/// is unsound since `T` requires all bytes to be initialized:
+///
+/// ```rust,no_run
+/// # use core::mem::{MaybeUninit, transmute};
+/// #[repr(C)] struct T([u8; 4]);
+/// #[repr(C)] struct U(u8, u16);
+/// fn unsound_identity(t: T) -> T {
+///     unsafe {
+///         let u: MaybeUninit<U> = transmute(t);
+///         transmute(u) // UB.
+///     }
+/// }
+/// ```
+///
+/// Conversely, the following is sound since `T` allows uninitialized bytes in
+/// the representation of a value, but the round trip may alter the value:
+///
+/// ```rust,no_run
+/// # use core::mem::{MaybeUninit, transmute};
+/// #[repr(C)] struct T(MaybeUninit<[u8; 4]>);
+/// #[repr(C)] struct U(u8, u16);
+/// fn non_identity(t: T) -> T {
+///     unsafe {
+///         // May lose an initialized byte.
 ///         let u: MaybeUninit<U> = transmute(t);
 ///         transmute(u)
 ///     }
 /// }
 /// ```
 ///
-/// If the representation of `t` contains initialized bytes at byte offsets
-/// where `U` contains padding bytes, these may not be preserved in
-/// `MaybeUninit<U>`. Transmuting `u` back to `T` (i.e., `transmute(u)` above)
-/// may thus be undefined behavior or yield a value different from `t` due to
-/// those bytes being lost. This is an active area of discussion, and this code
-/// may become sound in the future.
-///
-/// However, so long as no such byte offsets exist, then the preceding
-/// `identity` example *is* sound. In particular, since `[u8; N]` has no padding
-/// bytes, transmuting `t` to `MaybeUninit<[u8; size_of::<T>]>` and back will
-/// always produce the original value `t` again. This is true even if `t`
-/// contains [provenance]: the resulting value will have the same provenance as
-/// the original `t`.
-///
-/// Note a potential footgun: if `t` contains a reference, then there may be
-/// implicit reborrows of the reference any time it is copied, which may alter
-/// its provenance. In that case, the value returned by `identity` may not be
-/// exactly the same as its argument. However, even in this case, it remains
-/// true that `identity` behaves the same as a function that just returns `t`
-/// immediately (i.e., `fn identity<T>(t: T) -> T { t }`).
-///
+/// [bytes]: ../../reference/memory-model.html#bytes
 /// [provenance]: crate::ptr#provenance
-///
-/// [reference-byte]: ../../reference/memory-model.html#bytes
 #[stable(feature = "maybe_uninit", since = "1.36.0")]
 // Lang item so we can wrap other types in it. This is useful for coroutines.
 #[lang = "maybe_uninit"]
