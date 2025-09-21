@@ -209,7 +209,7 @@ rustc_queries! {
     /// Contrary to `def_span` below, this query returns the full absolute span of the definition.
     /// This span is meant for dep-tracking rather than diagnostics. It should not be used outside
     /// of rustc_middle::hir::source_map.
-    query source_span(key: LocalDefId) -> Span {
+    query source_span_q(key: LocalDefId) -> Span {
         // Accesses untracked data
         eval_always
         desc { "getting the source span" }

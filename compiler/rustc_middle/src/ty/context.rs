@@ -3482,6 +3482,15 @@ impl<'tcx> TyCtxt<'tcx> {
         }
         false
     }
+
+    #[inline]
+    pub fn source_span(self, key: LocalDefId) -> Span {
+        if self.dep_graph.is_fully_enabled() {
+            self.source_span_q(key)
+        } else {
+            self.untracked.source_span.get(key).unwrap_or(DUMMY_SP)
+        }
+    }
 }
 
 /// Parameter attributes that can only be determined by examining the body of a function instead
@@ -3508,7 +3517,8 @@ pub fn provide(providers: &mut Providers) {
         // We want to check if the panic handler was defined in this crate
         tcx.lang_items().panic_impl().is_some_and(|did| did.is_local())
     };
-    providers.source_span = |tcx, def_id| tcx.untracked.source_span.get(def_id).unwrap_or(DUMMY_SP);
+    providers.source_span_q =
+        |tcx, def_id| tcx.untracked.source_span.get(def_id).unwrap_or(DUMMY_SP);
 }
 
 pub fn contains_name(attrs: &[Attribute], name: Symbol) -> bool {
