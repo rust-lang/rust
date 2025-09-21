@@ -553,6 +553,8 @@ declare_features! (
     (unstable, macro_attr, "1.91.0", Some(143547)),
     /// Allow `macro_rules!` derive rules
     (unstable, macro_derive, "1.91.0", Some(143549)),
+    /// Allow macro fragment fields: `${fragment.field}`
+    (incomplete, macro_fragment_fields, "CURRENT_RUSTC_VERSION", Some(147023)),
     /// Allow `macro_rules!` fragments `:fn` and `:adt`
     (incomplete, macro_fragments_more, "CURRENT_RUSTC_VERSION", Some(147023)),
     /// Give access to additional metadata about declarative macro meta-variables.

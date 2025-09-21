@@ -31,6 +31,9 @@ pub(crate) enum MetaVarExpr {
     /// The length of the repetition at a particular depth, where 0 is the innermost
     /// repetition. The `usize` is the depth.
     Len(usize),
+
+    /// An expression that can contain other expressions
+    Recursive(MetaVarRecursiveExpr),
 }
 
 impl MetaVarExpr {
@@ -41,19 +44,20 @@ impl MetaVarExpr {
         psess: &'psess ParseSess,
     ) -> PResult<'psess, MetaVarExpr> {
         let mut iter = input.iter();
+        // FIXME: Refactor this to use Parser.
+        // All macro metavariable expressions current start with an ident.
         let ident = parse_ident(&mut iter, psess, outer_span)?;
-        let next = iter.next();
-        let Some(TokenTree::Delimited(.., Delimiter::Parenthesis, args)) = next else {
-            // No `()`; wrong or no delimiters. Point at a problematic span or a place to
-            // add parens if it makes sense.
-            let (unexpected_span, insert_span) = match next {
-                Some(TokenTree::Delimited(..)) => (None, None),
-                Some(tt) => (Some(tt.span()), None),
-                None => (None, Some(ident.span.shrink_to_hi())),
-            };
-            let err =
-                errors::MveMissingParen { ident_span: ident.span, unexpected_span, insert_span };
-            return Err(psess.dcx().create_err(err));
+        let args = match iter.next() {
+            Some(TokenTree::Token(Token { kind: token::Dot, .. }, _)) => {
+                return parse_field(ident, iter, psess, outer_span);
+            }
+            Some(TokenTree::Delimited(.., Delimiter::Parenthesis, args)) => args,
+            next => {
+                return Err(psess.dcx().create_err(errors::MveMissingParenOrDot {
+                    ident_span: ident.span,
+                    unexpected_span: next.map(|tt| tt.span()),
+                }));
+            }
         };
 
         // Ensure there are no trailing tokens in the braces, e.g. `${foo() extra}`
@@ -102,8 +106,53 @@ impl MetaVarExpr {
             }
             MetaVarExpr::Count(ident, _) | MetaVarExpr::Ignore(ident) => cb(aux, ident),
             MetaVarExpr::Index(..) | MetaVarExpr::Len(..) => aux,
+            MetaVarExpr::Recursive(expr) => expr.for_each_metavar(aux, cb),
         }
     }
+}
+
+/// A recursive meta-variable expression, which may contain other meta-variable expressions.
+#[derive(Debug, PartialEq, Encodable, Decodable)]
+pub(crate) enum MetaVarRecursiveExpr {
+    /// A single identifier, currently the only base of a recursive expression.
+    Ident(Ident),
+
+    /// A macro fragment field.
+    Field { expr: Box<MetaVarRecursiveExpr>, field: Ident },
+}
+
+impl MetaVarRecursiveExpr {
+    fn for_each_metavar<A>(&self, aux: A, mut cb: impl FnMut(A, &Ident) -> A) -> A {
+        match self {
+            Self::Ident(ident) => cb(aux, ident),
+            Self::Field { expr, field } => expr.for_each_metavar(cb(aux, field), cb),
+        }
+    }
+}
+
+/// Attempt to parse a meta-variable field.
+///
+/// The initial ident and dot have already been eaten.
+pub(crate) fn parse_field<'psess>(
+    base_ident: Ident,
+    mut iter: TokenStreamIter<'_>,
+    psess: &'psess ParseSess,
+    fallback_span: Span,
+) -> PResult<'psess, MetaVarExpr> {
+    let mut expr = MetaVarRecursiveExpr::Ident(base_ident);
+    let field = parse_ident(&mut iter, psess, fallback_span)?;
+    expr = MetaVarRecursiveExpr::Field { expr: Box::new(expr), field };
+    while let Some(TokenTree::Token(Token { kind: token::Dot, .. }, _)) = iter.next() {
+        let field = parse_ident(&mut iter, psess, fallback_span)?;
+        expr = MetaVarRecursiveExpr::Field { expr: Box::new(expr), field };
+    }
+
+    // Check for unexpected tokens
+    if let Some(span) = iter_span(&iter) {
+        return Err(psess.dcx().create_err(errors::MveExtraTokensAfterField { span }));
+    }
+
+    Ok(MetaVarExpr::Recursive(expr))
 }
 
 /// Checks if there are any remaining tokens (for example, `${ignore($valid, extra)}`) and create
