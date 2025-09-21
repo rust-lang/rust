@@ -1890,10 +1890,9 @@ class DocSearch {
                 await Promise.all([this.getName(entry[field]), this.getPathData(entry[field])]) :
                 [null, null];
             if (name !== null && path !== null) {
-                return { name: name, path: path };
-            } else {
-                return null;
+                return { name, path };
             }
+            return null;
         };
 
         const [
@@ -2741,9 +2740,9 @@ class DocSearch {
                         list.push(out.length);
                         traitImplIdxMap.set(obj.traitPath, list);
                     } else {
-                        const toRemove = traitImplIdxMap.get(obj.fullPath);
-                        if (toRemove) {
-                            removeIdxListAsc(out, toRemove);
+                        const toRemoveList = traitImplIdxMap.get(obj.fullPath);
+                        if (toRemoveList) {
+                            removeIdxListAsc(out, toRemoveList);
                         }
                         traitImplIdxMap.delete(obj.fullPath);
                     }
