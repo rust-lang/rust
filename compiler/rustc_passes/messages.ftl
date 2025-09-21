@@ -349,10 +349,6 @@ passes_invalid_attr_at_crate_level =
 passes_invalid_attr_at_crate_level_item =
     the inner attribute doesn't annotate this {$kind}
 
-passes_invalid_macro_export_arguments = invalid `#[macro_export]` argument
-
-passes_invalid_macro_export_arguments_too_many_items = `#[macro_export]` can only take 1 or 0 arguments
-
 passes_lang_item_fn = {$name ->
     [panic_impl] `#[panic_handler]`
     *[other] `{$name}` lang item
@@ -391,9 +387,6 @@ passes_link =
 passes_loop_match_attr =
     `#[loop_match]` should be applied to a loop
     .label = not a loop
-
-passes_macro_export =
-    `#[macro_export]` only has an effect on macro definitions
 
 passes_macro_export_on_decl_macro =
     `#[macro_export]` has no effect on declarative macro definitions

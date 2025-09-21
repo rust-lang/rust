@@ -56,6 +56,7 @@ impl AttributeKind {
             Linkage(..) => No,
             LoopMatch(..) => No,
             MacroEscape(..) => No,
+            MacroExport { .. } => Yes,
             MacroTransparency(..) => Yes,
             MacroUse { .. } => No,
             Marker(..) => No,
