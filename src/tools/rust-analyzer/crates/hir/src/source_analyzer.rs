@@ -53,7 +53,7 @@ use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use rustc_type_ir::{
     AliasTyKind,
-    inherent::{IntoKind, Ty as _},
+    inherent::{IntoKind, Term as _, Ty as _},
 };
 use smallvec::SmallVec;
 use stdx::never;
@@ -481,14 +481,15 @@ impl<'db> SourceAnalyzer<'db> {
 
         impl<'db> TyLoweringInferVarsCtx<'db> for VarsCtx<'_, 'db> {
             fn next_ty_var(&mut self, span: hir_ide::Span) -> Ty<'db> {
-                if let hir_ide::Span::TypeRefId(type_ref) = span
-                    && let Some(ty) =
-                        self.infer.and_then(|infer| infer.type_of_type_placeholder(type_ref))
-                {
-                    ty
-                } else {
-                    self.types.types.error
-                }
+                let term_ref = match span {
+                    hir_ide::Span::TypeRefId(type_ref) => type_ref.into(),
+                    _ => return self.types.types.error,
+                };
+
+                self.infer
+                    .and_then(|infer| infer.term_of_term_placeholder(term_ref))
+                    .and_then(|term| term.as_type())
+                    .unwrap_or(self.types.types.error)
             }
             fn next_const_var(&mut self, _span: hir_ide::Span) -> hir_ide::next_solver::Const<'db> {
                 self.types.consts.error

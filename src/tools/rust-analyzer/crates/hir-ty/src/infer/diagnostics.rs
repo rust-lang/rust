@@ -6,9 +6,10 @@ use std::cell::{OnceCell, RefCell};
 use std::ops::{Deref, DerefMut};
 
 use either::Either;
+use hir_def::expr_store::ExpressionStore;
 use hir_def::expr_store::path::Path;
+use hir_def::type_ref::ConstRef;
 use hir_def::{ExpressionStoreOwnerId, GenericDefId};
-use hir_def::{expr_store::ExpressionStore, type_ref::TypeRefId};
 use hir_def::{
     hir::{ExprId, ExprOrPatIdPacked},
     resolver::Resolver,
@@ -16,6 +17,7 @@ use hir_def::{
 use la_arena::RawIdx;
 use thin_vec::ThinVec;
 
+use crate::next_solver::{StoredTerm, Term};
 use crate::{
     InferenceDiagnostic, Span, ThinFxHashMap, TyLoweringDiagnostic,
     db::{AnonConstId, HirDatabase},
@@ -26,7 +28,7 @@ use crate::{
         TyLoweringInferVarsCtx,
         path::{PathDiagnosticCallback, PathLoweringContext},
     },
-    next_solver::{Const, Region, StoredTy, Ty},
+    next_solver::{Const, Region, TermRefIdPacked, Ty},
 };
 
 // Unfortunately, this struct needs to use interior mutability (but we encapsulate it)
@@ -63,7 +65,7 @@ pub(crate) struct PathDiagnosticCallbackData<'a> {
 
 pub(super) struct InferenceTyLoweringVarsCtx<'a, 'db> {
     pub(super) table: &'a mut InferenceTable<'db>,
-    pub(super) type_of_type_placeholder: &'a mut ThinFxHashMap<TypeRefId, StoredTy>,
+    pub(super) term_of_term_placeholders: &'a mut ThinFxHashMap<TermRefIdPacked, StoredTerm>,
 }
 
 impl<'db> TyLoweringInferVarsCtx<'db> for InferenceTyLoweringVarsCtx<'_, 'db> {
@@ -71,13 +73,24 @@ impl<'db> TyLoweringInferVarsCtx<'db> for InferenceTyLoweringVarsCtx<'_, 'db> {
         let ty = self.table.infer_ctxt.next_ty_var(span);
 
         if let Span::TypeRefId(type_ref) = span {
-            self.type_of_type_placeholder.insert(type_ref, ty.store());
+            self.term_of_term_placeholders.insert(type_ref.into(), Term::from(ty).store());
         }
 
         ty
     }
     fn next_const_var(&mut self, span: Span) -> Const<'db> {
-        self.table.infer_ctxt.next_const_var(span)
+        let const_ = self.table.infer_ctxt.next_const_var(span);
+
+        let term_ref = match span {
+            Span::ExprId(expr) => Some(ConstRef { expr }.into()),
+            Span::TypeRefId(type_ref) => Some(type_ref.into()),
+            _ => None,
+        };
+        if let Some(key) = term_ref {
+            self.term_of_term_placeholders.insert(key, Term::from(const_).store());
+        }
+
+        const_
     }
     fn next_region_var(&mut self, span: Span) -> Region<'db> {
         self.table.infer_ctxt.next_region_var(span)
