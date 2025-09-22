@@ -604,6 +604,29 @@ pub mod example_mod {
     }
 
     #[test]
+    fn operator_overload() {
+        check_symbol(
+            r#"
+//- minicore: add
+//- /workspace/lib.rs crate:main
+use core::ops::AddAssign;
+
+struct S;
+
+impl AddAssign for S {
+    fn add_assign(&mut self, _rhs: Self) {}
+}
+
+fn main() {
+    let mut s = S;
+    s +=$0 S;
+}
+"#,
+            "rust-analyzer cargo main . impl#[S][`AddAssign<Self>`]add_assign().",
+        );
+    }
+
+    #[test]
     fn symbol_for_trait() {
         check_symbol(
             r#"
