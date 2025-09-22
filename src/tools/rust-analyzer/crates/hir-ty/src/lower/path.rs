@@ -603,7 +603,7 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
         explicit_self_ty: Option<Ty>,
         lowering_assoc_type_generics: bool,
     ) -> Substitution {
-        let mut lifetime_elision = self.ctx.lifetime_elision.clone();
+        let old_lifetime_elision = self.ctx.lifetime_elision.clone();
 
         if let Some(args) = self.current_or_prev_segment.args_and_bindings
             && args.parenthesized != GenericArgsParentheses::No
@@ -633,19 +633,21 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
             }
 
             // `Fn()`-style generics are treated like functions for the purpose of lifetime elision.
-            lifetime_elision =
+            self.ctx.lifetime_elision =
                 LifetimeElisionKind::AnonymousCreateParameter { report_in_path: false };
         }
 
-        self.substs_from_args_and_bindings(
+        let result = self.substs_from_args_and_bindings(
             self.current_or_prev_segment.args_and_bindings,
             def,
             infer_args,
             explicit_self_ty,
             PathGenericsSource::Segment(self.current_segment_u32()),
             lowering_assoc_type_generics,
-            lifetime_elision,
-        )
+            self.ctx.lifetime_elision.clone(),
+        );
+        self.ctx.lifetime_elision = old_lifetime_elision;
+        result
     }
 
     pub(super) fn substs_from_args_and_bindings(
