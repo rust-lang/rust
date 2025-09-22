@@ -74,6 +74,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::align_of
         | sym::needs_drop
         | sym::caller_location
+        | sym::dynamic_shared_memory
         | sym::add_with_overflow
         | sym::sub_with_overflow
         | sym::mul_with_overflow
@@ -213,6 +214,7 @@ pub(crate) fn check_intrinsic_type(
         }
         sym::rustc_peek => (1, 0, vec![param(0)], param(0)),
         sym::caller_location => (0, 0, vec![], tcx.caller_location_ty()),
+        sym::dynamic_shared_memory => (1, 0, vec![], Ty::new_mut_ptr(tcx, param(0))),
         sym::assert_inhabited | sym::assert_zero_valid | sym::assert_mem_uninitialized_valid => {
             (1, 0, vec![], tcx.types.unit)
         }

@@ -1716,6 +1716,8 @@ pub struct AddressSpace(pub u32);
 impl AddressSpace {
     /// LLVM's `0` address space.
     pub const ZERO: Self = AddressSpace(0);
+    /// The address space for shared memory on nvptx and amdgpu.
+    pub const SHARED: Self = AddressSpace(3);
 }
 
 /// The way we represent values to the backend
