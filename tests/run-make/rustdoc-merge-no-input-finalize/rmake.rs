@@ -3,20 +3,26 @@
 
 //@ needs-target-std
 
-use run_make_support::rustdoc;
+use run_make_support::{path, rustdoc};
 
 fn main() {
+    let out_dir = path("out");
+    let merged_dir = path("merged");
+    let parts_out_dir = path("parts");
     rustdoc()
         .input("sierra.rs")
+        .out_dir(&out_dir)
         .arg("-Zunstable-options")
-        .arg("--parts-out-dir=parts")
+        .arg(format!("--parts-out-dir={}", parts_out_dir.display()))
         .arg("--merge=none")
         .run();
 
-    rustdoc()
+    let output = rustdoc()
         .arg("-Zunstable-options")
-        .arg("--include-parts-dir=parts")
+        .out_dir(&out_dir)
+        .arg(format!("--include-parts-dir={}", parts_out_dir.display()))
         .arg("--merge=finalize")
-        .out_dir("out")
         .run();
+
+    output.assert_exit_code(0);
 }
