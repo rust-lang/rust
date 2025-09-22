@@ -1,3 +1,5 @@
+//@ needs-target-std
+
 use run_make_support::{Rustc, cwd, diff, rust_lib_name, rustc};
 
 fn rustc_with_common_args() -> Rustc {
@@ -39,5 +41,5 @@ fn main() {
         .run_fail()
         .stderr_utf8();
 
-    diff().expected_file("main.stderr").actual_text("(rustc)", &stderr).run();
+    diff().expected_file("main.stderr").normalize(r"\\", "/").actual_text("(rustc)", &stderr).run();
 }
