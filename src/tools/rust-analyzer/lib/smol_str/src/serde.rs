@@ -2,6 +2,7 @@ use alloc::{string::String, vec::Vec};
 use core::fmt;
 
 use serde::de::{Deserializer, Error, Unexpected, Visitor};
+use serde_core as serde;
 
 use crate::SmolStr;
 

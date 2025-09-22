@@ -12,7 +12,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 all-features = true
 
 [dependencies]
-serde = { version = "1.0", optional = true, default-features = false }
+serde_core = { version = "1.0.220", optional = true, default-features = false }
 borsh = { version = "1.4.0", optional = true, default-features = false }
 arbitrary = { version = "1.3", optional = true }
 
@@ -23,4 +23,5 @@ serde = { version = "1.0", features = ["derive"] }
 
 [features]
 default = ["std"]
-std = ["serde?/std", "borsh?/std"]
+std = ["serde_core?/std", "borsh?/std"]
+serde = ["dep:serde_core"]
