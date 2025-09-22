@@ -144,30 +144,6 @@ pub(crate) struct RecursionLimitReached {
 }
 
 #[derive(Diagnostic)]
-#[diag(expand_malformed_feature_attribute, code = E0556)]
-pub(crate) struct MalformedFeatureAttribute {
-    #[primary_span]
-    pub span: Span,
-    #[subdiagnostic]
-    pub help: MalformedFeatureAttributeHelp,
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum MalformedFeatureAttributeHelp {
-    #[label(expand_expected)]
-    Label {
-        #[primary_span]
-        span: Span,
-    },
-    #[suggestion(expand_expected, code = "{suggestion}", applicability = "maybe-incorrect")]
-    Suggestion {
-        #[primary_span]
-        span: Span,
-        suggestion: Symbol,
-    },
-}
-
-#[derive(Diagnostic)]
 #[diag(expand_remove_expr_not_supported)]
 pub(crate) struct RemoveExprNotSupported {
     #[primary_span]
