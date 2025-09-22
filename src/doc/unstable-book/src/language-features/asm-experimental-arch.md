@@ -201,6 +201,9 @@ These flags registers must be restored upon exiting the asm block if the `preser
   - The status register `r2`.
 - M68k
   - The condition code register `ccr`.
+- PowerPC
+  - The condition registers `cr[0-7]`
+  - The fixed-point exception register `xer`
 - SPARC
   - Integer condition codes (`icc` and `xcc`)
   - Floating-point condition codes (`fcc[0-3]`)

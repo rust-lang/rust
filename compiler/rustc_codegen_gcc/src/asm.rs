@@ -546,9 +546,26 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         }
 
         if !options.contains(InlineAsmOptions::PRESERVES_FLAGS) {
-            // TODO(@Commeownist): I'm not 100% sure this one clobber is sufficient
-            // on all architectures. For instance, what about FP stack?
-            extended_asm.add_clobber("cc");
+            match asm_arch {
+                InlineAsmArch::PowerPC | InlineAsmArch::PowerPC64 => {
+                    let clobbers = ["cr0", "cr1", "cr2", "cr3", "cr4", "cr5", "cr6", "cr7", "xer"];
+                    clobbers.into_iter().for_each(|x| extended_asm.add_clobber(x));
+                }
+                _ => {
+                    // The machine specific flag preservation should be consistent across codegen
+                    // backends.
+                    //
+                    // gcc documents "cc" as being supported by all targets, but what flags are
+                    // clobbered is architecture specific. On many targets, this has no effect.
+                    // See documentation for target specific details.
+                    //
+                    // https://gcc.gnu.org/onlinedocs/gcc/Extended-Asm.html#Clobbers-and-Scratch-Registers
+                    //
+                    // At the time of commenting, cc is only documented as having an effect on
+                    // x86/arm/aarch64/s390.
+                    extended_asm.add_clobber("cc");
+                }
+            }
         }
         if !options.contains(InlineAsmOptions::NOMEM) {
             extended_asm.add_clobber("memory");
