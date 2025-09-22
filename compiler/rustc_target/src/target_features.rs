@@ -884,6 +884,28 @@ static M68K_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-end
 ];
 
+static AVR_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
+    // tidy-alphabetical-start
+    ("addsubiw", Unstable(sym::avr_target_feature), &[]),
+    ("break", Unstable(sym::avr_target_feature), &[]),
+    ("eijmpcall", Unstable(sym::avr_target_feature), &[]),
+    ("elpm", Unstable(sym::avr_target_feature), &[]),
+    ("elpmx", Unstable(sym::avr_target_feature), &[]),
+    ("ijmpcall", Unstable(sym::avr_target_feature), &[]),
+    ("jmpcall", Unstable(sym::avr_target_feature), &[]),
+    ("lowbytefirst", Unstable(sym::avr_target_feature), &[]),
+    ("lpm", Unstable(sym::avr_target_feature), &[]),
+    ("lpmx", Unstable(sym::avr_target_feature), &[]),
+    ("movw", Unstable(sym::avr_target_feature), &[]),
+    ("mul", Unstable(sym::avr_target_feature), &[]),
+    ("rmw", Unstable(sym::avr_target_feature), &[]),
+    ("spm", Unstable(sym::avr_target_feature), &[]),
+    ("spmx", Unstable(sym::avr_target_feature), &[]),
+    ("sram", Unstable(sym::avr_target_feature), &[]),
+    ("tinyencoding", Unstable(sym::avr_target_feature), &[]),
+    // tidy-alphabetical-end
+];
+
 /// When rustdoc is running, provide a list of all known features so that all their respective
 /// primitives may be documented.
 ///
@@ -905,6 +927,7 @@ pub fn all_rust_features() -> impl Iterator<Item = (&'static str, Stability)> {
         .chain(IBMZ_FEATURES)
         .chain(SPARC_FEATURES)
         .chain(M68K_FEATURES)
+        .chain(AVR_FEATURES)
         .cloned()
         .map(|(f, s, _)| (f, s))
 }
@@ -972,6 +995,7 @@ impl Target {
             "s390x" => IBMZ_FEATURES,
             "sparc" | "sparc64" => SPARC_FEATURES,
             "m68k" => M68K_FEATURES,
+            "avr" => AVR_FEATURES,
             _ => &[],
         }
     }
@@ -989,7 +1013,7 @@ impl Target {
             "sparc" | "sparc64" => SPARC_FEATURES_FOR_CORRECT_VECTOR_ABI,
             "hexagon" => HEXAGON_FEATURES_FOR_CORRECT_VECTOR_ABI,
             "mips" | "mips32r6" | "mips64" | "mips64r6" => MIPS_FEATURES_FOR_CORRECT_VECTOR_ABI,
-            "nvptx64" | "bpf" | "m68k" => &[], // no vector ABI
+            "nvptx64" | "bpf" | "m68k" | "avr" => &[], // no vector ABI
             "csky" => CSKY_FEATURES_FOR_CORRECT_VECTOR_ABI,
             // FIXME: for some tier3 targets, we are overly cautious and always give warnings
             // when passing args in vector registers.
