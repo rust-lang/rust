@@ -1779,9 +1779,14 @@ extern "C" void LLVMRustContextConfigureDiagnosticHandler(
     // Do not delete the file after we gather remarks
     RemarkFile->keep();
 
+#if LLVM_VERSION_GE(22, 0)
+    auto RemarkSerializer = remarks::createRemarkSerializer(
+        llvm::remarks::Format::YAML, RemarkFile->os());
+#else
     auto RemarkSerializer = remarks::createRemarkSerializer(
         llvm::remarks::Format::YAML, remarks::SerializerMode::Separate,
         RemarkFile->os());
+#endif
     if (Error E = RemarkSerializer.takeError()) {
       std::string Error = std::string("Cannot create remark serializer: ") +
                           toString(std::move(E));
