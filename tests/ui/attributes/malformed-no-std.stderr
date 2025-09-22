@@ -1,0 +1,86 @@
+error[E0565]: malformed `no_std` attribute input
+  --> $DIR/malformed-no-std.rs:3:1
+   |
+LL | #![no_std = "foo"]
+   | ^^^^^^^^^^-------^
+   | |         |
+   | |         didn't expect any arguments here
+   | help: must be of the form: `#![no_std]`
+
+error[E0565]: malformed `no_std` attribute input
+  --> $DIR/malformed-no-std.rs:5:1
+   |
+LL | #![no_std("bar")]
+   | ^^^^^^^^^-------^
+   | |        |
+   | |        didn't expect any arguments here
+   | help: must be of the form: `#![no_std]`
+
+error[E0565]: malformed `no_std` attribute input
+  --> $DIR/malformed-no-std.rs:7:1
+   |
+LL | #![no_std(foo = "bar")]
+   | ^^^^^^^^^-------------^
+   | |        |
+   | |        didn't expect any arguments here
+   | help: must be of the form: `#![no_std]`
+
+error[E0565]: malformed `no_core` attribute input
+  --> $DIR/malformed-no-std.rs:9:1
+   |
+LL | #![no_core = "foo"]
+   | ^^^^^^^^^^^-------^
+   | |          |
+   | |          didn't expect any arguments here
+   | help: must be of the form: `#![no_core]`
+
+error[E0565]: malformed `no_core` attribute input
+  --> $DIR/malformed-no-std.rs:11:1
+   |
+LL | #![no_core("bar")]
+   | ^^^^^^^^^^-------^
+   | |         |
+   | |         didn't expect any arguments here
+   | help: must be of the form: `#![no_core]`
+
+error[E0565]: malformed `no_core` attribute input
+  --> $DIR/malformed-no-std.rs:13:1
+   |
+LL | #![no_core(foo = "bar")]
+   | ^^^^^^^^^^-------------^
+   | |         |
+   | |         didn't expect any arguments here
+   | help: must be of the form: `#![no_core]`
+
+error: crate-level attribute should be an inner attribute: add an exclamation mark: `#![no_std]`
+  --> $DIR/malformed-no-std.rs:17:1
+   |
+LL | #[no_std]
+   | ^^^^^^^^^
+   |
+note: This attribute does not have an `!`, which means it is applied to this extern crate
+  --> $DIR/malformed-no-std.rs:22:1
+   |
+LL | extern crate core;
+   | ^^^^^^^^^^^^^^^^^^
+note: the lint level is defined here
+  --> $DIR/malformed-no-std.rs:16:8
+   |
+LL | #[deny(unused_attributes)]
+   |        ^^^^^^^^^^^^^^^^^
+
+error: crate-level attribute should be an inner attribute: add an exclamation mark: `#![no_core]`
+  --> $DIR/malformed-no-std.rs:19:1
+   |
+LL | #[no_core]
+   | ^^^^^^^^^^
+   |
+note: This attribute does not have an `!`, which means it is applied to this extern crate
+  --> $DIR/malformed-no-std.rs:22:1
+   |
+LL | extern crate core;
+   | ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0565`.

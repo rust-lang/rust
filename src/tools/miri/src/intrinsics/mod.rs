@@ -1,17 +1,19 @@
 #![warn(clippy::arithmetic_side_effects)]
 
 mod atomic;
+mod math;
 mod simd;
 
+pub use self::atomic::AtomicRmwOp;
+
+#[rustfmt::skip] // prevent `use` reordering
 use rand::Rng;
 use rustc_abi::Size;
-use rustc_apfloat::{self, Float, Round};
-use rustc_middle::mir;
-use rustc_middle::ty::{self, FloatTy};
+use rustc_middle::{mir, ty};
 use rustc_span::{Symbol, sym};
 
 use self::atomic::EvalContextExt as _;
-use self::helpers::{ToHost, ToSoft};
+use self::math::EvalContextExt as _;
 use self::simd::EvalContextExt as _;
 use crate::*;
 
@@ -176,288 +178,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(Scalar::from_bool(branch), dest)?;
             }
 
-            "sqrtf32" => {
-                let [f] = check_intrinsic_arg_count(args)?;
-                let f = this.read_scalar(f)?.to_f32()?;
-                // Sqrt is specified to be fully precise.
-                let res = math::sqrt(f);
-                let res = this.adjust_nan(res, &[f]);
-                this.write_scalar(res, dest)?;
-            }
-            "sqrtf64" => {
-                let [f] = check_intrinsic_arg_count(args)?;
-                let f = this.read_scalar(f)?.to_f64()?;
-                // Sqrt is specified to be fully precise.
-                let res = math::sqrt(f);
-                let res = this.adjust_nan(res, &[f]);
-                this.write_scalar(res, dest)?;
-            }
-
-            #[rustfmt::skip]
-            | "sinf32"
-            | "cosf32"
-            | "expf32"
-            | "exp2f32"
-            | "logf32"
-            | "log10f32"
-            | "log2f32"
-            => {
-                let [f] = check_intrinsic_arg_count(args)?;
-                let f = this.read_scalar(f)?.to_f32()?;
-
-                let res = math::fixed_float_value(this, intrinsic_name, &[f]).unwrap_or_else(|| {
-                    // Using host floats (but it's fine, these operations do not have
-                    // guaranteed precision).
-                    let host = f.to_host();
-                    let res = match intrinsic_name {
-                        "sinf32" => host.sin(),
-                        "cosf32" => host.cos(),
-                        "expf32" => host.exp(),
-                        "exp2f32" => host.exp2(),
-                        "logf32" => host.ln(),
-                        "log10f32" => host.log10(),
-                        "log2f32" => host.log2(),
-                        _ => bug!(),
-                    };
-                    let res = res.to_soft();
-
-                    // Apply a relative error of 4ULP to introduce some non-determinism
-                    // simulating imprecise implementations and optimizations.
-                    let res = math::apply_random_float_error_ulp(
-                        this,
-                        res,
-                        4,
-                    );
-
-                    // Clamp the result to the guaranteed range of this function according to the C standard,
-                    // if any.
-                    math::clamp_float_value(intrinsic_name, res)
-                });
-                let res = this.adjust_nan(res, &[f]);
-                this.write_scalar(res, dest)?;
-            }
-
-            #[rustfmt::skip]
-            | "sinf64"
-            | "cosf64"
-            | "expf64"
-            | "exp2f64"
-            | "logf64"
-            | "log10f64"
-            | "log2f64"
-            => {
-                let [f] = check_intrinsic_arg_count(args)?;
-                let f = this.read_scalar(f)?.to_f64()?;
-
-                let res = math::fixed_float_value(this, intrinsic_name, &[f]).unwrap_or_else(|| {
-                    // Using host floats (but it's fine, these operations do not have
-                    // guaranteed precision).
-                    let host = f.to_host();
-                    let res = match intrinsic_name {
-                        "sinf64" => host.sin(),
-                        "cosf64" => host.cos(),
-                        "expf64" => host.exp(),
-                        "exp2f64" => host.exp2(),
-                        "logf64" => host.ln(),
-                        "log10f64" => host.log10(),
-                        "log2f64" => host.log2(),
-                        _ => bug!(),
-                    };
-                    let res = res.to_soft();
-
-                    // Apply a relative error of 4ULP to introduce some non-determinism
-                    // simulating imprecise implementations and optimizations.
-                    let res = math::apply_random_float_error_ulp(
-                        this,
-                        res,
-                        4,
-                    );
-
-                    // Clamp the result to the guaranteed range of this function according to the C standard,
-                    // if any.
-                    math::clamp_float_value(intrinsic_name, res)
-                });
-                let res = this.adjust_nan(res, &[f]);
-                this.write_scalar(res, dest)?;
-            }
-
-            "fmaf32" => {
-                let [a, b, c] = check_intrinsic_arg_count(args)?;
-                let a = this.read_scalar(a)?.to_f32()?;
-                let b = this.read_scalar(b)?.to_f32()?;
-                let c = this.read_scalar(c)?.to_f32()?;
-                let res = a.mul_add(b, c).value;
-                let res = this.adjust_nan(res, &[a, b, c]);
-                this.write_scalar(res, dest)?;
-            }
-            "fmaf64" => {
-                let [a, b, c] = check_intrinsic_arg_count(args)?;
-                let a = this.read_scalar(a)?.to_f64()?;
-                let b = this.read_scalar(b)?.to_f64()?;
-                let c = this.read_scalar(c)?.to_f64()?;
-                let res = a.mul_add(b, c).value;
-                let res = this.adjust_nan(res, &[a, b, c]);
-                this.write_scalar(res, dest)?;
-            }
-
-            "fmuladdf32" => {
-                let [a, b, c] = check_intrinsic_arg_count(args)?;
-                let a = this.read_scalar(a)?.to_f32()?;
-                let b = this.read_scalar(b)?.to_f32()?;
-                let c = this.read_scalar(c)?.to_f32()?;
-                let fuse: bool = this.machine.float_nondet && this.machine.rng.get_mut().random();
-                let res = if fuse { a.mul_add(b, c).value } else { ((a * b).value + c).value };
-                let res = this.adjust_nan(res, &[a, b, c]);
-                this.write_scalar(res, dest)?;
-            }
-            "fmuladdf64" => {
-                let [a, b, c] = check_intrinsic_arg_count(args)?;
-                let a = this.read_scalar(a)?.to_f64()?;
-                let b = this.read_scalar(b)?.to_f64()?;
-                let c = this.read_scalar(c)?.to_f64()?;
-                let fuse: bool = this.machine.float_nondet && this.machine.rng.get_mut().random();
-                let res = if fuse { a.mul_add(b, c).value } else { ((a * b).value + c).value };
-                let res = this.adjust_nan(res, &[a, b, c]);
-                this.write_scalar(res, dest)?;
-            }
-
-            "powf32" => {
-                let [f1, f2] = check_intrinsic_arg_count(args)?;
-                let f1 = this.read_scalar(f1)?.to_f32()?;
-                let f2 = this.read_scalar(f2)?.to_f32()?;
-
-                let res =
-                    math::fixed_float_value(this, intrinsic_name, &[f1, f2]).unwrap_or_else(|| {
-                        // Using host floats (but it's fine, this operation does not have guaranteed precision).
-                        let res = f1.to_host().powf(f2.to_host()).to_soft();
-
-                        // Apply a relative error of 4ULP to introduce some non-determinism
-                        // simulating imprecise implementations and optimizations.
-                        math::apply_random_float_error_ulp(this, res, 4)
-                    });
-                let res = this.adjust_nan(res, &[f1, f2]);
-                this.write_scalar(res, dest)?;
-            }
-            "powf64" => {
-                let [f1, f2] = check_intrinsic_arg_count(args)?;
-                let f1 = this.read_scalar(f1)?.to_f64()?;
-                let f2 = this.read_scalar(f2)?.to_f64()?;
-
-                let res =
-                    math::fixed_float_value(this, intrinsic_name, &[f1, f2]).unwrap_or_else(|| {
-                        // Using host floats (but it's fine, this operation does not have guaranteed precision).
-                        let res = f1.to_host().powf(f2.to_host()).to_soft();
-
-                        // Apply a relative error of 4ULP to introduce some non-determinism
-                        // simulating imprecise implementations and optimizations.
-                        math::apply_random_float_error_ulp(this, res, 4)
-                    });
-                let res = this.adjust_nan(res, &[f1, f2]);
-                this.write_scalar(res, dest)?;
-            }
-
-            "powif32" => {
-                let [f, i] = check_intrinsic_arg_count(args)?;
-                let f = this.read_scalar(f)?.to_f32()?;
-                let i = this.read_scalar(i)?.to_i32()?;
-
-                let res = math::fixed_powi_value(this, f, i).unwrap_or_else(|| {
-                    // Using host floats (but it's fine, this operation does not have guaranteed precision).
-                    let res = f.to_host().powi(i).to_soft();
-
-                    // Apply a relative error of 4ULP to introduce some non-determinism
-                    // simulating imprecise implementations and optimizations.
-                    math::apply_random_float_error_ulp(this, res, 4)
-                });
-                let res = this.adjust_nan(res, &[f]);
-                this.write_scalar(res, dest)?;
-            }
-            "powif64" => {
-                let [f, i] = check_intrinsic_arg_count(args)?;
-                let f = this.read_scalar(f)?.to_f64()?;
-                let i = this.read_scalar(i)?.to_i32()?;
-
-                let res = math::fixed_powi_value(this, f, i).unwrap_or_else(|| {
-                    // Using host floats (but it's fine, this operation does not have guaranteed precision).
-                    let res = f.to_host().powi(i).to_soft();
-
-                    // Apply a relative error of 4ULP to introduce some non-determinism
-                    // simulating imprecise implementations and optimizations.
-                    math::apply_random_float_error_ulp(this, res, 4)
-                });
-                let res = this.adjust_nan(res, &[f]);
-                this.write_scalar(res, dest)?;
-            }
-
-            #[rustfmt::skip]
-            | "fadd_fast"
-            | "fsub_fast"
-            | "fmul_fast"
-            | "fdiv_fast"
-            | "frem_fast"
-            => {
-                let [a, b] = check_intrinsic_arg_count(args)?;
-                let a = this.read_immediate(a)?;
-                let b = this.read_immediate(b)?;
-                let op = match intrinsic_name {
-                    "fadd_fast" => mir::BinOp::Add,
-                    "fsub_fast" => mir::BinOp::Sub,
-                    "fmul_fast" => mir::BinOp::Mul,
-                    "fdiv_fast" => mir::BinOp::Div,
-                    "frem_fast" => mir::BinOp::Rem,
-                    _ => bug!(),
-                };
-                let float_finite = |x: &ImmTy<'tcx>| -> InterpResult<'tcx, bool> {
-                    let ty::Float(fty) = x.layout.ty.kind() else {
-                        bug!("float_finite: non-float input type {}", x.layout.ty)
-                    };
-                    interp_ok(match fty {
-                        FloatTy::F16 => x.to_scalar().to_f16()?.is_finite(),
-                        FloatTy::F32 => x.to_scalar().to_f32()?.is_finite(),
-                        FloatTy::F64 => x.to_scalar().to_f64()?.is_finite(),
-                        FloatTy::F128 => x.to_scalar().to_f128()?.is_finite(),
-                    })
-                };
-                match (float_finite(&a)?, float_finite(&b)?) {
-                    (false, false) => throw_ub_format!(
-                        "`{intrinsic_name}` intrinsic called with non-finite value as both parameters",
-                    ),
-                    (false, _) => throw_ub_format!(
-                        "`{intrinsic_name}` intrinsic called with non-finite value as first parameter",
-                    ),
-                    (_, false) => throw_ub_format!(
-                        "`{intrinsic_name}` intrinsic called with non-finite value as second parameter",
-                    ),
-                    _ => {}
-                }
-                let res = this.binary_op(op, &a, &b)?;
-                // This cannot be a NaN so we also don't have to apply any non-determinism.
-                // (Also, `binary_op` already called `generate_nan` if needed.)
-                if !float_finite(&res)? {
-                    throw_ub_format!("`{intrinsic_name}` intrinsic produced non-finite value as result");
-                }
-                // Apply a relative error of 4ULP to simulate non-deterministic precision loss
-                // due to optimizations.
-                let res = math::apply_random_float_error_to_imm(this, res, 4)?;
-                this.write_immediate(*res, dest)?;
-            }
-
-            "float_to_int_unchecked" => {
-                let [val] = check_intrinsic_arg_count(args)?;
-                let val = this.read_immediate(val)?;
-
-                let res = this
-                    .float_to_int_checked(&val, dest.layout, Round::TowardZero)?
-                    .ok_or_else(|| {
-                        err_ub_format!(
-                            "`float_to_int_unchecked` intrinsic called on {val} which cannot be represented in target type `{:?}`",
-                            dest.layout.ty
-                        )
-                    })?;
-
-                this.write_immediate(*res, dest)?;
-            }
-
             // Other
             "breakpoint" => {
                 let [] = check_intrinsic_arg_count(args)?;
@@ -469,7 +189,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Make these a NOP, so we get the better Miri-native error messages.
             }
 
-            _ => return interp_ok(EmulateItemResult::NotSupported),
+            _ => return this.emulate_math_intrinsic(intrinsic_name, generic_args, args, dest),
         }
 
         interp_ok(EmulateItemResult::NeedsReturn)

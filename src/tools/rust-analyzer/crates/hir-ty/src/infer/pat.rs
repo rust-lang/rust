@@ -10,6 +10,8 @@ use hir_def::{
 use hir_expand::name::Name;
 use stdx::TupleExt;
 
+use crate::infer::AllowTwoPhase;
+use crate::next_solver::mapping::{ChalkToNextSolver, NextSolverToChalk};
 use crate::{
     DeclContext, DeclOrigin, InferenceDiagnostic, Interner, Mutability, Scalar, Substitution, Ty,
     TyBuilder, TyExt, TyKind,
@@ -88,7 +90,7 @@ impl InferenceContext<'_> {
                                     Some(substs) => f.substitute(Interner, substs),
                                     None => f.substitute(Interner, &Substitution::empty(Interner)),
                                 };
-                                self.normalize_associated_types_in(expected_ty)
+                                self.process_remote_user_written_ty(expected_ty)
                             }
                             None => self.err_ty(),
                         }
@@ -152,7 +154,7 @@ impl InferenceContext<'_> {
                                     Some(substs) => f.substitute(Interner, substs),
                                     None => f.substitute(Interner, &Substitution::empty(Interner)),
                                 };
-                                self.normalize_associated_types_in(expected_ty)
+                                self.process_remote_user_written_ty(expected_ty)
                             }
                             None => {
                                 self.push_diagnostic(InferenceDiagnostic::NoSuchField {
@@ -190,7 +192,7 @@ impl InferenceContext<'_> {
         subs: &[PatId],
         decl: Option<DeclContext>,
     ) -> Ty {
-        let expected = self.resolve_ty_shallow(expected);
+        let expected = self.table.structurally_resolve_type(expected);
         let expectations = match expected.as_tuple() {
             Some(parameters) => parameters.as_slice(Interner),
             _ => &[],
@@ -238,7 +240,7 @@ impl InferenceContext<'_> {
         mut default_bm: BindingMode,
         decl: Option<DeclContext>,
     ) -> Ty {
-        let mut expected = self.resolve_ty_shallow(expected);
+        let mut expected = self.table.structurally_resolve_type(expected);
 
         if matches!(&self.body[pat], Pat::Ref { .. }) || self.inside_assignment {
             cov_mark::hit!(match_ergonomics_ref);
@@ -251,7 +253,7 @@ impl InferenceContext<'_> {
             let mut pat_adjustments = Vec::new();
             while let Some((inner, _lifetime, mutability)) = expected.as_reference() {
                 pat_adjustments.push(expected.clone());
-                expected = self.resolve_ty_shallow(inner);
+                expected = self.table.structurally_resolve_type(inner);
                 default_bm = match default_bm {
                     BindingMode::Move => BindingMode::Ref(mutability),
                     BindingMode::Ref(Mutability::Not) => BindingMode::Ref(Mutability::Not),
@@ -303,16 +305,15 @@ impl InferenceContext<'_> {
             Pat::Path(path) => {
                 let ty = self.infer_path(path, pat.into()).unwrap_or_else(|| self.err_ty());
                 let ty_inserted_vars = self.insert_type_vars_shallow(ty.clone());
-                match self.table.coerce(&expected, &ty_inserted_vars, CoerceNever::Yes) {
-                    Ok((adjustments, coerced_ty)) => {
-                        if !adjustments.is_empty() {
-                            self.result
-                                .pat_adjustments
-                                .entry(pat)
-                                .or_default()
-                                .extend(adjustments.into_iter().map(|adjust| adjust.target));
-                        }
-                        self.write_pat_ty(pat, coerced_ty);
+                match self.coerce(
+                    pat.into(),
+                    expected.to_nextsolver(self.table.interner),
+                    ty_inserted_vars.to_nextsolver(self.table.interner),
+                    AllowTwoPhase::No,
+                    CoerceNever::Yes,
+                ) {
+                    Ok(coerced_ty) => {
+                        self.write_pat_ty(pat, coerced_ty.to_chalk(self.table.interner));
                         return self.pat_ty_after_adjustment(pat);
                     }
                     Err(_) => {
@@ -387,8 +388,14 @@ impl InferenceContext<'_> {
                 );
                 // We are returning early to avoid the unifiability check below.
                 let lhs_ty = self.insert_type_vars_shallow(result);
-                let ty = match self.coerce(None, &expected, &lhs_ty, CoerceNever::Yes) {
-                    Ok(ty) => ty,
+                let ty = match self.coerce(
+                    pat.into(),
+                    expected.to_nextsolver(self.table.interner),
+                    lhs_ty.to_nextsolver(self.table.interner),
+                    AllowTwoPhase::No,
+                    CoerceNever::Yes,
+                ) {
+                    Ok(ty) => ty.to_chalk(self.table.interner),
                     Err(_) => {
                         self.result.type_mismatches.insert(
                             pat.into(),
@@ -494,7 +501,7 @@ impl InferenceContext<'_> {
         default_bm: BindingMode,
         decl: Option<DeclContext>,
     ) -> Ty {
-        let expected = self.resolve_ty_shallow(expected);
+        let expected = self.table.structurally_resolve_type(expected);
 
         // If `expected` is an infer ty, we try to equate it to an array if the given pattern
         // allows it. See issue #16609
@@ -506,7 +513,7 @@ impl InferenceContext<'_> {
             self.unify(&expected, &resolved_array_ty);
         }
 
-        let expected = self.resolve_ty_shallow(&expected);
+        let expected = self.table.structurally_resolve_type(&expected);
         let elem_ty = match expected.kind(Interner) {
             TyKind::Array(st, _) | TyKind::Slice(st) => st.clone(),
             _ => self.err_ty(),
@@ -542,7 +549,7 @@ impl InferenceContext<'_> {
         if let Expr::Literal(Literal::ByteString(_)) = self.body[expr]
             && let Some((inner, ..)) = expected.as_reference()
         {
-            let inner = self.resolve_ty_shallow(inner);
+            let inner = self.table.structurally_resolve_type(inner);
             if matches!(inner.kind(Interner), TyKind::Slice(_)) {
                 let elem_ty = TyKind::Scalar(Scalar::Uint(UintTy::U8)).intern(Interner);
                 let slice_ty = TyKind::Slice(elem_ty).intern(Interner);

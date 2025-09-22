@@ -196,7 +196,6 @@ fn issue_13106() {
 
     const {
         assert!(EMPTY_STR.is_empty());
-        //~^ const_is_empty
     }
 
     const {

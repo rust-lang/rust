@@ -281,6 +281,35 @@ fn basic() {
     assert_eq!(34.2f64.abs(), 34.2f64);
     assert_eq!((-1.0f128).abs(), 1.0f128);
     assert_eq!(34.2f128.abs(), 34.2f128);
+
+    assert_eq!(64_f16.sqrt(), 8_f16);
+    assert_eq!(64_f32.sqrt(), 8_f32);
+    assert_eq!(64_f64.sqrt(), 8_f64);
+    assert_eq!(64_f128.sqrt(), 8_f128);
+    assert_eq!(f16::INFINITY.sqrt(), f16::INFINITY);
+    assert_eq!(f32::INFINITY.sqrt(), f32::INFINITY);
+    assert_eq!(f64::INFINITY.sqrt(), f64::INFINITY);
+    assert_eq!(f128::INFINITY.sqrt(), f128::INFINITY);
+    assert_eq!(0.0_f16.sqrt().total_cmp(&0.0), std::cmp::Ordering::Equal);
+    assert_eq!(0.0_f32.sqrt().total_cmp(&0.0), std::cmp::Ordering::Equal);
+    assert_eq!(0.0_f64.sqrt().total_cmp(&0.0), std::cmp::Ordering::Equal);
+    assert_eq!(0.0_f128.sqrt().total_cmp(&0.0), std::cmp::Ordering::Equal);
+    assert_eq!((-0.0_f16).sqrt().total_cmp(&-0.0), std::cmp::Ordering::Equal);
+    assert_eq!((-0.0_f32).sqrt().total_cmp(&-0.0), std::cmp::Ordering::Equal);
+    assert_eq!((-0.0_f64).sqrt().total_cmp(&-0.0), std::cmp::Ordering::Equal);
+    assert_eq!((-0.0_f128).sqrt().total_cmp(&-0.0), std::cmp::Ordering::Equal);
+    assert!((-5.0_f16).sqrt().is_nan());
+    assert!((-5.0_f32).sqrt().is_nan());
+    assert!((-5.0_f64).sqrt().is_nan());
+    assert!((-5.0_f128).sqrt().is_nan());
+    assert!(f16::NEG_INFINITY.sqrt().is_nan());
+    assert!(f32::NEG_INFINITY.sqrt().is_nan());
+    assert!(f64::NEG_INFINITY.sqrt().is_nan());
+    assert!(f128::NEG_INFINITY.sqrt().is_nan());
+    assert!(f16::NAN.sqrt().is_nan());
+    assert!(f32::NAN.sqrt().is_nan());
+    assert!(f64::NAN.sqrt().is_nan());
+    assert!(f128::NAN.sqrt().is_nan());
 }
 
 /// Test casts from floats to ints and back
@@ -1011,21 +1040,6 @@ pub fn libm() {
         }
         unsafe { ldexp(a, b) }
     }
-
-    assert_eq!(64_f32.sqrt(), 8_f32);
-    assert_eq!(64_f64.sqrt(), 8_f64);
-    assert_eq!(f32::INFINITY.sqrt(), f32::INFINITY);
-    assert_eq!(f64::INFINITY.sqrt(), f64::INFINITY);
-    assert_eq!(0.0_f32.sqrt().total_cmp(&0.0), std::cmp::Ordering::Equal);
-    assert_eq!(0.0_f64.sqrt().total_cmp(&0.0), std::cmp::Ordering::Equal);
-    assert_eq!((-0.0_f32).sqrt().total_cmp(&-0.0), std::cmp::Ordering::Equal);
-    assert_eq!((-0.0_f64).sqrt().total_cmp(&-0.0), std::cmp::Ordering::Equal);
-    assert!((-5.0_f32).sqrt().is_nan());
-    assert!((-5.0_f64).sqrt().is_nan());
-    assert!(f32::NEG_INFINITY.sqrt().is_nan());
-    assert!(f64::NEG_INFINITY.sqrt().is_nan());
-    assert!(f32::NAN.sqrt().is_nan());
-    assert!(f64::NAN.sqrt().is_nan());
 
     assert_approx_eq!(25f32.powi(-2), 0.0016f32);
     assert_approx_eq!(23.2f64.powi(2), 538.24f64);

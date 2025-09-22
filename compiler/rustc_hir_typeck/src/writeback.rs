@@ -220,7 +220,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     // to use builtin indexing because the index type is known to be
     // usize-ish
     fn fix_index_builtin_expr(&mut self, e: &hir::Expr<'_>) {
-        if let hir::ExprKind::Index(ref base, ref index, _) = e.kind {
+        if let hir::ExprKind::Index(base, index, _) = e.kind {
             // All valid indexing looks like this; might encounter non-valid indexes at this point.
             let base_ty = self.typeck_results.expr_ty_adjusted(base);
             if let ty::Ref(_, base_ty_inner, _) = *base_ty.kind() {
@@ -583,7 +583,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             }
 
             if let Err(err) = opaque_type_has_defining_use_args(
-                &self.fcx,
+                self.fcx,
                 opaque_type_key,
                 hidden_type.span,
                 DefiningScopeKind::HirTypeck,
@@ -792,7 +792,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
     fn visit_potentially_region_dependent_goals(&mut self) {
         let obligations = self.fcx.take_hir_typeck_potentially_region_dependent_goals();
-        if let None = self.fcx.tainted_by_errors() {
+        if self.fcx.tainted_by_errors().is_none() {
             for obligation in obligations {
                 let (predicate, mut cause) =
                     self.fcx.resolve_vars_if_possible((obligation.predicate, obligation.cause));
@@ -802,7 +802,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                         format!("unexpected inference variable after writeback: {predicate:?}"),
                     );
                 } else {
-                    let predicate = self.tcx().erase_regions(predicate);
+                    let predicate = self.tcx().erase_and_anonymize_regions(predicate);
                     if cause.has_infer() || cause.has_placeholders() {
                         // We can't use the the obligation cause as it references
                         // information local to this query.
@@ -984,8 +984,8 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
         // borrowck, and specifically region constraints will be populated during
         // MIR typeck which is run on the new body.
         //
-        // We're not using `tcx.erase_regions` as that also anonymizes bound variables,
-        // regressing borrowck diagnostics.
+        // We're not using `tcx.erase_and_anonymize_regions` as that also
+        // anonymizes bound variables, regressing borrowck diagnostics.
         value = fold_regions(tcx, value, |_, _| tcx.lifetimes.re_erased);
 
         // Normalize consts in writeback, because GCE doesn't normalize eagerly.

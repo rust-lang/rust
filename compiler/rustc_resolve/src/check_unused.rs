@@ -169,7 +169,7 @@ impl<'a, 'ra, 'tcx> UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
                         UNUSED_EXTERN_CRATES,
                         extern_crate.id,
                         span,
-                        BuiltinLintDiag::UnusedExternCrate {
+                        crate::errors::UnusedExternCrate {
                             span: extern_crate.span,
                             removal_span: extern_crate.span_with_attributes,
                         },
@@ -406,7 +406,7 @@ impl Resolver<'_, '_> {
                                 MACRO_USE_EXTERN_CRATE,
                                 import.root_id,
                                 import.span,
-                                BuiltinLintDiag::MacroUseDeprecated,
+                                crate::errors::MacroUseDeprecated,
                             );
                         }
                     }
@@ -427,7 +427,7 @@ impl Resolver<'_, '_> {
                         UNUSED_IMPORTS,
                         import.root_id,
                         import.span,
-                        BuiltinLintDiag::UnusedMacroUse,
+                        crate::errors::UnusedMacroUse,
                     );
                 }
                 _ => {}

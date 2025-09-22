@@ -1,7 +1,7 @@
 //@ add-core-stubs
 //@ compile-flags: --target thumbv8m.main-none-eabi --crate-type lib
 //@ needs-llvm-components: arm
-#![feature(cmse_nonsecure_entry, c_variadic, no_core, lang_items)]
+#![feature(cmse_nonsecure_entry, no_core, lang_items)]
 #![no_core]
 
 extern crate minicore;
@@ -53,9 +53,7 @@ extern "cmse-nonsecure-entry" fn trait_object(x: &dyn Trait) -> &dyn Trait {
     x
 }
 
-extern "cmse-nonsecure-entry" fn static_trait_object(
-    x: &'static dyn Trait,
-) -> &'static dyn Trait {
+extern "cmse-nonsecure-entry" fn static_trait_object(x: &'static dyn Trait) -> &'static dyn Trait {
     //~^ ERROR return value of `"cmse-nonsecure-entry"` function too large to pass via registers [E0798]
     x
 }
@@ -63,14 +61,7 @@ extern "cmse-nonsecure-entry" fn static_trait_object(
 #[repr(transparent)]
 struct WrapperTransparent<'a>(&'a dyn Trait);
 
-extern "cmse-nonsecure-entry" fn wrapped_trait_object(
-    x: WrapperTransparent,
-) -> WrapperTransparent {
+extern "cmse-nonsecure-entry" fn wrapped_trait_object(x: WrapperTransparent) -> WrapperTransparent {
     //~^ ERROR return value of `"cmse-nonsecure-entry"` function too large to pass via registers [E0798]
     x
-}
-
-extern "cmse-nonsecure-entry" fn c_variadic(_: u32, _: ...) {
-    //~^ ERROR defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
-    //~| ERROR requires `va_list` lang_item
 }

@@ -168,9 +168,7 @@ fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         (&ty::Array(_, len), &ty::Slice(_)) => cx.const_usize(
             len.try_to_target_usize(cx.tcx()).expect("expected monomorphic const in codegen"),
         ),
-        (&ty::Dynamic(data_a, _, src_dyn_kind), &ty::Dynamic(data_b, _, target_dyn_kind))
-            if src_dyn_kind == target_dyn_kind =>
-        {
+        (&ty::Dynamic(data_a, _), &ty::Dynamic(data_b, _)) => {
             let old_info =
                 old_info.expect("unsized_info: missing old info for trait upcasting coercion");
             let b_principal_def_id = data_b.principal_def_id();
@@ -208,7 +206,7 @@ fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 old_info
             }
         }
-        (_, ty::Dynamic(data, _, _)) => meth::get_vtable(
+        (_, ty::Dynamic(data, _)) => meth::get_vtable(
             cx,
             source,
             data.principal()

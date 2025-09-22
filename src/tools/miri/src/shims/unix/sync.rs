@@ -498,14 +498,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     MutexKind::Normal => throw_machine_stop!(TerminationInfo::Deadlock),
                     MutexKind::ErrorCheck => this.eval_libc_i32("EDEADLK"),
                     MutexKind::Recursive => {
-                        this.mutex_lock(&mutex.mutex_ref);
+                        this.mutex_lock(&mutex.mutex_ref)?;
                         0
                     }
                 }
             }
         } else {
             // The mutex is unlocked. Let's lock it.
-            this.mutex_lock(&mutex.mutex_ref);
+            this.mutex_lock(&mutex.mutex_ref)?;
             0
         };
         this.write_scalar(Scalar::from_i32(ret), dest)?;
@@ -525,14 +525,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     MutexKind::Default | MutexKind::Normal | MutexKind::ErrorCheck =>
                         this.eval_libc_i32("EBUSY"),
                     MutexKind::Recursive => {
-                        this.mutex_lock(&mutex.mutex_ref);
+                        this.mutex_lock(&mutex.mutex_ref)?;
                         0
                     }
                 }
             }
         } else {
             // The mutex is unlocked. Let's lock it.
-            this.mutex_lock(&mutex.mutex_ref);
+            this.mutex_lock(&mutex.mutex_ref)?;
             0
         }))
     }
@@ -600,7 +600,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 dest.clone(),
             );
         } else {
-            this.rwlock_reader_lock(&rwlock.rwlock_ref);
+            this.rwlock_reader_lock(&rwlock.rwlock_ref)?;
             this.write_null(dest)?;
         }
 
@@ -615,7 +615,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if rwlock.rwlock_ref.is_write_locked() {
             interp_ok(Scalar::from_i32(this.eval_libc_i32("EBUSY")))
         } else {
-            this.rwlock_reader_lock(&rwlock.rwlock_ref);
+            this.rwlock_reader_lock(&rwlock.rwlock_ref)?;
             interp_ok(Scalar::from_i32(0))
         }
     }
@@ -648,7 +648,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 dest.clone(),
             );
         } else {
-            this.rwlock_writer_lock(&rwlock.rwlock_ref);
+            this.rwlock_writer_lock(&rwlock.rwlock_ref)?;
             this.write_null(dest)?;
         }
 
@@ -663,7 +663,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if rwlock.rwlock_ref.is_locked() {
             interp_ok(Scalar::from_i32(this.eval_libc_i32("EBUSY")))
         } else {
-            this.rwlock_writer_lock(&rwlock.rwlock_ref);
+            this.rwlock_writer_lock(&rwlock.rwlock_ref)?;
             interp_ok(Scalar::from_i32(0))
         }
     }

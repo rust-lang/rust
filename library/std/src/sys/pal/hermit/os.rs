@@ -3,7 +3,7 @@ use crate::ffi::{OsStr, OsString};
 use crate::marker::PhantomData;
 use crate::path::{self, PathBuf};
 use crate::sys::unsupported;
-use crate::{fmt, io, str};
+use crate::{fmt, io};
 
 pub fn errno() -> i32 {
     unsafe { hermit_abi::get_errno() }

@@ -12,7 +12,7 @@ fn main() {
     // Test that we can use addr_of! to get the address of a packed member which according to its
     // type is not aligned, but because it is a projection from a packed type is a valid place.
     let ptr0 = std::ptr::addr_of!(memory[0].tail);
-    let ptr1 = std::ptr::addr_of!(memory[1].tail);
+    let ptr1 = std::ptr::addr_of!(memory[0].tail);
     // Even if ptr0 happens to be aligned by chance, ptr1 is not.
     assert!(!ptr0.is_aligned() || !ptr1.is_aligned());
 

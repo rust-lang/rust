@@ -320,7 +320,7 @@ fn lint_wide_pointer<'tcx>(
         };
 
         (!ty.is_sized(cx.tcx, cx.typing_env()))
-            .then(|| (refs, modifiers, matches!(ty.kind(), ty::Dynamic(_, _, ty::Dyn))))
+            .then(|| (refs, modifiers, matches!(ty.kind(), ty::Dynamic(_, _))))
     };
 
     // the left and right operands can have references, remove any explicit references
@@ -935,7 +935,7 @@ impl<'tcx> LateLintPass<'tcx> for VariantSizeDifferences {
     fn check_item(&mut self, cx: &LateContext<'_>, it: &hir::Item<'_>) {
         if let hir::ItemKind::Enum(_, _, ref enum_definition) = it.kind {
             let t = cx.tcx.type_of(it.owner_id).instantiate_identity();
-            let ty = cx.tcx.erase_regions(t);
+            let ty = cx.tcx.erase_and_anonymize_regions(t);
             let Ok(layout) = cx.layout_of(ty) else { return };
             let Variants::Multiple { tag_encoding: TagEncoding::Direct, tag, variants, .. } =
                 &layout.variants

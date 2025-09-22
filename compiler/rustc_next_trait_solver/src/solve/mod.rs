@@ -24,7 +24,7 @@ mod trait_goals;
 use derive_where::derive_where;
 use rustc_type_ir::inherent::*;
 pub use rustc_type_ir::solve::*;
-use rustc_type_ir::{self as ty, Interner, TypingMode};
+use rustc_type_ir::{self as ty, Interner, TyVid, TypingMode};
 use tracing::instrument;
 
 pub use self::eval_ctxt::{
@@ -119,11 +119,15 @@ where
 
     #[instrument(level = "trace", skip(self))]
     fn compute_subtype_goal(&mut self, goal: Goal<I, ty::SubtypePredicate<I>>) -> QueryResult<I> {
-        if goal.predicate.a.is_ty_var() && goal.predicate.b.is_ty_var() {
-            self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
-        } else {
-            self.sub(goal.param_env, goal.predicate.a, goal.predicate.b)?;
-            self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        match (goal.predicate.a.kind(), goal.predicate.b.kind()) {
+            (ty::Infer(ty::TyVar(a_vid)), ty::Infer(ty::TyVar(b_vid))) => {
+                self.sub_unify_ty_vids_raw(a_vid, b_vid);
+                self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+            }
+            _ => {
+                self.sub(goal.param_env, goal.predicate.a, goal.predicate.b)?;
+                self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+            }
         }
     }
 
@@ -154,9 +158,10 @@ where
         if self.may_use_unstable_feature(param_env, symbol) {
             self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         } else {
-            self.evaluate_added_goals_and_make_canonical_response(Certainty::Maybe(
-                MaybeCause::Ambiguity,
-            ))
+            self.evaluate_added_goals_and_make_canonical_response(Certainty::Maybe {
+                cause: MaybeCause::Ambiguity,
+                opaque_types_jank: OpaqueTypesJank::AllGood,
+            })
         }
     }
 
@@ -274,18 +279,21 @@ where
 
     fn bail_with_ambiguity(&mut self, candidates: &[Candidate<I>]) -> CanonicalResponse<I> {
         debug_assert!(candidates.len() > 1);
-        let maybe_cause =
-            candidates.iter().fold(MaybeCause::Ambiguity, |maybe_cause, candidates| {
-                // Pull down the certainty of `Certainty::Yes` to ambiguity when combining
+        let (cause, opaque_types_jank) = candidates.iter().fold(
+            (MaybeCause::Ambiguity, OpaqueTypesJank::AllGood),
+            |(c, jank), candidates| {
+                // We pull down the certainty of `Certainty::Yes` to ambiguity when combining
                 // these responses, b/c we're combining more than one response and this we
                 // don't know which one applies.
-                let candidate = match candidates.result.value.certainty {
-                    Certainty::Yes => MaybeCause::Ambiguity,
-                    Certainty::Maybe(candidate) => candidate,
-                };
-                maybe_cause.or(candidate)
-            });
-        self.make_ambiguous_response_no_constraints(maybe_cause)
+                match candidates.result.value.certainty {
+                    Certainty::Yes => (c, jank),
+                    Certainty::Maybe { cause, opaque_types_jank } => {
+                        (c.or(cause), jank.or(opaque_types_jank))
+                    }
+                }
+            },
+        );
+        self.make_ambiguous_response_no_constraints(cause, opaque_types_jank)
     }
 
     /// If we fail to merge responses we flounder and return overflow or ambiguity.
@@ -372,25 +380,6 @@ where
     }
 }
 
-fn response_no_constraints_raw<I: Interner>(
-    cx: I,
-    max_universe: ty::UniverseIndex,
-    variables: I::CanonicalVarKinds,
-    certainty: Certainty,
-) -> CanonicalResponse<I> {
-    ty::Canonical {
-        max_universe,
-        variables,
-        value: Response {
-            var_values: ty::CanonicalVarValues::make_identity(cx, variables),
-            // FIXME: maybe we should store the "no response" version in cx, like
-            // we do for cx.types and stuff.
-            external_constraints: cx.mk_external_constraints(ExternalConstraintsData::default()),
-            certainty,
-        },
-    }
-}
-
 /// The result of evaluating a goal.
 pub struct GoalEvaluation<I: Interner> {
     /// The goal we've evaluated. This is the input goal, but potentially with its
@@ -422,6 +411,8 @@ pub struct GoalEvaluation<I: Interner> {
 pub struct GoalStalledOn<I: Interner> {
     pub num_opaques: usize,
     pub stalled_vars: Vec<I::GenericArg>,
-    /// The cause that will be returned on subsequent evaluations if this goal remains stalled.
-    pub stalled_cause: MaybeCause,
+    pub sub_roots: Vec<TyVid>,
+    /// The certainty that will be returned on subsequent evaluations if this
+    /// goal remains stalled.
+    pub stalled_certainty: Certainty,
 }

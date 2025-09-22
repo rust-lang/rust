@@ -3,7 +3,7 @@
 use std::{fmt, panic, sync::Mutex};
 
 use base_db::{
-    Crate, CrateGraphBuilder, CratesMap, FileSourceRootInput, FileText, RootQueryDb,
+    Crate, CrateGraphBuilder, CratesMap, FileSourceRootInput, FileText, Nonce, RootQueryDb,
     SourceDatabase, SourceRoot, SourceRootId, SourceRootInput,
 };
 use hir_expand::{InFile, files::FilePosition};
@@ -20,12 +20,12 @@ use crate::{
 };
 
 #[salsa_macros::db]
-#[derive(Clone)]
 pub(crate) struct TestDB {
     storage: salsa::Storage<Self>,
     files: Arc<base_db::Files>,
     crates_map: Arc<CratesMap>,
     events: Arc<Mutex<Option<Vec<salsa::Event>>>>,
+    nonce: Nonce,
 }
 
 impl Default for TestDB {
@@ -44,12 +44,25 @@ impl Default for TestDB {
             events,
             files: Default::default(),
             crates_map: Default::default(),
+            nonce: Nonce::new(),
         };
         this.set_expand_proc_attr_macros_with_durability(true, Durability::HIGH);
         // This needs to be here otherwise `CrateGraphBuilder` panics.
         this.set_all_crates(Arc::new(Box::new([])));
         CrateGraphBuilder::default().set_in_db(&mut this);
         this
+    }
+}
+
+impl Clone for TestDB {
+    fn clone(&self) -> Self {
+        Self {
+            storage: self.storage.clone(),
+            files: self.files.clone(),
+            crates_map: self.crates_map.clone(),
+            events: self.events.clone(),
+            nonce: Nonce::new(),
+        }
     }
 }
 
@@ -116,6 +129,10 @@ impl SourceDatabase for TestDB {
 
     fn crates_map(&self) -> Arc<CratesMap> {
         self.crates_map.clone()
+    }
+
+    fn nonce_and_revision(&self) -> (Nonce, salsa::Revision) {
+        (self.nonce, salsa::plumbing::ZalsaDatabase::zalsa(self).current_revision())
     }
 }
 

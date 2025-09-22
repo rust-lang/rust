@@ -3037,6 +3037,14 @@ impl Path {
     ///
     /// This is an alias to [`fs::canonicalize`].
     ///
+    /// # Errors
+    ///
+    /// This method will return an error in the following situations, but is not
+    /// limited to just these cases:
+    ///
+    /// * `path` does not exist.
+    /// * A non-final component in path is not a directory.
+    ///
     /// # Examples
     ///
     /// ```no_run

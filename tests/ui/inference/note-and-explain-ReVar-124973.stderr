@@ -1,3 +1,9 @@
+error: functions cannot be both `async` and C-variadic
+  --> $DIR/note-and-explain-ReVar-124973.rs:5:1
+   |
+LL | async unsafe extern "C" fn multiple_named_lifetimes<'a, 'b>(_: u8, ...) {}
+   | ^^^^^ `async` because of this                                      ^^^ C-variadic because of this
+
 error[E0700]: hidden type for `impl Future<Output = ()>` captures lifetime that does not appear in bounds
   --> $DIR/note-and-explain-ReVar-124973.rs:5:73
    |
@@ -8,6 +14,6 @@ LL | async unsafe extern "C" fn multiple_named_lifetimes<'a, 'b>(_: u8, ...) {}
    |
    = note: hidden type `{async fn body of multiple_named_lifetimes<'a, 'b>()}` captures lifetime `'_`
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0700`.

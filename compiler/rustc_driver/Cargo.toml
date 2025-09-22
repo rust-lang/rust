@@ -10,3 +10,8 @@ crate-type = ["dylib"]
 # tidy-alphabetical-start
 rustc_driver_impl = { path = "../rustc_driver_impl" }
 # tidy-alphabetical-end
+
+[build-dependencies]
+# tidy-alphabetical-start
+rustc_windows_rc = { path = "../rustc_windows_rc" }
+# tidy-alphabetical-end

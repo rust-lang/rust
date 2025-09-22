@@ -8,6 +8,7 @@
 // FIXME: +soft-float itself doesn't set -vector
 //@[z13_soft_float] compile-flags: --target s390x-unknown-linux-gnu -C target-cpu=z13 -C target-feature=-vector,+soft-float
 //@[z13_soft_float] needs-llvm-components: systemz
+//[z13_soft_float]~? WARN must be disabled to ensure that the ABI of the current target can be implemented correctly
 
 #![feature(no_core, repr_simd, s390x_target_feature)]
 #![no_core]

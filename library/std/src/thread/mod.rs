@@ -550,7 +550,7 @@ impl Builder {
             }
 
             if let Some(name) = their_thread.cname() {
-                imp::Thread::set_name(name);
+                imp::set_name(name);
             }
 
             let f = f.into_inner();
@@ -763,7 +763,7 @@ where
 /// [`Mutex`]: crate::sync::Mutex
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn yield_now() {
-    imp::Thread::yield_now()
+    imp::yield_now()
 }
 
 /// Determines whether the current thread is unwinding because of panic.
@@ -884,7 +884,7 @@ pub fn sleep_ms(ms: u32) {
 /// ```
 #[stable(feature = "thread_sleep", since = "1.4.0")]
 pub fn sleep(dur: Duration) {
-    imp::Thread::sleep(dur)
+    imp::sleep(dur)
 }
 
 /// Puts the current thread to sleep until the specified deadline has passed.
@@ -983,7 +983,7 @@ pub fn sleep(dur: Duration) {
 /// ```
 #[unstable(feature = "thread_sleep_until", issue = "113752")]
 pub fn sleep_until(deadline: Instant) {
-    imp::Thread::sleep_until(deadline)
+    imp::sleep_until(deadline)
 }
 
 /// Used to ensure that `park` and `park_timeout` do not unwind, as that can
@@ -1021,13 +1021,23 @@ impl Drop for PanicGuard {
 ///   specifying a maximum time to block the thread for.
 ///
 /// * The [`unpark`] method on a [`Thread`] atomically makes the token available
-///   if it wasn't already. Because the token is initially absent, [`unpark`]
-///   followed by [`park`] will result in the second call returning immediately.
+///   if it wasn't already. Because the token can be held by a thread even if it is currently not
+///   parked, [`unpark`] followed by [`park`] will result in the second call returning immediately.
+///   However, note that to rely on this guarantee, you need to make sure that your `unpark` happens
+///   after all `park` that may be done by other data structures!
 ///
-/// The API is typically used by acquiring a handle to the current thread,
-/// placing that handle in a shared data structure so that other threads can
-/// find it, and then `park`ing in a loop. When some desired condition is met, another
-/// thread calls [`unpark`] on the handle.
+/// The API is typically used by acquiring a handle to the current thread, placing that handle in a
+/// shared data structure so that other threads can find it, and then `park`ing in a loop. When some
+/// desired condition is met, another thread calls [`unpark`] on the handle. The last bullet point
+/// above guarantees that even if the `unpark` occurs before the thread is finished `park`ing, it
+/// will be woken up properly.
+///
+/// Note that the coordination via the shared data structure is crucial: If you `unpark` a thread
+/// without first establishing that it is about to be `park`ing within your code, that `unpark` may
+/// get consumed by a *different* `park` in the same thread, leading to a deadlock. This also means
+/// you must not call unknown code between setting up for parking and calling `park`; for instance,
+/// if you invoke `println!`, that may itself call `park` and thus consume your `unpark` and cause a
+/// deadlock.
 ///
 /// The motivation for this design is twofold:
 ///
@@ -1058,21 +1068,24 @@ impl Drop for PanicGuard {
 ///
 /// ```
 /// use std::thread;
-/// use std::sync::{Arc, atomic::{Ordering, AtomicBool}};
+/// use std::sync::atomic::{Ordering, AtomicBool};
 /// use std::time::Duration;
 ///
-/// let flag = Arc::new(AtomicBool::new(false));
-/// let flag2 = Arc::clone(&flag);
+/// static QUEUED: AtomicBool = AtomicBool::new(false);
+/// static FLAG: AtomicBool = AtomicBool::new(false);
 ///
 /// let parked_thread = thread::spawn(move || {
+///     println!("Thread spawned");
+///     // Signal that we are going to `park`. Between this store and our `park`, there may
+///     // be no other `park`, or else that `park` could consume our `unpark` token!
+///     QUEUED.store(true, Ordering::Release);
 ///     // We want to wait until the flag is set. We *could* just spin, but using
 ///     // park/unpark is more efficient.
-///     while !flag2.load(Ordering::Relaxed) {
-///         println!("Parking thread");
+///     while !FLAG.load(Ordering::Acquire) {
+///         // We can *not* use `println!` here since that could use thread parking internally.
 ///         thread::park();
 ///         // We *could* get here spuriously, i.e., way before the 10ms below are over!
 ///         // But that is no problem, we are in a loop until the flag is set anyway.
-///         println!("Thread unparked");
 ///     }
 ///     println!("Flag received");
 /// });
@@ -1080,11 +1093,22 @@ impl Drop for PanicGuard {
 /// // Let some time pass for the thread to be spawned.
 /// thread::sleep(Duration::from_millis(10));
 ///
+/// // Ensure the thread is about to park.
+/// // This is crucial! It guarantees that the `unpark` below is not consumed
+/// // by some other code in the parked thread (e.g. inside `println!`).
+/// while !QUEUED.load(Ordering::Acquire) {
+///     // Spinning is of course inefficient; in practice, this would more likely be
+///     // a dequeue where we have no work to do if there's nobody queued.
+///     std::hint::spin_loop();
+/// }
+///
 /// // Set the flag, and let the thread wake up.
-/// // There is no race condition here, if `unpark`
+/// // There is no race condition here: if `unpark`
 /// // happens first, `park` will return immediately.
+/// // There is also no other `park` that could consume this token,
+/// // since we waited until the other thread got queued.
 /// // Hence there is no risk of a deadlock.
-/// flag.store(true, Ordering::Relaxed);
+/// FLAG.store(true, Ordering::Release);
 /// println!("Unpark the thread");
 /// parked_thread.thread().unpark();
 ///
@@ -1494,10 +1518,14 @@ impl Thread {
     /// ```
     /// use std::thread;
     /// use std::time::Duration;
+    /// use std::sync::atomic::{AtomicBool, Ordering};
+    ///
+    /// static QUEUED: AtomicBool = AtomicBool::new(false);
     ///
     /// let parked_thread = thread::Builder::new()
     ///     .spawn(|| {
     ///         println!("Parking thread");
+    ///         QUEUED.store(true, Ordering::Release);
     ///         thread::park();
     ///         println!("Thread unparked");
     ///     })
@@ -1505,6 +1533,15 @@ impl Thread {
     ///
     /// // Let some time pass for the thread to be spawned.
     /// thread::sleep(Duration::from_millis(10));
+    ///
+    /// // Wait until the other thread is queued.
+    /// // This is crucial! It guarantees that the `unpark` below is not consumed
+    /// // by some other code in the parked thread (e.g. inside `println!`).
+    /// while !QUEUED.load(Ordering::Acquire) {
+    ///     // Spinning is of course inefficient; in practice, this would more likely be
+    ///     // a dequeue where we have no work to do if there's nobody queued.
+    ///     std::hint::spin_loop();
+    /// }
     ///
     /// println!("Unpark the thread");
     /// parked_thread.thread().unpark();

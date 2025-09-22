@@ -109,7 +109,6 @@ pub use self::typeck_results::{
     CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, IsIdentity,
     Rust2024IncompatiblePatInfo, TypeckResults, UserType, UserTypeAnnotationIndex, UserTypeKind,
 };
-pub use self::visit::*;
 use crate::error::{OpaqueHiddenTypeMismatch, TypeMismatchReason};
 use crate::metadata::ModChild;
 use crate::middle::privacy::EffectiveVisibilities;
@@ -253,12 +252,6 @@ pub struct ImplTraitHeader<'tcx> {
     pub polarity: ImplPolarity,
     pub safety: hir::Safety,
     pub constness: hir::Constness,
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Debug, TypeFoldable, TypeVisitable)]
-pub enum ImplSubject<'tcx> {
-    Trait(TraitRef<'tcx>),
-    Inherent(Ty<'tcx>),
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable, Debug)]
@@ -1935,6 +1928,11 @@ impl<'tcx> TyCtxt<'tcx> {
         Some((parent, def_kind))
     }
 
+    /// Returns the trait item that is implemented by the given item `DefId`.
+    pub fn trait_item_of(self, def_id: impl IntoQueryParam<DefId>) -> Option<DefId> {
+        self.opt_associated_item(def_id.into_query_param())?.trait_item_def_id()
+    }
+
     /// If the given `DefId` is an associated item of a trait,
     /// returns the `DefId` of the trait; otherwise, returns `None`.
     pub fn trait_of_assoc(self, def_id: DefId) -> Option<DefId> {
@@ -2150,17 +2148,12 @@ impl<'tcx> TyCtxt<'tcx> {
         let Some(item) = self.opt_associated_item(def_id) else {
             return false;
         };
-        if item.container != ty::AssocItemContainer::Impl {
-            return false;
-        }
 
-        let Some(trait_item_def_id) = item.trait_item_def_id else {
+        let AssocContainer::TraitImpl(Ok(trait_item_def_id)) = item.container else {
             return false;
         };
 
-        return !self
-            .associated_types_for_impl_traits_in_associated_fn(trait_item_def_id)
-            .is_empty();
+        !self.associated_types_for_impl_traits_in_associated_fn(trait_item_def_id).is_empty()
     }
 }
 

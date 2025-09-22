@@ -2261,7 +2261,7 @@ function loadDatabase(hooks) {
             this.hashes = hashes;
             this.emptyset = emptyset;
             this.name = name;
-            /** @type {{"hash": Uint8Array, "data": Promise<Uint8Array[]>?, "end": number}[]} */
+            /** @type {{"hash": Uint8Array, "data": Uint8Array[]?, "end": number}[]} */
             this.buckets = [];
             this.bucket_keys = [];
             const l = counts.length;
@@ -2295,64 +2295,75 @@ function loadDatabase(hooks) {
         /**
          * Look up a cell by row ID.
          * @param {number} id
-         * @returns {Promise<Uint8Array|undefined>}
+         * @returns {Promise<Uint8Array>|Uint8Array|undefined}
          */
-        async at(id) {
+        at(id) {
             if (this.emptyset.contains(id)) {
-                return Promise.resolve(EMPTY_UINT8);
+                return EMPTY_UINT8;
             } else {
                 let idx = -1;
                 while (this.bucket_keys[idx + 1] <= id) {
                     idx += 1;
                 }
                 if (idx === -1 || idx >= this.bucket_keys.length) {
-                    return Promise.resolve(undefined);
+                    return undefined;
                 } else {
                     const start = this.bucket_keys[idx];
-                    const {hash, end} = this.buckets[idx];
-                    let data = this.buckets[idx].data;
+                    const bucket = this.buckets[idx];
+                    const data = this.buckets[idx].data;
                     if (data === null) {
-                        const dataSansEmptysetOrig = await registry.dataLoadByNameAndHash(
-                            this.name,
-                            hash,
-                        );
-                        // After the `await` resolves, another task might fill
-                        // in the data. If so, we should use that.
-                        data = this.buckets[idx].data;
-                        if (data !== null) {
-                            return (await data)[id - start];
-                        }
-                        const dataSansEmptyset = [...dataSansEmptysetOrig];
-                        /** @type {(Uint8Array[])|null} */
-                        let dataWithEmptyset = null;
-                        let pos = start;
-                        let insertCount = 0;
-                        while (pos < end) {
-                            if (this.emptyset.contains(pos)) {
-                                if (dataWithEmptyset === null) {
-                                    dataWithEmptyset = dataSansEmptyset.splice(0, insertCount);
-                                } else if (insertCount !== 0) {
-                                    dataWithEmptyset.push(
-                                        ...dataSansEmptyset.splice(0, insertCount),
-                                    );
-                                }
-                                insertCount = 0;
-                                dataWithEmptyset.push(EMPTY_UINT8);
-                            } else {
-                                insertCount += 1;
-                            }
-                            pos += 1;
-                        }
-                        data = Promise.resolve(
-                            dataWithEmptyset === null ?
-                                dataSansEmptyset :
-                                dataWithEmptyset.concat(dataSansEmptyset),
-                        );
-                        this.buckets[idx].data = data;
+                        return this.atAsyncFetch(id, start, bucket);
+                    } else {
+                        return data[id - start];
                     }
-                    return (await data)[id - start];
                 }
             }
+        }
+        /**
+         * Look up a cell by row ID.
+         * @param {number} id
+         * @param {number} start
+         * @param {{hash: Uint8Array, data: Uint8Array[] | null, end: number}} bucket
+         * @returns {Promise<Uint8Array>}
+         */
+        async atAsyncFetch(id, start, bucket) {
+            const {hash, end} = bucket;
+            const dataSansEmptysetOrig = await registry.dataLoadByNameAndHash(
+                this.name,
+                hash,
+            );
+            // After the `await` resolves, another task might fill
+            // in the data. If so, we should use that.
+            let data = bucket.data;
+            if (data !== null) {
+                return data[id - start];
+            }
+            const dataSansEmptyset = [...dataSansEmptysetOrig];
+            /** @type {(Uint8Array[])|null} */
+            let dataWithEmptyset = null;
+            let pos = start;
+            let insertCount = 0;
+            while (pos < end) {
+                if (this.emptyset.contains(pos)) {
+                    if (dataWithEmptyset === null) {
+                        dataWithEmptyset = dataSansEmptyset.splice(0, insertCount);
+                    } else if (insertCount !== 0) {
+                        dataWithEmptyset.push(
+                            ...dataSansEmptyset.splice(0, insertCount),
+                        );
+                    }
+                    insertCount = 0;
+                    dataWithEmptyset.push(EMPTY_UINT8);
+                } else {
+                    insertCount += 1;
+                }
+                pos += 1;
+            }
+            data = dataWithEmptyset === null ?
+                dataSansEmptyset :
+                dataWithEmptyset.concat(dataSansEmptyset);
+            bucket.data = data;
+            return data[id - start];
         }
         /**
          * Search by exact substring

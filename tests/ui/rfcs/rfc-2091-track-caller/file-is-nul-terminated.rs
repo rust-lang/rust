@@ -1,5 +1,4 @@
 //@ run-pass
-#![feature(file_with_nul)]
 
 #[track_caller]
 const fn assert_file_has_trailing_zero() {

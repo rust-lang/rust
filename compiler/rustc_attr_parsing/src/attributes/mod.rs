@@ -12,15 +12,11 @@
 //! - [`CombineAttributeParser`](crate::attributes::CombineAttributeParser): makes it easy to implement an attribute which should combine the
 //! contents of attributes, if an attribute appear multiple times in a list
 //!
-//! By default, attributes are allowed anywhere. When adding an attribute that should only be used
-//! at the crate root, consider setting the `TYPE` in the parser trait to
-//! [`AttributeType::CrateLevel`](rustc_feature::AttributeType::CrateLevel).
-//!
 //! Attributes should be added to `crate::context::ATTRIBUTE_PARSERS` to be parsed.
 
 use std::marker::PhantomData;
 
-use rustc_feature::{AttributeTemplate, AttributeType, template};
+use rustc_feature::{AttributeTemplate, template};
 use rustc_hir::attrs::AttributeKind;
 use rustc_span::{Span, Symbol};
 use thin_vec::ThinVec;
@@ -89,10 +85,7 @@ pub(crate) trait AttributeParser<S: Stage>: Default + 'static {
     ///
     /// If an attribute has this symbol, the `accept` function will be called on it.
     const ATTRIBUTES: AcceptMapping<Self, S>;
-
     const ALLOWED_TARGETS: AllowedTargets;
-
-    const TYPE: AttributeType = AttributeType::Normal;
 
     /// The parser has gotten a chance to accept the attributes on an item,
     /// here it can produce an attribute.
@@ -134,8 +127,6 @@ pub(crate) trait SingleAttributeParser<S: Stage>: 'static {
 
     /// The template this attribute parser should implement. Used for diagnostics.
     const TEMPLATE: AttributeTemplate;
-
-    const TYPE: AttributeType = AttributeType::Normal;
 
     /// Converts a single syntactical attribute to a single semantic attribute, or [`AttributeKind`]
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind>;
@@ -182,8 +173,6 @@ impl<T: SingleAttributeParser<S>, S: Stage> AttributeParser<S> for Single<T, S> 
         },
     )];
     const ALLOWED_TARGETS: AllowedTargets = T::ALLOWED_TARGETS;
-
-    const TYPE: AttributeType = T::TYPE;
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         Some(self.1?.0)
@@ -269,7 +258,6 @@ pub(crate) trait NoArgsAttributeParser<S: Stage>: 'static {
     const PATH: &[Symbol];
     const ON_DUPLICATE: OnDuplicate<S>;
     const ALLOWED_TARGETS: AllowedTargets;
-    const TYPE: AttributeType = AttributeType::Normal;
 
     /// Create the [`AttributeKind`] given attribute's [`Span`].
     const CREATE: fn(Span) -> AttributeKind;
@@ -289,7 +277,6 @@ impl<T: NoArgsAttributeParser<S>, S: Stage> SingleAttributeParser<S> for Without
     const ON_DUPLICATE: OnDuplicate<S> = T::ON_DUPLICATE;
     const ALLOWED_TARGETS: AllowedTargets = T::ALLOWED_TARGETS;
     const TEMPLATE: AttributeTemplate = template!(Word);
-    const TYPE: AttributeType = T::TYPE;
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         if let Err(span) = args.no_args() {
@@ -322,8 +309,6 @@ pub(crate) trait CombineAttributeParser<S: Stage>: 'static {
 
     /// The template this attribute parser should implement. Used for diagnostics.
     const TEMPLATE: AttributeTemplate;
-
-    const TYPE: AttributeType = AttributeType::Normal;
 
     /// Converts a single syntactical attribute to a number of elements of the semantic attribute, or [`AttributeKind`]
     fn extend<'c>(
@@ -360,7 +345,6 @@ impl<T: CombineAttributeParser<S>, S: Stage> AttributeParser<S> for Combine<T, S
             group.items.extend(T::extend(cx, args))
         })];
     const ALLOWED_TARGETS: AllowedTargets = T::ALLOWED_TARGETS;
-    const TYPE: AttributeType = T::TYPE;
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         if let Some(first_span) = self.first_span {

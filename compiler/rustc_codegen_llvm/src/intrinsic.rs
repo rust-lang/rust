@@ -1208,7 +1208,8 @@ fn codegen_autodiff<'ll, 'tcx>(
 
     adjust_activity_to_abi(
         tcx,
-        fn_source.ty(tcx, TypingEnv::fully_monomorphized()),
+        fn_source,
+        TypingEnv::fully_monomorphized(),
         &mut diff_attrs.input_activity,
     );
 

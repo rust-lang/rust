@@ -84,9 +84,9 @@ pub struct Response {
     // request id. We fail deserialization in that case, so we just
     // make this field mandatory.
     pub id: RequestId,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub result: Option<serde_json::Value>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub error: Option<ResponseError>,
 }
 
@@ -94,7 +94,7 @@ pub struct Response {
 pub struct ResponseError {
     pub code: i32,
     pub message: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub data: Option<serde_json::Value>,
 }
 
@@ -175,7 +175,7 @@ impl Message {
         let msg = match serde_json::from_str(&text) {
             Ok(msg) => msg,
             Err(e) => {
-                return Err(invalid_data!("malformed LSP payload: {:?}", e));
+                return Err(invalid_data!("malformed LSP payload `{e:?}`: {text:?}"));
             }
         };
 

@@ -13,9 +13,8 @@ use rustc_errors::LintBuffer;
 use rustc_metadata::{DylibError, load_symbol_from_dylib};
 use rustc_middle::ty::CurrentGcx;
 use rustc_session::config::{Cfg, OutFileName, OutputFilenames, OutputTypes, Sysroot, host_tuple};
-use rustc_session::lint::{self, BuiltinLintDiag};
 use rustc_session::output::{CRATE_TYPES, categorize_crate_type};
-use rustc_session::{EarlyDiagCtxt, Session, filesearch};
+use rustc_session::{EarlyDiagCtxt, Session, filesearch, lint};
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMapInputs;
@@ -244,7 +243,7 @@ pub(crate) fn run_in_thread_pool_with_globals<
                                 let query_map = rustc_span::set_session_globals_then(unsafe { &*(session_globals as *const SessionGlobals) }, || {
                                     // Ensure there was no errors collecting all active jobs.
                                     // We need the complete map to ensure we find a cycle to break.
-                                    QueryCtxt::new(tcx).collect_active_jobs().ok().expect("failed to collect active queries in deadlock handler")
+                                    QueryCtxt::new(tcx).collect_active_jobs().expect("failed to collect active queries in deadlock handler")
                                 });
                                 break_query_cycles(query_map, &registry);
                             })
@@ -468,7 +467,10 @@ pub(crate) fn check_attr_crate_type(
                         lint::builtin::UNKNOWN_CRATE_TYPES,
                         ast::CRATE_NODE_ID,
                         span,
-                        BuiltinLintDiag::UnknownCrateTypes { span, candidate },
+                        errors::UnknownCrateTypes {
+                            sugg: candidate
+                                .map(|cand| errors::UnknownCrateTypesSub { span, snippet: cand }),
+                        },
                     );
                 }
             } else {
@@ -559,7 +561,7 @@ pub fn build_output_filenames(attrs: &[ast::Attribute], sess: &Session) -> Outpu
                 }
                 Some(out_file.clone())
             };
-            if sess.io.output_dir != None {
+            if sess.io.output_dir.is_some() {
                 sess.dcx().emit_warn(errors::IgnoringOutDir);
             }
 

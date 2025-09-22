@@ -349,7 +349,7 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         let file_metadata = file_metadata(self, &loc.file);
 
         let function_type_metadata =
-            create_subroutine_type(self, get_function_signature(self, fn_abi));
+            create_subroutine_type(self, &get_function_signature(self, fn_abi));
 
         let mut name = String::with_capacity(64);
         type_names::push_item_name(tcx, def_id, false, &mut name);
@@ -441,9 +441,9 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         fn get_function_signature<'ll, 'tcx>(
             cx: &CodegenCx<'ll, 'tcx>,
             fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
-        ) -> &'ll DIArray {
+        ) -> Vec<Option<&'ll llvm::Metadata>> {
             if cx.sess().opts.debuginfo != DebugInfo::Full {
-                return create_DIArray(DIB(cx), &[]);
+                return vec![];
             }
 
             let mut signature = Vec::with_capacity(fn_abi.args.len() + 1);
@@ -484,7 +484,7 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                     .extend(fn_abi.args.iter().map(|arg| Some(type_di_node(cx, arg.layout.ty))));
             }
 
-            create_DIArray(DIB(cx), &signature[..])
+            signature
         }
 
         fn get_template_parameters<'ll, 'tcx>(

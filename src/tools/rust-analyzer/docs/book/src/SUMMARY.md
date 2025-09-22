@@ -23,3 +23,4 @@
   - [Setup](contributing/setup.md)
   - [Style](contributing/style.md)
   - [Syntax](contributing/syntax.md)
+  - [Writing Tests](contributing/testing.md)

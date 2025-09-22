@@ -1057,6 +1057,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                     Some(LangItem::PointeeTrait) => {
                         let tail = selcx.tcx().struct_tail_raw(
                             self_ty,
+                            &obligation.cause,
                             |ty| {
                                 // We throw away any obligations we get from this, since we normalize
                                 // and confirm these obligations once again during confirmation

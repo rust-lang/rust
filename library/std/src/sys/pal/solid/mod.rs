@@ -10,10 +10,8 @@ pub mod itron {
     pub mod error;
     pub mod spin;
     pub mod task;
-    pub mod thread;
     pub mod thread_parking;
     pub mod time;
-    use super::unsupported;
 }
 
 // `error` is `pub(crate)` so that it can be accessed by `itron/error.rs` as
@@ -22,7 +20,7 @@ pub(crate) mod error;
 pub mod os;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;
-pub use self::itron::{thread, thread_parking};
+pub use self::itron::thread_parking;
 pub mod time;
 
 // SAFETY: must be called only once during runtime initialization.

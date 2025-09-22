@@ -33,7 +33,7 @@ use crate::ascii::Char as AsciiChar;
 /// }
 /// ```
 ///
-/// Now, you get all of the default values. Rust implements `Default` for various primitives types.
+/// Now, you get all of the default values. Rust implements `Default` for various primitive types.
 ///
 /// If you want to override a particular option, but still retain the other defaults:
 ///

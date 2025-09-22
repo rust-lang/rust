@@ -189,6 +189,10 @@ parse_dotdotdot = unexpected token: `...`
 parse_dotdotdot_rest_pattern = unexpected `...`
     .label = not a valid pattern
     .suggestion = for a rest pattern, use `..` instead of `...`
+    .note = only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+parse_dotdotdot_rest_type = unexpected `...`
+    .note = only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
 
 parse_double_colon_in_bound = expected `:` followed by trait or lifetime
     .suggestion = use single colon
@@ -479,9 +483,6 @@ parse_invalid_identifier_with_leading_number = identifiers cannot start with a n
 
 parse_invalid_literal_suffix_on_tuple_index = suffixes on a tuple index are invalid
     .label = invalid suffix `{$suffix}`
-    .tuple_exception_line_1 = `{$suffix}` is *temporarily* accepted on tuple index fields as it was incorrectly accepted on stable for a few releases
-    .tuple_exception_line_2 = on proc macros, you'll want to use `syn::Index::from` or `proc_macro::Literal::*_unsuffixed` for code that will desugar to tuple field access
-    .tuple_exception_line_3 = see issue #60210 <https://github.com/rust-lang/rust/issues/60210> for more information
 
 parse_invalid_logical_operator = `{$incorrect}` is not a logical operator
     .note = unlike in e.g., Python and PHP, `&&` and `||` are used for logical operators

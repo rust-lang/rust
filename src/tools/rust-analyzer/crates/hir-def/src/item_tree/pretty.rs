@@ -8,7 +8,7 @@ use crate::{
     item_tree::{
         Const, DefDatabase, Enum, ExternBlock, ExternCrate, FieldsShape, Function, Impl, ItemTree,
         Macro2, MacroCall, MacroRules, Mod, ModItemId, ModKind, RawAttrs, RawVisibilityId, Static,
-        Struct, Trait, TraitAlias, TypeAlias, Union, Use, UseTree, UseTreeKind,
+        Struct, Trait, TypeAlias, Union, Use, UseTree, UseTreeKind,
     },
     visibility::RawVisibility,
 };
@@ -249,12 +249,6 @@ impl Printer<'_> {
                 self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
                 w!(self, "trait {} {{ ... }}", name.display(self.db, self.edition));
-            }
-            ModItemId::TraitAlias(ast_id) => {
-                let TraitAlias { name, visibility } = &self.tree[ast_id];
-                self.print_ast_id(ast_id.erase());
-                self.print_visibility(*visibility);
-                wln!(self, "trait {} = ..;", name.display(self.db, self.edition));
             }
             ModItemId::Impl(ast_id) => {
                 let Impl {} = &self.tree[ast_id];

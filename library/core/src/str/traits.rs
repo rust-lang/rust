@@ -32,7 +32,8 @@ impl const PartialEq for str {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl Eq for str {}
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+impl const Eq for str {}
 
 /// Implements comparison operations on strings.
 ///
@@ -677,11 +678,11 @@ unsafe impl const SliceIndex<str> for range::RangeInclusive<usize> {
     type Output = str;
     #[inline]
     fn get(self, slice: &str) -> Option<&Self::Output> {
-        if self.end == usize::MAX { None } else { self.into_slice_range().get(slice) }
+        if self.last == usize::MAX { None } else { self.into_slice_range().get(slice) }
     }
     #[inline]
     fn get_mut(self, slice: &mut str) -> Option<&mut Self::Output> {
-        if self.end == usize::MAX { None } else { self.into_slice_range().get_mut(slice) }
+        if self.last == usize::MAX { None } else { self.into_slice_range().get_mut(slice) }
     }
     #[inline]
     unsafe fn get_unchecked(self, slice: *const str) -> *const Self::Output {
@@ -695,14 +696,14 @@ unsafe impl const SliceIndex<str> for range::RangeInclusive<usize> {
     }
     #[inline]
     fn index(self, slice: &str) -> &Self::Output {
-        if self.end == usize::MAX {
+        if self.last == usize::MAX {
             str_index_overflow_fail();
         }
         self.into_slice_range().index(slice)
     }
     #[inline]
     fn index_mut(self, slice: &mut str) -> &mut Self::Output {
-        if self.end == usize::MAX {
+        if self.last == usize::MAX {
             str_index_overflow_fail();
         }
         self.into_slice_range().index_mut(slice)

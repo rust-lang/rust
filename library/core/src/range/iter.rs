@@ -164,7 +164,7 @@ impl<A: Step> IterRangeInclusive<A> {
             return None;
         }
 
-        Some(RangeInclusive { start: self.0.start, end: self.0.end })
+        Some(RangeInclusive { start: self.0.start, last: self.0.end })
     }
 }
 

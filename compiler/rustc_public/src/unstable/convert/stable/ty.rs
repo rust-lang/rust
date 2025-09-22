@@ -48,16 +48,6 @@ impl<'tcx> Stable<'tcx> for ty::AliasTerm<'tcx> {
     }
 }
 
-impl<'tcx> Stable<'tcx> for ty::DynKind {
-    type T = crate::ty::DynKind;
-
-    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &CompilerCtxt<'_, BridgeTys>) -> Self::T {
-        match self {
-            ty::Dyn => crate::ty::DynKind::Dyn,
-        }
-    }
-}
-
 impl<'tcx> Stable<'tcx> for ty::ExistentialPredicate<'tcx> {
     type T = crate::ty::ExistentialPredicate;
 
@@ -439,16 +429,13 @@ impl<'tcx> Stable<'tcx> for ty::TyKind<'tcx> {
             }
             // FIXME(unsafe_binders):
             ty::UnsafeBinder(_) => todo!(),
-            ty::Dynamic(existential_predicates, region, dyn_kind) => {
-                TyKind::RigidTy(RigidTy::Dynamic(
-                    existential_predicates
-                        .iter()
-                        .map(|existential_predicate| existential_predicate.stable(tables, cx))
-                        .collect(),
-                    region.stable(tables, cx),
-                    dyn_kind.stable(tables, cx),
-                ))
-            }
+            ty::Dynamic(existential_predicates, region) => TyKind::RigidTy(RigidTy::Dynamic(
+                existential_predicates
+                    .iter()
+                    .map(|existential_predicate| existential_predicate.stable(tables, cx))
+                    .collect(),
+                region.stable(tables, cx),
+            )),
             ty::Closure(def_id, generic_args) => TyKind::RigidTy(RigidTy::Closure(
                 tables.closure_def(*def_id),
                 generic_args.stable(tables, cx),
@@ -1076,14 +1063,21 @@ impl<'tcx> Stable<'tcx> for ty::AssocKind {
     }
 }
 
-impl<'tcx> Stable<'tcx> for ty::AssocItemContainer {
-    type T = crate::ty::AssocItemContainer;
+impl<'tcx> Stable<'tcx> for ty::AssocContainer {
+    type T = crate::ty::AssocContainer;
 
-    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &CompilerCtxt<'_, BridgeTys>) -> Self::T {
-        use crate::ty::AssocItemContainer;
+    fn stable(
+        &self,
+        tables: &mut Tables<'_, BridgeTys>,
+        _: &CompilerCtxt<'_, BridgeTys>,
+    ) -> Self::T {
+        use crate::ty::AssocContainer;
         match self {
-            ty::AssocItemContainer::Trait => AssocItemContainer::Trait,
-            ty::AssocItemContainer::Impl => AssocItemContainer::Impl,
+            ty::AssocContainer::Trait => AssocContainer::Trait,
+            ty::AssocContainer::InherentImpl => AssocContainer::InherentImpl,
+            ty::AssocContainer::TraitImpl(trait_item_id) => {
+                AssocContainer::TraitImpl(tables.assoc_def(trait_item_id.unwrap()))
+            }
         }
     }
 }
@@ -1100,7 +1094,6 @@ impl<'tcx> Stable<'tcx> for ty::AssocItem {
             def_id: tables.assoc_def(self.def_id),
             kind: self.kind.stable(tables, cx),
             container: self.container.stable(tables, cx),
-            trait_item_def_id: self.trait_item_def_id.map(|did| tables.assoc_def(did)),
         }
     }
 }

@@ -192,3 +192,85 @@ mod issue13923 {
         x.b
     }
 }
+
+fn issue15666_original() {
+    struct UnitVariantAccess<'a, 'b, 's>(&'a &'b &'s ());
+
+    trait Trait<'de> {}
+
+    //~v elidable_lifetime_names
+    impl<'de, 'a, 's> Trait<'de> for UnitVariantAccess<'a, 'de, 's> {}
+    //        ^^  ^^                                   ^^       ^^
+}
+
+#[allow(clippy::upper_case_acronyms)]
+fn issue15666() {
+    struct S1<'a>(&'a ());
+    struct S2<'a, 'b>(&'a &'b ());
+    struct S3<'a, 'b, 'c>(&'a &'b &'c ());
+
+    trait T {}
+    trait TA<'a> {}
+    trait TB<'b> {}
+    trait TC<'c> {}
+    trait TAB<'a, 'b> {}
+    trait TAC<'a, 'c> {}
+    trait TBC<'b, 'c> {}
+    trait TABC<'a, 'b, 'c> {}
+
+    // 1 lifetime
+
+    impl<'a> TA<'a> for S1<'a> {}
+
+    //~v elidable_lifetime_names
+    impl<'a> T for S1<'a> {}
+    //   ^^
+
+    // 2 lifetimes
+
+    impl<'a, 'b> TAB<'a, 'b> for S2<'a, 'b> {}
+
+    //~v elidable_lifetime_names
+    impl<'a, 'b> TA<'a> for S2<'a, 'b> {}
+    //       ^^
+
+    //~v elidable_lifetime_names
+    impl<'a, 'b> TB<'b> for S2<'a, 'b> {}
+    //   ^^
+
+    //~v elidable_lifetime_names
+    impl<'a, 'b> T for S2<'a, 'b> {}
+    //   ^^  ^^
+
+    // 3 lifetimes
+
+    impl<'a, 'b, 'c> TABC<'a, 'b, 'c> for S3<'a, 'b, 'c> {}
+
+    //~v elidable_lifetime_names
+    impl<'a, 'b, 'c> TAB<'a, 'b> for S3<'a, 'b, 'c> {}
+    //           ^^
+
+    //~v elidable_lifetime_names
+    impl<'a, 'b, 'c> TAC<'a, 'c> for S3<'a, 'b, 'c> {}
+    //       ^^
+
+    //~v elidable_lifetime_names
+    impl<'a, 'b, 'c> TA<'a> for S3<'a, 'b, 'c> {}
+    //       ^^  ^^
+
+    //~v elidable_lifetime_names
+    impl<'a, 'b, 'c> TBC<'b, 'c> for S3<'a, 'b, 'c> {}
+    //   ^^
+
+    //~v elidable_lifetime_names
+    impl<'a, 'b, 'c> TB<'b> for S3<'a, 'b, 'c> {}
+    //   ^^      ^^
+
+    //~v elidable_lifetime_names
+    impl<'a, 'b, 'c> TC<'c> for S3<'a, 'b, 'c> {}
+    //   ^^  ^^
+
+    //~v elidable_lifetime_names
+    impl<'a, 'b, 'c> T for S3<'a, 'b, 'c> {}
+    //   ^^  ^^  ^^
+}

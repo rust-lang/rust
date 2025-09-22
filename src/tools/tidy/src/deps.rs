@@ -9,6 +9,8 @@ use build_helper::ci::CiEnv;
 use cargo_metadata::semver::Version;
 use cargo_metadata::{Metadata, Package, PackageId};
 
+use crate::diagnostics::{DiagCtx, RunningCheck};
+
 #[path = "../../../bootstrap/src/utils/proc_macro_deps.rs"]
 mod proc_macro_deps;
 
@@ -48,40 +50,116 @@ const LICENSES: &[&str] = &[
 
 type ExceptionList = &'static [(&'static str, &'static str)];
 
+#[derive(Clone, Copy)]
+pub(crate) struct WorkspaceInfo<'a> {
+    /// Path to the directory containing the workspace root Cargo.toml file.
+    pub(crate) path: &'a str,
+    /// The list of license exceptions.
+    pub(crate) exceptions: ExceptionList,
+    /// Optionally:
+    /// * A list of crates for which dependencies need to be explicitly allowed.
+    /// * The list of allowed dependencies.
+    /// * The source code location of the allowed dependencies list
+    crates_and_deps: Option<(&'a [&'a str], &'a [&'a str], ListLocation)>,
+    /// Submodules required for the workspace
+    pub(crate) submodules: &'a [&'a str],
+}
+
 /// The workspaces to check for licensing and optionally permitted dependencies.
-///
-/// Each entry consists of a tuple with the following elements:
-///
-/// * The path to the workspace root Cargo.toml file.
-/// * The list of license exceptions.
-/// * Optionally a tuple of:
-///     * A list of crates for which dependencies need to be explicitly allowed.
-///     * The list of allowed dependencies.
-/// * Submodules required for the workspace.
 // FIXME auto detect all cargo workspaces
-pub(crate) const WORKSPACES: &[(&str, ExceptionList, Option<(&[&str], &[&str])>, &[&str])] = &[
+pub(crate) const WORKSPACES: &[WorkspaceInfo<'static>] = &[
     // The root workspace has to be first for check_rustfix to work.
-    (".", EXCEPTIONS, Some((&["rustc-main"], PERMITTED_RUSTC_DEPENDENCIES)), &[]),
-    ("library", EXCEPTIONS_STDLIB, Some((&["sysroot"], PERMITTED_STDLIB_DEPENDENCIES)), &[]),
-    // Outside of the alphabetical section because rustfmt formats it using multiple lines.
-    (
-        "compiler/rustc_codegen_cranelift",
-        EXCEPTIONS_CRANELIFT,
-        Some((&["rustc_codegen_cranelift"], PERMITTED_CRANELIFT_DEPENDENCIES)),
-        &[],
-    ),
-    // tidy-alphabetical-start
-    ("compiler/rustc_codegen_gcc", EXCEPTIONS_GCC, None, &[]),
-    ("src/bootstrap", EXCEPTIONS_BOOTSTRAP, None, &[]),
-    ("src/tools/cargo", EXCEPTIONS_CARGO, None, &["src/tools/cargo"]),
-    //("src/tools/miri/test-cargo-miri", &[], None), // FIXME uncomment once all deps are vendored
-    //("src/tools/miri/test_dependencies", &[], None), // FIXME uncomment once all deps are vendored
-    ("src/tools/rust-analyzer", EXCEPTIONS_RUST_ANALYZER, None, &[]),
-    ("src/tools/rustbook", EXCEPTIONS_RUSTBOOK, None, &["src/doc/book", "src/doc/reference"]),
-    ("src/tools/rustc-perf", EXCEPTIONS_RUSTC_PERF, None, &["src/tools/rustc-perf"]),
-    ("src/tools/test-float-parse", EXCEPTIONS, None, &[]),
-    ("tests/run-make-cargo/uefi-qemu/uefi_qemu_test", EXCEPTIONS_UEFI_QEMU_TEST, None, &[]),
-    // tidy-alphabetical-end
+    WorkspaceInfo {
+        path: ".",
+        exceptions: EXCEPTIONS,
+        crates_and_deps: Some((
+            &["rustc-main"],
+            PERMITTED_RUSTC_DEPENDENCIES,
+            PERMITTED_RUSTC_DEPS_LOCATION,
+        )),
+        submodules: &[],
+    },
+    WorkspaceInfo {
+        path: "library",
+        exceptions: EXCEPTIONS_STDLIB,
+        crates_and_deps: Some((
+            &["sysroot"],
+            PERMITTED_STDLIB_DEPENDENCIES,
+            PERMITTED_STDLIB_DEPS_LOCATION,
+        )),
+        submodules: &[],
+    },
+    {
+        WorkspaceInfo {
+            path: "compiler/rustc_codegen_cranelift",
+            exceptions: EXCEPTIONS_CRANELIFT,
+            crates_and_deps: Some((
+                &["rustc_codegen_cranelift"],
+                PERMITTED_CRANELIFT_DEPENDENCIES,
+                PERMITTED_CRANELIFT_DEPS_LOCATION,
+            )),
+            submodules: &[],
+        }
+    },
+    WorkspaceInfo {
+        path: "compiler/rustc_codegen_gcc",
+        exceptions: EXCEPTIONS_GCC,
+        crates_and_deps: None,
+        submodules: &[],
+    },
+    WorkspaceInfo {
+        path: "src/bootstrap",
+        exceptions: EXCEPTIONS_BOOTSTRAP,
+        crates_and_deps: None,
+        submodules: &[],
+    },
+    WorkspaceInfo {
+        path: "src/tools/cargo",
+        exceptions: EXCEPTIONS_CARGO,
+        crates_and_deps: None,
+        submodules: &["src/tools/cargo"],
+    },
+    // FIXME uncomment once all deps are vendored
+    //  WorkspaceInfo {
+    //      path: "src/tools/miri/test-cargo-miri",
+    //      crates_and_deps: None
+    //      submodules: &[],
+    //  },
+    // WorkspaceInfo {
+    //      path: "src/tools/miri/test_dependencies",
+    //      crates_and_deps: None,
+    //      submodules: &[],
+    //  }
+    WorkspaceInfo {
+        path: "src/tools/rust-analyzer",
+        exceptions: EXCEPTIONS_RUST_ANALYZER,
+        crates_and_deps: None,
+        submodules: &[],
+    },
+    WorkspaceInfo {
+        path: "src/tools/rustbook",
+        exceptions: EXCEPTIONS_RUSTBOOK,
+        crates_and_deps: None,
+        submodules: &["src/doc/book", "src/doc/reference"],
+    },
+    WorkspaceInfo {
+        path: "src/tools/rustc-perf",
+        exceptions: EXCEPTIONS_RUSTC_PERF,
+        crates_and_deps: None,
+        submodules: &["src/tools/rustc-perf"],
+    },
+    WorkspaceInfo {
+        path: "src/tools/test-float-parse",
+        exceptions: EXCEPTIONS,
+        crates_and_deps: None,
+        submodules: &[],
+    },
+    WorkspaceInfo {
+        path: "tests/run-make-cargo/uefi-qemu/uefi_qemu_test",
+        exceptions: EXCEPTIONS_UEFI_QEMU_TEST,
+        crates_and_deps: None,
+        submodules: &[],
+    },
 ];
 
 /// These are exceptions to Rust's permissive licensing policy, and
@@ -226,7 +304,20 @@ const EXCEPTIONS_UEFI_QEMU_TEST: ExceptionList = &[
     ("r-efi", "MIT OR Apache-2.0 OR LGPL-2.1-or-later"), // LGPL is not acceptable, but we use it under MIT OR Apache-2.0
 ];
 
-const PERMITTED_DEPS_LOCATION: &str = concat!(file!(), ":", line!());
+#[derive(Clone, Copy)]
+struct ListLocation {
+    path: &'static str,
+    line: u32,
+}
+
+/// Creates a [`ListLocation`] for the current location (with an additional offset to the actual list start);
+macro_rules! location {
+    (+ $offset:literal) => {
+        ListLocation { path: file!(), line: line!() + $offset }
+    };
+}
+
+const PERMITTED_RUSTC_DEPS_LOCATION: ListLocation = location!(+6);
 
 /// Crates rustc is allowed to depend on. Avoid adding to the list if possible.
 ///
@@ -267,6 +358,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "digest",
     "displaydoc",
     "dissimilar",
+    "dyn-clone",
     "either",
     "elsa",
     "ena",
@@ -346,6 +438,8 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "rand_xorshift", // dependency for doc-tests in rustc_thread_pool
     "rand_xoshiro",
     "redox_syscall",
+    "ref-cast",
+    "ref-cast-impl",
     "regex",
     "regex-automata",
     "regex-syntax",
@@ -357,11 +451,14 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "rustix",
     "ruzstd", // via object in thorin-dwp
     "ryu",
+    "schemars",
+    "schemars_derive",
     "scoped-tls",
     "scopeguard",
     "self_cell",
     "serde",
     "serde_derive",
+    "serde_derive_internals",
     "serde_json",
     "serde_path_to_error",
     "sha1",
@@ -452,6 +549,8 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     // tidy-alphabetical-end
 ];
 
+const PERMITTED_STDLIB_DEPS_LOCATION: ListLocation = location!(+2);
+
 const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
     // tidy-alphabetical-start
     "addr2line",
@@ -477,7 +576,6 @@ const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
     "rustc-demangle",
     "rustc-literal-escaper",
     "shlex",
-    "unicode-width",
     "unwinding",
     "wasi",
     "windows-sys",
@@ -493,6 +591,8 @@ const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
     "wit-bindgen",
     // tidy-alphabetical-end
 ];
+
+const PERMITTED_CRANELIFT_DEPS_LOCATION: ListLocation = location!(+2);
 
 const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     // tidy-alphabetical-start
@@ -563,37 +663,47 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
 ///
 /// `root` is path to the directory with the root `Cargo.toml` (for the workspace). `cargo` is path
 /// to the cargo executable.
-pub fn check(root: &Path, cargo: &Path, bless: bool, bad: &mut bool) {
+pub fn check(root: &Path, cargo: &Path, bless: bool, diag_ctx: DiagCtx) {
+    let mut check = diag_ctx.start_check("deps");
+
     let mut checked_runtime_licenses = false;
 
-    check_proc_macro_dep_list(root, cargo, bless, bad);
+    check_proc_macro_dep_list(root, cargo, bless, &mut check);
 
-    for &(workspace, exceptions, permitted_deps, submodules) in WORKSPACES {
+    for &WorkspaceInfo { path, exceptions, crates_and_deps, submodules } in WORKSPACES {
         if has_missing_submodule(root, submodules) {
             continue;
         }
 
-        if !root.join(workspace).join("Cargo.lock").exists() {
-            tidy_error!(bad, "the `{workspace}` workspace doesn't have a Cargo.lock");
+        if !root.join(path).join("Cargo.lock").exists() {
+            check.error(format!("the `{path}` workspace doesn't have a Cargo.lock"));
             continue;
         }
 
         let mut cmd = cargo_metadata::MetadataCommand::new();
         cmd.cargo_path(cargo)
-            .manifest_path(root.join(workspace).join("Cargo.toml"))
+            .manifest_path(root.join(path).join("Cargo.toml"))
             .features(cargo_metadata::CargoOpt::AllFeatures)
             .other_options(vec!["--locked".to_owned()]);
         let metadata = t!(cmd.exec());
 
-        check_license_exceptions(&metadata, workspace, exceptions, bad);
-        if let Some((crates, permitted_deps)) = permitted_deps {
-            check_permitted_dependencies(&metadata, workspace, permitted_deps, crates, bad);
+        check_license_exceptions(&metadata, path, exceptions, &mut check);
+        if let Some((crates, permitted_deps, location)) = crates_and_deps {
+            let descr = crates.get(0).unwrap_or(&path);
+            check_permitted_dependencies(
+                &metadata,
+                descr,
+                permitted_deps,
+                crates,
+                location,
+                &mut check,
+            );
         }
 
-        if workspace == "library" {
-            check_runtime_license_exceptions(&metadata, bad);
-            check_runtime_no_duplicate_dependencies(&metadata, bad);
-            check_runtime_no_proc_macros(&metadata, bad);
+        if path == "library" {
+            check_runtime_license_exceptions(&metadata, &mut check);
+            check_runtime_no_duplicate_dependencies(&metadata, &mut check);
+            check_runtime_no_proc_macros(&metadata, &mut check);
             checked_runtime_licenses = true;
         }
     }
@@ -604,7 +714,7 @@ pub fn check(root: &Path, cargo: &Path, bless: bool, bad: &mut bool) {
 }
 
 /// Ensure the list of proc-macro crate transitive dependencies is up to date
-fn check_proc_macro_dep_list(root: &Path, cargo: &Path, bless: bool, bad: &mut bool) {
+fn check_proc_macro_dep_list(root: &Path, cargo: &Path, bless: bool, check: &mut RunningCheck) {
     let mut cmd = cargo_metadata::MetadataCommand::new();
     cmd.cargo_path(cargo)
         .manifest_path(root.join("Cargo.toml"))
@@ -651,22 +761,22 @@ pub static CRATES: &[&str] = &[
         )
         .unwrap();
     } else {
-        let old_bad = *bad;
+        let mut error_found = false;
 
         for missing in proc_macro_deps.difference(&expected) {
-            tidy_error!(
-                bad,
+            error_found = true;
+            check.error(format!(
                 "proc-macro crate dependency `{missing}` is not registered in `src/bootstrap/src/utils/proc_macro_deps.rs`",
-            );
+            ));
         }
         for extra in expected.difference(&proc_macro_deps) {
-            tidy_error!(
-                bad,
+            error_found = true;
+            check.error(format!(
                 "`{extra}` is registered in `src/bootstrap/src/utils/proc_macro_deps.rs`, but is not a proc-macro crate dependency",
-            );
+            ));
         }
-        if *bad != old_bad {
-            eprintln!("Run `./x.py test tidy --bless` to regenerate the list");
+        if error_found {
+            check.message("Run `./x.py test tidy --bless` to regenerate the list");
         }
     }
 }
@@ -688,7 +798,7 @@ pub fn has_missing_submodule(root: &Path, submodules: &[&str]) -> bool {
 ///
 /// Unlike for tools we don't allow exceptions to the `LICENSES` list for the runtime with the sole
 /// exception of `fortanix-sgx-abi` which is only used on x86_64-fortanix-unknown-sgx.
-fn check_runtime_license_exceptions(metadata: &Metadata, bad: &mut bool) {
+fn check_runtime_license_exceptions(metadata: &Metadata, check: &mut RunningCheck) {
     for pkg in &metadata.packages {
         if pkg.source.is_none() {
             // No need to check local packages.
@@ -697,7 +807,8 @@ fn check_runtime_license_exceptions(metadata: &Metadata, bad: &mut bool) {
         let license = match &pkg.license {
             Some(license) => license,
             None => {
-                tidy_error!(bad, "dependency `{}` does not define a license expression", pkg.id);
+                check
+                    .error(format!("dependency `{}` does not define a license expression", pkg.id));
                 continue;
             }
         };
@@ -710,7 +821,7 @@ fn check_runtime_license_exceptions(metadata: &Metadata, bad: &mut bool) {
                 continue;
             }
 
-            tidy_error!(bad, "invalid license `{}` in `{}`", license, pkg.id);
+            check.error(format!("invalid license `{}` in `{}`", license, pkg.id));
         }
     }
 }
@@ -722,37 +833,32 @@ fn check_license_exceptions(
     metadata: &Metadata,
     workspace: &str,
     exceptions: &[(&str, &str)],
-    bad: &mut bool,
+    check: &mut RunningCheck,
 ) {
     // Validate the EXCEPTIONS list hasn't changed.
     for (name, license) in exceptions {
         // Check that the package actually exists.
         if !metadata.packages.iter().any(|p| *p.name == *name) {
-            tidy_error!(
-                bad,
-                "could not find exception package `{}` in workspace `{workspace}`\n\
+            check.error(format!(
+                "could not find exception package `{name}` in workspace `{workspace}`\n\
                 Remove from EXCEPTIONS list if it is no longer used.",
-                name
-            );
+            ));
         }
         // Check that the license hasn't changed.
         for pkg in metadata.packages.iter().filter(|p| *p.name == *name) {
             match &pkg.license {
                 None => {
-                    tidy_error!(
-                        bad,
+                    check.error(format!(
                         "dependency exception `{}` in workspace `{workspace}` does not declare a license expression",
                         pkg.id
-                    );
+                    ));
                 }
                 Some(pkg_license) => {
                     if pkg_license.as_str() != *license {
-                        println!(
-                            "dependency exception `{name}` license in workspace `{workspace}` has changed"
-                        );
-                        println!("    previously `{license}` now `{pkg_license}`");
-                        println!("    update EXCEPTIONS for the new license");
-                        *bad = true;
+                        check.error(format!(r#"dependency exception `{name}` license in workspace `{workspace}` has changed
+    previously `{license}` now `{pkg_license}`
+    update EXCEPTIONS for the new license
+"#));
                     }
                 }
             }
@@ -773,26 +879,23 @@ fn check_license_exceptions(
         let license = match &pkg.license {
             Some(license) => license,
             None => {
-                tidy_error!(
-                    bad,
+                check.error(format!(
                     "dependency `{}` in workspace `{workspace}` does not define a license expression",
                     pkg.id
-                );
+                ));
                 continue;
             }
         };
         if !LICENSES.contains(&license.as_str()) {
-            tidy_error!(
-                bad,
+            check.error(format!(
                 "invalid license `{}` for package `{}` in workspace `{workspace}`",
-                license,
-                pkg.id
-            );
+                license, pkg.id
+            ));
         }
     }
 }
 
-fn check_runtime_no_duplicate_dependencies(metadata: &Metadata, bad: &mut bool) {
+fn check_runtime_no_duplicate_dependencies(metadata: &Metadata, check: &mut RunningCheck) {
     let mut seen_pkgs = HashSet::new();
     for pkg in &metadata.packages {
         if pkg.source.is_none() {
@@ -803,25 +906,23 @@ fn check_runtime_no_duplicate_dependencies(metadata: &Metadata, bad: &mut bool) 
         // depends on two version of (one for the `wasm32-wasip1` target and
         // another for the `wasm32-wasip2` target).
         if pkg.name.to_string() != "wasi" && !seen_pkgs.insert(&*pkg.name) {
-            tidy_error!(
-                bad,
+            check.error(format!(
                 "duplicate package `{}` is not allowed for the standard library",
                 pkg.name
-            );
+            ));
         }
     }
 }
 
-fn check_runtime_no_proc_macros(metadata: &Metadata, bad: &mut bool) {
+fn check_runtime_no_proc_macros(metadata: &Metadata, check: &mut RunningCheck) {
     for pkg in &metadata.packages {
         if pkg.targets.iter().any(|target| target.is_proc_macro()) {
-            tidy_error!(
-                bad,
+            check.error(format!(
                 "proc macro `{}` is not allowed as standard library dependency.\n\
                 Using proc macros in the standard library would break cross-compilation \
                 as proc-macros don't get shipped for the host tuple.",
                 pkg.name
-            );
+            ));
         }
     }
 }
@@ -835,7 +936,8 @@ fn check_permitted_dependencies(
     descr: &str,
     permitted_dependencies: &[&'static str],
     restricted_dependency_crates: &[&'static str],
-    bad: &mut bool,
+    permitted_location: ListLocation,
+    check: &mut RunningCheck,
 ) {
     let mut has_permitted_dep_error = false;
     let mut deps = HashSet::new();
@@ -857,11 +959,10 @@ fn check_permitted_dependencies(
             }
         }
         if !deps.iter().any(|dep_id| compare(pkg_from_id(metadata, dep_id), permitted)) {
-            tidy_error!(
-                bad,
+            check.error(format!(
                 "could not find allowed package `{permitted}`\n\
                 Remove from PERMITTED_DEPENDENCIES list if it is no longer used.",
-            );
+            ));
             has_permitted_dep_error = true;
         }
     }
@@ -888,14 +989,14 @@ fn check_permitted_dependencies(
                 false
             };
             if !is_eq {
-                tidy_error!(bad, "Dependency for {descr} not explicitly permitted: {}", dep.id);
+                check.error(format!("Dependency for {descr} not explicitly permitted: {}", dep.id));
                 has_permitted_dep_error = true;
             }
         }
     }
 
     if has_permitted_dep_error {
-        eprintln!("Go to `{PERMITTED_DEPS_LOCATION}` for the list.");
+        eprintln!("Go to `{}:{}` for the list.", permitted_location.path, permitted_location.line);
     }
 }
 

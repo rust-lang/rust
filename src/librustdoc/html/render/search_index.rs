@@ -6,6 +6,8 @@ use std::path::Path;
 
 use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
+use rustc_hir::attrs::AttributeKind;
+use rustc_hir::find_attr;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
 use rustc_span::sym;
@@ -1458,16 +1460,17 @@ pub(crate) fn build_index(
                     if fqp.last() != Some(&item.name) {
                         return None;
                     }
-                    let path =
-                        if item.ty == ItemType::Macro && tcx.has_attr(defid, sym::macro_export) {
-                            // `#[macro_export]` always exports to the crate root.
-                            vec![tcx.crate_name(defid.krate)]
-                        } else {
-                            if fqp.len() < 2 {
-                                return None;
-                            }
-                            fqp[..fqp.len() - 1].to_vec()
-                        };
+                    let path = if item.ty == ItemType::Macro
+                        && find_attr!(tcx.get_all_attrs(defid), AttributeKind::MacroExport { .. })
+                    {
+                        // `#[macro_export]` always exports to the crate root.
+                        vec![tcx.crate_name(defid.krate)]
+                    } else {
+                        if fqp.len() < 2 {
+                            return None;
+                        }
+                        fqp[..fqp.len() - 1].to_vec()
+                    };
                     if path == item.module_path {
                         return None;
                     }

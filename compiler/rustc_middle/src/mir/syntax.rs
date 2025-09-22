@@ -327,9 +327,11 @@ pub enum StatementKind<'tcx> {
     /// interesting for optimizations? Do we want to allow such optimizations?
     ///
     /// **Needs clarification**: We currently require that the LHS place not overlap with any place
-    /// read as part of computation of the RHS for some rvalues (generally those not producing
-    /// primitives). This requirement is under discussion in [#68364]. As a part of this discussion,
-    /// it is also unclear in what order the components are evaluated.
+    /// read as part of computation of the RHS for some rvalues. This requirement is under
+    /// discussion in [#68364]. Specifically, overlap is permitted only for assignments of a type
+    /// with `BackendRepr::Scalar | BackendRepr::ScalarPair` where all the scalar fields are
+    /// [`Scalar::Initialized`][rustc_abi::Scalar::Initialized]. As a part of this discussion, it is
+    /// also unclear in what order the components are evaluated.
     ///
     /// [#68364]: https://github.com/rust-lang/rust/issues/68364
     ///
@@ -1404,16 +1406,6 @@ pub enum Rvalue<'tcx> {
     /// Like with references, the semantics of this operation are heavily dependent on the aliasing
     /// model.
     RawPtr(RawPtrKind, Place<'tcx>),
-
-    /// Yields the length of the place, as a `usize`.
-    ///
-    /// If the type of the place is an array, this is the array length. For slices (`[T]`, not
-    /// `&[T]`) this accesses the place's metadata to determine the length. This rvalue is
-    /// ill-formed for places of other types.
-    ///
-    /// This cannot be a `UnOp(PtrMetadata, _)` because that expects a value, and we only
-    /// have a place, and `UnOp(PtrMetadata, RawPtr(place))` is not a thing.
-    Len(Place<'tcx>),
 
     /// Performs essentially all of the casts that can be performed via `as`.
     ///

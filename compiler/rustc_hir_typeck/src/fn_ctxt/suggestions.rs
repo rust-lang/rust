@@ -1358,7 +1358,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .infcx
                 .type_implements_trait(
                     clone_trait_def,
-                    [self.tcx.erase_regions(expected_ty)],
+                    [self.tcx.erase_and_anonymize_regions(expected_ty)],
                     self.param_env,
                 )
                 .must_apply_modulo_regions()
@@ -1882,7 +1882,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if segment.ident.name == sym::clone
             && results.type_dependent_def_id(expr.hir_id).is_some_and(|did| {
                     let assoc_item = self.tcx.associated_item(did);
-                    assoc_item.container == ty::AssocItemContainer::Trait
+                    assoc_item.container == ty::AssocContainer::Trait
                         && assoc_item.container_id(self.tcx) == clone_trait_did
                 })
             // If that clone call hasn't already dereferenced the self type (i.e. don't give this
@@ -3021,6 +3021,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         )
                     {
                         let deref_kind = if checked_ty.is_box() {
+                            // detect Box::new(..)
+                            if let ExprKind::Call(box_new, [_]) = expr.kind
+                                && let ExprKind::Path(qpath) = &box_new.kind
+                                && let Res::Def(DefKind::AssocFn, fn_id) =
+                                    self.typeck_results.borrow().qpath_res(qpath, box_new.hir_id)
+                                && let Some(impl_id) = self.tcx.inherent_impl_of_assoc(fn_id)
+                                && self.tcx.type_of(impl_id).skip_binder().is_box()
+                                && self.tcx.item_name(fn_id) == sym::new
+                            {
+                                let l_paren = self.tcx.sess.source_map().next_point(box_new.span);
+                                let r_paren = self.tcx.sess.source_map().end_point(expr.span);
+                                return Some((
+                                    vec![
+                                        (box_new.span.to(l_paren), String::new()),
+                                        (r_paren, String::new()),
+                                    ],
+                                    "consider removing the Box".to_string(),
+                                    Applicability::MachineApplicable,
+                                    false,
+                                    false,
+                                ));
+                            }
                             "unboxing the value"
                         } else if checked_ty.is_ref() {
                             "dereferencing the borrow"

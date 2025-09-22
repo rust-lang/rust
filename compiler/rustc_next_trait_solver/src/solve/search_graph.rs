@@ -6,6 +6,7 @@ use rustc_type_ir::search_graph::{self, PathKind};
 use rustc_type_ir::solve::{CanonicalInput, Certainty, NoSolution, QueryResult};
 use rustc_type_ir::{Interner, TypingMode};
 
+use crate::canonical::response_no_constraints_raw;
 use crate::delegate::SolverDelegate;
 use crate::solve::{
     EvalCtxt, FIXPOINT_STEP_LIMIT, has_no_inference_or_external_constraints, inspect,
@@ -93,7 +94,7 @@ where
     fn is_ambiguous_result(result: QueryResult<I>) -> bool {
         result.is_ok_and(|response| {
             has_no_inference_or_external_constraints(response)
-                && matches!(response.value.certainty, Certainty::Maybe(_))
+                && matches!(response.value.certainty, Certainty::Maybe { .. })
         })
     }
 
@@ -127,7 +128,7 @@ fn response_no_constraints<I: Interner>(
     input: CanonicalInput<I>,
     certainty: Certainty,
 ) -> QueryResult<I> {
-    Ok(super::response_no_constraints_raw(
+    Ok(response_no_constraints_raw(
         cx,
         input.canonical.max_universe,
         input.canonical.variables,

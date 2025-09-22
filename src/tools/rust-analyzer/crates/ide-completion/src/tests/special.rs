@@ -677,6 +677,7 @@ fn bar() -> Bar {
         expect![[r#"
             fn foo() (as Foo) fn() -> Self
             ex Bar
+            ex Bar::foo()
             ex bar()
         "#]],
     );
@@ -706,6 +707,7 @@ fn bar() -> Bar {
             fn bar()                  fn()
             fn foo() (as Foo) fn() -> Self
             ex Bar
+            ex Bar::foo()
             ex bar()
         "#]],
     );
@@ -734,6 +736,7 @@ fn bar() -> Bar {
         expect![[r#"
             fn foo() (as Foo) fn() -> Self
             ex Bar
+            ex Bar::foo()
             ex bar()
         "#]],
     );

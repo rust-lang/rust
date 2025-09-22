@@ -17,12 +17,13 @@ use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 use rustc_type_ir::TyKind::*;
 use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::walk::TypeWalker;
-use rustc_type_ir::{self as ir, BoundVar, CollectAndApply, DynKind, TypeVisitableExt, elaborate};
+use rustc_type_ir::{self as ir, BoundVar, CollectAndApply, TypeVisitableExt, elaborate};
 use tracing::instrument;
 use ty::util::IntTypeExt;
 
 use super::GenericParamDefKind;
 use crate::infer::canonical::Canonical;
+use crate::traits::ObligationCause;
 use crate::ty::InferTy::*;
 use crate::ty::{
     self, AdtDef, BoundRegionKind, Discr, GenericArg, GenericArgs, GenericArgsRef, List, ParamEnv,
@@ -734,7 +735,6 @@ impl<'tcx> Ty<'tcx> {
         tcx: TyCtxt<'tcx>,
         obj: &'tcx List<ty::PolyExistentialPredicate<'tcx>>,
         reg: ty::Region<'tcx>,
-        repr: DynKind,
     ) -> Ty<'tcx> {
         if cfg!(debug_assertions) {
             let projection_count = obj
@@ -767,7 +767,7 @@ impl<'tcx> Ty<'tcx> {
                 but it has {projection_count}"
             );
         }
-        Ty::new(tcx, Dynamic(obj, reg, repr))
+        Ty::new(tcx, Dynamic(obj, reg))
     }
 
     #[inline]
@@ -980,9 +980,8 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
         interner: TyCtxt<'tcx>,
         preds: &'tcx List<ty::PolyExistentialPredicate<'tcx>>,
         region: ty::Region<'tcx>,
-        kind: ty::DynKind,
     ) -> Self {
-        Ty::new_dynamic(interner, preds, region, kind)
+        Ty::new_dynamic(interner, preds, region)
     }
 
     fn new_coroutine(
@@ -1356,7 +1355,7 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn is_trait(self) -> bool {
-        matches!(self.kind(), Dynamic(_, _, ty::Dyn))
+        matches!(self.kind(), Dynamic(_, _))
     }
 
     #[inline]
@@ -1640,7 +1639,7 @@ impl<'tcx> Ty<'tcx> {
         tcx: TyCtxt<'tcx>,
         normalize: impl FnMut(Ty<'tcx>) -> Ty<'tcx>,
     ) -> Result<Ty<'tcx>, Ty<'tcx>> {
-        let tail = tcx.struct_tail_raw(self, normalize, || {});
+        let tail = tcx.struct_tail_raw(self, &ObligationCause::dummy(), normalize, || {});
         match tail.kind() {
             // Sized types
             ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
@@ -1671,7 +1670,7 @@ impl<'tcx> Ty<'tcx> {
 
             ty::Str | ty::Slice(_) => Ok(tcx.types.usize),
 
-            ty::Dynamic(_, _, ty::Dyn) => {
+            ty::Dynamic(_, _) => {
                 let dyn_metadata = tcx.require_lang_item(LangItem::DynMetadata, DUMMY_SP);
                 Ok(tcx.type_of(dyn_metadata).instantiate(tcx, &[tail.into()]))
             }
@@ -1853,7 +1852,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Never
             | ty::Error(_) => true,
 
-            ty::Str | ty::Slice(_) | ty::Dynamic(_, _, ty::Dyn) => match sizedness {
+            ty::Str | ty::Slice(_) | ty::Dynamic(_, _) => match sizedness {
                 SizedTraitKind::Sized => false,
                 SizedTraitKind::MetaSized => true,
             },

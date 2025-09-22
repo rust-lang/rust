@@ -820,6 +820,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_int(length.strict_sub(1), dest)?;
             }
 
+            "_Unwind_RaiseException" => {
+                // This is not formally part of POSIX, but it is very wide-spread on POSIX systems.
+                // It was originally specified as part of the Itanium C++ ABI:
+                // https://itanium-cxx-abi.github.io/cxx-abi/abi-eh.html#base-throw.
+                // MinGW implements _Unwind_RaiseException on top of SEH exceptions.
+                if this.tcx.sess.target.env != "gnu" {
+                    throw_unsup_format!(
+                        "`_Unwind_RaiseException` is not supported on non-MinGW Windows",
+                    );
+                }
+                // This function looks and behaves excatly like miri_start_unwind.
+                let [payload] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                this.handle_miri_start_unwind(payload)?;
+                return interp_ok(EmulateItemResult::NeedsUnwind);
+            }
+
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
             // These shims are enabled only when the caller is in the standard library.
             "GetProcessHeap" if this.frame_in_std() => {
@@ -878,22 +894,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 // FIXME: this should return a nonzero value if this call does result in switching to another thread.
                 this.write_null(dest)?;
-            }
-
-            "_Unwind_RaiseException" => {
-                // This is not formally part of POSIX, but it is very wide-spread on POSIX systems.
-                // It was originally specified as part of the Itanium C++ ABI:
-                // https://itanium-cxx-abi.github.io/cxx-abi/abi-eh.html#base-throw.
-                // MinGW implements _Unwind_RaiseException on top of SEH exceptions.
-                if this.tcx.sess.target.env != "gnu" {
-                    throw_unsup_format!(
-                        "`_Unwind_RaiseException` is not supported on non-MinGW Windows",
-                    );
-                }
-                // This function looks and behaves excatly like miri_start_unwind.
-                let [payload] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
-                this.handle_miri_start_unwind(payload)?;
-                return interp_ok(EmulateItemResult::NeedsUnwind);
             }
 
             _ => return interp_ok(EmulateItemResult::NotSupported),

@@ -14,6 +14,10 @@ compiletest-use-stage0-libtest = false
 [llvm]
 download-ci-llvm = false
 
+# Most users installing from source want to build all parts of the project from source.
+[gcc]
+download-ci-gcc = false
+
 [rust]
 # We have several defaults in bootstrap that depend on whether the channel is `dev` (e.g. `omit-git-hash` and `download-ci-llvm`).
 # Make sure they don't get set when installing from source.

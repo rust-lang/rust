@@ -1,7 +1,7 @@
 use std::ops::Not;
 
 use hir::{
-    ClosureStyle, HirDisplay, ImportPathConfig,
+    ClosureStyle, FindPathConfig, HirDisplay,
     db::ExpandDatabase,
     term_search::{TermSearchConfig, TermSearchCtx, term_search},
 };
@@ -73,7 +73,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypedHole<'_>) -> Option<Vec<Ass
             path.gen_source_code(
                 &scope,
                 &mut formatter,
-                ImportPathConfig {
+                FindPathConfig {
                     prefer_no_std: ctx.config.prefer_no_std,
                     prefer_prelude: ctx.config.prefer_prelude,
                     prefer_absolute: ctx.config.prefer_absolute,
@@ -152,7 +152,7 @@ fn main() {
 fn main() {
     let mut x = t();
     x = _;
-      //^ 💡 error: invalid `_` expression, expected type `&'static str`
+      //^ 💡 error: invalid `_` expression, expected type `&str`
     x = "";
 }
 fn t<T>() -> T { loop {} }

@@ -3,7 +3,7 @@
 use std::ops::ControlFlow;
 
 use hir::{
-    AsAssocItem, AssocItem, AssocItemContainer, Complete, Crate, HasCrate, ImportPathConfig,
+    AsAssocItem, AssocItem, AssocItemContainer, Complete, Crate, FindPathConfig, HasCrate,
     ItemInNs, ModPath, Module, ModuleDef, Name, PathResolution, PrefixKind, ScopeDef, Semantics,
     SemanticsScope, Trait, TyFingerprint, Type, db::HirDatabase,
 };
@@ -18,6 +18,17 @@ use crate::{
     FxIndexSet, RootDatabase,
     items_locator::{self, AssocSearchMode, DEFAULT_QUERY_SEARCH_LIMIT},
 };
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
+pub struct ImportPathConfig {
+    /// If true, prefer to unconditionally use imports of the `core` and `alloc` crate
+    /// over the std.
+    pub prefer_no_std: bool,
+    /// If true, prefer import paths containing a prelude module.
+    pub prefer_prelude: bool,
+    /// If true, prefer abs path (starting with `::`) where it is available.
+    pub prefer_absolute: bool,
+}
 
 /// A candidate for import, derived during various IDE activities:
 /// * completion with imports on the fly proposals
@@ -296,6 +307,12 @@ impl<'db> ImportAssets<'db> {
             Some(it) => it,
             None => return <FxIndexSet<_>>::default().into_iter(),
         };
+        let cfg = FindPathConfig {
+            prefer_no_std: cfg.prefer_no_std,
+            prefer_prelude: cfg.prefer_prelude,
+            prefer_absolute: cfg.prefer_absolute,
+            allow_unstable: sema.is_nightly(scope.krate()),
+        };
         let db = sema.db;
         let krate = self.module_with_candidate.krate();
         let scope_definitions = self.scope_definitions(sema);
@@ -475,8 +492,6 @@ fn validate_resolvable(
         }
         // FIXME
         ModuleDef::Trait(_) => return None,
-        // FIXME
-        ModuleDef::TraitAlias(_) => return None,
         ModuleDef::TypeAlias(alias) => alias.ty(db),
         ModuleDef::BuiltinType(builtin) => builtin.ty(db),
         ModuleDef::Adt(adt) => adt.ty(db),
@@ -700,7 +715,7 @@ fn get_mod_path(
     item_to_search: ItemInNs,
     module_with_candidate: &Module,
     prefixed: Option<PrefixKind>,
-    cfg: ImportPathConfig,
+    cfg: FindPathConfig,
 ) -> Option<ModPath> {
     if let Some(prefix_kind) = prefixed {
         module_with_candidate.find_use_path(db, item_to_search, prefix_kind, cfg)

@@ -520,7 +520,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 LocalRef::Place(va_list) => {
                     bx.va_end(va_list.val.llval);
 
-                    // Explicitly end the lifetime of the `va_list`, this matters for LLVM.
+                    // Explicitly end the lifetime of the `va_list`, improves LLVM codegen.
                     bx.lifetime_end(va_list.val.llval, va_list.layout.size);
                 }
                 _ => bug!("C-variadic function must have a `VaList` place"),
@@ -614,7 +614,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let (maybe_null, drop_fn, fn_abi, drop_instance) = match ty.kind() {
             // FIXME(eddyb) perhaps move some of this logic into
             // `Instance::resolve_drop_in_place`?
-            ty::Dynamic(_, _, ty::Dyn) => {
+            ty::Dynamic(_, _) => {
                 // IN THIS ARM, WE HAVE:
                 // ty = *mut (dyn Trait)
                 // which is: exists<T> ( *mut T,    Vtable<T: Trait> )

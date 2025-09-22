@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::{span_lint_hir, span_lint_hir_and_then};
 use clippy_utils::fn_has_unsatisfiable_preds;
 use clippy_utils::mir::{LocalUsage, PossibleBorrowerMap, visit_local_usage};
 use clippy_utils::source::SpanRangeExt;
-use clippy_utils::ty::{has_drop, is_copy, is_type_lang_item, walk_ptrs_ty_depth};
+use clippy_utils::ty::{has_drop, is_copy, is_type_lang_item, peel_and_count_ty_refs};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, FnDecl, LangItem, def_id};
@@ -263,7 +263,7 @@ fn is_call_with_ref_arg<'tcx>(
         && args.len() == 1
         && let mir::Operand::Move(mir::Place { local, .. }) = &args[0].node
         && let ty::FnDef(def_id, _) = *func.ty(mir, cx.tcx).kind()
-        && let (inner_ty, 1) = walk_ptrs_ty_depth(args[0].node.ty(mir, cx.tcx))
+        && let (inner_ty, 1, _) = peel_and_count_ty_refs(args[0].node.ty(mir, cx.tcx))
         && !is_copy(cx, inner_ty)
     {
         Some((def_id, *local, inner_ty, destination.as_local()?))
