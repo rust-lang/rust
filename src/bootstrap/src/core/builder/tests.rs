@@ -308,14 +308,14 @@ mod sysroot_target_dirs {
 /// cg_gcc tests instead.
 #[test]
 fn test_test_compiler() {
-    let config = configure_with_args(&["test", "compiler"], &[], &[TEST_TRIPLE_1]);
+    let config = configure_with_args(&["test", "compiler"], &[&host_target()], &[TEST_TRIPLE_1]);
     let cache = run_build(&config.paths.clone(), config);
 
     let compiler = cache.contains::<test::CrateLibrustc>();
     let cranelift = cache.contains::<test::CodegenCranelift>();
     let gcc = cache.contains::<test::CodegenGCC>();
 
-    assert_eq!((compiler, cranelift, gcc), (false, false, false));
+    assert_eq!((compiler, cranelift, gcc), (true, false, false));
 }
 
 #[test]

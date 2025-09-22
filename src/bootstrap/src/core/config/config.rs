@@ -424,6 +424,18 @@ impl Config {
             src = src_;
         }
 
+        #[cfg(test)]
+        {
+            if let Some(config_path) = flags_config.as_ref() {
+                assert!(
+                    !config_path.starts_with(&src),
+                    "Path {config_path:?} should not be inside or equal to src dir {src:?}"
+                );
+            } else {
+                panic!("During test the config should be explicitly added");
+            }
+        }
+
         // Now load the TOML config, as soon as possible
         let (mut toml, toml_path) = load_toml_config(&src, flags_config, &get_toml);
 

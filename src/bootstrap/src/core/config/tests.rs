@@ -175,20 +175,14 @@ fn override_toml_duplicate() {
 
 #[test]
 fn profile_user_dist() {
-    fn get_toml(file: &Path) -> Result<TomlConfig, toml::de::Error> {
-        let contents = if file.ends_with("bootstrap.toml")
-            || file.ends_with("config.toml")
-            || env::var_os("RUST_BOOTSTRAP_CONFIG").is_some()
-        {
-            "profile = \"user\"".to_owned()
-        } else {
-            assert!(file.ends_with("config.dist.toml") || file.ends_with("bootstrap.dist.toml"));
-            std::fs::read_to_string(file).unwrap()
-        };
-
-        toml::from_str(&contents).and_then(|table: toml::Value| TomlConfig::deserialize(table))
-    }
-    Config::parse_inner(Flags::parse(&["check".to_owned()]), get_toml);
+    TestCtx::new()
+        .config("check")
+        .with_default_toml_config(
+            r#"
+        profile = "user"
+    "#,
+        )
+        .create_config();
 }
 
 #[test]
@@ -224,8 +218,6 @@ fn verify_file_integrity() {
         config
             .verify(&tempfile, "7e255dd9542648a8779268a0f268b891a198e9828e860ed23f826440e786eae5")
     );
-
-    remove_file(tempfile).unwrap();
 }
 
 #[test]
@@ -648,6 +640,7 @@ fn test_include_precedence_over_profile() {
         .config("check")
         .with_default_toml_config(
             r#"
+        profile = "dist"
         include = ["./extension.toml"]
     "#,
         )
