@@ -64,83 +64,151 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         // it's usually worth updating that intrinsic's documentation
         // to note that it's safe to call, since
         // safe extern fns are otherwise unprecedented.
-        sym::abort
+
+        // tidy-alphabetical-start
+        | sym::abort
+        | sym::add_with_overflow
+        | sym::aggregate_raw_ptr
+        | sym::align_of
         | sym::assert_inhabited
-        | sym::assert_zero_valid
         | sym::assert_mem_uninitialized_valid
+        | sym::assert_zero_valid
+        | sym::autodiff
+        | sym::bitreverse
+        | sym::black_box
         | sym::box_new
         | sym::breakpoint
-        | sym::size_of
-        | sym::align_of
-        | sym::needs_drop
-        | sym::caller_location
-        | sym::add_with_overflow
-        | sym::sub_with_overflow
-        | sym::mul_with_overflow
-        | sym::carrying_mul_add
-        | sym::wrapping_add
-        | sym::wrapping_sub
-        | sym::wrapping_mul
-        | sym::saturating_add
-        | sym::saturating_sub
-        | sym::rotate_left
-        | sym::rotate_right
-        | sym::ctpop
-        | sym::ctlz
-        | sym::cttz
         | sym::bswap
-        | sym::bitreverse
-        | sym::three_way_compare
-        | sym::discriminant_value
-        | sym::type_id
-        | sym::type_id_eq
-        | sym::select_unpredictable
+        | sym::caller_location
+        | sym::carrying_mul_add
+        | sym::ceilf16
+        | sym::ceilf32
+        | sym::ceilf64
+        | sym::ceilf128
         | sym::cold_path
-        | sym::ptr_guaranteed_cmp
-        | sym::minnumf16
-        | sym::minnumf32
-        | sym::minnumf64
-        | sym::minnumf128
-        | sym::minimumf16
-        | sym::minimumf32
-        | sym::minimumf64
-        | sym::minimumf128
-        | sym::maxnumf16
-        | sym::maxnumf32
-        | sym::maxnumf64
-        | sym::maxnumf128
+        | sym::const_eval_select
+        | sym::contract_check_ensures
+        | sym::contract_check_requires
+        | sym::contract_checks
+        | sym::cosf16
+        | sym::cosf32
+        | sym::cosf64
+        | sym::cosf128
+        | sym::ctlz
+        | sym::ctpop
+        | sym::cttz
+        | sym::discriminant_value
+        | sym::exp2f16
+        | sym::exp2f32
+        | sym::exp2f64
+        | sym::exp2f128
+        | sym::expf16
+        | sym::expf32
+        | sym::expf64
+        | sym::expf128
+        | sym::fadd_algebraic
+        | sym::fdiv_algebraic
+        | sym::floorf16
+        | sym::floorf32
+        | sym::floorf64
+        | sym::floorf128
+        | sym::fmaf16
+        | sym::fmaf32
+        | sym::fmaf64
+        | sym::fmaf128
+        | sym::fmul_algebraic
+        | sym::fmuladdf16
+        | sym::fmuladdf32
+        | sym::fmuladdf64
+        | sym::fmuladdf128
+        | sym::forget
+        | sym::frem_algebraic
+        | sym::fsub_algebraic
+        | sym::is_val_statically_known
+        | sym::log2f16
+        | sym::log2f32
+        | sym::log2f64
+        | sym::log2f128
+        | sym::log10f16
+        | sym::log10f32
+        | sym::log10f64
+        | sym::log10f128
+        | sym::logf16
+        | sym::logf32
+        | sym::logf64
+        | sym::logf128
         | sym::maximumf16
         | sym::maximumf32
         | sym::maximumf64
         | sym::maximumf128
-        | sym::rustc_peek
-        | sym::type_name
-        | sym::forget
-        | sym::black_box
-        | sym::variant_count
-        | sym::is_val_statically_known
+        | sym::maxnumf16
+        | sym::maxnumf32
+        | sym::maxnumf64
+        | sym::maxnumf128
+        | sym::minimumf16
+        | sym::minimumf32
+        | sym::minimumf64
+        | sym::minimumf128
+        | sym::minnumf16
+        | sym::minnumf32
+        | sym::minnumf64
+        | sym::minnumf128
+        | sym::mul_with_overflow
+        | sym::needs_drop
+        | sym::powf16
+        | sym::powf32
+        | sym::powf64
+        | sym::powf128
+        | sym::powif16
+        | sym::powif32
+        | sym::powif64
+        | sym::powif128
+        | sym::prefetch_read_data
+        | sym::prefetch_read_instruction
+        | sym::prefetch_write_data
+        | sym::prefetch_write_instruction
+        | sym::ptr_guaranteed_cmp
         | sym::ptr_mask
-        | sym::aggregate_raw_ptr
         | sym::ptr_metadata
-        | sym::ub_checks
-        | sym::contract_checks
-        | sym::contract_check_requires
-        | sym::contract_check_ensures
-        | sym::fadd_algebraic
-        | sym::fsub_algebraic
-        | sym::fmul_algebraic
-        | sym::fdiv_algebraic
-        | sym::frem_algebraic
+        | sym::rotate_left
+        | sym::rotate_right
         | sym::round_ties_even_f16
         | sym::round_ties_even_f32
         | sym::round_ties_even_f64
         | sym::round_ties_even_f128
-        | sym::autodiff
-        | sym::prefetch_read_data
-        | sym::prefetch_write_data
-        | sym::prefetch_read_instruction
-        | sym::prefetch_write_instruction
-        | sym::const_eval_select => hir::Safety::Safe,
+        | sym::roundf16
+        | sym::roundf32
+        | sym::roundf64
+        | sym::roundf128
+        | sym::rustc_peek
+        | sym::saturating_add
+        | sym::saturating_sub
+        | sym::select_unpredictable
+        | sym::sinf16
+        | sym::sinf32
+        | sym::sinf64
+        | sym::sinf128
+        | sym::size_of
+        | sym::sqrtf16
+        | sym::sqrtf32
+        | sym::sqrtf64
+        | sym::sqrtf128
+        | sym::sub_with_overflow
+        | sym::three_way_compare
+        | sym::truncf16
+        | sym::truncf32
+        | sym::truncf64
+        | sym::truncf128
+        | sym::type_id
+        | sym::type_id_eq
+        | sym::type_name
+        | sym::ub_checks
+        | sym::variant_count
+        | sym::wrapping_add
+        | sym::wrapping_mul
+        | sym::wrapping_sub
+        // tidy-alphabetical-end
+        => hir::Safety::Safe,
         _ => hir::Safety::Unsafe,
     };
 
