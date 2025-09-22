@@ -8,6 +8,7 @@
 use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::fmt::{self, Display, Write};
+use std::iter;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_lexer::{Cursor, FrontmatterAllowed, LiteralKind, TokenKind};
@@ -15,8 +16,9 @@ use rustc_span::edition::Edition;
 use rustc_span::symbol::Symbol;
 use rustc_span::{BytePos, DUMMY_SP, Span};
 
-use super::format::{self, write_str};
+use super::format;
 use crate::clean::PrimitiveType;
+use crate::display::Joined as _;
 use crate::html::escape::EscapeBodyText;
 use crate::html::macro_expansion::ExpandedCode;
 use crate::html::render::{Context, LinkFromSrc};
@@ -51,26 +53,26 @@ pub(crate) enum Tooltip {
 /// Highlights `src` as an inline example, returning the HTML output.
 pub(crate) fn render_example_with_highlighting(
     src: &str,
-    out: &mut String,
-    tooltip: Tooltip,
+    tooltip: &Tooltip,
     playground_button: Option<&str>,
     extra_classes: &[String],
-) {
-    write_header(out, "rust-example-rendered", None, tooltip, extra_classes);
-    write_code(out, src, None, None, None);
-    write_footer(out, playground_button);
+) -> impl Display {
+    fmt::from_fn(move |f| {
+        write_header("rust-example-rendered", None, tooltip, extra_classes).fmt(f)?;
+        write_code(f, src, None, None, None);
+        write_footer(playground_button).fmt(f)
+    })
 }
 
 fn write_header(
-    out: &mut String,
     class: &str,
     extra_content: Option<&str>,
-    tooltip: Tooltip,
+    tooltip: &Tooltip,
     extra_classes: &[String],
-) {
-    write_str(
-        out,
-        format_args!(
+) -> impl Display {
+    fmt::from_fn(move |f| {
+        write!(
+            f,
             "<div class=\"example-wrap{}\">",
             match tooltip {
                 Tooltip::IgnoreAll | Tooltip::IgnoreSome(_) => " ignore",
@@ -79,58 +81,48 @@ fn write_header(
                 Tooltip::Edition(_) => " edition",
                 Tooltip::None => "",
             }
-        ),
-    );
+        )?;
 
-    if tooltip != Tooltip::None {
-        let tooltip = fmt::from_fn(|f| match &tooltip {
-            Tooltip::IgnoreAll => f.write_str("This example is not tested"),
-            Tooltip::IgnoreSome(platforms) => {
-                f.write_str("This example is not tested on ")?;
-                match &platforms[..] {
-                    [] => unreachable!(),
-                    [platform] => f.write_str(platform)?,
-                    [first, second] => write!(f, "{first} or {second}")?,
-                    [platforms @ .., last] => {
-                        for platform in platforms {
-                            write!(f, "{platform}, ")?;
+        if *tooltip != Tooltip::None {
+            let tooltip = fmt::from_fn(|f| match tooltip {
+                Tooltip::IgnoreAll => f.write_str("This example is not tested"),
+                Tooltip::IgnoreSome(platforms) => {
+                    f.write_str("This example is not tested on ")?;
+                    match &platforms[..] {
+                        [] => unreachable!(),
+                        [platform] => f.write_str(platform)?,
+                        [first, second] => write!(f, "{first} or {second}")?,
+                        [platforms @ .., last] => {
+                            for platform in platforms {
+                                write!(f, "{platform}, ")?;
+                            }
+                            write!(f, "or {last}")?;
                         }
-                        write!(f, "or {last}")?;
                     }
+                    Ok(())
                 }
-                Ok(())
-            }
-            Tooltip::CompileFail => f.write_str("This example deliberately fails to compile"),
-            Tooltip::ShouldPanic => f.write_str("This example panics"),
-            Tooltip::Edition(edition) => write!(f, "This example runs with edition {edition}"),
-            Tooltip::None => unreachable!(),
-        });
-        write_str(out, format_args!("<a href=\"#\" class=\"tooltip\" title=\"{tooltip}\">ⓘ</a>"));
-    }
+                Tooltip::CompileFail => f.write_str("This example deliberately fails to compile"),
+                Tooltip::ShouldPanic => f.write_str("This example panics"),
+                Tooltip::Edition(edition) => write!(f, "This example runs with edition {edition}"),
+                Tooltip::None => unreachable!(),
+            });
 
-    if let Some(extra) = extra_content {
-        out.push_str(extra);
-    }
-    if class.is_empty() {
-        write_str(
-            out,
-            format_args!(
-                "<pre class=\"rust{}{}\">",
-                if extra_classes.is_empty() { "" } else { " " },
-                extra_classes.join(" ")
-            ),
-        );
-    } else {
-        write_str(
-            out,
-            format_args!(
-                "<pre class=\"rust {class}{}{}\">",
-                if extra_classes.is_empty() { "" } else { " " },
-                extra_classes.join(" ")
-            ),
-        );
-    }
-    write_str(out, format_args!("<code>"));
+            write!(f, "<a href=\"#\" class=\"tooltip\" title=\"{tooltip}\">ⓘ</a>")?;
+        }
+
+        if let Some(extra) = extra_content {
+            f.write_str(extra)?;
+        }
+
+        let classes = fmt::from_fn(|f| {
+            iter::once("rust")
+                .chain(Some(class).filter(|class| !class.is_empty()))
+                .chain(extra_classes.iter().map(String::as_str))
+                .joined(" ", f)
+        });
+
+        write!(f, "<pre class=\"{classes}\"><code>")
+    })
 }
 
 /// Check if two `Class` can be merged together. In the following rules, "unclassified" means `None`
@@ -577,8 +569,8 @@ pub(super) fn write_code(
     });
 }
 
-fn write_footer(out: &mut String, playground_button: Option<&str>) {
-    write_str(out, format_args!("</code></pre>{}</div>", playground_button.unwrap_or_default()));
+fn write_footer(playground_button: Option<&str>) -> impl Display {
+    fmt::from_fn(move |f| write!(f, "</code></pre>{}</div>", playground_button.unwrap_or_default()))
 }
 
 /// How a span of text is classified. Mostly corresponds to token kinds.

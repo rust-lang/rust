@@ -337,15 +337,14 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
 
         // insert newline to clearly separate it from the
         // previous block so we can shorten the html output
-        let mut s = String::new();
-        s.push('\n');
-
-        highlight::render_example_with_highlighting(
-            &text,
-            &mut s,
-            tooltip,
-            playground_button.as_deref(),
-            &added_classes,
+        let s = format!(
+            "\n{}",
+            highlight::render_example_with_highlighting(
+                &text,
+                &tooltip,
+                playground_button.as_deref(),
+                &added_classes,
+            )
         );
         Some(Event::Html(s.into()))
     }
