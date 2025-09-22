@@ -18,7 +18,7 @@ help: the conflicting tag <TAG> was created here, in the initial state Reserved
    |
 LL |     let xref = unsafe { &mut *xraw };
    |                         ^^^^^^^^^^
-help: the conflicting tag <TAG> later transitioned to Active due to a child write access at offsets [0x0..0x4]
+help: the conflicting tag <TAG> later transitioned to Unique due to a child write access at offsets [0x0..0x4]
   --> tests/fail/tree_borrows/pass_invalid_mut.rs:LL:CC
    |
 LL |     *xref = 18; // activate xref
