@@ -106,7 +106,7 @@ fn tree_compacting_is_sound() {
                         as_foreign_or_child(rel),
                         kind,
                         parent.permission(),
-                        as_lazy_or_accessed(child.is_accessed()),
+                        as_lazy_or_accessed(child.accessed()),
                         child.permission(),
                         as_protected(child_protected),
                         np.permission(),
@@ -122,7 +122,7 @@ fn tree_compacting_is_sound() {
                         as_foreign_or_child(rel),
                         kind,
                         parent.permission(),
-                        as_lazy_or_accessed(child.is_accessed()),
+                        as_lazy_or_accessed(child.accessed()),
                         child.permission(),
                         as_protected(child_protected),
                         nc.permission()
@@ -375,7 +375,7 @@ mod spurious_read {
 
     impl LocStateProt {
         fn is_initial(&self) -> bool {
-            self.state.is_initial()
+            self.state.permission().is_initial()
         }
 
         fn perform_access(&self, kind: AccessKind, rel: AccessRelatedness) -> Result<Self, ()> {
