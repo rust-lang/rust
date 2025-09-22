@@ -13,7 +13,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir_analysis::autoderef::{self, Autoderef};
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk, TyCtxtInferExt};
-use rustc_infer::traits::ObligationCauseCode;
+use rustc_infer::traits::{ObligationCauseCode, query};
 use rustc_middle::middle::stability;
 use rustc_middle::ty::elaborate::supertrait_def_ids;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams, simplify_type};
@@ -30,7 +30,7 @@ use rustc_span::edit_distance::{
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
 use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
 use rustc_trait_selection::infer::InferCtxtExt as _;
-use rustc_trait_selection::traits::query::CanonicalTyGoal;
+use rustc_trait_selection::traits::query::CanonicalMethodAutoderefStepsGoal;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::query::method_autoderef::{
     CandidateStep, MethodAutoderefBadTy, MethodAutoderefStepsResult,
@@ -389,10 +389,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         OP: FnOnce(ProbeContext<'_, 'tcx>) -> Result<R, MethodError<'tcx>>,
     {
         let mut orig_values = OriginalQueryValues::default();
-        let query_input = self.canonicalize_query(
-            ParamEnvAnd { param_env: self.param_env, value: self_ty },
-            &mut orig_values,
-        );
+        let predefined_opaques_in_body = if self.next_trait_solver() {
+            self.tcx.mk_predefined_opaques_in_body_from_iter(
+                self.inner.borrow_mut().opaque_types().iter_opaque_types().map(|(k, v)| (k, v.ty)),
+            )
+        } else {
+            ty::List::empty()
+        };
+        let value = query::MethodAutoderefSteps { predefined_opaques_in_body, self_ty };
+        let query_input = self
+            .canonicalize_query(ParamEnvAnd { param_env: self.param_env, value }, &mut orig_values);
 
         let steps = match mode {
             Mode::MethodCall => self.tcx.method_autoderef_steps(query_input),
@@ -403,8 +409,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // special handling for this "trivial case" is a good idea.
 
                 let infcx = &self.infcx;
-                let (ParamEnvAnd { param_env: _, value: self_ty }, var_values) =
+                let (ParamEnvAnd { param_env: _, value }, var_values) =
                     infcx.instantiate_canonical(span, &query_input.canonical);
+                let query::MethodAutoderefSteps { predefined_opaques_in_body: _, self_ty } = value;
                 debug!(?self_ty, ?query_input, "probe_op: Mode::Path");
                 MethodAutoderefStepsResult {
                     steps: infcx.tcx.arena.alloc_from_iter([CandidateStep {
@@ -553,12 +560,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
 pub(crate) fn method_autoderef_steps<'tcx>(
     tcx: TyCtxt<'tcx>,
-    goal: CanonicalTyGoal<'tcx>,
+    goal: CanonicalMethodAutoderefStepsGoal<'tcx>,
 ) -> MethodAutoderefStepsResult<'tcx> {
     debug!("method_autoderef_steps({:?})", goal);
 
     let (ref infcx, goal, inference_vars) = tcx.infer_ctxt().build_with_canonical(DUMMY_SP, &goal);
-    let ParamEnvAnd { param_env, value: self_ty } = goal;
+    let ParamEnvAnd {
+        param_env,
+        value: query::MethodAutoderefSteps { predefined_opaques_in_body, self_ty },
+    } = goal;
+    for (key, ty) in predefined_opaques_in_body {
+        let prev =
+            infcx.register_hidden_type_in_storage(key, ty::OpaqueHiddenType { span: DUMMY_SP, ty });
+        // It may be possible that two entries in the opaque type storage end up
+        // with the same key after resolving contained inference variables.
+        //
+        // We could put them in the duplicate list but don't have to. The opaques we
+        // encounter here are already tracked in the caller, so there's no need to
+        // also store them here. We'd take them out when computing the query response
+        // and then discard them, as they're already present in the input.
+        //
+        // Ideally we'd drop duplicate opaque type definitions when computing
+        // the canonical input. This is more annoying to implement and may cause a
+        // perf regression, so we do it inside of the query for now.
+        if let Some(prev) = prev {
+            debug!(?key, ?ty, ?prev, "ignore duplicate in `opaque_types_storage`");
+        }
+    }
 
     // If arbitrary self types is not enabled, we follow the chain of
     // `Deref<Target=T>`. If arbitrary self types is enabled, we instead
@@ -655,7 +683,8 @@ pub(crate) fn method_autoderef_steps<'tcx>(
     };
 
     debug!("method_autoderef_steps: steps={:?} opt_bad_ty={:?}", steps, opt_bad_ty);
-
+    // Need to empty the opaque types storage before it gets dropped.
+    let _ = infcx.take_opaque_types();
     MethodAutoderefStepsResult {
         steps: tcx.arena.alloc_from_iter(steps),
         opt_bad_ty: opt_bad_ty.map(|ty| &*tcx.arena.alloc(ty)),

@@ -124,7 +124,7 @@ use crate::query::plumbing::{
 };
 use crate::traits::query::{
     CanonicalAliasGoal, CanonicalDropckOutlivesGoal, CanonicalImpliedOutlivesBoundsGoal,
-    CanonicalPredicateGoal, CanonicalTyGoal, CanonicalTypeOpAscribeUserTypeGoal,
+    CanonicalMethodAutoderefStepsGoal, CanonicalPredicateGoal, CanonicalTypeOpAscribeUserTypeGoal,
     CanonicalTypeOpNormalizeGoal, CanonicalTypeOpProvePredicateGoal, DropckConstraint,
     DropckOutlivesResult, MethodAutoderefStepsResult, NoSolution, NormalizationResult,
     OutlivesBound,
@@ -2559,9 +2559,9 @@ rustc_queries! {
     }
 
     query method_autoderef_steps(
-        goal: CanonicalTyGoal<'tcx>
+        goal: CanonicalMethodAutoderefStepsGoal<'tcx>
     ) -> MethodAutoderefStepsResult<'tcx> {
-        desc { "computing autoderef types for `{}`", goal.canonical.value.value }
+        desc { "computing autoderef types for `{}`", goal.canonical.value.value.self_ty }
     }
 
     /// Used by `-Znext-solver` to compute proof trees.

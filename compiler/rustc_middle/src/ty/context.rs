@@ -74,7 +74,8 @@ use crate::query::{IntoQueryParam, LocalCrate, Providers, TyCtxtAt};
 use crate::thir::Thir;
 use crate::traits;
 use crate::traits::solve::{
-    self, CanonicalInput, ExternalConstraints, ExternalConstraintsData, QueryResult, inspect,
+    self, CanonicalInput, ExternalConstraints, ExternalConstraintsData, PredefinedOpaques,
+    QueryResult, inspect,
 };
 use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
 use crate::ty::{
@@ -3125,6 +3126,14 @@ impl<'tcx> TyCtxt<'tcx> {
             >,
     {
         T::collect_and_apply(iter, |xs| self.mk_poly_existential_predicates(xs))
+    }
+
+    pub fn mk_predefined_opaques_in_body_from_iter<I, T>(self, iter: I) -> T::Output
+    where
+        I: Iterator<Item = T>,
+        T: CollectAndApply<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>), PredefinedOpaques<'tcx>>,
+    {
+        T::collect_and_apply(iter, |xs| self.mk_predefined_opaques_in_body(xs))
     }
 
     pub fn mk_clauses_from_iter<I, T>(self, iter: I) -> T::Output
