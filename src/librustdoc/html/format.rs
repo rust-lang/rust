@@ -30,7 +30,7 @@ use super::url_parts_builder::UrlPartsBuilder;
 use crate::clean::types::ExternalLocation;
 use crate::clean::utils::find_nearest_parent_module;
 use crate::clean::{self, ExternalCrate, PrimitiveType};
-use crate::display::{Joined as _, MaybeDisplay as _};
+use crate::display::{Joined as _, MaybeDisplay as _, WithOpts, Wrapped};
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::html::escape::{Escape, EscapeBodyText};
@@ -105,20 +105,16 @@ impl clean::GenericParamDef {
 
 impl clean::Generics {
     pub(crate) fn print(&self, cx: &Context<'_>) -> impl Display {
-        fmt::from_fn(move |f| {
-            let mut real_params = self.params.iter().filter(|p| !p.is_synthetic_param()).peekable();
-            if real_params.peek().is_none() {
-                return Ok(());
-            }
-
-            let real_params =
-                fmt::from_fn(|f| real_params.clone().map(|g| g.print(cx)).joined(", ", f));
-            if f.alternate() {
-                write!(f, "<{real_params:#}>")
-            } else {
-                write!(f, "&lt;{real_params}&gt;")
-            }
-        })
+        let mut real_params = self.params.iter().filter(|p| !p.is_synthetic_param()).peekable();
+        if real_params.peek().is_none() {
+            None
+        } else {
+            Some(
+                Wrapped::with_angle_brackets()
+                    .wrap_fn(move |f| real_params.clone().map(|g| g.print(cx)).joined(", ", f)),
+            )
+        }
+        .maybe_display()
     }
 }
 
@@ -151,11 +147,8 @@ fn print_where_predicate(predicate: &clean::WherePredicate, cx: &Context<'_>) ->
                 Ok(())
             }
             clean::WherePredicate::EqPredicate { lhs, rhs } => {
-                if f.alternate() {
-                    write!(f, "{:#} == {:#}", lhs.print(cx), rhs.print(cx))
-                } else {
-                    write!(f, "{} == {}", lhs.print(cx), rhs.print(cx))
-                }
+                let opts = WithOpts::from(f);
+                write!(f, "{} == {}", opts.display(lhs.print(cx)), opts.display(rhs.print(cx)))
             }
         }
     })
@@ -279,13 +272,10 @@ impl clean::GenericBound {
                 ty.print(cx).fmt(f)
             }
             clean::GenericBound::Use(args) => {
-                if f.alternate() {
-                    f.write_str("use<")?;
-                } else {
-                    f.write_str("use&lt;")?;
-                }
-                args.iter().map(|arg| arg.name()).joined(", ", f)?;
-                if f.alternate() { f.write_str(">") } else { f.write_str("&gt;") }
+                f.write_str("use")?;
+                Wrapped::with_angle_brackets()
+                    .wrap_fn(|f| args.iter().map(|arg| arg.name()).joined(", ", f))
+                    .fmt(f)
             }
         })
     }
@@ -297,40 +287,29 @@ impl clean::GenericArgs {
             match self {
                 clean::GenericArgs::AngleBracketed { args, constraints } => {
                     if !args.is_empty() || !constraints.is_empty() {
-                        if f.alternate() {
-                            f.write_str("<")?;
-                        } else {
-                            f.write_str("&lt;")?;
-                        }
-
-                        [Either::Left(args), Either::Right(constraints)]
-                            .into_iter()
-                            .flat_map(Either::factor_into_iter)
-                            .map(|either| {
-                                either.map_either(
-                                    |arg| arg.print(cx),
-                                    |constraint| constraint.print(cx),
-                                )
+                        Wrapped::with_angle_brackets()
+                            .wrap_fn(|f| {
+                                [Either::Left(args), Either::Right(constraints)]
+                                    .into_iter()
+                                    .flat_map(Either::factor_into_iter)
+                                    .map(|either| {
+                                        either.map_either(
+                                            |arg| arg.print(cx),
+                                            |constraint| constraint.print(cx),
+                                        )
+                                    })
+                                    .joined(", ", f)
                             })
-                            .joined(", ", f)?;
-
-                        if f.alternate() {
-                            f.write_str(">")?;
-                        } else {
-                            f.write_str("&gt;")?;
-                        }
+                            .fmt(f)?;
                     }
                 }
                 clean::GenericArgs::Parenthesized { inputs, output } => {
-                    f.write_str("(")?;
-                    inputs.iter().map(|ty| ty.print(cx)).joined(", ", f)?;
-                    f.write_str(")")?;
+                    Wrapped::with_parens()
+                        .wrap_fn(|f| inputs.iter().map(|ty| ty.print(cx)).joined(", ", f))
+                        .fmt(f)?;
                     if let Some(ref ty) = *output {
-                        if f.alternate() {
-                            write!(f, " -> {:#}", ty.print(cx))?;
-                        } else {
-                            write!(f, " -&gt; {}", ty.print(cx))?;
-                        }
+                        f.write_str(if f.alternate() { " -> " } else { " -&gt; " })?;
+                        ty.print(cx).fmt(f)?;
                     }
                 }
                 clean::GenericArgs::ReturnTypeNotation => {
@@ -834,9 +813,10 @@ fn print_higher_ranked_params_with_space(
     fmt::from_fn(move |f| {
         if !params.is_empty() {
             f.write_str(keyword)?;
-            f.write_str(if f.alternate() { "<" } else { "&lt;" })?;
-            params.iter().map(|lt| lt.print(cx)).joined(", ", f)?;
-            f.write_str(if f.alternate() { "> " } else { "&gt; " })?;
+            Wrapped::with_angle_brackets()
+                .wrap_fn(|f| params.iter().map(|lt| lt.print(cx)).joined(", ", f))
+                .fmt(f)?;
+            f.write_char(' ')?;
         }
         Ok(())
     })
@@ -923,26 +903,23 @@ fn fmt_type(
                         f,
                         PrimitiveType::Tuple,
                         format_args!(
-                            "({})",
-                            fmt::from_fn(|f| generic_names.iter().joined(", ", f))
+                            "{}",
+                            Wrapped::with_parens()
+                                .wrap_fn(|f| generic_names.iter().joined(", ", f))
                         ),
                         cx,
                     )
                 } else {
-                    f.write_str("(")?;
-                    many.iter().map(|item| item.print(cx)).joined(", ", f)?;
-                    f.write_str(")")
+                    Wrapped::with_parens()
+                        .wrap_fn(|f| many.iter().map(|item| item.print(cx)).joined(", ", f))
+                        .fmt(f)
                 }
             }
         },
         clean::Slice(box clean::Generic(name)) => {
             primitive_link(f, PrimitiveType::Slice, format_args!("[{name}]"), cx)
         }
-        clean::Slice(t) => {
-            write!(f, "[")?;
-            t.print(cx).fmt(f)?;
-            write!(f, "]")
-        }
+        clean::Slice(t) => Wrapped::with_square_brackets().wrap(t.print(cx)).fmt(f),
         clean::Type::Pat(t, pat) => {
             fmt::Display::fmt(&t.print(cx), f)?;
             write!(f, " is {pat}")
@@ -953,40 +930,27 @@ fn fmt_type(
             format_args!("[{name}; {n}]", n = Escape(n)),
             cx,
         ),
-        clean::Array(t, n) => {
-            write!(f, "[")?;
-            t.print(cx).fmt(f)?;
-            if f.alternate() {
-                write!(f, "; {n}")?;
-            } else {
-                write!(f, "; ")?;
-                primitive_link(f, PrimitiveType::Array, format_args!("{n}", n = Escape(n)), cx)?;
-            }
-            write!(f, "]")
-        }
+        clean::Array(t, n) => Wrapped::with_square_brackets()
+            .wrap(fmt::from_fn(|f| {
+                t.print(cx).fmt(f)?;
+                f.write_str("; ")?;
+                if f.alternate() {
+                    f.write_str(n)
+                } else {
+                    primitive_link(f, PrimitiveType::Array, format_args!("{n}", n = Escape(n)), cx)
+                }
+            }))
+            .fmt(f),
         clean::RawPointer(m, t) => {
-            let m = match m {
-                hir::Mutability::Mut => "mut",
-                hir::Mutability::Not => "const",
-            };
+            let m = m.ptr_str();
 
             if matches!(**t, clean::Generic(_)) || t.is_assoc_ty() {
-                let ty = t.print(cx);
-                if f.alternate() {
-                    primitive_link(
-                        f,
-                        clean::PrimitiveType::RawPointer,
-                        format_args!("*{m} {ty:#}"),
-                        cx,
-                    )
-                } else {
-                    primitive_link(
-                        f,
-                        clean::PrimitiveType::RawPointer,
-                        format_args!("*{m} {ty}"),
-                        cx,
-                    )
-                }
+                primitive_link(
+                    f,
+                    clean::PrimitiveType::RawPointer,
+                    format_args!("*{m} {ty}", ty = WithOpts::from(f).display(t.print(cx))),
+                    cx,
+                )
             } else {
                 primitive_link(f, clean::PrimitiveType::RawPointer, format_args!("*{m} "), cx)?;
                 t.print(cx).fmt(f)
@@ -1020,14 +984,10 @@ fn fmt_type(
                 clean::ImplTrait(ref bounds) if bounds.len() > 1 => true,
                 _ => false,
             };
-            if needs_parens {
-                f.write_str("(")?;
-            }
-            fmt_type(ty, f, use_absolute, cx)?;
-            if needs_parens {
-                f.write_str(")")?;
-            }
-            Ok(())
+            Wrapped::with_parens()
+                .when(needs_parens)
+                .wrap_fn(|f| fmt_type(ty, f, use_absolute, cx))
+                .fmt(f)
         }
         clean::ImplTrait(bounds) => {
             f.write_str("impl ")?;
@@ -1057,23 +1017,21 @@ impl clean::QPathData {
             // FIXME(inherent_associated_types): Once we support non-ADT self-types (#106719),
             // we need to surround them with angle brackets in some cases (e.g. `<dyn …>::P`).
 
-            if f.alternate() {
-                if let Some(trait_) = trait_
-                    && should_fully_qualify
-                {
-                    write!(f, "<{:#} as {:#}>::", self_type.print(cx), trait_.print(cx))?
-                } else {
-                    write!(f, "{:#}::", self_type.print(cx))?
-                }
+            if let Some(trait_) = trait_
+                && should_fully_qualify
+            {
+                let opts = WithOpts::from(f);
+                Wrapped::with_angle_brackets()
+                    .wrap(format_args!(
+                        "{} as {}",
+                        opts.display(self_type.print(cx)),
+                        opts.display(trait_.print(cx))
+                    ))
+                    .fmt(f)?
             } else {
-                if let Some(trait_) = trait_
-                    && should_fully_qualify
-                {
-                    write!(f, "&lt;{} as {}&gt;::", self_type.print(cx), trait_.print(cx))?
-                } else {
-                    write!(f, "{}::", self_type.print(cx))?
-                }
-            };
+                self_type.print(cx).fmt(f)?;
+            }
+            f.write_str("::")?;
             // It's pretty unsightly to look at `<A as B>::C` in output, and
             // we've got hyperlinking on our side, so try to avoid longer
             // notation as much as possible by making `C` a hyperlink to trait
@@ -1132,7 +1090,7 @@ impl clean::Impl {
 
             if let Some(ref ty) = self.trait_ {
                 if self.is_negative_trait_impl() {
-                    write!(f, "!")?;
+                    f.write_char('!')?;
                 }
                 if self.kind.is_fake_variadic()
                     && let Some(generics) = ty.generics()
@@ -1140,18 +1098,17 @@ impl clean::Impl {
                 {
                     let last = ty.last();
                     if f.alternate() {
-                        write!(f, "{last}<")?;
-                        self.print_type(inner_type, f, use_absolute, cx)?;
-                        write!(f, ">")?;
+                        write!(f, "{last}")?;
                     } else {
-                        write!(f, "{}&lt;", print_anchor(ty.def_id(), last, cx))?;
-                        self.print_type(inner_type, f, use_absolute, cx)?;
-                        write!(f, "&gt;")?;
-                    }
+                        write!(f, "{}", print_anchor(ty.def_id(), last, cx))?;
+                    };
+                    Wrapped::with_angle_brackets()
+                        .wrap_fn(|f| self.print_type(inner_type, f, use_absolute, cx))
+                        .fmt(f)?;
                 } else {
                     ty.print(cx).fmt(f)?;
                 }
-                write!(f, " for ")?;
+                f.write_str(" for ")?;
             }
 
             if let Some(ty) = self.kind.as_blanket_ty() {
@@ -1218,18 +1175,10 @@ impl clean::Impl {
             && let Ok(ty) = generics.exactly_one()
             && self.kind.is_fake_variadic()
         {
-            let wrapper = print_anchor(path.def_id(), path.last(), cx);
-            if f.alternate() {
-                write!(f, "{wrapper:#}&lt;")?;
-            } else {
-                write!(f, "{wrapper}<")?;
-            }
-            self.print_type(ty, f, use_absolute, cx)?;
-            if f.alternate() {
-                write!(f, "&gt;")?;
-            } else {
-                write!(f, ">")?;
-            }
+            print_anchor(path.def_id(), path.last(), cx).fmt(f)?;
+            Wrapped::with_angle_brackets()
+                .wrap_fn(|f| self.print_type(ty, f, use_absolute, cx))
+                .fmt(f)?;
         } else {
             fmt_type(type_, f, use_absolute, cx)?;
         }
@@ -1311,23 +1260,13 @@ impl clean::FnDecl {
     pub(crate) fn print(&self, cx: &Context<'_>) -> impl Display {
         fmt::from_fn(move |f| {
             let ellipsis = if self.c_variadic { ", ..." } else { "" };
-            if f.alternate() {
-                write!(
-                    f,
-                    "({params:#}{ellipsis}){arrow:#}",
-                    params = print_params(&self.inputs, cx),
-                    ellipsis = ellipsis,
-                    arrow = self.print_output(cx)
-                )
-            } else {
-                write!(
-                    f,
-                    "({params}{ellipsis}){arrow}",
-                    params = print_params(&self.inputs, cx),
-                    ellipsis = ellipsis,
-                    arrow = self.print_output(cx)
-                )
-            }
+            Wrapped::with_parens()
+                .wrap_fn(|f| {
+                    print_params(&self.inputs, cx).fmt(f)?;
+                    f.write_str(ellipsis)
+                })
+                .fmt(f)?;
+            self.print_output(cx).fmt(f)
         })
     }
 
@@ -1346,8 +1285,7 @@ impl clean::FnDecl {
         fmt::from_fn(move |f| {
             // First, generate the text form of the declaration, with no line wrapping, and count the bytes.
             let mut counter = WriteCounter(0);
-            write!(&mut counter, "{:#}", fmt::from_fn(|f| { self.inner_full_print(None, f, cx) }))
-                .unwrap();
+            write!(&mut counter, "{:#}", fmt::from_fn(|f| { self.inner_full_print(None, f, cx) }))?;
             // If the text form was over 80 characters wide, we will line-wrap our output.
             let line_wrapping_indent =
                 if header_len + counter.0 > 80 { Some(indent) } else { None };
@@ -1365,53 +1303,56 @@ impl clean::FnDecl {
         f: &mut fmt::Formatter<'_>,
         cx: &Context<'_>,
     ) -> fmt::Result {
-        f.write_char('(')?;
+        Wrapped::with_parens()
+            .wrap_fn(|f| {
+                if !self.inputs.is_empty() {
+                    let line_wrapping_indent = line_wrapping_indent.map(|n| Indent(n + 4));
 
-        if !self.inputs.is_empty() {
-            let line_wrapping_indent = line_wrapping_indent.map(|n| Indent(n + 4));
+                    if let Some(indent) = line_wrapping_indent {
+                        write!(f, "\n{indent}")?;
+                    }
 
-            if let Some(indent) = line_wrapping_indent {
-                write!(f, "\n{indent}")?;
-            }
+                    let sep = fmt::from_fn(|f| {
+                        if let Some(indent) = line_wrapping_indent {
+                            write!(f, ",\n{indent}")
+                        } else {
+                            f.write_str(", ")
+                        }
+                    });
 
-            let sep = fmt::from_fn(|f| {
-                if let Some(indent) = line_wrapping_indent {
-                    write!(f, ",\n{indent}")
-                } else {
-                    f.write_str(", ")
+                    self.inputs.iter().map(|param| param.print(cx)).joined(sep, f)?;
+
+                    if line_wrapping_indent.is_some() {
+                        writeln!(f, ",")?
+                    }
+
+                    if self.c_variadic {
+                        match line_wrapping_indent {
+                            None => write!(f, ", ...")?,
+                            Some(indent) => writeln!(f, "{indent}...")?,
+                        };
+                    }
                 }
-            });
 
-            self.inputs.iter().map(|param| param.print(cx)).joined(sep, f)?;
+                if let Some(n) = line_wrapping_indent {
+                    write!(f, "{}", Indent(n))?
+                }
 
-            if line_wrapping_indent.is_some() {
-                writeln!(f, ",")?
-            }
-
-            if self.c_variadic {
-                match line_wrapping_indent {
-                    None => write!(f, ", ...")?,
-                    Some(indent) => writeln!(f, "{indent}...")?,
-                };
-            }
-        }
-
-        if let Some(n) = line_wrapping_indent {
-            write!(f, "{}", Indent(n))?
-        }
-
-        f.write_char(')')?;
+                Ok(())
+            })
+            .fmt(f)?;
 
         self.print_output(cx).fmt(f)
     }
 
     fn print_output(&self, cx: &Context<'_>) -> impl Display {
-        fmt::from_fn(move |f| match &self.output {
-            clean::Tuple(tys) if tys.is_empty() => Ok(()),
-            ty if f.alternate() => {
-                write!(f, " -> {:#}", ty.print(cx))
+        fmt::from_fn(move |f| {
+            if self.output.is_unit() {
+                return Ok(());
             }
-            ty => write!(f, " -&gt; {}", ty.print(cx)),
+
+            f.write_str(if f.alternate() { " -> " } else { " -&gt; " })?;
+            self.output.print(cx).fmt(f)
         })
     }
 }
@@ -1422,10 +1363,13 @@ pub(crate) fn visibility_print_with_space(item: &clean::Item, cx: &Context<'_>) 
             f.write_str("#[doc(hidden)] ")?;
         }
 
-        match item.visibility(cx.tcx()) {
-            None => {}
-            Some(ty::Visibility::Public) => f.write_str("pub ")?,
-            Some(ty::Visibility::Restricted(vis_did)) => {
+        let Some(vis) = item.visibility(cx.tcx()) else {
+            return Ok(());
+        };
+
+        match vis {
+            ty::Visibility::Public => f.write_str("pub ")?,
+            ty::Visibility::Restricted(vis_did) => {
                 // FIXME(camelid): This may not work correctly if `item_did` is a module.
                 //                 However, rustdoc currently never displays a module's
                 //                 visibility, so it shouldn't matter.
