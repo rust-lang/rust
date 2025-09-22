@@ -422,10 +422,10 @@ impl std::str::FromStr for RustcLto {
 #[derive(Default, Clone)]
 pub enum GccCiMode {
     /// Build GCC from the local `src/gcc` submodule.
-    #[default]
     BuildLocally,
     /// Try to download GCC from CI.
     /// If it is not available on CI, it will be built locally instead.
+    #[default]
     DownloadFromCi,
 }
 

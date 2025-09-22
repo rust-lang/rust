@@ -329,13 +329,17 @@ pub fn is_wild(pat: &Pat<'_>) -> bool {
     matches!(pat.kind, PatKind::Wild)
 }
 
-// Checks if arm has the form `None => None`
-pub fn is_none_arm(cx: &LateContext<'_>, arm: &Arm<'_>) -> bool {
-    matches!(
-        arm.pat.kind,
+/// Checks if the `pat` is `None`.
+pub fn is_none_pattern(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
+    matches!(pat.kind,
         PatKind::Expr(PatExpr { kind: PatExprKind::Path(qpath), .. })
-            if is_res_lang_ctor(cx, cx.qpath_res(qpath, arm.pat.hir_id), OptionNone)
-    )
+            if is_res_lang_ctor(cx, cx.qpath_res(qpath, pat.hir_id), OptionNone))
+}
+
+/// Checks if `arm` has the form `None => None`.
+pub fn is_none_arm(cx: &LateContext<'_>, arm: &Arm<'_>) -> bool {
+    is_none_pattern(cx, arm.pat)
+        && matches!(peel_blocks(arm.body).kind, ExprKind::Path(qpath) if is_res_lang_ctor(cx, cx.qpath_res(&qpath, arm.body.hir_id), OptionNone))
 }
 
 /// Checks if the given `QPath` belongs to a type alias.
@@ -2133,17 +2137,11 @@ pub fn std_or_core(cx: &LateContext<'_>) -> Option<&'static str> {
 }
 
 pub fn is_no_std_crate(cx: &LateContext<'_>) -> bool {
-    cx.tcx
-        .hir_attrs(hir::CRATE_HIR_ID)
-        .iter()
-        .any(|attr| attr.has_name(sym::no_std))
+    find_attr!(cx.tcx.hir_attrs(hir::CRATE_HIR_ID), AttributeKind::NoStd(..))
 }
 
 pub fn is_no_core_crate(cx: &LateContext<'_>) -> bool {
-    cx.tcx
-        .hir_attrs(hir::CRATE_HIR_ID)
-        .iter()
-        .any(|attr| attr.has_name(sym::no_core))
+    find_attr!(cx.tcx.hir_attrs(hir::CRATE_HIR_ID), AttributeKind::NoCore(..))
 }
 
 /// Check if parent of a hir node is a trait implementation block.
@@ -2380,15 +2378,12 @@ pub fn peel_hir_ty_refs<'a>(mut ty: &'a hir::Ty<'a>) -> (&'a hir::Ty<'a>, usize)
     }
 }
 
-/// Peels off all references on the type. Returns the underlying type and the number of references
-/// removed.
-pub fn peel_middle_ty_refs(mut ty: Ty<'_>) -> (Ty<'_>, usize) {
-    let mut count = 0;
-    while let rustc_ty::Ref(_, dest_ty, _) = ty.kind() {
-        ty = *dest_ty;
-        count += 1;
+/// Returns the base type for HIR references and pointers.
+pub fn peel_hir_ty_refs_and_ptrs<'tcx>(ty: &'tcx hir::Ty<'tcx>) -> &'tcx hir::Ty<'tcx> {
+    match &ty.kind {
+        TyKind::Ptr(mut_ty) | TyKind::Ref(_, mut_ty) => peel_hir_ty_refs_and_ptrs(mut_ty.ty),
+        _ => ty,
     }
-    (ty, count)
 }
 
 /// Removes `AddrOf` operators (`&`) or deref operators (`*`), but only if a reference type is
@@ -3250,8 +3245,8 @@ pub fn get_path_from_caller_to_method_type<'tcx>(
     let assoc_item = tcx.associated_item(method);
     let def_id = assoc_item.container_id(tcx);
     match assoc_item.container {
-        rustc_ty::AssocItemContainer::Trait => get_path_to_callee(tcx, from, def_id),
-        rustc_ty::AssocItemContainer::Impl => {
+        rustc_ty::AssocContainer::Trait => get_path_to_callee(tcx, from, def_id),
+        rustc_ty::AssocContainer::InherentImpl | rustc_ty::AssocContainer::TraitImpl(_) => {
             let ty = tcx.type_of(def_id).instantiate_identity();
             get_path_to_ty(tcx, from, ty, args)
         },

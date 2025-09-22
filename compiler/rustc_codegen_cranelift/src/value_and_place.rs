@@ -909,8 +909,7 @@ pub(crate) fn assert_assignable<'tcx>(
             );
             // fn(&T) -> for<'l> fn(&'l T) is allowed
         }
-        (&ty::Dynamic(from_traits, _, _from_kind), &ty::Dynamic(to_traits, _, _to_kind)) => {
-            // FIXME(dyn-star): Do the right thing with DynKinds
+        (&ty::Dynamic(from_traits, _), &ty::Dynamic(to_traits, _)) => {
             for (from, to) in from_traits.iter().zip(to_traits) {
                 let from = fx.tcx.normalize_erasing_late_bound_regions(fx.typing_env(), from);
                 let to = fx.tcx.normalize_erasing_late_bound_regions(fx.typing_env(), to);

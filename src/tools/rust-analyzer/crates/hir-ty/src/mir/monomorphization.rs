@@ -38,7 +38,6 @@ struct Filler<'a> {
     trait_env: Arc<TraitEnvironment>,
     subst: &'a Substitution,
     generics: Option<Generics>,
-    owner: DefWithBodyId,
 }
 impl FallibleTypeFolder<Interner> for Filler<'_> {
     type Error = MirLowerError;
@@ -66,7 +65,11 @@ impl FallibleTypeFolder<Interner> for Filler<'_> {
                 }))
                 .intern(Interner))
             }
-            TyKind::OpaqueType(id, subst) => {
+            TyKind::Alias(chalk_ir::AliasTy::Opaque(chalk_ir::OpaqueTy {
+                opaque_ty_id: id,
+                substitution: subst,
+            }))
+            | TyKind::OpaqueType(id, subst) => {
                 let impl_trait_id = self.db.lookup_intern_impl_trait_id((*id).into());
                 let subst = subst.clone().try_fold_with(self.as_dyn(), outer_binder)?;
                 match impl_trait_id {
@@ -74,7 +77,6 @@ impl FallibleTypeFolder<Interner> for Filler<'_> {
                         let infer = self.db.infer(func.into());
                         let filler = &mut Filler {
                             db: self.db,
-                            owner: self.owner,
                             trait_env: self.trait_env.clone(),
                             subst: &subst,
                             generics: Some(generics(self.db, func.into())),
@@ -99,7 +101,7 @@ impl FallibleTypeFolder<Interner> for Filler<'_> {
         idx: chalk_ir::PlaceholderIndex,
         _outer_binder: DebruijnIndex,
     ) -> std::result::Result<chalk_ir::Const<Interner>, Self::Error> {
-        let it = from_placeholder_idx(self.db, idx);
+        let it = from_placeholder_idx(self.db, idx).0;
         let Some(idx) = self.generics.as_ref().and_then(|g| g.type_or_const_param_idx(it)) else {
             not_supported!("missing idx in generics");
         };
@@ -117,7 +119,7 @@ impl FallibleTypeFolder<Interner> for Filler<'_> {
         idx: chalk_ir::PlaceholderIndex,
         _outer_binder: DebruijnIndex,
     ) -> std::result::Result<Ty, Self::Error> {
-        let it = from_placeholder_idx(self.db, idx);
+        let it = from_placeholder_idx(self.db, idx).0;
         let Some(idx) = self.generics.as_ref().and_then(|g| g.type_or_const_param_idx(it)) else {
             not_supported!("missing idx in generics");
         };
@@ -306,7 +308,7 @@ pub fn monomorphized_mir_body_query(
     trait_env: Arc<crate::TraitEnvironment>,
 ) -> Result<Arc<MirBody>, MirLowerError> {
     let generics = owner.as_generic_def_id(db).map(|g_def| generics(db, g_def));
-    let filler = &mut Filler { db, subst: &subst, trait_env, generics, owner };
+    let filler = &mut Filler { db, subst: &subst, trait_env, generics };
     let body = db.mir_body(owner)?;
     let mut body = (*body).clone();
     filler.fill_body(&mut body)?;
@@ -330,23 +332,9 @@ pub fn monomorphized_mir_body_for_closure_query(
 ) -> Result<Arc<MirBody>, MirLowerError> {
     let InternedClosure(owner, _) = db.lookup_intern_closure(closure);
     let generics = owner.as_generic_def_id(db).map(|g_def| generics(db, g_def));
-    let filler = &mut Filler { db, subst: &subst, trait_env, generics, owner };
+    let filler = &mut Filler { db, subst: &subst, trait_env, generics };
     let body = db.mir_body_for_closure(closure)?;
     let mut body = (*body).clone();
     filler.fill_body(&mut body)?;
     Ok(Arc::new(body))
-}
-
-// FIXME: remove this function. Monomorphization is a time consuming job and should always be a query.
-pub fn monomorphize_mir_body_bad(
-    db: &dyn HirDatabase,
-    mut body: MirBody,
-    subst: Substitution,
-    trait_env: Arc<crate::TraitEnvironment>,
-) -> Result<MirBody, MirLowerError> {
-    let owner = body.owner;
-    let generics = owner.as_generic_def_id(db).map(|g_def| generics(db, g_def));
-    let filler = &mut Filler { db, subst: &subst, trait_env, generics, owner };
-    filler.fill_body(&mut body)?;
-    Ok(body)
 }

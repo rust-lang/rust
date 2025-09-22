@@ -1487,9 +1487,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                     unsize_to: None,
                                 },
                             );
-                        } else if let ty::Dynamic(src_tty, _src_lt, ty::Dyn) =
+                        } else if let ty::Dynamic(src_tty, _src_lt) =
                             *self.struct_tail(src.ty, location).kind()
-                            && let ty::Dynamic(dst_tty, dst_lt, ty::Dyn) =
+                            && let ty::Dynamic(dst_tty, dst_lt) =
                                 *self.struct_tail(dst.ty, location).kind()
                             && src_tty.principal().is_some()
                             && dst_tty.principal().is_some()
@@ -1511,7 +1511,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                 // FIXME: Once we disallow casting `*const dyn Trait + 'short`
                                 // to `*const dyn Trait + 'long`, then this can just be `src_lt`.
                                 dst_lt,
-                                ty::Dyn,
                             );
                             let dst_obj = Ty::new_dynamic(
                                 tcx,
@@ -1519,7 +1518,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                     &dst_tty.without_auto_traits().collect::<Vec<_>>(),
                                 ),
                                 dst_lt,
-                                ty::Dyn,
                             );
 
                             debug!(?src_tty, ?dst_tty, ?src_obj, ?dst_obj);
@@ -1631,7 +1629,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             | Rvalue::BinaryOp(..)
             | Rvalue::RawPtr(..)
             | Rvalue::ThreadLocalRef(..)
-            | Rvalue::Len(..)
             | Rvalue::Discriminant(..)
             | Rvalue::NullaryOp(NullOp::OffsetOf(..), _) => {}
         }
@@ -1892,7 +1889,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         if is_diverging {
             // The signature in this call can reference region variables,
             // so erase them before calling a query.
-            let output_ty = self.tcx().erase_regions(sig.output());
+            let output_ty = self.tcx().erase_and_anonymize_regions(sig.output());
             if !output_ty
                 .is_privately_uninhabited(self.tcx(), self.infcx.typing_env(self.infcx.param_env))
             {
@@ -1986,7 +1983,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
             let op_arg_ty = self.normalize(op_arg_ty, term_location);
             let category = if call_source.from_hir_call() {
-                ConstraintCategory::CallArgument(Some(self.infcx.tcx.erase_regions(func_ty)))
+                ConstraintCategory::CallArgument(Some(
+                    self.infcx.tcx.erase_and_anonymize_regions(func_ty),
+                ))
             } else {
                 ConstraintCategory::Boring
             };
@@ -2120,7 +2119,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // Erase the regions from `ty` to get a global type. The
         // `Sized` bound in no way depends on precise regions, so this
         // shouldn't affect `is_sized`.
-        let erased_ty = tcx.erase_regions(ty);
+        let erased_ty = tcx.erase_and_anonymize_regions(ty);
         // FIXME(#132279): Using `Ty::is_sized` causes us to incorrectly handle opaques here.
         if !erased_ty.is_sized(tcx, self.infcx.typing_env(self.infcx.param_env)) {
             // in current MIR construction, all non-control-flow rvalue
@@ -2199,7 +2198,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             | Rvalue::Repeat(..)
             | Rvalue::Ref(..)
             | Rvalue::RawPtr(..)
-            | Rvalue::Len(..)
             | Rvalue::Cast(..)
             | Rvalue::ShallowInitBox(..)
             | Rvalue::BinaryOp(..)

@@ -204,7 +204,7 @@ pub(super) trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.mutex_enqueue_and_block(mutex_ref, Some((retval, dest)));
         } else {
             // We can have it right now!
-            this.mutex_lock(&mutex_ref);
+            this.mutex_lock(&mutex_ref)?;
             // Don't forget to write the return value.
             this.write_scalar(retval, &dest)?;
         }
@@ -338,7 +338,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// Lock by setting the mutex owner and increasing the lock count.
-    fn mutex_lock(&mut self, mutex_ref: &MutexRef) {
+    fn mutex_lock(&mut self, mutex_ref: &MutexRef) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let thread = this.active_thread();
         let mut mutex = mutex_ref.0.borrow_mut();
@@ -352,9 +352,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             mutex.owner = Some(thread);
         }
         mutex.lock_count = mutex.lock_count.strict_add(1);
-        if let Some(data_race) = this.machine.data_race.as_vclocks_ref() {
-            data_race.acquire_clock(&mutex.clock, &this.machine.threads);
-        }
+        this.acquire_clock(&mutex.clock)?;
+        interp_ok(())
     }
 
     /// Try unlocking by decreasing the lock count and returning the old lock
@@ -377,11 +376,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // The mutex is completely unlocked. Try transferring ownership
                 // to another thread.
 
-                if let Some(data_race) = this.machine.data_race.as_vclocks_ref() {
-                    data_race.release_clock(&this.machine.threads, |clock| {
-                        mutex.clock.clone_from(clock)
-                    });
-                }
+                this.release_clock(|clock| mutex.clock.clone_from(clock))?;
                 let thread_id = mutex.queue.pop_front();
                 // We need to drop our mutex borrow before unblock_thread
                 // because it will be borrowed again in the unblock callback.
@@ -425,7 +420,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     assert_eq!(unblock, UnblockKind::Ready);
 
                     assert!(mutex_ref.owner().is_none());
-                    this.mutex_lock(&mutex_ref);
+                    this.mutex_lock(&mutex_ref)?;
 
                     if let Some((retval, dest)) = retval_dest {
                         this.write_scalar(retval, &dest)?;
@@ -439,7 +434,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     /// Read-lock the lock by adding the `reader` the list of threads that own
     /// this lock.
-    fn rwlock_reader_lock(&mut self, rwlock_ref: &RwLockRef) {
+    fn rwlock_reader_lock(&mut self, rwlock_ref: &RwLockRef) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let thread = this.active_thread();
         trace!("rwlock_reader_lock: now also held (one more time) by {:?}", thread);
@@ -447,9 +442,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         assert!(!rwlock.is_write_locked(), "the lock is write locked");
         let count = rwlock.readers.entry(thread).or_insert(0);
         *count = count.strict_add(1);
-        if let Some(data_race) = this.machine.data_race.as_vclocks_ref() {
-            data_race.acquire_clock(&rwlock.clock_unlocked, &this.machine.threads);
-        }
+        this.acquire_clock(&rwlock.clock_unlocked)?;
+        interp_ok(())
     }
 
     /// Try read-unlock the lock for the current threads and potentially give the lock to a new owner.
@@ -472,12 +466,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             Entry::Vacant(_) => return interp_ok(false), // we did not even own this lock
         }
-        if let Some(data_race) = this.machine.data_race.as_vclocks_ref() {
-            // Add this to the shared-release clock of all concurrent readers.
-            data_race.release_clock(&this.machine.threads, |clock| {
-                rwlock.clock_current_readers.join(clock)
-            });
-        }
+        // Add this to the shared-release clock of all concurrent readers.
+        this.release_clock(|clock| rwlock.clock_current_readers.join(clock))?;
 
         // The thread was a reader. If the lock is not held any more, give it to a writer.
         if rwlock.is_locked().not() {
@@ -521,7 +511,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
                 |this, unblock: UnblockKind| {
                     assert_eq!(unblock, UnblockKind::Ready);
-                    this.rwlock_reader_lock(&rwlock_ref);
+                    this.rwlock_reader_lock(&rwlock_ref)?;
                     this.write_scalar(retval, &dest)?;
                     interp_ok(())
                 }
@@ -531,7 +521,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     /// Lock by setting the writer that owns the lock.
     #[inline]
-    fn rwlock_writer_lock(&mut self, rwlock_ref: &RwLockRef) {
+    fn rwlock_writer_lock(&mut self, rwlock_ref: &RwLockRef) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let thread = this.active_thread();
         trace!("rwlock_writer_lock: now held by {:?}", thread);
@@ -539,9 +529,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let mut rwlock = rwlock_ref.0.borrow_mut();
         assert!(!rwlock.is_locked(), "the rwlock is already locked");
         rwlock.writer = Some(thread);
-        if let Some(data_race) = this.machine.data_race.as_vclocks_ref() {
-            data_race.acquire_clock(&rwlock.clock_unlocked, &this.machine.threads);
-        }
+        this.acquire_clock(&rwlock.clock_unlocked)?;
+        interp_ok(())
     }
 
     /// Try to unlock an rwlock held by the current thread.
@@ -559,11 +548,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             rwlock.writer = None;
             trace!("rwlock_writer_unlock: unlocked by {:?}", thread);
             // Record release clock for next lock holder.
-            if let Some(data_race) = this.machine.data_race.as_vclocks_ref() {
-                data_race.release_clock(&this.machine.threads, |clock| {
-                    rwlock.clock_unlocked.clone_from(clock)
-                });
-            }
+            this.release_clock(|clock| rwlock.clock_unlocked.clone_from(clock))?;
 
             // The thread was a writer.
             //
@@ -613,7 +598,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
                 |this, unblock: UnblockKind| {
                     assert_eq!(unblock, UnblockKind::Ready);
-                    this.rwlock_writer_lock(&rwlock_ref);
+                    this.rwlock_writer_lock(&rwlock_ref)?;
                     this.write_scalar(retval, &dest)?;
                     interp_ok(())
                 }
@@ -663,12 +648,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     match unblock {
                         UnblockKind::Ready => {
                             // The condvar was signaled. Make sure we get the clock for that.
-                            if let Some(data_race) = this.machine.data_race.as_vclocks_ref() {
-                                data_race.acquire_clock(
+                            this.acquire_clock(
                                     &condvar_ref.0.borrow().clock,
-                                    &this.machine.threads,
-                                );
-                            }
+                                )?;
                             // Try to acquire the mutex.
                             // The timeout only applies to the first wait (until the signal), not for mutex acquisition.
                             this.condvar_reacquire_mutex(mutex_ref, retval_succ, dest)
@@ -695,9 +677,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let mut condvar = condvar_ref.0.borrow_mut();
 
         // Each condvar signal happens-before the end of the condvar wake
-        if let Some(data_race) = this.machine.data_race.as_vclocks_ref() {
-            data_race.release_clock(&this.machine.threads, |clock| condvar.clock.clone_from(clock));
-        }
+        this.release_clock(|clock| condvar.clock.clone_from(clock))?;
         let Some(waiter) = condvar.waiters.pop_front() else {
             return interp_ok(false);
         };
@@ -736,9 +716,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         UnblockKind::Ready => {
                             let futex = futex_ref.0.borrow();
                             // Acquire the clock of the futex.
-                            if let Some(data_race) = this.machine.data_race.as_vclocks_ref() {
-                                data_race.acquire_clock(&futex.clock, &this.machine.threads);
-                            }
+                            this.acquire_clock(&futex.clock)?;
                         },
                         UnblockKind::TimedOut => {
                             // Remove the waiter from the futex.
@@ -766,9 +744,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let mut futex = futex_ref.0.borrow_mut();
 
         // Each futex-wake happens-before the end of the futex wait
-        if let Some(data_race) = this.machine.data_race.as_vclocks_ref() {
-            data_race.release_clock(&this.machine.threads, |clock| futex.clock.clone_from(clock));
-        }
+        this.release_clock(|clock| futex.clock.clone_from(clock))?;
 
         // Remove `count` of the threads in the queue that match any of the bits in the bitset.
         // We collect all of them before unblocking because the unblock callback may access the

@@ -38,6 +38,7 @@ use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::definitions::{DefPathData, Definitions, DisambiguatorState};
 use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::lang_items::LangItem;
+use rustc_hir::limit::Limit;
 use rustc_hir::{self as hir, Attribute, HirId, Node, TraitCandidate, find_attr};
 use rustc_index::IndexVec;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
@@ -45,14 +46,14 @@ use rustc_query_system::cache::WithDepNode;
 use rustc_query_system::dep_graph::DepNodeIndex;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
+use rustc_session::Session;
 use rustc_session::config::CrateType;
 use rustc_session::cstore::{CrateStoreDyn, Untracked};
 use rustc_session::lint::Lint;
-use rustc_session::{Limit, Session};
 use rustc_span::def_id::{CRATE_DEF_ID, DefPathHash, StableCrateId};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use rustc_type_ir::TyKind::*;
-use rustc_type_ir::lang_items::{SolverLangItem, SolverTraitLangItem};
+use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverLangItem, SolverTraitLangItem};
 pub use rustc_type_ir::lift::Lift;
 use rustc_type_ir::{
     CollectAndApply, Interner, TypeFlags, TypeFoldable, WithCachedTypeInfo, elaborate, search_graph,
@@ -94,6 +95,13 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type DefId = DefId;
     type LocalDefId = LocalDefId;
     type TraitId = DefId;
+    type ForeignId = DefId;
+    type FunctionId = DefId;
+    type ClosureId = DefId;
+    type CoroutineClosureId = DefId;
+    type CoroutineId = DefId;
+    type AdtId = DefId;
+    type ImplId = DefId;
     type Span = Span;
 
     type GenericArgs = ty::GenericArgsRef<'tcx>;
@@ -492,12 +500,20 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.require_lang_item(solver_trait_lang_item_to_lang_item(lang_item), DUMMY_SP)
     }
 
+    fn require_adt_lang_item(self, lang_item: SolverAdtLangItem) -> DefId {
+        self.require_lang_item(solver_adt_lang_item_to_lang_item(lang_item), DUMMY_SP)
+    }
+
     fn is_lang_item(self, def_id: DefId, lang_item: SolverLangItem) -> bool {
         self.is_lang_item(def_id, solver_lang_item_to_lang_item(lang_item))
     }
 
     fn is_trait_lang_item(self, def_id: DefId, lang_item: SolverTraitLangItem) -> bool {
         self.is_lang_item(def_id, solver_trait_lang_item_to_lang_item(lang_item))
+    }
+
+    fn is_adt_lang_item(self, def_id: DefId, lang_item: SolverAdtLangItem) -> bool {
+        self.is_lang_item(def_id, solver_adt_lang_item_to_lang_item(lang_item))
     }
 
     fn is_default_trait(self, def_id: DefId) -> bool {
@@ -510,6 +526,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     fn as_trait_lang_item(self, def_id: DefId) -> Option<SolverTraitLangItem> {
         lang_item_to_solver_trait_lang_item(self.lang_items().from_def_id(def_id)?)
+    }
+
+    fn as_adt_lang_item(self, def_id: DefId) -> Option<SolverAdtLangItem> {
+        lang_item_to_solver_adt_lang_item(self.lang_items().from_def_id(def_id)?)
     }
 
     fn associated_type_def_ids(self, def_id: DefId) -> impl IntoIterator<Item = DefId> {
@@ -554,7 +574,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             | ty::Ref(_, _, _)
             | ty::FnDef(_, _)
             | ty::FnPtr(..)
-            | ty::Dynamic(_, _, _)
+            | ty::Dynamic(_, _)
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(_, _)
@@ -631,7 +651,11 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             | ty::Bound(_, _) => bug!("unexpected self type: {self_ty}"),
         }
 
-        let trait_impls = tcx.trait_impls_of(trait_def_id);
+        #[allow(rustc::usage_of_type_ir_traits)]
+        self.for_each_blanket_impl(trait_def_id, f)
+    }
+    fn for_each_blanket_impl(self, trait_def_id: DefId, mut f: impl FnMut(DefId)) {
+        let trait_impls = self.trait_impls_of(trait_def_id);
         for &impl_def_id in trait_impls.blanket_impls() {
             f(impl_def_id);
         }
@@ -783,6 +807,13 @@ bidirectional_lang_item_map! {
     DynMetadata,
     FutureOutput,
     Metadata,
+// tidy-alphabetical-end
+}
+
+bidirectional_lang_item_map! {
+    SolverAdtLangItem, lang_item_to_solver_adt_lang_item, solver_adt_lang_item_to_lang_item;
+
+// tidy-alphabetical-start
     Option,
     Poll,
 // tidy-alphabetical-end
@@ -2245,7 +2276,16 @@ impl<'tcx> TyCtxt<'tcx> {
 
         let is_impl_item = match self.hir_node_by_def_id(suitable_region_binding_scope) {
             Node::Item(..) | Node::TraitItem(..) => false,
-            Node::ImplItem(..) => self.is_bound_region_in_impl_item(suitable_region_binding_scope),
+            Node::ImplItem(impl_item) => match impl_item.impl_kind {
+                // For now, we do not try to target impls of traits. This is
+                // because this message is going to suggest that the user
+                // change the fn signature, but they may not be free to do so,
+                // since the signature must match the trait.
+                //
+                // FIXME(#42706) -- in some cases, we could do better here.
+                hir::ImplItemImplKind::Trait { .. } => true,
+                _ => false,
+            },
             _ => false,
         };
 
@@ -2297,21 +2337,6 @@ impl<'tcx> TyCtxt<'tcx> {
             }
         }
         None
-    }
-
-    /// Checks if the bound region is in Impl Item.
-    pub fn is_bound_region_in_impl_item(self, suitable_region_binding_scope: LocalDefId) -> bool {
-        let container_id = self.parent(suitable_region_binding_scope.to_def_id());
-        if self.impl_trait_ref(container_id).is_some() {
-            // For now, we do not try to target impls of traits. This is
-            // because this message is going to suggest that the user
-            // change the fn signature, but they may not be free to do so,
-            // since the signature must match the trait.
-            //
-            // FIXME(#42706) -- in some cases, we could do better here.
-            return true;
-        }
-        false
     }
 
     /// Determines whether identifiers in the assembly have strict naming rules.

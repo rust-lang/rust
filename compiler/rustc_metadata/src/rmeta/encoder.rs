@@ -22,7 +22,7 @@ use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::mir::interpret;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::specialization_graph;
-use rustc_middle::ty::AssocItemContainer;
+use rustc_middle::ty::AssocContainer;
 use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::fast_reject::{self, TreatParams};
 use rustc_middle::{bug, span_bug};
@@ -1254,8 +1254,8 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
         DefKind::AssocTy => {
             let assoc_item = tcx.associated_item(def_id);
             match assoc_item.container {
-                ty::AssocItemContainer::Impl => true,
-                ty::AssocItemContainer::Trait => assoc_item.defaultness(tcx).has_value(),
+                ty::AssocContainer::InherentImpl | ty::AssocContainer::TraitImpl(_) => true,
+                ty::AssocContainer::Trait => assoc_item.defaultness(tcx).has_value(),
             }
         }
         DefKind::TyParam => {
@@ -1725,24 +1725,20 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let tcx = self.tcx;
         let item = tcx.associated_item(def_id);
 
-        self.tables.defaultness.set_some(def_id.index, item.defaultness(tcx));
-        self.tables.assoc_container.set_some(def_id.index, item.container);
+        if matches!(item.container, AssocContainer::Trait | AssocContainer::TraitImpl(_)) {
+            self.tables.defaultness.set_some(def_id.index, item.defaultness(tcx));
+        }
 
-        match item.container {
-            AssocItemContainer::Trait => {
-                if item.is_type() {
-                    self.encode_explicit_item_bounds(def_id);
-                    self.encode_explicit_item_self_bounds(def_id);
-                    if tcx.is_conditionally_const(def_id) {
-                        record_defaulted_array!(self.tables.explicit_implied_const_bounds[def_id]
-                            <- self.tcx.explicit_implied_const_bounds(def_id).skip_binder());
-                    }
-                }
-            }
-            AssocItemContainer::Impl => {
-                if let Some(trait_item_def_id) = item.trait_item_def_id {
-                    self.tables.trait_item_def_id.set_some(def_id.index, trait_item_def_id.into());
-                }
+        record!(self.tables.assoc_container[def_id] <- item.container);
+
+        if let AssocContainer::Trait = item.container
+            && item.is_type()
+        {
+            self.encode_explicit_item_bounds(def_id);
+            self.encode_explicit_item_self_bounds(def_id);
+            if tcx.is_conditionally_const(def_id) {
+                record_defaulted_array!(self.tables.explicit_implied_const_bounds[def_id]
+                    <- self.tcx.explicit_implied_const_bounds(def_id).skip_binder());
             }
         }
         if let ty::AssocKind::Type { data: ty::AssocTypeData::Rpitit(rpitit_info) } = item.kind {

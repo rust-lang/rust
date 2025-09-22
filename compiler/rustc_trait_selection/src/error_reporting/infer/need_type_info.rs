@@ -4,11 +4,12 @@ use std::path::PathBuf;
 
 use rustc_errors::codes::*;
 use rustc_errors::{Diag, IntoDiagArg};
-use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{Body, Closure, Expr, ExprKind, FnRetTy, HirId, LetStmt, LocalSource};
+use rustc_hir::{
+    self as hir, Body, Closure, Expr, ExprKind, FnRetTy, HirId, LetStmt, LocalSource, PatKind,
+};
 use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
@@ -512,7 +513,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     type_name: ty_to_string(self, ty, def_id),
                 });
             }
-            InferSourceKind::ClosureArg { insert_span, ty } => {
+            InferSourceKind::ClosureArg { insert_span, ty, .. } => {
                 infer_subdiags.push(SourceKindSubdiag::LetLike {
                     span: insert_span,
                     name: String::new(),
@@ -652,6 +653,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }),
         };
         *err.long_ty_path() = long_ty_path;
+        if let InferSourceKind::ClosureArg { kind: PatKind::Err(_), .. } = kind {
+            // We will have already emitted an error about this pattern.
+            err.downgrade_to_delayed_bug();
+        }
         err
     }
 }
@@ -673,6 +678,7 @@ enum InferSourceKind<'tcx> {
     ClosureArg {
         insert_span: Span,
         ty: Ty<'tcx>,
+        kind: PatKind<'tcx>,
     },
     GenericArg {
         insert_span: Span,
@@ -894,7 +900,8 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                 use ty::{Infer, TyVar};
                 match (inner_ty.kind(), target_ty.kind()) {
                     (&Infer(TyVar(a_vid)), &Infer(TyVar(b_vid))) => {
-                        self.tecx.sub_relations.borrow_mut().unified(self.tecx, a_vid, b_vid)
+                        self.tecx.sub_unification_table_root_var(a_vid)
+                            == self.tecx.sub_unification_table_root_var(b_vid)
                     }
                     _ => false,
                 }
@@ -1196,6 +1203,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
                     kind: InferSourceKind::ClosureArg {
                         insert_span: param.pat.span.shrink_to_hi(),
                         ty: param_ty,
+                        kind: param.pat.kind,
                     },
                 })
             }

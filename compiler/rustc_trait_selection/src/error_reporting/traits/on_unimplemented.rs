@@ -237,7 +237,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     }
                 }
             }
-            if let ty::Dynamic(traits, _, _) = self_ty.kind() {
+            if let ty::Dynamic(traits, _) = self_ty.kind() {
                 for t in traits.iter() {
                     if let ty::ExistentialPredicate::Trait(trait_ref) = t.skip_binder() {
                         self_types.push(self.tcx.def_path_str(trait_ref.def_id));

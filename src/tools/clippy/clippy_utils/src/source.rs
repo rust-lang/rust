@@ -215,6 +215,11 @@ impl fmt::Display for SourceText {
         self.as_str().fmt(f)
     }
 }
+impl fmt::Debug for SourceText {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.as_str().fmt(f)
+    }
+}
 
 fn get_source_range(sm: &SourceMap, sp: Range<BytePos>) -> Option<SourceFileRange> {
     let start = sm.lookup_byte_offset(sp.start);

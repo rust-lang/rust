@@ -2,7 +2,7 @@
 
 use crate::fmt;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
-use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
+use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr, ToSocketAddrs};
 use crate::os::wasi::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
 use crate::sys::fd::WasiFd;
 use crate::sys::{err2io, unsupported};
@@ -60,7 +60,7 @@ impl FromRawFd for Socket {
 }
 
 impl TcpStream {
-    pub fn connect(_: io::Result<&SocketAddr>) -> io::Result<TcpStream> {
+    pub fn connect<A: ToSocketAddrs>(_: A) -> io::Result<TcpStream> {
         unsupported()
     }
 
@@ -212,7 +212,7 @@ pub struct TcpListener {
 }
 
 impl TcpListener {
-    pub fn bind(_: io::Result<&SocketAddr>) -> io::Result<TcpListener> {
+    pub fn bind<A: ToSocketAddrs>(_: A) -> io::Result<TcpListener> {
         unsupported()
     }
 
@@ -316,7 +316,7 @@ pub struct UdpSocket {
 }
 
 impl UdpSocket {
-    pub fn bind(_: io::Result<&SocketAddr>) -> io::Result<UdpSocket> {
+    pub fn bind<A: ToSocketAddrs>(_: A) -> io::Result<UdpSocket> {
         unsupported()
     }
 
@@ -436,7 +436,7 @@ impl UdpSocket {
         unsupported()
     }
 
-    pub fn connect(&self, _: io::Result<&SocketAddr>) -> io::Result<()> {
+    pub fn connect<A: ToSocketAddrs>(&self, _: A) -> io::Result<()> {
         unsupported()
     }
 
@@ -477,12 +477,6 @@ impl fmt::Debug for UdpSocket {
 
 pub struct LookupHost(!);
 
-impl LookupHost {
-    pub fn port(&self) -> u16 {
-        self.0
-    }
-}
-
 impl Iterator for LookupHost {
     type Item = SocketAddr;
     fn next(&mut self) -> Option<SocketAddr> {
@@ -490,18 +484,6 @@ impl Iterator for LookupHost {
     }
 }
 
-impl<'a> TryFrom<&'a str> for LookupHost {
-    type Error = io::Error;
-
-    fn try_from(_v: &'a str) -> io::Result<LookupHost> {
-        unsupported()
-    }
-}
-
-impl<'a> TryFrom<(&'a str, u16)> for LookupHost {
-    type Error = io::Error;
-
-    fn try_from(_v: (&'a str, u16)) -> io::Result<LookupHost> {
-        unsupported()
-    }
+pub fn lookup_host(_host: &str, _port: u16) -> io::Result<LookupHost> {
+    unsupported()
 }

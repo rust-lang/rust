@@ -2616,6 +2616,18 @@ impl Expr<'_> {
             )
             | (
                 ExprKind::Struct(
+                    QPath::LangItem(LangItem::RangeToInclusiveCopy, _),
+                    [val1],
+                    StructTailExpr::None,
+                ),
+                ExprKind::Struct(
+                    QPath::LangItem(LangItem::RangeToInclusiveCopy, _),
+                    [val2],
+                    StructTailExpr::None,
+                ),
+            )
+            | (
+                ExprKind::Struct(
                     QPath::LangItem(LangItem::RangeFrom, _),
                     [val1],
                     StructTailExpr::None,
@@ -2705,7 +2717,8 @@ pub fn is_range_literal(expr: &Expr<'_>) -> bool {
                     | LangItem::RangeToInclusive
                     | LangItem::RangeCopy
                     | LangItem::RangeFromCopy
-                    | LangItem::RangeInclusiveCopy,
+                    | LangItem::RangeInclusiveCopy
+                    | LangItem::RangeToInclusiveCopy,
                 ..
             )
         ),
@@ -3207,12 +3220,21 @@ pub struct ImplItem<'hir> {
     pub owner_id: OwnerId,
     pub generics: &'hir Generics<'hir>,
     pub kind: ImplItemKind<'hir>,
-    pub defaultness: Defaultness,
+    pub impl_kind: ImplItemImplKind,
     pub span: Span,
-    pub vis_span: Span,
     pub has_delayed_lints: bool,
-    /// When we are in a trait impl, link to the trait-item's id.
-    pub trait_item_def_id: Option<DefId>,
+}
+
+#[derive(Debug, Clone, Copy, HashStable_Generic)]
+pub enum ImplItemImplKind {
+    Inherent {
+        vis_span: Span,
+    },
+    Trait {
+        defaultness: Defaultness,
+        /// Item in the trait that this item implements
+        trait_item_def_id: Result<DefId, ErrorGuaranteed>,
+    },
 }
 
 impl<'hir> ImplItem<'hir> {
@@ -3224,6 +3246,13 @@ impl<'hir> ImplItem<'hir> {
 
     pub fn impl_item_id(&self) -> ImplItemId {
         ImplItemId { owner_id: self.owner_id }
+    }
+
+    pub fn vis_span(&self) -> Option<Span> {
+        match self.impl_kind {
+            ImplItemImplKind::Trait { .. } => None,
+            ImplItemImplKind::Inherent { vis_span, .. } => Some(vis_span),
+        }
     }
 
     expect_methods_self_kind! {
@@ -4972,7 +5001,7 @@ mod size_asserts {
     static_assert_size!(GenericBound<'_>, 64);
     static_assert_size!(Generics<'_>, 56);
     static_assert_size!(Impl<'_>, 40);
-    static_assert_size!(ImplItem<'_>, 96);
+    static_assert_size!(ImplItem<'_>, 88);
     static_assert_size!(ImplItemKind<'_>, 40);
     static_assert_size!(Item<'_>, 88);
     static_assert_size!(ItemKind<'_>, 64);

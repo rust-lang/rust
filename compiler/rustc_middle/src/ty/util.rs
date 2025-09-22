@@ -12,9 +12,9 @@ use rustc_hashes::Hash128;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
+use rustc_hir::limit::Limit;
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, extension};
-use rustc_session::Limit;
 use rustc_span::sym;
 use rustc_type_ir::solve::SizedTraitKind;
 use smallvec::{SmallVec, smallvec};
@@ -24,6 +24,7 @@ use super::TypingEnv;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::mir;
 use crate::query::Providers;
+use crate::traits::ObligationCause;
 use crate::ty::layout::{FloatExt, IntegerExt};
 use crate::ty::{
     self, Asyncness, FallibleTypeFolder, GenericArgKind, GenericArgsRef, Ty, TyCtxt, TypeFoldable,
@@ -131,10 +132,9 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Creates a hash of the type `Ty` which will be the same no matter what crate
     /// context it's calculated within. This is used by the `type_id` intrinsic.
     pub fn type_id_hash(self, ty: Ty<'tcx>) -> Hash128 {
-        // We want the type_id be independent of the types free regions, so we
-        // erase them. The erase_regions() call will also anonymize bound
-        // regions, which is desirable too.
-        let ty = self.erase_regions(ty);
+        // We don't have region information, so we erase all free regions. Equal types
+        // must have the same `TypeId`, so we must anonymize all bound regions as well.
+        let ty = self.erase_and_anonymize_regions(ty);
 
         self.with_stable_hashing_context(|mut hcx| {
             let mut hasher = StableHasher::new();
@@ -217,7 +217,12 @@ impl<'tcx> TyCtxt<'tcx> {
         typing_env: ty::TypingEnv<'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self;
-        tcx.struct_tail_raw(ty, |ty| tcx.normalize_erasing_regions(typing_env, ty), || {})
+        tcx.struct_tail_raw(
+            ty,
+            &ObligationCause::dummy(),
+            |ty| tcx.normalize_erasing_regions(typing_env, ty),
+            || {},
+        )
     }
 
     /// Returns true if a type has metadata.
@@ -249,6 +254,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn struct_tail_raw(
         self,
         mut ty: Ty<'tcx>,
+        cause: &ObligationCause<'tcx>,
         mut normalize: impl FnMut(Ty<'tcx>) -> Ty<'tcx>,
         // This is currently used to allow us to walk a ValTree
         // in lockstep with the type in order to get the ValTree branch that
@@ -262,9 +268,11 @@ impl<'tcx> TyCtxt<'tcx> {
                     Limit(0) => Limit(2),
                     limit => limit * 2,
                 };
-                let reported = self
-                    .dcx()
-                    .emit_err(crate::error::RecursionLimitReached { ty, suggested_limit });
+                let reported = self.dcx().emit_err(crate::error::RecursionLimitReached {
+                    span: cause.span,
+                    ty,
+                    suggested_limit,
+                });
                 return Ty::new_error(self, reported);
             }
             match *ty.kind() {
@@ -609,10 +617,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns `true` if `def_id` refers to a definition that does not have its own
     /// type-checking context, i.e. closure, coroutine or inline const.
     pub fn is_typeck_child(self, def_id: DefId) -> bool {
-        matches!(
-            self.def_kind(def_id),
-            DefKind::Closure | DefKind::InlineConst | DefKind::SyntheticCoroutineBody
-        )
+        self.def_kind(def_id).is_typeck_child()
     }
 
     /// Returns `true` if `def_id` refers to a trait (i.e., `trait Foo { ... }`).
@@ -1309,7 +1314,7 @@ impl<'tcx> Ty<'tcx> {
                 debug_assert!(!typing_env.param_env.has_infer());
                 let query_ty = tcx
                     .try_normalize_erasing_regions(typing_env, query_ty)
-                    .unwrap_or_else(|_| tcx.erase_regions(query_ty));
+                    .unwrap_or_else(|_| tcx.erase_and_anonymize_regions(query_ty));
 
                 tcx.needs_drop_raw(typing_env.as_query_input(query_ty))
             }
@@ -1346,7 +1351,7 @@ impl<'tcx> Ty<'tcx> {
                 debug_assert!(!typing_env.has_infer());
                 let query_ty = tcx
                     .try_normalize_erasing_regions(typing_env, query_ty)
-                    .unwrap_or_else(|_| tcx.erase_regions(query_ty));
+                    .unwrap_or_else(|_| tcx.erase_and_anonymize_regions(query_ty));
 
                 tcx.needs_async_drop_raw(typing_env.as_query_input(query_ty))
             }
@@ -1363,6 +1368,7 @@ impl<'tcx> Ty<'tcx> {
     /// 2229 drop reorder migration analysis.
     #[inline]
     pub fn has_significant_drop(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool {
+        assert!(!self.has_non_region_infer());
         // Avoid querying in simple cases.
         match needs_drop_components(tcx, self) {
             Err(AlwaysRequiresDrop) => true,
@@ -1374,14 +1380,6 @@ impl<'tcx> Ty<'tcx> {
                     [component_ty] => component_ty,
                     _ => self,
                 };
-
-                // FIXME(#86868): We should be canonicalizing, or else moving this to a method of inference
-                // context, or *something* like that, but for now just avoid passing inference
-                // variables to queries that can't cope with them. Instead, conservatively
-                // return "true" (may change drop order).
-                if query_ty.has_infer() {
-                    return true;
-                }
 
                 // This doesn't depend on regions, so try to minimize distinct
                 // query keys used.

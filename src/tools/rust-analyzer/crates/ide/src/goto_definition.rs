@@ -62,7 +62,7 @@ pub(crate) fn goto_definition(
     })?;
     if let Some(doc_comment) = token_as_doc_comment(&original_token) {
         return doc_comment.get_definition_with_descend_at(sema, offset, |def, _, link_range| {
-            let nav = def.try_to_nav(db)?;
+            let nav = def.try_to_nav(sema)?;
             Some(RangeInfo::new(link_range, nav.collect()))
         });
     }
@@ -73,7 +73,7 @@ pub(crate) fn goto_definition(
         return Some(RangeInfo::new(
             range,
             match resolution {
-                Some(res) => def_to_nav(db, Definition::from(res)),
+                Some(res) => def_to_nav(sema, Definition::from(res)),
                 None => vec![],
             },
         ));
@@ -83,14 +83,14 @@ pub(crate) fn goto_definition(
         return Some(RangeInfo::new(original_token.text_range(), navs));
     }
 
-    if let Some(navs) = find_definition_for_known_blanket_dual_impls(sema, &original_token) {
-        return Some(RangeInfo::new(original_token.text_range(), navs));
-    }
-
     let navs = sema
         .descend_into_macros_no_opaque(original_token.clone(), false)
         .into_iter()
         .filter_map(|token| {
+            if let Some(navs) = find_definition_for_known_blanket_dual_impls(sema, &token.value) {
+                return Some(navs);
+            }
+
             let parent = token.value.parent()?;
 
             let token_file_id = token.file_id;
@@ -121,7 +121,7 @@ pub(crate) fn goto_definition(
                                 .collect();
                         }
                         try_filter_trait_item_definition(sema, &def)
-                            .unwrap_or_else(|| def_to_nav(sema.db, def))
+                            .unwrap_or_else(|| def_to_nav(sema, def))
                     })
                     .collect(),
             )
@@ -160,7 +160,7 @@ fn find_definition_for_known_blanket_dual_impls(
                     t_f,
                     [return_type.type_arguments().next()?],
                 )
-                .map(|f| def_to_nav(sema.db, f.into()));
+                .map(|f| def_to_nav(sema, f.into()));
         }
         hir::AssocItemContainer::Impl(_) => return None,
     };
@@ -201,7 +201,7 @@ fn find_definition_for_known_blanket_dual_impls(
     // succeed
     let _t = f.as_assoc_item(sema.db)?.implemented_trait(sema.db)?;
     let def = Definition::from(f);
-    Some(def_to_nav(sema.db, def))
+    Some(def_to_nav(sema, def))
 }
 
 fn try_lookup_include_path(
@@ -246,7 +246,7 @@ fn try_lookup_macro_def_in_macro_use(
     for mod_def in krate.root_module().declarations(sema.db) {
         if let ModuleDef::Macro(mac) = mod_def
             && mac.name(sema.db).as_str() == token.text()
-            && let Some(nav) = mac.try_to_nav(sema.db)
+            && let Some(nav) = mac.try_to_nav(sema)
         {
             return Some(nav.call_site);
         }
@@ -278,7 +278,7 @@ fn try_filter_trait_item_definition(
                 .items(db)
                 .iter()
                 .filter(|itm| discriminant(*itm) == discriminant_value)
-                .find_map(|itm| (itm.name(db)? == name).then(|| itm.try_to_nav(db)).flatten())
+                .find_map(|itm| (itm.name(db)? == name).then(|| itm.try_to_nav(sema)).flatten())
                 .map(|it| it.collect())
         }
     }
@@ -347,7 +347,7 @@ fn nav_for_exit_points(
             match_ast! {
                 match node {
                     ast::Fn(fn_) => {
-                        let mut nav = sema.to_def(&fn_)?.try_to_nav(db)?;
+                        let mut nav = sema.to_def(&fn_)?.try_to_nav(sema)?;
                         // For async token, we navigate to itself, which triggers
                         // VSCode to find the references
                         let focus_token = if matches!(token_kind, T![async]) {
@@ -564,8 +564,8 @@ fn nav_for_break_points(
     Some(navs)
 }
 
-fn def_to_nav(db: &RootDatabase, def: Definition) -> Vec<NavigationTarget> {
-    def.try_to_nav(db).map(|it| it.collect()).unwrap_or_default()
+fn def_to_nav(sema: &Semantics<'_, RootDatabase>, def: Definition) -> Vec<NavigationTarget> {
+    def.try_to_nav(sema).map(|it| it.collect()).unwrap_or_default()
 }
 
 fn expr_to_nav(
@@ -3284,6 +3284,32 @@ fn f() {
     }
 
     #[test]
+    fn into_call_to_from_definition_within_macro() {
+        check(
+            r#"
+//- proc_macros: identity
+//- minicore: from
+struct A;
+
+struct B;
+
+impl From<A> for B {
+    fn from(value: A) -> Self {
+     //^^^^
+        B
+    }
+}
+
+#[proc_macros::identity]
+fn f() {
+    let a = A;
+    let b: B = a.into$0();
+}
+        "#,
+        );
+    }
+
+    #[test]
     fn into_call_to_from_definition_with_trait_bounds() {
         check(
             r#"
@@ -3918,6 +3944,20 @@ fn main() {
         _ => {}
     }
 }
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_builtin_type() {
+        check(
+            r#"
+//- /main.rs crate:main deps:std
+const _: &str$0 = ""; }
+
+//- /libstd.rs crate:std
+mod prim_str {}
+//  ^^^^^^^^
 "#,
         );
     }

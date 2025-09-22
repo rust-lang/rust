@@ -17,7 +17,6 @@ use rustc_hir as hir;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::MacroKinds;
 use rustc_hir::find_attr;
-use rustc_lint_defs::BuiltinLintDiag;
 use rustc_lint_defs::builtin::{
     RUST_2021_INCOMPATIBLE_OR_PATTERNS, SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
 };
@@ -90,7 +89,7 @@ impl<'a> ParserAnyMacro<'a> {
                     SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
                     parser.token.span,
                     lint_node_id,
-                    BuiltinLintDiag::TrailingMacro(is_trailing_mac, macro_ident),
+                    errors::TrailingMacro { is_trailing: is_trailing_mac, name: macro_ident },
                 );
             }
             parser.bump();
@@ -703,7 +702,7 @@ pub fn compile_declarative_macro(
             kinds |= MacroKinds::DERIVE;
             let derive_keyword_span = p.prev_token.span;
             if !features.macro_derive() {
-                feature_err(sess, sym::macro_attr, span, "`macro_rules!` derives are unstable")
+                feature_err(sess, sym::macro_derive, span, "`macro_rules!` derives are unstable")
                     .emit();
             }
             if let Some(guar) = check_no_eof(sess, &p, "expected `()` after `derive`") {
@@ -1425,7 +1424,7 @@ fn check_matcher_core<'tt>(
                             RUST_2021_INCOMPATIBLE_OR_PATTERNS,
                             span,
                             ast::CRATE_NODE_ID,
-                            BuiltinLintDiag::OrPatternsBackCompat(span, suggestion),
+                            errors::OrPatternsBackCompat { span, suggestion },
                         );
                     }
                     match is_in_follow(next_token, kind) {

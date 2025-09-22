@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::ty::{is_type_lang_item, walk_ptrs_ty_depth};
+use clippy_utils::ty::{is_type_lang_item, peel_and_count_ty_refs};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
@@ -24,7 +24,7 @@ pub fn check(
         && let Some(args) = cx.typeck_results().node_args_opt(expr.hir_id)
         && let arg_ty = cx.typeck_results().expr_ty_adjusted(receiver)
         && let self_ty = args.type_at(0)
-        && let (deref_self_ty, deref_count) = walk_ptrs_ty_depth(self_ty)
+        && let (deref_self_ty, deref_count, _) = peel_and_count_ty_refs(self_ty)
         && deref_count >= 1
         && specializes_tostring(cx, deref_self_ty)
     {

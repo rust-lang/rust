@@ -7,7 +7,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{FnKind, Visitor};
 use rustc_hir::{Attribute, GenericParamKind, PatExprKind, PatKind, find_attr};
 use rustc_middle::hir::nested_filter::All;
-use rustc_middle::ty;
+use rustc_middle::ty::AssocContainer;
 use rustc_session::config::CrateType;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::def_id::LocalDefId;
@@ -19,29 +19,6 @@ use crate::lints::{
     NonUpperCaseGlobal, NonUpperCaseGlobalSub, NonUpperCaseGlobalSubTool,
 };
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
-
-#[derive(PartialEq)]
-pub(crate) enum MethodLateContext {
-    TraitAutoImpl,
-    TraitImpl,
-    PlainImpl,
-}
-
-pub(crate) fn method_context(cx: &LateContext<'_>, id: LocalDefId) -> MethodLateContext {
-    let item = cx.tcx.associated_item(id);
-    match item.container {
-        ty::AssocItemContainer::Trait => MethodLateContext::TraitAutoImpl,
-        ty::AssocItemContainer::Impl => match cx.tcx.impl_trait_ref(item.container_id(cx.tcx)) {
-            Some(_) => MethodLateContext::TraitImpl,
-            None => MethodLateContext::PlainImpl,
-        },
-    }
-}
-
-fn assoc_item_in_trait_impl(cx: &LateContext<'_>, ii: &hir::ImplItem<'_>) -> bool {
-    let item = cx.tcx.associated_item(ii.owner_id);
-    item.trait_item_def_id.is_some()
-}
 
 declare_lint! {
     /// The `non_camel_case_types` lint detects types, variants, traits and
@@ -389,8 +366,8 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
         id: LocalDefId,
     ) {
         match &fk {
-            FnKind::Method(ident, sig, ..) => match method_context(cx, id) {
-                MethodLateContext::PlainImpl => {
+            FnKind::Method(ident, sig, ..) => match cx.tcx.associated_item(id).container {
+                AssocContainer::InherentImpl => {
                     if sig.header.abi != ExternAbi::Rust
                         && find_attr!(cx.tcx.get_all_attrs(id), AttributeKind::NoMangle(..))
                     {
@@ -398,10 +375,10 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
                     }
                     self.check_snake_case(cx, "method", ident);
                 }
-                MethodLateContext::TraitAutoImpl => {
+                AssocContainer::Trait => {
                     self.check_snake_case(cx, "trait method", ident);
                 }
-                _ => (),
+                AssocContainer::TraitImpl(_) => {}
             },
             FnKind::ItemFn(ident, _, header) => {
                 // Skip foreign-ABI #[no_mangle] functions (Issue #31924)
@@ -602,7 +579,7 @@ impl<'tcx> LateLintPass<'tcx> for NonUpperCaseGlobals {
 
     fn check_impl_item(&mut self, cx: &LateContext<'_>, ii: &hir::ImplItem<'_>) {
         if let hir::ImplItemKind::Const(..) = ii.kind
-            && !assoc_item_in_trait_impl(cx, ii)
+            && let hir::ImplItemImplKind::Inherent { .. } = ii.impl_kind
         {
             NonUpperCaseGlobals::check_upper_case(cx, "associated constant", None, &ii.ident);
         }

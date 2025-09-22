@@ -482,7 +482,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 .map(|header| header.trait_ref.instantiate_identity().self_ty())
                 // We don't care about blanket impls.
                 .filter(|self_ty| !self_ty.has_non_region_param())
-                .map(|self_ty| tcx.erase_regions(self_ty).to_string())
+                .map(|self_ty| tcx.erase_and_anonymize_regions(self_ty).to_string())
                 .collect()
         };
         // FIXME: also look at `tcx.generics_of(self.item_def_id()).params` any that
@@ -859,7 +859,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     bound_spans.get_mut_or_insert_default(tcx.def_span(def.did())).push(msg)
                 }
                 // Point at the trait object that couldn't satisfy the bound.
-                ty::Dynamic(preds, _, _) => {
+                ty::Dynamic(preds, _) => {
                     for pred in preds.iter() {
                         match pred.skip_binder() {
                             ty::ExistentialPredicate::Trait(tr) => {

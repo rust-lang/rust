@@ -135,7 +135,7 @@ use crate::traits::{
 };
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::layout::ValidityRequirement;
-use crate::ty::print::{PrintTraitRefExt, describe_as_module};
+use crate::ty::print::PrintTraitRefExt;
 use crate::ty::util::AlwaysRequiresDrop;
 use crate::ty::{
     self, CrateInherentImpls, GenericArg, GenericArgsRef, PseudoCanonicalInput, SizedTraitKind, Ty,
@@ -761,9 +761,9 @@ rustc_queries! {
     }
 
     /// Erases regions from `ty` to yield a new type.
-    /// Normally you would just use `tcx.erase_regions(value)`,
+    /// Normally you would just use `tcx.erase_and_anonymize_regions(value)`,
     /// however, which uses this query as a kind of cache.
-    query erase_regions_ty(ty: Ty<'tcx>) -> Ty<'tcx> {
+    query erase_and_anonymize_regions_ty(ty: Ty<'tcx>) -> Ty<'tcx> {
         // This query is not expected to have input -- as a result, it
         // is not a good candidates for "replay" because it is essentially a
         // pure function of its input (and hence the expectation is that
@@ -1881,6 +1881,7 @@ rustc_queries! {
     }
 
     /// Returns whether the impl or associated function has the `default` keyword.
+    /// Note: This will ICE on inherent impl items. Consider using `AssocItem::defaultness`.
     query defaultness(def_id: DefId) -> hir::Defaultness {
         desc { |tcx| "looking up whether `{}` has `default`", tcx.def_path_str(def_id) }
         separate_provide_extern
@@ -2731,3 +2732,12 @@ rustc_queries! {
 
 rustc_with_all_queries! { define_callbacks! }
 rustc_feedable_queries! { define_feedable! }
+
+fn describe_as_module(def_id: impl Into<LocalDefId>, tcx: TyCtxt<'_>) -> String {
+    let def_id = def_id.into();
+    if def_id.is_top_level_module() {
+        "top-level module".to_string()
+    } else {
+        format!("module `{}`", tcx.def_path_str(def_id))
+    }
+}

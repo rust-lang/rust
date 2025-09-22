@@ -209,7 +209,8 @@ mod llvm_enzyme {
         mut item: Annotatable,
         mode: DiffMode,
     ) -> Vec<Annotatable> {
-        if cfg!(not(llvm_enzyme)) {
+        // FIXME(bjorn3) maybe have the backend directly tell if autodiff is supported?
+        if cfg!(not(feature = "llvm_enzyme")) {
             ecx.sess.dcx().emit_err(errors::AutoDiffSupportNotBuild { span: meta_item.span });
             return vec![item];
         }

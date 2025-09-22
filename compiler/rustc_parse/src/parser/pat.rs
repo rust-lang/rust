@@ -756,7 +756,7 @@ impl<'a> Parser<'a> {
             self.bump(); // `..`
             PatKind::Rest
         } else if self.check(exp!(DotDotDot)) && !self.is_pat_range_end_start(1) {
-            self.recover_dotdotdot_rest_pat(lo)
+            self.recover_dotdotdot_rest_pat(lo, expected)
         } else if let Some(form) = self.parse_range_end() {
             self.parse_pat_range_to(form)? // `..=X`, `...X`, or `..X`.
         } else if self.eat(exp!(Bang)) {
@@ -886,16 +886,27 @@ impl<'a> Parser<'a> {
 
     /// Recover from a typoed `...` pattern that was encountered
     /// Ref: Issue #70388
-    fn recover_dotdotdot_rest_pat(&mut self, lo: Span) -> PatKind {
+    fn recover_dotdotdot_rest_pat(&mut self, lo: Span, expected: Option<Expected>) -> PatKind {
         // A typoed rest pattern `...`.
         self.bump(); // `...`
 
-        // The user probably mistook `...` for a rest pattern `..`.
-        self.dcx().emit_err(DotDotDotRestPattern {
-            span: lo,
-            suggestion: lo.with_lo(lo.hi() - BytePos(1)),
-        });
-        PatKind::Rest
+        if let Some(Expected::ParameterName) = expected {
+            // We have `...` in a closure argument, likely meant to be var-arg, which aren't
+            // supported in closures (#146489).
+            PatKind::Err(self.dcx().emit_err(DotDotDotRestPattern {
+                span: lo,
+                suggestion: None,
+                var_args: Some(()),
+            }))
+        } else {
+            // The user probably mistook `...` for a rest pattern `..`.
+            self.dcx().emit_err(DotDotDotRestPattern {
+                span: lo,
+                suggestion: Some(lo.with_lo(lo.hi() - BytePos(1))),
+                var_args: None,
+            });
+            PatKind::Rest
+        }
     }
 
     /// Try to recover the more general form `intersect ::= $pat_lhs @ $pat_rhs`.

@@ -1,0 +1,25 @@
+error[E0277]: the trait bound `String: Trait<u32>` is not satisfied
+  --> $DIR/avoid-inference-constraints-from-blanket-3.rs:22:5
+   |
+LL |     impls_trait(x);
+   |     ^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `String`
+   |
+   = help: the trait `Trait<u32>` is not implemented for `String`
+           but trait `Trait<u64>` is implemented for it
+   = help: for that trait implementation, expected `u64`, found `u32`
+note: required for `String` to implement `Trait<u32>`
+  --> $DIR/avoid-inference-constraints-from-blanket-3.rs:16:15
+   |
+LL | impl<T: Copy> Trait<u32> for T {}
+   |         ----  ^^^^^^^^^^     ^
+   |         |
+   |         unsatisfied trait bound introduced here
+note: required by a bound in `impls_trait`
+  --> $DIR/avoid-inference-constraints-from-blanket-3.rs:18:19
+   |
+LL | fn impls_trait<T: Trait<U>, U>(_: T) {}
+   |                   ^^^^^^^^ required by this bound in `impls_trait`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

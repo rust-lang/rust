@@ -19,12 +19,6 @@ const TOL_P2: f16 = 0.5;
 #[allow(unused)]
 const TOL_P4: f16 = 10.0;
 
-/// First pattern over the mantissa
-const NAN_MASK1: u16 = 0x02aa;
-
-/// Second pattern over the mantissa
-const NAN_MASK2: u16 = 0x0155;
-
 // FIXME(f16_f128,miri): many of these have to be disabled since miri does not yet support
 // the intrinsics.
 
@@ -50,27 +44,6 @@ fn test_mul_add() {
 #[cfg(any(miri, target_has_reliable_f16_math))]
 fn test_max_recip() {
     assert_approx_eq!(f16::MAX.recip(), 1.526624e-5f16, 1e-4);
-}
-
-#[test]
-fn test_float_bits_conv() {
-    assert_eq!((1f16).to_bits(), 0x3c00);
-    assert_eq!((12.5f16).to_bits(), 0x4a40);
-    assert_eq!((1337f16).to_bits(), 0x6539);
-    assert_eq!((-14.25f16).to_bits(), 0xcb20);
-    assert_biteq!(f16::from_bits(0x3c00), 1.0);
-    assert_biteq!(f16::from_bits(0x4a40), 12.5);
-    assert_biteq!(f16::from_bits(0x6539), 1337.0);
-    assert_biteq!(f16::from_bits(0xcb20), -14.25);
-
-    // Check that NaNs roundtrip their bits regardless of signaling-ness
-    let masked_nan1 = f16::NAN.to_bits() ^ NAN_MASK1;
-    let masked_nan2 = f16::NAN.to_bits() ^ NAN_MASK2;
-    assert!(f16::from_bits(masked_nan1).is_nan());
-    assert!(f16::from_bits(masked_nan2).is_nan());
-
-    assert_eq!(f16::from_bits(masked_nan1).to_bits(), masked_nan1);
-    assert_eq!(f16::from_bits(masked_nan2).to_bits(), masked_nan2);
 }
 
 #[test]

@@ -54,7 +54,8 @@ where
     fn consider_impl_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, TraitPredicate<I>>,
-        impl_def_id: I::DefId,
+        impl_def_id: I::ImplId,
+        then: impl FnOnce(&mut EvalCtxt<'_, D>, Certainty) -> QueryResult<I>,
     ) -> Result<Candidate<I>, NoSolution> {
         let cx = ecx.cx();
 
@@ -91,13 +92,13 @@ where
         };
 
         ecx.probe_trait_candidate(CandidateSource::Impl(impl_def_id)).enter(|ecx| {
-            let impl_args = ecx.fresh_args_for_item(impl_def_id);
+            let impl_args = ecx.fresh_args_for_item(impl_def_id.into());
             ecx.record_impl_args(impl_args);
             let impl_trait_ref = impl_trait_ref.instantiate(cx, impl_args);
 
             ecx.eq(goal.param_env, goal.predicate.trait_ref, impl_trait_ref)?;
             let where_clause_bounds = cx
-                .predicates_of(impl_def_id)
+                .predicates_of(impl_def_id.into())
                 .iter_instantiated(cx, impl_args)
                 .map(|pred| goal.with(cx, pred));
             ecx.add_goals(GoalSource::ImplWhereBound, where_clause_bounds);
@@ -112,7 +113,7 @@ where
                     .map(|pred| goal.with(cx, pred)),
             );
 
-            ecx.evaluate_added_goals_and_make_canonical_response(maximal_certainty)
+            then(ecx, maximal_certainty)
         })
     }
 
@@ -816,15 +817,13 @@ where
                 }
 
                 // Trait upcasting, or `dyn Trait + Auto + 'a` -> `dyn Trait + 'b`.
-                (
-                    ty::Dynamic(a_data, a_region, ty::Dyn),
-                    ty::Dynamic(b_data, b_region, ty::Dyn),
-                ) => ecx.consider_builtin_dyn_upcast_candidates(
-                    goal, a_data, a_region, b_data, b_region,
-                ),
+                (ty::Dynamic(a_data, a_region), ty::Dynamic(b_data, b_region)) => ecx
+                    .consider_builtin_dyn_upcast_candidates(
+                        goal, a_data, a_region, b_data, b_region,
+                    ),
 
                 // `T` -> `dyn Trait` unsizing.
-                (_, ty::Dynamic(b_region, b_data, ty::Dyn)) => result_to_single(
+                (_, ty::Dynamic(b_region, b_data)) => result_to_single(
                     ecx.consider_builtin_unsize_to_dyn_candidate(goal, b_region, b_data),
                 ),
 

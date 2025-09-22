@@ -238,6 +238,88 @@ fn main() {
             r#"
 fn main() {
     let x = if $1 {
+    $2
+} else {
+    $0
+};
+    let y = 92;
+}
+"#,
+        );
+
+        check_edit(
+            "else",
+            r#"
+fn main() {
+    let x = if true {
+        ()
+    } $0
+    let y = 92;
+}
+"#,
+            r#"
+fn main() {
+    let x = if true {
+        ()
+    } else {
+    $0
+};
+    let y = 92;
+}
+"#,
+        );
+
+        check_edit(
+            "else if",
+            r#"
+fn main() {
+    let x = if true {
+        ()
+    } $0 else {};
+}
+"#,
+            r#"
+fn main() {
+    let x = if true {
+        ()
+    } else if $1 {
+    $0
+} else {};
+}
+"#,
+        );
+
+        check_edit(
+            "else if",
+            r#"
+fn main() {
+    let x = if true {
+        ()
+    } $0 else if true {};
+}
+"#,
+            r#"
+fn main() {
+    let x = if true {
+        ()
+    } else if $1 {
+    $0
+} else if true {};
+}
+"#,
+        );
+
+        check_edit(
+            "else",
+            r#"
+fn main() {
+    let x = 2 $0
+    let y = 92;
+}
+"#,
+            r#"
+fn main() {
+    let x = 2 else {
     $0
 };
     let y = 92;
@@ -333,6 +415,120 @@ fn main() {
 }
 ",
         )
+    }
+
+    #[test]
+    fn if_completion_in_parameter() {
+        check_edit(
+            "if",
+            r"
+fn main() {
+    foo($0)
+}
+",
+            r"
+fn main() {
+    foo(if $1 {
+    $2
+} else {
+    $0
+})
+}
+",
+        );
+
+        check_edit(
+            "if",
+            r"
+fn main() {
+    foo($0, 2)
+}
+",
+            r"
+fn main() {
+    foo(if $1 {
+    $2
+} else {
+    $0
+}, 2)
+}
+",
+        );
+
+        check_edit(
+            "if",
+            r"
+fn main() {
+    foo(2, $0)
+}
+",
+            r"
+fn main() {
+    foo(2, if $1 {
+    $2
+} else {
+    $0
+})
+}
+",
+        );
+
+        check_edit(
+            "if let",
+            r"
+fn main() {
+    foo(2, $0)
+}
+",
+            r"
+fn main() {
+    foo(2, if let $1 = $2 {
+    $3
+} else {
+    $0
+})
+}
+",
+        );
+    }
+
+    #[test]
+    fn if_completion_in_let_statement() {
+        check_edit(
+            "if",
+            r"
+fn main() {
+    let x = $0;
+}
+",
+            r"
+fn main() {
+    let x = if $1 {
+    $2
+} else {
+    $0
+};
+}
+",
+        );
+
+        check_edit(
+            "if let",
+            r"
+fn main() {
+    let x = $0;
+}
+",
+            r"
+fn main() {
+    let x = if let $1 = $2 {
+    $3
+} else {
+    $0
+};
+}
+",
+        );
     }
 
     #[test]

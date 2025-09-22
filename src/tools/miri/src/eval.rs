@@ -247,8 +247,21 @@ impl<'tcx> MainThreadState<'tcx> {
                 // to be like a global `static`, so that all memory reached by it is considered to "not leak".
                 this.terminate_active_thread(TlsAllocAction::Leak)?;
 
-                // Stop interpreter loop.
-                throw_machine_stop!(TerminationInfo::Exit { code: exit_code, leak_check: true });
+                // In GenMC mode, we do not immediately stop execution on main thread exit.
+                if let Some(genmc_ctx) = this.machine.data_race.as_genmc_ref() {
+                    // If there's no error, execution will continue (on another thread).
+                    genmc_ctx.handle_exit(
+                        ThreadId::MAIN_THREAD,
+                        exit_code,
+                        crate::concurrency::ExitType::MainThreadFinish,
+                    )?;
+                } else {
+                    // Stop interpreter loop.
+                    throw_machine_stop!(TerminationInfo::Exit {
+                        code: exit_code,
+                        leak_check: true
+                    });
+                }
             }
         }
         interp_ok(Poll::Pending)
@@ -449,10 +462,6 @@ pub fn eval_entry<'tcx>(
     // Copy setting before we move `config`.
     let ignore_leaks = config.ignore_leaks;
 
-    if let Some(genmc_ctx) = &genmc_ctx {
-        genmc_ctx.handle_execution_start();
-    }
-
     let mut ecx = match create_ecx(tcx, entry_id, entry_type, config, genmc_ctx).report_err() {
         Ok(v) => v,
         Err(err) => {
@@ -475,15 +484,6 @@ pub fn eval_entry<'tcx>(
 
     // Show diagnostic, if any.
     let (return_code, leak_check) = report_error(&ecx, err)?;
-
-    // We inform GenMC that the execution is complete.
-    if let Some(genmc_ctx) = ecx.machine.data_race.as_genmc_ref()
-        && let Err(error) = genmc_ctx.handle_execution_end(&ecx)
-    {
-        // FIXME(GenMC): Improve error reporting.
-        tcx.dcx().err(format!("GenMC returned an error: \"{error}\""));
-        return None;
-    }
 
     // If we get here there was no fatal error.
 

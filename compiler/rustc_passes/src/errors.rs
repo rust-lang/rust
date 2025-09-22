@@ -530,18 +530,9 @@ pub(crate) struct RustcForceInlineCoro {
 
 #[derive(LintDiagnostic)]
 pub(crate) enum MacroExport {
-    #[diag(passes_macro_export)]
-    Normal,
-
     #[diag(passes_macro_export_on_decl_macro)]
     #[note]
     OnDeclMacro,
-
-    #[diag(passes_invalid_macro_export_arguments)]
-    InvalidArgument,
-
-    #[diag(passes_invalid_macro_export_arguments_too_many_items)]
-    TooManyItems,
 }
 
 #[derive(Subdiagnostic)]
@@ -1603,6 +1594,15 @@ pub(crate) enum UnexportableItem<'a> {
 #[derive(Diagnostic)]
 #[diag(passes_repr_align_should_be_align)]
 pub(crate) struct ReprAlignShouldBeAlign {
+    #[primary_span]
+    #[help]
+    pub span: Span,
+    pub item: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_repr_align_should_be_align_static)]
+pub(crate) struct ReprAlignShouldBeAlignStatic {
     #[primary_span]
     #[help]
     pub span: Span,

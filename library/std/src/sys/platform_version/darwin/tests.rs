@@ -28,21 +28,21 @@ fn compare_against_sw_vers() {
     let subminor: i32 = sw_vers.next().unwrap_or("0").parse().unwrap();
     assert_eq!(sw_vers.count(), 0);
 
+    // Test directly against the lookup
+    assert_eq!(lookup_version().get(), pack_os_version(major as _, minor as _, subminor as _));
+
     // Current version is available
     assert_eq!(__isOSVersionAtLeast(major, minor, subminor), 1);
 
     // One lower is available
-    assert_eq!(__isOSVersionAtLeast(major, minor, subminor.saturating_sub(1)), 1);
-    assert_eq!(__isOSVersionAtLeast(major, minor.saturating_sub(1), subminor), 1);
-    assert_eq!(__isOSVersionAtLeast(major.saturating_sub(1), minor, subminor), 1);
+    assert_eq!(__isOSVersionAtLeast(major, minor, (subminor as u32).saturating_sub(1) as i32), 1);
+    assert_eq!(__isOSVersionAtLeast(major, (minor as u32).saturating_sub(1) as i32, subminor), 1);
+    assert_eq!(__isOSVersionAtLeast((major as u32).saturating_sub(1) as i32, minor, subminor), 1);
 
     // One higher isn't available
     assert_eq!(__isOSVersionAtLeast(major, minor, subminor + 1), 0);
     assert_eq!(__isOSVersionAtLeast(major, minor + 1, subminor), 0);
     assert_eq!(__isOSVersionAtLeast(major + 1, minor, subminor), 0);
-
-    // Test directly against the lookup
-    assert_eq!(lookup_version().get(), pack_os_version(major as _, minor as _, subminor as _));
 }
 
 #[test]

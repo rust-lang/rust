@@ -79,122 +79,6 @@ extern "C" void LLVMRustTimeTraceProfilerFinish(const char *FileName) {
   timeTraceProfilerCleanup();
 }
 
-#ifdef LLVM_COMPONENT_X86
-#define SUBTARGET_X86 SUBTARGET(X86)
-#else
-#define SUBTARGET_X86
-#endif
-
-#ifdef LLVM_COMPONENT_ARM
-#define SUBTARGET_ARM SUBTARGET(ARM)
-#else
-#define SUBTARGET_ARM
-#endif
-
-#ifdef LLVM_COMPONENT_AARCH64
-#define SUBTARGET_AARCH64 SUBTARGET(AArch64)
-#else
-#define SUBTARGET_AARCH64
-#endif
-
-#ifdef LLVM_COMPONENT_AVR
-#define SUBTARGET_AVR SUBTARGET(AVR)
-#else
-#define SUBTARGET_AVR
-#endif
-
-#ifdef LLVM_COMPONENT_M68k
-#define SUBTARGET_M68K SUBTARGET(M68k)
-#else
-#define SUBTARGET_M68K
-#endif
-
-#ifdef LLVM_COMPONENT_CSKY
-#define SUBTARGET_CSKY SUBTARGET(CSKY)
-#else
-#define SUBTARGET_CSKY
-#endif
-
-#ifdef LLVM_COMPONENT_MIPS
-#define SUBTARGET_MIPS SUBTARGET(Mips)
-#else
-#define SUBTARGET_MIPS
-#endif
-
-#ifdef LLVM_COMPONENT_POWERPC
-#define SUBTARGET_PPC SUBTARGET(PPC)
-#else
-#define SUBTARGET_PPC
-#endif
-
-#ifdef LLVM_COMPONENT_SYSTEMZ
-#define SUBTARGET_SYSTEMZ SUBTARGET(SystemZ)
-#else
-#define SUBTARGET_SYSTEMZ
-#endif
-
-#ifdef LLVM_COMPONENT_MSP430
-#define SUBTARGET_MSP430 SUBTARGET(MSP430)
-#else
-#define SUBTARGET_MSP430
-#endif
-
-#ifdef LLVM_COMPONENT_RISCV
-#define SUBTARGET_RISCV SUBTARGET(RISCV)
-#else
-#define SUBTARGET_RISCV
-#endif
-
-#ifdef LLVM_COMPONENT_SPARC
-#define SUBTARGET_SPARC SUBTARGET(Sparc)
-#else
-#define SUBTARGET_SPARC
-#endif
-
-#ifdef LLVM_COMPONENT_XTENSA
-#define SUBTARGET_XTENSA SUBTARGET(XTENSA)
-#else
-#define SUBTARGET_XTENSA
-#endif
-
-#ifdef LLVM_COMPONENT_HEXAGON
-#define SUBTARGET_HEXAGON SUBTARGET(Hexagon)
-#else
-#define SUBTARGET_HEXAGON
-#endif
-
-#ifdef LLVM_COMPONENT_LOONGARCH
-#define SUBTARGET_LOONGARCH SUBTARGET(LoongArch)
-#else
-#define SUBTARGET_LOONGARCH
-#endif
-
-#define GEN_SUBTARGETS                                                         \
-  SUBTARGET_X86                                                                \
-  SUBTARGET_ARM                                                                \
-  SUBTARGET_AARCH64                                                            \
-  SUBTARGET_AVR                                                                \
-  SUBTARGET_M68K                                                               \
-  SUBTARGET_CSKY                                                               \
-  SUBTARGET_MIPS                                                               \
-  SUBTARGET_PPC                                                                \
-  SUBTARGET_SYSTEMZ                                                            \
-  SUBTARGET_MSP430                                                             \
-  SUBTARGET_SPARC                                                              \
-  SUBTARGET_HEXAGON                                                            \
-  SUBTARGET_XTENSA                                                             \
-  SUBTARGET_RISCV                                                              \
-  SUBTARGET_LOONGARCH
-
-#define SUBTARGET(x)                                                           \
-  namespace llvm {                                                             \
-  extern const SubtargetFeatureKV x##FeatureKV[];                              \
-  extern const SubtargetFeatureKV x##SubTypeKV[];                              \
-  }
-
-GEN_SUBTARGETS
-#undef SUBTARGET
-
 // This struct and various functions are sort of a hack right now, but the
 // problem is that we've got in-memory LLVM modules after we generate and
 // optimize all codegen-units for one compilation in rustc. To be compatible
@@ -340,14 +224,6 @@ static FloatABI::ABIType fromRust(LLVMRustFloatABI RustFloatAbi) {
   report_fatal_error("Bad FloatABI.");
 }
 
-/// getLongestEntryLength - Return the length of the longest entry in the table.
-template <typename KV> static size_t getLongestEntryLength(ArrayRef<KV> Table) {
-  size_t MaxLen = 0;
-  for (auto &I : Table)
-    MaxLen = std::max(MaxLen, std::strlen(I.Key));
-  return MaxLen;
-}
-
 extern "C" void LLVMRustPrintTargetCPUs(LLVMTargetMachineRef TM,
                                         RustStringRef OutStr) {
   ArrayRef<SubtargetSubTypeKV> CPUTable =
@@ -395,8 +271,9 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     bool TrapUnreachable, bool Singlethread, bool VerboseAsm,
     bool EmitStackSizeSection, bool RelaxELFRelocations, bool UseInitArray,
     const char *SplitDwarfFile, const char *OutputObjFile,
-    const char *DebugInfoCompression, bool UseEmulatedTls,
-    const char *ArgsCstrBuff, size_t ArgsCstrBuffLen, bool UseWasmEH) {
+    const char *DebugInfoCompression, bool UseEmulatedTls, const char *Argv0,
+    size_t Argv0Len, const char *CommandLineArgs, size_t CommandLineArgsLen,
+    bool UseWasmEH) {
 
   auto OptLevel = fromRust(RustOptLevel);
   auto RM = fromRust(RustReloc);
@@ -467,53 +344,10 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
 
   Options.EmitStackSizeSection = EmitStackSizeSection;
 
-  if (ArgsCstrBuff != nullptr) {
-#if LLVM_VERSION_GE(20, 0)
-    size_t buffer_offset = 0;
-    assert(ArgsCstrBuff[ArgsCstrBuffLen - 1] == '\0');
-    auto Arg0 = std::string(ArgsCstrBuff);
-    buffer_offset = Arg0.size() + 1;
-
-    std::string CommandlineArgs;
-    raw_string_ostream OS(CommandlineArgs);
-    ListSeparator LS(" ");
-    for (StringRef Arg : split(StringRef(ArgsCstrBuff + buffer_offset,
-                                         ArgsCstrBuffLen - buffer_offset),
-                               '\0')) {
-      OS << LS;
-      sys::printArg(OS, Arg, /*Quote=*/true);
-    }
-    OS.flush();
-    Options.MCOptions.Argv0 = Arg0;
-    Options.MCOptions.CommandlineArgs = CommandlineArgs;
-#else
-    size_t buffer_offset = 0;
-    assert(ArgsCstrBuff[ArgsCstrBuffLen - 1] == '\0');
-
-    const size_t arg0_len = std::strlen(ArgsCstrBuff);
-    char *arg0 = new char[arg0_len + 1];
-    memcpy(arg0, ArgsCstrBuff, arg0_len);
-    arg0[arg0_len] = '\0';
-    buffer_offset += arg0_len + 1;
-
-    const size_t num_cmd_arg_strings = std::count(
-        &ArgsCstrBuff[buffer_offset], &ArgsCstrBuff[ArgsCstrBuffLen], '\0');
-
-    std::string *cmd_arg_strings = new std::string[num_cmd_arg_strings];
-    for (size_t i = 0; i < num_cmd_arg_strings; ++i) {
-      assert(buffer_offset < ArgsCstrBuffLen);
-      const size_t len = std::strlen(ArgsCstrBuff + buffer_offset);
-      cmd_arg_strings[i] = std::string(&ArgsCstrBuff[buffer_offset], len);
-      buffer_offset += len + 1;
-    }
-
-    assert(buffer_offset == ArgsCstrBuffLen);
-
-    Options.MCOptions.Argv0 = arg0;
-    Options.MCOptions.CommandLineArgs =
-        llvm::ArrayRef<std::string>(cmd_arg_strings, num_cmd_arg_strings);
-#endif
-  }
+  if (Argv0 != nullptr)
+    Options.MCOptions.Argv0 = {Argv0, Argv0Len};
+  if (CommandLineArgs != nullptr)
+    Options.MCOptions.CommandlineArgs = {CommandLineArgs, CommandLineArgsLen};
 
 #if LLVM_VERSION_GE(21, 0)
   TargetMachine *TM = TheTarget->createTargetMachine(Trip, CPU, Feature,
@@ -526,12 +360,6 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
 }
 
 extern "C" void LLVMRustDisposeTargetMachine(LLVMTargetMachineRef TM) {
-#if LLVM_VERSION_LT(20, 0)
-  MCTargetOptions &MCOptions = unwrap(TM)->Options.MCOptions;
-  delete[] MCOptions.Argv0;
-  delete[] MCOptions.CommandLineArgs.data();
-#endif
-
   delete unwrap(TM);
 }
 
@@ -812,14 +640,9 @@ extern "C" LLVMRustResult LLVMRustOptimize(
   // the PassBuilder does not create a pipeline.
   std::vector<std::function<void(ModulePassManager &, OptimizationLevel)>>
       PipelineStartEPCallbacks;
-#if LLVM_VERSION_GE(20, 0)
   std::vector<std::function<void(ModulePassManager &, OptimizationLevel,
                                  ThinOrFullLTOPhase)>>
       OptimizerLastEPCallbacks;
-#else
-  std::vector<std::function<void(ModulePassManager &, OptimizationLevel)>>
-      OptimizerLastEPCallbacks;
-#endif
 
   if (!IsLinkerPluginLTO && SanitizerOptions && SanitizerOptions->SanitizeCFI &&
       !NoPrepopulatePasses) {
@@ -871,12 +694,8 @@ extern "C" LLVMRustResult LLVMRustOptimize(
           SanitizerOptions->SanitizeDataFlowABIList +
               SanitizerOptions->SanitizeDataFlowABIListLen);
       OptimizerLastEPCallbacks.push_back(
-#if LLVM_VERSION_GE(20, 0)
           [ABIListFiles](ModulePassManager &MPM, OptimizationLevel Level,
                          ThinOrFullLTOPhase phase) {
-#else
-          [ABIListFiles](ModulePassManager &MPM, OptimizationLevel Level) {
-#endif
             MPM.addPass(DataFlowSanitizerPass(ABIListFiles));
           });
     }
@@ -887,66 +706,48 @@ extern "C" LLVMRustResult LLVMRustOptimize(
           SanitizerOptions->SanitizeMemoryRecover,
           /*CompileKernel=*/false,
           /*EagerChecks=*/true);
-      OptimizerLastEPCallbacks.push_back(
-#if LLVM_VERSION_GE(20, 0)
-          [Options](ModulePassManager &MPM, OptimizationLevel Level,
-                    ThinOrFullLTOPhase phase) {
-#else
-          [Options](ModulePassManager &MPM, OptimizationLevel Level) {
-#endif
-            MPM.addPass(MemorySanitizerPass(Options));
-          });
+      OptimizerLastEPCallbacks.push_back([Options](ModulePassManager &MPM,
+                                                   OptimizationLevel Level,
+                                                   ThinOrFullLTOPhase phase) {
+        MPM.addPass(MemorySanitizerPass(Options));
+      });
     }
 
     if (SanitizerOptions->SanitizeThread) {
-      OptimizerLastEPCallbacks.push_back(
-#if LLVM_VERSION_GE(20, 0)
-          [](ModulePassManager &MPM, OptimizationLevel Level,
-             ThinOrFullLTOPhase phase) {
-#else
-          [](ModulePassManager &MPM, OptimizationLevel Level) {
-#endif
-            MPM.addPass(ModuleThreadSanitizerPass());
-            MPM.addPass(
-                createModuleToFunctionPassAdaptor(ThreadSanitizerPass()));
-          });
+      OptimizerLastEPCallbacks.push_back([](ModulePassManager &MPM,
+                                            OptimizationLevel Level,
+                                            ThinOrFullLTOPhase phase) {
+        MPM.addPass(ModuleThreadSanitizerPass());
+        MPM.addPass(createModuleToFunctionPassAdaptor(ThreadSanitizerPass()));
+      });
     }
 
     if (SanitizerOptions->SanitizeAddress ||
         SanitizerOptions->SanitizeKernelAddress) {
-      OptimizerLastEPCallbacks.push_back(
-#if LLVM_VERSION_GE(20, 0)
-          [SanitizerOptions, TM](ModulePassManager &MPM,
-                                 OptimizationLevel Level,
-                                 ThinOrFullLTOPhase phase) {
-#else
-          [SanitizerOptions, TM](ModulePassManager &MPM,
-                                 OptimizationLevel Level) {
-#endif
-            auto CompileKernel = SanitizerOptions->SanitizeKernelAddress;
-            AddressSanitizerOptions opts = AddressSanitizerOptions{
-                CompileKernel,
-                SanitizerOptions->SanitizeAddressRecover ||
-                    SanitizerOptions->SanitizeKernelAddressRecover,
-                /*UseAfterScope=*/true,
-                AsanDetectStackUseAfterReturnMode::Runtime,
-            };
-            MPM.addPass(AddressSanitizerPass(
-                opts,
-                /*UseGlobalGC*/ true,
-                // UseOdrIndicator should be false on windows machines
-                // https://reviews.llvm.org/D137227
-                !TM->getTargetTriple().isOSWindows()));
-          });
+      OptimizerLastEPCallbacks.push_back([SanitizerOptions,
+                                          TM](ModulePassManager &MPM,
+                                              OptimizationLevel Level,
+                                              ThinOrFullLTOPhase phase) {
+        auto CompileKernel = SanitizerOptions->SanitizeKernelAddress;
+        AddressSanitizerOptions opts = AddressSanitizerOptions{
+            CompileKernel,
+            SanitizerOptions->SanitizeAddressRecover ||
+                SanitizerOptions->SanitizeKernelAddressRecover,
+            /*UseAfterScope=*/true,
+            AsanDetectStackUseAfterReturnMode::Runtime,
+        };
+        MPM.addPass(
+            AddressSanitizerPass(opts,
+                                 /*UseGlobalGC*/ true,
+                                 // UseOdrIndicator should be false on windows
+                                 // machines https://reviews.llvm.org/D137227
+                                 !TM->getTargetTriple().isOSWindows()));
+      });
     }
     if (SanitizerOptions->SanitizeHWAddress) {
       OptimizerLastEPCallbacks.push_back(
-#if LLVM_VERSION_GE(20, 0)
           [SanitizerOptions](ModulePassManager &MPM, OptimizationLevel Level,
                              ThinOrFullLTOPhase phase) {
-#else
-          [SanitizerOptions](ModulePassManager &MPM, OptimizationLevel Level) {
-#endif
             HWAddressSanitizerOptions opts(
                 /*CompileKernel=*/false,
                 SanitizerOptions->SanitizeHWAddressRecover,
@@ -1028,11 +829,7 @@ extern "C" LLVMRustResult LLVMRustOptimize(
     for (const auto &C : PipelineStartEPCallbacks)
       C(MPM, OptLevel);
     for (const auto &C : OptimizerLastEPCallbacks)
-#if LLVM_VERSION_GE(20, 0)
       C(MPM, OptLevel, ThinOrFullLTOPhase::None);
-#else
-      C(MPM, OptLevel);
-#endif
   }
 
   if (ExtraPassesLen) {
@@ -1309,11 +1106,7 @@ struct LLVMRustThinLTOData {
 
   // Not 100% sure what these are, but they impact what's internalized and
   // what's inlined across modules, I believe.
-#if LLVM_VERSION_GE(20, 0)
   FunctionImporter::ImportListsTy ImportLists;
-#else
-  DenseMap<StringRef, FunctionImporter::ImportMapTy> ImportLists;
-#endif
   DenseMap<StringRef, FunctionImporter::ExportSetTy> ExportLists;
   DenseMap<StringRef, GVSummaryMapTy> ModuleToDefinedGVSummaries;
   StringMap<std::map<GlobalValue::GUID, GlobalValue::LinkageTypes>> ResolvedODR;
@@ -1655,13 +1448,8 @@ extern "C" void LLVMRustComputeLTOCacheKey(RustStringRef KeyOut,
   const auto &ExportList = Data->ExportLists.lookup(ModId);
   const auto &ResolvedODR = Data->ResolvedODR.lookup(ModId);
   const auto &DefinedGlobals = Data->ModuleToDefinedGVSummaries.lookup(ModId);
-#if LLVM_VERSION_GE(20, 0)
   DenseSet<GlobalValue::GUID> CfiFunctionDefs;
   DenseSet<GlobalValue::GUID> CfiFunctionDecls;
-#else
-  std::set<GlobalValue::GUID> CfiFunctionDefs;
-  std::set<GlobalValue::GUID> CfiFunctionDecls;
-#endif
 
   // Based on the 'InProcessThinBackend' constructor in LLVM
 #if LLVM_VERSION_GE(21, 0)
@@ -1680,15 +1468,9 @@ extern "C" void LLVMRustComputeLTOCacheKey(RustStringRef KeyOut,
         GlobalValue::getGUID(GlobalValue::dropLLVMManglingEscape(Name)));
 #endif
 
-#if LLVM_VERSION_GE(20, 0)
   Key = llvm::computeLTOCacheKey(conf, Data->Index, ModId, ImportList,
                                  ExportList, ResolvedODR, DefinedGlobals,
                                  CfiFunctionDefs, CfiFunctionDecls);
-#else
-  llvm::computeLTOCacheKey(Key, conf, Data->Index, ModId, ImportList,
-                           ExportList, ResolvedODR, DefinedGlobals,
-                           CfiFunctionDefs, CfiFunctionDecls);
-#endif
 
   auto OS = RawRustStringOstream(KeyOut);
   OS << Key.str();

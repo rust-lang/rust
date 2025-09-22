@@ -421,7 +421,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 })
                 | hir::Node::ImplItem(hir::ImplItem {
                     generics,
-                    trait_item_def_id: None,
+                    impl_kind: hir::ImplItemImplKind::Inherent { .. },
                     kind: hir::ImplItemKind::Fn(..),
                     ..
                 }) if finder.can_suggest_bound(generics) => {
@@ -1131,7 +1131,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         },
                     )
                 }
-                ty::Dynamic(data, _, ty::Dyn) => data.iter().find_map(|pred| {
+                ty::Dynamic(data, _) => data.iter().find_map(|pred| {
                     if let ty::ExistentialPredicate::Projection(proj) = pred.skip_binder()
                         && self.tcx.is_lang_item(proj.def_id, LangItem::FnOnceOutput)
                         // for existential projection, args are shifted over by 1
@@ -1520,7 +1520,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let ty::Ref(_, object_ty, hir::Mutability::Not) = target_ty.kind() else {
             return;
         };
-        let ty::Dynamic(predicates, _, ty::Dyn) = object_ty.kind() else {
+        let ty::Dynamic(predicates, _) = object_ty.kind() else {
             return;
         };
         let self_ref_ty = Ty::new_imm_ref(self.tcx, self.tcx.lifetimes.re_erased, self_ty);
@@ -1883,7 +1883,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let ObligationCauseCode::SizedReturnType = obligation.cause.code() else {
             return false;
         };
-        let ty::Dynamic(_, _, ty::Dyn) = trait_pred.self_ty().skip_binder().kind() else {
+        let ty::Dynamic(_, _) = trait_pred.self_ty().skip_binder().kind() else {
             return false;
         };
 
@@ -2442,7 +2442,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         // Look for a type inside the coroutine interior that matches the target type to get
         // a span.
-        let target_ty_erased = self.tcx.erase_regions(target_ty);
+        let target_ty_erased = self.tcx.erase_and_anonymize_regions(target_ty);
         let ty_matches = |ty| -> bool {
             // Careful: the regions for types that appear in the
             // coroutine interior are not generally known, so we
@@ -2454,10 +2454,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // interior generally contain "bound regions" to
             // represent regions that are part of the suspended
             // coroutine frame. Bound regions are preserved by
-            // `erase_regions` and so we must also call
+            // `erase_and_anonymize_regions` and so we must also call
             // `instantiate_bound_regions_with_erased`.
             let ty_erased = self.tcx.instantiate_bound_regions_with_erased(ty);
-            let ty_erased = self.tcx.erase_regions(ty_erased);
+            let ty_erased = self.tcx.erase_and_anonymize_regions(ty_erased);
             let eq = ty_erased == target_ty_erased;
             debug!(?ty_erased, ?target_ty_erased, ?eq);
             eq

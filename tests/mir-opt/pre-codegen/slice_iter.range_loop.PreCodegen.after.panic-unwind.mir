@@ -5,28 +5,27 @@ fn range_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     debug f => _2;
     let mut _0: ();
     let mut _3: usize;
-    let mut _4: usize;
-    let mut _9: std::option::Option<usize>;
-    let mut _11: bool;
-    let mut _13: &impl Fn(usize, &T);
-    let mut _14: (usize, &T);
-    let _15: ();
+    let mut _8: std::option::Option<usize>;
+    let mut _10: bool;
+    let mut _12: &impl Fn(usize, &T);
+    let mut _13: (usize, &T);
+    let _14: ();
     scope 1 {
         debug ((iter: std::ops::Range<usize>).0: usize) => _4;
         debug ((iter: std::ops::Range<usize>).1: usize) => _3;
-        let _10: usize;
+        let _9: usize;
         scope 2 {
-            debug i => _10;
-            let _12: &T;
+            debug i => _9;
+            let _11: &T;
             scope 3 {
-                debug x => _12;
+                debug x => _11;
             }
         }
         scope 5 (inlined iter::range::<impl Iterator for std::ops::Range<usize>>::next) {
             scope 6 (inlined <std::ops::Range<usize> as iter::range::RangeIteratorImpl>::spec_next) {
+                let mut _4: usize;
                 let mut _6: bool;
                 let _7: usize;
-                let mut _8: usize;
                 scope 7 {
                     scope 9 (inlined <usize as Step>::forward_unchecked) {
                         scope 10 (inlined #[track_caller] core::num::<impl usize>::unchecked_add) {
@@ -48,13 +47,12 @@ fn range_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
 
     bb0: {
         _3 = PtrMetadata(copy _1);
-        StorageLive(_4);
         _4 = const 0_usize;
         goto -> bb1;
     }
 
     bb1: {
-        StorageLive(_9);
+        StorageLive(_8);
         StorageLive(_6);
         StorageLive(_5);
         _5 = copy _4;
@@ -65,8 +63,7 @@ fn range_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
 
     bb2: {
         StorageDead(_6);
-        StorageDead(_9);
-        StorageDead(_4);
+        StorageDead(_8);
         drop(_2) -> [return: bb3, unwind continue];
     }
 
@@ -76,30 +73,27 @@ fn range_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
 
     bb4: {
         _7 = copy _4;
-        StorageLive(_8);
-        _8 = AddUnchecked(copy _7, const 1_usize);
-        _4 = move _8;
-        StorageDead(_8);
-        _9 = Option::<usize>::Some(copy _7);
+        _4 = AddUnchecked(copy _7, const 1_usize);
+        _8 = Option::<usize>::Some(copy _7);
         StorageDead(_6);
-        _10 = copy ((_9 as Some).0: usize);
-        _11 = Lt(copy _10, copy _3);
-        assert(move _11, "index out of bounds: the length is {} but the index is {}", copy _3, copy _10) -> [success: bb5, unwind: bb7];
+        _9 = copy ((_8 as Some).0: usize);
+        _10 = Lt(copy _9, copy _3);
+        assert(move _10, "index out of bounds: the length is {} but the index is {}", copy _3, copy _9) -> [success: bb5, unwind: bb7];
     }
 
     bb5: {
-        _12 = &(*_1)[_10];
+        _11 = &(*_1)[_9];
+        StorageLive(_12);
+        _12 = &_2;
         StorageLive(_13);
-        _13 = &_2;
-        StorageLive(_14);
-        _14 = (copy _10, copy _12);
-        _15 = <impl Fn(usize, &T) as Fn<(usize, &T)>>::call(move _13, move _14) -> [return: bb6, unwind: bb7];
+        _13 = (copy _9, copy _11);
+        _14 = <impl Fn(usize, &T) as Fn<(usize, &T)>>::call(move _12, move _13) -> [return: bb6, unwind: bb7];
     }
 
     bb6: {
-        StorageDead(_14);
         StorageDead(_13);
-        StorageDead(_9);
+        StorageDead(_12);
+        StorageDead(_8);
         goto -> bb1;
     }
 

@@ -58,6 +58,36 @@ fn test_fmt_debug_of_raw_pointers() {
 }
 
 #[test]
+fn test_fmt_debug_of_mut_reference() {
+    let mut x: u32 = 0;
+
+    assert_eq!(format!("{:?}", &mut x), "0");
+}
+
+#[test]
+fn test_default_write_impls() {
+    use core::fmt::Write;
+
+    struct Buf(String);
+
+    impl Write for Buf {
+        fn write_str(&mut self, s: &str) -> core::fmt::Result {
+            self.0.write_str(s)
+        }
+    }
+
+    let mut buf = Buf(String::new());
+    buf.write_char('a').unwrap();
+
+    assert_eq!(buf.0, "a");
+
+    let mut buf = Buf(String::new());
+    buf.write_fmt(format_args!("a")).unwrap();
+
+    assert_eq!(buf.0, "a");
+}
+
+#[test]
 fn test_estimated_capacity() {
     assert_eq!(format_args!("").estimated_capacity(), 0);
     assert_eq!(format_args!("{}", { "" }).estimated_capacity(), 0);

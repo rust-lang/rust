@@ -124,6 +124,9 @@ xflags::xflags! {
             optional --disable-proc-macros
             /// Run the proc-macro-srv binary at the specified path.
             optional --proc-macro-srv path: PathBuf
+
+            /// The minimum severity.
+            optional --severity severity: Severity
         }
 
         /// Report unresolved references
@@ -281,6 +284,7 @@ pub struct Diagnostics {
     pub disable_build_scripts: bool,
     pub disable_proc_macros: bool,
     pub proc_macro_srv: Option<PathBuf>,
+    pub severity: Option<Severity>,
 }
 
 #[derive(Debug)]
@@ -373,6 +377,26 @@ impl FromStr for OutputFormat {
         match s {
             "csv" => Ok(Self::Csv),
             _ => Err(format!("unknown output format `{s}`")),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Severity {
+    Weak,
+    Warning,
+    Error,
+}
+
+impl FromStr for Severity {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match &*s.to_ascii_lowercase() {
+            "weak" => Ok(Self::Weak),
+            "warning" => Ok(Self::Warning),
+            "error" => Ok(Self::Error),
+            _ => Err(format!("unknown severity `{s}`")),
         }
     }
 }

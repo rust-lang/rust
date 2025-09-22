@@ -5,7 +5,7 @@ LL | fn create_complex_future() -> impl Future<Output = impl ReturnsSend> {
    |                                                    ^^^^^^^^^^^^^^^^ the trait `ReturnsSend` is not implemented for `()`
    |
 help: this trait has no implementations, consider adding one
-  --> $DIR/ice-issue-146191.rs:14:1
+  --> $DIR/ice-issue-146191.rs:13:1
    |
 LL | trait ReturnsSend {}
    | ^^^^^^^^^^^^^^^^^

@@ -319,10 +319,37 @@ pub(crate) struct ExternItemAscii {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_bad_c_variadic)]
-pub(crate) struct BadCVariadic {
+#[diag(ast_passes_c_variadic_no_extern)]
+#[help]
+pub(crate) struct CVariadicNoExtern {
     #[primary_span]
-    pub span: Vec<Span>,
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_c_variadic_must_be_unsafe)]
+pub(crate) struct CVariadicMustBeUnsafe {
+    #[primary_span]
+    pub span: Span,
+
+    #[suggestion(
+        ast_passes_suggestion,
+        applicability = "maybe-incorrect",
+        code = "unsafe ",
+        style = "verbose"
+    )]
+    pub unsafe_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_c_variadic_bad_extern)]
+#[help]
+pub(crate) struct CVariadicBadExtern {
+    #[primary_span]
+    pub span: Span,
+    pub abi: Symbol,
+    #[label]
+    pub extern_span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -487,6 +514,13 @@ pub(crate) struct UnsafeItem {
 pub(crate) struct MissingUnsafeOnExtern {
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(ast_passes_missing_unsafe_on_extern_lint)]
+pub(crate) struct MissingUnsafeOnExternLint {
+    #[suggestion(code = "unsafe ", applicability = "machine-applicable")]
+    pub suggestion: Span,
 }
 
 #[derive(Diagnostic)]
@@ -656,7 +690,19 @@ pub(crate) struct ConstAndCVariadic {
     #[label(ast_passes_const)]
     pub const_span: Span,
     #[label(ast_passes_variadic)]
-    pub variadic_spans: Vec<Span>,
+    pub variadic_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_coroutine_and_c_variadic)]
+pub(crate) struct CoroutineAndCVariadic {
+    #[primary_span]
+    pub spans: Vec<Span>,
+    pub coroutine_kind: &'static str,
+    #[label(ast_passes_const)]
+    pub coroutine_span: Span,
+    #[label(ast_passes_variadic)]
+    pub variadic_span: Span,
 }
 
 #[derive(Diagnostic)]

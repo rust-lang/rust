@@ -20,7 +20,7 @@ use crate::{
     config::Config,
     diagnostics::{DiagnosticsGeneration, NativeDiagnosticsFetchKind, fetch_native_diagnostics},
     discover::{DiscoverArgument, DiscoverCommand, DiscoverProjectMessage},
-    flycheck::{self, FlycheckMessage},
+    flycheck::{self, ClearDiagnosticsKind, FlycheckMessage},
     global_state::{
         FetchBuildDataResponse, FetchWorkspaceRequest, FetchWorkspaceResponse, GlobalState,
         file_id_to_url, url_to_file_id,
@@ -812,7 +812,7 @@ impl GlobalState {
                 };
 
                 if let Some(state) = state {
-                    self.report_progress("Building build-artifacts", state, msg, None, None);
+                    self.report_progress("Building compile-time-deps", state, msg, None, None);
                 }
             }
             Task::LoadProcMacros(progress) => {
@@ -1008,7 +1008,13 @@ impl GlobalState {
 
     fn handle_flycheck_msg(&mut self, message: FlycheckMessage) {
         match message {
-            FlycheckMessage::AddDiagnostic { id, workspace_root, diagnostic, package_id } => {
+            FlycheckMessage::AddDiagnostic {
+                id,
+                generation,
+                workspace_root,
+                diagnostic,
+                package_id,
+            } => {
                 let snap = self.snapshot();
                 let diagnostics = crate::diagnostics::to_proto::map_rust_diagnostic_to_lsp(
                     &self.config.diagnostics_map(None),
@@ -1020,6 +1026,7 @@ impl GlobalState {
                     match url_to_file_id(&self.vfs.read().0, &diag.url) {
                         Ok(Some(file_id)) => self.diagnostics.add_check_diagnostic(
                             id,
+                            generation,
                             &package_id,
                             file_id,
                             diag.diagnostic,
@@ -1035,12 +1042,17 @@ impl GlobalState {
                     };
                 }
             }
-            FlycheckMessage::ClearDiagnostics { id, package_id: None } => {
+            FlycheckMessage::ClearDiagnostics { id, kind: ClearDiagnosticsKind::All } => {
                 self.diagnostics.clear_check(id)
             }
-            FlycheckMessage::ClearDiagnostics { id, package_id: Some(package_id) } => {
-                self.diagnostics.clear_check_for_package(id, package_id)
-            }
+            FlycheckMessage::ClearDiagnostics {
+                id,
+                kind: ClearDiagnosticsKind::OlderThan(generation),
+            } => self.diagnostics.clear_check_older_than(id, generation),
+            FlycheckMessage::ClearDiagnostics {
+                id,
+                kind: ClearDiagnosticsKind::Package(package_id),
+            } => self.diagnostics.clear_check_for_package(id, package_id),
             FlycheckMessage::Progress { id, progress } => {
                 let (state, message) = match progress {
                     flycheck::Progress::DidStart => (Progress::Begin, None),

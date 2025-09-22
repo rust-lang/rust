@@ -75,7 +75,7 @@ passes_const_stable_not_stable =
     .label = attribute specified here
 
 passes_custom_mir_incompatible_dialect_and_phase =
-    The {$dialect} dialect is not compatible with the {$phase} phase
+    the {$dialect} dialect is not compatible with the {$phase} phase
     .dialect_span = this dialect...
     .phase_span = ... is not compatible with this phase
 
@@ -349,10 +349,6 @@ passes_invalid_attr_at_crate_level =
 passes_invalid_attr_at_crate_level_item =
     the inner attribute doesn't annotate this {$kind}
 
-passes_invalid_macro_export_arguments = invalid `#[macro_export]` argument
-
-passes_invalid_macro_export_arguments_too_many_items = `#[macro_export]` can only take 1 or 0 arguments
-
 passes_lang_item_fn = {$name ->
     [panic_impl] `#[panic_handler]`
     *[other] `{$name}` lang item
@@ -391,9 +387,6 @@ passes_link =
 passes_loop_match_attr =
     `#[loop_match]` should be applied to a loop
     .label = not a loop
-
-passes_macro_export =
-    `#[macro_export]` only has an effect on macro definitions
 
 passes_macro_export_on_decl_macro =
     `#[macro_export]` has no effect on declarative macro definitions
@@ -500,6 +493,10 @@ passes_repr_align_greater_than_target_max =
 passes_repr_align_should_be_align =
     `#[repr(align(...))]` is not supported on {$item}
     .help = use `#[rustc_align(...)]` instead
+
+passes_repr_align_should_be_align_static =
+    `#[repr(align(...))]` is not supported on {$item}
+    .help = use `#[rustc_align_static(...)]` instead
 
 passes_repr_conflicting =
     conflicting representation hints

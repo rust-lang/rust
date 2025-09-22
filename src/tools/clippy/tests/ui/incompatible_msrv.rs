@@ -1,6 +1,6 @@
 #![warn(clippy::incompatible_msrv)]
 #![feature(custom_inner_attributes)]
-#![allow(stable_features, clippy::diverging_sub_expression)]
+#![allow(stable_features)]
 #![feature(strict_provenance)] // For use in test
 #![clippy::msrv = "1.3.0"]
 

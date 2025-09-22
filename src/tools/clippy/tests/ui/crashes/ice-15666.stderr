@@ -1,0 +1,16 @@
+error: the following explicit lifetimes could be elided: 'a, 's
+  --> tests/ui/crashes/ice-15666.rs:5:11
+   |
+LL | impl<'de, 'a, 's> Trait<'de> for UnitVariantAccess<'a, 'de, 's> {}
+   |           ^^  ^^                                   ^^       ^^
+   |
+   = note: `-D clippy::elidable-lifetime-names` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::elidable_lifetime_names)]`
+help: elide the lifetimes
+   |
+LL - impl<'de, 'a, 's> Trait<'de> for UnitVariantAccess<'a, 'de, 's> {}
+LL + impl<'de> Trait<'de> for UnitVariantAccess<'_, 'de, '_> {}
+   |
+
+error: aborting due to 1 previous error
+

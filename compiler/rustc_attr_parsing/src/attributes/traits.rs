@@ -1,7 +1,5 @@
 use std::mem;
 
-use rustc_feature::AttributeType;
-
 use super::prelude::*;
 use crate::attributes::{
     AttributeOrder, NoArgsAttributeParser, OnDuplicate, SingleAttributeParser,
@@ -149,15 +147,6 @@ impl<S: Stage> NoArgsAttributeParser<S> for AllowIncoherentImplParser {
     const ALLOWED_TARGETS: AllowedTargets =
         AllowedTargets::AllowList(&[Allow(Target::Method(MethodKind::Inherent))]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::AllowIncoherentImpl;
-}
-
-pub(crate) struct CoherenceIsCoreParser;
-impl<S: Stage> NoArgsAttributeParser<S> for CoherenceIsCoreParser {
-    const PATH: &[Symbol] = &[sym::rustc_coherence_is_core];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
-    const TYPE: AttributeType = AttributeType::CrateLevel;
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::CoherenceIsCore;
 }
 
 pub(crate) struct FundamentalParser;

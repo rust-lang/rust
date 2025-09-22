@@ -11,6 +11,11 @@ pub enum SolverLangItem {
     DynMetadata,
     FutureOutput,
     Metadata,
+    // tidy-alphabetical-end
+}
+
+pub enum SolverAdtLangItem {
+    // tidy-alphabetical-start
     Option,
     Poll,
     // tidy-alphabetical-end

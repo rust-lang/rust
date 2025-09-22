@@ -1,12 +1,13 @@
+use std::assert_matches::assert_matches;
 use std::ops::ControlFlow;
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::struct_span_code_err;
 use rustc_hir as hir;
+use rustc_hir::PolyTraitRef;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
-use rustc_hir::{AmbigArg, PolyTraitRef};
 use rustc_middle::bug;
 use rustc_middle::ty::{
     self as ty, IsSuggestable, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
@@ -230,122 +231,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
     }
 
-    /// Checks whether `Self: DefaultAutoTrait` bounds should be added on trait super bounds
-    /// or associated items.
-    ///
-    /// To keep backward compatibility with existing code, `experimental_default_bounds` bounds
-    /// should be added everywhere, including super bounds. However this causes a huge performance
-    /// costs. For optimization purposes instead of adding default supertraits, bounds
-    /// are added to the associated items:
-    ///
-    /// ```ignore(illustrative)
-    /// // Default bounds are generated in the following way:
-    /// trait Trait {
-    ///     fn foo(&self) where Self: Leak {}
-    /// }
-    ///
-    /// // instead of this:
-    /// trait Trait: Leak {
-    ///     fn foo(&self) {}
-    /// }
-    /// ```
-    /// It is not always possible to do this because of backward compatibility:
-    ///
-    /// ```ignore(illustrative)
-    /// pub trait Trait<Rhs = Self> {}
-    /// pub trait Trait1 : Trait {}
-    /// //~^ ERROR: `Rhs` requires `DefaultAutoTrait`, but `Self` is not `DefaultAutoTrait`
-    /// ```
-    ///
-    /// or:
-    ///
-    /// ```ignore(illustrative)
-    /// trait Trait {
-    ///     type Type where Self: Sized;
-    /// }
-    /// trait Trait2<T> : Trait<Type = T> {}
-    /// //~^ ERROR: `DefaultAutoTrait` required for `Trait2`, by implicit  `Self: DefaultAutoTrait` in `Trait::Type`
-    /// ```
-    ///
-    /// Therefore, `experimental_default_bounds` are still being added to supertraits if
-    /// the `SelfTyParam` or `AssocItemConstraint` were found in a trait header.
-    fn requires_default_supertraits(
-        &self,
-        hir_bounds: &'tcx [hir::GenericBound<'tcx>],
-        hir_generics: &'tcx hir::Generics<'tcx>,
-    ) -> bool {
-        struct TraitInfoCollector;
-
-        impl<'tcx> hir::intravisit::Visitor<'tcx> for TraitInfoCollector {
-            type Result = ControlFlow<()>;
-
-            fn visit_assoc_item_constraint(
-                &mut self,
-                _constraint: &'tcx hir::AssocItemConstraint<'tcx>,
-            ) -> Self::Result {
-                ControlFlow::Break(())
-            }
-
-            fn visit_ty(&mut self, t: &'tcx hir::Ty<'tcx, AmbigArg>) -> Self::Result {
-                if matches!(
-                    &t.kind,
-                    hir::TyKind::Path(hir::QPath::Resolved(
-                        _,
-                        hir::Path { res: hir::def::Res::SelfTyParam { .. }, .. },
-                    ))
-                ) {
-                    return ControlFlow::Break(());
-                }
-                hir::intravisit::walk_ty(self, t)
-            }
-        }
-
-        let mut found = false;
-        for bound in hir_bounds {
-            found |= hir::intravisit::walk_param_bound(&mut TraitInfoCollector, bound).is_break();
-        }
-        found |= hir::intravisit::walk_generics(&mut TraitInfoCollector, hir_generics).is_break();
-        found
-    }
-
-    /// Implicitly add `Self: DefaultAutoTrait` clauses on trait associated items if
-    /// they are not added as super trait bounds to the trait itself. See
-    /// `requires_default_supertraits` for more information.
-    pub(crate) fn add_default_trait_item_bounds(
-        &self,
-        trait_item: &hir::TraitItem<'tcx>,
-        bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
-    ) {
-        let tcx = self.tcx();
-        if !tcx.sess.opts.unstable_opts.experimental_default_bounds {
-            return;
-        }
-
-        let parent = tcx.local_parent(trait_item.hir_id().owner.def_id);
-        let hir::Node::Item(parent_trait) = tcx.hir_node_by_def_id(parent) else {
-            unreachable!();
-        };
-
-        let (trait_generics, trait_bounds) = match parent_trait.kind {
-            hir::ItemKind::Trait(_, _, _, _, generics, supertraits, _) => (generics, supertraits),
-            hir::ItemKind::TraitAlias(_, generics, supertraits) => (generics, supertraits),
-            _ => unreachable!(),
-        };
-
-        if !self.requires_default_supertraits(trait_bounds, trait_generics) {
-            let self_ty_where_predicates = (parent, trait_item.generics.predicates);
-            self.add_default_traits(
-                bounds,
-                tcx.types.self_param,
-                &[],
-                Some(self_ty_where_predicates),
-                trait_item.span,
-            );
-        }
-    }
-
-    /// Lazily sets `experimental_default_bounds` to true on trait super bounds.
-    /// See `requires_default_supertraits` for more information.
+    /// Adds `experimental_default_bounds` bounds to the supertrait bounds.
     pub(crate) fn add_default_super_traits(
         &self,
         trait_def_id: LocalDefId,
@@ -354,21 +240,21 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         hir_generics: &'tcx hir::Generics<'tcx>,
         span: Span,
     ) {
-        if !self.tcx().sess.opts.unstable_opts.experimental_default_bounds {
+        assert_matches!(self.tcx().def_kind(trait_def_id), DefKind::Trait | DefKind::TraitAlias);
+
+        // Supertraits for auto trait are unsound according to the unstable book:
+        // https://doc.rust-lang.org/beta/unstable-book/language-features/auto-traits.html#supertraits
+        if self.tcx().trait_is_auto(trait_def_id.to_def_id()) {
             return;
         }
 
-        assert!(matches!(self.tcx().def_kind(trait_def_id), DefKind::Trait | DefKind::TraitAlias));
-        if self.requires_default_supertraits(hir_bounds, hir_generics) {
-            let self_ty_where_predicates = (trait_def_id, hir_generics.predicates);
-            self.add_default_traits(
-                bounds,
-                self.tcx().types.self_param,
-                hir_bounds,
-                Some(self_ty_where_predicates),
-                span,
-            );
-        }
+        self.add_default_traits(
+            bounds,
+            self.tcx().types.self_param,
+            hir_bounds,
+            Some((trait_def_id, hir_generics.predicates)),
+            span,
+        );
     }
 
     pub(crate) fn add_default_traits(

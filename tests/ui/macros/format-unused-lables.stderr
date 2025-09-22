@@ -7,6 +7,11 @@ LL |     println!("Test", 123, 456, 789);
    |              |       |    argument never used
    |              |       argument never used
    |              multiple missing formatting specifiers
+   |
+help: format specifiers use curly braces, consider adding 3 format specifiers
+   |
+LL |     println!("Test{}{}{}", 123, 456, 789);
+   |                   ++++++
 
 error: multiple unused formatting arguments
   --> $DIR/format-unused-lables.rs:6:9
@@ -19,6 +24,11 @@ LL |         456,
    |         ^^^ argument never used
 LL |         789
    |         ^^^ argument never used
+   |
+help: format specifiers use curly braces, consider adding 3 format specifiers
+   |
+LL |     println!("Test2{}{}{}",
+   |                    ++++++
 
 error: named argument never used
   --> $DIR/format-unused-lables.rs:11:35
@@ -27,6 +37,11 @@ LL |     println!("Some stuff", UNUSED="args");
    |              ------------         ^^^^^^ named argument never used
    |              |
    |              formatting specifier missing
+   |
+help: format specifiers use curly braces, consider adding a format specifier
+   |
+LL |     println!("Some stuff{}", UNUSED="args");
+   |                         ++
 
 error: multiple unused formatting arguments
   --> $DIR/format-unused-lables.rs:14:9

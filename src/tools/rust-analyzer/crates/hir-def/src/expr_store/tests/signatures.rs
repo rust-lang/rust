@@ -24,7 +24,6 @@ fn lower_and_print(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expe
                 ModuleDefId::ConstId(id) => id.into(),
                 ModuleDefId::StaticId(id) => id.into(),
                 ModuleDefId::TraitId(id) => id.into(),
-                ModuleDefId::TraitAliasId(id) => id.into(),
                 ModuleDefId::TypeAliasId(id) => id.into(),
                 ModuleDefId::EnumVariantId(_) => continue,
                 ModuleDefId::BuiltinType(_) => continue,
@@ -51,7 +50,6 @@ fn lower_and_print(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expe
 
             GenericDefId::ImplId(_id) => (),
             GenericDefId::StaticId(_id) => (),
-            GenericDefId::TraitAliasId(_id) => (),
             GenericDefId::TraitId(_id) => (),
             GenericDefId::TypeAliasId(_id) => (),
         }

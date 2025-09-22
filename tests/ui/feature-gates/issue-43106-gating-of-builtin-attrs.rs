@@ -214,22 +214,40 @@ mod macro_use {
 }
 
 #[macro_export]
-//~^ WARN `#[macro_export]` only has an effect on macro definitions
+//~^ WARN `#[macro_export]` attribute cannot be used on modules [unused_attributes]
+//~| WARN previously accepted
+//~| HELP can only be applied to
+//~| HELP remove the attribute
 mod macro_export {
     mod inner { #![macro_export] }
-    //~^ WARN `#[macro_export]` only has an effect on macro definitions
+    //~^ WARN `#[macro_export]` attribute cannot be used on modules
+    //~| WARN previously accepted
+    //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[macro_export] fn f() { }
-    //~^ WARN `#[macro_export]` only has an effect on macro definitions
+    //~^ WARN `#[macro_export]` attribute cannot be used on function
+    //~| WARN previously accepted
+    //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[macro_export] struct S;
-    //~^ WARN `#[macro_export]` only has an effect on macro definitions
+    //~^ WARN `#[macro_export]` attribute cannot be used on structs
+    //~| WARN previously accepted
+    //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[macro_export] type T = S;
-    //~^ WARN `#[macro_export]` only has an effect on macro definitions
+    //~^ WARN `#[macro_export]` attribute cannot be used on type aliases
+    //~| WARN previously accepted
+    //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[macro_export] impl S { }
-    //~^ WARN `#[macro_export]` only has an effect on macro definitions
+    //~^ WARN  `#[macro_export]` attribute cannot be used on inherent impl blocks
+    //~| WARN previously accepted
+    //~| HELP can only be applied to
+    //~| HELP remove the attribute
 }
 
 // At time of unit test authorship, if compiling without `--test` then
@@ -539,26 +557,26 @@ mod macro_escape {
 
 #[no_std]
 //~^ WARN crate-level attribute should be an inner attribute
-//~| HELP add a `!`
 mod no_std {
+    //~^ NOTE This attribute does not have an `!`, which means it is applied to this module
     mod inner { #![no_std] }
-//~^ WARN crate-level attribute should be in the root module
+//~^ WARN the `#![no_std]` attribute can only be used at the crate root
 
     #[no_std] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this function
 
     #[no_std] struct S;
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this struct
 
     #[no_std] type T = S;
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this type alias
 
     #[no_std] impl S { }
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this implementation block
 }
 
 // At time of authorship, #[proc_macro_derive = "2500"] signals error
@@ -917,50 +935,50 @@ mod no_builtins {
 
 #[recursion_limit="0200"]
 //~^ WARN crate-level attribute should be an inner attribute
-//~| HELP add a `!`
 mod recursion_limit {
+    //~^ NOTE This attribute does not have an `!`, which means it is applied to this module
     mod inner { #![recursion_limit="0200"] }
-//~^ WARN crate-level attribute should be in the root module
+//~^ WARN the `#![recursion_limit]` attribute can only be used at the crate root
 
     #[recursion_limit="0200"] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this function
 
     #[recursion_limit="0200"] struct S;
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this struct
 
     #[recursion_limit="0200"] type T = S;
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this type alias
 
     #[recursion_limit="0200"] impl S { }
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this implementation block
 }
 
 #[type_length_limit="0100"]
 //~^ WARN crate-level attribute should be an inner attribute
-//~| HELP add a `!`
 mod type_length_limit {
+    //~^ NOTE This attribute does not have an `!`, which means it is applied to this module
     mod inner { #![type_length_limit="0100"] }
-//~^ WARN crate-level attribute should be in the root module
+//~^ WARN the `#![type_length_limit]` attribute can only be used at the crate root
 
     #[type_length_limit="0100"] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this function
 
     #[type_length_limit="0100"] struct S;
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this struct
 
     #[type_length_limit="0100"] type T = S;
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this type alias
 
     #[type_length_limit="0100"] impl S { }
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this implementation block
 }
 
 fn main() {}

@@ -25,6 +25,7 @@ use tracing::{debug, instrument};
 use super::method::MethodCallee;
 use super::method::probe::ProbeScope;
 use super::{Expectation, FnCtxt, TupleArgumentsFlag};
+use crate::method::TreatNotYetDefinedOpaques;
 use crate::{errors, fluent_generated};
 
 /// Checks that it is legal to call methods of the trait corresponding
@@ -78,7 +79,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => self.check_expr(callee_expr),
         };
 
-        let expr_ty = self.structurally_resolve_type(call_expr.span, original_callee_ty);
+        let expr_ty = self.try_structurally_resolve_type(call_expr.span, original_callee_ty);
 
         let mut autoderef = self.autoderef(callee_expr.span, expr_ty);
         let mut result = None;
@@ -200,7 +201,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         arg_exprs: &'tcx [hir::Expr<'tcx>],
         autoderef: &Autoderef<'a, 'tcx>,
     ) -> Option<CallStep<'tcx>> {
-        let adjusted_ty = self.structurally_resolve_type(autoderef.span(), autoderef.final_ty());
+        let adjusted_ty =
+            self.try_structurally_resolve_type(autoderef.span(), autoderef.final_ty());
 
         // If the callee is a function pointer or a closure, then we're all set.
         match *adjusted_ty.kind() {
@@ -297,6 +299,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return None;
             }
 
+            ty::Infer(ty::TyVar(vid)) => {
+                // If we end up with an inference variable which is not the hidden type of
+                // an opaque, emit an error.
+                if !self.has_opaques_with_sub_unified_hidden_type(vid) {
+                    self.type_must_be_known_at_this_point(autoderef.span(), adjusted_ty);
+                    return None;
+                }
+            }
+
             ty::Error(_) => {
                 return None;
             }
@@ -367,26 +378,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Ty::new_tup_from_iter(self.tcx, arg_exprs.iter().map(|e| self.next_ty_var(e.span)))
             });
 
+            // We use `TreatNotYetDefinedOpaques::AsRigid` here so that if the `adjusted_ty`
+            // is `Box<impl FnOnce()>` we choose  `FnOnce` instead of `Fn`.
+            //
+            // We try all the different call traits in order and choose the first
+            // one which may apply. So if we treat opaques as inference variables
+            // `Box<impl FnOnce()>: Fn` is considered ambiguous and chosen.
             if let Some(ok) = self.lookup_method_for_operator(
                 self.misc(call_expr.span),
                 method_name,
                 trait_def_id,
                 adjusted_ty,
                 opt_input_type,
+                TreatNotYetDefinedOpaques::AsRigid,
             ) {
                 let method = self.register_infer_ok_obligations(ok);
                 let mut autoref = None;
                 if borrow {
                     // Check for &self vs &mut self in the method signature. Since this is either
                     // the Fn or FnMut trait, it should be one of those.
-                    let ty::Ref(_, _, mutbl) = method.sig.inputs()[0].kind() else {
+                    let ty::Ref(_, _, mutbl) = *method.sig.inputs()[0].kind() else {
                         bug!("Expected `FnMut`/`Fn` to take receiver by-ref/by-mut")
                     };
 
                     // For initial two-phase borrow
                     // deployment, conservatively omit
                     // overloaded function call ops.
-                    let mutbl = AutoBorrowMutability::new(*mutbl, AllowTwoPhase::No);
+                    let mutbl = AutoBorrowMutability::new(mutbl, AllowTwoPhase::No);
 
                     autoref = Some(Adjustment {
                         kind: Adjust::Borrow(AutoBorrow::Ref(mutbl)),

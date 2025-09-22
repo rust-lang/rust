@@ -14,6 +14,7 @@ pub use rustc_target::spec::SanitizerSet;
 use thin_vec::ThinVec;
 
 use crate::attrs::pretty_printing::PrintAttribute;
+use crate::limit::Limit;
 use crate::{DefaultBodyStability, PartialConstStability, RustcVersion, Stability};
 
 #[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic, PrintAttribute)]
@@ -443,9 +444,6 @@ pub enum AttributeKind {
         span: Span,
     },
 
-    /// Represents `#[rustc_coherence_is_core]`.
-    CoherenceIsCore,
-
     /// Represents `#[rustc_coinductive]`.
     Coinductive(Span),
 
@@ -553,6 +551,9 @@ pub enum AttributeKind {
     /// Represents `#[macro_escape]`.
     MacroEscape(Span),
 
+    /// Represents [`#[macro_export]`](https://doc.rust-lang.org/reference/macros-by-example.html#r-macro.decl.scope.path).
+    MacroExport { span: Span, local_inner_macros: bool },
+
     /// Represents `#[rustc_macro_transparency]`.
     MacroTransparency(Transparency),
 
@@ -565,6 +566,9 @@ pub enum AttributeKind {
     /// Represents [`#[may_dangle]`](https://std-dev-guide.rust-lang.org/tricky/may-dangle.html).
     MayDangle(Span),
 
+    /// Represents `#[move_size_limit]`
+    MoveSizeLimit { attr_span: Span, limit_span: Span, limit: Limit },
+
     /// Represents `#[must_use]`.
     MustUse {
         span: Span,
@@ -575,14 +579,26 @@ pub enum AttributeKind {
     /// Represents `#[naked]`
     Naked(Span),
 
+    /// Represents `#[no_core]`
+    NoCore(Span),
+
     /// Represents `#[no_implicit_prelude]`
     NoImplicitPrelude(Span),
 
     /// Represents `#[no_mangle]`
     NoMangle(Span),
 
+    /// Represents `#[no_std]`
+    NoStd(Span),
+
     /// Represents `#[non_exhaustive]`
     NonExhaustive(Span),
+
+    /// Represents `#[rustc_objc_class]`
+    ObjcClass { classname: Symbol, span: Span },
+
+    /// Represents `#[rustc_objc_selector]`
+    ObjcSelector { methname: Symbol, span: Span },
 
     /// Represents `#[optimize(size|speed)]`
     Optimize(OptimizeAttr, Span),
@@ -595,6 +611,9 @@ pub enum AttributeKind {
 
     /// Represents `#[path]`
     Path(Symbol, Span),
+
+    /// Represents `#[pattern_complexity_limit]`
+    PatternComplexityLimit { attr_span: Span, limit_span: Span, limit: Limit },
 
     /// Represents `#[pointee]`
     Pointee(Span),
@@ -611,11 +630,17 @@ pub enum AttributeKind {
     /// Represents `#[rustc_pub_transparent]` (used by the `repr_transparent_external_private_fields` lint).
     PubTransparent(Span),
 
+    /// Represents [`#[recursion_limit]`](https://doc.rust-lang.org/reference/attributes/limits.html#the-recursion_limit-attribute)
+    RecursionLimit { attr_span: Span, limit_span: Span, limit: Limit },
+
     /// Represents [`#[repr]`](https://doc.rust-lang.org/stable/reference/type-layout.html#representations).
     Repr { reprs: ThinVec<(ReprAttr, Span)>, first_span: Span },
 
     /// Represents `#[rustc_builtin_macro]`.
     RustcBuiltinMacro { builtin_name: Option<Symbol>, helper_attrs: ThinVec<Symbol>, span: Span },
+
+    /// Represents `#[rustc_coherence_is_core]`
+    RustcCoherenceIsCore(Span),
 
     /// Represents `#[rustc_layout_scalar_valid_range_end]`.
     RustcLayoutScalarValidRangeEnd(Box<u128>, Span),
@@ -660,6 +685,9 @@ pub enum AttributeKind {
 
     /// Represents `#[type_const]`.
     TypeConst(Span),
+
+    /// Represents `#[type_length_limit]`
+    TypeLengthLimit { attr_span: Span, limit_span: Span, limit: Limit },
 
     /// Represents `#[rustc_unsafe_specialization_marker]`.
     UnsafeSpecializationMarker(Span),

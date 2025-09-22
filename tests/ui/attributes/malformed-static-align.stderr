@@ -1,0 +1,45 @@
+error[E0539]: malformed `rustc_align_static` attribute input
+  --> $DIR/malformed-static-align.rs:4:1
+   |
+LL | #[rustc_align_static = 16]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | expected this to be a list
+   | help: must be of the form: `#[rustc_align_static(<alignment in bytes>)]`
+
+error[E0589]: invalid alignment value: not an unsuffixed integer
+  --> $DIR/malformed-static-align.rs:7:22
+   |
+LL | #[rustc_align_static("hello")]
+   |                      ^^^^^^^
+
+error[E0589]: invalid alignment value: not a power of two
+  --> $DIR/malformed-static-align.rs:10:22
+   |
+LL | #[rustc_align_static(0)]
+   |                      ^
+
+error: `#[rustc_align_static]` attribute cannot be used on structs
+  --> $DIR/malformed-static-align.rs:16:1
+   |
+LL | #[rustc_align_static(16)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_align_static]` can be applied to statics and foreign statics
+
+error: `#[repr(align(...))]` is not supported on statics
+  --> $DIR/malformed-static-align.rs:13:8
+   |
+LL | #[repr(align(16))]
+   |        ^^^^^^^^^
+   |
+help: use `#[rustc_align_static(...)]` instead
+  --> $DIR/malformed-static-align.rs:13:8
+   |
+LL | #[repr(align(16))]
+   |        ^^^^^^^^^
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0539, E0589.
+For more information about an error, try `rustc --explain E0539`.

@@ -10,15 +10,17 @@ use std::{
 
 use cfg::{CfgAtom, CfgDiff};
 use hir::{
-    Adt, AssocItem, Crate, DefWithBody, HasSource, HirDisplay, ImportPathConfig, ModuleDef, Name,
+    Adt, AssocItem, Crate, DefWithBody, FindPathConfig, HasCrate, HasSource, HirDisplay, ModuleDef,
+    Name,
     db::{DefDatabase, ExpandDatabase, HirDatabase},
+    next_solver::{DbInterner, GenericArgs},
 };
 use hir_def::{
     SyntheticSyntax,
     expr_store::BodySourceMap,
     hir::{ExprId, PatId},
 };
-use hir_ty::{Interner, Substitution, TyExt, TypeFlags};
+use hir_ty::{Interner, TyExt, TypeFlags};
 use ide::{
     Analysis, AnalysisHost, AnnotationConfig, DiagnosticsConfig, Edition, InlayFieldsToResolve,
     InlayHintsConfig, LineCol, RootDatabase,
@@ -331,7 +333,7 @@ impl flags::AnalysisStats {
         }
 
         if self.run_all_ide_things {
-            self.run_ide_things(host.analysis(), file_ids.clone());
+            self.run_ide_things(host.analysis(), file_ids.clone(), db, &vfs, verbosity);
         }
 
         if self.run_term_search {
@@ -361,6 +363,7 @@ impl flags::AnalysisStats {
         let mut all = 0;
         let mut fail = 0;
         for &a in adts {
+            let interner = DbInterner::new_with(db, Some(a.krate(db).base()), None);
             let generic_params = db.generic_params(a.into());
             if generic_params.iter_type_or_consts().next().is_some()
                 || generic_params.iter_lt().next().is_some()
@@ -371,7 +374,7 @@ impl flags::AnalysisStats {
             all += 1;
             let Err(e) = db.layout_of_adt(
                 hir_def::AdtId::from(a),
-                Substitution::empty(Interner),
+                GenericArgs::new_from_iter(interner, []),
                 db.trait_environment(a.into()),
             ) else {
                 continue;
@@ -390,15 +393,27 @@ impl flags::AnalysisStats {
     }
 
     fn run_const_eval(&self, db: &RootDatabase, bodies: &[DefWithBody], verbosity: Verbosity) {
+        let len = bodies
+            .iter()
+            .filter(|body| matches!(body, DefWithBody::Const(_) | DefWithBody::Static(_)))
+            .count();
+        let mut bar = match verbosity {
+            Verbosity::Quiet | Verbosity::Spammy => ProgressReport::hidden(),
+            _ if self.parallel || self.output.is_some() => ProgressReport::hidden(),
+            _ => ProgressReport::new(len),
+        };
+
         let mut sw = self.stop_watch();
         let mut all = 0;
         let mut fail = 0;
         for &b in bodies {
+            bar.set_message(move || format!("const eval: {}", full_name(db, b, b.module(db))));
             let res = match b {
                 DefWithBody::Const(c) => c.eval(db),
                 DefWithBody::Static(s) => s.eval(db),
                 _ => continue,
             };
+            bar.inc(1);
             all += 1;
             let Err(error) = res else {
                 continue;
@@ -406,10 +421,11 @@ impl flags::AnalysisStats {
             if verbosity.is_spammy() {
                 let full_name =
                     full_name_of_item(db, b.module(db), b.name(db).unwrap_or(Name::missing()));
-                println!("Const eval for {full_name} failed due {error:?}");
+                bar.println(format!("Const eval for {full_name} failed due {error:?}"));
             }
             fail += 1;
         }
+        bar.finish_and_clear();
         let const_eval_time = sw.elapsed();
         eprintln!("{:<20} {}", "Const evaluation:", const_eval_time);
         eprintln!("Failed const evals: {fail} ({}%)", percentage(fail, all));
@@ -535,7 +551,7 @@ impl flags::AnalysisStats {
                         .gen_source_code(
                             &scope,
                             &mut formatter,
-                            ImportPathConfig {
+                            FindPathConfig {
                                 prefer_no_std: false,
                                 prefer_prelude: true,
                                 prefer_absolute: false,
@@ -659,6 +675,10 @@ impl flags::AnalysisStats {
         let mut all = 0;
         let mut fail = 0;
         for &body_id in bodies {
+            bar.set_message(move || {
+                format!("mir lowering: {}", full_name(db, body_id, body_id.module(db)))
+            });
+            bar.inc(1);
             if matches!(body_id, DefWithBody::Variant(_)) {
                 continue;
             }
@@ -1086,12 +1106,29 @@ impl flags::AnalysisStats {
         report_metric("body lowering time", body_lowering_time.time.as_millis() as u64, "ms");
     }
 
-    fn run_ide_things(&self, analysis: Analysis, mut file_ids: Vec<EditionedFileId>) {
+    fn run_ide_things(
+        &self,
+        analysis: Analysis,
+        mut file_ids: Vec<EditionedFileId>,
+        db: &RootDatabase,
+        vfs: &Vfs,
+        verbosity: Verbosity,
+    ) {
+        let len = file_ids.len();
+        let create_bar = || match verbosity {
+            Verbosity::Quiet | Verbosity::Spammy => ProgressReport::hidden(),
+            _ if self.parallel || self.output.is_some() => ProgressReport::hidden(),
+            _ => ProgressReport::new(len),
+        };
+
         file_ids.sort();
         file_ids.dedup();
         let mut sw = self.stop_watch();
 
+        let mut bar = create_bar();
         for &file_id in &file_ids {
+            let msg = format!("diagnostics: {}", vfs.file_path(file_id.file_id(db)));
+            bar.set_message(move || msg.clone());
             _ = analysis.full_diagnostics(
                 &DiagnosticsConfig {
                     enabled: true,
@@ -1118,8 +1155,14 @@ impl flags::AnalysisStats {
                 ide::AssistResolveStrategy::All,
                 analysis.editioned_file_id_to_vfs(file_id),
             );
+            bar.inc(1);
         }
+        bar.finish_and_clear();
+
+        let mut bar = create_bar();
         for &file_id in &file_ids {
+            let msg = format!("inlay hints: {}", vfs.file_path(file_id.file_id(db)));
+            bar.set_message(move || msg.clone());
             _ = analysis.inlay_hints(
                 &InlayHintsConfig {
                     render_colons: false,
@@ -1134,6 +1177,7 @@ impl flags::AnalysisStats {
                     },
                     chaining_hints: true,
                     adjustment_hints: ide::AdjustmentHints::Always,
+                    adjustment_hints_disable_reborrows: true,
                     adjustment_hints_mode: ide::AdjustmentHintsMode::Postfix,
                     adjustment_hints_hide_outside_unsafe: false,
                     closure_return_type_hints: ide::ClosureReturnTypeHints::Always,
@@ -1154,8 +1198,14 @@ impl flags::AnalysisStats {
                 analysis.editioned_file_id_to_vfs(file_id),
                 None,
             );
+            bar.inc(1);
         }
+        bar.finish_and_clear();
+
+        let mut bar = create_bar();
         for &file_id in &file_ids {
+            let msg = format!("annotations: {}", vfs.file_path(file_id.file_id(db)));
+            bar.set_message(move || msg.clone());
             analysis
                 .annotations(
                     &AnnotationConfig {
@@ -1174,7 +1224,10 @@ impl flags::AnalysisStats {
                 .for_each(|annotation| {
                     _ = analysis.resolve_annotation(annotation);
                 });
+            bar.inc(1);
         }
+        bar.finish_and_clear();
+
         let ide_time = sw.elapsed();
         eprintln!("{:<20} {} ({} files)", "IDE:", ide_time, file_ids.len());
     }

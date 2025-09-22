@@ -15,8 +15,8 @@ use crate::{
     EnumVariantId, EnumVariantLoc, ExternBlockId, ExternBlockLoc, ExternCrateId, ExternCrateLoc,
     FunctionId, FunctionLoc, GenericDefId, ImplId, ImplLoc, LocalFieldId, Macro2Id, Macro2Loc,
     MacroExpander, MacroId, MacroRulesId, MacroRulesLoc, MacroRulesLocFlags, ProcMacroId,
-    ProcMacroLoc, StaticId, StaticLoc, StructId, StructLoc, TraitAliasId, TraitAliasLoc, TraitId,
-    TraitLoc, TypeAliasId, TypeAliasLoc, UnionId, UnionLoc, UseId, UseLoc, VariantId,
+    ProcMacroLoc, StaticId, StaticLoc, StructId, StructLoc, TraitId, TraitLoc, TypeAliasId,
+    TypeAliasLoc, UnionId, UnionLoc, UseId, UseLoc, VariantId,
     attr::{Attrs, AttrsWithOwner},
     expr_store::{
         Body, BodySourceMap, ExpressionStore, ExpressionStoreSourceMap, scope::ExprScopes,
@@ -28,7 +28,7 @@ use crate::{
     nameres::crate_def_map,
     signatures::{
         ConstSignature, EnumSignature, FunctionSignature, ImplSignature, StaticSignature,
-        StructSignature, TraitAliasSignature, TraitSignature, TypeAliasSignature, UnionSignature,
+        StructSignature, TraitSignature, TypeAliasSignature, UnionSignature,
     },
     tt,
     visibility::{self, Visibility},
@@ -68,9 +68,6 @@ pub trait InternDatabase: RootQueryDb {
 
     #[salsa::interned]
     fn intern_trait(&self, loc: TraitLoc) -> TraitId;
-
-    #[salsa::interned]
-    fn intern_trait_alias(&self, loc: TraitAliasLoc) -> TraitAliasId;
 
     #[salsa::interned]
     fn intern_type_alias(&self, loc: TypeAliasLoc) -> TypeAliasId;
@@ -153,11 +150,6 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + SourceDatabase {
     }
 
     #[salsa::tracked]
-    fn trait_alias_signature(&self, e: TraitAliasId) -> Arc<TraitAliasSignature> {
-        self.trait_alias_signature_with_source_map(e).0
-    }
-
-    #[salsa::tracked]
     fn type_alias_signature(&self, e: TypeAliasId) -> Arc<TypeAliasSignature> {
         self.type_alias_signature_with_source_map(e).0
     }
@@ -209,12 +201,6 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + SourceDatabase {
         &self,
         e: FunctionId,
     ) -> (Arc<FunctionSignature>, Arc<ExpressionStoreSourceMap>);
-
-    #[salsa::invoke(TraitAliasSignature::query)]
-    fn trait_alias_signature_with_source_map(
-        &self,
-        e: TraitAliasId,
-    ) -> (Arc<TraitAliasSignature>, Arc<ExpressionStoreSourceMap>);
 
     #[salsa::invoke(TypeAliasSignature::query)]
     fn type_alias_signature_with_source_map(

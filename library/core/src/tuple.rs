@@ -1,7 +1,7 @@
 // See core/src/primitive_docs.rs for documentation.
 
 use crate::cmp::Ordering::{self, *};
-use crate::marker::{ConstParamTy_, StructuralPartialEq, UnsizedConstParamTy};
+use crate::marker::{ConstParamTy_, StructuralPartialEq};
 use crate::ops::ControlFlow::{self, Break, Continue};
 
 // Recursive macro for implementing n-ary tuple functions and operations
@@ -23,7 +23,8 @@ macro_rules! tuple_impls {
         maybe_tuple_doc! {
             $($T)+ @
             #[stable(feature = "rust1", since = "1.0.0")]
-            impl<$($T: PartialEq),+> PartialEq for ($($T,)+) {
+            #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+            impl<$($T: [const] PartialEq),+> const PartialEq for ($($T,)+) {
                 #[inline]
                 fn eq(&self, other: &($($T,)+)) -> bool {
                     $( ${ignore($T)} self.${index()} == other.${index()} )&&+
@@ -38,21 +39,16 @@ macro_rules! tuple_impls {
         maybe_tuple_doc! {
             $($T)+ @
             #[stable(feature = "rust1", since = "1.0.0")]
-            impl<$($T: Eq),+> Eq for ($($T,)+)
+            #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+            impl<$($T: [const] Eq),+> const Eq for ($($T,)+)
             {}
         }
 
         maybe_tuple_doc! {
             $($T)+ @
             #[unstable(feature = "adt_const_params", issue = "95174")]
+            #[unstable_feature_bound(unsized_const_params)]
             impl<$($T: ConstParamTy_),+> ConstParamTy_ for ($($T,)+)
-            {}
-        }
-
-        maybe_tuple_doc! {
-            $($T)+ @
-            #[unstable(feature = "unsized_const_params", issue = "95174")]
-            impl<$($T: UnsizedConstParamTy),+> UnsizedConstParamTy for ($($T,)+)
             {}
         }
 
@@ -66,7 +62,8 @@ macro_rules! tuple_impls {
         maybe_tuple_doc! {
             $($T)+ @
             #[stable(feature = "rust1", since = "1.0.0")]
-            impl<$($T: PartialOrd),+> PartialOrd for ($($T,)+)
+            #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+            impl<$($T: [const] PartialOrd),+> const PartialOrd for ($($T,)+)
             {
                 #[inline]
                 fn partial_cmp(&self, other: &($($T,)+)) -> Option<Ordering> {
@@ -110,7 +107,8 @@ macro_rules! tuple_impls {
         maybe_tuple_doc! {
             $($T)+ @
             #[stable(feature = "rust1", since = "1.0.0")]
-            impl<$($T: Ord),+> Ord for ($($T,)+)
+            #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+            impl<$($T: [const] Ord),+> const Ord for ($($T,)+)
             {
                 #[inline]
                 fn cmp(&self, other: &($($T,)+)) -> Ordering {

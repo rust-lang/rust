@@ -2,7 +2,7 @@ use std::ops::Neg;
 use std::{f32, f64};
 
 use rand::Rng as _;
-use rustc_apfloat::Float as _;
+use rustc_apfloat::Float;
 use rustc_apfloat::ieee::{DoubleS, IeeeFloat, Semantics, SingleS};
 use rustc_middle::ty::{self, FloatTy, ScalarInt};
 
@@ -210,61 +210,66 @@ where
     let pi_over_2 = (pi / two).value;
     let pi_over_4 = (pi_over_2 / two).value;
 
-    Some(match (intrinsic_name, args) {
+    // Remove `f32`/`f64` suffix, if any.
+    let name = intrinsic_name
+        .strip_suffix("f32")
+        .or_else(|| intrinsic_name.strip_suffix("f64"))
+        .unwrap_or(intrinsic_name);
+    // Also strip trailing `f` (indicates "float"), with an exception for "erf" to avoid
+    // removing that `f`.
+    let name = if name == "erf" { name } else { name.strip_suffix("f").unwrap_or(name) };
+    Some(match (name, args) {
         // cos(±0) and cosh(±0)= 1
-        ("cosf32" | "cosf64" | "coshf" | "cosh", [input]) if input.is_zero() => one,
+        ("cos" | "cosh", [input]) if input.is_zero() => one,
 
         // e^0 = 1
-        ("expf32" | "expf64" | "exp2f32" | "exp2f64", [input]) if input.is_zero() => one,
+        ("exp" | "exp2", [input]) if input.is_zero() => one,
 
         // tanh(±INF) = ±1
-        ("tanhf" | "tanh", [input]) if input.is_infinite() => one.copy_sign(*input),
+        ("tanh", [input]) if input.is_infinite() => one.copy_sign(*input),
 
         // atan(±INF) = ±π/2
-        ("atanf" | "atan", [input]) if input.is_infinite() => pi_over_2.copy_sign(*input),
+        ("atan", [input]) if input.is_infinite() => pi_over_2.copy_sign(*input),
 
         // erf(±INF) = ±1
-        ("erff" | "erf", [input]) if input.is_infinite() => one.copy_sign(*input),
+        ("erf", [input]) if input.is_infinite() => one.copy_sign(*input),
 
         // erfc(-INF) = 2
-        ("erfcf" | "erfc", [input]) if input.is_neg_infinity() => (one + one).value,
+        ("erfc", [input]) if input.is_neg_infinity() => (one + one).value,
 
         // hypot(x, ±0) = abs(x), if x is not a NaN.
-        ("_hypotf" | "hypotf" | "_hypot" | "hypot", [x, y]) if !x.is_nan() && y.is_zero() =>
-            x.abs(),
+        // `_hypot` is the Windows name for this.
+        ("_hypot" | "hypot", [x, y]) if !x.is_nan() && y.is_zero() => x.abs(),
 
         // atan2(±0,−0) = ±π.
         // atan2(±0, y) = ±π for y < 0.
         // Must check for non NaN because `y.is_negative()` also applies to NaN.
-        ("atan2f" | "atan2", [x, y]) if (x.is_zero() && (y.is_negative() && !y.is_nan())) =>
-            pi.copy_sign(*x),
+        ("atan2", [x, y]) if (x.is_zero() && (y.is_negative() && !y.is_nan())) => pi.copy_sign(*x),
 
         // atan2(±x,−∞) = ±π for finite x > 0.
-        ("atan2f" | "atan2", [x, y])
-            if (!x.is_zero() && !x.is_infinite()) && y.is_neg_infinity() =>
+        ("atan2", [x, y]) if (!x.is_zero() && !x.is_infinite()) && y.is_neg_infinity() =>
             pi.copy_sign(*x),
 
         // atan2(x, ±0) = −π/2 for x < 0.
         // atan2(x, ±0) =  π/2 for x > 0.
-        ("atan2f" | "atan2", [x, y]) if !x.is_zero() && y.is_zero() => pi_over_2.copy_sign(*x),
+        ("atan2", [x, y]) if !x.is_zero() && y.is_zero() => pi_over_2.copy_sign(*x),
 
         //atan2(±∞, −∞) = ±3π/4
-        ("atan2f" | "atan2", [x, y]) if x.is_infinite() && y.is_neg_infinity() =>
+        ("atan2", [x, y]) if x.is_infinite() && y.is_neg_infinity() =>
             (pi_over_4 * three).value.copy_sign(*x),
 
         //atan2(±∞, +∞) = ±π/4
-        ("atan2f" | "atan2", [x, y]) if x.is_infinite() && y.is_pos_infinity() =>
-            pi_over_4.copy_sign(*x),
+        ("atan2", [x, y]) if x.is_infinite() && y.is_pos_infinity() => pi_over_4.copy_sign(*x),
 
         // atan2(±∞, y) returns ±π/2 for finite y.
-        ("atan2f" | "atan2", [x, y]) if x.is_infinite() && (!y.is_infinite() && !y.is_nan()) =>
+        ("atan2", [x, y]) if x.is_infinite() && (!y.is_infinite() && !y.is_nan()) =>
             pi_over_2.copy_sign(*x),
 
         // (-1)^(±INF) = 1
-        ("powf32" | "powf64", [base, exp]) if *base == -one && exp.is_infinite() => one,
+        ("pow", [base, exp]) if *base == -one && exp.is_infinite() => one,
 
         // 1^y = 1 for any y, even a NaN
-        ("powf32" | "powf64", [base, exp]) if *base == one => {
+        ("pow", [base, exp]) if *base == one => {
             let rng = this.machine.rng.get_mut();
             // SNaN exponents get special treatment: they might return 1, or a NaN.
             let return_nan = exp.is_signaling() && this.machine.float_nondet && rng.random();
@@ -273,7 +278,7 @@ where
         }
 
         // x^(±0) = 1 for any x, even a NaN
-        ("powf32" | "powf64", [base, exp]) if exp.is_zero() => {
+        ("pow", [base, exp]) if exp.is_zero() => {
             let rng = this.machine.rng.get_mut();
             // SNaN bases get special treatment: they might return 1, or a NaN.
             let return_nan = base.is_signaling() && this.machine.float_nondet && rng.random();
@@ -308,23 +313,23 @@ where
             Some(if return_nan { ecx.generate_nan(&[base]) } else { one })
         }
 
-        _ => return None,
+        _ => None,
     }
 }
 
-pub(crate) fn sqrt<S: rustc_apfloat::ieee::Semantics>(x: IeeeFloat<S>) -> IeeeFloat<S> {
+pub(crate) fn sqrt<F: Float>(x: F) -> F {
     match x.category() {
         // preserve zero sign
         rustc_apfloat::Category::Zero => x,
         // propagate NaN
         rustc_apfloat::Category::NaN => x,
         // sqrt of negative number is NaN
-        _ if x.is_negative() => IeeeFloat::NAN,
+        _ if x.is_negative() => F::NAN,
         // sqrt(∞) = ∞
-        rustc_apfloat::Category::Infinity => IeeeFloat::INFINITY,
+        rustc_apfloat::Category::Infinity => F::INFINITY,
         rustc_apfloat::Category::Normal => {
             // Floating point precision, excluding the integer bit
-            let prec = i32::try_from(S::PRECISION).unwrap() - 1;
+            let prec = i32::try_from(F::PRECISION).unwrap() - 1;
 
             // x = 2^(exp - prec) * mant
             // where mant is an integer with prec+1 bits
@@ -389,7 +394,7 @@ pub(crate) fn sqrt<S: rustc_apfloat::ieee::Semantics>(x: IeeeFloat<S>) -> IeeeFl
             res = (res + 1) >> 1;
 
             // Build resulting value with res as mantissa and exp/2 as exponent
-            IeeeFloat::from_u128(res).value.scalbn(exp / 2 - prec)
+            F::from_u128(res).value.scalbn(exp / 2 - prec)
         }
     }
 }

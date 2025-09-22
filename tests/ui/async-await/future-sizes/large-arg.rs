@@ -1,3 +1,5 @@
+// FIXME(#61117): Respect debuginfo-level-tests, do not force debuginfo=0
+//@ compile-flags: -C debuginfo=0
 //@ compile-flags: -C panic=abort -Z print-type-sizes --crate-type=lib
 //@ needs-deterministic-layouts
 //@ edition: 2021

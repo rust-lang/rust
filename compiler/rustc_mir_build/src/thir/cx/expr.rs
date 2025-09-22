@@ -792,10 +792,9 @@ impl<'tcx> ThirBuildCx<'tcx> {
                             let ty = self.typeck_results.node_type(anon_const.hir_id);
                             let did = anon_const.def_id.to_def_id();
                             let typeck_root_def_id = tcx.typeck_root_def_id(did);
-                            let parent_args = tcx.erase_regions(GenericArgs::identity_for_item(
-                                tcx,
-                                typeck_root_def_id,
-                            ));
+                            let parent_args = tcx.erase_and_anonymize_regions(
+                                GenericArgs::identity_for_item(tcx, typeck_root_def_id),
+                            );
                             let args =
                                 InlineConstArgs::new(tcx, InlineConstArgsParts { parent_args, ty })
                                     .args;
@@ -831,8 +830,10 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 let ty = self.typeck_results.node_type(anon_const.hir_id);
                 let did = anon_const.def_id.to_def_id();
                 let typeck_root_def_id = tcx.typeck_root_def_id(did);
-                let parent_args =
-                    tcx.erase_regions(GenericArgs::identity_for_item(tcx, typeck_root_def_id));
+                let parent_args = tcx.erase_and_anonymize_regions(GenericArgs::identity_for_item(
+                    tcx,
+                    typeck_root_def_id,
+                ));
                 let args = InlineConstArgs::new(tcx, InlineConstArgsParts { parent_args, ty }).args;
 
                 ExprKind::ConstBlock { did, args }

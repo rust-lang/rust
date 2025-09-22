@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::higher::{VecInitKind, get_vec_init_kind};
 use clippy_utils::ty::{is_type_diagnostic_item, is_uninit_value_valid_for_ty};
 use clippy_utils::{SpanlessEq, is_integer_literal, is_lint_allowed, path_to_local_id, peel_hir_expr_while, sym};
@@ -95,16 +95,13 @@ fn handle_uninit_vec_pair<'tcx>(
 
             // Check T of Vec<T>
             if !is_uninit_value_valid_for_ty(cx, args.type_at(0)) {
-                // FIXME: #7698, false positive of the internal lints
-                #[expect(clippy::collapsible_span_lint_calls)]
-                span_lint_and_then(
+                span_lint_and_help(
                     cx,
                     UNINIT_VEC,
                     vec![call_span, maybe_init_or_reserve.span],
                     "calling `set_len()` immediately after reserving a buffer creates uninitialized values",
-                    |diag| {
-                        diag.help("initialize the buffer or wrap the content in `MaybeUninit`");
-                    },
+                    None,
+                    "initialize the buffer or wrap the content in `MaybeUninit`",
                 );
             }
         } else {

@@ -31,7 +31,7 @@ use crate::{
     display::{DisplayTarget, HirDisplay, hir_display_with_store},
     error_lifetime,
     generics::generics,
-    infer::{CaptureKind, CapturedItem, TypeMismatch, cast::CastTy, unify::InferenceTable},
+    infer::{CaptureKind, CapturedItem, TypeMismatch, cast::CastTy},
     inhabitedness::is_ty_uninhabited_from,
     layout::LayoutError,
     mapping::ToChalk,
@@ -43,6 +43,7 @@ use crate::{
         Terminator, TerminatorKind, TupleFieldId, Ty, UnOp, VariantId, intern_const_scalar,
         return_slot,
     },
+    next_solver::{DbInterner, mapping::ChalkToNextSolver},
     static_lifetime,
     traits::FnTrait,
     utils::ClosureSubst,
@@ -52,6 +53,8 @@ use super::OperandKind;
 
 mod as_place;
 mod pattern_matching;
+#[cfg(test)]
+mod tests;
 
 #[derive(Debug, Clone)]
 struct LoopBlocks {
@@ -947,8 +950,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                     let cast_kind = if source_ty.as_reference().is_some() {
                         CastKind::PointerCoercion(PointerCast::ArrayToPointer)
                     } else {
-                        let mut table = InferenceTable::new(self.db, self.env.clone());
-                        cast_kind(&mut table, &source_ty, &target_ty)?
+                        cast_kind(self.db, &source_ty, &target_ty)?
                     };
 
                     Rvalue::Cast(cast_kind, it, target_ty)
@@ -1411,8 +1413,12 @@ impl<'ctx> MirLowerCtx<'ctx> {
     }
 
     fn lower_literal_to_operand(&mut self, ty: Ty, l: &Literal) -> Result<Operand> {
-        let size =
-            || self.db.layout_of_ty(ty.clone(), self.env.clone()).map(|it| it.size.bytes_usize());
+        let interner = DbInterner::new_with(self.db, None, None);
+        let size = || {
+            self.db
+                .layout_of_ty(ty.to_nextsolver(interner), self.env.clone())
+                .map(|it| it.size.bytes_usize())
+        };
         const USIZE_SIZE: usize = size_of::<usize>();
         let bytes: Box<[_]> = match l {
             hir_def::hir::Literal::String(b) => {
@@ -2012,9 +2018,9 @@ impl<'ctx> MirLowerCtx<'ctx> {
     }
 }
 
-fn cast_kind(table: &mut InferenceTable<'_>, source_ty: &Ty, target_ty: &Ty) -> Result<CastKind> {
-    let from = CastTy::from_ty(table, source_ty);
-    let cast = CastTy::from_ty(table, target_ty);
+fn cast_kind(db: &dyn HirDatabase, source_ty: &Ty, target_ty: &Ty) -> Result<CastKind> {
+    let from = CastTy::from_ty(db, source_ty);
+    let cast = CastTy::from_ty(db, target_ty);
     Ok(match (from, cast) {
         (Some(CastTy::Ptr(..) | CastTy::FnPtr), Some(CastTy::Int(_))) => {
             CastKind::PointerExposeAddress
@@ -2059,7 +2065,7 @@ pub fn mir_body_for_closure_query(
         },
     });
     ctx.result.param_locals.push(closure_local);
-    let Some(sig) = ClosureSubst(substs).sig_ty().callable_sig(db) else {
+    let Some(sig) = ClosureSubst(substs).sig_ty(db).callable_sig(db) else {
         implementation_error!("closure has not callable sig");
     };
     let resolver_guard = ctx.resolver.update_to_inner_scope(db, owner, expr);

@@ -21,6 +21,27 @@ extern crate rustc_pattern_analysis;
 #[cfg(not(feature = "in-rust-tree"))]
 extern crate ra_ap_rustc_pattern_analysis as rustc_pattern_analysis;
 
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_ast_ir;
+
+#[cfg(not(feature = "in-rust-tree"))]
+extern crate ra_ap_rustc_ast_ir as rustc_ast_ir;
+
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_type_ir;
+
+#[cfg(not(feature = "in-rust-tree"))]
+extern crate ra_ap_rustc_type_ir as rustc_type_ir;
+
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_next_trait_solver;
+
+#[cfg(not(feature = "in-rust-tree"))]
+extern crate ra_ap_rustc_next_trait_solver as rustc_next_trait_solver;
+
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_data_structures as ena;
+
 mod builder;
 mod chalk_db;
 mod chalk_ext;
@@ -29,13 +50,16 @@ mod infer;
 mod inhabitedness;
 mod interner;
 mod lower;
+mod lower_nextsolver;
 mod mapping;
+pub mod next_solver;
 mod target_feature;
 mod tls;
 mod utils;
 
 pub mod autoderef;
 pub mod consteval;
+pub mod consteval_nextsolver;
 pub mod db;
 pub mod diagnostics;
 pub mod display;
@@ -57,7 +81,7 @@ mod variance;
 use std::hash::Hash;
 
 use chalk_ir::{
-    NoSolution,
+    NoSolution, VariableKinds,
     fold::{Shift, TypeFoldable},
     interner::HasInterner,
 };
@@ -69,6 +93,7 @@ use intern::{Symbol, sym};
 use la_arena::{Arena, Idx};
 use mir::{MirEvalError, VTableMap};
 use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet};
+use rustc_type_ir::inherent::SliceLike;
 use syntax::ast::{ConstArg, make};
 use traits::FnTrait;
 use triomphe::Arc;
@@ -79,6 +104,10 @@ use crate::{
     display::{DisplayTarget, HirDisplay},
     generics::Generics,
     infer::unify::InferenceTable,
+    next_solver::{
+        DbInterner,
+        mapping::{ChalkToNextSolver, convert_ty_for_result},
+    },
 };
 
 pub use autoderef::autoderef;
@@ -89,23 +118,27 @@ pub use infer::{
     Adjust, Adjustment, AutoBorrow, BindingMode, InferenceDiagnostic, InferenceResult,
     InferenceTyDiagnosticSource, OverloadedDeref, PointerCast,
     cast::CastError,
-    closure::{CaptureKind, CapturedItem},
+    closure::analysis::{CaptureKind, CapturedItem},
     could_coerce, could_unify, could_unify_deeply,
 };
 pub use interner::Interner;
 pub use lower::{
     ImplTraitLoweringMode, LifetimeElisionKind, ParamLoweringMode, TyDefId, TyLoweringContext,
-    ValueTyDefId, associated_type_shorthand_candidates, diagnostics::*,
+    ValueTyDefId, diagnostics::*,
 };
+pub use lower_nextsolver::associated_type_shorthand_candidates;
 pub use mapping::{
     ToChalk, from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id, from_placeholder_idx,
     lt_from_placeholder_idx, lt_to_placeholder_idx, to_assoc_type_id, to_chalk_trait_id,
-    to_foreign_def_id, to_placeholder_idx,
+    to_foreign_def_id, to_placeholder_idx, to_placeholder_idx_no_index,
 };
 pub use method_resolution::check_orphan_rules;
 pub use target_feature::TargetFeatures;
 pub use traits::TraitEnvironment;
-pub use utils::{Unsafety, all_super_traits, direct_super_traits, is_fn_unsafe_to_call};
+pub use utils::{
+    TargetFeatureIsSafeInTarget, Unsafety, all_super_traits, direct_super_traits,
+    is_fn_unsafe_to_call, target_feature_is_safe_in_target,
+};
 pub use variance::Variance;
 
 pub use chalk_ir::{
@@ -121,9 +154,9 @@ pub type ClosureId = chalk_ir::ClosureId<Interner>;
 pub type OpaqueTyId = chalk_ir::OpaqueTyId<Interner>;
 pub type PlaceholderIndex = chalk_ir::PlaceholderIndex;
 
-pub type VariableKind = chalk_ir::VariableKind<Interner>;
-pub type VariableKinds = chalk_ir::VariableKinds<Interner>;
 pub type CanonicalVarKinds = chalk_ir::CanonicalVarKinds<Interner>;
+
+pub(crate) type VariableKind = chalk_ir::VariableKind<Interner>;
 /// Represents generic parameters and an item bound by them. When the item has parent, the binders
 /// also contain the generic parameters for its parent. See chalk's documentation for details.
 ///
@@ -145,71 +178,64 @@ pub type GenericArgData = chalk_ir::GenericArgData<Interner>;
 pub type Ty = chalk_ir::Ty<Interner>;
 pub type TyKind = chalk_ir::TyKind<Interner>;
 pub type TypeFlags = chalk_ir::TypeFlags;
-pub type DynTy = chalk_ir::DynTy<Interner>;
+pub(crate) type DynTy = chalk_ir::DynTy<Interner>;
 pub type FnPointer = chalk_ir::FnPointer<Interner>;
-// pub type FnSubst = chalk_ir::FnSubst<Interner>; // a re-export so we don't lose the tuple constructor
-pub use chalk_ir::FnSubst;
-pub type ProjectionTy = chalk_ir::ProjectionTy<Interner>;
-pub type AliasTy = chalk_ir::AliasTy<Interner>;
-pub type OpaqueTy = chalk_ir::OpaqueTy<Interner>;
-pub type InferenceVar = chalk_ir::InferenceVar;
+pub(crate) use chalk_ir::FnSubst; // a re-export so we don't lose the tuple constructor
 
-pub type Lifetime = chalk_ir::Lifetime<Interner>;
-pub type LifetimeData = chalk_ir::LifetimeData<Interner>;
-pub type LifetimeOutlives = chalk_ir::LifetimeOutlives<Interner>;
+pub type AliasTy = chalk_ir::AliasTy<Interner>;
+
+pub type ProjectionTy = chalk_ir::ProjectionTy<Interner>;
+pub(crate) type OpaqueTy = chalk_ir::OpaqueTy<Interner>;
+pub(crate) type InferenceVar = chalk_ir::InferenceVar;
+
+pub(crate) type Lifetime = chalk_ir::Lifetime<Interner>;
+pub(crate) type LifetimeData = chalk_ir::LifetimeData<Interner>;
+pub(crate) type LifetimeOutlives = chalk_ir::LifetimeOutlives<Interner>;
+
+pub type ConstValue = chalk_ir::ConstValue<Interner>;
 
 pub type Const = chalk_ir::Const<Interner>;
-pub type ConstData = chalk_ir::ConstData<Interner>;
-pub type ConstValue = chalk_ir::ConstValue<Interner>;
-pub type ConcreteConst = chalk_ir::ConcreteConst<Interner>;
+pub(crate) type ConstData = chalk_ir::ConstData<Interner>;
+pub(crate) type ConcreteConst = chalk_ir::ConcreteConst<Interner>;
 
-pub type ChalkTraitId = chalk_ir::TraitId<Interner>;
 pub type TraitRef = chalk_ir::TraitRef<Interner>;
 pub type QuantifiedWhereClause = Binders<WhereClause>;
-pub type QuantifiedWhereClauses = chalk_ir::QuantifiedWhereClauses<Interner>;
 pub type Canonical<T> = chalk_ir::Canonical<T>;
 
-pub type FnSig = chalk_ir::FnSig<Interner>;
+pub(crate) type ChalkTraitId = chalk_ir::TraitId<Interner>;
+pub(crate) type QuantifiedWhereClauses = chalk_ir::QuantifiedWhereClauses<Interner>;
+
+pub(crate) type FnSig = chalk_ir::FnSig<Interner>;
 
 pub type InEnvironment<T> = chalk_ir::InEnvironment<T>;
-pub type Environment = chalk_ir::Environment<Interner>;
-pub type DomainGoal = chalk_ir::DomainGoal<Interner>;
-pub type Goal = chalk_ir::Goal<Interner>;
 pub type AliasEq = chalk_ir::AliasEq<Interner>;
-pub type Solution = chalk_solve::Solution<Interner>;
-pub type Constraint = chalk_ir::Constraint<Interner>;
-pub type Constraints = chalk_ir::Constraints<Interner>;
-pub type ConstrainedSubst = chalk_ir::ConstrainedSubst<Interner>;
-pub type Guidance = chalk_solve::Guidance<Interner>;
 pub type WhereClause = chalk_ir::WhereClause<Interner>;
 
-pub type CanonicalVarKind = chalk_ir::CanonicalVarKind<Interner>;
-pub type GoalData = chalk_ir::GoalData<Interner>;
-pub type Goals = chalk_ir::Goals<Interner>;
-pub type ProgramClauseData = chalk_ir::ProgramClauseData<Interner>;
-pub type ProgramClause = chalk_ir::ProgramClause<Interner>;
-pub type ProgramClauses = chalk_ir::ProgramClauses<Interner>;
-pub type TyData = chalk_ir::TyData<Interner>;
-pub type Variances = chalk_ir::Variances<Interner>;
+pub(crate) type DomainGoal = chalk_ir::DomainGoal<Interner>;
+pub(crate) type Goal = chalk_ir::Goal<Interner>;
+
+pub(crate) type CanonicalVarKind = chalk_ir::CanonicalVarKind<Interner>;
+pub(crate) type GoalData = chalk_ir::GoalData<Interner>;
+pub(crate) type ProgramClause = chalk_ir::ProgramClause<Interner>;
 
 /// A constant can have reference to other things. Memory map job is holding
 /// the necessary bits of memory of the const eval session to keep the constant
 /// meaningful.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub enum MemoryMap {
+pub enum MemoryMap<'db> {
     #[default]
     Empty,
     Simple(Box<[u8]>),
-    Complex(Box<ComplexMemoryMap>),
+    Complex(Box<ComplexMemoryMap<'db>>),
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub struct ComplexMemoryMap {
+pub struct ComplexMemoryMap<'db> {
     memory: IndexMap<usize, Box<[u8]>, FxBuildHasher>,
-    vtable: VTableMap,
+    vtable: VTableMap<'db>,
 }
 
-impl ComplexMemoryMap {
+impl ComplexMemoryMap<'_> {
     fn insert(&mut self, addr: usize, val: Box<[u8]>) {
         match self.memory.entry(addr) {
             Entry::Occupied(mut e) => {
@@ -224,8 +250,8 @@ impl ComplexMemoryMap {
     }
 }
 
-impl MemoryMap {
-    pub fn vtable_ty(&self, id: usize) -> Result<&Ty, MirEvalError> {
+impl<'db> MemoryMap<'db> {
+    pub fn vtable_ty(&self, id: usize) -> Result<crate::next_solver::Ty<'db>, MirEvalError> {
         match self {
             MemoryMap::Empty | MemoryMap::Simple(_) => Err(MirEvalError::InvalidVTableId(id)),
             MemoryMap::Complex(cm) => cm.vtable.ty(id),
@@ -275,10 +301,11 @@ impl MemoryMap {
     }
 }
 
+// FIXME(next-solver): add a lifetime to this
 /// A concrete constant value
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConstScalar {
-    Bytes(Box<[u8]>, MemoryMap),
+    Bytes(Box<[u8]>, MemoryMap<'static>),
     // FIXME: this is a hack to get around chalk not being able to represent unevaluatable
     // constants
     UnevaluatedConst(GeneralConstId, Substitution),
@@ -299,6 +326,30 @@ impl Hash for ConstScalar {
     }
 }
 
+/// A concrete constant value
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ConstScalarNs<'db> {
+    Bytes(Box<[u8]>, MemoryMap<'db>),
+    // FIXME: this is a hack to get around chalk not being able to represent unevaluatable
+    // constants
+    UnevaluatedConst(GeneralConstId, Substitution),
+    /// Case of an unknown value that rustc might know but we don't
+    // FIXME: this is a hack to get around chalk not being able to represent unevaluatable
+    // constants
+    // https://github.com/rust-lang/rust-analyzer/pull/8813#issuecomment-840679177
+    // https://rust-lang.zulipchat.com/#narrow/stream/144729-wg-traits/topic/Handling.20non.20evaluatable.20constants'.20equality/near/238386348
+    Unknown,
+}
+
+impl Hash for ConstScalarNs<'_> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        core::mem::discriminant(self).hash(state);
+        if let ConstScalarNs::Bytes(b, _) = self {
+            b.hash(state)
+        }
+    }
+}
+
 /// Return an index of a parameter in the generic type parameter list by it's id.
 pub fn param_idx(db: &dyn HirDatabase, id: TypeOrConstParamId) -> Option<usize> {
     generics::generics(db, id.parent).type_or_const_param_idx(id)
@@ -311,30 +362,11 @@ where
     Binders::empty(Interner, value.shifted_in_from(Interner, DebruijnIndex::ONE))
 }
 
-pub(crate) fn make_type_and_const_binders<T: HasInterner<Interner = Interner>>(
-    which_is_const: impl Iterator<Item = Option<Ty>>,
-    value: T,
-) -> Binders<T> {
-    Binders::new(
-        VariableKinds::from_iter(
-            Interner,
-            which_is_const.map(|x| {
-                if let Some(ty) = x {
-                    chalk_ir::VariableKind::Const(ty)
-                } else {
-                    chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General)
-                }
-            }),
-        ),
-        value,
-    )
-}
-
 pub(crate) fn make_single_type_binders<T: HasInterner<Interner = Interner>>(
     value: T,
 ) -> Binders<T> {
     Binders::new(
-        VariableKinds::from_iter(
+        chalk_ir::VariableKinds::from_iter(
             Interner,
             std::iter::once(chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General)),
         ),
@@ -353,7 +385,7 @@ pub(crate) fn make_binders<T: HasInterner<Interner = Interner>>(
 pub(crate) fn variable_kinds_from_iter(
     db: &dyn HirDatabase,
     iter: impl Iterator<Item = hir_def::GenericParamId>,
-) -> VariableKinds {
+) -> VariableKinds<Interner> {
     VariableKinds::from_iter(
         Interner,
         iter.map(|x| match x {
@@ -563,6 +595,27 @@ impl CallableSig {
             is_varargs: fn_ptr.sig.variadic,
             safety: fn_ptr.sig.safety,
             abi: fn_ptr.sig.abi,
+        }
+    }
+    pub fn from_fn_sig_and_header<'db>(
+        interner: DbInterner<'db>,
+        sig: crate::next_solver::Binder<'db, rustc_type_ir::FnSigTys<DbInterner<'db>>>,
+        header: rustc_type_ir::FnHeader<DbInterner<'db>>,
+    ) -> CallableSig {
+        CallableSig {
+            // FIXME: what to do about lifetime params? -> return PolyFnSig
+            params_and_return: Arc::from_iter(
+                sig.skip_binder()
+                    .inputs_and_output
+                    .iter()
+                    .map(|t| convert_ty_for_result(interner, t)),
+            ),
+            is_varargs: header.c_variadic,
+            safety: match header.safety {
+                next_solver::abi::Safety::Safe => chalk_ir::Safety::Safe,
+                next_solver::abi::Safety::Unsafe => chalk_ir::Safety::Unsafe,
+            },
+            abi: header.abi,
         }
     }
 
@@ -913,23 +966,15 @@ pub fn callable_sig_from_fn_trait(
     )
     .build();
 
-    let block = trait_env.block;
-    let trait_env = trait_env.env.clone();
-    let obligation =
-        InEnvironment { goal: trait_ref.clone().cast(Interner), environment: trait_env.clone() };
-    let canonical = table.canonicalize(obligation.clone());
-    if db.trait_solve(krate, block, canonical.cast(Interner)).is_some() {
-        table.register_obligation(obligation.goal);
+    let goal: Goal = trait_ref.clone().cast(Interner);
+    let pred = goal.to_nextsolver(table.interner);
+    if !table.try_obligation(goal).no_solution() {
+        table.register_obligation(pred);
         let return_ty = table.normalize_projection_ty(projection);
         for fn_x in [FnTrait::Fn, FnTrait::FnMut, FnTrait::FnOnce] {
             let fn_x_trait = fn_x.get_id(db, krate)?;
             trait_ref.trait_id = to_chalk_trait_id(fn_x_trait);
-            let obligation: chalk_ir::InEnvironment<chalk_ir::Goal<Interner>> = InEnvironment {
-                goal: trait_ref.clone().cast(Interner),
-                environment: trait_env.clone(),
-            };
-            let canonical = table.canonicalize(obligation.clone());
-            if db.trait_solve(krate, block, canonical.cast(Interner)).is_some() {
+            if !table.try_obligation(trait_ref.clone().cast(Interner)).no_solution() {
                 let ret_ty = table.resolve_completely(return_ty);
                 let args_ty = table.resolve_completely(args_ty);
                 let params = args_ty
@@ -963,7 +1008,7 @@ struct PlaceholderCollector<'db> {
 
 impl PlaceholderCollector<'_> {
     fn collect(&mut self, idx: PlaceholderIndex) {
-        let id = from_placeholder_idx(self.db, idx);
+        let id = from_placeholder_idx(self.db, idx).0;
         self.placeholders.insert(id);
     }
 }
@@ -985,7 +1030,7 @@ impl TypeVisitor<Interner> for PlaceholderCollector<'_> {
         outer_binder: DebruijnIndex,
     ) -> std::ops::ControlFlow<Self::BreakTy> {
         let has_placeholder_bits = TypeFlags::HAS_TY_PLACEHOLDER | TypeFlags::HAS_CT_PLACEHOLDER;
-        let TyData { kind, flags } = ty.data(Interner);
+        let chalk_ir::TyData { kind, flags } = ty.data(Interner);
 
         if let TyKind::Placeholder(idx) = kind {
             self.collect(*idx);
@@ -1044,4 +1089,26 @@ pub(crate) enum DeclOrigin {
 #[derive(Debug, Copy, Clone)]
 pub(crate) struct DeclContext {
     pub(crate) origin: DeclOrigin,
+}
+
+pub fn setup_tracing() -> Option<tracing::subscriber::DefaultGuard> {
+    use std::env;
+    use std::sync::LazyLock;
+    use tracing_subscriber::{Registry, layer::SubscriberExt};
+    use tracing_tree::HierarchicalLayer;
+
+    static ENABLE: LazyLock<bool> = LazyLock::new(|| env::var("CHALK_DEBUG").is_ok());
+    if !*ENABLE {
+        return None;
+    }
+
+    let filter: tracing_subscriber::filter::Targets =
+        env::var("CHALK_DEBUG").ok().and_then(|it| it.parse().ok()).unwrap_or_default();
+    let layer = HierarchicalLayer::default()
+        .with_indent_lines(true)
+        .with_ansi(false)
+        .with_indent_amount(2)
+        .with_writer(std::io::stderr);
+    let subscriber = Registry::default().with(filter).with(layer);
+    Some(tracing::subscriber::set_default(subscriber))
 }

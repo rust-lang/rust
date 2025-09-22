@@ -69,8 +69,9 @@ pub(crate) fn extract_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
             edit.replace(ty.syntax(), new_ty.syntax());
 
             // Insert new alias
-            let ty_alias = make::ty_alias("Type", generic_params, None, None, Some((ty, None)))
-                .clone_for_update();
+            let ty_alias =
+                make::ty_alias(None, "Type", generic_params, None, None, Some((ty, None)))
+                    .clone_for_update();
 
             if let Some(cap) = ctx.config.snippet_cap
                 && let Some(name) = ty_alias.name()

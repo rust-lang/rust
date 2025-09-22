@@ -117,21 +117,25 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                     )
                 }
                 UsageKind::UnconstrainedHiddenType(hidden_type) => {
-                    let infer_var = hidden_type
-                        .ty
-                        .walk()
-                        .filter_map(ty::GenericArg::as_term)
-                        .find(|term| term.is_infer())
-                        .unwrap_or_else(|| hidden_type.ty.into());
-                    self.err_ctxt()
-                        .emit_inference_failure_err(
-                            self.body_id,
-                            hidden_type.span,
-                            infer_var,
-                            TypeAnnotationNeeded::E0282,
-                            false,
-                        )
-                        .emit()
+                    if let Some(guar) = self.tainted_by_errors() {
+                        guar
+                    } else {
+                        let infer_var = hidden_type
+                            .ty
+                            .walk()
+                            .filter_map(ty::GenericArg::as_term)
+                            .find(|term| term.is_infer())
+                            .unwrap_or_else(|| hidden_type.ty.into());
+                        self.err_ctxt()
+                            .emit_inference_failure_err(
+                                self.body_id,
+                                hidden_type.span,
+                                infer_var,
+                                TypeAnnotationNeeded::E0282,
+                                false,
+                            )
+                            .emit()
+                    }
                 }
                 UsageKind::HasDefiningUse => continue,
             };

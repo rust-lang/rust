@@ -1262,7 +1262,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             encountered_overflow |= stack_entry.encountered_overflow;
             debug_assert_eq!(stack_entry.input, input);
 
-            // If the current goal is not the root of a cycle, we are done.
+            // If the current goal is not a cycle head, we are done.
             //
             // There are no provisional cache entries which depend on this goal.
             let Some(usages) = stack_entry.usages else {
@@ -1278,7 +1278,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             //
             // Check whether we reached a fixpoint, either because the final result
             // is equal to the provisional result of the previous iteration, or because
-            // this was only the root of either coinductive or inductive cycles, and the
+            // this was only the head of either coinductive or inductive cycles, and the
             // final result is equal to the initial response for that case.
             if self.reached_fixpoint(cx, &stack_entry, usages, result) {
                 self.rebase_provisional_cache_entries(&stack_entry, |_, result| result);

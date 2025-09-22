@@ -317,7 +317,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         )?;
         Ok(pick)
     }
+}
 
+/// Used by [FnCtxt::lookup_method_for_operator] with `-Znext-solver`.
+///
+/// With `AsRigid` we error on `impl Opaque: NotInItemBounds` while
+/// `AsInfer` just treats it as ambiguous and succeeds. This is necessary
+/// as we want [FnCtxt::check_expr_call] to treat not-yet-defined opaque
+/// types as rigid to support `impl Deref<Target = impl FnOnce()>` and
+/// `Box<impl FnOnce()>`.
+///
+/// We only want to treat opaque types as rigid if we need to eagerly choose
+/// between multiple candidates. We otherwise treat them as ordinary inference
+/// variable to avoid rejecting otherwise correct code.
+#[derive(Debug)]
+pub(super) enum TreatNotYetDefinedOpaques {
+    AsInfer,
+    AsRigid,
+}
+
+impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// `lookup_method_in_trait` is used for overloaded operators.
     /// It does a very narrow slice of what the normal probe/confirm path does.
     /// In particular, it doesn't really do any probing: it simply constructs
@@ -331,6 +350,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         trait_def_id: DefId,
         self_ty: Ty<'tcx>,
         opt_rhs_ty: Option<Ty<'tcx>>,
+        treat_opaques: TreatNotYetDefinedOpaques,
     ) -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
         // Construct a trait-reference `self_ty : Trait<input_tys>`
         let args = GenericArgs::for_item(self.tcx, trait_def_id, |param, _| match param.kind {
@@ -360,7 +380,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         // Now we want to know if this can be matched
-        if !self.predicate_may_hold(&obligation) {
+        let matches_trait = match treat_opaques {
+            TreatNotYetDefinedOpaques::AsInfer => self.predicate_may_hold(&obligation),
+            TreatNotYetDefinedOpaques::AsRigid => {
+                self.predicate_may_hold_opaque_types_jank(&obligation)
+            }
+        };
+
+        if !matches_trait {
             debug!("--> Cannot match obligation");
             // Cannot be matched, no such method resolution is possible.
             return None;

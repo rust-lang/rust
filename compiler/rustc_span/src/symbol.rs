@@ -7,7 +7,7 @@ use std::ops::Deref;
 use std::{fmt, str};
 
 use rustc_arena::DroplessArena;
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_data_structures::stable_hasher::{
     HashStable, StableCompare, StableHasher, ToStableHashKey,
 };
@@ -21,18 +21,17 @@ mod tests;
 
 // The proc macro code for this is in `compiler/rustc_macros/src/symbols.rs`.
 symbols! {
-    // This list includes things that are definitely keywords (e.g. `if`),
-    // a few things that are definitely not keywords (e.g. the empty symbol,
-    // `{{root}}`) and things where there is disagreement between people and/or
-    // documents (such as the Rust Reference) about whether it is a keyword
-    // (e.g. `_`).
+    // This list includes things that are definitely keywords (e.g. `if`), a
+    // few things that are definitely not keywords (e.g. `{{root}}`) and things
+    // where there is disagreement between people and/or documents (such as the
+    // Rust Reference) about whether it is a keyword (e.g. `_`).
     //
     // If you modify this list, adjust any relevant `Symbol::{is,can_be}_*`
     // predicates and `used_keywords`. Also consider adding new keywords to the
     // `ui/parser/raw/raw-idents.rs` test.
     Keywords {
-        // Special reserved identifiers used internally for elided lifetimes,
-        // unnamed method parameters, crate root module, error recovery etc.
+        // Special reserved identifiers used internally for unnamed method
+        // parameters, crate root module, etc.
         // Matching predicates: `is_special`/`is_reserved`
         //
         // tidy-alphabetical-start
@@ -326,6 +325,7 @@ symbols! {
         RangeSub,
         RangeTo,
         RangeToInclusive,
+        RangeToInclusiveCopy,
         Rc,
         RcWeak,
         Ready,
@@ -1280,6 +1280,7 @@ symbols! {
         lang,
         lang_items,
         large_assignments,
+        last,
         lateout,
         lazy_normalization_consts,
         lazy_type_alias,
@@ -1412,6 +1413,7 @@ symbols! {
         mir_call,
         mir_cast_ptr_to_ptr,
         mir_cast_transmute,
+        mir_cast_unsize,
         mir_checked,
         mir_copy_for_deref,
         mir_debuginfo,
@@ -1846,6 +1848,7 @@ symbols! {
         rustc_abi,
         // FIXME(#82232, #143834): temporary name to mitigate `#[align]` nameres ambiguity
         rustc_align,
+        rustc_align_static,
         rustc_allocator,
         rustc_allocator_zeroed,
         rustc_allocator_zeroed_variant,
@@ -1915,6 +1918,8 @@ symbols! {
         rustc_no_mir_inline,
         rustc_nonnull_optimization_guaranteed,
         rustc_nounwind,
+        rustc_objc_class,
+        rustc_objc_selector,
         rustc_object_lifetime_default,
         rustc_on_unimplemented,
         rustc_outlives,
@@ -2097,6 +2102,7 @@ symbols! {
         staged_api,
         start,
         state,
+        static_align,
         static_in_const,
         static_nobundle,
         static_recursion,
@@ -2868,11 +2874,20 @@ impl Interner {
         let byte_strs = FxIndexSet::from_iter(
             init.iter().copied().chain(extra.iter().copied()).map(|str| str.as_bytes()),
         );
-        assert_eq!(
-            byte_strs.len(),
-            init.len() + extra.len(),
-            "duplicate symbols in the rustc symbol list and the extra symbols added by the driver",
-        );
+
+        // The order in which duplicates are reported is irrelevant.
+        #[expect(rustc::potential_query_instability)]
+        if byte_strs.len() != init.len() + extra.len() {
+            panic!(
+                "duplicate symbols in the rustc symbol list and the extra symbols added by the driver: {:?}",
+                FxHashSet::intersection(
+                    &init.iter().copied().collect(),
+                    &extra.iter().copied().collect(),
+                )
+                .collect::<Vec<_>>()
+            )
+        }
+
         Interner(Lock::new(InternerInner { arena: Default::default(), byte_strs }))
     }
 

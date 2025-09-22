@@ -16,7 +16,7 @@ LL |         let d = 42;
 LL |         d
    |         ^
    |
-   = note: -Ztrack-diagnostics: created at clippy_lints/src/returns.rs:LL:CC
+   = note: -Ztrack-diagnostics: created at clippy_lints/src/returns/let_and_return.rs:LL:CC
    = note: `-D clippy::let-and-return` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::let_and_return)]`
 help: return the expression directly
