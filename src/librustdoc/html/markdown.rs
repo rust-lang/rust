@@ -321,18 +321,22 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             ))
         });
 
-        let tooltip = if ignore == Ignore::All {
-            highlight::Tooltip::IgnoreAll
-        } else if let Ignore::Some(platforms) = ignore {
-            highlight::Tooltip::IgnoreSome(platforms)
-        } else if compile_fail {
-            highlight::Tooltip::CompileFail
-        } else if should_panic {
-            highlight::Tooltip::ShouldPanic
-        } else if explicit_edition {
-            highlight::Tooltip::Edition(edition)
-        } else {
-            highlight::Tooltip::None
+        let tooltip = {
+            use highlight::Tooltip::*;
+
+            if ignore == Ignore::All {
+                Some(IgnoreAll)
+            } else if let Ignore::Some(platforms) = ignore {
+                Some(IgnoreSome(platforms))
+            } else if compile_fail {
+                Some(CompileFail)
+            } else if should_panic {
+                Some(ShouldPanic)
+            } else if explicit_edition {
+                Some(Edition(edition))
+            } else {
+                None
+            }
         };
 
         // insert newline to clearly separate it from the
@@ -341,7 +345,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             "\n{}",
             highlight::render_example_with_highlighting(
                 &text,
-                &tooltip,
+                tooltip.as_ref(),
                 playground_button.as_deref(),
                 &added_classes,
             )

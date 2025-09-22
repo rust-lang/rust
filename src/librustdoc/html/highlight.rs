@@ -47,13 +47,12 @@ pub(crate) enum Tooltip {
     CompileFail,
     ShouldPanic,
     Edition(Edition),
-    None,
 }
 
 /// Highlights `src` as an inline example, returning the HTML output.
 pub(crate) fn render_example_with_highlighting(
     src: &str,
-    tooltip: &Tooltip,
+    tooltip: Option<&Tooltip>,
     playground_button: Option<&str>,
     extra_classes: &[String],
 ) -> impl Display {
@@ -67,23 +66,24 @@ pub(crate) fn render_example_with_highlighting(
 fn write_header(
     class: &str,
     extra_content: Option<&str>,
-    tooltip: &Tooltip,
+    tooltip: Option<&Tooltip>,
     extra_classes: &[String],
 ) -> impl Display {
     fmt::from_fn(move |f| {
         write!(
             f,
             "<div class=\"example-wrap{}\">",
-            match tooltip {
-                Tooltip::IgnoreAll | Tooltip::IgnoreSome(_) => " ignore",
-                Tooltip::CompileFail => " compile_fail",
-                Tooltip::ShouldPanic => " should_panic",
-                Tooltip::Edition(_) => " edition",
-                Tooltip::None => "",
-            }
+            tooltip
+                .map(|tooltip| match tooltip {
+                    Tooltip::IgnoreAll | Tooltip::IgnoreSome(_) => " ignore",
+                    Tooltip::CompileFail => " compile_fail",
+                    Tooltip::ShouldPanic => " should_panic",
+                    Tooltip::Edition(_) => " edition",
+                })
+                .unwrap_or_default()
         )?;
 
-        if *tooltip != Tooltip::None {
+        if let Some(tooltip) = tooltip {
             let tooltip = fmt::from_fn(|f| match tooltip {
                 Tooltip::IgnoreAll => f.write_str("This example is not tested"),
                 Tooltip::IgnoreSome(platforms) => {
@@ -104,7 +104,6 @@ fn write_header(
                 Tooltip::CompileFail => f.write_str("This example deliberately fails to compile"),
                 Tooltip::ShouldPanic => f.write_str("This example panics"),
                 Tooltip::Edition(edition) => write!(f, "This example runs with edition {edition}"),
-                Tooltip::None => unreachable!(),
             });
 
             write!(f, "<a href=\"#\" class=\"tooltip\" title=\"{tooltip}\">ⓘ</a>")?;
