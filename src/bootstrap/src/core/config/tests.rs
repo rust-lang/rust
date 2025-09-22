@@ -307,10 +307,11 @@ fn clippy_rule_separate_prefix() {
 
 #[test]
 fn verbose_tests_default_value() {
-    let config = Config::parse(Flags::parse(&["build".into(), "compiler".into()]));
+    let config = TestCtx::new().config("build").args(&["compiler".into()]).create_config();
     assert_eq!(config.verbose_tests, false);
 
-    let config = Config::parse(Flags::parse(&["build".into(), "compiler".into(), "-v".into()]));
+    let config =
+        TestCtx::new().config("build").args(&["compiler".into(), "-v".into()]).create_config();
     assert_eq!(config.verbose_tests, true);
 }
 
@@ -643,18 +644,10 @@ fn test_include_precedence_over_profile() {
     "#;
     File::create(extension).unwrap().write_all(extension_content).unwrap();
 
-    let root_config = testdir.join("config.toml");
-    let root_config_content = br#"
-        profile = "dist"
-        include = ["./extension.toml"]
-    "#;
-    File::create(&root_config).unwrap().write_all(root_config_content).unwrap();
-
     let config = test_ctx
         .config("check")
         .with_default_toml_config(
             r#"
-        profile = "dist"
         include = ["./extension.toml"]
     "#,
         )

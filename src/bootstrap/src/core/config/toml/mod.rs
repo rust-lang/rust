@@ -152,6 +152,12 @@ impl Config {
     }
 
     pub(crate) fn get_toml(file: &Path) -> Result<TomlConfig, toml::de::Error> {
+        #[cfg(test)]
+        {
+            let tmp = std::env::temp_dir();
+            assert!(file.starts_with(&tmp), "Expected path in temp dir {:?}, got {:?}", tmp, file);
+        }
+
         Self::get_toml_inner(file)
     }
 
