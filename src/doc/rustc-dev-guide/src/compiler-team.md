@@ -134,12 +134,3 @@ Getting on the reviewer rotation is much appreciated as it lowers the
 review burden for all of us! However, if you don't have time to give
 people timely feedback on their PRs, it may be better that you don't
 get on the list.
-
-### Full team membership
-
-Full team membership is typically extended once someone made many
-contributions to the Rust compiler over time, ideally (but not
-necessarily) to multiple areas. Sometimes this might be implementing a
-new feature, but it is also important — perhaps more important! — to
-have time and willingness to help out with general upkeep such as
-bugfixes, tracking regressions, and other less glamorous work.
