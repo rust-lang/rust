@@ -1,0 +1,200 @@
+error: invalid register `Y`: the frame pointer cannot be used as an operand for inline asm
+  --> $DIR/bad-reg.rs:20:18
+   |
+LL |         asm!("", out("Y") _);
+   |                  ^^^^^^^^^^
+
+error: invalid register `YL`: the frame pointer cannot be used as an operand for inline asm
+  --> $DIR/bad-reg.rs:22:18
+   |
+LL |         asm!("", out("YL") _);
+   |                  ^^^^^^^^^^^
+
+error: invalid register `YH`: the frame pointer cannot be used as an operand for inline asm
+  --> $DIR/bad-reg.rs:24:18
+   |
+LL |         asm!("", out("YH") _);
+   |                  ^^^^^^^^^^^
+
+error: invalid register `SP`: the stack pointer cannot be used as an operand for inline asm
+  --> $DIR/bad-reg.rs:26:18
+   |
+LL |         asm!("", out("SP") _);
+   |                  ^^^^^^^^^^^
+
+error: invalid register `SPL`: the stack pointer cannot be used as an operand for inline asm
+  --> $DIR/bad-reg.rs:28:18
+   |
+LL |         asm!("", out("SPL") _);
+   |                  ^^^^^^^^^^^^
+
+error: invalid register `SPH`: the stack pointer cannot be used as an operand for inline asm
+  --> $DIR/bad-reg.rs:30:18
+   |
+LL |         asm!("", out("SPH") _);
+   |                  ^^^^^^^^^^^^
+
+error: invalid register `r0`: LLVM reserves r0 (scratch register) and r1 (zero register)
+  --> $DIR/bad-reg.rs:32:18
+   |
+LL |         asm!("", out("r0") _);
+   |                  ^^^^^^^^^^^
+
+error: invalid register `r1`: LLVM reserves r0 (scratch register) and r1 (zero register)
+  --> $DIR/bad-reg.rs:34:18
+   |
+LL |         asm!("", out("r1") _);
+   |                  ^^^^^^^^^^^
+
+error: invalid register `r1r0`: LLVM reserves r0 (scratch register) and r1 (zero register)
+  --> $DIR/bad-reg.rs:36:18
+   |
+LL |         asm!("", out("r1r0") _);
+   |                  ^^^^^^^^^^^^^
+
+error: cannot use register `r2`: on AVRTiny, r[2-15] are unavailable, r16 (scratch register) and r17 (zero register) are reserved by LLVM
+  --> $DIR/bad-reg.rs:40:18
+   |
+LL |         asm!("", out("r2") _);
+   |                  ^^^^^^^^^^^
+
+error: cannot use register `r3`: on AVRTiny, r[2-15] are unavailable, r16 (scratch register) and r17 (zero register) are reserved by LLVM
+  --> $DIR/bad-reg.rs:42:18
+   |
+LL |         asm!("", out("r3") _);
+   |                  ^^^^^^^^^^^
+
+error: cannot use register `r4`: on AVRTiny, r[2-15] are unavailable, r16 (scratch register) and r17 (zero register) are reserved by LLVM
+  --> $DIR/bad-reg.rs:44:18
+   |
+LL |         asm!("", out("r4") _);
+   |                  ^^^^^^^^^^^
+
+error: cannot use register `r5`: on AVRTiny, r[2-15] are unavailable, r16 (scratch register) and r17 (zero register) are reserved by LLVM
+  --> $DIR/bad-reg.rs:46:18
+   |
+LL |         asm!("", out("r5") _);
+   |                  ^^^^^^^^^^^
+
+error: cannot use register `r6`: on AVRTiny, r[2-15] are unavailable, r16 (scratch register) and r17 (zero register) are reserved by LLVM
+  --> $DIR/bad-reg.rs:48:18
+   |
+LL |         asm!("", out("r6") _);
+   |                  ^^^^^^^^^^^
+
+error: cannot use register `r7`: on AVRTiny, r[2-15] are unavailable, r16 (scratch register) and r17 (zero register) are reserved by LLVM
+  --> $DIR/bad-reg.rs:50:18
+   |
+LL |         asm!("", out("r7") _);
+   |                  ^^^^^^^^^^^
+
+error: cannot use register `r8`: on AVRTiny, r[2-15] are unavailable, r16 (scratch register) and r17 (zero register) are reserved by LLVM
+  --> $DIR/bad-reg.rs:52:18
+   |
+LL |         asm!("", out("r8") _);
+   |                  ^^^^^^^^^^^
+
+error: cannot use register `r9`: on AVRTiny, r[2-15] are unavailable, r16 (scratch register) and r17 (zero register) are reserved by LLVM
+  --> $DIR/bad-reg.rs:54:18
+   |
+LL |         asm!("", out("r9") _);
+   |                  ^^^^^^^^^^^
+
+error: cannot use register `r10`: on AVRTiny, r[2-15] are unavailable, r16 (scratch register) and r17 (zero register) are reserved by LLVM
+  --> $DIR/bad-reg.rs:56:18
+   |
+LL |         asm!("", out("r10") _);
+   |                  ^^^^^^^^^^^^
+
+error: cannot use register `r11`: on AVRTiny, r[2-15] are unavailable, r16 (scratch register) and r17 (zero register) are reserved by LLVM
+  --> $DIR/bad-reg.rs:58:18
+   |
+LL |         asm!("", out("r11") _);
+   |                  ^^^^^^^^^^^^
+
+error: cannot use register `r12`: on AVRTiny, r[2-15] are unavailable, r16 (scratch register) and r17 (zero register) are reserved by LLVM
+  --> $DIR/bad-reg.rs:60:18
+   |
+LL |         asm!("", out("r12") _);
+   |                  ^^^^^^^^^^^^
+
+error: cannot use register `r13`: on AVRTiny, r[2-15] are unavailable, r16 (scratch register) and r17 (zero register) are reserved by LLVM
+  --> $DIR/bad-reg.rs:62:18
+   |
+LL |         asm!("", out("r13") _);
+   |                  ^^^^^^^^^^^^
+
+error: cannot use register `r14`: on AVRTiny, r[2-15] are unavailable, r16 (scratch register) and r17 (zero register) are reserved by LLVM
+  --> $DIR/bad-reg.rs:64:18
+   |
+LL |         asm!("", out("r14") _);
+   |                  ^^^^^^^^^^^^
+
+error: cannot use register `r15`: on AVRTiny, r[2-15] are unavailable, r16 (scratch register) and r17 (zero register) are reserved by LLVM
+  --> $DIR/bad-reg.rs:66:18
+   |
+LL |         asm!("", out("r15") _);
+   |                  ^^^^^^^^^^^^
+
+error: cannot use register `r16`: on AVRTiny, r[2-15] are unavailable, r16 (scratch register) and r17 (zero register) are reserved by LLVM
+  --> $DIR/bad-reg.rs:68:18
+   |
+LL |         asm!("", out("r16") _);
+   |                  ^^^^^^^^^^^^
+
+error: cannot use register `r17`: on AVRTiny, r[2-15] are unavailable, r16 (scratch register) and r17 (zero register) are reserved by LLVM
+  --> $DIR/bad-reg.rs:70:18
+   |
+LL |         asm!("", out("r17") _);
+   |                  ^^^^^^^^^^^^
+
+error: cannot use register `r3r2`: on AVRTiny, r[2-15] are unavailable, r16 (scratch register) and r17 (zero register) are reserved by LLVM
+  --> $DIR/bad-reg.rs:72:18
+   |
+LL |         asm!("", out("r3r2") _);
+   |                  ^^^^^^^^^^^^^
+
+error: cannot use register `r5r4`: on AVRTiny, r[2-15] are unavailable, r16 (scratch register) and r17 (zero register) are reserved by LLVM
+  --> $DIR/bad-reg.rs:74:18
+   |
+LL |         asm!("", out("r5r4") _);
+   |                  ^^^^^^^^^^^^^
+
+error: cannot use register `r7r6`: on AVRTiny, r[2-15] are unavailable, r16 (scratch register) and r17 (zero register) are reserved by LLVM
+  --> $DIR/bad-reg.rs:76:18
+   |
+LL |         asm!("", out("r7r6") _);
+   |                  ^^^^^^^^^^^^^
+
+error: cannot use register `r9r8`: on AVRTiny, r[2-15] are unavailable, r16 (scratch register) and r17 (zero register) are reserved by LLVM
+  --> $DIR/bad-reg.rs:78:18
+   |
+LL |         asm!("", out("r9r8") _);
+   |                  ^^^^^^^^^^^^^
+
+error: cannot use register `r11r10`: on AVRTiny, r[2-15] are unavailable, r16 (scratch register) and r17 (zero register) are reserved by LLVM
+  --> $DIR/bad-reg.rs:80:18
+   |
+LL |         asm!("", out("r11r10") _);
+   |                  ^^^^^^^^^^^^^^^
+
+error: cannot use register `r13r12`: on AVRTiny, r[2-15] are unavailable, r16 (scratch register) and r17 (zero register) are reserved by LLVM
+  --> $DIR/bad-reg.rs:82:18
+   |
+LL |         asm!("", out("r13r12") _);
+   |                  ^^^^^^^^^^^^^^^
+
+error: cannot use register `r15r14`: on AVRTiny, r[2-15] are unavailable, r16 (scratch register) and r17 (zero register) are reserved by LLVM
+  --> $DIR/bad-reg.rs:84:18
+   |
+LL |         asm!("", out("r15r14") _);
+   |                  ^^^^^^^^^^^^^^^
+
+error: cannot use register `r17r16`: on AVRTiny, r[2-15] are unavailable, r16 (scratch register) and r17 (zero register) are reserved by LLVM
+  --> $DIR/bad-reg.rs:86:18
+   |
+LL |         asm!("", out("r17r16") _);
+   |                  ^^^^^^^^^^^^^^^
+
+error: aborting due to 33 previous errors
+

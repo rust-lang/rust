@@ -1,0 +1,56 @@
+error: invalid register `Y`: the frame pointer cannot be used as an operand for inline asm
+  --> $DIR/bad-reg.rs:20:18
+   |
+LL |         asm!("", out("Y") _);
+   |                  ^^^^^^^^^^
+
+error: invalid register `YL`: the frame pointer cannot be used as an operand for inline asm
+  --> $DIR/bad-reg.rs:22:18
+   |
+LL |         asm!("", out("YL") _);
+   |                  ^^^^^^^^^^^
+
+error: invalid register `YH`: the frame pointer cannot be used as an operand for inline asm
+  --> $DIR/bad-reg.rs:24:18
+   |
+LL |         asm!("", out("YH") _);
+   |                  ^^^^^^^^^^^
+
+error: invalid register `SP`: the stack pointer cannot be used as an operand for inline asm
+  --> $DIR/bad-reg.rs:26:18
+   |
+LL |         asm!("", out("SP") _);
+   |                  ^^^^^^^^^^^
+
+error: invalid register `SPL`: the stack pointer cannot be used as an operand for inline asm
+  --> $DIR/bad-reg.rs:28:18
+   |
+LL |         asm!("", out("SPL") _);
+   |                  ^^^^^^^^^^^^
+
+error: invalid register `SPH`: the stack pointer cannot be used as an operand for inline asm
+  --> $DIR/bad-reg.rs:30:18
+   |
+LL |         asm!("", out("SPH") _);
+   |                  ^^^^^^^^^^^^
+
+error: invalid register `r0`: LLVM reserves r0 (scratch register) and r1 (zero register)
+  --> $DIR/bad-reg.rs:32:18
+   |
+LL |         asm!("", out("r0") _);
+   |                  ^^^^^^^^^^^
+
+error: invalid register `r1`: LLVM reserves r0 (scratch register) and r1 (zero register)
+  --> $DIR/bad-reg.rs:34:18
+   |
+LL |         asm!("", out("r1") _);
+   |                  ^^^^^^^^^^^
+
+error: invalid register `r1r0`: LLVM reserves r0 (scratch register) and r1 (zero register)
+  --> $DIR/bad-reg.rs:36:18
+   |
+LL |         asm!("", out("r1r0") _);
+   |                  ^^^^^^^^^^^^^
+
+error: aborting due to 9 previous errors
+
