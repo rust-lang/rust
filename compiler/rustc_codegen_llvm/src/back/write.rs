@@ -253,12 +253,16 @@ pub(crate) fn target_machine_factory(
     // Command-line information to be included in the target machine.
     // This seems to only be used for embedding in PDB debuginfo files.
     // FIXME(Zalathar): Maybe skip this for non-PDB targets?
-    let argv0 = std::env::current_exe()
-        .unwrap_or_default()
-        .into_os_string()
-        .into_string()
-        .unwrap_or_default();
-    let command_line_args = quote_command_line_args(&sess.expanded_args);
+    if false {
+        let _argv0 = std::env::current_exe()
+            .unwrap_or_default()
+            .into_os_string()
+            .into_string()
+            .unwrap_or_default();
+        let _command_line_args = quote_command_line_args(&sess.expanded_args);
+    }
+    let argv0 = String::new();
+    let command_line_args = String::new();
 
     let debuginfo_compression = sess.opts.debuginfo_compression.to_string();
     match sess.opts.debuginfo_compression {
