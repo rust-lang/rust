@@ -44,7 +44,7 @@ use std::cmp::max;
 use std::marker::PhantomData;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
-use std::{iter, mem, u64};
+use std::{iter, mem};
 
 use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
 use rustc_data_structures::fx::FxHashMap;
