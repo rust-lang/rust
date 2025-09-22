@@ -82,13 +82,28 @@ jobs:
         printf '[profile.release]\nlto = "fat"\n' >> build/build_sysroot/sysroot_src/library/Cargo.toml
         EMBED_LTO_BITCODE=1 ./y.sh test --release --clean --release-sysroot --build-sysroot --keep-lto-tests ${{ matrix.commands }}
 
-    - name: Run y.sh cargo build
+    - name: LTO test
       run: |
         EMBED_LTO_BITCODE=1 CHANNEL="release" ./y.sh cargo build --release --manifest-path tests/hello-world/Cargo.toml
         call_found=$(objdump -dj .text tests/hello-world/target/release/hello_world | grep -c "call .*mylib.*my_func" ) ||:
         if [ $call_found -gt 0 ]; then
           echo "ERROR: call my_func found in asm"
           echo "Test is done with LTO enabled, hence inlining should occur across crates"
+          exit 1
+        fi
+
+    - name: Cross-language LTO test
+      run: |
+        pushd tests/cross_lang_lto
+        gcc -c -flto add.c -masm=intel -fPIC -O3
+        ar rcs libadd.a add.o
+        popd
+
+        EMBED_LTO_BITCODE=1 CHANNEL="release" CG_RUSTFLAGS="-L native=. -Clinker-plugin-lto -Clinker=gcc" ./y.sh cargo build --release --manifest-path tests/cross_lang_lto/Cargo.toml
+        call_found=$(objdump -dj .text tests/cross_lang_lto/target/release/cross_lang_lto | grep -c "call .*my_add" ) ||:
+        if [ $call_found -gt 0 ]; then
+          echo "ERROR: call my_add found in asm"
+          echo "Test is done with cross-language LTO enabled, hence inlining should occur across object files"
           exit 1
         fi
 
