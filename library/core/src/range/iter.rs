@@ -3,6 +3,7 @@ use crate::iter::{
 };
 use crate::num::NonZero;
 use crate::range::{Range, RangeFrom, RangeInclusive, legacy};
+use crate::{intrinsics, mem};
 
 /// By-value [`Range`] iterator.
 #[unstable(feature = "new_range_api", issue = "125687")]
@@ -168,7 +169,7 @@ impl<A: Step> IterRangeInclusive<A> {
     }
 }
 
-#[unstable(feature = "trusted_random_access", issue = "none")]
+#[unstable(feature = "new_range_api", issue = "125687")]
 impl<A: Step> Iterator for IterRangeInclusive<A> {
     type Item = A;
 
@@ -293,32 +294,74 @@ range_incl_exact_iter_impl! {
 /// By-value [`RangeFrom`] iterator.
 #[unstable(feature = "new_range_api", issue = "125687")]
 #[derive(Debug, Clone)]
-pub struct IterRangeFrom<A>(legacy::RangeFrom<A>);
+pub struct IterRangeFrom<A> {
+    start: A,
+    /// Whether the first element of the iterator has yielded.
+    /// Only used when overflow checks are enabled.
+    first: bool,
+}
 
-impl<A> IterRangeFrom<A> {
+impl<A: Step> IterRangeFrom<A> {
     /// Returns the remainder of the range being iterated over.
+    #[inline]
+    #[rustc_inherit_overflow_checks]
     pub fn remainder(self) -> RangeFrom<A> {
-        RangeFrom { start: self.0.start }
+        if intrinsics::overflow_checks() {
+            if !self.first {
+                return RangeFrom { start: Step::forward(self.start, 1) };
+            }
+        }
+
+        RangeFrom { start: self.start }
     }
 }
 
-#[unstable(feature = "trusted_random_access", issue = "none")]
+#[unstable(feature = "new_range_api", issue = "125687")]
 impl<A: Step> Iterator for IterRangeFrom<A> {
     type Item = A;
 
     #[inline]
+    #[rustc_inherit_overflow_checks]
     fn next(&mut self) -> Option<A> {
-        self.0.next()
+        if intrinsics::overflow_checks() {
+            if self.first {
+                self.first = false;
+                return Some(self.start.clone());
+            }
+
+            self.start = Step::forward(self.start.clone(), 1);
+            return Some(self.start.clone());
+        }
+
+        let n = Step::forward(self.start.clone(), 1);
+        Some(mem::replace(&mut self.start, n))
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        self.0.size_hint()
+        (usize::MAX, None)
     }
 
     #[inline]
+    #[rustc_inherit_overflow_checks]
     fn nth(&mut self, n: usize) -> Option<A> {
-        self.0.nth(n)
+        if intrinsics::overflow_checks() {
+            if self.first {
+                self.first = false;
+
+                let plus_n = Step::forward(self.start.clone(), n);
+                self.start = plus_n.clone();
+                return Some(plus_n);
+            }
+
+            let plus_n = Step::forward(self.start.clone(), n);
+            self.start = Step::forward(plus_n.clone(), 1);
+            return Some(self.start.clone());
+        }
+
+        let plus_n = Step::forward(self.start.clone(), n);
+        self.start = Step::forward(plus_n.clone(), 1);
+        Some(plus_n)
     }
 }
 
@@ -334,6 +377,6 @@ impl<A: Step> IntoIterator for RangeFrom<A> {
     type IntoIter = IterRangeFrom<A>;
 
     fn into_iter(self) -> Self::IntoIter {
-        IterRangeFrom(self.into())
+        IterRangeFrom { start: self.start, first: true }
     }
 }
