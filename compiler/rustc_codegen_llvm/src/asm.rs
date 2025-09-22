@@ -251,7 +251,9 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     constraints.push("~{sreg}".to_string());
                 }
                 InlineAsmArch::Nvptx64 => {}
-                InlineAsmArch::PowerPC | InlineAsmArch::PowerPC64 => {}
+                InlineAsmArch::PowerPC | InlineAsmArch::PowerPC64 => {
+                    constraints.push("~{cr0}".to_string());
+                }
                 InlineAsmArch::Hexagon => {}
                 InlineAsmArch::LoongArch32 | InlineAsmArch::LoongArch64 => {
                     constraints.extend_from_slice(&[
