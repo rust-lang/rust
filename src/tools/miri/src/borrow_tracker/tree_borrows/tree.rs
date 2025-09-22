@@ -640,13 +640,18 @@ impl<'tcx> Tree {
         // Register new_tag as a child of parent_tag
         self.nodes.get_mut(parent_idx).unwrap().children.push(idx);
 
-        // We need to know the biggest SIFA for `update_last_accessed_after_retag` below.
-        let mut max_sifa = default_strongest_idempotent;
+        // We need to know the weakest SIFA for `update_idempotent_foreign_access_after_retag`.
+        let mut min_sifa = default_strongest_idempotent;
         for (Range { start, end }, &perm) in
             inside_perms.iter(Size::from_bytes(0), inside_perms.size())
         {
             assert!(perm.permission.is_initial());
-            max_sifa = cmp::max(max_sifa, perm.idempotent_foreign_access);
+            assert_eq!(
+                perm.idempotent_foreign_access,
+                perm.permission.strongest_idempotent_foreign_access(protected)
+            );
+
+            min_sifa = cmp::min(min_sifa, perm.idempotent_foreign_access);
             for (_perms_range, perms) in self
                 .rperms
                 .iter_mut(Size::from_bytes(start) + base_offset, Size::from_bytes(end - start))
@@ -656,22 +661,28 @@ impl<'tcx> Tree {
         }
 
         // Inserting the new perms might have broken the SIFA invariant (see
-        // `foreign_access_skipping.rs`). We now weaken the recorded SIFA for our parents, until the
-        // invariant is restored. We could weaken them all to `LocalAccess`, but it is more
-        // efficient to compute the SIFA for the new permission statically, and use that. For this
-        // we need the *maximum* SIFA (`Write` needs more fixup than `None`).
-        self.update_last_accessed_after_retag(parent_idx, max_sifa);
+        // `foreign_access_skipping.rs`) if the SIFA we inserted is weaker than that of some parent.
+        // We now weaken the recorded SIFA for our parents, until the invariant is restored. We
+        // could weaken them all to `None`, but it is more efficient to compute the SIFA for the new
+        // permission statically, and use that. For this we need the *minimum* SIFA (`None` needs
+        // more fixup than `Write`).
+        self.update_idempotent_foreign_access_after_retag(parent_idx, min_sifa);
 
         interp_ok(())
     }
 
-    /// Restores the SIFA "children are stronger" invariant after a retag.
-    /// See `foreign_access_skipping` and `new_child`.
-    fn update_last_accessed_after_retag(
+    /// Restores the SIFA "children are stronger"/"parents are weaker" invariant after a retag:
+    /// reduce the SIFA of `current` and its parents to be no stronger than `strongest_allowed`.
+    /// See `foreign_access_skipping.rs` and [`Tree::new_child`].
+    fn update_idempotent_foreign_access_after_retag(
         &mut self,
         mut current: UniIndex,
         strongest_allowed: IdempotentForeignAccess,
     ) {
+        if strongest_allowed == IdempotentForeignAccess::Write {
+            // Nothing is stronger than `Write`.
+            return;
+        }
         // We walk the tree upwards, until the invariant is restored
         loop {
             let current_node = self.nodes.get_mut(current).unwrap();
