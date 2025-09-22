@@ -1509,19 +1509,21 @@ impl RawTableInner {
 
         let ptr: NonNull<u8> = match do_alloc(alloc, layout) {
             Ok(block) => {
-                // Utilize over-sized allocations.
-                let x = maximum_buckets_in(block.len(), table_layout, Group::WIDTH);
-                debug_assert!(x >= buckets);
-                // Calculate the new ctrl_offset.
-                let (_oversized_layout, oversized_ctrl_offset) =
-                    match table_layout.calculate_layout_for(x) {
-                        Some(lco) => lco,
-                        None => unsafe { hint::unreachable_unchecked() },
-                    };
-                debug_assert!(_oversized_layout.size() <= block.len());
-                debug_assert!(oversized_ctrl_offset >= ctrl_offset);
-                ctrl_offset = oversized_ctrl_offset;
-                buckets = x;
+                if block.len() > layout.size() {
+                    // Utilize over-sized allocations.
+                    let x = maximum_buckets_in(block.len(), table_layout, Group::WIDTH);
+                    debug_assert!(x >= buckets);
+                    // Calculate the new ctrl_offset.
+                    let (_oversized_layout, oversized_ctrl_offset) =
+                        match table_layout.calculate_layout_for(x) {
+                            Some(lco) => lco,
+                            None => unsafe { hint::unreachable_unchecked() },
+                        };
+                    debug_assert!(_oversized_layout.size() <= block.len());
+                    debug_assert!(oversized_ctrl_offset >= ctrl_offset);
+                    ctrl_offset = oversized_ctrl_offset;
+                    buckets = x;
+                }
 
                 block.cast()
             }
