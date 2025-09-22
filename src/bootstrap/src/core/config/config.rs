@@ -2479,6 +2479,13 @@ fn find_correct_section_for_field(field_name: &str) -> Vec<WouldBeValidFor> {
         .collect()
 }
 
+/// Resolve the build directory used for tests.
+///
+/// - When tests are run through bootstrap (`x.py test`), the build system
+///   sets `CARGO_TARGET_DIR`, so we can trust and use it here.
+/// - When tests are run directly with cargo test, `CARGO_TARGET_DIR` will
+///   not be set. In that case we fall back to resolving relative to
+///   `CARGO_MANIFEST_DIR`, by walking two parents up and appending `build`.
 fn test_build_dir() -> PathBuf {
     env::var_os("CARGO_TARGET_DIR")
         .map(|value| Path::new(&value).parent().unwrap().to_path_buf())
