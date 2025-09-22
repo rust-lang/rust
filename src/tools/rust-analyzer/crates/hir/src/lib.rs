@@ -88,7 +88,7 @@ use hir_ty::{
     next_solver::{
         ClauseKind, DbInterner, GenericArgs,
         infer::InferCtxt,
-        mapping::{ChalkToNextSolver, convert_ty_for_result},
+        mapping::{ChalkToNextSolver, NextSolverToChalk, convert_ty_for_result},
     },
     primitive::UintTy,
     traits::FnTrait,
@@ -5171,7 +5171,14 @@ impl<'db> Type<'db> {
             .build();
 
         let goal = Canonical {
-            value: hir_ty::InEnvironment::new(&self.env.env, trait_ref.cast(Interner)),
+            value: hir_ty::InEnvironment::new(
+                &self.env.env.to_chalk(DbInterner::new_with(
+                    db,
+                    Some(self.env.krate),
+                    self.env.block,
+                )),
+                trait_ref.cast(Interner),
+            ),
             binders: CanonicalVarKinds::empty(Interner),
         };
 

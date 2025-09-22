@@ -7,6 +7,8 @@ use hir_def::signatures::StructFlags;
 use stdx::never;
 use triomphe::Arc;
 
+use crate::next_solver::DbInterner;
+use crate::next_solver::mapping::NextSolverToChalk;
 use crate::{
     AliasTy, Canonical, CanonicalVarKinds, ConcreteConst, ConstScalar, ConstValue, InEnvironment,
     Interner, ProjectionTy, TraitEnvironment, Ty, TyBuilder, TyKind, db::HirDatabase,
@@ -188,7 +190,10 @@ fn is_copy(db: &dyn HirDatabase, ty: Ty, env: Arc<TraitEnvironment<'_>>) -> bool
     };
     let trait_ref = TyBuilder::trait_ref(db, copy_trait).push(ty).build();
     let goal = Canonical {
-        value: InEnvironment::new(&env.env, trait_ref.cast(Interner)),
+        value: InEnvironment::new(
+            &env.env.to_chalk(DbInterner::new_with(db, Some(env.krate), env.block)),
+            trait_ref.cast(Interner),
+        ),
         binders: CanonicalVarKinds::empty(Interner),
     };
     db.trait_solve(env.krate, env.block, goal).certain()

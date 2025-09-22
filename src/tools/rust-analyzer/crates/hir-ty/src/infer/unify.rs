@@ -29,8 +29,8 @@ use crate::{
     db::HirDatabase,
     fold_generic_args, fold_tys_and_consts,
     next_solver::{
-        self, ClauseKind, DbInterner, ErrorGuaranteed, ParamEnv, Predicate, PredicateKind,
-        SolverDefIds, Term, TraitRef,
+        self, ClauseKind, DbInterner, ErrorGuaranteed, Predicate, PredicateKind, SolverDefIds,
+        Term, TraitRef,
         fulfill::FulfillmentCtxt,
         infer::{
             DbInternerInferExt, InferCtxt, InferOk,
@@ -213,7 +213,6 @@ pub(crate) struct InferenceTable<'db> {
     pub(crate) db: &'db dyn HirDatabase,
     pub(crate) interner: DbInterner<'db>,
     pub(crate) trait_env: Arc<TraitEnvironment<'db>>,
-    pub(crate) param_env: ParamEnv<'db>,
     pub(crate) tait_coercion_table: Option<FxHashMap<OpaqueTyId, Ty>>,
     pub(crate) infer_ctxt: InferCtxt<'db>,
     diverging_tys: FxHashSet<Ty>,
@@ -235,7 +234,6 @@ impl<'db> InferenceTable<'db> {
         InferenceTable {
             db,
             interner,
-            param_env: trait_env.env.to_nextsolver(interner),
             trait_env,
             tait_coercion_table: None,
             fulfillment_cx: FulfillmentCtxt::new(&infer_ctxt),
@@ -426,7 +424,7 @@ impl<'db> InferenceTable<'db> {
     {
         let ty = self.resolve_vars_with_obligations(ty);
         self.infer_ctxt
-            .at(&ObligationCause::new(), self.param_env)
+            .at(&ObligationCause::new(), self.trait_env.env)
             .deeply_normalize(ty.clone())
             .unwrap_or(ty)
     }
@@ -741,7 +739,7 @@ impl<'db> InferenceTable<'db> {
     ) -> InferResult<'db, ()> {
         let variance = rustc_type_ir::Variance::Invariant;
         let span = crate::next_solver::Span::dummy();
-        match self.infer_ctxt.relate(self.param_env, lhs, variance, rhs, span) {
+        match self.infer_ctxt.relate(self.trait_env.env, lhs, variance, rhs, span) {
             Ok(goals) => Ok(crate::infer::InferOk { goals, value: () }),
             Err(_) => Err(TypeError),
         }
@@ -798,7 +796,7 @@ impl<'db> InferenceTable<'db> {
 
     fn structurally_normalize_term(&mut self, term: Term<'db>) -> Term<'db> {
         self.infer_ctxt
-            .at(&ObligationCause::new(), self.param_env)
+            .at(&ObligationCause::new(), self.trait_env.env)
             .structurally_normalize_term(term, &mut self.fulfillment_cx)
             .unwrap_or(term)
     }
@@ -818,7 +816,7 @@ impl<'db> InferenceTable<'db> {
             // in a reentrant borrow, causing an ICE.
             let result = self
                 .infer_ctxt
-                .at(&ObligationCause::misc(), self.param_env)
+                .at(&ObligationCause::misc(), self.trait_env.env)
                 .structurally_normalize_ty(ty, &mut self.fulfillment_cx);
             match result {
                 Ok(normalized_ty) => normalized_ty,
@@ -874,14 +872,14 @@ impl<'db> InferenceTable<'db> {
     /// choice (during e.g. method resolution or deref).
     #[tracing::instrument(level = "debug", skip(self))]
     pub(crate) fn try_obligation(&mut self, predicate: Predicate<'db>) -> NextTraitSolveResult {
-        let goal = next_solver::Goal { param_env: self.param_env, predicate };
+        let goal = next_solver::Goal { param_env: self.trait_env.env, predicate };
         let canonicalized = self.canonicalize(goal);
 
         next_trait_solve_canonical_in_ctxt(&self.infer_ctxt, canonicalized)
     }
 
     pub(crate) fn register_obligation(&mut self, predicate: Predicate<'db>) {
-        let goal = next_solver::Goal { param_env: self.param_env, predicate };
+        let goal = next_solver::Goal { param_env: self.trait_env.env, predicate };
         self.register_obligation_in_env(goal)
     }
 

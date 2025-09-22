@@ -31,7 +31,7 @@ use crate::{
     infer::{Adjust, Adjustment, OverloadedDeref, PointerCast, unify::InferenceTable},
     lang_items::is_box,
     next_solver::{
-        self, SolverDefId,
+        self, DbInterner, SolverDefId,
         infer::{
             DefineOpaqueTypes,
             traits::{ObligationCause, PredicateObligation},
@@ -1755,7 +1755,10 @@ fn is_valid_trait_method_candidate(
                     };
                     let res = table
                         .infer_ctxt
-                        .at(&next_solver::infer::traits::ObligationCause::dummy(), table.param_env)
+                        .at(
+                            &next_solver::infer::traits::ObligationCause::dummy(),
+                            table.trait_env.env,
+                        )
                         .relate(
                             DefineOpaqueTypes::No,
                             expected_receiver.to_nextsolver(table.interner),
@@ -1845,7 +1848,12 @@ fn is_valid_impl_fn_candidate(
         let mut ctxt = ObligationCtxt::new(&table.infer_ctxt);
 
         ctxt.register_obligations(predicates.into_iter().map(|p| {
-            PredicateObligation::new(table.interner, ObligationCause::new(), table.param_env, p.0)
+            PredicateObligation::new(
+                table.interner,
+                ObligationCause::new(),
+                table.trait_env.env,
+                p.0,
+            )
         }));
 
         if ctxt.select_where_possible().is_empty() {
@@ -1893,7 +1901,10 @@ fn generic_implements_goal<'db>(
     let binders = CanonicalVarKinds::from_iter(Interner, kinds);
 
     let obligation = trait_ref.cast(Interner);
-    let value = InEnvironment::new(&env.env, obligation);
+    let value = InEnvironment::new(
+        &env.env.to_chalk(DbInterner::new_with(db, Some(env.krate), env.block)),
+        obligation,
+    );
     Canonical { binders, value }
 }
 
@@ -1910,7 +1921,7 @@ fn generic_implements_goal_ns<'db>(
     let trait_ref =
         rustc_type_ir::TraitRef::new_from_args(table.infer_ctxt.interner, trait_.into(), args)
             .with_replaced_self_ty(table.infer_ctxt.interner, self_ty);
-    let goal = next_solver::Goal::new(table.infer_ctxt.interner, table.param_env, trait_ref);
+    let goal = next_solver::Goal::new(table.infer_ctxt.interner, table.trait_env.env, trait_ref);
 
     table.canonicalize(goal)
 }

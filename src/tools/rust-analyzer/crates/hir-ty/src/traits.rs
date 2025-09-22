@@ -25,7 +25,7 @@ use crate::{
     db::HirDatabase,
     infer::unify::InferenceTable,
     next_solver::{
-        DbInterner, GenericArg, Predicate, SolverContext, Span,
+        DbInterner, GenericArg, ParamEnv, Predicate, SolverContext, Span,
         infer::{DbInternerInferExt, InferCtxt},
         mapping::{ChalkToNextSolver, convert_canonical_args_for_result},
         util::mini_canonicalize,
@@ -44,8 +44,7 @@ pub struct TraitEnvironment<'db> {
     pub block: Option<BlockId>,
     // FIXME make this a BTreeMap
     traits_from_clauses: Box<[(Ty, TraitId)]>,
-    pub env: chalk_ir::Environment<Interner>,
-    _db: std::marker::PhantomData<&'db ()>,
+    pub env: ParamEnv<'db>,
 }
 
 impl<'db> TraitEnvironment<'db> {
@@ -54,8 +53,7 @@ impl<'db> TraitEnvironment<'db> {
             krate,
             block: None,
             traits_from_clauses: Box::default(),
-            env: chalk_ir::Environment::new(Interner),
-            _db: std::marker::PhantomData,
+            env: ParamEnv::empty(),
         })
     }
 
@@ -63,15 +61,9 @@ impl<'db> TraitEnvironment<'db> {
         krate: Crate,
         block: Option<BlockId>,
         traits_from_clauses: Box<[(Ty, TraitId)]>,
-        env: chalk_ir::Environment<Interner>,
+        env: ParamEnv<'db>,
     ) -> Arc<Self> {
-        Arc::new(TraitEnvironment {
-            krate,
-            block,
-            traits_from_clauses,
-            env,
-            _db: std::marker::PhantomData,
-        })
+        Arc::new(TraitEnvironment { krate, block, traits_from_clauses, env })
     }
 
     // pub fn with_block(self: &mut Arc<Self>, block: BlockId) {

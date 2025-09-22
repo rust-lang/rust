@@ -182,12 +182,12 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
     #[salsa::invoke(crate::lower::generic_predicates_query)]
     fn generic_predicates(&self, def: GenericDefId) -> GenericPredicates;
 
-    #[salsa::invoke(crate::lower::trait_environment_for_body_query)]
+    #[salsa::invoke(crate::lower_nextsolver::trait_environment_for_body_query)]
     #[salsa::transparent]
     fn trait_environment_for_body<'db>(&'db self, def: DefWithBodyId)
     -> Arc<TraitEnvironment<'db>>;
 
-    #[salsa::invoke(crate::lower::trait_environment_query)]
+    #[salsa::invoke(crate::lower_nextsolver::trait_environment_query)]
     fn trait_environment<'db>(&'db self, def: GenericDefId) -> Arc<TraitEnvironment<'db>>;
 
     #[salsa::invoke(crate::lower::generic_defaults_with_diagnostics_query)]

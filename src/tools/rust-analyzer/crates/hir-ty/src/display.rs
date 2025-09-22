@@ -792,10 +792,7 @@ fn render_const_scalar_ns(
     let trait_env = TraitEnvironment::empty(f.krate());
     let interner = DbInterner::new_with(f.db, Some(trait_env.krate), trait_env.block);
     let infcx = interner.infer_ctxt().build(rustc_type_ir::TypingMode::PostAnalysis);
-    let ty = infcx
-        .at(&ObligationCause::new(), trait_env.env.to_nextsolver(interner))
-        .deeply_normalize(ty)
-        .unwrap_or(ty);
+    let ty = infcx.at(&ObligationCause::new(), trait_env.env).deeply_normalize(ty).unwrap_or(ty);
     render_const_scalar_inner(f, b, memory_map, ty, trait_env)
 }
 

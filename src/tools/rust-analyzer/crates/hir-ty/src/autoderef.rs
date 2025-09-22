@@ -298,7 +298,7 @@ fn structurally_normalize_ty<'db>(
 ) -> Option<(Ty<'db>, PredicateObligations<'db>)> {
     let mut ocx = ObligationCtxt::new(&table.infer_ctxt);
     let Ok(normalized_ty) =
-        ocx.structurally_normalize_ty(&ObligationCause::misc(), table.param_env, ty)
+        ocx.structurally_normalize_ty(&ObligationCause::misc(), table.trait_env.env, ty)
     else {
         // We shouldn't have errors here in the old solver, except for
         // evaluate/fulfill mismatches, but that's not a reason for an ICE.

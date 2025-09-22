@@ -1662,7 +1662,6 @@ impl<'db> InferenceContext<'db> {
             });
         self.resolver.reset_to_guard(g);
         if let Some(prev_env) = prev_env {
-            self.table.param_env = prev_env.env.to_nextsolver(self.table.interner);
             self.table.trait_env = prev_env;
         }
 
@@ -2132,7 +2131,7 @@ impl<'db> InferenceContext<'db> {
                         let origin = ObligationCause::new();
                         ocx.sup(
                             &origin,
-                            self.table.param_env,
+                            self.table.trait_env.env,
                             expected_output.to_nextsolver(interner),
                             formal_output,
                         )?;
@@ -2239,7 +2238,7 @@ impl<'db> InferenceContext<'db> {
             let formal_ty_error = this
                 .table
                 .infer_ctxt
-                .at(&ObligationCause::new(), this.table.param_env)
+                .at(&ObligationCause::new(), this.table.trait_env.env)
                 .eq(DefineOpaqueTypes::Yes, formal_input_ty, coerced_ty);
 
             // If neither check failed, the types are compatible
