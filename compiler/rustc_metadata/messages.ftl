@@ -98,6 +98,13 @@ metadata_full_metadata_not_found =
 metadata_global_alloc_required =
     no global memory allocator found but one is required; link to std or add `#[global_allocator]` to a static item that implements the GlobalAlloc trait
 
+metadata_incompatible_with_immediate_abort =
+    the crate `{$crate_name}` was compiled with a panic strategy which is incompatible with `immediate-abort`
+
+metadata_incompatible_with_immediate_abort_core =
+    the crate `core` was compiled with a panic strategy which is incompatible with `immediate-abort`
+    .help = consider building the standard library from source with `cargo build -Zbuild-std`
+
 metadata_incompatible_panic_in_drop_strategy =
     the crate `{$crate_name}` is compiled with the panic-in-drop strategy `{$found_strategy}` which is incompatible with this crate's strategy of `{$desired_strategy}`
 
