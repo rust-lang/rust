@@ -111,33 +111,45 @@ impl<'tcx> LateLintPass<'tcx> for LifetimeSyntax {
 }
 
 fn check_fn_like<'tcx>(cx: &LateContext<'tcx>, fd: &'tcx hir::FnDecl<'tcx>) {
-    let mut input_map = Default::default();
-    let mut output_map = Default::default();
+    if fd.inputs.is_empty() {
+        return;
+    }
+    let hir::FnRetTy::Return(output) = fd.output else {
+        return;
+    };
+
+    let mut map: FxIndexMap<hir::LifetimeKind, LifetimeGroup<'_>> = FxIndexMap::default();
+
+    LifetimeInfoCollector::collect(output, |info| {
+        let group = map.entry(info.lifetime.kind).or_default();
+        group.outputs.push(info);
+    });
+    if map.is_empty() {
+        return;
+    }
 
     for input in fd.inputs {
-        LifetimeInfoCollector::collect(input, &mut input_map);
-    }
-
-    if let hir::FnRetTy::Return(output) = fd.output {
-        LifetimeInfoCollector::collect(output, &mut output_map);
-    }
-
-    report_mismatches(cx, &input_map, &output_map);
-}
-
-#[instrument(skip_all)]
-fn report_mismatches<'tcx>(
-    cx: &LateContext<'tcx>,
-    inputs: &LifetimeInfoMap<'tcx>,
-    outputs: &LifetimeInfoMap<'tcx>,
-) {
-    for (resolved_lifetime, output_info) in outputs {
-        if let Some(input_info) = inputs.get(resolved_lifetime) {
-            if !lifetimes_use_matched_syntax(input_info, output_info) {
-                emit_mismatch_diagnostic(cx, input_info, output_info);
+        LifetimeInfoCollector::collect(input, |info| {
+            if let Some(group) = map.get_mut(&info.lifetime.kind) {
+                group.inputs.push(info);
             }
+        });
+    }
+
+    for LifetimeGroup { ref inputs, ref outputs } in map.into_values() {
+        if inputs.is_empty() {
+            continue;
+        }
+        if !lifetimes_use_matched_syntax(inputs, outputs) {
+            emit_mismatch_diagnostic(cx, inputs, outputs);
         }
     }
+}
+
+#[derive(Default)]
+struct LifetimeGroup<'tcx> {
+    inputs: Vec<Info<'tcx>>,
+    outputs: Vec<Info<'tcx>>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -547,27 +559,31 @@ impl<'tcx> Info<'tcx> {
     }
 }
 
-type LifetimeInfoMap<'tcx> = FxIndexMap<&'tcx hir::LifetimeKind, Vec<Info<'tcx>>>;
-
-struct LifetimeInfoCollector<'a, 'tcx> {
-    map: &'a mut LifetimeInfoMap<'tcx>,
+struct LifetimeInfoCollector<'tcx, F> {
+    info_func: F,
     ty: &'tcx hir::Ty<'tcx>,
 }
 
-impl<'a, 'tcx> LifetimeInfoCollector<'a, 'tcx> {
-    fn collect(ty: &'tcx hir::Ty<'tcx>, map: &'a mut LifetimeInfoMap<'tcx>) {
-        let mut this = Self { map, ty };
+impl<'tcx, F> LifetimeInfoCollector<'tcx, F>
+where
+    F: FnMut(Info<'tcx>),
+{
+    fn collect(ty: &'tcx hir::Ty<'tcx>, info_func: F) {
+        let mut this = Self { info_func, ty };
 
         intravisit::walk_unambig_ty(&mut this, ty);
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for LifetimeInfoCollector<'a, 'tcx> {
+impl<'tcx, F> Visitor<'tcx> for LifetimeInfoCollector<'tcx, F>
+where
+    F: FnMut(Info<'tcx>),
+{
     #[instrument(skip(self))]
     fn visit_lifetime(&mut self, lifetime: &'tcx hir::Lifetime) {
         if let Some(syntax_category) = LifetimeSyntaxCategory::new(lifetime) {
             let info = Info { lifetime, syntax_category, ty: self.ty };
-            self.map.entry(&lifetime.kind).or_default().push(info);
+            (self.info_func)(info);
         }
     }
 
