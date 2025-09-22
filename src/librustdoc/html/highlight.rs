@@ -57,18 +57,13 @@ pub(crate) fn render_example_with_highlighting(
     extra_classes: &[String],
 ) -> impl Display {
     fmt::from_fn(move |f| {
-        write_header("rust-example-rendered", None, tooltip, extra_classes).fmt(f)?;
+        write_header("rust-example-rendered", tooltip, extra_classes).fmt(f)?;
         write_code(f, src, None, None, None);
         write_footer(playground_button).fmt(f)
     })
 }
 
-fn write_header(
-    class: &str,
-    extra_content: Option<&str>,
-    tooltip: Option<&Tooltip>,
-    extra_classes: &[String],
-) -> impl Display {
+fn write_header(class: &str, tooltip: Option<&Tooltip>, extra_classes: &[String]) -> impl Display {
     fmt::from_fn(move |f| {
         write!(
             f,
@@ -107,10 +102,6 @@ fn write_header(
             });
 
             write!(f, "<a href=\"#\" class=\"tooltip\" title=\"{tooltip}\">ⓘ</a>")?;
-        }
-
-        if let Some(extra) = extra_content {
-            f.write_str(extra)?;
         }
 
         let classes = fmt::from_fn(|f| {
