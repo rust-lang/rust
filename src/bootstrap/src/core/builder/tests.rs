@@ -22,13 +22,7 @@ fn configure(cmd: &str, host: &[&str], target: &[&str]) -> Config {
 }
 
 fn configure_with_args(cmd: &[&str], host: &[&str], target: &[&str]) -> Config {
-    TestCtx::new()
-        .config(cmd[0])
-        .args(&cmd[1..])
-        .hosts(host)
-        .targets(target)
-        .args(&["--build", TEST_TRIPLE_1])
-        .create_config()
+    TestCtx::new().config(cmd[0]).args(&cmd[1..]).hosts(host).targets(target).create_config()
 }
 
 fn first<A, B>(v: Vec<(A, B)>) -> Vec<A> {
@@ -236,6 +230,7 @@ mod dist {
 
     use super::{Config, TEST_TRIPLE_1, TEST_TRIPLE_2, TEST_TRIPLE_3, first, run_build};
     use crate::Flags;
+    use crate::core::builder::tests::host_target;
     use crate::core::builder::*;
 
     fn configure(host: &[&str], target: &[&str]) -> Config {
@@ -244,11 +239,11 @@ mod dist {
 
     #[test]
     fn llvm_out_behaviour() {
-        let mut config = configure(&[TEST_TRIPLE_1], &[TEST_TRIPLE_2]);
+        let mut config = configure(&[], &[TEST_TRIPLE_2]);
         config.llvm_from_ci = true;
         let build = Build::new(config.clone());
 
-        let target = TargetSelection::from_user(TEST_TRIPLE_1);
+        let target = TargetSelection::from_user(&host_target());
         assert!(build.llvm_out(target).ends_with("ci-llvm"));
         let target = TargetSelection::from_user(TEST_TRIPLE_2);
         assert!(build.llvm_out(target).ends_with("llvm"));
@@ -313,14 +308,14 @@ mod sysroot_target_dirs {
 /// cg_gcc tests instead.
 #[test]
 fn test_test_compiler() {
-    let config = configure_with_args(&["test", "compiler"], &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]);
+    let config = configure_with_args(&["test", "compiler"], &[], &[TEST_TRIPLE_1]);
     let cache = run_build(&config.paths.clone(), config);
 
     let compiler = cache.contains::<test::CrateLibrustc>();
     let cranelift = cache.contains::<test::CodegenCranelift>();
     let gcc = cache.contains::<test::CodegenGCC>();
 
-    assert_eq!((compiler, cranelift, gcc), (true, false, false));
+    assert_eq!((compiler, cranelift, gcc), (false, false, false));
 }
 
 #[test]
@@ -346,7 +341,7 @@ fn test_test_coverage() {
         // Print each test case so that if one fails, the most recently printed
         // case is the one that failed.
         println!("Testing case: {cmd:?}");
-        let config = configure_with_args(cmd, &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]);
+        let config = configure_with_args(cmd, &[], &[TEST_TRIPLE_1]);
         let mut cache = run_build(&config.paths.clone(), config);
 
         let modes =
