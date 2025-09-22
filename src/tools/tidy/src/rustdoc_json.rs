@@ -17,11 +17,13 @@ pub fn check(src_path: &Path, ci_info: &crate::CiInfo, diag_ctx: DiagCtx) {
     };
 
     // First we check that `src/rustdoc-json-types` was modified.
-    if !crate::files_modified(ci_info, |p| p == RUSTDOC_JSON_TYPES) {
+    if !crate::files_modified(ci_info, |p| p.starts_with(RUSTDOC_JSON_TYPES)) {
         // `rustdoc-json-types` was not modified so nothing more to check here.
-        check.verbose_msg("`rustdoc-json-types` was not modified.");
         return;
     }
+
+    check.message("`rustdoc-json-types` modified, checking format version");
+
     // Then we check that if `FORMAT_VERSION` was updated, the `Latest feature:` was also updated.
     match crate::git_diff(base_commit, src_path.join("rustdoc-json-types")) {
         Some(output) => {
