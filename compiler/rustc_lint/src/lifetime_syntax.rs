@@ -517,9 +517,8 @@ fn build_mismatch_suggestion(
 
 #[derive(Debug)]
 struct Info<'tcx> {
-    type_span: Span,
-    referenced_type_span: Option<Span>,
     lifetime: &'tcx hir::Lifetime,
+    ty: &'tcx hir::Ty<'tcx>,
 }
 
 impl<'tcx> Info<'tcx> {
@@ -543,7 +542,7 @@ impl<'tcx> Info<'tcx> {
     /// to include the type. Otherwise we end up pointing at nothing,
     /// which is a bit confusing.
     fn reporting_span(&self) -> Span {
-        if self.lifetime.is_implicit() { self.type_span } else { self.lifetime.ident.span }
+        if self.lifetime.is_implicit() { self.ty.span } else { self.lifetime.ident.span }
     }
 
     /// When removing an explicit lifetime from a reference,
@@ -561,11 +560,9 @@ impl<'tcx> Info<'tcx> {
     // FIXME: Ideally, we'd also remove the lifetime declaration.
     fn removing_span(&self) -> Span {
         let mut span = self.suggestion("'dummy").0;
-
-        if let Some(referenced_type_span) = self.referenced_type_span {
-            span = span.until(referenced_type_span);
+        if let hir::TyKind::Ref(_, mut_ty) = self.ty.kind {
+            span = span.until(mut_ty.ty.span);
         }
-
         span
     }
 
@@ -577,14 +574,13 @@ impl<'tcx> Info<'tcx> {
 type LifetimeInfoMap<'tcx> = FxIndexMap<&'tcx hir::LifetimeKind, Vec<Info<'tcx>>>;
 
 struct LifetimeInfoCollector<'a, 'tcx> {
-    type_span: Span,
-    referenced_type_span: Option<Span>,
     map: &'a mut LifetimeInfoMap<'tcx>,
+    ty: &'tcx hir::Ty<'tcx>,
 }
 
 impl<'a, 'tcx> LifetimeInfoCollector<'a, 'tcx> {
     fn collect(ty: &'tcx hir::Ty<'tcx>, map: &'a mut LifetimeInfoMap<'tcx>) {
-        let mut this = Self { type_span: ty.span, referenced_type_span: None, map };
+        let mut this = Self { map, ty };
 
         intravisit::walk_unambig_ty(&mut this, ty);
     }
@@ -593,27 +589,14 @@ impl<'a, 'tcx> LifetimeInfoCollector<'a, 'tcx> {
 impl<'a, 'tcx> Visitor<'tcx> for LifetimeInfoCollector<'a, 'tcx> {
     #[instrument(skip(self))]
     fn visit_lifetime(&mut self, lifetime: &'tcx hir::Lifetime) {
-        let type_span = self.type_span;
-        let referenced_type_span = self.referenced_type_span;
-
-        let info = Info { type_span, referenced_type_span, lifetime };
-
+        let info = Info { lifetime, ty: self.ty };
         self.map.entry(&lifetime.kind).or_default().push(info);
     }
 
     #[instrument(skip(self))]
     fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx, hir::AmbigArg>) -> Self::Result {
-        let old_type_span = self.type_span;
-        let old_referenced_type_span = self.referenced_type_span;
-
-        self.type_span = ty.span;
-        if let hir::TyKind::Ref(_, ty) = ty.kind {
-            self.referenced_type_span = Some(ty.ty.span);
-        }
-
+        let old_ty = std::mem::replace(&mut self.ty, ty.as_unambig_ty());
         intravisit::walk_ty(self, ty);
-
-        self.type_span = old_type_span;
-        self.referenced_type_span = old_referenced_type_span;
+        self.ty = old_ty;
     }
 }
