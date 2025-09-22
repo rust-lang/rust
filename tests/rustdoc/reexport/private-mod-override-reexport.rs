@@ -1,6 +1,5 @@
 // https://github.com/rust-lang/rust/issues/60926
 #![crate_name = "foo"]
-#![crate_type = "lib"]
 
 mod m1 {
     pub mod m2 {
