@@ -1,3 +1,5 @@
+//@ needs-target-std
+
 use run_make_support::{Rustc, cwd, diff, rust_lib_name, rustc};
 
 fn rustc_with_common_args() -> Rustc {
