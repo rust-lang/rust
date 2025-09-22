@@ -1,4 +1,4 @@
-error: `only "hide" or "show" are allowed in "#[doc(auto_cfg(...))]"`
+error: only `hide` or `show` are allowed in `#[doc(auto_cfg(...))]`
   --> $DIR/doc-cfg.rs:11:7
    |
 LL | #[doc(auto_cfg(42))]
@@ -30,13 +30,13 @@ error: `#![doc(auto_cfg(hide(...)))]` only accepts identifiers or key/value item
 LL | #[doc(auto_cfg(hide(foo::bar)))]
    |                     ^^^^^^^^
 
-error: `expected boolean for #[doc(auto_cfg = ...)]`
+error: expected boolean for `#[doc(auto_cfg = ...)]`
   --> $DIR/doc-cfg.rs:16:7
    |
 LL | #[doc(auto_cfg = 42)]
    |       ^^^^^^^^^^^^^
 
-error: `expected boolean for #[doc(auto_cfg = ...)]`
+error: expected boolean for `#[doc(auto_cfg = ...)]`
   --> $DIR/doc-cfg.rs:17:7
    |
 LL | #[doc(auto_cfg = "a")]

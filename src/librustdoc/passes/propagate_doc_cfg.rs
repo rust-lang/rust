@@ -33,19 +33,7 @@ struct CfgPropagator<'a, 'tcx> {
 /// Returns true if the provided `token` is a `cfg` ident.
 fn is_cfg_token(token: &TokenTree) -> bool {
     // We only keep `doc(cfg)` items.
-    matches!(
-        token,
-        TokenTree::Token(
-            Token {
-                kind: TokenKind::Ident(
-                    ident,
-                    _,
-                ),
-                ..
-            },
-            _,
-        ) if *ident == sym::cfg,
-    )
+    matches!(token, TokenTree::Token(Token { kind: TokenKind::Ident(sym::cfg, _,), .. }, _,),)
 }
 
 /// We only want to keep `#[cfg()]` and `#[doc(cfg())]` attributes so we rebuild a vec of

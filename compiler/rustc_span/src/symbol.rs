@@ -878,6 +878,7 @@ symbols! {
         doc_alias,
         doc_auto_cfg,
         doc_cfg,
+        doc_cfg_hide,
         doc_keyword,
         doc_masked,
         doc_notable_trait,
