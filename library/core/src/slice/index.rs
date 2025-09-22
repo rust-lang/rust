@@ -233,7 +233,7 @@ unsafe impl<T> const SliceIndex<[T]> for usize {
     #[track_caller]
     unsafe fn get_unchecked(self, slice: *const [T]) -> *const T {
         assert_unsafe_precondition!(
-            check_language_ub,
+            check_language_ub, // okay because of the `assume` below
             "slice::get_unchecked requires that the index is within the slice",
             (this: usize = self, len: usize = slice.len()) => this < len
         );
