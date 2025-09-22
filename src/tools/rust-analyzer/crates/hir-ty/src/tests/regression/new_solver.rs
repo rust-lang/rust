@@ -418,3 +418,35 @@ fn foo() {
         "#]],
     );
 }
+
+#[test]
+fn regression_19637() {
+    check_no_mismatches(
+        r#"
+//- minicore: coerce_unsized
+pub trait Any {}
+
+impl<T: 'static> Any for T {}
+
+pub trait Trait: Any {
+    type F;
+}
+
+pub struct TT {}
+
+impl Trait for TT {
+    type F = f32;
+}
+
+pub fn coercion(x: &mut dyn Any) -> &mut dyn Any {
+    x
+}
+
+fn main() {
+    let mut t = TT {};
+    let tt = &mut t as &mut dyn Trait<F = f32>;
+    let st = coercion(tt);
+}
+    "#,
+    );
+}
