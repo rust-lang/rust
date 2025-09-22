@@ -427,6 +427,48 @@ fn main() {
     }
 
     #[test]
+    fn inferred_array_length() {
+        check_assist(
+            extract_type_alias,
+            r#"
+fn main() {
+    let a: $0[i32; _]$0 = [1, 2, 3];
+}
+            "#,
+            r#"
+type $0Type = [i32; 3];
+
+fn main() {
+    let a: Type = [1, 2, 3];
+}
+            "#,
+        )
+    }
+
+    #[test]
+    fn inferred_generic_const_parameter() {
+        check_assist(
+            extract_type_alias,
+            r#"
+struct Wrap<const N: usize>([i32; N]);
+
+fn main() {
+    let wrap: $0Wrap<_>$0 = Wrap([1, 2, 3]);
+}
+            "#,
+            r#"
+struct Wrap<const N: usize>([i32; N]);
+
+type $0Type = Wrap<3>;
+
+fn main() {
+    let wrap: Type = Wrap([1, 2, 3]);
+}
+            "#,
+        )
+    }
+
+    #[test]
     fn inferred_type() {
         check_assist(
             extract_type_alias,

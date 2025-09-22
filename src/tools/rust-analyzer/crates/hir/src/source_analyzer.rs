@@ -25,7 +25,7 @@ use hir_def::{
     lang_item::LangItems,
     nameres::MacroSubNs,
     resolver::{ResolveValueResult, Resolver, TypeNs, ValueNs, resolver_for_scope},
-    type_ref::{Mutability, TypeRefId},
+    type_ref::{ConstRef, Mutability, TypeRefId},
     visibility::Visibility,
 };
 use hir_expand::{
@@ -491,8 +491,17 @@ impl<'db> SourceAnalyzer<'db> {
                     .and_then(|term| term.as_type())
                     .unwrap_or(self.types.types.error)
             }
-            fn next_const_var(&mut self, _span: hir_ide::Span) -> hir_ide::next_solver::Const<'db> {
-                self.types.consts.error
+            fn next_const_var(&mut self, span: hir_ide::Span) -> hir_ide::next_solver::Const<'db> {
+                let term_ref = match span {
+                    hir_ide::Span::TypeRefId(type_ref) => type_ref.into(),
+                    hir_ide::Span::ExprId(expr) => ConstRef { expr }.into(),
+                    _ => return self.types.consts.error,
+                };
+
+                self.infer
+                    .and_then(|infer| infer.term_of_term_placeholder(term_ref))
+                    .and_then(|generic_arg| generic_arg.as_const())
+                    .unwrap_or(self.types.consts.error)
             }
             fn next_region_var(&mut self, _span: hir_ide::Span) -> Region<'db> {
                 self.types.regions.error
