@@ -11,4 +11,4 @@ mod m1 {
 pub use m1::*;
 use crate::m1::m2;
 
-//@ !has foo/index.html '//a[@href="m2/index.html"]' 'm2'
+//@ count foo/index.html '//a[@class="mod"]' 0
