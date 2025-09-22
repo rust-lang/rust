@@ -1,6 +1,6 @@
 //@aux-build:proc_macros.rs
 #![warn(clippy::legacy_numeric_constants)]
-#![expect(renamed_and_removed_lints, clippy::no_effect, clippy::useless_attribute)]
+#![expect(renamed_and_removed_lints, clippy::no_effect, clippy::useless_attribute, deprecated)]
 
 #[macro_use]
 extern crate proc_macros;
