@@ -210,9 +210,8 @@ impl<'a, 'b, 'db> Coerce<'a, 'b, 'db> {
         // Coercing from `!` to any type is allowed:
         if a.is_never() {
             // If we're coercing into an inference var, mark it as possibly diverging.
-            // FIXME: rustc does this differently.
-            if let TyKind::Infer(rustc_type_ir::TyVar(b)) = b.kind() {
-                self.table.set_diverging(b.as_u32().into(), chalk_ir::TyVariableKind::General);
+            if b.is_infer() {
+                self.table.set_diverging(b);
             }
 
             if self.coerce_never {
@@ -1613,16 +1612,21 @@ fn coerce<'db>(
             chalk_ir::GenericArgData::Const(c) => c.inference_var(Interner),
         } == Some(iv))
     };
-    let fallback = |iv, kind, default, binder| match kind {
-        chalk_ir::VariableKind::Ty(_ty_kind) => find_var(iv)
-            .map_or(default, |i| crate::BoundVar::new(binder, i).to_ty(Interner).cast(Interner)),
-        chalk_ir::VariableKind::Lifetime => find_var(iv).map_or(default, |i| {
-            crate::BoundVar::new(binder, i).to_lifetime(Interner).cast(Interner)
-        }),
-        chalk_ir::VariableKind::Const(ty) => find_var(iv).map_or(default, |i| {
-            crate::BoundVar::new(binder, i).to_const(Interner, ty).cast(Interner)
-        }),
+    let fallback = |iv, kind, binder| match kind {
+        chalk_ir::VariableKind::Ty(_ty_kind) => find_var(iv).map_or_else(
+            || chalk_ir::TyKind::Error.intern(Interner).cast(Interner),
+            |i| crate::BoundVar::new(binder, i).to_ty(Interner).cast(Interner),
+        ),
+        chalk_ir::VariableKind::Lifetime => find_var(iv).map_or_else(
+            || crate::LifetimeData::Error.intern(Interner).cast(Interner),
+            |i| crate::BoundVar::new(binder, i).to_lifetime(Interner).cast(Interner),
+        ),
+        chalk_ir::VariableKind::Const(ty) => find_var(iv).map_or_else(
+            || crate::unknown_const(ty.clone()).cast(Interner),
+            |i| crate::BoundVar::new(binder, i).to_const(Interner, ty.clone()).cast(Interner),
+        ),
     };
     // FIXME also map the types in the adjustments
+    // FIXME: We don't fallback correctly since this is done on `InferenceContext` and we only have `InferenceTable`.
     Ok((adjustments, table.resolve_with_fallback(ty.to_chalk(table.interner), &fallback)))
 }

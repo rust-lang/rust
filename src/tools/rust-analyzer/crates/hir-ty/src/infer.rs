@@ -19,6 +19,7 @@ pub(crate) mod closure;
 mod coerce;
 pub(crate) mod diagnostics;
 mod expr;
+mod fallback;
 mod mutability;
 mod pat;
 mod path;
@@ -53,16 +54,16 @@ use indexmap::IndexSet;
 use intern::sym;
 use la_arena::{ArenaMap, Entry};
 use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_type_ir::inherent::Ty as _;
 use stdx::{always, never};
 use triomphe::Arc;
 
-use crate::db::InternedClosureId;
 use crate::{
     AliasEq, AliasTy, Binders, ClosureId, Const, DomainGoal, GenericArg, ImplTraitId, ImplTraitIdx,
     IncorrectGenericsLenKind, Interner, Lifetime, OpaqueTyId, ParamLoweringMode,
     PathLoweringDiagnostic, ProjectionTy, Substitution, TargetFeatures, TraitEnvironment, Ty,
     TyBuilder, TyExt,
-    db::HirDatabase,
+    db::{HirDatabase, InternedClosureId},
     fold_tys,
     generics::Generics,
     infer::{
@@ -75,6 +76,7 @@ use crate::{
     mir::MirSpan,
     next_solver::{
         self, DbInterner,
+        infer::{DefineOpaqueTypes, traits::ObligationCause},
         mapping::{ChalkToNextSolver, NextSolverToChalk},
     },
     static_lifetime, to_assoc_type_id,
@@ -138,6 +140,20 @@ pub(crate) fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<Infer
 
     ctx.infer_mut_body();
 
+    ctx.type_inference_fallback();
+
+    // Comment from rustc:
+    // Even though coercion casts provide type hints, we check casts after fallback for
+    // backwards compatibility. This makes fallback a stronger type hint than a cast coercion.
+    let cast_checks = std::mem::take(&mut ctx.deferred_cast_checks);
+    for mut cast in cast_checks.into_iter() {
+        if let Err(diag) = cast.check(&mut ctx) {
+            ctx.diagnostics.push(diag);
+        }
+    }
+
+    ctx.table.select_obligations_where_possible();
+
     ctx.infer_closures();
 
     Arc::new(ctx.resolve_all())
@@ -165,7 +181,6 @@ pub(crate) fn normalize(db: &dyn HirDatabase, trait_env: Arc<TraitEnvironment<'_
 
     let ty_with_vars = table.normalize_associated_types_in(ty);
     table.select_obligations_where_possible();
-    table.propagate_diverging_flag();
     table.resolve_completely(ty_with_vars)
 }
 
@@ -686,6 +701,25 @@ impl Index<BindingId> for InferenceResult {
     }
 }
 
+#[derive(Debug, Clone)]
+struct InternedStandardTypesNextSolver<'db> {
+    unit: crate::next_solver::Ty<'db>,
+    never: crate::next_solver::Ty<'db>,
+    i32: crate::next_solver::Ty<'db>,
+    f64: crate::next_solver::Ty<'db>,
+}
+
+impl<'db> InternedStandardTypesNextSolver<'db> {
+    fn new(interner: DbInterner<'db>) -> Self {
+        Self {
+            unit: crate::next_solver::Ty::new_unit(interner),
+            never: crate::next_solver::Ty::new(interner, crate::next_solver::TyKind::Never),
+            i32: crate::next_solver::Ty::new_int(interner, rustc_type_ir::IntTy::I32),
+            f64: crate::next_solver::Ty::new_float(interner, rustc_type_ir::FloatTy::F64),
+        }
+    }
+}
+
 /// The inference context contains all information needed during type inference.
 #[derive(Clone, Debug)]
 pub(crate) struct InferenceContext<'db> {
@@ -718,6 +752,7 @@ pub(crate) struct InferenceContext<'db> {
     resume_yield_tys: Option<(Ty, Ty)>,
     diverges: Diverges,
     breakables: Vec<BreakableContext<'db>>,
+    types: InternedStandardTypesNextSolver<'db>,
 
     /// Whether we are inside the pattern of a destructuring assignment.
     inside_assignment: bool,
@@ -798,11 +833,13 @@ impl<'db> InferenceContext<'db> {
         resolver: Resolver<'db>,
     ) -> Self {
         let trait_env = db.trait_environment_for_body(owner);
+        let table = unify::InferenceTable::new(db, trait_env);
         InferenceContext {
+            types: InternedStandardTypesNextSolver::new(table.interner),
             target_features: OnceCell::new(),
             generics: OnceCell::new(),
             result: InferenceResult::default(),
-            table: unify::InferenceTable::new(db, trait_env),
+            table,
             tuple_field_accesses_rev: Default::default(),
             return_ty: TyKind::Error.intern(Interner), // set in collect_* calls
             resume_yield_tys: None,
@@ -865,24 +902,33 @@ impl<'db> InferenceContext<'db> {
         self.result.has_errors = true;
     }
 
-    // FIXME: This function should be private in module. It is currently only used in the consteval, since we need
-    // `InferenceResult` in the middle of inference. See the fixme comment in `consteval::eval_to_const`. If you
-    // used this function for another workaround, mention it here. If you really need this function and believe that
-    // there is no problem in it being `pub(crate)`, remove this comment.
-    pub(crate) fn resolve_all(mut self) -> InferenceResult {
-        self.table.select_obligations_where_possible();
-        self.table.fallback_if_possible();
+    /// Clones `self` and calls `resolve_all()` on it.
+    // FIXME: Remove this.
+    pub(crate) fn fixme_resolve_all_clone(&self) -> InferenceResult {
+        let mut ctx = self.clone();
+
+        ctx.type_inference_fallback();
 
         // Comment from rustc:
         // Even though coercion casts provide type hints, we check casts after fallback for
         // backwards compatibility. This makes fallback a stronger type hint than a cast coercion.
-        let cast_checks = std::mem::take(&mut self.deferred_cast_checks);
+        let cast_checks = std::mem::take(&mut ctx.deferred_cast_checks);
         for mut cast in cast_checks.into_iter() {
-            if let Err(diag) = cast.check(&mut self) {
-                self.diagnostics.push(diag);
+            if let Err(diag) = cast.check(&mut ctx) {
+                ctx.diagnostics.push(diag);
             }
         }
 
+        ctx.table.select_obligations_where_possible();
+
+        ctx.resolve_all()
+    }
+
+    // FIXME: This function should be private in module. It is currently only used in the consteval, since we need
+    // `InferenceResult` in the middle of inference. See the fixme comment in `consteval::eval_to_const`. If you
+    // used this function for another workaround, mention it here. If you really need this function and believe that
+    // there is no problem in it being `pub(crate)`, remove this comment.
+    pub(crate) fn resolve_all(self) -> InferenceResult {
         let InferenceContext {
             mut table, mut result, tuple_field_accesses_rev, diagnostics, ..
         } = self;
@@ -914,11 +960,6 @@ impl<'db> InferenceContext<'db> {
             diagnostics: _,
         } = &mut result;
 
-        // FIXME resolve obligations as well (use Guidance if necessary)
-        table.select_obligations_where_possible();
-
-        // make sure diverging type variables are marked as such
-        table.propagate_diverging_flag();
         for ty in type_of_expr.values_mut() {
             *ty = table.resolve_completely(ty.clone());
             *has_errors = *has_errors || ty.contains_unknown();
@@ -1671,6 +1712,22 @@ impl<'db> InferenceContext<'db> {
 
     fn resolve_associated_type(&mut self, inner_ty: Ty, assoc_ty: Option<TypeAliasId>) -> Ty {
         self.resolve_associated_type_with_params(inner_ty, assoc_ty, &[])
+    }
+
+    fn demand_eqtype(
+        &mut self,
+        expected: crate::next_solver::Ty<'db>,
+        actual: crate::next_solver::Ty<'db>,
+    ) {
+        let result = self
+            .table
+            .infer_ctxt
+            .at(&ObligationCause::new(), self.table.trait_env.env)
+            .eq(DefineOpaqueTypes::Yes, expected, actual)
+            .map(|infer_ok| self.table.register_infer_ok(infer_ok));
+        if let Err(_err) = result {
+            // FIXME: Emit diagnostic.
+        }
     }
 
     fn resolve_associated_type_with_params(
