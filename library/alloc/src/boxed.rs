@@ -1268,6 +1268,7 @@ impl<T: ?Sized> Box<T> {
     /// The raw pointer must point to a block of memory allocated by the global allocator.
     ///
     /// The safety conditions are described in the [memory layout] section.
+    /// Note that the [considerations for unsafe code] apply to all `Box<T>` values.
     ///
     /// # Examples
     ///
@@ -1293,6 +1294,7 @@ impl<T: ?Sized> Box<T> {
     /// ```
     ///
     /// [memory layout]: self#memory-layout
+    /// [considerations for unsafe code]: self#considerations-for-unsafe-code
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
     #[must_use = "call `drop(Box::from_raw(ptr))` if you intend to drop the `Box`"]
@@ -1317,6 +1319,7 @@ impl<T: ?Sized> Box<T> {
     /// The non-null pointer must point to a block of memory allocated by the global allocator.
     ///
     /// The safety conditions are described in the [memory layout] section.
+    /// Note that the [considerations for unsafe code] apply to all `Box<T>` values.
     ///
     /// # Examples
     ///
@@ -1347,6 +1350,7 @@ impl<T: ?Sized> Box<T> {
     /// ```
     ///
     /// [memory layout]: self#memory-layout
+    /// [considerations for unsafe code]: self#considerations-for-unsafe-code
     #[unstable(feature = "box_vec_non_null", issue = "130364")]
     #[inline]
     #[must_use = "call `drop(Box::from_non_null(ptr))` if you intend to drop the `Box`"]
@@ -1490,6 +1494,9 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     ///
     /// The raw pointer must point to a block of memory allocated by `alloc`.
     ///
+    /// The safety conditions are described in the [memory layout] section.
+    /// Note that the [considerations for unsafe code] apply to all `Box<T, A>` values.
+    ///
     /// # Examples
     ///
     /// Recreate a `Box` which was previously converted to a raw pointer
@@ -1521,6 +1528,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// ```
     ///
     /// [memory layout]: self#memory-layout
+    /// [considerations for unsafe code]: self#considerations-for-unsafe-code
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
     pub unsafe fn from_raw_in(raw: *mut T, alloc: A) -> Self {
@@ -1542,6 +1550,9 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// function is called twice on the same raw pointer.
     ///
     /// The non-null pointer must point to a block of memory allocated by `alloc`.
+    ///
+    /// The safety conditions are described in the [memory layout] section.
+    /// Note that the [considerations for unsafe code] apply to all `Box<T, A>` values.
     ///
     /// # Examples
     ///
@@ -1573,6 +1584,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// ```
     ///
     /// [memory layout]: self#memory-layout
+    /// [considerations for unsafe code]: self#considerations-for-unsafe-code
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "box_vec_non_null", issue = "130364")]
     #[inline]
