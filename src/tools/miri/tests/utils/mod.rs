@@ -51,3 +51,18 @@ pub fn check_all_outcomes<T: Eq + std::hash::Hash + std::fmt::Debug>(
     }
     unreachable!()
 }
+
+/// Check that the operation is non-deterministic
+#[track_caller]
+pub fn check_nondet<T: PartialEq + std::fmt::Debug>(f: impl Fn() -> T) {
+    let rounds = 50;
+    let first = f();
+    for _ in 1..rounds {
+        if f() != first {
+            // We saw two different values!
+            return;
+        }
+    }
+    // We saw the same thing N times.
+    panic!("expected non-determinism, got {rounds} times the same result: {first:?}");
+}
