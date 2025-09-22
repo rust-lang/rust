@@ -3,6 +3,7 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir, LifetimeSource};
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::Span;
+use rustc_span::def_id::LocalDefId;
 use tracing::instrument;
 
 use crate::{LateContext, LateLintPass, LintContext, lints};
@@ -78,11 +79,11 @@ impl<'tcx> LateLintPass<'tcx> for LifetimeSyntax {
     fn check_fn(
         &mut self,
         cx: &LateContext<'tcx>,
-        _: hir::intravisit::FnKind<'tcx>,
+        _: intravisit::FnKind<'tcx>,
         fd: &'tcx hir::FnDecl<'tcx>,
         _: &'tcx hir::Body<'tcx>,
-        _: rustc_span::Span,
-        _: rustc_span::def_id::LocalDefId,
+        _: Span,
+        _: LocalDefId,
     ) {
         check_fn_like(cx, fd);
     }
@@ -97,11 +98,7 @@ impl<'tcx> LateLintPass<'tcx> for LifetimeSyntax {
     }
 
     #[instrument(skip_all)]
-    fn check_foreign_item(
-        &mut self,
-        cx: &LateContext<'tcx>,
-        fi: &'tcx rustc_hir::ForeignItem<'tcx>,
-    ) {
+    fn check_foreign_item(&mut self, cx: &LateContext<'tcx>, fi: &'tcx hir::ForeignItem<'tcx>) {
         match fi.kind {
             hir::ForeignItemKind::Fn(fn_sig, _idents, _generics) => check_fn_like(cx, fn_sig.decl),
             hir::ForeignItemKind::Static(..) => {}
@@ -228,7 +225,7 @@ impl<T> LifetimeSyntaxCategories<Vec<T>> {
 
     pub fn iter_unnamed(&self) -> impl Iterator<Item = &T> {
         let Self { hidden, elided, named: _ } = self;
-        [hidden.iter(), elided.iter()].into_iter().flatten()
+        std::iter::chain(hidden, elided)
     }
 }
 
@@ -308,13 +305,13 @@ fn emit_mismatch_diagnostic<'tcx>(
         use LifetimeSource::*;
         use hir::LifetimeSyntax::*;
 
-        let syntax_source = info.syntax_source();
+        let lifetime = info.lifetime;
 
-        if let (ExplicitBound, _) = syntax_source {
+        if lifetime.syntax == ExplicitBound {
             bound_lifetime = Some(info);
         }
 
-        match syntax_source {
+        match (lifetime.syntax, lifetime.source) {
             // E.g. `&T`.
             (Implicit, Reference) => {
                 suggest_change_to_explicit_anonymous.push(info);
@@ -334,8 +331,8 @@ fn emit_mismatch_diagnostic<'tcx>(
                 suggest_change_to_explicit_bound.push(info);
             }
 
-            // E.g. `ContainsLifetime<'_>`.
-            (ExplicitAnonymous, Path { .. }) => {
+            // E.g. `ContainsLifetime<'_>`, `+ '_`, `+ use<'_>`.
+            (ExplicitAnonymous, Path { .. } | OutlivesBound | PreciseCapturing) => {
                 suggest_change_to_explicit_bound.push(info);
             }
 
@@ -346,8 +343,8 @@ fn emit_mismatch_diagnostic<'tcx>(
                 suggest_change_to_explicit_anonymous.push(info);
             }
 
-            // E.g. `ContainsLifetime<'a>`.
-            (ExplicitBound, Path { .. }) => {
+            // E.g. `ContainsLifetime<'a>`, `+ 'a`, `+ use<'a>`.
+            (ExplicitBound, Path { .. } | OutlivesBound | PreciseCapturing) => {
                 suggest_change_to_mixed_explicit_anonymous.push(info);
                 suggest_change_to_explicit_anonymous.push(info);
             }
@@ -356,29 +353,18 @@ fn emit_mismatch_diagnostic<'tcx>(
                 panic!("This syntax / source combination is not possible");
             }
 
-            // E.g. `+ '_`, `+ use<'_>`.
-            (ExplicitAnonymous, OutlivesBound | PreciseCapturing) => {
-                suggest_change_to_explicit_bound.push(info);
-            }
-
-            // E.g. `+ 'a`, `+ use<'a>`.
-            (ExplicitBound, OutlivesBound | PreciseCapturing) => {
-                suggest_change_to_mixed_explicit_anonymous.push(info);
-                suggest_change_to_explicit_anonymous.push(info);
-            }
-
             (_, Other) => {
                 panic!("This syntax / source combination has already been skipped");
             }
         }
 
-        if matches!(syntax_source, (_, Path { .. } | OutlivesBound | PreciseCapturing)) {
+        if matches!(lifetime.source, Path { .. } | OutlivesBound | PreciseCapturing) {
             allow_suggesting_implicit = false;
         }
 
-        match syntax_source {
-            (_, Reference) => saw_a_reference = true,
-            (_, Path { .. }) => saw_a_path = true,
+        match lifetime.source {
+            Reference => saw_a_reference = true,
+            Path { .. } => saw_a_path = true,
             _ => {}
         }
     }
@@ -398,10 +384,10 @@ fn emit_mismatch_diagnostic<'tcx>(
         |infos: &[&Info<'_>]| infos.iter().map(|i| i.removing_span()).collect::<Vec<_>>();
 
     let explicit_bound_suggestion = bound_lifetime.map(|info| {
-        build_mismatch_suggestion(info.lifetime_name(), &suggest_change_to_explicit_bound)
+        build_mismatch_suggestion(info.lifetime.ident.as_str(), &suggest_change_to_explicit_bound)
     });
 
-    let is_bound_static = bound_lifetime.is_some_and(|info| info.is_static());
+    let is_bound_static = bound_lifetime.is_some_and(|info| info.lifetime.is_static());
 
     tracing::debug!(?bound_lifetime, ?explicit_bound_suggestion, ?is_bound_static);
 
@@ -514,18 +500,6 @@ struct Info<'tcx> {
 }
 
 impl<'tcx> Info<'tcx> {
-    fn syntax_source(&self) -> (hir::LifetimeSyntax, LifetimeSource) {
-        (self.lifetime.syntax, self.lifetime.source)
-    }
-
-    fn lifetime_name(&self) -> &str {
-        self.lifetime.ident.as_str()
-    }
-
-    fn is_static(&self) -> bool {
-        self.lifetime.is_static()
-    }
-
     /// When reporting a lifetime that is implicit, we expand the span
     /// to include the type. Otherwise we end up pointing at nothing,
     /// which is a bit confusing.
@@ -547,7 +521,7 @@ impl<'tcx> Info<'tcx> {
     /// ```
     // FIXME: Ideally, we'd also remove the lifetime declaration.
     fn removing_span(&self) -> Span {
-        let mut span = self.suggestion("'dummy").0;
+        let mut span = self.lifetime.ident.span;
         if let hir::TyKind::Ref(_, mut_ty) = self.ty.kind {
             span = span.until(mut_ty.ty.span);
         }
