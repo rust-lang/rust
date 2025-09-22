@@ -668,7 +668,7 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             MutableRefInConst => const_eval_validation_mutable_ref_in_const,
             NullFnPtr => const_eval_validation_null_fn_ptr,
             NeverVal => const_eval_validation_never_val,
-            NullablePtrOutOfRange { .. } => const_eval_validation_nullable_ptr_out_of_range,
+            NonnullPtrMaybeNull { .. } => const_eval_validation_nonnull_ptr_out_of_range,
             PtrOutOfRange { .. } => const_eval_validation_ptr_out_of_range,
             OutOfRange { .. } => const_eval_validation_out_of_range,
             UnsafeCellInImmutable => const_eval_validation_unsafe_cell,
@@ -804,9 +804,7 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             | InvalidFnPtr { value } => {
                 err.arg("value", value);
             }
-            NullablePtrOutOfRange { range, max_value } | PtrOutOfRange { range, max_value } => {
-                add_range_arg(range, max_value, err)
-            }
+            PtrOutOfRange { range, max_value } => add_range_arg(range, max_value, err),
             OutOfRange { range, max_value, value } => {
                 err.arg("value", value);
                 add_range_arg(range, max_value, err);
@@ -826,6 +824,7 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             | MutableRefToImmutable
             | MutableRefInConst
             | NullFnPtr
+            | NonnullPtrMaybeNull
             | NeverVal
             | UnsafeCellInImmutable
             | InvalidMetaSliceTooLarge { .. }

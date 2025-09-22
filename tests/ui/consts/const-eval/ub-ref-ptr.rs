@@ -4,7 +4,7 @@
 //@ normalize-stderr: "([0-9a-f][0-9a-f] |__ |╾─*ALLOC[0-9]+(\+[a-z0-9]+)?(<imm>)?─*╼ )+ *│.*" -> "HEX_DUMP"
 //@ dont-require-annotations: NOTE
 //@ normalize-stderr: "0x[0-9](\.\.|\])" -> "0x%$1"
-
+#![feature(rustc_attrs)]
 #![allow(invalid_value)]
 
 use std::mem;
@@ -64,6 +64,15 @@ const UNALIGNED_READ: () = unsafe {
     let ptr = x.as_ptr().cast::<u32>();
     ptr.read(); //~ ERROR accessing memory
 };
+
+// Check the general case of a pointer value not falling into the scalar valid range.
+#[rustc_layout_scalar_valid_range_start(1000)]
+pub struct High {
+    pointer: *const (),
+}
+static S: u32 = 0; // just a static to construct a pointer with unknown absolute address
+const INVALID_VALUE_PTR: High = unsafe { mem::transmute(&S) };
+//~^ ERROR invalid value
 
 
 fn main() {}
