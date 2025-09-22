@@ -1355,6 +1355,18 @@ pub(crate) fn generic_predicates_for_param_cycle_result(
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GenericPredicates<'db>(Option<Arc<[Clause<'db>]>>);
 
+impl<'db> GenericPredicates<'db> {
+    pub fn instantiate(
+        &self,
+        interner: DbInterner<'db>,
+        args: GenericArgs<'db>,
+    ) -> Option<impl Iterator<Item = Clause<'db>>> {
+        self.0
+            .as_ref()
+            .map(|it| EarlyBinder::bind(it.iter().copied()).iter_instantiated(interner, args))
+    }
+}
+
 impl<'db> ops::Deref for GenericPredicates<'db> {
     type Target = [Clause<'db>];
 

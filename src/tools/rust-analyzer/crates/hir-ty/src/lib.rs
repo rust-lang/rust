@@ -93,7 +93,10 @@ use intern::{Symbol, sym};
 use la_arena::{Arena, Idx};
 use mir::{MirEvalError, VTableMap};
 use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet};
-use rustc_type_ir::inherent::SliceLike;
+use rustc_type_ir::{
+    UpcastFrom,
+    inherent::{SliceLike, Ty as _},
+};
 use syntax::ast::{ConstArg, make};
 use traits::FnTrait;
 use triomphe::Arc;
@@ -106,7 +109,7 @@ use crate::{
     infer::unify::InferenceTable,
     next_solver::{
         DbInterner,
-        mapping::{ChalkToNextSolver, convert_ty_for_result},
+        mapping::{ChalkToNextSolver, NextSolverToChalk, convert_ty_for_result},
     },
 };
 
@@ -957,26 +960,32 @@ pub fn callable_sig_from_fn_trait(
     // Register two obligations:
     // - Self: FnOnce<?args_ty>
     // - <Self as FnOnce<?args_ty>>::Output == ?ret_ty
-    let args_ty = table.new_type_var();
-    let mut trait_ref = b.push(self_ty.clone()).push(args_ty.clone()).build();
-    let projection = TyBuilder::assoc_type_projection(
-        db,
-        output_assoc_type,
-        Some(trait_ref.substitution.clone()),
-    )
-    .build();
+    let args_ty = table.next_ty_var();
+    let args = [self_ty.to_nextsolver(table.interner), args_ty];
+    let trait_ref = crate::next_solver::TraitRef::new(table.interner, fn_once_trait.into(), args);
+    let projection = crate::next_solver::Ty::new_alias(
+        table.interner,
+        rustc_type_ir::AliasTyKind::Projection,
+        crate::next_solver::AliasTy::new(table.interner, output_assoc_type.into(), args),
+    );
 
-    let goal: Goal = trait_ref.clone().cast(Interner);
-    let pred = goal.to_nextsolver(table.interner);
-    if !table.try_obligation(goal).no_solution() {
+    let pred = crate::next_solver::Predicate::upcast_from(trait_ref, table.interner);
+    if !table.try_obligation(pred).no_solution() {
         table.register_obligation(pred);
-        let return_ty = table.normalize_projection_ty(projection);
+        let return_ty = table.normalize_alias_ty(projection);
         for fn_x in [FnTrait::Fn, FnTrait::FnMut, FnTrait::FnOnce] {
             let fn_x_trait = fn_x.get_id(db, krate)?;
-            trait_ref.trait_id = to_chalk_trait_id(fn_x_trait);
-            if !table.try_obligation(trait_ref.clone().cast(Interner)).no_solution() {
-                let ret_ty = table.resolve_completely(return_ty);
-                let args_ty = table.resolve_completely(args_ty);
+            let trait_ref =
+                crate::next_solver::TraitRef::new(table.interner, fn_x_trait.into(), args);
+            if !table
+                .try_obligation(crate::next_solver::Predicate::upcast_from(
+                    trait_ref,
+                    table.interner,
+                ))
+                .no_solution()
+            {
+                let ret_ty = table.resolve_completely(return_ty.to_chalk(table.interner));
+                let args_ty = table.resolve_completely(args_ty.to_chalk(table.interner));
                 let params = args_ty
                     .as_tuple()?
                     .iter(Interner)

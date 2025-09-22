@@ -1,4 +1,4 @@
-//! Trait solving using Chalk.
+//! Trait solving using next trait solver.
 
 use core::fmt;
 use std::hash::Hash;
@@ -128,7 +128,7 @@ fn identity_subst(
     chalk_ir::Canonical { binders, value: identity_subst }
 }
 
-/// Solve a trait goal using Chalk.
+/// Solve a trait goal using next trait solver.
 pub(crate) fn trait_solve_query(
     db: &dyn HirDatabase,
     krate: Crate,
@@ -325,7 +325,7 @@ pub fn next_trait_solve_canonical_in_ctxt<'db>(
     }
 }
 
-/// Solve a trait goal using Chalk.
+/// Solve a trait goal using next trait solver.
 pub fn next_trait_solve_in_ctxt<'db, 'a>(
     infer_ctxt: &'a InferCtxt<'db>,
     goal: crate::next_solver::Goal<'db, crate::next_solver::Predicate<'db>>,

@@ -11,39 +11,35 @@ use hir_def::{AdtId, lang_item::LangItem};
 use hir_expand::name::Name;
 use intern::sym;
 use rustc_hash::{FxHashMap, FxHashSet};
-use rustc_type_ir::inherent::Ty as _;
 use rustc_type_ir::{
-    FloatVid, IntVid, TyVid, TypeVisitableExt,
-    inherent::{IntoKind, Span, Term as _},
+    FloatVid, IntVid, TyVid, TypeVisitableExt, UpcastFrom,
+    inherent::{IntoKind, Span, Term as _, Ty as _},
     relate::{Relate, solver_relating::RelateExt},
-    solve::{Certainty, GoalSource, NoSolution},
+    solve::{Certainty, GoalSource},
 };
 use smallvec::SmallVec;
 use triomphe::Arc;
 
 use super::{InferResult, InferenceContext, TypeError};
-use crate::next_solver::ErrorGuaranteed;
 use crate::{
     AliasTy, BoundVar, Canonical, Const, ConstValue, DebruijnIndex, GenericArg, GenericArgData,
-    Goal, GoalData, InEnvironment, InferenceVar, Interner, Lifetime, OpaqueTyId, ParamKind,
-    ProjectionTy, Scalar, Substitution, TraitEnvironment, TraitRef, Ty, TyBuilder, TyExt, TyKind,
-    VariableKind, WhereClause,
+    InferenceVar, Interner, Lifetime, OpaqueTyId, ProjectionTy, Scalar, Substitution,
+    TraitEnvironment, Ty, TyExt, TyKind, VariableKind,
     consteval::unknown_const,
     db::HirDatabase,
     fold_generic_args, fold_tys_and_consts,
-    next_solver::infer::InferOk,
     next_solver::{
-        self, ClauseKind, DbInterner, ParamEnv, Predicate, PredicateKind, SolverDefIds, Term,
+        self, ClauseKind, DbInterner, ErrorGuaranteed, ParamEnv, Predicate, PredicateKind,
+        SolverDefIds, Term, TraitRef,
         fulfill::FulfillmentCtxt,
         infer::{
-            DbInternerInferExt, InferCtxt,
+            DbInternerInferExt, InferCtxt, InferOk,
             snapshot::CombinedSnapshot,
             traits::{Obligation, ObligationCause},
         },
         inspect::{InspectConfig, InspectGoal, ProofTreeVisitor},
         mapping::{ChalkToNextSolver, NextSolverToChalk},
     },
-    to_chalk_trait_id,
     traits::{
         FnTrait, NextTraitSolveResult, next_trait_solve_canonical_in_ctxt, next_trait_solve_in_ctxt,
     },
@@ -877,26 +873,15 @@ impl<'db> InferenceTable<'db> {
     /// whether a trait *might* be implemented before deciding to 'lock in' the
     /// choice (during e.g. method resolution or deref).
     #[tracing::instrument(level = "debug", skip(self))]
-    pub(crate) fn try_obligation(&mut self, goal: Goal) -> NextTraitSolveResult {
-        let in_env = InEnvironment::new(&self.trait_env.env, goal);
-        let canonicalized = self.canonicalize(in_env.to_nextsolver(self.interner));
+    pub(crate) fn try_obligation(&mut self, predicate: Predicate<'db>) -> NextTraitSolveResult {
+        let goal = next_solver::Goal { param_env: self.param_env, predicate };
+        let canonicalized = self.canonicalize(goal);
 
         next_trait_solve_canonical_in_ctxt(&self.infer_ctxt, canonicalized)
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
-    pub(crate) fn solve_obligation(&mut self, goal: Goal) -> Result<Certainty, NoSolution> {
-        let goal = InEnvironment::new(&self.trait_env.env, goal);
-        let goal = goal.to_nextsolver(self.interner);
-        let result = next_trait_solve_in_ctxt(&self.infer_ctxt, goal);
-        result.map(|m| m.1)
-    }
-
     pub(crate) fn register_obligation(&mut self, predicate: Predicate<'db>) {
-        let goal = next_solver::Goal {
-            param_env: self.trait_env.env.to_nextsolver(self.interner),
-            predicate,
-        };
+        let goal = next_solver::Goal { param_env: self.param_env, predicate };
         self.register_obligation_in_env(goal)
     }
 
@@ -984,7 +969,7 @@ impl<'db> InferenceTable<'db> {
         &mut self,
         ty: &Ty,
         num_args: usize,
-    ) -> Option<(FnTrait, Vec<crate::next_solver::Ty<'db>>, crate::next_solver::Ty<'db>)> {
+    ) -> Option<(FnTrait, Vec<next_solver::Ty<'db>>, next_solver::Ty<'db>)> {
         for (fn_trait_name, output_assoc_name, subtraits) in [
             (FnTrait::FnOnce, sym::Output, &[FnTrait::Fn, FnTrait::FnMut][..]),
             (FnTrait::AsyncFnMut, sym::CallRefFuture, &[FnTrait::AsyncFn]),
@@ -997,42 +982,34 @@ impl<'db> InferenceTable<'db> {
                 trait_data.associated_type_by_name(&Name::new_symbol_root(output_assoc_name))?;
 
             let mut arg_tys = Vec::with_capacity(num_args);
-            let arg_ty = TyBuilder::tuple(num_args)
-                .fill(|it| {
-                    let arg = match it {
-                        ParamKind::Type => self.new_type_var(),
-                        ParamKind::Lifetime => unreachable!("Tuple with lifetime parameter"),
-                        ParamKind::Const(_) => unreachable!("Tuple with const parameter"),
-                    };
-                    arg_tys.push(arg.to_nextsolver(self.interner));
-                    arg.cast(Interner)
+            let arg_ty = next_solver::Ty::new_tup_from_iter(
+                self.interner,
+                std::iter::repeat_with(|| {
+                    let ty = self.next_ty_var();
+                    arg_tys.push(ty);
+                    ty
                 })
-                .build();
+                .take(num_args),
+            );
+            let args = [ty.to_nextsolver(self.interner), arg_ty];
+            let trait_ref = crate::next_solver::TraitRef::new(self.interner, fn_trait.into(), args);
 
-            let b = TyBuilder::trait_ref(self.db, fn_trait);
-            if b.remaining() != 2 {
-                return None;
-            }
-            let mut trait_ref = b.push(ty.clone()).push(arg_ty).build();
+            let projection = crate::next_solver::Ty::new_alias(
+                self.interner,
+                rustc_type_ir::AliasTyKind::Projection,
+                crate::next_solver::AliasTy::new(self.interner, output_assoc_type.into(), args),
+            );
 
-            let projection = TyBuilder::assoc_type_projection(
-                self.db,
-                output_assoc_type,
-                Some(trait_ref.substitution.clone()),
-            )
-            .fill_with_unknown()
-            .build();
-
-            let goal: Goal = trait_ref.clone().cast(Interner);
-            if !self.try_obligation(goal.clone()).no_solution() {
-                self.register_obligation(goal.to_nextsolver(self.interner));
-                let return_ty =
-                    self.normalize_projection_ty(projection).to_nextsolver(self.interner);
+            let pred = crate::next_solver::Predicate::upcast_from(trait_ref, self.interner);
+            if !self.try_obligation(pred).no_solution() {
+                self.register_obligation(pred);
+                let return_ty = self.normalize_alias_ty(projection);
                 for &fn_x in subtraits {
                     let fn_x_trait = fn_x.get_id(self.db, krate)?;
-                    trait_ref.trait_id = to_chalk_trait_id(fn_x_trait);
-                    let goal = trait_ref.clone().cast(Interner);
-                    if !self.try_obligation(goal).no_solution() {
+                    let trait_ref =
+                        crate::next_solver::TraitRef::new(self.interner, fn_x_trait.into(), args);
+                    let pred = crate::next_solver::Predicate::upcast_from(trait_ref, self.interner);
+                    if !self.try_obligation(pred).no_solution() {
                         return Some((fn_x, arg_tys, return_ty));
                     }
                 }
@@ -1171,12 +1148,11 @@ impl<'db> InferenceTable<'db> {
         let Some(sized) = LangItem::Sized.resolve_trait(self.db, self.trait_env.krate) else {
             return false;
         };
-        let sized_pred = WhereClause::Implemented(TraitRef {
-            trait_id: to_chalk_trait_id(sized),
-            substitution: Substitution::from1(Interner, ty),
-        });
-        let goal = GoalData::DomainGoal(chalk_ir::DomainGoal::Holds(sized_pred)).intern(Interner);
-        self.try_obligation(goal).certain()
+        let sized_pred = Predicate::upcast_from(
+            TraitRef::new(self.interner, sized.into(), [ty.to_nextsolver(self.interner)]),
+            self.interner,
+        );
+        self.try_obligation(sized_pred).certain()
     }
 }
 
