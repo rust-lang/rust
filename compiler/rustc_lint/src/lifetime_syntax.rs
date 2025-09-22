@@ -148,11 +148,11 @@ enum LifetimeSyntaxCategory {
 }
 
 impl LifetimeSyntaxCategory {
-    fn new(syntax_source: (hir::LifetimeSyntax, LifetimeSource)) -> Option<Self> {
+    fn new(lifetime: &hir::Lifetime) -> Option<Self> {
         use LifetimeSource::*;
         use hir::LifetimeSyntax::*;
 
-        match syntax_source {
+        match (lifetime.syntax, lifetime.source) {
             // E.g. `&T`.
             (Implicit, Reference) |
             // E.g. `&'_ T`.
@@ -233,22 +233,8 @@ impl std::ops::Add for LifetimeSyntaxCategories<usize> {
 }
 
 fn lifetimes_use_matched_syntax(input_info: &[Info<'_>], output_info: &[Info<'_>]) -> bool {
-    let mut syntax_counts = LifetimeSyntaxCategories::<usize>::default();
-
-    for info in input_info.iter().chain(output_info) {
-        if let Some(category) = info.lifetime_syntax_category() {
-            *syntax_counts.select(category) += 1;
-        }
-    }
-
-    tracing::debug!(?syntax_counts);
-
-    matches!(
-        syntax_counts,
-        LifetimeSyntaxCategories { hidden: _, elided: 0, named: 0 }
-            | LifetimeSyntaxCategories { hidden: 0, elided: _, named: 0 }
-            | LifetimeSyntaxCategories { hidden: 0, elided: 0, named: _ }
-    )
+    let (first, inputs) = input_info.split_first().unwrap();
+    std::iter::chain(inputs, output_info).all(|info| info.syntax_category == first.syntax_category)
 }
 
 fn emit_mismatch_diagnostic<'tcx>(
@@ -311,11 +297,6 @@ fn emit_mismatch_diagnostic<'tcx>(
         use hir::LifetimeSyntax::*;
 
         let syntax_source = info.syntax_source();
-
-        if let (_, Other) = syntax_source {
-            // Ignore any other kind of lifetime.
-            continue;
-        }
 
         if let (ExplicitBound, _) = syntax_source {
             bound_lifetime = Some(info);
@@ -393,9 +374,7 @@ fn emit_mismatch_diagnostic<'tcx>(
     let categorize = |infos: &[Info<'_>]| {
         let mut categories = LifetimeSyntaxCategories::<Vec<_>>::default();
         for info in infos {
-            if let Some(category) = info.lifetime_syntax_category() {
-                categories.select(category).push(info.reporting_span());
-            }
+            categories.select(info.syntax_category).push(info.reporting_span());
         }
         categories
     };
@@ -518,16 +497,13 @@ fn build_mismatch_suggestion(
 #[derive(Debug)]
 struct Info<'tcx> {
     lifetime: &'tcx hir::Lifetime,
+    syntax_category: LifetimeSyntaxCategory,
     ty: &'tcx hir::Ty<'tcx>,
 }
 
 impl<'tcx> Info<'tcx> {
     fn syntax_source(&self) -> (hir::LifetimeSyntax, LifetimeSource) {
         (self.lifetime.syntax, self.lifetime.source)
-    }
-
-    fn lifetime_syntax_category(&self) -> Option<LifetimeSyntaxCategory> {
-        LifetimeSyntaxCategory::new(self.syntax_source())
     }
 
     fn lifetime_name(&self) -> &str {
@@ -589,8 +565,10 @@ impl<'a, 'tcx> LifetimeInfoCollector<'a, 'tcx> {
 impl<'a, 'tcx> Visitor<'tcx> for LifetimeInfoCollector<'a, 'tcx> {
     #[instrument(skip(self))]
     fn visit_lifetime(&mut self, lifetime: &'tcx hir::Lifetime) {
-        let info = Info { lifetime, ty: self.ty };
-        self.map.entry(&lifetime.kind).or_default().push(info);
+        if let Some(syntax_category) = LifetimeSyntaxCategory::new(lifetime) {
+            let info = Info { lifetime, syntax_category, ty: self.ty };
+            self.map.entry(&lifetime.kind).or_default().push(info);
+        }
     }
 
     #[instrument(skip(self))]
