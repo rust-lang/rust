@@ -28,6 +28,7 @@ pub enum SimplifiedType<DefId> {
     Uint(ty::UintTy),
     Float(ty::FloatTy),
     Adt(DefId),
+    Field,
     Foreign(DefId),
     Str,
     Array,
@@ -123,6 +124,7 @@ pub fn simplify_type<I: Interner>(
         ty::Uint(uint_type) => Some(SimplifiedType::Uint(uint_type)),
         ty::Float(float_type) => Some(SimplifiedType::Float(float_type)),
         ty::Adt(def, _) => Some(SimplifiedType::Adt(def.def_id().into())),
+        ty::Field(..) => Some(SimplifiedType::Field),
         ty::Str => Some(SimplifiedType::Str),
         ty::Array(..) => Some(SimplifiedType::Array),
         ty::Slice(..) => Some(SimplifiedType::Slice),
@@ -292,6 +294,7 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
             | ty::Uint(_)
             | ty::Float(_)
             | ty::Adt(..)
+            | ty::Field(..)
             | ty::Str
             | ty::Array(..)
             | ty::Slice(..)
@@ -337,6 +340,14 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
             ty::Adt(lhs_def, lhs_args) => match rhs.kind() {
                 ty::Adt(rhs_def, rhs_args) => {
                     lhs_def == rhs_def && self.args_may_unify_inner(lhs_args, rhs_args, depth)
+                }
+                _ => false,
+            },
+
+            ty::Field(lhs_ty, lhs_field_path) => match rhs.kind() {
+                ty::Field(rhs_ty, rhs_field_path) => {
+                    self.types_may_unify_inner(lhs_ty, rhs_ty, depth)
+                        && lhs_field_path == rhs_field_path
                 }
                 _ => false,
             },

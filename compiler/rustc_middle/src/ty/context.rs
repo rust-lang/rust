@@ -79,9 +79,9 @@ use crate::traits::solve::{
 };
 use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
 use crate::ty::{
-    self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Clauses, Const, GenericArg, GenericArgs,
-    GenericArgsRef, GenericParamDefKind, List, ListWithCachedTypeInfo, ParamConst, ParamTy,
-    Pattern, PatternKind, PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind,
+    self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Clauses, Const, FieldPath, GenericArg,
+    GenericArgs, GenericArgsRef, GenericParamDefKind, List, ListWithCachedTypeInfo, ParamConst,
+    ParamTy, Pattern, PatternKind, PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind,
     PredicatePolarity, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVid,
     ValTree, ValTreeKind, Visibility,
 };
@@ -157,6 +157,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type PatList = &'tcx List<Pattern<'tcx>>;
     type Safety = hir::Safety;
     type Abi = ExternAbi;
+    type FieldPath = FieldPath<'tcx>;
     type Const = ty::Const<'tcx>;
     type PlaceholderConst = ty::PlaceholderConst;
 
@@ -565,6 +566,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             | ty::Uint(_)
             | ty::Float(_)
             | ty::Adt(_, _)
+            | ty::Field(_, _)
             | ty::Foreign(_)
             | ty::Str
             | ty::Array(_, _)
@@ -805,6 +807,8 @@ bidirectional_lang_item_map! {
     CoroutineReturn,
     CoroutineYield,
     DynMetadata,
+    FieldBase,
+    FieldType,
     FutureOutput,
     Metadata,
 // tidy-alphabetical-end
@@ -836,6 +840,7 @@ bidirectional_lang_item_map! {
     Destruct,
     DiscriminantKind,
     Drop,
+    Field,
     Fn,
     FnMut,
     FnOnce,
@@ -945,7 +950,7 @@ pub struct CtxtInterners<'tcx> {
     fields: InternedSet<'tcx, List<FieldIdx>>,
     local_def_ids: InternedSet<'tcx, List<LocalDefId>>,
     captures: InternedSet<'tcx, List<&'tcx ty::CapturedPlace<'tcx>>>,
-    offset_of: InternedSet<'tcx, List<(VariantIdx, FieldIdx)>>,
+    field_paths: InternedSet<'tcx, List<(VariantIdx, FieldIdx)>>,
     valtree: InternedSet<'tcx, ty::ValTreeKind<'tcx>>,
     patterns: InternedSet<'tcx, List<ty::Pattern<'tcx>>>,
     outlives: InternedSet<'tcx, List<ty::ArgOutlivesPredicate<'tcx>>>,
@@ -983,7 +988,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             fields: InternedSet::with_capacity(N * 4),
             local_def_ids: InternedSet::with_capacity(N),
             captures: InternedSet::with_capacity(N),
-            offset_of: InternedSet::with_capacity(N),
+            field_paths: InternedSet::with_capacity(N),
             valtree: InternedSet::with_capacity(N),
             patterns: InternedSet::with_capacity(N),
             outlives: InternedSet::with_capacity(N),
@@ -2578,6 +2583,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 fmt,
                 self,
                 Adt,
+                Field,
                 Array,
                 Slice,
                 RawPtr,
@@ -2783,7 +2789,7 @@ slice_interners!(
     fields: pub mk_fields(FieldIdx),
     local_def_ids: intern_local_def_ids(LocalDefId),
     captures: intern_captures(&'tcx ty::CapturedPlace<'tcx>),
-    offset_of: pub mk_offset_of((VariantIdx, FieldIdx)),
+    field_paths: pub mk_field_path((VariantIdx, FieldIdx)),
     patterns: pub mk_patterns(Pattern<'tcx>),
     outlives: pub mk_outlives(ty::ArgOutlivesPredicate<'tcx>),
 );
@@ -3177,12 +3183,12 @@ impl<'tcx> TyCtxt<'tcx> {
         T::collect_and_apply(iter, |xs| self.mk_fields(xs))
     }
 
-    pub fn mk_offset_of_from_iter<I, T>(self, iter: I) -> T::Output
+    pub fn mk_field_path_from_iter<I, T>(self, iter: I) -> T::Output
     where
         I: Iterator<Item = T>,
-        T: CollectAndApply<(VariantIdx, FieldIdx), &'tcx List<(VariantIdx, FieldIdx)>>,
+        T: CollectAndApply<(VariantIdx, FieldIdx), FieldPath<'tcx>>,
     {
-        T::collect_and_apply(iter, |xs| self.mk_offset_of(xs))
+        T::collect_and_apply(iter, |xs| FieldPath(self.mk_field_path(xs)))
     }
 
     pub fn mk_args_trait(

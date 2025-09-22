@@ -351,6 +351,11 @@ where
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
     ) -> Vec<Candidate<I>>;
+
+    fn consider_builtin_field_candidate(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+    ) -> Result<Candidate<I>, NoSolution>;
 }
 
 /// Allows callers of `assemble_and_evaluate_candidates` to choose whether to limit
@@ -606,6 +611,7 @@ where
                 Some(SolverTraitLangItem::BikeshedGuaranteedNoDrop) => {
                     G::consider_builtin_bikeshed_guaranteed_no_drop_candidate(self, goal)
                 }
+                Some(SolverTraitLangItem::Field) => G::consider_builtin_field_candidate(self, goal),
                 _ => Err(NoSolution),
             }
         };
@@ -675,6 +681,7 @@ where
             | ty::Uint(_)
             | ty::Float(_)
             | ty::Adt(_, _)
+            | ty::Field(_, _)
             | ty::Foreign(_)
             | ty::Str
             | ty::Array(_, _)
@@ -793,6 +800,7 @@ where
             | ty::Uint(_)
             | ty::Float(_)
             | ty::Adt(_, _)
+            | ty::Field(_, _)
             | ty::Foreign(_)
             | ty::Str
             | ty::Array(_, _)

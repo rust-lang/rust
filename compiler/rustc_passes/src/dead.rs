@@ -289,15 +289,18 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
 
     fn handle_offset_of(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         let data = self.typeck_results().offset_of_data();
-        let &(container, ref indices) =
-            data.get(expr.hir_id).expect("no offset_of_data for offset_of");
+        let &Ok((container, ref indices)) =
+            data.get(expr.hir_id).expect("no offset_of_data for offset_of")
+        else {
+            return;
+        };
 
         let body_did = self.typeck_results().hir_owner.to_def_id();
         let typing_env = ty::TypingEnv::non_body_analysis(self.tcx, body_did);
 
         let mut current_ty = container;
 
-        for &(variant, field) in indices {
+        for (variant, field) in indices {
             match current_ty.kind() {
                 ty::Adt(def, args) => {
                     let field = &def.variant(variant).fields[field];

@@ -781,12 +781,11 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
         let common_hir_owner = fcx_typeck_results.hir_owner;
 
-        for (local_id, &(container, ref indices)) in
-            fcx_typeck_results.offset_of_data().items_in_stable_order()
-        {
+        for (local_id, &result) in fcx_typeck_results.offset_of_data().items_in_stable_order() {
             let hir_id = HirId { owner: common_hir_owner, local_id };
-            let container = self.resolve(container, &hir_id);
-            self.typeck_results.offset_of_data_mut().insert(hir_id, (container, indices.clone()));
+            let result = result
+                .map(|(container, field_path)| (self.resolve(container, &hir_id), field_path));
+            self.typeck_results.offset_of_data_mut().insert(hir_id, result);
         }
     }
 

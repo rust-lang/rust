@@ -247,6 +247,10 @@ impl<'tcx> rustc_type_ir::inherent::AdtDef<TyCtxt<'tcx>> for AdtDef<'tcx> {
             hir::Constness::NotConst => AdtDestructorKind::NotConst,
         })
     }
+
+    fn is_packed(self) -> bool {
+        self.repr().packed()
+    }
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, HashStable, TyEncodable, TyDecodable)]

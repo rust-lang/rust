@@ -1,6 +1,8 @@
 //! Orphan checker: every impl either implements a trait defined in this
 //! crate or pertains to a type defined in this crate.
 
+use std::ops::ControlFlow;
+
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::ErrorGuaranteed;
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, TyCtxtInferExt};
@@ -150,6 +152,34 @@ pub(crate) fn orphan_check_impl(
                     NonlocalImpl::DisallowBecauseNonlocal
                 },
             ),
+
+            ty::Field(container, field_path) => {
+                let non_local_impl = if !matches!(container.kind(), ty::Adt(..)) {
+                    NonlocalImpl::DisallowBecauseNonlocal
+                } else {
+                    field_path
+                    .walk(tcx, *container, |base, _, _, _| match base.kind() {
+                        ty::Adt(def, _) => {
+                            // We don't check the field type for locality, since having a non-local
+                            // type as a field in a struct shouldn't make the field type non-local.
+                            if !def.did().is_local() {
+                                ControlFlow::Break(NonlocalImpl::DisallowBecauseNonlocal)
+                            } else {
+                                ControlFlow::Continue(())
+                            }
+                        }
+                        // Tuples are the only exception.
+                        ty::Tuple(..) => ControlFlow::Continue(()),
+                        _ => {
+                            panic!(
+                                "only adts & tuples are supported by `field_of!` but found: {base}"
+                            )
+                        }
+                    })
+                    .unwrap_or(NonlocalImpl::Allow)
+                };
+                (LocalImpl::Allow, non_local_impl)
+            }
 
             // extern { type OpaqueType; }
             // impl AutoTrait for OpaqueType {}
