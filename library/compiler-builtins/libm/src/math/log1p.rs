@@ -53,8 +53,6 @@
  *       See HP-15C Advanced Functions Handbook, p.193.
  */
 
-use core::f64;
-
 const LN2_HI: f64 = 6.93147180369123816490e-01; /* 3fe62e42 fee00000 */
 const LN2_LO: f64 = 1.90821492927058770002e-10; /* 3dea39ef 35793c76 */
 const LG1: f64 = 6.666666666666735130e-01; /* 3FE55555 55555593 */

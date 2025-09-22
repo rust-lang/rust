@@ -13,8 +13,6 @@
  * See comments in log2.c.
  */
 
-use core::f32;
-
 const IVLN2HI: f32 = 1.4428710938e+00; /* 0x3fb8b000 */
 const IVLN2LO: f32 = -1.7605285393e-04; /* 0xb9389ad4 */
 /* |(log(1+s)-log(1-s))/s - Lg(s)| < 2**-34.24 (~[-4.95e-11, 4.97e-11]). */
