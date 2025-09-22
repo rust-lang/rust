@@ -286,9 +286,7 @@ impl<'db> DbInterner<'db> {
     // FIXME(next-solver): remove this method
     pub fn conjure() -> DbInterner<'db> {
         salsa::with_attached_database(|db| DbInterner {
-            db: unsafe {
-                std::mem::transmute::<&dyn HirDatabase, &'db dyn HirDatabase>(db.as_view())
-            },
+            db: unsafe { std::mem::transmute::<&dyn salsa::Database, &'db dyn HirDatabase>(db) },
             krate: None,
             block: None,
         })

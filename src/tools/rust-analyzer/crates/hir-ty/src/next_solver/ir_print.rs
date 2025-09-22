@@ -62,9 +62,12 @@ impl<'db> IrPrint<ty::TraitRef<Self>> for DbInterner<'db> {
             let self_ty = &t.args.as_slice()[0];
             let trait_args = &t.args.as_slice()[1..];
             if trait_args.is_empty() {
+                let db = db.zalsa().views().downcaster_for::<dyn HirDatabase>();
+                db.downcast_unchecked(db)
                 fmt.write_str(&format!(
                     "{:?}: {}",
                     self_ty,
+                    db.as_dyn_database().as_dyn_database(),
                     db.as_view::<dyn HirDatabase>().trait_signature(trait_).name.as_str()
                 ))
             } else {

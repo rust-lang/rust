@@ -1,5 +1,6 @@
 //! Database used for testing `hir_def`.
 
+use salsa::database::AsDynDatabase;
 use std::{fmt, panic, sync::Mutex};
 
 use base_db::{
@@ -7,7 +8,7 @@ use base_db::{
     SourceDatabase, SourceRoot, SourceRootId, SourceRootInput,
 };
 use hir_expand::{InFile, files::FilePosition};
-use salsa::{AsDynDatabase, Durability};
+use salsa::{Durability, database::AsDynDatabase};
 use span::FileId;
 use syntax::{AstNode, algo, ast};
 use triomphe::Arc;
