@@ -587,6 +587,7 @@ Select which editor you would like to set up [default: None]: ";
                 "631c837b0e98ae35fd48b0e5f743b1ca60adadf2d0a2b23566ba25df372cf1a9",
                 "080955765db84bb6cbf178879f489c4e2369397626a6ecb3debedb94a9d0b3ce",
                 "f501475c6654187091c924ae26187fa5791d74d4a8ab3fb61fbbe4c0275aade1",
+                "e260553b71e4773c30a63c4b23b42b279fc73e72f95b775c47b7b7c511c51595",
             ],
             EditorKind::Helix => &[
                 "2d3069b8cf1b977e5d4023965eb6199597755e6c96c185ed5f2854f98b83d233",
@@ -594,6 +595,7 @@ Select which editor you would like to set up [default: None]: ";
                 "f252dcc30ca85a193a699581e5e929d5bd6c19d40d7a7ade5e257a9517a124a5",
                 "198c195ed0c070d15907b279b8b4ea96198ca71b939f5376454f3d636ab54da5",
                 "1c43ead340b20792b91d02b08494ee68708e7e09f56b6766629b4b72079208f1",
+                "eec09a09452682060afd23dd5d3536ccac5615b3cdbf427366446901215fb9f6",
             ],
             EditorKind::Vim | EditorKind::VsCode => &[
                 "ea67e259dedf60d4429b6c349a564ffcd1563cf41c920a856d1f5b16b4701ac8",
@@ -610,6 +612,7 @@ Select which editor you would like to set up [default: None]: ";
                 "f954316090936c7e590c253ca9d524008375882fa13c5b41d7e2547a896ff893",
                 "701b73751efd7abd6487f2c79348dab698af7ac4427b79fa3d2087c867144b12",
                 "a61df796c0c007cb6512127330564e49e57d558dec715703916a928b072a1054",
+                "02a49ac2d31f00ef6e4531c44e00dac51cea895112e480553f1ba060b3942a47",
             ],
             EditorKind::Zed => &[
                 "bbce727c269d1bd0c98afef4d612eb4ce27aea3c3a8968c5f10b31affbc40b6c",
@@ -617,6 +620,7 @@ Select which editor you would like to set up [default: None]: ";
                 "2e96bf0d443852b12f016c8fc9840ab3d0a2b4fe0b0fb3a157e8d74d5e7e0e26",
                 "4fadd4c87389a601a27db0d3d74a142fa3a2e656ae78982e934dbe24bee32ad6",
                 "f0bb3d23ab1a49175ab0ef5c4071af95bb03d01d460776cdb716d91333443382",
+                "5ef83292111d9a8bb63b6afc3abf42d0bc78fe24985f0d2e039e73258b5dab8f",
             ],
         }
     }
