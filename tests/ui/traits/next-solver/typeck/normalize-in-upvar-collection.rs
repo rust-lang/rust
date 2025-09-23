@@ -1,7 +1,7 @@
 //@ compile-flags: -Znext-solver
 //@ check-pass
 
-// Fixes a regression in icu_provider_adaptors where we weren't normalizing the
+// Fixes a regression in icu_provider_adapters where we weren't normalizing the
 // return type of a function type before performing a `Ty::builtin_deref` call,
 // leading to an ICE.
 
