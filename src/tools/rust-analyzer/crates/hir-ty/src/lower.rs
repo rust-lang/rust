@@ -32,7 +32,7 @@ use hir_def::{
     hir::generics::{GenericParamDataRef, TypeOrConstParamData, WherePredicate},
     lang_item::LangItem,
     resolver::{HasResolver, LifetimeNs, Resolver, TypeNs},
-    signatures::{FunctionSignature, TraitFlags, TypeAliasFlags},
+    signatures::{FunctionSignature, TraitFlags},
     type_ref::{
         ConstRef, LifetimeRefId, LiteralConstRef, PathId, TraitBoundModifier,
         TraitRef as HirTraitRef, TypeBound, TypeRef, TypeRefId,
@@ -908,7 +908,7 @@ pub(crate) fn field_types_query(
     db: &dyn HirDatabase,
     variant_id: VariantId,
 ) -> Arc<ArenaMap<LocalFieldId, Binders<Ty>>> {
-    db.field_types_with_diagnostics(variant_id).0
+    field_types_with_diagnostics_query(db, variant_id).0
 }
 
 /// Build the type of all specific fields of a struct or enum variant.
@@ -1303,46 +1303,6 @@ pub(crate) fn generic_defaults_with_diagnostics_cycle_result(
     (GenericDefaults(None), None)
 }
 
-pub(crate) fn type_for_type_alias_with_diagnostics_query(
-    db: &dyn HirDatabase,
-    t: TypeAliasId,
-) -> (Binders<Ty>, Diagnostics) {
-    let generics = generics(db, t.into());
-    let type_alias_data = db.type_alias_signature(t);
-    let mut diags = None;
-    let inner = if type_alias_data.flags.contains(TypeAliasFlags::IS_EXTERN) {
-        TyKind::Foreign(crate::to_foreign_def_id(t)).intern(Interner)
-    } else {
-        let resolver = t.resolver(db);
-        let alias = db.type_alias_signature(t);
-        let mut ctx = TyLoweringContext::new(
-            db,
-            &resolver,
-            &alias.store,
-            t.into(),
-            LifetimeElisionKind::AnonymousReportError,
-        )
-        .with_impl_trait_mode(ImplTraitLoweringMode::Opaque)
-        .with_type_param_mode(ParamLoweringMode::Variable);
-        let res = alias
-            .ty
-            .map(|type_ref| ctx.lower_ty(type_ref))
-            .unwrap_or_else(|| TyKind::Error.intern(Interner));
-        diags = create_diagnostics(ctx.diagnostics);
-        res
-    };
-
-    (make_binders(db, &generics, inner), diags)
-}
-
-pub(crate) fn type_for_type_alias_with_diagnostics_cycle_result(
-    db: &dyn HirDatabase,
-    adt: TypeAliasId,
-) -> (Binders<Ty>, Diagnostics) {
-    let generics = generics(db, adt.into());
-    (make_binders(db, &generics, TyKind::Error.intern(Interner)), None)
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TyDefId {
     BuiltinType(BuiltinType),
@@ -1376,7 +1336,7 @@ impl ValueTyDefId {
 }
 
 pub(crate) fn impl_self_ty_query(db: &dyn HirDatabase, impl_id: ImplId) -> Binders<Ty> {
-    db.impl_self_ty_with_diagnostics(impl_id).0
+    impl_self_ty_with_diagnostics_query(db, impl_id).0
 }
 
 pub(crate) fn impl_self_ty_with_diagnostics_query(
@@ -1400,16 +1360,8 @@ pub(crate) fn impl_self_ty_with_diagnostics_query(
     )
 }
 
-pub(crate) fn impl_self_ty_with_diagnostics_cycle_result(
-    db: &dyn HirDatabase,
-    impl_id: ImplId,
-) -> (Binders<Ty>, Diagnostics) {
-    let generics = generics(db, impl_id.into());
-    (make_binders(db, &generics, TyKind::Error.intern(Interner)), None)
-}
-
 pub(crate) fn const_param_ty_query(db: &dyn HirDatabase, def: ConstParamId) -> Ty {
-    db.const_param_ty_with_diagnostics(def).0
+    const_param_ty_with_diagnostics_query(db, def).0
 }
 
 // returns None if def is a type arg
@@ -1437,16 +1389,16 @@ pub(crate) fn const_param_ty_with_diagnostics_query(
     (ty, create_diagnostics(ctx.diagnostics))
 }
 
-pub(crate) fn const_param_ty_with_diagnostics_cycle_result(
+pub(crate) fn const_param_ty_cycle_result(
     _: &dyn HirDatabase,
     _: crate::db::HirDatabaseData,
     _: ConstParamId,
-) -> (Ty, Diagnostics) {
-    (TyKind::Error.intern(Interner), None)
+) -> Ty {
+    TyKind::Error.intern(Interner)
 }
 
 pub(crate) fn impl_trait_query(db: &dyn HirDatabase, impl_id: ImplId) -> Option<Binders<TraitRef>> {
-    db.impl_trait_with_diagnostics(impl_id).map(|it| it.0)
+    impl_trait_with_diagnostics_query(db, impl_id).map(|it| it.0)
 }
 
 pub(crate) fn impl_trait_with_diagnostics_query(

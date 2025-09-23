@@ -1320,7 +1320,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
         self,
         def_id: Self::DefId,
     ) -> EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>> {
-        let predicates = self.db().generic_predicates_without_parent_ns(def_id.try_into().unwrap());
+        let predicates = self.db().generic_predicates_without_parent(def_id.try_into().unwrap());
         let predicates: Vec<_> = predicates.iter().cloned().collect();
         EarlyBinder::bind(predicates.into_iter())
     }

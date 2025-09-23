@@ -364,7 +364,7 @@ where
         cb(MethodViolationCode::UndispatchableReceiver)?;
     }
 
-    let predicates = &*db.generic_predicates_without_parent_ns(func.into());
+    let predicates = &*db.generic_predicates_without_parent(func.into());
     for pred in predicates {
         let pred = pred.kind().skip_binder();
 

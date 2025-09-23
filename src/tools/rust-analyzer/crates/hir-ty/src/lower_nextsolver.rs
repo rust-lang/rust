@@ -904,7 +904,7 @@ pub(crate) fn impl_trait_query<'db>(
     db: &'db dyn HirDatabase,
     impl_id: ImplId,
 ) -> Option<EarlyBinder<'db, TraitRef<'db>>> {
-    db.impl_trait_with_diagnostics_ns(impl_id).map(|it| it.0)
+    db.impl_trait_with_diagnostics(impl_id).map(|it| it.0)
 }
 
 pub(crate) fn impl_trait_with_diagnostics_query<'db>(
@@ -986,7 +986,7 @@ pub(crate) fn ty_query<'db>(db: &'db dyn HirDatabase, def: TyDefId) -> EarlyBind
             AdtDef::new(it, interner),
             GenericArgs::identity_for_item(interner, it.into()),
         )),
-        TyDefId::TypeAliasId(it) => db.type_for_type_alias_with_diagnostics_ns(it).0,
+        TyDefId::TypeAliasId(it) => db.type_for_type_alias_with_diagnostics(it).0,
     }
 }
 
@@ -1131,7 +1131,7 @@ pub(crate) fn impl_self_ty_query<'db>(
     db: &'db dyn HirDatabase,
     impl_id: ImplId,
 ) -> EarlyBinder<'db, Ty<'db>> {
-    db.impl_self_ty_with_diagnostics_ns(impl_id).0
+    db.impl_self_ty_with_diagnostics(impl_id).0
 }
 
 pub(crate) fn impl_self_ty_with_diagnostics_query<'db>(
@@ -1162,7 +1162,7 @@ pub(crate) fn impl_self_ty_with_diagnostics_cycle_result(
 }
 
 pub(crate) fn const_param_ty_query<'db>(db: &'db dyn HirDatabase, def: ConstParamId) -> Ty<'db> {
-    db.const_param_ty_with_diagnostics_ns(def).0
+    db.const_param_ty_with_diagnostics(def).0
 }
 
 // returns None if def is a type arg
@@ -1191,11 +1191,21 @@ pub(crate) fn const_param_ty_with_diagnostics_query<'db>(
     (ty, create_diagnostics(ctx.diagnostics))
 }
 
+pub(crate) fn const_param_ty_with_diagnostics_cycle_result<'db>(
+    db: &'db dyn HirDatabase,
+    _: crate::db::HirDatabaseData,
+    def: ConstParamId,
+) -> (Ty<'db>, Diagnostics) {
+    let resolver = def.parent().resolver(db);
+    let interner = DbInterner::new_with(db, Some(resolver.krate()), None);
+    (Ty::new_error(interner, ErrorGuaranteed), None)
+}
+
 pub(crate) fn field_types_query<'db>(
     db: &'db dyn HirDatabase,
     variant_id: VariantId,
 ) -> Arc<ArenaMap<LocalFieldId, EarlyBinder<'db, Ty<'db>>>> {
-    db.field_types_with_diagnostics_ns(variant_id).0
+    db.field_types_with_diagnostics(variant_id).0
 }
 
 /// Build the type of all specific fields of a struct or enum variant.
