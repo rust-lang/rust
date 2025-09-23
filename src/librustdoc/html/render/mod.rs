@@ -77,7 +77,6 @@ use crate::html::escape::Escape;
 use crate::html::format::{
     Ending, HrefError, PrintWithSpace, href, print_abi_with_space, print_constness_with_space,
     print_default_space, print_generic_bounds, print_where_clause, visibility_print_with_space,
-    write_str,
 };
 use crate::html::markdown::{
     HeadingOffset, IdMap, Markdown, MarkdownItemInfo, MarkdownSummaryLine,
@@ -1647,69 +1646,77 @@ fn notable_traits_button(ty: &clean::Type, cx: &Context<'_>) -> Option<impl fmt:
 }
 
 fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
-    let mut out = String::new();
-
     let did = ty.def_id(cx.cache()).expect("notable_traits_button already checked this");
 
     let impls = cx.cache().impls.get(&did).expect("notable_traits_button already checked this");
 
-    for i in impls {
-        let impl_ = i.inner_impl();
-        if impl_.polarity != ty::ImplPolarity::Positive {
-            continue;
-        }
-
-        if !ty.is_doc_subtype_of(&impl_.for_, cx.cache()) {
-            // Two different types might have the same did,
-            // without actually being the same.
-            continue;
-        }
-        if let Some(trait_) = &impl_.trait_ {
-            let trait_did = trait_.def_id();
-
-            if cx.cache().traits.get(&trait_did).is_some_and(|t| t.is_notable_trait(cx.tcx())) {
-                if out.is_empty() {
-                    write_str(
-                        &mut out,
-                        format_args!(
-                            "<h3>Notable traits for <code>{}</code></h3>\
-                            <pre><code>",
-                            impl_.for_.print(cx)
-                        ),
-                    );
+    let out = fmt::from_fn(|f| {
+        let mut notable_impls = impls
+            .iter()
+            .map(|impl_| impl_.inner_impl())
+            .filter(|impl_| impl_.polarity == ty::ImplPolarity::Positive)
+            .filter(|impl_| {
+                // Two different types might have the same did, without actually being the same.
+                ty.is_doc_subtype_of(&impl_.for_, cx.cache())
+            })
+            .filter_map(|impl_| {
+                if let Some(trait_) = &impl_.trait_
+                    && let trait_did = trait_.def_id()
+                    && let Some(trait_) = cx.cache().traits.get(&trait_did)
+                    && trait_.is_notable_trait(cx.tcx())
+                {
+                    Some((impl_, trait_did))
+                } else {
+                    None
                 }
+            })
+            .peekable();
 
-                write_str(
-                    &mut out,
-                    format_args!("<div class=\"where\">{}</div>", impl_.print(false, cx)),
-                );
-                for it in &impl_.items {
-                    if let clean::AssocTypeItem(ref tydef, ref _bounds) = it.kind {
-                        let empty_set = FxIndexSet::default();
-                        let src_link = AssocItemLink::GotoSource(trait_did.into(), &empty_set);
-                        write_str(
-                            &mut out,
-                            format_args!(
-                                "<div class=\"where\">    {};</div>",
-                                assoc_type(
-                                    it,
-                                    &tydef.generics,
-                                    &[], // intentionally leaving out bounds
-                                    Some(&tydef.type_),
-                                    src_link,
-                                    0,
-                                    cx,
-                                )
-                            ),
-                        );
-                    }
-                }
+        let has_notable_impl = if let Some((impl_, _)) = notable_impls.peek() {
+            write!(
+                f,
+                "<h3>Notable traits for <code>{}</code></h3>\
+                <pre><code>",
+                impl_.for_.print(cx)
+            )?;
+            true
+        } else {
+            false
+        };
+
+        for (impl_, trait_did) in notable_impls {
+            write!(f, "<div class=\"where\">{}</div>", impl_.print(false, cx))?;
+            for it in &impl_.items {
+                let clean::AssocTypeItem(tydef, ..) = &it.kind else {
+                    continue;
+                };
+
+                let empty_set = FxIndexSet::default();
+                let src_link = AssocItemLink::GotoSource(trait_did.into(), &empty_set);
+
+                write!(
+                    f,
+                    "<div class=\"where\">    {};</div>",
+                    assoc_type(
+                        it,
+                        &tydef.generics,
+                        &[], // intentionally leaving out bounds
+                        Some(&tydef.type_),
+                        src_link,
+                        0,
+                        cx,
+                    )
+                )?;
             }
         }
-    }
-    if out.is_empty() {
-        out.push_str("</code></pre>");
-    }
+
+        if !has_notable_impl {
+            f.write_str("</code></pre>")?;
+        }
+
+        Ok(())
+    })
+    .to_string();
 
     (format!("{:#}", ty.print(cx)), out)
 }
