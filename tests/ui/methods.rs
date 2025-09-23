@@ -135,6 +135,26 @@ fn filter_next() {
     let _ = foo.filter(42).next();
 }
 
+#[rustfmt::skip]
+fn filter_next_back() {
+    let v = vec![3, 2, 1, 0, -1, -2, -3];
+
+    // Multi-line case.
+    let _ = v.iter().filter(|&x| {
+    //~^ filter_next
+                                *x < 0
+                            }
+                   ).next_back();
+    
+    // Check that we don't lint if the caller is not an `Iterator`.
+    let foo = IteratorFalsePositives { foo: 0 };
+    let _ = foo.filter().next_back();
+
+    let foo = IteratorMethodFalsePositives {};
+    let _ = foo.filter(42).next_back();
+}
+
 fn main() {
     filter_next();
+    filter_next_back();
 }
