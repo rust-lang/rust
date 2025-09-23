@@ -1,9 +1,10 @@
 //@ run-pass
 //@ ignore-emscripten
+//@ compile-flags: --cfg minisimd_const
 
 // Test that the simd_f{min,max} intrinsics produce the correct results.
 
-#![feature(repr_simd, core_intrinsics)]
+#![feature(repr_simd, core_intrinsics, const_trait_impl, const_cmp, const_index)]
 #![allow(non_camel_case_types)]
 
 #[path = "../../../auxiliary/minisimd.rs"]
@@ -12,7 +13,7 @@ use minisimd::*;
 
 use std::intrinsics::simd::*;
 
-fn main() {
+const fn minmax() {
     let x = f32x4::from_array([1.0, 2.0, 3.0, 4.0]);
     let y = f32x4::from_array([2.0, 1.0, 4.0, 3.0]);
 
@@ -28,22 +29,27 @@ fn main() {
     unsafe {
         let min0 = simd_fmin(x, y);
         let min1 = simd_fmin(y, x);
-        assert_eq!(min0, min1);
+        assert_eq_const_safe!(min0, min1);
         let e = f32x4::from_array([1.0, 1.0, 3.0, 3.0]);
-        assert_eq!(min0, e);
+        assert_eq_const_safe!(min0, e);
         let minn = simd_fmin(x, n);
-        assert_eq!(minn, x);
+        assert_eq_const_safe!(minn, x);
         let minn = simd_fmin(y, n);
-        assert_eq!(minn, y);
+        assert_eq_const_safe!(minn, y);
 
         let max0 = simd_fmax(x, y);
         let max1 = simd_fmax(y, x);
-        assert_eq!(max0, max1);
+        assert_eq_const_safe!(max0, max1);
         let e = f32x4::from_array([2.0, 2.0, 4.0, 4.0]);
-        assert_eq!(max0, e);
+        assert_eq_const_safe!(max0, e);
         let maxn = simd_fmax(x, n);
-        assert_eq!(maxn, x);
+        assert_eq_const_safe!(maxn, x);
         let maxn = simd_fmax(y, n);
-        assert_eq!(maxn, y);
+        assert_eq_const_safe!(maxn, y);
     }
+}
+
+fn main() {
+    const { minmax() };
+    minmax();
 }
