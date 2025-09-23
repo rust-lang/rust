@@ -39,7 +39,7 @@ pub mod consts {
     /// The Euler-Mascheroni constant (γ)
     #[unstable(feature = "f128", issue = "116909")]
     // Also, #[unstable(feature = "more_float_constants", issue = "103883")]
-    pub const EGAMMA: f128 = 0.577215664901532860606512090082402431042159335939923598805767_f128;
+    pub const GAMMA: f128 = 0.577215664901532860606512090082402431042159335939923598805767_f128;
 
     /// π/2
     #[unstable(feature = "f128", issue = "116909")]
@@ -107,6 +107,17 @@ pub mod consts {
     pub const FRAC_1_SQRT_3: f128 =
         0.577350269189625764509148780501957455647601751270126876018602_f128;
 
+    /// sqrt(5)
+    #[unstable(feature = "f128", issue = "116909")]
+    // Also, #[unstable(feature = "more_float_constants", issue = "103883")]
+    pub const SQRT_5: f128 = 2.23606797749978969640917366873127623544061835961152572427089_f128;
+
+    /// 1/sqrt(5)
+    #[unstable(feature = "f128", issue = "116909")]
+    // Also, #[unstable(feature = "more_float_constants", issue = "103883")]
+    pub const FRAC_1_SQRT_5: f128 =
+        0.447213595499957939281834733746255247088123671922305144854179_f128;
+
     /// Euler's number (e)
     #[unstable(feature = "f128", issue = "116909")]
     pub const E: f128 = 2.71828182845904523536028747135266249775724709369995957496697_f128;
@@ -130,6 +141,11 @@ pub mod consts {
     /// ln(2)
     #[unstable(feature = "f128", issue = "116909")]
     pub const LN_2: f128 = 0.693147180559945309417232121458176568075500134360255254120680_f128;
+
+    /// ln(3)
+    #[unstable(feature = "f128", issue = "116909")]
+    // Also, #[unstable(feature = "more_float_constants", issue = "103883")]
+    pub const LN_3: f128 = 1.09861228866810969139524523692252570464749055782274945173469_f128;
 
     /// ln(10)
     #[unstable(feature = "f128", issue = "116909")]

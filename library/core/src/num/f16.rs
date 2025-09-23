@@ -41,7 +41,7 @@ pub mod consts {
     /// The Euler-Mascheroni constant (γ)
     #[unstable(feature = "f16", issue = "116909")]
     // Also, #[unstable(feature = "more_float_constants", issue = "103883")]
-    pub const EGAMMA: f16 = 0.577215664901532860606512090082402431_f16;
+    pub const GAMMA: f16 = 0.577215664901532860606512090082402431_f16;
 
     /// π/2
     #[unstable(feature = "f16", issue = "116909")]
@@ -104,6 +104,16 @@ pub mod consts {
     // Also, #[unstable(feature = "more_float_constants", issue = "103883")]
     pub const FRAC_1_SQRT_3: f16 = 0.577350269189625764509148780501957456_f16;
 
+    /// sqrt(5)
+    #[unstable(feature = "f16", issue = "116909")]
+    // Also, #[unstable(feature = "more_float_constants", issue = "103883")]
+    pub const SQRT_5: f16 = 2.236067977499789696409173668731276235_f16;
+
+    /// 1/sqrt(5)
+    #[unstable(feature = "f16", issue = "116909")]
+    // Also, #[unstable(feature = "more_float_constants", issue = "103883")]
+    pub const FRAC_1_SQRT_5: f16 = 0.447213595499957939281834733746255247_f16;
+
     /// Euler's number (e)
     #[unstable(feature = "f16", issue = "116909")]
     pub const E: f16 = 2.71828182845904523536028747135266250_f16;
@@ -127,6 +137,11 @@ pub mod consts {
     /// ln(2)
     #[unstable(feature = "f16", issue = "116909")]
     pub const LN_2: f16 = 0.693147180559945309417232121458176568_f16;
+
+    /// ln(3)
+    #[unstable(feature = "f16", issue = "116909")]
+    // Also, #[unstable(feature = "more_float_constants", issue = "103883")]
+    pub const LN_3: f16 = 1.098612288668109691395245236922525704_f16;
 
     /// ln(10)
     #[unstable(feature = "f16", issue = "116909")]
