@@ -53,12 +53,13 @@ diff --git a/src/bootstrap/src/core/config/config.rs b/src/bootstrap/src/core/co
 index a656927b1f6..44fc5546fac 100644
 --- a/src/bootstrap/src/core/config/config.rs
 +++ b/src/bootstrap/src/core/config/config.rs
-@@ -2249,13 +2249,6 @@ pub fn parse_download_ci_llvm<'a>(
+@@ -2249,14 +2249,6 @@ pub fn parse_download_ci_llvm<'a>(
                  );
              }
 
--            if b && dwn_ctx.is_running_on_ci {
--                // On CI, we must always rebuild LLVM if there were any modifications to it
+-            #[cfg(not(test))]
+-            if b && dwn_ctx.is_running_on_ci && CiEnv::is_rust_lang_managed_ci_job() {
+-                // On rust-lang CI, we must always rebuild LLVM if there were any modifications to it
 -                panic!(
 -                    "\`llvm.download-ci-llvm\` cannot be set to \`true\` on CI. Use \`if-unchanged\` instead."
 -                );

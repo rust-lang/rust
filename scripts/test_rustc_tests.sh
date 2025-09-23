@@ -46,7 +46,9 @@ rm tests/ui/abi/mir/mir_codegen_calls_variadic.rs # requires float varargs
 rm tests/ui/abi/variadic-ffi.rs # requires callee side vararg support
 rm -r tests/run-make/c-link-to-rust-va-list-fn # requires callee side vararg support
 rm tests/ui/c-variadic/valid.rs # same
-rm tests/ui/c-variadic/naked.rs # same
+rm tests/ui/c-variadic/trait-method.rs # same
+rm tests/ui/c-variadic/inherent-method.rs # same
+rm tests/ui/c-variadic/same-program-multiple-abis-x86_64.rs # variadics for calling conventions other than C unsupported
 rm tests/ui/delegation/fn-header.rs
 
 # misc unimplemented things
@@ -64,7 +66,6 @@ rm -r tests/run-make/embed-source-dwarf # embedding sources in debuginfo
 rm -r tests/run-make/used-proc-macro # used(linker) isn't supported yet
 rm tests/ui/linking/no-gc-encapsulation-symbols.rs # same
 rm tests/ui/attributes/fn-align-dyn.rs # per-function alignment not supported
-rm tests/ui/c-variadic/same-program-multiple-abis-x86_64.rs # variadics for calling conventions other than C unsupported
 rm -r tests/ui/explicit-tail-calls # tail calls
 
 # requires LTO
