@@ -154,6 +154,7 @@ impl<'tcx> FromIterator<DropckConstraint<'tcx>> for DropckConstraint<'tcx> {
 #[derive(Debug, HashStable)]
 pub struct CandidateStep<'tcx> {
     pub self_ty: Canonical<'tcx, QueryResponse<'tcx, Ty<'tcx>>>,
+    pub self_ty_is_opaque: bool,
     pub autoderefs: usize,
     /// `true` if the type results from a dereference of a raw pointer.
     /// when assembling candidates, we include these steps, but not when
