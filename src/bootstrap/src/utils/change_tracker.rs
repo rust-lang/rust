@@ -556,4 +556,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "New option `build.windows-rc` that will override which resource compiler on Windows will be used to compile Rust.",
     },
+    ChangeInfo {
+        change_id: 146929,
+        severity: ChangeSeverity::Info,
+        summary: "`compiletest` is now always built with the stage 0 compiler, so `build.compiletest-use-stage0-libtest` has no effect.",
+    },
 ];

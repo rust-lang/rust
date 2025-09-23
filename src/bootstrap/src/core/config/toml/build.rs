@@ -70,6 +70,8 @@ define_config! {
         jobs: Option<u32> = "jobs",
         compiletest_diff_tool: Option<String> = "compiletest-diff-tool",
         compiletest_allow_stage0: Option<bool> = "compiletest-allow-stage0",
+        /// No longer has any effect; kept (for now) to avoid breaking people's configs.
+        /// FIXME(#146929): Remove this in 2026.
         compiletest_use_stage0_libtest: Option<bool> = "compiletest-use-stage0-libtest",
         tidy_extra_checks: Option<String> = "tidy-extra-checks",
         ccache: Option<StringOrBool> = "ccache",

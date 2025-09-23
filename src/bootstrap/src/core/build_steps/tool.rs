@@ -380,7 +380,6 @@ macro_rules! bootstrap_tool {
     ($(
         $name:ident, $path:expr, $tool_name:expr
         $(,is_external_tool = $external:expr)*
-        $(,is_unstable_tool = $unstable:expr)*
         $(,allow_features = $allow_features:expr)?
         $(,submodules = $submodules:expr)?
         $(,artifact_kind = $artifact_kind:expr)?
@@ -438,19 +437,11 @@ macro_rules! bootstrap_tool {
                     }
                 )*
 
-                let is_unstable = false $(|| $unstable)*;
-                let compiletest_wants_stage0 = $tool_name == "compiletest" && builder.config.compiletest_use_stage0_libtest;
-
                 builder.ensure(ToolBuild {
                     build_compiler: self.compiler,
                     target: self.target,
                     tool: $tool_name,
-                    mode: if is_unstable && !compiletest_wants_stage0 {
-                        // use in-tree libraries for unstable features
-                        Mode::ToolStd
-                    } else {
-                        Mode::ToolBootstrap
-                    },
+                    mode: Mode::ToolBootstrap,
                     path: $path,
                     source_type: if false $(|| $external)* {
                         SourceType::Submodule
@@ -483,8 +474,6 @@ macro_rules! bootstrap_tool {
     }
 }
 
-pub(crate) const COMPILETEST_ALLOW_FEATURES: &str = "internal_output_capture";
-
 bootstrap_tool!(
     // This is marked as an external tool because it includes dependencies
     // from submodules. Trying to keep the lints in sync between all the repos
@@ -495,7 +484,7 @@ bootstrap_tool!(
     Tidy, "src/tools/tidy", "tidy";
     Linkchecker, "src/tools/linkchecker", "linkchecker";
     CargoTest, "src/tools/cargotest", "cargotest";
-    Compiletest, "src/tools/compiletest", "compiletest", is_unstable_tool = true, allow_features = COMPILETEST_ALLOW_FEATURES;
+    Compiletest, "src/tools/compiletest", "compiletest";
     BuildManifest, "src/tools/build-manifest", "build-manifest";
     RemoteTestClient, "src/tools/remote-test-client", "remote-test-client";
     RustInstaller, "src/tools/rust-installer", "rust-installer";
@@ -509,8 +498,7 @@ bootstrap_tool!(
     CollectLicenseMetadata, "src/tools/collect-license-metadata", "collect-license-metadata";
     GenerateCopyright, "src/tools/generate-copyright", "generate-copyright";
     GenerateWindowsSys, "src/tools/generate-windows-sys", "generate-windows-sys";
-    // rustdoc-gui-test has a crate dependency on compiletest, so it needs the same unstable features.
-    RustdocGUITest, "src/tools/rustdoc-gui-test", "rustdoc-gui-test", is_unstable_tool = true, allow_features = COMPILETEST_ALLOW_FEATURES;
+    RustdocGUITest, "src/tools/rustdoc-gui-test", "rustdoc-gui-test";
     CoverageDump, "src/tools/coverage-dump", "coverage-dump";
     UnicodeTableGenerator, "src/tools/unicode-table-generator", "unicode-table-generator";
     FeaturesStatusDump, "src/tools/features-status-dump", "features-status-dump";
