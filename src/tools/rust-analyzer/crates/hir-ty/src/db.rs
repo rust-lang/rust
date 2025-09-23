@@ -16,8 +16,8 @@ use smallvec::SmallVec;
 use triomphe::Arc;
 
 use crate::{
-    Binders, Const, ImplTraitId, ImplTraits, InferenceResult, PolyFnSig, Substitution,
-    TraitEnvironment, TraitRef, Ty, TyDefId, ValueTyDefId, chalk_db,
+    Binders, Const, ImplTraitId, ImplTraits, InferenceResult, Substitution, TraitEnvironment,
+    TraitRef, Ty, TyDefId, ValueTyDefId, chalk_db,
     consteval::ConstEvalError,
     drop::DropGlue,
     dyn_compatibility::DynCompatibilityViolation,
@@ -167,8 +167,11 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
     #[salsa::transparent]
     fn field_types(&self, var: VariantId) -> Arc<ArenaMap<LocalFieldId, Binders<Ty>>>;
 
-    #[salsa::invoke(crate::lower::callable_item_signature_query)]
-    fn callable_item_signature(&self, def: CallableDefId) -> PolyFnSig;
+    #[salsa::invoke(crate::lower_nextsolver::callable_item_signature_query)]
+    fn callable_item_signature<'db>(
+        &'db self,
+        def: CallableDefId,
+    ) -> crate::next_solver::EarlyBinder<'db, crate::next_solver::PolyFnSig<'db>>;
 
     #[salsa::invoke(crate::lower::return_type_impl_traits)]
     fn return_type_impl_traits(&self, def: FunctionId) -> Option<Arc<Binders<ImplTraits>>>;
@@ -353,12 +356,6 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
     ) -> Arc<
         ArenaMap<LocalFieldId, crate::next_solver::EarlyBinder<'db, crate::next_solver::Ty<'db>>>,
     >;
-
-    #[salsa::invoke(crate::lower_nextsolver::callable_item_signature_query)]
-    fn callable_item_signature_ns<'db>(
-        &'db self,
-        def: CallableDefId,
-    ) -> crate::next_solver::EarlyBinder<'db, crate::next_solver::PolyFnSig<'db>>;
 
     #[salsa::invoke(crate::lower_nextsolver::return_type_impl_traits)]
     fn return_type_impl_traits_ns<'db>(

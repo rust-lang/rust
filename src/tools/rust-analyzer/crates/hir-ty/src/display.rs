@@ -46,8 +46,8 @@ use span::Edition;
 use stdx::never;
 use triomphe::Arc;
 
-use crate::next_solver::infer::DbInternerInferExt;
 use crate::next_solver::infer::traits::ObligationCause;
+use crate::next_solver::{infer::DbInternerInferExt, mapping::NextSolverToChalk};
 use crate::{
     AliasEq, AliasTy, Binders, CallableDefId, CallableSig, ConcreteConst, Const, ConstScalar,
     ConstValue, DomainGoal, FnAbi, GenericArg, ImplTraitId, Interner, Lifetime, LifetimeData,
@@ -1298,7 +1298,9 @@ impl<'db> HirDisplay for crate::next_solver::Ty<'db> {
                 let def = def.0;
                 let sig = db
                     .callable_item_signature(def)
-                    .substitute(Interner, &convert_args_for_result(interner, args.as_slice()));
+                    .instantiate(interner, args)
+                    .skip_binder()
+                    .to_chalk(interner);
 
                 if f.display_kind.is_source_code() {
                     // `FnDef` is anonymous and there's no surface syntax for it. Show it as a

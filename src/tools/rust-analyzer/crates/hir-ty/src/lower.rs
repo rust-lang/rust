@@ -24,9 +24,9 @@ use chalk_ir::{
 
 use either::Either;
 use hir_def::{
-    AdtId, AssocItemId, CallableDefId, ConstId, ConstParamId, EnumId, EnumVariantId, FunctionId,
-    GenericDefId, GenericParamId, ImplId, ItemContainerId, LocalFieldId, Lookup, StaticId,
-    StructId, TypeAliasId, TypeOrConstParamId, UnionId, VariantId,
+    AdtId, AssocItemId, ConstId, ConstParamId, EnumId, EnumVariantId, FunctionId, GenericDefId,
+    GenericParamId, ImplId, ItemContainerId, LocalFieldId, Lookup, StaticId, StructId, TypeAliasId,
+    TypeOrConstParamId, UnionId, VariantId,
     builtin_type::BuiltinType,
     expr_store::{ExpressionStore, path::Path},
     hir::generics::{GenericParamDataRef, TypeOrConstParamData, WherePredicate},
@@ -45,10 +45,10 @@ use stdx::{impl_from, never};
 use triomphe::{Arc, ThinArc};
 
 use crate::{
-    AliasTy, Binders, BoundVar, CallableSig, Const, DebruijnIndex, DynTy, FnAbi, FnPointer, FnSig,
-    FnSubst, ImplTrait, ImplTraitId, ImplTraits, Interner, Lifetime, LifetimeData,
-    LifetimeOutlives, PolyFnSig, QuantifiedWhereClause, QuantifiedWhereClauses, Substitution,
-    TraitRef, TraitRefExt, Ty, TyBuilder, TyKind, WhereClause, all_super_traits,
+    AliasTy, Binders, BoundVar, Const, DebruijnIndex, DynTy, FnAbi, FnPointer, FnSig, FnSubst,
+    ImplTrait, ImplTraitId, ImplTraits, Interner, Lifetime, LifetimeData, LifetimeOutlives,
+    QuantifiedWhereClause, QuantifiedWhereClauses, Substitution, TraitRef, TraitRefExt, Ty,
+    TyBuilder, TyKind, WhereClause, all_super_traits,
     consteval::{intern_const_ref, path_to_const, unknown_const, unknown_const_as_generic},
     db::HirDatabase,
     error_lifetime,
@@ -824,15 +824,6 @@ impl<'a> TyLoweringContext<'a> {
     }
 }
 
-/// Build the signature of a callable item (function, struct or enum variant).
-pub(crate) fn callable_item_signature_query(db: &dyn HirDatabase, def: CallableDefId) -> PolyFnSig {
-    match def {
-        CallableDefId::FunctionId(f) => fn_sig_for_fn(db, f),
-        CallableDefId::StructId(s) => fn_sig_for_struct_constructor(db, s),
-        CallableDefId::EnumVariantId(e) => fn_sig_for_enum_variant_constructor(db, e),
-    }
-}
-
 fn named_associated_type_shorthand_candidates<R>(
     db: &dyn HirDatabase,
     // If the type parameter is defined in an impl and we're in a method, there
@@ -1310,73 +1301,6 @@ pub(crate) fn generic_defaults_with_diagnostics_cycle_result(
     _def: GenericDefId,
 ) -> (GenericDefaults, Diagnostics) {
     (GenericDefaults(None), None)
-}
-
-fn fn_sig_for_fn(db: &dyn HirDatabase, def: FunctionId) -> PolyFnSig {
-    let data = db.function_signature(def);
-    let resolver = def.resolver(db);
-    let mut ctx_params = TyLoweringContext::new(
-        db,
-        &resolver,
-        &data.store,
-        def.into(),
-        LifetimeElisionKind::for_fn_params(&data),
-    )
-    .with_type_param_mode(ParamLoweringMode::Variable);
-    let params = data.params.iter().map(|&tr| ctx_params.lower_ty(tr));
-
-    let ret = match data.ret_type {
-        Some(ret_type) => {
-            let mut ctx_ret = TyLoweringContext::new(
-                db,
-                &resolver,
-                &data.store,
-                def.into(),
-                LifetimeElisionKind::for_fn_ret(),
-            )
-            .with_impl_trait_mode(ImplTraitLoweringMode::Opaque)
-            .with_type_param_mode(ParamLoweringMode::Variable);
-            ctx_ret.lower_ty(ret_type)
-        }
-        None => TyKind::Tuple(0, Substitution::empty(Interner)).intern(Interner),
-    };
-    let generics = generics(db, def.into());
-    let sig = CallableSig::from_params_and_return(
-        params,
-        ret,
-        data.is_varargs(),
-        if data.is_unsafe() { Safety::Unsafe } else { Safety::Safe },
-        data.abi.as_ref().map_or(FnAbi::Rust, FnAbi::from_symbol),
-    );
-    make_binders(db, &generics, sig)
-}
-
-fn fn_sig_for_struct_constructor(db: &dyn HirDatabase, def: StructId) -> PolyFnSig {
-    let field_tys = db.field_types(def.into());
-    let params = field_tys.iter().map(|(_, ty)| ty.skip_binders().clone());
-    let (ret, binders) = type_for_adt(db, def.into()).into_value_and_skipped_binders();
-    Binders::new(
-        binders,
-        CallableSig::from_params_and_return(params, ret, false, Safety::Safe, FnAbi::RustCall),
-    )
-}
-
-fn fn_sig_for_enum_variant_constructor(db: &dyn HirDatabase, def: EnumVariantId) -> PolyFnSig {
-    let field_tys = db.field_types(def.into());
-    let params = field_tys.iter().map(|(_, ty)| ty.skip_binders().clone());
-    let parent = def.lookup(db).parent;
-    let (ret, binders) = type_for_adt(db, parent.into()).into_value_and_skipped_binders();
-    Binders::new(
-        binders,
-        CallableSig::from_params_and_return(params, ret, false, Safety::Safe, FnAbi::RustCall),
-    )
-}
-
-fn type_for_adt(db: &dyn HirDatabase, adt: AdtId) -> Binders<Ty> {
-    let generics = generics(db, adt.into());
-    let subst = generics.bound_vars_subst(db, DebruijnIndex::INNERMOST);
-    let ty = TyKind::Adt(crate::AdtId(adt), subst).intern(Interner);
-    make_binders(db, &generics, ty)
 }
 
 pub(crate) fn type_for_type_alias_with_diagnostics_query(

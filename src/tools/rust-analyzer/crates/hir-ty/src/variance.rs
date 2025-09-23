@@ -15,6 +15,8 @@
 
 use crate::db::HirDatabase;
 use crate::generics::{Generics, generics};
+use crate::next_solver::DbInterner;
+use crate::next_solver::mapping::{ChalkToNextSolver, NextSolverToChalk};
 use crate::{
     AliasTy, Const, ConstScalar, DynTyExt, GenericArg, GenericArgData, Interner, Lifetime,
     LifetimeData, Ty, TyKind,
@@ -238,14 +240,15 @@ impl Context<'_> {
             }
             GenericDefId::FunctionId(f) => {
                 let subst = self.generics.placeholder_subst(self.db);
-                self.add_constraints_from_sig(
-                    self.db
-                        .callable_item_signature(f.into())
-                        .substitute(Interner, &subst)
-                        .params_and_return
-                        .iter(),
-                    Variance::Covariant,
-                );
+                let interner = DbInterner::new_with(self.db, None, None);
+                let args: crate::next_solver::GenericArgs<'_> = subst.to_nextsolver(interner);
+                let sig = self
+                    .db
+                    .callable_item_signature(f.into())
+                    .instantiate(interner, args)
+                    .skip_binder()
+                    .to_chalk(interner);
+                self.add_constraints_from_sig(sig.params_and_return.iter(), Variance::Covariant);
             }
             _ => {}
         }

@@ -1225,7 +1225,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
         self,
         def_id: Self::FunctionId,
     ) -> EarlyBinder<Self, rustc_type_ir::Binder<Self, rustc_type_ir::FnSig<Self>>> {
-        self.db().callable_item_signature_ns(def_id.0)
+        self.db().callable_item_signature(def_id.0)
     }
 
     fn coroutine_movability(self, def_id: Self::CoroutineId) -> rustc_ast_ir::Movability {
