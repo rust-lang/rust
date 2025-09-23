@@ -1970,7 +1970,8 @@ fn named_associated_type_shorthand_candidates<'db, R>(
     let mut search = |t: TraitRef<'db>| -> Option<R> {
         let trait_id = t.def_id.0;
         let mut checked_traits = FxHashSet::default();
-        let mut check_trait = |trait_id: TraitId| {
+        let mut check_trait = |trait_ref: TraitRef<'db>| {
+            let trait_id = trait_ref.def_id.0;
             let name = &db.trait_signature(trait_id).name;
             tracing::debug!(?trait_id, ?name);
             if !checked_traits.insert(trait_id) {
@@ -1981,37 +1982,39 @@ fn named_associated_type_shorthand_candidates<'db, R>(
             tracing::debug!(?data.items);
             for (name, assoc_id) in &data.items {
                 if let &AssocItemId::TypeAliasId(alias) = assoc_id
-                    && let Some(ty) = check_alias(name, t, alias)
+                    && let Some(ty) = check_alias(name, trait_ref, alias)
                 {
                     return Some(ty);
                 }
             }
             None
         };
-        let mut stack: SmallVec<[_; 4]> = smallvec![trait_id];
-        while let Some(trait_def_id) = stack.pop() {
-            if let Some(alias) = check_trait(trait_def_id) {
+        let mut stack: SmallVec<[_; 4]> = smallvec![t];
+        while let Some(trait_ref) = stack.pop() {
+            if let Some(alias) = check_trait(trait_ref) {
                 return Some(alias);
             }
             for pred in generic_predicates_filtered_by(
                 db,
-                GenericDefId::TraitId(trait_def_id),
+                GenericDefId::TraitId(trait_ref.def_id.0),
                 PredicateFilter::SelfTrait,
                 // We are likely in the midst of lowering generic predicates of `def`.
                 // So, if we allow `pred == def` we might fall into an infinite recursion.
                 // Actually, we have already checked for the case `pred == def` above as we started
                 // with a stack including `trait_id`
-                |pred| pred != def && pred == GenericDefId::TraitId(trait_def_id),
+                |pred| pred != def && pred == GenericDefId::TraitId(trait_ref.def_id.0),
             )
             .0
             .deref()
             {
                 tracing::debug!(?pred);
-                let trait_id = match pred.kind().skip_binder() {
-                    rustc_type_ir::ClauseKind::Trait(pred) => pred.def_id(),
+                let sup_trait_ref = match pred.kind().skip_binder() {
+                    rustc_type_ir::ClauseKind::Trait(pred) => pred.trait_ref,
                     _ => continue,
                 };
-                stack.push(trait_id.0);
+                let sup_trait_ref =
+                    EarlyBinder::bind(sup_trait_ref).instantiate(interner, trait_ref.args);
+                stack.push(sup_trait_ref);
             }
             tracing::debug!(?stack);
         }

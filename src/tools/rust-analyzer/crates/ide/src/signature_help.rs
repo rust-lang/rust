@@ -1097,8 +1097,8 @@ fn foo(mut r: impl WriteHandler<()>) {
 
                 By default this method stops actor's `Context`.
                 ------
-                fn finished(&mut self, ctx: &mut <impl WriteHandler<()> as Actor>::Context<()>)
-                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                fn finished(&mut self, ctx: &mut <impl WriteHandler<()> as Actor>::Context)
+                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
             "#]],
         );
     }
