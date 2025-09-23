@@ -8480,7 +8480,6 @@ intrinsics:
       - [poly16x8_t, p128]
       - [int8x16_t, p128]
       - [uint8x16_t, p128]
-    big_endian_inverse: false
     compose:
       - FnCall: [transmute, [a]]
 
@@ -8718,7 +8717,6 @@ intrinsics:
       - [poly8x16_t, float32x4_t]
       - [poly16x8_t, float32x4_t]
       - [p128, float32x4_t]
-    big_endian_inverse: false
     compose:
       - FnCall: [transmute, [a]]
 
@@ -8782,7 +8780,6 @@ intrinsics:
       - [float16x8_t, uint16x8_t]
       - [float16x8_t, uint32x4_t]
       - [float16x8_t, uint64x2_t]
-    big_endian_inverse: false
     compose:
       - FnCall: [transmute, [a]]
 
@@ -8807,7 +8804,6 @@ intrinsics:
       - [poly128_t, float16x8_t]
       - [float16x8_t, poly128_t]
       - [float16x8_t, poly64x2_t]
-    big_endian_inverse: false
     compose:
       - FnCall: [transmute, [a]]
 

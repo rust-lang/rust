@@ -37,6 +37,7 @@ pub fn write_bin_cargo_toml(
     write_cargo_toml_header(w, "intrinsic-test-programs")?;
 
     writeln!(w, "[dependencies]")?;
+    writeln!(w, "core_arch = {{ path = \"../crates/core_arch\" }}")?;
 
     for i in 0..module_count {
         writeln!(w, "mod_{i} = {{ path = \"mod_{i}/\" }}")?;
