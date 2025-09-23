@@ -411,7 +411,13 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
         }
 
         (ty::Field(lcontainer, lpath), ty::Field(rcontainer, rpath)) => {
-            let t = relation.relate(lcontainer, rcontainer)?;
+            let t = relation.relate_with_variance(
+                ty::Invariant,
+                VarianceDiagInfo::default(),
+                lcontainer,
+                rcontainer,
+            )?;
+
             if lpath == rpath {
                 Ok(Ty::new_field_type(cx, t, lpath))
             } else {
