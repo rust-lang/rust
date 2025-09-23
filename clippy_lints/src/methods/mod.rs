@@ -103,8 +103,6 @@ mod search_is_some;
 mod seek_from_current;
 mod seek_to_start_instead_of_rewind;
 mod single_char_add_str;
-mod single_char_insert_string;
-mod single_char_push_string;
 mod skip_while_next;
 mod sliced_string_as_bytes;
 mod stable_sort_primitive;
