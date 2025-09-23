@@ -43,6 +43,7 @@ rm -r tests/run-make/naked-symbol-visibility
 
 # variadic arguments
 rm tests/ui/abi/mir/mir_codegen_calls_variadic.rs # requires float varargs
+rm tests/ui/c-variadic/naked.rs # same
 rm tests/ui/abi/variadic-ffi.rs # requires callee side vararg support
 rm -r tests/run-make/c-link-to-rust-va-list-fn # requires callee side vararg support
 rm tests/ui/c-variadic/valid.rs # same
