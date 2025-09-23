@@ -1472,12 +1472,10 @@ fn render_assoc_items_inner(
                 )
             }
         };
-        let mut impls_buf = String::new();
-        for i in &non_trait {
-            write_str(
-                &mut impls_buf,
-                format_args!(
-                    "{}",
+        let impls_buf = fmt::from_fn(|f| {
+            non_trait
+                .iter()
+                .map(|i| {
                     render_impl(
                         cx,
                         i,
@@ -1493,9 +1491,11 @@ fn render_assoc_items_inner(
                             toggle_open_by_default: true,
                         },
                     )
-                ),
-            );
-        }
+                })
+                .joined("", f)
+        })
+        .to_string();
+
         if !impls_buf.is_empty() {
             write!(
                 w,
@@ -1805,27 +1805,19 @@ fn render_impl(
                                 document_item_info(cx, it, Some(parent))
                                     .render_into(&mut info_buffer)
                                     .unwrap();
-                                write_str(
-                                    &mut doc_buffer,
-                                    format_args!("{}", document_full(item, cx, HeadingOffset::H5)),
-                                );
+                                doc_buffer = document_full(item, cx, HeadingOffset::H5).to_string();
                                 short_documented = false;
                             } else {
                                 // In case the item isn't documented,
                                 // provide short documentation from the trait.
-                                write_str(
-                                    &mut doc_buffer,
-                                    format_args!(
-                                        "{}",
-                                        document_short(
-                                            it,
-                                            cx,
-                                            link,
-                                            parent,
-                                            rendering_params.show_def_docs,
-                                        )
-                                    ),
-                                );
+                                doc_buffer = document_short(
+                                    it,
+                                    cx,
+                                    link,
+                                    parent,
+                                    rendering_params.show_def_docs,
+                                )
+                                .to_string();
                             }
                         }
                     } else {
@@ -1833,21 +1825,14 @@ fn render_impl(
                             .render_into(&mut info_buffer)
                             .unwrap();
                         if rendering_params.show_def_docs {
-                            write_str(
-                                &mut doc_buffer,
-                                format_args!("{}", document_full(item, cx, HeadingOffset::H5)),
-                            );
+                            doc_buffer = document_full(item, cx, HeadingOffset::H5).to_string();
                             short_documented = false;
                         }
                     }
                 } else {
-                    write_str(
-                        &mut doc_buffer,
-                        format_args!(
-                            "{}",
-                            document_short(item, cx, link, parent, rendering_params.show_def_docs)
-                        ),
-                    );
+                    doc_buffer =
+                        document_short(item, cx, link, parent, rendering_params.show_def_docs)
+                            .to_string();
                 }
             }
             let mut w = if short_documented && trait_.is_some() {
