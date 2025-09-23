@@ -1,9 +1,4 @@
 #![crate_name = "compiletest"]
-// Needed by the "new" test executor that does not depend on libtest.
-// FIXME(Zalathar): We should be able to get rid of `internal_output_capture`,
-// by having `runtest` manually capture all of its println-like output instead.
-// That would result in compiletest being written entirely in stable Rust!
-#![feature(internal_output_capture)]
 
 #[cfg(test)]
 mod tests;
@@ -178,12 +173,6 @@ pub fn parse_config(args: Vec<String>) -> Config {
         // FIXME: Temporarily retained so we can point users to `--no-capture`
         .optflag("", "nocapture", "")
         .optflag("", "no-capture", "don't capture stdout/stderr of tests")
-        .optopt(
-            "N",
-            "new-output-capture",
-            "enables or disables the new output-capture implementation",
-            "off|on",
-        )
         .optflag("", "profiler-runtime", "is the profiler runtime enabled for this target")
         .optflag("h", "help", "show this message")
         .reqopt("", "channel", "current Rust channel", "CHANNEL")
@@ -480,14 +469,6 @@ pub fn parse_config(args: Vec<String>) -> Config {
         supported_crate_types: OnceLock::new(),
 
         nocapture: matches.opt_present("no-capture"),
-        new_output_capture: {
-            let value = matches
-                .opt_str("new-output-capture")
-                .or_else(|| env::var("COMPILETEST_NEW_OUTPUT_CAPTURE").ok())
-                .unwrap_or_else(|| "on".to_owned());
-            parse_bool_option(&value)
-                .unwrap_or_else(|| panic!("unknown `--new-output-capture` value `{value}` given"))
-        },
 
         nightly_branch: matches.opt_str("nightly-branch").unwrap(),
         git_merge_commit_email: matches.opt_str("git-merge-commit-email").unwrap(),
@@ -500,19 +481,6 @@ pub fn parse_config(args: Vec<String>) -> Config {
 
         default_codegen_backend,
         override_codegen_backend,
-    }
-}
-
-/// Parses the same set of boolean values accepted by rustc command-line arguments.
-///
-/// Accepting all of these values is more complicated than just picking one
-/// pair, but has the advantage that contributors who are used to rustc
-/// shouldn't have to think about which values are legal.
-fn parse_bool_option(value: &str) -> Option<bool> {
-    match value {
-        "off" | "no" | "n" | "false" => Some(false),
-        "on" | "yes" | "y" | "true" => Some(true),
-        _ => None,
     }
 }
 
