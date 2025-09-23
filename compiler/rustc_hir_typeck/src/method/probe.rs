@@ -486,6 +486,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ty::Infer(ty::TyVar(_)) => {
                         let raw_ptr_call = bad_ty.reached_raw_pointer
                             && !self.tcx.features().arbitrary_self_types();
+                        // FIXME: Ideally we'd use the span of the self-expr here,
+                        // not of the method path.
                         let mut err = self.err_ctxt().emit_inference_failure_err(
                             self.body_id,
                             span,
