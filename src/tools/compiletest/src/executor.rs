@@ -9,8 +9,8 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::hash::{BuildHasherDefault, DefaultHasher};
 use std::num::NonZero;
-use std::sync::{Arc, Mutex, mpsc};
-use std::{env, hint, io, mem, panic, thread};
+use std::sync::{Arc, mpsc};
+use std::{env, hint, mem, panic, thread};
 
 use camino::Utf8PathBuf;
 
@@ -130,10 +130,6 @@ fn run_test_inner(
         panic_hook::set_capture_buf(Default::default());
     }
 
-    if let CaptureKind::Old { ref buf } = capture {
-        io::set_output_capture(Some(Arc::clone(buf)));
-    }
-
     let stdout = capture.stdout();
     let stderr = capture.stderr();
 
@@ -143,9 +139,6 @@ fn run_test_inner(
         let panic_buf = panic_buf.lock().unwrap_or_else(|e| e.into_inner());
         // Forward any captured panic message to (captured) stderr.
         write!(stderr, "{panic_buf}");
-    }
-    if matches!(capture, CaptureKind::Old { .. }) {
-        io::set_output_capture(None);
     }
 
     let outcome = match (should_panic, panic_payload) {
@@ -167,31 +160,24 @@ enum CaptureKind {
     /// runners, whose output is always captured.)
     None,
 
-    /// Use the old output-capture implementation, which relies on the unstable
-    /// library feature `#![feature(internal_output_capture)]`.
-    Old { buf: Arc<Mutex<Vec<u8>>> },
-
-    /// Use the new output-capture implementation, which only uses stable Rust.
-    New { buf: output_capture::CaptureBuf },
+    /// Capture all console output that would be printed by test runners via
+    /// their `stdout` and `stderr` trait objects, or via the custom panic hook.
+    Capture { buf: output_capture::CaptureBuf },
 }
 
 impl CaptureKind {
     fn for_config(config: &Config) -> Self {
         if config.nocapture {
             Self::None
-        } else if config.new_output_capture {
-            Self::New { buf: output_capture::CaptureBuf::new() }
         } else {
-            // Create a capure buffer for `io::set_output_capture`.
-            Self::Old { buf: Default::default() }
+            Self::Capture { buf: output_capture::CaptureBuf::new() }
         }
     }
 
     fn should_set_panic_hook(&self) -> bool {
         match self {
             Self::None => false,
-            Self::Old { .. } => true,
-            Self::New { .. } => true,
+            Self::Capture { .. } => true,
         }
     }
 
@@ -205,16 +191,15 @@ impl CaptureKind {
 
     fn capture_buf_or<'a>(&'a self, fallback: &'a dyn ConsoleOut) -> &'a dyn ConsoleOut {
         match self {
-            Self::None | Self::Old { .. } => fallback,
-            Self::New { buf } => buf,
+            Self::None => fallback,
+            Self::Capture { buf } => buf,
         }
     }
 
     fn into_inner(self) -> Option<Vec<u8>> {
         match self {
             Self::None => None,
-            Self::Old { buf } => Some(buf.lock().unwrap_or_else(|e| e.into_inner()).to_vec()),
-            Self::New { buf } => Some(buf.into_inner().into()),
+            Self::Capture { buf } => Some(buf.into_inner().into()),
         }
     }
 }
