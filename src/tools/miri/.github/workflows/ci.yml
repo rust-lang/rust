@@ -231,6 +231,9 @@ jobs:
             exit ${exitcode}
           fi
 
+          # Store merge commit message          
+          git log -1 --pretty=%B > message.txt
+
           # Format changes
           ./miri toolchain
           ./miri fmt --check || (./miri fmt && git commit -am "fmt")
@@ -239,7 +242,7 @@ jobs:
           BRANCH="rustup-$(date -u +%Y-%m-%d)"
           git switch -c $BRANCH
           git push -u origin $BRANCH
-          gh pr create -B master --title 'Automatic Rustup' --body "Update \`rustc\` to https://github.com/rust-lang/rust/commit/$(cat rust-version)."
+          gh pr create -B master --title 'Automatic Rustup' --body-file message.txt
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
 
