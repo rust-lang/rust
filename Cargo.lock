@@ -1333,6 +1333,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "find-msvc-tools"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1ced73b1dacfc750a6db6c0a0c3a3853c8b41997e2e2c563dc90804ae6867959"
+
+[[package]]
 name = "flate2"
 version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3556,7 +3562,7 @@ dependencies = [
  "ar_archive_writer",
  "bitflags",
  "bstr",
- "cc",
+ "find-msvc-tools",
  "itertools",
  "libc",
  "object 0.37.3",
@@ -4760,7 +4766,7 @@ dependencies = [
 name = "rustc_windows_rc"
 version = "0.0.0"
 dependencies = [
- "cc",
+ "find-msvc-tools",
 ]
 
 [[package]]

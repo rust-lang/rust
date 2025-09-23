@@ -367,6 +367,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "expect-test",
     "fallible-iterator", // dependency of `thorin`
     "fastrand",
+    "find-msvc-tools",
     "flate2",
     "fluent-bundle",
     "fluent-langneg",
