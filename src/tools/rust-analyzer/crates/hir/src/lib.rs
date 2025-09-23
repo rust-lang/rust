@@ -1504,7 +1504,7 @@ impl<'db> InstantiatedStruct<'db> {
         let krate = self.inner.krate(db);
         let interner = DbInterner::new_with(db, Some(krate.base()), None);
 
-        let ty = db.ty_ns(self.inner.id.into());
+        let ty = db.ty(self.inner.id.into());
         TypeNs::new(db, self.inner.id, ty.instantiate(interner, self.args))
     }
 }
@@ -1664,7 +1664,7 @@ impl<'db> InstantiatedEnum<'db> {
         let krate = self.inner.krate(db);
         let interner = DbInterner::new_with(db, Some(krate.base()), None);
 
-        let ty = db.ty_ns(self.inner.id.into());
+        let ty = db.ty(self.inner.id.into());
         TypeNs::new(db, self.inner.id, ty.instantiate(interner, self.args))
     }
 }
@@ -1851,7 +1851,8 @@ impl Adt {
                     ParamKind::Lifetime => error_lifetime().cast(Interner),
                 }
             })
-            .build();
+            .build(DbInterner::conjure())
+            .to_chalk(DbInterner::conjure());
         Type::new(db, id, ty)
     }
 
@@ -4828,32 +4829,40 @@ impl<'db> Type<'db> {
     }
 
     fn from_def(db: &'db dyn HirDatabase, def: impl Into<TyDefId> + HasResolver) -> Self {
+        let interner = DbInterner::new_with(db, None, None);
         let ty = db.ty(def.into());
         let substs = TyBuilder::unknown_subst(
             db,
             match def.into() {
                 TyDefId::AdtId(it) => GenericDefId::AdtId(it),
                 TyDefId::TypeAliasId(it) => GenericDefId::TypeAliasId(it),
-                TyDefId::BuiltinType(_) => return Type::new(db, def, ty.skip_binders().clone()),
+                TyDefId::BuiltinType(_) => {
+                    return Type::new(db, def, ty.skip_binder().to_chalk(interner));
+                }
             },
         );
-        Type::new(db, def, ty.substitute(Interner, &substs))
+        let args: hir_ty::next_solver::GenericArgs<'_> = substs.to_nextsolver(interner);
+        Type::new(db, def, ty.instantiate(interner, args).to_chalk(interner))
     }
 
     fn from_def_placeholders(
         db: &'db dyn HirDatabase,
         def: impl Into<TyDefId> + HasResolver,
     ) -> Self {
+        let interner = DbInterner::new_with(db, None, None);
         let ty = db.ty(def.into());
         let substs = TyBuilder::placeholder_subst(
             db,
             match def.into() {
                 TyDefId::AdtId(it) => GenericDefId::AdtId(it),
                 TyDefId::TypeAliasId(it) => GenericDefId::TypeAliasId(it),
-                TyDefId::BuiltinType(_) => return Type::new(db, def, ty.skip_binders().clone()),
+                TyDefId::BuiltinType(_) => {
+                    return Type::new(db, def, ty.skip_binder().to_chalk(interner));
+                }
             },
         );
-        Type::new(db, def, ty.substitute(Interner, &substs))
+        let args: hir_ty::next_solver::GenericArgs<'_> = substs.to_nextsolver(interner);
+        Type::new(db, def, ty.instantiate(interner, args).to_chalk(interner))
     }
 
     fn from_value_def(

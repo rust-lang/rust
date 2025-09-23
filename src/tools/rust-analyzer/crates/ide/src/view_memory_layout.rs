@@ -94,8 +94,8 @@ pub(crate) fn view_memory_layout(
     let def = get_definition(&sema, token)?;
 
     let ty = match def {
-        Definition::Adt(it) => it.ty(db),
-        Definition::TypeAlias(it) => it.ty(db),
+        Definition::Adt(it) => salsa::attach(db, || it.ty(db)),
+        Definition::TypeAlias(it) => salsa::attach(db, || it.ty(db)),
         Definition::BuiltinType(it) => it.ty(db),
         Definition::SelfType(it) => it.self_ty(db),
         Definition::Local(it) => it.ty(db),

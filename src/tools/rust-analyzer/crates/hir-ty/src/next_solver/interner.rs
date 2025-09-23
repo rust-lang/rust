@@ -1091,9 +1091,9 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
                     ItemContainerId::ImplId(it) => it,
                     _ => panic!("assoc ty value should be in impl"),
                 };
-                self.db().ty_ns(id.into())
+                self.db().ty(id.into())
             }
-            SolverDefId::AdtId(id) => self.db().ty_ns(id.into()),
+            SolverDefId::AdtId(id) => self.db().ty(id.into()),
             // FIXME(next-solver): This uses the types of `query mir_borrowck` in rustc.
             //
             // We currently always use the type from HIR typeck which ignores regions. This

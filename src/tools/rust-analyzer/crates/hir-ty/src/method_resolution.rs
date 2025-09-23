@@ -1697,8 +1697,10 @@ fn is_valid_impl_method_candidate(
                 return IsValidCandidate::NotVisible;
             }
             let self_ty_matches = table.run_in_snapshot(|table| {
-                let expected_self_ty =
-                    TyBuilder::impl_self_ty(db, impl_id).fill_with_inference_vars(table).build();
+                let expected_self_ty = TyBuilder::impl_self_ty(db, impl_id)
+                    .fill_with_inference_vars(table)
+                    .build(DbInterner::conjure())
+                    .to_chalk(DbInterner::conjure());
                 table.unify(&expected_self_ty, self_ty)
             });
             if !self_ty_matches {

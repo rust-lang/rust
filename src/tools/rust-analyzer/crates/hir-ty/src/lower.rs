@@ -1458,16 +1458,6 @@ fn type_for_enum_variant_constructor(
     }
 }
 
-#[salsa_macros::tracked(cycle_result = type_for_adt_cycle_result)]
-fn type_for_adt_tracked(db: &dyn HirDatabase, adt: AdtId) -> Binders<Ty> {
-    type_for_adt(db, adt)
-}
-
-fn type_for_adt_cycle_result(db: &dyn HirDatabase, adt: AdtId) -> Binders<Ty> {
-    let generics = generics(db, adt.into());
-    make_binders(db, &generics, TyKind::Error.intern(Interner))
-}
-
 fn type_for_adt(db: &dyn HirDatabase, adt: AdtId) -> Binders<Ty> {
     let generics = generics(db, adt.into());
     let subst = generics.bound_vars_subst(db, DebruijnIndex::INNERMOST);
@@ -1544,18 +1534,6 @@ impl ValueTyDefId {
             Self::ConstId(id) => id.into(),
             Self::StaticId(id) => id.into(),
         }
-    }
-}
-
-/// Build the declared type of an item. This depends on the namespace; e.g. for
-/// `struct Foo(usize)`, we have two types: The type of the struct itself, and
-/// the constructor function `(usize) -> Foo` which lives in the values
-/// namespace.
-pub(crate) fn ty_query(db: &dyn HirDatabase, def: TyDefId) -> Binders<Ty> {
-    match def {
-        TyDefId::BuiltinType(it) => Binders::empty(Interner, TyBuilder::builtin(it)),
-        TyDefId::AdtId(it) => type_for_adt_tracked(db, it),
-        TyDefId::TypeAliasId(it) => db.type_for_type_alias_with_diagnostics(it).0,
     }
 }
 

@@ -114,9 +114,12 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
     #[salsa::invoke(crate::dyn_compatibility::dyn_compatibility_of_trait_query)]
     fn dyn_compatibility_of_trait(&self, trait_: TraitId) -> Option<DynCompatibilityViolation>;
 
-    #[salsa::invoke(crate::lower::ty_query)]
+    #[salsa::invoke(crate::lower_nextsolver::ty_query)]
     #[salsa::transparent]
-    fn ty(&self, def: TyDefId) -> Binders<Ty>;
+    fn ty<'db>(
+        &'db self,
+        def: TyDefId,
+    ) -> crate::next_solver::EarlyBinder<'db, crate::next_solver::Ty<'db>>;
 
     #[salsa::invoke(crate::lower::type_for_type_alias_with_diagnostics_query)]
     #[salsa::cycle(cycle_result = crate::lower::type_for_type_alias_with_diagnostics_cycle_result)]
@@ -276,13 +279,6 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
     fn has_drop_glue(&self, ty: Ty, env: Arc<TraitEnvironment<'_>>) -> DropGlue;
 
     // next trait solver
-
-    #[salsa::invoke(crate::lower_nextsolver::ty_query)]
-    #[salsa::transparent]
-    fn ty_ns<'db>(
-        &'db self,
-        def: TyDefId,
-    ) -> crate::next_solver::EarlyBinder<'db, crate::next_solver::Ty<'db>>;
 
     /// Returns the type of the value of the given constant, or `None` if the `ValueTyDefId` is
     /// a `StructId` or `EnumVariantId` with a record constructor.
