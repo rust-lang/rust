@@ -1,0 +1,212 @@
+error[E0407]: method `move_before_yield_with_noop` is not a member of trait `Drop`
+  --> $DIR/missing-drop-in-Drop.rs:13:5
+   |
+LL |     fn move_before_yield_with_noop() -> impl Coroutine<Yield = ()> {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a member of trait `Drop`
+
+error[E0658]: yield syntax is experimental
+  --> $DIR/missing-drop-in-Drop.rs:28:9
+   |
+LL |         yield;
+   |         ^^^^^
+   |
+   = note: see issue #43122 <https://github.com/rust-lang/rust/issues/43122> for more information
+   = help: add `#![feature(yield_expr)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: yield syntax is experimental
+  --> $DIR/missing-drop-in-Drop.rs:33:9
+   |
+LL |         yield;
+   |         ^^^^^
+   |
+   = note: see issue #43122 <https://github.com/rust-lang/rust/issues/43122> for more information
+   = help: add `#![feature(yield_expr)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: yield syntax is experimental
+  --> $DIR/missing-drop-in-Drop.rs:37:9
+   |
+LL |         yield;
+   |         ^^^^^
+   |
+   = note: see issue #43122 <https://github.com/rust-lang/rust/issues/43122> for more information
+   = help: add `#![feature(yield_expr)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: coroutine syntax is experimental
+  --> $DIR/missing-drop-in-Drop.rs:25:5
+   |
+LL |     static || {
+   |     ^^^^^^
+   |
+   = note: see issue #43122 <https://github.com/rust-lang/rust/issues/43122> for more information
+   = help: add `#![feature(coroutines)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: yield syntax is experimental
+  --> $DIR/missing-drop-in-Drop.rs:28:9
+   |
+LL |         yield;
+   |         ^^^^^
+   |
+   = note: see issue #43122 <https://github.com/rust-lang/rust/issues/43122> for more information
+   = help: add `#![feature(yield_expr)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: `yield` can only be used in `#[coroutine]` closures, or `gen` blocks
+  --> $DIR/missing-drop-in-Drop.rs:28:9
+   |
+LL |         yield;
+   |         ^^^^^
+   |
+help: use `#[coroutine]` to make this closure a coroutine
+   |
+LL |     #[coroutine] static || {
+   |     ++++++++++++
+
+error[E0658]: yield syntax is experimental
+  --> $DIR/missing-drop-in-Drop.rs:33:9
+   |
+LL |         yield;
+   |         ^^^^^
+   |
+   = note: see issue #43122 <https://github.com/rust-lang/rust/issues/43122> for more information
+   = help: add `#![feature(yield_expr)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: yield syntax is experimental
+  --> $DIR/missing-drop-in-Drop.rs:37:9
+   |
+LL |         yield;
+   |         ^^^^^
+   |
+   = note: see issue #43122 <https://github.com/rust-lang/rust/issues/43122> for more information
+   = help: add `#![feature(yield_expr)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0601]: `main` function not found in crate `missing_drop_in_Drop`
+  --> $DIR/missing-drop-in-Drop.rs:41:2
+   |
+LL | }
+   |  ^ consider adding a `main` function to `$DIR/missing-drop-in-Drop.rs`
+
+error[E0658]: use of unstable library feature `coroutine_trait`
+  --> $DIR/missing-drop-in-Drop.rs:5:5
+   |
+LL | use std::ops::Coroutine;
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #43122 <https://github.com/rust-lang/rust/issues/43122> for more information
+   = help: add `#![feature(coroutine_trait)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `coroutine_trait`
+  --> $DIR/missing-drop-in-Drop.rs:21:34
+   |
+LL | fn overlap_move_points() -> impl Coroutine<Yield = ()> {
+   |                                  ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #43122 <https://github.com/rust-lang/rust/issues/43122> for more information
+   = help: add `#![feature(coroutine_trait)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `coroutine_trait`
+  --> $DIR/missing-drop-in-Drop.rs:13:46
+   |
+LL |     fn move_before_yield_with_noop() -> impl Coroutine<Yield = ()> {}
+   |                                              ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #43122 <https://github.com/rust-lang/rust/issues/43122> for more information
+   = help: add `#![feature(coroutine_trait)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0046]: not all trait items implemented, missing: `drop`
+  --> $DIR/missing-drop-in-Drop.rs:11:1
+   |
+LL | / impl Drop for Foo {
+LL | |
+LL | |     fn move_before_yield_with_noop() -> impl Coroutine<Yield = ()> {}
+...  |
+LL | | }
+   | |_^
+   |
+   = note: default implementation of `drop` is unstable
+   = note: use of unstable library feature `pin_ergonomics`
+   = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
+   = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `coroutine_trait`
+  --> $DIR/missing-drop-in-Drop.rs:21:44
+   |
+LL | fn overlap_move_points() -> impl Coroutine<Yield = ()> {
+   |                                            ^^^^^^^^^^
+   |
+   = note: see issue #43122 <https://github.com/rust-lang/rust/issues/43122> for more information
+   = help: add `#![feature(coroutine_trait)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `coroutine_trait`
+  --> $DIR/missing-drop-in-Drop.rs:13:56
+   |
+LL |     fn move_before_yield_with_noop() -> impl Coroutine<Yield = ()> {}
+   |                                                        ^^^^^^^^^^
+   |
+   = note: see issue #43122 <https://github.com/rust-lang/rust/issues/43122> for more information
+   = help: add `#![feature(coroutine_trait)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0277]: the trait bound `(): Coroutine` is not satisfied
+  --> $DIR/missing-drop-in-Drop.rs:13:41
+   |
+LL |     fn move_before_yield_with_noop() -> impl Coroutine<Yield = ()> {}
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Coroutine` is not implemented for `()`
+
+error[E0658]: use of unstable library feature `coroutine_trait`
+  --> $DIR/missing-drop-in-Drop.rs:13:56
+   |
+LL |     fn move_before_yield_with_noop() -> impl Coroutine<Yield = ()> {}
+   |                                                        ^^^^^^^^^^
+   |
+   = note: see issue #43122 <https://github.com/rust-lang/rust/issues/43122> for more information
+   = help: add `#![feature(coroutine_trait)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0658]: use of unstable library feature `coroutine_trait`
+  --> $DIR/missing-drop-in-Drop.rs:21:44
+   |
+LL | fn overlap_move_points() -> impl Coroutine<Yield = ()> {
+   |                                            ^^^^^^^^^^
+   |
+   = note: see issue #43122 <https://github.com/rust-lang/rust/issues/43122> for more information
+   = help: add `#![feature(coroutine_trait)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0382]: use of moved value: `first`
+  --> $DIR/missing-drop-in-Drop.rs:36:22
+   |
+LL |         let first = Foo([0; FOO_SIZE]);
+   |             ----- move occurs because `first` has type `Foo`, which does not implement the `Copy` trait
+...
+LL |         let second = first;
+   |                      ----- value moved here
+...
+LL |         let second = first;
+   |                      ^^^^^ value used here after move
+   |
+note: if `Foo` implemented `Clone`, you could clone the value
+  --> $DIR/missing-drop-in-Drop.rs:9:1
+   |
+LL | struct Foo([u8; FOO_SIZE]);
+   | ^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |         let second = first;
+   |                      ----- you could clone this value
+
+error: aborting due to 20 previous errors
+
+Some errors have detailed explanations: E0046, E0277, E0382, E0407, E0601, E0658.
+For more information about an error, try `rustc --explain E0046`.

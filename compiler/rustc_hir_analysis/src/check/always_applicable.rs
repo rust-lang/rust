@@ -7,11 +7,13 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::codes::*;
 use rustc_errors::{ErrorGuaranteed, struct_span_code_err};
+use rustc_hir as hir;
 use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
 use rustc_infer::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::span_bug;
 use rustc_middle::ty::util::CheckRegions;
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypingMode};
+use rustc_span::sym;
 use rustc_trait_selection::regions::InferCtxtRegionExt;
 use rustc_trait_selection::traits::{self, ObligationCtxt};
 
@@ -70,7 +72,11 @@ pub(crate) fn check_drop_impl(
                 drop_impl_did,
                 adt_def.did(),
                 adt_to_impl_args,
-            )
+            )?;
+
+            check_drop_xor_pin_drop(tcx, drop_impl_did)?;
+
+            Ok(())
         }
         _ => {
             span_bug!(tcx.def_span(drop_impl_did), "incoherent impl of Drop");
@@ -292,5 +298,60 @@ fn ensure_impl_predicates_are_implied_by_item_defn<'tcx>(
         return Err(guar.unwrap());
     }
 
+    Ok(())
+}
+
+/// This function checks at least and at most one of `Drop::drop` and `Drop::pin_drop` is implemented.
+fn check_drop_xor_pin_drop<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    drop_impl_did: LocalDefId,
+) -> Result<(), ErrorGuaranteed> {
+    let item_impl = tcx.hir_expect_item(drop_impl_did).expect_impl();
+    let mut drop_span = None;
+    let mut pin_drop_span = None;
+    for &impl_item_id in item_impl.items {
+        let impl_item = tcx.hir_impl_item(impl_item_id);
+        if let hir::ImplItemKind::Fn(fn_sig, _) = impl_item.kind {
+            match impl_item.ident.name {
+                sym::drop => drop_span = Some(fn_sig.span),
+                sym::pin_drop => pin_drop_span = Some(fn_sig.span),
+                _ => {}
+            }
+        }
+    }
+
+    match (drop_span, pin_drop_span) {
+        (None, None) => {
+            if tcx.features().pin_ergonomics() {
+                return Err(tcx.dcx().emit_err(crate::errors::MissingOneOfTraitItem {
+                    span: tcx.def_span(drop_impl_did),
+                    note: None,
+                    missing_items_msg: "drop`, `pin_drop".to_string(),
+                }));
+            } else {
+                return Err(tcx
+                    .dcx()
+                    .span_delayed_bug(tcx.def_span(drop_impl_did), "missing `Drop::drop`"));
+            }
+        }
+        // FIXME(pin_ergonomics): reject `Drop::drop` for types that support pin-projection.
+        (Some(_span), None) => {}
+        (None, Some(span)) => {
+            if !tcx.features().pin_ergonomics() {
+                return Err(tcx.dcx().span_delayed_bug(
+                    span,
+                    "`Drop::pin_drop` should be guarded by the library feature gate",
+                ));
+            }
+            // FIXME(pin_ergonomics): reject `Drop::pin_drop` for types that don't support pin-projection.
+        }
+        (Some(drop_span), Some(pin_drop_span)) => {
+            return Err(tcx.dcx().emit_err(crate::errors::ConflictImplDropAndPinDrop {
+                span: tcx.def_span(drop_impl_did),
+                drop_span,
+                pin_drop_span,
+            }));
+        }
+    }
     Ok(())
 }
