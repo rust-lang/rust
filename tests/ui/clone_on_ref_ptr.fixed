@@ -1,0 +1,51 @@
+#![warn(clippy::clone_on_ref_ptr)]
+
+use std::rc::{Rc, Weak as RcWeak};
+use std::sync::{Arc, Weak as ArcWeak};
+
+fn main() {}
+
+fn clone_on_ref_ptr(rc: Rc<str>, rc_weak: RcWeak<str>, arc: Arc<str>, arc_weak: ArcWeak<str>) {
+    std::rc::Rc::<str>::clone(&rc);
+    //~^ clone_on_ref_ptr
+    std::rc::Weak::<str>::clone(&rc_weak);
+    //~^ clone_on_ref_ptr
+    std::sync::Arc::<str>::clone(&arc);
+    //~^ clone_on_ref_ptr
+    std::sync::Weak::<str>::clone(&arc_weak);
+    //~^ clone_on_ref_ptr
+
+    Rc::clone(&rc);
+    Arc::clone(&arc);
+    RcWeak::clone(&rc_weak);
+    ArcWeak::clone(&arc_weak);
+}
+
+trait SomeTrait {}
+struct SomeImpl;
+impl SomeTrait for SomeImpl {}
+
+fn trait_object() {
+    let x = Arc::new(SomeImpl);
+    let _: Arc<dyn SomeTrait> = std::sync::Arc::<SomeImpl>::clone(&x);
+    //~^ clone_on_ref_ptr
+}
+
+mod issue2076 {
+    use std::rc::Rc;
+
+    macro_rules! try_opt {
+        ($expr: expr) => {
+            match $expr {
+                Some(value) => value,
+                None => return None,
+            }
+        };
+    }
+
+    fn func() -> Option<Rc<u8>> {
+        let rc = Rc::new(42);
+        Some(std::rc::Rc::<u8>::clone(&try_opt!(Some(rc))))
+        //~^ clone_on_ref_ptr
+    }
+}
