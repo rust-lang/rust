@@ -276,16 +276,3 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
 
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
 unsafe impl<T: ?Sized> DerefPure for ManuallyDrop<T> {}
-
-/// If a value's type is `Copy`, then it has a trivial destructor,
-/// so wrapping it in `ManuallyDrop` can never laed to unwanted leaks.
-#[stable(feature = "from_wrapper_impls", since = "CURRENT_RUSTC_VERSION")]
-impl<T> From<T> for ManuallyDrop<T>
-where
-    T: Copy,
-{
-    #[inline(always)]
-    fn from(value: T) -> Self {
-        Self::new(value)
-    }
-}
