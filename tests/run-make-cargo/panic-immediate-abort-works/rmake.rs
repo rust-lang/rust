@@ -4,7 +4,12 @@
 // cleaner and more portable). So this test ensures that we didn't mix up a cfg or a compiler
 // implementation detail in a way that makes panic=immediate-abort encounter errors at link time.
 
+// Ideally this test would be run for most targets, but unfortunately:
+// This test is currently written using `fn main() {}` which requires std.
+// And since the default linker is only a linker for the host, we can't handle cross-compilation.
+// Both of these shortcomings could be addressed at the cost of making the test more complicated.
 //@ needs-target-std
+//@ ignore-cross-compile
 
 #![deny(warnings)]
 
