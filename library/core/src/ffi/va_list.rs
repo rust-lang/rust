@@ -243,10 +243,11 @@ impl<'f> VaListImpl<'f> {
     ///
     /// # Safety
     ///
-    /// This function is only sound to call when the next variable argument:
+    /// This function is only sound to call when:
     ///
-    /// - has a type that is ABI-compatible with the type `T`
-    /// - has a value that is a properly initialized value of type `T`
+    /// - there is a next variable argument available (i.e., the number of arguments already read from `ap` is less than the total number passed)
+    /// - the next variable argument has a type that is ABI-compatible with the type `T`
+    /// - the next variable argument has a value that is a properly initialized value of type `T`
     ///
     /// Calling this function with an incompatible type, an invalid value, or when there
     /// are no more variable arguments, is unsound.
