@@ -4,8 +4,7 @@ This is a guide for how to profile rustc with [perf](https://perf.wiki.kernel.or
 
 ## Initial steps
 
-- Get a clean checkout of rust-lang/master, or whatever it is you want
-  to profile.
+- Get a clean checkout of rust-lang/rust
 - Set the following settings in your `bootstrap.toml`:
   - `rust.debuginfo-level = 1` - enables line debuginfo
   - `rust.jemalloc = false` - lets you do memory use profiling with valgrind
