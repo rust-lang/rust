@@ -7,6 +7,8 @@ use hir_def::signatures::StructFlags;
 use stdx::never;
 use triomphe::Arc;
 
+use crate::next_solver::DbInterner;
+use crate::next_solver::mapping::NextSolverToChalk;
 use crate::{
     AliasTy, Canonical, CanonicalVarKinds, ConcreteConst, ConstScalar, ConstValue, InEnvironment,
     Interner, ProjectionTy, TraitEnvironment, Ty, TyBuilder, TyKind, db::HirDatabase,
@@ -43,7 +45,11 @@ pub enum DropGlue {
     HasDropGlue,
 }
 
-pub(crate) fn has_drop_glue(db: &dyn HirDatabase, ty: Ty, env: Arc<TraitEnvironment>) -> DropGlue {
+pub(crate) fn has_drop_glue(
+    db: &dyn HirDatabase,
+    ty: Ty,
+    env: Arc<TraitEnvironment<'_>>,
+) -> DropGlue {
     match ty.kind(Interner) {
         TyKind::Adt(adt, subst) => {
             if has_destructor(db, adt.0) {
@@ -165,7 +171,7 @@ pub(crate) fn has_drop_glue(db: &dyn HirDatabase, ty: Ty, env: Arc<TraitEnvironm
 
 fn projection_has_drop_glue(
     db: &dyn HirDatabase,
-    env: Arc<TraitEnvironment>,
+    env: Arc<TraitEnvironment<'_>>,
     projection: ProjectionTy,
     ty: Ty,
 ) -> DropGlue {
@@ -178,13 +184,16 @@ fn projection_has_drop_glue(
     }
 }
 
-fn is_copy(db: &dyn HirDatabase, ty: Ty, env: Arc<TraitEnvironment>) -> bool {
+fn is_copy(db: &dyn HirDatabase, ty: Ty, env: Arc<TraitEnvironment<'_>>) -> bool {
     let Some(copy_trait) = LangItem::Copy.resolve_trait(db, env.krate) else {
         return false;
     };
     let trait_ref = TyBuilder::trait_ref(db, copy_trait).push(ty).build();
     let goal = Canonical {
-        value: InEnvironment::new(&env.env, trait_ref.cast(Interner)),
+        value: InEnvironment::new(
+            &env.env.to_chalk(DbInterner::new_with(db, Some(env.krate), env.block)),
+            trait_ref.cast(Interner),
+        ),
         binders: CanonicalVarKinds::empty(Interner),
     };
     db.trait_solve(env.krate, env.block, goal).certain()
@@ -193,7 +202,7 @@ fn is_copy(db: &dyn HirDatabase, ty: Ty, env: Arc<TraitEnvironment>) -> bool {
 pub(crate) fn has_drop_glue_cycle_result(
     _db: &dyn HirDatabase,
     _ty: Ty,
-    _env: Arc<TraitEnvironment>,
+    _env: Arc<TraitEnvironment<'_>>,
 ) -> DropGlue {
     DropGlue::None
 }

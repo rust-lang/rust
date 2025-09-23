@@ -99,9 +99,9 @@ pub(crate) fn view_memory_layout(
         Definition::BuiltinType(it) => it.ty(db),
         Definition::SelfType(it) => it.self_ty(db),
         Definition::Local(it) => it.ty(db),
-        Definition::Field(it) => it.ty(db),
-        Definition::Const(it) => it.ty(db),
-        Definition::Static(it) => it.ty(db),
+        Definition::Field(it) => salsa::attach(db, || it.ty(db).to_type(db)),
+        Definition::Const(it) => salsa::attach(db, || it.ty(db)),
+        Definition::Static(it) => salsa::attach(db, || it.ty(db)),
         _ => return None,
     };
 

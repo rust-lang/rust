@@ -792,19 +792,16 @@ fn render_const_scalar_ns(
     let trait_env = TraitEnvironment::empty(f.krate());
     let interner = DbInterner::new_with(f.db, Some(trait_env.krate), trait_env.block);
     let infcx = interner.infer_ctxt().build(rustc_type_ir::TypingMode::PostAnalysis);
-    let ty = infcx
-        .at(&ObligationCause::new(), trait_env.env.to_nextsolver(interner))
-        .deeply_normalize(ty)
-        .unwrap_or(ty);
+    let ty = infcx.at(&ObligationCause::new(), trait_env.env).deeply_normalize(ty).unwrap_or(ty);
     render_const_scalar_inner(f, b, memory_map, ty, trait_env)
 }
 
-fn render_const_scalar_inner(
+fn render_const_scalar_inner<'db>(
     f: &mut HirFormatter<'_>,
     b: &[u8],
     memory_map: &MemoryMap<'_>,
-    ty: crate::next_solver::Ty<'_>,
-    trait_env: Arc<TraitEnvironment>,
+    ty: crate::next_solver::Ty<'db>,
+    trait_env: Arc<TraitEnvironment<'db>>,
 ) -> Result<(), HirDisplayError> {
     use rustc_type_ir::TyKind;
     match ty.kind() {
@@ -1068,11 +1065,11 @@ fn render_const_scalar_inner(
     }
 }
 
-fn render_variant_after_name(
+fn render_variant_after_name<'db>(
     data: &VariantFields,
     f: &mut HirFormatter<'_>,
     field_types: &ArenaMap<LocalFieldId, Binders<Ty>>,
-    trait_env: Arc<TraitEnvironment>,
+    trait_env: Arc<TraitEnvironment<'db>>,
     layout: &Layout,
     args: GenericArgs<'_>,
     b: &[u8],

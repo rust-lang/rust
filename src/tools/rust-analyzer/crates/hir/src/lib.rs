@@ -86,7 +86,9 @@ use hir_ty::{
     method_resolution,
     mir::{MutBorrowKind, interpret_mir},
     next_solver::{
-        ClauseKind, DbInterner, GenericArgs, infer::InferCtxt, mapping::ChalkToNextSolver,
+        ClauseKind, DbInterner, GenericArgs,
+        infer::InferCtxt,
+        mapping::{ChalkToNextSolver, NextSolverToChalk, convert_ty_for_result},
     },
     primitive::UintTy,
     traits::FnTrait,
@@ -680,7 +682,7 @@ impl Module {
                             push_ty_diagnostics(
                                 db,
                                 acc,
-                                db.field_types_with_diagnostics(s.id.into()).1,
+                                db.field_types_with_diagnostics_ns(s.id.into()).1,
                                 source_map,
                             );
                         }
@@ -692,7 +694,7 @@ impl Module {
                             push_ty_diagnostics(
                                 db,
                                 acc,
-                                db.field_types_with_diagnostics(u.id.into()).1,
+                                db.field_types_with_diagnostics_ns(u.id.into()).1,
                                 source_map,
                             );
                         }
@@ -722,7 +724,7 @@ impl Module {
                                 push_ty_diagnostics(
                                     db,
                                     acc,
-                                    db.field_types_with_diagnostics(v.into()).1,
+                                    db.field_types_with_diagnostics_ns(v.into()).1,
                                     source_map,
                                 );
                                 expr_store_diagnostics(db, acc, source_map);
@@ -738,7 +740,7 @@ impl Module {
                     push_ty_diagnostics(
                         db,
                         acc,
-                        db.type_for_type_alias_with_diagnostics(type_alias.id).1,
+                        db.type_for_type_alias_with_diagnostics_ns(type_alias.id).1,
                         &source_map,
                     );
                     acc.extend(def.diagnostics(db, style_lints));
@@ -913,13 +915,13 @@ impl Module {
             push_ty_diagnostics(
                 db,
                 acc,
-                db.impl_self_ty_with_diagnostics(impl_def.id).1,
+                db.impl_self_ty_with_diagnostics_ns(impl_def.id).1,
                 &source_map,
             );
             push_ty_diagnostics(
                 db,
                 acc,
-                db.impl_trait_with_diagnostics(impl_def.id).and_then(|it| it.1),
+                db.impl_trait_with_diagnostics_ns(impl_def.id).and_then(|it| it.1),
                 &source_map,
             );
 
@@ -1346,19 +1348,12 @@ impl Field {
         u32::from(self.id.into_raw()) as usize
     }
 
-    /// Returns the type as in the signature of the struct (i.e., with
-    /// placeholder types for type parameters). Only use this in the context of
-    /// the field definition.
-    pub fn ty<'db>(&self, db: &'db dyn HirDatabase) -> Type<'db> {
+    /// Returns the type as in the signature of the struct. Only use this in the
+    /// context of the field definition.
+    pub fn ty<'db>(&self, db: &'db dyn HirDatabase) -> TypeNs<'db> {
         let var_id = self.parent.into();
-        let generic_def_id: GenericDefId = match self.parent {
-            VariantDef::Struct(it) => it.id.into(),
-            VariantDef::Union(it) => it.id.into(),
-            VariantDef::Variant(it) => it.id.lookup(db).parent.into(),
-        };
-        let substs = TyBuilder::placeholder_subst(db, generic_def_id);
-        let ty = db.field_types(var_id)[self.id].clone().substitute(Interner, &substs);
-        Type::new(db, var_id, ty)
+        let ty = db.field_types_ns(var_id)[self.id].skip_binder();
+        TypeNs::new(db, var_id, ty)
     }
 
     // FIXME: Find better API to also handle const generics
@@ -1388,9 +1383,8 @@ impl Field {
     }
 
     pub fn layout(&self, db: &dyn HirDatabase) -> Result<Layout, LayoutError> {
-        let interner = DbInterner::new_with(db, None, None);
         db.layout_of_ty(
-            self.ty(db).ty.to_nextsolver(interner),
+            self.ty(db).ty,
             db.trait_environment(match hir_def::VariantId::from(self.parent) {
                 hir_def::VariantId::EnumVariantId(id) => {
                     GenericDefId::AdtId(id.lookup(db).parent.into())
@@ -3646,7 +3640,7 @@ impl AssocItem {
                 push_ty_diagnostics(
                     db,
                     acc,
-                    db.type_for_type_alias_with_diagnostics(type_alias.id).1,
+                    db.type_for_type_alias_with_diagnostics_ns(type_alias.id).1,
                     &db.type_alias_signature_with_source_map(type_alias.id).1,
                 );
                 for diag in hir_ty::diagnostics::incorrect_case(db, type_alias.id.into()) {
@@ -3782,7 +3776,7 @@ impl GenericDef {
                 push_ty_diagnostics(
                     db,
                     acc,
-                    db.const_param_ty_with_diagnostics(ConstParamId::from_unchecked(
+                    db.const_param_ty_with_diagnostics_ns(ConstParamId::from_unchecked(
                         TypeOrConstParamId { parent: def, local_id: param_id },
                     ))
                     .1,
@@ -3814,12 +3808,12 @@ impl GenericDef {
 pub struct GenericSubstitution<'db> {
     def: GenericDefId,
     subst: Substitution,
-    env: Arc<TraitEnvironment>,
+    env: Arc<TraitEnvironment<'db>>,
     _pd: PhantomCovariantLifetime<'db>,
 }
 
 impl<'db> GenericSubstitution<'db> {
-    fn new(def: GenericDefId, subst: Substitution, env: Arc<TraitEnvironment>) -> Self {
+    fn new(def: GenericDefId, subst: Substitution, env: Arc<TraitEnvironment<'db>>) -> Self {
         Self { def, subst, env, _pd: PhantomCovariantLifetime::new() }
     }
 
@@ -4573,7 +4567,7 @@ impl Impl {
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct TraitRef<'db> {
-    env: Arc<TraitEnvironment>,
+    env: Arc<TraitEnvironment<'db>>,
     trait_ref: hir_ty::next_solver::TraitRef<'db>,
     _pd: PhantomCovariantLifetime<'db>,
 }
@@ -4796,7 +4790,7 @@ impl CaptureUsageSource {
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct Type<'db> {
-    env: Arc<TraitEnvironment>,
+    env: Arc<TraitEnvironment<'db>>,
     ty: Ty,
     _pd: PhantomCovariantLifetime<'db>,
 }
@@ -5177,7 +5171,14 @@ impl<'db> Type<'db> {
             .build();
 
         let goal = Canonical {
-            value: hir_ty::InEnvironment::new(&self.env.env, trait_ref.cast(Interner)),
+            value: hir_ty::InEnvironment::new(
+                &self.env.env.to_chalk(DbInterner::new_with(
+                    db,
+                    Some(self.env.krate),
+                    self.env.block,
+                )),
+                trait_ref.cast(Interner),
+            ),
             binders: CanonicalVarKinds::empty(Interner),
         };
 
@@ -5951,7 +5952,7 @@ impl<'db> Type<'db> {
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct TypeNs<'db> {
-    env: Arc<TraitEnvironment>,
+    env: Arc<TraitEnvironment<'db>>,
     ty: hir_ty::next_solver::Ty<'db>,
     _pd: PhantomCovariantLifetime<'db>,
 }
@@ -5967,6 +5968,11 @@ impl<'db> TypeNs<'db> {
             .generic_def()
             .map_or_else(|| TraitEnvironment::empty(resolver.krate()), |d| db.trait_environment(d));
         TypeNs { env: environment, ty, _pd: PhantomCovariantLifetime::new() }
+    }
+
+    pub fn to_type(&self, db: &'db dyn HirDatabase) -> Type<'db> {
+        let interner = DbInterner::new_with(db, Some(self.env.krate), self.env.block);
+        Type { env: self.env.clone(), ty: convert_ty_for_result(interner, self.ty), _pd: self._pd }
     }
 
     // FIXME: Find better API that also handles const generics
@@ -5991,6 +5997,10 @@ impl<'db> TypeNs<'db> {
         );
         let res = hir_ty::traits::next_trait_solve_in_ctxt(&infcx, goal);
         res.map_or(false, |res| matches!(res.1, rustc_type_ir::solve::Certainty::Yes))
+    }
+
+    pub fn is_bool(&self) -> bool {
+        matches!(self.ty.kind(), rustc_type_ir::TyKind::Bool)
     }
 }
 

@@ -49,7 +49,7 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
         &self,
         def: DefWithBodyId,
         subst: Substitution,
-        env: Arc<TraitEnvironment>,
+        env: Arc<TraitEnvironment<'_>>,
     ) -> Result<Arc<MirBody>, MirLowerError>;
 
     #[salsa::invoke(crate::mir::monomorphized_mir_body_for_closure_query)]
@@ -57,7 +57,7 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
         &self,
         def: InternedClosureId,
         subst: Substitution,
-        env: Arc<TraitEnvironment>,
+        env: Arc<TraitEnvironment<'_>>,
     ) -> Result<Arc<MirBody>, MirLowerError>;
 
     #[salsa::invoke(crate::mir::borrowck_query)]
@@ -70,7 +70,7 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
         &self,
         def: GeneralConstId,
         subst: Substitution,
-        trait_env: Option<Arc<TraitEnvironment>>,
+        trait_env: Option<Arc<TraitEnvironment<'_>>>,
     ) -> Result<Const, ConstEvalError>;
 
     #[salsa::invoke(crate::consteval::const_eval_static_query)]
@@ -84,7 +84,7 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
     #[salsa::invoke(crate::method_resolution::lookup_impl_method_query)]
     fn lookup_impl_method(
         &self,
-        env: Arc<TraitEnvironment>,
+        env: Arc<TraitEnvironment<'_>>,
         func: FunctionId,
         fn_subst: Substitution,
     ) -> (FunctionId, Substitution);
@@ -97,7 +97,7 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
         &'db self,
         def: AdtId,
         args: crate::next_solver::GenericArgs<'db>,
-        trait_env: Arc<TraitEnvironment>,
+        trait_env: Arc<TraitEnvironment<'db>>,
     ) -> Result<Arc<Layout>, LayoutError>;
 
     #[salsa::invoke(crate::layout::layout_of_ty_query)]
@@ -105,7 +105,7 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
     fn layout_of_ty<'db>(
         &'db self,
         ty: crate::next_solver::Ty<'db>,
-        env: Arc<TraitEnvironment>,
+        env: Arc<TraitEnvironment<'db>>,
     ) -> Result<Arc<Layout>, LayoutError>;
 
     #[salsa::invoke(crate::layout::target_data_layout_query)]
@@ -182,12 +182,13 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
     #[salsa::invoke(crate::lower::generic_predicates_query)]
     fn generic_predicates(&self, def: GenericDefId) -> GenericPredicates;
 
-    #[salsa::invoke(crate::lower::trait_environment_for_body_query)]
+    #[salsa::invoke(crate::lower_nextsolver::trait_environment_for_body_query)]
     #[salsa::transparent]
-    fn trait_environment_for_body(&self, def: DefWithBodyId) -> Arc<TraitEnvironment>;
+    fn trait_environment_for_body<'db>(&'db self, def: DefWithBodyId)
+    -> Arc<TraitEnvironment<'db>>;
 
-    #[salsa::invoke(crate::lower::trait_environment_query)]
-    fn trait_environment(&self, def: GenericDefId) -> Arc<TraitEnvironment>;
+    #[salsa::invoke(crate::lower_nextsolver::trait_environment_query)]
+    fn trait_environment<'db>(&'db self, def: GenericDefId) -> Arc<TraitEnvironment<'db>>;
 
     #[salsa::invoke(crate::lower::generic_defaults_with_diagnostics_query)]
     #[salsa::cycle(cycle_result = crate::lower::generic_defaults_with_diagnostics_cycle_result)]
@@ -258,7 +259,7 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
     fn normalize_projection(
         &self,
         projection: crate::ProjectionTy,
-        env: Arc<TraitEnvironment>,
+        env: Arc<TraitEnvironment<'_>>,
     ) -> Ty;
 
     #[salsa::invoke(crate::traits::trait_solve_query)]
@@ -272,7 +273,7 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
 
     #[salsa::invoke(crate::drop::has_drop_glue)]
     #[salsa::cycle(cycle_result = crate::drop::has_drop_glue_cycle_result)]
-    fn has_drop_glue(&self, ty: Ty, env: Arc<TraitEnvironment>) -> DropGlue;
+    fn has_drop_glue(&self, ty: Ty, env: Arc<TraitEnvironment<'_>>) -> DropGlue;
 
     // next trait solver
 

@@ -219,7 +219,7 @@ impl<'db> SourceAnalyzer<'db> {
         })
     }
 
-    fn trait_environment(&self, db: &'db dyn HirDatabase) -> Arc<TraitEnvironment> {
+    fn trait_environment(&self, db: &'db dyn HirDatabase) -> Arc<TraitEnvironment<'db>> {
         self.body_().map(|(def, ..)| def).map_or_else(
             || TraitEnvironment::empty(self.resolver.krate()),
             |def| db.trait_environment_for_body(def),

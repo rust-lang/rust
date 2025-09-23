@@ -152,7 +152,7 @@ pub(crate) fn infer_cycle_result(_: &dyn HirDatabase, _: DefWithBodyId) -> Arc<I
 /// This is appropriate to use only after type-check: it assumes
 /// that normalization will succeed, for example.
 #[tracing::instrument(level = "debug", skip(db))]
-pub(crate) fn normalize(db: &dyn HirDatabase, trait_env: Arc<TraitEnvironment>, ty: Ty) -> Ty {
+pub(crate) fn normalize(db: &dyn HirDatabase, trait_env: Arc<TraitEnvironment<'_>>, ty: Ty) -> Ty {
     // FIXME: TypeFlags::HAS_CT_PROJECTION is not implemented in chalk, so TypeFlags::HAS_PROJECTION only
     // works for the type case, so we check array unconditionally. Remove the array part
     // when the bug in chalk becomes fixed.

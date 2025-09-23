@@ -23,7 +23,7 @@ pub fn layout_of_adt_query<'db>(
     db: &'db dyn HirDatabase,
     def: AdtId,
     args: GenericArgs<'db>,
-    trait_env: Arc<TraitEnvironment>,
+    trait_env: Arc<TraitEnvironment<'db>>,
 ) -> Result<Arc<Layout>, LayoutError> {
     let krate = trait_env.krate;
     let Ok(target) = db.target_data_layout(krate) else {
@@ -99,7 +99,7 @@ pub(crate) fn layout_of_adt_cycle_result<'db>(
     _: &'db dyn HirDatabase,
     _def: AdtId,
     _args: GenericArgs<'db>,
-    _trait_env: Arc<TraitEnvironment>,
+    _trait_env: Arc<TraitEnvironment<'db>>,
 ) -> Result<Arc<Layout>, LayoutError> {
     Err(LayoutError::RecursiveTypeWithoutIndirection)
 }

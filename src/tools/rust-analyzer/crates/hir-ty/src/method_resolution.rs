@@ -31,7 +31,7 @@ use crate::{
     infer::{Adjust, Adjustment, OverloadedDeref, PointerCast, unify::InferenceTable},
     lang_items::is_box,
     next_solver::{
-        self, SolverDefId,
+        self, DbInterner, SolverDefId,
         infer::{
             DefineOpaqueTypes,
             traits::{ObligationCause, PredicateObligation},
@@ -545,7 +545,7 @@ pub fn def_crates(db: &dyn HirDatabase, ty: &Ty, cur_crate: Crate) -> Option<Sma
 pub(crate) fn lookup_method<'db>(
     db: &'db dyn HirDatabase,
     ty: &next_solver::Canonical<'db, crate::next_solver::Ty<'db>>,
-    env: Arc<TraitEnvironment>,
+    env: Arc<TraitEnvironment<'db>>,
     traits_in_scope: &FxHashSet<TraitId>,
     visible_from_module: VisibleFromModule,
     name: &Name,
@@ -714,7 +714,7 @@ impl ReceiverAdjustments {
 pub(crate) fn iterate_method_candidates<'db, T>(
     ty: &next_solver::Canonical<'db, crate::next_solver::Ty<'db>>,
     db: &'db dyn HirDatabase,
-    env: Arc<TraitEnvironment>,
+    env: Arc<TraitEnvironment<'db>>,
     traits_in_scope: &FxHashSet<TraitId>,
     visible_from_module: VisibleFromModule,
     name: Option<&Name>,
@@ -742,9 +742,9 @@ pub(crate) fn iterate_method_candidates<'db, T>(
     slot
 }
 
-pub fn lookup_impl_const(
-    db: &dyn HirDatabase,
-    env: Arc<TraitEnvironment>,
+pub fn lookup_impl_const<'db>(
+    db: &'db dyn HirDatabase,
+    env: Arc<TraitEnvironment<'db>>,
     const_id: ConstId,
     subs: Substitution,
 ) -> (ConstId, Substitution) {
@@ -770,9 +770,9 @@ pub fn lookup_impl_const(
 
 /// Checks if the self parameter of `Trait` method is the `dyn Trait` and we should
 /// call the method using the vtable.
-pub fn is_dyn_method(
-    db: &dyn HirDatabase,
-    _env: Arc<TraitEnvironment>,
+pub fn is_dyn_method<'db>(
+    db: &'db dyn HirDatabase,
+    _env: Arc<TraitEnvironment<'db>>,
     func: FunctionId,
     fn_subst: Substitution,
 ) -> Option<usize> {
@@ -812,9 +812,9 @@ pub fn is_dyn_method(
 /// Looks up the impl method that actually runs for the trait method `func`.
 ///
 /// Returns `func` if it's not a method defined in a trait or the lookup failed.
-pub(crate) fn lookup_impl_method_query(
-    db: &dyn HirDatabase,
-    env: Arc<TraitEnvironment>,
+pub(crate) fn lookup_impl_method_query<'db>(
+    db: &'db dyn HirDatabase,
+    env: Arc<TraitEnvironment<'db>>,
     func: FunctionId,
     fn_subst: Substitution,
 ) -> (FunctionId, Substitution) {
@@ -845,10 +845,10 @@ pub(crate) fn lookup_impl_method_query(
     )
 }
 
-fn lookup_impl_assoc_item_for_trait_ref(
+fn lookup_impl_assoc_item_for_trait_ref<'db>(
     trait_ref: TraitRef,
-    db: &dyn HirDatabase,
-    env: Arc<TraitEnvironment>,
+    db: &'db dyn HirDatabase,
+    env: Arc<TraitEnvironment<'db>>,
     name: &Name,
 ) -> Option<(AssocItemId, Substitution)> {
     let hir_trait_id = trait_ref.hir_trait_id();
@@ -1067,7 +1067,7 @@ pub fn check_orphan_rules(db: &dyn HirDatabase, impl_: ImplId) -> bool {
 pub fn iterate_path_candidates<'db>(
     ty: &next_solver::Canonical<'db, crate::next_solver::Ty<'db>>,
     db: &'db dyn HirDatabase,
-    env: Arc<TraitEnvironment>,
+    env: Arc<TraitEnvironment<'db>>,
     traits_in_scope: &FxHashSet<TraitId>,
     visible_from_module: VisibleFromModule,
     name: Option<&Name>,
@@ -1089,7 +1089,7 @@ pub fn iterate_path_candidates<'db>(
 pub fn iterate_method_candidates_dyn<'db>(
     ty: &next_solver::Canonical<'db, crate::next_solver::Ty<'db>>,
     db: &'db dyn HirDatabase,
-    env: Arc<TraitEnvironment>,
+    env: Arc<TraitEnvironment<'db>>,
     traits_in_scope: &FxHashSet<TraitId>,
     visible_from_module: VisibleFromModule,
     name: Option<&Name>,
@@ -1351,7 +1351,7 @@ fn iterate_method_candidates_by_receiver<'db>(
 fn iterate_method_candidates_for_self_ty<'db>(
     self_ty: &next_solver::Canonical<'db, crate::next_solver::Ty<'db>>,
     db: &'db dyn HirDatabase,
-    env: Arc<TraitEnvironment>,
+    env: Arc<TraitEnvironment<'db>>,
     traits_in_scope: &FxHashSet<TraitId>,
     visible_from_module: VisibleFromModule,
     name: Option<&Name>,
@@ -1755,7 +1755,10 @@ fn is_valid_trait_method_candidate(
                     };
                     let res = table
                         .infer_ctxt
-                        .at(&next_solver::infer::traits::ObligationCause::dummy(), table.param_env)
+                        .at(
+                            &next_solver::infer::traits::ObligationCause::dummy(),
+                            table.trait_env.env,
+                        )
                         .relate(
                             DefineOpaqueTypes::No,
                             expected_receiver.to_nextsolver(table.interner),
@@ -1845,7 +1848,12 @@ fn is_valid_impl_fn_candidate(
         let mut ctxt = ObligationCtxt::new(&table.infer_ctxt);
 
         ctxt.register_obligations(predicates.into_iter().map(|p| {
-            PredicateObligation::new(table.interner, ObligationCause::new(), table.param_env, p.0)
+            PredicateObligation::new(
+                table.interner,
+                ObligationCause::new(),
+                table.trait_env.env,
+                p.0,
+            )
         }));
 
         if ctxt.select_where_possible().is_empty() {
@@ -1856,10 +1864,10 @@ fn is_valid_impl_fn_candidate(
     })
 }
 
-pub fn implements_trait_unique(
+pub fn implements_trait_unique<'db>(
     ty: &Canonical<Ty>,
-    db: &dyn HirDatabase,
-    env: &TraitEnvironment,
+    db: &'db dyn HirDatabase,
+    env: &TraitEnvironment<'db>,
     trait_: TraitId,
 ) -> bool {
     let goal = generic_implements_goal(db, env, trait_, ty);
@@ -1869,9 +1877,9 @@ pub fn implements_trait_unique(
 /// This creates Substs for a trait with the given Self type and type variables
 /// for all other parameters, to query next solver with it.
 #[tracing::instrument(skip_all)]
-fn generic_implements_goal(
-    db: &dyn HirDatabase,
-    env: &TraitEnvironment,
+fn generic_implements_goal<'db>(
+    db: &'db dyn HirDatabase,
+    env: &TraitEnvironment<'db>,
     trait_: TraitId,
     self_ty: &Canonical<Ty>,
 ) -> Canonical<InEnvironment<super::DomainGoal>> {
@@ -1893,7 +1901,10 @@ fn generic_implements_goal(
     let binders = CanonicalVarKinds::from_iter(Interner, kinds);
 
     let obligation = trait_ref.cast(Interner);
-    let value = InEnvironment::new(&env.env, obligation);
+    let value = InEnvironment::new(
+        &env.env.to_chalk(DbInterner::new_with(db, Some(env.krate), env.block)),
+        obligation,
+    );
     Canonical { binders, value }
 }
 
@@ -1910,7 +1921,7 @@ fn generic_implements_goal_ns<'db>(
     let trait_ref =
         rustc_type_ir::TraitRef::new_from_args(table.infer_ctxt.interner, trait_.into(), args)
             .with_replaced_self_ty(table.infer_ctxt.interner, self_ty);
-    let goal = next_solver::Goal::new(table.infer_ctxt.interner, table.param_env, trait_ref);
+    let goal = next_solver::Goal::new(table.infer_ctxt.interner, table.trait_env.env, trait_ref);
 
     table.canonicalize(goal)
 }

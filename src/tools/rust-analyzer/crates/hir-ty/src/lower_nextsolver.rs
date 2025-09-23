@@ -19,9 +19,9 @@ use base_db::Crate;
 use either::Either;
 use hir_def::item_tree::FieldsShape;
 use hir_def::{
-    AdtId, AssocItemId, CallableDefId, ConstParamId, EnumVariantId, FunctionId, GenericDefId,
-    GenericParamId, ImplId, ItemContainerId, LocalFieldId, Lookup, StructId, TraitId, TypeAliasId,
-    TypeOrConstParamId, VariantId,
+    AdtId, AssocItemId, CallableDefId, ConstParamId, DefWithBodyId, EnumVariantId, FunctionId,
+    GenericDefId, GenericParamId, HasModule, ImplId, ItemContainerId, LocalFieldId, Lookup,
+    StructId, TraitId, TypeAliasId, TypeOrConstParamId, VariantId,
     expr_store::{
         ExpressionStore,
         path::{GenericArg, Path},
@@ -57,7 +57,7 @@ use triomphe::Arc;
 
 use crate::ValueTyDefId;
 use crate::{
-    FnAbi, ImplTraitId, Interner, ParamKind, TyDefId, TyLoweringDiagnostic,
+    FnAbi, ImplTraitId, Interner, ParamKind, TraitEnvironment, TyDefId, TyLoweringDiagnostic,
     TyLoweringDiagnosticKind,
     consteval_nextsolver::{intern_const_ref, path_to_const, unknown_const_as_generic},
     db::HirDatabase,
@@ -66,8 +66,10 @@ use crate::{
     next_solver::{
         AdtDef, AliasTy, Binder, BoundExistentialPredicates, BoundRegionKind, BoundTyKind,
         BoundVarKind, BoundVarKinds, Clause, Clauses, Const, DbInterner, EarlyBinder,
-        EarlyParamRegion, ErrorGuaranteed, GenericArgs, PolyFnSig, Predicate, Region, SolverDefId,
-        TraitPredicate, TraitRef, Ty, Tys, abi::Safety, mapping::ChalkToNextSolver,
+        EarlyParamRegion, ErrorGuaranteed, GenericArgs, ParamEnv, PolyFnSig, Predicate, Region,
+        SolverDefId, TraitPredicate, TraitRef, Ty, Tys,
+        abi::Safety,
+        mapping::{ChalkToNextSolver, convert_ty_for_result},
     },
 };
 
@@ -1373,6 +1375,122 @@ impl<'db> ops::Deref for GenericPredicates<'db> {
     fn deref(&self) -> &Self::Target {
         self.0.as_deref().unwrap_or(&[])
     }
+}
+
+pub(crate) fn trait_environment_for_body_query(
+    db: &dyn HirDatabase,
+    def: DefWithBodyId,
+) -> Arc<TraitEnvironment<'_>> {
+    let Some(def) = def.as_generic_def_id(db) else {
+        let krate = def.module(db).krate();
+        return TraitEnvironment::empty(krate);
+    };
+    db.trait_environment(def)
+}
+
+pub(crate) fn trait_environment_query<'db>(
+    db: &'db dyn HirDatabase,
+    def: GenericDefId,
+) -> Arc<TraitEnvironment<'db>> {
+    let generics = generics(db, def);
+    if generics.has_no_predicates() && generics.is_empty() {
+        return TraitEnvironment::empty(def.krate(db));
+    }
+
+    let interner = DbInterner::new_with(db, Some(def.krate(db)), None);
+    let resolver = def.resolver(db);
+    let mut ctx = TyLoweringContext::new(
+        db,
+        &resolver,
+        generics.store(),
+        def,
+        LifetimeElisionKind::AnonymousReportError,
+    );
+    let mut traits_in_scope = Vec::new();
+    let mut clauses = Vec::new();
+    for maybe_parent_generics in
+        std::iter::successors(Some(&generics), |generics| generics.parent_generics())
+    {
+        ctx.store = maybe_parent_generics.store();
+        for pred in maybe_parent_generics.where_predicates() {
+            for pred in ctx.lower_where_predicate(pred, false, &generics, PredicateFilter::All) {
+                if let rustc_type_ir::ClauseKind::Trait(tr) = pred.kind().skip_binder() {
+                    traits_in_scope
+                        .push((convert_ty_for_result(interner, tr.self_ty()), tr.def_id().0));
+                }
+                clauses.push(pred);
+            }
+        }
+    }
+
+    if let Some(trait_id) = def.assoc_trait_container(db) {
+        // add `Self: Trait<T1, T2, ...>` to the environment in trait
+        // function default implementations (and speculative code
+        // inside consts or type aliases)
+        cov_mark::hit!(trait_self_implements_self);
+        let trait_ref = TraitRef::identity(ctx.interner, trait_id.into());
+        let clause = Clause(Predicate::new(
+            ctx.interner,
+            Binder::dummy(rustc_type_ir::PredicateKind::Clause(rustc_type_ir::ClauseKind::Trait(
+                TraitPredicate { trait_ref, polarity: rustc_type_ir::PredicatePolarity::Positive },
+            ))),
+        ));
+        clauses.push(clause);
+    }
+
+    let explicitly_unsized_tys = ctx.unsized_types;
+
+    let sized_trait = LangItem::Sized.resolve_trait(db, resolver.krate());
+    if let Some(sized_trait) = sized_trait {
+        let (mut generics, mut def_id) =
+            (crate::next_solver::generics::generics(db, def.into()), def);
+        loop {
+            let self_idx = trait_self_param_idx(db, def_id);
+            for (idx, p) in generics.own_params.iter().enumerate() {
+                if let Some(self_idx) = self_idx
+                    && p.index() as usize == self_idx
+                {
+                    continue;
+                }
+                let GenericParamId::TypeParamId(param_id) = p.id else {
+                    continue;
+                };
+                let idx = idx as u32 + generics.parent_count as u32;
+                let param_ty = Ty::new_param(ctx.interner, param_id, idx, p.name.clone());
+                if explicitly_unsized_tys.contains(&param_ty) {
+                    continue;
+                }
+                let trait_ref = TraitRef::new_from_args(
+                    ctx.interner,
+                    sized_trait.into(),
+                    GenericArgs::new_from_iter(ctx.interner, [param_ty.into()]),
+                );
+                let clause = Clause(Predicate::new(
+                    ctx.interner,
+                    Binder::dummy(rustc_type_ir::PredicateKind::Clause(
+                        rustc_type_ir::ClauseKind::Trait(TraitPredicate {
+                            trait_ref,
+                            polarity: rustc_type_ir::PredicatePolarity::Positive,
+                        }),
+                    )),
+                ));
+                clauses.push(clause);
+            }
+
+            if let Some(g) = generics.parent {
+                generics = crate::next_solver::generics::generics(db, g.into());
+                def_id = g;
+            } else {
+                break;
+            }
+        }
+    }
+
+    let clauses = rustc_type_ir::elaborate::elaborate(ctx.interner, clauses);
+    let clauses = Clauses::new_from_iter(ctx.interner, clauses);
+    let env = ParamEnv { clauses };
+
+    TraitEnvironment::new(resolver.krate(), None, traits_in_scope.into_boxed_slice(), env)
 }
 
 #[derive(Copy, Clone, Debug)]

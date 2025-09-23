@@ -70,7 +70,7 @@ pub(crate) struct MatchCheckCtx<'db> {
     body: DefWithBodyId,
     pub(crate) db: &'db dyn HirDatabase,
     exhaustive_patterns: bool,
-    env: Arc<TraitEnvironment>,
+    env: Arc<TraitEnvironment<'db>>,
 }
 
 impl<'db> MatchCheckCtx<'db> {
@@ -78,7 +78,7 @@ impl<'db> MatchCheckCtx<'db> {
         module: ModuleId,
         body: DefWithBodyId,
         db: &'db dyn HirDatabase,
-        env: Arc<TraitEnvironment>,
+        env: Arc<TraitEnvironment<'db>>,
     ) -> Self {
         let def_map = module.crate_def_map(db);
         let exhaustive_patterns = def_map.is_unstable_feature_enabled(&sym::exhaustive_patterns);

@@ -24,9 +24,9 @@ use chalk_ir::{
 
 use either::Either;
 use hir_def::{
-    AdtId, AssocItemId, CallableDefId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId,
-    FunctionId, GenericDefId, GenericParamId, HasModule, ImplId, ItemContainerId, LocalFieldId,
-    Lookup, StaticId, StructId, TypeAliasId, TypeOrConstParamId, UnionId, VariantId,
+    AdtId, AssocItemId, CallableDefId, ConstId, ConstParamId, EnumId, EnumVariantId, FunctionId,
+    GenericDefId, GenericParamId, ImplId, ItemContainerId, LocalFieldId, Lookup, StaticId,
+    StructId, TypeAliasId, TypeOrConstParamId, UnionId, VariantId,
     builtin_type::BuiltinType,
     expr_store::{ExpressionStore, path::Path},
     hir::generics::{GenericParamDataRef, TypeOrConstParamData, WherePredicate},
@@ -46,11 +46,10 @@ use stdx::{impl_from, never};
 use triomphe::{Arc, ThinArc};
 
 use crate::{
-    AliasTy, Binders, BoundVar, CallableSig, Const, DebruijnIndex, DomainGoal, DynTy, FnAbi,
-    FnPointer, FnSig, FnSubst, ImplTrait, ImplTraitId, ImplTraits, Interner, Lifetime,
-    LifetimeData, LifetimeOutlives, PolyFnSig, QuantifiedWhereClause, QuantifiedWhereClauses,
-    Substitution, TraitEnvironment, TraitRef, TraitRefExt, Ty, TyBuilder, TyKind, WhereClause,
-    all_super_traits,
+    AliasTy, Binders, BoundVar, CallableSig, Const, DebruijnIndex, DynTy, FnAbi, FnPointer, FnSig,
+    FnSubst, ImplTrait, ImplTraitId, ImplTraits, Interner, Lifetime, LifetimeData,
+    LifetimeOutlives, PolyFnSig, QuantifiedWhereClause, QuantifiedWhereClauses, Substitution,
+    TraitRef, TraitRefExt, Ty, TyBuilder, TyKind, WhereClause, all_super_traits,
     consteval::{intern_const_ref, path_to_const, unknown_const, unknown_const_as_generic},
     db::HirDatabase,
     error_lifetime,
@@ -1084,102 +1083,6 @@ pub(crate) fn generic_predicates_for_param_cycle_result(
     _assoc_name: Option<Name>,
 ) -> GenericPredicates {
     GenericPredicates(None)
-}
-
-pub(crate) fn trait_environment_for_body_query(
-    db: &dyn HirDatabase,
-    def: DefWithBodyId,
-) -> Arc<TraitEnvironment> {
-    let Some(def) = def.as_generic_def_id(db) else {
-        let krate = def.module(db).krate();
-        return TraitEnvironment::empty(krate);
-    };
-    db.trait_environment(def)
-}
-
-pub(crate) fn trait_environment_query(
-    db: &dyn HirDatabase,
-    def: GenericDefId,
-) -> Arc<TraitEnvironment> {
-    let generics = generics(db, def);
-    if generics.has_no_predicates() && generics.is_empty() {
-        return TraitEnvironment::empty(def.krate(db));
-    }
-
-    let resolver = def.resolver(db);
-    let mut ctx = TyLoweringContext::new(
-        db,
-        &resolver,
-        generics.store(),
-        def,
-        LifetimeElisionKind::AnonymousReportError,
-    )
-    .with_type_param_mode(ParamLoweringMode::Placeholder);
-    let mut traits_in_scope = Vec::new();
-    let mut clauses = Vec::new();
-    for maybe_parent_generics in
-        std::iter::successors(Some(&generics), |generics| generics.parent_generics())
-    {
-        ctx.store = maybe_parent_generics.store();
-        for pred in maybe_parent_generics.where_predicates() {
-            for pred in ctx.lower_where_predicate(pred, false) {
-                if let WhereClause::Implemented(tr) = pred.skip_binders() {
-                    traits_in_scope
-                        .push((tr.self_type_parameter(Interner).clone(), tr.hir_trait_id()));
-                }
-                let program_clause: Binders<DomainGoal> =
-                    pred.map(|pred| pred.into_from_env_goal(Interner).cast(Interner));
-                clauses.push(program_clause);
-            }
-        }
-    }
-
-    if let Some(trait_id) = def.assoc_trait_container(db) {
-        // add `Self: Trait<T1, T2, ...>` to the environment in trait
-        // function default implementations (and speculative code
-        // inside consts or type aliases)
-        cov_mark::hit!(trait_self_implements_self);
-        let substs = TyBuilder::placeholder_subst(db, trait_id);
-        let trait_ref = TraitRef { trait_id: to_chalk_trait_id(trait_id), substitution: substs };
-        let pred = WhereClause::Implemented(trait_ref);
-        clauses.push(Binders::empty(
-            Interner,
-            pred.cast::<DomainGoal>(Interner).into_from_env_goal(Interner),
-        ));
-    }
-
-    let subst = generics.placeholder_subst(db);
-    if !subst.is_empty(Interner) {
-        let explicitly_unsized_tys = ctx.unsized_types;
-        if let Some(implicitly_sized_clauses) =
-            implicitly_sized_clauses(db, def, &explicitly_unsized_tys, &subst, &resolver)
-        {
-            clauses.extend(implicitly_sized_clauses.map(|pred| {
-                Binders::empty(
-                    Interner,
-                    pred.into_from_env_goal(Interner).cast::<DomainGoal>(Interner),
-                )
-            }));
-        };
-    }
-
-    let clauses = chalk_ir::ProgramClauses::from_iter(
-        Interner,
-        clauses.into_iter().map(|g| {
-            chalk_ir::ProgramClause::new(
-                Interner,
-                chalk_ir::ProgramClauseData(g.map(|g| chalk_ir::ProgramClauseImplication {
-                    consequence: g,
-                    conditions: chalk_ir::Goals::empty(Interner),
-                    constraints: chalk_ir::Constraints::empty(Interner),
-                    priority: chalk_ir::ClausePriority::High,
-                })),
-            )
-        }),
-    );
-    let env = chalk_ir::Environment { clauses };
-
-    TraitEnvironment::new(resolver.krate(), None, traits_in_scope.into_boxed_slice(), env)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
