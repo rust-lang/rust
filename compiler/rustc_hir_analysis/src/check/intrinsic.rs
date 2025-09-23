@@ -90,6 +90,10 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::contract_check_ensures
         | sym::contract_check_requires
         | sym::contract_checks
+        | sym::copysignf16
+        | sym::copysignf32
+        | sym::copysignf64
+        | sym::copysignf128
         | sym::cosf16
         | sym::cosf32
         | sym::cosf64
@@ -106,6 +110,10 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::expf32
         | sym::expf64
         | sym::expf128
+        | sym::fabsf16
+        | sym::fabsf32
+        | sym::fabsf64
+        | sym::fabsf128
         | sym::fadd_algebraic
         | sym::fdiv_algebraic
         | sym::floorf16
