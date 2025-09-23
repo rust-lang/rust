@@ -29,7 +29,8 @@ use stdarch_test::assert_instr;
 #[target_feature(enable = "lzcnt")]
 #[cfg_attr(test, assert_instr(lzcnt))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _lzcnt_u64(x: u64) -> u64 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _lzcnt_u64(x: u64) -> u64 {
     x.leading_zeros() as u64
 }
 
@@ -40,23 +41,25 @@ pub fn _lzcnt_u64(x: u64) -> u64 {
 #[target_feature(enable = "popcnt")]
 #[cfg_attr(test, assert_instr(popcnt))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _popcnt64(x: i64) -> i32 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _popcnt64(x: i64) -> i32 {
     x.count_ones() as i32
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::core_arch::assert_eq_const as assert_eq;
     use stdarch_test::simd_test;
 
     use crate::core_arch::arch::x86_64::*;
 
     #[simd_test(enable = "lzcnt")]
-    unsafe fn test_lzcnt_u64() {
+    const unsafe fn test_lzcnt_u64() {
         assert_eq!(_lzcnt_u64(0b0101_1010), 57);
     }
 
     #[simd_test(enable = "popcnt")]
-    unsafe fn test_popcnt64() {
+    const unsafe fn test_popcnt64() {
         assert_eq!(_popcnt64(0b0101_1010), 4);
     }
 }

@@ -24,7 +24,8 @@ use stdarch_test::assert_instr;
 #[target_feature(enable = "bmi2")]
 #[cfg(not(target_arch = "x86"))] // calls an intrinsic
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub fn _mulx_u64(a: u64, b: u64, hi: &mut u64) -> u64 {
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mulx_u64(a: u64, b: u64, hi: &mut u64) -> u64 {
     let result: u128 = (a as u128) * (b as u128);
     *hi = (result >> 64) as u64;
     result as u64
@@ -79,6 +80,7 @@ unsafe extern "C" {
 
 #[cfg(test)]
 mod tests {
+    use crate::core_arch::assert_eq_const as assert_eq;
     use stdarch_test::simd_test;
 
     use crate::core_arch::x86_64::*;
@@ -120,7 +122,7 @@ mod tests {
 
     #[simd_test(enable = "bmi2")]
     #[rustfmt::skip]
-    unsafe fn test_mulx_u64() {
+const     unsafe fn test_mulx_u64() {
         let a: u64 = 9_223_372_036_854_775_800;
         let b: u64 = 100;
         let mut hi = 0;
