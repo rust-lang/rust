@@ -21,9 +21,9 @@ pub(super) fn check<'tcx>(
     unwrap_arg: &'tcx hir::Expr<'_>,
     msrv: Msrv,
 ) -> bool {
-    // lint if the caller of `map()` is an `Option` or a `Result`.
-    let is_option = cx.typeck_results().expr_ty(recv).is_diag_item(cx, sym::Option);
-    let is_result = cx.typeck_results().expr_ty(recv).is_diag_item(cx, sym::Result);
+    let recv_ty = cx.typeck_results().expr_ty(recv).peel_refs();
+    let is_option = recv_ty.is_diag_item(cx, sym::Option);
+    let is_result = recv_ty.is_diag_item(cx, sym::Result);
 
     if is_result && !msrv.meets(cx, msrvs::RESULT_MAP_OR_ELSE) {
         return false;

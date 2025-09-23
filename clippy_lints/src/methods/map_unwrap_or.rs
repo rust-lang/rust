@@ -26,13 +26,13 @@ pub(super) fn check<'tcx>(
     unwrap_arg: &'tcx rustc_hir::Expr<'_>,
     map_span: Span,
     msrv: Msrv,
-) -> bool {
-    // lint if the caller of `map()` is an `Option` or a `Result`.
-    let is_option = cx.typeck_results().expr_ty(recv).is_diag_item(cx, sym::Option);
-    let is_result = cx.typeck_results().expr_ty(recv).is_diag_item(cx, sym::Result);
+) {
+    let recv_ty = cx.typeck_results().expr_ty(recv).peel_refs();
+    let is_option = recv_ty.is_diag_item(cx, sym::Option);
+    let is_result = recv_ty.is_diag_item(cx, sym::Result);
 
     if is_result && !msrv.meets(cx, msrvs::RESULT_MAP_OR) {
-        return false;
+        return;
     }
 
     // lint if the caller of `map()` is an `Option`
@@ -71,12 +71,12 @@ pub(super) fn check<'tcx>(
 
             // Visit the body, and return if we've found a reference
             if reference_visitor.visit_body(body).is_break() {
-                return false;
+                return;
             }
         }
 
         if !unwrap_arg.span.eq_ctxt(map_span) {
-            return false;
+            return;
         }
 
         // is_some_and is stabilised && `unwrap_or` argument is false; suggest `is_some_and` instead
@@ -137,11 +137,7 @@ pub(super) fn check<'tcx>(
 
             diag.multipart_suggestion(format!("use `{suggest}` instead"), suggestion, applicability);
         });
-
-        return true;
     }
-
-    false
 }
 
 struct UnwrapVisitor<'a, 'tcx> {
