@@ -410,16 +410,16 @@ The query system allows for applying [modifiers][mod] to queries. These
 modifiers affect certain aspects of how the system treats the query with
 respect to incremental compilation:
 
- - `eval_always` - A query with the `eval_always` attribute is re-executed
+ - `no_incremental` - A query with the `no_incremental` attribute is re-executed
    unconditionally during incremental compilation. I.e. the system will not
-   even try to mark the query's dep-node as green. This attribute has two use
-   cases:
+   even try to mark the query's dep-node as green, but the result is still cached for use in the same compilation.
+   This attribute has two use cases:
 
-    - `eval_always` queries can read inputs (from files, global state, etc).
+    - `no_incremental` queries can read inputs (from files, global state, etc).
       They can also produce side effects like writing to files and changing global state.
 
     - Some queries are very likely to be re-evaluated because their result
-      depends on the entire source code. In this case `eval_always` can be used
+      depends on the entire source code. In this case `no_incremental` can be used
       as an optimization because the system can skip recording dependencies in
       the first place.
 
@@ -472,7 +472,7 @@ respect to incremental compilation:
 
 ## The projection query pattern
 
-It's interesting to note that `eval_always` and `no_hash` can be used together
+It's interesting to note that `no_incremental` and `no_hash` can be used together
 in the so-called "projection query" pattern. It is often the case that there is
 one query that depends on the entirety of the compiler's input (e.g. the indexed HIR)
 and another query that projects individual values out of this monolithic value
@@ -505,10 +505,10 @@ red. As a consequence `foo(a)` needs to be re-executed; but `bar(b)` and
 directly depended on `monolithic_query` then all of them would have had to be
 re-evaluated.
 
-This pattern works even without `eval_always` and `no_hash` but the two
+This pattern works even without `no_incremental` and `no_hash`, but the two
 modifiers can be used to avoid unnecessary overhead. If the monolithic query
 is likely to change at any minor modification of the compiler's input it makes
-sense to mark it as `eval_always`, thus getting rid of its dependency tracking
+sense to mark it as `no_incremental`, thus getting rid of its dependency tracking
 cost. And it always makes sense to mark the monolithic query as `no_hash`
 because we have the projections to take care of keeping things green as much
 as possible.

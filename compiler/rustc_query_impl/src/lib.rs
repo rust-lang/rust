@@ -167,8 +167,8 @@ where
     }
 
     #[inline(always)]
-    fn eval_always(self) -> bool {
-        self.dynamic.eval_always
+    fn no_incremental(self) -> bool {
+        self.dynamic.no_incremental
     }
 
     #[inline(always)]

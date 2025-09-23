@@ -235,7 +235,7 @@ pub struct DepKindStruct<Tcx: DepContext> {
     /// Eval-always queries do not track their dependencies, and are always recomputed, even if
     /// their inputs have not changed since the last compiler invocation. The result is still
     /// cached within one compiler invocation.
-    pub is_eval_always: bool,
+    pub is_no_incremental: bool,
 
     /// Whether the query key can be recovered from the hashed fingerprint.
     /// See [DepNodeParams] trait for the behaviour of each key type.

@@ -241,15 +241,15 @@ macro_rules! is_anon {
     };
 }
 
-macro_rules! is_eval_always {
+macro_rules! is_no_incremental {
     ([]) => {{
         false
     }};
-    ([(eval_always) $($rest:tt)*]) => {{
+    ([(no_incremental) $($rest:tt)*]) => {{
         true
     }};
     ([$other:tt $($modifiers:tt)*]) => {
-        is_eval_always!([$($modifiers)*])
+        is_no_incremental!([$($modifiers)*])
     };
 }
 
@@ -515,7 +515,7 @@ where
     }
 }
 
-pub(crate) fn query_callback<'tcx, Q>(is_anon: bool, is_eval_always: bool) -> DepKindStruct<'tcx>
+pub(crate) fn query_callback<'tcx, Q>(is_anon: bool, is_no_incremental: bool) -> DepKindStruct<'tcx>
 where
     Q: QueryConfigRestored<'tcx>,
 {
@@ -524,7 +524,7 @@ where
     if is_anon || !fingerprint_style.reconstructible() {
         return DepKindStruct {
             is_anon,
-            is_eval_always,
+            is_no_incremental,
             fingerprint_style,
             force_from_dep_node: None,
             try_load_from_on_disk_cache: None,
@@ -534,7 +534,7 @@ where
 
     DepKindStruct {
         is_anon,
-        is_eval_always,
+        is_no_incremental,
         fingerprint_style,
         force_from_dep_node: Some(|tcx, dep_node, _| {
             force_from_dep_node(Q::config(tcx), tcx, dep_node)
@@ -642,7 +642,7 @@ macro_rules! define_queries {
             {
                 DynamicQuery {
                     name: stringify!($name),
-                    eval_always: is_eval_always!([$($modifiers)*]),
+                    no_incremental: is_no_incremental!([$($modifiers)*]),
                     dep_kind: dep_graph::dep_kinds::$name,
                     handle_cycle_error: handle_cycle_error!([$($modifiers)*]),
                     query_state: std::mem::offset_of!(QueryStates<'tcx>, $name),
@@ -845,7 +845,7 @@ macro_rules! define_queries {
             pub(crate) fn Null<'tcx>() -> DepKindStruct<'tcx> {
                 DepKindStruct {
                     is_anon: false,
-                    is_eval_always: false,
+                    is_no_incremental: false,
                     fingerprint_style: FingerprintStyle::Unit,
                     force_from_dep_node: Some(|_, dep_node, _| bug!("force_from_dep_node: encountered {:?}", dep_node)),
                     try_load_from_on_disk_cache: None,
@@ -857,7 +857,7 @@ macro_rules! define_queries {
             pub(crate) fn Red<'tcx>() -> DepKindStruct<'tcx> {
                 DepKindStruct {
                     is_anon: false,
-                    is_eval_always: false,
+                    is_no_incremental: false,
                     fingerprint_style: FingerprintStyle::Unit,
                     force_from_dep_node: Some(|_, dep_node, _| bug!("force_from_dep_node: encountered {:?}", dep_node)),
                     try_load_from_on_disk_cache: None,
@@ -868,7 +868,7 @@ macro_rules! define_queries {
             pub(crate) fn SideEffect<'tcx>() -> DepKindStruct<'tcx> {
                 DepKindStruct {
                     is_anon: false,
-                    is_eval_always: false,
+                    is_no_incremental: false,
                     fingerprint_style: FingerprintStyle::Unit,
                     force_from_dep_node: Some(|tcx, _, prev_index| {
                         tcx.dep_graph.force_diagnostic_node(QueryCtxt::new(tcx), prev_index);
@@ -882,7 +882,7 @@ macro_rules! define_queries {
             pub(crate) fn AnonZeroDeps<'tcx>() -> DepKindStruct<'tcx> {
                 DepKindStruct {
                     is_anon: true,
-                    is_eval_always: false,
+                    is_no_incremental: false,
                     fingerprint_style: FingerprintStyle::Opaque,
                     force_from_dep_node: Some(|_, _, _| bug!("cannot force an anon node")),
                     try_load_from_on_disk_cache: None,
@@ -893,7 +893,7 @@ macro_rules! define_queries {
             pub(crate) fn TraitSelect<'tcx>() -> DepKindStruct<'tcx> {
                 DepKindStruct {
                     is_anon: true,
-                    is_eval_always: false,
+                    is_no_incremental: false,
                     fingerprint_style: FingerprintStyle::Unit,
                     force_from_dep_node: None,
                     try_load_from_on_disk_cache: None,
@@ -904,7 +904,7 @@ macro_rules! define_queries {
             pub(crate) fn CompileCodegenUnit<'tcx>() -> DepKindStruct<'tcx> {
                 DepKindStruct {
                     is_anon: false,
-                    is_eval_always: false,
+                    is_no_incremental: false,
                     fingerprint_style: FingerprintStyle::Opaque,
                     force_from_dep_node: None,
                     try_load_from_on_disk_cache: None,
@@ -915,7 +915,7 @@ macro_rules! define_queries {
             pub(crate) fn CompileMonoItem<'tcx>() -> DepKindStruct<'tcx> {
                 DepKindStruct {
                     is_anon: false,
-                    is_eval_always: false,
+                    is_no_incremental: false,
                     fingerprint_style: FingerprintStyle::Opaque,
                     force_from_dep_node: None,
                     try_load_from_on_disk_cache: None,
@@ -926,7 +926,7 @@ macro_rules! define_queries {
             pub(crate) fn Metadata<'tcx>() -> DepKindStruct<'tcx> {
                 DepKindStruct {
                     is_anon: false,
-                    is_eval_always: false,
+                    is_no_incremental: false,
                     fingerprint_style: FingerprintStyle::Unit,
                     force_from_dep_node: None,
                     try_load_from_on_disk_cache: None,
@@ -937,7 +937,7 @@ macro_rules! define_queries {
             $(pub(crate) fn $name<'tcx>()-> DepKindStruct<'tcx> {
                 $crate::plumbing::query_callback::<query_impl::$name::QueryType<'tcx>>(
                     is_anon!([$($modifiers)*]),
-                    is_eval_always!([$($modifiers)*]),
+                    is_no_incremental!([$($modifiers)*]),
                 )
             })*
         }

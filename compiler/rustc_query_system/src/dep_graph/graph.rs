@@ -346,7 +346,7 @@ impl<D: Deps> DepGraphData<D> {
         });
 
         let with_deps = |task_deps| D::with_deps(task_deps, || task(cx, arg));
-        let (result, edges) = if cx.dep_context().is_eval_always(key.kind) {
+        let (result, edges) = if cx.dep_context().is_no_incremental(key.kind) {
             (with_deps(TaskDepsRef::EvalAlways), EdgesVec::new())
         } else {
             let task_deps = Lock::new(TaskDeps {
@@ -385,7 +385,7 @@ impl<D: Deps> DepGraphData<D> {
     where
         OP: FnOnce() -> R,
     {
-        debug_assert!(!cx.is_eval_always(dep_kind));
+        debug_assert!(!cx.is_no_incremental(dep_kind));
 
         let task_deps = Lock::new(TaskDeps::default());
         let result = D::with_deps(TaskDepsRef::Allow(&task_deps), op);
@@ -465,7 +465,7 @@ impl<D: Deps> DepGraph<D> {
                 let mut task_deps = match task_deps {
                     TaskDepsRef::Allow(deps) => deps.lock(),
                     TaskDepsRef::EvalAlways => {
-                        // We don't need to record dependencies of eval_always
+                        // We don't need to record dependencies of no_incremental
                         // queries. They are re-evaluated unconditionally anyway.
                         return;
                     }
@@ -849,7 +849,7 @@ impl<D: Deps> DepGraphData<D> {
         qcx: Qcx,
         dep_node: &DepNode,
     ) -> Option<(SerializedDepNodeIndex, DepNodeIndex)> {
-        debug_assert!(!qcx.dep_context().is_eval_always(dep_node.kind));
+        debug_assert!(!qcx.dep_context().is_no_incremental(dep_node.kind));
 
         // Return None if the dep node didn't exist in the previous session
         let prev_index = self.previous.node_to_index_opt(dep_node)?;
@@ -898,8 +898,8 @@ impl<D: Deps> DepGraphData<D> {
         }
 
         // We don't know the state of this dependency. If it isn't
-        // an eval_always node, let's try to mark it green recursively.
-        if !qcx.dep_context().is_eval_always(dep_dep_node.kind) {
+        // an no_incremental node, let's try to mark it green recursively.
+        if !qcx.dep_context().is_no_incremental(dep_dep_node.kind) {
             debug!(
                 "state of dependency {:?} ({}) is unknown, trying to mark it green",
                 dep_dep_node, dep_dep_node.hash,
@@ -965,8 +965,8 @@ impl<D: Deps> DepGraphData<D> {
     ) -> Option<DepNodeIndex> {
         let frame = MarkFrame { index: prev_dep_node_index, parent: frame };
 
-        // We never try to mark eval_always nodes as green
-        debug_assert!(!qcx.dep_context().is_eval_always(dep_node.kind));
+        // We never try to mark no_incremental nodes as green
+        debug_assert!(!qcx.dep_context().is_no_incremental(dep_node.kind));
 
         debug_assert_eq!(self.previous.index_to_node(prev_dep_node_index), *dep_node);
 
@@ -1278,11 +1278,11 @@ impl<D: Deps> CurrentDepGraph<D> {
 pub enum TaskDepsRef<'a> {
     /// New dependencies can be added to the
     /// `TaskDeps`. This is used when executing a 'normal' query
-    /// (no `eval_always` modifier)
+    /// (no `no_incremental` modifier)
     Allow(&'a Lock<TaskDeps>),
-    /// This is used when executing an `eval_always` query. We don't
+    /// This is used when executing an `no_incremental` query. We don't
     /// need to track dependencies for a query that's always
-    /// re-executed -- but we need to know that this is an `eval_always`
+    /// re-executed -- but we need to know that this is an `no_incremental`
     /// query in order to emit dependencies to `DepNodeIndex::FOREVER_RED_NODE`
     /// when directly feeding other queries.
     EvalAlways,

@@ -63,7 +63,7 @@ pub trait QueryConfig<Qcx: QueryContext>: Copy {
     ) -> Self::Value;
 
     fn anon(self) -> bool;
-    fn eval_always(self) -> bool;
+    fn no_incremental(self) -> bool;
     fn depth_limit(self) -> bool;
     fn feedable(self) -> bool;
 
