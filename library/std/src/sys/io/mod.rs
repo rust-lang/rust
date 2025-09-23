@@ -10,6 +10,10 @@ mod io_slice {
             mod windows;
             pub use windows::*;
         }
+        target_os = "motor" => {
+            mod motor;
+            pub use motor::*;
+        }
         target_os = "wasi" => {
             mod wasi;
             pub use wasi::*;
@@ -38,6 +42,10 @@ mod is_terminal {
         target_os = "hermit" => {
             mod hermit;
             pub use hermit::*;
+        }
+        target_os = "motor" => {
+            mod motor;
+            pub use motor::*;
         }
         _ => {
             mod unsupported;

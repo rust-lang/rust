@@ -167,6 +167,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "moto-rt"
+version = "0.14.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "89b06cfad394d58f28e4c69ac064b4d0562b5c187cb982d67b44ec53f2acc64e"
+dependencies = [
+ "rustc-std-workspace-alloc",
+ "rustc-std-workspace-core",
+]
+
+[[package]]
 name = "object"
 version = "0.37.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -316,6 +326,7 @@ dependencies = [
  "hermit-abi",
  "libc",
  "miniz_oxide",
+ "moto-rt",
  "object",
  "panic_abort",
  "panic_unwind",
