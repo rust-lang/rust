@@ -49,6 +49,7 @@ windows_targets::link!("kernel32.dll" "system" fn GetFileSizeEx(hfile : HANDLE, 
 windows_targets::link!("kernel32.dll" "system" fn GetFileType(hfile : HANDLE) -> FILE_TYPE);
 windows_targets::link!("kernel32.dll" "system" fn GetFinalPathNameByHandleW(hfile : HANDLE, lpszfilepath : PWSTR, cchfilepath : u32, dwflags : GETFINALPATHNAMEBYHANDLE_FLAGS) -> u32);
 windows_targets::link!("kernel32.dll" "system" fn GetFullPathNameW(lpfilename : PCWSTR, nbufferlength : u32, lpbuffer : PWSTR, lpfilepart : *mut PWSTR) -> u32);
+windows_targets::link!("ws2_32.dll" "system" fn GetHostNameW(name : PWSTR, namelen : i32) -> i32);
 windows_targets::link!("kernel32.dll" "system" fn GetLastError() -> WIN32_ERROR);
 windows_targets::link!("kernel32.dll" "system" fn GetModuleFileNameW(hmodule : HMODULE, lpfilename : PWSTR, nsize : u32) -> u32);
 windows_targets::link!("kernel32.dll" "system" fn GetModuleHandleA(lpmodulename : PCSTR) -> HMODULE);
@@ -134,6 +135,7 @@ windows_targets::link!("ws2_32.dll" "system" fn getsockname(s : SOCKET, name : *
 windows_targets::link!("ws2_32.dll" "system" fn getsockopt(s : SOCKET, level : i32, optname : i32, optval : PSTR, optlen : *mut i32) -> i32);
 windows_targets::link!("ws2_32.dll" "system" fn ioctlsocket(s : SOCKET, cmd : i32, argp : *mut u32) -> i32);
 windows_targets::link!("ws2_32.dll" "system" fn listen(s : SOCKET, backlog : i32) -> i32);
+windows_targets::link!("kernel32.dll" "system" fn lstrlenW(lpstring : PCWSTR) -> i32);
 windows_targets::link!("ws2_32.dll" "system" fn recv(s : SOCKET, buf : PSTR, len : i32, flags : SEND_RECV_FLAGS) -> i32);
 windows_targets::link!("ws2_32.dll" "system" fn recvfrom(s : SOCKET, buf : PSTR, len : i32, flags : i32, from : *mut SOCKADDR, fromlen : *mut i32) -> i32);
 windows_targets::link!("ws2_32.dll" "system" fn select(nfds : i32, readfds : *mut FD_SET, writefds : *mut FD_SET, exceptfds : *mut FD_SET, timeout : *const TIMEVAL) -> i32);
