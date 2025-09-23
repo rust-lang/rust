@@ -2911,6 +2911,9 @@ mod snapshot {
         [build] rustc 1 <host> -> cargo-miri 2 <host>
         [dist] rustc 1 <host> -> miri 2 <host>
         [dist] src <>
+        [build] rustc 1 <host> -> rustc_codegen_cranelift 2 <host>
+        [dist] rustc 1 <host> -> rustc_codegen_cranelift 2 <host>
+        [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <host>
         ");
     }
 
