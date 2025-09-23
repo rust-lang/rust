@@ -194,7 +194,7 @@ where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self), ret)]
     fn evaluate_root_goal(
         &self,
         goal: Goal<I, I::Predicate>,
@@ -206,6 +206,7 @@ where
         })
     }
 
+    #[instrument(level = "debug", skip(self), ret)]
     fn root_goal_may_hold_opaque_types_jank(
         &self,
         goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,

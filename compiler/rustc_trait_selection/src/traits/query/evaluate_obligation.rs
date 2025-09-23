@@ -1,6 +1,6 @@
 use rustc_infer::traits::solve::Goal;
 use rustc_macros::extension;
-use rustc_middle::span_bug;
+use rustc_middle::{span_bug, ty};
 use rustc_next_trait_solver::solve::SolverDelegateEvalExt;
 
 use crate::infer::InferCtxt;
@@ -22,7 +22,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// for more details.
     fn predicate_may_hold_opaque_types_jank(&self, obligation: &PredicateObligation<'tcx>) -> bool {
         if self.next_trait_solver() {
-            <&SolverDelegate<'tcx>>::from(self).root_goal_may_hold_opaque_types_jank(Goal::new(
+            self.goal_may_hold_opaque_types_jank(Goal::new(
                 self.tcx,
                 obligation.param_env,
                 obligation.predicate,
@@ -30,6 +30,13 @@ impl<'tcx> InferCtxt<'tcx> {
         } else {
             self.predicate_may_hold(obligation)
         }
+    }
+
+    /// See the comment on [OpaqueTypesJank](crate::solve::OpaqueTypesJank)
+    /// for more details.
+    fn goal_may_hold_opaque_types_jank(&self, goal: Goal<'tcx, ty::Predicate<'tcx>>) -> bool {
+        assert!(self.next_trait_solver());
+        <&SolverDelegate<'tcx>>::from(self).root_goal_may_hold_opaque_types_jank(goal)
     }
 
     /// Evaluates whether the predicate can be satisfied in the given

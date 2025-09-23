@@ -85,11 +85,32 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         T: Debug + TypeFoldable<TyCtxt<'tcx>>,
     {
+        // While we ignore region constraints and pending obligations,
+        // we do return constrained opaque types to avoid unconstrained
+        // inference variables in the response. This is still slightly
+        // insufficient as ambiguous `Projection` obligations have the
+        // same issue.
+        //
+        // FIXME(-Znext-solver): We could alternatively extend the `var_values`
+        // each time we call `make_query_response_ignoring_pending_obligations`
+        // and equate inference variables created inside of the query this way.
+        // This is what we do for `CanonicalState` and is probably a bit nicer.
+        let opaque_types = if self.next_trait_solver() {
+            self.inner
+                .borrow_mut()
+                .opaque_type_storage
+                .iter_opaque_types()
+                .map(|(k, v)| (k, v.ty))
+                .collect()
+        } else {
+            vec![]
+        };
+
         self.canonicalize_response(QueryResponse {
             var_values: inference_vars,
             region_constraints: QueryRegionConstraints::default(),
             certainty: Certainty::Proven, // Ambiguities are OK!
-            opaque_types: vec![],
+            opaque_types,
             value: answer,
         })
     }
