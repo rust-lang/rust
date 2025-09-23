@@ -1,8 +1,8 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_hir_and_then;
-use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::msrvs::Msrv;
 use clippy_utils::source::{IntoSpan as _, SpanRangeExt, snippet, snippet_block_with_applicability};
-use clippy_utils::{span_contains_non_whitespace, sym, tokenize_with_text};
+use clippy_utils::{can_use_if_let_chains, span_contains_non_whitespace, sym, tokenize_with_text};
 use rustc_ast::{BinOpKind, MetaItemInner};
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, ExprKind, StmtKind};
@@ -216,8 +216,7 @@ impl CollapsibleIf {
     }
 
     fn eligible_condition(&self, cx: &LateContext<'_>, cond: &Expr<'_>) -> bool {
-        !matches!(cond.kind, ExprKind::Let(..))
-            || (cx.tcx.sess.edition().at_least_rust_2024() && self.msrv.meets(cx, msrvs::LET_CHAINS))
+        !matches!(cond.kind, ExprKind::Let(..)) || can_use_if_let_chains(cx, self.msrv)
     }
 
     // Check that nothing significant can be found between the initial `{` of `inner_if` and
