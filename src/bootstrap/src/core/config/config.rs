@@ -2137,15 +2137,7 @@ pub fn parse_download_ci_llvm<'a>(
     asserts: bool,
 ) -> bool {
     let dwn_ctx = dwn_ctx.as_ref();
-
-    // We don't ever want to use `true` on CI, as we should not
-    // download upstream artifacts if there are any local modifications.
-    let default = if dwn_ctx.is_running_on_ci {
-        StringOrBool::String("if-unchanged".to_string())
-    } else {
-        StringOrBool::Bool(true)
-    };
-    let download_ci_llvm = download_ci_llvm.unwrap_or(default);
+    let download_ci_llvm = download_ci_llvm.unwrap_or(StringOrBool::Bool(true));
 
     let if_unchanged = || {
         if rust_info.is_from_tarball() {
@@ -2177,8 +2169,9 @@ pub fn parse_download_ci_llvm<'a>(
                 );
             }
 
-            if b && dwn_ctx.is_running_on_ci {
-                // On CI, we must always rebuild LLVM if there were any modifications to it
+            #[cfg(not(test))]
+            if b && dwn_ctx.is_running_on_ci && CiEnv::is_rust_lang_managed_ci_job() {
+                // On rust-lang CI, we must always rebuild LLVM if there were any modifications to it
                 panic!(
                     "`llvm.download-ci-llvm` cannot be set to `true` on CI. Use `if-unchanged` instead."
                 );

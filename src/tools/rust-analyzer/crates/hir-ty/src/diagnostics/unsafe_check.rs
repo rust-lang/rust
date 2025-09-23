@@ -14,9 +14,11 @@ use hir_def::{
 };
 use span::Edition;
 
+use crate::utils::TargetFeatureIsSafeInTarget;
 use crate::{
-    InferenceResult, Interner, TargetFeatures, TyExt, TyKind, db::HirDatabase,
-    utils::is_fn_unsafe_to_call,
+    InferenceResult, Interner, TargetFeatures, TyExt, TyKind,
+    db::HirDatabase,
+    utils::{is_fn_unsafe_to_call, target_feature_is_safe_in_target},
 };
 
 #[derive(Debug, Default)]
@@ -119,11 +121,11 @@ pub fn unsafe_operations(
     def: DefWithBodyId,
     body: &Body,
     current: ExprId,
-    callback: &mut dyn FnMut(InsideUnsafeBlock),
+    callback: &mut dyn FnMut(ExprOrPatId, InsideUnsafeBlock),
 ) {
     let mut visitor_callback = |diag| {
-        if let UnsafeDiagnostic::UnsafeOperation { inside_unsafe_block, .. } = diag {
-            callback(inside_unsafe_block);
+        if let UnsafeDiagnostic::UnsafeOperation { inside_unsafe_block, node, .. } = diag {
+            callback(node, inside_unsafe_block);
         }
     };
     let mut visitor = UnsafeVisitor::new(db, infer, body, def, &mut visitor_callback);
@@ -144,6 +146,9 @@ struct UnsafeVisitor<'db> {
     def_target_features: TargetFeatures,
     // FIXME: This needs to be the edition of the span of each call.
     edition: Edition,
+    /// On some targets (WASM), calling safe functions with `#[target_feature]` is always safe, even when
+    /// the target feature is not enabled. This flag encodes that.
+    target_feature_is_safe: TargetFeatureIsSafeInTarget,
 }
 
 impl<'db> UnsafeVisitor<'db> {
@@ -159,7 +164,12 @@ impl<'db> UnsafeVisitor<'db> {
             DefWithBodyId::FunctionId(func) => TargetFeatures::from_attrs(&db.attrs(func.into())),
             _ => TargetFeatures::default(),
         };
-        let edition = resolver.module().krate().data(db).edition;
+        let krate = resolver.module().krate();
+        let edition = krate.data(db).edition;
+        let target_feature_is_safe = match &krate.workspace_data(db).target {
+            Ok(target) => target_feature_is_safe_in_target(target),
+            Err(_) => TargetFeatureIsSafeInTarget::No,
+        };
         Self {
             db,
             infer,
@@ -172,6 +182,7 @@ impl<'db> UnsafeVisitor<'db> {
             callback: unsafe_expr_cb,
             def_target_features,
             edition,
+            target_feature_is_safe,
         }
     }
 
@@ -184,7 +195,13 @@ impl<'db> UnsafeVisitor<'db> {
     }
 
     fn check_call(&mut self, node: ExprId, func: FunctionId) {
-        let unsafety = is_fn_unsafe_to_call(self.db, func, &self.def_target_features, self.edition);
+        let unsafety = is_fn_unsafe_to_call(
+            self.db,
+            func,
+            &self.def_target_features,
+            self.edition,
+            self.target_feature_is_safe,
+        );
         match unsafety {
             crate::utils::Unsafety::Safe => {}
             crate::utils::Unsafety::Unsafe => {

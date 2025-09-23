@@ -4,8 +4,8 @@ use libc::{self, RTP_ID, c_char, c_int};
 use super::common::*;
 use crate::io::{self, ErrorKind};
 use crate::num::NonZero;
-use crate::sys::cvt;
-use crate::sys::pal::thread;
+use crate::process::StdioPipes;
+use crate::sys::{cvt, thread};
 use crate::{fmt, sys};
 
 ////////////////////////////////////////////////////////////////////////////////

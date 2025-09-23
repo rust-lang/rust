@@ -3,7 +3,7 @@
 use crate::helpers::mod_path_to_ast;
 use either::Either;
 use hir::{
-    AsAssocItem, HirDisplay, HirFileId, ImportPathConfig, ModuleDef, SemanticsScope,
+    AsAssocItem, FindPathConfig, HirDisplay, HirFileId, ModuleDef, SemanticsScope,
     prettify_macro_expansion,
 };
 use itertools::Itertools;
@@ -11,7 +11,7 @@ use rustc_hash::FxHashMap;
 use span::Edition;
 use syntax::{
     NodeOrToken, SyntaxNode,
-    ast::{self, AstNode, HasGenericArgs, make},
+    ast::{self, AstNode, HasGenericArgs, HasName, make},
     syntax_editor::{self, SyntaxEditor},
 };
 
@@ -315,31 +315,48 @@ impl Ctx<'_> {
     }
 
     fn transform_path(&self, path: &SyntaxNode) -> SyntaxNode {
-        fn find_child_paths(root_path: &SyntaxNode) -> Vec<ast::Path> {
-            let mut result = Vec::new();
+        fn find_child_paths_and_ident_pats(
+            root_path: &SyntaxNode,
+        ) -> Vec<Either<ast::Path, ast::IdentPat>> {
+            let mut result: Vec<Either<ast::Path, ast::IdentPat>> = Vec::new();
             for child in root_path.children() {
                 if let Some(child_path) = ast::Path::cast(child.clone()) {
-                    result.push(child_path);
+                    result.push(either::Left(child_path));
+                } else if let Some(child_ident_pat) = ast::IdentPat::cast(child.clone()) {
+                    result.push(either::Right(child_ident_pat));
                 } else {
-                    result.extend(find_child_paths(&child));
+                    result.extend(find_child_paths_and_ident_pats(&child));
                 }
             }
             result
         }
+
         let root_path = path.clone_subtree();
-        let result = find_child_paths(&root_path);
+
+        let result = find_child_paths_and_ident_pats(&root_path);
         let mut editor = SyntaxEditor::new(root_path.clone());
         for sub_path in result {
             let new = self.transform_path(sub_path.syntax());
             editor.replace(sub_path.syntax(), new);
         }
+
         let update_sub_item = editor.finish().new_root().clone().clone_subtree();
-        let item = find_child_paths(&update_sub_item);
+        let item = find_child_paths_and_ident_pats(&update_sub_item);
         let mut editor = SyntaxEditor::new(update_sub_item);
         for sub_path in item {
-            self.transform_path_(&mut editor, &sub_path);
+            self.transform_path_or_ident_pat(&mut editor, &sub_path);
         }
         editor.finish().new_root().clone()
+    }
+    fn transform_path_or_ident_pat(
+        &self,
+        editor: &mut SyntaxEditor,
+        item: &Either<ast::Path, ast::IdentPat>,
+    ) -> Option<()> {
+        match item {
+            Either::Left(path) => self.transform_path_(editor, path),
+            Either::Right(ident_pat) => self.transform_ident_pat(editor, ident_pat),
+        }
     }
 
     fn transform_path_(&self, editor: &mut SyntaxEditor, path: &ast::Path) -> Option<()> {
@@ -375,7 +392,7 @@ impl Ctx<'_> {
                             parent.segment()?.name_ref()?,
                         )
                         .and_then(|trait_ref| {
-                            let cfg = ImportPathConfig {
+                            let cfg = FindPathConfig {
                                 prefer_no_std: false,
                                 prefer_prelude: true,
                                 prefer_absolute: false,
@@ -435,7 +452,7 @@ impl Ctx<'_> {
                     return None;
                 }
 
-                let cfg = ImportPathConfig {
+                let cfg = FindPathConfig {
                     prefer_no_std: false,
                     prefer_prelude: true,
                     prefer_absolute: false,
@@ -484,7 +501,7 @@ impl Ctx<'_> {
                 if let Some(adt) = ty.as_adt()
                     && let ast::Type::PathType(path_ty) = &ast_ty
                 {
-                    let cfg = ImportPathConfig {
+                    let cfg = FindPathConfig {
                         prefer_no_std: false,
                         prefer_prelude: true,
                         prefer_absolute: false,
@@ -514,6 +531,34 @@ impl Ctx<'_> {
             | hir::PathResolution::DeriveHelper(_) => (),
         }
         Some(())
+    }
+
+    fn transform_ident_pat(
+        &self,
+        editor: &mut SyntaxEditor,
+        ident_pat: &ast::IdentPat,
+    ) -> Option<()> {
+        let name = ident_pat.name()?;
+
+        let temp_path = make::path_from_text(&name.text());
+
+        let resolution = self.source_scope.speculative_resolve(&temp_path)?;
+
+        match resolution {
+            hir::PathResolution::Def(def) if def.as_assoc_item(self.source_scope.db).is_none() => {
+                let cfg = FindPathConfig {
+                    prefer_no_std: false,
+                    prefer_prelude: true,
+                    prefer_absolute: false,
+                    allow_unstable: true,
+                };
+                let found_path = self.target_module.find_path(self.source_scope.db, def, cfg)?;
+                let res = mod_path_to_ast(&found_path, self.target_edition).clone_for_update();
+                editor.replace(ident_pat.syntax(), res.syntax());
+                Some(())
+            }
+            _ => None,
+        }
     }
 }
 

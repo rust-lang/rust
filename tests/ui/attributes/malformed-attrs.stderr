@@ -178,22 +178,6 @@ LL | #[no_link()]
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/items/extern-crates.html#the-no_link-attribute>
 
-error: malformed `macro_export` attribute input
-  --> $DIR/malformed-attrs.rs:213:1
-   |
-LL | #[macro_export = 18]
-   | ^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/macros-by-example.html#path-based-scope>
-help: the following are the possible correct uses
-   |
-LL - #[macro_export = 18]
-LL + #[macro_export(local_inner_macros)]
-   |
-LL - #[macro_export = 18]
-LL + #[macro_export]
-   |
-
 error: the `#[proc_macro]` attribute is only usable with crates of the `proc-macro` crate type
   --> $DIR/malformed-attrs.rs:98:1
    |
@@ -724,6 +708,12 @@ error: valid forms for the attribute are `#[macro_use(name1, name2, ...)]` and `
    |
 LL | #[macro_use = 1]
    | ^^^^^^^^^^^^^^^^
+
+error: valid forms for the attribute are `#![macro_export(local_inner_macros)]` and `#![macro_export]`
+  --> $DIR/malformed-attrs.rs:213:1
+   |
+LL | #[macro_export = 18]
+   | ^^^^^^^^^^^^^^^^^^^^
 
 error[E0565]: malformed `allow_internal_unsafe` attribute input
   --> $DIR/malformed-attrs.rs:215:1

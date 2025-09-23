@@ -46,9 +46,9 @@ use stdx::{impl_from, never};
 use triomphe::{Arc, ThinArc};
 
 use crate::{
-    AliasTy, Binders, BoundVar, CallableSig, Const, DebruijnIndex, DynTy, FnAbi, FnPointer, FnSig,
-    FnSubst, ImplTrait, ImplTraitId, ImplTraits, Interner, Lifetime, LifetimeData,
-    LifetimeOutlives, PolyFnSig, ProgramClause, QuantifiedWhereClause, QuantifiedWhereClauses,
+    AliasTy, Binders, BoundVar, CallableSig, Const, DebruijnIndex, DomainGoal, DynTy, FnAbi,
+    FnPointer, FnSig, FnSubst, ImplTrait, ImplTraitId, ImplTraits, Interner, Lifetime,
+    LifetimeData, LifetimeOutlives, PolyFnSig, QuantifiedWhereClause, QuantifiedWhereClauses,
     Substitution, TraitEnvironment, TraitRef, TraitRefExt, Ty, TyBuilder, TyKind, WhereClause,
     all_super_traits,
     consteval::{intern_const_ref, path_to_const, unknown_const, unknown_const_as_generic},
@@ -81,7 +81,7 @@ impl ImplTraitLoweringState {
     }
 }
 
-pub(crate) struct PathDiagnosticCallbackData(TypeRefId);
+pub(crate) struct PathDiagnosticCallbackData(pub(crate) TypeRefId);
 
 #[derive(Debug, Clone)]
 pub enum LifetimeElisionKind {
@@ -299,6 +299,29 @@ impl<'a> TyLoweringContext<'a> {
                 const_type,
                 self.resolver.krate(),
             ),
+            hir_def::hir::Expr::UnaryOp { expr: inner_expr, op: hir_def::hir::UnaryOp::Neg } => {
+                if let hir_def::hir::Expr::Literal(literal) = &self.store[*inner_expr] {
+                    // Only handle negation for signed integers and floats
+                    match literal {
+                        hir_def::hir::Literal::Int(_, _) | hir_def::hir::Literal::Float(_, _) => {
+                            if let Some(negated_literal) = literal.clone().negate() {
+                                intern_const_ref(
+                                    self.db,
+                                    &negated_literal.into(),
+                                    const_type,
+                                    self.resolver.krate(),
+                                )
+                            } else {
+                                unknown_const(const_type)
+                            }
+                        }
+                        // For unsigned integers, chars, bools, etc., negation is not meaningful
+                        _ => unknown_const(const_type),
+                    }
+                } else {
+                    unknown_const(const_type)
+                }
+            }
             _ => unknown_const(const_type),
         }
     }
@@ -340,7 +363,13 @@ impl<'a> TyLoweringContext<'a> {
                 res = Some(TypeNs::GenericParam(type_param_id));
                 match self.type_param_mode {
                     ParamLoweringMode::Placeholder => {
-                        TyKind::Placeholder(to_placeholder_idx(self.db, type_param_id.into()))
+                        let generics = self.generics();
+                        let idx = generics.type_or_const_param_idx(type_param_id.into()).unwrap();
+                        TyKind::Placeholder(to_placeholder_idx(
+                            self.db,
+                            type_param_id.into(),
+                            idx as u32,
+                        ))
                     }
                     ParamLoweringMode::Variable => {
                         let idx =
@@ -777,7 +806,9 @@ impl<'a> TyLoweringContext<'a> {
                 LifetimeNs::Static => static_lifetime(),
                 LifetimeNs::LifetimeParam(id) => match self.type_param_mode {
                     ParamLoweringMode::Placeholder => {
-                        LifetimeData::Placeholder(lt_to_placeholder_idx(self.db, id))
+                        let generics = self.generics();
+                        let idx = generics.lifetime_idx(id).unwrap();
+                        LifetimeData::Placeholder(lt_to_placeholder_idx(self.db, id, idx as u32))
                     }
                     ParamLoweringMode::Variable => {
                         let idx = match self.generics().lifetime_idx(id) {
@@ -802,15 +833,6 @@ pub(crate) fn callable_item_signature_query(db: &dyn HirDatabase, def: CallableD
         CallableDefId::StructId(s) => fn_sig_for_struct_constructor(db, s),
         CallableDefId::EnumVariantId(e) => fn_sig_for_enum_variant_constructor(db, e),
     }
-}
-
-pub fn associated_type_shorthand_candidates<R>(
-    db: &dyn HirDatabase,
-    def: GenericDefId,
-    res: TypeNs,
-    mut cb: impl FnMut(&Name, TypeAliasId) -> Option<R>,
-) -> Option<R> {
-    named_associated_type_shorthand_candidates(db, def, res, None, |name, _, id| cb(name, id))
 }
 
 fn named_associated_type_shorthand_candidates<R>(
@@ -889,7 +911,7 @@ fn named_associated_type_shorthand_candidates<R>(
 
 pub(crate) type Diagnostics = Option<ThinArc<(), TyLoweringDiagnostic>>;
 
-fn create_diagnostics(diagnostics: Vec<TyLoweringDiagnostic>) -> Diagnostics {
+pub(crate) fn create_diagnostics(diagnostics: Vec<TyLoweringDiagnostic>) -> Diagnostics {
     (!diagnostics.is_empty()).then(|| ThinArc::from_header_and_iter((), diagnostics.into_iter()))
 }
 
@@ -1105,8 +1127,9 @@ pub(crate) fn trait_environment_query(
                     traits_in_scope
                         .push((tr.self_type_parameter(Interner).clone(), tr.hir_trait_id()));
                 }
-                let program_clause: chalk_ir::ProgramClause<Interner> = pred.cast(Interner);
-                clauses.push(program_clause.into_from_env_clause(Interner));
+                let program_clause: Binders<DomainGoal> =
+                    pred.map(|pred| pred.into_from_env_goal(Interner).cast(Interner));
+                clauses.push(program_clause);
             }
         }
     }
@@ -1119,7 +1142,10 @@ pub(crate) fn trait_environment_query(
         let substs = TyBuilder::placeholder_subst(db, trait_id);
         let trait_ref = TraitRef { trait_id: to_chalk_trait_id(trait_id), substitution: substs };
         let pred = WhereClause::Implemented(trait_ref);
-        clauses.push(pred.cast::<ProgramClause>(Interner).into_from_env_clause(Interner));
+        clauses.push(Binders::empty(
+            Interner,
+            pred.cast::<DomainGoal>(Interner).into_from_env_goal(Interner),
+        ));
     }
 
     let subst = generics.placeholder_subst(db);
@@ -1128,15 +1154,30 @@ pub(crate) fn trait_environment_query(
         if let Some(implicitly_sized_clauses) =
             implicitly_sized_clauses(db, def, &explicitly_unsized_tys, &subst, &resolver)
         {
-            clauses.extend(
-                implicitly_sized_clauses.map(|pred| {
-                    pred.cast::<ProgramClause>(Interner).into_from_env_clause(Interner)
-                }),
-            );
+            clauses.extend(implicitly_sized_clauses.map(|pred| {
+                Binders::empty(
+                    Interner,
+                    pred.into_from_env_goal(Interner).cast::<DomainGoal>(Interner),
+                )
+            }));
         };
     }
 
-    let env = chalk_ir::Environment::new(Interner).add_clauses(Interner, clauses);
+    let clauses = chalk_ir::ProgramClauses::from_iter(
+        Interner,
+        clauses.into_iter().map(|g| {
+            chalk_ir::ProgramClause::new(
+                Interner,
+                chalk_ir::ProgramClauseData(g.map(|g| chalk_ir::ProgramClauseImplication {
+                    consequence: g,
+                    conditions: chalk_ir::Goals::empty(Interner),
+                    constraints: chalk_ir::Constraints::empty(Interner),
+                    priority: chalk_ir::ClausePriority::High,
+                })),
+            )
+        }),
+    );
+    let env = chalk_ir::Environment { clauses };
 
     TraitEnvironment::new(resolver.krate(), None, traits_in_scope.into_boxed_slice(), env)
 }
@@ -1160,24 +1201,8 @@ pub(crate) fn generic_predicates_query(
     generic_predicates_filtered_by(db, def, |_, _| true).0
 }
 
-pub(crate) fn generic_predicates_without_parent_query(
-    db: &dyn HirDatabase,
-    def: GenericDefId,
-) -> GenericPredicates {
-    db.generic_predicates_without_parent_with_diagnostics(def).0
-}
-
 /// Resolve the where clause(s) of an item with generics,
-/// except the ones inherited from the parent
-pub(crate) fn generic_predicates_without_parent_with_diagnostics_query(
-    db: &dyn HirDatabase,
-    def: GenericDefId,
-) -> (GenericPredicates, Diagnostics) {
-    generic_predicates_filtered_by(db, def, |_, d| d == def)
-}
-
-/// Resolve the where clause(s) of an item with generics,
-/// except the ones inherited from the parent
+/// with a given filter
 fn generic_predicates_filtered_by<F>(
     db: &dyn HirDatabase,
     def: GenericDefId,

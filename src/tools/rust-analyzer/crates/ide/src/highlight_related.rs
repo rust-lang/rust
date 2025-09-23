@@ -277,7 +277,7 @@ fn highlight_references(
                     Definition::Module(module) => {
                         NavigationTarget::from_module_to_decl(sema.db, module)
                     }
-                    def => match def.try_to_nav(sema.db) {
+                    def => match def.try_to_nav(sema) {
                         Some(it) => it,
                         None => continue,
                     },
@@ -805,10 +805,8 @@ pub(crate) fn highlight_unsafe_points(
         push_to_highlights(unsafe_token_file_id, Some(unsafe_token.text_range()));
 
         // highlight unsafe operations
-        if let Some(block) = block_expr
-            && let Some(body) = sema.body_for(InFile::new(unsafe_token_file_id, block.syntax()))
-        {
-            let unsafe_ops = sema.get_unsafe_ops(body);
+        if let Some(block) = block_expr {
+            let unsafe_ops = sema.get_unsafe_ops_for_unsafe_block(block);
             for unsafe_op in unsafe_ops {
                 push_to_highlights(unsafe_op.file_id, Some(unsafe_op.value.text_range()));
             }
@@ -2533,6 +2531,23 @@ fn foo() {
     };
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn different_unsafe_block() {
+        check(
+            r#"
+fn main() {
+    unsafe$0 {
+ // ^^^^^^
+        *(0 as *const u8)
+     // ^^^^^^^^^^^^^^^^^
+    };
+    unsafe { *(1 as *const u8) };
+    unsafe { *(2 as *const u8) };
+}
+        "#,
         );
     }
 }

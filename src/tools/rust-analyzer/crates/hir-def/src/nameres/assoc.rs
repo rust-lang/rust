@@ -51,10 +51,18 @@ impl TraitItems {
         tr: TraitId,
     ) -> (TraitItems, DefDiagnostics) {
         let ItemLoc { container: module_id, id: ast_id } = tr.lookup(db);
+        let ast_id_map = db.ast_id_map(ast_id.file_id);
+        let source = ast_id.with_value(ast_id_map.get(ast_id.value)).to_node(db);
+        if source.eq_token().is_some() {
+            // FIXME(trait-alias) probably needs special handling here
+            return (
+                TraitItems { macro_calls: ThinVec::new(), items: Box::default() },
+                DefDiagnostics::new(vec![]),
+            );
+        }
 
         let collector =
             AssocItemCollector::new(db, module_id, ItemContainerId::TraitId(tr), ast_id.file_id);
-        let source = ast_id.with_value(collector.ast_id_map.get(ast_id.value)).to_node(db);
         let (items, macro_calls, diagnostics) = collector.collect(source.assoc_item_list());
 
         (TraitItems { macro_calls, items }, DefDiagnostics::new(diagnostics))

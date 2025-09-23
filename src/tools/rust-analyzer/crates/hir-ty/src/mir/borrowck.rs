@@ -113,8 +113,13 @@ fn make_fetch_closure_field(
         let InternedClosure(def, _) = db.lookup_intern_closure(c.into());
         let infer = db.infer(def);
         let (captures, _) = infer.closure_info(&c);
-        let parent_subst = ClosureSubst(subst).parent_subst();
-        captures.get(f).expect("broken closure field").ty.clone().substitute(Interner, parent_subst)
+        let parent_subst = ClosureSubst(subst).parent_subst(db);
+        captures
+            .get(f)
+            .expect("broken closure field")
+            .ty
+            .clone()
+            .substitute(Interner, &parent_subst)
     }
 }
 

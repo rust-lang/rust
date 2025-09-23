@@ -183,6 +183,10 @@ pub(crate) struct GlobalState {
     /// this queue should run only *after* [`GlobalState::process_changes`] has
     /// been called.
     pub(crate) deferred_task_queue: TaskQueue,
+    /// HACK: Workaround for https://github.com/rust-lang/rust-analyzer/issues/19709
+    /// This is marked true if we failed to load a crate root file at crate graph creation,
+    /// which will usually end up causing a bunch of incorrect diagnostics on startup.
+    pub(crate) incomplete_crate_graph: bool,
 }
 
 /// An immutable snapshot of the world's state at a point in time.
@@ -298,6 +302,7 @@ impl GlobalState {
             discover_workspace_queue: OpQueue::default(),
 
             deferred_task_queue: task_queue,
+            incomplete_crate_graph: false,
         };
         // Apply any required database inputs from the config.
         this.update_configuration(config);

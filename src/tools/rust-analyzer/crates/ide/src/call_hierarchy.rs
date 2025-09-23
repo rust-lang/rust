@@ -67,7 +67,7 @@ pub(crate) fn incoming_calls(
                 let def = ast::Fn::cast(node).and_then(|fn_| sema.to_def(&fn_))?;
                 // We should return def before check if it is a test, so that we
                 // will not continue to search for outer fn in nested fns
-                def.try_to_nav(sema.db).map(|nav| (def, nav))
+                def.try_to_nav(sema).map(|nav| (def, nav))
             });
 
             if let Some((def, nav)) = def_nav {
@@ -122,10 +122,10 @@ pub(crate) fn outgoing_calls(
                             if exclude_tests && it.is_test(db) {
                                 return None;
                             }
-                            it.try_to_nav(db)
+                            it.try_to_nav(&sema)
                         }
-                        hir::CallableKind::TupleEnumVariant(it) => it.try_to_nav(db),
-                        hir::CallableKind::TupleStruct(it) => it.try_to_nav(db),
+                        hir::CallableKind::TupleEnumVariant(it) => it.try_to_nav(&sema),
+                        hir::CallableKind::TupleStruct(it) => it.try_to_nav(&sema),
                         _ => None,
                     }
                     .zip(Some(sema.original_range(expr.syntax())))
@@ -136,7 +136,7 @@ pub(crate) fn outgoing_calls(
                         return None;
                     }
                     function
-                        .try_to_nav(db)
+                        .try_to_nav(&sema)
                         .zip(Some(sema.original_range(expr.name_ref()?.syntax())))
                 }
             }?;

@@ -38,14 +38,14 @@ pub(crate) fn goto_declaration(
                     ast::NameRef(name_ref) => match NameRefClass::classify(&sema, &name_ref)? {
                         NameRefClass::Definition(it, _) => Some(it),
                         NameRefClass::FieldShorthand { field_ref, .. } =>
-                            return field_ref.try_to_nav(db),
+                            return field_ref.try_to_nav(&sema),
                         NameRefClass::ExternCrateShorthand { decl, .. } =>
-                            return decl.try_to_nav(db),
+                            return decl.try_to_nav(&sema),
                     },
                     ast::Name(name) => match NameClass::classify(&sema, &name)? {
                         NameClass::Definition(it) | NameClass::ConstReference(it) => Some(it),
                         NameClass::PatFieldShorthand { field_ref, .. } =>
-                            return field_ref.try_to_nav(db),
+                            return field_ref.try_to_nav(&sema),
                     },
                     _ => None
                 }
@@ -57,14 +57,14 @@ pub(crate) fn goto_declaration(
                 Definition::Const(c) => c.as_assoc_item(db),
                 Definition::TypeAlias(ta) => ta.as_assoc_item(db),
                 Definition::Function(f) => f.as_assoc_item(db),
-                Definition::ExternCrateDecl(it) => return it.try_to_nav(db),
+                Definition::ExternCrateDecl(it) => return it.try_to_nav(&sema),
                 _ => None,
             }?;
 
             let trait_ = assoc.implemented_trait(db)?;
             let name = Some(assoc.name(db)?);
             let item = trait_.items(db).into_iter().find(|it| it.name(db) == name)?;
-            item.try_to_nav(db)
+            item.try_to_nav(&sema)
         })
         .flatten()
         .collect();

@@ -37,9 +37,7 @@ pub(crate) fn complete_type_path(
                 true
             }
             // Type things are fine
-            ScopeDef::ModuleDef(
-                BuiltinType(_) | Adt(_) | Module(_) | Trait(_) | TraitAlias(_) | TypeAlias(_),
-            )
+            ScopeDef::ModuleDef(BuiltinType(_) | Adt(_) | Module(_) | Trait(_) | TypeAlias(_))
             | ScopeDef::AdtSelfType(_)
             | ScopeDef::Unknown
             | ScopeDef::GenericParam(TypeParam(_)) => location.complete_types(),
@@ -79,9 +77,8 @@ pub(crate) fn complete_type_path(
         Qualified::With { resolution: None, .. } => {}
         Qualified::With { resolution: Some(resolution), .. } => {
             // Add associated types on type parameters and `Self`.
-            ctx.scope.assoc_type_shorthand_candidates(resolution, |_, alias| {
+            ctx.scope.assoc_type_shorthand_candidates(resolution, |alias| {
                 acc.add_type_alias(ctx, alias);
-                None::<()>
             });
 
             match resolution {

@@ -1,3 +1,4 @@
+use hir::next_solver::{DbInterner, TypingMode};
 use ide_db::{RootDatabase, famous_defs::FamousDefs};
 use syntax::ast::{self, AstNode, HasName};
 
@@ -80,17 +81,20 @@ fn existing_from_impl(
     sema: &'_ hir::Semantics<'_, RootDatabase>,
     variant: &ast::Variant,
 ) -> Option<()> {
+    let db = sema.db;
     let variant = sema.to_def(variant)?;
-    let enum_ = variant.parent_enum(sema.db);
-    let krate = enum_.module(sema.db).krate();
-
+    let krate = variant.module(db).krate();
     let from_trait = FamousDefs(sema, krate).core_convert_From()?;
+    let interner = DbInterner::new_with(db, Some(krate.base()), None);
+    use hir::next_solver::infer::DbInternerInferExt;
+    let infcx = interner.infer_ctxt().build(TypingMode::non_body_analysis());
 
-    let enum_type = enum_.ty(sema.db);
-
-    let wrapped_type = variant.fields(sema.db).first()?.ty(sema.db);
-
-    if enum_type.impls_trait(sema.db, from_trait, &[wrapped_type]) { Some(()) } else { None }
+    let variant = variant.instantiate_infer(&infcx);
+    let enum_ = variant.parent_enum(sema.db);
+    let field_ty = variant.fields(sema.db).first()?.ty(sema.db);
+    let enum_ty = enum_.ty(sema.db);
+    tracing::debug!(?enum_, ?field_ty, ?enum_ty);
+    enum_ty.impls_trait(infcx, from_trait, &[field_ty]).then_some(())
 }
 
 #[cfg(test)]
@@ -119,15 +123,19 @@ impl From<u32> for A {
         );
     }
 
+    // FIXME(next-solver): it would be nice to not be *required* to resolve the
+    // path in order to properly generate assists
     #[test]
     fn test_generate_from_impl_for_enum_complicated_path() {
         check_assist(
             generate_from_impl_for_enum,
             r#"
 //- minicore: from
+mod foo { pub mod bar { pub mod baz { pub struct Boo; } } }
 enum A { $0One(foo::bar::baz::Boo) }
 "#,
             r#"
+mod foo { pub mod bar { pub mod baz { pub struct Boo; } } }
 enum A { One(foo::bar::baz::Boo) }
 
 impl From<foo::bar::baz::Boo> for A {

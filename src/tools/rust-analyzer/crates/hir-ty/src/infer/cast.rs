@@ -1,13 +1,17 @@
 //! Type cast logic. Basically coercion + additional casts.
 
 use chalk_ir::{Mutability, Scalar, TyVariableKind, UintTy};
-use hir_def::{AdtId, hir::ExprId};
+use hir_def::{AdtId, hir::ExprId, signatures::TraitFlags};
 use stdx::never;
 
+use crate::infer::coerce::CoerceNever;
 use crate::{
-    Adjustment, Binders, DynTy, InferenceDiagnostic, Interner, PlaceholderIndex,
-    QuantifiedWhereClauses, Ty, TyExt, TyKind, TypeFlags, WhereClause,
-    infer::{coerce::CoerceNever, unify::InferenceTable},
+    Binders, DynTy, InferenceDiagnostic, Interner, PlaceholderIndex, QuantifiedWhereClauses, Ty,
+    TyExt, TyKind, TypeFlags, WhereClause,
+    db::HirDatabase,
+    from_chalk_trait_id,
+    infer::{AllowTwoPhase, InferenceContext},
+    next_solver::mapping::ChalkToNextSolver,
 };
 
 #[derive(Debug)]
@@ -30,7 +34,7 @@ pub(crate) enum CastTy {
 }
 
 impl CastTy {
-    pub(crate) fn from_ty(table: &mut InferenceTable<'_>, t: &Ty) -> Option<Self> {
+    pub(crate) fn from_ty(db: &dyn HirDatabase, t: &Ty) -> Option<Self> {
         match t.kind(Interner) {
             TyKind::Scalar(Scalar::Bool) => Some(Self::Int(Int::Bool)),
             TyKind::Scalar(Scalar::Char) => Some(Self::Int(Int::Char)),
@@ -43,8 +47,8 @@ impl CastTy {
                 let (AdtId::EnumId(id), _) = t.as_adt()? else {
                     return None;
                 };
-                let enum_data = id.enum_variants(table.db);
-                if enum_data.is_payload_free(table.db) { Some(Self::Int(Int::CEnum)) } else { None }
+                let enum_data = id.enum_variants(db);
+                if enum_data.is_payload_free(db) { Some(Self::Int(Int::CEnum)) } else { None }
             }
             TyKind::Raw(m, ty) => Some(Self::Ptr(ty.clone(), *m)),
             TyKind::Function(_) => Some(Self::FnPtr),
@@ -91,25 +95,34 @@ impl CastCheck {
         Self { expr, source_expr, expr_ty, cast_ty }
     }
 
-    pub(super) fn check<F, G>(
+    pub(super) fn check(
         &mut self,
-        table: &mut InferenceTable<'_>,
-        apply_adjustments: &mut F,
-        set_coercion_cast: &mut G,
-    ) -> Result<(), InferenceDiagnostic>
-    where
-        F: FnMut(ExprId, Vec<Adjustment>),
-        G: FnMut(ExprId),
-    {
-        self.expr_ty = table.eagerly_normalize_and_resolve_shallow_in(self.expr_ty.clone());
-        self.cast_ty = table.eagerly_normalize_and_resolve_shallow_in(self.cast_ty.clone());
+        ctx: &mut InferenceContext<'_>,
+    ) -> Result<(), InferenceDiagnostic> {
+        self.expr_ty = ctx.table.eagerly_normalize_and_resolve_shallow_in(self.expr_ty.clone());
+        self.cast_ty = ctx.table.eagerly_normalize_and_resolve_shallow_in(self.cast_ty.clone());
+
+        // This should always come first so that we apply the coercion, which impacts infer vars.
+        if ctx
+            .coerce(
+                self.source_expr.into(),
+                self.expr_ty.to_nextsolver(ctx.table.interner),
+                self.cast_ty.to_nextsolver(ctx.table.interner),
+                AllowTwoPhase::No,
+                CoerceNever::Yes,
+            )
+            .is_ok()
+        {
+            ctx.result.coercion_casts.insert(self.source_expr);
+            return Ok(());
+        }
 
         if self.expr_ty.contains_unknown() || self.cast_ty.contains_unknown() {
             return Ok(());
         }
 
         if !self.cast_ty.data(Interner).flags.contains(TypeFlags::HAS_TY_INFER)
-            && !table.is_sized(&self.cast_ty)
+            && !ctx.table.is_sized(&self.cast_ty)
         {
             return Err(InferenceDiagnostic::CastToUnsized {
                 expr: self.expr,
@@ -124,76 +137,63 @@ impl CastCheck {
             return Ok(());
         }
 
-        if let Ok((adj, _)) = table.coerce(&self.expr_ty, &self.cast_ty, CoerceNever::Yes) {
-            apply_adjustments(self.source_expr, adj);
-            set_coercion_cast(self.source_expr);
-            return Ok(());
-        }
-
-        self.do_check(table, apply_adjustments)
+        self.do_check(ctx)
             .map_err(|e| e.into_diagnostic(self.expr, self.expr_ty.clone(), self.cast_ty.clone()))
     }
 
-    fn do_check<F>(
-        &self,
-        table: &mut InferenceTable<'_>,
-        apply_adjustments: &mut F,
-    ) -> Result<(), CastError>
-    where
-        F: FnMut(ExprId, Vec<Adjustment>),
-    {
-        let (t_from, t_cast) =
-            match (CastTy::from_ty(table, &self.expr_ty), CastTy::from_ty(table, &self.cast_ty)) {
-                (Some(t_from), Some(t_cast)) => (t_from, t_cast),
-                (None, Some(t_cast)) => match self.expr_ty.kind(Interner) {
-                    TyKind::FnDef(..) => {
-                        let sig = self.expr_ty.callable_sig(table.db).expect("FnDef had no sig");
-                        let sig = table.eagerly_normalize_and_resolve_shallow_in(sig);
-                        let fn_ptr = TyKind::Function(sig.to_fn_ptr()).intern(Interner);
-                        if let Ok((adj, _)) = table.coerce(&self.expr_ty, &fn_ptr, CoerceNever::Yes)
-                        {
-                            apply_adjustments(self.source_expr, adj);
-                        } else {
-                            return Err(CastError::IllegalCast);
-                        }
-
-                        (CastTy::FnPtr, t_cast)
+    fn do_check(&self, ctx: &mut InferenceContext<'_>) -> Result<(), CastError> {
+        let (t_from, t_cast) = match (
+            CastTy::from_ty(ctx.db, &self.expr_ty),
+            CastTy::from_ty(ctx.db, &self.cast_ty),
+        ) {
+            (Some(t_from), Some(t_cast)) => (t_from, t_cast),
+            (None, Some(t_cast)) => match self.expr_ty.kind(Interner) {
+                TyKind::FnDef(..) => {
+                    let sig = self.expr_ty.callable_sig(ctx.db).expect("FnDef had no sig");
+                    let sig = ctx.table.eagerly_normalize_and_resolve_shallow_in(sig);
+                    let fn_ptr = TyKind::Function(sig.to_fn_ptr()).intern(Interner);
+                    if ctx
+                        .coerce(
+                            self.source_expr.into(),
+                            self.expr_ty.to_nextsolver(ctx.table.interner),
+                            fn_ptr.to_nextsolver(ctx.table.interner),
+                            AllowTwoPhase::No,
+                            CoerceNever::Yes,
+                        )
+                        .is_ok()
+                    {
+                    } else {
+                        return Err(CastError::IllegalCast);
                     }
-                    TyKind::Ref(mutbl, _, inner_ty) => {
-                        return match t_cast {
-                            CastTy::Int(_) | CastTy::Float => match inner_ty.kind(Interner) {
-                                TyKind::Scalar(
-                                    Scalar::Int(_) | Scalar::Uint(_) | Scalar::Float(_),
-                                )
-                                | TyKind::InferenceVar(
-                                    _,
-                                    TyVariableKind::Integer | TyVariableKind::Float,
-                                ) => Err(CastError::NeedDeref),
 
-                                _ => Err(CastError::NeedViaPtr),
-                            },
-                            // array-ptr-cast
-                            CastTy::Ptr(t, m) => {
-                                let t = table.eagerly_normalize_and_resolve_shallow_in(t);
-                                if !table.is_sized(&t) {
-                                    return Err(CastError::IllegalCast);
-                                }
-                                self.check_ref_cast(
-                                    table,
-                                    inner_ty,
-                                    *mutbl,
-                                    &t,
-                                    m,
-                                    apply_adjustments,
-                                )
+                    (CastTy::FnPtr, t_cast)
+                }
+                TyKind::Ref(mutbl, _, inner_ty) => {
+                    return match t_cast {
+                        CastTy::Int(_) | CastTy::Float => match inner_ty.kind(Interner) {
+                            TyKind::Scalar(Scalar::Int(_) | Scalar::Uint(_) | Scalar::Float(_))
+                            | TyKind::InferenceVar(
+                                _,
+                                TyVariableKind::Integer | TyVariableKind::Float,
+                            ) => Err(CastError::NeedDeref),
+
+                            _ => Err(CastError::NeedViaPtr),
+                        },
+                        // array-ptr-cast
+                        CastTy::Ptr(t, m) => {
+                            let t = ctx.table.eagerly_normalize_and_resolve_shallow_in(t);
+                            if !ctx.table.is_sized(&t) {
+                                return Err(CastError::IllegalCast);
                             }
-                            _ => Err(CastError::NonScalar),
-                        };
-                    }
-                    _ => return Err(CastError::NonScalar),
-                },
+                            self.check_ref_cast(ctx, inner_ty, *mutbl, &t, m)
+                        }
+                        _ => Err(CastError::NonScalar),
+                    };
+                }
                 _ => return Err(CastError::NonScalar),
-            };
+            },
+            _ => return Err(CastError::NonScalar),
+        };
 
         // rustc checks whether the `expr_ty` is foreign adt with `non_exhaustive` sym
 
@@ -207,12 +207,10 @@ impl CastCheck {
             }
             (CastTy::Int(Int::Bool | Int::CEnum | Int::Char) | CastTy::Float, CastTy::Ptr(..))
             | (CastTy::Ptr(..) | CastTy::FnPtr, CastTy::Float) => Err(CastError::IllegalCast),
-            (CastTy::Ptr(src, _), CastTy::Ptr(dst, _)) => {
-                self.check_ptr_ptr_cast(table, &src, &dst)
-            }
-            (CastTy::Ptr(src, _), CastTy::Int(_)) => self.check_ptr_addr_cast(table, &src),
-            (CastTy::Int(_), CastTy::Ptr(dst, _)) => self.check_addr_ptr_cast(table, &dst),
-            (CastTy::FnPtr, CastTy::Ptr(dst, _)) => self.check_fptr_ptr_cast(table, &dst),
+            (CastTy::Ptr(src, _), CastTy::Ptr(dst, _)) => self.check_ptr_ptr_cast(ctx, &src, &dst),
+            (CastTy::Ptr(src, _), CastTy::Int(_)) => self.check_ptr_addr_cast(ctx, &src),
+            (CastTy::Int(_), CastTy::Ptr(dst, _)) => self.check_addr_ptr_cast(ctx, &dst),
+            (CastTy::FnPtr, CastTy::Ptr(dst, _)) => self.check_fptr_ptr_cast(ctx, &dst),
             (CastTy::Int(Int::CEnum), CastTy::Int(_)) => Ok(()),
             (CastTy::Int(Int::Char | Int::Bool), CastTy::Int(_)) => Ok(()),
             (CastTy::Int(_) | CastTy::Float, CastTy::Int(_) | CastTy::Float) => Ok(()),
@@ -220,26 +218,30 @@ impl CastCheck {
         }
     }
 
-    fn check_ref_cast<F>(
+    fn check_ref_cast(
         &self,
-        table: &mut InferenceTable<'_>,
+        ctx: &mut InferenceContext<'_>,
         t_expr: &Ty,
         m_expr: Mutability,
         t_cast: &Ty,
         m_cast: Mutability,
-        apply_adjustments: &mut F,
-    ) -> Result<(), CastError>
-    where
-        F: FnMut(ExprId, Vec<Adjustment>),
-    {
+    ) -> Result<(), CastError> {
         // Mutability order is opposite to rustc. `Mut < Not`
         if m_expr <= m_cast
             && let TyKind::Array(ety, _) = t_expr.kind(Interner)
         {
             // Coerce to a raw pointer so that we generate RawPtr in MIR.
             let array_ptr_type = TyKind::Raw(m_expr, t_expr.clone()).intern(Interner);
-            if let Ok((adj, _)) = table.coerce(&self.expr_ty, &array_ptr_type, CoerceNever::Yes) {
-                apply_adjustments(self.source_expr, adj);
+            if ctx
+                .coerce(
+                    self.source_expr.into(),
+                    self.expr_ty.to_nextsolver(ctx.table.interner),
+                    array_ptr_type.to_nextsolver(ctx.table.interner),
+                    AllowTwoPhase::No,
+                    CoerceNever::Yes,
+                )
+                .is_ok()
+            {
             } else {
                 never!(
                     "could not cast from reference to array to pointer to array ({:?} to {:?})",
@@ -250,7 +252,16 @@ impl CastCheck {
 
             // This is a less strict condition than rustc's `demand_eqtype`,
             // but false negative is better than false positive
-            if table.coerce(ety, t_cast, CoerceNever::Yes).is_ok() {
+            if ctx
+                .coerce(
+                    self.source_expr.into(),
+                    ety.to_nextsolver(ctx.table.interner),
+                    t_cast.to_nextsolver(ctx.table.interner),
+                    AllowTwoPhase::No,
+                    CoerceNever::Yes,
+                )
+                .is_ok()
+            {
                 return Ok(());
             }
         }
@@ -260,12 +271,12 @@ impl CastCheck {
 
     fn check_ptr_ptr_cast(
         &self,
-        table: &mut InferenceTable<'_>,
+        ctx: &mut InferenceContext<'_>,
         src: &Ty,
         dst: &Ty,
     ) -> Result<(), CastError> {
-        let src_kind = pointer_kind(src, table).map_err(|_| CastError::Unknown)?;
-        let dst_kind = pointer_kind(dst, table).map_err(|_| CastError::Unknown)?;
+        let src_kind = pointer_kind(src, ctx).map_err(|_| CastError::Unknown)?;
+        let dst_kind = pointer_kind(dst, ctx).map_err(|_| CastError::Unknown)?;
 
         match (src_kind, dst_kind) {
             (Some(PointerKind::Error), _) | (_, Some(PointerKind::Error)) => Ok(()),
@@ -290,10 +301,12 @@ impl CastCheck {
                             return Ok(());
                         }
                         let src_principal =
-                            table.db.trait_datum(table.trait_env.krate, src_principal);
+                            ctx.db.trait_signature(from_chalk_trait_id(src_principal));
                         let dst_principal =
-                            table.db.trait_datum(table.trait_env.krate, dst_principal);
-                        if src_principal.is_auto_trait() && dst_principal.is_auto_trait() {
+                            ctx.db.trait_signature(from_chalk_trait_id(dst_principal));
+                        if src_principal.flags.contains(TraitFlags::AUTO)
+                            && dst_principal.flags.contains(TraitFlags::AUTO)
+                        {
                             Ok(())
                         } else {
                             Err(CastError::DifferingKinds)
@@ -309,10 +322,10 @@ impl CastCheck {
 
     fn check_ptr_addr_cast(
         &self,
-        table: &mut InferenceTable<'_>,
+        ctx: &mut InferenceContext<'_>,
         expr_ty: &Ty,
     ) -> Result<(), CastError> {
-        match pointer_kind(expr_ty, table).map_err(|_| CastError::Unknown)? {
+        match pointer_kind(expr_ty, ctx).map_err(|_| CastError::Unknown)? {
             // None => Err(CastError::UnknownExprPtrKind),
             None => Ok(()),
             Some(PointerKind::Error) => Ok(()),
@@ -323,10 +336,10 @@ impl CastCheck {
 
     fn check_addr_ptr_cast(
         &self,
-        table: &mut InferenceTable<'_>,
+        ctx: &mut InferenceContext<'_>,
         cast_ty: &Ty,
     ) -> Result<(), CastError> {
-        match pointer_kind(cast_ty, table).map_err(|_| CastError::Unknown)? {
+        match pointer_kind(cast_ty, ctx).map_err(|_| CastError::Unknown)? {
             // None => Err(CastError::UnknownCastPtrKind),
             None => Ok(()),
             Some(PointerKind::Error) => Ok(()),
@@ -339,10 +352,10 @@ impl CastCheck {
 
     fn check_fptr_ptr_cast(
         &self,
-        table: &mut InferenceTable<'_>,
+        ctx: &mut InferenceContext<'_>,
         cast_ty: &Ty,
     ) -> Result<(), CastError> {
-        match pointer_kind(cast_ty, table).map_err(|_| CastError::Unknown)? {
+        match pointer_kind(cast_ty, ctx).map_err(|_| CastError::Unknown)? {
             // None => Err(CastError::UnknownCastPtrKind),
             None => Ok(()),
             Some(PointerKind::Error) => Ok(()),
@@ -365,10 +378,10 @@ enum PointerKind {
     Error,
 }
 
-fn pointer_kind(ty: &Ty, table: &mut InferenceTable<'_>) -> Result<Option<PointerKind>, ()> {
-    let ty = table.eagerly_normalize_and_resolve_shallow_in(ty.clone());
+fn pointer_kind(ty: &Ty, ctx: &mut InferenceContext<'_>) -> Result<Option<PointerKind>, ()> {
+    let ty = ctx.table.eagerly_normalize_and_resolve_shallow_in(ty.clone());
 
-    if table.is_sized(&ty) {
+    if ctx.table.is_sized(&ty) {
         return Ok(Some(PointerKind::Thin));
     }
 
@@ -381,11 +394,11 @@ fn pointer_kind(ty: &Ty, table: &mut InferenceTable<'_>) -> Result<Option<Pointe
                 return Err(());
             };
 
-            let struct_data = id.fields(table.db);
+            let struct_data = id.fields(ctx.db);
             if let Some((last_field, _)) = struct_data.fields().iter().last() {
                 let last_field_ty =
-                    table.db.field_types(id.into())[last_field].clone().substitute(Interner, subst);
-                pointer_kind(&last_field_ty, table)
+                    ctx.db.field_types(id.into())[last_field].clone().substitute(Interner, subst);
+                pointer_kind(&last_field_ty, ctx)
             } else {
                 Ok(Some(PointerKind::Thin))
             }
@@ -393,7 +406,7 @@ fn pointer_kind(ty: &Ty, table: &mut InferenceTable<'_>) -> Result<Option<Pointe
         TyKind::Tuple(_, subst) => {
             match subst.iter(Interner).last().and_then(|arg| arg.ty(Interner)) {
                 None => Ok(Some(PointerKind::Thin)),
-                Some(ty) => pointer_kind(ty, table),
+                Some(ty) => pointer_kind(ty, ctx),
             }
         }
         TyKind::Foreign(_) => Ok(Some(PointerKind::Thin)),

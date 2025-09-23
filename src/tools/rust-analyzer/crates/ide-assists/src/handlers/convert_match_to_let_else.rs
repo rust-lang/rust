@@ -1,7 +1,7 @@
 use ide_db::defs::{Definition, NameRefClass};
 use syntax::{
     AstNode, SyntaxNode,
-    ast::{self, HasName, Name, syntax_factory::SyntaxFactory},
+    ast::{self, HasName, Name, edit::AstNodeEdit, syntax_factory::SyntaxFactory},
     syntax_editor::SyntaxEditor,
 };
 
@@ -45,7 +45,7 @@ pub(crate) fn convert_match_to_let_else(acc: &mut Assists, ctx: &AssistContext<'
         return None;
     }
 
-    let diverging_arm_expr = match diverging_arm.expr()? {
+    let diverging_arm_expr = match diverging_arm.expr()?.dedent(1.into()) {
         ast::Expr::BlockExpr(block) if block.modifier().is_none() && block.label().is_none() => {
             block.to_string()
         }
@@ -150,7 +150,12 @@ fn rename_variable(pat: &ast::Pat, extracted: &[Name], binding: ast::Pat) -> Syn
         }
     }
     editor.add_mappings(make.finish_with_mappings());
-    editor.finish().new_root().clone()
+    let new_node = editor.finish().new_root().clone();
+    if let Some(pat) = ast::Pat::cast(new_node.clone()) {
+        pat.dedent(1.into()).syntax().clone()
+    } else {
+        new_node
+    }
 }
 
 #[cfg(test)]
@@ -204,6 +209,53 @@ enum Foo {
 
 fn foo(opt: Option<Foo>) -> Result<u32, ()> {
     let Some(Foo::A(value) | Foo::B(value)) = opt else { return Err(()) };
+}
+    "#,
+        );
+    }
+
+    #[test]
+    fn indent_level() {
+        check_assist(
+            convert_match_to_let_else,
+            r#"
+//- minicore: option
+enum Foo {
+    A(u32),
+    B(u32),
+    C(String),
+}
+
+fn foo(opt: Option<Foo>) -> Result<u32, ()> {
+    let mut state = 2;
+    let va$0lue = match opt {
+        Some(
+            Foo::A(it)
+            | Foo::B(it)
+        ) => it,
+        _ => {
+            state = 3;
+            return Err(())
+        },
+    };
+}
+    "#,
+            r#"
+enum Foo {
+    A(u32),
+    B(u32),
+    C(String),
+}
+
+fn foo(opt: Option<Foo>) -> Result<u32, ()> {
+    let mut state = 2;
+    let Some(
+        Foo::A(value)
+        | Foo::B(value)
+    ) = opt else {
+        state = 3;
+        return Err(())
+    };
 }
     "#,
         );
@@ -489,9 +541,9 @@ fn f() {
             r#"
 fn f() {
     let Some(x) = Some(()) else {//comment
-            println!("nope");
-            return
-        };
+        println!("nope");
+        return
+    };
 }
 "#,
         );

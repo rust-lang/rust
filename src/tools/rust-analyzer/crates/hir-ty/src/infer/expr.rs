@@ -1,12 +1,10 @@
 //! Type inference for expressions.
 
-use std::{
-    iter::{repeat, repeat_with},
-    mem,
-};
+use std::{iter::repeat_with, mem};
 
 use chalk_ir::{DebruijnIndex, Mutability, TyVariableKind, cast::Cast};
 use either::Either;
+use hir_def::hir::ClosureKind;
 use hir_def::{
     BlockId, FieldId, GenericDefId, GenericParamId, ItemContainerId, Lookup, TupleFieldId, TupleId,
     expr_store::path::{GenericArg, GenericArgs, Path},
@@ -19,29 +17,37 @@ use hir_def::{
 };
 use hir_expand::name::Name;
 use intern::sym;
+use rustc_type_ir::inherent::{AdtDef, IntoKind, SliceLike, Ty as _};
 use stdx::always;
 use syntax::ast::RangeOp;
+use tracing::debug;
 
+use crate::autoderef::overloaded_deref_ty;
+use crate::next_solver::ErrorGuaranteed;
+use crate::next_solver::infer::DefineOpaqueTypes;
+use crate::next_solver::obligation_ctxt::ObligationCtxt;
 use crate::{
     Adjust, Adjustment, AdtId, AutoBorrow, Binders, CallableDefId, CallableSig, DeclContext,
-    DeclOrigin, IncorrectGenericsLenKind, Interner, Rawness, Scalar, Substitution,
-    TraitEnvironment, TraitRef, Ty, TyBuilder, TyExt, TyKind,
-    autoderef::{Autoderef, builtin_deref, deref_by_trait},
-    consteval,
+    DeclOrigin, IncorrectGenericsLenKind, Interner, LifetimeElisionKind, Rawness, Scalar,
+    Substitution, TraitEnvironment, TraitRef, Ty, TyBuilder, TyExt, TyKind, consteval,
     generics::generics,
     infer::{
-        BreakableKind,
-        coerce::{CoerceMany, CoerceNever, CoercionCause},
+        AllowTwoPhase, BreakableKind,
+        coerce::{CoerceMany, CoerceNever},
         find_continuable,
         pat::contains_explicit_ref_binding,
     },
     lang_items::lang_items_for_bin_op,
     lower::{
-        LifetimeElisionKind, ParamLoweringMode, lower_to_chalk_mutability,
+        ParamLoweringMode, lower_to_chalk_mutability,
         path::{GenericArgsLowerer, TypeLikeConst, substs_from_args_and_bindings},
     },
     mapping::{ToChalk, from_chalk},
     method_resolution::{self, VisibleFromModule},
+    next_solver::{
+        infer::traits::ObligationCause,
+        mapping::{ChalkToNextSolver, NextSolverToChalk},
+    },
     primitive::{self, UintTy},
     static_lifetime, to_chalk_trait_id,
     traits::FnTrait,
@@ -49,7 +55,7 @@ use crate::{
 
 use super::{
     BreakableContext, Diverges, Expectation, InferenceContext, InferenceDiagnostic, TypeMismatch,
-    cast::CastCheck, coerce::auto_deref_adjust_steps, find_breakable,
+    cast::CastCheck, find_breakable,
 };
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -58,7 +64,7 @@ pub(crate) enum ExprIsRead {
     No,
 }
 
-impl InferenceContext<'_> {
+impl<'db> InferenceContext<'db> {
     pub(crate) fn infer_expr(
         &mut self,
         tgt_expr: ExprId,
@@ -97,8 +103,14 @@ impl InferenceContext<'_> {
             } else {
                 CoerceNever::No
             };
-            match self.coerce(Some(expr), &ty, &target, coerce_never) {
-                Ok(res) => res,
+            match self.coerce(
+                expr.into(),
+                ty.to_nextsolver(self.table.interner),
+                target.to_nextsolver(self.table.interner),
+                AllowTwoPhase::No,
+                coerce_never,
+            ) {
+                Ok(res) => res.to_chalk(self.table.interner),
                 Err(_) => {
                     self.result.type_mismatches.insert(
                         expr.into(),
@@ -259,8 +271,15 @@ impl InferenceContext<'_> {
             }
 
             if let Some(target) = expected.only_has_type(&mut self.table) {
-                self.coerce(Some(expr), &ty, &target, CoerceNever::Yes)
-                    .expect("never-to-any coercion should always succeed")
+                self.coerce(
+                    expr.into(),
+                    ty.to_nextsolver(self.table.interner),
+                    target.to_nextsolver(self.table.interner),
+                    AllowTwoPhase::No,
+                    CoerceNever::Yes,
+                )
+                .expect("never-to-any coercion should always succeed")
+                .to_chalk(self.table.interner)
             } else {
                 ty
             }
@@ -278,6 +297,7 @@ impl InferenceContext<'_> {
         }
     }
 
+    #[tracing::instrument(level = "debug", skip(self, is_read), ret)]
     fn infer_expr_inner(
         &mut self,
         tgt_expr: ExprId,
@@ -286,7 +306,9 @@ impl InferenceContext<'_> {
     ) -> Ty {
         self.db.unwind_if_revision_cancelled();
 
-        let ty = match &self.body[tgt_expr] {
+        let expr = &self.body[tgt_expr];
+        tracing::trace!(?expr);
+        let ty = match expr {
             Expr::Missing => self.err_ty(),
             &Expr::If { condition, then_branch, else_branch } => {
                 let expected = &expected.adjust_for_branches(&mut self.table);
@@ -300,27 +322,41 @@ impl InferenceContext<'_> {
 
                 let then_ty = self.infer_expr_inner(then_branch, expected, ExprIsRead::Yes);
                 let then_diverges = mem::replace(&mut self.diverges, Diverges::Maybe);
-                let mut coerce = CoerceMany::new(expected.coercion_target_type(&mut self.table));
-                coerce.coerce(self, Some(then_branch), &then_ty, CoercionCause::Expr(then_branch));
+                let mut coercion_sites = [then_branch, tgt_expr];
+                if let Some(else_branch) = else_branch {
+                    coercion_sites[1] = else_branch;
+                }
+                let mut coerce = CoerceMany::with_coercion_sites(
+                    expected
+                        .coercion_target_type(&mut self.table)
+                        .to_nextsolver(self.table.interner),
+                    &coercion_sites,
+                );
+                coerce.coerce(
+                    self,
+                    &ObligationCause::new(),
+                    then_branch,
+                    then_ty.to_nextsolver(self.table.interner),
+                );
                 match else_branch {
                     Some(else_branch) => {
                         let else_ty = self.infer_expr_inner(else_branch, expected, ExprIsRead::Yes);
                         let else_diverges = mem::replace(&mut self.diverges, Diverges::Maybe);
                         coerce.coerce(
                             self,
-                            Some(else_branch),
-                            &else_ty,
-                            CoercionCause::Expr(else_branch),
+                            &ObligationCause::new(),
+                            else_branch,
+                            else_ty.to_nextsolver(self.table.interner),
                         );
                         self.diverges = condition_diverges | then_diverges & else_diverges;
                     }
                     None => {
-                        coerce.coerce_forced_unit(self, CoercionCause::Expr(tgt_expr));
+                        coerce.coerce_forced_unit(self, tgt_expr, &ObligationCause::new(), true);
                         self.diverges = condition_diverges;
                     }
                 }
 
-                coerce.complete(self)
+                coerce.complete(self).to_chalk(self.table.interner)
             }
             &Expr::Let { pat, expr } => {
                 let child_is_read = if self.pat_guaranteed_to_constitute_read_for_never(pat) {
@@ -373,7 +409,15 @@ impl InferenceContext<'_> {
                 }
             }
             Expr::Closure { body, args, ret_type, arg_types, closure_kind, capture_by: _ } => self
-                .infer_closure(body, args, ret_type, arg_types, *closure_kind, tgt_expr, expected),
+                .infer_closure(
+                    *body,
+                    args,
+                    *ret_type,
+                    arg_types,
+                    *closure_kind,
+                    tgt_expr,
+                    expected,
+                ),
             Expr::Call { callee, args, .. } => self.infer_call(tgt_expr, *callee, args, expected),
             Expr::MethodCall { receiver, args, method_name, generic_args } => self
                 .infer_method_call(
@@ -399,7 +443,7 @@ impl InferenceContext<'_> {
                     let matchee_diverges = mem::replace(&mut self.diverges, Diverges::Maybe);
                     let mut all_arms_diverge = Diverges::Always;
                     for arm in arms.iter() {
-                        let input_ty = self.resolve_ty_shallow(&input_ty);
+                        let input_ty = self.table.structurally_resolve_type(&input_ty);
                         self.infer_top_pat(arm.pat, &input_ty, None);
                     }
 
@@ -412,7 +456,7 @@ impl InferenceContext<'_> {
                         }
                         _ => self.table.new_type_var(),
                     };
-                    let mut coerce = CoerceMany::new(result_ty);
+                    let mut coerce = CoerceMany::new(result_ty.to_nextsolver(self.table.interner));
 
                     for arm in arms.iter() {
                         if let Some(guard_expr) = arm.guard {
@@ -427,12 +471,17 @@ impl InferenceContext<'_> {
 
                         let arm_ty = self.infer_expr_inner(arm.expr, &expected, ExprIsRead::Yes);
                         all_arms_diverge &= self.diverges;
-                        coerce.coerce(self, Some(arm.expr), &arm_ty, CoercionCause::Expr(arm.expr));
+                        coerce.coerce(
+                            self,
+                            &ObligationCause::new(),
+                            arm.expr,
+                            arm_ty.to_nextsolver(self.table.interner),
+                        );
                     }
 
                     self.diverges = matchee_diverges | all_arms_diverge;
 
-                    coerce.complete(self)
+                    coerce.complete(self).to_chalk(self.table.interner)
                 }
             }
             Expr::Path(p) => self.infer_expr_path(p, tgt_expr.into(), tgt_expr),
@@ -450,7 +499,7 @@ impl InferenceContext<'_> {
                 let val_ty = if let Some(expr) = expr {
                     let opt_coerce_to = match find_breakable(&mut self.breakables, label) {
                         Some(ctxt) => match &ctxt.coerce {
-                            Some(coerce) => coerce.expected_ty(),
+                            Some(coerce) => coerce.expected_ty().to_chalk(self.table.interner),
                             None => {
                                 self.push_diagnostic(InferenceDiagnostic::BreakOutsideOfLoop {
                                     expr: tgt_expr,
@@ -474,11 +523,12 @@ impl InferenceContext<'_> {
                 match find_breakable(&mut self.breakables, label) {
                     Some(ctxt) => match ctxt.coerce.take() {
                         Some(mut coerce) => {
-                            let cause = match expr {
-                                Some(expr) => CoercionCause::Expr(expr),
-                                None => CoercionCause::Expr(tgt_expr),
-                            };
-                            coerce.coerce(self, expr, &val_ty, cause);
+                            coerce.coerce(
+                                self,
+                                &ObligationCause::new(),
+                                expr.unwrap_or(tgt_expr),
+                                val_ty.to_nextsolver(self.table.interner),
+                            );
 
                             // Avoiding borrowck
                             let ctxt = find_breakable(&mut self.breakables, label)
@@ -510,7 +560,13 @@ impl InferenceContext<'_> {
                         );
                     } else {
                         let unit = self.result.standard_types.unit.clone();
-                        let _ = self.coerce(Some(tgt_expr), &unit, &yield_ty, CoerceNever::Yes);
+                        let _ = self.coerce(
+                            tgt_expr.into(),
+                            unit.to_nextsolver(self.table.interner),
+                            yield_ty.to_nextsolver(self.table.interner),
+                            AllowTwoPhase::No,
+                            CoerceNever::Yes,
+                        );
                     }
                     resume_ty
                 } else {
@@ -649,7 +705,7 @@ impl InferenceContext<'_> {
             &Expr::Box { expr } => self.infer_expr_box(expr, expected),
             Expr::UnaryOp { expr, op } => {
                 let inner_ty = self.infer_expr_inner(*expr, &Expectation::none(), ExprIsRead::Yes);
-                let inner_ty = self.resolve_ty_shallow(&inner_ty);
+                let inner_ty = self.table.structurally_resolve_type(&inner_ty);
                 // FIXME: Note down method resolution her
                 match op {
                     UnaryOp::Deref => {
@@ -666,11 +722,23 @@ impl InferenceContext<'_> {
                                 Substitution::empty(Interner),
                             );
                         }
-                        if let Some(derefed) = builtin_deref(self.table.db, &inner_ty, true) {
-                            self.resolve_ty_shallow(derefed)
+                        if let Some(derefed) =
+                            inner_ty.to_nextsolver(self.table.interner).builtin_deref(self.db, true)
+                        {
+                            self.table
+                                .structurally_resolve_type(&derefed.to_chalk(self.table.interner))
                         } else {
-                            deref_by_trait(&mut self.table, inner_ty, false)
-                                .unwrap_or_else(|| self.err_ty())
+                            let infer_ok = overloaded_deref_ty(
+                                &self.table,
+                                inner_ty.to_nextsolver(self.table.interner),
+                            );
+                            match infer_ok {
+                                Some(infer_ok) => self
+                                    .table
+                                    .register_infer_ok(infer_ok)
+                                    .to_chalk(self.table.interner),
+                                None => self.err_ty(),
+                            }
                         }
                     }
                     UnaryOp::Neg => {
@@ -823,10 +891,10 @@ impl InferenceContext<'_> {
                 let index_ty = self.infer_expr(*index, &Expectation::none(), ExprIsRead::Yes);
 
                 if let Some(index_trait) = self.resolve_lang_trait(LangItem::Index) {
-                    let canonicalized = self.canonicalize(base_ty.clone());
+                    let canonicalized =
+                        self.canonicalize(base_ty.clone().to_nextsolver(self.table.interner));
                     let receiver_adjustments = method_resolution::resolve_indexing_op(
-                        self.db,
-                        self.table.trait_env.clone(),
+                        &mut self.table,
                         canonicalized,
                         index_trait,
                     );
@@ -929,6 +997,7 @@ impl InferenceContext<'_> {
                     }
                     None => {
                         let expected_ty = expected.to_option(&mut self.table);
+                        tracing::debug!(?expected_ty);
                         let opt_ty = match expected_ty.as_ref().map(|it| it.kind(Interner)) {
                             Some(TyKind::Scalar(Scalar::Int(_) | Scalar::Uint(_))) => expected_ty,
                             Some(TyKind::Scalar(Scalar::Char)) => {
@@ -998,18 +1067,30 @@ impl InferenceContext<'_> {
                     // allows them to be inferred based on how they are used later in the
                     // function.
                     if is_input {
-                        let ty = this.resolve_ty_shallow(&ty);
+                        let ty = this.table.structurally_resolve_type(&ty);
                         match ty.kind(Interner) {
                             TyKind::FnDef(def, parameters) => {
                                 let fnptr_ty = TyKind::Function(
                                     CallableSig::from_def(this.db, *def, parameters).to_fn_ptr(),
                                 )
                                 .intern(Interner);
-                                _ = this.coerce(Some(expr), &ty, &fnptr_ty, CoerceNever::Yes);
+                                _ = this.coerce(
+                                    expr.into(),
+                                    ty.to_nextsolver(this.table.interner),
+                                    fnptr_ty.to_nextsolver(this.table.interner),
+                                    AllowTwoPhase::No,
+                                    CoerceNever::Yes,
+                                );
                             }
                             TyKind::Ref(mutbl, _, base_ty) => {
                                 let ptr_ty = TyKind::Raw(*mutbl, base_ty.clone()).intern(Interner);
-                                _ = this.coerce(Some(expr), &ty, &ptr_ty, CoerceNever::Yes);
+                                _ = this.coerce(
+                                    expr.into(),
+                                    ty.to_nextsolver(this.table.interner),
+                                    ptr_ty.to_nextsolver(this.table.interner),
+                                    AllowTwoPhase::No,
+                                    CoerceNever::Yes,
+                                );
                             }
                             _ => {}
                         }
@@ -1087,15 +1168,23 @@ impl InferenceContext<'_> {
         let ret_ty = self.table.new_type_var();
         let prev_diverges = mem::replace(&mut self.diverges, Diverges::Maybe);
         let prev_ret_ty = mem::replace(&mut self.return_ty, ret_ty.clone());
-        let prev_ret_coercion = self.return_coercion.replace(CoerceMany::new(ret_ty.clone()));
+        let prev_ret_coercion = self
+            .return_coercion
+            .replace(CoerceMany::new(ret_ty.to_nextsolver(self.table.interner)));
 
         // FIXME: We should handle async blocks like we handle closures
         let expected = &Expectation::has_type(ret_ty);
         let (_, inner_ty) = self.with_breakable_ctx(BreakableKind::Border, None, None, |this| {
             let ty = this.infer_block(tgt_expr, *id, statements, *tail, None, expected);
             if let Some(target) = expected.only_has_type(&mut this.table) {
-                match this.coerce(Some(tgt_expr), &ty, &target, CoerceNever::Yes) {
-                    Ok(res) => res,
+                match this.coerce(
+                    tgt_expr.into(),
+                    ty.to_nextsolver(this.table.interner),
+                    target.to_nextsolver(this.table.interner),
+                    AllowTwoPhase::No,
+                    CoerceNever::Yes,
+                ) {
+                    Ok(res) => res.to_chalk(this.table.interner),
                     Err(_) => {
                         this.result.type_mismatches.insert(
                             tgt_expr.into(),
@@ -1204,13 +1293,21 @@ impl InferenceContext<'_> {
                 (elem_ty, consteval::usize_const(self.db, Some(0), krate))
             }
             Array::ElementList { elements, .. } => {
-                let mut coerce = CoerceMany::new(elem_ty);
+                let mut coerce = CoerceMany::with_coercion_sites(
+                    elem_ty.to_nextsolver(self.table.interner),
+                    elements,
+                );
                 for &expr in elements.iter() {
                     let cur_elem_ty = self.infer_expr_inner(expr, &expected, ExprIsRead::Yes);
-                    coerce.coerce(self, Some(expr), &cur_elem_ty, CoercionCause::Expr(expr));
+                    coerce.coerce(
+                        self,
+                        &ObligationCause::new(),
+                        expr,
+                        cur_elem_ty.to_nextsolver(self.table.interner),
+                    );
                 }
                 (
-                    coerce.complete(self),
+                    coerce.complete(self).to_chalk(self.table.interner),
                     consteval::usize_const(self.db, Some(elements.len() as u128), krate),
                 )
             }
@@ -1249,11 +1346,17 @@ impl InferenceContext<'_> {
             .return_coercion
             .as_mut()
             .expect("infer_return called outside function body")
-            .expected_ty();
+            .expected_ty()
+            .to_chalk(self.table.interner);
         let return_expr_ty =
             self.infer_expr_inner(expr, &Expectation::HasType(ret_ty), ExprIsRead::Yes);
         let mut coerce_many = self.return_coercion.take().unwrap();
-        coerce_many.coerce(self, Some(expr), &return_expr_ty, CoercionCause::Expr(expr));
+        coerce_many.coerce(
+            self,
+            &ObligationCause::new(),
+            expr,
+            return_expr_ty.to_nextsolver(self.table.interner),
+        );
         self.return_coercion = Some(coerce_many);
     }
 
@@ -1264,7 +1367,7 @@ impl InferenceContext<'_> {
                     self.infer_return(expr);
                 } else {
                     let mut coerce = self.return_coercion.take().unwrap();
-                    coerce.coerce_forced_unit(self, CoercionCause::Expr(ret));
+                    coerce.coerce_forced_unit(self, ret, &ObligationCause::new(), true);
                     self.return_coercion = Some(coerce);
                 }
             }
@@ -1281,7 +1384,7 @@ impl InferenceContext<'_> {
     fn infer_expr_become(&mut self, expr: ExprId) -> Ty {
         match &self.return_coercion {
             Some(return_coercion) => {
-                let ret_ty = return_coercion.expected_ty();
+                let ret_ty = return_coercion.expected_ty().to_chalk(self.table.interner);
 
                 let call_expr_ty = self.infer_expr_inner(
                     expr,
@@ -1414,15 +1517,16 @@ impl InferenceContext<'_> {
             None => self.err_ty(),
         };
 
-        let ret_ty = self.normalize_associated_types_in(ret_ty);
+        let ret_ty = self.process_remote_user_written_ty(ret_ty);
 
         if self.is_builtin_binop(&lhs_ty, &rhs_ty, op) {
             // use knowledge of built-in binary ops, which can sometimes help inference
             let builtin_ret = self.enforce_builtin_binop_types(&lhs_ty, &rhs_ty, op);
             self.unify(&builtin_ret, &ret_ty);
+            builtin_ret
+        } else {
+            ret_ty
         }
-
-        ret_ty
     }
 
     fn infer_block(
@@ -1534,9 +1638,10 @@ impl InferenceContext<'_> {
                         };
                         if this
                             .coerce(
-                                Some(expr),
-                                &this.result.standard_types.unit.clone(),
-                                &t,
+                                expr.into(),
+                                this.result.standard_types.unit.to_nextsolver(this.table.interner),
+                                t.to_nextsolver(this.table.interner),
+                                AllowTwoPhase::No,
                                 coerce_never,
                             )
                             .is_err()
@@ -1557,6 +1662,7 @@ impl InferenceContext<'_> {
             });
         self.resolver.reset_to_guard(g);
         if let Some(prev_env) = prev_env {
+            self.table.param_env = prev_env.env.to_nextsolver(self.table.interner);
             self.table.trait_env = prev_env;
         }
 
@@ -1568,50 +1674,49 @@ impl InferenceContext<'_> {
         receiver_ty: &Ty,
         name: &Name,
     ) -> Option<(Ty, Either<FieldId, TupleFieldId>, Vec<Adjustment>, bool)> {
-        let mut autoderef = Autoderef::new(&mut self.table, receiver_ty.clone(), false, false);
+        let interner = self.table.interner;
+        let mut autoderef = self.table.autoderef(receiver_ty.to_nextsolver(self.table.interner));
         let mut private_field = None;
         let res = autoderef.by_ref().find_map(|(derefed_ty, _)| {
-            let (field_id, parameters) = match derefed_ty.kind(Interner) {
-                TyKind::Tuple(_, substs) => {
+            let (field_id, parameters) = match derefed_ty.kind() {
+                crate::next_solver::TyKind::Tuple(substs) => {
                     return name.as_tuple_index().and_then(|idx| {
-                        substs
-                            .as_slice(Interner)
-                            .get(idx)
-                            .map(|a| a.assert_ty_ref(Interner))
-                            .cloned()
-                            .map(|ty| {
-                                (
-                                    Either::Right(TupleFieldId {
-                                        tuple: TupleId(
-                                            self.tuple_field_accesses_rev
-                                                .insert_full(substs.clone())
-                                                .0
-                                                as u32,
-                                        ),
-                                        index: idx as u32,
-                                    }),
-                                    ty,
-                                )
-                            })
+                        substs.as_slice().get(idx).copied().map(|ty| {
+                            (
+                                Either::Right(TupleFieldId {
+                                    tuple: TupleId(
+                                        self.tuple_field_accesses_rev
+                                            .insert_full(substs.to_chalk(interner))
+                                            .0 as u32,
+                                    ),
+                                    index: idx as u32,
+                                }),
+                                ty.to_chalk(interner),
+                            )
+                        })
                     });
                 }
-                &TyKind::Adt(AdtId(hir_def::AdtId::StructId(s)), ref parameters) => {
-                    let local_id = s.fields(self.db).field(name)?;
-                    let field = FieldId { parent: s.into(), local_id };
-                    (field, parameters.clone())
-                }
-                &TyKind::Adt(AdtId(hir_def::AdtId::UnionId(u)), ref parameters) => {
-                    let local_id = u.fields(self.db).field(name)?;
-                    let field = FieldId { parent: u.into(), local_id };
-                    (field, parameters.clone())
-                }
+                crate::next_solver::TyKind::Adt(adt, parameters) => match adt.def_id().0 {
+                    hir_def::AdtId::StructId(s) => {
+                        let local_id = s.fields(self.db).field(name)?;
+                        let field = FieldId { parent: s.into(), local_id };
+                        (field, parameters)
+                    }
+                    hir_def::AdtId::UnionId(u) => {
+                        let local_id = u.fields(self.db).field(name)?;
+                        let field = FieldId { parent: u.into(), local_id };
+                        (field, parameters)
+                    }
+                    hir_def::AdtId::EnumId(_) => return None,
+                },
                 _ => return None,
             };
+            let parameters: crate::Substitution = parameters.to_chalk(interner);
             let is_visible = self.db.field_visibilities(field_id.parent)[field_id.local_id]
                 .is_visible_from(self.db, self.resolver.module());
             if !is_visible {
                 if private_field.is_none() {
-                    private_field = Some((field_id, parameters));
+                    private_field = Some((field_id, parameters.clone()));
                 }
                 return None;
             }
@@ -1623,20 +1728,18 @@ impl InferenceContext<'_> {
 
         Some(match res {
             Some((field_id, ty)) => {
-                let adjustments = auto_deref_adjust_steps(&autoderef);
-                let ty = self.insert_type_vars(ty);
-                let ty = self.normalize_associated_types_in(ty);
+                let adjustments = autoderef.adjust_steps();
+                let ty = self.process_remote_user_written_ty(ty);
 
                 (ty, field_id, adjustments, true)
             }
             None => {
                 let (field_id, subst) = private_field?;
-                let adjustments = auto_deref_adjust_steps(&autoderef);
+                let adjustments = autoderef.adjust_steps();
                 let ty = self.db.field_types(field_id.parent)[field_id.local_id]
                     .clone()
                     .substitute(Interner, &subst);
-                let ty = self.insert_type_vars(ty);
-                let ty = self.normalize_associated_types_in(ty);
+                let ty = self.process_remote_user_written_ty(ty);
 
                 (ty, Either::Left(field_id), adjustments, false)
             }
@@ -1675,7 +1778,8 @@ impl InferenceContext<'_> {
             None => {
                 // no field found, lets attempt to resolve it like a function so that IDE things
                 // work out while people are typing
-                let canonicalized_receiver = self.canonicalize(receiver_ty.clone());
+                let canonicalized_receiver =
+                    self.canonicalize(receiver_ty.clone().to_nextsolver(self.table.interner));
                 let resolved = method_resolution::lookup_method(
                     self.db,
                     &canonicalized_receiver,
@@ -1720,11 +1824,13 @@ impl InferenceContext<'_> {
         expected: &Expectation,
     ) -> Ty {
         let callee_ty = self.infer_expr(callee, &Expectation::none(), ExprIsRead::Yes);
-        let mut derefs = Autoderef::new(&mut self.table, callee_ty.clone(), false, true);
+        let interner = self.table.interner;
+        let mut derefs = self.table.autoderef(callee_ty.to_nextsolver(interner));
         let (res, derefed_callee) = loop {
             let Some((callee_deref_ty, _)) = derefs.next() else {
                 break (None, callee_ty.clone());
             };
+            let callee_deref_ty = callee_deref_ty.to_chalk(interner);
             if let Some(res) = derefs.table.callable_sig(&callee_deref_ty, args.len()) {
                 break (Some(res), callee_deref_ty);
             }
@@ -1735,27 +1841,29 @@ impl InferenceContext<'_> {
             derefed_callee.callable_sig(self.db).is_some_and(|sig| sig.is_varargs) || res.is_none();
         let (param_tys, ret_ty) = match res {
             Some((func, params, ret_ty)) => {
-                let mut adjustments = auto_deref_adjust_steps(&derefs);
-                if let TyKind::Closure(c, _) =
-                    self.table.resolve_completely(callee_ty.clone()).kind(Interner)
-                {
-                    self.add_current_closure_dependency(*c);
-                    self.deferred_closures.entry(*c).or_default().push((
-                        derefed_callee.clone(),
-                        callee_ty.clone(),
-                        params.clone(),
-                        tgt_expr,
-                    ));
-                }
+                let params_chalk =
+                    params.iter().map(|param| param.to_chalk(interner)).collect::<Vec<_>>();
+                let mut adjustments = derefs.adjust_steps();
                 if let Some(fn_x) = func {
                     self.write_fn_trait_method_resolution(
                         fn_x,
                         &derefed_callee,
                         &mut adjustments,
                         &callee_ty,
-                        &params,
+                        &params_chalk,
                         tgt_expr,
                     );
+                }
+                if let &TyKind::Closure(c, _) =
+                    self.table.resolve_completely(callee_ty.clone()).kind(Interner)
+                {
+                    self.add_current_closure_dependency(c.into());
+                    self.deferred_closures.entry(c.into()).or_default().push((
+                        derefed_callee.clone(),
+                        callee_ty.clone(),
+                        params_chalk,
+                        tgt_expr,
+                    ));
                 }
                 self.write_expr_adj(callee, adjustments.into_boxed_slice());
                 (params, ret_ty)
@@ -1765,7 +1873,7 @@ impl InferenceContext<'_> {
                     call_expr: tgt_expr,
                     found: callee_ty.clone(),
                 });
-                (Vec::new(), self.err_ty())
+                (Vec::new(), crate::next_solver::Ty::new_error(interner, ErrorGuaranteed))
             }
         };
         let indices_to_skip = self.check_legacy_const_generics(derefed_callee, args);
@@ -1786,29 +1894,24 @@ impl InferenceContext<'_> {
         tgt_expr: ExprId,
         args: &[ExprId],
         callee_ty: Ty,
-        param_tys: &[Ty],
-        ret_ty: Ty,
+        param_tys: &[crate::next_solver::Ty<'db>],
+        ret_ty: crate::next_solver::Ty<'db>,
         indices_to_skip: &[u32],
         is_varargs: bool,
         expected: &Expectation,
     ) -> Ty {
         self.register_obligations_for_call(&callee_ty);
 
-        let expected_inputs = self.expected_inputs_for_expected_output(
-            expected,
-            ret_ty.clone(),
-            param_tys.to_owned(),
-        );
-
         self.check_call_arguments(
             tgt_expr,
-            args,
-            &expected_inputs,
             param_tys,
+            ret_ty,
+            expected,
+            args,
             indices_to_skip,
             is_varargs,
         );
-        self.normalize_associated_types_in(ret_ty)
+        self.table.normalize_associated_types_in_ns(ret_ty).to_chalk(self.table.interner)
     }
 
     fn infer_method_call(
@@ -1821,7 +1924,23 @@ impl InferenceContext<'_> {
         expected: &Expectation,
     ) -> Ty {
         let receiver_ty = self.infer_expr_inner(receiver, &Expectation::none(), ExprIsRead::Yes);
-        let canonicalized_receiver = self.canonicalize(receiver_ty.clone());
+        let receiver_ty = self.table.structurally_resolve_type(&receiver_ty);
+
+        if matches!(
+            receiver_ty.kind(Interner),
+            TyKind::Error | TyKind::InferenceVar(_, TyVariableKind::General)
+        ) {
+            // Don't probe on error type, or on a fully unresolved infer var.
+            // FIXME: Emit an error if we're probing on an infer var (type annotations needed).
+            for &arg in args {
+                // Make sure we infer and record the arguments.
+                self.infer_expr_no_expect(arg, ExprIsRead::Yes);
+            }
+            return receiver_ty;
+        }
+
+        let canonicalized_receiver =
+            self.canonicalize(receiver_ty.clone().to_nextsolver(self.table.interner));
 
         let resolved = method_resolution::lookup_method(
             self.db,
@@ -1912,14 +2031,21 @@ impl InferenceContext<'_> {
                         tgt_expr,
                         args,
                         callee_ty,
-                        sig.params().get(strip_first as usize..).unwrap_or(&[]),
-                        sig.ret().clone(),
+                        &sig.params()
+                            .get(strip_first as usize..)
+                            .unwrap_or(&[])
+                            .iter()
+                            .map(|param| param.to_nextsolver(self.table.interner))
+                            .collect::<Vec<_>>(),
+                        sig.ret().to_nextsolver(self.table.interner),
                         &[],
                         true,
                         expected,
                     ),
                     None => {
-                        self.check_call_arguments(tgt_expr, args, &[], &[], &[], true);
+                        for &arg in args.iter() {
+                            self.infer_expr_no_expect(arg, ExprIsRead::Yes);
+                        }
                         self.err_ty()
                     }
                 }
@@ -1938,147 +2064,252 @@ impl InferenceContext<'_> {
     ) -> Ty {
         let method_ty = method_ty.substitute(Interner, &substs);
         self.register_obligations_for_call(&method_ty);
+        let interner = self.table.interner;
         let ((formal_receiver_ty, param_tys), ret_ty, is_varargs) =
             match method_ty.callable_sig(self.db) {
                 Some(sig) => (
                     if !sig.params().is_empty() {
-                        (sig.params()[0].clone(), sig.params()[1..].to_vec())
+                        (
+                            sig.params()[0].to_nextsolver(interner),
+                            sig.params()[1..]
+                                .iter()
+                                .map(|param| param.to_nextsolver(interner))
+                                .collect(),
+                        )
                     } else {
-                        (self.err_ty(), Vec::new())
+                        (crate::next_solver::Ty::new_error(interner, ErrorGuaranteed), Vec::new())
                     },
-                    sig.ret().clone(),
+                    sig.ret().to_nextsolver(interner),
                     sig.is_varargs,
                 ),
-                None => ((self.err_ty(), Vec::new()), self.err_ty(), true),
-            };
-        self.unify(&formal_receiver_ty, &receiver_ty);
-
-        let expected_inputs =
-            self.expected_inputs_for_expected_output(expected, ret_ty.clone(), param_tys.clone());
-
-        self.check_call_arguments(tgt_expr, args, &expected_inputs, &param_tys, &[], is_varargs);
-        self.normalize_associated_types_in(ret_ty)
-    }
-
-    fn expected_inputs_for_expected_output(
-        &mut self,
-        expected_output: &Expectation,
-        output: Ty,
-        inputs: Vec<Ty>,
-    ) -> Vec<Ty> {
-        if let Some(expected_ty) = expected_output.only_has_type(&mut self.table) {
-            self.table.fudge_inference(|table| {
-                if table.try_unify(&expected_ty, &output).is_ok() {
-                    table.resolve_with_fallback(inputs, &|var, kind, _, _| match kind {
-                        chalk_ir::VariableKind::Ty(tk) => var.to_ty(Interner, tk).cast(Interner),
-                        chalk_ir::VariableKind::Lifetime => {
-                            var.to_lifetime(Interner).cast(Interner)
-                        }
-                        chalk_ir::VariableKind::Const(ty) => {
-                            var.to_const(Interner, ty).cast(Interner)
-                        }
-                    })
-                } else {
-                    Vec::new()
+                None => {
+                    let formal_receiver_ty = self.table.next_ty_var();
+                    let ret_ty = self.table.next_ty_var();
+                    ((formal_receiver_ty, Vec::new()), ret_ty, true)
                 }
-            })
-        } else {
-            Vec::new()
-        }
+            };
+        self.table.unify_ns(formal_receiver_ty, receiver_ty.to_nextsolver(interner));
+
+        self.check_call_arguments(tgt_expr, &param_tys, ret_ty, expected, args, &[], is_varargs);
+        self.table.normalize_associated_types_in_ns(ret_ty).to_chalk(interner)
     }
 
-    fn check_call_arguments(
+    /// Generic function that factors out common logic from function calls,
+    /// method calls and overloaded operators.
+    pub(in super::super) fn check_call_arguments(
         &mut self,
-        expr: ExprId,
-        args: &[ExprId],
-        expected_inputs: &[Ty],
-        param_tys: &[Ty],
+        call_expr: ExprId,
+        // Types (as defined in the *signature* of the target function)
+        formal_input_tys: &[crate::next_solver::Ty<'db>],
+        formal_output: crate::next_solver::Ty<'db>,
+        // Expected output from the parent expression or statement
+        expectation: &Expectation,
+        // The expressions for each provided argument
+        provided_args: &[ExprId],
         skip_indices: &[u32],
-        ignore_arg_param_mismatch: bool,
+        // Whether the function is variadic, for example when imported from C
+        c_variadic: bool,
     ) {
-        let arg_count_mismatch =
-            !ignore_arg_param_mismatch && args.len() != param_tys.len() + skip_indices.len();
-        if arg_count_mismatch {
-            self.push_diagnostic(InferenceDiagnostic::MismatchedArgCount {
-                call_expr: expr,
-                expected: param_tys.len() + skip_indices.len(),
-                found: args.len(),
-            });
+        let interner = self.table.interner;
+
+        // First, let's unify the formal method signature with the expectation eagerly.
+        // We use this to guide coercion inference; it's output is "fudged" which means
+        // any remaining type variables are assigned to new, unrelated variables. This
+        // is because the inference guidance here is only speculative.
+        let formal_output = self.table.resolve_vars_with_obligations(formal_output);
+        let expected_input_tys: Option<Vec<_>> = expectation
+            .only_has_type(&mut self.table)
+            .and_then(|expected_output| {
+                self.table
+                    .infer_ctxt
+                    .fudge_inference_if_ok(|| {
+                        let mut ocx = ObligationCtxt::new(&self.table.infer_ctxt);
+
+                        // Attempt to apply a subtyping relationship between the formal
+                        // return type (likely containing type variables if the function
+                        // is polymorphic) and the expected return type.
+                        // No argument expectations are produced if unification fails.
+                        let origin = ObligationCause::new();
+                        ocx.sup(
+                            &origin,
+                            self.table.param_env,
+                            expected_output.to_nextsolver(interner),
+                            formal_output,
+                        )?;
+                        if !ocx.select_where_possible().is_empty() {
+                            return Err(crate::next_solver::TypeError::Mismatch);
+                        }
+
+                        // Record all the argument types, with the args
+                        // produced from the above subtyping unification.
+                        Ok(Some(
+                            formal_input_tys
+                                .iter()
+                                .map(|&ty| self.table.infer_ctxt.resolve_vars_if_possible(ty))
+                                .collect(),
+                        ))
+                    })
+                    .ok()
+            })
+            .unwrap_or_default();
+
+        // If there are no external expectations at the call site, just use the types from the function defn
+        let expected_input_tys = if let Some(expected_input_tys) = &expected_input_tys {
+            assert_eq!(expected_input_tys.len(), formal_input_tys.len());
+            expected_input_tys
+        } else {
+            formal_input_tys
         };
 
-        // Quoting https://github.com/rust-lang/rust/blob/6ef275e6c3cb1384ec78128eceeb4963ff788dca/src/librustc_typeck/check/mod.rs#L3325 --
+        let minimum_input_count = expected_input_tys.len();
+        let provided_arg_count = provided_args.len() - skip_indices.len();
+
+        // Keep track of whether we *could possibly* be satisfied, i.e. whether we're on the happy path
+        // if the wrong number of arguments were supplied, we CAN'T be satisfied,
+        // and if we're c_variadic, the supplied arguments must be >= the minimum count from the function
+        // otherwise, they need to be identical, because rust doesn't currently support variadic functions
+        let args_count_matches = if c_variadic {
+            provided_arg_count >= minimum_input_count
+        } else {
+            provided_arg_count == minimum_input_count
+        };
+
+        if !args_count_matches {
+            self.push_diagnostic(InferenceDiagnostic::MismatchedArgCount {
+                call_expr,
+                expected: expected_input_tys.len() + skip_indices.len(),
+                found: provided_args.len(),
+            });
+        }
+
+        // We introduce a helper function to demand that a given argument satisfy a given input
+        // This is more complicated than just checking type equality, as arguments could be coerced
+        // This version writes those types back so further type checking uses the narrowed types
+        let demand_compatible = |this: &mut InferenceContext<'db>, idx| {
+            let formal_input_ty: crate::next_solver::Ty<'db> = formal_input_tys[idx];
+            let expected_input_ty: crate::next_solver::Ty<'db> = expected_input_tys[idx];
+            let provided_arg = provided_args[idx];
+
+            debug!("checking argument {}: {:?} = {:?}", idx, provided_arg, formal_input_ty);
+
+            // We're on the happy path here, so we'll do a more involved check and write back types
+            // To check compatibility, we'll do 3 things:
+            // 1. Unify the provided argument with the expected type
+            let expectation = Expectation::rvalue_hint(this, expected_input_ty.to_chalk(interner));
+
+            let checked_ty = this
+                .infer_expr_inner(provided_arg, &expectation, ExprIsRead::Yes)
+                .to_nextsolver(interner);
+
+            // 2. Coerce to the most detailed type that could be coerced
+            //    to, which is `expected_ty` if `rvalue_hint` returns an
+            //    `ExpectHasType(expected_ty)`, or the `formal_ty` otherwise.
+            let coerced_ty = expectation
+                .only_has_type(&mut this.table)
+                .map(|it| it.to_nextsolver(interner))
+                .unwrap_or(formal_input_ty);
+
+            // Cause selection errors caused by resolving a single argument to point at the
+            // argument and not the call. This lets us customize the span pointed to in the
+            // fulfillment error to be more accurate.
+            let coerced_ty = this.table.resolve_vars_with_obligations(coerced_ty);
+
+            let coerce_never = if this
+                .expr_guaranteed_to_constitute_read_for_never(provided_arg, ExprIsRead::Yes)
+            {
+                CoerceNever::Yes
+            } else {
+                CoerceNever::No
+            };
+            let coerce_error = this
+                .coerce(
+                    provided_arg.into(),
+                    checked_ty,
+                    coerced_ty,
+                    AllowTwoPhase::Yes,
+                    coerce_never,
+                )
+                .err();
+            if coerce_error.is_some() {
+                return Err((coerce_error, coerced_ty, checked_ty));
+            }
+
+            // 3. Check if the formal type is actually equal to the checked one
+            //    and register any such obligations for future type checks.
+            let formal_ty_error = this
+                .table
+                .infer_ctxt
+                .at(&ObligationCause::new(), this.table.param_env)
+                .eq(DefineOpaqueTypes::Yes, formal_input_ty, coerced_ty);
+
+            // If neither check failed, the types are compatible
+            match formal_ty_error {
+                Ok(crate::next_solver::infer::InferOk { obligations, value: () }) => {
+                    this.table.register_predicates(obligations);
+                    Ok(())
+                }
+                Err(err) => Err((Some(err), coerced_ty, checked_ty)),
+            }
+        };
+
+        // Check the arguments.
         // We do this in a pretty awful way: first we type-check any arguments
         // that are not closures, then we type-check the closures. This is so
         // that we have more information about the types of arguments when we
         // type-check the functions. This isn't really the right way to do this.
         for check_closures in [false, true] {
-            let mut skip_indices = skip_indices.iter().copied().fuse().peekable();
-            let param_iter = param_tys.iter().cloned().chain(repeat(self.err_ty()));
-            let expected_iter = expected_inputs
-                .iter()
-                .cloned()
-                .chain(param_iter.clone().skip(expected_inputs.len()));
-            for (idx, ((&arg, param_ty), expected_ty)) in
-                args.iter().zip(param_iter).zip(expected_iter).enumerate()
-            {
-                let is_closure = matches!(&self.body[arg], Expr::Closure { .. });
+            // More awful hacks: before we check argument types, try to do
+            // an "opportunistic" trait resolution of any trait bounds on
+            // the call. This helps coercions.
+            if check_closures {
+                self.table.select_obligations_where_possible();
+            }
+
+            let mut skip_indices = skip_indices.iter().copied();
+            // Check each argument, to satisfy the input it was provided for
+            // Visually, we're traveling down the diagonal of the compatibility matrix
+            for (idx, arg) in provided_args.iter().enumerate() {
+                if skip_indices.clone().next() == Some(idx as u32) {
+                    skip_indices.next();
+                    continue;
+                }
+
+                // For this check, we do *not* want to treat async coroutine closures (async blocks)
+                // as proper closures. Doing so would regress type inference when feeding
+                // the return value of an argument-position async block to an argument-position
+                // closure wrapped in a block.
+                // See <https://github.com/rust-lang/rust/issues/112225>.
+                let is_closure = if let Expr::Closure { closure_kind, .. } = self.body[*arg] {
+                    !matches!(closure_kind, ClosureKind::Coroutine(_))
+                } else {
+                    false
+                };
                 if is_closure != check_closures {
                     continue;
                 }
 
-                while skip_indices.peek().is_some_and(|&i| i < idx as u32) {
-                    skip_indices.next();
-                }
-                if skip_indices.peek().copied() == Some(idx as u32) {
+                if idx >= minimum_input_count {
+                    // Make sure we've checked this expr at least once.
+                    self.infer_expr_no_expect(*arg, ExprIsRead::Yes);
                     continue;
                 }
 
-                // the difference between param_ty and expected here is that
-                // expected is the parameter when the expected *return* type is
-                // taken into account. So in `let _: &[i32] = identity(&[1, 2])`
-                // the expected type is already `&[i32]`, whereas param_ty is
-                // still an unbound type variable. We don't always want to force
-                // the parameter to coerce to the expected type (for example in
-                // `coerce_unsize_expected_type_4`).
-                let param_ty = self.normalize_associated_types_in(param_ty);
-                let expected_ty = self.normalize_associated_types_in(expected_ty);
-                let expected = Expectation::rvalue_hint(self, expected_ty);
-                // infer with the expected type we have...
-                let ty = self.infer_expr_inner(arg, &expected, ExprIsRead::Yes);
-
-                // then coerce to either the expected type or just the formal parameter type
-                let coercion_target = if let Some(ty) = expected.only_has_type(&mut self.table) {
-                    // if we are coercing to the expectation, unify with the
-                    // formal parameter type to connect everything
-                    self.unify(&ty, &param_ty);
-                    ty
-                } else {
-                    param_ty
-                };
-                // The function signature may contain some unknown types, so we need to insert
-                // type vars here to avoid type mismatch false positive.
-                let coercion_target = self.insert_type_vars(coercion_target);
-
-                // Any expression that produces a value of type `!` must have diverged,
-                // unless it's a place expression that isn't being read from, in which case
-                // diverging would be unsound since we may never actually read the `!`.
-                // e.g. `let _ = *never_ptr;` with `never_ptr: *const !`.
-                let coerce_never =
-                    if self.expr_guaranteed_to_constitute_read_for_never(arg, ExprIsRead::Yes) {
-                        CoerceNever::Yes
-                    } else {
-                        CoerceNever::No
-                    };
-                if self.coerce(Some(arg), &ty, &coercion_target, coerce_never).is_err()
-                    && !arg_count_mismatch
+                if let Err((_error, expected, found)) = demand_compatible(self, idx)
+                    && args_count_matches
                 {
+                    // Don't report type mismatches if there is a mismatch in args count.
                     self.result.type_mismatches.insert(
-                        arg.into(),
-                        TypeMismatch { expected: coercion_target, actual: ty.clone() },
+                        (*arg).into(),
+                        TypeMismatch {
+                            expected: expected.to_chalk(interner),
+                            actual: found.to_chalk(interner),
+                        },
                     );
                 }
             }
         }
+
+        if !args_count_matches {}
     }
 
     fn substs_for_method_call(
@@ -2227,7 +2458,7 @@ impl InferenceContext<'_> {
     }
 
     fn register_obligations_for_call(&mut self, callable_ty: &Ty) {
-        let callable_ty = self.resolve_ty_shallow(callable_ty);
+        let callable_ty = self.table.structurally_resolve_type(callable_ty);
         if let TyKind::FnDef(fn_def, parameters) = callable_ty.kind(Interner) {
             let def: CallableDefId = from_chalk(self.db, *fn_def);
             let generic_predicates =
@@ -2316,9 +2547,9 @@ impl InferenceContext<'_> {
 
     /// Dereferences a single level of immutable referencing.
     fn deref_ty_if_possible(&mut self, ty: &Ty) -> Ty {
-        let ty = self.resolve_ty_shallow(ty);
+        let ty = self.table.structurally_resolve_type(ty);
         match ty.kind(Interner) {
-            TyKind::Ref(Mutability::Not, _, inner) => self.resolve_ty_shallow(inner),
+            TyKind::Ref(Mutability::Not, _, inner) => self.table.structurally_resolve_type(inner),
             _ => ty,
         }
     }
@@ -2438,10 +2669,22 @@ impl InferenceContext<'_> {
         cb: impl FnOnce(&mut Self) -> T,
     ) -> (Option<Ty>, T) {
         self.breakables.push({
-            BreakableContext { kind, may_break: false, coerce: ty.map(CoerceMany::new), label }
+            BreakableContext {
+                kind,
+                may_break: false,
+                coerce: ty.map(|ty| CoerceMany::new(ty.to_nextsolver(self.table.interner))),
+                label,
+            }
         });
         let res = cb(self);
         let ctx = self.breakables.pop().expect("breakable stack broken");
-        (if ctx.may_break { ctx.coerce.map(|ctx| ctx.complete(self)) } else { None }, res)
+        (
+            if ctx.may_break {
+                ctx.coerce.map(|ctx| ctx.complete(self).to_chalk(self.table.interner))
+            } else {
+                None
+            },
+            res,
+        )
     }
 }

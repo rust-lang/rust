@@ -117,10 +117,11 @@ impl<K, V> InternalNode<K, V> {
     /// initialized and valid edge. This function does not set up
     /// such an edge.
     unsafe fn new<A: Allocator + Clone>(alloc: A) -> Box<Self, A> {
+        let mut node = Box::<Self, _>::new_uninit_in(alloc);
         unsafe {
-            let mut node = Box::<Self, _>::new_uninit_in(alloc);
-            // We only need to initialize the data; the edges are MaybeUninit.
+            // SAFETY: argument points to the `node.data` `LeafNode`
             LeafNode::init(&raw mut (*node.as_mut_ptr()).data);
+            // SAFETY: `node.data` was just initialized and `node.edges` is MaybeUninit.
             node.assume_init()
         }
     }
