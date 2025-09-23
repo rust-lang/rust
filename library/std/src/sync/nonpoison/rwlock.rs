@@ -495,7 +495,7 @@ impl<T: ?Sized> RwLock<T> {
     /// or written through after the lock is dropped.
     #[unstable(feature = "rwlock_data_ptr", issue = "140368")]
     // #[unstable(feature = "nonpoison_rwlock", issue = "134645")]
-    pub fn data_ptr(&self) -> *mut T {
+    pub const fn data_ptr(&self) -> *mut T {
         self.data.get()
     }
 }
