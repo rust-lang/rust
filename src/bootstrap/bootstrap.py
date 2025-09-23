@@ -1391,7 +1391,6 @@ def main():
             )
             sys.exit(1)
 
-
     # If the user is asking for other helps, let them know that the whole download-and-build
     # process has to happen before anything is printed out.
     if help_triggered:
