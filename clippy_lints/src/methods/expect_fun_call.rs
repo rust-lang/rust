@@ -7,8 +7,8 @@ use clippy_utils::{contains_return, is_inside_always_const_context, peel_blocks}
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
+use rustc_span::Span;
 use rustc_span::symbol::sym;
-use rustc_span::{Span, Symbol};
 use std::borrow::Cow;
 use std::ops::ControlFlow;
 
@@ -20,16 +20,11 @@ pub(super) fn check<'tcx>(
     format_args_storage: &FormatArgsStorage,
     expr: &hir::Expr<'_>,
     method_span: Span,
-    name: Symbol,
     receiver: &'tcx hir::Expr<'tcx>,
-    args: &'tcx [hir::Expr<'tcx>],
+    arg: &'tcx hir::Expr<'tcx>,
 ) {
-    if name == sym::expect
-        && let [arg] = args
-        && let arg_root = get_arg_root(cx, arg)
-        && contains_call(cx, arg_root)
-        && !contains_return(arg_root)
-    {
+    let arg_root = get_arg_root(cx, arg);
+    if contains_call(cx, arg_root) && !contains_return(arg_root) {
         let receiver_type = cx.typeck_results().expr_ty_adjusted(receiver);
         let closure_args = if is_type_diagnostic_item(cx, receiver_type, sym::Option) {
             "||"
@@ -54,7 +49,7 @@ pub(super) fn check<'tcx>(
                     cx,
                     EXPECT_FUN_CALL,
                     span_replace_word,
-                    format!("function call inside of `{name}`"),
+                    "function call inside of `expect`",
                     "try",
                     format!("unwrap_or_else({closure_args} panic!({sugg}))"),
                     applicability,
@@ -69,7 +64,7 @@ pub(super) fn check<'tcx>(
             cx,
             EXPECT_FUN_CALL,
             span_replace_word,
-            format!("function call inside of `{name}`"),
+            "function call inside of `expect`",
             "try",
             format!("unwrap_or_else({closure_args} panic!(\"{{}}\", {arg_root_snippet}))"),
             applicability,

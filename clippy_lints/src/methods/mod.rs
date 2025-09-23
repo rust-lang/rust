@@ -4842,8 +4842,6 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             return;
         }
 
-        self.check_methods(cx, expr);
-
         match expr.kind {
             ExprKind::Call(func, args) => {
                 from_iter_instead_of_collect::check(cx, expr, args, func);
@@ -4854,24 +4852,8 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 swap_with_temporary::check(cx, expr, func, args);
                 ip_constant::check(cx, expr, func, args);
             },
-            ExprKind::MethodCall(method_call, receiver, args, _) => {
-                let method_span = method_call.ident.span;
-                or_fun_call::check(cx, expr, method_span, method_call.ident.name, receiver, args, self.msrv);
-                expect_fun_call::check(
-                    cx,
-                    &self.format_args,
-                    expr,
-                    method_span,
-                    method_call.ident.name,
-                    receiver,
-                    args,
-                );
-                clone_on_copy::check(cx, expr, method_call.ident.name, receiver, args);
-                clone_on_ref_ptr::check(cx, expr, method_call.ident.name, receiver, args);
-                inefficient_to_string::check(cx, expr, method_call.ident.name, receiver, args, self.msrv);
-                single_char_add_str::check(cx, expr, receiver, args);
-                into_iter_on_ref::check(cx, expr, method_span, method_call.ident.name, receiver);
-                unnecessary_to_owned::check(cx, expr, method_call.ident.name, receiver, args, self.msrv);
+            ExprKind::MethodCall(..) => {
+                self.check_methods(cx, expr);
             },
             ExprKind::Binary(op, lhs, rhs) if op.node == hir::BinOpKind::Eq || op.node == hir::BinOpKind::Ne => {
                 let mut info = BinaryExprInfo {
@@ -5566,8 +5548,18 @@ impl Methods {
         }
         // Handle method calls whose receiver and arguments may come from expansion
         if let ExprKind::MethodCall(path, recv, args, _call_span) = expr.kind {
+            let method_span = path.ident.span;
+
+            // Those methods do their own method name checking as they deal with multiple methods.
+            or_fun_call::check(cx, expr, method_span, path.ident.name, recv, args, self.msrv);
+            unnecessary_to_owned::check(cx, expr, path.ident.name, recv, args, self.msrv);
+
             match (path.ident.name, args) {
-                (sym::expect, [_]) => {
+                (sym::clone, []) => {
+                    clone_on_ref_ptr::check(cx, expr, recv);
+                    clone_on_copy::check(cx, expr, recv);
+                },
+                (sym::expect, [arg]) => {
                     unwrap_expect_used::check(
                         cx,
                         expr,
@@ -5577,6 +5569,7 @@ impl Methods {
                         self.allow_expect_in_tests,
                         unwrap_expect_used::Variant::Expect,
                     );
+                    expect_fun_call::check(cx, &self.format_args, expr, method_span, recv, arg);
                 },
                 (sym::expect_err, [_]) => {
                     unwrap_expect_used::check(
@@ -5588,6 +5581,15 @@ impl Methods {
                         self.allow_expect_in_tests,
                         unwrap_expect_used::Variant::Expect,
                     );
+                },
+                (sym::insert_str | sym::push_str, _) => {
+                    single_char_add_str::check(cx, expr, recv, args);
+                },
+                (sym::into_iter, []) => {
+                    into_iter_on_ref::check(cx, expr, method_span, recv);
+                },
+                (sym::to_string, []) => {
+                    inefficient_to_string::check(cx, expr, recv, self.msrv);
                 },
                 (sym::unwrap, []) => {
                     unwrap_expect_used::check(
