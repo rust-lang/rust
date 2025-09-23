@@ -48,6 +48,7 @@ use std::path::PathBuf;
 use std::{fs, str};
 
 use askama::Template;
+use indexmap::IndexMap;
 use itertools::Either;
 use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
@@ -60,8 +61,6 @@ use rustc_middle::ty::print::PrintTraitRefExt;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::symbol::{Symbol, sym};
 use rustc_span::{BytePos, DUMMY_SP, FileName, RealFileName};
-use serde::ser::SerializeMap;
-use serde::{Serialize, Serializer};
 use tracing::{debug, info};
 
 pub(crate) use self::context::*;
@@ -1722,23 +1721,9 @@ fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
 }
 
 fn notable_traits_json<'a>(tys: impl Iterator<Item = &'a clean::Type>, cx: &Context<'_>) -> String {
-    let mut mp: Vec<(String, String)> = tys.map(|ty| notable_traits_decl(ty, cx)).collect();
-    mp.sort_by(|(name1, _html1), (name2, _html2)| name1.cmp(name2));
-    struct NotableTraitsMap(Vec<(String, String)>);
-    impl Serialize for NotableTraitsMap {
-        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
-        {
-            let mut map = serializer.serialize_map(Some(self.0.len()))?;
-            for item in &self.0 {
-                map.serialize_entry(&item.0, &item.1)?;
-            }
-            map.end()
-        }
-    }
-    serde_json::to_string(&NotableTraitsMap(mp))
-        .expect("serialize (string, string) -> json object cannot fail")
+    let mut mp = tys.map(|ty| notable_traits_decl(ty, cx)).collect::<IndexMap<_, _>>();
+    mp.sort_unstable_keys();
+    serde_json::to_string(&mp).expect("serialize (string, string) -> json object cannot fail")
 }
 
 #[derive(Clone, Copy, Debug)]
