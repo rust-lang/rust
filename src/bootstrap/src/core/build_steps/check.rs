@@ -8,8 +8,8 @@ use crate::core::build_steps::compile::{
 };
 use crate::core::build_steps::tool;
 use crate::core::build_steps::tool::{
-    COMPILETEST_ALLOW_FEATURES, SourceType, TEST_FLOAT_PARSE_ALLOW_FEATURES, ToolTargetBuildMode,
-    get_tool_target_compiler, prepare_tool_cargo,
+    SourceType, TEST_FLOAT_PARSE_ALLOW_FEATURES, ToolTargetBuildMode, get_tool_target_compiler,
+    prepare_tool_cargo,
 };
 use crate::core::builder::{
     self, Alias, Builder, Cargo, Kind, RunConfig, ShouldRun, Step, StepMetadata, crate_description,
@@ -825,12 +825,7 @@ tool_check_step!(CoverageDump {
 // so this is mainly for people working on compiletest to run locally.
 tool_check_step!(Compiletest {
     path: "src/tools/compiletest",
-    mode: |builder: &Builder<'_>| if builder.config.compiletest_use_stage0_libtest {
-        Mode::ToolBootstrap
-    } else {
-        Mode::ToolStd
-    },
-    allow_features: COMPILETEST_ALLOW_FEATURES,
+    mode: |_builder| Mode::ToolBootstrap,
     default: false,
 });
 

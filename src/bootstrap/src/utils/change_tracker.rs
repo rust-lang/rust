@@ -561,4 +561,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Warning,
         summary: "The `rust.use-lld` option has been renamed to `rust.bootstrap-override-lld`. Note that it only serves for overriding the linker used when building Rust code in bootstrap to be LLD.",
     },
+    ChangeInfo {
+        change_id: 146929,
+        severity: ChangeSeverity::Info,
+        summary: "`compiletest` is now always built with the stage 0 compiler, so `build.compiletest-use-stage0-libtest` has no effect.",
+    },
 ];
