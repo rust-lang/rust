@@ -34,14 +34,7 @@ use crate::fmt;
 ///
 /// # Behavior with Foreign Threads
 ///
-/// `LocalKey` exhibits the same foreign thread compatibility as the [`thread_local!`]
-/// macro since it uses the same underlying thread-local storage mechanisms.
-/// See the [`thread_local!`] documentation for detailed platform-specific behavior.
-///
-/// ## Example with Foreign Threads
-///
-/// ```
-/// use std::cell::RefCell;
+/// `LocalKey` exhibits the same foreign thread compatibility as the [`thread_local!`] macro since it uses the same underlying thread-local storage mechanisms.  See the [`thread_local!`] documentation for detailed platform-specific behavior.  ## Example with Foreign Threads ``` use std::cell::RefCell;
 /// use std::thread::LocalKey;
 ///
 /// static DATA: LocalKey<RefCell<String>> = {
@@ -193,7 +186,7 @@ impl<T: 'static> fmt::Debug for LocalKey<T> {
 ///
 /// Extensive testing reveals compatibility with:
 /// - **Native OS threads** (C, C++, Rust)
-/// - **M:N schedulers** (Go goroutines via CGO)  
+/// - **M:N schedulers** (Go goroutines via CGO)
 /// - **Green threads** (Ruby MRI via FFI)
 /// - **GIL-protected threads** (Python threading module)
 ///
@@ -203,14 +196,14 @@ impl<T: 'static> fmt::Debug for LocalKey<T> {
 /// Uses pthreads TLS (`pthread_setspecific`/`pthread_getspecific`), which works
 /// reliably with any runtime that properly initializes pthreads thread-local storage.
 ///
-/// ### Windows Systems  
+/// ### Windows Systems
 /// Compatibility depends on host runtime interaction with Windows TLS slots
 /// (`TlsAlloc`/`TlsGetValue`). Behavior may differ from Unix implementations.
 ///
 /// ## Key Guarantees
 ///
 /// - Static initializers run exactly once per thread context
-/// - Thread isolation is maintained under high concurrency  
+/// - Thread isolation is maintained under high concurrency
 /// - Thread reuse preserves TLS values correctly
 /// - No race conditions observed in tested environments
 ///
@@ -230,7 +223,7 @@ impl<T: 'static> fmt::Debug for LocalKey<T> {
 /// }
 ///
 /// // Safe to call from foreign threads (C, Go, Python, Ruby, etc.)
-/// #[unsafe(no_mangle)] 
+/// #[unsafe(no_mangle)]
 /// pub extern "C" fn foreign_callable_function() {
 ///     DATA.with(|data| {
 ///         // Thread-safe access across common runtimes
@@ -240,7 +233,7 @@ impl<T: 'static> fmt::Debug for LocalKey<T> {
 ///
 /// For maximum portability to unknown runtimes, consider alternative synchronization
 /// patterns. However, for common environments using native threads or proper FFI,
-/// `thread_local!` is generally safe. 
+/// `thread_local!` is generally safe.
 ///
 /// This macro supports a special `const {}` syntax that can be used
 /// when the initialization expression can be evaluated as a constant.
