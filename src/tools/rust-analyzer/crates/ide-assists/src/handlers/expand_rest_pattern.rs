@@ -24,7 +24,7 @@ use crate::{AssistContext, AssistId, Assists};
 // struct Bar { y: Y, z: Z }
 //
 // fn foo(bar: Bar) {
-//     let Bar { y, z  } = bar;
+//     let Bar { y, z } = bar;
 // }
 // ```
 fn expand_record_rest_pattern(
@@ -53,18 +53,17 @@ fn expand_record_rest_pattern(
         |builder| {
             let make = SyntaxFactory::with_mappings();
             let mut editor = builder.make_editor(rest_pat.syntax());
-            let new_field_list = make.record_pat_field_list(old_field_list.fields(), None);
-            for (f, _) in missing_fields.iter() {
-                let field = make.record_pat_field_shorthand(
+            let new_fields = old_field_list.fields().chain(missing_fields.iter().map(|(f, _)| {
+                make.record_pat_field_shorthand(
                     make.ident_pat(
                         false,
                         false,
                         make.name(&f.name(ctx.sema.db).display_no_db(edition).to_smolstr()),
                     )
                     .into(),
-                );
-                new_field_list.add_field(field);
-            }
+                )
+            }));
+            let new_field_list = make.record_pat_field_list(new_fields, None);
 
             editor.replace(old_field_list.syntax(), new_field_list.syntax());
 
@@ -211,7 +210,7 @@ enum Foo {
 fn bar(foo: Foo) {
     match foo {
         Foo::A(_) => false,
-        Foo::B{ y, z  } => true,
+        Foo::B{ y, z } => true,
     };
 }
 "#,
@@ -272,7 +271,7 @@ struct Bar {
 }
 
 fn foo(bar: Bar) {
-    let Bar { y, z  } = bar;
+    let Bar { y, z } = bar;
 }
 "#,
         );
@@ -376,7 +375,7 @@ macro_rules! position {
 position!(usize);
 
 fn macro_call(pos: Pos) {
-    let Pos { x, y  } = pos;
+    let Pos { x, y } = pos;
 }
 "#,
         );
@@ -420,7 +419,7 @@ enum_gen!(usize);
 fn macro_call(foo: Foo) {
     match foo {
         Foo::A(_) => false,
-        Foo::B{ x, y  } => true,
+        Foo::B{ x, y } => true,
     }
 }
 "#,

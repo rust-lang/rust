@@ -1035,7 +1035,7 @@ fn foo(bar: Bar) {
 struct Bar { y: Y, z: Z }
 
 fn foo(bar: Bar) {
-    let Bar { y, z  } = bar;
+    let Bar { y, z } = bar;
 }
 "#####,
     )
