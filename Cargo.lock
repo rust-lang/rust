@@ -5504,7 +5504,7 @@ version = "0.1.0"
 [[package]]
 name = "tikv-jemalloc-sys"
 version = "0.6.0+5.3.0-1-ge13ca993e8ccb9ba9847cc330696e02839f328f7"
-source = "git+https://github.com/dpaoliello/jemallocator.git?branch=temp#329682034ae0b8f7cca4514146b211d7dc694c9c"
+source = "git+https://github.com/dpaoliello/jemallocator.git?branch=filterlto#6db31514fd2241445a4b5f350ef0f9a214d69793"
 dependencies = [
  "cc",
  "libc",
