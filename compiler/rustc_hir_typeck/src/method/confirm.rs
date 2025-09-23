@@ -172,7 +172,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // Commit the autoderefs by calling `autoderef` again, but this
         // time writing the results into the various typeck results.
         let mut autoderef = self.autoderef(self.call_expr.span, unadjusted_self_ty);
-        let Some((ty, n)) = autoderef.nth(pick.autoderefs) else {
+        let Some((mut target, n)) = autoderef.nth(pick.autoderefs) else {
             return Ty::new_error_with_message(
                 self.tcx,
                 DUMMY_SP,
@@ -182,8 +182,6 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         assert_eq!(n, pick.autoderefs);
 
         let mut adjustments = self.adjust_steps(&autoderef);
-        let mut target = self.structurally_resolve_type(autoderef.span(), ty);
-
         match pick.autoref_or_ptr_adjustment {
             Some(probe::AutorefOrPtrAdjustment::Autoref { mutbl, unsize }) => {
                 let region = self.next_region_var(RegionVariableOrigin::Autoref(self.span));
