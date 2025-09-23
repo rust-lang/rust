@@ -274,7 +274,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::Field(ty, _) => {
-                self.add_constraints_from_ty(current, ty, variance);
+                let invar = self.invariant(variance);
+                self.add_constraints_from_ty(current, ty, invar);
             }
 
             ty::Alias(ty::Projection | ty::Inherent | ty::Opaque, ref data) => {
