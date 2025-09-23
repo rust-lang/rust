@@ -1375,8 +1375,8 @@ def main():
     args = parse_args(sys.argv)
     help_triggered = args.help or len(sys.argv) == 1
 
-    # If the user is asking for help, it prints commands from the saved file.
-    if help_triggered:
+    # Root help (e.g., x.py --help) prints help from the saved file to save the time
+    if help_triggered and sys.argv[1] in ["-h", "--help"]:
         try:
             with open(
                 os.path.join(os.path.dirname(__file__), "../etc/xhelp"), "r"
@@ -1385,9 +1385,20 @@ def main():
                 print(f.read(), end="")
                 sys.exit(0)
         except Exception as error:
-            eprint(f"ERROR: unable to run help: {error}")
-            eprint("x.py run generate-help may solve the problem.")
+            eprint(
+                f"ERROR: unable to run help: {error}\n",
+                "x.py run generate-help may solve the problem.",
+            )
             sys.exit(1)
+
+
+    # If the user is asking for other helps, let them know that the whole download-and-build
+    # process has to happen before anything is printed out.
+    if help_triggered:
+        eprint(
+            "INFO: Downloading and building bootstrap before processing --help command.\n",
+            "See src/bootstrap/README.md for help with common commands.",
+        )
 
     exit_code = 0
     success_word = "successfully"
@@ -1401,12 +1412,13 @@ def main():
             eprint(error)
         success_word = "unsuccessfully"
 
-    eprint(
-        "Build completed",
-        success_word,
-        "in",
-        format_build_time(time() - start_time),
-    )
+    if not help_triggered:
+        eprint(
+            "Build completed",
+            success_word,
+            "in",
+            format_build_time(time() - start_time),
+        )
 
     sys.exit(exit_code)
 
