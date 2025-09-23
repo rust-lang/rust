@@ -2146,6 +2146,18 @@ mod snapshot {
     }
 
     #[test]
+    fn test_compiletest_self_test() {
+        let ctx = TestCtx::new();
+        let steps = ctx.config("test").arg("compiletest").render_steps();
+        insta::assert_snapshot!(steps, @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustdoc 1 <host>
+        ");
+    }
+
+    #[test]
     fn test_compiletest_suites_stage1() {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
