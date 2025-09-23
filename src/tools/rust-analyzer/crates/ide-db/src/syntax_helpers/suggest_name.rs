@@ -473,7 +473,7 @@ mod tests {
             frange.range,
             "selection is not an expression(yet contained in one)"
         );
-        let name = NameGenerator::default().for_variable(&expr, &sema);
+        let name = salsa::attach(sema.db, || NameGenerator::default().for_variable(&expr, &sema));
         assert_eq!(&name, expected);
     }
 

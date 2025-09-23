@@ -4872,6 +4872,7 @@ impl<'db> Type<'db> {
         let Some(ty) = db.value_ty(def.into()) else {
             return Type::new(db, def, TyKind::Error.intern(Interner));
         };
+        let interner = DbInterner::new_with(db, None, None);
         let substs = TyBuilder::unknown_subst(
             db,
             match def.into() {
@@ -4882,10 +4883,13 @@ impl<'db> Type<'db> {
                 ValueTyDefId::EnumVariantId(it) => {
                     GenericDefId::AdtId(AdtId::EnumId(it.lookup(db).parent))
                 }
-                ValueTyDefId::StaticId(_) => return Type::new(db, def, ty.skip_binders().clone()),
+                ValueTyDefId::StaticId(_) => {
+                    return Type::new(db, def, ty.skip_binder().to_chalk(interner));
+                }
             },
         );
-        Type::new(db, def, ty.substitute(Interner, &substs))
+        let args: crate::next_solver::GenericArgs<'_> = substs.to_nextsolver(interner);
+        Type::new(db, def, ty.instantiate(interner, args).to_chalk(interner))
     }
 
     pub fn new_slice(ty: Self) -> Self {

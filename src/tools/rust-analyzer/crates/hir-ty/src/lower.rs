@@ -30,7 +30,6 @@ use hir_def::{
     builtin_type::BuiltinType,
     expr_store::{ExpressionStore, path::Path},
     hir::generics::{GenericParamDataRef, TypeOrConstParamData, WherePredicate},
-    item_tree::FieldsShape,
     lang_item::LangItem,
     resolver::{HasResolver, LifetimeNs, Resolver, TypeNs},
     signatures::{FunctionSignature, TraitFlags, TypeAliasFlags},
@@ -59,7 +58,7 @@ use crate::{
         path::{PathDiagnosticCallback, PathLoweringContext},
     },
     make_binders,
-    mapping::{ToChalk, from_chalk_trait_id, lt_to_placeholder_idx},
+    mapping::{from_chalk_trait_id, lt_to_placeholder_idx},
     static_lifetime, to_chalk_trait_id, to_placeholder_idx,
     utils::all_super_trait_refs,
     variable_kinds_from_iter,
@@ -1352,51 +1351,6 @@ fn fn_sig_for_fn(db: &dyn HirDatabase, def: FunctionId) -> PolyFnSig {
     make_binders(db, &generics, sig)
 }
 
-/// Build the declared type of a function. This should not need to look at the
-/// function body.
-fn type_for_fn(db: &dyn HirDatabase, def: FunctionId) -> Binders<Ty> {
-    let generics = generics(db, def.into());
-    let substs = generics.bound_vars_subst(db, DebruijnIndex::INNERMOST);
-    make_binders(
-        db,
-        &generics,
-        TyKind::FnDef(CallableDefId::FunctionId(def).to_chalk(db), substs).intern(Interner),
-    )
-}
-
-/// Build the declared type of a const.
-fn type_for_const(db: &dyn HirDatabase, def: ConstId) -> Binders<Ty> {
-    let data = db.const_signature(def);
-    let generics = generics(db, def.into());
-    let resolver = def.resolver(db);
-    let parent = def.loc(db).container;
-    let mut ctx = TyLoweringContext::new(
-        db,
-        &resolver,
-        &data.store,
-        def.into(),
-        LifetimeElisionKind::for_const(parent),
-    )
-    .with_type_param_mode(ParamLoweringMode::Variable);
-
-    make_binders(db, &generics, ctx.lower_ty(data.type_ref))
-}
-
-/// Build the declared type of a static.
-fn type_for_static(db: &dyn HirDatabase, def: StaticId) -> Binders<Ty> {
-    let data = db.static_signature(def);
-    let resolver = def.resolver(db);
-    let mut ctx = TyLoweringContext::new(
-        db,
-        &resolver,
-        &data.store,
-        def.into(),
-        LifetimeElisionKind::Elided(static_lifetime()),
-    );
-
-    Binders::empty(Interner, ctx.lower_ty(data.type_ref))
-}
-
 fn fn_sig_for_struct_constructor(db: &dyn HirDatabase, def: StructId) -> PolyFnSig {
     let field_tys = db.field_types(def.into());
     let params = field_tys.iter().map(|(_, ty)| ty.skip_binders().clone());
@@ -1405,24 +1359,6 @@ fn fn_sig_for_struct_constructor(db: &dyn HirDatabase, def: StructId) -> PolyFnS
         binders,
         CallableSig::from_params_and_return(params, ret, false, Safety::Safe, FnAbi::RustCall),
     )
-}
-
-/// Build the type of a tuple struct constructor.
-fn type_for_struct_constructor(db: &dyn HirDatabase, def: StructId) -> Option<Binders<Ty>> {
-    let struct_data = def.fields(db);
-    match struct_data.shape {
-        FieldsShape::Record => None,
-        FieldsShape::Unit => Some(type_for_adt(db, def.into())),
-        FieldsShape::Tuple => {
-            let generics = generics(db, AdtId::from(def).into());
-            let substs = generics.bound_vars_subst(db, DebruijnIndex::INNERMOST);
-            Some(make_binders(
-                db,
-                &generics,
-                TyKind::FnDef(CallableDefId::StructId(def).to_chalk(db), substs).intern(Interner),
-            ))
-        }
-    }
 }
 
 fn fn_sig_for_enum_variant_constructor(db: &dyn HirDatabase, def: EnumVariantId) -> PolyFnSig {
@@ -1434,28 +1370,6 @@ fn fn_sig_for_enum_variant_constructor(db: &dyn HirDatabase, def: EnumVariantId)
         binders,
         CallableSig::from_params_and_return(params, ret, false, Safety::Safe, FnAbi::RustCall),
     )
-}
-
-/// Build the type of a tuple enum variant constructor.
-fn type_for_enum_variant_constructor(
-    db: &dyn HirDatabase,
-    def: EnumVariantId,
-) -> Option<Binders<Ty>> {
-    let e = def.lookup(db).parent;
-    match def.fields(db).shape {
-        FieldsShape::Record => None,
-        FieldsShape::Unit => Some(type_for_adt(db, e.into())),
-        FieldsShape::Tuple => {
-            let generics = generics(db, e.into());
-            let substs = generics.bound_vars_subst(db, DebruijnIndex::INNERMOST);
-            Some(make_binders(
-                db,
-                &generics,
-                TyKind::FnDef(CallableDefId::EnumVariantId(def).to_chalk(db), substs)
-                    .intern(Interner),
-            ))
-        }
-    }
 }
 
 fn type_for_adt(db: &dyn HirDatabase, adt: AdtId) -> Binders<Ty> {
@@ -1534,17 +1448,6 @@ impl ValueTyDefId {
             Self::ConstId(id) => id.into(),
             Self::StaticId(id) => id.into(),
         }
-    }
-}
-
-pub(crate) fn value_ty_query(db: &dyn HirDatabase, def: ValueTyDefId) -> Option<Binders<Ty>> {
-    match def {
-        ValueTyDefId::FunctionId(it) => Some(type_for_fn(db, it)),
-        ValueTyDefId::StructId(it) => type_for_struct_constructor(db, it),
-        ValueTyDefId::UnionId(it) => Some(type_for_adt(db, it.into())),
-        ValueTyDefId::EnumVariantId(it) => type_for_enum_variant_constructor(db, it),
-        ValueTyDefId::ConstId(it) => Some(type_for_const(db, it)),
-        ValueTyDefId::StaticId(it) => Some(type_for_static(db, it)),
     }
 }
 

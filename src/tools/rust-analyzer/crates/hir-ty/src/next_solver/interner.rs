@@ -1099,15 +1099,13 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
             // We currently always use the type from HIR typeck which ignores regions. This
             // should be fine.
             SolverDefId::InternedOpaqueTyId(_) => self.type_of_opaque_hir_typeck(def_id),
-            SolverDefId::FunctionId(id) => self.db.value_ty_ns(id.into()).unwrap(),
+            SolverDefId::FunctionId(id) => self.db.value_ty(id.into()).unwrap(),
             SolverDefId::Ctor(id) => {
                 let id = match id {
                     Ctor::Struct(id) => id.into(),
                     Ctor::Enum(id) => id.into(),
                 };
-                self.db
-                    .value_ty_ns(id)
-                    .expect("`SolverDefId::Ctor` should have a function-like ctor")
+                self.db.value_ty(id).expect("`SolverDefId::Ctor` should have a function-like ctor")
             }
             _ => panic!("Unexpected def_id `{def_id:?}` provided for `type_of`"),
         }

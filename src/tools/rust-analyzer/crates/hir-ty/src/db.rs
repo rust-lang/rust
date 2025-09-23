@@ -127,8 +127,11 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
 
     /// Returns the type of the value of the given constant, or `None` if the `ValueTyDefId` is
     /// a `StructId` or `EnumVariantId` with a record constructor.
-    #[salsa::invoke(crate::lower::value_ty_query)]
-    fn value_ty(&self, def: ValueTyDefId) -> Option<Binders<Ty>>;
+    #[salsa::invoke(crate::lower_nextsolver::value_ty_query)]
+    fn value_ty<'db>(
+        &'db self,
+        def: ValueTyDefId,
+    ) -> Option<crate::next_solver::EarlyBinder<'db, crate::next_solver::Ty<'db>>>;
 
     #[salsa::invoke(crate::lower::impl_self_ty_with_diagnostics_query)]
     #[salsa::cycle(cycle_result = crate::lower::impl_self_ty_with_diagnostics_cycle_result)]
@@ -279,14 +282,6 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
     fn has_drop_glue(&self, ty: Ty, env: Arc<TraitEnvironment<'_>>) -> DropGlue;
 
     // next trait solver
-
-    /// Returns the type of the value of the given constant, or `None` if the `ValueTyDefId` is
-    /// a `StructId` or `EnumVariantId` with a record constructor.
-    #[salsa::invoke(crate::lower_nextsolver::value_ty_query)]
-    fn value_ty_ns<'db>(
-        &'db self,
-        def: ValueTyDefId,
-    ) -> Option<crate::next_solver::EarlyBinder<'db, crate::next_solver::Ty<'db>>>;
 
     #[salsa::invoke(crate::lower_nextsolver::type_for_type_alias_with_diagnostics_query)]
     #[salsa::cycle(cycle_result = crate::lower_nextsolver::type_for_type_alias_with_diagnostics_cycle_result)]
