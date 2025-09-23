@@ -152,7 +152,9 @@ impl GlobalState {
         if self.fetch_build_data_error().is_err() {
             status.health |= lsp_ext::Health::Warning;
             message.push_str("Failed to run build scripts of some packages.\n\n");
-            message.push_str("Please refer to the logs for more details on the errors.");
+            message.push_str(
+                "Please refer to the language server logs for more details on the errors.",
+            );
         }
         if let Some(err) = &self.config_errors {
             status.health |= lsp_ext::Health::Warning;
@@ -316,7 +318,7 @@ impl GlobalState {
                     }
                 }
 
-                let mut workspaces = linked_projects
+                let mut workspaces: Vec<_> = linked_projects
                     .iter()
                     .map(|project| match project {
                         LinkedProject::ProjectManifest(manifest) => {
@@ -337,7 +339,7 @@ impl GlobalState {
                             Ok(workspace)
                         }
                     })
-                    .collect::<Vec<_>>();
+                    .collect();
 
                 let mut i = 0;
                 while i < workspaces.len() {
@@ -739,13 +741,16 @@ impl GlobalState {
             })
             .collect();
 
+        self.incomplete_crate_graph = false;
         let (crate_graph, proc_macro_paths) = {
             // Create crate graph from all the workspaces
             let vfs = &self.vfs.read().0;
             let load = |path: &AbsPath| {
                 let vfs_path = vfs::VfsPath::from(path.to_path_buf());
                 self.crate_graph_file_dependencies.insert(vfs_path.clone());
-                vfs.file_id(&vfs_path).and_then(|(file_id, excluded)| {
+                let file_id = vfs.file_id(&vfs_path);
+                self.incomplete_crate_graph |= file_id.is_none();
+                file_id.and_then(|(file_id, excluded)| {
                     (excluded == vfs::FileExcluded::No).then_some(file_id)
                 })
             };
@@ -846,21 +851,17 @@ impl GlobalState {
     fn reload_flycheck(&mut self) {
         let _p = tracing::info_span!("GlobalState::reload_flycheck").entered();
         let config = self.config.flycheck(None);
-        let sender = self.flycheck_sender.clone();
-        let invocation_strategy = match config {
-            FlycheckConfig::CargoCommand { .. } => {
-                crate::flycheck::InvocationStrategy::PerWorkspace
-            }
-            FlycheckConfig::CustomCommand { ref invocation_strategy, .. } => {
-                invocation_strategy.clone()
-            }
-        };
+        let sender = &self.flycheck_sender;
+        let invocation_strategy = config.invocation_strategy();
+        let next_gen =
+            self.flycheck.iter().map(FlycheckHandle::generation).max().unwrap_or_default() + 1;
 
         self.flycheck = match invocation_strategy {
             crate::flycheck::InvocationStrategy::Once => {
                 vec![FlycheckHandle::spawn(
                     0,
-                    sender,
+                    next_gen,
+                    sender.clone(),
                     config,
                     None,
                     self.config.root_path().clone(),
@@ -898,6 +899,7 @@ impl GlobalState {
                     .map(|(id, (root, manifest_path), sysroot_root)| {
                         FlycheckHandle::spawn(
                             id,
+                            next_gen,
                             sender.clone(),
                             config.clone(),
                             sysroot_root,

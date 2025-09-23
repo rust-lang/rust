@@ -299,7 +299,7 @@ pub(crate) fn render_expr(
             .unwrap_or_else(|| String::from("..."))
     };
 
-    let cfg = ctx.config.import_path_config(ctx.is_nightly);
+    let cfg = ctx.config.find_path_config(ctx.is_nightly);
 
     let label =
         expr.gen_source_code(&ctx.scope, &mut label_formatter, cfg, ctx.display_target).ok()?;
@@ -486,10 +486,7 @@ fn render_resolution_path(
         | ScopeDef::Label(_)
         | ScopeDef::Unknown
         | ScopeDef::ModuleDef(
-            ModuleDef::Trait(_)
-            | ModuleDef::TraitAlias(_)
-            | ModuleDef::Module(_)
-            | ModuleDef::TypeAlias(_),
+            ModuleDef::Trait(_) | ModuleDef::Module(_) | ModuleDef::TypeAlias(_),
         ) => (),
     };
 
@@ -542,9 +539,6 @@ fn res_to_kind(resolution: ScopeDef) -> CompletionItemKind {
         ScopeDef::ModuleDef(Const(..)) => CompletionItemKind::SymbolKind(SymbolKind::Const),
         ScopeDef::ModuleDef(Static(..)) => CompletionItemKind::SymbolKind(SymbolKind::Static),
         ScopeDef::ModuleDef(Trait(..)) => CompletionItemKind::SymbolKind(SymbolKind::Trait),
-        ScopeDef::ModuleDef(TraitAlias(..)) => {
-            CompletionItemKind::SymbolKind(SymbolKind::TraitAlias)
-        }
         ScopeDef::ModuleDef(TypeAlias(..)) => CompletionItemKind::SymbolKind(SymbolKind::TypeAlias),
         ScopeDef::ModuleDef(BuiltinType(..)) => CompletionItemKind::BuiltinType,
         ScopeDef::GenericParam(param) => CompletionItemKind::SymbolKind(match param {

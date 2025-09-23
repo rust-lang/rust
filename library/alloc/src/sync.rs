@@ -480,8 +480,6 @@ impl<T> Arc<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(get_mut_unchecked)]
-    ///
     /// use std::sync::Arc;
     ///
     /// let mut five = Arc::<u32>::new_uninit();
@@ -516,8 +514,6 @@ impl<T> Arc<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(new_zeroed_alloc)]
-    ///
     /// use std::sync::Arc;
     ///
     /// let zero = Arc::<u32>::new_zeroed();
@@ -529,7 +525,7 @@ impl<T> Arc<T> {
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    #[unstable(feature = "new_zeroed_alloc", issue = "129396")]
+    #[stable(feature = "new_zeroed_alloc", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     pub fn new_zeroed() -> Arc<mem::MaybeUninit<T>> {
         unsafe {
@@ -588,7 +584,6 @@ impl<T> Arc<T> {
     ///
     /// ```
     /// #![feature(allocator_api)]
-    /// #![feature(get_mut_unchecked)]
     ///
     /// use std::sync::Arc;
     ///
@@ -603,7 +598,6 @@ impl<T> Arc<T> {
     /// # Ok::<(), std::alloc::AllocError>(())
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
-    // #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn try_new_uninit() -> Result<Arc<mem::MaybeUninit<T>>, AllocError> {
         unsafe {
             Ok(Arc::from_ptr(Arc::try_allocate_for_layout(
@@ -636,7 +630,6 @@ impl<T> Arc<T> {
     ///
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[unstable(feature = "allocator_api", issue = "32838")]
-    // #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn try_new_zeroed() -> Result<Arc<mem::MaybeUninit<T>>, AllocError> {
         unsafe {
             Ok(Arc::from_ptr(Arc::try_allocate_for_layout(
@@ -703,7 +696,6 @@ impl<T, A: Allocator> Arc<T, A> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    // #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
     pub fn new_uninit_in(alloc: A) -> Arc<mem::MaybeUninit<T>, A> {
         unsafe {
@@ -741,7 +733,6 @@ impl<T, A: Allocator> Arc<T, A> {
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    // #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
     pub fn new_zeroed_in(alloc: A) -> Arc<mem::MaybeUninit<T>, A> {
         unsafe {
@@ -927,7 +918,6 @@ impl<T, A: Allocator> Arc<T, A> {
     /// # Ok::<(), std::alloc::AllocError>(())
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
-    // #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
     pub fn try_new_uninit_in(alloc: A) -> Result<Arc<mem::MaybeUninit<T>, A>, AllocError> {
         unsafe {
@@ -966,7 +956,6 @@ impl<T, A: Allocator> Arc<T, A> {
     ///
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[unstable(feature = "allocator_api", issue = "32838")]
-    // #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
     pub fn try_new_zeroed_in(alloc: A) -> Result<Arc<mem::MaybeUninit<T>, A>, AllocError> {
         unsafe {
@@ -1164,8 +1153,6 @@ impl<T> Arc<[T]> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(get_mut_unchecked)]
-    ///
     /// use std::sync::Arc;
     ///
     /// let mut values = Arc::<[u32]>::new_uninit_slice(3);
@@ -1197,8 +1184,6 @@ impl<T> Arc<[T]> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(new_zeroed_alloc)]
-    ///
     /// use std::sync::Arc;
     ///
     /// let values = Arc::<[u32]>::new_zeroed_slice(3);
@@ -1210,7 +1195,7 @@ impl<T> Arc<[T]> {
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    #[unstable(feature = "new_zeroed_alloc", issue = "129396")]
+    #[stable(feature = "new_zeroed_alloc", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     pub fn new_zeroed_slice(len: usize) -> Arc<[mem::MaybeUninit<T>]> {
         unsafe {
@@ -1336,8 +1321,6 @@ impl<T, A: Allocator> Arc<mem::MaybeUninit<T>, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(get_mut_unchecked)]
-    ///
     /// use std::sync::Arc;
     ///
     /// let mut five = Arc::<u32>::new_uninit();
@@ -1374,8 +1357,6 @@ impl<T, A: Allocator> Arc<[mem::MaybeUninit<T>], A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(get_mut_unchecked)]
-    ///
     /// use std::sync::Arc;
     ///
     /// let mut values = Arc::<[u32]>::new_uninit_slice(3);

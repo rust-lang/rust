@@ -102,6 +102,9 @@ fn is_primitive_int(ctx: &AssistContext<'_>, expr: &ast::Expr) -> bool {
 
 /// Extract the operands of an arithmetic expression (e.g. `1 + 2` or `1.checked_add(2)`)
 fn parse_binary_op(ctx: &AssistContext<'_>) -> Option<(ast::Expr, ArithOp, ast::Expr)> {
+    if !ctx.has_empty_selection() {
+        return None;
+    }
     let expr = ctx.find_node_at_offset::<ast::BinExpr>()?;
 
     let op = match expr.op_kind() {
@@ -163,7 +166,7 @@ impl ArithKind {
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::check_assist;
+    use crate::tests::{check_assist, check_assist_not_applicable};
 
     use super::*;
 
@@ -219,6 +222,18 @@ fn main() {
             r#"
 fn main() {
     let x = 1.wrapping_add(2);
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn replace_arith_not_applicable_with_non_empty_selection() {
+        check_assist_not_applicable(
+            replace_arith_with_checked,
+            r#"
+fn main() {
+    let x = 1 $0+$0 2;
 }
 "#,
         )

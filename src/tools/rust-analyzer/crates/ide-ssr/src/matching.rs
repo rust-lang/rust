@@ -6,7 +6,7 @@ use crate::{
     parsing::{Constraint, NodeKind, Placeholder, Var},
     resolving::{ResolvedPattern, ResolvedRule, UfcsCallInfo},
 };
-use hir::{FileRange, ImportPathConfig, Semantics};
+use hir::{FileRange, FindPathConfig, Semantics};
 use ide_db::{FxHashMap, base_db::RootQueryDb};
 use std::{cell::Cell, iter::Peekable};
 use syntax::{
@@ -661,7 +661,7 @@ impl Match {
             .module();
         for (path, resolved_path) in &template.resolved_paths {
             if let hir::PathResolution::Def(module_def) = resolved_path.resolution {
-                let cfg = ImportPathConfig {
+                let cfg = FindPathConfig {
                     prefer_no_std: false,
                     prefer_prelude: true,
                     prefer_absolute: false,

@@ -204,6 +204,9 @@ pub(crate) fn target_machine_factory(
     optlvl: config::OptLevel,
     target_features: &[String],
 ) -> TargetMachineFactoryFn<LlvmCodegenBackend> {
+    // Self-profile timer for creating a _factory_.
+    let _prof_timer = sess.prof.generic_activity("target_machine_factory");
+
     let reloc_model = to_llvm_relocation_model(sess.relocation_model());
 
     let (opt_level, _) = to_llvm_opt_settings(optlvl);
@@ -259,6 +262,9 @@ pub(crate) fn target_machine_factory(
         .into_string()
         .unwrap_or_default();
     let command_line_args = quote_command_line_args(&sess.expanded_args);
+    // Self-profile counter for the number of bytes produced by command-line quoting.
+    // Values are summed, so the summary result is cumulative across all TM factories.
+    sess.prof.artifact_size("quoted_command_line_args", "-", command_line_args.len() as u64);
 
     let debuginfo_compression = sess.opts.debuginfo_compression.to_string();
     match sess.opts.debuginfo_compression {
@@ -281,7 +287,11 @@ pub(crate) fn target_machine_factory(
 
     let use_wasm_eh = wants_wasm_eh(sess);
 
+    let prof = SelfProfilerRef::clone(&sess.prof);
     Arc::new(move |config: TargetMachineFactoryConfig| {
+        // Self-profile timer for invoking a factory to create a target machine.
+        let _prof_timer = prof.generic_activity("target_machine_factory_inner");
+
         let path_to_cstring_helper = |path: Option<PathBuf>| -> CString {
             let path = path.unwrap_or_default();
             let path = path_mapping

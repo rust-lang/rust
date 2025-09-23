@@ -1865,7 +1865,7 @@ macro_rules! uint_impl {
         #[inline]
         pub const unsafe fn unchecked_exact_shl(self, rhs: u32) -> $SelfT {
             assert_unsafe_precondition!(
-                check_language_ub,
+                check_library_ub,
                 concat!(stringify!($SelfT), "::exact_shl_unchecked cannot shift out non-zero bits"),
                 (
                     zeros: u32 = self.leading_zeros(),
@@ -2037,7 +2037,7 @@ macro_rules! uint_impl {
         #[inline]
         pub const unsafe fn unchecked_exact_shr(self, rhs: u32) -> $SelfT {
             assert_unsafe_precondition!(
-                check_language_ub,
+                check_library_ub,
                 concat!(stringify!($SelfT), "::exact_shr_unchecked cannot shift out non-zero bits"),
                 (
                     zeros: u32 = self.trailing_zeros(),

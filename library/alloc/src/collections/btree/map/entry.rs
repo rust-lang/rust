@@ -99,7 +99,12 @@ impl<K: Debug + Ord, V: Debug, A: Allocator + Clone> Debug for OccupiedEntry<'_,
 ///
 /// Contains the occupied entry, and the value that was not inserted.
 #[unstable(feature = "map_try_insert", issue = "82766")]
-pub struct OccupiedError<'a, K: 'a, V: 'a, A: Allocator + Clone = Global> {
+pub struct OccupiedError<
+    'a,
+    K: 'a,
+    V: 'a,
+    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + Clone = Global,
+> {
     /// The entry in the map that was already occupied.
     pub entry: OccupiedEntry<'a, K, V, A>,
     /// The value which was not inserted, because the entry was already occupied.

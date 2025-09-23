@@ -1603,8 +1603,7 @@ pub mod math {
     #[unstable(feature = "core_float_math", issue = "137578")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn floor(x: f32) -> f32 {
-        // SAFETY: intrinsic with no preconditions
-        unsafe { intrinsics::floorf32(x) }
+        intrinsics::floorf32(x)
     }
 
     /// Experimental version of `ceil` in `core`. See [`f32::ceil`] for details.
@@ -1632,8 +1631,7 @@ pub mod math {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "core_float_math", issue = "137578")]
     pub const fn ceil(x: f32) -> f32 {
-        // SAFETY: intrinsic with no preconditions
-        unsafe { intrinsics::ceilf32(x) }
+        intrinsics::ceilf32(x)
     }
 
     /// Experimental version of `round` in `core`. See [`f32::round`] for details.
@@ -1666,8 +1664,7 @@ pub mod math {
     #[unstable(feature = "core_float_math", issue = "137578")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn round(x: f32) -> f32 {
-        // SAFETY: intrinsic with no preconditions
-        unsafe { intrinsics::roundf32(x) }
+        intrinsics::roundf32(x)
     }
 
     /// Experimental version of `round_ties_even` in `core`. See [`f32::round_ties_even`] for
@@ -1729,8 +1726,7 @@ pub mod math {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "core_float_math", issue = "137578")]
     pub const fn trunc(x: f32) -> f32 {
-        // SAFETY: intrinsic with no preconditions
-        unsafe { intrinsics::truncf32(x) }
+        intrinsics::truncf32(x)
     }
 
     /// Experimental version of `fract` in `core`. See [`f32::fract`] for details.
@@ -1804,8 +1800,7 @@ pub mod math {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "core_float_math", issue = "137578")]
     pub fn mul_add(x: f32, y: f32, z: f32) -> f32 {
-        // SAFETY: intrinsic with no preconditions
-        unsafe { intrinsics::fmaf32(x, y, z) }
+        intrinsics::fmaf32(x, y, z)
     }
 
     /// Experimental version of `div_euclid` in `core`. See [`f32::div_euclid`] for details.
@@ -1896,8 +1891,7 @@ pub mod math {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "core_float_math", issue = "137578")]
     pub fn powi(x: f32, n: i32) -> f32 {
-        // SAFETY: intrinsic with no preconditions
-        unsafe { intrinsics::powif32(x, n) }
+        intrinsics::powif32(x, n)
     }
 
     /// Experimental version of `sqrt` in `core`. See [`f32::sqrt`] for details.
@@ -1927,8 +1921,7 @@ pub mod math {
     #[unstable(feature = "core_float_math", issue = "137578")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn sqrt(x: f32) -> f32 {
-        // SAFETY: intrinsic with no preconditions
-        unsafe { intrinsics::sqrtf32(x) }
+        intrinsics::sqrtf32(x)
     }
 
     /// Experimental version of `abs_sub` in `core`. See [`f32::abs_sub`] for details.

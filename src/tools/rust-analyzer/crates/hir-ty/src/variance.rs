@@ -49,7 +49,23 @@ pub(crate) fn variances_of(db: &dyn HirDatabase, def: GenericDefId) -> Option<Ar
     if count == 0 {
         return None;
     }
-    let variances = Context { generics, variances: vec![Variance::Bivariant; count], db }.solve();
+    let mut variances =
+        Context { generics, variances: vec![Variance::Bivariant; count], db }.solve();
+
+    // FIXME(next-solver): This is *not* the correct behavior. I don't know if it has an actual effect,
+    // since bivariance is prohibited in Rust, but rustc definitely does not fallback bivariance.
+    // So why do we do this? Because, with the new solver, the effects of bivariance are catastrophic:
+    // it leads to not relating types properly, and to very, very hard to debug bugs (speaking from experience).
+    // Furthermore, our variance infra is known to not handle cycles properly. Therefore, at least until we fix
+    // cycles, and perhaps forever at least for out tests, not allowing bivariance makes sense.
+    // Why specifically invariance? I don't have a strong reason, mainly that invariance is a stronger relationship
+    // (therefore, less room for mistakes) and that IMO incorrect covariance can be more problematic that incorrect
+    // bivariance, at least while we don't handle lifetimes anyway.
+    for variance in &mut variances {
+        if *variance == Variance::Bivariant {
+            *variance = Variance::Invariant;
+        }
+    }
 
     variances.is_empty().not().then(|| Arc::from_iter(variances))
 }
@@ -73,7 +89,8 @@ pub(crate) fn variances_of_cycle_initial(
     if count == 0 {
         return None;
     }
-    Some(Arc::from(vec![Variance::Bivariant; count]))
+    // FIXME(next-solver): Returns `Invariance` and not `Bivariance` here, see the comment in the main query.
+    Some(Arc::from(vec![Variance::Invariant; count]))
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -344,7 +361,7 @@ impl Context<'_> {
 
             // Chalk has no params, so use placeholders for now?
             TyKind::Placeholder(index) => {
-                let idx = crate::from_placeholder_idx(self.db, *index);
+                let idx = crate::from_placeholder_idx(self.db, *index).0;
                 let index = self.generics.type_or_const_param_idx(idx).unwrap();
                 self.constrain(index, variance);
             }
@@ -445,7 +462,7 @@ impl Context<'_> {
         );
         match region.data(Interner) {
             LifetimeData::Placeholder(index) => {
-                let idx = crate::lt_from_placeholder_idx(self.db, *index);
+                let idx = crate::lt_from_placeholder_idx(self.db, *index).0;
                 let inferred = self.generics.lifetime_idx(idx).unwrap();
                 self.constrain(inferred, variance);
             }
@@ -581,8 +598,8 @@ struct Other<'a> {
 }
 "#,
             expect![[r#"
-                Hello['a: bivariant]
-                Other['a: bivariant]
+                Hello['a: invariant]
+                Other['a: invariant]
             "#]],
         );
     }
@@ -601,7 +618,7 @@ struct Foo<T: Trait> { //~ ERROR [T: o]
 }
 "#,
             expect![[r#"
-                Foo[T: bivariant]
+                Foo[T: invariant]
             "#]],
         );
     }
@@ -683,9 +700,9 @@ struct TestBox<U,T:Getter<U>+Setter<U>> { //~ ERROR [U: *, T: +]
                 get[Self: contravariant, T: covariant]
                 get[Self: contravariant, T: contravariant]
                 TestStruct[U: covariant, T: covariant]
-                TestEnum[U: bivariant, T: covariant]
-                TestContraStruct[U: bivariant, T: covariant]
-                TestBox[U: bivariant, T: covariant]
+                TestEnum[U: invariant, T: covariant]
+                TestContraStruct[U: invariant, T: covariant]
+                TestBox[U: invariant, T: covariant]
             "#]],
         );
     }
@@ -805,8 +822,8 @@ enum SomeEnum<'a> { Nothing } //~ ERROR parameter `'a` is never used
 trait SomeTrait<'a> { fn foo(&self); } // OK on traits.
 "#,
             expect![[r#"
-                SomeStruct['a: bivariant]
-                SomeEnum['a: bivariant]
+                SomeStruct['a: invariant]
+                SomeEnum['a: invariant]
                 foo[Self: contravariant, 'a: invariant]
             "#]],
         );
@@ -834,14 +851,14 @@ struct DoubleNothing<T> {
 
 "#,
             expect![[r#"
-                SomeStruct[A: bivariant]
-                SomeEnum[A: bivariant]
-                ListCell[T: bivariant]
-                SelfTyAlias[T: bivariant]
-                WithBounds[T: bivariant]
-                WithWhereBounds[T: bivariant]
-                WithOutlivesBounds[T: bivariant]
-                DoubleNothing[T: bivariant]
+                SomeStruct[A: invariant]
+                SomeEnum[A: invariant]
+                ListCell[T: invariant]
+                SelfTyAlias[T: invariant]
+                WithBounds[T: invariant]
+                WithWhereBounds[T: invariant]
+                WithOutlivesBounds[T: invariant]
+                DoubleNothing[T: invariant]
             "#]],
         );
     }
@@ -952,7 +969,7 @@ struct S3<T>(S<T, T>);
 "#,
             expect![[r#"
                 S[T: covariant]
-                S2[T: bivariant]
+                S2[T: invariant]
                 S3[T: covariant]
             "#]],
         );
@@ -965,7 +982,7 @@ struct S3<T>(S<T, T>);
 struct FixedPoint<T, U, V>(&'static FixedPoint<(), T, U>, V);
 "#,
             expect![[r#"
-                FixedPoint[T: bivariant, U: bivariant, V: bivariant]
+                FixedPoint[T: invariant, U: invariant, V: invariant]
             "#]],
         );
     }
@@ -990,7 +1007,6 @@ struct FixedPoint<T, U, V>(&'static FixedPoint<(), T, U>, V);
                 ModuleDefId::AdtId(it) => it.into(),
                 ModuleDefId::ConstId(it) => it.into(),
                 ModuleDefId::TraitId(it) => it.into(),
-                ModuleDefId::TraitAliasId(it) => it.into(),
                 ModuleDefId::TypeAliasId(it) => it.into(),
                 _ => return,
             })
@@ -1018,10 +1034,6 @@ struct FixedPoint<T, U, V>(&'static FixedPoint<(), T, U>, V);
                             loc.source(&db).value.name().unwrap()
                         }
                         GenericDefId::TraitId(it) => {
-                            let loc = it.lookup(&db);
-                            loc.source(&db).value.name().unwrap()
-                        }
-                        GenericDefId::TraitAliasId(it) => {
                             let loc = it.lookup(&db);
                             loc.source(&db).value.name().unwrap()
                         }

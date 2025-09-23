@@ -165,6 +165,21 @@ impl Generics {
         (parent_len, self_param, type_params, const_params, impl_trait_params, lifetime_params)
     }
 
+    pub(crate) fn type_or_const_param(
+        &self,
+        param: TypeOrConstParamId,
+    ) -> Option<(usize, TypeOrConstParamData)> {
+        let idx = self.find_type_or_const_param(param)?;
+        self.iter().nth(idx).and_then(|p| {
+            let data = match p.1 {
+                GenericParamDataRef::TypeParamData(p) => p.clone().into(),
+                GenericParamDataRef::ConstParamData(p) => p.clone().into(),
+                _ => return None,
+            };
+            Some((idx, data))
+        })
+    }
+
     pub fn type_or_const_param_idx(&self, param: TypeOrConstParamId) -> Option<usize> {
         self.find_type_or_const_param(param)
     }
@@ -241,15 +256,15 @@ impl Generics {
     pub fn placeholder_subst(&self, db: &dyn HirDatabase) -> Substitution {
         Substitution::from_iter(
             Interner,
-            self.iter_id().map(|id| match id {
+            self.iter_id().enumerate().map(|(index, id)| match id {
                 GenericParamId::TypeParamId(id) => {
-                    to_placeholder_idx(db, id.into()).to_ty(Interner).cast(Interner)
+                    to_placeholder_idx(db, id.into(), index as u32).to_ty(Interner).cast(Interner)
                 }
-                GenericParamId::ConstParamId(id) => to_placeholder_idx(db, id.into())
+                GenericParamId::ConstParamId(id) => to_placeholder_idx(db, id.into(), index as u32)
                     .to_const(Interner, db.const_param_ty(id))
                     .cast(Interner),
                 GenericParamId::LifetimeParamId(id) => {
-                    lt_to_placeholder_idx(db, id).to_lifetime(Interner).cast(Interner)
+                    lt_to_placeholder_idx(db, id, index as u32).to_lifetime(Interner).cast(Interner)
                 }
             }),
         )
@@ -258,7 +273,7 @@ impl Generics {
 
 pub(crate) fn trait_self_param_idx(db: &dyn DefDatabase, def: GenericDefId) -> Option<usize> {
     match def {
-        GenericDefId::TraitId(_) | GenericDefId::TraitAliasId(_) => {
+        GenericDefId::TraitId(_) => {
             let params = db.generic_params(def);
             params.trait_self_param().map(|idx| idx.into_raw().into_u32() as usize)
         }
@@ -272,7 +287,7 @@ pub(crate) fn trait_self_param_idx(db: &dyn DefDatabase, def: GenericDefId) -> O
     }
 }
 
-fn parent_generic_def(db: &dyn DefDatabase, def: GenericDefId) -> Option<GenericDefId> {
+pub(crate) fn parent_generic_def(db: &dyn DefDatabase, def: GenericDefId) -> Option<GenericDefId> {
     let container = match def {
         GenericDefId::FunctionId(it) => it.lookup(db).container,
         GenericDefId::TypeAliasId(it) => it.lookup(db).container,
@@ -280,8 +295,7 @@ fn parent_generic_def(db: &dyn DefDatabase, def: GenericDefId) -> Option<Generic
         GenericDefId::StaticId(_)
         | GenericDefId::AdtId(_)
         | GenericDefId::TraitId(_)
-        | GenericDefId::ImplId(_)
-        | GenericDefId::TraitAliasId(_) => return None,
+        | GenericDefId::ImplId(_) => return None,
     };
 
     match container {

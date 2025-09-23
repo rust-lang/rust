@@ -211,7 +211,7 @@ extern crate wloop;
 //~^ ERROR can't find crate for `wloop` [E0463]
 
 #[macro_export = 18]
-//~^ ERROR malformed `macro_export` attribute input
+//~^ ERROR valid forms for the attribute are
 #[allow_internal_unsafe = 1]
 //~^ ERROR malformed
 //~| ERROR allow_internal_unsafe side-steps the unsafe_code lint

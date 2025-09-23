@@ -86,9 +86,8 @@ fn collect_data(ident_pat: ast::IdentPat, ctx: &AssistContext<'_>) -> Option<Str
     let ty = ctx.sema.type_of_binding_in_pat(&ident_pat)?;
     let hir::Adt::Struct(struct_type) = ty.strip_references().as_adt()? else { return None };
 
-    let cfg = ctx.config.import_path_config();
-
     let module = ctx.sema.scope(ident_pat.syntax())?.module();
+    let cfg = ctx.config.find_path_confg(ctx.sema.is_nightly(module.krate()));
     let struct_def = hir::ModuleDef::from(struct_type);
     let kind = struct_type.kind(ctx.db());
     let struct_def_path = module.find_path(ctx.db(), struct_def, cfg)?;

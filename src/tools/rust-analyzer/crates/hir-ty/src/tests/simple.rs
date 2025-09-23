@@ -439,11 +439,11 @@ h";
             256..260 'true': bool
             274..370 'r#"   ...    "#': &'static str
             384..394 'br#"yolo"#': &'static [u8; 4]
-            412..413 'a': &'static [u8; 4]
+            412..413 'a': &'? [u8; 4]
             416..440 'b"a\x2...    c"': &'static [u8; 4]
-            458..459 'b': &'static [u8; 4]
+            458..459 'b': &'? [u8; 4]
             462..470 'br"g\ h"': &'static [u8; 4]
-            488..489 'c': &'static [u8; 6]
+            488..489 'c': &'? [u8; 6]
             492..504 'br#"x"\"yb"#': &'static [u8; 6]
         "##]],
     );
@@ -1124,13 +1124,13 @@ fn infer_tuple() {
             116..122 '(c, x)': ((isize, &'? str), &'? str)
             117..118 'c': (isize, &'? str)
             120..121 'x': &'? str
-            132..133 'e': (i32, &'static str)
-            136..144 '(1, "e")': (i32, &'static str)
+            132..133 'e': (i32, &'? str)
+            136..144 '(1, "e")': (i32, &'? str)
             137..138 '1': i32
             140..143 '"e"': &'static str
-            154..155 'f': ((i32, &'static str), &'static str)
-            158..166 '(e, "d")': ((i32, &'static str), &'static str)
-            159..160 'e': (i32, &'static str)
+            154..155 'f': ((i32, &'? str), &'? str)
+            158..166 '(e, "d")': ((i32, &'? str), &'? str)
+            159..160 'e': (i32, &'? str)
             162..165 '"d"': &'static str
         "#]],
     );
@@ -1201,8 +1201,8 @@ fn infer_array() {
             209..215 '[1, 2]': [i32; 2]
             210..211 '1': i32
             213..214 '2': i32
-            225..226 'i': [&'static str; 2]
-            229..239 '["a", "b"]': [&'static str; 2]
+            225..226 'i': [&'? str; 2]
+            229..239 '["a", "b"]': [&'? str; 2]
             230..233 '"a"': &'static str
             235..238 '"b"': &'static str
             250..251 'b': [[&'? str; 1]; 2]
@@ -1283,11 +1283,11 @@ fn infer_tuple_struct_generics() {
             92..93 'A': fn A<u128>(u128) -> A<u128>
             92..101 'A(42u128)': A<u128>
             94..100 '42u128': u128
-            107..111 'Some': fn Some<&'static str>(&'static str) -> Option<&'static str>
-            107..116 'Some("x")': Option<&'static str>
+            107..111 'Some': fn Some<&'? str>(&'? str) -> Option<&'? str>
+            107..116 'Some("x")': Option<&'? str>
             112..115 '"x"': &'static str
-            122..134 'Option::Some': fn Some<&'static str>(&'static str) -> Option<&'static str>
-            122..139 'Option...e("x")': Option<&'static str>
+            122..134 'Option::Some': fn Some<&'? str>(&'? str) -> Option<&'? str>
+            122..139 'Option...e("x")': Option<&'? str>
             135..138 '"x"': &'static str
             145..149 'None': Option<{unknown}>
             159..160 'x': Option<i64>
@@ -1946,14 +1946,16 @@ fn closure_return_inferred() {
         "#,
         expect![[r#"
             16..46 '{     ..." }; }': u32
-            26..27 'x': impl Fn() -> &'static str
-            30..43 '|| { "test" }': impl Fn() -> &'static str
-            33..43 '{ "test" }': &'static str
+            26..27 'x': impl Fn() -> &'? str
+            30..43 '|| { "test" }': impl Fn() -> &'? str
+            33..43 '{ "test" }': &'? str
             35..41 '"test"': &'static str
         "#]],
     );
 }
 
+// FIXME(next-solver): `&'? str` in 231..262 seems suspicious.
+// Should revisit this once we fully migrated into next-solver without chalk-ir.
 #[test]
 fn coroutine_types_inferred() {
     check_infer(
@@ -1981,10 +1983,10 @@ fn test() {
             70..71 'v': i64
             78..80 '{}': ()
             91..362 '{     ...   } }': ()
-            101..106 'mut g': |usize| yields i64 -> &'static str
-            109..218 '|r| { ...     }': |usize| yields i64 -> &'static str
+            101..106 'mut g': |usize| yields i64 -> &'? str
+            109..218 '|r| { ...     }': |usize| yields i64 -> &'? str
             110..111 'r': usize
-            113..218 '{     ...     }': &'static str
+            113..218 '{     ...     }': &'? str
             127..128 'a': usize
             131..138 'yield 0': usize
             137..138 '0': i64
@@ -1996,20 +1998,20 @@ fn test() {
             187..188 '2': i64
             198..212 '"return value"': &'static str
             225..360 'match ...     }': ()
-            231..239 'Pin::new': fn new<&'? mut |usize| yields i64 -> &'static str>(&'? mut |usize| yields i64 -> &'static str) -> Pin<&'? mut |usize| yields i64 -> &'static str>
-            231..247 'Pin::n...mut g)': Pin<&'? mut |usize| yields i64 -> &'static str>
-            231..262 'Pin::n...usize)': CoroutineState<i64, &'static str>
-            240..246 '&mut g': &'? mut |usize| yields i64 -> &'static str
-            245..246 'g': |usize| yields i64 -> &'static str
+            231..239 'Pin::new': fn new<&'? mut |usize| yields i64 -> &'? str>(&'? mut |usize| yields i64 -> &'? str) -> Pin<&'? mut |usize| yields i64 -> &'? str>
+            231..247 'Pin::n...mut g)': Pin<&'? mut |usize| yields i64 -> &'? str>
+            231..262 'Pin::n...usize)': CoroutineState<i64, &'? str>
+            240..246 '&mut g': &'? mut |usize| yields i64 -> &'? str
+            245..246 'g': |usize| yields i64 -> &'? str
             255..261 '0usize': usize
-            273..299 'Corout...ded(y)': CoroutineState<i64, &'static str>
+            273..299 'Corout...ded(y)': CoroutineState<i64, &'? str>
             297..298 'y': i64
             303..312 '{ f(y); }': ()
             305..306 'f': fn f(i64)
             305..309 'f(y)': ()
             307..308 'y': i64
-            321..348 'Corout...ete(r)': CoroutineState<i64, &'static str>
-            346..347 'r': &'static str
+            321..348 'Corout...ete(r)': CoroutineState<i64, &'? str>
+            346..347 'r': &'? str
             352..354 '{}': ()
         "#]],
     );
@@ -2705,11 +2707,11 @@ unsafe impl Allocator for Global {}
 
 #[lang = "owned_box"]
 #[fundamental]
-pub struct Box<T: ?Sized, A: Allocator = Global>;
+pub struct Box<T: ?Sized, A: Allocator = Global>(T, A);
 
 impl<T: ?Sized + Unsize<U>, U: ?Sized, A: Allocator> CoerceUnsized<Box<U, A>> for Box<T, A> {}
 
-pub struct Vec<T, A: Allocator = Global> {}
+pub struct Vec<T, A: Allocator = Global>(T, A);
 
 #[lang = "slice"]
 impl<T> [T] {}
@@ -2732,22 +2734,22 @@ struct Astruct;
 impl B for Astruct {}
 "#,
         expect![[r#"
-            604..608 'self': Box<[T], A>
-            637..669 '{     ...     }': Vec<T, A>
-            683..853 '{     ...])); }': ()
-            693..696 'vec': Vec<i32, Global>
-            699..714 '<[_]>::into_vec': fn into_vec<i32, Global>(Box<[i32], Global>) -> Vec<i32, Global>
-            699..745 '<[_]>:...i32]))': Vec<i32, Global>
-            715..744 '#[rust...1i32])': Box<[i32; 1], Global>
-            737..743 '[1i32]': [i32; 1]
-            738..742 '1i32': i32
-            755..756 'v': Vec<Box<dyn B + '?, Global>, Global>
-            776..793 '<[_]> ...to_vec': fn into_vec<Box<dyn B + '?, Global>, Global>(Box<[Box<dyn B + '?, Global>], Global>) -> Vec<Box<dyn B + '?, Global>, Global>
-            776..850 '<[_]> ...ct)]))': Vec<Box<dyn B + '?, Global>, Global>
-            794..849 '#[rust...uct)])': Box<[Box<dyn B + '?, Global>; 1], Global>
-            816..848 '[#[rus...ruct)]': [Box<dyn B + '?, Global>; 1]
-            817..847 '#[rust...truct)': Box<Astruct, Global>
-            839..846 'Astruct': Astruct
+            614..618 'self': Box<[T], A>
+            647..679 '{     ...     }': Vec<T, A>
+            693..863 '{     ...])); }': ()
+            703..706 'vec': Vec<i32, Global>
+            709..724 '<[_]>::into_vec': fn into_vec<i32, Global>(Box<[i32], Global>) -> Vec<i32, Global>
+            709..755 '<[_]>:...i32]))': Vec<i32, Global>
+            725..754 '#[rust...1i32])': Box<[i32; 1], Global>
+            747..753 '[1i32]': [i32; 1]
+            748..752 '1i32': i32
+            765..766 'v': Vec<Box<dyn B + '?, Global>, Global>
+            786..803 '<[_]> ...to_vec': fn into_vec<Box<dyn B + '?, Global>, Global>(Box<[Box<dyn B + '?, Global>], Global>) -> Vec<Box<dyn B + '?, Global>, Global>
+            786..860 '<[_]> ...ct)]))': Vec<Box<dyn B + '?, Global>, Global>
+            804..859 '#[rust...uct)])': Box<[Box<dyn B + '?, Global>; 1], Global>
+            826..858 '[#[rus...ruct)]': [Box<dyn B + '?, Global>; 1]
+            827..857 '#[rust...truct)': Box<Astruct, Global>
+            849..856 'Astruct': Astruct
         "#]],
     )
 }
@@ -2923,7 +2925,7 @@ fn test {
      // ^^ impl Fn()
 
     let c4 = f1();
-     // ^^ impl FnOnce() + ?Sized
+     // ^^ impl FnOnce()
 
     f2(|| { 0 });
     // ^^^^^^^^ impl FnOnce() -> i32
@@ -3887,9 +3889,9 @@ fn main() {
             74..75 'f': F
             80..82 '{}': ()
             94..191 '{     ... }); }': ()
-            100..113 'async_closure': fn async_closure<impl AsyncFnOnce(i32) -> impl Future<Output = ()>>(impl AsyncFnOnce(i32) -> impl Future<Output = ()>)
+            100..113 'async_closure': fn async_closure<impl FnOnce(i32)>(impl FnOnce(i32))
             100..147 'async_...    })': ()
-            114..146 'async ...     }': impl AsyncFnOnce(i32) -> impl Future<Output = ()>
+            114..146 'async ...     }': impl FnOnce(i32)
             121..124 'arg': i32
             126..146 '{     ...     }': ()
             136..139 'arg': i32
@@ -3922,7 +3924,7 @@ fn foo<T: Bar>() {
         expect![[r#"
             110..127 '{     ...z(); }': ()
             116..122 'T::baz': fn baz<T>() -> <{unknown} as Foo>::Gat<'?>
-            116..124 'T::baz()': Foo::Gat<'?, {unknown}>
+            116..124 'T::baz()': <{unknown} as Foo>::Gat<'?>
         "#]],
     );
 }

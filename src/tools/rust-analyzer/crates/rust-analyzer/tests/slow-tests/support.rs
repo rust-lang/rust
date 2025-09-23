@@ -97,6 +97,7 @@ impl Project<'_> {
             proc_macro_names,
             toolchain,
             target_data_layout: _,
+            target_arch: _,
         } = FixtureWithProjectMeta::parse(self.fixture);
         assert!(proc_macro_names.is_empty());
         assert!(mini_core.is_none());
@@ -177,6 +178,7 @@ impl Project<'_> {
             proc_macro_names,
             toolchain,
             target_data_layout: _,
+            target_arch: _,
         } = FixtureWithProjectMeta::parse(self.fixture);
         assert!(proc_macro_names.is_empty());
         assert!(mini_core.is_none());

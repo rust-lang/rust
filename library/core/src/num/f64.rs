@@ -1601,8 +1601,7 @@ pub mod math {
     #[unstable(feature = "core_float_math", issue = "137578")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn floor(x: f64) -> f64 {
-        // SAFETY: intrinsic with no preconditions
-        unsafe { intrinsics::floorf64(x) }
+        intrinsics::floorf64(x)
     }
 
     /// Experimental version of `ceil` in `core`. See [`f64::ceil`] for details.
@@ -1630,8 +1629,7 @@ pub mod math {
     #[unstable(feature = "core_float_math", issue = "137578")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn ceil(x: f64) -> f64 {
-        // SAFETY: intrinsic with no preconditions
-        unsafe { intrinsics::ceilf64(x) }
+        intrinsics::ceilf64(x)
     }
 
     /// Experimental version of `round` in `core`. See [`f64::round`] for details.
@@ -1664,8 +1662,7 @@ pub mod math {
     #[unstable(feature = "core_float_math", issue = "137578")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn round(x: f64) -> f64 {
-        // SAFETY: intrinsic with no preconditions
-        unsafe { intrinsics::roundf64(x) }
+        intrinsics::roundf64(x)
     }
 
     /// Experimental version of `round_ties_even` in `core`. See [`f64::round_ties_even`] for
@@ -1727,8 +1724,7 @@ pub mod math {
     #[unstable(feature = "core_float_math", issue = "137578")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn trunc(x: f64) -> f64 {
-        // SAFETY: intrinsic with no preconditions
-        unsafe { intrinsics::truncf64(x) }
+        intrinsics::truncf64(x)
     }
 
     /// Experimental version of `fract` in `core`. See [`f64::fract`] for details.
@@ -1802,8 +1798,7 @@ pub mod math {
     #[unstable(feature = "core_float_math", issue = "137578")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn mul_add(x: f64, a: f64, b: f64) -> f64 {
-        // SAFETY: intrinsic with no preconditions
-        unsafe { intrinsics::fmaf64(x, a, b) }
+        intrinsics::fmaf64(x, a, b)
     }
 
     /// Experimental version of `div_euclid` in `core`. See [`f64::div_euclid`] for details.
@@ -1894,8 +1889,7 @@ pub mod math {
     #[unstable(feature = "core_float_math", issue = "137578")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn powi(x: f64, n: i32) -> f64 {
-        // SAFETY: intrinsic with no preconditions
-        unsafe { intrinsics::powif64(x, n) }
+        intrinsics::powif64(x, n)
     }
 
     /// Experimental version of `sqrt` in `core`. See [`f64::sqrt`] for details.
@@ -1925,8 +1919,7 @@ pub mod math {
     #[unstable(feature = "core_float_math", issue = "137578")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn sqrt(x: f64) -> f64 {
-        // SAFETY: intrinsic with no preconditions
-        unsafe { intrinsics::sqrtf64(x) }
+        intrinsics::sqrtf64(x)
     }
 
     /// Experimental version of `abs_sub` in `core`. See [`f64::abs_sub`] for details.
