@@ -823,3 +823,115 @@ where
         crate::intrinsics::select_unpredictable(condition, true_val, false_val).assume_init()
     }
 }
+
+/// The expected temporal locality of a memory prefetch operation.
+///
+/// Locality expresses how likely the prefetched data is to be reused soon,
+/// and therefore which level of cache it should be brought into.
+///
+/// The locality is just a hint, and may be ignored on some targets or by the hardware.
+///
+/// Used with functions like [`prefetch_read_data`] and [`prefetch_write_data`].
+///
+/// [`prefetch_read_data`]: crate::hint::prefetch_read_data
+/// [`prefetch_write_data`]: crate::hint::prefetch_write_data
+#[unstable(feature = "hint_prefetch", issue = "146941")]
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Locality {
+    /// Data is unlikely to be reused soon.
+    ///
+    /// Typically bypasses the caches so they are not polluted.
+    NonTemporal = 0,
+    /// Data is expected to be reused eventually.
+    ///
+    /// Typically prefetches into L3 cache (if the CPU supports it).
+    L3 = 1,
+    /// Data is expected to be reused in the near future.
+    ///
+    /// Typically prefetches into L2 cache.
+    L2 = 2,
+    /// Data is expected to be reused very soon.
+    ///
+    /// Typically prefetches into L1 cache.
+    L1 = 3,
+}
+
+/// Prefetch the cache line containing `ptr` for a future read.
+///
+/// A strategically placed prefetch can reduce cache miss latency if the data is accessed
+/// soon after, but may also increase bandwidth usage or evict other cache lines.
+///
+/// A prefetch is a *hint*, and may be ignored on certain targets or by the hardware.
+///
+/// Passing a dangling or invalid pointer is permitted: the memory will not
+/// actually be dereferenced, and no faults are raised.
+///
+/// # Examples
+///
+/// ```
+/// use std::hint::{Locality, prefetch_read_data};
+/// use std::mem::size_of_val;
+///
+/// // Prefetch all of `slice` into the L1 cache.
+/// fn prefetch_slice<T>(slice: &[T]) {
+///     // On most systems the cache line size is 64 bytes.
+///     for offset in (0..size_of_val(slice)).step_by(64) {
+///         prefetch_read_data(slice.as_ptr().wrapping_add(offset), Locality::L1);
+///     }
+/// }
+/// ```
+#[inline(always)]
+#[unstable(feature = "hint_prefetch", issue = "146941")]
+pub const fn prefetch_read_data<T>(ptr: *const T, locality: Locality) {
+    match locality {
+        Locality::NonTemporal => {
+            intrinsics::prefetch_read_data::<T, { Locality::NonTemporal as i32 }>(ptr)
+        }
+        Locality::L3 => intrinsics::prefetch_read_data::<T, { Locality::L3 as i32 }>(ptr),
+        Locality::L2 => intrinsics::prefetch_read_data::<T, { Locality::L2 as i32 }>(ptr),
+        Locality::L1 => intrinsics::prefetch_read_data::<T, { Locality::L1 as i32 }>(ptr),
+    }
+}
+
+/// Prefetch the cache line containing `ptr` for a future write.
+///
+/// A strategically placed prefetch can reduce cache miss latency if the data is accessed
+/// soon after, but may also increase bandwidth usage or evict other cache lines.
+///
+/// A prefetch is a *hint*, and may be ignored on certain targets or by the hardware.
+///
+/// Passing a dangling or invalid pointer is permitted: the memory will not
+/// actually be dereferenced, and no faults are raised.
+#[unstable(feature = "hint_prefetch", issue = "146941")]
+pub const fn prefetch_write_data<T>(ptr: *mut T, locality: Locality) {
+    match locality {
+        Locality::NonTemporal => {
+            intrinsics::prefetch_write_data::<T, { Locality::NonTemporal as i32 }>(ptr)
+        }
+        Locality::L3 => intrinsics::prefetch_write_data::<T, { Locality::L3 as i32 }>(ptr),
+        Locality::L2 => intrinsics::prefetch_write_data::<T, { Locality::L2 as i32 }>(ptr),
+        Locality::L1 => intrinsics::prefetch_write_data::<T, { Locality::L1 as i32 }>(ptr),
+    }
+}
+
+/// Prefetch the cache line containing `ptr` for a future read.
+///
+/// A strategically placed prefetch can reduce cache miss latency if the instructions are
+/// accessed soon after, but may also increase bandwidth usage or evict other cache lines.
+///
+/// A prefetch is a *hint*, and may be ignored on certain targets or by the hardware.
+///
+/// Passing a dangling or invalid pointer is permitted: the memory will not
+/// actually be dereferenced, and no faults are raised.
+#[unstable(feature = "hint_prefetch", issue = "146941")]
+pub const fn prefetch_read_instruction<T>(ptr: *const T, locality: Locality) {
+    match locality {
+        Locality::NonTemporal => {
+            intrinsics::prefetch_read_instruction::<T, { Locality::NonTemporal as i32 }>(ptr)
+        }
+        Locality::L3 => intrinsics::prefetch_read_instruction::<T, { Locality::L3 as i32 }>(ptr),
+        Locality::L2 => intrinsics::prefetch_read_instruction::<T, { Locality::L2 as i32 }>(ptr),
+        Locality::L1 => intrinsics::prefetch_read_instruction::<T, { Locality::L1 as i32 }>(ptr),
+    }
+}
