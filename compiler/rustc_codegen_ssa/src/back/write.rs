@@ -25,6 +25,7 @@ use rustc_incremental::{
 use rustc_metadata::fs::copy_to_stdout;
 use rustc_middle::bug;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
+use rustc_middle::middle::debuginfo::CommandLineArgsForDebuginfo;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::{
@@ -283,6 +284,10 @@ pub struct TargetMachineFactoryConfig {
     /// The name of the output object file. Used for setting OutputFilenames in target options
     /// so that LLVM can emit the CodeView S_OBJNAME record in pdb files
     pub output_obj_file: Option<PathBuf>,
+
+    /// Contains a copy of [`TyCtxt::args_for_debuginfo`] for codegen,
+    /// or `None` if the target machine is informational only.
+    pub args_for_debuginfo: Option<Arc<CommandLineArgsForDebuginfo>>,
 }
 
 impl TargetMachineFactoryConfig {
@@ -306,7 +311,12 @@ impl TargetMachineFactoryConfig {
             module_name,
             cgcx.invocation_temp.as_deref(),
         ));
-        TargetMachineFactoryConfig { split_dwarf_file, output_obj_file }
+
+        TargetMachineFactoryConfig {
+            split_dwarf_file,
+            output_obj_file,
+            args_for_debuginfo: Some(Arc::clone(&cgcx.args_for_debuginfo)),
+        }
     }
 }
 
@@ -350,7 +360,7 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     /// This will only be used within debug info, e.g. in the pdb file on windows
     /// This is mainly useful for other tools that reads that debuginfo to figure out
     /// how to call the compiler with the same arguments.
-    pub expanded_args: Vec<String>,
+    pub args_for_debuginfo: Arc<CommandLineArgsForDebuginfo>,
 
     /// Emitter to use for diagnostics produced during codegen.
     pub diag_emitter: SharedEmitter,
@@ -1153,7 +1163,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         remark: sess.opts.cg.remark.clone(),
         remark_dir,
         incr_comp_session_dir: sess.incr_comp_session_dir_opt().map(|r| r.clone()),
-        expanded_args: tcx.sess.expanded_args.clone(),
+        args_for_debuginfo: Arc::clone(tcx.args_for_debuginfo()),
         diag_emitter: shared_emitter.clone(),
         output_filenames: Arc::clone(tcx.output_filenames(())),
         module_config: regular_config,

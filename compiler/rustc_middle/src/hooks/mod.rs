@@ -3,11 +3,14 @@
 //! similar to queries, but queries come with a lot of machinery for caching and incremental
 //! compilation, whereas hooks are just plain function pointers without any of the query magic.
 
+use std::sync::Arc;
+
 use rustc_hir::def_id::{DefId, DefPathHash};
 use rustc_session::StableCrateId;
 use rustc_span::def_id::{CrateNum, LocalDefId};
 use rustc_span::{ExpnHash, ExpnId};
 
+use crate::middle::debuginfo::CommandLineArgsForDebuginfo;
 use crate::mir;
 use crate::ty::{Ty, TyCtxt};
 
@@ -102,6 +105,13 @@ declare_hooks! {
     /// Ensure the given scalar is valid for the given type.
     /// This checks non-recursive runtime validity.
     hook validate_scalar_in_layout(scalar: crate::ty::ScalarInt, ty: Ty<'tcx>) -> bool;
+
+    /// Builds a quoted form of _all_ command-line args, for inclusion in some
+    /// forms of debuginfo (specifically PDB).
+    ///
+    /// This needs to _not_ be a query, because it would ruin incremental
+    /// compilation for CGUs that would otherwise be considered up-to-date.
+    hook args_for_debuginfo() -> &'tcx Arc<CommandLineArgsForDebuginfo>;
 }
 
 #[cold]

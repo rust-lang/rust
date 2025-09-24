@@ -66,6 +66,7 @@ use crate::infer::canonical::{CanonicalParamEnvCache, CanonicalVarKind, Canonica
 use crate::lint::lint_level;
 use crate::metadata::ModChild;
 use crate::middle::codegen_fn_attrs::{CodegenFnAttrs, TargetFeature};
+use crate::middle::debuginfo::CommandLineArgsForDebuginfo;
 use crate::middle::resolve_bound_vars;
 use crate::mir::interpret::{self, Allocation, ConstAllocation};
 use crate::mir::{Body, Local, Place, PlaceElem, ProjectionKind, Promoted};
@@ -1593,6 +1594,10 @@ pub struct GlobalCtxt<'tcx> {
 
     /// A jobserver reference used to release then acquire a token while waiting on a query.
     pub jobserver_proxy: Arc<Proxy>,
+
+    /// Memoization slot for the [`TyCtxt::args_for_debuginfo`] hook, which needs
+    /// to not be a query, but should still be cached after being computed once.
+    pub args_for_debuginfo_cache: OnceLock<Arc<CommandLineArgsForDebuginfo>>,
 }
 
 impl<'tcx> GlobalCtxt<'tcx> {
@@ -1818,6 +1823,7 @@ impl<'tcx> TyCtxt<'tcx> {
             alloc_map: interpret::AllocMap::new(),
             current_gcx,
             jobserver_proxy,
+            args_for_debuginfo_cache: OnceLock::new(),
         });
 
         // This is a separate function to work around a crash with parallel rustc (#135870)

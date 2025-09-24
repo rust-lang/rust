@@ -16,13 +16,13 @@ use rustc_codegen_ssa::back::write::{
     TargetMachineFactoryFn,
 };
 use rustc_codegen_ssa::base::wants_wasm_eh;
-use rustc_codegen_ssa::debuginfo::command_line_args::quote_command_line_args;
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen, ModuleKind};
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_errors::{DiagCtxtHandle, Level};
 use rustc_fs_util::{link_or_copy, path_to_c_string};
+use rustc_middle::middle::debuginfo::CommandLineArgsForDebuginfo;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::{
@@ -108,7 +108,11 @@ pub(crate) fn create_informational_target_machine(
     sess: &Session,
     only_base_features: bool,
 ) -> OwnedTargetMachine {
-    let config = TargetMachineFactoryConfig { split_dwarf_file: None, output_obj_file: None };
+    let config = TargetMachineFactoryConfig {
+        split_dwarf_file: None,
+        output_obj_file: None,
+        args_for_debuginfo: None,
+    };
     // Can't use query system here quite yet because this function is invoked before the query
     // system/tcx is set up.
     let features = llvm_util::global_llvm_features(sess, false, only_base_features);
@@ -133,7 +137,12 @@ pub(crate) fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> OwnedTar
         mod_name,
         tcx.sess.invocation_temp.as_deref(),
     ));
-    let config = TargetMachineFactoryConfig { split_dwarf_file, output_obj_file };
+
+    let config = TargetMachineFactoryConfig {
+        split_dwarf_file,
+        output_obj_file,
+        args_for_debuginfo: Some(Arc::clone(tcx.args_for_debuginfo())),
+    };
 
     target_machine_factory(
         tcx.sess,
@@ -253,19 +262,6 @@ pub(crate) fn target_machine_factory(
 
     let use_emulated_tls = matches!(sess.tls_model(), TlsModel::Emulated);
 
-    // Command-line information to be included in the target machine.
-    // This seems to only be used for embedding in PDB debuginfo files.
-    // FIXME(Zalathar): Maybe skip this for non-PDB targets?
-    let argv0 = std::env::current_exe()
-        .unwrap_or_default()
-        .into_os_string()
-        .into_string()
-        .unwrap_or_default();
-    let command_line_args = quote_command_line_args(&sess.expanded_args);
-    // Self-profile counter for the number of bytes produced by command-line quoting.
-    // Values are summed, so the summary result is cumulative across all TM factories.
-    sess.prof.artifact_size("quoted_command_line_args", "-", command_line_args.len() as u64);
-
     let debuginfo_compression = sess.opts.debuginfo_compression.to_string();
     match sess.opts.debuginfo_compression {
         rustc_session::config::DebugInfoCompression::Zlib => {
@@ -304,6 +300,14 @@ pub(crate) fn target_machine_factory(
         let split_dwarf_file = path_to_cstring_helper(config.split_dwarf_file);
         let output_obj_file = path_to_cstring_helper(config.output_obj_file);
 
+        let (argv0, quoted_args) = config
+            .args_for_debuginfo
+            .as_deref()
+            .map(|CommandLineArgsForDebuginfo { argv0, quoted_args }| {
+                (argv0.as_str(), quoted_args.as_str())
+            })
+            .unwrap_or_default();
+
         OwnedTargetMachine::new(
             &triple,
             &cpu,
@@ -326,8 +330,8 @@ pub(crate) fn target_machine_factory(
             &output_obj_file,
             &debuginfo_compression,
             use_emulated_tls,
-            &argv0,
-            &command_line_args,
+            argv0,
+            quoted_args,
             use_wasm_eh,
         )
     })
