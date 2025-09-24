@@ -540,7 +540,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
 
         // If there are nested bodies in promoteds, we also need to update their
-        // location to something in the actually body, not the promoted.
+        // location to something in the actual body, not the promoted.
         //
         // We don't update the constraint categories of the resulting constraints
         // as returns in nested bodies are a proper return, even if that nested body
