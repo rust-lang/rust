@@ -1450,8 +1450,7 @@ impl f32 {
     #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn abs(self) -> f32 {
-        // SAFETY: this is actually a safe intrinsic
-        unsafe { intrinsics::fabsf32(self) }
+        intrinsics::fabsf32(self)
     }
 
     /// Returns a number that represents the sign of `self`.
@@ -1509,8 +1508,7 @@ impl f32 {
     #[stable(feature = "copysign", since = "1.35.0")]
     #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     pub const fn copysign(self, sign: f32) -> f32 {
-        // SAFETY: this is actually a safe intrinsic
-        unsafe { intrinsics::copysignf32(self, sign) }
+        intrinsics::copysignf32(self, sign)
     }
 
     /// Float addition that allows optimizations based on algebraic rules.

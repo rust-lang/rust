@@ -3170,7 +3170,7 @@ pub const fn maximumf128(x: f128, y: f128) -> f128 {
 /// [`f16::abs`](../../std/primitive.f16.html#method.abs)
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub const unsafe fn fabsf16(x: f16) -> f16;
+pub const fn fabsf16(x: f16) -> f16;
 
 /// Returns the absolute value of an `f32`.
 ///
@@ -3179,7 +3179,7 @@ pub const unsafe fn fabsf16(x: f16) -> f16;
 #[rustc_nounwind]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-pub const unsafe fn fabsf32(x: f32) -> f32;
+pub const fn fabsf32(x: f32) -> f32;
 
 /// Returns the absolute value of an `f64`.
 ///
@@ -3188,7 +3188,7 @@ pub const unsafe fn fabsf32(x: f32) -> f32;
 #[rustc_nounwind]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-pub const unsafe fn fabsf64(x: f64) -> f64;
+pub const fn fabsf64(x: f64) -> f64;
 
 /// Returns the absolute value of an `f128`.
 ///
@@ -3196,7 +3196,7 @@ pub const unsafe fn fabsf64(x: f64) -> f64;
 /// [`f128::abs`](../../std/primitive.f128.html#method.abs)
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub const unsafe fn fabsf128(x: f128) -> f128;
+pub const fn fabsf128(x: f128) -> f128;
 
 /// Copies the sign from `y` to `x` for `f16` values.
 ///
@@ -3204,7 +3204,7 @@ pub const unsafe fn fabsf128(x: f128) -> f128;
 /// [`f16::copysign`](../../std/primitive.f16.html#method.copysign)
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub const unsafe fn copysignf16(x: f16, y: f16) -> f16;
+pub const fn copysignf16(x: f16, y: f16) -> f16;
 
 /// Copies the sign from `y` to `x` for `f32` values.
 ///
@@ -3213,7 +3213,7 @@ pub const unsafe fn copysignf16(x: f16, y: f16) -> f16;
 #[rustc_nounwind]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-pub const unsafe fn copysignf32(x: f32, y: f32) -> f32;
+pub const fn copysignf32(x: f32, y: f32) -> f32;
 /// Copies the sign from `y` to `x` for `f64` values.
 ///
 /// The stabilized version of this intrinsic is
@@ -3221,7 +3221,7 @@ pub const unsafe fn copysignf32(x: f32, y: f32) -> f32;
 #[rustc_nounwind]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-pub const unsafe fn copysignf64(x: f64, y: f64) -> f64;
+pub const fn copysignf64(x: f64, y: f64) -> f64;
 
 /// Copies the sign from `y` to `x` for `f128` values.
 ///
@@ -3229,7 +3229,7 @@ pub const unsafe fn copysignf64(x: f64, y: f64) -> f64;
 /// [`f128::copysign`](../../std/primitive.f128.html#method.copysign)
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub const unsafe fn copysignf128(x: f128, y: f128) -> f128;
+pub const fn copysignf128(x: f128, y: f128) -> f128;
 
 /// Generates the LLVM body for the automatic differentiation of `f` using Enzyme,
 /// with `df` as the derivative function and `args` as its arguments.

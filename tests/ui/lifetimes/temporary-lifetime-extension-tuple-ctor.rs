@@ -1,4 +1,4 @@
-//@ edition:2024
+//@ reference: destructors.scope.lifetime-extension.exprs
 
 fn temp() -> String {
     String::from("Hello")
@@ -22,7 +22,7 @@ fn main() {
     let a = &temp();
     let b = Some(&temp());
     let c = Option::Some::<&String>(&temp());
-    use Option::Some as S;
+    use std::option::Option::Some as S;
     let d = S(&temp());
     let e = X(&temp());
     let f = Some(Ok::<_, ()>(std::borrow::Cow::Borrowed(if true {
@@ -31,6 +31,6 @@ fn main() {
         panic!()
     })));
     let some = Some; // Turn the ctor into a regular function.
-    let g = some(&temp()); //~ERROR temporary value dropped while borrowe
+    let g = some(&temp()); //~ERROR temporary value dropped while borrowed
     println!("{a:?} {b:?} {c:?} {d:?} {e:?} {f:?} {g:?}");
 }
