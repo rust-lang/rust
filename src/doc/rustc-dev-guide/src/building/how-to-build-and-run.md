@@ -149,7 +149,7 @@ On Windows, the Powershell commands may give you an error that looks like this:
 ```
 PS C:\Users\vboxuser\rust> ./x
 ./x : File C:\Users\vboxuser\rust\x.ps1 cannot be loaded because running scripts is disabled on this system. For more
-information, see about_Execution_Policies at https:/go.microsoft.com/fwlink/?LinkID=135170.
+information, see about_Execution_Policies at https://go.microsoft.com/fwlink/?LinkID=135170.
 At line:1 char:1
 + ./x
 + ~~~
