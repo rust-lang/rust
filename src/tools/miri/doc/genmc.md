@@ -63,18 +63,14 @@ Note that `cargo miri test` in GenMC mode is currently not supported.
 
 ### Eliminating unbounded loops
 
-#### Limiting the number of explored executions
+As mentioned above, GenMC requires all loops to be bounded.
+Otherwise, it is not possible to exhaustively explore all executions.
+Currently, Miri-GenMC has no support for automatically bounding loops, so this needs to be done manually.
 
-The number of explored executions in a concurrent program can increase super-exponentially in the size of the program.
-Reducing the number of explored executions is the most impactful way to improve verification times.
-Some programs also contain possibly infinite loops, which are not supported by GenMC.
+#### Bounding loops without side effects
 
-One way to drastically improve verification performance is by bounding spinloops.
-A spinloop may loop a many times before it can finally make progress.
-If such a loop doesn't have any visible side effects, meaning it does not matter to the outcome of the program whether the loop ran once or a million time, then the loop can be limited to one iteration.
-
-The following code gives an example for how to replace a loop that waits for a boolean to be true.
-Since there are no side effects, replacing the loop with one iteration is safe.
+The easiest case is that of a loop that simply spins until it observes a certain condition, without any side effects.
+Such loops can be limited to one iteration, as demonstrated by the following example:
 
 ```rust
 #[cfg(miri)]
@@ -84,20 +80,22 @@ unsafe extern "Rust" {
   pub unsafe fn miri_genmc_assume(condition: bool);
 }
 
-/// This functions loads an atomic boolean in a loop until it is true.
-/// GenMC will explore all executions where this does 1, 2, ..., ∞ loads, which means the verification will never terminate.
+// This functions loads an atomic boolean in a loop until it is true.
+// GenMC will explore all executions where this does 1, 2, ..., ∞ loads, which means the verification will never terminate.
 fn spin_until_true(flag: &AtomicBool) {
-  while (!flag.load(Relaxed)) {
+  while !flag.load(Relaxed) {
     std::hint::spin_loop();
   }
 }
 
-/// By replacing this loop with an assume statement, the only executions that will be explored are those with exactly 1 load.
-/// Incorrect use of assume statements can lead GenMC to miss important executions, so it is marked `unsafe`.
+// By replacing this loop with an assume statement, the only executions that will be explored are those with exactly 1 load that observes the expected value.
+// Incorrect use of assume statements can lead GenMC to miss important executions, so it is marked `unsafe`.
 fn spin_until_true_genmc(flag: &AtomicBool) {
-  unsafe { miri_genmc_assume(flag.load(Relaxed)); }
+  unsafe { miri_genmc_assume(flag.load(Relaxed)) };
 }
 ```
+
+#### Bounding loops with side effects
 
 Some loops do contain side effects, meaning the number of explored iterations affects the rest of the program.
 Replacing the loop with one iteration like we did above would mean we miss all those possible executions.
@@ -110,11 +108,11 @@ The choice of iteration limit trades off verification time for possibly missing 
 /// Instead of replacing the loop entirely (which would miss all executions with `count > 0`), we limit the loop to at most 3 iterations.
 fn count_until_true_genmc(flag: &AtomicBool) -> u64 {
   let mut count = 0;
-  while (!flag.load(Relaxed)) {
-    // Any execution that takes more than 3 iterations will not be explored.
-    unsafe { miri_genmc_assume(count < 3); }
+  while !flag.load(Relaxed) {
     count += 1;
     std::hint::spin_loop();
+    // Any execution that takes more than 3 iterations will not be explored.
+    unsafe { miri_genmc_assume(count <= 3) };
   }
   count
 }
