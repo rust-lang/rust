@@ -1771,6 +1771,17 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 target: target.to_string(),
             });
         }
+        // Error on `#[repr(transparent)]` in combination with
+        // `#[rustc_pass_indirectly_in_non_rustic_abis]`
+        if is_transparent
+            && let Some(&pass_indirectly_span) =
+                find_attr!(attrs, AttributeKind::RustcPassIndirectlyInNonRusticAbis(span) => span)
+        {
+            self.dcx().emit_err(errors::TransparentIncompatible {
+                hint_spans: vec![span, pass_indirectly_span],
+                target: target.to_string(),
+            });
+        }
         if is_explicit_rust && (int_reprs > 0 || is_c || is_simd) {
             let hint_spans = hint_spans.clone().collect();
             self.dcx().emit_err(errors::ReprConflicting { hint_spans });
