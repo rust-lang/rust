@@ -6,7 +6,15 @@ use super::intrinsic_helpers::IntrinsicTypeDefinition;
 
 // The number of times each intrinsic will be called.
 const PASSES: u32 = 20;
-const COMMON_HEADERS: [&str; 5] = ["iostream", "string", "cstring", "iomanip", "sstream"];
+const COMMON_HEADERS: [&str; 7] = [
+    "iostream",
+    "string",
+    "cstring",
+    "iomanip",
+    "sstream",
+    "type_traits",
+    "cassert",
+];
 
 pub fn generate_c_test_loop<T: IntrinsicTypeDefinition + Sized>(
     w: &mut impl std::io::Write,
@@ -48,9 +56,13 @@ pub fn generate_c_constraint_blocks<'a, T: IntrinsicTypeDefinition + 'a>(
         let ty = current.ty.c_type();
 
         writeln!(w, "{indentation}{{")?;
+
+        // TODO: Move to actually specifying the enum value
+        // instead of typecasting integers, for better clarity
+        // of generated code.
         writeln!(
             w,
-            "{body_indentation}const {ty} {} = {i};",
+            "{body_indentation}const {ty} {} = ({ty}){i};",
             current.generate_name()
         )?;
 
@@ -113,11 +125,17 @@ pub fn write_mod_cpp<T: IntrinsicTypeDefinition>(
     writeln!(
         w,
         r#"
+// T1 is the `To` type, T2 is the `From` type
 template<typename T1, typename T2> T1 cast(T2 x) {{
-  static_assert(sizeof(T1) == sizeof(T2), "sizeof T1 and T2 must be the same");
-  T1 ret{{}};
-  memcpy(&ret, &x, sizeof(T1));
-  return ret;
+  if (std::is_convertible<T2, T1>::value) {{
+      return x;
+  }} else if (sizeof(T1) == sizeof(T2)) {{
+    T1 ret{{}};
+    memcpy(&ret, &x, sizeof(T1));
+    return ret;
+  }} else {{
+    assert("T2 must either be convertable to T1, or have the same size as T1!");
+  }}
 }}
 "#
     )?;
