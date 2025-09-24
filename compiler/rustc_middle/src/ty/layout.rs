@@ -72,7 +72,10 @@ impl abi::Integer {
     /// signed discriminant range and `#[repr]` attribute.
     /// N.B.: `u128` values above `i128::MAX` will be treated as signed, but
     /// that shouldn't affect anything, other than maybe debuginfo.
-    fn repr_discr<'tcx>(
+    ///
+    /// This is the basis for computing the type of the *tag* of an enum (which can be smaller than
+    /// the type of the *discriminant*, which is determined by [`ReprOptions::discr_type`]).
+    fn discr_range_of_repr<'tcx>(
         tcx: TyCtxt<'tcx>,
         ty: Ty<'tcx>,
         repr: &ReprOptions,
