@@ -110,6 +110,9 @@ pub enum BlockReason {
     Eventfd,
     /// Blocked on unnamed_socket.
     UnnamedSocket,
+    /// Blocked for any reason related to GenMC, such as `assume` statements (GenMC mode only).
+    /// Will be implicitly unblocked when GenMC schedules this thread again.
+    Genmc,
 }
 
 /// The state of a thread.
@@ -572,6 +575,7 @@ impl<'tcx> ThreadManager<'tcx> {
     /// See <https://docs.microsoft.com/en-us/windows/win32/procthread/thread-handles-and-identifiers>:
     /// > The handle is valid until closed, even after the thread it represents has been terminated.
     fn detach_thread(&mut self, id: ThreadId, allow_terminated_joined: bool) -> InterpResult<'tcx> {
+        // NOTE: In GenMC mode, we treat detached threads like regular threads that are never joined, so there is no special handling required here.
         trace!("detaching {:?}", id);
 
         let is_ub = if allow_terminated_joined && self.threads[id].state.is_terminated() {
@@ -705,11 +709,18 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
 
         // In GenMC mode, we let GenMC do the scheduling.
         if let Some(genmc_ctx) = this.machine.data_race.as_genmc_ref() {
-            let next_thread_id = genmc_ctx.schedule_thread(this)?;
-
+            let Some(next_thread_id) = genmc_ctx.schedule_thread(this)? else {
+                return interp_ok(SchedulingAction::ExecuteStep);
+            };
+            // If a thread is blocked on GenMC, we have to implicitly unblock it when it gets scheduled again.
+            if this.machine.threads.threads[next_thread_id].state.is_blocked_on(BlockReason::Genmc)
+            {
+                info!("GenMC: scheduling blocked thread {next_thread_id:?}, so we unblock it now.");
+                this.unblock_thread(next_thread_id, BlockReason::Genmc)?;
+            }
+            // Set the new active thread.
             let thread_manager = &mut this.machine.threads;
             thread_manager.active_thread = next_thread_id;
-
             assert!(thread_manager.threads[thread_manager.active_thread].state.is_enabled());
             return interp_ok(SchedulingAction::ExecuteStep);
         }

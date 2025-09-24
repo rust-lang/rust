@@ -30,6 +30,12 @@
 #include <memory>
 #include <utility>
 
+/**** Blocking instructions ****/
+
+void MiriGenmcShim::handle_assume_block(ThreadId thread_id) {
+    GenMCDriver::handleAssume(inc_pos(thread_id), AssumeType::User);
+}
+
 /**** Memory access handling ****/
 
 [[nodiscard]] auto MiriGenmcShim::handle_load(

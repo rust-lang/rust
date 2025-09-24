@@ -1,11 +1,12 @@
 use rustc_abi::{Align, Size};
 use rustc_const_eval::interpret::{AllocId, InterpCx, InterpResult};
 
+pub use self::intercept::EvalContextExt as GenmcEvalContextExt;
 pub use self::run::run_genmc_mode;
 use crate::intrinsics::AtomicRmwOp;
 use crate::{
-    AtomicFenceOrd, AtomicReadOrd, AtomicRwOrd, AtomicWriteOrd, MemoryKind, MiriMachine, Scalar,
-    ThreadId, ThreadManager, VisitProvenance, VisitWith,
+    AtomicFenceOrd, AtomicReadOrd, AtomicRwOrd, AtomicWriteOrd, MemoryKind, MiriMachine, OpTy,
+    Scalar, ThreadId, ThreadManager, VisitProvenance, VisitWith,
 };
 
 #[derive(Clone, Copy, Debug)]
@@ -36,8 +37,26 @@ mod run {
     }
 }
 
+mod intercept {
+    use super::*;
+
+    impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+    pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
+        fn handle_genmc_verifier_assume(&mut self, _condition: &OpTy<'tcx>) -> InterpResult<'tcx> {
+            unreachable!();
+        }
+    }
+}
+
 impl GenmcCtx {
     // We don't provide the `new` function in the dummy module.
+
+    pub(crate) fn schedule_thread<'tcx>(
+        &self,
+        _ecx: &InterpCx<'tcx, MiriMachine<'tcx>>,
+    ) -> InterpResult<'tcx, Option<ThreadId>> {
+        unreachable!()
+    }
 
     /**** Memory access handling ****/
 
@@ -189,26 +208,6 @@ impl GenmcCtx {
         _exit_code: i32,
         _exit_type: ExitType,
     ) -> InterpResult<'tcx> {
-        unreachable!()
-    }
-
-    /**** Scheduling functionality ****/
-
-    pub fn schedule_thread<'tcx>(
-        &self,
-        _ecx: &InterpCx<'tcx, MiriMachine<'tcx>>,
-    ) -> InterpResult<'tcx, ThreadId> {
-        unreachable!()
-    }
-
-    /**** Blocking instructions ****/
-
-    #[allow(unused)]
-    pub(crate) fn handle_verifier_assume<'tcx>(
-        &self,
-        _machine: &MiriMachine<'tcx>,
-        _condition: bool,
-    ) -> InterpResult<'tcx, ()> {
         unreachable!()
     }
 }
