@@ -1065,6 +1065,7 @@ impl f64 {
                   without modifying the original"]
     #[stable(feature = "float_approx_unchecked_to", since = "1.44.0")]
     #[inline]
+    #[core::contracts::requires(self.is_finite())]
     pub unsafe fn to_int_unchecked<Int>(self) -> Int
     where
         Self: FloatToInt<Int>,

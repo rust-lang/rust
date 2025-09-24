@@ -1921,6 +1921,7 @@ fn simd_contains(needle: &str, haystack: &str) -> Option<bool> {
     all(target_arch = "loongarch64", target_feature = "lsx")
 ))]
 #[inline]
+#[core::contracts::requires(x.len() == y.len())]
 unsafe fn small_slice_eq(x: &[u8], y: &[u8]) -> bool {
     debug_assert_eq!(x.len(), y.len());
     // This function is adapted from

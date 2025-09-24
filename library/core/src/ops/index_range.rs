@@ -20,6 +20,8 @@ impl IndexRange {
     /// - `start <= end`
     #[inline]
     #[track_caller]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::requires(start <= end)]
     pub(crate) const unsafe fn new_unchecked(start: usize, end: usize) -> Self {
         ub_checks::assert_unsafe_precondition!(
             check_library_ub,
@@ -54,6 +56,7 @@ impl IndexRange {
     /// # Safety
     /// - Can only be called when `start < end`, aka when `len > 0`.
     #[inline]
+    #[core::contracts::requires(self.start < self.end)]
     unsafe fn next_unchecked(&mut self) -> usize {
         debug_assert!(self.start < self.end);
 
@@ -66,6 +69,7 @@ impl IndexRange {
     /// # Safety
     /// - Can only be called when `start < end`, aka when `len > 0`.
     #[inline]
+    #[core::contracts::requires(self.start < self.end)]
     unsafe fn next_back_unchecked(&mut self) -> usize {
         debug_assert!(self.start < self.end);
 

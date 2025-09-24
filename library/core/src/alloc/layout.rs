@@ -66,6 +66,14 @@ impl Layout {
     #[stable(feature = "alloc_layout", since = "1.28.0")]
     #[rustc_const_stable(feature = "const_alloc_layout_size_align", since = "1.50.0")]
     #[inline]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::ensures(
+        move |result: &Result<Self, LayoutError>|
+        result.is_err() || (
+            align.is_power_of_two() &&
+            size <= isize::MAX as usize - (align - 1) &&
+            result.as_ref().unwrap().size() == size &&
+            result.as_ref().unwrap().align() == align))]
     pub const fn from_size_align(size: usize, align: usize) -> Result<Self, LayoutError> {
         if Layout::is_size_align_valid(size, align) {
             // SAFETY: Layout::is_size_align_valid checks the preconditions for this call.
@@ -127,6 +135,10 @@ impl Layout {
     #[must_use]
     #[inline]
     #[track_caller]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::requires(Layout::from_size_align(size, align).is_ok())]
+    #[core::contracts::ensures(
+        move |result: &Self| result.size() == size && result.align() == align)]
     pub const unsafe fn from_size_align_unchecked(size: usize, align: usize) -> Self {
         assert_unsafe_precondition!(
             check_library_ub,
@@ -167,6 +179,10 @@ impl Layout {
     #[rustc_const_stable(feature = "alloc_layout_const_new", since = "1.42.0")]
     #[must_use]
     #[inline]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::ensures(
+        |result: &Self|
+        result.size() == mem::size_of::<T>() && result.align() == mem::align_of::<T>())]
     pub const fn new<T>() -> Self {
         let (size, align) = size_align::<T>();
         // SAFETY: if the type is instantiated, rustc already ensures that its
@@ -182,6 +198,10 @@ impl Layout {
     #[rustc_const_stable(feature = "const_alloc_layout", since = "1.85.0")]
     #[must_use]
     #[inline]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::requires(mem::align_of_val(t).is_power_of_two())]
+    // FIXME: requires `&self` to be `'static`
+    // #[core::contracts::ensures(move |result: &Self| result.align() == mem::align_of_val(t))]
     pub const fn for_value<T: ?Sized>(t: &T) -> Self {
         let (size, align) = (size_of_val(t), align_of_val(t));
         // SAFETY: see rationale in `new` for why this is using the unsafe variant
@@ -217,6 +237,8 @@ impl Layout {
     /// [extern type]: ../../unstable-book/language-features/extern-types.html
     #[unstable(feature = "layout_for_ptr", issue = "69835")]
     #[must_use]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::ensures(|result: &Self| result.align().is_power_of_two())]
     pub const unsafe fn for_value_raw<T: ?Sized>(t: *const T) -> Self {
         // SAFETY: we pass along the prerequisites of these functions to the caller
         let (size, align) = unsafe { (mem::size_of_val_raw(t), mem::align_of_val_raw(t)) };
@@ -233,6 +255,8 @@ impl Layout {
     #[unstable(feature = "alloc_layout_extra", issue = "55724")]
     #[must_use]
     #[inline]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::ensures(|result: &NonNull<u8>| result.is_aligned())]
     pub const fn dangling(&self) -> NonNull<u8> {
         NonNull::without_provenance(self.align.as_nonzero())
     }
@@ -254,6 +278,12 @@ impl Layout {
     #[stable(feature = "alloc_layout_manipulation", since = "1.44.0")]
     #[rustc_const_stable(feature = "const_alloc_layout", since = "1.85.0")]
     #[inline]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::ensures(
+        move |result: &Result<Self, LayoutError>|
+        result.is_err() || (
+            result.as_ref().unwrap().align() >= align &&
+            result.as_ref().unwrap().align().is_power_of_two()))]
     pub const fn align_to(&self, align: usize) -> Result<Self, LayoutError> {
         if let Some(align) = Alignment::new(align) {
             Layout::from_size_alignment(self.size, Alignment::max(self.align, align))
@@ -282,6 +312,8 @@ impl Layout {
     #[must_use = "this returns the padding needed, \
                   without modifying the `Layout`"]
     #[inline]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::ensures(move |result| *result <= align)]
     pub const fn padding_needed_for(&self, align: usize) -> usize {
         // FIXME: Can we just change the type on this to `Alignment`?
         let Some(align) = Alignment::new(align) else { return usize::MAX };
@@ -330,6 +362,14 @@ impl Layout {
     #[must_use = "this returns a new `Layout`, \
                   without modifying the original"]
     #[inline]
+    // FIXME: requires `&self` to be `'static`
+    // #[rustc_allow_const_fn_unstable(contracts)]
+    // #[core::contracts::ensures(
+    //     move |result: &Layout|
+    //     result.size() >= self.size() &&
+    //     result.align() == self.align() &&
+    //     result.size() % result.align() == 0 &&
+    //     self.size() + self.padding_needed_for(self.align()) == result.size())]
     pub const fn pad_to_align(&self) -> Layout {
         // This cannot overflow. Quoting from the invariant of Layout:
         // > `size`, when rounded up to the nearest multiple of `align`,
@@ -370,6 +410,12 @@ impl Layout {
     /// ```
     #[unstable(feature = "alloc_layout_extra", issue = "55724")]
     #[inline]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::ensures(
+        move |result: &Result<(Self, usize), LayoutError>|
+        result.is_err() || (
+            (n == 0 || result.as_ref().unwrap().0.size() % n == 0) &&
+            result.as_ref().unwrap().0.size() == n * result.as_ref().unwrap().1))]
     pub const fn repeat(&self, n: usize) -> Result<(Self, usize), LayoutError> {
         let padded = self.pad_to_align();
         if let Ok(repeated) = padded.repeat_packed(n) {
@@ -427,6 +473,15 @@ impl Layout {
     #[stable(feature = "alloc_layout_manipulation", since = "1.44.0")]
     #[rustc_const_stable(feature = "const_alloc_layout", since = "1.85.0")]
     #[inline]
+    // FIXME: requires `&self` to be `'static`
+    // #[rustc_allow_const_fn_unstable(contracts)]
+    // #[core::contracts::ensures(
+    //     move |result: &Result<(Self, usize), LayoutError>|
+    //     result.is_err() || (
+    //         result.as_ref().unwrap().0.align() == cmp::max(self.align(), next.align()) &&
+    //         result.as_ref().unwrap().0.size() >= self.size() + next.size() &&
+    //         result.as_ref().unwrap().1 >= self.size() &&
+    //         result.as_ref().unwrap().1 <= result.as_ref().unwrap().0.size()))]
     pub const fn extend(&self, next: Self) -> Result<(Self, usize), LayoutError> {
         let new_align = Alignment::max(self.align, next.align);
         let offset = self.size_rounded_up_to_custom_align(next.align);
@@ -458,6 +513,13 @@ impl Layout {
     /// On arithmetic overflow, returns `LayoutError`.
     #[unstable(feature = "alloc_layout_extra", issue = "55724")]
     #[inline]
+    // FIXME: requires `&self` to be `'static`
+    // #[rustc_allow_const_fn_unstable(contracts)]
+    // #[core::contracts::ensures(
+    //     move |result: &Result<Self, LayoutError>|
+    //     result.is_err() || (
+    //         result.as_ref().unwrap().size() == n * self.size() &&
+    //         result.as_ref().unwrap().align() == self.align()))]
     pub const fn repeat_packed(&self, n: usize) -> Result<Self, LayoutError> {
         if let Some(size) = self.size.checked_mul(n) {
             // The safe constructor is called here to enforce the isize size limit.
@@ -475,6 +537,13 @@ impl Layout {
     /// On arithmetic overflow, returns `LayoutError`.
     #[unstable(feature = "alloc_layout_extra", issue = "55724")]
     #[inline]
+    // FIXME: requires `&self` to be `'static`
+    // #[rustc_allow_const_fn_unstable(contracts)]
+    // #[core::contracts::ensures(
+    //     move |result: &Result<Self, LayoutError>|
+    //     result.is_err() || (
+    //         result.as_ref().unwrap().size() == self.size() + next.size() &&
+    //         result.as_ref().unwrap().align() == self.align()))]
     pub const fn extend_packed(&self, next: Self) -> Result<Self, LayoutError> {
         // SAFETY: each `size` is at most `isize::MAX == usize::MAX/2`, so the
         // sum is at most `usize::MAX/2*2 == usize::MAX - 1`, and cannot overflow.
@@ -490,6 +559,12 @@ impl Layout {
     #[stable(feature = "alloc_layout_manipulation", since = "1.44.0")]
     #[rustc_const_stable(feature = "const_alloc_layout", since = "1.85.0")]
     #[inline]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::ensures(
+        move |result: &Result<Self, LayoutError>|
+        result.is_err() || (
+            result.as_ref().unwrap().size() == n * mem::size_of::<T>() &&
+            result.as_ref().unwrap().align() == mem::align_of::<T>()))]
     pub const fn array<T>(n: usize) -> Result<Self, LayoutError> {
         // Reduce the amount of code we need to monomorphize per `T`.
         return inner(T::LAYOUT, n);

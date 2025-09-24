@@ -77,6 +77,7 @@ macro_rules! iterator {
             ///
             /// The iterator must not be empty
             #[inline]
+            #[core::contracts::requires(!is_empty!(self))]
             unsafe fn next_back_unchecked(&mut self) -> $elem {
                 // SAFETY: the caller promised it's not empty, so
                 // the offsetting is in-bounds and there's an element to return.
@@ -96,6 +97,7 @@ macro_rules! iterator {
             // returning the old start.
             // Unsafe because the offset must not exceed `self.len()`.
             #[inline(always)]
+            #[core::contracts::requires(offset <= len!(self))]
             unsafe fn post_inc_start(&mut self, offset: usize) -> NonNull<T> {
                 let old = self.ptr;
 
@@ -115,6 +117,7 @@ macro_rules! iterator {
             // returning the new end.
             // Unsafe because the offset must not exceed `self.len()`.
             #[inline(always)]
+            #[core::contracts::requires(offset <= len!(self))]
             unsafe fn pre_dec_end(&mut self, offset: usize) -> NonNull<T> {
                 if_zst!(mut self,
                     // SAFETY: By our precondition, `offset` can be at most the
@@ -392,6 +395,7 @@ macro_rules! iterator {
             }
 
             #[inline]
+            #[core::contracts::requires(idx < len!(self))]
             unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
                 // SAFETY: the caller must guarantee that `i` is in bounds of
                 // the underlying slice, so `i` cannot overflow an `isize`, and
@@ -460,6 +464,7 @@ macro_rules! iterator {
 
         impl<'a, T> UncheckedIterator for $name<'a, T> {
             #[inline]
+            #[core::contracts::requires(!is_empty!(self))]
             unsafe fn next_unchecked(&mut self) -> $elem {
                 // SAFETY: The caller promised there's at least one more item.
                 unsafe {

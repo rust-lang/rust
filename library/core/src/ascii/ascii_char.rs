@@ -458,6 +458,10 @@ impl AsciiChar {
     /// or returns `None` if it's too large.
     #[unstable(feature = "ascii_char", issue = "110998")]
     #[inline]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::ensures(
+        move |result: &Option<AsciiChar>|
+        (b <= 127) == (result.is_some() && result.unwrap() as u8 == b))]
     pub const fn from_u8(b: u8) -> Option<Self> {
         if b <= 127 {
             // SAFETY: Just checked that `b` is in-range
@@ -475,6 +479,9 @@ impl AsciiChar {
     /// `b` must be in `0..=127`, or else this is UB.
     #[unstable(feature = "ascii_char", issue = "110998")]
     #[inline]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::requires(b <= 127)]
+    #[core::contracts::ensures(move |result: &Self| *result as u8 == b)]
     pub const unsafe fn from_u8_unchecked(b: u8) -> Self {
         // SAFETY: Our safety precondition is that `b` is in-range.
         unsafe { transmute(b) }
@@ -513,6 +520,11 @@ impl AsciiChar {
     #[unstable(feature = "ascii_char", issue = "110998")]
     #[inline]
     #[track_caller]
+    // Only `d < 64` is required for safety as described above, but we use `d < 10` as in the
+    // `assert_unsafe_precondition` inside. See https://github.com/rust-lang/rust/pull/129374 for
+    // some context about the discrepancy.
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::requires(d < 10)]
     pub const unsafe fn digit_unchecked(d: u8) -> Self {
         assert_unsafe_precondition!(
             check_library_ub,
@@ -532,6 +544,8 @@ impl AsciiChar {
     /// Gets this ASCII character as a byte.
     #[unstable(feature = "ascii_char", issue = "110998")]
     #[inline]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::ensures(|result: &u8| *result <= 127)]
     pub const fn to_u8(self) -> u8 {
         self as u8
     }

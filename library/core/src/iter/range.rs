@@ -184,12 +184,14 @@ pub trait Step: Clone + PartialOrd + Sized {
 // than the signed::MAX value. Therefore `as` casting to the signed type would be incorrect.
 macro_rules! step_signed_methods {
     ($unsigned: ty) => {
+        #[core::contracts::requires(start.checked_add_unsigned(n as $unsigned).is_some())]
         #[inline]
         unsafe fn forward_unchecked(start: Self, n: usize) -> Self {
             // SAFETY: the caller has to guarantee that `start + n` doesn't overflow.
             unsafe { start.checked_add_unsigned(n as $unsigned).unwrap_unchecked() }
         }
 
+        #[core::contracts::requires(start.checked_sub_unsigned(n as $unsigned).is_some())]
         #[inline]
         unsafe fn backward_unchecked(start: Self, n: usize) -> Self {
             // SAFETY: the caller has to guarantee that `start - n` doesn't overflow.
@@ -200,12 +202,14 @@ macro_rules! step_signed_methods {
 
 macro_rules! step_unsigned_methods {
     () => {
+        #[core::contracts::requires(start.checked_add(n as Self).is_some())]
         #[inline]
         unsafe fn forward_unchecked(start: Self, n: usize) -> Self {
             // SAFETY: the caller has to guarantee that `start + n` doesn't overflow.
             unsafe { start.unchecked_add(n as Self) }
         }
 
+        #[core::contracts::requires(start >= (n as Self))]
         #[inline]
         unsafe fn backward_unchecked(start: Self, n: usize) -> Self {
             // SAFETY: the caller has to guarantee that `start - n` doesn't overflow.
@@ -495,6 +499,11 @@ impl Step for char {
         Some(unsafe { char::from_u32_unchecked(res) })
     }
 
+    #[core::contracts::requires(
+        (start as u32).checked_add(count as u32).is_some_and(|dist|
+            (start as u32) >= 0xD800 ||
+            dist < 0xD800 ||
+            dist.checked_add(0x800).is_some()))]
     #[inline]
     unsafe fn forward_unchecked(start: char, count: usize) -> char {
         let start = start as u32;
@@ -511,6 +520,11 @@ impl Step for char {
         unsafe { char::from_u32_unchecked(res) }
     }
 
+    #[core::contracts::requires(
+        (start as u32).checked_sub(count as u32).is_some_and(|dist|
+            (start as u32) < 0xE000 ||
+            dist >= 0xE000 ||
+            dist.checked_sub(0x800).is_some()))]
     #[inline]
     unsafe fn backward_unchecked(start: char, count: usize) -> char {
         let start = start as u32;
@@ -549,6 +563,7 @@ impl Step for AsciiChar {
         Some(unsafe { AsciiChar::from_u8_unchecked(end) })
     }
 
+    #[core::contracts::requires(count < 256 && start.to_u8().checked_add(count as u8).is_some())]
     #[inline]
     unsafe fn forward_unchecked(start: AsciiChar, count: usize) -> AsciiChar {
         // SAFETY: Caller asserts that result is a valid ASCII character,
@@ -559,6 +574,7 @@ impl Step for AsciiChar {
         unsafe { AsciiChar::from_u8_unchecked(end) }
     }
 
+    #[core::contracts::requires(count < 256 && start.to_u8().checked_sub(count as u8).is_some())]
     #[inline]
     unsafe fn backward_unchecked(start: AsciiChar, count: usize) -> AsciiChar {
         // SAFETY: Caller asserts that result is a valid ASCII character,
@@ -587,6 +603,7 @@ impl Step for Ipv4Addr {
         u32::backward_checked(start.to_bits(), count).map(Ipv4Addr::from_bits)
     }
 
+    #[core::contracts::requires(start.to_bits().checked_add(count as u32).is_some())]
     #[inline]
     unsafe fn forward_unchecked(start: Ipv4Addr, count: usize) -> Ipv4Addr {
         // SAFETY: Since u32 and Ipv4Addr are losslessly convertible,
@@ -594,6 +611,7 @@ impl Step for Ipv4Addr {
         Ipv4Addr::from_bits(unsafe { u32::forward_unchecked(start.to_bits(), count) })
     }
 
+    #[core::contracts::requires(start.to_bits().checked_sub(count as u32).is_some())]
     #[inline]
     unsafe fn backward_unchecked(start: Ipv4Addr, count: usize) -> Ipv4Addr {
         // SAFETY: Since u32 and Ipv4Addr are losslessly convertible,
@@ -619,6 +637,7 @@ impl Step for Ipv6Addr {
         u128::backward_checked(start.to_bits(), count).map(Ipv6Addr::from_bits)
     }
 
+    #[core::contracts::requires(start.to_bits().checked_add(count as u128).is_some())]
     #[inline]
     unsafe fn forward_unchecked(start: Ipv6Addr, count: usize) -> Ipv6Addr {
         // SAFETY: Since u128 and Ipv6Addr are losslessly convertible,
@@ -626,6 +645,7 @@ impl Step for Ipv6Addr {
         Ipv6Addr::from_bits(unsafe { u128::forward_unchecked(start.to_bits(), count) })
     }
 
+    #[core::contracts::requires(start.to_bits().checked_sub(count as u128).is_some())]
     #[inline]
     unsafe fn backward_unchecked(start: Ipv6Addr, count: usize) -> Ipv6Addr {
         // SAFETY: Since u128 and Ipv6Addr are losslessly convertible,
@@ -905,6 +925,7 @@ impl<A: Step> Iterator for ops::Range<A> {
     }
 
     #[inline]
+    #[core::contracts::requires(idx < self.size_hint().0)]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item
     where
         Self: TrustedRandomAccessNoCoerce,
