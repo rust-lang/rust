@@ -282,7 +282,7 @@ impl IntrinsicType {
             }
             IntrinsicType {
                 kind: TypeKind::Vector,
-                bit_len: Some(bit_len @ (128 | 256 | 512)),
+                bit_len: Some(128 | 256 | 512),
                 simd_len,
                 vec_len,
                 ..
