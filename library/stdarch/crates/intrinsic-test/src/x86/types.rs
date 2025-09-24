@@ -127,6 +127,30 @@ impl IntrinsicTypeDefinition for X86IntrinsicType {
                 .replace("64", "");
             {
                 let suffix = match (self.bit_len, self.kind) {
+                    (Some(16), TypeKind::Float)
+                        if ["__m128i", "__m256i", "__m512i"]
+                            .contains(&self.param.type_data.as_str()) =>
+                    {
+                        format!("ph_to_{}", self.param.type_data)
+                    }
+                    (Some(32), TypeKind::Float)
+                        if ["__m128h", "__m256h", "__m512h"]
+                            .contains(&self.param.type_data.as_str()) =>
+                    {
+                        format!("ps_to_{}", self.param.type_data)
+                    }
+                    (Some(bit_len @ (16 | 32 | 64)), TypeKind::Int(_) | TypeKind::Mask)
+                        if ["__m128d", "__m256d", "__m512d"]
+                            .contains(&self.param.type_data.as_str()) =>
+                    {
+                        format!("epi{bit_len}_to_{}", self.param.type_data)
+                    }
+                    (Some(bit_len @ (16 | 32 | 64)), TypeKind::Int(_) | TypeKind::Mask)
+                        if ["__m128", "__m256", "__m512"]
+                            .contains(&self.param.type_data.as_str()) =>
+                    {
+                        format!("epi{bit_len}_to_{}", self.param.type_data)
+                    }
                     (Some(bit_len @ (8 | 16 | 32 | 64)), TypeKind::Int(_)) => {
                         format!("epi{bit_len}")
                     }

@@ -8,6 +8,128 @@ pub const F16_FORMATTING_DEF: &str = r#"
 use std::arch::x86_64::*;
 
 #[inline]
+unsafe fn _mm_loadu_ph_to___m128i(mem_addr: *const f16) -> __m128i {
+    _mm_castph_si128(_mm_loadu_ph(mem_addr))
+}
+
+#[inline]
+unsafe fn _mm256_loadu_ph_to___m256i(mem_addr: *const f16) -> __m256i {
+    _mm256_castph_si256(_mm256_loadu_ph(mem_addr))
+}
+
+#[inline]
+unsafe fn _mm512_loadu_ph_to___mm512i(mem_addr: *const f16) -> __m512i {
+    _mm512_castph_si512(_mm512_loadu_ph(mem_addr))
+}
+
+
+#[inline]
+unsafe fn _mm_loadu_ps_to___m128h(mem_addr: *const f32) -> __m128h {
+    _mm_castps_ph(_mm_loadu_ps(mem_addr))
+}
+
+#[inline]
+unsafe fn _mm256_loadu_ps_to___m256h(mem_addr: *const f32) -> __m256h {
+    _mm256_castps_ph(_mm256_loadu_ps(mem_addr))
+}
+
+#[inline]
+unsafe fn _mm512_loadu_ps_to___m512h(mem_addr: *const f32) -> __m512h {
+    _mm512_castps_ph(_mm512_loadu_ps(mem_addr))
+}
+
+#[inline]
+unsafe fn _mm_loadu_epi16_to___m128d(mem_addr: *const i16) -> __m128d {
+    _mm_castsi128_pd(_mm_loadu_epi16(mem_addr))
+}
+
+#[inline]
+unsafe fn _mm256_loadu_epi16_to___m256d(mem_addr: *const i16) -> __m256d {
+    _mm256_castsi256_pd(_mm256_loadu_epi16(mem_addr))
+}
+
+#[inline]
+unsafe fn _mm512_loadu_epi16_to___m512d(mem_addr: *const i16) -> __m512d {
+    _mm512_castsi512_pd(_mm512_loadu_epi16(mem_addr))
+}
+
+#[inline]
+unsafe fn _mm_loadu_epi32_to___m128d(mem_addr: *const i32) -> __m128d {
+    _mm_castsi128_pd(_mm_loadu_epi32(mem_addr))
+}
+
+#[inline]
+unsafe fn _mm256_loadu_epi32_to___m256d(mem_addr: *const i32) -> __m256d {
+    _mm256_castsi256_pd(_mm256_loadu_epi32(mem_addr))
+}
+
+#[inline]
+unsafe fn _mm512_loadu_epi32_to___m512d(mem_addr: *const i32) -> __m512d {
+    _mm512_castsi512_pd(_mm512_loadu_epi32(mem_addr))
+}
+
+#[inline]
+unsafe fn _mm_loadu_epi64_to___m128d(mem_addr: *const i64) -> __m128d {
+    _mm_castsi128_pd(_mm_loadu_epi64(mem_addr))
+}
+
+#[inline]
+unsafe fn _mm256_loadu_epi64_to___m256d(mem_addr: *const i64) -> __m256d {
+    _mm256_castsi256_pd(_mm256_loadu_epi64(mem_addr))
+}
+
+#[inline]
+unsafe fn _mm512_loadu_epi64_to___m512d(mem_addr: *const i64) -> __m512d {
+    _mm512_castsi512_pd(_mm512_loadu_epi64(mem_addr))
+}
+
+// === 
+#[inline]
+unsafe fn _mm_loadu_epi16_to___m128(mem_addr: *const i16) -> __m128 {
+    _mm_castsi128_ps(_mm_loadu_epi16(mem_addr))
+}
+
+#[inline]
+unsafe fn _mm256_loadu_epi16_to___m256(mem_addr: *const i16) -> __m256 {
+    _mm256_castsi256_ps(_mm256_loadu_epi16(mem_addr))
+}
+
+#[inline]
+unsafe fn _mm512_loadu_epi16_to___m512(mem_addr: *const i16) -> __m512 {
+    _mm512_castsi512_ps(_mm512_loadu_epi16(mem_addr))
+}
+
+#[inline]
+unsafe fn _mm_loadu_epi32_to___m128(mem_addr: *const i32) -> __m128 {
+    _mm_castsi128_ps(_mm_loadu_epi32(mem_addr))
+}
+
+#[inline]
+unsafe fn _mm256_loadu_epi32_to___m256(mem_addr: *const i32) -> __m256 {
+    _mm256_castsi256_ps(_mm256_loadu_epi32(mem_addr))
+}
+
+#[inline]
+unsafe fn _mm512_loadu_epi32_to___m512(mem_addr: *const i32) -> __m512 {
+    _mm512_castsi512_ps(_mm512_loadu_epi32(mem_addr))
+}
+
+#[inline]
+unsafe fn _mm_loadu_epi64_to___m128(mem_addr: *const i64) -> __m128 {
+    _mm_castsi128_ps(_mm_loadu_epi64(mem_addr))
+}
+
+#[inline]
+unsafe fn _mm256_loadu_epi64_to___m256(mem_addr: *const i64) -> __m256 {
+    _mm256_castsi256_ps(_mm256_loadu_epi64(mem_addr))
+}
+
+#[inline]
+unsafe fn _mm512_loadu_epi64_to___m512(mem_addr: *const i64) -> __m512 {
+    _mm512_castsi512_ps(_mm512_loadu_epi64(mem_addr))
+}
+
+#[inline]
 fn debug_simd_finish<T: core::fmt::Debug, const N: usize>(
     formatter: &mut core::fmt::Formatter<'_>,
     type_name: &str,
@@ -50,6 +172,13 @@ impl DebugHexF16 for __m128h {
     }
 }
 
+impl DebugHexF16 for __m128i {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let array = unsafe { core::mem::transmute::<_, [Hex<f16>; 8]>(*self) };
+        debug_simd_finish(f, "__m128i", &array)
+    }
+}
+
 impl DebugHexF16 for __m256h {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let array = unsafe { core::mem::transmute::<_, [Hex<f16>; 16]>(*self) };
@@ -57,10 +186,24 @@ impl DebugHexF16 for __m256h {
     }
 }
 
+impl DebugHexF16 for __m256i {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let array = unsafe { core::mem::transmute::<_, [Hex<f16>; 16]>(*self) };
+        debug_simd_finish(f, "__m256i", &array)
+    }
+}
+
 impl DebugHexF16 for __m512h {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let array = unsafe { core::mem::transmute::<_, [Hex<f16>; 32]>(*self) };
         debug_simd_finish(f, "__m512h", &array)
+    }
+}
+
+impl DebugHexF16 for __m512i {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let array = unsafe { core::mem::transmute::<_, [Hex<f16>; 32]>(*self) };
+        debug_simd_finish(f, "__m512i", &array)
     }
 }
  "#;
