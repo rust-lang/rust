@@ -30,7 +30,8 @@ where
     }
 
     pub fn to_c_type(&self) -> String {
-        self.ty.c_type()
+        let prefix = if self.ty.constant { "const " } else { "" };
+        format!("{}{}", prefix, self.ty.c_type())
     }
 
     pub fn generate_name(&self) -> String {
@@ -95,7 +96,7 @@ where
     pub fn as_call_param_rust(&self) -> String {
         self.iter()
             .filter(|a| !a.has_constraint())
-            .map(|arg| arg.generate_name())
+            .map(|arg| arg.generate_name() + " as _")
             .collect::<Vec<String>>()
             .join(", ")
     }
@@ -177,15 +178,16 @@ where
         self.iter()
             .filter(|&arg| !arg.has_constraint())
             .map(|arg| {
+                let load = if arg.is_simd() {
+                    arg.ty.get_load_function(Language::Rust)
+                } else {
+                    "*".to_string()
+                };
+                let typecast = if load.len() > 2 { "as _" } else { "" };
                 format!(
-                    "{indentation}let {name} = {load}({vals_name}.as_ptr().offset(i));\n",
+                    "{indentation}let {name} = {load}({vals_name}.as_ptr().offset(i){typecast});\n",
                     name = arg.generate_name(),
                     vals_name = arg.rust_vals_array_name(),
-                    load = if arg.is_simd() {
-                        arg.ty.get_load_function(Language::Rust)
-                    } else {
-                        "*".to_string()
-                    },
                 )
             })
             .collect()
