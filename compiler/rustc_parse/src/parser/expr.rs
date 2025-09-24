@@ -3612,20 +3612,36 @@ impl<'a> Parser<'a> {
         self.token.is_keyword(kw::Async) && self.is_gen_block(kw::Gen, 1)
     }
 
+    fn is_likely_struct_lit(&self) -> bool {
+        // `{ ident, ` and `{ ident: ` cannot start a block.
+        self.look_ahead(1, |t| t.is_ident())
+            && self.look_ahead(2, |t| t == &token::Comma || t == &token::Colon)
+    }
+
     fn maybe_parse_struct_expr(
         &mut self,
         qself: &Option<Box<ast::QSelf>>,
         path: &ast::Path,
     ) -> Option<PResult<'a, Box<Expr>>> {
         let struct_allowed = !self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL);
-        let is_ident = self.look_ahead(1, |t| t.is_ident());
-        let is_comma = self.look_ahead(2, |t| t == &token::Comma);
-        let is_colon = self.look_ahead(2, |t| t == &token::Colon);
-        match (struct_allowed, is_ident, is_comma, is_colon) {
-            (false, true, true, _) | (false, true, _, true) => {
+        match (struct_allowed, self.is_likely_struct_lit()) {
+            // A struct literal isn't expected and one is pretty much assured not to be present. The
+            // only situation that isn't detected is when a struct with a single field was attempted
+            // in a place where a struct literal wasn't expected, but regular parser errors apply.
+            // Happy path.
+            (false, false) => None,
+            (true, _) => {
+                // A struct is accepted here, try to parse it and rely on `parse_expr_struct` for
+                // any kind of recovery. Happy path.
+                if let Err(err) = self.expect(exp!(OpenBrace)) {
+                    return Some(Err(err));
+                }
+                Some(self.parse_expr_struct(qself.clone(), path.clone(), true))
+            }
+            (false, true) => {
                 // We have something like `match foo { bar,` or `match foo { bar:`, which means the
                 // user might have meant to write a struct literal as part of the `match`
-                // discriminant.
+                // discriminant. This is done purely for error recovery.
                 let snapshot = self.create_snapshot_for_diagnostic();
                 if let Err(err) = self.expect(exp!(OpenBrace)) {
                     return Some(Err(err));
@@ -3651,15 +3667,6 @@ impl<'a> Parser<'a> {
                     }
                 }
             }
-            (true, _, _, _) => {
-                // A struct is accepted here, try to parse it and rely on `parse_expr_struct` for
-                // any kind of recovery.
-                if let Err(err) = self.expect(exp!(OpenBrace)) {
-                    return Some(Err(err));
-                }
-                Some(self.parse_expr_struct(qself.clone(), path.clone(), true))
-            }
-            (false, _, _, _) => None,
         }
     }
 
