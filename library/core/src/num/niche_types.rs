@@ -33,6 +33,12 @@ macro_rules! define_valid_range_type {
 
         impl $name {
             #[inline]
+            #[rustc_allow_const_fn_unstable(contracts)]
+            #[core::contracts::ensures(
+                |result: &Option<$name>|
+                result.is_none() || (
+                    (result.unwrap().as_inner() as $uint) >= ($low as $uint) &&
+                    (result.unwrap().as_inner() as $uint) <= ($high as $uint)))]
             pub const fn new(val: $int) -> Option<Self> {
                 if (val as $uint) >= ($low as $uint) && (val as $uint) <= ($high as $uint) {
                     // SAFETY: just checked the inclusive range
@@ -49,12 +55,19 @@ macro_rules! define_valid_range_type {
             /// Immediate language UB if `val` is not within the valid range for this
             /// type, as it violates the validity invariant.
             #[inline]
+            #[rustc_allow_const_fn_unstable(contracts)]
+            #[core::contracts::requires(
+                (val as $uint) >= ($low as $uint) && (val as $uint) <= ($high as $uint))]
             pub const unsafe fn new_unchecked(val: $int) -> Self {
                 // SAFETY: Caller promised that `val` is within the valid range.
                 unsafe { $name(val) }
             }
 
             #[inline]
+            #[rustc_allow_const_fn_unstable(contracts)]
+            #[core::contracts::ensures(
+                |result|
+                (*result as $uint) >= ($low as $uint) && (*result as $uint) <= ($high as $uint))]
             pub const fn as_inner(self) -> $int {
                 // SAFETY: This is a transparent wrapper, so unwrapping it is sound
                 // (Not using `.0` due to MCP#807.)

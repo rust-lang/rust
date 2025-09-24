@@ -1403,6 +1403,8 @@ impl<'a, T> Iterator for Windows<'a, T> {
         }
     }
 
+    #[allow(unused_parens)]
+    #[core::contracts::requires(idx < self.len())]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
         // SAFETY: since the caller guarantees that `i` is in bounds,
         // which means that `i` cannot overflow an `isize`, and the
@@ -1560,6 +1562,8 @@ impl<'a, T> Iterator for Chunks<'a, T> {
         }
     }
 
+    #[allow(unused_parens)]
+    #[core::contracts::requires(idx < self.len())]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
         let start = idx * self.chunk_size;
         // SAFETY: the caller guarantees that `i` is in bounds,
@@ -1749,6 +1753,8 @@ impl<'a, T> Iterator for ChunksMut<'a, T> {
         }
     }
 
+    #[allow(unused_parens)]
+    #[core::contracts::requires(idx < self.len())]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
         let start = idx * self.chunk_size;
         // SAFETY: see comments for `Chunks::__iterator_get_unchecked` and `self.v`.
@@ -1947,6 +1953,8 @@ impl<'a, T> Iterator for ChunksExact<'a, T> {
         self.next_back()
     }
 
+    #[allow(unused_parens)]
+    #[core::contracts::requires(idx < self.len())]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
         let start = idx * self.chunk_size;
         // SAFETY: mostly identical to `Chunks::__iterator_get_unchecked`.
@@ -2108,6 +2116,8 @@ impl<'a, T> Iterator for ChunksExactMut<'a, T> {
         self.next_back()
     }
 
+    #[allow(unused_parens)]
+    #[core::contracts::requires(idx < self.len())]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
         let start = idx * self.chunk_size;
         // SAFETY: see comments for `Chunks::__iterator_get_unchecked` and `self.v`.
@@ -2414,6 +2424,8 @@ impl<'a, T> Iterator for RChunks<'a, T> {
         }
     }
 
+    #[allow(unused_parens)]
+    #[core::contracts::requires(idx < self.len())]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
         let end = self.v.len() - idx * self.chunk_size;
         let start = match end.checked_sub(self.chunk_size) {
@@ -2594,6 +2606,8 @@ impl<'a, T> Iterator for RChunksMut<'a, T> {
         }
     }
 
+    #[allow(unused_parens)]
+    #[core::contracts::requires(idx < self.len())]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
         let end = self.v.len() - idx * self.chunk_size;
         let start = match end.checked_sub(self.chunk_size) {
@@ -2787,6 +2801,8 @@ impl<'a, T> Iterator for RChunksExact<'a, T> {
         self.next_back()
     }
 
+    #[allow(unused_parens)]
+    #[core::contracts::requires(idx < self.len())]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
         let end = self.v.len() - idx * self.chunk_size;
         let start = end - self.chunk_size;
@@ -2953,6 +2969,8 @@ impl<'a, T> Iterator for RChunksExactMut<'a, T> {
         self.next_back()
     }
 
+    #[allow(unused_parens)]
+    #[core::contracts::requires(idx < self.len())]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
         let end = self.v.len() - idx * self.chunk_size;
         let start = end - self.chunk_size;

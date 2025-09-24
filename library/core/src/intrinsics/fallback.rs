@@ -130,6 +130,7 @@ macro_rules! impl_disjoint_bitor {
         impl const DisjointBitOr for $t {
             #[cfg_attr(miri, track_caller)]
             #[inline]
+            #[core::contracts::requires((self & other) == zero!($t))]
             unsafe fn disjoint_bitor(self, other: Self) -> Self {
                 // Note that the assume here is required for UB detection in Miri!
 

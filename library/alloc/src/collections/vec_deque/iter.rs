@@ -144,6 +144,8 @@ impl<'a, T> Iterator for Iter<'a, T> {
     }
 
     #[inline]
+    #[allow(unused_parens)]
+    #[core::contracts::requires(idx < self.len())]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
         // Safety: The TrustedRandomAccess contract requires that callers only pass an index
         // that is in bounds.

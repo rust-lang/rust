@@ -129,6 +129,8 @@ where
     }
 
     #[inline]
+    #[allow(unused_parens)]
+    #[core::contracts::requires(idx < self.iter.size_hint().0)]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> B
     where
         Self: TrustedRandomAccessNoCoerce,

@@ -356,6 +356,8 @@ impl Iterator for Bytes<'_> {
     }
 
     #[inline]
+    #[allow(unused_parens)]
+    #[core::contracts::requires(idx < self.0.len())]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> u8 {
         // SAFETY: the caller must uphold the safety contract
         // for `Iterator::__iterator_get_unchecked`.
