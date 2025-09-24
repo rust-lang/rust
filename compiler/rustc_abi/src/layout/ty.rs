@@ -291,6 +291,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         {
             self = field;
         }
+
         Ty::is_pass_indirectly_in_non_rustic_abis_flag_set(self)
     }
 
