@@ -2663,7 +2663,7 @@ impl<'test> TestCx<'test> {
 
             // The alloc-id appears in pretty-printed allocations.
             normalized = static_regex!(
-                r"╾─*a(lloc)?([0-9]+)(\+0x[0-9]+)?(<imm>)?( \([0-9]+ ptr bytes\))?─*╼"
+                r"╾─*a(lloc)?([0-9]+)(\+0x[0-9a-f]+)?(<imm>)?( \([0-9]+ ptr bytes\))?─*╼"
             )
             .replace_all(&normalized, |caps: &Captures<'_>| {
                 // Renumber the captured index.
