@@ -9,7 +9,7 @@ LL | const NULL_PTR: NonNull<u8> = unsafe { mem::transmute(0usize) };
                HEX_DUMP
            }
 
-error[E0080]: in-bounds pointer arithmetic failed: attempting to offset pointer by 255 bytes, but got ALLOC1 which is only 1 byte from the end of the allocation
+error[E0080]: in-bounds pointer arithmetic failed: attempting to offset pointer by 255 bytes, but got ALLOC2 which is only 1 byte from the end of the allocation
   --> $DIR/ub-nonnull.rs:22:29
    |
 LL |     let out_of_bounds_ptr = &ptr[255];
@@ -37,7 +37,7 @@ LL | const NULL_USIZE: NonZero<usize> = unsafe { mem::transmute(0usize) };
                HEX_DUMP
            }
 
-error[E0080]: reading memory at ALLOC2[0x0..0x1], but memory is uninitialized at [0x0..0x1], and this operation requires initialized memory
+error[E0080]: reading memory at ALLOC3[0x0..0x1], but memory is uninitialized at [0x0..0x1], and this operation requires initialized memory
   --> $DIR/ub-nonnull.rs:36:38
    |
 LL | const UNINIT: NonZero<u8> = unsafe { MaybeUninit { uninit: () }.init };
@@ -80,6 +80,17 @@ LL | const NULL_FAT_PTR: NonNull<dyn Send> = unsafe {
                HEX_DUMP
            }
 
-error: aborting due to 8 previous errors
+error[E0080]: constructing invalid value: encountered a maybe-null pointer, but expected something that is definitely non-zero
+  --> $DIR/ub-nonnull.rs:61:1
+   |
+LL | const MAYBE_NULL_PTR: NonNull<()> = unsafe { mem::transmute((&raw const S).wrapping_add(4)) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
+   |
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               HEX_DUMP
+           }
+
+error: aborting due to 9 previous errors
 
 For more information about this error, try `rustc --explain E0080`.
