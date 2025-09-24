@@ -286,12 +286,17 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     where
         Ty: TyAbiInterface<'a, C> + Copy,
     {
-        while self.is_transparent()
-            && let Some((_, field)) = self.non_1zst_field(cx)
-        {
-            self = field;
+        loop {
+            if Ty::is_pass_indirectly_in_non_rustic_abis_flag_set(self) {
+                return true;
+            } else if self.is_transparent()
+                && let Some((_, field)) = self.non_1zst_field(cx)
+            {
+                self = field;
+            } else {
+                return false;
+            }
         }
-        Ty::is_pass_indirectly_in_non_rustic_abis_flag_set(self)
     }
 
     /// Finds the one field that is not a 1-ZST.

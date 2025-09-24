@@ -1,4 +1,4 @@
-error: fn_abi_of(func) = FnAbi {
+error: fn_abi_of(extern_c) = FnAbi {
            args: [
                ArgAbi {
                    layout: TyAndLayout {
@@ -77,8 +77,196 @@ error: fn_abi_of(func) = FnAbi {
        }
   --> $DIR/pass-indirectly-attr.rs:13:1
    |
-LL | pub extern "C" fn func(_: Type) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | pub extern "C" fn extern_c(_: Type) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 1 previous error
+error: fn_abi_of(extern_rust) = FnAbi {
+           args: [
+               ArgAbi {
+                   layout: TyAndLayout {
+                       ty: Type,
+                       layout: Layout {
+                           size: Size(1 bytes),
+                           align: AbiAlign {
+                               abi: Align(1 bytes),
+                           },
+                           backend_repr: Memory {
+                               sized: true,
+                           },
+                           fields: Arbitrary {
+                               offsets: [
+                                   Size(0 bytes),
+                               ],
+                               memory_index: [
+                                   0,
+                               ],
+                           },
+                           largest_niche: None,
+                           uninhabited: false,
+                           variants: Single {
+                               index: 0,
+                           },
+                           max_repr_align: None,
+                           unadjusted_abi_align: Align(1 bytes),
+                           randomization_seed: $SEED,
+                       },
+                   },
+                   mode: Cast {
+                       pad_i32: false,
+                       cast: CastTarget {
+                           prefix: [
+                               None,
+                               None,
+                               None,
+                               None,
+                               None,
+                               None,
+                               None,
+                               None,
+                           ],
+                           rest_offset: None,
+                           rest: Uniform {
+                               unit: Reg {
+                                   kind: Integer,
+                                   size: Size(1 bytes),
+                               },
+                               total: Size(1 bytes),
+                               is_consecutive: false,
+                           },
+                           attrs: ArgAttributes {
+                               regular: ,
+                               arg_ext: None,
+                               pointee_size: Size(0 bytes),
+                               pointee_align: None,
+                           },
+                       },
+                   },
+               },
+           ],
+           ret: ArgAbi {
+               layout: TyAndLayout {
+                   ty: (),
+                   layout: Layout {
+                       size: Size(0 bytes),
+                       align: AbiAlign {
+                           abi: Align(1 bytes),
+                       },
+                       backend_repr: Memory {
+                           sized: true,
+                       },
+                       fields: Arbitrary {
+                           offsets: [],
+                           memory_index: [],
+                       },
+                       largest_niche: None,
+                       uninhabited: false,
+                       variants: Single {
+                           index: 0,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(1 bytes),
+                       randomization_seed: $SEED,
+                   },
+               },
+               mode: Ignore,
+           },
+           c_variadic: false,
+           fixed_count: 1,
+           conv: Rust,
+           can_unwind: true,
+       }
+  --> $DIR/pass-indirectly-attr.rs:20:1
+   |
+LL | pub extern "Rust" fn extern_rust(_: Type) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: fn_abi_of(wrapped_transparent) = FnAbi {
+           args: [
+               ArgAbi {
+                   layout: TyAndLayout {
+                       ty: Wrapper,
+                       layout: Layout {
+                           size: Size(8 bytes),
+                           align: AbiAlign {
+                               abi: Align(8 bytes),
+                           },
+                           backend_repr: Scalar(
+                               Initialized {
+                                   value: Int(
+                                       I64,
+                                       false,
+                                   ),
+                                   valid_range: 0..=18446744073709551615,
+                               },
+                           ),
+                           fields: Arbitrary {
+                               offsets: [
+                                   Size(0 bytes),
+                               ],
+                               memory_index: [
+                                   0,
+                               ],
+                           },
+                           largest_niche: None,
+                           uninhabited: false,
+                           variants: Single {
+                               index: 0,
+                           },
+                           max_repr_align: None,
+                           unadjusted_abi_align: Align(8 bytes),
+                           randomization_seed: $SEED,
+                       },
+                   },
+                   mode: Indirect {
+                       attrs: ArgAttributes {
+                           regular: NoAlias | CapturesAddress | NonNull | NoUndef,
+                           arg_ext: None,
+                           pointee_size: Size(8 bytes),
+                           pointee_align: Some(
+                               Align(8 bytes),
+                           ),
+                       },
+                       meta_attrs: None,
+                       on_stack: false,
+                   },
+               },
+           ],
+           ret: ArgAbi {
+               layout: TyAndLayout {
+                   ty: (),
+                   layout: Layout {
+                       size: Size(0 bytes),
+                       align: AbiAlign {
+                           abi: Align(1 bytes),
+                       },
+                       backend_repr: Memory {
+                           sized: true,
+                       },
+                       fields: Arbitrary {
+                           offsets: [],
+                           memory_index: [],
+                       },
+                       largest_niche: None,
+                       uninhabited: false,
+                       variants: Single {
+                           index: 0,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(1 bytes),
+                       randomization_seed: $SEED,
+                   },
+               },
+               mode: Ignore,
+           },
+           c_variadic: false,
+           fixed_count: 1,
+           conv: C,
+           can_unwind: false,
+       }
+  --> $DIR/pass-indirectly-attr.rs:33:1
+   |
+LL | pub extern "C" fn wrapped_transparent(_: Wrapper) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
 
