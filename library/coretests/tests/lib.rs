@@ -20,6 +20,7 @@
 #![feature(const_convert)]
 #![feature(const_destruct)]
 #![feature(const_eval_select)]
+#![feature(const_mul_add)]
 #![feature(const_ops)]
 #![feature(const_option_ops)]
 #![feature(const_ref_cell)]
