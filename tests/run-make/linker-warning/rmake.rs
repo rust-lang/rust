@@ -61,7 +61,6 @@ fn main() {
         diff()
             .expected_file("short-error.txt")
             .actual_text("(linker error)", out.stderr())
-            .normalize(r#"/rustc[^/_-]*/"#, "/rustc/")
             .normalize("libpanic_abort", "libpanic_unwind")
             .normalize(
                 regex::escape(
