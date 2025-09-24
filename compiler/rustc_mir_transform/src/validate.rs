@@ -655,20 +655,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         location: Location,
     ) {
         match elem {
-            ProjectionElem::OpaqueCast(ty)
-                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) =>
-            {
-                self.fail(
-                    location,
-                    format!("explicit opaque type cast to `{ty}` after `PostAnalysisNormalize`"),
-                )
-            }
-            ProjectionElem::Index(index) => {
-                let index_ty = self.body.local_decls[index].ty;
-                if index_ty != self.tcx.types.usize {
-                    self.fail(location, format!("bad index ({index_ty} != usize)"))
-                }
-            }
             ProjectionElem::Deref
                 if self.body.phase >= MirPhase::Runtime(RuntimePhase::PostCleanup) =>
             {
@@ -814,6 +800,20 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         self.fail(location, format!("{:?} does not have fields", parent_ty.ty));
                     }
                 }
+            }
+            ProjectionElem::Index(index) => {
+                let index_ty = self.body.local_decls[index].ty;
+                if index_ty != self.tcx.types.usize {
+                    self.fail(location, format!("bad index ({index_ty} != usize)"))
+                }
+            }
+            ProjectionElem::OpaqueCast(ty)
+                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) =>
+            {
+                self.fail(
+                    location,
+                    format!("explicit opaque type cast to `{ty}` after `PostAnalysisNormalize`"),
+                )
             }
             ProjectionElem::UnwrapUnsafeBinder(unwrapped_ty) => {
                 let binder_ty = place_ref.ty(&self.body.local_decls, self.tcx);
