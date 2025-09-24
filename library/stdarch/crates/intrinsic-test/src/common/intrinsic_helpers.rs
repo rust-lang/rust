@@ -284,6 +284,7 @@ impl IntrinsicType {
                 kind: TypeKind::Vector,
                 bit_len: Some(bit_len @ (128 | 256 | 512)),
                 simd_len,
+                vec_len,
                 ..
             } => {
                 let (prefix, suffix) = match language {
@@ -292,14 +293,27 @@ impl IntrinsicType {
                 };
                 let body_indentation = indentation.nested();
                 let effective_bit_len = 32;
-                let effective_vec_len = bit_len / effective_bit_len;
                 format!(
                     "{prefix}\n{body}\n{indentation}{suffix}",
-                    body = (0..(simd_len.unwrap_or(1) * effective_vec_len + loads - 1))
+                    body = (0..(vec_len.unwrap_or(1) * simd_len.unwrap_or(1) + loads - 1))
                         .format_with(",\n", |i, fmt| {
                             let src = value_for_array(effective_bit_len, i);
-                            assert!(src == 0 || src.ilog2() < *bit_len);
-                            fmt(&format_args!("{body_indentation}{src:#x}"))
+                            assert!(src == 0 || src.ilog2() < effective_bit_len);
+                            if (src >> (effective_bit_len - 1)) != 0 {
+                                // `src` is a two's complement representation of a negative value.
+                                let mask = !0u64 >> (64 - effective_bit_len);
+                                let ones_compl = src ^ mask;
+                                let twos_compl = ones_compl + 1;
+                                if (twos_compl == src) && (language == &Language::C) {
+                                    // `src` is INT*_MIN. C requires `-0x7fffffff - 1` to avoid
+                                    // undefined literal overflow behaviour.
+                                    fmt(&format_args!("{body_indentation}-{ones_compl:#x} - 1"))
+                                } else {
+                                    fmt(&format_args!("{body_indentation}-{twos_compl:#x}"))
+                                }
+                            } else {
+                                fmt(&format_args!("{body_indentation}{src:#x}"))
+                            }
                         })
                 )
             }
