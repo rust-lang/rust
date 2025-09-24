@@ -84,7 +84,7 @@ fn xml_to_intrinsic(
         if ty.is_err() {
             None
         } else {
-            let constraint = map_constraints(&param.imm_type);
+            let constraint = map_constraints(&param.imm_type, param.imm_width);
             let arg = Argument::<X86IntrinsicType>::new(
                 i,
                 param.var_name.clone(),
@@ -117,11 +117,20 @@ fn xml_to_intrinsic(
         args[index].ty.bit_len = args[0].ty.bit_len;
     }
 
+    args.iter_mut().for_each(|arg| arg.ty.update_simd_len());
+
+    if name == "_mm_mpsadbw_epu8" {
+        args.iter_mut()
+            .filter(|arg| arg.name.contains("imm8"))
+            .for_each(|arg| arg.ty.bit_len = Some(3));
+    }
+
     let arguments = ArgumentList::<X86IntrinsicType> { args };
 
     if let Err(message) = result {
         return Err(Box::from(message));
     }
+
     Ok(Intrinsic {
         name,
         arguments,
