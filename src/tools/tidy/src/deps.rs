@@ -569,6 +569,7 @@ const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
     "libc",
     "memchr",
     "miniz_oxide",
+    "moto-rt",
     "object",
     "r-efi",
     "r-efi-alloc",
