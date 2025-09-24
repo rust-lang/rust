@@ -13,6 +13,7 @@ It takes some combination of the following values, separated by a `,`.
 - `leaf` - Enable pointer authentication for all functions, including leaf functions.
 - `b-key` - Sign return addresses with key B, instead of the default key A.
 - `bti` - Enable branch target identification.
+- `gcs` - Enable guarded control stack support.
 
 `leaf`, `b-key` and `pc` are only valid if `pac-ret` was previously specified.
 For example, `-Z branch-protection=bti,pac-ret,leaf` is valid, but
