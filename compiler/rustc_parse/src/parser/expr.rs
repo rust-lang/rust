@@ -3612,36 +3612,55 @@ impl<'a> Parser<'a> {
         self.token.is_keyword(kw::Async) && self.is_gen_block(kw::Gen, 1)
     }
 
-    fn is_certainly_not_a_block(&self) -> bool {
-        // `{ ident, ` and `{ ident: ` cannot start a block.
-        self.look_ahead(1, |t| t.is_ident())
-            && self.look_ahead(2, |t| t == &token::Comma || t == &token::Colon)
-    }
-
     fn maybe_parse_struct_expr(
         &mut self,
         qself: &Option<Box<ast::QSelf>>,
         path: &ast::Path,
     ) -> Option<PResult<'a, Box<Expr>>> {
         let struct_allowed = !self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL);
-        if struct_allowed || self.is_certainly_not_a_block() {
-            if let Err(err) = self.expect(exp!(OpenBrace)) {
-                return Some(Err(err));
+        let is_ident = self.look_ahead(1, |t| t.is_ident());
+        let is_comma = self.look_ahead(2, |t| t == &token::Comma);
+        let is_colon = self.look_ahead(2, |t| t == &token::Colon);
+        match (struct_allowed, is_ident, is_comma, is_colon) {
+            (false, true, true, _) | (false, true, _, true) => {
+                // We have something like `match foo { bar,` or `match foo { bar:`, which means the
+                // user might have meant to write a struct literal as part of the `match`
+                // discriminant.
+                let snapshot = self.create_snapshot_for_diagnostic();
+                if let Err(err) = self.expect(exp!(OpenBrace)) {
+                    return Some(Err(err));
+                }
+                match self.parse_expr_struct(qself.clone(), path.clone(), false) {
+                    Ok(expr) => {
+                        // This is a struct literal, but we don't accept them here.
+                        self.dcx().emit_err(errors::StructLiteralNotAllowedHere {
+                            span: expr.span,
+                            sub: errors::StructLiteralNotAllowedHereSugg {
+                                left: path.span.shrink_to_lo(),
+                                right: expr.span.shrink_to_hi(),
+                            },
+                        });
+                        Some(Ok(expr))
+                    }
+                    Err(err) => {
+                        // We couldn't parse a valid struct, rollback and let the parser emit an
+                        // error elsewhere.
+                        err.cancel();
+                        self.restore_snapshot(snapshot);
+                        None
+                    }
+                }
             }
-            let expr = self.parse_expr_struct(qself.clone(), path.clone(), true);
-            if let (Ok(expr), false) = (&expr, struct_allowed) {
-                // This is a struct literal, but we don't can't accept them here.
-                self.dcx().emit_err(errors::StructLiteralNotAllowedHere {
-                    span: expr.span,
-                    sub: errors::StructLiteralNotAllowedHereSugg {
-                        left: path.span.shrink_to_lo(),
-                        right: expr.span.shrink_to_hi(),
-                    },
-                });
+            (true, _, _, _) => {
+                // A struct is accepted here, try to parse it and rely on `parse_expr_struct` for
+                // any kind of recovery.
+                if let Err(err) = self.expect(exp!(OpenBrace)) {
+                    return Some(Err(err));
+                }
+                Some(self.parse_expr_struct(qself.clone(), path.clone(), true))
             }
-            return Some(expr);
+            (false, _, _, _) => None,
         }
-        None
     }
 
     pub(super) fn parse_struct_fields(

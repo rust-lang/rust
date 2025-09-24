@@ -2748,28 +2748,7 @@ impl<'a> Parser<'a> {
         if token::Colon != self.token.kind {
             return first_pat;
         }
-        if !matches!(first_pat.kind, PatKind::Ident(_, _, None) | PatKind::Path(..))
-            || !self.look_ahead(1, |token| token.is_non_reserved_ident())
-        {
-            let mut snapshot_type = self.create_snapshot_for_diagnostic();
-            snapshot_type.bump(); // `:`
-            match snapshot_type.parse_ty() {
-                Err(inner_err) => {
-                    inner_err.cancel();
-                }
-                Ok(ty) => {
-                    let Err(mut err) = self.expected_one_of_not_found(&[], &[]) else {
-                        return first_pat;
-                    };
-                    err.span_label(ty.span, "specifying the type of a pattern isn't supported");
-                    self.restore_snapshot(snapshot_type);
-                    let span = first_pat.span.to(ty.span);
-                    first_pat = self.mk_pat(span, PatKind::Wild);
-                    err.emit();
-                }
-            }
-            return first_pat;
-        }
+
         // The pattern looks like it might be a path with a `::` -> `:` typo:
         // `match foo { bar:baz => {} }`
         let colon_span = self.token.span;
@@ -2857,7 +2836,13 @@ impl<'a> Parser<'a> {
                                 Applicability::MaybeIncorrect,
                             );
                         } else {
-                            first_pat = self.mk_pat(new_span, PatKind::Wild);
+                            first_pat = self.mk_pat(
+                                new_span,
+                                PatKind::Err(
+                                    self.dcx()
+                                        .span_delayed_bug(colon_span, "recovered bad path pattern"),
+                                ),
+                            );
                         }
                         self.restore_snapshot(snapshot_pat);
                     }
@@ -2870,7 +2855,14 @@ impl<'a> Parser<'a> {
                         err.span_label(ty.span, "specifying the type of a pattern isn't supported");
                         self.restore_snapshot(snapshot_type);
                         let new_span = first_pat.span.to(ty.span);
-                        first_pat = self.mk_pat(new_span, PatKind::Wild);
+                        first_pat =
+                            self.mk_pat(
+                                new_span,
+                                PatKind::Err(self.dcx().span_delayed_bug(
+                                    colon_span,
+                                    "recovered bad pattern with type",
+                                )),
+                            );
                     }
                 }
                 err.emit();
