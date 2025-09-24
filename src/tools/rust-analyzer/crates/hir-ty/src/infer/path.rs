@@ -74,8 +74,11 @@ impl<'db> InferenceContext<'db> {
             }
             ValueNs::ImplSelf(impl_id) => {
                 let generics = crate::generics::generics(self.db, impl_id.into());
+                let interner = DbInterner::new_with(self.db, None, None);
                 let substs = generics.placeholder_subst(self.db);
-                let ty = self.db.impl_self_ty(impl_id).substitute(Interner, &substs);
+                let args: crate::next_solver::GenericArgs<'_> = substs.to_nextsolver(interner);
+                let ty =
+                    self.db.impl_self_ty(impl_id).instantiate(interner, args).to_chalk(interner);
                 return if let Some((AdtId::StructId(struct_id), substs)) = ty.as_adt() {
                     Some(ValuePathResolution::GenericDef(
                         struct_id.into(),
@@ -359,10 +362,13 @@ impl<'db> InferenceContext<'db> {
         };
         let substs = match container {
             ItemContainerId::ImplId(impl_id) => {
+                let interner = DbInterner::new_with(self.db, None, None);
                 let impl_substs = TyBuilder::subst_for_def(self.db, impl_id, None)
                     .fill_with_inference_vars(&mut self.table)
                     .build();
-                let impl_self_ty = self.db.impl_self_ty(impl_id).substitute(Interner, &impl_substs);
+                let args: crate::next_solver::GenericArgs<'_> = impl_substs.to_nextsolver(interner);
+                let impl_self_ty =
+                    self.db.impl_self_ty(impl_id).instantiate(interner, args).to_chalk(interner);
                 self.unify(&impl_self_ty, &ty);
                 impl_substs
             }

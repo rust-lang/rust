@@ -869,10 +869,13 @@ impl Module {
                     .collect();
 
                 if !missing.is_empty() {
-                    let self_ty = db.impl_self_ty(impl_def.id).substitute(
-                        Interner,
-                        &hir_ty::generics::generics(db, impl_def.id.into()).placeholder_subst(db),
-                    );
+                    let interner = DbInterner::new_with(db, None, None);
+                    let args: crate::next_solver::GenericArgs<'_> =
+                        hir_ty::generics::generics(db, impl_def.id.into())
+                            .placeholder_subst(db)
+                            .to_nextsolver(interner);
+                    let self_ty =
+                        db.impl_self_ty(impl_def.id).instantiate(interner, args).to_chalk(interner);
                     let self_ty = if let TyKind::Alias(AliasTy::Projection(projection)) =
                         self_ty.kind(Interner)
                     {
@@ -4546,21 +4549,23 @@ impl Impl {
     }
 
     pub fn trait_(self, db: &dyn HirDatabase) -> Option<Trait> {
-        let trait_ref = db.impl_trait_ns(self.id)?;
+        let trait_ref = db.impl_trait(self.id)?;
         let id = trait_ref.skip_binder().def_id;
         Some(Trait { id: id.0 })
     }
 
     pub fn trait_ref(self, db: &dyn HirDatabase) -> Option<TraitRef<'_>> {
-        let trait_ref = db.impl_trait_ns(self.id)?.instantiate_identity();
+        let trait_ref = db.impl_trait(self.id)?.instantiate_identity();
         let resolver = self.id.resolver(db);
         Some(TraitRef::new_with_resolver(db, &resolver, trait_ref))
     }
 
     pub fn self_ty(self, db: &dyn HirDatabase) -> Type<'_> {
         let resolver = self.id.resolver(db);
+        let interner = DbInterner::new_with(db, Some(resolver.krate()), None);
         let substs = TyBuilder::placeholder_subst(db, self.id);
-        let ty = db.impl_self_ty(self.id).substitute(Interner, &substs);
+        let args: crate::next_solver::GenericArgs<'_> = substs.to_nextsolver(interner);
+        let ty = db.impl_self_ty(self.id).instantiate(interner, args).to_chalk(interner);
         Type::new_with_resolver_inner(db, &resolver, ty)
     }
 

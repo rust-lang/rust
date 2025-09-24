@@ -25,7 +25,7 @@ use chalk_ir::{
 use either::Either;
 use hir_def::{
     AdtId, AssocItemId, ConstId, ConstParamId, EnumId, EnumVariantId, FunctionId, GenericDefId,
-    GenericParamId, ImplId, ItemContainerId, LocalFieldId, Lookup, StaticId, StructId, TypeAliasId,
+    GenericParamId, ItemContainerId, LocalFieldId, Lookup, StaticId, StructId, TypeAliasId,
     TypeOrConstParamId, UnionId, VariantId,
     builtin_type::BuiltinType,
     expr_store::{ExpressionStore, path::Path},
@@ -34,8 +34,8 @@ use hir_def::{
     resolver::{HasResolver, LifetimeNs, Resolver, TypeNs},
     signatures::{FunctionSignature, TraitFlags},
     type_ref::{
-        ConstRef, LifetimeRefId, LiteralConstRef, PathId, TraitBoundModifier,
-        TraitRef as HirTraitRef, TypeBound, TypeRef, TypeRefId,
+        ConstRef, LifetimeRefId, LiteralConstRef, PathId, TraitBoundModifier, TypeBound, TypeRef,
+        TypeRefId,
     },
 };
 use hir_expand::name::Name;
@@ -59,6 +59,10 @@ use crate::{
     },
     make_binders,
     mapping::{from_chalk_trait_id, lt_to_placeholder_idx},
+    next_solver::{
+        DbInterner,
+        mapping::{ChalkToNextSolver, NextSolverToChalk},
+    },
     static_lifetime, to_chalk_trait_id, to_placeholder_idx,
     utils::all_super_trait_refs,
     variable_kinds_from_iter,
@@ -565,14 +569,6 @@ impl<'a> TyLoweringContext<'a> {
         Some((ctx.lower_trait_ref_from_resolved_path(resolved, explicit_self_ty, false), ctx))
     }
 
-    fn lower_trait_ref(
-        &mut self,
-        trait_ref: &HirTraitRef,
-        explicit_self_ty: Ty,
-    ) -> Option<TraitRef> {
-        self.lower_trait_ref_from_path(trait_ref.path, explicit_self_ty).map(|it| it.0)
-    }
-
     /// When lowering predicates from parents (impl, traits) for children defs (fns, consts, types), `generics` should
     /// contain the `Generics` for the **child**, while `predicate_owner` should contain the `GenericDefId` of the
     /// **parent**. This is important so we generate the correct bound var/placeholder.
@@ -851,21 +847,21 @@ fn named_associated_type_shorthand_candidates<R>(
         })
     };
 
+    let interner = DbInterner::new_with(db, None, None);
     match res {
         TypeNs::SelfType(impl_id) => {
-            // we're _in_ the impl -- the binders get added back later. Correct,
-            // but it would be nice to make this more explicit
-            let trait_ref = db.impl_trait(impl_id)?.into_value_and_skipped_binders().0;
+            let trait_ref = db.impl_trait(impl_id)?;
 
             let impl_id_as_generic_def: GenericDefId = impl_id.into();
             if impl_id_as_generic_def != def {
                 let subst = TyBuilder::subst_for_def(db, impl_id, None)
                     .fill_with_bound_vars(DebruijnIndex::INNERMOST, 0)
                     .build();
-                let trait_ref = subst.apply(trait_ref, Interner);
+                let args: crate::next_solver::GenericArgs<'_> = subst.to_nextsolver(interner);
+                let trait_ref = trait_ref.instantiate(interner, args).to_chalk(interner);
                 search(trait_ref)
             } else {
-                search(trait_ref)
+                search(trait_ref.skip_binder().to_chalk(interner))
             }
         }
         TypeNs::GenericParam(param_id) => {
@@ -1335,31 +1331,6 @@ impl ValueTyDefId {
     }
 }
 
-pub(crate) fn impl_self_ty_query(db: &dyn HirDatabase, impl_id: ImplId) -> Binders<Ty> {
-    impl_self_ty_with_diagnostics_query(db, impl_id).0
-}
-
-pub(crate) fn impl_self_ty_with_diagnostics_query(
-    db: &dyn HirDatabase,
-    impl_id: ImplId,
-) -> (Binders<Ty>, Diagnostics) {
-    let impl_data = db.impl_signature(impl_id);
-    let resolver = impl_id.resolver(db);
-    let generics = generics(db, impl_id.into());
-    let mut ctx = TyLoweringContext::new(
-        db,
-        &resolver,
-        &impl_data.store,
-        impl_id.into(),
-        LifetimeElisionKind::AnonymousCreateParameter { report_in_path: true },
-    )
-    .with_type_param_mode(ParamLoweringMode::Variable);
-    (
-        make_binders(db, &generics, ctx.lower_ty(impl_data.self_ty)),
-        create_diagnostics(ctx.diagnostics),
-    )
-}
-
 pub(crate) fn const_param_ty_query(db: &dyn HirDatabase, def: ConstParamId) -> Ty {
     const_param_ty_with_diagnostics_query(db, def).0
 }
@@ -1395,30 +1366,6 @@ pub(crate) fn const_param_ty_cycle_result(
     _: ConstParamId,
 ) -> Ty {
     TyKind::Error.intern(Interner)
-}
-
-pub(crate) fn impl_trait_query(db: &dyn HirDatabase, impl_id: ImplId) -> Option<Binders<TraitRef>> {
-    impl_trait_with_diagnostics_query(db, impl_id).map(|it| it.0)
-}
-
-pub(crate) fn impl_trait_with_diagnostics_query(
-    db: &dyn HirDatabase,
-    impl_id: ImplId,
-) -> Option<(Binders<TraitRef>, Diagnostics)> {
-    let impl_data = db.impl_signature(impl_id);
-    let resolver = impl_id.resolver(db);
-    let mut ctx = TyLoweringContext::new(
-        db,
-        &resolver,
-        &impl_data.store,
-        impl_id.into(),
-        LifetimeElisionKind::AnonymousCreateParameter { report_in_path: true },
-    )
-    .with_type_param_mode(ParamLoweringMode::Variable);
-    let (self_ty, binders) = db.impl_self_ty(impl_id).into_value_and_skipped_binders();
-    let target_trait = impl_data.target_trait.as_ref()?;
-    let trait_ref = Binders::new(binders, ctx.lower_trait_ref(target_trait, self_ty)?);
-    Some((trait_ref, create_diagnostics(ctx.diagnostics)))
 }
 
 pub(crate) fn return_type_impl_traits(

@@ -287,7 +287,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                     }
                 }
             }
-            TypeNs::SelfType(impl_id) => self.ctx.db.impl_self_ty_ns(impl_id).skip_binder(),
+            TypeNs::SelfType(impl_id) => self.ctx.db.impl_self_ty(impl_id).skip_binder(),
             TypeNs::AdtSelfType(adt) => {
                 let args = crate::next_solver::GenericArgs::identity_for_item(
                     self.ctx.interner,

@@ -255,8 +255,15 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                         // `def` can be either impl itself or item within, and we need impl itself
                         // now.
                         let generics = generics.parent_or_self();
+                        let interner = DbInterner::new_with(self.ctx.db, None, None);
                         let subst = generics.placeholder_subst(self.ctx.db);
-                        self.ctx.db.impl_self_ty(impl_id).substitute(Interner, &subst)
+                        let args: crate::next_solver::GenericArgs<'_> =
+                            subst.to_nextsolver(interner);
+                        self.ctx
+                            .db
+                            .impl_self_ty(impl_id)
+                            .instantiate(interner, args)
+                            .to_chalk(interner)
                     }
                     ParamLoweringMode::Variable => TyBuilder::impl_self_ty(self.ctx.db, impl_id)
                         .fill_with_bound_vars(self.ctx.in_binders, 0)

@@ -297,11 +297,12 @@ impl TraitImpls {
                     continue;
                 }
                 let target_trait = match db.impl_trait(impl_id) {
-                    Some(tr) => tr.skip_binders().hir_trait_id(),
+                    Some(tr) => tr.skip_binder().def_id.0,
                     None => continue,
                 };
-                let self_ty = db.impl_self_ty(impl_id);
-                let self_ty_fp = TyFingerprint::for_trait_impl(self_ty.skip_binders());
+                let interner = DbInterner::new_with(db, None, None);
+                let self_ty = db.impl_self_ty(impl_id).instantiate_identity().to_chalk(interner);
+                let self_ty_fp = TyFingerprint::for_trait_impl(&self_ty);
                 map.entry(target_trait).or_default().entry(self_ty_fp).or_default().push(impl_id);
             }
 
@@ -414,8 +415,8 @@ impl InherentImpls {
                     continue;
                 }
 
-                let self_ty = db.impl_self_ty(impl_id);
-                let self_ty = self_ty.skip_binders();
+                let interner = DbInterner::new_with(db, None, None);
+                let self_ty = &db.impl_self_ty(impl_id).instantiate_identity().to_chalk(interner);
 
                 match is_inherent_impl_coherent(db, def_map, impl_id, self_ty) {
                     true => {
@@ -897,10 +898,13 @@ fn find_matching_impl(
         table.run_in_snapshot(|table| {
             let impl_substs =
                 TyBuilder::subst_for_def(db, impl_, None).fill_with_inference_vars(table).build();
+            let args: crate::next_solver::GenericArgs<'_> =
+                impl_substs.to_nextsolver(table.interner);
             let trait_ref = db
                 .impl_trait(impl_)
                 .expect("non-trait method in find_matching_impl")
-                .substitute(Interner, &impl_substs);
+                .instantiate(table.interner, args)
+                .to_chalk(table.interner);
 
             if !table.unify(&trait_ref, &actual_trait_ref) {
                 return None;
@@ -1018,7 +1022,9 @@ pub fn check_orphan_rules(db: &dyn HirDatabase, impl_: ImplId) -> bool {
     let local_crate = impl_.lookup(db).container.krate();
     let is_local = |tgt_crate| tgt_crate == local_crate;
 
-    let trait_ref = impl_trait.substitute(Interner, &substs);
+    let interner = DbInterner::new_with(db, None, None);
+    let args: crate::next_solver::GenericArgs<'_> = substs.to_nextsolver(interner);
+    let trait_ref = impl_trait.instantiate(interner, args).to_chalk(interner);
     let trait_id = from_chalk_trait_id(trait_ref.trait_id);
     if is_local(trait_id.module(db).krate()) {
         // trait to be implemented is local
@@ -1824,7 +1830,7 @@ fn is_valid_impl_fn_candidate(
         let _p = tracing::info_span!("subst_for_def").entered();
         let impl_subst = table.infer_ctxt.fresh_args_for_item(impl_id.into());
         let expect_self_ty = db
-            .impl_self_ty_ns(impl_id)
+            .impl_self_ty(impl_id)
             .instantiate(table.interner, &impl_subst)
             .to_chalk(table.interner);
 

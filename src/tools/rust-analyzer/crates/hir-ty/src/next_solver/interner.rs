@@ -1394,7 +1394,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
         self,
         impl_id: Self::ImplId,
     ) -> EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>> {
-        let trait_ref = self.db().impl_trait_ns(impl_id.0).expect("expected an impl of trait");
+        let trait_ref = self.db().impl_trait(impl_id.0).expect("expected an impl of trait");
         trait_ref.map_bound(|trait_ref| {
             let clause: Clause<'_> = trait_ref.upcast(self);
             Clauses::new_from_iter(
@@ -1633,7 +1633,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
                 |impls| {
                     for i in impls.for_trait(trait_) {
                         use rustc_type_ir::TypeVisitable;
-                        let contains_errors = self.db().impl_trait_ns(i).map_or(false, |b| {
+                        let contains_errors = self.db().impl_trait(i).map_or(false, |b| {
                             b.skip_binder().visit_with(&mut ContainsTypeErrors).is_break()
                         });
                         if contains_errors {
@@ -1656,7 +1656,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
                     for fp in fps {
                         for i in impls.for_trait_and_self_ty(trait_, *fp) {
                             use rustc_type_ir::TypeVisitable;
-                            let contains_errors = self.db().impl_trait_ns(i).map_or(false, |b| {
+                            let contains_errors = self.db().impl_trait(i).map_or(false, |b| {
                                 b.skip_binder().visit_with(&mut ContainsTypeErrors).is_break()
                             });
                             if contains_errors {
@@ -1702,7 +1702,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
         impl_id: Self::ImplId,
     ) -> EarlyBinder<Self, rustc_type_ir::TraitRef<Self>> {
         let db = self.db();
-        db.impl_trait_ns(impl_id.0)
+        db.impl_trait(impl_id.0)
             // ImplIds for impls where the trait ref can't be resolved should never reach trait solving
             .expect("invalid impl passed to trait solver")
     }
