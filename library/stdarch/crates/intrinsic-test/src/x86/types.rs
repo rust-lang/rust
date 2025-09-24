@@ -115,6 +115,10 @@ impl IntrinsicTypeDefinition for X86IntrinsicType {
             // if "type" starts with __m<num>{h/i/<null>},
             // then use either _mm_set1_epi64,
             // _mm256_set1_epi64 or _mm512_set1_epi64
+            if type_value.contains("__m64") {
+                return String::from("*(__m64*)");
+            }
+
             let type_val_filtered = type_value
                 .chars()
                 .filter(|c| c.is_numeric())
@@ -126,12 +130,11 @@ impl IntrinsicTypeDefinition for X86IntrinsicType {
                     (Some(bit_len @ (8 | 16 | 32 | 64)), TypeKind::Int(_)) => {
                         format!("epi{bit_len}")
                     }
+                    (Some(bit_len), TypeKind::Mask) => format!("epi{bit_len}"),
                     (Some(16), TypeKind::Float) => format!("ph"),
                     (Some(32), TypeKind::Float) => format!("ps"),
                     (Some(64), TypeKind::Float) => format!("pd"),
-                    (Some(128), TypeKind::Vector) => format!("si128"),
-                    (Some(256), TypeKind::Vector) => format!("si256"),
-                    (Some(512), TypeKind::Vector) => format!("si512"),
+                    (Some(128 | 256 | 512), TypeKind::Vector) => format!("epi32"),
                     _ => unreachable!("Invalid element type for a vector type! {:?}", self.param),
                 };
                 format!("_mm{type_val_filtered}_loadu_{suffix}")
@@ -252,17 +255,18 @@ impl IntrinsicTypeDefinition for X86IntrinsicType {
     }
 
     fn rust_scalar_type(&self) -> String {
-        let re = Regex::new(r"\__m\d+[a-z]*").unwrap();
-        if let Some(match_type) = re.find(self.param.type_data.as_str()) {
-            match_type.as_str().to_string()
-        } else {
-            let prefix = match self.data.kind {
-                TypeKind::Mask => String::from("__mmask"),
-                _ => self.kind().rust_prefix().to_string(),
-            };
+        let prefix = match self.data.kind {
+            TypeKind::Mask => String::from("__mmask"),
+            TypeKind::Vector => String::from("i"),
+            _ => self.kind().rust_prefix().to_string(),
+        };
 
-            format!("{prefix}{bits}", bits = self.inner_size())
-        }
+        let bits = if self.inner_size() >= 128 {
+            32
+        } else {
+            self.inner_size()
+        };
+        format!("{prefix}{bits}")
     }
 }
 
@@ -311,6 +315,26 @@ impl X86IntrinsicType {
         })
     }
 
+    pub fn update_simd_len(&mut self) {
+        let mut type_processed = self.param.type_data.clone();
+        type_processed.retain(|c| c.is_numeric());
+
+        // check the param.type and extract numeric part if there are double
+        // underscores. divide this number with bit-len and set this as simd-len.
+        // Only __m<int> types can have a simd-len.
+        if self.param.type_data.contains("__m") && !self.param.type_data.contains("__mmask") {
+            self.data.simd_len = match str::parse::<u32>(type_processed.as_str()) {
+                // If bit_len is None, simd_len will be None.
+                // Else simd_len will be (num_bits / bit_len).
+                Ok(num_bits) => self
+                    .data
+                    .bit_len
+                    .and_then(|bit_len| Some(num_bits / bit_len)),
+                Err(_) => None,
+            };
+        }
+    }
+
     pub fn from_param(param: &Parameter) -> Result<Self, String> {
         match Self::from_c(param.type_data.as_str()) {
             Err(message) => Err(message),
@@ -350,22 +374,26 @@ impl X86IntrinsicType {
                     }
                 }
 
-                if param.type_data.matches("__mmask").next().is_some() {
+                if param.type_data.contains("__mmask") {
                     data.bit_len = str::parse::<u32>(type_processed.as_str()).ok();
                 }
 
-                // then check the param.type and extract numeric part if there are double
-                // underscores. divide this number with bit-len and set this as simd-len.
-                // Only __m<int> types can have a simd-len.
-                if param.type_data.matches("__m").next().is_some()
-                    && param.type_data.matches("__mmask").next().is_none()
-                {
-                    data.simd_len = match str::parse::<u32>(type_processed.as_str()) {
-                        // If bit_len is None, simd_len will be None.
-                        // Else simd_len will be (num_bits / bit_len).
-                        Ok(num_bits) => data.bit_len.and_then(|bit_len| Some(num_bits / bit_len)),
-                        Err(_) => None,
-                    };
+                if vec!["M512", "M256", "M128"].contains(&param.etype.as_str()) {
+                    match param.type_data.chars().last() {
+                        Some('i') => {
+                            data.kind = TypeKind::Int(Sign::Signed);
+                            data.bit_len = Some(32);
+                        }
+                        Some('h') => {
+                            data.kind = TypeKind::Float;
+                            data.bit_len = Some(16);
+                        }
+                        Some('d') => {
+                            data.kind = TypeKind::Float;
+                            data.bit_len = Some(64);
+                        }
+                        _ => (),
+                    }
                 }
 
                 // default settings for "void *" parameters
@@ -381,22 +409,35 @@ impl X86IntrinsicType {
                     data.bit_len = Some(32);
                 }
 
-                // default settings for IMM parameters
-                if param.etype == "IMM" && param.imm_width > 0 {
-                    data.bit_len = Some(param.imm_width);
-                }
-
                 if param.etype == "IMM" || param.imm_width > 0 || param.imm_type.len() > 0 {
+                    data.kind = TypeKind::Int(Sign::Unsigned);
                     data.constant = true;
                 }
 
-                // if param.etype == IMM, then it is a constant.
-                // else it stays unchanged.
-                data.constant |= param.etype == "IMM";
-                Ok(X86IntrinsicType {
+                // Rust defaults to signed variants, unless they are explicitly mentioned
+                // the `type` field are C++ types.
+                if data.kind == TypeKind::Int(Sign::Unsigned)
+                    && !(param.type_data.contains("unsigned") || param.type_data.contains("uint"))
+                {
+                    data.kind = TypeKind::Int(Sign::Signed)
+                }
+
+                // default settings for IMM parameters
+                if param.etype == "IMM" {
+                    data.bit_len = if param.imm_width > 0 {
+                        Some(param.imm_width)
+                    } else {
+                        Some(8)
+                    }
+                }
+
+                let mut result = X86IntrinsicType {
                     data,
                     param: param.clone(),
-                })
+                };
+
+                result.update_simd_len();
+                Ok(result)
             }
         }
         // Tile types won't currently reach here, since the intrinsic that involve them
