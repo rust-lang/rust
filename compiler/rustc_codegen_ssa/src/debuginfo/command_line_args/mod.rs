@@ -6,7 +6,7 @@ mod tests;
 ///
 /// The result is intended to be informational, for embedding in debug metadata,
 /// and might not be properly quoted/escaped for actual command-line use.
-pub(crate) fn quote_command_line_args(args: &[String]) -> String {
+pub fn quote_command_line_args(args: &[String]) -> String {
     // Start with a decent-sized buffer, since rustc invocations tend to be long.
     let mut buf = String::with_capacity(128);
 

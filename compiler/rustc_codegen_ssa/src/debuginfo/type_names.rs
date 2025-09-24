@@ -1,5 +1,7 @@
 //! Type Names for Debug Info.
 
+// FIXME(eddyb) find a place for this (or a way to replace it).
+
 // Notes on targeting MSVC:
 // In general, MSVC's debugger attempts to parse all arguments as C++ expressions,
 // even if the argument is explicitly a symbol name.
