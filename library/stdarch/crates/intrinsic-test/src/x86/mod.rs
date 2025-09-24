@@ -11,6 +11,7 @@ use crate::common::compile_c::CppCompilation;
 use crate::common::intrinsic::Intrinsic;
 use crate::common::intrinsic_helpers::TypeKind;
 use intrinsic::X86IntrinsicType;
+use itertools::Itertools;
 use xml_parser::get_xml_intrinsics;
 
 pub struct X86ArchitectureTest {
@@ -58,6 +59,7 @@ impl SupportedArchitectureTest for X86ArchitectureTest {
             .filter(|i| !i.arguments.iter().any(|a| a.is_ptr()))
             .filter(|i| !i.arguments.iter().any(|a| a.ty.inner_size() == 128))
             .filter(|i| !cli_options.skip.contains(&i.name))
+            .unique_by(|i| i.name.clone())
             .collect::<Vec<_>>();
 
         intrinsics.sort_by(|a, b| a.name.cmp(&b.name));
