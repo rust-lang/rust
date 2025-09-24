@@ -904,7 +904,7 @@ pub(crate) fn impl_trait_query<'db>(
     db: &'db dyn HirDatabase,
     impl_id: ImplId,
 ) -> Option<EarlyBinder<'db, TraitRef<'db>>> {
-    db.impl_trait_with_diagnostics_ns(impl_id).map(|it| it.0)
+    db.impl_trait_with_diagnostics(impl_id).map(|it| it.0)
 }
 
 pub(crate) fn impl_trait_with_diagnostics_query<'db>(
@@ -986,7 +986,7 @@ pub(crate) fn ty_query<'db>(db: &'db dyn HirDatabase, def: TyDefId) -> EarlyBind
             AdtDef::new(it, interner),
             GenericArgs::identity_for_item(interner, it.into()),
         )),
-        TyDefId::TypeAliasId(it) => db.type_for_type_alias_with_diagnostics_ns(it).0,
+        TyDefId::TypeAliasId(it) => db.type_for_type_alias_with_diagnostics(it).0,
     }
 }
 
@@ -1131,7 +1131,7 @@ pub(crate) fn impl_self_ty_query<'db>(
     db: &'db dyn HirDatabase,
     impl_id: ImplId,
 ) -> EarlyBinder<'db, Ty<'db>> {
-    db.impl_self_ty_with_diagnostics_ns(impl_id).0
+    db.impl_self_ty_with_diagnostics(impl_id).0
 }
 
 pub(crate) fn impl_self_ty_with_diagnostics_query<'db>(
@@ -1162,7 +1162,7 @@ pub(crate) fn impl_self_ty_with_diagnostics_cycle_result(
 }
 
 pub(crate) fn const_param_ty_query<'db>(db: &'db dyn HirDatabase, def: ConstParamId) -> Ty<'db> {
-    db.const_param_ty_with_diagnostics_ns(def).0
+    db.const_param_ty_with_diagnostics(def).0
 }
 
 // returns None if def is a type arg
@@ -1191,11 +1191,21 @@ pub(crate) fn const_param_ty_with_diagnostics_query<'db>(
     (ty, create_diagnostics(ctx.diagnostics))
 }
 
+pub(crate) fn const_param_ty_with_diagnostics_cycle_result<'db>(
+    db: &'db dyn HirDatabase,
+    _: crate::db::HirDatabaseData,
+    def: ConstParamId,
+) -> (Ty<'db>, Diagnostics) {
+    let resolver = def.parent().resolver(db);
+    let interner = DbInterner::new_with(db, Some(resolver.krate()), None);
+    (Ty::new_error(interner, ErrorGuaranteed), None)
+}
+
 pub(crate) fn field_types_query<'db>(
     db: &'db dyn HirDatabase,
     variant_id: VariantId,
 ) -> Arc<ArenaMap<LocalFieldId, EarlyBinder<'db, Ty<'db>>>> {
-    db.field_types_with_diagnostics_ns(variant_id).0
+    db.field_types_with_diagnostics(variant_id).0
 }
 
 /// Build the type of all specific fields of a struct or enum variant.
@@ -1960,7 +1970,8 @@ fn named_associated_type_shorthand_candidates<'db, R>(
     let mut search = |t: TraitRef<'db>| -> Option<R> {
         let trait_id = t.def_id.0;
         let mut checked_traits = FxHashSet::default();
-        let mut check_trait = |trait_id: TraitId| {
+        let mut check_trait = |trait_ref: TraitRef<'db>| {
+            let trait_id = trait_ref.def_id.0;
             let name = &db.trait_signature(trait_id).name;
             tracing::debug!(?trait_id, ?name);
             if !checked_traits.insert(trait_id) {
@@ -1971,37 +1982,39 @@ fn named_associated_type_shorthand_candidates<'db, R>(
             tracing::debug!(?data.items);
             for (name, assoc_id) in &data.items {
                 if let &AssocItemId::TypeAliasId(alias) = assoc_id
-                    && let Some(ty) = check_alias(name, t, alias)
+                    && let Some(ty) = check_alias(name, trait_ref, alias)
                 {
                     return Some(ty);
                 }
             }
             None
         };
-        let mut stack: SmallVec<[_; 4]> = smallvec![trait_id];
-        while let Some(trait_def_id) = stack.pop() {
-            if let Some(alias) = check_trait(trait_def_id) {
+        let mut stack: SmallVec<[_; 4]> = smallvec![t];
+        while let Some(trait_ref) = stack.pop() {
+            if let Some(alias) = check_trait(trait_ref) {
                 return Some(alias);
             }
             for pred in generic_predicates_filtered_by(
                 db,
-                GenericDefId::TraitId(trait_def_id),
+                GenericDefId::TraitId(trait_ref.def_id.0),
                 PredicateFilter::SelfTrait,
                 // We are likely in the midst of lowering generic predicates of `def`.
                 // So, if we allow `pred == def` we might fall into an infinite recursion.
                 // Actually, we have already checked for the case `pred == def` above as we started
                 // with a stack including `trait_id`
-                |pred| pred != def && pred == GenericDefId::TraitId(trait_def_id),
+                |pred| pred != def && pred == GenericDefId::TraitId(trait_ref.def_id.0),
             )
             .0
             .deref()
             {
                 tracing::debug!(?pred);
-                let trait_id = match pred.kind().skip_binder() {
-                    rustc_type_ir::ClauseKind::Trait(pred) => pred.def_id(),
+                let sup_trait_ref = match pred.kind().skip_binder() {
+                    rustc_type_ir::ClauseKind::Trait(pred) => pred.trait_ref,
                     _ => continue,
                 };
-                stack.push(trait_id.0);
+                let sup_trait_ref =
+                    EarlyBinder::bind(sup_trait_ref).instantiate(interner, trait_ref.args);
+                stack.push(sup_trait_ref);
             }
             tracing::debug!(?stack);
         }

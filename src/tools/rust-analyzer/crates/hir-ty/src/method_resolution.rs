@@ -1697,8 +1697,10 @@ fn is_valid_impl_method_candidate(
                 return IsValidCandidate::NotVisible;
             }
             let self_ty_matches = table.run_in_snapshot(|table| {
-                let expected_self_ty =
-                    TyBuilder::impl_self_ty(db, impl_id).fill_with_inference_vars(table).build();
+                let expected_self_ty = TyBuilder::impl_self_ty(db, impl_id)
+                    .fill_with_inference_vars(table)
+                    .build(DbInterner::conjure())
+                    .to_chalk(DbInterner::conjure());
                 table.unify(&expected_self_ty, self_ty)
             });
             if !self_ty_matches {
@@ -1744,9 +1746,13 @@ fn is_valid_trait_method_candidate(
                         .fill_with_inference_vars(table)
                         .build();
 
+                    let args: crate::next_solver::GenericArgs<'_> =
+                        fn_subst.to_nextsolver(table.interner);
                     let sig = db.callable_item_signature(fn_id.into());
-                    let expected_receiver =
-                        sig.map(|s| s.params()[0].clone()).substitute(Interner, &fn_subst);
+                    let expected_receiver = sig
+                        .map_bound(|s| s.skip_binder().inputs_and_output.as_slice()[0])
+                        .instantiate(table.interner, args)
+                        .to_chalk(table.interner);
 
                     // FIXME: Clean up this mess with some context struct like rustc's `ProbeContext`
                     let variance = match mode {
@@ -1831,9 +1837,12 @@ fn is_valid_impl_fn_candidate(
             let fn_subst: crate::Substitution =
                 table.infer_ctxt.fresh_args_for_item(fn_id.into()).to_chalk(table.interner);
 
+            let args: crate::next_solver::GenericArgs<'_> = fn_subst.to_nextsolver(table.interner);
             let sig = db.callable_item_signature(fn_id.into());
-            let expected_receiver =
-                sig.map(|s| s.params()[0].clone()).substitute(Interner, &fn_subst);
+            let expected_receiver = sig
+                .map_bound(|s| s.skip_binder().inputs_and_output.as_slice()[0])
+                .instantiate(table.interner, args)
+                .to_chalk(table.interner);
 
             check_that!(table.unify(receiver_ty, &expected_receiver));
         }

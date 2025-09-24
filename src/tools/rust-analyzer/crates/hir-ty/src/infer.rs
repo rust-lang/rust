@@ -1708,6 +1708,7 @@ impl<'db> InferenceContext<'db> {
             LifetimeElisionKind::Infer,
         );
         let mut path_ctx = ctx.at_path(path, node);
+        let interner = DbInterner::conjure();
         let (resolution, unresolved) = if value_ns {
             let Some(res) = path_ctx.resolve_path_in_value_ns(HygieneId::ROOT) else {
                 return (self.err_ty(), None);
@@ -1717,15 +1718,27 @@ impl<'db> InferenceContext<'db> {
                     ValueNs::EnumVariantId(var) => {
                         let substs = path_ctx.substs_from_path(var.into(), true, false);
                         drop(ctx);
-                        let ty = self.db.ty(var.lookup(self.db).parent.into());
-                        let ty = self.insert_type_vars(ty.substitute(Interner, &substs));
+                        let args: crate::next_solver::GenericArgs<'_> =
+                            substs.to_nextsolver(interner);
+                        let ty = self
+                            .db
+                            .ty(var.lookup(self.db).parent.into())
+                            .instantiate(interner, args)
+                            .to_chalk(interner);
+                        let ty = self.insert_type_vars(ty);
                         return (ty, Some(var.into()));
                     }
                     ValueNs::StructId(strukt) => {
                         let substs = path_ctx.substs_from_path(strukt.into(), true, false);
                         drop(ctx);
-                        let ty = self.db.ty(strukt.into());
-                        let ty = self.insert_type_vars(ty.substitute(Interner, &substs));
+                        let args: crate::next_solver::GenericArgs<'_> =
+                            substs.to_nextsolver(interner);
+                        let ty = self
+                            .db
+                            .ty(strukt.into())
+                            .instantiate(interner, args)
+                            .to_chalk(interner);
+                        let ty = self.insert_type_vars(ty);
                         return (ty, Some(strukt.into()));
                     }
                     ValueNs::ImplSelf(impl_id) => (TypeNs::SelfType(impl_id), None),
@@ -1746,22 +1759,29 @@ impl<'db> InferenceContext<'db> {
             TypeNs::AdtId(AdtId::StructId(strukt)) => {
                 let substs = path_ctx.substs_from_path(strukt.into(), true, false);
                 drop(ctx);
-                let ty = self.db.ty(strukt.into());
-                let ty = self.insert_type_vars(ty.substitute(Interner, &substs));
+                let args: crate::next_solver::GenericArgs<'_> = substs.to_nextsolver(interner);
+                let ty = self.db.ty(strukt.into()).instantiate(interner, args).to_chalk(interner);
+                let ty = self.insert_type_vars(ty);
                 forbid_unresolved_segments((ty, Some(strukt.into())), unresolved)
             }
             TypeNs::AdtId(AdtId::UnionId(u)) => {
                 let substs = path_ctx.substs_from_path(u.into(), true, false);
                 drop(ctx);
-                let ty = self.db.ty(u.into());
-                let ty = self.insert_type_vars(ty.substitute(Interner, &substs));
+                let args: crate::next_solver::GenericArgs<'_> = substs.to_nextsolver(interner);
+                let ty = self.db.ty(u.into()).instantiate(interner, args).to_chalk(interner);
+                let ty = self.insert_type_vars(ty);
                 forbid_unresolved_segments((ty, Some(u.into())), unresolved)
             }
             TypeNs::EnumVariantId(var) => {
                 let substs = path_ctx.substs_from_path(var.into(), true, false);
                 drop(ctx);
-                let ty = self.db.ty(var.lookup(self.db).parent.into());
-                let ty = self.insert_type_vars(ty.substitute(Interner, &substs));
+                let args: crate::next_solver::GenericArgs<'_> = substs.to_nextsolver(interner);
+                let ty = self
+                    .db
+                    .ty(var.lookup(self.db).parent.into())
+                    .instantiate(interner, args)
+                    .to_chalk(interner);
+                let ty = self.insert_type_vars(ty);
                 forbid_unresolved_segments((ty, Some(var.into())), unresolved)
             }
             TypeNs::SelfType(impl_id) => {
@@ -1844,8 +1864,10 @@ impl<'db> InferenceContext<'db> {
                 };
                 let substs = path_ctx.substs_from_path_segment(it.into(), true, None, false);
                 drop(ctx);
-                let ty = self.db.ty(it.into());
-                let ty = self.insert_type_vars(ty.substitute(Interner, &substs));
+                let interner = DbInterner::conjure();
+                let args: crate::next_solver::GenericArgs<'_> = substs.to_nextsolver(interner);
+                let ty = self.db.ty(it.into()).instantiate(interner, args).to_chalk(interner);
+                let ty = self.insert_type_vars(ty);
 
                 self.resolve_variant_on_alias(ty, unresolved, mod_path)
             }

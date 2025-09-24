@@ -1,18 +1,17 @@
 use base_db::target::TargetData;
-use chalk_ir::{AdtId, TyKind};
 use either::Either;
 use hir_def::db::DefDatabase;
 use project_model::{Sysroot, toolchain_info::QueryConfig};
 use rustc_hash::FxHashMap;
+use rustc_type_ir::inherent::{GenericArgs as _, Ty as _};
 use syntax::ToSmolStr;
 use test_fixture::WithFixture;
 use triomphe::Arc;
 
 use crate::{
-    Interner, Substitution,
     db::HirDatabase,
     layout::{Layout, LayoutError},
-    next_solver::{DbInterner, mapping::ChalkToNextSolver},
+    next_solver::{AdtDef, DbInterner, GenericArgs, mapping::ChalkToNextSolver},
     setup_tracing,
     test_db::TestDB,
 };
@@ -80,18 +79,18 @@ fn eval_goal(
             Some(adt_or_type_alias_id)
         })
         .unwrap();
-    let goal_ty = match adt_or_type_alias_id {
-        Either::Left(adt_id) => {
-            TyKind::Adt(AdtId(adt_id), Substitution::empty(Interner)).intern(Interner)
-        }
-        Either::Right(ty_id) => {
-            db.ty(ty_id.into()).substitute(Interner, &Substitution::empty(Interner))
-        }
-    };
     salsa::attach(&db, || {
         let interner = DbInterner::new_with(&db, None, None);
+        let goal_ty = match adt_or_type_alias_id {
+            Either::Left(adt_id) => crate::next_solver::Ty::new_adt(
+                interner,
+                AdtDef::new(adt_id, interner),
+                GenericArgs::identity_for_item(interner, adt_id.into()),
+            ),
+            Either::Right(ty_id) => db.ty(ty_id.into()).instantiate_identity(),
+        };
         db.layout_of_ty(
-            goal_ty.to_nextsolver(interner),
+            goal_ty,
             db.trait_environment(match adt_or_type_alias_id {
                 Either::Left(adt) => hir_def::GenericDefId::AdtId(adt),
                 Either::Right(ty) => hir_def::GenericDefId::TypeAliasId(ty),

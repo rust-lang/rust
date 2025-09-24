@@ -504,14 +504,11 @@ impl SomeStruct {
                 "crate_local_def_map",
                 "trait_impls_in_crate_shim",
                 "attrs_shim",
-                "impl_trait_with_diagnostics_shim",
                 "impl_signature_shim",
                 "impl_signature_with_source_map_shim",
-                "impl_self_ty_with_diagnostics_shim",
                 "struct_signature_shim",
                 "struct_signature_with_source_map_shim",
                 "attrs_shim",
-                "type_for_adt_tracked",
             ]
         "#]],
     );
@@ -609,9 +606,6 @@ fn main() {
                 "trait_impls_in_crate_shim",
                 "impl_trait_with_diagnostics_shim",
                 "impl_self_ty_with_diagnostics_shim",
-                "type_for_adt_tracked",
-                "impl_trait_with_diagnostics_ns_shim",
-                "impl_self_ty_with_diagnostics_ns_shim",
                 "generic_predicates_ns_shim",
                 "value_ty_shim",
                 "generic_predicates_shim",
@@ -700,8 +694,6 @@ fn main() {
                 "trait_impls_in_crate_shim",
                 "impl_trait_with_diagnostics_shim",
                 "impl_self_ty_with_diagnostics_shim",
-                "impl_trait_with_diagnostics_ns_shim",
-                "impl_self_ty_with_diagnostics_ns_shim",
                 "generic_predicates_ns_shim",
                 "generic_predicates_shim",
             ]

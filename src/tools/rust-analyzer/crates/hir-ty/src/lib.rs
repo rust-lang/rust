@@ -578,8 +578,10 @@ impl CallableSig {
 
     pub fn from_def(db: &dyn HirDatabase, def: FnDefId, substs: &Substitution) -> CallableSig {
         let callable_def = ToChalk::from_chalk(db, def);
+        let interner = DbInterner::new_with(db, None, None);
+        let args: crate::next_solver::GenericArgs<'_> = substs.to_nextsolver(interner);
         let sig = db.callable_item_signature(callable_def);
-        sig.substitute(Interner, substs)
+        sig.instantiate(interner, args).skip_binder().to_chalk(interner)
     }
     pub fn from_fn_ptr(fn_ptr: &FnPointer) -> CallableSig {
         CallableSig {

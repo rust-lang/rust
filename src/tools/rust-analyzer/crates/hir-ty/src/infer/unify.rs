@@ -780,7 +780,7 @@ impl<'db> InferenceTable<'db> {
     }
 
     pub(crate) fn structurally_resolve_type(&mut self, ty: &Ty) -> Ty {
-        if let TyKind::Alias(..) = ty.kind(Interner) {
+        if let TyKind::Alias(chalk_ir::AliasTy::Projection(..)) = ty.kind(Interner) {
             self.structurally_normalize_ty(ty)
         } else {
             self.resolve_vars_with_obligations(ty.to_nextsolver(self.interner))

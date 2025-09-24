@@ -1091,23 +1091,21 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
                     ItemContainerId::ImplId(it) => it,
                     _ => panic!("assoc ty value should be in impl"),
                 };
-                self.db().ty_ns(id.into())
+                self.db().ty(id.into())
             }
-            SolverDefId::AdtId(id) => self.db().ty_ns(id.into()),
+            SolverDefId::AdtId(id) => self.db().ty(id.into()),
             // FIXME(next-solver): This uses the types of `query mir_borrowck` in rustc.
             //
             // We currently always use the type from HIR typeck which ignores regions. This
             // should be fine.
             SolverDefId::InternedOpaqueTyId(_) => self.type_of_opaque_hir_typeck(def_id),
-            SolverDefId::FunctionId(id) => self.db.value_ty_ns(id.into()).unwrap(),
+            SolverDefId::FunctionId(id) => self.db.value_ty(id.into()).unwrap(),
             SolverDefId::Ctor(id) => {
                 let id = match id {
                     Ctor::Struct(id) => id.into(),
                     Ctor::Enum(id) => id.into(),
                 };
-                self.db
-                    .value_ty_ns(id)
-                    .expect("`SolverDefId::Ctor` should have a function-like ctor")
+                self.db.value_ty(id).expect("`SolverDefId::Ctor` should have a function-like ctor")
             }
             _ => panic!("Unexpected def_id `{def_id:?}` provided for `type_of`"),
         }
@@ -1227,7 +1225,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
         self,
         def_id: Self::FunctionId,
     ) -> EarlyBinder<Self, rustc_type_ir::Binder<Self, rustc_type_ir::FnSig<Self>>> {
-        self.db().callable_item_signature_ns(def_id.0)
+        self.db().callable_item_signature(def_id.0)
     }
 
     fn coroutine_movability(self, def_id: Self::CoroutineId) -> rustc_ast_ir::Movability {
@@ -1322,7 +1320,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
         self,
         def_id: Self::DefId,
     ) -> EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>> {
-        let predicates = self.db().generic_predicates_without_parent_ns(def_id.try_into().unwrap());
+        let predicates = self.db().generic_predicates_without_parent(def_id.try_into().unwrap());
         let predicates: Vec<_> = predicates.iter().cloned().collect();
         EarlyBinder::bind(predicates.into_iter())
     }

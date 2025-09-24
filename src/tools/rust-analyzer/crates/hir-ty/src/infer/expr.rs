@@ -23,13 +23,13 @@ use syntax::ast::RangeOp;
 use tracing::debug;
 
 use crate::autoderef::overloaded_deref_ty;
-use crate::next_solver::ErrorGuaranteed;
 use crate::next_solver::infer::DefineOpaqueTypes;
 use crate::next_solver::obligation_ctxt::ObligationCtxt;
+use crate::next_solver::{DbInterner, ErrorGuaranteed};
 use crate::{
-    Adjust, Adjustment, AdtId, AutoBorrow, Binders, CallableDefId, CallableSig, DeclContext,
-    DeclOrigin, IncorrectGenericsLenKind, Interner, LifetimeElisionKind, Rawness, Scalar,
-    Substitution, TraitEnvironment, TraitRef, Ty, TyBuilder, TyExt, TyKind, consteval,
+    Adjust, Adjustment, AdtId, AutoBorrow, CallableDefId, CallableSig, DeclContext, DeclOrigin,
+    IncorrectGenericsLenKind, Interner, LifetimeElisionKind, Rawness, Scalar, Substitution,
+    TraitEnvironment, TraitRef, Ty, TyBuilder, TyExt, TyKind, consteval,
     generics::generics,
     infer::{
         AllowTwoPhase, BreakableKind,
@@ -1481,7 +1481,10 @@ impl<'db> InferenceContext<'db> {
 
         self.write_method_resolution(tgt_expr, func, subst.clone());
 
-        let method_ty = self.db.value_ty(func.into()).unwrap().substitute(Interner, &subst);
+        let interner = DbInterner::new_with(self.db, None, None);
+        let args: crate::next_solver::GenericArgs<'_> = subst.to_nextsolver(interner);
+        let method_ty =
+            self.db.value_ty(func.into()).unwrap().instantiate(interner, args).to_chalk(interner);
         self.register_obligations_for_call(&method_ty);
 
         self.infer_expr_coerce(rhs, &Expectation::has_type(rhs_ty.clone()), ExprIsRead::Yes);
@@ -1800,11 +1803,17 @@ impl<'db> InferenceContext<'db> {
                         self.write_expr_adj(receiver, adjustments.into_boxed_slice());
                         self.write_method_resolution(tgt_expr, func, substs.clone());
 
+                        let interner = DbInterner::new_with(self.db, None, None);
+                        let args: crate::next_solver::GenericArgs<'_> =
+                            substs.to_nextsolver(interner);
                         self.check_method_call(
                             tgt_expr,
                             &[],
-                            self.db.value_ty(func.into()).unwrap(),
-                            substs,
+                            self.db
+                                .value_ty(func.into())
+                                .unwrap()
+                                .instantiate(interner, args)
+                                .to_chalk(interner),
                             ty,
                             expected,
                         )
@@ -1963,11 +1972,16 @@ impl<'db> InferenceContext<'db> {
 
                 let substs = self.substs_for_method_call(tgt_expr, func.into(), generic_args);
                 self.write_method_resolution(tgt_expr, func, substs.clone());
+                let interner = DbInterner::new_with(self.db, None, None);
+                let gen_args: crate::next_solver::GenericArgs<'_> = substs.to_nextsolver(interner);
                 self.check_method_call(
                     tgt_expr,
                     args,
-                    self.db.value_ty(func.into()).expect("we have a function def"),
-                    substs,
+                    self.db
+                        .value_ty(func.into())
+                        .expect("we have a function def")
+                        .instantiate(interner, gen_args)
+                        .to_chalk(interner),
                     ty,
                     expected,
                 )
@@ -2012,11 +2026,15 @@ impl<'db> InferenceContext<'db> {
                 let recovered = match assoc_func_with_same_name {
                     Some(f) => {
                         let substs = self.substs_for_method_call(tgt_expr, f.into(), generic_args);
+                        let interner = DbInterner::new_with(self.db, None, None);
+                        let args: crate::next_solver::GenericArgs<'_> =
+                            substs.to_nextsolver(interner);
                         let f = self
                             .db
                             .value_ty(f.into())
                             .expect("we have a function def")
-                            .substitute(Interner, &substs);
+                            .instantiate(interner, args)
+                            .to_chalk(interner);
                         let sig = f.callable_sig(self.db).expect("we have a function def");
                         Some((f, sig, true))
                     }
@@ -2056,12 +2074,10 @@ impl<'db> InferenceContext<'db> {
         &mut self,
         tgt_expr: ExprId,
         args: &[ExprId],
-        method_ty: Binders<Ty>,
-        substs: Substitution,
+        method_ty: Ty,
         receiver_ty: Ty,
         expected: &Expectation,
     ) -> Ty {
-        let method_ty = method_ty.substitute(Interner, &substs);
         self.register_obligations_for_call(&method_ty);
         let interner = self.table.interner;
         let ((formal_receiver_ty, param_tys), ret_ty, is_varargs) =

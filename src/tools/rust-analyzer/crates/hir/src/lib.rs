@@ -682,7 +682,7 @@ impl Module {
                             push_ty_diagnostics(
                                 db,
                                 acc,
-                                db.field_types_with_diagnostics_ns(s.id.into()).1,
+                                db.field_types_with_diagnostics(s.id.into()).1,
                                 source_map,
                             );
                         }
@@ -694,7 +694,7 @@ impl Module {
                             push_ty_diagnostics(
                                 db,
                                 acc,
-                                db.field_types_with_diagnostics_ns(u.id.into()).1,
+                                db.field_types_with_diagnostics(u.id.into()).1,
                                 source_map,
                             );
                         }
@@ -724,7 +724,7 @@ impl Module {
                                 push_ty_diagnostics(
                                     db,
                                     acc,
-                                    db.field_types_with_diagnostics_ns(v.into()).1,
+                                    db.field_types_with_diagnostics(v.into()).1,
                                     source_map,
                                 );
                                 expr_store_diagnostics(db, acc, source_map);
@@ -740,7 +740,7 @@ impl Module {
                     push_ty_diagnostics(
                         db,
                         acc,
-                        db.type_for_type_alias_with_diagnostics_ns(type_alias.id).1,
+                        db.type_for_type_alias_with_diagnostics(type_alias.id).1,
                         &source_map,
                     );
                     acc.extend(def.diagnostics(db, style_lints));
@@ -915,13 +915,13 @@ impl Module {
             push_ty_diagnostics(
                 db,
                 acc,
-                db.impl_self_ty_with_diagnostics_ns(impl_def.id).1,
+                db.impl_self_ty_with_diagnostics(impl_def.id).1,
                 &source_map,
             );
             push_ty_diagnostics(
                 db,
                 acc,
-                db.impl_trait_with_diagnostics_ns(impl_def.id).and_then(|it| it.1),
+                db.impl_trait_with_diagnostics(impl_def.id).and_then(|it| it.1),
                 &source_map,
             );
 
@@ -1504,7 +1504,7 @@ impl<'db> InstantiatedStruct<'db> {
         let krate = self.inner.krate(db);
         let interner = DbInterner::new_with(db, Some(krate.base()), None);
 
-        let ty = db.ty_ns(self.inner.id.into());
+        let ty = db.ty(self.inner.id.into());
         TypeNs::new(db, self.inner.id, ty.instantiate(interner, self.args))
     }
 }
@@ -1664,7 +1664,7 @@ impl<'db> InstantiatedEnum<'db> {
         let krate = self.inner.krate(db);
         let interner = DbInterner::new_with(db, Some(krate.base()), None);
 
-        let ty = db.ty_ns(self.inner.id.into());
+        let ty = db.ty(self.inner.id.into());
         TypeNs::new(db, self.inner.id, ty.instantiate(interner, self.args))
     }
 }
@@ -1851,7 +1851,8 @@ impl Adt {
                     ParamKind::Lifetime => error_lifetime().cast(Interner),
                 }
             })
-            .build();
+            .build(DbInterner::conjure())
+            .to_chalk(DbInterner::conjure());
         Type::new(db, id, ty)
     }
 
@@ -2286,7 +2287,13 @@ impl Function {
     pub fn fn_ptr_type(self, db: &dyn HirDatabase) -> Type<'_> {
         let resolver = self.id.resolver(db);
         let substs = TyBuilder::placeholder_subst(db, self.id);
-        let callable_sig = db.callable_item_signature(self.id.into()).substitute(Interner, &substs);
+        let interner = DbInterner::new_with(db, None, None);
+        let args: crate::next_solver::GenericArgs<'_> = substs.to_nextsolver(interner);
+        let callable_sig = db
+            .callable_item_signature(self.id.into())
+            .instantiate(interner, args)
+            .skip_binder()
+            .to_chalk(interner);
         let ty = TyKind::Function(callable_sig.to_fn_ptr()).intern(Interner);
         Type::new_with_resolver_inner(db, &resolver, ty)
     }
@@ -2295,8 +2302,14 @@ impl Function {
     pub fn ret_type(self, db: &dyn HirDatabase) -> Type<'_> {
         let resolver = self.id.resolver(db);
         let substs = TyBuilder::placeholder_subst(db, self.id);
-        let callable_sig = db.callable_item_signature(self.id.into()).substitute(Interner, &substs);
-        let ty = callable_sig.ret().clone();
+        let interner = DbInterner::new_with(db, None, None);
+        let args: crate::next_solver::GenericArgs<'_> = substs.to_nextsolver(interner);
+        let ty = db
+            .callable_item_signature(self.id.into())
+            .instantiate(interner, args)
+            .skip_binder()
+            .output()
+            .to_chalk(interner);
         Type::new_with_resolver_inner(db, &resolver, ty)
     }
 
@@ -2325,8 +2338,14 @@ impl Function {
             parent_id.map(|id| TyBuilder::subst_for_def(db, id, None).fill(&mut filler).build());
         let substs = TyBuilder::subst_for_def(db, self.id, parent_substs).fill(&mut filler).build();
 
-        let callable_sig = db.callable_item_signature(self.id.into()).substitute(Interner, &substs);
-        let ty = callable_sig.ret().clone();
+        let interner = DbInterner::new_with(db, None, None);
+        let args: crate::next_solver::GenericArgs<'_> = substs.to_nextsolver(interner);
+        let ty = db
+            .callable_item_signature(self.id.into())
+            .instantiate(interner, args)
+            .skip_binder()
+            .output()
+            .to_chalk(interner);
         Type::new_with_resolver_inner(db, &resolver, ty)
     }
 
@@ -2336,8 +2355,14 @@ impl Function {
         }
         let resolver = self.id.resolver(db);
         let substs = TyBuilder::placeholder_subst(db, self.id);
-        let callable_sig = db.callable_item_signature(self.id.into()).substitute(Interner, &substs);
-        let ret_ty = callable_sig.ret().clone();
+        let interner = DbInterner::new_with(db, None, None);
+        let args: crate::next_solver::GenericArgs<'_> = substs.to_nextsolver(interner);
+        let ret_ty = db
+            .callable_item_signature(self.id.into())
+            .instantiate(interner, args)
+            .skip_binder()
+            .output()
+            .to_chalk(interner);
         for pred in ret_ty.impl_trait_bounds(db).into_iter().flatten() {
             if let WhereClause::AliasEq(output_eq) = pred.into_value_and_skipped_binders().0 {
                 return Type::new_with_resolver_inner(db, &resolver, output_eq.ty).into();
@@ -2357,7 +2382,13 @@ impl Function {
     pub fn assoc_fn_params(self, db: &dyn HirDatabase) -> Vec<Param<'_>> {
         let environment = db.trait_environment(self.id.into());
         let substs = TyBuilder::placeholder_subst(db, self.id);
-        let callable_sig = db.callable_item_signature(self.id.into()).substitute(Interner, &substs);
+        let interner = DbInterner::new_with(db, None, None);
+        let args: crate::next_solver::GenericArgs<'_> = substs.to_nextsolver(interner);
+        let callable_sig = db
+            .callable_item_signature(self.id.into())
+            .instantiate(interner, args)
+            .skip_binder()
+            .to_chalk(interner);
         callable_sig
             .params()
             .iter()
@@ -2385,7 +2416,13 @@ impl Function {
     pub fn params_without_self(self, db: &dyn HirDatabase) -> Vec<Param<'_>> {
         let environment = db.trait_environment(self.id.into());
         let substs = TyBuilder::placeholder_subst(db, self.id);
-        let callable_sig = db.callable_item_signature(self.id.into()).substitute(Interner, &substs);
+        let interner = DbInterner::new_with(db, None, None);
+        let args: crate::next_solver::GenericArgs<'_> = substs.to_nextsolver(interner);
+        let callable_sig = db
+            .callable_item_signature(self.id.into())
+            .instantiate(interner, args)
+            .skip_binder()
+            .to_chalk(interner);
         let skip = if db.function_signature(self.id).has_self_param() { 1 } else { 0 };
         callable_sig
             .params()
@@ -2435,7 +2472,13 @@ impl Function {
                 GenericArg::new(Interner, GenericArgData::Ty(ty))
             })
             .build();
-        let callable_sig = db.callable_item_signature(self.id.into()).substitute(Interner, &substs);
+        let interner = DbInterner::new_with(db, None, None);
+        let args: crate::next_solver::GenericArgs<'_> = substs.to_nextsolver(interner);
+        let callable_sig = db
+            .callable_item_signature(self.id.into())
+            .instantiate(interner, args)
+            .skip_binder()
+            .to_chalk(interner);
         let skip = if db.function_signature(self.id).has_self_param() { 1 } else { 0 };
         callable_sig
             .params()
@@ -2730,8 +2773,13 @@ impl SelfParam {
 
     pub fn ty<'db>(&self, db: &'db dyn HirDatabase) -> Type<'db> {
         let substs = TyBuilder::placeholder_subst(db, self.func);
-        let callable_sig =
-            db.callable_item_signature(self.func.into()).substitute(Interner, &substs);
+        let interner = DbInterner::new_with(db, None, None);
+        let args: crate::next_solver::GenericArgs<'_> = substs.to_nextsolver(interner);
+        let callable_sig = db
+            .callable_item_signature(self.func.into())
+            .instantiate(interner, args)
+            .skip_binder()
+            .to_chalk(interner);
         let environment = db.trait_environment(self.func.into());
         let ty = callable_sig.params()[0].clone();
         Type { env: environment, ty, _pd: PhantomCovariantLifetime::new() }
@@ -2763,8 +2811,13 @@ impl SelfParam {
         let parent_substs = TyBuilder::subst_for_def(db, parent_id, None).fill(&mut filler).build();
         let substs =
             TyBuilder::subst_for_def(db, self.func, Some(parent_substs)).fill(&mut filler).build();
-        let callable_sig =
-            db.callable_item_signature(self.func.into()).substitute(Interner, &substs);
+        let interner = DbInterner::new_with(db, None, None);
+        let args: crate::next_solver::GenericArgs<'_> = substs.to_nextsolver(interner);
+        let callable_sig = db
+            .callable_item_signature(self.func.into())
+            .instantiate(interner, args)
+            .skip_binder()
+            .to_chalk(interner);
         let environment = db.trait_environment(self.func.into());
         let ty = callable_sig.params()[0].clone();
         Type { env: environment, ty, _pd: PhantomCovariantLifetime::new() }
@@ -3640,7 +3693,7 @@ impl AssocItem {
                 push_ty_diagnostics(
                     db,
                     acc,
-                    db.type_for_type_alias_with_diagnostics_ns(type_alias.id).1,
+                    db.type_for_type_alias_with_diagnostics(type_alias.id).1,
                     &db.type_alias_signature_with_source_map(type_alias.id).1,
                 );
                 for diag in hir_ty::diagnostics::incorrect_case(db, type_alias.id.into()) {
@@ -3768,7 +3821,7 @@ impl GenericDef {
         push_ty_diagnostics(
             db,
             acc,
-            db.generic_predicates_without_parent_with_diagnostics_ns(def).1,
+            db.generic_predicates_without_parent_with_diagnostics(def).1,
             &source_map,
         );
         for (param_id, param) in generics.iter_type_or_consts() {
@@ -3776,7 +3829,7 @@ impl GenericDef {
                 push_ty_diagnostics(
                     db,
                     acc,
-                    db.const_param_ty_with_diagnostics_ns(ConstParamId::from_unchecked(
+                    db.const_param_ty_with_diagnostics(ConstParamId::from_unchecked(
                         TypeOrConstParamId { parent: def, local_id: param_id },
                     ))
                     .1,
@@ -4828,32 +4881,40 @@ impl<'db> Type<'db> {
     }
 
     fn from_def(db: &'db dyn HirDatabase, def: impl Into<TyDefId> + HasResolver) -> Self {
+        let interner = DbInterner::new_with(db, None, None);
         let ty = db.ty(def.into());
         let substs = TyBuilder::unknown_subst(
             db,
             match def.into() {
                 TyDefId::AdtId(it) => GenericDefId::AdtId(it),
                 TyDefId::TypeAliasId(it) => GenericDefId::TypeAliasId(it),
-                TyDefId::BuiltinType(_) => return Type::new(db, def, ty.skip_binders().clone()),
+                TyDefId::BuiltinType(_) => {
+                    return Type::new(db, def, ty.skip_binder().to_chalk(interner));
+                }
             },
         );
-        Type::new(db, def, ty.substitute(Interner, &substs))
+        let args: hir_ty::next_solver::GenericArgs<'_> = substs.to_nextsolver(interner);
+        Type::new(db, def, ty.instantiate(interner, args).to_chalk(interner))
     }
 
     fn from_def_placeholders(
         db: &'db dyn HirDatabase,
         def: impl Into<TyDefId> + HasResolver,
     ) -> Self {
+        let interner = DbInterner::new_with(db, None, None);
         let ty = db.ty(def.into());
         let substs = TyBuilder::placeholder_subst(
             db,
             match def.into() {
                 TyDefId::AdtId(it) => GenericDefId::AdtId(it),
                 TyDefId::TypeAliasId(it) => GenericDefId::TypeAliasId(it),
-                TyDefId::BuiltinType(_) => return Type::new(db, def, ty.skip_binders().clone()),
+                TyDefId::BuiltinType(_) => {
+                    return Type::new(db, def, ty.skip_binder().to_chalk(interner));
+                }
             },
         );
-        Type::new(db, def, ty.substitute(Interner, &substs))
+        let args: hir_ty::next_solver::GenericArgs<'_> = substs.to_nextsolver(interner);
+        Type::new(db, def, ty.instantiate(interner, args).to_chalk(interner))
     }
 
     fn from_value_def(
@@ -4863,6 +4924,7 @@ impl<'db> Type<'db> {
         let Some(ty) = db.value_ty(def.into()) else {
             return Type::new(db, def, TyKind::Error.intern(Interner));
         };
+        let interner = DbInterner::new_with(db, None, None);
         let substs = TyBuilder::unknown_subst(
             db,
             match def.into() {
@@ -4873,10 +4935,13 @@ impl<'db> Type<'db> {
                 ValueTyDefId::EnumVariantId(it) => {
                     GenericDefId::AdtId(AdtId::EnumId(it.lookup(db).parent))
                 }
-                ValueTyDefId::StaticId(_) => return Type::new(db, def, ty.skip_binders().clone()),
+                ValueTyDefId::StaticId(_) => {
+                    return Type::new(db, def, ty.skip_binder().to_chalk(interner));
+                }
             },
         );
-        Type::new(db, def, ty.substitute(Interner, &substs))
+        let args: crate::next_solver::GenericArgs<'_> = substs.to_nextsolver(interner);
+        Type::new(db, def, ty.instantiate(interner, args).to_chalk(interner))
     }
 
     pub fn new_slice(ty: Self) -> Self {
