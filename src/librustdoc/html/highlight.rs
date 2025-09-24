@@ -159,11 +159,17 @@ impl Element {
         other.content.iter().all(|c| can_merge(self.class, other.class, &c.text))
     }
 
-    fn write_elem_to<W: Write>(&self, out: &mut W, href_context: &Option<HrefContext<'_, '_>>, parent_class: Option<Class>) {
+    fn write_elem_to<W: Write>(
+        &self,
+        out: &mut W,
+        href_context: &Option<HrefContext<'_, '_>>,
+        parent_class: Option<Class>,
+    ) {
         let mut prev = parent_class;
         let mut closing_tag = None;
         for part in &self.content {
-            let text: &dyn Display = if part.needs_escape { &EscapeBodyText(&part.text) } else { &part.text };
+            let text: &dyn Display =
+                if part.needs_escape { &EscapeBodyText(&part.text) } else { &part.text };
             if part.class.is_some() {
                 // We only try to generate links as the `<span>` should have already be generated
                 // by the caller of `write_elem_to`.
@@ -198,11 +204,18 @@ enum ElementOrStack {
     Stack(ElementStack),
 }
 
+/// This represents the stack of HTML elements. For example a macro expansion
+/// will contain other elements which might themselves contain other elements
+/// (like macros).
+///
+/// This allows to easily handle HTML tags instead of having a more complicated
+/// state machine to keep track of which tags are open.
 #[derive(Debug)]
 struct ElementStack {
     elements: Vec<ElementOrStack>,
     parent: Option<Box<ElementStack>>,
     class: Option<Class>,
+    pending_exit: bool,
 }
 
 impl ElementStack {
@@ -211,10 +224,15 @@ impl ElementStack {
     }
 
     fn new_with_class(class: Option<Class>) -> Self {
-        Self { elements: Vec::new(), parent: None, class }
+        Self { elements: Vec::new(), parent: None, class, pending_exit: false }
     }
 
     fn push_element(&mut self, mut elem: Element) {
+        if self.pending_exit
+            && !can_merge(self.class, elem.class, elem.content.first().map_or("", |c| &c.text))
+        {
+            self.exit_current_stack();
+        }
         if let Some(ElementOrStack::Element(last)) = self.elements.last_mut()
             && last.can_merge(&elem)
         {
@@ -237,7 +255,21 @@ impl ElementStack {
         }
     }
 
-    fn enter_stack(&mut self, ElementStack { elements, parent, class }: ElementStack) {
+    fn enter_stack(
+        &mut self,
+        ElementStack { elements, parent, class, pending_exit }: ElementStack,
+    ) {
+        if self.pending_exit {
+            if can_merge(self.class, class, "") {
+                self.pending_exit = false;
+                for elem in elements {
+                    self.elements.push(elem);
+                }
+                // Compatible stacks, nothing to be done here!
+                return;
+            }
+            self.exit_current_stack();
+        }
         assert!(parent.is_none(), "`enter_stack` used with a non empty parent");
         let parent_elements = std::mem::take(&mut self.elements);
         let parent_parent = std::mem::take(&mut self.parent);
@@ -245,23 +277,27 @@ impl ElementStack {
             elements: parent_elements,
             parent: parent_parent,
             class: self.class,
+            pending_exit: self.pending_exit,
         }));
         self.class = class;
         self.elements = elements;
+        self.pending_exit = pending_exit;
     }
 
-    fn enter_elem(&mut self, class: Class) {
-        let elements = std::mem::take(&mut self.elements);
-        let parent = std::mem::take(&mut self.parent);
-        self.parent = Some(Box::new(ElementStack { elements, parent, class: self.class }));
-        self.class = Some(class);
-    }
-
+    /// This sets the `pending_exit` field to `true`. Meaning that if we try to push another stack
+    /// which is not compatible with this one, it will exit the current one before adding the new
+    /// one.
     fn exit_elem(&mut self) {
+        self.pending_exit = true;
+    }
+
+    /// Unlike `exit_elem`, this method directly exits the current stack. It is called when the
+    /// current stack is not compatible with a new one pushed or if an expansion was ended.
+    fn exit_current_stack(&mut self) {
         let Some(element) = std::mem::take(&mut self.parent) else {
             panic!("exiting an element where there is no parent");
         };
-        let ElementStack { elements, parent, class } = Box::into_inner(element);
+        let ElementStack { elements, parent, class, pending_exit } = Box::into_inner(element);
 
         let old_elements = std::mem::take(&mut self.elements);
         self.elements = elements;
@@ -269,9 +305,11 @@ impl ElementStack {
             elements: old_elements,
             class: self.class,
             parent: None,
+            pending_exit: false,
         }));
         self.parent = parent;
         self.class = class;
+        self.pending_exit = pending_exit;
     }
 
     fn write_content<W: Write>(&self, out: &mut W, href_context: &Option<HrefContext<'_, '_>>) {
@@ -306,16 +344,18 @@ impl ElementStack {
             // we generate the `<a>` directly here.
             //
             // For other elements, the links will be generated in `write_elem_to`.
-            let href_context = if matches!(class, Class::Macro(_)) {
-                href_context
-            } else {
-                &None
-            };
-            string_without_closing_tag(out, "", Some(class), href_context, self.class != parent_class)
-                .expect(
-                    "internal error: enter_span was called with Some(class) but did not \
+            let href_context = if matches!(class, Class::Macro(_)) { href_context } else { &None };
+            string_without_closing_tag(
+                out,
+                "",
+                Some(class),
+                href_context,
+                self.class != parent_class,
+            )
+            .expect(
+                "internal error: enter_span was called with Some(class) but did not \
                     return a closing HTML tag",
-                )
+            )
         } else {
             ""
         };
@@ -427,7 +467,7 @@ impl<F: Write> TokenHandler<'_, '_, F> {
 
         // We inline everything into the top-most element.
         while self.element_stack.parent.is_some() {
-            self.element_stack.exit_elem();
+            self.element_stack.exit_current_stack();
             if let Some(ElementOrStack::Stack(stack)) = self.element_stack.elements.last()
                 && let Some(class) = stack.class
                 && class != Class::Original
@@ -450,6 +490,11 @@ impl<F: Write> TokenHandler<'_, '_, F> {
 impl<F: Write> Drop for TokenHandler<'_, '_, F> {
     /// When leaving, we need to flush all pending data to not have missing content.
     fn drop(&mut self) {
+        // We need to clean the hierarchy before displaying it, otherwise the parents won't see
+        // the last child.
+        while self.element_stack.parent.is_some() {
+            self.element_stack.exit_current_stack();
+        }
         self.element_stack.write_content(self.out, &self.href_context);
     }
 }
@@ -493,7 +538,7 @@ fn end_expansion<'a, W: Write>(
     expanded_codes: &'a [ExpandedCode],
     span: Span,
 ) -> Option<&'a ExpandedCode> {
-    token_handler.element_stack.exit_elem();
+    token_handler.element_stack.exit_current_stack();
     let expansion = get_next_expansion(expanded_codes, token_handler.line, span);
     if expansion.is_none() {
         token_handler.close_expansion();
@@ -617,7 +662,9 @@ pub(super) fn write_code(
                 }
             }
         }
-        Highlight::EnterSpan { class } => token_handler.element_stack.enter_elem(class),
+        Highlight::EnterSpan { class } => {
+            token_handler.element_stack.enter_stack(ElementStack::new_with_class(Some(class)))
+        }
         Highlight::ExitSpan => token_handler.element_stack.exit_elem(),
     });
 }
