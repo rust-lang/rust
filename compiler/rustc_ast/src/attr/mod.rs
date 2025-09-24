@@ -424,7 +424,7 @@ impl MetaItem {
                 _span,
                 _spacing,
                 Delimiter::Invisible(InvisibleOrigin::MetaVar(
-                    MetaVarKind::Meta { .. } | MetaVarKind::Path,
+                    MetaVarKind::Meta | MetaVarKind::Path,
                 )),
                 _stream,
             )) => {

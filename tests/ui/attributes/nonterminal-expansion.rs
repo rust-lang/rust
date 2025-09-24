@@ -5,8 +5,7 @@
 macro_rules! pass_nonterminal {
     ($n:expr) => {
         #[repr(align($n))]
-        //~^ ERROR expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found `expr` metavariable
-        struct S;
+        fn foo() {}
     };
 }
 
@@ -15,5 +14,6 @@ macro_rules! n {
 }
 
 pass_nonterminal!(n!());
+//~^ ERROR expected one of `(`, `::`, or `=`, found `!`
 
 fn main() {}

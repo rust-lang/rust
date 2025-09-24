@@ -410,19 +410,18 @@ impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
     }
 
     fn parse_attr_item(&mut self) -> PResult<'sess, MetaItemParser<'static>> {
-        if let Some(MetaVarKind::Meta { has_meta_form }) = self.parser.token.is_metavar_seq() {
-            return if has_meta_form {
-                let attr_item = self
-                    .parser
-                    .eat_metavar_seq(MetaVarKind::Meta { has_meta_form: true }, |this| {
-                        MetaItemListParserContext { parser: this, should_emit: self.should_emit }
-                            .parse_attr_item()
-                    })
-                    .unwrap();
-                Ok(attr_item)
-            } else {
-                self.parser.unexpected_any()
-            };
+        if let Some(mv_kind @ (MetaVarKind::Meta | MetaVarKind::Expr { .. })) =
+            self.parser.token.is_metavar_seq()
+        {
+            return self
+                .parser
+                .eat_metavar_seq(mv_kind, |this| {
+                    MetaItemListParserContext { parser: this, should_emit: self.should_emit }
+                        .parse_attr_item()
+                })
+                .ok_or_else(|| {
+                    self.parser.unexpected_any::<core::convert::Infallible>().unwrap_err()
+                });
         }
 
         let path = self.parser.parse_path(PathStyle::Mod)?;

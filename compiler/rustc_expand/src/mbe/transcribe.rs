@@ -481,12 +481,7 @@ fn transcribe_pnr<'tx>(
             mk_delimited(ty.span, MetaVarKind::Ty { is_path }, TokenStream::from_ast(ty))
         }
         ParseNtResult::Meta(attr_item) => {
-            let has_meta_form = attr_item.meta_kind().is_some();
-            mk_delimited(
-                attr_item.span(),
-                MetaVarKind::Meta { has_meta_form },
-                TokenStream::from_ast(attr_item),
-            )
+            mk_delimited(attr_item.span(), MetaVarKind::Meta, TokenStream::from_ast(attr_item))
         }
         ParseNtResult::Path(path) => {
             mk_delimited(path.span, MetaVarKind::Path, TokenStream::from_ast(path))
