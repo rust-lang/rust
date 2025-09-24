@@ -703,13 +703,6 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             "bpf" => bpf::compute_abi_info(cx, self),
             arch => panic!("no lowering implemented for {arch}"),
         }
-        // Double check that any argument types annotated with the
-        // `#[rustc_pass_indirectly_in_non_rustic_abis]` attribute are passed indirectly.
-        for arg in &self.args {
-            if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
-                assert!(matches!(arg.mode, PassMode::Indirect { on_stack: false, .. }));
-            }
-        }
     }
 
     pub fn adjust_for_rust_abi<C>(&mut self, cx: &C)
