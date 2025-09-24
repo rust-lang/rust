@@ -4460,7 +4460,7 @@ declare_clippy_lint! {
     /// Checks for calls to `Read::bytes` on types which don't implement `BufRead`.
     ///
     /// ### Why is this bad?
-    /// The default implementation calls `read` for each byte, which can be very inefficient for data that’s not in memory, such as `File`.
+    /// The default implementation calls `read` for each byte, which can be very inefficient for data that's not in memory, such as `File`.
     ///
     /// ### Example
     /// ```no_run
