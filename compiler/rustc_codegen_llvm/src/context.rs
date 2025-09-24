@@ -370,7 +370,8 @@ pub(crate) unsafe fn create_module<'ll>(
         );
     }
 
-    if let Some(BranchProtection { bti, pac_ret }) = sess.opts.unstable_opts.branch_protection {
+    if let Some(BranchProtection { bti, pac_ret, gcs }) = sess.opts.unstable_opts.branch_protection
+    {
         if sess.target.arch == "aarch64" {
             llvm::add_module_flag_u32(
                 llmod,
@@ -402,6 +403,12 @@ pub(crate) unsafe fn create_module<'ll>(
                 llvm::ModuleFlagMergeBehavior::Min,
                 "sign-return-address-with-bkey",
                 u32::from(pac_opts.key == PAuthKey::B),
+            );
+            llvm::add_module_flag_u32(
+                llmod,
+                llvm::ModuleFlagMergeBehavior::Min,
+                "guarded-control-stack",
+                gcs.into(),
             );
         } else {
             bug!(
