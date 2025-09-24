@@ -1,5 +1,4 @@
 #![warn(clippy::or_fun_call)]
-#![allow(dead_code)]
 #![allow(
     clippy::borrow_as_ptr,
     clippy::uninlined_format_args,
@@ -479,4 +478,19 @@ fn test_result_and() {
     //~^ or_fun_call
 }
 
+#[clippy::msrv = "1.15"]
+fn below_msrv(opt: Option<i32>, res: Result<i32, ()>) {
+    let _ = opt.unwrap_or(Default::default());
+    //~^ unwrap_or_default
+    let _ = res.unwrap_or(Default::default());
+    //~^ or_fun_call
+}
+
+#[clippy::msrv = "1.16"]
+fn above_msrv(opt: Option<i32>, res: Result<i32, ()>) {
+    let _ = opt.unwrap_or(Default::default());
+    //~^ unwrap_or_default
+    let _ = res.unwrap_or(Default::default());
+    //~^ unwrap_or_default
+}
 fn main() {}

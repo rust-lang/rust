@@ -883,6 +883,7 @@ The minimum rust version that the project supports. Defaults to the `rust-versio
 * [`needless_borrow`](https://rust-lang.github.io/rust-clippy/master/index.html#needless_borrow)
 * [`non_std_lazy_statics`](https://rust-lang.github.io/rust-clippy/master/index.html#non_std_lazy_statics)
 * [`option_as_ref_deref`](https://rust-lang.github.io/rust-clippy/master/index.html#option_as_ref_deref)
+* [`or_fun_call`](https://rust-lang.github.io/rust-clippy/master/index.html#or_fun_call)
 * [`ptr_as_ptr`](https://rust-lang.github.io/rust-clippy/master/index.html#ptr_as_ptr)
 * [`question_mark`](https://rust-lang.github.io/rust-clippy/master/index.html#question_mark)
 * [`redundant_field_names`](https://rust-lang.github.io/rust-clippy/master/index.html#redundant_field_names)
