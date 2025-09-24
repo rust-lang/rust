@@ -13,7 +13,7 @@ pub(crate) mod inspect;
 pub mod interner;
 mod ir_print;
 pub mod mapping;
-mod normalize;
+pub mod normalize;
 pub mod obligation_ctxt;
 mod opaques;
 pub mod predicate;

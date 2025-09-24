@@ -14,8 +14,6 @@ fn test() {
     );
 }
 
-// FIXME(next-solver): The never type fallback implemented in r-a no longer works properly because of
-// `Coerce` predicates. We should reimplement fallback like rustc.
 #[test]
 fn infer_never2() {
     check_types(
@@ -26,7 +24,7 @@ fn test() {
     let a = gen();
     if false { a } else { loop {} };
     a;
-} //^ {unknown}
+} //^ !
 "#,
     );
 }
@@ -41,7 +39,7 @@ fn test() {
     let a = gen();
     if false { loop {} } else { a };
     a;
-  //^ {unknown}
+  //^ !
 }
 "#,
     );
@@ -56,7 +54,7 @@ enum Option<T> { None, Some(T) }
 fn test() {
     let a = if true { Option::None } else { Option::Some(return) };
     a;
-} //^ Option<{unknown}>
+} //^ Option<!>
 "#,
     );
 }
@@ -220,7 +218,7 @@ fn test(a: i32) {
         _ => loop {},
     };
     i;
-} //^ {unknown}
+} //^ !
 "#,
     );
 }

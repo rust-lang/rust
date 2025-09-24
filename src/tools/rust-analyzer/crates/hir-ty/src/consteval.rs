@@ -327,7 +327,7 @@ pub(crate) fn eval_to_const(
     debruijn: DebruijnIndex,
 ) -> Const {
     let db = ctx.db;
-    let infer = ctx.clone().resolve_all();
+    let infer = ctx.fixme_resolve_all_clone();
     fn has_closure(body: &Body, expr: ExprId) -> bool {
         if matches!(body[expr], Expr::Closure { .. }) {
             return true;

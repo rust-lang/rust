@@ -222,7 +222,7 @@ pub(crate) fn const_eval_discriminant_variant(
 // and make this function private. See the fixme comment on `InferenceContext::resolve_all`.
 pub(crate) fn eval_to_const<'db>(expr: ExprId, ctx: &mut InferenceContext<'db>) -> Const<'db> {
     let interner = DbInterner::new_with(ctx.db, None, None);
-    let infer = ctx.clone().resolve_all();
+    let infer = ctx.fixme_resolve_all_clone();
     fn has_closure(body: &Body, expr: ExprId) -> bool {
         if matches!(body[expr], Expr::Closure { .. }) {
             return true;
