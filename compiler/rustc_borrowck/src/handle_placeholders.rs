@@ -126,7 +126,13 @@ pub(crate) struct RegionTracker {
     /// regions reachable from this SCC.
     min_max_nameable_universe: UniverseIndex,
 
-    /// The existential region with the smallest universe, if any.
+    /// The largest universe of a placeholder in this SCC. Iff
+    /// an existential can name this universe it's allowed to
+    /// reach us.
+    scc_placeholder_largest_universe: Option<UniverseIndex>,
+
+    /// The reached existential region with the smallest universe, if any. This
+    /// is an upper bound on the universe.
     min_universe_existential: Option<(UniverseIndex, RegionVid)>,
 
     /// The representative Region Variable Id for this SCC.
@@ -135,29 +141,39 @@ pub(crate) struct RegionTracker {
 
 impl RegionTracker {
     pub(crate) fn new(rvid: RegionVid, definition: &RegionDefinition<'_>) -> Self {
-        let reachable_placeholders =
-            if matches!(definition.origin, NllRegionVariableOrigin::Placeholder(_)) {
-                PlaceholderReachability::Placeholders {
-                    max_universe: (definition.universe, rvid),
+        use NllRegionVariableOrigin::*;
+        use PlaceholderReachability::*;
+
+        let min_max_nameable_universe = definition.universe;
+        let representative = Representative::new(rvid, definition);
+        let universe_and_rvid = (definition.universe, rvid);
+
+        match definition.origin {
+            FreeRegion => Self {
+                reachable_placeholders: NoPlaceholders,
+                min_max_nameable_universe,
+                scc_placeholder_largest_universe: None,
+                min_universe_existential: None,
+                representative,
+            },
+            Placeholder(_) => Self {
+                reachable_placeholders: Placeholders {
+                    max_universe: universe_and_rvid,
                     min_placeholder: rvid,
                     max_placeholder: rvid,
-                }
-            } else {
-                PlaceholderReachability::NoPlaceholders
-            };
-
-        Self {
-            reachable_placeholders,
-            min_universe_existential: if matches!(
-                definition.origin,
-                NllRegionVariableOrigin::Existential { .. }
-            ) {
-                Some((definition.universe, rvid))
-            } else {
-                None
+                },
+                min_max_nameable_universe,
+                scc_placeholder_largest_universe: Some(definition.universe),
+                min_universe_existential: None,
+                representative,
             },
-            min_max_nameable_universe: definition.universe,
-            representative: Representative::new(rvid, definition),
+            Existential { .. } => Self {
+                reachable_placeholders: NoPlaceholders,
+                min_max_nameable_universe,
+                scc_placeholder_largest_universe: None,
+                min_universe_existential: Some(universe_and_rvid),
+                representative,
+            },
         }
     }
 
@@ -196,7 +212,7 @@ impl RegionTracker {
     ///
     /// Returns *a* culprit (there may be more than one).
     fn reaches_existential_that_cannot_name_us(&self) -> Option<RegionVid> {
-        let Representative::Placeholder(_p) = self.representative else {
+        let Some(required_universe) = self.scc_placeholder_largest_universe else {
             return None;
         };
 
@@ -207,8 +223,7 @@ impl RegionTracker {
             return None;
         };
 
-        (!self.reachable_placeholders.can_be_named_by(reachable_lowest_max_u))
-            .then_some(reachable_lowest_max_u_rvid)
+        (!reachable_lowest_max_u.can_name(required_universe)).then_some(reachable_lowest_max_u_rvid)
     }
 
     /// Determine if this SCC reaches a placeholder that isn't `placeholder_rvid`,
@@ -238,6 +253,9 @@ impl scc::Annotation for RegionTracker {
 
         Self {
             representative: self.representative.min(other.representative),
+            scc_placeholder_largest_universe: self
+                .scc_placeholder_largest_universe
+                .max(other.scc_placeholder_largest_universe),
             ..self.merge_reached(other)
         }
     }
@@ -254,6 +272,7 @@ impl scc::Annotation for RegionTracker {
                 .min(other.min_max_nameable_universe),
             reachable_placeholders: self.reachable_placeholders.merge(other.reachable_placeholders),
             representative: self.representative,
+            scc_placeholder_largest_universe: self.scc_placeholder_largest_universe,
         }
     }
 }
