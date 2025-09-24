@@ -46,8 +46,7 @@ use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::infer::relate::RelateResult;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk, InferResult, RegionVariableOrigin};
 use rustc_infer::traits::{
-    EvaluationResult, MatchExpressionArmCause, Obligation, PredicateObligation,
-    PredicateObligations, SelectionError,
+    MatchExpressionArmCause, Obligation, PredicateObligation, PredicateObligations, SelectionError,
 };
 use rustc_middle::span_bug;
 use rustc_middle::ty::adjustment::{
@@ -283,17 +282,23 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             }
             ty::Adt(_, _)
                 if self.tcx.features().reborrow()
-                    && self.fcx.infcx.type_implements_trait(
-                        self.tcx
-                            .lang_items()
-                            .reborrow()
-                            .expect("Unexpectedly using core/std without reborrow"),
-                        [b],
-                        self.fcx.param_env,
-                    ) == EvaluationResult::EvaluatedToOk =>
+                    && self
+                        .fcx
+                        .infcx
+                        .type_implements_trait(
+                            self.tcx
+                                .lang_items()
+                                .reborrow()
+                                .expect("Unexpectedly using core/std without reborrow"),
+                            [b],
+                            self.fcx.param_env,
+                        )
+                        .must_apply_modulo_regions() =>
             {
-                // FIXME(reborrow): how to check for t impl Reborrow, t impl CoerceShared
-                panic!("Don't do the magic!");
+                let reborrow_coerce = self.commit_if_ok(|_| self.coerce_reborrow(a, b));
+                if reborrow_coerce.is_ok() {
+                    return reborrow_coerce;
+                }
             }
             _ => {}
         }
@@ -860,6 +865,29 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // To complete the reborrow, we need to make sure we can unify the inner types, and if so we
         // add the adjustments.
         self.unify_and(a, b, [], Adjust::ReborrowPin(mut_b), ForceLeakCheck::No)
+    }
+
+    /// Applies geneirc reborrowing on type implementing `Reborrow`.
+    #[instrument(skip(self), level = "trace")]
+    fn coerce_reborrow(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
+        debug_assert!(self.shallow_resolve(a) == a);
+        debug_assert!(self.shallow_resolve(b) == b);
+
+        // We need to make sure the two types are compatible for reborrow.'
+        // FIXME(reborrow): this shouldn't be just an equality check.
+        if a == b {
+            // Exclusive reborrowing goes from T -> T.
+            return self.unify_and(
+                a,
+                b,
+                [],
+                Adjust::GenericReborrow(ty::Mutability::Mut),
+                ForceLeakCheck::No,
+            );
+        }
+
+        // FIXME(reborrow): CoerceShared.
+        self.unify_and(a, b, [], Adjust::GenericReborrow(ty::Mutability::Not), ForceLeakCheck::No)
     }
 
     fn coerce_from_fn_pointer(
