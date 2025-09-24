@@ -4854,7 +4854,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             },
             ExprKind::MethodCall(method_call, receiver, args, _) => {
                 let method_span = method_call.ident.span;
-                or_fun_call::check(cx, expr, method_span, method_call.ident.name, receiver, args);
+                or_fun_call::check(cx, expr, method_span, method_call.ident.name, receiver, args, self.msrv);
                 expect_fun_call::check(
                     cx,
                     &self.format_args,

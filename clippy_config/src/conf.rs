@@ -779,6 +779,7 @@ define_Conf! {
         needless_borrow,
         non_std_lazy_statics,
         option_as_ref_deref,
+        or_fun_call,
         ptr_as_ptr,
         question_mark,
         redundant_field_names,

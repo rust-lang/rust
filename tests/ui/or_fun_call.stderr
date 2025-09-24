@@ -288,5 +288,29 @@ error: function call inside of `and`
 LL |     let _ = x.and(g());
    |               ^^^^^^^^ help: try: `and_then(|_| g())`
 
-error: aborting due to 45 previous errors
+error: use of `unwrap_or` to construct default value
+  --> tests/ui/or_fun_call.rs:483:17
+   |
+LL |     let _ = opt.unwrap_or(Default::default());
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_default()`
+
+error: function call inside of `unwrap_or`
+  --> tests/ui/or_fun_call.rs:485:17
+   |
+LL |     let _ = res.unwrap_or(Default::default());
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|_| Default::default())`
+
+error: use of `unwrap_or` to construct default value
+  --> tests/ui/or_fun_call.rs:491:17
+   |
+LL |     let _ = opt.unwrap_or(Default::default());
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_default()`
+
+error: use of `unwrap_or` to construct default value
+  --> tests/ui/or_fun_call.rs:493:17
+   |
+LL |     let _ = res.unwrap_or(Default::default());
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_default()`
+
+error: aborting due to 49 previous errors
 
