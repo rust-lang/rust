@@ -141,7 +141,6 @@ fn push_inner<I: Interner>(stack: &mut TypeWalkerStack<I>, parent: I::GenericArg
             }
             ty::Field(ty, _) => {
                 stack.push(ty.into());
-                // FIXME(field_projections): figure out if need to push `field_path`
             }
             ty::Tuple(ts) => stack.extend(ts.iter().rev().map(|ty| ty.into())),
             ty::FnPtr(sig_tys, _hdr) => {
