@@ -1780,8 +1780,7 @@ extern "C" void LLVMRustContextConfigureDiagnosticHandler(
     RemarkFile->keep();
 
     auto RemarkSerializer = remarks::createRemarkSerializer(
-        llvm::remarks::Format::YAML, remarks::SerializerMode::Separate,
-        RemarkFile->os());
+        llvm::remarks::Format::YAML, RemarkFile->os());
     if (Error E = RemarkSerializer.takeError()) {
       std::string Error = std::string("Cannot create remark serializer: ") +
                           toString(std::move(E));
