@@ -2107,7 +2107,7 @@ impl PartialEq for PathBuf {
 impl cmp::PartialEq<str> for PathBuf {
     #[inline]
     fn eq(&self, other: &str) -> bool {
-        Path::eq(self, other)
+        self.as_path() == other
     }
 }
 
@@ -2115,7 +2115,7 @@ impl cmp::PartialEq<str> for PathBuf {
 impl cmp::PartialEq<PathBuf> for str {
     #[inline]
     fn eq(&self, other: &PathBuf) -> bool {
-        other == self
+        self == other.as_path()
     }
 }
 
@@ -2123,7 +2123,7 @@ impl cmp::PartialEq<PathBuf> for str {
 impl cmp::PartialEq<String> for PathBuf {
     #[inline]
     fn eq(&self, other: &String) -> bool {
-        **self == **other
+        self.as_path() == other.as_str()
     }
 }
 
@@ -2131,7 +2131,7 @@ impl cmp::PartialEq<String> for PathBuf {
 impl cmp::PartialEq<PathBuf> for String {
     #[inline]
     fn eq(&self, other: &PathBuf) -> bool {
-        other == self
+        self.as_str() == other.as_path()
     }
 }
 
@@ -3426,7 +3426,7 @@ impl cmp::PartialEq<Path> for str {
 impl cmp::PartialEq<String> for Path {
     #[inline]
     fn eq(&self, other: &String) -> bool {
-        self == &*other
+        self == other.as_str()
     }
 }
 
@@ -3434,7 +3434,7 @@ impl cmp::PartialEq<String> for Path {
 impl cmp::PartialEq<Path> for String {
     #[inline]
     fn eq(&self, other: &Path) -> bool {
-        other == self
+        self.as_str() == other
     }
 }
 
