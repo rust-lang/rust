@@ -661,8 +661,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// operations that can be const-folded today.
     fn check_constness(&self, mut kind: &'a ExprKind<'tcx>) -> bool {
         loop {
+            debug!(?kind, "check_constness");
             match kind {
-                &ExprKind::PointerCoercion {
+                &ExprKind::ValueTypeAscription { source: eid, user_ty: _, user_ty_span: _ }
+                | &ExprKind::Use { source: eid }
+                | &ExprKind::PointerCoercion {
                     cast: PointerCoercion::Unsize,
                     source: eid,
                     is_from_as_cast: _,

@@ -29,10 +29,18 @@ const Y: X<'static, i32> = X { f: &0 };
 fn main() {
     let _: [X<'static, dyn Display>; 0] = [Y; 0];
     coercion_on_weak_in_const();
+    coercion_on_weak_as_cast();
 }
 
 fn coercion_on_weak_in_const() {
     const X: Weak<i32> = Weak::new();
     const Y: [Weak<dyn Send>; 0] = [X; 0];
     let _ = Y;
+}
+
+fn coercion_on_weak_as_cast() {
+    const Y: X<'static, i32> = X { f: &0 };
+    // What happens in the following code is that
+    // a constant is explicitly coerced into
+    let _a: [X<'static, dyn Display>; 0] = [Y as X<'static, dyn Display>; 0];
 }
