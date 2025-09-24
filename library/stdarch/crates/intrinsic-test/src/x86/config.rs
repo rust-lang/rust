@@ -5,8 +5,64 @@ pub const NOTICE: &str = "\
 
 // Format f16 values (and vectors containing them) in a way that is consistent with C.
 pub const F16_FORMATTING_DEF: &str = r#"
+use std::arch::x86_64::*;
+
+#[inline]
+fn debug_simd_finish<T: core::fmt::Debug, const N: usize>(
+    formatter: &mut core::fmt::Formatter<'_>,
+    type_name: &str,
+    array: &[T; N],
+) -> core::fmt::Result {
+    core::fmt::Formatter::debug_tuple_fields_finish(
+        formatter,
+        type_name,
+        &core::array::from_fn::<&dyn core::fmt::Debug, N, _>(|i| &array[i]),
+    )
+}
+
 #[repr(transparent)]
 struct Hex<T>(T);
+
+impl<T: DebugHexF16> core::fmt::Debug for Hex<T> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        <T as DebugHexF16>::fmt(&self.0, f)
+    }
+}
+
+fn debug_f16<T: DebugHexF16>(x: T) -> impl core::fmt::Debug {
+    Hex(x)
+}
+
+trait DebugHexF16 {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result;
+}
+
+impl DebugHexF16 for f16 {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{:#06x?}", self.to_bits())
+    }
+}
+
+impl DebugHexF16 for __m128h {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let array = unsafe { core::mem::transmute::<_, [Hex<f16>; 8]>(*self) };
+        debug_simd_finish(f, "__m128h", &array)
+    }
+}
+
+impl DebugHexF16 for __m256h {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let array = unsafe { core::mem::transmute::<_, [Hex<f16>; 16]>(*self) };
+        debug_simd_finish(f, "__m256h", &array)
+    }
+}
+
+impl DebugHexF16 for __m512h {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let array = unsafe { core::mem::transmute::<_, [Hex<f16>; 32]>(*self) };
+        debug_simd_finish(f, "__m512h", &array)
+    }
+}
  "#;
 
 pub const LANE_FUNCTION_HELPERS: &str = r#"
@@ -18,12 +74,54 @@ typedef double float64_t;
 #define __int32 int
 
 std::ostream& operator<<(std::ostream& os, _Float16 value);
+std::ostream& operator<<(std::ostream& os, __m128i value);
+std::ostream& operator<<(std::ostream& os, __m256i value);
+std::ostream& operator<<(std::ostream& os, __m512i value);
 
 std::ostream& operator<<(std::ostream& os, _Float16 value) {
     uint16_t temp = 0;
     memcpy(&temp, &value, sizeof(_Float16));
     std::stringstream ss;
     ss << "0x" << std::setfill('0') << std::setw(4) << std::hex << temp;
+    os << ss.str();
+    return os;
+}
+
+std::ostream& operator<<(std::ostream& os, __m128i value) {
+    void* temp = malloc(sizeof(__m128i));
+    _mm_storeu_si128((__m128i*)temp, value);
+    std::stringstream ss;
+    
+    ss << "0x";
+    for(int i = 0; i < 16; i++) {
+        ss << std::setfill('0') << std::setw(2) << std::hex << ((char*)temp)[i];
+    }
+    os << ss.str();
+    return os;
+}
+
+std::ostream& operator<<(std::ostream& os, __m256i value) {
+    void* temp = malloc(sizeof(__m256i));
+    _mm256_storeu_si256((__m256i*)temp, value);
+    std::stringstream ss;
+    
+    ss << "0x";
+    for(int i = 0; i < 32; i++) {
+        ss << std::setfill('0') << std::setw(2) << std::hex << ((char*)temp)[i];
+    }
+    os << ss.str();
+    return os;
+}
+
+std::ostream& operator<<(std::ostream& os, __m512i value) {
+    void* temp = malloc(sizeof(__m512i));
+    _mm512_storeu_si512((__m512i*)temp, value);
+    std::stringstream ss;
+    
+    ss << "0x";
+    for(int i = 0; i < 64; i++) {
+        ss << std::setfill('0') << std::setw(2) << std::hex << ((char*)temp)[i];
+    }
     os << ss.str();
     return os;
 }
@@ -55,8 +153,6 @@ pub const X86_CONFIGURATIONS: &str = r#"
 #![cfg_attr(target_arch = "x86", feature(stdarch_x86_avx512_f16))]
 #![cfg_attr(target_arch = "x86", feature(stdarch_x86_rtm))]
 #![cfg_attr(target_arch = "x86", feature(stdarch_x86_rtm))]
-#![cfg_attr(target_arch = "x86_64", feature(sse))]
-#![cfg_attr(target_arch = "x86_64", feature(sse2))]
 #![cfg_attr(target_arch = "x86_64", feature(x86_amx_intrinsics))]
 #![cfg_attr(target_arch = "x86_64", feature(stdarch_x86_avx512_f16))]
 #![feature(fmt_helpers_for_derive)]
