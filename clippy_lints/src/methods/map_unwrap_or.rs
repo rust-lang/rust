@@ -1,13 +1,13 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::{MaybeDef as _, MaybeResPath as _};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_copy;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
-use rustc_hir::intravisit::{Visitor, walk_path};
-use rustc_hir::{ExprKind, HirId, Node, PatKind, Path, QPath};
+use rustc_hir::intravisit::{Visitor, walk_expr, walk_path};
+use rustc_hir::{ExprKind, HirId, LangItem, Node, PatKind, Path, QPath};
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
 use rustc_span::{Span, sym};
@@ -28,116 +28,131 @@ pub(super) fn check<'tcx>(
     msrv: Msrv,
 ) {
     let recv_ty = cx.typeck_results().expr_ty(recv).peel_refs();
-    let is_option = recv_ty.is_diag_item(cx, sym::Option);
-    let is_result = recv_ty.is_diag_item(cx, sym::Result);
+    let recv_ty_kind = match recv_ty.opt_diag_name(cx) {
+        Some(sym::Option) => sym::Option,
+        Some(sym::Result) if msrv.meets(cx, msrvs::RESULT_MAP_OR) => sym::Result,
+        _ => return,
+    };
 
-    if is_result && !msrv.meets(cx, msrvs::RESULT_MAP_OR) {
+    let unwrap_arg_ty = cx.typeck_results().expr_ty(unwrap_arg);
+    if !is_copy(cx, unwrap_arg_ty) {
+        // Replacing `.map(<f>).unwrap_or(<a>)` with `.map_or(<a>, <f>)` can sometimes lead to
+        // borrowck errors, see #10579 for one such instance.
+        // In particular, if `a` causes a move and `f` references that moved binding, then we cannot lint:
+        // ```
+        // let x = vec![1, 2];
+        // x.get(0..1).map(|s| s.to_vec()).unwrap_or(x);
+        // ```
+        // This compiles, but changing it to `map_or` will produce a compile error:
+        // ```
+        // let x = vec![1, 2];
+        // x.get(0..1).map_or(x, |s| s.to_vec())
+        //                    ^ moving `x` here
+        // ^^^^^^^^^^^ while it is borrowed here (and later used in the closure)
+        // ```
+        // So, we have to check that `a` is not referenced anywhere (even outside of the `.map` closure!)
+        // before the call to `unwrap_or`.
+
+        let mut unwrap_visitor = UnwrapVisitor {
+            cx,
+            identifiers: FxHashSet::default(),
+        };
+        unwrap_visitor.visit_expr(unwrap_arg);
+
+        let mut reference_visitor = ReferenceVisitor {
+            cx,
+            identifiers: unwrap_visitor.identifiers,
+            unwrap_or_span: unwrap_arg.span,
+        };
+
+        let body = cx.tcx.hir_body_owned_by(cx.tcx.hir_enclosing_body_owner(expr.hir_id));
+
+        // Visit the body, and return if we've found a reference
+        if reference_visitor.visit_body(body).is_break() {
+            return;
+        }
+    }
+
+    if !unwrap_arg.span.eq_ctxt(map_span) {
         return;
     }
 
-    // lint if the caller of `map()` is an `Option`
-    if is_option || is_result {
-        if !is_copy(cx, cx.typeck_results().expr_ty(unwrap_arg)) {
-            // Replacing `.map(<f>).unwrap_or(<a>)` with `.map_or(<a>, <f>)` can sometimes lead to
-            // borrowck errors, see #10579 for one such instance.
-            // In particular, if `a` causes a move and `f` references that moved binding, then we cannot lint:
-            // ```
-            // let x = vec![1, 2];
-            // x.get(0..1).map(|s| s.to_vec()).unwrap_or(x);
-            // ```
-            // This compiles, but changing it to `map_or` will produce a compile error:
-            // ```
-            // let x = vec![1, 2];
-            // x.get(0..1).map_or(x, |s| s.to_vec())
-            //                    ^ moving `x` here
-            // ^^^^^^^^^^^ while it is borrowed here (and later used in the closure)
-            // ```
-            // So, we have to check that `a` is not referenced anywhere (even outside of the `.map` closure!)
-            // before the call to `unwrap_or`.
+    let mut applicability = Applicability::MachineApplicable;
+    // get snippet for unwrap_or()
+    let unwrap_snippet = snippet_with_applicability(cx, unwrap_arg.span, "..", &mut applicability);
+    // lint message
 
-            let mut unwrap_visitor = UnwrapVisitor {
-                cx,
-                identifiers: FxHashSet::default(),
-            };
-            unwrap_visitor.visit_expr(unwrap_arg);
-
-            let mut reference_visitor = ReferenceVisitor {
-                cx,
-                identifiers: unwrap_visitor.identifiers,
-                unwrap_or_span: unwrap_arg.span,
-            };
-
-            let body = cx.tcx.hir_body_owned_by(cx.tcx.hir_enclosing_body_owner(expr.hir_id));
-
-            // Visit the body, and return if we've found a reference
-            if reference_visitor.visit_body(body).is_break() {
-                return;
-            }
-        }
-
-        if !unwrap_arg.span.eq_ctxt(map_span) {
-            return;
-        }
-
-        // is_some_and is stabilised && `unwrap_or` argument is false; suggest `is_some_and` instead
-        let suggest_is_some_and = matches!(&unwrap_arg.kind, ExprKind::Lit(lit)
-            if matches!(lit.node, rustc_ast::LitKind::Bool(false)))
-            && msrv.meets(cx, msrvs::OPTION_RESULT_IS_VARIANT_AND);
-
-        let mut applicability = Applicability::MachineApplicable;
-        // get snippet for unwrap_or()
-        let unwrap_snippet = snippet_with_applicability(cx, unwrap_arg.span, "..", &mut applicability);
-        // lint message
-        // comparing the snippet from source to raw text ("None") below is safe
-        // because we already have checked the type.
-        let unwrap_snippet_none = is_option && unwrap_snippet == "None";
-        let arg = if unwrap_snippet_none {
-            "None"
-        } else if suggest_is_some_and {
-            "false"
-        } else {
-            "<a>"
-        };
-        let suggest = if unwrap_snippet_none {
-            "and_then(<f>)"
-        } else if suggest_is_some_and {
-            if is_result {
-                "is_ok_and(<f>)"
-            } else {
-                "is_some_and(<f>)"
-            }
-        } else {
-            "map_or(<a>, <f>)"
-        };
-        let msg = format!(
-            "called `map(<f>).unwrap_or({arg})` on an `{}` value",
-            if is_option { "Option" } else { "Result" }
-        );
-
-        span_lint_and_then(cx, MAP_UNWRAP_OR, expr.span, msg, |diag| {
-            let map_arg_span = map_arg.span;
-
-            let mut suggestion = vec![
-                (
-                    map_span,
-                    String::from(if unwrap_snippet_none {
-                        "and_then"
-                    } else if suggest_is_some_and {
-                        if is_result { "is_ok_and" } else { "is_some_and" }
-                    } else {
-                        "map_or"
-                    }),
-                ),
-                (expr.span.with_lo(unwrap_recv.span.hi()), String::new()),
-            ];
-
-            if !unwrap_snippet_none && !suggest_is_some_and {
-                suggestion.push((map_arg_span.with_hi(map_arg_span.lo()), format!("{unwrap_snippet}, ")));
-            }
-
-            diag.multipart_suggestion(format!("use `{suggest}` instead"), suggestion, applicability);
-        });
+    let suggest_kind = if recv_ty_kind == sym::Option
+        && unwrap_arg
+            .basic_res()
+            .ctor_parent(cx)
+            .is_lang_item(cx, LangItem::OptionNone)
+    {
+        SuggestedKind::AndThen
     }
+    // is_some_and is stabilised && `unwrap_or` argument is false; suggest `is_some_and` instead
+    else if matches!(&unwrap_arg.kind, ExprKind::Lit(lit)
+            if matches!(lit.node, rustc_ast::LitKind::Bool(false)))
+        && msrv.meets(cx, msrvs::OPTION_RESULT_IS_VARIANT_AND)
+    {
+        SuggestedKind::IsVariantAnd
+    } else {
+        SuggestedKind::Other
+    };
+
+    let arg = match suggest_kind {
+        SuggestedKind::AndThen => "None",
+        SuggestedKind::IsVariantAnd => "false",
+        SuggestedKind::Other => "<a>",
+    };
+
+    let suggest = match (suggest_kind, recv_ty_kind) {
+        (SuggestedKind::AndThen, _) => "and_then(<f>)",
+        (SuggestedKind::IsVariantAnd, sym::Result) => "is_ok_and(<f>)",
+        (SuggestedKind::IsVariantAnd, sym::Option) => "is_some_and(<f>)",
+        _ => "map_or(<a>, <f>)",
+    };
+
+    let msg = format!(
+        "called `map(<f>).unwrap_or({arg})` on {} `{recv_ty_kind}` value",
+        if recv_ty_kind == sym::Option { "an" } else { "a" }
+    );
+
+    span_lint_and_then(cx, MAP_UNWRAP_OR, expr.span, msg, |diag| {
+        let map_arg_span = map_arg.span;
+
+        let mut suggestion = vec![
+            (
+                map_span,
+                String::from(match (suggest_kind, recv_ty_kind) {
+                    (SuggestedKind::AndThen, _) => "and_then",
+                    (SuggestedKind::IsVariantAnd, sym::Result) => "is_ok_and",
+                    (SuggestedKind::IsVariantAnd, sym::Option) => "is_some_and",
+                    (SuggestedKind::Other, _)
+                        if unwrap_arg_ty.peel_refs().is_array()
+                            && cx.typeck_results().expr_ty_adjusted(unwrap_arg).peel_refs().is_slice() =>
+                    {
+                        return;
+                    },
+                    _ => "map_or",
+                }),
+            ),
+            (expr.span.with_lo(unwrap_recv.span.hi()), String::new()),
+        ];
+
+        if matches!(suggest_kind, SuggestedKind::Other) {
+            suggestion.push((map_arg_span.with_hi(map_arg_span.lo()), format!("{unwrap_snippet}, ")));
+        }
+
+        diag.multipart_suggestion(format!("use `{suggest}` instead"), suggestion, applicability);
+    });
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum SuggestedKind {
+    AndThen,
+    IsVariantAnd,
+    Other,
 }
 
 struct UnwrapVisitor<'a, 'tcx> {
@@ -186,7 +201,7 @@ impl<'tcx> Visitor<'tcx> for ReferenceVisitor<'_, 'tcx> {
         {
             return ControlFlow::Break(());
         }
-        rustc_hir::intravisit::walk_expr(self, expr)
+        walk_expr(self, expr)
     }
 
     fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
