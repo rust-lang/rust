@@ -93,6 +93,7 @@ case ${TARGET} in
         TEST_CPPFLAGS="-fuse-ld=lld -I/usr/include/x86_64-linux-gnu/"
         TEST_CXX_COMPILER="clang++-19"
         TEST_RUNNER="${CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER}"
+        TEST_SKIP_INTRINSICS=crates/intrinsic-test/missing_x86.txt
         export STDARCH_DISABLE_ASSERT_INSTR=1
 
         export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+avx"
