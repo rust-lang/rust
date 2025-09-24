@@ -2528,7 +2528,17 @@ fn normalize_lexically() {
 }
 
 #[test]
-/// See issue#146183
-fn compare_path_to_str() {
-    assert!(&PathBuf::from("x") == "x");
+/// See issue#146183 and issue#146940
+fn compare_path_like_to_str_like() {
+    let path_buf = PathBuf::from("x");
+    let path = Path::new("x");
+    let s = String::from("x");
+    assert!(path == "x");
+    assert!("x" == path);
+    assert!(path == &s);
+    assert!(&s == path);
+    assert!(&path_buf == "x");
+    assert!("x" == &path_buf);
+    assert!(path_buf == s);
+    assert!(s == path_buf);
 }
