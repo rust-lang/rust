@@ -1448,8 +1448,7 @@ impl f64 {
     #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn abs(self) -> f64 {
-        // SAFETY: this is actually a safe intrinsic
-        unsafe { intrinsics::fabsf64(self) }
+        intrinsics::fabsf64(self)
     }
 
     /// Returns a number that represents the sign of `self`.
@@ -1507,8 +1506,7 @@ impl f64 {
     #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn copysign(self, sign: f64) -> f64 {
-        // SAFETY: this is actually a safe intrinsic
-        unsafe { intrinsics::copysignf64(self, sign) }
+        intrinsics::copysignf64(self, sign)
     }
 
     /// Float addition that allows optimizations based on algebraic rules.
