@@ -21,7 +21,8 @@ use tracing::{debug, instrument};
 use super::errors::GenericsArgsErrExtend;
 use crate::errors;
 use crate::hir_ty_lowering::{
-    AssocItemQSelf, FeedConstTy, HirTyLowerer, PredicateFilter, RegionInferReason,
+    AssocItemQSelf, FeedConstTy, HirTyLowerer, OverlappingAsssocItemConstraints, PredicateFilter,
+    RegionInferReason,
 };
 
 #[derive(Debug, Default)]
@@ -362,7 +363,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         param_ty,
                         bounds,
                         predicate_filter,
-                        false,
+                        OverlappingAsssocItemConstraints::Allowed,
                     );
                 }
                 hir::GenericBound::Outlives(lifetime) => {
