@@ -1685,6 +1685,14 @@ extern "C" void LLVMRustContextConfigureDiagnosticHandler(
           RemarkStreamer(std::move(RemarkStreamer)),
           LlvmRemarkStreamer(std::move(LlvmRemarkStreamer)) {}
 
+#if LLVM_VERSION_GE(22, 0)
+    ~RustDiagnosticHandler() {
+      if (RemarkStreamer) {
+        RemarkStreamer->releaseSerializer();
+      }
+    }
+#endif
+
     virtual bool handleDiagnostics(const DiagnosticInfo &DI) override {
       // If this diagnostic is one of the optimization remark kinds, we can
       // check if it's enabled before emitting it. This can avoid many
