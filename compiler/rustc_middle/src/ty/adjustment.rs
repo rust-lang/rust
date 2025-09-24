@@ -106,6 +106,10 @@ pub enum Adjust {
 
     /// Take a pinned reference and reborrow as a `Pin<&mut T>` or `Pin<&T>`.
     ReborrowPin(hir::Mutability),
+
+    /// Generate a T and use the Reborrow or CoerceShared trait to produce a
+    /// new T.
+    GenericReborrow(hir::Mutability),
 }
 
 /// An overloaded autoderef step, representing a `Deref(Mut)::deref(_mut)`

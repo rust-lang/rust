@@ -25,6 +25,7 @@ pub(crate) mod debug;
 pub(crate) mod default;
 pub(crate) mod from;
 pub(crate) mod hash;
+pub(crate) mod reborrow;
 
 #[path = "cmp/eq.rs"]
 pub(crate) mod eq;

@@ -46,7 +46,8 @@ use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::infer::relate::RelateResult;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk, InferResult, RegionVariableOrigin};
 use rustc_infer::traits::{
-    MatchExpressionArmCause, Obligation, PredicateObligation, PredicateObligations, SelectionError,
+    EvaluationResult, MatchExpressionArmCause, Obligation, PredicateObligation,
+    PredicateObligations, SelectionError,
 };
 use rustc_middle::span_bug;
 use rustc_middle::ty::adjustment::{
@@ -262,7 +263,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         }
 
         // Examine the target type and consider type-specific coercions, such
-        // as auto-borrowing, coercing pointer mutability, or pin-ergonomics.
+        // as auto-borrowing, coercing pointer mutability, pin-ergonomics, or
+        // generic reborrow.
         match *b.kind() {
             ty::RawPtr(_, b_mutbl) => {
                 return self.coerce_to_raw_ptr(a, b, b_mutbl);
@@ -278,6 +280,20 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 if pin_coerce.is_ok() {
                     return pin_coerce;
                 }
+            }
+            ty::Adt(_, _)
+                if self.tcx.features().reborrow()
+                    && self.fcx.infcx.type_implements_trait(
+                        self.tcx
+                            .lang_items()
+                            .reborrow()
+                            .expect("Unexpectedly using core/std without reborrow"),
+                        [b],
+                        self.fcx.param_env,
+                    ) == EvaluationResult::EvaluatedToOk =>
+            {
+                // FIXME(reborrow): how to check for t impl Reborrow, t impl CoerceShared
+                panic!("Don't do the magic!");
             }
             _ => {}
         }
