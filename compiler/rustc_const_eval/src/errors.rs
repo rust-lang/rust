@@ -696,8 +696,8 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             }
             UnalignedPtr { ptr_kind: PointerKind::Box, .. } => const_eval_validation_unaligned_box,
 
-            NullPtr { ptr_kind: PointerKind::Box } => const_eval_validation_null_box,
-            NullPtr { ptr_kind: PointerKind::Ref(_) } => const_eval_validation_null_ref,
+            NullPtr { ptr_kind: PointerKind::Box, .. } => const_eval_validation_null_box,
+            NullPtr { ptr_kind: PointerKind::Ref(_), .. } => const_eval_validation_null_ref,
             DanglingPtrNoProvenance { ptr_kind: PointerKind::Box, .. } => {
                 const_eval_validation_dangling_box_no_provenance
             }
@@ -820,8 +820,10 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
                 err.arg("vtable_dyn_type", vtable_dyn_type.to_string());
                 err.arg("expected_dyn_type", expected_dyn_type.to_string());
             }
-            NullPtr { .. }
-            | MutableRefToImmutable
+            NullPtr { maybe, .. } => {
+                err.arg("maybe", maybe);
+            }
+            MutableRefToImmutable
             | MutableRefInConst
             | NullFnPtr
             | NonnullPtrMaybeNull

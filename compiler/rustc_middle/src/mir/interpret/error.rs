@@ -541,6 +541,8 @@ pub enum ValidationErrorKind<'tcx> {
     },
     NullPtr {
         ptr_kind: PointerKind,
+        /// Records whether this pointer is definitely null or just may be null.
+        maybe: bool,
     },
     DanglingPtrNoProvenance {
         ptr_kind: PointerKind,
