@@ -220,7 +220,10 @@ pub fn eval_condition(
                 }
             }
         }
-        MetaItemKind::Word | MetaItemKind::NameValue(..) if cfg.path.segments.len() != 1 => {
+        MetaItemKind::Word | MetaItemKind::NameValue(..)
+            if cfg.path.segments.len() != 1
+                || cfg.path.segments[0].ident.is_path_segment_keyword() =>
+        {
             dcx.emit_err(session_diagnostics::CfgPredicateIdentifier { span: cfg.path.span });
             true
         }

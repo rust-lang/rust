@@ -1,0 +1,107 @@
+error: `cfg` predicate key must be an identifier
+  --> $DIR/path-kw-as-pred.rs:11:7
+   |
+LL | #[cfg(crate)]
+   |       ^^^^^
+
+error: `cfg` predicate key must be an identifier
+  --> $DIR/path-kw-as-pred.rs:12:7
+   |
+LL | #[cfg(super)]
+   |       ^^^^^
+
+error: `cfg` predicate key must be an identifier
+  --> $DIR/path-kw-as-pred.rs:13:7
+   |
+LL | #[cfg(self)]
+   |       ^^^^
+
+error: `cfg` predicate key must be an identifier
+  --> $DIR/path-kw-as-pred.rs:14:7
+   |
+LL | #[cfg(Self)]
+   |       ^^^^
+
+error: `cfg` predicate key must be an identifier
+  --> $DIR/path-kw-as-pred.rs:15:12
+   |
+LL | #[cfg_attr(crate, path = "foo")]
+   |            ^^^^^
+
+error: `cfg` predicate key must be an identifier
+  --> $DIR/path-kw-as-pred.rs:16:12
+   |
+LL | #[cfg_attr(super, path = "foo")]
+   |            ^^^^^
+
+error: `cfg` predicate key must be an identifier
+  --> $DIR/path-kw-as-pred.rs:17:12
+   |
+LL | #[cfg_attr(self, path = "foo")]
+   |            ^^^^
+
+error: `cfg` predicate key must be an identifier
+  --> $DIR/path-kw-as-pred.rs:18:12
+   |
+LL | #[cfg_attr(Self, path = "foo")]
+   |            ^^^^
+
+error: `cfg` predicate key must be an identifier
+  --> $DIR/path-kw-as-pred.rs:3:15
+   |
+LL |         #[cfg($crate)]
+   |               ^^^^^^
+...
+LL |     foo!();
+   |     ------ in this macro invocation
+   |
+   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `cfg` predicate key must be an identifier
+  --> $DIR/path-kw-as-pred.rs:4:20
+   |
+LL |         #[cfg_attr($crate, path = "foo")]
+   |                    ^^^^^^
+...
+LL |     foo!();
+   |     ------ in this macro invocation
+   |
+   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `cfg` predicate key must be an identifier
+  --> $DIR/path-kw-as-pred.rs:7:14
+   |
+LL |         cfg!($crate);
+   |              ^^^^^^
+...
+LL |     foo!();
+   |     ------ in this macro invocation
+   |
+   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `cfg` predicate key must be an identifier
+  --> $DIR/path-kw-as-pred.rs:24:10
+   |
+LL |     cfg!(crate);
+   |          ^^^^^
+
+error: `cfg` predicate key must be an identifier
+  --> $DIR/path-kw-as-pred.rs:25:10
+   |
+LL |     cfg!(super);
+   |          ^^^^^
+
+error: `cfg` predicate key must be an identifier
+  --> $DIR/path-kw-as-pred.rs:26:10
+   |
+LL |     cfg!(self);
+   |          ^^^^
+
+error: `cfg` predicate key must be an identifier
+  --> $DIR/path-kw-as-pred.rs:27:10
+   |
+LL |     cfg!(Self);
+   |          ^^^^
+
+error: aborting due to 15 previous errors
+
