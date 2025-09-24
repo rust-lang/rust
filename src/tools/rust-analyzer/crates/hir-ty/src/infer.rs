@@ -632,6 +632,26 @@ impl InferenceResult {
     pub fn binding_mode(&self, id: PatId) -> Option<BindingMode> {
         self.binding_modes.get(id).copied()
     }
+
+    // This method is consumed by external tools to run rust-analyzer as a library. Don't remove, please.
+    pub fn expression_types(&self) -> impl Iterator<Item = (ExprId, &Ty)> {
+        self.type_of_expr.iter()
+    }
+
+    // This method is consumed by external tools to run rust-analyzer as a library. Don't remove, please.
+    pub fn pattern_types(&self) -> impl Iterator<Item = (PatId, &Ty)> {
+        self.type_of_pat.iter()
+    }
+
+    // This method is consumed by external tools to run rust-analyzer as a library. Don't remove, please.
+    pub fn binding_types(&self) -> impl Iterator<Item = (BindingId, &Ty)> {
+        self.type_of_binding.iter()
+    }
+
+    // This method is consumed by external tools to run rust-analyzer as a library. Don't remove, please.
+    pub fn return_position_impl_trait_types(&self) -> impl Iterator<Item = (ImplTraitIdx, &Ty)> {
+        self.type_of_rpit.iter()
+    }
 }
 
 impl Index<ExprId> for InferenceResult {
