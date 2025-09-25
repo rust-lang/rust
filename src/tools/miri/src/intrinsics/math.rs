@@ -1,4 +1,3 @@
-use rand::Rng;
 use rustc_apfloat::{self, Float, FloatConvert, Round};
 use rustc_middle::mir;
 use rustc_middle::ty::{self, FloatTy};
@@ -38,46 +37,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "sqrtf32" => sqrt::<rustc_apfloat::ieee::Single>(this, args, dest)?,
             "sqrtf64" => sqrt::<rustc_apfloat::ieee::Double>(this, args, dest)?,
             "sqrtf128" => sqrt::<rustc_apfloat::ieee::Quad>(this, args, dest)?,
-
-            "fmaf32" => {
-                let [a, b, c] = check_intrinsic_arg_count(args)?;
-                let a = this.read_scalar(a)?.to_f32()?;
-                let b = this.read_scalar(b)?.to_f32()?;
-                let c = this.read_scalar(c)?.to_f32()?;
-                let res = a.mul_add(b, c).value;
-                let res = this.adjust_nan(res, &[a, b, c]);
-                this.write_scalar(res, dest)?;
-            }
-            "fmaf64" => {
-                let [a, b, c] = check_intrinsic_arg_count(args)?;
-                let a = this.read_scalar(a)?.to_f64()?;
-                let b = this.read_scalar(b)?.to_f64()?;
-                let c = this.read_scalar(c)?.to_f64()?;
-                let res = a.mul_add(b, c).value;
-                let res = this.adjust_nan(res, &[a, b, c]);
-                this.write_scalar(res, dest)?;
-            }
-
-            "fmuladdf32" => {
-                let [a, b, c] = check_intrinsic_arg_count(args)?;
-                let a = this.read_scalar(a)?.to_f32()?;
-                let b = this.read_scalar(b)?.to_f32()?;
-                let c = this.read_scalar(c)?.to_f32()?;
-                let fuse: bool = this.machine.float_nondet && this.machine.rng.get_mut().random();
-                let res = if fuse { a.mul_add(b, c).value } else { ((a * b).value + c).value };
-                let res = this.adjust_nan(res, &[a, b, c]);
-                this.write_scalar(res, dest)?;
-            }
-            "fmuladdf64" => {
-                let [a, b, c] = check_intrinsic_arg_count(args)?;
-                let a = this.read_scalar(a)?.to_f64()?;
-                let b = this.read_scalar(b)?.to_f64()?;
-                let c = this.read_scalar(c)?.to_f64()?;
-                let fuse: bool = this.machine.float_nondet && this.machine.rng.get_mut().random();
-                let res = if fuse { a.mul_add(b, c).value } else { ((a * b).value + c).value };
-                let res = this.adjust_nan(res, &[a, b, c]);
-                this.write_scalar(res, dest)?;
-            }
 
             #[rustfmt::skip]
             | "fadd_fast"
