@@ -1112,6 +1112,8 @@ pub fn build_session(
 
     let timings = TimingSectionHandler::new(sopts.json_timings);
 
+    let sopts = enable_default_sanitizers(sopts, &target);
+
     let sess = Session {
         target,
         host,
@@ -1141,6 +1143,16 @@ pub fn build_session(
     validate_commandline_args_with_session_available(&sess);
 
     sess
+}
+
+/// Update parsed sanitizers with the target defaults.
+//
+// This is the first time we have access to both the target and parsed options,
+// and we need to update the sanitizer list for ABI changing sanitizers, like
+// Shadow Call Stack.
+fn enable_default_sanitizers(mut sopts: config::Options, target: &Target) -> config::Options {
+    sopts.unstable_opts.sanitizer |= target.options.default_sanitizers;
+    return sopts;
 }
 
 /// Validate command line arguments with a `Session`.

@@ -9,6 +9,7 @@ pub(crate) fn target() -> Target {
     base.max_atomic_width = Some(64);
     base.stack_probes = StackProbeType::Inline;
     base.supported_sanitizers = SanitizerSet::SHADOWCALLSTACK;
+    base.default_sanitizers = SanitizerSet::SHADOWCALLSTACK;
     base.supports_xray = true;
 
     Target {

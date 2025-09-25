@@ -12,6 +12,7 @@ pub(crate) fn target() -> Target {
         | SanitizerSet::CFI
         | SanitizerSet::LEAK
         | SanitizerSet::SHADOWCALLSTACK;
+    base.default_sanitizers = SanitizerSet::SHADOWCALLSTACK;
     base.supports_xray = true;
 
     base.add_pre_link_args(
