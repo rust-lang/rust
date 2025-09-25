@@ -1,0 +1,13 @@
+error: `$crate` may not be imported
+  --> $DIR/use-dollar-crate-self.rs:3:22
+   |
+LL |         use $crate::{self};
+   |                      ^^^^
+...
+LL | foo!();
+   | ------ in this macro invocation
+   |
+   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+

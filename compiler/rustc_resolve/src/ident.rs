@@ -861,6 +861,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         // FIXME: Implement these with renaming requirements so that e.g.
                         // `use super;` doesn't work, but `use super as name;` does.
                         // Fall through here to get an error from `early_resolve_...`.
+
+                        if ident.name == kw::Super {
+                            if let Some(parent) = parent_scope.module.parent {
+                                return Ok(parent.self_binding.unwrap());
+                            }
+                        } else {
+                            return Ok(parent_scope.module.self_binding.unwrap());
+                        }
                     }
                 }
 

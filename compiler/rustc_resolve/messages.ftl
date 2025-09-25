@@ -463,6 +463,9 @@ resolve_unexpected_res_use_at_op_in_slice_pat_with_range_sugg =
 resolve_unnamed_crate_root_import =
     crate root imports need to be explicitly named: `use crate as name;`
 
+resolve_unnamed_imports =
+    imports need to be explicitly named: `use {$ident} as name;`
+
 resolve_unreachable_label =
     use of unreachable label `{$name}`
     .label = unreachable label `{$name}`
