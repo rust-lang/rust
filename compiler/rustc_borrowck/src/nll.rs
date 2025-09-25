@@ -136,6 +136,8 @@ pub(crate) fn compute_regions<'tcx>(
         &mut placeholder_errors,
     );
 
+    debug!("Placeholder errors: {placeholder_errors:?}");
+
     // If requested, emit legacy polonius facts.
     polonius::legacy::emit_facts(
         &mut polonius_facts,
@@ -188,6 +190,7 @@ pub(crate) fn compute_regions<'tcx>(
 
     let nll_errors = if region_inference_errors.is_empty() {
         // Only flag the higher-kinded bounds errors if there are no borrowck errors.
+        debug!("No region inference errors, using placeholder errors: {placeholder_errors:?}");
         placeholder_errors
     } else {
         debug!("Errors already reported, skipping these: {placeholder_errors:?}");
