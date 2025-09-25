@@ -415,7 +415,7 @@ macro_rules! forward {
 }
 
 forward! {
-    verbose(f: impl Fn()),
+    do_if_verbose(f: impl Fn()),
     is_verbose() -> bool,
     create(path: &Path, s: &str),
     remove(f: &Path),
@@ -601,11 +601,11 @@ impl Build {
             .unwrap()
             .trim();
         if local_release.split('.').take(2).eq(version.split('.').take(2)) {
-            build.verbose(|| println!("auto-detected local-rebuild {local_release}"));
+            build.do_if_verbose(|| println!("auto-detected local-rebuild {local_release}"));
             build.local_rebuild = true;
         }
 
-        build.verbose(|| println!("finding compilers"));
+        build.do_if_verbose(|| println!("finding compilers"));
         utils::cc_detect::fill_compilers(&mut build);
         // When running `setup`, the profile is about to change, so any requirements we have now may
         // be different on the next invocation. Don't check for them until the next time x.py is
@@ -613,7 +613,7 @@ impl Build {
         //
         // Similarly, for `setup` we don't actually need submodules or cargo metadata.
         if !matches!(build.config.cmd, Subcommand::Setup { .. }) {
-            build.verbose(|| println!("running sanity check"));
+            build.do_if_verbose(|| println!("running sanity check"));
             crate::core::sanity::check(&mut build);
 
             // Make sure we update these before gathering metadata so we don't get an error about missing
@@ -631,7 +631,7 @@ impl Build {
             // Now, update all existing submodules.
             build.update_existing_submodules();
 
-            build.verbose(|| println!("learning about cargo"));
+            build.do_if_verbose(|| println!("learning about cargo"));
             crate::core::metadata::build(&mut build);
         }
 
