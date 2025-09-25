@@ -477,8 +477,8 @@ pub(crate) fn spanned_type_di_node<'ll, 'tcx>(
         ty::CoroutineClosure(..) => build_closure_env_di_node(cx, unique_type_id),
         ty::Coroutine(..) => enums::build_coroutine_di_node(cx, unique_type_id),
         ty::Adt(def, ..) => match def.adt_kind() {
-            AdtKind::Struct => build_struct_type_di_node(cx, unique_type_id),
-            AdtKind::Union => build_union_type_di_node(cx, unique_type_id),
+            AdtKind::Struct => build_struct_type_di_node(cx, unique_type_id, span),
+            AdtKind::Union => build_union_type_di_node(cx, unique_type_id, span),
             AdtKind::Enum => enums::build_enum_type_di_node(cx, unique_type_id, span),
         },
         ty::Tuple(_) => build_tuple_type_di_node(cx, unique_type_id),
@@ -1076,6 +1076,7 @@ fn visibility_di_flags<'ll, 'tcx>(
 fn build_struct_type_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     unique_type_id: UniqueTypeId<'tcx>,
+    span: Span,
 ) -> DINodeCreationResult<'ll> {
     let struct_type = unique_type_id.expect_ty();
     let ty::Adt(adt_def, _) = struct_type.kind() else {
@@ -1083,7 +1084,7 @@ fn build_struct_type_di_node<'ll, 'tcx>(
     };
     assert!(adt_def.is_struct());
     let containing_scope = get_namespace_for_item(cx, adt_def.did());
-    let struct_type_and_layout = cx.layout_of(struct_type);
+    let struct_type_and_layout = cx.spanned_layout_of(struct_type, span);
     let variant_def = adt_def.non_enum_variant();
     let def_location = if cx.sess().opts.unstable_opts.debug_info_type_line_numbers {
         Some(file_metadata_from_def_id(cx, Some(adt_def.did())))
@@ -1276,6 +1277,7 @@ fn build_closure_env_di_node<'ll, 'tcx>(
 fn build_union_type_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     unique_type_id: UniqueTypeId<'tcx>,
+    span: Span,
 ) -> DINodeCreationResult<'ll> {
     let union_type = unique_type_id.expect_ty();
     let (union_def_id, variant_def) = match union_type.kind() {
@@ -1283,7 +1285,7 @@ fn build_union_type_di_node<'ll, 'tcx>(
         _ => bug!("build_union_type_di_node on a non-ADT"),
     };
     let containing_scope = get_namespace_for_item(cx, union_def_id);
-    let union_ty_and_layout = cx.layout_of(union_type);
+    let union_ty_and_layout = cx.spanned_layout_of(union_type, span);
     let type_name = compute_debuginfo_type_name(cx.tcx, union_type, false);
     let def_location = if cx.sess().opts.unstable_opts.debug_info_type_line_numbers {
         Some(file_metadata_from_def_id(cx, Some(union_def_id)))
