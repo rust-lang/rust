@@ -111,7 +111,8 @@ impl abi::Integer {
             abi::Integer::I8
         };
 
-        // Pick the smallest fit.
+        // Pick the smallest fit. Prefer unsigned; that matches clang in cases where this makes a
+        // difference (https://godbolt.org/z/h4xEasW1d) so it is crucial for repr(C).
         if unsigned_fit <= signed_fit {
             (cmp::max(unsigned_fit, at_least), false)
         } else {
