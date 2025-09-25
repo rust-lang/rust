@@ -241,6 +241,26 @@ impl SerializedSearchIndex {
         self.alias_pointers.push(alias_pointer);
         index
     }
+    fn add_entry(&mut self, name: Symbol, entry_data: EntryData, desc: String) -> usize {
+        let fqp = if let Some(module_path_index) = entry_data.module_path {
+            let mut fqp = self.path_data[module_path_index].as_ref().unwrap().module_path.clone();
+            fqp.push(Symbol::intern(&self.names[module_path_index]));
+            fqp.push(name);
+            fqp
+        } else {
+            vec![name]
+        };
+        if let Some(&other_path) = self.crate_paths_index.get(&(entry_data.ty, fqp))
+            && self.entry_data[other_path].is_none()
+            && self.descs[other_path].is_empty()
+        {
+            self.entry_data[other_path] = Some(entry_data);
+            self.descs[other_path] = desc;
+            other_path
+        } else {
+            self.push(name.as_str().to_string(), None, Some(entry_data), desc, None, None, None)
+        }
+    }
     fn push_path(&mut self, name: String, path_data: PathData) -> usize {
         self.push(name, Some(path_data), None, String::new(), None, None, None)
     }
@@ -1516,10 +1536,9 @@ pub(crate) fn build_index(
             .as_ref()
             .map(|path| serialized_index.get_id_by_module_path(path));
 
-        let new_entry_id = serialized_index.push(
-            item.name.as_str().to_string(),
-            None,
-            Some(EntryData {
+        let new_entry_id = serialized_index.add_entry(
+            item.name,
+            EntryData {
                 ty: item.ty,
                 parent: item.parent_idx,
                 module_path,
@@ -1538,11 +1557,8 @@ pub(crate) fn build_index(
                     None
                 },
                 krate: crate_idx,
-            }),
+            },
             item.desc.to_string(),
-            None, // filled in after all the types have been indexed
-            None,
-            None,
         );
 
         // Aliases
