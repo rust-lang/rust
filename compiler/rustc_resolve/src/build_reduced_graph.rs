@@ -706,6 +706,12 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                     }
 
                     e.emit();
+                } else if let &[self_span] = &self_spans[..]
+                    && prefix.len() == 1
+                    && prefix[0].ident.name == kw::DollarCrate
+                {
+                    // Disallow `use $crate::{self};`
+                    self.r.dcx().emit_err(errors::CrateImported { span: self_span });
                 }
 
                 for &(ref tree, id) in items {
