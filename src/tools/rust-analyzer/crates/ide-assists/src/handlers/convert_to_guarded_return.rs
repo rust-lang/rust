@@ -1,11 +1,11 @@
 use std::iter::once;
 
-use hir::Semantics;
 use either::Either;
+use hir::{Semantics, TypeInfo};
 use ide_db::{RootDatabase, ty_filter::TryEnum};
 use syntax::{
     AstNode,
-    SyntaxKind::{FN, FOR_EXPR, LOOP_EXPR, WHILE_EXPR, WHITESPACE},
+    SyntaxKind::{CLOSURE_EXPR, FN, FOR_EXPR, LOOP_EXPR, WHILE_EXPR, WHITESPACE},
     SyntaxNode, T,
     ast::{
         self,
@@ -228,16 +228,26 @@ fn early_expression(
     parent_container: SyntaxNode,
     sema: &Semantics<'_, RootDatabase>,
 ) -> Option<ast::Expr> {
+    let return_none_expr = || {
+        let none_expr = make::expr_path(make::ext::ident_path("None"));
+        make::expr_return(Some(none_expr))
+    };
     if let Some(fn_) = ast::Fn::cast(parent_container.clone())
         && let Some(fn_def) = sema.to_def(&fn_)
         && let Some(TryEnum::Option) = TryEnum::from_ty(sema, &fn_def.ret_type(sema.db))
     {
-        let none_expr = make::expr_path(make::ext::ident_path("None"));
-        return Some(make::expr_return(Some(none_expr)));
+        return Some(return_none_expr());
     }
+    if let Some(body) = ast::ClosureExpr::cast(parent_container.clone()).and_then(|it| it.body())
+        && let Some(ret_ty) = sema.type_of_expr(&body).map(TypeInfo::original)
+        && let Some(TryEnum::Option) = TryEnum::from_ty(sema, &ret_ty)
+    {
+        return Some(return_none_expr());
+    }
+
     Some(match parent_container.kind() {
         WHILE_EXPR | LOOP_EXPR | FOR_EXPR => make::expr_continue(None),
-        FN => make::expr_return(None),
+        FN | CLOSURE_EXPR => make::expr_return(None),
         _ => return None,
     })
 }
@@ -324,6 +334,40 @@ fn ret_option() -> Option<()> {
 
     // comment
     bar();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn convert_inside_closure() {
+        check_assist(
+            convert_to_guarded_return,
+            r#"
+fn main() {
+    let _f = || {
+        bar();
+        if$0 true {
+            foo();
+
+            // comment
+            bar();
+        }
+    }
+}
+"#,
+            r#"
+fn main() {
+    let _f = || {
+        bar();
+        if false {
+            return;
+        }
+        foo();
+
+        // comment
+        bar();
+    }
 }
 "#,
         );
