@@ -8,7 +8,7 @@ LL |     A = 9223372036854775807, // i64::MAX
    = note: `#[deny(overflowing_literals)]` on by default
 
 error: literal out of range for `isize`
-  --> $DIR/repr-c-big-discriminant1.rs:24:9
+  --> $DIR/repr-c-big-discriminant1.rs:23:9
    |
 LL |     A = -2147483649, // i32::MIN-1
    |         ^^^^^^^^^^^

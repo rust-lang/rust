@@ -16,7 +16,6 @@ enum OverflowingEnum1 {
     A = 9223372036854775807, // i64::MAX
     //[ptr32]~^ ERROR: literal out of range
     //[ptr64]~^^ ERROR: discriminant does not fit into C `int`
-    //[ptr64]~^^^ WARN: previously accepted
 }
 
 #[repr(C)]
@@ -24,7 +23,6 @@ enum OverflowingEnum2 {
     A = -2147483649, // i32::MIN-1
     //[ptr32]~^ ERROR: literal out of range
     //[ptr64]~^^ ERROR: discriminant does not fit into C `int`
-    //[ptr64]~^^^ WARN: previously accepted
 }
 
 const I64_MAX: i64 = 9223372036854775807;
@@ -33,7 +31,6 @@ const I64_MAX: i64 = 9223372036854775807;
 enum OverflowingEnum3 {
     A = I64_MAX as isize,
     //[ptr64]~^ ERROR: discriminant does not fit into C `int`
-    //[ptr64]~^^ WARN: previously accepted
     // No warning/error on 32bit targets, but the `as isize` hints that wrapping is occurring.
 }
 

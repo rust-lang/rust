@@ -638,16 +638,12 @@ pub(super) fn lower_enum_variant_types(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             let c_int = Size::from_bits(tcx.sess.target.c_int_width);
             if discr_val < c_int.signed_int_min() || discr_val > c_int.signed_int_max() {
                 let span = tcx.def_span(variant.def_id);
-                tcx.node_span_lint(
-                    rustc_session::lint::builtin::REPR_C_ENUMS_LARGER_THAN_INT,
-                    tcx.local_def_id_to_hir_id(def_id),
-                    span,
-                    |d| {
-                        d.primary_message("`repr(C)` enum discriminant does not fit into C `int`")
-                        .note("`repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C")
-                        .help("use `repr($int_ty)` instead to explicitly set the size of this enum");
-                    }
-                );
+                let mut d = tcx
+                    .dcx()
+                    .struct_span_err(span, "`repr(C)` enum discriminant does not fit into C `int`");
+                d.note("`repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C")
+                    .help("use `repr($int_ty)` instead to explicitly set the size of this enum");
+                d.emit();
             }
         }
 

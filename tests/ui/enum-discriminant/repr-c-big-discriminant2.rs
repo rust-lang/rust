@@ -19,7 +19,6 @@ enum OverflowingEnum {
     B, // +1
     //[ptr32]~^ ERROR: enum discriminant overflowed
     //[ptr64]~^^ ERROR: discriminant does not fit into C `int`
-    //[ptr64]~^^^ WARN: previously accepted
 }
 
 fn main() {}
