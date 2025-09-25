@@ -834,10 +834,6 @@ pub fn select_unpredictable<T>(condition: bool, true_val: T, false_val: T) -> T 
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Locality {
-    /// Data is unlikely to be reused soon.
-    ///
-    /// Typically bypasses the caches so they are not polluted.
-    NonTemporal = 0,
     /// Data is expected to be reused eventually.
     ///
     /// Typically prefetches into L3 cache (if the CPU supports it).
@@ -865,6 +861,7 @@ pub enum Locality {
 /// # Examples
 ///
 /// ```
+/// #![feature(hint_prefetch)]
 /// use std::hint::{Locality, prefetch_read_data};
 /// use std::mem::size_of_val;
 ///
@@ -880,13 +877,26 @@ pub enum Locality {
 #[unstable(feature = "hint_prefetch", issue = "146941")]
 pub const fn prefetch_read_data<T>(ptr: *const T, locality: Locality) {
     match locality {
-        Locality::NonTemporal => {
-            intrinsics::prefetch_read_data::<T, { Locality::NonTemporal as i32 }>(ptr)
-        }
         Locality::L3 => intrinsics::prefetch_read_data::<T, { Locality::L3 as i32 }>(ptr),
         Locality::L2 => intrinsics::prefetch_read_data::<T, { Locality::L2 as i32 }>(ptr),
         Locality::L1 => intrinsics::prefetch_read_data::<T, { Locality::L1 as i32 }>(ptr),
     }
+}
+
+/// Prefetch the cache line containing `ptr` for a single future read, but attempt to avoid
+/// polluting the cache.
+///
+/// A strategically placed prefetch can reduce cache miss latency if the data is accessed
+/// soon after, but may also increase bandwidth usage or evict other cache lines.
+///
+/// A prefetch is a *hint*, and may be ignored on certain targets or by the hardware.
+///
+/// Passing a dangling or invalid pointer is permitted: the memory will not
+/// actually be dereferenced, and no faults are raised.
+#[inline(always)]
+#[unstable(feature = "hint_prefetch", issue = "146941")]
+pub const fn prefetch_read_data_non_temporal<T>(ptr: *const T) {
+    intrinsics::prefetch_read_data::<T, 0>(ptr)
 }
 
 /// Prefetch the cache line containing `ptr` for a future write.
@@ -898,12 +908,10 @@ pub const fn prefetch_read_data<T>(ptr: *const T, locality: Locality) {
 ///
 /// Passing a dangling or invalid pointer is permitted: the memory will not
 /// actually be dereferenced, and no faults are raised.
+#[inline(always)]
 #[unstable(feature = "hint_prefetch", issue = "146941")]
 pub const fn prefetch_write_data<T>(ptr: *mut T, locality: Locality) {
     match locality {
-        Locality::NonTemporal => {
-            intrinsics::prefetch_write_data::<T, { Locality::NonTemporal as i32 }>(ptr)
-        }
         Locality::L3 => intrinsics::prefetch_write_data::<T, { Locality::L3 as i32 }>(ptr),
         Locality::L2 => intrinsics::prefetch_write_data::<T, { Locality::L2 as i32 }>(ptr),
         Locality::L1 => intrinsics::prefetch_write_data::<T, { Locality::L1 as i32 }>(ptr),
@@ -919,12 +927,10 @@ pub const fn prefetch_write_data<T>(ptr: *mut T, locality: Locality) {
 ///
 /// Passing a dangling or invalid pointer is permitted: the memory will not
 /// actually be dereferenced, and no faults are raised.
+#[inline(always)]
 #[unstable(feature = "hint_prefetch", issue = "146941")]
 pub const fn prefetch_read_instruction<T>(ptr: *const T, locality: Locality) {
     match locality {
-        Locality::NonTemporal => {
-            intrinsics::prefetch_read_instruction::<T, { Locality::NonTemporal as i32 }>(ptr)
-        }
         Locality::L3 => intrinsics::prefetch_read_instruction::<T, { Locality::L3 as i32 }>(ptr),
         Locality::L2 => intrinsics::prefetch_read_instruction::<T, { Locality::L2 as i32 }>(ptr),
         Locality::L1 => intrinsics::prefetch_read_instruction::<T, { Locality::L1 as i32 }>(ptr),
