@@ -69,51 +69,40 @@ pub fn get_attr<'a, A: AttributeExt + 'a>(
     name: Symbol,
 ) -> impl Iterator<Item = &'a A> {
     attrs.iter().filter(move |attr| {
-        let Some(attr_segments) = attr.ident_path() else {
-            return false;
-        };
-
-        if attr_segments.len() == 2 && attr_segments[0].name == sym::clippy {
-            BUILTIN_ATTRIBUTES
+        if let Some([clippy, segment2]) = attr.ident_path().as_deref()
+            && clippy.name == sym::clippy
+        {
+            let Some((_, deprecation_status)) = BUILTIN_ATTRIBUTES
                 .iter()
-                .find_map(|(builtin_name, deprecation_status)| {
-                    if attr_segments[1].name == *builtin_name {
-                        Some(deprecation_status)
-                    } else {
-                        None
-                    }
-                })
-                .map_or_else(
-                    || {
-                        sess.dcx().span_err(attr_segments[1].span, "usage of unknown attribute");
-                        false
-                    },
-                    |deprecation_status| {
-                        let mut diag = sess
-                            .dcx()
-                            .struct_span_err(attr_segments[1].span, "usage of deprecated attribute");
-                        match *deprecation_status {
-                            DeprecationStatus::Deprecated => {
-                                diag.emit();
-                                false
-                            },
-                            DeprecationStatus::Replaced(new_name) => {
-                                diag.span_suggestion(
-                                    attr_segments[1].span,
-                                    "consider using",
-                                    new_name,
-                                    Applicability::MachineApplicable,
-                                );
-                                diag.emit();
-                                false
-                            },
-                            DeprecationStatus::None => {
-                                diag.cancel();
-                                attr_segments[1].name == name
-                            },
-                        }
-                    },
-                )
+                .find(|(builtin_name, _)| segment2.name == *builtin_name)
+            else {
+                sess.dcx().span_err(segment2.span, "usage of unknown attribute");
+                return false;
+            };
+
+            let mut diag = sess
+                .dcx()
+                .struct_span_err(segment2.span, "usage of deprecated attribute");
+            match deprecation_status {
+                DeprecationStatus::Deprecated => {
+                    diag.emit();
+                    false
+                },
+                DeprecationStatus::Replaced(new_name) => {
+                    diag.span_suggestion(
+                        segment2.span,
+                        "consider using",
+                        new_name,
+                        Applicability::MachineApplicable,
+                    );
+                    diag.emit();
+                    false
+                },
+                DeprecationStatus::None => {
+                    diag.cancel();
+                    segment2.name == name
+                },
+            }
         } else {
             false
         }
@@ -122,15 +111,15 @@ pub fn get_attr<'a, A: AttributeExt + 'a>(
 
 fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[impl AttributeExt], name: Symbol, mut f: F) {
     for attr in get_attr(sess, attrs, name) {
-        if let Some(value) = attr.value_str() {
-            if let Ok(value) = FromStr::from_str(value.as_str()) {
-                f(value);
-            } else {
-                sess.dcx().span_err(attr.span(), "not a number");
-            }
-        } else {
+        let Some(value) = attr.value_str() else {
             sess.dcx().span_err(attr.span(), "bad clippy attribute");
-        }
+            continue;
+        };
+        let Ok(value) = u64::from_str(value.as_str()) else {
+            sess.dcx().span_err(attr.span(), "not a number");
+            continue;
+        };
+        f(value);
     }
 }
 
