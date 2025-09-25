@@ -109,6 +109,7 @@ use rustc_ast::token::{Delimiter, IdentIsRaw, Token, TokenKind};
 use rustc_ast::{DUMMY_NODE_ID, NodeId};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::DecorateDiagCompat;
+use rustc_parse::parser::ForceCollect;
 use rustc_session::lint::builtin::META_VARIABLE_MISUSE;
 use rustc_session::parse::ParseSess;
 use rustc_span::{ErrorGuaranteed, MacroRulesNormalizedIdent, Span, kw};
@@ -193,20 +194,23 @@ struct MacroState<'a> {
 /// - `psess` is used to emit diagnostics and lints
 /// - `node_id` is used to emit lints
 /// - `args`, `lhs`, and `rhs` represent the rule
+/// - `collect` is set to the token collection mode needed for the macro (recursive if any metavar exprs)
 pub(super) fn check_meta_variables(
     psess: &ParseSess,
     node_id: NodeId,
     args: Option<&TokenTree>,
     lhs: &TokenTree,
     rhs: &TokenTree,
+    collect: &mut ForceCollect,
 ) -> Result<(), ErrorGuaranteed> {
     let mut guar = None;
     let mut binders = Binders::default();
+    let ops = &Stack::Empty;
     if let Some(args) = args {
-        check_binders(psess, node_id, args, &Stack::Empty, &mut binders, &Stack::Empty, &mut guar);
+        check_binders(psess, node_id, args, &Stack::Empty, &mut binders, ops, collect, &mut guar);
     }
-    check_binders(psess, node_id, lhs, &Stack::Empty, &mut binders, &Stack::Empty, &mut guar);
-    check_occurrences(psess, node_id, rhs, &Stack::Empty, &binders, &Stack::Empty, &mut guar);
+    check_binders(psess, node_id, lhs, &Stack::Empty, &mut binders, ops, collect, &mut guar);
+    check_occurrences(psess, node_id, rhs, &Stack::Empty, &binders, ops, collect, &mut guar);
     guar.map_or(Ok(()), Err)
 }
 
@@ -220,6 +224,7 @@ pub(super) fn check_meta_variables(
 /// - `macros` is the stack of possible outer macros
 /// - `binders` contains the binders of the LHS
 /// - `ops` is the stack of Kleene operators from the LHS
+/// - `collect` is updated to recursive if we encounter any metadata expressions
 /// - `guar` is set in case of errors
 fn check_binders(
     psess: &ParseSess,
@@ -228,6 +233,7 @@ fn check_binders(
     macros: &Stack<'_, MacroState<'_>>,
     binders: &mut Binders,
     ops: &Stack<'_, KleeneToken>,
+    collect: &mut ForceCollect,
     guar: &mut Option<ErrorGuaranteed>,
 ) {
     match *lhs {
@@ -255,7 +261,7 @@ fn check_binders(
                 binders.insert(name, BinderInfo { span, ops: ops.into() });
             } else {
                 // 3. The meta-variable is bound: This is an occurrence.
-                check_occurrences(psess, node_id, lhs, macros, binders, ops, guar);
+                check_occurrences(psess, node_id, lhs, macros, binders, ops, collect, guar);
             }
         }
         // Similarly, this can only happen when checking a toplevel macro.
@@ -280,13 +286,13 @@ fn check_binders(
         TokenTree::MetaVarExpr(..) => {}
         TokenTree::Delimited(.., ref del) => {
             for tt in &del.tts {
-                check_binders(psess, node_id, tt, macros, binders, ops, guar);
+                check_binders(psess, node_id, tt, macros, binders, ops, collect, guar);
             }
         }
         TokenTree::Sequence(_, ref seq) => {
             let ops = ops.push(seq.kleene);
             for tt in &seq.tts {
-                check_binders(psess, node_id, tt, macros, binders, &ops, guar);
+                check_binders(psess, node_id, tt, macros, binders, &ops, collect, guar);
             }
         }
     }
@@ -316,6 +322,7 @@ fn get_binder_info<'a>(
 /// - `macros` is the stack of possible outer macros
 /// - `binders` contains the binders of the associated LHS
 /// - `ops` is the stack of Kleene operators from the RHS
+/// - `collect` is updated to recursive if we encounter any metadata expressions
 /// - `guar` is set in case of errors
 fn check_occurrences(
     psess: &ParseSess,
@@ -324,6 +331,7 @@ fn check_occurrences(
     macros: &Stack<'_, MacroState<'_>>,
     binders: &Binders,
     ops: &Stack<'_, KleeneToken>,
+    collect: &mut ForceCollect,
     guar: &mut Option<ErrorGuaranteed>,
 ) {
     match *rhs {
@@ -336,17 +344,21 @@ fn check_occurrences(
             check_ops_is_prefix(psess, node_id, macros, binders, ops, span, name);
         }
         TokenTree::MetaVarExpr(dl, ref mve) => {
+            // Require recursive token collection if we have any metadata expressions
+            *collect = ForceCollect::Recursive;
             mve.for_each_metavar((), |_, ident| {
                 let name = MacroRulesNormalizedIdent::new(*ident);
                 check_ops_is_prefix(psess, node_id, macros, binders, ops, dl.entire(), name);
             });
         }
         TokenTree::Delimited(.., ref del) => {
-            check_nested_occurrences(psess, node_id, &del.tts, macros, binders, ops, guar);
+            check_nested_occurrences(psess, node_id, &del.tts, macros, binders, ops, collect, guar);
         }
         TokenTree::Sequence(_, ref seq) => {
             let ops = ops.push(seq.kleene);
-            check_nested_occurrences(psess, node_id, &seq.tts, macros, binders, &ops, guar);
+            check_nested_occurrences(
+                psess, node_id, &seq.tts, macros, binders, &ops, collect, guar,
+            );
         }
     }
 }
@@ -381,6 +393,7 @@ enum NestedMacroState {
 /// - `macros` is the stack of possible outer macros
 /// - `binders` contains the binders of the associated LHS
 /// - `ops` is the stack of Kleene operators from the RHS
+/// - `collect` is updated to recursive if we encounter metadata expressions or nested macros
 /// - `guar` is set in case of errors
 fn check_nested_occurrences(
     psess: &ParseSess,
@@ -389,6 +402,7 @@ fn check_nested_occurrences(
     macros: &Stack<'_, MacroState<'_>>,
     binders: &Binders,
     ops: &Stack<'_, KleeneToken>,
+    collect: &mut ForceCollect,
     guar: &mut Option<ErrorGuaranteed>,
 ) {
     let mut state = NestedMacroState::Empty;
@@ -421,16 +435,26 @@ fn check_nested_occurrences(
             (NestedMacroState::MacroRulesBang, &TokenTree::MetaVar(..)) => {
                 state = NestedMacroState::MacroRulesBangName;
                 // We check that the meta-variable is correctly used.
-                check_occurrences(psess, node_id, tt, macros, binders, ops, guar);
+                check_occurrences(psess, node_id, tt, macros, binders, ops, collect, guar);
             }
             (NestedMacroState::MacroRulesBangName, TokenTree::Delimited(.., del))
             | (NestedMacroState::MacroName, TokenTree::Delimited(.., del))
                 if del.delim == Delimiter::Brace =>
             {
+                // Conservatively assume that we might need recursive tokens, since our parsing in
+                // the face of nested macro definitions is fuzzy.
+                *collect = ForceCollect::Recursive;
                 let macro_rules = state == NestedMacroState::MacroRulesBangName;
                 state = NestedMacroState::Empty;
-                let rest =
-                    check_nested_macro(psess, node_id, macro_rules, &del.tts, &nested_macros, guar);
+                let rest = check_nested_macro(
+                    psess,
+                    node_id,
+                    macro_rules,
+                    &del.tts,
+                    &nested_macros,
+                    collect,
+                    guar,
+                );
                 // If we did not check the whole macro definition, then check the rest as if outside
                 // the macro definition.
                 check_nested_occurrences(
@@ -440,6 +464,7 @@ fn check_nested_occurrences(
                     macros,
                     binders,
                     ops,
+                    collect,
                     guar,
                 );
             }
@@ -452,7 +477,7 @@ fn check_nested_occurrences(
             (NestedMacroState::Macro, &TokenTree::MetaVar(..)) => {
                 state = NestedMacroState::MacroName;
                 // We check that the meta-variable is correctly used.
-                check_occurrences(psess, node_id, tt, macros, binders, ops, guar);
+                check_occurrences(psess, node_id, tt, macros, binders, ops, collect, guar);
             }
             (NestedMacroState::MacroName, TokenTree::Delimited(.., del))
                 if del.delim == Delimiter::Parenthesis =>
@@ -466,6 +491,7 @@ fn check_nested_occurrences(
                     &nested_macros,
                     &mut nested_binders,
                     &Stack::Empty,
+                    collect,
                     guar,
                 );
             }
@@ -480,12 +506,13 @@ fn check_nested_occurrences(
                     &nested_macros,
                     &nested_binders,
                     &Stack::Empty,
+                    collect,
                     guar,
                 );
             }
             (_, tt) => {
                 state = NestedMacroState::Empty;
-                check_occurrences(psess, node_id, tt, macros, binders, ops, guar);
+                check_occurrences(psess, node_id, tt, macros, binders, ops, collect, guar);
             }
         }
     }
@@ -504,6 +531,7 @@ fn check_nested_occurrences(
 /// - `macro_rules` specifies whether the macro is `macro_rules`
 /// - `tts` is checked as a list of (LHS) => {RHS}
 /// - `macros` is the stack of outer macros
+/// - `collect` is passed down through to the macro checking code (but is already recursive)
 /// - `guar` is set in case of errors
 fn check_nested_macro(
     psess: &ParseSess,
@@ -511,6 +539,7 @@ fn check_nested_macro(
     macro_rules: bool,
     tts: &[TokenTree],
     macros: &Stack<'_, MacroState<'_>>,
+    collect: &mut ForceCollect,
     guar: &mut Option<ErrorGuaranteed>,
 ) -> usize {
     let n = tts.len();
@@ -528,8 +557,8 @@ fn check_nested_macro(
         let lhs = &tts[i];
         let rhs = &tts[i + 2];
         let mut binders = Binders::default();
-        check_binders(psess, node_id, lhs, macros, &mut binders, &Stack::Empty, guar);
-        check_occurrences(psess, node_id, rhs, macros, &binders, &Stack::Empty, guar);
+        check_binders(psess, node_id, lhs, macros, &mut binders, &Stack::Empty, collect, guar);
+        check_occurrences(psess, node_id, rhs, macros, &binders, &Stack::Empty, collect, guar);
         // Since the last semicolon is optional for `macro_rules` macros and decl_macro are not terminated,
         // we increment our checked position by how many token trees we already checked (the 3
         // above) before checking for the separator.

@@ -603,6 +603,10 @@ fn eval_metavar_recursive_expr<'psess, 'interp>(
                     let f = require_fn_item(fn_item);
                     Ok(ident_pnr(f.ident))
                 }
+                (ParseNtResult::Fn(fn_item), sym::vis) => {
+                    let _ = require_fn_item(fn_item);
+                    Ok(Cow::Owned(ParseNtResult::Vis(Box::new(fn_item.vis.clone()))))
+                }
                 (_, _) => err_unknown_field(),
             }
         }

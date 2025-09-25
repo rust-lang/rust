@@ -81,7 +81,7 @@ use rustc_ast::token::{self, DocComment, NonterminalKind, Token, TokenKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_lint_defs::pluralize;
-use rustc_parse::parser::{ParseNtResult, Parser, token_descr};
+use rustc_parse::parser::{ForceCollect, ParseNtResult, Parser, token_descr};
 use rustc_span::{Ident, MacroRulesNormalizedIdent, Span};
 
 use crate::mbe::macro_rules::Tracker;
@@ -616,6 +616,7 @@ impl TtParser {
         &mut self,
         parser: &mut Cow<'_, Parser<'_>>,
         matcher: &'matcher [MatcherLoc],
+        collect_mode: ForceCollect,
         track: &mut T,
     ) -> NamedParseResult<T::Failure> {
         // A queue of possible matcher positions. We initialize it with the matcher position in
@@ -675,7 +676,7 @@ impl TtParser {
                     {
                         // We use the span of the metavariable declaration to determine any
                         // edition-specific matching behavior for non-terminals.
-                        let nt = match parser.to_mut().parse_nonterminal(kind) {
+                        let nt = match parser.to_mut().parse_nonterminal(kind, collect_mode) {
                             Err(err) => {
                                 let guarantee = err.with_span_label(
                                     span,

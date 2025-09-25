@@ -113,7 +113,11 @@ impl<'a> Parser<'a> {
     /// Parse a non-terminal (e.g. MBE `:pat` or `:ident`). Inlined because there is only one call
     /// site.
     #[inline]
-    pub fn parse_nonterminal(&mut self, kind: NonterminalKind) -> PResult<'a, ParseNtResult> {
+    pub fn parse_nonterminal(
+        &mut self,
+        kind: NonterminalKind,
+        collect: ForceCollect,
+    ) -> PResult<'a, ParseNtResult> {
         // A `macro_rules!` invocation may pass a captured item/expr to a proc-macro,
         // which requires having captured tokens available. Since we cannot determine
         // in advance whether or not a proc-macro will be (transitively) invoked,
@@ -121,12 +125,13 @@ impl<'a> Parser<'a> {
         match kind {
             // Note that TT is treated differently to all the others.
             NonterminalKind::TT => Ok(ParseNtResult::Tt(self.parse_token_tree())),
-            NonterminalKind::Item => match self.parse_item(ForceCollect::Yes)? {
+            // FIXME: handle `ForceCollect::Recursive` in more kinds of nonterminals.
+            NonterminalKind::Item => match self.parse_item(collect)? {
                 Some(item) => Ok(ParseNtResult::Item(item)),
                 None => Err(self.dcx().create_err(UnexpectedNonterminal::Item(self.token.span))),
             },
             NonterminalKind::Fn => {
-                if let Some(item) = self.parse_item(ForceCollect::Yes)?
+                if let Some(item) = self.parse_item(collect)?
                     && let ItemKind::Fn(_) = item.kind
                 {
                     Ok(ParseNtResult::Fn(item))
@@ -135,7 +140,7 @@ impl<'a> Parser<'a> {
                 }
             }
             NonterminalKind::Adt => {
-                if let Some(item) = self.parse_item(ForceCollect::Yes)?
+                if let Some(item) = self.parse_item(collect)?
                     && matches!(
                         item.kind,
                         ItemKind::Struct(..) | ItemKind::Enum(..) | ItemKind::Union(..)
@@ -200,7 +205,7 @@ impl<'a> Parser<'a> {
                 Ok(ParseNtResult::Meta(Box::new(self.parse_attr_item(ForceCollect::Yes)?)))
             }
             NonterminalKind::Vis => Ok(ParseNtResult::Vis(Box::new(
-                self.collect_tokens_no_attrs(|this| this.parse_visibility(FollowedByType::Yes))?,
+                self.parse_visibility(collect, FollowedByType::Yes)?,
             ))),
             NonterminalKind::Lifetime => {
                 // We want to keep `'keyword` parsing, just like `keyword` is still

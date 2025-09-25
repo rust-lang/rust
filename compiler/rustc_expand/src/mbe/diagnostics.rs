@@ -4,7 +4,7 @@ use rustc_ast::token::{self, Token};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, DiagMessage};
 use rustc_macros::Subdiagnostic;
-use rustc_parse::parser::{Parser, Recovery, token_descr};
+use rustc_parse::parser::{ForceCollect, Parser, Recovery, token_descr};
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Ident, Span};
@@ -44,12 +44,14 @@ pub(super) fn failed_to_match_macro(
     // diagnostics.
     let mut tracker = CollectTrackerAndEmitter::new(psess.dcx(), sp);
 
+    // We don't need to collect tokens to process failures, since we'll never expand them.
+    let no = ForceCollect::No;
     let try_success_result = match args {
-        FailedMacro::Func => try_match_macro(psess, name, body, rules, &mut tracker),
+        FailedMacro::Func => try_match_macro(psess, name, body, rules, no, &mut tracker),
         FailedMacro::Attr(attr_args) => {
-            try_match_macro_attr(psess, name, attr_args, body, rules, &mut tracker)
+            try_match_macro_attr(psess, name, attr_args, body, rules, no, &mut tracker)
         }
-        FailedMacro::Derive => try_match_macro_derive(psess, name, body, rules, &mut tracker),
+        FailedMacro::Derive => try_match_macro_derive(psess, name, body, rules, no, &mut tracker),
     };
 
     if try_success_result.is_ok() {
@@ -108,9 +110,12 @@ pub(super) fn failed_to_match_macro(
             let parser = parser_from_cx(psess, body.clone(), Recovery::Allowed);
             let mut tt_parser = TtParser::new(name);
 
-            if let Success(_) =
-                tt_parser.parse_tt(&mut Cow::Borrowed(&parser), lhs, &mut NoopTracker)
-            {
+            if let Success(_) = tt_parser.parse_tt(
+                &mut Cow::Borrowed(&parser),
+                lhs,
+                ForceCollect::No,
+                &mut NoopTracker,
+            ) {
                 if comma_span.is_dummy() {
                     err.note("you might be missing a comma");
                 } else {

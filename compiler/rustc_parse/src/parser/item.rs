@@ -140,17 +140,18 @@ impl<'a> Parser<'a> {
         fn_parse_mode: FnParseMode,
         force_collect: ForceCollect,
     ) -> PResult<'a, Option<Item>> {
-        if let Some(item) =
-            self.eat_metavar_seq(MetaVarKind::Item, |this| this.parse_item(ForceCollect::Yes))
+        if let Some(item) = self
+            .eat_metavar_seq(MetaVarKind::Item, |this| this.parse_item(force_collect.for_reparse()))
         {
             let mut item = item.expect("an actual item");
             attrs.prepend_to_nt_inner(&mut item.attrs);
             return Ok(Some(*item));
         }
 
+        // FIXME: Handle `ForceCollect::Recursive` in more cases
         self.collect_tokens(None, attrs, force_collect, |this, mut attrs| {
             let lo = this.token.span;
-            let vis = this.parse_visibility(FollowedByType::No)?;
+            let vis = this.parse_visibility(force_collect.recurse(), FollowedByType::No)?;
             let mut def = this.parse_defaultness();
             let kind = this.parse_item_kind(
                 &mut attrs,
@@ -1638,7 +1639,7 @@ impl<'a> Parser<'a> {
         self.collect_tokens(None, variant_attrs, ForceCollect::No, |this, variant_attrs| {
             let vlo = this.token.span;
 
-            let vis = this.parse_visibility(FollowedByType::No)?;
+            let vis = this.parse_visibility(ForceCollect::No, FollowedByType::No)?;
             if !this.recover_nested_adt_item(kw::Enum)? {
                 return Ok((None, Trailing::No, UsePreAttrPos::No));
             }
@@ -1885,7 +1886,7 @@ impl<'a> Parser<'a> {
                     snapshot = Some(p.create_snapshot_for_diagnostic());
                 }
                 let lo = p.token.span;
-                let vis = match p.parse_visibility(FollowedByType::Yes) {
+                let vis = match p.parse_visibility(ForceCollect::No, FollowedByType::Yes) {
                     Ok(vis) => vis,
                     Err(err) => {
                         if let Some(ref mut snapshot) = snapshot {
@@ -1949,7 +1950,7 @@ impl<'a> Parser<'a> {
         self.recover_vcs_conflict_marker();
         self.collect_tokens(None, attrs, ForceCollect::No, |this, attrs| {
             let lo = this.token.span;
-            let vis = this.parse_visibility(FollowedByType::No)?;
+            let vis = this.parse_visibility(ForceCollect::No, FollowedByType::No)?;
             let safety = this.parse_unsafe_field();
             this.parse_single_struct_field(adt_ty, lo, vis, safety, attrs, ident_span)
                 .map(|field| (field, Trailing::No, UsePreAttrPos::No))
@@ -2913,13 +2914,14 @@ impl<'a> Parser<'a> {
                     else if self.check_keyword(exp!(Pub)) {
                         let sp = sp_start.to(self.prev_token.span);
                         if let Ok(snippet) = self.span_to_snippet(sp) {
-                            let current_vis = match self.parse_visibility(FollowedByType::No) {
-                                Ok(v) => v,
-                                Err(d) => {
-                                    d.cancel();
-                                    return Err(err);
-                                }
-                            };
+                            let current_vis =
+                                match self.parse_visibility(ForceCollect::No, FollowedByType::No) {
+                                    Ok(v) => v,
+                                    Err(d) => {
+                                        d.cancel();
+                                        return Err(err);
+                                    }
+                                };
                             let vs = pprust::vis_to_string(&current_vis);
                             let vs = vs.trim_end();
 

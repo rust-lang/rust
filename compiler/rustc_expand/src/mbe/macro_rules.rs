@@ -21,7 +21,7 @@ use rustc_lint_defs::builtin::{
     RUST_2021_INCOMPATIBLE_OR_PATTERNS, SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
 };
 use rustc_parse::exp;
-use rustc_parse::parser::{Parser, Recovery};
+use rustc_parse::parser::{ForceCollect, Parser, Recovery};
 use rustc_session::Session;
 use rustc_session::parse::{ParseSess, feature_err};
 use rustc_span::edition::Edition;
@@ -147,6 +147,7 @@ pub struct MacroRulesMacroExpander {
     span: Span,
     transparency: Transparency,
     kinds: MacroKinds,
+    collect: ForceCollect,
     rules: Vec<MacroRule>,
 }
 
@@ -183,7 +184,7 @@ impl MacroRulesMacroExpander {
             trace_macros_note(&mut cx.expansions, sp, msg);
         }
 
-        match try_match_macro_derive(psess, name, body, rules, &mut NoopTracker) {
+        match try_match_macro_derive(psess, name, body, rules, self.collect, &mut NoopTracker) {
             Ok((rule_index, rule, named_matches)) => {
                 let MacroRule::Derive { rhs, .. } = rule else {
                     panic!("try_match_macro_derive returned non-derive rule");
@@ -239,6 +240,7 @@ impl TTMacroExpander for MacroRulesMacroExpander {
             self.node_id,
             self.name,
             self.transparency,
+            self.collect,
             input,
             &self.rules,
         ))
@@ -260,6 +262,7 @@ impl AttrProcMacro for MacroRulesMacroExpander {
             self.node_id,
             self.name,
             self.transparency,
+            self.collect,
             args,
             body,
             &self.rules,
@@ -332,6 +335,7 @@ fn expand_macro<'cx>(
     node_id: NodeId,
     name: Ident,
     transparency: Transparency,
+    collect: ForceCollect,
     arg: TokenStream,
     rules: &[MacroRule],
 ) -> Box<dyn MacResult + 'cx> {
@@ -343,7 +347,7 @@ fn expand_macro<'cx>(
     }
 
     // Track nothing for the best performance.
-    let try_success_result = try_match_macro(psess, name, &arg, rules, &mut NoopTracker);
+    let try_success_result = try_match_macro(psess, name, &arg, rules, collect, &mut NoopTracker);
 
     match try_success_result {
         Ok((rule_index, rule, named_matches)) => {
@@ -408,6 +412,7 @@ fn expand_macro_attr(
     node_id: NodeId,
     name: Ident,
     transparency: Transparency,
+    collect: ForceCollect,
     args: TokenStream,
     body: TokenStream,
     rules: &[MacroRule],
@@ -427,7 +432,7 @@ fn expand_macro_attr(
     }
 
     // Track nothing for the best performance.
-    match try_match_macro_attr(psess, name, &args, &body, rules, &mut NoopTracker) {
+    match try_match_macro_attr(psess, name, &args, &body, rules, collect, &mut NoopTracker) {
         Ok((i, rule, named_matches)) => {
             let MacroRule::Attr { rhs, .. } = rule else {
                 panic!("try_macro_match_attr returned non-attr rule");
@@ -484,6 +489,7 @@ pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
     name: Ident,
     arg: &TokenStream,
     rules: &'matcher [MacroRule],
+    collect_mode: ForceCollect,
     track: &mut T,
 ) -> Result<(usize, &'matcher MacroRule, NamedMatches), CanRetry> {
     // We create a base parser that can be used for the "black box" parts.
@@ -518,7 +524,7 @@ pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
         // are not recorded. On the first `Success(..)`ful matcher, the spans are merged.
         let mut gated_spans_snapshot = mem::take(&mut *psess.gated_spans.spans.borrow_mut());
 
-        let result = tt_parser.parse_tt(&mut Cow::Borrowed(&parser), lhs, track);
+        let result = tt_parser.parse_tt(&mut Cow::Borrowed(&parser), lhs, collect_mode, track);
 
         track.after_arm(true, &result);
 
@@ -565,6 +571,7 @@ pub(super) fn try_match_macro_attr<'matcher, T: Tracker<'matcher>>(
     attr_args: &TokenStream,
     attr_body: &TokenStream,
     rules: &'matcher [MacroRule],
+    collect_mode: ForceCollect,
     track: &mut T,
 ) -> Result<(usize, &'matcher MacroRule, NamedMatches), CanRetry> {
     // This uses the same strategy as `try_match_macro`
@@ -576,7 +583,8 @@ pub(super) fn try_match_macro_attr<'matcher, T: Tracker<'matcher>>(
 
         let mut gated_spans_snapshot = mem::take(&mut *psess.gated_spans.spans.borrow_mut());
 
-        let result = tt_parser.parse_tt(&mut Cow::Borrowed(&args_parser), args, track);
+        let result =
+            tt_parser.parse_tt(&mut Cow::Borrowed(&args_parser), args, collect_mode, track);
         track.after_arm(false, &result);
 
         let mut named_matches = match result {
@@ -589,7 +597,8 @@ pub(super) fn try_match_macro_attr<'matcher, T: Tracker<'matcher>>(
             ErrorReported(guar) => return Err(CanRetry::No(guar)),
         };
 
-        let result = tt_parser.parse_tt(&mut Cow::Borrowed(&body_parser), body, track);
+        let result =
+            tt_parser.parse_tt(&mut Cow::Borrowed(&body_parser), body, collect_mode, track);
         track.after_arm(true, &result);
 
         match result {
@@ -619,6 +628,7 @@ pub(super) fn try_match_macro_derive<'matcher, T: Tracker<'matcher>>(
     name: Ident,
     body: &TokenStream,
     rules: &'matcher [MacroRule],
+    collect_mode: ForceCollect,
     track: &mut T,
 ) -> Result<(usize, &'matcher MacroRule, NamedMatches), CanRetry> {
     // This uses the same strategy as `try_match_macro`
@@ -629,7 +639,8 @@ pub(super) fn try_match_macro_derive<'matcher, T: Tracker<'matcher>>(
 
         let mut gated_spans_snapshot = mem::take(&mut *psess.gated_spans.spans.borrow_mut());
 
-        let result = tt_parser.parse_tt(&mut Cow::Borrowed(&body_parser), body, track);
+        let result =
+            tt_parser.parse_tt(&mut Cow::Borrowed(&body_parser), body, collect_mode, track);
         track.after_arm(true, &result);
 
         match result {
@@ -679,6 +690,7 @@ pub fn compile_declarative_macro(
 
     let mut kinds = MacroKinds::empty();
     let mut rules = Vec::new();
+    let mut collect = ForceCollect::Yes;
 
     while p.token != token::Eof {
         let (args, is_derive) = if p.eat_keyword_noexpect(sym::attr) {
@@ -744,7 +756,14 @@ pub fn compile_declarative_macro(
         let rhs_tt = p.parse_token_tree();
         let rhs_tt = parse_one_tt(rhs_tt, RulePart::Body, sess, node_id, features, edition);
         check_emission(check_rhs(sess, &rhs_tt));
-        check_emission(check_meta_variables(&sess.psess, node_id, args.as_ref(), &lhs_tt, &rhs_tt));
+        check_emission(check_meta_variables(
+            &sess.psess,
+            node_id,
+            args.as_ref(),
+            &lhs_tt,
+            &rhs_tt,
+            &mut collect,
+        ));
         let lhs_span = lhs_tt.span();
         // Convert the lhs into `MatcherLoc` form, which is better for doing the
         // actual matching.
@@ -792,7 +811,8 @@ pub fn compile_declarative_macro(
     // Return the number of rules for unused rule linting, if this is a local macro.
     let nrules = if is_defined_in_current_crate(node_id) { rules.len() } else { 0 };
 
-    let exp = MacroRulesMacroExpander { name: ident, kinds, span, node_id, transparency, rules };
+    let exp =
+        MacroRulesMacroExpander { name: ident, kinds, span, node_id, transparency, collect, rules };
     (mk_syn_ext(SyntaxExtensionKind::MacroRules(Arc::new(exp))), nrules)
 }
 
