@@ -1092,13 +1092,6 @@ impl Build {
         self.verbosity > level
     }
 
-    /// Runs a function if verbosity is greater than `level`.
-    fn verbose_than(&self, level: usize, f: impl Fn()) {
-        if self.is_verbose_than(level) {
-            f()
-        }
-    }
-
     fn info(&self, msg: &str) {
         match self.config.get_dry_run() {
             DryRun::SelfCheck => (),
@@ -1816,7 +1809,6 @@ impl Build {
         if self.config.dry_run() {
             return;
         }
-        self.verbose_than(1, || println!("Copy/Link {src:?} to {dst:?}"));
         if src == dst {
             return;
         }
@@ -1933,7 +1925,10 @@ impl Build {
             return;
         }
         let dst = dstdir.join(src.file_name().unwrap());
-        self.verbose_than(1, || println!("Install {src:?} to {dst:?}"));
+
+        #[cfg(feature = "tracing")]
+        let _span = trace_io!("install", ?src, ?dst);
+
         t!(fs::create_dir_all(dstdir));
         if !src.exists() {
             panic!("ERROR: File \"{}\" not found!", src.display());

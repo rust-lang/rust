@@ -1902,12 +1902,7 @@ impl Step for Sysroot {
                 if !path.parent().is_none_or(|p| p.ends_with(&suffix)) {
                     return true;
                 }
-                if !filtered_files.iter().all(|f| f != path.file_name().unwrap()) {
-                    builder.verbose_than(1, || println!("ignoring {}", path.display()));
-                    false
-                } else {
-                    true
-                }
+                filtered_files.iter().all(|f| f != path.file_name().unwrap())
             });
         }
 
