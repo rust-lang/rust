@@ -1098,6 +1098,7 @@ pub mod consts {
     /// * `"redox"`
     /// * `"solaris"`
     /// * `"solid_asp3`
+    /// * `"vexos"`
     /// * `"vita"`
     /// * `"vxworks"`
     /// * `"xous"`
@@ -1148,6 +1149,7 @@ pub mod consts {
     ///
     /// <details><summary>Full list of possible values</summary>
     ///
+    /// * `"bin"`
     /// * `"exe"`
     /// * `"efi"`
     /// * `"js"`

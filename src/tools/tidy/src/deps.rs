@@ -578,6 +578,7 @@ const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
     "rustc-literal-escaper",
     "shlex",
     "unwinding",
+    "vex-sdk",
     "wasi",
     "windows-sys",
     "windows-targets",

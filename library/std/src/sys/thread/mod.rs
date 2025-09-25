@@ -81,6 +81,13 @@ cfg_select! {
         ))]
         pub use unsupported::set_name;
     }
+    target_os = "vexos" => {
+        mod vexos;
+        pub use vexos::{sleep, yield_now};
+        #[expect(dead_code)]
+        mod unsupported;
+        pub use unsupported::{Thread, available_parallelism, current_os_id, set_name, DEFAULT_MIN_STACK_SIZE};
+    }
     all(target_os = "wasi", target_env = "p1") => {
         mod wasip1;
         pub use wasip1::{DEFAULT_MIN_STACK_SIZE, sleep, yield_now};
