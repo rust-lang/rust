@@ -1576,7 +1576,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         from_region_origin: NllRegionVariableOrigin,
         to_region: RegionVid,
     ) -> (BlameConstraint<'tcx>, Vec<OutlivesConstraint<'tcx>>) {
-        assert!(from_region != to_region, "Trying to blame a region for itself!");
+        if from_region == to_region {
+            bug!("Trying to blame {from_region:?} for itself!");
+        }
 
         let path = self.constraint_path_between_regions(from_region, to_region).unwrap();
 
