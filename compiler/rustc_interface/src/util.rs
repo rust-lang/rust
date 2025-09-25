@@ -386,8 +386,8 @@ fn get_codegen_sysroot(
                 .collect::<Vec<_>>()
                 .join("\n* ");
             let err = format!(
-                "failed to find a `codegen-backends` folder \
-                           in the sysroot candidates:\n* {candidates}"
+                "failed to find a `codegen-backends` folder in the sysroot candidates:\n\
+                 * {candidates}"
             );
             early_dcx.early_fatal(err);
         });
@@ -396,10 +396,8 @@ fn get_codegen_sysroot(
 
     let d = sysroot.read_dir().unwrap_or_else(|e| {
         let err = format!(
-            "failed to load default codegen backend, couldn't \
-                           read `{}`: {}",
+            "failed to load default codegen backend, couldn't read `{}`: {e}",
             sysroot.display(),
-            e
         );
         early_dcx.early_fatal(err);
     });
