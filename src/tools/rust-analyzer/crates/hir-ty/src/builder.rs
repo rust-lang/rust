@@ -378,6 +378,6 @@ impl<'db> TyBuilder<EarlyBinder<'db, crate::next_solver::Ty<'db>>> {
         db: &'db dyn HirDatabase,
         def: hir_def::ImplId,
     ) -> TyBuilder<EarlyBinder<'db, crate::next_solver::Ty<'db>>> {
-        TyBuilder::subst_for_def(db, def, None).with_data(db.impl_self_ty_ns(def))
+        TyBuilder::subst_for_def(db, def, None).with_data(db.impl_self_ty(def))
     }
 }

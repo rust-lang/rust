@@ -16,8 +16,8 @@ use smallvec::SmallVec;
 use triomphe::Arc;
 
 use crate::{
-    Binders, Const, ImplTraitId, ImplTraits, InferenceResult, Substitution, TraitEnvironment,
-    TraitRef, Ty, TyDefId, ValueTyDefId, chalk_db,
+    Binders, Const, ImplTraitId, ImplTraits, InferenceResult, Substitution, TraitEnvironment, Ty,
+    TyDefId, ValueTyDefId, chalk_db,
     consteval::ConstEvalError,
     drop::DropGlue,
     dyn_compatibility::DynCompatibilityViolation,
@@ -143,9 +143,12 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
         def: ImplId,
     ) -> (crate::next_solver::EarlyBinder<'db, crate::next_solver::Ty<'db>>, Diagnostics);
 
-    #[salsa::invoke(crate::lower::impl_self_ty_query)]
+    #[salsa::invoke(crate::lower_nextsolver::impl_self_ty_query)]
     #[salsa::transparent]
-    fn impl_self_ty(&self, def: ImplId) -> Binders<Ty>;
+    fn impl_self_ty<'db>(
+        &'db self,
+        def: ImplId,
+    ) -> crate::next_solver::EarlyBinder<'db, crate::next_solver::Ty<'db>>;
 
     // FIXME: Make this a non-interned query.
     #[salsa::invoke_interned(crate::lower_nextsolver::const_param_ty_with_diagnostics_query)]
@@ -169,9 +172,12 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
         Diagnostics,
     )>;
 
-    #[salsa::invoke(crate::lower::impl_trait_query)]
+    #[salsa::invoke(crate::lower_nextsolver::impl_trait_query)]
     #[salsa::transparent]
-    fn impl_trait(&self, def: ImplId) -> Option<Binders<TraitRef>>;
+    fn impl_trait<'db>(
+        &'db self,
+        def: ImplId,
+    ) -> Option<crate::next_solver::EarlyBinder<'db, crate::next_solver::TraitRef<'db>>>;
 
     #[salsa::invoke(crate::lower_nextsolver::field_types_with_diagnostics_query)]
     fn field_types_with_diagnostics<'db>(
@@ -325,23 +331,9 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
 
     // next trait solver
 
-    #[salsa::invoke(crate::lower_nextsolver::impl_self_ty_query)]
-    #[salsa::transparent]
-    fn impl_self_ty_ns<'db>(
-        &'db self,
-        def: ImplId,
-    ) -> crate::next_solver::EarlyBinder<'db, crate::next_solver::Ty<'db>>;
-
     #[salsa::invoke(crate::lower_nextsolver::const_param_ty_query)]
     #[salsa::transparent]
     fn const_param_ty_ns<'db>(&'db self, def: ConstParamId) -> crate::next_solver::Ty<'db>;
-
-    #[salsa::invoke(crate::lower_nextsolver::impl_trait_query)]
-    #[salsa::transparent]
-    fn impl_trait_ns<'db>(
-        &'db self,
-        def: ImplId,
-    ) -> Option<crate::next_solver::EarlyBinder<'db, crate::next_solver::TraitRef<'db>>>;
 
     #[salsa::invoke(crate::lower_nextsolver::field_types_query)]
     #[salsa::transparent]

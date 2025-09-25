@@ -1864,7 +1864,9 @@ impl<'db> InferenceContext<'db> {
             TypeNs::SelfType(impl_id) => {
                 let generics = crate::generics::generics(self.db, impl_id.into());
                 let substs = generics.placeholder_subst(self.db);
-                let mut ty = self.db.impl_self_ty(impl_id).substitute(Interner, &substs);
+                let args: crate::next_solver::GenericArgs<'_> = substs.to_nextsolver(interner);
+                let mut ty =
+                    self.db.impl_self_ty(impl_id).instantiate(interner, args).to_chalk(interner);
 
                 let Some(remaining_idx) = unresolved else {
                     drop(ctx);

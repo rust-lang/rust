@@ -432,9 +432,12 @@ impl MirEvalError {
                 let self_ = match func.lookup(db).container {
                     ItemContainerId::ImplId(impl_id) => Some({
                         let generics = crate::generics::generics(db, impl_id.into());
+                        let interner = DbInterner::new_with(db, None, None);
                         let substs = generics.placeholder_subst(db);
+                        let args: crate::next_solver::GenericArgs<'_> =
+                            substs.to_nextsolver(interner);
                         db.impl_self_ty(impl_id)
-                            .substitute(Interner, &substs)
+                            .instantiate(interner, args)
                             .display(db, display_target)
                             .to_string()
                     }),
