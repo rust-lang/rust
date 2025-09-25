@@ -56,8 +56,8 @@ jobs:
       # Install a pinned rustc commit to avoid surprises
       - name: Install Rust toolchain
         run: |
-          RUSTC_VERSION=`cat rust-version`
-          rustup-toolchain-install-master ${RUSTC_VERSION} -c rust-src -c rustfmt
+          RUSTC_VERSION=$(cat rust-version)
+          rustup-toolchain-install-master ${RUSTC_VERSION} -c cargo -c rust-src -c rustfmt
           rustup default ${RUSTC_VERSION}
 
       # Emulate a nightly toolchain, because the toolchain installed above does not have "nightly"
