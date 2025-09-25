@@ -1,0 +1,171 @@
+error: crate root imports need to be explicitly named: `use crate as name;`
+  --> $DIR/use-path-segment-kw.rs:36:13
+   |
+LL |         use crate;
+   |             ^^^^^
+
+error: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:37:15
+   |
+LL |         use ::crate;
+   |               ^^^^^
+
+error: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:38:21
+   |
+LL |         use foobar::crate;
+   |                     ^^^^^
+
+error: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:39:20
+   |
+LL |         use crate::crate;
+   |                    ^^^^^
+
+error: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:40:20
+   |
+LL |         use super::crate;
+   |                    ^^^^^
+
+error: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:41:19
+   |
+LL |         use self::crate;
+   |                   ^^^^^
+
+error: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:42:24
+   |
+LL |         use ::crate as _crate2;
+   |                        ^^^^^^^
+
+error: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:43:30
+   |
+LL |         use foobar::crate as _crate3;
+   |                              ^^^^^^^
+
+error: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:44:29
+   |
+LL |         use crate::crate as _crate4;
+   |                             ^^^^^^^
+
+error: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:45:29
+   |
+LL |         use super::crate as _crate5;
+   |                             ^^^^^^^
+
+error: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:46:28
+   |
+LL |         use self::crate as _crate6;
+   |                            ^^^^^^^
+
+error: imports need to be explicitly named: `use super as name;`
+  --> $DIR/use-path-segment-kw.rs:49:13
+   |
+LL |         use super;
+   |             ^^^^^
+
+error: imports need to be explicitly named: `use super as name;`
+  --> $DIR/use-path-segment-kw.rs:50:15
+   |
+LL |         use ::super;
+   |               ^^^^^
+
+error: imports need to be explicitly named: `use super as name;`
+  --> $DIR/use-path-segment-kw.rs:51:21
+   |
+LL |         use foobar::super;
+   |                     ^^^^^
+
+error: imports need to be explicitly named: `use super as name;`
+  --> $DIR/use-path-segment-kw.rs:52:20
+   |
+LL |         use crate::super;
+   |                    ^^^^^
+
+error: imports need to be explicitly named: `use super as name;`
+  --> $DIR/use-path-segment-kw.rs:53:20
+   |
+LL |         use super::super;
+   |                    ^^^^^
+
+error: imports need to be explicitly named: `use super as name;`
+  --> $DIR/use-path-segment-kw.rs:54:19
+   |
+LL |         use self::super;
+   |                   ^^^^^
+
+error: imports need to be explicitly named: `use self as name;`
+  --> $DIR/use-path-segment-kw.rs:67:13
+   |
+LL |         use self;
+   |             ^^^^
+
+error: imports need to be explicitly named: `use self as name;`
+  --> $DIR/use-path-segment-kw.rs:68:15
+   |
+LL |         use ::self;
+   |               ^^^^
+
+error: imports need to be explicitly named: `use self as name;`
+  --> $DIR/use-path-segment-kw.rs:69:20
+   |
+LL |         use crate::self;
+   |                    ^^^^
+
+error: imports need to be explicitly named: `use self as name;`
+  --> $DIR/use-path-segment-kw.rs:70:20
+   |
+LL |         use super::self;
+   |                    ^^^^
+
+error: imports need to be explicitly named: `use self as name;`
+  --> $DIR/use-path-segment-kw.rs:71:19
+   |
+LL |         use self::self;
+   |                   ^^^^
+
+error[E0432]: unresolved import `super`
+  --> $DIR/use-path-segment-kw.rs:55:13
+   |
+LL |         use ::super as _super2;
+   |             ^^^^^^^^^^^^^^^^^^ no `super` in the root
+
+error[E0432]: unresolved import `foobar::super`
+  --> $DIR/use-path-segment-kw.rs:56:13
+   |
+LL |         use foobar::super as _super3;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^ no `super` in `foo::bar::foobar`
+
+error[E0432]: unresolved import `crate::super`
+  --> $DIR/use-path-segment-kw.rs:57:13
+   |
+LL |         use crate::super as _super4;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^ no `super` in the root
+
+error[E0432]: unresolved import `super::super`
+  --> $DIR/use-path-segment-kw.rs:58:13
+   |
+LL |         use super::super as _super5;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^ no `super` in `foo`
+
+error[E0432]: unresolved import `foobar::super`
+  --> $DIR/use-path-segment-kw.rs:59:13
+   |
+LL |         use foobar::super as _super6;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^ no `super` in `foo::bar::foobar`
+
+error[E0432]: unresolved import `{{root}}`
+  --> $DIR/use-path-segment-kw.rs:72:13
+   |
+LL |         use ::self as _self2;
+   |             ^^^^^^^^^^^^^^^^ no `{{root}}` in the root
+
+error: aborting due to 28 previous errors
+
+For more information about this error, try `rustc --explain E0432`.
