@@ -476,3 +476,100 @@ fn minus_belongs_to_literal() {
             --"#]],
     );
 }
+
+#[test]
+fn negative_literals_in_const_generics() {
+    // Test that negative literals work correctly in declarative macros
+    // when used as const generic arguments. The issue was that expressions
+    // like -1 would be wrapped in parentheses, creating invalid syntax
+    // Foo::<(-1)> instead of the correct Foo::<-1>.
+    let decl = r#"
+($val:expr) => {
+    struct Foo<const I: i16> {
+        pub value: i16,
+    }
+
+    impl<const I: i16> Foo<I> {
+        pub fn new(value: i16) -> Self {
+            Self { value }
+        }
+    }
+
+    Foo::<$val>::new($val)
+};
+"#;
+    let check = |args, expect| check(Edition::CURRENT, Edition::CURRENT, decl, args, expect);
+
+    // Test negative integer literal - should produce Foo::<-1>, not Foo::<(-1)>
+    check(
+        "-1",
+        expect![[r#"
+            SUBTREE $$ 1:Root[0000, 0]@0..2#ROOT2024 1:Root[0000, 0]@0..2#ROOT2024
+              IDENT   struct 0:Root[0000, 0]@22..28#ROOT2024
+              IDENT   Foo 0:Root[0000, 0]@29..32#ROOT2024
+              PUNCH   < [alone] 0:Root[0000, 0]@32..33#ROOT2024
+              IDENT   const 0:Root[0000, 0]@33..38#ROOT2024
+              IDENT   I 0:Root[0000, 0]@39..40#ROOT2024
+              PUNCH   : [alone] 0:Root[0000, 0]@40..41#ROOT2024
+              IDENT   i16 0:Root[0000, 0]@42..45#ROOT2024
+              PUNCH   > [alone] 0:Root[0000, 0]@45..46#ROOT2024
+              SUBTREE {} 0:Root[0000, 0]@47..48#ROOT2024 0:Root[0000, 0]@77..78#ROOT2024
+                IDENT   pub 0:Root[0000, 0]@57..60#ROOT2024
+                IDENT   value 0:Root[0000, 0]@61..66#ROOT2024
+                PUNCH   : [alone] 0:Root[0000, 0]@66..67#ROOT2024
+                IDENT   i16 0:Root[0000, 0]@68..71#ROOT2024
+                PUNCH   , [alone] 0:Root[0000, 0]@71..72#ROOT2024
+              IDENT   impl 0:Root[0000, 0]@84..88#ROOT2024
+              PUNCH   < [alone] 0:Root[0000, 0]@88..89#ROOT2024
+              IDENT   const 0:Root[0000, 0]@89..94#ROOT2024
+              IDENT   I 0:Root[0000, 0]@95..96#ROOT2024
+              PUNCH   : [alone] 0:Root[0000, 0]@96..97#ROOT2024
+              IDENT   i16 0:Root[0000, 0]@98..101#ROOT2024
+              PUNCH   > [alone] 0:Root[0000, 0]@101..102#ROOT2024
+              IDENT   Foo 0:Root[0000, 0]@103..106#ROOT2024
+              PUNCH   < [alone] 0:Root[0000, 0]@106..107#ROOT2024
+              IDENT   I 0:Root[0000, 0]@107..108#ROOT2024
+              PUNCH   > [alone] 0:Root[0000, 0]@108..109#ROOT2024
+              SUBTREE {} 0:Root[0000, 0]@110..111#ROOT2024 0:Root[0000, 0]@194..195#ROOT2024
+                IDENT   pub 0:Root[0000, 0]@120..123#ROOT2024
+                IDENT   fn 0:Root[0000, 0]@124..126#ROOT2024
+                IDENT   new 0:Root[0000, 0]@127..130#ROOT2024
+                SUBTREE () 0:Root[0000, 0]@130..131#ROOT2024 0:Root[0000, 0]@141..142#ROOT2024
+                  IDENT   value 0:Root[0000, 0]@131..136#ROOT2024
+                  PUNCH   : [alone] 0:Root[0000, 0]@136..137#ROOT2024
+                  IDENT   i16 0:Root[0000, 0]@138..141#ROOT2024
+                PUNCH   - [joint] 0:Root[0000, 0]@143..144#ROOT2024
+                PUNCH   > [alone] 0:Root[0000, 0]@144..145#ROOT2024
+                IDENT   Self 0:Root[0000, 0]@146..150#ROOT2024
+                SUBTREE {} 0:Root[0000, 0]@151..152#ROOT2024 0:Root[0000, 0]@188..189#ROOT2024
+                  IDENT   Self 0:Root[0000, 0]@165..169#ROOT2024
+                  SUBTREE {} 0:Root[0000, 0]@170..171#ROOT2024 0:Root[0000, 0]@178..179#ROOT2024
+                    IDENT   value 0:Root[0000, 0]@172..177#ROOT2024
+              IDENT   Foo 0:Root[0000, 0]@201..204#ROOT2024
+              PUNCH   : [joint] 0:Root[0000, 0]@204..205#ROOT2024
+              PUNCH   : [joint] 0:Root[0000, 0]@205..206#ROOT2024
+              PUNCH   < [joint] 0:Root[0000, 0]@206..207#ROOT2024
+              PUNCH   - [alone] 1:Root[0000, 0]@0..1#ROOT2024
+              LITERAL Integer 1 1:Root[0000, 0]@1..2#ROOT2024
+              PUNCH   > [joint] 0:Root[0000, 0]@211..212#ROOT2024
+              PUNCH   : [joint] 0:Root[0000, 0]@212..213#ROOT2024
+              PUNCH   : [alone] 0:Root[0000, 0]@213..214#ROOT2024
+              IDENT   new 0:Root[0000, 0]@214..217#ROOT2024
+              SUBTREE () 0:Root[0000, 0]@217..218#ROOT2024 0:Root[0000, 0]@222..223#ROOT2024
+                PUNCH   - [alone] 1:Root[0000, 0]@0..1#ROOT2024
+                LITERAL Integer 1 1:Root[0000, 0]@1..2#ROOT2024
+
+            struct Foo<const I:i16>{
+                pub value:i16,
+            }
+            impl <const I:i16>Foo<I>{
+                pub fn new(value:i16) -> Self {
+                    Self {
+                        value
+                    }
+                }
+
+                }
+            Foo::<-1>::new(-1)"#]],
+    );
+}
