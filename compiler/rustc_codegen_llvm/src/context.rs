@@ -8,7 +8,6 @@ use std::str;
 use rustc_abi::{HasDataLayout, Size, TargetDataLayout, VariantIdx};
 use rustc_codegen_ssa::back::versioned_llvm_target;
 use rustc_codegen_ssa::base::{wants_msvc_seh, wants_wasm_eh};
-use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::errors as ssa_errors;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::base_n::{ALPHANUMERIC_ONLY, ToBaseN};
@@ -27,7 +26,7 @@ use rustc_session::config::{
     BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, FunctionReturn, PAuthKey, PacRet,
 };
 use rustc_span::source_map::Spanned;
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::spec::{HasTargetSpec, RelocModel, SmallDataThresholdSupport, Target, TlsModel};
 use smallvec::SmallVec;
@@ -120,7 +119,7 @@ pub(crate) struct FullCx<'ll, 'tcx> {
 
     /// Statics that will be placed in the llvm.compiler.used variable
     /// See <https://llvm.org/docs/LangRef.html#the-llvm-compiler-used-global-variable> for details
-    pub compiler_used_statics: Vec<&'ll Value>,
+    pub compiler_used_statics: RefCell<Vec<&'ll Value>>,
 
     /// Mapping of non-scalar types to llvm types.
     pub type_lowering: RefCell<FxHashMap<(Ty<'tcx>, Option<VariantIdx>), &'ll Type>>,
@@ -147,6 +146,15 @@ pub(crate) struct FullCx<'ll, 'tcx> {
     /// `global_asm!` needs to be able to find this new global so that it can
     /// compute the correct mangled symbol name to insert into the asm.
     pub renamed_statics: RefCell<FxHashMap<DefId, &'ll Value>>,
+
+    /// Cached Objective-C class type
+    pub objc_class_t: Cell<Option<&'ll Type>>,
+
+    /// Cache of Objective-C class references
+    pub objc_classrefs: RefCell<FxHashMap<Symbol, &'ll Value>>,
+
+    /// Cache of Objective-C selector references
+    pub objc_selrefs: RefCell<FxHashMap<Symbol, &'ll Value>>,
 }
 
 fn to_llvm_tls_model(tls_model: TlsModel) -> llvm::ThreadLocalMode {
@@ -173,35 +181,6 @@ pub(crate) unsafe fn create_module<'ll>(
     let mut target_data_layout = sess.target.data_layout.to_string();
     let llvm_version = llvm_util::get_version();
 
-    if llvm_version < (20, 0, 0) {
-        if sess.target.arch == "aarch64" || sess.target.arch.starts_with("arm64") {
-            // LLVM 20 defines three additional address spaces for alternate
-            // pointer kinds used in Windows.
-            // See https://github.com/llvm/llvm-project/pull/111879
-            target_data_layout =
-                target_data_layout.replace("-p270:32:32-p271:32:32-p272:64:64", "");
-        }
-        if sess.target.arch.starts_with("sparc") {
-            // LLVM 20 updates the sparc layout to correctly align 128 bit integers to 128 bit.
-            // See https://github.com/llvm/llvm-project/pull/106951
-            target_data_layout = target_data_layout.replace("-i128:128", "");
-        }
-        if sess.target.arch.starts_with("mips64") {
-            // LLVM 20 updates the mips64 layout to correctly align 128 bit integers to 128 bit.
-            // See https://github.com/llvm/llvm-project/pull/112084
-            target_data_layout = target_data_layout.replace("-i128:128", "");
-        }
-        if sess.target.arch.starts_with("powerpc64") {
-            // LLVM 20 updates the powerpc64 layout to correctly align 128 bit integers to 128 bit.
-            // See https://github.com/llvm/llvm-project/pull/118004
-            target_data_layout = target_data_layout.replace("-i128:128", "");
-        }
-        if sess.target.arch.starts_with("wasm32") || sess.target.arch.starts_with("wasm64") {
-            // LLVM 20 updates the wasm(32|64) layout to correctly align 128 bit integers to 128 bit.
-            // See https://github.com/llvm/llvm-project/pull/119204
-            target_data_layout = target_data_layout.replace("-i128:128", "");
-        }
-    }
     if llvm_version < (21, 0, 0) {
         if sess.target.arch == "nvptx64" {
             // LLVM 21 updated the default layout on nvptx: https://github.com/llvm/llvm-project/pull/124961
@@ -211,6 +190,16 @@ pub(crate) unsafe fn create_module<'ll>(
             // LLVM 21 adds the address width for address space 8.
             // See https://github.com/llvm/llvm-project/pull/139419
             target_data_layout = target_data_layout.replace("p8:128:128:128:48", "p8:128:128")
+        }
+    }
+    if llvm_version < (22, 0, 0) {
+        if sess.target.arch == "avr" {
+            // LLVM 22.0 updated the default layout on avr: https://github.com/llvm/llvm-project/pull/153010
+            target_data_layout = target_data_layout.replace("n8:16", "n8")
+        }
+        if sess.target.arch == "nvptx64" {
+            // LLVM 22 updated the NVPTX layout to indicate 256-bit vector load/store: https://github.com/llvm/llvm-project/pull/155198
+            target_data_layout = target_data_layout.replace("-i256:256", "");
         }
     }
 
@@ -372,7 +361,17 @@ pub(crate) unsafe fn create_module<'ll>(
         }
     }
 
-    if let Some(BranchProtection { bti, pac_ret }) = sess.opts.unstable_opts.branch_protection {
+    if let Some(regparm_count) = sess.opts.unstable_opts.regparm {
+        llvm::add_module_flag_u32(
+            llmod,
+            llvm::ModuleFlagMergeBehavior::Error,
+            "NumRegisterParameters",
+            regparm_count,
+        );
+    }
+
+    if let Some(BranchProtection { bti, pac_ret, gcs }) = sess.opts.unstable_opts.branch_protection
+    {
         if sess.target.arch == "aarch64" {
             llvm::add_module_flag_u32(
                 llmod,
@@ -404,6 +403,12 @@ pub(crate) unsafe fn create_module<'ll>(
                 llvm::ModuleFlagMergeBehavior::Min,
                 "sign-return-address-with-bkey",
                 u32::from(pac_opts.key == PAuthKey::B),
+            );
+            llvm::add_module_flag_u32(
+                llmod,
+                llvm::ModuleFlagMergeBehavior::Min,
+                "guarded-control-stack",
+                gcs.into(),
             );
         } else {
             bug!(
@@ -455,6 +460,15 @@ pub(crate) unsafe fn create_module<'ll>(
                 1,
             );
         }
+    }
+
+    if sess.opts.unstable_opts.indirect_branch_cs_prefix {
+        llvm::add_module_flag_u32(
+            llmod,
+            llvm::ModuleFlagMergeBehavior::Override,
+            "indirect_branch_cs_prefix",
+            1,
+        );
     }
 
     match (sess.opts.unstable_opts.small_data_threshold, sess.target.small_data_threshold_support())
@@ -617,7 +631,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
                 const_globals: Default::default(),
                 statics_to_rauw: RefCell::new(Vec::new()),
                 used_statics: Vec::new(),
-                compiler_used_statics: Vec::new(),
+                compiler_used_statics: Default::default(),
                 type_lowering: Default::default(),
                 scalar_lltypes: Default::default(),
                 coverage_cx,
@@ -628,6 +642,9 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
                 intrinsics: Default::default(),
                 local_gen_sym_counter: Cell::new(0),
                 renamed_statics: Default::default(),
+                objc_class_t: Cell::new(None),
+                objc_classrefs: Default::default(),
+                objc_selrefs: Default::default(),
             },
             PhantomData,
         )
@@ -652,12 +669,71 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         llvm::set_linkage(g, llvm::Linkage::AppendingLinkage);
         llvm::set_section(g, c"llvm.metadata");
     }
+
+    /// The Objective-C ABI that is used.
+    ///
+    /// This corresponds to the `-fobjc-abi-version=` flag in Clang / GCC.
+    pub(crate) fn objc_abi_version(&self) -> u32 {
+        assert!(self.tcx.sess.target.is_like_darwin);
+        if self.tcx.sess.target.arch == "x86" && self.tcx.sess.target.os == "macos" {
+            // 32-bit x86 macOS uses ABI version 1 (a.k.a. the "fragile ABI").
+            1
+        } else {
+            // All other Darwin-like targets we support use ABI version 2
+            // (a.k.a the "non-fragile ABI").
+            2
+        }
+    }
+
+    // We do our best here to match what Clang does when compiling Objective-C natively.
+    // See Clang's `CGObjCCommonMac::EmitImageInfo`:
+    // https://github.com/llvm/llvm-project/blob/llvmorg-20.1.8/clang/lib/CodeGen/CGObjCMac.cpp#L5085
+    pub(crate) fn add_objc_module_flags(&self) {
+        let abi_version = self.objc_abi_version();
+
+        llvm::add_module_flag_u32(
+            self.llmod,
+            llvm::ModuleFlagMergeBehavior::Error,
+            "Objective-C Version",
+            abi_version,
+        );
+
+        llvm::add_module_flag_u32(
+            self.llmod,
+            llvm::ModuleFlagMergeBehavior::Error,
+            "Objective-C Image Info Version",
+            0,
+        );
+
+        llvm::add_module_flag_str(
+            self.llmod,
+            llvm::ModuleFlagMergeBehavior::Error,
+            "Objective-C Image Info Section",
+            match abi_version {
+                1 => "__OBJC,__image_info,regular",
+                2 => "__DATA,__objc_imageinfo,regular,no_dead_strip",
+                _ => unreachable!(),
+            },
+        );
+
+        if self.tcx.sess.target.env == "sim" {
+            llvm::add_module_flag_u32(
+                self.llmod,
+                llvm::ModuleFlagMergeBehavior::Error,
+                "Objective-C Is Simulated",
+                1 << 5,
+            );
+        }
+
+        llvm::add_module_flag_u32(
+            self.llmod,
+            llvm::ModuleFlagMergeBehavior::Error,
+            "Objective-C Class Properties",
+            1 << 6,
+        );
+    }
 }
 impl<'ll> SimpleCx<'ll> {
-    pub(crate) fn get_return_type(&self, ty: &'ll Type) -> &'ll Type {
-        assert_eq!(self.type_kind(ty), TypeKind::Function);
-        unsafe { llvm::LLVMGetReturnType(ty) }
-    }
     pub(crate) fn get_type_of_global(&self, val: &'ll Value) -> &'ll Type {
         unsafe { llvm::LLVMGlobalGetValueType(val) }
     }
@@ -682,7 +758,7 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     }
 
     pub(crate) fn get_const_int(&self, ty: &'ll Type, val: u64) -> &'ll Value {
-        unsafe { llvm::LLVMConstInt(ty, val, llvm::False) }
+        unsafe { llvm::LLVMConstInt(ty, val, llvm::FALSE) }
     }
 
     pub(crate) fn get_const_i64(&self, n: u64) -> &'ll Value {
@@ -720,16 +796,6 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         unsafe {
             llvm::LLVMMDStringInContext2(self.llcx(), name.as_ptr() as *const c_char, name.len())
         }
-    }
-
-    pub(crate) fn get_functions(&self) -> Vec<&'ll Value> {
-        let mut functions = vec![];
-        let mut func = unsafe { llvm::LLVMGetFirstFunction(self.llmod()) };
-        while let Some(f) = func {
-            functions.push(f);
-            func = unsafe { llvm::LLVMGetNextFunction(f) }
-        }
-        functions
     }
 }
 
@@ -810,7 +876,7 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 } else {
                     let fty = self.type_variadic_func(&[], self.type_i32());
                     let llfn = self.declare_cfn(name, llvm::UnnamedAddr::Global, fty);
-                    let target_cpu = attributes::target_cpu_attr(self);
+                    let target_cpu = attributes::target_cpu_attr(self, self.sess());
                     attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &[target_cpu]);
                     llfn
                 }
@@ -825,22 +891,22 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     }
 
     fn set_frame_pointer_type(&self, llfn: &'ll Value) {
-        if let Some(attr) = attributes::frame_pointer_type_attr(self) {
+        if let Some(attr) = attributes::frame_pointer_type_attr(self, self.sess()) {
             attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &[attr]);
         }
     }
 
     fn apply_target_cpu_attr(&self, llfn: &'ll Value) {
         let mut attrs = SmallVec::<[_; 2]>::new();
-        attrs.push(attributes::target_cpu_attr(self));
-        attrs.extend(attributes::tune_cpu_attr(self));
+        attrs.push(attributes::target_cpu_attr(self, self.sess()));
+        attrs.extend(attributes::tune_cpu_attr(self, self.sess()));
         attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &attrs);
     }
 
     fn declare_c_main(&self, fn_type: Self::Type) -> Option<Self::Function> {
         let entry_name = self.sess().target.entry_name.as_ref();
         if self.get_declared_value(entry_name).is_none() {
-            Some(self.declare_entry_fn(
+            let llfn = self.declare_entry_fn(
                 entry_name,
                 llvm::CallConv::from_conv(
                     self.sess().target.entry_abi,
@@ -848,7 +914,13 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 ),
                 llvm::UnnamedAddr::Global,
                 fn_type,
-            ))
+            );
+            attributes::apply_to_llfn(
+                llfn,
+                llvm::AttributePlace::Function,
+                attributes::target_features_attr(self, self.tcx, vec![]).as_slice(),
+            );
+            Some(llfn)
         } else {
             // If the symbol already exists, it is an error: for example, the user wrote
             // #[no_mangle] extern "C" fn main(..) {..}

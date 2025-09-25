@@ -16,12 +16,13 @@ use rustc_macros::{HashStable, TyDecodable, TyEncodable, extension};
 use rustc_session::config::OptLevel;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 use rustc_target::callconv::FnAbi;
-use rustc_target::spec::{HasTargetSpec, HasX86AbiOpt, PanicStrategy, Target, X86Abi};
+use rustc_target::spec::{HasTargetSpec, HasX86AbiOpt, Target, X86Abi};
 use tracing::debug;
 use {rustc_abi as abi, rustc_hir as hir};
 
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::query::TyCtxtAt;
+use crate::traits::ObligationCause;
 use crate::ty::normalize_erasing_regions::NormalizationError;
 use crate::ty::{self, CoroutineArgsExt, Ty, TyCtxt, TypeVisitableExt};
 
@@ -384,6 +385,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
 
                 let tail = tcx.struct_tail_raw(
                     pointee,
+                    &ObligationCause::dummy(),
                     |ty| match tcx.try_normalize_erasing_regions(typing_env, ty) {
                         Ok(ty) => ty,
                         Err(e) => Ty::new_error_with_message(
@@ -401,7 +403,10 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 match tail.kind() {
                     ty::Param(_) | ty::Alias(ty::Projection | ty::Inherent, _) => {
                         debug_assert!(tail.has_non_region_param());
-                        Ok(SizeSkeleton::Pointer { non_zero, tail: tcx.erase_regions(tail) })
+                        Ok(SizeSkeleton::Pointer {
+                            non_zero,
+                            tail: tcx.erase_and_anonymize_regions(tail),
+                        })
                     }
                     ty::Error(guar) => {
                         // Fixes ICE #124031
@@ -809,7 +814,7 @@ where
                 | ty::CoroutineWitness(..)
                 | ty::Foreign(..)
                 | ty::Pat(_, _)
-                | ty::Dynamic(_, _, ty::Dyn) => {
+                | ty::Dynamic(_, _) => {
                     bug!("TyAndLayout::field({:?}): not applicable", this)
                 }
 
@@ -875,7 +880,7 @@ where
                         // `std::mem::uninitialized::<&dyn Trait>()`, for example.
                         if let ty::Adt(def, args) = metadata.kind()
                             && tcx.is_lang_item(def.did(), LangItem::DynMetadata)
-                            && let ty::Dynamic(data, _, ty::Dyn) = args.type_at(0).kind()
+                            && let ty::Dynamic(data, _) = args.type_at(0).kind()
                         {
                             mk_dyn_vtable(data.principal())
                         } else {
@@ -884,7 +889,7 @@ where
                     } else {
                         match tcx.struct_tail_for_codegen(pointee, cx.typing_env()).kind() {
                             ty::Slice(_) | ty::Str => tcx.types.usize,
-                            ty::Dynamic(data, _, ty::Dyn) => mk_dyn_vtable(data.principal()),
+                            ty::Dynamic(data, _) => mk_dyn_vtable(data.principal()),
                             _ => bug!("TyAndLayout::field({:?}): not applicable", this),
                         }
                     };
@@ -1193,7 +1198,7 @@ pub fn fn_can_unwind(tcx: TyCtxt<'_>, fn_def_id: Option<DefId>, abi: ExternAbi) 
         //
         // Note that this is true regardless ABI specified on the function -- a `extern "C-unwind"`
         // function defined in Rust is also required to abort.
-        if tcx.sess.panic_strategy() == PanicStrategy::Abort && !tcx.is_foreign_item(did) {
+        if !tcx.sess.panic_strategy().unwinds() && !tcx.is_foreign_item(did) {
             return false;
         }
 
@@ -1201,7 +1206,7 @@ pub fn fn_can_unwind(tcx: TyCtxt<'_>, fn_def_id: Option<DefId>, abi: ExternAbi) 
         //
         // This is not part of `codegen_fn_attrs` as it can differ between crates
         // and therefore cannot be computed in core.
-        if tcx.sess.opts.unstable_opts.panic_in_drop == PanicStrategy::Abort
+        if !tcx.sess.opts.unstable_opts.panic_in_drop.unwinds()
             && tcx.is_lang_item(did, LangItem::DropInPlace)
         {
             return false;
@@ -1240,7 +1245,7 @@ pub fn fn_can_unwind(tcx: TyCtxt<'_>, fn_def_id: Option<DefId>, abi: ExternAbi) 
         | RiscvInterruptS
         | RustInvalid
         | Unadjusted => false,
-        Rust | RustCall | RustCold => tcx.sess.panic_strategy() == PanicStrategy::Unwind,
+        Rust | RustCall | RustCold => tcx.sess.panic_strategy().unwinds(),
     }
 }
 

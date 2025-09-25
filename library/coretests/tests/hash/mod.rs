@@ -53,12 +53,14 @@ fn test_writer_hasher() {
     assert_eq!(hash(&5_u16), 5);
     assert_eq!(hash(&5_u32), 5);
     assert_eq!(hash(&5_u64), 5);
+    assert_eq!(hash(&5_u128), 5);
     assert_eq!(hash(&5_usize), 5);
 
     assert_eq!(hash(&5_i8), 5);
     assert_eq!(hash(&5_i16), 5);
     assert_eq!(hash(&5_i32), 5);
     assert_eq!(hash(&5_i64), 5);
+    assert_eq!(hash(&5_i128), 5);
     assert_eq!(hash(&5_isize), 5);
 
     assert_eq!(hash(&false), 0);
@@ -84,6 +86,17 @@ fn test_writer_hasher() {
 
     let ptr = ptr::without_provenance_mut::<i32>(5_usize);
     assert_eq!(hash(&ptr), 5);
+
+    // Use a newtype to test the `Hash::hash_slice` default implementation.
+    struct Byte(u8);
+
+    impl Hash for Byte {
+        fn hash<H: Hasher>(&self, state: &mut H) {
+            state.write_u8(self.0)
+        }
+    }
+
+    assert_eq!(hash(&[Byte(b'a')]), 97 + 1);
 
     if cfg!(miri) {
         // Miri cannot hash pointers

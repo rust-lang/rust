@@ -929,8 +929,13 @@ macro_rules! common_visitor_and_walkers {
         }
 
         impl_walkable!(|&$($mut)? $($lt)? self: Impl, vis: &mut V| {
-            let Impl { defaultness, safety, generics, constness, polarity, of_trait, self_ty, items } = self;
-            visit_visitable!($($mut)? vis, defaultness, safety, generics, constness, polarity, of_trait, self_ty);
+            let Impl { generics, of_trait, self_ty, items } = self;
+            try_visit!(vis.visit_generics(generics));
+            if let Some(box of_trait) = of_trait {
+                let TraitImplHeader { defaultness, safety, constness, polarity, trait_ref } = of_trait;
+                visit_visitable!($($mut)? vis, defaultness, safety, constness, polarity, trait_ref);
+            }
+            try_visit!(vis.visit_ty(self_ty));
             visit_visitable_with!($($mut)? vis, items, AssocCtxt::Impl { of_trait: of_trait.is_some() });
             V::Result::output()
         });

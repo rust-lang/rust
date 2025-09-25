@@ -106,6 +106,10 @@ fn dyn_compatibility_violations_for_trait(
     if !spans.is_empty() {
         violations.push(DynCompatibilityViolation::SupertraitNonLifetimeBinder(spans));
     }
+    let spans = super_predicates_are_unconditionally_const(tcx, trait_def_id);
+    if !spans.is_empty() {
+        violations.push(DynCompatibilityViolation::SupertraitConst(spans));
+    }
 
     violations
 }
@@ -247,13 +251,28 @@ fn super_predicates_have_non_lifetime_binders(
     tcx: TyCtxt<'_>,
     trait_def_id: DefId,
 ) -> SmallVec<[Span; 1]> {
-    // If non_lifetime_binders is disabled, then exit early
-    if !tcx.features().non_lifetime_binders() {
-        return SmallVec::new();
-    }
     tcx.explicit_super_predicates_of(trait_def_id)
         .iter_identity_copied()
         .filter_map(|(pred, span)| pred.has_non_region_bound_vars().then_some(span))
+        .collect()
+}
+
+/// Checks for `const Trait` supertraits. We're okay with `[const] Trait`,
+/// supertraits since for a non-const instantiation of that trait, the
+/// conditionally-const supertrait is also not required to be const.
+fn super_predicates_are_unconditionally_const(
+    tcx: TyCtxt<'_>,
+    trait_def_id: DefId,
+) -> SmallVec<[Span; 1]> {
+    tcx.explicit_super_predicates_of(trait_def_id)
+        .iter_identity_copied()
+        .filter_map(|(pred, span)| {
+            if let ty::ClauseKind::HostEffect(_) = pred.kind().skip_binder() {
+                Some(span)
+            } else {
+                None
+            }
+        })
         .collect()
 }
 
@@ -406,6 +425,9 @@ fn virtual_call_violations_for_method<'tcx>(
     }
     if let Some(code) = contains_illegal_impl_trait_in_trait(tcx, method.def_id, sig.output()) {
         errors.push(code);
+    }
+    if sig.skip_binder().c_variadic {
+        errors.push(MethodViolationCode::CVariadic);
     }
 
     // We can't monomorphize things like `fn foo<A>(...)`.
@@ -740,7 +762,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IllegalSelfTypeVisitor<'tcx> {
                                     )),
                                 )
                                 .map(|trait_ref| {
-                                    self.tcx.erase_regions(
+                                    self.tcx.erase_and_anonymize_regions(
                                         self.tcx.instantiate_bound_regions_with_erased(trait_ref),
                                     )
                                 })

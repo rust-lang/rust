@@ -389,10 +389,14 @@ pub enum ObligationCauseCode<'tcx> {
     /// against.
     MatchImpl(ObligationCause<'tcx>, DefId),
 
+    UnOp {
+        hir_id: HirId,
+    },
+
     BinOp {
         lhs_hir_id: HirId,
-        rhs_hir_id: Option<HirId>,
-        rhs_span: Option<Span>,
+        rhs_hir_id: HirId,
+        rhs_span: Span,
         rhs_is_lit: bool,
         output_ty: Option<Ty<'tcx>>,
     },
@@ -760,6 +764,9 @@ pub enum DynCompatibilityViolation {
     // Supertrait has a non-lifetime `for<T>` binder.
     SupertraitNonLifetimeBinder(SmallVec<[Span; 1]>),
 
+    // Trait has a `const Trait` supertrait.
+    SupertraitConst(SmallVec<[Span; 1]>),
+
     /// Method has something illegal.
     Method(Symbol, MethodViolationCode, Span),
 
@@ -784,6 +791,9 @@ impl DynCompatibilityViolation {
             }
             DynCompatibilityViolation::SupertraitNonLifetimeBinder(_) => {
                 "where clause cannot reference non-lifetime `for<...>` variables".into()
+            }
+            DynCompatibilityViolation::SupertraitConst(_) => {
+                "it cannot have a `const` supertrait".into()
             }
             DynCompatibilityViolation::Method(name, MethodViolationCode::StaticMethod(_), _) => {
                 format!("associated function `{name}` has no `self` parameter").into()
@@ -812,6 +822,9 @@ impl DynCompatibilityViolation {
             }
             DynCompatibilityViolation::Method(name, MethodViolationCode::AsyncFn, _) => {
                 format!("method `{name}` is `async`").into()
+            }
+            DynCompatibilityViolation::Method(name, MethodViolationCode::CVariadic, _) => {
+                format!("method `{name}` is C-variadic").into()
             }
             DynCompatibilityViolation::Method(
                 name,
@@ -842,7 +855,8 @@ impl DynCompatibilityViolation {
         match self {
             DynCompatibilityViolation::SizedSelf(_)
             | DynCompatibilityViolation::SupertraitSelf(_)
-            | DynCompatibilityViolation::SupertraitNonLifetimeBinder(..) => {
+            | DynCompatibilityViolation::SupertraitNonLifetimeBinder(..)
+            | DynCompatibilityViolation::SupertraitConst(_) => {
                 DynCompatibilityViolationSolution::None
             }
             DynCompatibilityViolation::Method(
@@ -873,15 +887,17 @@ impl DynCompatibilityViolation {
         match self {
             DynCompatibilityViolation::SupertraitSelf(spans)
             | DynCompatibilityViolation::SizedSelf(spans)
-            | DynCompatibilityViolation::SupertraitNonLifetimeBinder(spans) => spans.clone(),
+            | DynCompatibilityViolation::SupertraitNonLifetimeBinder(spans)
+            | DynCompatibilityViolation::SupertraitConst(spans) => spans.clone(),
             DynCompatibilityViolation::AssocConst(_, span)
             | DynCompatibilityViolation::GAT(_, span)
-            | DynCompatibilityViolation::Method(_, _, span)
-                if *span != DUMMY_SP =>
-            {
-                smallvec![*span]
+            | DynCompatibilityViolation::Method(_, _, span) => {
+                if *span != DUMMY_SP {
+                    smallvec![*span]
+                } else {
+                    smallvec![]
+                }
             }
-            _ => smallvec![],
         }
     }
 }
@@ -963,6 +979,9 @@ pub enum MethodViolationCode {
 
     /// e.g., `fn foo<A>()`
     Generic,
+
+    /// e.g., `fn (mut ap: ...)`
+    CVariadic,
 
     /// the method's receiver (`self` argument) can't be dispatched on
     UndispatchableReceiver(Option<Span>),

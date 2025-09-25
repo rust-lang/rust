@@ -375,12 +375,12 @@ linking time. It takes one of the following values:
 
 * `y`, `yes`, `on`, `true`, `fat`, or no value: perform "fat" LTO which attempts to
   perform optimizations across all crates within the dependency graph.
-* `n`, `no`, `off`, `false`: disables LTO.
 * `thin`: perform ["thin"
   LTO](http://blog.llvm.org/2016/06/thinlto-scalable-and-incremental-lto.html).
   This is similar to "fat", but takes substantially less time to run while
   still achieving performance gains similar to "fat".
   For larger projects like the Rust compiler, ThinLTO can even result in better performance than fat LTO.
+* `n`, `no`, `off`, `false`: disables LTO.
 
 If `-C lto` is not specified, then the compiler will attempt to perform "thin
 local LTO" which performs "thin" LTO on the local crate only across its
@@ -471,11 +471,13 @@ If not specified, overflow checks are enabled if
 This option lets you control what happens when the code panics.
 
 * `abort`: terminate the process upon panic
+* `immediate-abort`: terminate the process upon panic, and do not call any panic hooks
 * `unwind`: unwind the stack upon panic
 
 If not specified, the default depends on the target.
 
 If any crate in the crate graph uses `abort`, the final binary (`bin`, `dylib`, `cdylib`, `staticlib`) must also use `abort`.
+If any crate in the crate graph uses `immediate-abort`, every crate in the graph must use `immediate-abort`.
 If `std` is used as a `dylib` with `unwind`, the final binary must also use `unwind`.
 
 ## passes

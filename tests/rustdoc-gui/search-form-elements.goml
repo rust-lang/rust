@@ -2,6 +2,7 @@
 include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search=test"
 wait-for: "#search-tabs" // Waiting for the search.js to load.
+wait-for-false: "#search-tabs .count.loading"
 show-text: true
 
 define-function: (
@@ -31,7 +32,7 @@ define-function: (
             },
         )
         assert-css: (
-            "#help-button > a",
+            "rustdoc-toolbar .help-menu > a",
             {
                 "color": |menu_button_a_color|,
                 "border-color": "transparent",
@@ -39,9 +40,9 @@ define-function: (
             },
         )
         // Hover help button.
-        move-cursor-to: "#help-button"
+        move-cursor-to: "rustdoc-toolbar .help-menu"
         assert-css: (
-            "#help-button > a",
+            "rustdoc-toolbar .help-menu > a",
             {
                 "color": |menu_button_a_color|,
                 "border-color": |menu_button_a_border_hover|,
@@ -49,15 +50,15 @@ define-function: (
             },
         )
         // Link color inside
-        click: "#help-button"
+        click: "rustdoc-toolbar .help-menu"
         assert-css: (
-            "#help a",
+            "rustdoc-toolbar #help a",
             {
                 "color": |menu_a_color|,
             },
         )
         assert-css: (
-            "#settings-menu > a",
+            "rustdoc-toolbar .settings-menu > a",
             {
                 "color": |menu_button_a_color|,
                 "border-color": "transparent",
@@ -65,9 +66,9 @@ define-function: (
             },
         )
         // Hover settings menu.
-        move-cursor-to: "#settings-menu"
+        move-cursor-to: "rustdoc-toolbar .settings-menu"
         assert-css: (
-            "#settings-menu:hover > a",
+            "rustdoc-toolbar .settings-menu:hover > a",
             {
                 "color": |menu_button_a_color|,
                 "border-color": |menu_button_a_border_hover|,
@@ -120,8 +121,10 @@ call-function: (
 // Check that search input correctly decodes form encoding.
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search=a+b"
 wait-for: "#search-tabs" // Waiting for the search.js to load.
+wait-for-false: "#search-tabs .count.loading"
 assert-property: (".search-input", { "value": "a b" })
 // Check that literal + is not treated as space.
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search=a%2Bb"
 wait-for: "#search-tabs" // Waiting for the search.js to load.
+wait-for-false: "#search-tabs .count.loading"
 assert-property: (".search-input", { "value": "a+b" })

@@ -1,7 +1,7 @@
 #![allow(unsafe_op_in_unsafe_fn)]
 
 /// The configure builtins provides runtime support compiler-builtin features
-/// which require dynamic intialization to work as expected, e.g. aarch64
+/// which require dynamic initialization to work as expected, e.g. aarch64
 /// outline-atomics.
 mod configure_builtins;
 
@@ -26,10 +26,12 @@ pub mod io;
 pub mod net;
 pub mod os_str;
 pub mod path;
+pub mod platform_version;
 pub mod process;
 pub mod random;
 pub mod stdio;
 pub mod sync;
+pub mod thread;
 pub mod thread_local;
 
 // FIXME(117276): remove this, move feature implementations into individual

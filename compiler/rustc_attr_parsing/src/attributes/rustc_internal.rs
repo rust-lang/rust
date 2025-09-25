@@ -1,10 +1,5 @@
-use rustc_feature::{AttributeTemplate, template};
-use rustc_hir::attrs::AttributeKind;
-use rustc_span::{Symbol, sym};
-
-use crate::attributes::{AttributeOrder, OnDuplicate, SingleAttributeParser};
-use crate::context::{AcceptContext, Stage, parse_single_integer};
-use crate::parser::ArgParser;
+use super::prelude::*;
+use super::util::parse_single_integer;
 
 pub(crate) struct RustcLayoutScalarValidRangeStart;
 
@@ -12,7 +7,8 @@ impl<S: Stage> SingleAttributeParser<S> for RustcLayoutScalarValidRangeStart {
     const PATH: &'static [Symbol] = &[sym::rustc_layout_scalar_valid_range_start];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-    const TEMPLATE: AttributeTemplate = template!(List: "start");
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
+    const TEMPLATE: AttributeTemplate = template!(List: &["start"]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         parse_single_integer(cx, args)
@@ -26,7 +22,8 @@ impl<S: Stage> SingleAttributeParser<S> for RustcLayoutScalarValidRangeEnd {
     const PATH: &'static [Symbol] = &[sym::rustc_layout_scalar_valid_range_end];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-    const TEMPLATE: AttributeTemplate = template!(List: "end");
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
+    const TEMPLATE: AttributeTemplate = template!(List: &["end"]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         parse_single_integer(cx, args)
@@ -40,6 +37,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcObjectLifetimeDefaultParser {
     const PATH: &[rustc_span::Symbol] = &[sym::rustc_object_lifetime_default];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
     const TEMPLATE: AttributeTemplate = template!(Word);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {

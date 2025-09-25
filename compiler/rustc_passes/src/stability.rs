@@ -21,8 +21,8 @@ use rustc_middle::middle::lib_features::{FeatureStability, LibFeatures};
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::middle::stability::{AllowUnstable, Deprecated, DeprecationEntry, EvalResult};
 use rustc_middle::query::{LocalCrate, Providers};
-use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_middle::ty::{AssocContainer, TyCtxt};
 use rustc_session::lint;
 use rustc_session::lint::builtin::{DEPRECATED, INEFFECTIVE_UNSTABLE_TRAIT_IMPL};
 use rustc_span::{Span, Symbol, sym};
@@ -486,8 +486,7 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
 
     fn visit_impl_item(&mut self, ii: &'tcx hir::ImplItem<'tcx>) {
         self.check_compatible_stability(ii.owner_id.def_id);
-        let impl_def_id = self.tcx.hir_get_parent_item(ii.hir_id());
-        if self.tcx.impl_trait_ref(impl_def_id).is_none() {
+        if let hir::ImplItemImplKind::Inherent { .. } = ii.impl_kind {
             self.check_missing_stability(ii.owner_id.def_id);
             self.check_missing_const_stability(ii.owner_id.def_id);
         }
@@ -590,9 +589,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
             // For implementations of traits, check the stability of each item
             // individually as it's possible to have a stable trait with unstable
             // items.
-            hir::ItemKind::Impl(hir::Impl {
-                of_trait: Some(t), self_ty, items, constness, ..
-            }) => {
+            hir::ItemKind::Impl(hir::Impl { of_trait: Some(of_trait), self_ty, items, .. }) => {
                 let features = self.tcx.features();
                 if features.staged_api() {
                     let attrs = self.tcx.hir_attrs(item.hir_id());
@@ -628,7 +625,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                     {
                         let mut c = CheckTraitImplStable { tcx: self.tcx, fully_stable: true };
                         c.visit_ty_unambig(self_ty);
-                        c.visit_trait_ref(t);
+                        c.visit_trait_ref(&of_trait.trait_ref);
 
                         // Skip the lint if the impl is marked as unstable using
                         // #[unstable_feature_bound(..)]
@@ -641,7 +638,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
 
                         // do not lint when the trait isn't resolved, since resolution error should
                         // be fixed first
-                        if t.path.res != Res::Err
+                        if of_trait.trait_ref.path.res != Res::Err
                             && c.fully_stable
                             && !unstable_feature_bound_in_effect
                         {
@@ -655,7 +652,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                     }
 
                     if features.const_trait_impl()
-                        && let hir::Constness::Const = constness
+                        && let hir::Constness::Const = of_trait.constness
                     {
                         let stable_or_implied_stable = match const_stab {
                             None => true,
@@ -671,7 +668,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                             Some(_) => false,
                         };
 
-                        if let Some(trait_id) = t.trait_def_id()
+                        if let Some(trait_id) = of_trait.trait_ref.trait_def_id()
                             && let Some(const_stab) = self.tcx.lookup_const_stability(trait_id)
                         {
                             // the const stability of a trait impl must match the const stability on the trait.
@@ -699,17 +696,21 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                     }
                 }
 
-                if let hir::Constness::Const = constness
-                    && let Some(def_id) = t.trait_def_id()
+                if let hir::Constness::Const = of_trait.constness
+                    && let Some(def_id) = of_trait.trait_ref.trait_def_id()
                 {
                     // FIXME(const_trait_impl): Improve the span here.
-                    self.tcx.check_const_stability(def_id, t.path.span, t.path.span);
+                    self.tcx.check_const_stability(
+                        def_id,
+                        of_trait.trait_ref.path.span,
+                        of_trait.trait_ref.path.span,
+                    );
                 }
 
-                for impl_item_ref in *items {
+                for impl_item_ref in items {
                     let impl_item = self.tcx.associated_item(impl_item_ref.owner_id);
 
-                    if let Some(def_id) = impl_item.trait_item_def_id {
+                    if let AssocContainer::TraitImpl(Ok(def_id)) = impl_item.container {
                         // Pass `None` to skip deprecation warnings.
                         self.tcx.check_stability(
                             def_id,

@@ -1,10 +1,10 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::LocalDefId;
+use rustc_infer::infer::SubregionOrigin;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::outlives::obligations::{TypeOutlives, TypeOutlivesDelegate};
 use rustc_infer::infer::region_constraints::{GenericKind, VerifyBound};
-use rustc_infer::infer::{InferCtxt, SubregionOrigin};
 use rustc_infer::traits::query::type_op::DeeplyNormalize;
 use rustc_middle::bug;
 use rustc_middle::ty::{
@@ -18,10 +18,12 @@ use crate::constraints::OutlivesConstraint;
 use crate::region_infer::TypeTest;
 use crate::type_check::{Locations, MirTypeckRegionConstraints};
 use crate::universal_regions::UniversalRegions;
-use crate::{ClosureOutlivesSubject, ClosureRegionRequirements, ConstraintCategory};
+use crate::{
+    BorrowckInferCtxt, ClosureOutlivesSubject, ClosureRegionRequirements, ConstraintCategory,
+};
 
 pub(crate) struct ConstraintConversion<'a, 'tcx> {
-    infcx: &'a InferCtxt<'tcx>,
+    infcx: &'a BorrowckInferCtxt<'tcx>,
     universal_regions: &'a UniversalRegions<'tcx>,
     /// Each RBP `GK: 'a` is assumed to be true. These encode
     /// relationships like `T: 'a` that are added via implicit bounds
@@ -34,7 +36,6 @@ pub(crate) struct ConstraintConversion<'a, 'tcx> {
     /// logic expecting to see (e.g.) `ReStatic`, and if we supplied
     /// our special inference variable there, we would mess that up.
     region_bound_pairs: &'a RegionBoundPairs<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
     known_type_outlives_obligations: &'a [ty::PolyTypeOutlivesPredicate<'tcx>],
     locations: Locations,
     span: Span,
@@ -45,10 +46,9 @@ pub(crate) struct ConstraintConversion<'a, 'tcx> {
 
 impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
     pub(crate) fn new(
-        infcx: &'a InferCtxt<'tcx>,
+        infcx: &'a BorrowckInferCtxt<'tcx>,
         universal_regions: &'a UniversalRegions<'tcx>,
         region_bound_pairs: &'a RegionBoundPairs<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
         known_type_outlives_obligations: &'a [ty::PolyTypeOutlivesPredicate<'tcx>],
         locations: Locations,
         span: Span,
@@ -59,7 +59,6 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
             infcx,
             universal_regions,
             region_bound_pairs,
-            param_env,
             known_type_outlives_obligations,
             locations,
             span,
@@ -286,8 +285,11 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
             ConstraintCategory<'tcx>,
         )>,
     ) -> Ty<'tcx> {
-        match self.param_env.and(DeeplyNormalize { value: ty }).fully_perform(self.infcx, self.span)
-        {
+        match self.infcx.param_env.and(DeeplyNormalize { value: ty }).fully_perform(
+            self.infcx,
+            self.infcx.root_def_id,
+            self.span,
+        ) {
             Ok(TypeOpOutput { output: ty, constraints, .. }) => {
                 // FIXME(higher_ranked_auto): What should we do with the assumptions here?
                 if let Some(QueryRegionConstraints { outlives, assumptions: _ }) = constraints {

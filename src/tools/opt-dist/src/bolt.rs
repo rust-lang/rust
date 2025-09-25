@@ -9,6 +9,7 @@ use crate::utils::io::copy_file;
 /// Instruments an artifact at the given `path` (in-place) with BOLT and then calls `func`.
 /// After this function finishes, the original file will be restored.
 pub fn with_bolt_instrumented<F: FnOnce(&Utf8Path) -> anyhow::Result<R>, R>(
+    env: &Environment,
     path: &Utf8Path,
     func: F,
 ) -> anyhow::Result<R> {
@@ -26,7 +27,7 @@ pub fn with_bolt_instrumented<F: FnOnce(&Utf8Path) -> anyhow::Result<R>, R>(
     let profile_prefix = Utf8Path::from_path(&profile_prefix).unwrap();
 
     // Instrument the original file with BOLT, saving the result into `instrumented_path`
-    cmd(&["llvm-bolt"])
+    cmd(&[env.llvm_bolt().as_str()])
         .arg("-instrument")
         .arg(path)
         .arg(&format!("--instrumentation-file={profile_prefix}"))
@@ -61,7 +62,7 @@ pub fn bolt_optimize(
     let split_strategy =
         if env.host_tuple().starts_with("aarch64") { "profile2" } else { "cdsplit" };
 
-    cmd(&["llvm-bolt"])
+    cmd(&[env.llvm_bolt().as_str()])
         .arg(temp_path.display())
         .arg("-data")
         .arg(&profile.0)

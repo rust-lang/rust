@@ -5,10 +5,13 @@ use rustc_middle::{mir, ty};
 use super::check_intrinsic_arg_count;
 use crate::*;
 
-pub enum AtomicOp {
-    /// The `bool` indicates whether the result of the operation should be negated (`UnOp::Not`,
-    /// must be a boolean-typed operation).
-    MirOp(mir::BinOp, bool),
+pub enum AtomicRmwOp {
+    MirOp {
+        op: mir::BinOp,
+        /// Indicates whether the result of the operation should be negated (`UnOp::Not`, must be a
+        /// boolean-typed operation).
+        neg: bool,
+    },
     Max,
     Min,
 }
@@ -106,55 +109,85 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             "or" => {
                 let ord = get_ord_at(2);
-                this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::BitOr, false), rw_ord(ord))?;
+                this.atomic_rmw_op(
+                    args,
+                    dest,
+                    AtomicRmwOp::MirOp { op: BinOp::BitOr, neg: false },
+                    rw_ord(ord),
+                )?;
             }
             "xor" => {
                 let ord = get_ord_at(2);
-                this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::BitXor, false), rw_ord(ord))?;
+                this.atomic_rmw_op(
+                    args,
+                    dest,
+                    AtomicRmwOp::MirOp { op: BinOp::BitXor, neg: false },
+                    rw_ord(ord),
+                )?;
             }
             "and" => {
                 let ord = get_ord_at(2);
-                this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::BitAnd, false), rw_ord(ord))?;
+                this.atomic_rmw_op(
+                    args,
+                    dest,
+                    AtomicRmwOp::MirOp { op: BinOp::BitAnd, neg: false },
+                    rw_ord(ord),
+                )?;
             }
             "nand" => {
                 let ord = get_ord_at(2);
-                this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::BitAnd, true), rw_ord(ord))?;
+                this.atomic_rmw_op(
+                    args,
+                    dest,
+                    AtomicRmwOp::MirOp { op: BinOp::BitAnd, neg: true },
+                    rw_ord(ord),
+                )?;
             }
             "xadd" => {
                 let ord = get_ord_at(2);
-                this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::Add, false), rw_ord(ord))?;
+                this.atomic_rmw_op(
+                    args,
+                    dest,
+                    AtomicRmwOp::MirOp { op: BinOp::Add, neg: false },
+                    rw_ord(ord),
+                )?;
             }
             "xsub" => {
                 let ord = get_ord_at(2);
-                this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::Sub, false), rw_ord(ord))?;
+                this.atomic_rmw_op(
+                    args,
+                    dest,
+                    AtomicRmwOp::MirOp { op: BinOp::Sub, neg: false },
+                    rw_ord(ord),
+                )?;
             }
             "min" => {
                 let ord = get_ord_at(1);
                 // Later we will use the type to indicate signed vs unsigned,
                 // so make sure it matches the intrinsic name.
                 assert!(matches!(args[1].layout.ty.kind(), ty::Int(_)));
-                this.atomic_rmw_op(args, dest, AtomicOp::Min, rw_ord(ord))?;
+                this.atomic_rmw_op(args, dest, AtomicRmwOp::Min, rw_ord(ord))?;
             }
             "umin" => {
                 let ord = get_ord_at(1);
                 // Later we will use the type to indicate signed vs unsigned,
                 // so make sure it matches the intrinsic name.
                 assert!(matches!(args[1].layout.ty.kind(), ty::Uint(_)));
-                this.atomic_rmw_op(args, dest, AtomicOp::Min, rw_ord(ord))?;
+                this.atomic_rmw_op(args, dest, AtomicRmwOp::Min, rw_ord(ord))?;
             }
             "max" => {
                 let ord = get_ord_at(1);
                 // Later we will use the type to indicate signed vs unsigned,
                 // so make sure it matches the intrinsic name.
                 assert!(matches!(args[1].layout.ty.kind(), ty::Int(_)));
-                this.atomic_rmw_op(args, dest, AtomicOp::Max, rw_ord(ord))?;
+                this.atomic_rmw_op(args, dest, AtomicRmwOp::Max, rw_ord(ord))?;
             }
             "umax" => {
                 let ord = get_ord_at(1);
                 // Later we will use the type to indicate signed vs unsigned,
                 // so make sure it matches the intrinsic name.
                 assert!(matches!(args[1].layout.ty.kind(), ty::Uint(_)));
-                this.atomic_rmw_op(args, dest, AtomicOp::Max, rw_ord(ord))?;
+                this.atomic_rmw_op(args, dest, AtomicRmwOp::Max, rw_ord(ord))?;
             }
 
             _ => return interp_ok(EmulateItemResult::NotSupported),
@@ -222,8 +255,8 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
         &mut self,
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
-        atomic_op: AtomicOp,
-        atomic: AtomicRwOrd,
+        atomic_op: AtomicRmwOp,
+        ord: AtomicRwOrd,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
@@ -231,8 +264,9 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
         let place = this.deref_pointer(place)?;
         let rhs = this.read_immediate(rhs)?;
 
+        // The LHS can be a pointer, the RHS must be an integer.
         if !(place.layout.ty.is_integral() || place.layout.ty.is_raw_ptr())
-            || !(rhs.layout.ty.is_integral() || rhs.layout.ty.is_raw_ptr())
+            || !rhs.layout.ty.is_integral()
         {
             span_bug!(
                 this.cur_span(),
@@ -240,14 +274,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
             );
         }
 
-        let old = match atomic_op {
-            AtomicOp::Min =>
-                this.atomic_min_max_scalar(&place, rhs, /* min */ true, atomic)?,
-            AtomicOp::Max =>
-                this.atomic_min_max_scalar(&place, rhs, /* min */ false, atomic)?,
-            AtomicOp::MirOp(op, not) =>
-                this.atomic_rmw_op_immediate(&place, &rhs, op, not, atomic)?,
-        };
+        let old = this.atomic_rmw_op_immediate(&place, &rhs, atomic_op, ord)?;
         this.write_immediate(*old, dest)?; // old value is returned
         interp_ok(())
     }

@@ -1,6 +1,7 @@
 # armv4t-none-eabi / thumbv4t-none-eabi
 
-Tier 3
+* **Tier:  3**
+* **Library Support:** core and alloc (bare-metal, `#![no_std]`)
 
 These two targets are part of the [`arm-none-eabi`](arm-none-eabi.md) target
 group, and all the information there applies.

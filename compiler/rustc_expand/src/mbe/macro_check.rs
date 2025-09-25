@@ -108,8 +108,7 @@
 use rustc_ast::token::{Delimiter, IdentIsRaw, Token, TokenKind};
 use rustc_ast::{DUMMY_NODE_ID, NodeId};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::MultiSpan;
-use rustc_lint_defs::BuiltinLintDiag;
+use rustc_errors::DecorateDiagCompat;
 use rustc_session::lint::builtin::META_VARIABLE_MISUSE;
 use rustc_session::parse::ParseSess;
 use rustc_span::{ErrorGuaranteed, MacroRulesNormalizedIdent, Span, kw};
@@ -245,9 +244,12 @@ fn check_binders(
             // There are 3 possibilities:
             if let Some(prev_info) = binders.get(&name) {
                 // 1. The meta-variable is already bound in the current LHS: This is an error.
-                let mut span = MultiSpan::from_span(span);
-                span.push_span_label(prev_info.span, "previous declaration");
-                buffer_lint(psess, span, node_id, BuiltinLintDiag::DuplicateMatcherBinding);
+                buffer_lint(
+                    psess,
+                    span,
+                    node_id,
+                    errors::DuplicateMatcherBindingLint { span, prev: prev_info.span },
+                );
             } else if get_binder_info(macros, binders, name).is_none() {
                 // 2. The meta-variable is free: This is a binder.
                 binders.insert(name, BinderInfo { span, ops: ops.into() });
@@ -357,10 +359,10 @@ enum NestedMacroState {
     /// The token `macro_rules` was processed.
     MacroRules,
     /// The tokens `macro_rules!` were processed.
-    MacroRulesNot,
+    MacroRulesBang,
     /// The tokens `macro_rules!` followed by a name were processed. The name may be either directly
     /// an identifier or a meta-variable (that hopefully would be instantiated by an identifier).
-    MacroRulesNotName,
+    MacroRulesBangName,
     /// The keyword `macro` was processed.
     Macro,
     /// The keyword `macro` followed by a name was processed.
@@ -408,24 +410,24 @@ fn check_nested_occurrences(
                 NestedMacroState::MacroRules,
                 &TokenTree::Token(Token { kind: TokenKind::Bang, .. }),
             ) => {
-                state = NestedMacroState::MacroRulesNot;
+                state = NestedMacroState::MacroRulesBang;
             }
             (
-                NestedMacroState::MacroRulesNot,
+                NestedMacroState::MacroRulesBang,
                 &TokenTree::Token(Token { kind: TokenKind::Ident(..), .. }),
             ) => {
-                state = NestedMacroState::MacroRulesNotName;
+                state = NestedMacroState::MacroRulesBangName;
             }
-            (NestedMacroState::MacroRulesNot, &TokenTree::MetaVar(..)) => {
-                state = NestedMacroState::MacroRulesNotName;
+            (NestedMacroState::MacroRulesBang, &TokenTree::MetaVar(..)) => {
+                state = NestedMacroState::MacroRulesBangName;
                 // We check that the meta-variable is correctly used.
                 check_occurrences(psess, node_id, tt, macros, binders, ops, guar);
             }
-            (NestedMacroState::MacroRulesNotName, TokenTree::Delimited(.., del))
+            (NestedMacroState::MacroRulesBangName, TokenTree::Delimited(.., del))
             | (NestedMacroState::MacroName, TokenTree::Delimited(.., del))
                 if del.delim == Delimiter::Brace =>
             {
-                let macro_rules = state == NestedMacroState::MacroRulesNotName;
+                let macro_rules = state == NestedMacroState::MacroRulesBangName;
                 state = NestedMacroState::Empty;
                 let rest =
                     check_nested_macro(psess, node_id, macro_rules, &del.tts, &nested_macros, guar);
@@ -579,7 +581,7 @@ fn check_ops_is_prefix(
             return;
         }
     }
-    buffer_lint(psess, span.into(), node_id, BuiltinLintDiag::UnknownMacroVariable(name));
+    buffer_lint(psess, span, node_id, errors::UnknownMacroVariable { name });
 }
 
 /// Returns whether `binder_ops` is a prefix of `occurrence_ops`.
@@ -604,29 +606,42 @@ fn ops_is_prefix(
     psess: &ParseSess,
     node_id: NodeId,
     span: Span,
-    name: MacroRulesNormalizedIdent,
+    ident: MacroRulesNormalizedIdent,
     binder_ops: &[KleeneToken],
     occurrence_ops: &[KleeneToken],
 ) {
     for (i, binder) in binder_ops.iter().enumerate() {
         if i >= occurrence_ops.len() {
-            let mut span = MultiSpan::from_span(span);
-            span.push_span_label(binder.span, "expected repetition");
-            buffer_lint(psess, span, node_id, BuiltinLintDiag::MetaVariableStillRepeating(name));
+            buffer_lint(
+                psess,
+                span,
+                node_id,
+                errors::MetaVarStillRepeatingLint { label: binder.span, ident },
+            );
             return;
         }
         let occurrence = &occurrence_ops[i];
         if occurrence.op != binder.op {
-            let mut span = MultiSpan::from_span(span);
-            span.push_span_label(binder.span, "expected repetition");
-            span.push_span_label(occurrence.span, "conflicting repetition");
-            buffer_lint(psess, span, node_id, BuiltinLintDiag::MetaVariableWrongOperator);
+            buffer_lint(
+                psess,
+                span,
+                node_id,
+                errors::MetaVariableWrongOperator {
+                    binder: binder.span,
+                    occurrence: occurrence.span,
+                },
+            );
             return;
         }
     }
 }
 
-fn buffer_lint(psess: &ParseSess, span: MultiSpan, node_id: NodeId, diag: BuiltinLintDiag) {
+fn buffer_lint(
+    psess: &ParseSess,
+    span: Span,
+    node_id: NodeId,
+    diag: impl Into<DecorateDiagCompat>,
+) {
     // Macros loaded from other crates have dummy node ids.
     if node_id != DUMMY_NODE_ID {
         psess.buffer_lint(META_VARIABLE_MISUSE, span, node_id, diag);

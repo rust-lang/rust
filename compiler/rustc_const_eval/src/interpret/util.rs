@@ -1,6 +1,6 @@
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::{AllocInit, Allocation, InterpResult, Pointer};
+use rustc_middle::mir::interpret::{AllocInit, Allocation, GlobalAlloc, InterpResult, Pointer};
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{TyCtxt, TypeVisitable, TypeVisitableExt};
 use tracing::debug;
@@ -38,7 +38,14 @@ pub(crate) fn create_static_alloc<'tcx>(
     static_def_id: LocalDefId,
     layout: TyAndLayout<'tcx>,
 ) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
-    let alloc = Allocation::try_new(layout.size, layout.align.abi, AllocInit::Uninit, ())?;
+    // Inherit size and align from the `GlobalAlloc::Static` so we can avoid duplicating
+    // the alignment attribute logic.
+    let (size, align) =
+        GlobalAlloc::Static(static_def_id.into()).size_and_align(*ecx.tcx, ecx.typing_env);
+    assert_eq!(size, layout.size);
+    assert!(align >= layout.align.abi);
+
+    let alloc = Allocation::try_new(size, align, AllocInit::Uninit, ())?;
     let alloc_id = ecx.tcx.reserve_and_set_static_alloc(static_def_id.into());
     assert_eq!(ecx.machine.static_root_ids, None);
     ecx.machine.static_root_ids = Some((alloc_id, static_def_id));
@@ -85,11 +92,11 @@ impl EnteredTraceSpan for tracing::span::EnteredSpan {
 /// # let my_debug_var = String::new();
 /// // logs a span named "hello" with a field named "arg" of value 42 (works only because
 /// // 42 implements the tracing::Value trait, otherwise use one of the options below)
-/// let _span = enter_trace_span!(M, "hello", arg = 42);
+/// let _trace = enter_trace_span!(M, "hello", arg = 42);
 /// // logs a field called "my_display_var" using the Display implementation
-/// let _span = enter_trace_span!(M, "hello", %my_display_var);
+/// let _trace = enter_trace_span!(M, "hello", %my_display_var);
 /// // logs a field called "my_debug_var" using the Debug implementation
-/// let _span = enter_trace_span!(M, "hello", ?my_debug_var);
+/// let _trace = enter_trace_span!(M, "hello", ?my_debug_var);
 ///  ```
 ///
 /// ### `NAME::SUBNAME` syntax
@@ -107,8 +114,8 @@ impl EnteredTraceSpan for tracing::span::EnteredSpan {
 /// # use rustc_const_eval::enter_trace_span;
 /// # type M = rustc_const_eval::const_eval::CompileTimeMachine<'static>;
 /// // for example, the first will expand to the second
-/// let _span = enter_trace_span!(M, borrow_tracker::on_stack_pop, /* ... */);
-/// let _span = enter_trace_span!(M, "borrow_tracker", borrow_tracker = "on_stack_pop", /* ... */);
+/// let _trace = enter_trace_span!(M, borrow_tracker::on_stack_pop, /* ... */);
+/// let _trace = enter_trace_span!(M, "borrow_tracker", borrow_tracker = "on_stack_pop", /* ... */);
 /// ```
 ///
 /// ### `tracing_separate_thread` parameter
@@ -124,7 +131,7 @@ impl EnteredTraceSpan for tracing::span::EnteredSpan {
 /// ```rust
 /// # use rustc_const_eval::enter_trace_span;
 /// # type M = rustc_const_eval::const_eval::CompileTimeMachine<'static>;
-/// let _span = enter_trace_span!(M, step::eval_statement, tracing_separate_thread = tracing::field::Empty);
+/// let _trace = enter_trace_span!(M, step::eval_statement, tracing_separate_thread = tracing::field::Empty);
 /// ```
 ///
 /// ### Executing something else when tracing is disabled
@@ -136,7 +143,7 @@ impl EnteredTraceSpan for tracing::span::EnteredSpan {
 /// # use rustc_const_eval::enter_trace_span;
 /// # use rustc_const_eval::interpret::EnteredTraceSpan;
 /// # type M = rustc_const_eval::const_eval::CompileTimeMachine<'static>;
-/// let _span = enter_trace_span!(M, step::eval_statement)
+/// let _trace = enter_trace_span!(M, step::eval_statement)
 ///     .or_if_tracing_disabled(|| tracing::info!("eval_statement"));
 /// ```
 #[macro_export]

@@ -34,6 +34,7 @@
 //! The normal logic that a program with UB can be changed to do anything does not apply to
 //! pre-"runtime" MIR!
 
+use itertools::Itertools as _;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -288,19 +289,12 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
             return false;
         };
 
-        let first_succ = {
-            if let Some(first_succ) = terminator.successors().next() {
-                if terminator.successors().all(|s| s == first_succ) {
-                    let count = terminator.successors().count();
-                    self.pred_count[first_succ] -= (count - 1) as u32;
-                    first_succ
-                } else {
-                    return false;
-                }
-            } else {
-                return false;
-            }
+        let Ok(first_succ) = terminator.successors().all_equal_value() else {
+            return false;
         };
+
+        let count = terminator.successors().count();
+        self.pred_count[first_succ] -= (count - 1) as u32;
 
         debug!("simplifying branch {:?}", terminator);
         terminator.kind = TerminatorKind::Goto { target: first_succ };

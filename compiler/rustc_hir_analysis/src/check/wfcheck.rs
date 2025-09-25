@@ -244,48 +244,48 @@ pub(super) fn check_item<'tcx>(
         //
         // won't be allowed unless there's an *explicit* implementation of `Send`
         // for `T`
-        hir::ItemKind::Impl(impl_) => {
-            let header = tcx.impl_trait_header(def_id);
-            let is_auto = header
-                .is_some_and(|header| tcx.trait_is_auto(header.trait_ref.skip_binder().def_id));
-
+        hir::ItemKind::Impl(ref impl_) => {
             crate::impl_wf_check::check_impl_wf(tcx, def_id)?;
             let mut res = Ok(());
-            if let (hir::Defaultness::Default { .. }, true) = (impl_.defaultness, is_auto) {
-                let sp = impl_.of_trait.as_ref().map_or(item.span, |t| t.path.span);
-                res = Err(tcx
-                    .dcx()
-                    .struct_span_err(sp, "impls of auto traits cannot be default")
-                    .with_span_labels(impl_.defaultness_span, "default because of this")
-                    .with_span_label(sp, "auto trait")
-                    .emit());
-            }
-            // We match on both `ty::ImplPolarity` and `ast::ImplPolarity` just to get the `!` span.
-            match header.map(|h| h.polarity) {
-                // `None` means this is an inherent impl
-                Some(ty::ImplPolarity::Positive) | None => {
-                    res = res.and(check_impl(tcx, item, impl_.self_ty, &impl_.of_trait));
-                }
-                Some(ty::ImplPolarity::Negative) => {
-                    let ast::ImplPolarity::Negative(span) = impl_.polarity else {
-                        bug!("impl_polarity query disagrees with impl's polarity in HIR");
-                    };
-                    // FIXME(#27579): what amount of WF checking do we need for neg impls?
-                    if let hir::Defaultness::Default { .. } = impl_.defaultness {
-                        let mut spans = vec![span];
-                        spans.extend(impl_.defaultness_span);
-                        res = Err(struct_span_code_err!(
-                            tcx.dcx(),
-                            spans,
-                            E0750,
-                            "negative impls cannot be default impls"
-                        )
+            if let Some(of_trait) = impl_.of_trait {
+                let header = tcx.impl_trait_header(def_id).unwrap();
+                let is_auto = tcx.trait_is_auto(header.trait_ref.skip_binder().def_id);
+                if let (hir::Defaultness::Default { .. }, true) = (of_trait.defaultness, is_auto) {
+                    let sp = of_trait.trait_ref.path.span;
+                    res = Err(tcx
+                        .dcx()
+                        .struct_span_err(sp, "impls of auto traits cannot be default")
+                        .with_span_labels(of_trait.defaultness_span, "default because of this")
+                        .with_span_label(sp, "auto trait")
                         .emit());
+                }
+                match header.polarity {
+                    ty::ImplPolarity::Positive => {
+                        res = res.and(check_impl(tcx, item, impl_));
+                    }
+                    ty::ImplPolarity::Negative => {
+                        let ast::ImplPolarity::Negative(span) = of_trait.polarity else {
+                            bug!("impl_polarity query disagrees with impl's polarity in HIR");
+                        };
+                        // FIXME(#27579): what amount of WF checking do we need for neg impls?
+                        if let hir::Defaultness::Default { .. } = of_trait.defaultness {
+                            let mut spans = vec![span];
+                            spans.extend(of_trait.defaultness_span);
+                            res = Err(struct_span_code_err!(
+                                tcx.dcx(),
+                                spans,
+                                E0750,
+                                "negative impls cannot be default impls"
+                            )
+                            .emit());
+                        }
+                    }
+                    ty::ImplPolarity::Reservation => {
+                        // FIXME: what amount of WF checking do we need for reservation impls?
                     }
                 }
-                Some(ty::ImplPolarity::Reservation) => {
-                    // FIXME: what amount of WF checking do we need for reservation impls?
-                }
+            } else {
+                res = res.and(check_impl(tcx, item, impl_));
             }
             res
         }
@@ -819,17 +819,7 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &ty::GenericParamDef) -> Result<(), Er
             let span = tcx.def_span(param.def_id);
             let def_id = param.def_id.expect_local();
 
-            if tcx.features().unsized_const_params() {
-                enter_wf_checking_ctxt(tcx, tcx.local_parent(def_id), |wfcx| {
-                    wfcx.register_bound(
-                        ObligationCause::new(span, def_id, ObligationCauseCode::ConstParam(ty)),
-                        wfcx.param_env,
-                        ty,
-                        tcx.require_lang_item(LangItem::UnsizedConstParamTy, span),
-                    );
-                    Ok(())
-                })
-            } else if tcx.features().adt_const_params() {
+            if tcx.features().adt_const_params() {
                 enter_wf_checking_ctxt(tcx, tcx.local_parent(def_id), |wfcx| {
                     wfcx.register_bound(
                         ObligationCause::new(span, def_id, ObligationCauseCode::ConstParam(ty)),
@@ -880,7 +870,6 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &ty::GenericParamDef) -> Result<(), Er
                     tcx,
                     tcx.param_env(param.def_id),
                     ty,
-                    LangItem::ConstParamTy,
                     cause,
                 ) {
                     // Can never implement `ConstParamTy`, don't suggest anything.
@@ -944,12 +933,11 @@ pub(crate) fn check_associated_item(
 
         // Avoid bogus "type annotations needed `Foo: Bar`" errors on `impl Bar for Foo` in case
         // other `Foo` impls are incoherent.
-        tcx.ensure_ok()
-            .coherent_trait(tcx.parent(item.trait_item_def_id.unwrap_or(item_id.into())))?;
+        tcx.ensure_ok().coherent_trait(tcx.parent(item.trait_item_or_self()?))?;
 
         let self_ty = match item.container {
-            ty::AssocItemContainer::Trait => tcx.types.self_param,
-            ty::AssocItemContainer::Impl => {
+            ty::AssocContainer::Trait => tcx.types.self_param,
+            ty::AssocContainer::InherentImpl | ty::AssocContainer::TraitImpl(_) => {
                 tcx.type_of(item.container_id(tcx)).instantiate_identity()
             }
         };
@@ -978,7 +966,7 @@ pub(crate) fn check_associated_item(
                 check_method_receiver(wfcx, hir_sig, item, self_ty)
             }
             ty::AssocKind::Type { .. } => {
-                if let ty::AssocItemContainer::Trait = item.container {
+                if let ty::AssocContainer::Trait = item.container {
                     check_associated_type_bounds(wfcx, item, span)
                 }
                 if item.defaultness(tcx).has_value() {
@@ -1047,7 +1035,7 @@ fn check_type_defn<'tcx>(
             let needs_drop_copy = || {
                 packed && {
                     let ty = tcx.type_of(variant.tail().did).instantiate_identity();
-                    let ty = tcx.erase_regions(ty);
+                    let ty = tcx.erase_and_anonymize_regions(ty);
                     assert!(!ty.has_infer());
                     ty.needs_drop(tcx, wfcx.infcx.typing_env(wfcx.param_env))
                 }
@@ -1258,16 +1246,15 @@ pub(crate) fn check_const_item(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<()
     })
 }
 
-#[instrument(level = "debug", skip(tcx, hir_self_ty, hir_trait_ref))]
+#[instrument(level = "debug", skip(tcx, impl_))]
 fn check_impl<'tcx>(
     tcx: TyCtxt<'tcx>,
     item: &'tcx hir::Item<'tcx>,
-    hir_self_ty: &hir::Ty<'_>,
-    hir_trait_ref: &Option<hir::TraitRef<'_>>,
+    impl_: &hir::Impl<'_>,
 ) -> Result<(), ErrorGuaranteed> {
     enter_wf_checking_ctxt(tcx, item.owner_id.def_id, |wfcx| {
-        match hir_trait_ref {
-            Some(hir_trait_ref) => {
+        match impl_.of_trait {
+            Some(of_trait) => {
                 // `#[rustc_reservation_impl]` impls are not real impls and
                 // therefore don't need to be WF (the trait's `Self: Trait` predicate
                 // won't hold).
@@ -1275,7 +1262,7 @@ fn check_impl<'tcx>(
                 // Avoid bogus "type annotations needed `Foo: Bar`" errors on `impl Bar for Foo` in case
                 // other `Foo` impls are incoherent.
                 tcx.ensure_ok().coherent_trait(trait_ref.def_id)?;
-                let trait_span = hir_trait_ref.path.span;
+                let trait_span = of_trait.trait_ref.path.span;
                 let trait_ref = wfcx.deeply_normalize(
                     trait_span,
                     Some(WellFormedLoc::Ty(item.hir_id().expect_owner().def_id)),
@@ -1299,12 +1286,12 @@ fn check_impl<'tcx>(
                     if let Some(pred) = obligation.predicate.as_trait_clause()
                         && pred.skip_binder().self_ty() == trait_ref.self_ty()
                     {
-                        obligation.cause.span = hir_self_ty.span;
+                        obligation.cause.span = impl_.self_ty.span;
                     }
                     if let Some(pred) = obligation.predicate.as_projection_clause()
                         && pred.skip_binder().self_ty() == trait_ref.self_ty()
                     {
-                        obligation.cause.span = hir_self_ty.span;
+                        obligation.cause.span = impl_.self_ty.span;
                     }
                 }
 
@@ -1321,7 +1308,7 @@ fn check_impl<'tcx>(
                         wfcx.register_obligation(Obligation::new(
                             tcx,
                             ObligationCause::new(
-                                hir_self_ty.span,
+                                impl_.self_ty.span,
                                 wfcx.body_def_id,
                                 ObligationCauseCode::WellFormed(None),
                             ),
@@ -1342,7 +1329,7 @@ fn check_impl<'tcx>(
                     self_ty,
                 );
                 wfcx.register_wf_obligation(
-                    hir_self_ty.span,
+                    impl_.self_ty.span,
                     Some(WellFormedLoc::Ty(item.hir_id().expect_owner().def_id)),
                     self_ty.into(),
                 );
@@ -2288,8 +2275,7 @@ fn lint_redundant_lifetimes<'tcx>(
             // Proceed
         }
         DefKind::AssocFn | DefKind::AssocTy | DefKind::AssocConst => {
-            let parent_def_id = tcx.local_parent(owner_id);
-            if matches!(tcx.def_kind(parent_def_id), DefKind::Impl { of_trait: true }) {
+            if tcx.trait_impl_of_assoc(owner_id.to_def_id()).is_some() {
                 // Don't check for redundant lifetimes for associated items of trait
                 // implementations, since the signature is required to be compatible
                 // with the trait, even if the implementation implies some lifetimes

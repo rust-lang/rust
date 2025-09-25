@@ -28,6 +28,7 @@
 
 use rustc_middle::mir::{Body, START_BLOCK, TerminatorKind};
 use rustc_middle::ty::{TyCtxt, TypeFlags, TypeVisitableExt};
+use rustc_span::def_id::DefId;
 use rustc_trait_selection::traits;
 use tracing::trace;
 
@@ -35,23 +36,29 @@ use crate::pass_manager::MirPass;
 
 pub(crate) struct ImpossiblePredicates;
 
+fn has_impossible_predicates(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+    let predicates = tcx.predicates_of(def_id).instantiate_identity(tcx);
+    tracing::trace!(?predicates);
+    let predicates = predicates.predicates.into_iter().filter(|p| {
+        !p.has_type_flags(
+            // Only consider global clauses to simplify.
+            TypeFlags::HAS_FREE_LOCAL_NAMES
+                // Clauses that refer to unevaluated constants as they cause cycles.
+                | TypeFlags::HAS_CT_PROJECTION,
+        )
+    });
+    let predicates: Vec<_> = traits::elaborate(tcx, predicates).collect();
+    tracing::trace!(?predicates);
+    predicates.references_error() || traits::impossible_predicates(tcx, predicates)
+}
+
 impl<'tcx> MirPass<'tcx> for ImpossiblePredicates {
     #[tracing::instrument(level = "trace", skip(self, tcx, body))]
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         tracing::trace!(def_id = ?body.source.def_id());
-        let predicates = tcx.predicates_of(body.source.def_id()).instantiate_identity(tcx);
-        tracing::trace!(?predicates);
-        let predicates = predicates.predicates.into_iter().filter(|p| {
-            !p.has_type_flags(
-                // Only consider global clauses to simplify.
-                TypeFlags::HAS_FREE_LOCAL_NAMES
-                // Clauses that refer to unevaluated constants as they cause cycles.
-                | TypeFlags::HAS_CT_PROJECTION,
-            )
-        });
-        let predicates: Vec<_> = traits::elaborate(tcx, predicates).collect();
-        tracing::trace!(?predicates);
-        if predicates.references_error() || traits::impossible_predicates(tcx, predicates) {
+        let impossible = body.tainted_by_errors.is_some()
+            || has_impossible_predicates(tcx, body.source.def_id());
+        if impossible {
             trace!("found unsatisfiable predicates");
             // Clear the body to only contain a single `unreachable` statement.
             let bbs = body.basic_blocks.as_mut();

@@ -9,14 +9,14 @@
 pub trait Trait {
     #[unstable(feature = "feat", issue = "none" )]
     #[unstable_feature_bound(foo)]
-    //~^ ERROR: attribute should be applied to `impl` or free function outside of any `impl` or trait
+    //~^ ERROR: attribute cannot be used on
     fn foo();
 }
 
 #[stable(feature = "a", since = "1.1.1" )]
 impl Trait for u8 {
     #[unstable_feature_bound(foo)]
-    //~^ ERROR: attribute should be applied to `impl` or free function outside of any `impl` or trait
+    //~^ ERROR: attribute cannot be used on
     fn foo() {}
 }
 

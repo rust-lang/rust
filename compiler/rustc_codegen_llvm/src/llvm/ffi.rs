@@ -11,9 +11,8 @@
 //! the need for an extra cast from `*const u8` on the Rust side.
 
 #![allow(non_camel_case_types)]
-#![allow(non_upper_case_globals)]
 
-use std::fmt::Debug;
+use std::fmt::{self, Debug};
 use std::marker::PhantomData;
 use std::num::NonZero;
 use std::ptr;
@@ -25,18 +24,67 @@ use rustc_target::spec::SymbolVisibility;
 
 use super::RustString;
 use super::debuginfo::{
-    DIArray, DIBasicType, DIBuilder, DICompositeType, DIDerivedType, DIDescriptor, DIEnumerator,
-    DIFile, DIFlags, DIGlobalVariableExpression, DILocation, DISPFlags, DIScope, DISubprogram,
-    DISubrange, DITemplateTypeParameter, DIType, DIVariable, DebugEmissionKind, DebugNameTableKind,
+    DIArray, DIBuilder, DIDerivedType, DIDescriptor, DIEnumerator, DIFile, DIFlags,
+    DIGlobalVariableExpression, DILocation, DISPFlags, DIScope, DISubprogram, DISubrange,
+    DITemplateTypeParameter, DIType, DIVariable, DebugEmissionKind, DebugNameTableKind,
 };
 use crate::llvm;
 
 /// In the LLVM-C API, boolean values are passed as `typedef int LLVMBool`,
 /// which has a different ABI from Rust or C++ `bool`.
-pub(crate) type Bool = c_int;
+///
+/// This wrapper does not implement `PartialEq`.
+/// To test the underlying boolean value, use [`Self::is_true`].
+#[derive(Clone, Copy)]
+#[repr(transparent)]
+pub(crate) struct Bool {
+    value: c_int,
+}
 
-pub(crate) const True: Bool = 1 as Bool;
-pub(crate) const False: Bool = 0 as Bool;
+pub(crate) const TRUE: Bool = Bool::TRUE;
+pub(crate) const FALSE: Bool = Bool::FALSE;
+
+impl Bool {
+    pub(crate) const TRUE: Self = Self { value: 1 };
+    pub(crate) const FALSE: Self = Self { value: 0 };
+
+    pub(crate) const fn from_bool(rust_bool: bool) -> Self {
+        if rust_bool { Self::TRUE } else { Self::FALSE }
+    }
+
+    /// Converts this LLVM-C boolean to a Rust `bool`
+    pub(crate) fn is_true(self) -> bool {
+        // Since we're interacting with a C API, follow the C convention of
+        // treating any nonzero value as true.
+        self.value != Self::FALSE.value
+    }
+}
+
+impl Debug for Bool {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.value {
+            0 => f.write_str("FALSE"),
+            1 => f.write_str("TRUE"),
+            // As with `Self::is_true`, treat any nonzero value as true.
+            v => write!(f, "TRUE ({v})"),
+        }
+    }
+}
+
+/// Convenience trait to convert `bool` to `llvm::Bool` with an explicit method call.
+///
+/// Being able to write `b.to_llvm_bool()` is less noisy than `llvm::Bool::from(b)`,
+/// while being more explicit and less mistake-prone than something like `b.into()`.
+pub(crate) trait ToLlvmBool: Copy {
+    fn to_llvm_bool(self) -> llvm::Bool;
+}
+
+impl ToLlvmBool for bool {
+    #[inline(always)]
+    fn to_llvm_bool(self) -> llvm::Bool {
+        llvm::Bool::from_bool(self)
+    }
+}
 
 /// Wrapper for a raw enum value returned from LLVM's C APIs.
 ///
@@ -97,6 +145,7 @@ pub(crate) enum ModuleFlagMergeBehavior {
 
 // Consts for the LLVM CallConv type, pre-cast to usize.
 
+/// Must match the layout of `LLVMTailCallKind`.
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[repr(C)]
 #[allow(dead_code)]
@@ -214,7 +263,7 @@ pub(crate) enum AttributeKind {
     MinSize = 4,
     Naked = 5,
     NoAlias = 6,
-    NoCapture = 7,
+    CapturesAddress = 7,
     NoInline = 8,
     NonNull = 9,
     NoRedZone = 10,
@@ -249,6 +298,8 @@ pub(crate) enum AttributeKind {
     FnRetThunkExtern = 41,
     Writable = 42,
     DeadOnUnwind = 43,
+    DeadOnReturn = 44,
+    CapturesReadOnly = 45,
 }
 
 /// LLVMIntPredicate
@@ -331,10 +382,15 @@ impl RealPredicate {
     }
 }
 
-/// LLVMTypeKind
-#[derive(Copy, Clone, PartialEq, Debug)]
+/// Must match the layout of `LLVMTypeKind`.
+///
+/// Use [`RawEnum<TypeKind>`] for values of `LLVMTypeKind` returned from LLVM,
+/// to avoid risk of UB if LLVM adds new enum values.
+///
+/// All of LLVM's variants should be declared here, even if no Rust-side code refers
+/// to them, because unknown variants will cause [`RawEnum::to_rust`] to panic.
+#[derive(Copy, Clone, PartialEq, Debug, TryFromU32)]
 #[repr(C)]
-#[expect(dead_code, reason = "Some variants are unused, but are kept to match LLVM-C")]
 pub(crate) enum TypeKind {
     Void = 0,
     Half = 1,
@@ -609,17 +665,6 @@ pub(crate) enum DiagnosticLevel {
     Remark,
 }
 
-/// LLVMRustArchiveKind
-#[derive(Copy, Clone)]
-#[repr(C)]
-pub(crate) enum ArchiveKind {
-    K_GNU,
-    K_BSD,
-    K_DARWIN,
-    K_COFF,
-    K_AIXBIG,
-}
-
 unsafe extern "C" {
     // LLVMRustThinLTOData
     pub(crate) type ThinLTOData;
@@ -665,6 +710,7 @@ pub(crate) enum MemoryEffects {
     None,
     ReadOnly,
     InaccessibleMemOnly,
+    ReadOnlyNotPure,
 }
 
 /// LLVMOpcode
@@ -768,19 +814,12 @@ pub(crate) struct Builder<'a>(InvariantOpaque<'a>);
 pub(crate) struct PassManager<'a>(InvariantOpaque<'a>);
 unsafe extern "C" {
     pub type TargetMachine;
-    pub(crate) type Archive;
 }
-#[repr(C)]
-pub(crate) struct ArchiveIterator<'a>(InvariantOpaque<'a>);
-#[repr(C)]
-pub(crate) struct ArchiveChild<'a>(InvariantOpaque<'a>);
 unsafe extern "C" {
     pub(crate) type Twine;
     pub(crate) type DiagnosticInfo;
     pub(crate) type SMDiagnostic;
 }
-#[repr(C)]
-pub(crate) struct RustArchiveMember<'a>(InvariantOpaque<'a>);
 /// Opaque pointee of `LLVMOperandBundleRef`.
 #[repr(C)]
 pub(crate) struct OperandBundle<'a>(InvariantOpaque<'a>);
@@ -1045,6 +1084,8 @@ unsafe extern "C" {
         CanThrow: llvm::Bool,
     ) -> &'ll Value;
 
+    pub(crate) safe fn LLVMGetTypeKind(Ty: &Type) -> RawEnum<TypeKind>;
+
     // Operations on integer types
     pub(crate) fn LLVMInt1TypeInContext(C: &Context) -> &Type;
     pub(crate) fn LLVMInt8TypeInContext(C: &Context) -> &Type;
@@ -1196,7 +1237,8 @@ unsafe extern "C" {
     pub(crate) safe fn LLVMIsGlobalConstant(GlobalVar: &Value) -> Bool;
     pub(crate) safe fn LLVMSetGlobalConstant(GlobalVar: &Value, IsConstant: Bool);
     pub(crate) safe fn LLVMSetTailCall(CallInst: &Value, IsTailCall: Bool);
-    pub(crate) safe fn LLVMRustSetTailCallKind(CallInst: &Value, Kind: TailCallKind);
+    pub(crate) safe fn LLVMSetTailCallKind(CallInst: &Value, kind: TailCallKind);
+    pub(crate) safe fn LLVMSetExternallyInitialized(GlobalVar: &Value, IsExtInit: Bool);
 
     // Operations on attributes
     pub(crate) fn LLVMCreateStringAttribute(
@@ -1830,6 +1872,124 @@ unsafe extern "C" {
         Scope: &'ll Metadata,
         InlinedAt: Option<&'ll Metadata>,
     ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderCreateSubroutineType<'ll>(
+        Builder: &DIBuilder<'ll>,
+        File: Option<&'ll Metadata>, // (ignored and has no effect)
+        ParameterTypes: *const Option<&'ll Metadata>,
+        NumParameterTypes: c_uint,
+        Flags: DIFlags, // (default is `DIFlags::DIFlagZero`)
+    ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderCreateUnionType<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Scope: Option<&'ll Metadata>,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
+        NameLen: size_t,
+        File: &'ll Metadata,
+        LineNumber: c_uint,
+        SizeInBits: u64,
+        AlignInBits: u32,
+        Flags: DIFlags,
+        Elements: *const Option<&'ll Metadata>,
+        NumElements: c_uint,
+        RunTimeLang: c_uint, // (optional Objective-C runtime version; default is 0)
+        UniqueId: *const c_uchar, // See "PTR_LEN_STR".
+        UniqueIdLen: size_t,
+    ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderCreateArrayType<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Size: u64,
+        Align: u32,
+        Ty: &'ll Metadata,
+        Subscripts: *const &'ll Metadata,
+        NumSubscripts: c_uint,
+    ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderCreateBasicType<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
+        NameLen: size_t,
+        SizeInBits: u64,
+        Encoding: c_uint, // (`LLVMDWARFTypeEncoding`)
+        Flags: DIFlags,   // (default is `DIFlags::DIFlagZero`)
+    ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderCreatePointerType<'ll>(
+        Builder: &DIBuilder<'ll>,
+        PointeeTy: &'ll Metadata,
+        SizeInBits: u64,
+        AlignInBits: u32,
+        AddressSpace: c_uint, // (optional DWARF address space; default is 0)
+        Name: *const c_uchar, // See "PTR_LEN_STR".
+        NameLen: size_t,
+    ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderCreateStructType<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Scope: Option<&'ll Metadata>,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
+        NameLen: size_t,
+        File: &'ll Metadata,
+        LineNumber: c_uint,
+        SizeInBits: u64,
+        AlignInBits: u32,
+        Flags: DIFlags,
+        DerivedFrom: Option<&'ll Metadata>,
+        Elements: *const Option<&'ll Metadata>,
+        NumElements: c_uint,
+        RunTimeLang: c_uint, // (optional Objective-C runtime version; default is 0)
+        VTableHolder: Option<&'ll Metadata>,
+        UniqueId: *const c_uchar, // See "PTR_LEN_STR".
+        UniqueIdLen: size_t,
+    ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderCreateMemberType<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Scope: &'ll Metadata,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
+        NameLen: size_t,
+        File: &'ll Metadata,
+        LineNo: c_uint,
+        SizeInBits: u64,
+        AlignInBits: u32,
+        OffsetInBits: u64,
+        Flags: DIFlags,
+        Ty: &'ll Metadata,
+    ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderCreateStaticMemberType<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Scope: &'ll Metadata,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
+        NameLen: size_t,
+        File: &'ll Metadata,
+        LineNumber: c_uint,
+        Type: &'ll Metadata,
+        Flags: DIFlags,
+        ConstantVal: Option<&'ll Value>,
+        AlignInBits: u32,
+    ) -> &'ll Metadata;
+
+    /// Creates a "qualified type" in the C/C++ sense, by adding modifiers
+    /// like `const` or `volatile`.
+    pub(crate) fn LLVMDIBuilderCreateQualifiedType<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Tag: c_uint, // (DWARF tag, e.g. `DW_TAG_const_type`)
+        Type: &'ll Metadata,
+    ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderCreateTypedef<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Type: &'ll Metadata,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
+        NameLen: size_t,
+        File: &'ll Metadata,
+        LineNo: c_uint,
+        Scope: Option<&'ll Metadata>,
+        AlignInBits: u32, // (optional; default is 0)
+    ) -> &'ll Metadata;
 }
 
 #[link(name = "llvm-wrapper", kind = "static")]
@@ -1839,9 +1999,6 @@ unsafe extern "C" {
 
     // Create and destroy contexts.
     pub(crate) fn LLVMRustContextCreate(shouldDiscardNames: bool) -> &'static mut Context;
-
-    /// See llvm::LLVMTypeKind::getTypeID.
-    pub(crate) fn LLVMRustGetTypeKind(Ty: &Type) -> TypeKind;
 
     // Operations on all values
     pub(crate) fn LLVMRustGlobalAddMetadata<'a>(
@@ -1892,11 +2049,17 @@ unsafe extern "C" {
         C: &Context,
         effects: MemoryEffects,
     ) -> &Attribute;
+    /// ## Safety
+    /// - Each of `LowerWords` and `UpperWords` must point to an array that is
+    ///   long enough to fully define an integer of size `NumBits`, i.e. each
+    ///   pointer must point to `NumBits.div_ceil(64)` elements or more.
+    /// - The implementation will make its own copy of the pointed-to `u64`
+    ///   values, so the pointers only need to outlive this function call.
     pub(crate) fn LLVMRustCreateRangeAttribute(
         C: &Context,
-        num_bits: c_uint,
-        lower_words: *const u64,
-        upper_words: *const u64,
+        NumBits: c_uint,
+        LowerWords: *const u64,
+        UpperWords: *const u64,
     ) -> &Attribute;
 
     // Operations on functions
@@ -2129,11 +2292,6 @@ unsafe extern "C" {
         SourceLen: size_t,
     ) -> &'a DIFile;
 
-    pub(crate) fn LLVMRustDIBuilderCreateSubroutineType<'a>(
-        Builder: &DIBuilder<'a>,
-        ParameterTypes: &'a DIArray,
-    ) -> &'a DICompositeType;
-
     pub(crate) fn LLVMRustDIBuilderCreateFunction<'a>(
         Builder: &DIBuilder<'a>,
         Scope: &'a DIDescriptor,
@@ -2167,66 +2325,6 @@ unsafe extern "C" {
         TParam: &'a DIArray,
     ) -> &'a DISubprogram;
 
-    pub(crate) fn LLVMRustDIBuilderCreateBasicType<'a>(
-        Builder: &DIBuilder<'a>,
-        Name: *const c_char,
-        NameLen: size_t,
-        SizeInBits: u64,
-        Encoding: c_uint,
-    ) -> &'a DIBasicType;
-
-    pub(crate) fn LLVMRustDIBuilderCreateTypedef<'a>(
-        Builder: &DIBuilder<'a>,
-        Type: &'a DIBasicType,
-        Name: *const c_char,
-        NameLen: size_t,
-        File: &'a DIFile,
-        LineNo: c_uint,
-        Scope: Option<&'a DIScope>,
-    ) -> &'a DIDerivedType;
-
-    pub(crate) fn LLVMRustDIBuilderCreatePointerType<'a>(
-        Builder: &DIBuilder<'a>,
-        PointeeTy: &'a DIType,
-        SizeInBits: u64,
-        AlignInBits: u32,
-        AddressSpace: c_uint,
-        Name: *const c_char,
-        NameLen: size_t,
-    ) -> &'a DIDerivedType;
-
-    pub(crate) fn LLVMRustDIBuilderCreateStructType<'a>(
-        Builder: &DIBuilder<'a>,
-        Scope: Option<&'a DIDescriptor>,
-        Name: *const c_char,
-        NameLen: size_t,
-        File: &'a DIFile,
-        LineNumber: c_uint,
-        SizeInBits: u64,
-        AlignInBits: u32,
-        Flags: DIFlags,
-        DerivedFrom: Option<&'a DIType>,
-        Elements: &'a DIArray,
-        RunTimeLang: c_uint,
-        VTableHolder: Option<&'a DIType>,
-        UniqueId: *const c_char,
-        UniqueIdLen: size_t,
-    ) -> &'a DICompositeType;
-
-    pub(crate) fn LLVMRustDIBuilderCreateMemberType<'a>(
-        Builder: &DIBuilder<'a>,
-        Scope: &'a DIDescriptor,
-        Name: *const c_char,
-        NameLen: size_t,
-        File: &'a DIFile,
-        LineNo: c_uint,
-        SizeInBits: u64,
-        AlignInBits: u32,
-        OffsetInBits: u64,
-        Flags: DIFlags,
-        Ty: &'a DIType,
-    ) -> &'a DIDerivedType;
-
     pub(crate) fn LLVMRustDIBuilderCreateVariantMemberType<'a>(
         Builder: &DIBuilder<'a>,
         Scope: &'a DIScope,
@@ -2241,25 +2339,6 @@ unsafe extern "C" {
         Flags: DIFlags,
         Ty: &'a DIType,
     ) -> &'a DIType;
-
-    pub(crate) fn LLVMRustDIBuilderCreateStaticMemberType<'a>(
-        Builder: &DIBuilder<'a>,
-        Scope: &'a DIDescriptor,
-        Name: *const c_char,
-        NameLen: size_t,
-        File: &'a DIFile,
-        LineNo: c_uint,
-        Ty: &'a DIType,
-        Flags: DIFlags,
-        val: Option<&'a Value>,
-        AlignInBits: u32,
-    ) -> &'a DIDerivedType;
-
-    pub(crate) fn LLVMRustDIBuilderCreateQualifiedType<'a>(
-        Builder: &DIBuilder<'a>,
-        Tag: c_uint,
-        Type: &'a DIType,
-    ) -> &'a DIDerivedType;
 
     pub(crate) fn LLVMRustDIBuilderCreateStaticVariable<'a>(
         Builder: &DIBuilder<'a>,
@@ -2291,14 +2370,6 @@ unsafe extern "C" {
         ArgNo: c_uint,
         AlignInBits: u32,
     ) -> &'a DIVariable;
-
-    pub(crate) fn LLVMRustDIBuilderCreateArrayType<'a>(
-        Builder: &DIBuilder<'a>,
-        Size: u64,
-        AlignInBits: u32,
-        Ty: &'a DIType,
-        Subscripts: &'a DIArray,
-    ) -> &'a DIType;
 
     pub(crate) fn LLVMRustDIBuilderGetOrCreateSubrange<'a>(
         Builder: &DIBuilder<'a>,
@@ -2343,22 +2414,6 @@ unsafe extern "C" {
         Elements: &'a DIArray,
         ClassType: &'a DIType,
         IsScoped: bool,
-    ) -> &'a DIType;
-
-    pub(crate) fn LLVMRustDIBuilderCreateUnionType<'a>(
-        Builder: &DIBuilder<'a>,
-        Scope: Option<&'a DIScope>,
-        Name: *const c_char,
-        NameLen: size_t,
-        File: &'a DIFile,
-        LineNumber: c_uint,
-        SizeInBits: u64,
-        AlignInBits: u32,
-        Flags: DIFlags,
-        Elements: Option<&'a DIArray>,
-        RunTimeLang: c_uint,
-        UniqueId: *const c_char,
-        UniqueIdLen: size_t,
     ) -> &'a DIType;
 
     pub(crate) fn LLVMRustDIBuilderCreateVariantPart<'a>(
@@ -2437,8 +2492,10 @@ unsafe extern "C" {
         OutputObjFile: *const c_char,
         DebugInfoCompression: *const c_char,
         UseEmulatedTls: bool,
-        ArgsCstrBuff: *const c_char,
-        ArgsCstrBuffLen: usize,
+        Argv0: *const c_uchar, // See "PTR_LEN_STR".
+        Argv0Len: size_t,
+        CommandLineArgs: *const c_uchar, // See "PTR_LEN_STR".
+        CommandLineArgsLen: size_t,
         UseWasmEH: bool,
     ) -> *mut TargetMachine;
 
@@ -2504,19 +2561,6 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustSetNormalizedTarget(M: &Module, triple: *const c_char);
     pub(crate) fn LLVMRustRunRestrictionPass(M: &Module, syms: *const *const c_char, len: size_t);
 
-    pub(crate) fn LLVMRustOpenArchive(path: *const c_char) -> Option<&'static mut Archive>;
-    pub(crate) fn LLVMRustArchiveIteratorNew(AR: &Archive) -> &mut ArchiveIterator<'_>;
-    pub(crate) fn LLVMRustArchiveIteratorNext<'a>(
-        AIR: &ArchiveIterator<'a>,
-    ) -> Option<&'a mut ArchiveChild<'a>>;
-    pub(crate) fn LLVMRustArchiveChildName(
-        ACR: &ArchiveChild<'_>,
-        size: &mut size_t,
-    ) -> *const c_char;
-    pub(crate) fn LLVMRustArchiveChildFree<'a>(ACR: &'a mut ArchiveChild<'a>);
-    pub(crate) fn LLVMRustArchiveIteratorFree<'a>(AIR: &'a mut ArchiveIterator<'a>);
-    pub(crate) fn LLVMRustDestroyArchive(AR: &'static mut Archive);
-
     pub(crate) fn LLVMRustWriteTwineToString(T: &Twine, s: &RustString);
 
     pub(crate) fn LLVMRustUnpackOptimizationDiagnostic<'a>(
@@ -2554,21 +2598,6 @@ unsafe extern "C" {
         num_ranges: &mut usize,
     ) -> bool;
 
-    pub(crate) fn LLVMRustWriteArchive(
-        Dst: *const c_char,
-        NumMembers: size_t,
-        Members: *const &RustArchiveMember<'_>,
-        WriteSymbtab: bool,
-        Kind: ArchiveKind,
-        isEC: bool,
-    ) -> LLVMRustResult;
-    pub(crate) fn LLVMRustArchiveMemberNew<'a>(
-        Filename: *const c_char,
-        Name: *const c_char,
-        Child: Option<&ArchiveChild<'a>>,
-    ) -> &'a mut RustArchiveMember<'a>;
-    pub(crate) fn LLVMRustArchiveMemberFree<'a>(Member: &'a mut RustArchiveMember<'a>);
-
     pub(crate) fn LLVMRustSetDataLayoutFromTargetMachine<'a>(M: &'a Module, TM: &'a TargetMachine);
 
     pub(crate) fn LLVMRustPositionBuilderPastAllocas<'a>(B: &Builder<'a>, Fn: &'a Value);
@@ -2587,7 +2616,6 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustThinLTOBufferCreate(
         M: &Module,
         is_thin: bool,
-        emit_summary: bool,
     ) -> &'static mut ThinLTOBuffer;
     pub(crate) fn LLVMRustThinLTOBufferFree(M: &'static mut ThinLTOBuffer);
     pub(crate) fn LLVMRustThinLTOBufferPtr(M: &ThinLTOBuffer) -> *const c_char;
@@ -2670,6 +2698,8 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustIs64BitSymbolicFile(buf_ptr: *const u8, buf_len: usize) -> bool;
 
     pub(crate) fn LLVMRustIsECObject(buf_ptr: *const u8, buf_len: usize) -> bool;
+
+    pub(crate) fn LLVMRustIsAnyArm64Coff(buf_ptr: *const u8, buf_len: usize) -> bool;
 
     pub(crate) fn LLVMRustSetNoSanitizeAddress(Global: &Value);
     pub(crate) fn LLVMRustSetNoSanitizeHWAddress(Global: &Value);

@@ -150,7 +150,7 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
         } = item.kind
         {
             check_fn_inner(cx, sig, Some(id), None, generics, item.span, true, self.msrv);
-        } else if let ItemKind::Impl(impl_) = item.kind
+        } else if let ItemKind::Impl(impl_) = &item.kind
             && !item.span.from_expansion()
         {
             report_extra_impl_lifetimes(cx, impl_);
@@ -712,8 +712,8 @@ fn report_extra_impl_lifetimes<'tcx>(cx: &LateContext<'tcx>, impl_: &'tcx Impl<'
     let mut checker = LifetimeChecker::<middle_nested_filter::All>::new(cx, impl_.generics);
 
     walk_generics(&mut checker, impl_.generics);
-    if let Some(ref trait_ref) = impl_.of_trait {
-        walk_trait_ref(&mut checker, trait_ref);
+    if let Some(of_trait) = impl_.of_trait {
+        walk_trait_ref(&mut checker, &of_trait.trait_ref);
     }
     walk_unambig_ty(&mut checker, impl_.self_ty);
     for &item in impl_.items {
@@ -745,7 +745,7 @@ fn report_elidable_impl_lifetimes<'tcx>(
     impl_: &'tcx Impl<'_>,
     map: &FxIndexMap<LocalDefId, Vec<Usage>>,
 ) {
-    let single_usages = map
+    let (elidable_lts, usages): (Vec<_>, Vec<_>) = map
         .iter()
         .filter_map(|(def_id, usages)| {
             if let [
@@ -762,13 +762,11 @@ fn report_elidable_impl_lifetimes<'tcx>(
                 None
             }
         })
-        .collect::<Vec<_>>();
+        .unzip();
 
-    if single_usages.is_empty() {
+    if elidable_lts.is_empty() {
         return;
     }
-
-    let (elidable_lts, usages): (Vec<_>, Vec<_>) = single_usages.into_iter().unzip();
 
     report_elidable_lifetimes(cx, impl_.generics, &elidable_lts, &usages, true);
 }
@@ -795,9 +793,7 @@ fn report_elidable_lifetimes(
         // In principle, the result of the call to `Node::ident` could be `unwrap`ped, as `DefId` should refer to a
         // `Node::GenericParam`.
         .filter_map(|&def_id| cx.tcx.hir_node_by_def_id(def_id).ident())
-        .map(|ident| ident.to_string())
-        .collect::<Vec<_>>()
-        .join(", ");
+        .format(", ");
 
     let elidable_usages: Vec<ElidableUsage> = usages
         .iter()
@@ -860,36 +856,89 @@ fn elision_suggestions(
         .filter(|param| !param.is_elided_lifetime() && !param.is_impl_trait())
         .collect::<Vec<_>>();
 
-    let mut suggestions = if elidable_lts.len() == explicit_params.len() {
+    if !elidable_lts
+        .iter()
+        .all(|lt| explicit_params.iter().any(|param| param.def_id == *lt))
+    {
+        return None;
+    }
+
+    let mut suggestions = if elidable_lts.is_empty() {
+        vec![]
+    } else if elidable_lts.len() == explicit_params.len() {
         // if all the params are elided remove the whole generic block
         //
         // fn x<'a>() {}
         //     ^^^^
         vec![(generics.span, String::new())]
     } else {
-        elidable_lts
-            .iter()
-            .map(|&id| {
-                let pos = explicit_params.iter().position(|param| param.def_id == id)?;
-                let param = explicit_params.get(pos)?;
-
-                let span = if let Some(next) = explicit_params.get(pos + 1) {
-                    // fn x<'prev, 'a, 'next>() {}
-                    //             ^^^^
-                    param.span.until(next.span)
+        match &explicit_params[..] {
+            // no params, nothing to elide
+            [] => unreachable!("handled by `elidable_lts.is_empty()`"),
+            [param] => {
+                if elidable_lts.contains(&param.def_id) {
+                    unreachable!("handled by `elidable_lts.len() == explicit_params.len()`")
                 } else {
-                    // `pos` should be at least 1 here, because the param in position 0 would either have a `next`
-                    // param or would have taken the `elidable_lts.len() == explicit_params.len()` branch.
-                    let prev = explicit_params.get(pos - 1)?;
+                    unreachable!("handled by `elidable_lts.is_empty()`")
+                }
+            },
+            [_, _, ..] => {
+                // Given a list like `<'a, 'b, 'c, 'd, ..>`,
+                //
+                // If there is a cluster of elidable lifetimes at the beginning, say `'a` and `'b`, we should
+                // suggest removing them _and_ the trailing comma. The span for that is `a.span.until(c.span)`:
+                // <'a, 'b, 'c, 'd, ..> => <'a, 'b, 'c, 'd, ..>
+                //  ^^  ^^                  ^^^^^^^^
+                //
+                // And since we know that `'c` isn't elidable--otherwise it would've been in the cluster--we can go
+                // over all the lifetimes after it, and for each elidable one, add a suggestion spanning the
+                // lifetime itself and the comma before, because each individual suggestion is guaranteed to leave
+                // the list valid:
+                // <.., 'c, 'd, 'e, 'f, 'g, ..> => <.., 'c, 'd, 'e, 'f, 'g, ..>
+                //          ^^      ^^  ^^                ^^^^    ^^^^^^^^
+                //
+                // In case there is no such starting cluster, we only need to do the second part of the algorithm:
+                // <'a, 'b, 'c, 'd, 'e, 'f, 'g, ..> => <'a, 'b , 'c, 'd, 'e, 'f, 'g, ..>
+                //      ^^  ^^      ^^  ^^                ^^^^^^^^^    ^^^^^^^^
 
-                    // fn x<'prev, 'a>() {}
-                    //           ^^^^
-                    param.span.with_lo(prev.span.hi())
+                // Split off the starting cluster
+                // TODO: use `slice::split_once` once stabilized (github.com/rust-lang/rust/issues/112811):
+                // ```
+                // let Some(split) = explicit_params.split_once(|param| !elidable_lts.contains(&param.def_id)) else {
+                //     // there were no lifetime param that couldn't be elided
+                //     unreachable!("handled by `elidable_lts.len() == explicit_params.len()`")
+                // };
+                // match split { /* .. */ }
+                // ```
+                let Some(split_pos) = explicit_params
+                    .iter()
+                    .position(|param| !elidable_lts.contains(&param.def_id))
+                else {
+                    // there were no lifetime param that couldn't be elided
+                    unreachable!("handled by `elidable_lts.len() == explicit_params.len()`")
                 };
+                let split = explicit_params
+                    .split_at_checked(split_pos)
+                    .expect("got `split_pos` from `position` on the same Vec");
 
-                Some((span, String::new()))
-            })
-            .collect::<Option<Vec<_>>>()?
+                match split {
+                    ([..], []) => unreachable!("handled by `elidable_lts.len() == explicit_params.len()`"),
+                    ([], [_]) => unreachable!("handled by `explicit_params.len() == 1`"),
+                    (cluster, rest @ [rest_first, ..]) => {
+                        // the span for the cluster
+                        (cluster.first().map(|fw| fw.span.until(rest_first.span)).into_iter())
+                            // the span for the remaining lifetimes (calculations independent of the cluster)
+                            .chain(
+                                rest.array_windows()
+                                    .filter(|[_, curr]| elidable_lts.contains(&curr.def_id))
+                                    .map(|[prev, curr]| curr.span.with_lo(prev.span.hi())),
+                            )
+                            .map(|sp| (sp, String::new()))
+                            .collect()
+                    },
+                }
+            },
+        }
     };
 
     suggestions.extend(usages.iter().map(|&usage| {

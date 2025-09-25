@@ -5,15 +5,15 @@ use std::mem;
 
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_hir as hir;
-use rustc_hir::def::{DefKind, Res};
+use rustc_hir::attrs::AttributeKind;
+use rustc_hir::def::{DefKind, MacroKinds, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId, LocalDefIdSet};
 use rustc_hir::intravisit::{Visitor, walk_body, walk_item};
-use rustc_hir::{CRATE_HIR_ID, Node};
+use rustc_hir::{CRATE_HIR_ID, Node, find_attr};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 use rustc_span::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
-use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{Symbol, kw, sym};
 use tracing::debug;
 
@@ -167,7 +167,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             if !child.reexport_chain.is_empty()
                 && let Res::Def(DefKind::Macro(_), def_id) = child.res
                 && let Some(local_def_id) = def_id.as_local()
-                && self.cx.tcx.has_attr(def_id, sym::macro_export)
+                && find_attr!(self.cx.tcx.get_all_attrs(def_id), AttributeKind::MacroExport { .. })
                 && inserted.insert(def_id)
             {
                 let item = self.cx.tcx.hir_expect_item(local_def_id);
@@ -325,7 +325,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
         let is_bang_macro = matches!(
             item,
-            Node::Item(&hir::Item { kind: hir::ItemKind::Macro(_, _, MacroKind::Bang), .. })
+            Node::Item(&hir::Item { kind: hir::ItemKind::Macro(_, _, kinds), .. }) if kinds.contains(MacroKinds::BANG)
         );
 
         if !self.view_item_stack.insert(res_did) && !is_bang_macro {
@@ -406,8 +406,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             // attribute can still be visible.
             || match item.kind {
                 hir::ItemKind::Impl(..) => true,
-                hir::ItemKind::Macro(_, _, MacroKind::Bang) => {
-                    self.cx.tcx.has_attr(item.owner_id.def_id, sym::macro_export)
+                hir::ItemKind::Macro(_, _, _) => {
+                    find_attr!(self.cx.tcx.get_all_attrs(item.owner_id.def_id), AttributeKind::MacroExport{..})
                 }
                 _ => false,
             }
@@ -525,7 +525,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
                 let def_id = item.owner_id.to_def_id();
                 let is_macro_2_0 = !macro_def.macro_rules;
-                let nonexported = !tcx.has_attr(def_id, sym::macro_export);
+                let nonexported =
+                    !find_attr!(tcx.get_all_attrs(def_id), AttributeKind::MacroExport { .. });
 
                 if is_macro_2_0 || nonexported || self.inlining {
                     self.add_to_current_mod(item, renamed, import_id);

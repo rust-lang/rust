@@ -51,8 +51,6 @@ enum GetSafeTransmuteErrorAndReason {
     Error { err_msg: String, safe_transmute_explanation: Option<String> },
 }
 
-struct UnsatisfiedConst(pub bool);
-
 /// Crude way of getting back an `Expr` from a `Span`.
 pub struct FindExprBySpan<'hir> {
     pub span: Span,
@@ -141,10 +139,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         &self,
         mut errors: Vec<FulfillmentError<'tcx>>,
     ) -> ErrorGuaranteed {
-        self.sub_relations
-            .borrow_mut()
-            .add_constraints(self, errors.iter().map(|e| e.obligation.predicate));
-
         #[derive(Debug)]
         struct ErrorDescriptor<'tcx> {
             goal: Goal<'tcx, ty::Predicate<'tcx>>,
@@ -560,7 +554,7 @@ fn attempt_dyn_to_enum_suggestion(
             // defaults to assuming that things are *not* sized, whereas we want to
             // fall back to assuming that things may be sized.
             match impl_type.kind() {
-                ty::Str | ty::Slice(_) | ty::Dynamic(_, _, ty::DynKind::Dyn) => {
+                ty::Str | ty::Slice(_) | ty::Dynamic(_, _) => {
                     return None;
                 }
                 _ => {}

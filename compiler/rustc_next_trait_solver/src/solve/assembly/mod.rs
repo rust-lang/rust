@@ -7,11 +7,13 @@ use std::ops::ControlFlow;
 
 use derive_where::derive_where;
 use rustc_type_ir::inherent::*;
-use rustc_type_ir::lang_items::TraitSolverLangItem;
+use rustc_type_ir::lang_items::SolverTraitLangItem;
+use rustc_type_ir::search_graph::CandidateHeadUsages;
 use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::{
-    self as ty, Interner, TypeFlags, TypeFoldable, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt as _, TypeVisitor, TypingMode, Upcast as _, elaborate,
+    self as ty, Interner, TypeFlags, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Upcast,
+    elaborate,
 };
 use tracing::{debug, instrument};
 
@@ -21,7 +23,8 @@ use crate::delegate::SolverDelegate;
 use crate::solve::inspect::ProbeKind;
 use crate::solve::{
     BuiltinImplSource, CandidateSource, CanonicalResponse, Certainty, EvalCtxt, Goal, GoalSource,
-    MaybeCause, NoSolution, ParamEnvSource, QueryResult, has_no_inference_or_external_constraints,
+    MaybeCause, NoSolution, OpaqueTypesJank, ParamEnvSource, QueryResult,
+    has_no_inference_or_external_constraints,
 };
 
 enum AliasBoundKind {
@@ -33,10 +36,11 @@ enum AliasBoundKind {
 ///
 /// It consists of both the `source`, which describes how that goal would be proven,
 /// and the `result` when using the given `source`.
-#[derive_where(Clone, Debug; I: Interner)]
+#[derive_where(Debug; I: Interner)]
 pub(super) struct Candidate<I: Interner> {
     pub(super) source: CandidateSource<I>,
     pub(super) result: CanonicalResponse<I>,
+    pub(super) head_usages: CandidateHeadUsages,
 }
 
 /// Methods used to assemble candidates for either trait or projection goals.
@@ -52,7 +56,7 @@ where
 
     fn with_replaced_self_ty(self, cx: I, self_ty: I::Ty) -> Self;
 
-    fn trait_def_id(self, cx: I) -> I::DefId;
+    fn trait_def_id(self, cx: I) -> I::TraitId;
 
     /// Consider a clause, which consists of a "assumption" and some "requirements",
     /// to satisfy a goal. If the requirements hold, then attempt to satisfy our
@@ -83,7 +87,7 @@ where
     ) -> Result<Candidate<I>, NoSolution> {
         Self::probe_and_match_goal_against_assumption(ecx, source, goal, assumption, |ecx| {
             let cx = ecx.cx();
-            let ty::Dynamic(bounds, _, _) = goal.predicate.self_ty().kind() else {
+            let ty::Dynamic(bounds, _) = goal.predicate.self_ty().kind() else {
                 panic!("expected object type in `probe_and_consider_object_bound_candidate`");
             };
             match structural_traits::predicates_for_object_candidate(
@@ -116,8 +120,11 @@ where
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
         assumption: I::Clause,
-    ) -> Result<Candidate<I>, NoSolution> {
-        Self::fast_reject_assumption(ecx, goal, assumption)?;
+    ) -> Result<Candidate<I>, CandidateHeadUsages> {
+        match Self::fast_reject_assumption(ecx, goal, assumption) {
+            Ok(()) => {}
+            Err(NoSolution) => return Err(CandidateHeadUsages::default()),
+        }
 
         // Dealing with `ParamEnv` candidates is a bit of a mess as we need to lazily
         // check whether the candidate is global while considering normalization.
@@ -126,18 +133,23 @@ where
         // in `probe` even if the candidate does not apply before we get there. We handle this
         // by using a `Cell` here. We only ever write into it inside of `match_assumption`.
         let source = Cell::new(CandidateSource::ParamEnv(ParamEnvSource::Global));
-        ecx.probe(|result: &QueryResult<I>| inspect::ProbeKind::TraitCandidate {
-            source: source.get(),
-            result: *result,
-        })
-        .enter(|ecx| {
-            Self::match_assumption(ecx, goal, assumption, |ecx| {
-                ecx.try_evaluate_added_goals()?;
-                source.set(ecx.characterize_param_env_assumption(goal.param_env, assumption)?);
-                ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        let (result, head_usages) = ecx
+            .probe(|result: &QueryResult<I>| inspect::ProbeKind::TraitCandidate {
+                source: source.get(),
+                result: *result,
             })
-        })
-        .map(|result| Candidate { source: source.get(), result })
+            .enter_single_candidate(|ecx| {
+                Self::match_assumption(ecx, goal, assumption, |ecx| {
+                    ecx.try_evaluate_added_goals()?;
+                    source.set(ecx.characterize_param_env_assumption(goal.param_env, assumption)?);
+                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                })
+            });
+
+        match result {
+            Ok(result) => Ok(Candidate { source: source.get(), result, head_usages }),
+            Err(NoSolution) => Err(head_usages),
+        }
     }
 
     /// Try equating an assumption predicate against a goal's predicate. If it
@@ -176,7 +188,8 @@ where
     fn consider_impl_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
-        impl_def_id: I::DefId,
+        impl_def_id: I::ImplId,
+        then: impl FnOnce(&mut EvalCtxt<'_, D>, Certainty) -> QueryResult<I>,
     ) -> Result<Candidate<I>, NoSolution>;
 
     /// If the predicate contained an error, we want to avoid emitting unnecessary trait
@@ -355,6 +368,28 @@ pub(super) enum AssembleCandidatesFrom {
     EnvAndBounds,
 }
 
+impl AssembleCandidatesFrom {
+    fn should_assemble_impl_candidates(&self) -> bool {
+        match self {
+            AssembleCandidatesFrom::All => true,
+            AssembleCandidatesFrom::EnvAndBounds => false,
+        }
+    }
+}
+
+/// This is currently used to track the [CandidateHeadUsages] of all failed `ParamEnv`
+/// candidates. This is then used to ignore their head usages in case there's another
+/// always applicable `ParamEnv` candidate. Look at how `param_env_head_usages` is
+/// used in the code for more details.
+///
+/// We could easily extend this to also ignore head usages of other ignored candidates.
+/// However, we currently don't have any tests where this matters and the complexity of
+/// doing so does not feel worth it for now.
+#[derive(Debug)]
+pub(super) struct FailedCandidateInfo {
+    pub param_env_head_usages: CandidateHeadUsages,
+}
+
 impl<D, I> EvalCtxt<'_, D>
 where
     D: SolverDelegate<Interner = I>,
@@ -364,34 +399,38 @@ where
         &mut self,
         goal: Goal<I, G>,
         assemble_from: AssembleCandidatesFrom,
-    ) -> Vec<Candidate<I>> {
+    ) -> (Vec<Candidate<I>>, FailedCandidateInfo) {
+        let mut candidates = vec![];
+        let mut failed_candidate_info =
+            FailedCandidateInfo { param_env_head_usages: CandidateHeadUsages::default() };
         let Ok(normalized_self_ty) =
             self.structurally_normalize_ty(goal.param_env, goal.predicate.self_ty())
         else {
-            return vec![];
+            return (candidates, failed_candidate_info);
         };
-
-        if normalized_self_ty.is_ty_var() {
-            debug!("self type has been normalized to infer");
-            return self.forced_ambiguity(MaybeCause::Ambiguity).into_iter().collect();
-        }
 
         let goal: Goal<I, G> = goal
             .with(self.cx(), goal.predicate.with_replaced_self_ty(self.cx(), normalized_self_ty));
+
+        if normalized_self_ty.is_ty_var() {
+            debug!("self type has been normalized to infer");
+            self.try_assemble_bounds_via_registered_opaques(goal, assemble_from, &mut candidates);
+            return (candidates, failed_candidate_info);
+        }
+
         // Vars that show up in the rest of the goal substs may have been constrained by
         // normalizing the self type as well, since type variables are not uniquified.
         let goal = self.resolve_vars_if_possible(goal);
 
-        let mut candidates = vec![];
-
         if let TypingMode::Coherence = self.typing_mode()
             && let Ok(candidate) = self.consider_coherence_unknowable_candidate(goal)
         {
-            return vec![candidate];
+            candidates.push(candidate);
+            return (candidates, failed_candidate_info);
         }
 
         self.assemble_alias_bound_candidates(goal, &mut candidates);
-        self.assemble_param_env_candidates(goal, &mut candidates);
+        self.assemble_param_env_candidates(goal, &mut candidates, &mut failed_candidate_info);
 
         match assemble_from {
             AssembleCandidatesFrom::All => {
@@ -423,7 +462,7 @@ where
             AssembleCandidatesFrom::EnvAndBounds => {}
         }
 
-        candidates
+        (candidates, failed_candidate_info)
     }
 
     pub(super) fn forced_ambiguity(
@@ -436,7 +475,7 @@ where
         //
         // cc trait-system-refactor-initiative#105
         let source = CandidateSource::BuiltinImpl(BuiltinImplSource::Misc);
-        let certainty = Certainty::Maybe(cause);
+        let certainty = Certainty::Maybe { cause, opaque_types_jank: OpaqueTypesJank::AllGood };
         self.probe_trait_candidate(source)
             .enter(|this| this.evaluate_added_goals_and_make_canonical_response(certainty))
     }
@@ -458,8 +497,9 @@ where
                 if cx.impl_is_default(impl_def_id) {
                     return;
                 }
-
-                match G::consider_impl_candidate(self, goal, impl_def_id) {
+                match G::consider_impl_candidate(self, goal, impl_def_id, |ecx, certainty| {
+                    ecx.evaluate_added_goals_and_make_canonical_response(certainty)
+                }) {
                     Ok(candidate) => candidates.push(candidate),
                     Err(NoSolution) => (),
                 }
@@ -490,80 +530,80 @@ where
         } else if cx.trait_is_alias(trait_def_id) {
             G::consider_trait_alias_candidate(self, goal)
         } else {
-            match cx.as_lang_item(trait_def_id) {
-                Some(TraitSolverLangItem::Sized) => {
+            match cx.as_trait_lang_item(trait_def_id) {
+                Some(SolverTraitLangItem::Sized) => {
                     G::consider_builtin_sizedness_candidates(self, goal, SizedTraitKind::Sized)
                 }
-                Some(TraitSolverLangItem::MetaSized) => {
+                Some(SolverTraitLangItem::MetaSized) => {
                     G::consider_builtin_sizedness_candidates(self, goal, SizedTraitKind::MetaSized)
                 }
-                Some(TraitSolverLangItem::PointeeSized) => {
+                Some(SolverTraitLangItem::PointeeSized) => {
                     unreachable!("`PointeeSized` is removed during lowering");
                 }
-                Some(TraitSolverLangItem::Copy | TraitSolverLangItem::Clone) => {
+                Some(SolverTraitLangItem::Copy | SolverTraitLangItem::Clone) => {
                     G::consider_builtin_copy_clone_candidate(self, goal)
                 }
-                Some(TraitSolverLangItem::Fn) => {
+                Some(SolverTraitLangItem::Fn) => {
                     G::consider_builtin_fn_trait_candidates(self, goal, ty::ClosureKind::Fn)
                 }
-                Some(TraitSolverLangItem::FnMut) => {
+                Some(SolverTraitLangItem::FnMut) => {
                     G::consider_builtin_fn_trait_candidates(self, goal, ty::ClosureKind::FnMut)
                 }
-                Some(TraitSolverLangItem::FnOnce) => {
+                Some(SolverTraitLangItem::FnOnce) => {
                     G::consider_builtin_fn_trait_candidates(self, goal, ty::ClosureKind::FnOnce)
                 }
-                Some(TraitSolverLangItem::AsyncFn) => {
+                Some(SolverTraitLangItem::AsyncFn) => {
                     G::consider_builtin_async_fn_trait_candidates(self, goal, ty::ClosureKind::Fn)
                 }
-                Some(TraitSolverLangItem::AsyncFnMut) => {
+                Some(SolverTraitLangItem::AsyncFnMut) => {
                     G::consider_builtin_async_fn_trait_candidates(
                         self,
                         goal,
                         ty::ClosureKind::FnMut,
                     )
                 }
-                Some(TraitSolverLangItem::AsyncFnOnce) => {
+                Some(SolverTraitLangItem::AsyncFnOnce) => {
                     G::consider_builtin_async_fn_trait_candidates(
                         self,
                         goal,
                         ty::ClosureKind::FnOnce,
                     )
                 }
-                Some(TraitSolverLangItem::FnPtrTrait) => {
+                Some(SolverTraitLangItem::FnPtrTrait) => {
                     G::consider_builtin_fn_ptr_trait_candidate(self, goal)
                 }
-                Some(TraitSolverLangItem::AsyncFnKindHelper) => {
+                Some(SolverTraitLangItem::AsyncFnKindHelper) => {
                     G::consider_builtin_async_fn_kind_helper_candidate(self, goal)
                 }
-                Some(TraitSolverLangItem::Tuple) => G::consider_builtin_tuple_candidate(self, goal),
-                Some(TraitSolverLangItem::PointeeTrait) => {
+                Some(SolverTraitLangItem::Tuple) => G::consider_builtin_tuple_candidate(self, goal),
+                Some(SolverTraitLangItem::PointeeTrait) => {
                     G::consider_builtin_pointee_candidate(self, goal)
                 }
-                Some(TraitSolverLangItem::Future) => {
+                Some(SolverTraitLangItem::Future) => {
                     G::consider_builtin_future_candidate(self, goal)
                 }
-                Some(TraitSolverLangItem::Iterator) => {
+                Some(SolverTraitLangItem::Iterator) => {
                     G::consider_builtin_iterator_candidate(self, goal)
                 }
-                Some(TraitSolverLangItem::FusedIterator) => {
+                Some(SolverTraitLangItem::FusedIterator) => {
                     G::consider_builtin_fused_iterator_candidate(self, goal)
                 }
-                Some(TraitSolverLangItem::AsyncIterator) => {
+                Some(SolverTraitLangItem::AsyncIterator) => {
                     G::consider_builtin_async_iterator_candidate(self, goal)
                 }
-                Some(TraitSolverLangItem::Coroutine) => {
+                Some(SolverTraitLangItem::Coroutine) => {
                     G::consider_builtin_coroutine_candidate(self, goal)
                 }
-                Some(TraitSolverLangItem::DiscriminantKind) => {
+                Some(SolverTraitLangItem::DiscriminantKind) => {
                     G::consider_builtin_discriminant_kind_candidate(self, goal)
                 }
-                Some(TraitSolverLangItem::Destruct) => {
+                Some(SolverTraitLangItem::Destruct) => {
                     G::consider_builtin_destruct_candidate(self, goal)
                 }
-                Some(TraitSolverLangItem::TransmuteTrait) => {
+                Some(SolverTraitLangItem::TransmuteTrait) => {
                     G::consider_builtin_transmute_candidate(self, goal)
                 }
-                Some(TraitSolverLangItem::BikeshedGuaranteedNoDrop) => {
+                Some(SolverTraitLangItem::BikeshedGuaranteedNoDrop) => {
                     G::consider_builtin_bikeshed_guaranteed_no_drop_candidate(self, goal)
                 }
                 _ => Err(NoSolution),
@@ -574,7 +614,7 @@ where
 
         // There may be multiple unsize candidates for a trait with several supertraits:
         // `trait Foo: Bar<A> + Bar<B>` and `dyn Foo: Unsize<dyn Bar<_>>`
-        if cx.is_lang_item(trait_def_id, TraitSolverLangItem::Unsize) {
+        if cx.is_trait_lang_item(trait_def_id, SolverTraitLangItem::Unsize) {
             candidates.extend(G::consider_structural_builtin_unsize_candidates(self, goal));
         }
     }
@@ -584,9 +624,15 @@ where
         &mut self,
         goal: Goal<I, G>,
         candidates: &mut Vec<Candidate<I>>,
+        failed_candidate_info: &mut FailedCandidateInfo,
     ) {
         for assumption in goal.param_env.caller_bounds().iter() {
-            candidates.extend(G::probe_and_consider_param_env_candidate(self, goal, assumption));
+            match G::probe_and_consider_param_env_candidate(self, goal, assumption) {
+                Ok(candidate) => candidates.push(candidate),
+                Err(head_usages) => {
+                    failed_candidate_info.param_env_head_usages.merge_usages(head_usages)
+                }
+            }
         }
     }
 
@@ -661,7 +707,11 @@ where
                 if let Ok(result) =
                     self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
                 {
-                    candidates.push(Candidate { source: CandidateSource::AliasBound, result });
+                    candidates.push(Candidate {
+                        source: CandidateSource::AliasBound,
+                        result,
+                        head_usages: CandidateHeadUsages::default(),
+                    });
                 }
                 return;
             }
@@ -907,6 +957,135 @@ where
         }
     }
 
+    /// If the self type is the hidden type of an opaque, try to assemble
+    /// candidates for it by consider its item bounds and by using blanket
+    /// impls. This is used to incompletely guide type inference when handling
+    /// non-defining uses in the defining scope.
+    ///
+    /// We otherwise just fail fail with ambiguity. Even if we're using an
+    /// opaque type item bound or a blank impls, we still force its certainty
+    /// to be `Maybe` so that we properly prove this goal later.
+    ///
+    /// See <https://github.com/rust-lang/trait-system-refactor-initiative/issues/182>
+    /// for why this is necessary.
+    fn try_assemble_bounds_via_registered_opaques<G: GoalKind<D>>(
+        &mut self,
+        goal: Goal<I, G>,
+        assemble_from: AssembleCandidatesFrom,
+        candidates: &mut Vec<Candidate<I>>,
+    ) {
+        let self_ty = goal.predicate.self_ty();
+        // We only use this hack during HIR typeck.
+        let opaque_types = match self.typing_mode() {
+            TypingMode::Analysis { .. } => self.opaques_with_sub_unified_hidden_type(self_ty),
+            TypingMode::Coherence
+            | TypingMode::Borrowck { .. }
+            | TypingMode::PostBorrowckAnalysis { .. }
+            | TypingMode::PostAnalysis => vec![],
+        };
+
+        if opaque_types.is_empty() {
+            candidates.extend(self.forced_ambiguity(MaybeCause::Ambiguity));
+            return;
+        }
+
+        for &alias_ty in &opaque_types {
+            debug!("self ty is sub unified with {alias_ty:?}");
+
+            struct ReplaceOpaque<I: Interner> {
+                cx: I,
+                alias_ty: ty::AliasTy<I>,
+                self_ty: I::Ty,
+            }
+            impl<I: Interner> TypeFolder<I> for ReplaceOpaque<I> {
+                fn cx(&self) -> I {
+                    self.cx
+                }
+                fn fold_ty(&mut self, ty: I::Ty) -> I::Ty {
+                    if let ty::Alias(ty::Opaque, alias_ty) = ty.kind() {
+                        if alias_ty == self.alias_ty {
+                            return self.self_ty;
+                        }
+                    }
+                    ty.super_fold_with(self)
+                }
+            }
+
+            // We look at all item-bounds of the opaque, replacing the
+            // opaque with the current self type before considering
+            // them as a candidate. Imagine e've got `?x: Trait<?y>`
+            // and `?x` has been sub-unified with the hidden type of
+            // `impl Trait<u32>`, We take the item bound `opaque: Trait<u32>`
+            // and replace all occurrences of `opaque` with `?x`. This results
+            // in a `?x: Trait<u32>` alias-bound candidate.
+            for item_bound in self
+                .cx()
+                .item_self_bounds(alias_ty.def_id)
+                .iter_instantiated(self.cx(), alias_ty.args)
+            {
+                let assumption =
+                    item_bound.fold_with(&mut ReplaceOpaque { cx: self.cx(), alias_ty, self_ty });
+                candidates.extend(G::probe_and_match_goal_against_assumption(
+                    self,
+                    CandidateSource::AliasBound,
+                    goal,
+                    assumption,
+                    |ecx| {
+                        // We want to reprove this goal once we've inferred the
+                        // hidden type, so we force the certainty to `Maybe`.
+                        ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+                    },
+                ));
+            }
+        }
+
+        // If the self type is sub unified with any opaque type, we also look at blanket
+        // impls for it.
+        //
+        // See tests/ui/impl-trait/non-defining-uses/use-blanket-impl.rs for an example.
+        if assemble_from.should_assemble_impl_candidates() {
+            let cx = self.cx();
+            cx.for_each_blanket_impl(goal.predicate.trait_def_id(cx), |impl_def_id| {
+                // For every `default impl`, there's always a non-default `impl`
+                // that will *also* apply. There's no reason to register a candidate
+                // for this impl, since it is *not* proof that the trait goal holds.
+                if cx.impl_is_default(impl_def_id) {
+                    return;
+                }
+
+                match G::consider_impl_candidate(self, goal, impl_def_id, |ecx, certainty| {
+                    if ecx.shallow_resolve(self_ty).is_ty_var() {
+                        // We force the certainty of impl candidates to be `Maybe`.
+                        let certainty = certainty.and(Certainty::AMBIGUOUS);
+                        ecx.evaluate_added_goals_and_make_canonical_response(certainty)
+                    } else {
+                        // We don't want to use impls if they constrain the opaque.
+                        //
+                        // FIXME(trait-system-refactor-initiative#229): This isn't
+                        // perfect yet as it still allows us to incorrectly constrain
+                        // other inference variables.
+                        Err(NoSolution)
+                    }
+                }) {
+                    Ok(candidate) => candidates.push(candidate),
+                    Err(NoSolution) => (),
+                }
+            });
+        }
+
+        if candidates.is_empty() {
+            let source = CandidateSource::BuiltinImpl(BuiltinImplSource::Misc);
+            let certainty = Certainty::Maybe {
+                cause: MaybeCause::Ambiguity,
+                opaque_types_jank: OpaqueTypesJank::ErrorIfRigidSelfTy,
+            };
+            candidates
+                .extend(self.probe_trait_candidate(source).enter(|this| {
+                    this.evaluate_added_goals_and_make_canonical_response(certainty)
+                }));
+        }
+    }
+
     /// Assemble and merge candidates for goals which are related to an underlying trait
     /// goal. Right now, this is normalizes-to and host effect goals.
     ///
@@ -959,7 +1138,7 @@ where
                 // Even when a trait bound has been proven using a where-bound, we
                 // still need to consider alias-bounds for normalization, see
                 // `tests/ui/next-solver/alias-bound-shadowed-by-env.rs`.
-                let mut candidates: Vec<_> = self
+                let (mut candidates, _) = self
                     .assemble_and_evaluate_candidates(goal, AssembleCandidatesFrom::EnvAndBounds);
 
                 // We still need to prefer where-bounds over alias-bounds however.
@@ -972,23 +1151,20 @@ where
                     return inject_normalize_to_rigid_candidate(self);
                 }
 
-                if let Some(response) = self.try_merge_candidates(&candidates) {
+                if let Some((response, _)) = self.try_merge_candidates(&candidates) {
                     Ok(response)
                 } else {
                     self.flounder(&candidates)
                 }
             }
             TraitGoalProvenVia::Misc => {
-                let mut candidates =
+                let (mut candidates, _) =
                     self.assemble_and_evaluate_candidates(goal, AssembleCandidatesFrom::All);
 
                 // Prefer "orphaned" param-env normalization predicates, which are used
                 // (for example, and ideally only) when proving item bounds for an impl.
-                let candidates_from_env: Vec<_> = candidates
-                    .extract_if(.., |c| matches!(c.source, CandidateSource::ParamEnv(_)))
-                    .collect();
-                if let Some(response) = self.try_merge_candidates(&candidates_from_env) {
-                    return Ok(response);
+                if candidates.iter().any(|c| matches!(c.source, CandidateSource::ParamEnv(_))) {
+                    candidates.retain(|c| matches!(c.source, CandidateSource::ParamEnv(_)));
                 }
 
                 // We drop specialized impls to allow normalization via a final impl here. In case
@@ -997,7 +1173,7 @@ where
                 // means we can just ignore inference constraints and don't have to special-case
                 // constraining the normalized-to `term`.
                 self.filter_specialized_impls(AllowInferenceConstraints::Yes, &mut candidates);
-                if let Some(response) = self.try_merge_candidates(&candidates) {
+                if let Some((response, _)) = self.try_merge_candidates(&candidates) {
                     Ok(response)
                 } else {
                     self.flounder(&candidates)

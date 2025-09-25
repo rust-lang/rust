@@ -276,7 +276,9 @@ fn wait(
             // If the managing thread happens to signal and unpark us before we
             // can park ourselves, the result could be this thread never gets
             // unparked. Luckily `park` comes with the guarantee that if it got
-            // an `unpark` just before on an unparked thread it does not park.
+            // an `unpark` just before on an unparked thread it does not park. Crucially, we know
+            // the `unpark` must have happened between the `compare_exchange_weak` above and here,
+            // and there's no other `park` in that code that could steal our token.
             // SAFETY: we retrieved this handle on the current thread above.
             unsafe { node.thread.park() }
         }

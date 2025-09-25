@@ -1,3 +1,4 @@
+//~ ERROR reached the recursion limit finding the struct tail for `Bottom`
 //@ check-fail
 //@ compile-flags: --crate-type lib -Cdebuginfo=2
 
@@ -40,5 +41,3 @@ link!(J, K);
 link!(K, Bottom);
 
 fn main() {}
-
-//~? ERROR reached the recursion limit finding the struct tail for `Bottom`

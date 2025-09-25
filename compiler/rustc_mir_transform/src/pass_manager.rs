@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
-use rustc_middle::mir::{self, Body, MirPhase, RuntimePhase};
+use rustc_middle::mir::{Body, MirDumper, MirPhase, RuntimePhase};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use tracing::trace;
@@ -41,19 +41,40 @@ fn to_profiler_name(type_name: &'static str) -> &'static str {
     })
 }
 
-// const wrapper for `if let Some((_, tail)) = name.rsplit_once(':') { tail } else { name }`
-const fn c_name(name: &'static str) -> &'static str {
+// A function that simplifies a pass's type_name. E.g. `Baz`, `Baz<'_>`,
+// `foo::bar::Baz`, and `foo::bar::Baz<'a, 'b>` all become `Baz`.
+//
+// It's `const` for perf reasons: it's called a lot, and doing the string
+// operations at runtime causes a non-trivial slowdown. If
+// `split_once`/`rsplit_once` become `const` its body could be simplified to
+// this:
+// ```ignore (fragment)
+// let name = if let Some((_, tail)) = name.rsplit_once(':') { tail } else { name };
+// let name = if let Some((head, _)) = name.split_once('<') { head } else { name };
+// name
+// ```
+const fn simplify_pass_type_name(name: &'static str) -> &'static str {
     // FIXME(const-hack) Simplify the implementation once more `str` methods get const-stable.
-    // and inline into call site
+
+    // Work backwards from the end. If a ':' is hit, strip it and everything before it.
     let bytes = name.as_bytes();
     let mut i = bytes.len();
     while i > 0 && bytes[i - 1] != b':' {
-        i = i - 1;
+        i -= 1;
     }
     let (_, bytes) = bytes.split_at(i);
+
+    // Work forwards from the start of what's left. If a '<' is hit, strip it and everything after
+    // it.
+    let mut i = 0;
+    while i < bytes.len() && bytes[i] != b'<' {
+        i += 1;
+    }
+    let (bytes, _) = bytes.split_at(i);
+
     match std::str::from_utf8(bytes) {
         Ok(name) => name,
-        Err(_) => name,
+        Err(_) => panic!(),
     }
 }
 
@@ -62,12 +83,7 @@ const fn c_name(name: &'static str) -> &'static str {
 /// loop that goes over each available MIR and applies `run_pass`.
 pub(super) trait MirPass<'tcx> {
     fn name(&self) -> &'static str {
-        // FIXME(const-hack) Simplify the implementation once more `str` methods get const-stable.
-        // See copypaste in `MirLint`
-        const {
-            let name = std::any::type_name::<Self>();
-            c_name(name)
-        }
+        const { simplify_pass_type_name(std::any::type_name::<Self>()) }
     }
 
     fn profiler_name(&self) -> &'static str {
@@ -101,12 +117,7 @@ pub(super) trait MirPass<'tcx> {
 /// disabled (via the `Lint` adapter).
 pub(super) trait MirLint<'tcx> {
     fn name(&self) -> &'static str {
-        // FIXME(const-hack) Simplify the implementation once more `str` methods get const-stable.
-        // See copypaste in `MirPass`
-        const {
-            let name = std::any::type_name::<Self>();
-            c_name(name)
-        }
+        const { simplify_pass_type_name(std::any::type_name::<Self>()) }
     }
 
     fn is_enabled(&self, _sess: &Session) -> bool {
@@ -270,16 +281,22 @@ fn run_passes_inner<'tcx>(
         let lint = tcx.sess.opts.unstable_opts.lint_mir;
 
         for pass in passes {
-            let name = pass.name();
+            let pass_name = pass.name();
 
             if !should_run_pass(tcx, *pass, optimizations) {
                 continue;
             };
 
-            let dump_enabled = pass.is_mir_dump_enabled();
+            let dumper = if pass.is_mir_dump_enabled()
+                && let Some(dumper) = MirDumper::new(tcx, pass_name, body)
+            {
+                Some(dumper.set_show_pass_num().set_disambiguator(&"before"))
+            } else {
+                None
+            };
 
-            if dump_enabled {
-                dump_mir_for_pass(tcx, body, name, false);
+            if let Some(dumper) = dumper.as_ref() {
+                dumper.dump_mir(body);
             }
 
             if let Some(prof_arg) = &prof_arg {
@@ -291,14 +308,15 @@ fn run_passes_inner<'tcx>(
                 pass.run_pass(tcx, body);
             }
 
-            if dump_enabled {
-                dump_mir_for_pass(tcx, body, name, true);
+            if let Some(dumper) = dumper {
+                dumper.set_disambiguator(&"after").dump_mir(body);
             }
+
             if validate {
-                validate_body(tcx, body, format!("after pass {name}"));
+                validate_body(tcx, body, format!("after pass {pass_name}"));
             }
             if lint {
-                lint_body(tcx, body, format!("after pass {name}"));
+                lint_body(tcx, body, format!("after pass {pass_name}"));
             }
 
             body.pass_count += 1;
@@ -334,18 +352,9 @@ pub(super) fn validate_body<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, when
     validate::Validator { when }.run_pass(tcx, body);
 }
 
-fn dump_mir_for_pass<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, pass_name: &str, is_after: bool) {
-    mir::dump_mir(
-        tcx,
-        true,
-        pass_name,
-        if is_after { &"after" } else { &"before" },
-        body,
-        |_, _| Ok(()),
-    );
-}
-
 pub(super) fn dump_mir_for_phase_change<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
     assert_eq!(body.pass_count, 0);
-    mir::dump_mir(tcx, true, body.phase.name(), &"after", body, |_, _| Ok(()))
+    if let Some(dumper) = MirDumper::new(tcx, body.phase.name(), body) {
+        dumper.set_show_pass_num().set_disambiguator(&"after").dump_mir(body)
+    }
 }

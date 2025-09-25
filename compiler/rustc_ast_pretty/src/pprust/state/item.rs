@@ -308,39 +308,41 @@ impl<'a> State<'a> {
                 let (cb, ib) = self.head(visibility_qualified(&item.vis, "union"));
                 self.print_struct(struct_def, generics, *ident, item.span, true, cb, ib);
             }
-            ast::ItemKind::Impl(box ast::Impl {
-                safety,
-                polarity,
-                defaultness,
-                constness,
-                generics,
-                of_trait,
-                self_ty,
-                items,
-            }) => {
+            ast::ItemKind::Impl(ast::Impl { generics, of_trait, self_ty, items }) => {
                 let (cb, ib) = self.head("");
                 self.print_visibility(&item.vis);
-                self.print_defaultness(*defaultness);
-                self.print_safety(*safety);
-                self.word("impl");
 
-                if generics.params.is_empty() {
-                    self.nbsp();
-                } else {
-                    self.print_generic_params(&generics.params);
-                    self.space();
-                }
+                let impl_generics = |this: &mut Self| {
+                    this.word("impl");
 
-                self.print_constness(*constness);
+                    if generics.params.is_empty() {
+                        this.nbsp();
+                    } else {
+                        this.print_generic_params(&generics.params);
+                        this.space();
+                    }
+                };
 
-                if let ast::ImplPolarity::Negative(_) = polarity {
-                    self.word("!");
-                }
-
-                if let Some(t) = of_trait {
-                    self.print_trait_ref(t);
+                if let Some(box of_trait) = of_trait {
+                    let ast::TraitImplHeader {
+                        defaultness,
+                        safety,
+                        constness,
+                        polarity,
+                        ref trait_ref,
+                    } = *of_trait;
+                    self.print_defaultness(defaultness);
+                    self.print_safety(safety);
+                    impl_generics(self);
+                    self.print_constness(constness);
+                    if let ast::ImplPolarity::Negative(_) = polarity {
+                        self.word("!");
+                    }
+                    self.print_trait_ref(trait_ref);
                     self.space();
                     self.word_space("for");
+                } else {
+                    impl_generics(self);
                 }
 
                 self.print_type(self_ty);

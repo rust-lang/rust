@@ -44,12 +44,28 @@ pub(super) fn check<'tcx>(
                     }
                 }
 
-                // Skip if the trait is not stable in const contexts
-                if is_in_const_context(cx)
-                    && let Some(binop_id) = cx.tcx.associated_item_def_ids(trait_id).first()
-                    && !is_stable_const_fn(cx, *binop_id, msrv)
-                {
-                    return;
+                // Skip if the trait or the implementation is not stable in const contexts
+                if is_in_const_context(cx) {
+                    if cx
+                        .tcx
+                        .associated_item_def_ids(trait_id)
+                        .first()
+                        .is_none_or(|binop_id| !is_stable_const_fn(cx, *binop_id, msrv))
+                    {
+                        return;
+                    }
+
+                    let impls = cx.tcx.non_blanket_impls_for_ty(trait_id, rty).collect::<Vec<_>>();
+                    if impls.is_empty()
+                        || impls.into_iter().any(|impl_id| {
+                            cx.tcx
+                                .associated_item_def_ids(impl_id)
+                                .first()
+                                .is_none_or(|fn_id| !is_stable_const_fn(cx, *fn_id, msrv))
+                        })
+                    {
+                        return;
+                    }
                 }
 
                 span_lint_and_then(

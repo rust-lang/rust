@@ -141,7 +141,7 @@ impl LateLintPass<'_> for MyStructLint {
             // we are looking for the `DefId` of `Drop` trait in lang items
             .drop_trait()
             // then we use it with our type `ty` by calling `implements_trait` from Clippy's utils
-            .map_or(false, |id| implements_trait(cx, ty, id, &[])) {
+            .is_some_and(|id| implements_trait(cx, ty, id, &[])) {
                 // `expr` implements `Drop` trait
             }
     }

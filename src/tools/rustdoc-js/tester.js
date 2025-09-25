@@ -1,7 +1,8 @@
 /* global globalThis */
+
 const fs = require("fs");
 const path = require("path");
-
+const { isGeneratorObject } = require("util/types");
 
 function arrayToCode(array) {
     return array.map((value, index) => {
@@ -45,23 +46,16 @@ function shouldIgnoreField(fieldName) {
 }
 
 function valueMapper(key, testOutput) {
-    const isAlias = testOutput["is_alias"];
     let value = testOutput[key];
     // To make our life easier, if there is a "parent" type, we add it to the path.
     if (key === "path") {
-        if (testOutput["parent"] !== undefined) {
+        if (testOutput["parent"]) {
             if (value.length > 0) {
                 value += "::" + testOutput["parent"]["name"];
             } else {
                 value = testOutput["parent"]["name"];
             }
-        } else if (testOutput["is_alias"]) {
-            value = valueMapper(key, testOutput["original"]);
         }
-    } else if (isAlias && key === "alias") {
-        value = testOutput["name"];
-    } else if (isAlias && ["name"].includes(key)) {
-        value = testOutput["original"][key];
     }
     return value;
 }
@@ -237,7 +231,7 @@ async function runSearch(query, expected, doSearch, loadedFile, queryName) {
     const ignore_order = loadedFile.ignore_order;
     const exact_check = loadedFile.exact_check;
 
-    const results = await doSearch(query, loadedFile.FILTER_CRATE);
+    const { resultsTable } = await doSearch(query, loadedFile.FILTER_CRATE);
     const error_text = [];
 
     for (const key in expected) {
@@ -247,37 +241,38 @@ async function runSearch(query, expected, doSearch, loadedFile, queryName) {
         if (!Object.prototype.hasOwnProperty.call(expected, key)) {
             continue;
         }
-        if (!Object.prototype.hasOwnProperty.call(results, key)) {
+        if (!Object.prototype.hasOwnProperty.call(resultsTable, key)) {
             error_text.push("==> Unknown key \"" + key + "\"");
             break;
         }
         const entry = expected[key];
 
-        if (exact_check && entry.length !== results[key].length) {
+        if (exact_check && entry.length !== resultsTable[key].length) {
             error_text.push(queryName + "==> Expected exactly " + entry.length +
-                            " results but found " + results[key].length + " in '" + key + "'");
+                            " results but found " + resultsTable[key].length + " in '" + key + "'");
         }
 
         let prev_pos = -1;
         for (const [index, elem] of entry.entries()) {
-            const entry_pos = lookForEntry(elem, results[key]);
+            const entry_pos = lookForEntry(elem, resultsTable[key]);
             if (entry_pos === -1) {
                 error_text.push(queryName + "==> Result not found in '" + key + "': '" +
                                 JSON.stringify(elem) + "'");
                 // By default, we just compare the two first items.
                 let item_to_diff = 0;
-                if ((!ignore_order || exact_check) && index < results[key].length) {
+                if ((!ignore_order || exact_check) && index < resultsTable[key].length) {
                     item_to_diff = index;
                 }
                 error_text.push("Diff of first error:\n" +
-                    betterLookingDiff(elem, results[key][item_to_diff]));
+                    betterLookingDiff(elem, resultsTable[key][item_to_diff]));
             } else if (exact_check === true && prev_pos + 1 !== entry_pos) {
                 error_text.push(queryName + "==> Exact check failed at position " + (prev_pos + 1) +
                                 ": expected '" + JSON.stringify(elem) + "' but found '" +
-                                JSON.stringify(results[key][index]) + "'");
+                                JSON.stringify(resultsTable[key][index]) + "'");
             } else if (ignore_order === false && entry_pos < prev_pos) {
-                error_text.push(queryName + "==> '" + JSON.stringify(elem) + "' was supposed " +
-                                "to be before '" + JSON.stringify(results[key][prev_pos]) + "'");
+                error_text.push(queryName + "==> '" +
+                                JSON.stringify(elem) + "' was supposed to be before '" +
+                                JSON.stringify(resultsTable[key][prev_pos]) + "'");
             } else {
                 prev_pos = entry_pos;
             }
@@ -286,19 +281,20 @@ async function runSearch(query, expected, doSearch, loadedFile, queryName) {
     return error_text;
 }
 
-async function runCorrections(query, corrections, getCorrections, loadedFile) {
-    const qc = await getCorrections(query, loadedFile.FILTER_CRATE);
+async function runCorrections(query, corrections, doSearch, loadedFile) {
+    const { parsedQuery } = await doSearch(query, loadedFile.FILTER_CRATE);
+    const qc = parsedQuery.correction;
     const error_text = [];
 
     if (corrections === null) {
         if (qc !== null) {
-            error_text.push(`==> expected = null, found = ${qc}`);
+            error_text.push(`==> [correction] expected = null, found = ${qc}`);
         }
         return error_text;
     }
 
-    if (qc !== corrections.toLowerCase()) {
-        error_text.push(`==> expected = ${corrections}, found = ${qc}`);
+    if (qc.toLowerCase() !== corrections.toLowerCase()) {
+        error_text.push(`==> [correction] expected = ${corrections}, found = ${qc}`);
     }
 
     return error_text;
@@ -320,7 +316,7 @@ function checkResult(error_text, loadedFile, displaySuccess) {
     return 1;
 }
 
-async function runCheckInner(callback, loadedFile, entry, getCorrections, extra) {
+async function runCheckInner(callback, loadedFile, entry, extra, doSearch) {
     if (typeof entry.query !== "string") {
         console.log("FAILED");
         console.log("==> Missing `query` field");
@@ -338,7 +334,7 @@ async function runCheckInner(callback, loadedFile, entry, getCorrections, extra)
         error_text = await runCorrections(
             entry.query,
             entry.correction,
-            getCorrections,
+            doSearch,
             loadedFile,
         );
         if (checkResult(error_text, loadedFile, false) !== 0) {
@@ -348,16 +344,16 @@ async function runCheckInner(callback, loadedFile, entry, getCorrections, extra)
     return true;
 }
 
-async function runCheck(loadedFile, key, getCorrections, callback) {
+async function runCheck(loadedFile, key, doSearch, callback) {
     const expected = loadedFile[key];
 
     if (Array.isArray(expected)) {
         for (const entry of expected) {
-            if (!await runCheckInner(callback, loadedFile, entry, getCorrections, true)) {
+            if (!await runCheckInner(callback, loadedFile, entry, true, doSearch)) {
                 return 1;
             }
         }
-    } else if (!await runCheckInner(callback, loadedFile, expected, getCorrections, false)) {
+    } else if (!await runCheckInner(callback, loadedFile, expected, false, doSearch)) {
         return 1;
     }
     console.log("OK");
@@ -368,7 +364,7 @@ function hasCheck(content, checkName) {
     return content.startsWith(`const ${checkName}`) || content.includes(`\nconst ${checkName}`);
 }
 
-async function runChecks(testFile, doSearch, parseQuery, getCorrections) {
+async function runChecks(testFile, doSearch, parseQuery) {
     let checkExpected = false;
     let checkParsed = false;
     let testFileContent = readFile(testFile);
@@ -397,16 +393,34 @@ async function runChecks(testFile, doSearch, parseQuery, getCorrections) {
     let res = 0;
 
     if (checkExpected) {
-        res += await runCheck(loadedFile, "EXPECTED", getCorrections, (query, expected, text) => {
+        res += await runCheck(loadedFile, "EXPECTED", doSearch, (query, expected, text) => {
             return runSearch(query, expected, doSearch, loadedFile, text);
         });
     }
     if (checkParsed) {
-        res += await runCheck(loadedFile, "PARSED", getCorrections, (query, expected, text) => {
+        res += await runCheck(loadedFile, "PARSED", doSearch, (query, expected, text) => {
             return runParser(query, expected, parseQuery, text);
         });
     }
     return res;
+}
+
+function mostRecentMatch(staticFiles, regex) {
+    const matchingEntries = fs.readdirSync(staticFiles)
+        .filter(f => f.match(regex))
+        .map(f => {
+            const stats = fs.statSync(path.join(staticFiles, f));
+            return {
+                path: f,
+                time: stats.mtimeMs,
+            };
+        });
+    if (matchingEntries.length === 0) {
+        throw "No static file matching regex";
+    }
+    // We sort entries in descending order.
+    matchingEntries.sort((a, b) => b.time - a.time);
+    return matchingEntries[0].path;
 }
 
 /**
@@ -416,71 +430,89 @@ async function runChecks(testFile, doSearch, parseQuery, getCorrections) {
  * @param {string} resource_suffix - Version number between filename and .js, e.g. "1.59.0"
  * @returns {Object}               - Object containing keys: `doSearch`, which runs a search
  *   with the loaded index and returns a table of results; `parseQuery`, which is the
- *   `parseQuery` function exported from the search module; and `getCorrections`, which runs
+ *   `parseQuery` function exported from the search module, which runs
  *   a search but returns type name corrections instead of results.
  */
-function loadSearchJS(doc_folder, resource_suffix) {
-    const searchIndexJs = path.join(doc_folder, "search-index" + resource_suffix + ".js");
-    const searchIndex = require(searchIndexJs);
-
-    globalThis.searchState = {
-        descShards: new Map(),
-        loadDesc: async function({descShard, descIndex}) {
-            if (descShard.promise === null) {
-                descShard.promise = new Promise((resolve, reject) => {
-                    descShard.resolve = resolve;
-                    const ds = descShard;
-                    const fname = `${ds.crate}-desc-${ds.shard}-${resource_suffix}.js`;
-                    fs.readFile(
-                        `${doc_folder}/search.desc/${descShard.crate}/${fname}`,
-                        (err, data) => {
-                            if (err) {
-                                reject(err);
-                            } else {
-                                eval(data.toString("utf8"));
-                            }
-                        },
-                    );
-                });
-            }
-            const list = await descShard.promise;
-            return list[descIndex];
-        },
-        loadedDescShard: function(crate, shard, data) {
-            this.descShards.get(crate)[shard].resolve(data.split("\n"));
-        },
-    };
-
+async function loadSearchJS(doc_folder, resource_suffix) {
     const staticFiles = path.join(doc_folder, "static.files");
-    const searchJs = fs.readdirSync(staticFiles).find(f => f.match(/search.*\.js$/));
+    const stringdexJs = mostRecentMatch(staticFiles, /stringdex.*\.js$/);
+    const stringdexModule = require(path.join(staticFiles, stringdexJs));
+    const searchJs = mostRecentMatch(staticFiles, /search-[0-9a-f]{8}.*\.js$/);
     const searchModule = require(path.join(staticFiles, searchJs));
-    searchModule.initSearch(searchIndex.searchIndex);
-    const docSearch = searchModule.docSearch;
+    globalThis.nonnull = (x, msg) => {
+        if (x === null) {
+            throw (msg || "unexpected null value!");
+        } else {
+            return x;
+        }
+    };
+    const { docSearch, DocSearch } = await searchModule.initSearch(
+        stringdexModule.Stringdex,
+        stringdexModule.RoaringBitmap,
+        {
+            loadRoot: callbacks => {
+                for (const key in callbacks) {
+                    if (Object.hasOwn(callbacks, key)) {
+                        globalThis[key] = callbacks[key];
+                    }
+                }
+                const rootJs = readFile(path.join(doc_folder, "search.index/root" +
+                    resource_suffix + ".js"));
+                eval(rootJs);
+            },
+            loadTreeByHash: hashHex => {
+                const shardJs = readFile(path.join(doc_folder, "search.index/" + hashHex + ".js"));
+                eval(shardJs);
+            },
+            loadDataByNameAndHash: (name, hashHex) => {
+                const shardJs = readFile(path.join(doc_folder, "search.index/" + name + "/" +
+                    hashHex + ".js"));
+                eval(shardJs);
+            },
+        },
+    );
     return {
         doSearch: async function(queryStr, filterCrate, currentCrate) {
-            const result = await docSearch.execQuery(searchModule.parseQuery(queryStr),
-                filterCrate, currentCrate);
+            const parsedQuery = DocSearch.parseQuery(queryStr);
+            const result = await docSearch.execQuery(parsedQuery, filterCrate, currentCrate);
+            const resultsTable = {};
             for (const tab in result) {
                 if (!Object.prototype.hasOwnProperty.call(result, tab)) {
                     continue;
                 }
-                if (!(result[tab] instanceof Array)) {
+                if (!isGeneratorObject(result[tab])) {
                     continue;
                 }
-                for (const entry of result[tab]) {
+                resultsTable[tab] = [];
+                for await (const entry of result[tab]) {
+                    const flatEntry = Object.assign({
+                        crate: entry.item.crate,
+                        name: entry.item.name,
+                        path: entry.item.modulePath,
+                        exactPath: entry.item.exactModulePath,
+                        ty: entry.item.ty,
+                    }, entry);
                     for (const key in entry) {
                         if (!Object.prototype.hasOwnProperty.call(entry, key)) {
                             continue;
                         }
-                        if (key === "displayTypeSignature" && entry.displayTypeSignature !== null) {
-                            const {type, mappedNames, whereClause} =
-                                await entry.displayTypeSignature;
-                            entry.displayType = arrayToCode(type);
-                            entry.displayMappedNames = [...mappedNames.entries()]
+                        if (key === "desc" && entry.desc !== null) {
+                            flatEntry.desc = await entry.desc;
+                        } else if (key === "displayTypeSignature" &&
+                            entry.displayTypeSignature !== null
+                        ) {
+                            flatEntry.displayTypeSignature = await entry.displayTypeSignature;
+                            const {
+                                type,
+                                mappedNames,
+                                whereClause,
+                            } = flatEntry.displayTypeSignature;
+                            flatEntry.displayType = arrayToCode(type);
+                            flatEntry.displayMappedNames = [...mappedNames.entries()]
                                 .map(([name, qname]) => {
                                     return `${name} = ${qname}`;
                                 }).join(", ");
-                            entry.displayWhereClause = [...whereClause.entries()]
+                            flatEntry.displayWhereClause = [...whereClause.entries()]
                                 .flatMap(([name, value]) => {
                                     if (value.length === 0) {
                                         return [];
@@ -489,16 +521,12 @@ function loadSearchJS(doc_folder, resource_suffix) {
                                 }).join(", ");
                         }
                     }
+                    resultsTable[tab].push(flatEntry);
                 }
             }
-            return result;
+            return { resultsTable, parsedQuery };
         },
-        getCorrections: function(queryStr, filterCrate, currentCrate) {
-            const parsedQuery = searchModule.parseQuery(queryStr);
-            docSearch.execQuery(parsedQuery, filterCrate, currentCrate);
-            return parsedQuery.correction;
-        },
-        parseQuery: searchModule.parseQuery,
+        parseQuery: DocSearch.parseQuery,
     };
 }
 
@@ -570,7 +598,7 @@ async function main(argv) {
         return 1;
     }
 
-    const parseAndSearch = loadSearchJS(
+    const parseAndSearch = await loadSearchJS(
         opts["doc_folder"],
         opts["resource_suffix"],
     );
@@ -579,14 +607,11 @@ async function main(argv) {
     const doSearch = function(queryStr, filterCrate) {
         return parseAndSearch.doSearch(queryStr, filterCrate, opts["crate_name"]);
     };
-    const getCorrections = function(queryStr, filterCrate) {
-        return parseAndSearch.getCorrections(queryStr, filterCrate, opts["crate_name"]);
-    };
 
     if (opts["test_file"].length !== 0) {
         for (const file of opts["test_file"]) {
             process.stdout.write(`Testing ${file} ... `);
-            errors += await runChecks(file, doSearch, parseAndSearch.parseQuery, getCorrections);
+            errors += await runChecks(file, doSearch, parseAndSearch.parseQuery);
         }
     } else if (opts["test_folder"].length !== 0) {
         for (const file of fs.readdirSync(opts["test_folder"])) {
@@ -595,7 +620,7 @@ async function main(argv) {
             }
             process.stdout.write(`Testing ${file} ... `);
             errors += await runChecks(path.join(opts["test_folder"], file), doSearch,
-                    parseAndSearch.parseQuery, getCorrections);
+                    parseAndSearch.parseQuery);
         }
     }
     return errors > 0 ? 1 : 0;

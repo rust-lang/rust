@@ -12,7 +12,7 @@ note: in edition 2024, the requirement `!: Default` will fail
    |
 LL |         true => Default::default(),
    |                 ^^^^^^^^^^^^^^^^^^
-   = note: `#[warn(dependency_on_unit_never_type_fallback)]` on by default
+   = note: `#[warn(dependency_on_unit_never_type_fallback)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
 help: use `()` annotations to avoid fallback changes
    |
 LL |     let x: () = match true {
@@ -111,7 +111,7 @@ note: in edition 2024, the requirement `!: Default` will fail
    |
 LL |         true => Default::default(),
    |                 ^^^^^^^^^^^^^^^^^^
-   = note: `#[warn(dependency_on_unit_never_type_fallback)]` on by default
+   = note: `#[warn(dependency_on_unit_never_type_fallback)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
 help: use `()` annotations to avoid fallback changes
    |
 LL |     let x: () = match true {
@@ -132,7 +132,7 @@ note: in edition 2024, the requirement `!: Default` will fail
    |
 LL |     deserialize()?;
    |     ^^^^^^^^^^^^^
-   = note: `#[warn(dependency_on_unit_never_type_fallback)]` on by default
+   = note: `#[warn(dependency_on_unit_never_type_fallback)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
 help: use `()` annotations to avoid fallback changes
    |
 LL |     deserialize::<()>()?;
@@ -153,7 +153,7 @@ note: in edition 2024, the requirement `(): From<!>` will fail
    |
 LL |     help(1)?;
    |     ^^^^^^^
-   = note: `#[warn(dependency_on_unit_never_type_fallback)]` on by default
+   = note: `#[warn(dependency_on_unit_never_type_fallback)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
 help: use `()` annotations to avoid fallback changes
    |
 LL |     help::<(), _>(1)?;
@@ -174,7 +174,7 @@ note: in edition 2024, the requirement `!: Default` will fail
    |
 LL |     takes_apit(|| Default::default())?;
    |                   ^^^^^^^^^^^^^^^^^^
-   = note: `#[warn(dependency_on_unit_never_type_fallback)]` on by default
+   = note: `#[warn(dependency_on_unit_never_type_fallback)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
 help: use `()` annotations to avoid fallback changes
    |
 LL |     takes_apit::<()>(|| Default::default())?;
@@ -195,7 +195,7 @@ note: in edition 2024, the requirement `!: Default` will fail
    |
 LL |     takes_apit2(mk()?);
    |                 ^^^^^
-   = note: `#[warn(dependency_on_unit_never_type_fallback)]` on by default
+   = note: `#[warn(dependency_on_unit_never_type_fallback)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
 help: use `()` annotations to avoid fallback changes
    |
 LL |     takes_apit2(mk::<()>()?);

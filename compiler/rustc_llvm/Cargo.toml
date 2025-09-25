@@ -10,8 +10,7 @@ libc = "0.2.73"
 
 [build-dependencies]
 # tidy-alphabetical-start
-# `cc` updates often break things, so we pin it here. Cargo enforces "max 1 semver-compat version
-# per crate", so if you change this, you need to also change it in `rustc_codegen_ssa`.
+# `cc` updates often break things, so we pin it here.
 cc = "=1.2.16"
 # tidy-alphabetical-end
 

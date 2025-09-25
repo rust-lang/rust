@@ -15,7 +15,7 @@ pub(crate) fn target() -> Target {
         llvm_target: "aarch64-pc-windows-msvc".into(),
         metadata: TargetMetadata {
             description: Some("ARM64 Windows MSVC".into()),
-            tier: Some(2),
+            tier: Some(1),
             host_tools: Some(true),
             std: Some(true),
         },

@@ -11,7 +11,9 @@
 
 use serde::{Deserialize, Deserializer};
 
-use crate::core::config::{LlvmLibunwind, Merge, ReplaceOpt, SplitDebuginfo, StringOrBool};
+use crate::core::config::{
+    CompilerBuiltins, LlvmLibunwind, Merge, ReplaceOpt, SplitDebuginfo, StringOrBool,
+};
 use crate::{CodegenBackendKind, HashSet, PathBuf, define_config, exit};
 
 define_config! {
@@ -39,7 +41,7 @@ define_config! {
         no_std: Option<bool> = "no-std",
         codegen_backends: Option<Vec<String>> = "codegen-backends",
         runner: Option<String> = "runner",
-        optimized_compiler_builtins: Option<bool> = "optimized-compiler-builtins",
+        optimized_compiler_builtins: Option<CompilerBuiltins> = "optimized-compiler-builtins",
         jemalloc: Option<bool> = "jemalloc",
     }
 }
@@ -71,7 +73,7 @@ pub struct Target {
     pub runner: Option<String>,
     pub no_std: bool,
     pub codegen_backends: Option<Vec<CodegenBackendKind>>,
-    pub optimized_compiler_builtins: Option<bool>,
+    pub optimized_compiler_builtins: Option<CompilerBuiltins>,
     pub jemalloc: Option<bool>,
 }
 

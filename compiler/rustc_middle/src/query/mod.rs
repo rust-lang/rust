@@ -100,7 +100,7 @@ use rustc_session::lint::LintExpectationId;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span, Symbol};
-use rustc_target::spec::PanicStrategy;
+use rustc_target::spec::{PanicStrategy, SanitizerSet};
 use {rustc_abi as abi, rustc_ast as ast, rustc_hir as hir};
 
 use crate::infer::canonical::{self, Canonical};
@@ -131,11 +131,11 @@ use crate::traits::query::{
 };
 use crate::traits::{
     CodegenObligationError, DynCompatibilityViolation, EvaluationResult, ImplSource,
-    ObligationCause, OverflowError, WellFormedLoc, specialization_graph,
+    ObligationCause, OverflowError, WellFormedLoc, solve, specialization_graph,
 };
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::layout::ValidityRequirement;
-use crate::ty::print::{PrintTraitRefExt, describe_as_module};
+use crate::ty::print::PrintTraitRefExt;
 use crate::ty::util::AlwaysRequiresDrop;
 use crate::ty::{
     self, CrateInherentImpls, GenericArg, GenericArgsRef, PseudoCanonicalInput, SizedTraitKind, Ty,
@@ -450,6 +450,8 @@ rustc_queries! {
         }
     }
 
+    /// A list of all bodies inside of `key`, nested bodies are always stored
+    /// before their parent.
     query nested_bodies_within(
         key: LocalDefId
     ) -> &'tcx ty::List<LocalDefId> {
@@ -696,6 +698,22 @@ rustc_queries! {
         return_result_from_ensure_ok
     }
 
+    /// Used in case `mir_borrowck` fails to prove an obligation. We generally assume that
+    /// all goals we prove in MIR type check hold as we've already checked them in HIR typeck.
+    ///
+    /// However, we replace each free region in the MIR body with a unique region inference
+    /// variable. As we may rely on structural identity when proving goals this may cause a
+    /// goal to no longer hold. We store obligations for which this may happen during HIR
+    /// typeck in the `TypeckResults`. We then uniquify and reprove them in case MIR typeck
+    /// encounters an unexpected error. We expect this to result in an error when used and
+    /// delay a bug if it does not.
+    query check_potentially_region_dependent_goals(key: LocalDefId) -> Result<(), ErrorGuaranteed> {
+        desc {
+            |tcx| "reproving potentially region dependent HIR typeck goals for `{}",
+            tcx.def_path_str(key)
+        }
+    }
+
     /// MIR after our optimization passes have run. This is MIR that is ready
     /// for codegen. This is also the only query that can fetch non-local MIR, at present.
     query optimized_mir(key: DefId) -> &'tcx mir::Body<'tcx> {
@@ -743,9 +761,9 @@ rustc_queries! {
     }
 
     /// Erases regions from `ty` to yield a new type.
-    /// Normally you would just use `tcx.erase_regions(value)`,
+    /// Normally you would just use `tcx.erase_and_anonymize_regions(value)`,
     /// however, which uses this query as a kind of cache.
-    query erase_regions_ty(ty: Ty<'tcx>) -> Ty<'tcx> {
+    query erase_and_anonymize_regions_ty(ty: Ty<'tcx>) -> Ty<'tcx> {
         // This query is not expected to have input -- as a result, it
         // is not a good candidates for "replay" because it is essentially a
         // pure function of its input (and hence the expectation is that
@@ -1113,6 +1131,11 @@ rustc_queries! {
 
     query incoherent_impls(key: SimplifiedType) -> &'tcx [DefId] {
         desc { |tcx| "collecting all inherent impls for `{:?}`", key }
+    }
+
+    /// Unsafety-check this `LocalDefId`.
+    query check_transmutes(key: LocalDefId) {
+        desc { |tcx| "check transmute calls inside `{}`", tcx.def_path_str(key) }
     }
 
     /// Unsafety-check this `LocalDefId`.
@@ -1858,6 +1881,7 @@ rustc_queries! {
     }
 
     /// Returns whether the impl or associated function has the `default` keyword.
+    /// Note: This will ICE on inherent impl items. Consider using `AssocItem::defaultness`.
     query defaultness(def_id: DefId) -> hir::Defaultness {
         desc { |tcx| "looking up whether `{}` has `default`", tcx.def_path_str(def_id) }
         separate_provide_extern
@@ -2540,6 +2564,14 @@ rustc_queries! {
         desc { "computing autoderef types for `{}`", goal.canonical.value.value }
     }
 
+    /// Used by `-Znext-solver` to compute proof trees.
+    query evaluate_root_goal_for_proof_tree_raw(
+        goal: solve::CanonicalInput<'tcx>,
+    ) -> (solve::QueryResult<'tcx>, &'tcx solve::inspect::Probe<TyCtxt<'tcx>>) {
+        no_hash
+        desc { "computing proof tree for `{}`", goal.canonical.value.goal.predicate }
+    }
+
     /// Returns the Rust target features for the current target. These are not always the same as LLVM target features!
     query rust_target_features(_: CrateNum) -> &'tcx UnordMap<String, rustc_target::target_features::Stability> {
         arena_cache
@@ -2686,7 +2718,26 @@ rustc_queries! {
         desc { |tcx| "looking up anon const kind of `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
+
+    /// Checks for the nearest `#[sanitize(xyz = "off")]` or
+    /// `#[sanitize(xyz = "on")]` on this def and any enclosing defs, up to the
+    /// crate root.
+    ///
+    /// Returns the set of sanitizers that is explicitly disabled for this def.
+    query disabled_sanitizers_for(key: LocalDefId) -> SanitizerSet {
+        desc { |tcx| "checking what set of sanitizers are enabled on `{}`", tcx.def_path_str(key) }
+        feedable
+    }
 }
 
 rustc_with_all_queries! { define_callbacks! }
 rustc_feedable_queries! { define_feedable! }
+
+fn describe_as_module(def_id: impl Into<LocalDefId>, tcx: TyCtxt<'_>) -> String {
+    let def_id = def_id.into();
+    if def_id.is_top_level_module() {
+        "top-level module".to_string()
+    } else {
+        format!("module `{}`", tcx.def_path_str(def_id))
+    }
+}

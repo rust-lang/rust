@@ -312,7 +312,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                         })
                         .map(|inner| MustUsePath::Opaque(Box::new(inner)))
                 }
-                ty::Dynamic(binders, _, _) => binders.iter().find_map(|predicate| {
+                ty::Dynamic(binders, _) => binders.iter().find_map(|predicate| {
                     if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate.skip_binder()
                     {
                         let def_id = trait_ref.def_id;
@@ -843,6 +843,10 @@ trait UnusedDelimLint {
                 && !snip.ends_with(' ')
             {
                 " "
+            } else if let Ok(snip) = sm.span_to_prev_source(value_span)
+                && snip.ends_with(|c: char| c.is_alphanumeric())
+            {
+                " "
             } else {
                 ""
             };
@@ -850,6 +854,10 @@ trait UnusedDelimLint {
             let hi_replace = if keep_space.1
                 && let Ok(snip) = sm.span_to_next_source(hi)
                 && !snip.starts_with(' ')
+            {
+                " "
+            } else if let Ok(snip) = sm.span_to_prev_source(value_span)
+                && snip.starts_with(|c: char| c.is_alphanumeric())
             {
                 " "
             } else {

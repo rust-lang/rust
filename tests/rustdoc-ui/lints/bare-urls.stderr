@@ -243,5 +243,73 @@ help: use an automatic link instead
 LL | #[doc = "<https://example.com/raw>"]
    |          +                       +
 
-error: aborting due to 20 previous errors
+error: this URL is not a hyperlink
+  --> $DIR/bare-urls.rs:72:5
+   |
+LL | /// [https://bloob.blob]
+   |     ^^^^^^^^^^^^^^^^^^^^ help: use an automatic link instead: `<https://bloob.blob>`
+   |
+   = note: bare URLs are not automatically turned into clickable links
+
+error: this URL is not a hyperlink
+  --> $DIR/bare-urls.rs:74:7
+   |
+LL | /// [ https://bloob.blob ]
+   |       ^^^^^^^^^^^^^^^^^^
+   |
+   = note: bare URLs are not automatically turned into clickable links
+help: use an automatic link instead
+   |
+LL | /// [ <https://bloob.blob> ]
+   |       +                  +
+
+error: this URL is not a hyperlink
+  --> $DIR/bare-urls.rs:76:7
+   |
+LL | /// [ https://bloob.blob]
+   |       ^^^^^^^^^^^^^^^^^^
+   |
+   = note: bare URLs are not automatically turned into clickable links
+help: use an automatic link instead
+   |
+LL | /// [ <https://bloob.blob>]
+   |       +                  +
+
+error: this URL is not a hyperlink
+  --> $DIR/bare-urls.rs:78:6
+   |
+LL | /// [https://bloob.blob ]
+   |      ^^^^^^^^^^^^^^^^^^
+   |
+   = note: bare URLs are not automatically turned into clickable links
+help: use an automatic link instead
+   |
+LL | /// [<https://bloob.blob> ]
+   |      +                  +
+
+error: this URL is not a hyperlink
+  --> $DIR/bare-urls.rs:80:6
+   |
+LL | /// [https://bloob.blob
+   |      ^^^^^^^^^^^^^^^^^^
+   |
+   = note: bare URLs are not automatically turned into clickable links
+help: use an automatic link instead
+   |
+LL | /// [<https://bloob.blob>
+   |      +                  +
+
+error: this URL is not a hyperlink
+  --> $DIR/bare-urls.rs:82:5
+   |
+LL | /// https://bloob.blob]
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: bare URLs are not automatically turned into clickable links
+help: use an automatic link instead
+   |
+LL | /// <https://bloob.blob>]
+   |     +                  +
+
+error: aborting due to 26 previous errors
 

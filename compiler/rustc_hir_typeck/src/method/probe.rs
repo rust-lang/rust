@@ -18,8 +18,8 @@ use rustc_middle::middle::stability;
 use rustc_middle::ty::elaborate::supertrait_def_ids;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams, simplify_type};
 use rustc_middle::ty::{
-    self, AssocItem, AssocItemContainer, GenericArgs, GenericArgsRef, GenericParamDefKind,
-    ParamEnvAnd, Ty, TyCtxt, TypeVisitableExt, Upcast,
+    self, AssocContainer, AssocItem, GenericArgs, GenericArgsRef, GenericParamDefKind, ParamEnvAnd,
+    Ty, TyCtxt, TypeVisitableExt, Upcast,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
@@ -403,15 +403,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // special handling for this "trivial case" is a good idea.
 
                 let infcx = &self.infcx;
-                let (ParamEnvAnd { param_env: _, value: self_ty }, canonical_inference_vars) =
+                let (ParamEnvAnd { param_env: _, value: self_ty }, var_values) =
                     infcx.instantiate_canonical(span, &query_input.canonical);
                 debug!(?self_ty, ?query_input, "probe_op: Mode::Path");
                 MethodAutoderefStepsResult {
                     steps: infcx.tcx.arena.alloc_from_iter([CandidateStep {
-                        self_ty: self.make_query_response_ignoring_pending_obligations(
-                            canonical_inference_vars,
-                            self_ty,
-                        ),
+                        self_ty: self
+                            .make_query_response_ignoring_pending_obligations(var_values, self_ty),
                         autoderefs: 0,
                         from_unsafe_deref: false,
                         unsize: false,
@@ -530,7 +528,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ProbeScope::Single(def_id) => {
                     let item = self.tcx.associated_item(def_id);
                     // FIXME(fn_delegation): Delegation to inherent methods is not yet supported.
-                    assert_eq!(item.container, AssocItemContainer::Trait);
+                    assert_eq!(item.container, AssocContainer::Trait);
 
                     let trait_def_id = self.tcx.parent(def_id);
                     let trait_span = self.tcx.def_span(trait_def_id);
@@ -629,7 +627,7 @@ pub(crate) fn method_autoderef_steps<'tcx>(
             .collect();
         (steps, autoderef_via_deref.reached_recursion_limit())
     };
-    let final_ty = autoderef_via_deref.final_ty(true);
+    let final_ty = autoderef_via_deref.final_ty();
     let opt_bad_ty = match final_ty.kind() {
         ty::Infer(ty::TyVar(_)) | ty::Error(_) => Some(MethodAutoderefBadTy {
             reached_raw_pointer,
@@ -777,31 +775,16 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
                 self.assemble_inherent_candidates_from_object(generalized_self_ty);
                 self.assemble_inherent_impl_candidates_for_type(p.def_id(), receiver_steps);
-                if self.tcx.has_attr(p.def_id(), sym::rustc_has_incoherent_inherent_impls) {
-                    self.assemble_inherent_candidates_for_incoherent_ty(
-                        raw_self_ty,
-                        receiver_steps,
-                    );
-                }
+                self.assemble_inherent_candidates_for_incoherent_ty(raw_self_ty, receiver_steps);
             }
             ty::Adt(def, _) => {
                 let def_id = def.did();
                 self.assemble_inherent_impl_candidates_for_type(def_id, receiver_steps);
-                if self.tcx.has_attr(def_id, sym::rustc_has_incoherent_inherent_impls) {
-                    self.assemble_inherent_candidates_for_incoherent_ty(
-                        raw_self_ty,
-                        receiver_steps,
-                    );
-                }
+                self.assemble_inherent_candidates_for_incoherent_ty(raw_self_ty, receiver_steps);
             }
             ty::Foreign(did) => {
                 self.assemble_inherent_impl_candidates_for_type(did, receiver_steps);
-                if self.tcx.has_attr(did, sym::rustc_has_incoherent_inherent_impls) {
-                    self.assemble_inherent_candidates_for_incoherent_ty(
-                        raw_self_ty,
-                        receiver_steps,
-                    );
-                }
+                self.assemble_inherent_candidates_for_incoherent_ty(raw_self_ty, receiver_steps);
             }
             ty::Param(_) => {
                 self.assemble_inherent_candidates_from_param(raw_self_ty);
@@ -909,6 +892,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         debug_assert_matches!(param_ty.kind(), ty::Param(_));
 
         let tcx = self.tcx;
+
+        // We use `DeepRejectCtxt` here which may return false positive on where clauses
+        // with alias self types. We need to later on reject these as inherent candidates
+        // in `consider_probe`.
         let bounds = self.param_env.caller_bounds().iter().filter_map(|predicate| {
             let bound_predicate = predicate.kind();
             match bound_predicate.skip_binder() {
@@ -1672,7 +1659,7 @@ impl<'tcx> Pick<'tcx> {
     /// Do not use for type checking.
     pub(crate) fn differs_from(&self, other: &Self) -> bool {
         let Self {
-            item: AssocItem { def_id, kind: _, container: _, trait_item_def_id: _ },
+            item: AssocItem { def_id, kind: _, container: _ },
             kind: _,
             import_ids: _,
             autoderefs: _,
@@ -1715,7 +1702,7 @@ impl<'tcx> Pick<'tcx> {
                         tcx.def_path_str(self.item.def_id),
                     ));
                 }
-                (ty::AssocKind::Const { name }, ty::AssocItemContainer::Trait) => {
+                (ty::AssocKind::Const { name }, ty::AssocContainer::Trait) => {
                     let def_id = self.item.container_id(tcx);
                     lint.span_suggestion(
                         span,
@@ -1945,6 +1932,29 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     );
                     (xform_self_ty, xform_ret_ty) =
                         self.xform_self_ty(probe.item, trait_ref.self_ty(), trait_ref.args);
+
+                    if matches!(probe.kind, WhereClauseCandidate(_)) {
+                        // `WhereClauseCandidate` requires that the self type is a param,
+                        // because it has special behavior with candidate preference as an
+                        // inherent pick.
+                        match ocx.structurally_normalize_ty(
+                            cause,
+                            self.param_env,
+                            trait_ref.self_ty(),
+                        ) {
+                            Ok(ty) => {
+                                if !matches!(ty.kind(), ty::Param(_)) {
+                                    debug!("--> not a param ty: {xform_self_ty:?}");
+                                    return ProbeResult::NoMatch;
+                                }
+                            }
+                            Err(errors) => {
+                                debug!("--> cannot relate self-types {:?}", errors);
+                                return ProbeResult::NoMatch;
+                            }
+                        }
+                    }
+
                     xform_self_ty = ocx.normalize(cause, self.param_env, xform_self_ty);
                     match ocx.relate(cause, self.param_env, self.variance(), self_ty, xform_self_ty)
                     {
@@ -2373,17 +2383,14 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         if !self.is_relevant_kind_for_mode(x.kind) {
                             return false;
                         }
-                        if self.matches_by_doc_alias(x.def_id) {
-                            return true;
-                        }
-                        match edit_distance_with_substrings(
+                        if let Some(d) = edit_distance_with_substrings(
                             name.as_str(),
                             x.name().as_str(),
                             max_dist,
                         ) {
-                            Some(d) => d > 0,
-                            None => false,
+                            return d > 0;
                         }
+                        self.matches_by_doc_alias(x.def_id)
                     })
                     .copied()
                     .collect()

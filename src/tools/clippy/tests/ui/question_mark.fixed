@@ -1,6 +1,4 @@
 #![feature(try_blocks)]
-#![allow(unreachable_code)]
-#![allow(dead_code)]
 #![allow(clippy::unnecessary_wraps)]
 
 use std::sync::MutexGuard;
@@ -464,4 +462,16 @@ fn issue_13642(x: Option<i32>) -> Option<()> {
     };
 
     None
+}
+
+fn issue_15679() -> Result<i32, String> {
+    let some_result: Result<i32, &'static str> = todo!();
+
+    some_result?;
+
+    some_result?;
+
+    some_result?;
+
+    Ok(0)
 }

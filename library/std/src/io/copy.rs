@@ -63,10 +63,11 @@ where
     R: Read,
     W: Write,
 {
-    cfg_if::cfg_if! {
-        if #[cfg(any(target_os = "linux", target_os = "android"))] {
+    cfg_select! {
+        any(target_os = "linux", target_os = "android") => {
             crate::sys::kernel_copy::copy_spec(reader, writer)
-        } else {
+        }
+        _ => {
             generic_copy(reader, writer)
         }
     }

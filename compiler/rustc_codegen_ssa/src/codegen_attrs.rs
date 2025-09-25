@@ -6,12 +6,10 @@ use rustc_ast::{LitKind, MetaItem, MetaItemInner, attr};
 use rustc_hir::attrs::{AttributeKind, InlineAttr, InstructionSetAttr, UsedBy};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
-use rustc_hir::weak_lang_items::WEAK_LANG_ITEMS;
 use rustc_hir::{self as hir, Attribute, LangItem, find_attr, lang_items};
 use rustc_middle::middle::codegen_fn_attrs::{
     CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry,
 };
-use rustc_middle::mir::mono::Linkage;
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self as ty, TyCtxt};
@@ -25,31 +23,6 @@ use crate::errors::NoMangleNameless;
 use crate::target_features::{
     check_target_feature_trait_unsafe, check_tied_features, from_target_feature_attr,
 };
-
-fn linkage_by_name(tcx: TyCtxt<'_>, def_id: LocalDefId, name: &str) -> Linkage {
-    use rustc_middle::mir::mono::Linkage::*;
-
-    // Use the names from src/llvm/docs/LangRef.rst here. Most types are only
-    // applicable to variable declarations and may not really make sense for
-    // Rust code in the first place but allow them anyway and trust that the
-    // user knows what they're doing. Who knows, unanticipated use cases may pop
-    // up in the future.
-    //
-    // ghost, dllimport, dllexport and linkonce_odr_autohide are not supported
-    // and don't have to be, LLVM treats them as no-ops.
-    match name {
-        "available_externally" => AvailableExternally,
-        "common" => Common,
-        "extern_weak" => ExternalWeak,
-        "external" => External,
-        "internal" => Internal,
-        "linkonce" => LinkOnceAny,
-        "linkonce_odr" => LinkOnceODR,
-        "weak" => WeakAny,
-        "weak_odr" => WeakODR,
-        _ => tcx.dcx().span_fatal(tcx.def_span(def_id), "invalid linkage specified"),
-    }
-}
 
 /// In some cases, attributes are only valid on functions, but it's the `check_attr`
 /// pass that checks that they aren't used anywhere else, rather than this module.
@@ -101,39 +74,6 @@ fn parse_instruction_set_attr(tcx: TyCtxt<'_>, attr: &Attribute) -> Option<Instr
             None
         }
     }
-}
-
-// FIXME(jdonszelmann): remove when linkage becomes a parsed attr
-fn parse_linkage_attr(tcx: TyCtxt<'_>, did: LocalDefId, attr: &Attribute) -> Option<Linkage> {
-    let val = attr.value_str()?;
-    let linkage = linkage_by_name(tcx, did, val.as_str());
-    Some(linkage)
-}
-
-// FIXME(jdonszelmann): remove when no_sanitize becomes a parsed attr
-fn parse_no_sanitize_attr(tcx: TyCtxt<'_>, attr: &Attribute) -> Option<SanitizerSet> {
-    let list = attr.meta_item_list()?;
-    let mut sanitizer_set = SanitizerSet::empty();
-
-    for item in list.iter() {
-        match item.name() {
-            Some(sym::address) => {
-                sanitizer_set |= SanitizerSet::ADDRESS | SanitizerSet::KERNELADDRESS
-            }
-            Some(sym::cfi) => sanitizer_set |= SanitizerSet::CFI,
-            Some(sym::kcfi) => sanitizer_set |= SanitizerSet::KCFI,
-            Some(sym::memory) => sanitizer_set |= SanitizerSet::MEMORY,
-            Some(sym::memtag) => sanitizer_set |= SanitizerSet::MEMTAG,
-            Some(sym::shadow_call_stack) => sanitizer_set |= SanitizerSet::SHADOWCALLSTACK,
-            Some(sym::thread) => sanitizer_set |= SanitizerSet::THREAD,
-            Some(sym::hwaddress) => sanitizer_set |= SanitizerSet::HWADDRESS,
-            _ => {
-                tcx.dcx().emit_err(errors::InvalidNoSanitize { span: item.span() });
-            }
-        }
-    }
-
-    Some(sanitizer_set)
 }
 
 // FIXME(jdonszelmann): remove when patchable_function_entry becomes a parsed attr
@@ -194,7 +134,7 @@ fn parse_patchable_function_entry(
 #[derive(Default)]
 struct InterestingAttributeDiagnosticSpans {
     link_ordinal: Option<Span>,
-    no_sanitize: Option<Span>,
+    sanitize: Option<Span>,
     inline: Option<Span>,
     no_mangle: Option<Span>,
 }
@@ -210,20 +150,12 @@ fn process_builtin_attrs(
     let mut interesting_spans = InterestingAttributeDiagnosticSpans::default();
     let rust_target_features = tcx.rust_target_features(LOCAL_CRATE);
 
-    // If our rustc version supports autodiff/enzyme, then we call our handler
-    // to check for any `#[rustc_autodiff(...)]` attributes.
-    // FIXME(jdonszelmann): merge with loop below
-    if cfg!(llvm_enzyme) {
-        let ad = autodiff_attrs(tcx, did.into());
-        codegen_fn_attrs.autodiff_item = ad;
-    }
-
     for attr in attrs.iter() {
         if let hir::Attribute::Parsed(p) = attr {
             match p {
                 AttributeKind::Cold(_) => codegen_fn_attrs.flags |= CodegenFnAttrFlags::COLD,
                 AttributeKind::ExportName { name, .. } => {
-                    codegen_fn_attrs.export_name = Some(*name)
+                    codegen_fn_attrs.symbol_name = Some(*name)
                 }
                 AttributeKind::Inline(inline, span) => {
                     codegen_fn_attrs.inline = *inline;
@@ -231,7 +163,13 @@ fn process_builtin_attrs(
                 }
                 AttributeKind::Naked(_) => codegen_fn_attrs.flags |= CodegenFnAttrFlags::NAKED,
                 AttributeKind::Align { align, .. } => codegen_fn_attrs.alignment = Some(*align),
-                AttributeKind::LinkName { name, .. } => codegen_fn_attrs.link_name = Some(*name),
+                AttributeKind::LinkName { name, .. } => {
+                    // FIXME Remove check for foreign functions once #[link_name] on non-foreign
+                    // functions is a hard error
+                    if tcx.is_foreign_item(did) {
+                        codegen_fn_attrs.symbol_name = Some(*name);
+                    }
+                }
                 AttributeKind::LinkOrdinal { ordinal, span } => {
                     codegen_fn_attrs.link_ordinal = Some(*ordinal);
                     interesting_spans.link_ordinal = Some(*span);
@@ -255,7 +193,7 @@ fn process_builtin_attrs(
                     }
                 }
                 AttributeKind::Optimize(optimize, _) => codegen_fn_attrs.optimize = *optimize,
-                AttributeKind::TargetFeature(features, attr_span) => {
+                AttributeKind::TargetFeature { features, attr_span, was_forced } => {
                     let Some(sig) = tcx.hir_node_by_def_id(did).fn_sig() else {
                         tcx.dcx().span_delayed_bug(*attr_span, "target_feature applied to non-fn");
                         continue;
@@ -263,7 +201,7 @@ fn process_builtin_attrs(
                     let safe_target_features =
                         matches!(sig.header.safety, hir::HeaderSafety::SafeTargetFeatures);
                     codegen_fn_attrs.safe_target_features = safe_target_features;
-                    if safe_target_features {
+                    if safe_target_features && !was_forced {
                         if tcx.sess.target.is_like_wasm || tcx.sess.opts.actually_rustdoc {
                             // The `#[target_feature]` attribute is allowed on
                             // WebAssembly targets on all functions. Prior to stabilizing
@@ -294,6 +232,7 @@ fn process_builtin_attrs(
                         tcx,
                         did,
                         features,
+                        *was_forced,
                         rust_target_features,
                         &mut codegen_fn_attrs.target_features,
                     );
@@ -332,6 +271,37 @@ fn process_builtin_attrs(
                 AttributeKind::StdInternalSymbol(_) => {
                     codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL
                 }
+                AttributeKind::Linkage(linkage, _) => {
+                    let linkage = Some(*linkage);
+
+                    if tcx.is_foreign_item(did) {
+                        codegen_fn_attrs.import_linkage = linkage;
+
+                        if tcx.is_mutable_static(did.into()) {
+                            let mut diag = tcx.dcx().struct_span_err(
+                                attr.span(),
+                                "extern mutable statics are not allowed with `#[linkage]`",
+                            );
+                            diag.note(
+                                "marking the extern static mutable would allow changing which \
+                                symbol the static references rather than make the target of the \
+                                symbol mutable",
+                            );
+                            diag.emit();
+                        }
+                    } else {
+                        codegen_fn_attrs.linkage = linkage;
+                    }
+                }
+                AttributeKind::Sanitize { span, .. } => {
+                    interesting_spans.sanitize = Some(*span);
+                }
+                AttributeKind::ObjcClass { classname, .. } => {
+                    codegen_fn_attrs.objc_class = Some(*classname);
+                }
+                AttributeKind::ObjcSelector { methname, .. } => {
+                    codegen_fn_attrs.objc_selector = Some(*methname);
+                }
                 _ => {}
             }
         }
@@ -349,33 +319,6 @@ fn process_builtin_attrs(
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR_ZEROED
             }
             sym::thread_local => codegen_fn_attrs.flags |= CodegenFnAttrFlags::THREAD_LOCAL,
-            sym::linkage => {
-                let linkage = parse_linkage_attr(tcx, did, attr);
-
-                if tcx.is_foreign_item(did) {
-                    codegen_fn_attrs.import_linkage = linkage;
-
-                    if tcx.is_mutable_static(did.into()) {
-                        let mut diag = tcx.dcx().struct_span_err(
-                            attr.span(),
-                            "extern mutable statics are not allowed with `#[linkage]`",
-                        );
-                        diag.note(
-                            "marking the extern static mutable would allow changing which \
-                            symbol the static references rather than make the target of the \
-                            symbol mutable",
-                        );
-                        diag.emit();
-                    }
-                } else {
-                    codegen_fn_attrs.linkage = linkage;
-                }
-            }
-            sym::no_sanitize => {
-                interesting_spans.no_sanitize = Some(attr.span());
-                codegen_fn_attrs.no_sanitize |=
-                    parse_no_sanitize_attr(tcx, attr).unwrap_or_default();
-            }
             sym::instruction_set => {
                 codegen_fn_attrs.instruction_set = parse_instruction_set_attr(tcx, attr)
             }
@@ -399,6 +342,8 @@ fn apply_overrides(tcx: TyCtxt<'_>, did: LocalDefId, codegen_fn_attrs: &mut Code
     codegen_fn_attrs.alignment =
         Ord::max(codegen_fn_attrs.alignment, tcx.sess.opts.unstable_opts.min_function_alignment);
 
+    // Compute the disabled sanitizers.
+    codegen_fn_attrs.no_sanitize |= tcx.disabled_sanitizers_for(did);
     // On trait methods, inherit the `#[align]` of the trait's method prototype.
     codegen_fn_attrs.alignment = Ord::max(codegen_fn_attrs.alignment, tcx.inherited_align(did));
 
@@ -443,6 +388,29 @@ fn apply_overrides(tcx: TyCtxt<'_>, did: LocalDefId, codegen_fn_attrs: &mut Code
     if tcx.should_inherit_track_caller(did) {
         codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER;
     }
+
+    // Foreign items by default use no mangling for their symbol name.
+    if tcx.is_foreign_item(did) {
+        codegen_fn_attrs.flags |= CodegenFnAttrFlags::FOREIGN_ITEM;
+
+        // There's a few exceptions to this rule though:
+        if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL) {
+            // * `#[rustc_std_internal_symbol]` mangles the symbol name in a special way
+            //   both for exports and imports through foreign items. This is handled further,
+            //   during symbol mangling logic.
+        } else if codegen_fn_attrs.symbol_name.is_some() {
+            // * This can be overridden with the `#[link_name]` attribute
+        } else {
+            // NOTE: there's one more exception that we cannot apply here. On wasm,
+            // some items cannot be `no_mangle`.
+            // However, we don't have enough information here to determine that.
+            // As such, no_mangle foreign items on wasm that have the same defid as some
+            // import will *still* be mangled despite this.
+            //
+            // if none of the exceptions apply; apply no_mangle
+            codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE;
+        }
+    }
 }
 
 fn check_result(
@@ -466,26 +434,33 @@ fn check_result(
     // llvm/llvm-project#70563).
     if !codegen_fn_attrs.target_features.is_empty()
         && matches!(codegen_fn_attrs.inline, InlineAttr::Always)
+        && !tcx.features().target_feature_inline_always()
         && let Some(span) = interesting_spans.inline
     {
-        tcx.dcx().span_err(span, "cannot use `#[inline(always)]` with `#[target_feature]`");
+        feature_err(
+            tcx.sess,
+            sym::target_feature_inline_always,
+            span,
+            "cannot use `#[inline(always)]` with `#[target_feature]`",
+        )
+        .emit();
     }
 
     // warn that inline has no effect when no_sanitize is present
     if !codegen_fn_attrs.no_sanitize.is_empty()
         && codegen_fn_attrs.inline.always()
         && let (Some(no_sanitize_span), Some(inline_span)) =
-            (interesting_spans.no_sanitize, interesting_spans.inline)
+            (interesting_spans.sanitize, interesting_spans.inline)
     {
         let hir_id = tcx.local_def_id_to_hir_id(did);
         tcx.node_span_lint(lint::builtin::INLINE_NO_SANITIZE, hir_id, no_sanitize_span, |lint| {
-            lint.primary_message("`no_sanitize` will have no effect after inlining");
+            lint.primary_message("setting `sanitize` off will have no effect after inlining");
             lint.span_note(inline_span, "inlining requested here");
         })
     }
 
     // error when specifying link_name together with link_ordinal
-    if let Some(_) = codegen_fn_attrs.link_name
+    if let Some(_) = codegen_fn_attrs.symbol_name
         && let Some(_) = codegen_fn_attrs.link_ordinal
     {
         let msg = "cannot use `#[link_name]` with `#[link_ordinal]`";
@@ -505,7 +480,7 @@ fn check_result(
             .collect(),
     ) {
         let span =
-            find_attr!(tcx.get_all_attrs(did), AttributeKind::TargetFeature(_, span) => *span)
+            find_attr!(tcx.get_all_attrs(did), AttributeKind::TargetFeature{attr_span: span, ..} => *span)
                 .unwrap_or_else(|| tcx.def_span(did));
 
         tcx.dcx()
@@ -532,14 +507,11 @@ fn handle_lang_items(
     // strippable by the linker.
     //
     // Additionally weak lang items have predetermined symbol names.
-    if let Some(lang_item) = lang_item {
-        if WEAK_LANG_ITEMS.contains(&lang_item) {
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL;
-        }
-        if let Some(link_name) = lang_item.link_name() {
-            codegen_fn_attrs.export_name = Some(link_name);
-            codegen_fn_attrs.link_name = Some(link_name);
-        }
+    if let Some(lang_item) = lang_item
+        && let Some(link_name) = lang_item.link_name()
+    {
+        codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL;
+        codegen_fn_attrs.symbol_name = Some(link_name);
     }
 
     // error when using no_mangle on a lang item item
@@ -596,26 +568,44 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     codegen_fn_attrs
 }
 
-/// If the provided DefId is a method in a trait impl, return the DefId of the method prototype.
-fn opt_trait_item(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
-    let impl_item = tcx.opt_associated_item(def_id)?;
-    match impl_item.container {
-        ty::AssocItemContainer::Impl => impl_item.trait_item_def_id,
-        _ => None,
+fn disabled_sanitizers_for(tcx: TyCtxt<'_>, did: LocalDefId) -> SanitizerSet {
+    // Backtrack to the crate root.
+    let mut disabled = match tcx.opt_local_parent(did) {
+        // Check the parent (recursively).
+        Some(parent) => tcx.disabled_sanitizers_for(parent),
+        // We reached the crate root without seeing an attribute, so
+        // there is no sanitizers to exclude.
+        None => SanitizerSet::empty(),
+    };
+
+    // Check for a sanitize annotation directly on this def.
+    if let Some((on_set, off_set)) = find_attr!(tcx.get_all_attrs(did), AttributeKind::Sanitize {on_set, off_set, ..} => (on_set, off_set))
+    {
+        // the on set is the set of sanitizers explicitly enabled.
+        // we mask those out since we want the set of disabled sanitizers here
+        disabled &= !*on_set;
+        // the off set is the set of sanitizers explicitly disabled.
+        // we or those in here.
+        disabled |= *off_set;
+        // the on set and off set are distjoint since there's a third option: unset.
+        // a node may not set the sanitizer setting in which case it inherits from parents.
+        // the code above in this function does this backtracking
     }
+    disabled
 }
 
 /// Checks if the provided DefId is a method in a trait impl for a trait which has track_caller
 /// applied to the method prototype.
 fn should_inherit_track_caller(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    let Some(trait_item) = opt_trait_item(tcx, def_id) else { return false };
-    tcx.codegen_fn_attrs(trait_item).flags.intersects(CodegenFnAttrFlags::TRACK_CALLER)
+    tcx.trait_item_of(def_id).is_some_and(|id| {
+        tcx.codegen_fn_attrs(id).flags.intersects(CodegenFnAttrFlags::TRACK_CALLER)
+    })
 }
 
 /// If the provided DefId is a method in a trait impl, return the value of the `#[align]`
 /// attribute on the method prototype (if any).
 fn inherited_align<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Option<Align> {
-    tcx.codegen_fn_attrs(opt_trait_item(tcx, def_id)?).alignment
+    tcx.codegen_fn_attrs(tcx.trait_item_of(def_id)?).alignment
 }
 
 /// We now check the #\[rustc_autodiff\] attributes which we generated from the #[autodiff(...)]
@@ -624,7 +614,7 @@ fn inherited_align<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Option<Align> {
 /// placeholder functions. We wrote the rustc_autodiff attributes ourself, so this should never
 /// panic, unless we introduced a bug when parsing the autodiff macro.
 //FIXME(jdonszelmann): put in the main loop. No need to have two..... :/ Let's do that when we make autodiff parsed.
-fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> Option<AutoDiffAttrs> {
+pub fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> Option<AutoDiffAttrs> {
     let attrs = tcx.get_attrs(id, sym::rustc_autodiff);
 
     let attrs = attrs.filter(|attr| attr.has_name(sym::rustc_autodiff)).collect::<Vec<_>>();
@@ -729,6 +719,11 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> Option<AutoDiffAttrs> {
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers =
-        Providers { codegen_fn_attrs, should_inherit_track_caller, inherited_align, ..*providers };
+    *providers = Providers {
+        codegen_fn_attrs,
+        should_inherit_track_caller,
+        inherited_align,
+        disabled_sanitizers_for,
+        ..*providers
+    };
 }

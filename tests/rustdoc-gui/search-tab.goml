@@ -15,7 +15,8 @@ define-function: (
         focus: ".search-input"
         press-key: "Enter"
 
-        wait-for: "#search-tabs"
+        wait-for: "#search-tabs .count"
+        wait-for-false: "#search-tabs .count.loading"
         assert-css: ("#search-tabs > button:not(.selected)", {
             "background-color": |background|,
             "border-bottom": |border_bottom|,

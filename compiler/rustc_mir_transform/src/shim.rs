@@ -75,7 +75,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<
             build_call_shim(tcx, instance, Some(adjustment), CallKind::Direct(def_id))
         }
         ty::InstanceKind::FnPtrShim(def_id, ty) => {
-            let trait_ = tcx.trait_of_assoc(def_id).unwrap();
+            let trait_ = tcx.parent(def_id);
             // Supports `Fn` or `async Fn` traits.
             let adjustment = match tcx
                 .fn_trait_kind_from_def_id(trait_)
@@ -1242,14 +1242,12 @@ fn build_construct_coroutine_by_move_shim<'tcx>(
 
     let body =
         new_body(source, IndexVec::from_elem_n(start_block, 1), locals, sig.inputs().len(), span);
-    dump_mir(
-        tcx,
-        false,
-        if receiver_by_ref { "coroutine_closure_by_ref" } else { "coroutine_closure_by_move" },
-        &0,
-        &body,
-        |_, _| Ok(()),
-    );
+
+    let pass_name =
+        if receiver_by_ref { "coroutine_closure_by_ref" } else { "coroutine_closure_by_move" };
+    if let Some(dumper) = MirDumper::new(tcx, pass_name, &body) {
+        dumper.dump_mir(&body);
+    }
 
     body
 }

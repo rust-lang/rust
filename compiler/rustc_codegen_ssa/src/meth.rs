@@ -78,7 +78,7 @@ fn dyn_trait_in_self<'tcx>(
 ) -> Option<ty::ExistentialTraitRef<'tcx>> {
     for arg in ty.peel_refs().walk() {
         if let GenericArgKind::Type(ty) = arg.kind()
-            && let ty::Dynamic(data, _, _) = ty.kind()
+            && let ty::Dynamic(data, _) = ty.kind()
         {
             // FIXME(arbitrary_self_types): This is likely broken for receivers which
             // have a "non-self" trait objects as a generic argument.

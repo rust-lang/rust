@@ -21,8 +21,9 @@ use crate::intrinsics::{self, const_eval_select};
 /// slow down const-eval/Miri and we'll get the panic message instead of the interpreter's nice
 /// diagnostic, but our ability to detect UB is unchanged.
 /// But if `check_language_ub` is used when the check is actually for library UB, the check is
-/// omitted in const-eval/Miri and thus if we eventually execute language UB which relies on the
-/// library UB, the backtrace Miri reports may be far removed from original cause.
+/// omitted in const-eval/Miri and thus UB might occur undetected. Even if we eventually execute
+/// language UB which relies on the library UB, the backtrace Miri reports may be far removed from
+/// original cause.
 ///
 /// These checks are behind a condition which is evaluated at codegen time, not expansion time like
 /// [`debug_assert`]. This means that a standard library built with optimizations and debug

@@ -8,9 +8,9 @@ use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use clippy_utils::{
-    eq_expr_value, higher, is_else_clause, is_in_const_context, is_lint_allowed, is_path_lang_item, is_res_lang_ctor,
-    pat_and_expr_can_be_question_mark, path_res, path_to_local, path_to_local_id, peel_blocks, peel_blocks_with_stmt,
-    span_contains_cfg, span_contains_comment, sym,
+    eq_expr_value, fn_def_id_with_node_args, higher, is_else_clause, is_in_const_context, is_lint_allowed,
+    is_path_lang_item, is_res_lang_ctor, pat_and_expr_can_be_question_mark, path_res, path_to_local, path_to_local_id,
+    peel_blocks, peel_blocks_with_stmt, span_contains_cfg, span_contains_comment, sym,
 };
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{self, OptionNone, OptionSome, ResultErr, ResultOk};
@@ -393,8 +393,8 @@ fn check_arm_is_none_or_err<'tcx>(cx: &LateContext<'tcx>, mode: TryMode, arm: &A
                 && let ExprKind::Ret(Some(wrapped_ret_expr)) = arm_body.kind
                 && let ExprKind::Call(ok_ctor, [ret_expr]) = wrapped_ret_expr.kind
                 && is_res_lang_ctor(cx, path_res(cx, ok_ctor), ResultErr)
-                // check `...` is `val` from binding
-                && path_to_local_id(ret_expr, ok_val)
+                // check if `...` is `val` from binding or `val.into()`
+                && is_local_or_local_into(cx, ret_expr, ok_val)
             {
                 true
             } else {
@@ -414,6 +414,17 @@ fn check_arm_is_none_or_err<'tcx>(cx: &LateContext<'tcx>, mode: TryMode, arm: &A
                 false
             }
         },
+    }
+}
+
+/// Check if `expr` is `val` or `val.into()`
+fn is_local_or_local_into(cx: &LateContext<'_>, expr: &Expr<'_>, val: HirId) -> bool {
+    let is_into_call = fn_def_id_with_node_args(cx, expr)
+        .and_then(|(fn_def_id, _)| cx.tcx.trait_of_assoc(fn_def_id))
+        .is_some_and(|trait_def_id| cx.tcx.is_diagnostic_item(sym::Into, trait_def_id));
+    match expr.kind {
+        ExprKind::MethodCall(_, recv, [], _) | ExprKind::Call(_, [recv]) => is_into_call && path_to_local_id(recv, val),
+        _ => path_to_local_id(expr, val),
     }
 }
 

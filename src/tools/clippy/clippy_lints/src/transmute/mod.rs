@@ -105,7 +105,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub CROSSPOINTER_TRANSMUTE,
-    complexity,
+    suspicious,
     "transmutes that have to or from types that are a pointer to the other"
 }
 
@@ -520,7 +520,7 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                 | transmuting_null::check(cx, e, arg, to_ty)
                 | transmute_null_to_fn::check(cx, e, arg, to_ty)
                 | transmute_ptr_to_ref::check(cx, e, from_ty, to_ty, arg, path, self.msrv)
-                | missing_transmute_annotations::check(cx, path, from_ty, to_ty, e.hir_id)
+                | missing_transmute_annotations::check(cx, path, arg, from_ty, to_ty, e.hir_id)
                 | transmute_ref_to_ref::check(cx, e, from_ty, to_ty, arg, const_context)
                 | transmute_ptr_to_ptr::check(cx, e, from_ty, to_ty, arg, self.msrv)
                 | transmute_int_to_bool::check(cx, e, from_ty, to_ty, arg)

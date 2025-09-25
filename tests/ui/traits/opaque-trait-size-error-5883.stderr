@@ -1,0 +1,35 @@
+error[E0277]: the size for values of type `(dyn A + 'static)` cannot be known at compilation time
+  --> $DIR/opaque-trait-size-error-5883.rs:10:6
+   |
+LL | ) -> Struct {
+   |      ^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: within `Struct`, the trait `Sized` is not implemented for `(dyn A + 'static)`
+note: required because it appears within the type `Struct`
+  --> $DIR/opaque-trait-size-error-5883.rs:4:8
+   |
+LL | struct Struct {
+   |        ^^^^^^
+   = note: the return type of a function must have a statically known size
+
+error[E0277]: the size for values of type `(dyn A + 'static)` cannot be known at compilation time
+  --> $DIR/opaque-trait-size-error-5883.rs:9:8
+   |
+LL |     r: dyn A + 'static
+   |        ^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn A + 'static)`
+   = help: unsized fn params are gated as an unstable feature
+help: you can use `impl Trait` as the argument type
+   |
+LL -     r: dyn A + 'static
+LL +     r: impl A + 'static
+   |
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL |     r: &dyn A + 'static
+   |        +
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

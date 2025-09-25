@@ -284,14 +284,14 @@ fn transform_with_focus_on_idx(alternatives: &mut ThinVec<Box<Pat>>, focus_idx: 
             |k, ps1, idx| matches!(
                 k,
                 TupleStruct(qself2, path2, ps2)
-                    if eq_maybe_qself(qself1.as_ref(), qself2.as_ref())
+                    if eq_maybe_qself(qself1.as_deref(), qself2.as_deref())
                        && eq_path(path1, path2) && eq_pre_post(ps1, ps2, idx)
             ),
             |k| always_pat!(k, TupleStruct(_, _, ps) => ps),
         ),
         // Transform a record pattern `S { fp_0, ..., fp_n }`.
         Struct(qself1, path1, fps1, rest1) => {
-            extend_with_struct_pat(qself1.as_ref(), path1, fps1, *rest1, start, alternatives)
+            extend_with_struct_pat(qself1.as_deref(), path1, fps1, *rest1, start, alternatives)
         },
     };
 
@@ -304,7 +304,7 @@ fn transform_with_focus_on_idx(alternatives: &mut ThinVec<Box<Pat>>, focus_idx: 
 /// So when we fixate on some `ident_k: pat_k`, we try to find `ident_k` in the other pattern
 /// and check that all `fp_i` where `i ∈ ((0...n) \ k)` between two patterns are equal.
 fn extend_with_struct_pat(
-    qself1: Option<&Box<ast::QSelf>>,
+    qself1: Option<&ast::QSelf>,
     path1: &ast::Path,
     fps1: &mut [ast::PatField],
     rest1: ast::PatFieldsRest,
@@ -319,14 +319,18 @@ fn extend_with_struct_pat(
             |k| {
                 matches!(k, Struct(qself2, path2, fps2, rest2)
                 if rest1 == *rest2 // If one struct pattern has `..` so must the other.
-                && eq_maybe_qself(qself1, qself2.as_ref())
+                && eq_maybe_qself(qself1, qself2.as_deref())
                 && eq_path(path1, path2)
                 && fps1.len() == fps2.len()
                 && fps1.iter().enumerate().all(|(idx_1, fp1)| {
                     if idx_1 == idx {
                         // In the case of `k`, we merely require identical field names
                         // so that we will transform into `ident_k: p1_k | p2_k`.
-                        let pos = fps2.iter().position(|fp2| eq_id(fp1.ident, fp2.ident));
+                        let pos = fps2.iter().position(|fp2| {
+                            // Avoid `Foo { bar } | Foo { bar }` => `Foo { bar | bar }`
+                            !(fp1.is_shorthand && fp2.is_shorthand)
+                                && eq_id(fp1.ident, fp2.ident)
+                        });
                         pos_in_2.set(pos);
                         pos.is_some()
                     } else {

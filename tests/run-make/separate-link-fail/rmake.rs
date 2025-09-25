@@ -11,5 +11,5 @@ fn main() {
         .arg("-Zlink-only")
         .input("foo.rs")
         .run_fail()
-        .assert_stderr_contains("The input does not look like a .rlink file");
+        .assert_stderr_contains("the input does not look like a .rlink file");
 }

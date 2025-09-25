@@ -10,11 +10,12 @@ use rustc_ast::{
 };
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
-    Applicability, Diag, MultiSpan, PResult, SingleLabelManySpans, listify, pluralize,
+    Applicability, BufferedEarlyLint, Diag, MultiSpan, PResult, SingleLabelManySpans, listify,
+    pluralize,
 };
 use rustc_expand::base::*;
 use rustc_lint_defs::builtin::NAMED_ARGUMENTS_USED_POSITIONALLY;
-use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiag, LintId};
+use rustc_lint_defs::{BuiltinLintDiag, LintId};
 use rustc_parse::exp;
 use rustc_parse_format as parse;
 use rustc_span::{BytePos, ErrorGuaranteed, Ident, InnerSpan, Span, Symbol};
@@ -564,9 +565,11 @@ fn make_format_args(
             &used,
             &args,
             &pieces,
+            &invalid_refs,
             detect_foreign_fmt,
             str_style,
             fmt_str,
+            uncooked_fmt_str.1.as_str(),
             fmt_span,
         );
     }
@@ -595,7 +598,8 @@ fn make_format_args(
                     named_arg_sp: arg_name.span,
                     named_arg_name: arg_name.name.to_string(),
                     is_formatting_arg: matches!(used_as, Width | Precision),
-                },
+                }
+                .into(),
             });
         }
     }
@@ -643,9 +647,11 @@ fn report_missing_placeholders(
     used: &[bool],
     args: &FormatArguments,
     pieces: &[parse::Piece<'_>],
+    invalid_refs: &[(usize, Option<Span>, PositionUsedAs, FormatArgPositionKind)],
     detect_foreign_fmt: bool,
     str_style: Option<usize>,
     fmt_str: &str,
+    uncooked_fmt_str: &str,
     fmt_span: Span,
 ) {
     let mut diag = if let &[(span, named)] = &unused[..] {
@@ -758,6 +764,35 @@ fn report_missing_placeholders(
     }
     if !found_foreign && unused.len() == 1 {
         diag.span_label(fmt_span, "formatting specifier missing");
+    }
+
+    if !found_foreign && invalid_refs.is_empty() {
+        // Show example if user didn't use any format specifiers
+        let show_example = used.iter().all(|used| !used);
+
+        if !show_example {
+            if unused.len() > 1 {
+                diag.note(format!("consider adding {} format specifiers", unused.len()));
+            }
+        } else {
+            let msg = if unused.len() == 1 {
+                "a format specifier".to_string()
+            } else {
+                format!("{} format specifiers", unused.len())
+            };
+
+            let sugg = match str_style {
+                None => format!("\"{}{}\"", uncooked_fmt_str, "{}".repeat(unused.len())),
+                Some(n_hashes) => format!(
+                    "r{hashes}\"{uncooked_fmt_str}{fmt_specifiers}\"{hashes}",
+                    hashes = "#".repeat(n_hashes),
+                    fmt_specifiers = "{}".repeat(unused.len())
+                ),
+            };
+            let msg = format!("format specifiers use curly braces, consider adding {msg}");
+
+            diag.span_suggestion_verbose(fmt_span, msg, sugg, Applicability::MaybeIncorrect);
+        }
     }
 
     diag.emit();

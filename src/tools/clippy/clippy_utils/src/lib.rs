@@ -102,9 +102,9 @@ use rustc_hir::hir_id::{HirIdMap, HirIdSet};
 use rustc_hir::intravisit::{FnKind, Visitor, walk_expr};
 use rustc_hir::{
     self as hir, Arm, BindingMode, Block, BlockCheckMode, Body, ByRef, Closure, ConstArgKind, CoroutineDesugaring,
-    CoroutineKind, Destination, Expr, ExprField, ExprKind, FnDecl, FnRetTy, GenericArg, GenericArgs, HirId, Impl,
-    ImplItem, ImplItemKind, Item, ItemKind, LangItem, LetStmt, MatchSource, Mutability, Node, OwnerId, OwnerNode,
-    Param, Pat, PatExpr, PatExprKind, PatKind, Path, PathSegment, QPath, Stmt, StmtKind, TraitFn, TraitItem,
+    CoroutineKind, CoroutineSource, Destination, Expr, ExprField, ExprKind, FnDecl, FnRetTy, GenericArg, GenericArgs,
+    HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, LangItem, LetStmt, MatchSource, Mutability, Node, OwnerId,
+    OwnerNode, Param, Pat, PatExpr, PatExprKind, PatKind, Path, PathSegment, QPath, Stmt, StmtKind, TraitFn, TraitItem,
     TraitItemKind, TraitRef, TyKind, UnOp, def, find_attr,
 };
 use rustc_lexer::{FrontmatterAllowed, TokenKind, tokenize};
@@ -126,6 +126,7 @@ use rustc_span::{InnerSpan, Span};
 use source::{SpanRangeExt, walk_span_to_context};
 use visitors::{Visitable, for_each_unconsumed_temporary};
 
+use crate::ast_utils::unordered_over;
 use crate::consts::{ConstEvalCtxt, Constant, mir_to_const};
 use crate::higher::Range;
 use crate::ty::{adt_and_variant_of_res, can_partially_move_ty, expr_sig, is_copy, is_recursively_primitive_type};
@@ -308,6 +309,7 @@ pub fn is_lang_item_or_ctor(cx: &LateContext<'_>, did: DefId, item: LangItem) ->
     cx.tcx.lang_items().get(item) == Some(did)
 }
 
+/// Checks if `expr` is an empty block or an empty tuple.
 pub fn is_unit_expr(expr: &Expr<'_>) -> bool {
     matches!(
         expr.kind,
@@ -327,13 +329,17 @@ pub fn is_wild(pat: &Pat<'_>) -> bool {
     matches!(pat.kind, PatKind::Wild)
 }
 
-// Checks if arm has the form `None => None`
-pub fn is_none_arm(cx: &LateContext<'_>, arm: &Arm<'_>) -> bool {
-    matches!(
-        arm.pat.kind,
+/// Checks if the `pat` is `None`.
+pub fn is_none_pattern(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
+    matches!(pat.kind,
         PatKind::Expr(PatExpr { kind: PatExprKind::Path(qpath), .. })
-            if is_res_lang_ctor(cx, cx.qpath_res(qpath, arm.pat.hir_id), OptionNone)
-    )
+            if is_res_lang_ctor(cx, cx.qpath_res(qpath, pat.hir_id), OptionNone))
+}
+
+/// Checks if `arm` has the form `None => None`.
+pub fn is_none_arm(cx: &LateContext<'_>, arm: &Arm<'_>) -> bool {
+    is_none_pattern(cx, arm.pat)
+        && matches!(peel_blocks(arm.body).kind, ExprKind::Path(qpath) if is_res_lang_ctor(cx, cx.qpath_res(&qpath, arm.body.hir_id), OptionNone))
 }
 
 /// Checks if the given `QPath` belongs to a type alias.
@@ -460,6 +466,23 @@ pub fn path_to_local_id(expr: &Expr<'_>, id: HirId) -> bool {
     path_to_local(expr) == Some(id)
 }
 
+/// If the expression is a path to a local (with optional projections),
+/// returns the canonical `HirId` of the local.
+///
+/// For example, `x.field[0].field2` would return the `HirId` of `x`.
+pub fn path_to_local_with_projections(expr: &Expr<'_>) -> Option<HirId> {
+    match expr.kind {
+        ExprKind::Field(recv, _) | ExprKind::Index(recv, _, _) => path_to_local_with_projections(recv),
+        ExprKind::Path(QPath::Resolved(
+            _,
+            Path {
+                res: Res::Local(local), ..
+            },
+        )) => Some(*local),
+        _ => None,
+    }
+}
+
 pub trait MaybePath<'hir> {
     fn hir_id(&self) -> HirId;
     fn qpath_opt(&self) -> Option<&QPath<'hir>>;
@@ -528,8 +551,9 @@ pub fn path_def_id<'tcx>(cx: &LateContext<'_>, maybe_path: &impl MaybePath<'tcx>
 pub fn trait_ref_of_method<'tcx>(cx: &LateContext<'tcx>, owner: OwnerId) -> Option<&'tcx TraitRef<'tcx>> {
     if let Node::Item(item) = cx.tcx.hir_node(cx.tcx.hir_owner_parent(owner))
         && let ItemKind::Impl(impl_) = &item.kind
+        && let Some(of_trait) = impl_.of_trait
     {
-        return impl_.of_trait.as_ref();
+        return Some(&of_trait.trait_ref);
     }
     None
 }
@@ -622,9 +646,8 @@ fn is_default_equivalent_ctor(cx: &LateContext<'_>, def_id: DefId, path: &QPath<
         && let Some(impl_did) = cx.tcx.impl_of_assoc(def_id)
         && let Some(adt) = cx.tcx.type_of(impl_did).instantiate_identity().ty_adt_def()
     {
-        return std_types_symbols.iter().any(|&symbol| {
-            cx.tcx.is_diagnostic_item(symbol, adt.did()) || Some(adt.did()) == cx.tcx.lang_items().string()
-        });
+        return Some(adt.did()) == cx.tcx.lang_items().string()
+            || (cx.tcx.get_diagnostic_name(adt.did())).is_some_and(|adt_name| std_types_symbols.contains(&adt_name));
     }
     false
 }
@@ -1974,7 +1997,7 @@ pub fn is_expr_identity_of_pat(cx: &LateContext<'_>, pat: &Pat<'_>, expr: &Expr<
         (PatKind::Tuple(pats, dotdot), ExprKind::Tup(tup))
             if dotdot.as_opt_usize().is_none() && pats.len() == tup.len() =>
         {
-            zip(pats, tup).all(|(pat, expr)| is_expr_identity_of_pat(cx, pat, expr, by_hir))
+            over(pats, tup, |pat, expr| is_expr_identity_of_pat(cx, pat, expr, by_hir))
         },
         (PatKind::Slice(before, None, after), ExprKind::Array(arr)) if before.len() + after.len() == arr.len() => {
             zip(before.iter().chain(after), arr).all(|(pat, expr)| is_expr_identity_of_pat(cx, pat, expr, by_hir))
@@ -1986,23 +2009,21 @@ pub fn is_expr_identity_of_pat(cx: &LateContext<'_>, pat: &Pat<'_>, expr: &Expr<
             if let ExprKind::Path(ident) = &ident.kind
                 && qpath_res(&pat_ident, pat.hir_id) == qpath_res(ident, expr.hir_id)
                 // check fields
-                && zip(field_pats, fields).all(|(pat, expr)| is_expr_identity_of_pat(cx, pat, expr,by_hir))
+                && over(field_pats, fields, |pat, expr| is_expr_identity_of_pat(cx, pat, expr,by_hir))
             {
                 true
             } else {
                 false
             }
         },
-        (PatKind::Struct(pat_ident, field_pats, false), ExprKind::Struct(ident, fields, hir::StructTailExpr::None))
+        (PatKind::Struct(pat_ident, field_pats, None), ExprKind::Struct(ident, fields, hir::StructTailExpr::None))
             if field_pats.len() == fields.len() =>
         {
             // check ident
             qpath_res(&pat_ident, pat.hir_id) == qpath_res(ident, expr.hir_id)
                 // check fields
-                && field_pats.iter().all(|field_pat| {
-                    fields.iter().any(|field| {
-                        field_pat.ident == field.ident && is_expr_identity_of_pat(cx, field_pat.pat, field.expr, by_hir)
-                    })
+                && unordered_over(field_pats, fields, |field_pat, field| {
+                    field_pat.ident == field.ident && is_expr_identity_of_pat(cx, field_pat.pat, field.expr, by_hir)
                 })
         },
         _ => false,
@@ -2116,17 +2137,11 @@ pub fn std_or_core(cx: &LateContext<'_>) -> Option<&'static str> {
 }
 
 pub fn is_no_std_crate(cx: &LateContext<'_>) -> bool {
-    cx.tcx
-        .hir_attrs(hir::CRATE_HIR_ID)
-        .iter()
-        .any(|attr| attr.has_name(sym::no_std))
+    find_attr!(cx.tcx.hir_attrs(hir::CRATE_HIR_ID), AttributeKind::NoStd(..))
 }
 
 pub fn is_no_core_crate(cx: &LateContext<'_>) -> bool {
-    cx.tcx
-        .hir_attrs(hir::CRATE_HIR_ID)
-        .iter()
-        .any(|attr| attr.has_name(sym::no_core))
+    find_attr!(cx.tcx.hir_attrs(hir::CRATE_HIR_ID), AttributeKind::NoCore(..))
 }
 
 /// Check if parent of a hir node is a trait implementation block.
@@ -2363,15 +2378,12 @@ pub fn peel_hir_ty_refs<'a>(mut ty: &'a hir::Ty<'a>) -> (&'a hir::Ty<'a>, usize)
     }
 }
 
-/// Peels off all references on the type. Returns the underlying type and the number of references
-/// removed.
-pub fn peel_middle_ty_refs(mut ty: Ty<'_>) -> (Ty<'_>, usize) {
-    let mut count = 0;
-    while let rustc_ty::Ref(_, dest_ty, _) = ty.kind() {
-        ty = *dest_ty;
-        count += 1;
+/// Returns the base type for HIR references and pointers.
+pub fn peel_hir_ty_refs_and_ptrs<'tcx>(ty: &'tcx hir::Ty<'tcx>) -> &'tcx hir::Ty<'tcx> {
+    match &ty.kind {
+        TyKind::Ptr(mut_ty) | TyKind::Ref(_, mut_ty) => peel_hir_ty_refs_and_ptrs(mut_ty.ty),
+        _ => ty,
     }
-    (ty, count)
 }
 
 /// Removes `AddrOf` operators (`&`) or deref operators (`*`), but only if a reference type is
@@ -2385,6 +2397,24 @@ pub fn peel_ref_operators<'hir>(cx: &LateContext<'_>, mut expr: &'hir Expr<'hir>
         }
     }
     expr
+}
+
+/// Returns a `Vec` of `Expr`s containing `AddrOf` operators (`&`) or deref operators (`*`) of a
+/// given expression.
+pub fn get_ref_operators<'hir>(cx: &LateContext<'_>, expr: &'hir Expr<'hir>) -> Vec<&'hir Expr<'hir>> {
+    let mut operators = Vec::new();
+    peel_hir_expr_while(expr, |expr| match expr.kind {
+        ExprKind::AddrOf(_, _, e) => {
+            operators.push(expr);
+            Some(e)
+        },
+        ExprKind::Unary(UnOp::Deref, e) if cx.typeck_results().expr_ty(e).is_ref() => {
+            operators.push(expr);
+            Some(e)
+        },
+        _ => None,
+    });
+    operators
 }
 
 pub fn is_hir_ty_cfg_dependant(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
@@ -3215,8 +3245,8 @@ pub fn get_path_from_caller_to_method_type<'tcx>(
     let assoc_item = tcx.associated_item(method);
     let def_id = assoc_item.container_id(tcx);
     match assoc_item.container {
-        rustc_ty::AssocItemContainer::Trait => get_path_to_callee(tcx, from, def_id),
-        rustc_ty::AssocItemContainer::Impl => {
+        rustc_ty::AssocContainer::Trait => get_path_to_callee(tcx, from, def_id),
+        rustc_ty::AssocContainer::InherentImpl | rustc_ty::AssocContainer::TraitImpl(_) => {
             let ty = tcx.type_of(def_id).instantiate_identity();
             get_path_to_ty(tcx, from, ty, args)
         },
@@ -3614,4 +3644,18 @@ pub fn expr_adjustment_requires_coercion(cx: &LateContext<'_>, expr: &Expr<'_>) 
             Adjust::Deref(Some(_)) | Adjust::Pointer(PointerCoercion::Unsize) | Adjust::NeverToAny
         )
     })
+}
+
+/// Checks if the expression is an async block (i.e., `async { ... }`).
+pub fn is_expr_async_block(expr: &Expr<'_>) -> bool {
+    matches!(
+        expr.kind,
+        ExprKind::Closure(Closure {
+            kind: hir::ClosureKind::Coroutine(CoroutineKind::Desugared(
+                CoroutineDesugaring::Async,
+                CoroutineSource::Block
+            )),
+            ..
+        })
+    )
 }

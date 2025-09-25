@@ -49,5 +49,17 @@ error: this call to `from_str_radix` can be replaced with a call to `str::parse`
 LL |     i32::from_str_radix(&stringier, 10)?;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `stringier.parse::<i32>()`
 
-error: aborting due to 8 previous errors
+error: this call to `from_str_radix` can be replaced with a call to `str::parse`
+  --> tests/ui/from_str_radix_10.rs:81:13
+   |
+LL |     let _ = u32::from_str_radix(&s, 10).unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `s.parse::<u32>()`
+
+error: this call to `from_str_radix` can be replaced with a call to `str::parse`
+  --> tests/ui/from_str_radix_10.rs:84:13
+   |
+LL |     let _ = u32::from_str_radix(&s_ref, 10).unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `s_ref.parse::<u32>()`
+
+error: aborting due to 10 previous errors
 

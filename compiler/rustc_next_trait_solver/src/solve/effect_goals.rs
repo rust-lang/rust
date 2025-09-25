@@ -3,10 +3,10 @@
 
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
-use rustc_type_ir::lang_items::TraitSolverLangItem;
+use rustc_type_ir::lang_items::SolverTraitLangItem;
 use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::solve::inspect::ProbeKind;
-use rustc_type_ir::{self as ty, Interner, elaborate};
+use rustc_type_ir::{self as ty, Interner, TypingMode, elaborate};
 use tracing::instrument;
 
 use super::assembly::{Candidate, structural_traits};
@@ -33,7 +33,7 @@ where
         self.with_replaced_self_ty(cx, self_ty)
     }
 
-    fn trait_def_id(self, _: I) -> I::DefId {
+    fn trait_def_id(self, _: I) -> I::TraitId {
         self.def_id()
     }
 
@@ -123,7 +123,8 @@ where
     fn consider_impl_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
-        impl_def_id: I::DefId,
+        impl_def_id: I::ImplId,
+        then: impl FnOnce(&mut EvalCtxt<'_, D>, Certainty) -> QueryResult<I>,
     ) -> Result<Candidate<I>, NoSolution> {
         let cx = ecx.cx();
 
@@ -135,12 +136,16 @@ where
         }
 
         let impl_polarity = cx.impl_polarity(impl_def_id);
-        match impl_polarity {
+        let certainty = match impl_polarity {
             ty::ImplPolarity::Negative => return Err(NoSolution),
-            ty::ImplPolarity::Reservation => {
-                unimplemented!("reservation impl for const trait: {:?}", goal)
-            }
-            ty::ImplPolarity::Positive => {}
+            ty::ImplPolarity::Reservation => match ecx.typing_mode() {
+                TypingMode::Coherence => Certainty::AMBIGUOUS,
+                TypingMode::Analysis { .. }
+                | TypingMode::Borrowck { .. }
+                | TypingMode::PostBorrowckAnalysis { .. }
+                | TypingMode::PostAnalysis => return Err(NoSolution),
+            },
+            ty::ImplPolarity::Positive => Certainty::Yes,
         };
 
         if !cx.impl_is_const(impl_def_id) {
@@ -148,20 +153,20 @@ where
         }
 
         ecx.probe_trait_candidate(CandidateSource::Impl(impl_def_id)).enter(|ecx| {
-            let impl_args = ecx.fresh_args_for_item(impl_def_id);
+            let impl_args = ecx.fresh_args_for_item(impl_def_id.into());
             ecx.record_impl_args(impl_args);
             let impl_trait_ref = impl_trait_ref.instantiate(cx, impl_args);
 
             ecx.eq(goal.param_env, goal.predicate.trait_ref, impl_trait_ref)?;
             let where_clause_bounds = cx
-                .predicates_of(impl_def_id)
+                .predicates_of(impl_def_id.into())
                 .iter_instantiated(cx, impl_args)
                 .map(|pred| goal.with(cx, pred));
             ecx.add_goals(GoalSource::ImplWhereBound, where_clause_bounds);
 
             // For this impl to be `const`, we need to check its `[const]` bounds too.
             let const_conditions = cx
-                .const_conditions(impl_def_id)
+                .const_conditions(impl_def_id.into())
                 .iter_instantiated(cx, impl_args)
                 .map(|bound_trait_ref| {
                     goal.with(
@@ -171,7 +176,7 @@ where
                 });
             ecx.add_goals(GoalSource::ImplWhereBound, const_conditions);
 
-            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+            then(ecx, certainty)
         })
     }
 
@@ -233,10 +238,10 @@ where
         // A built-in `Fn` impl only holds if the output is sized.
         // (FIXME: technically we only need to check this if the type is a fn ptr...)
         let output_is_sized_pred = inputs_and_output.map_bound(|(_, output)| {
-            ty::TraitRef::new(cx, cx.require_lang_item(TraitSolverLangItem::Sized), [output])
+            ty::TraitRef::new(cx, cx.require_trait_lang_item(SolverTraitLangItem::Sized), [output])
         });
         let requirements = cx
-            .const_conditions(def_id)
+            .const_conditions(def_id.into())
             .iter_instantiated(cx, args)
             .map(|trait_ref| {
                 (

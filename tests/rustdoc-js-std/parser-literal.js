@@ -15,7 +15,7 @@ const PARSED = [
                     generics: [],
                 },
             ],
-            typeFilter: -1,
+            typeFilter: null,
         }],
         foundElems: 1,
         userQuery: "R<P>",

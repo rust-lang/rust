@@ -81,10 +81,11 @@ pub fn parse_rustc_verbose() -> usize {
 }
 
 /// Parses the value of the "RUSTC_STAGE" environment variable and returns it as a `String`.
+/// This is the stage of the *build compiler*, which we are wrapping using a rustc/rustdoc wrapper.
 ///
 /// If "RUSTC_STAGE" was not set, the program will be terminated with 101.
-pub fn parse_rustc_stage() -> String {
-    env::var("RUSTC_STAGE").unwrap_or_else(|_| {
+pub fn parse_rustc_stage() -> u32 {
+    env::var("RUSTC_STAGE").ok().and_then(|v| v.parse().ok()).unwrap_or_else(|| {
         // Don't panic here; it's reasonable to try and run these shims directly. Give a helpful error instead.
         eprintln!("rustc shim: FATAL: RUSTC_STAGE was not set");
         eprintln!("rustc shim: NOTE: use `x.py build -vvv` to see all environment variables set by bootstrap");

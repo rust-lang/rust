@@ -4,8 +4,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use cfg_if::cfg_if;
-
 use crate::ffi::OsStr;
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 use crate::path::Path;
@@ -13,17 +11,19 @@ use crate::sealed::Sealed;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 use crate::{io, process, sys};
 
-cfg_if! {
-    if #[cfg(any(target_os = "vxworks", target_os = "espidf", target_os = "horizon", target_os = "vita"))] {
+cfg_select! {
+    any(target_os = "vxworks", target_os = "espidf", target_os = "horizon", target_os = "vita") => {
         type UserId = u16;
         type GroupId = u16;
-    } else if #[cfg(target_os = "nto")] {
+    }
+    target_os = "nto" => {
         // Both IDs are signed, see `sys/target_nto.h` of the QNX Neutrino SDP.
         // Only positive values should be used, see e.g.
         // https://www.qnx.com/developers/docs/7.1/#com.qnx.doc.neutrino.lib_ref/topic/s/setuid.html
         type UserId = i32;
         type GroupId = i32;
-    } else {
+    }
+    _ => {
         type UserId = u32;
         type GroupId = u32;
     }
@@ -406,8 +406,10 @@ pub trait ChildExt: Sealed {
     /// use libc::SIGTERM;
     ///
     /// fn main() -> io::Result<()> {
+    ///     # if cfg!(not(all(target_vendor = "apple", not(target_os = "macos")))) {
     ///     let child = Command::new("cat").stdin(Stdio::piped()).spawn()?;
     ///     child.send_signal(SIGTERM)?;
+    ///     # }
     ///     Ok(())
     /// }
     /// ```

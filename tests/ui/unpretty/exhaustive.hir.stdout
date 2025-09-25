@@ -12,6 +12,7 @@
 #![feature(box_patterns)]
 #![feature(builtin_syntax)]
 #![feature(const_trait_impl)]
+#![feature(coroutines)]
 #![feature(decl_macro)]
 #![feature(deref_patterns)]
 #![feature(explicit_tail_calls)]
@@ -33,9 +34,6 @@ extern crate std;
 #[prelude_import]
 use std::prelude::rust_2024::*;
 
-#[prelude_import]
-use self::prelude::*;
-
 mod prelude {
     use std::prelude::rust_2024::*;
 
@@ -48,13 +46,16 @@ mod prelude {
     }
 }
 
+#[prelude_import]
+use self::prelude::*;
+
 /// inner single-line doc comment
 /**
      * inner multi-line doc comment
      */
 #[doc = "inner doc attribute"]
 #[allow(dead_code, unused_variables)]
-#[no_std]
+#[attr = NoStd]
 mod attributes {
 
     /// outer single-line doc comment
@@ -509,7 +510,7 @@ mod items {
         impl () { }
         impl <T> () { }
         impl Default for () { }
-        impl const <T> Default for () { }
+        impl <T> const Default for () { }
     }
     /// ItemKind::MacCall
     mod item_mac_call { }

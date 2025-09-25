@@ -38,10 +38,6 @@ pub(crate) struct CguNotRecorded<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_ssa_autodiff_without_lto)]
-pub struct AutodiffWithoutLto;
-
-#[derive(Diagnostic)]
 #[diag(codegen_ssa_unknown_reuse_kind)]
 pub(crate) struct UnknownReuseKind {
     #[primary_span]
@@ -1118,14 +1114,6 @@ impl IntoDiagArg for ExpectedPointerMutability {
             ExpectedPointerMutability::Not => DiagArgValue::Str(Cow::Borrowed("*_")),
         }
     }
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_ssa_invalid_no_sanitize)]
-#[note]
-pub(crate) struct InvalidNoSanitize {
-    #[primary_span]
-    pub span: Span,
 }
 
 #[derive(Diagnostic)]

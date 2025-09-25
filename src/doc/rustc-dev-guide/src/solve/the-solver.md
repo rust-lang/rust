@@ -71,6 +71,6 @@ fails.
 ## Learning more
 
 The solver should be fairly self-contained. I hope that the above information provides a
-good foundation when looking at the code itself. Please reach out on zulip if you get stuck
+good foundation when looking at the code itself. Please reach out on Zulip if you get stuck
 while doing so or there are some quirks and design decisions which were unclear and deserve
 better comments or should be mentioned here.

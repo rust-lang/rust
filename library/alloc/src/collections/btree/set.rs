@@ -1202,7 +1202,6 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(btree_extract_if)]
     /// use std::collections::BTreeSet;
     ///
     /// // Splitting a set into even and odd values, reusing the original set:
@@ -1219,7 +1218,7 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// assert_eq!(low.into_iter().collect::<Vec<_>>(), [0, 1, 2, 3]);
     /// assert_eq!(high.into_iter().collect::<Vec<_>>(), [4, 5, 6, 7]);
     /// ```
-    #[unstable(feature = "btree_extract_if", issue = "70530")]
+    #[stable(feature = "btree_extract_if", since = "CURRENT_RUSTC_VERSION")]
     pub fn extract_if<F, R>(&mut self, range: R, pred: F) -> ExtractIf<'_, T, R, F, A>
     where
         T: Ord,
@@ -1554,7 +1553,7 @@ impl<'a, T, A: Allocator + Clone> IntoIterator for &'a BTreeSet<T, A> {
 }
 
 /// An iterator produced by calling `extract_if` on BTreeSet.
-#[unstable(feature = "btree_extract_if", issue = "70530")]
+#[stable(feature = "btree_extract_if", since = "CURRENT_RUSTC_VERSION")]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct ExtractIf<
     'a,
@@ -1569,7 +1568,7 @@ pub struct ExtractIf<
     alloc: A,
 }
 
-#[unstable(feature = "btree_extract_if", issue = "70530")]
+#[stable(feature = "btree_extract_if", since = "CURRENT_RUSTC_VERSION")]
 impl<T, R, F, A> fmt::Debug for ExtractIf<'_, T, R, F, A>
 where
     T: fmt::Debug,
@@ -1582,7 +1581,7 @@ where
     }
 }
 
-#[unstable(feature = "btree_extract_if", issue = "70530")]
+#[stable(feature = "btree_extract_if", since = "CURRENT_RUSTC_VERSION")]
 impl<T, R, F, A: Allocator + Clone> Iterator for ExtractIf<'_, T, R, F, A>
 where
     T: PartialOrd,
@@ -1602,7 +1601,7 @@ where
     }
 }
 
-#[unstable(feature = "btree_extract_if", issue = "70530")]
+#[stable(feature = "btree_extract_if", since = "CURRENT_RUSTC_VERSION")]
 impl<T, R, F, A: Allocator + Clone> FusedIterator for ExtractIf<'_, T, R, F, A>
 where
     T: PartialOrd,

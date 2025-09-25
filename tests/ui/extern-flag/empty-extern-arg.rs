@@ -1,4 +1,5 @@
 //~ ERROR extern location for std does not exist
+//~^ ERROR cannot resolve a prelude import
 //@ compile-flags: --extern std=
 //@ needs-unwind since it affects the error output
 //@ ignore-emscripten missing eh_catch_typeinfo lang item

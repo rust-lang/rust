@@ -1,4 +1,3 @@
-#![allow(improper_ctypes)]
 #![cfg_attr(f128_enabled, feature(f128))]
 
 use builtins_test::float_bench;

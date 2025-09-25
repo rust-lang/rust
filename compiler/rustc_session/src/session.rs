@@ -1,12 +1,12 @@
 use std::any::Any;
-use std::ops::{Div, Mul};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
-use std::{env, fmt, io};
+use std::{env, io};
 
 use rand::{RngCore, rng};
+use rustc_ast::NodeId;
 use rustc_data_structures::base_n::{CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
@@ -22,8 +22,9 @@ use rustc_errors::timings::TimingSectionHandler;
 use rustc_errors::translation::Translator;
 use rustc_errors::{
     Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, Diagnostic, ErrorGuaranteed, FatalAbort,
-    TerminalUrl, fallback_fluent_bundle,
+    LintEmitter, TerminalUrl, fallback_fluent_bundle,
 };
+use rustc_hir::limit::Limit;
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
 use rustc_span::edition::Edition;
@@ -44,6 +45,7 @@ use crate::config::{
     SwitchWithOptPath,
 };
 use crate::filesearch::FileSearch;
+use crate::lint::LintId;
 use crate::parse::{ParseSess, add_feature_diagnostics};
 use crate::search_paths::SearchPath;
 use crate::{errors, filesearch, lint};
@@ -58,64 +60,6 @@ pub enum CtfeBacktrace {
     Capture,
     /// Capture a backtrace at the point the error is created and immediately print it out.
     Immediate,
-}
-
-/// New-type wrapper around `usize` for representing limits. Ensures that comparisons against
-/// limits are consistent throughout the compiler.
-#[derive(Clone, Copy, Debug, HashStable_Generic)]
-pub struct Limit(pub usize);
-
-impl Limit {
-    /// Create a new limit from a `usize`.
-    pub fn new(value: usize) -> Self {
-        Limit(value)
-    }
-
-    /// Create a new unlimited limit.
-    pub fn unlimited() -> Self {
-        Limit(usize::MAX)
-    }
-
-    /// Check that `value` is within the limit. Ensures that the same comparisons are used
-    /// throughout the compiler, as mismatches can cause ICEs, see #72540.
-    #[inline]
-    pub fn value_within_limit(&self, value: usize) -> bool {
-        value <= self.0
-    }
-}
-
-impl From<usize> for Limit {
-    fn from(value: usize) -> Self {
-        Self::new(value)
-    }
-}
-
-impl fmt::Display for Limit {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-impl Div<usize> for Limit {
-    type Output = Limit;
-
-    fn div(self, rhs: usize) -> Self::Output {
-        Limit::new(self.0 / rhs)
-    }
-}
-
-impl Mul<usize> for Limit {
-    type Output = Limit;
-
-    fn mul(self, rhs: usize) -> Self::Output {
-        Limit::new(self.0 * rhs)
-    }
-}
-
-impl rustc_errors::IntoDiagArg for Limit {
-    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> rustc_errors::DiagArgValue {
-        self.to_string().into_diag_arg(&mut None)
-    }
 }
 
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
@@ -139,7 +83,10 @@ pub struct CompilerIO {
     pub temps_dir: Option<PathBuf>,
 }
 
-pub trait LintStoreMarker: Any + DynSync + DynSend {}
+pub trait DynLintStore: Any + DynSync + DynSend {
+    /// Provides a way to access lint groups without depending on `rustc_lint`
+    fn lint_groups_iter(&self) -> Box<dyn Iterator<Item = LintGroup> + '_>;
+}
 
 /// Represents the data associated with a compilation
 /// session for a single crate.
@@ -164,7 +111,7 @@ pub struct Session {
     pub code_stats: CodeStats,
 
     /// This only ever stores a `LintStore` but we don't want a dependency on that type here.
-    pub lint_store: Option<Arc<dyn LintStoreMarker>>,
+    pub lint_store: Option<Arc<dyn DynLintStore>>,
 
     /// Cap lint level specified by a driver specifically.
     pub driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
@@ -219,6 +166,20 @@ pub struct Session {
     pub invocation_temp: Option<String>,
 }
 
+impl LintEmitter for &'_ Session {
+    type Id = NodeId;
+
+    fn emit_node_span_lint(
+        self,
+        lint: &'static rustc_lint_defs::Lint,
+        node_id: Self::Id,
+        span: impl Into<rustc_errors::MultiSpan>,
+        decorator: impl for<'a> rustc_errors::LintDiagnostic<'a, ()> + DynSend + 'static,
+    ) {
+        self.psess.buffer_lint(lint, span, node_id, decorator);
+    }
+}
+
 #[derive(Clone, Copy)]
 pub enum CodegenUnits {
     /// Specified by the user. In this case we try fairly hard to produce the
@@ -238,6 +199,12 @@ impl CodegenUnits {
             CodegenUnits::Default(n) => n,
         }
     }
+}
+
+pub struct LintGroup {
+    pub name: &'static str,
+    pub lints: Vec<LintId>,
+    pub is_externally_loaded: bool,
 }
 
 impl Session {
@@ -596,6 +563,13 @@ impl Session {
             (&*self.target.staticlib_prefix, &*self.target.staticlib_suffix)
         }
     }
+
+    pub fn lint_groups_iter(&self) -> Box<dyn Iterator<Item = LintGroup> + '_> {
+        match self.lint_store {
+            Some(ref lint_store) => lint_store.lint_groups_iter(),
+            None => Box::new(std::iter::empty()),
+        }
+    }
 }
 
 // JUSTIFICATION: defn of the suggested wrapper fns
@@ -626,6 +600,13 @@ impl Session {
 
     /// Calculates the flavor of LTO to use for this compilation.
     pub fn lto(&self) -> config::Lto {
+        // Autodiff currently requires fat-lto to have access to the llvm-ir of all (indirectly) used functions and types.
+        // fat-lto is the easiest solution to this requirement, but quite expensive.
+        // FIXME(autodiff): Make autodiff also work with embed-bc instead of fat-lto.
+        if self.opts.autodiff_enabled() {
+            return config::Lto::Fat;
+        }
+
         // If our target has codegen requirements ignore the command line
         if self.target.requires_lto {
             return config::Lto::Fat;
@@ -796,9 +777,11 @@ impl Session {
         // Otherwise, we can defer to the `-C force-unwind-tables=<yes/no>`
         // value, if it is provided, or disable them, if not.
         self.target.requires_uwtable
-            || self.opts.cg.force_unwind_tables.unwrap_or(
-                self.panic_strategy() == PanicStrategy::Unwind || self.target.default_uwtable,
-            )
+            || self
+                .opts
+                .cg
+                .force_unwind_tables
+                .unwrap_or(self.panic_strategy().unwinds() || self.target.default_uwtable)
     }
 
     /// Returns the number of query threads that should be used for this
@@ -1248,7 +1231,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     }
 
     // KCFI requires panic=abort
-    if sess.is_sanitizer_kcfi_enabled() && sess.panic_strategy() != PanicStrategy::Abort {
+    if sess.is_sanitizer_kcfi_enabled() && sess.panic_strategy().unwinds() {
         sess.dcx().emit_err(errors::SanitizerKcfiRequiresPanicAbort);
     }
 
@@ -1365,6 +1348,12 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     if sess.opts.unstable_opts.function_return != FunctionReturn::default() {
         if sess.target.arch != "x86" && sess.target.arch != "x86_64" {
             sess.dcx().emit_err(errors::FunctionReturnRequiresX86OrX8664);
+        }
+    }
+
+    if sess.opts.unstable_opts.indirect_branch_cs_prefix {
+        if sess.target.arch != "x86" && sess.target.arch != "x86_64" {
+            sess.dcx().emit_err(errors::IndirectBranchCsPrefixRequiresX86OrX8664);
         }
     }
 

@@ -167,7 +167,7 @@ impl TcpStream {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn connect<A: ToSocketAddrs>(addr: A) -> io::Result<TcpStream> {
-        super::each_addr(addr, net_imp::TcpStream::connect).map(TcpStream)
+        net_imp::TcpStream::connect(addr).map(TcpStream)
     }
 
     /// Opens a TCP connection to a remote host with a timeout.
@@ -782,7 +782,7 @@ impl TcpListener {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn bind<A: ToSocketAddrs>(addr: A) -> io::Result<TcpListener> {
-        super::each_addr(addr, net_imp::TcpListener::bind).map(TcpListener)
+        net_imp::TcpListener::bind(addr).map(TcpListener)
     }
 
     /// Returns the local socket address of this listener.

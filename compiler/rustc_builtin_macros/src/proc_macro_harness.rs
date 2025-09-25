@@ -231,12 +231,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
         let fn_ident = if let ast::ItemKind::Fn(fn_) = &item.kind {
             fn_.ident
         } else {
-            self.dcx
-                .create_err(errors::AttributeOnlyBeUsedOnBareFunctions {
-                    span: attr.span,
-                    path: &pprust::path_to_string(&attr.get_normal_item().path),
-                })
-                .emit();
+            // Error handled by general target checking logic
             return;
         };
 

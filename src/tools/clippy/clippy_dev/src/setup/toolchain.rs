@@ -1,20 +1,12 @@
+use crate::utils::{cargo_cmd, run_exit_on_err};
 use std::env::consts::EXE_SUFFIX;
 use std::env::current_dir;
 use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use walkdir::WalkDir;
 
-use crate::utils::exit_if_err;
-
-use super::verify_inside_clippy_dir;
-
 pub fn create(standalone: bool, force: bool, release: bool, name: &str) {
-    if !verify_inside_clippy_dir() {
-        return;
-    }
-
     let rustup_home = std::env::var("RUSTUP_HOME").unwrap();
     let toolchain = std::env::var("RUSTUP_TOOLCHAIN").unwrap();
 
@@ -51,11 +43,10 @@ pub fn create(standalone: bool, force: bool, release: bool, name: &str) {
         }
     }
 
-    let status = Command::new("cargo")
-        .arg("build")
-        .args(release.then_some("--release"))
-        .status();
-    exit_if_err(status);
+    run_exit_on_err(
+        "cargo build",
+        cargo_cmd().arg("build").args(release.then_some("--release")),
+    );
 
     install_bin("cargo-clippy", &dest, standalone, release);
     install_bin("clippy-driver", &dest, standalone, release);

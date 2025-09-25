@@ -31,16 +31,22 @@ jobs:
             os: ubuntu-24.04-arm
             multiarch: armhf
             gcc_cross: arm-linux-gnueabihf
-          - host_target: riscv64gc-unknown-linux-gnu
-            os: ubuntu-latest
-            multiarch: riscv64
-            gcc_cross: riscv64-linux-gnu
-            qemu: true
-          - host_target: s390x-unknown-linux-gnu
-            os: ubuntu-latest
-            multiarch: s390x
-            gcc_cross: s390x-linux-gnu
-            qemu: true
+          # Disabled due to Ubuntu repo trouble
+          # - host_target: riscv64gc-unknown-linux-gnu
+          #   os: ubuntu-latest
+          #   multiarch: riscv64
+          #   gcc_cross: riscv64-linux-gnu
+          #   qemu: true
+          # - host_target: s390x-unknown-linux-gnu
+          #   os: ubuntu-latest
+          #   multiarch: s390x
+          #   gcc_cross: s390x-linux-gnu
+          #   qemu: true
+          # - host_target: powerpc64le-unknown-linux-gnu
+          #   os: ubuntu-latest
+          #   multiarch: ppc64el
+          #   gcc_cross: powerpc64le-linux-gnu
+          #   qemu: true
           - host_target: aarch64-apple-darwin
             os: macos-latest
           - host_target: i686-pc-windows-msvc
@@ -62,19 +68,13 @@ jobs:
       - name: install multiarch
         if: ${{ matrix.multiarch != '' }}
         run: |
-          # s390x, ppc64el need Ubuntu Ports to be in the mirror list
+          # s390x, ppc64el, riscv64 need Ubuntu Ports to be in the mirror list
           sudo bash -c "echo 'https://ports.ubuntu.com/	priority:4' >> /etc/apt/apt-mirrors.txt"
           # Add architecture
           sudo dpkg --add-architecture ${{ matrix.multiarch }}
           sudo apt update
           # Install needed packages
           sudo apt install $(echo "libatomic1: zlib1g-dev:" | sed 's/:/:${{ matrix.multiarch }}/g')
-      - name: Install rustup on Windows ARM
-        if: ${{ matrix.os == 'windows-11-arm' }}
-        run: |
-            curl -LOs https://static.rust-lang.org/rustup/dist/aarch64-pc-windows-msvc/rustup-init.exe
-            ./rustup-init.exe -y --no-modify-path
-            echo "$USERPROFILE/.cargo/bin" >> "$GITHUB_PATH"
       - uses: ./.github/workflows/setup
         with:
           toolchain_flags: "--host ${{ matrix.host_target }}"
@@ -117,6 +117,41 @@ jobs:
       - name: rustdoc
         run: RUSTDOCFLAGS="-Dwarnings" ./miri doc --document-private-items
 
+  bootstrap:
+    name: bootstrap build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Deliberately skipping `./.github/workflows/setup` as we do our own setup
+      - name: Add cache for cargo
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            # Taken from <https://doc.rust-lang.org/nightly/cargo/guide/cargo-home.html#caching-the-cargo-home-in-ci>.
+            # Cache package/registry information
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            # Cache bootstrap downloads
+            ../rust/build/cache
+          key: cargo-bootstrap-${{ hashFiles('rust-version') }}
+          restore-keys: cargo-bootstrap
+      - name: prepare build environment
+        run: |
+          MIRIDIR=$(pwd)
+          cd ..
+          # Bootstrap needs at least depth 2 to function.
+          git clone https://github.com/rust-lang/rust/ rust --depth 2 --revision $(cat "$MIRIDIR/rust-version")
+          cd rust
+          # Replace the in-tree Miri with the current version.
+          rm src/tools/miri -rf
+          ln -s "$MIRIDIR" src/tools/miri
+      - name: check build
+        run: |
+          cd ../rust # ./x does not seem to like being invoked from elsewhere
+          ./x check miri
+
   coverage:
     name: coverage report
     runs-on: ubuntu-latest
@@ -130,7 +165,7 @@ jobs:
   # ALL THE PREVIOUS JOBS NEED TO BE ADDED TO THE `needs` SECTION OF THIS JOB!
   # And they should be added below in `cron-fail-notify` as well.
   conclusion:
-    needs: [test, style, coverage]
+    needs: [test, style, bootstrap, coverage]
     # We need to ensure this job does *not* get skipped if its dependencies fail,
     # because a skipped job is considered a success by GitHub. So we have to
     # overwrite `if:`. We use `!cancelled()` to ensure the job does still not get run
@@ -169,7 +204,13 @@ jobs:
         run: rustup toolchain install nightly --profile minimal
       - name: Install rustup-toolchain-install-master
         run: cargo install -f rustup-toolchain-install-master
-      - name: Push changes to a branch and create PR
+      # Create a token for the next step so it can create a PR that actually runs CI.
+      - uses: actions/create-github-app-token@v2
+        id: app-token
+        with:
+          app-id: ${{ vars.APP_CLIENT_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+      - name: pull changes from rustc and create PR
         run: |
           # Make it easier to see what happens.
           set -x
@@ -198,14 +239,14 @@ jobs:
           BRANCH="rustup-$(date -u +%Y-%m-%d)"
           git switch -c $BRANCH
           git push -u origin $BRANCH
-          gh pr create -B master --title 'Automatic Rustup' --body 'Please close and re-open this PR to trigger CI, then enable auto-merge.'
+          gh pr create -B master --title 'Automatic Rustup' --body "Update \`rustc\` to https://github.com/rust-lang/rust/commit/$(cat rust-version)."
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
 
   cron-fail-notify:
     name: cronjob failure notification
     runs-on: ubuntu-latest
-    needs: [test, style, coverage]
+    needs: [test, style, bootstrap, coverage]
     if: ${{ github.event_name == 'schedule' && failure() }}
     steps:
       # Send a Zulip notification

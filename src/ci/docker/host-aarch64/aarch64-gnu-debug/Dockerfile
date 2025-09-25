@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM ubuntu:25.10
 
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -54,4 +54,4 @@ ENV RUST_CONFIGURE_ARGS \
 
 ENV SCRIPT \
   python3 ../x.py --stage 2 build && \
-  python3 ../x.py --stage 2 test tests/run-make
+  python3 ../x.py --stage 2 test tests/run-make tests/run-make-cargo

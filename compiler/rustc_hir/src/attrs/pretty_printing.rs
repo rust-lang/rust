@@ -6,7 +6,10 @@ use rustc_ast::{AttrStyle, IntTy, UintTy};
 use rustc_ast_pretty::pp::Printer;
 use rustc_span::hygiene::Transparency;
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
+use rustc_target::spec::SanitizerSet;
 use thin_vec::ThinVec;
+
+use crate::limit::Limit;
 
 /// This trait is used to print attributes in `rustc_hir_pretty`.
 ///
@@ -145,5 +148,15 @@ macro_rules! print_tup {
 
 print_tup!(A B C D E F G H);
 print_skip!(Span, (), ErrorGuaranteed);
-print_disp!(u16, bool, NonZero<u32>);
-print_debug!(Symbol, Ident, UintTy, IntTy, Align, AttrStyle, CommentKind, Transparency);
+print_disp!(u16, bool, NonZero<u32>, Limit);
+print_debug!(
+    Symbol,
+    Ident,
+    UintTy,
+    IntTy,
+    Align,
+    AttrStyle,
+    CommentKind,
+    Transparency,
+    SanitizerSet,
+);

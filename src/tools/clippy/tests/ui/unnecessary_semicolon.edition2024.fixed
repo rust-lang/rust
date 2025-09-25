@@ -63,3 +63,12 @@ fn issue14100() -> bool {
     // cast into the `bool` function return type.
     if return true {};
 }
+
+fn issue15426(x: u32) {
+    // removing the `;` would turn the stmt into an expr, but attrs aren't allowed on exprs
+    #[rustfmt::skip]
+    match x {
+        0b00 => {}  0b01 => {}
+        0b11 => {}  _    => {}
+    };
+}

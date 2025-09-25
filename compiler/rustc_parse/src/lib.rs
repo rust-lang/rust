@@ -6,6 +6,7 @@
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(debug_closure_helpers)]
+#![feature(default_field_values)]
 #![feature(if_let_guard)]
 #![feature(iter_intersperse)]
 #![recursion_limit = "256"]
@@ -16,7 +17,7 @@ use std::str::Utf8Error;
 use std::sync::Arc;
 
 use rustc_ast as ast;
-use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::tokenstream::{DelimSpan, TokenStream};
 use rustc_ast::{AttrItem, Attribute, MetaItemInner, token};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Diag, EmissionGuarantee, FatalError, PResult, pluralize};
@@ -30,8 +31,11 @@ pub const MACRO_ARGUMENTS: Option<&str> = Some("macro arguments");
 #[macro_use]
 pub mod parser;
 use parser::Parser;
+use rustc_ast::token::Delimiter;
+
+use crate::lexer::StripTokens;
+
 pub mod lexer;
-pub mod validate_attr;
 
 mod errors;
 
@@ -50,16 +54,18 @@ pub fn unwrap_or_emit_fatal<T>(expr: Result<T, Vec<Diag<'_>>>) -> T {
     }
 }
 
-/// Creates a new parser from a source string. On failure, the errors must be consumed via
-/// `unwrap_or_emit_fatal`, `emit`, `cancel`, etc., otherwise a panic will occur when they are
-/// dropped.
+/// Creates a new parser from a source string.
+///
+/// On failure, the errors must be consumed via `unwrap_or_emit_fatal`, `emit`, `cancel`,
+/// etc., otherwise a panic will occur when they are dropped.
 pub fn new_parser_from_source_str(
     psess: &ParseSess,
     name: FileName,
     source: String,
+    strip_tokens: StripTokens,
 ) -> Result<Parser<'_>, Vec<Diag<'_>>> {
     let source_file = psess.source_map().new_source_file(name, source);
-    new_parser_from_source_file(psess, source_file)
+    new_parser_from_source_file(psess, source_file, strip_tokens)
 }
 
 /// Creates a new parser from a filename. On failure, the errors must be consumed via
@@ -70,6 +76,7 @@ pub fn new_parser_from_source_str(
 pub fn new_parser_from_file<'a>(
     psess: &'a ParseSess,
     path: &Path,
+    strip_tokens: StripTokens,
     sp: Option<Span>,
 ) -> Result<Parser<'a>, Vec<Diag<'a>>> {
     let sm = psess.source_map();
@@ -93,7 +100,7 @@ pub fn new_parser_from_file<'a>(
         }
         err.emit();
     });
-    new_parser_from_source_file(psess, source_file)
+    new_parser_from_source_file(psess, source_file, strip_tokens)
 }
 
 pub fn utf8_error<E: EmissionGuarantee>(
@@ -144,9 +151,10 @@ pub fn utf8_error<E: EmissionGuarantee>(
 fn new_parser_from_source_file(
     psess: &ParseSess,
     source_file: Arc<SourceFile>,
+    strip_tokens: StripTokens,
 ) -> Result<Parser<'_>, Vec<Diag<'_>>> {
     let end_pos = source_file.end_position();
-    let stream = source_file_to_stream(psess, source_file, None)?;
+    let stream = source_file_to_stream(psess, source_file, None, strip_tokens)?;
     let mut parser = Parser::new(psess, stream, None);
     if parser.token == token::Eof {
         parser.token.span = Span::new(end_pos, end_pos, parser.token.span.ctxt(), None);
@@ -154,6 +162,9 @@ fn new_parser_from_source_file(
     Ok(parser)
 }
 
+/// Given a source string, produces a sequence of token trees.
+///
+/// NOTE: This only strips shebangs, not frontmatter!
 pub fn source_str_to_stream(
     psess: &ParseSess,
     name: FileName,
@@ -161,15 +172,21 @@ pub fn source_str_to_stream(
     override_span: Option<Span>,
 ) -> Result<TokenStream, Vec<Diag<'_>>> {
     let source_file = psess.source_map().new_source_file(name, source);
-    source_file_to_stream(psess, source_file, override_span)
+    // FIXME(frontmatter): Consider stripping frontmatter in a future edition. We can't strip them
+    // in the current edition since that would be breaking.
+    // See also <https://github.com/rust-lang/rust/issues/145520>.
+    // Alternatively, stop stripping shebangs here, too, if T-lang and crater approve.
+    source_file_to_stream(psess, source_file, override_span, StripTokens::Shebang)
 }
 
-/// Given a source file, produces a sequence of token trees. Returns any buffered errors from
-/// parsing the token stream.
+/// Given a source file, produces a sequence of token trees.
+///
+/// Returns any buffered errors from parsing the token stream.
 fn source_file_to_stream<'psess>(
     psess: &'psess ParseSess,
     source_file: Arc<SourceFile>,
     override_span: Option<Span>,
+    strip_tokens: StripTokens,
 ) -> Result<TokenStream, Vec<Diag<'psess>>> {
     let src = source_file.src.as_ref().unwrap_or_else(|| {
         psess.dcx().bug(format!(
@@ -178,7 +195,7 @@ fn source_file_to_stream<'psess>(
         ));
     });
 
-    lexer::lex_token_trees(psess, src.as_str(), source_file.start_pos, override_span)
+    lexer::lex_token_trees(psess, src.as_str(), source_file.start_pos, override_span, strip_tokens)
 }
 
 /// Runs the given subparser `f` on the tokens of the given `attr`'s item.
@@ -225,7 +242,7 @@ pub fn parse_cfg_attr(
         ast::AttrArgs::Delimited(ast::DelimArgs { dspan, delim, ref tokens })
             if !tokens.is_empty() =>
         {
-            crate::validate_attr::check_cfg_attr_bad_delim(psess, dspan, delim);
+            check_cfg_attr_bad_delim(psess, dspan, delim);
             match parse_in(psess, tokens.clone(), "`cfg_attr` input", |p| p.parse_cfg_attr()) {
                 Ok(r) => return Some(r),
                 Err(e) => {
@@ -243,4 +260,14 @@ pub fn parse_cfg_attr(
         }
     }
     None
+}
+
+fn check_cfg_attr_bad_delim(psess: &ParseSess, span: DelimSpan, delim: Delimiter) {
+    if let Delimiter::Parenthesis = delim {
+        return;
+    }
+    psess.dcx().emit_err(errors::CfgAttrBadDelim {
+        span: span.entire(),
+        sugg: errors::MetaBadDelimSugg { open: span.open, close: span.close },
+    });
 }

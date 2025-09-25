@@ -5,15 +5,17 @@ use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::DefId;
 use rustc_hir::find_attr;
 use rustc_macros::{Decodable, Encodable, HashStable};
-use rustc_span::{Ident, Symbol};
+use rustc_span::{ErrorGuaranteed, Ident, Symbol};
 
 use super::{TyCtxt, Visibility};
 use crate::ty;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, HashStable, Hash, Encodable, Decodable)]
-pub enum AssocItemContainer {
+pub enum AssocContainer {
     Trait,
-    Impl,
+    InherentImpl,
+    /// The `DefId` points to the trait item being implemented.
+    TraitImpl(Result<DefId, ErrorGuaranteed>),
 }
 
 /// Information about an associated item
@@ -21,11 +23,7 @@ pub enum AssocItemContainer {
 pub struct AssocItem {
     pub def_id: DefId,
     pub kind: AssocKind,
-    pub container: AssocItemContainer,
-
-    /// If this is an item in an impl of a trait then this is the `DefId` of
-    /// the associated item on the trait that this implements.
-    pub trait_item_def_id: Option<DefId>,
+    pub container: AssocContainer,
 }
 
 impl AssocItem {
@@ -55,7 +53,34 @@ impl AssocItem {
     ///
     /// [`type_of`]: crate::ty::TyCtxt::type_of
     pub fn defaultness(&self, tcx: TyCtxt<'_>) -> hir::Defaultness {
-        tcx.defaultness(self.def_id)
+        match self.container {
+            AssocContainer::InherentImpl => hir::Defaultness::Final,
+            AssocContainer::Trait | AssocContainer::TraitImpl(_) => tcx.defaultness(self.def_id),
+        }
+    }
+
+    pub fn expect_trait_impl(&self) -> Result<DefId, ErrorGuaranteed> {
+        let AssocContainer::TraitImpl(trait_item_id) = self.container else {
+            bug!("expected item to be in a trait impl: {:?}", self.def_id);
+        };
+        trait_item_id
+    }
+
+    /// If this is a trait impl item, returns the `DefId` of the trait item this implements.
+    /// Otherwise, returns `DefId` for self. Returns an Err in case the trait item was not
+    /// resolved successfully.
+    pub fn trait_item_or_self(&self) -> Result<DefId, ErrorGuaranteed> {
+        match self.container {
+            AssocContainer::TraitImpl(id) => id,
+            AssocContainer::Trait | AssocContainer::InherentImpl => Ok(self.def_id),
+        }
+    }
+
+    pub fn trait_item_def_id(&self) -> Option<DefId> {
+        match self.container {
+            AssocContainer::TraitImpl(Ok(id)) => Some(id),
+            _ => None,
+        }
     }
 
     #[inline]
@@ -71,16 +96,18 @@ impl AssocItem {
     #[inline]
     pub fn trait_container(&self, tcx: TyCtxt<'_>) -> Option<DefId> {
         match self.container {
-            AssocItemContainer::Impl => None,
-            AssocItemContainer::Trait => Some(tcx.parent(self.def_id)),
+            AssocContainer::InherentImpl | AssocContainer::TraitImpl(_) => None,
+            AssocContainer::Trait => Some(tcx.parent(self.def_id)),
         }
     }
 
     #[inline]
     pub fn impl_container(&self, tcx: TyCtxt<'_>) -> Option<DefId> {
         match self.container {
-            AssocItemContainer::Impl => Some(tcx.parent(self.def_id)),
-            AssocItemContainer::Trait => None,
+            AssocContainer::InherentImpl | AssocContainer::TraitImpl(_) => {
+                Some(tcx.parent(self.def_id))
+            }
+            AssocContainer::Trait => None,
         }
     }
 
@@ -156,11 +183,11 @@ impl AssocItem {
             return false;
         }
 
-        let def_id = match (self.container, self.trait_item_def_id) {
-            (AssocItemContainer::Trait, _) => self.def_id,
-            (AssocItemContainer::Impl, Some(trait_item_did)) => trait_item_did,
-            // Inherent impl but this attr is only applied to trait assoc items.
-            (AssocItemContainer::Impl, None) => return true,
+        let def_id = match self.container {
+            AssocContainer::Trait => self.def_id,
+            AssocContainer::TraitImpl(Ok(trait_item_did)) => trait_item_did,
+            AssocContainer::TraitImpl(Err(_)) => return false,
+            AssocContainer::InherentImpl => return true,
         };
         find_attr!(tcx.get_all_attrs(def_id), AttributeKind::TypeConst(_))
     }

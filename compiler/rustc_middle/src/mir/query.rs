@@ -17,7 +17,7 @@ use crate::ty::{self, CoroutineArgsExt, OpaqueHiddenType, Ty};
 rustc_index::newtype_index! {
     #[derive(HashStable)]
     #[encodable]
-    #[debug_format = "_{}"]
+    #[debug_format = "_s{}"]
     pub struct CoroutineSavedLocal {}
 }
 
@@ -149,8 +149,15 @@ pub enum ConstraintCategory<'tcx> {
     /// A constraint that doesn't correspond to anything the user sees.
     Internal,
 
-    /// An internal constraint derived from an illegal universe relation.
-    IllegalUniverse,
+    /// An internal constraint added when a region outlives a placeholder
+    /// it cannot name and therefore has to outlive `'static`. The argument
+    /// is the unnameable placeholder and the constraint is always between
+    /// an SCC representative and `'static`.
+    OutlivesUnnameablePlaceholder(
+        #[type_foldable(identity)]
+        #[type_visitable(ignore)]
+        ty::RegionVid,
+    ),
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]

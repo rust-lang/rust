@@ -118,7 +118,7 @@ Here is an example of how can `opt-dist` be used locally (outside of CI):
     ```
 3. Run the tool with the `local` mode and provide necessary parameters:
     ```bash
-    ./build/host/stage0-tools-bin/opt-dist local \
+    ./build/host/stage1-tools-bin/opt-dist local \
       --target-triple <target> \ # select target, e.g. "x86_64-unknown-linux-gnu"
       --checkout-dir <path>    \ # path to rust checkout, e.g. "."
       --llvm-dir <path>        \ # path to built LLVM toolchain, e.g. "/foo/bar/llvm/install"

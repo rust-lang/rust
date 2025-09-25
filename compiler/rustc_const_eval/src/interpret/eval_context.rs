@@ -4,6 +4,7 @@ use either::{Left, Right};
 use rustc_abi::{Align, HasDataLayout, Size, TargetDataLayout};
 use rustc_errors::DiagCtxtHandle;
 use rustc_hir::def_id::DefId;
+use rustc_hir::limit::Limit;
 use rustc_middle::mir::interpret::{ErrorHandled, InvalidMetaKind, ReportedErrorInfo};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{
@@ -12,7 +13,6 @@ use rustc_middle::ty::layout::{
 };
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypingEnv, Variance};
 use rustc_middle::{mir, span_bug};
-use rustc_session::Limit;
 use rustc_span::Span;
 use rustc_target::callconv::FnAbi;
 use tracing::{debug, trace};
@@ -113,7 +113,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// See [LayoutOf::layout_of] for the original documentation.
     #[inline(always)]
     pub fn layout_of(&self, ty: Ty<'tcx>) -> <Self as LayoutOfHelpers<'tcx>>::LayoutOfResult {
-        let _span = enter_trace_span!(M, layouting::layout_of, ty = ?ty.kind());
+        let _trace = enter_trace_span!(M, layouting::layout_of, ty = ?ty.kind());
         LayoutOf::layout_of(self, ty)
     }
 
@@ -126,7 +126,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         sig: ty::PolyFnSig<'tcx>,
         extra_args: &'tcx ty::List<Ty<'tcx>>,
     ) -> <Self as FnAbiOfHelpers<'tcx>>::FnAbiOfResult {
-        let _span = enter_trace_span!(M, layouting::fn_abi_of_fn_ptr, ?sig, ?extra_args);
+        let _trace = enter_trace_span!(M, layouting::fn_abi_of_fn_ptr, ?sig, ?extra_args);
         FnAbiOf::fn_abi_of_fn_ptr(self, sig, extra_args)
     }
 
@@ -139,7 +139,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         instance: ty::Instance<'tcx>,
         extra_args: &'tcx ty::List<Ty<'tcx>>,
     ) -> <Self as FnAbiOfHelpers<'tcx>>::FnAbiOfResult {
-        let _span = enter_trace_span!(M, layouting::fn_abi_of_instance, ?instance, ?extra_args);
+        let _trace = enter_trace_span!(M, layouting::fn_abi_of_instance, ?instance, ?extra_args);
         FnAbiOf::fn_abi_of_instance(self, instance, extra_args)
     }
 }
@@ -322,11 +322,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         frame: &Frame<'tcx, M::Provenance, M::FrameExtra>,
         value: T,
     ) -> Result<T, ErrorHandled> {
-        let _span = enter_trace_span!(
+        let _trace = enter_trace_span!(
             M,
             "instantiate_from_frame_and_normalize_erasing_regions",
-            "{}",
-            frame.instance
+            %frame.instance
         );
         frame
             .instance
@@ -344,6 +343,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         def: DefId,
         args: GenericArgsRef<'tcx>,
     ) -> InterpResult<'tcx, ty::Instance<'tcx>> {
+        let _trace = enter_trace_span!(M, resolve::try_resolve, def = ?def);
         trace!("resolve: {:?}, {:#?}", def, args);
         trace!("typing_env: {:#?}", self.typing_env);
         trace!("args: {:#?}", args);
@@ -469,7 +469,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 }
                 interp_ok(Some((full_size, full_align)))
             }
-            ty::Dynamic(expected_trait, _, ty::Dyn) => {
+            ty::Dynamic(expected_trait, _) => {
                 let vtable = metadata.unwrap_meta().to_pointer(self)?;
                 // Read size and align from vtable (already checks size).
                 interp_ok(Some(self.get_vtable_size_and_align(vtable, Some(expected_trait))?))
@@ -582,6 +582,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         span: Span,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
+        let _trace = enter_trace_span!(M, const_eval::eval_mir_constant, ?val);
         let const_val = val.eval(*self.tcx, self.typing_env, span).map_err(|err| {
                 if M::ALL_CONSTS_ARE_PRECHECKED {
                     match err {

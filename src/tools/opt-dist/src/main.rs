@@ -329,7 +329,7 @@ fn execute_pipeline(
 
                 // FIXME(kobzol): try gather profiles together, at once for LLVM and rustc
                 // Instrument the libraries and gather profiles
-                let llvm_profile = with_bolt_instrumented(&llvm_lib, |llvm_profile_dir| {
+                let llvm_profile = with_bolt_instrumented(env, &llvm_lib, |llvm_profile_dir| {
                     stage.section("Gather profiles", |_| {
                         gather_bolt_profiles(env, "LLVM", llvm_benchmarks(env), llvm_profile_dir)
                     })
@@ -354,7 +354,7 @@ fn execute_pipeline(
             log::info!("Optimizing {rustc_lib} with BOLT");
 
             // Instrument it and gather profiles
-            let rustc_profile = with_bolt_instrumented(&rustc_lib, |rustc_profile_dir| {
+            let rustc_profile = with_bolt_instrumented(env, &rustc_lib, |rustc_profile_dir| {
                 stage.section("Gather profiles", |_| {
                     gather_bolt_profiles(env, "rustc", rustc_benchmarks(env), rustc_profile_dir)
                 })
@@ -375,8 +375,14 @@ fn execute_pipeline(
 
     let mut dist = Bootstrap::dist(env, &dist_args)
         .llvm_pgo_optimize(llvm_pgo_profile.as_ref())
-        .rustc_pgo_optimize(&rustc_pgo_profile)
-        .avoid_rustc_rebuild();
+        .rustc_pgo_optimize(&rustc_pgo_profile);
+
+    // if LLVM is not built we'll have PGO optimized rustc
+    dist = if env.supports_shared_llvm() || !env.build_llvm() {
+        dist.avoid_rustc_rebuild()
+    } else {
+        dist.rustc_rebuild()
+    };
 
     for bolt_profile in bolt_profiles {
         dist = dist.with_bolt_profile(bolt_profile);

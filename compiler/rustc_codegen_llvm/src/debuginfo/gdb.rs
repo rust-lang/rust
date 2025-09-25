@@ -72,7 +72,7 @@ pub(crate) fn get_or_insert_gdb_debug_scripts_section_global<'ll>(
                 .unwrap_or_else(|| bug!("symbol `{}` is already defined", section_var_name));
             llvm::set_section(section_var, c".debug_gdb_scripts");
             llvm::set_initializer(section_var, cx.const_bytes(section_contents));
-            llvm::LLVMSetGlobalConstant(section_var, llvm::True);
+            llvm::LLVMSetGlobalConstant(section_var, llvm::TRUE);
             llvm::set_unnamed_address(section_var, llvm::UnnamedAddr::Global);
             llvm::set_linkage(section_var, llvm::Linkage::LinkOnceODRLinkage);
             // This should make sure that the whole section is not larger than

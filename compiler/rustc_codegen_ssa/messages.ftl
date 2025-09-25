@@ -8,8 +8,6 @@ codegen_ssa_aix_strip_not_used = using host's `strip` binary to cross-compile to
 
 codegen_ssa_archive_build_failure = failed to build archive at `{$path}`: {$error}
 
-codegen_ssa_autodiff_without_lto = using the autodiff feature requires using fat-lto
-
 codegen_ssa_bare_instruction_set = `#[instruction_set]` requires an argument
 
 codegen_ssa_binary_output_to_tty = option `-o` or `--emit` is used to write binary output type `{$shorthand}` to stdout, but stdout is a tty
@@ -31,7 +29,7 @@ codegen_ssa_cpu_required = target requires explicitly specifying a cpu with `-C 
 codegen_ssa_create_temp_dir = couldn't create a temp dir: {$error}
 
 codegen_ssa_dlltool_fail_import_library =
-    Dlltool could not create import library with {$dlltool_path} {$dlltool_args}:
+    dlltool could not create import library with {$dlltool_path} {$dlltool_args}:
     {$stdout}
     {$stderr}
 
@@ -40,15 +38,15 @@ codegen_ssa_dynamic_linking_with_lto =
     .note = only 'staticlib', 'bin', and 'cdylib' outputs are supported with LTO
 
 codegen_ssa_error_calling_dlltool =
-    Error calling dlltool '{$dlltool_path}': {$error}
+    error calling dlltool '{$dlltool_path}': {$error}
 
 codegen_ssa_error_creating_import_library =
-    Error creating import library for {$lib_name}: {$error}
+    error creating import library for {$lib_name}: {$error}
 
 codegen_ssa_error_creating_remark_dir = failed to create remark directory: {$error}
 
 codegen_ssa_error_writing_def_file =
-    Error writing .DEF file: {$error}
+    error writing .DEF file: {$error}
 
 codegen_ssa_expected_name_value_pair = expected name value pair
 
@@ -171,9 +169,6 @@ codegen_ssa_invalid_monomorphization_unsupported_symbol = invalid monomorphizati
 
 codegen_ssa_invalid_monomorphization_unsupported_symbol_of_size = invalid monomorphization of `{$name}` intrinsic: unsupported {$symbol} from `{$in_ty}` with element `{$in_elem}` of size `{$size}` to `{$ret_ty}`
 
-codegen_ssa_invalid_no_sanitize = invalid argument for `no_sanitize`
-    .note = expected one of: `address`, `cfi`, `hwaddress`, `kcfi`, `memory`, `memtag`, `shadow-call-stack`, or `thread`
-
 codegen_ssa_invalid_windows_subsystem = invalid windows subsystem `{$subsystem}`, only `windows` and `console` are allowed
 
 codegen_ssa_ld64_unimplemented_modifier = `as-needed` modifier not implemented yet for ld64
@@ -267,9 +262,9 @@ codegen_ssa_shuffle_indices_evaluation = could not evaluate shuffle_indices at c
 
 codegen_ssa_specify_libraries_to_link = use the `-l` flag to specify native libraries to link
 
-codegen_ssa_static_library_native_artifacts = Link against the following native artifacts when linking against this static library. The order and any duplication can be significant on some platforms.
+codegen_ssa_static_library_native_artifacts = link against the following native artifacts when linking against this static library. The order and any duplication can be significant on some platforms.
 
-codegen_ssa_static_library_native_artifacts_to_file = Native artifacts to link against have been written to {$path}. The order and any duplication can be significant on some platforms.
+codegen_ssa_static_library_native_artifacts_to_file = native artifacts to link against have been written to {$path}. The order and any duplication can be significant on some platforms.
 
 codegen_ssa_stripping_debug_info_failed = stripping debug info with `{$util}` failed: {$status}
     .note = {$output}
@@ -367,13 +362,13 @@ codegen_ssa_unable_to_run = unable to run `{$util}`: {$error}
 
 codegen_ssa_unable_to_run_dsymutil = unable to run `dsymutil`: {$error}
 
-codegen_ssa_unable_to_write_debugger_visualizer = Unable to write debugger visualizer file `{$path}`: {$error}
+codegen_ssa_unable_to_write_debugger_visualizer = unable to write debugger visualizer file `{$path}`: {$error}
 
 codegen_ssa_unexpected_parameter_name = unexpected parameter name
     .label = expected `{$prefix_nops}` or `{$entry_nops}`
 
 codegen_ssa_unknown_archive_kind =
-    Don't know how to build archive of type: {$kind}
+    don't know how to build archive of type: {$kind}
 
 codegen_ssa_unknown_ctarget_feature =
     unknown and unstable feature specified for `-Ctarget-feature`: `{$feature}`
@@ -400,6 +395,9 @@ codegen_ssa_use_cargo_directive = use the `cargo:rustc-link-lib` directive to sp
 codegen_ssa_version_script_write_failure = failed to write version script: {$error}
 
 codegen_ssa_visual_studio_not_installed = you may need to install Visual Studio build tools with the "C++ build tools" workload
+
+codegen_ssa_xcrun_about =
+    the SDK is needed by the linker to know where to find symbols in system libraries and for embedding the SDK version in the final object file
 
 codegen_ssa_xcrun_command_line_tools_insufficient =
     when compiling for iOS, tvOS, visionOS or watchOS, you need a full installation of Xcode

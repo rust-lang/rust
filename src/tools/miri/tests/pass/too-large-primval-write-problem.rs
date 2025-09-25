@@ -7,6 +7,8 @@
 //
 // This is just intended as a regression test to make sure we don't reintroduce this problem.
 
+#![allow(integer_to_ptr_transmutes)]
+
 #[cfg(target_pointer_width = "32")]
 fn main() {
     use std::mem::transmute;

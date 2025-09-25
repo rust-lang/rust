@@ -56,8 +56,8 @@ jobs:
       # Install a pinned rustc commit to avoid surprises
       - name: Install Rust toolchain
         run: |
-          RUSTC_VERSION=`cat rust-version`
-          rustup-toolchain-install-master ${RUSTC_VERSION} -c rust-src -c rustfmt
+          RUSTC_VERSION=$(cat rust-version)
+          rustup-toolchain-install-master ${RUSTC_VERSION} -c cargo -c rust-src -c rustfmt
           rustup default ${RUSTC_VERSION}
 
       # Emulate a nightly toolchain, because the toolchain installed above does not have "nightly"
@@ -98,9 +98,9 @@ jobs:
         run: |
           rustup update --no-self-update stable
           rustup default stable
-          rustup component add --toolchain stable rust-src clippy
-          # We always use a nightly rustfmt, regardless of channel, because we need
-          # --file-lines.
+          rustup component add --toolchain stable rust-src clippy rustfmt
+          # We also install a nightly rustfmt, because we use `--file-lines` in
+          # a test.
           rustup toolchain install nightly --profile minimal --component rustfmt
       # https://github.com/actions-rust-lang/setup-rust-toolchain/blob/main/rust.json
       - name: Install Rust Problem Matcher

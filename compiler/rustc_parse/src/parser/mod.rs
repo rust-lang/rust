@@ -22,9 +22,11 @@ use std::{fmt, mem, slice};
 use attr_wrapper::{AttrWrapper, UsePreAttrPos};
 pub use diagnostics::AttemptLocalParseRecovery;
 pub(crate) use expr::ForbiddenLetReason;
-pub(crate) use item::FnParseMode;
+// Public to use it for custom `if` expressions in rustfmt forks like https://github.com/tucant/rustfmt
+pub use expr::LetChainsPolicy;
+pub(crate) use item::{FnContext, FnParseMode};
 pub use pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
-use path::PathStyle;
+pub use path::PathStyle;
 use rustc_ast::token::{
     self, IdentIsRaw, InvisibleOrigin, MetaVarKind, NtExprKind, NtPatKind, Token, TokenKind,
 };
@@ -261,19 +263,19 @@ struct CaptureState {
 
 /// A sequence separator.
 #[derive(Debug)]
-struct SeqSep<'a> {
+struct SeqSep {
     /// The separator token.
-    sep: Option<ExpTokenPair<'a>>,
+    sep: Option<ExpTokenPair>,
     /// `true` if a trailing separator is allowed.
     trailing_sep_allowed: bool,
 }
 
-impl<'a> SeqSep<'a> {
-    fn trailing_allowed(sep: ExpTokenPair<'a>) -> SeqSep<'a> {
+impl SeqSep {
+    fn trailing_allowed(sep: ExpTokenPair) -> SeqSep {
         SeqSep { sep: Some(sep), trailing_sep_allowed: true }
     }
 
-    fn none() -> SeqSep<'a> {
+    fn none() -> SeqSep {
         SeqSep { sep: None, trailing_sep_allowed: false }
     }
 }
@@ -285,7 +287,7 @@ pub enum FollowedByType {
 }
 
 #[derive(Copy, Clone, Debug)]
-enum Trailing {
+pub enum Trailing {
     No,
     Yes,
 }
@@ -425,13 +427,13 @@ impl<'a> Parser<'a> {
     }
 
     /// Expects and consumes the token `t`. Signals an error if the next token is not `t`.
-    pub fn expect(&mut self, exp: ExpTokenPair<'_>) -> PResult<'a, Recovered> {
+    pub fn expect(&mut self, exp: ExpTokenPair) -> PResult<'a, Recovered> {
         if self.expected_token_types.is_empty() {
-            if self.token == *exp.tok {
+            if self.token == exp.tok {
                 self.bump();
                 Ok(Recovered::No)
             } else {
-                self.unexpected_try_recover(exp.tok)
+                self.unexpected_try_recover(&exp.tok)
             }
         } else {
             self.expect_one_of(slice::from_ref(&exp), &[])
@@ -443,13 +445,13 @@ impl<'a> Parser<'a> {
     /// anything. Signal a fatal error if next token is unexpected.
     fn expect_one_of(
         &mut self,
-        edible: &[ExpTokenPair<'_>],
-        inedible: &[ExpTokenPair<'_>],
+        edible: &[ExpTokenPair],
+        inedible: &[ExpTokenPair],
     ) -> PResult<'a, Recovered> {
-        if edible.iter().any(|exp| exp.tok == &self.token.kind) {
+        if edible.iter().any(|exp| exp.tok == self.token.kind) {
             self.bump();
             Ok(Recovered::No)
-        } else if inedible.iter().any(|exp| exp.tok == &self.token.kind) {
+        } else if inedible.iter().any(|exp| exp.tok == self.token.kind) {
             // leave it in the input
             Ok(Recovered::No)
         } else if self.token != token::Eof
@@ -494,8 +496,8 @@ impl<'a> Parser<'a> {
     /// This method will automatically add `tok` to `expected_token_types` if `tok` is not
     /// encountered.
     #[inline]
-    fn check(&mut self, exp: ExpTokenPair<'_>) -> bool {
-        let is_present = self.token == *exp.tok;
+    pub fn check(&mut self, exp: ExpTokenPair) -> bool {
+        let is_present = self.token == exp.tok;
         if !is_present {
             self.expected_token_types.insert(exp.token_type);
         }
@@ -542,7 +544,7 @@ impl<'a> Parser<'a> {
     /// Consumes a token 'tok' if it exists. Returns whether the given token was present.
     #[inline]
     #[must_use]
-    pub fn eat(&mut self, exp: ExpTokenPair<'_>) -> bool {
+    pub fn eat(&mut self, exp: ExpTokenPair) -> bool {
         let is_present = self.check(exp);
         if is_present {
             self.bump()
@@ -633,7 +635,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Consume a sequence produced by a metavar expansion, if present.
-    fn eat_metavar_seq<T>(
+    pub fn eat_metavar_seq<T>(
         &mut self,
         mv_kind: MetaVarKind,
         f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
@@ -745,13 +747,13 @@ impl<'a> Parser<'a> {
     /// Eats the expected token if it's present possibly breaking
     /// compound tokens like multi-character operators in process.
     /// Returns `true` if the token was eaten.
-    fn break_and_eat(&mut self, exp: ExpTokenPair<'_>) -> bool {
-        if self.token == *exp.tok {
+    fn break_and_eat(&mut self, exp: ExpTokenPair) -> bool {
+        if self.token == exp.tok {
             self.bump();
             return true;
         }
         match self.token.kind.break_two_token_op(1) {
-            Some((first, second)) if first == *exp.tok => {
+            Some((first, second)) if first == exp.tok => {
                 let first_span = self.psess.source_map().start_point(self.token.span);
                 let second_span = self.token.span.with_lo(first_span.hi());
                 self.token = Token::new(first, first_span);
@@ -826,7 +828,7 @@ impl<'a> Parser<'a> {
     /// Checks if the next token is contained within `closes`, and returns `true` if so.
     fn expect_any_with_type(
         &mut self,
-        closes_expected: &[ExpTokenPair<'_>],
+        closes_expected: &[ExpTokenPair],
         closes_not_expected: &[&TokenKind],
     ) -> bool {
         closes_expected.iter().any(|&close| self.check(close))
@@ -838,9 +840,9 @@ impl<'a> Parser<'a> {
     /// closing bracket.
     fn parse_seq_to_before_tokens<T>(
         &mut self,
-        closes_expected: &[ExpTokenPair<'_>],
+        closes_expected: &[ExpTokenPair],
         closes_not_expected: &[&TokenKind],
-        sep: SeqSep<'_>,
+        sep: SeqSep,
         mut f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
     ) -> PResult<'a, (ThinVec<T>, Trailing, Recovered)> {
         let mut first = true;
@@ -869,7 +871,7 @@ impl<'a> Parser<'a> {
                         }
                         Err(mut expect_err) => {
                             let sp = self.prev_token.span.shrink_to_hi();
-                            let token_str = pprust::token_kind_to_string(exp.tok);
+                            let token_str = pprust::token_kind_to_string(&exp.tok);
 
                             match self.current_closure.take() {
                                 Some(closure_spans) if self.token == TokenKind::Semi => {
@@ -1039,8 +1041,8 @@ impl<'a> Parser<'a> {
     /// closing bracket.
     fn parse_seq_to_before_end<T>(
         &mut self,
-        close: ExpTokenPair<'_>,
-        sep: SeqSep<'_>,
+        close: ExpTokenPair,
+        sep: SeqSep,
         f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
     ) -> PResult<'a, (ThinVec<T>, Trailing, Recovered)> {
         self.parse_seq_to_before_tokens(&[close], &[], sep, f)
@@ -1051,8 +1053,8 @@ impl<'a> Parser<'a> {
     /// closing bracket.
     fn parse_seq_to_end<T>(
         &mut self,
-        close: ExpTokenPair<'_>,
-        sep: SeqSep<'_>,
+        close: ExpTokenPair,
+        sep: SeqSep,
         f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
     ) -> PResult<'a, (ThinVec<T>, Trailing)> {
         let (val, trailing, recovered) = self.parse_seq_to_before_end(close, sep, f)?;
@@ -1070,9 +1072,9 @@ impl<'a> Parser<'a> {
     /// closing bracket.
     fn parse_unspanned_seq<T>(
         &mut self,
-        open: ExpTokenPair<'_>,
-        close: ExpTokenPair<'_>,
-        sep: SeqSep<'_>,
+        open: ExpTokenPair,
+        close: ExpTokenPair,
+        sep: SeqSep,
         f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
     ) -> PResult<'a, (ThinVec<T>, Trailing)> {
         self.expect(open)?;
@@ -1084,8 +1086,8 @@ impl<'a> Parser<'a> {
     /// closing bracket.
     fn parse_delim_comma_seq<T>(
         &mut self,
-        open: ExpTokenPair<'_>,
-        close: ExpTokenPair<'_>,
+        open: ExpTokenPair,
+        close: ExpTokenPair,
         f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
     ) -> PResult<'a, (ThinVec<T>, Trailing)> {
         self.parse_unspanned_seq(open, close, SeqSep::trailing_allowed(exp!(Comma)), f)
@@ -1094,7 +1096,7 @@ impl<'a> Parser<'a> {
     /// Parses a comma-separated sequence delimited by parentheses (e.g. `(x, y)`).
     /// The function `f` must consume tokens until reaching the next separator or
     /// closing bracket.
-    fn parse_paren_comma_seq<T>(
+    pub fn parse_paren_comma_seq<T>(
         &mut self,
         f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
     ) -> PResult<'a, (ThinVec<T>, Trailing)> {
@@ -1333,7 +1335,10 @@ impl<'a> Parser<'a> {
         if let token::Literal(token::Lit { kind: token::Integer, symbol, suffix }) = self.token.kind
         {
             if let Some(suffix) = suffix {
-                self.expect_no_tuple_index_suffix(self.token.span, suffix);
+                self.dcx().emit_err(errors::InvalidLiteralSuffixOnTupleIndex {
+                    span: self.token.span,
+                    suffix,
+                });
             }
             self.bump();
             Ok(Ident::new(symbol, self.prev_token.span))
@@ -1355,7 +1360,8 @@ impl<'a> Parser<'a> {
             AttrArgs::Delimited(args)
         } else if self.eat(exp!(Eq)) {
             let eq_span = self.prev_token.span;
-            AttrArgs::Eq { eq_span, expr: self.parse_expr_force_collect()? }
+            let expr = self.parse_expr_force_collect()?;
+            AttrArgs::Eq { eq_span, expr }
         } else {
             AttrArgs::Empty
         })
@@ -1388,15 +1394,26 @@ impl<'a> Parser<'a> {
             // matching `CloseDelim` we are *after* the delimited sequence,
             // i.e. at depth `d - 1`.
             let target_depth = self.token_cursor.stack.len() - 1;
-            loop {
-                // Advance one token at a time, so `TokenCursor::next()`
-                // can capture these tokens if necessary.
+
+            if let Capturing::No = self.capture_state.capturing {
+                // We are not capturing tokens, so skip to the end of the
+                // delimited sequence. This is a perf win when dealing with
+                // declarative macros that pass large `tt` fragments through
+                // multiple rules, as seen in the uom-0.37.0 crate.
+                self.token_cursor.curr.bump_to_end();
                 self.bump();
-                if self.token_cursor.stack.len() == target_depth {
-                    debug_assert!(self.token.kind.close_delim().is_some());
-                    break;
+                debug_assert_eq!(self.token_cursor.stack.len(), target_depth);
+            } else {
+                loop {
+                    // Advance one token at a time, so `TokenCursor::next()`
+                    // can capture these tokens if necessary.
+                    self.bump();
+                    if self.token_cursor.stack.len() == target_depth {
+                        break;
+                    }
                 }
             }
+            debug_assert!(self.token.kind.close_delim().is_some());
 
             // Consume close delimiter
             self.bump();

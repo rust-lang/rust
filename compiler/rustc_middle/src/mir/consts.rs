@@ -448,6 +448,11 @@ impl<'tcx> Const<'tcx> {
         Self::Val(val, ty)
     }
 
+    #[inline]
+    pub fn from_ty_value(tcx: TyCtxt<'tcx>, val: ty::Value<'tcx>) -> Self {
+        Self::Ty(val.ty, ty::Const::new_value(tcx, val.valtree, val.ty))
+    }
+
     pub fn from_bits(
         tcx: TyCtxt<'tcx>,
         bits: u128,
@@ -574,7 +579,7 @@ impl<'tcx> Display for Const<'tcx> {
 }
 
 ///////////////////////////////////////////////////////////////////////////
-/// Const-related utilities
+// Const-related utilities
 
 impl<'tcx> TyCtxt<'tcx> {
     pub fn span_as_caller_location(self, span: Span) -> ConstValue {

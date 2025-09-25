@@ -15,8 +15,6 @@ use std::sync::OnceLock;
 use std::{env, fs};
 
 use build_helper::git::PathFreshness;
-#[cfg(feature = "tracing")]
-use tracing::instrument;
 
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step, StepMetadata};
 use crate::core::config::{Config, TargetSelection};
@@ -31,7 +29,7 @@ use crate::{CLang, GitRepo, Kind, trace};
 pub struct LlvmResult {
     /// Path to llvm-config binary.
     /// NB: This is always the host llvm-config!
-    pub llvm_config: PathBuf,
+    pub host_llvm_config: PathBuf,
     /// Path to LLVM cmake directory for the target.
     pub llvm_cmake_dir: PathBuf,
 }
@@ -111,14 +109,14 @@ pub fn prebuilt_llvm_config(
         && let Some(ref s) = config.llvm_config
     {
         check_llvm_version(builder, s);
-        let llvm_config = s.to_path_buf();
-        let mut llvm_cmake_dir = llvm_config.clone();
+        let host_llvm_config = s.to_path_buf();
+        let mut llvm_cmake_dir = host_llvm_config.clone();
         llvm_cmake_dir.pop();
         llvm_cmake_dir.pop();
         llvm_cmake_dir.push("lib");
         llvm_cmake_dir.push("cmake");
         llvm_cmake_dir.push("llvm");
-        return LlvmBuildStatus::AlreadyBuilt(LlvmResult { llvm_config, llvm_cmake_dir });
+        return LlvmBuildStatus::AlreadyBuilt(LlvmResult { host_llvm_config, llvm_cmake_dir });
     }
 
     if handle_submodule_when_needed {
@@ -143,7 +141,7 @@ pub fn prebuilt_llvm_config(
     };
 
     let llvm_cmake_dir = out_dir.join("lib/cmake/llvm");
-    let res = LlvmResult { llvm_config: build_llvm_config, llvm_cmake_dir };
+    let res = LlvmResult { host_llvm_config: build_llvm_config, llvm_cmake_dir };
 
     static STAMP_HASH_MEMO: OnceLock<String> = OnceLock::new();
     let smart_stamp_hash = STAMP_HASH_MEMO.get_or_init(|| {
@@ -196,7 +194,10 @@ pub(crate) fn detect_llvm_freshness(config: &Config, is_git: bool) -> PathFreshn
 ///
 /// This checks the build triple platform to confirm we're usable at all, and if LLVM
 /// with/without assertions is available.
-pub(crate) fn is_ci_llvm_available_for_target(config: &Config, asserts: bool) -> bool {
+pub(crate) fn is_ci_llvm_available_for_target(
+    host_target: &TargetSelection,
+    asserts: bool,
+) -> bool {
     // This is currently all tier 1 targets and tier 2 targets with host tools
     // (since others may not have CI artifacts)
     // https://doc.rust-lang.org/rustc/platform-support.html#tier-1
@@ -204,6 +205,7 @@ pub(crate) fn is_ci_llvm_available_for_target(config: &Config, asserts: bool) ->
         // tier 1
         ("aarch64-unknown-linux-gnu", false),
         ("aarch64-apple-darwin", false),
+        ("aarch64-pc-windows-msvc", false),
         ("i686-pc-windows-gnu", false),
         ("i686-pc-windows-msvc", false),
         ("i686-unknown-linux-gnu", false),
@@ -212,17 +214,12 @@ pub(crate) fn is_ci_llvm_available_for_target(config: &Config, asserts: bool) ->
         ("x86_64-pc-windows-gnu", true),
         ("x86_64-pc-windows-msvc", true),
         // tier 2 with host tools
-        ("aarch64-pc-windows-msvc", false),
         ("aarch64-unknown-linux-musl", false),
         ("arm-unknown-linux-gnueabi", false),
         ("arm-unknown-linux-gnueabihf", false),
         ("armv7-unknown-linux-gnueabihf", false),
         ("loongarch64-unknown-linux-gnu", false),
         ("loongarch64-unknown-linux-musl", false),
-        ("mips-unknown-linux-gnu", false),
-        ("mips64-unknown-linux-gnuabi64", false),
-        ("mips64el-unknown-linux-gnuabi64", false),
-        ("mipsel-unknown-linux-gnu", false),
         ("powerpc-unknown-linux-gnu", false),
         ("powerpc64-unknown-linux-gnu", false),
         ("powerpc64le-unknown-linux-gnu", false),
@@ -235,8 +232,8 @@ pub(crate) fn is_ci_llvm_available_for_target(config: &Config, asserts: bool) ->
         ("x86_64-unknown-netbsd", false),
     ];
 
-    if !supported_platforms.contains(&(&*config.host_target.triple, asserts))
-        && (asserts || !supported_platforms.contains(&(&*config.host_target.triple, true)))
+    if !supported_platforms.contains(&(&*host_target.triple, asserts))
+        && (asserts || !supported_platforms.contains(&(&*host_target.triple, true)))
     {
         return false;
     }
@@ -252,7 +249,7 @@ pub struct Llvm {
 impl Step for Llvm {
     type Output = LlvmResult;
 
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/llvm-project").path("src/llvm-project/llvm")
@@ -263,15 +260,6 @@ impl Step for Llvm {
     }
 
     /// Compile LLVM for `target`.
-    #[cfg_attr(
-        feature = "tracing",
-        instrument(
-            level = "debug",
-            name = "Llvm::run",
-            skip_all,
-            fields(target = ?self.target),
-        ),
-    )]
     fn run(self, builder: &Builder<'_>) -> LlvmResult {
         let target = self.target;
         let target_native = if self.target.starts_with("riscv") {
@@ -495,11 +483,14 @@ impl Step for Llvm {
 
         // https://llvm.org/docs/HowToCrossCompileLLVM.html
         if !builder.config.is_host_target(target) {
-            let LlvmResult { llvm_config, .. } =
+            let LlvmResult { host_llvm_config, .. } =
                 builder.ensure(Llvm { target: builder.config.host_target });
             if !builder.config.dry_run() {
-                let llvm_bindir =
-                    command(&llvm_config).arg("--bindir").run_capture_stdout(builder).stdout();
+                let llvm_bindir = command(&host_llvm_config)
+                    .arg("--bindir")
+                    .cached()
+                    .run_capture_stdout(builder)
+                    .stdout();
                 let host_bin = Path::new(llvm_bindir.trim());
                 cfg.define(
                     "LLVM_TABLEGEN",
@@ -508,7 +499,7 @@ impl Step for Llvm {
                 // LLVM_NM is required for cross compiling using MSVC
                 cfg.define("LLVM_NM", host_bin.join("llvm-nm").with_extension(EXE_EXTENSION));
             }
-            cfg.define("LLVM_CONFIG_PATH", llvm_config);
+            cfg.define("LLVM_CONFIG_PATH", host_llvm_config);
             if builder.config.llvm_clang {
                 let build_bin =
                     builder.llvm_out(builder.config.host_target).join("build").join("bin");
@@ -550,7 +541,7 @@ impl Step for Llvm {
 
         // Helper to find the name of LLVM's shared library on darwin and linux.
         let find_llvm_lib_name = |extension| {
-            let major = get_llvm_version_major(builder, &res.llvm_config);
+            let major = get_llvm_version_major(builder, &res.host_llvm_config);
             match &llvm_version_suffix {
                 Some(version_suffix) => format!("libLLVM-{major}{version_suffix}.{extension}"),
                 None => format!("libLLVM-{major}.{extension}"),
@@ -605,7 +596,13 @@ impl Step for Llvm {
 }
 
 pub fn get_llvm_version(builder: &Builder<'_>, llvm_config: &Path) -> String {
-    command(llvm_config).arg("--version").run_capture_stdout(builder).stdout().trim().to_owned()
+    command(llvm_config)
+        .arg("--version")
+        .cached()
+        .run_capture_stdout(builder)
+        .stdout()
+        .trim()
+        .to_owned()
 }
 
 pub fn get_llvm_version_major(builder: &Builder<'_>, llvm_config: &Path) -> u8 {
@@ -622,11 +619,11 @@ fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
     let version = get_llvm_version(builder, llvm_config);
     let mut parts = version.split('.').take(2).filter_map(|s| s.parse::<u32>().ok());
     if let (Some(major), Some(_minor)) = (parts.next(), parts.next())
-        && major >= 19
+        && major >= 20
     {
         return;
     }
-    panic!("\n\nbad LLVM version: {version}, need >=19\n\n")
+    panic!("\n\nbad LLVM version: {version}, need >=20\n\n")
 }
 
 fn configure_cmake(
@@ -905,7 +902,7 @@ pub struct Enzyme {
 
 impl Step for Enzyme {
     type Output = PathBuf;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/enzyme/enzyme")
@@ -916,15 +913,6 @@ impl Step for Enzyme {
     }
 
     /// Compile Enzyme for `target`.
-    #[cfg_attr(
-        feature = "tracing",
-        instrument(
-            level = "debug",
-            name = "Enzyme::run",
-            skip_all,
-            fields(target = ?self.target),
-        ),
-    )]
     fn run(self, builder: &Builder<'_>) -> PathBuf {
         builder.require_submodule(
             "src/tools/enzyme",
@@ -936,7 +924,7 @@ impl Step for Enzyme {
         }
         let target = self.target;
 
-        let LlvmResult { llvm_config, .. } = builder.ensure(Llvm { target: self.target });
+        let LlvmResult { host_llvm_config, .. } = builder.ensure(Llvm { target: self.target });
 
         static STAMP_HASH_MEMO: OnceLock<String> = OnceLock::new();
         let smart_stamp_hash = STAMP_HASH_MEMO.get_or_init(|| {
@@ -990,7 +978,7 @@ impl Step for Enzyme {
 
         cfg.out_dir(&out_dir)
             .profile(profile)
-            .env("LLVM_CONFIG_REAL", &llvm_config)
+            .env("LLVM_CONFIG_REAL", &host_llvm_config)
             .define("LLVM_ENABLE_ASSERTIONS", "ON")
             .define("ENZYME_EXTERNAL_SHARED_LIB", "ON")
             .define("ENZYME_BC_LOADER", "OFF")
@@ -1010,7 +998,7 @@ pub struct Lld {
 
 impl Step for Lld {
     type Output = PathBuf;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/llvm-project/lld")
@@ -1027,13 +1015,13 @@ impl Step for Lld {
         }
         let target = self.target;
 
-        let LlvmResult { llvm_config, llvm_cmake_dir } = builder.ensure(Llvm { target });
+        let LlvmResult { host_llvm_config, llvm_cmake_dir } = builder.ensure(Llvm { target });
 
         // The `dist` step packages LLD next to LLVM's binaries for download-ci-llvm. The root path
         // we usually expect here is `./build/$triple/ci-llvm/`, with the binaries in its `bin`
         // subfolder. We check if that's the case, and if LLD's binary already exists there next to
         // `llvm-config`: if so, we can use it instead of building LLVM/LLD from source.
-        let ci_llvm_bin = llvm_config.parent().unwrap();
+        let ci_llvm_bin = host_llvm_config.parent().unwrap();
         if ci_llvm_bin.is_dir() && ci_llvm_bin.file_name().unwrap() == "bin" {
             let lld_path = ci_llvm_bin.join(exe("lld", target));
             if lld_path.exists() {
@@ -1116,7 +1104,7 @@ impl Step for Lld {
             // Use the host llvm-tblgen binary.
             cfg.define(
                 "LLVM_TABLEGEN_EXE",
-                llvm_config.with_file_name("llvm-tblgen").with_extension(EXE_EXTENSION),
+                host_llvm_config.with_file_name("llvm-tblgen").with_extension(EXE_EXTENSION),
             );
         }
 
@@ -1157,7 +1145,7 @@ impl Step for Sanitizers {
             return runtimes;
         }
 
-        let LlvmResult { llvm_config, .. } =
+        let LlvmResult { host_llvm_config, .. } =
             builder.ensure(Llvm { target: builder.config.host_target });
 
         static STAMP_HASH_MEMO: OnceLock<String> = OnceLock::new();
@@ -1197,7 +1185,7 @@ impl Step for Sanitizers {
         cfg.define("COMPILER_RT_BUILD_XRAY", "OFF");
         cfg.define("COMPILER_RT_DEFAULT_TARGET_ONLY", "ON");
         cfg.define("COMPILER_RT_USE_LIBCXX", "OFF");
-        cfg.define("LLVM_CONFIG_PATH", &llvm_config);
+        cfg.define("LLVM_CONFIG_PATH", &host_llvm_config);
 
         if self.target.contains("ohos") {
             cfg.define("COMPILER_RT_USE_BUILTINS_LIBRARY", "ON");

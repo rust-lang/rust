@@ -1,0 +1,35 @@
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/undefined-function-issue-120760.rs:20:16
+   |
+LL |     pub name: &'a str,
+   |                ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | pub struct User<'a, 'dep> {
+   |                 +++
+
+error[E0425]: cannot find function `run` in this scope
+  --> $DIR/undefined-function-issue-120760.rs:14:5
+   |
+LL |     run("dependency").await;
+   |     ^^^ not found in this scope
+
+error[E0425]: cannot find function `run` in this scope
+  --> $DIR/undefined-function-issue-120760.rs:61:17
+   |
+LL |         let _ = run("dependency").await;
+   |                 ^^^ not found in this scope
+
+error[E0560]: struct `User<'_>` has no field named `dep`
+  --> $DIR/undefined-function-issue-120760.rs:70:12
+   |
+LL |     User { dep }.save().await;
+   |            ^^^ `User<'_>` does not have this field
+   |
+   = note: available fields are: `name`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0261, E0425, E0560.
+For more information about an error, try `rustc --explain E0261`.

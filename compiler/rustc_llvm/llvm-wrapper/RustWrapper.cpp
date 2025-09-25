@@ -242,7 +242,7 @@ enum class LLVMRustAttributeKind {
   MinSize = 4,
   Naked = 5,
   NoAlias = 6,
-  NoCapture = 7,
+  CapturesAddress = 7,
   NoInline = 8,
   NonNull = 9,
   NoRedZone = 10,
@@ -277,6 +277,8 @@ enum class LLVMRustAttributeKind {
   FnRetThunkExtern = 41,
   Writable = 42,
   DeadOnUnwind = 43,
+  DeadOnReturn = 44,
+  CapturesReadOnly = 45,
 };
 
 static Attribute::AttrKind fromRust(LLVMRustAttributeKind Kind) {
@@ -295,12 +297,6 @@ static Attribute::AttrKind fromRust(LLVMRustAttributeKind Kind) {
     return Attribute::Naked;
   case LLVMRustAttributeKind::NoAlias:
     return Attribute::NoAlias;
-  case LLVMRustAttributeKind::NoCapture:
-#if LLVM_VERSION_GE(21, 0)
-    report_fatal_error("NoCapture doesn't exist in LLVM 21");
-#else
-    return Attribute::NoCapture;
-#endif
   case LLVMRustAttributeKind::NoCfCheck:
     return Attribute::NoCfCheck;
   case LLVMRustAttributeKind::NoInline:
@@ -369,6 +365,15 @@ static Attribute::AttrKind fromRust(LLVMRustAttributeKind Kind) {
     return Attribute::Writable;
   case LLVMRustAttributeKind::DeadOnUnwind:
     return Attribute::DeadOnUnwind;
+  case LLVMRustAttributeKind::DeadOnReturn:
+#if LLVM_VERSION_GE(21, 0)
+    return Attribute::DeadOnReturn;
+#else
+    report_fatal_error("DeadOnReturn attribute requires LLVM 21 or later");
+#endif
+  case LLVMRustAttributeKind::CapturesAddress:
+  case LLVMRustAttributeKind::CapturesReadOnly:
+    report_fatal_error("Should be handled separately");
   }
   report_fatal_error("bad LLVMRustAttributeKind");
 }
@@ -419,9 +424,14 @@ extern "C" void LLVMRustEraseInstFromParent(LLVMValueRef Instr) {
 extern "C" LLVMAttributeRef
 LLVMRustCreateAttrNoValue(LLVMContextRef C, LLVMRustAttributeKind RustAttr) {
 #if LLVM_VERSION_GE(21, 0)
-  // LLVM 21 replaced the NoCapture attribute with Captures(none).
-  if (RustAttr == LLVMRustAttributeKind::NoCapture) {
-    return wrap(Attribute::getWithCaptureInfo(*unwrap(C), CaptureInfo::none()));
+  if (RustAttr == LLVMRustAttributeKind::CapturesAddress) {
+    return wrap(Attribute::getWithCaptureInfo(
+        *unwrap(C), CaptureInfo(CaptureComponents::Address)));
+  }
+  if (RustAttr == LLVMRustAttributeKind::CapturesReadOnly) {
+    return wrap(Attribute::getWithCaptureInfo(
+        *unwrap(C), CaptureInfo(CaptureComponents::Address |
+                                CaptureComponents::ReadProvenance)));
   }
 #endif
   return wrap(Attribute::get(*unwrap(C), fromRust(RustAttr)));
@@ -473,6 +483,9 @@ extern "C" LLVMAttributeRef
 LLVMRustCreateRangeAttribute(LLVMContextRef C, unsigned NumBits,
                              const uint64_t LowerWords[],
                              const uint64_t UpperWords[]) {
+  // FIXME(Zalathar): There appears to be no stable guarantee that C++
+  // `AttrKind` values correspond directly to the `unsigned KindID` values
+  // accepted by LLVM-C API functions, though in practice they currently do.
   return LLVMCreateConstantRangeAttribute(C, Attribute::Range, NumBits,
                                           LowerWords, UpperWords);
 }
@@ -540,6 +553,7 @@ enum class LLVMRustMemoryEffects {
   None,
   ReadOnly,
   InaccessibleMemOnly,
+  ReadOnlyNotPure,
 };
 
 extern "C" LLVMAttributeRef
@@ -555,6 +569,10 @@ LLVMRustCreateMemoryEffectsAttr(LLVMContextRef C,
   case LLVMRustMemoryEffects::InaccessibleMemOnly:
     return wrap(Attribute::getWithMemoryEffects(
         *unwrap(C), MemoryEffects::inaccessibleMemOnly()));
+  case LLVMRustMemoryEffects::ReadOnlyNotPure:
+    return wrap(Attribute::getWithMemoryEffects(
+        *unwrap(C),
+        MemoryEffects::readOnly() | MemoryEffects::inaccessibleMemOnly()));
   default:
     report_fatal_error("bad MemoryEffects.");
   }
@@ -1013,13 +1031,6 @@ LLVMRustDIBuilderCreateFile(LLVMDIBuilderRef Builder, const char *Filename,
                                           CSInfo, oSource));
 }
 
-extern "C" LLVMMetadataRef
-LLVMRustDIBuilderCreateSubroutineType(LLVMDIBuilderRef Builder,
-                                      LLVMMetadataRef ParameterTypes) {
-  return wrap(unwrap(Builder)->createSubroutineType(
-      DITypeRefArray(unwrap<MDTuple>(ParameterTypes))));
-}
-
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateFunction(
     LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
     size_t NameLen, const char *LinkageName, size_t LinkageNameLen,
@@ -1058,47 +1069,6 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateMethod(
   return wrap(Sub);
 }
 
-extern "C" LLVMMetadataRef
-LLVMRustDIBuilderCreateBasicType(LLVMDIBuilderRef Builder, const char *Name,
-                                 size_t NameLen, uint64_t SizeInBits,
-                                 unsigned Encoding) {
-  return wrap(unwrap(Builder)->createBasicType(StringRef(Name, NameLen),
-                                               SizeInBits, Encoding));
-}
-
-extern "C" LLVMMetadataRef
-LLVMRustDIBuilderCreateTypedef(LLVMDIBuilderRef Builder, LLVMMetadataRef Type,
-                               const char *Name, size_t NameLen,
-                               LLVMMetadataRef File, unsigned LineNo,
-                               LLVMMetadataRef Scope) {
-  return wrap(unwrap(Builder)->createTypedef(
-      unwrap<DIType>(Type), StringRef(Name, NameLen), unwrap<DIFile>(File),
-      LineNo, unwrapDIPtr<DIScope>(Scope)));
-}
-
-extern "C" LLVMMetadataRef LLVMRustDIBuilderCreatePointerType(
-    LLVMDIBuilderRef Builder, LLVMMetadataRef PointeeTy, uint64_t SizeInBits,
-    uint32_t AlignInBits, unsigned AddressSpace, const char *Name,
-    size_t NameLen) {
-  return wrap(unwrap(Builder)->createPointerType(
-      unwrapDI<DIType>(PointeeTy), SizeInBits, AlignInBits, AddressSpace,
-      StringRef(Name, NameLen)));
-}
-
-extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateStructType(
-    LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
-    size_t NameLen, LLVMMetadataRef File, unsigned LineNumber,
-    uint64_t SizeInBits, uint32_t AlignInBits, LLVMDIFlags Flags,
-    LLVMMetadataRef DerivedFrom, LLVMMetadataRef Elements, unsigned RunTimeLang,
-    LLVMMetadataRef VTableHolder, const char *UniqueId, size_t UniqueIdLen) {
-  return wrap(unwrap(Builder)->createStructType(
-      unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen),
-      unwrapDI<DIFile>(File), LineNumber, SizeInBits, AlignInBits,
-      fromRust(Flags), unwrapDI<DIType>(DerivedFrom),
-      DINodeArray(unwrapDI<MDTuple>(Elements)), RunTimeLang,
-      unwrapDI<DIType>(VTableHolder), StringRef(UniqueId, UniqueIdLen)));
-}
-
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariantPart(
     LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
     size_t NameLen, LLVMMetadataRef File, unsigned LineNumber,
@@ -1111,17 +1081,6 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariantPart(
       fromRust(Flags), unwrapDI<DIDerivedType>(Discriminator),
       DINodeArray(unwrapDI<MDTuple>(Elements)),
       StringRef(UniqueId, UniqueIdLen)));
-}
-
-extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateMemberType(
-    LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
-    size_t NameLen, LLVMMetadataRef File, unsigned LineNo, uint64_t SizeInBits,
-    uint32_t AlignInBits, uint64_t OffsetInBits, LLVMDIFlags Flags,
-    LLVMMetadataRef Ty) {
-  return wrap(unwrap(Builder)->createMemberType(
-      unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen),
-      unwrapDI<DIFile>(File), LineNo, SizeInBits, AlignInBits, OffsetInBits,
-      fromRust(Flags), unwrapDI<DIType>(Ty)));
 }
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariantMemberType(
@@ -1137,23 +1096,6 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariantMemberType(
       unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen),
       unwrapDI<DIFile>(File), LineNo, SizeInBits, AlignInBits, OffsetInBits, D,
       fromRust(Flags), unwrapDI<DIType>(Ty)));
-}
-
-extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateStaticMemberType(
-    LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
-    size_t NameLen, LLVMMetadataRef File, unsigned LineNo, LLVMMetadataRef Ty,
-    LLVMDIFlags Flags, LLVMValueRef val, uint32_t AlignInBits) {
-  return wrap(unwrap(Builder)->createStaticMemberType(
-      unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen),
-      unwrapDI<DIFile>(File), LineNo, unwrapDI<DIType>(Ty), fromRust(Flags),
-      unwrap<llvm::ConstantInt>(val), llvm::dwarf::DW_TAG_member, AlignInBits));
-}
-
-extern "C" LLVMMetadataRef
-LLVMRustDIBuilderCreateQualifiedType(LLVMDIBuilderRef Builder, unsigned Tag,
-                                     LLVMMetadataRef Type) {
-  return wrap(
-      unwrap(Builder)->createQualifiedType(Tag, unwrapDI<DIType>(Type)));
 }
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateStaticVariable(
@@ -1206,15 +1148,6 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariable(
 }
 
 extern "C" LLVMMetadataRef
-LLVMRustDIBuilderCreateArrayType(LLVMDIBuilderRef Builder, uint64_t Size,
-                                 uint32_t AlignInBits, LLVMMetadataRef Ty,
-                                 LLVMMetadataRef Subscripts) {
-  return wrap(unwrap(Builder)->createArrayType(
-      Size, AlignInBits, unwrapDI<DIType>(Ty),
-      DINodeArray(unwrapDI<MDTuple>(Subscripts))));
-}
-
-extern "C" LLVMMetadataRef
 LLVMRustDIBuilderGetOrCreateSubrange(LLVMDIBuilderRef Builder, int64_t Lo,
                                      int64_t Count) {
   return wrap(unwrap(Builder)->getOrCreateSubrange(Lo, Count));
@@ -1260,19 +1193,6 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateEnumerationType(
       unwrapDI<DIFile>(File), LineNumber, SizeInBits, AlignInBits,
       DINodeArray(unwrapDI<MDTuple>(Elements)), unwrapDI<DIType>(ClassTy),
       /* RunTimeLang */ 0, "", IsScoped));
-}
-
-extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateUnionType(
-    LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
-    size_t NameLen, LLVMMetadataRef File, unsigned LineNumber,
-    uint64_t SizeInBits, uint32_t AlignInBits, LLVMDIFlags Flags,
-    LLVMMetadataRef Elements, unsigned RunTimeLang, const char *UniqueId,
-    size_t UniqueIdLen) {
-  return wrap(unwrap(Builder)->createUnionType(
-      unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen),
-      unwrapDI<DIFile>(File), LineNumber, SizeInBits, AlignInBits,
-      fromRust(Flags), DINodeArray(unwrapDI<MDTuple>(Elements)), RunTimeLang,
-      StringRef(UniqueId, UniqueIdLen)));
 }
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateTemplateTypeParameter(
@@ -1451,60 +1371,6 @@ static LLVMRustDiagnosticKind toRust(DiagnosticKind Kind) {
 extern "C" LLVMRustDiagnosticKind
 LLVMRustGetDiagInfoKind(LLVMDiagnosticInfoRef DI) {
   return toRust((DiagnosticKind)unwrap(DI)->getKind());
-}
-
-// This is kept distinct from LLVMGetTypeKind, because when
-// a new type kind is added, the Rust-side enum must be
-// updated or UB will result.
-extern "C" LLVMTypeKind LLVMRustGetTypeKind(LLVMTypeRef Ty) {
-  switch (unwrap(Ty)->getTypeID()) {
-  case Type::VoidTyID:
-    return LLVMVoidTypeKind;
-  case Type::HalfTyID:
-    return LLVMHalfTypeKind;
-  case Type::FloatTyID:
-    return LLVMFloatTypeKind;
-  case Type::DoubleTyID:
-    return LLVMDoubleTypeKind;
-  case Type::X86_FP80TyID:
-    return LLVMX86_FP80TypeKind;
-  case Type::FP128TyID:
-    return LLVMFP128TypeKind;
-  case Type::PPC_FP128TyID:
-    return LLVMPPC_FP128TypeKind;
-  case Type::LabelTyID:
-    return LLVMLabelTypeKind;
-  case Type::MetadataTyID:
-    return LLVMMetadataTypeKind;
-  case Type::IntegerTyID:
-    return LLVMIntegerTypeKind;
-  case Type::FunctionTyID:
-    return LLVMFunctionTypeKind;
-  case Type::StructTyID:
-    return LLVMStructTypeKind;
-  case Type::ArrayTyID:
-    return LLVMArrayTypeKind;
-  case Type::PointerTyID:
-    return LLVMPointerTypeKind;
-  case Type::FixedVectorTyID:
-    return LLVMVectorTypeKind;
-  case Type::TokenTyID:
-    return LLVMTokenTypeKind;
-  case Type::ScalableVectorTyID:
-    return LLVMScalableVectorTypeKind;
-  case Type::BFloatTyID:
-    return LLVMBFloatTypeKind;
-  case Type::X86_AMXTyID:
-    return LLVMX86_AMXTypeKind;
-  default: {
-    std::string error;
-    auto stream = llvm::raw_string_ostream(error);
-    stream << "Rust does not support the TypeID: " << unwrap(Ty)->getTypeID()
-           << " for the type: " << *unwrap(Ty);
-    stream.flush();
-    report_fatal_error(error.c_str());
-  }
-  }
 }
 
 DEFINE_SIMPLE_CONVERSION_FUNCTIONS(SMDiagnostic, LLVMSMDiagnosticRef)
@@ -1985,30 +1851,4 @@ extern "C" void LLVMRustSetNoSanitizeHWAddress(LLVMValueRef Global) {
     MD = GV.getSanitizerMetadata();
   MD.NoHWAddress = true;
   GV.setSanitizerMetadata(MD);
-}
-
-enum class LLVMRustTailCallKind {
-  None = 0,
-  Tail = 1,
-  MustTail = 2,
-  NoTail = 3
-};
-
-extern "C" void LLVMRustSetTailCallKind(LLVMValueRef Call,
-                                        LLVMRustTailCallKind Kind) {
-  CallInst *CI = unwrap<CallInst>(Call);
-  switch (Kind) {
-  case LLVMRustTailCallKind::None:
-    CI->setTailCallKind(CallInst::TCK_None);
-    break;
-  case LLVMRustTailCallKind::Tail:
-    CI->setTailCallKind(CallInst::TCK_Tail);
-    break;
-  case LLVMRustTailCallKind::MustTail:
-    CI->setTailCallKind(CallInst::TCK_MustTail);
-    break;
-  case LLVMRustTailCallKind::NoTail:
-    CI->setTailCallKind(CallInst::TCK_NoTail);
-    break;
-  }
 }

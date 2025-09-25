@@ -15,4 +15,4 @@ use minicore::*;
 
 // CHECK: define x86_intrcc void @has_x86_interrupt_abi
 #[no_mangle]
-pub extern "x86-interrupt" fn has_x86_interrupt_abi() {}
+pub extern "x86-interrupt" fn has_x86_interrupt_abi(_p: *const u8) {}

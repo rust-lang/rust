@@ -1,12 +1,9 @@
-error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+error[E0080]: transmuting from 8-byte type to 16-byte type: `usize` -> `&[u8]`
   --> $DIR/issue-79494.rs:5:33
    |
 LL | pub const ZST: &[u8] = unsafe { std::mem::transmute(1usize) };
-   |                                 ^^^^^^^^^^^^^^^^^^^
-   |
-   = note: source type: `usize` (64 bits)
-   = note: target type: `&[u8]` (128 bits)
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `ZST` failed here
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0512`.
+For more information about this error, try `rustc --explain E0080`.

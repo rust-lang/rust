@@ -204,7 +204,7 @@ where
                         //
                         // Only goals proven via the trait solver should be region dependent.
                         Certainty::Yes => {}
-                        Certainty::Maybe(_) => {
+                        Certainty::Maybe { .. } => {
                             self.obligations.register(obligation, None);
                         }
                     }
@@ -252,11 +252,13 @@ where
                         // inside of an opaque type, e.g. if there's `Opaque = (?x, ?x)` in the
                         // storage, we can also rely on structural identity of `?x` even if we
                         // later uniquify it in MIR borrowck.
-                        if infcx.in_hir_typeck && obligation.has_non_region_infer() {
+                        if infcx.in_hir_typeck
+                            && (obligation.has_non_region_infer() || obligation.has_free_regions())
+                        {
                             infcx.push_hir_typeck_potentially_region_dependent_goal(obligation);
                         }
                     }
-                    Certainty::Maybe(_) => self.obligations.register(obligation, stalled_on),
+                    Certainty::Maybe { .. } => self.obligations.register(obligation, stalled_on),
                 }
             }
 

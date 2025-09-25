@@ -39,7 +39,6 @@ fn init_compiler_benchmarks(
         "--exact-match",
         crates.join(",").as_str(),
     ])
-    .env("RUST_LOG", "collector=debug")
     .env("RUSTC", env.rustc_stage_0().as_str())
     .env("RUSTC_BOOTSTRAP", "1")
     .workdir(&env.rustc_perf_dir());
@@ -195,7 +194,8 @@ pub fn gather_bolt_profiles(
     let profiles: Vec<_> =
         glob::glob(&format!("{profile_prefix}*"))?.collect::<Result<Vec<_>, _>>()?;
 
-    let mut merge_args = vec!["merge-fdata"];
+    let fdata = env.merge_fdata();
+    let mut merge_args = vec![fdata.as_str()];
     merge_args.extend(profiles.iter().map(|p| p.to_str().unwrap()));
 
     with_log_group("Merging BOLT profiles", || {

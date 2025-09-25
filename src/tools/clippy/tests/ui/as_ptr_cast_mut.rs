@@ -1,7 +1,6 @@
 #![allow(unused)]
 #![warn(clippy::as_ptr_cast_mut)]
 #![allow(clippy::wrong_self_convention, clippy::unnecessary_cast)]
-//@no-rustfix: incorrect suggestion
 
 struct MutPtrWrapper(Vec<u8>);
 impl MutPtrWrapper {
@@ -20,9 +19,6 @@ impl<T> Covariant<T> {
 fn main() {
     let mut string = String::new();
     let _ = string.as_ptr() as *mut u8;
-    //~^ as_ptr_cast_mut
-
-    let _: *mut i8 = string.as_ptr() as *mut _;
     //~^ as_ptr_cast_mut
 
     let _ = string.as_ptr() as *const i8;

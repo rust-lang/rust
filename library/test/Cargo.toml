@@ -6,7 +6,7 @@ version = "0.0.0"
 edition = "2024"
 
 [dependencies]
-getopts = { version = "0.2.21", features = ['rustc-dep-of-std'] }
+getopts = { version = "0.2.24", default-features = false, features = ['rustc-dep-of-std'] }
 std = { path = "../std", public = true }
 core = { path = "../core", public = true }
 

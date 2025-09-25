@@ -11,22 +11,16 @@ pub struct TryFromIntError(pub(crate) ());
 
 #[stable(feature = "try_from", since = "1.34.0")]
 impl fmt::Display for TryFromIntError {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        #[allow(deprecated)]
-        self.description().fmt(fmt)
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        "out of range integral type conversion attempted".fmt(f)
     }
 }
 
 #[stable(feature = "try_from", since = "1.34.0")]
-impl Error for TryFromIntError {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-        "out of range integral type conversion attempted"
-    }
-}
+impl Error for TryFromIntError {}
 
 #[stable(feature = "try_from", since = "1.34.0")]
-#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 impl const From<Infallible> for TryFromIntError {
     fn from(x: Infallible) -> TryFromIntError {
         match x {}
@@ -34,7 +28,7 @@ impl const From<Infallible> for TryFromIntError {
 }
 
 #[unstable(feature = "never_type", issue = "35121")]
-#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 impl const From<!> for TryFromIntError {
     #[inline]
     fn from(never: !) -> TryFromIntError {
@@ -128,15 +122,6 @@ impl ParseIntError {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for ParseIntError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        #[allow(deprecated)]
-        self.description().fmt(f)
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl Error for ParseIntError {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
         match self.kind {
             IntErrorKind::Empty => "cannot parse integer from empty string",
             IntErrorKind::InvalidDigit => "invalid digit found in string",
@@ -144,5 +129,9 @@ impl Error for ParseIntError {
             IntErrorKind::NegOverflow => "number too small to fit in target type",
             IntErrorKind::Zero => "number would be zero for non-zero type",
         }
+        .fmt(f)
     }
 }
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Error for ParseIntError {}

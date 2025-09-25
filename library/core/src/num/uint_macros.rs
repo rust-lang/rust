@@ -14,6 +14,9 @@ macro_rules! uint_impl {
         rot = $rot:literal,
         rot_op = $rot_op:literal,
         rot_result = $rot_result:literal,
+        fsh_op = $fsh_op:literal,
+        fshl_result = $fshl_result:literal,
+        fshr_result = $fshr_result:literal,
         swap_op = $swap_op:literal,
         swapped = $swapped:literal,
         reversed = $reversed:literal,
@@ -261,6 +264,54 @@ macro_rules! uint_impl {
             self & self.wrapping_neg()
         }
 
+        /// Returns the index of the highest bit set to one in `self`, or `None`
+        /// if `self` is `0`.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(int_lowest_highest_one)]
+        ///
+        #[doc = concat!("assert_eq!(0x0_", stringify!($SelfT), ".highest_one(), None);")]
+        #[doc = concat!("assert_eq!(0x1_", stringify!($SelfT), ".highest_one(), Some(0));")]
+        #[doc = concat!("assert_eq!(0x10_", stringify!($SelfT), ".highest_one(), Some(4));")]
+        #[doc = concat!("assert_eq!(0x1f_", stringify!($SelfT), ".highest_one(), Some(4));")]
+        /// ```
+        #[unstable(feature = "int_lowest_highest_one", issue = "145203")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline(always)]
+        pub const fn highest_one(self) -> Option<u32> {
+            match NonZero::new(self) {
+                Some(v) => Some(v.highest_one()),
+                None => None,
+            }
+        }
+
+        /// Returns the index of the lowest bit set to one in `self`, or `None`
+        /// if `self` is `0`.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(int_lowest_highest_one)]
+        ///
+        #[doc = concat!("assert_eq!(0x0_", stringify!($SelfT), ".lowest_one(), None);")]
+        #[doc = concat!("assert_eq!(0x1_", stringify!($SelfT), ".lowest_one(), Some(0));")]
+        #[doc = concat!("assert_eq!(0x10_", stringify!($SelfT), ".lowest_one(), Some(4));")]
+        #[doc = concat!("assert_eq!(0x1f_", stringify!($SelfT), ".lowest_one(), Some(0));")]
+        /// ```
+        #[unstable(feature = "int_lowest_highest_one", issue = "145203")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline(always)]
+        pub const fn lowest_one(self) -> Option<u32> {
+            match NonZero::new(self) {
+                Some(v) => Some(v.lowest_one()),
+                None => None,
+            }
+        }
+
         /// Returns the bit pattern of `self` reinterpreted as a signed integer of the same size.
         ///
         /// This produces the same result as an `as` cast, but ensures that the bit-width remains
@@ -325,6 +376,76 @@ macro_rules! uint_impl {
         #[inline(always)]
         pub const fn rotate_right(self, n: u32) -> Self {
             return intrinsics::rotate_right(self, n);
+        }
+
+        /// Performs a left funnel shift (concatenates `self` with `rhs`, with `self`
+        /// making up the most significant half, then shifts the combined value left
+        /// by `n`, and most significant half is extracted to produce the result).
+        ///
+        /// Please note this isn't the same operation as the `<<` shifting operator or
+        /// [`rotate_left`](Self::rotate_left), although `a.funnel_shl(a, n)` is *equivalent*
+        /// to `a.rotate_left(n)`.
+        ///
+        /// # Panics
+        ///
+        /// If `n` is greater than or equal to the number of bits in `self`
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(funnel_shifts)]
+        #[doc = concat!("let a = ", $rot_op, stringify!($SelfT), ";")]
+        #[doc = concat!("let b = ", $fsh_op, stringify!($SelfT), ";")]
+        #[doc = concat!("let m = ", $fshl_result, ";")]
+        ///
+        #[doc = concat!("assert_eq!(a.funnel_shl(b, ", $rot, "), m);")]
+        /// ```
+        #[rustc_const_unstable(feature = "funnel_shifts", issue = "145686")]
+        #[unstable(feature = "funnel_shifts", issue = "145686")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline(always)]
+        pub const fn funnel_shl(self, rhs: Self, n: u32) -> Self {
+            assert!(n < Self::BITS, "attempt to funnel shift left with overflow");
+            // SAFETY: just checked that `shift` is in-range
+            unsafe { intrinsics::unchecked_funnel_shl(self, rhs, n) }
+        }
+
+        /// Performs a right funnel shift (concatenates `self` and `rhs`, with `self`
+        /// making up the most significant half, then shifts the combined value right
+        /// by `n`, and least significant half is extracted to produce the result).
+        ///
+        /// Please note this isn't the same operation as the `>>` shifting operator or
+        /// [`rotate_right`](Self::rotate_right), although `a.funnel_shr(a, n)` is *equivalent*
+        /// to `a.rotate_right(n)`.
+        ///
+        /// # Panics
+        ///
+        /// If `n` is greater than or equal to the number of bits in `self`
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(funnel_shifts)]
+        #[doc = concat!("let a = ", $rot_op, stringify!($SelfT), ";")]
+        #[doc = concat!("let b = ", $fsh_op, stringify!($SelfT), ";")]
+        #[doc = concat!("let m = ", $fshr_result, ";")]
+        ///
+        #[doc = concat!("assert_eq!(a.funnel_shr(b, ", $rot, "), m);")]
+        /// ```
+        #[rustc_const_unstable(feature = "funnel_shifts", issue = "145686")]
+        #[unstable(feature = "funnel_shifts", issue = "145686")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline(always)]
+        pub const fn funnel_shr(self, rhs: Self, n: u32) -> Self {
+            assert!(n < Self::BITS, "attempt to funnel shift right with overflow");
+            // SAFETY: just checked that `shift` is in-range
+            unsafe { intrinsics::unchecked_funnel_shr(self, rhs, n) }
         }
 
         /// Reverses the byte order of the integer.
@@ -1094,23 +1215,17 @@ macro_rules! uint_impl {
             self / rhs
         }
 
-        /// Checked integer division without remainder. Computes `self / rhs`.
-        ///
-        /// # Panics
-        ///
-        /// This function will panic  if `rhs == 0` or `self % rhs != 0`.
+        /// Checked integer division without remainder. Computes `self / rhs`,
+        /// returning `None` if `rhs == 0` or if `self % rhs != 0`.
         ///
         /// # Examples
         ///
         /// ```
         /// #![feature(exact_div)]
-        #[doc = concat!("assert_eq!(64", stringify!($SelfT), ".exact_div(2), 32);")]
-        #[doc = concat!("assert_eq!(64", stringify!($SelfT), ".exact_div(32), 2);")]
-        /// ```
-        ///
-        /// ```should_panic
-        /// #![feature(exact_div)]
-        #[doc = concat!("let _ = 65", stringify!($SelfT), ".exact_div(2);")]
+        #[doc = concat!("assert_eq!(64", stringify!($SelfT), ".checked_exact_div(2), Some(32));")]
+        #[doc = concat!("assert_eq!(64", stringify!($SelfT), ".checked_exact_div(32), Some(2));")]
+        #[doc = concat!("assert_eq!(64", stringify!($SelfT), ".checked_exact_div(0), None);")]
+        #[doc = concat!("assert_eq!(65", stringify!($SelfT), ".checked_exact_div(2), None);")]
         /// ```
         #[unstable(
             feature = "exact_div",
@@ -1449,6 +1564,20 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         pub const fn checked_ilog(self, base: Self) -> Option<u32> {
+            // Inform compiler of optimizations when the base is known at
+            // compile time and there's a cheaper method available.
+            //
+            // Note: Like all optimizations, this is not guaranteed to be
+            // applied by the compiler. If you want those specific bases,
+            // use `.checked_ilog2()` or `.checked_ilog10()` directly.
+            if core::intrinsics::is_val_statically_known(base) {
+                if base == 2 {
+                    return self.checked_ilog2();
+                } else if base == 10 {
+                    return self.checked_ilog10();
+                }
+            }
+
             if self <= 0 || base <= 1 {
                 None
             } else if self < base {
@@ -1564,7 +1693,7 @@ macro_rules! uint_impl {
         ///
         /// ```should_panic
         #[doc = concat!("let _ = 1", stringify!($SelfT), ".strict_neg();")]
-        ///
+        /// ```
         #[stable(feature = "strict_overflow_ops", since = "CURRENT_RUSTC_VERSION")]
         #[rustc_const_stable(feature = "strict_overflow_ops", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
@@ -1692,6 +1821,63 @@ macro_rules! uint_impl {
             }
         }
 
+        /// Exact shift left. Computes `self << rhs` as long as it can be reversed losslessly.
+        ///
+        /// Returns `None` if any non-zero bits would be shifted out or if `rhs` >=
+        #[doc = concat!("`", stringify!($SelfT), "::BITS`.")]
+        /// Otherwise, returns `Some(self << rhs)`.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(exact_bitshifts)]
+        ///
+        #[doc = concat!("assert_eq!(0x1", stringify!($SelfT), ".exact_shl(4), Some(0x10));")]
+        #[doc = concat!("assert_eq!(0x1", stringify!($SelfT), ".exact_shl(129), None);")]
+        /// ```
+        #[unstable(feature = "exact_bitshifts", issue = "144336")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn exact_shl(self, rhs: u32) -> Option<$SelfT> {
+            if rhs <= self.leading_zeros() && rhs < <$SelfT>::BITS {
+                // SAFETY: rhs is checked above
+                Some(unsafe { self.unchecked_shl(rhs) })
+            } else {
+                None
+            }
+        }
+
+        /// Unchecked exact shift left. Computes `self << rhs`, assuming the operation can be
+        /// losslessly reversed `rhs` cannot be larger than
+        #[doc = concat!("`", stringify!($SelfT), "::BITS`.")]
+        ///
+        /// # Safety
+        ///
+        /// This results in undefined behavior when `rhs > self.leading_zeros() || rhs >=
+        #[doc = concat!(stringify!($SelfT), "::BITS`")]
+        /// i.e. when
+        #[doc = concat!("[`", stringify!($SelfT), "::exact_shl`]")]
+        /// would return `None`.
+        #[unstable(feature = "exact_bitshifts", issue = "144336")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const unsafe fn unchecked_exact_shl(self, rhs: u32) -> $SelfT {
+            assert_unsafe_precondition!(
+                check_library_ub,
+                concat!(stringify!($SelfT), "::exact_shl_unchecked cannot shift out non-zero bits"),
+                (
+                    zeros: u32 = self.leading_zeros(),
+                    bits: u32 =  <$SelfT>::BITS,
+                    rhs: u32 = rhs,
+                ) => rhs <= zeros && rhs < bits,
+            );
+
+            // SAFETY: this is guaranteed to be safe by the caller
+            unsafe { self.unchecked_shl(rhs) }
+        }
+
         /// Checked shift right. Computes `self >> rhs`, returning `None`
         /// if `rhs` is larger than or equal to the number of bits in `self`.
         ///
@@ -1805,6 +1991,63 @@ macro_rules! uint_impl {
             } else {
                 0
             }
+        }
+
+        /// Exact shift right. Computes `self >> rhs` as long as it can be reversed losslessly.
+        ///
+        /// Returns `None` if any non-zero bits would be shifted out or if `rhs` >=
+        #[doc = concat!("`", stringify!($SelfT), "::BITS`.")]
+        /// Otherwise, returns `Some(self >> rhs)`.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(exact_bitshifts)]
+        ///
+        #[doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".exact_shr(4), Some(0x1));")]
+        #[doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".exact_shr(5), None);")]
+        /// ```
+        #[unstable(feature = "exact_bitshifts", issue = "144336")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn exact_shr(self, rhs: u32) -> Option<$SelfT> {
+            if rhs <= self.trailing_zeros() && rhs < <$SelfT>::BITS {
+                // SAFETY: rhs is checked above
+                Some(unsafe { self.unchecked_shr(rhs) })
+            } else {
+                None
+            }
+        }
+
+        /// Unchecked exact shift right. Computes `self >> rhs`, assuming the operation can be
+        /// losslessly reversed and `rhs` cannot be larger than
+        #[doc = concat!("`", stringify!($SelfT), "::BITS`.")]
+        ///
+        /// # Safety
+        ///
+        /// This results in undefined behavior when `rhs > self.trailing_zeros() || rhs >=
+        #[doc = concat!(stringify!($SelfT), "::BITS`")]
+        /// i.e. when
+        #[doc = concat!("[`", stringify!($SelfT), "::exact_shr`]")]
+        /// would return `None`.
+        #[unstable(feature = "exact_bitshifts", issue = "144336")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const unsafe fn unchecked_exact_shr(self, rhs: u32) -> $SelfT {
+            assert_unsafe_precondition!(
+                check_library_ub,
+                concat!(stringify!($SelfT), "::exact_shr_unchecked cannot shift out non-zero bits"),
+                (
+                    zeros: u32 = self.trailing_zeros(),
+                    bits: u32 =  <$SelfT>::BITS,
+                    rhs: u32 = rhs,
+                ) => rhs <= zeros && rhs < bits,
+            );
+
+            // SAFETY: this is guaranteed to be safe by the caller
+            unsafe { self.unchecked_shr(rhs) }
         }
 
         /// Checked exponentiation. Computes `self.pow(exp)`, returning `None` if
@@ -2121,8 +2364,7 @@ macro_rules! uint_impl {
         ///
         /// # Examples
         ///
-        /// Please note that this example is shared between integer types.
-        /// Which explains why `u8` is used here.
+        /// Please note that this example is shared among integer types, which is why `u8` is used.
         ///
         /// ```
         /// assert_eq!(10u8.wrapping_mul(12), 120);
@@ -2406,7 +2648,7 @@ macro_rules! uint_impl {
         }
 
         /// Calculates `self` + `rhs` + `carry` and returns a tuple containing
-        /// the sum and the output carry.
+        /// the sum and the output carry (in that order).
         ///
         /// Performs "ternary addition" of two integer operands and a carry-in
         /// bit, and returns an output integer and a carry-out bit. This allows
@@ -2424,8 +2666,6 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(bigint_helper_methods)]
-        ///
         #[doc = concat!("//    3  MAX    (a = 3 × 2^", stringify!($BITS), " + 2^", stringify!($BITS), " - 1)")]
         #[doc = concat!("// +  5    7    (b = 5 × 2^", stringify!($BITS), " + 7)")]
         /// // ---------
@@ -2442,7 +2682,7 @@ macro_rules! uint_impl {
         ///
         /// assert_eq!((sum1, sum0), (9, 6));
         /// ```
-        #[unstable(feature = "bigint_helper_methods", issue = "85532")]
+        #[stable(feature = "unsigned_bigint_helpers", since = "CURRENT_RUSTC_VERSION")]
         #[rustc_const_unstable(feature = "bigint_helper_methods", issue = "85532")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
@@ -2518,8 +2758,6 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(bigint_helper_methods)]
-        ///
         #[doc = concat!("//    9    6    (a = 9 × 2^", stringify!($BITS), " + 6)")]
         #[doc = concat!("// -  5    7    (b = 5 × 2^", stringify!($BITS), " + 7)")]
         /// // ---------
@@ -2536,7 +2774,7 @@ macro_rules! uint_impl {
         ///
         #[doc = concat!("assert_eq!((diff1, diff0), (3, ", stringify!($SelfT), "::MAX));")]
         /// ```
-        #[unstable(feature = "bigint_helper_methods", issue = "85532")]
+        #[stable(feature = "unsigned_bigint_helpers", since = "CURRENT_RUSTC_VERSION")]
         #[rustc_const_unstable(feature = "bigint_helper_methods", issue = "85532")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
@@ -2610,10 +2848,12 @@ macro_rules! uint_impl {
         /// indicating whether an arithmetic overflow would occur. If an
         /// overflow would have occurred then the wrapped value is returned.
         ///
+        /// If you want the *value* of the overflow, rather than just *whether*
+        /// an overflow occurred, see [`Self::carrying_mul`].
+        ///
         /// # Examples
         ///
-        /// Please note that this example is shared between integer types.
-        /// Which explains why `u32` is used here.
+        /// Please note that this example is shared among integer types, which is why `u32` is used.
         ///
         /// ```
         /// assert_eq!(5u32.overflowing_mul(2), (10, false));
@@ -2629,18 +2869,39 @@ macro_rules! uint_impl {
             (a as Self, b)
         }
 
-        /// Calculates the complete product `self * rhs` without the possibility to overflow.
+        /// Calculates the complete double-width product `self * rhs`.
         ///
         /// This returns the low-order (wrapping) bits and the high-order (overflow) bits
-        /// of the result as two separate values, in that order.
+        /// of the result as two separate values, in that order. As such,
+        /// `a.widening_mul(b).0` produces the same result as `a.wrapping_mul(b)`.
+        ///
+        /// If you also need to add a value and carry to the wide result, then you want
+        /// [`Self::carrying_mul_add`] instead.
         ///
         /// If you also need to add a carry to the wide result, then you want
         /// [`Self::carrying_mul`] instead.
         ///
+        /// If you just want to know *whether* the multiplication overflowed, then you
+        /// want [`Self::overflowing_mul`] instead.
+        ///
         /// # Examples
         ///
-        /// Please note that this example is shared between integer types.
-        /// Which explains why `u32` is used here.
+        /// ```
+        /// #![feature(bigint_helper_methods)]
+        #[doc = concat!("assert_eq!(5_", stringify!($SelfT), ".widening_mul(7), (35, 0));")]
+        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.widening_mul(", stringify!($SelfT), "::MAX), (1, ", stringify!($SelfT), "::MAX - 1));")]
+        /// ```
+        ///
+        /// Compared to other `*_mul` methods:
+        /// ```
+        /// #![feature(bigint_helper_methods)]
+        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::widening_mul(1 << ", stringify!($BITS_MINUS_ONE), ", 6), (0, 3));")]
+        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::overflowing_mul(1 << ", stringify!($BITS_MINUS_ONE), ", 6), (0, true));")]
+        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::wrapping_mul(1 << ", stringify!($BITS_MINUS_ONE), ", 6), 0);")]
+        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::checked_mul(1 << ", stringify!($BITS_MINUS_ONE), ", 6), None);")]
+        /// ```
+        ///
+        /// Please note that this example is shared among integer types, which is why `u32` is used.
         ///
         /// ```
         /// #![feature(bigint_helper_methods)]
@@ -2666,15 +2927,13 @@ macro_rules! uint_impl {
         /// additional amount of overflow. This allows for chaining together multiple
         /// multiplications to create "big integers" which represent larger values.
         ///
-        /// If you don't need the `carry`, then you can use [`Self::widening_mul`] instead.
+        /// If you also need to add a value, then use [`Self::carrying_mul_add`].
         ///
         /// # Examples
         ///
-        /// Please note that this example is shared between integer types.
-        /// Which explains why `u32` is used here.
+        /// Please note that this example is shared among integer types, which is why `u32` is used.
         ///
         /// ```
-        /// #![feature(bigint_helper_methods)]
         /// assert_eq!(5u32.carrying_mul(2, 0), (10, 0));
         /// assert_eq!(5u32.carrying_mul(2, 10), (20, 0));
         /// assert_eq!(1_000_000_000u32.carrying_mul(10, 0), (1410065408, 2));
@@ -2732,7 +2991,7 @@ macro_rules! uint_impl {
         ///     789_u16.wrapping_mul(456).wrapping_add(123),
         /// );
         /// ```
-        #[unstable(feature = "bigint_helper_methods", issue = "85532")]
+        #[stable(feature = "unsigned_bigint_helpers", since = "CURRENT_RUSTC_VERSION")]
         #[rustc_const_unstable(feature = "bigint_helper_methods", issue = "85532")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
@@ -2741,18 +3000,20 @@ macro_rules! uint_impl {
             Self::carrying_mul_add(self, rhs, carry, 0)
         }
 
-        /// Calculates the "full multiplication" `self * rhs + carry1 + carry2`
-        /// without the possibility to overflow.
+        /// Calculates the "full multiplication" `self * rhs + carry1 + carry2`.
         ///
         /// This returns the low-order (wrapping) bits and the high-order (overflow) bits
         /// of the result as two separate values, in that order.
+        ///
+        /// This cannot overflow, as the double-width result has exactly enough
+        /// space for the largest possible result. This is equivalent to how, in
+        /// decimal, 9 × 9 + 9 + 9 = 81 + 18 = 99 = 9×10⁰ + 9×10¹ = 10² - 1.
         ///
         /// Performs "long multiplication" which takes in an extra amount to add, and may return an
         /// additional amount of overflow. This allows for chaining together multiple
         /// multiplications to create "big integers" which represent larger values.
         ///
-        /// If you don't need either `carry`, then you can use [`Self::widening_mul`] instead,
-        /// and if you only need one `carry`, then you can use [`Self::carrying_mul`] instead.
+        /// If you don't need the `add` part, then you can use [`Self::carrying_mul`] instead.
         ///
         /// # Examples
         ///
@@ -2760,7 +3021,6 @@ macro_rules! uint_impl {
         /// which explains why `u32` is used here.
         ///
         /// ```
-        /// #![feature(bigint_helper_methods)]
         /// assert_eq!(5u32.carrying_mul_add(2, 0, 0), (10, 0));
         /// assert_eq!(5u32.carrying_mul_add(2, 10, 10), (30, 0));
         /// assert_eq!(1_000_000_000u32.carrying_mul_add(10, 0, 0), (1410065408, 2));
@@ -2777,8 +3037,6 @@ macro_rules! uint_impl {
         /// using `u8` for simplicity of the demonstration.
         ///
         /// ```
-        /// #![feature(bigint_helper_methods)]
-        ///
         /// fn quadratic_mul<const N: usize>(a: [u8; N], b: [u8; N]) -> [u8; N] {
         ///     let mut out = [0; N];
         ///     for j in 0..N {
@@ -2793,13 +3051,13 @@ macro_rules! uint_impl {
         /// // -1 * -1 == 1
         /// assert_eq!(quadratic_mul([0xFF; 3], [0xFF; 3]), [1, 0, 0]);
         ///
-        /// assert_eq!(u32::wrapping_mul(0x9e3779b9, 0x7f4a7c15), 0xCFFC982D);
+        /// assert_eq!(u32::wrapping_mul(0x9e3779b9, 0x7f4a7c15), 0xcffc982d);
         /// assert_eq!(
         ///     quadratic_mul(u32::to_le_bytes(0x9e3779b9), u32::to_le_bytes(0x7f4a7c15)),
-        ///     u32::to_le_bytes(0xCFFC982D)
+        ///     u32::to_le_bytes(0xcffc982d)
         /// );
         /// ```
-        #[unstable(feature = "bigint_helper_methods", issue = "85532")]
+        #[stable(feature = "unsigned_bigint_helpers", since = "CURRENT_RUSTC_VERSION")]
         #[rustc_const_unstable(feature = "bigint_helper_methods", issue = "85532")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]

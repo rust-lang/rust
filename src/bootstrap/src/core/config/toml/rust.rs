@@ -65,6 +65,8 @@ define_config! {
         lto: Option<String> = "lto",
         validate_mir_opts: Option<u32> = "validate-mir-opts",
         std_features: Option<BTreeSet<String>> = "std-features",
+        break_on_ice: Option<bool> = "break-on-ice",
+        parallel_frontend_threads: Option<u32> = "parallel-frontend-threads",
     }
 }
 
@@ -269,9 +271,9 @@ pub fn check_incompatible_options_for_ci_rustc(
     err!(current_profiler, profiler, "build");
 
     let current_optimized_compiler_builtins =
-        current_config_toml.build.as_ref().and_then(|b| b.optimized_compiler_builtins);
+        current_config_toml.build.as_ref().and_then(|b| b.optimized_compiler_builtins.clone());
     let optimized_compiler_builtins =
-        ci_config_toml.build.as_ref().and_then(|b| b.optimized_compiler_builtins);
+        ci_config_toml.build.as_ref().and_then(|b| b.optimized_compiler_builtins.clone());
     err!(current_optimized_compiler_builtins, optimized_compiler_builtins, "build");
 
     // We always build the in-tree compiler on cross targets, so we only care
@@ -355,6 +357,8 @@ pub fn check_incompatible_options_for_ci_rustc(
         download_rustc: _,
         validate_mir_opts: _,
         frame_pointers: _,
+        break_on_ice: _,
+        parallel_frontend_threads: _,
     } = ci_rust_config;
 
     // There are two kinds of checks for CI rustc incompatible options:
@@ -414,6 +418,10 @@ pub(crate) fn parse_codegen_backends(
             backend => CodegenBackendKind::Custom(backend.to_string()),
         };
         found_backends.push(backend);
+    }
+    if found_backends.is_empty() {
+        eprintln!("ERROR: `{section}.codegen-backends` should not be set to `[]`");
+        exit!(1);
     }
     found_backends
 }

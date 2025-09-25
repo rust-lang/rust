@@ -1,6 +1,6 @@
 [package]
 name = "clippy"
-version = "0.1.91"
+version = "0.1.92"
 description = "A bunch of helpful lints to avoid common pitfalls in Rust"
 repository = "https://github.com/rust-lang/rust-clippy"
 readme = "README.md"
@@ -64,3 +64,7 @@ harness = false
 [[test]]
 name = "dogfood"
 harness = false
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = ['cfg(bootstrap)']

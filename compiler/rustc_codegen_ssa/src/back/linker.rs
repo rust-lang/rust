@@ -4,15 +4,16 @@ use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::{env, io, iter, mem, str};
 
-use cc::windows_registry;
+use find_msvc_tools;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_metadata::{
     find_native_static_library, try_find_native_dynamic_library, try_find_native_static_library,
 };
 use rustc_middle::bug;
 use rustc_middle::middle::dependency_format::Linkage;
-use rustc_middle::middle::exported_symbols;
-use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo, SymbolExportKind};
+use rustc_middle::middle::exported_symbols::{
+    self, ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel,
+};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
@@ -22,6 +23,8 @@ use tracing::{debug, warn};
 
 use super::command::Command;
 use super::symbol_export;
+use crate::back::symbol_export::allocator_shim_symbols;
+use crate::base::needs_allocator_shim_for_linking;
 use crate::errors;
 
 #[cfg(test)]
@@ -50,7 +53,7 @@ pub(crate) fn get_linker<'a>(
     self_contained: bool,
     target_cpu: &'a str,
 ) -> Box<dyn Linker + 'a> {
-    let msvc_tool = windows_registry::find_tool(&sess.target.arch, "link.exe");
+    let msvc_tool = find_msvc_tools::find_tool(&sess.target.arch, "link.exe");
 
     // If our linker looks like a batch script on Windows then to execute this
     // we'll need to spawn `cmd` explicitly. This is primarily done to handle
@@ -114,7 +117,6 @@ pub(crate) fn get_linker<'a>(
     if sess.target.is_like_msvc
         && let Some(ref tool) = msvc_tool
     {
-        cmd.args(tool.args());
         for (k, v) in tool.env() {
             if k == "PATH" {
                 new_path.extend(env::split_paths(v));
@@ -842,6 +844,11 @@ impl<'a> Linker for GccLinker<'a> {
                 self.sess.dcx().emit_fatal(errors::VersionScriptWriteFailure { error });
             }
             self.link_arg("--dynamic-list").link_arg(path);
+        } else if self.sess.target.is_like_wasm {
+            self.link_arg("--no-export-dynamic");
+            for (sym, _) in symbols {
+                self.link_arg("--export").link_arg(sym);
+            }
         } else {
             // Write an LD version script
             let res: io::Result<()> = try {
@@ -1827,7 +1834,7 @@ fn exported_symbols_for_non_proc_macro(
     let export_threshold = symbol_export::crates_export_threshold(&[crate_type]);
     for_each_exported_symbols_include_dep(tcx, crate_type, |symbol, info, cnum| {
         // Do not export mangled symbols from cdylibs and don't attempt to export compiler-builtins
-        // from any cdylib. The latter doesn't work anyway as we use hidden visibility for
+        // from any dylib. The latter doesn't work anyway as we use hidden visibility for
         // compiler-builtins. Most linkers silently ignore it, but ld64 gives a warning.
         if info.level.is_below_threshold(export_threshold) && !tcx.is_compiler_builtins(cnum) {
             symbols.push((
@@ -1837,6 +1844,14 @@ fn exported_symbols_for_non_proc_macro(
             symbol_export::extend_exported_symbols(&mut symbols, tcx, symbol, cnum);
         }
     });
+
+    // Mark allocator shim symbols as exported only if they were generated.
+    if export_threshold == SymbolExportLevel::Rust
+        && needs_allocator_shim_for_linking(tcx.dependency_formats(()), crate_type)
+        && tcx.allocator_kind(()).is_some()
+    {
+        symbols.extend(allocator_shim_symbols(tcx));
+    }
 
     symbols
 }

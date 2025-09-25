@@ -185,7 +185,11 @@ fn fetch_manifest(
         format!("{}/dist/channel-rust-{}.toml", config.dist_server, channel)
     };
 
-    Ok(toml::from_slice(&http_get(&url)?)?)
+    // FIXME: on newer `toml` (>= `0.9.*`), use `toml::from_slice`. For now, we use the most recent
+    // `toml` available in-tree which is `0.8.*`, so we have to do an additional dance here.
+    let response = http_get(&url)?;
+    let response = String::from_utf8(response)?;
+    Ok(toml::from_str(&response)?)
 }
 
 fn http_get(url: &str) -> Result<Vec<u8>, Error> {

@@ -254,10 +254,10 @@ fn is_format_trait_impl(cx: &LateContext<'_>, impl_item: &ImplItem<'_>) -> Optio
     if impl_item.ident.name == sym::fmt
         && let ImplItemKind::Fn(_, body_id) = impl_item.kind
         && let Some(Impl {
-            of_trait: Some(trait_ref),
+            of_trait: Some(of_trait),
             ..
         }) = get_parent_as_impl(cx.tcx, impl_item.hir_id())
-        && let Some(did) = trait_ref.trait_def_id()
+        && let Some(did) = of_trait.trait_ref.trait_def_id()
         && let Some(name) = cx.tcx.get_diagnostic_name(did)
         && matches!(name, sym::Debug | sym::Display)
     {

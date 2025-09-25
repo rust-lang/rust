@@ -2,9 +2,9 @@
 
 #[const_trait]
 trait A {
-    #[const_trait] //~ ERROR attribute should be applied
+    #[const_trait] //~ ERROR attribute cannot be used on
     fn foo(self);
 }
 
-#[const_trait] //~ ERROR attribute should be applied
+#[const_trait] //~ ERROR attribute cannot be used on
 fn main() {}
