@@ -20,7 +20,7 @@ use crate::ty::VarianceDiagInfo;
 use crate::type_check::free_region_relations::UniversalRegionRelations;
 use crate::type_check::{Locations, MirTypeckRegionConstraints};
 use crate::universal_regions::UniversalRegions;
-use crate::{BorrowckInferCtxt, NllRegionVariableOrigin, bug};
+use crate::{BorrowckInferCtxt, NllRegionVariableOrigin};
 
 /// A set of outlives constraints after rewriting to remove
 /// higher-kinded constraints.
@@ -122,10 +122,12 @@ impl PlaceholderReachability {
 pub(crate) struct RegionTracker {
     reachable_placeholders: PlaceholderReachability,
 
-    /// The largest universe nameable from this SCC.
-    /// It is the smallest nameable universes of all
-    /// existential regions reachable from it. Small Rvids are preferred.
-    max_nameable_universe: (UniverseIndex, RegionVid),
+    /// The smallest max nameable universe of all
+    /// regions reachable from this SCC.
+    min_max_nameable_universe: UniverseIndex,
+
+    /// The existential region with the smallest universe, if any.
+    min_universe_existential: Option<(UniverseIndex, RegionVid)>,
 
     /// The representative Region Variable Id for this SCC.
     pub(crate) representative: Representative,
@@ -146,7 +148,15 @@ impl RegionTracker {
 
         Self {
             reachable_placeholders,
-            max_nameable_universe: (definition.universe, rvid),
+            min_universe_existential: if matches!(
+                definition.origin,
+                NllRegionVariableOrigin::Existential { .. }
+            ) {
+                Some((definition.universe, rvid))
+            } else {
+                None
+            },
+            min_max_nameable_universe: definition.universe,
             representative: Representative::new(rvid, definition),
         }
     }
@@ -155,7 +165,8 @@ impl RegionTracker {
     /// largest nameable universe of any reachable region, or
     /// `max_nameable(r) = min (max_nameable(r') for r' reachable from r)`
     pub(crate) fn max_nameable_universe(self) -> UniverseIndex {
-        self.max_nameable_universe.0
+        // Note that this is stricter than it might need to be!
+        self.min_max_nameable_universe
     }
 
     pub(crate) fn max_placeholder_universe_reached(self) -> UniverseIndex {
@@ -168,13 +179,13 @@ impl RegionTracker {
 
     /// Determine if we can name all the placeholders in `other`.
     pub(crate) fn can_name_all_placeholders(&self, other: Self) -> bool {
-        other.reachable_placeholders.can_be_named_by(self.max_nameable_universe.0)
+        other.reachable_placeholders.can_be_named_by(self.min_max_nameable_universe)
     }
 
     /// If this SCC reaches a placeholder it can't name, return it.
     fn unnameable_placeholder(&self) -> Option<(UniverseIndex, RegionVid)> {
         self.reachable_placeholders.max_universe().filter(|&(placeholder_universe, _)| {
-            !self.max_nameable_universe().can_name(placeholder_universe)
+            !self.min_max_nameable_universe.can_name(placeholder_universe)
         })
     }
 
@@ -189,7 +200,12 @@ impl RegionTracker {
             return None;
         };
 
-        let (reachable_lowest_max_u, reachable_lowest_max_u_rvid) = self.max_nameable_universe;
+        let Some((reachable_lowest_max_u, reachable_lowest_max_u_rvid)) =
+            self.min_universe_existential
+        else {
+            debug!("SCC universe wasn't lowered by an existential; skipping.");
+            return None;
+        };
 
         (!self.reachable_placeholders.can_be_named_by(reachable_lowest_max_u))
             .then_some(reachable_lowest_max_u_rvid)
@@ -222,14 +238,20 @@ impl scc::Annotation for RegionTracker {
 
         Self {
             representative: self.representative.min(other.representative),
-            max_nameable_universe: self.max_nameable_universe.min(other.max_nameable_universe),
-            reachable_placeholders: self.reachable_placeholders.merge(other.reachable_placeholders),
+            ..self.merge_reached(other)
         }
     }
 
+    #[inline(always)]
     fn merge_reached(self, other: Self) -> Self {
         Self {
-            max_nameable_universe: self.max_nameable_universe.min(other.max_nameable_universe),
+            min_universe_existential: self
+                .min_universe_existential
+                .xor(other.min_universe_existential)
+                .or_else(|| self.min_universe_existential.min(other.min_universe_existential)),
+            min_max_nameable_universe: self
+                .min_max_nameable_universe
+                .min(other.min_max_nameable_universe),
             reachable_placeholders: self.reachable_placeholders.merge(other.reachable_placeholders),
             representative: self.representative,
         }
@@ -438,19 +460,7 @@ fn rewrite_placeholder_outlives<'tcx>(
                 variance_info: VarianceDiagInfo::None,
                 from_closure: false,
             });
-        } else if !(annotation.reaches_existential_that_cannot_name_us().is_some()
-            || annotation.reaches_other_placeholder(annotation.representative.rvid()).is_some())
-        {
-            // The SCC's representative is not nameable from some region
-            // that ends up in the SCC. This means there is nothing for us to do.
-            // However, this is only possible under circumstances that produce
-            // errors, so we make sure that we catch them here. Otherwise,
-            // there might actually be soundness issues!
-            bug!(
-                "Universe of SCC {scc:?} should have been lowered by an existential or at least another placeholder but was lowered by {:?}, which is neither.",
-                annotation.max_nameable_universe
-            );
-        };
+        }
     }
     added_constraints
 }
@@ -482,12 +492,12 @@ fn find_placeholder_mismatch_errors<'tcx>(
         let scc = sccs.scc(rvid);
         let annotation = annotations.scc_to_annotation[scc];
 
-        if let Some(existential_that_cannot_name_rvid) =
-            annotation.reaches_existential_that_cannot_name_us()
-        {
+        if let Some(cannot_name_rvid) = annotation.reaches_existential_that_cannot_name_us() {
+            debug!("Existential {cannot_name_rvid:?} lowered our universe...");
+
             errors_buffer.push(RegionErrorKind::PlaceholderOutlivesExistentialThatCannotNameIt {
                 longer_fr: rvid,
-                existential_that_cannot_name_longer: existential_that_cannot_name_rvid,
+                existential_that_cannot_name_longer: cannot_name_rvid,
                 placeholder: origin_a,
             })
         }
