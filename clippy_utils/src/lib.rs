@@ -52,6 +52,7 @@ extern crate rustc_trait_selection;
 extern crate smallvec;
 
 pub mod ast_utils;
+#[deny(missing_docs)]
 pub mod attrs;
 mod check_proc_macro;
 pub mod comparisons;

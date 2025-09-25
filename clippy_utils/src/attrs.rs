@@ -1,3 +1,5 @@
+//! Utility functions for attributes, including Clippy's built-in ones
+
 use crate::source::SpanRangeExt;
 use crate::{sym, tokenize_with_text};
 use rustc_ast::attr;
@@ -12,7 +14,8 @@ use rustc_session::Session;
 use rustc_span::{Span, Symbol};
 use std::str::FromStr;
 
-pub fn get_attr<'a, A: AttributeExt + 'a>(
+/// Given `attrs`, extract all the instances of a built-in Clippy attribute called `name`
+pub fn get_builtin_attr<'a, A: AttributeExt + 'a>(
     sess: &'a Session,
     attrs: &'a [A],
     name: Symbol,
@@ -59,9 +62,11 @@ pub fn get_attr<'a, A: AttributeExt + 'a>(
     })
 }
 
-pub fn get_unique_attr<'a, A: AttributeExt>(sess: &'a Session, attrs: &'a [A], name: Symbol) -> Option<&'a A> {
+/// If `attrs` contain exactly one instance of a built-in Clippy attribute called `name`,
+/// returns that attribute, and `None` otherwise
+pub fn get_unique_builtin_attr<'a, A: AttributeExt>(sess: &'a Session, attrs: &'a [A], name: Symbol) -> Option<&'a A> {
     let mut unique_attr: Option<&A> = None;
-    for attr in get_attr(sess, attrs, name) {
+    for attr in get_builtin_attr(sess, attrs, name) {
         if let Some(duplicate) = unique_attr {
             sess.dcx()
                 .struct_span_err(attr.span(), format!("`{name}` is defined multiple times"))
@@ -74,13 +79,13 @@ pub fn get_unique_attr<'a, A: AttributeExt>(sess: &'a Session, attrs: &'a [A], n
     unique_attr
 }
 
-/// Returns true if the attributes contain any of `proc_macro`,
-/// `proc_macro_derive` or `proc_macro_attribute`, false otherwise
+/// Checks whether `attrs` contain any of `proc_macro`, `proc_macro_derive` or
+/// `proc_macro_attribute`
 pub fn is_proc_macro(attrs: &[impl AttributeExt]) -> bool {
     attrs.iter().any(AttributeExt::is_proc_macro_attr)
 }
 
-/// Returns true if the attributes contain `#[doc(hidden)]`
+/// Checks whether `attrs` contain `#[doc(hidden)]`
 pub fn is_doc_hidden(attrs: &[impl AttributeExt]) -> bool {
     attrs
         .iter()
@@ -89,6 +94,7 @@ pub fn is_doc_hidden(attrs: &[impl AttributeExt]) -> bool {
         .any(|l| attr::list_contains_name(&l, sym::hidden))
 }
 
+/// Checks whether the given ADT, or any of its fields/variants, are marked as `#[non_exhaustive]`
 pub fn has_non_exhaustive_attr(tcx: TyCtxt<'_>, adt: AdtDef<'_>) -> bool {
     adt.is_variant_list_non_exhaustive()
         || find_attr!(tcx.get_all_attrs(adt.did()), AttributeKind::NonExhaustive(..))
@@ -101,7 +107,7 @@ pub fn has_non_exhaustive_attr(tcx: TyCtxt<'_>, adt: AdtDef<'_>) -> bool {
             .any(|field_def| find_attr!(tcx.get_all_attrs(field_def.did), AttributeKind::NonExhaustive(..)))
 }
 
-/// Checks if the given span contains a `#[cfg(..)]` attribute
+/// Checks whether the given span contains a `#[cfg(..)]` attribute
 pub fn span_contains_cfg(cx: &LateContext<'_>, s: Span) -> bool {
     s.check_source_text(cx, |src| {
         let mut iter = tokenize_with_text(src);
@@ -123,6 +129,8 @@ pub fn span_contains_cfg(cx: &LateContext<'_>, s: Span) -> bool {
         false
     })
 }
+
+/// Currently used to keep track of the current value of `#[clippy::cognitive_complexity(N)]`
 pub struct LimitStack {
     default: u64,
     stack: Vec<u64>,
@@ -134,6 +142,7 @@ impl Drop for LimitStack {
     }
 }
 
+#[expect(missing_docs, reason = "they're all trivial...")]
 impl LimitStack {
     #[must_use]
     /// Initialize the stack starting with a default value, which usually comes from configuration
@@ -157,7 +166,7 @@ impl LimitStack {
 }
 
 fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[impl AttributeExt], name: Symbol, mut f: F) {
-    for attr in get_attr(sess, attrs, name) {
+    for attr in get_builtin_attr(sess, attrs, name) {
         let Some(value) = attr.value_str() else {
             sess.dcx().span_err(attr.span(), "bad clippy attribute");
             continue;
