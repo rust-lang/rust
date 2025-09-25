@@ -720,9 +720,9 @@ pass `--doctest-build-arg ARG` for each argument `ARG`.
 
 This flag enables the generation of toggles to expand macros in the HTML source code pages.
 
-## `#[doc(cfg)]`
+## `#[doc(cfg)]` and `#[doc(auto_cfg)]`
 
-This feature aims at providing rustdoc users the possibility to add visual markers to the rendered documentation to know under which conditions an item is available (currently possible through the following unstable features: `doc_cfg`, `doc_auto_cfg` and `doc_cfg_hide`).
+This feature aims at providing rustdoc users the possibility to add visual markers to the rendered documentation to know under which conditions an item is available (currently possible through the following unstable feature: `doc_cfg`).
 
 It does not aim to allow having a same item with different `cfg`s to appear more than once in the generated documentation.
 
@@ -735,25 +735,6 @@ This features adds the following attributes:
  * `#![doc(auto_cfg(hide(...)))]` / `#[doc(auto_cfg(show(...)))]`
 
 All of these attributes can be added to a module or to the crate root, and they will be inherited by the child items unless another attribute overrides it. This is why "opposite" attributes like `auto_cfg(hide(...))` and `auto_cfg(show(...))` are provided: they allow a child item to override its parent.
-
-### `#[doc(auto_cfg)`/`#[doc(auto_cfg = true)]`/`#[doc(auto_cfg = false)]`
-
-By default, `#[doc(auto_cfg)]` is enabled at the crate-level. When it's enabled, Rustdoc will automatically display `cfg(...)` compatibility information as-if the same `#[doc(cfg(...))]` had been specified.
-
-This attribute impacts the item on which it is used and its descendants.
-
-So if we take back the previous example:
-
-```rust
-#[cfg(feature = "futures-io")]
-pub mod futures {}
-```
-
-There's no need to "duplicate" the `cfg` into a `doc(cfg())` to make Rustdoc display it.
-
-In some situations, the detailed conditional compilation rules used to implement the feature might not serve as good documentation (for example, the list of supported platforms might be very long, and it might be better to document them in one place). To turn it off, add the `#[doc(auto_cfg = false)]` attribute on the item.
-
-If no argument is specified (ie `#[doc(auto_cfg)]`), it's the same as writing `#[doc(auto_cfg = true)]`.
 
 ### `#[doc(cfg(...))]`
 
@@ -926,6 +907,25 @@ Using this attribute will re-enable `auto_cfg` if it was disabled at this locati
 #[doc(auto_cfg(show(unix)))] // `auto_cfg` is re-enabled.
 pub fn foo() {}
 ```
+
+### `#[doc(auto_cfg)`/`#[doc(auto_cfg = true)]`/`#[doc(auto_cfg = false)]`
+
+By default, `#[doc(auto_cfg)]` is enabled at the crate-level. When it's enabled, Rustdoc will automatically display `cfg(...)` compatibility information as-if the same `#[doc(cfg(...))]` had been specified.
+
+This attribute impacts the item on which it is used and its descendants.
+
+So if we take back the previous example:
+
+```rust
+#[cfg(feature = "futures-io")]
+pub mod futures {}
+```
+
+There's no need to "duplicate" the `cfg` into a `doc(cfg())` to make Rustdoc display it.
+
+In some situations, the detailed conditional compilation rules used to implement the feature might not serve as good documentation (for example, the list of supported platforms might be very long, and it might be better to document them in one place). To turn it off, add the `#[doc(auto_cfg = false)]` attribute on the item.
+
+If no argument is specified (ie `#[doc(auto_cfg)]`), it's the same as writing `#[doc(auto_cfg = true)]`.
 
 ## Inheritance
 

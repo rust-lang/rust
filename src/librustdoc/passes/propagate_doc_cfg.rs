@@ -97,9 +97,8 @@ impl CfgPropagator<'_, '_> {
         //
         // Otherwise, `cfg_info` already tracks everything we need so nothing else to do!
         if matches!(item.kind, ItemKind::ImplItem(_))
-            && let Some(def_id) = item.item_id.as_def_id().and_then(|def_id| def_id.as_local())
+            && let Some(mut next_def_id) = item.item_id.as_local_def_id()
         {
-            let mut next_def_id = def_id;
             while let Some(parent_def_id) = self.cx.tcx.opt_local_parent(next_def_id) {
                 let x = load_attrs(self.cx, parent_def_id.to_def_id());
                 add_only_cfg_attributes(&mut attrs, x);

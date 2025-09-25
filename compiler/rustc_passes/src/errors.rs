@@ -318,14 +318,14 @@ pub(crate) struct DocAutoCfgExpectsHideOrShow;
 
 #[derive(LintDiagnostic)]
 #[diag(passes_doc_auto_cfg_hide_show_expects_list)]
-pub(crate) struct DocAutoCfgHideShowExpectsList<'a> {
-    pub attr_name: &'a str,
+pub(crate) struct DocAutoCfgHideShowExpectsList {
+    pub attr_name: Symbol,
 }
 
 #[derive(LintDiagnostic)]
 #[diag(passes_doc_auto_cfg_hide_show_unexpected_item)]
-pub(crate) struct DocAutoCfgHideShowUnexpectedItem<'a> {
-    pub attr_name: &'a str,
+pub(crate) struct DocAutoCfgHideShowUnexpectedItem {
+    pub attr_name: Symbol,
 }
 
 #[derive(LintDiagnostic)]

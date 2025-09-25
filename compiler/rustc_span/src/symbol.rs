@@ -629,7 +629,6 @@ symbols! {
         cfg_emscripten_wasm_eh,
         cfg_eval,
         cfg_fmt_debug,
-        cfg_hide,
         cfg_overflow_checks,
         cfg_panic,
         cfg_relocation_model,

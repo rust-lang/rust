@@ -140,9 +140,6 @@ passes_doc_attribute_not_attribute =
     nonexistent builtin attribute `{$attribute}` used in `#[doc(attribute = "...")]`
     .help = only existing builtin attributes are allowed in core/std
 
-passes_doc_cfg_hide_takes_list =
-    `#[doc(cfg_hide(...))]` takes a list of attributes
-
 passes_doc_auto_cfg_expects_hide_or_show =
     only `hide` or `show` are allowed in `#[doc(auto_cfg(...))]`
 

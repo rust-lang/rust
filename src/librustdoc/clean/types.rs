@@ -925,7 +925,7 @@ pub(crate) fn hir_attr_lists<'a, I: IntoIterator<Item = &'a hir::Attribute>>(
 /// This type keeps track of (doc) cfg information as we go down the item tree.
 #[derive(Clone, Debug)]
 pub(crate) struct CfgInfo {
-    /// List of currently active `doc(auto_cfg(hide(...)))` cfgs,minus currently active
+    /// List of currently active `doc(auto_cfg(hide(...)))` cfgs, minus currently active
     /// `doc(auto_cfg(show(...)))` cfgs.
     hidden_cfg: FxHashSet<Cfg>,
     /// Current computed `cfg`. Each time we enter a new item, this field is updated as well while
@@ -942,13 +942,11 @@ pub(crate) struct CfgInfo {
 impl Default for CfgInfo {
     fn default() -> Self {
         Self {
-            hidden_cfg: [
+            hidden_cfg: FxHashSet::from_iter([
                 Cfg::Cfg(sym::test, None),
                 Cfg::Cfg(sym::doc, None),
                 Cfg::Cfg(sym::doctest, None),
-            ]
-            .into_iter()
-            .collect(),
+            ]),
             current_cfg: Cfg::True,
             auto_cfg_active: true,
             parent_is_doc_cfg: false,
@@ -990,7 +988,7 @@ fn handle_auto_cfg_hide_show(
         && let MetaItemKind::List(items) = &item.kind
     {
         for item in items {
-            // Cfg parsing errors should already have been reported in `rustc_passes::check_attr`.
+            // FIXME: Report in case `Cfg::parse` reports an error?
             if let Ok(Cfg::Cfg(key, value)) = Cfg::parse(item) {
                 if is_show {
                     if let Some(span) = new_hide_attrs.get(&(key, value)) {

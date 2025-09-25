@@ -1160,7 +1160,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    /// Check that the `#![doc(auto_cfg(..))]` attribute has expected input.
+    /// Check that the `#![doc(auto_cfg)]` attribute has the expected input.
     fn check_doc_auto_cfg(&self, meta: &MetaItem, hir_id: HirId) {
         match &meta.kind {
             MetaItemKind::Word => {}
@@ -1176,7 +1176,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             }
             MetaItemKind::List(list) => {
                 for item in list {
-                    let Some(attr_name) = item.name() else {
+                    let Some(attr_name @ (sym::hide | sym::show)) = item.name() else {
                         self.tcx.emit_node_span_lint(
                             INVALID_DOC_ATTRIBUTES,
                             hir_id,
@@ -1185,36 +1185,21 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         );
                         continue;
                     };
-                    if attr_name != sym::hide && attr_name != sym::show {
-                        self.tcx.emit_node_span_lint(
-                            INVALID_DOC_ATTRIBUTES,
-                            hir_id,
-                            meta.span,
-                            errors::DocAutoCfgExpectsHideOrShow,
-                        );
-                    } else if let Some(list) = item.meta_item_list() {
+                    if let Some(list) = item.meta_item_list() {
                         for item in list {
-                            if item.meta_item_list().is_some() {
+                            let valid = item.meta_item().is_some_and(|meta| {
+                                meta.path.segments.len() == 1
+                                    && matches!(
+                                        &meta.kind,
+                                        MetaItemKind::Word | MetaItemKind::NameValue(_)
+                                    )
+                            });
+                            if !valid {
                                 self.tcx.emit_node_span_lint(
                                     INVALID_DOC_ATTRIBUTES,
                                     hir_id,
                                     item.span(),
-                                    errors::DocAutoCfgHideShowUnexpectedItem {
-                                        attr_name: attr_name.as_str(),
-                                    },
-                                );
-                            } else if match item {
-                                MetaItemInner::Lit(_) => true,
-                                // We already checked above that it's not a list.
-                                MetaItemInner::MetaItem(meta) => meta.path.segments.len() != 1,
-                            } {
-                                self.tcx.emit_node_span_lint(
-                                    INVALID_DOC_ATTRIBUTES,
-                                    hir_id,
-                                    item.span(),
-                                    errors::DocAutoCfgHideShowUnexpectedItem {
-                                        attr_name: attr_name.as_str(),
-                                    },
+                                    errors::DocAutoCfgHideShowUnexpectedItem { attr_name },
                                 );
                             }
                         }
@@ -1223,7 +1208,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             INVALID_DOC_ATTRIBUTES,
                             hir_id,
                             meta.span,
-                            errors::DocAutoCfgHideShowExpectsList { attr_name: attr_name.as_str() },
+                            errors::DocAutoCfgHideShowExpectsList { attr_name },
                         );
                     }
                 }
