@@ -1087,11 +1087,6 @@ impl Build {
         })
     }
 
-    /// Check if verbosity is greater than the `level`
-    pub fn is_verbose_than(&self, level: usize) -> bool {
-        self.verbosity > level
-    }
-
     fn info(&self, msg: &str) {
         match self.config.get_dry_run() {
             DryRun::SelfCheck => (),
