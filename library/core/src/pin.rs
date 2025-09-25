@@ -1692,8 +1692,22 @@ impl<Ptr: [const] Deref> const Deref for Pin<Ptr> {
 mod helper {
     /// Helper that prevents downstream crates from implementing `DerefMut` for `Pin`.
     ///
-    /// This type is not `#[fundamental]`, so it's possible to relax its `DerefMut` impl bounds in
-    /// the future, so the orphan rules reject downstream impls of `DerefMut` of `Pin`.
+    /// The `Pin` type implements the unsafe trait `PinCoerceUnsized`, which essentially requires
+    /// that the type does not have a malicious `Deref` or `DerefMut` impl. However, without this
+    /// helper module, downstream crates are able to write `impl DerefMut for Pin<LocalType>` as
+    /// long as it does not overlap with the impl provided by stdlib. This is because `Pin` is
+    /// `#[fundamental]`, so stdlib promises to never implement traits for `Pin` that it does not
+    /// implement today.
+    ///
+    /// However, this is problematic. Downstream crates could implement `DerefMut` for
+    /// `Pin<&LocalType>`, and they could do so maliciously. To prevent this, the implementation for
+    /// `Pin` delegates to this helper module. Since `helper::Pin` is not `#[fundamental]`, the
+    /// orphan rules assume that stdlib might implement `helper::DerefMut` for `helper::Pin<&_>` in
+    /// the future. Because of this, downstream crates can no longer provide an implementation of
+    /// `DerefMut` for `Pin<&_>`, as it might overlap with a trait impl that, according to the
+    /// orphan rules, the stdlib could introduce without a breaking change in a future release.
+    ///
+    /// See <https://github.com/rust-lang/rust/issues/85099> for the issue this fixes.
     #[repr(transparent)]
     #[unstable(feature = "pin_derefmut_internals", issue = "none")]
     #[allow(missing_debug_implementations)]
