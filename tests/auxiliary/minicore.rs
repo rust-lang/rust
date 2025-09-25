@@ -177,6 +177,21 @@ impl Add<isize> for isize {
     }
 }
 
+#[lang = "neg"]
+pub trait Neg {
+    type Output;
+
+    fn neg(self) -> Self::Output;
+}
+
+impl Neg for isize {
+    type Output = isize;
+
+    fn neg(self) -> isize {
+        loop {} // Dummy impl, not actually used
+    }
+}
+
 #[lang = "sync"]
 trait Sync {}
 impl_marker_trait!(
@@ -231,6 +246,13 @@ pub mod mem {
     #[rustc_nounwind]
     #[rustc_intrinsic]
     pub unsafe fn transmute<Src, Dst>(src: Src) -> Dst;
+
+    #[rustc_nounwind]
+    #[rustc_intrinsic]
+    pub const fn size_of<T>() -> usize;
+    #[rustc_nounwind]
+    #[rustc_intrinsic]
+    pub const fn align_of<T>() -> usize;
 }
 
 #[lang = "c_void"]

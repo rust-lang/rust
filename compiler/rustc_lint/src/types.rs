@@ -10,7 +10,7 @@ use rustc_span::{Span, Symbol, sym};
 use tracing::debug;
 use {rustc_ast as ast, rustc_hir as hir};
 
-mod improper_ctypes; // these filed do the implementation for ImproperCTypesDefinitions,ImproperCTypesDeclarations
+mod improper_ctypes; // these files do the implementation for ImproperCTypesDefinitions,ImproperCTypesDeclarations
 pub(crate) use improper_ctypes::ImproperCTypesLint;
 
 use crate::lints::{
@@ -25,7 +25,6 @@ use crate::lints::{
 use crate::{LateContext, LateLintPass, LintContext};
 
 mod literal;
-
 use literal::{int_ty_range, lint_literal, uint_ty_range};
 
 declare_lint! {
