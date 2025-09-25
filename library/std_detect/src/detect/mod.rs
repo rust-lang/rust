@@ -61,11 +61,12 @@ cfg_select! {
         #[path = "os/freebsd/mod.rs"]
         mod os;
     }
-    all(target_os = "openbsd", target_arch = "aarch64", feature = "libc") => {
+    all(target_os = "openbsd", feature = "libc") => {
         #[allow(dead_code)] // we don't use code that calls the mrs instruction.
+        #[cfg(target_arch = "aarch64")]
         #[path = "os/aarch64.rs"]
         mod aarch64;
-        #[path = "os/openbsd/aarch64.rs"]
+        #[path = "os/openbsd/mod.rs"]
         mod os;
     }
     all(target_os = "windows", any(target_arch = "aarch64", target_arch = "arm64ec")) => {
