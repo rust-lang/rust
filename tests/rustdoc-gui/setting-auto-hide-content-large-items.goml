@@ -9,7 +9,7 @@ define-function: (
     [storage_value, setting_attribute_value, toggle_attribute_value],
     block {
         assert-local-storage: {"rustdoc-auto-hide-large-items": |storage_value|}
-        click: "#settings-menu"
+        click: "rustdoc-toolbar .settings-menu"
         wait-for: "#settings"
         assert-property: ("#auto-hide-large-items", {"checked": |setting_attribute_value|})
         assert-attribute: (".item-decl .type-contents-toggle", {"open": |toggle_attribute_value|})

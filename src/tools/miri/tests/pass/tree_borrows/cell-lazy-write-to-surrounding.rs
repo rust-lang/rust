@@ -14,9 +14,11 @@ fn main() {
     foo(&arr[0]);
 
     let pair = (Cell::new(1), 1);
-    // TODO: Ideally, this would result in UB since the second element
-    // in `pair` is Frozen.  We would need some way to express a
-    // "shared reference with permission to access surrounding
-    // interior mutable data".
     foo(&pair.0);
+
+    // As long as the "inside" part is `!Freeze`, the permission to mutate the "outside" is preserved.
+    let pair = (Cell::new(()), 1);
+    let x = &pair.0;
+    let ptr = (&raw const *x).cast::<i32>().cast_mut();
+    unsafe { ptr.write(0) };
 }

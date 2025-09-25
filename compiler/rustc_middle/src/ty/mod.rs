@@ -32,7 +32,7 @@ use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
-use rustc_errors::{Diag, ErrorGuaranteed};
+use rustc_errors::{Diag, ErrorGuaranteed, LintBuffer};
 use rustc_hir::attrs::{AttributeKind, StrippedCfgItem};
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
@@ -46,7 +46,6 @@ use rustc_macros::{
 };
 use rustc_query_system::ich::StableHashingContext;
 use rustc_serialize::{Decodable, Encodable};
-use rustc_session::lint::LintBuffer;
 pub use rustc_session::lint::RegisteredTools;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::{DUMMY_SP, ExpnId, ExpnKind, Ident, Span, Symbol, sym};
@@ -110,7 +109,6 @@ pub use self::typeck_results::{
     CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, IsIdentity,
     Rust2024IncompatiblePatInfo, TypeckResults, UserType, UserTypeAnnotationIndex, UserTypeKind,
 };
-pub use self::visit::*;
 use crate::error::{OpaqueHiddenTypeMismatch, TypeMismatchReason};
 use crate::metadata::ModChild;
 use crate::middle::privacy::EffectiveVisibilities;
@@ -254,12 +252,6 @@ pub struct ImplTraitHeader<'tcx> {
     pub polarity: ImplPolarity,
     pub safety: hir::Safety,
     pub constness: hir::Constness,
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Debug, TypeFoldable, TypeVisitable)]
-pub enum ImplSubject<'tcx> {
-    Trait(TraitRef<'tcx>),
-    Inherent(Ty<'tcx>),
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable, Debug)]
@@ -830,14 +822,15 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
         // Convert the type from the function into a type valid outside by mapping generic
         // parameters to into the context of the opaque.
         //
-        // We erase regions when doing this during HIR typeck.
+        // We erase regions when doing this during HIR typeck. We manually use `fold_regions`
+        // here as we do not want to anonymize bound variables.
         let this = match defining_scope_kind {
-            DefiningScopeKind::HirTypeck => tcx.erase_regions(self),
+            DefiningScopeKind::HirTypeck => fold_regions(tcx, self, |_, _| tcx.lifetimes.re_erased),
             DefiningScopeKind::MirBorrowck => self,
         };
         let result = this.fold_with(&mut opaque_types::ReverseMapper::new(tcx, map, self.span));
         if cfg!(debug_assertions) && matches!(defining_scope_kind, DefiningScopeKind::HirTypeck) {
-            assert_eq!(result.ty, tcx.erase_regions(result.ty));
+            assert_eq!(result.ty, fold_regions(tcx, result.ty, |_, _| tcx.lifetimes.re_erased));
         }
         result
     }
@@ -1925,21 +1918,55 @@ impl<'tcx> TyCtxt<'tcx> {
         self.impl_trait_ref(def_id).map(|tr| tr.skip_binder().def_id)
     }
 
-    /// If the given `DefId` is an associated item, returns the `DefId` of the parent trait or impl.
-    pub fn assoc_parent(self, def_id: DefId) -> Option<DefId> {
-        self.def_kind(def_id).is_assoc().then(|| self.parent(def_id))
+    /// If the given `DefId` is an associated item, returns the `DefId` and `DefKind` of the parent trait or impl.
+    pub fn assoc_parent(self, def_id: DefId) -> Option<(DefId, DefKind)> {
+        if !self.def_kind(def_id).is_assoc() {
+            return None;
+        }
+        let parent = self.parent(def_id);
+        let def_kind = self.def_kind(parent);
+        Some((parent, def_kind))
+    }
+
+    /// Returns the trait item that is implemented by the given item `DefId`.
+    pub fn trait_item_of(self, def_id: impl IntoQueryParam<DefId>) -> Option<DefId> {
+        self.opt_associated_item(def_id.into_query_param())?.trait_item_def_id()
     }
 
     /// If the given `DefId` is an associated item of a trait,
     /// returns the `DefId` of the trait; otherwise, returns `None`.
     pub fn trait_of_assoc(self, def_id: DefId) -> Option<DefId> {
-        self.assoc_parent(def_id).filter(|id| self.def_kind(id) == DefKind::Trait)
+        match self.assoc_parent(def_id) {
+            Some((id, DefKind::Trait)) => Some(id),
+            _ => None,
+        }
     }
 
     /// If the given `DefId` is an associated item of an impl,
     /// returns the `DefId` of the impl; otherwise returns `None`.
     pub fn impl_of_assoc(self, def_id: DefId) -> Option<DefId> {
-        self.assoc_parent(def_id).filter(|id| matches!(self.def_kind(id), DefKind::Impl { .. }))
+        match self.assoc_parent(def_id) {
+            Some((id, DefKind::Impl { .. })) => Some(id),
+            _ => None,
+        }
+    }
+
+    /// If the given `DefId` is an associated item of an inherent impl,
+    /// returns the `DefId` of the impl; otherwise, returns `None`.
+    pub fn inherent_impl_of_assoc(self, def_id: DefId) -> Option<DefId> {
+        match self.assoc_parent(def_id) {
+            Some((id, DefKind::Impl { of_trait: false })) => Some(id),
+            _ => None,
+        }
+    }
+
+    /// If the given `DefId` is an associated item of a trait impl,
+    /// returns the `DefId` of the impl; otherwise, returns `None`.
+    pub fn trait_impl_of_assoc(self, def_id: DefId) -> Option<DefId> {
+        match self.assoc_parent(def_id) {
+            Some((id, DefKind::Impl { of_trait: true })) => Some(id),
+            _ => None,
+        }
     }
 
     pub fn is_exportable(self, def_id: DefId) -> bool {
@@ -2121,17 +2148,12 @@ impl<'tcx> TyCtxt<'tcx> {
         let Some(item) = self.opt_associated_item(def_id) else {
             return false;
         };
-        if item.container != ty::AssocItemContainer::Impl {
-            return false;
-        }
 
-        let Some(trait_item_def_id) = item.trait_item_def_id else {
+        let AssocContainer::TraitImpl(Ok(trait_item_def_id)) = item.container else {
             return false;
         };
 
-        return !self
-            .associated_types_for_impl_traits_in_associated_fn(trait_item_def_id)
-            .is_empty();
+        !self.associated_types_for_impl_traits_in_associated_fn(trait_item_def_id).is_empty()
     }
 }
 

@@ -34,6 +34,7 @@
 #![feature(sized_hierarchy)]
 #![feature(test)]
 #![feature(thread_id_value)]
+#![feature(trusted_len)]
 #![feature(type_alias_impl_trait)]
 #![feature(unwrap_infallible)]
 // tidy-alphabetical-end
@@ -77,6 +78,7 @@ pub mod thinvec;
 pub mod thousands;
 pub mod transitive_relation;
 pub mod unhash;
+pub mod union_find;
 pub mod unord;
 pub mod vec_cache;
 pub mod work_queue;

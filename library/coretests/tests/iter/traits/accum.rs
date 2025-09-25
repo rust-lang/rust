@@ -1,4 +1,5 @@
 use core::iter::*;
+use std::num::Saturating;
 
 #[test]
 fn test_iterator_sum() {
@@ -63,4 +64,39 @@ fn test_iterator_product_option() {
     assert_eq!(v.iter().cloned().product::<Option<i32>>(), Some(24));
     let v: &[Option<i32>] = &[Some(1), None, Some(3), Some(4)];
     assert_eq!(v.iter().cloned().product::<Option<i32>>(), None);
+}
+
+#[test]
+fn test_saturating_sum_product() {
+    let v = (1u32..=10).map(|i| Saturating(i));
+    assert_eq!(v.sum::<Saturating<u32>>(), Saturating(55));
+    let v = (1u32..=10).map(|i| Saturating(i));
+    assert_eq!(v.product::<Saturating<u32>>(), Saturating(3628800));
+    let v = [Saturating(usize::MAX), Saturating(2)];
+    assert_eq!(v.iter().copied().sum::<Saturating<usize>>(), Saturating(usize::MAX));
+    assert_eq!(v.iter().copied().product::<Saturating<usize>>(), Saturating(usize::MAX));
+
+    let mut cnt = 0;
+    let v = 250..=u8::MAX;
+    assert_eq!(
+        v.map(|i| {
+            cnt += 1;
+            Saturating(i)
+        })
+        .sum::<Saturating<u8>>(),
+        Saturating(u8::MAX)
+    );
+    assert_eq!(cnt, 6); // no short-circuiting
+
+    let mut cnt = 0;
+    let v = (250..=u8::MAX).chain(0..5);
+    assert_eq!(
+        v.map(|i| {
+            cnt += 1;
+            Saturating(i)
+        })
+        .product::<Saturating<u8>>(),
+        Saturating(0)
+    );
+    assert_eq!(cnt, 11); // no short-circuiting
 }

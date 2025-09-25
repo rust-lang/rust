@@ -6,7 +6,11 @@ LL |     requires_sync(container);
    |     |
    |     required by a bound introduced by this call
    |
-   = help: within `Container`, the trait `Sync` is not implemented for `NoSync`
+help: within `Container`, the trait `Sync` is not implemented for `NoSync`
+  --> $DIR/enum-negative-sync-impl.rs:9:1
+   |
+LL | struct NoSync;
+   | ^^^^^^^^^^^^^
 note: required because it appears within the type `Container`
   --> $DIR/enum-negative-sync-impl.rs:12:6
    |

@@ -17,8 +17,12 @@ ast_passes_abi_must_not_have_parameters_or_return_type=
 
 ast_passes_abi_must_not_have_return_type=
     invalid signature for `extern {$abi}` function
-    .note = functions with the "custom" ABI cannot have a return type
+    .note = functions with the {$abi} ABI cannot have a return type
     .help = remove the return type
+
+ast_passes_abi_x86_interrupt =
+    invalid signature for `extern "x86-interrupt"` function
+    .note = functions with the "x86-interrupt" ABI must be have either 1 or 2 parameters (but found {$param_count})
 
 ast_passes_assoc_const_without_body =
     associated constant in `impl` without body
@@ -31,6 +35,13 @@ ast_passes_assoc_fn_without_body =
 ast_passes_assoc_type_without_body =
     associated type in `impl` without body
     .suggestion = provide a definition for the type
+
+ast_passes_async_fn_in_const_trait_or_trait_impl =
+    async functions are not allowed in `const` {$in_impl ->
+        [true] trait impls
+        *[false] traits
+    }
+    .label = associated functions of `const` cannot be declared `async`
 
 ast_passes_at_least_one_trait = at least one trait must be specified
 
@@ -46,14 +57,23 @@ ast_passes_auto_super_lifetime = auto traits cannot have super traits or lifetim
     .label = {ast_passes_auto_super_lifetime}
     .suggestion = remove the super traits or lifetime bounds
 
-ast_passes_bad_c_variadic = only foreign, `unsafe extern "C"`, or `unsafe extern "C-unwind"` functions may have a C-variadic arg
-
 ast_passes_body_in_extern = incorrect `{$kind}` inside `extern` block
     .cannot_have = cannot have a body
     .invalid = the invalid body
     .existing = `extern` blocks define existing foreign {$kind}s and {$kind}s inside of them cannot have a body
 
 ast_passes_bound_in_context = bounds on `type`s in {$ctx} have no effect
+
+ast_passes_c_variadic_bad_extern = `...` is not supported for `extern "{$abi}"` functions
+    .label = `extern "{$abi}"` because of this
+    .help = only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+ast_passes_c_variadic_must_be_unsafe =
+    functions with a C variable argument list must be unsafe
+    .suggestion = add the `unsafe` keyword to this definition
+
+ast_passes_c_variadic_no_extern = `...` is not supported for non-extern functions
+    .help = only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
 
 ast_passes_const_and_c_variadic = functions cannot be both `const` and C-variadic
     .const = `const` because of this
@@ -72,6 +92,10 @@ ast_passes_const_without_body =
 
 ast_passes_constraint_on_negative_bound =
     associated type constraints not allowed on negative bounds
+
+ast_passes_coroutine_and_c_variadic = functions cannot be both `{$coroutine_kind}` and C-variadic
+    .const = `{$coroutine_kind}` because of this
+    .variadic = C-variadic because of this
 
 ast_passes_equality_in_where = equality constraints are not yet supported in `where` clauses
     .label = not supported
@@ -101,6 +125,10 @@ ast_passes_extern_types_cannot = `type`s inside `extern` blocks cannot have {$de
 ast_passes_extern_without_abi = `extern` declarations without an explicit ABI are disallowed
     .suggestion = specify an ABI
     .help = prior to Rust 2024, a default ABI was inferred
+
+ast_passes_extern_without_abi_sugg = `extern` declarations without an explicit ABI are deprecated
+    .label = ABI should be specified here
+    .suggestion = explicitly specify the {$default_abi} ABI
 
 ast_passes_feature_on_non_nightly = `#![feature]` may not be used on the {$channel} release channel
     .suggestion = remove the attribute
@@ -175,11 +203,6 @@ ast_passes_generic_default_trailing = generic parameters with a default must be 
 ast_passes_incompatible_features = `{$f1}` and `{$f2}` are incompatible, using them at the same time is not allowed
     .help = remove one of these features
 
-ast_passes_inherent_cannot_be = inherent impls cannot be {$annotation}
-    .because = {$annotation} because of this
-    .type = inherent impl for this type
-    .only_trait = only trait implementations may be annotated with {$annotation}
-
 ast_passes_item_invalid_safety = items outside of `unsafe extern {"{ }"}` cannot be declared with `safe` safety qualifier
     .suggestion = remove safe from this item
 
@@ -191,6 +214,10 @@ ast_passes_match_arm_with_no_body =
     .suggestion = add a body after the pattern
 
 ast_passes_missing_unsafe_on_extern = extern blocks must be unsafe
+    .suggestion = needs `unsafe` before the extern keyword
+
+ast_passes_missing_unsafe_on_extern_lint = extern blocks should be unsafe
+    .suggestion = needs `unsafe` before the extern keyword
 
 ast_passes_module_nonascii = trying to load file for module `{$name}` with non-ascii identifier name
     .help = consider using the `#[path]` attribute to specify filesystem path

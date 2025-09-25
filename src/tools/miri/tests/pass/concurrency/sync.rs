@@ -9,7 +9,8 @@ use std::time::{Duration, Instant};
 
 // We are expecting to sleep for 10ms. How long of a sleep we are accepting?
 // Even with 1000ms we still see this test fail on macOS runners.
-const MAX_SLEEP_TIME_MS: u64 = 2000;
+// On a aarch64-pc-windows-msvc runner, we saw 2.7s!
+const MAX_SLEEP_TIME_MS: u64 = 4000;
 
 // Check if Rust barriers are working.
 

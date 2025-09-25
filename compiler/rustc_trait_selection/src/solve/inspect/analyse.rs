@@ -18,9 +18,9 @@ use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::solve::{Certainty, Goal, GoalSource, NoSolution, QueryResult};
 use rustc_middle::ty::{TyCtxt, VisitorResult, try_visit};
 use rustc_middle::{bug, ty};
+use rustc_next_trait_solver::canonical::instantiate_canonical_state;
 use rustc_next_trait_solver::resolve::eager_resolve_vars;
-use rustc_next_trait_solver::solve::inspect::{self, instantiate_canonical_state};
-use rustc_next_trait_solver::solve::{MaybeCause, SolverDelegateEvalExt as _};
+use rustc_next_trait_solver::solve::{MaybeCause, SolverDelegateEvalExt as _, inspect};
 use rustc_span::Span;
 use tracing::instrument;
 
@@ -37,7 +37,7 @@ pub struct InspectGoal<'a, 'tcx> {
     orig_values: Vec<ty::GenericArg<'tcx>>,
     goal: Goal<'tcx, ty::Predicate<'tcx>>,
     result: Result<Certainty, NoSolution>,
-    evaluation_kind: inspect::GoalEvaluationKind<TyCtxt<'tcx>>,
+    final_revision: &'tcx inspect::Probe<TyCtxt<'tcx>>,
     normalizes_to_term_hack: Option<NormalizesToTermHack<'tcx>>,
     source: GoalSource,
 }
@@ -249,7 +249,7 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
                     // `InspectGoal::new` so that the goal has the right result (and maintains
                     // the impression that we don't do this normalizes-to infer hack at all).
                     let (nested, proof_tree) = infcx.evaluate_root_goal_for_proof_tree(goal, span);
-                    let nested_goals_result = nested.and_then(|(nested, _)| {
+                    let nested_goals_result = nested.and_then(|nested| {
                         normalizes_to_term_hack.constrain_and(
                             infcx,
                             span,
@@ -332,7 +332,7 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
                 inspect::ProbeStep::MakeCanonicalResponse { shallow_certainty: c } => {
                     assert_matches!(
                         shallow_certainty.replace(c),
-                        None | Some(Certainty::Maybe(MaybeCause::Ambiguity))
+                        None | Some(Certainty::Maybe { cause: MaybeCause::Ambiguity, .. })
                     );
                 }
                 inspect::ProbeStep::NestedProbe(ref probe) => {
@@ -391,15 +391,8 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
 
     pub fn candidates(&'a self) -> Vec<InspectCandidate<'a, 'tcx>> {
         let mut candidates = vec![];
-        let last_eval_step = match &self.evaluation_kind {
-            // An annoying edge case in case the recursion limit is 0.
-            inspect::GoalEvaluationKind::Overflow => return vec![],
-            inspect::GoalEvaluationKind::Evaluation { final_revision } => final_revision,
-        };
-
         let mut nested_goals = vec![];
-        self.candidates_recur(&mut candidates, &mut nested_goals, &last_eval_step);
-
+        self.candidates_recur(&mut candidates, &mut nested_goals, &self.final_revision);
         candidates
     }
 
@@ -426,7 +419,8 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
     ) -> Self {
         let infcx = <&SolverDelegate<'tcx>>::from(infcx);
 
-        let inspect::GoalEvaluation { uncanonicalized_goal, orig_values, kind, result } = root;
+        let inspect::GoalEvaluation { uncanonicalized_goal, orig_values, final_revision, result } =
+            root;
         // If there's a normalizes-to goal, AND the evaluation result with the result of
         // constraining the normalizes-to RHS and computing the nested goals.
         let result = result.and_then(|ok| {
@@ -441,7 +435,7 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
             orig_values,
             goal: eager_resolve_vars(infcx, uncanonicalized_goal),
             result,
-            evaluation_kind: kind,
+            final_revision,
             normalizes_to_term_hack: term_hack_and_nested_certainty.map(|(n, _)| n),
             source,
         }

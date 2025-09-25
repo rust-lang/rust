@@ -1,6 +1,5 @@
 // Disabling in Miri as these would take too long.
 #![cfg(not(miri))]
-#![feature(btree_extract_if)]
 #![feature(iter_next_chunk)]
 #![feature(repr_simd)]
 #![feature(slice_partition_dedup)]

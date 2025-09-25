@@ -55,6 +55,12 @@ RUN ./install-riscv64-none-elf.sh
 COPY host-x86_64/dist-various-1/install-riscv32-none-elf.sh /build
 RUN ./install-riscv32-none-elf.sh
 
+COPY host-x86_64/dist-various-1/install-emscripten.sh /build
+RUN ./install-emscripten.sh
+
+# Add Emscripten to PATH
+ENV PATH="/build/emsdk:/build/emsdk/upstream/emscripten:/build/emsdk/node/current/bin:${PATH}"
+
 # Suppress some warnings in the openwrt toolchains we downloaded
 ENV STAGING_DIR=/tmp
 
@@ -152,7 +158,7 @@ ENV RUST_CONFIGURE_ARGS \
       --disable-docs
 
 ENV SCRIPT \
-      python3 ../x.py --stage 2 test --host='' --target $RUN_MAKE_TARGETS tests/run-make && \
+      python3 ../x.py --stage 2 test --host='' --target $RUN_MAKE_TARGETS tests/run-make tests/run-make-cargo && \
       python3 ../x.py dist --host='' --target $TARGETS
 
 # sccache

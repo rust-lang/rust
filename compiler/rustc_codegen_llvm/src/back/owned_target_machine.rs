@@ -1,4 +1,4 @@
-use std::ffi::{CStr, c_char};
+use std::ffi::CStr;
 use std::marker::PhantomData;
 use std::ptr::NonNull;
 
@@ -38,15 +38,10 @@ impl OwnedTargetMachine {
         output_obj_file: &CStr,
         debug_info_compression: &CStr,
         use_emulated_tls: bool,
-        args_cstr_buff: &[u8],
+        argv0: &str,
+        command_line_args: &str,
         use_wasm_eh: bool,
     ) -> Result<Self, LlvmError<'static>> {
-        assert!(args_cstr_buff.len() > 0);
-        assert!(
-            *args_cstr_buff.last().unwrap() == 0,
-            "The last character must be a null terminator."
-        );
-
         // SAFETY: llvm::LLVMRustCreateTargetMachine copies pointed to data
         let tm_ptr = unsafe {
             llvm::LLVMRustCreateTargetMachine(
@@ -71,8 +66,10 @@ impl OwnedTargetMachine {
                 output_obj_file.as_ptr(),
                 debug_info_compression.as_ptr(),
                 use_emulated_tls,
-                args_cstr_buff.as_ptr() as *const c_char,
-                args_cstr_buff.len(),
+                argv0.as_ptr(),
+                argv0.len(),
+                command_line_args.as_ptr(),
+                command_line_args.len(),
                 use_wasm_eh,
             )
         };
@@ -99,7 +96,7 @@ impl Drop for OwnedTargetMachine {
         // llvm::LLVMRustCreateTargetMachine OwnedTargetMachine is not copyable so there is no
         // double free or use after free.
         unsafe {
-            llvm::LLVMRustDisposeTargetMachine(self.tm_unique.as_mut());
+            llvm::LLVMRustDisposeTargetMachine(self.tm_unique.as_ptr());
         }
     }
 }

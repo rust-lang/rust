@@ -6,6 +6,7 @@ use std::sync::{Arc, LazyLock, OnceLock};
 use std::{env, fs, iter};
 
 use rustc_ast as ast;
+use rustc_attr_parsing::{AttributeParser, ShouldEmit};
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::jobserver::Proxy;
 use rustc_data_structures::steal::Steal;
@@ -15,8 +16,10 @@ use rustc_errors::timings::TimingSection;
 use rustc_expand::base::{ExtCtxt, LintStoreExpand};
 use rustc_feature::Features;
 use rustc_fs_util::try_canonicalize;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::{LOCAL_CRATE, StableCrateId, StableCrateIdMap};
 use rustc_hir::definitions::Definitions;
+use rustc_hir::limit::Limit;
 use rustc_incremental::setup_dep_graph;
 use rustc_lint::{BufferedEarlyLint, EarlyCheckNode, LintStore, unerased_lint_store};
 use rustc_metadata::EncodedMetadata;
@@ -25,23 +28,21 @@ use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepsType;
 use rustc_middle::ty::{self, CurrentGcx, GlobalCtxt, RegisteredTools, TyCtxt};
 use rustc_middle::util::Providers;
-use rustc_parse::{
-    new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal, validate_attr,
-};
+use rustc_parse::lexer::StripTokens;
+use rustc_parse::{new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal};
 use rustc_passes::{abi_test, input_stats, layout_test};
 use rustc_resolve::{Resolver, ResolverOutputs};
+use rustc_session::Session;
 use rustc_session::config::{CrateType, Input, OutFileName, OutputFilenames, OutputType};
 use rustc_session::cstore::Untracked;
 use rustc_session::output::{collect_crate_types, filename_for_input};
 use rustc_session::parse::feature_err;
 use rustc_session::search_paths::PathKind;
-use rustc_session::{Limit, Session};
 use rustc_span::{
     DUMMY_SP, ErrorGuaranteed, ExpnKind, FileName, SourceFileHash, SourceFileHashAlgorithm, Span,
     Symbol, sym,
 };
-use rustc_target::spec::PanicStrategy;
-use rustc_trait_selection::traits;
+use rustc_trait_selection::{solve, traits};
 use tracing::{info, instrument};
 
 use crate::interface::Compiler;
@@ -51,10 +52,18 @@ pub fn parse<'a>(sess: &'a Session) -> ast::Crate {
     let mut krate = sess
         .time("parse_crate", || {
             let mut parser = unwrap_or_emit_fatal(match &sess.io.input {
-                Input::File(file) => new_parser_from_file(&sess.psess, file, None),
-                Input::Str { input, name } => {
-                    new_parser_from_source_str(&sess.psess, name.clone(), input.clone())
-                }
+                Input::File(file) => new_parser_from_file(
+                    &sess.psess,
+                    file,
+                    StripTokens::ShebangAndFrontmatter,
+                    None,
+                ),
+                Input::Str { input, name } => new_parser_from_source_str(
+                    &sess.psess,
+                    name.clone(),
+                    input.clone(),
+                    StripTokens::ShebangAndFrontmatter,
+                ),
             });
             parser.parse_crate_mod()
         })
@@ -182,7 +191,7 @@ fn configure_and_expand(
             unsafe {
                 env::set_var(
                     "PATH",
-                    &env::join_paths(
+                    env::join_paths(
                         new_path.iter().filter(|p| env::join_paths(iter::once(p)).is_ok()),
                     )
                     .unwrap(),
@@ -272,7 +281,7 @@ fn configure_and_expand(
         feature_err(sess, sym::export_stable, DUMMY_SP, "`sdylib` crate type is unstable").emit();
     }
 
-    if is_proc_macro_crate && sess.panic_strategy() == PanicStrategy::Abort {
+    if is_proc_macro_crate && !sess.panic_strategy().unwinds() {
         sess.dcx().emit_warn(errors::ProcMacroCratePanicAbort);
     }
 
@@ -436,7 +445,7 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
                 let prev_source = sess.psess.source_map().span_to_prev_source(first_span);
                 let ferris_fix = prev_source
                     .map_or(FerrisFix::SnakeCase, |source| {
-                        let mut source_before_ferris = source.trim_end().split_whitespace().rev();
+                        let mut source_before_ferris = source.split_whitespace().rev();
                         match source_before_ferris.next() {
                             Some("struct" | "trait" | "mod" | "union" | "type" | "enum") => {
                                 FerrisFix::PascalCase
@@ -490,7 +499,7 @@ fn env_var_os<'tcx>(tcx: TyCtxt<'tcx>, key: &'tcx OsStr) -> Option<&'tcx OsStr> 
     // properly change-tracked.
     tcx.sess.psess.env_depinfo.borrow_mut().insert((
         Symbol::intern(&key.to_string_lossy()),
-        value.as_ref().and_then(|value| value.to_str()).map(|value| Symbol::intern(&value)),
+        value.as_ref().and_then(|value| value.to_str()).map(|value| Symbol::intern(value)),
     ));
 
     value_tcx
@@ -814,7 +823,7 @@ pub fn write_dep_info(tcx: TyCtxt<'_>) {
 
     let outputs = tcx.output_filenames(());
     let output_paths =
-        generated_output_paths(tcx, &outputs, sess.io.output_file.is_some(), crate_name);
+        generated_output_paths(tcx, outputs, sess.io.output_file.is_some(), crate_name);
 
     // Ensure the source file isn't accidentally overwritten during compilation.
     if let Some(input_path) = sess.io.input.opt_path() {
@@ -837,7 +846,7 @@ pub fn write_dep_info(tcx: TyCtxt<'_>) {
         }
     }
 
-    write_out_deps(tcx, &outputs, &output_paths);
+    write_out_deps(tcx, outputs, &output_paths);
 
     let only_dep_info = sess.opts.output_types.contains_key(&OutputType::DepInfo)
         && sess.opts.output_types.len() == 1;
@@ -895,6 +904,7 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     rustc_hir_typeck::provide(providers);
     ty::provide(providers);
     traits::provide(providers);
+    solve::provide(providers);
     rustc_passes::provide(providers);
     rustc_traits::provide(providers);
     rustc_ty_utils::provide(providers);
@@ -1081,7 +1091,8 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
             if !tcx.is_typeck_child(def_id.to_def_id()) {
                 // Child unsafety and borrowck happens together with the parent
                 tcx.ensure_ok().check_unsafety(def_id);
-                tcx.ensure_ok().mir_borrowck(def_id)
+                tcx.ensure_ok().mir_borrowck(def_id);
+                tcx.ensure_ok().check_transmutes(def_id);
             }
             tcx.ensure_ok().has_ffi_unwind_calls(def_id);
 
@@ -1245,7 +1256,7 @@ pub fn get_crate_name(sess: &Session, krate_attrs: &[ast::Attribute]) -> Symbol 
     // macro expansion.
 
     let attr_crate_name =
-        validate_and_find_value_str_builtin_attr(sym::crate_name, sess, krate_attrs);
+        parse_crate_name(sess, krate_attrs, ShouldEmit::EarlyFatal { also_emit_lints: true });
 
     let validate = |name, span| {
         rustc_session::output::validate_crate_name(sess, name, span);
@@ -1283,37 +1294,41 @@ pub fn get_crate_name(sess: &Session, krate_attrs: &[ast::Attribute]) -> Symbol 
     sym::rust_out
 }
 
-fn get_recursion_limit(krate_attrs: &[ast::Attribute], sess: &Session) -> Limit {
-    // We don't permit macro calls inside of the attribute (e.g., #![recursion_limit = `expand!()`])
-    // because that would require expanding this while in the middle of expansion, which needs to
-    // know the limit before expanding.
-    let _ = validate_and_find_value_str_builtin_attr(sym::recursion_limit, sess, krate_attrs);
-    crate::limits::get_recursion_limit(krate_attrs, sess)
+pub(crate) fn parse_crate_name(
+    sess: &Session,
+    attrs: &[ast::Attribute],
+    emit_errors: ShouldEmit,
+) -> Option<(Symbol, Span)> {
+    let rustc_hir::Attribute::Parsed(AttributeKind::CrateName { name, name_span, .. }) =
+        AttributeParser::parse_limited_should_emit(
+            sess,
+            attrs,
+            sym::crate_name,
+            DUMMY_SP,
+            rustc_ast::node_id::CRATE_NODE_ID,
+            None,
+            emit_errors,
+        )?
+    else {
+        unreachable!("crate_name is the only attr we could've parsed here");
+    };
+
+    Some((name, name_span))
 }
 
-/// Validate *all* occurrences of the given "[value-str]" built-in attribute and return the first find.
-///
-/// This validator is intended for built-in attributes whose value needs to be known very early
-/// during compilation (namely, before macro expansion) and it mainly exists to reject macro calls
-/// inside of the attributes, such as in `#![name = expand!()]`. Normal attribute validation happens
-/// during semantic analysis via [`TyCtxt::check_mod_attrs`] which happens *after* macro expansion
-/// when such macro calls (here: `expand`) have already been expanded and we can no longer check for
-/// their presence.
-///
-/// [value-str]: ast::Attribute::value_str
-fn validate_and_find_value_str_builtin_attr(
-    name: Symbol,
-    sess: &Session,
-    krate_attrs: &[ast::Attribute],
-) -> Option<(Symbol, Span)> {
-    let mut result = None;
-    // Validate *all* relevant attributes, not just the first occurrence.
-    for attr in ast::attr::filter_by_name(krate_attrs, name) {
-        let Some(value) = attr.value_str() else {
-            validate_attr::emit_fatal_malformed_builtin_attribute(&sess.psess, attr, name)
-        };
-        // Choose the first occurrence as our result.
-        result.get_or_insert((value, attr.span));
-    }
-    result
+fn get_recursion_limit(krate_attrs: &[ast::Attribute], sess: &Session) -> Limit {
+    let attr = AttributeParser::parse_limited_should_emit(
+        sess,
+        &krate_attrs,
+        sym::recursion_limit,
+        DUMMY_SP,
+        rustc_ast::node_id::CRATE_NODE_ID,
+        None,
+        // errors are fatal here, but lints aren't.
+        // If things aren't fatal we continue, and will parse this again.
+        // That makes the same lint trigger again.
+        // So, no lints here to avoid duplicates.
+        ShouldEmit::EarlyFatal { also_emit_lints: false },
+    );
+    crate::limits::get_recursion_limit(attr.as_slice())
 }

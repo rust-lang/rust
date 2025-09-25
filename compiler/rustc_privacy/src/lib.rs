@@ -1779,7 +1779,8 @@ fn check_mod_privacy(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
         if let DefKind::Impl { of_trait: true } = tcx.def_kind(def_id) {
             let trait_ref = tcx.impl_trait_ref(def_id).unwrap();
             let trait_ref = trait_ref.instantiate_identity();
-            visitor.span = tcx.hir_expect_item(def_id).expect_impl().of_trait.unwrap().path.span;
+            visitor.span =
+                tcx.hir_expect_item(def_id).expect_impl().of_trait.unwrap().trait_ref.path.span;
             let _ =
                 visitor.visit_def_id(trait_ref.def_id, "trait", &trait_ref.print_only_trait_path());
         }

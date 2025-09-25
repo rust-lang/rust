@@ -103,21 +103,21 @@ Number of file 0 mappings: 3
 Highest counter ID seen: (none)
 
 Function name: async::g
-Raw bytes (9): 0x[01, 01, 00, 01, 01, 1b, 01, 00, 16]
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 1b, 01, 00, 12]
 Number of files: 1
 - file 0 => $DIR/async.rs
 Number of expressions: 0
 Number of file 0 mappings: 1
-- Code(Counter(0)) at (prev + 27, 1) to (start + 0, 22)
+- Code(Counter(0)) at (prev + 27, 1) to (start + 0, 18)
 Highest counter ID seen: c0
 
 Function name: async::g::{closure#0} (unused)
-Raw bytes (64): 0x[01, 01, 00, 0c, 00, 1b, 17, 00, 18, 00, 01, 0b, 00, 0c, 00, 01, 09, 00, 0a, 00, 00, 0e, 00, 17, 00, 00, 1b, 00, 1c, 00, 00, 20, 00, 22, 00, 01, 09, 00, 0a, 00, 00, 0e, 00, 17, 00, 00, 1b, 00, 1c, 00, 00, 20, 00, 22, 00, 01, 0e, 00, 10, 00, 02, 01, 00, 02]
+Raw bytes (64): 0x[01, 01, 00, 0c, 00, 1b, 13, 00, 14, 00, 01, 0b, 00, 0c, 00, 01, 09, 00, 0a, 00, 00, 0e, 00, 17, 00, 00, 1b, 00, 1c, 00, 00, 20, 00, 22, 00, 01, 09, 00, 0a, 00, 00, 0e, 00, 17, 00, 00, 1b, 00, 1c, 00, 00, 20, 00, 22, 00, 01, 0e, 00, 10, 00, 02, 01, 00, 02]
 Number of files: 1
 - file 0 => $DIR/async.rs
 Number of expressions: 0
 Number of file 0 mappings: 12
-- Code(Zero) at (prev + 27, 23) to (start + 0, 24)
+- Code(Zero) at (prev + 27, 19) to (start + 0, 20)
 - Code(Zero) at (prev + 1, 11) to (start + 0, 12)
 - Code(Zero) at (prev + 1, 9) to (start + 0, 10)
 - Code(Zero) at (prev + 0, 14) to (start + 0, 23)

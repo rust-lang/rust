@@ -122,7 +122,7 @@ pub fn simplify_type<I: Interner>(
         ty::Int(int_type) => Some(SimplifiedType::Int(int_type)),
         ty::Uint(uint_type) => Some(SimplifiedType::Uint(uint_type)),
         ty::Float(float_type) => Some(SimplifiedType::Float(float_type)),
-        ty::Adt(def, _) => Some(SimplifiedType::Adt(def.def_id())),
+        ty::Adt(def, _) => Some(SimplifiedType::Adt(def.def_id().into())),
         ty::Str => Some(SimplifiedType::Str),
         ty::Array(..) => Some(SimplifiedType::Array),
         ty::Slice(..) => Some(SimplifiedType::Slice),
@@ -130,16 +130,16 @@ pub fn simplify_type<I: Interner>(
         ty::RawPtr(_, mutbl) => Some(SimplifiedType::Ptr(mutbl)),
         ty::Dynamic(trait_info, ..) => match trait_info.principal_def_id() {
             Some(principal_def_id) if !cx.trait_is_auto(principal_def_id) => {
-                Some(SimplifiedType::Trait(principal_def_id))
+                Some(SimplifiedType::Trait(principal_def_id.into()))
             }
             _ => Some(SimplifiedType::MarkerTraitObject),
         },
         ty::Ref(_, _, mutbl) => Some(SimplifiedType::Ref(mutbl)),
-        ty::FnDef(def_id, _) | ty::Closure(def_id, _) | ty::CoroutineClosure(def_id, _) => {
-            Some(SimplifiedType::Closure(def_id))
-        }
-        ty::Coroutine(def_id, _) => Some(SimplifiedType::Coroutine(def_id)),
-        ty::CoroutineWitness(def_id, _) => Some(SimplifiedType::CoroutineWitness(def_id)),
+        ty::FnDef(def_id, _) => Some(SimplifiedType::Closure(def_id.into())),
+        ty::Closure(def_id, _) => Some(SimplifiedType::Closure(def_id.into())),
+        ty::CoroutineClosure(def_id, _) => Some(SimplifiedType::Closure(def_id.into())),
+        ty::Coroutine(def_id, _) => Some(SimplifiedType::Coroutine(def_id.into())),
+        ty::CoroutineWitness(def_id, _) => Some(SimplifiedType::CoroutineWitness(def_id.into())),
         ty::Never => Some(SimplifiedType::Never),
         ty::Tuple(tys) => Some(SimplifiedType::Tuple(tys.len())),
         ty::FnPtr(sig_tys, _hdr) => {
@@ -161,7 +161,7 @@ pub fn simplify_type<I: Interner>(
             }
             TreatParams::AsRigid | TreatParams::InstantiateWithInfer => None,
         },
-        ty::Foreign(def_id) => Some(SimplifiedType::Foreign(def_id)),
+        ty::Foreign(def_id) => Some(SimplifiedType::Foreign(def_id.into())),
         ty::Error(_) => Some(SimplifiedType::Error),
         ty::Bound(..) | ty::Infer(_) => None,
     }

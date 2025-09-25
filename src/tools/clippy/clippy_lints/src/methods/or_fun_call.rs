@@ -2,6 +2,7 @@ use std::ops::ControlFlow;
 
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::eager_or_lazy::switch_to_lazy_eval;
+use clippy_utils::higher::VecArgs;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::{expr_type_is_certain, implements_trait, is_type_diagnostic_item};
 use clippy_utils::visitors::for_each_expr;
@@ -94,6 +95,12 @@ pub(super) fn check<'tcx>(
             )
         };
         if in_sugg_method_implementation {
+            return false;
+        }
+
+        // `.unwrap_or(vec![])` is as readable as `.unwrap_or_default()`. And if the expression is a
+        // non-empty `Vec`, then it will not be a default value anyway. Bail out in all cases.
+        if call_expr.and_then(|call_expr| VecArgs::hir(cx, call_expr)).is_some() {
             return false;
         }
 

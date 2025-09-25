@@ -86,7 +86,6 @@ use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::source_map::dummy_spanned;
 use rustc_span::symbol::sym;
 use rustc_span::{DUMMY_SP, Span};
-use rustc_target::spec::PanicStrategy;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::TyCtxtInferExt as _;
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode, ObligationCtxt};
@@ -1149,7 +1148,7 @@ fn can_return<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, typing_env: ty::Typing
 
 fn can_unwind<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> bool {
     // Nothing can unwind when landing pads are off.
-    if tcx.sess.panic_strategy() == PanicStrategy::Abort {
+    if !tcx.sess.panic_strategy().unwinds() {
         return false;
     }
 
@@ -1294,7 +1293,9 @@ fn create_coroutine_resume_function<'tcx>(
 
     pm::run_passes_no_validate(tcx, body, &[&abort_unwinding_calls::AbortUnwindingCalls], None);
 
-    dump_mir(tcx, false, "coroutine_resume", &0, body, |_, _| Ok(()));
+    if let Some(dumper) = MirDumper::new(tcx, "coroutine_resume", body) {
+        dumper.dump_mir(body);
+    }
 }
 
 /// An operation that can be performed on a coroutine.
@@ -1338,14 +1339,13 @@ fn create_cases<'tcx>(
                     }
                 }
 
-                if operation == Operation::Resume {
+                if operation == Operation::Resume && point.resume_arg != CTX_ARG.into() {
                     // Move the resume argument to the destination place of the `Yield` terminator
-                    let resume_arg = CTX_ARG;
                     statements.push(Statement::new(
                         source_info,
                         StatementKind::Assign(Box::new((
                             point.resume_arg,
-                            Rvalue::Use(Operand::Move(resume_arg.into())),
+                            Rvalue::Use(Operand::Move(CTX_ARG.into())),
                         ))),
                     ));
                 }
@@ -1437,7 +1437,10 @@ fn check_field_tys_sized<'tcx>(
 }
 
 impl<'tcx> crate::MirPass<'tcx> for StateTransform {
+    #[instrument(level = "debug", skip(self, tcx, body), ret)]
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        debug!(def_id = ?body.source.def_id());
+
         let Some(old_yield_ty) = body.yield_ty() else {
             // This only applies to coroutines
             return;
@@ -1446,7 +1449,9 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
 
         assert!(body.coroutine_drop().is_none() && body.coroutine_drop_async().is_none());
 
-        dump_mir(tcx, false, "coroutine_before", &0, body, |_, _| Ok(()));
+        if let Some(dumper) = MirDumper::new(tcx, "coroutine_before", body) {
+            dumper.dump_mir(body);
+        }
 
         // The first argument is the coroutine type passed by value
         let coroutine_ty = body.local_decls.raw[1].ty;
@@ -1506,36 +1511,15 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
         ) {
             let context_mut_ref = transform_async_context(tcx, body);
             expand_async_drops(tcx, body, context_mut_ref, coroutine_kind, coroutine_ty);
-            dump_mir(tcx, false, "coroutine_async_drop_expand", &0, body, |_, _| Ok(()));
+
+            if let Some(dumper) = MirDumper::new(tcx, "coroutine_async_drop_expand", body) {
+                dumper.dump_mir(body);
+            }
         } else {
             cleanup_async_drops(body);
         }
 
-        // We also replace the resume argument and insert an `Assign`.
-        // This is needed because the resume argument `_2` might be live across a `yield`, in which
-        // case there is no `Assign` to it that the transform can turn into a store to the coroutine
-        // state. After the yield the slot in the coroutine state would then be uninitialized.
-        let resume_local = CTX_ARG;
-        let resume_ty = body.local_decls[resume_local].ty;
-        let old_resume_local = replace_local(resume_local, resume_ty, body, tcx);
-
-        // When first entering the coroutine, move the resume argument into its old local
-        // (which is now a generator interior).
-        let source_info = SourceInfo::outermost(body.span);
-        let stmts = &mut body.basic_blocks_mut()[START_BLOCK].statements;
-        stmts.insert(
-            0,
-            Statement::new(
-                source_info,
-                StatementKind::Assign(Box::new((
-                    old_resume_local.into(),
-                    Rvalue::Use(Operand::Move(resume_local.into())),
-                ))),
-            ),
-        );
-
         let always_live_locals = always_storage_live_locals(body);
-
         let movable = coroutine_kind.movability() == hir::Movability::Movable;
         let liveness_info =
             locals_live_across_suspend_points(tcx, body, &always_live_locals, movable);
@@ -1576,6 +1560,21 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
         };
         transform.visit_body(body);
 
+        // MIR parameters are not explicitly assigned-to when entering the MIR body.
+        // If we want to save their values inside the coroutine state, we need to do so explicitly.
+        let source_info = SourceInfo::outermost(body.span);
+        let args_iter = body.args_iter();
+        body.basic_blocks.as_mut()[START_BLOCK].statements.splice(
+            0..0,
+            args_iter.filter_map(|local| {
+                let (ty, variant_index, idx) = transform.remap[local]?;
+                let lhs = transform.make_field(variant_index, idx, ty);
+                let rhs = Rvalue::Use(Operand::Move(local.into()));
+                let assign = StatementKind::Assign(Box::new((lhs, rhs)));
+                Some(Statement::new(source_info, assign))
+            }),
+        );
+
         // Update our MIR struct to reflect the changes we've made
         body.arg_count = 2; // self, resume arg
         body.spread_arg = None;
@@ -1605,14 +1604,18 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
         // This is expanded to a drop ladder in `elaborate_coroutine_drops`.
         let drop_clean = insert_clean_drop(tcx, body, has_async_drops);
 
-        dump_mir(tcx, false, "coroutine_pre-elab", &0, body, |_, _| Ok(()));
+        if let Some(dumper) = MirDumper::new(tcx, "coroutine_pre-elab", body) {
+            dumper.dump_mir(body);
+        }
 
         // Expand `drop(coroutine_struct)` to a drop ladder which destroys upvars.
         // If any upvars are moved out of, drop elaboration will handle upvar destruction.
         // However we need to also elaborate the code generated by `insert_clean_drop`.
         elaborate_coroutine_drops(tcx, body);
 
-        dump_mir(tcx, false, "coroutine_post-transform", &0, body, |_, _| Ok(()));
+        if let Some(dumper) = MirDumper::new(tcx, "coroutine_post-transform", body) {
+            dumper.dump_mir(body);
+        }
 
         let can_unwind = can_unwind(tcx, body);
 
@@ -1880,7 +1883,7 @@ fn check_must_not_suspend_ty<'tcx>(
             }
             has_emitted
         }
-        ty::Dynamic(binder, _, _) => {
+        ty::Dynamic(binder, _) => {
             let mut has_emitted = false;
             for predicate in binder.iter() {
                 if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate.skip_binder() {

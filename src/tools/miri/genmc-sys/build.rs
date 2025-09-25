@@ -26,17 +26,27 @@ mod downloading {
     use super::GENMC_DOWNLOAD_PATH;
 
     /// The GenMC repository the we get our commit from.
-    pub(crate) const GENMC_GITHUB_URL: &str = "https://github.com/MPI-SWS/genmc.git";
+    pub(crate) const GENMC_GITHUB_URL: &str = "https://gitlab.inf.ethz.ch/public-plf/genmc.git";
     /// The GenMC commit we depend on. It must be available on the specified GenMC repository.
-    pub(crate) const GENMC_COMMIT: &str = "3438dd2c1202cd4a47ed7881d099abf23e4167ab";
+    pub(crate) const GENMC_COMMIT: &str = "af9cc9ccd5d412b16defc35dbf36571c63a19c76";
 
-    pub(crate) fn download_genmc() -> PathBuf {
+    /// Ensure that a local GenMC repo is present and set to the correct commit.
+    /// Return the path of the GenMC repo and whether the checked out commit was changed.
+    pub(crate) fn download_genmc() -> (PathBuf, bool) {
         let Ok(genmc_download_path) = PathBuf::from_str(GENMC_DOWNLOAD_PATH);
         let commit_oid = Oid::from_str(GENMC_COMMIT).expect("Commit should be valid.");
 
         match Repository::open(&genmc_download_path) {
             Ok(repo) => {
                 assert_repo_unmodified(&repo);
+                if let Ok(head) = repo.head()
+                    && let Ok(head_commit) = head.peel_to_commit()
+                    && head_commit.id() == commit_oid
+                {
+                    // Fast path: The expected commit is already checked out.
+                    return (genmc_download_path, false);
+                }
+                // Check if the local repository already contains the commit we need, download it otherwise.
                 let commit = update_local_repo(&repo, commit_oid);
                 checkout_commit(&repo, &commit);
             }
@@ -51,7 +61,7 @@ mod downloading {
             }
         };
 
-        genmc_download_path
+        (genmc_download_path, true)
     }
 
     fn get_remote(repo: &Repository) -> Remote<'_> {
@@ -71,7 +81,8 @@ mod downloading {
 
         // Update remote URL.
         println!(
-            "cargo::warning=GenMC repository remote URL has changed from '{remote_url:?}' to '{GENMC_GITHUB_URL}'"
+            "cargo::warning=GenMC repository remote URL has changed from '{}' to '{GENMC_GITHUB_URL}'",
+            remote_url.unwrap_or_default()
         );
         repo.remote_set_url("origin", GENMC_GITHUB_URL)
             .expect("cannot rename url of remote 'origin'");
@@ -175,19 +186,25 @@ fn link_to_llvm(config_file: &Path) -> (String, String) {
 }
 
 /// Build the GenMC model checker library and the Rust-C++ interop library with cxx.rs
-fn compile_cpp_dependencies(genmc_path: &Path) {
+fn compile_cpp_dependencies(genmc_path: &Path, always_configure: bool) {
+    // Give each step a separate build directory to prevent interference.
+    let out_dir = PathBuf::from(std::env::var("OUT_DIR").as_deref().unwrap());
+    let genmc_build_dir = out_dir.join("genmc");
+    let interface_build_dir = out_dir.join("miri_genmc");
+
     // Part 1:
     // Compile the GenMC library using cmake.
-
-    let cmakelists_path = genmc_path.join("CMakeLists.txt");
 
     // FIXME(genmc,cargo): Switch to using `CARGO_CFG_DEBUG_ASSERTIONS` once https://github.com/rust-lang/cargo/issues/15760 is completed.
     // Enable/disable additional debug checks, prints and options for GenMC, based on the Rust profile (debug/release)
     let enable_genmc_debug = matches!(std::env::var("PROFILE").as_deref().unwrap(), "debug");
 
-    let mut config = cmake::Config::new(cmakelists_path);
-    config.profile(GENMC_CMAKE_PROFILE);
-    config.define("GENMC_DEBUG", if enable_genmc_debug { "ON" } else { "OFF" });
+    let mut config = cmake::Config::new(genmc_path);
+    config
+        .always_configure(always_configure) // We force running the configure step when the GenMC commit changed.
+        .out_dir(genmc_build_dir)
+        .profile(GENMC_CMAKE_PROFILE)
+        .define("GENMC_DEBUG", if enable_genmc_debug { "ON" } else { "OFF" });
 
     // The actual compilation happens here:
     let genmc_install_dir = config.build();
@@ -210,6 +227,13 @@ fn compile_cpp_dependencies(genmc_path: &Path) {
     // These definitions are parsed into a cmake list and then printed to the config.h file, so they are ';' separated.
     let definitions = llvm_definitions.split(";");
 
+    let cpp_files = [
+        "./cpp/src/MiriInterface/EventHandling.cpp",
+        "./cpp/src/MiriInterface/Exploration.cpp",
+        "./cpp/src/MiriInterface/Setup.cpp",
+        "./cpp/src/MiriInterface/ThreadManagement.cpp",
+    ];
+
     let mut bridge = cxx_build::bridge("src/lib.rs");
     // FIXME(genmc,cmake): Remove once the GenMC debug setting is available in the config.h file.
     if enable_genmc_debug {
@@ -225,9 +249,9 @@ fn compile_cpp_dependencies(genmc_path: &Path) {
         .std("c++23")
         .include(genmc_include_dir)
         .include(llvm_include_dirs)
-        .include("./src_cpp")
-        .file("./src_cpp/MiriInterface.hpp")
-        .file("./src_cpp/MiriInterface.cpp")
+        .include("./cpp/include")
+        .files(&cpp_files)
+        .out_dir(interface_build_dir)
         .compile("genmc_interop");
 
     // Link the Rust-C++ interface library generated by cxx_build:
@@ -235,15 +259,9 @@ fn compile_cpp_dependencies(genmc_path: &Path) {
 }
 
 fn main() {
-    // Make sure we don't accidentally distribute a binary with GPL code.
-    if option_env!("RUSTC_STAGE").is_some() {
-        panic!(
-            "genmc should not be enabled in the rustc workspace since it includes a GPL dependency"
-        );
-    }
-
     // Select which path to use for the GenMC repo:
-    let genmc_path = if let Ok(genmc_src_path) = std::env::var("GENMC_SRC_PATH") {
+    let (genmc_path, always_configure) = if let Some(genmc_src_path) = option_env!("GENMC_SRC_PATH")
+    {
         let genmc_src_path =
             PathBuf::from_str(&genmc_src_path).expect("GENMC_SRC_PATH should contain a valid path");
         assert!(
@@ -251,13 +269,20 @@ fn main() {
             "GENMC_SRC_PATH={} does not exist!",
             genmc_src_path.display()
         );
-        genmc_src_path
+        // Rebuild files in the given path change.
+        println!("cargo::rerun-if-changed={}", genmc_src_path.display());
+        // We disable `always_configure` when working with a local repository,
+        // since it increases compile times when working on `genmc-sys`.
+        (genmc_src_path, false)
     } else {
+        // Download GenMC if required and ensure that the correct commit is checked out.
+        // If anything changed in the downloaded repository (e.g., the commit),
+        // we set `always_configure` to ensure there are no weird configs from previous builds.
         downloading::download_genmc()
     };
 
     // Build all required components:
-    compile_cpp_dependencies(&genmc_path);
+    compile_cpp_dependencies(&genmc_path, always_configure);
 
     // Only rebuild if anything changes:
     // Note that we don't add the downloaded GenMC repo, since that should never be modified
@@ -265,5 +290,5 @@ fn main() {
     // cloned (since cargo detects that as a file modification).
     println!("cargo::rerun-if-changed={RUST_CXX_BRIDGE_FILE_PATH}");
     println!("cargo::rerun-if-changed=./src");
-    println!("cargo::rerun-if-changed=./src_cpp");
+    println!("cargo::rerun-if-changed=./cpp");
 }

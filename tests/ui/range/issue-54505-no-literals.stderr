@@ -207,7 +207,7 @@ LL |     take_range(std::ops::RangeToInclusive { end: 5 });
    |     arguments to this function are incorrect
    |
    = note: expected reference `&_`
-                 found struct `RangeToInclusive<{integer}>`
+                 found struct `std::ops::RangeToInclusive<{integer}>`
 note: function defined here
   --> $DIR/issue-54505-no-literals.rs:12:4
    |
@@ -227,7 +227,7 @@ LL |     take_range(::std::ops::RangeToInclusive { end: 5 });
    |     arguments to this function are incorrect
    |
    = note: expected reference `&_`
-                 found struct `RangeToInclusive<{integer}>`
+                 found struct `std::ops::RangeToInclusive<{integer}>`
 note: function defined here
   --> $DIR/issue-54505-no-literals.rs:12:4
    |

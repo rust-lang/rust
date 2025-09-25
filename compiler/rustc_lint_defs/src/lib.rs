@@ -1,18 +1,17 @@
-use rustc_abi::ExternAbi;
+use std::borrow::Cow;
+
 use rustc_ast::AttrId;
 use rustc_ast::attr::AttributeExt;
-use rustc_ast::node_id::NodeId;
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::stable_hasher::{
     HashStable, StableCompare, StableHasher, ToStableHashKey,
 };
-use rustc_error_messages::{DiagMessage, MultiSpan};
-use rustc_hir::def::Namespace;
-use rustc_hir::def_id::DefPathHash;
-use rustc_hir::{HashStableContext, HirId, ItemLocalId};
+use rustc_error_messages::{DiagArgValue, DiagMessage, IntoDiagArg, MultiSpan};
+use rustc_hir_id::{HashStableContext, HirId, ItemLocalId};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
+use rustc_span::def_id::DefPathHash;
 pub use rustc_span::edition::Edition;
-use rustc_span::{Ident, MacroRulesNormalizedIdent, Span, Symbol, sym};
+use rustc_span::{Ident, Span, Symbol, sym};
 use serde::{Deserialize, Serialize};
 
 pub use self::Level::*;
@@ -138,7 +137,7 @@ impl LintExpectationId {
     }
 }
 
-impl<HCX: rustc_hir::HashStableContext> HashStable<HCX> for LintExpectationId {
+impl<HCX: HashStableContext> HashStable<HCX> for LintExpectationId {
     #[inline]
     fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
         match self {
@@ -156,7 +155,7 @@ impl<HCX: rustc_hir::HashStableContext> HashStable<HCX> for LintExpectationId {
     }
 }
 
-impl<HCX: rustc_hir::HashStableContext> ToStableHashKey<HCX> for LintExpectationId {
+impl<HCX: HashStableContext> ToStableHashKey<HCX> for LintExpectationId {
     type KeyType = (DefPathHash, ItemLocalId, u16, u16);
 
     #[inline]
@@ -294,6 +293,12 @@ impl Level {
             Level::Allow | Level::Expect | Level::Warn | Level::ForceWarn => false,
             Level::Deny | Level::Forbid => true,
         }
+    }
+}
+
+impl IntoDiagArg for Level {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
+        DiagArgValue::Str(Cow::Borrowed(self.to_cmd_flag()))
     }
 }
 
@@ -615,17 +620,7 @@ pub enum DeprecatedSinceKind {
 #[derive(Debug)]
 pub enum BuiltinLintDiag {
     AbsPathWithModule(Span),
-    ProcMacroDeriveResolutionFallback {
-        span: Span,
-        ns: Namespace,
-        ident: Ident,
-    },
-    MacroExpandedMacroExportsAccessedByAbsolutePaths(Span),
     ElidedLifetimesInPaths(usize, Span, bool, Span),
-    UnknownCrateTypes {
-        span: Span,
-        candidate: Option<Symbol>,
-    },
     UnusedImports {
         remove_whole_use: bool,
         num_to_remove: usize,
@@ -641,20 +636,11 @@ pub enum BuiltinLintDiag {
         path: String,
         since_kind: DeprecatedSinceKind,
     },
-    MissingAbi(Span, ExternAbi),
-    UnusedDocComment(Span),
-    UnusedBuiltinAttribute {
-        attr_name: Symbol,
-        macro_name: String,
-        invoc_span: Span,
-    },
     PatternsInFnsWithoutBody {
         span: Span,
         ident: Ident,
         is_foreign: bool,
     },
-    LegacyDeriveHelpers(Span),
-    OrPatternsBackCompat(Span, String),
     ReservedPrefix(Span, String),
     /// `'r#` in edition < 2021.
     RawPrefix(Span),
@@ -663,23 +649,11 @@ pub enum BuiltinLintDiag {
         is_string: bool,
         suggestion: Span,
     },
-    HiddenUnicodeCodepoints {
-        label: String,
-        count: usize,
-        span_label: Span,
-        labels: Option<Vec<(char, Span)>>,
-        escape: bool,
-        spans: Vec<(char, Span)>,
-    },
-    TrailingMacro(bool, Ident),
     BreakWithLabelAndLoop(Span),
     UnicodeTextFlow(Span, String),
     UnexpectedCfgName((Symbol, Span), Option<(Symbol, Span)>),
     UnexpectedCfgValue((Symbol, Span), Option<(Symbol, Span)>),
     DeprecatedWhereclauseLocation(Span, Option<(Span, String)>),
-    MissingUnsafeOnExtern {
-        suggestion: Span,
-    },
     SingleUseLifetime {
         /// Span of the parameter which declares this lifetime.
         param_span: Span,
@@ -703,14 +677,6 @@ pub enum BuiltinLintDiag {
         named_arg_name: String,
         /// Indicates if the named argument is used as a width/precision for formatting
         is_formatting_arg: bool,
-    },
-    ByteSliceInPackedStructWithDerive {
-        // FIXME: enum of byte/string
-        ty: String,
-    },
-    UnusedExternCrate {
-        span: Span,
-        removal_span: Span,
     },
     ExternCrateNotIdiomatic {
         vis_span: Span,
@@ -739,11 +705,6 @@ pub enum BuiltinLintDiag {
         /// The local binding that shadows the glob reexport.
         private_item_span: Span,
     },
-    ReexportPrivateDependency {
-        name: String,
-        kind: String,
-        krate: Symbol,
-    },
     UnusedQualifications {
         /// The span of the unnecessarily-qualified path to remove.
         removal_span: Span,
@@ -766,96 +727,27 @@ pub enum BuiltinLintDiag {
         span: Span,
         typo_name: Option<Symbol>,
     },
-    MacroUseDeprecated,
-    UnusedMacroUse,
     PrivateExternCrateReexport {
         source: Ident,
         extern_crate_span: Span,
     },
-    UnusedLabel,
     MacroIsPrivate(Ident),
     UnusedMacroDefinition(Symbol),
     MacroRuleNeverUsed(usize, Symbol),
     UnstableFeature(DiagMessage),
-    AvoidUsingIntelSyntax,
-    AvoidUsingAttSyntax,
-    IncompleteInclude,
-    UnnameableTestItems,
-    DuplicateMacroAttribute,
-    CfgAttrNoAttributes,
-    MetaVariableStillRepeating(MacroRulesNormalizedIdent),
-    MetaVariableWrongOperator,
-    DuplicateMatcherBinding,
-    UnknownMacroVariable(MacroRulesNormalizedIdent),
     UnusedCrateDependency {
         extern_crate: Symbol,
         local_crate: Symbol,
     },
     IllFormedAttributeInput {
         suggestions: Vec<String>,
-    },
-    InnerAttributeUnstable {
-        is_macro: bool,
+        docs: Option<&'static str>,
     },
     OutOfScopeMacroCalls {
         span: Span,
         path: String,
         location: String,
     },
-    UnexpectedBuiltinCfg {
-        cfg: String,
-        cfg_name: Symbol,
-        controlled_by: &'static str,
-    },
-}
-
-/// Lints that are buffered up early on in the `Session` before the
-/// `LintLevels` is calculated.
-#[derive(Debug)]
-pub struct BufferedEarlyLint {
-    /// The span of code that we are linting on.
-    pub span: Option<MultiSpan>,
-
-    /// The `NodeId` of the AST node that generated the lint.
-    pub node_id: NodeId,
-
-    /// A lint Id that can be passed to
-    /// `rustc_lint::early::EarlyContextAndPass::check_id`.
-    pub lint_id: LintId,
-
-    /// Customization of the `Diag<'_>` for the lint.
-    pub diagnostic: BuiltinLintDiag,
-}
-
-#[derive(Default, Debug)]
-pub struct LintBuffer {
-    pub map: FxIndexMap<NodeId, Vec<BufferedEarlyLint>>,
-}
-
-impl LintBuffer {
-    pub fn add_early_lint(&mut self, early_lint: BufferedEarlyLint) {
-        self.map.entry(early_lint.node_id).or_default().push(early_lint);
-    }
-
-    pub fn take(&mut self, id: NodeId) -> Vec<BufferedEarlyLint> {
-        // FIXME(#120456) - is `swap_remove` correct?
-        self.map.swap_remove(&id).unwrap_or_default()
-    }
-
-    pub fn buffer_lint(
-        &mut self,
-        lint: &'static Lint,
-        node_id: NodeId,
-        span: impl Into<MultiSpan>,
-        diagnostic: BuiltinLintDiag,
-    ) {
-        self.add_early_lint(BufferedEarlyLint {
-            lint_id: LintId::of(lint),
-            node_id,
-            span: Some(span.into()),
-            diagnostic,
-        });
-    }
 }
 
 pub type RegisteredTools = FxIndexSet<Ident>;

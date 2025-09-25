@@ -162,3 +162,207 @@ fn write_u8_min(bh: &mut Bencher) {
         black_box(format!("{}", black_box(u8::MIN)));
     });
 }
+
+#[bench]
+fn write_i8_bin(bh: &mut Bencher) {
+    let mut buf = String::with_capacity(256);
+    bh.iter(|| {
+        write!(black_box(&mut buf), "{:b}", black_box(0_i8)).unwrap();
+        write!(black_box(&mut buf), "{:b}", black_box(100_i8)).unwrap();
+        write!(black_box(&mut buf), "{:b}", black_box(-100_i8)).unwrap();
+        write!(black_box(&mut buf), "{:b}", black_box(1_i8 << 4)).unwrap();
+        black_box(&mut buf).clear();
+    });
+}
+
+#[bench]
+fn write_i16_bin(bh: &mut Bencher) {
+    let mut buf = String::with_capacity(256);
+    bh.iter(|| {
+        write!(black_box(&mut buf), "{:b}", black_box(0_i16)).unwrap();
+        write!(black_box(&mut buf), "{:b}", black_box(100_i16)).unwrap();
+        write!(black_box(&mut buf), "{:b}", black_box(-100_i16)).unwrap();
+        write!(black_box(&mut buf), "{:b}", black_box(1_i16 << 8)).unwrap();
+        black_box(&mut buf).clear();
+    });
+}
+
+#[bench]
+fn write_i32_bin(bh: &mut Bencher) {
+    let mut buf = String::with_capacity(256);
+    bh.iter(|| {
+        write!(black_box(&mut buf), "{:b}", black_box(0_i32)).unwrap();
+        write!(black_box(&mut buf), "{:b}", black_box(100_i32)).unwrap();
+        write!(black_box(&mut buf), "{:b}", black_box(-100_i32)).unwrap();
+        write!(black_box(&mut buf), "{:b}", black_box(1_i32 << 16)).unwrap();
+        black_box(&mut buf).clear();
+    });
+}
+
+#[bench]
+fn write_i64_bin(bh: &mut Bencher) {
+    let mut buf = String::with_capacity(256);
+    bh.iter(|| {
+        write!(black_box(&mut buf), "{:b}", black_box(0_i64)).unwrap();
+        write!(black_box(&mut buf), "{:b}", black_box(100_i64)).unwrap();
+        write!(black_box(&mut buf), "{:b}", black_box(-100_i64)).unwrap();
+        write!(black_box(&mut buf), "{:b}", black_box(1_i64 << 32)).unwrap();
+        black_box(&mut buf).clear();
+    });
+}
+
+#[bench]
+fn write_i128_bin(bh: &mut Bencher) {
+    let mut buf = String::with_capacity(256);
+    bh.iter(|| {
+        write!(black_box(&mut buf), "{:b}", black_box(0_i128)).unwrap();
+        write!(black_box(&mut buf), "{:b}", black_box(100_i128)).unwrap();
+        write!(black_box(&mut buf), "{:b}", black_box(-100_i128)).unwrap();
+        write!(black_box(&mut buf), "{:b}", black_box(1_i128 << 64)).unwrap();
+        black_box(&mut buf).clear();
+    });
+}
+
+#[bench]
+fn write_i8_oct(bh: &mut Bencher) {
+    let mut buf = String::with_capacity(256);
+    bh.iter(|| {
+        write!(black_box(&mut buf), "{:o}", black_box(0_i8)).unwrap();
+        write!(black_box(&mut buf), "{:o}", black_box(100_i8)).unwrap();
+        write!(black_box(&mut buf), "{:o}", black_box(-100_i8)).unwrap();
+        write!(black_box(&mut buf), "{:o}", black_box(1_i8 << 4)).unwrap();
+        black_box(&mut buf).clear();
+    });
+}
+
+#[bench]
+fn write_i16_oct(bh: &mut Bencher) {
+    let mut buf = String::with_capacity(256);
+    bh.iter(|| {
+        write!(black_box(&mut buf), "{:o}", black_box(0_i16)).unwrap();
+        write!(black_box(&mut buf), "{:o}", black_box(100_i16)).unwrap();
+        write!(black_box(&mut buf), "{:o}", black_box(-100_i16)).unwrap();
+        write!(black_box(&mut buf), "{:o}", black_box(1_i16 << 8)).unwrap();
+        black_box(&mut buf).clear();
+    });
+}
+
+#[bench]
+fn write_i32_oct(bh: &mut Bencher) {
+    let mut buf = String::with_capacity(256);
+    bh.iter(|| {
+        write!(black_box(&mut buf), "{:o}", black_box(0_i32)).unwrap();
+        write!(black_box(&mut buf), "{:o}", black_box(100_i32)).unwrap();
+        write!(black_box(&mut buf), "{:o}", black_box(-100_i32)).unwrap();
+        write!(black_box(&mut buf), "{:o}", black_box(1_i32 << 16)).unwrap();
+        black_box(&mut buf).clear();
+    });
+}
+
+#[bench]
+fn write_i64_oct(bh: &mut Bencher) {
+    let mut buf = String::with_capacity(256);
+    bh.iter(|| {
+        write!(black_box(&mut buf), "{:o}", black_box(0_i64)).unwrap();
+        write!(black_box(&mut buf), "{:o}", black_box(100_i64)).unwrap();
+        write!(black_box(&mut buf), "{:o}", black_box(-100_i64)).unwrap();
+        write!(black_box(&mut buf), "{:o}", black_box(1_i64 << 32)).unwrap();
+        black_box(&mut buf).clear();
+    });
+}
+
+#[bench]
+fn write_i128_oct(bh: &mut Bencher) {
+    let mut buf = String::with_capacity(256);
+    bh.iter(|| {
+        write!(black_box(&mut buf), "{:o}", black_box(0_i128)).unwrap();
+        write!(black_box(&mut buf), "{:o}", black_box(100_i128)).unwrap();
+        write!(black_box(&mut buf), "{:o}", black_box(-100_i128)).unwrap();
+        write!(black_box(&mut buf), "{:o}", black_box(1_i128 << 64)).unwrap();
+        black_box(&mut buf).clear();
+    });
+}
+
+#[bench]
+fn write_i8_hex(bh: &mut Bencher) {
+    let mut buf = String::with_capacity(256);
+    bh.iter(|| {
+        write!(black_box(&mut buf), "{:x}", black_box(0_i8)).unwrap();
+        write!(black_box(&mut buf), "{:x}", black_box(100_i8)).unwrap();
+        write!(black_box(&mut buf), "{:x}", black_box(-100_i8)).unwrap();
+        write!(black_box(&mut buf), "{:x}", black_box(1_i8 << 4)).unwrap();
+        black_box(&mut buf).clear();
+    });
+}
+
+#[bench]
+fn write_i16_hex(bh: &mut Bencher) {
+    let mut buf = String::with_capacity(256);
+    bh.iter(|| {
+        write!(black_box(&mut buf), "{:x}", black_box(0_i16)).unwrap();
+        write!(black_box(&mut buf), "{:x}", black_box(100_i16)).unwrap();
+        write!(black_box(&mut buf), "{:x}", black_box(-100_i16)).unwrap();
+        write!(black_box(&mut buf), "{:x}", black_box(1_i16 << 8)).unwrap();
+        black_box(&mut buf).clear();
+    });
+}
+
+#[bench]
+fn write_i32_hex(bh: &mut Bencher) {
+    let mut buf = String::with_capacity(256);
+    bh.iter(|| {
+        write!(black_box(&mut buf), "{:x}", black_box(0_i32)).unwrap();
+        write!(black_box(&mut buf), "{:x}", black_box(100_i32)).unwrap();
+        write!(black_box(&mut buf), "{:x}", black_box(-100_i32)).unwrap();
+        write!(black_box(&mut buf), "{:x}", black_box(1_i32 << 16)).unwrap();
+        black_box(&mut buf).clear();
+    });
+}
+
+#[bench]
+fn write_i64_hex(bh: &mut Bencher) {
+    let mut buf = String::with_capacity(256);
+    bh.iter(|| {
+        write!(black_box(&mut buf), "{:x}", black_box(0_i64)).unwrap();
+        write!(black_box(&mut buf), "{:x}", black_box(100_i64)).unwrap();
+        write!(black_box(&mut buf), "{:x}", black_box(-100_i64)).unwrap();
+        write!(black_box(&mut buf), "{:x}", black_box(1_i64 << 32)).unwrap();
+        black_box(&mut buf).clear();
+    });
+}
+
+#[bench]
+fn write_i128_hex(bh: &mut Bencher) {
+    let mut buf = String::with_capacity(256);
+    bh.iter(|| {
+        write!(black_box(&mut buf), "{:x}", black_box(0_i128)).unwrap();
+        write!(black_box(&mut buf), "{:x}", black_box(100_i128)).unwrap();
+        write!(black_box(&mut buf), "{:x}", black_box(-100_i128)).unwrap();
+        write!(black_box(&mut buf), "{:x}", black_box(1_i128 << 64)).unwrap();
+        black_box(&mut buf).clear();
+    });
+}
+
+#[bench]
+fn write_i64_exp(bh: &mut Bencher) {
+    let mut buf = String::with_capacity(1024);
+    bh.iter(|| {
+        write!(black_box(&mut buf), "{:e}", black_box(0_i64)).unwrap();
+        write!(black_box(&mut buf), "{:e}", black_box(100_i64)).unwrap();
+        write!(black_box(&mut buf), "{:e}", black_box(-100_i64)).unwrap();
+        write!(black_box(&mut buf), "{:e}", black_box(1_i64 << 32)).unwrap();
+        black_box(&mut buf).clear();
+    });
+}
+
+#[bench]
+fn write_i128_exp(bh: &mut Bencher) {
+    let mut buf = String::with_capacity(1024);
+    bh.iter(|| {
+        write!(black_box(&mut buf), "{:e}", black_box(0_i128)).unwrap();
+        write!(black_box(&mut buf), "{:e}", black_box(100_i128)).unwrap();
+        write!(black_box(&mut buf), "{:e}", black_box(-100_i128)).unwrap();
+        write!(black_box(&mut buf), "{:e}", black_box(1_i128 << 64)).unwrap();
+        black_box(&mut buf).clear();
+    });
+}

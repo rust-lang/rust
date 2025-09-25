@@ -2,7 +2,7 @@ error[E0277]: the trait bound `RawImpl<_>: Raw<_>` is not satisfied
   --> $DIR/issue-62742.rs:4:5
    |
 LL |     WrongImpl::foo(0i32);
-   |     ^^^^^^^^^ the trait `Raw<_>` is not implemented for `RawImpl<_>`
+   |     ^^^^^^^^^ unsatisfied trait bound
    |
    = help: the trait `Raw<_>` is not implemented for `RawImpl<_>`
            but trait `Raw<[_]>` is implemented for it
@@ -41,7 +41,7 @@ error[E0277]: the trait bound `RawImpl<()>: Raw<()>` is not satisfied
   --> $DIR/issue-62742.rs:10:5
    |
 LL |     WrongImpl::<()>::foo(0i32);
-   |     ^^^^^^^^^^^^^^^ the trait `Raw<()>` is not implemented for `RawImpl<()>`
+   |     ^^^^^^^^^^^^^^^ unsatisfied trait bound
    |
    = help: the trait `Raw<()>` is not implemented for `RawImpl<()>`
            but trait `Raw<[()]>` is implemented for it

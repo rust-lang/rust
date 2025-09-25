@@ -13,17 +13,19 @@ use rustc_ast::visit::{AssocCtxt, Visitor};
 use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, Item, NodeId, PatKind};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::sync;
-use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed, PResult};
+use rustc_errors::{BufferedEarlyLint, DiagCtxtHandle, ErrorGuaranteed, PResult};
 use rustc_feature::Features;
 use rustc_hir as hir;
 use rustc_hir::attrs::{AttributeKind, CfgEntry, Deprecation};
+use rustc_hir::def::MacroKinds;
+use rustc_hir::limit::Limit;
 use rustc_hir::{Stability, find_attr};
-use rustc_lint_defs::{BufferedEarlyLint, RegisteredTools};
+use rustc_lint_defs::RegisteredTools;
 use rustc_parse::MACRO_ARGUMENTS;
 use rustc_parse::parser::{ForceCollect, Parser};
+use rustc_session::Session;
 use rustc_session::config::CollapseMacroDebuginfo;
 use rustc_session::parse::ParseSess;
-use rustc_session::{Limit, Session};
 use rustc_span::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId, MacroKind};
@@ -718,6 +720,9 @@ impl MacResult for DummyResult {
 /// A syntax extension kind.
 #[derive(Clone)]
 pub enum SyntaxExtensionKind {
+    /// A `macro_rules!` macro that can work as any `MacroKind`
+    MacroRules(Arc<crate::MacroRulesMacroExpander>),
+
     /// A token-based function-like macro.
     Bang(
         /// An expander with signature TokenStream -> TokenStream.
@@ -772,7 +777,37 @@ pub enum SyntaxExtensionKind {
     ),
 
     /// A glob delegation.
+    ///
+    /// This is for delegated function implementations, and has nothing to do with glob imports.
     GlobDelegation(Arc<dyn GlobDelegationExpander + sync::DynSync + sync::DynSend>),
+}
+
+impl SyntaxExtensionKind {
+    /// Returns `Some(expander)` for a macro usable as a `LegacyBang`; otherwise returns `None`
+    ///
+    /// This includes a `MacroRules` with function-like rules.
+    pub fn as_legacy_bang(&self) -> Option<&(dyn TTMacroExpander + sync::DynSync + sync::DynSend)> {
+        match self {
+            SyntaxExtensionKind::LegacyBang(exp) => Some(exp.as_ref()),
+            SyntaxExtensionKind::MacroRules(exp) if exp.kinds().contains(MacroKinds::BANG) => {
+                Some(exp.as_ref())
+            }
+            _ => None,
+        }
+    }
+
+    /// Returns `Some(expander)` for a macro usable as an `Attr`; otherwise returns `None`
+    ///
+    /// This includes a `MacroRules` with `attr` rules.
+    pub fn as_attr(&self) -> Option<&(dyn AttrProcMacro + sync::DynSync + sync::DynSend)> {
+        match self {
+            SyntaxExtensionKind::Attr(exp) => Some(exp.as_ref()),
+            SyntaxExtensionKind::MacroRules(exp) if exp.kinds().contains(MacroKinds::ATTR) => {
+                Some(exp.as_ref())
+            }
+            _ => None,
+        }
+    }
 }
 
 /// A struct representing a macro definition in "lowered" form ready for expansion.
@@ -804,18 +839,19 @@ pub struct SyntaxExtension {
 }
 
 impl SyntaxExtension {
-    /// Returns which kind of macro calls this syntax extension.
-    pub fn macro_kind(&self) -> MacroKind {
+    /// Returns which kinds of macro call this syntax extension.
+    pub fn macro_kinds(&self) -> MacroKinds {
         match self.kind {
             SyntaxExtensionKind::Bang(..)
             | SyntaxExtensionKind::LegacyBang(..)
-            | SyntaxExtensionKind::GlobDelegation(..) => MacroKind::Bang,
+            | SyntaxExtensionKind::GlobDelegation(..) => MacroKinds::BANG,
             SyntaxExtensionKind::Attr(..)
             | SyntaxExtensionKind::LegacyAttr(..)
-            | SyntaxExtensionKind::NonMacroAttr => MacroKind::Attr,
+            | SyntaxExtensionKind::NonMacroAttr => MacroKinds::ATTR,
             SyntaxExtensionKind::Derive(..) | SyntaxExtensionKind::LegacyDerive(..) => {
-                MacroKind::Derive
+                MacroKinds::DERIVE
             }
+            SyntaxExtensionKind::MacroRules(ref m) => m.kinds(),
         }
     }
 
@@ -904,14 +940,11 @@ impl SyntaxExtension {
             find_attr!(attrs, AttributeKind::AllowInternalUnstable(i, _) => i)
                 .map(|i| i.as_slice())
                 .unwrap_or_default();
-        // FIXME(jdonszelman): allow_internal_unsafe isn't yet new-style
-        // let allow_internal_unsafe = find_attr!(attrs, AttributeKind::AllowInternalUnsafe);
-        let allow_internal_unsafe =
-            ast::attr::find_by_name(attrs, sym::allow_internal_unsafe).is_some();
+        let allow_internal_unsafe = find_attr!(attrs, AttributeKind::AllowInternalUnsafe(_));
 
-        let local_inner_macros = ast::attr::find_by_name(attrs, sym::macro_export)
-            .and_then(|macro_export| macro_export.meta_item_list())
-            .is_some_and(|l| ast::attr::list_contains_name(&l, sym::local_inner_macros));
+        let local_inner_macros =
+            *find_attr!(attrs, AttributeKind::MacroExport {local_inner_macros: l, ..} => l)
+                .unwrap_or(&false);
         let collapse_debuginfo = Self::get_collapse_debuginfo(sess, attrs, !is_local);
         tracing::debug!(?name, ?local_inner_macros, ?collapse_debuginfo, ?allow_internal_unsafe);
 
@@ -1027,11 +1060,12 @@ impl SyntaxExtension {
         parent: LocalExpnId,
         call_site: Span,
         descr: Symbol,
+        kind: MacroKind,
         macro_def_id: Option<DefId>,
         parent_module: Option<DefId>,
     ) -> ExpnData {
         ExpnData::new(
-            ExpnKind::Macro(self.macro_kind(), descr),
+            ExpnKind::Macro(kind, descr),
             parent.to_expn_id(),
             call_site,
             self.span,

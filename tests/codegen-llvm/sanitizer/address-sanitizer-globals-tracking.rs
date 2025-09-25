@@ -19,7 +19,7 @@
 //@ only-linux
 //
 //@ revisions:ASAN ASAN-FAT-LTO
-//@ compile-flags: -Zsanitizer=address -Ctarget-feature=-crt-static
+//@ compile-flags: -Zsanitizer=address -Ctarget-feature=-crt-static -C unsafe-allow-abi-mismatch=sanitizer
 // [ASAN] no extra compile-flags
 //@[ASAN-FAT-LTO] compile-flags: -Cprefer-dynamic=false -Clto=fat
 

@@ -1,14 +1,14 @@
+// ignore-tidy-filelength
+
 #![allow(rustc::untranslatable_diagnostic)]
 use std::num::NonZero;
 
-use rustc_abi::ExternAbi;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagMessage, DiagStyledString, ElidedLifetimeInPathSubdiag,
     EmissionGuarantee, LintDiagnostic, MultiSpan, Subdiagnostic, SuggestionStyle,
 };
 use rustc_hir as hir;
-use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::VisitorExt;
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
@@ -17,7 +17,7 @@ use rustc_middle::ty::{Clause, PolyExistentialTraitRef, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_session::lint::AmbiguityErrorDiag;
 use rustc_span::edition::Edition;
-use rustc_span::{Ident, MacroRulesNormalizedIdent, Span, Symbol, sym};
+use rustc_span::{Ident, Span, Symbol, sym};
 
 use crate::builtin::{InitError, ShorthandAssocTyCollector, TypeAliasBounds};
 use crate::errors::{OverruledAttributeSub, RequestedLevel};
@@ -817,80 +817,6 @@ pub(crate) enum InvalidReferenceCastingDiag<'tcx> {
     },
 }
 
-// hidden_unicode_codepoints.rs
-#[derive(LintDiagnostic)]
-#[diag(lint_hidden_unicode_codepoints)]
-#[note]
-pub(crate) struct HiddenUnicodeCodepointsDiag<'a> {
-    pub label: &'a str,
-    pub count: usize,
-    #[label]
-    pub span_label: Span,
-    #[subdiagnostic]
-    pub labels: Option<HiddenUnicodeCodepointsDiagLabels>,
-    #[subdiagnostic]
-    pub sub: HiddenUnicodeCodepointsDiagSub,
-}
-
-pub(crate) struct HiddenUnicodeCodepointsDiagLabels {
-    pub spans: Vec<(char, Span)>,
-}
-
-impl Subdiagnostic for HiddenUnicodeCodepointsDiagLabels {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
-        for (c, span) in self.spans {
-            diag.span_label(span, format!("{c:?}"));
-        }
-    }
-}
-
-pub(crate) enum HiddenUnicodeCodepointsDiagSub {
-    Escape { spans: Vec<(char, Span)> },
-    NoEscape { spans: Vec<(char, Span)> },
-}
-
-// Used because of multiple multipart_suggestion and note
-impl Subdiagnostic for HiddenUnicodeCodepointsDiagSub {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
-        match self {
-            HiddenUnicodeCodepointsDiagSub::Escape { spans } => {
-                diag.multipart_suggestion_with_style(
-                    fluent::lint_suggestion_remove,
-                    spans.iter().map(|(_, span)| (*span, "".to_string())).collect(),
-                    Applicability::MachineApplicable,
-                    SuggestionStyle::HideCodeAlways,
-                );
-                diag.multipart_suggestion(
-                    fluent::lint_suggestion_escape,
-                    spans
-                        .into_iter()
-                        .map(|(c, span)| {
-                            let c = format!("{c:?}");
-                            (span, c[1..c.len() - 1].to_string())
-                        })
-                        .collect(),
-                    Applicability::MachineApplicable,
-                );
-            }
-            HiddenUnicodeCodepointsDiagSub::NoEscape { spans } => {
-                // FIXME: in other suggestions we've reversed the inner spans of doc comments. We
-                // should do the same here to provide the same good suggestions as we do for
-                // literals above.
-                diag.arg(
-                    "escaped",
-                    spans
-                        .into_iter()
-                        .map(|(c, _)| format!("{c:?}"))
-                        .collect::<Vec<String>>()
-                        .join(", "),
-                );
-                diag.note(fluent::lint_suggestion_remove);
-                diag.note(fluent::lint_no_suggestion_note_escape);
-            }
-        }
-    }
-}
-
 // map_unit_fn.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_map_unit_fn)]
@@ -1616,6 +1542,48 @@ impl<'a> LintDiagnostic<'a, ()> for DropGlue<'_> {
         diag.primary_message(fluent::lint_drop_glue);
         diag.arg("needs_drop", self.tcx.def_path_str(self.def_id));
     }
+}
+
+// transmute.rs
+#[derive(LintDiagnostic)]
+#[diag(lint_int_to_ptr_transmutes)]
+#[note]
+#[note(lint_note_exposed_provenance)]
+#[help(lint_suggestion_without_provenance_mut)]
+#[help(lint_help_transmute)]
+#[help(lint_help_exposed_provenance)]
+pub(crate) struct IntegerToPtrTransmutes<'tcx> {
+    #[subdiagnostic]
+    pub suggestion: Option<IntegerToPtrTransmutesSuggestion<'tcx>>,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum IntegerToPtrTransmutesSuggestion<'tcx> {
+    #[multipart_suggestion(
+        lint_suggestion_with_exposed_provenance,
+        applicability = "machine-applicable",
+        style = "verbose"
+    )]
+    ToPtr {
+        dst: Ty<'tcx>,
+        suffix: &'static str,
+        #[suggestion_part(code = "std::ptr::with_exposed_provenance{suffix}::<{dst}>(")]
+        start_call: Span,
+    },
+    #[multipart_suggestion(
+        lint_suggestion_with_exposed_provenance,
+        applicability = "machine-applicable",
+        style = "verbose"
+    )]
+    ToRef {
+        dst: Ty<'tcx>,
+        suffix: &'static str,
+        ref_mutbl: &'static str,
+        #[suggestion_part(
+            code = "&{ref_mutbl}*std::ptr::with_exposed_provenance{suffix}::<{dst}>("
+        )]
+        start_call: Span,
+    },
 }
 
 // types.rs
@@ -2568,35 +2536,12 @@ pub(crate) mod unexpected_cfg_value {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_unexpected_builtin_cfg)]
-#[note(lint_controlled_by)]
-#[note(lint_incoherent)]
-pub(crate) struct UnexpectedBuiltinCfg {
-    pub(crate) cfg: String,
-    pub(crate) cfg_name: Symbol,
-    pub(crate) controlled_by: &'static str,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_macro_use_deprecated)]
-#[help]
-pub(crate) struct MacroUseDeprecated;
-
-#[derive(LintDiagnostic)]
-#[diag(lint_unused_macro_use)]
-pub(crate) struct UnusedMacroUse;
-
-#[derive(LintDiagnostic)]
 #[diag(lint_private_extern_crate_reexport, code = E0365)]
 pub(crate) struct PrivateExternCrateReexport {
     pub ident: Ident,
     #[suggestion(code = "pub ", style = "verbose", applicability = "maybe-incorrect")]
     pub sugg: Span,
 }
-
-#[derive(LintDiagnostic)]
-#[diag(lint_unused_label)]
-pub(crate) struct UnusedLabel;
 
 #[derive(LintDiagnostic)]
 #[diag(lint_macro_is_private)]
@@ -2628,50 +2573,6 @@ impl<'a> LintDiagnostic<'a, ()> for UnstableFeature {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_avoid_intel_syntax)]
-pub(crate) struct AvoidIntelSyntax;
-
-#[derive(LintDiagnostic)]
-#[diag(lint_avoid_att_syntax)]
-pub(crate) struct AvoidAttSyntax;
-
-#[derive(LintDiagnostic)]
-#[diag(lint_incomplete_include)]
-pub(crate) struct IncompleteInclude;
-
-#[derive(LintDiagnostic)]
-#[diag(lint_unnameable_test_items)]
-pub(crate) struct UnnameableTestItems;
-
-#[derive(LintDiagnostic)]
-#[diag(lint_duplicate_macro_attribute)]
-pub(crate) struct DuplicateMacroAttribute;
-
-#[derive(LintDiagnostic)]
-#[diag(lint_cfg_attr_no_attributes)]
-pub(crate) struct CfgAttrNoAttributes;
-
-#[derive(LintDiagnostic)]
-#[diag(lint_metavariable_still_repeating)]
-pub(crate) struct MetaVariableStillRepeating {
-    pub name: MacroRulesNormalizedIdent,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_metavariable_wrong_operator)]
-pub(crate) struct MetaVariableWrongOperator;
-
-#[derive(LintDiagnostic)]
-#[diag(lint_duplicate_matcher_binding)]
-pub(crate) struct DuplicateMatcherBinding;
-
-#[derive(LintDiagnostic)]
-#[diag(lint_unknown_macro_variable)]
-pub(crate) struct UnknownMacroVariable {
-    pub name: MacroRulesNormalizedIdent,
-}
-
-#[derive(LintDiagnostic)]
 #[diag(lint_unused_crate_dependency)]
 #[help]
 pub(crate) struct UnusedCrateDependency {
@@ -2685,14 +2586,9 @@ pub(crate) struct UnusedCrateDependency {
 pub(crate) struct IllFormedAttributeInput {
     pub num_suggestions: usize,
     pub suggestions: DiagArgValue,
-}
-
-#[derive(LintDiagnostic)]
-pub(crate) enum InnerAttributeUnstable {
-    #[diag(lint_inner_macro_attribute_unstable)]
-    InnerMacroAttribute,
-    #[diag(lint_custom_inner_attribute_unstable)]
-    CustomInnerAttribute,
+    #[note]
+    pub has_docs: bool,
+    pub docs: &'static str,
 }
 
 #[derive(LintDiagnostic)]
@@ -2762,41 +2658,10 @@ pub(crate) struct AbsPathWithModuleSugg {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_proc_macro_derive_resolution_fallback)]
-pub(crate) struct ProcMacroDeriveResolutionFallback {
-    #[label]
-    pub span: Span,
-    pub ns: Namespace,
-    pub ident: Ident,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_macro_expanded_macro_exports_accessed_by_absolute_paths)]
-pub(crate) struct MacroExpandedMacroExportsAccessedByAbsolutePaths {
-    #[note]
-    pub definition: Span,
-}
-
-#[derive(LintDiagnostic)]
 #[diag(lint_hidden_lifetime_parameters)]
 pub(crate) struct ElidedLifetimesInPaths {
     #[subdiagnostic]
     pub subdiag: ElidedLifetimeInPathSubdiag,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_invalid_crate_type_value)]
-pub(crate) struct UnknownCrateTypes {
-    #[subdiagnostic]
-    pub sugg: Option<UnknownCrateTypesSub>,
-}
-
-#[derive(Subdiagnostic)]
-#[suggestion(lint_suggestion, code = r#""{candidate}""#, applicability = "maybe-incorrect")]
-pub(crate) struct UnknownCrateTypesSub {
-    #[primary_span]
-    pub span: Span,
-    pub candidate: Symbol,
 }
 
 #[derive(LintDiagnostic)]
@@ -2857,14 +2722,6 @@ pub(crate) enum RedundantImportSub {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_unused_doc_comment)]
-#[help]
-pub(crate) struct UnusedDocComment {
-    #[label]
-    pub span: Span,
-}
-
-#[derive(LintDiagnostic)]
 pub(crate) enum PatternsInFnsWithoutBody {
     #[diag(lint_pattern_in_foreign)]
     Foreign {
@@ -2888,29 +2745,6 @@ pub(crate) struct PatternsInFnsWithoutBodySub {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_extern_without_abi)]
-pub(crate) struct MissingAbi {
-    #[suggestion(code = "extern {default_abi}", applicability = "machine-applicable")]
-    pub span: Span,
-    pub default_abi: ExternAbi,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_legacy_derive_helpers)]
-pub(crate) struct LegacyDeriveHelpers {
-    #[label]
-    pub span: Span,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_or_patterns_back_compat)]
-pub(crate) struct OrPatternsBackCompat {
-    #[suggestion(code = "{suggestion}", applicability = "machine-applicable")]
-    pub span: Span,
-    pub suggestion: String,
-}
-
-#[derive(LintDiagnostic)]
 #[diag(lint_reserved_prefix)]
 pub(crate) struct ReservedPrefix {
     #[label]
@@ -2928,26 +2762,6 @@ pub(crate) struct RawPrefix {
     pub label: Span,
     #[suggestion(code = " ", applicability = "machine-applicable")]
     pub suggestion: Span,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_unused_builtin_attribute)]
-pub(crate) struct UnusedBuiltinAttribute {
-    #[note]
-    pub invoc_span: Span,
-
-    pub attr_name: Symbol,
-    pub macro_name: String,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_trailing_semi_macro)]
-pub(crate) struct TrailingMacro {
-    #[note(lint_note1)]
-    #[note(lint_note2)]
-    pub is_trailing: bool,
-
-    pub name: Ident,
 }
 
 #[derive(LintDiagnostic)]
@@ -2990,13 +2804,6 @@ pub(crate) enum DeprecatedWhereClauseLocationSugg {
         #[primary_span]
         span: Span,
     },
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_missing_unsafe_on_extern)]
-pub(crate) struct MissingUnsafeOnExtern {
-    #[suggestion(code = "unsafe ", applicability = "machine-applicable")]
-    pub suggestion: Span,
 }
 
 #[derive(LintDiagnostic)]
@@ -3047,23 +2854,6 @@ pub(crate) struct NamedArgumentUsedPositionally {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_byte_slice_in_packed_struct_with_derive)]
-#[help]
-pub(crate) struct ByteSliceInPackedStructWithDerive {
-    // FIXME: make this translatable
-    pub ty: String,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_unused_extern_crate)]
-pub(crate) struct UnusedExternCrate {
-    #[label]
-    pub span: Span,
-    #[suggestion(code = "", applicability = "machine-applicable", style = "verbose")]
-    pub removal_span: Span,
-}
-
-#[derive(LintDiagnostic)]
 #[diag(lint_extern_crate_not_idiomatic)]
 pub(crate) struct ExternCrateNotIdiomatic {
     #[suggestion(style = "verbose", code = "{code}", applicability = "machine-applicable")]
@@ -3108,14 +2898,6 @@ pub(crate) struct HiddenGlobReexports {
     pub name: String,
     // FIXME: make this translatable
     pub namespace: String,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_reexport_private_dependency)]
-pub(crate) struct ReexportPrivateDependency {
-    pub name: String,
-    pub kind: String,
-    pub krate: Symbol,
 }
 
 #[derive(LintDiagnostic)]

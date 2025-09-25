@@ -64,6 +64,11 @@ builtin_macros_autodiff_ty_activity = {$act} can not be used for this type
 builtin_macros_autodiff_unknown_activity = did not recognize Activity: `{$act}`
 
 builtin_macros_autodiff_width = autodiff width must fit u32, but is {$width}
+
+builtin_macros_avoid_att_syntax = avoid using `.att_syntax`, prefer using `options(att_syntax)` instead
+
+builtin_macros_avoid_intel_syntax = avoid using `.intel_syntax`, Intel syntax is the default
+
 builtin_macros_bad_derive_target = `derive` may only be applied to `struct`s, `enum`s and `union`s
     .label = not applicable here
     .label2 = not a `struct`, `enum` or `union`
@@ -137,6 +142,8 @@ builtin_macros_derive_path_args_list = traits in `#[derive(...)]` don't accept a
 
 builtin_macros_derive_path_args_value = traits in `#[derive(...)]` don't accept values
     .suggestion = remove the value
+
+builtin_macros_duplicate_macro_attribute = duplicated attribute
 
 builtin_macros_env_not_defined = environment variable `{$var}` not defined at compile time
     .cargo = Cargo sets build script variables at run time. Use `std::env::var({$var_expr})` instead
@@ -222,6 +229,17 @@ builtin_macros_format_unused_args = multiple unused formatting arguments
 
 builtin_macros_format_use_positional = consider using a positional formatting argument instead
 
+builtin_macros_derive_from_wrong_target = `#[derive(From)]` used on {$kind}
+
+builtin_macros_derive_from_wrong_field_count = `#[derive(From)]` used on a struct with {$multiple_fields ->
+    [true] multiple fields
+    *[false] no fields
+}
+
+builtin_macros_derive_from_usage_note = `#[derive(From)]` can only be used on structs with exactly one field
+
+builtin_macros_incomplete_include = include macro expected single expression in source
+
 builtin_macros_multiple_default_attrs = multiple `#[default]` attributes
     .note = only one `#[default]` attribute is needed
     .label = `#[default]` used here
@@ -259,8 +277,6 @@ builtin_macros_only_one_argument = {$name} takes 1 argument
 
 builtin_macros_proc_macro = `proc-macro` crate types currently cannot export any items other than functions tagged with `#[proc_macro]`, `#[proc_macro_derive]`, or `#[proc_macro_attribute]`
 
-builtin_macros_proc_macro_attribute_only_be_used_on_bare_functions = the `#[{$path}]` attribute may only be used on bare functions
-
 builtin_macros_proc_macro_attribute_only_usable_with_crate_type = the `#[{$path}]` attribute is only usable with crates of the `proc-macro` crate type
 
 builtin_macros_requires_cfg_pattern =
@@ -287,3 +303,5 @@ builtin_macros_unexpected_lit = expected path to a trait, found literal
     .label = not a trait
     .str_lit = try using `#[derive({$sym})]`
     .other = for example, write `#[derive(Debug)]` for `Debug`
+
+builtin_macros_unnameable_test_items = cannot test inner items

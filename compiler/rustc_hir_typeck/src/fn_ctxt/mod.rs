@@ -21,7 +21,6 @@ use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::Session;
 use rustc_span::{self, DUMMY_SP, ErrorGuaranteed, Ident, Span, sym};
 use rustc_trait_selection::error_reporting::TypeErrCtxt;
-use rustc_trait_selection::error_reporting::infer::sub_relations::SubRelations;
 use rustc_trait_selection::traits::{
     self, FulfillmentError, ObligationCause, ObligationCauseCode, ObligationCtxt,
 };
@@ -126,6 +125,10 @@ pub(crate) struct FnCtxt<'a, 'tcx> {
     /// These are stored here so we may collect them when canonicalizing user
     /// type ascriptions later.
     pub(super) trait_ascriptions: RefCell<ItemLocalMap<Vec<ty::Clause<'tcx>>>>,
+
+    /// Whether the current crate enables the `rustc_attrs` feature.
+    /// This allows to skip processing attributes in many places.
+    pub(super) has_rustc_attrs: bool,
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -154,6 +157,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             diverging_fallback_behavior,
             diverging_block_behavior,
             trait_ascriptions: Default::default(),
+            has_rustc_attrs: root_ctxt.tcx.features().rustc_attrs(),
         }
     }
 
@@ -183,14 +187,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// [`InferCtxtErrorExt::err_ctxt`]: rustc_trait_selection::error_reporting::InferCtxtErrorExt::err_ctxt
     pub(crate) fn err_ctxt(&'a self) -> TypeErrCtxt<'a, 'tcx> {
-        let mut sub_relations = SubRelations::default();
-        sub_relations.add_constraints(
-            self,
-            self.fulfillment_cx.borrow_mut().pending_obligations().iter().map(|o| o.predicate),
-        );
         TypeErrCtxt {
             infcx: &self.infcx,
-            sub_relations: RefCell::new(sub_relations),
             typeck_results: Some(self.typeck_results.borrow()),
             fallback_has_occurred: self.fallback_has_occurred.get(),
             normalize_fn_sig: Box::new(|fn_sig| {
@@ -525,10 +523,13 @@ fn parse_never_type_options_attr(
     let mut fallback = None;
     let mut block = None;
 
-    let items = tcx
-        .get_attr(CRATE_DEF_ID, sym::rustc_never_type_options)
-        .map(|attr| attr.meta_item_list().unwrap())
-        .unwrap_or_default();
+    let items = if tcx.features().rustc_attrs() {
+        tcx.get_attr(CRATE_DEF_ID, sym::rustc_never_type_options)
+            .map(|attr| attr.meta_item_list().unwrap())
+    } else {
+        None
+    };
+    let items = items.unwrap_or_default();
 
     for item in items {
         if item.has_name(sym::fallback) && fallback.is_none() {

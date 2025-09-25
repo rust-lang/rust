@@ -201,10 +201,14 @@ pub struct TestProps {
     /// Build and use `minicore` as `core` stub for `no_core` tests in cross-compilation scenarios
     /// that don't otherwise want/need `-Z build-std`.
     pub add_core_stubs: bool,
+    /// Add these flags to the build of `minicore`.
+    pub core_stubs_compile_flags: Vec<String>,
     /// Whether line annotatins are required for the given error kind.
     pub dont_require_annotations: HashSet<ErrorKind>,
     /// Whether pretty printers should be disabled in gdb.
     pub disable_gdb_pretty_printers: bool,
+    /// Compare the output by lines, rather than as a single string.
+    pub compare_output_by_lines: bool,
 }
 
 mod directives {
@@ -251,9 +255,11 @@ mod directives {
     pub const FILECHECK_FLAGS: &'static str = "filecheck-flags";
     pub const NO_AUTO_CHECK_CFG: &'static str = "no-auto-check-cfg";
     pub const ADD_CORE_STUBS: &'static str = "add-core-stubs";
+    pub const CORE_STUBS_COMPILE_FLAGS: &'static str = "core-stubs-compile-flags";
     // This isn't a real directive, just one that is probably mistyped often
     pub const INCORRECT_COMPILER_FLAGS: &'static str = "compiler-flags";
     pub const DISABLE_GDB_PRETTY_PRINTERS: &'static str = "disable-gdb-pretty-printers";
+    pub const COMPARE_OUTPUT_BY_LINES: &'static str = "compare-output-by-lines";
 }
 
 impl TestProps {
@@ -308,8 +314,10 @@ impl TestProps {
             no_auto_check_cfg: false,
             has_enzyme: false,
             add_core_stubs: false,
+            core_stubs_compile_flags: vec![],
             dont_require_annotations: Default::default(),
             disable_gdb_pretty_printers: false,
+            compare_output_by_lines: false,
         }
     }
 
@@ -649,6 +657,21 @@ impl TestProps {
 
                     self.update_add_core_stubs(ln, config);
 
+                    if let Some(flags) = config.parse_name_value_directive(
+                        ln,
+                        directives::CORE_STUBS_COMPILE_FLAGS,
+                        testfile,
+                        line_number,
+                    ) {
+                        let flags = split_flags(&flags);
+                        for flag in &flags {
+                            if flag == "--edition" || flag.starts_with("--edition=") {
+                                panic!("you must use `//@ edition` to configure the edition");
+                            }
+                        }
+                        self.core_stubs_compile_flags.extend(flags);
+                    }
+
                     if let Some(err_kind) = config.parse_name_value_directive(
                         ln,
                         DONT_REQUIRE_ANNOTATIONS,
@@ -663,6 +686,11 @@ impl TestProps {
                         ln,
                         DISABLE_GDB_PRETTY_PRINTERS,
                         &mut self.disable_gdb_pretty_printers,
+                    );
+                    config.set_name_directive(
+                        ln,
+                        COMPARE_OUTPUT_BY_LINES,
+                        &mut self.compare_output_by_lines,
                     );
                 },
             );
@@ -1003,7 +1031,7 @@ impl Config {
         if let Some(raw) = self.parse_name_value_directive(line, "revisions", testfile, line_number)
         {
             if self.mode == TestMode::RunMake {
-                panic!("`run-make` tests do not support revisions: {}", testfile);
+                panic!("`run-make` mode tests do not support revisions: {}", testfile);
             }
 
             let mut duplicates: HashSet<_> = existing.iter().cloned().collect();
@@ -1437,6 +1465,7 @@ pub(crate) fn make_test_description<R: Read>(
     cache: &DirectivesCache,
     name: String,
     path: &Utf8Path,
+    filterable_path: &Utf8Path,
     src: R,
     test_revision: Option<&str>,
     poisoned: &mut bool,
@@ -1511,7 +1540,13 @@ pub(crate) fn make_test_description<R: Read>(
         _ => ShouldPanic::No,
     };
 
-    CollectedTestDesc { name, ignore, ignore_message, should_panic }
+    CollectedTestDesc {
+        name,
+        filterable_path: filterable_path.to_owned(),
+        ignore,
+        ignore_message,
+        should_panic,
+    }
 }
 
 fn ignore_cdb(config: &Config, line: &str) -> IgnoreDecision {
@@ -1624,7 +1659,7 @@ fn ignore_backends(
                 }
             }
         }) {
-            if config.codegen_backend == backend {
+            if config.default_codegen_backend == backend {
                 return IgnoreDecision::Ignore {
                     reason: format!("{} backend is marked as ignore", backend.as_str()),
                 };
@@ -1651,12 +1686,12 @@ fn needs_backends(
                     panic!("Invalid needs-backends value `{backend}` in `{path}`: {error}")
                 }
             })
-            .any(|backend| config.codegen_backend == backend)
+            .any(|backend| config.default_codegen_backend == backend)
         {
             return IgnoreDecision::Ignore {
                 reason: format!(
                     "{} backend is not part of required backends",
-                    config.codegen_backend.as_str()
+                    config.default_codegen_backend.as_str()
                 ),
             };
         }

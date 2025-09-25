@@ -7,9 +7,9 @@
 //! Specifically, you might not care about managing the state of your [`AttributeParser`]
 //! state machine yourself. In this case you can choose to implement:
 //!
-//! - [`SingleAttributeParser`]: makes it easy to implement an attribute which should error if it
+//! - [`SingleAttributeParser`](crate::attributes::SingleAttributeParser): makes it easy to implement an attribute which should error if it
 //! appears more than once in a list of attributes
-//! - [`CombineAttributeParser`]: makes it easy to implement an attribute which should combine the
+//! - [`CombineAttributeParser`](crate::attributes::CombineAttributeParser): makes it easy to implement an attribute which should combine the
 //! contents of attributes, if an attribute appear multiple times in a list
 //!
 //! Attributes should be added to `crate::context::ATTRIBUTE_PARSERS` to be parsed.
@@ -24,6 +24,10 @@ use thin_vec::ThinVec;
 use crate::context::{AcceptContext, FinalizeContext, Stage};
 use crate::parser::ArgParser;
 use crate::session_diagnostics::UnusedMultiple;
+use crate::target_checking::AllowedTargets;
+
+/// All the parsers require roughly the same imports, so this prelude has most of the often-needed ones.
+mod prelude;
 
 pub(crate) mod allow_unstable;
 pub(crate) mod body;
@@ -31,6 +35,7 @@ pub(crate) mod cfg;
 pub(crate) mod cfg_old;
 pub(crate) mod codegen_attrs;
 pub(crate) mod confusables;
+pub(crate) mod crate_level;
 pub(crate) mod deprecation;
 pub(crate) mod dummy;
 pub(crate) mod inline;
@@ -43,6 +48,7 @@ pub(crate) mod no_implicit_prelude;
 pub(crate) mod non_exhaustive;
 pub(crate) mod path;
 pub(crate) mod proc_macro_attrs;
+pub(crate) mod prototype;
 pub(crate) mod repr;
 pub(crate) mod rustc_internal;
 pub(crate) mod semantics;
@@ -79,6 +85,7 @@ pub(crate) trait AttributeParser<S: Stage>: Default + 'static {
     ///
     /// If an attribute has this symbol, the `accept` function will be called on it.
     const ATTRIBUTES: AcceptMapping<Self, S>;
+    const ALLOWED_TARGETS: AllowedTargets;
 
     /// The parser has gotten a chance to accept the attributes on an item,
     /// here it can produce an attribute.
@@ -115,6 +122,8 @@ pub(crate) trait SingleAttributeParser<S: Stage>: 'static {
     /// [`ATTRIBUTE_ORDER`](Self::ATTRIBUTE_ORDER) specified which one is assumed to be correct,
     /// and this specified whether to, for example, warn or error on the other one.
     const ON_DUPLICATE: OnDuplicate<S>;
+
+    const ALLOWED_TARGETS: AllowedTargets;
 
     /// The template this attribute parser should implement. Used for diagnostics.
     const TEMPLATE: AttributeTemplate;
@@ -163,6 +172,7 @@ impl<T: SingleAttributeParser<S>, S: Stage> AttributeParser<S> for Single<T, S> 
             }
         },
     )];
+    const ALLOWED_TARGETS: AllowedTargets = T::ALLOWED_TARGETS;
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         Some(self.1?.0)
@@ -247,6 +257,7 @@ pub(crate) enum AttributeOrder {
 pub(crate) trait NoArgsAttributeParser<S: Stage>: 'static {
     const PATH: &[Symbol];
     const ON_DUPLICATE: OnDuplicate<S>;
+    const ALLOWED_TARGETS: AllowedTargets;
 
     /// Create the [`AttributeKind`] given attribute's [`Span`].
     const CREATE: fn(Span) -> AttributeKind;
@@ -264,6 +275,7 @@ impl<T: NoArgsAttributeParser<S>, S: Stage> SingleAttributeParser<S> for Without
     const PATH: &[Symbol] = T::PATH;
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = T::ON_DUPLICATE;
+    const ALLOWED_TARGETS: AllowedTargets = T::ALLOWED_TARGETS;
     const TEMPLATE: AttributeTemplate = template!(Word);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
@@ -292,6 +304,8 @@ pub(crate) trait CombineAttributeParser<S: Stage>: 'static {
     /// For example, individual representations fomr `#[repr(...)]` attributes into an `AttributeKind::Repr(x)`,
     ///  where `x` is a vec of these individual reprs.
     const CONVERT: ConvertFn<Self::Item>;
+
+    const ALLOWED_TARGETS: AllowedTargets;
 
     /// The template this attribute parser should implement. Used for diagnostics.
     const TEMPLATE: AttributeTemplate;
@@ -324,15 +338,13 @@ impl<T: CombineAttributeParser<S>, S: Stage> Default for Combine<T, S> {
 }
 
 impl<T: CombineAttributeParser<S>, S: Stage> AttributeParser<S> for Combine<T, S> {
-    const ATTRIBUTES: AcceptMapping<Self, S> = &[(
-        T::PATH,
-        <T as CombineAttributeParser<S>>::TEMPLATE,
-        |group: &mut Combine<T, S>, cx, args| {
+    const ATTRIBUTES: AcceptMapping<Self, S> =
+        &[(T::PATH, T::TEMPLATE, |group: &mut Combine<T, S>, cx, args| {
             // Keep track of the span of the first attribute, for diagnostics
             group.first_span.get_or_insert(cx.attr_span);
             group.items.extend(T::extend(cx, args))
-        },
-    )];
+        })];
+    const ALLOWED_TARGETS: AllowedTargets = T::ALLOWED_TARGETS;
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         if let Some(first_span) = self.first_span {

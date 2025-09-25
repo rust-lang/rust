@@ -4,7 +4,7 @@
 #[inline]
 fn f() {}
 
-#[inline] //~ ERROR: attribute should be applied to function or closure
+#[inline] //~ ERROR: attribute cannot be used on
 struct S;
 
 struct I {

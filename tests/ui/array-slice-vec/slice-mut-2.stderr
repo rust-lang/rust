@@ -4,10 +4,10 @@ error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
 LL |     let _ = &mut x[2..4];
    |                  ^ `x` is a `&` reference, so the data it refers to cannot be borrowed as mutable
    |
-help: consider changing this to be a mutable reference
+help: consider changing this binding's type
    |
-LL |     let x: &[isize] = &mut [1, 2, 3, 4, 5];
-   |                        +++
+LL |     let x: &mut [isize] = &[1, 2, 3, 4, 5];
+   |             +++
 
 error: aborting due to 1 previous error
 

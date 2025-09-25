@@ -590,21 +590,21 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
             try_visit!(visitor.visit_generics(generics));
             try_visit!(visitor.visit_enum_def(enum_definition));
         }
-        ItemKind::Impl(Impl {
-            constness: _,
-            safety: _,
-            defaultness: _,
-            polarity: _,
-            defaultness_span: _,
-            generics,
-            of_trait,
-            self_ty,
-            items,
-        }) => {
+        ItemKind::Impl(Impl { generics, of_trait, self_ty, items }) => {
             try_visit!(visitor.visit_generics(generics));
-            visit_opt!(visitor, visit_trait_ref, of_trait);
+            if let Some(TraitImplHeader {
+                constness: _,
+                safety: _,
+                polarity: _,
+                defaultness: _,
+                defaultness_span: _,
+                trait_ref,
+            }) = of_trait
+            {
+                try_visit!(visitor.visit_trait_ref(trait_ref));
+            }
             try_visit!(visitor.visit_ty_unambig(self_ty));
-            walk_list!(visitor, visit_impl_item_ref, *items);
+            walk_list!(visitor, visit_impl_item_ref, items);
         }
         ItemKind::Struct(ident, ref generics, ref struct_definition)
         | ItemKind::Union(ident, ref generics, ref struct_definition) => {
@@ -1085,7 +1085,7 @@ pub fn walk_generic_param<'v, V: Visitor<'v>>(
         GenericParamKind::Type { ref default, .. } => {
             visit_opt!(visitor, visit_ty_unambig, default)
         }
-        GenericParamKind::Const { ref ty, ref default, synthetic: _ } => {
+        GenericParamKind::Const { ref ty, ref default } => {
             try_visit!(visitor.visit_ty_unambig(ty));
             if let Some(default) = default {
                 try_visit!(visitor.visit_const_param_default(*hir_id, default));
@@ -1257,18 +1257,21 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(
         owner_id: _,
         ident,
         ref generics,
+        ref impl_kind,
         ref kind,
-        ref defaultness,
         span: _,
-        vis_span: _,
         has_delayed_lints: _,
-        trait_item_def_id: _,
     } = *impl_item;
 
     try_visit!(visitor.visit_ident(ident));
     try_visit!(visitor.visit_generics(generics));
-    try_visit!(visitor.visit_defaultness(defaultness));
     try_visit!(visitor.visit_id(impl_item.hir_id()));
+    match impl_kind {
+        ImplItemImplKind::Inherent { vis_span: _ } => {}
+        ImplItemImplKind::Trait { defaultness, trait_item_def_id: _ } => {
+            try_visit!(visitor.visit_defaultness(defaultness));
+        }
+    }
     match *kind {
         ImplItemKind::Const(ref ty, body) => {
             try_visit!(visitor.visit_ty_unambig(ty));

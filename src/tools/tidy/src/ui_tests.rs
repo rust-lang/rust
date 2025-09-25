@@ -7,13 +7,16 @@ use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
+use crate::diagnostics::{CheckId, DiagCtx, RunningCheck};
+
 const ISSUES_TXT_HEADER: &str = r#"============================================================
     ⚠️⚠️⚠️NOTHING SHOULD EVER BE ADDED TO THIS LIST⚠️⚠️⚠️
 ============================================================
 "#;
 
-pub fn check(root_path: &Path, bless: bool, bad: &mut bool) {
+pub fn check(root_path: &Path, bless: bool, diag_ctx: DiagCtx) {
     let path = &root_path.join("tests");
+    let mut check = diag_ctx.start_check(CheckId::new("ui_tests").path(path));
 
     // the list of files in ui tests that are allowed to start with `issue-XXXX`
     // BTreeSet because we would like a stable ordering so --bless works
@@ -33,16 +36,15 @@ pub fn check(root_path: &Path, bless: bool, bad: &mut bool) {
         .collect();
 
     if !is_sorted && !bless {
-        tidy_error!(
-            bad,
+        check.error(
             "`src/tools/tidy/src/issues.txt` is not in order, mostly because you modified it manually,
             please only update it with command `x test tidy --bless`"
         );
     }
 
-    deny_new_top_level_ui_tests(bad, &path.join("ui"));
+    deny_new_top_level_ui_tests(&mut check, &path.join("ui"));
 
-    let remaining_issue_names = recursively_check_ui_tests(bad, path, &allowed_issue_names);
+    let remaining_issue_names = recursively_check_ui_tests(&mut check, path, &allowed_issue_names);
 
     // if there are any file names remaining, they were moved on the fs.
     // our data must remain up to date, so it must be removed from issues.txt
@@ -64,16 +66,15 @@ pub fn check(root_path: &Path, bless: bool, bad: &mut bool) {
         for file_name in remaining_issue_names {
             let mut p = PathBuf::from(path);
             p.push(file_name);
-            tidy_error!(
-                bad,
+            check.error(format!(
                 "file `{}` no longer exists and should be removed from the exclusions in `src/tools/tidy/src/issues.txt`",
                 p.display()
-            );
+            ));
         }
     }
 }
 
-fn deny_new_top_level_ui_tests(bad: &mut bool, tests_path: &Path) {
+fn deny_new_top_level_ui_tests(check: &mut RunningCheck, tests_path: &Path) {
     // See <https://github.com/rust-lang/compiler-team/issues/902> where we propose banning adding
     // new ui tests *directly* under `tests/ui/`. For more context, see:
     //
@@ -93,16 +94,15 @@ fn deny_new_top_level_ui_tests(bad: &mut bool, tests_path: &Path) {
         })
         .filter(|e| !e.file_type().is_dir());
     for entry in top_level_ui_tests {
-        tidy_error!(
-            bad,
+        check.error(format!(
             "ui tests should be added under meaningful subdirectories: `{}`",
             entry.path().display()
-        )
+        ));
     }
 }
 
 fn recursively_check_ui_tests<'issues>(
-    bad: &mut bool,
+    check: &mut RunningCheck,
     path: &Path,
     allowed_issue_names: &'issues BTreeSet<&'issues str>,
 ) -> BTreeSet<&'issues str> {
@@ -113,19 +113,19 @@ fn recursively_check_ui_tests<'issues>(
     crate::walk::walk_no_read(&paths, |_, _| false, &mut |entry| {
         let file_path = entry.path();
         if let Some(ext) = file_path.extension().and_then(OsStr::to_str) {
-            check_unexpected_extension(bad, file_path, ext);
+            check_unexpected_extension(check, file_path, ext);
 
             // NB: We do not use file_stem() as some file names have multiple `.`s and we
             // must strip all of them.
             let testname =
                 file_path.file_name().unwrap().to_str().unwrap().split_once('.').unwrap().0;
             if ext == "stderr" || ext == "stdout" || ext == "fixed" {
-                check_stray_output_snapshot(bad, file_path, testname);
-                check_empty_output_snapshot(bad, file_path);
+                check_stray_output_snapshot(check, file_path, testname);
+                check_empty_output_snapshot(check, file_path);
             }
 
             deny_new_nondescriptive_test_names(
-                bad,
+                check,
                 path,
                 &mut remaining_issue_names,
                 file_path,
@@ -137,7 +137,7 @@ fn recursively_check_ui_tests<'issues>(
     remaining_issue_names
 }
 
-fn check_unexpected_extension(bad: &mut bool, file_path: &Path, ext: &str) {
+fn check_unexpected_extension(check: &mut RunningCheck, file_path: &Path, ext: &str) {
     const EXPECTED_TEST_FILE_EXTENSIONS: &[&str] = &[
         "rs",     // test source files
         "stderr", // expected stderr file, corresponds to a rs file
@@ -178,11 +178,11 @@ fn check_unexpected_extension(bad: &mut bool, file_path: &Path, ext: &str) {
     if !(EXPECTED_TEST_FILE_EXTENSIONS.contains(&ext)
         || EXTENSION_EXCEPTION_PATHS.iter().any(|path| file_path.ends_with(path)))
     {
-        tidy_error!(bad, "file {} has unexpected extension {}", file_path.display(), ext);
+        check.error(format!("file {} has unexpected extension {}", file_path.display(), ext));
     }
 }
 
-fn check_stray_output_snapshot(bad: &mut bool, file_path: &Path, testname: &str) {
+fn check_stray_output_snapshot(check: &mut RunningCheck, file_path: &Path, testname: &str) {
     // Test output filenames have one of the formats:
     // ```
     // $testname.stderr
@@ -197,20 +197,20 @@ fn check_stray_output_snapshot(bad: &mut bool, file_path: &Path, testname: &str)
     if !file_path.with_file_name(testname).with_extension("rs").exists()
         && !testname.contains("ignore-tidy")
     {
-        tidy_error!(bad, "Stray file with UI testing output: {:?}", file_path);
+        check.error(format!("Stray file with UI testing output: {:?}", file_path));
     }
 }
 
-fn check_empty_output_snapshot(bad: &mut bool, file_path: &Path) {
+fn check_empty_output_snapshot(check: &mut RunningCheck, file_path: &Path) {
     if let Ok(metadata) = fs::metadata(file_path)
         && metadata.len() == 0
     {
-        tidy_error!(bad, "Empty file with UI testing output: {:?}", file_path);
+        check.error(format!("Empty file with UI testing output: {:?}", file_path));
     }
 }
 
 fn deny_new_nondescriptive_test_names(
-    bad: &mut bool,
+    check: &mut RunningCheck,
     path: &Path,
     remaining_issue_names: &mut BTreeSet<&str>,
     file_path: &Path,
@@ -231,11 +231,10 @@ fn deny_new_nondescriptive_test_names(
         if !remaining_issue_names.remove(stripped_path.as_str())
             && !stripped_path.starts_with("ui/issues/")
         {
-            tidy_error!(
-                bad,
+            check.error(format!(
                 "file `tests/{stripped_path}` must begin with a descriptive name, consider `{{reason}}-issue-{issue_n}.rs`",
                 issue_n = &test_name[1],
-            );
+            ));
         }
     }
 }

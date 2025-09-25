@@ -1,4 +1,6 @@
-use std::env;
+use std::{env, path};
+
+use rustc_windows_rc::{VersionInfoFileType, compile_windows_resource_file};
 
 fn main() {
     let target_os = env::var("CARGO_CFG_TARGET_OS");
@@ -13,6 +15,18 @@ fn main() {
 
 // Add a manifest file to rustc.exe.
 fn set_windows_exe_options() {
+    set_windows_resource();
+    set_windows_manifest();
+}
+
+fn set_windows_resource() {
+    let stem = path::PathBuf::from("rustc_main_resource");
+    let file_description = "rustc";
+    let res_file = compile_windows_resource_file(&stem, file_description, VersionInfoFileType::App);
+    println!("cargo:rustc-link-arg={}", res_file.display());
+}
+
+fn set_windows_manifest() {
     static WINDOWS_MANIFEST_FILE: &str = "Windows Manifest.xml";
 
     let mut manifest = env::current_dir().unwrap();

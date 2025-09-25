@@ -168,8 +168,9 @@ pub trait FileDescription: std::fmt::Debug + FileDescriptionExt {
     }
 
     /// Determines whether this FD non-deterministically has its reads and writes shortened.
-    fn nondet_short_accesses(&self) -> bool {
-        true
+    fn short_fd_operations(&self) -> bool {
+        // We only enable this for FD kinds where we think short accesses gain useful test coverage.
+        false
     }
 
     /// Seeks to the given offset (which can be relative to the beginning, end, or current position).
@@ -393,6 +394,13 @@ impl FileDescription for FileHandle {
 
     fn is_tty(&self, communicate_allowed: bool) -> bool {
         communicate_allowed && self.file.is_terminal()
+    }
+
+    fn short_fd_operations(&self) -> bool {
+        // While short accesses on file-backed FDs are very rare (at least for sufficiently small
+        // accesses), they can realistically happen when a signal interrupts the syscall.
+        // FIXME: we should return `false` if this is a named pipe...
+        true
     }
 
     fn as_unix<'tcx>(&self, ecx: &MiriInterpCx<'tcx>) -> &dyn UnixFileDescription {

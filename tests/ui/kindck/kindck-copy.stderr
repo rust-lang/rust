@@ -120,8 +120,13 @@ error[E0277]: the trait bound `MyNoncopyStruct: Copy` is not satisfied
   --> $DIR/kindck-copy.rs:64:19
    |
 LL |     assert_copy::<MyNoncopyStruct>();
-   |                   ^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `MyNoncopyStruct`
+   |                   ^^^^^^^^^^^^^^^ unsatisfied trait bound
    |
+help: the trait `Copy` is not implemented for `MyNoncopyStruct`
+  --> $DIR/kindck-copy.rs:15:1
+   |
+LL | struct MyNoncopyStruct {
+   | ^^^^^^^^^^^^^^^^^^^^^^
 note: required by a bound in `assert_copy`
   --> $DIR/kindck-copy.rs:5:18
    |

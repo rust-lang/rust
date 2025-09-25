@@ -8,8 +8,8 @@ use crate::fmt;
 
 /// A thread local storage (TLS) key which owns its contents.
 ///
-/// This key uses the fastest possible implementation available to it for the
-/// target platform. It is instantiated with the [`thread_local!`] macro and the
+/// This key uses the fastest implementation available on the target platform.
+/// It is instantiated with the [`thread_local!`] macro and the
 /// primary method is the [`with`] method, though there are helpers to make
 /// working with [`Cell`] types easier.
 ///
@@ -24,10 +24,10 @@ use crate::fmt;
 /// [`with`]) within a thread, and values that implement [`Drop`] get
 /// destructed when a thread exits. Some platform-specific caveats apply, which
 /// are explained below.
-/// Note that, should the destructor panics, the whole process will be [aborted].
+/// Note that if the destructor panics, the whole process will be [aborted].
 ///
 /// A `LocalKey`'s initializer cannot recursively depend on itself. Using a
-/// `LocalKey` in this way may cause panics, aborts or infinite recursion on
+/// `LocalKey` in this way may cause panics, aborts, or infinite recursion on
 /// the first call to `with`.
 ///
 /// [aborted]: crate::process::abort
@@ -230,7 +230,7 @@ impl fmt::Display for AccessError {
 impl Error for AccessError {}
 
 // This ensures the panicking code is outlined from `with` for `LocalKey`.
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+#[cfg_attr(not(panic = "immediate-abort"), inline(never))]
 #[track_caller]
 #[cold]
 fn panic_access_error(err: AccessError) -> ! {

@@ -114,11 +114,12 @@ mod attr_impl {
     bitflags::bitflags! {
         impl ArgAttribute: u8 {
             const NoAlias   = 1 << 1;
-            const NoCapture = 1 << 2;
+            const CapturesAddress = 1 << 2;
             const NonNull   = 1 << 3;
             const ReadOnly  = 1 << 4;
             const InReg     = 1 << 5;
             const NoUndef = 1 << 6;
+            const CapturesReadOnly = 1 << 7;
         }
     }
     rustc_data_structures::external_bitflags_debug! { ArgAttribute }
@@ -399,11 +400,11 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
         let mut attrs = ArgAttributes::new();
 
         // For non-immediate arguments the callee gets its own copy of
-        // the value on the stack, so there are no aliases. It's also
-        // program-invisible so can't possibly capture
+        // the value on the stack, so there are no aliases. The function
+        // can capture the address of the argument, but not the provenance.
         attrs
             .set(ArgAttribute::NoAlias)
-            .set(ArgAttribute::NoCapture)
+            .set(ArgAttribute::CapturesAddress)
             .set(ArgAttribute::NonNull)
             .set(ArgAttribute::NoUndef);
         attrs.pointee_size = layout.size;

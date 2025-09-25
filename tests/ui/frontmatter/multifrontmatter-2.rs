@@ -1,11 +1,11 @@
 ---
  ---
-//~^ ERROR: invalid preceding whitespace for frontmatter close
 
  ---
-//~^ ERROR: expected item, found `-`
-// FIXME(frontmatter): make this diagnostic better
 ---
+
+// hyphens only need to be escaped when at the start of a line
+//@ check-pass
 
 #![feature(frontmatter)]
 

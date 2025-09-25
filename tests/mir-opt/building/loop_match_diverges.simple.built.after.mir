@@ -1,0 +1,187 @@
+// MIR for `simple` after built
+
+fn simple(_1: State) -> State {
+    debug state => _1;
+    let mut _0: State;
+    let _2: ();
+    let mut _3: isize;
+    let mut _4: !;
+    let mut _5: isize;
+    let mut _6: bool;
+    let mut _7: !;
+    let mut _8: isize;
+    let mut _9: !;
+    let mut _10: isize;
+    let mut _11: !;
+
+    bb0: {
+        StorageLive(_2);
+        goto -> bb1;
+    }
+
+    bb1: {
+        falseUnwind -> [real: bb2, unwind: bb37];
+    }
+
+    bb2: {
+        PlaceMention(_1);
+        _3 = discriminant(_1);
+        switchInt(move _3) -> [0: bb4, 1: bb6, 2: bb8, otherwise: bb3];
+    }
+
+    bb3: {
+        FakeRead(ForMatchedPlace(None), _1);
+        unreachable;
+    }
+
+    bb4: {
+        falseEdge -> [real: bb11, imaginary: bb6];
+    }
+
+    bb5: {
+        goto -> bb3;
+    }
+
+    bb6: {
+        falseEdge -> [real: bb10, imaginary: bb8];
+    }
+
+    bb7: {
+        goto -> bb3;
+    }
+
+    bb8: {
+        _2 = const ();
+        goto -> bb36;
+    }
+
+    bb9: {
+        goto -> bb3;
+    }
+
+    bb10: {
+        StorageLive(_6);
+        _6 = const true;
+        switchInt(move _6) -> [0: bb17, otherwise: bb16];
+    }
+
+    bb11: {
+        _1 = State::B;
+        _5 = discriminant(_1);
+        falseEdge -> [real: bb12, imaginary: bb13];
+    }
+
+    bb12: {
+        goto -> bb10;
+    }
+
+    bb13: {
+        goto -> bb34;
+    }
+
+    bb14: {
+        unreachable;
+    }
+
+    bb15: {
+        goto -> bb32;
+    }
+
+    bb16: {
+        _1 = State::C;
+        _8 = discriminant(_1);
+        falseEdge -> [real: bb18, imaginary: bb19];
+    }
+
+    bb17: {
+        goto -> bb23;
+    }
+
+    bb18: {
+        goto -> bb20;
+    }
+
+    bb19: {
+        goto -> bb33;
+    }
+
+    bb20: {
+        StorageDead(_6);
+        goto -> bb8;
+    }
+
+    bb21: {
+        unreachable;
+    }
+
+    bb22: {
+        goto -> bb29;
+    }
+
+    bb23: {
+        _1 = State::A;
+        _10 = discriminant(_1);
+        falseEdge -> [real: bb24, imaginary: bb25];
+    }
+
+    bb24: {
+        goto -> bb26;
+    }
+
+    bb25: {
+        goto -> bb33;
+    }
+
+    bb26: {
+        StorageDead(_6);
+        goto -> bb11;
+    }
+
+    bb27: {
+        unreachable;
+    }
+
+    bb28: {
+        goto -> bb29;
+    }
+
+    bb29: {
+        StorageDead(_6);
+        goto -> bb32;
+    }
+
+    bb30: {
+        unreachable;
+    }
+
+    bb31: {
+        goto -> bb32;
+    }
+
+    bb32: {
+        goto -> bb35;
+    }
+
+    bb33: {
+        StorageDead(_6);
+        goto -> bb34;
+    }
+
+    bb34: {
+        goto -> bb35;
+    }
+
+    bb35: {
+        goto -> bb1;
+    }
+
+    bb36: {
+        StorageDead(_2);
+        _0 = move _1;
+        return;
+    }
+
+    bb37 (cleanup): {
+        resume;
+    }
+}

@@ -1,10 +1,14 @@
 # About the compiler team
 
+> NOTE:
+> There exists much detail about the team [on Forge], making most of the following obsolete.
+
 rustc is maintained by the [Rust compiler team][team]. The people who belong to
 this team collectively work to track regressions and implement new features.
 Members of the Rust compiler team are people who have made significant
 contributions to rustc and its design.
 
+[on Forge]: https://forge.rust-lang.org/compiler
 [team]: https://www.rust-lang.org/governance/teams/compiler
 
 ## Discussion
@@ -12,7 +16,7 @@ contributions to rustc and its design.
 Currently the compiler team chats in Zulip:
 
 - Team chat occurs in the [`t-compiler`][zulip-t-compiler] stream on the Zulip instance
-- There are also a number of other associated Zulip streams,
+- There are also a number of other associated Zulip channels,
   such as [`t-compiler/help`][zulip-help], where people can ask for help
   with rustc development, or [`t-compiler/meetings`][zulip-meetings],
   where the team holds their weekly triage and steering meetings.

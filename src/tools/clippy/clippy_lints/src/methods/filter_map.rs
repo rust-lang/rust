@@ -106,7 +106,7 @@ enum CheckResult<'tcx> {
 
 impl<'tcx> OffendingFilterExpr<'tcx> {
     pub fn check_map_call(
-        &mut self,
+        &self,
         cx: &LateContext<'tcx>,
         map_body: &'tcx Body<'tcx>,
         map_param_id: HirId,
@@ -233,18 +233,16 @@ impl<'tcx> OffendingFilterExpr<'tcx> {
             // the latter only calls `effect` once
             let side_effect_expr_span = receiver.can_have_side_effects().then_some(receiver.span);
 
-            if cx.tcx.is_diagnostic_item(sym::Option, recv_ty.did()) && path.ident.name == sym::is_some {
-                Some(Self::IsSome {
+            match (cx.tcx.get_diagnostic_name(recv_ty.did()), path.ident.name) {
+                (Some(sym::Option), sym::is_some) => Some(Self::IsSome {
                     receiver,
                     side_effect_expr_span,
-                })
-            } else if cx.tcx.is_diagnostic_item(sym::Result, recv_ty.did()) && path.ident.name == sym::is_ok {
-                Some(Self::IsOk {
+                }),
+                (Some(sym::Result), sym::is_ok) => Some(Self::IsOk {
                     receiver,
                     side_effect_expr_span,
-                })
-            } else {
-                None
+                }),
+                _ => None,
             }
         } else if matching_root_macro_call(cx, expr.span, sym::matches_macro).is_some()
             // we know for a fact that the wildcard pattern is the second arm
@@ -413,7 +411,7 @@ fn is_find_or_filter<'a>(
         }
 
         && let PatKind::Binding(_, filter_param_id, _, None) = filter_pat.kind
-        && let Some(mut offending_expr) = OffendingFilterExpr::hir(cx, filter_body.value, filter_param_id)
+        && let Some(offending_expr) = OffendingFilterExpr::hir(cx, filter_body.value, filter_param_id)
 
         && let ExprKind::Closure(&Closure { body: map_body_id, .. }) = map_arg.kind
         && let map_body = cx.tcx.hir_body(map_body_id)

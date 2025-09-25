@@ -3,6 +3,11 @@ error[E0422]: cannot find struct, variant or union type `MyStruct` in this scope
    |
 LL |     let x = MyStruct {};
    |             ^^^^^^^^ not found in this scope
+   |
+  ::: $DIR/auxiliary/use_by_macro.rs:15:1
+   |
+LL | x!(my_struct);
+   | ------------- you might have meant to refer to this struct
 
 error: aborting due to 1 previous error
 

@@ -12,7 +12,6 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_span::source_map::Spanned;
 use rustc_type_ir::{ConstKind, TypeFolder, VisitorResult, try_visit};
 
-use super::print::PrettyPrinter;
 use super::{GenericArg, GenericArgKind, Pattern, Region};
 use crate::mir::PlaceElem;
 use crate::ty::print::{FmtPrinter, Printer, with_no_trimmed_paths};
@@ -168,15 +167,11 @@ impl<'tcx> fmt::Debug for ty::Const<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // If this is a value, we spend some effort to make it look nice.
         if let ConstKind::Value(cv) = self.kind() {
-            return ty::tls::with(move |tcx| {
-                let cv = tcx.lift(cv).unwrap();
-                let mut p = FmtPrinter::new(tcx, Namespace::ValueNS);
-                p.pretty_print_const_valtree(cv, /*print_ty*/ true)?;
-                f.write_str(&p.into_buffer())
-            });
+            write!(f, "{}", cv)
+        } else {
+            // Fall back to something verbose.
+            write!(f, "{:?}", self.kind())
         }
-        // Fall back to something verbose.
-        write!(f, "{:?}", self.kind())
     }
 }
 
@@ -395,11 +390,9 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
             ty::Array(typ, sz) => ty::Array(typ.try_fold_with(folder)?, sz.try_fold_with(folder)?),
             ty::Slice(typ) => ty::Slice(typ.try_fold_with(folder)?),
             ty::Adt(tid, args) => ty::Adt(tid, args.try_fold_with(folder)?),
-            ty::Dynamic(trait_ty, region, representation) => ty::Dynamic(
-                trait_ty.try_fold_with(folder)?,
-                region.try_fold_with(folder)?,
-                representation,
-            ),
+            ty::Dynamic(trait_ty, region) => {
+                ty::Dynamic(trait_ty.try_fold_with(folder)?, region.try_fold_with(folder)?)
+            }
             ty::Tuple(ts) => ty::Tuple(ts.try_fold_with(folder)?),
             ty::FnDef(def_id, args) => ty::FnDef(def_id, args.try_fold_with(folder)?),
             ty::FnPtr(sig_tys, hdr) => ty::FnPtr(sig_tys.try_fold_with(folder)?, hdr),
@@ -442,8 +435,8 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
             ty::Array(typ, sz) => ty::Array(typ.fold_with(folder), sz.fold_with(folder)),
             ty::Slice(typ) => ty::Slice(typ.fold_with(folder)),
             ty::Adt(tid, args) => ty::Adt(tid, args.fold_with(folder)),
-            ty::Dynamic(trait_ty, region, representation) => {
-                ty::Dynamic(trait_ty.fold_with(folder), region.fold_with(folder), representation)
+            ty::Dynamic(trait_ty, region) => {
+                ty::Dynamic(trait_ty.fold_with(folder), region.fold_with(folder))
             }
             ty::Tuple(ts) => ty::Tuple(ts.fold_with(folder)),
             ty::FnDef(def_id, args) => ty::FnDef(def_id, args.fold_with(folder)),
@@ -486,7 +479,7 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for Ty<'tcx> {
             }
             ty::Slice(typ) => typ.visit_with(visitor),
             ty::Adt(_, args) => args.visit_with(visitor),
-            ty::Dynamic(trait_ty, reg, _) => {
+            ty::Dynamic(trait_ty, reg) => {
                 try_visit!(trait_ty.visit_with(visitor));
                 reg.visit_with(visitor)
             }

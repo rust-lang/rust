@@ -125,8 +125,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
         Some(ty::ImplTraitInTraitData::Impl { fn_def_id }) => {
             match tcx.collect_return_position_impl_trait_in_trait_tys(fn_def_id) {
                 Ok(map) => {
-                    let assoc_item = tcx.associated_item(def_id);
-                    return map[&assoc_item.trait_item_def_id.unwrap()];
+                    let trait_item_def_id = tcx.trait_item_of(def_id).unwrap();
+                    return map[&trait_item_def_id];
                 }
                 Err(_) => {
                     return ty::EarlyBinder::bind(Ty::new_error_with_message(
@@ -198,7 +198,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                 }
             }
             ImplItemKind::Type(ty) => {
-                if tcx.impl_trait_ref(tcx.hir_get_parent_item(hir_id)).is_none() {
+                if let ImplItemImplKind::Inherent { .. } = item.impl_kind {
                     check_feature_inherent_assoc_ty(tcx, item.span);
                 }
 
@@ -251,7 +251,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                         .emit_err(crate::errors::SelfInImplSelf { span: spans.into(), note: () });
                     Ty::new_error(tcx, guar)
                 }
-                _ => icx.lower_ty(*self_ty),
+                _ => icx.lower_ty(self_ty),
             },
             ItemKind::Fn { .. } => {
                 let args = ty::GenericArgs::identity_for_item(tcx, def_id);

@@ -17,6 +17,7 @@ unsafe extern "Rust" {
     #[rustc_allocator]
     #[rustc_nounwind]
     #[rustc_std_internal_symbol]
+    #[rustc_allocator_zeroed_variant = "__rust_alloc_zeroed"]
     fn __rust_alloc(size: usize, align: usize) -> *mut u8;
     #[rustc_deallocator]
     #[rustc_nounwind]
@@ -407,12 +408,12 @@ pub const fn handle_alloc_error(layout: Layout) -> ! {
         }
     }
 
-    #[cfg(not(feature = "panic_immediate_abort"))]
+    #[cfg(not(panic = "immediate-abort"))]
     {
         core::intrinsics::const_eval_select((layout,), ct_error, rt_error)
     }
 
-    #[cfg(feature = "panic_immediate_abort")]
+    #[cfg(panic = "immediate-abort")]
     ct_error(layout)
 }
 

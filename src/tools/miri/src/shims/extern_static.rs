@@ -62,7 +62,7 @@ impl<'tcx> MiriMachine<'tcx> {
             }
             "android" => {
                 Self::null_ptr_extern_statics(ecx, &["bsd_signal"])?;
-                Self::weak_symbol_extern_statics(ecx, &["signal", "getrandom"])?;
+                Self::weak_symbol_extern_statics(ecx, &["signal", "getrandom", "gettid"])?;
             }
             "windows" => {
                 // "_tls_used"

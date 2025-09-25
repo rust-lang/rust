@@ -6,6 +6,7 @@ use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, DiagSymbolList, Diagnostic, EmissionGuarantee, Level,
     MultiSpan,
 };
+use rustc_hir::limit::Limit;
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
 use rustc_span::{Ident, Span, Symbol};
@@ -410,17 +411,6 @@ pub(crate) struct UnconstrainedOpaqueType {
     pub what: &'static str,
 }
 
-#[derive(Diagnostic)]
-#[diag(hir_analysis_tait_forward_compat2)]
-#[note]
-pub(crate) struct TaitForwardCompat2 {
-    #[primary_span]
-    pub span: Span,
-    #[note(hir_analysis_opaque)]
-    pub opaque_type_span: Span,
-    pub opaque_type: String,
-}
-
 pub(crate) struct MissingTypeParams {
     pub span: Span,
     pub def_span: Span,
@@ -568,7 +558,7 @@ pub(crate) struct AutoDerefReachedRecursionLimit<'a> {
     #[label]
     pub span: Span,
     pub ty: Ty<'a>,
-    pub suggested_limit: rustc_session::Limit,
+    pub suggested_limit: Limit,
     pub crate_name: Symbol,
 }
 

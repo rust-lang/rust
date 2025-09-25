@@ -1,91 +1,335 @@
+use std::ops::Neg;
+use std::{f32, f64};
+
 use rand::Rng as _;
-use rustc_apfloat::Float as _;
-use rustc_apfloat::ieee::IeeeFloat;
+use rustc_apfloat::Float;
+use rustc_apfloat::ieee::{DoubleS, IeeeFloat, Semantics, SingleS};
 use rustc_middle::ty::{self, FloatTy, ScalarInt};
 
 use crate::*;
 
 /// Disturbes a floating-point result by a relative error in the range (-2^scale, 2^scale).
-///
-/// For a 2^N ULP error, you can use an `err_scale` of `-(F::PRECISION - 1 - N)`.
-/// In other words, a 1 ULP (absolute) error is the same as a `2^-(F::PRECISION-1)` relative error.
-/// (Subtracting 1 compensates for the integer bit.)
 pub(crate) fn apply_random_float_error<F: rustc_apfloat::Float>(
     ecx: &mut crate::MiriInterpCx<'_>,
     val: F,
     err_scale: i32,
 ) -> F {
-    if !ecx.machine.float_nondet || !ecx.machine.float_rounding_error {
+    if !ecx.machine.float_nondet
+        || matches!(ecx.machine.float_rounding_error, FloatRoundingErrorMode::None)
+        // relative errors don't do anything to zeros... avoid messing up the sign
+        || val.is_zero()
+        // The logic below makes no sense if the input is already non-finite.
+        || !val.is_finite()
+    {
         return val;
     }
-
     let rng = ecx.machine.rng.get_mut();
+
     // Generate a random integer in the range [0, 2^PREC).
     // (When read as binary, the position of the first `1` determines the exponent,
     // and the remaining bits fill the mantissa. `PREC` is one plus the size of the mantissa,
     // so this all works out.)
-    let r = F::from_u128(rng.random_range(0..(1 << F::PRECISION))).value;
+    let r = F::from_u128(match ecx.machine.float_rounding_error {
+        FloatRoundingErrorMode::Random => rng.random_range(0..(1 << F::PRECISION)),
+        FloatRoundingErrorMode::Max => (1 << F::PRECISION) - 1, // force max error
+        FloatRoundingErrorMode::None => unreachable!(),
+    })
+    .value;
     // Multiply this with 2^(scale - PREC). The result is between 0 and
     // 2^PREC * 2^(scale - PREC) = 2^scale.
     let err = r.scalbn(err_scale.strict_sub(F::PRECISION.try_into().unwrap()));
     // give it a random sign
     let err = if rng.random() { -err } else { err };
-    // multiple the value with (1+err)
-    (val * (F::from_u128(1).value + err).value).value
+    // Compute `val*(1+err)`, distributed out as `val + val*err` to avoid the imprecise addition
+    // error being amplified by multiplication.
+    (val + (val * err).value).value
 }
 
-/// [`apply_random_float_error`] gives instructions to apply a 2^N ULP error.
-/// This function implements these instructions such that applying a 2^N ULP error is less error prone.
-/// So for a 2^N ULP error, you would pass N as the `ulp_exponent` argument.
+/// Applies an error of `[-N, +N]` ULP to the given value.
 pub(crate) fn apply_random_float_error_ulp<F: rustc_apfloat::Float>(
     ecx: &mut crate::MiriInterpCx<'_>,
     val: F,
-    ulp_exponent: u32,
+    max_error: u32,
 ) -> F {
-    let n = i32::try_from(ulp_exponent)
-        .expect("`err_scale_for_ulp`: exponent is too large to create an error scale");
-    // we know this fits
-    let prec = i32::try_from(F::PRECISION).unwrap();
-    let err_scale = -(prec - n - 1);
-    apply_random_float_error(ecx, val, err_scale)
+    // We could try to be clever and reuse `apply_random_float_error`, but that is hard to get right
+    // (see <https://github.com/rust-lang/miri/pull/4558#discussion_r2316838085> for why) so we
+    // implement the logic directly instead.
+    if !ecx.machine.float_nondet
+        || matches!(ecx.machine.float_rounding_error, FloatRoundingErrorMode::None)
+        // FIXME: also disturb zeros? That requires a lot more cases in `fixed_float_value`
+        // and might make the std test suite quite unhappy.
+        || val.is_zero()
+        // The logic below makes no sense if the input is already non-finite.
+        || !val.is_finite()
+    {
+        return val;
+    }
+    let rng = ecx.machine.rng.get_mut();
+
+    let max_error = i64::from(max_error);
+    let error = match ecx.machine.float_rounding_error {
+        FloatRoundingErrorMode::Random => rng.random_range(-max_error..=max_error),
+        FloatRoundingErrorMode::Max =>
+            if rng.random() {
+                max_error
+            } else {
+                -max_error
+            },
+        FloatRoundingErrorMode::None => unreachable!(),
+    };
+    // If upwards ULP and downwards ULP differ, we take the average.
+    let ulp = (((val.next_up().value - val).value + (val - val.next_down().value).value).value
+        / F::from_u128(2).value)
+        .value;
+    // Shift the value by N times the ULP
+    (val + (ulp * F::from_i128(error.into()).value).value).value
 }
 
-/// Applies a random 16ULP floating point error to `val` and returns the new value.
+/// Applies an error of `[-N, +N]` ULP to the given value.
 /// Will fail if `val` is not a floating point number.
 pub(crate) fn apply_random_float_error_to_imm<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
     val: ImmTy<'tcx>,
-    ulp_exponent: u32,
+    max_error: u32,
 ) -> InterpResult<'tcx, ImmTy<'tcx>> {
     let scalar = val.to_scalar_int()?;
     let res: ScalarInt = match val.layout.ty.kind() {
         ty::Float(FloatTy::F16) =>
-            apply_random_float_error_ulp(ecx, scalar.to_f16(), ulp_exponent).into(),
+            apply_random_float_error_ulp(ecx, scalar.to_f16(), max_error).into(),
         ty::Float(FloatTy::F32) =>
-            apply_random_float_error_ulp(ecx, scalar.to_f32(), ulp_exponent).into(),
+            apply_random_float_error_ulp(ecx, scalar.to_f32(), max_error).into(),
         ty::Float(FloatTy::F64) =>
-            apply_random_float_error_ulp(ecx, scalar.to_f64(), ulp_exponent).into(),
+            apply_random_float_error_ulp(ecx, scalar.to_f64(), max_error).into(),
         ty::Float(FloatTy::F128) =>
-            apply_random_float_error_ulp(ecx, scalar.to_f128(), ulp_exponent).into(),
+            apply_random_float_error_ulp(ecx, scalar.to_f128(), max_error).into(),
         _ => bug!("intrinsic called with non-float input type"),
     };
 
     interp_ok(ImmTy::from_scalar_int(res, val.layout))
 }
 
-pub(crate) fn sqrt<S: rustc_apfloat::ieee::Semantics>(x: IeeeFloat<S>) -> IeeeFloat<S> {
+/// Given a floating-point operation and a floating-point value, clamps the result to the output
+/// range of the given operation according to the C standard, if any.
+pub(crate) fn clamp_float_value<S: Semantics>(
+    intrinsic_name: &str,
+    val: IeeeFloat<S>,
+) -> IeeeFloat<S>
+where
+    IeeeFloat<S>: IeeeExt,
+{
+    let zero = IeeeFloat::<S>::ZERO;
+    let one = IeeeFloat::<S>::one();
+    let two = IeeeFloat::<S>::two();
+    let pi = IeeeFloat::<S>::pi();
+    let pi_over_2 = (pi / two).value;
+
+    match intrinsic_name {
+        // sin, cos, tanh: [-1, 1]
+        #[rustfmt::skip]
+        | "sinf32"
+        | "sinf64"
+        | "cosf32"
+        | "cosf64"
+        | "tanhf"
+        | "tanh"
+         => val.clamp(one.neg(), one),
+
+        // exp: [0, +INF)
+        "expf32" | "exp2f32" | "expf64" | "exp2f64" => val.maximum(zero),
+
+        // cosh: [1, +INF)
+        "coshf" | "cosh" => val.maximum(one),
+
+        // acos: [0, π]
+        "acosf" | "acos" => val.clamp(zero, pi),
+
+        // asin: [-π, +π]
+        "asinf" | "asin" => val.clamp(pi.neg(), pi),
+
+        // atan: (-π/2, +π/2)
+        "atanf" | "atan" => val.clamp(pi_over_2.neg(), pi_over_2),
+
+        // erfc: (-1, 1)
+        "erff" | "erf" => val.clamp(one.neg(), one),
+
+        // erfc: (0, 2)
+        "erfcf" | "erfc" => val.clamp(zero, two),
+
+        // atan2(y, x): arctan(y/x) in [−π, +π]
+        "atan2f" | "atan2" => val.clamp(pi.neg(), pi),
+
+        _ => val,
+    }
+}
+
+/// For the intrinsics:
+/// - sinf32, sinf64, sinhf, sinh
+/// - cosf32, cosf64, coshf, cosh
+/// - tanhf, tanh, atanf, atan, atan2f, atan2
+/// - expf32, expf64, exp2f32, exp2f64
+/// - logf32, logf64, log2f32, log2f64, log10f32, log10f64
+/// - powf32, powf64
+/// - erff, erf, erfcf, erfc
+/// - hypotf, hypot
+///
+/// # Return
+///
+/// Returns `Some(output)` if the `intrinsic` results in a defined fixed `output` specified in the C standard
+/// (specifically, C23 annex F.10)  when given `args` as arguments. Outputs that are unaffected by a relative error
+/// (such as INF and zero) are not handled here, they are assumed to be handled by the underlying
+/// implementation. Returns `None` if no specific value is guaranteed.
+///
+/// # Note
+///
+/// For `powf*` operations of the form:
+///
+/// - `(SNaN)^(±0)`
+/// - `1^(SNaN)`
+///
+/// The result is implementation-defined:
+/// - musl returns for both `1.0`
+/// - glibc returns for both `NaN`
+///
+/// This discrepancy exists because SNaN handling is not consistently defined across platforms,
+/// and the C standard leaves behavior for SNaNs unspecified.
+///
+/// Miri chooses to adhere to both implementations and returns either one of them non-deterministically.
+pub(crate) fn fixed_float_value<S: Semantics>(
+    ecx: &mut MiriInterpCx<'_>,
+    intrinsic_name: &str,
+    args: &[IeeeFloat<S>],
+) -> Option<IeeeFloat<S>>
+where
+    IeeeFloat<S>: IeeeExt,
+{
+    let this = ecx.eval_context_mut();
+    let one = IeeeFloat::<S>::one();
+    let two = IeeeFloat::<S>::two();
+    let three = IeeeFloat::<S>::three();
+    let pi = IeeeFloat::<S>::pi();
+    let pi_over_2 = (pi / two).value;
+    let pi_over_4 = (pi_over_2 / two).value;
+
+    // Remove `f32`/`f64` suffix, if any.
+    let name = intrinsic_name
+        .strip_suffix("f32")
+        .or_else(|| intrinsic_name.strip_suffix("f64"))
+        .unwrap_or(intrinsic_name);
+    // Also strip trailing `f` (indicates "float"), with an exception for "erf" to avoid
+    // removing that `f`.
+    let name = if name == "erf" { name } else { name.strip_suffix("f").unwrap_or(name) };
+    Some(match (name, args) {
+        // cos(±0) and cosh(±0)= 1
+        ("cos" | "cosh", [input]) if input.is_zero() => one,
+
+        // e^0 = 1
+        ("exp" | "exp2", [input]) if input.is_zero() => one,
+
+        // tanh(±INF) = ±1
+        ("tanh", [input]) if input.is_infinite() => one.copy_sign(*input),
+
+        // atan(±INF) = ±π/2
+        ("atan", [input]) if input.is_infinite() => pi_over_2.copy_sign(*input),
+
+        // erf(±INF) = ±1
+        ("erf", [input]) if input.is_infinite() => one.copy_sign(*input),
+
+        // erfc(-INF) = 2
+        ("erfc", [input]) if input.is_neg_infinity() => (one + one).value,
+
+        // hypot(x, ±0) = abs(x), if x is not a NaN.
+        // `_hypot` is the Windows name for this.
+        ("_hypot" | "hypot", [x, y]) if !x.is_nan() && y.is_zero() => x.abs(),
+
+        // atan2(±0,−0) = ±π.
+        // atan2(±0, y) = ±π for y < 0.
+        // Must check for non NaN because `y.is_negative()` also applies to NaN.
+        ("atan2", [x, y]) if (x.is_zero() && (y.is_negative() && !y.is_nan())) => pi.copy_sign(*x),
+
+        // atan2(±x,−∞) = ±π for finite x > 0.
+        ("atan2", [x, y]) if (!x.is_zero() && !x.is_infinite()) && y.is_neg_infinity() =>
+            pi.copy_sign(*x),
+
+        // atan2(x, ±0) = −π/2 for x < 0.
+        // atan2(x, ±0) =  π/2 for x > 0.
+        ("atan2", [x, y]) if !x.is_zero() && y.is_zero() => pi_over_2.copy_sign(*x),
+
+        //atan2(±∞, −∞) = ±3π/4
+        ("atan2", [x, y]) if x.is_infinite() && y.is_neg_infinity() =>
+            (pi_over_4 * three).value.copy_sign(*x),
+
+        //atan2(±∞, +∞) = ±π/4
+        ("atan2", [x, y]) if x.is_infinite() && y.is_pos_infinity() => pi_over_4.copy_sign(*x),
+
+        // atan2(±∞, y) returns ±π/2 for finite y.
+        ("atan2", [x, y]) if x.is_infinite() && (!y.is_infinite() && !y.is_nan()) =>
+            pi_over_2.copy_sign(*x),
+
+        // (-1)^(±INF) = 1
+        ("pow", [base, exp]) if *base == -one && exp.is_infinite() => one,
+
+        // 1^y = 1 for any y, even a NaN
+        ("pow", [base, exp]) if *base == one => {
+            let rng = this.machine.rng.get_mut();
+            // SNaN exponents get special treatment: they might return 1, or a NaN.
+            let return_nan = exp.is_signaling() && this.machine.float_nondet && rng.random();
+            // Handle both the musl and glibc cases non-deterministically.
+            if return_nan { this.generate_nan(args) } else { one }
+        }
+
+        // x^(±0) = 1 for any x, even a NaN
+        ("pow", [base, exp]) if exp.is_zero() => {
+            let rng = this.machine.rng.get_mut();
+            // SNaN bases get special treatment: they might return 1, or a NaN.
+            let return_nan = base.is_signaling() && this.machine.float_nondet && rng.random();
+            // Handle both the musl and glibc cases non-deterministically.
+            if return_nan { this.generate_nan(args) } else { one }
+        }
+
+        // There are a lot of cases for fixed outputs according to the C Standard, but these are
+        // mainly INF or zero which are not affected by the applied error.
+        _ => return None,
+    })
+}
+
+/// Returns `Some(output)` if `powi` (called `pown` in C) results in a fixed value specified in the
+/// C standard (specifically, C23 annex F.10.4.6) when doing `base^exp`. Otherwise, returns `None`.
+pub(crate) fn fixed_powi_value<S: Semantics>(
+    ecx: &mut MiriInterpCx<'_>,
+    base: IeeeFloat<S>,
+    exp: i32,
+) -> Option<IeeeFloat<S>>
+where
+    IeeeFloat<S>: IeeeExt,
+{
+    match exp {
+        0 => {
+            let one = IeeeFloat::<S>::one();
+            let rng = ecx.machine.rng.get_mut();
+            let return_nan = ecx.machine.float_nondet && rng.random() && base.is_signaling();
+            // For SNaN treatment, we are consistent with `powf`above.
+            // (We wouldn't have two, unlike powf all implementations seem to agree for powi,
+            // but for now we are maximally conservative.)
+            Some(if return_nan { ecx.generate_nan(&[base]) } else { one })
+        }
+
+        _ => None,
+    }
+}
+
+pub(crate) fn sqrt<F: Float>(x: F) -> F {
     match x.category() {
         // preserve zero sign
         rustc_apfloat::Category::Zero => x,
         // propagate NaN
         rustc_apfloat::Category::NaN => x,
         // sqrt of negative number is NaN
-        _ if x.is_negative() => IeeeFloat::NAN,
+        _ if x.is_negative() => F::NAN,
         // sqrt(∞) = ∞
-        rustc_apfloat::Category::Infinity => IeeeFloat::INFINITY,
+        rustc_apfloat::Category::Infinity => F::INFINITY,
         rustc_apfloat::Category::Normal => {
             // Floating point precision, excluding the integer bit
-            let prec = i32::try_from(S::PRECISION).unwrap() - 1;
+            let prec = i32::try_from(F::PRECISION).unwrap() - 1;
 
             // x = 2^(exp - prec) * mant
             // where mant is an integer with prec+1 bits
@@ -150,24 +394,52 @@ pub(crate) fn sqrt<S: rustc_apfloat::ieee::Semantics>(x: IeeeFloat<S>) -> IeeeFl
             res = (res + 1) >> 1;
 
             // Build resulting value with res as mantissa and exp/2 as exponent
-            IeeeFloat::from_u128(res).value.scalbn(exp / 2 - prec)
+            F::from_u128(res).value.scalbn(exp / 2 - prec)
         }
     }
 }
 
-/// Extend functionality of rustc_apfloat softfloats
+/// Extend functionality of `rustc_apfloat` softfloats for IEEE float types.
 pub trait IeeeExt: rustc_apfloat::Float {
+    // Some values we use:
+
     #[inline]
     fn one() -> Self {
         Self::from_u128(1).value
     }
 
     #[inline]
+    fn two() -> Self {
+        Self::from_u128(2).value
+    }
+
+    #[inline]
+    fn three() -> Self {
+        Self::from_u128(3).value
+    }
+
+    fn pi() -> Self;
+
+    #[inline]
     fn clamp(self, min: Self, max: Self) -> Self {
         self.maximum(min).minimum(max)
     }
 }
-impl<S: rustc_apfloat::ieee::Semantics> IeeeExt for IeeeFloat<S> {}
+
+macro_rules! impl_ieee_pi {
+    ($float_ty:ident, $semantic:ty) => {
+        impl IeeeExt for IeeeFloat<$semantic> {
+            #[inline]
+            fn pi() -> Self {
+                // We take the value from the standard library as the most reasonable source for an exact π here.
+                Self::from_bits($float_ty::consts::PI.to_bits().into())
+            }
+        }
+    };
+}
+
+impl_ieee_pi!(f32, SingleS);
+impl_ieee_pi!(f64, DoubleS);
 
 #[cfg(test)]
 mod tests {

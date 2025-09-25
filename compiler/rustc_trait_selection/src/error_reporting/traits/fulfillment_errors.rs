@@ -3,7 +3,8 @@ use std::borrow::Cow;
 use std::path::PathBuf;
 
 use rustc_abi::ExternAbi;
-use rustc_ast::TraitObjectSyntax;
+use rustc_ast::ast::LitKind;
+use rustc_ast::{LitIntType, TraitObjectSyntax};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
@@ -26,8 +27,8 @@ use rustc_middle::ty::print::{
     with_forced_trimmed_paths,
 };
 use rustc_middle::ty::{
-    self, TraitRef, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
-    Upcast,
+    self, GenericArgKind, TraitRef, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeVisitableExt, Upcast,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{BytePos, DUMMY_SP, STDLIB_STABLE_CRATES, Span, Symbol, sym};
@@ -37,7 +38,6 @@ use super::on_unimplemented::{AppendConstMessage, OnUnimplementedNote};
 use super::suggestions::get_explanation_based_on_obligation;
 use super::{
     ArgKind, CandidateSimilarity, FindExprBySpan, GetSafeTransmuteErrorAndReason, ImplCandidate,
-    UnsatisfiedConst,
 };
 use crate::error_reporting::TypeErrCtxt;
 use crate::error_reporting::infer::TyCategory;
@@ -75,7 +75,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 {
                     if let Some(cause) = self
                         .tcx
-                        .diagnostic_hir_wf_check((tcx.erase_regions(obligation.predicate), *wf_loc))
+                        .diagnostic_hir_wf_check((tcx.erase_and_anonymize_regions(obligation.predicate), *wf_loc))
                     {
                         obligation.cause = cause.clone();
                         span = obligation.cause.span;
@@ -276,9 +276,16 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         *err.long_ty_path() = long_ty_file;
 
                         let mut suggested = false;
+                        let mut noted_missing_impl = false;
                         if is_try_conversion || is_question_mark {
-                            suggested = self.try_conversion_context(&obligation, main_trait_predicate, &mut err);
+                            (suggested, noted_missing_impl) = self.try_conversion_context(&obligation, main_trait_predicate, &mut err);
                         }
+
+                        suggested |= self.detect_negative_literal(
+                            &obligation,
+                            main_trait_predicate,
+                            &mut err,
+                        );
 
                         if let Some(ret_span) = self.return_type_span(&obligation) {
                             if is_try_conversion {
@@ -336,6 +343,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             return err.emit();
                         }
 
+                        let ty_span = match leaf_trait_predicate.self_ty().skip_binder().kind() {
+                            ty::Adt(def, _) if def.did().is_local()
+                                && !self.can_suggest_derive(&obligation, leaf_trait_predicate) => self.tcx.def_span(def.did()),
+                            _ => DUMMY_SP,
+                        };
                         if let Some(s) = label {
                             // If it has a custom `#[rustc_on_unimplemented]`
                             // error message, let's display it as the label!
@@ -348,15 +360,28 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                     // Don't say "the trait `FromResidual<Option<Infallible>>` is
                                     // not implemented for `Result<T, E>`".
                             {
-                                err.help(explanation);
+                                // We do this just so that the JSON output's `help` position is the
+                                // right one and not `file.rs:1:1`. The render is the same.
+                                if ty_span == DUMMY_SP {
+                                    err.help(explanation);
+                                } else {
+                                    err.span_help(ty_span, explanation);
+                                }
                             }
                         } else if let Some(custom_explanation) = safe_transmute_explanation {
                             err.span_label(span, custom_explanation);
-                        } else if explanation.len() > self.tcx.sess.diagnostic_width() {
+                        } else if (explanation.len() > self.tcx.sess.diagnostic_width() || ty_span != DUMMY_SP) && !noted_missing_impl {
                             // Really long types don't look good as span labels, instead move it
                             // to a `help`.
                             err.span_label(span, "unsatisfied trait bound");
-                            err.help(explanation);
+
+                            // We do this just so that the JSON output's `help` position is the
+                            // right one and not `file.rs:1:1`. The render is the same.
+                            if ty_span == DUMMY_SP {
+                                err.help(explanation);
+                            } else {
+                                err.span_help(ty_span, explanation);
+                            }
                         } else {
                             err.span_label(span, explanation);
                         }
@@ -373,13 +398,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 );
                             }
                         }
-
-                        let UnsatisfiedConst(unsatisfied_const) = self
-                            .maybe_add_note_for_unsatisfied_const(
-                                leaf_trait_predicate,
-                                &mut err,
-                                span,
-                            );
 
                         if let Some((msg, span)) = type_def {
                             err.span_label(span, msg);
@@ -506,7 +524,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             span,
                             is_fn_trait,
                             suggested,
-                            unsatisfied_const,
                         );
 
                         // Changing mutability doesn't make a difference to whether we have
@@ -940,6 +957,38 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         Ok(())
     }
 
+    fn detect_negative_literal(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        err: &mut Diag<'_>,
+    ) -> bool {
+        if let ObligationCauseCode::UnOp { hir_id, .. } = obligation.cause.code()
+            && let hir::Node::Expr(expr) = self.tcx.hir_node(*hir_id)
+            && let hir::ExprKind::Unary(hir::UnOp::Neg, inner) = expr.kind
+            && let hir::ExprKind::Lit(lit) = inner.kind
+            && let LitKind::Int(_, LitIntType::Unsuffixed) = lit.node
+        {
+            err.span_suggestion_verbose(
+                lit.span.shrink_to_hi(),
+                "consider specifying an integer type that can be negative",
+                match trait_pred.skip_binder().self_ty().kind() {
+                    ty::Uint(ty::UintTy::Usize) => "isize",
+                    ty::Uint(ty::UintTy::U8) => "i8",
+                    ty::Uint(ty::UintTy::U16) => "i16",
+                    ty::Uint(ty::UintTy::U32) => "i32",
+                    ty::Uint(ty::UintTy::U64) => "i64",
+                    ty::Uint(ty::UintTy::U128) => "i128",
+                    _ => "i64",
+                }
+                .to_string(),
+                Applicability::MaybeIncorrect,
+            );
+            return true;
+        }
+        false
+    }
+
     /// When the `E` of the resulting `Result<T, E>` in an expression `foo().bar().baz()?`,
     /// identify those method chain sub-expressions that could or could not have been annotated
     /// with `?`.
@@ -948,7 +997,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
         err: &mut Diag<'_>,
-    ) -> bool {
+    ) -> (bool, bool) {
         let span = obligation.cause.span;
         /// Look for the (direct) sub-expr of `?`, and return it if it's a `.` method call.
         struct FindMethodSubexprOfTry {
@@ -968,21 +1017,22 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
         }
         let hir_id = self.tcx.local_def_id_to_hir_id(obligation.cause.body_id);
-        let Some(body_id) = self.tcx.hir_node(hir_id).body_id() else { return false };
+        let Some(body_id) = self.tcx.hir_node(hir_id).body_id() else { return (false, false) };
         let ControlFlow::Break(expr) =
             (FindMethodSubexprOfTry { search_span: span }).visit_body(self.tcx.hir_body(body_id))
         else {
-            return false;
+            return (false, false);
         };
         let Some(typeck) = &self.typeck_results else {
-            return false;
+            return (false, false);
         };
         let ObligationCauseCode::QuestionMark = obligation.cause.code().peel_derives() else {
-            return false;
+            return (false, false);
         };
         let self_ty = trait_pred.skip_binder().self_ty();
         let found_ty = trait_pred.skip_binder().trait_ref.args.get(1).and_then(|a| a.as_type());
-        self.note_missing_impl_for_question_mark(err, self_ty, found_ty, trait_pred);
+        let noted_missing_impl =
+            self.note_missing_impl_for_question_mark(err, self_ty, found_ty, trait_pred);
 
         let mut prev_ty = self.resolve_vars_if_possible(
             typeck.expr_ty_adjusted_opt(expr).unwrap_or(Ty::new_misc_error(self.tcx)),
@@ -1146,7 +1196,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
             prev = Some(err_ty);
         }
-        suggested
+        (suggested, noted_missing_impl)
     }
 
     fn note_missing_impl_for_question_mark(
@@ -1155,7 +1205,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         self_ty: Ty<'_>,
         found_ty: Option<Ty<'_>>,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
-    ) {
+    ) -> bool {
         match (self_ty.kind(), found_ty) {
             (ty::Adt(def, _), Some(ty))
                 if let ty::Adt(found, _) = ty.kind()
@@ -1196,8 +1246,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     format!("`{ty}` needs to implement `Into<{self_ty}>`"),
                 );
             }
-            _ => {}
+            _ => return false,
         }
+        true
     }
 
     fn report_const_param_not_wf(
@@ -2265,7 +2316,19 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 cand
             })
             .collect();
-        impl_candidates.sort_by_key(|cand| (cand.similarity, cand.trait_ref.to_string()));
+        impl_candidates.sort_by_key(|cand| {
+            // When suggesting array types, sort them by the length of the array, not lexicographically (#135098)
+            let len = if let GenericArgKind::Type(ty) = cand.trait_ref.args[0].kind()
+                && let ty::Array(_, len) = ty.kind()
+            {
+                // Deprioritize suggestions for parameterized arrays.
+                len.try_to_target_usize(self.tcx).unwrap_or(u64::MAX)
+            } else {
+                0
+            };
+
+            (cand.similarity, len, cand.trait_ref.to_string())
+        });
         let mut impl_candidates: Vec<_> =
             impl_candidates.into_iter().map(|cand| cand.trait_ref).collect();
         impl_candidates.dedup();
@@ -2561,8 +2624,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
 
             // Erase regions because layout code doesn't particularly care about regions.
-            let trait_pred =
-                self.tcx.erase_regions(self.tcx.instantiate_bound_regions_with_erased(trait_pred));
+            let trait_pred = self.tcx.erase_and_anonymize_regions(
+                self.tcx.instantiate_bound_regions_with_erased(trait_pred),
+            );
 
             let src_and_dst = rustc_transmute::Types {
                 dst: trait_pred.trait_ref.args.type_at(0),
@@ -2716,12 +2780,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         span: Span,
         is_fn_trait: bool,
         suggested: bool,
-        unsatisfied_const: bool,
     ) {
         let body_def_id = obligation.cause.body_id;
-        let span = if let ObligationCauseCode::BinOp { rhs_span: Some(rhs_span), .. } =
-            obligation.cause.code()
-        {
+        let span = if let ObligationCauseCode::BinOp { rhs_span, .. } = obligation.cause.code() {
             *rhs_span
         } else {
             span
@@ -2763,10 +2824,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 self.tcx.def_span(trait_def_id),
                 crate::fluent_generated::trait_selection_trait_has_no_impls,
             );
-        } else if !suggested
-            && !unsatisfied_const
-            && trait_predicate.polarity() == ty::PredicatePolarity::Positive
-        {
+        } else if !suggested && trait_predicate.polarity() == ty::PredicatePolarity::Positive {
             // Can't show anything else useful, try to find similar impls.
             let impl_candidates = self.find_similar_impl_candidates(trait_predicate);
             if !self.report_similar_impl_candidates(
@@ -2876,17 +2934,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 given_args,
             );
         }
-    }
-
-    fn maybe_add_note_for_unsatisfied_const(
-        &self,
-        _trait_predicate: ty::PolyTraitPredicate<'tcx>,
-        _err: &mut Diag<'_>,
-        _span: Span,
-    ) -> UnsatisfiedConst {
-        let unsatisfied_const = UnsatisfiedConst(false);
-        // FIXME(const_trait_impl)
-        unsatisfied_const
     }
 
     fn report_closure_error(

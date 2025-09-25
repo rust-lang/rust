@@ -9,7 +9,7 @@ use std::process::{Command, Stdio};
 
 use object::read::archive::{ArchiveFile, ArchiveMember};
 use object::{
-    File as ObjFile, Object, ObjectSymbol, Symbol, SymbolKind, SymbolScope, SymbolSection,
+    File as ObjFile, Object, ObjectSection, ObjectSymbol, Symbol, SymbolKind, SymbolScope,
 };
 use serde_json::Value;
 
@@ -154,7 +154,7 @@ struct SymInfo {
     name: String,
     kind: SymbolKind,
     scope: SymbolScope,
-    section: SymbolSection,
+    section: String,
     is_undefined: bool,
     is_global: bool,
     is_local: bool,
@@ -165,12 +165,22 @@ struct SymInfo {
 }
 
 impl SymInfo {
-    fn new(sym: &Symbol, member: &ArchiveMember) -> Self {
+    fn new(sym: &Symbol, obj: &ObjFile, member: &ArchiveMember) -> Self {
+        // Include the section name if possible. Fall back to the `Section` debug impl if not.
+        let section = sym.section();
+        let section_name = sym
+            .section()
+            .index()
+            .and_then(|idx| obj.section_by_index(idx).ok())
+            .and_then(|sec| sec.name().ok())
+            .map(ToString::to_string)
+            .unwrap_or_else(|| format!("{section:?}"));
+
         Self {
             name: sym.name().expect("missing name").to_owned(),
             kind: sym.kind(),
             scope: sym.scope(),
-            section: sym.section(),
+            section: section_name,
             is_undefined: sym.is_undefined(),
             is_global: sym.is_global(),
             is_local: sym.is_local(),
@@ -192,22 +202,27 @@ fn verify_no_duplicates(archive: &Archive) {
     let mut dups = Vec::new();
     let mut found_any = false;
 
-    archive.for_each_symbol(|symbol, member| {
+    archive.for_each_symbol(|symbol, obj, member| {
         // Only check defined globals
         if !symbol.is_global() || symbol.is_undefined() {
             return;
         }
 
-        let sym = SymInfo::new(&symbol, member);
+        let sym = SymInfo::new(&symbol, obj, member);
 
         // x86-32 includes multiple copies of thunk symbols
         if sym.name.starts_with("__x86.get_pc_thunk") {
             return;
         }
 
+        // GDB pretty printing symbols may show up more than once but are weak.
+        if sym.section == ".debug_gdb_scripts" && sym.is_weak {
+            return;
+        }
+
         // Windows has symbols for literal numeric constants, string literals, and MinGW pseudo-
         // relocations. These are allowed to have repeated definitions.
-        let win_allowed_dup_pfx = ["__real@", "__xmm@", "??_C@_", ".refptr"];
+        let win_allowed_dup_pfx = ["__real@", "__xmm@", "__ymm@", "??_C@_", ".refptr"];
         if win_allowed_dup_pfx
             .iter()
             .any(|pfx| sym.name.starts_with(pfx))
@@ -244,7 +259,7 @@ fn verify_core_symbols(archive: &Archive) {
     let mut undefined = Vec::new();
     let mut has_symbols = false;
 
-    archive.for_each_symbol(|symbol, member| {
+    archive.for_each_symbol(|symbol, obj, member| {
         has_symbols = true;
 
         // Find only symbols from `core`
@@ -252,7 +267,7 @@ fn verify_core_symbols(archive: &Archive) {
             return;
         }
 
-        let sym = SymInfo::new(&symbol, member);
+        let sym = SymInfo::new(&symbol, obj, member);
         if sym.is_undefined {
             undefined.push(sym);
         } else {
@@ -304,9 +319,9 @@ impl Archive {
     }
 
     /// For a given archive, do something with each symbol.
-    fn for_each_symbol(&self, mut f: impl FnMut(Symbol, &ArchiveMember)) {
+    fn for_each_symbol(&self, mut f: impl FnMut(Symbol, &ObjFile, &ArchiveMember)) {
         self.for_each_object(|obj, member| {
-            obj.symbols().for_each(|sym| f(sym, member));
+            obj.symbols().for_each(|sym| f(sym, &obj, member));
         });
     }
 }

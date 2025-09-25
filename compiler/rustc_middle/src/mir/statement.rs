@@ -160,7 +160,11 @@ impl<'tcx> PlaceTy<'tcx> {
     /// Convenience wrapper around `projection_ty_core` for `PlaceElem`,
     /// where we can just use the `Ty` that is already stored inline on
     /// field projection elems.
-    pub fn projection_ty(self, tcx: TyCtxt<'tcx>, elem: PlaceElem<'tcx>) -> PlaceTy<'tcx> {
+    pub fn projection_ty<V: ::std::fmt::Debug>(
+        self,
+        tcx: TyCtxt<'tcx>,
+        elem: ProjectionElem<V, Ty<'tcx>>,
+    ) -> PlaceTy<'tcx> {
         self.projection_ty_core(tcx, &elem, |ty| ty, |_, _, _, ty| ty, |ty| ty)
     }
 
@@ -290,6 +294,36 @@ impl<V, T> ProjectionElem<V, T> {
             Self::UnwrapUnsafeBinder(..) => false,
         }
     }
+
+    /// Returns the `ProjectionKind` associated to this projection.
+    pub fn kind(self) -> ProjectionKind {
+        self.try_map(|_| Some(()), |_| ()).unwrap()
+    }
+
+    /// Apply functions to types and values in this projection and return the result.
+    pub fn try_map<V2, T2>(
+        self,
+        v: impl FnOnce(V) -> Option<V2>,
+        t: impl FnOnce(T) -> T2,
+    ) -> Option<ProjectionElem<V2, T2>> {
+        Some(match self {
+            ProjectionElem::Deref => ProjectionElem::Deref,
+            ProjectionElem::Downcast(name, read_variant) => {
+                ProjectionElem::Downcast(name, read_variant)
+            }
+            ProjectionElem::Field(f, ty) => ProjectionElem::Field(f, t(ty)),
+            ProjectionElem::ConstantIndex { offset, min_length, from_end } => {
+                ProjectionElem::ConstantIndex { offset, min_length, from_end }
+            }
+            ProjectionElem::Subslice { from, to, from_end } => {
+                ProjectionElem::Subslice { from, to, from_end }
+            }
+            ProjectionElem::OpaqueCast(ty) => ProjectionElem::OpaqueCast(t(ty)),
+            ProjectionElem::Subtype(ty) => ProjectionElem::Subtype(t(ty)),
+            ProjectionElem::UnwrapUnsafeBinder(ty) => ProjectionElem::UnwrapUnsafeBinder(t(ty)),
+            ProjectionElem::Index(val) => ProjectionElem::Index(v(val)?),
+        })
+    }
 }
 
 /// Alias for projections as they appear in `UserTypeProjection`, where we
@@ -374,14 +408,14 @@ impl<'tcx> Place<'tcx> {
         self.as_ref().project_deeper(more_projections, tcx)
     }
 
-    pub fn ty_from<D: ?Sized>(
+    pub fn ty_from<D>(
         local: Local,
         projection: &[PlaceElem<'tcx>],
         local_decls: &D,
         tcx: TyCtxt<'tcx>,
     ) -> PlaceTy<'tcx>
     where
-        D: HasLocalDecls<'tcx>,
+        D: ?Sized + HasLocalDecls<'tcx>,
     {
         PlaceTy::from_ty(local_decls.local_decls()[local].ty).multi_projection_ty(tcx, projection)
     }
@@ -495,9 +529,9 @@ impl<'tcx> PlaceRef<'tcx> {
         Place { local: self.local, projection: tcx.mk_place_elems(new_projections) }
     }
 
-    pub fn ty<D: ?Sized>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> PlaceTy<'tcx>
+    pub fn ty<D>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> PlaceTy<'tcx>
     where
-        D: HasLocalDecls<'tcx>,
+        D: ?Sized + HasLocalDecls<'tcx>,
     {
         Place::ty_from(self.local, self.projection, local_decls, tcx)
     }
@@ -596,9 +630,9 @@ impl<'tcx> Operand<'tcx> {
         if let ty::FnDef(def_id, args) = *const_ty.kind() { Some((def_id, args)) } else { None }
     }
 
-    pub fn ty<D: ?Sized>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> Ty<'tcx>
+    pub fn ty<D>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> Ty<'tcx>
     where
-        D: HasLocalDecls<'tcx>,
+        D: ?Sized + HasLocalDecls<'tcx>,
     {
         match self {
             &Operand::Copy(ref l) | &Operand::Move(ref l) => l.ty(local_decls, tcx).ty,
@@ -606,9 +640,9 @@ impl<'tcx> Operand<'tcx> {
         }
     }
 
-    pub fn span<D: ?Sized>(&self, local_decls: &D) -> Span
+    pub fn span<D>(&self, local_decls: &D) -> Span
     where
-        D: HasLocalDecls<'tcx>,
+        D: ?Sized + HasLocalDecls<'tcx>,
     {
         match self {
             &Operand::Copy(ref l) | &Operand::Move(ref l) => {
@@ -640,7 +674,7 @@ impl<'tcx> ConstOperand<'tcx> {
 }
 
 ///////////////////////////////////////////////////////////////////////////
-/// Rvalues
+// Rvalues
 
 pub enum RvalueInitializationState {
     Shallow,
@@ -663,7 +697,6 @@ impl<'tcx> Rvalue<'tcx> {
             | Rvalue::Ref(_, _, _)
             | Rvalue::ThreadLocalRef(_)
             | Rvalue::RawPtr(_, _)
-            | Rvalue::Len(_)
             | Rvalue::Cast(
                 CastKind::IntToInt
                 | CastKind::FloatToInt
@@ -687,9 +720,9 @@ impl<'tcx> Rvalue<'tcx> {
         }
     }
 
-    pub fn ty<D: ?Sized>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> Ty<'tcx>
+    pub fn ty<D>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> Ty<'tcx>
     where
-        D: HasLocalDecls<'tcx>,
+        D: ?Sized + HasLocalDecls<'tcx>,
     {
         match *self {
             Rvalue::Use(ref operand) => operand.ty(local_decls, tcx),
@@ -705,7 +738,6 @@ impl<'tcx> Rvalue<'tcx> {
                 let place_ty = place.ty(local_decls, tcx).ty;
                 Ty::new_ptr(tcx, place_ty, kind.to_mutbl_lossy())
             }
-            Rvalue::Len(..) => tcx.types.usize,
             Rvalue::Cast(.., ty) => ty,
             Rvalue::BinaryOp(op, box (ref lhs, ref rhs)) => {
                 let lhs_ty = lhs.ty(local_decls, tcx);

@@ -196,7 +196,7 @@ to enable.
 
 ### Document keywords
 
-This is for Rust compiler internal use only.
+This is for internal use in the std library.
 
 Rust keywords are documented in the standard library (look for `match` for example).
 
@@ -208,6 +208,23 @@ To do so, the `#[doc(keyword = "...")]` attribute is used. Example:
 
 /// Some documentation about the keyword.
 #[doc(keyword = "break")]
+mod empty_mod {}
+```
+
+### Document builtin attributes
+
+This is for internal use in the std library.
+
+Rust builtin attributes are documented in the standard library (look for `repr` for example).
+
+To do so, the `#[doc(attribute = "...")]` attribute is used. Example:
+
+```rust
+#![feature(rustdoc_internals)]
+#![allow(internal_features)]
+
+/// Some documentation about the attribute.
+#[doc(attribute = "repr")]
 mod empty_mod {}
 ```
 
@@ -796,3 +813,7 @@ will be split as follows:
     "you today?",
 ]
 ```
+
+## `--generate-macro-expansion`: Generate macros expansion toggles in source code
+
+This flag enables the generation of toggles to expand macros in the HTML source code pages.

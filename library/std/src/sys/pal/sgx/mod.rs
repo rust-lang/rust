@@ -13,7 +13,6 @@ mod libunwind_integration;
 pub mod os;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;
-pub mod thread;
 pub mod thread_parking;
 pub mod time;
 pub mod waitqueue;
@@ -59,8 +58,7 @@ pub fn sgx_ineffective<T>(v: T) -> crate::io::Result<T> {
 
 #[inline]
 pub fn is_interrupted(code: i32) -> bool {
-    use fortanix_sgx_abi::Error;
-    code == Error::Interrupted as _
+    code == fortanix_sgx_abi::Error::Interrupted as _
 }
 
 pub fn decode_error_kind(code: i32) -> ErrorKind {

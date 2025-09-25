@@ -213,40 +213,6 @@ nonpoison_and_poison_unwrap_test!(
     }
 );
 
-// FIXME(nonpoison_condvar): Move this to the `condvar.rs` test file once `nonpoison::condvar` gets
-// implemented.
-#[test]
-fn test_mutex_arc_condvar() {
-    struct Packet<T>(Arc<(Mutex<T>, Condvar)>);
-
-    let packet = Packet(Arc::new((Mutex::new(false), Condvar::new())));
-    let packet2 = Packet(packet.0.clone());
-
-    let (tx, rx) = channel();
-
-    let _t = thread::spawn(move || {
-        // Wait until our parent has taken the lock.
-        rx.recv().unwrap();
-        let &(ref lock, ref cvar) = &*packet2.0;
-
-        // Set the data to `true` and wake up our parent.
-        let mut guard = lock.lock().unwrap();
-        *guard = true;
-        cvar.notify_one();
-    });
-
-    let &(ref lock, ref cvar) = &*packet.0;
-    let mut guard = lock.lock().unwrap();
-    // Wake up our child.
-    tx.send(()).unwrap();
-
-    // Wait until our child has set the data to `true`.
-    assert!(!*guard);
-    while !*guard {
-        guard = cvar.wait(guard).unwrap();
-    }
-}
-
 nonpoison_and_poison_unwrap_test!(
     name: test_mutex_arc_nested,
     test_body: {
@@ -300,7 +266,7 @@ nonpoison_and_poison_unwrap_test!(
     }
 );
 
-#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+#[cfg(panic = "unwind")] // Requires unwinding support.
 nonpoison_and_poison_unwrap_test!(
     name: test_panics,
     test_body: {
@@ -331,7 +297,7 @@ nonpoison_and_poison_unwrap_test!(
     }
 );
 
-#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+#[cfg(panic = "unwind")] // Requires unwinding support.
 nonpoison_and_poison_unwrap_test!(
     name: test_mutex_arc_access_in_unwind,
     test_body: {

@@ -390,7 +390,8 @@ impl<T: Ord + Copy> Ord for Cell<T> {
 }
 
 #[stable(feature = "cell_from", since = "1.12.0")]
-impl<T> From<T> for Cell<T> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T> const From<T> for Cell<T> {
     /// Creates a new `Cell<T>` containing the given value.
     fn from(t: T) -> Cell<T> {
         Cell::new(t)
@@ -698,14 +699,14 @@ impl<T, const N: usize> Cell<[T; N]> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(as_array_of_cells)]
     /// use std::cell::Cell;
     ///
     /// let mut array: [i32; 3] = [1, 2, 3];
     /// let cell_array: &Cell<[i32; 3]> = Cell::from_mut(&mut array);
     /// let array_cell: &[Cell<i32>; 3] = cell_array.as_array_of_cells();
     /// ```
-    #[unstable(feature = "as_array_of_cells", issue = "88248")]
+    #[stable(feature = "as_array_of_cells", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "as_array_of_cells", since = "CURRENT_RUSTC_VERSION")]
     pub const fn as_array_of_cells(&self) -> &[Cell<T>; N] {
         // SAFETY: `Cell<T>` has the same memory layout as `T`.
         unsafe { &*(self as *const Cell<[T; N]> as *const [Cell<T>; N]) }
@@ -777,7 +778,7 @@ impl Display for BorrowMutError {
 }
 
 // This ensures the panicking code is outlined from `borrow_mut` for `RefCell`.
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+#[cfg_attr(not(panic = "immediate-abort"), inline(never))]
 #[track_caller]
 #[cold]
 const fn panic_already_borrowed(err: BorrowMutError) -> ! {
@@ -789,7 +790,7 @@ const fn panic_already_borrowed(err: BorrowMutError) -> ! {
 }
 
 // This ensures the panicking code is outlined from `borrow` for `RefCell`.
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+#[cfg_attr(not(panic = "immediate-abort"), inline(never))]
 #[track_caller]
 #[cold]
 const fn panic_already_mutably_borrowed(err: BorrowError) -> ! {
@@ -1402,7 +1403,8 @@ impl<T: ?Sized + Ord> Ord for RefCell<T> {
 }
 
 #[stable(feature = "cell_from", since = "1.12.0")]
-impl<T> From<T> for RefCell<T> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T> const From<T> for RefCell<T> {
     /// Creates a new `RefCell<T>` containing the given value.
     fn from(t: T) -> RefCell<T> {
         RefCell::new(t)
@@ -1483,7 +1485,7 @@ pub struct Ref<'b, T: ?Sized + 'b> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_deref", issue = "88955")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T: ?Sized> const Deref for Ref<'_, T> {
     type Target = T;
 
@@ -1570,6 +1572,47 @@ impl<'b, T: ?Sized> Ref<'b, T> {
         match f(&*orig) {
             Some(value) => Ok(Ref { value: NonNull::from(value), borrow: orig.borrow }),
             None => Err(orig),
+        }
+    }
+
+    /// Tries to makes a new `Ref` for a component of the borrowed data.
+    /// On failure, the original guard is returned alongside with the error
+    /// returned by the closure.
+    ///
+    /// The `RefCell` is already immutably borrowed, so this cannot fail.
+    ///
+    /// This is an associated function that needs to be used as
+    /// `Ref::try_map(...)`. A method would interfere with methods of the same
+    /// name on the contents of a `RefCell` used through `Deref`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(refcell_try_map)]
+    /// use std::cell::{RefCell, Ref};
+    /// use std::str::{from_utf8, Utf8Error};
+    ///
+    /// let c = RefCell::new(vec![0xF0, 0x9F, 0xA6 ,0x80]);
+    /// let b1: Ref<'_, Vec<u8>> = c.borrow();
+    /// let b2: Result<Ref<'_, str>, _> = Ref::try_map(b1, |v| from_utf8(v));
+    /// assert_eq!(&*b2.unwrap(), "🦀");
+    ///
+    /// let c = RefCell::new(vec![0xF0, 0x9F, 0xA6]);
+    /// let b1: Ref<'_, Vec<u8>> = c.borrow();
+    /// let b2: Result<_, (Ref<'_, Vec<u8>>, Utf8Error)> = Ref::try_map(b1, |v| from_utf8(v));
+    /// let (b3, e) = b2.unwrap_err();
+    /// assert_eq!(*b3, vec![0xF0, 0x9F, 0xA6]);
+    /// assert_eq!(e.valid_up_to(), 0);
+    /// ```
+    #[unstable(feature = "refcell_try_map", issue = "143801")]
+    #[inline]
+    pub fn try_map<U: ?Sized, E>(
+        orig: Ref<'b, T>,
+        f: impl FnOnce(&T) -> Result<&U, E>,
+    ) -> Result<Ref<'b, U>, (Self, E)> {
+        match f(&*orig) {
+            Ok(value) => Ok(Ref { value: NonNull::from(value), borrow: orig.borrow }),
+            Err(e) => Err((orig, e)),
         }
     }
 
@@ -1734,6 +1777,58 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
         }
     }
 
+    /// Tries to makes a new `RefMut` for a component of the borrowed data.
+    /// On failure, the original guard is returned alongside with the error
+    /// returned by the closure.
+    ///
+    /// The `RefCell` is already mutably borrowed, so this cannot fail.
+    ///
+    /// This is an associated function that needs to be used as
+    /// `RefMut::try_map(...)`. A method would interfere with methods of the same
+    /// name on the contents of a `RefCell` used through `Deref`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(refcell_try_map)]
+    /// use std::cell::{RefCell, RefMut};
+    /// use std::str::{from_utf8_mut, Utf8Error};
+    ///
+    /// let c = RefCell::new(vec![0x68, 0x65, 0x6C, 0x6C, 0x6F]);
+    /// {
+    ///     let b1: RefMut<'_, Vec<u8>> = c.borrow_mut();
+    ///     let b2: Result<RefMut<'_, str>, _> = RefMut::try_map(b1, |v| from_utf8_mut(v));
+    ///     let mut b2 = b2.unwrap();
+    ///     assert_eq!(&*b2, "hello");
+    ///     b2.make_ascii_uppercase();
+    /// }
+    /// assert_eq!(*c.borrow(), "HELLO".as_bytes());
+    ///
+    /// let c = RefCell::new(vec![0xFF]);
+    /// let b1: RefMut<'_, Vec<u8>> = c.borrow_mut();
+    /// let b2: Result<_, (RefMut<'_, Vec<u8>>, Utf8Error)> = RefMut::try_map(b1, |v| from_utf8_mut(v));
+    /// let (b3, e) = b2.unwrap_err();
+    /// assert_eq!(*b3, vec![0xFF]);
+    /// assert_eq!(e.valid_up_to(), 0);
+    /// ```
+    #[unstable(feature = "refcell_try_map", issue = "143801")]
+    #[inline]
+    pub fn try_map<U: ?Sized, E>(
+        mut orig: RefMut<'b, T>,
+        f: impl FnOnce(&mut T) -> Result<&mut U, E>,
+    ) -> Result<RefMut<'b, U>, (Self, E)> {
+        // SAFETY: function holds onto an exclusive reference for the duration
+        // of its call through `orig`, and the pointer is only de-referenced
+        // inside of the function call never allowing the exclusive reference to
+        // escape.
+        match f(&mut *orig) {
+            Ok(value) => {
+                Ok(RefMut { value: NonNull::from(value), borrow: orig.borrow, marker: PhantomData })
+            }
+            Err(e) => Err((orig, e)),
+        }
+    }
+
     /// Splits a `RefMut` into multiple `RefMut`s for different components of the
     /// borrowed data.
     ///
@@ -1874,7 +1969,7 @@ pub struct RefMut<'b, T: ?Sized + 'b> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_deref", issue = "88955")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T: ?Sized> const Deref for RefMut<'_, T> {
     type Target = T;
 
@@ -1886,7 +1981,7 @@ impl<T: ?Sized> const Deref for RefMut<'_, T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_deref", issue = "88955")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T: ?Sized> const DerefMut for RefMut<'_, T> {
     #[inline]
     fn deref_mut(&mut self) -> &mut T {
@@ -2341,7 +2436,8 @@ impl<T: [const] Default> const Default for UnsafeCell<T> {
 }
 
 #[stable(feature = "cell_from", since = "1.12.0")]
-impl<T> From<T> for UnsafeCell<T> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T> const From<T> for UnsafeCell<T> {
     /// Creates a new `UnsafeCell<T>` containing the given value.
     fn from(t: T) -> UnsafeCell<T> {
         UnsafeCell::new(t)
@@ -2446,7 +2542,8 @@ impl<T: [const] Default> const Default for SyncUnsafeCell<T> {
 }
 
 #[unstable(feature = "sync_unsafe_cell", issue = "95439")]
-impl<T> From<T> for SyncUnsafeCell<T> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T> const From<T> for SyncUnsafeCell<T> {
     /// Creates a new `SyncUnsafeCell<T>` containing the given value.
     fn from(t: T) -> SyncUnsafeCell<T> {
         SyncUnsafeCell::new(t)

@@ -1,6 +1,6 @@
 [package]
 name = "clippy_lints"
-version = "0.1.91"
+version = "0.1.92"
 description = "A bunch of helpful lints to avoid common pitfalls in Rust"
 repository = "https://github.com/rust-lang/rust-clippy"
 readme = "README.md"
@@ -26,6 +26,10 @@ url = "2.2"
 
 [dev-dependencies]
 walkdir = "2.3"
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = ['cfg(bootstrap)']
 
 [package.metadata.rust-analyzer]
 # This crate uses #[feature(rustc_private)]

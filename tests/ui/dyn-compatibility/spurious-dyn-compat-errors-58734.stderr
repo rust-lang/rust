@@ -1,0 +1,42 @@
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/spurious-dyn-compat-errors-58734.rs:21:5
+   |
+LL |     Trait::nonexistent(());
+   |     ^^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: `#[warn(bare_trait_objects)]` (part of `#[warn(rust_2021_compatibility)]`) on by default
+help: if this is a dyn-compatible trait, use `dyn`
+   |
+LL |     <dyn Trait>::nonexistent(());
+   |     ++++      +
+
+error[E0038]: the trait `Trait` is not dyn compatible
+  --> $DIR/spurious-dyn-compat-errors-58734.rs:21:5
+   |
+LL |     Trait::nonexistent(());
+   |     ^^^^^ `Trait` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/spurious-dyn-compat-errors-58734.rs:5:8
+   |
+LL | trait Trait {
+   |       ----- this trait is not dyn compatible...
+...
+LL |     fn dyn_incompatible() -> Self;
+   |        ^^^^^^^^^^^^^^^^ ...because associated function `dyn_incompatible` has no `self` parameter
+   = help: only type `()` implements `Trait`; consider using it directly instead.
+help: consider turning `dyn_incompatible` into a method by giving it a `&self` argument
+   |
+LL |     fn dyn_incompatible(&self) -> Self;
+   |                         +++++
+help: alternatively, consider constraining `dyn_incompatible` so it does not apply to trait objects
+   |
+LL |     fn dyn_incompatible() -> Self where Self: Sized;
+   |                                   +++++++++++++++++
+
+error: aborting due to 1 previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0038`.

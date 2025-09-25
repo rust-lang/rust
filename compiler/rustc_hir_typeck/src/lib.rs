@@ -46,14 +46,14 @@ use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, pluralize, struct_span_code_err};
 use rustc_hir as hir;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{HirId, HirIdMap, Node, find_attr};
+use rustc_hir::{HirId, HirIdMap, Node};
 use rustc_hir_analysis::check::{check_abi, check_custom_abi};
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::traits::{ObligationCauseCode, ObligationInspector, WellFormedLoc};
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config;
 use rustc_span::Span;
@@ -174,7 +174,7 @@ fn typeck_with_inspect<'tcx>(
                 .map(|(idx, ty)| fcx.normalize(arg_span(idx), ty)),
         );
 
-        if find_attr!(tcx.get_all_attrs(def_id), AttributeKind::Naked(..)) {
+        if tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::NAKED) {
             naked_functions::typeck_naked_fn(tcx, def_id, body);
         }
 
@@ -247,32 +247,20 @@ fn typeck_with_inspect<'tcx>(
 
     debug!(pending_obligations = ?fcx.fulfillment_cx.borrow().pending_obligations());
 
-    if let None = fcx.infcx.tainted_by_errors() {
-        fcx.report_ambiguity_errors();
+    // We need to handle opaque types before emitting ambiguity errors as applying
+    // defining uses may guide type inference.
+    if fcx.next_trait_solver() {
+        fcx.handle_opaque_type_uses_next();
     }
 
-    if let None = fcx.infcx.tainted_by_errors() {
-        fcx.check_transmutes();
+    fcx.select_obligations_where_possible(|_| {});
+    if fcx.infcx.tainted_by_errors().is_none() {
+        fcx.report_ambiguity_errors();
     }
 
     fcx.check_asms();
 
     let typeck_results = fcx.resolve_type_vars_in_body(body);
-
-    // Handle potentially region dependent goals, see `InferCtxt::in_hir_typeck`.
-    if let None = fcx.infcx.tainted_by_errors() {
-        for obligation in fcx.take_hir_typeck_potentially_region_dependent_goals() {
-            let obligation = fcx.resolve_vars_if_possible(obligation);
-            if obligation.has_non_region_infer() {
-                bug!("unexpected inference variable after writeback: {obligation:?}");
-            }
-            fcx.register_predicate(obligation);
-        }
-        fcx.select_obligations_where_possible(|_| {});
-        if let None = fcx.infcx.tainted_by_errors() {
-            fcx.report_ambiguity_errors();
-        }
-    }
 
     fcx.detect_opaque_types_added_during_writeback();
 
@@ -290,8 +278,7 @@ fn infer_type_if_missing<'tcx>(fcx: &FnCtxt<'_, 'tcx>, node: Node<'tcx>) -> Opti
     {
         if let Some(item) = tcx.opt_associated_item(def_id.into())
             && let ty::AssocKind::Const { .. } = item.kind
-            && let ty::AssocItemContainer::Impl = item.container
-            && let Some(trait_item_def_id) = item.trait_item_def_id
+            && let ty::AssocContainer::TraitImpl(Ok(trait_item_def_id)) = item.container
         {
             let impl_def_id = item.container_id(tcx);
             let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().instantiate_identity();
@@ -308,7 +295,7 @@ fn infer_type_if_missing<'tcx>(fcx: &FnCtxt<'_, 'tcx>, node: Node<'tcx>) -> Opti
     } else if let Node::AnonConst(_) = node {
         let id = tcx.local_def_id_to_hir_id(def_id);
         match tcx.parent_hir_node(id) {
-            Node::Ty(&hir::Ty { kind: hir::TyKind::Typeof(ref anon_const), span, .. })
+            Node::Ty(&hir::Ty { kind: hir::TyKind::Typeof(anon_const), span, .. })
                 if anon_const.hir_id == id =>
             {
                 Some(fcx.next_ty_var(span))
@@ -555,6 +542,7 @@ pub fn provide(providers: &mut Providers) {
         method_autoderef_steps: method::probe::method_autoderef_steps,
         typeck,
         used_trait_imports,
+        check_transmutes: intrinsicck::check_transmutes,
         ..*providers
     };
 }

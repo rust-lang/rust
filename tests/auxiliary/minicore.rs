@@ -179,7 +179,14 @@ impl Add<isize> for isize {
 
 #[lang = "sync"]
 trait Sync {}
-impl Sync for u8 {}
+impl_marker_trait!(
+    Sync => [
+        char, bool,
+        isize, i8, i16, i32, i64, i128,
+        usize, u8, u16, u32, u64, u128,
+        f16, f32, f64, f128,
+    ]
+);
 
 #[lang = "drop_in_place"]
 fn drop_in_place<T>(_: *mut T) {}
@@ -224,4 +231,11 @@ pub mod mem {
     #[rustc_nounwind]
     #[rustc_intrinsic]
     pub unsafe fn transmute<Src, Dst>(src: Src) -> Dst;
+}
+
+#[lang = "c_void"]
+#[repr(u8)]
+pub enum c_void {
+    __variant1,
+    __variant2,
 }

@@ -2,7 +2,6 @@ use std::borrow::Cow;
 use std::fmt;
 use std::hash::Hash;
 
-use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
 use rustc_data_structures::base_n::{BaseNString, CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexMap;
@@ -10,9 +9,8 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHas
 use rustc_data_structures::unord::UnordMap;
 use rustc_hashes::Hash128;
 use rustc_hir::ItemId;
-use rustc_hir::attrs::InlineAttr;
+use rustc_hir::attrs::{InlineAttr, Linkage};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdSet, LOCAL_CRATE};
-use rustc_index::Idx;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::config::OptLevel;
@@ -337,7 +335,6 @@ impl ToStableHashKey<StableHashingContext<'_>> for MonoItem<'_> {
 pub struct MonoItemPartitions<'tcx> {
     pub codegen_units: &'tcx [CodegenUnit<'tcx>],
     pub all_mono_items: &'tcx DefIdSet,
-    pub autodiff_items: &'tcx [AutoDiffItem],
 }
 
 #[derive(Debug, HashStable)]
@@ -367,22 +364,6 @@ pub struct MonoItemData {
 
     /// A cached copy of the result of `MonoItem::size_estimate`.
     pub size_estimate: usize,
-}
-
-/// Specifies the linkage type for a `MonoItem`.
-///
-/// See <https://llvm.org/docs/LangRef.html#linkage-types> for more details about these variants.
-#[derive(Copy, Clone, PartialEq, Debug, TyEncodable, TyDecodable, HashStable)]
-pub enum Linkage {
-    External,
-    AvailableExternally,
-    LinkOnceAny,
-    LinkOnceODR,
-    WeakAny,
-    WeakODR,
-    Internal,
-    ExternalWeak,
-    Common,
 }
 
 /// Specifies the symbol visibility with regards to dynamic linking.
@@ -526,45 +507,68 @@ impl<'tcx> CodegenUnit<'tcx> {
         tcx: TyCtxt<'tcx>,
     ) -> Vec<(MonoItem<'tcx>, MonoItemData)> {
         // The codegen tests rely on items being process in the same order as
-        // they appear in the file, so for local items, we sort by node_id first
+        // they appear in the file, so for local items, we sort by span first
         #[derive(PartialEq, Eq, PartialOrd, Ord)]
-        struct ItemSortKey<'tcx>(Option<usize>, SymbolName<'tcx>);
+        struct ItemSortKey<'tcx>(Option<Span>, SymbolName<'tcx>);
 
+        // We only want to take HirIds of user-defines instances into account.
+        // The others don't matter for the codegen tests and can even make item
+        // order unstable.
+        fn local_item_id<'tcx>(item: MonoItem<'tcx>) -> Option<DefId> {
+            match item {
+                MonoItem::Fn(ref instance) => match instance.def {
+                    InstanceKind::Item(def) => def.as_local().map(|_| def),
+                    InstanceKind::VTableShim(..)
+                    | InstanceKind::ReifyShim(..)
+                    | InstanceKind::Intrinsic(..)
+                    | InstanceKind::FnPtrShim(..)
+                    | InstanceKind::Virtual(..)
+                    | InstanceKind::ClosureOnceShim { .. }
+                    | InstanceKind::ConstructCoroutineInClosureShim { .. }
+                    | InstanceKind::DropGlue(..)
+                    | InstanceKind::CloneShim(..)
+                    | InstanceKind::ThreadLocalShim(..)
+                    | InstanceKind::FnPtrAddrShim(..)
+                    | InstanceKind::AsyncDropGlue(..)
+                    | InstanceKind::FutureDropPollShim(..)
+                    | InstanceKind::AsyncDropGlueCtorShim(..) => None,
+                },
+                MonoItem::Static(def_id) => def_id.as_local().map(|_| def_id),
+                MonoItem::GlobalAsm(item_id) => Some(item_id.owner_id.def_id.to_def_id()),
+            }
+        }
         fn item_sort_key<'tcx>(tcx: TyCtxt<'tcx>, item: MonoItem<'tcx>) -> ItemSortKey<'tcx> {
             ItemSortKey(
-                match item {
-                    MonoItem::Fn(ref instance) => {
-                        match instance.def {
-                            // We only want to take HirIds of user-defined
-                            // instances into account. The others don't matter for
-                            // the codegen tests and can even make item order
-                            // unstable.
-                            InstanceKind::Item(def) => def.as_local().map(Idx::index),
-                            InstanceKind::VTableShim(..)
-                            | InstanceKind::ReifyShim(..)
-                            | InstanceKind::Intrinsic(..)
-                            | InstanceKind::FnPtrShim(..)
-                            | InstanceKind::Virtual(..)
-                            | InstanceKind::ClosureOnceShim { .. }
-                            | InstanceKind::ConstructCoroutineInClosureShim { .. }
-                            | InstanceKind::DropGlue(..)
-                            | InstanceKind::CloneShim(..)
-                            | InstanceKind::ThreadLocalShim(..)
-                            | InstanceKind::FnPtrAddrShim(..)
-                            | InstanceKind::AsyncDropGlue(..)
-                            | InstanceKind::FutureDropPollShim(..)
-                            | InstanceKind::AsyncDropGlueCtorShim(..) => None,
-                        }
-                    }
-                    MonoItem::Static(def_id) => def_id.as_local().map(Idx::index),
-                    MonoItem::GlobalAsm(item_id) => Some(item_id.owner_id.def_id.index()),
-                },
+                local_item_id(item)
+                    .map(|def_id| tcx.def_span(def_id).find_ancestor_not_from_macro())
+                    .flatten(),
                 item.symbol_name(tcx),
             )
         }
 
         let mut items: Vec<_> = self.items().iter().map(|(&i, &data)| (i, data)).collect();
-        items.sort_by_cached_key(|&(i, _)| item_sort_key(tcx, i));
+        if !tcx.sess.opts.unstable_opts.codegen_source_order {
+            // In this case, we do not need to keep the items in any specific order, as the input
+            // is already deterministic.
+            //
+            // However, it seems that moving related things (such as different
+            // monomorphizations of the same function) close to one another is actually beneficial
+            // for LLVM performance.
+            // LLVM will codegen the items in the order we pass them to it, and when it handles
+            // similar things in succession, it seems that it leads to better cache utilization,
+            // less branch mispredictions and in general to better performance.
+            // For example, if we have functions `a`, `c::<u32>`, `b`, `c::<i16>`, `d` and
+            // `c::<bool>`, it seems that it helps LLVM's performance to codegen the three `c`
+            // instantiations right after one another, as they will likely reference similar types,
+            // call similar functions, etc.
+            //
+            // See https://github.com/rust-lang/rust/pull/145358 for more details.
+            //
+            // Sorting by symbol name should not incur any new non-determinism.
+            items.sort_by_cached_key(|&(i, _)| i.symbol_name(tcx));
+        } else {
+            items.sort_by_cached_key(|&(i, _)| item_sort_key(tcx, i));
+        }
         items
     }
 

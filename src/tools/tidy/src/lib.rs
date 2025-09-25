@@ -4,12 +4,15 @@
 //! to be used by tools.
 
 use std::ffi::OsStr;
+use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::{env, io};
 
 use build_helper::ci::CiEnv;
 use build_helper::git::{GitConfig, get_closest_upstream_commit};
 use build_helper::stage0_parser::{Stage0Config, parse_stage0_file};
-use termcolor::WriteColor;
+
+use crate::diagnostics::{DiagCtx, RunningCheck};
 
 macro_rules! static_regex {
     ($re:literal) => {{
@@ -41,35 +44,6 @@ macro_rules! t {
     };
 }
 
-macro_rules! tidy_error {
-    ($bad:expr, $($fmt:tt)*) => ({
-        $crate::tidy_error(&format_args!($($fmt)*).to_string()).expect("failed to output error");
-        *$bad = true;
-    });
-}
-
-macro_rules! tidy_error_ext {
-    ($tidy_error:path, $bad:expr, $($fmt:tt)*) => ({
-        $tidy_error(&format_args!($($fmt)*).to_string()).expect("failed to output error");
-        *$bad = true;
-    });
-}
-
-fn tidy_error(args: &str) -> std::io::Result<()> {
-    use std::io::Write;
-
-    use termcolor::{Color, ColorChoice, ColorSpec, StandardStream};
-
-    let mut stderr = StandardStream::stdout(ColorChoice::Auto);
-    stderr.set_color(ColorSpec::new().set_fg(Some(Color::Red)))?;
-
-    write!(&mut stderr, "tidy error")?;
-    stderr.set_color(&ColorSpec::new())?;
-
-    writeln!(&mut stderr, ": {args}")?;
-    Ok(())
-}
-
 pub struct CiInfo {
     pub git_merge_commit_email: String,
     pub nightly_branch: String,
@@ -78,7 +52,9 @@ pub struct CiInfo {
 }
 
 impl CiInfo {
-    pub fn new(bad: &mut bool) -> Self {
+    pub fn new(diag_ctx: DiagCtx) -> Self {
+        let mut check = diag_ctx.start_check("CI history");
+
         let stage0 = parse_stage0_file();
         let Stage0Config { nightly_branch, git_merge_commit_email, .. } = stage0.config;
 
@@ -91,11 +67,14 @@ impl CiInfo {
         let base_commit = match get_closest_upstream_commit(None, &info.git_config(), info.ci_env) {
             Ok(Some(commit)) => Some(commit),
             Ok(None) => {
-                info.error_if_in_ci("no base commit found", bad);
+                info.error_if_in_ci("no base commit found", &mut check);
                 None
             }
             Err(error) => {
-                info.error_if_in_ci(&format!("failed to retrieve base commit: {error}"), bad);
+                info.error_if_in_ci(
+                    &format!("failed to retrieve base commit: {error}"),
+                    &mut check,
+                );
                 None
             }
         };
@@ -110,12 +89,11 @@ impl CiInfo {
         }
     }
 
-    pub fn error_if_in_ci(&self, msg: &str, bad: &mut bool) {
+    pub fn error_if_in_ci(&self, msg: &str, check: &mut RunningCheck) {
         if self.ci_env.is_running_in_ci() {
-            *bad = true;
-            eprintln!("tidy check error: {msg}");
+            check.error(msg);
         } else {
-            eprintln!("tidy check warning: {msg}. Some checks will be skipped.");
+            check.warning(format!("{msg}. Some checks will be skipped."));
         }
     }
 }
@@ -180,10 +158,75 @@ pub fn files_modified(ci_info: &CiInfo, pred: impl Fn(&str) -> bool) -> bool {
     !v.is_empty()
 }
 
+/// If the given executable is installed with the given version, use that,
+/// otherwise install via cargo.
+pub fn ensure_version_or_cargo_install(
+    build_dir: &Path,
+    cargo: &Path,
+    pkg_name: &str,
+    bin_name: &str,
+    version: &str,
+) -> io::Result<PathBuf> {
+    // ignore the process exit code here and instead just let the version number check fail.
+    // we also importantly don't return if the program wasn't installed,
+    // instead we want to continue to the fallback.
+    'ck: {
+        // FIXME: rewrite as if-let chain once this crate is 2024 edition.
+        let Ok(output) = Command::new(bin_name).arg("--version").output() else {
+            break 'ck;
+        };
+        let Ok(s) = str::from_utf8(&output.stdout) else {
+            break 'ck;
+        };
+        let Some(v) = s.trim().split_whitespace().last() else {
+            break 'ck;
+        };
+        if v == version {
+            return Ok(PathBuf::from(bin_name));
+        }
+    }
+
+    let tool_root_dir = build_dir.join("misc-tools");
+    let tool_bin_dir = tool_root_dir.join("bin");
+    eprintln!("building external tool {bin_name} from package {pkg_name}@{version}");
+    // use --force to ensure that if the required version is bumped, we update it.
+    // use --target-dir to ensure we have a build cache so repeated invocations aren't slow.
+    // modify PATH so that cargo doesn't print a warning telling the user to modify the path.
+    let cargo_exit_code = Command::new(cargo)
+        .args(["install", "--locked", "--force", "--quiet"])
+        .arg("--root")
+        .arg(&tool_root_dir)
+        .arg("--target-dir")
+        .arg(tool_root_dir.join("target"))
+        .arg(format!("{pkg_name}@{version}"))
+        .env(
+            "PATH",
+            env::join_paths(
+                env::split_paths(&env::var("PATH").unwrap())
+                    .chain(std::iter::once(tool_bin_dir.clone())),
+            )
+            .expect("build dir contains invalid char"),
+        )
+        .env("RUSTFLAGS", "-Copt-level=0")
+        .spawn()?
+        .wait()?;
+    if !cargo_exit_code.success() {
+        return Err(io::Error::other("cargo install failed"));
+    }
+    let bin_path = tool_bin_dir.join(bin_name).with_extension(env::consts::EXE_EXTENSION);
+    assert!(
+        matches!(bin_path.try_exists(), Ok(true)),
+        "cargo install did not produce the expected binary"
+    );
+    eprintln!("finished building tool {bin_name}");
+    Ok(bin_path)
+}
+
 pub mod alphabetical;
 pub mod bins;
 pub mod debug_artifacts;
 pub mod deps;
+pub mod diagnostics;
 pub mod edition;
 pub mod error_codes;
 pub mod extdeps;
@@ -191,6 +234,7 @@ pub mod extra_checks;
 pub mod features;
 pub mod filenames;
 pub mod fluent_alphabetical;
+pub mod fluent_lowercase;
 pub mod fluent_period;
 mod fluent_used;
 pub mod gcc_submodule;

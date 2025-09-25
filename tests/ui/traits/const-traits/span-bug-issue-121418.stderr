@@ -1,10 +1,10 @@
-error: inherent impls cannot be `const`
+error: inherent impls cannot be const
   --> $DIR/span-bug-issue-121418.rs:6:12
    |
 LL | impl const dyn T {
    |      ----- ^^^^^ inherent impl for this type
    |      |
-   |      `const` because of this
+   |      const because of this
    |
    = note: only trait implementations may be annotated with `const`
 

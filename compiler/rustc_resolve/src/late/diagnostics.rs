@@ -19,14 +19,13 @@ use rustc_errors::{
 };
 use rustc_hir as hir;
 use rustc_hir::def::Namespace::{self, *};
-use rustc_hir::def::{self, CtorKind, CtorOf, DefKind};
+use rustc_hir::def::{self, CtorKind, CtorOf, DefKind, MacroKinds};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_hir::{MissingLifetimeKind, PrimTy};
 use rustc_middle::ty;
 use rustc_session::{Session, lint};
 use rustc_span::edit_distance::{edit_distance, find_best_match_for_name};
 use rustc_span::edition::Edition;
-use rustc_span::hygiene::MacroKind;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use thin_vec::ThinVec;
 use tracing::debug;
@@ -39,8 +38,8 @@ use crate::late::{
 };
 use crate::ty::fast_reject::SimplifiedType;
 use crate::{
-    Module, ModuleKind, ModuleOrUniformRoot, PathResult, PathSource, Resolver, Segment, errors,
-    path_names_to_string,
+    Module, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult, PathSource, Resolver,
+    ScopeSet, Segment, errors, path_names_to_string,
 };
 
 type Res = def::Res<ast::NodeId>;
@@ -850,9 +849,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         }
 
         // Try to find in last block rib
-        if let Some(rib) = &self.last_block_rib
-            && let RibKind::Normal = rib.kind
-        {
+        if let Some(rib) = &self.last_block_rib {
             for (ident, &res) in &rib.bindings {
                 if let Res::Local(_) = res
                     && path.len() == 1
@@ -901,7 +898,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         if path.len() == 1 {
             for rib in self.ribs[ns].iter().rev() {
                 let item = path[0].ident;
-                if let RibKind::Module(module) = rib.kind
+                if let RibKind::Module(module) | RibKind::Block(Some(module)) = rib.kind
                     && let Some(did) = find_doc_alias_name(self.r, module, item.name)
                 {
                     return Some((did, item));
@@ -1850,12 +1847,12 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
         match (res, source) {
             (
-                Res::Def(DefKind::Macro(MacroKind::Bang), def_id),
+                Res::Def(DefKind::Macro(kinds), def_id),
                 PathSource::Expr(Some(Expr {
                     kind: ExprKind::Index(..) | ExprKind::Call(..), ..
                 }))
                 | PathSource::Struct(_),
-            ) => {
+            ) if kinds.contains(MacroKinds::BANG) => {
                 // Don't suggest macro if it's unstable.
                 let suggestable = def_id.is_local()
                     || self.r.tcx.lookup_stability(def_id).is_none_or(|s| s.is_stable());
@@ -1880,7 +1877,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     err.note("if you want the `try` keyword, you need Rust 2018 or later");
                 }
             }
-            (Res::Def(DefKind::Macro(MacroKind::Bang), _), _) => {
+            (Res::Def(DefKind::Macro(kinds), _), _) if kinds.contains(MacroKinds::BANG) => {
                 err.span_label(span, fallback_label.to_string());
             }
             (Res::Def(DefKind::TyAlias, def_id), PathSource::Trait(_)) => {
@@ -2459,44 +2456,28 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     }
                 }
 
+                if let RibKind::Block(Some(module)) = rib.kind {
+                    self.r.add_module_candidates(module, &mut names, &filter_fn, Some(ctxt));
+                } else if let RibKind::Module(module) = rib.kind {
+                    // Encountered a module item, abandon ribs and look into that module and preludes.
+                    let parent_scope = &ParentScope { module, ..self.parent_scope };
+                    self.r.add_scope_set_candidates(
+                        &mut names,
+                        ScopeSet::All(ns),
+                        parent_scope,
+                        ctxt,
+                        filter_fn,
+                    );
+                    break;
+                }
+
                 if let RibKind::MacroDefinition(def) = rib.kind
                     && def == self.r.macro_def(ctxt)
                 {
                     // If an invocation of this macro created `ident`, give up on `ident`
                     // and switch to `ident`'s source from the macro definition.
                     ctxt.remove_mark();
-                    continue;
                 }
-
-                // Items in scope
-                if let RibKind::Module(module) = rib.kind {
-                    // Items from this module
-                    self.r.add_module_candidates(module, &mut names, &filter_fn, Some(ctxt));
-
-                    if let ModuleKind::Block = module.kind {
-                        // We can see through blocks
-                    } else {
-                        // Items from the prelude
-                        if !module.no_implicit_prelude {
-                            names.extend(self.r.extern_prelude.keys().flat_map(|ident| {
-                                let res = Res::Def(DefKind::Mod, CRATE_DEF_ID.to_def_id());
-                                filter_fn(res)
-                                    .then_some(TypoSuggestion::typo_from_ident(ident.0, res))
-                            }));
-
-                            if let Some(prelude) = self.r.prelude {
-                                self.r.add_module_candidates(prelude, &mut names, &filter_fn, None);
-                            }
-                        }
-                        break;
-                    }
-                }
-            }
-            // Add primitive types to the mix
-            if filter_fn(Res::PrimTy(PrimTy::Bool)) {
-                names.extend(PrimTy::ALL.iter().map(|prim_ty| {
-                    TypoSuggestion::typo_from_name(prim_ty.name(), Res::PrimTy(*prim_ty))
-                }))
             }
         } else {
             // Search in module.
@@ -3114,11 +3095,11 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         } else {
             self.suggest_introducing_lifetime(
                 &mut err,
-                Some(lifetime_ref.ident.name.as_str()),
+                Some(lifetime_ref.ident),
                 |err, _, span, message, suggestion, span_suggs| {
                     err.multipart_suggestion_verbose(
                         message,
-                        std::iter::once((span, suggestion)).chain(span_suggs.clone()).collect(),
+                        std::iter::once((span, suggestion)).chain(span_suggs).collect(),
                         Applicability::MaybeIncorrect,
                     );
                     true
@@ -3132,7 +3113,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     fn suggest_introducing_lifetime(
         &self,
         err: &mut Diag<'_>,
-        name: Option<&str>,
+        name: Option<Ident>,
         suggest: impl Fn(
             &mut Diag<'_>,
             bool,
@@ -3179,7 +3160,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     let mut rm_inner_binders: FxIndexSet<Span> = Default::default();
                     let (span, sugg) = if span.is_empty() {
                         let mut binder_idents: FxIndexSet<Ident> = Default::default();
-                        binder_idents.insert(Ident::from_str(name.unwrap_or("'a")));
+                        binder_idents.insert(name.unwrap_or(Ident::from_str("'a")));
 
                         // We need to special case binders in the following situation:
                         // Change `T: for<'a> Trait<T> + 'b` to `for<'a, 'b> T: Trait<T> + 'b`
@@ -3209,16 +3190,11 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                             }
                         }
 
-                        let binders_sugg = binder_idents.into_iter().enumerate().fold(
-                            "".to_string(),
-                            |mut binders, (i, x)| {
-                                if i != 0 {
-                                    binders += ", ";
-                                }
-                                binders += x.as_str();
-                                binders
-                            },
-                        );
+                        let binders_sugg: String = binder_idents
+                            .into_iter()
+                            .map(|ident| ident.to_string())
+                            .intersperse(", ".to_owned())
+                            .collect();
                         let sugg = format!(
                             "{}<{}>{}",
                             if higher_ranked { "for" } else { "" },
@@ -3234,7 +3210,8 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                             .source_map()
                             .span_through_char(span, '<')
                             .shrink_to_hi();
-                        let sugg = format!("{}, ", name.unwrap_or("'a"));
+                        let sugg =
+                            format!("{}, ", name.map(|i| i.to_string()).as_deref().unwrap_or("'a"));
                         (span, sugg)
                     };
 
@@ -3242,7 +3219,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         let message = Cow::from(format!(
                             "consider making the {} lifetime-generic with a new `{}` lifetime",
                             kind.descr(),
-                            name.unwrap_or("'a"),
+                            name.map(|i| i.to_string()).as_deref().unwrap_or("'a"),
                         ));
                         should_continue = suggest(
                             err,

@@ -2,8 +2,10 @@ use std::iter::once;
 use std::path::{self, Path, PathBuf};
 
 use rustc_ast::{AttrVec, Attribute, Inline, Item, ModSpans};
+use rustc_attr_parsing::validate_attr;
 use rustc_errors::{Diag, ErrorGuaranteed};
-use rustc_parse::{exp, new_parser_from_file, unwrap_or_emit_fatal, validate_attr};
+use rustc_parse::lexer::StripTokens;
+use rustc_parse::{exp, new_parser_from_file, unwrap_or_emit_fatal};
 use rustc_session::Session;
 use rustc_session::parse::ParseSess;
 use rustc_span::{Ident, Span, sym};
@@ -66,8 +68,12 @@ pub(crate) fn parse_external_mod(
         }
 
         // Actually parse the external file as a module.
-        let mut parser =
-            unwrap_or_emit_fatal(new_parser_from_file(&sess.psess, &mp.file_path, Some(span)));
+        let mut parser = unwrap_or_emit_fatal(new_parser_from_file(
+            &sess.psess,
+            &mp.file_path,
+            StripTokens::ShebangAndFrontmatter,
+            Some(span),
+        ));
         let (inner_attrs, items, inner_span) =
             parser.parse_mod(exp!(Eof)).map_err(|err| ModError::ParserError(err))?;
         attrs.extend(inner_attrs);
@@ -120,7 +126,7 @@ pub(crate) fn mod_dir_path(
 
             (dir_path, dir_ownership)
         }
-        Inline::No => {
+        Inline::No { .. } => {
             // FIXME: This is a subset of `parse_external_mod` without actual parsing,
             // check whether the logic for unloaded, loaded and inline modules can be unified.
             let file_path = mod_file_path(sess, ident, attrs, &module.dir_path, dir_ownership)

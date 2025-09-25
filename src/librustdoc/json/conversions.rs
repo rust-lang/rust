@@ -52,7 +52,7 @@ impl JsonRenderer<'_> {
         let clean::ItemInner { name, item_id, .. } = *item.inner;
         let id = self.id_from_item(item);
         let inner = match item.kind {
-            clean::KeywordItem => return None,
+            clean::KeywordItem | clean::AttributeItem => return None,
             clean::StrippedItem(ref inner) => {
                 match &**inner {
                     // We document stripped modules as with `Module::is_stripped` set to
@@ -85,7 +85,7 @@ impl JsonRenderer<'_> {
     fn ids(&self, items: &[clean::Item]) -> Vec<Id> {
         items
             .iter()
-            .filter(|i| !i.is_stripped() && !i.is_keyword())
+            .filter(|i| !i.is_stripped() && !i.is_keyword() && !i.is_attribute())
             .map(|i| self.id_from_item(i))
             .collect()
     }
@@ -93,7 +93,10 @@ impl JsonRenderer<'_> {
     fn ids_keeping_stripped(&self, items: &[clean::Item]) -> Vec<Option<Id>> {
         items
             .iter()
-            .map(|i| (!i.is_stripped() && !i.is_keyword()).then(|| self.id_from_item(i)))
+            .map(|i| {
+                (!i.is_stripped() && !i.is_keyword() && !i.is_attribute())
+                    .then(|| self.id_from_item(i))
+            })
             .collect()
     }
 }
@@ -332,8 +335,8 @@ fn from_clean_item(item: &clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum 
             bounds: b.into_json(renderer),
             type_: Some(t.item_type.as_ref().unwrap_or(&t.type_).into_json(renderer)),
         },
-        // `convert_item` early returns `None` for stripped items and keywords.
-        KeywordItem => unreachable!(),
+        // `convert_item` early returns `None` for stripped items, keywords and attributes.
+        KeywordItem | AttributeItem => unreachable!(),
         StrippedItem(inner) => {
             match inner.as_ref() {
                 ModuleItem(m) => ItemEnum::Module(Module {
@@ -463,7 +466,7 @@ impl FromClean<clean::GenericParamDefKind> for GenericParamDefKind {
                 default: default.into_json(renderer),
                 is_synthetic: *synthetic,
             },
-            Const { ty, default, synthetic: _ } => GenericParamDefKind::Const {
+            Const { ty, default } => GenericParamDefKind::Const {
                 type_: ty.into_json(renderer),
                 default: default.as_ref().map(|x| x.as_ref().clone()),
             },
@@ -887,6 +890,7 @@ impl FromClean<ItemType> for ItemKind {
             AssocType => ItemKind::AssocType,
             ForeignType => ItemKind::ExternType,
             Keyword => ItemKind::Keyword,
+            Attribute => ItemKind::Attribute,
             TraitAlias => ItemKind::TraitAlias,
             ProcAttribute => ItemKind::ProcAttribute,
             ProcDerive => ItemKind::ProcDerive,
@@ -908,12 +912,8 @@ fn maybe_from_hir_attr(
         hir::Attribute::Parsed(kind) => kind,
 
         hir::Attribute::Unparsed(_) => {
-            return Some(if attr.has_name(sym::macro_export) {
-                Attribute::MacroExport
-                // FIXME: We should handle `#[doc(hidden)]`.
-            } else {
-                other_attr(tcx, attr)
-            });
+            // FIXME: We should handle `#[doc(hidden)]`.
+            return Some(other_attr(tcx, attr));
         }
     };
 
@@ -921,6 +921,7 @@ fn maybe_from_hir_attr(
         AK::Deprecation { .. } => return None, // Handled separately into Item::deprecation.
         AK::DocComment { .. } => unreachable!("doc comments stripped out earlier"),
 
+        AK::MacroExport { .. } => Attribute::MacroExport,
         AK::MustUse { reason, span: _ } => {
             Attribute::MustUse { reason: reason.map(|s| s.to_string()) }
         }
@@ -930,7 +931,7 @@ fn maybe_from_hir_attr(
         ),
         AK::ExportName { name, span: _ } => Attribute::ExportName(name.to_string()),
         AK::LinkSection { name, span: _ } => Attribute::LinkSection(name.to_string()),
-        AK::TargetFeature(features, _span) => Attribute::TargetFeature {
+        AK::TargetFeature { features, .. } => Attribute::TargetFeature {
             enable: features.iter().map(|(feat, _span)| feat.to_string()).collect(),
         },
 

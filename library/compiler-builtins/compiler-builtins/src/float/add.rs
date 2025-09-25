@@ -130,7 +130,7 @@ where
             return F::from_bits(MinInt::ZERO);
         }
 
-        // If partial cancellation occured, we need to left-shift the result
+        // If partial cancellation occurred, we need to left-shift the result
         // and adjust the exponent:
         if a_significand < implicit_bit << 3 {
             let shift = a_significand.leading_zeros() as i32
@@ -191,6 +191,11 @@ where
 }
 
 intrinsics! {
+    #[cfg(f16_enabled)]
+    pub extern "C" fn __addhf3(a: f16, b: f16) -> f16 {
+        add(a, b)
+    }
+
     #[aapcs_on_arm]
     #[arm_aeabi_alias = __aeabi_fadd]
     pub extern "C" fn __addsf3(a: f32, b: f32) -> f32 {

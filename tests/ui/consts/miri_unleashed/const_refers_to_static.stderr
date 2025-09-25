@@ -22,7 +22,7 @@ error: constant REF_INTERIOR_MUT cannot be used as pattern
 LL |         REF_INTERIOR_MUT => {},
    |         ^^^^^^^^^^^^^^^^
    |
-   = note: constants that reference mutable or external memory cannot be used as pattern
+   = note: constants that reference mutable or external memory cannot be used as patterns
 
 warning: skipping const checks
    |

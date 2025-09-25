@@ -17,9 +17,10 @@ unsafe extern "unadjusted" {
 /// Generates the cache operation instruction
 #[inline]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn cacop<const IMM12: i32>(a: i32, b: i32) {
-    static_assert_simm_bits!(IMM12, 12);
-    __cacop(a, b, IMM12);
+pub unsafe fn cacop<const IMM5: i32, const IMM_S12: i32>(b: i32) {
+    static_assert_uimm_bits!(IMM5, 5);
+    static_assert_simm_bits!(IMM_S12, 12);
+    __cacop(IMM5, b, IMM_S12);
 }
 
 /// Reads the CSR

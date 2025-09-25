@@ -22,5 +22,5 @@ pub mod weak_memory;
 mod genmc;
 
 pub use self::data_race_handler::{AllocDataRaceHandler, GlobalDataRaceHandler};
-pub use self::genmc::{GenmcConfig, GenmcCtx};
+pub use self::genmc::{ExitType, GenmcConfig, GenmcCtx, run_genmc_mode};
 pub use self::vector_clock::VClock;

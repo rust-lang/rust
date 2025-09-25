@@ -16,6 +16,7 @@ use tracing::debug;
 use crate::builder::Builder;
 use crate::common::Funclet;
 use crate::context::CodegenCx;
+use crate::llvm::ToLlvmBool;
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
@@ -239,6 +240,7 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 }
                 InlineAsmArch::RiscV32 | InlineAsmArch::RiscV64 => {
                     constraints.extend_from_slice(&[
+                        "~{fflags}".to_string(),
                         "~{vtype}".to_string(),
                         "~{vl}".to_string(),
                         "~{vxsat}".to_string(),
@@ -338,8 +340,8 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             attrs.push(llvm::AttributeKind::WillReturn.create_attr(self.cx.llcx));
         } else if options.contains(InlineAsmOptions::NOMEM) {
             attrs.push(llvm::MemoryEffects::InaccessibleMemOnly.create_attr(self.cx.llcx));
-        } else {
-            // LLVM doesn't have an attribute to represent ReadOnly + SideEffect
+        } else if options.contains(InlineAsmOptions::READONLY) {
+            attrs.push(llvm::MemoryEffects::ReadOnlyNotPure.create_attr(self.cx.llcx));
         }
         attributes::apply_to_callsite(result, llvm::AttributePlace::Function, &{ attrs });
 
@@ -470,10 +472,6 @@ pub(crate) fn inline_asm_call<'ll>(
     dest: Option<&'ll llvm::BasicBlock>,
     catch_funclet: Option<(&'ll llvm::BasicBlock, Option<&Funclet<'ll>>)>,
 ) -> Option<&'ll Value> {
-    let volatile = if volatile { llvm::True } else { llvm::False };
-    let alignstack = if alignstack { llvm::True } else { llvm::False };
-    let can_throw = if unwind { llvm::True } else { llvm::False };
-
     let argtys = inputs
         .iter()
         .map(|v| {
@@ -500,10 +498,10 @@ pub(crate) fn inline_asm_call<'ll>(
             asm.len(),
             cons.as_ptr(),
             cons.len(),
-            volatile,
-            alignstack,
+            volatile.to_llvm_bool(),
+            alignstack.to_llvm_bool(),
             dia,
-            can_throw,
+            unwind.to_llvm_bool(),
         )
     };
 
@@ -664,7 +662,12 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
             PowerPC(PowerPCInlineAsmRegClass::reg_nonzero) => "b",
             PowerPC(PowerPCInlineAsmRegClass::freg) => "f",
             PowerPC(PowerPCInlineAsmRegClass::vreg) => "v",
-            PowerPC(PowerPCInlineAsmRegClass::cr) | PowerPC(PowerPCInlineAsmRegClass::xer) => {
+            PowerPC(
+                PowerPCInlineAsmRegClass::cr
+                | PowerPCInlineAsmRegClass::ctr
+                | PowerPCInlineAsmRegClass::lr
+                | PowerPCInlineAsmRegClass::xer,
+            ) => {
                 unreachable!("clobber-only")
             }
             RiscV(RiscVInlineAsmRegClass::reg) => "r",
@@ -832,7 +835,12 @@ fn dummy_output_type<'ll>(cx: &CodegenCx<'ll, '_>, reg: InlineAsmRegClass) -> &'
         PowerPC(PowerPCInlineAsmRegClass::reg_nonzero) => cx.type_i32(),
         PowerPC(PowerPCInlineAsmRegClass::freg) => cx.type_f64(),
         PowerPC(PowerPCInlineAsmRegClass::vreg) => cx.type_vector(cx.type_i32(), 4),
-        PowerPC(PowerPCInlineAsmRegClass::cr) | PowerPC(PowerPCInlineAsmRegClass::xer) => {
+        PowerPC(
+            PowerPCInlineAsmRegClass::cr
+            | PowerPCInlineAsmRegClass::ctr
+            | PowerPCInlineAsmRegClass::lr
+            | PowerPCInlineAsmRegClass::xer,
+        ) => {
             unreachable!("clobber-only")
         }
         RiscV(RiscVInlineAsmRegClass::reg) => cx.type_i32(),

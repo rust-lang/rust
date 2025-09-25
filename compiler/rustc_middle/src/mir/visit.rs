@@ -531,13 +531,20 @@ macro_rules! make_mir_visitor {
                         unwind: _,
                         replace: _,
                         drop: _,
-                        async_fut: _,
+                        async_fut,
                     } => {
                         self.visit_place(
                             place,
                             PlaceContext::MutatingUse(MutatingUseContext::Drop),
                             location
                         );
+                        if let Some(async_fut) = async_fut {
+                            self.visit_local(
+                                $(&$mutability)? *async_fut,
+                                PlaceContext::MutatingUse(MutatingUseContext::Borrow),
+                                location
+                            );
+                        }
                     }
 
                     TerminatorKind::Call {
@@ -708,14 +715,6 @@ macro_rules! make_mir_visitor {
                             ),
                         };
                         self.visit_place(path, ctx, location);
-                    }
-
-                    Rvalue::Len(path) => {
-                        self.visit_place(
-                            path,
-                            PlaceContext::NonMutatingUse(NonMutatingUseContext::Inspect),
-                            location
-                        );
                     }
 
                     Rvalue::Cast(_cast_kind, operand, ty) => {
@@ -1408,6 +1407,24 @@ impl PlaceContext {
         )
     }
 
+    /// Returns `true` if this place context may be used to know the address of the given place.
+    #[inline]
+    pub fn may_observe_address(self) -> bool {
+        matches!(
+            self,
+            PlaceContext::NonMutatingUse(
+                NonMutatingUseContext::SharedBorrow
+                    | NonMutatingUseContext::RawBorrow
+                    | NonMutatingUseContext::FakeBorrow
+            ) | PlaceContext::MutatingUse(
+                MutatingUseContext::Drop
+                    | MutatingUseContext::Borrow
+                    | MutatingUseContext::RawBorrow
+                    | MutatingUseContext::AsmOutput
+            )
+        )
+    }
+
     /// Returns `true` if this place context represents a storage live or storage dead marker.
     #[inline]
     pub fn is_storage_marker(self) -> bool {
@@ -1456,5 +1473,22 @@ impl PlaceContext {
             ) => ty::Covariant,
             PlaceContext::NonUse(AscribeUserTy(variance)) => variance,
         }
+    }
+}
+
+/// Small utility to visit places and locals without manually implementing a full visitor.
+pub struct VisitPlacesWith<F>(pub F);
+
+impl<'tcx, F> Visitor<'tcx> for VisitPlacesWith<F>
+where
+    F: FnMut(Place<'tcx>, PlaceContext),
+{
+    fn visit_local(&mut self, local: Local, ctxt: PlaceContext, _: Location) {
+        (self.0)(local.into(), ctxt);
+    }
+
+    fn visit_place(&mut self, place: &Place<'tcx>, ctxt: PlaceContext, location: Location) {
+        (self.0)(*place, ctxt);
+        self.visit_projection(place.as_ref(), ctxt, location);
     }
 }

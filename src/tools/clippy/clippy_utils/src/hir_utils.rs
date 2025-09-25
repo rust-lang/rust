@@ -258,7 +258,7 @@ impl HirEqInterExpr<'_, '_, '_> {
         })
     }
 
-    fn should_ignore(&mut self, expr: &Expr<'_>) -> bool {
+    fn should_ignore(&self, expr: &Expr<'_>) -> bool {
         macro_backtrace(expr.span).last().is_some_and(|macro_call| {
             matches!(
                 self.inner.cx.tcx.get_diagnostic_name(macro_call.def_id),
@@ -757,7 +757,7 @@ pub fn both_some_and<X, Y>(l: Option<X>, r: Option<Y>, mut pred: impl FnMut(X, Y
 }
 
 /// Checks if two slices are equal as per `eq_fn`.
-pub fn over<X>(left: &[X], right: &[X], mut eq_fn: impl FnMut(&X, &X) -> bool) -> bool {
+pub fn over<X, Y>(left: &[X], right: &[Y], mut eq_fn: impl FnMut(&X, &Y) -> bool) -> bool {
     left.len() == right.len() && left.iter().zip(right).all(|(x, y)| eq_fn(x, y))
 }
 

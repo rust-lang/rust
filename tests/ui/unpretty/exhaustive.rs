@@ -12,6 +12,7 @@
 #![feature(box_patterns)]
 #![feature(builtin_syntax)]
 #![feature(const_trait_impl)]
+#![feature(coroutines)]
 #![feature(decl_macro)]
 #![feature(deref_patterns)]
 #![feature(explicit_tail_calls)]
@@ -29,9 +30,6 @@
 #![feature(yeet_expr)]
 #![allow(incomplete_features)]
 
-#[prelude_import]
-use self::prelude::*;
-
 mod prelude {
     pub use std::prelude::rust_2024::*;
 
@@ -41,6 +39,9 @@ mod prelude {
         const CONST: ();
     }
 }
+
+#[prelude_import]
+use self::prelude::*;
 
 mod attributes {
     //! inner single-line doc comment

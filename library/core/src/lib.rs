@@ -156,6 +156,7 @@
 #![feature(f128)]
 #![feature(freeze_impls)]
 #![feature(fundamental)]
+#![feature(funnel_shifts)]
 #![feature(if_let_guard)]
 #![feature(intra_doc_pointers)]
 #![feature(intrinsics)]
@@ -172,6 +173,7 @@
 #![feature(no_core)]
 #![feature(optimize_attribute)]
 #![feature(prelude_import)]
+#![feature(reborrow)]
 #![feature(repr_simd)]
 #![feature(rustc_allow_const_fn_unstable)]
 #![feature(rustc_attrs)]
@@ -200,8 +202,6 @@
 #![feature(riscv_target_feature)]
 #![feature(rtm_target_feature)]
 #![feature(s390x_target_feature)]
-#![feature(sse4a_target_feature)]
-#![feature(tbm_target_feature)]
 #![feature(wasm_target_feature)]
 #![feature(x86_amx_intrinsics)]
 // tidy-alphabetical-end
@@ -209,6 +209,10 @@
 // allow using `core::` in intra-doc links
 #[allow(unused_extern_crates)]
 extern crate self as core;
+
+/* The core prelude, not as all-encompassing as the std prelude */
+// The compiler expects the prelude definition to be defined before it's use statement.
+pub mod prelude;
 
 #[prelude_import]
 #[allow(unused)]
@@ -222,6 +226,13 @@ mod macros;
 pub mod assert_matches {
     #[unstable(feature = "assert_matches", issue = "82775")]
     pub use crate::macros::{assert_matches, debug_assert_matches};
+}
+
+#[unstable(feature = "derive_from", issue = "144889")]
+/// Unstable module containing the unstable `From` derive macro.
+pub mod from {
+    #[unstable(feature = "derive_from", issue = "144889")]
+    pub use crate::macros::builtin::From;
 }
 
 // We don't export this through #[macro_export] for now, to avoid breakage.
@@ -241,47 +252,16 @@ pub use crate::macros::cfg_select;
 #[macro_use]
 mod internal_macros;
 
-#[path = "num/shells/int_macros.rs"]
-#[macro_use]
-mod int_macros;
-
-#[rustc_diagnostic_item = "i128_legacy_mod"]
-#[path = "num/shells/i128.rs"]
-pub mod i128;
-#[rustc_diagnostic_item = "i16_legacy_mod"]
-#[path = "num/shells/i16.rs"]
-pub mod i16;
-#[rustc_diagnostic_item = "i32_legacy_mod"]
-#[path = "num/shells/i32.rs"]
-pub mod i32;
-#[rustc_diagnostic_item = "i64_legacy_mod"]
-#[path = "num/shells/i64.rs"]
-pub mod i64;
-#[rustc_diagnostic_item = "i8_legacy_mod"]
-#[path = "num/shells/i8.rs"]
-pub mod i8;
-#[rustc_diagnostic_item = "isize_legacy_mod"]
-#[path = "num/shells/isize.rs"]
-pub mod isize;
-
-#[rustc_diagnostic_item = "u128_legacy_mod"]
-#[path = "num/shells/u128.rs"]
-pub mod u128;
-#[rustc_diagnostic_item = "u16_legacy_mod"]
-#[path = "num/shells/u16.rs"]
-pub mod u16;
-#[rustc_diagnostic_item = "u32_legacy_mod"]
-#[path = "num/shells/u32.rs"]
-pub mod u32;
-#[rustc_diagnostic_item = "u64_legacy_mod"]
-#[path = "num/shells/u64.rs"]
-pub mod u64;
-#[rustc_diagnostic_item = "u8_legacy_mod"]
-#[path = "num/shells/u8.rs"]
-pub mod u8;
-#[rustc_diagnostic_item = "usize_legacy_mod"]
-#[path = "num/shells/usize.rs"]
-pub mod usize;
+#[path = "num/shells/legacy_int_modules.rs"]
+mod legacy_int_modules;
+#[stable(feature = "rust1", since = "1.0.0")]
+#[allow(clippy::useless_attribute)] // FIXME false positive (https://github.com/rust-lang/rust-clippy/issues/15636)
+#[allow(deprecated_in_future)]
+pub use legacy_int_modules::{i8, i16, i32, i64, isize, u8, u16, u32, u64, usize};
+#[stable(feature = "i128", since = "1.26.0")]
+#[allow(clippy::useless_attribute)] // FIXME false positive (https://github.com/rust-lang/rust-clippy/issues/15636)
+#[allow(deprecated_in_future)]
+pub use legacy_int_modules::{i128, u128};
 
 #[path = "num/f128.rs"]
 pub mod f128;
@@ -294,10 +274,6 @@ pub mod f64;
 
 #[macro_use]
 pub mod num;
-
-/* The core prelude, not as all-encompassing as the std prelude */
-
-pub mod prelude;
 
 /* Core modules for ownership management */
 
@@ -337,6 +313,7 @@ pub mod io;
 pub mod iter;
 pub mod net;
 pub mod option;
+pub mod os;
 pub mod panic;
 pub mod panicking;
 #[unstable(feature = "pattern_type_macro", issue = "123646")]
@@ -356,6 +333,8 @@ pub mod hash;
 pub mod slice;
 pub mod str;
 pub mod time;
+
+pub mod wtf8;
 
 pub mod unicode;
 

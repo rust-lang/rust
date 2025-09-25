@@ -3,6 +3,8 @@
 //! Regression test for <https://github.com/rust-lang/rust/issues/33013>.
 
 //@ ignore-aarch64: Doesn't work yet.
+//@ ignore-loongarch64: Doesn't work yet.
+//@ ignore-riscv64: Doesn't work yet.
 //@ compile-flags: -g
 
 // gdb-command: run

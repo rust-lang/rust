@@ -9,11 +9,13 @@ help: you might be missing a const parameter
 LL | impl<const bar: /* Type */> Wrapper<{ bar() }> {
    |     +++++++++++++++++++++++
 
-error[E0741]: using function pointers as const generic parameters is forbidden
+error: using function pointers as const generic parameters is forbidden
   --> $DIR/non_valtreeable_const_arg-2.rs:8:25
    |
 LL | struct Wrapper<const F: fn()>;
    |                         ^^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
 
 error[E0599]: the function or associated item `call` exists for struct `Wrapper<function>`, but its trait bounds were not satisfied
   --> $DIR/non_valtreeable_const_arg-2.rs:17:26
@@ -35,5 +37,5 @@ note: the trait `Fn` must be implemented
 
 error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0425, E0599, E0741.
+Some errors have detailed explanations: E0425, E0599.
 For more information about an error, try `rustc --explain E0425`.

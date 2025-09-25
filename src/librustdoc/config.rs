@@ -305,6 +305,8 @@ pub(crate) struct RenderOptions {
     pub(crate) parts_out_dir: Option<PathToParts>,
     /// disable minification of CSS/JS
     pub(crate) disable_minification: bool,
+    /// If `true`, HTML source pages will generate the possibility to expand macros.
+    pub(crate) generate_macro_expansion: bool,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -452,15 +454,22 @@ impl Options {
             return None;
         }
 
-        let mut emit = Vec::new();
+        let mut emit = FxIndexMap::<_, EmitType>::default();
         for list in matches.opt_strs("emit") {
             for kind in list.split(',') {
                 match kind.parse() {
-                    Ok(kind) => emit.push(kind),
+                    Ok(kind) => {
+                        // De-duplicate emit types and the last wins.
+                        // Only one instance for each type is allowed
+                        // regardless the actual data it carries.
+                        // This matches rustc's `--emit` behavior.
+                        emit.insert(std::mem::discriminant(&kind), kind);
+                    }
                     Err(()) => dcx.fatal(format!("unrecognized emission type: {kind}")),
                 }
             }
         }
+        let emit = emit.into_values().collect::<Vec<_>>();
 
         let show_coverage = matches.opt_present("show-coverage");
         let output_format_s = matches.opt_str("output-format");
@@ -786,6 +795,7 @@ impl Options {
         let show_type_layout = matches.opt_present("show-type-layout");
         let nocapture = matches.opt_present("nocapture");
         let generate_link_to_definition = matches.opt_present("generate-link-to-definition");
+        let generate_macro_expansion = matches.opt_present("generate-macro-expansion");
         let extern_html_root_takes_precedence =
             matches.opt_present("extern-html-root-takes-precedence");
         let html_no_source = matches.opt_present("html-no-source");
@@ -801,10 +811,18 @@ impl Options {
             .with_note("`--generate-link-to-definition` option will be ignored")
             .emit();
         }
+        if generate_macro_expansion && (show_coverage || output_format != OutputFormat::Html) {
+            dcx.struct_warn(
+                "`--generate-macro-expansion` option can only be used with HTML output format",
+            )
+            .with_note("`--generate-macro-expansion` option will be ignored")
+            .emit();
+        }
 
         let scrape_examples_options = ScrapeExamplesOptions::new(matches, dcx);
         let with_examples = matches.opt_strs("with-examples");
-        let call_locations = crate::scrape_examples::load_call_locations(with_examples, dcx);
+        let call_locations =
+            crate::scrape_examples::load_call_locations(with_examples, dcx, &mut loaded_paths);
         let doctest_build_args = matches.opt_strs("doctest-build-arg");
 
         let unstable_features =
@@ -881,6 +899,7 @@ impl Options {
             unstable_features,
             emit,
             generate_link_to_definition,
+            generate_macro_expansion,
             call_locations,
             no_emit_shared: false,
             html_no_source,

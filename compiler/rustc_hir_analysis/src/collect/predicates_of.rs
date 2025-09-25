@@ -111,9 +111,8 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
         }
 
         Some(ImplTraitInTraitData::Impl { fn_def_id }) => {
-            let assoc_item = tcx.associated_item(def_id);
-            let trait_assoc_predicates =
-                tcx.explicit_predicates_of(assoc_item.trait_item_def_id.unwrap());
+            let trait_item_def_id = tcx.trait_item_of(def_id).unwrap();
+            let trait_assoc_predicates = tcx.explicit_predicates_of(trait_item_def_id);
 
             let impl_assoc_identity_args = ty::GenericArgs::identity_for_item(tcx, def_id);
             let impl_def_id = tcx.parent(fn_def_id);
@@ -158,7 +157,9 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     if let Node::Item(item) = node {
         match item.kind {
             ItemKind::Impl(impl_) => {
-                if impl_.defaultness.is_default() {
+                if let Some(of_trait) = impl_.of_trait
+                    && of_trait.defaultness.is_default()
+                {
                     is_default_impl_trait = tcx
                         .impl_trait_ref(def_id)
                         .map(|t| ty::Binder::dummy(t.instantiate_identity()));
@@ -171,12 +172,6 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             _ => {}
         }
     };
-
-    if let Node::TraitItem(item) = node {
-        let mut bounds = Vec::new();
-        icx.lowerer().add_default_trait_item_bounds(item, &mut bounds);
-        predicates.extend(bounds);
-    }
 
     let generics = tcx.generics_of(def_id);
 

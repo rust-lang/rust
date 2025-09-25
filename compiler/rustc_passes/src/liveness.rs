@@ -95,8 +95,10 @@ use rustc_hir::{Expr, HirId, HirIdMap, HirIdSet, find_attr};
 use rustc_index::IndexVec;
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
+use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, RootVariableMinCaptureList, Ty, TyCtxt};
 use rustc_session::lint;
+use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::{BytePos, Span, Symbol};
 use tracing::{debug, instrument};
 
@@ -1583,7 +1585,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
         });
 
         let can_remove = match pat.kind {
-            hir::PatKind::Struct(_, fields, true) => {
+            hir::PatKind::Struct(_, fields, Some(_)) => {
                 // if all fields are shorthand, remove the struct field, otherwise, mark with _ as prefix
                 fields.iter().all(|f| f.is_shorthand)
             }
@@ -1688,6 +1690,51 @@ impl<'tcx> Liveness<'_, 'tcx> {
             let is_assigned =
                 if ln == self.exit_ln { false } else { self.assigned_on_exit(ln, var) };
 
+            let mut typo = None;
+            for (hir_id, _, span) in &hir_ids_and_spans {
+                let ty = self.typeck_results.node_type(*hir_id);
+                if let ty::Adt(adt, _) = ty.peel_refs().kind() {
+                    let name = Symbol::intern(&name);
+                    let adt_def = self.ir.tcx.adt_def(adt.did());
+                    let variant_names: Vec<_> = adt_def
+                        .variants()
+                        .iter()
+                        .filter(|v| matches!(v.ctor, Some((CtorKind::Const, _))))
+                        .map(|v| v.name)
+                        .collect();
+                    if let Some(name) = find_best_match_for_name(&variant_names, name, None)
+                        && let Some(variant) = adt_def.variants().iter().find(|v| {
+                            v.name == name && matches!(v.ctor, Some((CtorKind::Const, _)))
+                        })
+                    {
+                        typo = Some(errors::PatternTypo {
+                            span: *span,
+                            code: with_no_trimmed_paths!(self.ir.tcx.def_path_str(variant.def_id)),
+                            kind: self.ir.tcx.def_descr(variant.def_id).to_string(),
+                            item_name: variant.name.to_string(),
+                        });
+                    }
+                }
+            }
+            if typo.is_none() {
+                for (hir_id, _, span) in &hir_ids_and_spans {
+                    let ty = self.typeck_results.node_type(*hir_id);
+                    // Look for consts of the same type with similar names as well, not just unit
+                    // structs and variants.
+                    for def_id in self.ir.tcx.hir_body_owners() {
+                        if let DefKind::Const = self.ir.tcx.def_kind(def_id)
+                            && self.ir.tcx.type_of(def_id).instantiate_identity() == ty
+                        {
+                            typo = Some(errors::PatternTypo {
+                                span: *span,
+                                code: with_no_trimmed_paths!(self.ir.tcx.def_path_str(def_id)),
+                                kind: "constant".to_string(),
+                                item_name: self.ir.tcx.item_name(def_id).to_string(),
+                            });
+                        }
+                    }
+                }
+            }
             if is_assigned {
                 self.ir.tcx.emit_node_span_lint(
                     lint::builtin::UNUSED_VARIABLES,
@@ -1696,7 +1743,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
                         .into_iter()
                         .map(|(_, _, ident_span)| ident_span)
                         .collect::<Vec<_>>(),
-                    errors::UnusedVarAssignedOnly { name },
+                    errors::UnusedVarAssignedOnly { name, typo },
                 )
             } else if can_remove {
                 let spans = hir_ids_and_spans
@@ -1788,6 +1835,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
                             name,
                             sugg,
                             string_interp: suggestions,
+                            typo,
                         },
                     );
                 }

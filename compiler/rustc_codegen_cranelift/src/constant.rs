@@ -281,8 +281,8 @@ fn data_id_for_static(
             .abi
             .bytes();
 
-        let linkage = if import_linkage == rustc_middle::mir::mono::Linkage::ExternalWeak
-            || import_linkage == rustc_middle::mir::mono::Linkage::WeakAny
+        let linkage = if import_linkage == rustc_hir::attrs::Linkage::ExternalWeak
+            || import_linkage == rustc_hir::attrs::Linkage::WeakAny
         {
             Linkage::Preemptible
         } else {
@@ -332,8 +332,8 @@ fn data_id_for_static(
 
     let linkage = if definition {
         crate::linkage::get_static_linkage(tcx, def_id)
-    } else if attrs.linkage == Some(rustc_middle::mir::mono::Linkage::ExternalWeak)
-        || attrs.linkage == Some(rustc_middle::mir::mono::Linkage::WeakAny)
+    } else if attrs.linkage == Some(rustc_hir::attrs::Linkage::ExternalWeak)
+        || attrs.linkage == Some(rustc_hir::attrs::Linkage::WeakAny)
     {
         Linkage::Preemptible
     } else {

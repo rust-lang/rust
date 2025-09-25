@@ -9,24 +9,29 @@ help: wrap the attribute in `unsafe(...)`
 LL |     #[unsafe(ffi_pure)]
    |       +++++++        +
 
-error[E0755]: `#[ffi_pure]` may only be used on foreign functions
+error: `#[ffi_pure]` attribute cannot be used on functions
   --> $DIR/ffi_pure.rs:4:1
    |
 LL | #[unsafe(ffi_pure)]
    | ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[ffi_pure]` can only be applied to foreign functions
 
-error[E0755]: `#[ffi_pure]` may only be used on foreign functions
+error: `#[ffi_pure]` attribute cannot be used on macro defs
   --> $DIR/ffi_pure.rs:7:1
    |
 LL | #[unsafe(ffi_pure)]
    | ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[ffi_pure]` can only be applied to foreign functions
 
-error[E0755]: `#[ffi_pure]` may only be used on foreign functions
+error: `#[ffi_pure]` attribute cannot be used on foreign statics
   --> $DIR/ffi_pure.rs:13:5
    |
 LL |     #[unsafe(ffi_pure)]
    |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[ffi_pure]` can only be applied to foreign functions
 
 error: aborting due to 4 previous errors
 
-For more information about this error, try `rustc --explain E0755`.

@@ -5,6 +5,7 @@ use rustc_ast as ast;
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_data_structures::packed::Pu128;
 use rustc_hir::lang_items::LangItem;
+use rustc_lint_defs::builtin::TAIL_CALL_TRACK_CALLER;
 use rustc_middle::mir::{self, AssertKind, InlineAsmMacro, SwitchTargets, UnwindTerminateReason};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, ValidityRequirement};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
@@ -35,7 +36,7 @@ enum MergingSucc {
     True,
 }
 
-/// Indicates to the call terminator codegen whether a cal
+/// Indicates to the call terminator codegen whether a call
 /// is a normal call or an explicit tail call.
 #[derive(Debug, PartialEq)]
 enum CallKind {
@@ -518,6 +519,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             match self.locals[mir::Local::from_usize(1 + va_list_arg_idx)] {
                 LocalRef::Place(va_list) => {
                     bx.va_end(va_list.val.llval);
+
+                    // Explicitly end the lifetime of the `va_list`, improves LLVM codegen.
+                    bx.lifetime_end(va_list.val.llval, va_list.layout.size);
                 }
                 _ => bug!("C-variadic function must have a `VaList` place"),
             }
@@ -610,7 +614,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let (maybe_null, drop_fn, fn_abi, drop_instance) = match ty.kind() {
             // FIXME(eddyb) perhaps move some of this logic into
             // `Instance::resolve_drop_in_place`?
-            ty::Dynamic(_, _, ty::Dyn) => {
+            ty::Dynamic(_, _) => {
                 // IN THIS ARM, WE HAVE:
                 // ty = *mut (dyn Trait)
                 // which is: exists<T> ( *mut T,    Vtable<T: Trait> )
@@ -906,7 +910,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     fn_span,
                 );
 
-                let instance = match instance.def {
+                match instance.def {
                     // We don't need AsyncDropGlueCtorShim here because it is not `noop func`,
                     // it is `func returning noop future`
                     ty::InstanceKind::DropGlue(_, None) => {
@@ -995,14 +999,35 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                         intrinsic.name,
                                     );
                                 }
-                                instance
+                                (Some(instance), None)
                             }
                         }
                     }
-                    _ => instance,
-                };
 
-                (Some(instance), None)
+                    _ if kind == CallKind::Tail
+                        && instance.def.requires_caller_location(bx.tcx()) =>
+                    {
+                        if let Some(hir_id) =
+                            terminator.source_info.scope.lint_root(&self.mir.source_scopes)
+                        {
+                            let msg = "tail calling a function marked with `#[track_caller]` has no special effect";
+                            bx.tcx().node_lint(TAIL_CALL_TRACK_CALLER, hir_id, |d| {
+                                _ = d.primary_message(msg).span(fn_span)
+                            });
+                        }
+
+                        let instance = ty::Instance::resolve_for_fn_ptr(
+                            bx.tcx(),
+                            bx.typing_env(),
+                            def_id,
+                            generic_args,
+                        )
+                        .unwrap();
+
+                        (None, Some(bx.get_fn_addr(instance)))
+                    }
+                    _ => (Some(instance), None),
+                }
             }
             ty::FnPtr(..) => (None, Some(callee.immediate())),
             _ => bug!("{} is not callable", callee.layout.ty),

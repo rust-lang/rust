@@ -1,5 +1,5 @@
 error: symbol `fail` is already defined
-  --> $DIR/cache-after-waiting-issue-111528.rs:12:1
+  --> $DIR/cache-after-waiting-issue-111528.rs:14:1
    |
 LL | pub fn b() {
    | ^^^^^^^^^^

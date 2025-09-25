@@ -8,7 +8,6 @@ use std::mem;
 use hir::def_id::{LocalDefIdMap, LocalDefIdSet};
 use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_data_structures::unord::UnordSet;
 use rustc_errors::MultiSpan;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
@@ -79,7 +78,7 @@ struct MarkSymbolVisitor<'tcx> {
     worklist: Vec<(LocalDefId, ComesFromAllowExpect)>,
     tcx: TyCtxt<'tcx>,
     maybe_typeck_results: Option<&'tcx ty::TypeckResults<'tcx>>,
-    scanned: UnordSet<(LocalDefId, ComesFromAllowExpect)>,
+    scanned: LocalDefIdSet,
     live_symbols: LocalDefIdSet,
     repr_unconditionally_treats_fields_as_live: bool,
     repr_has_repr_simd: bool,
@@ -172,7 +171,6 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         }
     }
 
-    #[allow(dead_code)] // FIXME(81658): should be used + lint reinstated after #83171 relands.
     fn handle_assign(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         if self
             .typeck_results()
@@ -189,7 +187,6 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         }
     }
 
-    #[allow(dead_code)] // FIXME(81658): should be used + lint reinstated after #83171 relands.
     fn check_for_self_assign(&mut self, assign: &'tcx hir::Expr<'tcx>) {
         fn check_for_self_assign_helper<'tcx>(
             typeck_results: &'tcx ty::TypeckResults<'tcx>,
@@ -323,17 +320,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
 
     fn mark_live_symbols(&mut self) {
         while let Some(work) = self.worklist.pop() {
-            if !self.scanned.insert(work) {
-                continue;
-            }
-
             let (mut id, comes_from_allow_expect) = work;
-
-            // Avoid accessing the HIR for the synthesized associated type generated for RPITITs.
-            if self.tcx.is_impl_trait_in_trait(id.to_def_id()) {
-                self.live_symbols.insert(id);
-                continue;
-            }
 
             // in the case of tuple struct constructors we want to check the item,
             // not the generated tuple struct constructor function
@@ -362,9 +349,23 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             // this "duplication" is essential as otherwise a function with `#[expect]`
             // called from a `pub fn` may be falsely reported as not live, falsely
             // triggering the `unfulfilled_lint_expectations` lint.
-            if comes_from_allow_expect != ComesFromAllowExpect::Yes {
-                self.live_symbols.insert(id);
+            match comes_from_allow_expect {
+                ComesFromAllowExpect::Yes => {}
+                ComesFromAllowExpect::No => {
+                    self.live_symbols.insert(id);
+                }
             }
+
+            if !self.scanned.insert(id) {
+                continue;
+            }
+
+            // Avoid accessing the HIR for the synthesized associated type generated for RPITITs.
+            if self.tcx.is_impl_trait_in_trait(id.to_def_id()) {
+                self.live_symbols.insert(id);
+                continue;
+            }
+
             self.visit_node(self.tcx.hir_node_by_def_id(id));
         }
     }
@@ -372,31 +373,27 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     /// Automatically generated items marked with `rustc_trivial_field_reads`
     /// will be ignored for the purposes of dead code analysis (see PR #85200
     /// for discussion).
-    fn should_ignore_item(&mut self, def_id: DefId) -> bool {
-        if let Some(impl_of) = self.tcx.impl_of_assoc(def_id) {
-            if !self.tcx.is_automatically_derived(impl_of) {
-                return false;
-            }
-
-            if let Some(trait_of) = self.tcx.trait_id_of_impl(impl_of)
-                && self.tcx.has_attr(trait_of, sym::rustc_trivial_field_reads)
+    fn should_ignore_impl_item(&mut self, impl_item: &hir::ImplItem<'_>) -> bool {
+        if let hir::ImplItemImplKind::Trait { .. } = impl_item.impl_kind
+            && let impl_of = self.tcx.parent(impl_item.owner_id.to_def_id())
+            && self.tcx.is_automatically_derived(impl_of)
+            && let trait_ref = self.tcx.impl_trait_ref(impl_of).unwrap().instantiate_identity()
+            && self.tcx.has_attr(trait_ref.def_id, sym::rustc_trivial_field_reads)
+        {
+            if let ty::Adt(adt_def, _) = trait_ref.self_ty().kind()
+                && let Some(adt_def_id) = adt_def.did().as_local()
             {
-                let trait_ref = self.tcx.impl_trait_ref(impl_of).unwrap().instantiate_identity();
-                if let ty::Adt(adt_def, _) = trait_ref.self_ty().kind()
-                    && let Some(adt_def_id) = adt_def.did().as_local()
-                {
-                    self.ignored_derived_traits.entry(adt_def_id).or_default().insert(trait_of);
-                }
-                return true;
+                self.ignored_derived_traits.entry(adt_def_id).or_default().insert(trait_ref.def_id);
             }
+            return true;
         }
 
         false
     }
 
     fn visit_node(&mut self, node: Node<'tcx>) {
-        if let Node::ImplItem(hir::ImplItem { owner_id, .. }) = node
-            && self.should_ignore_item(owner_id.to_def_id())
+        if let Node::ImplItem(impl_item) = node
+            && self.should_ignore_impl_item(impl_item)
         {
             return;
         }
@@ -438,7 +435,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             }
             Node::ImplItem(impl_item) => {
                 let item = self.tcx.local_parent(impl_item.owner_id.def_id);
-                if self.tcx.impl_trait_ref(item).is_none() {
+                if let hir::ImplItemImplKind::Inherent { .. } = impl_item.impl_kind {
                     //// If it's a type whose items are live, then it's live, too.
                     //// This is done to handle the case where, for example, the static
                     //// method of a private type is used, but the type itself is never
@@ -483,13 +480,11 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     fn check_impl_or_impl_item_live(&mut self, local_def_id: LocalDefId) -> bool {
         let (impl_block_id, trait_def_id) = match self.tcx.def_kind(local_def_id) {
             // assoc impl items of traits are live if the corresponding trait items are live
-            DefKind::AssocConst | DefKind::AssocTy | DefKind::AssocFn => (
-                self.tcx.local_parent(local_def_id),
-                self.tcx
-                    .associated_item(local_def_id)
-                    .trait_item_def_id
-                    .and_then(|def_id| def_id.as_local()),
-            ),
+            DefKind::AssocConst | DefKind::AssocTy | DefKind::AssocFn => {
+                let trait_item_id =
+                    self.tcx.trait_item_of(local_def_id).and_then(|def_id| def_id.as_local());
+                (self.tcx.local_parent(local_def_id), trait_item_id)
+            }
             // impl items are live if the corresponding traits are live
             DefKind::Impl { of_trait: true } => (
                 local_def_id,
@@ -575,6 +570,10 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
             }
             hir::ExprKind::OffsetOf(..) => {
                 self.handle_offset_of(expr);
+            }
+            hir::ExprKind::Assign(ref lhs, ..) => {
+                self.handle_assign(lhs);
+                self.check_for_self_assign(expr);
             }
             _ => (),
         }

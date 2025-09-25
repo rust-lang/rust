@@ -3,8 +3,8 @@ use std::io::Write;
 use std::path::Path;
 
 use rustc_abi::{Align, AlignFromBytesError, CanonAbi, Size};
-use rustc_apfloat::Float;
 use rustc_ast::expand::allocator::alloc_error_handler_name;
+use rustc_hir::attrs::Linkage;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::CrateNum;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -14,9 +14,9 @@ use rustc_middle::{mir, ty};
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
 
-use self::helpers::{ToHost, ToSoft};
 use super::alloc::EvalContextExt as _;
 use super::backtrace::EvalContextExt as _;
+use crate::helpers::EvalContextExt as _;
 use crate::*;
 
 /// Type of dynamic symbols (for `dlsym` et al)
@@ -138,7 +138,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Entry::Occupied(e) => e.into_mut(),
             Entry::Vacant(e) => {
                 // Find it if it was not cached.
-                let mut instance_and_crate: Option<(ty::Instance<'_>, CrateNum)> = None;
+
+                struct SymbolTarget<'tcx> {
+                    instance: ty::Instance<'tcx>,
+                    cnum: CrateNum,
+                    is_weak: bool,
+                }
+                let mut symbol_target: Option<SymbolTarget<'tcx>> = None;
                 helpers::iter_exported_symbols(tcx, |cnum, def_id| {
                     let attrs = tcx.codegen_fn_attrs(def_id);
                     // Skip over imports of items.
@@ -146,7 +152,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         return interp_ok(());
                     }
                     // Skip over items without an explicitly defined symbol name.
-                    if !(attrs.export_name.is_some()
+                    if !(attrs.symbol_name.is_some()
                         || attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE)
                         || attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL))
                     {
@@ -155,40 +161,80 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                     let instance = Instance::mono(tcx, def_id);
                     let symbol_name = tcx.symbol_name(instance).name;
+                    let is_weak = attrs.linkage == Some(Linkage::WeakAny);
                     if symbol_name == link_name.as_str() {
-                        if let Some((original_instance, original_cnum)) = instance_and_crate {
-                            // Make sure we are consistent wrt what is 'first' and 'second'.
-                            let original_span = tcx.def_span(original_instance.def_id()).data();
-                            let span = tcx.def_span(def_id).data();
-                            if original_span < span {
-                                throw_machine_stop!(TerminationInfo::MultipleSymbolDefinitions {
-                                    link_name,
-                                    first: original_span,
-                                    first_crate: tcx.crate_name(original_cnum),
-                                    second: span,
-                                    second_crate: tcx.crate_name(cnum),
-                                });
-                            } else {
-                                throw_machine_stop!(TerminationInfo::MultipleSymbolDefinitions {
-                                    link_name,
-                                    first: span,
-                                    first_crate: tcx.crate_name(cnum),
-                                    second: original_span,
-                                    second_crate: tcx.crate_name(original_cnum),
-                                });
+                        if let Some(original) = &symbol_target {
+                            // There is more than one definition with this name. What we do now
+                            // depends on whether one or both definitions are weak.
+                            match (is_weak, original.is_weak) {
+                                (false, true) => {
+                                    // Original definition is a weak definition. Override it.
+
+                                    symbol_target = Some(SymbolTarget {
+                                        instance: ty::Instance::mono(tcx, def_id),
+                                        cnum,
+                                        is_weak,
+                                    });
+                                }
+                                (true, false) => {
+                                    // Current definition is a weak definition. Keep the original one.
+                                }
+                                (true, true) | (false, false) => {
+                                    // Either both definitions are non-weak or both are weak. In
+                                    // either case return an error. For weak definitions we error
+                                    // because it is unspecified which definition would have been
+                                    // picked by the linker.
+
+                                    // Make sure we are consistent wrt what is 'first' and 'second'.
+                                    let original_span =
+                                        tcx.def_span(original.instance.def_id()).data();
+                                    let span = tcx.def_span(def_id).data();
+                                    if original_span < span {
+                                        throw_machine_stop!(
+                                            TerminationInfo::MultipleSymbolDefinitions {
+                                                link_name,
+                                                first: original_span,
+                                                first_crate: tcx.crate_name(original.cnum),
+                                                second: span,
+                                                second_crate: tcx.crate_name(cnum),
+                                            }
+                                        );
+                                    } else {
+                                        throw_machine_stop!(
+                                            TerminationInfo::MultipleSymbolDefinitions {
+                                                link_name,
+                                                first: span,
+                                                first_crate: tcx.crate_name(cnum),
+                                                second: original_span,
+                                                second_crate: tcx.crate_name(original.cnum),
+                                            }
+                                        );
+                                    }
+                                }
                             }
+                        } else {
+                            symbol_target = Some(SymbolTarget {
+                                instance: ty::Instance::mono(tcx, def_id),
+                                cnum,
+                                is_weak,
+                            });
                         }
-                        if !matches!(tcx.def_kind(def_id), DefKind::Fn | DefKind::AssocFn) {
-                            throw_ub_format!(
-                                "attempt to call an exported symbol that is not defined as a function"
-                            );
-                        }
-                        instance_and_crate = Some((ty::Instance::mono(tcx, def_id), cnum));
                     }
                     interp_ok(())
                 })?;
 
-                e.insert(instance_and_crate.map(|ic| ic.0))
+                // Once we identified the instance corresponding to the symbol, ensure
+                // it is a function. It is okay to encounter non-functions in the search above
+                // as long as the final instance we arrive at is a function.
+                if let Some(SymbolTarget { instance, .. }) = symbol_target {
+                    if !matches!(tcx.def_kind(instance.def_id()), DefKind::Fn | DefKind::AssocFn) {
+                        throw_ub_format!(
+                            "attempt to call an exported symbol that is not defined as a function"
+                        );
+                    }
+                }
+
+                e.insert(symbol_target.map(|SymbolTarget { instance, .. }| instance))
             }
         };
         match instance {
@@ -443,13 +489,22 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "exit" => {
                 let [code] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 let code = this.read_scalar(code)?.to_i32()?;
+                if let Some(genmc_ctx) = this.machine.data_race.as_genmc_ref() {
+                    // If there is no error, execution should continue (on a different thread).
+                    genmc_ctx.handle_exit(
+                        this.machine.threads.active_thread(),
+                        code,
+                        crate::concurrency::ExitType::ExitCalled,
+                    )?;
+                    todo!(); // FIXME(genmc): Add a way to return here that is allowed to not do progress (can't use existing EmulateItemResult variants).
+                }
                 throw_machine_stop!(TerminationInfo::Exit { code, leak_check: false });
             }
             "abort" => {
                 let [] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 throw_machine_stop!(TerminationInfo::Abort(
                     "the program aborted execution".to_owned()
-                ))
+                ));
             }
 
             // Standard C allocation
@@ -761,208 +816,6 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_pointer(ptr_dest, dest)?;
             }
 
-            // math functions (note that there are also intrinsics for some other functions)
-            #[rustfmt::skip]
-            | "cbrtf"
-            | "coshf"
-            | "sinhf"
-            | "tanf"
-            | "tanhf"
-            | "acosf"
-            | "asinf"
-            | "atanf"
-            | "log1pf"
-            | "expm1f"
-            | "tgammaf"
-            | "erff"
-            | "erfcf"
-            => {
-                let [f] = this.check_shim_sig_lenient(abi, CanonAbi::C , link_name, args)?;
-                let f = this.read_scalar(f)?.to_f32()?;
-                // Using host floats (but it's fine, these operations do not have guaranteed precision).
-                let f_host = f.to_host();
-                let res = match link_name.as_str() {
-                    "cbrtf" => f_host.cbrt(),
-                    "coshf" => f_host.cosh(),
-                    "sinhf" => f_host.sinh(),
-                    "tanf" => f_host.tan(),
-                    "tanhf" => f_host.tanh(),
-                    "acosf" => f_host.acos(),
-                    "asinf" => f_host.asin(),
-                    "atanf" => f_host.atan(),
-                    "log1pf" => f_host.ln_1p(),
-                    "expm1f" => f_host.exp_m1(),
-                    "tgammaf" => f_host.gamma(),
-                    "erff" => f_host.erf(),
-                    "erfcf" => f_host.erfc(),
-                    _ => bug!(),
-                };
-                let res = res.to_soft();
-                // Apply a relative error of 16ULP to introduce some non-determinism
-                // simulating imprecise implementations and optimizations.
-                // FIXME: temporarily disabled as it breaks std tests.
-                // let res = math::apply_random_float_error_ulp(
-                //     this,
-                //     res,
-                //     4, // log2(16)
-                // );
-                let res = this.adjust_nan(res, &[f]);
-                this.write_scalar(res, dest)?;
-            }
-            #[rustfmt::skip]
-            | "_hypotf"
-            | "hypotf"
-            | "atan2f"
-            | "fdimf"
-            => {
-                let [f1, f2] = this.check_shim_sig_lenient(abi, CanonAbi::C , link_name, args)?;
-                let f1 = this.read_scalar(f1)?.to_f32()?;
-                let f2 = this.read_scalar(f2)?.to_f32()?;
-                // underscore case for windows, here and below
-                // (see https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/floating-point-primitives?view=vs-2019)
-                // Using host floats (but it's fine, these operations do not have guaranteed precision).
-                let res = match link_name.as_str() {
-                    "_hypotf" | "hypotf" => f1.to_host().hypot(f2.to_host()).to_soft(),
-                    "atan2f" => f1.to_host().atan2(f2.to_host()).to_soft(),
-                    #[allow(deprecated)]
-                    "fdimf" => f1.to_host().abs_sub(f2.to_host()).to_soft(),
-                    _ => bug!(),
-                };
-                // Apply a relative error of 16ULP to introduce some non-determinism
-                // simulating imprecise implementations and optimizations.
-                // FIXME: temporarily disabled as it breaks std tests.
-                // let res = math::apply_random_float_error_ulp(
-                //     this,
-                //     res,
-                //     4, // log2(16)
-                // );
-                let res = this.adjust_nan(res, &[f1, f2]);
-                this.write_scalar(res, dest)?;
-            }
-            #[rustfmt::skip]
-            | "cbrt"
-            | "cosh"
-            | "sinh"
-            | "tan"
-            | "tanh"
-            | "acos"
-            | "asin"
-            | "atan"
-            | "log1p"
-            | "expm1"
-            | "tgamma"
-            | "erf"
-            | "erfc"
-            => {
-                let [f] = this.check_shim_sig_lenient(abi, CanonAbi::C , link_name, args)?;
-                let f = this.read_scalar(f)?.to_f64()?;
-                // Using host floats (but it's fine, these operations do not have guaranteed precision).
-                let f_host = f.to_host();
-                let res = match link_name.as_str() {
-                    "cbrt" => f_host.cbrt(),
-                    "cosh" => f_host.cosh(),
-                    "sinh" => f_host.sinh(),
-                    "tan" => f_host.tan(),
-                    "tanh" => f_host.tanh(),
-                    "acos" => f_host.acos(),
-                    "asin" => f_host.asin(),
-                    "atan" => f_host.atan(),
-                    "log1p" => f_host.ln_1p(),
-                    "expm1" => f_host.exp_m1(),
-                    "tgamma" => f_host.gamma(),
-                    "erf" => f_host.erf(),
-                    "erfc" => f_host.erfc(),
-                    _ => bug!(),
-                };
-                let res = res.to_soft();
-                // Apply a relative error of 16ULP to introduce some non-determinism
-                // simulating imprecise implementations and optimizations.
-                // FIXME: temporarily disabled as it breaks std tests.
-                // let res = math::apply_random_float_error_ulp(
-                //     this,
-                //     res.to_soft(),
-                //     4, // log2(16)
-                // );
-                let res = this.adjust_nan(res, &[f]);
-                this.write_scalar(res, dest)?;
-            }
-            #[rustfmt::skip]
-            | "_hypot"
-            | "hypot"
-            | "atan2"
-            | "fdim"
-            => {
-                let [f1, f2] = this.check_shim_sig_lenient(abi, CanonAbi::C , link_name, args)?;
-                let f1 = this.read_scalar(f1)?.to_f64()?;
-                let f2 = this.read_scalar(f2)?.to_f64()?;
-                // underscore case for windows, here and below
-                // (see https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/floating-point-primitives?view=vs-2019)
-                // Using host floats (but it's fine, these operations do not have guaranteed precision).
-                let res = match link_name.as_str() {
-                    "_hypot" | "hypot" => f1.to_host().hypot(f2.to_host()).to_soft(),
-                    "atan2" => f1.to_host().atan2(f2.to_host()).to_soft(),
-                    #[allow(deprecated)]
-                    "fdim" => f1.to_host().abs_sub(f2.to_host()).to_soft(),
-                    _ => bug!(),
-                };
-                // Apply a relative error of 16ULP to introduce some non-determinism
-                // simulating imprecise implementations and optimizations.
-                // FIXME: temporarily disabled as it breaks std tests.
-                // let res = math::apply_random_float_error_ulp(
-                //     this,
-                //     res,
-                //     4, // log2(16)
-                // );
-                let res = this.adjust_nan(res, &[f1, f2]);
-                this.write_scalar(res, dest)?;
-            }
-            #[rustfmt::skip]
-            | "_ldexp"
-            | "ldexp"
-            | "scalbn"
-            => {
-                let [x, exp] = this.check_shim_sig_lenient(abi, CanonAbi::C , link_name, args)?;
-                // For radix-2 (binary) systems, `ldexp` and `scalbn` are the same.
-                let x = this.read_scalar(x)?.to_f64()?;
-                let exp = this.read_scalar(exp)?.to_i32()?;
-
-                let res = x.scalbn(exp);
-                let res = this.adjust_nan(res, &[x]);
-                this.write_scalar(res, dest)?;
-            }
-            "lgammaf_r" => {
-                let [x, signp] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
-                let x = this.read_scalar(x)?.to_f32()?;
-                let signp = this.deref_pointer_as(signp, this.machine.layouts.i32)?;
-
-                // Using host floats (but it's fine, these operations do not have guaranteed precision).
-                let (res, sign) = x.to_host().ln_gamma();
-                this.write_int(sign, &signp)?;
-                let res = res.to_soft();
-                // Apply a relative error of 16ULP to introduce some non-determinism
-                // simulating imprecise implementations and optimizations.
-                // FIXME: temporarily disabled as it breaks std tests.
-                // let res = math::apply_random_float_error_ulp(this, res, 4 /* log2(16) */);
-                let res = this.adjust_nan(res, &[x]);
-                this.write_scalar(res, dest)?;
-            }
-            "lgamma_r" => {
-                let [x, signp] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
-                let x = this.read_scalar(x)?.to_f64()?;
-                let signp = this.deref_pointer_as(signp, this.machine.layouts.i32)?;
-
-                // Using host floats (but it's fine, these operations do not have guaranteed precision).
-                let (res, sign) = x.to_host().ln_gamma();
-                this.write_int(sign, &signp)?;
-                let res = res.to_soft();
-                // Apply a relative error of 16ULP to introduce some non-determinism
-                // simulating imprecise implementations and optimizations.
-                // FIXME: temporarily disabled as it breaks std tests.
-                // let res = math::apply_random_float_error_ulp(this, res, 4 /* log2(16) */);
-                let res = this.adjust_nan(res, &[x]);
-                this.write_scalar(res, dest)?;
-            }
-
             // LLVM intrinsics
             "llvm.prefetch" => {
                 let [p, rw, loc, ty] =
@@ -1044,8 +897,18 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
             }
 
-            // Platform-specific shims
-            _ =>
+            // Fallback to shims in submodules.
+            _ => {
+                // Math shims
+                #[expect(irrefutable_let_patterns)]
+                if let res = shims::math::EvalContextExt::emulate_foreign_item_inner(
+                    this, link_name, abi, args, dest,
+                )? && !matches!(res, EmulateItemResult::NotSupported)
+                {
+                    return interp_ok(res);
+                }
+
+                // Platform-specific shims
                 return match this.tcx.sess.target.os.as_ref() {
                     _ if this.target_os_is_unix() =>
                         shims::unix::foreign_items::EvalContextExt::emulate_foreign_item_inner(
@@ -1060,7 +923,8 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             this, link_name, abi, args, dest,
                         ),
                     _ => interp_ok(EmulateItemResult::NotSupported),
-                },
+                };
+            }
         };
         // We only fall through to here if we did *not* hit the `_` arm above,
         // i.e., if we actually emulated the function with one of the shims.

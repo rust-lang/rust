@@ -33,8 +33,9 @@ const DEFAULT_DOC_VALID_IDENTS: &[&str] = &[
     "GPLv2", "GPLv3",
     "GitHub", "GitLab",
     "IPv4", "IPv6",
+    "InfiniBand", "RoCE",
     "ClojureScript", "CoffeeScript", "JavaScript", "PostScript", "PureScript", "TypeScript",
-    "WebAssembly",
+    "PowerPC", "WebAssembly",
     "NaN", "NaNs",
     "OAuth", "GraphQL",
     "OCaml",
@@ -569,6 +570,9 @@ define_Conf! {
     /// The maximum cognitive complexity a function can have
     #[lints(cognitive_complexity)]
     cognitive_complexity_threshold: u64 = 25,
+    /// The minimum digits a const float literal must have to supress the `excessive_precicion` lint
+    #[lints(excessive_precision)]
+    const_literal_digits_threshold: usize = 30,
     /// DEPRECATED LINT: CYCLOMATIC_COMPLEXITY.
     ///
     /// Use the Cognitive Complexity lint instead.
@@ -775,7 +779,6 @@ define_Conf! {
         needless_borrow,
         non_std_lazy_statics,
         option_as_ref_deref,
-        option_map_unwrap_or,
         ptr_as_ptr,
         question_mark,
         redundant_field_names,
@@ -783,7 +786,6 @@ define_Conf! {
         repeat_vec_with_capacity,
         same_item_push,
         seek_from_current,
-        seek_rewind,
         to_digit_is_some,
         transmute_ptr_to_ref,
         tuple_array_conversions,

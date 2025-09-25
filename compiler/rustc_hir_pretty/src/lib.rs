@@ -690,39 +690,44 @@ impl<'a> State<'a> {
                 let (cb, ib) = self.head("union");
                 self.print_struct(ident.name, generics, struct_def, item.span, true, cb, ib);
             }
-            hir::ItemKind::Impl(&hir::Impl {
-                constness,
-                safety,
-                polarity,
-                defaultness,
-                defaultness_span: _,
-                generics,
-                ref of_trait,
-                self_ty,
-                items,
-            }) => {
+            hir::ItemKind::Impl(hir::Impl { generics, of_trait, self_ty, items }) => {
                 let (cb, ib) = self.head("");
-                self.print_defaultness(defaultness);
-                self.print_safety(safety);
-                self.word_nbsp("impl");
 
-                if let hir::Constness::Const = constness {
-                    self.word_nbsp("const");
-                }
+                let impl_generics = |this: &mut Self| {
+                    this.word_nbsp("impl");
+                    if !generics.params.is_empty() {
+                        this.print_generic_params(generics.params);
+                        this.space();
+                    }
+                };
 
-                if !generics.params.is_empty() {
-                    self.print_generic_params(generics.params);
-                    self.space();
-                }
+                match of_trait {
+                    None => impl_generics(self),
+                    Some(&hir::TraitImplHeader {
+                        constness,
+                        safety,
+                        polarity,
+                        defaultness,
+                        defaultness_span: _,
+                        ref trait_ref,
+                    }) => {
+                        self.print_defaultness(defaultness);
+                        self.print_safety(safety);
 
-                if let hir::ImplPolarity::Negative(_) = polarity {
-                    self.word("!");
-                }
+                        impl_generics(self);
 
-                if let Some(t) = of_trait {
-                    self.print_trait_ref(t);
-                    self.space();
-                    self.word_space("for");
+                        if let hir::Constness::Const = constness {
+                            self.word_nbsp("const");
+                        }
+
+                        if let hir::ImplPolarity::Negative(_) = polarity {
+                            self.word("!");
+                        }
+
+                        self.print_trait_ref(trait_ref);
+                        self.space();
+                        self.word_space("for");
+                    }
                 }
 
                 self.print_type(self_ty);
@@ -1953,12 +1958,12 @@ impl<'a> State<'a> {
                 self.print_qpath(qpath, true);
                 self.nbsp();
                 self.word("{");
-                let empty = fields.is_empty() && !etc;
+                let empty = fields.is_empty() && etc.is_none();
                 if !empty {
                     self.space();
                 }
                 self.commasep_cmnt(Consistent, fields, |s, f| s.print_patfield(f), |f| f.pat.span);
-                if etc {
+                if etc.is_some() {
                     if !fields.is_empty() {
                         self.word_space(",");
                     }
@@ -2374,7 +2379,7 @@ impl<'a> State<'a> {
                     self.print_type(default);
                 }
             }
-            GenericParamKind::Const { ty, ref default, synthetic: _ } => {
+            GenericParamKind::Const { ty, ref default } => {
                 self.word_space(":");
                 self.print_type(ty);
                 if let Some(default) = default {

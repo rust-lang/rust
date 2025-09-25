@@ -5,13 +5,14 @@ LL |         *z = 2;
    |         ^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
+   = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/tree-borrows.md for further information
    = help: the accessed tag <TAG> has state Frozen which forbids this child write access
 help: the accessed tag <TAG> was created here, in the initial state Reserved
   --> tests/fail/tree_borrows/fnentry_invalidation.rs:LL:CC
    |
 LL |     let z = &mut x as *mut i32;
    |             ^^^^^^
-help: the accessed tag <TAG> later transitioned to Active due to a child write access at offsets [0x0..0x4]
+help: the accessed tag <TAG> later transitioned to Unique due to a child write access at offsets [0x0..0x4]
   --> tests/fail/tree_borrows/fnentry_invalidation.rs:LL:CC
    |
 LL |         *z = 1;
