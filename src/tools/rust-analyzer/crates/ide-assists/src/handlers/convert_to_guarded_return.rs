@@ -1,6 +1,7 @@
 use std::iter::once;
 
 use hir::Semantics;
+use either::Either;
 use ide_db::{RootDatabase, ty_filter::TryEnum};
 use syntax::{
     AstNode,
@@ -42,12 +43,9 @@ use crate::{
 // }
 // ```
 pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
-    if let Some(let_stmt) = ctx.find_node_at_offset() {
-        let_stmt_to_guarded_return(let_stmt, acc, ctx)
-    } else if let Some(if_expr) = ctx.find_node_at_offset() {
-        if_expr_to_guarded_return(if_expr, acc, ctx)
-    } else {
-        None
+    match ctx.find_node_at_offset::<Either<ast::LetStmt, ast::IfExpr>>()? {
+        Either::Left(let_stmt) => let_stmt_to_guarded_return(let_stmt, acc, ctx),
+        Either::Right(if_expr) => if_expr_to_guarded_return(if_expr, acc, ctx),
     }
 }
 
@@ -374,6 +372,30 @@ fn main() {
 fn main() {
     let Ok(x) = Err(92) else { return };
     foo(x);
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn convert_if_let_result_inside_let() {
+        check_assist(
+            convert_to_guarded_return,
+            r#"
+fn main() {
+    let _x = loop {
+        if$0 let Ok(x) = Err(92) {
+            foo(x);
+        }
+    };
+}
+"#,
+            r#"
+fn main() {
+    let _x = loop {
+        let Ok(x) = Err(92) else { continue };
+        foo(x);
+    };
 }
 "#,
         );
