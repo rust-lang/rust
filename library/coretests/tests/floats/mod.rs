@@ -1190,15 +1190,12 @@ float_test! {
     }
 }
 
-// FIXME(f16_f128,miri): many of these have to be disabled since miri does not yet support
-// the intrinsics.
-
 float_test! {
     name: sqrt_domain,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
-        f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+        f16: #[cfg(any(miri, target_has_reliable_f16_math))],
+        f128: #[cfg(any(miri, target_has_reliable_f128_math))],
     },
     test<Float> {
         assert!(Float::NAN.sqrt().is_nan());
@@ -1256,8 +1253,8 @@ float_test! {
 float_test! {
     name: total_cmp,
     attrs: {
-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
-        f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+        f16: #[cfg(any(miri, target_has_reliable_f16_math))],
+        f128: #[cfg(any(miri, target_has_reliable_f128_math))],
     },
     test<Float> {
         use core::cmp::Ordering;
@@ -1365,8 +1362,8 @@ float_test! {
     name: total_cmp_s_nan,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(false)],
-        f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+        f16: #[cfg(miri)],
+        f128: #[cfg(any(miri, target_has_reliable_f128_math))],
     },
     test<Float> {
         use core::cmp::Ordering;
@@ -1442,6 +1439,7 @@ float_test! {
     name: powi,
     attrs: {
         const: #[cfg(false)],
+        // FIXME(f16_f128): `powi` does not work in Miri for these types
         f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
         f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
     },
@@ -1462,8 +1460,8 @@ float_test! {
 float_test! {
     name: to_degrees,
     attrs: {
-        f16: #[cfg(target_has_reliable_f16)],
-        f128: #[cfg(target_has_reliable_f128)],
+        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        f128: #[cfg(any(miri, target_has_reliable_f128))],
     },
     test<Float> {
         let pi: Float = Float::PI;
@@ -1483,8 +1481,8 @@ float_test! {
 float_test! {
     name: to_radians,
     attrs: {
-        f16: #[cfg(target_has_reliable_f16)],
-        f128: #[cfg(target_has_reliable_f128)],
+        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        f128: #[cfg(any(miri, target_has_reliable_f128))],
     },
     test<Float> {
         let pi: Float = Float::PI;
@@ -1504,8 +1502,8 @@ float_test! {
 float_test! {
     name: to_algebraic,
     attrs: {
-        f16: #[cfg(target_has_reliable_f16)],
-        f128: #[cfg(target_has_reliable_f128)],
+        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        f128: #[cfg(any(miri, target_has_reliable_f128))],
     },
     test<Float> {
         let a: Float = 123.0;
@@ -1528,8 +1526,8 @@ float_test! {
 float_test! {
     name: to_bits_conv,
     attrs: {
-        f16: #[cfg(target_has_reliable_f16)],
-        f128: #[cfg(target_has_reliable_f128)],
+        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        f128: #[cfg(any(miri, target_has_reliable_f128))],
     },
     test<Float> {
         assert_biteq!(flt(1.0), Float::RAW_1);
