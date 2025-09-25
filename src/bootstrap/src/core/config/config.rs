@@ -642,12 +642,12 @@ impl Config {
         let llvm_assertions = llvm_assertions.unwrap_or(false);
         let mut target_config = HashMap::new();
         let mut channel = "dev".to_string();
+
+        let out = flags_build_dir.or_else(|| build_build_dir.map(PathBuf::from));
         let out = if cfg!(test) {
-            test_build_dir()
+            out.expect("--build-dir has to be specified in tests")
         } else {
-            flags_build_dir
-                .or_else(|| build_build_dir.map(PathBuf::from))
-                .unwrap_or_else(|| PathBuf::from("build"))
+            out.unwrap_or_else(|| PathBuf::from("build"))
         };
 
         // NOTE: Bootstrap spawns various commands with different working directories.
@@ -2489,23 +2489,4 @@ fn find_correct_section_for_field(field_name: &str) -> Vec<WouldBeValidFor> {
             }
         })
         .collect()
-}
-
-/// Resolve the build directory used for tests.
-///
-/// - When tests are run through bootstrap (`x.py test`), the build system
-///   sets `CARGO_TARGET_DIR`, so we can trust and use it here.
-/// - When tests are run directly with cargo test, `CARGO_TARGET_DIR` will
-///   not be set. In that case we fall back to resolving relative to
-///   `CARGO_MANIFEST_DIR`, by walking two parents up and appending `build`.
-fn test_build_dir() -> PathBuf {
-    env::var_os("CARGO_TARGET_DIR")
-        .map(|value| Path::new(&value).parent().unwrap().to_path_buf())
-        .unwrap_or_else(|| {
-            let base = option_env!("CARGO_MANIFEST_DIR")
-                .map(PathBuf::from)
-                .unwrap_or_else(|| std::env::current_dir().expect("failed to get current dir"));
-
-            base.ancestors().nth(2).unwrap_or_else(|| Path::new(".")).join("build")
-        })
 }
