@@ -102,6 +102,7 @@
 
 use std::borrow::Cow;
 
+use itertools::Itertools;
 use rustc_abi::FieldIdx;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{IndexSlice, IndexVec};
@@ -261,6 +262,28 @@ impl RelocateUpvars {
             | ty::InstanceKind::FnPtrAddrShim(..) => unreachable!(),
         };
 
+        // HACK: in case `AddRetag` is already run, we have one `Retag` at the body entrance
+        // so we need to make sure that first `Retag` is run.
+        let last_retag = body.basic_blocks[START_BLOCK]
+            .statements
+            .iter()
+            .find_position(|stmt| !matches!(stmt.kind, StatementKind::Retag(_, _)));
+        let retagged_start_block = if let Some((index, _)) = last_retag {
+            let span = body.span;
+            let bbs = body.basic_blocks_mut();
+            let stmts = bbs[START_BLOCK].statements.split_off(index);
+            let terminator = bbs[START_BLOCK].terminator.take();
+            let split_start_block = bbs.push(BasicBlockData::new_stmts(stmts, terminator, false));
+            bbs[START_BLOCK].statements.shrink_to_fit();
+            bbs[START_BLOCK].terminator = Some(Terminator {
+                kind: TerminatorKind::Goto { target: split_start_block },
+                source_info: SourceInfo::outermost(span),
+            });
+            Some(split_start_block)
+        } else {
+            None
+        };
+
         if let Some(mir_dumper) = MirDumper::new(tcx, "RelocateUpvars", body) {
             mir_dumper.set_disambiguator(&"before").dump_mir(body);
         }
@@ -308,7 +331,7 @@ impl RelocateUpvars {
         SubstituteUpvarVisitor { tcx, mappings: &substitution_mapping }.visit_body(body);
 
         rewrite_drop_coroutine_struct(tcx, body, &substitution_mapping);
-        insert_substitution_prologue(body, &substitution_mapping);
+        insert_substitution_prologue(body, retagged_start_block, &substitution_mapping);
         patch_missing_storage_deads(tcx, body, &substitution_mapping);
         hydrate_var_debug_info(body, &substitution_mapping);
         if let Some(mir_dumper) = MirDumper::new(tcx, "RelocateUpvars", body) {
@@ -445,10 +468,11 @@ fn rewrite_drop_coroutine_struct<'tcx>(
 
 fn insert_substitution_prologue<'tcx>(
     body: &mut Body<'tcx>,
+    retagged_start_block: Option<BasicBlock>,
     substitution_mapping: &IndexSlice<FieldIdx, UpvarSubstitution<'tcx>>,
 ) {
     let mut patch = MirPatch::new(body);
-    let mut stmts = Vec::with_capacity(2 * substitution_mapping.len());
+    let mut stmts = Vec::with_capacity(5 * substitution_mapping.len());
     for &UpvarSubstitution { local, reloc, upvar_place, span, name: _ } in substitution_mapping {
         // For each upvar-local _$i
         let source_info = SourceInfo::outermost(span);
@@ -481,22 +505,30 @@ fn insert_substitution_prologue<'tcx>(
     let source_info = SourceInfo::outermost(body.span);
     let prologue = patch.new_block(BasicBlockData::new_stmts(
         stmts,
-        Some(Terminator { source_info, kind: TerminatorKind::Goto { target: START_BLOCK } }),
+        Some(Terminator {
+            source_info,
+            kind: TerminatorKind::Goto { target: retagged_start_block.unwrap_or(START_BLOCK) },
+        }),
         false,
     ));
     patch.apply(body);
 
     // Manually patch so that prologue is the new entry-point
-    let preds = body.basic_blocks.predecessors()[START_BLOCK].clone();
-    let basic_blocks = body.basic_blocks.as_mut();
-    for pred in preds {
-        basic_blocks[pred].terminator_mut().successors_mut(|target| {
-            if *target == START_BLOCK {
-                *target = prologue;
-            }
-        });
+    if retagged_start_block.is_some() {
+        let basic_blocks = body.basic_blocks.as_mut();
+        basic_blocks[START_BLOCK].terminator_mut().successors_mut(|target| *target = prologue);
+    } else {
+        let preds = body.basic_blocks.predecessors()[START_BLOCK].clone();
+        let basic_blocks = body.basic_blocks.as_mut();
+        for pred in preds {
+            basic_blocks[pred].terminator_mut().successors_mut(|target| {
+                if *target == START_BLOCK {
+                    *target = prologue;
+                }
+            });
+        }
+        basic_blocks.swap(START_BLOCK, prologue);
     }
-    basic_blocks.swap(START_BLOCK, prologue);
 }
 
 /// Occasionally there are upvar locals left without `StorageDead` because
