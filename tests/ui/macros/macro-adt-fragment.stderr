@@ -1,0 +1,65 @@
+error: expected a struct, enum, or union
+  --> $DIR/macro-adt-fragment.rs:56:13
+   |
+LL |     ($a:adt) => {};
+   |      ------ while parsing argument for this `adt` macro fragment
+...
+LL |     fn f() {}
+   |             ^
+
+error: expected identifier, found `;`
+  --> $DIR/macro-adt-fragment.rs:61:11
+   |
+LL |     ($a:adt) => {};
+   |      ------ while parsing argument for this `adt` macro fragment
+...
+LL |     struct;
+   |           ^ expected identifier
+
+error: expected identifier, found `;`
+  --> $DIR/macro-adt-fragment.rs:66:9
+   |
+LL |     ($a:adt) => {};
+   |      ------ while parsing argument for this `adt` macro fragment
+...
+LL |     enum;
+   |         ^ expected identifier
+
+error: expected one of `!` or `::`, found `;`
+  --> $DIR/macro-adt-fragment.rs:71:10
+   |
+LL |     ($a:adt) => {};
+   |      ------ while parsing argument for this `adt` macro fragment
+...
+LL |     union;
+   |          ^ expected one of `!` or `::`
+
+error: expected a struct, enum, or union
+  --> $DIR/macro-adt-fragment.rs:90:9
+   |
+LL |     attr() ($a:adt) => { parse_adt!($a); };
+   |             ------ while parsing argument for this `adt` macro fragment
+...
+LL | fn f() {}
+   |         ^
+
+error: expected a struct, enum, or union
+  --> $DIR/macro-adt-fragment.rs:94:13
+   |
+LL |     attr() ($a:adt) => { parse_adt!($a); };
+   |             ------ while parsing argument for this `adt` macro fragment
+...
+LL | type T = u64;
+   |             ^
+
+error: expected a struct, enum, or union
+  --> $DIR/macro-adt-fragment.rs:98:14
+   |
+LL |     attr() ($a:adt) => { parse_adt!($a); };
+   |             ------ while parsing argument for this `adt` macro fragment
+...
+LL | trait Trait {}
+   |              ^
+
+error: aborting due to 7 previous errors
+

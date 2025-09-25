@@ -1670,6 +1670,7 @@ pub enum ParseNtResult {
     Lifetime(Ident, IdentIsRaw),
     Item(Box<ast::Item>),
     Fn(Box<ast::Item>),
+    Adt(Box<ast::Item>),
     Block(Box<ast::Block>),
     Stmt(Box<ast::Stmt>),
     Pat(Box<ast::Pat>, NtPatKind),

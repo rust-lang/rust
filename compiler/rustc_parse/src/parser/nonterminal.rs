@@ -105,7 +105,8 @@ impl<'a> Parser<'a> {
             NonterminalKind::TT
             | NonterminalKind::Item
             | NonterminalKind::Stmt
-            | NonterminalKind::Fn => token.kind.close_delim().is_none(),
+            | NonterminalKind::Fn
+            | NonterminalKind::Adt => token.kind.close_delim().is_none(),
         }
     }
 
@@ -131,6 +132,18 @@ impl<'a> Parser<'a> {
                     Ok(ParseNtResult::Fn(item))
                 } else {
                     Err(self.dcx().create_err(UnexpectedNonterminal::Fn(self.token.span)))
+                }
+            }
+            NonterminalKind::Adt => {
+                if let Some(item) = self.parse_item(ForceCollect::Yes)?
+                    && matches!(
+                        item.kind,
+                        ItemKind::Struct(..) | ItemKind::Enum(..) | ItemKind::Union(..)
+                    )
+                {
+                    Ok(ParseNtResult::Adt(item))
+                } else {
+                    Err(self.dcx().create_err(UnexpectedNonterminal::Adt(self.token.span)))
                 }
             }
             NonterminalKind::Block => {

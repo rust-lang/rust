@@ -1102,6 +1102,7 @@ pub enum NonterminalKind {
     Vis,
     TT,
     Fn,
+    Adt,
 }
 
 impl NonterminalKind {
@@ -1140,6 +1141,7 @@ impl NonterminalKind {
             sym::vis => NonterminalKind::Vis,
             sym::tt => NonterminalKind::TT,
             kw::Fn => NonterminalKind::Fn,
+            sym::adt => NonterminalKind::Adt,
             _ => return None,
         })
     }
@@ -1162,6 +1164,7 @@ impl NonterminalKind {
             NonterminalKind::Vis => sym::vis,
             NonterminalKind::TT => sym::tt,
             NonterminalKind::Fn => kw::Fn,
+            NonterminalKind::Adt => sym::adt,
         }
     }
 }
