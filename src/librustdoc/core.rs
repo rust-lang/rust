@@ -213,7 +213,6 @@ pub(crate) fn create_config(
         describe_lints,
         lint_cap,
         scrape_examples_options,
-        expanded_args,
         remap_path_prefix,
         target_modifiers,
         ..
@@ -326,7 +325,6 @@ pub(crate) fn create_config(
         registry: rustc_driver::diagnostics_registry(),
         ice_file: None,
         using_internal_features: &USING_INTERNAL_FEATURES,
-        expanded_args,
     }
 }
 
