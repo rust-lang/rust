@@ -414,15 +414,17 @@ impl Config {
         // Set config values based on flags.
         let mut exec_ctx = ExecutionContext::new(flags_verbose, flags_cmd.fail_fast());
         exec_ctx.set_dry_run(if flags_dry_run { DryRun::UserSelected } else { DryRun::Disabled });
-        let mut src = {
+
+        let default_src_dir = {
             let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
             // Undo `src/bootstrap`
             manifest_dir.parent().unwrap().parent().unwrap().to_owned()
         };
-
-        if let Some(src_) = compute_src_directory(flags_src, &exec_ctx) {
-            src = src_;
-        }
+        let src = if let Some(s) = compute_src_directory(flags_src, &exec_ctx) {
+            s
+        } else {
+            default_src_dir.clone()
+        };
 
         #[cfg(test)]
         {
@@ -659,6 +661,10 @@ impl Config {
             out
         };
 
+        let default_stage0_rustc_path = |dir: &Path| {
+            dir.join(host_target).join("stage0").join("bin").join(exe("rustc", host_target))
+        };
+
         if cfg!(test) {
             // When configuring bootstrap for tests, make sure to set the rustc and Cargo to the
             // same ones used to call the tests (if custom ones are not defined in the toml). If we
@@ -667,6 +673,22 @@ impl Config {
             // Cargo in their bootstrap.toml.
             build_rustc = build_rustc.take().or(std::env::var_os("RUSTC").map(|p| p.into()));
             build_cargo = build_cargo.take().or(std::env::var_os("CARGO").map(|p| p.into()));
+
+            // If we are running only `cargo test` (and not `x test bootstrap`), which is useful
+            // e.g. for debugging bootstrap itself, then we won't have RUSTC and CARGO set to the
+            // proper paths.
+            // We thus "guess" that the build directory is located at <src>/build, and try to load
+            // rustc and cargo from there
+            let is_test_outside_x = std::env::var("CARGO_TARGET_DIR").is_err();
+            if is_test_outside_x && build_rustc.is_none() {
+                let stage0_rustc = default_stage0_rustc_path(&default_src_dir.join("build"));
+                assert!(
+                    stage0_rustc.exists(),
+                    "Trying to run cargo test without having a stage0 rustc available in {}",
+                    stage0_rustc.display()
+                );
+                build_rustc = Some(stage0_rustc);
+            }
         }
 
         if !flags_skip_stage0_validation {
@@ -700,7 +722,7 @@ impl Config {
 
         let initial_rustc = build_rustc.unwrap_or_else(|| {
             download_beta_toolchain(&dwn_ctx, &out);
-            out.join(host_target).join("stage0").join("bin").join(exe("rustc", host_target))
+            default_stage0_rustc_path(&out)
         });
 
         let initial_sysroot = t!(PathBuf::from_str(
@@ -1540,11 +1562,11 @@ impl Config {
                                 println!("WARNING: CI rustc has some fields that are no longer supported in bootstrap; download-rustc will be disabled.");
                                 println!("HELP: Consider rebasing to a newer commit if available.");
                                 return None;
-                            },
+                            }
                             Err(e) => {
                                 eprintln!("ERROR: Failed to parse CI rustc bootstrap.toml: {e}");
                                 exit!(2);
-                            },
+                            }
                         };
 
                         let current_config_toml = Self::get_toml(config_path).unwrap();
