@@ -224,7 +224,7 @@ pub(crate) fn default_configuration(sess: &Session) -> Cfg {
         ins_sym!(sym::relocation_model, sess.target.relocation_model.desc_symbol());
     }
 
-    for mut s in sess.opts.unstable_opts.sanitizer {
+    for mut s in sess.sanitizers() {
         // KASAN is still ASAN under the hood, so it uses the same attribute.
         if s == SanitizerSet::KERNELADDRESS {
             s = SanitizerSet::ADDRESS;

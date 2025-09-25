@@ -71,7 +71,7 @@ pub fn walk_native_lib_search_dirs<R>(
         || sess.target.os == "linux"
         || sess.target.os == "fuchsia"
         || sess.target.is_like_aix
-        || sess.target.is_like_darwin && !sess.opts.unstable_opts.sanitizer.is_empty()
+        || sess.target.is_like_darwin && !sess.sanitizers().is_empty()
     {
         f(&sess.target_tlib_path.dir, false)?;
     }

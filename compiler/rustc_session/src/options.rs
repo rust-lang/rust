@@ -22,7 +22,7 @@ use rustc_target::spec::{
 use crate::config::*;
 use crate::search_paths::SearchPath;
 use crate::utils::NativeLib;
-use crate::{EarlyDiagCtxt, lint};
+use crate::{EarlyDiagCtxt, Session, lint};
 
 macro_rules! insert {
     ($opt_name:ident, $opt_expr:expr, $sub_hashes:expr) => {
@@ -111,12 +111,12 @@ mod target_modifier_consistency_check {
         lparsed & tmod_sanitizers == rparsed & tmod_sanitizers
     }
     pub(super) fn sanitizer_cfi_normalize_integers(
-        opts: &Options,
+        sess: &Session,
         l: &TargetModifier,
         r: Option<&TargetModifier>,
     ) -> bool {
         // For kCFI, the helper flag -Zsanitizer-cfi-normalize-integers should also be a target modifier
-        if opts.unstable_opts.sanitizer.contains(SanitizerSet::KCFI) {
+        if sess.sanitizers().contains(SanitizerSet::KCFI) {
             if let Some(r) = r {
                 return l.extend().tech_value == r.extend().tech_value;
             } else {
@@ -133,7 +133,7 @@ impl TargetModifier {
     }
     // Custom consistency check for target modifiers (or default `l.tech_value == r.tech_value`)
     // When other is None, consistency with default value is checked
-    pub fn consistent(&self, opts: &Options, other: Option<&TargetModifier>) -> bool {
+    pub fn consistent(&self, sess: &Session, other: Option<&TargetModifier>) -> bool {
         assert!(other.is_none() || self.opt == other.unwrap().opt);
         match self.opt {
             OptionsTargetModifiers::UnstableOptions(unstable) => match unstable {
@@ -142,7 +142,7 @@ impl TargetModifier {
                 }
                 UnstableOptionsTargetModifiers::sanitizer_cfi_normalize_integers => {
                     return target_modifier_consistency_check::sanitizer_cfi_normalize_integers(
-                        opts, self, other,
+                        sess, self, other,
                     );
                 }
                 _ => {}
@@ -2575,6 +2575,7 @@ written to standard error output)"),
     retpoline_external_thunk: bool = (false, parse_bool, [TRACKED TARGET_MODIFIER],
         "enables retpoline-external-thunk, retpoline-indirect-branches and retpoline-indirect-calls \
         target features (default: no)"),
+    #[rustc_lint_opt_deny_field_access("use `Session::sanitizers()` instead of this field")]
     sanitizer: SanitizerSet = (SanitizerSet::empty(), parse_sanitizers, [TRACKED TARGET_MODIFIER],
         "use a sanitizer"),
     sanitizer_cfi_canonical_jump_tables: Option<bool> = (Some(true), parse_opt_bool, [TRACKED],
