@@ -359,10 +359,6 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   return wrap(TM);
 }
 
-extern "C" void LLVMRustDisposeTargetMachine(LLVMTargetMachineRef TM) {
-  delete unwrap(TM);
-}
-
 // Unfortunately, the LLVM C API doesn't provide a way to create the
 // TargetLibraryInfo pass, so we use this method to do so.
 extern "C" void LLVMRustAddLibraryInfo(LLVMPassManagerRef PMR, LLVMModuleRef M,
