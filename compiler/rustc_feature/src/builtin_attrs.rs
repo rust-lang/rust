@@ -1212,6 +1212,12 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         niche optimizations in the standard library",
     ),
     rustc_attr!(
+        rustc_simd_monomorphize_lane_limit, Normal, template!(NameValueStr: "N"), ErrorFollowing,
+        EncodeCrossCrate::Yes,
+        "the `#[rustc_simd_monomorphize_lane_limit]` attribute is just used by std::simd \
+        for better error messages",
+    ),
+    rustc_attr!(
         rustc_nonnull_optimization_guaranteed, Normal, template!(Word), WarnFollowing,
         EncodeCrossCrate::Yes,
         "the `#[rustc_nonnull_optimization_guaranteed]` attribute is just used to document \

@@ -1044,7 +1044,10 @@ impl<'tcx, 'll> HasTypingEnv<'tcx> for CodegenCx<'ll, 'tcx> {
 impl<'tcx> LayoutOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
     #[inline]
     fn handle_layout_err(&self, err: LayoutError<'tcx>, span: Span, ty: Ty<'tcx>) -> ! {
-        if let LayoutError::SizeOverflow(_) | LayoutError::ReferencesError(_) = err {
+        if let LayoutError::SizeOverflow(_)
+        | LayoutError::ReferencesError(_)
+        | LayoutError::InvalidSimd { .. } = err
+        {
             self.tcx.dcx().emit_fatal(Spanned { span, node: err.into_diagnostic() })
         } else {
             self.tcx.dcx().emit_fatal(ssa_errors::FailedToGetLayout { span, ty, err })
@@ -1061,7 +1064,11 @@ impl<'tcx> FnAbiOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
         fn_abi_request: FnAbiRequest<'tcx>,
     ) -> ! {
         match err {
-            FnAbiError::Layout(LayoutError::SizeOverflow(_) | LayoutError::Cycle(_)) => {
+            FnAbiError::Layout(
+                LayoutError::SizeOverflow(_)
+                | LayoutError::Cycle(_)
+                | LayoutError::InvalidSimd { .. },
+            ) => {
                 self.tcx.dcx().emit_fatal(Spanned { span, node: err });
             }
             _ => match fn_abi_request {

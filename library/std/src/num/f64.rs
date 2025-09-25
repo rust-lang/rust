@@ -217,7 +217,8 @@ impl f64 {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn mul_add(self, a: f64, b: f64) -> f64 {
+    #[rustc_const_unstable(feature = "const_mul_add", issue = "146724")]
+    pub const fn mul_add(self, a: f64, b: f64) -> f64 {
         core::f64::math::mul_add(self, a, b)
     }
 
