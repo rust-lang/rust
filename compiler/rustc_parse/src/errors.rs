@@ -2171,6 +2171,8 @@ pub(crate) enum UnexpectedNonterminal {
     Statement(#[primary_span] Span),
     #[diag(parse_nonterminal_expected_fn)]
     Fn(#[primary_span] Span),
+    #[diag(parse_nonterminal_expected_adt)]
+    Adt(#[primary_span] Span),
     #[diag(parse_nonterminal_expected_ident)]
     Ident {
         #[primary_span]

@@ -1550,7 +1550,7 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
         IsInFollow::Yes
     } else {
         match kind {
-            NonterminalKind::Item | NonterminalKind::Fn => {
+            NonterminalKind::Item | NonterminalKind::Fn | NonterminalKind::Adt => {
                 // since items *must* be followed by either a `;` or a `}`, we can
                 // accept anything after them
                 IsInFollow::Yes

@@ -14,7 +14,8 @@ use crate::mbe::{Delimited, KleeneOp, KleeneToken, MetaVarExpr, SequenceRepetiti
 
 pub(crate) const VALID_FRAGMENT_NAMES_MSG: &str = "valid fragment specifiers are \
     `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, `path`, \
-    `meta`, `tt`, `item`, `fn`, and `vis`, along with `expr_2021` and `pat_param` for edition compatibility";
+    `meta`, `tt`, `item`, `fn`, 'adt', and `vis`, \
+    along with `expr_2021` and `pat_param` for edition compatibility";
 
 /// Which part of a macro rule we're parsing
 #[derive(Copy, Clone)]
@@ -142,7 +143,9 @@ fn parse(
                 });
                 NonterminalKind::TT
             });
-            if matches!(kind, NonterminalKind::Fn) && !features.macro_fragments_more() {
+            if matches!(kind, NonterminalKind::Fn | NonterminalKind::Adt)
+                && !features.macro_fragments_more()
+            {
                 let msg = "macro `:fn` and `:adt` fragments are unstable";
                 feature_err(sess, sym::macro_fragments_more, span, msg).emit();
             }
