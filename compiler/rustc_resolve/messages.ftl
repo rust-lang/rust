@@ -381,15 +381,6 @@ resolve_self_import_only_in_import_list_with_non_empty_prefix =
     `self` import can only appear in an import list with a non-empty prefix
     .label = can only appear in an import list with a non-empty prefix
 
-resolve_self_imports_only_allowed_within =
-    `self` imports are only allowed within a {"{"} {"}"} list
-
-resolve_self_imports_only_allowed_within_multipart_suggestion =
-    alternatively, use the multi-path `use` syntax to import `self`
-
-resolve_self_imports_only_allowed_within_suggestion =
-    consider importing the module directly
-
 resolve_self_in_const_generic_ty =
     cannot use `Self` in const parameter type
 
@@ -462,6 +453,9 @@ resolve_unexpected_res_use_at_op_in_slice_pat_with_range_sugg =
 
 resolve_unnamed_crate_root_import =
     crate root imports need to be explicitly named: `use crate as name;`
+
+resolve_unnamed_imports =
+    imports need to be explicitly named: `use {$ident} as name;`
 
 resolve_unreachable_label =
     use of unreachable label `{$name}`

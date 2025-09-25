@@ -595,35 +595,72 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                         }
                     }
                 } else {
-                    // Disallow `self`
-                    if source.ident.name == kw::SelfLower {
-                        let parent = module_path.last();
+                    match source.ident.name {
+                        // Allow `use crate as name;`
+                        kw::Crate => {
+                            if !module_path.is_empty() {
+                                self.r.dcx().span_err(
+                                    ident.span,
+                                    "`crate` in paths can only be used in start position",
+                                );
+                                return;
+                            }
 
-                        let span = match parent {
-                            // only `::self` from `use foo::self as bar`
-                            Some(seg) => seg.ident.span.shrink_to_hi().to(source.ident.span),
-                            None => source.ident.span,
-                        };
-                        let span_with_rename = match rename {
-                            // only `self as bar` from `use foo::self as bar`
-                            Some(rename) => source.ident.span.to(rename.span),
-                            None => source.ident.span,
-                        };
-                        self.r.report_error(
-                            span,
-                            ResolutionError::SelfImportsOnlyAllowedWithin {
-                                root: parent.is_none(),
-                                span_with_rename,
-                            },
-                        );
-
-                        // Error recovery: replace `use foo::self;` with `use foo;`
-                        if let Some(parent) = module_path.pop() {
-                            source = parent;
                             if rename.is_none() {
-                                ident = source.ident;
+                                self.r
+                                    .dcx()
+                                    .emit_err(errors::UnnamedCrateRootImport { span: ident.span });
+                                return;
                             }
                         }
+                        // Allow `use super as name;`
+                        kw::Super => {
+                            if !module_path.is_empty() {
+                                self.r.dcx().span_err(
+                                    ident.span,
+                                    "`super` in paths can only be used in start position",
+                                );
+                                return;
+                            }
+
+                            if rename.is_none() {
+                                self.r
+                                    .dcx()
+                                    .emit_err(errors::UnnamedImports { span: ident.span, ident });
+                                return;
+                            }
+
+                            type_ns_only = true;
+                        }
+                        // Allow `use self as name;`, `use foo::self;` and `use foo::self as name;`
+                        kw::SelfLower => {
+                            if let Some(parent) = module_path.pop() {
+                                if parent.ident.name.is_path_segment_keyword() {
+                                    self.r.report_error(
+                                        source.ident.span,
+                                        ResolutionError::SelfImportOnlyInImportListWithNonEmptyPrefix,
+                                    );
+                                    return;
+                                }
+
+                                let self_span = source.ident.span;
+                                source = parent;
+                                if rename.is_none() {
+                                    ident = Ident::new(source.ident.name, self_span);
+                                }
+                            } else {
+                                if rename.is_none() {
+                                    self.r.dcx().emit_err(errors::UnnamedImports {
+                                        span: ident.span,
+                                        ident,
+                                    });
+                                    return;
+                                }
+                            }
+                            type_ns_only = true;
+                        }
+                        kw::DollarCrate => {}
+                        _ => {}
                     }
 
                     // Disallow `use $crate;`
@@ -707,6 +744,12 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                     }
 
                     e.emit();
+                } else if let &[self_span] = &self_spans[..]
+                    && prefix.len() == 1
+                    && prefix[0].ident.name == kw::DollarCrate
+                {
+                    // Disallow `use $crate::{self};`
+                    self.r.dcx().emit_err(errors::CrateImported { span: self_span });
                 }
 
                 for &(ref tree, id) in items {

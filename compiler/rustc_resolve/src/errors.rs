@@ -273,40 +273,6 @@ pub(crate) struct AttemptToUseNonConstantValueInConstantWithoutSuggestion<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(resolve_self_imports_only_allowed_within, code = E0429)]
-pub(crate) struct SelfImportsOnlyAllowedWithin {
-    #[primary_span]
-    pub(crate) span: Span,
-    #[subdiagnostic]
-    pub(crate) suggestion: Option<SelfImportsOnlyAllowedWithinSuggestion>,
-    #[subdiagnostic]
-    pub(crate) mpart_suggestion: Option<SelfImportsOnlyAllowedWithinMultipartSuggestion>,
-}
-
-#[derive(Subdiagnostic)]
-#[suggestion(
-    resolve_self_imports_only_allowed_within_suggestion,
-    code = "",
-    applicability = "machine-applicable"
-)]
-pub(crate) struct SelfImportsOnlyAllowedWithinSuggestion {
-    #[primary_span]
-    pub(crate) span: Span,
-}
-
-#[derive(Subdiagnostic)]
-#[multipart_suggestion(
-    resolve_self_imports_only_allowed_within_multipart_suggestion,
-    applicability = "machine-applicable"
-)]
-pub(crate) struct SelfImportsOnlyAllowedWithinMultipartSuggestion {
-    #[suggestion_part(code = "{{")]
-    pub(crate) multipart_start: Span,
-    #[suggestion_part(code = "}}")]
-    pub(crate) multipart_end: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(resolve_binding_shadows_something_unacceptable, code = E0530)]
 pub(crate) struct BindingShadowsSomethingUnacceptable<'a> {
     #[primary_span]
@@ -896,6 +862,14 @@ pub(crate) struct ArgumentsMacroUseNotAllowed {
 pub(crate) struct UnnamedCrateRootImport {
     #[primary_span]
     pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_unnamed_imports)]
+pub(crate) struct UnnamedImports {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) ident: Ident,
 }
 
 #[derive(Diagnostic)]
