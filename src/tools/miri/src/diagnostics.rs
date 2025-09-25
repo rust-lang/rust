@@ -31,8 +31,9 @@ pub enum TerminationInfo {
     },
     Int2PtrWithStrictProvenance,
     Deadlock,
-    /// In GenMC mode, an execution can get stuck in certain cases. This is not an error.
-    GenmcStuckExecution,
+    /// In GenMC mode, executions can get blocked, which stops the current execution without running any cleanup.
+    /// No leak checks should be performed if this happens, since they would give false positives.
+    GenmcBlockedExecution,
     MultipleSymbolDefinitions {
         link_name: Symbol,
         first: SpanData,
@@ -77,7 +78,8 @@ impl fmt::Display for TerminationInfo {
             StackedBorrowsUb { msg, .. } => write!(f, "{msg}"),
             TreeBorrowsUb { title, .. } => write!(f, "{title}"),
             Deadlock => write!(f, "the evaluated program deadlocked"),
-            GenmcStuckExecution => write!(f, "GenMC determined that the execution got stuck"),
+            GenmcBlockedExecution =>
+                write!(f, "GenMC determined that the execution got blocked (this is not an error)"),
             MultipleSymbolDefinitions { link_name, .. } =>
                 write!(f, "multiple definitions of symbol `{link_name}`"),
             SymbolShimClashing { link_name, .. } =>
@@ -139,6 +141,13 @@ pub enum NonHaltingDiagnostic {
         ptr: Pointer,
     },
     ExternTypeReborrow,
+    GenmcCompareExchangeWeak,
+    GenmcCompareExchangeOrderingMismatch {
+        success_ordering: AtomicRwOrd,
+        upgraded_success_ordering: AtomicRwOrd,
+        failure_ordering: AtomicReadOrd,
+        effective_failure_ordering: AtomicReadOrd,
+    },
 }
 
 /// Level of Miri specific diagnostics
@@ -243,11 +252,12 @@ pub fn report_error<'tcx>(
                 labels.push(format!("this thread got stuck here"));
                 None
             }
-            GenmcStuckExecution => {
-                // This case should only happen in GenMC mode. We treat it like a normal program exit.
+            GenmcBlockedExecution => {
+                // This case should only happen in GenMC mode.
                 assert!(ecx.machine.data_race.as_genmc_ref().is_some());
-                tracing::info!("GenMC: found stuck execution");
-                return Some((0, true));
+                // The program got blocked by GenMC without finishing the execution.
+                // No cleanup code was executed, so we don't do any leak checks.
+                return Some((0, false));
             }
             MultipleSymbolDefinitions { .. } | SymbolShimClashing { .. } => None,
         };
@@ -634,6 +644,8 @@ impl<'tcx> MiriMachine<'tcx> {
                 ("sharing memory with a native function".to_string(), DiagLevel::Warning),
             ExternTypeReborrow =>
                 ("reborrow of reference to `extern type`".to_string(), DiagLevel::Warning),
+            GenmcCompareExchangeWeak | GenmcCompareExchangeOrderingMismatch { .. } =>
+                ("GenMC might miss possible behaviors of this code".to_string(), DiagLevel::Warning),
             CreatedPointerTag(..)
             | PoppedPointerTag(..)
             | CreatedAlloc(..)
@@ -672,6 +684,23 @@ impl<'tcx> MiriMachine<'tcx> {
                 format!("weak memory emulation: outdated value returned from load at {ptr}"),
             ExternTypeReborrow =>
                 format!("reborrow of a reference to `extern type` is not properly supported"),
+            GenmcCompareExchangeWeak =>
+                "GenMC currently does not model spurious failures of `compare_exchange_weak`. Miri with GenMC might miss bugs related to spurious failures."
+                    .to_string(),
+            GenmcCompareExchangeOrderingMismatch {
+                success_ordering,
+                upgraded_success_ordering,
+                failure_ordering,
+                effective_failure_ordering,
+            } => {
+                let was_upgraded_msg = if success_ordering != upgraded_success_ordering {
+                    format!("Success ordering '{success_ordering:?}' was upgraded to '{upgraded_success_ordering:?}' to match failure ordering '{failure_ordering:?}'")
+                } else {
+                    assert_ne!(failure_ordering, effective_failure_ordering);
+                    format!("Due to success ordering '{success_ordering:?}', the failure ordering '{failure_ordering:?}' is treated like '{effective_failure_ordering:?}'")
+                };
+                format!("GenMC currently does not model the failure ordering for `compare_exchange`. {was_upgraded_msg}. Miri with GenMC might miss bugs related to this memory access.")
+            }
         };
 
         let notes = match &e {

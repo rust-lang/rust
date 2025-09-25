@@ -565,6 +565,51 @@ fn issue_14789() {
     );
 }
 
+fn issue_15072() {
+    use std::ops::Deref;
+
+    struct Foo;
+    impl Deref for Foo {
+        type Target = fn() -> &'static str;
+
+        fn deref(&self) -> &Self::Target {
+            fn hello() -> &'static str {
+                "Hello, world!"
+            }
+            &(hello as fn() -> &'static str)
+        }
+    }
+
+    fn accepts_fn(f: impl Fn() -> &'static str) {
+        println!("{}", f());
+    }
+
+    fn some_fn() -> &'static str {
+        todo!()
+    }
+
+    let f = &Foo;
+    accepts_fn(|| f());
+    //~^ redundant_closure
+
+    let g = &some_fn;
+    accepts_fn(|| g());
+    //~^ redundant_closure
+
+    struct Bar(Foo);
+    impl Deref for Bar {
+        type Target = Foo;
+
+        fn deref(&self) -> &Self::Target {
+            &self.0
+        }
+    }
+
+    let b = &Bar(Foo);
+    accepts_fn(|| b());
+    //~^ redundant_closure
+}
+
 fn issue8817() {
     fn f(_: u32) -> u32 {
         todo!()
@@ -589,4 +634,12 @@ fn issue8817() {
         //~^ redundant_closure
         //~| HELP: replace the closure with the tuple variant itself
         .unwrap(); // just for nicer formatting
+}
+
+async fn issue13892<'a, T, F>(maybe: Option<&'a T>, visitor: F)
+where
+    F: AsyncFn(&'a T),
+    T: 'a,
+{
+    maybe.map(|x| visitor(x));
 }

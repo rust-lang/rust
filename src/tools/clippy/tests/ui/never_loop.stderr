@@ -193,6 +193,19 @@ LL | |         return;
 LL | |     }
    | |_____^
    |
+help: this code is unreachable. Consider moving the reachable parts out
+  --> tests/ui/never_loop.rs:436:9
+   |
+LL | /         loop {
+LL | |
+LL | |             break 'outer;
+LL | |         }
+   | |_________^
+help: this code is unreachable. Consider moving the reachable parts out
+  --> tests/ui/never_loop.rs:440:9
+   |
+LL |         return;
+   |         ^^^^^^^
 help: if you need the first element of the iterator, try writing
    |
 LL -     'outer: for v in 0..10 {
@@ -297,5 +310,87 @@ LL ~
 LL ~         
    |
 
-error: aborting due to 24 previous errors
+error: this loop never actually loops
+  --> tests/ui/never_loop.rs:503:5
+   |
+LL | /     'bar: for _ in 0..100 {
+LL | |
+LL | |         loop {
+...  |
+LL | |     }
+   | |_____^
+   |
+help: this code is unreachable. Consider moving the reachable parts out
+  --> tests/ui/never_loop.rs:505:9
+   |
+LL | /         loop {
+LL | |
+LL | |             println!("This will still run");
+LL | |             break 'bar;
+LL | |         }
+   | |_________^
+help: if you need the first element of the iterator, try writing
+   |
+LL -     'bar: for _ in 0..100 {
+LL +     if let Some(_) = (0..100).next() {
+   |
+
+error: this loop never actually loops
+  --> tests/ui/never_loop.rs:505:9
+   |
+LL | /         loop {
+LL | |
+LL | |             println!("This will still run");
+LL | |             break 'bar;
+LL | |         }
+   | |_________^
+
+error: this loop never actually loops
+  --> tests/ui/never_loop.rs:512:5
+   |
+LL | /     'foo: for _ in 0..100 {
+LL | |
+LL | |         loop {
+...  |
+LL | |     }
+   | |_____^
+   |
+help: this code is unreachable. Consider moving the reachable parts out
+  --> tests/ui/never_loop.rs:514:9
+   |
+LL | /         loop {
+LL | |
+LL | |             println!("This will still run");
+LL | |             loop {
+...  |
+LL | |         }
+   | |_________^
+help: if you need the first element of the iterator, try writing
+   |
+LL -     'foo: for _ in 0..100 {
+LL +     if let Some(_) = (0..100).next() {
+   |
+
+error: this loop never actually loops
+  --> tests/ui/never_loop.rs:514:9
+   |
+LL | /         loop {
+LL | |
+LL | |             println!("This will still run");
+LL | |             loop {
+...  |
+LL | |         }
+   | |_________^
+
+error: this loop never actually loops
+  --> tests/ui/never_loop.rs:517:13
+   |
+LL | /             loop {
+LL | |
+LL | |                 println!("This will still run");
+LL | |                 break 'foo;
+LL | |             }
+   | |_____________^
+
+error: aborting due to 29 previous errors
 

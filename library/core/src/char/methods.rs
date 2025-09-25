@@ -969,7 +969,43 @@ impl char {
     #[must_use]
     #[inline]
     pub(crate) fn is_grapheme_extended(self) -> bool {
-        unicode::Grapheme_Extend(self)
+        !self.is_ascii() && unicode::Grapheme_Extend(self)
+    }
+
+    /// Returns `true` if this `char` has the `Cased` property.
+    ///
+    /// `Cased` is described in Chapter 4 (Character Properties) of the [Unicode Standard] and
+    /// specified in the [Unicode Character Database][ucd] [`DerivedCoreProperties.txt`].
+    ///
+    /// [Unicode Standard]: https://www.unicode.org/versions/latest/
+    /// [ucd]: https://www.unicode.org/reports/tr44/
+    /// [`DerivedCoreProperties.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/DerivedCoreProperties.txt
+    #[must_use]
+    #[inline]
+    #[doc(hidden)]
+    #[unstable(feature = "char_internals", reason = "exposed only for libstd", issue = "none")]
+    pub fn is_cased(self) -> bool {
+        if self.is_ascii() { self.is_ascii_alphabetic() } else { unicode::Cased(self) }
+    }
+
+    /// Returns `true` if this `char` has the `Case_Ignorable` property.
+    ///
+    /// `Case_Ignorable` is described in Chapter 4 (Character Properties) of the [Unicode Standard] and
+    /// specified in the [Unicode Character Database][ucd] [`DerivedCoreProperties.txt`].
+    ///
+    /// [Unicode Standard]: https://www.unicode.org/versions/latest/
+    /// [ucd]: https://www.unicode.org/reports/tr44/
+    /// [`DerivedCoreProperties.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/DerivedCoreProperties.txt
+    #[must_use]
+    #[inline]
+    #[doc(hidden)]
+    #[unstable(feature = "char_internals", reason = "exposed only for libstd", issue = "none")]
+    pub fn is_case_ignorable(self) -> bool {
+        if self.is_ascii() {
+            matches!(self, '\'' | '.' | ':' | '^' | '`')
+        } else {
+            unicode::Case_Ignorable(self)
+        }
     }
 
     /// Returns `true` if this `char` has one of the general categories for numbers.

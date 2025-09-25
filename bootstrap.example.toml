@@ -325,6 +325,9 @@
 # Defaults to the Python interpreter used to execute x.py.
 #build.python = "python"
 
+# The path to (or name of) the resource compiler executable to use on Windows.
+#build.windows-rc = "rc.exe"
+
 # The path to the REUSE executable to use. Note that REUSE is not required in
 # most cases, as our tooling relies on a cached (and shrunk) copy of the
 # REUSE output present in the git repository and in our source tarballs.
@@ -855,6 +858,17 @@
 # Since libstd also builds libcore and liballoc as dependencies and all their features are mirrored
 # as libstd features, this option can also be used to configure features such as optimize_for_size.
 #rust.std-features = ["panic_unwind"]
+
+# Trigger a `DebugBreak` after an internal compiler error during bootstrap on Windows
+#rust.break-on-ice = true
+
+# Set the number of threads for the compiler frontend used during compilation of Rust code (passed to `-Zthreads`).
+# The valid options are:
+# 0 - Set the number of threads according to the detected number of threads of the host system
+# 1 - Use a single thread for compilation of Rust code (the default)
+# N - Number of threads used for compilation of Rust code
+#
+#rust.parallel-frontend-threads = 1
 
 # =============================================================================
 # Distribution options

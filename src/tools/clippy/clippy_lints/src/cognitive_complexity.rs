@@ -23,8 +23,8 @@ declare_clippy_lint! {
     ///
     /// ### Known problems
     /// The true Cognitive Complexity of a method is not something we can
-    /// calculate using modern technology. This lint has been left in the
-    /// `nursery` so as to not mislead users into using this lint as a
+    /// calculate using modern technology. This lint has been left in
+    /// `restriction` so as to not mislead users into using this lint as a
     /// measurement tool.
     ///
     /// For more detailed information, see [rust-clippy#3793](https://github.com/rust-lang/rust-clippy/issues/3793)

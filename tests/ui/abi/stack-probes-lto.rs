@@ -13,5 +13,6 @@
 //@ ignore-tvos Stack probes are enabled, but the SIGSEGV handler isn't
 //@ ignore-watchos Stack probes are enabled, but the SIGSEGV handler isn't
 //@ ignore-visionos Stack probes are enabled, but the SIGSEGV handler isn't
+//@ ignore-backends: gcc
 
 include!("stack-probes.rs");

@@ -73,6 +73,7 @@ fn test_units() {
 /// GPLv2 GPLv3
 /// GitHub GitLab
 /// IPv4 IPv6
+/// InfiniBand RoCE
 /// ClojureScript CoffeeScript JavaScript PostScript PureScript TypeScript
 /// PowerPC WebAssembly
 /// NaN NaNs

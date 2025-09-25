@@ -408,11 +408,8 @@ impl WriteBackendMethods for GccCodegenBackend {
         back::write::codegen(cgcx, module, config)
     }
 
-    fn prepare_thin(
-        module: ModuleCodegen<Self::Module>,
-        emit_summary: bool,
-    ) -> (String, Self::ThinBuffer) {
-        back::lto::prepare_thin(module, emit_summary)
+    fn prepare_thin(module: ModuleCodegen<Self::Module>) -> (String, Self::ThinBuffer) {
+        back::lto::prepare_thin(module)
     }
 
     fn serialize_module(_module: ModuleCodegen<Self::Module>) -> (String, Self::ModuleBuffer) {

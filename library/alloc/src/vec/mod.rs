@@ -760,33 +760,6 @@ impl<T> Vec<T> {
         unsafe { Self::from_parts_in(ptr, length, capacity, Global) }
     }
 
-    /// Returns a mutable reference to the last item in the vector, or
-    /// `None` if it is empty.
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// #![feature(vec_peek_mut)]
-    /// let mut vec = Vec::new();
-    /// assert!(vec.peek_mut().is_none());
-    ///
-    /// vec.push(1);
-    /// vec.push(5);
-    /// vec.push(2);
-    /// assert_eq!(vec.last(), Some(&2));
-    /// if let Some(mut val) = vec.peek_mut() {
-    ///     *val = 0;
-    /// }
-    /// assert_eq!(vec.last(), Some(&0));
-    /// ```
-    #[inline]
-    #[unstable(feature = "vec_peek_mut", issue = "122742")]
-    pub fn peek_mut(&mut self) -> Option<PeekMut<'_, T>> {
-        PeekMut::new(self)
-    }
-
     /// Decomposes a `Vec<T>` into its raw components: `(pointer, length, capacity)`.
     ///
     /// Returns the raw pointer to the underlying data, the length of
@@ -2047,7 +2020,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn swap_remove(&mut self, index: usize) -> T {
         #[cold]
-        #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+        #[cfg_attr(not(panic = "immediate-abort"), inline(never))]
         #[track_caller]
         #[optimize(size)]
         fn assert_failed(index: usize, len: usize) -> ! {
@@ -2129,7 +2102,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[must_use = "if you don't need a reference to the value, use `Vec::insert` instead"]
     pub fn insert_mut(&mut self, index: usize, element: T) -> &mut T {
         #[cold]
-        #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+        #[cfg_attr(not(panic = "immediate-abort"), inline(never))]
         #[track_caller]
         #[optimize(size)]
         fn assert_failed(index: usize, len: usize) -> ! {
@@ -2193,7 +2166,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[rustc_confusables("delete", "take")]
     pub fn remove(&mut self, index: usize) -> T {
         #[cold]
-        #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+        #[cfg_attr(not(panic = "immediate-abort"), inline(never))]
         #[track_caller]
         #[optimize(size)]
         fn assert_failed(index: usize, len: usize) -> ! {
@@ -2747,6 +2720,33 @@ impl<T, A: Allocator> Vec<T, A> {
         if predicate(last) { self.pop() } else { None }
     }
 
+    /// Returns a mutable reference to the last item in the vector, or
+    /// `None` if it is empty.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(vec_peek_mut)]
+    /// let mut vec = Vec::new();
+    /// assert!(vec.peek_mut().is_none());
+    ///
+    /// vec.push(1);
+    /// vec.push(5);
+    /// vec.push(2);
+    /// assert_eq!(vec.last(), Some(&2));
+    /// if let Some(mut val) = vec.peek_mut() {
+    ///     *val = 0;
+    /// }
+    /// assert_eq!(vec.last(), Some(&0));
+    /// ```
+    #[inline]
+    #[unstable(feature = "vec_peek_mut", issue = "122742")]
+    pub fn peek_mut(&mut self) -> Option<PeekMut<'_, T, A>> {
+        PeekMut::new(self)
+    }
+
     /// Moves all the elements of `other` into `self`, leaving `other` empty.
     ///
     /// # Panics
@@ -2796,8 +2796,8 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// # Panics
     ///
-    /// Panics if the starting point is greater than the end point or if
-    /// the end point is greater than the length of the vector.
+    /// Panics if the range has `start_bound > end_bound`, or, if the range is
+    /// bounded on either end and past the length of the vector.
     ///
     /// # Leaking
     ///
@@ -2955,7 +2955,7 @@ impl<T, A: Allocator> Vec<T, A> {
         A: Clone,
     {
         #[cold]
-        #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+        #[cfg_attr(not(panic = "immediate-abort"), inline(never))]
         #[track_caller]
         #[optimize(size)]
         fn assert_failed(at: usize, len: usize) -> ! {
@@ -3860,8 +3860,8 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// # Panics
     ///
-    /// Panics if the starting point is greater than the end point or if
-    /// the end point is greater than the length of the vector.
+    /// Panics if the range has `start_bound > end_bound`, or, if the range is
+    /// bounded on either end and past the length of the vector.
     ///
     /// # Examples
     ///

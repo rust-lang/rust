@@ -373,7 +373,7 @@ impl<T: ?Sized> Mutex<T> {
     /// or written through after the mutex is dropped.
     #[unstable(feature = "mutex_data_ptr", issue = "140368")]
     // #[unstable(feature = "nonpoison_mutex", issue = "134645")]
-    pub fn data_ptr(&self) -> *mut T {
+    pub const fn data_ptr(&self) -> *mut T {
         self.data.get()
     }
 }

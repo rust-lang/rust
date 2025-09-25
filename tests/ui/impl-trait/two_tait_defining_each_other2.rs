@@ -12,8 +12,7 @@ trait Foo {}
 fn muh(x: A) -> B {
     //[next]~^ ERROR: type annotations needed
     x // B's hidden type is A (opaquely)
-    //[next]~^ ERROR: type annotations needed
-    //[current]~^^ ERROR opaque type's hidden type cannot be another opaque type
+    //[current]~^ ERROR opaque type's hidden type cannot be another opaque type
 }
 
 struct Bar;

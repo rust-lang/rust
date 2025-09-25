@@ -1,4 +1,6 @@
 #![allow(dead_code)]
+#![feature(const_trait_impl)]
+#![feature(const_default)]
 
 use std::collections::HashMap;
 
@@ -392,6 +394,45 @@ mod issue11368 {
         #[track_caller]
         fn default() -> Self {
             Self { a: 0 }
+        }
+    }
+}
+
+mod issue15493 {
+    #[derive(Copy, Clone)]
+    #[repr(transparent)]
+    struct Foo(u64);
+
+    impl const Default for Foo {
+        fn default() -> Self {
+            Self(0)
+        }
+    }
+
+    #[derive(Copy, Clone)]
+    enum Bar {
+        A,
+        B,
+    }
+
+    impl const Default for Bar {
+        fn default() -> Self {
+            Bar::A
+        }
+    }
+}
+
+mod issue15536 {
+    #[derive(Copy, Clone)]
+    enum Bar {
+        A,
+        B,
+    }
+
+    impl Default for Bar {
+        //~^ derivable_impls
+        fn default() -> Self {
+            Self::A
         }
     }
 }

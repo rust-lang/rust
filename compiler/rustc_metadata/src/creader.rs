@@ -412,7 +412,7 @@ impl CStore {
             match (&left_name_val, &right_name_val) {
                 (Some(l), Some(r)) => match l.1.opt.cmp(&r.1.opt) {
                     cmp::Ordering::Equal => {
-                        if l.0.tech_value != r.0.tech_value {
+                        if !l.1.consistent(&tcx.sess.opts, Some(&r.1)) {
                             report_diff(
                                 &l.0.prefix,
                                 &l.0.name,
@@ -424,20 +424,28 @@ impl CStore {
                         right_name_val = None;
                     }
                     cmp::Ordering::Greater => {
-                        report_diff(&r.0.prefix, &r.0.name, None, Some(&r.1.value_name));
+                        if !r.1.consistent(&tcx.sess.opts, None) {
+                            report_diff(&r.0.prefix, &r.0.name, None, Some(&r.1.value_name));
+                        }
                         right_name_val = None;
                     }
                     cmp::Ordering::Less => {
-                        report_diff(&l.0.prefix, &l.0.name, Some(&l.1.value_name), None);
+                        if !l.1.consistent(&tcx.sess.opts, None) {
+                            report_diff(&l.0.prefix, &l.0.name, Some(&l.1.value_name), None);
+                        }
                         left_name_val = None;
                     }
                 },
                 (Some(l), None) => {
-                    report_diff(&l.0.prefix, &l.0.name, Some(&l.1.value_name), None);
+                    if !l.1.consistent(&tcx.sess.opts, None) {
+                        report_diff(&l.0.prefix, &l.0.name, Some(&l.1.value_name), None);
+                    }
                     left_name_val = None;
                 }
                 (None, Some(r)) => {
-                    report_diff(&r.0.prefix, &r.0.name, None, Some(&r.1.value_name));
+                    if !r.1.consistent(&tcx.sess.opts, None) {
+                        report_diff(&r.0.prefix, &r.0.name, None, Some(&r.1.value_name));
+                    }
                     right_name_val = None;
                 }
                 (None, None) => break,
@@ -1019,6 +1027,10 @@ impl CStore {
         let name = match desired_strategy {
             PanicStrategy::Unwind => sym::panic_unwind,
             PanicStrategy::Abort => sym::panic_abort,
+            PanicStrategy::ImmediateAbort => {
+                // Immediate-aborting panics don't use a runtime.
+                return;
+            }
         };
         info!("panic runtime not found -- loading {}", name);
 

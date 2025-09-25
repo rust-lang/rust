@@ -5,16 +5,7 @@ declare namespace stringdex {
      * The client interface to Stringdex.
      */
     interface Database {
-        getIndex(colname: string): SearchTree|undefined;
         getData(colname: string): DataColumn|undefined;
-    }
-    /**
-     * A search index file.
-     */
-    interface SearchTree {
-        trie(): Trie;
-        search(name: Uint8Array|string): Promise<Trie?>;
-        searchLev(name: Uint8Array|string): AsyncGenerator<Trie>;
     }
     /**
      * A compressed node in the search tree.
@@ -29,9 +20,7 @@ declare namespace stringdex {
         matches(): RoaringBitmap;
         substringMatches(): AsyncGenerator<RoaringBitmap>;
         prefixMatches(): AsyncGenerator<RoaringBitmap>;
-        keys(): Uint8Array;
         keysExcludeSuffixOnly(): Uint8Array;
-        children(): [number, Promise<Trie>][];
         childrenExcludeSuffixOnly(): [number, Promise<Trie>][];
         child(id: number): Promise<Trie>?;
     }
@@ -40,7 +29,9 @@ declare namespace stringdex {
      */
     interface DataColumn {
         isEmpty(id: number): boolean;
-        at(id: number): Promise<Uint8Array|undefined>;
+        at(id: number): Promise<Uint8Array>|Uint8Array|undefined;
+        search(name: Uint8Array|string): Promise<Trie?>;
+        searchLev(name: Uint8Array|string): AsyncGenerator<Trie>;
         length: number,
     }
     /**

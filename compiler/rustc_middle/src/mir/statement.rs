@@ -408,14 +408,14 @@ impl<'tcx> Place<'tcx> {
         self.as_ref().project_deeper(more_projections, tcx)
     }
 
-    pub fn ty_from<D: ?Sized>(
+    pub fn ty_from<D>(
         local: Local,
         projection: &[PlaceElem<'tcx>],
         local_decls: &D,
         tcx: TyCtxt<'tcx>,
     ) -> PlaceTy<'tcx>
     where
-        D: HasLocalDecls<'tcx>,
+        D: ?Sized + HasLocalDecls<'tcx>,
     {
         PlaceTy::from_ty(local_decls.local_decls()[local].ty).multi_projection_ty(tcx, projection)
     }
@@ -529,9 +529,9 @@ impl<'tcx> PlaceRef<'tcx> {
         Place { local: self.local, projection: tcx.mk_place_elems(new_projections) }
     }
 
-    pub fn ty<D: ?Sized>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> PlaceTy<'tcx>
+    pub fn ty<D>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> PlaceTy<'tcx>
     where
-        D: HasLocalDecls<'tcx>,
+        D: ?Sized + HasLocalDecls<'tcx>,
     {
         Place::ty_from(self.local, self.projection, local_decls, tcx)
     }
@@ -630,9 +630,9 @@ impl<'tcx> Operand<'tcx> {
         if let ty::FnDef(def_id, args) = *const_ty.kind() { Some((def_id, args)) } else { None }
     }
 
-    pub fn ty<D: ?Sized>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> Ty<'tcx>
+    pub fn ty<D>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> Ty<'tcx>
     where
-        D: HasLocalDecls<'tcx>,
+        D: ?Sized + HasLocalDecls<'tcx>,
     {
         match self {
             &Operand::Copy(ref l) | &Operand::Move(ref l) => l.ty(local_decls, tcx).ty,
@@ -640,9 +640,9 @@ impl<'tcx> Operand<'tcx> {
         }
     }
 
-    pub fn span<D: ?Sized>(&self, local_decls: &D) -> Span
+    pub fn span<D>(&self, local_decls: &D) -> Span
     where
-        D: HasLocalDecls<'tcx>,
+        D: ?Sized + HasLocalDecls<'tcx>,
     {
         match self {
             &Operand::Copy(ref l) | &Operand::Move(ref l) => {
@@ -674,7 +674,7 @@ impl<'tcx> ConstOperand<'tcx> {
 }
 
 ///////////////////////////////////////////////////////////////////////////
-/// Rvalues
+// Rvalues
 
 pub enum RvalueInitializationState {
     Shallow,
@@ -697,7 +697,6 @@ impl<'tcx> Rvalue<'tcx> {
             | Rvalue::Ref(_, _, _)
             | Rvalue::ThreadLocalRef(_)
             | Rvalue::RawPtr(_, _)
-            | Rvalue::Len(_)
             | Rvalue::Cast(
                 CastKind::IntToInt
                 | CastKind::FloatToInt
@@ -721,9 +720,9 @@ impl<'tcx> Rvalue<'tcx> {
         }
     }
 
-    pub fn ty<D: ?Sized>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> Ty<'tcx>
+    pub fn ty<D>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> Ty<'tcx>
     where
-        D: HasLocalDecls<'tcx>,
+        D: ?Sized + HasLocalDecls<'tcx>,
     {
         match *self {
             Rvalue::Use(ref operand) => operand.ty(local_decls, tcx),
@@ -739,7 +738,6 @@ impl<'tcx> Rvalue<'tcx> {
                 let place_ty = place.ty(local_decls, tcx).ty;
                 Ty::new_ptr(tcx, place_ty, kind.to_mutbl_lossy())
             }
-            Rvalue::Len(..) => tcx.types.usize,
             Rvalue::Cast(.., ty) => ty,
             Rvalue::BinaryOp(op, box (ref lhs, ref rhs)) => {
                 let lhs_ty = lhs.ty(local_decls, tcx);

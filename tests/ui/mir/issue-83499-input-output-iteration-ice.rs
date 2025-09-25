@@ -4,7 +4,6 @@
 
 fn main() {}
 
-fn foo(_: Bar, ...) -> impl {}
-//~^ ERROR defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
-//~| ERROR cannot find type `Bar` in this scope
+unsafe extern "C" fn foo(_: Bar, ...) -> impl {}
+//~^ ERROR cannot find type `Bar` in this scope
 //~| ERROR at least one trait must be specified

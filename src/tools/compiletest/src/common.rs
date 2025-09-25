@@ -67,6 +67,7 @@ string_enum! {
         MirOpt => "mir-opt",
         Pretty => "pretty",
         RunMake => "run-make",
+        RunMakeCargo => "run-make-cargo",
         Rustdoc => "rustdoc",
         RustdocGui => "rustdoc-gui",
         RustdocJs => "rustdoc-js",
@@ -202,6 +203,10 @@ impl CodegenBackend {
             Self::Llvm => "llvm",
         }
     }
+
+    pub fn is_llvm(self) -> bool {
+        matches!(self, Self::Llvm)
+    }
 }
 
 /// Configuration for `compiletest` *per invocation*.
@@ -269,9 +274,6 @@ pub struct Config {
     /// between e.g. beta `cargo` vs in-tree `cargo`.
     ///
     /// FIXME: maybe rename this to reflect that this is a *staged* host cargo.
-    ///
-    /// FIXME(#134109): split `run-make` into two test suites, a test suite *with* staged cargo, and
-    /// another test suite *without*.
     pub cargo_path: Option<Utf8PathBuf>,
 
     /// Path to the stage 0 `rustc` used to build `run-make` recipes. This must not be confused with

@@ -571,11 +571,15 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
     }
 
-    /// Returns `true` if all the elements in the value of `scc_b` are nameable
+    /// Returns `true` if all the placeholders in the value of `scc_b` are nameable
     /// in `scc_a`. Used during constraint propagation, and only once
     /// the value of `scc_b` has been computed.
-    fn universe_compatible(&self, scc_b: ConstraintSccIndex, scc_a: ConstraintSccIndex) -> bool {
-        self.scc_annotations[scc_a].universe_compatible_with(self.scc_annotations[scc_b])
+    fn can_name_all_placeholders(
+        &self,
+        scc_a: ConstraintSccIndex,
+        scc_b: ConstraintSccIndex,
+    ) -> bool {
+        self.scc_annotations[scc_a].can_name_all_placeholders(self.scc_annotations[scc_b])
     }
 
     /// Once regions have been propagated, this method is used to see
@@ -615,7 +619,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
 
             // Type-test failed. Report the error.
-            let erased_generic_kind = infcx.tcx.erase_regions(type_test.generic_kind);
+            let erased_generic_kind = infcx.tcx.erase_and_anonymize_regions(type_test.generic_kind);
 
             // Skip duplicate-ish errors.
             if deduplicate_errors.insert((
@@ -964,16 +968,22 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             return true;
         }
 
+        let fr_static = self.universal_regions().fr_static;
+
         // If we are checking that `'sup: 'sub`, and `'sub` contains
         // some placeholder that `'sup` cannot name, then this is only
         // true if `'sup` outlives static.
-        if !self.universe_compatible(sub_region_scc, sup_region_scc) {
+        //
+        // Avoid infinite recursion if `sub_region` is already `'static`
+        if sub_region != fr_static
+            && !self.can_name_all_placeholders(sup_region_scc, sub_region_scc)
+        {
             debug!(
                 "sub universe `{sub_region_scc:?}` is not nameable \
                 by super `{sup_region_scc:?}`, promoting to static",
             );
 
-            return self.eval_outlives(sup_region, self.universal_regions().fr_static);
+            return self.eval_outlives(sup_region, fr_static);
         }
 
         // Both the `sub_region` and `sup_region` consist of the union
@@ -1726,9 +1736,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // `BoringNoLocation` constraints can point to user-written code, but are less
                 // specific, and are not used for relations that would make sense to blame.
                 ConstraintCategory::BoringNoLocation => 6,
-                // Do not blame internal constraints.
-                ConstraintCategory::OutlivesUnnameablePlaceholder(_) => 7,
-                ConstraintCategory::Internal => 8,
+                // Do not blame internal constraints if we can avoid it. Never blame
+                // the `'region: 'static` constraints introduced by placeholder outlives.
+                ConstraintCategory::Internal => 7,
+                ConstraintCategory::OutlivesUnnameablePlaceholder(_) => 8,
             };
 
             debug!("constraint {constraint:?} category: {category:?}, interest: {interest:?}");

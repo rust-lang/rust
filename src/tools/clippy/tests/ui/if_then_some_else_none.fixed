@@ -165,3 +165,44 @@ mod issue15257 {
         do_something((i % 2 == 0).then_some(closure_fn));
     }
 }
+
+fn issue15005() {
+    struct Counter {
+        count: u32,
+    }
+
+    impl Counter {
+        fn new() -> Counter {
+            Counter { count: 0 }
+        }
+    }
+
+    impl Iterator for Counter {
+        type Item = u32;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            //~v if_then_some_else_none
+            (self.count < 5).then(||  { self.count += 1; self.count })
+        }
+    }
+}
+
+fn statements_from_macro() {
+    macro_rules! mac {
+        () => {
+            println!("foo");
+            println!("bar");
+        };
+    }
+    //~v if_then_some_else_none
+    let _ = true.then(||  { mac!(); 42 });
+}
+
+fn dont_lint_inside_macros() {
+    macro_rules! mac {
+        ($cond:expr, $res:expr) => {
+            if $cond { Some($res) } else { None }
+        };
+    }
+    let _: Option<u32> = mac!(true, 42);
+}

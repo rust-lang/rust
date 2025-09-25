@@ -112,6 +112,16 @@ fn compute_dbg_replacement(
                 }
             }
         }
+        // dbg!(2, 'x', &x, x, ...);
+        exprs if ast::ExprStmt::can_cast(parent.kind()) && exprs.iter().all(pure_expr) => {
+            let mut replace = vec![parent.clone().into()];
+            if let Some(prev_sibling) = parent.prev_sibling_or_token()
+                && prev_sibling.kind() == syntax::SyntaxKind::WHITESPACE
+            {
+                replace.push(prev_sibling);
+            }
+            (replace, None)
+        }
         // dbg!(expr0)
         [expr] => {
             // dbg!(expr, &parent);
@@ -161,6 +171,20 @@ fn compute_dbg_replacement(
             (vec![macro_call.syntax().clone().into()], Some(expr.into()))
         }
     })
+}
+
+fn pure_expr(expr: &ast::Expr) -> bool {
+    match_ast! {
+        match (expr.syntax()) {
+            ast::Literal(_) => true,
+            ast::RefExpr(it) => {
+                matches!(it.expr(), Some(ast::Expr::PathExpr(p))
+                    if p.path().and_then(|p| p.as_single_name_ref()).is_some())
+            },
+            ast::PathExpr(it) => it.path().and_then(|it| it.as_single_name_ref()).is_some(),
+            _ => false,
+        }
+    }
 }
 
 fn replace_nested_dbgs(expanded: ast::Expr) -> ast::Expr {
@@ -229,6 +253,32 @@ mod tests {
         check("dbg!(1 $0+ 1)", "1 + 1");
         check("dbg![$01 + 1]", "1 + 1");
         check("dbg!{$01 + 1}", "1 + 1");
+    }
+
+    #[test]
+    fn test_remove_simple_dbg_statement() {
+        check_assist(
+            remove_dbg,
+            r#"
+fn foo() {
+    let n = 2;
+    $0dbg!(3);
+    dbg!(2.6);
+    dbg!(1, 2.5);
+    dbg!('x');
+    dbg!(&n);
+    dbg!(n);
+    // needless comment
+    dbg!("foo");$0
+}
+"#,
+            r#"
+fn foo() {
+    let n = 2;
+    // needless comment
+}
+"#,
+        );
     }
 
     #[test]

@@ -18,6 +18,7 @@
 #![feature(derive_coerce_pointee)]
 #![feature(arbitrary_self_types)]
 #![feature(iter_advance_by)]
+#![cfg_attr(not(bootstrap), feature(duration_from_nanos_u128))]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,
@@ -132,7 +133,7 @@ pub use crate::concurrency::thread::{
     BlockReason, DynUnblockCallback, EvalContextExt as _, StackEmptyCallback, ThreadId,
     ThreadManager, TimeoutAnchor, TimeoutClock, UnblockKind,
 };
-pub use crate::concurrency::{GenmcConfig, GenmcCtx};
+pub use crate::concurrency::{GenmcConfig, GenmcCtx, run_genmc_mode};
 pub use crate::data_structures::dedup_range_map::DedupRangeMap;
 pub use crate::data_structures::mono_hash_map::MonoHashMap;
 pub use crate::diagnostics::{

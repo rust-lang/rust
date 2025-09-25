@@ -106,7 +106,7 @@ unsafe fn configure_llvm(sess: &Session) {
 
         if sess.target.os == "emscripten"
             && !sess.opts.unstable_opts.emscripten_wasm_eh
-            && sess.panic_strategy() == PanicStrategy::Unwind
+            && sess.panic_strategy().unwinds()
         {
             add("-enable-emscripten-cxx-exceptions", false);
         }
@@ -217,27 +217,16 @@ impl<'a> IntoIterator for LLVMFeature<'a> {
 /// Rust can also be build with an external precompiled version of LLVM which might lead to failures
 /// if the oldest tested / supported LLVM version doesn't yet support the relevant intrinsics.
 pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFeature<'a>> {
-    let arch = if sess.target.arch == "x86_64" {
-        "x86"
-    } else if sess.target.arch == "arm64ec" {
-        "aarch64"
-    } else if sess.target.arch == "sparc64" {
-        "sparc"
-    } else if sess.target.arch == "powerpc64" {
-        "powerpc"
-    } else {
-        &*sess.target.arch
+    let raw_arch = &*sess.target.arch;
+    let arch = match raw_arch {
+        "x86_64" => "x86",
+        "arm64ec" => "aarch64",
+        "sparc64" => "sparc",
+        "powerpc64" => "powerpc",
+        _ => raw_arch,
     };
+    let (major, _, _) = get_version();
     match (arch, s) {
-        ("x86", "sse4.2") => Some(LLVMFeature::with_dependencies(
-            "sse4.2",
-            smallvec![TargetFeatureFoldStrength::EnableOnly("crc32")],
-        )),
-        ("x86", "pclmulqdq") => Some(LLVMFeature::new("pclmul")),
-        ("x86", "rdrand") => Some(LLVMFeature::new("rdrnd")),
-        ("x86", "bmi1") => Some(LLVMFeature::new("bmi")),
-        ("x86", "cmpxchg16b") => Some(LLVMFeature::new("cx16")),
-        ("x86", "lahfsahf") => Some(LLVMFeature::new("sahf")),
         ("aarch64", "rcpc2") => Some(LLVMFeature::new("rcpc-immo")),
         ("aarch64", "dpb") => Some(LLVMFeature::new("ccpp")),
         ("aarch64", "dpb2") => Some(LLVMFeature::new("ccdp")),
@@ -246,9 +235,6 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         ("aarch64", "pmuv3") => Some(LLVMFeature::new("perfmon")),
         ("aarch64", "paca") => Some(LLVMFeature::new("pauth")),
         ("aarch64", "pacg") => Some(LLVMFeature::new("pauth")),
-        // Before LLVM 20 those two features were packaged together as b16b16
-        ("aarch64", "sve-b16b16") if get_version().0 < 20 => Some(LLVMFeature::new("b16b16")),
-        ("aarch64", "sme-b16b16") if get_version().0 < 20 => Some(LLVMFeature::new("b16b16")),
         ("aarch64", "flagm2") => Some(LLVMFeature::new("altnzcv")),
         // Rust ties fp and neon together.
         ("aarch64", "neon") => Some(LLVMFeature::with_dependencies(
@@ -262,57 +248,26 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         // Filter out features that are not supported by the current LLVM version
         ("aarch64", "fpmr") => None, // only existed in 18
         ("arm", "fp16") => Some(LLVMFeature::new("fullfp16")),
-        // NVPTX targets added in LLVM 20
-        ("nvptx64", "sm_100") if get_version().0 < 20 => None,
-        ("nvptx64", "sm_100a") if get_version().0 < 20 => None,
-        ("nvptx64", "sm_101") if get_version().0 < 20 => None,
-        ("nvptx64", "sm_101a") if get_version().0 < 20 => None,
-        ("nvptx64", "sm_120") if get_version().0 < 20 => None,
-        ("nvptx64", "sm_120a") if get_version().0 < 20 => None,
-        ("nvptx64", "ptx86") if get_version().0 < 20 => None,
-        ("nvptx64", "ptx87") if get_version().0 < 20 => None,
         // Filter out features that are not supported by the current LLVM version
-        ("loongarch64", "div32" | "lam-bh" | "lamcas" | "ld-seq-sa" | "scq")
-            if get_version().0 < 20 =>
-        {
-            None
-        }
-        ("loongarch32" | "loongarch64", "32s") if get_version().0 < 21 => None,
-        // Filter out features that are not supported by the current LLVM version
-        ("riscv32" | "riscv64", "zacas" | "rva23u64" | "supm") if get_version().0 < 20 => None,
-        (
-            "s390x",
-            "message-security-assist-extension12"
-            | "concurrent-functions"
-            | "miscellaneous-extensions-4"
-            | "vector-enhancements-3"
-            | "vector-packed-decimal-enhancement-3",
-        ) if get_version().0 < 20 => None,
+        ("loongarch32" | "loongarch64", "32s") if major < 21 => None,
+        ("powerpc", "power8-crypto") => Some(LLVMFeature::new("crypto")),
+        ("sparc", "leoncasa") => Some(LLVMFeature::new("hasleoncasa")),
+        ("x86", "sse4.2") => Some(LLVMFeature::with_dependencies(
+            "sse4.2",
+            smallvec![TargetFeatureFoldStrength::EnableOnly("crc32")],
+        )),
+        ("x86", "pclmulqdq") => Some(LLVMFeature::new("pclmul")),
+        ("x86", "rdrand") => Some(LLVMFeature::new("rdrnd")),
+        ("x86", "bmi1") => Some(LLVMFeature::new("bmi")),
+        ("x86", "cmpxchg16b") => Some(LLVMFeature::new("cx16")),
+        ("x86", "lahfsahf") => Some(LLVMFeature::new("sahf")),
         // Enable the evex512 target feature if an avx512 target feature is enabled.
         ("x86", s) if s.starts_with("avx512") => Some(LLVMFeature::with_dependencies(
             s,
             smallvec![TargetFeatureFoldStrength::EnableOnly("evex512")],
         )),
-        // Support for `wide-arithmetic` will first land in LLVM 20 as part of
-        // llvm/llvm-project#111598
-        ("wasm32" | "wasm64", "wide-arithmetic") if get_version() < (20, 0, 0) => None,
-        ("sparc", "leoncasa") => Some(LLVMFeature::new("hasleoncasa")),
-        // In LLVM 19, there is no `v8plus` feature and `v9` means "SPARC-V9 instruction available and SPARC-V8+ ABI used".
-        // https://github.com/llvm/llvm-project/blob/llvmorg-19.1.0/llvm/lib/Target/Sparc/MCTargetDesc/SparcELFObjectWriter.cpp#L27-L28
-        // Before LLVM 19, there was no `v8plus` feature and `v9` means "SPARC-V9 instruction available".
-        // https://github.com/llvm/llvm-project/blob/llvmorg-18.1.0/llvm/lib/Target/Sparc/MCTargetDesc/SparcELFObjectWriter.cpp#L26
-        ("sparc", "v8plus") if get_version().0 == 19 => Some(LLVMFeature::new("v9")),
-        ("powerpc", "power8-crypto") => Some(LLVMFeature::new("crypto")),
-        // These new `amx` variants and `movrs` were introduced in LLVM20
-        ("x86", "amx-avx512" | "amx-fp8" | "amx-movrs" | "amx-tf32" | "amx-transpose")
-            if get_version().0 < 20 =>
-        {
-            None
-        }
-        ("x86", "movrs") if get_version().0 < 20 => None,
         ("x86", "avx10.1") => Some(LLVMFeature::new("avx10.1-512")),
-        ("x86", "avx10.2") if get_version().0 < 20 => None,
-        ("x86", "avx10.2") if get_version().0 >= 20 => Some(LLVMFeature::new("avx10.2-512")),
+        ("x86", "avx10.2") => Some(LLVMFeature::new("avx10.2-512")),
         ("x86", "apxf") => Some(LLVMFeature::with_dependencies(
             "egpr",
             smallvec![
@@ -716,17 +671,7 @@ pub(crate) fn global_llvm_features(
     };
 
     // Features implied by an implicit or explicit `--target`.
-    features.extend(
-        sess.target
-            .features
-            .split(',')
-            .filter(|v| !v.is_empty())
-            // Drop +v8plus feature introduced in LLVM 20.
-            // (Hard-coded target features do not go through `to_llvm_feature` since they already
-            // are LLVM feature names, hence we need a special case here.)
-            .filter(|v| *v != "+v8plus" || get_version() >= (20, 0, 0))
-            .map(String::from),
-    );
+    features.extend(sess.target.features.split(',').filter(|v| !v.is_empty()).map(String::from));
 
     if wants_wasm_eh(sess) && sess.panic_strategy() == PanicStrategy::Unwind {
         features.push("+exception-handling".into());

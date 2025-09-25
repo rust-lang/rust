@@ -533,7 +533,7 @@ impl Builder<'_> {
         if cmd_kind == Kind::Doc {
             let my_out = match mode {
                 // This is the intended out directory for compiler documentation.
-                Mode::Rustc | Mode::ToolRustcPrivate | Mode::ToolBootstrap => {
+                Mode::Rustc | Mode::ToolRustcPrivate | Mode::ToolBootstrap | Mode::ToolTarget => {
                     self.compiler_doc_out(target)
                 }
                 Mode::Std => {
@@ -679,6 +679,12 @@ impl Builder<'_> {
         // cargo would implicitly add it, it was discover that sometimes bootstrap only use
         // `rustflags` without `cargo` making it required.
         rustflags.arg("-Zunstable-options");
+
+        // Add parallel frontend threads configuration
+        if let Some(threads) = self.config.rust_parallel_frontend_threads {
+            rustflags.arg(&format!("-Zthreads={threads}"));
+        }
+
         for (restricted_mode, name, values) in EXTRA_CHECK_CFGS {
             if restricted_mode.is_none() || *restricted_mode == Some(mode) {
                 rustflags.arg(&check_cfg_arg(name, *values));
@@ -878,8 +884,11 @@ impl Builder<'_> {
             .env("RUSTC_LIBDIR", libdir)
             .env("RUSTDOC", self.bootstrap_out.join("rustdoc"))
             .env("RUSTDOC_REAL", rustdoc_path)
-            .env("RUSTC_ERROR_METADATA_DST", self.extended_error_dir())
-            .env("RUSTC_BREAK_ON_ICE", "1");
+            .env("RUSTC_ERROR_METADATA_DST", self.extended_error_dir());
+
+        if self.config.rust_break_on_ice {
+            cargo.env("RUSTC_BREAK_ON_ICE", "1");
+        }
 
         // Set RUSTC_WRAPPER to the bootstrap shim, which switches between beta and in-tree
         // sysroot depending on whether we're building build scripts.
@@ -1130,7 +1139,7 @@ impl Builder<'_> {
             cargo.env("RUSTC_BACKTRACE_ON_ICE", "1");
         }
 
-        if self.is_verbose() {
+        if self.is_verbose_than(1) {
             // This provides very useful logs especially when debugging build cache-related stuff.
             cargo.env("CARGO_LOG", "cargo::core::compiler::fingerprint=info");
         }
@@ -1218,6 +1227,11 @@ impl Builder<'_> {
             rustflags.arg("-Zehcont-guard");
         }
 
+        // Optionally override the rc.exe when compiling rustc on Windows.
+        if let Some(windows_rc) = &self.config.windows_rc {
+            cargo.env("RUSTC_WINDOWS_RC", windows_rc);
+        }
+
         // For `cargo doc` invocations, make rustdoc print the Rust version into the docs
         // This replaces spaces with tabs because RUSTDOCFLAGS does not
         // support arguments with regular spaces. Hopefully someday Cargo will
@@ -1272,8 +1286,9 @@ impl Builder<'_> {
             cargo.env("WINAPI_NO_BUNDLED_LIBRARIES", "1");
         }
 
-        for _ in 0..self.verbosity {
-            cargo.arg("-v");
+        // verbose cargo output is very noisy, so only enable it with -vv
+        for _ in 0..self.verbosity.saturating_sub(1) {
+            cargo.arg("--verbose");
         }
 
         match (mode, self.config.rust_codegen_units_std, self.config.rust_codegen_units) {

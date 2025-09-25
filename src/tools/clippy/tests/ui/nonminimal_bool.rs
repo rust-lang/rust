@@ -182,13 +182,11 @@ fn issue_5794() {
     if !b == true {}
     //~^ nonminimal_bool
     //~| bool_comparison
-    //~| bool_comparison
     if !b != true {}
     //~^ nonminimal_bool
     //~| bool_comparison
     if true == !b {}
     //~^ nonminimal_bool
-    //~| bool_comparison
     //~| bool_comparison
     if true != !b {}
     //~^ nonminimal_bool

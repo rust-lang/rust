@@ -8,6 +8,14 @@ LL | #![rustc_main]
    = note: the `#[rustc_main]` attribute is an internal implementation detail that will never be stable
    = note: the `#[rustc_main]` attribute is used internally to specify test entry point function
 
+error: `#[macro_export]` attribute cannot be used on crates
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:10:1
+   |
+LL | #![macro_export]
+   | ^^^^^^^^^^^^^^^^
+   |
+   = help: `#[macro_export]` can only be applied to macro defs
+
 error: `#[path]` attribute cannot be used on crates
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:19:1
    |
@@ -49,7 +57,7 @@ LL | #[inline]
    = help: `#[inline]` can only be applied to functions
 
 error: `#[inline]` attribute cannot be used on modules
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:37:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:36:17
    |
 LL |     mod inner { #![inline] }
    |                 ^^^^^^^^^^
@@ -57,7 +65,7 @@ LL |     mod inner { #![inline] }
    = help: `#[inline]` can only be applied to functions
 
 error: `#[inline]` attribute cannot be used on structs
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:46:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:45:5
    |
 LL |     #[inline] struct S;
    |     ^^^^^^^^^
@@ -65,7 +73,7 @@ LL |     #[inline] struct S;
    = help: `#[inline]` can only be applied to functions
 
 error: `#[inline]` attribute cannot be used on type aliases
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:49:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:48:5
    |
 LL |     #[inline] type T = S;
    |     ^^^^^^^^^
@@ -73,7 +81,7 @@ LL |     #[inline] type T = S;
    = help: `#[inline]` can only be applied to functions
 
 error: `#[inline]` attribute cannot be used on inherent impl blocks
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:52:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:51:5
    |
 LL |     #[inline] impl S { }
    |     ^^^^^^^^^
@@ -81,7 +89,7 @@ LL |     #[inline] impl S { }
    = help: `#[inline]` can only be applied to functions
 
 error: `#[export_name]` attribute cannot be used on modules
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:82:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:81:1
    |
 LL | #[export_name = "2200"]
    | ^^^^^^^^^^^^^^^^^^^^^^^
@@ -89,7 +97,7 @@ LL | #[export_name = "2200"]
    = help: `#[export_name]` can be applied to functions and statics
 
 error: `#[export_name]` attribute cannot be used on modules
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:85:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:84:17
    |
 LL |     mod inner { #![export_name="2200"] }
    |                 ^^^^^^^^^^^^^^^^^^^^^^
@@ -97,7 +105,7 @@ LL |     mod inner { #![export_name="2200"] }
    = help: `#[export_name]` can be applied to functions and statics
 
 error: `#[export_name]` attribute cannot be used on structs
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:90:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:89:5
    |
 LL |     #[export_name = "2200"] struct S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^
@@ -105,7 +113,7 @@ LL |     #[export_name = "2200"] struct S;
    = help: `#[export_name]` can be applied to functions and statics
 
 error: `#[export_name]` attribute cannot be used on type aliases
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:93:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:92:5
    |
 LL |     #[export_name = "2200"] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^
@@ -113,7 +121,7 @@ LL |     #[export_name = "2200"] type T = S;
    = help: `#[export_name]` can be applied to functions and statics
 
 error: `#[export_name]` attribute cannot be used on inherent impl blocks
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:96:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:95:5
    |
 LL |     #[export_name = "2200"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^
@@ -121,7 +129,7 @@ LL |     #[export_name = "2200"] impl S { }
    = help: `#[export_name]` can be applied to functions and statics
 
 error: `#[export_name]` attribute cannot be used on required trait methods
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:100:9
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:99:9
    |
 LL |         #[export_name = "2200"] fn foo();
    |         ^^^^^^^^^^^^^^^^^^^^^^^
@@ -129,7 +137,7 @@ LL |         #[export_name = "2200"] fn foo();
    = help: `#[export_name]` can be applied to statics, functions, inherent methods, provided trait methods, and trait methods in impl blocks
 
 error: attribute should be applied to an `extern crate` item
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:56:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:55:1
    |
 LL |   #[no_link]
    |   ^^^^^^^^^^
@@ -143,7 +151,7 @@ LL | | }
    | |_- not an `extern crate` item
 
 error[E0517]: attribute should be applied to a struct, enum, or union
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:107:8
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:106:8
    |
 LL |   #[repr(C)]
    |          ^
@@ -156,7 +164,7 @@ LL | | }
    | |_- not a struct, enum, or union
 
 error[E0517]: attribute should be applied to a struct, enum, or union
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:131:8
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:130:8
    |
 LL |   #[repr(Rust)]
    |          ^^^^
@@ -173,21 +181,6 @@ error: attribute should be applied to an `extern crate` item
    |
 LL | #![no_link]
    | ^^^^^^^^^^^ not an `extern crate` item
-
-error: `macro_export` attribute cannot be used at crate level
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:10:1
-   |
-LL | #![macro_export]
-   | ^^^^^^^^^^^^^^^^
-...
-LL | mod inline {
-   |     ------ the inner attribute doesn't annotate this module
-   |
-help: perhaps you meant to use an outer attribute
-   |
-LL - #![macro_export]
-LL + #[macro_export]
-   |
 
 error: `rustc_main` attribute cannot be used at crate level
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:12:1
@@ -220,85 +213,85 @@ LL + #[repr()]
    |
 
 error: attribute should be applied to an `extern crate` item
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:61:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:60:17
    |
 LL |     mod inner { #![no_link] }
    |     ------------^^^^^^^^^^^-- not an `extern crate` item
 
 error: attribute should be applied to an `extern crate` item
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:65:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:64:5
    |
 LL |     #[no_link] fn f() { }
    |     ^^^^^^^^^^ ---------- not an `extern crate` item
 
 error: attribute should be applied to an `extern crate` item
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:69:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:68:5
    |
 LL |     #[no_link] struct S;
    |     ^^^^^^^^^^ --------- not an `extern crate` item
 
 error: attribute should be applied to an `extern crate` item
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:73:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:72:5
    |
 LL |     #[no_link]type T = S;
    |     ^^^^^^^^^^----------- not an `extern crate` item
 
 error: attribute should be applied to an `extern crate` item
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:77:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:76:5
    |
 LL |     #[no_link] impl S { }
    |     ^^^^^^^^^^ ---------- not an `extern crate` item
 
 error[E0517]: attribute should be applied to a struct, enum, or union
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:111:25
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:110:25
    |
 LL |     mod inner { #![repr(C)] }
    |     --------------------^---- not a struct, enum, or union
 
 error[E0517]: attribute should be applied to a struct, enum, or union
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:115:12
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:114:12
    |
 LL |     #[repr(C)] fn f() { }
    |            ^   ---------- not a struct, enum, or union
 
 error[E0517]: attribute should be applied to a struct, enum, or union
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:121:12
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:120:12
    |
 LL |     #[repr(C)] type T = S;
    |            ^   ----------- not a struct, enum, or union
 
 error[E0517]: attribute should be applied to a struct, enum, or union
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:125:12
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:124:12
    |
 LL |     #[repr(C)] impl S { }
    |            ^   ---------- not a struct, enum, or union
 
 error[E0517]: attribute should be applied to a struct, enum, or union
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:135:25
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:134:25
    |
 LL |     mod inner { #![repr(Rust)] }
    |     --------------------^^^^---- not a struct, enum, or union
 
 error[E0517]: attribute should be applied to a struct, enum, or union
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:139:12
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:138:12
    |
 LL |     #[repr(Rust)] fn f() { }
    |            ^^^^   ---------- not a struct, enum, or union
 
 error[E0517]: attribute should be applied to a struct, enum, or union
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:145:12
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:144:12
    |
 LL |     #[repr(Rust)] type T = S;
    |            ^^^^   ----------- not a struct, enum, or union
 
 error[E0517]: attribute should be applied to a struct, enum, or union
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:149:12
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:148:12
    |
 LL |     #[repr(Rust)] impl S { }
    |            ^^^^   ---------- not a struct, enum, or union
 
 error: valid forms for the attribute are `#[inline(always)]`, `#[inline(never)]`, and `#[inline]`
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:40:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:39:5
    |
 LL |     #[inline = "2100"] fn f() { }
    |     ^^^^^^^^^^^^^^^^^^
@@ -313,7 +306,7 @@ Some errors have detailed explanations: E0517, E0658.
 For more information about an error, try `rustc --explain E0517`.
 Future incompatibility report: Future breakage diagnostic:
 error: valid forms for the attribute are `#[inline(always)]`, `#[inline(never)]`, and `#[inline]`
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:40:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:39:5
    |
 LL |     #[inline = "2100"] fn f() { }
    |     ^^^^^^^^^^^^^^^^^^

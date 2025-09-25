@@ -2227,11 +2227,18 @@ function preLoadCss(cssUrl) {
     });
 }());
 
-// This section is a bugfix for firefox: when copying text with `user-select: none`, it adds
-// extra backline characters.
+
+// Workaround for browser-specific bugs when copying code snippets.
 //
-// Rustdoc issue: Workaround for https://github.com/rust-lang/rust/issues/141464
-// Firefox issue: https://bugzilla.mozilla.org/show_bug.cgi?id=1273836
+// * In Firefox, copying text that includes elements with `user-select: none`
+//   inserts extra blank lines.
+//   - Firefox issue: https://bugzilla.mozilla.org/show_bug.cgi?id=1273836
+//   - Rust issue: https://github.com/rust-lang/rust/issues/141464
+//
+// * In Chromium-based browsers, `document.getSelection()` includes elements
+//   with `user-select: none`, causing unwanted line numbers to be copied.
+//   - Chromium issue: https://issues.chromium.org/issues/446539520
+//   - Rust issue: https://github.com/rust-lang/rust/issues/146816
 (function() {
     document.body.addEventListener("copy", event => {
         let target = nonnull(event.target);
@@ -2248,9 +2255,13 @@ function preLoadCss(cssUrl) {
         if (!isInsideCode) {
             return;
         }
-        const selection = document.getSelection();
-         // @ts-expect-error
-        nonnull(event.clipboardData).setData("text/plain", selection.toString());
+        const selection = nonnull(document.getSelection());
+        const text = Array.from({ length: selection.rangeCount }, (_, i) => {
+            const fragment = selection.getRangeAt(i).cloneContents();
+            fragment.querySelectorAll("[data-nosnippet]").forEach(el => el.remove());
+            return fragment.textContent;
+        }).join("");
+        nonnull(event.clipboardData).setData("text/plain", text);
         event.preventDefault();
     });
 }());

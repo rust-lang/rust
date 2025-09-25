@@ -1,3 +1,4 @@
+use base_db::target::TargetData;
 use chalk_ir::{AdtId, TyKind};
 use either::Either;
 use hir_def::db::DefDatabase;
@@ -11,13 +12,15 @@ use crate::{
     Interner, Substitution,
     db::HirDatabase,
     layout::{Layout, LayoutError},
+    next_solver::{DbInterner, mapping::ChalkToNextSolver},
+    setup_tracing,
     test_db::TestDB,
 };
 
 mod closure;
 
-fn current_machine_data_layout() -> String {
-    project_model::toolchain_info::target_data_layout::get(
+fn current_machine_target_data() -> TargetData {
+    project_model::toolchain_info::target_data::get(
         QueryConfig::Rustc(&Sysroot::empty(), &std::env::current_dir().unwrap()),
         None,
         &FxHashMap::default(),
@@ -29,7 +32,9 @@ fn eval_goal(
     #[rust_analyzer::rust_fixture] ra_fixture: &str,
     minicore: &str,
 ) -> Result<Arc<Layout>, LayoutError> {
-    let target_data_layout = current_machine_data_layout();
+    let _tracing = setup_tracing();
+    let target_data = current_machine_target_data();
+    let target_data_layout = target_data.data_layout;
     let ra_fixture = format!(
         "//- target_data_layout: {target_data_layout}\n{minicore}//- /main.rs crate:test\n{ra_fixture}",
     );
@@ -83,13 +88,16 @@ fn eval_goal(
             db.ty(ty_id.into()).substitute(Interner, &Substitution::empty(Interner))
         }
     };
-    db.layout_of_ty(
-        goal_ty,
-        db.trait_environment(match adt_or_type_alias_id {
-            Either::Left(adt) => hir_def::GenericDefId::AdtId(adt),
-            Either::Right(ty) => hir_def::GenericDefId::TypeAliasId(ty),
-        }),
-    )
+    salsa::attach(&db, || {
+        let interner = DbInterner::new_with(&db, None, None);
+        db.layout_of_ty(
+            goal_ty.to_nextsolver(interner),
+            db.trait_environment(match adt_or_type_alias_id {
+                Either::Left(adt) => hir_def::GenericDefId::AdtId(adt),
+                Either::Right(ty) => hir_def::GenericDefId::TypeAliasId(ty),
+            }),
+        )
+    })
 }
 
 /// A version of `eval_goal` for types that can not be expressed in ADTs, like closures and `impl Trait`
@@ -97,7 +105,9 @@ fn eval_expr(
     #[rust_analyzer::rust_fixture] ra_fixture: &str,
     minicore: &str,
 ) -> Result<Arc<Layout>, LayoutError> {
-    let target_data_layout = current_machine_data_layout();
+    let _tracing = setup_tracing();
+    let target_data = current_machine_target_data();
+    let target_data_layout = target_data.data_layout;
     let ra_fixture = format!(
         "//- target_data_layout: {target_data_layout}\n{minicore}//- /main.rs crate:test\nfn main(){{let goal = {{{ra_fixture}}};}}",
     );
@@ -125,7 +135,10 @@ fn eval_expr(
         .0;
     let infer = db.infer(function_id.into());
     let goal_ty = infer.type_of_binding[b].clone();
-    db.layout_of_ty(goal_ty, db.trait_environment(function_id.into()))
+    salsa::attach(&db, || {
+        let interner = DbInterner::new_with(&db, None, None);
+        db.layout_of_ty(goal_ty.to_nextsolver(interner), db.trait_environment(function_id.into()))
+    })
 }
 
 #[track_caller]

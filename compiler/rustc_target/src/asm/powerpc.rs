@@ -13,6 +13,8 @@ def_reg_class! {
         freg,
         vreg,
         cr,
+        ctr,
+        lr,
         xer,
     }
 }
@@ -56,7 +58,7 @@ impl PowerPCInlineAsmRegClass {
                 altivec: VecI8(16), VecI16(8), VecI32(4), VecF32(4);
                 vsx: F32, F64, VecI64(2), VecF64(2);
             },
-            Self::cr | Self::xer => &[],
+            Self::cr | Self::ctr | Self::lr | Self::xer => &[],
         }
     }
 }
@@ -195,6 +197,8 @@ def_regs! {
         cr5: cr = ["cr5"],
         cr6: cr = ["cr6"],
         cr7: cr = ["cr7"],
+        ctr: ctr = ["ctr"],
+        lr: lr = ["lr"],
         xer: xer = ["xer"],
         #error = ["r1", "1", "sp"] =>
             "the stack pointer cannot be used as an operand for inline asm",
@@ -206,10 +210,6 @@ def_regs! {
             "r30 is used internally by LLVM and cannot be used as an operand for inline asm",
         #error = ["r31", "31", "fp"] =>
             "the frame pointer cannot be used as an operand for inline asm",
-        #error = ["lr"] =>
-            "the link register cannot be used as an operand for inline asm",
-        #error = ["ctr"] =>
-            "the counter register cannot be used as an operand for inline asm",
         #error = ["vrsave"] =>
             "the vrsave register cannot be used as an operand for inline asm",
     }
@@ -247,6 +247,8 @@ impl PowerPCInlineAsmReg {
             (v24, "24"), (v25, "25"), (v26, "26"), (v27, "27"), (v28, "28"), (v29, "29"), (v30, "30"), (v31, "31");
             (cr, "cr");
             (cr0, "0"), (cr1, "1"), (cr2, "2"), (cr3, "3"), (cr4, "4"), (cr5, "5"), (cr6, "6"), (cr7, "7");
+            (ctr, "ctr");
+            (lr, "lr");
             (xer, "xer");
         }
     }

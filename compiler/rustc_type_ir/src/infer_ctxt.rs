@@ -6,7 +6,7 @@ use crate::fold::TypeFoldable;
 use crate::inherent::*;
 use crate::relate::RelateResult;
 use crate::relate::combine::PredicateEmittingRelation;
-use crate::{self as ty, Interner};
+use crate::{self as ty, Interner, TyVid};
 
 /// The current typing mode of an inference context. We unfortunately have some
 /// slightly different typing rules depending on the current context. See the
@@ -158,6 +158,7 @@ pub trait InferCtxtLike: Sized {
     fn universe_of_ct(&self, ct: ty::ConstVid) -> Option<ty::UniverseIndex>;
 
     fn root_ty_var(&self, var: ty::TyVid) -> ty::TyVid;
+    fn sub_unification_table_root_var(&self, var: ty::TyVid) -> ty::TyVid;
     fn root_const_var(&self, var: ty::ConstVid) -> ty::ConstVid;
 
     fn opportunistic_resolve_ty_var(&self, vid: ty::TyVid) -> <Self::Interner as Interner>::Ty;
@@ -197,6 +198,7 @@ pub trait InferCtxtLike: Sized {
     ) -> U;
 
     fn equate_ty_vids_raw(&self, a: ty::TyVid, b: ty::TyVid);
+    fn sub_unify_ty_vids_raw(&self, a: ty::TyVid, b: ty::TyVid);
     fn equate_int_vids_raw(&self, a: ty::IntVid, b: ty::IntVid);
     fn equate_float_vids_raw(&self, a: ty::FloatVid, b: ty::FloatVid);
     fn equate_const_vids_raw(&self, a: ty::ConstVid, b: ty::ConstVid);
@@ -269,6 +271,7 @@ pub trait InferCtxtLike: Sized {
         &self,
         prev_entries: Self::OpaqueTypeStorageEntries,
     ) -> Vec<(ty::OpaqueTypeKey<Self::Interner>, <Self::Interner as Interner>::Ty)>;
+    fn opaques_with_sub_unified_hidden_type(&self, ty: TyVid) -> Vec<ty::AliasTy<Self::Interner>>;
 
     fn register_hidden_type_in_storage(
         &self,

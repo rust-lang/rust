@@ -63,7 +63,7 @@
         "@typescript-eslint/eslint-plugin": "^8.25.0",
         "@typescript-eslint/parser": "^8.25.0",
         "@vscode/test-electron": "^2.4.1",
-        "@vscode/vsce": "^3.2.2",
+        "@vscode/vsce": "^3.6.0",
         "esbuild": "^0.25.0",
         "eslint": "^9.21.0",
         "eslint-config-prettier": "^10.0.2",
@@ -1586,6 +1586,16 @@
                 }
             },
             {
+                "title": "Document",
+                "properties": {
+                    "rust-analyzer.document.symbol.search.excludeLocals": {
+                        "markdownDescription": "Exclude all locals from document symbol search.",
+                        "default": true,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
                 "title": "Files",
                 "properties": {
                     "rust-analyzer.files.exclude": {
@@ -2196,6 +2206,16 @@
                             "Never show discriminant hints.",
                             "Only show discriminant hints on fieldless enum variants."
                         ]
+                    }
+                }
+            },
+            {
+                "title": "Inlay Hints",
+                "properties": {
+                    "rust-analyzer.inlayHints.expressionAdjustmentHints.disableReborrows": {
+                        "markdownDescription": "Disable reborrows in expression adjustments inlay hints.\n\nReborrows are a pair of a builtin deref then borrow, i.e. `&*`. They are inserted by the compiler but are mostly useless to the programmer.\n\nNote: if the deref is not builtin (an overloaded deref), or the borrow is `&raw const`/`&raw mut`, they are not removed.",
+                        "default": true,
+                        "type": "boolean"
                     }
                 }
             },
@@ -2826,6 +2846,16 @@
                     "rust-analyzer.rustfmt.rangeFormatting.enable": {
                         "markdownDescription": "Enables the use of rustfmt's unstable range formatting command for the\n`textDocument/rangeFormatting` request. The rustfmt option is unstable and only\navailable on a nightly build.",
                         "default": false,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "Semantic Highlighting",
+                "properties": {
+                    "rust-analyzer.semanticHighlighting.comments.enable": {
+                        "markdownDescription": "Use semantic tokens for comments.\n\nIn some editors (e.g. vscode) semantic tokens override other highlighting grammars.\nBy disabling semantic tokens for comments, other grammars can be used to highlight\ntheir contents.",
+                        "default": true,
                         "type": "boolean"
                     }
                 }

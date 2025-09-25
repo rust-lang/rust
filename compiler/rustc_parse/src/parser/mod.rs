@@ -22,6 +22,8 @@ use std::{fmt, mem, slice};
 use attr_wrapper::{AttrWrapper, UsePreAttrPos};
 pub use diagnostics::AttemptLocalParseRecovery;
 pub(crate) use expr::ForbiddenLetReason;
+// Public to use it for custom `if` expressions in rustfmt forks like https://github.com/tucant/rustfmt
+pub use expr::LetChainsPolicy;
 pub(crate) use item::{FnContext, FnParseMode};
 pub use pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
 pub use path::PathStyle;
@@ -1333,7 +1335,10 @@ impl<'a> Parser<'a> {
         if let token::Literal(token::Lit { kind: token::Integer, symbol, suffix }) = self.token.kind
         {
             if let Some(suffix) = suffix {
-                self.expect_no_tuple_index_suffix(self.token.span, suffix);
+                self.dcx().emit_err(errors::InvalidLiteralSuffixOnTupleIndex {
+                    span: self.token.span,
+                    suffix,
+                });
             }
             self.bump();
             Ok(Ident::new(symbol, self.prev_token.span))

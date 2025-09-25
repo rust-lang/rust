@@ -536,4 +536,24 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Warning,
         summary: "It is no longer possible to `x test` with stage 0, except for running compiletest and opting into `build.compiletest-allow-stage0`.",
     },
+    ChangeInfo {
+        change_id: 145976,
+        severity: ChangeSeverity::Info,
+        summary: "Added a new option `rust.break-on-ice` to control if internal compiler errors cause a debug break on Windows.",
+    },
+    ChangeInfo {
+        change_id: 146435,
+        severity: ChangeSeverity::Info,
+        summary: "The default value of the `gcc.download-ci-gcc` option has been changed to `true`.",
+    },
+    ChangeInfo {
+        change_id: 146458,
+        severity: ChangeSeverity::Info,
+        summary: "There is now a bootstrap option called `rust.parallel-frontend-threads`, which can be used to set the number of threads for the compiler frontend used during compilation of Rust code.",
+    },
+    ChangeInfo {
+        change_id: 146663,
+        severity: ChangeSeverity::Info,
+        summary: "New option `build.windows-rc` that will override which resource compiler on Windows will be used to compile Rust.",
+    },
 ];

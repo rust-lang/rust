@@ -18,13 +18,14 @@ use rustc_feature::Features;
 use rustc_hir as hir;
 use rustc_hir::attrs::{AttributeKind, CfgEntry, Deprecation};
 use rustc_hir::def::MacroKinds;
+use rustc_hir::limit::Limit;
 use rustc_hir::{Stability, find_attr};
 use rustc_lint_defs::RegisteredTools;
 use rustc_parse::MACRO_ARGUMENTS;
 use rustc_parse::parser::{ForceCollect, Parser};
+use rustc_session::Session;
 use rustc_session::config::CollapseMacroDebuginfo;
 use rustc_session::parse::ParseSess;
-use rustc_session::{Limit, Session};
 use rustc_span::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId, MacroKind};
@@ -941,9 +942,9 @@ impl SyntaxExtension {
                 .unwrap_or_default();
         let allow_internal_unsafe = find_attr!(attrs, AttributeKind::AllowInternalUnsafe(_));
 
-        let local_inner_macros = ast::attr::find_by_name(attrs, sym::macro_export)
-            .and_then(|macro_export| macro_export.meta_item_list())
-            .is_some_and(|l| ast::attr::list_contains_name(&l, sym::local_inner_macros));
+        let local_inner_macros =
+            *find_attr!(attrs, AttributeKind::MacroExport {local_inner_macros: l, ..} => l)
+                .unwrap_or(&false);
         let collapse_debuginfo = Self::get_collapse_debuginfo(sess, attrs, !is_local);
         tracing::debug!(?name, ?local_inner_macros, ?collapse_debuginfo, ?allow_internal_unsafe);
 

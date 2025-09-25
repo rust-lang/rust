@@ -11,7 +11,6 @@ use rustc_errors::DiagCtxtHandle;
 use rustc_expand::base::{ExtCtxt, ResolverExpand};
 use rustc_expand::expand::{AstFragment, ExpansionConfig};
 use rustc_feature::Features;
-use rustc_lint_defs::BuiltinLintDiag;
 use rustc_session::Session;
 use rustc_session::lint::builtin::UNNAMEABLE_TEST_ITEMS;
 use rustc_span::hygiene::{AstPass, SyntaxContext, Transparency};
@@ -64,8 +63,8 @@ pub fn inject(
 
     if sess.is_test_crate() {
         let panic_strategy = match (panic_strategy, sess.opts.unstable_opts.panic_abort_tests) {
-            (PanicStrategy::Abort, true) => PanicStrategy::Abort,
-            (PanicStrategy::Abort, false) => {
+            (PanicStrategy::Abort | PanicStrategy::ImmediateAbort, true) => panic_strategy,
+            (PanicStrategy::Abort | PanicStrategy::ImmediateAbort, false) => {
                 if panic_strategy == platform_panic_strategy {
                     // Silently allow compiling with panic=abort on these platforms,
                     // but with old behavior (abort if a test fails).
@@ -165,7 +164,7 @@ impl<'a> Visitor<'a> for InnerItemLinter<'_> {
                 UNNAMEABLE_TEST_ITEMS,
                 attr.span,
                 i.id,
-                BuiltinLintDiag::UnnameableTestItems,
+                errors::UnnameableTestItems,
             );
         }
     }
@@ -288,10 +287,8 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> Box<ast::Item> {
     let ecx = &cx.ext_cx;
     let test_ident = Ident::new(sym::test, sp);
 
-    let runner_name = match cx.panic_strategy {
-        PanicStrategy::Unwind => "test_main_static",
-        PanicStrategy::Abort => "test_main_static_abort",
-    };
+    let runner_name =
+        if cx.panic_strategy.unwinds() { "test_main_static" } else { "test_main_static_abort" };
 
     // test::test_main_static(...)
     let mut test_runner = cx.test_runner.clone().unwrap_or_else(|| {

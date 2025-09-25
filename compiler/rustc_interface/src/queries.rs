@@ -94,7 +94,7 @@ impl Linker {
                 &rlink_file,
                 &codegen_results,
                 &self.metadata,
-                &*self.output_filenames,
+                &self.output_filenames,
             )
             .unwrap_or_else(|error| {
                 sess.dcx().emit_fatal(FailedWritingFile { path: &rlink_file, error })

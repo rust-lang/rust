@@ -37,7 +37,7 @@ pub(super) fn compare_impl_item(
     impl_item_def_id: LocalDefId,
 ) -> Result<(), ErrorGuaranteed> {
     let impl_item = tcx.associated_item(impl_item_def_id);
-    let trait_item = tcx.associated_item(impl_item.trait_item_def_id.unwrap());
+    let trait_item = tcx.associated_item(impl_item.expect_trait_impl()?);
     let impl_trait_ref =
         tcx.impl_trait_ref(impl_item.container_id(tcx)).unwrap().instantiate_identity();
     debug!(?impl_trait_ref);
@@ -298,14 +298,9 @@ fn compare_method_predicate_entailment<'tcx>(
     // compatible with that of the trait method. We do this by
     // checking that `impl_fty <: trait_fty`.
     //
-    // FIXME. Unfortunately, this doesn't quite work right now because
-    // associated type normalization is not integrated into subtype
-    // checks. For the comparison to be valid, we need to
-    // normalize the associated types in the impl/trait methods
-    // first. However, because function types bind regions, just
-    // calling `FnCtxt::normalize` would have no effect on
-    // any associated types appearing in the fn arguments or return
-    // type.
+    // FIXME: We manually instantiate the trait method here as we need
+    // to manually compute its implied bounds. Otherwise this could just
+    // be `ocx.sub(impl_sig, trait_sig)`.
 
     let mut wf_tys = FxIndexSet::default();
 
@@ -446,7 +441,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     impl_m_def_id: LocalDefId,
 ) -> Result<&'tcx DefIdMap<ty::EarlyBinder<'tcx, Ty<'tcx>>>, ErrorGuaranteed> {
     let impl_m = tcx.associated_item(impl_m_def_id.to_def_id());
-    let trait_m = tcx.associated_item(impl_m.trait_item_def_id.unwrap());
+    let trait_m = tcx.associated_item(impl_m.expect_trait_impl()?);
     let impl_trait_ref =
         tcx.impl_trait_ref(tcx.parent(impl_m_def_id.to_def_id())).unwrap().instantiate_identity();
     // First, check a few of the same things as `compare_impl_method`,
@@ -1449,8 +1444,10 @@ fn compare_self_type<'tcx>(
 
     let self_string = |method: ty::AssocItem| {
         let untransformed_self_ty = match method.container {
-            ty::AssocItemContainer::Impl => impl_trait_ref.self_ty(),
-            ty::AssocItemContainer::Trait => tcx.types.self_param,
+            ty::AssocContainer::InherentImpl | ty::AssocContainer::TraitImpl(_) => {
+                impl_trait_ref.self_ty()
+            }
+            ty::AssocContainer::Trait => tcx.types.self_param,
         };
         let self_arg_ty = tcx.fn_sig(method.def_id).instantiate_identity().input(0);
         let (infcx, param_env) = tcx
@@ -2458,8 +2455,12 @@ fn param_env_with_gat_bounds<'tcx>(
 
     for impl_ty in impl_tys_to_install {
         let trait_ty = match impl_ty.container {
-            ty::AssocItemContainer::Trait => impl_ty,
-            ty::AssocItemContainer::Impl => tcx.associated_item(impl_ty.trait_item_def_id.unwrap()),
+            ty::AssocContainer::InherentImpl => bug!(),
+            ty::AssocContainer::Trait => impl_ty,
+            ty::AssocContainer::TraitImpl(Err(_)) => continue,
+            ty::AssocContainer::TraitImpl(Ok(trait_item_def_id)) => {
+                tcx.associated_item(trait_item_def_id)
+            }
         };
 
         let mut bound_vars: smallvec::SmallVec<[ty::BoundVariableKind; 8]> =

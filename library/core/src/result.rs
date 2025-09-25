@@ -542,7 +542,8 @@ use crate::{convert, fmt, hint};
 ///
 /// See the [module documentation](self) for details.
 #[doc(search_unbox)]
-#[derive(Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
+#[derive(Copy, Debug, Hash)]
+#[derive_const(PartialEq, PartialOrd, Eq, Ord)]
 #[must_use = "this `Result` may be an `Err` variant, which should be handled"]
 #[rustc_diagnostic_item = "Result"]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1846,7 +1847,7 @@ impl<T, E> Result<Result<T, E>, E> {
 }
 
 // This is a separate function to reduce the code size of the methods
-#[cfg(not(feature = "panic_immediate_abort"))]
+#[cfg(not(panic = "immediate-abort"))]
 #[inline(never)]
 #[cold]
 #[track_caller]
@@ -1858,7 +1859,7 @@ fn unwrap_failed(msg: &str, error: &dyn fmt::Debug) -> ! {
 // that gets immediately thrown away, since vtables don't get cleaned up
 // by dead code elimination if a trait object is constructed even if it goes
 // unused
-#[cfg(feature = "panic_immediate_abort")]
+#[cfg(panic = "immediate-abort")]
 #[inline]
 #[cold]
 #[track_caller]

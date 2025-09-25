@@ -546,7 +546,11 @@ impl<K, V: fmt::Debug> fmt::Debug for ValuesMut<'_, K, V> {
 /// [`into_keys`]: BTreeMap::into_keys
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
-pub struct IntoKeys<K, V, A: Allocator + Clone = Global> {
+pub struct IntoKeys<
+    K,
+    V,
+    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + Clone = Global,
+> {
     inner: IntoIter<K, V, A>,
 }
 
@@ -1433,7 +1437,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(btree_extract_if)]
     /// use std::collections::BTreeMap;
     ///
     /// // Splitting a map into even and odd keys, reusing the original map:
@@ -1450,7 +1453,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// assert_eq!(low.keys().copied().collect::<Vec<_>>(), [0, 1, 2, 3]);
     /// assert_eq!(high.keys().copied().collect::<Vec<_>>(), [4, 5, 6, 7]);
     /// ```
-    #[unstable(feature = "btree_extract_if", issue = "70530")]
+    #[stable(feature = "btree_extract_if", since = "CURRENT_RUSTC_VERSION")]
     pub fn extract_if<F, R>(&mut self, range: R, pred: F) -> ExtractIf<'_, K, V, R, F, A>
     where
         K: Ord,
@@ -1937,7 +1940,7 @@ impl<K, V> Default for Values<'_, K, V> {
 }
 
 /// An iterator produced by calling `extract_if` on BTreeMap.
-#[unstable(feature = "btree_extract_if", issue = "70530")]
+#[stable(feature = "btree_extract_if", since = "CURRENT_RUSTC_VERSION")]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct ExtractIf<
     'a,
@@ -1970,7 +1973,7 @@ pub(super) struct ExtractIfInner<'a, K, V, R> {
     range: R,
 }
 
-#[unstable(feature = "btree_extract_if", issue = "70530")]
+#[stable(feature = "btree_extract_if", since = "CURRENT_RUSTC_VERSION")]
 impl<K, V, R, F, A> fmt::Debug for ExtractIf<'_, K, V, R, F, A>
 where
     K: fmt::Debug,
@@ -1982,7 +1985,7 @@ where
     }
 }
 
-#[unstable(feature = "btree_extract_if", issue = "70530")]
+#[stable(feature = "btree_extract_if", since = "CURRENT_RUSTC_VERSION")]
 impl<K, V, R, F, A: Allocator + Clone> Iterator for ExtractIf<'_, K, V, R, F, A>
 where
     K: PartialOrd,
@@ -2056,7 +2059,7 @@ impl<'a, K, V, R> ExtractIfInner<'a, K, V, R> {
     }
 }
 
-#[unstable(feature = "btree_extract_if", issue = "70530")]
+#[stable(feature = "btree_extract_if", since = "CURRENT_RUSTC_VERSION")]
 impl<K, V, R, F> FusedIterator for ExtractIf<'_, K, V, R, F>
 where
     K: PartialOrd,

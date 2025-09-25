@@ -45,4 +45,4 @@ pub struct GetAddress {
     raw: [u8; 4096],
 }
 
-pub use dns::LookupHost;
+pub use dns::lookup_host;

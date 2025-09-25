@@ -16,7 +16,7 @@ use rustc_hir::Attribute;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::ty::Visibility;
+use rustc_middle::ty::{AssocContainer, Visibility};
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::symbol::kw;
@@ -246,12 +246,11 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx hir::ImplItem<'_>) {
         // If the method is an impl for a trait, don't doc.
-        if let Some(cid) = cx.tcx.associated_item(impl_item.owner_id).impl_container(cx.tcx) {
-            if cx.tcx.impl_trait_ref(cid).is_some() {
+        match cx.tcx.associated_item(impl_item.owner_id).container {
+            AssocContainer::Trait | AssocContainer::TraitImpl(_) => {
                 note_prev_span_then_ret!(self.prev_span, impl_item.span);
-            }
-        } else {
-            note_prev_span_then_ret!(self.prev_span, impl_item.span);
+            },
+            AssocContainer::InherentImpl => {},
         }
 
         let (article, desc) = cx.tcx.article_and_description(impl_item.owner_id.to_def_id());

@@ -1,0 +1,38 @@
+error: float has excessive precision
+  --> tests/ui-toml/excessive_precision/excessive_precision.rs:12:18
+   |
+LL |     let _: f32 = 1.012345678901234567890;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: consider making it a `const` item
+  --> tests/ui-toml/excessive_precision/excessive_precision.rs:12:5
+   |
+LL |     let _: f32 = 1.012345678901234567890;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `-D clippy::excessive-precision` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::excessive_precision)]`
+help: consider changing the type or truncating it to
+   |
+LL -     let _: f32 = 1.012345678901234567890;
+LL +     let _: f32 = 1.012_345_7;
+   |
+
+error: float has excessive precision
+  --> tests/ui-toml/excessive_precision/excessive_precision.rs:14:18
+   |
+LL |     let _: f64 = 1.012345678901234567890;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: consider making it a `const` item
+  --> tests/ui-toml/excessive_precision/excessive_precision.rs:14:5
+   |
+LL |     let _: f64 = 1.012345678901234567890;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider changing the type or truncating it to
+   |
+LL -     let _: f64 = 1.012345678901234567890;
+LL +     let _: f64 = 1.012_345_678_901_234_6;
+   |
+
+error: aborting due to 2 previous errors
+

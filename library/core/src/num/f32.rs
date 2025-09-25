@@ -1025,7 +1025,6 @@ impl f32 {
                 ((self as f64 + other as f64) / 2.0) as f32
             }
             _ => {
-                const LO: f32 = f32::MIN_POSITIVE * 2.;
                 const HI: f32 = f32::MAX / 2.;
 
                 let (a, b) = (self, other);
@@ -1035,14 +1034,7 @@ impl f32 {
                 if abs_a <= HI && abs_b <= HI {
                     // Overflow is impossible
                     (a + b) / 2.
-                } else if abs_a < LO {
-                    // Not safe to halve `a` (would underflow)
-                    a + (b / 2.)
-                } else if abs_b < LO {
-                    // Not safe to halve `b` (would underflow)
-                    (a / 2.) + b
                 } else {
-                    // Safe to halve `a` and `b`
                     (a / 2.) + (b / 2.)
                 }
             }
@@ -1361,9 +1353,10 @@ impl f32 {
     /// }
     /// ```
     #[stable(feature = "total_cmp", since = "1.62.0")]
+    #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
     #[must_use]
     #[inline]
-    pub fn total_cmp(&self, other: &Self) -> crate::cmp::Ordering {
+    pub const fn total_cmp(&self, other: &Self) -> crate::cmp::Ordering {
         let mut left = self.to_bits() as i32;
         let mut right = other.to_bits() as i32;
 
@@ -1457,8 +1450,7 @@ impl f32 {
     #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn abs(self) -> f32 {
-        // SAFETY: this is actually a safe intrinsic
-        unsafe { intrinsics::fabsf32(self) }
+        intrinsics::fabsf32(self)
     }
 
     /// Returns a number that represents the sign of `self`.
@@ -1516,8 +1508,7 @@ impl f32 {
     #[stable(feature = "copysign", since = "1.35.0")]
     #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     pub const fn copysign(self, sign: f32) -> f32 {
-        // SAFETY: this is actually a safe intrinsic
-        unsafe { intrinsics::copysignf32(self, sign) }
+        intrinsics::copysignf32(self, sign)
     }
 
     /// Float addition that allows optimizations based on algebraic rules.
@@ -1611,8 +1602,7 @@ pub mod math {
     #[unstable(feature = "core_float_math", issue = "137578")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn floor(x: f32) -> f32 {
-        // SAFETY: intrinsic with no preconditions
-        unsafe { intrinsics::floorf32(x) }
+        intrinsics::floorf32(x)
     }
 
     /// Experimental version of `ceil` in `core`. See [`f32::ceil`] for details.
@@ -1640,8 +1630,7 @@ pub mod math {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "core_float_math", issue = "137578")]
     pub const fn ceil(x: f32) -> f32 {
-        // SAFETY: intrinsic with no preconditions
-        unsafe { intrinsics::ceilf32(x) }
+        intrinsics::ceilf32(x)
     }
 
     /// Experimental version of `round` in `core`. See [`f32::round`] for details.
@@ -1674,8 +1663,7 @@ pub mod math {
     #[unstable(feature = "core_float_math", issue = "137578")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn round(x: f32) -> f32 {
-        // SAFETY: intrinsic with no preconditions
-        unsafe { intrinsics::roundf32(x) }
+        intrinsics::roundf32(x)
     }
 
     /// Experimental version of `round_ties_even` in `core`. See [`f32::round_ties_even`] for
@@ -1737,8 +1725,7 @@ pub mod math {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "core_float_math", issue = "137578")]
     pub const fn trunc(x: f32) -> f32 {
-        // SAFETY: intrinsic with no preconditions
-        unsafe { intrinsics::truncf32(x) }
+        intrinsics::truncf32(x)
     }
 
     /// Experimental version of `fract` in `core`. See [`f32::fract`] for details.
@@ -1812,8 +1799,7 @@ pub mod math {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "core_float_math", issue = "137578")]
     pub fn mul_add(x: f32, y: f32, z: f32) -> f32 {
-        // SAFETY: intrinsic with no preconditions
-        unsafe { intrinsics::fmaf32(x, y, z) }
+        intrinsics::fmaf32(x, y, z)
     }
 
     /// Experimental version of `div_euclid` in `core`. See [`f32::div_euclid`] for details.
@@ -1904,8 +1890,7 @@ pub mod math {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "core_float_math", issue = "137578")]
     pub fn powi(x: f32, n: i32) -> f32 {
-        // SAFETY: intrinsic with no preconditions
-        unsafe { intrinsics::powif32(x, n) }
+        intrinsics::powif32(x, n)
     }
 
     /// Experimental version of `sqrt` in `core`. See [`f32::sqrt`] for details.
@@ -1935,8 +1920,7 @@ pub mod math {
     #[unstable(feature = "core_float_math", issue = "137578")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn sqrt(x: f32) -> f32 {
-        // SAFETY: intrinsic with no preconditions
-        unsafe { intrinsics::sqrtf32(x) }
+        intrinsics::sqrtf32(x)
     }
 
     /// Experimental version of `abs_sub` in `core`. See [`f32::abs_sub`] for details.
@@ -1954,8 +1938,8 @@ pub mod math {
     /// let abs_difference_x = (f32::math::abs_sub(x, 1.0) - 2.0).abs();
     /// let abs_difference_y = (f32::math::abs_sub(y, 1.0) - 0.0).abs();
     ///
-    /// assert!(abs_difference_x <= f32::EPSILON);
-    /// assert!(abs_difference_y <= f32::EPSILON);
+    /// assert!(abs_difference_x <= 1e-6);
+    /// assert!(abs_difference_y <= 1e-6);
     /// ```
     ///
     /// _This standalone function is for testing only.
@@ -2000,7 +1984,7 @@ pub mod math {
     /// // x^(1/3) - 2 == 0
     /// let abs_difference = (f32::math::cbrt(x) - 2.0).abs();
     ///
-    /// assert!(abs_difference <= f32::EPSILON);
+    /// assert!(abs_difference <= 1e-6);
     /// ```
     ///
     /// _This standalone function is for testing only.

@@ -69,7 +69,7 @@
             },
         },
         ws_data: CrateWorkspaceData {
-            data_layout: Err(
+            target: Err(
                 "target_data_layout not loaded",
             ),
             toolchain: None,
@@ -153,7 +153,7 @@
             },
         },
         ws_data: CrateWorkspaceData {
-            data_layout: Err(
+            target: Err(
                 "target_data_layout not loaded",
             ),
             toolchain: None,
@@ -237,7 +237,7 @@
             },
         },
         ws_data: CrateWorkspaceData {
-            data_layout: Err(
+            target: Err(
                 "target_data_layout not loaded",
             ),
             toolchain: None,
@@ -321,7 +321,7 @@
             },
         },
         ws_data: CrateWorkspaceData {
-            data_layout: Err(
+            target: Err(
                 "target_data_layout not loaded",
             ),
             toolchain: None,
@@ -402,7 +402,7 @@
             },
         },
         ws_data: CrateWorkspaceData {
-            data_layout: Err(
+            target: Err(
                 "target_data_layout not loaded",
             ),
             toolchain: None,

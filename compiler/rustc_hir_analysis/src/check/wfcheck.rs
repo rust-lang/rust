@@ -819,17 +819,7 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &ty::GenericParamDef) -> Result<(), Er
             let span = tcx.def_span(param.def_id);
             let def_id = param.def_id.expect_local();
 
-            if tcx.features().unsized_const_params() {
-                enter_wf_checking_ctxt(tcx, tcx.local_parent(def_id), |wfcx| {
-                    wfcx.register_bound(
-                        ObligationCause::new(span, def_id, ObligationCauseCode::ConstParam(ty)),
-                        wfcx.param_env,
-                        ty,
-                        tcx.require_lang_item(LangItem::UnsizedConstParamTy, span),
-                    );
-                    Ok(())
-                })
-            } else if tcx.features().adt_const_params() {
+            if tcx.features().adt_const_params() {
                 enter_wf_checking_ctxt(tcx, tcx.local_parent(def_id), |wfcx| {
                     wfcx.register_bound(
                         ObligationCause::new(span, def_id, ObligationCauseCode::ConstParam(ty)),
@@ -880,7 +870,6 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &ty::GenericParamDef) -> Result<(), Er
                     tcx,
                     tcx.param_env(param.def_id),
                     ty,
-                    LangItem::ConstParamTy,
                     cause,
                 ) {
                     // Can never implement `ConstParamTy`, don't suggest anything.
@@ -944,12 +933,11 @@ pub(crate) fn check_associated_item(
 
         // Avoid bogus "type annotations needed `Foo: Bar`" errors on `impl Bar for Foo` in case
         // other `Foo` impls are incoherent.
-        tcx.ensure_ok()
-            .coherent_trait(tcx.parent(item.trait_item_def_id.unwrap_or(item_id.into())))?;
+        tcx.ensure_ok().coherent_trait(tcx.parent(item.trait_item_or_self()?))?;
 
         let self_ty = match item.container {
-            ty::AssocItemContainer::Trait => tcx.types.self_param,
-            ty::AssocItemContainer::Impl => {
+            ty::AssocContainer::Trait => tcx.types.self_param,
+            ty::AssocContainer::InherentImpl | ty::AssocContainer::TraitImpl(_) => {
                 tcx.type_of(item.container_id(tcx)).instantiate_identity()
             }
         };
@@ -978,7 +966,7 @@ pub(crate) fn check_associated_item(
                 check_method_receiver(wfcx, hir_sig, item, self_ty)
             }
             ty::AssocKind::Type { .. } => {
-                if let ty::AssocItemContainer::Trait = item.container {
+                if let ty::AssocContainer::Trait = item.container {
                     check_associated_type_bounds(wfcx, item, span)
                 }
                 if item.defaultness(tcx).has_value() {
@@ -1047,7 +1035,7 @@ fn check_type_defn<'tcx>(
             let needs_drop_copy = || {
                 packed && {
                     let ty = tcx.type_of(variant.tail().did).instantiate_identity();
-                    let ty = tcx.erase_regions(ty);
+                    let ty = tcx.erase_and_anonymize_regions(ty);
                     assert!(!ty.has_infer());
                     ty.needs_drop(tcx, wfcx.infcx.typing_env(wfcx.param_env))
                 }

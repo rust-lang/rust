@@ -38,17 +38,13 @@ pub(super) fn check(
     ];
 
     let is_deref = match map_arg.kind {
-        hir::ExprKind::Path(ref expr_qpath) => {
-            cx.qpath_res(expr_qpath, map_arg.hir_id)
-                .opt_def_id()
-                .is_some_and(|fun_def_id| {
-                    cx.tcx.is_diagnostic_item(sym::deref_method, fun_def_id)
-                        || cx.tcx.is_diagnostic_item(sym::deref_mut_method, fun_def_id)
-                        || deref_aliases
-                            .iter()
-                            .any(|&sym| cx.tcx.is_diagnostic_item(sym, fun_def_id))
-                })
-        },
+        hir::ExprKind::Path(ref expr_qpath) => cx
+            .qpath_res(expr_qpath, map_arg.hir_id)
+            .opt_def_id()
+            .and_then(|fun_def_id| cx.tcx.get_diagnostic_name(fun_def_id))
+            .is_some_and(|fun_name| {
+                matches!(fun_name, sym::deref_method | sym::deref_mut_method) || deref_aliases.contains(&fun_name)
+            }),
         hir::ExprKind::Closure(&hir::Closure { body, .. }) => {
             let closure_body = cx.tcx.hir_body(body);
             let closure_expr = peel_blocks(closure_body.value);
@@ -63,13 +59,11 @@ pub(super) fn check(
                             .map(|x| &x.kind)
                             .collect::<Box<[_]>>()
                         && let [ty::adjustment::Adjust::Deref(None), ty::adjustment::Adjust::Borrow(_)] = *adj
+                        && let method_did = cx.typeck_results().type_dependent_def_id(closure_expr.hir_id).unwrap()
+                        && let Some(method_name) = cx.tcx.get_diagnostic_name(method_did)
                     {
-                        let method_did = cx.typeck_results().type_dependent_def_id(closure_expr.hir_id).unwrap();
-                        cx.tcx.is_diagnostic_item(sym::deref_method, method_did)
-                            || cx.tcx.is_diagnostic_item(sym::deref_mut_method, method_did)
-                            || deref_aliases
-                                .iter()
-                                .any(|&sym| cx.tcx.is_diagnostic_item(sym, method_did))
+                        matches!(method_name, sym::deref_method | sym::deref_mut_method)
+                            || deref_aliases.contains(&method_name)
                     } else {
                         false
                     }

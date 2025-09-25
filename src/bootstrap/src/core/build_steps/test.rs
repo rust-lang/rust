@@ -1522,6 +1522,12 @@ test!(Pretty {
 });
 
 test!(RunMake { path: "tests/run-make", mode: "run-make", suite: "run-make", default: true });
+test!(RunMakeCargo {
+    path: "tests/run-make-cargo",
+    mode: "run-make",
+    suite: "run-make-cargo",
+    default: true
+});
 
 test!(AssemblyLlvm {
     path: "tests/assembly-llvm",
@@ -1773,7 +1779,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
                 target,
             });
         }
-        if suite == "run-make" {
+        if mode == "run-make" {
             builder.tool_exe(Tool::RunMakeSupport);
         }
 
@@ -1816,25 +1822,41 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
 
         let is_rustdoc = suite == "rustdoc-ui" || suite == "rustdoc-js";
 
+        // There are (potentially) 2 `cargo`s to consider:
+        //
+        // - A "bootstrap" cargo, which is the same cargo used to build bootstrap itself, and is
+        //   used to build the `run-make` test recipes and the `run-make-support` test library. All
+        //   of these may not use unstable rustc/cargo features.
+        // - An in-tree cargo, which should be considered as under test. The `run-make-cargo` test
+        //   suite is intended to support the use case of testing the "toolchain" (that is, at the
+        //   minimum the interaction between in-tree cargo + rustc) together.
+        //
+        // For build time and iteration purposes, we partition `run-make` tests which needs an
+        // in-tree cargo (a smaller subset) versus `run-make` tests that do not into two test
+        // suites, `run-make` and `run-make-cargo`. That way, contributors who do not need to run
+        // the `run-make` tests that need in-tree cargo do not need to spend time building in-tree
+        // cargo.
         if mode == "run-make" {
-            let cargo_path = if test_compiler.stage == 0 {
-                // If we're using `--stage 0`, we should provide the bootstrap cargo.
-                builder.initial_cargo.clone()
-            } else {
-                builder
-                    .ensure(tool::Cargo::from_build_compiler(
-                        builder.compiler(test_compiler.stage - 1, test_compiler.host),
-                        test_compiler.host,
-                    ))
-                    .tool_path
-            };
-
-            cmd.arg("--cargo-path").arg(cargo_path);
-
             // We need to pass the compiler that was used to compile run-make-support,
             // because we have to use the same compiler to compile rmake.rs recipes.
             let stage0_rustc_path = builder.compiler(0, test_compiler.host);
             cmd.arg("--stage0-rustc-path").arg(builder.rustc(stage0_rustc_path));
+
+            if suite == "run-make-cargo" {
+                let cargo_path = if test_compiler.stage == 0 {
+                    // If we're using `--stage 0`, we should provide the bootstrap cargo.
+                    builder.initial_cargo.clone()
+                } else {
+                    builder
+                        .ensure(tool::Cargo::from_build_compiler(
+                            builder.compiler(test_compiler.stage - 1, test_compiler.host),
+                            test_compiler.host,
+                        ))
+                        .tool_path
+                };
+
+                cmd.arg("--cargo-path").arg(cargo_path);
+            }
         }
 
         // Avoid depending on rustdoc when we don't need it.
@@ -2064,11 +2086,25 @@ HELP: You can add it into `bootstrap.toml` in `rust.codegen-backends = [{name:?}
         }
 
         // Get paths from cmd args
-        let paths = match &builder.config.cmd {
+        let mut paths = match &builder.config.cmd {
             Subcommand::Test { .. } => &builder.config.paths[..],
             _ => &[],
         };
 
+        // in rustdoc-js mode, allow filters to be rs files or js files.
+        // use a late-initialized Vec to avoid cloning for other modes.
+        let mut paths_v;
+        if mode == "rustdoc-js" {
+            paths_v = paths.to_vec();
+            for p in &mut paths_v {
+                if let Some(ext) = p.extension()
+                    && ext == "js"
+                {
+                    p.set_extension("rs");
+                }
+            }
+            paths = &paths_v;
+        }
         // Get test-args by striping suite path
         let mut test_args: Vec<&str> = paths
             .iter()
@@ -3382,9 +3418,6 @@ impl Step for TierCheck {
         );
         cargo.arg(builder.src.join("src/doc/rustc/src/platform-support.md"));
         cargo.arg(builder.rustc(self.test_compiler));
-        if builder.is_verbose() {
-            cargo.arg("--verbose");
-        }
 
         let _guard = builder.msg_test(
             "platform support check",

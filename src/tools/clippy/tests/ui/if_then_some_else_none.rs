@@ -211,3 +211,54 @@ mod issue15257 {
         });
     }
 }
+
+fn issue15005() {
+    struct Counter {
+        count: u32,
+    }
+
+    impl Counter {
+        fn new() -> Counter {
+            Counter { count: 0 }
+        }
+    }
+
+    impl Iterator for Counter {
+        type Item = u32;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            //~v if_then_some_else_none
+            if self.count < 5 {
+                self.count += 1;
+                Some(self.count)
+            } else {
+                None
+            }
+        }
+    }
+}
+
+fn statements_from_macro() {
+    macro_rules! mac {
+        () => {
+            println!("foo");
+            println!("bar");
+        };
+    }
+    //~v if_then_some_else_none
+    let _ = if true {
+        mac!();
+        Some(42)
+    } else {
+        None
+    };
+}
+
+fn dont_lint_inside_macros() {
+    macro_rules! mac {
+        ($cond:expr, $res:expr) => {
+            if $cond { Some($res) } else { None }
+        };
+    }
+    let _: Option<u32> = mac!(true, 42);
+}

@@ -5,7 +5,6 @@
 use std::fmt;
 
 use base_db::Crate;
-use chalk_solve::rust_ir::AdtKind;
 use either::Either;
 use hir_def::{
     AdtId, AssocItemId, DefWithBodyId, HasModule, ItemContainerId, Lookup,
@@ -300,11 +299,7 @@ impl ExprValidator {
                 value_or_partial.is_none_or(|v| !matches!(v, ValueNs::StaticId(_)))
             }
             Expr::Field { expr, .. } => match self.infer.type_of_expr[*expr].kind(Interner) {
-                TyKind::Adt(adt, ..)
-                    if db.adt_datum(self.owner.krate(db), *adt).kind == AdtKind::Union =>
-                {
-                    false
-                }
+                TyKind::Adt(adt, ..) if matches!(adt.0, AdtId::UnionId(_)) => false,
                 _ => self.is_known_valid_scrutinee(*expr, db),
             },
             Expr::Index { base, .. } => self.is_known_valid_scrutinee(*base, db),

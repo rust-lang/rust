@@ -176,7 +176,7 @@ fn resolve_associated_item<'tcx>(
                 args,
                 leaf_def.defining_node,
             );
-            let args = infcx.tcx.erase_regions(args);
+            let args = infcx.tcx.erase_and_anonymize_regions(args);
 
             // HACK: We may have overlapping `dyn Trait` built-in impls and
             // user-provided blanket impls. Detect that case here, and return
@@ -222,7 +222,7 @@ fn resolve_associated_item<'tcx>(
                 return Err(guar);
             }
 
-            let args = tcx.erase_regions(args);
+            let args = tcx.erase_and_anonymize_regions(args);
 
             // We check that the impl item is compatible with the trait item
             // because otherwise we may ICE in const eval due to type mismatches,
@@ -279,7 +279,7 @@ fn resolve_associated_item<'tcx>(
                     assert_eq!(name, sym::clone_from);
 
                     // Use the default `fn clone_from` from `trait Clone`.
-                    let args = tcx.erase_regions(rcvr_args);
+                    let args = tcx.erase_and_anonymize_regions(rcvr_args);
                     Some(ty::Instance::new_raw(trait_item_id, args))
                 }
             } else if tcx.is_lang_item(trait_ref.def_id, LangItem::FnPtrTrait) {
@@ -380,7 +380,7 @@ fn resolve_associated_item<'tcx>(
             } else if tcx.is_lang_item(trait_ref.def_id, LangItem::TransmuteTrait) {
                 let name = tcx.item_name(trait_item_id);
                 assert_eq!(name, sym::transmute);
-                let args = tcx.erase_regions(rcvr_args);
+                let args = tcx.erase_and_anonymize_regions(rcvr_args);
                 Some(ty::Instance::new_raw(trait_item_id, args))
             } else {
                 Instance::try_resolve_item_for_coroutine(tcx, trait_item_id, trait_id, rcvr_args)

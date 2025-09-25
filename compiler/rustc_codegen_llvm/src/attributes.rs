@@ -296,6 +296,19 @@ pub(crate) fn tune_cpu_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribu
         .map(|tune_cpu| llvm::CreateAttrStringValue(cx.llcx, "tune-cpu", tune_cpu))
 }
 
+/// Get the `target-features` LLVM attribute.
+pub(crate) fn target_features_attr<'ll>(
+    cx: &CodegenCx<'ll, '_>,
+    function_features: Vec<String>,
+) -> Option<&'ll Attribute> {
+    let global_features = cx.tcx.global_backend_features(()).iter().map(String::as_str);
+    let function_features = function_features.iter().map(String::as_str);
+    let target_features =
+        global_features.chain(function_features).intersperse(",").collect::<String>();
+    (!target_features.is_empty())
+        .then(|| llvm::CreateAttrStringValue(cx.llcx, "target-features", &target_features))
+}
+
 /// Get the `NonLazyBind` LLVM attribute,
 /// if the codegen options allow skipping the PLT.
 pub(crate) fn non_lazy_bind_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
@@ -394,12 +407,15 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
         to_add.extend(sanitize_attrs(cx, codegen_fn_attrs.no_sanitize));
 
         // For non-naked functions, set branch protection attributes on aarch64.
-        if let Some(BranchProtection { bti, pac_ret }) =
+        if let Some(BranchProtection { bti, pac_ret, gcs }) =
             cx.sess().opts.unstable_opts.branch_protection
         {
             assert!(cx.sess().target.arch == "aarch64");
             if bti {
                 to_add.push(llvm::CreateAttrString(cx.llcx, "branch-target-enforcement"));
+            }
+            if gcs {
+                to_add.push(llvm::CreateAttrString(cx.llcx, "guarded-control-stack"));
             }
             if let Some(PacRet { leaf, pc, key }) = pac_ret {
                 if pc {
@@ -523,14 +539,7 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
         }
     }
 
-    let global_features = cx.tcx.global_backend_features(()).iter().map(|s| s.as_str());
-    let function_features = function_features.iter().map(|s| s.as_str());
-    let target_features: String =
-        global_features.chain(function_features).intersperse(",").collect();
-
-    if !target_features.is_empty() {
-        to_add.push(llvm::CreateAttrStringValue(cx.llcx, "target-features", &target_features));
-    }
+    to_add.extend(target_features_attr(cx, function_features));
 
     attributes::apply_to_llfn(llfn, Function, &to_add);
 }

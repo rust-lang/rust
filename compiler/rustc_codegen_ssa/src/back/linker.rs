@@ -4,7 +4,7 @@ use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::{env, io, iter, mem, str};
 
-use cc::windows_registry;
+use find_msvc_tools;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_metadata::{
     find_native_static_library, try_find_native_dynamic_library, try_find_native_static_library,
@@ -53,7 +53,7 @@ pub(crate) fn get_linker<'a>(
     self_contained: bool,
     target_cpu: &'a str,
 ) -> Box<dyn Linker + 'a> {
-    let msvc_tool = windows_registry::find_tool(&sess.target.arch, "link.exe");
+    let msvc_tool = find_msvc_tools::find_tool(&sess.target.arch, "link.exe");
 
     // If our linker looks like a batch script on Windows then to execute this
     // we'll need to spawn `cmd` explicitly. This is primarily done to handle
@@ -117,7 +117,6 @@ pub(crate) fn get_linker<'a>(
     if sess.target.is_like_msvc
         && let Some(ref tool) = msvc_tool
     {
-        cmd.args(tool.args());
         for (k, v) in tool.env() {
             if k == "PATH" {
                 new_path.extend(env::split_paths(v));
@@ -845,6 +844,11 @@ impl<'a> Linker for GccLinker<'a> {
                 self.sess.dcx().emit_fatal(errors::VersionScriptWriteFailure { error });
             }
             self.link_arg("--dynamic-list").link_arg(path);
+        } else if self.sess.target.is_like_wasm {
+            self.link_arg("--no-export-dynamic");
+            for (sym, _) in symbols {
+                self.link_arg("--export").link_arg(sym);
+            }
         } else {
             // Write an LD version script
             let res: io::Result<()> = try {

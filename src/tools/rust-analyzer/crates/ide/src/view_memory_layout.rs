@@ -3,6 +3,7 @@ use std::fmt;
 use hir::{DisplayTarget, Field, HirDisplay, Layout, Semantics, Type};
 use ide_db::{
     RootDatabase,
+    base_db::salsa,
     defs::Definition,
     helpers::{get_definition, pick_best_token},
 };
@@ -138,10 +139,12 @@ pub(crate) fn view_memory_layout(
         nodes[parent_idx].children_len = fields.len() as u64;
 
         for (field, child_ty) in fields.iter() {
-            if let Ok(child_layout) = child_ty.layout(db) {
+            if let Ok(child_layout) = salsa::attach(db, || child_ty.layout(db)) {
                 nodes.push(MemoryLayoutNode {
                     item_name: field.name(db),
-                    typename: child_ty.display(db, display_target).to_string(),
+                    typename: salsa::attach(db, || {
+                        child_ty.display(db, display_target).to_string()
+                    }),
                     size: child_layout.size(),
                     alignment: child_layout.align(),
                     offset: match *field {
@@ -169,13 +172,13 @@ pub(crate) fn view_memory_layout(
         }
 
         for (i, (_, child_ty)) in fields.iter().enumerate() {
-            if let Ok(child_layout) = child_ty.layout(db) {
+            if let Ok(child_layout) = salsa::attach(db, || child_ty.layout(db)) {
                 read_layout(nodes, db, child_ty, &child_layout, children_start + i, display_target);
             }
         }
     }
 
-    ty.layout(db)
+    salsa::attach(db, || ty.layout(db))
         .map(|layout| {
             let item_name = match def {
                 // def is a datatype
@@ -188,7 +191,7 @@ pub(crate) fn view_memory_layout(
                 def => def.name(db).map(|n| n.as_str().to_owned()).unwrap_or("[ROOT]".to_owned()),
             };
 
-            let typename = ty.display(db, display_target).to_string();
+            let typename = salsa::attach(db, || ty.display(db, display_target).to_string());
 
             let mut nodes = vec![MemoryLayoutNode {
                 item_name,

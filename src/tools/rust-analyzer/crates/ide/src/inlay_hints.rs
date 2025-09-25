@@ -8,7 +8,9 @@ use hir::{
     ClosureStyle, DisplayTarget, EditionedFileId, HasVisibility, HirDisplay, HirDisplayError,
     HirWrite, InRealFile, ModuleDef, ModuleDefId, Semantics, sym,
 };
-use ide_db::{FileRange, RootDatabase, famous_defs::FamousDefs, text_edit::TextEditBuilder};
+use ide_db::{
+    FileRange, RootDatabase, base_db::salsa, famous_defs::FamousDefs, text_edit::TextEditBuilder,
+};
 use ide_db::{FxHashSet, text_edit::TextEdit};
 use itertools::Itertools;
 use smallvec::{SmallVec, smallvec};
@@ -105,14 +107,16 @@ pub(crate) fn inlay_hints(
         }
     };
     let mut preorder = file.preorder();
-    while let Some(event) = preorder.next() {
-        if matches!((&event, range_limit), (WalkEvent::Enter(node), Some(range)) if range.intersect(node.text_range()).is_none())
-        {
-            preorder.skip_subtree();
-            continue;
+    salsa::attach(sema.db, || {
+        while let Some(event) = preorder.next() {
+            if matches!((&event, range_limit), (WalkEvent::Enter(node), Some(range)) if range.intersect(node.text_range()).is_none())
+            {
+                preorder.skip_subtree();
+                continue;
+            }
+            hints(event);
         }
-        hints(event);
-    }
+    });
     if let Some(range_limit) = range_limit {
         acc.retain(|hint| range_limit.contains_range(hint.range));
     }
@@ -228,9 +232,9 @@ fn hints(
                 chaining::hints(hints, famous_defs, config, display_target, &expr);
                 adjustment::hints(hints, famous_defs, config, display_target, &expr);
                 match expr {
-                    ast::Expr::CallExpr(it) => param_name::hints(hints, famous_defs, config, ast::Expr::from(it)),
+                    ast::Expr::CallExpr(it) => param_name::hints(hints, famous_defs, config, file_id, ast::Expr::from(it)),
                     ast::Expr::MethodCallExpr(it) => {
-                        param_name::hints(hints, famous_defs, config, ast::Expr::from(it))
+                        param_name::hints(hints, famous_defs, config, file_id, ast::Expr::from(it))
                     }
                     ast::Expr::ClosureExpr(it) => {
                         closure_captures::hints(hints, famous_defs, config, it.clone());
@@ -302,6 +306,7 @@ pub struct InlayHintsConfig {
     pub generic_parameter_hints: GenericParameterHints,
     pub chaining_hints: bool,
     pub adjustment_hints: AdjustmentHints,
+    pub adjustment_hints_disable_reborrows: bool,
     pub adjustment_hints_mode: AdjustmentHintsMode,
     pub adjustment_hints_hide_outside_unsafe: bool,
     pub closure_return_type_hints: ClosureReturnTypeHints,
@@ -426,7 +431,7 @@ pub enum LifetimeElisionHints {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum AdjustmentHints {
     Always,
-    ReborrowOnly,
+    BorrowsOnly,
     Never,
 }
 
@@ -667,7 +672,7 @@ impl fmt::Debug for InlayHintLabelPart {
 
 #[derive(Debug)]
 struct InlayHintLabelBuilder<'a> {
-    db: &'a RootDatabase,
+    sema: &'a Semantics<'a, RootDatabase>,
     result: InlayHintLabel,
     last_part: String,
     resolve: bool,
@@ -689,7 +694,7 @@ impl HirWrite for InlayHintLabelBuilder<'_> {
             LazyProperty::Lazy
         } else {
             LazyProperty::Computed({
-                let Some(location) = ModuleDef::from(def).try_to_nav(self.db) else { return };
+                let Some(location) = ModuleDef::from(def).try_to_nav(self.sema) else { return };
                 let location = location.call_site();
                 FileRange { file_id: location.file_id, range: location.focus_or_full_range() }
             })
@@ -734,48 +739,50 @@ fn label_of_ty(
         config: &InlayHintsConfig,
         display_target: DisplayTarget,
     ) -> Result<(), HirDisplayError> {
-        let iter_item_type = hint_iterator(sema, famous_defs, ty);
-        match iter_item_type {
-            Some((iter_trait, item, ty)) => {
-                const LABEL_START: &str = "impl ";
-                const LABEL_ITERATOR: &str = "Iterator";
-                const LABEL_MIDDLE: &str = "<";
-                const LABEL_ITEM: &str = "Item";
-                const LABEL_MIDDLE2: &str = " = ";
-                const LABEL_END: &str = ">";
+        salsa::attach(sema.db, || {
+            let iter_item_type = hint_iterator(sema, famous_defs, ty);
+            match iter_item_type {
+                Some((iter_trait, item, ty)) => {
+                    const LABEL_START: &str = "impl ";
+                    const LABEL_ITERATOR: &str = "Iterator";
+                    const LABEL_MIDDLE: &str = "<";
+                    const LABEL_ITEM: &str = "Item";
+                    const LABEL_MIDDLE2: &str = " = ";
+                    const LABEL_END: &str = ">";
 
-                max_length = max_length.map(|len| {
-                    len.saturating_sub(
-                        LABEL_START.len()
-                            + LABEL_ITERATOR.len()
-                            + LABEL_MIDDLE.len()
-                            + LABEL_MIDDLE2.len()
-                            + LABEL_END.len(),
-                    )
-                });
+                    max_length = max_length.map(|len| {
+                        len.saturating_sub(
+                            LABEL_START.len()
+                                + LABEL_ITERATOR.len()
+                                + LABEL_MIDDLE.len()
+                                + LABEL_MIDDLE2.len()
+                                + LABEL_END.len(),
+                        )
+                    });
 
-                label_builder.write_str(LABEL_START)?;
-                label_builder.start_location_link(ModuleDef::from(iter_trait).into());
-                label_builder.write_str(LABEL_ITERATOR)?;
-                label_builder.end_location_link();
-                label_builder.write_str(LABEL_MIDDLE)?;
-                label_builder.start_location_link(ModuleDef::from(item).into());
-                label_builder.write_str(LABEL_ITEM)?;
-                label_builder.end_location_link();
-                label_builder.write_str(LABEL_MIDDLE2)?;
-                rec(sema, famous_defs, max_length, &ty, label_builder, config, display_target)?;
-                label_builder.write_str(LABEL_END)?;
-                Ok(())
+                    label_builder.write_str(LABEL_START)?;
+                    label_builder.start_location_link(ModuleDef::from(iter_trait).into());
+                    label_builder.write_str(LABEL_ITERATOR)?;
+                    label_builder.end_location_link();
+                    label_builder.write_str(LABEL_MIDDLE)?;
+                    label_builder.start_location_link(ModuleDef::from(item).into());
+                    label_builder.write_str(LABEL_ITEM)?;
+                    label_builder.end_location_link();
+                    label_builder.write_str(LABEL_MIDDLE2)?;
+                    rec(sema, famous_defs, max_length, &ty, label_builder, config, display_target)?;
+                    label_builder.write_str(LABEL_END)?;
+                    Ok(())
+                }
+                None => ty
+                    .display_truncated(sema.db, max_length, display_target)
+                    .with_closure_style(config.closure_style)
+                    .write_to(label_builder),
             }
-            None => ty
-                .display_truncated(sema.db, max_length, display_target)
-                .with_closure_style(config.closure_style)
-                .write_to(label_builder),
-        }
+        })
     }
 
     let mut label_builder = InlayHintLabelBuilder {
-        db: sema.db,
+        sema,
         last_part: String::new(),
         location: None,
         result: InlayHintLabel::default(),
@@ -880,6 +887,7 @@ mod tests {
         closure_return_type_hints: ClosureReturnTypeHints::Never,
         closure_capture_hints: false,
         adjustment_hints: AdjustmentHints::Never,
+        adjustment_hints_disable_reborrows: false,
         adjustment_hints_mode: AdjustmentHintsMode::Prefix,
         adjustment_hints_hide_outside_unsafe: false,
         binding_mode_hints: false,

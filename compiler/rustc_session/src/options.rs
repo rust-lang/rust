@@ -83,9 +83,76 @@ pub struct TargetModifier {
     pub value_name: String,
 }
 
+mod target_modifier_consistency_check {
+    use super::*;
+    pub(super) fn sanitizer(l: &TargetModifier, r: Option<&TargetModifier>) -> bool {
+        let mut lparsed: SanitizerSet = Default::default();
+        let lval = if l.value_name.is_empty() { None } else { Some(l.value_name.as_str()) };
+        parse::parse_sanitizers(&mut lparsed, lval);
+
+        let mut rparsed: SanitizerSet = Default::default();
+        let rval = r.filter(|v| !v.value_name.is_empty()).map(|v| v.value_name.as_str());
+        parse::parse_sanitizers(&mut rparsed, rval);
+
+        // Some sanitizers need to be target modifiers, and some do not.
+        // For now, we should mark all sanitizers as target modifiers except for these:
+        // AddressSanitizer, LeakSanitizer
+        let tmod_sanitizers = SanitizerSet::MEMORY
+            | SanitizerSet::THREAD
+            | SanitizerSet::HWADDRESS
+            | SanitizerSet::CFI
+            | SanitizerSet::MEMTAG
+            | SanitizerSet::SHADOWCALLSTACK
+            | SanitizerSet::KCFI
+            | SanitizerSet::KERNELADDRESS
+            | SanitizerSet::SAFESTACK
+            | SanitizerSet::DATAFLOW;
+
+        lparsed & tmod_sanitizers == rparsed & tmod_sanitizers
+    }
+    pub(super) fn sanitizer_cfi_normalize_integers(
+        opts: &Options,
+        l: &TargetModifier,
+        r: Option<&TargetModifier>,
+    ) -> bool {
+        // For kCFI, the helper flag -Zsanitizer-cfi-normalize-integers should also be a target modifier
+        if opts.unstable_opts.sanitizer.contains(SanitizerSet::KCFI) {
+            if let Some(r) = r {
+                return l.extend().tech_value == r.extend().tech_value;
+            } else {
+                return false;
+            }
+        }
+        true
+    }
+}
+
 impl TargetModifier {
     pub fn extend(&self) -> ExtendedTargetModifierInfo {
         self.opt.reparse(&self.value_name)
+    }
+    // Custom consistency check for target modifiers (or default `l.tech_value == r.tech_value`)
+    // When other is None, consistency with default value is checked
+    pub fn consistent(&self, opts: &Options, other: Option<&TargetModifier>) -> bool {
+        assert!(other.is_none() || self.opt == other.unwrap().opt);
+        match self.opt {
+            OptionsTargetModifiers::UnstableOptions(unstable) => match unstable {
+                UnstableOptionsTargetModifiers::sanitizer => {
+                    return target_modifier_consistency_check::sanitizer(self, other);
+                }
+                UnstableOptionsTargetModifiers::sanitizer_cfi_normalize_integers => {
+                    return target_modifier_consistency_check::sanitizer_cfi_normalize_integers(
+                        opts, self, other,
+                    );
+                }
+                _ => {}
+            },
+            _ => {}
+        };
+        match other {
+            Some(other) => self.extend().tech_value == other.extend().tech_value,
+            None => false,
+        }
     }
 }
 
@@ -735,7 +802,7 @@ mod desc {
     pub(crate) const parse_threads: &str = parse_number;
     pub(crate) const parse_time_passes_format: &str = "`text` (default) or `json`";
     pub(crate) const parse_passes: &str = "a space-separated list of passes, or `all`";
-    pub(crate) const parse_panic_strategy: &str = "either `unwind` or `abort`";
+    pub(crate) const parse_panic_strategy: &str = "either `unwind`, `abort`, or `immediate-abort`";
     pub(crate) const parse_on_broken_pipe: &str = "either `kill`, `error`, or `inherit`";
     pub(crate) const parse_patchable_function_entry: &str = "either two comma separated integers (total_nops,prefix_nops), with prefix_nops <= total_nops, or one integer (total_nops)";
     pub(crate) const parse_opt_panic_strategy: &str = parse_panic_strategy;
@@ -799,7 +866,7 @@ mod desc {
     pub(crate) const parse_polonius: &str = "either no value or `legacy` (the default), or `next`";
     pub(crate) const parse_stack_protector: &str =
         "one of (`none` (default), `basic`, `strong`, or `all`)";
-    pub(crate) const parse_branch_protection: &str = "a `,` separated combination of `bti`, `pac-ret`, followed by a combination of `pc`, `b-key`, or `leaf`";
+    pub(crate) const parse_branch_protection: &str = "a `,` separated combination of `bti`, `gcs`, `pac-ret`, (optionally with `pc`, `b-key`, `leaf` if `pac-ret` is set)";
     pub(crate) const parse_proc_macro_execution_strategy: &str =
         "one of supported execution strategies (`same-thread`, or `cross-thread`)";
     pub(crate) const parse_remap_path_scope: &str =
@@ -1098,6 +1165,7 @@ pub mod parse {
         match v {
             Some("unwind") => *slot = Some(PanicStrategy::Unwind),
             Some("abort") => *slot = Some(PanicStrategy::Abort),
+            Some("immediate-abort") => *slot = Some(PanicStrategy::ImmediateAbort),
             _ => return false,
         }
         true
@@ -1107,6 +1175,7 @@ pub mod parse {
         match v {
             Some("unwind") => *slot = PanicStrategy::Unwind,
             Some("abort") => *slot = PanicStrategy::Abort,
+            Some("immediate-abort") => *slot = PanicStrategy::ImmediateAbort,
             _ => return false,
         }
         true
@@ -1836,6 +1905,7 @@ pub mod parse {
                             Some(pac) => pac.pc = true,
                             _ => return false,
                         },
+                        "gcs" => slot.gcs = true,
                         _ => return false,
                     };
                 }
@@ -2504,13 +2574,13 @@ written to standard error output)"),
     retpoline_external_thunk: bool = (false, parse_bool, [TRACKED TARGET_MODIFIER],
         "enables retpoline-external-thunk, retpoline-indirect-branches and retpoline-indirect-calls \
         target features (default: no)"),
-    sanitizer: SanitizerSet = (SanitizerSet::empty(), parse_sanitizers, [TRACKED],
+    sanitizer: SanitizerSet = (SanitizerSet::empty(), parse_sanitizers, [TRACKED TARGET_MODIFIER],
         "use a sanitizer"),
     sanitizer_cfi_canonical_jump_tables: Option<bool> = (Some(true), parse_opt_bool, [TRACKED],
         "enable canonical jump tables (default: yes)"),
     sanitizer_cfi_generalize_pointers: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "enable generalizing pointer types (default: no)"),
-    sanitizer_cfi_normalize_integers: Option<bool> = (None, parse_opt_bool, [TRACKED],
+    sanitizer_cfi_normalize_integers: Option<bool> = (None, parse_opt_bool, [TRACKED TARGET_MODIFIER],
         "enable normalizing integer types (default: no)"),
     sanitizer_dataflow_abilist: Vec<String> = (Vec::new(), parse_comma_list, [TRACKED],
         "additional ABI list files that control how shadow parameters are passed (comma separated)"),

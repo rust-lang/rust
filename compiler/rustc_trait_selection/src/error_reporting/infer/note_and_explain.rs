@@ -292,7 +292,7 @@ impl<T> Trait<T> for X {
                             );
                         }
                     }
-                    (ty::Dynamic(t, _, ty::DynKind::Dyn), ty::Alias(ty::Opaque, alias))
+                    (ty::Dynamic(t, _), ty::Alias(ty::Opaque, alias))
                         if let Some(def_id) = t.principal_def_id()
                             && tcx
                                 .explicit_item_self_bounds(alias.def_id)
@@ -314,9 +314,7 @@ impl<T> Trait<T> for X {
                             values.found, values.expected,
                         ));
                     }
-                    (ty::Dynamic(t, _, ty::DynKind::Dyn), _)
-                        if let Some(def_id) = t.principal_def_id() =>
-                    {
+                    (ty::Dynamic(t, _), _) if let Some(def_id) = t.principal_def_id() => {
                         let mut has_matching_impl = false;
                         tcx.for_each_relevant_impl(def_id, values.found, |did| {
                             if DeepRejectCtxt::relate_rigid_infer(tcx)
@@ -335,9 +333,7 @@ impl<T> Trait<T> for X {
                             ));
                         }
                     }
-                    (_, ty::Dynamic(t, _, ty::DynKind::Dyn))
-                        if let Some(def_id) = t.principal_def_id() =>
-                    {
+                    (_, ty::Dynamic(t, _)) if let Some(def_id) = t.principal_def_id() => {
                         let mut has_matching_impl = false;
                         tcx.for_each_relevant_impl(def_id, values.expected, |did| {
                             if DeepRejectCtxt::relate_rigid_infer(tcx)
@@ -489,7 +485,7 @@ impl<T> Trait<T> for X {
                             && let Some(then) = blk.expr
                             && def.is_box()
                             && let boxed_ty = args.type_at(0)
-                            && let ty::Dynamic(t, _, _) = boxed_ty.kind()
+                            && let ty::Dynamic(t, _) = boxed_ty.kind()
                             && let Some(def_id) = t.principal_def_id()
                             && let mut impl_def_ids = vec![]
                             && let _ =
@@ -629,7 +625,11 @@ impl<T> Trait<T> for X {
         let tcx = self.tcx;
 
         // Don't suggest constraining a projection to something containing itself
-        if self.tcx.erase_regions(values.found).contains(self.tcx.erase_regions(values.expected)) {
+        if self
+            .tcx
+            .erase_and_anonymize_regions(values.found)
+            .contains(self.tcx.erase_and_anonymize_regions(values.expected))
+        {
             return;
         }
 
@@ -853,11 +853,11 @@ fn foo(&self) -> Self::T { String::new() }
                     && self.infcx.can_eq(param_env, assoc_ty, found)
                 {
                     let msg = match assoc_item.container {
-                        ty::AssocItemContainer::Trait => {
+                        ty::AssocContainer::Trait => {
                             "associated type defaults can't be assumed inside the \
                                             trait defining them"
                         }
-                        ty::AssocItemContainer::Impl => {
+                        ty::AssocContainer::InherentImpl | ty::AssocContainer::TraitImpl(_) => {
                             "associated type is `default` and may be overridden"
                         }
                     };

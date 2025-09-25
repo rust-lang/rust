@@ -1,6 +1,10 @@
 //@ run-pass
 #![allow(unused_variables)]
 //@ compile-flags:--test -g
+//@ ignore-ios needs the `.dSYM` files to be moved to the device
+//@ ignore-tvos needs the `.dSYM` files to be moved to the device
+//@ ignore-watchos needs the `.dSYM` files to be moved to the device
+//@ ignore-visionos needs the `.dSYM` files to be moved to the device
 
 #[cfg(target_vendor = "apple")]
 #[test]

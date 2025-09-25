@@ -1163,7 +1163,10 @@ impl<'a> Parser<'a> {
                         suffix,
                     }) => {
                         if let Some(suffix) = suffix {
-                            self.expect_no_tuple_index_suffix(current.span, suffix);
+                            self.dcx().emit_err(errors::InvalidLiteralSuffixOnTupleIndex {
+                                span: current.span,
+                                suffix,
+                            });
                         }
                         match self.break_up_float(symbol, current.span) {
                             // 1e2
@@ -1239,7 +1242,8 @@ impl<'a> Parser<'a> {
         suffix: Option<Symbol>,
     ) -> Box<Expr> {
         if let Some(suffix) = suffix {
-            self.expect_no_tuple_index_suffix(ident_span, suffix);
+            self.dcx()
+                .emit_err(errors::InvalidLiteralSuffixOnTupleIndex { span: ident_span, suffix });
         }
         self.mk_expr(lo.to(ident_span), ExprKind::Field(base, Ident::new(field, ident_span)))
     }
@@ -2225,24 +2229,6 @@ impl<'a> Parser<'a> {
         })
     }
 
-    pub(super) fn expect_no_tuple_index_suffix(&self, span: Span, suffix: Symbol) {
-        if [sym::i32, sym::u32, sym::isize, sym::usize].contains(&suffix) {
-            // #59553: warn instead of reject out of hand to allow the fix to percolate
-            // through the ecosystem when people fix their macros
-            self.dcx().emit_warn(errors::InvalidLiteralSuffixOnTupleIndex {
-                span,
-                suffix,
-                exception: true,
-            });
-        } else {
-            self.dcx().emit_err(errors::InvalidLiteralSuffixOnTupleIndex {
-                span,
-                suffix,
-                exception: false,
-            });
-        }
-    }
-
     /// Matches `'-' lit | lit` (cf. `ast_validation::AstValidator::check_expr_within_pat`).
     /// Keep this in sync with `Token::can_begin_literal_maybe_minus`.
     pub fn parse_literal_maybe_minus(&mut self) -> PResult<'a, Box<Expr>> {
@@ -2742,7 +2728,7 @@ impl<'a> Parser<'a> {
     /// The specified `edition` in `let_chains_policy` should be that of the whole `if` construct,
     /// i.e. the same span we use to later decide whether the drop behaviour should be that of
     /// edition `..=2021` or that of `2024..`.
-    // Public because it is used in rustfmt forks such as https://github.com/tucant/rustfmt/blob/30c83df9e1db10007bdd16dafce8a86b404329b2/src/parse/macros/html.rs#L57 for custom if expressions.
+    // Public to use it for custom `if` expressions in rustfmt forks like https://github.com/tucant/rustfmt
     pub fn parse_expr_cond(
         &mut self,
         let_chains_policy: LetChainsPolicy,

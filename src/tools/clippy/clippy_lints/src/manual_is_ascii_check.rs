@@ -97,11 +97,12 @@ impl<'tcx> LateLintPass<'tcx> for ManualIsAsciiCheck {
             return;
         }
 
-        if let Some(macro_call) = matching_root_macro_call(cx, expr.span, sym::matches_macro) {
-            if let ExprKind::Match(recv, [arm, ..], _) = expr.kind {
-                let range = check_pat(&arm.pat.kind);
-                check_is_ascii(cx, macro_call.span, recv, &range, None);
-            }
+        let (arg, span, range) = if let Some(macro_call) = matching_root_macro_call(cx, expr.span, sym::matches_macro)
+            && let ExprKind::Match(recv, [arm, ..], _) = expr.kind
+        {
+            let recv = peel_ref_operators(cx, recv);
+            let range = check_pat(&arm.pat.kind);
+            (recv, macro_call.span, range)
         } else if let ExprKind::MethodCall(path, receiver, [arg], ..) = expr.kind
             && path.ident.name == sym::contains
             && let Some(higher::Range {
@@ -112,10 +113,14 @@ impl<'tcx> LateLintPass<'tcx> for ManualIsAsciiCheck {
             && !matches!(cx.typeck_results().expr_ty(arg).peel_refs().kind(), ty::Param(_))
         {
             let arg = peel_ref_operators(cx, arg);
-            let ty_sugg = get_ty_sugg(cx, arg);
             let range = check_expr_range(start, end);
-            check_is_ascii(cx, expr.span, arg, &range, ty_sugg);
-        }
+            (arg, expr.span, range)
+        } else {
+            return;
+        };
+
+        let ty_sugg = get_ty_sugg(cx, arg);
+        check_is_ascii(cx, span, arg, &range, ty_sugg);
     }
 }
 
@@ -146,9 +151,8 @@ fn check_is_ascii(
         CharRange::HexDigit => "is_ascii_hexdigit",
         CharRange::Otherwise | CharRange::LowerHexLetter | CharRange::UpperHexLetter => return,
     };
-    let default_snip = "..";
     let mut app = Applicability::MachineApplicable;
-    let recv = Sugg::hir_with_context(cx, recv, span.ctxt(), default_snip, &mut app).maybe_paren();
+    let recv = Sugg::hir_with_context(cx, recv, span.ctxt(), "_", &mut app).maybe_paren();
     let mut suggestion = vec![(span, format!("{recv}.{sugg}()"))];
     if let Some((ty_span, ty)) = ty_sugg {
         suggestion.push((ty_span, format!("{recv}: {ty}")));
@@ -182,7 +186,7 @@ fn check_pat(pat_kind: &PatKind<'_>) -> CharRange {
                 CharRange::Otherwise
             }
         },
-        PatKind::Range(Some(start), Some(end), kind) if *kind == RangeEnd::Included => check_range(start, end),
+        PatKind::Range(Some(start), Some(end), RangeEnd::Included) => check_range(start, end),
         _ => CharRange::Otherwise,
     }
 }

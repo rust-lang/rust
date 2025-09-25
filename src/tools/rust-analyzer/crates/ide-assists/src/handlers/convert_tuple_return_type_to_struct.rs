@@ -184,8 +184,6 @@ fn augment_references_with_imports(
 ) -> Vec<(ast::NameLike, Option<(ImportScope, ast::Path)>)> {
     let mut visited_modules = FxHashSet::default();
 
-    let cfg = ctx.config.import_path_config();
-
     references
         .iter()
         .filter_map(|FileReference { name, .. }| {
@@ -201,6 +199,7 @@ fn augment_references_with_imports(
             {
                 visited_modules.insert(ref_module);
 
+                let cfg = ctx.config.find_path_confg(ctx.sema.is_nightly(ref_module.krate()));
                 let import_scope =
                     ImportScope::find_insert_use_container(new_name.syntax(), &ctx.sema);
                 let path = ref_module

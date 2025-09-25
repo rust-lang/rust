@@ -47,175 +47,175 @@ LL |     with_default_type.unwrap_or(u64::default());
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_default()`
 
 error: function call inside of `unwrap_or`
-  --> tests/ui/or_fun_call.rs:81:18
+  --> tests/ui/or_fun_call.rs:97:18
    |
 LL |     self_default.unwrap_or(<FakeDefault>::default());
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(<FakeDefault>::default)`
 
 error: use of `unwrap_or` to construct default value
-  --> tests/ui/or_fun_call.rs:85:18
+  --> tests/ui/or_fun_call.rs:101:18
    |
 LL |     real_default.unwrap_or(<FakeDefault as Default>::default());
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_default()`
 
 error: use of `unwrap_or` to construct default value
-  --> tests/ui/or_fun_call.rs:89:14
+  --> tests/ui/or_fun_call.rs:105:14
    |
-LL |     with_vec.unwrap_or(vec![]);
-   |              ^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_default()`
+LL |     with_vec.unwrap_or(Vec::new());
+   |              ^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_default()`
 
 error: function call inside of `unwrap_or`
-  --> tests/ui/or_fun_call.rs:93:21
+  --> tests/ui/or_fun_call.rs:109:21
    |
 LL |     without_default.unwrap_or(Foo::new());
    |                     ^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(Foo::new)`
 
 error: use of `or_insert` to construct default value
-  --> tests/ui/or_fun_call.rs:97:19
+  --> tests/ui/or_fun_call.rs:113:19
    |
 LL |     map.entry(42).or_insert(String::new());
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `or_default()`
 
 error: use of `or_insert` to construct default value
-  --> tests/ui/or_fun_call.rs:101:23
+  --> tests/ui/or_fun_call.rs:117:23
    |
-LL |     map_vec.entry(42).or_insert(vec![]);
-   |                       ^^^^^^^^^^^^^^^^^ help: try: `or_default()`
+LL |     map_vec.entry(42).or_insert(Vec::new());
+   |                       ^^^^^^^^^^^^^^^^^^^^^ help: try: `or_default()`
 
 error: use of `or_insert` to construct default value
-  --> tests/ui/or_fun_call.rs:105:21
+  --> tests/ui/or_fun_call.rs:121:21
    |
 LL |     btree.entry(42).or_insert(String::new());
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `or_default()`
 
 error: use of `or_insert` to construct default value
-  --> tests/ui/or_fun_call.rs:109:25
+  --> tests/ui/or_fun_call.rs:125:25
    |
-LL |     btree_vec.entry(42).or_insert(vec![]);
-   |                         ^^^^^^^^^^^^^^^^^ help: try: `or_default()`
+LL |     btree_vec.entry(42).or_insert(Vec::new());
+   |                         ^^^^^^^^^^^^^^^^^^^^^ help: try: `or_default()`
 
 error: use of `unwrap_or` to construct default value
-  --> tests/ui/or_fun_call.rs:113:21
+  --> tests/ui/or_fun_call.rs:129:21
    |
 LL |     let _ = stringy.unwrap_or(String::new());
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_default()`
 
 error: function call inside of `ok_or`
-  --> tests/ui/or_fun_call.rs:118:17
+  --> tests/ui/or_fun_call.rs:134:17
    |
 LL |     let _ = opt.ok_or(format!("{} world.", hello));
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `ok_or_else(|| format!("{} world.", hello))`
 
 error: function call inside of `unwrap_or`
-  --> tests/ui/or_fun_call.rs:123:21
+  --> tests/ui/or_fun_call.rs:139:21
    |
 LL |     let _ = Some(1).unwrap_or(map[&1]);
    |                     ^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| map[&1])`
 
 error: function call inside of `unwrap_or`
-  --> tests/ui/or_fun_call.rs:126:21
+  --> tests/ui/or_fun_call.rs:142:21
    |
 LL |     let _ = Some(1).unwrap_or(map[&1]);
    |                     ^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| map[&1])`
 
 error: function call inside of `or`
-  --> tests/ui/or_fun_call.rs:151:35
+  --> tests/ui/or_fun_call.rs:167:35
    |
 LL |     let _ = Some("a".to_string()).or(Some("b".to_string()));
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `or_else(|| Some("b".to_string()))`
 
 error: function call inside of `unwrap_or`
-  --> tests/ui/or_fun_call.rs:194:18
+  --> tests/ui/or_fun_call.rs:210:18
    |
 LL |             None.unwrap_or(ptr_to_ref(s));
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| ptr_to_ref(s))`
 
 error: function call inside of `unwrap_or`
-  --> tests/ui/or_fun_call.rs:202:14
+  --> tests/ui/or_fun_call.rs:218:14
    |
 LL |         None.unwrap_or(unsafe { ptr_to_ref(s) });
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| unsafe { ptr_to_ref(s) })`
 
 error: function call inside of `unwrap_or`
-  --> tests/ui/or_fun_call.rs:205:14
+  --> tests/ui/or_fun_call.rs:221:14
    |
 LL |         None.unwrap_or( unsafe { ptr_to_ref(s) }    );
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| unsafe { ptr_to_ref(s) })`
 
 error: function call inside of `map_or`
-  --> tests/ui/or_fun_call.rs:281:25
+  --> tests/ui/or_fun_call.rs:297:25
    |
 LL |         let _ = Some(4).map_or(g(), |v| v);
    |                         ^^^^^^^^^^^^^^^^^^ help: try: `map_or_else(g, |v| v)`
 
 error: function call inside of `map_or`
-  --> tests/ui/or_fun_call.rs:283:25
+  --> tests/ui/or_fun_call.rs:299:25
    |
 LL |         let _ = Some(4).map_or(g(), f);
    |                         ^^^^^^^^^^^^^^ help: try: `map_or_else(g, f)`
 
 error: function call inside of `map_or`
-  --> tests/ui/or_fun_call.rs:286:25
+  --> tests/ui/or_fun_call.rs:302:25
    |
 LL |         let _ = Some(4).map_or("asd".to_string().len() as i32, f);
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `map_or_else(|| "asd".to_string().len() as i32, f)`
 
 error: use of `unwrap_or_else` to construct default value
-  --> tests/ui/or_fun_call.rs:317:18
+  --> tests/ui/or_fun_call.rs:333:18
    |
 LL |         with_new.unwrap_or_else(Vec::new);
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_default()`
 
 error: use of `unwrap_or_else` to construct default value
-  --> tests/ui/or_fun_call.rs:321:28
+  --> tests/ui/or_fun_call.rs:337:28
    |
 LL |         with_default_trait.unwrap_or_else(Default::default);
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_default()`
 
 error: use of `unwrap_or_else` to construct default value
-  --> tests/ui/or_fun_call.rs:325:27
+  --> tests/ui/or_fun_call.rs:341:27
    |
 LL |         with_default_type.unwrap_or_else(u64::default);
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_default()`
 
 error: use of `unwrap_or_else` to construct default value
-  --> tests/ui/or_fun_call.rs:329:22
+  --> tests/ui/or_fun_call.rs:345:22
    |
 LL |         real_default.unwrap_or_else(<FakeDefault as Default>::default);
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_default()`
 
 error: use of `or_insert_with` to construct default value
-  --> tests/ui/or_fun_call.rs:333:23
+  --> tests/ui/or_fun_call.rs:349:23
    |
 LL |         map.entry(42).or_insert_with(String::new);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `or_default()`
 
 error: use of `or_insert_with` to construct default value
-  --> tests/ui/or_fun_call.rs:337:25
+  --> tests/ui/or_fun_call.rs:353:25
    |
 LL |         btree.entry(42).or_insert_with(String::new);
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `or_default()`
 
 error: use of `unwrap_or_else` to construct default value
-  --> tests/ui/or_fun_call.rs:341:25
+  --> tests/ui/or_fun_call.rs:357:25
    |
 LL |         let _ = stringy.unwrap_or_else(String::new);
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_default()`
 
 error: function call inside of `unwrap_or`
-  --> tests/ui/or_fun_call.rs:383:17
+  --> tests/ui/or_fun_call.rs:399:17
    |
 LL |     let _ = opt.unwrap_or({ f() }); // suggest `.unwrap_or_else(f)`
    |                 ^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(f)`
 
 error: function call inside of `unwrap_or`
-  --> tests/ui/or_fun_call.rs:388:17
+  --> tests/ui/or_fun_call.rs:404:17
    |
 LL |     let _ = opt.unwrap_or(f() + 1); // suggest `.unwrap_or_else(|| f() + 1)`
    |                 ^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| f() + 1)`
 
 error: function call inside of `unwrap_or`
-  --> tests/ui/or_fun_call.rs:393:17
+  --> tests/ui/or_fun_call.rs:409:17
    |
 LL |       let _ = opt.unwrap_or({
    |  _________________^
@@ -235,55 +235,55 @@ LL ~     });
    |
 
 error: function call inside of `map_or`
-  --> tests/ui/or_fun_call.rs:399:17
+  --> tests/ui/or_fun_call.rs:415:17
    |
 LL |     let _ = opt.map_or(f() + 1, |v| v); // suggest `.map_or_else(|| f() + 1, |v| v)`
    |                 ^^^^^^^^^^^^^^^^^^^^^^ help: try: `map_or_else(|| f() + 1, |v| v)`
 
 error: use of `unwrap_or` to construct default value
-  --> tests/ui/or_fun_call.rs:404:17
+  --> tests/ui/or_fun_call.rs:420:17
    |
 LL |     let _ = opt.unwrap_or({ i32::default() });
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_default()`
 
 error: function call inside of `unwrap_or`
-  --> tests/ui/or_fun_call.rs:411:21
+  --> tests/ui/or_fun_call.rs:427:21
    |
 LL |     let _ = opt_foo.unwrap_or(Foo { val: String::default() });
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| Foo { val: String::default() })`
 
 error: function call inside of `map_or`
-  --> tests/ui/or_fun_call.rs:426:19
+  --> tests/ui/or_fun_call.rs:442:19
    |
 LL |         let _ = x.map_or(g(), |v| v);
    |                   ^^^^^^^^^^^^^^^^^^ help: try: `map_or_else(|_| g(), |v| v)`
 
 error: function call inside of `map_or`
-  --> tests/ui/or_fun_call.rs:428:19
+  --> tests/ui/or_fun_call.rs:444:19
    |
 LL |         let _ = x.map_or(g(), f);
    |                   ^^^^^^^^^^^^^^ help: try: `map_or_else(|_| g(), f)`
 
 error: function call inside of `map_or`
-  --> tests/ui/or_fun_call.rs:431:19
+  --> tests/ui/or_fun_call.rs:447:19
    |
 LL |         let _ = x.map_or("asd".to_string().len() as i32, f);
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `map_or_else(|_| "asd".to_string().len() as i32, f)`
 
 error: function call inside of `get_or_insert`
-  --> tests/ui/or_fun_call.rs:442:15
+  --> tests/ui/or_fun_call.rs:458:15
    |
 LL |     let _ = x.get_or_insert(g());
    |               ^^^^^^^^^^^^^^^^^^ help: try: `get_or_insert_with(g)`
 
 error: function call inside of `and`
-  --> tests/ui/or_fun_call.rs:452:15
+  --> tests/ui/or_fun_call.rs:468:15
    |
 LL |     let _ = x.and(g());
    |               ^^^^^^^^ help: try: `and_then(|_| g())`
 
 error: function call inside of `and`
-  --> tests/ui/or_fun_call.rs:462:15
+  --> tests/ui/or_fun_call.rs:478:15
    |
 LL |     let _ = x.and(g());
    |               ^^^^^^^^ help: try: `and_then(|_| g())`

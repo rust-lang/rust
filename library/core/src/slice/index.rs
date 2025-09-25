@@ -31,8 +31,8 @@ where
     }
 }
 
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
-#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[cfg_attr(not(panic = "immediate-abort"), inline(never), cold)]
+#[cfg_attr(panic = "immediate-abort", inline)]
 #[track_caller]
 const fn slice_index_fail(start: usize, end: usize, len: usize) -> ! {
     if start > len {
@@ -129,6 +129,8 @@ mod private_slice_index {
     #[unstable(feature = "new_range_api", issue = "125687")]
     impl Sealed for range::RangeInclusive<usize> {}
     #[unstable(feature = "new_range_api", issue = "125687")]
+    impl Sealed for range::RangeToInclusive<usize> {}
+    #[unstable(feature = "new_range_api", issue = "125687")]
     impl Sealed for range::RangeFrom<usize> {}
 
     impl Sealed for ops::IndexRange {}
@@ -151,7 +153,7 @@ mod private_slice_index {
     message = "the type `{T}` cannot be indexed by `{Self}`",
     label = "slice indices are of type `usize` or ranges of `usize`"
 )]
-#[const_trait]
+#[const_trait] // FIXME(const_trait_impl): Migrate to `const unsafe trait` once #146122 is fixed.
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
 pub unsafe trait SliceIndex<T: ?Sized>: private_slice_index::Sealed {
     /// The output type returned by methods.
@@ -231,7 +233,7 @@ unsafe impl<T> const SliceIndex<[T]> for usize {
     #[track_caller]
     unsafe fn get_unchecked(self, slice: *const [T]) -> *const T {
         assert_unsafe_precondition!(
-            check_language_ub,
+            check_language_ub, // okay because of the `assume` below
             "slice::get_unchecked requires that the index is within the slice",
             (this: usize = self, len: usize = slice.len()) => this < len
         );
@@ -785,6 +787,45 @@ unsafe impl<T> const SliceIndex<[T]> for ops::RangeToInclusive<usize> {
     #[inline]
     fn index_mut(self, slice: &mut [T]) -> &mut [T] {
         (0..=self.end).index_mut(slice)
+    }
+}
+
+/// The methods `index` and `index_mut` panic if the end of the range is out of bounds.
+#[stable(feature = "inclusive_range", since = "1.26.0")]
+#[rustc_const_unstable(feature = "const_index", issue = "143775")]
+unsafe impl<T> const SliceIndex<[T]> for range::RangeToInclusive<usize> {
+    type Output = [T];
+
+    #[inline]
+    fn get(self, slice: &[T]) -> Option<&[T]> {
+        (0..=self.last).get(slice)
+    }
+
+    #[inline]
+    fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
+        (0..=self.last).get_mut(slice)
+    }
+
+    #[inline]
+    unsafe fn get_unchecked(self, slice: *const [T]) -> *const [T] {
+        // SAFETY: the caller has to uphold the safety contract for `get_unchecked`.
+        unsafe { (0..=self.last).get_unchecked(slice) }
+    }
+
+    #[inline]
+    unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut [T] {
+        // SAFETY: the caller has to uphold the safety contract for `get_unchecked_mut`.
+        unsafe { (0..=self.last).get_unchecked_mut(slice) }
+    }
+
+    #[inline]
+    fn index(self, slice: &[T]) -> &[T] {
+        (0..=self.last).index(slice)
+    }
+
+    #[inline]
+    fn index_mut(self, slice: &mut [T]) -> &mut [T] {
+        (0..=self.last).index_mut(slice)
     }
 }
 

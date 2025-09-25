@@ -50,7 +50,7 @@ nonpoison_and_poison_unwrap_test!(
 // FIXME: On macOS we use a provenance-incorrect implementation and Miri
 // catches that issue with a chance of around 1/1000.
 // See <https://github.com/rust-lang/rust/issues/121950> for details.
-#[cfg_attr(all(miri, target_os = "macos"), ignore)]
+#[cfg(not(all(miri, target_os = "macos")))]
 nonpoison_and_poison_unwrap_test!(
     name: frob,
     test_body: {
@@ -124,7 +124,7 @@ nonpoison_and_poison_unwrap_test!(
     }
 );
 
-#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+#[cfg(panic = "unwind")] // Requires unwinding support.
 nonpoison_and_poison_unwrap_test!(
     name: test_rw_arc_access_in_unwind,
     test_body: {
@@ -315,7 +315,7 @@ nonpoison_and_poison_unwrap_test!(
 
 // FIXME: On macOS we use a provenance-incorrect implementation and Miri catches that issue.
 // See <https://github.com/rust-lang/rust/issues/121950> for details.
-#[cfg_attr(all(miri, target_os = "macos"), ignore)]
+#[cfg(not(all(miri, target_os = "macos")))]
 nonpoison_and_poison_unwrap_test!(
     name: test_downgrade_observe,
     test_body: {
@@ -362,7 +362,7 @@ nonpoison_and_poison_unwrap_test!(
 
 // FIXME: On macOS we use a provenance-incorrect implementation and Miri catches that issue.
 // See <https://github.com/rust-lang/rust/issues/121950> for details.
-#[cfg_attr(all(miri, target_os = "macos"), ignore)]
+#[cfg(not(all(miri, target_os = "macos")))]
 nonpoison_and_poison_unwrap_test!(
     name: test_downgrade_atomic,
     test_body: {

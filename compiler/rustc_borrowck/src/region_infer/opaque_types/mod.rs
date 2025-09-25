@@ -341,7 +341,7 @@ fn compute_concrete_types_from_defining_uses<'tcx>(
         //
         // FIXME(-Znext-solver): This isn't necessary after all. We can remove this check again.
         if let Some((prev_decl_key, prev_span)) = decls_modulo_regions.insert(
-            rcx.infcx.tcx.erase_regions(opaque_type_key),
+            rcx.infcx.tcx.erase_and_anonymize_regions(opaque_type_key),
             (opaque_type_key, hidden_type.span),
         ) && let Some((arg1, arg2)) = std::iter::zip(
             prev_decl_key.iter_captured_args(infcx.tcx).map(|(_, arg)| arg),
@@ -503,7 +503,16 @@ pub(crate) fn apply_computed_concrete_opaque_types<'tcx>(
     let mut errors = Vec::new();
     for &(key, hidden_type) in opaque_types {
         let Some(expected) = get_concrete_opaque_type(concrete_opaque_types, key.def_id) else {
-            assert!(tcx.use_typing_mode_borrowck(), "non-defining use in defining scope");
+            if !tcx.use_typing_mode_borrowck() {
+                if let ty::Alias(ty::Opaque, alias_ty) = hidden_type.ty.kind()
+                    && alias_ty.def_id == key.def_id.to_def_id()
+                    && alias_ty.args == key.args
+                {
+                    continue;
+                } else {
+                    unreachable!("non-defining use in defining scope");
+                }
+            }
             errors.push(DeferredOpaqueTypeError::NonDefiningUseInDefiningScope {
                 span: hidden_type.span,
                 opaque_type_key: key,

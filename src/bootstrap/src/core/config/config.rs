@@ -191,7 +191,6 @@ pub struct Config {
     pub rust_optimize: RustOptimize,
     pub rust_codegen_units: Option<u32>,
     pub rust_codegen_units_std: Option<u32>,
-
     pub rustc_debug_assertions: bool,
     pub std_debug_assertions: bool,
     pub tools_debug_assertions: bool,
@@ -221,6 +220,9 @@ pub struct Config {
     pub rust_lto: RustcLto,
     pub rust_validate_mir_opts: Option<u32>,
     pub rust_std_features: BTreeSet<String>,
+    pub rust_break_on_ice: bool,
+    pub rust_parallel_frontend_threads: Option<u32>,
+
     pub llvm_profile_use: Option<String>,
     pub llvm_profile_generate: bool,
     pub llvm_libunwind_default: Option<LlvmLibunwind>,
@@ -271,6 +273,7 @@ pub struct Config {
     pub gdb: Option<PathBuf>,
     pub lldb: Option<PathBuf>,
     pub python: Option<PathBuf>,
+    pub windows_rc: Option<PathBuf>,
     pub reuse: Option<PathBuf>,
     pub cargo_native_static: bool,
     pub configure_args: Vec<String>,
@@ -448,6 +451,7 @@ impl Config {
             nodejs: build_nodejs,
             npm: build_npm,
             python: build_python,
+            windows_rc: build_windows_rc,
             reuse: build_reuse,
             locked_deps: build_locked_deps,
             vendor: build_vendor,
@@ -533,6 +537,7 @@ impl Config {
             backtrace_on_ice: rust_backtrace_on_ice,
             verify_llvm_ir: rust_verify_llvm_ir,
             thin_lto_import_instr_limit: rust_thin_lto_import_instr_limit,
+            parallel_frontend_threads: rust_parallel_frontend_threads,
             remap_debuginfo: rust_remap_debuginfo,
             jemalloc: rust_jemalloc,
             test_compare_mode: rust_test_compare_mode,
@@ -550,6 +555,7 @@ impl Config {
             strip: rust_strip,
             lld_mode: rust_lld_mode,
             std_features: rust_std_features,
+            break_on_ice: rust_break_on_ice,
         } = toml.rust.unwrap_or_default();
 
         let Llvm {
@@ -1269,6 +1275,7 @@ impl Config {
             reproducible_artifacts: flags_reproducible_artifact,
             reuse: build_reuse.map(PathBuf::from),
             rust_analyzer_info,
+            rust_break_on_ice: rust_break_on_ice.unwrap_or(true),
             rust_codegen_backends: rust_codegen_backends
                 .map(|backends| parse_codegen_backends(backends, "rust"))
                 .unwrap_or(vec![CodegenBackendKind::Llvm]),
@@ -1295,6 +1302,7 @@ impl Config {
             rust_overflow_checks_std: rust_overflow_checks_std
                 .or(rust_overflow_checks)
                 .unwrap_or(rust_debug == Some(true)),
+            rust_parallel_frontend_threads: rust_parallel_frontend_threads.map(threads_from_config),
             rust_profile_generate: flags_rust_profile_generate.or(rust_profile_generate),
             rust_profile_use: flags_rust_profile_use.or(rust_profile_use),
             rust_randomize_layout: rust_randomize_layout.unwrap_or(false),
@@ -1336,6 +1344,7 @@ impl Config {
                 .unwrap_or(rust_debug == Some(true)),
             vendor,
             verbose_tests,
+            windows_rc: build_windows_rc.map(PathBuf::from),
             // tidy-alphabetical-end
         }
     }
@@ -1850,13 +1859,7 @@ fn load_toml_config(
         } else {
             toml_path.clone()
         });
-        (
-            get_toml(&toml_path).unwrap_or_else(|e| {
-                eprintln!("ERROR: Failed to parse '{}': {e}", toml_path.display());
-                exit!(2);
-            }),
-            path,
-        )
+        (get_toml(&toml_path).unwrap_or_else(|e| bad_config(&toml_path, e)), path)
     } else {
         (TomlConfig::default(), None)
     }
@@ -1889,10 +1892,8 @@ fn postprocess_toml(
             .unwrap()
             .join(include_path);
 
-        let included_toml = get_toml(&include_path).unwrap_or_else(|e| {
-            eprintln!("ERROR: Failed to parse '{}': {e}", include_path.display());
-            exit!(2);
-        });
+        let included_toml =
+            get_toml(&include_path).unwrap_or_else(|e| bad_config(&include_path, e));
         toml.merge(
             Some(include_path),
             &mut Default::default(),
@@ -2136,15 +2137,7 @@ pub fn parse_download_ci_llvm<'a>(
     asserts: bool,
 ) -> bool {
     let dwn_ctx = dwn_ctx.as_ref();
-
-    // We don't ever want to use `true` on CI, as we should not
-    // download upstream artifacts if there are any local modifications.
-    let default = if dwn_ctx.is_running_on_ci {
-        StringOrBool::String("if-unchanged".to_string())
-    } else {
-        StringOrBool::Bool(true)
-    };
-    let download_ci_llvm = download_ci_llvm.unwrap_or(default);
+    let download_ci_llvm = download_ci_llvm.unwrap_or(StringOrBool::Bool(true));
 
     let if_unchanged = || {
         if rust_info.is_from_tarball() {
@@ -2176,8 +2169,9 @@ pub fn parse_download_ci_llvm<'a>(
                 );
             }
 
-            if b && dwn_ctx.is_running_on_ci {
-                // On CI, we must always rebuild LLVM if there were any modifications to it
+            #[cfg(not(test))]
+            if b && dwn_ctx.is_running_on_ci && CiEnv::is_rust_lang_managed_ci_job() {
+                // On rust-lang CI, we must always rebuild LLVM if there were any modifications to it
                 panic!(
                     "`llvm.download-ci-llvm` cannot be set to `true` on CI. Use `if-unchanged` instead."
                 );
@@ -2394,4 +2388,99 @@ pub(crate) fn read_file_by_commit<'a>(
     let mut git = helpers::git(Some(dwn_ctx.src));
     git.arg("show").arg(format!("{commit}:{}", file.to_str().unwrap()));
     git.run_capture_stdout(dwn_ctx.exec_ctx).stdout()
+}
+
+fn bad_config(toml_path: &Path, e: toml::de::Error) -> ! {
+    eprintln!("ERROR: Failed to parse '{}': {e}", toml_path.display());
+    let e_s = e.to_string();
+    if e_s.contains("unknown field")
+        && let Some(field_name) = e_s.split("`").nth(1)
+        && let sections = find_correct_section_for_field(field_name)
+        && !sections.is_empty()
+    {
+        if sections.len() == 1 {
+            match sections[0] {
+                WouldBeValidFor::TopLevel { is_section } => {
+                    if is_section {
+                        eprintln!(
+                            "hint: section name `{field_name}` used as a key within a section"
+                        );
+                    } else {
+                        eprintln!("hint: try using `{field_name}` as a top level key");
+                    }
+                }
+                WouldBeValidFor::Section(section) => {
+                    eprintln!("hint: try moving `{field_name}` to the `{section}` section")
+                }
+            }
+        } else {
+            eprintln!(
+                "hint: `{field_name}` would be valid {}",
+                join_oxford_comma(sections.iter(), "or"),
+            );
+        }
+    }
+
+    exit!(2);
+}
+
+#[derive(Copy, Clone, Debug)]
+enum WouldBeValidFor {
+    TopLevel { is_section: bool },
+    Section(&'static str),
+}
+
+fn join_oxford_comma(
+    mut parts: impl ExactSizeIterator<Item = impl std::fmt::Display>,
+    conj: &str,
+) -> String {
+    use std::fmt::Write;
+    let mut out = String::new();
+
+    assert!(parts.len() > 1);
+    while let Some(part) = parts.next() {
+        if parts.len() == 0 {
+            write!(&mut out, "{conj} {part}")
+        } else {
+            write!(&mut out, "{part}, ")
+        }
+        .unwrap();
+    }
+    out
+}
+
+impl std::fmt::Display for WouldBeValidFor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::TopLevel { .. } => write!(f, "at top level"),
+            Self::Section(section_name) => write!(f, "in section `{section_name}`"),
+        }
+    }
+}
+
+fn find_correct_section_for_field(field_name: &str) -> Vec<WouldBeValidFor> {
+    let sections = ["build", "install", "llvm", "gcc", "rust", "dist"];
+    sections
+        .iter()
+        .map(Some)
+        .chain([None])
+        .filter_map(|section_name| {
+            let dummy_config_str = if let Some(section_name) = section_name {
+                format!("{section_name}.{field_name} = 0\n")
+            } else {
+                format!("{field_name} = 0\n")
+            };
+            let is_unknown_field = toml::from_str::<toml::Value>(&dummy_config_str)
+                .and_then(TomlConfig::deserialize)
+                .err()
+                .is_some_and(|e| e.to_string().contains("unknown field"));
+            if is_unknown_field {
+                None
+            } else {
+                Some(section_name.copied().map(WouldBeValidFor::Section).unwrap_or_else(|| {
+                    WouldBeValidFor::TopLevel { is_section: sections.contains(&field_name) }
+                }))
+            }
+        })
+        .collect()
 }

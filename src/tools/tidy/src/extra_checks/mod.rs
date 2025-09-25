@@ -24,6 +24,7 @@ use std::str::FromStr;
 use std::{fmt, fs, io};
 
 use crate::CiInfo;
+use crate::diagnostics::DiagCtx;
 
 mod rustdoc_js;
 
@@ -54,8 +55,10 @@ pub fn check(
     bless: bool,
     extra_checks: Option<&str>,
     pos_args: &[String],
-    bad: &mut bool,
+    diag_ctx: DiagCtx,
 ) {
+    let mut check = diag_ctx.start_check("extra_checks");
+
     if let Err(e) = check_impl(
         root_path,
         outdir,
@@ -68,7 +71,7 @@ pub fn check(
         extra_checks,
         pos_args,
     ) {
-        tidy_error!(bad, "{e}");
+        check.error(e);
     }
 }
 
@@ -124,6 +127,12 @@ fn check_impl(
         };
     }
 
+    let rerun_with_bless = |mode: &str, action: &str| {
+        if !bless {
+            eprintln!("rerun tidy with `--extra-checks={mode} --bless` to {action}");
+        }
+    };
+
     let python_lint = extra_check!(Py, Lint);
     let python_fmt = extra_check!(Py, Fmt);
     let shell_lint = extra_check!(Shell, Lint);
@@ -147,14 +156,21 @@ fn check_impl(
     }
 
     if python_lint {
-        eprintln!("linting python files");
         let py_path = py_path.as_ref().unwrap();
-        let res = run_ruff(root_path, outdir, py_path, &cfg_args, &file_args, &["check".as_ref()]);
+        let args: &[&OsStr] = if bless {
+            eprintln!("linting python files and applying suggestions");
+            &["check".as_ref(), "--fix".as_ref()]
+        } else {
+            eprintln!("linting python files");
+            &["check".as_ref()]
+        };
 
-        if res.is_err() && show_diff {
+        let res = run_ruff(root_path, outdir, py_path, &cfg_args, &file_args, args);
+
+        if res.is_err() && show_diff && !bless {
             eprintln!("\npython linting failed! Printing diff suggestions:");
 
-            let _ = run_ruff(
+            let diff_res = run_ruff(
                 root_path,
                 outdir,
                 py_path,
@@ -162,6 +178,10 @@ fn check_impl(
                 &file_args,
                 &["check".as_ref(), "--diff".as_ref()],
             );
+            // `ruff check --diff` will return status 0 if there are no suggestions.
+            if diff_res.is_err() {
+                rerun_with_bless("py:lint", "apply ruff suggestions");
+            }
         }
         // Rethrow error
         res?;
@@ -192,7 +212,7 @@ fn check_impl(
                     &["format".as_ref(), "--diff".as_ref()],
                 );
             }
-            eprintln!("rerun tidy with `--extra-checks=py:fmt --bless` to reformat Python code");
+            rerun_with_bless("py:fmt", "reformat Python code");
         }
 
         // Rethrow error
@@ -225,7 +245,7 @@ fn check_impl(
         let args = merge_args(&cfg_args_clang_format, &file_args_clang_format);
         let res = py_runner(py_path.as_ref().unwrap(), false, None, "clang-format", &args);
 
-        if res.is_err() && show_diff {
+        if res.is_err() && show_diff && !bless {
             eprintln!("\nclang-format linting failed! Printing diff suggestions:");
 
             let mut cfg_args_clang_format_diff = cfg_args.clone();
@@ -265,6 +285,7 @@ fn check_impl(
                     );
                 }
             }
+            rerun_with_bless("cpp:fmt", "reformat C++ code");
         }
         // Rethrow error
         res?;
@@ -290,12 +311,16 @@ fn check_impl(
         args.extend_from_slice(SPELLCHECK_DIRS);
 
         if bless {
-            eprintln!("spellcheck files and fix");
+            eprintln!("spellchecking files and fixing typos");
             args.push("--write-changes");
         } else {
-            eprintln!("spellcheck files");
+            eprintln!("spellchecking files");
         }
-        spellcheck_runner(root_path, &outdir, &cargo, &args)?;
+        let res = spellcheck_runner(root_path, &outdir, &cargo, &args);
+        if res.is_err() {
+            rerun_with_bless("spellcheck", "fix typos");
+        }
+        res?;
     }
 
     if js_lint || js_typecheck {
@@ -303,11 +328,21 @@ fn check_impl(
     }
 
     if js_lint {
-        rustdoc_js::lint(outdir, librustdoc_path, tools_path)?;
+        if bless {
+            eprintln!("linting javascript files");
+        } else {
+            eprintln!("linting javascript files and applying suggestions");
+        }
+        let res = rustdoc_js::lint(outdir, librustdoc_path, tools_path, bless);
+        if res.is_err() {
+            rerun_with_bless("js:lint", "apply eslint suggestions");
+        }
+        res?;
         rustdoc_js::es_check(outdir, librustdoc_path)?;
     }
 
     if js_typecheck {
+        eprintln!("typechecking javascript files");
         rustdoc_js::typecheck(outdir, librustdoc_path)?;
     }
 
@@ -720,21 +755,19 @@ impl ExtraCheckArg {
         if !self.auto {
             return true;
         }
-        let ext = match self.lang {
-            ExtraCheckLang::Py => ".py",
-            ExtraCheckLang::Cpp => ".cpp",
-            ExtraCheckLang::Shell => ".sh",
-            ExtraCheckLang::Js => ".js",
+        let exts: &[&str] = match self.lang {
+            ExtraCheckLang::Py => &[".py"],
+            ExtraCheckLang::Cpp => &[".cpp"],
+            ExtraCheckLang::Shell => &[".sh"],
+            ExtraCheckLang::Js => &[".js", ".ts"],
             ExtraCheckLang::Spellcheck => {
-                for dir in SPELLCHECK_DIRS {
-                    if Path::new(filepath).starts_with(dir) {
-                        return true;
-                    }
+                if SPELLCHECK_DIRS.iter().any(|dir| Path::new(filepath).starts_with(dir)) {
+                    return true;
                 }
-                return false;
+                &[]
             }
         };
-        filepath.ends_with(ext)
+        exts.iter().any(|ext| filepath.ends_with(ext))
     }
 
     fn has_supported_kind(&self) -> bool {

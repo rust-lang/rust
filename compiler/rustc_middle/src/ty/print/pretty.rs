@@ -13,8 +13,8 @@ use rustc_hir::LangItem;
 use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{DefIdMap, DefIdSet, LOCAL_CRATE, ModDefId};
 use rustc_hir::definitions::{DefKey, DefPathDataName};
+use rustc_hir::limit::Limit;
 use rustc_macros::{Lift, extension};
-use rustc_session::Limit;
 use rustc_session::cstore::{ExternCrate, ExternCrateSource};
 use rustc_span::{FileNameDisplayPreference, Ident, Symbol, kw, sym};
 use rustc_type_ir::{Upcast as _, elaborate};
@@ -784,14 +784,12 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 },
             },
             ty::Adt(def, args) => self.print_def_path(def.did(), args)?,
-            ty::Dynamic(data, r, repr) => {
+            ty::Dynamic(data, r) => {
                 let print_r = self.should_print_optional_region(r);
                 if print_r {
                     write!(self, "(")?;
                 }
-                match repr {
-                    ty::Dyn => write!(self, "dyn ")?,
-                }
+                write!(self, "dyn ")?;
                 data.print(self)?;
                 if print_r {
                     write!(self, " + ")?;
@@ -1436,8 +1434,8 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                                 // anonymized regions, but the super projections can still
                                 // contain named regions. So we erase and anonymize everything
                                 // here to compare the types modulo regions below.
-                                let proj = p.tcx().erase_regions(proj);
-                                let super_proj = p.tcx().erase_regions(super_proj);
+                                let proj = p.tcx().erase_and_anonymize_regions(proj);
+                                let super_proj = p.tcx().erase_and_anonymize_regions(super_proj);
 
                                 proj == super_proj
                             });

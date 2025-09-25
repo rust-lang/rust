@@ -832,7 +832,6 @@ impl f128 {
     #[unstable(feature = "f128", issue = "116909")]
     #[rustc_const_unstable(feature = "f128", issue = "116909")]
     pub const fn midpoint(self, other: f128) -> f128 {
-        const LO: f128 = f128::MIN_POSITIVE * 2.;
         const HI: f128 = f128::MAX / 2.;
 
         let (a, b) = (self, other);
@@ -842,14 +841,7 @@ impl f128 {
         if abs_a <= HI && abs_b <= HI {
             // Overflow is impossible
             (a + b) / 2.
-        } else if abs_a < LO {
-            // Not safe to halve `a` (would underflow)
-            a + (b / 2.)
-        } else if abs_b < LO {
-            // Not safe to halve `b` (would underflow)
-            (a / 2.) + b
         } else {
-            // Safe to halve `a` and `b`
             (a / 2.) + (b / 2.)
         }
     }
@@ -1204,7 +1196,8 @@ impl f128 {
     #[inline]
     #[must_use]
     #[unstable(feature = "f128", issue = "116909")]
-    pub fn total_cmp(&self, other: &Self) -> crate::cmp::Ordering {
+    #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+    pub const fn total_cmp(&self, other: &Self) -> crate::cmp::Ordering {
         let mut left = self.to_bits() as i128;
         let mut right = other.to_bits() as i128;
 
@@ -1374,8 +1367,7 @@ impl f128 {
     #[rustc_const_unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn copysign(self, sign: f128) -> f128 {
-        // SAFETY: this is actually a safe intrinsic
-        unsafe { intrinsics::copysignf128(self, sign) }
+        intrinsics::copysignf128(self, sign)
     }
 
     /// Float addition that allows optimizations based on algebraic rules.
@@ -1467,8 +1459,7 @@ impl f128 {
     #[rustc_const_unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn floor(self) -> f128 {
-        // SAFETY: intrinsic with no preconditions
-        unsafe { intrinsics::floorf128(self) }
+        intrinsics::floorf128(self)
     }
 
     /// Returns the smallest integer greater than or equal to `self`.
@@ -1496,8 +1487,7 @@ impl f128 {
     #[rustc_const_unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn ceil(self) -> f128 {
-        // SAFETY: intrinsic with no preconditions
-        unsafe { intrinsics::ceilf128(self) }
+        intrinsics::ceilf128(self)
     }
 
     /// Returns the nearest integer to `self`. If a value is half-way between two
@@ -1531,8 +1521,7 @@ impl f128 {
     #[rustc_const_unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn round(self) -> f128 {
-        // SAFETY: intrinsic with no preconditions
-        unsafe { intrinsics::roundf128(self) }
+        intrinsics::roundf128(self)
     }
 
     /// Returns the nearest integer to a number. Rounds half-way cases to the number
@@ -1595,8 +1584,7 @@ impl f128 {
     #[rustc_const_unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn trunc(self) -> f128 {
-        // SAFETY: intrinsic with no preconditions
-        unsafe { intrinsics::truncf128(self) }
+        intrinsics::truncf128(self)
     }
 
     /// Returns the fractional part of `self`.
@@ -1672,8 +1660,7 @@ impl f128 {
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn mul_add(self, a: f128, b: f128) -> f128 {
-        // SAFETY: intrinsic with no preconditions
-        unsafe { intrinsics::fmaf128(self, a, b) }
+        intrinsics::fmaf128(self, a, b)
     }
 
     /// Calculates Euclidean division, the matching method for `rem_euclid`.
@@ -1788,8 +1775,7 @@ impl f128 {
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn powi(self, n: i32) -> f128 {
-        // SAFETY: intrinsic with no preconditions
-        unsafe { intrinsics::powif128(self, n) }
+        intrinsics::powif128(self, n)
     }
 
     /// Returns the square root of a number.
@@ -1824,7 +1810,6 @@ impl f128 {
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn sqrt(self) -> f128 {
-        // SAFETY: intrinsic with no preconditions
-        unsafe { intrinsics::sqrtf128(self) }
+        intrinsics::sqrtf128(self)
     }
 }

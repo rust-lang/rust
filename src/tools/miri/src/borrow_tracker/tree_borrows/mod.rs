@@ -294,24 +294,6 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return interp_ok(Some(Provenance::Concrete { alloc_id, tag: new_tag }));
         }
 
-        let span = this.machine.current_span();
-
-        // When adding a new node, the SIFA of its parents needs to be updated, potentially across
-        // the entire memory range. For the parts that are being accessed below, the access itself
-        // trivially takes care of that. However, we have to do some more work to also deal with the
-        // parts that are not being accessed. Specifically what we do is that we call
-        // `update_last_accessed_after_retag` on the SIFA of the permission set for the part of
-        // memory outside `perm_map` -- so that part is definitely taken care of. The remaining
-        // concern is the part of memory that is in the range of `perms_map`, but not accessed
-        // below. There we have two cases:
-        // * If the type is `!Freeze`, then the non-accessed part uses `nonfreeze_perm`, so the
-        //   `nonfreeze_perm` initialized parts are also fine. We enforce the `freeze_perm` parts to
-        //   be accessed via the assert below, and thus everything is taken care of.
-        // * If the type is `Freeze`, then `freeze_perm` is used everywhere (both inside and outside
-        //   the initial range), and we update everything to have the `freeze_perm`'s SIFA, so there
-        //   are no issues. (And this assert below is not actually needed in this case).
-        assert!(new_perm.freeze_access);
-
         let protected = new_perm.protector.is_some();
         let precise_interior_mut = this
             .machine
@@ -337,7 +319,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 LocationState::new_non_accessed(perm, sifa)
             }
         };
-        let perms_map = if !precise_interior_mut {
+        let inside_perms = if !precise_interior_mut {
             // For `!Freeze` types, just pretend the entire thing is an `UnsafeCell`.
             let ty_is_freeze = place.layout.ty.is_freeze(*this.tcx, this.typing_env());
             let state = loc_state(ty_is_freeze);
@@ -364,8 +346,8 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let alloc_extra = this.get_alloc_extra(alloc_id)?;
         let mut tree_borrows = alloc_extra.borrow_tracker_tb().borrow_mut();
 
-        for (perm_range, perm) in perms_map.iter_all() {
-            if perm.is_accessed() {
+        for (perm_range, perm) in inside_perms.iter_all() {
+            if perm.accessed() {
                 // Some reborrows incur a read access to the parent.
                 // Adjust range to be relative to allocation start (rather than to `place`).
                 let range_in_alloc = AllocRange {
@@ -401,10 +383,10 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             base_offset,
             orig_tag,
             new_tag,
-            perms_map,
+            inside_perms,
             new_perm.outside_perm,
             protected,
-            span,
+            this.machine.current_span(),
         )?;
         drop(tree_borrows);
 

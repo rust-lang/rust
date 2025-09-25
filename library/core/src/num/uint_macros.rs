@@ -1821,6 +1821,63 @@ macro_rules! uint_impl {
             }
         }
 
+        /// Exact shift left. Computes `self << rhs` as long as it can be reversed losslessly.
+        ///
+        /// Returns `None` if any non-zero bits would be shifted out or if `rhs` >=
+        #[doc = concat!("`", stringify!($SelfT), "::BITS`.")]
+        /// Otherwise, returns `Some(self << rhs)`.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(exact_bitshifts)]
+        ///
+        #[doc = concat!("assert_eq!(0x1", stringify!($SelfT), ".exact_shl(4), Some(0x10));")]
+        #[doc = concat!("assert_eq!(0x1", stringify!($SelfT), ".exact_shl(129), None);")]
+        /// ```
+        #[unstable(feature = "exact_bitshifts", issue = "144336")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn exact_shl(self, rhs: u32) -> Option<$SelfT> {
+            if rhs <= self.leading_zeros() && rhs < <$SelfT>::BITS {
+                // SAFETY: rhs is checked above
+                Some(unsafe { self.unchecked_shl(rhs) })
+            } else {
+                None
+            }
+        }
+
+        /// Unchecked exact shift left. Computes `self << rhs`, assuming the operation can be
+        /// losslessly reversed `rhs` cannot be larger than
+        #[doc = concat!("`", stringify!($SelfT), "::BITS`.")]
+        ///
+        /// # Safety
+        ///
+        /// This results in undefined behavior when `rhs > self.leading_zeros() || rhs >=
+        #[doc = concat!(stringify!($SelfT), "::BITS`")]
+        /// i.e. when
+        #[doc = concat!("[`", stringify!($SelfT), "::exact_shl`]")]
+        /// would return `None`.
+        #[unstable(feature = "exact_bitshifts", issue = "144336")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const unsafe fn unchecked_exact_shl(self, rhs: u32) -> $SelfT {
+            assert_unsafe_precondition!(
+                check_library_ub,
+                concat!(stringify!($SelfT), "::exact_shl_unchecked cannot shift out non-zero bits"),
+                (
+                    zeros: u32 = self.leading_zeros(),
+                    bits: u32 =  <$SelfT>::BITS,
+                    rhs: u32 = rhs,
+                ) => rhs <= zeros && rhs < bits,
+            );
+
+            // SAFETY: this is guaranteed to be safe by the caller
+            unsafe { self.unchecked_shl(rhs) }
+        }
+
         /// Checked shift right. Computes `self >> rhs`, returning `None`
         /// if `rhs` is larger than or equal to the number of bits in `self`.
         ///
@@ -1934,6 +1991,63 @@ macro_rules! uint_impl {
             } else {
                 0
             }
+        }
+
+        /// Exact shift right. Computes `self >> rhs` as long as it can be reversed losslessly.
+        ///
+        /// Returns `None` if any non-zero bits would be shifted out or if `rhs` >=
+        #[doc = concat!("`", stringify!($SelfT), "::BITS`.")]
+        /// Otherwise, returns `Some(self >> rhs)`.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(exact_bitshifts)]
+        ///
+        #[doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".exact_shr(4), Some(0x1));")]
+        #[doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".exact_shr(5), None);")]
+        /// ```
+        #[unstable(feature = "exact_bitshifts", issue = "144336")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn exact_shr(self, rhs: u32) -> Option<$SelfT> {
+            if rhs <= self.trailing_zeros() && rhs < <$SelfT>::BITS {
+                // SAFETY: rhs is checked above
+                Some(unsafe { self.unchecked_shr(rhs) })
+            } else {
+                None
+            }
+        }
+
+        /// Unchecked exact shift right. Computes `self >> rhs`, assuming the operation can be
+        /// losslessly reversed and `rhs` cannot be larger than
+        #[doc = concat!("`", stringify!($SelfT), "::BITS`.")]
+        ///
+        /// # Safety
+        ///
+        /// This results in undefined behavior when `rhs > self.trailing_zeros() || rhs >=
+        #[doc = concat!(stringify!($SelfT), "::BITS`")]
+        /// i.e. when
+        #[doc = concat!("[`", stringify!($SelfT), "::exact_shr`]")]
+        /// would return `None`.
+        #[unstable(feature = "exact_bitshifts", issue = "144336")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const unsafe fn unchecked_exact_shr(self, rhs: u32) -> $SelfT {
+            assert_unsafe_precondition!(
+                check_library_ub,
+                concat!(stringify!($SelfT), "::exact_shr_unchecked cannot shift out non-zero bits"),
+                (
+                    zeros: u32 = self.trailing_zeros(),
+                    bits: u32 =  <$SelfT>::BITS,
+                    rhs: u32 = rhs,
+                ) => rhs <= zeros && rhs < bits,
+            );
+
+            // SAFETY: this is guaranteed to be safe by the caller
+            unsafe { self.unchecked_shr(rhs) }
         }
 
         /// Checked exponentiation. Computes `self.pow(exp)`, returning `None` if

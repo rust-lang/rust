@@ -71,7 +71,7 @@ related tests.
 > //! Regression test for <https://github.com/rust-lang/rust/issues/123456>.
 > ```
 >
-> One exception to this rule is [crashes tests]: there it is canonical that
+> One exception to this rule is [crash tests]: there it is canonical that
 > tests are named only after issue numbers because its purpose is to track
 > snippets from which issues no longer ICE/crash, and they would either be
 > removed or converted into proper ui/other tests in the fix PRs.
@@ -83,10 +83,10 @@ related tests.
     - E.g. for an implementation of RFC 2093 specifically, we can group a
       collection of tests under `tests/ui/rfc-2093-infer-outlives/`. For the
       directory name, include what the RFC is about.
-- For the [`run-make`] test suite, each `rmake.rs` must be contained within an
-  immediate subdirectory under `tests/run-make/`. Further nesting is not
-  presently supported. Avoid including issue number in the directory name too,
-  include that info in a comment inside `rmake.rs`.
+- For the [`run-make`]/`run-make-support` test suites, each `rmake.rs` must
+  be contained within an immediate subdirectory under `tests/run-make/` or
+  `tests/run-make-cargo/` respectively. Further nesting is not presently
+  supported. Avoid using _only_ an issue number for the test name as well.
 
 ## Test descriptions
 
@@ -199,4 +199,4 @@ See [LLVM FileCheck guide][FileCheck] for details.
 [compiletest directives]: ./directives.md
 [`run-make`]: ./compiletest.md#run-make-tests
 [FileCheck]: https://llvm.org/docs/CommandGuide/FileCheck.html
-[crashes tests]: ./compiletest.md#crashes-tests
+[crash tests]: ./compiletest.md#crash-tests

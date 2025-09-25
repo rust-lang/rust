@@ -1,6 +1,7 @@
 //@revisions: stack tree
 //@[tree]compile-flags: -Zmiri-tree-borrows
 #![feature(allocator_api)]
+use std::alloc::{Layout, alloc, dealloc};
 use std::cell::Cell;
 use std::ptr;
 
@@ -305,5 +306,14 @@ fn zst() {
         let ptr = &raw mut *b as *mut ();
         drop(b);
         let _ref = &mut *ptr;
+
+        // zero-sized protectors do not affect deallocation
+        fn with_protector(_x: &mut (), ptr: *mut u8, l: Layout) {
+            // `_x` here is strongly protected but covers zero bytes.
+            unsafe { dealloc(ptr, l) };
+        }
+        let l = Layout::from_size_align(1, 1).unwrap();
+        let ptr = alloc(l);
+        with_protector(&mut *ptr.cast::<()>(), ptr, l);
     }
 }

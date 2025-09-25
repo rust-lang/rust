@@ -82,7 +82,7 @@ impl ExpnNode {
         Self {
             expn_id,
 
-            expn_kind: expn_data.kind.clone(),
+            expn_kind: expn_data.kind,
             call_site,
             call_site_expn_id,
 

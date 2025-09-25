@@ -138,7 +138,7 @@ pub(crate) fn find_all_refs(
                 Definition::Module(module) => {
                     Some(NavigationTarget::from_module_to_decl(sema.db, module))
                 }
-                def => def.try_to_nav(sema.db),
+                def => def.try_to_nav(sema),
             }
             .map(|nav| {
                 let (nav, extra_ref) = match nav.def_site {
@@ -1783,7 +1783,7 @@ trait Bar$0 = Foo where Self: ;
 fn foo<T: Bar>(_: impl Bar, _: &dyn Bar) {}
 "#,
             expect![[r#"
-                Bar TraitAlias FileId(0) 13..42 19..22
+                Bar Trait FileId(0) 13..42 19..22
 
                 FileId(0) 53..56
                 FileId(0) 66..69

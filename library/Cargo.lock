@@ -99,13 +99,12 @@ dependencies = [
 
 [[package]]
 name = "getopts"
-version = "0.2.23"
+version = "0.2.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cba6ae63eb948698e300f645f87c70f76630d505f23b8907cf1e193ee85048c1"
+checksum = "cfe4fbac503b8d1f88e6676011885f34b7174f46e59956bba534ba83abded4df"
 dependencies = [
  "rustc-std-workspace-core",
  "rustc-std-workspace-std",
- "unicode-width",
 ]
 
 [[package]]
@@ -328,7 +327,7 @@ dependencies = [
  "std_detect",
  "unwind",
  "wasi 0.11.1+wasi-snapshot-preview1",
- "wasi 0.14.3+wasi-0.2.4",
+ "wasi 0.14.4+wasi-0.2.4",
  "windows-targets 0.0.0",
 ]
 
@@ -362,16 +361,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "unicode-width"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4a1a07cc7db3810833284e8d372ccdc6da29741639ecc70c9ec107df0fa6154c"
-dependencies = [
- "rustc-std-workspace-core",
- "rustc-std-workspace-std",
-]
-
-[[package]]
 name = "unwind"
 version = "0.0.0"
 dependencies = [
@@ -402,9 +391,9 @@ dependencies = [
 
 [[package]]
 name = "wasi"
-version = "0.14.3+wasi-0.2.4"
+version = "0.14.4+wasi-0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6a51ae83037bdd272a9e28ce236db8c07016dd0d50c27038b3f407533c030c95"
+checksum = "88a5f4a424faf49c3c2c344f166f0662341d470ea185e939657aaff130f0ec4a"
 dependencies = [
  "rustc-std-workspace-alloc",
  "rustc-std-workspace-core",

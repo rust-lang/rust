@@ -1131,6 +1131,59 @@ mod snapshot {
     }
 
     #[test]
+    fn dist_compiler_docs() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("dist")
+                .path("rustc-docs")
+                .args(&["--set", "build.compiler-docs=true"])
+                .render_steps(), @r"
+        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
+        [build] rustc 0 <host> -> Rustbook 1 <host>
+        [doc] unstable-book (book) <host>
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [doc] book (book) <host>
+        [doc] book/first-edition (book) <host>
+        [doc] book/second-edition (book) <host>
+        [doc] book/2018-edition (book) <host>
+        [build] rustdoc 1 <host>
+        [doc] rustc 1 <host> -> standalone 2 <host>
+        [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] rustc 1 <host> -> rustc 2 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [doc] rustc 1 <host> -> Rustdoc 2 <host>
+        [doc] rustc 1 <host> -> Rustfmt 2 <host>
+        [build] rustc 1 <host> -> error-index 2 <host>
+        [doc] rustc 1 <host> -> error-index 2 <host>
+        [doc] nomicon (book) <host>
+        [doc] rustc 1 <host> -> reference (book) 2 <host>
+        [doc] rustdoc (book) <host>
+        [doc] rust-by-example (book) <host>
+        [build] rustc 0 <host> -> LintDocs 1 <host>
+        [doc] rustc (book) <host>
+        [doc] rustc 1 <host> -> Cargo 2 <host>
+        [doc] cargo (book) <host>
+        [doc] rustc 1 <host> -> Clippy 2 <host>
+        [doc] clippy (book) <host>
+        [doc] rustc 1 <host> -> Miri 2 <host>
+        [doc] embedded-book (book) <host>
+        [doc] edition-guide (book) <host>
+        [doc] style-guide (book) <host>
+        [build] rustdoc 0 <host>
+        [doc] rustc 0 <host> -> Tidy 1 <host>
+        [doc] rustc 0 <host> -> Bootstrap 1 <host>
+        [doc] rustc 1 <host> -> releases 2 <host>
+        [doc] rustc 0 <host> -> RunMakeSupport 1 <host>
+        [doc] rustc 0 <host> -> BuildHelper 1 <host>
+        [doc] rustc 0 <host> -> Compiletest 1 <host>
+        [build] rustc 0 <host> -> RustInstaller 1 <host>
+        "
+        );
+    }
+
+    #[test]
     fn dist_extended() {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
@@ -1752,7 +1805,7 @@ mod snapshot {
         insta::assert_snapshot!(
             ctx.config("check")
                 .path("compiler")
-                .render_steps(), @"[check] rustc 0 <host> -> rustc 1 <host> (74 crates)");
+                .render_steps(), @"[check] rustc 0 <host> -> rustc 1 <host> (75 crates)");
     }
 
     #[test]
@@ -1778,7 +1831,7 @@ mod snapshot {
             ctx.config("check")
                 .path("compiler")
                 .stage(1)
-                .render_steps(), @"[check] rustc 0 <host> -> rustc 1 <host> (74 crates)");
+                .render_steps(), @"[check] rustc 0 <host> -> rustc 1 <host> (75 crates)");
     }
 
     #[test]
@@ -1792,7 +1845,7 @@ mod snapshot {
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
-        [check] rustc 1 <host> -> rustc 2 <host> (74 crates)
+        [check] rustc 1 <host> -> rustc 2 <host> (75 crates)
         ");
     }
 
@@ -1808,7 +1861,7 @@ mod snapshot {
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
         [check] rustc 1 <host> -> std 1 <target1>
-        [check] rustc 1 <host> -> rustc 2 <target1> (74 crates)
+        [check] rustc 1 <host> -> rustc 2 <target1> (75 crates)
         [check] rustc 1 <host> -> rustc 2 <target1>
         [check] rustc 1 <host> -> Rustdoc 2 <target1>
         [check] rustc 1 <host> -> rustc_codegen_cranelift 2 <target1>
@@ -1904,7 +1957,7 @@ mod snapshot {
             ctx.config("check")
                 .paths(&["library", "compiler"])
                 .args(&args)
-                .render_steps(), @"[check] rustc 0 <host> -> rustc 1 <host> (74 crates)");
+                .render_steps(), @"[check] rustc 0 <host> -> rustc 1 <host> (75 crates)");
     }
 
     #[test]
@@ -2099,8 +2152,9 @@ mod snapshot {
         [build] rustc 0 <host> -> HtmlChecker 1 <host>
         [test] html-check <host>
         [build] rustc 0 <host> -> RunMakeSupport 1 <host>
-        [build] rustc 0 <host> -> cargo 1 <host>
         [test] compiletest-run-make 1 <host>
+        [build] rustc 0 <host> -> cargo 1 <host>
+        [test] compiletest-run-make-cargo 1 <host>
         ");
     }
 
@@ -2118,7 +2172,6 @@ mod snapshot {
         [test] compiletest-ui 1 <host>
         [test] compiletest-ui-fulldeps 1 <host>
         [build] rustc 0 <host> -> RunMakeSupport 1 <host>
-        [build] rustc 0 <host> -> cargo 1 <host>
         [build] rustdoc 1 <host>
         [test] compiletest-run-make 1 <host>
         [test] compiletest-rustdoc 1 <host>
@@ -2147,7 +2200,6 @@ mod snapshot {
         [build] rustc 2 <host> -> rustc 3 <host>
         [test] compiletest-ui-fulldeps 2 <host>
         [build] rustc 0 <host> -> RunMakeSupport 1 <host>
-        [build] rustc 1 <host> -> cargo 2 <host>
         [build] rustdoc 2 <host>
         [test] compiletest-run-make 2 <host>
         [test] compiletest-rustdoc 2 <host>
@@ -2181,7 +2233,6 @@ mod snapshot {
         [build] rustc 2 <host> -> rustc 3 <target1>
         [test] compiletest-ui-fulldeps 2 <target1>
         [build] rustc 0 <host> -> RunMakeSupport 1 <host>
-        [build] rustc 1 <host> -> cargo 2 <host>
         [build] rustdoc 2 <host>
         [test] compiletest-run-make 2 <target1>
         [test] compiletest-rustdoc 2 <target1>
@@ -2276,8 +2327,9 @@ mod snapshot {
         [build] rustc 0 <host> -> HtmlChecker 1 <host>
         [test] html-check <host>
         [build] rustc 0 <host> -> RunMakeSupport 1 <host>
-        [build] rustc 1 <host> -> cargo 2 <host>
         [test] compiletest-run-make 2 <host>
+        [build] rustc 1 <host> -> cargo 2 <host>
+        [test] compiletest-run-make-cargo 2 <host>
         ");
     }
 
@@ -2411,6 +2463,43 @@ mod snapshot {
         ");
     }
 
+    // Differential snapshots for `./x test run-make` run `./x test run-make-cargo`: only
+    // `run-make-cargo` should build an in-tree cargo, running `./x test run-make` should not.
+    #[test]
+    fn test_run_make_no_cargo() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("test")
+                .path("run-make")
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 0 <host> -> RunMakeSupport 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 0 <host> -> Compiletest 1 <host>
+        [build] rustdoc 1 <host>
+        [test] compiletest-run-make 1 <host>
+        ");
+    }
+
+    #[test]
+    fn test_run_make_cargo_builds_cargo() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("test")
+                .path("run-make-cargo")
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 0 <host> -> RunMakeSupport 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 0 <host> -> Compiletest 1 <host>
+        [build] rustc 0 <host> -> cargo 1 <host>
+        [build] rustdoc 1 <host>
+        [test] compiletest-run-make-cargo 1 <host>
+        ");
+    }
+
     #[test]
     fn doc_all() {
         let ctx = TestCtx::new();
@@ -2459,6 +2548,33 @@ mod snapshot {
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustdoc 1 <host>
         [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        ");
+    }
+
+    #[test]
+    fn doc_cargo_stage_1() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("doc")
+                .path("cargo")
+                .render_steps(), @r"
+        [build] rustdoc 0 <host>
+        [doc] rustc 0 <host> -> Cargo 1 <host>
+        ");
+    }
+    #[test]
+    fn doc_cargo_stage_2() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("doc")
+                .path("cargo")
+                .stage(2)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustdoc 1 <host>
+        [doc] rustc 1 <host> -> Cargo 2 <host>
         ");
     }
 

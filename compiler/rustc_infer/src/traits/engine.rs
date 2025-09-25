@@ -72,12 +72,27 @@ pub trait TraitEngine<'tcx, E: 'tcx>: 'tcx {
             self.register_predicate_obligation(infcx, obligation);
         }
     }
-
+    /// Go over the list of pending obligations and try to evaluate them.
+    ///
+    /// For each result:
+    /// Ok: remove the obligation from the list
+    /// Ambiguous: leave the obligation in the list to be evaluated later
+    /// Err: remove the obligation from the list and return an error
+    ///
+    /// Returns a list of errors from obligations that evaluated to Err.
     #[must_use]
     fn select_where_possible(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E>;
 
     fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E>;
 
+    /// Evaluate all pending obligations, return error if they can't be evaluated.
+    ///
+    /// For each result:
+    /// Ok: remove the obligation from the list
+    /// Ambiguous: remove the obligation from the list and return an error
+    /// Err: remove the obligation from the list and return an error
+    ///
+    /// Returns a list of errors from obligations that evaluated to Ambiguous or Err.
     #[must_use]
     fn select_all_or_error(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E> {
         let errors = self.select_where_possible(infcx);

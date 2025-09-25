@@ -39,7 +39,7 @@ use std::sync::atomic::{AtomicI32, AtomicU32, Ordering};
 
 use miri::{
     BacktraceStyle, BorrowTrackerMethod, GenmcConfig, GenmcCtx, MiriConfig, MiriEntryFnType,
-    ProvenanceMode, RetagFields, TreeBorrowsParams, ValidationMode,
+    ProvenanceMode, RetagFields, TreeBorrowsParams, ValidationMode, run_genmc_mode,
 };
 use rustc_abi::ExternAbi;
 use rustc_data_structures::sync;
@@ -186,10 +186,18 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
                     optimizations is usually marginal at best.");
         }
 
-        if let Some(_genmc_config) = &config.genmc_config {
-            let _genmc_ctx = Rc::new(GenmcCtx::new(&config));
-
-            todo!("GenMC mode not yet implemented");
+        // Run in GenMC mode if enabled.
+        if config.genmc_config.is_some() {
+            // This is the entry point used in GenMC mode.
+            // This closure will be called multiple times to explore the concurrent execution space of the program.
+            let eval_entry_once = |genmc_ctx: Rc<GenmcCtx>| {
+                miri::eval_entry(tcx, entry_def_id, entry_type, &config, Some(genmc_ctx))
+            };
+            let return_code = run_genmc_mode(&config, eval_entry_once, tcx).unwrap_or_else(|| {
+                tcx.dcx().abort_if_errors();
+                rustc_driver::EXIT_FAILURE
+            });
+            exit(return_code);
         };
 
         if let Some(many_seeds) = self.many_seeds.take() {
@@ -737,19 +745,11 @@ fn main() {
         many_seeds.map(|seeds| ManySeedsConfig { seeds, keep_going: many_seeds_keep_going });
 
     // Validate settings for data race detection and GenMC mode.
-    if miri_config.genmc_config.is_some() {
-        if !miri_config.data_race_detector {
-            fatal_error!("Cannot disable data race detection in GenMC mode (currently)");
-        } else if !miri_config.weak_memory_emulation {
-            fatal_error!("Cannot disable weak memory emulation in GenMC mode");
-        }
-        if miri_config.borrow_tracker.is_some() {
-            eprintln!(
-                "warning: borrow tracking has been disabled, it is not (yet) supported in GenMC mode."
-            );
-            miri_config.borrow_tracker = None;
-        }
-    } else if miri_config.weak_memory_emulation && !miri_config.data_race_detector {
+    if let Err(err) = GenmcConfig::validate_genmc_mode_settings(&mut miri_config) {
+        fatal_error!("Invalid settings: {err}");
+    }
+
+    if miri_config.weak_memory_emulation && !miri_config.data_race_detector {
         fatal_error!(
             "Weak memory emulation cannot be enabled when the data race detector is disabled"
         );

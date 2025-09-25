@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::ty::option_arg_ty;
 use clippy_utils::{get_parent_expr, is_res_lang_ctor, path_res};
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::ResultErr;
@@ -28,25 +28,15 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, scrutine
         && is_res_lang_ctor(cx, path_res(cx, err_fun), ResultErr)
         && let Some(return_ty) = find_return_type(cx, &expr.kind)
     {
-        let prefix;
-        let suffix;
-        let err_ty;
-
-        if let Some(ty) = result_error_type(cx, return_ty) {
-            prefix = "Err(";
-            suffix = ")";
-            err_ty = ty;
+        let (prefix, suffix, err_ty) = if let Some(ty) = result_error_type(cx, return_ty) {
+            ("Err(", ")", ty)
         } else if let Some(ty) = poll_result_error_type(cx, return_ty) {
-            prefix = "Poll::Ready(Err(";
-            suffix = "))";
-            err_ty = ty;
+            ("Poll::Ready(Err(", "))", ty)
         } else if let Some(ty) = poll_option_result_error_type(cx, return_ty) {
-            prefix = "Poll::Ready(Some(Err(";
-            suffix = ")))";
-            err_ty = ty;
+            ("Poll::Ready(Some(Err(", ")))", ty)
         } else {
             return;
-        }
+        };
 
         span_lint_and_then(
             cx,
@@ -88,8 +78,8 @@ fn find_return_type<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx ExprKind<'_>) -> O
 
 /// Extracts the error type from Result<T, E>.
 fn result_error_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
-    if let ty::Adt(_, subst) = ty.kind()
-        && is_type_diagnostic_item(cx, ty, sym::Result)
+    if let ty::Adt(def, subst) = ty.kind()
+        && cx.tcx.is_diagnostic_item(sym::Result, def.did())
     {
         Some(subst.type_at(1))
     } else {
@@ -101,11 +91,9 @@ fn result_error_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'t
 fn poll_result_error_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
     if let ty::Adt(def, subst) = ty.kind()
         && cx.tcx.lang_items().get(LangItem::Poll) == Some(def.did())
-        && let ready_ty = subst.type_at(0)
-        && let ty::Adt(ready_def, ready_subst) = ready_ty.kind()
-        && cx.tcx.is_diagnostic_item(sym::Result, ready_def.did())
     {
-        Some(ready_subst.type_at(1))
+        let ready_ty = subst.type_at(0);
+        result_error_type(cx, ready_ty)
     } else {
         None
     }
@@ -116,13 +104,9 @@ fn poll_option_result_error_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> 
     if let ty::Adt(def, subst) = ty.kind()
         && cx.tcx.lang_items().get(LangItem::Poll) == Some(def.did())
         && let ready_ty = subst.type_at(0)
-        && let ty::Adt(ready_def, ready_subst) = ready_ty.kind()
-        && cx.tcx.is_diagnostic_item(sym::Option, ready_def.did())
-        && let some_ty = ready_subst.type_at(0)
-        && let ty::Adt(some_def, some_subst) = some_ty.kind()
-        && cx.tcx.is_diagnostic_item(sym::Result, some_def.did())
+        && let Some(some_ty) = option_arg_ty(cx, ready_ty)
     {
-        Some(some_subst.type_at(1))
+        result_error_type(cx, some_ty)
     } else {
         None
     }

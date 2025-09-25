@@ -273,6 +273,28 @@ const ISSUE14763: fn(Option<String>) = |x| {
     }
 };
 
+fn issue12295() {
+    let option = Some(());
+
+    if option.is_some() {
+        println!("{:?}", option.unwrap());
+        //~^ unnecessary_unwrap
+    } else {
+        println!("{:?}", option.unwrap());
+        //~^ panicking_unwrap
+    }
+
+    let result = Ok::<(), ()>(());
+
+    if result.is_ok() {
+        println!("{:?}", result.unwrap());
+        //~^ unnecessary_unwrap
+    } else {
+        println!("{:?}", result.unwrap());
+        //~^ panicking_unwrap
+    }
+}
+
 fn check_expect() {
     let x = Some(());
     if x.is_some() {
