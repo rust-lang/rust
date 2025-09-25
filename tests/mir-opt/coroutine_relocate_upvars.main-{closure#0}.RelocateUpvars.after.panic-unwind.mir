@@ -16,12 +16,7 @@ yields ()
     let _10: &mut std::string::String;
 
     bb0: {
-        StorageLive(_9);
-        StorageLive(_10);
-        _10 = move (_1.0: &mut std::string::String);
-        _9 = move _10;
-        StorageDead(_10);
-        goto -> bb23;
+        goto -> bb24;
     }
 
     bb1: {
@@ -53,7 +48,7 @@ yields ()
         StorageDead(_5);
         StorageDead(_4);
         _0 = const ();
-        goto -> bb15;
+        goto -> bb16;
     }
 
     bb6: {
@@ -67,7 +62,7 @@ yields ()
     }
 
     bb8: {
-        goto -> bb19;
+        goto -> bb20;
     }
 
     bb9: {
@@ -76,64 +71,73 @@ yields ()
 
     bb10 (cleanup): {
         StorageDead(_3);
-        goto -> bb22;
+        goto -> bb23;
     }
 
     bb11 (cleanup): {
         resume;
     }
 
-    bb12 (cleanup): {
+    bb12: {
+        StorageLive(_3);
+        _3 = String::new() -> [return: bb1, unwind: bb10];
+    }
+
+    bb13 (cleanup): {
         StorageDead(_9);
         goto -> bb11;
     }
 
-    bb13 (cleanup): {
-        goto -> bb12;
+    bb14 (cleanup): {
+        goto -> bb13;
     }
 
-    bb14: {
+    bb15: {
         StorageDead(_9);
         goto -> bb6;
     }
 
-    bb15: {
-        goto -> bb14;
+    bb16: {
+        goto -> bb15;
     }
 
-    bb16 (cleanup): {
+    bb17 (cleanup): {
         StorageDead(_9);
         goto -> bb11;
     }
 
-    bb17 (cleanup): {
-        goto -> bb16;
+    bb18 (cleanup): {
+        goto -> bb17;
     }
 
-    bb18: {
+    bb19: {
         StorageDead(_9);
         goto -> bb9;
     }
 
-    bb19: {
-        goto -> bb18;
-    }
-
-    bb20 (cleanup): {
-        terminate(cleanup);
+    bb20: {
+        goto -> bb19;
     }
 
     bb21 (cleanup): {
+        terminate(cleanup);
+    }
+
+    bb22 (cleanup): {
         StorageDead(_9);
         goto -> bb11;
     }
 
-    bb22 (cleanup): {
-        goto -> bb21;
+    bb23 (cleanup): {
+        goto -> bb22;
     }
 
-    bb23: {
-        StorageLive(_3);
-        _3 = String::new() -> [return: bb1, unwind: bb10];
+    bb24: {
+        StorageLive(_9);
+        StorageLive(_10);
+        _10 = move (_1.0: &mut std::string::String);
+        _9 = move _10;
+        StorageDead(_10);
+        goto -> bb12;
     }
 }

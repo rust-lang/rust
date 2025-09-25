@@ -16,12 +16,7 @@ yields ()
     let _10: &mut std::string::String;
 
     bb0: {
-        StorageLive(_9);
-        StorageLive(_10);
-        _10 = move (_1.0: &mut std::string::String);
-        _9 = move _10;
-        StorageDead(_10);
-        goto -> bb18;
+        goto -> bb19;
     }
 
     bb1: {
@@ -47,7 +42,7 @@ yields ()
         StorageDead(_5);
         StorageDead(_4);
         _0 = const ();
-        goto -> bb13;
+        goto -> bb14;
     }
 
     bb5: {
@@ -61,55 +56,64 @@ yields ()
     }
 
     bb7: {
-        goto -> bb17;
+        goto -> bb18;
     }
 
     bb8: {
         coroutine_drop;
     }
 
-    bb9 (cleanup): {
-        unreachable;
+    bb9: {
+        StorageLive(_3);
+        _3 = String::new() -> [return: bb1, unwind unreachable];
     }
 
     bb10 (cleanup): {
-        StorageDead(_9);
-        goto -> bb9;
+        unreachable;
     }
 
     bb11 (cleanup): {
+        StorageDead(_9);
         goto -> bb10;
     }
 
-    bb12: {
+    bb12 (cleanup): {
+        goto -> bb11;
+    }
+
+    bb13: {
         StorageDead(_9);
         goto -> bb5;
     }
 
-    bb13: {
-        goto -> bb12;
-    }
-
-    bb14 (cleanup): {
-        StorageDead(_9);
-        goto -> bb9;
+    bb14: {
+        goto -> bb13;
     }
 
     bb15 (cleanup): {
-        goto -> bb14;
+        StorageDead(_9);
+        goto -> bb10;
     }
 
-    bb16: {
+    bb16 (cleanup): {
+        goto -> bb15;
+    }
+
+    bb17: {
         StorageDead(_9);
         goto -> bb8;
     }
 
-    bb17: {
-        goto -> bb16;
+    bb18: {
+        goto -> bb17;
     }
 
-    bb18: {
-        StorageLive(_3);
-        _3 = String::new() -> [return: bb1, unwind unreachable];
+    bb19: {
+        StorageLive(_9);
+        StorageLive(_10);
+        _10 = move (_1.0: &mut std::string::String);
+        _9 = move _10;
+        StorageDead(_10);
+        goto -> bb9;
     }
 }

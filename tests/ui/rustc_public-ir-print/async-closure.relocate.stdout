@@ -58,8 +58,8 @@ fn foo::{closure#0}::{closure#0}(_1: Pin<&mut {async closure body@$DIR/async-clo
     bb1: {
         StorageLive(_5);
         StorageLive(_6);
-        _10 = CopyForDeref((_1.0: &mut {async closure body@$DIR/async-closure.rs:12:22: 14:6}));
-        _6 = move (((*_10) as variant#0).0: &i32);
+        _11 = CopyForDeref((_1.0: &mut {async closure body@$DIR/async-closure.rs:12:22: 14:6}));
+        _6 = move (((*_11) as variant#0).0: &i32);
         _5 = move _6;
         StorageDead(_6);
         StorageLive(_3);
@@ -69,8 +69,8 @@ fn foo::{closure#0}::{closure#0}(_1: Pin<&mut {async closure body@$DIR/async-clo
         StorageDead(_3);
         StorageDead(_5);
         _0 = std::task::Poll::Ready(move _7);
-        _11 = CopyForDeref((_1.0: &mut {async closure body@$DIR/async-closure.rs:12:22: 14:6}));
-        discriminant((*_11)) = 1;
+        _10 = CopyForDeref((_1.0: &mut {async closure body@$DIR/async-closure.rs:12:22: 14:6}));
+        discriminant((*_10)) = 1;
         return;
     }
     bb2: {
@@ -103,8 +103,8 @@ fn foo::{closure#0}::{synthetic#0}(_1: Pin<&mut {async closure body@$DIR/async-c
     bb1: {
         StorageLive(_5);
         StorageLive(_6);
-        _10 = CopyForDeref((_1.0: &mut {async closure body@$DIR/async-closure.rs:12:22: 14:6}));
-        _6 = move (((*_10) as variant#0).0: &i32);
+        _11 = CopyForDeref((_1.0: &mut {async closure body@$DIR/async-closure.rs:12:22: 14:6}));
+        _6 = move (((*_11) as variant#0).0: &i32);
         _5 = move _6;
         StorageDead(_6);
         StorageLive(_3);
@@ -114,8 +114,8 @@ fn foo::{closure#0}::{synthetic#0}(_1: Pin<&mut {async closure body@$DIR/async-c
         StorageDead(_3);
         StorageDead(_5);
         _0 = std::task::Poll::Ready(move _7);
-        _11 = CopyForDeref((_1.0: &mut {async closure body@$DIR/async-closure.rs:12:22: 14:6}));
-        discriminant((*_11)) = 1;
+        _10 = CopyForDeref((_1.0: &mut {async closure body@$DIR/async-closure.rs:12:22: 14:6}));
+        discriminant((*_10)) = 1;
         return;
     }
     bb2: {

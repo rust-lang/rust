@@ -13,8 +13,7 @@ yields ()
     let mut _8: &mut std::string::String;
 
     bb0: {
-        StorageLive(_3);
-        _3 = String::new() -> [return: bb1, unwind unreachable];
+        goto -> bb9;
     }
 
     bb1: {
@@ -59,5 +58,10 @@ yields ()
 
     bb8: {
         coroutine_drop;
+    }
+
+    bb9: {
+        StorageLive(_3);
+        _3 = String::new() -> [return: bb1, unwind unreachable];
     }
 }
