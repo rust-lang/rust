@@ -5367,7 +5367,9 @@ impl Methods {
                                 iter_overeager_cloned::Op::LaterCloned,
                                 false,
                             ),
-                            (sym::filter, [arg]) => filter_next::check(cx, expr, recv2, arg),
+                            (sym::filter, [arg]) => {
+                                filter_next::check(cx, expr, recv2, arg, filter_next::Direction::Forward);
+                            },
                             (sym::filter_map, [arg]) => filter_map_next::check(cx, expr, recv2, arg, self.msrv),
                             (sym::iter, []) => iter_next_slice::check(cx, expr, recv2),
                             (sym::skip, [arg]) => iter_skip_next::check(cx, expr, recv2, arg),
@@ -5375,6 +5377,14 @@ impl Methods {
                             (sym::rev, []) => manual_next_back::check(cx, expr, recv, recv2),
                             _ => {},
                         }
+                    }
+                },
+                (sym::next_back, []) => {
+                    if let Some((name2, recv2, args2, _, _)) = method_call(recv)
+                        && let (sym::filter, [arg]) = (name2, args2)
+                        && self.msrv.meets(cx, msrvs::DOUBLE_ENDED_ITERATOR_RFIND)
+                    {
+                        filter_next::check(cx, expr, recv2, arg, filter_next::Direction::Backward);
                     }
                 },
                 (sym::nth, [n_arg]) => match method_call(recv) {
