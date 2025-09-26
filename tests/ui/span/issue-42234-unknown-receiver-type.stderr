@@ -4,7 +4,7 @@ error[E0282]: type annotations needed
 LL |     let x: Option<_> = None;
    |                        ^^^^ cannot infer type of the type parameter `T` declared on the enum `Option`
 LL |     x.unwrap().method_that_could_exist_on_some_type();
-   |     ---------- type must be known at this point
+   |                ------------------------------------ type must be known at this point
    |
 help: consider specifying the generic argument
    |
@@ -16,6 +16,8 @@ error[E0282]: type annotations needed
    |
 LL |         .sum::<_>()
    |          ^^^ cannot infer type of the type parameter `S` declared on the method `sum`
+LL |         .to_string()
+   |          --------- type must be known at this point
    |
 
 error: aborting due to 2 previous errors
