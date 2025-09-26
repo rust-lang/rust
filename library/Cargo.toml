@@ -64,12 +64,17 @@ rustflags = [
     # Until Cargo can rebuild the standard library with the user profile's `lto`
     # setting, Cargo will force this to be `no`
     "-Cembed-bitcode=yes",
+    # Enable frame pointers
+    "-Zunstable-options",
+    "-Cforce-frame-pointers=non-leaf",
 ]
 
 [profile.dist.package.panic_abort]
 rustflags = [
     "-Cpanic=abort",
     "-Cembed-bitcode=yes",
+    "-Zunstable-options",
+    "-Cforce-frame-pointers=non-leaf",
 ]
 
 [patch.crates-io]
