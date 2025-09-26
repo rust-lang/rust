@@ -569,7 +569,7 @@ extern "C" LLVMRustResult LLVMRustOptimize(
   }
 
   std::optional<PGOOptions> PGOOpt;
-#if LLVM_VERSION_LE(22, 0)
+#if LLVM_VERSION_LT(22, 0)
   auto FS = vfs::getRealFileSystem();
 #endif
   if (PGOGenPath) {
