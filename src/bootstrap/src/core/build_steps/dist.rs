@@ -2304,7 +2304,7 @@ fn maybe_install_llvm(
         let mut cmd = command(host_llvm_config);
         cmd.cached();
         cmd.arg("--libfiles");
-        builder.verbose(|| println!("running {cmd:?}"));
+        builder.do_if_verbose(|| println!("running {cmd:?}"));
         let files = cmd.run_capture_stdout(builder).stdout();
         let build_llvm_out = &builder.llvm_out(builder.config.host_target);
         let target_llvm_out = &builder.llvm_out(target);
