@@ -162,9 +162,9 @@ pub(crate) fn mir_callgraph_cyclic<'tcx>(
     // grows as we recurse into the call graph. If we use the same recursion limit here and in the
     // solver, the solver hits the limit first and emits a fatal error. But if we use a reduced
     // limit, we will hit the limit first and give up on looking for inlining. And in any case,
-    // the default recursion limits are quite generous for us. If we need to recurse 64 times
+    // the default recursion limits are quite generous for us. If we need to recurse 16 times
     // into the call graph, we're probably not going to find any useful MIR inlining.
-    let recursion_limit = tcx.recursion_limit() / 2;
+    let recursion_limit = tcx.recursion_limit() / 8;
     let mut involved = FxHashSet::default();
     let typing_env = ty::TypingEnv::post_analysis(tcx, root);
     let root_instance =
