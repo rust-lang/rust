@@ -545,7 +545,7 @@ impl StepDescription {
         if !builder.config.skip.is_empty()
             && !matches!(builder.config.get_dry_run(), DryRun::SelfCheck)
         {
-            builder.verbose(|| {
+            builder.do_if_verbose(|| {
                 println!(
                     "{:?} not skipped for {:?} -- not in {:?}",
                     pathset, self.name, builder.config.skip
@@ -947,7 +947,7 @@ impl Step for Libdir {
             // Sysroot`).
             if !builder.download_rustc() {
                 let sysroot_target_libdir = sysroot.join(self.target).join("lib");
-                builder.verbose(|| {
+                builder.do_if_verbose(|| {
                     eprintln!(
                         "Removing sysroot {} to avoid caching bugs",
                         sysroot_target_libdir.display()

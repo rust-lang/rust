@@ -603,7 +603,12 @@ impl AllTypes {
         }
 
         fmt::from_fn(|f| {
-            f.write_str("<h1>List of all items</h1>")?;
+            f.write_str(
+                "<div class=\"main-heading\">\
+                    <h1>List of all items</h1>\
+                    <rustdoc-toolbar></rustdoc-toolbar>\
+                </div>",
+            )?;
             // Note: print_entries does not escape the title, because we know the current set of titles
             // doesn't require escaping.
             print_entries(&self.structs, ItemSection::Structs).fmt(f)?;

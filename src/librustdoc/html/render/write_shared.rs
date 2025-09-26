@@ -386,8 +386,13 @@ impl CratesIndexPart {
         let layout = &cx.shared.layout;
         let style_files = &cx.shared.style_files;
         const DELIMITER: &str = "\u{FFFC}"; // users are being naughty if they have this
-        let content =
-            format!("<h1>List of all crates</h1><ul class=\"all-items\">{DELIMITER}</ul>");
+        let content = format!(
+            "<div class=\"main-heading\">\
+                <h1>List of all crates</h1>\
+                <rustdoc-toolbar></rustdoc-toolbar>\
+            </div>\
+            <ul class=\"all-items\">{DELIMITER}</ul>"
+        );
         let template = layout::render(layout, &page, "", content, style_files);
         SortedTemplate::from_template(&template, DELIMITER)
             .expect("Object Replacement Character (U+FFFC) should not appear in the --index-page")

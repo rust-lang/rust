@@ -1,6 +1,5 @@
 //! A bunch of methods and structures more or less related to resolving imports.
 
-use std::cell::Cell;
 use std::mem;
 
 use rustc_ast::NodeId;
@@ -32,6 +31,7 @@ use crate::errors::{
     CannotBeReexportedPrivateNS, CannotDetermineImportResolution, CannotGlobImportAllCrates,
     ConsiderAddingMacroExport, ConsiderMarkingAsPub, ConsiderMarkingAsPubCrate,
 };
+use crate::ref_mut::CmCell;
 use crate::{
     AmbiguityError, AmbiguityKind, BindingKey, CmResolver, Determinacy, Finalize, ImportSuggestion,
     Module, ModuleOrUniformRoot, NameBinding, NameBindingData, NameBindingKind, ParentScope,
@@ -68,7 +68,7 @@ pub(crate) enum ImportKind<'ra> {
         /// It will directly use `source` when the format is `use prefix::source`.
         target: Ident,
         /// Bindings introduced by the import.
-        bindings: PerNS<Cell<PendingBinding<'ra>>>,
+        bindings: PerNS<CmCell<PendingBinding<'ra>>>,
         /// `true` for `...::{self [as target]}` imports, `false` otherwise.
         type_ns_only: bool,
         /// Did this import result from a nested import? ie. `use foo::{bar, baz};`
@@ -89,7 +89,7 @@ pub(crate) enum ImportKind<'ra> {
     Glob {
         // The visibility of the greatest re-export.
         // n.b. `max_vis` is only used in `finalize_import` to check for re-export errors.
-        max_vis: Cell<Option<Visibility>>,
+        max_vis: CmCell<Option<Visibility>>,
         id: NodeId,
     },
     ExternCrate {
@@ -182,7 +182,7 @@ pub(crate) struct ImportData<'ra> {
     /// |`use ::foo`      | `ModuleOrUniformRoot::ExternPrelude`          | 2018+ editions |
     /// |`use ::foo`      | `ModuleOrUniformRoot::ModuleAndExternPrelude` | a special case in 2015 edition |
     /// |`use foo`        | `ModuleOrUniformRoot::CurrentScope`           | - |
-    pub imported_module: Cell<Option<ModuleOrUniformRoot<'ra>>>,
+    pub imported_module: CmCell<Option<ModuleOrUniformRoot<'ra>>>,
     pub vis: Visibility,
 
     /// Span of the visibility.
@@ -320,7 +320,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             && (vis == import_vis
                 || max_vis.get().is_none_or(|max_vis| vis.is_at_least(max_vis, self.tcx)))
         {
-            max_vis.set(Some(vis.expect_local()))
+            // FIXME(batched): Will be fixed in batched import resolution.
+            max_vis.set_unchecked(Some(vis.expect_local()))
         }
 
         self.arenas.alloc_name_binding(NameBindingData {
@@ -349,7 +350,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // because they can be fetched by glob imports from those modules, and bring traits
         // into scope both directly and through glob imports.
         let key = BindingKey::new_disambiguated(ident, ns, || {
-            module.underscore_disambiguator.update(|d| d + 1);
+            // FIXME(batched): Will be fixed in batched resolution.
+            module.underscore_disambiguator.update_unchecked(|d| d + 1);
             module.underscore_disambiguator.get()
         });
         self.update_local_resolution(module, key, warn_ambiguity, |this, resolution| {
@@ -482,7 +484,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
         };
 
-        let Ok(glob_importers) = module.glob_importers.try_borrow_mut() else {
+        let Ok(glob_importers) = module.glob_importers.try_borrow_mut_unchecked() else {
             return t;
         };
 
@@ -862,7 +864,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
         };
 
-        import.imported_module.set(Some(module));
+        // FIXME(batched): Will be fixed in batched import resolution.
+        import.imported_module.set_unchecked(Some(module));
         let (source, target, bindings, type_ns_only) = match import.kind {
             ImportKind::Single { source, target, ref bindings, type_ns_only, .. } => {
                 (source, target, bindings, type_ns_only)
@@ -937,7 +940,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         PendingBinding::Pending
                     }
                 };
-                bindings[ns].set(binding);
+                // FIXME(batched): Will be fixed in batched import resolution.
+                bindings[ns].set_unchecked(binding);
             }
         });
 
@@ -1508,7 +1512,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         // Add to module's glob_importers
-        module.glob_importers.borrow_mut().push(import);
+        module.glob_importers.borrow_mut_unchecked().push(import);
 
         // Ensure that `resolutions` isn't borrowed during `try_define`,
         // since it might get updated via a glob cycle.
@@ -1550,7 +1554,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     // reporting conflicts, and reporting unresolved imports.
     fn finalize_resolutions_in(&mut self, module: Module<'ra>) {
         // Since import resolution is finished, globs will not define any more names.
-        *module.globs.borrow_mut() = Vec::new();
+        *module.globs.borrow_mut(self) = Vec::new();
 
         let Some(def_id) = module.opt_def_id() else { return };
 

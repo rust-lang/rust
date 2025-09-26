@@ -1571,8 +1571,8 @@ impl Config {
     }
 
     /// Runs a function if verbosity is greater than 0
-    pub fn verbose(&self, f: impl Fn()) {
-        self.exec_ctx.verbose(f);
+    pub fn do_if_verbose(&self, f: impl Fn()) {
+        self.exec_ctx.do_if_verbose(f);
     }
 
     pub fn any_sanitizers_to_build(&self) -> bool {
@@ -2061,7 +2061,7 @@ pub fn download_ci_rustc_commit<'a>(
         // Look for a version to compare to based on the current commit.
         // Only commits merged by bors will have CI artifacts.
         let freshness = check_path_modifications_(dwn_ctx, RUSTC_IF_UNCHANGED_ALLOWED_PATHS);
-        dwn_ctx.exec_ctx.verbose(|| {
+        dwn_ctx.exec_ctx.do_if_verbose(|| {
             eprintln!("rustc freshness: {freshness:?}");
         });
         match freshness {
