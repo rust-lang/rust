@@ -11,7 +11,7 @@ The Cranelift codegen backend is distributed in nightly builds on Linux, macOS a
 install it using Rustup, you can do that by running:
 
 ```bash
-$ rustup component add rustc-codegen-cranelift-preview --toolchain nightly
+rustup component add rustc-codegen-cranelift-preview --toolchain nightly
 ```
 
 Once it is installed, you can enable it with one of the following approaches:
@@ -47,16 +47,16 @@ If you want to use `cargo clif build` instead of having to specify the full path
 If you want to build the backend manually, you can download it from GitHub and build it yourself:
 
 ```bash
-$ git clone https://github.com/rust-lang/rustc_codegen_cranelift
-$ cd rustc_codegen_cranelift
-$ ./y.sh build
+git clone https://github.com/rust-lang/rustc_codegen_cranelift
+cd rustc_codegen_cranelift
+./y.sh build
 ```
 
 To run the test suite replace the last command with:
 
 ```bash
-$ ./y.sh prepare # only needs to be run the first time
-$ ./test.sh
+./y.sh prepare # only needs to be run the first time
+./test.sh
 ```
 
 For more docs on how to build and test see [build_system/usage.txt](build_system/usage.txt) or the help message of `./y.sh`.
@@ -90,7 +90,7 @@ Assuming `$cg_clif_dir` is the directory you cloned this repo into and you follo
 In the directory with your project (where you can do the usual `cargo build`), run:
 
 ```bash
-$ $cg_clif_dir/dist/cargo-clif build
+$cg_clif_dir/dist/cargo-clif build
 ```
 
 This will build your project with rustc_codegen_cranelift instead of the usual LLVM backend.
