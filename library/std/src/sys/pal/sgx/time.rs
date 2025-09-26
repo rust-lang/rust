@@ -2,45 +2,61 @@ use super::abi::usercalls;
 use crate::time::Duration;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
-pub struct Instant(Duration);
+pub struct Instant {
+    nanos: u64,
+}
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
-pub struct SystemTime(Duration);
+pub struct SystemTime {
+    nanos: u64,
+}
 
-pub const UNIX_EPOCH: SystemTime = SystemTime(Duration::from_secs(0));
+pub const UNIX_EPOCH: SystemTime = SystemTime { nanos: 0 };
 
 impl Instant {
     pub fn now() -> Instant {
-        Instant(usercalls::insecure_time())
+        Instant { nanos: usercalls::insecure_time() }
     }
 
     pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
-        self.0.checked_sub(other.0)
+        let nanos = self.nanos.checked_sub(other.nanos)?;
+        Some(Duration::from_nanos(nanos))
     }
 
     pub fn checked_add_duration(&self, other: &Duration) -> Option<Instant> {
-        Some(Instant(self.0.checked_add(*other)?))
+        let to_add = other.as_nanos().try_into().ok()?;
+        let nanos = self.nanos.checked_add(to_add)?;
+        Some(Instant { nanos })
     }
 
     pub fn checked_sub_duration(&self, other: &Duration) -> Option<Instant> {
-        Some(Instant(self.0.checked_sub(*other)?))
+        let to_sub = other.as_nanos().try_into().ok()?;
+        let nanos = self.nanos.checked_sub(to_sub)?;
+        Some(Instant { nanos })
     }
 }
 
 impl SystemTime {
     pub fn now() -> SystemTime {
-        SystemTime(usercalls::insecure_time())
+        SystemTime { nanos: usercalls::insecure_time() }
     }
 
     pub fn sub_time(&self, other: &SystemTime) -> Result<Duration, Duration> {
-        self.0.checked_sub(other.0).ok_or_else(|| other.0 - self.0)
+        self.nanos
+            .checked_sub(other.nanos)
+            .map(Duration::from_nanos)
+            .ok_or_else(|| Duration::from_nanos(other.nanos - self.nanos))
     }
 
     pub fn checked_add_duration(&self, other: &Duration) -> Option<SystemTime> {
-        Some(SystemTime(self.0.checked_add(*other)?))
+        let to_add = other.as_nanos().try_into().ok()?;
+        let nanos = self.nanos.checked_add(to_add)?;
+        Some(SystemTime { nanos })
     }
 
     pub fn checked_sub_duration(&self, other: &Duration) -> Option<SystemTime> {
-        Some(SystemTime(self.0.checked_sub(*other)?))
+        let to_sub = other.as_nanos().try_into().ok()?;
+        let nanos = self.nanos.checked_sub(to_sub)?;
+        Some(SystemTime { nanos })
     }
 }

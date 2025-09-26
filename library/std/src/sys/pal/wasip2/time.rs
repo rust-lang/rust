@@ -1,8 +1,12 @@
 use crate::time::Duration;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
-pub struct Instant(Duration);
+pub struct Instant {
+    nanos: wasip2::clocks::monotonic_clock::Instant,
+}
 
+// WASIp2's datetime is identical to our `Duration` in terms of its representable
+// range, so use `Duration` to simplify the implementation below.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 pub struct SystemTime(Duration);
 
@@ -10,23 +14,28 @@ pub const UNIX_EPOCH: SystemTime = SystemTime(Duration::from_secs(0));
 
 impl Instant {
     pub fn now() -> Instant {
-        Instant(Duration::from_nanos(wasip2::clocks::monotonic_clock::now()))
+        Instant { nanos: wasip2::clocks::monotonic_clock::now() }
+    }
+
+    pub fn to_wasi_instant(self) -> wasip2::clocks::monotonic_clock::Instant {
+        self.nanos
     }
 
     pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
-        self.0.checked_sub(other.0)
+        let nanos = self.nanos.checked_sub(other.nanos)?;
+        Some(Duration::from_nanos(nanos))
     }
 
     pub fn checked_add_duration(&self, other: &Duration) -> Option<Instant> {
-        Some(Instant(self.0.checked_add(*other)?))
+        let to_add = other.as_nanos().try_into().ok()?;
+        let nanos = self.nanos.checked_add(to_add)?;
+        Some(Instant { nanos })
     }
 
     pub fn checked_sub_duration(&self, other: &Duration) -> Option<Instant> {
-        Some(Instant(self.0.checked_sub(*other)?))
-    }
-
-    pub(crate) fn as_duration(&self) -> &Duration {
-        &self.0
+        let to_sub = other.as_nanos().try_into().ok()?;
+        let nanos = self.nanos.checked_sub(to_sub)?;
+        Some(Instant { nanos })
     }
 }
 
@@ -40,8 +49,9 @@ impl SystemTime {
         SystemTime(Duration::from_nanos(ts))
     }
 
-    pub fn to_wasi_timestamp(&self) -> Option<wasi::Timestamp> {
-        self.0.as_nanos().try_into().ok()
+    pub fn to_wasi_timestamp(self) -> wasi::Timestamp {
+        // FIXME: use the WASIp2 filesystem proposal, which accepts a WASIp2 datetime.
+        self.0.as_nanos().try_into().expect("error converting WASIp2 datetime to WASIp1 timestamp")
     }
 
     pub fn sub_time(&self, other: &SystemTime) -> Result<Duration, Duration> {

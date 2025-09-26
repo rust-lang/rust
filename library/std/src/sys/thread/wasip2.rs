@@ -12,21 +12,6 @@ pub fn sleep(dur: Duration) {
 }
 
 pub fn sleep_until(deadline: Instant) {
-    match u64::try_from(deadline.into_inner().as_duration().as_nanos()) {
-        // If the point in time we're sleeping to fits within a 64-bit
-        // number of nanoseconds then directly use `subscribe_instant`.
-        Ok(deadline) => {
-            wasip2::clocks::monotonic_clock::subscribe_instant(deadline).block();
-        }
-        // ... otherwise we're sleeping for 500+ years relative to the
-        // "start" of what the system is using as a clock so speed/accuracy
-        // is not so much of a concern. Use `sleep` instead.
-        Err(_) => {
-            let now = Instant::now();
-
-            if let Some(delay) = deadline.checked_duration_since(now) {
-                sleep(delay);
-            }
-        }
-    }
+    wasip2::clocks::monotonic_clock::subscribe_instant(deadline.into_inner().to_wasi_instant())
+        .block();
 }
