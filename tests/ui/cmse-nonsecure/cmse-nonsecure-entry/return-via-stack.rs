@@ -1,10 +1,10 @@
 //@ add-core-stubs
 //@ compile-flags: --target thumbv8m.main-none-eabi --crate-type lib
 //@ needs-llvm-components: arm
-//@ add-core-stubs
 
 #![feature(cmse_nonsecure_entry, no_core, lang_items)]
 #![no_core]
+#![warn(cmse_uninitialized_leak)]
 
 extern crate minicore;
 use minicore::*;
@@ -59,26 +59,4 @@ pub extern "cmse-nonsecure-entry" fn u128() -> u128 {
 pub extern "cmse-nonsecure-entry" fn i128() -> i128 {
     //~^ ERROR [E0798]
     456
-}
-
-#[repr(Rust)]
-pub union ReprRustUnionU64 {
-    _unused: u64,
-}
-
-#[repr(C)]
-pub union ReprCUnionU64 {
-    _unused: u64,
-}
-
-#[no_mangle]
-#[allow(improper_ctypes_definitions)]
-pub extern "cmse-nonsecure-entry" fn union_rust() -> ReprRustUnionU64 {
-    //~^ ERROR [E0798]
-    ReprRustUnionU64 { _unused: 1 }
-}
-#[no_mangle]
-pub extern "cmse-nonsecure-entry" fn union_c() -> ReprCUnionU64 {
-    //~^ ERROR [E0798]
-    ReprCUnionU64 { _unused: 2 }
 }

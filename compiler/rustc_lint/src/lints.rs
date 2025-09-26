@@ -1467,6 +1467,12 @@ pub(crate) struct NonLocalDefinitionsCargoUpdateNote {
     pub crate_name: Symbol,
 }
 
+// cmse_uninitialized_leak.rs
+#[derive(LintDiagnostic)]
+#[diag(lint_cmse_union_may_leak_information)]
+#[note]
+pub(crate) struct CmseUnionMayLeakInformation;
+
 // precedence.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_ambiguous_negative_literals)]

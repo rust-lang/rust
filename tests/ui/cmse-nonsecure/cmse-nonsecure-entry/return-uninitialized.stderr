@@ -1,0 +1,62 @@
+warning: passing a union across the security boundary may leak information
+  --> $DIR/return-uninitialized.rs:20:5
+   |
+LL |     ReprRustUnionU64 { _unused: 1 }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the bits not used by the current variant may contain stale secure data
+   = note: `#[warn(cmse_uninitialized_leak)]` on by default
+
+warning: passing a union across the security boundary may leak information
+  --> $DIR/return-uninitialized.rs:26:5
+   |
+LL |     MaybeUninit::uninit()
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the bits not used by the current variant may contain stale secure data
+
+warning: passing a union across the security boundary may leak information
+  --> $DIR/return-uninitialized.rs:36:5
+   |
+LL |     MaybeUninit::new(3.14)
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the bits not used by the current variant may contain stale secure data
+
+warning: passing a union across the security boundary may leak information
+  --> $DIR/return-uninitialized.rs:33:9
+   |
+LL |         return MaybeUninit::new(6.28);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the bits not used by the current variant may contain stale secure data
+
+warning: `extern` fn uses type `ReprRustUnionU64`, which is not FFI-safe
+  --> $DIR/return-uninitialized.rs:44:66
+   |
+LL | pub extern "cmse-nonsecure-entry" fn repr_transparent_union() -> Wrapper {
+   |                                                                  ^^^^^^^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this union
+   = note: this union has unspecified layout
+note: the type is defined here
+  --> $DIR/return-uninitialized.rs:13:1
+   |
+LL | pub union ReprRustUnionU64 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `#[warn(improper_ctypes_definitions)]` on by default
+
+warning: passing a union across the security boundary may leak information
+  --> $DIR/return-uninitialized.rs:46:5
+   |
+LL | /     match 0 {
+LL | |
+LL | |         0 => Wrapper(ReprRustUnionU64 { _unused: 1 }),
+LL | |         _ => Wrapper(ReprRustUnionU64 { _unused: 2 }),
+LL | |     }
+   | |_____^
+   |
+   = note: the bits not used by the current variant may contain stale secure data
+
+warning: 6 warnings emitted
+
