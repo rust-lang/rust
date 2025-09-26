@@ -87,8 +87,11 @@ pub trait Delegate: Sized {
         input: <Self::Cx as Cx>::Input,
     ) -> <Self::Cx as Cx>::Result;
     fn is_initial_provisional_result(result: <Self::Cx as Cx>::Result) -> Option<PathKind>;
-    fn on_stack_overflow(cx: Self::Cx, input: <Self::Cx as Cx>::Input) -> <Self::Cx as Cx>::Result;
-    fn on_fixpoint_overflow(
+    fn stack_overflow_result(
+        cx: Self::Cx,
+        input: <Self::Cx as Cx>::Input,
+    ) -> <Self::Cx as Cx>::Result;
+    fn fixpoint_overflow_result(
         cx: Self::Cx,
         input: <Self::Cx as Cx>::Input,
     ) -> <Self::Cx as Cx>::Result;
@@ -885,7 +888,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         }
 
         debug!("encountered stack overflow");
-        D::on_stack_overflow(cx, input)
+        D::stack_overflow_result(cx, input)
     }
 
     /// When reevaluating a goal with a changed provisional result, all provisional cache entry
@@ -1033,7 +1036,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
                         RebaseReason::Ambiguity => {
                             *result = D::propagate_ambiguity(cx, input, *result);
                         }
-                        RebaseReason::Overflow => *result = D::on_fixpoint_overflow(cx, input),
+                        RebaseReason::Overflow => *result = D::fixpoint_overflow_result(cx, input),
                         RebaseReason::ReachedFixpoint(None) => {}
                         RebaseReason::ReachedFixpoint(Some(path_kind)) => {
                             if !popped_head.usages.is_single(path_kind) {
@@ -1362,7 +1365,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
             i += 1;
             if i >= D::FIXPOINT_STEP_LIMIT {
                 debug!("canonical cycle overflow");
-                let result = D::on_fixpoint_overflow(cx, input);
+                let result = D::fixpoint_overflow_result(cx, input);
                 self.rebase_provisional_cache_entries(cx, &stack_entry, RebaseReason::Overflow);
                 return EvaluationResult::finalize(stack_entry, encountered_overflow, result);
             }

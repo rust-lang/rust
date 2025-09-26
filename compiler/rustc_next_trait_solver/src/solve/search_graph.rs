@@ -91,11 +91,11 @@ where
         }
     }
 
-    fn on_stack_overflow(cx: I, input: CanonicalInput<I>) -> QueryResult<I> {
+    fn stack_overflow_result(cx: I, input: CanonicalInput<I>) -> QueryResult<I> {
         response_no_constraints(cx, input, Certainty::overflow(true))
     }
 
-    fn on_fixpoint_overflow(cx: I, input: CanonicalInput<I>) -> QueryResult<I> {
+    fn fixpoint_overflow_result(cx: I, input: CanonicalInput<I>) -> QueryResult<I> {
         response_no_constraints(cx, input, Certainty::overflow(false))
     }
 
