@@ -1,6 +1,6 @@
 //@ compile-flags: -Copt-level=3
 //@ revisions: new old
-//@ [old] ignore-llvm-version: 22 - 99
+//@ [old] max-llvm-major-version: 21
 //@ [new] min-llvm-version: 22
 
 #![crate_type = "lib"]
