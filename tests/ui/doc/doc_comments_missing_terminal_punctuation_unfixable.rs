@@ -4,9 +4,10 @@
 // Only line doc comments are provided with suggestions.
 //@no-rustfix
 
-/**
+/// Sometimes a doc attribute is used for concatenation
+/// ```
+#[doc = ""]
+/// ```
 //~^ doc_comments_missing_terminal_punctuation
- * Block doc comments work
- *
- */
-struct BlockDocComment;
+struct DocAttribute;
+

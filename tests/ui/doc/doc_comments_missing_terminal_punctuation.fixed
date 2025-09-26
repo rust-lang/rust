@@ -36,8 +36,9 @@ enum Exceptions {
     /// HTML content is however not checked:
     /// <em>Raw HTML is allowed as well</em>
     RawHtml,
-    /// The raw HTML exception also unfortunately results in ignoring autolinks too:
-    /// <https://spec.commonmark.org/0.31.2/#autolinks>
+    /// The raw HTML exception actually does the right thing to autolinks:
+    /// <https://spec.commonmark.org/0.31.2/#autolinks>.
+    //~^ doc_comments_missing_terminal_punctuation
     MarkdownAutolink,
     /// | Exception      | Note  |
     /// | -------------- | ----- |
@@ -77,7 +78,7 @@ mod module {
 enum Trailers {
     /// (Sometimes the last sentence is in parentheses, and that's ok.)
     ParensPassing,
-    /// (But sometimes it is missing a period.)
+    /// (But sometimes it is missing a period).
     //~^ doc_comments_missing_terminal_punctuation
     ParensFailing,
     /// **Sometimes the last sentence is in bold, and that's ok.**
@@ -131,12 +132,16 @@ struct TrailingBlankLine;
 //~^ doc_comments_missing_terminal_punctuation
 struct OnlyLastSentence;
 
-/// Sometimes a doc attribute is used for concatenation:
 /// ```
-#[doc = ""]
-/// ```
-struct DocAttribute;
+struct IncompleteBlockCode;
 
 #[expect(clippy::empty_docs)]
 ///
 struct EmptyDocComment;
+
+/**
+ * Block doc comments work.
+ *
+ */
+//~^^^ doc_comments_missing_terminal_punctuation
+struct BlockDocComment;

@@ -1,12 +1,8 @@
 error: doc comments should end with a terminal punctuation mark
-  --> tests/ui/doc/doc_comments_missing_terminal_punctuation_unfixable.rs:7:1
+  --> tests/ui/doc/doc_comments_missing_terminal_punctuation_unfixable.rs:10:1
    |
-LL | / /**
-LL | |
-LL | |  * Block doc comments work
-LL | |  *
-LL | |  */
-   | |___^
+LL | /// ```
+   | ^^^^^^^
    |
    = note: `-D clippy::doc-comments-missing-terminal-punctuation` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::doc_comments_missing_terminal_punctuation)]`

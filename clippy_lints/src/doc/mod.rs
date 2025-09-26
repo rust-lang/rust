@@ -733,7 +733,6 @@ impl_lint_pass!(Documentation => [
 impl EarlyLintPass for Documentation {
     fn check_attributes(&mut self, cx: &EarlyContext<'_>, attrs: &[rustc_ast::Attribute]) {
         include_in_doc_without_cfg::check(cx, attrs);
-        doc_comments_missing_terminal_punctuation::check(cx, attrs);
     }
 }
 
@@ -893,6 +892,15 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
             Some(&mut fake_broken_link_callback),
         )
         .into_offset_iter(),
+        &doc,
+        Fragments {
+            doc: &doc,
+            fragments: &fragments,
+        },
+    );
+
+    doc_comments_missing_terminal_punctuation::check(
+        cx,
         &doc,
         Fragments {
             doc: &doc,
