@@ -1,5 +1,10 @@
 #![expect(dead_code)]
 
+
+use tracing::info;
+
+use std::path::Path;
+
 use libc::{c_char, c_uint};
 
 use super::MetadataKindId;
@@ -107,18 +112,20 @@ pub(crate) struct EnzymeFns {
             }
             dbg!("starting");
             dbg!("Loading Enzyme");
-            let lib = unsafe {libloading::Library::new("/home/manuel/prog/rust/build/x86_64-unknown-linux-gnu/enzyme/lib/libEnzyme-21.so")?};
+            use std::sync::OnceLock;
+            static ENZYME_PATH: OnceLock<String> = OnceLock::new();
+            assert!(ENZYME_PATH.get().is_some());
+            let mypath = ENZYME_PATH.get().unwrap(); // load Library from mypath
+            let lib = unsafe {libloading::Library::new(mypath)?};
+            //let lib = unsafe {libloading::Library::new("/home/manuel/prog/rust/build/x86_64-unknown-linux-gnu/enzyme/lib/libEnzyme-21.so")?};
             dbg!("second");
             let EnzymeSetCLBool: libloading::Symbol<'_, SetFlag> = unsafe{lib.get(b"EnzymeSetCLBool")?};
             dbg!("third");
             let registerEnzymeAndPassPipeline =
                 load_ptr(&lib, b"registerEnzymeAndPassPipeline").unwrap() as *const c_void;
             dbg!("fourth");
-            //let EnzymeSetCLBool: libloading::Symbol<'_, unsafe extern "C" fn(&mut c_void, u8) -> ()> = unsafe{lib.get(b"registerEnzymeAndPassPipeline")?};
-            //let EnzymeSetCLBool = unsafe {EnzymeSetCLBool.try_as_raw_ptr().unwrap()};
             let EnzymeSetCLString: libloading::Symbol<'_, SetFlag> = unsafe{ lib.get(b"EnzymeSetCLString")?};
             dbg!("done");
-            //let EnzymeSetCLString = unsafe {EnzymeSetCLString.try_as_raw_ptr().unwrap()};
 
             let EnzymePrintPerf = load_ptr(&lib, b"EnzymePrintPerf").unwrap();
             let EnzymePrintActivity = load_ptr(&lib, b"EnzymePrintActivity").unwrap();
@@ -141,8 +148,6 @@ pub(crate) struct EnzymeFns {
                 looseTypeAnalysis,
                 EnzymeInline,
                 RustTypeRules,
-                //EnzymeSetCLBool: EnzymeFns {set_cl: unsafe{*EnzymeSetCLBool}},
-                //EnzymeSetCLString: EnzymeFns {set_cl: unsafe{*EnzymeSetCLString}},
                 EnzymeSetCLBool: EnzymeFns {set_cl: *EnzymeSetCLBool},
                 EnzymeSetCLString: EnzymeFns {set_cl: *EnzymeSetCLString},
                 registerEnzymeAndPassPipeline,
@@ -152,16 +157,71 @@ pub(crate) struct EnzymeFns {
             Ok(wrap)
         }
 use std::sync::Mutex;
+use rustc_middle::bug;
+use tracing::info;
+use rustc_session::filesearch;
+use rustc_session::Session;
+use rustc_session::config::host_tuple;
 unsafe impl Sync for EnzymeWrapper {}
 unsafe impl Send for EnzymeWrapper {}
     impl EnzymeWrapper {
         pub(crate) fn current() -> &'static Mutex<EnzymeWrapper> {
             use std::sync::OnceLock;
             static CELL: OnceLock<Mutex<EnzymeWrapper>> = OnceLock::new();
+            static ENZYME_PATH: OnceLock<String> = OnceLock::new();
             fn init_enzyme() -> Mutex<EnzymeWrapper> {
                 call_dynamic().unwrap().into()
             }
+            ENZYME_PATH.wait();
+            //if ENZYME_PATH.get().is_none() {
+            //    bug!("enzyme path is none!");
+            //}
             CELL.get_or_init(|| init_enzyme())
+        }
+        pub(crate) fn set_path(session: &Session) -> String {
+            fn get_enzyme_path(session: &Session) -> String {
+                dbg!("starting");
+                dbg!("Loading Enzyme");
+                let target = host_tuple();
+                let lib_ext = std::env::consts::DLL_EXTENSION;
+                let sysroot = &session.opts.sysroot;
+                //dbg!(sysroot);
+
+                let sysroot = sysroot
+                    .all_paths()
+                    .map(|sysroot| {
+                        filesearch::make_target_lib_path(sysroot, target).join("lib").with_file_name("libEnzyme-21").with_extension(lib_ext)
+                        //filesearch::make_target_lib_path(sysroot, target).join("lib").with_file_name("lib")
+                    })
+                    .find(|f| {
+                        info!("Enzyme candidate: {}", f.display());
+                        f.exists()
+                    })
+                    .unwrap_or_else(|| {
+                        let candidates = sysroot
+                            .all_paths()
+                            .map(|p| p.join("lib").display().to_string())
+                            .collect::<Vec<_>>()
+                            .join("\n* ");
+                        let err = format!(
+                            "failed to find a `libEnzyme` folder \
+                                       in the sysroot candidates:\n* {candidates}"
+                        );
+                        dbg!(&err);
+                        bug!("asdf");
+                        //early_dcx.early_fatal(err);
+                    });
+
+                info!("probing {} for a codegen backend", sysroot.display());
+                let enzyme_path = sysroot.to_str().unwrap().to_string();
+                //dbg!(&enzyme_path);
+                enzyme_path
+            }
+            use std::sync::OnceLock;
+            static ENZYME_PATH: OnceLock<String> = OnceLock::new();
+            ENZYME_PATH.get_or_init(|| get_enzyme_path(session)).to_string()
+            //ENZYME_PATH.get().unwrap().to_string()
+            //ENZYME_PATH.get_or_init(|| get_enzyme_path(session)).clone()
         }
         pub(crate) fn set_print_perf(&mut self, print: bool) {
             unsafe {

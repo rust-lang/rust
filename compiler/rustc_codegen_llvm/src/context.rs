@@ -834,6 +834,7 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     }
 
     fn sess(&self) -> &Session {
+        let _enzyme = crate::llvm::EnzymeWrapper::set_path(self.tcx.sess);
         self.tcx.sess
     }
 
