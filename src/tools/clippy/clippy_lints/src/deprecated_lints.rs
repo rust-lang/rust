@@ -139,7 +139,7 @@ declare_with_version! { RENAMED(RENAMED_VERSION) = [
     #[clippy::version = "1.80.0"]
     ("clippy::mismatched_target_os", "unexpected_cfgs"),
     #[clippy::version = "1.91.0"]
-    ("clippy::needless_maybe_sized", "redundant_sizedness_bound"),
+    ("clippy::needless_maybe_sized", "redundant_sizedness_bounds"),
     #[clippy::version = ""]
     ("clippy::new_without_default_derive", "clippy::new_without_default"),
     #[clippy::version = ""]

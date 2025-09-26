@@ -1,4 +1,4 @@
-#![allow(redundant_sizedness_bound)]
+#![allow(redundant_sizedness_bounds)]
 #![warn(clippy::type_repetition_in_bounds)]
 
 fn f<T>()

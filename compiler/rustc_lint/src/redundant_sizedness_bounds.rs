@@ -10,46 +10,45 @@ use rustc_span::symbol::Ident;
 use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {
-    /// The `redundant_sizedness_bound` lint detects redundant sizedness bounds applied to type parameters that are already
-    /// otherwise implied.
+    /// The `redundant_sizedness_bounds` lint detects redundant sizedness bounds
+    /// applied to type parameters that are already otherwise implied.
     ///
     /// ### Example
     ///
     /// ```rust
-    /// #![feature(sized_hierarchy)]
-    /// use std::marker::MetaSized;
     /// // `T` must be `Sized` due to the bound `Clone`, thus `?Sized` is redundant.
     /// fn f<T: Clone + ?Sized>(t: &T) {}
-    /// // `T` is `Sized` due to `Clone` bound, thereby implying `MetaSized` and making the explicit `MetaSized` bound redundant.
-    /// fn g<T: MetaSized + Clone>(t: &T) {}
+    /// // `T` is `Sized` due to `Default` bound, thus the explicit `Sized` bound is redundant.
+    /// fn g<T: Default + Sized>(t: &T) {}
     /// ```
     ///
     /// {{produces}}
     ///
     /// ### Explanation
     ///
-    /// Sizedness bounds that have no effect as another bound implies a greater degree of sizedness are potentially misleading
-    /// This lint notifies the user of such redundant bounds.
-    pub REDUNDANT_SIZEDNESS_BOUND,
+    /// Sizedness bounds that have no effect, as another bound implies `Sized`,
+    /// are redundant and can be misleading. This lint notifies the user of
+    /// these redundant bounds.
+    pub REDUNDANT_SIZEDNESS_BOUNDS,
     Warn,
     "a sizedness bound that is redundant due to another bound"
 }
-declare_lint_pass!(RedundantSizednessBound => [REDUNDANT_SIZEDNESS_BOUND]);
+declare_lint_pass!(RedundantSizednessBounds => [REDUNDANT_SIZEDNESS_BOUNDS]);
 
 struct Bound<'tcx> {
-    /// The [`DefId`] of the type parameter the bound refers to
+    /// The [`DefId`] of the type parameter the bound refers to.
     param: DefId,
-    /// Identifier of type parameter
+    /// Identifier of type parameter.
     ident: Ident,
-    /// A reference to the trait bound applied to the parameter
+    /// A reference to the trait bound applied to the parameter.
     trait_bound: &'tcx PolyTraitRef<'tcx>,
-    /// The index of the predicate within the generics predicate list
+    /// The index of the predicate within the generics predicate list.
     predicate_pos: usize,
-    /// Position of the bound in the bounds list of a predicate
+    /// Position of the bound in the bounds list of a predicate.
     bound_pos: usize,
 }
 
-/// Finds all of the [`Bound`]s that refer to a type parameter and are not from a macro expansion
+/// Finds all of the [`Bound`]s that refer to a type parameter and are not from a macro expansion.
 fn type_param_bounds<'tcx>(generics: &'tcx Generics<'tcx>) -> impl Iterator<Item = Bound<'tcx>> {
     generics
         .predicates
@@ -80,7 +79,7 @@ fn type_param_bounds<'tcx>(generics: &'tcx Generics<'tcx>) -> impl Iterator<Item
 }
 
 /// Searches the supertraits of the trait referred to by `trait_bound` recursively, returning the
-/// path taken to find the `target` bound if one is found
+/// path taken to find the `target` bound if one is found.
 fn path_to_bound(
     cx: &LateContext<'_>,
     trait_bound: &PolyTraitRef<'_>,
@@ -115,8 +114,8 @@ fn path_to_bound(
     search(cx, &mut path, target).then_some(path)
 }
 
-// Checks if there exists a bound `redundant_bound` that is already implied by `implicit_bound`
-fn check_redundant_sizedness_bound(
+// Checks if there exists a bound `redundant_bound` that is already implied by `implicit_bound`.
+fn check_redundant_sizedness_bounds(
     redundant_bound: DefId,
     redundant_bound_polarity: BoundPolarity,
     implicit_bound: DefId,
@@ -142,7 +141,7 @@ fn check_redundant_sizedness_bound(
                 _ => "",
             };
             cx.span_lint(
-                REDUNDANT_SIZEDNESS_BOUND,
+                REDUNDANT_SIZEDNESS_BOUNDS,
                 redundant_sized_bound.trait_bound.span,
                 |diag| {
                     let redundant_bound_str = cx.tcx.def_path_str(redundant_bound);
@@ -188,7 +187,7 @@ fn check_redundant_sizedness_bound(
     false
 }
 
-impl LateLintPass<'_> for RedundantSizednessBound {
+impl LateLintPass<'_> for RedundantSizednessBounds {
     fn check_generics(&mut self, cx: &LateContext<'_>, generics: &Generics<'_>) {
         let Some(sized_trait) = cx.tcx.lang_items().sized_trait() else {
             return;
@@ -200,7 +199,7 @@ impl LateLintPass<'_> for RedundantSizednessBound {
             return;
         };
 
-        if check_redundant_sizedness_bound(
+        if check_redundant_sizedness_bounds(
             sized_trait,
             BoundPolarity::Maybe(Default::default()),
             sized_trait,
@@ -209,7 +208,7 @@ impl LateLintPass<'_> for RedundantSizednessBound {
         ) {
             return;
         }
-        if check_redundant_sizedness_bound(
+        if check_redundant_sizedness_bounds(
             meta_sized_trait,
             BoundPolarity::Positive,
             sized_trait,
@@ -218,7 +217,7 @@ impl LateLintPass<'_> for RedundantSizednessBound {
         ) {
             return;
         }
-        if check_redundant_sizedness_bound(
+        if check_redundant_sizedness_bounds(
             pointee_sized_trait,
             BoundPolarity::Positive,
             sized_trait,
@@ -227,7 +226,7 @@ impl LateLintPass<'_> for RedundantSizednessBound {
         ) {
             return;
         }
-        if check_redundant_sizedness_bound(
+        if check_redundant_sizedness_bounds(
             pointee_sized_trait,
             BoundPolarity::Positive,
             meta_sized_trait,
