@@ -6,12 +6,11 @@
 
 //@ revisions: current next
 //@[next] compile-flags: -Znext-solver
-//@[current] check-pass
+//@ check-pass
 
 fn foo(b: bool) -> impl Iterator<Item = ()> {
     if b {
         foo(false).next().unwrap();
-        //[next]~^ ERROR type annotations needed
     }
     std::iter::empty()
 }

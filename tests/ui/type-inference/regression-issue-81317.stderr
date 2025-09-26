@@ -5,7 +5,7 @@ LL |     let iv = S ^ index.into();
    |         ^^
 LL |
 LL |     &iv.to_bytes_be();
-   |      -- type must be known at this point
+   |         ----------- type must be known at this point
    |
 help: consider giving `iv` an explicit type
    |

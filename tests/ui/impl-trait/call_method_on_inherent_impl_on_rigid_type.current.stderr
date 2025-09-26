@@ -1,5 +1,5 @@
 error[E0599]: no method named `my_debug` found for reference `&impl Debug` in the current scope
-  --> $DIR/call_method_on_inherent_impl_on_rigid_type.rs:16:11
+  --> $DIR/call_method_on_inherent_impl_on_rigid_type.rs:15:11
    |
 LL |         x.my_debug();
    |           ^^^^^^^^ method not found in `&impl Debug`

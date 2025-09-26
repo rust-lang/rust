@@ -1,7 +1,6 @@
 //! A utility module to inspect currently ambiguous obligations in the current context.
 
 use rustc_infer::traits::{self, ObligationCause, PredicateObligations};
-use rustc_middle::traits::solve::GoalSource;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_span::Span;
 use rustc_trait_selection::solve::Certainty;
@@ -37,10 +36,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> bool {
         match predicate.kind().skip_binder() {
             ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => {
-                self.type_matches_expected_vid(expected_vid, data.self_ty())
+                self.type_matches_expected_vid(data.self_ty(), expected_vid)
             }
             ty::PredicateKind::Clause(ty::ClauseKind::Projection(data)) => {
-                self.type_matches_expected_vid(expected_vid, data.projection_term.self_ty())
+                self.type_matches_expected_vid(data.projection_term.self_ty(), expected_vid)
             }
             ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(..))
             | ty::PredicateKind::Subtype(..)
@@ -60,7 +59,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self), ret)]
-    fn type_matches_expected_vid(&self, expected_vid: ty::TyVid, ty: Ty<'tcx>) -> bool {
+    fn type_matches_expected_vid(&self, ty: Ty<'tcx>, expected_vid: ty::TyVid) -> bool {
         let ty = self.shallow_resolve(ty);
         debug!(?ty);
 
@@ -76,7 +75,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         self_ty: ty::TyVid,
     ) -> PredicateObligations<'tcx> {
-        let obligations = self.fulfillment_cx.borrow().pending_obligations();
+        let sub_root_var = self.sub_unification_table_root_var(self_ty);
+        let obligations = self
+            .fulfillment_cx
+            .borrow()
+            .pending_obligations_potentially_referencing_sub_root(sub_root_var);
         debug!(?obligations);
         let mut obligations_for_self_ty = PredicateObligations::new();
         for obligation in obligations {
@@ -125,23 +128,21 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for NestedObligationsForSelfTy<'a, 'tcx> {
             return;
         }
 
+        // We don't care about any pending goals which don't actually
+        // use the self type.
+        if !inspect_goal
+            .orig_values()
+            .iter()
+            .filter_map(|arg| arg.as_type())
+            .any(|ty| self.fcx.type_matches_expected_vid(ty, self.self_ty))
+        {
+            debug!(goal = ?inspect_goal.goal(), "goal does not mention self type");
+            return;
+        }
+
         let tcx = self.fcx.tcx;
         let goal = inspect_goal.goal();
-        if self.fcx.predicate_has_self_ty(goal.predicate, self.self_ty)
-            // We do not push the instantiated forms of goals as it would cause any
-            // aliases referencing bound vars to go from having escaping bound vars to
-            // being able to be normalized to an inference variable.
-            //
-            // This is mostly just a hack as arbitrary nested goals could still contain
-            // such aliases while having a different `GoalSource`. Closure signature inference
-            // however can't really handle *every* higher ranked `Fn` goal also being present
-            // in the form of `?c: Fn<(<?x as Trait<'!a>>::Assoc)`.
-            //
-            // This also just better matches the behaviour of the old solver where we do not
-            // encounter instantiated forms of goals, only nested goals that referred to bound
-            // vars from instantiated goals.
-            && !matches!(inspect_goal.source(), GoalSource::InstantiateHigherRanked)
-        {
+        if self.fcx.predicate_has_self_ty(goal.predicate, self.self_ty) {
             self.obligations_for_self_ty.push(traits::Obligation::new(
                 tcx,
                 self.root_cause.clone(),

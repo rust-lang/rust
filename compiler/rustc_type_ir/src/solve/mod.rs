@@ -78,8 +78,6 @@ pub enum GoalSource {
     ImplWhereBound,
     /// Const conditions that need to hold for `[const]` alias bounds to hold.
     AliasBoundConstCondition,
-    /// Instantiating a higher-ranked goal and re-proving it.
-    InstantiateHigherRanked,
     /// Predicate required for an alias projection to be well-formed.
     /// This is used in three places:
     /// 1. projecting to an opaque whose hidden type is already registered in
@@ -108,19 +106,6 @@ pub struct QueryInput<I: Interner, P> {
 }
 
 impl<I: Interner, P: Eq> Eq for QueryInput<I, P> {}
-
-/// Opaques that are defined in the inference context before a query is called.
-#[derive_where(Clone, Hash, PartialEq, Debug, Default; I: Interner)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
-#[cfg_attr(
-    feature = "nightly",
-    derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
-)]
-pub struct PredefinedOpaquesData<I: Interner> {
-    pub opaque_types: Vec<(ty::OpaqueTypeKey<I>, I::Ty)>,
-}
-
-impl<I: Interner> Eq for PredefinedOpaquesData<I> {}
 
 /// Possible ways the given goal can be proven.
 #[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
