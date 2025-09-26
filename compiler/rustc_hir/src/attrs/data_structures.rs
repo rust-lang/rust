@@ -363,6 +363,20 @@ pub struct LinkEntry {
     pub import_name_type: Option<(PeImportNameType, Span)>,
 }
 
+#[derive(HashStable_Generic, PrintAttribute)]
+#[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Debug, Encodable, Decodable)]
+pub enum DebuggerVisualizerType {
+    Natvis,
+    GdbPrettyPrinter,
+}
+
+#[derive(Debug, Encodable, Decodable, Clone, HashStable_Generic, PrintAttribute)]
+pub struct DebugVisualizer {
+    pub span: Span,
+    pub visualizer_type: DebuggerVisualizerType,
+    pub path: Symbol,
+}
+
 /// Represents parsed *built-in* inert attributes.
 ///
 /// ## Overview
@@ -485,7 +499,10 @@ pub enum AttributeKind {
     /// Represents `#[custom_mir]`.
     CustomMir(Option<(MirDialect, Span)>, Option<(MirPhase, Span)>, Span),
 
-    ///Represents `#[rustc_deny_explicit_impl]`.
+    /// Represents `#[debugger_visualizer]`.
+    DebuggerVisualizer(ThinVec<DebugVisualizer>),
+
+    /// Represents `#[rustc_deny_explicit_impl]`.
     DenyExplicitImpl(Span),
 
     /// Represents [`#[deprecated]`](https://doc.rust-lang.org/stable/reference/attributes/diagnostics.html#the-deprecated-attribute).

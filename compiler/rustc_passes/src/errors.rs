@@ -476,23 +476,6 @@ pub(crate) struct MacroOnlyAttribute {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_debug_visualizer_placement)]
-pub(crate) struct DebugVisualizerPlacement {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_debug_visualizer_invalid)]
-#[note(passes_note_1)]
-#[note(passes_note_2)]
-#[note(passes_note_3)]
-pub(crate) struct DebugVisualizerInvalid {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(passes_debug_visualizer_unreadable)]
 pub(crate) struct DebugVisualizerUnreadable<'a> {
     #[primary_span]
