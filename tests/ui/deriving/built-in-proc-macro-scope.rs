@@ -10,7 +10,7 @@ extern crate another_proc_macro;
 
 use another_proc_macro::{AnotherMacro, pointee};
 
-#[derive(core::marker::CoercePointee)]
+#[derive(core::ops::CoercePointee)]
 #[repr(transparent)]
 pub struct Ptr<'a, #[pointee] T: ?Sized> {
     data: &'a mut T,

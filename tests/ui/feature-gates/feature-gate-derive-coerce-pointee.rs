@@ -1,4 +1,4 @@
-use std::marker::CoercePointee; //~ ERROR use of unstable library feature `derive_coerce_pointee`
+use std::ops::CoercePointee; //~ ERROR use of unstable library feature `derive_coerce_pointee`
 
 #[derive(CoercePointee)] //~ ERROR use of unstable library feature `derive_coerce_pointee`
 #[repr(transparent)]

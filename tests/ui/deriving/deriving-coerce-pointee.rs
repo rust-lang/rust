@@ -1,7 +1,7 @@
 //@ run-pass
 #![feature(derive_coerce_pointee, arbitrary_self_types)]
 
-use std::marker::CoercePointee;
+use std::ops::CoercePointee;
 
 #[derive(CoercePointee)]
 #[repr(transparent)]
