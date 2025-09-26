@@ -74,13 +74,21 @@ where
         }
     }
 
-    fn is_initial_provisional_result(
-        cx: Self::Cx,
-        kind: PathKind,
-        input: CanonicalInput<I>,
-        result: QueryResult<I>,
-    ) -> bool {
-        Self::initial_provisional_result(cx, kind, input) == result
+    fn is_initial_provisional_result(result: QueryResult<I>) -> Option<PathKind> {
+        match result {
+            Ok(response) => {
+                if has_no_inference_or_external_constraints(response) {
+                    if response.value.certainty == Certainty::Yes {
+                        return Some(PathKind::Coinductive);
+                    } else if response.value.certainty == Certainty::overflow(false) {
+                        return Some(PathKind::Unknown);
+                    }
+                }
+
+                None
+            }
+            Err(NoSolution) => Some(PathKind::Inductive),
+        }
     }
 
     fn on_stack_overflow(cx: I, input: CanonicalInput<I>) -> QueryResult<I> {
