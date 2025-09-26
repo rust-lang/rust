@@ -1274,7 +1274,6 @@ fn pre_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) -> 
     for &elem in projection.iter().rev() {
         match elem {
             ProjectionElem::OpaqueCast(_)
-            | ProjectionElem::Subtype(_)
             | ProjectionElem::Downcast(_, _)
             | ProjectionElem::Field(_, _) => {
                 write!(fmt, "(")?;
@@ -1299,9 +1298,6 @@ fn post_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) ->
         match elem {
             ProjectionElem::OpaqueCast(ty) => {
                 write!(fmt, " as {ty})")?;
-            }
-            ProjectionElem::Subtype(ty) => {
-                write!(fmt, " as subtype {ty})")?;
             }
             ProjectionElem::Downcast(Some(name), _index) => {
                 write!(fmt, " as {name})")?;

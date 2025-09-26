@@ -956,11 +956,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             let layout = o.layout.for_variant(bx.cx(), vidx);
                             o = OperandRef { val: o.val, layout }
                         }
-                        mir::PlaceElem::Subtype(subtype_ty) => {
-                            let subtype_ty = self.monomorphize(subtype_ty);
-                            let layout = self.cx.layout_of(subtype_ty);
-                            o = OperandRef { val: o.val, layout }
-                        }
                         _ => return None,
                     }
                 }

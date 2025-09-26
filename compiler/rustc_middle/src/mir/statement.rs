@@ -222,7 +222,6 @@ impl<'tcx> PlaceTy<'tcx> {
                 fty,
             )),
             ProjectionElem::OpaqueCast(ty) => PlaceTy::from_ty(handle_opaque_cast_and_subtype(ty)),
-            ProjectionElem::Subtype(ty) => PlaceTy::from_ty(handle_opaque_cast_and_subtype(ty)),
 
             // FIXME(unsafe_binders): Rename `handle_opaque_cast_and_subtype` to be more general.
             ProjectionElem::UnwrapUnsafeBinder(ty) => {
@@ -244,7 +243,6 @@ impl<V, T> ProjectionElem<V, T> {
             Self::Field(_, _)
             | Self::Index(_)
             | Self::OpaqueCast(_)
-            | Self::Subtype(_)
             | Self::ConstantIndex { .. }
             | Self::Subslice { .. }
             | Self::Downcast(_, _)
@@ -259,7 +257,6 @@ impl<V, T> ProjectionElem<V, T> {
             Self::Deref | Self::Index(_) => false,
             Self::Field(_, _)
             | Self::OpaqueCast(_)
-            | Self::Subtype(_)
             | Self::ConstantIndex { .. }
             | Self::Subslice { .. }
             | Self::Downcast(_, _)
@@ -286,7 +283,6 @@ impl<V, T> ProjectionElem<V, T> {
             | Self::Field(_, _) => true,
             Self::ConstantIndex { from_end: true, .. }
             | Self::Index(_)
-            | Self::Subtype(_)
             | Self::OpaqueCast(_)
             | Self::Subslice { .. } => false,
 
@@ -319,7 +315,6 @@ impl<V, T> ProjectionElem<V, T> {
                 ProjectionElem::Subslice { from, to, from_end }
             }
             ProjectionElem::OpaqueCast(ty) => ProjectionElem::OpaqueCast(t(ty)),
-            ProjectionElem::Subtype(ty) => ProjectionElem::Subtype(t(ty)),
             ProjectionElem::UnwrapUnsafeBinder(ty) => ProjectionElem::UnwrapUnsafeBinder(t(ty)),
             ProjectionElem::Index(val) => ProjectionElem::Index(v(val)?),
         })
@@ -706,7 +701,8 @@ impl<'tcx> Rvalue<'tcx> {
                 | CastKind::PtrToPtr
                 | CastKind::PointerCoercion(_, _)
                 | CastKind::PointerWithExposedProvenance
-                | CastKind::Transmute,
+                | CastKind::Transmute
+                | CastKind::Subtype,
                 _,
                 _,
             )

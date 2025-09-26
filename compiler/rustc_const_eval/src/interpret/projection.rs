@@ -395,8 +395,6 @@ where
                 span_bug!(self.cur_span(), "OpaqueCast({ty}) encountered after borrowck")
             }
             UnwrapUnsafeBinder(target) => base.transmute(self.layout_of(target)?, self)?,
-            // We don't want anything happening here, this is here as a dummy.
-            Subtype(_) => base.transmute(base.layout(), self)?,
             Field(field, _) => self.project_field(base, field)?,
             Downcast(_, variant) => self.project_downcast(base, variant)?,
             Deref => self.deref_pointer(&base.to_op(self)?)?.into(),
