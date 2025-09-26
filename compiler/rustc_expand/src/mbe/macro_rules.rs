@@ -894,12 +894,12 @@ fn check_redundant_vis_repetition(
     seq: &SequenceRepetition,
     span: &DelimSpan,
 ) {
-    let is_zero_or_one: bool = seq.kleene.op == KleeneOp::ZeroOrOne;
-    let is_vis = seq.tts.first().map_or(false, |tt| {
-        matches!(tt, mbe::TokenTree::MetaVarDecl { kind: NonterminalKind::Vis, .. })
-    });
-
-    if is_vis && is_zero_or_one {
+    if seq.kleene.op == KleeneOp::ZeroOrOne
+        && matches!(
+            seq.tts.first(),
+            Some(mbe::TokenTree::MetaVarDecl { kind: NonterminalKind::Vis, .. })
+        )
+    {
         err.note("a `vis` fragment can already be empty");
         err.multipart_suggestion(
             "remove the `$(` and `)?`",
