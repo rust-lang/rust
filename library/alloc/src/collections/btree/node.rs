@@ -225,7 +225,11 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::Leaf> {
     }
 
     fn from_new_leaf<A: Allocator + Clone>(leaf: Box<LeafNode<K, V>, A>) -> Self {
-        NodeRef { height: 0, node: NonNull::from(Box::leak(leaf)), _marker: PhantomData }
+        // The allocator must be dropped, not leaked.  See also `BTreeMap::alloc`.
+        let (leaf, _alloc) = Box::into_raw_with_allocator(leaf);
+        // SAFETY: the node was just allocated.
+        let node = unsafe { NonNull::new_unchecked(leaf) };
+        NodeRef { height: 0, node, _marker: PhantomData }
     }
 }
 
@@ -243,7 +247,11 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::Internal> {
         height: usize,
     ) -> Self {
         debug_assert!(height > 0);
-        let node = NonNull::from(Box::leak(internal)).cast();
+        // The allocator must be dropped, not leaked.  See also `BTreeMap::alloc`.
+        let (internal, _alloc) = Box::into_raw_with_allocator(internal);
+        // SAFETY: the node was just allocated.
+        let internal = unsafe { NonNull::new_unchecked(internal) };
+        let node = internal.cast();
         let mut this = NodeRef { height, node, _marker: PhantomData };
         this.borrow_mut().correct_all_childrens_parent_links();
         this

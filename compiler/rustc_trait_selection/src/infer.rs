@@ -9,7 +9,7 @@ use rustc_middle::infer::canonical::{
     Canonical, CanonicalQueryInput, CanonicalQueryResponse, QueryResponse,
 };
 use rustc_middle::traits::query::NoSolution;
-use rustc_middle::ty::{self, GenericArg, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, Upcast};
+use rustc_middle::ty::{self, GenericArg, Ty, TyCtxt, TypeFoldable, Upcast};
 use rustc_span::DUMMY_SP;
 use tracing::instrument;
 
@@ -31,19 +31,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
     fn type_is_copy_modulo_regions(&self, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
         let ty = self.resolve_vars_if_possible(ty);
-
-        // FIXME(#132279): This should be removed as it causes us to incorrectly
-        // handle opaques in their defining scope, and stalled coroutines.
-        if !self.next_trait_solver() && !(param_env, ty).has_infer() && !ty.has_coroutines() {
-            return self.tcx.type_is_copy_modulo_regions(self.typing_env(param_env), ty);
-        }
-
         let copy_def_id = self.tcx.require_lang_item(LangItem::Copy, DUMMY_SP);
-
-        // This can get called from typeck (by euv), and `moves_by_default`
-        // rightly refuses to work with inference variables, but
-        // moves_by_default has a cache, which we want to use in other
-        // cases.
         traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, copy_def_id)
     }
 

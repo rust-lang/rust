@@ -739,7 +739,7 @@ This flag can be passed multiple times to nest wrappers.
 
 ## Passing arguments to rustc when compiling doctests
 
-You can use the `--doctest-compilation-args` flag if you want to add options when compiling the
+You can use the `--doctest-build-arg` flag if you want to add options when compiling the
 doctest. For example if you have:
 
 ```rust,no_run
@@ -784,10 +784,10 @@ failures:
 test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
 ```
 
-But if you can limit the lint level to warning by using `--doctest_compilation_args=--cap-lints=warn`:
+But if you can limit the lint level to warning by using `--doctest-build-arg=--cap-lints=warn`:
 
 ```console
-$ rustdoc --test --doctest_compilation_args=--cap-lints=warn file.rs
+$ rustdoc --test --doctest-build-arg=--cap-lints=warn file.rs
 
 running 1 test
 test tests/rustdoc-ui/doctest/rustflags.rs - Bar (line 5) ... ok
@@ -795,24 +795,8 @@ test tests/rustdoc-ui/doctest/rustflags.rs - Bar (line 5) ... ok
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
 ```
 
-The parsing of arguments works as follows: if it encounters a `"` or a `'`, it will continue
-until it finds the character unescaped (without a prepending `\`). If not inside a string, a
-whitespace character will also split arguments. Example:
-
-```text
-"hello 'a'\" ok" how are   'you today?'
-```
-
-will be split as follows:
-
-```text
-[
-    "hello 'a'\" ok",
-    "how",
-    "are",
-    "you today?",
-]
-```
+In order to pass multiple arguments to the underlying compiler,
+pass `--doctest-build-arg ARG` for each argument `ARG`.
 
 ## `--generate-macro-expansion`: Generate macros expansion toggles in source code
 

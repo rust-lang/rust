@@ -143,6 +143,12 @@ pub enum LayoutError<'tcx> {
     #[diag(middle_layout_size_overflow)]
     Overflow { ty: Ty<'tcx> },
 
+    #[diag(middle_layout_simd_too_many)]
+    SimdTooManyLanes { ty: Ty<'tcx>, max_lanes: u64 },
+
+    #[diag(middle_layout_simd_zero_length)]
+    SimdZeroLength { ty: Ty<'tcx> },
+
     #[diag(middle_layout_normalization_failure)]
     NormalizationFailure { ty: Ty<'tcx>, failure_ty: String },
 

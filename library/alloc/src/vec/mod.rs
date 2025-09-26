@@ -2020,7 +2020,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn swap_remove(&mut self, index: usize) -> T {
         #[cold]
-        #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+        #[cfg_attr(not(panic = "immediate-abort"), inline(never))]
         #[track_caller]
         #[optimize(size)]
         fn assert_failed(index: usize, len: usize) -> ! {
@@ -2102,7 +2102,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[must_use = "if you don't need a reference to the value, use `Vec::insert` instead"]
     pub fn insert_mut(&mut self, index: usize, element: T) -> &mut T {
         #[cold]
-        #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+        #[cfg_attr(not(panic = "immediate-abort"), inline(never))]
         #[track_caller]
         #[optimize(size)]
         fn assert_failed(index: usize, len: usize) -> ! {
@@ -2166,16 +2166,44 @@ impl<T, A: Allocator> Vec<T, A> {
     #[rustc_confusables("delete", "take")]
     pub fn remove(&mut self, index: usize) -> T {
         #[cold]
-        #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+        #[cfg_attr(not(panic = "immediate-abort"), inline(never))]
         #[track_caller]
         #[optimize(size)]
         fn assert_failed(index: usize, len: usize) -> ! {
             panic!("removal index (is {index}) should be < len (is {len})");
         }
 
+        match self.try_remove(index) {
+            Some(elem) => elem,
+            None => assert_failed(index, self.len()),
+        }
+    }
+
+    /// Remove and return the element at position `index` within the vector,
+    /// shifting all elements after it to the left, or [`None`] if it does not
+    /// exist.
+    ///
+    /// Note: Because this shifts over the remaining elements, it has a
+    /// worst-case performance of *O*(*n*). If you'd like to remove
+    /// elements from the beginning of the `Vec`, consider using
+    /// [`VecDeque::pop_front`] instead.
+    ///
+    /// [`VecDeque::pop_front`]: crate::collections::VecDeque::pop_front
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vec_try_remove)]
+    /// let mut v = vec![1, 2, 3];
+    /// assert_eq!(v.try_remove(0), Some(1));
+    /// assert_eq!(v.try_remove(2), None);
+    /// ```
+    #[unstable(feature = "vec_try_remove", issue = "146954")]
+    #[rustc_confusables("delete", "take", "remove")]
+    pub fn try_remove(&mut self, index: usize) -> Option<T> {
         let len = self.len();
         if index >= len {
-            assert_failed(index, len);
+            return None;
         }
         unsafe {
             // infallible
@@ -2191,7 +2219,7 @@ impl<T, A: Allocator> Vec<T, A> {
                 ptr::copy(ptr.add(1), ptr, len - index - 1);
             }
             self.set_len(len - 1);
-            ret
+            Some(ret)
         }
     }
 
@@ -2955,7 +2983,7 @@ impl<T, A: Allocator> Vec<T, A> {
         A: Clone,
     {
         #[cold]
-        #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+        #[cfg_attr(not(panic = "immediate-abort"), inline(never))]
         #[track_caller]
         #[optimize(size)]
         fn assert_failed(at: usize, len: usize) -> ! {

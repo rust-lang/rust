@@ -548,6 +548,18 @@ macro_rules! nonzero_integer {
         #[doc = concat!("assert_eq!(align_of::<", stringify!($Ty), ">(), align_of::<Option<", stringify!($Ty), ">>());")]
         /// ```
         ///
+        /// # Compile-time creation
+        ///
+        /// Since both [`Option::unwrap()`] and [`Option::expect()`] are `const`, it is possible to
+        /// define a new
+        #[doc = concat!("`", stringify!($Ty), "`")]
+        /// at compile time via:
+        /// ```
+        #[doc = concat!("use std::num::", stringify!($Ty), ";")]
+        ///
+        #[doc = concat!("const TEN: ", stringify!($Ty), " = ", stringify!($Ty) , r#"::new(10).expect("ten is non-zero");"#)]
+        /// ```
+        ///
         /// [null pointer optimization]: crate::option#representation
         #[$stability]
         pub type $Ty = NonZero<$Int>;

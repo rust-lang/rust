@@ -8,6 +8,7 @@ use rustc_middle::middle::region;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
+use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::cast::{CastTy, mir_cast_kind};
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, Ty, UpvarArgs};
@@ -656,6 +657,27 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         block.and(rvalue)
     }
 
+    /// Recursively inspect a THIR expression and probe through unsizing
+    /// operations that can be const-folded today.
+    fn check_constness(&self, mut kind: &'a ExprKind<'tcx>) -> bool {
+        loop {
+            debug!(?kind, "check_constness");
+            match kind {
+                &ExprKind::ValueTypeAscription { source: eid, user_ty: _, user_ty_span: _ }
+                | &ExprKind::Use { source: eid }
+                | &ExprKind::PointerCoercion {
+                    cast: PointerCoercion::Unsize,
+                    source: eid,
+                    is_from_as_cast: _,
+                }
+                | &ExprKind::Scope { region_scope: _, lint_level: _, value: eid } => {
+                    kind = &self.thir[eid].kind
+                }
+                _ => return matches!(Category::of(&kind), Some(Category::Constant)),
+            }
+        }
+    }
+
     fn build_zero_repeat(
         &mut self,
         mut block: BasicBlock,
@@ -666,7 +688,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let this = self;
         let value_expr = &this.thir[value];
         let elem_ty = value_expr.ty;
-        if let Some(Category::Constant) = Category::of(&value_expr.kind) {
+        if this.check_constness(&value_expr.kind) {
             // Repeating a const does nothing
         } else {
             // For a non-const, we may need to generate an appropriate `Drop`

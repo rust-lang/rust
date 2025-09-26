@@ -840,8 +840,8 @@ unsafe fn bidirectional_merge<T: FreezeMarker, F: FnMut(&T, &T) -> bool>(
     }
 }
 
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
-#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[cfg_attr(not(panic = "immediate-abort"), inline(never), cold)]
+#[cfg_attr(panic = "immediate-abort", inline)]
 fn panic_on_ord_violation() -> ! {
     // This is indicative of a logic bug in the user-provided comparison function or Ord
     // implementation. They are expected to implement a total order as explained in the Ord

@@ -3,44 +3,23 @@
 
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 
-#[cfg(feature = "in-rust-tree")]
-extern crate rustc_index;
+// FIXME: We used to import `rustc_*` deps from `rustc_private` with `feature = "in-rust-tree" but
+// temporarily switched to crates.io versions due to hardships that working on them from rustc
+// demands corresponding changes on rust-analyzer at the same time.
+// For details, see the zulip discussion below:
+// https://rust-lang.zulipchat.com/#narrow/channel/185405-t-compiler.2Frust-analyzer/topic/relying.20on.20in-tree.20.60rustc_type_ir.60.2F.60rustc_next_trait_solver.60/with/541055689
 
-#[cfg(not(feature = "in-rust-tree"))]
 extern crate ra_ap_rustc_index as rustc_index;
 
-#[cfg(feature = "in-rust-tree")]
-extern crate rustc_abi;
-
-#[cfg(not(feature = "in-rust-tree"))]
 extern crate ra_ap_rustc_abi as rustc_abi;
 
-#[cfg(feature = "in-rust-tree")]
-extern crate rustc_pattern_analysis;
-
-#[cfg(not(feature = "in-rust-tree"))]
 extern crate ra_ap_rustc_pattern_analysis as rustc_pattern_analysis;
 
-#[cfg(feature = "in-rust-tree")]
-extern crate rustc_ast_ir;
-
-#[cfg(not(feature = "in-rust-tree"))]
 extern crate ra_ap_rustc_ast_ir as rustc_ast_ir;
 
-#[cfg(feature = "in-rust-tree")]
-extern crate rustc_type_ir;
-
-#[cfg(not(feature = "in-rust-tree"))]
 extern crate ra_ap_rustc_type_ir as rustc_type_ir;
 
-#[cfg(feature = "in-rust-tree")]
-extern crate rustc_next_trait_solver;
-
-#[cfg(not(feature = "in-rust-tree"))]
 extern crate ra_ap_rustc_next_trait_solver as rustc_next_trait_solver;
-
-#[cfg(feature = "in-rust-tree")]
-extern crate rustc_data_structures as ena;
 
 mod builder;
 mod chalk_db;

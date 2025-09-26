@@ -128,9 +128,9 @@ dependencies = [
 
 [[package]]
 name = "anstyle-svg"
-version = "0.1.10"
+version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc03a770ef506fe1396c0e476120ac0e6523cf14b74218dd5f18cd6833326fa9"
+checksum = "26b9ec8c976eada1b0f9747a3d7cc4eae3bef10613e443746e7487f26c872fde"
 dependencies = [
  "anstyle",
  "anstyle-lossy",
@@ -1331,6 +1331,12 @@ dependencies = [
  "libredox",
  "windows-sys 0.59.0",
 ]
+
+[[package]]
+name = "find-msvc-tools"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1ced73b1dacfc750a6db6c0a0c3a3853c8b41997e2e2c563dc90804ae6867959"
 
 [[package]]
 name = "flate2"
@@ -3556,7 +3562,7 @@ dependencies = [
  "ar_archive_writer",
  "bitflags",
  "bstr",
- "cc",
+ "find-msvc-tools",
  "itertools",
  "libc",
  "object 0.37.3",
@@ -4760,7 +4766,7 @@ dependencies = [
 name = "rustc_windows_rc"
 version = "0.0.0"
 dependencies = [
- "cc",
+ "find-msvc-tools",
 ]
 
 [[package]]

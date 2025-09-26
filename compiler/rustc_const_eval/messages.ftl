@@ -476,14 +476,20 @@ const_eval_validation_invalid_vtable_trait = {$front_matter}: wrong trait in wid
 const_eval_validation_mutable_ref_in_const = {$front_matter}: encountered mutable reference in `const` value
 const_eval_validation_mutable_ref_to_immutable = {$front_matter}: encountered mutable reference or box pointing to read-only memory
 const_eval_validation_never_val = {$front_matter}: encountered a value of the never type `!`
-const_eval_validation_null_box = {$front_matter}: encountered a null box
+const_eval_validation_null_box = {$front_matter}: encountered a {$maybe ->
+    [true] maybe-null
+    *[false] null
+  } box
 const_eval_validation_null_fn_ptr = {$front_matter}: encountered a null function pointer
-const_eval_validation_null_ref = {$front_matter}: encountered a null reference
-const_eval_validation_nullable_ptr_out_of_range = {$front_matter}: encountered a potentially null pointer, but expected something that cannot possibly fail to be {$in_range}
+const_eval_validation_null_ref = {$front_matter}: encountered a {$maybe ->
+    [true] maybe-null
+    *[false] null
+  } reference
+const_eval_validation_nonnull_ptr_out_of_range = {$front_matter}: encountered a maybe-null pointer, but expected something that is definitely non-zero
 const_eval_validation_out_of_range = {$front_matter}: encountered {$value}, but expected something {$in_range}
 const_eval_validation_partial_pointer = {$front_matter}: encountered a partial pointer or a mix of pointers
 const_eval_validation_pointer_as_int = {$front_matter}: encountered a pointer, but {$expected}
-const_eval_validation_ptr_out_of_range = {$front_matter}: encountered a pointer, but expected something that cannot possibly fail to be {$in_range}
+const_eval_validation_ptr_out_of_range = {$front_matter}: encountered a pointer with unknown absolute address, but expected something that is definitely {$in_range}
 const_eval_validation_ref_to_uninhabited = {$front_matter}: encountered a reference pointing to uninhabited type {$ty}
 const_eval_validation_unaligned_box = {$front_matter}: encountered an unaligned box (required {$required_bytes} byte alignment but found {$found_bytes})
 const_eval_validation_unaligned_ref = {$front_matter}: encountered an unaligned reference (required {$required_bytes} byte alignment but found {$found_bytes})

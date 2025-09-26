@@ -370,7 +370,8 @@ pub(crate) unsafe fn create_module<'ll>(
         );
     }
 
-    if let Some(BranchProtection { bti, pac_ret }) = sess.opts.unstable_opts.branch_protection {
+    if let Some(BranchProtection { bti, pac_ret, gcs }) = sess.opts.unstable_opts.branch_protection
+    {
         if sess.target.arch == "aarch64" {
             llvm::add_module_flag_u32(
                 llmod,
@@ -402,6 +403,12 @@ pub(crate) unsafe fn create_module<'ll>(
                 llvm::ModuleFlagMergeBehavior::Min,
                 "sign-return-address-with-bkey",
                 u32::from(pac_opts.key == PAuthKey::B),
+            );
+            llvm::add_module_flag_u32(
+                llmod,
+                llvm::ModuleFlagMergeBehavior::Min,
+                "guarded-control-stack",
+                gcs.into(),
             );
         } else {
             bug!(
@@ -1037,7 +1044,10 @@ impl<'tcx, 'll> HasTypingEnv<'tcx> for CodegenCx<'ll, 'tcx> {
 impl<'tcx> LayoutOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
     #[inline]
     fn handle_layout_err(&self, err: LayoutError<'tcx>, span: Span, ty: Ty<'tcx>) -> ! {
-        if let LayoutError::SizeOverflow(_) | LayoutError::ReferencesError(_) = err {
+        if let LayoutError::SizeOverflow(_)
+        | LayoutError::ReferencesError(_)
+        | LayoutError::InvalidSimd { .. } = err
+        {
             self.tcx.dcx().emit_fatal(Spanned { span, node: err.into_diagnostic() })
         } else {
             self.tcx.dcx().emit_fatal(ssa_errors::FailedToGetLayout { span, ty, err })
@@ -1054,7 +1064,11 @@ impl<'tcx> FnAbiOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
         fn_abi_request: FnAbiRequest<'tcx>,
     ) -> ! {
         match err {
-            FnAbiError::Layout(LayoutError::SizeOverflow(_) | LayoutError::Cycle(_)) => {
+            FnAbiError::Layout(
+                LayoutError::SizeOverflow(_)
+                | LayoutError::Cycle(_)
+                | LayoutError::InvalidSimd { .. },
+            ) => {
                 self.tcx.dcx().emit_fatal(Spanned { span, node: err });
             }
             _ => match fn_abi_request {

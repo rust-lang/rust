@@ -505,6 +505,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let mut constraints = Default::default();
         let mut liveness_constraints =
             LivenessValues::without_specific_points(Rc::new(DenseLocationMap::new(promoted_body)));
+        let mut deferred_closure_requirements = Default::default();
 
         // Don't try to add borrow_region facts for the promoted MIR as they refer
         // to the wrong locations.
@@ -512,6 +513,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             mem::swap(this.polonius_facts, polonius_facts);
             mem::swap(&mut this.constraints.outlives_constraints, &mut constraints);
             mem::swap(&mut this.constraints.liveness_constraints, &mut liveness_constraints);
+            mem::swap(this.deferred_closure_requirements, &mut deferred_closure_requirements);
         };
 
         swap_constraints(self);
@@ -536,6 +538,17 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
             self.constraints.outlives_constraints.push(constraint)
         }
+
+        // If there are nested bodies in promoteds, we also need to update their
+        // location to something in the actual body, not the promoted.
+        //
+        // We don't update the constraint categories of the resulting constraints
+        // as returns in nested bodies are a proper return, even if that nested body
+        // is in a promoted.
+        for (closure_def_id, args, _locations) in deferred_closure_requirements {
+            self.deferred_closure_requirements.push((closure_def_id, args, locations));
+        }
+
         // If the region is live at least one location in the promoted MIR,
         // then add a liveness constraint to the main MIR for this region
         // at the location provided as an argument to this method

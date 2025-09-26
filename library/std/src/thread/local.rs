@@ -230,7 +230,7 @@ impl fmt::Display for AccessError {
 impl Error for AccessError {}
 
 // This ensures the panicking code is outlined from `with` for `LocalKey`.
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+#[cfg_attr(not(panic = "immediate-abort"), inline(never))]
 #[track_caller]
 #[cold]
 fn panic_access_error(err: AccessError) -> ! {

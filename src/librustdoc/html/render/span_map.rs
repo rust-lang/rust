@@ -2,11 +2,9 @@ use std::path::{Path, PathBuf};
 
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{
-    ExprKind, HirId, Item, ItemKind, Mod, Node, Pat, PatExpr, PatExprKind, PatKind, QPath,
-};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
+use rustc_hir::intravisit::{self, Visitor, VisitorExt};
+use rustc_hir::{ExprKind, HirId, Item, ItemKind, Mod, Node, QPath};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::hygiene::MacroKind;
@@ -67,7 +65,7 @@ struct SpanMapVisitor<'tcx> {
 
 impl SpanMapVisitor<'_> {
     /// This function is where we handle `hir::Path` elements and add them into the "span map".
-    fn handle_path(&mut self, path: &rustc_hir::Path<'_>) {
+    fn handle_path(&mut self, path: &rustc_hir::Path<'_>, only_use_last_segment: bool) {
         match path.res {
             // FIXME: For now, we handle `DefKind` if it's not a `DefKind::TyParam`.
             // Would be nice to support them too alongside the other `DefKind`
@@ -79,24 +77,36 @@ impl SpanMapVisitor<'_> {
                     LinkFromSrc::External(def_id)
                 };
                 // In case the path ends with generics, we remove them from the span.
-                let span = path
-                    .segments
-                    .last()
-                    .map(|last| {
-                        // In `use` statements, the included item is not in the path segments.
-                        // However, it doesn't matter because you can't have generics on `use`
-                        // statements.
-                        if path.span.contains(last.ident.span) {
-                            path.span.with_hi(last.ident.span.hi())
-                        } else {
-                            path.span
-                        }
-                    })
-                    .unwrap_or(path.span);
+                let span = if only_use_last_segment
+                    && let Some(path_span) = path.segments.last().map(|segment| segment.ident.span)
+                {
+                    path_span
+                } else {
+                    path.segments
+                        .last()
+                        .map(|last| {
+                            // In `use` statements, the included item is not in the path segments.
+                            // However, it doesn't matter because you can't have generics on `use`
+                            // statements.
+                            if path.span.contains(last.ident.span) {
+                                path.span.with_hi(last.ident.span.hi())
+                            } else {
+                                path.span
+                            }
+                        })
+                        .unwrap_or(path.span)
+                };
                 self.matches.insert(span, link);
             }
             Res::Local(_) if let Some(span) = self.tcx.hir_res_span(path.res) => {
-                self.matches.insert(path.span, LinkFromSrc::Local(clean::Span::new(span)));
+                let path_span = if only_use_last_segment
+                    && let Some(path_span) = path.segments.last().map(|segment| segment.ident.span)
+                {
+                    path_span
+                } else {
+                    path.span
+                };
+                self.matches.insert(path_span, LinkFromSrc::Local(clean::Span::new(span)));
             }
             Res::PrimTy(p) => {
                 // FIXME: Doesn't handle "path-like" primitives like arrays or tuples.
@@ -189,31 +199,23 @@ impl SpanMapVisitor<'_> {
             self.matches.insert(span, link);
         }
     }
+}
 
-    fn handle_pat(&mut self, p: &Pat<'_>) {
-        let mut check_qpath = |qpath, hir_id| match qpath {
-            QPath::TypeRelative(_, path) if matches!(path.res, Res::Err) => {
-                self.infer_id(path.hir_id, Some(hir_id), qpath.span());
-            }
-            QPath::Resolved(_, path) => self.handle_path(path),
-            _ => {}
-        };
-        match p.kind {
-            PatKind::Binding(_, _, _, Some(p)) => self.handle_pat(p),
-            PatKind::Struct(qpath, _, _) | PatKind::TupleStruct(qpath, _, _) => {
-                check_qpath(qpath, p.hir_id)
-            }
-            PatKind::Expr(PatExpr { kind: PatExprKind::Path(qpath), hir_id, .. }) => {
-                check_qpath(*qpath, *hir_id)
-            }
-            PatKind::Or(pats) => {
-                for pat in pats {
-                    self.handle_pat(pat);
-                }
-            }
-            _ => {}
+// This is a reimplementation of `hir_enclosing_body_owner` which allows to fail without
+// panicking.
+fn hir_enclosing_body_owner(tcx: TyCtxt<'_>, hir_id: HirId) -> Option<LocalDefId> {
+    for (_, node) in tcx.hir_parent_iter(hir_id) {
+        // FIXME: associated type impl items don't have an associated body, so we don't handle
+        // them currently.
+        if let Node::ImplItem(impl_item) = node
+            && matches!(impl_item.kind, rustc_hir::ImplItemKind::Type(_))
+        {
+            return None;
+        } else if let Some((def_id, _)) = node.associated_body() {
+            return Some(def_id);
         }
     }
+    None
 }
 
 impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
@@ -227,12 +229,42 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
         if self.handle_macro(path.span) {
             return;
         }
-        self.handle_path(path);
+        self.handle_path(path, false);
         intravisit::walk_path(self, path);
     }
 
-    fn visit_pat(&mut self, p: &Pat<'tcx>) {
-        self.handle_pat(p);
+    fn visit_qpath(&mut self, qpath: &QPath<'tcx>, id: HirId, _span: Span) {
+        match *qpath {
+            QPath::TypeRelative(qself, path) => {
+                if matches!(path.res, Res::Err) {
+                    let tcx = self.tcx;
+                    if let Some(body_id) = hir_enclosing_body_owner(tcx, id) {
+                        let typeck_results = tcx.typeck_body(tcx.hir_body_owned_by(body_id).id());
+                        let path = rustc_hir::Path {
+                            // We change the span to not include parens.
+                            span: path.ident.span,
+                            res: typeck_results.qpath_res(qpath, id),
+                            segments: &[],
+                        };
+                        self.handle_path(&path, false);
+                    }
+                } else {
+                    self.infer_id(path.hir_id, Some(id), path.ident.span);
+                }
+
+                rustc_ast::visit::try_visit!(self.visit_ty_unambig(qself));
+                self.visit_path_segment(path);
+            }
+            QPath::Resolved(maybe_qself, path) => {
+                self.handle_path(path, true);
+
+                rustc_ast::visit::visit_opt!(self, visit_ty_unambig, maybe_qself);
+                if !self.handle_macro(path.span) {
+                    intravisit::walk_path(self, path);
+                }
+            }
+            _ => {}
+        }
     }
 
     fn visit_mod(&mut self, m: &'tcx Mod<'tcx>, span: Span, id: HirId) {

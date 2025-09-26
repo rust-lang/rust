@@ -256,6 +256,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::MacroEscape( .. )
                     | AttributeKind::RustcLayoutScalarValidRangeStart(..)
                     | AttributeKind::RustcLayoutScalarValidRangeEnd(..)
+                    | AttributeKind::RustcSimdMonomorphizeLaneLimit(..)
                     | AttributeKind::ExportStable
                     | AttributeKind::FfiConst(..)
                     | AttributeKind::UnstableFeatureBound(..)

@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Output, Stdio};
 use std::{env, fmt, fs, io, mem, str};
 
-use cc::windows_registry;
+use find_msvc_tools;
 use itertools::Itertools;
 use regex::Regex;
 use rustc_arena::TypedArena;
@@ -47,8 +47,8 @@ use rustc_span::Symbol;
 use rustc_target::spec::crt_objects::CrtObjects;
 use rustc_target::spec::{
     BinaryFormat, Cc, LinkOutputKind, LinkSelfContainedComponents, LinkSelfContainedDefault,
-    LinkerFeatures, LinkerFlavor, LinkerFlavorCli, Lld, PanicStrategy, RelocModel, RelroLevel,
-    SanitizerSet, SplitDebuginfo,
+    LinkerFeatures, LinkerFlavor, LinkerFlavorCli, Lld, RelocModel, RelroLevel, SanitizerSet,
+    SplitDebuginfo,
 };
 use tracing::{debug, info, warn};
 
@@ -877,9 +877,9 @@ fn link_natively(
                     // All Microsoft `link.exe` linking ror codes are
                     // four digit numbers in the range 1000 to 9999 inclusive
                     if is_msvc_link_exe && (code < 1000 || code > 9999) {
-                        let is_vs_installed = windows_registry::find_vs_version().is_ok();
+                        let is_vs_installed = find_msvc_tools::find_vs_version().is_ok();
                         let has_linker =
-                            windows_registry::find_tool(&sess.target.arch, "link.exe").is_some();
+                            find_msvc_tools::find_tool(&sess.target.arch, "link.exe").is_some();
 
                         sess.dcx().emit_note(errors::LinkExeUnexpectedError);
 
@@ -2512,10 +2512,10 @@ fn add_order_independent_options(
     if sess.target.os == "emscripten" {
         cmd.cc_arg(if sess.opts.unstable_opts.emscripten_wasm_eh {
             "-fwasm-exceptions"
-        } else if sess.panic_strategy() == PanicStrategy::Abort {
-            "-sDISABLE_EXCEPTION_CATCHING=1"
-        } else {
+        } else if sess.panic_strategy().unwinds() {
             "-sDISABLE_EXCEPTION_CATCHING=0"
+        } else {
+            "-sDISABLE_EXCEPTION_CATCHING=1"
         });
     }
 

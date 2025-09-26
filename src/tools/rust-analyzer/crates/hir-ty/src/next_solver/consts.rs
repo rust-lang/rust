@@ -36,8 +36,6 @@ impl<'db> Const<'db> {
             internee: kind,
             flags: flags.flags,
             outer_exclusive_binder: flags.outer_exclusive_binder,
-            #[cfg(feature = "in-rust-tree")]
-            stable_hash: ena::fingerprint::Fingerprint::ZERO,
         };
         Const::new_(interner.db(), InternedWrapperNoDebug(cached))
     }
