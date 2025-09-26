@@ -1,6 +1,5 @@
 #![feature(reborrow)]
-use std::marker::Reborrow;
-use std::ops::CoerceShared;
+use std::ops::{CoerceShared, Reborrow};
 
 struct CustomMut<'a, T>(&'a mut T);
 impl<'a, T> Reborrow for CustomMut<'a, T> {}

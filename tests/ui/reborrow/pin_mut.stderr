@@ -11,8 +11,8 @@ LL |     let _ = method(a);
 note: consider changing this parameter type in function `method` to borrow instead if owning the value isn't necessary
   --> $DIR/pin_mut.rs:3:14
    |
-LL | fn method(a: Pin<& mut ()>) {}
-   |    ------    ^^^^^^^^^^^^^ this parameter takes ownership of the value
+LL | fn method(a: Pin<&mut ()>) {}
+   |    ------    ^^^^^^^^^^^^ this parameter takes ownership of the value
    |    |
    |    in this function
 

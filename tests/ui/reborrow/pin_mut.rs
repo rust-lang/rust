@@ -1,6 +1,6 @@
 use std::pin::Pin;
 
-fn method(a: Pin<& mut ()>) {}
+fn method(a: Pin<&mut ()>) {}
 
 fn main() {
     let a = &mut ();

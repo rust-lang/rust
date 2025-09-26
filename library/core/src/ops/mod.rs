@@ -191,7 +191,7 @@ pub use self::range::{OneSidedRange, OneSidedRangeBound};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::range::{Range, RangeFrom, RangeFull, RangeTo};
 #[unstable(feature = "reborrow", issue = "145612")]
-pub use self::reborrow::CoerceShared;
+pub use self::reborrow::{CoerceShared, Reborrow};
 #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
 pub use self::try_trait::Residual;
 #[unstable(feature = "try_trait_v2_yeet", issue = "96374")]

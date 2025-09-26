@@ -10,5 +10,4 @@ fn main() {
     //~| NOTE arguments to this function are incorrect
     //~| NOTE types differ in mutability
     //~| NOTE expected struct `Pin<&()>`
-    //~| NOTE    found struct `Pin<&mut ()>`
 }

@@ -1,4 +1,4 @@
-fn method(a: Option<& mut ()>) {}
+fn method(a: Option<&mut ()>) {}
 
 fn main() {
     let a = Some(&mut ());
