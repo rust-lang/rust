@@ -1,6 +1,6 @@
 # `armebv7r-none-eabi` and `armebv7r-none-eabihf`
 
-* **Tier: 2**
+* **Tier: 3**
 * **Library Support:** core and alloc (bare-metal, `#![no_std]`)
 
 Bare-metal target for CPUs in the Armv7-R architecture family running in Big
