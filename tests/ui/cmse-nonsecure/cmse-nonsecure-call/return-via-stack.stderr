@@ -80,7 +80,7 @@ LL |     f1: extern "cmse-nonsecure-call" fn() -> ReprRustUnionU64,
    = note: the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
 
 error[E0798]: return value of `"cmse-nonsecure-call"` function too large to pass via registers
-  --> $DIR/return-via-stack.rs:58:46
+  --> $DIR/return-via-stack.rs:59:46
    |
 LL |     f2: extern "cmse-nonsecure-call" fn() -> ReprCUnionU64,
    |                                              ^^^^^^^^^^^^^ this type doesn't fit in the available registers
