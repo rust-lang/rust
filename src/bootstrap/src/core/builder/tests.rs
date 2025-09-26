@@ -22,13 +22,7 @@ fn configure(cmd: &str, host: &[&str], target: &[&str]) -> Config {
 }
 
 fn configure_with_args(cmd: &[&str], host: &[&str], target: &[&str]) -> Config {
-    TestCtx::new()
-        .config(cmd[0])
-        .args(&cmd[1..])
-        .hosts(host)
-        .targets(target)
-        .args(&["--build", TEST_TRIPLE_1])
-        .create_config()
+    TestCtx::new().config(cmd[0]).args(&cmd[1..]).hosts(host).targets(target).create_config()
 }
 
 fn first<A, B>(v: Vec<(A, B)>) -> Vec<A> {
@@ -218,18 +212,17 @@ fn prepare_rustc_checkout(ctx: &mut GitCtx) {
 
 /// Parses a Config directory from `path`, with the given value of `download_rustc`.
 fn parse_config_download_rustc_at(path: &Path, download_rustc: &str, ci: bool) -> Config {
-    Config::parse_inner(
-        Flags::parse(&[
-            "build".to_owned(),
-            "--dry-run".to_owned(),
-            "--ci".to_owned(),
-            if ci { "true" } else { "false" }.to_owned(),
-            format!("--set=rust.download-rustc='{download_rustc}'"),
-            "--src".to_owned(),
-            path.to_str().unwrap().to_owned(),
-        ]),
-        |&_| Ok(Default::default()),
-    )
+    TestCtx::new()
+        .config("build")
+        .args(&[
+            "--ci",
+            if ci { "true" } else { "false" },
+            format!("--set=rust.download-rustc='{download_rustc}'").as_str(),
+            "--src",
+            path.to_str().unwrap(),
+        ])
+        .no_override_download_ci_llvm()
+        .create_config()
 }
 
 mod dist {
@@ -237,6 +230,7 @@ mod dist {
 
     use super::{Config, TEST_TRIPLE_1, TEST_TRIPLE_2, TEST_TRIPLE_3, first, run_build};
     use crate::Flags;
+    use crate::core::builder::tests::host_target;
     use crate::core::builder::*;
 
     fn configure(host: &[&str], target: &[&str]) -> Config {
@@ -245,11 +239,11 @@ mod dist {
 
     #[test]
     fn llvm_out_behaviour() {
-        let mut config = configure(&[TEST_TRIPLE_1], &[TEST_TRIPLE_2]);
+        let mut config = configure(&[], &[TEST_TRIPLE_2]);
         config.llvm_from_ci = true;
         let build = Build::new(config.clone());
 
-        let target = TargetSelection::from_user(TEST_TRIPLE_1);
+        let target = TargetSelection::from_user(&host_target());
         assert!(build.llvm_out(target).ends_with("ci-llvm"));
         let target = TargetSelection::from_user(TEST_TRIPLE_2);
         assert!(build.llvm_out(target).ends_with("llvm"));
@@ -314,7 +308,7 @@ mod sysroot_target_dirs {
 /// cg_gcc tests instead.
 #[test]
 fn test_test_compiler() {
-    let config = configure_with_args(&["test", "compiler"], &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]);
+    let config = configure_with_args(&["test", "compiler"], &[&host_target()], &[TEST_TRIPLE_1]);
     let cache = run_build(&config.paths.clone(), config);
 
     let compiler = cache.contains::<test::CrateLibrustc>();
@@ -347,7 +341,7 @@ fn test_test_coverage() {
         // Print each test case so that if one fails, the most recently printed
         // case is the one that failed.
         println!("Testing case: {cmd:?}");
-        let config = configure_with_args(cmd, &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]);
+        let config = configure_with_args(cmd, &[], &[TEST_TRIPLE_1]);
         let mut cache = run_build(&config.paths.clone(), config);
 
         let modes =
@@ -359,14 +353,7 @@ fn test_test_coverage() {
 #[test]
 fn test_prebuilt_llvm_config_path_resolution() {
     fn configure(config: &str) -> Config {
-        Config::parse_inner(
-            Flags::parse(&[
-                "build".to_string(),
-                "--dry-run".to_string(),
-                "--config=/does/not/exist".to_string(),
-            ]),
-            |&_| toml::from_str(&config),
-        )
+        TestCtx::new().config("build").with_default_toml_config(config).create_config()
     }
 
     // Removes Windows disk prefix if present
