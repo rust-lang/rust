@@ -4,7 +4,7 @@
 #![feature(arbitrary_self_types)]
 
 use std::ops::Deref;
-use std::marker::CoercePointee;
+use std::ops::CoercePointee;
 use std::sync::Arc;
 
 trait MyTrait<T> {}

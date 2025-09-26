@@ -8,7 +8,7 @@
 extern crate std;
 #[prelude_import]
 use ::std::prelude::rust_2015::*;
-use std::marker::CoercePointee;
+use std::ops::CoercePointee;
 
 pub trait MyTrait<T: ?Sized> {}
 
@@ -17,8 +17,7 @@ struct MyPointer<'a, #[pointee] T: ?Sized> {
     ptr: &'a T,
 }
 #[automatically_derived]
-impl<'a, T: ?Sized> ::core::marker::CoercePointeeValidated for
-    MyPointer<'a, T> {
+impl<'a, T: ?Sized> ::core::ops::CoercePointeeValidated for MyPointer<'a, T> {
 }
 #[automatically_derived]
 impl<'a, T: ?Sized + ::core::marker::Unsize<__S>, __S: ?Sized>
@@ -37,8 +36,8 @@ pub struct MyPointer2<'a, Y, Z: MyTrait<T>, #[pointee] T: ?Sized + MyTrait<T>,
 }
 #[automatically_derived]
 impl<'a, Y, Z: MyTrait<T>, T: ?Sized + MyTrait<T>, X: MyTrait<T>>
-    ::core::marker::CoercePointeeValidated for MyPointer2<'a, Y, Z, T, X>
-    where Y: MyTrait<T> {
+    ::core::ops::CoercePointeeValidated for MyPointer2<'a, Y, Z, T, X> where
+    Y: MyTrait<T> {
 }
 #[automatically_derived]
 impl<'a, Y, Z: MyTrait<T> + MyTrait<__S>, T: ?Sized + MyTrait<T> +
@@ -58,7 +57,7 @@ struct MyPointerWithoutPointee<'a, T: ?Sized> {
     ptr: &'a T,
 }
 #[automatically_derived]
-impl<'a, T: ?Sized> ::core::marker::CoercePointeeValidated for
+impl<'a, T: ?Sized> ::core::ops::CoercePointeeValidated for
     MyPointerWithoutPointee<'a, T> {
 }
 #[automatically_derived]

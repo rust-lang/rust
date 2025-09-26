@@ -2,7 +2,7 @@ use std::any::Any;
 use std::collections::BTreeMap;
 use std::fs::{File, Metadata};
 use std::io::{ErrorKind, IsTerminal, Seek, SeekFrom, Write};
-use std::marker::CoercePointee;
+use std::ops::CoercePointee;
 use std::ops::Deref;
 use std::rc::{Rc, Weak};
 use std::{fs, io};
