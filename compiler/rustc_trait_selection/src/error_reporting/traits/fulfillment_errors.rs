@@ -548,6 +548,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             });
                             let unit_obligation = obligation.with(tcx, predicate);
                             if self.predicate_may_hold(&unit_obligation) {
+                                // FIXME: make a new issue for this
                                 err.note(
                                     "this error might have been caused by changes to \
                                     Rust's type-inference algorithm (see issue #48950 \
