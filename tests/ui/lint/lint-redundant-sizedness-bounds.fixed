@@ -1,38 +1,38 @@
 //@ run-rustfix
-#![deny(redundant_sizedness_bound)]
+#![deny(redundant_sizedness_bounds)]
 #![feature(sized_hierarchy)]
 #![allow(unused)]
 use std::marker::{MetaSized, PointeeSized};
 
 fn directly<T: Sized>(t: &T) {}
-//~^ ERROR redundant_sizedness_bound
+//~^ ERROR redundant_sizedness_bounds
 
 trait A: Sized {}
 trait B: A {}
 
 fn depth_1<T: A>(t: &T) {}
-//~^ ERROR redundant_sizedness_bound
+//~^ ERROR redundant_sizedness_bounds
 fn depth_2<T: B>(t: &T) {}
-//~^ ERROR redundant_sizedness_bound
+//~^ ERROR redundant_sizedness_bounds
 
 // We only need to show one
 fn multiple_paths<T: A + B>(t: &T) {}
-//~^ ERROR redundant_sizedness_bound
+//~^ ERROR redundant_sizedness_bounds
 
 fn in_where<T>(t: &T)
 where
     T: Sized,
-    //~^ ERROR redundant_sizedness_bound
+    //~^ ERROR redundant_sizedness_bounds
 {
 }
 
 fn mixed_1<T: Sized>(t: &T)
-    //~^ ERROR redundant_sizedness_bound
+    //~^ ERROR redundant_sizedness_bounds
 {
 }
 
 fn mixed_2<T>(t: &T)
-//~^ ERROR redundant_sizedness_bound
+//~^ ERROR redundant_sizedness_bounds
 where
     T: Sized,
 {
@@ -41,50 +41,50 @@ where
 fn mixed_3<T>(t: &T)
 where
     T: Sized,
-    //~^ ERROR redundant_sizedness_bound
+    //~^ ERROR redundant_sizedness_bounds
 {
 }
 
 struct Struct<T: Sized>(T);
-//~^ ERROR redundant_sizedness_bound
+//~^ ERROR redundant_sizedness_bounds
 
 impl<T: Sized> Struct<T> {
-    //~^ ERROR redundant_sizedness_bound
+    //~^ ERROR redundant_sizedness_bounds
     fn method<U: Sized>(&self) {}
-    //~^ ERROR redundant_sizedness_bound
+    //~^ ERROR redundant_sizedness_bounds
 }
 
 enum Enum<T: Sized + 'static> {
-    //~^ ERROR redundant_sizedness_bound
+    //~^ ERROR redundant_sizedness_bounds
     Variant(&'static T),
 }
 
 union Union<'a, T: Sized> {
-    //~^ ERROR redundant_sizedness_bound
+    //~^ ERROR redundant_sizedness_bounds
     a: &'a T,
 }
 
 trait Trait<T: Sized> {
-    //~^ ERROR redundant_sizedness_bound
+    //~^ ERROR redundant_sizedness_bounds
     fn trait_method<U: Sized>() {}
-    //~^ ERROR redundant_sizedness_bound
+    //~^ ERROR redundant_sizedness_bounds
 
     type GAT<U: Sized>;
-    //~^ ERROR redundant_sizedness_bound
+    //~^ ERROR redundant_sizedness_bounds
 
     type Assoc: Sized + ?Sized; // False negative
 }
 
 trait SecondInTrait: Send + Sized {}
 fn second_in_trait<T: SecondInTrait>() {}
-//~^ ERROR redundant_sizedness_bound
+//~^ ERROR redundant_sizedness_bounds
 
 fn impl_trait(_: &(impl Sized)) {}
-//~^ ERROR redundant_sizedness_bound
+//~^ ERROR redundant_sizedness_bounds
 
 trait GenericTrait<T>: Sized {}
 fn in_generic_trait<T: GenericTrait<U>, U>() {}
-//~^ ERROR redundant_sizedness_bound
+//~^ ERROR redundant_sizedness_bounds
 
 mod larger_graph {
     // C1  C2  Sized
@@ -100,17 +100,17 @@ mod larger_graph {
     trait A1: B1 + B2 {}
 
     fn larger_graph<T: A1>() {}
-    //~^ ERROR redundant_sizedness_bound
+    //~^ ERROR redundant_sizedness_bounds
 }
 
 trait S1: Sized {}
 fn meta_sized<T: S1>() {}
-//~^ ERROR redundant_sizedness_bound
+//~^ ERROR redundant_sizedness_bounds
 fn pointee_sized<T: S1>() {}
-//~^ ERROR redundant_sizedness_bound
+//~^ ERROR redundant_sizedness_bounds
 trait M1: MetaSized {}
 fn pointee_metasized<T: M1>() {}
-//~^ ERROR redundant_sizedness_bound
+//~^ ERROR redundant_sizedness_bounds
 
 // Should not lint
 

@@ -1,19 +1,19 @@
 error: `?Sized` bound is redundant because of a `Sized` requirement
-  --> $DIR/lint-redundant-sizedness-bound.rs:7:24
+  --> $DIR/lint-redundant-sizedness-bounds.rs:7:24
    |
 LL | fn directly<T: Sized + ?Sized>(t: &T) {}
    |                        ^^^^^^
    |
 note: `T` is implied to be `Sized` because of the bound
-  --> $DIR/lint-redundant-sizedness-bound.rs:7:16
+  --> $DIR/lint-redundant-sizedness-bounds.rs:7:16
    |
 LL | fn directly<T: Sized + ?Sized>(t: &T) {}
    |                ^^^^^
 note: the lint level is defined here
-  --> $DIR/lint-redundant-sizedness-bound.rs:2:9
+  --> $DIR/lint-redundant-sizedness-bounds.rs:2:9
    |
-LL | #![deny(redundant_sizedness_bound)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #![deny(redundant_sizedness_bounds)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: change the bounds that require `Sized`, or remove the `?Sized` bound
    |
 LL - fn directly<T: Sized + ?Sized>(t: &T) {}
@@ -21,13 +21,13 @@ LL + fn directly<T: Sized>(t: &T) {}
    |
 
 error: `?Sized` bound is redundant because of a `Sized` requirement
-  --> $DIR/lint-redundant-sizedness-bound.rs:13:19
+  --> $DIR/lint-redundant-sizedness-bounds.rs:13:19
    |
 LL | fn depth_1<T: A + ?Sized>(t: &T) {}
    |                   ^^^^^^
    |
 note: `T` is implied to be `Sized` because of the bound
-  --> $DIR/lint-redundant-sizedness-bound.rs:13:15
+  --> $DIR/lint-redundant-sizedness-bounds.rs:13:15
    |
 LL | fn depth_1<T: A + ?Sized>(t: &T) {}
    |               ^
@@ -39,13 +39,13 @@ LL + fn depth_1<T: A>(t: &T) {}
    |
 
 error: `?Sized` bound is redundant because of a `Sized` requirement
-  --> $DIR/lint-redundant-sizedness-bound.rs:15:19
+  --> $DIR/lint-redundant-sizedness-bounds.rs:15:19
    |
 LL | fn depth_2<T: B + ?Sized>(t: &T) {}
    |                   ^^^^^^
    |
 note: `T` is implied to be `Sized` because of the bound
-  --> $DIR/lint-redundant-sizedness-bound.rs:15:15
+  --> $DIR/lint-redundant-sizedness-bounds.rs:15:15
    |
 LL | fn depth_2<T: B + ?Sized>(t: &T) {}
    |               ^
@@ -58,13 +58,13 @@ LL + fn depth_2<T: B>(t: &T) {}
    |
 
 error: `?Sized` bound is redundant because of a `Sized` requirement
-  --> $DIR/lint-redundant-sizedness-bound.rs:19:30
+  --> $DIR/lint-redundant-sizedness-bounds.rs:19:30
    |
 LL | fn multiple_paths<T: A + B + ?Sized>(t: &T) {}
    |                              ^^^^^^
    |
 note: `T` is implied to be `Sized` because of the bound
-  --> $DIR/lint-redundant-sizedness-bound.rs:19:22
+  --> $DIR/lint-redundant-sizedness-bounds.rs:19:22
    |
 LL | fn multiple_paths<T: A + B + ?Sized>(t: &T) {}
    |                      ^
@@ -76,13 +76,13 @@ LL + fn multiple_paths<T: A + B>(t: &T) {}
    |
 
 error: `?Sized` bound is redundant because of a `Sized` requirement
-  --> $DIR/lint-redundant-sizedness-bound.rs:24:16
+  --> $DIR/lint-redundant-sizedness-bounds.rs:24:16
    |
 LL |     T: Sized + ?Sized,
    |                ^^^^^^
    |
 note: `T` is implied to be `Sized` because of the bound
-  --> $DIR/lint-redundant-sizedness-bound.rs:24:8
+  --> $DIR/lint-redundant-sizedness-bounds.rs:24:8
    |
 LL |     T: Sized + ?Sized,
    |        ^^^^^
@@ -93,13 +93,13 @@ LL +     T: Sized,
    |
 
 error: `?Sized` bound is redundant because of a `Sized` requirement
-  --> $DIR/lint-redundant-sizedness-bound.rs:31:8
+  --> $DIR/lint-redundant-sizedness-bounds.rs:31:8
    |
 LL |     T: ?Sized,
    |        ^^^^^^
    |
 note: `T` is implied to be `Sized` because of the bound
-  --> $DIR/lint-redundant-sizedness-bound.rs:29:15
+  --> $DIR/lint-redundant-sizedness-bounds.rs:29:15
    |
 LL | fn mixed_1<T: Sized>(t: &T)
    |               ^^^^^
@@ -110,13 +110,13 @@ LL -     T: ?Sized,
    |
 
 error: `?Sized` bound is redundant because of a `Sized` requirement
-  --> $DIR/lint-redundant-sizedness-bound.rs:36:15
+  --> $DIR/lint-redundant-sizedness-bounds.rs:36:15
    |
 LL | fn mixed_2<T: ?Sized>(t: &T)
    |               ^^^^^^
    |
 note: `T` is implied to be `Sized` because of the bound
-  --> $DIR/lint-redundant-sizedness-bound.rs:39:8
+  --> $DIR/lint-redundant-sizedness-bounds.rs:39:8
    |
 LL |     T: Sized,
    |        ^^^^^
@@ -127,13 +127,13 @@ LL + fn mixed_2<T>(t: &T)
    |
 
 error: `?Sized` bound is redundant because of a `Sized` requirement
-  --> $DIR/lint-redundant-sizedness-bound.rs:46:8
+  --> $DIR/lint-redundant-sizedness-bounds.rs:46:8
    |
 LL |     T: ?Sized,
    |        ^^^^^^
    |
 note: `T` is implied to be `Sized` because of the bound
-  --> $DIR/lint-redundant-sizedness-bound.rs:45:8
+  --> $DIR/lint-redundant-sizedness-bounds.rs:45:8
    |
 LL |     T: Sized,
    |        ^^^^^
@@ -145,13 +145,13 @@ LL +     T: Sized,
    |
 
 error: `?Sized` bound is redundant because of a `Sized` requirement
-  --> $DIR/lint-redundant-sizedness-bound.rs:51:26
+  --> $DIR/lint-redundant-sizedness-bounds.rs:51:26
    |
 LL | struct Struct<T: Sized + ?Sized>(T);
    |                          ^^^^^^
    |
 note: `T` is implied to be `Sized` because of the bound
-  --> $DIR/lint-redundant-sizedness-bound.rs:51:18
+  --> $DIR/lint-redundant-sizedness-bounds.rs:51:18
    |
 LL | struct Struct<T: Sized + ?Sized>(T);
    |                  ^^^^^
@@ -162,13 +162,13 @@ LL + struct Struct<T: Sized>(T);
    |
 
 error: `?Sized` bound is redundant because of a `Sized` requirement
-  --> $DIR/lint-redundant-sizedness-bound.rs:54:17
+  --> $DIR/lint-redundant-sizedness-bounds.rs:54:17
    |
 LL | impl<T: Sized + ?Sized> Struct<T> {
    |                 ^^^^^^
    |
 note: `T` is implied to be `Sized` because of the bound
-  --> $DIR/lint-redundant-sizedness-bound.rs:54:9
+  --> $DIR/lint-redundant-sizedness-bounds.rs:54:9
    |
 LL | impl<T: Sized + ?Sized> Struct<T> {
    |         ^^^^^
@@ -179,13 +179,13 @@ LL + impl<T: Sized> Struct<T> {
    |
 
 error: `?Sized` bound is redundant because of a `Sized` requirement
-  --> $DIR/lint-redundant-sizedness-bound.rs:56:26
+  --> $DIR/lint-redundant-sizedness-bounds.rs:56:26
    |
 LL |     fn method<U: Sized + ?Sized>(&self) {}
    |                          ^^^^^^
    |
 note: `U` is implied to be `Sized` because of the bound
-  --> $DIR/lint-redundant-sizedness-bound.rs:56:18
+  --> $DIR/lint-redundant-sizedness-bounds.rs:56:18
    |
 LL |     fn method<U: Sized + ?Sized>(&self) {}
    |                  ^^^^^
@@ -196,13 +196,13 @@ LL +     fn method<U: Sized>(&self) {}
    |
 
 error: `?Sized` bound is redundant because of a `Sized` requirement
-  --> $DIR/lint-redundant-sizedness-bound.rs:60:22
+  --> $DIR/lint-redundant-sizedness-bounds.rs:60:22
    |
 LL | enum Enum<T: Sized + ?Sized + 'static> {
    |                      ^^^^^^
    |
 note: `T` is implied to be `Sized` because of the bound
-  --> $DIR/lint-redundant-sizedness-bound.rs:60:14
+  --> $DIR/lint-redundant-sizedness-bounds.rs:60:14
    |
 LL | enum Enum<T: Sized + ?Sized + 'static> {
    |              ^^^^^
@@ -213,13 +213,13 @@ LL + enum Enum<T: Sized + 'static> {
    |
 
 error: `?Sized` bound is redundant because of a `Sized` requirement
-  --> $DIR/lint-redundant-sizedness-bound.rs:65:28
+  --> $DIR/lint-redundant-sizedness-bounds.rs:65:28
    |
 LL | union Union<'a, T: Sized + ?Sized> {
    |                            ^^^^^^
    |
 note: `T` is implied to be `Sized` because of the bound
-  --> $DIR/lint-redundant-sizedness-bound.rs:65:20
+  --> $DIR/lint-redundant-sizedness-bounds.rs:65:20
    |
 LL | union Union<'a, T: Sized + ?Sized> {
    |                    ^^^^^
@@ -230,13 +230,13 @@ LL + union Union<'a, T: Sized> {
    |
 
 error: `?Sized` bound is redundant because of a `Sized` requirement
-  --> $DIR/lint-redundant-sizedness-bound.rs:70:24
+  --> $DIR/lint-redundant-sizedness-bounds.rs:70:24
    |
 LL | trait Trait<T: Sized + ?Sized> {
    |                        ^^^^^^
    |
 note: `T` is implied to be `Sized` because of the bound
-  --> $DIR/lint-redundant-sizedness-bound.rs:70:16
+  --> $DIR/lint-redundant-sizedness-bounds.rs:70:16
    |
 LL | trait Trait<T: Sized + ?Sized> {
    |                ^^^^^
@@ -247,13 +247,13 @@ LL + trait Trait<T: Sized> {
    |
 
 error: `?Sized` bound is redundant because of a `Sized` requirement
-  --> $DIR/lint-redundant-sizedness-bound.rs:72:32
+  --> $DIR/lint-redundant-sizedness-bounds.rs:72:32
    |
 LL |     fn trait_method<U: Sized + ?Sized>() {}
    |                                ^^^^^^
    |
 note: `U` is implied to be `Sized` because of the bound
-  --> $DIR/lint-redundant-sizedness-bound.rs:72:24
+  --> $DIR/lint-redundant-sizedness-bounds.rs:72:24
    |
 LL |     fn trait_method<U: Sized + ?Sized>() {}
    |                        ^^^^^
@@ -264,13 +264,13 @@ LL +     fn trait_method<U: Sized>() {}
    |
 
 error: `?Sized` bound is redundant because of a `Sized` requirement
-  --> $DIR/lint-redundant-sizedness-bound.rs:75:25
+  --> $DIR/lint-redundant-sizedness-bounds.rs:75:25
    |
 LL |     type GAT<U: Sized + ?Sized>;
    |                         ^^^^^^
    |
 note: `U` is implied to be `Sized` because of the bound
-  --> $DIR/lint-redundant-sizedness-bound.rs:75:17
+  --> $DIR/lint-redundant-sizedness-bounds.rs:75:17
    |
 LL |     type GAT<U: Sized + ?Sized>;
    |                 ^^^^^
@@ -281,13 +281,13 @@ LL +     type GAT<U: Sized>;
    |
 
 error: `?Sized` bound is redundant because of a `Sized` requirement
-  --> $DIR/lint-redundant-sizedness-bound.rs:82:23
+  --> $DIR/lint-redundant-sizedness-bounds.rs:82:23
    |
 LL | fn second_in_trait<T: ?Sized + SecondInTrait>() {}
    |                       ^^^^^^
    |
 note: `T` is implied to be `Sized` because of the bound
-  --> $DIR/lint-redundant-sizedness-bound.rs:82:32
+  --> $DIR/lint-redundant-sizedness-bounds.rs:82:32
    |
 LL | fn second_in_trait<T: ?Sized + SecondInTrait>() {}
    |                                ^^^^^^^^^^^^^
@@ -299,13 +299,13 @@ LL + fn second_in_trait<T: SecondInTrait>() {}
    |
 
 error: `?Sized` bound is redundant because of a `Sized` requirement
-  --> $DIR/lint-redundant-sizedness-bound.rs:85:33
+  --> $DIR/lint-redundant-sizedness-bounds.rs:85:33
    |
 LL | fn impl_trait(_: &(impl Sized + ?Sized)) {}
    |                                 ^^^^^^
    |
 note: `impl Sized + ?Sized` is implied to be `Sized` because of the bound
-  --> $DIR/lint-redundant-sizedness-bound.rs:85:25
+  --> $DIR/lint-redundant-sizedness-bounds.rs:85:25
    |
 LL | fn impl_trait(_: &(impl Sized + ?Sized)) {}
    |                         ^^^^^
@@ -316,13 +316,13 @@ LL + fn impl_trait(_: &(impl Sized)) {}
    |
 
 error: `?Sized` bound is redundant because of a `Sized` requirement
-  --> $DIR/lint-redundant-sizedness-bound.rs:89:42
+  --> $DIR/lint-redundant-sizedness-bounds.rs:89:42
    |
 LL | fn in_generic_trait<T: GenericTrait<U> + ?Sized, U>() {}
    |                                          ^^^^^^
    |
 note: `T` is implied to be `Sized` because of the bound
-  --> $DIR/lint-redundant-sizedness-bound.rs:89:24
+  --> $DIR/lint-redundant-sizedness-bounds.rs:89:24
    |
 LL | fn in_generic_trait<T: GenericTrait<U> + ?Sized, U>() {}
    |                        ^^^^^^^^^^^^^^^
@@ -334,13 +334,13 @@ LL + fn in_generic_trait<T: GenericTrait<U>, U>() {}
    |
 
 error: `MetaSized` bound is redundant because of a `Sized` requirement
-  --> $DIR/lint-redundant-sizedness-bound.rs:110:18
+  --> $DIR/lint-redundant-sizedness-bounds.rs:110:18
    |
 LL | fn meta_sized<T: MetaSized + S1>() {}
    |                  ^^^^^^^^^
    |
 note: `T` is implied to be `Sized` because of the bound
-  --> $DIR/lint-redundant-sizedness-bound.rs:110:30
+  --> $DIR/lint-redundant-sizedness-bounds.rs:110:30
    |
 LL | fn meta_sized<T: MetaSized + S1>() {}
    |                              ^^
@@ -352,13 +352,13 @@ LL + fn meta_sized<T: S1>() {}
    |
 
 error: `PointeeSized` bound is redundant because of a `Sized` requirement
-  --> $DIR/lint-redundant-sizedness-bound.rs:112:21
+  --> $DIR/lint-redundant-sizedness-bounds.rs:112:21
    |
 LL | fn pointee_sized<T: PointeeSized + S1>() {}
    |                     ^^^^^^^^^^^^
    |
 note: `T` is implied to be `Sized` because of the bound
-  --> $DIR/lint-redundant-sizedness-bound.rs:112:36
+  --> $DIR/lint-redundant-sizedness-bounds.rs:112:36
    |
 LL | fn pointee_sized<T: PointeeSized + S1>() {}
    |                                    ^^
@@ -370,13 +370,13 @@ LL + fn pointee_sized<T: S1>() {}
    |
 
 error: `PointeeSized` bound is redundant because of a `MetaSized` requirement
-  --> $DIR/lint-redundant-sizedness-bound.rs:115:25
+  --> $DIR/lint-redundant-sizedness-bounds.rs:115:25
    |
 LL | fn pointee_metasized<T: PointeeSized + M1>() {}
    |                         ^^^^^^^^^^^^
    |
 note: `T` is implied to be `MetaSized` because of the bound
-  --> $DIR/lint-redundant-sizedness-bound.rs:115:40
+  --> $DIR/lint-redundant-sizedness-bounds.rs:115:40
    |
 LL | fn pointee_metasized<T: PointeeSized + M1>() {}
    |                                        ^^
@@ -388,13 +388,13 @@ LL + fn pointee_metasized<T: M1>() {}
    |
 
 error: `?Sized` bound is redundant because of a `Sized` requirement
-  --> $DIR/lint-redundant-sizedness-bound.rs:105:29
+  --> $DIR/lint-redundant-sizedness-bounds.rs:105:29
    |
 LL |     fn larger_graph<T: A1 + ?Sized>() {}
    |                             ^^^^^^
    |
 note: `T` is implied to be `Sized` because of the bound
-  --> $DIR/lint-redundant-sizedness-bound.rs:105:24
+  --> $DIR/lint-redundant-sizedness-bounds.rs:105:24
    |
 LL |     fn larger_graph<T: A1 + ?Sized>() {}
    |                        ^^

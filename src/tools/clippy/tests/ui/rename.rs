@@ -42,7 +42,7 @@
 #![allow(clippy::overly_complex_bool_expr)]
 #![allow(unexpected_cfgs)]
 #![allow(enum_intrinsics_non_enums)]
-#![allow(redundant_sizedness_bound)]
+#![allow(redundant_sizedness_bounds)]
 #![allow(clippy::new_without_default)]
 #![allow(clippy::bind_instead_of_map)]
 #![allow(clippy::expect_used)]
