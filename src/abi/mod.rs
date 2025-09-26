@@ -300,7 +300,7 @@ pub(crate) fn codegen_fn_prelude<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, start_
             Some(cvalue_for_param(fx, None, None, arg_abi, &mut block_params_iter).unwrap());
     }
 
-    assert!(arg_abis_iter.next().is_none(), "ArgAbi left behind");
+    assert_eq!(arg_abis_iter.next(), None, "ArgAbi left behind for {:?}", fx.fn_abi);
     assert!(block_params_iter.next().is_none(), "arg_value left behind");
 
     self::comments::add_locals_header_comment(fx);
