@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::sso::SsoHashMap;
 use rustc_index::Idx;
 use rustc_middle::mir::*;
 use rustc_middle::ty::Ty;
@@ -10,7 +10,7 @@ use tracing::debug;
 /// and replacement of terminators, and then apply the queued changes all at
 /// once with `apply`. This is useful for MIR transformation passes.
 pub(crate) struct MirPatch<'tcx> {
-    term_patch_map: FxHashMap<BasicBlock, TerminatorKind<'tcx>>,
+    term_patch_map: SsoHashMap<BasicBlock, TerminatorKind<'tcx>>,
     new_blocks: Vec<BasicBlockData<'tcx>>,
     new_statements: Vec<(Location, StatementKind<'tcx>)>,
     new_locals: Vec<LocalDecl<'tcx>>,
