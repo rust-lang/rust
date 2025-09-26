@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: could not find `Struc` in `module`
+error[E0433]: cannot find `Struc` in `module`
   --> $DIR/typo-suggestion-mistyped-in-path.rs:35:13
    |
 LL |     module::Struc::foo();
@@ -22,7 +22,7 @@ LL -     Struct::fob();
 LL +     Struct::foo();
    |
 
-error[E0433]: failed to resolve: use of undeclared type `Struc`
+error[E0433]: cannot find type `Struc` in this scope
   --> $DIR/typo-suggestion-mistyped-in-path.rs:27:5
    |
 LL |     Struc::foo();
@@ -31,7 +31,7 @@ LL |     Struc::foo();
    |     use of undeclared type `Struc`
    |     help: a struct with a similar name exists: `Struct`
 
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `modul`
+error[E0433]: cannot find module or crate `modul` in this scope
   --> $DIR/typo-suggestion-mistyped-in-path.rs:31:5
    |
 LL |     modul::foo();
@@ -42,7 +42,7 @@ help: there is a crate or module with a similar name
 LL |     module::foo();
    |          +
 
-error[E0433]: failed to resolve: use of undeclared type `Trai`
+error[E0433]: cannot find type `Trai` in this scope
   --> $DIR/typo-suggestion-mistyped-in-path.rs:39:5
    |
 LL |     Trai::foo();

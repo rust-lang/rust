@@ -5,7 +5,7 @@ trait Trait {}
 struct S;
 
 impl Trait for u8 {
-    reuse unresolved::*; //~ ERROR failed to resolve: use of unresolved module or unlinked crate `unresolved`
+    reuse unresolved::*; //~ ERROR cannot find module or crate `unresolved`
     reuse S::*; //~ ERROR expected trait, found struct `S`
 }
 

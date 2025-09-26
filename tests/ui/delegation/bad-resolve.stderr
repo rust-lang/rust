@@ -79,7 +79,7 @@ LL |     type Type;
 LL | impl Trait for S {
    | ^^^^^^^^^^^^^^^^ missing `Type` in implementation
 
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `unresolved_prefix`
+error[E0433]: cannot find module or crate `unresolved_prefix` in this scope
   --> $DIR/bad-resolve.rs:43:7
    |
 LL | reuse unresolved_prefix::{a, b, c};
@@ -87,11 +87,11 @@ LL | reuse unresolved_prefix::{a, b, c};
    |
    = help: you might be missing a crate named `unresolved_prefix`
 
-error[E0433]: failed to resolve: `crate` in paths can only be used in start position
+error[E0433]: `crate` in paths can only be used in start position
   --> $DIR/bad-resolve.rs:44:29
    |
 LL | reuse prefix::{self, super, crate};
-   |                             ^^^^^ `crate` in paths can only be used in start position
+   |                             ^^^^^ can only be used in path start position
 
 error: aborting due to 12 previous errors
 

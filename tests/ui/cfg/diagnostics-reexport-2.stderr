@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: could not find `gated` in `reexport`
+error[E0433]: cannot find `gated` in `reexport`
   --> $DIR/diagnostics-reexport-2.rs:42:15
    |
 LL |     reexport::gated::foo();
@@ -13,7 +13,7 @@ LL |     #[cfg(false)]
 LL |     pub mod gated {
    |             ^^^^^
 
-error[E0433]: failed to resolve: could not find `gated` in `reexport2`
+error[E0433]: cannot find `gated` in `reexport2`
   --> $DIR/diagnostics-reexport-2.rs:46:16
    |
 LL |     reexport2::gated::foo();
@@ -28,7 +28,7 @@ LL |     #[cfg(false)]
 LL |     pub mod gated {
    |             ^^^^^
 
-error[E0433]: failed to resolve: could not find `gated` in `reexport30`
+error[E0433]: cannot find `gated` in `reexport30`
   --> $DIR/diagnostics-reexport-2.rs:50:17
    |
 LL |     reexport30::gated::foo();
@@ -43,7 +43,7 @@ LL |     #[cfg(false)]
 LL |     pub mod gated {
    |             ^^^^^
 
-error[E0433]: failed to resolve: could not find `gated` in `reexport31`
+error[E0433]: cannot find `gated` in `reexport31`
   --> $DIR/diagnostics-reexport-2.rs:54:17
    |
 LL |     reexport31::gated::foo();
@@ -58,7 +58,7 @@ LL |     #[cfg(false)]
 LL |     pub mod gated {
    |             ^^^^^
 
-error[E0433]: failed to resolve: could not find `gated` in `reexport32`
+error[E0433]: cannot find `gated` in `reexport32`
   --> $DIR/diagnostics-reexport-2.rs:58:17
    |
 LL |     reexport32::gated::foo();

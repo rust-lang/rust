@@ -7,7 +7,7 @@ trait X {
 
 trait Y {
     fn a() -> NOT_EXIST::unknown<{}> {}
-    //~^ ERROR: failed to resolve: use of undeclared type `NOT_EXIST`
+    //~^ ERROR: cannot find type `NOT_EXIST`
 }
 
 trait Z<T> {

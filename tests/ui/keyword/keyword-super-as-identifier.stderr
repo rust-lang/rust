@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: there are too many leading `super` keywords
+error[E0433]: too many leading `super` keywords
   --> $DIR/keyword-super-as-identifier.rs:2:9
    |
 LL |     let super = 22;

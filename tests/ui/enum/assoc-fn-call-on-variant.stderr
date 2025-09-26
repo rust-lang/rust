@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: `A` is a variant, not a module
+error[E0433]: cannot find module `A` in `E`
   --> $DIR/assoc-fn-call-on-variant.rs:14:8
    |
 LL |     E::A::f();

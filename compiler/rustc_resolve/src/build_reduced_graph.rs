@@ -418,9 +418,15 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                     PathResult::NonModule(partial_res) => {
                         expected_found_error(partial_res.expect_full_res())
                     }
-                    PathResult::Failed { span, label, suggestion, .. } => {
-                        Err(VisResolutionError::FailedToResolve(span, label, suggestion))
-                    }
+                    PathResult::Failed {
+                        span, label, suggestion, message, segment_name, ..
+                    } => Err(VisResolutionError::FailedToResolve(
+                        span,
+                        segment_name,
+                        label,
+                        suggestion,
+                        message,
+                    )),
                     PathResult::Indeterminate => Err(VisResolutionError::Indeterminate(path.span)),
                 }
             }

@@ -50,7 +50,7 @@ fn main() {
     //~| NOTE not found in `inner`
 
     // The module isn't found - we get a diagnostic.
-    inner::doesnt_exist::hello(); //~ ERROR failed to resolve
+    inner::doesnt_exist::hello(); //~ ERROR cannot find
     //~| NOTE could not find `doesnt_exist` in `inner`
 
     // It should find the one in the right module, not the wrong one.

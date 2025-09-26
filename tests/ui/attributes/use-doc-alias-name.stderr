@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: could not find `DocAliasX` in `n`
+error[E0433]: cannot find `DocAliasX` in `n`
   --> $DIR/use-doc-alias-name.rs:52:11
    |
 LL |     m::n::DocAliasX::y::S6;
@@ -136,7 +136,7 @@ LL -     doc_alias_f2();
 LL +     f();
    |
 
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `not_exist_module`
+error[E0433]: cannot find module or crate `not_exist_module` in this scope
   --> $DIR/use-doc-alias-name.rs:44:5
    |
 LL |     not_exist_module::DocAliasS1;

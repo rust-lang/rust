@@ -42,7 +42,7 @@ fn main() {
     //~| HELP: `S5` has a name defined in the doc alias attribute as `DocAliasS5`
 
     not_exist_module::DocAliasS1;
-    //~^ ERROR: use of unresolved module or unlinked crate `not_exist_module`
+    //~^ ERROR: cannot find module or crate `not_exist_module`
     //~| HELP: you might be missing a crate named `not_exist_module`
 
     use_doc_alias_name_extern::DocAliasS1;
@@ -50,7 +50,7 @@ fn main() {
     //~| HELP: `S1` has a name defined in the doc alias attribute as `DocAliasS1`
 
     m::n::DocAliasX::y::S6;
-    //~^ ERROR: could not find `DocAliasX` in `n`
+    //~^ ERROR: cannot find `DocAliasX` in `n`
     //~| HELP: `x` has a name defined in the doc alias attribute as `DocAliasX`
 
     m::n::x::y::DocAliasS6;

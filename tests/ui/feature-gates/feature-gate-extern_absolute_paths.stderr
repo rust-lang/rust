@@ -7,7 +7,7 @@ LL | use core::default;
    |     you might be missing crate `core`
    |     help: try using `std` instead of `core`: `std`
 
-error[E0433]: failed to resolve: you might be missing crate `core`
+error[E0433]: cannot find `core` in the crate root
   --> $DIR/feature-gate-extern_absolute_paths.rs:4:19
    |
 LL |     let _: u8 = ::core::default::Default();

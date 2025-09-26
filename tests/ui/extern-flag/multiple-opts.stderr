@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `somedep`
+error[E0433]: cannot find module or crate `somedep` in this scope
   --> $DIR/multiple-opts.rs:19:5
    |
 LL |     somedep::somefun();

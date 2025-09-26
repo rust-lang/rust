@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `r#mod`
+error[E0433]: cannot find module or crate `r#mod` in `crate`
   --> $DIR/issue-61732.rs:3:15
    |
 LL | pub(in crate::r#mod) fn main() {}

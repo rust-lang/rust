@@ -16,7 +16,7 @@ error[E0742]: visibilities can only be restricted to ancestor modules
 LL | pub(in std::vec) struct F;
    |        ^^^^^^^^
 
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `nonexistent`
+error[E0433]: cannot find module or crate `nonexistent` in the crate root
   --> $DIR/resolve-bad-visibility.rs:8:8
    |
 LL | pub(in nonexistent) struct G;
@@ -27,7 +27,7 @@ help: you might be missing a crate named `nonexistent`, add it to your project a
 LL + extern crate nonexistent;
    |
 
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `too_soon`
+error[E0433]: cannot find module or crate `too_soon` in the crate root
   --> $DIR/resolve-bad-visibility.rs:9:8
    |
 LL | pub(in too_soon) struct H;
