@@ -265,11 +265,11 @@ error: lint `clippy::mismatched_target_os` has been renamed to `unexpected_cfgs`
 LL | #![warn(clippy::mismatched_target_os)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `unexpected_cfgs`
 
-error: lint `clippy::needless_maybe_sized` has been renamed to `redundant_sizedness_bound`
+error: lint `clippy::needless_maybe_sized` has been renamed to `redundant_sizedness_bounds`
   --> tests/ui/rename.rs:113:9
    |
 LL | #![warn(clippy::needless_maybe_sized)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `redundant_sizedness_bound`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `redundant_sizedness_bounds`
 
 error: lint `clippy::new_without_default_derive` has been renamed to `clippy::new_without_default`
   --> tests/ui/rename.rs:114:9
