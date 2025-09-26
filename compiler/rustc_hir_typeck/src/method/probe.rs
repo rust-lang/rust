@@ -2192,6 +2192,15 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         &self,
         trait_predicate: Option<ty::Predicate<'tcx>>,
     ) -> bool {
+        // This function is what hacky and doesn't perfectly do what we want it to.
+        // It's not soundness critical and we should be able to freely improve this
+        // in the future.
+        //
+        // Some concrete edge cases include the fact that `goal_may_hold_opaque_types_jank`
+        // also fails if there are any constraints opaques which are never used as a self
+        // type. We also allow where-bounds which are currently ambiguous but end up
+        // constraining an opaque later on.
+
         // Check whether the trait candidate would not be applicable if the
         // opaque type were rigid.
         if let Some(predicate) = trait_predicate {

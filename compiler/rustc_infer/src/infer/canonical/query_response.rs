@@ -87,14 +87,11 @@ impl<'tcx> InferCtxt<'tcx> {
     {
         // While we ignore region constraints and pending obligations,
         // we do return constrained opaque types to avoid unconstrained
-        // inference variables in the response. This is still slightly
-        // insufficient as ambiguous `Projection` obligations have the
-        // same issue.
+        // inference variables in the response. This is important as we want
+        // to check that opaques in deref steps stay unconstrained.
         //
-        // FIXME(-Znext-solver): We could alternatively extend the `var_values`
-        // each time we call `make_query_response_ignoring_pending_obligations`
-        // and equate inference variables created inside of the query this way.
-        // This is what we do for `CanonicalState` and is probably a bit nicer.
+        // This doesn't handle the more general case for non-opaques as
+        // ambiguous `Projection` obligations have same the issue.
         let opaque_types = if self.next_trait_solver() {
             self.inner
                 .borrow_mut()
