@@ -2,10 +2,9 @@ use std::cell::OnceCell;
 use std::ops::ControlFlow;
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::graph::iterate::DepthFirstSearch;
 use rustc_data_structures::graph::vec_graph::VecGraph;
 use rustc_data_structures::graph::{self};
-use rustc_data_structures::unord::{UnordBag, UnordMap, UnordSet};
+use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir as hir;
 use rustc_hir::HirId;
 use rustc_hir::def::{DefKind, Res};
@@ -18,15 +17,12 @@ use rustc_span::{DUMMY_SP, Span};
 use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
 use tracing::debug;
 
-use crate::typeck_root_ctxt::InferVarInfo;
 use crate::{FnCtxt, errors};
 
 #[derive(Copy, Clone)]
 pub(crate) enum DivergingFallbackBehavior {
     /// Always fallback to `()` (aka "always spontaneous decay")
     ToUnit,
-    /// Sometimes fallback to `!`, but mainly fallback to `()` so that most of the crates are not broken.
-    ContextDependent,
     /// Always fallback to `!` (which should be equivalent to never falling back + not making
     /// never-to-any coercions unless necessary)
     ToNever,
@@ -267,9 +263,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         // type variable. These will typically default to `!`, unless
         // we find later that they are *also* reachable from some
         // other type variable outside this set.
-        let mut roots_reachable_from_diverging = DepthFirstSearch::new(&coercion_graph);
         let mut diverging_vids = vec![];
-        let mut non_diverging_vids = vec![];
         for unsolved_vid in unsolved_vids {
             let root_vid = self.root_var(unsolved_vid);
             debug!(
@@ -280,49 +274,17 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             );
             if diverging_roots.contains(&root_vid) {
                 diverging_vids.push(unsolved_vid);
-                roots_reachable_from_diverging.push_start_node(root_vid);
 
                 debug!(
                     "calculate_diverging_fallback: root_vid={:?} reaches {:?}",
                     root_vid,
                     graph::depth_first_search(&coercion_graph, root_vid).collect::<Vec<_>>()
                 );
-
-                // drain the iterator to visit all nodes reachable from this node
-                roots_reachable_from_diverging.complete_search();
-            } else {
-                non_diverging_vids.push(unsolved_vid);
             }
         }
-
-        debug!(
-            "calculate_diverging_fallback: roots_reachable_from_diverging={:?}",
-            roots_reachable_from_diverging,
-        );
-
-        // Find all type variables N0 that are not reachable from a
-        // diverging variable, and then compute the set reachable from
-        // N0, which we call N. These are the *non-diverging* type
-        // variables. (Note that this set consists of "root variables".)
-        let mut roots_reachable_from_non_diverging = DepthFirstSearch::new(&coercion_graph);
-        for &non_diverging_vid in &non_diverging_vids {
-            let root_vid = self.root_var(non_diverging_vid);
-            if roots_reachable_from_diverging.visited(root_vid) {
-                continue;
-            }
-            roots_reachable_from_non_diverging.push_start_node(root_vid);
-            roots_reachable_from_non_diverging.complete_search();
-        }
-        debug!(
-            "calculate_diverging_fallback: roots_reachable_from_non_diverging={:?}",
-            roots_reachable_from_non_diverging,
-        );
 
         debug!("obligations: {:#?}", self.fulfillment_cx.borrow_mut().pending_obligations());
 
-        // For each diverging variable, figure out whether it can
-        // reach a member of N. If so, it falls back to `()`. Else
-        // `!`.
         let mut diverging_fallback = UnordMap::with_capacity(diverging_vids.len());
         let unsafe_infer_vars = OnceCell::new();
 
@@ -335,21 +297,6 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         for &diverging_vid in &diverging_vids {
             let diverging_ty = Ty::new_var(self.tcx, diverging_vid);
             let root_vid = self.root_var(diverging_vid);
-            let can_reach_non_diverging = graph::depth_first_search(&coercion_graph, root_vid)
-                .any(|n| roots_reachable_from_non_diverging.visited(n));
-
-            let infer_var_infos: UnordBag<_> = self
-                .infer_var_info
-                .borrow()
-                .items()
-                .filter(|&(vid, _)| self.infcx.root_var(*vid) == root_vid)
-                .map(|(_, info)| *info)
-                .collect();
-
-            let found_infer_var_info = InferVarInfo {
-                self_in_trait: infer_var_infos.items().any(|info| info.self_in_trait),
-                output: infer_var_infos.items().any(|info| info.output),
-            };
 
             let mut fallback_to = |ty| {
                 self.lint_never_type_fallback_flowing_into_unsafe_code(
@@ -366,52 +313,16 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                     debug!("fallback to () - legacy: {:?}", diverging_vid);
                     fallback_to(self.tcx.types.unit);
                 }
-                DivergingFallbackBehavior::ContextDependent => {
-                    if found_infer_var_info.self_in_trait && found_infer_var_info.output {
-                        // This case falls back to () to ensure that the code pattern in
-                        // tests/ui/never_type/fallback-closure-ret.rs continues to
-                        // compile when never_type_fallback is enabled.
-                        //
-                        // This rule is not readily explainable from first principles,
-                        // but is rather intended as a patchwork fix to ensure code
-                        // which compiles before the stabilization of never type
-                        // fallback continues to work.
-                        //
-                        // Typically this pattern is encountered in a function taking a
-                        // closure as a parameter, where the return type of that closure
-                        // (checked by `relationship.output`) is expected to implement
-                        // some trait (checked by `relationship.self_in_trait`). This
-                        // can come up in non-closure cases too, so we do not limit this
-                        // rule to specifically `FnOnce`.
-                        //
-                        // When the closure's body is something like `panic!()`, the
-                        // return type would normally be inferred to `!`. However, it
-                        // needs to fall back to `()` in order to still compile, as the
-                        // trait is specifically implemented for `()` but not `!`.
-                        //
-                        // For details on the requirements for these relationships to be
-                        // set, see the relationship finding module in
-                        // compiler/rustc_trait_selection/src/traits/relationships.rs.
-                        debug!("fallback to () - found trait and projection: {:?}", diverging_vid);
-                        fallback_to(self.tcx.types.unit);
-                    } else if can_reach_non_diverging {
-                        debug!("fallback to () - reached non-diverging: {:?}", diverging_vid);
-                        fallback_to(self.tcx.types.unit);
-                    } else {
-                        debug!("fallback to ! - all diverging: {:?}", diverging_vid);
-                        fallback_to(self.tcx.types.never);
-                    }
-                }
                 DivergingFallbackBehavior::ToNever => {
                     debug!(
-                        "fallback to ! - `rustc_never_type_mode = \"fallback_to_never\")`: {:?}",
+                        "fallback to ! - `rustc_never_type_options::falback = \"never\")`: {:?}",
                         diverging_vid
                     );
                     fallback_to(self.tcx.types.never);
                 }
                 DivergingFallbackBehavior::NoFallback => {
                     debug!(
-                        "no fallback - `rustc_never_type_mode = \"no_fallback\"`: {:?}",
+                        "no fallback - `rustc_never_type_options::fallback = \"no\"`: {:?}",
                         diverging_vid
                     );
                 }
