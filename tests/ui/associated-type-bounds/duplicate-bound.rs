@@ -7,84 +7,84 @@
 use std::iter;
 use std::mem::ManuallyDrop;
 
-struct SI1<T: Iterator<Item: Copy, Item: Send>> {
+struct Si1<T: Iterator<Item: Copy, Item: Send>> {
     f: T,
 }
-struct SI2<T: Iterator<Item: Copy, Item: Copy>> {
+struct Si2<T: Iterator<Item: Copy, Item: Copy>> {
     f: T,
 }
-struct SI3<T: Iterator<Item: 'static, Item: 'static>> {
+struct Si3<T: Iterator<Item: 'static, Item: 'static>> {
     f: T,
 }
-struct SW1<T>
+struct Sw1<T>
 where
     T: Iterator<Item: Copy, Item: Send>,
 {
     f: T,
 }
-struct SW2<T>
+struct Sw2<T>
 where
     T: Iterator<Item: Copy, Item: Copy>,
 {
     f: T,
 }
-struct SW3<T>
+struct Sw3<T>
 where
     T: Iterator<Item: 'static, Item: 'static>,
 {
     f: T,
 }
 
-enum EI1<T: Iterator<Item: Copy, Item: Send>> {
+enum Ei1<T: Iterator<Item: Copy, Item: Send>> {
     V(T),
 }
-enum EI2<T: Iterator<Item: Copy, Item: Copy>> {
+enum Ei2<T: Iterator<Item: Copy, Item: Copy>> {
     V(T),
 }
-enum EI3<T: Iterator<Item: 'static, Item: 'static>> {
+enum Ei3<T: Iterator<Item: 'static, Item: 'static>> {
     V(T),
 }
-enum EW1<T>
+enum Ew1<T>
 where
     T: Iterator<Item: Copy, Item: Send>,
 {
     V(T),
 }
-enum EW2<T>
+enum Ew2<T>
 where
     T: Iterator<Item: Copy, Item: Copy>,
 {
     V(T),
 }
-enum EW3<T>
+enum Ew3<T>
 where
     T: Iterator<Item: 'static, Item: 'static>,
 {
     V(T),
 }
 
-union UI1<T: Iterator<Item: Copy, Item: Send>> {
+union Ui1<T: Iterator<Item: Copy, Item: Send>> {
     f: ManuallyDrop<T>,
 }
-union UI2<T: Iterator<Item: Copy, Item: Copy>> {
+union Ui2<T: Iterator<Item: Copy, Item: Copy>> {
     f: ManuallyDrop<T>,
 }
-union UI3<T: Iterator<Item: 'static, Item: 'static>> {
+union Ui3<T: Iterator<Item: 'static, Item: 'static>> {
     f: ManuallyDrop<T>,
 }
-union UW1<T>
+union Uw1<T>
 where
     T: Iterator<Item: Copy, Item: Send>,
 {
     f: ManuallyDrop<T>,
 }
-union UW2<T>
+union Uw2<T>
 where
     T: Iterator<Item: Copy, Item: Copy>,
 {
     f: ManuallyDrop<T>,
 }
-union UW3<T>
+union Uw3<T>
 where
     T: Iterator<Item: 'static, Item: 'static>,
 {
@@ -110,78 +110,78 @@ where
 {
 }
 
-fn frpit1() -> impl Iterator<Item: Copy, Item: Send> {
+fn rpit1() -> impl Iterator<Item: Copy, Item: Send> {
     iter::empty::<u32>()
 }
-fn frpit2() -> impl Iterator<Item: Copy, Item: Copy> {
+fn rpit2() -> impl Iterator<Item: Copy, Item: Copy> {
     iter::empty::<u32>()
 }
-fn frpit3() -> impl Iterator<Item: 'static, Item: 'static> {
+fn rpit3() -> impl Iterator<Item: 'static, Item: 'static> {
     iter::empty::<u32>()
 }
-fn fapit1(_: impl Iterator<Item: Copy, Item: Send>) {}
-fn fapit2(_: impl Iterator<Item: Copy, Item: Copy>) {}
-fn fapit3(_: impl Iterator<Item: 'static, Item: 'static>) {}
+fn apit1(_: impl Iterator<Item: Copy, Item: Send>) {}
+fn apit2(_: impl Iterator<Item: Copy, Item: Copy>) {}
+fn apit3(_: impl Iterator<Item: 'static, Item: 'static>) {}
 
-type TAI1<T: Iterator<Item: Copy, Item: Send>> = T;
-type TAI2<T: Iterator<Item: Copy, Item: Copy>> = T;
-type TAI3<T: Iterator<Item: 'static, Item: 'static>> = T;
-type TAW1<T>
+type Tait1<T: Iterator<Item: Copy, Item: Send>> = T;
+type Tait2<T: Iterator<Item: Copy, Item: Copy>> = T;
+type Tait3<T: Iterator<Item: 'static, Item: 'static>> = T;
+type Taw1<T>
 where
     T: Iterator<Item: Copy, Item: Send>,
 = T;
-type TAW2<T>
+type Taw2<T>
 where
     T: Iterator<Item: Copy, Item: Copy>,
 = T;
-type TAW3<T>
+type Taw3<T>
 where
     T: Iterator<Item: 'static, Item: 'static>,
 = T;
 
-trait TRI1<T: Iterator<Item: Copy, Item: Send>> {}
-trait TRI2<T: Iterator<Item: Copy, Item: Copy>> {}
-trait TRI3<T: Iterator<Item: 'static, Item: 'static>> {}
-trait TRS1: Iterator<Item: Copy, Item: Send> {}
-trait TRS2: Iterator<Item: Copy, Item: Copy> {}
-trait TRS3: Iterator<Item: 'static, Item: 'static> {}
-trait TRW1<T>
+trait Tri1<T: Iterator<Item: Copy, Item: Send>> {}
+trait Tri2<T: Iterator<Item: Copy, Item: Copy>> {}
+trait Tri3<T: Iterator<Item: 'static, Item: 'static>> {}
+trait Trs1: Iterator<Item: Copy, Item: Send> {}
+trait Trs2: Iterator<Item: Copy, Item: Copy> {}
+trait Trs3: Iterator<Item: 'static, Item: 'static> {}
+trait Trw1<T>
 where
     T: Iterator<Item: Copy, Item: Send>,
 {
 }
-trait TRW2<T>
+trait Trw2<T>
 where
     T: Iterator<Item: Copy, Item: Copy>,
 {
 }
-trait TRW3<T>
+trait Trw3<T>
 where
     T: Iterator<Item: 'static, Item: 'static>,
 {
 }
-trait TRSW1
+trait Trsw1
 where
     Self: Iterator<Item: Copy, Item: Send>,
 {
 }
-trait TRSW2
+trait Trsw2
 where
     Self: Iterator<Item: Copy, Item: Copy>,
 {
 }
-trait TRSW3
+trait Trsw3
 where
     Self: Iterator<Item: 'static, Item: 'static>,
 {
 }
-trait TRA1 {
+trait Tra1 {
     type A: Iterator<Item: Copy, Item: Send>;
 }
-trait TRA2 {
+trait Tra2 {
     type A: Iterator<Item: Copy, Item: Copy>;
 }
-trait TRA3 {
+trait Tra3 {
     type A: Iterator<Item: 'static, Item: 'static>;
 }
 

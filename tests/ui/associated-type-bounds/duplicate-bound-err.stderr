@@ -34,50 +34,50 @@ LL |     iter::empty::<T>()
 error: unconstrained opaque type
   --> $DIR/duplicate-bound-err.rs:21:51
    |
-LL | type ETAI1<T: Iterator<Item: Copy, Item: Send>> = impl Copy;
+LL | type Tait1<T: Iterator<Item: Copy, Item: Send>> = impl Copy;
    |                                                   ^^^^^^^^^
    |
-   = note: `ETAI1` must be used in combination with a concrete type within the same crate
+   = note: `Tait1` must be used in combination with a concrete type within the same crate
 
 error: unconstrained opaque type
   --> $DIR/duplicate-bound-err.rs:23:51
    |
-LL | type ETAI2<T: Iterator<Item: Copy, Item: Copy>> = impl Copy;
+LL | type Tait2<T: Iterator<Item: Copy, Item: Copy>> = impl Copy;
    |                                                   ^^^^^^^^^
    |
-   = note: `ETAI2` must be used in combination with a concrete type within the same crate
+   = note: `Tait2` must be used in combination with a concrete type within the same crate
 
 error: unconstrained opaque type
   --> $DIR/duplicate-bound-err.rs:25:57
    |
-LL | type ETAI3<T: Iterator<Item: 'static, Item: 'static>> = impl Copy;
+LL | type Tait3<T: Iterator<Item: 'static, Item: 'static>> = impl Copy;
    |                                                         ^^^^^^^^^
    |
-   = note: `ETAI3` must be used in combination with a concrete type within the same crate
+   = note: `Tait3` must be used in combination with a concrete type within the same crate
 
 error: unconstrained opaque type
   --> $DIR/duplicate-bound-err.rs:28:14
    |
-LL | type ETAI4 = impl Iterator<Item: Copy, Item: Send>;
+LL | type Tait4 = impl Iterator<Item: Copy, Item: Send>;
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `ETAI4` must be used in combination with a concrete type within the same crate
+   = note: `Tait4` must be used in combination with a concrete type within the same crate
 
 error: unconstrained opaque type
   --> $DIR/duplicate-bound-err.rs:30:14
    |
-LL | type ETAI5 = impl Iterator<Item: Copy, Item: Copy>;
+LL | type Tait5 = impl Iterator<Item: Copy, Item: Copy>;
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `ETAI5` must be used in combination with a concrete type within the same crate
+   = note: `Tait5` must be used in combination with a concrete type within the same crate
 
 error: unconstrained opaque type
   --> $DIR/duplicate-bound-err.rs:32:14
    |
-LL | type ETAI6 = impl Iterator<Item: 'static, Item: 'static>;
+LL | type Tait6 = impl Iterator<Item: 'static, Item: 'static>;
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `ETAI6` must be used in combination with a concrete type within the same crate
+   = note: `Tait6` must be used in combination with a concrete type within the same crate
 
 error[E0277]: `*const ()` cannot be sent between threads safely
   --> $DIR/duplicate-bound-err.rs:35:18

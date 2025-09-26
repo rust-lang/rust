@@ -5,31 +5,31 @@
 
 use std::iter;
 
-fn frpit1() -> impl Iterator<Item: Copy, Item: Send> {
+fn rpit1() -> impl Iterator<Item: Copy, Item: Send> {
     iter::empty()
     //~^ ERROR type annotations needed
 }
-fn frpit2() -> impl Iterator<Item: Copy, Item: Copy> {
+fn rpit2() -> impl Iterator<Item: Copy, Item: Copy> {
     iter::empty()
     //~^ ERROR type annotations needed
 }
-fn frpit3() -> impl Iterator<Item: 'static, Item: 'static> {
+fn rpit3() -> impl Iterator<Item: 'static, Item: 'static> {
     iter::empty()
     //~^ ERROR type annotations needed
 }
 
-type ETAI1<T: Iterator<Item: Copy, Item: Send>> = impl Copy;
+type Tait1<T: Iterator<Item: Copy, Item: Send>> = impl Copy;
 //~^ ERROR unconstrained opaque type
-type ETAI2<T: Iterator<Item: Copy, Item: Copy>> = impl Copy;
+type Tait2<T: Iterator<Item: Copy, Item: Copy>> = impl Copy;
 //~^ ERROR unconstrained opaque type
-type ETAI3<T: Iterator<Item: 'static, Item: 'static>> = impl Copy;
+type Tait3<T: Iterator<Item: 'static, Item: 'static>> = impl Copy;
 //~^ ERROR unconstrained opaque type
 
-type ETAI4 = impl Iterator<Item: Copy, Item: Send>;
+type Tait4 = impl Iterator<Item: Copy, Item: Send>;
 //~^ ERROR unconstrained opaque type
-type ETAI5 = impl Iterator<Item: Copy, Item: Copy>;
+type Tait5 = impl Iterator<Item: Copy, Item: Copy>;
 //~^ ERROR unconstrained opaque type
-type ETAI6 = impl Iterator<Item: 'static, Item: 'static>;
+type Tait6 = impl Iterator<Item: 'static, Item: 'static>;
 //~^ ERROR unconstrained opaque type
 
 fn mismatch() -> impl Iterator<Item: Copy, Item: Send> {
