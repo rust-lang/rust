@@ -76,7 +76,7 @@ pub(crate) fn declare_raw_fn<'ll, 'tcx>(
         attrs.push(llvm::AttributeKind::NoRedZone.create_attr(cx.llcx));
     }
 
-    attrs.extend(attributes::non_lazy_bind_attr(cx));
+    attrs.extend(attributes::non_lazy_bind_attr(cx, cx.tcx.sess));
 
     attributes::apply_to_llfn(llfn, Function, &attrs);
 
