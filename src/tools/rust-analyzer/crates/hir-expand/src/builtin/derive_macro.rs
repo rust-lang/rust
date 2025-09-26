@@ -12,7 +12,7 @@ use tracing::debug;
 
 use crate::{
     ExpandError, ExpandResult, MacroCallId,
-    builtin::quote::{dollar_crate, quote},
+    builtin::quote::dollar_crate,
     db::ExpandDatabase,
     hygiene::span_with_def_site_ctxt,
     name::{self, AsName, Name},
