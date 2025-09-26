@@ -41,8 +41,30 @@ use crate::{
 
 type Res = def::Res<NodeId>;
 
+/// The the side effect made when resolving the bindings for an underterminate import.
+enum SideEffectBindings<'ra> {
+    None,
+    /// Side effect that should be applied to the field `bindings` of `ImportKind::Single`.
+    ///
+    /// The inner `Option` is the actual side effect, it tells us whether we found a binding
+    /// when resolving the import in this particular namespace.
+    /// The outer `Option` tells us if this side effect is present.
+    Single {
+        import_bindings: PerNS<Option<Option<NameBinding<'ra>>>>,
+    },
+    Glob {
+        import_bindings: Vec<(NameBinding<'ra>, BindingKey)>,
+    },
+}
+
+/// The side effect made when resolving an undeterminate import.
+struct SideEffect<'ra> {
+    imported_module: ModuleOrUniformRoot<'ra>,
+    bindings: SideEffectBindings<'ra>,
+}
+
 /// A [`NameBinding`] in the process of being resolved.
-#[derive(Clone, Copy, Default, PartialEq)]
+#[derive(Clone, Copy, Default, PartialEq, Debug)]
 pub(crate) enum PendingBinding<'ra> {
     Ready(Option<NameBinding<'ra>>),
     #[default]
@@ -542,31 +564,143 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     // Import resolution
     //
-    // This is a fixed-point algorithm. We resolve imports until our efforts
-    // are stymied by an unresolved import; then we bail out of the current
-    // module and continue. We terminate successfully once no more imports
-    // remain or unsuccessfully when no forward progress in resolving imports
-    // is made.
+    // This is a batched fixed-point algorithm. Each import is resolved in
+    // isolation, with any side effects collected for later.
+    // After a full pass over the current set of `indeterminate_imports`,
+    // the collected side effects are committed together. The process
+    // repeats until either no imports remain or no further progress can
+    // be made.
 
     /// Resolves all imports for the crate. This method performs the fixed-
     /// point iteration.
     pub(crate) fn resolve_imports(&mut self) {
-        self.assert_speculative = true;
         let mut prev_indeterminate_count = usize::MAX;
         let mut indeterminate_count = self.indeterminate_imports.len() * 3;
         while indeterminate_count < prev_indeterminate_count {
             prev_indeterminate_count = indeterminate_count;
             indeterminate_count = 0;
+            let mut side_effects = Vec::new();
+            self.assert_speculative = true;
             for import in mem::take(&mut self.indeterminate_imports) {
-                let import_indeterminate_count = self.cm().resolve_import(import);
+                let (side_effect, import_indeterminate_count) = self.cm().resolve_import(import);
                 indeterminate_count += import_indeterminate_count;
                 match import_indeterminate_count {
                     0 => self.determined_imports.push(import),
                     _ => self.indeterminate_imports.push(import),
                 }
+                if let Some(side_effect) = side_effect {
+                    side_effects.push((import, side_effect));
+                }
+            }
+            self.assert_speculative = false;
+            self.commit_import_resolutions(side_effects);
+        }
+    }
+
+    fn commit_import_resolutions(
+        &mut self,
+        import_resolutions: Vec<(Import<'ra>, SideEffect<'ra>)>,
+    ) {
+        for (import, side_effect) in import_resolutions.iter() {
+            let SideEffect { imported_module, .. } = side_effect;
+            import.imported_module.set(Some(*imported_module));
+
+            if import.is_glob() {
+                let ModuleOrUniformRoot::Module(module) = imported_module else {
+                    self.dcx().emit_err(CannotGlobImportAllCrates { span: import.span });
+                    continue;
+                };
+                if import.parent_scope.module != *module {
+                    module.glob_importers.borrow_mut().push(*import);
+                }
             }
         }
-        self.assert_speculative = false;
+
+        for (import, side_effect) in import_resolutions {
+            let SideEffect { imported_module, bindings: side_effect_bindings } = side_effect;
+            let parent = import.parent_scope.module;
+
+            match (&import.kind, side_effect_bindings) {
+                (
+                    ImportKind::Single { target, bindings, .. },
+                    SideEffectBindings::Single { import_bindings },
+                ) => {
+                    self.per_ns(|this, ns| {
+                        match import_bindings[ns] {
+                            Some(Some(binding)) => {
+                                if binding.is_assoc_item()
+                                    && !this.tcx.features().import_trait_associated_functions()
+                                {
+                                    feature_err(
+                                        this.tcx.sess,
+                                        sym::import_trait_associated_functions,
+                                        import.span,
+                                        "`use` associated items of traits is unstable",
+                                    )
+                                    .emit();
+                                }
+                                this.define_binding_local(parent, *target, ns, binding);
+                                bindings[ns].set(PendingBinding::Ready(Some(binding)));
+                            }
+                            Some(None) => {
+                                // Don't remove underscores from `single_imports`, they were never added.
+                                if target.name != kw::Underscore {
+                                    let key = BindingKey::new(*target, ns);
+                                    this.update_local_resolution(
+                                        parent,
+                                        key,
+                                        false,
+                                        |_, resolution| {
+                                            resolution.single_imports.swap_remove(&import);
+                                        },
+                                    );
+                                }
+                                bindings[ns].set(PendingBinding::Ready(None));
+                            }
+                            None => {}
+                        }
+                    });
+                }
+                (ImportKind::Glob { id, .. }, SideEffectBindings::Glob { import_bindings }) => {
+                    let ModuleOrUniformRoot::Module(module) = imported_module else {
+                        continue;
+                    };
+
+                    if module.is_trait() && !self.tcx.features().import_trait_associated_functions()
+                    {
+                        feature_err(
+                            self.tcx.sess,
+                            sym::import_trait_associated_functions,
+                            import.span,
+                            "`use` associated items of traits is unstable",
+                        )
+                        .emit();
+                    }
+
+                    for (binding, key) in import_bindings {
+                        let imported_binding = self.import(binding, import);
+                        let warn_ambiguity = self
+                            .resolution(import.parent_scope.module, key)
+                            .and_then(|r| r.binding())
+                            .is_some_and(|binding| binding.warn_ambiguity_recursive());
+                        let _ = self.try_define_local(
+                            parent,
+                            key.ident.0,
+                            key.ns,
+                            imported_binding,
+                            warn_ambiguity,
+                        );
+                    }
+
+                    self.record_partial_res(*id, PartialRes::new(module.res().unwrap()));
+                }
+
+                (_, SideEffectBindings::None) => {}
+
+                // Something weird happened, which shouldn't have happened.
+                _ => unreachable!("Mismatched import kind and side effect"),
+            }
+        }
     }
 
     pub(crate) fn finalize_imports(&mut self) {
@@ -837,9 +971,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// - `0` means its resolution is determined.
     /// - Other values mean that indeterminate exists under certain namespaces.
     ///
-    /// Meanwhile, if resolve successful, the resolved bindings are written
-    /// into the module.
-    fn resolve_import<'r>(mut self: CmResolver<'r, 'ra, 'tcx>, import: Import<'ra>) -> usize {
+    /// Meanwhile, if resolution is successful, the side effect of the resolution is returned.
+    fn resolve_import<'r>(
+        mut self: CmResolver<'r, 'ra, 'tcx>,
+        import: Import<'ra>,
+    ) -> (Option<SideEffect<'ra>>, usize) {
         debug!(
             "(resolving import for module) resolving import `{}::...` in `{}`",
             Segment::names_to_string(&import.module_path),
@@ -857,91 +993,68 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
             match path_res {
                 PathResult::Module(module) => module,
-                PathResult::Indeterminate => return 3,
-                PathResult::NonModule(..) | PathResult::Failed { .. } => return 0,
+                PathResult::Indeterminate => return (None, 3),
+                PathResult::NonModule(..) | PathResult::Failed { .. } => {
+                    return (None, 0);
+                }
             }
         };
 
-        import.imported_module.set(Some(module));
-        let (source, target, bindings, type_ns_only) = match import.kind {
+        let (source, _, bindings, type_ns_only) = match import.kind {
             ImportKind::Single { source, target, ref bindings, type_ns_only, .. } => {
                 (source, target, bindings, type_ns_only)
             }
             ImportKind::Glob { .. } => {
-                // FIXME: Use mutable resolver directly as a hack, this should be an output of
-                // speculative resolution.
-                self.get_mut_unchecked().resolve_glob_import(import);
-                return 0;
+                return (
+                    Some(SideEffect {
+                        imported_module: module,
+                        bindings: self.resolve_glob_import(import, module),
+                    }),
+                    0,
+                );
             }
             _ => unreachable!(),
         };
 
+        let mut import_bindings = PerNS::default();
         let mut indeterminate_count = 0;
-        self.per_ns_cm(|this, ns| {
+
+        // HACK: Use array of namespaces in the same order as `per_ns_mut`.
+        // We can't use `per_ns_cm` because of the invariance on CmResolver (RefOrMut).
+        for ns in [TypeNS, ValueNS, MacroNS] {
             if !type_ns_only || ns == TypeNS {
                 if bindings[ns].get() != PendingBinding::Pending {
-                    return;
+                    continue;
                 };
-                let binding_result = this.reborrow().maybe_resolve_ident_in_module(
+                let binding_result = self.reborrow().maybe_resolve_ident_in_module(
                     module,
                     source,
                     ns,
                     &import.parent_scope,
                     Some(import),
                 );
-                let parent = import.parent_scope.module;
-                let binding = match binding_result {
+                let pending_binding = match binding_result {
                     Ok(binding) => {
-                        if binding.is_assoc_item()
-                            && !this.tcx.features().import_trait_associated_functions()
-                        {
-                            feature_err(
-                                this.tcx.sess,
-                                sym::import_trait_associated_functions,
-                                import.span,
-                                "`use` associated items of traits is unstable",
-                            )
-                            .emit();
-                        }
                         // We need the `target`, `source` can be extracted.
-                        let imported_binding = this.import(binding, import);
-                        // FIXME: Use mutable resolver directly as a hack, this should be an output of
-                        // speculative resolution.
-                        this.get_mut_unchecked().define_binding_local(
-                            parent,
-                            target,
-                            ns,
-                            imported_binding,
-                        );
-                        PendingBinding::Ready(Some(imported_binding))
+                        let imported_binding = self.import(binding, import);
+                        Some(Some(imported_binding))
                     }
-                    Err(Determinacy::Determined) => {
-                        // Don't remove underscores from `single_imports`, they were never added.
-                        if target.name != kw::Underscore {
-                            let key = BindingKey::new(target, ns);
-                            // FIXME: Use mutable resolver directly as a hack, this should be an output of
-                            // speculative resolution.
-                            this.get_mut_unchecked().update_local_resolution(
-                                parent,
-                                key,
-                                false,
-                                |_, resolution| {
-                                    resolution.single_imports.swap_remove(&import);
-                                },
-                            );
-                        }
-                        PendingBinding::Ready(None)
-                    }
+                    Err(Determinacy::Determined) => Some(None),
                     Err(Determinacy::Undetermined) => {
                         indeterminate_count += 1;
-                        PendingBinding::Pending
+                        None
                     }
                 };
-                bindings[ns].set(binding);
+                import_bindings[ns] = pending_binding;
             }
-        });
-
-        indeterminate_count
+        }
+        (
+            Some(SideEffect {
+                imported_module: module,
+                bindings: SideEffectBindings::Single { import_bindings },
+            }),
+            indeterminate_count,
+        )
     }
 
     /// Performs final import resolution, consistency checks and error reporting.
@@ -1484,66 +1597,40 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         false
     }
 
-    fn resolve_glob_import(&mut self, import: Import<'ra>) {
-        // This function is only called for glob imports.
-        let ImportKind::Glob { id, .. } = import.kind else { unreachable!() };
+    fn resolve_glob_import(
+        &self,
+        import: Import<'ra>,
+        imported_module: ModuleOrUniformRoot<'ra>,
+    ) -> SideEffectBindings<'ra> {
+        match imported_module {
+            ModuleOrUniformRoot::Module(module) if module != import.parent_scope.module => {
+                let import_bindings = self
+                    .resolutions(module)
+                    .borrow()
+                    .iter()
+                    .filter_map(|(key, resolution)| {
+                        let binding = resolution.borrow().binding()?;
+                        let mut key = *key;
+                        let scope = match key
+                            .ident
+                            .0
+                            .span
+                            .reverse_glob_adjust(module.expansion, import.span)
+                        {
+                            Some(Some(def)) => self.expn_def_scope(def),
+                            Some(None) => import.parent_scope.module,
+                            None => return None,
+                        };
+                        self.is_accessible_from(binding.vis, scope).then(|| (binding, key))
+                    })
+                    .collect::<Vec<_>>();
 
-        let ModuleOrUniformRoot::Module(module) = import.imported_module.get().unwrap() else {
-            self.dcx().emit_err(CannotGlobImportAllCrates { span: import.span });
-            return;
-        };
-
-        if module.is_trait() && !self.tcx.features().import_trait_associated_functions() {
-            feature_err(
-                self.tcx.sess,
-                sym::import_trait_associated_functions,
-                import.span,
-                "`use` associated items of traits is unstable",
-            )
-            .emit();
-        }
-
-        if module == import.parent_scope.module {
-            return;
-        }
-
-        // Add to module's glob_importers
-        module.glob_importers.borrow_mut().push(import);
-
-        // Ensure that `resolutions` isn't borrowed during `try_define`,
-        // since it might get updated via a glob cycle.
-        let bindings = self
-            .resolutions(module)
-            .borrow()
-            .iter()
-            .filter_map(|(key, resolution)| {
-                resolution.borrow().binding().map(|binding| (*key, binding))
-            })
-            .collect::<Vec<_>>();
-        for (mut key, binding) in bindings {
-            let scope = match key.ident.0.span.reverse_glob_adjust(module.expansion, import.span) {
-                Some(Some(def)) => self.expn_def_scope(def),
-                Some(None) => import.parent_scope.module,
-                None => continue,
-            };
-            if self.is_accessible_from(binding.vis, scope) {
-                let imported_binding = self.import(binding, import);
-                let warn_ambiguity = self
-                    .resolution(import.parent_scope.module, key)
-                    .and_then(|r| r.binding())
-                    .is_some_and(|binding| binding.warn_ambiguity_recursive());
-                let _ = self.try_define_local(
-                    import.parent_scope.module,
-                    key.ident.0,
-                    key.ns,
-                    imported_binding,
-                    warn_ambiguity,
-                );
+                SideEffectBindings::Glob { import_bindings }
             }
-        }
 
-        // Record the destination of this import
-        self.record_partial_res(id, PartialRes::new(module.res().unwrap()));
+            // Errors are reported in `commit_imports_resolutions`
+            _ => SideEffectBindings::None,
+        }
     }
 
     // Miscellaneous post-processing, including recording re-exports,
@@ -1558,8 +1645,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         module.for_each_child(self, |this, ident, _, binding| {
             let res = binding.res().expect_non_local();
-            let error_ambiguity = binding.is_ambiguity_recursive() && !binding.warn_ambiguity;
-            if res != def::Res::Err && !error_ambiguity {
+            if res != def::Res::Err && !binding.is_ambiguity_recursive() {
                 let mut reexport_chain = SmallVec::new();
                 let mut next_binding = binding;
                 while let NameBindingKind::Import { binding, import, .. } = next_binding.kind {
