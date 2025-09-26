@@ -13,6 +13,7 @@
 use std::fmt;
 use std::ops::{Index, IndexMut};
 
+use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::*;
@@ -309,7 +310,7 @@ pub struct MovePathLookup<'tcx> {
     /// subsequent search so that it is solely relative to that
     /// base-place). For the remaining lookup, we map the projection
     /// elem to the associated MovePathIndex.
-    projections: FxHashMap<(MovePathIndex, ProjectionKind), MovePathIndex>,
+    projections: FxHashMap<(MovePathIndex, MoveSubPath), MovePathIndex>,
 
     un_derefer: UnDerefer<'tcx>,
 }
@@ -333,7 +334,14 @@ impl<'tcx> MovePathLookup<'tcx> {
         };
 
         for (_, elem) in self.un_derefer.iter_projections(place) {
-            if let Some(&subpath) = self.projections.get(&(result, elem.kind())) {
+            let subpath = match MoveSubPath::of(elem.kind()) {
+                MoveSubPathResult::One(kind) => self.projections.get(&(result, kind)),
+                MoveSubPathResult::Subslice { .. } => None, // just use the parent MovePath
+                MoveSubPathResult::Skip => continue,
+                MoveSubPathResult::Stop => None,
+            };
+
+            if let Some(&subpath) = subpath {
                 result = subpath;
             } else {
                 return LookupResult::Parent(Some(result));
@@ -388,5 +396,56 @@ impl<'tcx> MoveData<'tcx> {
         }
 
         self.move_paths[root].find_descendant(&self.move_paths, pred)
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum MoveSubPath {
+    Deref,
+    Field(FieldIdx),
+    ConstantIndex(u64),
+    Downcast(VariantIdx),
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum MoveSubPathResult {
+    One(MoveSubPath),
+    Subslice { from: u64, to: u64 },
+    Skip,
+    Stop,
+}
+
+impl MoveSubPath {
+    pub fn of(elem: ProjectionKind) -> MoveSubPathResult {
+        let subpath = match elem {
+            // correspond to a MoveSubPath
+            ProjectionKind::Deref => MoveSubPath::Deref,
+            ProjectionKind::Field(idx, _) => MoveSubPath::Field(idx),
+            ProjectionKind::ConstantIndex { offset, min_length: _, from_end: false } => {
+                MoveSubPath::ConstantIndex(offset)
+            }
+            ProjectionKind::Downcast(_, idx) => MoveSubPath::Downcast(idx),
+
+            // these should be the same move path as their parent
+            // they're fine to skip because they cannot have sibling move paths
+            ProjectionKind::OpaqueCast(_) | ProjectionKind::UnwrapUnsafeBinder(_) => {
+                return MoveSubPathResult::Skip;
+            }
+
+            // these cannot be moved through
+            ProjectionKind::Index(_)
+            | ProjectionKind::ConstantIndex { offset: _, min_length: _, from_end: true }
+            | ProjectionKind::Subslice { from: _, to: _, from_end: true } => {
+                return MoveSubPathResult::Stop;
+            }
+
+            // subslice is special.
+            // it needs to be split into individual move paths
+            ProjectionKind::Subslice { from, to, from_end: false } => {
+                return MoveSubPathResult::Subslice { from, to };
+            }
+        };
+
+        MoveSubPathResult::One(subpath)
     }
 }
