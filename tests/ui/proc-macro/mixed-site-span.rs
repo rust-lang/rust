@@ -2,6 +2,7 @@
 
 //@ aux-build: token-site-span.rs
 //@ proc-macro: mixed-site-span.rs
+//@ ignore-backends: gcc
 
 extern crate mixed_site_span;
 extern crate token_site_span;

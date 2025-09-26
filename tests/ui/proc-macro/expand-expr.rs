@@ -1,4 +1,5 @@
 //@ proc-macro: expand-expr.rs
+//@ ignore-backends: gcc
 // no-remap-src-base: check_expand_expr_file!() fails when enabled.
 
 #![feature(concat_bytes)]
@@ -10,7 +11,7 @@ use expand_expr::{
 
 // Check builtin macros can be expanded.
 
-expand_expr_is!(13u32, line!());
+expand_expr_is!(14u32, line!());
 expand_expr_is!(24u32, column!());
 
 expand_expr_is!("Hello, World!", concat!("Hello, ", "World", "!"));

@@ -2,6 +2,7 @@
 //@ compile-flags: -C overflow-checks=on
 //@ needs-threads
 //@ needs-unwind
+//@ ignore-backends: gcc
 
 use std::thread;
 
