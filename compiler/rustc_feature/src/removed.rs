@@ -101,6 +101,8 @@ declare_features! (
      Some("never properly implemented; requires significant design work"), 127655),
     /// Allows deriving traits as per `SmartPointer` specification
     (removed, derive_smart_pointer, "1.84.0", Some(123430), Some("replaced by `CoercePointee`"), 131284),
+    /// Tells rustdoc to automatically generate `#[doc(cfg(...))]`.
+    (removed, doc_auto_cfg, "1.58.0", Some(43781), Some("merged into `doc_cfg`"), 138907),
     /// Allows `#[doc(cfg_hide(...))]`.
     (removed, doc_cfg_hide, "1.57.0", Some(43781), Some("merged into `doc_cfg`"), 138907),
     /// Allows using `#[doc(keyword = "...")]`.
