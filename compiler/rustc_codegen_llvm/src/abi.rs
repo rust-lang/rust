@@ -538,7 +538,13 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
 
         // If the declaration has an associated instance, compute extra attributes based on that.
         if let Some(instance) = instance {
-            llfn_attrs_from_instance(cx, llfn, instance);
+            llfn_attrs_from_instance(
+                cx,
+                cx.tcx,
+                llfn,
+                &cx.tcx.codegen_instance_attrs(instance.def),
+                Some(instance),
+            );
         }
     }
 
