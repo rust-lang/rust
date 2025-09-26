@@ -188,12 +188,42 @@ enum UnstableOptions {
 }
 
 #[track_caller]
+fn dwo_out_filenames(dwo_out: Option<&str>) -> BTreeSet<String> {
+    let dwo_out = if let Some(d) = dwo_out {
+        d
+    } else {
+        return BTreeSet::new();
+    };
+    let files = shallow_find_files(dwo_out, |path| {
+        // Fiilter out source files
+        !has_extension(path, "rs")
+    });
+    files
+        .iter()
+        .map(|p| {
+            format!("{}/{}", dwo_out, p.file_name().unwrap().to_os_string().into_string().unwrap())
+        })
+        .collect()
+}
+
+#[track_caller]
 fn cwd_filenames() -> BTreeSet<String> {
     let files = shallow_find_files(cwd(), |path| {
         // Fiilter out source files
         !has_extension(path, "rs")
     });
     files.iter().map(|p| p.file_name().unwrap().to_os_string().into_string().unwrap()).collect()
+}
+
+#[track_caller]
+fn dwo_out_dwo_filenames(dwo_out: &str) -> BTreeSet<String> {
+    let files = shallow_find_files(dwo_out, |p| has_extension(p, "dwo"));
+    files
+        .iter()
+        .map(|p| {
+            format!("{}/{}", dwo_out, p.file_name().unwrap().to_os_string().into_string().unwrap())
+        })
+        .collect()
 }
 
 #[track_caller]
@@ -376,17 +406,19 @@ mod shared_linux_other_tests {
         lto: LinkerPluginLto,
         remap_path_prefix: RemapPathPrefix,
         remap_path_scope: RemapPathScope,
+        split_dwarf_output_directory: Option<&str>,
     ) {
         run_in_tmpdir(|| {
             println!(
-                "checking: unstable_options={:?} + split_kind={:?} + level={:?} + split_dwarf_kind={:?} + lto={:?} + remap_path_prefix={:?} + remap_path_scope={:?}",
+                "checking: unstable_options={:?} + split_kind={:?} + level={:?} + split_dwarf_kind={:?} + lto={:?} + remap_path_prefix={:?} + remap_path_scope={:?} + split_dwarf_out_dir={:?}",
                 unstable_options,
                 split_kind,
                 level,
                 split_dwarf_kind,
                 lto,
                 remap_path_prefix,
-                remap_path_scope
+                remap_path_scope,
+                split_dwarf_output_directory,
             );
 
             match cross_crate_test {
@@ -398,6 +430,7 @@ mod shared_linux_other_tests {
                     lto,
                     remap_path_prefix,
                     remap_path_scope,
+                    split_dwarf_output_directory,
                 ),
                 CrossCrateTest::No => simple_split_debuginfo(
                     unstable_options,
@@ -407,6 +440,7 @@ mod shared_linux_other_tests {
                     lto,
                     remap_path_prefix,
                     remap_path_scope,
+                    split_dwarf_output_directory,
                 ),
             }
         });
@@ -420,7 +454,11 @@ mod shared_linux_other_tests {
         lto: LinkerPluginLto,
         remap_path_prefix: RemapPathPrefix,
         remap_path_scope: RemapPathScope,
+        split_dwarf_output_directory: Option<&str>,
     ) {
+        if let Some(dwo_out) = split_dwarf_output_directory {
+            run_make_support::rfs::create_dir(dwo_out);
+        }
         match (split_kind, level, split_dwarf_kind, lto, remap_path_prefix, remap_path_scope) {
             // packed-crosscrate-split
             // - Debuginfo in `.dwo` files
@@ -531,13 +569,19 @@ mod shared_linux_other_tests {
                     .input("bar.rs")
                     .crate_type("lib")
                     .split_debuginfo(split_kind.cli_value())
+                    .split_dwarf_out_dir(split_dwarf_output_directory)
                     .debuginfo(level.cli_value())
                     .arg(format!("-Zsplit-dwarf-kind={}", split_dwarf_kind.cli_value()))
                     .run();
 
-                let bar_found_files = cwd_filenames();
+                let mut bar_found_files = cwd_filenames();
+                bar_found_files.append(&mut dwo_out_filenames(split_dwarf_output_directory));
 
-                let bar_dwo_files = cwd_dwo_filenames();
+                let bar_dwo_files = if let Some(dwo_out) = split_dwarf_output_directory {
+                    dwo_out_dwo_filenames(dwo_out)
+                } else {
+                    cwd_dwo_filenames()
+                };
                 assert_eq!(bar_dwo_files.len(), 1);
 
                 let mut bar_expected_files = BTreeSet::new();
@@ -553,13 +597,19 @@ mod shared_linux_other_tests {
                     .extern_("bar", "libbar.rlib")
                     .input("main.rs")
                     .split_debuginfo(split_kind.cli_value())
+                    .split_dwarf_out_dir(split_dwarf_output_directory)
                     .debuginfo(level.cli_value())
                     .arg(format!("-Zsplit-dwarf-kind={}", split_dwarf_kind.cli_value()))
                     .run();
 
-                let overall_found_files = cwd_filenames();
+                let mut overall_found_files = cwd_filenames();
+                overall_found_files.append(&mut dwo_out_filenames(split_dwarf_output_directory));
 
-                let overall_dwo_files = cwd_dwo_filenames();
+                let overall_dwo_files = if let Some(dwo_out) = split_dwarf_output_directory {
+                    dwo_out_dwo_filenames(dwo_out)
+                } else {
+                    cwd_dwo_filenames()
+                };
                 assert_eq!(overall_dwo_files.len(), 2);
 
                 let mut overall_expected_files = BTreeSet::new();
@@ -648,7 +698,11 @@ mod shared_linux_other_tests {
         lto: LinkerPluginLto,
         remap_path_prefix: RemapPathPrefix,
         remap_path_scope: RemapPathScope,
+        split_dwarf_output_directory: Option<&str>,
     ) {
+        if let Some(dwo_out) = split_dwarf_output_directory {
+            run_make_support::rfs::create_dir(dwo_out);
+        }
         match (split_kind, level, split_dwarf_kind, lto, remap_path_prefix, remap_path_scope) {
             // off (unspecified):
             // - Debuginfo in `.o` files
@@ -921,14 +975,19 @@ mod shared_linux_other_tests {
                 rustc(unstable_options)
                     .input("foo.rs")
                     .split_debuginfo(split_kind.cli_value())
+                    .split_dwarf_out_dir(split_dwarf_output_directory)
                     .debuginfo(level.cli_value())
                     .arg(format!("-Zsplit-dwarf-kind={}", split_dwarf_kind.cli_value()))
                     .run();
-                let found_files = cwd_filenames();
+                let mut found_files = cwd_filenames();
+                found_files.append(&mut dwo_out_filenames(split_dwarf_output_directory));
 
-                let dwo_files = cwd_dwo_filenames();
+                let dwo_files = if let Some(dwo_dir) = split_dwarf_output_directory {
+                    dwo_out_dwo_filenames(dwo_dir)
+                } else {
+                    cwd_dwo_filenames()
+                };
                 assert_eq!(dwo_files.len(), 1);
-
                 let mut expected_files = BTreeSet::new();
                 expected_files.extend(dwo_files);
                 expected_files.insert("foo".to_string());
@@ -1056,14 +1115,20 @@ mod shared_linux_other_tests {
                 rustc(unstable_options)
                     .input("foo.rs")
                     .split_debuginfo(split_kind.cli_value())
+                    .split_dwarf_out_dir(split_dwarf_output_directory)
                     .debuginfo(level.cli_value())
                     .arg(format!("-Zsplit-dwarf-kind={}", split_dwarf_kind.cli_value()))
                     .remap_path_prefix(cwd(), remapped_prefix)
                     .run();
 
-                let found_files = cwd_filenames();
+                let mut found_files = cwd_filenames();
+                found_files.append(&mut dwo_out_filenames(split_dwarf_output_directory));
 
-                let dwo_files = cwd_dwo_filenames();
+                let dwo_files = if let Some(dwo_out) = split_dwarf_output_directory {
+                    dwo_out_dwo_filenames(dwo_out)
+                } else {
+                    cwd_dwo_filenames()
+                };
                 assert_eq!(dwo_files.len(), 1);
 
                 let mut expected_files = BTreeSet::new();
@@ -1358,6 +1423,7 @@ fn main() {
             LinkerPluginLto::Unspecified,
             RemapPathPrefix::Unspecified,
             RemapPathScope::Unspecified,
+            None,
         );
 
         // off
@@ -1370,6 +1436,7 @@ fn main() {
             LinkerPluginLto::Unspecified,
             RemapPathPrefix::Unspecified,
             RemapPathScope::Unspecified,
+            None,
         );
 
         // packed-split
@@ -1382,6 +1449,7 @@ fn main() {
             LinkerPluginLto::Unspecified,
             RemapPathPrefix::Unspecified,
             RemapPathScope::Unspecified,
+            None,
         );
 
         // packed-single
@@ -1394,6 +1462,7 @@ fn main() {
             LinkerPluginLto::Unspecified,
             RemapPathPrefix::Unspecified,
             RemapPathScope::Unspecified,
+            None,
         );
 
         // packed-lto-split
@@ -1406,6 +1475,7 @@ fn main() {
             LinkerPluginLto::Yes,
             RemapPathPrefix::Unspecified,
             RemapPathScope::Unspecified,
+            None,
         );
 
         // packed-lto-single
@@ -1418,6 +1488,7 @@ fn main() {
             LinkerPluginLto::Yes,
             RemapPathPrefix::Unspecified,
             RemapPathScope::Unspecified,
+            None,
         );
 
         // FIXME: the remapping tests probably need to be reworked, see
@@ -1433,6 +1504,7 @@ fn main() {
             LinkerPluginLto::Unspecified,
             RemapPathPrefix::Yes { remapped_prefix: "/__MY_REMAPPED_PATH__" },
             RemapPathScope::Unspecified,
+            None,
         );
 
         // packed-remapped-single
@@ -1445,6 +1517,7 @@ fn main() {
             LinkerPluginLto::Unspecified,
             RemapPathPrefix::Yes { remapped_prefix: "/__MY_REMAPPED_PATH__" },
             RemapPathScope::Unspecified,
+            None,
         );
 
         // packed-remapped-scope
@@ -1457,6 +1530,7 @@ fn main() {
             LinkerPluginLto::Unspecified,
             RemapPathPrefix::Yes { remapped_prefix: "/__MY_REMAPPED_PATH__" },
             RemapPathScope::Yes("debuginfo"),
+            None,
         );
 
         // packed-remapped-wrong-scope
@@ -1469,6 +1543,7 @@ fn main() {
             LinkerPluginLto::Unspecified,
             RemapPathPrefix::Yes { remapped_prefix: "/__MY_REMAPPED_PATH__" },
             RemapPathScope::Yes("macro"),
+            None,
         );
 
         // packed-crosscrate-split
@@ -1481,6 +1556,7 @@ fn main() {
             LinkerPluginLto::Unspecified,
             RemapPathPrefix::Unspecified,
             RemapPathScope::Unspecified,
+            None,
         );
 
         // packed-crosscrate-single
@@ -1493,6 +1569,7 @@ fn main() {
             LinkerPluginLto::Unspecified,
             RemapPathPrefix::Unspecified,
             RemapPathScope::Unspecified,
+            None,
         );
 
         // unpacked-split
@@ -1505,6 +1582,20 @@ fn main() {
             LinkerPluginLto::Unspecified,
             RemapPathPrefix::Unspecified,
             RemapPathScope::Unspecified,
+            None,
+        );
+
+        // unpacked-split with split-dwarf-out-dir
+        shared_linux_other_tests::split_debuginfo(
+            CrossCrateTest::No,
+            UnstableOptions::Yes,
+            SplitDebuginfo::Unpacked,
+            DebuginfoLevel::Full,
+            SplitDwarfKind::Split,
+            LinkerPluginLto::Unspecified,
+            RemapPathPrefix::Unspecified,
+            RemapPathScope::Unspecified,
+            Some("other-dir"),
         );
 
         // unpacked-single
@@ -1517,6 +1608,7 @@ fn main() {
             LinkerPluginLto::Unspecified,
             RemapPathPrefix::Unspecified,
             RemapPathScope::Unspecified,
+            None,
         );
 
         // unpacked-lto-split
@@ -1529,6 +1621,7 @@ fn main() {
             LinkerPluginLto::Yes,
             RemapPathPrefix::Unspecified,
             RemapPathScope::Unspecified,
+            None,
         );
 
         // unpacked-lto-single
@@ -1541,6 +1634,7 @@ fn main() {
             LinkerPluginLto::Yes,
             RemapPathPrefix::Unspecified,
             RemapPathScope::Unspecified,
+            None,
         );
 
         // unpacked-remapped-split
@@ -1553,6 +1647,20 @@ fn main() {
             LinkerPluginLto::Unspecified,
             RemapPathPrefix::Yes { remapped_prefix: "/__MY_REMAPPED_PATH__" },
             RemapPathScope::Unspecified,
+            None,
+        );
+
+        // unpacked-remapped-split with split-dwarf-out-dir
+        shared_linux_other_tests::split_debuginfo(
+            CrossCrateTest::No,
+            UnstableOptions::Yes,
+            SplitDebuginfo::Unpacked,
+            DebuginfoLevel::Full,
+            SplitDwarfKind::Split,
+            LinkerPluginLto::Unspecified,
+            RemapPathPrefix::Yes { remapped_prefix: "/__MY_REMAPPED_PATH__" },
+            RemapPathScope::Unspecified,
+            Some("other-dir"),
         );
 
         // unpacked-remapped-single
@@ -1565,6 +1673,7 @@ fn main() {
             LinkerPluginLto::Unspecified,
             RemapPathPrefix::Yes { remapped_prefix: "/__MY_REMAPPED_PATH__" },
             RemapPathScope::Unspecified,
+            None,
         );
 
         // unpacked-remapped-scope
@@ -1577,6 +1686,7 @@ fn main() {
             LinkerPluginLto::Unspecified,
             RemapPathPrefix::Yes { remapped_prefix: "/__MY_REMAPPED_PATH__" },
             RemapPathScope::Yes("debuginfo"),
+            None,
         );
 
         // unpacked-remapped-wrong-scope
@@ -1589,6 +1699,7 @@ fn main() {
             LinkerPluginLto::Unspecified,
             RemapPathPrefix::Yes { remapped_prefix: "/__MY_REMAPPED_PATH__" },
             RemapPathScope::Yes("macro"),
+            None,
         );
 
         // unpacked-crosscrate-split
@@ -1601,6 +1712,20 @@ fn main() {
             LinkerPluginLto::Unspecified,
             RemapPathPrefix::Unspecified,
             RemapPathScope::Unspecified,
+            None,
+        );
+
+        // unpacked-crosscrate-split with split-dwarf-out-dir
+        shared_linux_other_tests::split_debuginfo(
+            CrossCrateTest::Yes,
+            UnstableOptions::Yes,
+            SplitDebuginfo::Unpacked,
+            DebuginfoLevel::Full,
+            SplitDwarfKind::Split,
+            LinkerPluginLto::Unspecified,
+            RemapPathPrefix::Unspecified,
+            RemapPathScope::Unspecified,
+            Some("other-dir"),
         );
 
         // unpacked-crosscrate-single
@@ -1613,6 +1738,7 @@ fn main() {
             LinkerPluginLto::Unspecified,
             RemapPathPrefix::Unspecified,
             RemapPathScope::Unspecified,
+            None,
         );
     }
 }
