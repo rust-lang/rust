@@ -77,7 +77,7 @@ declare_hooks! {
     /// session, if it still exists. This is used during incremental compilation to
     /// turn a deserialized `DefPathHash` into its current `DefId`.
     /// Will fetch a DefId from a DefPathHash for a foreign crate.
-    hook def_path_hash_to_def_id_extern(hash: DefPathHash, stable_crate_id: StableCrateId) -> DefId;
+    hook def_path_hash_to_def_id_extern(hash: DefPathHash, stable_crate_id: StableCrateId) -> Option<DefId>;
 
     /// Returns `true` if we should codegen an instance in the local crate, or returns `false` if we
     /// can just link to the upstream crate and therefore don't need a mono item.
