@@ -505,11 +505,6 @@ fn default_fallback(tcx: TyCtxt<'_>) -> DivergingFallbackBehavior {
         return DivergingFallbackBehavior::ToNever;
     }
 
-    // `feature(never_type_fallback)`: fallback to `!` or `()` trying to not break stuff
-    if tcx.features().never_type_fallback() {
-        return DivergingFallbackBehavior::ContextDependent;
-    }
-
     // Otherwise: fallback to `()`
     DivergingFallbackBehavior::ToUnit
 }
@@ -536,7 +531,6 @@ fn parse_never_type_options_attr(
             let mode = item.value_str().unwrap();
             match mode {
                 sym::unit => fallback = Some(DivergingFallbackBehavior::ToUnit),
-                sym::niko => fallback = Some(DivergingFallbackBehavior::ContextDependent),
                 sym::never => fallback = Some(DivergingFallbackBehavior::ToNever),
                 sym::no => fallback = Some(DivergingFallbackBehavior::NoFallback),
                 _ => {
