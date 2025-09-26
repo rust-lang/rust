@@ -596,6 +596,7 @@ Select which editor you would like to set up [default: None]: ";
                 "198c195ed0c070d15907b279b8b4ea96198ca71b939f5376454f3d636ab54da5",
                 "1c43ead340b20792b91d02b08494ee68708e7e09f56b6766629b4b72079208f1",
                 "eec09a09452682060afd23dd5d3536ccac5615b3cdbf427366446901215fb9f6",
+                "d3fbf8eca90f7e12a3609988ba2e7e5ba0c03c15d9d64344cde5147eb80fee69",
             ],
             EditorKind::Vim | EditorKind::VsCode => &[
                 "ea67e259dedf60d4429b6c349a564ffcd1563cf41c920a856d1f5b16b4701ac8",
