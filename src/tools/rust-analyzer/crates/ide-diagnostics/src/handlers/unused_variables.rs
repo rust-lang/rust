@@ -6,7 +6,7 @@ use ide_db::{
     label::Label,
     source_change::SourceChange,
 };
-use syntax::{AstNode, Edition, TextRange};
+use syntax::{AstNode, Edition, TextRange, ToSmolStr};
 
 use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 
@@ -73,7 +73,8 @@ fn fixes(
     if is_in_marco {
         return None;
     }
-    let name = var_name.display(db, edition);
+    let name = var_name.display(db, edition).to_smolstr();
+    let name = name.strip_prefix("r#").unwrap_or(&name);
     let new_name = if is_shorthand_field { format!("{name}: _{name}") } else { format!("_{name}") };
 
     Some(vec![Assist {
@@ -230,6 +231,19 @@ fn main() {
             _ = f2;
         }
     }
+}
+"#,
+        );
+
+        check_fix(
+            r#"
+fn main() {
+    let $0r#type = 2;
+}
+"#,
+            r#"
+fn main() {
+    let _type = 2;
 }
 "#,
         );
