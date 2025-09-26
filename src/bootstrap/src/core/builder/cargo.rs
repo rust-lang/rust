@@ -106,9 +106,9 @@ pub struct Cargo {
     rustdocflags: Rustflags,
     hostflags: HostFlags,
     allow_features: String,
-    release_build: bool,
     build_compiler_stage: u32,
     extra_rustflags: Vec<String>,
+    profile: Option<&'static str>,
 }
 
 impl Cargo {
@@ -137,7 +137,11 @@ impl Cargo {
     }
 
     pub fn release_build(&mut self, release_build: bool) {
-        self.release_build = release_build;
+        self.profile = if release_build { Some("release") } else { None };
+    }
+
+    pub fn profile(&mut self, profile: &'static str) {
+        self.profile = Some(profile);
     }
 
     pub fn compiler(&self) -> Compiler {
@@ -407,8 +411,8 @@ impl Cargo {
 
 impl From<Cargo> for BootstrapCommand {
     fn from(mut cargo: Cargo) -> BootstrapCommand {
-        if cargo.release_build {
-            cargo.args.insert(0, "--release".into());
+        if let Some(profile) = cargo.profile {
+            cargo.args.insert(0, format!("--profile={profile}").into());
         }
 
         for arg in &cargo.extra_rustflags {
@@ -1434,9 +1438,18 @@ impl Builder<'_> {
             .unwrap_or(&self.config.rust_rustflags)
             .clone();
 
-        let release_build = self.config.rust_optimize.is_release() &&
-            // cargo bench/install do not accept `--release` and miri doesn't want it
-            !matches!(cmd_kind, Kind::Bench | Kind::Install | Kind::Miri | Kind::MiriSetup | Kind::MiriTest);
+        let profile =
+            if matches!(cmd_kind, Kind::Bench | Kind::Miri | Kind::MiriSetup | Kind::MiriTest) {
+                // Use the default profile for bench/miri
+                None
+            } else {
+                match (mode, self.config.rust_optimize.is_release()) {
+                    // Some std configuration exists in its own profile
+                    (Mode::Std, true) => Some("dist"),
+                    (_, true) => Some("release"),
+                    (_, false) => Some("dev"),
+                }
+            };
 
         Cargo {
             command: cargo,
@@ -1448,9 +1461,9 @@ impl Builder<'_> {
             rustdocflags,
             hostflags,
             allow_features,
-            release_build,
             build_compiler_stage,
             extra_rustflags,
+            profile,
         }
     }
 }

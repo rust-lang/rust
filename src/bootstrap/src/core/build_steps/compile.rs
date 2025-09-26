@@ -680,13 +680,6 @@ pub fn std_cargo(
         }
     }
 
-    // By default, rustc uses `-Cembed-bitcode=yes`, and Cargo overrides that
-    // with `-Cembed-bitcode=no` for non-LTO builds. However, libstd must be
-    // built with bitcode so that the produced rlibs can be used for both LTO
-    // builds (which use bitcode) and non-LTO builds (which use object code).
-    // So we override the override here!
-    cargo.rustflag("-Cembed-bitcode=yes");
-
     if builder.config.rust_lto == RustcLto::Off {
         cargo.rustflag("-Clto=off");
     }
