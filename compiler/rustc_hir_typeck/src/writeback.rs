@@ -1003,8 +1003,10 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Resolver<'cx, 'tcx> {
     }
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        debug_assert!(!r.is_bound(), "Should not be resolving bound region.");
-        self.fcx.tcx.lifetimes.re_erased
+        match r.kind() {
+            ty::ReBound(..) => r,
+            _ => self.fcx.tcx.lifetimes.re_erased,
+        }
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {

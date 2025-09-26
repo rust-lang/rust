@@ -6,7 +6,5 @@
 struct Simd<const N: usize>([f32; N]);
 
 fn main() {
-    let _ = Simd::<0>([]);
+    let _empty = Simd::<0>([]); //~ ERROR the SIMD type `Simd<0>` has zero elements
 }
-
-//~? ERROR monomorphising SIMD type `Simd<0>` of zero length

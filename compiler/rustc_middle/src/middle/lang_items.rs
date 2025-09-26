@@ -98,5 +98,6 @@ pub fn required(tcx: TyCtxt<'_>, lang_item: LangItem) -> bool {
             lang_item != LangItem::EhPersonality && lang_item != LangItem::EhCatchTypeinfo
         }
         PanicStrategy::Unwind => true,
+        PanicStrategy::ImmediateAbort => false,
     }
 }

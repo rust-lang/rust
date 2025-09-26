@@ -49,3 +49,21 @@ impl<S: Stage> SingleAttributeParser<S> for RustcObjectLifetimeDefaultParser {
         Some(AttributeKind::RustcObjectLifetimeDefault)
     }
 }
+
+pub(crate) struct RustcSimdMonomorphizeLaneLimitParser;
+
+impl<S: Stage> SingleAttributeParser<S> for RustcSimdMonomorphizeLaneLimitParser {
+    const PATH: &[Symbol] = &[sym::rustc_simd_monomorphize_lane_limit];
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
+    const TEMPLATE: AttributeTemplate = template!(NameValueStr: "N");
+
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+        let ArgParser::NameValue(nv) = args else {
+            cx.expected_name_value(cx.attr_span, None);
+            return None;
+        };
+        Some(AttributeKind::RustcSimdMonomorphizeLaneLimit(cx.parse_limit_int(nv)?))
+    }
+}

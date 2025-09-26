@@ -1053,6 +1053,8 @@ unsafe extern "C" {
         SLen: c_uint,
     ) -> MetadataKindId;
 
+    pub(crate) fn LLVMDisposeTargetMachine(T: ptr::NonNull<TargetMachine>);
+
     // Create modules.
     pub(crate) fn LLVMModuleCreateWithNameInContext(
         ModuleID: *const c_char,
@@ -2499,7 +2501,6 @@ unsafe extern "C" {
         UseWasmEH: bool,
     ) -> *mut TargetMachine;
 
-    pub(crate) fn LLVMRustDisposeTargetMachine(T: *mut TargetMachine);
     pub(crate) fn LLVMRustAddLibraryInfo<'a>(
         PM: &PassManager<'a>,
         M: &'a Module,

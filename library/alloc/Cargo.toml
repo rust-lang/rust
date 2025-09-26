@@ -22,8 +22,6 @@ compiler_builtins = { path = "../compiler-builtins/compiler-builtins", features 
 compiler-builtins-mem = ['compiler_builtins/mem']
 compiler-builtins-c = ["compiler_builtins/c"]
 compiler-builtins-no-f16-f128 = ["compiler_builtins/no-f16-f128"]
-# Make panics and failed asserts immediately abort without formatting any message
-panic_immediate_abort = ["core/panic_immediate_abort"]
 # Choose algorithms that are optimized for binary size instead of runtime performance
 optimize_for_size = ["core/optimize_for_size"]
 
