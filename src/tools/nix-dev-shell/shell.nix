@@ -16,6 +16,7 @@ pkgs.mkShell {
     pkgs.nix
     pkgs.glibc.out
     pkgs.glibc.static
+    pkgs.rust-analyzer
     x
     # Get the runtime deps of the x wrapper
   ] ++ lists.flatten (attrsets.attrValues env);
