@@ -2,13 +2,13 @@ use std::borrow::{Borrow, Cow};
 use std::fmt;
 use std::hash::Hash;
 
-use rustc_abi::{Align, Size};
+use rustc_abi::{Align, FieldIdx, Size};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, IndexEntry};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, CRATE_HIR_ID, LangItem};
 use rustc_middle::mir::AssertMessage;
-use rustc_middle::mir::interpret::ReportedErrorInfo;
+use rustc_middle::mir::interpret::{Pointer, ReportedErrorInfo};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{HasTypingEnv, TyAndLayout, ValidityRequirement};
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -22,7 +22,7 @@ use crate::errors::{LongRunning, LongRunningWarn};
 use crate::fluent_generated as fluent;
 use crate::interpret::{
     self, AllocId, AllocInit, AllocRange, ConstAllocation, CtfeProvenance, FnArg, Frame,
-    GlobalAlloc, ImmTy, InterpCx, InterpResult, OpTy, PlaceTy, Pointer, RangeSet, Scalar,
+    GlobalAlloc, ImmTy, InterpCx, InterpResult, OpTy, PlaceTy, RangeSet, Scalar,
     compile_time_machine, err_inval, interp_ok, throw_exhaust, throw_inval, throw_ub,
     throw_ub_custom, throw_unsup, throw_unsup_format,
 };
@@ -589,6 +589,14 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                     // Skip the `return_to_block` at the end (we panicked, we do not return).
                     return interp_ok(None);
                 }
+            }
+
+            sym::type_of => {
+                let op = ecx.project_field(&args[0], FieldIdx::ZERO)?;
+                let op = ecx.project_index(&op, 0)?;
+                let id = ecx.read_scalar(&op)?.to_pointer(ecx)?;
+                let (ty, _offset) = ecx.get_ptr_type_id(id)?;
+                ecx.write_type_info(ty, dest)?;
             }
 
             _ => {
