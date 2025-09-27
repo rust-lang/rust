@@ -258,6 +258,8 @@ pub enum AutoDiff {
     LooseTypes,
     /// Runs Enzyme's aggressive inlining
     Inline,
+    /// Disable Type Tree
+    NoTT,
 }
 
 /// Settings for `-Z instrument-xray` flag.

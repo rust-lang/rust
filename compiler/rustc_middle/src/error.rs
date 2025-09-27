@@ -37,7 +37,6 @@ pub(crate) struct OpaqueHiddenTypeMismatch<'tcx> {
     pub sub: TypeMismatchReason,
 }
 
-// FIXME(autodiff): I should get used somewhere
 #[derive(Diagnostic)]
 #[diag(middle_unsupported_union)]
 pub struct UnsupportedUnion {

@@ -1,6 +1,7 @@
 use std::ptr;
 
 use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, DiffActivity, DiffMode};
+use rustc_ast::expand::typetree::FncTree;
 use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, BuilderMethods};
 use rustc_middle::ty::{Instance, PseudoCanonicalInput, TyCtxt, TypingEnv};
@@ -294,6 +295,7 @@ pub(crate) fn generate_enzyme_call<'ll, 'tcx>(
     fn_args: &[&'ll Value],
     attrs: AutoDiffAttrs,
     dest: PlaceRef<'tcx, &'ll Value>,
+    fnc_tree: FncTree,
 ) {
     // We have to pick the name depending on whether we want forward or reverse mode autodiff.
     let mut ad_name: String = match attrs.mode {
@@ -369,6 +371,10 @@ pub(crate) fn generate_enzyme_call<'ll, 'tcx>(
         &attrs.input_activity,
         fn_args,
     );
+
+    if !fnc_tree.args.is_empty() || !fnc_tree.ret.0.is_empty() {
+        crate::typetree::add_tt(cx.llmod, cx.llcx, fn_to_diff, fnc_tree);
+    }
 
     let call = builder.call(enzyme_ty, None, None, ad_fn, &args, None, None);
 
