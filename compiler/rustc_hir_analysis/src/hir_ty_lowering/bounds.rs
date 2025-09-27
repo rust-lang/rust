@@ -21,7 +21,8 @@ use tracing::{debug, instrument};
 use super::errors::GenericsArgsErrExtend;
 use crate::errors;
 use crate::hir_ty_lowering::{
-    AssocItemQSelf, FeedConstTy, HirTyLowerer, PredicateFilter, RegionInferReason,
+    AssocItemQSelf, FeedConstTy, HirTyLowerer, OverlappingAsssocItemConstraints, PredicateFilter,
+    RegionInferReason,
 };
 
 #[derive(Debug, Default)]
@@ -362,6 +363,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         param_ty,
                         bounds,
                         predicate_filter,
+                        OverlappingAsssocItemConstraints::Allowed,
                     );
                 }
                 hir::GenericBound::Outlives(lifetime) => {
@@ -402,7 +404,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         trait_ref: ty::PolyTraitRef<'tcx>,
         constraint: &hir::AssocItemConstraint<'tcx>,
         bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
-        duplicates: &mut FxIndexMap<DefId, Span>,
+        duplicates: Option<&mut FxIndexMap<DefId, Span>>,
         path_span: Span,
         predicate_filter: PredicateFilter,
     ) -> Result<(), ErrorGuaranteed> {
@@ -458,17 +460,19 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             )
             .expect("failed to find associated item");
 
-        duplicates
-            .entry(assoc_item.def_id)
-            .and_modify(|prev_span| {
-                self.dcx().emit_err(errors::ValueOfAssociatedStructAlreadySpecified {
-                    span: constraint.span,
-                    prev_span: *prev_span,
-                    item_name: constraint.ident,
-                    def_path: tcx.def_path_str(assoc_item.container_id(tcx)),
-                });
-            })
-            .or_insert(constraint.span);
+        if let Some(duplicates) = duplicates {
+            duplicates
+                .entry(assoc_item.def_id)
+                .and_modify(|prev_span| {
+                    self.dcx().emit_err(errors::ValueOfAssociatedStructAlreadySpecified {
+                        span: constraint.span,
+                        prev_span: *prev_span,
+                        item_name: constraint.ident,
+                        def_path: tcx.def_path_str(assoc_item.container_id(tcx)),
+                    });
+                })
+                .or_insert(constraint.span);
+        }
 
         let projection_term = if let ty::AssocTag::Fn = assoc_tag {
             let bound_vars = tcx.late_bound_vars(constraint.hir_id);

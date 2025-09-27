@@ -23,7 +23,9 @@ use tracing::{debug, instrument};
 
 use super::HirTyLowerer;
 use crate::errors::SelfInTypeAlias;
-use crate::hir_ty_lowering::{GenericArgCountMismatch, PredicateFilter, RegionInferReason};
+use crate::hir_ty_lowering::{
+    GenericArgCountMismatch, OverlappingAsssocItemConstraints, PredicateFilter, RegionInferReason,
+};
 
 impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// Lower a trait object type from the HIR to our internal notion of a type.
@@ -60,6 +62,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 dummy_self,
                 &mut user_written_bounds,
                 PredicateFilter::SelfOnly,
+                OverlappingAsssocItemConstraints::Forbidden,
             );
             if let Err(GenericArgCountMismatch { invalid_args, .. }) = result.correct {
                 potential_assoc_types.extend(invalid_args);
@@ -157,10 +160,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 self.dcx()
                     .struct_span_err(
                         span,
-                        format!(
-                            "conflicting associated type bounds for `{item}` when \
-                            expanding trait alias"
-                        ),
+                        format!("conflicting associated type bounds for `{item}`"),
                     )
                     .with_span_label(
                         old_proj_span,
