@@ -569,25 +569,43 @@ extern "C" LLVMRustResult LLVMRustOptimize(
   }
 
   std::optional<PGOOptions> PGOOpt;
+#if LLVM_VERSION_LT(22, 0)
   auto FS = vfs::getRealFileSystem();
+#endif
   if (PGOGenPath) {
     assert(!PGOUsePath && !PGOSampleUsePath);
     PGOOpt = PGOOptions(
+#if LLVM_VERSION_GE(22, 0)
+        PGOGenPath, "", "", "", PGOOptions::IRInstr, PGOOptions::NoCSAction,
+#else
         PGOGenPath, "", "", "", FS, PGOOptions::IRInstr, PGOOptions::NoCSAction,
+#endif
         PGOOptions::ColdFuncOpt::Default, DebugInfoForProfiling);
   } else if (PGOUsePath) {
     assert(!PGOSampleUsePath);
     PGOOpt = PGOOptions(
+#if LLVM_VERSION_GE(22, 0)
+        PGOUsePath, "", "", "", PGOOptions::IRUse, PGOOptions::NoCSAction,
+#else
         PGOUsePath, "", "", "", FS, PGOOptions::IRUse, PGOOptions::NoCSAction,
+#endif
         PGOOptions::ColdFuncOpt::Default, DebugInfoForProfiling);
   } else if (PGOSampleUsePath) {
     PGOOpt =
+#if LLVM_VERSION_GE(22, 0)
+        PGOOptions(PGOSampleUsePath, "", "", "", PGOOptions::SampleUse,
+#else
         PGOOptions(PGOSampleUsePath, "", "", "", FS, PGOOptions::SampleUse,
+#endif
                    PGOOptions::NoCSAction, PGOOptions::ColdFuncOpt::Default,
                    DebugInfoForProfiling);
   } else if (DebugInfoForProfiling) {
     PGOOpt = PGOOptions(
+#if LLVM_VERSION_GE(22, 0)
+        "", "", "", "", PGOOptions::NoAction, PGOOptions::NoCSAction,
+#else
         "", "", "", "", FS, PGOOptions::NoAction, PGOOptions::NoCSAction,
+#endif
         PGOOptions::ColdFuncOpt::Default, DebugInfoForProfiling);
   }
 
