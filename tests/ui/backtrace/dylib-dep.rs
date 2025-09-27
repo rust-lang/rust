@@ -4,7 +4,6 @@
 // Original test:
 // <https://github.com/rust-lang/backtrace-rs/tree/6fa4b85b9962c3e1be8c2e5cc605cd078134152b/crates/dylib-dep>
 // ignore-tidy-linelength
-//@ ignore-android FIXME #17520
 //@ ignore-fuchsia Backtraces not symbolized
 //@ ignore-musl musl doesn't support dynamic libraries (at least when the original test was written).
 //@ ignore-ios needs the `.dSYM` files to be moved to the device
