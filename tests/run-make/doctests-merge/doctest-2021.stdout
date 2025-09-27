@@ -1,5 +1,5 @@
 
-running 2 tests
+running 2 standalone doctests
 test doctest.rs - (line 4) ... ok
 test doctest.rs - init (line 8) ... ok
 

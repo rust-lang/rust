@@ -1,5 +1,5 @@
 
-running 3 tests
+running 3 standalone doctests
 test $DIR/wrong-ast.rs - one (line 6) ... FAILED
 test $DIR/wrong-ast.rs - three (line 16) ... ok
 test $DIR/wrong-ast.rs - two (line 11) ... FAILED

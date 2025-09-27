@@ -1,5 +1,5 @@
 
-running 2 tests
+running 2 merged doctests
 test $DIR/merged-ignore-no_run.rs - ignored (line 7) ... ignored
 test $DIR/merged-ignore-no_run.rs - no_run (line 12) - compile ... ok
 

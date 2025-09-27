@@ -1,5 +1,5 @@
 
-running 1 test
+running 1 merged doctest
 test $DIR/edition-2024-error-output.rs - (line 14) ... FAILED
 
 failures:

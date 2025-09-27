@@ -391,6 +391,7 @@ pub(crate) fn run_tests(
                 opts.clone(),
                 Arc::clone(rustdoc_options),
                 unused_extern_reports.clone(),
+                false,
             ));
         }
     }
@@ -1021,7 +1022,7 @@ impl CreateRunnableDocTests {
             || self.rustdoc_options.nocapture
             || self.rustdoc_options.test_args.iter().any(|arg| arg == "--show-output");
         if is_standalone {
-            let test_desc = self.generate_test_desc_and_fn(doctest, scraped_test);
+            let test_desc = self.generate_test_desc_and_fn(doctest, scraped_test, false);
             self.standalone_tests.push(test_desc);
         } else {
             self.mergeable_tests
@@ -1042,6 +1043,7 @@ impl CreateRunnableDocTests {
         &mut self,
         test: DocTestBuilder,
         scraped_test: ScrapedDocTest,
+        merged: bool,
     ) -> test::TestDescAndFn {
         if !scraped_test.langstr.compile_fail {
             self.compiling_test_count.fetch_add(1, Ordering::SeqCst);
@@ -1053,16 +1055,66 @@ impl CreateRunnableDocTests {
             self.opts.clone(),
             Arc::clone(&self.rustdoc_options),
             self.unused_extern_reports.clone(),
+            merged,
         )
     }
 }
 
+#[cfg(not(bootstrap))]
 fn generate_test_desc_and_fn(
     test: DocTestBuilder,
     scraped_test: ScrapedDocTest,
     opts: GlobalTestOptions,
     rustdoc_options: Arc<RustdocOptions>,
     unused_externs: Arc<Mutex<Vec<UnusedExterns>>>,
+    merged: bool,
+) -> test::TestDescAndFn {
+    let target_str = rustdoc_options.target.to_string();
+    let rustdoc_test_options =
+        IndividualTestOptions::new(&rustdoc_options, &test.test_id, scraped_test.path());
+
+    debug!("creating test {}: {}", scraped_test.name, scraped_test.text);
+    test::TestDescAndFn {
+        desc: test::TestDesc {
+            name: test::DynTestName(scraped_test.name.clone()),
+            ignore: match scraped_test.langstr.ignore {
+                Ignore::All => true,
+                Ignore::None => false,
+                Ignore::Some(ref ignores) => ignores.iter().any(|s| target_str.contains(s)),
+            },
+            ignore_message: None,
+            source_file: "",
+            start_line: 0,
+            start_col: 0,
+            end_line: 0,
+            end_col: 0,
+            // compiler failures are test failures
+            should_panic: test::ShouldPanic::No,
+            compile_fail: scraped_test.langstr.compile_fail,
+            no_run: scraped_test.no_run(&rustdoc_options),
+            test_type: test::TestType::DocTest { merged },
+        },
+        testfn: test::DynTestFn(Box::new(move || {
+            doctest_run_fn(
+                rustdoc_test_options,
+                opts,
+                test,
+                scraped_test,
+                rustdoc_options,
+                unused_externs,
+            )
+        })),
+    }
+}
+
+#[cfg(bootstrap)]
+fn generate_test_desc_and_fn(
+    test: DocTestBuilder,
+    scraped_test: ScrapedDocTest,
+    opts: GlobalTestOptions,
+    rustdoc_options: Arc<RustdocOptions>,
+    unused_externs: Arc<Mutex<Vec<UnusedExterns>>>,
+    _merged: bool,
 ) -> test::TestDescAndFn {
     let target_str = rustdoc_options.target.to_string();
     let rustdoc_test_options =

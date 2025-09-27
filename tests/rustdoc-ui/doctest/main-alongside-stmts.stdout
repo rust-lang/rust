@@ -1,5 +1,5 @@
 
-running 2 tests
+running 2 standalone doctests
 test $DIR/main-alongside-stmts.rs - (line 17) ... ok
 test $DIR/main-alongside-stmts.rs - (line 26) ... ok
 

@@ -1,5 +1,5 @@
 
-running 2 tests
+running 2 standalone doctests
 test $DIR/non-local-defs-impl.rs - doctest (line 13) - compile ... FAILED
 test $DIR/non-local-defs-impl.rs - doctest (line 25) - compile ... ok
 
