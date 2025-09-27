@@ -1,3 +1,5 @@
+//@ check-pass
+
 #![feature(associated_const_equality, generic_const_items)]
 #![expect(incomplete_features)]
 
@@ -16,9 +18,4 @@ fn bar<const N: u32, T: Foo<ASSOC<N> = 10>>() {}
 
 fn main() {
     bar::<_, ()>();
-    //~^ ERROR: type mismatch resolving `<() as Foo>::ASSOC<_> == 10`
-
-    // FIXME(mgca):
-    // FIXME(associated_const_equality):
-    // This ought to start compiling once const items are aliases rather than bodies
 }

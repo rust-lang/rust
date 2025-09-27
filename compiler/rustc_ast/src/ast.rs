@@ -3754,7 +3754,7 @@ pub struct ConstItem {
     pub ident: Ident,
     pub generics: Generics,
     pub ty: Box<Ty>,
-    pub expr: Option<Box<Expr>>,
+    pub body: Option<Box<AnonConst>>,
     pub define_opaque: Option<ThinVec<(NodeId, Path)>>,
 }
 

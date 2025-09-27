@@ -2161,7 +2161,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
             // We error when the type contains unsubstituted generics since we do not currently
             // give the anon const any of the generics from the parent.
-            if anon_const_type.has_non_region_param() {
+            if tcx.features().generic_const_parameter_types()
+                && anon_const_type.has_non_region_param()
+            {
                 let e = self.dcx().span_err(
                     const_arg.span(),
                     "anonymous constants referencing generics are not yet supported",

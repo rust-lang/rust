@@ -523,17 +523,17 @@ impl<'a> State<'a> {
         ident: Ident,
         generics: &hir::Generics<'_>,
         ty: &hir::Ty<'_>,
-        default: Option<hir::BodyId>,
+        default: Option<&'_ hir::ConstArg<'_>>,
     ) {
         self.word_space("const");
         self.print_ident(ident);
         self.print_generic_params(generics.params);
         self.word_space(":");
         self.print_type(ty);
-        if let Some(expr) = default {
+        if let Some(ct_arg) = default {
             self.space();
             self.word_space("=");
-            self.ann.nested(self, Nested::Body(expr));
+            self.print_const_arg(ct_arg);
         }
         self.print_where_clause(generics);
         self.word(";")
@@ -626,7 +626,7 @@ impl<'a> State<'a> {
                 self.end(ib);
 
                 self.word_space("=");
-                self.ann.nested(self, Nested::Body(expr));
+                self.print_const_arg(expr);
                 self.print_where_clause(generics);
                 self.word(";");
                 self.end(cb);

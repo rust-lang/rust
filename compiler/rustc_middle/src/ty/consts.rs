@@ -287,6 +287,12 @@ pub enum AnonConstKind {
     GCE,
     /// stable `min_const_generics` anon consts are not allowed to use any generic parameters
     MCG,
+    /// We sometimes use anon consts for the bodies of free and associated const items,
+    /// and they should be handled differently from anon consts used in repeat exprs and const args.
+    ///
+    /// The bodies are allowed to use generics from the parent, whereas anon consts in the type
+    /// of the const item have more restrictions.
+    ItemBody,
     /// anon consts used as the length of a repeat expr are syntactically allowed to use generic parameters
     /// but must not depend on the actual instantiation. See #76200 for more information
     RepeatExprCount,

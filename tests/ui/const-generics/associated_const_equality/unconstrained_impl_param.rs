@@ -19,7 +19,7 @@ impl<U> Trait for () where (U,): AssocConst<A = { 0 }> {}
 fn foo()
 where
     (): Trait,
-    //~^ ERROR type mismatch resolving
+    //~^ ERROR type annotations needed
 {
 }
 
