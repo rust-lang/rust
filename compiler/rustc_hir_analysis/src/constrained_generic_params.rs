@@ -4,7 +4,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable, TypeV
 use rustc_span::Span;
 use tracing::debug;
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub(crate) struct Parameter(pub u32);
 
 impl From<ty::ParamTy> for Parameter {
