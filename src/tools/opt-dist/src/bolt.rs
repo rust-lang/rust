@@ -91,6 +91,7 @@ pub fn bolt_optimize(
         .arg("--use-old-text")
         .arg("--no-huge-pages")
         .arg("--align-text=64")
+        .arg("--align-functions=2")
         // Update DWARF debug info in the final binary
         .arg("-update-debug-sections")
         // Print optimization statistics
