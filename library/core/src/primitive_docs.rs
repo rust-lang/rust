@@ -1014,6 +1014,29 @@ mod prim_slice {}
 /// Constructing a non-UTF-8 string slice is not immediate undefined behavior, but any function
 /// called on a string slice may assume that it is valid UTF-8, which means that a non-UTF-8 string
 /// slice can lead to undefined behavior down the road.
+///
+/// As an exception, some functions explicitly allow invalid UTF-8, and will not immediately cause undefined
+/// behavior if called on a `str` containing invalid UTF-8. In general, all of `str`'s associated
+/// functions other than those listed here should be assumed to require their input be valid UTF-8.
+/// Note that calling one of these functions on a `str` containing invalid UTF-8, may result in the return value
+/// also containing invalid UTF-8, if relevant.
+///
+/// * `str::as_bytes`
+/// * `str::as_bytes_mut`
+/// * `str::as_str`
+/// * `str::as_ptr`
+/// * `str::as_mut_ptr`
+/// * `str::bytes`
+/// * `str::into_string`
+/// * `str::into_boxed_bytes`
+/// * `str::len`
+/// * `<str as AsRef<[u8]>>::as_ref`
+/// * `<str as AsRef<str>>::as_ref`
+/// * `<str as AsMut<str>>::as_mut`
+/// * `<str as Borrow<str>>::borrow`
+/// * `<str as BorrowMut<str>>::borrow_mut`
+/// * `<Box<str> as Clone>::clone`
+/// * `<Box<str> as Clone>::clone_from`
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_str {}
 
