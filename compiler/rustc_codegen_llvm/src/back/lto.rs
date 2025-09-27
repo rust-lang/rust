@@ -611,7 +611,7 @@ pub(crate) fn run_pass_manager(
         write::llvm_optimize(cgcx, dcx, module, None, config, opt_level, opt_stage, stage);
     }
 
-    if enable_gpu && !thin {
+    if enable_gpu && !thin && !(cgcx.target_arch == "nvptx64" || cgcx.target_arch == "amdgpu") {
         let cx =
             SimpleCx::new(module.module_llvm.llmod(), &module.module_llvm.llcx, cgcx.pointer_size);
         crate::builder::gpu_offload::handle_gpu_code(cgcx, &cx);
