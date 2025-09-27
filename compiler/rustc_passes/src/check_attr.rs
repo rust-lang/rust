@@ -10,7 +10,7 @@ use std::collections::hash_map::Entry;
 use std::slice;
 
 use rustc_abi::{Align, ExternAbi, Size};
-use rustc_ast::{AttrStyle, LitKind, MetaItemInner, MetaItemKind, ast};
+use rustc_ast::{AttrStyle, LitKind, MetaItem, MetaItemInner, MetaItemKind, ast};
 use rustc_attr_parsing::{AttributeParser, Late};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, DiagCtxtHandle, IntoDiagArg, MultiSpan, StashKey};
@@ -1160,16 +1160,59 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    /// Check that the `#![doc(cfg_hide(...))]` attribute only contains a list of attributes.
-    ///
-    fn check_doc_cfg_hide(&self, meta: &MetaItemInner, hir_id: HirId) {
-        if meta.meta_item_list().is_none() {
-            self.tcx.emit_node_span_lint(
-                INVALID_DOC_ATTRIBUTES,
-                hir_id,
-                meta.span(),
-                errors::DocCfgHideTakesList,
-            );
+    /// Check that the `#![doc(auto_cfg)]` attribute has the expected input.
+    fn check_doc_auto_cfg(&self, meta: &MetaItem, hir_id: HirId) {
+        match &meta.kind {
+            MetaItemKind::Word => {}
+            MetaItemKind::NameValue(lit) => {
+                if !matches!(lit.kind, LitKind::Bool(_)) {
+                    self.tcx.emit_node_span_lint(
+                        INVALID_DOC_ATTRIBUTES,
+                        hir_id,
+                        meta.span,
+                        errors::DocAutoCfgWrongLiteral,
+                    );
+                }
+            }
+            MetaItemKind::List(list) => {
+                for item in list {
+                    let Some(attr_name @ (sym::hide | sym::show)) = item.name() else {
+                        self.tcx.emit_node_span_lint(
+                            INVALID_DOC_ATTRIBUTES,
+                            hir_id,
+                            meta.span,
+                            errors::DocAutoCfgExpectsHideOrShow,
+                        );
+                        continue;
+                    };
+                    if let Some(list) = item.meta_item_list() {
+                        for item in list {
+                            let valid = item.meta_item().is_some_and(|meta| {
+                                meta.path.segments.len() == 1
+                                    && matches!(
+                                        &meta.kind,
+                                        MetaItemKind::Word | MetaItemKind::NameValue(_)
+                                    )
+                            });
+                            if !valid {
+                                self.tcx.emit_node_span_lint(
+                                    INVALID_DOC_ATTRIBUTES,
+                                    hir_id,
+                                    item.span(),
+                                    errors::DocAutoCfgHideShowUnexpectedItem { attr_name },
+                                );
+                            }
+                        }
+                    } else {
+                        self.tcx.emit_node_span_lint(
+                            INVALID_DOC_ATTRIBUTES,
+                            hir_id,
+                            meta.span,
+                            errors::DocAutoCfgHideShowExpectsList { attr_name },
+                        );
+                    }
+                }
+            }
         }
     }
 
@@ -1245,10 +1288,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             self.check_attr_crate_level(attr, style, meta, hir_id);
                         }
 
-                        Some(sym::cfg_hide) => {
-                            if self.check_attr_crate_level(attr, style, meta, hir_id) {
-                                self.check_doc_cfg_hide(meta, hir_id);
-                            }
+                        Some(sym::auto_cfg) => {
+                            self.check_doc_auto_cfg(i_meta, hir_id);
                         }
 
                         Some(sym::inline | sym::no_inline) => {

@@ -56,88 +56,6 @@ It is also not emitted for foreign items, aliases, extern crates and imports.
 These features operate by extending the `#[doc]` attribute, and thus can be caught by the compiler
 and enabled with a `#![feature(...)]` attribute in your crate.
 
-### `#[doc(cfg)]`: Recording what platforms or features are required for code to be present
-
- * Tracking issue: [#43781](https://github.com/rust-lang/rust/issues/43781)
-
-You can use `#[doc(cfg(...))]` to tell Rustdoc exactly which platform items appear on.
-This has two effects:
-
-1. doctests will only run on the appropriate platforms, and
-2. When Rustdoc renders documentation for that item, it will be accompanied by a banner explaining
-   that the item is only available on certain platforms.
-
-`#[doc(cfg)]` is intended to be used alongside [`#[cfg(doc)]`][cfg-doc].
-For example, `#[cfg(any(windows, doc))]` will preserve the item either on Windows or during the
-documentation process. Then, adding a new attribute `#[doc(cfg(windows))]` will tell Rustdoc that
-the item is supposed to be used on Windows. For example:
-
-```rust
-#![feature(doc_cfg)]
-
-/// Token struct that can only be used on Windows.
-#[cfg(any(windows, doc))]
-#[doc(cfg(windows))]
-pub struct WindowsToken;
-
-/// Token struct that can only be used on Unix.
-#[cfg(any(unix, doc))]
-#[doc(cfg(unix))]
-pub struct UnixToken;
-
-/// Token struct that is only available with the `serde` feature
-#[cfg(feature = "serde")]
-#[doc(cfg(feature = "serde"))]
-#[derive(serde::Deserialize)]
-pub struct SerdeToken;
-```
-
-In this sample, the tokens will only appear on their respective platforms, but they will both appear
-in documentation.
-
-`#[doc(cfg(...))]` was introduced to be used by the standard library and currently requires the
-`#![feature(doc_cfg)]` feature gate. For more information, see [its chapter in the Unstable
-Book][unstable-doc-cfg] and [its tracking issue][issue-doc-cfg].
-
-### `doc_auto_cfg`: Automatically generate `#[doc(cfg)]`
-
- * Tracking issue: [#43781](https://github.com/rust-lang/rust/issues/43781)
-
-`doc_auto_cfg` is an extension to the `#[doc(cfg)]` feature. With it, you don't need to add
-`#[doc(cfg(...)]` anymore unless you want to override the default behaviour. So if we take the
-previous source code:
-
-```rust
-#![feature(doc_auto_cfg)]
-
-/// Token struct that can only be used on Windows.
-#[cfg(any(windows, doc))]
-pub struct WindowsToken;
-
-/// Token struct that can only be used on Unix.
-#[cfg(any(unix, doc))]
-pub struct UnixToken;
-
-/// Token struct that is only available with the `serde` feature
-#[cfg(feature = "serde")]
-#[derive(serde::Deserialize)]
-pub struct SerdeToken;
-```
-
-It'll render almost the same, the difference being that `doc` will also be displayed. To fix this,
-you can use `doc_cfg_hide`:
-
-```rust
-#![feature(doc_cfg_hide)]
-#![doc(cfg_hide(doc))]
-```
-
-And `doc` won't show up anymore!
-
-[cfg-doc]: ./advanced-features.md
-[unstable-doc-cfg]: ../unstable-book/language-features/doc-cfg.html
-[issue-doc-cfg]: https://github.com/rust-lang/rust/issues/43781
-
 ### Adding your trait to the "Notable traits" dialog
 
  * Tracking issue: [#45040](https://github.com/rust-lang/rust/issues/45040)
@@ -801,3 +719,271 @@ pass `--doctest-build-arg ARG` for each argument `ARG`.
 ## `--generate-macro-expansion`: Generate macros expansion toggles in source code
 
 This flag enables the generation of toggles to expand macros in the HTML source code pages.
+
+## `#[doc(cfg)]` and `#[doc(auto_cfg)]`
+
+This feature aims at providing rustdoc users the possibility to add visual markers to the rendered documentation to know under which conditions an item is available (currently possible through the following unstable feature: `doc_cfg`).
+
+It does not aim to allow having a same item with different `cfg`s to appear more than once in the generated documentation.
+
+It does not aim to document items which are *inactive* under the current configuration (i.e., “`cfg`ed out”).
+
+This features adds the following attributes:
+
+ * `#[doc(auto_cfg)]`/`#[doc(auto_cfg = true)]`/`#[doc(auto_cfg = false)]`
+ * `#[doc(cfg(...))]`
+ * `#![doc(auto_cfg(hide(...)))]` / `#[doc(auto_cfg(show(...)))]`
+
+All of these attributes can be added to a module or to the crate root, and they will be inherited by the child items unless another attribute overrides it. This is why "opposite" attributes like `auto_cfg(hide(...))` and `auto_cfg(show(...))` are provided: they allow a child item to override its parent.
+
+### `#[doc(cfg(...))]`
+
+This attribute provides a standardized format to override `#[cfg()]` attributes to document conditionally available items. Example:
+
+```rust,ignore (nightly)
+// the "real" cfg condition
+#[cfg(feature = "futures-io")]
+// the `doc(cfg())` so it's displayed to the readers
+#[doc(cfg(feature = "futures-io"))]
+pub mod futures {}
+```
+
+It will display in the documentation for this module:
+
+```text
+This is supported on feature="futures-io" only.
+```
+
+You can use it to display information in generated documentation, whether or not there is a `#[cfg()]` attribute:
+
+```rust,ignore (nightly)
+#[doc(cfg(feature = "futures-io"))]
+pub mod futures {}
+```
+
+It will be displayed exactly the same as the previous code.
+
+This attribute has the same syntax as conditional compilation, but it only causes documentation to be added. This means `#[doc(cfg(not(windows)))]` will not cause your docs to be hidden on non-windows targets, even though `#[cfg(not(windows))]` does do that.
+
+If `doc(auto_cfg)` is enabled on the item, `doc(cfg)` will override it anyway so in the two previous examples, even if the `doc(auto_cfg)` feature was enabled, it would still display the same thing.
+
+This attribute works on modules and on items.
+
+### `#[doc(auto_cfg(hide(...)))]`
+
+This attribute is used to prevent some `cfg` to be generated in the visual markers. It only applies to `#[doc(auto_cfg = true)]`, not to `#[doc(cfg(...))]`. So in the previous example:
+
+```rust,ignore (nightly)
+#[cfg(any(unix, feature = "futures-io"))]
+pub mod futures {}
+```
+
+It currently displays both `unix` and `feature = "futures-io"` into the documentation, which is not great. To prevent the `unix` cfg to ever be displayed, you can use this attribute at the crate root level:
+
+```rust,ignore (nightly)
+#![doc(auto_cfg(hide(unix)))]
+```
+
+Or directly on a given item/module as it covers any of the item's descendants:
+
+```rust,ignore (nightly)
+#[doc(auto_cfg(hide(unix)))]
+#[cfg(any(unix, feature = "futures-io"))]
+pub mod futures {
+    // `futures` and all its descendants won't display "unix" in their cfgs.
+}
+```
+
+Then, the `unix` cfg will never be displayed into the documentation.
+
+Rustdoc currently hides `doc` and `doctest` attributes by default and reserves the right to change the list of "hidden by default" attributes.
+
+The attribute accepts only a list of identifiers or key/value items. So you can write:
+
+```rust,ignore (nightly)
+#[doc(auto_cfg(hide(unix, doctest, feature = "something")))]
+#[doc(auto_cfg(hide()))]
+```
+
+But you cannot write:
+
+```rust,ignore (nightly)
+#[doc(auto_cfg(hide(not(unix))))]
+```
+
+So if we use `doc(auto_cfg(hide(unix)))`, it means it will hide all mentions of `unix`:
+
+```rust,ignore (nightly)
+#[cfg(unix)] // nothing displayed
+#[cfg(any(unix))] // nothing displayed
+#[cfg(any(unix, windows))] // only `windows` displayed
+```
+
+However, it only impacts the `unix` cfg, not the feature:
+
+```rust,ignore (nightly)
+#[cfg(feature = "unix")] // `feature = "unix"` is displayed
+```
+
+If `cfg_auto(show(...))` and `cfg_auto(hide(...))` are used to show/hide a same `cfg` on a same item, it'll emit an error. Example:
+
+```rust,ignore (nightly)
+#[doc(auto_cfg(hide(unix)))]
+#[doc(auto_cfg(show(unix)))] // Error!
+pub fn foo() {}
+```
+
+Using this attribute will re-enable `auto_cfg` if it was disabled at this location:
+
+```rust,ignore (nightly)
+#[doc(auto_cfg = false)] // Disabling `auto_cfg`
+pub fn foo() {}
+```
+
+And using `doc(auto_cfg)` will re-enable it:
+
+```rust,ignore (nightly)
+#[doc(auto_cfg = false)] // Disabling `auto_cfg`
+pub mod module {
+    #[doc(auto_cfg(hide(unix)))] // `auto_cfg` is re-enabled.
+    pub fn foo() {}
+}
+```
+
+However, using `doc(auto_cfg = ...)` and `doc(auto_cfg(...))` on the same item will emit an error:
+
+```rust,ignore (nightly)
+#[doc(auto_cfg = false)]
+#[doc(auto_cfg(hide(unix)))] // error
+pub fn foo() {}
+```
+
+The reason behind this is that `doc(auto_cfg = ...)` enables or disables the feature, whereas `doc(auto_cfg(...))` enables it unconditionally, making the first attribute to appear useless as it will be overidden by the next `doc(auto_cfg)` attribute.
+
+### `#[doc(auto_cfg(show(...)))]`
+
+This attribute does the opposite of `#[doc(auto_cfg(hide(...)))]`: if you used `#[doc(auto_cfg(hide(...)))]` and want to revert its effect on an item and its descendants, you can use `#[doc(auto_cfg(show(...)))]`.
+It only applies to `#[doc(auto_cfg = true)]`, not to `#[doc(cfg(...))]`.
+
+For example:
+
+```rust,ignore (nightly)
+#[doc(auto_cfg(hide(unix)))]
+#[cfg(any(unix, feature = "futures-io"))]
+pub mod futures {
+    // `futures` and all its descendants won't display "unix" in their cfgs.
+    #[doc(auto_cfg(show(unix)))]
+    pub mod child {
+        // `child` and all its descendants will display "unix" in their cfgs.
+    }
+}
+```
+
+The attribute accepts only a list of identifiers or key/value items. So you can write:
+
+```rust,ignore (nightly)
+#[doc(auto_cfg(show(unix, doctest, feature = "something")))]
+#[doc(auto_cfg(show()))]
+```
+
+But you cannot write:
+
+```rust,ignore (nightly)
+#[doc(auto_cfg(show(not(unix))))]
+```
+
+If `auto_cfg(show(...))` and `auto_cfg(hide(...))` are used to show/hide a same `cfg` on a same item, it'll emit an error. Example:
+
+```rust,ignore (nightly)
+#[doc(auto_cfg(show(unix)))]
+#[doc(auto_cfg(hide(unix)))] // Error!
+pub fn foo() {}
+```
+
+Using this attribute will re-enable `auto_cfg` if it was disabled at this location:
+
+```rust,ignore (nightly)
+#[doc(auto_cfg = false)] // Disabling `auto_cfg`
+#[doc(auto_cfg(show(unix)))] // `auto_cfg` is re-enabled.
+pub fn foo() {}
+```
+
+### `#[doc(auto_cfg)`/`#[doc(auto_cfg = true)]`/`#[doc(auto_cfg = false)]`
+
+By default, `#[doc(auto_cfg)]` is enabled at the crate-level. When it's enabled, Rustdoc will automatically display `cfg(...)` compatibility information as-if the same `#[doc(cfg(...))]` had been specified.
+
+This attribute impacts the item on which it is used and its descendants.
+
+So if we take back the previous example:
+
+```rust
+#[cfg(feature = "futures-io")]
+pub mod futures {}
+```
+
+There's no need to "duplicate" the `cfg` into a `doc(cfg())` to make Rustdoc display it.
+
+In some situations, the detailed conditional compilation rules used to implement the feature might not serve as good documentation (for example, the list of supported platforms might be very long, and it might be better to document them in one place). To turn it off, add the `#[doc(auto_cfg = false)]` attribute on the item.
+
+If no argument is specified (ie `#[doc(auto_cfg)]`), it's the same as writing `#[doc(auto_cfg = true)]`.
+
+## Inheritance
+
+Rustdoc merges `cfg` attributes from parent modules to its children. For example, in this case, the module `non_unix` will describe the entire compatibility matrix for the module, and not just its directly attached information:
+
+```rust,ignore (nightly)
+#[doc(cfg(any(windows, unix)))]
+pub mod desktop {
+    #[doc(cfg(not(unix)))]
+    pub mod non_unix {
+        // ...
+    }
+}
+```
+
+This code will display:
+
+```text
+Available on (Windows or Unix) and non-Unix only.
+```
+
+### Re-exports and inlining
+
+`cfg` attributes of a re-export are never merged with the re-exported item(s) attributes except if the re-export has the `#[doc(inline)]` attribute. In this case, the `cfg` of the re-exported item will be merged with the re-export's.
+
+When talking about "attributes merge", we mean that if the re-export has `#[cfg(unix)]` and the re-exported item has `#[cfg(feature = "foo")]`, you will only see `cfg(unix)` on the re-export and only `cfg(feature = "foo")` on the re-exported item, unless the re-export has `#[doc(inline)]`, then you will only see the re-exported item with both `cfg(unix)` and `cfg(feature = "foo")`.
+
+Example:
+
+```rust,ignore (nightly)
+#[doc(cfg(any(windows, unix)))]
+pub mod desktop {
+    #[doc(cfg(not(unix)))]
+    pub mod non_unix {
+        // code
+    }
+}
+
+#[doc(cfg(target_os = "freebsd"))]
+pub use desktop::non_unix as non_unix_desktop;
+#[doc(cfg(target_os = "macos"))]
+#[doc(inline)]
+pub use desktop::non_unix as inlined_non_unix_desktop;
+```
+
+In this example, `non_unix_desktop` will only display `cfg(target_os = "freeebsd")` and not display any `cfg` from `desktop::non_unix`.
+
+On the contrary, `inlined_non_unix_desktop` will have cfgs from both the re-export and the re-exported item.
+
+So that also means that if a crate re-exports a foreign item, unless it has `#[doc(inline)]`, the `cfg` and `doc(cfg)` attributes will not be visible:
+
+```rust,ignore (nightly)
+// dep:
+#[cfg(feature = "a")]
+pub struct S;
+
+// crate using dep:
+
+// There will be no mention of `feature = "a"` in the documentation.
+pub use dep::S as Y;
+```

@@ -309,8 +309,24 @@ pub(crate) struct DocTestLiteral;
 pub(crate) struct DocTestTakesList;
 
 #[derive(LintDiagnostic)]
-#[diag(passes_doc_cfg_hide_takes_list)]
-pub(crate) struct DocCfgHideTakesList;
+#[diag(passes_doc_auto_cfg_wrong_literal)]
+pub(crate) struct DocAutoCfgWrongLiteral;
+
+#[derive(LintDiagnostic)]
+#[diag(passes_doc_auto_cfg_expects_hide_or_show)]
+pub(crate) struct DocAutoCfgExpectsHideOrShow;
+
+#[derive(LintDiagnostic)]
+#[diag(passes_doc_auto_cfg_hide_show_expects_list)]
+pub(crate) struct DocAutoCfgHideShowExpectsList {
+    pub attr_name: Symbol,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(passes_doc_auto_cfg_hide_show_unexpected_item)]
+pub(crate) struct DocAutoCfgHideShowUnexpectedItem {
+    pub attr_name: Symbol,
+}
 
 #[derive(LintDiagnostic)]
 #[diag(passes_doc_test_unknown_any)]
