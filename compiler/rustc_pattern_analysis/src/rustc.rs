@@ -120,7 +120,7 @@ impl<'p, 'tcx: 'p> fmt::Debug for RustcPatCtxt<'p, 'tcx> {
 impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
     /// Type inference occasionally gives us opaque types in places where corresponding patterns
     /// have more specific types. To avoid inconsistencies as well as detect opaque uninhabited
-    /// types, we use the corresponding concrete type if possible.
+    /// types, we use the corresponding hidden type if possible.
     // FIXME(#132279): This will be unnecessary once we have a TypingMode which supports revealing
     // opaque types defined in a body.
     #[inline]
@@ -146,7 +146,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
     /// know it.
     fn reveal_opaque_key(&self, key: OpaqueTypeKey<'tcx>) -> Option<Ty<'tcx>> {
         self.typeck_results
-            .concrete_opaque_types
+            .hidden_types
             .get(&key.def_id)
             .map(|x| ty::EarlyBinder::bind(x.ty).instantiate(self.tcx, key.args))
     }

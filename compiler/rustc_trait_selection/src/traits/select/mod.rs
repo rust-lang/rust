@@ -2359,7 +2359,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 if self.infcx.can_define_opaque_ty(def_id) {
                     unreachable!()
                 } else {
-                    // We can resolve the `impl Trait` to its concrete type,
+                    // We can resolve the opaque type to its hidden type,
                     // which enforces a DAG between the functions requiring
                     // the auto trait bounds in question.
                     match self.tcx().type_of_opaque(def_id) {

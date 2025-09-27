@@ -219,7 +219,7 @@ fn check_opaque(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 
     // HACK(jynelson): trying to infer the type of `impl trait` breaks documenting
     // `async-std` (and `pub async fn` in general).
-    // Since rustdoc doesn't care about the concrete type behind `impl Trait`, just don't look at it!
+    // Since rustdoc doesn't care about the hidden type behind `impl Trait`, just don't look at it!
     // See https://github.com/rust-lang/rust/issues/75100
     if tcx.sess.opts.actually_rustdoc {
         return;
@@ -252,7 +252,7 @@ pub(super) fn check_opaque_for_cycles<'tcx>(
     Ok(())
 }
 
-/// Check that the concrete type behind `impl Trait` actually implements `Trait`.
+/// Check that the hidden type behind `impl Trait` actually implements `Trait`.
 ///
 /// This is mostly checked at the places that specify the opaque type, but we
 /// check those cases in the `param_env` of that function, which may have

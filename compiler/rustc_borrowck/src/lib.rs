@@ -116,10 +116,7 @@ pub fn provide(providers: &mut Providers) {
 /// Provider for `query mir_borrowck`. Similar to `typeck`, this must
 /// only be called for typeck roots which will then borrowck all
 /// nested bodies as well.
-fn mir_borrowck(
-    tcx: TyCtxt<'_>,
-    def: LocalDefId,
-) -> Result<&ConcreteOpaqueTypes<'_>, ErrorGuaranteed> {
+fn mir_borrowck(tcx: TyCtxt<'_>, def: LocalDefId) -> Result<&HiddenTypes<'_>, ErrorGuaranteed> {
     assert!(!tcx.is_typeck_child(def.to_def_id()));
     let (input_body, _) = tcx.mir_promoted(def);
     debug!("run query mir_borrowck: {}", tcx.def_path_str(def));
@@ -130,7 +127,7 @@ fn mir_borrowck(
         Err(guar)
     } else if input_body.should_skip() {
         debug!("Skipping borrowck because of injected body");
-        let opaque_types = ConcreteOpaqueTypes(Default::default());
+        let opaque_types = HiddenTypes(Default::default());
         Ok(tcx.arena.alloc(opaque_types))
     } else {
         let mut root_cx = BorrowCheckRootCtxt::new(tcx, def, None);
