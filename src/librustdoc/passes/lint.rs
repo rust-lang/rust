@@ -6,18 +6,15 @@ mod html_tags;
 mod redundant_explicit_links;
 mod unescaped_backticks;
 
-use super::Pass;
 use crate::clean::*;
 use crate::core::DocContext;
 use crate::visit::DocVisitor;
-
-pub(crate) const RUN_LINTS: Pass = Pass { name: "run-lints", run: Some(run_lints) };
 
 struct Linter<'a, 'tcx> {
     cx: &'a mut DocContext<'tcx>,
 }
 
-pub(crate) fn run_lints(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
+pub(crate) fn lint(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
     Linter { cx }.visit_crate(&krate);
     krate
 }

@@ -5,11 +5,13 @@
 use crate::clean::{self, ItemIdSet};
 use crate::core::DocContext;
 use crate::fold::DocFolder;
-use crate::passes::{ImplStripper, ImportStripper, Pass, Stripper};
-
-pub(crate) const STRIP_PRIVATE: Pass = Pass { name: "strip-private", run: Some(strip_private) };
+use crate::passes::{ImplStripper, ImportStripper, Stripper};
 
 pub(crate) fn strip_private(mut krate: clean::Crate, cx: &mut DocContext<'_>) -> clean::Crate {
+    if cx.document_private() {
+        return krate;
+    }
+
     // This stripper collects all *retained* nodes.
     let mut retained = ItemIdSet::default();
     let is_json_output = cx.is_json_output();

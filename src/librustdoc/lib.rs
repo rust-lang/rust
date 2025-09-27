@@ -15,6 +15,7 @@
 #![feature(iter_advance_by)]
 #![feature(iter_intersperse)]
 #![feature(iter_order_by)]
+#![feature(macro_metavar_expr)]
 #![feature(rustc_private)]
 #![feature(test)]
 #![feature(trim_prefix_suffix)]
