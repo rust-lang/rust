@@ -58,6 +58,7 @@
 #![allow(clippy::missing_const_for_thread_local)]
 #![allow(clippy::recursive_format_impl)]
 #![allow(unnecessary_transmutes)]
+#![allow(clippy::unchecked_time_subtraction)]
 #![allow(undropped_manually_drops)]
 #![allow(unknown_lints)]
 #![allow(unused_labels)]
@@ -131,6 +132,7 @@
 #![warn(clippy::transmute_int_to_char)] //~ ERROR: lint `clippy::transmute_int_to_char`
 #![warn(clippy::transmute_int_to_float)] //~ ERROR: lint `clippy::transmute_int_to_float`
 #![warn(clippy::transmute_num_to_bytes)] //~ ERROR: lint `clippy::transmute_num_to_bytes`
+#![warn(clippy::unchecked_duration_subtraction)] //~ ERROR: lint `clippy::unchecked_duration_subtraction`
 #![warn(clippy::undropped_manually_drops)] //~ ERROR: lint `clippy::undropped_manually_drops`
 #![warn(clippy::unknown_clippy_lints)] //~ ERROR: lint `clippy::unknown_clippy_lints`
 #![warn(clippy::unused_label)] //~ ERROR: lint `clippy::unused_label`
