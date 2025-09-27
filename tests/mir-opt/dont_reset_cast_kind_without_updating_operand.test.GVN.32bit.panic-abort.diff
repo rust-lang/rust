@@ -10,7 +10,7 @@
       let mut _8: *const [()];
       let mut _9: std::boxed::Box<()>;
       let mut _10: *const ();
-      let mut _23: usize;
+      let mut _25: usize;
       scope 1 {
           debug vp_ctx => _1;
           let _4: *const ();
@@ -47,7 +47,9 @@
                       scope 11 (inlined NonNull::<[u8]>::as_mut_ptr) {
                           scope 12 (inlined NonNull::<[u8]>::as_non_null_ptr) {
                               scope 13 (inlined NonNull::<[u8]>::cast::<u8>) {
-                                  let mut _22: *mut [u8];
+                                  let mut _22: (*const u8) is !null;
+                                  let mut _23: *mut u8;
+                                  let mut _24: *mut [u8];
                                   scope 14 (inlined NonNull::<[u8]>::as_ptr) {
                                   }
                               }
@@ -105,8 +107,14 @@
       bb4: {
           _17 = copy ((_15 as Ok).0: std::ptr::NonNull<[u8]>);
           StorageLive(_22);
-          _22 = copy _17 as *mut [u8] (Transmute);
-          _13 = copy _22 as *mut u8 (PtrToPtr);
+          StorageLive(_23);
+          StorageLive(_24);
+          _24 = copy _17 as *mut [u8] (Transmute);
+          _23 = move _24 as *mut u8 (PtrToPtr);
+          StorageDead(_24);
+          _22 = move _23 as (*const u8) is !null (Transmute);
+          StorageDead(_23);
+          _13 = copy _22 as *mut u8 (Transmute);
           StorageDead(_22);
           StorageDead(_15);
           StorageDead(_17);
@@ -129,11 +137,11 @@
           StorageLive(_6);
 -         _6 = copy _4;
 +         _6 = copy _10;
-          StorageLive(_23);
-          _23 = const 1_usize;
--         _5 = *const [()] from (copy _6, copy _23);
+          StorageLive(_25);
+          _25 = const 1_usize;
+-         _5 = *const [()] from (copy _6, copy _25);
 +         _5 = *const [()] from (copy _10, const 1_usize);
-          StorageDead(_23);
+          StorageDead(_25);
           StorageDead(_6);
           StorageLive(_7);
           StorageLive(_8);
