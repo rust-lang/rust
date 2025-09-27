@@ -50,29 +50,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         let fallback_occurred = self.fallback_types();
 
         if fallback_occurred {
-            // We now see if we can make progress. This might cause us to
-            // unify inference variables for opaque types, since we may
-            // have unified some other type variables during the first
-            // phase of fallback. This means that we only replace
-            // inference variables with their underlying opaque types as a
-            // last resort.
-            //
-            // In code like this:
-            //
-            // ```rust
-            // type MyType = impl Copy;
-            // fn produce() -> MyType { true }
-            // fn bad_produce() -> MyType { panic!() }
-            // ```
-            //
-            // we want to unify the opaque inference variable in `bad_produce`
-            // with the diverging fallback for `panic!` (e.g. `()` or `!`).
-            // This will produce a nice error message about conflicting concrete
-            // types for `MyType`.
-            //
-            // If we had tried to fallback the opaque inference variable to `MyType`,
-            // we will generate a confusing type-check error that does not explicitly
-            // refer to opaque types.
+            // if fallback occurred, previously stalled goals may make progress again
             self.select_obligations_where_possible(|_| {});
         }
     }
@@ -157,73 +135,6 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         true
     }
 
-    /// The "diverging fallback" system is rather complicated. This is
-    /// a result of our need to balance 'do the right thing' with
-    /// backwards compatibility.
-    ///
-    /// "Diverging" type variables are variables created when we
-    /// coerce a `!` type into an unbound type variable `?X`. If they
-    /// never wind up being constrained, the "right and natural" thing
-    /// is that `?X` should "fallback" to `!`. This means that e.g. an
-    /// expression like `Some(return)` will ultimately wind up with a
-    /// type like `Option<!>` (presuming it is not assigned or
-    /// constrained to have some other type).
-    ///
-    /// However, the fallback used to be `()` (before the `!` type was
-    /// added). Moreover, there are cases where the `!` type 'leaks
-    /// out' from dead code into type variables that affect live
-    /// code. The most common case is something like this:
-    ///
-    /// ```rust
-    /// # fn foo() -> i32 { 4 }
-    /// match foo() {
-    ///     22 => Default::default(), // call this type `?D`
-    ///     _ => return, // return has type `!`
-    /// } // call the type of this match `?M`
-    /// ```
-    ///
-    /// Here, coercing the type `!` into `?M` will create a diverging
-    /// type variable `?X` where `?X <: ?M`. We also have that `?D <:
-    /// ?M`. If `?M` winds up unconstrained, then `?X` will
-    /// fallback. If it falls back to `!`, then all the type variables
-    /// will wind up equal to `!` -- this includes the type `?D`
-    /// (since `!` doesn't implement `Default`, we wind up a "trait
-    /// not implemented" error in code like this). But since the
-    /// original fallback was `()`, this code used to compile with `?D
-    /// = ()`. This is somewhat surprising, since `Default::default()`
-    /// on its own would give an error because the types are
-    /// insufficiently constrained.
-    ///
-    /// Our solution to this dilemma is to modify diverging variables
-    /// so that they can *either* fallback to `!` (the default) or to
-    /// `()` (the backwards compatibility case). We decide which
-    /// fallback to use based on whether there is a coercion pattern
-    /// like this:
-    ///
-    /// ```ignore (not-rust)
-    /// ?Diverging -> ?V
-    /// ?NonDiverging -> ?V
-    /// ?V != ?NonDiverging
-    /// ```
-    ///
-    /// Here `?Diverging` represents some diverging type variable and
-    /// `?NonDiverging` represents some non-diverging type
-    /// variable. `?V` can be any type variable (diverging or not), so
-    /// long as it is not equal to `?NonDiverging`.
-    ///
-    /// Intuitively, what we are looking for is a case where a
-    /// "non-diverging" type variable (like `?M` in our example above)
-    /// is coerced *into* some variable `?V` that would otherwise
-    /// fallback to `!`. In that case, we make `?V` fallback to `!`,
-    /// along with anything that would flow into `?V`.
-    ///
-    /// The algorithm we use:
-    /// * Identify all variables that are coerced *into* by a
-    ///   diverging variable. Do this by iterating over each
-    ///   diverging, unsolved variable and finding all variables
-    ///   reachable from there. Call that set `D`.
-    /// * Walk over all unsolved, non-diverging variables, and find
-    ///   any variable that has an edge into `D`.
     fn calculate_diverging_fallback(
         &self,
         unresolved_variables: &[Ty<'tcx>],
