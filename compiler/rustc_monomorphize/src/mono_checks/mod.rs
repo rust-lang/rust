@@ -7,9 +7,12 @@ use rustc_middle::ty::{Instance, TyCtxt};
 
 mod abi_check;
 mod move_check;
+mod normalization_check;
 
 fn check_mono_item<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
     let body = tcx.instance_mir(instance.def);
+
+    normalization_check::check_normalization_error(tcx, instance, body);
     abi_check::check_feature_dependent_abi(tcx, instance, body);
     move_check::check_moves(tcx, instance, body);
 }
