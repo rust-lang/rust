@@ -169,7 +169,7 @@ fn find_best_leaf_obligation<'tcx>(
     // We should probably fix the visitor to not do so instead, as this also
     // means the leaf obligation may be incorrect.
     let obligation = infcx
-        .fudge_inference_if_ok(|| {
+        .fudge_inference_if_ok(|_| {
             infcx
                 .visit_proof_tree(
                     obligation.as_goal(),

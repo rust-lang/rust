@@ -9,6 +9,7 @@ use tracing::instrument;
 use ut::UnifyKey;
 
 use super::VariableLengths;
+use crate::infer::snapshot::CombinedSnapshot;
 use crate::infer::type_variable::TypeVariableOrigin;
 use crate::infer::unify_key::{ConstVariableValue, ConstVidKey};
 use crate::infer::{ConstVariableOrigin, InferCtxt, RegionVariableOrigin, UnificationTable};
@@ -87,12 +88,12 @@ impl<'tcx> InferCtxt<'tcx> {
     #[instrument(skip(self, f), level = "debug")]
     pub fn fudge_inference_if_ok<T, E, F>(&self, f: F) -> Result<T, E>
     where
-        F: FnOnce() -> Result<T, E>,
+        F: FnOnce(&CombinedSnapshot<'tcx>) -> Result<T, E>,
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         let variable_lengths = self.variable_lengths();
-        let (snapshot_vars, value) = self.probe(|_| {
-            let value = f()?;
+        let (snapshot_vars, value) = self.probe(|snapshot| {
+            let value = f(snapshot)?;
             // At this point, `value` could in principle refer
             // to inference variables that have been created during
             // the snapshot. Once we exit `probe()`, those are
