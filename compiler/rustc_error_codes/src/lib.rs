@@ -338,7 +338,7 @@ E0550: 0550,
 E0551: 0551,
 E0552: 0552,
 E0554: 0554,
-E0556: 0556,
+E0556: 0556, // REMOVED: merged with other attribute error codes
 E0557: 0557,
 E0559: 0559,
 E0560: 0560,
