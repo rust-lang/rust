@@ -11,12 +11,8 @@ use crate::clean::inline::{load_attrs, merge_attrs};
 use crate::clean::{CfgInfo, Crate, Item, ItemId, ItemKind};
 use crate::core::DocContext;
 use crate::fold::DocFolder;
-use crate::passes::Pass;
 
-pub(crate) const PROPAGATE_DOC_CFG: Pass =
-    Pass { name: "propagate-doc-cfg", run: Some(propagate_doc_cfg) };
-
-pub(crate) fn propagate_doc_cfg(cr: Crate, cx: &mut DocContext<'_>) -> Crate {
+pub(super) fn propagate_doc_cfg(cr: Crate, cx: &mut DocContext<'_>) -> Crate {
     if cx.tcx.features().doc_cfg() {
         CfgPropagator { cx, cfg_info: CfgInfo::default(), impl_cfg_info: FxHashMap::default() }
             .fold_crate(cr)

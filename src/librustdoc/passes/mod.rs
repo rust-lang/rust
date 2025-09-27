@@ -1,8 +1,6 @@
-//! Contains information about "passes", used to modify crate information during the documentation
-//! process.
+//! The definitions of *passes* which transform crate information.
 
-use self::Condition::*;
-use crate::clean;
+use crate::clean::Crate;
 use crate::core::DocContext;
 
 mod stripper;
@@ -19,65 +17,47 @@ mod strip_hidden;
 mod strip_priv_imports;
 mod strip_private;
 
-/// A single pass over the cleaned documentation.
-///
-/// Runs in the compiler context, so it has access to types and traits and the like.
-#[derive(Copy, Clone)]
-pub(crate) struct Pass {
-    pub(crate) name: &'static str,
-    pub(crate) run: Option<fn(clean::Crate, &mut DocContext<'_>) -> clean::Crate>,
+#[derive(Default)]
+pub(crate) struct Store {
+    links: collect_intra_doc_links::LinkCollection,
 }
 
-/// In a list of passes, a pass that may or may not need to be run depending on options.
-#[derive(Copy, Clone)]
-pub(crate) struct ConditionalPass {
-    pub(crate) pass: Pass,
-    pub(crate) condition: Condition,
-}
-
-/// How to decide whether to run a conditional pass.
-#[derive(Copy, Clone)]
-pub(crate) enum Condition {
-    Always,
-    /// When `--document-private-items` is passed.
-    WhenDocumentPrivate,
-    /// When `--document-private-items` is not passed.
-    WhenNotDocumentPrivate,
-    /// When `--document-hidden-items` is not passed.
-    WhenNotDocumentHidden,
-}
-
-/// The list of passes run by default.
-const DEFAULT_PASSES: &[ConditionalPass] = &[
-    ConditionalPass::always(collect_trait_impls::COLLECT_TRAIT_IMPLS),
-    ConditionalPass::always(check_doc_test_visibility::CHECK_DOC_TEST_VISIBILITY),
-    ConditionalPass::always(strip_aliased_non_local::STRIP_ALIASED_NON_LOCAL),
-    ConditionalPass::always(propagate_doc_cfg::PROPAGATE_DOC_CFG),
-    ConditionalPass::new(strip_hidden::STRIP_HIDDEN, WhenNotDocumentHidden),
-    ConditionalPass::new(strip_private::STRIP_PRIVATE, WhenNotDocumentPrivate),
-    ConditionalPass::new(strip_priv_imports::STRIP_PRIV_IMPORTS, WhenDocumentPrivate),
-    ConditionalPass::always(collect_intra_doc_links::COLLECT_INTRA_DOC_LINKS),
-    ConditionalPass::always(propagate_stability::PROPAGATE_STABILITY),
-    ConditionalPass::always(lint::RUN_LINTS),
-];
-
-/// The list of default passes run when `--doc-coverage` is passed to rustdoc.
-const COVERAGE_PASSES: &[ConditionalPass] = &[
-    ConditionalPass::new(strip_hidden::STRIP_HIDDEN, WhenNotDocumentHidden),
-    ConditionalPass::new(strip_private::STRIP_PRIVATE, WhenNotDocumentPrivate),
-];
-
-impl ConditionalPass {
-    pub(crate) const fn always(pass: Pass) -> Self {
-        Self::new(pass, Always)
+#[tracing::instrument(level = "info", skip_all)]
+pub(crate) fn run(
+    mut krate: Crate,
+    cx: &mut DocContext<'_>,
+    show_coverage: bool,
+) -> (Crate, Store) {
+    macro_rules! run {
+        ($name:ident($( $args:tt )*)) => {{
+            tracing::debug!("running pass `{}`", stringify!($name));
+            cx.tcx.sess.time(stringify!($name), || $name::$name($( $args )*))
+        }};
     }
 
-    pub(crate) const fn new(pass: Pass, condition: Condition) -> Self {
-        ConditionalPass { pass, condition }
+    let mut store = Store::default();
+
+    if !show_coverage {
+        krate = run!(collect_trait_impls(krate, cx));
+        krate = run!(check_doc_test_visibility(krate, cx));
+        krate = run!(strip_aliased_non_local(krate, cx));
+        krate = run!(propagate_doc_cfg(krate, cx));
     }
+
+    krate = run!(strip_hidden(krate, cx));
+    krate = run!(strip_private(krate, cx));
+
+    if !show_coverage {
+        krate = run!(strip_priv_imports(krate, cx));
+        (krate, store.links) = run!(collect_intra_doc_links(krate, cx));
+        krate = run!(propagate_stability(krate, cx));
+        krate = run!(lint(krate, cx));
+    }
+
+    (krate, store)
 }
 
-/// Returns the given default set of passes.
-pub(crate) fn defaults(show_coverage: bool) -> &'static [ConditionalPass] {
-    if show_coverage { COVERAGE_PASSES } else { DEFAULT_PASSES }
+/// To be run after the cache in [`DocContext`] has been fully populated.
+pub(crate) fn finalize(cx: &mut DocContext<'_>, store: Store) {
+    collect_intra_doc_links::resolve_ambiguous_links(store.links, cx);
 }

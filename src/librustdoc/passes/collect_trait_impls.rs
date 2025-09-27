@@ -12,16 +12,12 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::kw;
 use tracing::debug;
 
-use super::Pass;
 use crate::clean::*;
 use crate::core::DocContext;
 use crate::formats::cache::Cache;
 use crate::visit::DocVisitor;
 
-pub(crate) const COLLECT_TRAIT_IMPLS: Pass =
-    Pass { name: "collect-trait-impls", run: Some(collect_trait_impls) };
-
-pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate {
+pub(super) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate {
     let tcx = cx.tcx;
     // We need to check if there are errors before running this pass because it would crash when
     // we try to get auto and blanket implementations.
