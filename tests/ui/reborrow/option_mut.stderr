@@ -1,0 +1,21 @@
+error[E0382]: use of moved value: `a`
+  --> $DIR/option_mut.rs:6:20
+   |
+LL |     let a = Some(&mut ());
+   |         - move occurs because `a` has type `Option<&mut ()>`, which does not implement the `Copy` trait
+LL |     let _ = method(a);
+   |                    - value moved here
+LL |     let _ = method(a);
+   |                    ^ value used here after move
+   |
+note: consider changing this parameter type in function `method` to borrow instead if owning the value isn't necessary
+  --> $DIR/option_mut.rs:1:14
+   |
+LL | fn method(a: Option<&mut ()>) {}
+   |    ------    ^^^^^^^^^^^^^^^ this parameter takes ownership of the value
+   |    |
+   |    in this function
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.
