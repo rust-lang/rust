@@ -47,7 +47,7 @@ pub use self::iter::Iter;
 
 mod iter;
 
-use self::spec_extend::SpecExtend;
+use self::spec_extend::{SpecExtend, SpecExtendFront};
 
 mod spec_extend;
 
@@ -172,6 +172,21 @@ impl<T, A: Allocator> VecDeque<T, A> {
         // SAFETY: Because of the precondition, it's guaranteed that there is space
         // in the logical array after the last element.
         unsafe { self.buffer_write(self.to_physical_idx(self.len), element) };
+        // This can't overflow because `deque.len() < deque.capacity() <= usize::MAX`.
+        self.len += 1;
+    }
+
+    /// Prepends an element to the buffer.
+    ///
+    /// # Safety
+    ///
+    /// May only be called if `deque.len() < deque.capacity()`
+    #[inline]
+    unsafe fn push_front_unchecked(&mut self, element: T) {
+        self.head = self.wrap_sub(self.head, 1);
+        // SAFETY: Because of the precondition, it's guaranteed that there is space
+        // in the logical array before the first element (where self.head is now).
+        unsafe { self.buffer_write(self.head, element) };
         // This can't overflow because `deque.len() < deque.capacity() <= usize::MAX`.
         self.len += 1;
     }
@@ -1966,6 +1981,24 @@ impl<T, A: Allocator> VecDeque<T, A> {
         let len = self.len;
         self.len += 1;
         unsafe { self.buffer_write(self.to_physical_idx(len), value) }
+    }
+
+    /// Prepends all elements from the iterator to the front of the deque, as if [`push_front`][VecDeque::push_front] was called with the elements of the iterator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(deque_extend_front)]
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut deque = VecDeque::from([4, 5, 6]);
+    /// deque.extend_front([3, 2, 1]);
+    /// assert_eq!(deque, [1, 2, 3, 4, 5, 6]);
+    /// ```
+    #[unstable(feature = "deque_extend_front", issue = "none")]
+    #[track_caller]
+    pub fn extend_front<I: IntoIterator<Item = T>>(&mut self, iter: I) {
+        <Self as SpecExtendFront<T, I::IntoIter>>::spec_extend_front(self, iter.into_iter());
     }
 
     #[inline]

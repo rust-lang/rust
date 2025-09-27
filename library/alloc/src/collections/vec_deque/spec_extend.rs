@@ -1,3 +1,5 @@
+#[cfg(not(test))]
+use core::iter::Rev;
 use core::iter::TrustedLen;
 use core::slice;
 
@@ -118,5 +120,60 @@ where
             self.copy_slice(self.to_physical_idx(self.len), slice);
             self.len += slice.len();
         }
+    }
+}
+
+// Specialization trait used for VecDeque::extend_front
+pub(super) trait SpecExtendFront<T, I> {
+    #[track_caller]
+    fn spec_extend_front(&mut self, iter: I);
+}
+
+impl<T, I, A: Allocator> SpecExtendFront<T, I> for VecDeque<T, A>
+where
+    I: Iterator<Item = T>,
+{
+    #[track_caller]
+    default fn spec_extend_front(&mut self, mut iter: I) {
+        // This function should be the moral equivalent of:
+        //
+        // for item in iter {
+        //     self.push_front(item);
+        // }
+
+        while let Some(element) = iter.next() {
+            let (lower, _) = iter.size_hint();
+            self.reserve(lower.saturating_add(1));
+
+            // SAFETY: We just reserved space for at least one element.
+            unsafe { self.push_front_unchecked(element) };
+
+            // Inner loop to avoid repeatedly calling `reserve`.
+            while self.len < self.capacity() {
+                let Some(element) = iter.next() else {
+                    return;
+                };
+                // SAFETY: The loop condition guarantees that `self.len() < self.capacity()`.
+                unsafe { self.push_front_unchecked(element) };
+            }
+        }
+    }
+}
+
+#[cfg(not(test))]
+impl<T, A: Allocator> SpecExtendFront<T, Rev<vec::IntoIter<T>>> for VecDeque<T, A> {
+    #[track_caller]
+    fn spec_extend_front(&mut self, iterator: Rev<vec::IntoIter<T>>) {
+        let mut iterator = iterator.into_inner();
+
+        let slice = iterator.as_slice();
+        self.reserve(slice.len());
+
+        unsafe {
+            self.head = self.wrap_sub(self.head, slice.len());
+            self.copy_slice(self.head, slice);
+            self.len += slice.len();
+        }
+        iterator.forget_remaining_elements();
     }
 }
