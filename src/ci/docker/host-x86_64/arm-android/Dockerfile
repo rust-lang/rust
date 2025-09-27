@@ -34,7 +34,7 @@ ENV TARGETS=arm-linux-androideabi
 
 ENV RUST_CONFIGURE_ARGS --android-ndk=/android/ndk/
 
-ENV SCRIPT python3 ../x.py --stage 2 test --host='' --target $TARGETS
+ENV SCRIPT python3 ../x.py --stage 2 test --host='' --target $TARGETS tests/ui/test-attrs/test-panic-abort.rs tests/ui/test-attrs/test-panic-abort-nocapture.rs
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
