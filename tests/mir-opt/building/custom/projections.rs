@@ -79,19 +79,6 @@ fn simple_index(a: [i32; 10], b: &[i32]) -> i32 {
     }
 }
 
-// EMIT_MIR projections.copy_for_deref.built.after.mir
-#[custom_mir(dialect = "runtime", phase = "initial")]
-fn copy_for_deref(x: (&i32, i32)) -> i32 {
-    mir! {
-        let temp: &i32;
-        {
-            temp = CopyForDeref(x.0);
-            RET = *temp;
-            Return()
-        }
-    }
-}
-
 fn main() {
     assert_eq!(unions(U { a: 5 }), 5);
     assert_eq!(tuples((5, 6)), (5, 6));
@@ -103,7 +90,4 @@ fn main() {
     assert_eq!(o, Some(10));
 
     assert_eq!(simple_index([0; 10], &[0; 10]), 0);
-
-    let one = 1;
-    assert_eq!(copy_for_deref((&one, one)), 1);
 }

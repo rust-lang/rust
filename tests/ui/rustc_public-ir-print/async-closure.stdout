@@ -28,7 +28,7 @@ fn foo::{closure#0}(_1: &{async closure@$DIR/async-closure.rs:9:13: 9:21}) -> {a
     debug y => (*((*_1).0: &i32));
     bb0: {
         StorageLive(_2);
-        _3 = CopyForDeref(((*_1).0: &i32));
+        _3 = ((*_1).0: &i32);
         _2 = &(*_3);
         _0 = {coroutine@$DIR/async-closure.rs:9:22: 11:6}(move _2);
         StorageDead(_2);
@@ -48,19 +48,19 @@ fn foo::{closure#0}::{closure#0}(_1: Pin<&mut {async closure body@$DIR/async-clo
     debug y => (*((*(_1.0: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6})).0: &i32));
     debug y => _3;
     bb0: {
-        _7 = CopyForDeref((_1.0: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6}));
+        _7 = (_1.0: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6});
         _6 = discriminant((*_7));
         switchInt(move _6) -> [0: bb1, 1: bb2, otherwise: bb3];
     }
     bb1: {
         StorageLive(_3);
-        _8 = CopyForDeref((_1.0: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6}));
-        _4 = CopyForDeref(((*_8).0: &i32));
+        _8 = (_1.0: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6});
+        _4 = ((*_8).0: &i32);
         _3 = (*_4);
         _5 = ();
         StorageDead(_3);
         _0 = std::task::Poll::Ready(move _5);
-        _9 = CopyForDeref((_1.0: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6}));
+        _9 = (_1.0: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6});
         discriminant((*_9)) = 1;
         return;
     }
@@ -84,19 +84,19 @@ fn foo::{closure#0}::{synthetic#0}(_1: Pin<&mut {async closure body@$DIR/async-c
     debug y => (*((*(_1.0: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6})).0: &i32));
     debug y => _3;
     bb0: {
-        _7 = CopyForDeref((_1.0: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6}));
+        _7 = (_1.0: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6});
         _6 = discriminant((*_7));
         switchInt(move _6) -> [0: bb1, 1: bb2, otherwise: bb3];
     }
     bb1: {
         StorageLive(_3);
-        _8 = CopyForDeref((_1.0: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6}));
-        _4 = CopyForDeref(((*_8).0: &i32));
+        _8 = (_1.0: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6});
+        _4 = ((*_8).0: &i32);
         _3 = (*_4);
         _5 = ();
         StorageDead(_3);
         _0 = std::task::Poll::Ready(move _5);
-        _9 = CopyForDeref((_1.0: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6}));
+        _9 = (_1.0: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6});
         discriminant((*_9)) = 1;
         return;
     }
