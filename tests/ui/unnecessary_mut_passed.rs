@@ -40,6 +40,7 @@ mod issue11268 {
 struct MyStruct;
 
 impl MyStruct {
+    fn takes_nothing(&self) {}
     fn takes_ref(&self, a: &i32) {}
     fn takes_refmut(&self, a: &mut i32) {}
     fn takes_ref_ref(&self, a: &&i32) {}
@@ -167,4 +168,23 @@ fn raw_ptrs(my_struct: MyStruct) {
     my_struct.takes_raw_const(&raw const n);
     my_struct.takes_raw_mut(&raw mut n);
     my_struct.takes_raw_const(a);
+}
+
+#[expect(clippy::needless_borrow)]
+fn issue15722(mut my_struct: MyStruct) {
+    (&mut my_struct).takes_nothing();
+    //~^ unnecessary_mut_passed
+    (&my_struct).takes_nothing();
+
+    // Only put parens around the argument that used to have it
+    (&mut my_struct).takes_ref(&mut 42);
+    //~^ unnecessary_mut_passed
+    //~| unnecessary_mut_passed
+    #[expect(clippy::double_parens)]
+    (&mut my_struct).takes_ref((&mut 42));
+    //~^ unnecessary_mut_passed
+    //~| unnecessary_mut_passed
+    #[expect(clippy::double_parens)]
+    my_struct.takes_ref((&mut 42));
+    //~^ unnecessary_mut_passed
 }

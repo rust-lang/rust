@@ -1,5 +1,5 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::sugg::Sugg;
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::source::SpanRangeExt;
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability};
 use rustc_lint::{LateContext, LateLintPass};
@@ -87,16 +87,33 @@ fn check_arguments<'tcx>(
             if let ty::Ref(_, _, Mutability::Not) | ty::RawPtr(_, Mutability::Not) = parameter.kind()
                 && let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Mut, arg) = argument.kind
             {
-                let mut applicability = Applicability::MachineApplicable;
-                let sugg = Sugg::hir_with_applicability(cx, arg, "_", &mut applicability).addr();
-                span_lint_and_sugg(
+                let applicability = Applicability::MachineApplicable;
+
+                let span_to_remove = {
+                    let span_until_arg = argument.span.until(arg.span);
+                    if let Some(Some(ref_pos)) = span_until_arg.with_source_text(cx, |src| {
+                        src
+                            // we don't use `strip_prefix` here, because `argument` might be enclosed in parens, in
+                            // which case `&` is no longer the prefix
+                            .find('&')
+                            // just a sanity check, in case some proc-macro messes up the spans
+                            .filter(|ref_pos| src[*ref_pos..].contains("mut"))
+                    }) && let Ok(lo) = u32::try_from(ref_pos + '&'.len_utf8())
+                    {
+                        span_until_arg.split_at(lo).1
+                    } else {
+                        return;
+                    }
+                };
+
+                span_lint_and_then(
                     cx,
                     UNNECESSARY_MUT_PASSED,
                     argument.span,
                     format!("the {fn_kind} `{name}` doesn't need a mutable reference"),
-                    "remove this `mut`",
-                    sugg.to_string(),
-                    applicability,
+                    |diag| {
+                        diag.span_suggestion_verbose(span_to_remove, "remove this `mut`", String::new(), applicability);
+                    },
                 );
             }
         }
