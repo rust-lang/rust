@@ -122,6 +122,11 @@ impl Once {
     }
 
     #[inline]
+    pub const fn new_complete() -> Once {
+        Once { state_and_queue: AtomicPtr::new(ptr::without_provenance_mut(COMPLETE)) }
+    }
+
+    #[inline]
     pub fn is_completed(&self) -> bool {
         // An `Acquire` load is enough because that makes all the initialization
         // operations visible to us, and, this being a fast path, weaker
