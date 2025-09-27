@@ -92,7 +92,7 @@ impl<'db> NormalizesToTermHack<'db> {
         let mut ocx = ObligationCtxt::new(infcx);
         ocx.eq(&ObligationCause::dummy(), param_env, self.term, self.unconstrained_term)?;
         f(&mut ocx);
-        let errors = ocx.select_all_or_error();
+        let errors = ocx.evaluate_obligations_error_on_ambiguity();
         if errors.is_empty() {
             Ok(Certainty::Yes)
         } else if errors.iter().all(|e| !matches!(e, NextSolverError::TrueError(_))) {

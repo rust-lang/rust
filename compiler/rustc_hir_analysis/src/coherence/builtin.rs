@@ -333,7 +333,7 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
                     param_env,
                     ty::TraitRef::new(tcx, trait_ref.def_id, [ty_a, ty_b]),
                 ));
-                let errors = ocx.select_all_or_error();
+                let errors = ocx.evaluate_obligations_error_on_ambiguity();
                 if !errors.is_empty() {
                     if is_from_coerce_pointee_derive(tcx, span) {
                         return Err(tcx.dcx().emit_err(errors::CoerceFieldValidity {
@@ -558,7 +558,7 @@ pub(crate) fn coerce_unsized_info<'tcx>(
         ty::TraitRef::new(tcx, trait_def_id, [source, target]),
     );
     ocx.register_obligation(obligation);
-    let errors = ocx.select_all_or_error();
+    let errors = ocx.evaluate_obligations_error_on_ambiguity();
 
     if !errors.is_empty() {
         if is_from_coerce_pointee_derive(tcx, span) {

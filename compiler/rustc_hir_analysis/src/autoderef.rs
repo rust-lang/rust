@@ -199,7 +199,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             // evaluate/fulfill mismatches, but that's not a reason for an ICE.
             return None;
         };
-        let errors = ocx.select_where_possible();
+        let errors = ocx.try_evaluate_obligations();
         if !errors.is_empty() {
             if self.infcx.next_trait_solver() {
                 unreachable!();

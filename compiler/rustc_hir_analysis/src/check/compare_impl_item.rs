@@ -363,7 +363,7 @@ fn compare_method_predicate_entailment<'tcx>(
 
     // Check that all obligations are satisfied by the implementation's
     // version.
-    let errors = ocx.select_all_or_error();
+    let errors = ocx.evaluate_obligations_error_on_ambiguity();
     if !errors.is_empty() {
         let reported = infcx.err_ctxt().report_fulfillment_errors(errors);
         return Err(reported);
@@ -669,7 +669,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
 
     // Check that all obligations are satisfied by the implementation's
     // RPITs.
-    let errors = ocx.select_all_or_error();
+    let errors = ocx.evaluate_obligations_error_on_ambiguity();
     if !errors.is_empty() {
         if let Err(guar) = try_report_async_mismatch(tcx, infcx, &errors, trait_m, impl_m, impl_sig)
         {
@@ -1215,7 +1215,7 @@ fn check_region_late_boundedness<'tcx>(
         return None;
     };
 
-    let errors = ocx.select_where_possible();
+    let errors = ocx.try_evaluate_obligations();
     if !errors.is_empty() {
         return None;
     }
@@ -2106,7 +2106,7 @@ fn compare_const_predicate_entailment<'tcx>(
 
     // Check that all obligations are satisfied by the implementation's
     // version.
-    let errors = ocx.select_all_or_error();
+    let errors = ocx.evaluate_obligations_error_on_ambiguity();
     if !errors.is_empty() {
         return Err(infcx.err_ctxt().report_fulfillment_errors(errors));
     }
@@ -2242,7 +2242,7 @@ fn compare_type_predicate_entailment<'tcx>(
 
     // Check that all obligations are satisfied by the implementation's
     // version.
-    let errors = ocx.select_all_or_error();
+    let errors = ocx.evaluate_obligations_error_on_ambiguity();
     if !errors.is_empty() {
         let reported = infcx.err_ctxt().report_fulfillment_errors(errors);
         return Err(reported);
@@ -2367,7 +2367,7 @@ pub(super) fn check_type_bounds<'tcx>(
     // Check that all obligations are satisfied by the implementation's
     // version.
     ocx.register_obligations(obligations);
-    let errors = ocx.select_all_or_error();
+    let errors = ocx.evaluate_obligations_error_on_ambiguity();
     if !errors.is_empty() {
         let reported = infcx.err_ctxt().report_fulfillment_errors(errors);
         return Err(reported);

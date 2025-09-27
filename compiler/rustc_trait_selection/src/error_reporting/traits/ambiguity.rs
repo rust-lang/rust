@@ -83,7 +83,7 @@ pub fn compute_applicable_impls_for_diagnostics<'tcx>(
                 });
             ocx.register_obligations(obligations);
 
-            ocx.select_where_possible().is_empty()
+            ocx.try_evaluate_obligations().is_empty()
         })
     };
 
@@ -113,7 +113,7 @@ pub fn compute_applicable_impls_for_diagnostics<'tcx>(
                 return false;
             }
 
-            ocx.select_where_possible().is_empty()
+            ocx.try_evaluate_obligations().is_empty()
         })
     };
 

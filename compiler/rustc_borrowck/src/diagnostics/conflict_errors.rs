@@ -1313,7 +1313,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             let ocx = ObligationCtxt::new_with_diagnostics(self.infcx);
             let cause = ObligationCause::misc(expr.span, self.mir_def_id());
             ocx.register_bound(cause, self.infcx.param_env, ty, clone_trait);
-            let errors = ocx.select_all_or_error();
+            let errors = ocx.evaluate_obligations_error_on_ambiguity();
             if errors.iter().all(|error| {
                 match error.obligation.predicate.as_clause().and_then(|c| c.as_trait_clause()) {
                     Some(clause) => match clause.self_ty().skip_binder().kind() {
@@ -1497,7 +1497,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let cause = ObligationCause::misc(span, self.mir_def_id());
 
         ocx.register_bound(cause, self.infcx.param_env, ty, def_id);
-        let errors = ocx.select_all_or_error();
+        let errors = ocx.evaluate_obligations_error_on_ambiguity();
 
         // Only emit suggestion if all required predicates are on generic
         let predicates: Result<Vec<_>, _> = errors

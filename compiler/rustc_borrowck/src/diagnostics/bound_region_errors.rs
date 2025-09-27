@@ -420,7 +420,7 @@ fn try_extract_error_from_fulfill_cx<'a, 'tcx>(
     // We generally shouldn't have errors here because the query was
     // already run, but there's no point using `span_delayed_bug`
     // when we're going to emit an error here anyway.
-    let _errors = ocx.select_all_or_error();
+    let _errors = ocx.evaluate_obligations_error_on_ambiguity();
     let region_constraints = ocx.infcx.with_region_constraints(|r| r.clone());
     try_extract_error_from_region_constraints(
         ocx.infcx,

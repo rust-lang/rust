@@ -657,7 +657,7 @@ impl<'tcx> LivenessContext<'_, '_, 'tcx> {
                     let errors = match dropck_outlives::compute_dropck_outlives_with_errors(
                         &ocx, op, span,
                     ) {
-                        Ok(_) => ocx.select_all_or_error(),
+                        Ok(_) => ocx.evaluate_obligations_error_on_ambiguity(),
                         Err(e) => e,
                     };
 

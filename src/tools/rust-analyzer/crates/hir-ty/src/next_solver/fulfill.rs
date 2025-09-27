@@ -54,7 +54,7 @@ struct ObligationStorage<'db> {
     /// Obligations which resulted in an overflow in fulfillment itself.
     ///
     /// We cannot eagerly return these as error so we instead store them here
-    /// to avoid recomputing them each time `select_where_possible` is called.
+    /// to avoid recomputing them each time `try_evaluate_obligations` is called.
     /// This also allows us to return the correct `FulfillmentError` for them.
     overflowed: Vec<PredicateObligation<'db>>,
     pending: PendingObligations<'db>,
@@ -95,7 +95,7 @@ impl<'db> ObligationStorage<'db> {
             // IMPORTANT: we must not use solve any inference variables in the obligations
             // as this is all happening inside of a probe. We use a probe to make sure
             // we get all obligations involved in the overflow. We pretty much check: if
-            // we were to do another step of `select_where_possible`, which goals would
+            // we were to do another step of `try_evaluate_obligations`, which goals would
             // change.
             // FIXME: <https://github.com/Gankra/thin-vec/pull/66> is merged, this can be removed.
             self.overflowed.extend(
@@ -131,7 +131,7 @@ impl<'db> FulfillmentCtxt<'db> {
         infcx: &InferCtxt<'db>,
         obligation: PredicateObligation<'db>,
     ) {
-        // FIXME: See the comment in `select_where_possible()`.
+        // FIXME: See the comment in `try_evaluate_obligations()`.
         // assert_eq!(self.usable_in_snapshot, infcx.num_open_snapshots());
         self.obligations.register(obligation, None);
     }
@@ -141,7 +141,7 @@ impl<'db> FulfillmentCtxt<'db> {
         infcx: &InferCtxt<'db>,
         obligations: impl IntoIterator<Item = PredicateObligation<'db>>,
     ) {
-        // FIXME: See the comment in `select_where_possible()`.
+        // FIXME: See the comment in `try_evaluate_obligations()`.
         // assert_eq!(self.usable_in_snapshot, infcx.num_open_snapshots());
         obligations.into_iter().for_each(|obligation| self.obligations.register(obligation, None));
     }
@@ -158,7 +158,7 @@ impl<'db> FulfillmentCtxt<'db> {
             .collect()
     }
 
-    pub(crate) fn select_where_possible(
+    pub(crate) fn try_evaluate_obligations(
         &mut self,
         infcx: &InferCtxt<'db>,
     ) -> Vec<NextSolverError<'db>> {
@@ -223,11 +223,11 @@ impl<'db> FulfillmentCtxt<'db> {
         errors
     }
 
-    pub(crate) fn select_all_or_error(
+    pub(crate) fn evaluate_obligations_error_on_ambiguity(
         &mut self,
         infcx: &InferCtxt<'db>,
     ) -> Vec<NextSolverError<'db>> {
-        let errors = self.select_where_possible(infcx);
+        let errors = self.try_evaluate_obligations(infcx);
         if !errors.is_empty() {
             return errors;
         }

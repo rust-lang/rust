@@ -660,7 +660,7 @@ pub fn check_function_signature<'tcx>(
 
     match ocx.eq(&cause, param_env, expected_sig, actual_sig) {
         Ok(()) => {
-            let errors = ocx.select_all_or_error();
+            let errors = ocx.evaluate_obligations_error_on_ambiguity();
             if !errors.is_empty() {
                 return Err(infcx.err_ctxt().report_fulfillment_errors(errors));
             }

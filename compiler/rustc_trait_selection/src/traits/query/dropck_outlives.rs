@@ -199,7 +199,7 @@ where
                 // Flush errors b/c `deeply_normalize` doesn't expect pending
                 // obligations, and we may have pending obligations from the
                 // branch above (from other types).
-                let errors = ocx.select_all_or_error();
+                let errors = ocx.evaluate_obligations_error_on_ambiguity();
                 if !errors.is_empty() {
                     return Err(errors);
                 }

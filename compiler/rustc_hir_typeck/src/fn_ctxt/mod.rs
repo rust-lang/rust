@@ -199,7 +199,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let ocx = ObligationCtxt::new(self);
                     let normalized_fn_sig =
                         ocx.normalize(&ObligationCause::dummy(), self.param_env, fn_sig);
-                    if ocx.select_all_or_error().is_empty() {
+                    if ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
                         let normalized_fn_sig = self.resolve_vars_if_possible(normalized_fn_sig);
                         if !normalized_fn_sig.has_infer() {
                             return normalized_fn_sig;
@@ -347,7 +347,7 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
             );
             ocx.register_obligations(impl_obligations);
 
-            let mut errors = ocx.select_where_possible();
+            let mut errors = ocx.try_evaluate_obligations();
             if !errors.is_empty() {
                 fulfillment_errors.append(&mut errors);
                 return false;

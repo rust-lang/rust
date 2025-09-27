@@ -176,7 +176,7 @@ fn satisfied_from_param_env<'tcx>(
             if self.infcx.probe(|_| {
                 let ocx = ObligationCtxt::new(self.infcx);
                 ocx.eq(&ObligationCause::dummy(), self.param_env, c, self.ct).is_ok()
-                    && ocx.select_all_or_error().is_empty()
+                    && ocx.evaluate_obligations_error_on_ambiguity().is_empty()
             }) {
                 self.single_match = match self.single_match {
                     None => Some(Ok(c)),
@@ -217,7 +217,7 @@ fn satisfied_from_param_env<'tcx>(
     if let Some(Ok(c)) = single_match {
         let ocx = ObligationCtxt::new(infcx);
         assert!(ocx.eq(&ObligationCause::dummy(), param_env, c, ct).is_ok());
-        assert!(ocx.select_all_or_error().is_empty());
+        assert!(ocx.evaluate_obligations_error_on_ambiguity().is_empty());
         return true;
     }
 

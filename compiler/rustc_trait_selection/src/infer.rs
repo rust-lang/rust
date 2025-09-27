@@ -25,7 +25,7 @@ impl<'tcx> InferCtxt<'tcx> {
             let Ok(()) = ocx.eq(&ObligationCause::dummy(), param_env, a, b) else {
                 return false;
             };
-            ocx.select_where_possible().is_empty()
+            ocx.try_evaluate_obligations().is_empty()
         })
     }
 
@@ -124,7 +124,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 param_env,
                 ty::TraitRef::new(self.tcx, trait_def_id, [ty]),
             ));
-            let errors = ocx.select_where_possible();
+            let errors = ocx.try_evaluate_obligations();
             // Find the original predicate in the list of predicates that could definitely not be fulfilled.
             // If it is in that list, then we know this doesn't even shallowly implement the trait.
             // If it is not in that list, it was fulfilled, but there may be nested obligations, which we don't care about here.
