@@ -60,7 +60,7 @@ fn is_missing_punctuation(doc_string: &str) -> Option<usize> {
             Event::InlineHtml(_) | Event::Start(Tag::Image { .. }) | Event::End(TagEnd::Image) => {
                 text_offset = None;
             },
-            Event::Text(..) | Event::Start(Tag::Link { .. }) | Event::End(TagEnd::Link)
+            Event::Code(..) | Event::Text(..) | Event::Start(Tag::Link { .. }) | Event::End(TagEnd::Link)
                 if no_report_depth == 0 && !offset.is_empty() =>
             {
                 text_offset = Some(offset);

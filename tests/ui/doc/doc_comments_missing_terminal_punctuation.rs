@@ -141,6 +141,10 @@ struct OnlyLastSentence;
 /// ```
 struct IncompleteBlockCode;
 
+/// This ends with a code `span`
+//~^ doc_comments_missing_terminal_punctuation
+struct CodeSpan;
+
 #[expect(clippy::empty_docs)]
 ///
 struct EmptyDocComment;

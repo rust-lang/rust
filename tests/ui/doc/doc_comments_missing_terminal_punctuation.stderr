@@ -86,10 +86,16 @@ LL | /// Only the last sentence is
    |                              ^ help: end the doc comment with some punctuation: `.`
 
 error: doc comments should end with a terminal punctuation mark
-  --> tests/ui/doc/doc_comments_missing_terminal_punctuation.rs:149:27
+  --> tests/ui/doc/doc_comments_missing_terminal_punctuation.rs:144:33
+   |
+LL | /// This ends with a code `span`
+   |                                 ^ help: end the doc comment with some punctuation: `.`
+
+error: doc comments should end with a terminal punctuation mark
+  --> tests/ui/doc/doc_comments_missing_terminal_punctuation.rs:153:27
    |
 LL |  * Block doc comments work
    |                           ^ help: end the doc comment with some punctuation: `.`
 
-error: aborting due to 15 previous errors
+error: aborting due to 16 previous errors
 
