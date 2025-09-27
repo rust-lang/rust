@@ -2384,6 +2384,12 @@ options! {
         "print some statistics about AST and HIR (default: no)"),
     instrument_mcount: bool = (false, parse_bool, [TRACKED],
         "insert function instrument code for mcount-based tracing (default: no)"),
+    instrument_moves: bool = (false, parse_bool, [TRACKED],
+        "emit debug info for compiler-generated move and copy operations \
+        to make them visible in profilers (default: no)"),
+    instrument_moves_size_limit: Option<u64> = (None, parse_opt_number, [TRACKED],
+        "the minimum size object to instrument move/copy operations \
+        (default: 65 bytes)"),
     instrument_xray: Option<InstrumentXRay> = (None, parse_instrument_xray, [TRACKED],
         "insert function instrument code for XRay-based tracing (default: no)
          Optional extra settings:
