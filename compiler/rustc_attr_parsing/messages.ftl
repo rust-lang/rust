@@ -205,7 +205,7 @@ attr_parsing_suffixed_literal_in_attribute = suffixed literals are not allowed i
     .help = instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), use an unsuffixed version (`1`, `1.0`, etc.)
 
 attr_parsing_as_needed_compatibility =
-    linking modifier `as-needed` is only compatible with `dylib` and `framework` linking kinds
+    linking modifier `as-needed` is only compatible with `dylib`, `framework` and `raw-dylib` linking kinds
 
 attr_parsing_bundle_needs_static =
     linking modifier `bundle` is only compatible with `static` linking kind
