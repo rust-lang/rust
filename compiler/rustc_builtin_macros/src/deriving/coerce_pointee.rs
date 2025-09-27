@@ -102,7 +102,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
     // # Validity assertion which will be checked later in `rustc_hir_analysis::coherence::builtins`.
     {
         let trait_path =
-            cx.path_all(span, true, path!(span, core::marker::CoercePointeeValidated), vec![]);
+            cx.path_all(span, true, path!(span, core::ops::CoercePointeeValidated), vec![]);
         let trait_ref = cx.trait_ref(trait_path);
         push(Annotatable::Item(
             cx.item(
