@@ -35,7 +35,7 @@ impl<S: Stage> SingleAttributeParser<S> for SkipDuringMethodDispatchParser {
                 continue;
             };
             if let Err(span) = arg.args().no_args() {
-                cx.expected_no_args(span);
+                cx.expected_no_args(&arg.path().get_attribute_path(), span);
             }
             let path = arg.path();
             let (key, skip): (Symbol, &mut bool) = match path.word_sym() {

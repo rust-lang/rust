@@ -259,3 +259,7 @@ attr_parsing_whole_archive_needs_static =
 attr_parsing_limit_invalid =
     `limit` must be a non-negative integer
     .label = {$error_str}
+
+attr_parsing_feature_single_word =
+    rust features are always a single identifier, not paths with multiple segments
+    .help = did you maybe mean `{$first_segment}`?

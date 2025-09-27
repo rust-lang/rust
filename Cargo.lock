@@ -3415,6 +3415,7 @@ dependencies = [
  "rustc_errors",
  "rustc_feature",
  "rustc_fluent_macro",
+ "rustc_hir",
  "rustc_macros",
  "rustc_session",
  "rustc_span",
