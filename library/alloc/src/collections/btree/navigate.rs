@@ -261,14 +261,12 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
     /// # Safety
     /// Unless `BorrowType` is `Immut`, do not use the handles to visit the same
     /// KV twice.
-    unsafe fn find_leaf_edges_spanning_range<Q: ?Sized, R>(
+    unsafe fn find_leaf_edges_spanning_range<Q: ?Sized + Ord, R: RangeBounds<Q>>(
         self,
         range: R,
     ) -> LeafRange<BorrowType, K, V>
     where
-        Q: Ord,
         K: Borrow<Q>,
-        R: RangeBounds<Q>,
     {
         match self.search_tree_for_bifurcation(&range) {
             Err(_) => LeafRange::none(),
@@ -741,12 +739,11 @@ impl<BorrowType: marker::BorrowType, K, V>
 impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
     /// Returns the leaf edge corresponding to the first point at which the
     /// given bound is true.
-    pub(super) fn lower_bound<Q: ?Sized>(
+    pub(super) fn lower_bound<Q: ?Sized + Ord>(
         self,
         mut bound: SearchBound<&Q>,
     ) -> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>
     where
-        Q: Ord,
         K: Borrow<Q>,
     {
         let mut node = self;
@@ -764,12 +761,11 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
 
     /// Returns the leaf edge corresponding to the last point at which the
     /// given bound is true.
-    pub(super) fn upper_bound<Q: ?Sized>(
+    pub(super) fn upper_bound<Q: ?Sized + Ord>(
         self,
         mut bound: SearchBound<&Q>,
     ) -> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>
     where
-        Q: Ord,
         K: Borrow<Q>,
     {
         let mut node = self;
