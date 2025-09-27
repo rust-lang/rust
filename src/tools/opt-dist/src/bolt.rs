@@ -88,7 +88,10 @@ pub fn bolt_optimize(
         // FIXME(kobzol): try to re-enable this once BOLT in-place rewriting is merged or after
         // we bump LLVM.
         // Try to reuse old text segments to reduce binary size
-        // .arg("--use-old-text")
+        .arg("--use-old-text")
+        .arg("--no-huge-pages")
+        .arg("--align-text=64")
+        .arg("--align-functions=2")
         // Update DWARF debug info in the final binary
         .arg("-update-debug-sections")
         // Print optimization statistics
