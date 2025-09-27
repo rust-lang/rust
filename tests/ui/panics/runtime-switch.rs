@@ -18,7 +18,6 @@
 //@ normalize-stderr: "\n +at [^\n]+" -> ""
 
 //@ ignore-msvc see #62897 and `backtrace-debuginfo.rs` test
-//@ ignore-android FIXME #17520
 //@ ignore-openbsd no support for libbacktrace without filename
 //@ ignore-wasm no backtrace support
 //@ ignore-fuchsia Backtrace not symbolized

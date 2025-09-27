@@ -1,5 +1,4 @@
 //@ run-pass
-//@ ignore-android FIXME #17520
 //@ needs-subprocess
 //@ ignore-openbsd no support for libbacktrace without filename
 //@ ignore-msvc see #62897 and `backtrace-debuginfo.rs` test
