@@ -35,6 +35,7 @@ pub use cli::TestOpts;
 pub use self::ColorConfig::*;
 pub use self::bench::{Bencher, black_box};
 pub use self::console::run_tests_console;
+pub use self::formatters::TestGroupKind;
 pub use self::options::{ColorConfig, Options, OutputFormat, RunIgnored, ShouldPanic};
 pub use self::types::TestName::*;
 pub use self::types::*;
@@ -342,6 +343,19 @@ where
     if !opts.bench_benchmarks {
         filtered_tests = convert_benchmarks_to_tests(filtered_tests);
     }
+    let group_kind = match filtered_tests.get(0).map(|x| x.desc.test_type) {
+        // if all remaining tests are the same kind of doctest, we will print a different message.
+        Some(ty @ TestType::DocTest { merged })
+            if filtered_tests.iter().all(|t| t.desc.test_type == ty) =>
+        {
+            if merged {
+                TestGroupKind::DocTestMerged
+            } else {
+                TestGroupKind::DocTestStandalone
+            }
+        }
+        _ => TestGroupKind::Regular,
+    };
 
     for test in filtered_tests {
         let mut desc = test.desc;
@@ -363,7 +377,7 @@ where
 
     let shuffle_seed = get_shuffle_seed(opts);
 
-    let event = TestEvent::TeFiltered(filtered.total_len(), shuffle_seed);
+    let event = TestEvent::TeFiltered(filtered.total_len(), shuffle_seed, group_kind);
     notify_about_test_event(event)?;
 
     let concurrency = opts.test_threads.unwrap_or_else(get_concurrency);

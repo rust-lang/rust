@@ -1,5 +1,5 @@
 
-running 1 test
+running 1 standalone doctest
 test $DIR/dead-code.rs - f (line 12) - compile ... FAILED
 
 failures:

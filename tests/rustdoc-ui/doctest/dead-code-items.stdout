@@ -1,5 +1,5 @@
 
-running 13 tests
+running 13 standalone doctests
 test $DIR/dead-code-items.rs - A (line 34) - compile ... ok
 test $DIR/dead-code-items.rs - A (line 90) - compile ... ok
 test $DIR/dead-code-items.rs - A::field (line 41) - compile ... FAILED

@@ -1,5 +1,5 @@
 
-running 1 test
+running 1 standalone doctest
 test $DIR/relative-path-include-bytes-132203.rs - (line 20) ... FAILED
 
 failures:

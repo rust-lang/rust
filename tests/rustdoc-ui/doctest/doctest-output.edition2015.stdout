@@ -1,5 +1,5 @@
 
-running 3 tests
+running 3 standalone doctests
 test $DIR/doctest-output.rs - (line 12) ... ok
 test $DIR/doctest-output.rs - ExpandedStruct (line 28) ... ok
 test $DIR/doctest-output.rs - foo::bar (line 22) ... ok

@@ -379,7 +379,7 @@ fn time_test_failure_template(test_type: TestType) -> TestResult {
 
 #[test]
 fn test_error_on_exceed() {
-    let types = [TestType::UnitTest, TestType::IntegrationTest, TestType::DocTest];
+    let types = [TestType::UnitTest, TestType::IntegrationTest, TestType::DocTest { merged: true }];
 
     for test_type in types.iter() {
         let result = time_test_failure_template(*test_type);
@@ -433,9 +433,9 @@ fn test_time_options_threshold() {
         (TestType::IntegrationTest, integration.warn.as_millis() - 1, false, false),
         (TestType::IntegrationTest, integration.warn.as_millis(), true, false),
         (TestType::IntegrationTest, integration.critical.as_millis(), true, true),
-        (TestType::DocTest, doc.warn.as_millis() - 1, false, false),
-        (TestType::DocTest, doc.warn.as_millis(), true, false),
-        (TestType::DocTest, doc.critical.as_millis(), true, true),
+        (TestType::DocTest { merged: false }, doc.warn.as_millis() - 1, false, false),
+        (TestType::DocTest { merged: false }, doc.warn.as_millis(), true, false),
+        (TestType::DocTest { merged: false }, doc.critical.as_millis(), true, true),
     ];
 
     for (test_type, time, expected_warn, expected_critical) in test_vector.iter() {

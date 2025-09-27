@@ -21,7 +21,7 @@ pub enum TestType {
     /// Integration-style tests are expected to be in the `tests` folder of the crate.
     IntegrationTest,
     /// Doctests are created by the `librustdoc` manually, so it's a different type of test.
-    DocTest,
+    DocTest { merged: bool },
     /// Tests for the sources that don't follow the project layout convention
     /// (e.g. tests in raw `main.rs` compiled by calling `rustc --test` directly).
     Unknown,
@@ -252,6 +252,7 @@ pub struct TestDescAndFn {
 }
 
 impl TestDescAndFn {
+    /// Generate a new merged doctest
     pub const fn new_doctest(
         test_name: &'static str,
         ignore: bool,
@@ -278,7 +279,7 @@ impl TestDescAndFn {
                 } else {
                     options::ShouldPanic::No
                 },
-                test_type: TestType::DocTest,
+                test_type: TestType::DocTest { merged: true },
             },
             testfn,
         }

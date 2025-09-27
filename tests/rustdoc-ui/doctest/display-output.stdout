@@ -1,5 +1,5 @@
 
-running 1 test
+running 1 standalone doctest
 test $DIR/display-output.rs - foo (line 9) ... ok
 
 successes:

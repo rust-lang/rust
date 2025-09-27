@@ -21,7 +21,12 @@ pub(crate) trait OutputFormatter {
     fn write_test_discovered(&mut self, desc: &TestDesc, test_type: &str) -> io::Result<()>;
     fn write_discovery_finish(&mut self, state: &ConsoleTestDiscoveryState) -> io::Result<()>;
 
-    fn write_run_start(&mut self, test_count: usize, shuffle_seed: Option<u64>) -> io::Result<()>;
+    fn write_run_start(
+        &mut self,
+        test_count: usize,
+        shuffle_seed: Option<u64>,
+        kind: TestGroupKind,
+    ) -> io::Result<()>;
     fn write_test_start(&mut self, desc: &TestDesc) -> io::Result<()>;
     fn write_timeout(&mut self, desc: &TestDesc) -> io::Result<()>;
     fn write_result(
@@ -47,4 +52,23 @@ pub(crate) fn write_stderr_delimiter(test_output: &mut Vec<u8>, test_name: &Test
         None => (),
     }
     writeln!(test_output, "---- {test_name} stderr ----").unwrap();
+}
+
+/// Controls what type of message is printed when running tests.
+#[non_exhaustive]
+#[derive(Copy, Clone, Debug)]
+pub enum TestGroupKind {
+    Regular,
+    DocTestMerged,
+    DocTestStandalone,
+}
+
+impl TestGroupKind {
+    fn qualifier(&self) -> &str {
+        match self {
+            TestGroupKind::Regular => "",
+            TestGroupKind::DocTestMerged => "merged doc",
+            TestGroupKind::DocTestStandalone => "standalone doc",
+        }
+    }
 }
