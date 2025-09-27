@@ -1063,8 +1063,19 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
             {
                 tcx.ensure_ok().exportable_items(LOCAL_CRATE);
                 tcx.ensure_ok().stable_order_of_exportable_impls(LOCAL_CRATE);
+
+                // Prefetch this as it is used later by the loop below
+                // to prevent multiple threads from blocking on it.
+                tcx.ensure_done().get_lang_items(());
+
+                let _timer = tcx.sess.timer("misc_module_passes");
                 tcx.par_hir_for_each_module(|module| {
                     tcx.ensure_ok().check_mod_attrs(module);
+                });
+            },
+            {
+                let _timer = tcx.sess.timer("check_unstable_api_usage");
+                tcx.par_hir_for_each_module(|module| {
                     tcx.ensure_ok().check_mod_unstable_api_usage(module);
                 });
             },
@@ -1086,42 +1097,54 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     // This improves performance by allowing lock-free access to them.
     tcx.untracked().definitions.freeze();
 
-    sess.time("MIR_borrow_checking", || {
-        tcx.par_hir_body_owners(|def_id| {
-            if !tcx.is_typeck_child(def_id.to_def_id()) {
-                // Child unsafety and borrowck happens together with the parent
-                tcx.ensure_ok().check_unsafety(def_id);
-                tcx.ensure_ok().mir_borrowck(def_id);
-                tcx.ensure_ok().check_transmutes(def_id);
-            }
-            tcx.ensure_ok().has_ffi_unwind_calls(def_id);
-
-            // If we need to codegen, ensure that we emit all errors from
-            // `mir_drops_elaborated_and_const_checked` now, to avoid discovering
-            // them later during codegen.
-            if tcx.sess.opts.output_types.should_codegen()
-                || tcx.hir_body_const_context(def_id).is_some()
+    sess.time("misc_checking_2", || {
+        parallel!(
             {
-                tcx.ensure_ok().mir_drops_elaborated_and_const_checked(def_id);
-            }
-            if tcx.is_coroutine(def_id.to_def_id()) {
-                tcx.ensure_ok().mir_coroutine_witnesses(def_id);
-                let _ = tcx.ensure_ok().check_coroutine_obligations(
-                    tcx.typeck_root_def_id(def_id.to_def_id()).expect_local(),
-                );
-                if !tcx.is_async_drop_in_place_coroutine(def_id.to_def_id()) {
-                    // Eagerly check the unsubstituted layout for cycles.
-                    tcx.ensure_ok().layout_of(
-                        ty::TypingEnv::post_analysis(tcx, def_id.to_def_id())
-                            .as_query_input(tcx.type_of(def_id).instantiate_identity()),
-                    );
-                }
-            }
-        });
-    });
+                // Prefetch this as it is used later by lint checking and privacy checking.
+                tcx.ensure_done().effective_visibilities(());
+            },
+            {
+                sess.time("misc_body_checking", || {
+                    tcx.par_hir_body_owners(|def_id| {
+                        if !tcx.is_typeck_child(def_id.to_def_id()) {
+                            // Child unsafety and borrowck happens together with the parent
+                            tcx.ensure_ok().check_unsafety(def_id);
+                            tcx.ensure_ok().mir_borrowck(def_id);
+                            tcx.ensure_ok().check_transmutes(def_id);
+                        }
+                        tcx.ensure_ok().has_ffi_unwind_calls(def_id);
 
-    sess.time("layout_testing", || layout_test::test_layout(tcx));
-    sess.time("abi_testing", || abi_test::test_abi(tcx));
+                        // If we need to codegen, ensure that we emit all errors from
+                        // `mir_drops_elaborated_and_const_checked` now, to avoid discovering
+                        // them later during codegen.
+                        if tcx.sess.opts.output_types.should_codegen()
+                            || tcx.hir_body_const_context(def_id).is_some()
+                        {
+                            tcx.ensure_ok().mir_drops_elaborated_and_const_checked(def_id);
+                        }
+
+                        if tcx.is_coroutine(def_id.to_def_id()) {
+                            tcx.ensure_ok().mir_coroutine_witnesses(def_id);
+                            let _ = tcx.ensure_ok().check_coroutine_obligations(
+                                tcx.typeck_root_def_id(def_id.to_def_id()).expect_local(),
+                            );
+                            if !tcx.is_async_drop_in_place_coroutine(def_id.to_def_id()) {
+                                // Eagerly check the unsubstituted layout for cycles.
+                                tcx.ensure_ok().layout_of(
+                                    ty::TypingEnv::post_analysis(tcx, def_id.to_def_id())
+                                        .as_query_input(tcx.type_of(def_id).instantiate_identity()),
+                                );
+                            }
+                        }
+                    });
+                });
+            },
+            {
+                sess.time("layout_testing", || layout_test::test_layout(tcx));
+                sess.time("abi_testing", || abi_test::test_abi(tcx));
+            }
+        )
+    });
 
     // If `-Zvalidate-mir` is set, we also want to compute the final MIR for each item
     // (either its `mir_for_ctfe` or `optimized_mir`) since that helps uncover any bugs
@@ -1158,28 +1181,20 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) {
     sess.time("misc_checking_3", || {
         parallel!(
             {
-                tcx.ensure_ok().effective_visibilities(());
-
-                parallel!(
-                    {
-                        tcx.par_hir_for_each_module(|module| {
-                            tcx.ensure_ok().check_private_in_public(module)
-                        })
-                    },
-                    {
-                        tcx.par_hir_for_each_module(|module| {
-                            tcx.ensure_ok().check_mod_deathness(module)
-                        });
-                    },
-                    {
-                        sess.time("lint_checking", || {
-                            rustc_lint::check_crate(tcx);
-                        });
-                    },
-                    {
-                        tcx.ensure_ok().clashing_extern_declarations(());
-                    }
-                );
+                tcx.par_hir_for_each_module(|module| {
+                    tcx.ensure_ok().check_private_in_public(module)
+                })
+            },
+            {
+                tcx.par_hir_for_each_module(|module| tcx.ensure_ok().check_mod_deathness(module));
+            },
+            {
+                sess.time("lint_checking", || {
+                    rustc_lint::check_crate(tcx);
+                });
+            },
+            {
+                tcx.ensure_ok().clashing_extern_declarations(());
             },
             {
                 sess.time("privacy_checking_modules", || {
