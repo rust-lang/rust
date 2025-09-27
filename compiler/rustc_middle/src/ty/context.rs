@@ -2012,7 +2012,7 @@ impl<'tcx> TyCtxt<'tcx> {
         if stable_crate_id == self.stable_crate_id(LOCAL_CRATE) {
             Some(self.untracked.definitions.read().local_def_path_hash_to_def_id(hash)?.to_def_id())
         } else {
-            Some(self.def_path_hash_to_def_id_extern(hash, stable_crate_id))
+            self.def_path_hash_to_def_id_extern(hash, stable_crate_id)
         }
     }
 

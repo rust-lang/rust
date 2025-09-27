@@ -37,7 +37,7 @@ use serde_derive::Deserialize;
 pub use target_selection::TargetSelection;
 pub use toml::BUILDER_CONFIG_FILENAME;
 pub use toml::change_id::ChangeId;
-pub use toml::rust::LldMode;
+pub use toml::rust::BootstrapOverrideLld;
 pub use toml::target::Target;
 
 use crate::Display;

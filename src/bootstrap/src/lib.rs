@@ -35,7 +35,7 @@ use utils::exec::ExecutionContext;
 
 use crate::core::builder;
 use crate::core::builder::Kind;
-use crate::core::config::{DryRun, LldMode, LlvmLibunwind, TargetSelection, flags};
+use crate::core::config::{BootstrapOverrideLld, DryRun, LlvmLibunwind, TargetSelection, flags};
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{self, dir_is_empty, exe, libdir, set_file_times, split_debuginfo};
 
@@ -1358,14 +1358,14 @@ impl Build {
             && !target.is_msvc()
         {
             Some(self.cc(target))
-        } else if self.config.lld_mode.is_used()
+        } else if self.config.bootstrap_override_lld.is_used()
             && self.is_lld_direct_linker(target)
             && self.host_target == target
         {
-            match self.config.lld_mode {
-                LldMode::SelfContained => Some(self.initial_lld.clone()),
-                LldMode::External => Some("lld".into()),
-                LldMode::Unused => None,
+            match self.config.bootstrap_override_lld {
+                BootstrapOverrideLld::SelfContained => Some(self.initial_lld.clone()),
+                BootstrapOverrideLld::External => Some("lld".into()),
+                BootstrapOverrideLld::None => None,
             }
         } else {
             None

@@ -404,11 +404,15 @@ pub(crate) fn run_tests(
             std::mem::drop(temp_dir.take());
             times.display_times();
         });
-    }
-    if nb_errors != 0 {
-        // We ensure temp dir destructor is called.
-        std::mem::drop(temp_dir);
+    } else {
+        // If the first condition branch exited successfully, `test_main_with_exit_callback` will
+        // not exit the process. So to prevent displaying the times twice, we put it behind an
+        // `else` condition.
         times.display_times();
+    }
+    // We ensure temp dir destructor is called.
+    std::mem::drop(temp_dir);
+    if nb_errors != 0 {
         std::process::exit(test::ERROR_EXIT_CODE);
     }
 }

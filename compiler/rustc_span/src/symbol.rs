@@ -679,6 +679,7 @@ symbols! {
         cmpxchg16b_target_feature,
         cmse_nonsecure_entry,
         coerce_pointee_validated,
+        coerce_shared,
         coerce_unsized,
         cold,
         cold_path,

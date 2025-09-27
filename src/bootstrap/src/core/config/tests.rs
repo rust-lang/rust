@@ -17,7 +17,9 @@ use crate::core::build_steps::clippy::{LintConfig, get_clippy_rules_in_order};
 use crate::core::build_steps::llvm::LLVM_INVALIDATION_PATHS;
 use crate::core::build_steps::{llvm, test};
 use crate::core::config::toml::TomlConfig;
-use crate::core::config::{CompilerBuiltins, LldMode, StringOrBool, Target, TargetSelection};
+use crate::core::config::{
+    BootstrapOverrideLld, CompilerBuiltins, StringOrBool, Target, TargetSelection,
+};
 use crate::utils::tests::TestCtx;
 use crate::utils::tests::git::git_test;
 
@@ -222,11 +224,33 @@ fn verify_file_integrity() {
 
 #[test]
 fn rust_lld() {
-    assert!(matches!(parse("").lld_mode, LldMode::Unused));
-    assert!(matches!(parse("rust.use-lld = \"self-contained\"").lld_mode, LldMode::SelfContained));
-    assert!(matches!(parse("rust.use-lld = \"external\"").lld_mode, LldMode::External));
-    assert!(matches!(parse("rust.use-lld = true").lld_mode, LldMode::External));
-    assert!(matches!(parse("rust.use-lld = false").lld_mode, LldMode::Unused));
+    assert!(matches!(parse("").bootstrap_override_lld, BootstrapOverrideLld::None));
+    assert!(matches!(
+        parse("rust.bootstrap-override-lld = \"self-contained\"").bootstrap_override_lld,
+        BootstrapOverrideLld::SelfContained
+    ));
+    assert!(matches!(
+        parse("rust.bootstrap-override-lld = \"external\"").bootstrap_override_lld,
+        BootstrapOverrideLld::External
+    ));
+    assert!(matches!(
+        parse("rust.bootstrap-override-lld = true").bootstrap_override_lld,
+        BootstrapOverrideLld::External
+    ));
+    assert!(matches!(
+        parse("rust.bootstrap-override-lld = false").bootstrap_override_lld,
+        BootstrapOverrideLld::None
+    ));
+
+    // Also check the legacy options
+    assert!(matches!(
+        parse("rust.use-lld = true").bootstrap_override_lld,
+        BootstrapOverrideLld::External
+    ));
+    assert!(matches!(
+        parse("rust.use-lld = false").bootstrap_override_lld,
+        BootstrapOverrideLld::None
+    ));
 }
 
 #[test]
