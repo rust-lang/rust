@@ -506,7 +506,7 @@ pub(crate) fn maybe_download_rustfmt<'a>(
         return Some(PathBuf::new());
     }
 
-    let VersionMetadata { date, version } = dwn_ctx.stage0_metadata.rustfmt.as_ref()?;
+    let VersionMetadata { date, version, .. } = dwn_ctx.stage0_metadata.rustfmt.as_ref()?;
     let channel = format!("{version}-{date}");
 
     let host = dwn_ctx.host_target;

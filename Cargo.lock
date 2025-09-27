@@ -334,8 +334,10 @@ dependencies = [
  "anyhow",
  "build_helper",
  "curl",
+ "hex",
  "indexmap",
  "serde",
+ "sha2",
  "toml 0.8.23",
 ]
 
