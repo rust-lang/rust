@@ -8,7 +8,7 @@
 
 use std::mem;
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -37,6 +37,14 @@ struct ScopeResolutionVisitor<'tcx> {
     scope_tree: ScopeTree,
 
     cx: Context,
+
+    /// Tracks [extending] blocks and `if` expressions. This is used in performing lifetime
+    /// extension on block tail expressions: if we've already extended the temporary scopes of
+    /// extending borrows within a block's tail when checking a parent `let` statement or block, we
+    /// don't want to re-extend them to be shorter when checking the block itself.
+    ///
+    /// [extending]: https://doc.rust-lang.org/nightly/reference/destructors.html#extending-based-on-expressions
+    extended_blocks: FxHashSet<hir::ItemLocalId>,
 
     extended_super_lets: FxHashMap<hir::ItemLocalId, Option<Scope>>,
 }
@@ -159,6 +167,17 @@ fn resolve_block<'tcx>(
                     .scope_tree
                     .backwards_incompatible_scope
                     .insert(local_id, Scope { local_id, data: ScopeData::Node });
+            }
+            // If we haven't already checked for temporary lifetime extension due to a parent `let`
+            // statement initializer or block, do so. This, e.g., allows `temp()` in `{ &temp() }`
+            // to outlive the block even when the block itself is not in a `let` statement
+            // initializer. The same rules for `let` are used here, so non-extending borrows are
+            // unaffected: `{ f(&temp()) }` drops `temp()` at the end of the block in Rust 2024.
+            if !visitor.extended_blocks.contains(&blk.hir_id.local_id) {
+                let blk_result_scope = prev_cx.parent.and_then(|blk_parent| {
+                    visitor.scope_tree.default_temporary_scope(blk_parent).0
+                });
+                record_rvalue_scope_if_borrow_expr(visitor, tail_expr, blk_result_scope);
             }
             resolve_expr(visitor, tail_expr, terminating);
         }
@@ -354,6 +373,22 @@ fn resolve_expr<'tcx>(
 
         hir::ExprKind::If(cond, then, Some(otherwise)) => {
             let expr_cx = visitor.cx;
+            // If we haven't already checked for temporary lifetime extension due to a parent `let`
+            // statement initializer or block, do so. This, e.g., allows `format!("temp")` in
+            // `if cond { &format!("temp") } else { "" }` to outlive the block even when the `if`
+            // expression itself is not in a `let` statement initializer. The same rules for `let`
+            // are used here, so non-extending borrows are unaffected:
+            // `if cond { f(&format!("temp")) } else { "" }`
+            // drops `format!("temp")` at the end of the block in all editions.
+            // This also allows `super let` in the then and else blocks to have the scope of the
+            // result of the block, as expected.
+            if !visitor.extended_blocks.contains(&expr.hir_id.local_id) {
+                let blk_result_scope = expr_cx
+                    .parent
+                    .and_then(|if_parent| visitor.scope_tree.default_temporary_scope(if_parent).0);
+                record_rvalue_scope_if_borrow_expr(visitor, then, blk_result_scope);
+                record_rvalue_scope_if_borrow_expr(visitor, otherwise, blk_result_scope);
+            }
             let data = if expr.span.at_least_rust_2024() {
                 ScopeData::IfThenRescope
             } else {
@@ -369,6 +404,13 @@ fn resolve_expr<'tcx>(
 
         hir::ExprKind::If(cond, then, None) => {
             let expr_cx = visitor.cx;
+            // As above, perform lifetime extension on the consequent block.
+            if !visitor.extended_blocks.contains(&expr.hir_id.local_id) {
+                let blk_result_scope = expr_cx
+                    .parent
+                    .and_then(|if_parent| visitor.scope_tree.default_temporary_scope(if_parent).0);
+                record_rvalue_scope_if_borrow_expr(visitor, then, blk_result_scope);
+            }
             let data = if expr.span.at_least_rust_2024() {
                 ScopeData::IfThenRescope
             } else {
@@ -473,7 +515,7 @@ fn resolve_local<'tcx>(
             if let Some(scope) =
                 visitor.extended_super_lets.remove(&pat.unwrap().hir_id.local_id) =>
         {
-            // This expression was lifetime-extended by a parent let binding. E.g.
+            // This expression was lifetime-extended by a parent let binding or block. E.g.
             //
             //     let a = {
             //         super let b = temp();
@@ -489,7 +531,8 @@ fn resolve_local<'tcx>(
             true
         }
         LetKind::Super => {
-            // This `super let` is not subject to lifetime extension from a parent let binding. E.g.
+            // This `super let` is not subject to lifetime extension from a parent let binding or
+            // block. E.g.
             //
             //     identity({ super let x = temp(); &x }).method();
             //
@@ -500,10 +543,16 @@ fn resolve_local<'tcx>(
             if let Some(inner_scope) = visitor.cx.var_parent {
                 (visitor.cx.var_parent, _) = visitor.scope_tree.default_temporary_scope(inner_scope)
             }
-            // Don't lifetime-extend child `super let`s or block tail expressions' temporaries in
-            // the initializer when this `super let` is not itself extended by a parent `let`
-            // (#145784). Block tail expressions are temporary drop scopes in Editions 2024 and
-            // later, their temps shouldn't outlive the block in e.g. `f(pin!({ &temp() }))`.
+            // Don't apply lifetime extension to the initializer of non-extended `super let`.
+            // This helps ensure that `{ super let x = &$EXPR; x }` is equivalent to `&$EXPR` in
+            // non-extending contexts: we want to avoid extending temporaries in `$EXPR` past what
+            // their temporary scopes would otherwise be (#145784).
+            // Currently, this shouldn't do anything. The discrepancy in #145784 was due to
+            // `{ super let x = &{ &temp() }; x }` extending `temp()` to outlive its immediately
+            // enclosing temporary scope (the block tail expression in Rust 2024), whereas in a
+            // non-extending context, `&{ &temp() }` would drop `temp()` at the end of the block.
+            // This particular quirk no longer exists: lifetime extension rules are applied to block
+            // tail expressions, so `temp()` is extended past the block in the latter case as well.
             false
         }
     };
@@ -602,87 +651,92 @@ fn resolve_local<'tcx>(
             | PatKind::Err(_) => false,
         }
     }
+}
 
-    /// If `expr` matches the `E&` grammar, then records an extended rvalue scope as appropriate:
-    ///
-    /// ```text
-    ///     E& = & ET
-    ///        | StructName { ..., f: E&, ... }
-    ///        | [ ..., E&, ... ]
-    ///        | ( ..., E&, ... )
-    ///        | {...; E&}
-    ///        | { super let ... = E&; ... }
-    ///        | if _ { ...; E& } else { ...; E& }
-    ///        | match _ { ..., _ => E&, ... }
-    ///        | box E&
-    ///        | E& as ...
-    ///        | ( E& )
-    /// ```
-    fn record_rvalue_scope_if_borrow_expr<'tcx>(
-        visitor: &mut ScopeResolutionVisitor<'tcx>,
-        expr: &hir::Expr<'_>,
-        blk_id: Option<Scope>,
-    ) {
-        match expr.kind {
-            hir::ExprKind::AddrOf(_, _, subexpr) => {
-                record_rvalue_scope_if_borrow_expr(visitor, subexpr, blk_id);
-                visitor.scope_tree.record_rvalue_candidate(
-                    subexpr.hir_id,
-                    RvalueCandidate { target: subexpr.hir_id.local_id, lifetime: blk_id },
-                );
-            }
-            hir::ExprKind::Struct(_, fields, _) => {
-                for field in fields {
-                    record_rvalue_scope_if_borrow_expr(visitor, field.expr, blk_id);
-                }
-            }
-            hir::ExprKind::Array(subexprs) | hir::ExprKind::Tup(subexprs) => {
-                for subexpr in subexprs {
-                    record_rvalue_scope_if_borrow_expr(visitor, subexpr, blk_id);
-                }
-            }
-            hir::ExprKind::Cast(subexpr, _) => {
-                record_rvalue_scope_if_borrow_expr(visitor, subexpr, blk_id)
-            }
-            hir::ExprKind::Block(block, _) => {
-                if let Some(subexpr) = block.expr {
-                    record_rvalue_scope_if_borrow_expr(visitor, subexpr, blk_id);
-                }
-                for stmt in block.stmts {
-                    if let hir::StmtKind::Let(local) = stmt.kind
-                        && let Some(_) = local.super_
-                    {
-                        visitor.extended_super_lets.insert(local.pat.hir_id.local_id, blk_id);
-                    }
-                }
-            }
-            hir::ExprKind::If(_, then_block, else_block) => {
-                record_rvalue_scope_if_borrow_expr(visitor, then_block, blk_id);
-                if let Some(else_block) = else_block {
-                    record_rvalue_scope_if_borrow_expr(visitor, else_block, blk_id);
-                }
-            }
-            hir::ExprKind::Match(_, arms, _) => {
-                for arm in arms {
-                    record_rvalue_scope_if_borrow_expr(visitor, arm.body, blk_id);
-                }
-            }
-            hir::ExprKind::Call(func, args) => {
-                // Recurse into tuple constructors, such as `Some(&temp())`.
-                //
-                // That way, there is no difference between `Some(..)` and `Some { 0: .. }`,
-                // even though the former is syntactically a function call.
-                if let hir::ExprKind::Path(path) = &func.kind
-                    && let hir::QPath::Resolved(None, path) = path
-                    && let Res::SelfCtor(_) | Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) = path.res
-                {
-                    for arg in args {
-                        record_rvalue_scope_if_borrow_expr(visitor, arg, blk_id);
-                    }
-                }
-            }
-            _ => {}
+/// If `expr` matches the `E&` grammar, then records an extended rvalue scope as appropriate:
+///
+/// ```text
+///     E& = & ET
+///        | StructName { ..., f: E&, ... }
+///        | StructName(..., E&, ...)
+///        | [ ..., E&, ... ]
+///        | ( ..., E&, ... )
+///        | {...; E&}
+///        | { super let ... = E&; ... }
+///        | if _ { ...; E& } else { ...; E& }
+///        | match _ { ..., _ => E&, ... }
+///        | E& as ...
+/// ```
+fn record_rvalue_scope_if_borrow_expr<'tcx>(
+    visitor: &mut ScopeResolutionVisitor<'tcx>,
+    expr: &hir::Expr<'_>,
+    blk_id: Option<Scope>,
+) {
+    match expr.kind {
+        hir::ExprKind::AddrOf(_, _, subexpr) => {
+            record_rvalue_scope_if_borrow_expr(visitor, subexpr, blk_id);
+            visitor.scope_tree.record_rvalue_candidate(
+                subexpr.hir_id,
+                RvalueCandidate { target: subexpr.hir_id.local_id, lifetime: blk_id },
+            );
         }
+        hir::ExprKind::Struct(_, fields, _) => {
+            for field in fields {
+                record_rvalue_scope_if_borrow_expr(visitor, field.expr, blk_id);
+            }
+        }
+        hir::ExprKind::Array(subexprs) | hir::ExprKind::Tup(subexprs) => {
+            for subexpr in subexprs {
+                record_rvalue_scope_if_borrow_expr(visitor, subexpr, blk_id);
+            }
+        }
+        hir::ExprKind::Cast(subexpr, _) => {
+            record_rvalue_scope_if_borrow_expr(visitor, subexpr, blk_id)
+        }
+        hir::ExprKind::Block(block, _) => {
+            // Mark the block as extending, so we know its extending borrows and `super let`s have
+            // extended scopes when checking the block itself.
+            visitor.extended_blocks.insert(block.hir_id.local_id);
+            if let Some(subexpr) = block.expr {
+                record_rvalue_scope_if_borrow_expr(visitor, subexpr, blk_id);
+            }
+            for stmt in block.stmts {
+                if let hir::StmtKind::Let(local) = stmt.kind
+                    && let Some(_) = local.super_
+                {
+                    visitor.extended_super_lets.insert(local.pat.hir_id.local_id, blk_id);
+                }
+            }
+        }
+        hir::ExprKind::If(_, then_block, else_block) => {
+            // Mark the expression as extending, so we know its extending borrows and `super let`s
+            // have extended scopes when checking the `if` expression's blocks.
+            visitor.extended_blocks.insert(expr.hir_id.local_id);
+            record_rvalue_scope_if_borrow_expr(visitor, then_block, blk_id);
+            if let Some(else_block) = else_block {
+                record_rvalue_scope_if_borrow_expr(visitor, else_block, blk_id);
+            }
+        }
+        hir::ExprKind::Match(_, arms, _) => {
+            for arm in arms {
+                record_rvalue_scope_if_borrow_expr(visitor, arm.body, blk_id);
+            }
+        }
+        hir::ExprKind::Call(func, args) => {
+            // Recurse into tuple constructors, such as `Some(&temp())`.
+            //
+            // That way, there is no difference between `Some(..)` and `Some { 0: .. }`,
+            // even though the former is syntactically a function call.
+            if let hir::ExprKind::Path(path) = &func.kind
+                && let hir::QPath::Resolved(None, path) = path
+                && let Res::SelfCtor(_) | Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) = path.res
+            {
+                for arg in args {
+                    record_rvalue_scope_if_borrow_expr(visitor, arg, blk_id);
+                }
+            }
+        }
+        _ => {}
     }
 }
 
@@ -823,6 +877,7 @@ pub(crate) fn region_scope_tree(tcx: TyCtxt<'_>, def_id: DefId) -> &ScopeTree {
             tcx,
             scope_tree: ScopeTree::default(),
             cx: Context { parent: None, var_parent: None },
+            extended_blocks: Default::default(),
             extended_super_lets: Default::default(),
         };
 
