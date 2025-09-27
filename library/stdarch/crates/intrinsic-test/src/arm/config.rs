@@ -6,8 +6,9 @@ pub const NOTICE: &str = "\
 pub const POLY128_OSTREAM_DECL: &str = r#"
 #ifdef __aarch64__
 std::ostream& operator<<(std::ostream& os, poly128_t value);
-std::ostream& operator<<(std::ostream& os, float16_t value);
 #endif
+
+std::ostream& operator<<(std::ostream& os, float16_t value);
 
 // T1 is the `To` type, T2 is the `From` type
 template<typename T1, typename T2> T1 cast(T2 x) {
@@ -33,6 +34,8 @@ std::ostream& operator<<(std::ostream& os, poly128_t value) {
     return os;
 }
 
+#endif
+
 std::ostream& operator<<(std::ostream& os, float16_t value) {
     uint16_t temp = 0;
     memcpy(&temp, &value, sizeof(float16_t));
@@ -41,7 +44,6 @@ std::ostream& operator<<(std::ostream& os, float16_t value) {
     os << ss.str();
     return os;
 }
-#endif
 "#;
 
 // Format f16 values (and vectors containing them) in a way that is consistent with C.
