@@ -5,6 +5,7 @@
 //! which are themselves a single [`Token`] or a `Delimited` subsequence of tokens.
 
 use std::borrow::Cow;
+use std::hash::Hash;
 use std::ops::Range;
 use std::sync::Arc;
 use std::{cmp, fmt, iter, mem};
@@ -22,7 +23,7 @@ use crate::token::{self, Delimiter, Token, TokenKind};
 use crate::{AttrVec, Attribute};
 
 /// Part of a `TokenStream`.
-#[derive(Debug, Clone, PartialEq, Encodable, Decodable, HashStable_Generic)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Encodable, Decodable, HashStable_Generic)]
 pub enum TokenTree {
     /// A single token. Should never be `OpenDelim` or `CloseDelim`, because
     /// delimiters are implicitly represented by `Delimited`.
@@ -540,7 +541,7 @@ pub struct AttrsTarget {
 /// compound token. Used for conversions to `proc_macro::Spacing`. Also used to
 /// guide pretty-printing, which is where the `JointHidden` value (which isn't
 /// part of `proc_macro::Spacing`) comes in useful.
-#[derive(Clone, Copy, Debug, PartialEq, Encodable, Decodable, HashStable_Generic)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encodable, Decodable, HashStable_Generic)]
 pub enum Spacing {
     /// The token cannot join with the following token to form a compound
     /// token.
@@ -597,7 +598,7 @@ pub enum Spacing {
 }
 
 /// A `TokenStream` is an abstract sequence of tokens, organized into [`TokenTree`]s.
-#[derive(Clone, Debug, Default, Encodable, Decodable)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Encodable, Decodable)]
 pub struct TokenStream(pub(crate) Arc<Vec<TokenTree>>);
 
 impl TokenStream {
@@ -813,14 +814,6 @@ impl TokenStream {
     }
 }
 
-impl PartialEq<TokenStream> for TokenStream {
-    fn eq(&self, other: &TokenStream) -> bool {
-        self.iter().eq(other.iter())
-    }
-}
-
-impl Eq for TokenStream {}
-
 impl FromIterator<TokenTree> for TokenStream {
     fn from_iter<I: IntoIterator<Item = TokenTree>>(iter: I) -> Self {
         TokenStream::new(iter.into_iter().collect::<Vec<TokenTree>>())
@@ -972,7 +965,18 @@ impl TokenCursor {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Encodable, Decodable, HashStable_Generic, Walkable)]
+#[derive(
+    Debug,
+    Copy,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    Encodable,
+    Decodable,
+    HashStable_Generic,
+    Walkable
+)]
 pub struct DelimSpan {
     pub open: Span,
     pub close: Span,
@@ -996,7 +1000,7 @@ impl DelimSpan {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Encodable, Decodable, HashStable_Generic)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable, HashStable_Generic)]
 pub struct DelimSpacing {
     pub open: Spacing,
     pub close: Spacing,
