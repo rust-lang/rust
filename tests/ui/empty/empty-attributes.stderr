@@ -56,12 +56,16 @@ error: unused attribute
    |
 LL | #[repr()]
    | ^^^^^^^^^ help: remove this attribute
+   |
+   = note: using `repr` with an empty list has no effect
 
 error: unused attribute
   --> $DIR/empty-attributes.rs:12:1
    |
 LL | #[target_feature()]
    | ^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+   = note: using `target_feature` with an empty list has no effect
 
 error: aborting due to 8 previous errors
 
