@@ -847,7 +847,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
         hir::ItemKind::Trait(constness, is_auto, safety, ..) => {
             (constness, false, is_auto == hir::IsAuto::Yes, safety)
         }
-        hir::ItemKind::TraitAlias(..) => (hir::Constness::NotConst, true, false, hir::Safety::Safe),
+        hir::ItemKind::TraitAlias(constness, ..) => (constness, true, false, hir::Safety::Safe),
         _ => span_bug!(item.span, "trait_def_of_item invoked on non-trait"),
     };
 
