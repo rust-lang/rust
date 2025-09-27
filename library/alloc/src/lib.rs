@@ -96,6 +96,7 @@
 #![feature(bstr)]
 #![feature(bstr_internals)]
 #![feature(cast_maybe_uninit)]
+#![feature(cell_get_cloned)]
 #![feature(char_internals)]
 #![feature(char_max_len)]
 #![feature(clone_to_uninit)]
