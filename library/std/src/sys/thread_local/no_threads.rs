@@ -39,11 +39,6 @@ pub macro thread_local_inner {
             })
         }
     }},
-
-    ($(#[$attr:meta])* $vis:vis $name:ident, $t:ty, $(#[$align_attr:meta])*, $($init:tt)*) => {
-        $(#[$attr])* $vis const $name: $crate::thread::LocalKey<$t> =
-            $crate::thread::local_impl::thread_local_inner!(@key $t, $(#[$align_attr])*, $($init)*);
-    },
 }
 
 #[allow(missing_debug_implementations)]
