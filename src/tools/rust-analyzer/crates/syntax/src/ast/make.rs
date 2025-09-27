@@ -1355,7 +1355,7 @@ pub mod tokens {
 
     pub(super) static SOURCE_FILE: LazyLock<Parse<SourceFile>> = LazyLock::new(|| {
         SourceFile::parse(
-            "use crate::foo; const C: <()>::Item = ( true && true , true || true , 1 != 1, 2 == 2, 3 < 3, 4 <= 4, 5 > 5, 6 >= 6, !true, *p, &p , &mut p, async { let _ @ [] })\n;\n\nunsafe impl A for B where: {}",
+            "use crate::foo; const C: <()>::Item = ( true && true , true || true , 1 != 1, 2 == 2, 3 < 3, 4 <= 4, 5 > 5, 6 >= 6, !true, *p, &p , &mut p, async { let _ @ [] }, while loop {} {})\n;\n\nunsafe impl A for B where: {}",
             Edition::CURRENT,
         )
     });
