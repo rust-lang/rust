@@ -450,6 +450,8 @@ pub use self::sources::{Successors, successors};
 pub use self::traits::FusedIterator;
 #[unstable(issue = "none", feature = "inplace_iteration")]
 pub use self::traits::InPlaceIterable;
+#[stable(feature = "infinite_iterator_trait", since = "CURRENT_RUSTC_VERSION")]
+pub use self::traits::InfiniteIterator;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::traits::Iterator;
 #[unstable(issue = "none", feature = "trusted_fused")]
