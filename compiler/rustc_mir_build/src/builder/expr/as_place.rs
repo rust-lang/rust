@@ -454,7 +454,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 index,
                 mutability,
                 fake_borrow_temps,
-                expr.temp_lifetime,
                 expr_span,
                 source_info,
             ),
@@ -625,7 +624,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         index: ExprId,
         mutability: Mutability,
         fake_borrow_temps: Option<&mut Vec<Local>>,
-        temp_lifetime: TempLifetime,
         expr_span: Span,
         source_info: SourceInfo,
     ) -> BlockAnd<PlaceBuilder<'tcx>> {
@@ -639,7 +637,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // Making this a *fresh* temporary means we do not have to worry about
         // the index changing later: Nothing will ever change this temporary.
         // The "retagging" transformation (for Stacked Borrows) relies on this.
-        let idx = unpack!(block = self.as_temp(block, temp_lifetime, index, Mutability::Not));
+        let index_lifetime = self.thir[index].temp_lifetime;
+        let idx = unpack!(block = self.as_temp(block, index_lifetime, index, Mutability::Not));
 
         block = self.bounds_check(block, &base_place, idx, expr_span, source_info);
 
