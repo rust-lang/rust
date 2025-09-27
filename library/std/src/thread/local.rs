@@ -327,13 +327,17 @@ pub macro thread_local_process_attrs {
 
     // process `const` declaration and recurse
     ([$($align_attrs:tt)*] [$($other_attrs:tt)*]; $vis:vis static $name:ident: $t:ty = const $init:block $(; $($($rest:tt)+)?)?) => (
-        $crate::thread::local_impl::thread_local_inner!($($other_attrs)* $vis $name, $t, $($align_attrs)*, const $init);
+        $($other_attrs)* $vis const $name: $crate::thread::LocalKey<$t> =
+            $crate::thread::local_impl::thread_local_inner!(@key $t, $($align_attrs)*, const $init);
+
         $($($crate::thread::local_impl::thread_local_process_attrs!([] []; $($rest)+);)?)?
     ),
 
     // process non-`const` declaration and recurse
     ([$($align_attrs:tt)*] [$($other_attrs:tt)*]; $vis:vis static $name:ident: $t:ty = $init:expr $(; $($($rest:tt)+)?)?) => (
-        $crate::thread::local_impl::thread_local_inner!($($other_attrs)* $vis $name, $t, $($align_attrs)*, $init);
+        $($other_attrs)* $vis const $name: $crate::thread::LocalKey<$t> =
+            $crate::thread::local_impl::thread_local_inner!(@key $t, $($align_attrs)*, $init);
+
         $($($crate::thread::local_impl::thread_local_process_attrs!([] []; $($rest)+);)?)?
     ),
 }

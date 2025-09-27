@@ -85,11 +85,6 @@ pub macro thread_local_inner {
 
         $($crate::thread::local_impl::thread_local_inner!(@align $final_align, $($attr_rest)+);)?
     },
-
-    ($(#[$attr:meta])* $vis:vis $name:ident, $t:ty, $(#[$($align_attr:tt)*])*, $($init:tt)*) => {
-        $(#[$attr])* $vis const $name: $crate::thread::LocalKey<$t> =
-            $crate::thread::local_impl::thread_local_inner!(@key $t, $(#[$($align_attr)*])*, $($init)*);
-    },
 }
 
 /// Use a regular global static to store this key; the state provided will then be
