@@ -63,7 +63,8 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             return false;
         }
 
-        let diverging_fallback = self.calculate_diverging_fallback(&unresolved_variables);
+        let (diverging_fallback, diverging_fallback_ty) =
+            self.calculate_diverging_fallback(&unresolved_variables);
 
         // We do fallback in two passes, to try to generate
         // better error messages.
@@ -71,7 +72,8 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         let mut fallback_occurred = false;
         for ty in unresolved_variables {
             debug!("unsolved_variable = {:?}", ty);
-            fallback_occurred |= self.fallback_if_possible(ty, &diverging_fallback);
+            fallback_occurred |=
+                self.fallback_if_possible(ty, &diverging_fallback, diverging_fallback_ty);
         }
 
         fallback_occurred
@@ -95,7 +97,8 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     fn fallback_if_possible(
         &self,
         ty: Ty<'tcx>,
-        diverging_fallback: &UnordMap<Ty<'tcx>, Ty<'tcx>>,
+        diverging_fallback: &UnordSet<Ty<'tcx>>,
+        diverging_fallback_ty: Ty<'tcx>,
     ) -> bool {
         // Careful: we do NOT shallow-resolve `ty`. We know that `ty`
         // is an unsolved variable, and we determine its fallback
@@ -119,13 +122,11 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             _ if let Some(e) = self.tainted_by_errors() => Ty::new_error(self.tcx, e),
             ty::Infer(ty::IntVar(_)) => self.tcx.types.i32,
             ty::Infer(ty::FloatVar(_)) => self.tcx.types.f64,
-            _ => match diverging_fallback.get(&ty) {
-                Some(&fallback_ty) => {
-                    self.diverging_fallback_has_occurred.set(true);
-                    fallback_ty
-                }
-                None => return false,
-            },
+            _ if diverging_fallback.contains(&ty) => {
+                self.diverging_fallback_has_occurred.set(true);
+                diverging_fallback_ty
+            }
+            _ => return false,
         };
         debug!("fallback_if_possible(ty={:?}): defaulting to `{:?}`", ty, fallback);
 
@@ -137,8 +138,17 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     fn calculate_diverging_fallback(
         &self,
         unresolved_variables: &[Ty<'tcx>],
-    ) -> UnordMap<Ty<'tcx>, Ty<'tcx>> {
+    ) -> (UnordSet<Ty<'tcx>>, Ty<'tcx>) {
         debug!("calculate_diverging_fallback({:?})", unresolved_variables);
+
+        let diverging_fallback_ty = match self.diverging_fallback_behavior {
+            DivergingFallbackBehavior::ToUnit => self.tcx.types.unit,
+            DivergingFallbackBehavior::ToNever => self.tcx.types.never,
+            DivergingFallbackBehavior::NoFallback => {
+                // the type doesn't matter, since no fallback will occur
+                return (UnordSet::new(), self.tcx.types.unit);
+            }
+        };
 
         // Construct a coercion graph where an edge `A -> B` indicates
         // a type variable is that is coerced
@@ -194,7 +204,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
 
         debug!("obligations: {:#?}", self.fulfillment_cx.borrow_mut().pending_obligations());
 
-        let mut diverging_fallback = UnordMap::with_capacity(diverging_vids.len());
+        let mut diverging_fallback = UnordSet::with_capacity(diverging_vids.len());
         let unsafe_infer_vars = OnceCell::new();
 
         self.lint_obligations_broken_by_never_type_fallback_change(
@@ -206,38 +216,16 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             let diverging_ty = Ty::new_var(self.tcx, diverging_vid);
             let root_vid = self.root_var(diverging_vid);
 
-            let mut fallback_to = |ty| {
-                self.lint_never_type_fallback_flowing_into_unsafe_code(
-                    &unsafe_infer_vars,
-                    &coercion_graph,
-                    root_vid,
-                );
+            self.lint_never_type_fallback_flowing_into_unsafe_code(
+                &unsafe_infer_vars,
+                &coercion_graph,
+                root_vid,
+            );
 
-                diverging_fallback.insert(diverging_ty, ty);
-            };
-
-            match self.diverging_fallback_behavior {
-                DivergingFallbackBehavior::ToUnit => {
-                    debug!("fallback to () - legacy: {:?}", diverging_vid);
-                    fallback_to(self.tcx.types.unit);
-                }
-                DivergingFallbackBehavior::ToNever => {
-                    debug!(
-                        "fallback to ! - `rustc_never_type_options::falback = \"never\")`: {:?}",
-                        diverging_vid
-                    );
-                    fallback_to(self.tcx.types.never);
-                }
-                DivergingFallbackBehavior::NoFallback => {
-                    debug!(
-                        "no fallback - `rustc_never_type_options::fallback = \"no\"`: {:?}",
-                        diverging_vid
-                    );
-                }
-            }
+            diverging_fallback.insert(diverging_ty);
         }
 
-        diverging_fallback
+        (diverging_fallback, diverging_fallback_ty)
     }
 
     fn lint_never_type_fallback_flowing_into_unsafe_code(
