@@ -692,7 +692,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let stable_order_of_exportable_impls =
             stat!("exportable-items", || self.encode_stable_order_of_exportable_impls());
 
-        // Encode exported symbols info. This is prefetched in `encode_metadata`.
+        // Encode exported symbols info. This is prefetched in `encode_metadata` so we encode
+        // this as late as possible to give the prefetching as much time as possible to complete.
         let (exported_non_generic_symbols, exported_generic_symbols) =
             stat!("exported-symbols", || {
                 (
@@ -2362,6 +2363,28 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
     // there's no need to do dep-graph tracking for any of it.
     tcx.dep_graph.assert_ignored();
 
+    join(
+        || encode_metadata_impl(tcx, path, ref_path),
+        || {
+            if tcx.sess.threads() == 1 {
+                return;
+            }
+
+            // Prefetch some queries used by metadata encoding.
+            // This is not necessary for correctness, but is only done for performance reasons.
+            // It can be removed if it turns out to cause trouble or be detrimental to performance.
+            join(
+                || prefetch_mir(tcx),
+                || {
+                    let _ = tcx.exported_non_generic_symbols(LOCAL_CRATE);
+                    let _ = tcx.exported_generic_symbols(LOCAL_CRATE);
+                },
+            );
+        },
+    );
+}
+
+fn encode_metadata_impl(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
     // Generate the metadata stub manually, as that is a small file compared to full metadata.
     if let Some(ref_path) = ref_path {
         let _prof_timer = tcx.prof.verbose_generic_activity("generate_crate_metadata_stub");
@@ -2398,19 +2421,6 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
         };
         return;
     };
-
-    if tcx.sess.threads() != 1 {
-        // Prefetch some queries used by metadata encoding.
-        // This is not necessary for correctness, but is only done for performance reasons.
-        // It can be removed if it turns out to cause trouble or be detrimental to performance.
-        join(
-            || prefetch_mir(tcx),
-            || {
-                let _ = tcx.exported_non_generic_symbols(LOCAL_CRATE);
-                let _ = tcx.exported_generic_symbols(LOCAL_CRATE);
-            },
-        );
-    }
 
     // Perform metadata encoding inside a task, so the dep-graph can check if any encoded
     // information changes, and maybe reuse the work product.
