@@ -165,12 +165,6 @@ pub(crate) struct Options {
     /// to have it in both places.
     pub(crate) unstable_features: rustc_feature::UnstableFeatures,
 
-    /// All commandline args used to invoke the compiler, with @file args fully expanded.
-    /// This will only be used within debug info, e.g. in the pdb file on windows
-    /// This is mainly useful for other tools that reads that debuginfo to figure out
-    /// how to call the compiler with the same arguments.
-    pub(crate) expanded_args: Vec<String>,
-
     /// Arguments to be used when compiling doctests.
     pub(crate) doctest_build_args: Vec<String>,
 
@@ -870,7 +864,6 @@ impl Options {
             json_unused_externs,
             scrape_examples_options,
             unstable_features,
-            expanded_args: args,
             doctest_build_args,
             target_modifiers,
         };
