@@ -8,6 +8,7 @@
 
 use crate::cmp::Ordering::{self, Equal, Greater, Less};
 use crate::intrinsics::{exact_div, unchecked_sub};
+use crate::marker::Destruct;
 use crate::mem::{self, MaybeUninit, SizedTypeProperties};
 use crate::num::NonZero;
 use crate::ops::{OneSidedRange, OneSidedRangeBound, Range, RangeBounds, RangeInclusive};
@@ -3785,10 +3786,12 @@ impl<T> [T] {
     /// [`copy_from_slice`]: slice::copy_from_slice
     /// [`split_at_mut`]: slice::split_at_mut
     #[stable(feature = "clone_from_slice", since = "1.7.0")]
+    #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+    #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
     #[track_caller]
-    pub fn clone_from_slice(&mut self, src: &[T])
+    pub const fn clone_from_slice(&mut self, src: &[T])
     where
-        T: Clone,
+        T: [const] Clone + [const] Destruct,
     {
         self.spec_clone_from(src);
     }
@@ -5089,31 +5092,43 @@ impl [f64] {
     }
 }
 
+#[const_trait]
+#[rustc_const_unstable(feature = "const_clone", issue = "142757")]
 trait CloneFromSpec<T> {
-    fn spec_clone_from(&mut self, src: &[T]);
+    fn spec_clone_from(&mut self, src: &[T])
+    where
+        T: [const] Destruct;
 }
 
-impl<T> CloneFromSpec<T> for [T]
+#[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+impl<T> const CloneFromSpec<T> for [T]
 where
-    T: Clone,
+    T: [const] Clone,
 {
     #[track_caller]
-    default fn spec_clone_from(&mut self, src: &[T]) {
+    default fn spec_clone_from(&mut self, src: &[T])
+    where
+        T: [const] Destruct,
+    {
         assert!(self.len() == src.len(), "destination and source slices have different lengths");
         // NOTE: We need to explicitly slice them to the same length
         // to make it easier for the optimizer to elide bounds checking.
         // But since it can't be relied on we also have an explicit specialization for T: Copy.
         let len = self.len();
         let src = &src[..len];
-        for i in 0..len {
-            self[i].clone_from(&src[i]);
+        // FIXME(const_hack): make this a `for idx in 0..self.len()` loop.
+        let mut idx = 0;
+        while idx < self.len() {
+            self[idx].clone_from(&src[idx]);
+            idx += 1;
         }
     }
 }
 
-impl<T> CloneFromSpec<T> for [T]
+#[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+impl<T> const CloneFromSpec<T> for [T]
 where
-    T: Copy,
+    T: [const] Copy,
 {
     #[track_caller]
     fn spec_clone_from(&mut self, src: &[T]) {
