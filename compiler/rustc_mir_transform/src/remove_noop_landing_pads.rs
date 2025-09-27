@@ -30,15 +30,6 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveNoopLandingPads {
             return;
         }
 
-        // make sure there's a resume block without any statements
-        let resume_block = {
-            let mut patch = MirPatch::new(body);
-            let resume_block = patch.resume_block();
-            patch.apply(body);
-            resume_block
-        };
-        debug!(?resume_block);
-
         let mut nop_landing_pads = DenseBitSet::new_empty(body.basic_blocks.len());
 
         // This is a post-order traversal, so that if A post-dominates B
@@ -55,6 +46,15 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveNoopLandingPads {
             debug!("no nop landing pads in MIR");
             return;
         }
+
+        // make sure there's a resume block without any statements
+        let resume_block = {
+            let mut patch = MirPatch::new(body);
+            let resume_block = patch.resume_block();
+            patch.apply(body);
+            resume_block
+        };
+        debug!(?resume_block);
 
         let basic_blocks = body.basic_blocks.as_mut();
         for (bb, bbdata) in basic_blocks.iter_enumerated_mut() {
