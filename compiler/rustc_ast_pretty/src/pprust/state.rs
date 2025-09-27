@@ -1232,6 +1232,7 @@ impl<'a> State<'a> {
                     self.print_expr_anon_const(end, &[]);
                 }
             }
+            rustc_ast::TyPatKind::NotNull => self.word("!null"),
             rustc_ast::TyPatKind::Or(variants) => {
                 let mut first = true;
                 for pat in variants {

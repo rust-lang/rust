@@ -725,7 +725,7 @@ pub fn walk_ty_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v TyPat<'v>) 
             try_visit!(visitor.visit_const_arg_unambig(upper_bound));
         }
         TyPatKind::Or(patterns) => walk_list!(visitor, visit_pattern_type_pattern, patterns),
-        TyPatKind::Err(_) => (),
+        TyPatKind::NotNull | TyPatKind::Err(_) => (),
     }
     V::Result::output()
 }
