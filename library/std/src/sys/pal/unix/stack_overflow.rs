@@ -148,6 +148,13 @@ mod imp {
 
         let mut guard_page_range = unsafe { install_main_guard() };
 
+        // Even for panic=immediate-abort, installing the guard pages is important for soundness.
+        // That said, we do not care about giving nice stackoverflow messages via our custom
+        // signal handler, just exit early and let the user enjoy the segfault.
+        if cfg!(panic = "immediate-abort") {
+            return;
+        }
+
         // SAFETY: assuming all platforms define struct sigaction as "zero-initializable"
         let mut action: sigaction = unsafe { mem::zeroed() };
         for &signal in &[SIGSEGV, SIGBUS] {
@@ -179,6 +186,9 @@ mod imp {
     /// Must be called only once
     #[forbid(unsafe_op_in_unsafe_fn)]
     pub unsafe fn cleanup() {
+        if cfg!(panic = "immediate-abort") {
+            return;
+        }
         // FIXME: I probably cause more bugs than I'm worth!
         // see https://github.com/rust-lang/rust/issues/111272
         unsafe { drop_handler(MAIN_ALTSTACK.load(Ordering::Relaxed)) };
@@ -230,7 +240,7 @@ mod imp {
     /// Mutates the alternate signal stack
     #[forbid(unsafe_op_in_unsafe_fn)]
     pub unsafe fn make_handler(main_thread: bool, thread_name: Option<Box<str>>) -> Handler {
-        if !NEED_ALTSTACK.load(Ordering::Acquire) {
+        if cfg!(panic = "immediate-abort") || !NEED_ALTSTACK.load(Ordering::Acquire) {
             return Handler::null();
         }
 
