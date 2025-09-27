@@ -1685,7 +1685,7 @@ impl Type {
         match (self_cleared, other_cleared) {
             // Recursive cases.
             (Type::Tuple(a), Type::Tuple(b)) => {
-                a.len() == b.len() && a.iter().zip(b).all(|(a, b)| a.is_doc_subtype_of(b, cache))
+                a.iter().eq_by(b, |a, b| a.is_doc_subtype_of(b, cache))
             }
             (Type::Slice(a), Type::Slice(b)) => a.is_doc_subtype_of(b, cache),
             (Type::Array(a, al), Type::Array(b, bl)) => al == bl && a.is_doc_subtype_of(b, cache),
