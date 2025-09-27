@@ -38,6 +38,7 @@
 
 use core::arch::asm;
 
+use crate::alloc::System;
 use crate::mem::ManuallyDrop;
 use crate::os::xous::ffi::{MemoryFlags, map_memory, unmap_memory};
 use crate::ptr;
@@ -151,7 +152,10 @@ struct Node {
 }
 
 unsafe fn register_dtor(key: Key, dtor: Dtor) {
-    let mut node = ManuallyDrop::new(Box::new(Node { key, dtor, next: ptr::null_mut() }));
+    // We use the System allocator here to avoid interfering with a potential
+    // Global allocator using thread-local storage.
+    let mut node =
+        ManuallyDrop::new(Box::new_in(Node { key, dtor, next: ptr::null_mut() }, System));
 
     #[allow(unused_unsafe)]
     let mut head = unsafe { DTORS.load(Acquire) };

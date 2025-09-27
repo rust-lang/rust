@@ -1,5 +1,6 @@
 use super::key::{Key, LazyKey, get, set};
 use super::{abort_on_dtor_unwind, guard};
+use crate::alloc::System;
 use crate::cell::Cell;
 use crate::marker::PhantomData;
 use crate::ptr;
@@ -95,8 +96,11 @@ impl<T: 'static> Storage<T> {
             return ptr::null();
         }
 
-        let value = Box::new(Value { value: i.and_then(Option::take).unwrap_or_else(f), key });
-        let ptr = Box::into_raw(value);
+        // We use the System allocator here to avoid interfering with a potential
+        // Global allocator using thread-local storage.
+        let value =
+            Box::new_in(Value { value: i.and_then(Option::take).unwrap_or_else(f), key }, System);
+        let ptr = Box::into_raw_with_allocator(value).0;
 
         // SAFETY:
         // * key came from a `LazyKey` and is thus correct.
@@ -114,7 +118,7 @@ impl<T: 'static> Storage<T> {
             // initializer has already returned and the next scope only starts
             // after we return the pointer. Therefore, there can be no references
             // to the old value.
-            drop(unsafe { Box::from_raw(old) });
+            drop(unsafe { Box::from_raw_in(old, System) });
         }
 
         // SAFETY: We just created this value above.
@@ -133,7 +137,7 @@ unsafe extern "C" fn destroy_value<T: 'static>(ptr: *mut u8) {
     // Note that to prevent an infinite loop we reset it back to null right
     // before we return from the destructor ourselves.
     abort_on_dtor_unwind(|| {
-        let ptr = unsafe { Box::from_raw(ptr as *mut Value<T>) };
+        let ptr = unsafe { Box::from_raw_in(ptr as *mut Value<T>, System) };
         let key = ptr.key;
         // SAFETY: `key` is the TLS key `ptr` was stored under.
         unsafe { set(key, ptr::without_provenance_mut(1)) };
