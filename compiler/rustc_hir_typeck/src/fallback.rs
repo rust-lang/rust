@@ -85,8 +85,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             return false;
         }
 
-        let diverging_fallback = self
-            .calculate_diverging_fallback(&unresolved_variables, self.diverging_fallback_behavior);
+        let diverging_fallback = self.calculate_diverging_fallback(&unresolved_variables);
 
         // We do fallback in two passes, to try to generate
         // better error messages.
@@ -160,7 +159,6 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     fn calculate_diverging_fallback(
         &self,
         unresolved_variables: &[Ty<'tcx>],
-        behavior: DivergingFallbackBehavior,
     ) -> UnordMap<Ty<'tcx>, Ty<'tcx>> {
         debug!("calculate_diverging_fallback({:?})", unresolved_variables);
 
@@ -222,7 +220,6 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         let unsafe_infer_vars = OnceCell::new();
 
         self.lint_obligations_broken_by_never_type_fallback_change(
-            behavior,
             &diverging_vids,
             &coercion_graph,
         );
@@ -241,7 +238,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                 diverging_fallback.insert(diverging_ty, ty);
             };
 
-            match behavior {
+            match self.diverging_fallback_behavior {
                 DivergingFallbackBehavior::ToUnit => {
                     debug!("fallback to () - legacy: {:?}", diverging_vid);
                     fallback_to(self.tcx.types.unit);
@@ -314,11 +311,10 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
 
     fn lint_obligations_broken_by_never_type_fallback_change(
         &self,
-        behavior: DivergingFallbackBehavior,
         diverging_vids: &[ty::TyVid],
         coercions: &VecGraph<ty::TyVid, true>,
     ) {
-        let DivergingFallbackBehavior::ToUnit = behavior else { return };
+        let DivergingFallbackBehavior::ToUnit = self.diverging_fallback_behavior else { return };
 
         // Fallback happens if and only if there are diverging variables
         if diverging_vids.is_empty() {
