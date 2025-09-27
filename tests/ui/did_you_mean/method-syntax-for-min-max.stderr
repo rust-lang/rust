@@ -1,0 +1,67 @@
+error[E0425]: cannot find function `max` in this scope
+  --> $DIR/method-syntax-for-min-max.rs:9:5
+   |
+LL |     max(x, y);
+   |     ^^^ not found in this scope
+   |
+help: you may have meant to use the method syntax
+   |
+LL -     max(x, y);
+LL +     x.max(y);
+   |
+help: consider importing this function
+   |
+LL + use std::cmp::max;
+   |
+
+error[E0425]: cannot find function `min` in this scope
+  --> $DIR/method-syntax-for-min-max.rs:12:13
+   |
+LL |     let _ = min(x, y);
+   |             ^^^ not found in this scope
+   |
+help: you may have meant to use the method syntax
+   |
+LL -     let _ = min(x, y);
+LL +     let _ = x.min(y);
+   |
+help: consider importing this function
+   |
+LL + use std::cmp::min;
+   |
+
+error[E0425]: cannot find function `min` in this scope
+  --> $DIR/method-syntax-for-min-max.rs:15:20
+   |
+LL |     println!("{}", min(43, 43));
+   |                    ^^^ not found in this scope
+   |
+help: you may have meant to use the method syntax
+   |
+LL -     println!("{}", min(43, 43));
+LL +     println!("{}", 43.min(43));
+   |
+help: consider importing this function
+   |
+LL + use std::cmp::min;
+   |
+
+error[E0425]: cannot find function `max` in this scope
+  --> $DIR/method-syntax-for-min-max.rs:18:18
+   |
+LL |     let _ = vec![max(f(), g())];
+   |                  ^^^ not found in this scope
+   |
+help: you may have meant to use the method syntax
+   |
+LL -     let _ = vec![max(f(), g())];
+LL +     let _ = vec![f().max(g())];
+   |
+help: consider importing this function
+   |
+LL + use std::cmp::max;
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0425`.
