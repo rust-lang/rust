@@ -129,7 +129,7 @@ session_target_requires_unwind_tables = target requires unwind tables, they cann
 
 session_target_small_data_threshold_not_supported = `-Z small-data-threshold` is not supported for target {$target_triple} and will be ignored
 
-session_target_stack_protector_not_supported = `-Z stack-protector={$stack_protector}` is not supported for target {$target_triple} and will be ignored
+session_target_stack_protector_not_supported = `-C stack-protector={$stack_protector}` is not supported for target {$target_triple}
 
 session_unexpected_builtin_cfg = unexpected `--cfg {$cfg}` flag
     .controlled_by = config `{$cfg_name}` is only supposed to be controlled by `{$controlled_by}`
