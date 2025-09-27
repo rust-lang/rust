@@ -12,7 +12,7 @@ use std::{env, fs, io, panic, str};
 
 use object::read::archive::ArchiveFile;
 
-use crate::LldMode;
+use crate::BootstrapOverrideLld;
 use crate::core::builder::Builder;
 use crate::core::config::{Config, TargetSelection};
 use crate::utils::exec::{BootstrapCommand, command};
@@ -357,15 +357,19 @@ pub fn get_clang_cl_resource_dir(builder: &Builder<'_>, clang_cl_path: &str) -> 
 /// Returns a flag that configures LLD to use only a single thread.
 /// If we use an external LLD, we need to find out which version is it to know which flag should we
 /// pass to it (LLD older than version 10 had a different flag).
-fn lld_flag_no_threads(builder: &Builder<'_>, lld_mode: LldMode, is_windows: bool) -> &'static str {
+fn lld_flag_no_threads(
+    builder: &Builder<'_>,
+    bootstrap_override_lld: BootstrapOverrideLld,
+    is_windows: bool,
+) -> &'static str {
     static LLD_NO_THREADS: OnceLock<(&'static str, &'static str)> = OnceLock::new();
 
     let new_flags = ("/threads:1", "--threads=1");
     let old_flags = ("/no-threads", "--no-threads");
 
     let (windows_flag, other_flag) = LLD_NO_THREADS.get_or_init(|| {
-        let newer_version = match lld_mode {
-            LldMode::External => {
+        let newer_version = match bootstrap_override_lld {
+            BootstrapOverrideLld::External => {
                 let mut cmd = command("lld");
                 cmd.arg("-flavor").arg("ld").arg("--version");
                 let out = cmd.run_capture_stdout(builder).stdout();
@@ -422,24 +426,28 @@ pub fn linker_flags(
     lld_threads: LldThreads,
 ) -> Vec<String> {
     let mut args = vec![];
-    if !builder.is_lld_direct_linker(target) && builder.config.lld_mode.is_used() {
-        match builder.config.lld_mode {
-            LldMode::External => {
+    if !builder.is_lld_direct_linker(target) && builder.config.bootstrap_override_lld.is_used() {
+        match builder.config.bootstrap_override_lld {
+            BootstrapOverrideLld::External => {
                 args.push("-Clinker-features=+lld".to_string());
                 args.push("-Zunstable-options".to_string());
             }
-            LldMode::SelfContained => {
+            BootstrapOverrideLld::SelfContained => {
                 args.push("-Clinker-features=+lld".to_string());
                 args.push("-Clink-self-contained=+linker".to_string());
                 args.push("-Zunstable-options".to_string());
             }
-            LldMode::Unused => unreachable!(),
+            BootstrapOverrideLld::None => unreachable!(),
         };
 
         if matches!(lld_threads, LldThreads::No) {
             args.push(format!(
                 "-Clink-arg=-Wl,{}",
-                lld_flag_no_threads(builder, builder.config.lld_mode, target.is_windows())
+                lld_flag_no_threads(
+                    builder,
+                    builder.config.bootstrap_override_lld,
+                    target.is_windows()
+                )
             ));
         }
     }
