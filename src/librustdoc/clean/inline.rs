@@ -433,8 +433,86 @@ pub(crate) fn merge_attrs(
     }
 }
 
+/// Inline an `impl`, inherent or of a trait. The `did` must be for an `impl` defined in the current crate.
+pub(crate) fn build_local_impl(
+    cx: &mut DocContext<'_>,
+    did: DefId,
+    attrs: Option<(&[hir::Attribute], Option<LocalDefId>)>,
+    ret: &mut Vec<clean::Item>,
+) {
+    if !cx.inlined.insert(did.into()) {
+        return;
+    }
+    debug_assert!(did.is_local(), "build_local_impl called on external impl");
+    let tcx = cx.tcx;
+    let _prof_timer = tcx.sess.prof.generic_activity("build_local_impl");
+
+    let associated_trait = tcx.impl_trait_ref(did).map(ty::EarlyBinder::skip_binder);
+
+    let impl_item = match did.as_local() {
+        Some(did) => match &tcx.hir_expect_item(did).kind {
+            hir::ItemKind::Impl(impl_) => impl_,
+            _ => panic!("`DefID` passed to `build_impl` is not an `impl"),
+        },
+        None => unreachable!("build_local_impl called on external impl"),
+    };
+
+    let for_ = clean_ty(impl_item.self_ty, cx);
+
+    let document_hidden = cx.render_options.document_hidden;
+    let (trait_items, generics) = (
+        impl_item
+            .items
+            .iter()
+            .map(|&item| tcx.hir_impl_item(item))
+            .filter(|item| {
+                // Filter out impl items whose corresponding trait item has `doc(hidden)`
+                // not to document such impl items.
+                // For inherent impls, we don't do any filtering, because that's already done in strip_hidden.rs.
+
+                // When `--document-hidden-items` is passed, we don't
+                // do any filtering, too.
+                if document_hidden {
+                    return true;
+                }
+                if let Some(associated_trait) = associated_trait {
+                    let assoc_tag = match item.kind {
+                        hir::ImplItemKind::Const(..) => ty::AssocTag::Const,
+                        hir::ImplItemKind::Fn(..) => ty::AssocTag::Fn,
+                        hir::ImplItemKind::Type(..) => ty::AssocTag::Type,
+                    };
+                    let trait_item = tcx
+                        .associated_items(associated_trait.def_id)
+                        .find_by_ident_and_kind(tcx, item.ident, assoc_tag, associated_trait.def_id)
+                        .unwrap(); // SAFETY: For all impl items there exists trait item that has the same name.
+                    !tcx.is_doc_hidden(trait_item.def_id)
+                } else {
+                    true
+                }
+            })
+            .map(|item| clean_impl_item(item, cx))
+            .collect::<Vec<_>>(),
+        clean_generics(impl_item.generics, cx),
+    );
+    build_impl_finalize(cx, did, attrs, ret, associated_trait, for_, trait_items, generics)
+}
+
 /// Inline an `impl`, inherent or of a trait. The `did` must be for an `impl`.
 pub(crate) fn build_impl(
+    cx: &mut DocContext<'_>,
+    did: DefId,
+    attrs: Option<(&[hir::Attribute], Option<LocalDefId>)>,
+    ret: &mut Vec<clean::Item>,
+) {
+    if did.is_local() {
+        build_local_impl(cx, did, attrs, ret);
+    } else {
+        build_external_impl(cx, did, attrs, ret);
+    }
+}
+
+/// Inline an `impl`, inherent or of a trait. The `did` must be for an `impl` defined in an external crate.
+pub(crate) fn build_external_impl(
     cx: &mut DocContext<'_>,
     did: DefId,
     attrs: Option<(&[hir::Attribute], Option<LocalDefId>)>,
@@ -445,7 +523,7 @@ pub(crate) fn build_impl(
     }
 
     let tcx = cx.tcx;
-    let _prof_timer = tcx.sess.prof.generic_activity("build_impl");
+    let _prof_timer = tcx.sess.prof.generic_activity("build_external_impl");
 
     let associated_trait = tcx.impl_trait_ref(did).map(ty::EarlyBinder::skip_binder);
 
@@ -462,30 +540,18 @@ pub(crate) fn build_impl(
 
     // Only inline impl if the implemented trait is
     // reachable in rustdoc generated documentation
-    if !did.is_local()
-        && let Some(traitref) = associated_trait
+    if let Some(traitref) = associated_trait
         && !is_directly_public(cx, traitref.def_id)
     {
         return;
     }
 
-    let impl_item = match did.as_local() {
-        Some(did) => match &tcx.hir_expect_item(did).kind {
-            hir::ItemKind::Impl(impl_) => Some(impl_),
-            _ => panic!("`DefID` passed to `build_impl` is not an `impl"),
-        },
-        None => None,
-    };
-
-    let for_ = match &impl_item {
-        Some(impl_) => clean_ty(impl_.self_ty, cx),
-        None => clean_middle_ty(
-            ty::Binder::dummy(tcx.type_of(did).instantiate_identity()),
-            cx,
-            Some(did),
-            None,
-        ),
-    };
+    let for_ = clean_middle_ty(
+        ty::Binder::dummy(tcx.type_of(did).instantiate_identity()),
+        cx,
+        Some(did),
+        None,
+    );
 
     // Only inline impl if the implementing type is
     // reachable in rustdoc generated documentation
@@ -496,82 +562,57 @@ pub(crate) fn build_impl(
         return;
     }
 
-    let document_hidden = cx.render_options.document_hidden;
-    let (trait_items, generics) = match impl_item {
-        Some(impl_) => (
-            impl_
-                .items
-                .iter()
-                .map(|&item| tcx.hir_impl_item(item))
-                .filter(|item| {
-                    // Filter out impl items whose corresponding trait item has `doc(hidden)`
-                    // not to document such impl items.
-                    // For inherent impls, we don't do any filtering, because that's already done in strip_hidden.rs.
+    debug_assert!(!did.is_local(), "build_external_impl called on local impl");
 
-                    // When `--document-hidden-items` is passed, we don't
-                    // do any filtering, too.
-                    if document_hidden {
-                        return true;
-                    }
-                    if let Some(associated_trait) = associated_trait {
-                        let assoc_tag = match item.kind {
-                            hir::ImplItemKind::Const(..) => ty::AssocTag::Const,
-                            hir::ImplItemKind::Fn(..) => ty::AssocTag::Fn,
-                            hir::ImplItemKind::Type(..) => ty::AssocTag::Type,
-                        };
-                        let trait_item = tcx
-                            .associated_items(associated_trait.def_id)
-                            .find_by_ident_and_kind(
-                                tcx,
-                                item.ident,
-                                assoc_tag,
-                                associated_trait.def_id,
-                            )
-                            .unwrap(); // SAFETY: For all impl items there exists trait item that has the same name.
-                        !tcx.is_doc_hidden(trait_item.def_id)
-                    } else {
-                        true
-                    }
-                })
-                .map(|item| clean_impl_item(item, cx))
-                .collect::<Vec<_>>(),
-            clean_generics(impl_.generics, cx),
-        ),
-        None => (
-            tcx.associated_items(did)
-                .in_definition_order()
-                .filter(|item| !item.is_impl_trait_in_trait())
-                .filter(|item| {
-                    // If this is a trait impl, filter out associated items whose corresponding item
-                    // in the associated trait is marked `doc(hidden)`.
-                    // If this is an inherent impl, filter out private associated items.
-                    if let Some(associated_trait) = associated_trait {
-                        let trait_item = tcx
-                            .associated_items(associated_trait.def_id)
-                            .find_by_ident_and_kind(
-                                tcx,
-                                item.ident(tcx),
-                                item.as_tag(),
-                                associated_trait.def_id,
-                            )
-                            .unwrap(); // corresponding associated item has to exist
-                        document_hidden || !tcx.is_doc_hidden(trait_item.def_id)
-                    } else {
-                        item.visibility(tcx).is_public()
-                    }
-                })
-                .map(|item| clean_middle_assoc_item(item, cx))
-                .collect::<Vec<_>>(),
-            clean::enter_impl_trait(cx, |cx| clean_ty_generics(cx, did)),
-        ),
-    };
+    let document_hidden = cx.render_options.document_hidden;
+    let (trait_items, generics) = (
+        tcx.associated_items(did)
+            .in_definition_order()
+            .filter(|item| !item.is_impl_trait_in_trait())
+            .filter(|item| {
+                // If this is a trait impl, filter out associated items whose corresponding item
+                // in the associated trait is marked `doc(hidden)`.
+                // If this is an inherent impl, filter out private associated items.
+                if let Some(associated_trait) = associated_trait {
+                    let trait_item = tcx
+                        .associated_items(associated_trait.def_id)
+                        .find_by_ident_and_kind(
+                            tcx,
+                            item.ident(tcx),
+                            item.as_tag(),
+                            associated_trait.def_id,
+                        )
+                        .unwrap(); // corresponding associated item has to exist
+                    document_hidden || !tcx.is_doc_hidden(trait_item.def_id)
+                } else {
+                    item.visibility(tcx).is_public()
+                }
+            })
+            .map(|item| clean_middle_assoc_item(item, cx))
+            .collect::<Vec<_>>(),
+        clean::enter_impl_trait(cx, |cx| clean_ty_generics(cx, did)),
+    );
+    build_impl_finalize(cx, did, attrs, ret, associated_trait, for_, trait_items, generics)
+}
+
+fn build_impl_finalize<'tcx>(
+    cx: &mut DocContext<'tcx>,
+    did: DefId,
+    attrs: Option<(&[rustc_hir::Attribute], Option<LocalDefId>)>,
+    ret: &mut Vec<Item>,
+    associated_trait: Option<ty::TraitRef<'tcx>>,
+    for_: Type,
+    trait_items: Vec<Item>,
+    generics: clean::Generics,
+) {
+    let tcx = cx.tcx;
+    let document_hidden = cx.render_options.document_hidden;
     let polarity = tcx.impl_polarity(did);
     let trait_ = associated_trait
         .map(|t| clean_trait_ref_with_constraints(cx, ty::Binder::dummy(t), ThinVec::new()));
     if trait_.as_ref().map(|t| t.def_id()) == tcx.lang_items().deref_trait() {
         super::build_deref_target_impls(cx, &trait_items, ret);
     }
-
     if !document_hidden {
         // Return if the trait itself or any types of the generic parameters are doc(hidden).
         let mut stack: Vec<&Type> = vec![&for_];
@@ -597,16 +638,13 @@ pub(crate) fn build_impl(
             }
         }
     }
-
     if let Some(did) = trait_.as_ref().map(|t| t.def_id()) {
         cx.with_param_env(did, |cx| {
             record_extern_trait(cx, did);
         });
     }
-
     let (merged_attrs, cfg) = merge_attrs(cx, load_attrs(cx, did), attrs);
     trace!("merged_attrs={merged_attrs:?}");
-
     trace!(
         "build_impl: impl {:?} for {:?}",
         trait_.as_ref().map(|t| t.def_id()),
@@ -620,7 +658,7 @@ pub(crate) fn build_impl(
             generics,
             trait_,
             for_,
-            items: trait_items,
+            items: trait_items.to_vec(),
             polarity,
             kind: if utils::has_doc_flag(tcx, did, sym::fake_variadic) {
                 ImplKind::FakeVariadic
