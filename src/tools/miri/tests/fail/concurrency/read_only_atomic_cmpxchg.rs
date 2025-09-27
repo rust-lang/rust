@@ -6,6 +6,7 @@ use std::sync::atomic::{AtomicI32, Ordering};
 fn main() {
     static X: i32 = 0;
     let x = &X as *const i32 as *const AtomicI32;
+    #[expect(unsafe_cell_transmutes)]
     let x = unsafe { &*x };
     x.compare_exchange(1, 2, Ordering::Relaxed, Ordering::Relaxed).unwrap_err(); //~ERROR: cannot be performed on read-only memory
 }
