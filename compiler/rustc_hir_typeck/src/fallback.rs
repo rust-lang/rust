@@ -31,8 +31,8 @@ pub(crate) enum DivergingFallbackBehavior {
 }
 
 impl<'tcx> FnCtxt<'_, 'tcx> {
-    /// Performs type inference fallback, setting `FnCtxt::fallback_has_occurred`
-    /// if fallback has occurred.
+    /// Performs type inference fallback, setting [`FnCtxt::diverging_fallback_has_occurred`]
+    /// if the never type fallback has occurred.
     pub(super) fn type_inference_fallback(&self) {
         debug!(
             "type-inference-fallback start obligations: {:#?}",
@@ -115,8 +115,8 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     /// Fallback becomes very dubious if we have encountered
     /// type-checking errors. In that case, fallback to Error.
     ///
-    /// Sets [`FnCtxt::fallback_has_occurred`] if fallback is performed
-    /// during this call.
+    /// Sets [`FnCtxt::diverging_fallback_has_occurred`] if never type fallback
+    /// is performed during this call.
     fn fallback_if_possible(
         &self,
         ty: Ty<'tcx>,
@@ -145,7 +145,10 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             ty::Infer(ty::IntVar(_)) => self.tcx.types.i32,
             ty::Infer(ty::FloatVar(_)) => self.tcx.types.f64,
             _ => match diverging_fallback.get(&ty) {
-                Some(&fallback_ty) => fallback_ty,
+                Some(&fallback_ty) => {
+                    self.diverging_fallback_has_occurred.set(true);
+                    fallback_ty
+                }
                 None => return false,
             },
         };
@@ -153,7 +156,6 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
 
         let span = ty.ty_vid().map_or(DUMMY_SP, |vid| self.infcx.type_var_origin(vid).span);
         self.demand_eqtype(span, ty, fallback);
-        self.fallback_has_occurred.set(true);
         true
     }
 

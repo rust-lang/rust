@@ -541,7 +541,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         // variable that used to fallback to `()` now falling back to `!`. Issue a
                         // note informing about the change in behaviour.
                         if leaf_trait_predicate.skip_binder().self_ty().is_never()
-                            && self.fallback_has_occurred
+                            && self.diverging_fallback_has_occurred
                         {
                             let predicate = leaf_trait_predicate.map_bound(|trait_pred| {
                                 trait_pred.with_replaced_self_ty(self.tcx, tcx.types.unit)
