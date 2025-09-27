@@ -2413,7 +2413,7 @@ impl<K, V> Default for BTreeMap<K, V> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K: PartialEq, V: PartialEq, A: Allocator + Clone> PartialEq for BTreeMap<K, V, A> {
     fn eq(&self, other: &BTreeMap<K, V, A>) -> bool {
-        self.len() == other.len() && self.iter().zip(other).all(|(a, b)| a == b)
+        self.iter().eq(other)
     }
 }
 

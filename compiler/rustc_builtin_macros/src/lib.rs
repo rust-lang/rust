@@ -11,6 +11,7 @@
 #![feature(box_patterns)]
 #![feature(decl_macro)]
 #![feature(if_let_guard)]
+#![feature(iter_order_by)]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_quote)]
 #![feature(rustdoc_internals)]
