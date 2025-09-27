@@ -35,12 +35,12 @@ pub mod consts {
 
     /// The golden ratio (φ)
     #[unstable(feature = "f16", issue = "116909")]
-    // Also, #[unstable(feature = "more_float_constants", issue = "103883")]
+    // Also, #[unstable(feature = "more_float_constants", issue = "146939")]
     pub const PHI: f16 = 1.618033988749894848204586834365638118_f16;
 
     /// The Euler-Mascheroni constant (γ)
     #[unstable(feature = "f16", issue = "116909")]
-    // Also, #[unstable(feature = "more_float_constants", issue = "103883")]
+    // Also, #[unstable(feature = "more_float_constants", issue = "146939")]
     pub const EGAMMA: f16 = 0.577215664901532860606512090082402431_f16;
 
     /// π/2
@@ -69,13 +69,13 @@ pub mod consts {
 
     /// 1/sqrt(π)
     #[unstable(feature = "f16", issue = "116909")]
-    // Also, #[unstable(feature = "more_float_constants", issue = "103883")]
+    // Also, #[unstable(feature = "more_float_constants", issue = "146939")]
     pub const FRAC_1_SQRT_PI: f16 = 0.564189583547756286948079451560772586_f16;
 
     /// 1/sqrt(2π)
     #[doc(alias = "FRAC_1_SQRT_TAU")]
     #[unstable(feature = "f16", issue = "116909")]
-    // Also, #[unstable(feature = "more_float_constants", issue = "103883")]
+    // Also, #[unstable(feature = "more_float_constants", issue = "146939")]
     pub const FRAC_1_SQRT_2PI: f16 = 0.398942280401432677939946059934381868_f16;
 
     /// 2/π
@@ -96,12 +96,12 @@ pub mod consts {
 
     /// sqrt(3)
     #[unstable(feature = "f16", issue = "116909")]
-    // Also, #[unstable(feature = "more_float_constants", issue = "103883")]
+    // Also, #[unstable(feature = "more_float_constants", issue = "146939")]
     pub const SQRT_3: f16 = 1.732050807568877293527446341505872367_f16;
 
     /// 1/sqrt(3)
     #[unstable(feature = "f16", issue = "116909")]
-    // Also, #[unstable(feature = "more_float_constants", issue = "103883")]
+    // Also, #[unstable(feature = "more_float_constants", issue = "146939")]
     pub const FRAC_1_SQRT_3: f16 = 0.577350269189625764509148780501957456_f16;
 
     /// Euler's number (e)

@@ -33,12 +33,12 @@ pub mod consts {
 
     /// The golden ratio (φ)
     #[unstable(feature = "f128", issue = "116909")]
-    // Also, #[unstable(feature = "more_float_constants", issue = "103883")]
+    // Also, #[unstable(feature = "more_float_constants", issue = "146939")]
     pub const PHI: f128 = 1.61803398874989484820458683436563811772030917980576286213545_f128;
 
     /// The Euler-Mascheroni constant (γ)
     #[unstable(feature = "f128", issue = "116909")]
-    // Also, #[unstable(feature = "more_float_constants", issue = "103883")]
+    // Also, #[unstable(feature = "more_float_constants", issue = "146939")]
     pub const EGAMMA: f128 = 0.577215664901532860606512090082402431042159335939923598805767_f128;
 
     /// π/2
@@ -67,14 +67,14 @@ pub mod consts {
 
     /// 1/sqrt(π)
     #[unstable(feature = "f128", issue = "116909")]
-    // Also, #[unstable(feature = "more_float_constants", issue = "103883")]
+    // Also, #[unstable(feature = "more_float_constants", issue = "146939")]
     pub const FRAC_1_SQRT_PI: f128 =
         0.564189583547756286948079451560772585844050629328998856844086_f128;
 
     /// 1/sqrt(2π)
     #[doc(alias = "FRAC_1_SQRT_TAU")]
     #[unstable(feature = "f128", issue = "116909")]
-    // Also, #[unstable(feature = "more_float_constants", issue = "103883")]
+    // Also, #[unstable(feature = "more_float_constants", issue = "146939")]
     pub const FRAC_1_SQRT_2PI: f128 =
         0.398942280401432677939946059934381868475858631164934657665926_f128;
 
@@ -98,12 +98,12 @@ pub mod consts {
 
     /// sqrt(3)
     #[unstable(feature = "f128", issue = "116909")]
-    // Also, #[unstable(feature = "more_float_constants", issue = "103883")]
+    // Also, #[unstable(feature = "more_float_constants", issue = "146939")]
     pub const SQRT_3: f128 = 1.73205080756887729352744634150587236694280525381038062805581_f128;
 
     /// 1/sqrt(3)
     #[unstable(feature = "f128", issue = "116909")]
-    // Also, #[unstable(feature = "more_float_constants", issue = "103883")]
+    // Also, #[unstable(feature = "more_float_constants", issue = "146939")]
     pub const FRAC_1_SQRT_3: f128 =
         0.577350269189625764509148780501957455647601751270126876018602_f128;
 
