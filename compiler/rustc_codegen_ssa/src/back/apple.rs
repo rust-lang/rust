@@ -188,16 +188,29 @@ pub(super) fn get_sdk_root(sess: &Session) -> Option<PathBuf> {
             diag.note(fluent::codegen_ssa_xcrun_about);
 
             // Recognize common error cases, and give more Rust-specific error messages for those.
-            if let Some(developer_dir) = xcode_select_developer_dir() {
-                diag.arg("developer_dir", &developer_dir);
-                diag.note(fluent::codegen_ssa_xcrun_found_developer_dir);
-                if developer_dir.as_os_str().to_string_lossy().contains("CommandLineTools") {
-                    if sdk_name != "MacOSX" {
-                        diag.help(fluent::codegen_ssa_xcrun_command_line_tools_insufficient);
+            if sess.host.os == "macos" {
+                if let Some(developer_dir) = xcode_select_developer_dir() {
+                    diag.arg("developer_dir", &developer_dir);
+                    diag.note(fluent::codegen_ssa_xcrun_found_developer_dir);
+                    if developer_dir.as_os_str().to_string_lossy().contains("CommandLineTools") {
+                        if sdk_name != "MacOSX" {
+                            diag.help(fluent::codegen_ssa_xcrun_command_line_tools_insufficient);
+                        }
                     }
+                } else {
+                    diag.help(fluent::codegen_ssa_xcrun_no_developer_dir);
                 }
             } else {
-                diag.help(fluent::codegen_ssa_xcrun_no_developer_dir);
+                diag.help(fluent::codegen_ssa_xcrun_cross_env_var);
+                diag.help(fluent::codegen_ssa_xcrun_cross_download_sdk);
+
+                if sess.opts.cg.linker.is_none() {
+                    diag.warn(fluent::codegen_ssa_xcrun_cross_linker_not_explicitly_set);
+                }
+
+                if sess.target.os != "macos" {
+                    diag.warn(fluent::codegen_ssa_xcrun_cross_ill_supported_target);
+                }
             }
 
             diag.emit();
