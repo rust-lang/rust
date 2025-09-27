@@ -5,6 +5,7 @@ fn process_slice(data: &[i32]) {
 fn main() {
     let some_generated_vec = (0..10).collect();
     //~^ ERROR the size for values of type `[i32]` cannot be known at compilation time
+    //~| NOTE required by a bound introduced by this call
     //~| ERROR the size for values of type `[i32]` cannot be known at compilation time
     //~| ERROR a slice of type `[i32]` cannot be built since `[i32]` has no definite size
     //~| NOTE try explicitly collecting into a `Vec<{integer}>`
@@ -17,6 +18,7 @@ fn main() {
 
     let some_generated_vec = (0..10).collect();
     //~^ ERROR a slice of type `&[i32]` cannot be built since we need to store the elements somewhere
+    //~| NOTE required by a bound introduced by this call
     //~| NOTE try explicitly collecting into a `Vec<{integer}>`
     //~| NOTE required by a bound in `collect`
     process_slice(some_generated_vec);

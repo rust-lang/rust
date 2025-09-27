@@ -32,22 +32,22 @@ LL |     for _ in 1..ONE + ONE {}
    |              ^^^^^^^^^^^^ help: use: `1..=ONE`
 
 error: an inclusive range would be more readable
-  --> tests/ui/range_plus_minus_one.rs:70:5
+  --> tests/ui/range_plus_minus_one.rs:70:6
    |
 LL |     (1..10 + 1).for_each(|_| {});
-   |     ^^^^^^^^^^^ help: use: `(1..=10)`
+   |      ^^^^^^^^^ help: use: `1..=10`
 
 error: an inclusive range would be more readable
-  --> tests/ui/range_plus_minus_one.rs:75:5
+  --> tests/ui/range_plus_minus_one.rs:75:6
    |
 LL |     (1..10 + 1).into_iter().for_each(|_| {});
-   |     ^^^^^^^^^^^ help: use: `(1..=10)`
+   |      ^^^^^^^^^ help: use: `1..=10`
 
 error: an inclusive range would be more readable
-  --> tests/ui/range_plus_minus_one.rs:80:17
+  --> tests/ui/range_plus_minus_one.rs:80:18
    |
 LL |         let _ = (1..10 + 1).start_bound();
-   |                 ^^^^^^^^^^^ help: use: `(1..=10)`
+   |                  ^^^^^^^^^ help: use: `1..=10`
 
 error: an inclusive range would be more readable
   --> tests/ui/range_plus_minus_one.rs:86:16
@@ -80,10 +80,10 @@ LL |     a[0..2 + 1][0] = 1;
    |       ^^^^^^^^ help: use: `0..=2`
 
 error: an exclusive range would be more readable
-  --> tests/ui/range_plus_minus_one.rs:180:5
+  --> tests/ui/range_plus_minus_one.rs:180:6
    |
 LL |     (1..=n - 1).sum()
-   |     ^^^^^^^^^^^ help: use: `(1..n)`
+   |      ^^^^^^^^^ help: use: `1..n`
    |
    = note: `-D clippy::range-minus-one` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::range_minus_one)]`
