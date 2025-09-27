@@ -446,14 +446,18 @@ macro_rules! define_callbacks {
         impl<'tcx> TyCtxtEnsureDone<'tcx> {
             $($(#[$attr])*
             #[inline(always)]
-            pub fn $name(self, key: query_helper_param_ty!($($K)*)) {
-                query_ensure(
+            pub fn $name(
+                self,
+                key: query_helper_param_ty!($($K)*),
+            ) -> ensure_ok_result!([$($modifiers)*]) {
+                query_ensure!(
+                    [$($modifiers)*]
                     self.tcx,
                     self.tcx.query_system.fns.engine.$name,
                     &self.tcx.query_system.caches.$name,
                     key.into_query_param(),
                     true,
-                );
+                )
             })*
         }
 
