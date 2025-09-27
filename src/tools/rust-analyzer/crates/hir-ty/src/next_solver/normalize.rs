@@ -77,7 +77,7 @@ where
         stalled_coroutine_goals: vec![],
     };
     let value = value.try_fold_with(&mut folder)?;
-    let errors = folder.fulfill_cx.select_all_or_error(at.infcx);
+    let errors = folder.fulfill_cx.evaluate_obligations_error_on_ambiguity(at.infcx);
     if errors.is_empty() { Ok((value, folder.stalled_coroutine_goals)) } else { Err(errors) }
 }
 
@@ -138,7 +138,7 @@ impl<'db> NormalizationFolder<'_, 'db> {
     fn select_all_and_stall_coroutine_predicates(
         &mut self,
     ) -> Result<(), Vec<NextSolverError<'db>>> {
-        let errors = self.fulfill_cx.select_where_possible(self.at.infcx);
+        let errors = self.fulfill_cx.try_evaluate_obligations(self.at.infcx);
         if !errors.is_empty() {
             return Err(errors);
         }

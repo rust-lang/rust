@@ -818,7 +818,7 @@ impl<'db> InferenceTable<'db> {
     }
 
     pub(crate) fn select_obligations_where_possible(&mut self) {
-        self.fulfillment_cx.select_where_possible(&self.infer_ctxt);
+        self.fulfillment_cx.try_evaluate_obligations(&self.infer_ctxt);
     }
 
     pub(super) fn register_predicate(
