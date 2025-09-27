@@ -13,17 +13,23 @@ unsafe impl Sync for Thread {}
 
 pub const DEFAULT_MIN_STACK_SIZE: usize = 1 << 20;
 
+struct ThreadData {
+    handle: crate::thread::Thread,
+    main: Box<dyn FnOnce()>,
+}
+
 impl Thread {
     pub unsafe fn new_with_coreid(
         stack: usize,
-        p: Box<dyn FnOnce()>,
+        handle: crate::thread::Thread,
+        main: Box<dyn FnOnce()>,
         core_id: isize,
     ) -> io::Result<Thread> {
-        let p = Box::into_raw(Box::new(p));
+        let data = Box::into_raw(Box::new(ThreadData { handle, main }));
         let tid = unsafe {
             hermit_abi::spawn2(
                 thread_start,
-                p.expose_provenance(),
+                data.expose_provenance(),
                 hermit_abi::Priority::into(hermit_abi::NORMAL_PRIO),
                 stack,
                 core_id,
@@ -31,10 +37,11 @@ impl Thread {
         };
 
         return if tid == 0 {
-            // The thread failed to start and as a result p was not consumed. Therefore, it is
-            // safe to reconstruct the box so that it gets deallocated.
+            // The thread failed to start and as a result data was not consumed.
+            // Therefore, it is safe to reconstruct the box so that it gets
+            // deallocated.
             unsafe {
-                drop(Box::from_raw(p));
+                drop(Box::from_raw(data));
             }
             Err(io::const_error!(io::ErrorKind::Uncategorized, "unable to create thread!"))
         } else {
@@ -42,24 +49,26 @@ impl Thread {
         };
 
         extern "C" fn thread_start(main: usize) {
-            unsafe {
-                // Finally, let's run some code.
-                Box::from_raw(ptr::with_exposed_provenance::<Box<dyn FnOnce()>>(main).cast_mut())();
+            let data = unsafe {
+                Box::from_raw(ptr::with_exposed_provenance::<ThreadData>(main).cast_mut())
+            };
 
-                // run all destructors
-                crate::sys::thread_local::destructors::run();
-                crate::rt::thread_cleanup();
-            }
+            crate::thread::set_current(data.handle);
+            (data.main)();
+
+            // run all destructors
+            unsafe { crate::sys::thread_local::destructors::run() };
+            crate::rt::thread_cleanup();
         }
     }
 
     pub unsafe fn new(
         stack: usize,
-        _name: Option<&str>,
-        p: Box<dyn FnOnce()>,
+        handle: crate::thread::Thread,
+        main: Box<dyn FnOnce()>,
     ) -> io::Result<Thread> {
         unsafe {
-            Thread::new_with_coreid(stack, p, -1 /* = no specific core */)
+            Thread::new_with_coreid(stack, handle, main, -1 /* = no specific core */)
         }
     }
 
