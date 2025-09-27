@@ -234,7 +234,7 @@ pub(super) fn layout<
                 &ReprOptions::default(),
                 StructKind::Prefixed(prefix_size, prefix_align.abi),
             )?;
-            variant.variants = Variants::Single { index };
+            variant.variants = Variants::Single { index, variants: None };
 
             let FieldsShape::Arbitrary { offsets, memory_index } = variant.fields else {
                 unreachable!();

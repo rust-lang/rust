@@ -12,7 +12,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
     pub fn unit<C: HasDataLayout>(cx: &C, sized: bool) -> Self {
         let dl = cx.data_layout();
         LayoutData {
-            variants: Variants::Single { index: VariantIdx::new(0) },
+            variants: Variants::Single { index: VariantIdx::new(0), variants: None },
             fields: FieldsShape::Arbitrary {
                 offsets: IndexVec::new(),
                 memory_index: IndexVec::new(),
@@ -32,7 +32,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
         let dl = cx.data_layout();
         // This is also used for uninhabited enums, so we use `Variants::Empty`.
         LayoutData {
-            variants: Variants::Empty,
+            variants: Variants::Empty { variants: None },
             fields: FieldsShape::Primitive,
             backend_repr: BackendRepr::Memory { sized: true },
             largest_niche: None,
@@ -74,7 +74,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
             .wrapping_add((range.end as u64).rotate_right(16));
 
         LayoutData {
-            variants: Variants::Single { index: VariantIdx::new(0) },
+            variants: Variants::Single { index: VariantIdx::new(0), variants: None },
             fields: FieldsShape::Primitive,
             backend_repr: BackendRepr::Scalar(scalar),
             largest_niche,
@@ -104,7 +104,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
         let combined_seed = a.size(dl).bytes().wrapping_add(b.size(dl).bytes());
 
         LayoutData {
-            variants: Variants::Single { index: VariantIdx::new(0) },
+            variants: Variants::Single { index: VariantIdx::new(0), variants: None },
             fields: FieldsShape::Arbitrary {
                 offsets: [Size::ZERO, b_offset].into(),
                 memory_index: [0, 1].into(),
@@ -120,14 +120,14 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
         }
     }
 
-    /// Returns a dummy layout for an uninhabited variant.
+    /// Returns a dummy layout for an absent variant.
     ///
-    /// Uninhabited variants get pruned as part of the layout calculation,
+    /// Absent variants get pruned as part of the layout calculation,
     /// so this can be used after the fact to reconstitute a layout.
-    pub fn uninhabited_variant<C: HasDataLayout>(cx: &C, index: VariantIdx, fields: usize) -> Self {
+    pub fn absent_variant<C: HasDataLayout>(cx: &C, index: VariantIdx, fields: usize) -> Self {
         let dl = cx.data_layout();
         LayoutData {
-            variants: Variants::Single { index },
+            variants: Variants::Single { index, variants: None },
             fields: match NonZero::new(fields) {
                 Some(fields) => FieldsShape::Union(fields),
                 None => FieldsShape::Arbitrary {
