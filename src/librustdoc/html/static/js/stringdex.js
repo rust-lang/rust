@@ -1108,22 +1108,39 @@ function loadDatabase(hooks) {
                     const id2 = id1 + ((nodeid[4] << 8) | nodeid[5]);
                     leaves = RoaringBitmap.makeSingleton(id1)
                         .union(RoaringBitmap.makeSingleton(id2));
+                } else if (!isWhole && (nodeid[0] & 0xf0) === 0x80) {
+                    const id1 = ((nodeid[0] & 0x0f) << 16) | (nodeid[1] << 8) | nodeid[2];
+                    const id2 = id1 + ((nodeid[3] << 4) | ((nodeid[4] >> 4) & 0x0f));
+                    const id3 = id2 + (((nodeid[4] & 0x0f) << 8) | nodeid[5]);
+                    leaves = RoaringBitmap.makeSingleton(id1)
+                        .union(RoaringBitmap.makeSingleton(id2))
+                        .union(RoaringBitmap.makeSingleton(id3));
                 } else {
                     leaves = RoaringBitmap.makeSingleton(
                         (nodeid[2] << 24) | (nodeid[3] << 16) |
                         (nodeid[4] << 8) | nodeid[5],
                     );
                 }
-                const data = (nodeid[0] & 0x20) !== 0 ?
-                    Uint8Array.of(((nodeid[0] & 0x0f) << 4) | (nodeid[1] >> 4)) :
-                    EMPTY_UINT8;
-                newPromise = Promise.resolve(new PrefixSearchTree(
-                    EMPTY_SEARCH_TREE_BRANCHES,
-                    EMPTY_SEARCH_TREE_BRANCHES,
-                    data,
-                    isWhole ? leaves : EMPTY_BITMAP,
-                    isWhole ? EMPTY_BITMAP : leaves,
-                ));
+                if (isWhole) {
+                    const data = (nodeid[0] & 0x20) !== 0 ?
+                        Uint8Array.of(((nodeid[0] & 0x0f) << 4) | (nodeid[1] >> 4)) :
+                        EMPTY_UINT8;
+                    newPromise = Promise.resolve(new PrefixSearchTree(
+                        EMPTY_SEARCH_TREE_BRANCHES,
+                        EMPTY_SEARCH_TREE_BRANCHES,
+                        data,
+                        leaves,
+                        EMPTY_BITMAP,
+                    ));
+                } else {
+                    const data = (nodeid[0] & 0xf0) === 0x80 ? 0 : (
+                        ((nodeid[0] & 0x0f) << 4) | (nodeid[1] >> 4));
+                    newPromise = Promise.resolve(new SuffixSearchTree(
+                        EMPTY_SEARCH_TREE_BRANCHES,
+                        data,
+                        leaves,
+                    ));
+                }
             } else {
                 const hashHex = makeHexFromUint8Array(nodeid);
                 newPromise = new Promise((resolve, reject) => {
@@ -2748,6 +2765,7 @@ function loadDatabase(hooks) {
             // because that's the canonical, hashed version of the data
             let compression_tag = input[i];
             const is_pure_suffixes_only_node = (compression_tag & 0x01) !== 0;
+            let no_leaves_flag;
             if (compression_tag > 1) {
                 // compressed node
                 const is_long_compressed = (compression_tag & 0x04) !== 0;
@@ -2759,7 +2777,8 @@ function loadDatabase(hooks) {
                     compression_tag |= input[i] << 16;
                     i += 1;
                 }
-                let dlen = input[i];
+                let dlen = input[i] & 0x7F;
+                no_leaves_flag = input[i] & 0x80;
                 i += 1;
                 if (is_data_compressed) {
                     data = data_history[data_history.length - dlen - 1];
@@ -2786,10 +2805,15 @@ function loadDatabase(hooks) {
                 let whole;
                 let suffix;
                 if (is_pure_suffixes_only_node) {
-                    suffix = input[i] === 0 ?
-                        EMPTY_BITMAP1 :
-                        new RoaringBitmap(input, i);
-                    i += suffix.consumed_len_bytes;
+                    if (no_leaves_flag) {
+                        whole = EMPTY_BITMAP;
+                        suffix = EMPTY_BITMAP;
+                    } else {
+                        suffix = input[i] === 0 ?
+                            EMPTY_BITMAP1 :
+                            new RoaringBitmap(input, i);
+                        i += suffix.consumed_len_bytes;
+                    }
                     tree = new SuffixSearchTree(
                         branches,
                         dlen,
@@ -2807,7 +2831,7 @@ function loadDatabase(hooks) {
                     let ci = 0;
                     canonical[ci] = 1;
                     ci += 1;
-                    canonical[ci] = dlen;
+                    canonical[ci] = dlen | no_leaves_flag;
                     ci += 1;
                     canonical[ci] = input[coffset]; // suffix child count
                     ci += 1;
@@ -2821,10 +2845,9 @@ function loadDatabase(hooks) {
                     }
                     siphashOfBytes(canonical.subarray(0, clen), 0, 0, 0, 0, hash);
                 } else {
-                    if (input[i] === 0xff) {
+                    if (no_leaves_flag) {
                         whole = EMPTY_BITMAP;
-                        suffix = EMPTY_BITMAP1;
-                        i += 1;
+                        suffix = EMPTY_BITMAP;
                     } else {
                         whole = input[i] === 0 ?
                             EMPTY_BITMAP1 :
@@ -2856,7 +2879,7 @@ function loadDatabase(hooks) {
                     let ci = 0;
                     canonical[ci] = 0;
                     ci += 1;
-                    canonical[ci] = dlen;
+                    canonical[ci] = dlen | no_leaves_flag;
                     ci += 1;
                     canonical.set(data, ci);
                     ci += data.length;
@@ -2880,9 +2903,11 @@ function loadDatabase(hooks) {
                 }
                 hash[2] &= 0x7f;
             } else {
+                i += 1;
                 // uncompressed node
-                const dlen = input [i + 1];
-                i += 2;
+                const dlen = input[i] & 0x7F;
+                no_leaves_flag = input[i] & 0x80;
+                i += 1;
                 if (dlen === 0 || is_pure_suffixes_only_node) {
                     data = EMPTY_UINT8;
                 } else {
@@ -2897,16 +2922,15 @@ function loadDatabase(hooks) {
                 i += branches_consumed_len_bytes;
                 let whole;
                 let suffix;
-                if (is_pure_suffixes_only_node) {
+                if (no_leaves_flag) {
+                    whole = EMPTY_BITMAP;
+                    suffix = EMPTY_BITMAP;
+                } else if (is_pure_suffixes_only_node) {
                     whole = EMPTY_BITMAP;
                     suffix = input[i] === 0 ?
                         EMPTY_BITMAP1 :
                         new RoaringBitmap(input, i);
                     i += suffix.consumed_len_bytes;
-                } else if (input[i] === 0xff) {
-                    whole = EMPTY_BITMAP;
-                    suffix = EMPTY_BITMAP;
-                    i += 1;
                 } else {
                     whole = input[i] === 0 ?
                         EMPTY_BITMAP1 :
