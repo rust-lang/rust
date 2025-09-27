@@ -1,107 +1,93 @@
 //! Decodes a floating-point value into individual parts and error ranges.
 
-use crate::num::FpCategory;
-use crate::num::dec2flt::float::RawFloat;
+use crate::mem::size_of;
 
-/// Decoded unsigned finite value, such that:
-///
-/// - The original value equals to `mant * 2^exp`.
-///
-/// - Any number from `(mant - minus) * 2^exp` to `(mant + plus) * 2^exp` will
-///   round to the original value. The range is inclusive only when
-///   `inclusive` is `true`.
+/// Generic decoding of floating points up to 64-bit wide such that its absolute
+/// finite value matches mant * 2^exp. Values in range (mant - minus) * 2^exp up
+/// to (mant + plus) * 2^exp will all round to the same value. The range with
+/// minus and plus is inclusive only when `inclusive` is true.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct Decoded {
-    /// The scaled mantissa.
+pub struct Decoded64 {
+    /// Scaled Mantissa
     pub mant: u64,
-    /// The lower error range.
+    /// Lower Error Range
     pub minus: u64,
-    /// The upper error range.
+    /// Upper Error Range
     pub plus: u64,
-    /// The shared exponent in base 2.
-    pub exp: i16,
-    /// True when the error range is inclusive.
-    ///
-    /// In IEEE 754, this is true when the original mantissa was even.
+    /// Shared Exponent In Base 2
+    pub exp: isize,
+    /// Flag For Error Range
     pub inclusive: bool,
 }
 
-/// Decoded unsigned value.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum FullDecoded {
-    /// Not-a-number.
-    Nan,
-    /// Infinities, either positive or negative.
-    Infinite,
-    /// Zero, either positive or negative.
-    Zero,
-    /// Finite numbers with further decoded fields.
-    Finite(Decoded),
-}
+macro_rules! floats {
+    ($($T:ident)*) => {
+        $(
 
-/// A floating point type which can be `decode`d.
-pub trait DecodableFloat: RawFloat + Copy {
-    /// The minimum positive normalized value.
-    fn min_pos_norm_value() -> Self;
-}
+        /// Decode a floating-point into its integer components. The tuple in
+        /// return contains the mantissa m and exponent e, such that original
+        /// value equals m × 2^e, ignoring the sign.
+        ///
+        /// For normal numbers: mantissa includes the implied leading 1.
+        /// For denormal numbers: mantissa is shifted to maintain the equation.
+        const fn ${concat(mant_and_exp_, $T)}(v: $T) -> (u64, isize) {
+            const ENC_BITS: usize = size_of::<$T>() * 8;
+            // The encoding of the sign resides in the most significant bit.
+            const SIGN_ENC_BITS: usize = 1;
+            // The encoding of the mantissa resides in the least-significant
+            // bits.
+            const MANT_ENC_BITS: usize = $T::MANTISSA_DIGITS as usize - 1;
+            // The encoding of the exponent resides in the remaining bits,
+            // inbetween sign and the mantissa.
+            const EXP_ENC_BITS: usize = ENC_BITS - (SIGN_ENC_BITS + MANT_ENC_BITS);
 
-#[cfg(target_has_reliable_f16)]
-impl DecodableFloat for f16 {
-    fn min_pos_norm_value() -> Self {
-        f16::MIN_POSITIVE
-    }
-}
+            let enc = v.to_bits();
+            let exp_enc = (enc << SIGN_ENC_BITS) >> (SIGN_ENC_BITS + MANT_ENC_BITS);
+            let mant_enc = enc & ((1 << MANT_ENC_BITS) - 1);
 
-impl DecodableFloat for f32 {
-    fn min_pos_norm_value() -> Self {
-        f32::MIN_POSITIVE
-    }
-}
+            const EXP_BIAS: isize = (1 << (EXP_ENC_BITS - 1)) - 1;
+            let exp = exp_enc as isize - (EXP_BIAS + MANT_ENC_BITS as isize);
 
-impl DecodableFloat for f64 {
-    fn min_pos_norm_value() -> Self {
-        f64::MIN_POSITIVE
-    }
-}
+            let mant = if exp_enc != 0 {
+                // Normal numbers have an implied leading 1 to the mantissa
+                // bits.
+                mant_enc | 1 << MANT_ENC_BITS
+            } else {
+                // Denormal numbers use a special exponent of 1 − bias instead
+                // of −bias.
+                mant_enc << 1
+            };
 
-/// Returns a sign (true when negative) and `FullDecoded` value
-/// from given floating point number.
-pub fn decode<T: DecodableFloat>(v: T) -> (/*negative?*/ bool, FullDecoded) {
-    let (mant, exp, sign) = v.integer_decode();
-    let even = (mant & 1) == 0;
-    let decoded = match v.classify() {
-        FpCategory::Nan => FullDecoded::Nan,
-        FpCategory::Infinite => FullDecoded::Infinite,
-        FpCategory::Zero => FullDecoded::Zero,
-        FpCategory::Subnormal => {
-            // neighbors: (mant - 2, exp) -- (mant, exp) -- (mant + 2, exp)
-            // Float::integer_decode always preserves the exponent,
-            // so the mantissa is scaled for subnormals.
-            FullDecoded::Finite(Decoded { mant, minus: 1, plus: 1, exp, inclusive: even })
+            const _: () = assert!(ENC_BITS <= 64);
+            (mant as u64, exp)
         }
-        FpCategory::Normal => {
-            let minnorm = <T as DecodableFloat>::min_pos_norm_value().integer_decode();
-            if mant == minnorm.0 {
+
+        /// Parse a finite value into the generic structure.
+        pub fn ${concat(decode_, $T)}(v: $T) -> Decoded64 {
+            let (mant, exp) = ${concat(mant_and_exp_, $T)}(v);
+            let is_even = (mant & 1) == 0;
+
+            if v.is_subnormal() {
+                // neighbors: (mant - 2, exp) -- (mant, exp) -- (mant + 2, exp)
+                return Decoded64 { mant: mant, minus: 1, plus: 1, exp: exp, inclusive: is_even };
+            }
+            debug_assert!(v.is_normal());
+
+            const MIN_POS_MANT: u64 = ${concat(mant_and_exp_, $T)}($T::MIN_POSITIVE).0;
+            const MIN_NEG_MANT: u64 = ${concat(mant_and_exp_, $T)}(-$T::MIN_POSITIVE).0;
+            const _: () = assert!(MIN_POS_MANT == MIN_NEG_MANT);
+            if mant == MIN_POS_MANT {
                 // neighbors: (maxmant, exp - 1) -- (minnormmant, exp) -- (minnormmant + 1, exp)
-                // where maxmant = minnormmant * 2 - 1
-                FullDecoded::Finite(Decoded {
-                    mant: mant << 2,
-                    minus: 1,
-                    plus: 2,
-                    exp: exp - 2,
-                    inclusive: even,
-                })
+                // where maxmant = minnorm.mant * 2 - 1
+                Decoded64 { mant: mant << 2, minus: 1, plus: 2, exp: exp - 2, inclusive: is_even }
             } else {
                 // neighbors: (mant - 1, exp) -- (mant, exp) -- (mant + 1, exp)
-                FullDecoded::Finite(Decoded {
-                    mant: mant << 1,
-                    minus: 1,
-                    plus: 1,
-                    exp: exp - 1,
-                    inclusive: even,
-                })
+                Decoded64 { mant: mant << 1, minus: 1, plus: 1, exp: exp - 1, inclusive: is_even }
             }
         }
+
+        )*
     };
-    (sign < 0, decoded)
 }
+
+floats! { f16 f32 f64 }

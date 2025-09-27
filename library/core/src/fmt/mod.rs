@@ -6,7 +6,6 @@ use crate::cell::{Cell, Ref, RefCell, RefMut, SyncUnsafeCell, UnsafeCell};
 use crate::char::EscapeDebugExtArgs;
 use crate::hint::assert_unchecked;
 use crate::marker::{PhantomData, PointeeSized};
-use crate::num::fmt as numfmt;
 use crate::ops::Deref;
 use crate::ptr::NonNull;
 use crate::{iter, mem, result, str};
@@ -1779,7 +1778,7 @@ impl<'a> Formatter<'a> {
 
     /// Write a formatted integer to the Formatter. The `digits` string should
     /// hold the representation of the absolute value, without sign. Whether a
-    /// sign ("+" or "-") is written depends both on format paramaters and on
+    /// sign ("+" or "-") is written depends both on format parameters and on
     /// `is_nonnegative`. The `prefix` (e.g., "0x") is written when alternate.
     /// Padding may be included when width is Some. The precision is ignored
     /// for integers.
@@ -2003,53 +2002,6 @@ impl<'a> Formatter<'a> {
         }
 
         Ok(PostPadding::new(fill, padding - padding_left))
-    }
-
-    /// Takes the formatted parts and applies the padding.
-    ///
-    /// Assumes that the caller already has rendered the parts with required precision,
-    /// so that `self.precision` can be ignored.
-    ///
-    /// # Safety
-    ///
-    /// Any `numfmt::Part::Copy` parts in `formatted` must contain valid UTF-8.
-    unsafe fn pad_formatted_parts(&mut self, formatted: &numfmt::Formatted<'_>) -> Result {
-        unsafe fn write_bytes(buf: &mut dyn Write, s: &[u8]) -> Result {
-            // SAFETY: This is used for `numfmt::Part::Num` and `numfmt::Part::Copy`.
-            // It's safe to use for `numfmt::Part::Num` since every char `c` is between
-            // `b'0'` and `b'9'`, which means `s` is valid UTF-8. It's safe to use for
-            // `numfmt::Part::Copy` due to this function's precondition.
-            buf.write_str(unsafe { str::from_utf8_unchecked(s) })
-        }
-
-        let sign = formatted.sign;
-        let out_len = formatted.len() - sign.len();
-        self.pad_number(sign, out_len, |f: &mut Self| {
-            for part in formatted.parts {
-                match *part {
-                    numfmt::Part::Zero(nzeroes) => {
-                        f.write_zeroes(nzeroes)?;
-                    }
-                    numfmt::Part::Num(mut v) => {
-                        let mut s = [0; 5];
-                        let len = part.len();
-                        for c in s[..len].iter_mut().rev() {
-                            *c = b'0' + (v % 10) as u8;
-                            v /= 10;
-                        }
-                        // SAFETY: Per the precondition.
-                        unsafe {
-                            write_bytes(f.buf, &s[..len])?;
-                        }
-                    }
-                    // SAFETY: Per the precondition.
-                    numfmt::Part::Copy(buf) => unsafe {
-                        write_bytes(f.buf, buf)?;
-                    },
-                }
-            }
-            Ok(())
-        })
     }
 
     /// Write n ASCII digits (U+0030) to the Formatter.
