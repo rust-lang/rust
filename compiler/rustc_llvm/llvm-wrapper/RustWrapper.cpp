@@ -35,6 +35,10 @@
 #include "llvm/Support/Signals.h"
 #include "llvm/Support/Timer.h"
 #include "llvm/Support/ToolOutputFile.h"
+#include "llvm/TextAPI/Architecture.h"
+#include "llvm/TextAPI/InterfaceFile.h"
+#include "llvm/TextAPI/Platform.h"
+#include "llvm/TextAPI/TextAPIWriter.h"
 #include <iostream>
 
 // for raw `write` in the bad-alloc handler
@@ -1864,4 +1868,53 @@ extern "C" void LLVMRustSetNoSanitizeHWAddress(LLVMValueRef Global) {
     MD = GV.getSanitizerMetadata();
   MD.NoHWAddress = true;
   GV.setSanitizerMetadata(MD);
+}
+
+struct LLVMRustMachOTbdExport {
+  char *name;
+  MachO::SymbolFlags flags;
+  MachO::EncodeKind kind;
+};
+
+extern "C" uint8_t LLVMRustMachoTbdWrite(
+    const char *Path,
+    const char *LLVMTargetName,
+    const char *InstallName,
+    uint32_t CurrentVersion,
+    uint32_t CompatibilityVersion,
+    const LLVMRustMachOTbdExport *Exports,
+    size_t NumExports) {
+  MachO::InterfaceFile File;
+  File.setFileType(MachO::FileType::TBD_V1); // TODO
+
+  File.setInstallName(StringRef(InstallName));
+  File.setCurrentVersion(MachO::PackedVersion(CurrentVersion));
+  File.setCompatibilityVersion(MachO::PackedVersion(CompatibilityVersion));
+  // File.setTwoLevelNamespace();
+
+  // auto Arch = MachO::getArchitectureFromName(Arch);
+  // auto Platform = MachO::getPlatformFromName(PlatPlatform);
+  MachO::Target Target{Triple(LLVMTargetName)};
+  File.addTarget(Target);
+
+  for (size_t i = 0; i < NumExports; i++) {
+    File.addSymbol(Exports[i].kind, StringRef(Exports[i].name), Target, Exports[i].flags);
+  }
+
+  std::string ErrorInfo;
+  std::error_code EC;
+  raw_fd_ostream OS(Path, EC, sys::fs::CD_CreateAlways);
+  if (EC)
+    ErrorInfo = EC.message();
+  if (ErrorInfo != "") {
+    LLVMRustSetLastError(ErrorInfo.c_str());
+    return -1;
+  }
+
+  if (Error Err = MachO::TextAPIWriter::writeToStream(OS, File)) {
+      LLVMRustSetLastError(toString(std::move(Err)).c_str());
+      return -1;
+  }
+
+  return 0;
 }

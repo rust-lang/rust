@@ -1,5 +1,7 @@
+use std::ffi::CString;
 use std::fs;
 use std::io::{BufWriter, Write};
+use std::mem::ManuallyDrop;
 use std::path::{Path, PathBuf};
 
 use rustc_abi::Endian;
@@ -11,6 +13,7 @@ use rustc_hir::attrs::NativeLibKind;
 use rustc_session::Session;
 use rustc_session::cstore::DllImport;
 use rustc_span::Symbol;
+use rustc_target::spec::apple::OSVersion;
 
 use crate::back::archive::ImportLibraryItem;
 use crate::back::link::ArchiveBuilderBuilder;
@@ -23,7 +26,7 @@ use crate::{NativeLib, common, errors};
 /// then the CodegenResults value contains one NativeLib instance for each block. However, the
 /// linker appears to expect only a single import library for each library used, so we need to
 /// collate the symbols together by library name before generating the import libraries.
-fn collate_raw_dylibs_windows<'a>(
+fn collate_raw_dylibs<'a>(
     sess: &Session,
     used_libraries: impl IntoIterator<Item = &'a NativeLib>,
 ) -> Vec<(String, Vec<DllImport>)> {
@@ -32,14 +35,21 @@ fn collate_raw_dylibs_windows<'a>(
 
     for lib in used_libraries {
         if lib.kind == NativeLibKind::RawDylib {
-            let ext = if lib.verbatim { "" } else { ".dll" };
-            let name = format!("{}{}", lib.name, ext);
+            let name = if lib.verbatim {
+                lib.name.as_str().to_owned()
+            } else {
+                let prefix = sess.target.dll_prefix.as_ref();
+                let suffix = sess.target.dll_suffix.as_ref();
+                format!("{prefix}{}{suffix}", lib.name)
+            };
             let imports = dylib_table.entry(name.clone()).or_default();
             for import in &lib.dll_imports {
                 if let Some(old_import) = imports.insert(import.name, import) {
                     // FIXME: when we add support for ordinals, figure out if we need to do anything
                     // if we have two DllImport values with the same name but different ordinals.
-                    if import.calling_convention != old_import.calling_convention {
+                    if sess.target.is_like_windows
+                        && import.calling_convention != old_import.calling_convention
+                    {
                         sess.dcx().emit_err(errors::MultipleExternalFuncDecl {
                             span: import.span,
                             function: import.name,
@@ -66,7 +76,7 @@ pub(super) fn create_raw_dylib_dll_import_libs<'a>(
     tmpdir: &Path,
     is_direct_dependency: bool,
 ) -> Vec<PathBuf> {
-    collate_raw_dylibs_windows(sess, used_libraries)
+    collate_raw_dylibs(sess, used_libraries)
         .into_iter()
         .map(|(raw_dylib_name, raw_dylib_imports)| {
             let name_suffix = if is_direct_dependency { "_imports" } else { "_imports_indirect" };
@@ -119,42 +129,127 @@ pub(super) fn create_raw_dylib_dll_import_libs<'a>(
         .collect()
 }
 
-/// Extract all symbols defined in raw-dylib libraries, collated by library name.
+/// Mach-O linkers support the TAPI/TBD (TextAPI / Text-based Stubs) format as an alternative to
+/// a full dynamic library.
 ///
-/// If we have multiple extern blocks that specify symbols defined in the same raw-dylib library,
-/// then the CodegenResults value contains one NativeLib instance for each block. However, the
-/// linker appears to expect only a single import library for each library used, so we need to
-/// collate the symbols together by library name before generating the import libraries.
-fn collate_raw_dylibs_elf<'a>(
+/// TODO.
+pub(super) fn create_raw_dylib_macho_tapi<'a>(
     sess: &Session,
     used_libraries: impl IntoIterator<Item = &'a NativeLib>,
-) -> Vec<(String, Vec<DllImport>)> {
-    // Use index maps to preserve original order of imports and libraries.
-    let mut dylib_table = FxIndexMap::<String, FxIndexMap<Symbol, &DllImport>>::default();
+    tmpdir: &Path,
+) -> impl Iterator<Item = PathBuf> {
+    collate_raw_dylibs(sess, used_libraries).into_iter().map(|(install_name, raw_dylib_imports)| {
+        // TODO: Do this properly
+        let path = tmpdir.join(Path::new(&install_name).file_stem().unwrap()).with_extension("tbd");
 
-    for lib in used_libraries {
-        if lib.kind == NativeLibKind::RawDylib {
-            let filename = if lib.verbatim {
-                lib.name.as_str().to_owned()
-            } else {
-                let ext = sess.target.dll_suffix.as_ref();
-                let prefix = sess.target.dll_prefix.as_ref();
-                format!("{prefix}{}{ext}", lib.name)
-            };
+        let exports: Vec<_> = raw_dylib_imports
+            .iter()
+            .map(|import| {
+                let name = if let Some(name) = import.name.as_str().strip_prefix("\x01") {
+                    name.to_string()
+                } else {
+                    format!("_{}", import.name.as_str())
+                };
+                LLVMRustMachOTbdExport {
+                    // TODO
+                    name: ManuallyDrop::new(CString::new(name).unwrap()).as_ptr(),
+                    flags: if import.is_fn { SymbolFlags::Text } else { SymbolFlags::Data },
+                    kind: EncodeKind::GlobalSymbol,
+                }
+            })
+            .collect();
 
-            let imports = dylib_table.entry(filename.clone()).or_default();
-            for import in &lib.dll_imports {
-                imports.insert(import.name, import);
-            }
-        }
+        unsafe {
+            macho_tbd_write(
+                &path,
+                &sess.target.llvm_target,
+                &install_name,
+                OSVersion::new(1, 0, 0),
+                OSVersion::new(1, 0, 0),
+                &exports,
+            )
+            .unwrap()
+        };
+
+        path
+    })
+}
+
+bitflags::bitflags! {
+    #[repr(transparent)]
+    #[derive(Copy, Clone)]
+    pub(crate) struct SymbolFlags: u8 {
+        const None = 0;
+        const ThreadLocalValue = 1 << 0;
+        const WeakDefined = 1 << 1;
+        const WeakReferenced = 1 << 2;
+        const Undefined = 1 << 3;
+        const Rexported = 1 << 4;
+        const Data = 1 << 5;
+        const Text = 1 << 6;
     }
-    sess.dcx().abort_if_errors();
-    dylib_table
-        .into_iter()
-        .map(|(name, imports)| {
-            (name, imports.into_iter().map(|(_, import)| import.clone()).collect())
-        })
-        .collect()
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[repr(u8)]
+#[allow(unused)]
+pub(crate) enum EncodeKind {
+    GlobalSymbol = 0,
+    ObjectiveCClass = 1,
+    ObjectiveCClassEHType = 2,
+    ObjectiveCInstanceVariable = 3,
+}
+
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub(crate) struct LLVMRustMachOTbdExport {
+    pub(crate) name: *const std::ffi::c_char,
+    pub(crate) flags: SymbolFlags,
+    pub(crate) kind: EncodeKind,
+}
+
+unsafe extern "C" {
+    pub(crate) fn LLVMRustMachoTbdWrite(
+        path: *const std::ffi::c_char,
+        llvm_target_name: *const std::ffi::c_char,
+        install_name: *const std::ffi::c_char,
+        current_version: u32,
+        compatibility_version: u32,
+        exports: *const LLVMRustMachOTbdExport,
+        num_exports: libc::size_t,
+    ) -> u8;
+}
+
+unsafe fn macho_tbd_write(
+    path: &Path,
+    llvm_target_name: &str,
+    install_name: &str,
+    current_version: OSVersion,
+    compatibility_version: OSVersion,
+    exports: &[LLVMRustMachOTbdExport],
+) -> Result<(), ()> {
+    let path = CString::new(path.to_str().unwrap()).unwrap();
+    let llvm_target_name = CString::new(llvm_target_name).unwrap();
+    let install_name = CString::new(install_name).unwrap();
+
+    fn pack_version(OSVersion { major, minor, patch }: OSVersion) -> u32 {
+        let (major, minor, patch) = (major as u32, minor as u32, patch as u32);
+        (major << 16) | (minor << 8) | patch
+    }
+
+    let result = unsafe {
+        LLVMRustMachoTbdWrite(
+            path.as_ptr(),
+            llvm_target_name.as_ptr(),
+            install_name.as_ptr(),
+            pack_version(current_version),
+            pack_version(compatibility_version),
+            exports.as_ptr(),
+            exports.len(),
+        )
+    };
+
+    if result == 0 { Ok(()) } else { Err(()) }
 }
 
 pub(super) fn create_raw_dylib_elf_stub_shared_objects<'a>(
@@ -162,7 +257,7 @@ pub(super) fn create_raw_dylib_elf_stub_shared_objects<'a>(
     used_libraries: impl IntoIterator<Item = &'a NativeLib>,
     raw_dylib_so_dir: &Path,
 ) -> Vec<String> {
-    collate_raw_dylibs_elf(sess, used_libraries)
+    collate_raw_dylibs(sess, used_libraries)
         .into_iter()
         .map(|(load_filename, raw_dylib_imports)| {
             use std::hash::Hash;

@@ -1,0 +1,18 @@
+error[E0658]: link kind `raw-dylib` is unstable on Mach-O platforms
+  --> $DIR/raw-dylib-windows-only.rs:8:29
+   |
+LL | #[link(name = "foo", kind = "raw-dylib")]
+   |                             ^^^^^^^^^^^
+   |
+   = help: add `#![feature(raw_dylib_macho)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: link kind `raw-dylib` should use the `+verbatim` linkage modifier
+  --> $DIR/raw-dylib-windows-only.rs:8:1
+   |
+LL | #[link(name = "foo", kind = "raw-dylib")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.
