@@ -18,8 +18,8 @@ use crate::core::build_steps::llvm::get_llvm_version;
 use crate::core::build_steps::run::get_completion_paths;
 use crate::core::build_steps::synthetic_targets::MirOptPanicAbortSyntheticTarget;
 use crate::core::build_steps::tool::{
-    self, COMPILETEST_ALLOW_FEATURES, RustcPrivateCompilers, SourceType,
-    TEST_FLOAT_PARSE_ALLOW_FEATURES, Tool, ToolTargetBuildMode, get_tool_target_compiler,
+    self, RustcPrivateCompilers, SourceType, TEST_FLOAT_PARSE_ALLOW_FEATURES, Tool,
+    ToolTargetBuildMode, get_tool_target_compiler,
 };
 use crate::core::build_steps::toolstate::ToolState;
 use crate::core::build_steps::{compile, dist, llvm};
@@ -36,7 +36,7 @@ use crate::utils::helpers::{
     linker_args, linker_flags, t, target_supports_cranelift_backend, up_to_date,
 };
 use crate::utils::render_tests::{add_flags_and_try_run_tests, try_run_tests};
-use crate::{CLang, CodegenBackendKind, DocTests, GitRepo, Mode, PathSet, debug, envify};
+use crate::{CLang, CodegenBackendKind, DocTests, GitRepo, Mode, PathSet, envify};
 
 const ADB_TEST_DIR: &str = "/data/local/tmp/work";
 
@@ -786,26 +786,26 @@ impl Step for CompiletestTest {
     fn run(self, builder: &Builder<'_>) {
         let host = self.host;
 
+        // Now that compiletest uses only stable Rust, building it always uses
+        // the stage 0 compiler. However, some of its unit tests need to be able
+        // to query information from an in-tree compiler, so we treat `--stage`
+        // as selecting the stage of that secondary compiler.
+
         if builder.top_stage == 0 && !builder.config.compiletest_allow_stage0 {
             eprintln!("\
-ERROR: `--stage 0` runs compiletest self-tests against the stage0 (precompiled) compiler, not the in-tree compiler, and will almost always cause tests to fail
+ERROR: `--stage 0` causes compiletest to query information from the stage0 (precompiled) compiler, instead of the in-tree compiler, which can cause some tests to fail inappropriately
 NOTE: if you're sure you want to do this, please open an issue as to why. In the meantime, you can override this with `--set build.compiletest-allow-stage0=true`."
             );
             crate::exit!(1);
         }
 
-        let compiler = builder.compiler(builder.top_stage, host);
-        debug!(?compiler);
+        let bootstrap_compiler = builder.compiler(0, host);
+        let staged_compiler = builder.compiler(builder.top_stage, host);
 
-        // We need `ToolStd` for the locally-built sysroot because
-        // compiletest uses unstable features of the `test` crate.
-        builder.std(compiler, host);
         let mut cargo = tool::prepare_tool_cargo(
             builder,
-            compiler,
-            // compiletest uses libtest internals; make it use the in-tree std to make sure it never
-            // breaks when std sources change.
-            Mode::ToolStd,
+            bootstrap_compiler,
+            Mode::ToolBootstrap,
             host,
             Kind::Test,
             "src/tools/compiletest",
@@ -816,9 +816,8 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         // Used for `compiletest` self-tests to have the path to the *staged* compiler. Getting this
         // right is important, as `compiletest` is intended to only support one target spec JSON
         // format, namely that of the staged compiler.
-        cargo.env("TEST_RUSTC", builder.rustc(compiler));
+        cargo.env("TEST_RUSTC", builder.rustc(staged_compiler));
 
-        cargo.allow_features(COMPILETEST_ALLOW_FEATURES);
         run_cargo_test(cargo, &[], &[], "compiletest self test", host, builder);
     }
 }

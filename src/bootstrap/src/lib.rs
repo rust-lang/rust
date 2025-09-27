@@ -327,8 +327,8 @@ pub enum Mode {
     ToolTarget,
 
     /// Build a tool which uses the locally built std, placing output in the
-    /// "stageN-tools" directory. Its usage is quite rare, mainly used by
-    /// compiletest which needs libtest.
+    /// "stageN-tools" directory. Its usage is quite rare; historically it was
+    /// needed by compiletest, but now it is mainly used by `test-float-parse`.
     ToolStd,
 
     /// Build a tool which uses the `rustc_private` mechanism, and thus

@@ -2005,21 +2005,6 @@ mod snapshot {
     }
 
     #[test]
-    fn check_compiletest_stage1_libtest() {
-        let ctx = TestCtx::new();
-        insta::assert_snapshot!(
-            ctx.config("check")
-                .path("compiletest")
-                .args(&["--set", "build.compiletest-use-stage0-libtest=false"])
-                .render_steps(), @r"
-        [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [check] rustc 1 <host> -> Compiletest 2 <host>
-        ");
-    }
-
-    #[test]
     fn check_codegen() {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
@@ -2142,6 +2127,17 @@ mod snapshot {
         [test] compiletest-run-make 1 <host>
         [build] rustc 0 <host> -> cargo 1 <host>
         [test] compiletest-run-make-cargo 1 <host>
+        ");
+    }
+
+    #[test]
+    fn test_compiletest_self_test() {
+        let ctx = TestCtx::new();
+        let steps = ctx.config("test").arg("compiletest").render_steps();
+        insta::assert_snapshot!(steps, @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustdoc 0 <host>
         ");
     }
 
