@@ -336,21 +336,37 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 ("`async` blocks are only allowed in Rust 2018 or later".to_string(), suggestion)
             } else {
                 // check if we are in situation of typo like `True` instead of `true`.
-                let override_suggestion =
-                    if ["true", "false"].contains(&item_str.to_string().to_lowercase().as_str()) {
-                        let item_typo = item_str.to_string().to_lowercase();
-                        Some((item_span, "you may want to use a bool value instead", item_typo))
-                    // FIXME(vincenzopalazzo): make the check smarter,
-                    // and maybe expand with levenshtein distance checks
-                    } else if item_str.as_str() == "printf" {
-                        Some((
-                            item_span,
-                            "you may have meant to use the `print` macro",
-                            "print!".to_owned(),
-                        ))
-                    } else {
-                        suggestion
-                    };
+                let override_suggestion = if ["true", "false"]
+                    .contains(&item_str.to_string().to_lowercase().as_str())
+                {
+                    let item_typo = item_str.to_string().to_lowercase();
+                    Some((item_span, "you may want to use a bool value instead", item_typo))
+                // FIXME(vincenzopalazzo): make the check smarter,
+                // and maybe expand with levenshtein distance checks
+                } else if item_str.as_str() == "printf" {
+                    Some((
+                        item_span,
+                        "you may have meant to use the `print` macro",
+                        "print!".to_owned(),
+                    ))
+                } else if ["max", "min"].contains(&item_str.as_str())
+                    && let PathSource::Expr(Some(Expr {
+                        kind: ExprKind::Call(_, args),
+                        span: call_span,
+                        ..
+                    })) = source
+                    && args.len() == 2
+                {
+                    let arg0 = self.r.tcx.sess.source_map().span_to_snippet(args[0].span).unwrap();
+                    let arg1 = self.r.tcx.sess.source_map().span_to_snippet(args[1].span).unwrap();
+                    Some((
+                        *call_span,
+                        "you may have meant to use the method syntax",
+                        format!("{arg0}.{item_str}({arg1})"),
+                    ))
+                } else {
+                    suggestion
+                };
                 (format!("not found in {mod_str}"), override_suggestion)
             };
 
