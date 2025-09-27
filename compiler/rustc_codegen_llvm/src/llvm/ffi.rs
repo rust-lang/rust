@@ -25,8 +25,8 @@ use rustc_target::spec::SymbolVisibility;
 use super::RustString;
 use super::debuginfo::{
     DIArray, DIBuilder, DIDerivedType, DIDescriptor, DIEnumerator, DIFile, DIFlags,
-    DIGlobalVariableExpression, DILocation, DISPFlags, DIScope, DISubprogram, DISubrange,
-    DITemplateTypeParameter, DIType, DIVariable, DebugEmissionKind, DebugNameTableKind,
+    DIGlobalVariableExpression, DILocation, DISPFlags, DIScope, DISubprogram,
+    DITemplateTypeParameter, DIType, DebugEmissionKind, DebugNameTableKind,
 };
 use crate::llvm;
 
@@ -807,6 +807,8 @@ unsafe extern "C" {
     pub(crate) type Metadata;
     pub(crate) type BasicBlock;
     pub(crate) type Comdat;
+    /// `&'ll DbgRecord` represents `LLVMDbgRecordRef`.
+    pub(crate) type DbgRecord;
 }
 #[repr(C)]
 pub(crate) struct Builder<'a>(InvariantOpaque<'a>);
@@ -891,7 +893,6 @@ pub(crate) mod debuginfo {
     pub(crate) type DIVariable = DIDescriptor;
     pub(crate) type DIGlobalVariableExpression = DIDescriptor;
     pub(crate) type DIArray = DIDescriptor;
-    pub(crate) type DISubrange = DIDescriptor;
     pub(crate) type DIEnumerator = DIDescriptor;
     pub(crate) type DITemplateTypeParameter = DIDescriptor;
 
@@ -1992,6 +1993,59 @@ unsafe extern "C" {
         Scope: Option<&'ll Metadata>,
         AlignInBits: u32, // (optional; default is 0)
     ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderGetOrCreateSubrange<'ll>(
+        Builder: &DIBuilder<'ll>,
+        LowerBound: i64,
+        Count: i64,
+    ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderGetOrCreateArray<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Data: *const Option<&'ll Metadata>,
+        NumElements: size_t,
+    ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderCreateExpression<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Addr: *const u64,
+        Length: size_t,
+    ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderInsertDeclareRecordAtEnd<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Storage: &'ll Value,
+        VarInfo: &'ll Metadata,
+        Expr: &'ll Metadata,
+        DebugLoc: &'ll Metadata,
+        Block: &'ll BasicBlock,
+    ) -> &'ll DbgRecord;
+
+    pub(crate) fn LLVMDIBuilderCreateAutoVariable<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Scope: &'ll Metadata,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
+        NameLen: size_t,
+        File: &'ll Metadata,
+        LineNo: c_uint,
+        Ty: &'ll Metadata,
+        AlwaysPreserve: llvm::Bool, // "If true, this descriptor will survive optimizations."
+        Flags: DIFlags,
+        AlignInBits: u32,
+    ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderCreateParameterVariable<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Scope: &'ll Metadata,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
+        NameLen: size_t,
+        ArgNo: c_uint,
+        File: &'ll Metadata,
+        LineNo: c_uint,
+        Ty: &'ll Metadata,
+        AlwaysPreserve: llvm::Bool, // "If true, this descriptor will survive optimizations."
+        Flags: DIFlags,
+    ) -> &'ll Metadata;
 }
 
 #[link(name = "llvm-wrapper", kind = "static")]
@@ -2357,43 +2411,6 @@ unsafe extern "C" {
         Decl: Option<&'a DIDescriptor>,
         AlignInBits: u32,
     ) -> &'a DIGlobalVariableExpression;
-
-    pub(crate) fn LLVMRustDIBuilderCreateVariable<'a>(
-        Builder: &DIBuilder<'a>,
-        Tag: c_uint,
-        Scope: &'a DIDescriptor,
-        Name: *const c_char,
-        NameLen: size_t,
-        File: &'a DIFile,
-        LineNo: c_uint,
-        Ty: &'a DIType,
-        AlwaysPreserve: bool,
-        Flags: DIFlags,
-        ArgNo: c_uint,
-        AlignInBits: u32,
-    ) -> &'a DIVariable;
-
-    pub(crate) fn LLVMRustDIBuilderGetOrCreateSubrange<'a>(
-        Builder: &DIBuilder<'a>,
-        Lo: i64,
-        Count: i64,
-    ) -> &'a DISubrange;
-
-    pub(crate) fn LLVMRustDIBuilderGetOrCreateArray<'a>(
-        Builder: &DIBuilder<'a>,
-        Ptr: *const Option<&'a DIDescriptor>,
-        Count: c_uint,
-    ) -> &'a DIArray;
-
-    pub(crate) fn LLVMRustDIBuilderInsertDeclareAtEnd<'a>(
-        Builder: &DIBuilder<'a>,
-        Val: &'a Value,
-        VarInfo: &'a DIVariable,
-        AddrOps: *const u64,
-        AddrOpsCount: c_uint,
-        DL: &'a DILocation,
-        InsertAtEnd: &'a BasicBlock,
-    );
 
     pub(crate) fn LLVMRustDIBuilderCreateEnumerator<'a>(
         Builder: &DIBuilder<'a>,
