@@ -10,6 +10,7 @@ use std::collections::VecDeque;
 use std::fmt::{self, Display, Write};
 use std::iter;
 
+use arrayvec::ArrayVec;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_lexer::{Cursor, FrontmatterAllowed, LiteralKind, TokenKind};
 use rustc_span::edition::Edition;
@@ -818,7 +819,7 @@ impl<'src> Classifier<'src> {
     }
 
     /// Concatenate colons and idents as one when possible.
-    fn get_full_ident_path(&mut self) -> Vec<(TokenKind, usize, usize)> {
+    fn get_full_ident_path(&mut self) -> ArrayVec<(TokenKind, usize, usize), 2> {
         let start = self.byte_pos as usize;
         let mut pos = start;
         let mut has_ident = false;
@@ -832,13 +833,16 @@ impl<'src> Classifier<'src> {
             // Ident path can start with "::" but if we already have content in the ident path,
             // the "::" is mandatory.
             if has_ident && nb == 0 {
-                return vec![(TokenKind::Ident, start, pos)];
+                return ArrayVec::from_iter([(TokenKind::Ident, start, pos)]);
             } else if nb != 0 && nb != 2 {
-                if has_ident {
-                    return vec![(TokenKind::Ident, start, pos), (TokenKind::Colon, pos, pos + nb)];
+                return if has_ident {
+                    ArrayVec::from_iter([
+                        (TokenKind::Ident, start, pos),
+                        (TokenKind::Colon, pos, pos + nb),
+                    ])
                 } else {
-                    return vec![(TokenKind::Colon, start, pos + nb)];
-                }
+                    ArrayVec::from_iter([(TokenKind::Colon, start, pos + nb)])
+                };
             }
 
             if let Some((None, text)) = self.tokens.peek().map(|(token, text)| {
@@ -854,15 +858,21 @@ impl<'src> Classifier<'src> {
                 pos += text.len() + nb;
                 has_ident = true;
                 self.tokens.next();
-            } else if nb > 0 && has_ident {
-                return vec![(TokenKind::Ident, start, pos), (TokenKind::Colon, pos, pos + nb)];
-            } else if nb > 0 {
-                return vec![(TokenKind::Colon, start, start + nb)];
-            } else if has_ident {
-                return vec![(TokenKind::Ident, start, pos)];
-            } else {
-                return Vec::new();
+                continue;
             }
+
+            return if nb > 0 && has_ident {
+                ArrayVec::from_iter([
+                    (TokenKind::Ident, start, pos),
+                    (TokenKind::Colon, pos, pos + nb),
+                ])
+            } else if nb > 0 {
+                ArrayVec::from_iter([(TokenKind::Colon, start, start + nb)])
+            } else if has_ident {
+                ArrayVec::from_iter([(TokenKind::Ident, start, pos)])
+            } else {
+                ArrayVec::new()
+            };
         }
     }
 
@@ -903,8 +913,7 @@ impl<'src> Classifier<'src> {
             if self
                 .tokens
                 .peek()
-                .map(|t| matches!(t.0, TokenKind::Colon | TokenKind::Ident))
-                .unwrap_or(false)
+                .is_some_and(|(kind, _)| matches!(kind, TokenKind::Colon | TokenKind::Ident))
             {
                 let tokens = self.get_full_ident_path();
                 for (token, start, end) in &tokens {
