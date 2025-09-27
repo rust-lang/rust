@@ -352,6 +352,7 @@ fn fatal_error_(msg: &impl std::fmt::Display) -> ! {
 macro_rules! fatal_error {
     ($($tt:tt)*) => { $crate::fatal_error_(&format_args!($($tt)*)) };
 }
+#[allow(unused)] // use depends on cfg
 use fatal_error;
 
 /// Execute a compiler with the given CLI arguments and callbacks.
