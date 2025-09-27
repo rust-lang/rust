@@ -118,6 +118,10 @@ impl<'tcx> ObligationStorage<'tcx> {
             );
         })
     }
+
+    fn num_pending(&self) -> usize {
+        self.pending.len()
+    }
 }
 
 impl<'tcx, E: 'tcx> FulfillmentCtxt<'tcx, E> {
@@ -181,6 +185,9 @@ where
 
     fn select_where_possible(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E> {
         assert_eq!(self.usable_in_snapshot, infcx.num_open_snapshots());
+        if self.obligations.num_pending() == 0 {
+            return vec![];
+        }
         let mut errors = Vec::new();
         loop {
             let mut any_changed = false;
