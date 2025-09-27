@@ -1,53 +1,138 @@
 error: `cfg` predicate key must be an identifier
-  --> $DIR/path-kw-as-pred.rs:11:7
+  --> $DIR/path-kw-as-pred.rs:13:7
    |
 LL | #[cfg(crate)]
    |       ^^^^^
 
 error: `cfg` predicate key must be an identifier
-  --> $DIR/path-kw-as-pred.rs:12:7
+  --> $DIR/path-kw-as-pred.rs:14:7
    |
 LL | #[cfg(super)]
    |       ^^^^^
 
 error: `cfg` predicate key must be an identifier
-  --> $DIR/path-kw-as-pred.rs:13:7
+  --> $DIR/path-kw-as-pred.rs:15:7
    |
 LL | #[cfg(self)]
    |       ^^^^
 
 error: `cfg` predicate key must be an identifier
-  --> $DIR/path-kw-as-pred.rs:14:7
+  --> $DIR/path-kw-as-pred.rs:16:7
    |
 LL | #[cfg(Self)]
    |       ^^^^
 
 error: `cfg` predicate key must be an identifier
-  --> $DIR/path-kw-as-pred.rs:15:12
+  --> $DIR/path-kw-as-pred.rs:17:12
    |
 LL | #[cfg_attr(crate, path = "foo")]
    |            ^^^^^
 
 error: `cfg` predicate key must be an identifier
-  --> $DIR/path-kw-as-pred.rs:16:12
+  --> $DIR/path-kw-as-pred.rs:18:12
    |
 LL | #[cfg_attr(super, path = "foo")]
    |            ^^^^^
 
 error: `cfg` predicate key must be an identifier
-  --> $DIR/path-kw-as-pred.rs:17:12
+  --> $DIR/path-kw-as-pred.rs:19:12
    |
 LL | #[cfg_attr(self, path = "foo")]
    |            ^^^^
 
 error: `cfg` predicate key must be an identifier
-  --> $DIR/path-kw-as-pred.rs:18:12
+  --> $DIR/path-kw-as-pred.rs:20:12
    |
 LL | #[cfg_attr(Self, path = "foo")]
    |            ^^^^
 
+error: expected identifier, found keyword `struct`
+  --> $DIR/path-kw-as-pred.rs:23:7
+   |
+LL | #[cfg(struct)]
+   |       ^^^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `enum`
+  --> $DIR/path-kw-as-pred.rs:26:7
+   |
+LL | #[cfg(enum)]
+   |       ^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `async`
+  --> $DIR/path-kw-as-pred.rs:29:7
+   |
+LL | #[cfg(async)]
+   |       ^^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `impl`
+  --> $DIR/path-kw-as-pred.rs:32:7
+   |
+LL | #[cfg(impl)]
+   |       ^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `trait`
+  --> $DIR/path-kw-as-pred.rs:35:7
+   |
+LL | #[cfg(trait)]
+   |       ^^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `struct`
+  --> $DIR/path-kw-as-pred.rs:38:12
+   |
+LL | #[cfg_attr(struct, path = "foo")]
+   |            ^^^^^^ expected identifier, found keyword
+   |
+help: escape `struct` to use it as an identifier
+   |
+LL | #[cfg_attr(r#struct, path = "foo")]
+   |            ++
+
+error: expected identifier, found keyword `enum`
+  --> $DIR/path-kw-as-pred.rs:41:12
+   |
+LL | #[cfg_attr(enum, path = "foo")]
+   |            ^^^^ expected identifier, found keyword
+   |
+help: escape `enum` to use it as an identifier
+   |
+LL | #[cfg_attr(r#enum, path = "foo")]
+   |            ++
+
+error: expected identifier, found keyword `async`
+  --> $DIR/path-kw-as-pred.rs:44:12
+   |
+LL | #[cfg_attr(async, path = "foo")]
+   |            ^^^^^ expected identifier, found keyword
+   |
+help: escape `async` to use it as an identifier
+   |
+LL | #[cfg_attr(r#async, path = "foo")]
+   |            ++
+
+error: expected identifier, found keyword `impl`
+  --> $DIR/path-kw-as-pred.rs:47:12
+   |
+LL | #[cfg_attr(impl, path = "foo")]
+   |            ^^^^ expected identifier, found keyword
+   |
+help: escape `impl` to use it as an identifier
+   |
+LL | #[cfg_attr(r#impl, path = "foo")]
+   |            ++
+
+error: expected identifier, found keyword `trait`
+  --> $DIR/path-kw-as-pred.rs:50:12
+   |
+LL | #[cfg_attr(trait, path = "foo")]
+   |            ^^^^^ expected identifier, found keyword
+   |
+help: escape `trait` to use it as an identifier
+   |
+LL | #[cfg_attr(r#trait, path = "foo")]
+   |            ++
+
 error: `cfg` predicate key must be an identifier
-  --> $DIR/path-kw-as-pred.rs:3:15
+  --> $DIR/path-kw-as-pred.rs:5:15
    |
 LL |         #[cfg($crate)]
    |               ^^^^^^
@@ -58,7 +143,7 @@ LL |     foo!();
    = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `cfg` predicate key must be an identifier
-  --> $DIR/path-kw-as-pred.rs:4:20
+  --> $DIR/path-kw-as-pred.rs:6:20
    |
 LL |         #[cfg_attr($crate, path = "foo")]
    |                    ^^^^^^
@@ -69,7 +154,7 @@ LL |     foo!();
    = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `cfg` predicate key must be an identifier
-  --> $DIR/path-kw-as-pred.rs:7:14
+  --> $DIR/path-kw-as-pred.rs:9:14
    |
 LL |         cfg!($crate);
    |              ^^^^^^
@@ -80,28 +165,195 @@ LL |     foo!();
    = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `cfg` predicate key must be an identifier
-  --> $DIR/path-kw-as-pred.rs:24:10
+  --> $DIR/path-kw-as-pred.rs:57:10
    |
 LL |     cfg!(crate);
    |          ^^^^^
 
 error: `cfg` predicate key must be an identifier
-  --> $DIR/path-kw-as-pred.rs:25:10
+  --> $DIR/path-kw-as-pred.rs:58:10
    |
 LL |     cfg!(super);
    |          ^^^^^
 
 error: `cfg` predicate key must be an identifier
-  --> $DIR/path-kw-as-pred.rs:26:10
+  --> $DIR/path-kw-as-pred.rs:59:10
    |
 LL |     cfg!(self);
    |          ^^^^
 
 error: `cfg` predicate key must be an identifier
-  --> $DIR/path-kw-as-pred.rs:27:10
+  --> $DIR/path-kw-as-pred.rs:60:10
    |
 LL |     cfg!(Self);
    |          ^^^^
 
-error: aborting due to 15 previous errors
+error: expected identifier, found keyword `struct`
+  --> $DIR/path-kw-as-pred.rs:62:10
+   |
+LL |     cfg!(struct);
+   |          ^^^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `enum`
+  --> $DIR/path-kw-as-pred.rs:64:10
+   |
+LL |     cfg!(enum);
+   |          ^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `async`
+  --> $DIR/path-kw-as-pred.rs:66:10
+   |
+LL |     cfg!(async);
+   |          ^^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `impl`
+  --> $DIR/path-kw-as-pred.rs:68:10
+   |
+LL |     cfg!(impl);
+   |          ^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `trait`
+  --> $DIR/path-kw-as-pred.rs:70:10
+   |
+LL |     cfg!(trait);
+   |          ^^^^^ expected identifier, found keyword
+
+warning: unexpected `cfg` condition name: `r#struct`
+  --> $DIR/path-kw-as-pred.rs:23:7
+   |
+LL | #[cfg(struct)]
+   |       ^^^^^^
+   |
+   = help: expected names are: `FALSE` and `test` and 31 more
+   = help: to expect this configuration use `--check-cfg=cfg(r#struct)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unexpected `cfg` condition name: `r#enum`
+  --> $DIR/path-kw-as-pred.rs:26:7
+   |
+LL | #[cfg(enum)]
+   |       ^^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(r#enum)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `r#async`
+  --> $DIR/path-kw-as-pred.rs:29:7
+   |
+LL | #[cfg(async)]
+   |       ^^^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(r#async)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `r#impl`
+  --> $DIR/path-kw-as-pred.rs:32:7
+   |
+LL | #[cfg(impl)]
+   |       ^^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(r#impl)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `r#trait`
+  --> $DIR/path-kw-as-pred.rs:35:7
+   |
+LL | #[cfg(trait)]
+   |       ^^^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(r#trait)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `r#struct`
+  --> $DIR/path-kw-as-pred.rs:38:12
+   |
+LL | #[cfg_attr(struct, path = "foo")]
+   |            ^^^^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(r#struct)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `r#enum`
+  --> $DIR/path-kw-as-pred.rs:41:12
+   |
+LL | #[cfg_attr(enum, path = "foo")]
+   |            ^^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(r#enum)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `r#async`
+  --> $DIR/path-kw-as-pred.rs:44:12
+   |
+LL | #[cfg_attr(async, path = "foo")]
+   |            ^^^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(r#async)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `r#impl`
+  --> $DIR/path-kw-as-pred.rs:47:12
+   |
+LL | #[cfg_attr(impl, path = "foo")]
+   |            ^^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(r#impl)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `r#trait`
+  --> $DIR/path-kw-as-pred.rs:50:12
+   |
+LL | #[cfg_attr(trait, path = "foo")]
+   |            ^^^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(r#trait)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `r#struct`
+  --> $DIR/path-kw-as-pred.rs:62:10
+   |
+LL |     cfg!(struct);
+   |          ^^^^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(r#struct)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `r#enum`
+  --> $DIR/path-kw-as-pred.rs:64:10
+   |
+LL |     cfg!(enum);
+   |          ^^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(r#enum)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `r#async`
+  --> $DIR/path-kw-as-pred.rs:66:10
+   |
+LL |     cfg!(async);
+   |          ^^^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(r#async)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `r#impl`
+  --> $DIR/path-kw-as-pred.rs:68:10
+   |
+LL |     cfg!(impl);
+   |          ^^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(r#impl)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `r#trait`
+  --> $DIR/path-kw-as-pred.rs:70:10
+   |
+LL |     cfg!(trait);
+   |          ^^^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(r#trait)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+error: aborting due to 30 previous errors; 15 warnings emitted
 
