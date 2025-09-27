@@ -40,33 +40,33 @@ error: only unsuffixes integer literals are supported in meta-variable expressio
 LL |     ( $( $i:ident ),* ) => { ${ index(1u32) } };
    |                                 ^^^^^
 
-error: expected `(`
+error: expected `(` or `.`
   --> $DIR/syntax-errors.rs:32:33
    |
 LL |     ( $( $i:ident ),* ) => { ${ count } };
-   |                                 ^^^^^- help: try adding parentheses: `( /* ... */ )`
-   |                                 |
-   |                                 for this this metavariable expression
+   |                                 ^^^^^ after this metavariable expression
    |
-   = note: metavariable expressions use function-like parentheses syntax
+   = note: metavariable expressions use parentheses for functions or dot for fields
 
-error: expected `(`
+error: expected `(` or `.`
   --> $DIR/syntax-errors.rs:49:33
    |
 LL |     ( $( $i:ident ),* ) => { ${ count $i ($i) } };
    |                                 ^^^^^ - unexpected token
    |                                 |
-   |                                 for this this metavariable expression
+   |                                 after this metavariable expression
    |
-   = note: metavariable expressions use function-like parentheses syntax
+   = note: metavariable expressions use parentheses for functions or dot for fields
 
-error: expected `(`
+error: expected `(` or `.`
   --> $DIR/syntax-errors.rs:54:33
    |
 LL |     ( $( $i:ident ),* ) => { ${ count{i} } };
-   |                                 ^^^^^ for this this metavariable expression
+   |                                 ^^^^^--- unexpected token
+   |                                 |
+   |                                 after this metavariable expression
    |
-   = note: metavariable expressions use function-like parentheses syntax
+   = note: metavariable expressions use parentheses for functions or dot for fields
 
 error: expected identifier, found `123`
   --> $DIR/syntax-errors.rs:59:23

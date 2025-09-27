@@ -721,6 +721,8 @@ parse_no_digits_literal = no valid digits found for number
 parse_non_string_abi_literal = non-string ABI literal
     .suggestion = specify the ABI with a string literal
 
+parse_nonterminal_expected_adt = expected a struct, enum, or union
+parse_nonterminal_expected_fn = expected a function
 parse_nonterminal_expected_ident = expected ident, found `{$token}`
 parse_nonterminal_expected_item_keyword = expected an item keyword
 parse_nonterminal_expected_lifetime = expected a lifetime, found `{$token}`

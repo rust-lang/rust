@@ -12,7 +12,7 @@ mod metavar_expr;
 mod quoted;
 mod transcribe;
 
-use metavar_expr::MetaVarExpr;
+use metavar_expr::{MetaVarExpr, MetaVarRecursiveExpr};
 use rustc_ast::token::{Delimiter, NonterminalKind, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan};
 use rustc_macros::{Decodable, Encodable};

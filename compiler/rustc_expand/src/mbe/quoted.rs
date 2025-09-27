@@ -14,7 +14,8 @@ use crate::mbe::{Delimited, KleeneOp, KleeneToken, MetaVarExpr, SequenceRepetiti
 
 pub(crate) const VALID_FRAGMENT_NAMES_MSG: &str = "valid fragment specifiers are \
     `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, `path`, \
-    `meta`, `tt`, `item` and `vis`, along with `expr_2021` and `pat_param` for edition compatibility";
+    `meta`, `tt`, `item`, `fn`, 'adt', and `vis`, \
+    along with `expr_2021` and `pat_param` for edition compatibility";
 
 /// Which part of a macro rule we're parsing
 #[derive(Copy, Clone)]
@@ -142,6 +143,12 @@ fn parse(
                 });
                 NonterminalKind::TT
             });
+            if matches!(kind, NonterminalKind::Fn | NonterminalKind::Adt)
+                && !features.macro_fragments_more()
+            {
+                let msg = "macro `:fn` and `:adt` fragments are unstable";
+                feature_err(sess, sym::macro_fragments_more, span, msg).emit();
+            }
             result.push(TokenTree::MetaVarDecl { span, name: ident, kind });
         } else {
             // Whether it's none or some other tree, it doesn't belong to
@@ -180,6 +187,13 @@ fn maybe_emit_macro_metavar_expr_concat_feature(features: &Features, sess: &Sess
     if !features.macro_metavar_expr_concat() {
         let msg = "the `concat` meta-variable expression is unstable";
         feature_err(sess, sym::macro_metavar_expr_concat, span, msg).emit();
+    }
+}
+
+fn maybe_emit_macro_fragment_fields_feature(features: &Features, sess: &Session, span: Span) {
+    if !features.macro_fragment_fields() {
+        let msg = "macro fragment fields are unstable";
+        feature_err(sess, sym::macro_fragment_fields, span, msg).emit();
     }
 }
 
@@ -250,18 +264,26 @@ fn parse_tree<'a>(
                                         return TokenTree::token(token::Dollar, dollar_span);
                                     }
                                     Ok(elem) => {
-                                        if let MetaVarExpr::Concat(_) = elem {
-                                            maybe_emit_macro_metavar_expr_concat_feature(
+                                        match elem {
+                                            MetaVarExpr::Concat(..) => {
+                                                maybe_emit_macro_metavar_expr_concat_feature(
+                                                    features,
+                                                    sess,
+                                                    delim_span.entire(),
+                                                )
+                                            }
+                                            MetaVarExpr::Recursive(..) => {
+                                                maybe_emit_macro_fragment_fields_feature(
+                                                    features,
+                                                    sess,
+                                                    delim_span.entire(),
+                                                )
+                                            }
+                                            _ => maybe_emit_macro_metavar_expr_feature(
                                                 features,
                                                 sess,
                                                 delim_span.entire(),
-                                            );
-                                        } else {
-                                            maybe_emit_macro_metavar_expr_feature(
-                                                features,
-                                                sess,
-                                                delim_span.entire(),
-                                            );
+                                            ),
                                         }
                                         return TokenTree::MetaVarExpr(delim_span, elem);
                                     }
