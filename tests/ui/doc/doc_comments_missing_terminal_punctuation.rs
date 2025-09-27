@@ -145,3 +145,9 @@ struct EmptyDocComment;
  */
 //~^^^ doc_comments_missing_terminal_punctuation
 struct BlockDocComment;
+
+/// Sometimes a doc attribute is used for concatenation
+/// ```
+#[doc = ""]
+/// ```
+struct DocAttribute;

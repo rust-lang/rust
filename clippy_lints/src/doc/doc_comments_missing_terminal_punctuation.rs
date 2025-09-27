@@ -10,23 +10,19 @@ const MSG: &str = "doc comments should end with a terminal punctuation mark";
 const PUNCTUATION_SUGGESTION: char = '.';
 
 pub fn check(cx: &LateContext<'_>, doc: &str, fragments: Fragments<'_>) {
-    if let Some(offset) = is_missing_punctuation(doc) {
-        if let Some(span) = fragments.span(cx, offset..offset) {
-            clippy_utils::diagnostics::span_lint_and_sugg(
-                cx,
-                DOC_COMMENTS_MISSING_TERMINAL_PUNCTUATION,
-                span,
-                MSG,
-                "end the doc comment with some punctuation",
-                PUNCTUATION_SUGGESTION.to_string(),
-                Applicability::MaybeIncorrect,
-            );
-        } else {
-            let span = fragments.fragments.last().unwrap().span;
-            // Seems more difficult to preserve the formatting of `#[doc]` attrs, so we do not provide
-            // suggestions for them; they are much rarer anyway.
-            clippy_utils::diagnostics::span_lint(cx, DOC_COMMENTS_MISSING_TERMINAL_PUNCTUATION, span, MSG);
-        }
+    // This ignores `#[doc]` attributes, which we do not handle.
+    if let Some(offset) = is_missing_punctuation(doc)
+        && let Some(span) = fragments.span(cx, offset..offset)
+    {
+        clippy_utils::diagnostics::span_lint_and_sugg(
+            cx,
+            DOC_COMMENTS_MISSING_TERMINAL_PUNCTUATION,
+            span,
+            MSG,
+            "end the doc comment with some punctuation",
+            PUNCTUATION_SUGGESTION.to_string(),
+            Applicability::MaybeIncorrect,
+        );
     }
 }
 
