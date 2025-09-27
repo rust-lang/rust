@@ -3,63 +3,78 @@
 use crate::time::Duration;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
-pub struct Instant(Duration);
+pub struct Instant {
+    nanos: wasi::Timestamp,
+}
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
-pub struct SystemTime(Duration);
+pub struct SystemTime {
+    nanos: wasi::Timestamp,
+}
 
-pub const UNIX_EPOCH: SystemTime = SystemTime(Duration::from_secs(0));
+pub const UNIX_EPOCH: SystemTime = SystemTime { nanos: 0 };
 
-fn current_time(clock: wasi::Clockid) -> Duration {
-    let ts = unsafe {
+fn current_time(clock: wasi::Clockid) -> wasi::Timestamp {
+    unsafe {
         wasi::clock_time_get(
             clock, 1, // precision... seems ignored though?
         )
         .unwrap()
-    };
-    Duration::new((ts / 1_000_000_000) as u64, (ts % 1_000_000_000) as u32)
+    }
 }
 
 impl Instant {
     pub fn now() -> Instant {
-        Instant(current_time(wasi::CLOCKID_MONOTONIC))
+        Instant { nanos: current_time(wasi::CLOCKID_MONOTONIC) }
     }
 
     pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
-        self.0.checked_sub(other.0)
+        let nanos = self.nanos.checked_sub(other.nanos)?;
+        Some(Duration::from_nanos(nanos))
     }
 
     pub fn checked_add_duration(&self, other: &Duration) -> Option<Instant> {
-        Some(Instant(self.0.checked_add(*other)?))
+        let to_add = other.as_nanos().try_into().ok()?;
+        let nanos = self.nanos.checked_add(to_add)?;
+        Some(Instant { nanos })
     }
 
     pub fn checked_sub_duration(&self, other: &Duration) -> Option<Instant> {
-        Some(Instant(self.0.checked_sub(*other)?))
+        let to_sub = other.as_nanos().try_into().ok()?;
+        let nanos = self.nanos.checked_sub(to_sub)?;
+        Some(Instant { nanos })
     }
 }
 
 impl SystemTime {
     pub fn now() -> SystemTime {
-        SystemTime(current_time(wasi::CLOCKID_REALTIME))
+        SystemTime { nanos: current_time(wasi::CLOCKID_REALTIME) }
     }
 
     pub fn from_wasi_timestamp(ts: wasi::Timestamp) -> SystemTime {
-        SystemTime(Duration::from_nanos(ts))
+        SystemTime { nanos: ts }
     }
 
-    pub fn to_wasi_timestamp(&self) -> Option<wasi::Timestamp> {
-        self.0.as_nanos().try_into().ok()
+    pub fn to_wasi_timestamp(self) -> wasi::Timestamp {
+        self.nanos
     }
 
     pub fn sub_time(&self, other: &SystemTime) -> Result<Duration, Duration> {
-        self.0.checked_sub(other.0).ok_or_else(|| other.0 - self.0)
+        self.nanos
+            .checked_sub(other.nanos)
+            .map(Duration::from_nanos)
+            .ok_or_else(|| Duration::from_nanos(other.nanos - self.nanos))
     }
 
     pub fn checked_add_duration(&self, other: &Duration) -> Option<SystemTime> {
-        Some(SystemTime(self.0.checked_add(*other)?))
+        let to_add = other.as_nanos().try_into().ok()?;
+        let nanos = self.nanos.checked_add(to_add)?;
+        Some(SystemTime { nanos })
     }
 
     pub fn checked_sub_duration(&self, other: &Duration) -> Option<SystemTime> {
-        Some(SystemTime(self.0.checked_sub(*other)?))
+        let to_sub = other.as_nanos().try_into().ok()?;
+        let nanos = self.nanos.checked_sub(to_sub)?;
+        Some(SystemTime { nanos })
     }
 }

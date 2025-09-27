@@ -5,12 +5,16 @@ use crate::os::xous::services::{systime_server, ticktimer_server};
 use crate::time::Duration;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
-pub struct Instant(Duration);
+pub struct Instant {
+    millis: u64,
+}
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
-pub struct SystemTime(Duration);
+pub struct SystemTime {
+    millis: u64,
+}
 
-pub const UNIX_EPOCH: SystemTime = SystemTime(Duration::from_secs(0));
+pub const UNIX_EPOCH: SystemTime = SystemTime { millis: 0 };
 
 impl Instant {
     pub fn now() -> Instant {
@@ -18,19 +22,24 @@ impl Instant {
             .expect("failed to request elapsed_ms");
         let lower = result[0];
         let upper = result[1];
-        Instant { 0: Duration::from_millis(lower as u64 | (upper as u64) << 32) }
+        Instant { millis: lower as u64 | (upper as u64) << 32 }
     }
 
     pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
-        self.0.checked_sub(other.0)
+        let millis = self.millis.checked_sub(other.millis)?;
+        Some(Duration::from_millis(millis))
     }
 
     pub fn checked_add_duration(&self, other: &Duration) -> Option<Instant> {
-        self.0.checked_add(*other).map(Instant)
+        let to_add = other.as_millis().try_into().ok()?;
+        let millis = self.millis.checked_add(to_add)?;
+        Some(Instant { millis })
     }
 
     pub fn checked_sub_duration(&self, other: &Duration) -> Option<Instant> {
-        self.0.checked_sub(*other).map(Instant)
+        let to_sub = other.as_millis().try_into().ok()?;
+        let millis = self.millis.checked_sub(to_sub)?;
+        Some(Instant { millis })
     }
 }
 
@@ -40,18 +49,25 @@ impl SystemTime {
             .expect("failed to request utc time in ms");
         let lower = result[0];
         let upper = result[1];
-        SystemTime { 0: Duration::from_millis((upper as u64) << 32 | lower as u64) }
+        SystemTime { millis: (upper as u64) << 32 | lower as u64 }
     }
 
     pub fn sub_time(&self, other: &SystemTime) -> Result<Duration, Duration> {
-        self.0.checked_sub(other.0).ok_or_else(|| other.0 - self.0)
+        self.millis
+            .checked_sub(other.millis)
+            .map(Duration::from_millis)
+            .ok_or_else(|| Duration::from_millis(other.millis - self.millis))
     }
 
     pub fn checked_add_duration(&self, other: &Duration) -> Option<SystemTime> {
-        Some(SystemTime(self.0.checked_add(*other)?))
+        let to_add = other.as_millis().try_into().ok()?;
+        let millis = self.millis.checked_add(to_add)?;
+        Some(SystemTime { millis })
     }
 
     pub fn checked_sub_duration(&self, other: &Duration) -> Option<SystemTime> {
-        Some(SystemTime(self.0.checked_sub(*other)?))
+        let to_sub = other.as_millis().try_into().ok()?;
+        let millis = self.millis.checked_sub(to_sub)?;
+        Some(SystemTime { millis })
     }
 }
