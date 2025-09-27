@@ -55,6 +55,8 @@ pub(super) enum SimplifyCfg {
     Final,
     MakeShim,
     AfterUnreachableEnumBranching,
+    /// Extra run introduced by `StateTransform`.
+    PostStateTransform,
 }
 
 impl SimplifyCfg {
@@ -70,6 +72,7 @@ impl SimplifyCfg {
             SimplifyCfg::AfterUnreachableEnumBranching => {
                 "SimplifyCfg-after-unreachable-enum-branching"
             }
+            SimplifyCfg::PostStateTransform => "SimplifyCfg-post-StateTransform",
         }
     }
 }
@@ -390,6 +393,8 @@ pub(super) enum SimplifyLocals {
     BeforeConstProp,
     AfterGVN,
     Final,
+    /// Extra run introduced by `StateTransform`.
+    PostStateTransform,
 }
 
 impl<'tcx> crate::MirPass<'tcx> for SimplifyLocals {
@@ -398,6 +403,7 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyLocals {
             SimplifyLocals::BeforeConstProp => "SimplifyLocals-before-const-prop",
             SimplifyLocals::AfterGVN => "SimplifyLocals-after-value-numbering",
             SimplifyLocals::Final => "SimplifyLocals-final",
+            SimplifyLocals::PostStateTransform => "SimplifyLocals-post-StateTransform",
         }
     }
 
