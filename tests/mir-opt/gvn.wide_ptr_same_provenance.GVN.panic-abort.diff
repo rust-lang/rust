@@ -89,6 +89,7 @@
 -         StorageDead(_4);
 +         _3 = copy _4;
 +         nop;
+          StorageDead(_8);
           StorageDead(_7);
           StorageDead(_5);
           StorageLive(_10);
@@ -116,6 +117,7 @@
 -         StorageDead(_11);
 +         _10 = copy _11;
 +         nop;
+          StorageDead(_15);
           StorageDead(_14);
           StorageDead(_12);
           StorageLive(_17);
@@ -251,9 +253,7 @@
           StorageDead(_43);
           StorageDead(_42);
           _0 = const ();
-          StorageDead(_15);
           StorageDead(_10);
-          StorageDead(_8);
           StorageDead(_3);
           StorageDead(_1);
           return;
