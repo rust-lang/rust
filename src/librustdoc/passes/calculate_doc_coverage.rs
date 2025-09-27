@@ -17,14 +17,13 @@ use tracing::debug;
 use crate::clean;
 use crate::core::DocContext;
 use crate::html::markdown::{ErrorCodes, find_testable_code};
-use crate::passes::Pass;
 use crate::passes::check_doc_test_visibility::{Tests, should_have_doc_example};
 use crate::visit::DocVisitor;
 
-pub(crate) const CALCULATE_DOC_COVERAGE: Pass =
-    Pass { name: "calculate-doc-coverage", run: Some(calculate_doc_coverage) };
-
-fn calculate_doc_coverage(krate: clean::Crate, ctx: &mut DocContext<'_>) -> clean::Crate {
+pub(crate) fn calculate_doc_coverage(
+    krate: clean::Crate,
+    ctx: &mut DocContext<'_>,
+) -> clean::Crate {
     let mut calc = CoverageCalculator { items: Default::default(), ctx };
     calc.visit_crate(&krate);
 

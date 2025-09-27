@@ -34,11 +34,7 @@ use crate::clean::{self, Crate, Item, ItemId, ItemLink, PrimitiveType};
 use crate::core::DocContext;
 use crate::html::markdown::{MarkdownLink, MarkdownLinkRange, markdown_links};
 use crate::lint::{BROKEN_INTRA_DOC_LINKS, PRIVATE_INTRA_DOC_LINKS};
-use crate::passes::Pass;
 use crate::visit::DocVisitor;
-
-pub(crate) const COLLECT_INTRA_DOC_LINKS: Pass =
-    Pass { name: "collect-intra-doc-links", run: None };
 
 pub(crate) fn collect_intra_doc_links<'a, 'tcx>(
     krate: Crate,
