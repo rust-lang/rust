@@ -7,16 +7,15 @@
 use std::pin::Pin;
 
 // This test verifies that a `&pin mut T` can be projected to a pinned
-// reference field `&pin mut T.U`.
-// FIXME(pin_ergonomics): it is unsound to project `&pin mut T` to
-// `&pin mut T.U` when `U: !Unpin` but `T: Unpin`, or when there exists
-// `impl Drop for T` that takes a `&mut self` receiver.
+// reference field `&pin mut T.U` when `T` is marked with `#[pin_project]`.
 
+#[pin_project] //[normal]~ ERROR the `#[pin_project]` attribute is an experimental feature
 struct Foo<T, U> {
     x: T,
     y: U,
 }
 
+#[pin_project] //[normal]~ ERROR the `#[pin_project]` attribute is an experimental feature
 enum Bar<T, U> {
     Foo(T, U),
     Bar { x: T, y: U },

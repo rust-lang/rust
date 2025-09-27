@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/pattern-matching-deref-pattern.rs:45:28
+  --> $DIR/pattern-matching-deref-pattern.rs:48:28
    |
 LL |         let Foo { x, y } = foo.as_mut();
    |                   -  -     ^^^^^^^^^^^^
@@ -18,7 +18,7 @@ LL |         let Foo { x, ref y } = foo.as_mut();
    |                      +++
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/pattern-matching-deref-pattern.rs:35:24
+  --> $DIR/pattern-matching-deref-pattern.rs:38:24
    |
 LL |     let Foo { x, y } = foo.as_mut();
    |               -  -     ^^^^^^^^^^^^
@@ -37,7 +37,7 @@ LL |     let Foo { x, ref y } = foo.as_mut();
    |                  +++
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/pattern-matching-deref-pattern.rs:67:28
+  --> $DIR/pattern-matching-deref-pattern.rs:70:28
    |
 LL |         let Foo { x, y } = foo.as_ref();
    |                   -  -     ^^^^^^^^^^^^
@@ -56,7 +56,7 @@ LL |         let Foo { x, ref y } = foo.as_ref();
    |                      +++
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/pattern-matching-deref-pattern.rs:57:24
+  --> $DIR/pattern-matching-deref-pattern.rs:60:24
    |
 LL |     let Foo { x, y } = foo.as_ref();
    |               -  -     ^^^^^^^^^^^^
@@ -75,7 +75,7 @@ LL |     let Foo { x, ref y } = foo.as_ref();
    |                  +++
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/pattern-matching-deref-pattern.rs:89:25
+  --> $DIR/pattern-matching-deref-pattern.rs:92:25
    |
 LL |         let Bar(x, y) = bar.as_mut();
    |                 -  -    ^^^^^^^^^^^^
@@ -94,7 +94,7 @@ LL |         let Bar(x, ref y) = bar.as_mut();
    |                    +++
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/pattern-matching-deref-pattern.rs:79:21
+  --> $DIR/pattern-matching-deref-pattern.rs:82:21
    |
 LL |     let Bar(x, y) = bar.as_mut();
    |             -  -    ^^^^^^^^^^^^
@@ -113,7 +113,7 @@ LL |     let Bar(x, ref y) = bar.as_mut();
    |                +++
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/pattern-matching-deref-pattern.rs:111:25
+  --> $DIR/pattern-matching-deref-pattern.rs:114:25
    |
 LL |         let Bar(x, y) = bar.as_ref();
    |                 -  -    ^^^^^^^^^^^^
@@ -132,7 +132,7 @@ LL |         let Bar(x, ref y) = bar.as_ref();
    |                    +++
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/pattern-matching-deref-pattern.rs:101:21
+  --> $DIR/pattern-matching-deref-pattern.rs:104:21
    |
 LL |     let Bar(x, y) = bar.as_ref();
    |             -  -    ^^^^^^^^^^^^

@@ -2466,8 +2466,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     ty::TraitRef::new_from_args(tcx, trait_def_id, err_args)
                 };
 
-                let obligation =
-                    Obligation::new(self.tcx(), cause.clone(), param_env, trait_ref);
+                let obligation = Obligation::new(self.tcx(), cause.clone(), param_env, trait_ref);
                 obligations.push(obligation);
                 obligations
             })
