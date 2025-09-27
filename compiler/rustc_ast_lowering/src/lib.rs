@@ -77,6 +77,7 @@ macro_rules! arena_vec {
 
 mod asm;
 mod block;
+mod contract;
 mod delegation;
 mod errors;
 mod expr;
