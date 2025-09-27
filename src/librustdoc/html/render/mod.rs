@@ -48,6 +48,7 @@ use std::path::PathBuf;
 use std::{fs, str};
 
 use askama::Template;
+use indexmap::IndexMap;
 use itertools::Either;
 use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
@@ -60,8 +61,6 @@ use rustc_middle::ty::print::PrintTraitRefExt;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::symbol::{Symbol, sym};
 use rustc_span::{BytePos, DUMMY_SP, FileName, RealFileName};
-use serde::ser::SerializeMap;
-use serde::{Serialize, Serializer};
 use tracing::{debug, info};
 
 pub(crate) use self::context::*;
@@ -77,7 +76,6 @@ use crate::html::escape::Escape;
 use crate::html::format::{
     Ending, HrefError, PrintWithSpace, href, print_abi_with_space, print_constness_with_space,
     print_default_space, print_generic_bounds, print_where_clause, visibility_print_with_space,
-    write_str,
 };
 use crate::html::markdown::{
     HeadingOffset, IdMap, Markdown, MarkdownItemInfo, MarkdownSummaryLine,
@@ -1477,12 +1475,10 @@ fn render_assoc_items_inner(
                 )
             }
         };
-        let mut impls_buf = String::new();
-        for i in &non_trait {
-            write_str(
-                &mut impls_buf,
-                format_args!(
-                    "{}",
+        let impls_buf = fmt::from_fn(|f| {
+            non_trait
+                .iter()
+                .map(|i| {
                     render_impl(
                         cx,
                         i,
@@ -1498,9 +1494,11 @@ fn render_assoc_items_inner(
                             toggle_open_by_default: true,
                         },
                     )
-                ),
-            );
-        }
+                })
+                .joined("", f)
+        })
+        .to_string();
+
         if !impls_buf.is_empty() {
             write!(
                 w,
@@ -1652,91 +1650,85 @@ fn notable_traits_button(ty: &clean::Type, cx: &Context<'_>) -> Option<impl fmt:
 }
 
 fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
-    let mut out = String::new();
-
     let did = ty.def_id(cx.cache()).expect("notable_traits_button already checked this");
 
     let impls = cx.cache().impls.get(&did).expect("notable_traits_button already checked this");
 
-    for i in impls {
-        let impl_ = i.inner_impl();
-        if impl_.polarity != ty::ImplPolarity::Positive {
-            continue;
-        }
-
-        if !ty.is_doc_subtype_of(&impl_.for_, cx.cache()) {
-            // Two different types might have the same did,
-            // without actually being the same.
-            continue;
-        }
-        if let Some(trait_) = &impl_.trait_ {
-            let trait_did = trait_.def_id();
-
-            if cx.cache().traits.get(&trait_did).is_some_and(|t| t.is_notable_trait(cx.tcx())) {
-                if out.is_empty() {
-                    write_str(
-                        &mut out,
-                        format_args!(
-                            "<h3>Notable traits for <code>{}</code></h3>\
-                            <pre><code>",
-                            impl_.for_.print(cx)
-                        ),
-                    );
+    let out = fmt::from_fn(|f| {
+        let mut notable_impls = impls
+            .iter()
+            .map(|impl_| impl_.inner_impl())
+            .filter(|impl_| impl_.polarity == ty::ImplPolarity::Positive)
+            .filter(|impl_| {
+                // Two different types might have the same did, without actually being the same.
+                ty.is_doc_subtype_of(&impl_.for_, cx.cache())
+            })
+            .filter_map(|impl_| {
+                if let Some(trait_) = &impl_.trait_
+                    && let trait_did = trait_.def_id()
+                    && let Some(trait_) = cx.cache().traits.get(&trait_did)
+                    && trait_.is_notable_trait(cx.tcx())
+                {
+                    Some((impl_, trait_did))
+                } else {
+                    None
                 }
+            })
+            .peekable();
 
-                write_str(
-                    &mut out,
-                    format_args!("<div class=\"where\">{}</div>", impl_.print(false, cx)),
-                );
-                for it in &impl_.items {
-                    if let clean::AssocTypeItem(ref tydef, ref _bounds) = it.kind {
-                        let empty_set = FxIndexSet::default();
-                        let src_link = AssocItemLink::GotoSource(trait_did.into(), &empty_set);
-                        write_str(
-                            &mut out,
-                            format_args!(
-                                "<div class=\"where\">    {};</div>",
-                                assoc_type(
-                                    it,
-                                    &tydef.generics,
-                                    &[], // intentionally leaving out bounds
-                                    Some(&tydef.type_),
-                                    src_link,
-                                    0,
-                                    cx,
-                                )
-                            ),
-                        );
-                    }
-                }
+        let has_notable_impl = if let Some((impl_, _)) = notable_impls.peek() {
+            write!(
+                f,
+                "<h3>Notable traits for <code>{}</code></h3>\
+                <pre><code>",
+                impl_.for_.print(cx)
+            )?;
+            true
+        } else {
+            false
+        };
+
+        for (impl_, trait_did) in notable_impls {
+            write!(f, "<div class=\"where\">{}</div>", impl_.print(false, cx))?;
+            for it in &impl_.items {
+                let clean::AssocTypeItem(tydef, ..) = &it.kind else {
+                    continue;
+                };
+
+                let empty_set = FxIndexSet::default();
+                let src_link = AssocItemLink::GotoSource(trait_did.into(), &empty_set);
+
+                write!(
+                    f,
+                    "<div class=\"where\">    {};</div>",
+                    assoc_type(
+                        it,
+                        &tydef.generics,
+                        &[], // intentionally leaving out bounds
+                        Some(&tydef.type_),
+                        src_link,
+                        0,
+                        cx,
+                    )
+                )?;
             }
         }
-    }
-    if out.is_empty() {
-        out.push_str("</code></pre>");
-    }
+
+        if !has_notable_impl {
+            f.write_str("</code></pre>")?;
+        }
+
+        Ok(())
+    })
+    .to_string();
 
     (format!("{:#}", ty.print(cx)), out)
 }
 
 fn notable_traits_json<'a>(tys: impl Iterator<Item = &'a clean::Type>, cx: &Context<'_>) -> String {
-    let mut mp: Vec<(String, String)> = tys.map(|ty| notable_traits_decl(ty, cx)).collect();
-    mp.sort_by(|(name1, _html1), (name2, _html2)| name1.cmp(name2));
-    struct NotableTraitsMap(Vec<(String, String)>);
-    impl Serialize for NotableTraitsMap {
-        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
-        {
-            let mut map = serializer.serialize_map(Some(self.0.len()))?;
-            for item in &self.0 {
-                map.serialize_entry(&item.0, &item.1)?;
-            }
-            map.end()
-        }
-    }
-    serde_json::to_string(&NotableTraitsMap(mp))
-        .expect("serialize (string, string) -> json object cannot fail")
+    let mut mp = tys.map(|ty| notable_traits_decl(ty, cx)).collect::<IndexMap<_, _>>();
+    mp.sort_unstable_keys();
+    serde_json::to_string(&mp).expect("serialize (string, string) -> json object cannot fail")
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -1810,27 +1802,19 @@ fn render_impl(
                                 document_item_info(cx, it, Some(parent))
                                     .render_into(&mut info_buffer)
                                     .unwrap();
-                                write_str(
-                                    &mut doc_buffer,
-                                    format_args!("{}", document_full(item, cx, HeadingOffset::H5)),
-                                );
+                                doc_buffer = document_full(item, cx, HeadingOffset::H5).to_string();
                                 short_documented = false;
                             } else {
                                 // In case the item isn't documented,
                                 // provide short documentation from the trait.
-                                write_str(
-                                    &mut doc_buffer,
-                                    format_args!(
-                                        "{}",
-                                        document_short(
-                                            it,
-                                            cx,
-                                            link,
-                                            parent,
-                                            rendering_params.show_def_docs,
-                                        )
-                                    ),
-                                );
+                                doc_buffer = document_short(
+                                    it,
+                                    cx,
+                                    link,
+                                    parent,
+                                    rendering_params.show_def_docs,
+                                )
+                                .to_string();
                             }
                         }
                     } else {
@@ -1838,21 +1822,14 @@ fn render_impl(
                             .render_into(&mut info_buffer)
                             .unwrap();
                         if rendering_params.show_def_docs {
-                            write_str(
-                                &mut doc_buffer,
-                                format_args!("{}", document_full(item, cx, HeadingOffset::H5)),
-                            );
+                            doc_buffer = document_full(item, cx, HeadingOffset::H5).to_string();
                             short_documented = false;
                         }
                     }
                 } else {
-                    write_str(
-                        &mut doc_buffer,
-                        format_args!(
-                            "{}",
-                            document_short(item, cx, link, parent, rendering_params.show_def_docs)
-                        ),
-                    );
+                    doc_buffer =
+                        document_short(item, cx, link, parent, rendering_params.show_def_docs)
+                            .to_string();
                 }
             }
             let mut w = if short_documented && trait_.is_some() {
