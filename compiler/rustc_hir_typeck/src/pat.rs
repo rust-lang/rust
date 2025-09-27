@@ -554,6 +554,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             {
                 debug!("scrutinee ty {expected:?} is a pinned reference, inserting pin deref");
 
+                // if the inner_ty is an ADT, make sure that it can be structurally pinned
+                // (i.e., it is `#[pin_project]`).
+                if let Some(adt) = inner_ty.ty_adt_def()
+                    && !adt.is_pin_project()
+                    && !adt.is_pin()
+                {
+                    let def_span: Option<Span> = self.tcx.hir_span_if_local(adt.did());
+                    let sugg_span = def_span.map(|span| span.shrink_to_lo());
+                    self.dcx().emit_err(crate::errors::ProjectOnNonPinProjectType {
+                        span: pat.span,
+                        def_span,
+                        sugg_span,
+                    });
+                }
+
                 let binding_mode = adjust_binding_mode(Pinnedness::Pinned, inner_mutability);
                 // If the pinnedness is `Not`, it means the pattern is unpinned
                 // and thus requires an `Unpin` bound.

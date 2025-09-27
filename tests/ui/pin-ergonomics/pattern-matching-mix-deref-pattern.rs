@@ -10,20 +10,30 @@
 
 use std::pin::Pin;
 
+#[cfg_attr(any(pin_ergonomics, both), pin_project)]
 struct Foo<T, U> {
     x: T,
     y: U,
 }
 
+#[cfg_attr(any(pin_ergonomics, both), pin_project)]
 struct Bar<T, U>(T, U);
 
+#[cfg_attr(any(pin_ergonomics, both), pin_project)]
 enum Baz<T, U> {
     Foo(T, U),
     Bar { x: T, y: U },
 }
 
-fn foo_mut<T: Unpin, U: Unpin>(foo: Pin<&mut Foo<T, U>>) {
-    match foo {
+struct NonPinProject<T> {
+    x: T,
+}
+
+fn foo_mut<T: Unpin, U: Unpin>(mut foo: Pin<&mut Foo<T, U>>) {
+    let Foo { x, y } = foo.as_mut();
+    //[normal]~^ ERROR mismatched types
+
+    match foo.as_mut() {
         Foo { x, y } => {}
         //[normal]~^ ERROR mismatched types
         //[deref_patterns]~^^ ERROR mix of deref patterns and normal constructors
@@ -31,7 +41,7 @@ fn foo_mut<T: Unpin, U: Unpin>(foo: Pin<&mut Foo<T, U>>) {
         //[both]~^^^^ ERROR mix of deref patterns and normal constructors
         Pin { .. } => {}
     }
-    let _ = || match foo {
+    let _ = || match foo.as_mut() {
         Foo { x, y } => {}
         //[normal]~^ ERROR mismatched types
         //[deref_patterns]~^^ ERROR mix of deref patterns and normal constructors
@@ -42,6 +52,9 @@ fn foo_mut<T: Unpin, U: Unpin>(foo: Pin<&mut Foo<T, U>>) {
 }
 
 fn foo_const<T: Unpin, U: Unpin>(foo: Pin<&Foo<T, U>>) {
+    let Foo { x, y } = foo;
+    //[normal]~^ ERROR mismatched types
+
     match foo {
         Foo { x, y } => {}
         //[normal]~^ ERROR mismatched types
@@ -61,6 +74,31 @@ fn foo_const<T: Unpin, U: Unpin>(foo: Pin<&Foo<T, U>>) {
 }
 
 fn bar_mut<T: Unpin, U: Unpin>(bar: Pin<&mut Bar<T, U>>) {
+    let Bar(x, y) = bar.as_mut();
+    //[normal]~^ ERROR mismatched types
+
+    match bar.as_mut() {
+        Bar(x, y) => {}
+        //[normal]~^ ERROR mismatched types
+        //[deref_patterns]~^^ ERROR mix of deref patterns and normal constructors
+        //[pin_ergonomics]~^^^ ERROR mix of deref patterns and normal constructors
+        //[both]~^^^^ ERROR mix of deref patterns and normal constructors
+        Pin { .. } => {}
+    }
+    let _ = || match bar.as_mut() {
+        Bar(x, y) => {}
+        //[normal]~^ ERROR mismatched types
+        //[deref_patterns]~^^ ERROR mix of deref patterns and normal constructors
+        //[pin_ergonomics]~^^^ ERROR mix of deref patterns and normal constructors
+        //[both]~^^^^ ERROR mix of deref patterns and normal constructors
+        Pin { .. } => {}
+    };
+}
+
+fn bar_const<T: Unpin, U: Unpin>(bar: Pin<&Bar<T, U>>) {
+    let Bar(x, y) = bar;
+    //[normal]~^ ERROR mismatched types
+
     match bar {
         Bar(x, y) => {}
         //[normal]~^ ERROR mismatched types
@@ -79,23 +117,32 @@ fn bar_mut<T: Unpin, U: Unpin>(bar: Pin<&mut Bar<T, U>>) {
     };
 }
 
-fn bar_const<T: Unpin, U: Unpin>(bar: Pin<&Bar<T, U>>) {
-    match bar {
-        Bar(x, y) => {}
+fn non_pin_project<T, U: Unpin>(foo: Pin<&mut NonPinProject<T>>, bar: Pin<&NonPinProject<U>>) {
+    let NonPinProject { x } = foo;
+    //[normal]~^ ERROR mismatched types
+    //[pin_ergonomics]~^^ ERROR cannot project on type that is not `#[pin_project]`
+    //[both]~^^^ ERROR cannot project on type that is not `#[pin_project]`
+    let NonPinProject { x } = bar;
+    //[normal]~^ ERROR mismatched types
+    //[pin_ergonomics]~^^ ERROR cannot project on type that is not `#[pin_project]`
+    //[both]~^^^ ERROR cannot project on type that is not `#[pin_project]`
+
+    match foo {
+        NonPinProject { x } => {}
         //[normal]~^ ERROR mismatched types
         //[deref_patterns]~^^ ERROR mix of deref patterns and normal constructors
-        //[pin_ergonomics]~^^^ ERROR mix of deref patterns and normal constructors
-        //[both]~^^^^ ERROR mix of deref patterns and normal constructors
+        //[pin_ergonomics]~^^^ ERROR cannot project on type that is not `#[pin_project]`
+        //[both]~^^^^ ERROR cannot project on type that is not `#[pin_project]`
         Pin { .. } => {}
     }
-    let _ = || match bar {
-        Bar(x, y) => {}
+    match bar {
+        NonPinProject { x } => {}
         //[normal]~^ ERROR mismatched types
         //[deref_patterns]~^^ ERROR mix of deref patterns and normal constructors
-        //[pin_ergonomics]~^^^ ERROR mix of deref patterns and normal constructors
-        //[both]~^^^^ ERROR mix of deref patterns and normal constructors
+        //[pin_ergonomics]~^^^ ERROR cannot project on type that is not `#[pin_project]`
+        //[both]~^^^^ ERROR cannot project on type that is not `#[pin_project]`
         Pin { .. } => {}
-    };
+    }
 }
 
 fn main() {}

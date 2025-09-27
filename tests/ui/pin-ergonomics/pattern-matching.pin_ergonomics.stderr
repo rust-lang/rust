@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/pattern-matching.rs:116:6
+  --> $DIR/pattern-matching.rs:115:6
    |
 LL |     (&mut x,): Pin<&'a mut &'a mut (Foo<T, U>,)>,
    |      ^^^^^^    --------------------------------- expected due to this
@@ -9,7 +9,7 @@ LL |     (&mut x,): Pin<&'a mut &'a mut (Foo<T, U>,)>,
    = note:         expected struct `Foo<T, U>`
            found mutable reference `&mut _`
 note: to declare a mutable binding use: `mut x`
-  --> $DIR/pattern-matching.rs:116:6
+  --> $DIR/pattern-matching.rs:115:6
    |
 LL |     (&mut x,): Pin<&'a mut &'a mut (Foo<T, U>,)>,
    |      ^^^^^^
@@ -20,7 +20,7 @@ LL +     (x,): Pin<&'a mut &'a mut (Foo<T, U>,)>,
    |
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-matching.rs:122:5
+  --> $DIR/pattern-matching.rs:121:5
    |
 LL |     &mut (x,): Pin<&'a mut (&'a mut Foo<T, U>,)>,
    |     ^^^^^^^^^  --------------------------------- expected due to this
@@ -35,7 +35,7 @@ LL |     &mut (x,): Pin<&'a mut (&'a mut Foo<T, U>,)>.pointer,
    |                                                 ++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-matching.rs:128:5
+  --> $DIR/pattern-matching.rs:127:5
    |
 LL |     &mut (x,): Pin<&'a mut &'a mut (Foo<T, U>,)>,
    |     ^^^^^^^^^  --------------------------------- expected due to this

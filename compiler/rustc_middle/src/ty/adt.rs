@@ -57,6 +57,8 @@ bitflags::bitflags! {
         const IS_UNSAFE_PINNED              = 1 << 10;
         /// Indicates whether the type is `Pin`.
         const IS_PIN                        = 1 << 11;
+        /// Indicates whether the type is `#[pin_project]`.
+        const IS_PIN_PROJECT                = 1 << 12;
     }
 }
 rustc_data_structures::external_bitflags_debug! { AdtFlags }
@@ -286,6 +288,10 @@ impl AdtDefData {
             debug!("found non-exhaustive variant list for {:?}", did);
             flags = flags | AdtFlags::IS_VARIANT_LIST_NON_EXHAUSTIVE;
         }
+        if find_attr!(tcx.get_all_attrs(did), AttributeKind::PinProject(..)) {
+            debug!("found pin-project type {:?}", did);
+            flags |= AdtFlags::IS_PIN_PROJECT;
+        }
 
         flags |= match kind {
             AdtKind::Enum => AdtFlags::IS_ENUM,
@@ -437,6 +443,13 @@ impl<'tcx> AdtDef<'tcx> {
     #[inline]
     pub fn is_pin(self) -> bool {
         self.flags().contains(AdtFlags::IS_PIN)
+    }
+
+    /// Returns `true` is this is `#[pin_project]` for the purposes
+    /// of structural pinning.
+    #[inline]
+    pub fn is_pin_project(self) -> bool {
+        self.flags().contains(AdtFlags::IS_PIN_PROJECT)
     }
 
     /// Returns `true` if this type has a destructor.
