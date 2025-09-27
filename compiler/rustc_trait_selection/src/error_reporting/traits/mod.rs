@@ -21,7 +21,7 @@ use rustc_infer::traits::{
 };
 use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::{ErrorGuaranteed, ExpnKind, Span};
+use rustc_span::{DesugaringKind, ErrorGuaranteed, ExpnKind, Span};
 use tracing::{info, instrument};
 
 pub use self::overflow::*;
@@ -154,9 +154,20 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             })
             .collect();
 
-        // Ensure `T: Sized`, `T: MetaSized`, `T: PointeeSized` and `T: WF` obligations come last.
+        // Ensure `T: Sized`, `T: MetaSized`, `T: PointeeSized` and `T: WF` obligations come last,
+        // and `Subtype` obligations from `FormatLiteral` desugarings come first.
         // This lets us display diagnostics with more relevant type information and hide redundant
         // E0282 errors.
+        #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+        enum ErrorSortKey {
+            SubtypeFormat(usize, usize),
+            OtherKind,
+            SizedTrait,
+            MetaSizedTrait,
+            PointeeSizedTrait,
+            Coerce,
+            WellFormed,
+        }
         errors.sort_by_key(|e| {
             let maybe_sizedness_did = match e.obligation.predicate.kind().skip_binder() {
                 ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) => Some(pred.def_id()),
@@ -165,12 +176,30 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             };
 
             match e.obligation.predicate.kind().skip_binder() {
-                _ if maybe_sizedness_did == self.tcx.lang_items().sized_trait() => 1,
-                _ if maybe_sizedness_did == self.tcx.lang_items().meta_sized_trait() => 2,
-                _ if maybe_sizedness_did == self.tcx.lang_items().pointee_sized_trait() => 3,
-                ty::PredicateKind::Coerce(_) => 4,
-                ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => 5,
-                _ => 0,
+                ty::PredicateKind::Subtype(_)
+                    if matches!(
+                        e.obligation.cause.span.desugaring_kind(),
+                        Some(DesugaringKind::FormatLiteral { .. })
+                    ) =>
+                {
+                    let (_, row, col, ..) =
+                        self.tcx.sess.source_map().span_to_location_info(e.obligation.cause.span);
+                    ErrorSortKey::SubtypeFormat(row, col)
+                }
+                _ if maybe_sizedness_did == self.tcx.lang_items().sized_trait() => {
+                    ErrorSortKey::SizedTrait
+                }
+                _ if maybe_sizedness_did == self.tcx.lang_items().meta_sized_trait() => {
+                    ErrorSortKey::MetaSizedTrait
+                }
+                _ if maybe_sizedness_did == self.tcx.lang_items().pointee_sized_trait() => {
+                    ErrorSortKey::PointeeSizedTrait
+                }
+                ty::PredicateKind::Coerce(_) => ErrorSortKey::Coerce,
+                ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => {
+                    ErrorSortKey::WellFormed
+                }
+                _ => ErrorSortKey::OtherKind,
             }
         });
 
