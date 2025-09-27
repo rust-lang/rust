@@ -7,7 +7,6 @@
 #![feature(iter_intersperse)]
 #![feature(iter_partition_in_place)]
 #![feature(never_type)]
-#![cfg_attr(bootstrap, feature(round_char_boundary))]
 #![feature(rustc_private)]
 #![feature(stmt_expr_attributes)]
 #![feature(unwrap_infallible)]
