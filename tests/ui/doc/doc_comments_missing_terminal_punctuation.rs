@@ -40,10 +40,14 @@ enum Exceptions {
     /// <https://spec.commonmark.org/0.31.2/#autolinks>
     //~^ doc_comments_missing_terminal_punctuation
     MarkdownAutolink,
+    /// This table introduction ends with a colon:
+    ///
     /// | Exception      | Note  |
     /// | -------------- | ----- |
     /// | Markdown table | A-ok  |
     MarkdownTable,
+    /// Here is a snippet
+    ///
     /// ```
     /// // Code blocks are no issues.
     /// ```
@@ -105,6 +109,8 @@ struct LinkRefDefinition;
 
 // List items do not always need to end with a period.
 enum UnorderedLists {
+    /// This list has an introductory sentence:
+    ///
     /// - A list item
     Dash,
     /// + A list item

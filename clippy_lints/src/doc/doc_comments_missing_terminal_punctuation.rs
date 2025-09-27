@@ -48,15 +48,14 @@ fn is_missing_punctuation(doc_string: &str) -> Option<usize> {
             ) => {
                 no_report_depth += 1;
             },
+            Event::End(TagEnd::FootnoteDefinition) => {
+                no_report_depth -= 1;
+            },
             Event::End(
-                TagEnd::CodeBlock
-                | TagEnd::FootnoteDefinition
-                | TagEnd::Heading(_)
-                | TagEnd::HtmlBlock
-                | TagEnd::List(_)
-                | TagEnd::Table,
+                TagEnd::CodeBlock | TagEnd::Heading(_) | TagEnd::HtmlBlock | TagEnd::List(_) | TagEnd::Table,
             ) => {
                 no_report_depth -= 1;
+                text_offset = None;
             },
             Event::InlineHtml(_) | Event::Start(Tag::Image { .. }) | Event::End(TagEnd::Image) => {
                 text_offset = None;

@@ -32,61 +32,61 @@ LL |     /// <https://spec.commonmark.org/0.31.2/#autolinks>
    |                                                        ^ help: end the doc comment with some punctuation: `.`
 
 error: doc comments should end with a terminal punctuation mark
-  --> tests/ui/doc/doc_comments_missing_terminal_punctuation.rs:67:15
+  --> tests/ui/doc/doc_comments_missing_terminal_punctuation.rs:71:15
    |
 LL |     /// U+0001
    |               ^ help: end the doc comment with some punctuation: `.`
 
 error: doc comments should end with a terminal punctuation mark
-  --> tests/ui/doc/doc_comments_missing_terminal_punctuation.rs:74:29
+  --> tests/ui/doc/doc_comments_missing_terminal_punctuation.rs:78:29
    |
 LL |     //! inner attributes too
    |                             ^ help: end the doc comment with some punctuation: `.`
 
 error: doc comments should end with a terminal punctuation mark
-  --> tests/ui/doc/doc_comments_missing_terminal_punctuation.rs:81:47
+  --> tests/ui/doc/doc_comments_missing_terminal_punctuation.rs:85:47
    |
 LL |     /// (But sometimes it is missing a period)
    |                                               ^ help: end the doc comment with some punctuation: `.`
 
 error: doc comments should end with a terminal punctuation mark
-  --> tests/ui/doc/doc_comments_missing_terminal_punctuation.rs:86:47
+  --> tests/ui/doc/doc_comments_missing_terminal_punctuation.rs:90:47
    |
 LL |     /// **But sometimes it is missing a period**
    |                                               ^ help: end the doc comment with some punctuation: `.`
 
 error: doc comments should end with a terminal punctuation mark
-  --> tests/ui/doc/doc_comments_missing_terminal_punctuation.rs:91:46
+  --> tests/ui/doc/doc_comments_missing_terminal_punctuation.rs:95:46
    |
 LL |     /// _But sometimes it is missing a period_
    |                                              ^ help: end the doc comment with some punctuation: `.`
 
 error: doc comments should end with a terminal punctuation mark
-  --> tests/ui/doc/doc_comments_missing_terminal_punctuation.rs:96:56
+  --> tests/ui/doc/doc_comments_missing_terminal_punctuation.rs:100:56
    |
 LL | /// Doc comments can end with an [inline link](#anchor)
    |                                                        ^ help: end the doc comment with some punctuation: `.`
 
 error: doc comments should end with a terminal punctuation mark
-  --> tests/ui/doc/doc_comments_missing_terminal_punctuation.rs:100:65
+  --> tests/ui/doc/doc_comments_missing_terminal_punctuation.rs:104:65
    |
 LL | /// Some doc comments contain [link reference definitions][spec]
    |                                                                 ^ help: end the doc comment with some punctuation: `.`
 
 error: doc comments should end with a terminal punctuation mark
-  --> tests/ui/doc/doc_comments_missing_terminal_punctuation.rs:123:57
+  --> tests/ui/doc/doc_comments_missing_terminal_punctuation.rs:129:57
    |
 LL | /// Doc comments with trailing blank lines are supported
    |                                                         ^ help: end the doc comment with some punctuation: `.`
 
 error: doc comments should end with a terminal punctuation mark
-  --> tests/ui/doc/doc_comments_missing_terminal_punctuation.rs:131:30
+  --> tests/ui/doc/doc_comments_missing_terminal_punctuation.rs:137:30
    |
 LL | /// Only the last sentence is
    |                              ^ help: end the doc comment with some punctuation: `.`
 
 error: doc comments should end with a terminal punctuation mark
-  --> tests/ui/doc/doc_comments_missing_terminal_punctuation.rs:143:27
+  --> tests/ui/doc/doc_comments_missing_terminal_punctuation.rs:149:27
    |
 LL |  * Block doc comments work
    |                           ^ help: end the doc comment with some punctuation: `.`
