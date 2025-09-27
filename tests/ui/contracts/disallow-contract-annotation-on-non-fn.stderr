@@ -1,47 +1,47 @@
 error: contract annotations can only be used on functions
-  --> $DIR/disallow-contract-annotation-on-non-fn.rs:7:1
+  --> $DIR/disallow-contract-annotation-on-non-fn.rs:8:1
    |
 LL | #[core::contracts::requires(true)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: contract annotations can only be used on functions
-  --> $DIR/disallow-contract-annotation-on-non-fn.rs:11:1
+  --> $DIR/disallow-contract-annotation-on-non-fn.rs:12:1
    |
 LL | #[core::contracts::ensures(|v| v == 100)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: contract annotations is only supported in functions with bodies
-  --> $DIR/disallow-contract-annotation-on-non-fn.rs:16:1
+  --> $DIR/disallow-contract-annotation-on-non-fn.rs:17:1
    |
 LL | #[core::contracts::ensures(|v| v == 100)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: contract annotations is only supported in functions with bodies
-  --> $DIR/disallow-contract-annotation-on-non-fn.rs:20:1
+  --> $DIR/disallow-contract-annotation-on-non-fn.rs:21:1
    |
 LL | #[core::contracts::ensures(|v| v == 100)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: contract annotations can only be used on functions
-  --> $DIR/disallow-contract-annotation-on-non-fn.rs:24:1
+  --> $DIR/disallow-contract-annotation-on-non-fn.rs:25:1
    |
 LL | #[core::contracts::requires(true)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: contract annotations can only be used on functions
-  --> $DIR/disallow-contract-annotation-on-non-fn.rs:35:1
+  --> $DIR/disallow-contract-annotation-on-non-fn.rs:36:1
    |
 LL | #[core::contracts::ensures(|dummy| dummy.0 > 0)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: contract annotations can only be used on functions
-  --> $DIR/disallow-contract-annotation-on-non-fn.rs:46:1
+  --> $DIR/disallow-contract-annotation-on-non-fn.rs:47:1
    |
 LL | #[core::contracts::requires(true)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: the feature `contracts` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/disallow-contract-annotation-on-non-fn.rs:3:12
+  --> $DIR/disallow-contract-annotation-on-non-fn.rs:4:12
    |
 LL | #![feature(contracts)]
    |            ^^^^^^^^^
