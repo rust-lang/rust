@@ -1,4 +1,5 @@
 use super::prelude::*;
+use crate::session_diagnostics::{ExpectedSingleWord, LimitInvalid};
 
 pub(crate) struct CrateNameParser;
 
@@ -146,4 +147,113 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcCoherenceIsCoreParser {
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::CrateLevel;
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcCoherenceIsCore;
+}
+
+pub(crate) struct FeatureParser;
+
+impl<S: Stage> CombineAttributeParser<S> for FeatureParser {
+    const PATH: &[Symbol] = &[sym::feature];
+    type Item = Ident;
+    const CONVERT: ConvertFn<Self::Item> = AttributeKind::Feature;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::CrateLevel;
+    const TEMPLATE: AttributeTemplate = template!(List: &["feature1, feature2, ..."]);
+
+    fn extend<'c>(
+        cx: &'c mut AcceptContext<'_, '_, S>,
+        args: &'c ArgParser<'_>,
+    ) -> impl IntoIterator<Item = Self::Item> + 'c {
+        let ArgParser::List(list) = args else {
+            cx.expected_list(cx.attr_span);
+            return Vec::new();
+        };
+
+        if list.is_empty() {
+            cx.warn_empty_attribute(cx.attr_span);
+        }
+
+        let mut res = Vec::new();
+
+        for elem in list.mixed() {
+            let Some(elem) = elem.meta_item() else {
+                cx.expected_identifier(elem.span());
+                continue;
+            };
+            if let Err(arg_span) = elem.args().no_args() {
+                cx.expected_no_args(arg_span);
+                continue;
+            }
+
+            let path = elem.path();
+            let Some(ident) = path.word() else {
+                let first_segment = elem.path().segments().next().expect("at least one segment");
+                cx.emit_err(ExpectedSingleWord {
+                    description: "rust features",
+                    span: path.span(),
+                    first_segment_span: first_segment.span,
+                    first_segment: first_segment.name,
+                });
+                continue;
+            };
+
+            res.push(ident);
+        }
+
+        res
+    }
+}
+
+pub(crate) struct RegisterToolParser;
+
+impl<S: Stage> CombineAttributeParser<S> for RegisterToolParser {
+    const PATH: &[Symbol] = &[sym::register_tool];
+    type Item = Ident;
+    const CONVERT: ConvertFn<Self::Item> = AttributeKind::RegisterTool;
+
+    // FIXME: recursion limit is allowed on all targets and ignored,
+    //        even though it should only be valid on crates of course
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
+    const TEMPLATE: AttributeTemplate = template!(List: &["tool1, tool2, ..."]);
+
+    fn extend<'c>(
+        cx: &'c mut AcceptContext<'_, '_, S>,
+        args: &'c ArgParser<'_>,
+    ) -> impl IntoIterator<Item = Self::Item> + 'c {
+        let ArgParser::List(list) = args else {
+            cx.expected_list(cx.attr_span);
+            return Vec::new();
+        };
+
+        if list.is_empty() {
+            cx.warn_empty_attribute(cx.attr_span);
+        }
+
+        let mut res = Vec::new();
+
+        for elem in list.mixed() {
+            let Some(elem) = elem.meta_item() else {
+                cx.expected_identifier(elem.span());
+                continue;
+            };
+            if let Err(arg_span) = elem.args().no_args() {
+                cx.expected_no_args(arg_span);
+                continue;
+            }
+
+            let path = elem.path();
+            let Some(ident) = path.word() else {
+                let first_segment = elem.path().segments().next().expect("at least one segment");
+                cx.emit_err(ExpectedSingleWord {
+                    description: "tools",
+                    span: path.span(),
+                    first_segment_span: first_segment.span,
+                    first_segment: first_segment.name,
+                });
+                continue;
+            };
+
+            res.push(ident);
+        }
+
+        res
+    }
 }

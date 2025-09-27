@@ -1,8 +1,14 @@
-error: `register_tool` only accepts identifiers
+error: tools are always a single identifier, not paths with multiple segments
   --> $DIR/nested-disallowed.rs:2:18
    |
 LL | #![register_tool(foo::bar)]
-   |                  ^^^^^^^^ not an identifier
+   |                  ^^^^^^^^
+   |
+help: did you maybe mean `foo`?
+  --> $DIR/nested-disallowed.rs:2:18
+   |
+LL | #![register_tool(foo::bar)]
+   |                  ^^^
 
 error: aborting due to 1 previous error
 

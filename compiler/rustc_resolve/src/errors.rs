@@ -1120,15 +1120,6 @@ pub(crate) struct ToolWasAlreadyRegistered {
     pub(crate) old_ident_span: Span,
 }
 
-#[derive(Diagnostic)]
-#[diag(resolve_tool_only_accepts_identifiers)]
-pub(crate) struct ToolOnlyAcceptsIdentifiers {
-    #[primary_span]
-    #[label]
-    pub(crate) span: Span,
-    pub(crate) tool: Symbol,
-}
-
 #[derive(Subdiagnostic)]
 pub(crate) enum DefinedHere {
     #[label(resolve_similarly_named_defined_here)]

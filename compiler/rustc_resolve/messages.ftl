@@ -415,10 +415,6 @@ resolve_tool_module_imported =
     cannot use a tool module through an import
     .note = the tool module imported here
 
-resolve_tool_only_accepts_identifiers =
-    `{$tool}` only accepts identifiers
-    .label = not an identifier
-
 resolve_tool_was_already_registered =
     tool `{$tool}` was already registered
     .label = already registered here

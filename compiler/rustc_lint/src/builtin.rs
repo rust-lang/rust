@@ -1133,12 +1133,10 @@ declare_lint_pass!(
 );
 
 impl<'tcx> LateLintPass<'tcx> for UnstableFeatures {
-    fn check_attribute(&mut self, cx: &LateContext<'_>, attr: &hir::Attribute) {
-        if attr.has_name(sym::feature)
-            && let Some(items) = attr.meta_item_list()
-        {
-            for item in items {
-                cx.emit_span_lint(UNSTABLE_FEATURES, item.span(), BuiltinUnstableFeatures);
+    fn check_attributes(&mut self, cx: &LateContext<'_>, attrs: &[hir::Attribute]) {
+        if let Some(features) = find_attr!(attrs, AttributeKind::Feature(features, _) => features) {
+            for feature in features {
+                cx.emit_span_lint(UNSTABLE_FEATURES, feature.span, BuiltinUnstableFeatures);
             }
         }
     }
