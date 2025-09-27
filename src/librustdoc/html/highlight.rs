@@ -950,19 +950,19 @@ impl<'src> Classifier<'src> {
         let file_span = self.file_span;
         let no_highlight =
             || (new_span(before, text, file_span), Highlight::Token { text, class: None });
-        let mut whitespace = || {
+        let mut whitespace = |class| {
             let mut start = 0u32;
             for part in text.split('\n').intersperse("\n").filter(|s| !s.is_empty()) {
                 sink(
                     new_span(before + start, part, file_span),
-                    Highlight::Token { text: part, class: None },
+                    Highlight::Token { text: part, class },
                 );
                 start += part.len() as u32;
             }
         };
         let class = match token {
             TokenKind::Whitespace => {
-                whitespace();
+                whitespace(None);
                 return;
             }
             TokenKind::LineComment { doc_style } | TokenKind::BlockComment { doc_style, .. } => {
@@ -986,7 +986,7 @@ impl<'src> Classifier<'src> {
             // a logical and or a multiplication operator: `&&` or `* `.
             TokenKind::Star => match self.tokens.peek() {
                 Some((TokenKind::Whitespace, _)) => {
-                    whitespace();
+                    whitespace(None);
                     return;
                 }
                 Some((TokenKind::Ident, "mut")) => {
@@ -1019,7 +1019,7 @@ impl<'src> Classifier<'src> {
                     return;
                 }
                 Some((TokenKind::Whitespace, _)) => {
-                    whitespace();
+                    whitespace(None);
                     return;
                 }
                 Some((TokenKind::Ident, "mut")) => {
@@ -1206,14 +1206,7 @@ impl<'src> Classifier<'src> {
         };
         // Anything that didn't return above is the simple case where we the
         // class just spans a single token, so we can use the `string` method.
-        let mut start = 0u32;
-        for part in text.split('\n').intersperse("\n").filter(|s| !s.is_empty()) {
-            sink(
-                new_span(before + start, part, file_span),
-                Highlight::Token { text: part, class: Some(class) },
-            );
-            start += part.len() as u32;
-        }
+        whitespace(Some(class));
     }
 
     fn peek(&mut self) -> Option<TokenKind> {
