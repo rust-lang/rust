@@ -550,7 +550,7 @@ declare_features! (
     /// Allows fused `loop`/`match` for direct intraprocedural jumps.
     (incomplete, loop_match, "1.90.0", Some(132306)),
     /// Allow `macro_rules!` attribute rules
-    (unstable, macro_attr, "1.91.0", Some(83527)),
+    (unstable, macro_attr, "1.91.0", Some(143547)),
     /// Allow `macro_rules!` derive rules
     (unstable, macro_derive, "1.91.0", Some(143549)),
     /// Give access to additional metadata about declarative macro meta-variables.
