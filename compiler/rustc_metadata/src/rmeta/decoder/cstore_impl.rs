@@ -691,8 +691,8 @@ fn provide_cstore_hooks(providers: &mut Providers) {
             .get(&stable_crate_id)
             .unwrap_or_else(|| bug!("uninterned StableCrateId: {stable_crate_id:?}"));
         assert_ne!(cnum, LOCAL_CRATE);
-        let def_index = cstore.get_crate_data(cnum).def_path_hash_to_def_index(hash);
-        DefId { krate: cnum, index: def_index }
+        let def_index = cstore.get_crate_data(cnum).def_path_hash_to_def_index(hash)?;
+        Some(DefId { krate: cnum, index: def_index })
     };
 
     providers.hooks.expn_hash_to_expn_id = |tcx, cnum, index_guess, hash| {
