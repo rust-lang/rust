@@ -33,6 +33,7 @@ pub struct Foo(#[m$0] i32);
             at diagnostic::do_not_recommend
             at diagnostic::on_unimplemented
             at doc = "…"
+            at doc = include_str!("…")
             at doc(alias = "…")
             at doc(hidden)
             at expect(…)
@@ -85,6 +86,7 @@ struct Foo;
             at deprecated
             at derive(…)
             at doc = "…"
+            at doc = include_str!("…")
             at doc(alias = "…")
             at doc(hidden)
             at expect(…)
@@ -158,6 +160,7 @@ fn attr_on_source_file() {
             at deny(…)
             at deprecated
             at doc = "…"
+            at doc = include_str!("…")
             at doc(alias = "…")
             at doc(hidden)
             at expect(…)
@@ -189,6 +192,7 @@ fn attr_on_module() {
             at deny(…)
             at deprecated
             at doc = "…"
+            at doc = include_str!("…")
             at doc(alias = "…")
             at doc(hidden)
             at expect(…)
@@ -212,6 +216,7 @@ fn attr_on_module() {
             at deny(…)
             at deprecated
             at doc = "…"
+            at doc = include_str!("…")
             at doc(alias = "…")
             at doc(hidden)
             at expect(…)
@@ -238,6 +243,7 @@ fn attr_on_macro_rules() {
             at deny(…)
             at deprecated
             at doc = "…"
+            at doc = include_str!("…")
             at doc(alias = "…")
             at doc(hidden)
             at expect(…)
@@ -264,6 +270,7 @@ fn attr_on_macro_def() {
             at deny(…)
             at deprecated
             at doc = "…"
+            at doc = include_str!("…")
             at doc(alias = "…")
             at doc(hidden)
             at expect(…)
@@ -288,6 +295,7 @@ fn attr_on_extern_crate() {
             at deny(…)
             at deprecated
             at doc = "…"
+            at doc = include_str!("…")
             at doc(alias = "…")
             at doc(hidden)
             at expect(…)
@@ -313,6 +321,7 @@ fn attr_on_use() {
             at deny(…)
             at deprecated
             at doc = "…"
+            at doc = include_str!("…")
             at doc(alias = "…")
             at doc(hidden)
             at expect(…)
@@ -337,6 +346,7 @@ fn attr_on_type_alias() {
             at deny(…)
             at deprecated
             at doc = "…"
+            at doc = include_str!("…")
             at doc(alias = "…")
             at doc(hidden)
             at expect(…)
@@ -368,6 +378,7 @@ struct Foo;
             at derive(…)
             at derive_const macro derive_const
             at doc = "…"
+            at doc = include_str!("…")
             at doc(alias = "…")
             at doc(hidden)
             at expect(…)
@@ -396,6 +407,7 @@ fn attr_on_enum() {
             at deprecated
             at derive(…)
             at doc = "…"
+            at doc = include_str!("…")
             at doc(alias = "…")
             at doc(hidden)
             at expect(…)
@@ -422,6 +434,7 @@ fn attr_on_const() {
             at deny(…)
             at deprecated
             at doc = "…"
+            at doc = include_str!("…")
             at doc(alias = "…")
             at doc(hidden)
             at expect(…)
@@ -446,6 +459,7 @@ fn attr_on_static() {
             at deny(…)
             at deprecated
             at doc = "…"
+            at doc = include_str!("…")
             at doc(alias = "…")
             at doc(hidden)
             at expect(…)
@@ -476,6 +490,7 @@ fn attr_on_trait() {
             at deprecated
             at diagnostic::on_unimplemented
             at doc = "…"
+            at doc = include_str!("…")
             at doc(alias = "…")
             at doc(hidden)
             at expect(…)
@@ -502,6 +517,7 @@ fn attr_on_impl() {
             at deprecated
             at diagnostic::do_not_recommend
             at doc = "…"
+            at doc = include_str!("…")
             at doc(alias = "…")
             at doc(hidden)
             at expect(…)
@@ -522,6 +538,7 @@ fn attr_on_impl() {
             at deny(…)
             at deprecated
             at doc = "…"
+            at doc = include_str!("…")
             at doc(alias = "…")
             at doc(hidden)
             at expect(…)
@@ -548,6 +565,7 @@ fn attr_with_qualifier() {
             at deprecated
             at do_not_recommend
             at doc = "…"
+            at doc = include_str!("…")
             at doc(alias = "…")
             at doc(hidden)
             at expect(…)
@@ -566,6 +584,7 @@ fn attr_with_qualifier() {
             at deny(…)
             at deprecated
             at doc = "…"
+            at doc = include_str!("…")
             at doc(alias = "…")
             at doc(hidden)
             at expect(…)
@@ -616,6 +635,7 @@ fn attr_on_extern_block() {
             at deny(…)
             at deprecated
             at doc = "…"
+            at doc = include_str!("…")
             at doc(alias = "…")
             at doc(hidden)
             at expect(…)
@@ -637,6 +657,7 @@ fn attr_on_extern_block() {
             at deny(…)
             at deprecated
             at doc = "…"
+            at doc = include_str!("…")
             at doc(alias = "…")
             at doc(hidden)
             at expect(…)
@@ -682,6 +703,7 @@ fn attr_on_fn() {
             at deny(…)
             at deprecated
             at doc = "…"
+            at doc = include_str!("…")
             at doc(alias = "…")
             at doc(hidden)
             at expect(…)
@@ -724,6 +746,7 @@ fn attr_in_source_file_end() {
             at diagnostic::do_not_recommend
             at diagnostic::on_unimplemented
             at doc = "…"
+            at doc = include_str!("…")
             at doc(alias = "…")
             at doc(hidden)
             at expect(…)
