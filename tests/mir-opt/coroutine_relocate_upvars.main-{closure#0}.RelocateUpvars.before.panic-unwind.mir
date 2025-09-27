@@ -1,0 +1,78 @@
+// MIR for `main::{closure#0}` before RelocateUpvars
+
+fn main::{closure#0}(_1: {coroutine@$DIR/coroutine_relocate_upvars.rs:12:5: 12:7}, _2: ()) -> ()
+yields ()
+ {
+    debug x => (*(_1.0: &mut std::string::String));
+    let mut _0: ();
+    let mut _3: std::string::String;
+    let _4: ();
+    let mut _5: ();
+    let mut _6: &mut std::string::String;
+    let mut _7: &mut std::string::String;
+    let mut _8: &mut std::string::String;
+
+    bb0: {
+        StorageLive(_3);
+        _3 = String::new() -> [return: bb1, unwind: bb10];
+    }
+
+    bb1: {
+        _6 = deref_copy (_1.0: &mut std::string::String);
+        drop((*_6)) -> [return: bb2, unwind: bb3];
+    }
+
+    bb2: {
+        _7 = deref_copy (_1.0: &mut std::string::String);
+        (*_7) = move _3;
+        goto -> bb4;
+    }
+
+    bb3 (cleanup): {
+        _8 = deref_copy (_1.0: &mut std::string::String);
+        (*_8) = move _3;
+        goto -> bb10;
+    }
+
+    bb4: {
+        StorageDead(_3);
+        StorageLive(_4);
+        StorageLive(_5);
+        _5 = ();
+        _4 = yield(move _5) -> [resume: bb5, drop: bb7];
+    }
+
+    bb5: {
+        StorageDead(_5);
+        StorageDead(_4);
+        _0 = const ();
+        drop(_1) -> [return: bb6, unwind: bb11];
+    }
+
+    bb6: {
+        return;
+    }
+
+    bb7: {
+        StorageDead(_5);
+        StorageDead(_4);
+        goto -> bb8;
+    }
+
+    bb8: {
+        drop(_1) -> [return: bb9, unwind: bb11];
+    }
+
+    bb9: {
+        coroutine_drop;
+    }
+
+    bb10 (cleanup): {
+        StorageDead(_3);
+        drop(_1) -> [return: bb11, unwind terminate(cleanup)];
+    }
+
+    bb11 (cleanup): {
+        resume;
+    }
+}

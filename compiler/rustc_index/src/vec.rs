@@ -197,6 +197,11 @@ impl<I: Idx, T> IndexVec<I, T> {
     pub fn append(&mut self, other: &mut Self) {
         self.raw.append(&mut other.raw);
     }
+
+    #[inline]
+    pub fn debug_map_view(&self) -> IndexSliceMapView<'_, I, T> {
+        IndexSliceMapView(self.as_slice())
+    }
 }
 
 /// `IndexVec` is often used as a map, so it provides some map-like APIs.
@@ -220,11 +225,41 @@ impl<I: Idx, T> IndexVec<I, Option<T>> {
     pub fn contains(&self, index: I) -> bool {
         self.get(index).and_then(Option::as_ref).is_some()
     }
+
+    #[inline]
+    pub fn debug_map_view_compact(&self) -> IndexSliceMapViewCompact<'_, I, T> {
+        IndexSliceMapViewCompact(self.as_slice())
+    }
 }
+
+pub struct IndexSliceMapView<'a, I: Idx, T>(&'a IndexSlice<I, T>);
+pub struct IndexSliceMapViewCompact<'a, I: Idx, T>(&'a IndexSlice<I, Option<T>>);
 
 impl<I: Idx, T: fmt::Debug> fmt::Debug for IndexVec<I, T> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&self.raw, fmt)
+    }
+}
+
+impl<'a, I: Idx, T: fmt::Debug> fmt::Debug for IndexSliceMapView<'a, I, T> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut entries = fmt.debug_map();
+        for (idx, val) in self.0.iter_enumerated() {
+            entries.entry(&idx, val);
+        }
+        entries.finish()
+    }
+}
+
+impl<'a, I: Idx, T: fmt::Debug> fmt::Debug for IndexSliceMapViewCompact<'a, I, T> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut entries = fmt.debug_map();
+        for (idx, val) in self.0.iter_enumerated() {
+            if let Some(val) = val {
+                entries.entry(&idx, val);
+            }
+        }
+        entries.finish()
     }
 }
 

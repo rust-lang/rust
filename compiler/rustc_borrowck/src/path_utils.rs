@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 use rustc_abi::FieldIdx;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_middle::mir::{BasicBlock, Body, Location, Place, PlaceRef, ProjectionElem};
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{CapturedPlace, TyCtxt};
 use tracing::debug;
 
 use crate::borrow_set::{BorrowData, BorrowSet, TwoPhaseActivation};
@@ -133,7 +133,7 @@ pub(super) fn borrow_of_local_data(place: Place<'_>) -> bool {
 /// of a closure type.
 pub(crate) fn is_upvar_field_projection<'tcx>(
     tcx: TyCtxt<'tcx>,
-    upvars: &[&rustc_middle::ty::CapturedPlace<'tcx>],
+    upvars: &[&CapturedPlace<'tcx>],
     place_ref: PlaceRef<'tcx>,
     body: &Body<'tcx>,
 ) -> Option<FieldIdx> {

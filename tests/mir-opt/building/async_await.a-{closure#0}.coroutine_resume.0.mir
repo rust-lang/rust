@@ -7,6 +7,7 @@
         Panicked (2): [],
     },
     storage_conflicts: BitMatrix(0x0) {},
+    relocated_upvars: {},
 } */
 
 fn a::{closure#0}(_1: Pin<&mut {async fn body of a()}>, _2: &mut Context<'_>) -> Poll<()> {
