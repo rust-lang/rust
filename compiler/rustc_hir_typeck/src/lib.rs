@@ -5,6 +5,7 @@
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
 #![feature(iter_intersperse)]
+#![feature(iter_order_by)]
 #![feature(never_type)]
 // tidy-alphabetical-end
 

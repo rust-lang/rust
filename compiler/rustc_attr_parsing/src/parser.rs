@@ -49,7 +49,7 @@ impl<'a> PathParser<'a> {
     }
 
     pub fn segments_is(&self, segments: &[Symbol]) -> bool {
-        self.len() == segments.len() && self.segments().zip(segments).all(|(a, b)| a.name == *b)
+        self.segments().map(|segment| &segment.name).eq(segments)
     }
 
     pub fn word(&self) -> Option<Ident> {
@@ -72,7 +72,8 @@ impl<'a> PathParser<'a> {
     /// Unlike [`segments_is`](Self::segments_is),
     /// `self` may contain more segments than the number matched  against.
     pub fn starts_with(&self, segments: &[Symbol]) -> bool {
-        segments.len() < self.len() && self.segments().zip(segments).all(|(a, b)| a.name == *b)
+        segments.len() < self.len()
+            && self.segments().take(segments.len()).map(|segment| &segment.name).eq(segments)
     }
 }
 
