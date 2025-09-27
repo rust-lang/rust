@@ -14,7 +14,7 @@ use crate::core::build_steps::tool::{self, RustcPrivateCompilers, SourceType, To
 use crate::core::build_steps::vendor::{Vendor, default_paths_to_vendor};
 use crate::core::builder::{Builder, Kind, RunConfig, ShouldRun, Step, StepMetadata};
 use crate::core::config::TargetSelection;
-use crate::core::config::flags::get_completion;
+use crate::core::config::flags::{get_completion, get_help};
 use crate::utils::exec::command;
 use crate::{Mode, t};
 
@@ -499,5 +499,33 @@ impl Step for Rustfmt {
         rustfmt.args(builder.config.args());
 
         rustfmt.into_cmd().run(builder);
+    }
+}
+
+/// Return the path of x.py's help.
+pub fn get_help_path(builder: &Builder<'_>) -> PathBuf {
+    builder.src.join("src/etc/xhelp")
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct GenerateHelp;
+
+impl Step for GenerateHelp {
+    type Output = ();
+
+    fn run(self, builder: &Builder<'_>) {
+        let path = get_help_path(builder);
+        if let Some(help) = get_help(&path) {
+            std::fs::write(&path, help)
+                .unwrap_or_else(|e| panic!("writing help into {} failed: {e:?}", path.display()));
+        }
+    }
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("generate-help")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(GenerateHelp)
     }
 }
