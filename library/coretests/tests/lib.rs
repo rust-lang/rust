@@ -19,6 +19,7 @@
 #![feature(const_cmp)]
 #![feature(const_convert)]
 #![feature(const_destruct)]
+#![feature(const_drop_in_place)]
 #![feature(const_eval_select)]
 #![feature(const_mul_add)]
 #![feature(const_ops)]
