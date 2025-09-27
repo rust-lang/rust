@@ -4,6 +4,7 @@
 
 use crate::sealed::Sealed;
 use crate::sys_common::AsInner;
+#[cfg(target_os = "linux")]
 use crate::time::Duration;
 use crate::{io, net};
 
