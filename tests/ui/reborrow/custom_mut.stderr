@@ -1,0 +1,29 @@
+error[E0382]: use of moved value: `a`
+  --> $DIR/custom_mut.rs:12:20
+   |
+LL |     let a = CustomMut(&mut ());
+   |         - move occurs because `a` has type `CustomMut<'_, ()>`, which does not implement the `Copy` trait
+LL |     let _ = method(a);
+   |                    - value moved here
+LL |     let _ = method(a);
+   |                    ^ value used here after move
+   |
+note: consider changing this parameter type in function `method` to borrow instead if owning the value isn't necessary
+  --> $DIR/custom_mut.rs:7:14
+   |
+LL | fn method(a: CustomMut<'_, ()>) {}
+   |    ------    ^^^^^^^^^^^^^^^^^ this parameter takes ownership of the value
+   |    |
+   |    in this function
+note: if `CustomMut<'_, ()>` implemented `Clone`, you could clone the value
+  --> $DIR/custom_mut.rs:4:1
+   |
+LL | struct CustomMut<'a, T>(&'a mut T);
+   | ^^^^^^^^^^^^^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let _ = method(a);
+   |                    - you could clone this value
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.
