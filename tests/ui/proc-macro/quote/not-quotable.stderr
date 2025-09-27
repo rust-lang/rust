@@ -15,8 +15,8 @@ LL |     let _ = quote! { $ip };
              Cow<'_, T>
              Option<T>
              Rc<T>
-             RepInterp<T>
-           and 25 others
+             bool
+           and 24 others
 
 error: aborting due to 1 previous error
 

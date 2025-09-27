@@ -1897,6 +1897,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         other: bool,
         param_env: ty::ParamEnv<'tcx>,
     ) -> bool {
+        let parent_map = self.tcx.visible_parent_map(());
         let alternative_candidates = |def_id: DefId| {
             let mut impl_candidates: Vec<_> = self
                 .tcx
@@ -1921,7 +1922,21 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         // FIXME(compiler-errors): This could be generalized, both to
                         // be more granular, and probably look past other `#[fundamental]`
                         // types, too.
-                        self.tcx.visibility(def.did()).is_accessible_from(body_def_id, self.tcx)
+                        let mut did = def.did();
+                        if self.tcx.visibility(did).is_accessible_from(body_def_id, self.tcx) {
+                            // don't suggest foreign `#[doc(hidden)]` types
+                            if !did.is_local() {
+                                while let Some(parent) = parent_map.get(&did) {
+                                    if self.tcx.is_doc_hidden(did) {
+                                        return false;
+                                    }
+                                    did = *parent;
+                                }
+                            }
+                            true
+                        } else {
+                            false
+                        }
                     } else {
                         true
                     }
