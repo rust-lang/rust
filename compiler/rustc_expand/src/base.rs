@@ -10,7 +10,7 @@ use rustc_ast::attr::{AttributeExt, MarkedAttrs};
 use rustc_ast::token::MetaVarKind;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{AssocCtxt, Visitor};
-use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, Item, NodeId, PatKind};
+use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, Item, NodeId, PatKind, Safety};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::sync;
 use rustc_errors::{BufferedEarlyLint, DiagCtxtHandle, ErrorGuaranteed, PResult};
@@ -345,6 +345,21 @@ pub trait AttrProcMacro {
         annotation: TokenStream,
         annotated: TokenStream,
     ) -> Result<TokenStream, ErrorGuaranteed>;
+
+    // Default implementation for safe attributes; override if the attribute can be unsafe.
+    fn expand_with_safety<'cx>(
+        &self,
+        ecx: &'cx mut ExtCtxt<'_>,
+        safety: Safety,
+        span: Span,
+        annotation: TokenStream,
+        annotated: TokenStream,
+    ) -> Result<TokenStream, ErrorGuaranteed> {
+        if let Safety::Unsafe(span) = safety {
+            ecx.dcx().span_err(span, "unnecessary `unsafe` on safe attribute");
+        }
+        self.expand(ecx, span, annotation, annotated)
+    }
 }
 
 impl<F> AttrProcMacro for F
