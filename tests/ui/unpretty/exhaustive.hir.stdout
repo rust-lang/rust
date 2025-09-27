@@ -8,27 +8,12 @@
 // Note: the HIR revision includes a `.stderr` file because there are some
 // errors that only occur once we get past the AST.
 
-#![feature(auto_traits)]
-#![feature(box_patterns)]
-#![feature(builtin_syntax)]
-#![feature(const_trait_impl)]
-#![feature(coroutines)]
-#![feature(decl_macro)]
-#![feature(deref_patterns)]
-#![feature(explicit_tail_calls)]
-#![feature(gen_blocks)]
-#![feature(more_qualified_paths)]
-#![feature(never_patterns)]
-#![feature(never_type)]
-#![feature(pattern_types)]
-#![feature(pattern_type_macro)]
-#![feature(prelude_import)]
-#![feature(specialization)]
-#![feature(trace_macros)]
-#![feature(trait_alias)]
-#![feature(try_blocks)]
-#![feature(yeet_expr)]
 #![allow(incomplete_features)]
+#![attr = Feature([auto_traits#0, box_patterns#0, builtin_syntax#0,
+const_trait_impl#0, coroutines#0, decl_macro#0, deref_patterns#0,
+explicit_tail_calls#0, gen_blocks#0, more_qualified_paths#0, never_patterns#0,
+never_type#0, pattern_types#0, pattern_type_macro#0, prelude_import#0,
+specialization#0, trace_macros#0, trait_alias#0, try_blocks#0, yeet_expr#0])]
 #[attr = MacroUse {arguments: UseAll}]
 extern crate std;
 #[prelude_import]
