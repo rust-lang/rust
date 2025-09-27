@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-118809.rs:6:10
+  --> $DIR/issue-118809.rs:7:10
    |
 LL | #[derive(Deserialize)]
    |          ^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL | #[derive(Deserialize)]
    |          arguments to this enum variant are incorrect
    |
 help: the type constructed contains `u32` due to the type of the argument passed
-  --> $DIR/issue-118809.rs:6:10
+  --> $DIR/issue-118809.rs:7:10
    |
 LL | #[derive(Deserialize)]
    |          ^^^^^^^^^^^ this argument influences the type of `Some`

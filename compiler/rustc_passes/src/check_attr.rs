@@ -282,6 +282,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::ObjcClass { .. }
                     | AttributeKind::ObjcSelector { .. }
                     | AttributeKind::RustcCoherenceIsCore(..)
+                    | AttributeKind::DebuggerVisualizer(..)
                 ) => { /* do nothing  */ }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
@@ -302,7 +303,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             &mut doc_aliases,
                         ),
                         [sym::no_link, ..] => self.check_no_link(hir_id, attr, span, target),
-                        [sym::debugger_visualizer, ..] => self.check_debugger_visualizer(attr, target),
                         [sym::rustc_no_implicit_autorefs, ..] => {
                             self.check_applied_to_fn_or_method(hir_id, attr.span(), span, target)
                         }
@@ -1780,20 +1780,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 self.tcx.dcx().emit_err(errors::MacroOnlyAttribute { attr_span, span });
             }
             _ => {}
-        }
-    }
-
-    /// Checks if the items on the `#[debugger_visualizer]` attribute are valid.
-    fn check_debugger_visualizer(&self, attr: &Attribute, target: Target) {
-        // Here we only check that the #[debugger_visualizer] attribute is attached
-        // to nothing other than a module. All other checks are done in the
-        // `debugger_visualizer` query where they need to be done for decoding
-        // anyway.
-        match target {
-            Target::Mod => {}
-            _ => {
-                self.dcx().emit_err(errors::DebugVisualizerPlacement { span: attr.span() });
-            }
         }
     }
 

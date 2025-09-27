@@ -7,6 +7,7 @@
 //@ compile-flags: -C lto -g -Cdwarf-version=5
 //@ no-prefer-dynamic
 //@ build-pass
+//@ ignore-backends: gcc
 
 extern crate dwarf_mixed_versions_lto_aux;
 
