@@ -6,7 +6,8 @@
       let _1: u32;
       let mut _2: (u32, bool);
       scope 1 {
-          debug x => _1;
+-         debug x => _1;
++         debug x => const 2_u32;
       }
   
       bb0: {

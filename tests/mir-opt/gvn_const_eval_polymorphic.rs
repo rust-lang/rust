@@ -51,7 +51,7 @@ fn optimize_false<T>() -> bool {
 // EMIT_MIR gvn_const_eval_polymorphic.no_optimize.GVN.diff
 fn no_optimize<T>() -> bool {
     // CHECK-LABEL: fn no_optimize(
-    // CHECK: _0 = Eq(const no_optimize::<T>::{constant#0}, const no_optimize::<T>::{constant#1});
+    // CHECK: _0 = Eq(const no_optimize::<T>::{constant#0}, const true);
     // CHECK-NEXT: return;
     (const { type_name_contains_i32(&generic::<T>) }) == const { true }
 }

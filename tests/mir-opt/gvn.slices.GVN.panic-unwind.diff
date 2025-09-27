@@ -50,10 +50,12 @@
       let _53: &*const u8;
       let mut _54: std::option::Option<std::fmt::Arguments<'_>>;
       scope 1 {
-          debug s => _1;
+-         debug s => _1;
++         debug s => const "my favourite slice";
           let _4: &str;
           scope 2 {
-              debug t => _4;
+-             debug t => _4;
++             debug t => const "my favourite slice";
               let _15: &*const u8;
               let _16: &*const u8;
               let _29: &[u8];
@@ -62,7 +64,8 @@
                   debug right_val => _16;
                   let _21: core::panicking::AssertKind;
                   scope 4 {
-                      debug kind => _21;
+-                     debug kind => _21;
++                     debug kind => const core::panicking::AssertKind::Eq;
                   }
               }
               scope 5 {
@@ -74,7 +77,8 @@
                       debug right_val => _42;
                       let _47: core::panicking::AssertKind;
                       scope 7 {
-                          debug kind => _47;
+-                         debug kind => _47;
++                         debug kind => const core::panicking::AssertKind::Eq;
                       }
                   }
               }
