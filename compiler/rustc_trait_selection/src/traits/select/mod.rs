@@ -1462,7 +1462,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             TypingMode::Analysis { .. }
             | TypingMode::Borrowck { .. }
             | TypingMode::PostBorrowckAnalysis { .. }
-            | TypingMode::PostAnalysis => return Ok(()),
+            | TypingMode::PostAnalysis
+            | TypingMode::Codegen => return Ok(()),
         }
 
         debug!("is_knowable()");
@@ -1521,7 +1522,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             //
             // FIXME(#132279): This is still incorrect as we treat opaque types
             // and default associated items differently between these two modes.
-            TypingMode::PostAnalysis => true,
+            TypingMode::PostAnalysis | TypingMode::Codegen => true,
         }
     }
 
@@ -2844,6 +2845,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             }
             TypingMode::Coherence
             | TypingMode::PostAnalysis
+            | TypingMode::Codegen
             | TypingMode::Borrowck { defining_opaque_types: _ }
             | TypingMode::PostBorrowckAnalysis { defined_opaque_types: _ } => false,
         }

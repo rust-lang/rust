@@ -1,0 +1,24 @@
+error: future cannot be sent between threads safely
+  --> $DIR/box-dyn-non-send.rs:7:5
+   |
+LL | /     Box::new(async {
+LL | |
+LL | |         let non_send = null::<()>();
+LL | |         &non_send;
+LL | |         async {}.await
+LL | |     })
+   | |______^ future created by async block is not `Send`
+   |
+   = help: within `{async block@$DIR/box-dyn-non-send.rs:7:14: 7:19}`, the trait `Send` is not implemented for `*const ()`
+note: future is not `Send` as this value is used across an await
+  --> $DIR/box-dyn-non-send.rs:11:18
+   |
+LL |         let non_send = null::<()>();
+   |             -------- has type `*const ()` which is not `Send`
+LL |         &non_send;
+LL |         async {}.await
+   |                  ^^^^^ await occurs here, with `non_send` maybe used later
+   = note: required for the cast from `Box<{async block@$DIR/box-dyn-non-send.rs:7:14: 7:19}>` to `Box<dyn Send>`
+
+error: aborting due to 1 previous error
+

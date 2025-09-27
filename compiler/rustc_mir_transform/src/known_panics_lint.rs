@@ -44,13 +44,6 @@ impl<'tcx> crate::MirLint<'tcx> for KnownPanicsLint {
             return;
         }
 
-        // FIXME(welseywiser) const prop doesn't work on coroutines because of query cycles
-        // computing their layout.
-        if tcx.is_coroutine(def_id.to_def_id()) {
-            trace!("KnownPanicsLint skipped for coroutine {:?}", def_id);
-            return;
-        }
-
         trace!("KnownPanicsLint starting for {:?}", def_id);
 
         let mut linter = ConstPropagator::new(body, tcx);
