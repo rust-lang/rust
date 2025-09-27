@@ -1,10 +1,10 @@
 # This config uses a separate build directory for rust-analyzer,
 # so that r-a's checks don't block user `x` commands and vice-verse.
-# R-a's build directory is located in `build/rust-analyzer`.
+# R-a's build directory is located in `build-rust-analyzer`.
 #
 # To build rustfmt and proc macro server for r-a run the following command:
 # ```
-# x b proc-macro-srv-cli rustfmt --stage 0 --build-dir build/rust-analyzer
+# x b proc-macro-srv-cli rustfmt --stage 0 --build-dir build-rust-analyzer
 # ```
 
 [language-server.rust-analyzer.config]
@@ -26,17 +26,17 @@ overrideCommand = [
     "check",
     "--json-output",
     "--build-dir",
-    "build/rust-analyzer",
+    "build-rust-analyzer",
 ]
 
 [language-server.rust-analyzer.config.rustfmt]
 overrideCommand = [
-    "build/rust-analyzer/host/rustfmt/bin/rustfmt",
+    "build-rust-analyzer/host/rustfmt/bin/rustfmt",
     "--edition=2024"
 ]
 
 [language-server.rust-analyzer.config.procMacro]
-server = "build/rust-analyzer/host/stage0/libexec/rust-analyzer-proc-macro-srv"
+server = "build-rust-analyzer/host/stage0/libexec/rust-analyzer-proc-macro-srv"
 enable = true
 
 [language-server.rust-analyzer.config.rustc]
@@ -58,6 +58,6 @@ overrideCommand = [
     "check",
     "--json-output",
     "--build-dir",
-    "build/rust-analyzer",
-    "--compile-time-deps"
+    "build-rust-analyzer",
+    "--compile-time-deps",
 ]
