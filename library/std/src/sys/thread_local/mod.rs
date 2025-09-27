@@ -42,7 +42,7 @@ cfg_select! {
     }
     _ => {
         mod os;
-        pub use os::{Storage, thread_local_inner};
+        pub use os::{Storage, thread_local_inner, value_align};
         pub(crate) use os::{LocalPointer, local_pointer};
     }
 }
