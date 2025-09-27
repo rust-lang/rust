@@ -1221,6 +1221,8 @@ impl<'a> Builder<'a> {
                 install::Miri,
                 install::LlvmTools,
                 install::Src,
+                install::RustcCodegenCranelift,
+                install::LlvmBitcodeLinker
             ),
             Kind::Run => describe!(
                 run::BuildManifest,
