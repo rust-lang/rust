@@ -77,9 +77,6 @@ impl<'tcx> Iterator for Prefixes<'tcx> {
                         | ProjectionElem::Index(_) => {
                             cursor = cursor_base;
                         }
-                        ProjectionElem::Subtype(..) => {
-                            panic!("Subtype projection is not allowed before borrow check")
-                        }
                         ProjectionElem::Deref => {
                             match self.kind {
                                 PrefixSet::Shallow => {

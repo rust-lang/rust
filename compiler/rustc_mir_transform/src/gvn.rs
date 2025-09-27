@@ -656,7 +656,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     let res = self.ecx.float_to_float_or_int(&value, ty).discard_err()?;
                     res.into()
                 }
-                CastKind::Transmute => {
+                CastKind::Transmute | CastKind::Subtype => {
                     let value = self.evaluated[value].as_ref()?;
                     // `offset` for immediates generally only supports projections that match the
                     // type of the immediate. However, as a HACK, we exploit that it can also do
@@ -788,7 +788,6 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 ProjectionElem::Subslice { from, to, from_end }
             }
             ProjectionElem::OpaqueCast(_) => ProjectionElem::OpaqueCast(()),
-            ProjectionElem::Subtype(_) => ProjectionElem::Subtype(()),
             ProjectionElem::UnwrapUnsafeBinder(_) => ProjectionElem::UnwrapUnsafeBinder(()),
         };
 

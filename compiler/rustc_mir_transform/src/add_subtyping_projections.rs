@@ -40,8 +40,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for SubTypeChecker<'a, 'tcx> {
                 .new_temp(rval_ty, self.local_decls[place.as_ref().local].source_info.span);
             let new_place = Place::from(temp);
             self.patcher.add_assign(location, new_place, rvalue.clone());
-            let subtyped = new_place.project_deeper(&[ProjectionElem::Subtype(place_ty)], self.tcx);
-            *rvalue = Rvalue::Use(Operand::Move(subtyped));
+            *rvalue = Rvalue::Cast(CastKind::Subtype, Operand::Move(new_place), place_ty);
         }
     }
 }

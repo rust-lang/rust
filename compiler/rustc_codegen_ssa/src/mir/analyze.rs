@@ -150,10 +150,6 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> LocalAnalyzer<'a, 'b, 'tcx, Bx>
                     {
                         layout.for_variant(self.fx.cx, vidx)
                     }
-                    mir::PlaceElem::Subtype(subtype_ty) => {
-                        let subtype_ty = self.fx.monomorphize(subtype_ty);
-                        self.fx.cx.layout_of(subtype_ty)
-                    }
                     _ => {
                         self.locals[place_ref.local] = LocalKind::Memory;
                         return;

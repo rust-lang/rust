@@ -356,6 +356,7 @@ impl<'tcx> Stable<'tcx> for mir::CastKind {
             PtrToPtr => crate::mir::CastKind::PtrToPtr,
             FnPtrToPtr => crate::mir::CastKind::FnPtrToPtr,
             Transmute => crate::mir::CastKind::Transmute,
+            Subtype => crate::mir::CastKind::Subtype,
         }
     }
 }
@@ -453,7 +454,6 @@ impl<'tcx> Stable<'tcx> for mir::PlaceElem<'tcx> {
             // found at https://github.com/rust-lang/rust/pull/117517#issuecomment-1811683486
             Downcast(_, idx) => crate::mir::ProjectionElem::Downcast(idx.stable(tables, cx)),
             OpaqueCast(ty) => crate::mir::ProjectionElem::OpaqueCast(ty.stable(tables, cx)),
-            Subtype(ty) => crate::mir::ProjectionElem::Subtype(ty.stable(tables, cx)),
             UnwrapUnsafeBinder(..) => todo!("FIXME(unsafe_binders):"),
         }
     }
