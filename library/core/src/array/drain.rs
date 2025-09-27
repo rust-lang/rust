@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use crate::iter::{TrustedLen, UncheckedIterator};
 use crate::mem::ManuallyDrop;
 use crate::ptr::drop_in_place;
