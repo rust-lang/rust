@@ -269,6 +269,19 @@ std::ostream& operator<<(std::ostream& os, __m512i value) {
     return os;
 }
 
+// T1 is the `To` type, T2 is the `From` type
+template<typename T1, typename T2> T1 cast(T2 x) {{
+  if (std::is_convertible<T2, T1>::value) {{
+      return x;
+  }} else if (sizeof(T1) == sizeof(T2)) {{
+    T1 ret{{}};
+    memcpy(&ret, &x, sizeof(T1));
+    return ret;
+  }} else {{
+    assert("T2 must either be convertable to T1, or have the same size as T1!");
+  }}
+}}
+
 #define _mm512_extract_intrinsic_test_epi8(m, lane) \
     _mm_extract_epi8(_mm512_extracti64x2_epi64((m), (lane) / 16), (lane) % 16)
 
