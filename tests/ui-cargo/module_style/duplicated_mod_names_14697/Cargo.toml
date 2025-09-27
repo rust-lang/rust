@@ -1,0 +1,11 @@
+# Should trigger when multiple mods with the same name exist and not all of them follow self-named convention.
+# See issue #14697.
+[package]
+name = "duplicated-mod-names-14697"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
