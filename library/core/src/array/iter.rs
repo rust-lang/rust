@@ -1,7 +1,7 @@
 //! Defines the `IntoIter` owned iterator for arrays.
 
 use crate::intrinsics::transmute_unchecked;
-use crate::iter::{FusedIterator, TrustedLen, TrustedRandomAccessNoCoerce};
+use crate::iter::{FusedIterator, PeekableIterator, TrustedLen, TrustedRandomAccessNoCoerce};
 use crate::mem::MaybeUninit;
 use crate::num::NonZero;
 use crate::ops::{IndexRange, Range, Try};
@@ -349,6 +349,13 @@ impl<T, const N: usize> FusedIterator for IntoIter<T, N> {}
 // always decremented by 1 in those methods, but only if `Some(_)` is returned.
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
 unsafe impl<T, const N: usize> TrustedLen for IntoIter<T, N> {}
+
+#[unstable(feature = "peekable_iterator", issue = "132973")]
+impl<T, const N: usize> PeekableIterator for IntoIter<T, N> {
+    fn peek_with<U>(&mut self, func: impl for<'b> FnOnce(Option<&'b Self::Item>) -> U) -> U {
+        self.unsize_mut().peek_with(func)
+    }
+}
 
 #[doc(hidden)]
 #[unstable(issue = "none", feature = "std_internals")]

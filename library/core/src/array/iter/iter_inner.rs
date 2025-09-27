@@ -176,6 +176,14 @@ impl<T> PolymorphicIter<[MaybeUninit<T>]> {
     }
 
     #[inline]
+    pub(super) fn peek_with<U>(&self, func: impl for<'b> FnOnce(Option<&'b T>) -> U) -> U {
+        func(self.alive.clone().next().map(|idx| {
+            // SAFETY: `idx` is in self.alive range
+            unsafe { self.data.get_unchecked(idx).assume_init_ref() }
+        }))
+    }
+
+    #[inline]
     pub(super) fn size_hint(&self) -> (usize, Option<usize>) {
         let len = self.len();
         (len, Some(len))
