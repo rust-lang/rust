@@ -797,7 +797,7 @@ fn check_borrow_conflicts_in_at_patterns<'tcx>(cx: &MatchVisitor<'_, 'tcx>, pat:
             // We have `x @ pat` where `x` is by-move. Reject all borrows in `pat`.
             let mut conflicts_ref = Vec::new();
             sub.each_binding(|_, mode, _, span| {
-                if matches!(mode, ByRef::Yes(_)) {
+                if matches!(mode, ByRef::Yes(..)) {
                     conflicts_ref.push(span)
                 }
             });
@@ -813,7 +813,7 @@ fn check_borrow_conflicts_in_at_patterns<'tcx>(cx: &MatchVisitor<'_, 'tcx>, pat:
             return;
         }
         ByRef::No => return,
-        ByRef::Yes(m) => m,
+        ByRef::Yes(_, m) => m,
     };
 
     // We now have `ref $mut_outer binding @ sub` (semantically).
@@ -823,7 +823,7 @@ fn check_borrow_conflicts_in_at_patterns<'tcx>(cx: &MatchVisitor<'_, 'tcx>, pat:
     let mut conflicts_mut_ref = Vec::new();
     sub.each_binding(|name, mode, ty, span| {
         match mode {
-            ByRef::Yes(mut_inner) => match (mut_outer, mut_inner) {
+            ByRef::Yes(_, mut_inner) => match (mut_outer, mut_inner) {
                 // Both sides are `ref`.
                 (Mutability::Not, Mutability::Not) => {}
                 // 2x `ref mut`.
