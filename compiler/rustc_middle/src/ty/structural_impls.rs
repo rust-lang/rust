@@ -13,7 +13,7 @@ use rustc_span::source_map::Spanned;
 use rustc_type_ir::{ConstKind, TypeFolder, VisitorResult, try_visit};
 
 use super::{GenericArg, GenericArgKind, Pattern, Region};
-use crate::mir::PlaceElem;
+use crate::mir::{PlaceElem, ProjectionFragment};
 use crate::ty::print::{FmtPrinter, Printer, with_no_trimmed_paths};
 use crate::ty::{
     self, FallibleTypeFolder, Lift, Term, TermKind, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable,
@@ -798,6 +798,7 @@ list_fold! {
     &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>> : mk_poly_existential_predicates,
     &'tcx ty::List<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)>: mk_predefined_opaques_in_body,
     &'tcx ty::List<PlaceElem<'tcx>> : mk_place_elems,
+    &'tcx ty::List<ProjectionFragment<'tcx>> : mk_place_elem_chain,
     &'tcx ty::List<ty::Pattern<'tcx>> : mk_patterns,
     &'tcx ty::List<ty::ArgOutlivesPredicate<'tcx>> : mk_outlives,
 }

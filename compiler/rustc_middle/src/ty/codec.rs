@@ -298,6 +298,25 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for mir::Place<'tcx> {
     }
 }
 
+impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for mir::CompoundPlace<'tcx> {
+    fn decode(decoder: &mut D) -> Self {
+        let base_place: mir::Place<'tcx> = Decodable::decode(decoder);
+        let chain_len = decoder.read_usize();
+        let projection_chain =
+            decoder.interner().mk_place_elem_chain_from_iter((0..chain_len).map(|_| {
+                let projs_len = decoder.read_usize();
+                decoder.interner().mk_place_elems_from_iter(
+                    (0..projs_len).map::<mir::PlaceElem<'tcx>, _>(|_| Decodable::decode(decoder)),
+                )
+            }));
+        mir::CompoundPlace {
+            local: base_place.local,
+            direct_projection: base_place.projection,
+            projection_chain,
+        }
+    }
+}
+
 impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::Region<'tcx> {
     fn decode(decoder: &mut D) -> Self {
         ty::Region::new_from_kind(decoder.interner(), Decodable::decode(decoder))
