@@ -780,6 +780,7 @@ symbols! {
         count,
         coverage,
         coverage_attribute,
+        cpuid_target_feature,
         cr,
         crate_in_paths,
         crate_local,
