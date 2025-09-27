@@ -790,6 +790,8 @@ mod desc {
     pub(crate) const parse_opt_langid: &str = "a language identifier";
     pub(crate) const parse_opt_pathbuf: &str = "a path";
     pub(crate) const parse_list: &str = "a space-separated list of strings";
+    pub(crate) const parse_annotate_moves: &str =
+        "either a boolean (`y`, `yes`, `on`, `true`, `n`, `no`, `off` or `false`), or a number";
     pub(crate) const parse_list_with_polarity: &str =
         "a comma-separated list of strings, with elements beginning with + or -";
     pub(crate) const parse_autodiff: &str = "a comma separated list of settings: `Enable`, `PrintSteps`, `PrintTA`, `PrintTAFn`, `PrintAA`, `PrintPerf`, `PrintModBefore`, `PrintModAfter`, `PrintModFinal`, `PrintPasses`, `NoPostopt`, `LooseTypes`, `Inline`";
@@ -1633,6 +1635,38 @@ pub mod parse {
         true
     }
 
+    pub(crate) fn parse_annotate_moves(slot: &mut AnnotateMoves, v: Option<&str>) -> bool {
+        match v {
+            // No value provided: -Z annotate-moves (enable with default limit)
+            None => {
+                *slot = AnnotateMoves::Enabled(None);
+                true
+            }
+            Some(s) => {
+                // Try to parse as boolean first
+                match s {
+                    "y" | "yes" | "on" | "true" => {
+                        *slot = AnnotateMoves::Enabled(None);
+                        return true;
+                    }
+                    "n" | "no" | "off" | "false" => {
+                        *slot = AnnotateMoves::Disabled;
+                        return true;
+                    }
+                    _ => {}
+                }
+
+                // Try to parse as number (size limit)
+                if let Ok(size_limit) = s.parse::<u64>() {
+                    *slot = AnnotateMoves::Enabled(Some(size_limit));
+                    true
+                } else {
+                    false
+                }
+            }
+        }
+    }
+
     pub(crate) fn parse_lto(slot: &mut LtoCli, v: Option<&str>) -> bool {
         if v.is_some() {
             let mut bool_arg = None;
@@ -2195,6 +2229,9 @@ options! {
         "only allow the listed language features to be enabled in code (comma separated)"),
     always_encode_mir: bool = (false, parse_bool, [TRACKED],
         "encode MIR of all functions into the crate metadata (default: no)"),
+    annotate_moves: AnnotateMoves = (AnnotateMoves::Disabled, parse_annotate_moves, [TRACKED],
+        "emit debug info for compiler-generated move and copy operations \
+        to make them visible in profilers. Can be a boolean or a size limit in bytes (default: disabled)"),
     assert_incr_state: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "assert that the incremental cache is in given state: \
          either `loaded` or `not-loaded`."),

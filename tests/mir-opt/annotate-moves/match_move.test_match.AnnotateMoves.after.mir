@@ -1,0 +1,37 @@
+// MIR for `test_match` after AnnotateMoves
+
+fn test_match(_1: Option<LargeStruct>) -> LargeStruct {
+    debug opt => _1;
+    let mut _0: LargeStruct;
+    let mut _2: isize;
+    let mut _3: [u64; 20];
+    scope 1 {
+        debug s => _0;
+    }
+    scope 2 (inlined core::profiling::compiler_move::<[u64; 20], 160>) {
+    }
+    scope 3 (inlined core::profiling::compiler_move::<LargeStruct, 160>) {
+    }
+
+    bb0: {
+        _2 = discriminant(_1);
+        switchInt(move _2) -> [0: bb1, 1: bb2, otherwise: bb3];
+    }
+
+    bb1: {
+        StorageLive(_3);
+        _3 = [const 0_u64; 20];
+        _0 = LargeStruct { data: move _3 };
+        StorageDead(_3);
+        return;
+    }
+
+    bb2: {
+        _0 = move ((_1 as Some).0: LargeStruct);
+        return;
+    }
+
+    bb3: {
+        unreachable;
+    }
+}

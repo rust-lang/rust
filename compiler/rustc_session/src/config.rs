@@ -219,6 +219,29 @@ pub enum CoverageLevel {
     Condition,
 }
 
+/// The different settings that the `-Z annotate-moves` flag can have.
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+pub enum AnnotateMoves {
+    /// `-Z annotate-moves=no` (or `off`, `false` etc.)
+    Disabled,
+    /// `-Z annotate-moves` or `-Z annotate-moves=yes` (use default size limit)
+    /// `-Z annotate-moves=SIZE` (use specified size limit)
+    Enabled(Option<u64>),
+}
+
+impl AnnotateMoves {
+    pub fn is_enabled(&self) -> bool {
+        matches!(self, AnnotateMoves::Enabled(_))
+    }
+
+    pub fn size_limit(&self) -> Option<u64> {
+        match self {
+            AnnotateMoves::Disabled => None,
+            AnnotateMoves::Enabled(limit) => *limit,
+        }
+    }
+}
+
 // The different settings that the `-Z offload` flag can have.
 #[derive(Clone, Copy, PartialEq, Hash, Debug)]
 pub enum Offload {
@@ -3227,13 +3250,13 @@ pub(crate) mod dep_tracking {
     };
 
     use super::{
-        AutoDiff, BranchProtection, CFGuard, CFProtection, CollapseMacroDebuginfo, CoverageOptions,
-        CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug, FunctionReturn,
-        InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto, LocationDetail,
-        LtoCli, MirStripDebugInfo, NextSolverConfig, Offload, OomStrategy, OptLevel, OutFileName,
-        OutputType, OutputTypes, PatchableFunctionEntry, Polonius, RemapPathScopeComponents,
-        ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath,
-        SymbolManglingVersion, WasiExecModel,
+        AnnotateMoves, AutoDiff, BranchProtection, CFGuard, CFProtection, CollapseMacroDebuginfo,
+        CoverageOptions, CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug,
+        FunctionReturn, InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto,
+        LocationDetail, LtoCli, MirStripDebugInfo, NextSolverConfig, Offload, OomStrategy,
+        OptLevel, OutFileName, OutputType, OutputTypes, PatchableFunctionEntry, Polonius,
+        RemapPathScopeComponents, ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind,
+        SwitchWithOptPath, SymbolManglingVersion, WasiExecModel,
     };
     use crate::lint;
     use crate::utils::NativeLib;
@@ -3276,6 +3299,7 @@ pub(crate) mod dep_tracking {
 
     impl_dep_tracking_hash_via_hash!(
         (),
+        AnnotateMoves,
         AutoDiff,
         Offload,
         bool,

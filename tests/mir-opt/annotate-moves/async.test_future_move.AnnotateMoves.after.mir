@@ -1,0 +1,10 @@
+// MIR for `test_future_move` after AnnotateMoves
+
+fn test_future_move() -> {async fn body of test_future_move()} {
+    let mut _0: {async fn body of test_future_move()};
+
+    bb0: {
+        _0 = {coroutine@$DIR/async.rs:30:48: 36:2 (#0)};
+        return;
+    }
+}

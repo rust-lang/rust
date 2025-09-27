@@ -1,0 +1,11 @@
+// MIR for `test_small_move` after AnnotateMoves
+
+fn test_small_move(_1: SmallStruct) -> SmallStruct {
+    debug s => _1;
+    let mut _0: SmallStruct;
+
+    bb0: {
+        _0 = move _1;
+        return;
+    }
+}

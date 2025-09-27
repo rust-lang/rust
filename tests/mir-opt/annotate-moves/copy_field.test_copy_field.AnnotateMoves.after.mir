@@ -1,0 +1,13 @@
+// MIR for `test_copy_field` after AnnotateMoves
+
+fn test_copy_field(_1: &LargeStruct) -> [u64; 20] {
+    debug s => _1;
+    let mut _0: [u64; 20];
+    scope 1 (inlined core::profiling::compiler_copy::<[u64; 20], 160>) {
+    }
+
+    bb0: {
+        _0 = copy ((*_1).0: [u64; 20]);
+        return;
+    }
+}
