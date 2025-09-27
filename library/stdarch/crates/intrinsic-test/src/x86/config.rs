@@ -270,17 +270,17 @@ std::ostream& operator<<(std::ostream& os, __m512i value) {
 }
 
 // T1 is the `To` type, T2 is the `From` type
-template<typename T1, typename T2> T1 cast(T2 x) {{
-  if (std::is_convertible<T2, T1>::value) {{
+template<typename T1, typename T2> T1 cast(T2 x) {
+  if (std::is_convertible<T2, T1>::value) {
       return x;
-  }} else if (sizeof(T1) == sizeof(T2)) {{
-    T1 ret{{}};
+  } else if (sizeof(T1) == sizeof(T2)) {
+    T1 ret{};
     memcpy(&ret, &x, sizeof(T1));
     return ret;
-  }} else {{
+  } else {
     assert("T2 must either be convertable to T1, or have the same size as T1!");
-  }}
-}}
+  }
+}
 
 #define _mm512_extract_intrinsic_test_epi8(m, lane) \
     _mm_extract_epi8(_mm512_extracti64x2_epi64((m), (lane) / 16), (lane) % 16)
@@ -299,6 +299,43 @@ template<typename T1, typename T2> T1 cast(T2 x) {{
 
 #define _mm64_extract_intrinsic_test_epi32(m, lane) \
     _mm_cvtsi64_si32(_mm_srli_si64(m, (lane) * 32))
+    
+// Load f16 (__m128h) and cast to integer (__m128i)
+#define _mm_loadu_ph_to___m128i(mem_addr) _mm_castph_si128(_mm_loadu_ph(mem_addr))
+#define _mm256_loadu_ph_to___m256i(mem_addr) _mm256_castph_si256(_mm256_loadu_ph(mem_addr))
+#define _mm512_loadu_ph_to___m512i(mem_addr) _mm512_castph_si512(_mm512_loadu_ph(mem_addr))
+
+// Load f32 (__m128) and cast to f16 (__m128h)
+#define _mm_loadu_ps_to___m128h(mem_addr) _mm_castps_ph(_mm_loadu_ps(mem_addr))
+#define _mm256_loadu_ps_to___m256h(mem_addr) _mm256_castps_ph(_mm256_loadu_ps(mem_addr))
+#define _mm512_loadu_ps_to___m512h(mem_addr) _mm512_castps_ph(_mm512_loadu_ps(mem_addr))
+
+// Load integer types and cast to double (__m128d, __m256d, __m512d)
+#define _mm_loadu_epi16_to___m128d(mem_addr) _mm_castsi128_pd(_mm_loadu_si128((__m128i const*)(mem_addr)))
+#define _mm256_loadu_epi16_to___m256d(mem_addr) _mm256_castsi256_pd(_mm256_loadu_si256((__m256i const*)(mem_addr)))
+#define _mm512_loadu_epi16_to___m512d(mem_addr) _mm512_castsi512_pd(_mm512_loadu_si512((__m512i const*)(mem_addr)))
+
+#define _mm_loadu_epi32_to___m128d(mem_addr) _mm_castsi128_pd(_mm_loadu_si128((__m128i const*)(mem_addr)))
+#define _mm256_loadu_epi32_to___m256d(mem_addr) _mm256_castsi256_pd(_mm256_loadu_si256((__m256i const*)(mem_addr)))
+#define _mm512_loadu_epi32_to___m512d(mem_addr) _mm512_castsi512_pd(_mm512_loadu_si512((__m512i const*)(mem_addr)))
+
+#define _mm_loadu_epi64_to___m128d(mem_addr) _mm_castsi128_pd(_mm_loadu_si128((__m128i const*)(mem_addr)))
+#define _mm256_loadu_epi64_to___m256d(mem_addr) _mm256_castsi256_pd(_mm256_loadu_si256((__m256i const*)(mem_addr)))
+#define _mm512_loadu_epi64_to___m512d(mem_addr) _mm512_castsi512_pd(_mm512_loadu_si512((__m512i const*)(mem_addr)))
+
+// Load integer types and cast to float (__m128, __m256, __m512)
+#define _mm_loadu_epi16_to___m128(mem_addr) _mm_castsi128_ps(_mm_loadu_si128((__m128i const*)(mem_addr)))
+#define _mm256_loadu_epi16_to___m256(mem_addr) _mm256_castsi256_ps(_mm256_loadu_si256((__m256i const*)(mem_addr)))
+#define _mm512_loadu_epi16_to___m512(mem_addr) _mm512_castsi512_ps(_mm512_loadu_si512((__m512i const*)(mem_addr)))
+
+#define _mm_loadu_epi32_to___m128(mem_addr) _mm_castsi128_ps(_mm_loadu_si128((__m128i const*)(mem_addr)))
+#define _mm256_loadu_epi32_to___m256(mem_addr) _mm256_castsi256_ps(_mm256_loadu_si256((__m256i const*)(mem_addr)))
+#define _mm512_loadu_epi32_to___m512(mem_addr) _mm512_castsi512_ps(_mm512_loadu_si512((__m512i const*)(mem_addr)))
+
+#define _mm_loadu_epi64_to___m128(mem_addr) _mm_castsi128_ps(_mm_loadu_si128((__m128i const*)(mem_addr)))
+#define _mm256_loadu_epi64_to___m256(mem_addr) _mm256_castsi256_ps(_mm256_loadu_si256((__m256i const*)(mem_addr)))
+#define _mm512_loadu_epi64_to___m512(mem_addr) _mm512_castsi512_ps(_mm512_loadu_si512((__m512i const*)(mem_addr)))
+
 "#;
 
 pub const X86_CONFIGURATIONS: &str = r#"

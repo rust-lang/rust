@@ -24,6 +24,8 @@ pub fn build_cpp_compilation(config: &ProcessedCli) -> Option<CppCompilation> {
             "-mavx512dq",
             "-mavx512cd",
             "-mavx512fp16",
+            "-msha512",
+            "-msm4",
             "-ferror-limit=1000",
         ]);
 
