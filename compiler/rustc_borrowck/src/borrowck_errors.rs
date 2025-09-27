@@ -426,7 +426,7 @@ impl<'infcx, 'tcx> crate::MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     }
 
     pub(crate) fn path_does_not_live_long_enough(&self, span: Span, path: &str) -> Diag<'infcx> {
-        struct_span_code_err!(self.dcx(), span, E0597, "{} does not live long enough", path,)
+        struct_span_code_err!(self.dcx(), span, E0597, "{} does not live long enough", path)
     }
 
     pub(crate) fn cannot_return_reference_to_local(
@@ -480,7 +480,7 @@ impl<'infcx, 'tcx> crate::MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     }
 
     pub(crate) fn temporary_value_borrowed_for_too_long(&self, span: Span) -> Diag<'infcx> {
-        struct_span_code_err!(self.dcx(), span, E0716, "temporary value dropped while borrowed",)
+        struct_span_code_err!(self.dcx(), span, E0716, "temporary value dropped while borrowed")
     }
 }
 

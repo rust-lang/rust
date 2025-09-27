@@ -44,4 +44,18 @@ fn through_field_and_ref_move<'a>(x: &S<'a>) {
     outlives::<'a>(call_once(c)); //~ ERROR explicit lifetime required in the type of `x`
 }
 
+struct T;
+impl T {
+    fn outlives<'a>(&'a self, _: impl Sized + 'a) {}
+}
+fn through_method<'a>(x: &'a i32) {
+    let c = async || { println!("{}", *x); }; //~ ERROR `x` does not live long enough
+    T.outlives::<'a>(c());
+    T.outlives::<'a>(call_once(c));
+
+    let c = async move || { println!("{}", *x); };
+    T.outlives::<'a>(c()); //~ ERROR `c` does not live long enough
+    T.outlives::<'a>(call_once(c));
+}
+
 fn main() {}

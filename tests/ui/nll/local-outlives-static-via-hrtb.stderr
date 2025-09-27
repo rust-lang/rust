@@ -17,6 +17,11 @@ note: due to a current limitation of the type system, this implies a `'static` l
    |
 LL | fn assert_static_via_hrtb<G>(_: G) where for<'a> G: Outlives<'a> {}
    |                                          ^^^^^^^^^^^^^^^^^^^^^^^
+note: requirement that the value outlives `'static` introduced here
+  --> $DIR/local-outlives-static-via-hrtb.rs:15:53
+   |
+LL | fn assert_static_via_hrtb<G>(_: G) where for<'a> G: Outlives<'a> {}
+   |                                                     ^^^^^^^^^^^^
 
 error[E0597]: `local` does not live long enough
   --> $DIR/local-outlives-static-via-hrtb.rs:25:45
@@ -37,6 +42,11 @@ note: due to a current limitation of the type system, this implies a `'static` l
    |
 LL |     for<'a> &'a T: Reference<AssociatedType = &'a ()>,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: requirement that the value outlives `'static` introduced here
+  --> $DIR/local-outlives-static-via-hrtb.rs:19:30
+   |
+LL |     for<'a> &'a T: Reference<AssociatedType = &'a ()>,
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 
