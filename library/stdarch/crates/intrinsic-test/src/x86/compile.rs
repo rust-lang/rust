@@ -26,7 +26,15 @@ pub fn build_cpp_compilation(config: &ProcessedCli) -> Option<CppCompilation> {
             "-mavx512fp16",
             "-msha512",
             "-msm4",
+            "-mavxvnni",
+            "-mavx512bitalg",
+            "-mavx512ifma",
+            "-mavx512vbmi",
+            "-mavx512vbmi2",
+            "-mavx512vnni",
+            "-mavx512vpopcntdq",
             "-ferror-limit=1000",
+            "-std=c++17",
         ]);
 
     if !cpp_compiler.contains("clang") {
