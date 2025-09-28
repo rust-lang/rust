@@ -285,6 +285,7 @@ fn register_builtins(store: &mut LintStore) {
         "unused",
         UNUSED_IMPORTS,
         UNUSED_VARIABLES,
+        UNUSED_VISIBILITIES,
         UNUSED_ASSIGNMENTS,
         DEAD_CODE,
         UNUSED_MUT,
