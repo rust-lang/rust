@@ -8,7 +8,7 @@ use std::fmt::{Debug, Display};
 
 use rustc_ast::token::{self, Delimiter, MetaVarKind};
 use rustc_ast::tokenstream::TokenStream;
-use rustc_ast::{AttrArgs, Expr, ExprKind, LitKind, MetaItemLit, NormalAttr, Path};
+use rustc_ast::{AttrArgs, Expr, ExprKind, LitKind, MetaItemLit, NormalAttr, Path, StmtKind, UnOp};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Diag, PResult};
 use rustc_hir::{self as hir, AttrPath};
@@ -488,51 +488,55 @@ impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
             descr: token_descr(&self.parser.token),
             quote_ident_sugg: None,
             remove_neg_sugg: None,
-            macro_call: None,
+            label: None,
         };
+
+        if let token::OpenInvisible(_) = self.parser.token.kind {
+            // Do not attempt to suggest anything when encountered as part of a macro expansion.
+            return self.parser.dcx().create_err(err);
+        }
 
         // Suggest quoting idents, e.g. in `#[cfg(key = value)]`. We don't use `Token::ident` and
         // don't `uninterpolate` the token to avoid suggesting anything butchered or questionable
         // when macro metavariables are involved.
-        if self.parser.prev_token == token::Eq
-            && let token::Ident(..) = self.parser.token.kind
-        {
-            if self.parser.look_ahead(1, |t| matches!(t.kind, token::TokenKind::Bang)) {
-                let snapshot = self.parser.create_snapshot_for_diagnostic();
-                let stmt = self.parser.parse_stmt_without_recovery(false, ForceCollect::No, false);
-                match stmt {
-                    Ok(Some(stmt)) => {
-                        // The user tried to write something like
-                        // `#[deprecated(note = concat!("a", "b"))]`.
-                        err.descr = format!("macro {}", err.descr);
-                        err.macro_call = Some(stmt.span);
-                        err.span = stmt.span;
+        let snapshot = self.parser.create_snapshot_for_diagnostic();
+        let stmt = self.parser.parse_stmt_without_recovery(false, ForceCollect::No, false);
+        match stmt {
+            Ok(Some(stmt)) => {
+                // The user tried to write something like
+                // `#[deprecated(note = concat!("a", "b"))]`.
+                err.descr = stmt.kind.descr().to_string();
+                err.label = Some(stmt.span);
+                err.span = stmt.span;
+                if let StmtKind::Expr(expr) = &stmt.kind
+                    && let ExprKind::Unary(UnOp::Neg, val) = &expr.kind
+                    && let ExprKind::Lit(_) = val.kind
+                {
+                    err.remove_neg_sugg = Some(InvalidMetaItemRemoveNegSugg {
+                        negative_sign: expr.span.until(val.span),
+                    });
+                } else if let StmtKind::Expr(expr) = &stmt.kind
+                    && let ExprKind::Path(None, Path { segments, .. }) = &expr.kind
+                    && segments.len() == 1
+                {
+                    while let token::Ident(..) | token::Literal(_) | token::Dot =
+                        self.parser.token.kind
+                    {
+                        // We've got a word, so we try to consume the rest of a potential sentence.
+                        // We include `.` to correctly handle things like `A sentence here.`.
+                        self.parser.bump();
                     }
-                    Ok(None) => {}
-                    Err(err) => {
-                        err.cancel();
-                        self.parser.restore_snapshot(snapshot);
-                    }
+                    err.quote_ident_sugg = Some(InvalidMetaItemQuoteIdentSugg {
+                        before: expr.span.shrink_to_lo(),
+                        after: self.parser.prev_token.span.shrink_to_hi(),
+                    });
                 }
-            } else {
-                let before = self.parser.token.span.shrink_to_lo();
-                while let token::Ident(..) = self.parser.token.kind {
-                    self.parser.bump();
-                }
-                err.quote_ident_sugg = Some(InvalidMetaItemQuoteIdentSugg {
-                    before,
-                    after: self.parser.prev_token.span.shrink_to_hi(),
-                });
             }
-        }
-
-        if self.parser.token == token::Minus
-            && self.parser.look_ahead(1, |t| matches!(t.kind, token::TokenKind::Literal { .. }))
-        {
-            err.remove_neg_sugg =
-                Some(InvalidMetaItemRemoveNegSugg { negative_sign: self.parser.token.span });
-            self.parser.bump();
-            self.parser.bump();
+            Ok(None) => {}
+            Err(e) => {
+                e.cancel();
+                self.parser.restore_snapshot(snapshot);
+            }
         }
 
         self.parser.dcx().create_err(err)
