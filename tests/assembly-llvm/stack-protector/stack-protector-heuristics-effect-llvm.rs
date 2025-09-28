@@ -13,7 +13,6 @@
 #![allow(internal_features)]
 #![feature(unsized_fn_params)]
 
-
 extern "C" {
     fn strcpy(dest: *mut u8, src: *const u8) -> *mut u8;
     fn printf(fmt: *const u8, ...) -> i32;
@@ -23,7 +22,7 @@ extern "C" {
     fn funfloat2(p: *mut *mut f64);
     fn testi_aux() -> f64;
     fn getp() -> *mut i32;
-    fn dummy(_: ... ) -> i32;
+    fn dummy(_: ...) -> i32;
 
     static STR: [u8; 1];
 }
@@ -40,7 +39,7 @@ struct Pair {
 
 #[repr(C)]
 struct Nest {
-    first:  Pair,
+    first: Pair,
     second: Pair,
 }
 
@@ -122,7 +121,6 @@ pub unsafe extern "C" fn test6() {
 // CHECK-LABEL: test7{{:|\[}}
 #[no_mangle]
 pub fn test7(a: i32) {
-
     let ptr_val: usize = &a as *const i32 as usize;
 
     unsafe {
@@ -390,11 +388,11 @@ pub unsafe extern "C" fn test21() {
 // Variable sized alloca(VLA): see https://github.com/rust-lang/rfcs/pull/1909
 
 // CHECK-LABEL: test25{{:|\[}}
- #[no_mangle]
+#[no_mangle]
 pub unsafe extern "C" fn test25() -> i32 {
     let a: [i32; 4] = [0; 4];
 
-    let _whole = std::ptr::read_volatile(&a as *const _);  // avoid array a from optimization
+    let _whole = std::ptr::read_volatile(&a as *const _); // avoid array a from optimization
 
     std::ptr::read_volatile(&a[0])
 
@@ -407,10 +405,7 @@ pub unsafe extern "C" fn test25() -> i32 {
 // CHECK-LABEL: test26{{:|\[}}
 #[no_mangle]
 pub unsafe extern "C" fn test26() {
-    let c = Nest {
-        first:  Pair { a: 10, b: 11 },
-        second: Pair { a: 20, b: 21 },
-    };
+    let c = Nest { first: Pair { a: 10, b: 11 }, second: Pair { a: 20, b: 21 } };
 
     let whole: Nest = std::ptr::read_volatile(&c);
 
