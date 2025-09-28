@@ -12,29 +12,6 @@ use rustc_session::Session;
 use rustc_span::{Span, Symbol};
 use std::str::FromStr;
 
-/// Deprecation status of attributes known by Clippy.
-pub enum DeprecationStatus {
-    /// Attribute is deprecated
-    Deprecated,
-    /// Attribute is deprecated and was replaced by the named attribute
-    Replaced(&'static str),
-    None,
-}
-
-#[rustfmt::skip]
-pub const BUILTIN_ATTRIBUTES: &[(Symbol, DeprecationStatus)] = &[
-    (sym::author,                DeprecationStatus::None),
-    (sym::version,               DeprecationStatus::None),
-    (sym::cognitive_complexity,  DeprecationStatus::None),
-    (sym::cyclomatic_complexity, DeprecationStatus::Replaced("cognitive_complexity")),
-    (sym::dump,                  DeprecationStatus::None),
-    (sym::msrv,                  DeprecationStatus::None),
-    // The following attributes are for the 3rd party crate authors.
-    // See book/src/attribs.md
-    (sym::has_significant_drop,  DeprecationStatus::None),
-    (sym::format_args,           DeprecationStatus::None),
-];
-
 pub struct LimitStack {
     stack: Vec<u64>,
 }
@@ -72,36 +49,37 @@ pub fn get_attr<'a, A: AttributeExt + 'a>(
         if let Some([clippy, segment2]) = attr.ident_path().as_deref()
             && clippy.name == sym::clippy
         {
-            let Some((_, deprecation_status)) = BUILTIN_ATTRIBUTES
-                .iter()
-                .find(|(builtin_name, _)| segment2.name == *builtin_name)
-            else {
-                sess.dcx().span_err(segment2.span, "usage of unknown attribute");
-                return false;
+            let new_name = match segment2.name {
+                sym::cyclomatic_complexity => Some("cognitive_complexity"),
+                sym::author
+                | sym::version
+                | sym::cognitive_complexity
+                | sym::dump
+                | sym::msrv
+                // The following attributes are for the 3rd party crate authors.
+                // See book/src/attribs.md
+                | sym::has_significant_drop
+                | sym::format_args => None,
+                _ => {
+                    sess.dcx().span_err(segment2.span, "usage of unknown attribute");
+                    return false;
+                },
             };
 
-            let mut diag = sess
-                .dcx()
-                .struct_span_err(segment2.span, "usage of deprecated attribute");
-            match deprecation_status {
-                DeprecationStatus::Deprecated => {
-                    diag.emit();
+            match new_name {
+                Some(new_name) => {
+                    sess.dcx()
+                        .struct_span_err(segment2.span, "usage of deprecated attribute")
+                        .with_span_suggestion(
+                            segment2.span,
+                            "consider using",
+                            new_name,
+                            Applicability::MachineApplicable,
+                        )
+                        .emit();
                     false
                 },
-                DeprecationStatus::Replaced(new_name) => {
-                    diag.span_suggestion(
-                        segment2.span,
-                        "consider using",
-                        new_name,
-                        Applicability::MachineApplicable,
-                    );
-                    diag.emit();
-                    false
-                },
-                DeprecationStatus::None => {
-                    diag.cancel();
-                    segment2.name == name
-                },
+                None => segment2.name == name,
             }
         } else {
             false
