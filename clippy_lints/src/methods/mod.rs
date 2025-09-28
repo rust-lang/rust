@@ -80,6 +80,7 @@ mod needless_character_iteration;
 mod needless_collect;
 mod needless_option_as_deref;
 mod needless_option_take;
+mod new_ret_no_self;
 mod no_effect_replace;
 mod obfuscated_if_else;
 mod ok_expect;
@@ -148,11 +149,9 @@ mod zst_offset;
 
 use clippy_config::Conf;
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
-use clippy_utils::diagnostics::span_lint;
 use clippy_utils::macros::FormatArgsStorage;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::ty::contains_ty_adt_constructor_opaque;
-use clippy_utils::{contains_return, is_trait_method, iter_input_pats, peel_blocks, return_ty, sym};
+use clippy_utils::{contains_return, is_trait_method, iter_input_pats, peel_blocks, sym};
 pub use path_ends_with_ext::DEFAULT_ALLOWED_DOTFILES;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::{self as hir, Expr, ExprKind, Node, Stmt, StmtKind, TraitItem, TraitItemKind};
@@ -4918,20 +4917,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 );
             }
 
-            // if this impl block implements a trait, lint in trait definition instead
-            if !implements_trait
-                && impl_item.ident.name == sym::new
-                && let ret_ty = return_ty(cx, impl_item.owner_id)
-                && ret_ty != self_ty
-                && !contains_ty_adt_constructor_opaque(cx, ret_ty, self_ty)
-            {
-                span_lint(
-                    cx,
-                    NEW_RET_NO_SELF,
-                    impl_item.span,
-                    "methods called `new` usually return `Self`",
-                );
-            }
+            new_ret_no_self::check_impl_item(cx, impl_item, self_ty, implements_trait);
         }
     }
 
@@ -4963,18 +4949,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 );
             }
 
-            if item.ident.name == sym::new
-                && let ret_ty = return_ty(cx, item.owner_id)
-                && let self_ty = TraitRef::identity(cx.tcx, item.owner_id.to_def_id()).self_ty()
-                && !ret_ty.contains(self_ty)
-            {
-                span_lint(
-                    cx,
-                    NEW_RET_NO_SELF,
-                    item.span,
-                    "methods called `new` usually return `Self`",
-                );
-            }
+            new_ret_no_self::check_trait_item(cx, item);
         }
     }
 }
