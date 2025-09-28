@@ -805,7 +805,7 @@ pub(crate) struct InvalidMetaItem {
     #[subdiagnostic]
     pub remove_neg_sugg: Option<InvalidMetaItemRemoveNegSugg>,
     #[label]
-    pub macro_call: Option<Span>,
+    pub label: Option<Span>,
 }
 
 #[derive(Subdiagnostic)]
