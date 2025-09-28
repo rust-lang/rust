@@ -1350,6 +1350,28 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         bx.trunc(i_xn_msb, bx.type_vector(bx.type_i1(), in_len))
     }
 
+    fn trunc_int_to_i1_vector<'ll>(
+        bx: &mut Builder<'_, 'll, '_>,
+        val: &'ll Value,
+        src_len: u64,
+        dest_len: u64,
+    ) -> &'ll Value {
+        debug_assert!(dest_len <= src_len);
+
+        let vector_type = bx.type_vector(bx.type_i1(), src_len);
+        let bitcasted = bx.bitcast(val, vector_type);
+        if dest_len == src_len {
+            bitcasted
+        } else {
+            let shuffle_mask = (0..dest_len).map(|i| bx.const_i32(i as i32)).collect::<Vec<_>>();
+            bx.shuffle_vector(
+                bitcasted,
+                bx.const_poison(vector_type),
+                bx.const_vector(&shuffle_mask),
+            )
+        }
+    }
+
     // Sanity-check: all vector arguments must be immediates.
     if cfg!(debug_assertions) {
         for arg in args {
@@ -1366,9 +1388,13 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         let expected_bytes = len.div_ceil(8);
 
         let mask_ty = args[0].layout.ty;
-        let mask = match mask_ty.kind() {
-            ty::Int(i) if i.bit_width() == Some(expected_int_bits) => args[0].immediate(),
-            ty::Uint(i) if i.bit_width() == Some(expected_int_bits) => args[0].immediate(),
+        let (mask, mask_len) = match mask_ty.kind() {
+            ty::Int(i) if i.bit_width() == Some(expected_int_bits) => {
+                (args[0].immediate(), expected_int_bits)
+            }
+            ty::Uint(i) if i.bit_width() == Some(expected_int_bits) => {
+                (args[0].immediate(), expected_int_bits)
+            }
             ty::Array(elem, len)
                 if matches!(elem.kind(), ty::Uint(ty::UintTy::U8))
                     && len
@@ -1379,7 +1405,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 let place = PlaceRef::alloca(bx, args[0].layout);
                 args[0].val.store(bx, place);
                 let int_ty = bx.type_ix(expected_bytes * 8);
-                bx.load(int_ty, place.val.llval, Align::ONE)
+                (bx.load(int_ty, place.val.llval, Align::ONE), 8 * expected_bytes)
             }
             _ => return_error!(InvalidMonomorphization::InvalidBitmask {
                 span,
@@ -1390,12 +1416,9 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             }),
         };
 
-        let i1 = bx.type_i1();
-        let im = bx.type_ix(len);
-        let i1xn = bx.type_vector(i1, len);
-        let m_im = bx.trunc(mask, im);
-        let m_i1s = bx.bitcast(m_im, i1xn);
-        return Ok(bx.select(m_i1s, args[1].immediate(), args[2].immediate()));
+        let mask_vector = trunc_int_to_i1_vector(bx, mask, mask_len, len);
+
+        return Ok(bx.select(mask_vector, args[1].immediate(), args[2].immediate()));
     }
 
     // every intrinsic below takes a SIMD vector as its first argument
