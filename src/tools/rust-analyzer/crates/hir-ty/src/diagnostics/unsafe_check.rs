@@ -315,6 +315,22 @@ impl<'db> UnsafeVisitor<'db> {
                     }
                     _ => (),
                 }
+
+                let mut peeled = *expr;
+                while let Expr::Field { expr: lhs, .. } = &self.body[peeled] {
+                    if let Some(Either::Left(FieldId { parent: VariantId::UnionId(_), .. })) =
+                        self.infer.field_resolution(peeled)
+                    {
+                        peeled = *lhs;
+                    } else {
+                        break;
+                    }
+                }
+
+                // Walk the peeled expression (the LHS of the union field chain)
+                self.walk_expr(peeled);
+                // Return so we don't recurse directly onto the union field access(es)
+                return;
             }
             Expr::MethodCall { .. } => {
                 if let Some((func, _)) = self.infer.method_resolution(current) {
