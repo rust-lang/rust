@@ -1812,3 +1812,15 @@ extern "C" void LLVMRustSetNoSanitizeHWAddress(LLVMValueRef Global) {
   MD.NoHWAddress = true;
   GV.setSanitizerMetadata(MD);
 }
+
+#ifdef ENZYME
+extern "C" {
+extern llvm::cl::opt<unsigned> EnzymeMaxTypeDepth;
+}
+
+extern "C" size_t LLVMRustEnzymeGetMaxTypeDepth() { return EnzymeMaxTypeDepth; }
+#else
+extern "C" size_t LLVMRustEnzymeGetMaxTypeDepth() {
+  return 6; // Default fallback depth
+}
+#endif

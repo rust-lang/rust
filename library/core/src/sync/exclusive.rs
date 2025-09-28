@@ -1,28 +1,32 @@
 //! Defines [`Exclusive`].
 
+use core::cmp::Ordering;
 use core::fmt;
 use core::future::Future;
-use core::marker::Tuple;
+use core::hash::{Hash, Hasher};
+use core::marker::{StructuralPartialEq, Tuple};
 use core::ops::{Coroutine, CoroutineState};
 use core::pin::Pin;
 use core::task::{Context, Poll};
 
-/// `Exclusive` provides only _mutable_ access, also referred to as _exclusive_
-/// access to the underlying value. It provides no _immutable_, or _shared_
-/// access to the underlying value.
+/// `Exclusive` provides _mutable_ access, also referred to as _exclusive_
+/// access to the underlying value. However, it only permits _immutable_, or _shared_
+/// access to the underlying value when that value is [`Sync`].
 ///
 /// While this may seem not very useful, it allows `Exclusive` to _unconditionally_
-/// implement [`Sync`]. Indeed, the safety requirements of `Sync` state that for `Exclusive`
+/// implement `Sync`. Indeed, the safety requirements of `Sync` state that for `Exclusive`
 /// to be `Sync`, it must be sound to _share_ across threads, that is, it must be sound
-/// for `&Exclusive` to cross thread boundaries. By design, a `&Exclusive` has no API
-/// whatsoever, making it useless, thus harmless, thus memory safe.
+/// for `&Exclusive` to cross thread boundaries. By design, a `&Exclusive<T>` for non-`Sync` T
+/// has no API whatsoever, making it useless, thus harmless, thus memory safe.
 ///
 /// Certain constructs like [`Future`]s can only be used with _exclusive_ access,
 /// and are often `Send` but not `Sync`, so `Exclusive` can be used as hint to the
 /// Rust compiler that something is `Sync` in practice.
 ///
 /// ## Examples
-/// Using a non-`Sync` future prevents the wrapping struct from being `Sync`
+///
+/// Using a non-`Sync` future prevents the wrapping struct from being `Sync`:
+///
 /// ```compile_fail
 /// use core::cell::Cell;
 ///
@@ -43,7 +47,8 @@ use core::task::{Context, Poll};
 /// ```
 ///
 /// `Exclusive` ensures the struct is `Sync` without stripping the future of its
-/// functionality.
+/// functionality:
+///
 /// ```
 /// #![feature(exclusive_wrapper)]
 /// use core::cell::Cell;
@@ -66,6 +71,7 @@ use core::task::{Context, Poll};
 /// ```
 ///
 /// ## Parallels with a mutex
+///
 /// In some sense, `Exclusive` can be thought of as a _compile-time_ version of
 /// a mutex, as the borrow-checker guarantees that only one `&mut` can exist
 /// for any value. This is a parallel with the fact that
@@ -75,7 +81,7 @@ use core::task::{Context, Poll};
 #[doc(alias = "SyncWrapper")]
 #[doc(alias = "SyncCell")]
 #[doc(alias = "Unique")]
-// `Exclusive` can't have `PartialOrd`, `Clone`, etc. impls as they would
+// `Exclusive` can't have derived `PartialOrd`, `Clone`, etc. impls as they would
 // use `&` access to the inner value, violating the `Sync` impl's safety
 // requirements.
 #[derive(Default)]
@@ -196,6 +202,17 @@ where
 }
 
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
+impl<F, Args> Fn<Args> for Exclusive<F>
+where
+    F: Sync + Fn<Args>,
+    Args: Tuple,
+{
+    extern "rust-call" fn call(&self, args: Args) -> Self::Output {
+        self.as_ref().call(args)
+    }
+}
+
+#[unstable(feature = "exclusive_wrapper", issue = "98407")]
 impl<T> Future for Exclusive<T>
 where
     T: Future + ?Sized,
@@ -219,5 +236,82 @@ where
     #[inline]
     fn resume(self: Pin<&mut Self>, arg: R) -> CoroutineState<Self::Yield, Self::Return> {
         G::resume(self.get_pin_mut(), arg)
+    }
+}
+
+#[unstable(feature = "exclusive_wrapper", issue = "98407")]
+impl<T> AsRef<T> for Exclusive<T>
+where
+    T: Sync + ?Sized,
+{
+    #[inline]
+    fn as_ref(&self) -> &T {
+        &self.inner
+    }
+}
+
+#[unstable(feature = "exclusive_wrapper", issue = "98407")]
+impl<T> Clone for Exclusive<T>
+where
+    T: Sync + Clone,
+{
+    #[inline]
+    fn clone(&self) -> Self {
+        Self { inner: self.inner.clone() }
+    }
+}
+
+#[unstable(feature = "exclusive_wrapper", issue = "98407")]
+impl<T> Copy for Exclusive<T> where T: Sync + Copy {}
+
+#[unstable(feature = "exclusive_wrapper", issue = "98407")]
+impl<T, U> PartialEq<Exclusive<U>> for Exclusive<T>
+where
+    T: Sync + PartialEq<U> + ?Sized,
+    U: Sync + ?Sized,
+{
+    #[inline]
+    fn eq(&self, other: &Exclusive<U>) -> bool {
+        self.inner == other.inner
+    }
+}
+
+#[unstable(feature = "exclusive_wrapper", issue = "98407")]
+impl<T> StructuralPartialEq for Exclusive<T> where T: Sync + StructuralPartialEq + ?Sized {}
+
+#[unstable(feature = "exclusive_wrapper", issue = "98407")]
+impl<T> Eq for Exclusive<T> where T: Sync + Eq + ?Sized {}
+
+#[unstable(feature = "exclusive_wrapper", issue = "98407")]
+impl<T> Hash for Exclusive<T>
+where
+    T: Sync + Hash + ?Sized,
+{
+    #[inline]
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        Hash::hash(&self.inner, state)
+    }
+}
+
+#[unstable(feature = "exclusive_wrapper", issue = "98407")]
+impl<T, U> PartialOrd<Exclusive<U>> for Exclusive<T>
+where
+    T: Sync + PartialOrd<U> + ?Sized,
+    U: Sync + ?Sized,
+{
+    #[inline]
+    fn partial_cmp(&self, other: &Exclusive<U>) -> Option<Ordering> {
+        self.inner.partial_cmp(&other.inner)
+    }
+}
+
+#[unstable(feature = "exclusive_wrapper", issue = "98407")]
+impl<T> Ord for Exclusive<T>
+where
+    T: Sync + Ord + ?Sized,
+{
+    #[inline]
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.inner.cmp(&other.inner)
     }
 }
