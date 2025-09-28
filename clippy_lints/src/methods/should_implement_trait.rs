@@ -5,6 +5,7 @@ use rustc_hir as hir;
 use rustc_hir::{FnSig, ImplItem};
 use rustc_lint::LateContext;
 use rustc_middle::ty::Ty;
+use rustc_span::edition::Edition::{self, Edition2015, Edition2021};
 use rustc_span::{Symbol, kw};
 
 use super::SHOULD_IMPLEMENT_TRAIT;
@@ -31,6 +32,7 @@ pub(super) fn check_impl_item<'tcx>(
                     .is_none_or(|first_arg_ty| method_config.self_kind.matches(cx, self_ty, first_arg_ty))
                 && fn_header_equals(method_config.fn_header, sig.header)
                 && method_config.lifetime_param_cond(impl_item)
+                && method_config.in_prelude_since <= cx.tcx.sess.edition()
             {
                 span_lint_and_help(
                     cx,
@@ -69,8 +71,10 @@ struct ShouldImplTraitCase {
     output_type: OutType,
     // certain methods with explicit lifetimes can't implement the equivalent trait method
     lint_explicit_lifetime: bool,
+    in_prelude_since: Edition,
 }
 impl ShouldImplTraitCase {
+    #[expect(clippy::too_many_arguments)]
     const fn new(
         trait_name: &'static str,
         method_name: Symbol,
@@ -79,6 +83,7 @@ impl ShouldImplTraitCase {
         self_kind: SelfKind,
         output_type: OutType,
         lint_explicit_lifetime: bool,
+        in_prelude_since: Edition,
     ) -> ShouldImplTraitCase {
         ShouldImplTraitCase {
             trait_name,
@@ -88,6 +93,7 @@ impl ShouldImplTraitCase {
             self_kind,
             output_type,
             lint_explicit_lifetime,
+            in_prelude_since,
         }
     }
 
@@ -106,36 +112,36 @@ impl ShouldImplTraitCase {
 
 #[rustfmt::skip]
 const TRAIT_METHODS: [ShouldImplTraitCase; 30] = [
-    ShouldImplTraitCase::new("std::ops::Add",           sym::add,        2,  FN_HEADER, SelfKind::Value,  OutType::Any,  true ),
-    ShouldImplTraitCase::new("std::convert::AsMut",     sym::as_mut,     1,  FN_HEADER, SelfKind::RefMut, OutType::Ref,  true ),
-    ShouldImplTraitCase::new("std::convert::AsRef",     sym::as_ref,     1,  FN_HEADER, SelfKind::Ref,    OutType::Ref,  true ),
-    ShouldImplTraitCase::new("std::ops::BitAnd",        sym::bitand,     2,  FN_HEADER, SelfKind::Value,  OutType::Any,  true ),
-    ShouldImplTraitCase::new("std::ops::BitOr",         sym::bitor,      2,  FN_HEADER, SelfKind::Value,  OutType::Any,  true ),
-    ShouldImplTraitCase::new("std::ops::BitXor",        sym::bitxor,     2,  FN_HEADER, SelfKind::Value,  OutType::Any,  true ),
-    ShouldImplTraitCase::new("std::borrow::Borrow",     sym::borrow,     1,  FN_HEADER, SelfKind::Ref,    OutType::Ref,  true ),
-    ShouldImplTraitCase::new("std::borrow::BorrowMut",  sym::borrow_mut, 1,  FN_HEADER, SelfKind::RefMut, OutType::Ref,  true ),
-    ShouldImplTraitCase::new("std::clone::Clone",       sym::clone,      1,  FN_HEADER, SelfKind::Ref,    OutType::Any,  true ),
-    ShouldImplTraitCase::new("std::cmp::Ord",           sym::cmp,        2,  FN_HEADER, SelfKind::Ref,    OutType::Any,  true ),
-    ShouldImplTraitCase::new("std::default::Default",   kw::Default,     0,  FN_HEADER, SelfKind::No,     OutType::Any,  true ),
-    ShouldImplTraitCase::new("std::ops::Deref",         sym::deref,      1,  FN_HEADER, SelfKind::Ref,    OutType::Ref,  true ),
-    ShouldImplTraitCase::new("std::ops::DerefMut",      sym::deref_mut,  1,  FN_HEADER, SelfKind::RefMut, OutType::Ref,  true ),
-    ShouldImplTraitCase::new("std::ops::Div",           sym::div,        2,  FN_HEADER, SelfKind::Value,  OutType::Any,  true ),
-    ShouldImplTraitCase::new("std::ops::Drop",          sym::drop,       1,  FN_HEADER, SelfKind::RefMut, OutType::Unit, true ),
-    ShouldImplTraitCase::new("std::cmp::PartialEq",     sym::eq,         2,  FN_HEADER, SelfKind::Ref,    OutType::Bool, true ),
-    ShouldImplTraitCase::new("std::iter::FromIterator", sym::from_iter,  1,  FN_HEADER, SelfKind::No,     OutType::Any,  true ),
-    ShouldImplTraitCase::new("std::str::FromStr",       sym::from_str,   1,  FN_HEADER, SelfKind::No,     OutType::Any,  true ),
-    ShouldImplTraitCase::new("std::hash::Hash",         sym::hash,       2,  FN_HEADER, SelfKind::Ref,    OutType::Unit, true ),
-    ShouldImplTraitCase::new("std::ops::Index",         sym::index,      2,  FN_HEADER, SelfKind::Ref,    OutType::Ref,  true ),
-    ShouldImplTraitCase::new("std::ops::IndexMut",      sym::index_mut,  2,  FN_HEADER, SelfKind::RefMut, OutType::Ref,  true ),
-    ShouldImplTraitCase::new("std::iter::IntoIterator", sym::into_iter,  1,  FN_HEADER, SelfKind::Value,  OutType::Any,  true ),
-    ShouldImplTraitCase::new("std::ops::Mul",           sym::mul,        2,  FN_HEADER, SelfKind::Value,  OutType::Any,  true ),
-    ShouldImplTraitCase::new("std::ops::Neg",           sym::neg,        1,  FN_HEADER, SelfKind::Value,  OutType::Any,  true ),
-    ShouldImplTraitCase::new("std::iter::Iterator",     sym::next,       1,  FN_HEADER, SelfKind::RefMut, OutType::Any,  false),
-    ShouldImplTraitCase::new("std::ops::Not",           sym::not,        1,  FN_HEADER, SelfKind::Value,  OutType::Any,  true ),
-    ShouldImplTraitCase::new("std::ops::Rem",           sym::rem,        2,  FN_HEADER, SelfKind::Value,  OutType::Any,  true ),
-    ShouldImplTraitCase::new("std::ops::Shl",           sym::shl,        2,  FN_HEADER, SelfKind::Value,  OutType::Any,  true ),
-    ShouldImplTraitCase::new("std::ops::Shr",           sym::shr,        2,  FN_HEADER, SelfKind::Value,  OutType::Any,  true ),
-    ShouldImplTraitCase::new("std::ops::Sub",           sym::sub,        2,  FN_HEADER, SelfKind::Value,  OutType::Any,  true ),
+    ShouldImplTraitCase::new("std::ops::Add",           sym::add,        2,  FN_HEADER, SelfKind::Value,  OutType::Any,  true,  Edition2015),
+    ShouldImplTraitCase::new("std::convert::AsMut",     sym::as_mut,     1,  FN_HEADER, SelfKind::RefMut, OutType::Ref,  true,  Edition2015),
+    ShouldImplTraitCase::new("std::convert::AsRef",     sym::as_ref,     1,  FN_HEADER, SelfKind::Ref,    OutType::Ref,  true,  Edition2015),
+    ShouldImplTraitCase::new("std::ops::BitAnd",        sym::bitand,     2,  FN_HEADER, SelfKind::Value,  OutType::Any,  true,  Edition2015),
+    ShouldImplTraitCase::new("std::ops::BitOr",         sym::bitor,      2,  FN_HEADER, SelfKind::Value,  OutType::Any,  true,  Edition2015),
+    ShouldImplTraitCase::new("std::ops::BitXor",        sym::bitxor,     2,  FN_HEADER, SelfKind::Value,  OutType::Any,  true,  Edition2015),
+    ShouldImplTraitCase::new("std::borrow::Borrow",     sym::borrow,     1,  FN_HEADER, SelfKind::Ref,    OutType::Ref,  true,  Edition2015),
+    ShouldImplTraitCase::new("std::borrow::BorrowMut",  sym::borrow_mut, 1,  FN_HEADER, SelfKind::RefMut, OutType::Ref,  true,  Edition2015),
+    ShouldImplTraitCase::new("std::clone::Clone",       sym::clone,      1,  FN_HEADER, SelfKind::Ref,    OutType::Any,  true,  Edition2015),
+    ShouldImplTraitCase::new("std::cmp::Ord",           sym::cmp,        2,  FN_HEADER, SelfKind::Ref,    OutType::Any,  true,  Edition2015),
+    ShouldImplTraitCase::new("std::default::Default",   kw::Default,     0,  FN_HEADER, SelfKind::No,     OutType::Any,  true,  Edition2015),
+    ShouldImplTraitCase::new("std::ops::Deref",         sym::deref,      1,  FN_HEADER, SelfKind::Ref,    OutType::Ref,  true,  Edition2015),
+    ShouldImplTraitCase::new("std::ops::DerefMut",      sym::deref_mut,  1,  FN_HEADER, SelfKind::RefMut, OutType::Ref,  true,  Edition2015),
+    ShouldImplTraitCase::new("std::ops::Div",           sym::div,        2,  FN_HEADER, SelfKind::Value,  OutType::Any,  true,  Edition2015),
+    ShouldImplTraitCase::new("std::ops::Drop",          sym::drop,       1,  FN_HEADER, SelfKind::RefMut, OutType::Unit, true,  Edition2015),
+    ShouldImplTraitCase::new("std::cmp::PartialEq",     sym::eq,         2,  FN_HEADER, SelfKind::Ref,    OutType::Bool, true,  Edition2015),
+    ShouldImplTraitCase::new("std::iter::FromIterator", sym::from_iter,  1,  FN_HEADER, SelfKind::No,     OutType::Any,  true,  Edition2021),
+    ShouldImplTraitCase::new("std::str::FromStr",       sym::from_str,   1,  FN_HEADER, SelfKind::No,     OutType::Any,  true,  Edition2015),
+    ShouldImplTraitCase::new("std::hash::Hash",         sym::hash,       2,  FN_HEADER, SelfKind::Ref,    OutType::Unit, true,  Edition2015),
+    ShouldImplTraitCase::new("std::ops::Index",         sym::index,      2,  FN_HEADER, SelfKind::Ref,    OutType::Ref,  true,  Edition2015),
+    ShouldImplTraitCase::new("std::ops::IndexMut",      sym::index_mut,  2,  FN_HEADER, SelfKind::RefMut, OutType::Ref,  true,  Edition2015),
+    ShouldImplTraitCase::new("std::iter::IntoIterator", sym::into_iter,  1,  FN_HEADER, SelfKind::Value,  OutType::Any,  true,  Edition2015),
+    ShouldImplTraitCase::new("std::ops::Mul",           sym::mul,        2,  FN_HEADER, SelfKind::Value,  OutType::Any,  true,  Edition2015),
+    ShouldImplTraitCase::new("std::ops::Neg",           sym::neg,        1,  FN_HEADER, SelfKind::Value,  OutType::Any,  true,  Edition2015),
+    ShouldImplTraitCase::new("std::iter::Iterator",     sym::next,       1,  FN_HEADER, SelfKind::RefMut, OutType::Any,  false, Edition2015),
+    ShouldImplTraitCase::new("std::ops::Not",           sym::not,        1,  FN_HEADER, SelfKind::Value,  OutType::Any,  true,  Edition2015),
+    ShouldImplTraitCase::new("std::ops::Rem",           sym::rem,        2,  FN_HEADER, SelfKind::Value,  OutType::Any,  true,  Edition2015),
+    ShouldImplTraitCase::new("std::ops::Shl",           sym::shl,        2,  FN_HEADER, SelfKind::Value,  OutType::Any,  true,  Edition2015),
+    ShouldImplTraitCase::new("std::ops::Shr",           sym::shr,        2,  FN_HEADER, SelfKind::Value,  OutType::Any,  true,  Edition2015),
+    ShouldImplTraitCase::new("std::ops::Sub",           sym::sub,        2,  FN_HEADER, SelfKind::Value,  OutType::Any,  true,  Edition2015),
 ];
 
 #[derive(Clone, Copy)]
