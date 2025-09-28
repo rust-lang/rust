@@ -65,6 +65,14 @@ rustc_index::newtype_index! {
         const FIRST_VARIANT = 0;
     }
 }
+
+impl VariantIdx {
+    /// The second variant, at index 1.
+    ///
+    /// For use alongside [`VariantIdx::ZERO`].
+    pub const ONE: VariantIdx = VariantIdx::from_u32(1);
+}
+
 #[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable_Generic)]
 #[rustc_pass_by_value]
 pub struct Layout<'a>(pub Interned<'a, LayoutData<FieldIdx, VariantIdx>>);

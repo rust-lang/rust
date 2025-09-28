@@ -45,6 +45,9 @@
 //! For coroutines with state 1 (returned) and state 2 (poisoned) it panics.
 //! Otherwise it continues the execution from the last suspension point.
 //!
+//! If -Zfused-futures is given however, then `Future::poll` from the state 1 (returned)
+//! will not panic and will instead return `Poll::Pending`.
+//!
 //! The other function is the drop glue for the coroutine.
 //! For coroutines with state 0 (unresumed) it drops the upvars of the coroutine.
 //! For coroutines with state 1 (returned) and state 2 (poisoned) it does nothing.
@@ -218,10 +221,17 @@ impl<'tcx> TransformVisitor<'tcx> {
         let source_info = SourceInfo::outermost(body.span);
 
         let none_value = match self.coroutine_kind {
-            CoroutineKind::Desugared(CoroutineDesugaring::Async, _) => {
-                span_bug!(body.span, "`Future`s are not fused inherently")
-            }
             CoroutineKind::Coroutine(_) => span_bug!(body.span, "`Coroutine`s cannot be fused"),
+            // Fused futures continue to return `Poll::Pending`.
+            CoroutineKind::Desugared(CoroutineDesugaring::Async, _) => {
+                let poll_def_id = self.tcx.require_lang_item(LangItem::Poll, body.span);
+                make_aggregate_adt(
+                    poll_def_id,
+                    VariantIdx::ONE,
+                    self.tcx.mk_args(&[self.old_ret_ty.into()]),
+                    IndexVec::new(),
+                )
+            }
             // `gen` continues return `None`
             CoroutineKind::Desugared(CoroutineDesugaring::Gen, _) => {
                 let option_def_id = self.tcx.require_lang_item(LangItem::Option, body.span);
@@ -278,7 +288,7 @@ impl<'tcx> TransformVisitor<'tcx> {
         statements: &mut Vec<Statement<'tcx>>,
     ) {
         const ZERO: VariantIdx = VariantIdx::ZERO;
-        const ONE: VariantIdx = VariantIdx::from_usize(1);
+        const ONE: VariantIdx = VariantIdx::ONE;
         let rvalue = match self.coroutine_kind {
             CoroutineKind::Desugared(CoroutineDesugaring::Async, _) => {
                 let poll_def_id = self.tcx.require_lang_item(LangItem::Poll, source_info.span);
@@ -1099,7 +1109,7 @@ fn return_poll_ready_assign<'tcx>(tcx: TyCtxt<'tcx>, source_info: SourceInfo) ->
         const_: Const::zero_sized(tcx.types.unit),
     }));
     let ready_val = Rvalue::Aggregate(
-        Box::new(AggregateKind::Adt(poll_def_id, VariantIdx::from_usize(0), args, None, None)),
+        Box::new(AggregateKind::Adt(poll_def_id, VariantIdx::ZERO, args, None, None)),
         IndexVec::from_raw(vec![val]),
     );
     Statement::new(source_info, StatementKind::Assign(Box::new((Place::return_place(), ready_val))))
@@ -1253,17 +1263,23 @@ fn create_coroutine_resume_function<'tcx>(
 
     if can_return {
         let block = match transform.coroutine_kind {
+            CoroutineKind::Coroutine(_) => {
+                insert_panic_block(tcx, body, ResumedAfterReturn(transform.coroutine_kind))
+            }
             CoroutineKind::Desugared(CoroutineDesugaring::Async, _)
-            | CoroutineKind::Coroutine(_) => {
+                if tcx.is_async_drop_in_place_coroutine(body.source.def_id()) =>
+            {
                 // For `async_drop_in_place<T>::{closure}` we just keep return Poll::Ready,
                 // because async drop of such coroutine keeps polling original coroutine
-                if tcx.is_async_drop_in_place_coroutine(body.source.def_id()) {
-                    insert_poll_ready_block(tcx, body)
-                } else {
-                    insert_panic_block(tcx, body, ResumedAfterReturn(transform.coroutine_kind))
-                }
+                insert_poll_ready_block(tcx, body)
             }
-            CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)
+            CoroutineKind::Desugared(CoroutineDesugaring::Async, _)
+                if !tcx.sess.opts.unstable_opts.fused_futures =>
+            {
+                insert_panic_block(tcx, body, ResumedAfterReturn(transform.coroutine_kind))
+            }
+            CoroutineKind::Desugared(CoroutineDesugaring::Async, _)
+            | CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)
             | CoroutineKind::Desugared(CoroutineDesugaring::Gen, _) => {
                 transform.insert_none_ret_block(body)
             }

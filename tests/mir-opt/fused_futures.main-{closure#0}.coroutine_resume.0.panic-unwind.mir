@@ -1,0 +1,66 @@
+// MIR for `main::{closure#0}` 0 coroutine_resume
+/* coroutine_layout = CoroutineLayout {
+    field_tys: {},
+    variant_fields: {
+        Unresumed(0): [],
+        Returned (1): [],
+        Panicked (2): [],
+        Suspend0 (3): [],
+    },
+    storage_conflicts: BitMatrix(0x0) {},
+} */
+
+fn main::{closure#0}(_1: Pin<&mut {coroutine@$DIR/fused_futures.rs:17:5: 17:7}>, _2: ()) -> CoroutineState<i32, &str> {
+    let mut _0: std::ops::CoroutineState<i32, &str>;
+    let mut _3: !;
+    let _4: ();
+    let mut _5: &str;
+    let mut _6: u32;
+
+    bb0: {
+        _6 = discriminant((*(_1.0: &mut {coroutine@$DIR/fused_futures.rs:17:5: 17:7})));
+        switchInt(move _6) -> [0: bb1, 1: bb6, 3: bb5, otherwise: bb7];
+    }
+
+    bb1: {
+        StorageLive(_4);
+        _0 = CoroutineState::<i32, &str>::Yielded(const 1_i32);
+        StorageDead(_4);
+        discriminant((*(_1.0: &mut {coroutine@$DIR/fused_futures.rs:17:5: 17:7}))) = 3;
+        return;
+    }
+
+    bb2: {
+        StorageDead(_4);
+        _5 = const "foo";
+        goto -> bb4;
+    }
+
+    bb3: {
+        _0 = CoroutineState::<i32, &str>::Complete(move _5);
+        discriminant((*(_1.0: &mut {coroutine@$DIR/fused_futures.rs:17:5: 17:7}))) = 1;
+        return;
+    }
+
+    bb4: {
+        goto -> bb3;
+    }
+
+    bb5: {
+        StorageLive(_4);
+        _4 = move _2;
+        goto -> bb2;
+    }
+
+    bb6: {
+        assert(const false, "coroutine resumed after completion") -> [success: bb6, unwind continue];
+    }
+
+    bb7: {
+        unreachable;
+    }
+}
+
+ALLOC0 (size: 3, align: 1) {
+    66 6f 6f                                        │ foo
+}

@@ -2336,6 +2336,8 @@ options! {
         "replace returns with jumps to `__x86_return_thunk` (default: `keep`)"),
     function_sections: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "whether each function should go in its own section"),
+    fused_futures: bool = (false, parse_bool, [TRACKED],
+        "make compiler-generated futures return `Poll::Pending` and not `panic!` when polled after completion"),
     future_incompat_test: bool = (false, parse_bool, [UNTRACKED],
         "forces all lints to be future incompatible, used for internal testing (default: no)"),
     graphviz_dark_mode: bool = (false, parse_bool, [UNTRACKED],
