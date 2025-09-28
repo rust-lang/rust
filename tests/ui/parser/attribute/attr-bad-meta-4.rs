@@ -9,7 +9,7 @@ macro_rules! mac {
 mac!(an(arbitrary token stream));
 
 #[cfg(feature = -1)]
-//~^ ERROR expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found `-`
+//~^ ERROR expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found
 fn handler() {}
 
 fn main() {}
