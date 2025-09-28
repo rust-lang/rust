@@ -1,4 +1,3 @@
-use crate::methods::SelfKind;
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::ty::is_copy;
 use itertools::Itertools;
@@ -8,6 +7,7 @@ use rustc_span::{Span, Symbol};
 use std::fmt;
 
 use super::WRONG_SELF_CONVENTION;
+use super::lib::SelfKind;
 
 #[rustfmt::skip]
 const CONVENTIONS: [(&[Convention], &[SelfKind]); 9] = [
