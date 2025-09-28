@@ -557,7 +557,7 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         summary: "New option `build.windows-rc` that will override which resource compiler on Windows will be used to compile Rust.",
     },
     ChangeInfo {
-        change_id: 99999,
+        change_id: 147046,
         severity: ChangeSeverity::Warning,
         summary: "The `rust.use-lld` option has been renamed to `rust.bootstrap-override-lld`. Note that it only serves for overriding the linker used when building Rust code in bootstrap to be LLD.",
     },
