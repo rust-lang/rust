@@ -668,8 +668,7 @@ impl<A: Allocator> RawVecInner<A> {
     /// - `elem_layout` must be valid for `self`, i.e. it must be the same `elem_layout` used to
     ///   initially construct `self`
     /// - `elem_layout`'s size must be a multiple of its alignment
-    /// - The sum of `len` and `additional` must be greater than or equal to
-    ///   `self.capacity(elem_layout.size())`
+    /// - The sum of `len` and `additional` must be greater than the current capacity
     unsafe fn grow_amortized(
         &mut self,
         len: usize,
@@ -693,16 +692,12 @@ impl<A: Allocator> RawVecInner<A> {
         let cap = cmp::max(self.cap.as_inner() * 2, required_cap);
         let cap = cmp::max(min_non_zero_cap(elem_layout.size()), cap);
 
-        let new_layout = layout_array(cap, elem_layout)?;
-
         // SAFETY:
-        // - For the `current_memory` call: Precondition passed to caller
-        // - For the `finish_grow` call: Precondition passed to caller
-        //   + `current_memory` does the right thing
-        let ptr =
-            unsafe { finish_grow(new_layout, self.current_memory(elem_layout), &mut self.alloc)? };
+        // - cap >= len + additional
+        // - other preconditions passed to caller
+        let ptr = unsafe { self.finish_grow(cap, elem_layout)? };
 
-        // SAFETY: layout_array would have resulted in a capacity overflow if we tried to allocate more than `isize::MAX` items
+        // SAFETY: `finish_grow` would have failed if `cap > isize::MAX`
         unsafe { self.set_ptr_and_cap(ptr, cap) };
         Ok(())
     }
@@ -711,8 +706,7 @@ impl<A: Allocator> RawVecInner<A> {
     /// - `elem_layout` must be valid for `self`, i.e. it must be the same `elem_layout` used to
     ///   initially construct `self`
     /// - `elem_layout`'s size must be a multiple of its alignment
-    /// - The sum of `len` and `additional` must be greater than or equal to
-    ///   `self.capacity(elem_layout.size())`
+    /// - The sum of `len` and `additional` must be greater than the current capacity
     unsafe fn grow_exact(
         &mut self,
         len: usize,
@@ -726,19 +720,42 @@ impl<A: Allocator> RawVecInner<A> {
         }
 
         let cap = len.checked_add(additional).ok_or(CapacityOverflow)?;
+
+        // SAFETY: preconditions passed to caller
+        let ptr = unsafe { self.finish_grow(cap, elem_layout)? };
+
+        // SAFETY: `finish_grow` would have failed if `cap > isize::MAX`
+        unsafe { self.set_ptr_and_cap(ptr, cap) };
+        Ok(())
+    }
+
+    /// # Safety
+    /// - `elem_layout` must be valid for `self`, i.e. it must be the same `elem_layout` used to
+    ///   initially construct `self`
+    /// - `elem_layout`'s size must be a multiple of its alignment
+    /// - `cap` must be greater than the current capacity
+    // not marked inline(never) since we want optimizers to be able to observe the specifics of this
+    // function, see tests/codegen-llvm/vec-reserve-extend.rs.
+    #[cold]
+    unsafe fn finish_grow(
+        &self,
+        cap: usize,
+        elem_layout: Layout,
+    ) -> Result<NonNull<[u8]>, TryReserveError> {
         let new_layout = layout_array(cap, elem_layout)?;
 
-        // SAFETY:
-        // - For the `current_memory` call: Precondition passed to caller
-        // - For the `finish_grow` call: Precondition passed to caller
-        //   + `current_memory` does the right thing
-        let ptr =
-            unsafe { finish_grow(new_layout, self.current_memory(elem_layout), &mut self.alloc)? };
-        // SAFETY: layout_array would have resulted in a capacity overflow if we tried to allocate more than `isize::MAX` items
-        unsafe {
-            self.set_ptr_and_cap(ptr, cap);
-        }
-        Ok(())
+        let memory = if let Some((ptr, old_layout)) = unsafe { self.current_memory(elem_layout) } {
+            debug_assert_eq!(old_layout.align(), new_layout.align());
+            unsafe {
+                // The allocator checks for alignment equality
+                hint::assert_unchecked(old_layout.align() == new_layout.align());
+                self.alloc.grow(ptr, old_layout, new_layout)
+            }
+        } else {
+            self.alloc.allocate(new_layout)
+        };
+
+        memory.map_err(|_| AllocError { layout: new_layout, non_exhaustive: () }.into())
     }
 
     /// # Safety
@@ -818,38 +835,6 @@ impl<A: Allocator> RawVecInner<A> {
             }
         }
     }
-}
-
-/// # Safety
-/// If `current_memory` matches `Some((ptr, old_layout))`:
-/// - `ptr` must denote a block of memory *currently allocated* via `alloc`
-/// - `old_layout` must *fit* that block of memory
-/// - `new_layout` must have the same alignment as `old_layout`
-/// - `new_layout.size()` must be greater than or equal to `old_layout.size()`
-/// If `current_memory` is `None`, this function is safe.
-// not marked inline(never) since we want optimizers to be able to observe the specifics of this
-// function, see tests/codegen-llvm/vec-reserve-extend.rs.
-#[cold]
-unsafe fn finish_grow<A>(
-    new_layout: Layout,
-    current_memory: Option<(NonNull<u8>, Layout)>,
-    alloc: &mut A,
-) -> Result<NonNull<[u8]>, TryReserveError>
-where
-    A: Allocator,
-{
-    let memory = if let Some((ptr, old_layout)) = current_memory {
-        debug_assert_eq!(old_layout.align(), new_layout.align());
-        unsafe {
-            // The allocator checks for alignment equality
-            hint::assert_unchecked(old_layout.align() == new_layout.align());
-            alloc.grow(ptr, old_layout, new_layout)
-        }
-    } else {
-        alloc.allocate(new_layout)
-    };
-
-    memory.map_err(|_| AllocError { layout: new_layout, non_exhaustive: () }.into())
 }
 
 // Central function for reserve error handling.
