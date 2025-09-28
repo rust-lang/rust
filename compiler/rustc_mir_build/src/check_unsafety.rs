@@ -554,6 +554,21 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                     visit::walk_expr(self, &self.thir[arg]);
                     return;
                 }
+
+                // Secondly, we allow raw borrows of union field accesses. Peel
+                // any of those off, and recurse normally on the LHS, which should
+                // reject any unsafe operations within.
+                let mut peeled = arg;
+                while let ExprKind::Scope { value: arg, .. } = self.thir[peeled].kind
+                    && let ExprKind::Field { lhs, name: _, variant_index: _ } = self.thir[arg].kind
+                    && let ty::Adt(def, _) = &self.thir[lhs].ty.kind()
+                    && def.is_union()
+                {
+                    peeled = lhs;
+                }
+                visit::walk_expr(self, &self.thir[peeled]);
+                // And return so we don't recurse directly onto the union field access(es).
+                return;
             }
             ExprKind::Deref { arg } => {
                 if let ExprKind::StaticRef { def_id, .. } | ExprKind::ThreadLocalRef(def_id) =
