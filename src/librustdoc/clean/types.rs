@@ -1085,7 +1085,7 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
     let mut changed_auto_active_status = None;
 
     // First we get all `doc(auto_cfg)` attributes.
-    for attr in attrs.clone() {
+    for attr in attrs {
         if let Some(ident) = attr.ident()
             && ident.name == sym::doc
             && let Some(attrs) = attr.meta_item_list()
@@ -1146,13 +1146,9 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
                     }
                 }
             }
-        }
-    }
-
-    // If there is no `doc(cfg())`, then we retrieve the `cfg()` attributes (because
-    // `doc(cfg())` overrides `cfg()`).
-    for attr in attrs {
-        if let hir::Attribute::Parsed(AttributeKind::TargetFeature { features, .. }) = attr {
+        // If there is no `doc(cfg())`, then we retrieve the `cfg()` attributes (because
+        // `doc(cfg())` overrides `cfg()`).
+        } else if let hir::Attribute::Parsed(AttributeKind::TargetFeature { features, .. }) = attr {
             // treat #[target_feature(enable = "feat")] attributes as if they were
             // #[doc(cfg(target_feature = "feat"))] attributes as well
             for (feature, _) in features {
