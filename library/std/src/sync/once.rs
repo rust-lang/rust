@@ -49,7 +49,8 @@ pub struct OnceState {
     pub(crate) inner: sys::OnceState,
 }
 
-pub(crate) enum ExclusiveState {
+/// Used for the internal implementation of `sys::sync::once` on different platforms.
+pub(crate) enum OnceExclusiveState {
     Incomplete,
     Poisoned,
     Complete,
@@ -310,7 +311,7 @@ impl Once {
     /// be running, so the state must be either "incomplete", "poisoned" or
     /// "complete".
     #[inline]
-    pub(crate) fn state(&mut self) -> ExclusiveState {
+    pub(crate) fn state(&mut self) -> OnceExclusiveState {
         self.inner.state()
     }
 
@@ -320,7 +321,7 @@ impl Once {
     /// be running, so the state must be either "incomplete", "poisoned" or
     /// "complete".
     #[inline]
-    pub(crate) fn set_state(&mut self, new_state: ExclusiveState) {
+    pub(crate) fn set_state(&mut self, new_state: OnceExclusiveState) {
         self.inner.set_state(new_state);
     }
 }
