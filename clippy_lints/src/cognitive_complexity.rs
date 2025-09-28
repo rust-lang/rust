@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::source::{IntoSpan, SpanRangeExt};
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::for_each_expr_without_closures;
-use clippy_utils::{LimitStack, get_async_fn_body, is_async_fn, sym};
+use clippy_utils::{LimitStack, get_async_fn_body, sym};
 use core::ops::ControlFlow;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Attribute, Body, Expr, ExprKind, FnDecl};
@@ -147,7 +147,7 @@ impl<'tcx> LateLintPass<'tcx> for CognitiveComplexity {
         def_id: LocalDefId,
     ) {
         if !cx.tcx.has_attr(def_id, sym::test) {
-            let expr = if is_async_fn(kind) {
+            let expr = if kind.asyncness().is_async() {
                 match get_async_fn_body(cx.tcx, body) {
                     Some(b) => b,
                     None => {
