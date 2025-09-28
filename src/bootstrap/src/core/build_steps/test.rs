@@ -582,11 +582,11 @@ impl Miri {
         // We re-use the `cargo` from above.
         cargo.arg("--print-sysroot");
 
-        builder.verbose(|| println!("running: {cargo:?}"));
+        builder.do_if_verbose(|| println!("running: {cargo:?}"));
         let stdout = cargo.run_capture_stdout(builder).stdout();
         // Output is "<sysroot>\n".
         let sysroot = stdout.trim_end();
-        builder.verbose(|| println!("`cargo miri setup --print-sysroot` said: {sysroot:?}"));
+        builder.do_if_verbose(|| println!("`cargo miri setup --print-sysroot` said: {sysroot:?}"));
         PathBuf::from(sysroot)
     }
 }
@@ -2675,7 +2675,7 @@ fn markdown_test(builder: &Builder<'_>, compiler: Compiler, markdown: &Path) -> 
         return true;
     }
 
-    builder.verbose(|| println!("doc tests for: {}", markdown.display()));
+    builder.do_if_verbose(|| println!("doc tests for: {}", markdown.display()));
     let mut cmd = builder.rustdoc_cmd(compiler);
     builder.add_rust_test_threads(&mut cmd);
     // allow for unstable options such as new editions

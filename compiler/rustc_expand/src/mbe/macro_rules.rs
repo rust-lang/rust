@@ -33,8 +33,8 @@ use super::diagnostics::{FailedMacro, failed_to_match_macro};
 use super::macro_parser::{NamedMatches, NamedParseResult};
 use super::{SequenceRepetition, diagnostics};
 use crate::base::{
-    AttrProcMacro, DummyResult, ExpandResult, ExtCtxt, MacResult, MacroExpanderResult,
-    SyntaxExtension, SyntaxExtensionKind, TTMacroExpander,
+    AttrProcMacro, BangProcMacro, DummyResult, ExpandResult, ExtCtxt, MacResult,
+    MacroExpanderResult, SyntaxExtension, SyntaxExtensionKind, TTMacroExpander,
 };
 use crate::errors;
 use crate::expand::{AstFragment, AstFragmentKind, ensure_complete_parse, parse_ast_fragment};
@@ -267,16 +267,16 @@ impl AttrProcMacro for MacroRulesMacroExpander {
     }
 }
 
-struct DummyExpander(ErrorGuaranteed);
+struct DummyBang(ErrorGuaranteed);
 
-impl TTMacroExpander for DummyExpander {
+impl BangProcMacro for DummyBang {
     fn expand<'cx>(
         &self,
         _: &'cx mut ExtCtxt<'_>,
-        span: Span,
+        _: Span,
         _: TokenStream,
-    ) -> ExpandResult<Box<dyn MacResult + 'cx>, ()> {
-        ExpandResult::Ready(DummyResult::any(span, self.0))
+    ) -> Result<TokenStream, ErrorGuaranteed> {
+        Err(self.0)
     }
 }
 
@@ -664,7 +664,7 @@ pub fn compile_declarative_macro(
         SyntaxExtension::new(sess, kind, span, Vec::new(), edition, ident.name, attrs, is_local)
     };
     let dummy_syn_ext =
-        |guar| (mk_syn_ext(SyntaxExtensionKind::LegacyBang(Arc::new(DummyExpander(guar)))), 0);
+        |guar| (mk_syn_ext(SyntaxExtensionKind::Bang(Arc::new(DummyBang(guar)))), 0);
 
     let macro_rules = macro_def.macro_rules;
     let exp_sep = if macro_rules { exp!(Semi) } else { exp!(Comma) };
@@ -894,12 +894,12 @@ fn check_redundant_vis_repetition(
     seq: &SequenceRepetition,
     span: &DelimSpan,
 ) {
-    let is_zero_or_one: bool = seq.kleene.op == KleeneOp::ZeroOrOne;
-    let is_vis = seq.tts.first().map_or(false, |tt| {
-        matches!(tt, mbe::TokenTree::MetaVarDecl { kind: NonterminalKind::Vis, .. })
-    });
-
-    if is_vis && is_zero_or_one {
+    if seq.kleene.op == KleeneOp::ZeroOrOne
+        && matches!(
+            seq.tts.first(),
+            Some(mbe::TokenTree::MetaVarDecl { kind: NonterminalKind::Vis, .. })
+        )
+    {
         err.note("a `vis` fragment can already be empty");
         err.multipart_suggestion(
             "remove the `$(` and `)?`",

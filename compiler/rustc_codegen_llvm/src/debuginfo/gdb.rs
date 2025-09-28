@@ -2,9 +2,9 @@
 
 use rustc_codegen_ssa::base::collect_debugger_visualizers_transitive;
 use rustc_codegen_ssa::traits::*;
+use rustc_hir::attrs::DebuggerVisualizerType;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::bug;
-use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerType;
 use rustc_session::config::{CrateType, DebugInfo};
 
 use crate::builder::Builder;

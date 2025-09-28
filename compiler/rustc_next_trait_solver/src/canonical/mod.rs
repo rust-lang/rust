@@ -25,7 +25,7 @@ use crate::delegate::SolverDelegate;
 use crate::resolve::eager_resolve_vars;
 use crate::solve::{
     CanonicalInput, CanonicalResponse, Certainty, ExternalConstraintsData, Goal,
-    NestedNormalizationGoals, PredefinedOpaquesData, QueryInput, Response, inspect,
+    NestedNormalizationGoals, QueryInput, Response, inspect,
 };
 
 pub mod canonicalizer;
@@ -53,7 +53,7 @@ impl<I: Interner, T> ResponseT<I> for inspect::State<I, T> {
 pub(super) fn canonicalize_goal<D, I>(
     delegate: &D,
     goal: Goal<I, I::Predicate>,
-    opaque_types: Vec<(ty::OpaqueTypeKey<I>, I::Ty)>,
+    opaque_types: &[(ty::OpaqueTypeKey<I>, I::Ty)],
 ) -> (Vec<I::GenericArg>, CanonicalInput<I, I::Predicate>)
 where
     D: SolverDelegate<Interner = I>,
@@ -65,9 +65,7 @@ where
         &mut orig_values,
         QueryInput {
             goal,
-            predefined_opaques_in_body: delegate
-                .cx()
-                .mk_predefined_opaques_in_body(PredefinedOpaquesData { opaque_types }),
+            predefined_opaques_in_body: delegate.cx().mk_predefined_opaques_in_body(opaque_types),
         },
     );
     let query_input = ty::CanonicalQueryInput { canonical, typing_mode: delegate.typing_mode() };

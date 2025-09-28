@@ -5,7 +5,6 @@
 //! unexpanded macros in the fragment are visited and registered.
 //! Imports are also considered items and placed into modules here, but not resolved yet.
 
-use std::cell::Cell;
 use std::sync::Arc;
 
 use rustc_ast::visit::{self, AssocCtxt, Visitor, WalkItemKind};
@@ -35,6 +34,7 @@ use crate::Namespace::{MacroNS, TypeNS, ValueNS};
 use crate::def_collector::collect_definitions;
 use crate::imports::{ImportData, ImportKind};
 use crate::macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
+use crate::ref_mut::CmCell;
 use crate::{
     BindingKey, ExternPreludeEntry, Finalize, MacroData, Module, ModuleKind, ModuleOrUniformRoot,
     NameBinding, ParentScope, PathResult, ResolutionError, Resolver, Segment, Used,
@@ -87,7 +87,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // because they can be fetched by glob imports from those modules, and bring traits
         // into scope both directly and through glob imports.
         let key = BindingKey::new_disambiguated(ident, ns, || {
-            parent.underscore_disambiguator.update(|d| d + 1);
+            // FIXME(batched): Will be fixed in batched resolution.
+            parent.underscore_disambiguator.update_unchecked(|d| d + 1);
             parent.underscore_disambiguator.get()
         });
         if self
@@ -477,7 +478,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             kind,
             parent_scope: self.parent_scope,
             module_path,
-            imported_module: Cell::new(None),
+            imported_module: CmCell::new(None),
             span,
             use_span: item.span,
             use_span_with_attributes: item.span_with_attributes(),
@@ -505,7 +506,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                     });
                 }
             }
-            ImportKind::Glob { .. } => current_module.globs.borrow_mut().push(import),
+            ImportKind::Glob { .. } => current_module.globs.borrow_mut(self.r).push(import),
             _ => unreachable!(),
         }
     }
@@ -668,7 +669,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             }
             ast::UseTreeKind::Glob => {
                 if !ast::attr::contains_name(&item.attrs, sym::prelude_import) {
-                    let kind = ImportKind::Glob { max_vis: Cell::new(None), id };
+                    let kind = ImportKind::Glob { max_vis: CmCell::new(None), id };
                     self.add_import(prefix, kind, use_tree.span, item, root_span, item.id, vis);
                 } else {
                     // Resolve the prelude import early.
@@ -971,7 +972,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             kind: ImportKind::ExternCrate { source: orig_name, target: ident, id: item.id },
             root_id: item.id,
             parent_scope: self.parent_scope,
-            imported_module: Cell::new(module),
+            imported_module: CmCell::new(module),
             has_attributes: !item.attrs.is_empty(),
             use_span_with_attributes: item.span_with_attributes(),
             use_span: item.span,
@@ -1103,7 +1104,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 kind: ImportKind::MacroUse { warn_private },
                 root_id: item.id,
                 parent_scope: this.parent_scope,
-                imported_module: Cell::new(Some(ModuleOrUniformRoot::Module(module))),
+                imported_module: CmCell::new(Some(ModuleOrUniformRoot::Module(module))),
                 use_span_with_attributes: item.span_with_attributes(),
                 has_attributes: !item.attrs.is_empty(),
                 use_span: item.span,
@@ -1196,7 +1197,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
     /// directly into its parent scope's module.
     fn visit_invoc_in_module(&mut self, id: NodeId) -> MacroRulesScopeRef<'ra> {
         let invoc_id = self.visit_invoc(id);
-        self.parent_scope.module.unexpanded_invocations.borrow_mut().insert(invoc_id);
+        self.parent_scope.module.unexpanded_invocations.borrow_mut(self.r).insert(invoc_id);
         self.r.arenas.alloc_macro_rules_scope(MacroRulesScope::Invocation(invoc_id))
     }
 
@@ -1274,7 +1275,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                     kind: ImportKind::MacroExport,
                     root_id: item.id,
                     parent_scope: self.parent_scope,
-                    imported_module: Cell::new(None),
+                    imported_module: CmCell::new(None),
                     has_attributes: false,
                     use_span_with_attributes: span,
                     use_span: span,

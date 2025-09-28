@@ -13,7 +13,7 @@ impl Stdin {
 }
 
 impl io::Read for Stdin {
-    fn read(&mut self, mut buf: &mut [u8]) -> io::Result<usize> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let mut count = 0;
 
         for out_byte in buf.iter_mut() {

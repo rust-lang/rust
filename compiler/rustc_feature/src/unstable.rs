@@ -327,7 +327,7 @@ declare_features! (
     (unstable, m68k_target_feature, "1.85.0", Some(134328)),
     (unstable, mips_target_feature, "1.27.0", Some(44839)),
     (unstable, movrs_target_feature, "1.88.0", Some(137976)),
-    (unstable, nvptx_target_feature, "CURRENT_RUSTC_VERSION", Some(44839)),
+    (unstable, nvptx_target_feature, "1.91.0", Some(44839)),
     (unstable, powerpc_target_feature, "1.27.0", Some(44839)),
     (unstable, prfchw_target_feature, "1.78.0", Some(44839)),
     (unstable, riscv_target_feature, "1.45.0", Some(44839)),
@@ -471,17 +471,13 @@ declare_features! (
     /// Allows deref patterns.
     (incomplete, deref_patterns, "1.79.0", Some(87121)),
     /// Allows deriving the From trait on single-field structs.
-    (unstable, derive_from, "CURRENT_RUSTC_VERSION", Some(144889)),
-    /// Tells rustdoc to automatically generate `#[doc(cfg(...))]`.
-    (unstable, doc_auto_cfg, "1.58.0", Some(43781)),
+    (unstable, derive_from, "1.91.0", Some(144889)),
     /// Allows `#[doc(cfg(...))]`.
     (unstable, doc_cfg, "1.21.0", Some(43781)),
-    /// Allows `#[doc(cfg_hide(...))]`.
-    (unstable, doc_cfg_hide, "1.57.0", Some(43781)),
     /// Allows `#[doc(masked)]`.
     (unstable, doc_masked, "1.21.0", Some(44027)),
     /// Allows features to allow target_feature to better interact with traits.
-    (incomplete, effective_target_features, "CURRENT_RUSTC_VERSION", Some(143352)),
+    (incomplete, effective_target_features, "1.91.0", Some(143352)),
     /// Allows the .use postfix syntax `x.use` and use closures `use |x| { ... }`
     (incomplete, ergonomic_clones, "1.87.0", Some(132290)),
     /// Allows exhaustive pattern matching on types that contain uninhabited types.
@@ -554,9 +550,9 @@ declare_features! (
     /// Allows fused `loop`/`match` for direct intraprocedural jumps.
     (incomplete, loop_match, "1.90.0", Some(132306)),
     /// Allow `macro_rules!` attribute rules
-    (unstable, macro_attr, "CURRENT_RUSTC_VERSION", Some(83527)),
+    (unstable, macro_attr, "1.91.0", Some(83527)),
     /// Allow `macro_rules!` derive rules
-    (unstable, macro_derive, "CURRENT_RUSTC_VERSION", Some(143549)),
+    (unstable, macro_derive, "1.91.0", Some(143549)),
     /// Give access to additional metadata about declarative macro meta-variables.
     (unstable, macro_metavar_expr, "1.61.0", Some(83527)),
     /// Provides a way to concatenate identifiers using metavariable expressions.
@@ -613,7 +609,7 @@ declare_features! (
     (unstable, proc_macro_hygiene, "1.30.0", Some(54727)),
     /// Allows the use of raw-dylibs on ELF platforms
     (incomplete, raw_dylib_elf, "1.87.0", Some(135694)),
-    (unstable, reborrow, "CURRENT_RUSTC_VERSION", Some(145612)),
+    (unstable, reborrow, "1.91.0", Some(145612)),
     /// Makes `&` and `&mut` patterns eat only one layer of references in Rust 2024.
     (incomplete, ref_pat_eat_one_layer_2024, "1.79.0", Some(123076)),
     /// Makes `&` and `&mut` patterns eat only one layer of references in Rust 2024—structural variant
@@ -627,13 +623,13 @@ declare_features! (
     /// Allows `extern "rust-cold"`.
     (unstable, rust_cold_cc, "1.63.0", Some(97544)),
     /// Allows the use of the `sanitize` attribute.
-    (unstable, sanitize, "CURRENT_RUSTC_VERSION", Some(39699)),
+    (unstable, sanitize, "1.91.0", Some(39699)),
     /// Allows the use of SIMD types in functions declared in `extern` blocks.
     (unstable, simd_ffi, "1.0.0", Some(27731)),
     /// Allows specialization of implementations (RFC 1210).
     (incomplete, specialization, "1.7.0", Some(31844)),
     /// Allows using `#[rustc_align_static(...)]` on static items.
-    (unstable, static_align, "CURRENT_RUSTC_VERSION", Some(146177)),
+    (unstable, static_align, "1.91.0", Some(146177)),
     /// Allows attributes on expressions and non-item statements.
     (unstable, stmt_expr_attributes, "1.6.0", Some(15701)),
     /// Allows lints part of the strict provenance effort.
@@ -645,7 +641,7 @@ declare_features! (
     /// Allows subtrait items to shadow supertrait items.
     (unstable, supertrait_item_shadowing, "1.86.0", Some(89151)),
     /// Allows the use of target_feature when a function is marked inline(always).
-    (unstable, target_feature_inline_always, "CURRENT_RUSTC_VERSION", Some(145574)),
+    (unstable, target_feature_inline_always, "1.91.0", Some(145574)),
     /// Allows using `#[thread_local]` on `static` items.
     (unstable, thread_local, "1.0.0", Some(29594)),
     /// Allows defining `trait X = A + B;` alias items.

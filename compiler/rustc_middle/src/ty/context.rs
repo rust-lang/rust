@@ -75,7 +75,7 @@ use crate::thir::Thir;
 use crate::traits;
 use crate::traits::solve::{
     self, CanonicalInput, ExternalConstraints, ExternalConstraintsData, PredefinedOpaques,
-    PredefinedOpaquesData, QueryResult, inspect,
+    QueryResult, inspect,
 };
 use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
 use crate::ty::{
@@ -116,7 +116,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     fn mk_predefined_opaques_in_body(
         self,
-        data: PredefinedOpaquesData<Self>,
+        data: &[(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)],
     ) -> Self::PredefinedOpaques {
         self.mk_predefined_opaques_in_body(data)
     }
@@ -941,7 +941,7 @@ pub struct CtxtInterners<'tcx> {
     layout: InternedSet<'tcx, LayoutData<FieldIdx, VariantIdx>>,
     adt_def: InternedSet<'tcx, AdtDefData>,
     external_constraints: InternedSet<'tcx, ExternalConstraintsData<TyCtxt<'tcx>>>,
-    predefined_opaques_in_body: InternedSet<'tcx, PredefinedOpaquesData<TyCtxt<'tcx>>>,
+    predefined_opaques_in_body: InternedSet<'tcx, List<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)>>,
     fields: InternedSet<'tcx, List<FieldIdx>>,
     local_def_ids: InternedSet<'tcx, List<LocalDefId>>,
     captures: InternedSet<'tcx, List<&'tcx ty::CapturedPlace<'tcx>>>,
@@ -2748,8 +2748,6 @@ direct_interners! {
     adt_def: pub mk_adt_def_from_data(AdtDefData): AdtDef -> AdtDef<'tcx>,
     external_constraints: pub mk_external_constraints(ExternalConstraintsData<TyCtxt<'tcx>>):
         ExternalConstraints -> ExternalConstraints<'tcx>,
-    predefined_opaques_in_body: pub mk_predefined_opaques_in_body(PredefinedOpaquesData<TyCtxt<'tcx>>):
-        PredefinedOpaques -> PredefinedOpaques<'tcx>,
 }
 
 macro_rules! slice_interners {
@@ -2786,6 +2784,7 @@ slice_interners!(
     offset_of: pub mk_offset_of((VariantIdx, FieldIdx)),
     patterns: pub mk_patterns(Pattern<'tcx>),
     outlives: pub mk_outlives(ty::ArgOutlivesPredicate<'tcx>),
+    predefined_opaques_in_body: pub mk_predefined_opaques_in_body((ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)),
 );
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -3127,6 +3126,14 @@ impl<'tcx> TyCtxt<'tcx> {
             >,
     {
         T::collect_and_apply(iter, |xs| self.mk_poly_existential_predicates(xs))
+    }
+
+    pub fn mk_predefined_opaques_in_body_from_iter<I, T>(self, iter: I) -> T::Output
+    where
+        I: Iterator<Item = T>,
+        T: CollectAndApply<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>), PredefinedOpaques<'tcx>>,
+    {
+        T::collect_and_apply(iter, |xs| self.mk_predefined_opaques_in_body(xs))
     }
 
     pub fn mk_clauses_from_iter<I, T>(self, iter: I) -> T::Output

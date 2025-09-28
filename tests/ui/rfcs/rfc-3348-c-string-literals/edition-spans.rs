@@ -7,6 +7,7 @@
 //@ check-pass
 
 //@ proc-macro: count.rs
+//@ ignore-backends: gcc
 extern crate count;
 
 const _: () = {

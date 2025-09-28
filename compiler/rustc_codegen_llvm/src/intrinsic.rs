@@ -1047,7 +1047,7 @@ fn codegen_emcc_try<'ll, 'tcx>(
         // create an alloca and pass a pointer to that.
         let ptr_size = bx.tcx().data_layout.pointer_size();
         let ptr_align = bx.tcx().data_layout.pointer_align().abi;
-        let i8_align = bx.tcx().data_layout.i8_align.abi;
+        let i8_align = bx.tcx().data_layout.i8_align;
         // Required in order for there to be no padding between the fields.
         assert!(i8_align <= ptr_align);
         let catch_data = bx.alloca(2 * ptr_size, ptr_align);

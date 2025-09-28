@@ -73,7 +73,7 @@ $ cargo +nightly build -Zbuild-std --target armv7s-apple-ios
 
 The simulator variants can be differentiated from the variants running
 on-device with the `target_env = "sim"` cfg (or `target_abi = "sim"` before
-Rust CURRENT_RUSTC_VERSION).
+Rust 1.91.0).
 
 ```rust
 if cfg!(all(target_vendor = "apple", target_env = "sim")) {

@@ -3,6 +3,7 @@
 //! Like `tuple-index-suffix.rs`, but exercises the proc-macro interaction.
 
 //@ proc-macro: tuple-index-suffix-proc-macro-aux.rs
+//@ ignore-backends: gcc
 
 extern crate tuple_index_suffix_proc_macro_aux;
 use tuple_index_suffix_proc_macro_aux as aux;

@@ -1,4 +1,5 @@
 //@ proc-macro: weird-hygiene.rs
+//@ ignore-backends: gcc
 
 #![feature(stmt_expr_attributes)]
 #![feature(proc_macro_hygiene)]

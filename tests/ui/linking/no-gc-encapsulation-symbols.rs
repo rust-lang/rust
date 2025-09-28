@@ -5,6 +5,7 @@
 //
 //@ build-pass
 //@ only-x86_64-unknown-linux-gnu
+//@ ignore-backends: gcc
 
 unsafe extern "Rust" {
     // The __start_ section name is magical for the linker,
