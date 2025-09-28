@@ -3191,3 +3191,10 @@ pub(crate) struct UnsafeAttrOutsideUnsafeSuggestion {
     #[suggestion_part(code = ")")]
     pub right: Span,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(lint_unused_visibilities)]
+pub(crate) struct UnusedVisibility {
+    #[suggestion(style = "short", code = "", applicability = "machine-applicable")]
+    pub span: Span,
+}
