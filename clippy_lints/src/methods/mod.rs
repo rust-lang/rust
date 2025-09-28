@@ -149,13 +149,12 @@ use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::macros::FormatArgsStorage;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::ty::{contains_ty_adt_constructor_opaque, implements_trait, is_copy, is_type_diagnostic_item};
+use clippy_utils::ty::{contains_ty_adt_constructor_opaque, implements_trait, is_copy};
 use clippy_utils::{contains_return, is_bool, is_trait_method, iter_input_pats, peel_blocks, return_ty, sym};
 pub use path_ends_with_ext::DEFAULT_ALLOWED_DOTFILES;
 use rustc_abi::ExternAbi;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir as hir;
-use rustc_hir::{Expr, ExprKind, Node, Stmt, StmtKind, TraitItem, TraitItemKind};
+use rustc_hir::{self as hir, Expr, ExprKind, Node, Stmt, StmtKind, TraitItem, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::{self, TraitRef, Ty};
 use rustc_session::impl_lint_pass;
@@ -4889,13 +4888,13 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         if impl_item.span.in_external_macro(cx.sess().source_map()) {
             return;
         }
-        let name = impl_item.ident.name;
-        let parent = cx.tcx.hir_get_parent_item(impl_item.hir_id()).def_id;
-        let item = cx.tcx.hir_expect_item(parent);
-        let self_ty = cx.tcx.type_of(item.owner_id).instantiate_identity();
-
-        let implements_trait = matches!(item.kind, hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }));
         if let hir::ImplItemKind::Fn(ref sig, id) = impl_item.kind {
+            let name = impl_item.ident.name;
+            let parent = cx.tcx.hir_get_parent_item(impl_item.hir_id()).def_id;
+            let item = cx.tcx.hir_expect_item(parent);
+            let self_ty = cx.tcx.type_of(item.owner_id).instantiate_identity();
+
+            let implements_trait = matches!(item.kind, hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }));
             let method_sig = cx.tcx.fn_sig(impl_item.owner_id).instantiate_identity();
             let method_sig = cx.tcx.instantiate_bound_regions_with_erased(method_sig);
             let first_arg_ty_opt = method_sig.inputs().iter().next().copied();
@@ -4908,9 +4907,8 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                         && method_config.output_type.matches(&sig.decl.output)
                         // in case there is no first arg, since we already have checked the number of arguments
                         // it's should be always true
-                        && first_arg_ty_opt.is_none_or(|first_arg_ty| method_config
-                            .self_kind.matches(cx, self_ty, first_arg_ty)
-                            )
+                        && first_arg_ty_opt
+                            .is_none_or(|first_arg_ty| method_config.self_kind.matches(cx, self_ty, first_arg_ty))
                         && fn_header_equals(method_config.fn_header, sig.header)
                         && method_config.lifetime_param_cond(impl_item)
                     {
@@ -4948,21 +4946,14 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                     false,
                 );
             }
-        }
 
-        // if this impl block implements a trait, lint in trait definition instead
-        if implements_trait {
-            return;
-        }
-
-        if let hir::ImplItemKind::Fn(_, _) = impl_item.kind {
-            let ret_ty = return_ty(cx, impl_item.owner_id);
-
-            if contains_ty_adt_constructor_opaque(cx, ret_ty, self_ty) {
-                return;
-            }
-
-            if name == sym::new && ret_ty != self_ty {
+            // if this impl block implements a trait, lint in trait definition instead
+            if !implements_trait
+                && impl_item.ident.name == sym::new
+                && let ret_ty = return_ty(cx, impl_item.owner_id)
+                && ret_ty != self_ty
+                && !contains_ty_adt_constructor_opaque(cx, ret_ty, self_ty)
+            {
                 span_lint(
                     cx,
                     NEW_RET_NO_SELF,
@@ -4978,41 +4969,41 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             return;
         }
 
-        if let TraitItemKind::Fn(ref sig, _) = item.kind
-            && sig.decl.implicit_self.has_implicit_self()
-            && let Some(first_arg_hir_ty) = sig.decl.inputs.first()
-            && let Some(&first_arg_ty) = cx
-                .tcx
-                .fn_sig(item.owner_id)
-                .instantiate_identity()
-                .inputs()
-                .skip_binder()
-                .first()
-        {
-            let self_ty = TraitRef::identity(cx.tcx, item.owner_id.to_def_id()).self_ty();
-            wrong_self_convention::check(
-                cx,
-                item.ident.name,
-                self_ty,
-                first_arg_ty,
-                first_arg_hir_ty.span,
-                false,
-                true,
-            );
-        }
+        if let TraitItemKind::Fn(ref sig, _) = item.kind {
+            if sig.decl.implicit_self.has_implicit_self()
+                && let Some(first_arg_hir_ty) = sig.decl.inputs.first()
+                && let Some(&first_arg_ty) = cx
+                    .tcx
+                    .fn_sig(item.owner_id)
+                    .instantiate_identity()
+                    .inputs()
+                    .skip_binder()
+                    .first()
+            {
+                let self_ty = TraitRef::identity(cx.tcx, item.owner_id.to_def_id()).self_ty();
+                wrong_self_convention::check(
+                    cx,
+                    item.ident.name,
+                    self_ty,
+                    first_arg_ty,
+                    first_arg_hir_ty.span,
+                    false,
+                    true,
+                );
+            }
 
-        if item.ident.name == sym::new
-            && let TraitItemKind::Fn(_, _) = item.kind
-            && let ret_ty = return_ty(cx, item.owner_id)
-            && let self_ty = TraitRef::identity(cx.tcx, item.owner_id.to_def_id()).self_ty()
-            && !ret_ty.contains(self_ty)
-        {
-            span_lint(
-                cx,
-                NEW_RET_NO_SELF,
-                item.span,
-                "methods called `new` usually return `Self`",
-            );
+            if item.ident.name == sym::new
+                && let ret_ty = return_ty(cx, item.owner_id)
+                && let self_ty = TraitRef::identity(cx.tcx, item.owner_id.to_def_id()).self_ty()
+                && !ret_ty.contains(self_ty)
+            {
+                span_lint(
+                    cx,
+                    NEW_RET_NO_SELF,
+                    item.span,
+                    "methods called `new` usually return `Self`",
+                );
+            }
         }
     }
 }
@@ -5776,36 +5767,36 @@ impl ShouldImplTraitCase {
 
 #[rustfmt::skip]
 const TRAIT_METHODS: [ShouldImplTraitCase; 30] = [
-    ShouldImplTraitCase::new("std::ops::Add", sym::add,  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::convert::AsMut", sym::as_mut,  1,  FN_HEADER,  SelfKind::RefMut,  OutType::Ref, true),
-    ShouldImplTraitCase::new("std::convert::AsRef", sym::as_ref,  1,  FN_HEADER,  SelfKind::Ref,  OutType::Ref, true),
-    ShouldImplTraitCase::new("std::ops::BitAnd", sym::bitand,  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::ops::BitOr", sym::bitor,  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::ops::BitXor", sym::bitxor,  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::borrow::Borrow", sym::borrow,  1,  FN_HEADER,  SelfKind::Ref,  OutType::Ref, true),
-    ShouldImplTraitCase::new("std::borrow::BorrowMut", sym::borrow_mut,  1,  FN_HEADER,  SelfKind::RefMut,  OutType::Ref, true),
-    ShouldImplTraitCase::new("std::clone::Clone", sym::clone,  1,  FN_HEADER,  SelfKind::Ref,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::cmp::Ord", sym::cmp,  2,  FN_HEADER,  SelfKind::Ref,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::default::Default", kw::Default,  0,  FN_HEADER,  SelfKind::No,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::ops::Deref", sym::deref,  1,  FN_HEADER,  SelfKind::Ref,  OutType::Ref, true),
-    ShouldImplTraitCase::new("std::ops::DerefMut", sym::deref_mut,  1,  FN_HEADER,  SelfKind::RefMut,  OutType::Ref, true),
-    ShouldImplTraitCase::new("std::ops::Div", sym::div,  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::ops::Drop", sym::drop,  1,  FN_HEADER,  SelfKind::RefMut,  OutType::Unit, true),
-    ShouldImplTraitCase::new("std::cmp::PartialEq", sym::eq,  2,  FN_HEADER,  SelfKind::Ref,  OutType::Bool, true),
-    ShouldImplTraitCase::new("std::iter::FromIterator", sym::from_iter,  1,  FN_HEADER,  SelfKind::No,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::str::FromStr", sym::from_str,  1,  FN_HEADER,  SelfKind::No,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::hash::Hash", sym::hash,  2,  FN_HEADER,  SelfKind::Ref,  OutType::Unit, true),
-    ShouldImplTraitCase::new("std::ops::Index", sym::index,  2,  FN_HEADER,  SelfKind::Ref,  OutType::Ref, true),
-    ShouldImplTraitCase::new("std::ops::IndexMut", sym::index_mut,  2,  FN_HEADER,  SelfKind::RefMut,  OutType::Ref, true),
-    ShouldImplTraitCase::new("std::iter::IntoIterator", sym::into_iter,  1,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::ops::Mul", sym::mul,  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::ops::Neg", sym::neg,  1,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::iter::Iterator", sym::next,  1,  FN_HEADER,  SelfKind::RefMut,  OutType::Any, false),
-    ShouldImplTraitCase::new("std::ops::Not", sym::not,  1,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::ops::Rem", sym::rem,  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::ops::Shl", sym::shl,  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::ops::Shr", sym::shr,  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::ops::Sub", sym::sub,  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::ops::Add",           sym::add,        2,  FN_HEADER, SelfKind::Value,  OutType::Any,  true ),
+    ShouldImplTraitCase::new("std::convert::AsMut",     sym::as_mut,     1,  FN_HEADER, SelfKind::RefMut, OutType::Ref,  true ),
+    ShouldImplTraitCase::new("std::convert::AsRef",     sym::as_ref,     1,  FN_HEADER, SelfKind::Ref,    OutType::Ref,  true ),
+    ShouldImplTraitCase::new("std::ops::BitAnd",        sym::bitand,     2,  FN_HEADER, SelfKind::Value,  OutType::Any,  true ),
+    ShouldImplTraitCase::new("std::ops::BitOr",         sym::bitor,      2,  FN_HEADER, SelfKind::Value,  OutType::Any,  true ),
+    ShouldImplTraitCase::new("std::ops::BitXor",        sym::bitxor,     2,  FN_HEADER, SelfKind::Value,  OutType::Any,  true ),
+    ShouldImplTraitCase::new("std::borrow::Borrow",     sym::borrow,     1,  FN_HEADER, SelfKind::Ref,    OutType::Ref,  true ),
+    ShouldImplTraitCase::new("std::borrow::BorrowMut",  sym::borrow_mut, 1,  FN_HEADER, SelfKind::RefMut, OutType::Ref,  true ),
+    ShouldImplTraitCase::new("std::clone::Clone",       sym::clone,      1,  FN_HEADER, SelfKind::Ref,    OutType::Any,  true ),
+    ShouldImplTraitCase::new("std::cmp::Ord",           sym::cmp,        2,  FN_HEADER, SelfKind::Ref,    OutType::Any,  true ),
+    ShouldImplTraitCase::new("std::default::Default",   kw::Default,     0,  FN_HEADER, SelfKind::No,     OutType::Any,  true ),
+    ShouldImplTraitCase::new("std::ops::Deref",         sym::deref,      1,  FN_HEADER, SelfKind::Ref,    OutType::Ref,  true ),
+    ShouldImplTraitCase::new("std::ops::DerefMut",      sym::deref_mut,  1,  FN_HEADER, SelfKind::RefMut, OutType::Ref,  true ),
+    ShouldImplTraitCase::new("std::ops::Div",           sym::div,        2,  FN_HEADER, SelfKind::Value,  OutType::Any,  true ),
+    ShouldImplTraitCase::new("std::ops::Drop",          sym::drop,       1,  FN_HEADER, SelfKind::RefMut, OutType::Unit, true ),
+    ShouldImplTraitCase::new("std::cmp::PartialEq",     sym::eq,         2,  FN_HEADER, SelfKind::Ref,    OutType::Bool, true ),
+    ShouldImplTraitCase::new("std::iter::FromIterator", sym::from_iter,  1,  FN_HEADER, SelfKind::No,     OutType::Any,  true ),
+    ShouldImplTraitCase::new("std::str::FromStr",       sym::from_str,   1,  FN_HEADER, SelfKind::No,     OutType::Any,  true ),
+    ShouldImplTraitCase::new("std::hash::Hash",         sym::hash,       2,  FN_HEADER, SelfKind::Ref,    OutType::Unit, true ),
+    ShouldImplTraitCase::new("std::ops::Index",         sym::index,      2,  FN_HEADER, SelfKind::Ref,    OutType::Ref,  true ),
+    ShouldImplTraitCase::new("std::ops::IndexMut",      sym::index_mut,  2,  FN_HEADER, SelfKind::RefMut, OutType::Ref,  true ),
+    ShouldImplTraitCase::new("std::iter::IntoIterator", sym::into_iter,  1,  FN_HEADER, SelfKind::Value,  OutType::Any,  true ),
+    ShouldImplTraitCase::new("std::ops::Mul",           sym::mul,        2,  FN_HEADER, SelfKind::Value,  OutType::Any,  true ),
+    ShouldImplTraitCase::new("std::ops::Neg",           sym::neg,        1,  FN_HEADER, SelfKind::Value,  OutType::Any,  true ),
+    ShouldImplTraitCase::new("std::iter::Iterator",     sym::next,       1,  FN_HEADER, SelfKind::RefMut, OutType::Any,  false),
+    ShouldImplTraitCase::new("std::ops::Not",           sym::not,        1,  FN_HEADER, SelfKind::Value,  OutType::Any,  true ),
+    ShouldImplTraitCase::new("std::ops::Rem",           sym::rem,        2,  FN_HEADER, SelfKind::Value,  OutType::Any,  true ),
+    ShouldImplTraitCase::new("std::ops::Shl",           sym::shl,        2,  FN_HEADER, SelfKind::Value,  OutType::Any,  true ),
+    ShouldImplTraitCase::new("std::ops::Shr",           sym::shr,        2,  FN_HEADER, SelfKind::Value,  OutType::Any,  true ),
+    ShouldImplTraitCase::new("std::ops::Sub",           sym::sub,        2,  FN_HEADER, SelfKind::Value,  OutType::Any,  true ),
 ];
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -5823,12 +5814,10 @@ impl SelfKind {
                 true
             } else if let Some(boxed_ty) = ty.boxed_ty() {
                 boxed_ty == parent_ty
-            } else if is_type_diagnostic_item(cx, ty, sym::Rc) || is_type_diagnostic_item(cx, ty, sym::Arc) {
-                if let ty::Adt(_, args) = ty.kind() {
-                    args.types().next() == Some(parent_ty)
-                } else {
-                    false
-                }
+            } else if let ty::Adt(adt, args) = ty.kind()
+                && matches!(cx.tcx.get_diagnostic_name(adt.did()), Some(sym::Rc | sym::Arc))
+            {
+                args.types().next() == Some(parent_ty)
             } else {
                 false
             }
