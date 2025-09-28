@@ -147,7 +147,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             let layout = tcx
                 .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(rust_type))
                 .unwrap();
-            let align = layout.align.abi.bytes();
+            let align = layout.align.bytes();
             // For types with size 1, the alignment can be 1 and only 1
             // So, we can skip the call to ``get_aligned`.
             // In the future, we can add a GCC API to query the type align,
@@ -186,9 +186,9 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             (i128_type, u128_type)
         } else {
             /*let layout = tcx.layout_of(ParamEnv::reveal_all().and(tcx.types.i128)).unwrap();
-            let i128_align = layout.align.abi.bytes();
+            let i128_align = layout.align.bytes();
             let layout = tcx.layout_of(ParamEnv::reveal_all().and(tcx.types.u128)).unwrap();
-            let u128_align = layout.align.abi.bytes();*/
+            let u128_align = layout.align.bytes();*/
 
             // TODO(antoyo): re-enable the alignment when libgccjit fixed the issue in
             // gcc_jit_context_new_array_constructor (it should not use reinterpret_cast).

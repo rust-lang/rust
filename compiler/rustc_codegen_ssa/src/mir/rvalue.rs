@@ -617,7 +617,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                     mir::NullOp::AlignOf => {
                         assert!(bx.cx().type_is_sized(ty));
-                        let val = layout.align.abi.bytes();
+                        let val = layout.align.bytes();
                         bx.cx().const_usize(val)
                     }
                     mir::NullOp::OffsetOf(fields) => {

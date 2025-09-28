@@ -795,7 +795,7 @@ fn variant_info_for_adt<'tcx>(
                     name,
                     offset: offset.bytes(),
                     size: field_layout.size.bytes(),
-                    align: field_layout.align.abi.bytes(),
+                    align: field_layout.align.bytes(),
                     type_name: None,
                 }
             })
@@ -804,7 +804,7 @@ fn variant_info_for_adt<'tcx>(
         VariantInfo {
             name: n,
             kind: if layout.is_unsized() { SizeKind::Min } else { SizeKind::Exact },
-            align: layout.align.abi.bytes(),
+            align: layout.align.bytes(),
             size: if min_size.bytes() == 0 { layout.size.bytes() } else { min_size.bytes() },
             fields: field_info,
         }
@@ -877,7 +877,7 @@ fn variant_info_for_coroutine<'tcx>(
                 name: *name,
                 offset: offset.bytes(),
                 size: field_layout.size.bytes(),
-                align: field_layout.align.abi.bytes(),
+                align: field_layout.align.bytes(),
                 type_name: None,
             }
         })
@@ -905,7 +905,7 @@ fn variant_info_for_coroutine<'tcx>(
                         }),
                         offset: offset.bytes(),
                         size: field_layout.size.bytes(),
-                        align: field_layout.align.abi.bytes(),
+                        align: field_layout.align.bytes(),
                         // Include the type name if there is no field name, or if the name is the
                         // __awaitee placeholder symbol which means a child future being `.await`ed.
                         type_name: (field_name.is_none() || field_name == Some(sym::__awaitee))
@@ -946,7 +946,7 @@ fn variant_info_for_coroutine<'tcx>(
                 name: Some(Symbol::intern(&ty::CoroutineArgs::variant_name(variant_idx))),
                 kind: SizeKind::Exact,
                 size: variant_size.bytes(),
-                align: variant_layout.align.abi.bytes(),
+                align: variant_layout.align.bytes(),
                 fields,
             }
         })

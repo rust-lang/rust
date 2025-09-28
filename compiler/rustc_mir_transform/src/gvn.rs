@@ -618,7 +618,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 }
                 let val = match null_op {
                     NullOp::SizeOf => arg_layout.size.bytes(),
-                    NullOp::AlignOf => arg_layout.align.abi.bytes(),
+                    NullOp::AlignOf => arg_layout.align.bytes(),
                     NullOp::OffsetOf(fields) => self
                         .ecx
                         .tcx

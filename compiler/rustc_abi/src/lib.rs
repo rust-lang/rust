@@ -2159,7 +2159,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
 
     /// Returns `true` if the type is sized and a 1-ZST (meaning it has size 0 and alignment 1).
     pub fn is_1zst(&self) -> bool {
-        self.is_sized() && self.size.bytes() == 0 && self.align.abi.bytes() == 1
+        self.is_sized() && self.size.bytes() == 0 && self.align.bytes() == 1
     }
 
     /// Returns `true` if the type is a ZST and not unsized.

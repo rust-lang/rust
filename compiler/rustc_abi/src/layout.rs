@@ -1169,7 +1169,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 // To allow unsizing `&Foo<Type>` -> `&Foo<dyn Trait>`, the layout of the struct must
                 // not depend on the layout of the tail.
                 let max_field_align =
-                    fields_excluding_tail.iter().map(|f| f.align.abi.bytes()).max().unwrap_or(1);
+                    fields_excluding_tail.iter().map(|f| f.align.bytes()).max().unwrap_or(1);
                 let largest_niche_size = fields_excluding_tail
                     .iter()
                     .filter_map(|f| f.largest_niche)
@@ -1189,7 +1189,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                     } else {
                         // Returns `log2(effective-align)`. The calculation assumes that size is an
                         // integer multiple of align, except for ZSTs.
-                        let align = layout.align.abi.bytes();
+                        let align = layout.align.bytes();
                         let size = layout.size.bytes();
                         let niche_size = layout.largest_niche.map(|n| n.available(dl)).unwrap_or(0);
                         // Group [u8; 4] with align-4 or [u8; 6] with align-2 fields.
@@ -1488,7 +1488,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         for i in layout.fields.index_by_increasing_offset() {
             let offset = layout.fields.offset(i);
             let f = &fields[FieldIdx::new(i)];
-            write!(s, "[o{}a{}s{}", offset.bytes(), f.align.abi.bytes(), f.size.bytes()).unwrap();
+            write!(s, "[o{}a{}s{}", offset.bytes(), f.align.bytes(), f.size.bytes()).unwrap();
             if let Some(n) = f.largest_niche {
                 write!(
                     s,
