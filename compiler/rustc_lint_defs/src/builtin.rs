@@ -141,6 +141,7 @@ declare_lint_pass! {
         UNUSED_QUALIFICATIONS,
         UNUSED_UNSAFE,
         UNUSED_VARIABLES,
+        UNUSED_VISIBILITIES,
         USELESS_DEPRECATED,
         WARNINGS,
         // tidy-alphabetical-end
@@ -688,6 +689,26 @@ declare_lint! {
     pub UNUSED_VARIABLES,
     Warn,
     "detect variables which are not used in any way"
+}
+
+declare_lint! {
+    /// The `unused_visibilities` lint detects visibility qualifiers (like `pub`)
+    /// on a `const _` item.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// pub const _: () = {};
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// These qualifiers have no effect.
+    pub UNUSED_VISIBILITIES,
+    Warn,
+    "detect visibility qualifiers on `const _` items"
 }
 
 declare_lint! {
