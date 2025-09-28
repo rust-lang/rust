@@ -1139,7 +1139,7 @@ impl Builder<'_> {
             cargo.env("RUSTC_BACKTRACE_ON_ICE", "1");
         }
 
-        if self.is_verbose_than(1) {
+        if self.verbosity >= 2 {
             // This provides very useful logs especially when debugging build cache-related stuff.
             cargo.env("CARGO_LOG", "cargo::core::compiler::fingerprint=info");
         }

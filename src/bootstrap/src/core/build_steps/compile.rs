@@ -895,6 +895,8 @@ impl Step for StartupObjects {
     fn run(self, builder: &Builder<'_>) -> Vec<(PathBuf, DependencyType)> {
         let for_compiler = self.compiler;
         let target = self.target;
+        // Even though no longer necessary on x86_64, they are kept for now to
+        // avoid potential issues in downstream crates.
         if !target.is_windows_gnu() {
             return vec![];
         }
@@ -1832,8 +1834,9 @@ impl Step for Sysroot {
         let sysroot = sysroot_dir(compiler.stage);
         trace!(stage = ?compiler.stage, ?sysroot);
 
-        builder
-            .verbose(|| println!("Removing sysroot {} to avoid caching bugs", sysroot.display()));
+        builder.do_if_verbose(|| {
+            println!("Removing sysroot {} to avoid caching bugs", sysroot.display())
+        });
         let _ = fs::remove_dir_all(&sysroot);
         t!(fs::create_dir_all(&sysroot));
 
@@ -1902,12 +1905,7 @@ impl Step for Sysroot {
                 if !path.parent().is_none_or(|p| p.ends_with(&suffix)) {
                     return true;
                 }
-                if !filtered_files.iter().all(|f| f != path.file_name().unwrap()) {
-                    builder.verbose_than(1, || println!("ignoring {}", path.display()));
-                    false
-                } else {
-                    true
-                }
+                filtered_files.iter().all(|f| f != path.file_name().unwrap())
             });
         }
 
@@ -2596,7 +2594,7 @@ pub fn stream_cargo(
         cmd.arg(arg);
     }
 
-    builder.verbose(|| println!("running: {cmd:?}"));
+    builder.do_if_verbose(|| println!("running: {cmd:?}"));
 
     let streaming_command = cmd.stream_capture_stdout(&builder.config.exec_ctx);
 

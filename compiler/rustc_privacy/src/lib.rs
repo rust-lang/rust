@@ -45,7 +45,7 @@ use tracing::debug;
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// Generic infrastructure used to implement specific visitors below.
+// Generic infrastructure used to implement specific visitors below.
 ////////////////////////////////////////////////////////////////////////////////
 
 struct LazyDefPathStr<'tcx> {
@@ -309,10 +309,7 @@ fn min(vis1: ty::Visibility, vis2: ty::Visibility, tcx: TyCtxt<'_>) -> ty::Visib
     if vis1.is_at_least(vis2, tcx) { vis2 } else { vis1 }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// Visitor used to determine impl visibility and reachability.
-////////////////////////////////////////////////////////////////////////////////
-
 struct FindMin<'a, 'tcx, VL: VisibilityLike, const SHALLOW: bool> {
     tcx: TyCtxt<'tcx>,
     effective_visibilities: &'a EffectiveVisibilities,
@@ -387,10 +384,7 @@ impl VisibilityLike for EffectiveVisibility {
     }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// The embargo visitor, used to determine the exports of the AST.
-////////////////////////////////////////////////////////////////////////////////
-
 struct EmbargoVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
 
@@ -849,9 +843,7 @@ impl<'tcx> DefIdVisitor<'tcx> for ReachEverythingInTheInterfaceVisitor<'_, 'tcx>
     }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// Visitor, used for EffectiveVisibilities table checking
-////////////////////////////////////////////////////////////////////////////////
 pub struct TestReachabilityVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     effective_visibilities: &'a EffectiveVisibilities,
@@ -909,13 +901,11 @@ impl<'a, 'tcx> TestReachabilityVisitor<'a, 'tcx> {
     }
 }
 
-//////////////////////////////////////////////////////////////////////////////////////
 /// Name privacy visitor, checks privacy and reports violations.
+///
 /// Most of name privacy checks are performed during the main resolution phase,
 /// or later in type checking when field accesses and associated items are resolved.
 /// This pass performs remaining checks for fields in struct expressions and patterns.
-//////////////////////////////////////////////////////////////////////////////////////
-
 struct NamePrivacyVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
     maybe_typeck_results: Option<&'tcx ty::TypeckResults<'tcx>>,
@@ -1120,12 +1110,10 @@ impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
     }
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////
 /// Type privacy visitor, checks types for privacy and reports violations.
+///
 /// Both explicitly written types and inferred types of expressions and patterns are checked.
 /// Checks are performed on "semantic" types regardless of names and their hygiene.
-////////////////////////////////////////////////////////////////////////////////////////////
-
 struct TypePrivacyVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
     module_def_id: LocalModDefId,
@@ -1345,13 +1333,11 @@ impl<'tcx> DefIdVisitor<'tcx> for TypePrivacyVisitor<'tcx> {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////////
 /// SearchInterfaceForPrivateItemsVisitor traverses an item's interface and
 /// finds any private components in it.
+///
 /// PrivateItemsInPublicInterfacesVisitor ensures there are no private types
 /// and traits in public interfaces.
-///////////////////////////////////////////////////////////////////////////////
-
 struct SearchInterfaceForPrivateItemsVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
     item_def_id: LocalDefId,

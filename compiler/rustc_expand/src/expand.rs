@@ -971,7 +971,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                             });
                         }
                     },
-                    SyntaxExtensionKind::LegacyBang(..) => {
+                    SyntaxExtensionKind::Bang(..) => {
                         let msg = "expanded a dummy glob delegation";
                         let guar = self.cx.dcx().span_delayed_bug(span, msg);
                         return ExpandResult::Ready(fragment_kind.dummy(span, guar));

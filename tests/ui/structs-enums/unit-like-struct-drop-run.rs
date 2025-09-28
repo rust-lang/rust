@@ -1,6 +1,7 @@
 //@ run-pass
 //@ needs-unwind
 //@ needs-threads
+//@ ignore-backends: gcc
 
 // Make sure the destructor is run for unit-like structs.
 
