@@ -94,7 +94,7 @@
 //! pull-requests for your suggested changes.
 //!
 //! Contributions are appreciated! If you see a part of the docs that can be
-//! improved, submit a PR, or chat with us first on [Discord][rust-discord]
+//! improved, submit a PR, or chat with us first on [Zulip][rust-zulip]
 //! #docs.
 //!
 //! # A Tour of The Rust Standard Library
@@ -212,7 +212,7 @@
 //! [multithreading]: thread
 //! [other]: #what-is-in-the-standard-library-documentation
 //! [primitive types]: ../book/ch03-02-data-types.html
-//! [rust-discord]: https://discord.gg/rust-lang
+//! [rust-zulip]: https://rust-lang.zulipchat.com/
 //! [array]: prim@array
 //! [slice]: prim@slice
 
