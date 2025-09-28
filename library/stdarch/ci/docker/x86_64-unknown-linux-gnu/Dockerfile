@@ -8,6 +8,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   wget \
   xz-utils \
   clang \
+  libstdc++-14-dev \
+  build-essential \
   lld
 
 RUN wget http://ci-mirrors.rust-lang.org/stdarch/sde-external-9.58.0-2025-06-16-lin.tar.xz -O sde.tar.xz
