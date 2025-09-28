@@ -98,7 +98,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::definitions::{DefPath, DefPathData};
 use rustc_hir::hir_id::{HirIdMap, HirIdSet};
-use rustc_hir::intravisit::{FnKind, Visitor, walk_expr};
+use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{
     self as hir, Arm, BindingMode, Block, BlockCheckMode, Body, ByRef, Closure, ConstArgKind, CoroutineDesugaring,
     CoroutineKind, CoroutineSource, Destination, Expr, ExprField, ExprKind, FnDecl, FnRetTy, GenericArg, GenericArgs,
@@ -1852,15 +1852,6 @@ pub fn if_sequence<'tcx>(mut expr: &'tcx Expr<'tcx>) -> (Vec<&'tcx Expr<'tcx>>, 
     }
 
     (conds, blocks)
-}
-
-/// Checks if the given function kind is an async function.
-pub fn is_async_fn(kind: FnKind<'_>) -> bool {
-    match kind {
-        FnKind::ItemFn(_, _, header) => header.asyncness.is_async(),
-        FnKind::Method(_, sig) => sig.header.asyncness.is_async(),
-        FnKind::Closure => false,
-    }
 }
 
 /// Peels away all the compiler generated code surrounding the body of an async closure.
