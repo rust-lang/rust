@@ -12,28 +12,28 @@ impl DummyStruct {
 }
 
 fn simple_double_parens() -> i32 {
-    ((0))
+    (0)
     //~^ double_parens
 }
 
 fn fn_double_parens() {
-    dummy_fn((0));
+    dummy_fn(0);
     //~^ double_parens
 }
 
 fn method_double_parens(x: DummyStruct) {
-    x.dummy_method((0));
+    x.dummy_method(0);
     //~^ double_parens
 }
 
 fn tuple_double_parens() -> (i32, i32) {
-    ((1, 2))
+    (1, 2)
     //~^ double_parens
 }
 
 #[allow(clippy::unused_unit)]
 fn unit_double_parens() {
-    (())
+    ()
     //~^ double_parens
 }
 
@@ -56,7 +56,7 @@ fn method_unit_ok(x: DummyStruct) {
 // Issue #3206
 fn inside_macro() {
     assert_eq!((1, 2), (1, 2), "Error");
-    assert_eq!(((1, 2)), (1, 2), "Error");
+    assert_eq!((1, 2), (1, 2), "Error");
     //~^ double_parens
 }
 
@@ -81,18 +81,18 @@ fn issue9000(x: DummyStruct) {
 
     // should lint: both parens are from inside the macro
     macro_rules! bar {
-        () => {((100))}
+        () => {(100)}
         //~^ double_parens
     }
     bar!();
 
     // should lint: both parens are from outside the macro;
     // make sure to suggest the macro unexpanded
-    ((vec![1, 2]));
+    (vec![1, 2]);
     //~^ double_parens
-    dummy_fn((vec![1, 2]));
+    dummy_fn(vec![1, 2]);
     //~^ double_parens
-    x.dummy_method((vec![1, 2]));
+    x.dummy_method(vec![1, 2]);
     //~^ double_parens
 }
 
