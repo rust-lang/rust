@@ -6,10 +6,15 @@ fn demo_byte_add_thin(_1: *const u32, _2: usize) -> *const u32 {
     let mut _0: *const u32;
     scope 1 (inlined #[track_caller] std::ptr::const_ptr::<impl *const u32>::byte_add) {
         let mut _3: *const u8;
-        let mut _4: *const u8;
+        let mut _4: usize;
+        let mut _9: *const u8;
         scope 2 (inlined std::ptr::const_ptr::<impl *const u32>::cast::<u8>) {
         }
         scope 3 (inlined #[track_caller] std::ptr::const_ptr::<impl *const u8>::add) {
+            let mut _5: &usize;
+            let mut _6: &*const u8;
+            let mut _7: {closure@std::ptr::const_ptr::<impl *const u8>::add::{closure#0}};
+            let _8: ();
         }
         scope 4 (inlined std::ptr::const_ptr::<impl *const u8>::with_metadata_of::<u32>) {
             scope 5 (inlined std::ptr::metadata::<u32>) {
@@ -20,13 +25,29 @@ fn demo_byte_add_thin(_1: *const u32, _2: usize) -> *const u32 {
     }
 
     bb0: {
-        StorageLive(_4);
+        StorageLive(_9);
         StorageLive(_3);
         _3 = copy _1 as *const u8 (PtrToPtr);
-        _4 = Offset(copy _3, copy _2);
-        StorageDead(_3);
-        _0 = copy _4 as *const u32 (PtrToPtr);
+        StorageLive(_4);
+        _4 = copy _2;
+        StorageLive(_7);
+        StorageLive(_5);
+        _5 = &_4;
+        StorageLive(_6);
+        _6 = &_3;
+        _7 = {closure@$SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL} { 0: copy _5, 1: copy _6 };
+        StorageDead(_6);
+        StorageDead(_5);
+        _8 = contract_check_requires::<{closure@std::ptr::const_ptr::<impl *const u8>::add::{closure#0}}>(move _7) -> [return: bb1, unwind continue];
+    }
+
+    bb1: {
+        StorageDead(_7);
+        _9 = Offset(copy _3, copy _2);
         StorageDead(_4);
+        StorageDead(_3);
+        _0 = copy _9 as *const u32 (PtrToPtr);
+        StorageDead(_9);
         return;
     }
 }
