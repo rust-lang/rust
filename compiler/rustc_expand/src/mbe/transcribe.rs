@@ -599,13 +599,19 @@ fn eval_metavar_recursive_expr<'psess, 'interp>(
                     };
                     Ok(ident_pnr(ident))
                 }
+                (ParseNtResult::Adt(adt_item), sym::vis) => {
+                    if !matches!(adt_item.kind, ItemKind::Struct(..) | ItemKind::Enum(..) | ItemKind::Union(..)) {
+                        dcx.span_bug(field.span, "`adt` item was not an adt");
+                    }
+                    Ok(vis_pnr(&adt_item.vis))
+                }
                 (ParseNtResult::Fn(fn_item), sym::name) => {
                     let f = require_fn_item(fn_item);
                     Ok(ident_pnr(f.ident))
                 }
                 (ParseNtResult::Fn(fn_item), sym::vis) => {
                     let _ = require_fn_item(fn_item);
-                    Ok(Cow::Owned(ParseNtResult::Vis(Box::new(fn_item.vis.clone()))))
+                    Ok(vis_pnr(&fn_item.vis))
                 }
                 (_, _) => err_unknown_field(),
             }
@@ -615,6 +621,10 @@ fn eval_metavar_recursive_expr<'psess, 'interp>(
 
 fn ident_pnr(ident: Ident) -> Cow<'static, ParseNtResult> {
     Cow::Owned(ParseNtResult::Ident(ident, ident.is_raw_guess().into()))
+}
+
+fn vis_pnr(vis: &ast::Visibility) -> Cow<'static, ParseNtResult> {
+    Cow::Owned(ParseNtResult::Vis(Box::new(vis.clone())))
 }
 
 fn pnr_type(pnr: &ParseNtResult) -> &'static str {

@@ -83,12 +83,36 @@ assert_fn_vis! {
     fn f() {}
 }
 
+macro_rules! assert_adt_vis {
+    ($v:vis, $s:adt) => {
+        const _: () = {
+            assert!(stringify!(${s.vis}) == stringify!($v));
+        };
+    }
+}
+
+assert_adt_vis! {
+    pub,
+    pub struct S;
+}
+
+assert_adt_vis! {
+    pub(crate),
+    pub(crate) union U {}
+}
+
 macro_rules! use_vis {
     ($f:fn) => {${f.vis} struct StructWithFnVis;}
 }
 
+macro_rules! use_adt_vis {
+    ($s:adt) => {${s.vis} fn fn_with_struct_vis() {}}
+}
+
 mod module {
     use_vis! { pub fn f() {} }
+    use_adt_vis! { pub(crate) struct S; }
 }
 
 const C: module::StructWithFnVis = module::StructWithFnVis;
+use module::fn_with_struct_vis;
