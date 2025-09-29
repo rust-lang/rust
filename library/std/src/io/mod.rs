@@ -3234,7 +3234,7 @@ fn inlined_slow_read_byte<R: Read>(reader: &mut R) -> Option<Result<u8>> {
     }
 }
 
-// Used by `BufReader::spec_read_byte`, for which the `inline(ever)` is
+// Used by `BufReader::spec_read_byte`, for which the `inline(never)` is
 // important.
 #[inline(never)]
 fn uninlined_slow_read_byte<R: Read>(reader: &mut R) -> Option<Result<u8>> {

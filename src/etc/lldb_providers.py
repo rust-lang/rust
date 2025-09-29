@@ -652,6 +652,21 @@ class MSVCEnumSyntheticProvider:
         return name
 
 
+def StructSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
+    output = []
+    for i in range(valobj.GetNumChildren()):
+        child: SBValue = valobj.GetChildAtIndex(i)
+        summary = child.summary
+        if summary is None:
+            summary = child.value
+            if summary is None:
+                summary = StructSummaryProvider(child, _dict)
+        summary = child.GetName() + ":" + summary
+        output.append(summary)
+
+    return "{" + ", ".join(output) + "}"
+
+
 def MSVCEnumSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
     enum_synth = MSVCEnumSyntheticProvider(valobj.GetNonSyntheticValue(), _dict)
     variant_names: SBType = valobj.target.FindFirstType(
@@ -695,16 +710,7 @@ def MSVCEnumSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
         return name + TupleSummaryProvider(enum_synth.value, _dict)
     else:
         # enum variant is a regular struct
-        var_list = (
-            str(enum_synth.value.GetNonSyntheticValue()).split("= ", 1)[1].splitlines()
-        )
-        vars = [x.strip() for x in var_list if x not in ("{", "}")]
-        if vars[0][0] == "(":
-            vars[0] = vars[0][1:]
-        if vars[-1][-1] == ")":
-            vars[-1] = vars[-1][:-1]
-
-        return f"{name}{{{', '.join(vars)}}}"
+        return name + StructSummaryProvider(enum_synth.value, _dict)
 
 
 class TupleSyntheticProvider:

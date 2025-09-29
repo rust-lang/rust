@@ -768,8 +768,7 @@
 # make this default to false.
 #rust.lld = false in all cases, except on `x86_64-unknown-linux-gnu` as described above, where it is true
 
-# Indicates whether LLD will be used to link Rust crates during bootstrap on
-# supported platforms.
+# Indicates if we should override the linker used to link Rust crates during bootstrap to be LLD.
 # If set to `true` or `"external"`, a global `lld` binary that has to be in $PATH
 # will be used.
 # If set to `"self-contained"`, rust-lld from the snapshot compiler will be used.
@@ -777,7 +776,7 @@
 # On MSVC, LLD will not be used if we're cross linking.
 #
 # Explicitly setting the linker for a target will override this option when targeting MSVC.
-#rust.use-lld = false
+#rust.bootstrap-override-lld = false
 
 # Indicates whether some LLVM tools, like llvm-objdump, will be made available in the
 # sysroot.
@@ -950,7 +949,7 @@
 # Linker to be used to bootstrap Rust code. Note that the
 # default value is platform specific, and if not specified it may also depend on
 # what platform is crossing to what platform.
-# Setting this will override the `use-lld` option for Rust code when targeting MSVC.
+# Setting this will override the `bootstrap-override-lld` option for Rust code when targeting MSVC.
 #linker = "cc" (path)
 
 # Should rustc and the standard library be built with split debuginfo? Default

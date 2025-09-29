@@ -990,14 +990,6 @@ extern "C" void LLVMRustGlobalAddMetadata(LLVMValueRef Global, unsigned Kind,
   unwrap<GlobalObject>(Global)->addMetadata(Kind, *unwrap<MDNode>(MD));
 }
 
-extern "C" LLVMDIBuilderRef LLVMRustDIBuilderCreate(LLVMModuleRef M) {
-  return wrap(new DIBuilder(*unwrap(M)));
-}
-
-extern "C" void LLVMRustDIBuilderDispose(LLVMDIBuilderRef Builder) {
-  delete unwrap(Builder);
-}
-
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateCompileUnit(
     LLVMDIBuilderRef Builder, unsigned Lang, LLVMMetadataRef FileRef,
     const char *Producer, size_t ProducerLen, bool isOptimized,
@@ -1127,51 +1119,6 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateStaticVariable(
   InitVal->setMetadata("dbg", VarExpr);
 
   return wrap(VarExpr);
-}
-
-extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariable(
-    LLVMDIBuilderRef Builder, unsigned Tag, LLVMMetadataRef Scope,
-    const char *Name, size_t NameLen, LLVMMetadataRef File, unsigned LineNo,
-    LLVMMetadataRef Ty, bool AlwaysPreserve, LLVMDIFlags Flags, unsigned ArgNo,
-    uint32_t AlignInBits) {
-  if (Tag == 0x100) { // DW_TAG_auto_variable
-    return wrap(unwrap(Builder)->createAutoVariable(
-        unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen),
-        unwrapDI<DIFile>(File), LineNo, unwrapDI<DIType>(Ty), AlwaysPreserve,
-        fromRust(Flags), AlignInBits));
-  } else {
-    return wrap(unwrap(Builder)->createParameterVariable(
-        unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen), ArgNo,
-        unwrapDI<DIFile>(File), LineNo, unwrapDI<DIType>(Ty), AlwaysPreserve,
-        fromRust(Flags)));
-  }
-}
-
-extern "C" LLVMMetadataRef
-LLVMRustDIBuilderGetOrCreateSubrange(LLVMDIBuilderRef Builder, int64_t Lo,
-                                     int64_t Count) {
-  return wrap(unwrap(Builder)->getOrCreateSubrange(Lo, Count));
-}
-
-extern "C" LLVMMetadataRef
-LLVMRustDIBuilderGetOrCreateArray(LLVMDIBuilderRef Builder,
-                                  LLVMMetadataRef *Ptr, unsigned Count) {
-  Metadata **DataValue = unwrap(Ptr);
-  return wrap(unwrap(Builder)
-                  ->getOrCreateArray(ArrayRef<Metadata *>(DataValue, Count))
-                  .get());
-}
-
-extern "C" void
-LLVMRustDIBuilderInsertDeclareAtEnd(LLVMDIBuilderRef Builder, LLVMValueRef V,
-                                    LLVMMetadataRef VarInfo, uint64_t *AddrOps,
-                                    unsigned AddrOpsCount, LLVMMetadataRef DL,
-                                    LLVMBasicBlockRef InsertAtEnd) {
-  unwrap(Builder)->insertDeclare(
-      unwrap(V), unwrap<DILocalVariable>(VarInfo),
-      unwrap(Builder)->createExpression(
-          llvm::ArrayRef<uint64_t>(AddrOps, AddrOpsCount)),
-      DebugLoc(cast<MDNode>(unwrap(DL))), unwrap(InsertAtEnd));
 }
 
 extern "C" LLVMMetadataRef
@@ -1865,3 +1812,15 @@ extern "C" void LLVMRustSetNoSanitizeHWAddress(LLVMValueRef Global) {
   MD.NoHWAddress = true;
   GV.setSanitizerMetadata(MD);
 }
+
+#ifdef ENZYME
+extern "C" {
+extern llvm::cl::opt<unsigned> EnzymeMaxTypeDepth;
+}
+
+extern "C" size_t LLVMRustEnzymeGetMaxTypeDepth() { return EnzymeMaxTypeDepth; }
+#else
+extern "C" size_t LLVMRustEnzymeGetMaxTypeDepth() {
+  return 6; // Default fallback depth
+}
+#endif

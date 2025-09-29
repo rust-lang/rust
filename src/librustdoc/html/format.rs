@@ -37,10 +37,6 @@ use crate::html::escape::{Escape, EscapeBodyText};
 use crate::html::render::Context;
 use crate::passes::collect_intra_doc_links::UrlFragment;
 
-pub(crate) fn write_str(s: &mut String, f: fmt::Arguments<'_>) {
-    s.write_fmt(f).unwrap();
-}
-
 pub(crate) fn print_generic_bounds(
     bounds: &[clean::GenericBound],
     cx: &Context<'_>,

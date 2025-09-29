@@ -291,11 +291,11 @@ pub mod consts {
     pub const TAU: f32 = 6.28318530717958647692528676655900577_f32;
 
     /// The golden ratio (φ)
-    #[unstable(feature = "more_float_constants", issue = "103883")]
+    #[unstable(feature = "more_float_constants", issue = "146939")]
     pub const PHI: f32 = 1.618033988749894848204586834365638118_f32;
 
     /// The Euler-Mascheroni constant (γ)
-    #[unstable(feature = "more_float_constants", issue = "103883")]
+    #[unstable(feature = "more_float_constants", issue = "146939")]
     pub const EGAMMA: f32 = 0.577215664901532860606512090082402431_f32;
 
     /// π/2
@@ -323,12 +323,12 @@ pub mod consts {
     pub const FRAC_1_PI: f32 = 0.318309886183790671537767526745028724_f32;
 
     /// 1/sqrt(π)
-    #[unstable(feature = "more_float_constants", issue = "103883")]
+    #[unstable(feature = "more_float_constants", issue = "146939")]
     pub const FRAC_1_SQRT_PI: f32 = 0.564189583547756286948079451560772586_f32;
 
     /// 1/sqrt(2π)
     #[doc(alias = "FRAC_1_SQRT_TAU")]
-    #[unstable(feature = "more_float_constants", issue = "103883")]
+    #[unstable(feature = "more_float_constants", issue = "146939")]
     pub const FRAC_1_SQRT_2PI: f32 = 0.398942280401432677939946059934381868_f32;
 
     /// 2/π
@@ -348,11 +348,11 @@ pub mod consts {
     pub const FRAC_1_SQRT_2: f32 = 0.707106781186547524400844362104849039_f32;
 
     /// sqrt(3)
-    #[unstable(feature = "more_float_constants", issue = "103883")]
+    #[unstable(feature = "more_float_constants", issue = "146939")]
     pub const SQRT_3: f32 = 1.732050807568877293527446341505872367_f32;
 
     /// 1/sqrt(3)
-    #[unstable(feature = "more_float_constants", issue = "103883")]
+    #[unstable(feature = "more_float_constants", issue = "146939")]
     pub const FRAC_1_SQRT_3: f32 = 0.577350269189625764509148780501957456_f32;
 
     /// Euler's number (e)
