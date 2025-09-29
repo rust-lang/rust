@@ -55,7 +55,7 @@ LL +     };
    |
 
 error: this let-binding has unit value
-  --> tests/ui/let_unit.rs:192:9
+  --> tests/ui/let_unit.rs:190:9
    |
 LL |         let res = returns_unit();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -69,15 +69,15 @@ LL ~         returns_result(()).unwrap();
    |
 
 error: this let-binding has unit value
-  --> tests/ui/let_unit.rs:206:5
+  --> tests/ui/let_unit.rs:203:5
    |
-LL |     let res = return_unit();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     let res = returns_unit();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: replace variable usages with `()`
    |
 LL ~     let res = ();
-LL ~     return_unit();
+LL ~     returns_unit();
 LL |
 LL ~     do_something(());
    |

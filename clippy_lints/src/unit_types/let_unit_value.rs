@@ -89,15 +89,30 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, format_args: &FormatArgsStorag
                         walk_body(&mut visitor, body);
 
                         let mut has_in_format_capture = false;
-                        suggestions.extend(visitor.spans.iter().filter_map(|span| match span {
+                        suggestions.extend(visitor.spans.into_iter().filter_map(|span| match span {
                             MaybeInFormatCapture::Yes => {
                                 has_in_format_capture = true;
                                 None
                             },
-                            MaybeInFormatCapture::No(span) => Some((*span, "()".to_string())),
+                            MaybeInFormatCapture::No(span) => Some((span, "()".to_string())),
                         }));
 
                         if has_in_format_capture {
+                            // In a case like this:
+                            // ```
+                            // let unit = returns_unit();
+                            // eprintln!("{unit}");
+                            // ```
+                            // we can't remove the `unit` binding and replace its uses with a `()`,
+                            // because the `eprintln!` would break.
+                            //
+                            // So do the following instead:
+                            // ```
+                            // let unit = ();
+                            // returns_unit();
+                            // eprintln!("{unit}");
+                            // ```
+                            // TODO: find a less awkward way to do this
                             suggestions.push((
                                 init.span,
                                 format!("();\n{}", reindent_multiline(&snip, false, indent_of(cx, local.span))),
@@ -132,6 +147,12 @@ struct UnitVariableCollector<'a, 'tcx> {
     macro_call: Option<&'a FormatArgs>,
 }
 
+/// Whether the unit variable is captured in a `format!`:
+///
+/// ```ignore
+/// let unit = ();
+/// eprintln!("{unit}");
+/// ```
 enum MaybeInFormatCapture {
     Yes,
     No(Span),
