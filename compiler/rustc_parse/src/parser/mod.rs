@@ -141,8 +141,35 @@ enum BlockMode {
 /// regardless of whether or not it has attributes
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ForceCollect {
-    Yes,
+    /// Don't force collection of tokens
     No,
+    /// Force collection of tokens for the node, but not for its child nodes
+    Yes,
+    /// Force collection of tokens for the node and its child nodes
+    Recursive,
+}
+
+impl ForceCollect {
+    #[inline]
+    fn recurse(self) -> Self {
+        match self {
+            Self::Recursive => Self::Recursive,
+            _ => Self::No,
+        }
+    }
+
+    #[inline]
+    fn for_reparse(self) -> Self {
+        match self {
+            Self::Recursive => Self::Recursive,
+            _ => Self::Yes,
+        }
+    }
+
+    #[inline]
+    fn yes(self) -> bool {
+        self != Self::No
+    }
 }
 
 /// If the next tokens are ill-formed `$ty::` recover them as `<$ty>::`.
@@ -1455,13 +1482,21 @@ impl<'a> Parser<'a> {
     /// it's not a tuple struct field), and the contents within the parentheses aren't valid,
     /// so emit a proper diagnostic.
     // Public for rustfmt usage.
-    pub fn parse_visibility(&mut self, fbt: FollowedByType) -> PResult<'a, Visibility> {
-        if let Some(vis) = self
-            .eat_metavar_seq(MetaVarKind::Vis, |this| this.parse_visibility(FollowedByType::Yes))
-        {
+    pub fn parse_visibility(
+        &mut self,
+        force_collect: ForceCollect,
+        fbt: FollowedByType,
+    ) -> PResult<'a, Visibility> {
+        if let Some(vis) = self.eat_metavar_seq(MetaVarKind::Vis, |this| {
+            this.parse_visibility(force_collect, FollowedByType::Yes)
+        }) {
             return Ok(vis);
         }
 
+        self.maybe_collect_tokens_no_attrs(force_collect, |this| this.parse_visibility_inner(fbt))
+    }
+
+    fn parse_visibility_inner(&mut self, fbt: FollowedByType) -> PResult<'a, Visibility> {
         if !self.eat_keyword(exp!(Pub)) {
             // We need a span for our `Spanned<VisibilityKind>`, but there's inherently no
             // keyword to grab a span from for inherited visibility; an empty span at the
@@ -1563,6 +1598,20 @@ impl<'a> Parser<'a> {
             },
             Err(None) => None,
         }
+    }
+
+    #[inline]
+    fn maybe_collect_tokens_no_attrs<R: HasAttrs + HasTokens>(
+        &mut self,
+        force_collect: ForceCollect,
+        f: impl FnOnce(&mut Self) -> PResult<'a, R>,
+    ) -> PResult<'a, R> {
+        if !force_collect.yes() {
+            return f(self);
+        }
+        self.collect_tokens(None, AttrWrapper::empty(), force_collect, |this, _attrs| {
+            Ok((f(this)?, Trailing::No, UsePreAttrPos::No))
+        })
     }
 
     fn collect_tokens_no_attrs<R: HasAttrs + HasTokens>(
@@ -1669,6 +1718,8 @@ pub enum ParseNtResult {
     Ident(Ident, IdentIsRaw),
     Lifetime(Ident, IdentIsRaw),
     Item(Box<ast::Item>),
+    Fn(Box<ast::Item>),
+    Adt(Box<ast::Item>),
     Block(Box<ast::Block>),
     Stmt(Box<ast::Stmt>),
     Pat(Box<ast::Pat>, NtPatKind),

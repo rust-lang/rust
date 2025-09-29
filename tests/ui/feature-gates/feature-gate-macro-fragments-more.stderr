@@ -1,0 +1,23 @@
+error[E0658]: macro `:fn` and `:adt` fragments are unstable
+  --> $DIR/feature-gate-macro-fragments-more.rs:3:24
+   |
+LL | macro_rules! use_fn { ($f:fn) => {} }
+   |                        ^^^^^
+   |
+   = note: see issue #147023 <https://github.com/rust-lang/rust/issues/147023> for more information
+   = help: add `#![feature(macro_fragments_more)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: macro `:fn` and `:adt` fragments are unstable
+  --> $DIR/feature-gate-macro-fragments-more.rs:6:25
+   |
+LL | macro_rules! use_adt { ($f:adt) => {} }
+   |                         ^^^^^^
+   |
+   = note: see issue #147023 <https://github.com/rust-lang/rust/issues/147023> for more information
+   = help: add `#![feature(macro_fragments_more)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

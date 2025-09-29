@@ -1,0 +1,29 @@
+error: expected a function
+  --> $DIR/macro-fn-fragment.rs:24:13
+   |
+LL |     ($f:fn) => {};
+   |      ----- while parsing argument for this `fn` macro fragment
+...
+LL |     struct S;
+   |             ^
+
+error: expected identifier, found `;`
+  --> $DIR/macro-fn-fragment.rs:29:18
+   |
+LL |     ($f:fn) => {};
+   |      ----- while parsing argument for this `fn` macro fragment
+...
+LL |     extern "C" fn;
+   |                  ^ expected identifier
+
+error: expected a function
+  --> $DIR/macro-fn-fragment.rs:42:1
+   |
+LL |     attr() ($f:fn) => { parse_fn!($f); };
+   |             ----- while parsing argument for this `fn` macro fragment
+...
+LL | }
+   | ^
+
+error: aborting due to 3 previous errors
+

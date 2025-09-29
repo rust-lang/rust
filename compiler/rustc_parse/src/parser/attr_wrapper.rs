@@ -150,7 +150,7 @@ impl<'a> Parser<'a> {
         // if any of the following conditions hold.
         // - We are force collecting tokens (because force collection requires
         //   tokens by definition).
-        let needs_collection = matches!(force_collect, ForceCollect::Yes)
+        let needs_collection = force_collect.yes()
             // - Any of our outer attributes require tokens.
             || needs_tokens(&attrs.attrs)
             // - Our target supports custom inner attributes (custom
@@ -233,7 +233,7 @@ impl<'a> Parser<'a> {
         // We must collect if anything could observe the collected tokens, i.e.
         // if any of the following conditions hold.
         // - We are force collecting tokens.
-        let needs_collection = matches!(force_collect, ForceCollect::Yes)
+        let needs_collection = force_collect.yes()
             // - Any of our outer *or* inner attributes require tokens.
             //   (`attr.attrs` was just outer attributes, but `ret.attrs()` is
             //   outer and inner attributes. So this check is more precise than

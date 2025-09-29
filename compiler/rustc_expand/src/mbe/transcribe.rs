@@ -1,10 +1,11 @@
+use std::borrow::Cow;
 use std::mem;
 
 use rustc_ast::token::{
     self, Delimiter, IdentIsRaw, InvisibleOrigin, Lit, LitKind, MetaVarKind, Token, TokenKind,
 };
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
-use rustc_ast::{ExprKind, StmtKind, TyKind, UnOp};
+use rustc_ast::{self as ast, ExprKind, ItemKind, StmtKind, TyKind, UnOp};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Diag, DiagCtxtHandle, PResult, pluralize};
 use rustc_parse::lexer::nfc_normalize;
@@ -18,12 +19,12 @@ use smallvec::{SmallVec, smallvec};
 
 use crate::errors::{
     CountRepetitionMisplaced, MacroVarStillRepeating, MetaVarsDifSeqMatchers, MustRepeatOnce,
-    MveUnrecognizedVar, NoSyntaxVarsExprRepeat,
+    MveExprHasNoField, MveUnrecognizedVar, NoSyntaxVarsExprRepeat,
 };
 use crate::mbe::macro_parser::NamedMatch;
 use crate::mbe::macro_parser::NamedMatch::*;
 use crate::mbe::metavar_expr::{MetaVarExprConcatElem, RAW_IDENT_ERR};
-use crate::mbe::{self, KleeneOp, MetaVarExpr};
+use crate::mbe::{self, KleeneOp, MetaVarExpr, MetaVarRecursiveExpr};
 
 /// Context needed to perform transcription of metavariable expressions.
 struct TranscrCtx<'psess, 'itp> {
@@ -437,7 +438,7 @@ fn transcribe_pnr<'tx>(
             let kind = token::NtLifetime(*ident, *is_raw);
             TokenTree::token_alone(kind, sp)
         }
-        ParseNtResult::Item(item) => {
+        ParseNtResult::Item(item) | ParseNtResult::Fn(item) | ParseNtResult::Adt(item) => {
             mk_delimited(item.span, MetaVarKind::Item, TokenStream::from_ast(item))
         }
         ParseNtResult::Block(block) => {
@@ -540,9 +541,107 @@ fn transcribe_metavar_expr<'tx>(
                 return Err(out_of_bounds_err(dcx, tscx.repeats.len(), dspan.entire(), "len"));
             }
         },
+        MetaVarExpr::Recursive(ref expr) => {
+            let pnr = eval_metavar_recursive_expr(tscx, expr)?;
+            return transcribe_pnr(tscx, dspan.entire(), &pnr);
+        }
     };
     tscx.result.push(tt);
     Ok(())
+}
+
+/// Evaluate recursive metavariable expressions into a `ParseNtResult`.
+///
+/// This does not do any transcription; that's handled in the caller.
+///
+/// It's okay to recurse here for now, because we expect a limited degree of nested fields. More
+/// complex expressions may require translating this into a proper interpreter.
+fn eval_metavar_recursive_expr<'psess, 'interp>(
+    tscx: &TranscrCtx<'psess, 'interp>,
+    expr: &MetaVarRecursiveExpr,
+) -> PResult<'psess, Cow<'interp, ParseNtResult>> {
+    let dcx = tscx.psess.dcx();
+    match expr {
+        MetaVarRecursiveExpr::Ident(ident) => {
+            let span = ident.span;
+            let ident = MacroRulesNormalizedIdent::new(*ident);
+            match matched_from_mrn_ident(dcx, span, ident, tscx.interp)? {
+                NamedMatch::MatchedSingle(pnr) => Ok(Cow::Borrowed(pnr)),
+                NamedMatch::MatchedSeq(named_matches) => {
+                    let Some((curr_idx, _)) = tscx.repeats.last() else {
+                        return Err(dcx.struct_span_err(span, "invalid syntax"));
+                    };
+                    match &named_matches[*curr_idx] {
+                        MatchedSeq(_) => {
+                            Err(dcx.create_err(MacroVarStillRepeating { span, ident }))
+                        }
+                        MatchedSingle(pnr) => Ok(Cow::Borrowed(pnr)),
+                    }
+                }
+            }
+        }
+        MetaVarRecursiveExpr::Field { expr: base_expr, field } => {
+            let base_pnr = eval_metavar_recursive_expr(tscx, base_expr)?;
+            let err_unknown_field = || {
+                Err(dcx.create_err(MveExprHasNoField {
+                    span: field.span,
+                    pnr_type: pnr_type(&base_pnr),
+                    field: *field,
+                }))
+            };
+            match (base_pnr.as_ref(), field.name) {
+                (ParseNtResult::Adt(adt_item), sym::name) => {
+                    let ident = match adt_item.kind {
+                        ItemKind::Struct(ident, ..)
+                        | ItemKind::Enum(ident, ..)
+                        | ItemKind::Union(ident, ..) => ident,
+                        _ => dcx.span_bug(field.span, "`adt` item was not an adt"),
+                    };
+                    Ok(ident_pnr(ident))
+                }
+                (ParseNtResult::Fn(fn_item), sym::name) => {
+                    let f = require_fn_item(fn_item);
+                    Ok(ident_pnr(f.ident))
+                }
+                (ParseNtResult::Fn(fn_item), sym::vis) => {
+                    let _ = require_fn_item(fn_item);
+                    Ok(Cow::Owned(ParseNtResult::Vis(Box::new(fn_item.vis.clone()))))
+                }
+                (_, _) => err_unknown_field(),
+            }
+        }
+    }
+}
+
+fn ident_pnr(ident: Ident) -> Cow<'static, ParseNtResult> {
+    Cow::Owned(ParseNtResult::Ident(ident, ident.is_raw_guess().into()))
+}
+
+fn pnr_type(pnr: &ParseNtResult) -> &'static str {
+    match pnr {
+        ParseNtResult::Tt(..) => "tt",
+        ParseNtResult::Ident(..) => "ident",
+        ParseNtResult::Lifetime(..) => "lifetime",
+        ParseNtResult::Item(..) => "item",
+        ParseNtResult::Fn(..) => "fn",
+        ParseNtResult::Adt(..) => "adt",
+        ParseNtResult::Block(..) => "block",
+        ParseNtResult::Stmt(..) => "stmt",
+        ParseNtResult::Pat(..) => "pat",
+        ParseNtResult::Expr(..) => "expr",
+        ParseNtResult::Literal(..) => "literal",
+        ParseNtResult::Ty(..) => "ty",
+        ParseNtResult::Meta(..) => "meta",
+        ParseNtResult::Path(..) => "path",
+        ParseNtResult::Vis(..) => "vis",
+    }
+}
+
+fn require_fn_item(item: &ast::Item) -> &ast::Fn {
+    match item.kind {
+        ItemKind::Fn(ref f) => &f,
+        _ => panic!("`fn` item was not a fn"),
+    }
 }
 
 /// Handle the `${concat(...)}` metavariable expression.
@@ -891,8 +990,19 @@ fn matched_from_ident<'ctx, 'interp, 'rslt>(
 where
     'interp: 'rslt,
 {
-    let span = ident.span;
-    let key = MacroRulesNormalizedIdent::new(ident);
+    matched_from_mrn_ident(dcx, ident.span, MacroRulesNormalizedIdent::new(ident), interp)
+}
+
+/// Returns a `NamedMatch` item declared on the LHS given an arbitrary [MacroRulesNormalizedIdent]
+fn matched_from_mrn_ident<'ctx, 'interp, 'rslt>(
+    dcx: DiagCtxtHandle<'ctx>,
+    span: Span,
+    key: MacroRulesNormalizedIdent,
+    interp: &'interp FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
+) -> PResult<'ctx, &'rslt NamedMatch>
+where
+    'interp: 'rslt,
+{
     interp.get(&key).ok_or_else(|| dcx.create_err(MveUnrecognizedVar { span, key }))
 }
 

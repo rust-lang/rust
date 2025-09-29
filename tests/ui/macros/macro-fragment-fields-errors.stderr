@@ -1,0 +1,44 @@
+error: expression of type `fn` has no field `unknown_field`
+  --> $DIR/macro-fragment-fields-errors.rs:9:22
+   |
+LL |     ($f:fn) => { ${f.unknown_field} };
+   |                      ^^^^^^^^^^^^^
+
+error: expression of type `ident` has no field `unknown_field`
+  --> $DIR/macro-fragment-fields-errors.rs:16:27
+   |
+LL |     ($f:fn) => { ${f.name.unknown_field} };
+   |                           ^^^^^^^^^^^^^
+
+error: expression of type `ident` has no field `unknown_field`
+  --> $DIR/macro-fragment-fields-errors.rs:23:27
+   |
+LL |     ($f:fn) => { ${f.name.unknown_field.unknown_field} };
+   |                           ^^^^^^^^^^^^^
+
+error: expression of type `item` has no field `name`
+  --> $DIR/macro-fragment-fields-errors.rs:30:24
+   |
+LL |     ($f:item) => { ${f.name} };
+   |                        ^^^^
+
+error: expression of type `block` has no field `unknown_field`
+  --> $DIR/macro-fragment-fields-errors.rs:37:25
+   |
+LL |     ($f:block) => { ${f.unknown_field} };
+   |                         ^^^^^^^^^^^^^
+
+error: expression of type `adt` has no field `unknown_field`
+  --> $DIR/macro-fragment-fields-errors.rs:44:23
+   |
+LL |     ($a:adt) => { ${a.unknown_field} };
+   |                       ^^^^^^^^^^^^^
+
+error: expression of type `ident` has no field `unknown_field`
+  --> $DIR/macro-fragment-fields-errors.rs:51:28
+   |
+LL |     ($a:adt) => { ${a.name.unknown_field} };
+   |                            ^^^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
+

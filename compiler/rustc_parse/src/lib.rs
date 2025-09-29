@@ -9,6 +9,7 @@
 #![feature(default_field_values)]
 #![feature(if_let_guard)]
 #![feature(iter_intersperse)]
+#![feature(type_changing_struct_update)]
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
 
