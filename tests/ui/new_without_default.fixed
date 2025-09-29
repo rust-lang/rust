@@ -322,3 +322,23 @@ where
         Self { _kv: None }
     }
 }
+
+mod issue15778 {
+    pub struct Foo(Vec<i32>);
+
+    impl Foo {
+        pub fn new() -> Self {
+            Self(Vec::new())
+        }
+    }
+
+    impl<'a> IntoIterator for &'a Foo {
+        type Item = &'a i32;
+
+        type IntoIter = std::slice::Iter<'a, i32>;
+
+        fn into_iter(self) -> Self::IntoIter {
+            self.0.as_slice().iter()
+        }
+    }
+}

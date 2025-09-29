@@ -94,7 +94,7 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                             return;
                         }
                         if sig.decl.inputs.is_empty()
-                            && cx.effective_visibilities.is_reachable(impl_item.owner_id.def_id)
+                            && cx.effective_visibilities.is_exported(impl_item.owner_id.def_id)
                             && let self_ty = cx.tcx.type_of(item.owner_id).instantiate_identity()
                             && self_ty == return_ty(cx, impl_item.owner_id)
                             && let Some(default_trait_id) = cx.tcx.get_diagnostic_item(sym::Default)
