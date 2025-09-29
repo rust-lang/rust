@@ -1,5 +1,10 @@
 #![warn(clippy::let_unit_value)]
-#![allow(clippy::no_effect, clippy::needless_late_init, path_statements)]
+#![allow(
+    clippy::no_effect,
+    clippy::needless_late_init,
+    path_statements,
+    clippy::match_single_binding
+)]
 
 macro_rules! let_and_return {
     ($n:expr) => {{
@@ -197,11 +202,28 @@ pub fn issue12594() {
     }
 }
 
-fn issue15061() {
-    fn do_something(x: ()) {}
+fn takes_unit(x: ()) {}
 
+fn issue15061() {
     let res = returns_unit();
     //~^ let_unit_value
-    do_something(res);
+    takes_unit(res);
+    println!("{res:?}");
+}
+
+fn issue15771() {
+    match "Example String" {
+        _ => _ = returns_unit(),
+        //~^ let_unit_value
+    }
+
+    _ = if true {}
+    //~^ let_unit_value
+}
+
+fn issue_15784() {
+    let res = eprintln!("I return unit");
+    //~^ let_unit_value
+    takes_unit(res);
     println!("{res:?}");
 }

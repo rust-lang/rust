@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::{FormatArgsStorage, find_format_arg_expr, is_format_macro, root_macro_call_first_node};
-use clippy_utils::source::{indent_of, reindent_multiline, snippet_with_context};
+use clippy_utils::source::{snippet_indent, walk_span_to_context};
 use clippy_utils::visitors::{for_each_local_assignment, for_each_value_source};
 use core::ops::ControlFlow;
 use rustc_ast::{FormatArgs, FormatArgumentKind};
@@ -74,10 +74,10 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, format_args: &FormatArgsStorag
                 "this let-binding has unit value",
                 |diag| {
                     let mut suggestions = Vec::new();
+                    let init_new_span = walk_span_to_context(init.span, local.span.ctxt()).unwrap();
 
                     // Suggest omitting the `let` binding
-                    let mut app = Applicability::MachineApplicable;
-                    let snip = snippet_with_context(cx, init.span, local.span.ctxt(), "()", &mut app).0;
+                    let app = Applicability::MachineApplicable;
 
                     // If this is a binding pattern, we need to add suggestions to remove any usages
                     // of the variable
@@ -114,21 +114,23 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, format_args: &FormatArgsStorag
                             // ```
                             // TODO: find a less awkward way to do this
                             suggestions.push((
-                                init.span,
-                                format!("();\n{}", reindent_multiline(&snip, false, indent_of(cx, local.span))),
+                                init_new_span.shrink_to_lo(),
+                                format!("();\n{}", snippet_indent(cx, local.span).as_deref().unwrap_or("")),
                             ));
-                            diag.multipart_suggestion("replace variable usages with `()`", suggestions, app);
+                            diag.multipart_suggestion_verbose("replace variable usages with `()`", suggestions, app);
                             return;
                         }
                     }
 
-                    suggestions.push((local.span, format!("{snip};")));
+                    // let local = returns_unit();
+                    // ^^^^^^^^^^^^ remove this
+                    suggestions.push((local.span.until(init_new_span), String::new()));
                     let message = if suggestions.len() == 1 {
                         "omit the `let` binding"
                     } else {
                         "omit the `let` binding and replace variable usages with `()`"
                     };
-                    diag.multipart_suggestion(message, suggestions, app);
+                    diag.multipart_suggestion_verbose(message, suggestions, app);
                 },
             );
         }
