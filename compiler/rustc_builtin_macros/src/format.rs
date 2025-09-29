@@ -768,7 +768,7 @@ fn report_missing_placeholders(
 
     if !found_foreign && invalid_refs.is_empty() {
         // Show example if user didn't use any format specifiers
-        let show_example = used.iter().all(|used| !used);
+        let show_example = !used.contains(&true);
 
         if !show_example {
             if unused.len() > 1 {

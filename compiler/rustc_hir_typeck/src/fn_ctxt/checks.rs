@@ -2803,9 +2803,7 @@ impl<'a, 'b, 'tcx> ArgMatchingCtxt<'a, 'b, 'tcx> {
         if let Some((assoc, fn_sig)) = self.similar_assoc(call_name)
             && fn_sig.inputs()[1..]
                 .iter()
-                .zip(input_types.iter())
-                .all(|(expected, found)| self.may_coerce(*expected, *found))
-            && fn_sig.inputs()[1..].len() == input_types.len()
+                .eq_by(input_types, |expected, found| self.may_coerce(*expected, found))
         {
             let assoc_name = assoc.name();
             err.span_suggestion_verbose(
