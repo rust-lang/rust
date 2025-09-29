@@ -117,11 +117,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, format_args: &FormatArgsStorag
                                 init.span,
                                 format!("();\n{}", reindent_multiline(&snip, false, indent_of(cx, local.span))),
                             ));
-                            diag.multipart_suggestion(
-                                "replace variable usages with `()`",
-                                suggestions,
-                                Applicability::MachineApplicable,
-                            );
+                            diag.multipart_suggestion("replace variable usages with `()`", suggestions, app);
                             return;
                         }
                     }
@@ -132,7 +128,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, format_args: &FormatArgsStorag
                     } else {
                         "omit the `let` binding and replace variable usages with `()`"
                     };
-                    diag.multipart_suggestion(message, suggestions, Applicability::MachineApplicable);
+                    diag.multipart_suggestion(message, suggestions, app);
                 },
             );
         }
