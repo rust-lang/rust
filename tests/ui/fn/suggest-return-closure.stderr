@@ -2,34 +2,40 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
   --> $DIR/suggest-return-closure.rs:1:17
    |
 LL | fn fn_once() -> _ {
-   |                 ^
-   |                 |
-   |                 not allowed in type signatures
-   |                 help: replace with an appropriate return type: `impl FnOnce()`
+   |                 ^ not allowed in type signatures
    |
    = note: for more information on `Fn` traits and closure types, see https://doc.rust-lang.org/book/ch13-01-closures.html
+help: replace with an appropriate return type
+   |
+LL - fn fn_once() -> _ {
+LL + fn fn_once() -> impl FnOnce() {
+   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
   --> $DIR/suggest-return-closure.rs:13:16
    |
 LL | fn fn_mut() -> _ {
-   |                ^
-   |                |
-   |                not allowed in type signatures
-   |                help: replace with an appropriate return type: `impl FnMut(char)`
+   |                ^ not allowed in type signatures
    |
    = note: for more information on `Fn` traits and closure types, see https://doc.rust-lang.org/book/ch13-01-closures.html
+help: replace with an appropriate return type
+   |
+LL - fn fn_mut() -> _ {
+LL + fn fn_mut() -> impl FnMut(char) {
+   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
   --> $DIR/suggest-return-closure.rs:33:13
    |
 LL | fn fun() -> _ {
-   |             ^
-   |             |
-   |             not allowed in type signatures
-   |             help: replace with an appropriate return type: `impl Fn() -> i32`
+   |             ^ not allowed in type signatures
    |
    = note: for more information on `Fn` traits and closure types, see https://doc.rust-lang.org/book/ch13-01-closures.html
+help: replace with an appropriate return type
+   |
+LL - fn fun() -> _ {
+LL + fn fun() -> impl Fn() -> i32 {
+   |
 
 error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
   --> $DIR/suggest-return-closure.rs:24:9

@@ -1140,7 +1140,7 @@ fn recover_infer_ret_ty<'tcx>(
     // recursive function definition to leak out into the fn sig.
     let mut recovered_ret_ty = None;
     if let Some(suggestable_ret_ty) = ret_ty.make_suggestable(tcx, false, None) {
-        diag.span_suggestion(
+        diag.span_suggestion_verbose(
             infer_ret_ty.span,
             "replace with the correct return type",
             suggestable_ret_ty,
@@ -1152,7 +1152,7 @@ fn recover_infer_ret_ty<'tcx>(
         tcx.param_env(def_id),
         ret_ty,
     ) {
-        diag.span_suggestion(
+        diag.span_suggestion_verbose(
             infer_ret_ty.span,
             "replace with an appropriate return type",
             sugg,
