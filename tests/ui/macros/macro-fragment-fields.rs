@@ -101,6 +101,29 @@ assert_adt_vis! {
     pub(crate) union U {}
 }
 
+macro_rules! assert_item_vis {
+    ($v:vis, $i:item) => {
+        const _: () = {
+            assert!(stringify!(${i.vis}) == stringify!($v));
+        };
+    }
+}
+
+assert_item_vis! {
+    pub,
+    pub mod m;
+}
+
+assert_item_vis! {
+    pub(crate),
+    pub(crate) type T = u32;
+}
+
+assert_item_vis! {
+    pub(self),
+    pub(self) const Const: u32 = 42;
+}
+
 macro_rules! use_vis {
     ($f:fn) => {${f.vis} struct StructWithFnVis;}
 }

@@ -590,6 +590,7 @@ fn eval_metavar_recursive_expr<'psess, 'interp>(
                 }))
             };
             match (base_pnr.as_ref(), field.name) {
+                (ParseNtResult::Item(item), sym::vis) => Ok(vis_pnr(&item.vis)),
                 (ParseNtResult::Adt(adt_item), sym::name) => {
                     let ident = match adt_item.kind {
                         ItemKind::Struct(ident, ..)
