@@ -15,6 +15,7 @@ error: unused attribute
 LL | #[repr()]
    | ^^^^^^^^^ help: remove this attribute
    |
+   = note: using `repr` with an empty list has no effect
 note: the lint level is defined here
   --> $DIR/repr-empty-packed.rs:2:9
    |
