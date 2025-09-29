@@ -2,7 +2,7 @@ use itertools::Itertools as _;
 use rustc_abi::{self as abi, BackendRepr, FIRST_VARIANT};
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
-use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
+use rustc_middle::ty::{self, Instance, Mutability, Ty, TyCtxt};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_session::config::OptLevel;
 use tracing::{debug, instrument};
@@ -23,7 +23,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         rvalue: &mir::Rvalue<'tcx>,
     ) {
         match *rvalue {
-            mir::Rvalue::Use(ref operand, _) => {
+            mir::Rvalue::Use(ref operand, with_retag) => {
                 if let mir::Operand::Constant(const_op) = operand {
                     let val = self.eval_mir_constant(&const_op);
                     if val.all_bytes_uninit(self.cx.tcx()) {
@@ -40,9 +40,20 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 ) {
                     debug_assert!(!matches!(cg_operand.val, OperandValue::Ref(..)));
                 }
+                // If this is storing a &Freeze reference with a retag, record that it's not
+                // possible to perform writes through the stored pointer.
+                let flags = if let ty::Ref(_, pointee_ty, Mutability::Not) =
+                    operand.ty(self.mir, self.cx.tcx()).kind()
+                    && with_retag.yes()
+                    && pointee_ty.is_freeze(self.cx.tcx(), self.cx.typing_env())
+                {
+                    MemFlags::CAPTURES_READ_ONLY
+                } else {
+                    MemFlags::empty()
+                };
                 // FIXME: consider not copying constants through stack. (Fixable by codegen'ing
                 // constants into `OperandValue::Ref`; why don’t we do that yet if we don’t?)
-                cg_operand.store_with_annotation(bx, dest);
+                cg_operand.store_with_annotation_and_flags(bx, dest, flags);
             }
 
             mir::Rvalue::Cast(
