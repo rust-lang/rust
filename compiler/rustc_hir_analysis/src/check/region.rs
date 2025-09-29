@@ -24,7 +24,7 @@ use tracing::debug;
 #[derive(Debug, Copy, Clone)]
 struct Context {
     /// The scope that contains any new variables declared.
-    var_parent: Option<Scope>,
+    var_parent: (Option<Scope>, ScopeCompatibility),
 
     /// Region parent of expressions, etc.
     parent: Option<Scope>,
@@ -56,13 +56,17 @@ struct ExtendedTemporaryScope {
 
 /// Records the lifetime of a local variable as `cx.var_parent`
 fn record_var_lifetime(visitor: &mut ScopeResolutionVisitor<'_>, var_id: hir::ItemLocalId) {
-    match visitor.cx.var_parent {
+    let (var_parent_scope, var_parent_compat) = visitor.cx.var_parent;
+    match var_parent_scope {
         None => {
             // this can happen in extern fn declarations like
             //
             // extern fn isalnum(c: c_int) -> c_int
         }
         Some(parent_scope) => visitor.scope_tree.record_var_scope(var_id, parent_scope),
+    }
+    if let ScopeCompatibility::FutureIncompatible { shortens_to } = var_parent_compat {
+        visitor.scope_tree.record_future_incompatible_var_scope(var_id, shortens_to);
     }
 }
 
@@ -101,7 +105,7 @@ fn resolve_block<'tcx>(
     // itself has returned.
 
     visitor.enter_node_scope_with_dtor(blk.hir_id.local_id, terminating);
-    visitor.cx.var_parent = visitor.cx.parent;
+    visitor.cx.var_parent = (visitor.cx.parent, ScopeCompatibility::FutureCompatible);
 
     {
         // This block should be kept approximately in sync with
@@ -120,7 +124,8 @@ fn resolve_block<'tcx>(
                         local_id: blk.hir_id.local_id,
                         data: ScopeData::Remainder(FirstStatementIndex::new(i)),
                     });
-                    visitor.cx.var_parent = visitor.cx.parent;
+                    visitor.cx.var_parent =
+                        (visitor.cx.parent, ScopeCompatibility::FutureCompatible);
                     visitor.visit_stmt(statement);
                     // We need to back out temporarily to the last enclosing scope
                     // for the `else` block, so that even the temporaries receiving
@@ -144,7 +149,8 @@ fn resolve_block<'tcx>(
                         local_id: blk.hir_id.local_id,
                         data: ScopeData::Remainder(FirstStatementIndex::new(i)),
                     });
-                    visitor.cx.var_parent = visitor.cx.parent;
+                    visitor.cx.var_parent =
+                        (visitor.cx.parent, ScopeCompatibility::FutureCompatible);
                     visitor.visit_stmt(statement)
                 }
                 hir::StmtKind::Item(..) => {
@@ -208,7 +214,7 @@ fn resolve_arm<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, arm: &'tcx hir:
     let prev_cx = visitor.cx;
 
     visitor.enter_node_scope_with_dtor(arm.hir_id.local_id, true);
-    visitor.cx.var_parent = visitor.cx.parent;
+    visitor.cx.var_parent = (visitor.cx.parent, ScopeCompatibility::FutureCompatible);
 
     resolve_pat(visitor, arm.pat);
     if let Some(guard) = arm.guard {
@@ -216,7 +222,7 @@ fn resolve_arm<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, arm: &'tcx hir:
         // ensure they're dropped before the arm's pattern's bindings. This extends to the end of
         // the arm body and is the scope of its locals as well.
         visitor.enter_scope(Scope { local_id: arm.hir_id.local_id, data: ScopeData::MatchGuard });
-        visitor.cx.var_parent = visitor.cx.parent;
+        visitor.cx.var_parent = (visitor.cx.parent, ScopeCompatibility::FutureCompatible);
         resolve_cond(visitor, guard);
     }
     resolve_expr(visitor, arm.body, false);
@@ -373,7 +379,7 @@ fn resolve_expr<'tcx>(
                 ScopeData::IfThen
             };
             visitor.enter_scope(Scope { local_id: then.hir_id.local_id, data });
-            visitor.cx.var_parent = visitor.cx.parent;
+            visitor.cx.var_parent = (visitor.cx.parent, ScopeCompatibility::FutureCompatible);
             resolve_cond(visitor, cond);
             resolve_expr(visitor, then, true);
             visitor.cx = expr_cx;
@@ -388,7 +394,7 @@ fn resolve_expr<'tcx>(
                 ScopeData::IfThen
             };
             visitor.enter_scope(Scope { local_id: then.hir_id.local_id, data });
-            visitor.cx.var_parent = visitor.cx.parent;
+            visitor.cx.var_parent = (visitor.cx.parent, ScopeCompatibility::FutureCompatible);
             resolve_cond(visitor, cond);
             resolve_expr(visitor, then, true);
             visitor.cx = expr_cx;
@@ -498,7 +504,7 @@ fn resolve_local<'tcx>(
                 //
                 // Processing of `let a` will have already decided to extend the lifetime of this
                 // `super let` to its own var_scope. We use that scope.
-                visitor.cx.var_parent = scope.scope;
+                visitor.cx.var_parent = (scope.scope, scope.compat);
                 // Inherit compatibility from the original `let` statement. If the original `let`
                 // was regular, lifetime extension should apply as normal. If the original `let` was
                 // `super`, blocks within the initializer will be affected by #145838.
@@ -512,9 +518,11 @@ fn resolve_local<'tcx>(
                 //
                 // Iterate up to the enclosing destruction scope to find the same scope that will also
                 // be used for the result of the block itself.
-                if let Some(inner_scope) = visitor.cx.var_parent {
-                    (visitor.cx.var_parent, _) =
-                        visitor.scope_tree.default_temporary_scope(inner_scope)
+                if let (Some(inner_scope), _) = visitor.cx.var_parent {
+                    // NB(@dianne): This could use the incompatibility reported by
+                    // `default_temporary_scope` to make `tail_expr_drop_order` more comprehensive.
+                    visitor.cx.var_parent =
+                        (visitor.scope_tree.default_temporary_scope(inner_scope).0, ScopeCompatibility::FutureCompatible);
                 }
                 // Blocks within the initializer will be affected by #145838.
                 (LetKind::Super, ScopeCompatibility::FutureCompatible)
@@ -524,7 +532,7 @@ fn resolve_local<'tcx>(
 
     if let Some(expr) = init {
         let scope = ExtendedTemporaryScope {
-            scope: visitor.cx.var_parent,
+            scope: visitor.cx.var_parent.0,
             let_kind: source_let_kind,
             compat,
         };
@@ -536,8 +544,8 @@ fn resolve_local<'tcx>(
                     expr.hir_id,
                     RvalueCandidate {
                         target: expr.hir_id.local_id,
-                        lifetime: visitor.cx.var_parent,
-                        compat: ScopeCompatibility::FutureCompatible,
+                        lifetime: visitor.cx.var_parent.0,
+                        compat: visitor.cx.var_parent.1,
                     },
                 );
             }
@@ -818,7 +826,7 @@ impl<'tcx> Visitor<'tcx> for ScopeResolutionVisitor<'tcx> {
         self.enter_body(body.value.hir_id, |this| {
             if this.tcx.hir_body_owner_kind(owner_id).is_fn_or_closure() {
                 // The arguments and `self` are parented to the fn.
-                this.cx.var_parent = this.cx.parent;
+                this.cx.var_parent = (this.cx.parent, ScopeCompatibility::FutureCompatible);
                 for param in body.params {
                     this.visit_pat(param.pat);
                 }
@@ -844,7 +852,7 @@ impl<'tcx> Visitor<'tcx> for ScopeResolutionVisitor<'tcx> {
                 // would *not* let the `f()` temporary escape into an outer scope
                 // (i.e., `'static`), which means that after `g` returns, it drops,
                 // and all the associated destruction scope rules apply.
-                this.cx.var_parent = None;
+                this.cx.var_parent = (None, ScopeCompatibility::FutureCompatible);
                 this.enter_scope(Scope {
                     local_id: body.value.hir_id.local_id,
                     data: ScopeData::Destruction,
@@ -896,7 +904,7 @@ pub(crate) fn region_scope_tree(tcx: TyCtxt<'_>, def_id: DefId) -> &ScopeTree {
         let mut visitor = ScopeResolutionVisitor {
             tcx,
             scope_tree: ScopeTree::default(),
-            cx: Context { parent: None, var_parent: None },
+            cx: Context { parent: None, var_parent: (None, ScopeCompatibility::FutureCompatible) },
             extended_super_lets: Default::default(),
         };
 
