@@ -2497,6 +2497,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     &mut bounds,
                     ty::List::empty(),
                     PredicateFilter::All,
+                    OverlappingAsssocItemConstraints::Allowed,
                 );
                 self.add_sizedness_bounds(
                     &mut bounds,

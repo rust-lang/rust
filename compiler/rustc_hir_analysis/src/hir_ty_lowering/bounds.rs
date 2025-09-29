@@ -339,6 +339,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
         bound_vars: &'tcx ty::List<ty::BoundVariableKind>,
         predicate_filter: PredicateFilter,
+        overlapping_assoc_constraints: OverlappingAsssocItemConstraints,
     ) where
         'tcx: 'hir,
     {
@@ -363,7 +364,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         param_ty,
                         bounds,
                         predicate_filter,
-                        OverlappingAsssocItemConstraints::Allowed,
+                        overlapping_assoc_constraints,
                     );
                 }
                 hir::GenericBound::Outlives(lifetime) => {
@@ -604,6 +605,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             bounds,
                             projection_ty.bound_vars(),
                             predicate_filter,
+                            OverlappingAsssocItemConstraints::Allowed,
                         );
                     }
                     PredicateFilter::SelfOnly
