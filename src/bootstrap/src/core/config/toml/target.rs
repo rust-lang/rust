@@ -9,6 +9,7 @@
 //! * [`Target`]: This struct represents the processed and validated configuration for a
 //!   build target, which is is stored in the main `Config` structure.
 
+use serde::de::Error;
 use serde::{Deserialize, Deserializer};
 
 use crate::core::config::{
@@ -24,6 +25,7 @@ define_config! {
         ar: Option<String> = "ar",
         ranlib: Option<String> = "ranlib",
         default_linker: Option<PathBuf> = "default-linker",
+        default_linker_linux: Option<DefaultLinuxLinkerOverride> = "default-linker-linux",
         linker: Option<String> = "linker",
         split_debuginfo: Option<String> = "split-debuginfo",
         llvm_config: Option<String> = "llvm-config",
@@ -60,6 +62,7 @@ pub struct Target {
     pub ar: Option<PathBuf>,
     pub ranlib: Option<PathBuf>,
     pub default_linker: Option<PathBuf>,
+    pub default_linker_linux: Option<DefaultLinuxLinkerOverride>,
     pub linker: Option<PathBuf>,
     pub split_debuginfo: Option<SplitDebuginfo>,
     pub sanitizers: Option<bool>,
@@ -87,5 +90,28 @@ impl Target {
             target.runner = Some("node".into());
         }
         target
+    }
+}
+
+/// Overrides the default linker used on a Linux linker.
+/// On Linux, the linker is usually invoked through `cc`, therefore this exists as a separate
+/// configuration from simply setting `default-linker`, which corresponds to `-Clinker`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DefaultLinuxLinkerOverride {
+    /// Use the self-contained `rust-lld` linker, invoked through `cc`.
+    /// Corresponds to `-Clinker-features=+lld -Clink-self-contained=+linker`.
+    SelfContainedLldCc,
+}
+
+impl<'de> Deserialize<'de> for DefaultLinuxLinkerOverride {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let name = String::deserialize(deserializer)?;
+        match name.as_str() {
+            "self-contained-lld-cc" => Ok(Self::SelfContainedLldCc),
+            other => Err(D::Error::unknown_variant(other, &["self-contained-lld-cc"])),
+        }
     }
 }
