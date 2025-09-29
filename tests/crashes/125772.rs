@@ -1,5 +1,5 @@
 //@ known-bug: rust-lang/rust#125772
-//@ only-x86_64
+//@ only-64bit
 #![feature(generic_const_exprs)]
 
 struct Outer<const A: i64, const B: i64>();
