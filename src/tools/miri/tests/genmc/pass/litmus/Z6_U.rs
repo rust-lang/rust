@@ -55,8 +55,7 @@ fn miri_start(_argc: isize, _argv: *const *const u8) -> isize {
         join_pthreads(ids);
 
         // Print the values to check that we get all of them:
-        writeln!(MiriStderr, "a={a}, b={b}, X={}, Y={}", X.load(Relaxed), Y.load(Relaxed))
-            .unwrap_or_else(|_| std::process::abort());
+        writeln!(MiriStderr, "a={a}, b={b}, X={}, Y={}", X.load(Relaxed), Y.load(Relaxed)).ok();
         0
     }
 }
