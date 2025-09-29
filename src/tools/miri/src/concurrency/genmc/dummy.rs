@@ -1,5 +1,6 @@
 use rustc_abi::{Align, Size};
 use rustc_const_eval::interpret::{AllocId, InterpCx, InterpResult};
+use rustc_middle::ty::TyCtxt;
 
 pub use self::intercept::EvalContextExt as GenmcEvalContextExt;
 pub use self::run::run_genmc_mode;
@@ -230,8 +231,9 @@ impl GenmcConfig {
         }
     }
 
-    pub fn validate_genmc_mode_settings(
+    pub fn validate(
         _miri_config: &mut crate::MiriConfig,
+        _tcx: TyCtxt<'_>,
     ) -> Result<(), &'static str> {
         Ok(())
     }
