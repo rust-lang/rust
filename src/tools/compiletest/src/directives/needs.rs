@@ -1,10 +1,10 @@
 use crate::common::{Config, KNOWN_CRATE_TYPES, KNOWN_TARGET_HAS_ATOMIC_WIDTHS, Sanitizer};
-use crate::directives::{IgnoreDecision, llvm_has_libzstd};
+use crate::directives::{DirectiveLine, IgnoreDecision, llvm_has_libzstd};
 
 pub(super) fn handle_needs(
     cache: &CachedNeedsConditions,
     config: &Config,
-    ln: &str,
+    ln: &DirectiveLine<'_>,
 ) -> IgnoreDecision {
     // Note that we intentionally still put the needs- prefix here to make the file show up when
     // grepping for a directive name, even though we could technically strip that.
@@ -180,6 +180,8 @@ pub(super) fn handle_needs(
             ignore_reason: "ignored if target does not support std",
         },
     ];
+
+    let &DirectiveLine { raw_directive: ln, .. } = ln;
 
     let (name, rest) = match ln.split_once([':', ' ']) {
         Some((name, rest)) => (name, Some(rest)),
