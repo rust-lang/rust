@@ -148,7 +148,7 @@ fn capacity_to_buckets(cap: usize, table_layout: TableLayout) -> Option<usize> {
             16
         };
         ensure_bucket_bytes_at_least_ctrl_align(table_layout, buckets);
-        Some(buckets)
+        return Some(buckets);
     }
 
     // Otherwise require 1/8 buckets to be empty (87.5% load)
