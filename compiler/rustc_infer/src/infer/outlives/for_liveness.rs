@@ -85,11 +85,11 @@ where
                 // alias.
                 if outlives_bounds.contains(&tcx.lifetimes.re_static) {
                     // no
-                } else if let Some(r) = outlives_bounds.first()
-                    && outlives_bounds[1..].iter().all(|other_r| other_r == r)
-                {
-                    assert!(r.type_flags().intersects(ty::TypeFlags::HAS_FREE_REGIONS));
-                    r.visit_with(self);
+                    // } else if let Some(r) = outlives_bounds.first()
+                    //     && outlives_bounds[1..].iter().all(|other_r| other_r == r)
+                    // {
+                    //     assert!(r.type_flags().intersects(ty::TypeFlags::HAS_FREE_REGIONS));
+                    //     r.visit_with(self);
                 } else {
                     // Skip lifetime parameters that are not captured, since they do
                     // not need to be live.
