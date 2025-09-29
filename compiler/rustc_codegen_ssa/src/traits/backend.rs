@@ -41,6 +41,8 @@ pub trait CodegenBackend {
     /// Called before `init` so that all other functions are able to emit translatable diagnostics.
     fn locale_resource(&self) -> &'static str;
 
+    fn name(&self) -> &'static str;
+
     fn init(&self, _sess: &Session) {}
 
     fn print(&self, _req: &PrintRequest, _out: &mut String, _sess: &Session) {}
@@ -96,7 +98,14 @@ pub trait CodegenBackend {
         metadata: EncodedMetadata,
         outputs: &OutputFilenames,
     ) {
-        link_binary(sess, &ArArchiveBuilderBuilder, codegen_results, metadata, outputs);
+        link_binary(
+            sess,
+            &ArArchiveBuilderBuilder,
+            codegen_results,
+            metadata,
+            outputs,
+            self.name(),
+        );
     }
 }
 
