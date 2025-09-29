@@ -1,4 +1,6 @@
 use genmc_sys::LogLevel;
+use rustc_abi::Endian;
+use rustc_middle::ty::TyCtxt;
 
 use super::GenmcParams;
 use crate::{IsolatedOp, MiriConfig, RejectOpWith};
@@ -32,8 +34,6 @@ impl GenmcConfig {
         genmc_config: &mut Option<GenmcConfig>,
         trimmed_arg: &str,
     ) -> Result<(), String> {
-        // FIXME(genmc): Ensure host == target somewhere.
-
         if genmc_config.is_none() {
             *genmc_config = Some(Default::default());
         }
@@ -86,10 +86,15 @@ impl GenmcConfig {
     ///
     /// Unsupported configurations return an error.
     /// Adjusts Miri settings where required, printing a warnings if the change might be unexpected for the user.
-    pub fn validate_genmc_mode_settings(miri_config: &mut MiriConfig) -> Result<(), &'static str> {
+    pub fn validate(miri_config: &mut MiriConfig, tcx: TyCtxt<'_>) -> Result<(), &'static str> {
         let Some(genmc_config) = miri_config.genmc_config.as_mut() else {
             return Ok(());
         };
+
+        // Check for supported target.
+        if tcx.data_layout.endian != Endian::Little || tcx.data_layout.pointer_size().bits() != 64 {
+            return Err("GenMC only supports 64bit little-endian targets");
+        }
 
         // Check for disallowed configurations.
         if !miri_config.data_race_detector {
