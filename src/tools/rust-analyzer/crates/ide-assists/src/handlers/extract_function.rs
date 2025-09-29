@@ -1001,7 +1001,7 @@ impl FunctionBody {
         &self,
         ctx: &'a AssistContext<'_>,
         parent: &SyntaxNode,
-    ) -> impl Iterator<Item = OutlivedLocal> + 'a {
+    ) -> impl Iterator<Item = OutlivedLocal> + 'a + use<'a> {
         let parent = parent.clone();
         let range = self.text_range();
         locals_defined_in_body(&ctx.sema, self)
