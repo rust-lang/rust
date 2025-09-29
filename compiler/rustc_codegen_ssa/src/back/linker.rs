@@ -52,6 +52,7 @@ pub(crate) fn get_linker<'a>(
     flavor: LinkerFlavor,
     self_contained: bool,
     target_cpu: &'a str,
+    codegen_backend: &'static str,
 ) -> Box<dyn Linker + 'a> {
     let msvc_tool = find_msvc_tools::find_tool(&sess.target.arch, "link.exe");
 
@@ -154,6 +155,7 @@ pub(crate) fn get_linker<'a>(
             is_ld: cc == Cc::No,
             is_gnu: flavor.is_gnu(),
             uses_lld: flavor.uses_lld(),
+            codegen_backend,
         }) as Box<dyn Linker>,
         LinkerFlavor::Msvc(..) => Box::new(MsvcLinker { cmd, sess }) as Box<dyn Linker>,
         LinkerFlavor::EmCc => Box::new(EmLinker { cmd, sess }) as Box<dyn Linker>,
@@ -367,6 +369,7 @@ struct GccLinker<'a> {
     is_ld: bool,
     is_gnu: bool,
     uses_lld: bool,
+    codegen_backend: &'static str,
 }
 
 impl<'a> GccLinker<'a> {
@@ -423,9 +426,15 @@ impl<'a> GccLinker<'a> {
         if let Some(path) = &self.sess.opts.unstable_opts.profile_sample_use {
             self.link_arg(&format!("-plugin-opt=sample-profile={}", path.display()));
         };
+        let prefix = if self.codegen_backend == "gcc" {
+            // The GCC linker plugin requires a leading dash.
+            "-"
+        } else {
+            ""
+        };
         self.link_args(&[
-            &format!("-plugin-opt={opt_level}"),
-            &format!("-plugin-opt=mcpu={}", self.target_cpu),
+            &format!("-plugin-opt={prefix}{opt_level}"),
+            &format!("-plugin-opt={prefix}mcpu={}", self.target_cpu),
         ]);
     }
 

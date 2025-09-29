@@ -79,6 +79,7 @@ pub fn link_binary(
     codegen_results: CodegenResults,
     metadata: EncodedMetadata,
     outputs: &OutputFilenames,
+    codegen_backend: &'static str,
 ) {
     let _timer = sess.timer("link_binary");
     let output_metadata = sess.opts.output_types.contains_key(&OutputType::Metadata);
@@ -154,6 +155,7 @@ pub fn link_binary(
                         &codegen_results,
                         &metadata,
                         path.as_ref(),
+                        codegen_backend,
                     );
                 }
             }
@@ -680,6 +682,7 @@ fn link_natively(
     codegen_results: &CodegenResults,
     metadata: &EncodedMetadata,
     tmpdir: &Path,
+    codegen_backend: &'static str,
 ) {
     info!("preparing {:?} to {:?}", crate_type, out_filename);
     let (linker_path, flavor) = linker_and_flavor(sess);
@@ -705,6 +708,7 @@ fn link_natively(
         codegen_results,
         metadata,
         self_contained_components,
+        codegen_backend,
     );
 
     linker::disable_localization(&mut cmd);
@@ -2208,6 +2212,7 @@ fn linker_with_args(
     codegen_results: &CodegenResults,
     metadata: &EncodedMetadata,
     self_contained_components: LinkSelfContainedComponents,
+    codegen_backend: &'static str,
 ) -> Command {
     let self_contained_crt_objects = self_contained_components.is_crt_objects_enabled();
     let cmd = &mut *super::linker::get_linker(
@@ -2216,6 +2221,7 @@ fn linker_with_args(
         flavor,
         self_contained_components.are_any_components_enabled(),
         &codegen_results.crate_info.target_cpu,
+        codegen_backend,
     );
     let link_output_kind = link_output_kind(sess, crate_type);
 

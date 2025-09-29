@@ -232,6 +232,10 @@ impl CodegenBackend for LlvmCodegenBackend {
         crate::DEFAULT_LOCALE_RESOURCE
     }
 
+    fn name(&self) -> &'static str {
+        "llvm"
+    }
+
     fn init(&self, sess: &Session) {
         llvm_util::init(sess); // Make sure llvm is inited
     }
@@ -350,7 +354,14 @@ impl CodegenBackend for LlvmCodegenBackend {
 
         // Run the linker on any artifacts that resulted from the LLVM run.
         // This should produce either a finished executable or library.
-        link_binary(sess, &LlvmArchiveBuilderBuilder, codegen_results, metadata, outputs);
+        link_binary(
+            sess,
+            &LlvmArchiveBuilderBuilder,
+            codegen_results,
+            metadata,
+            outputs,
+            self.name(),
+        );
     }
 }
 
