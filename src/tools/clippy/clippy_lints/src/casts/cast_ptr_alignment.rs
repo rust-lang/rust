@@ -43,8 +43,8 @@ fn lint_cast_ptr_alignment<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, cast_f
             expr.span,
             format!(
                 "casting from `{cast_from}` to a more-strictly-aligned pointer (`{cast_to}`) ({} < {} bytes)",
-                from_layout.align.abi.bytes(),
-                to_layout.align.abi.bytes(),
+                from_layout.align.bytes(),
+                to_layout.align.bytes(),
             ),
         );
     }

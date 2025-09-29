@@ -193,7 +193,7 @@ fn emit_aapcs_va_arg<'ll, 'tcx>(
     // the offset again.
 
     bx.switch_to_block(maybe_reg);
-    if gr_type && layout.align.abi.bytes() > 8 {
+    if gr_type && layout.align.bytes() > 8 {
         reg_off_v = bx.add(reg_off_v, bx.const_i32(15));
         reg_off_v = bx.and(reg_off_v, bx.const_i32(-16));
     }
@@ -291,7 +291,7 @@ fn emit_powerpc_va_arg<'ll, 'tcx>(
         bx.inbounds_ptradd(va_list_addr, bx.const_usize(1)) // fpr
     };
 
-    let mut num_regs = bx.load(bx.type_i8(), num_regs_addr, dl.i8_align.abi);
+    let mut num_regs = bx.load(bx.type_i8(), num_regs_addr, dl.i8_align);
 
     // "Align" the register count when the type is passed as `i64`.
     if is_i64 || (is_f64 && is_soft_float_abi) {
@@ -329,7 +329,7 @@ fn emit_powerpc_va_arg<'ll, 'tcx>(
         // Increase the used-register count.
         let reg_incr = if is_i64 || (is_f64 && is_soft_float_abi) { 2 } else { 1 };
         let new_num_regs = bx.add(num_regs, bx.cx.const_u8(reg_incr));
-        bx.store(new_num_regs, num_regs_addr, dl.i8_align.abi);
+        bx.store(new_num_regs, num_regs_addr, dl.i8_align);
 
         bx.br(end);
 
@@ -339,7 +339,7 @@ fn emit_powerpc_va_arg<'ll, 'tcx>(
     let mem_addr = {
         bx.switch_to_block(in_mem);
 
-        bx.store(bx.const_u8(max_regs), num_regs_addr, dl.i8_align.abi);
+        bx.store(bx.const_u8(max_regs), num_regs_addr, dl.i8_align);
 
         // Everything in the overflow area is rounded up to a size of at least 4.
         let overflow_area_align = Align::from_bytes(4).unwrap();
@@ -761,7 +761,7 @@ fn x86_64_sysv64_va_arg_from_memory<'ll, 'tcx>(
     // byte boundary if alignment needed by type exceeds 8 byte boundary.
     // It isn't stated explicitly in the standard, but in practice we use
     // alignment greater than 16 where necessary.
-    if layout.layout.align.abi.bytes() > 8 {
+    if layout.layout.align.bytes() > 8 {
         unreachable!("all instances of VaArgSafe have an alignment <= 8");
     }
 
@@ -814,7 +814,7 @@ fn emit_xtensa_va_arg<'ll, 'tcx>(
     let va_ndx_offset = va_reg_offset + 4;
     let offset_ptr = bx.inbounds_ptradd(va_list_addr, bx.cx.const_usize(va_ndx_offset));
 
-    let offset = bx.load(bx.type_i32(), offset_ptr, bx.tcx().data_layout.i32_align.abi);
+    let offset = bx.load(bx.type_i32(), offset_ptr, bx.tcx().data_layout.i32_align);
     let offset = round_up_to_alignment(bx, offset, layout.align.abi);
 
     let slot_size = layout.size.align_to(Align::from_bytes(4).unwrap()).bytes() as i32;

@@ -361,7 +361,7 @@ pub(crate) mod rustc {
 
                 ty::Ref(region, ty, mutability) => {
                     let layout = layout_of(cx, *ty)?;
-                    let referent_align = layout.align.abi.bytes_usize();
+                    let referent_align = layout.align.bytes_usize();
                     let referent_size = layout.size.bytes_usize();
 
                     Ok(Tree::Ref(Reference {

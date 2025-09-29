@@ -138,7 +138,7 @@ fn is_valid_cmse_inputs<'tcx>(
     for (index, ty) in fn_sig.inputs().iter().enumerate() {
         let layout = tcx.layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(*ty))?;
 
-        let align = layout.layout.align().abi.bytes();
+        let align = layout.layout.align().bytes();
         let size = layout.layout.size().bytes();
 
         accum += size;

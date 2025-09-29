@@ -1341,7 +1341,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
                     name = ecx.tcx.def_path_str(def_id),
                     krate = ecx.tcx.crate_name(def_id.krate),
                     decl_size = extern_decl_layout.size.bytes(),
-                    decl_align = extern_decl_layout.align.abi.bytes(),
+                    decl_align = extern_decl_layout.align.bytes(),
                     shim_size = info.size.bytes(),
                     shim_align = info.align.bytes(),
                 )

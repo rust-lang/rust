@@ -609,7 +609,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 let op_layout = self.ecx.layout_of(ty).ok()?;
                 let val = match null_op {
                     NullOp::SizeOf => op_layout.size.bytes(),
-                    NullOp::AlignOf => op_layout.align.abi.bytes(),
+                    NullOp::AlignOf => op_layout.align.bytes(),
                     NullOp::OffsetOf(fields) => self
                         .tcx
                         .offset_of_subfield(self.typing_env, op_layout, fields.iter())
