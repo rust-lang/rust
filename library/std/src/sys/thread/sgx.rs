@@ -25,19 +25,24 @@ mod task_queue {
     }
 
     pub(super) struct Task {
-        p: Box<dyn FnOnce() + Send>,
+        handle: crate::thread::Thread,
+        main: Box<dyn FnOnce() + Send>,
         done: JoinNotifier,
     }
 
     impl Task {
-        pub(super) fn new(p: Box<dyn FnOnce() + Send>) -> (Task, JoinHandle) {
+        pub(super) fn new(
+            handle: crate::thread::Thread,
+            main: Box<dyn FnOnce() + Send>,
+        ) -> (Task, JoinHandle) {
             let (done, recv) = wait_notify::new();
             let done = JoinNotifier(Some(done));
-            (Task { p, done }, recv)
+            (Task { handle, main, done }, recv)
         }
 
         pub(super) fn run(self) -> JoinNotifier {
-            (self.p)();
+            crate::thread::set_current(self.handle);
+            (self.main)();
             self.done
         }
     }
@@ -95,12 +100,12 @@ impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
     pub unsafe fn new(
         _stack: usize,
-        _name: Option<&str>,
-        p: Box<dyn FnOnce() + Send>,
+        handle: crate::thread::Thread,
+        main: Box<dyn FnOnce() + Send>,
     ) -> io::Result<Thread> {
         let mut queue_lock = task_queue::lock();
         unsafe { usercalls::launch_thread()? };
-        let (task, handle) = task_queue::Task::new(p);
+        let (task, handle) = task_queue::Task::new(handle, main);
         queue_lock.push(task);
         Ok(Thread(handle))
     }

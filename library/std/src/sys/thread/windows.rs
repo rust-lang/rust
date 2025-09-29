@@ -17,15 +17,20 @@ pub struct Thread {
     handle: Handle,
 }
 
+struct ThreadData {
+    handle: crate::thread::Thread,
+    main: Box<dyn FnOnce()>,
+}
+
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub unsafe fn new(
         stack: usize,
-        _name: Option<&str>,
-        p: Box<dyn FnOnce()>,
+        handle: crate::thread::Thread,
+        main: Box<dyn FnOnce()>,
     ) -> io::Result<Thread> {
-        let p = Box::into_raw(Box::new(p));
+        let data = Box::into_raw(Box::new(ThreadData { handle, main }));
 
         // CreateThread rounds up values for the stack size to the nearest page size (at least 4kb).
         // If a value of zero is given then the default stack size is used instead.
@@ -36,7 +41,7 @@ impl Thread {
                 ptr::null_mut(),
                 stack,
                 Some(thread_start),
-                p as *mut _,
+                data as *mut _,
                 c::STACK_SIZE_PARAM_IS_A_RESERVATION,
                 ptr::null_mut(),
             );
@@ -45,19 +50,33 @@ impl Thread {
         return if let Ok(handle) = ret.try_into() {
             Ok(Thread { handle: Handle::from_inner(handle) })
         } else {
-            // The thread failed to start and as a result p was not consumed. Therefore, it is
-            // safe to reconstruct the box so that it gets deallocated.
-            unsafe { drop(Box::from_raw(p)) };
+            // The thread failed to start and as a result data was not consumed.
+            // Therefore, it is  safe to reconstruct the box so that it gets
+            // deallocated.
+            unsafe { drop(Box::from_raw(data)) };
             Err(io::Error::last_os_error())
         };
 
-        unsafe extern "system" fn thread_start(main: *mut c_void) -> u32 {
-            // Next, reserve some stack space for if we otherwise run out of stack.
-            stack_overflow::reserve_stack();
-            // Finally, let's run some code.
+        unsafe extern "system" fn thread_start(data: *mut c_void) -> u32 {
             // SAFETY: We are simply recreating the box that was leaked earlier.
             // It's the responsibility of the one who call `Thread::new` to ensure this is safe to call here.
-            unsafe { Box::from_raw(main as *mut Box<dyn FnOnce()>)() };
+            let data = unsafe { Box::from_raw(data as *mut ThreadData) };
+
+            // Call `set_current` immediately, as `set_name` may call the global
+            // allocator, which in turn might try to access the thread handle.
+            crate::thread::set_current(data.handle.clone());
+
+            // Reserve some stack space for if we otherwise run out of stack.
+            stack_overflow::reserve_stack();
+
+            // Name the thread...
+            if let Some(name) = data.handle.cname() {
+                set_name(name);
+            }
+
+            // ... and run its main function.
+            (data.main)();
+
             0
         }
     }
@@ -98,7 +117,7 @@ pub fn current_os_id() -> Option<u64> {
     if id == 0 { None } else { Some(id.into()) }
 }
 
-pub fn set_name(name: &CStr) {
+fn set_name(name: &CStr) {
     if let Ok(utf8) = name.to_str() {
         if let Ok(utf16) = to_u16s(utf8) {
             unsafe {
