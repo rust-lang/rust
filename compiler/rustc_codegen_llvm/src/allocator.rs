@@ -5,9 +5,10 @@ use rustc_ast::expand::allocator::{
 };
 use rustc_codegen_ssa::traits::BaseTypeCodegenMethods as _;
 use rustc_middle::bug;
-use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
+use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{DebugInfo, OomStrategy};
+use rustc_span::sym;
 use rustc_symbol_mangling::mangle_internal_symbol;
 
 use crate::attributes::llfn_attrs_from_instance;
@@ -59,7 +60,26 @@ pub(crate) unsafe fn codegen(
             let from_name = mangle_internal_symbol(tcx, &global_fn_name(method.name));
             let to_name = mangle_internal_symbol(tcx, &default_fn_name(method.name));
 
-            create_wrapper_function(tcx, &cx, &from_name, Some(&to_name), &args, output, false);
+            let alloc_attr_flag = match method.name {
+                sym::alloc => CodegenFnAttrFlags::ALLOCATOR,
+                sym::dealloc => CodegenFnAttrFlags::DEALLOCATOR,
+                sym::realloc => CodegenFnAttrFlags::REALLOCATOR,
+                sym::alloc_zeroed => CodegenFnAttrFlags::ALLOCATOR_ZEROED,
+                _ => unreachable!("Unknown allocator method!"),
+            };
+
+            let mut attrs = CodegenFnAttrs::new();
+            attrs.flags |= alloc_attr_flag;
+            create_wrapper_function(
+                tcx,
+                &cx,
+                &from_name,
+                Some(&to_name),
+                &args,
+                output,
+                false,
+                &attrs,
+            );
         }
     }
 
@@ -72,6 +92,7 @@ pub(crate) unsafe fn codegen(
         &[usize, usize], // size, align
         None,
         true,
+        &CodegenFnAttrs::new(),
     );
 
     unsafe {
@@ -93,6 +114,7 @@ pub(crate) unsafe fn codegen(
             &[],
             None,
             false,
+            &CodegenFnAttrs::new(),
         );
     }
 
@@ -139,6 +161,7 @@ fn create_wrapper_function(
     args: &[&Type],
     output: Option<&Type>,
     no_return: bool,
+    attrs: &CodegenFnAttrs,
 ) {
     let ty = cx.type_func(args, output.unwrap_or_else(|| cx.type_void()));
     let llfn = declare_simple_fn(
@@ -150,8 +173,7 @@ fn create_wrapper_function(
         ty,
     );
 
-    let attrs = CodegenFnAttrs::new();
-    llfn_attrs_from_instance(cx, tcx, llfn, &attrs, None);
+    llfn_attrs_from_instance(cx, tcx, llfn, attrs, None);
 
     let no_return = if no_return {
         // -> ! DIFlagNoReturn
