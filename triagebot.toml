@@ -1382,6 +1382,7 @@ libs = [
     "@tgross35",
     "@thomcc",
     "@ibraheemdev",
+    "@joboet",
 ]
 infra-ci = [
     "@Mark-Simulacrum",
