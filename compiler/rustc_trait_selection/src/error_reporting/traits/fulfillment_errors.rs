@@ -1908,7 +1908,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 // Ignore automatically derived impls and `!Trait` impls.
                 .map(|def_id| (self.tcx.impl_trait_header(def_id), def_id))
                 .filter_map(|(header, def_id)| {
-                    (header.polarity != ty::ImplPolarity::Negative
+                    (header.polarity == ty::ImplPolarity::Positive
                         || self.tcx.is_automatically_derived(def_id))
                     .then(|| (header.trait_ref.instantiate_identity(), def_id))
                 })
