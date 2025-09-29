@@ -1121,7 +1121,7 @@ impl Config {
         line.starts_with("no-") && self.parse_name_directive(&line[3..], directive)
     }
 
-    pub fn parse_name_value_directive(
+    fn parse_name_value_directive(
         &self,
         line: &str,
         directive: &str,

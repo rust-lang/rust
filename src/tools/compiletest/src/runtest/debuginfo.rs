@@ -59,7 +59,7 @@ impl TestCx<'_> {
         }
 
         // Parse debugger commands etc from test files
-        let dbg_cmds = DebuggerCommands::parse_from(&self.testpaths.file, self.config, "cdb")
+        let dbg_cmds = DebuggerCommands::parse_from(&self.testpaths.file, "cdb")
             .unwrap_or_else(|e| self.fatal(&e));
 
         // https://docs.microsoft.com/en-us/windows-hardware/drivers/debugger/debugger-commands
@@ -130,7 +130,7 @@ impl TestCx<'_> {
     }
 
     fn run_debuginfo_gdb_test_no_opt(&self) {
-        let dbg_cmds = DebuggerCommands::parse_from(&self.testpaths.file, self.config, "gdb")
+        let dbg_cmds = DebuggerCommands::parse_from(&self.testpaths.file, "gdb")
             .unwrap_or_else(|e| self.fatal(&e));
         let mut cmds = dbg_cmds.commands.join("\n");
 
@@ -397,7 +397,7 @@ impl TestCx<'_> {
         }
 
         // Parse debugger commands etc from test files
-        let dbg_cmds = DebuggerCommands::parse_from(&self.testpaths.file, self.config, "lldb")
+        let dbg_cmds = DebuggerCommands::parse_from(&self.testpaths.file, "lldb")
             .unwrap_or_else(|e| self.fatal(&e));
 
         // Write debugger script:
