@@ -70,6 +70,7 @@ pub fn check(
         bless,
         extra_checks,
         pos_args,
+        diag_ctx,
     ) {
         check.error(e);
     }
@@ -86,6 +87,7 @@ fn check_impl(
     bless: bool,
     extra_checks: Option<&str>,
     pos_args: &[String],
+    diag_ctx: DiagCtx,
 ) -> Result<(), Error> {
     let show_diff =
         std::env::var("TIDY_PRINT_DIFF").is_ok_and(|v| v.eq_ignore_ascii_case("true") || v == "1");
@@ -138,6 +140,7 @@ fn check_impl(
     let shell_lint = extra_check!(Shell, Lint);
     let cpp_fmt = extra_check!(Cpp, Fmt);
     let spellcheck = extra_check!(Spellcheck, None);
+    let fluent_check = extra_check!(Ftl, None);
     let js_lint = extra_check!(Js, Lint);
     let js_typecheck = extra_check!(Js, Typecheck);
 
@@ -344,6 +347,11 @@ fn check_impl(
     if js_typecheck {
         eprintln!("typechecking javascript files");
         rustdoc_js::typecheck(outdir, librustdoc_path)?;
+    }
+
+    if fluent_check {
+        eprintln!("checking ftl files");
+        crate::error_messages::check(&root_path, diag_ctx);
     }
 
     Ok(())
@@ -766,6 +774,7 @@ impl ExtraCheckArg {
                 }
                 &[]
             }
+            ExtraCheckLang::Ftl => &[".ftl"],
         };
         exts.iter().any(|ext| filepath.ends_with(ext))
     }
@@ -782,6 +791,7 @@ impl ExtraCheckArg {
             ExtraCheckLang::Shell => &[Lint],
             ExtraCheckLang::Spellcheck => &[],
             ExtraCheckLang::Js => &[Lint, Typecheck],
+            ExtraCheckLang::Ftl => &[],
         };
         supported_kinds.contains(&kind)
     }
@@ -823,6 +833,7 @@ enum ExtraCheckLang {
     Cpp,
     Spellcheck,
     Js,
+    Ftl,
 }
 
 impl FromStr for ExtraCheckLang {
@@ -835,6 +846,7 @@ impl FromStr for ExtraCheckLang {
             "cpp" => Self::Cpp,
             "spellcheck" => Self::Spellcheck,
             "js" => Self::Js,
+            "ftl" => Self::Ftl,
             _ => return Err(ExtraCheckParseError::UnknownLang(s.to_string())),
         })
     }
