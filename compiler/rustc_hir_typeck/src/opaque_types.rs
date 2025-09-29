@@ -35,8 +35,8 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         }
         debug!(?opaque_types);
 
-        self.compute_hidden_types(&opaque_types);
-        self.apply_hidden_types(&opaque_types);
+        self.compute_definition_site_hidden_types(&opaque_types);
+        self.apply_definition_site_hidden_types(&opaque_types);
     }
 }
 
@@ -71,7 +71,7 @@ impl<'tcx> UsageKind<'tcx> {
 }
 
 impl<'tcx> FnCtxt<'_, 'tcx> {
-    fn compute_hidden_types(
+    fn compute_definition_site_hidden_types(
         &mut self,
         opaque_types: &[(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)],
     ) {
@@ -203,7 +203,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         UsageKind::HasDefiningUse
     }
 
-    fn apply_hidden_types(
+    fn apply_definition_site_hidden_types(
         &mut self,
         opaque_types: &[(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)],
     ) {

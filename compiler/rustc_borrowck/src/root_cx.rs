@@ -12,12 +12,12 @@ use smallvec::SmallVec;
 use crate::consumers::BorrowckConsumer;
 use crate::nll::compute_closure_requirements_modulo_opaques;
 use crate::region_infer::opaque_types::{
-    apply_hidden_types, clone_and_resolve_opaque_types, compute_hidden_types,
-    detect_opaque_types_added_while_handling_opaque_types,
+    apply_definition_site_hidden_types, clone_and_resolve_opaque_types,
+    compute_definition_site_hidden_types, detect_opaque_types_added_while_handling_opaque_types,
 };
 use crate::type_check::{Locations, constraint_conversion};
 use crate::{
-    ClosureRegionRequirements, CollectRegionConstraintsResult, HiddenTypes,
+    ClosureRegionRequirements, CollectRegionConstraintsResult, DefinitionSiteHiddenTypes,
     PropagatedBorrowCheckResults, borrowck_check_region_constraints,
     borrowck_collect_region_constraints,
 };
@@ -27,7 +27,7 @@ use crate::{
 pub(super) struct BorrowCheckRootCtxt<'tcx> {
     pub tcx: TyCtxt<'tcx>,
     root_def_id: LocalDefId,
-    hidden_types: HiddenTypes<'tcx>,
+    hidden_types: DefinitionSiteHiddenTypes<'tcx>,
     /// The region constraints computed by [borrowck_collect_region_constraints]. This uses
     /// an [FxIndexMap] to guarantee that iterating over it visits nested bodies before
     /// their parents.
@@ -72,7 +72,7 @@ impl<'tcx> BorrowCheckRootCtxt<'tcx> {
         &self.propagated_borrowck_results[&nested_body_def_id].used_mut_upvars
     }
 
-    pub(super) fn finalize(self) -> Result<&'tcx HiddenTypes<'tcx>, ErrorGuaranteed> {
+    pub(super) fn finalize(self) -> Result<&'tcx DefinitionSiteHiddenTypes<'tcx>, ErrorGuaranteed> {
         if let Some(guar) = self.tainted_by_errors {
             Err(guar)
         } else {
@@ -88,7 +88,7 @@ impl<'tcx> BorrowCheckRootCtxt<'tcx> {
                 &input.universal_region_relations,
                 &mut input.constraints,
             );
-            input.deferred_opaque_type_errors = compute_hidden_types(
+            input.deferred_opaque_type_errors = compute_definition_site_hidden_types(
                 &input.infcx,
                 &input.universal_region_relations,
                 &input.constraints,
@@ -103,7 +103,7 @@ impl<'tcx> BorrowCheckRootCtxt<'tcx> {
             self.collect_region_constraints_results.values_mut().zip(per_body_info)
         {
             if input.deferred_opaque_type_errors.is_empty() {
-                input.deferred_opaque_type_errors = apply_hidden_types(
+                input.deferred_opaque_type_errors = apply_definition_site_hidden_types(
                     &input.infcx,
                     &input.body_owned,
                     &input.universal_region_relations.universal_regions,

@@ -8,7 +8,7 @@ use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin, OpaqueTypeStorageEntries};
 use rustc_infer::traits::ObligationCause;
 use rustc_macros::extension;
-use rustc_middle::mir::{Body, ConstraintCategory, HiddenTypes};
+use rustc_middle::mir::{Body, ConstraintCategory, DefinitionSiteHiddenTypes};
 use rustc_middle::ty::{
     self, DefiningScopeKind, EarlyBinder, FallibleTypeFolder, GenericArg, GenericArgsRef,
     OpaqueHiddenType, OpaqueTypeKey, Region, RegionVid, Ty, TyCtxt, TypeFoldable,
@@ -131,7 +131,7 @@ fn nll_var_to_universal_region<'tcx>(
 /// and errors if we end up with distinct hidden types.
 fn add_hidden_type<'tcx>(
     tcx: TyCtxt<'tcx>,
-    hidden_types: &mut HiddenTypes<'tcx>,
+    hidden_types: &mut DefinitionSiteHiddenTypes<'tcx>,
     def_id: LocalDefId,
     hidden_ty: OpaqueHiddenType<'tcx>,
 ) {
@@ -156,7 +156,7 @@ fn add_hidden_type<'tcx>(
 }
 
 fn get_hidden_type<'tcx>(
-    hidden_types: &HiddenTypes<'tcx>,
+    hidden_types: &DefinitionSiteHiddenTypes<'tcx>,
     def_id: LocalDefId,
 ) -> Option<EarlyBinder<'tcx, OpaqueHiddenType<'tcx>>> {
     hidden_types.0.get(&def_id).map(|ty| EarlyBinder::bind(*ty))
@@ -183,12 +183,12 @@ struct DefiningUse<'tcx> {
 ///
 /// It also means that this whole function is not really soundness critical as we
 /// recheck all uses of the opaques regardless.
-pub(crate) fn compute_hidden_types<'tcx>(
+pub(crate) fn compute_definition_site_hidden_types<'tcx>(
     infcx: &BorrowckInferCtxt<'tcx>,
     universal_region_relations: &Frozen<UniversalRegionRelations<'tcx>>,
     constraints: &MirTypeckRegionConstraints<'tcx>,
     location_map: Rc<DenseLocationMap>,
-    hidden_types: &mut HiddenTypes<'tcx>,
+    hidden_types: &mut DefinitionSiteHiddenTypes<'tcx>,
     opaque_types: &[(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)],
 ) -> Vec<DeferredOpaqueTypeError<'tcx>> {
     let mut errors = Vec::new();
@@ -211,14 +211,19 @@ pub(crate) fn compute_hidden_types<'tcx>(
     // After applying member constraints, we now check whether all member regions ended
     // up equal to one of their choice regions and compute the actual hidden type of
     // the opaque type definition. This is stored in the `root_cx`.
-    compute_hidden_types_from_defining_uses(&rcx, hidden_types, &defining_uses, &mut errors);
+    compute_definition_site_hidden_types_from_defining_uses(
+        &rcx,
+        hidden_types,
+        &defining_uses,
+        &mut errors,
+    );
     errors
 }
 
 #[instrument(level = "debug", skip_all, ret)]
 fn collect_defining_uses<'tcx>(
     rcx: &mut RegionCtxt<'_, 'tcx>,
-    hidden_types: &mut HiddenTypes<'tcx>,
+    hidden_types: &mut DefinitionSiteHiddenTypes<'tcx>,
     opaque_types: &[(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)],
     errors: &mut Vec<DeferredOpaqueTypeError<'tcx>>,
 ) -> Vec<DefiningUse<'tcx>> {
@@ -271,9 +276,9 @@ fn collect_defining_uses<'tcx>(
     defining_uses
 }
 
-fn compute_hidden_types_from_defining_uses<'tcx>(
+fn compute_definition_site_hidden_types_from_defining_uses<'tcx>(
     rcx: &RegionCtxt<'_, 'tcx>,
-    hidden_types: &mut HiddenTypes<'tcx>,
+    hidden_types: &mut DefinitionSiteHiddenTypes<'tcx>,
     defining_uses: &[DefiningUse<'tcx>],
     errors: &mut Vec<DeferredOpaqueTypeError<'tcx>>,
 ) {
@@ -483,14 +488,14 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for ToArgRegionsFolder<'_, 'tcx> {
 ///
 /// It does this by equating the hidden type of each use with the instantiated final
 /// hidden type of the opaque.
-pub(crate) fn apply_hidden_types<'tcx>(
+pub(crate) fn apply_definition_site_hidden_types<'tcx>(
     infcx: &BorrowckInferCtxt<'tcx>,
     body: &Body<'tcx>,
     universal_regions: &UniversalRegions<'tcx>,
     region_bound_pairs: &RegionBoundPairs<'tcx>,
     known_type_outlives_obligations: &[ty::PolyTypeOutlivesPredicate<'tcx>],
     constraints: &mut MirTypeckRegionConstraints<'tcx>,
-    hidden_types: &mut HiddenTypes<'tcx>,
+    hidden_types: &mut DefinitionSiteHiddenTypes<'tcx>,
     opaque_types: &[(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)],
 ) -> Vec<DeferredOpaqueTypeError<'tcx>> {
     let tcx = infcx.tcx;
@@ -561,7 +566,7 @@ pub(crate) fn apply_hidden_types<'tcx>(
     errors
 }
 
-/// In theory `apply_hidden_types` could introduce new uses of opaque types.
+/// In theory `apply_definition_site_hidden_types` could introduce new uses of opaque types.
 /// We do not check these new uses so this could be unsound.
 ///
 /// We detect any new uses and simply delay a bug if they occur. If this results in

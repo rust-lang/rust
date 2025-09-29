@@ -87,7 +87,7 @@ impl Debug for CoroutineLayout<'_> {
 /// All the opaque types that have had their hidden type fully computed.
 /// Unlike the value in `TypeckResults`, this has unerased regions.
 #[derive(Default, Debug, TyEncodable, TyDecodable, HashStable)]
-pub struct HiddenTypes<'tcx>(pub FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>>);
+pub struct DefinitionSiteHiddenTypes<'tcx>(pub FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>>);
 
 /// The result of the `mir_const_qualif` query.
 ///
