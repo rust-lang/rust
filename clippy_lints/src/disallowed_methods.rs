@@ -1,13 +1,18 @@
 use clippy_config::Conf;
 use clippy_config::types::{DisallowedPath, create_disallowed_map};
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::disallowed_profiles::{ProfileEntry, ProfileResolver};
 use clippy_utils::paths::PathNS;
+use clippy_utils::sym;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefIdMap;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::impl_lint_pass;
+use rustc_span::{Span, Symbol};
+use smallvec::SmallVec;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -55,6 +60,21 @@ declare_clippy_lint! {
     /// let mut xs = Vec::new(); // Vec::new is _not_ disallowed in the config.
     /// xs.push(123); // Vec::push is _not_ disallowed in the config.
     /// ```
+    ///
+    /// Profiles allow scoping different disallow lists:
+    /// ```toml
+    /// [disallowed-methods-profiles.forward_pass]
+    /// paths = [
+    ///     { path = "crate::devices::Buffer::copy_to_host", reason = "Forward code must not touch host buffers" }
+    /// ]
+    /// ```
+    ///
+    /// ```rust,ignore
+    /// #[clippy::disallowed_profile("forward_pass")]
+    /// fn evaluate() {
+    ///     // Method calls in this function use the `forward_pass` profile.
+    /// }
+    /// ```
     #[clippy::version = "1.49.0"]
     pub DISALLOWED_METHODS,
     style,
@@ -64,12 +84,17 @@ declare_clippy_lint! {
 impl_lint_pass!(DisallowedMethods => [DISALLOWED_METHODS]);
 
 pub struct DisallowedMethods {
-    disallowed: DefIdMap<(&'static str, &'static DisallowedPath)>,
+    default: DefIdMap<(&'static str, &'static DisallowedPath)>,
+    profiles: FxHashMap<Symbol, DefIdMap<(&'static str, &'static DisallowedPath)>>,
+    known_profiles: FxHashSet<Symbol>,
+    profile_cache: ProfileResolver,
+    warned_unknown_profiles: FxHashSet<Span>,
 }
 
 impl DisallowedMethods {
+    #[allow(rustc::potential_query_instability)] // Profiles are sorted for deterministic iteration.
     pub fn new(tcx: TyCtxt<'_>, conf: &'static Conf) -> Self {
-        let (disallowed, _) = create_disallowed_map(
+        let (default, _) = create_disallowed_map(
             tcx,
             &conf.disallowed_methods,
             PathNS::Value,
@@ -82,7 +107,69 @@ impl DisallowedMethods {
             "function",
             false,
         );
-        Self { disallowed }
+
+        let mut profiles = FxHashMap::default();
+        let mut names: Vec<_> = conf.disallowed_methods_profiles.keys().collect();
+        names.sort();
+        for name in names {
+            let symbol = Symbol::intern(name.as_str());
+            let paths = conf
+                .disallowed_methods_profiles
+                .get(name)
+                .expect("profile entry must exist");
+            let (map, _) = create_disallowed_map(
+                tcx,
+                paths,
+                PathNS::Value,
+                |def_kind| {
+                    matches!(
+                        def_kind,
+                        DefKind::Fn | DefKind::Ctor(_, CtorKind::Fn) | DefKind::AssocFn
+                    )
+                },
+                "function",
+                false,
+            );
+            profiles.insert(symbol, map);
+        }
+
+        let mut known_profiles = FxHashSet::default();
+        for name in conf
+            .disallowed_methods_profiles
+            .keys()
+            .chain(conf.disallowed_types_profiles.keys())
+        {
+            known_profiles.insert(Symbol::intern(name.as_str()));
+        }
+
+        Self {
+            default,
+            profiles,
+            known_profiles,
+            profile_cache: ProfileResolver::default(),
+            warned_unknown_profiles: FxHashSet::default(),
+        }
+    }
+
+    fn warn_unknown_profile(&mut self, cx: &LateContext<'_>, entry: &ProfileEntry) {
+        if self.warned_unknown_profiles.insert(entry.span) {
+            let attr_name = if entry.attr_name == sym::disallowed_profiles {
+                "clippy::disallowed_profiles"
+            } else {
+                "clippy::disallowed_profile"
+            };
+            cx.tcx
+                .sess
+                .dcx()
+                .struct_span_warn(
+                    entry.span,
+                    format!(
+                        "`{attr_name}` references unknown profile `{}` for `clippy::disallowed_methods`",
+                        entry.name
+                    ),
+                )
+                .emit();
+        }
     }
 }
 
@@ -98,7 +185,36 @@ impl<'tcx> LateLintPass<'tcx> for DisallowedMethods {
             },
             _ => return,
         };
-        if let Some(&(path, disallowed_path)) = self.disallowed.get(&id) {
+        let mut active_profiles = SmallVec::<[Symbol; 2]>::new();
+        let mut unknown_profiles = SmallVec::<[ProfileEntry; 2]>::new();
+        if let Some(selection) = self.profile_cache.active_profiles(cx, expr.hir_id) {
+            for entry in selection.iter() {
+                let is_active = self.profiles.contains_key(&entry.name);
+                if is_active {
+                    active_profiles.push(entry.name);
+                } else if !self.known_profiles.contains(&entry.name) {
+                    unknown_profiles.push(entry.clone());
+                }
+            }
+        }
+
+        for entry in unknown_profiles {
+            self.warn_unknown_profile(cx, &entry);
+        }
+
+        if let Some((profile, &(path, disallowed_path))) = active_profiles.iter().find_map(|symbol| {
+            self.profiles
+                .get(symbol)
+                .and_then(|map| map.get(&id).map(|info| (*symbol, info)))
+        }) {
+            span_lint_and_then(
+                cx,
+                DISALLOWED_METHODS,
+                span,
+                format!("use of a disallowed method `{path}` (profile: {profile})"),
+                disallowed_path.diag_amendment(span),
+            );
+        } else if let Some(&(path, disallowed_path)) = self.default.get(&id) {
             span_lint_and_then(
                 cx,
                 DISALLOWED_METHODS,

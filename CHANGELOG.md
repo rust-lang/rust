@@ -7578,8 +7578,10 @@ Released 2018-09-13
 [`disallowed-fields`]: https://doc.rust-lang.org/clippy/lint_configuration.html#disallowed-fields
 [`disallowed-macros`]: https://doc.rust-lang.org/clippy/lint_configuration.html#disallowed-macros
 [`disallowed-methods`]: https://doc.rust-lang.org/clippy/lint_configuration.html#disallowed-methods
+[`disallowed-methods-profiles`]: https://doc.rust-lang.org/clippy/lint_configuration.html#disallowed-methods-profiles
 [`disallowed-names`]: https://doc.rust-lang.org/clippy/lint_configuration.html#disallowed-names
 [`disallowed-types`]: https://doc.rust-lang.org/clippy/lint_configuration.html#disallowed-types
+[`disallowed-types-profiles`]: https://doc.rust-lang.org/clippy/lint_configuration.html#disallowed-types-profiles
 [`doc-valid-idents`]: https://doc.rust-lang.org/clippy/lint_configuration.html#doc-valid-idents
 [`enable-raw-pointer-heuristic-for-send`]: https://doc.rust-lang.org/clippy/lint_configuration.html#enable-raw-pointer-heuristic-for-send
 [`enforce-iter-loop-reborrow`]: https://doc.rust-lang.org/clippy/lint_configuration.html#enforce-iter-loop-reborrow

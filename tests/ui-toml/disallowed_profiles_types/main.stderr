@@ -1,0 +1,63 @@
+error: use of a disallowed type `std::rc::Rc`
+  --> tests/ui-toml/disallowed_profiles_types/main.rs:4:1
+   |
+LL | use std::rc::Rc;
+   | ^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::disallowed-types` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::disallowed_types)]`
+
+error: use of a disallowed type `std::rc::Rc`
+  --> tests/ui-toml/disallowed_profiles_types/main.rs:10:17
+   |
+LL |     let _value: Rc<i32> = todo!();
+   |                 ^^^^^^^
+
+error: use of a disallowed type `std::cell::RefCell` (profile: forward_pass)
+  --> tests/ui-toml/disallowed_profiles_types/main.rs:15:17
+   |
+LL |     let _value: std::cell::RefCell<i32> = todo!();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: Prefer shared references
+
+error: use of a disallowed type `std::sync::Mutex` (profile: export)
+  --> tests/ui-toml/disallowed_profiles_types/main.rs:20:17
+   |
+LL |     let _value: Mutex<i32> = todo!();
+   |                 ^^^^^^^^^^
+
+warning: `clippy::disallowed_profile` references unknown profile `unknown_type_profile` for `clippy::disallowed_methods`
+  --> tests/ui-toml/disallowed_profiles_types/main.rs:23:30
+   |
+LL | #[clippy::disallowed_profile("unknown_type_profile")]
+   |                              ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: `clippy::disallowed_profile` references unknown profile `unknown_type_profile` for `clippy::disallowed_types`
+  --> tests/ui-toml/disallowed_profiles_types/main.rs:23:30
+   |
+LL | #[clippy::disallowed_profile("unknown_type_profile")]
+   |                              ^^^^^^^^^^^^^^^^^^^^^^
+
+error: use of a disallowed type `std::rc::Rc`
+  --> tests/ui-toml/disallowed_profiles_types/main.rs:28:20
+   |
+LL |     let _fallback: Rc<i32> = todo!();
+   |                    ^^^^^^^
+
+error: use of a disallowed type `std::cell::RefCell` (profile: forward_pass)
+  --> tests/ui-toml/disallowed_profiles_types/main.rs:33:17
+   |
+LL |     let _value: std::cell::RefCell<i32> = todo!();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: Prefer shared references
+
+error: use of a disallowed type `std::sync::Mutex` (profile: export)
+  --> tests/ui-toml/disallowed_profiles_types/main.rs:34:17
+   |
+LL |     let _other: Mutex<i32> = todo!();
+   |                 ^^^^^^^^^^
+
+error: aborting due to 7 previous errors; 2 warnings emitted
+

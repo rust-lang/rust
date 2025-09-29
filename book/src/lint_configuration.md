@@ -573,6 +573,30 @@ The list of disallowed methods, written as fully qualified paths.
 * [`disallowed_methods`](https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_methods)
 
 
+## `disallowed-methods-profiles`
+Named profiles of disallowed methods, keyed by profile name.
+
+#### Example
+
+```toml
+[disallowed-methods-profiles.forward_pass]
+paths = [
+    { path = "crate::io::DeviceBuffer::copy_to_host", reason = "Forward code stays on the device" }
+]
+
+[disallowed-methods-profiles.export]
+paths = [
+    { path = "crate::io::DeviceBuffer::into_host_slice" }
+]
+```
+
+**Default Value:** `{}`
+
+---
+**Affected lints:**
+* [`disallowed_methods`](https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_methods)
+
+
 ## `disallowed-names`
 The list of disallowed names to lint about. NB: `bar` is not here since it has legitimate uses. The value
 `".."` can be used as part of the list to indicate that the configured values should be appended to the
@@ -596,6 +620,25 @@ The list of disallowed types, written as fully qualified paths.
   if the path doesn't exist, instead of emitting an error
 
 **Default Value:** `[]`
+
+---
+**Affected lints:**
+* [`disallowed_types`](https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_types)
+
+
+## `disallowed-types-profiles`
+Named profiles of disallowed types, keyed by profile name.
+
+#### Example
+
+```toml
+[disallowed-types-profiles.forward_pass]
+paths = [
+    { path = "crate::io::HostBuffer", reason = "Prefer device buffers" }
+]
+```
+
+**Default Value:** `{}`
 
 ---
 **Affected lints:**
