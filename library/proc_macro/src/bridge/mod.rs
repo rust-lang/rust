@@ -160,12 +160,10 @@ pub struct BridgeConfig<'a> {
 
     /// If 'true', always invoke the default panic hook
     force_show_panics: bool,
-
-    // Prevent Send and Sync impls. `!Send`/`!Sync` is the usual way of doing
-    // this, but that requires unstable features. rust-analyzer uses this code
-    // and avoids unstable features.
-    _marker: marker::PhantomData<*mut ()>,
 }
+
+impl !Send for BridgeConfig<'_> {}
+impl !Sync for BridgeConfig<'_> {}
 
 #[forbid(unsafe_code)]
 #[allow(non_camel_case_types)]

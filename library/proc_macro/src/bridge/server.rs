@@ -295,12 +295,7 @@ impl ExecutionStrategy for SameThread {
 
         let mut dispatch = |buf| dispatcher.dispatch(buf);
 
-        run_client(BridgeConfig {
-            input,
-            dispatch: (&mut dispatch).into(),
-            force_show_panics,
-            _marker: marker::PhantomData,
-        })
+        run_client(BridgeConfig { input, dispatch: (&mut dispatch).into(), force_show_panics })
     }
 }
 
@@ -331,12 +326,7 @@ where
                 client.recv().expect("server died while client waiting for reply")
             };
 
-            run_client(BridgeConfig {
-                input,
-                dispatch: (&mut dispatch).into(),
-                force_show_panics,
-                _marker: marker::PhantomData,
-            })
+            run_client(BridgeConfig { input, dispatch: (&mut dispatch).into(), force_show_panics })
         });
 
         while let Some(b) = server.recv() {
