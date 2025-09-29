@@ -187,7 +187,7 @@ Alternatively, you can write `bootstrap.toml` by hand. See `bootstrap.example.to
 settings and explanations of them. See `src/bootstrap/defaults` for common settings to change.
 
 If you have already built `rustc` and you change settings related to LLVM, then you may have to
-execute `rm -rf build` for subsequent configuration changes to take effect. Note that `./x
+execute `./x clean --all` for subsequent configuration changes to take effect. Note that `./x
 clean` will not cause a rebuild of LLVM.
 
 ## Common `x` commands
