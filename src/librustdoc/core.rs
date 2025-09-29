@@ -33,7 +33,6 @@ use crate::config::{Options as RustdocOptions, OutputFormat, RenderOptions};
 use crate::formats::cache::Cache;
 use crate::html::macro_expansion::{ExpandedCode, source_macro_expansion};
 use crate::passes;
-use crate::passes::Condition::*;
 use crate::passes::collect_intra_doc_links::LinkCollector;
 
 pub(crate) struct DocContext<'tcx> {
@@ -421,38 +420,39 @@ pub(crate) fn run_global_ctxt(
         }
     }
 
-    info!("Executing passes");
+    info!("running passes");
 
-    let mut visited = FxHashMap::default();
-    let mut ambiguous = FxIndexMap::default();
+    let mut visited_links = FxHashMap::default();
+    let mut ambiguous_links = FxIndexMap::default();
 
-    for p in passes::defaults(show_coverage) {
-        let run = match p.condition {
-            Always => true,
-            WhenDocumentPrivate => ctxt.render_options.document_private,
-            WhenNotDocumentPrivate => !ctxt.render_options.document_private,
-            WhenNotDocumentHidden => !ctxt.render_options.document_hidden,
-        };
-        if run {
-            debug!("running pass {}", p.pass.name);
-            if let Some(run_fn) = p.pass.run {
-                krate = tcx.sess.time(p.pass.name, || run_fn(krate, &mut ctxt));
-            } else {
-                let (k, LinkCollector { visited_links, ambiguous_links, .. }) =
-                    passes::collect_intra_doc_links::collect_intra_doc_links(krate, &mut ctxt);
-                krate = k;
-                visited = visited_links;
-                ambiguous = ambiguous_links;
-            }
-        }
+    if !show_coverage {
+        krate = passes::track!(tcx, collect_trait_impls(krate, &mut ctxt));
+        krate = passes::track!(tcx, check_doc_test_visibility(krate, &mut ctxt));
+        krate = passes::track!(tcx, check_doc_cfg(krate, &mut ctxt));
+        krate = passes::track!(tcx, strip_aliased_non_local(krate, &mut ctxt));
+    }
+
+    krate = passes::track!(tcx, strip_hidden(krate, &mut ctxt));
+    krate = passes::track!(tcx, strip_private(krate, &mut ctxt));
+
+    if show_coverage {
+        krate = passes::track!(tcx, calculate_doc_coverage(krate, &mut ctxt));
+    }
+
+    if !show_coverage {
+        krate = passes::track!(tcx, strip_priv_imports(krate, &mut ctxt));
+        (krate, LinkCollector { visited_links, ambiguous_links, .. }) =
+            passes::track!(tcx, collect_intra_doc_links(krate, &mut ctxt));
+        krate = passes::track!(tcx, propagate_doc_cfg(krate, &mut ctxt));
+        krate = passes::track!(tcx, propagate_stability(krate, &mut ctxt));
+        krate = passes::track!(tcx, lint(krate, &mut ctxt));
     }
 
     tcx.sess.time("check_lint_expectations", || tcx.check_expectations(Some(sym::rustdoc)));
 
     krate = tcx.sess.time("create_format_cache", || Cache::populate(&mut ctxt, krate));
 
-    let mut collector =
-        LinkCollector { cx: &mut ctxt, visited_links: visited, ambiguous_links: ambiguous };
+    let mut collector = LinkCollector { cx: &mut ctxt, visited_links, ambiguous_links };
     collector.resolve_ambiguities();
 
     tcx.dcx().abort_if_errors();

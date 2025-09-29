@@ -4,15 +4,13 @@
 use crate::clean;
 use crate::core::DocContext;
 use crate::fold::DocFolder;
-use crate::passes::{ImportStripper, Pass};
-
-pub(crate) const STRIP_PRIV_IMPORTS: Pass = Pass {
-    name: "strip-priv-imports",
-    run: Some(strip_priv_imports),
-    description: "strips all private import statements (`use`, `extern crate`) from a crate",
-};
+use crate::passes::ImportStripper;
 
 pub(crate) fn strip_priv_imports(krate: clean::Crate, cx: &mut DocContext<'_>) -> clean::Crate {
+    if !cx.render_options.document_private {
+        return krate;
+    }
+
     let is_json_output = cx.is_json_output();
     ImportStripper {
         tcx: cx.tcx,

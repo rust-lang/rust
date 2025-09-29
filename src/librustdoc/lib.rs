@@ -8,6 +8,7 @@
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(debug_closure_helpers)]
+#![feature(decl_macro)]
 #![feature(file_buffered)]
 #![feature(formatting_options)]
 #![feature(if_let_guard)]
@@ -219,7 +220,7 @@ fn init_logging(early_dcx: &EarlyDiagCtxt) {
         .with_ansi(color_logs)
         .with_targets(true)
         .with_wraparound(10)
-        .with_verbose_exit(true)
+        .with_verbose_exit(false)
         .with_verbose_entry(true)
         .with_indent_amount(2);
     #[cfg(debug_assertions)]
