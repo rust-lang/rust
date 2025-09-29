@@ -1275,13 +1275,13 @@ fn report_non_exhaustive_match<'p, 'tcx>(
             if ty.is_ptr_sized_integral() {
                 if ty.inner() == cx.tcx.types.usize {
                     err.note(format!(
-                        "`{ty}` does not have a fixed maximum value, so half-open ranges are \
-                         necessary to match exhaustively",
+                        "`{ty}::MAX` is not treated as exhaustive, \
+                        so half-open ranges are necessary to match exhaustively",
                     ));
                 } else if ty.inner() == cx.tcx.types.isize {
                     err.note(format!(
-                        "`{ty}` does not have fixed minimum and maximum values, so half-open \
-                         ranges are necessary to match exhaustively",
+                        "`{ty}::MIN` and `{ty}::MAX` are not treated as exhaustive, \
+                        so half-open ranges are necessary to match exhaustively",
                     ));
                 }
             } else if ty.inner() == cx.tcx.types.str_ {

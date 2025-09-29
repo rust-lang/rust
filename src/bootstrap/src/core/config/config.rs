@@ -41,7 +41,7 @@ use crate::core::config::toml::gcc::Gcc;
 use crate::core::config::toml::install::Install;
 use crate::core::config::toml::llvm::Llvm;
 use crate::core::config::toml::rust::{
-    LldMode, Rust, RustOptimize, check_incompatible_options_for_ci_rustc,
+    BootstrapOverrideLld, Rust, RustOptimize, check_incompatible_options_for_ci_rustc,
     default_lld_opt_in_targets, parse_codegen_backends,
 };
 use crate::core::config::toml::target::Target;
@@ -174,7 +174,7 @@ pub struct Config {
     pub llvm_from_ci: bool,
     pub llvm_build_config: HashMap<String, String>,
 
-    pub lld_mode: LldMode,
+    pub bootstrap_override_lld: BootstrapOverrideLld,
     pub lld_enabled: bool,
     pub llvm_tools_enabled: bool,
     pub llvm_bitcode_linker_enabled: bool,
@@ -567,7 +567,8 @@ impl Config {
             frame_pointers: rust_frame_pointers,
             stack_protector: rust_stack_protector,
             strip: rust_strip,
-            lld_mode: rust_lld_mode,
+            bootstrap_override_lld: rust_bootstrap_override_lld,
+            bootstrap_override_lld_legacy: rust_bootstrap_override_lld_legacy,
             std_features: rust_std_features,
             break_on_ice: rust_break_on_ice,
         } = toml.rust.unwrap_or_default();
@@ -614,6 +615,15 @@ impl Config {
         } = toml.dist.unwrap_or_default();
 
         let Gcc { download_ci_gcc: gcc_download_ci_gcc } = toml.gcc.unwrap_or_default();
+
+        if rust_bootstrap_override_lld.is_some() && rust_bootstrap_override_lld_legacy.is_some() {
+            panic!(
+                "Cannot use both `rust.use-lld` and `rust.bootstrap-override-lld`. Please use only `rust.bootstrap-override-lld`"
+            );
+        }
+
+        let bootstrap_override_lld =
+            rust_bootstrap_override_lld.or(rust_bootstrap_override_lld_legacy).unwrap_or_default();
 
         if rust_optimize.as_ref().is_some_and(|v| matches!(v, RustOptimize::Bool(false))) {
             eprintln!(
@@ -960,7 +970,7 @@ impl Config {
 
         let initial_rustfmt = build_rustfmt.or_else(|| maybe_download_rustfmt(&dwn_ctx, &out));
 
-        if matches!(rust_lld_mode.unwrap_or_default(), LldMode::SelfContained)
+        if matches!(bootstrap_override_lld, BootstrapOverrideLld::SelfContained)
             && !lld_enabled
             && flags_stage.unwrap_or(0) > 0
         {
@@ -1172,6 +1182,7 @@ impl Config {
             backtrace_on_ice: rust_backtrace_on_ice.unwrap_or(false),
             bindir: install_bindir.map(PathBuf::from).unwrap_or("bin".into()),
             bootstrap_cache_path: build_bootstrap_cache_path,
+            bootstrap_override_lld,
             bypass_bootstrap_lock: flags_bypass_bootstrap_lock,
             cargo_info,
             cargo_native_static: build_cargo_native_static.unwrap_or(false),
@@ -1238,7 +1249,6 @@ impl Config {
             libdir: install_libdir.map(PathBuf::from),
             library_docs_private_items: build_library_docs_private_items.unwrap_or(false),
             lld_enabled,
-            lld_mode: rust_lld_mode.unwrap_or_default(),
             lldb: build_lldb.map(PathBuf::from),
             llvm_allow_old_toolchain: llvm_allow_old_toolchain.unwrap_or(false),
             llvm_assertions,

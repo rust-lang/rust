@@ -1,0 +1,2 @@
+; Check that mixed struct with large array generates correct detailed type tree
+CHECK: define{{.*}}"enzyme_type"="{[-1]:Float@float}"{{.*}}@test_mixed_struct{{.*}}"enzyme_type"="{[-1]:Pointer, [-1,0]:Integer, [-1,8]:Float@float}"
