@@ -64,7 +64,7 @@ pub(super) fn check<'tcx>(
             if let Some(indexed_extent) = indexed_extent {
                 let parent_def_id = cx.tcx.hir_get_parent_item(expr.hir_id);
                 let region_scope_tree = cx.tcx.region_scope_tree(parent_def_id);
-                let pat_extent = region_scope_tree.var_scope(pat.hir_id.local_id).unwrap();
+                let pat_extent = region_scope_tree.var_scope(pat.hir_id.local_id).0.unwrap();
                 if region_scope_tree.is_subscope_of(indexed_extent, pat_extent) {
                     return;
                 }
@@ -298,6 +298,7 @@ impl<'tcx> VarVisitor<'_, 'tcx> {
                         .tcx
                         .region_scope_tree(parent_def_id)
                         .var_scope(hir_id.local_id)
+                        .0
                         .unwrap();
                     if index_used_directly {
                         self.indexed_directly.insert(
