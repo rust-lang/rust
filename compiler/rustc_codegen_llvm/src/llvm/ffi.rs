@@ -29,6 +29,7 @@ use super::debuginfo::{
     DITemplateTypeParameter, DIType, DebugEmissionKind, DebugNameTableKind,
 };
 use crate::llvm;
+use crate::llvm::MetadataKindId;
 
 /// In the LLVM-C API, boolean values are passed as `typedef int LLVMBool`,
 /// which has a different ABI from Rust or C++ `bool`.
@@ -1034,16 +1035,6 @@ pub(crate) type SelfProfileAfterPassCallback = unsafe extern "C" fn(*mut c_void)
 pub(crate) type GetSymbolsCallback =
     unsafe extern "C" fn(*mut c_void, *const c_char) -> *mut c_void;
 pub(crate) type GetSymbolsErrorCallback = unsafe extern "C" fn(*const c_char) -> *mut c_void;
-
-#[derive(Copy, Clone)]
-#[repr(transparent)]
-pub(crate) struct MetadataKindId(c_uint);
-
-impl From<MetadataType> for MetadataKindId {
-    fn from(value: MetadataType) -> Self {
-        Self(value as c_uint)
-    }
-}
 
 unsafe extern "C" {
     // Create and destroy contexts.
