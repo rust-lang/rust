@@ -633,28 +633,19 @@ where
     // the certainty of all the goals.
     #[instrument(level = "trace", skip(self))]
     pub(super) fn try_evaluate_added_goals(&mut self) -> Result<Certainty, NoSolution> {
-        let mut response = Ok(Certainty::overflow(false));
         for _ in 0..FIXPOINT_STEP_LIMIT {
-            // FIXME: This match is a bit ugly, it might be nice to change the inspect
-            // stuff to use a closure instead. which should hopefully simplify this a bit.
             match self.evaluate_added_goals_step() {
-                Ok(Some(cert)) => {
-                    response = Ok(cert);
-                    break;
-                }
                 Ok(None) => {}
+                Ok(Some(cert)) => return Ok(cert),
                 Err(NoSolution) => {
-                    response = Err(NoSolution);
-                    break;
+                    self.tainted = Err(NoSolution);
+                    return Err(NoSolution);
                 }
             }
         }
 
-        if response.is_err() {
-            self.tainted = Err(NoSolution);
-        }
-
-        response
+        debug!("try_evaluate_added_goals: encountered overflow");
+        Ok(Certainty::overflow(false))
     }
 
     /// Iterate over all added goals: returning `Ok(Some(_))` in case we can stop rerunning.
