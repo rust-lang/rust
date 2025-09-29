@@ -60,7 +60,7 @@ impl<A, B> Chain<A, B> {
 /// assert_eq!(iter.next(), Some(6));
 /// assert_eq!(iter.next(), None);
 /// ```
-#[stable(feature = "iter_chain", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "iter_chain", since = "1.91.0")]
 pub fn chain<A, B>(a: A, b: B) -> Chain<A::IntoIter, B::IntoIter>
 where
     A: IntoIterator,

@@ -194,7 +194,7 @@ where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self), ret)]
     fn evaluate_root_goal(
         &self,
         goal: Goal<I, I::Predicate>,
@@ -206,6 +206,7 @@ where
         })
     }
 
+    #[instrument(level = "debug", skip(self), ret)]
     fn root_goal_may_hold_opaque_types_jank(
         &self,
         goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
@@ -357,7 +358,7 @@ where
         f: impl FnOnce(&mut EvalCtxt<'_, D>, Goal<I, I::Predicate>) -> R,
     ) -> R {
         let (ref delegate, input, var_values) = D::build_with_canonical(cx, &canonical_input);
-        for &(key, ty) in &input.predefined_opaques_in_body.opaque_types {
+        for (key, ty) in input.predefined_opaques_in_body.iter() {
             let prev = delegate.register_hidden_type_in_storage(key, ty, I::Span::dummy());
             // It may be possible that two entries in the opaque type storage end up
             // with the same key after resolving contained inference variables.
@@ -467,7 +468,7 @@ where
         let opaque_types = self.delegate.clone_opaque_types_lookup_table();
         let (goal, opaque_types) = eager_resolve_vars(self.delegate, (goal, opaque_types));
 
-        let (orig_values, canonical_goal) = canonicalize_goal(self.delegate, goal, opaque_types);
+        let (orig_values, canonical_goal) = canonicalize_goal(self.delegate, goal, &opaque_types);
         let canonical_result = self.search_graph.evaluate_goal(
             self.cx(),
             canonical_goal,
@@ -548,7 +549,6 @@ where
                             .canonical
                             .value
                             .predefined_opaques_in_body
-                            .opaque_types
                             .len(),
                         stalled_vars,
                         sub_roots,
@@ -1557,7 +1557,7 @@ pub(super) fn evaluate_root_goal_for_proof_tree<D: SolverDelegate<Interner = I>,
     let opaque_types = delegate.clone_opaque_types_lookup_table();
     let (goal, opaque_types) = eager_resolve_vars(delegate, (goal, opaque_types));
 
-    let (orig_values, canonical_goal) = canonicalize_goal(delegate, goal, opaque_types);
+    let (orig_values, canonical_goal) = canonicalize_goal(delegate, goal, &opaque_types);
 
     let (canonical_result, final_revision) =
         delegate.cx().evaluate_root_goal_for_proof_tree_raw(canonical_goal);

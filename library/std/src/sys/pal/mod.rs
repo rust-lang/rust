@@ -45,6 +45,10 @@ cfg_select! {
         mod trusty;
         pub use self::trusty::*;
     }
+    target_os = "vexos" => {
+        mod vexos;
+        pub use self::vexos::*;
+    }
     all(target_os = "wasi", target_env = "p2") => {
         mod wasip2;
         pub use self::wasip2::*;

@@ -7,7 +7,7 @@ LL |
 LL | struct A([u8]);
    |          ---- this field does not implement `ConstParamTy_`
    |
-note: the `ConstParamTy_` impl for `[u8]` requires that `unstable feature: `unsized_const_params``
+note: the `ConstParamTy_` impl for `[u8]` requires that `feature(unsized_const_params) is enabled`
   --> $DIR/unsized_field-1.rs:10:10
    |
 LL | struct A([u8]);
@@ -22,7 +22,7 @@ LL |
 LL | struct B(&'static [u8]);
    |          ------------- this field does not implement `ConstParamTy_`
    |
-note: the `ConstParamTy_` impl for `&'static [u8]` requires that `unstable feature: `unsized_const_params``
+note: the `ConstParamTy_` impl for `&'static [u8]` requires that `feature(unsized_const_params) is enabled`
   --> $DIR/unsized_field-1.rs:14:10
    |
 LL | struct B(&'static [u8]);
@@ -37,7 +37,7 @@ LL |
 LL | struct D(unsized_const_param::GenericNotUnsizedParam<&'static [u8]>);
    |          ---------------------------------------------------------- this field does not implement `ConstParamTy_`
    |
-note: the `ConstParamTy_` impl for `GenericNotUnsizedParam<&'static [u8]>` requires that `unstable feature: `unsized_const_params``
+note: the `ConstParamTy_` impl for `GenericNotUnsizedParam<&'static [u8]>` requires that `feature(unsized_const_params) is enabled`
   --> $DIR/unsized_field-1.rs:21:10
    |
 LL | struct D(unsized_const_param::GenericNotUnsizedParam<&'static [u8]>);

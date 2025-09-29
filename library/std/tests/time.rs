@@ -227,3 +227,19 @@ fn big_math() {
     check(instant.checked_add(Duration::from_secs(100)), Instant::checked_sub);
     check(instant.checked_add(Duration::from_secs(i64::MAX as _)), Instant::checked_sub);
 }
+
+#[test]
+#[cfg(unix)]
+fn system_time_duration_since_max_range_on_unix() {
+    // Repro regression https://github.com/rust-lang/rust/issues/146228
+
+    // Min and max values of `SystemTime` on Unix.
+    let min = SystemTime::UNIX_EPOCH - (Duration::new(i64::MAX as u64 + 1, 0));
+    let max = SystemTime::UNIX_EPOCH + (Duration::new(i64::MAX as u64, 999_999_999));
+
+    let delta_a = max.duration_since(min).expect("duration_since overflow");
+    let delta_b = min.duration_since(max).expect_err("duration_since overflow").duration();
+
+    assert_eq!(Duration::MAX, delta_a);
+    assert_eq!(Duration::MAX, delta_b);
+}

@@ -1305,8 +1305,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 {
                     if ty.is_structural_eq_shallow(self.tcx) {
                         diag.span_suggestion(
-                            span,
-                            "add `#[derive(ConstParamTy)]` to the struct",
+                            span.shrink_to_lo(),
+                            format!("add `#[derive(ConstParamTy)]` to the {}", def.descr()),
                             "#[derive(ConstParamTy)]\n",
                             Applicability::MachineApplicable,
                         );
@@ -1314,8 +1314,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         // FIXME(adt_const_params): We should check there's not already an
                         // overlapping `Eq`/`PartialEq` impl.
                         diag.span_suggestion(
-                            span,
-                            "add `#[derive(ConstParamTy, PartialEq, Eq)]` to the struct",
+                            span.shrink_to_lo(),
+                            format!(
+                                "add `#[derive(ConstParamTy, PartialEq, Eq)]` to the {}",
+                                def.descr()
+                            ),
                             "#[derive(ConstParamTy, PartialEq, Eq)]\n",
                             Applicability::MachineApplicable,
                         );

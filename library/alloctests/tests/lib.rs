@@ -41,12 +41,12 @@
 #![feature(unique_rc_arc)]
 #![feature(macro_metavar_expr_concat)]
 #![feature(vec_peek_mut)]
+#![feature(vec_try_remove)]
 #![allow(internal_features)]
 #![deny(fuzzy_provenance_casts)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
 extern crate alloc;
-extern crate test;
 
 use std::hash::{DefaultHasher, Hash, Hasher};
 

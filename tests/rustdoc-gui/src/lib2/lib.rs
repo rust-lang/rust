@@ -1,7 +1,6 @@
 // ignore-tidy-linelength
 
 #![feature(doc_cfg)]
-#![feature(doc_auto_cfg)]
 
 pub mod another_folder;
 pub mod another_mod;

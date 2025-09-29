@@ -101,6 +101,10 @@ declare_features! (
      Some("never properly implemented; requires significant design work"), 127655),
     /// Allows deriving traits as per `SmartPointer` specification
     (removed, derive_smart_pointer, "1.84.0", Some(123430), Some("replaced by `CoercePointee`"), 131284),
+    /// Tells rustdoc to automatically generate `#[doc(cfg(...))]`.
+    (removed, doc_auto_cfg, "1.58.0", Some(43781), Some("merged into `doc_cfg`"), 138907),
+    /// Allows `#[doc(cfg_hide(...))]`.
+    (removed, doc_cfg_hide, "1.57.0", Some(43781), Some("merged into `doc_cfg`"), 138907),
     /// Allows using `#[doc(keyword = "...")]`.
     (removed, doc_keyword, "1.58.0", Some(51315),
      Some("merged into `#![feature(rustdoc_internals)]`"), 90420),
@@ -192,7 +196,7 @@ declare_features! (
     (removed, no_debug, "1.43.0", Some(29721), Some("removed due to lack of demand"), 69667),
     // Allows the use of `no_sanitize` attribute.
     /// The feature was renamed to `sanitize` and the attribute to `#[sanitize(xyz = "on|off")]`
-    (removed, no_sanitize, "CURRENT_RUSTC_VERSION", Some(39699), Some(r#"renamed to sanitize(xyz = "on|off")"#), 142681),
+    (removed, no_sanitize, "1.91.0", Some(39699), Some(r#"renamed to sanitize(xyz = "on|off")"#), 142681),
     /// Note: this feature was previously recorded in a separate
     /// `STABLE_REMOVED` list because it, uniquely, was once stable but was
     /// then removed. But there was no utility storing it separately, so now
@@ -203,7 +207,7 @@ declare_features! (
     (removed, object_safe_for_dispatch, "1.83.0", Some(43561),
      Some("renamed to `dyn_compatible_for_dispatch`"), 131511),
     /// Allows using `#[omit_gdb_pretty_printer_section]`.
-    (removed, omit_gdb_pretty_printer_section, "CURRENT_RUSTC_VERSION", None, None, 144738),
+    (removed, omit_gdb_pretty_printer_section, "1.91.0", None, None, 144738),
     /// Allows using `#[on_unimplemented(..)]` on traits.
     /// (Moved to `rustc_attrs`.)
     (removed, on_unimplemented, "1.40.0", None, None, 65794),

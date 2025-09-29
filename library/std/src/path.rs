@@ -1191,7 +1191,7 @@ impl PathBuf {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     #[inline]
-    #[rustc_const_stable(feature = "const_pathbuf_osstring_new", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_pathbuf_osstring_new", since = "1.91.0")]
     pub const fn new() -> PathBuf {
         PathBuf { inner: OsString::new() }
     }
@@ -1594,7 +1594,7 @@ impl PathBuf {
     /// p.add_extension("");
     /// assert_eq!(Path::new("/feel/the.formatted.dark"), p.as_path());
     /// ```
-    #[stable(feature = "path_add_extension", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "path_add_extension", since = "1.91.0")]
     pub fn add_extension<S: AsRef<OsStr>>(&mut self, extension: S) -> bool {
         self._add_extension(extension.as_ref())
     }
@@ -2103,35 +2103,35 @@ impl PartialEq for PathBuf {
     }
 }
 
-#[stable(feature = "eq_str_for_path", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "eq_str_for_path", since = "1.91.0")]
 impl cmp::PartialEq<str> for PathBuf {
     #[inline]
     fn eq(&self, other: &str) -> bool {
-        Path::eq(self, other)
+        self.as_path() == other
     }
 }
 
-#[stable(feature = "eq_str_for_path", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "eq_str_for_path", since = "1.91.0")]
 impl cmp::PartialEq<PathBuf> for str {
     #[inline]
     fn eq(&self, other: &PathBuf) -> bool {
-        other == self
+        self == other.as_path()
     }
 }
 
-#[stable(feature = "eq_str_for_path", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "eq_str_for_path", since = "1.91.0")]
 impl cmp::PartialEq<String> for PathBuf {
     #[inline]
     fn eq(&self, other: &String) -> bool {
-        **self == **other
+        self.as_path() == other.as_str()
     }
 }
 
-#[stable(feature = "eq_str_for_path", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "eq_str_for_path", since = "1.91.0")]
 impl cmp::PartialEq<PathBuf> for String {
     #[inline]
     fn eq(&self, other: &PathBuf) -> bool {
-        other == self
+        self.as_str() == other.as_path()
     }
 }
 
@@ -2724,7 +2724,7 @@ impl Path {
     ///
     /// [`Path::file_stem`]: Path::file_stem
     ///
-    #[stable(feature = "path_file_prefix", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "path_file_prefix", since = "1.91.0")]
     #[must_use]
     pub fn file_prefix(&self) -> Option<&OsStr> {
         self.file_name().map(split_file_at_dot).and_then(|(before, _after)| Some(before))
@@ -2888,7 +2888,7 @@ impl Path {
     /// assert_eq!(path.with_added_extension("xz"), PathBuf::from("foo.tar.gz.xz"));
     /// assert_eq!(path.with_added_extension("").with_added_extension("txt"), PathBuf::from("foo.tar.gz.txt"));
     /// ```
-    #[stable(feature = "path_add_extension", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "path_add_extension", since = "1.91.0")]
     pub fn with_added_extension<S: AsRef<OsStr>>(&self, extension: S) -> PathBuf {
         let mut new_path = self.to_path_buf();
         new_path.add_extension(extension);
@@ -3405,7 +3405,7 @@ impl PartialEq for Path {
     }
 }
 
-#[stable(feature = "eq_str_for_path", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "eq_str_for_path", since = "1.91.0")]
 impl cmp::PartialEq<str> for Path {
     #[inline]
     fn eq(&self, other: &str) -> bool {
@@ -3414,7 +3414,7 @@ impl cmp::PartialEq<str> for Path {
     }
 }
 
-#[stable(feature = "eq_str_for_path", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "eq_str_for_path", since = "1.91.0")]
 impl cmp::PartialEq<Path> for str {
     #[inline]
     fn eq(&self, other: &Path) -> bool {
@@ -3422,19 +3422,19 @@ impl cmp::PartialEq<Path> for str {
     }
 }
 
-#[stable(feature = "eq_str_for_path", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "eq_str_for_path", since = "1.91.0")]
 impl cmp::PartialEq<String> for Path {
     #[inline]
     fn eq(&self, other: &String) -> bool {
-        self == &*other
+        self == other.as_str()
     }
 }
 
-#[stable(feature = "eq_str_for_path", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "eq_str_for_path", since = "1.91.0")]
 impl cmp::PartialEq<Path> for String {
     #[inline]
     fn eq(&self, other: &Path) -> bool {
-        other == self
+        self.as_str() == other
     }
 }
 

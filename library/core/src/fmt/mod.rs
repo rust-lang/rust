@@ -386,8 +386,8 @@ impl FormattingOptions {
     /// used. The alternate forms are:
     /// - [`Debug`] : pretty-print the [`Debug`] formatting (adds linebreaks and indentation)
     /// - [`LowerHex`] as well as [`UpperHex`] - precedes the argument with a `0x`
-    /// - [`Octal`] - precedes the argument with a `0b`
-    /// - [`Binary`] - precedes the argument with a `0o`
+    /// - [`Octal`] - precedes the argument with a `0o`
+    /// - [`Binary`] - precedes the argument with a `0b`
     #[unstable(feature = "formatting_options", issue = "118117")]
     pub const fn alternate(&mut self, alternate: bool) -> &mut Self {
         if alternate {

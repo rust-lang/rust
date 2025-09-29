@@ -1,5 +1,5 @@
 error: there is no argument named `x`
-  --> $DIR/format-args-capture-from-pm-first-arg-macro.rs:6:5
+  --> $DIR/format-args-capture-from-pm-first-arg-macro.rs:7:5
    |
 LL |     format_string_proc_macro::bad_format_args_captures!();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

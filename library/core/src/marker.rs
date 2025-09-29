@@ -1341,11 +1341,3 @@ pub macro CoercePointee($item:item) {
 pub trait CoercePointeeValidated {
     /* compiler built-in */
 }
-
-/// Allows value to be reborrowed as exclusive, creating a copy of the value
-/// that disables the source for reads and writes for the lifetime of the copy.
-#[lang = "reborrow"]
-#[unstable(feature = "reborrow", issue = "145612")]
-pub trait Reborrow {
-    // Empty.
-}

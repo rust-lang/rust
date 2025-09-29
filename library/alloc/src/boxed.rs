@@ -1706,7 +1706,7 @@ impl Default for Box<str> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "pin_default_impls", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "pin_default_impls", since = "1.91.0")]
 impl<T> Default for Pin<Box<T>>
 where
     T: ?Sized,

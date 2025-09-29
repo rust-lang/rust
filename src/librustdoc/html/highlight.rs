@@ -8,6 +8,7 @@
 use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::fmt::{self, Display, Write};
+use std::iter;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_lexer::{Cursor, FrontmatterAllowed, LiteralKind, TokenKind};
@@ -15,8 +16,9 @@ use rustc_span::edition::Edition;
 use rustc_span::symbol::Symbol;
 use rustc_span::{BytePos, DUMMY_SP, Span};
 
-use super::format::{self, write_str};
+use super::format;
 use crate::clean::PrimitiveType;
+use crate::display::Joined as _;
 use crate::html::escape::EscapeBodyText;
 use crate::html::macro_expansion::ExpandedCode;
 use crate::html::render::{Context, LinkFromSrc};
@@ -45,92 +47,72 @@ pub(crate) enum Tooltip {
     CompileFail,
     ShouldPanic,
     Edition(Edition),
-    None,
 }
 
 /// Highlights `src` as an inline example, returning the HTML output.
 pub(crate) fn render_example_with_highlighting(
     src: &str,
-    out: &mut String,
-    tooltip: Tooltip,
+    tooltip: Option<&Tooltip>,
     playground_button: Option<&str>,
     extra_classes: &[String],
-) {
-    write_header(out, "rust-example-rendered", None, tooltip, extra_classes);
-    write_code(out, src, None, None, None);
-    write_footer(out, playground_button);
+) -> impl Display {
+    fmt::from_fn(move |f| {
+        write_header("rust-example-rendered", tooltip, extra_classes).fmt(f)?;
+        write_code(f, src, None, None, None);
+        write_footer(playground_button).fmt(f)
+    })
 }
 
-fn write_header(
-    out: &mut String,
-    class: &str,
-    extra_content: Option<&str>,
-    tooltip: Tooltip,
-    extra_classes: &[String],
-) {
-    write_str(
-        out,
-        format_args!(
+fn write_header(class: &str, tooltip: Option<&Tooltip>, extra_classes: &[String]) -> impl Display {
+    fmt::from_fn(move |f| {
+        write!(
+            f,
             "<div class=\"example-wrap{}\">",
-            match tooltip {
-                Tooltip::IgnoreAll | Tooltip::IgnoreSome(_) => " ignore",
-                Tooltip::CompileFail => " compile_fail",
-                Tooltip::ShouldPanic => " should_panic",
-                Tooltip::Edition(_) => " edition",
-                Tooltip::None => "",
-            }
-        ),
-    );
+            tooltip
+                .map(|tooltip| match tooltip {
+                    Tooltip::IgnoreAll | Tooltip::IgnoreSome(_) => " ignore",
+                    Tooltip::CompileFail => " compile_fail",
+                    Tooltip::ShouldPanic => " should_panic",
+                    Tooltip::Edition(_) => " edition",
+                })
+                .unwrap_or_default()
+        )?;
 
-    if tooltip != Tooltip::None {
-        let tooltip = fmt::from_fn(|f| match &tooltip {
-            Tooltip::IgnoreAll => f.write_str("This example is not tested"),
-            Tooltip::IgnoreSome(platforms) => {
-                f.write_str("This example is not tested on ")?;
-                match &platforms[..] {
-                    [] => unreachable!(),
-                    [platform] => f.write_str(platform)?,
-                    [first, second] => write!(f, "{first} or {second}")?,
-                    [platforms @ .., last] => {
-                        for platform in platforms {
-                            write!(f, "{platform}, ")?;
+        if let Some(tooltip) = tooltip {
+            let tooltip = fmt::from_fn(|f| match tooltip {
+                Tooltip::IgnoreAll => f.write_str("This example is not tested"),
+                Tooltip::IgnoreSome(platforms) => {
+                    f.write_str("This example is not tested on ")?;
+                    match &platforms[..] {
+                        [] => unreachable!(),
+                        [platform] => f.write_str(platform)?,
+                        [first, second] => write!(f, "{first} or {second}")?,
+                        [platforms @ .., last] => {
+                            for platform in platforms {
+                                write!(f, "{platform}, ")?;
+                            }
+                            write!(f, "or {last}")?;
                         }
-                        write!(f, "or {last}")?;
                     }
+                    Ok(())
                 }
-                Ok(())
-            }
-            Tooltip::CompileFail => f.write_str("This example deliberately fails to compile"),
-            Tooltip::ShouldPanic => f.write_str("This example panics"),
-            Tooltip::Edition(edition) => write!(f, "This example runs with edition {edition}"),
-            Tooltip::None => unreachable!(),
-        });
-        write_str(out, format_args!("<a href=\"#\" class=\"tooltip\" title=\"{tooltip}\">ⓘ</a>"));
-    }
+                Tooltip::CompileFail => f.write_str("This example deliberately fails to compile"),
+                Tooltip::ShouldPanic => f.write_str("This example panics"),
+                Tooltip::Edition(edition) => write!(f, "This example runs with edition {edition}"),
+            });
 
-    if let Some(extra) = extra_content {
-        out.push_str(extra);
-    }
-    if class.is_empty() {
-        write_str(
-            out,
-            format_args!(
-                "<pre class=\"rust{}{}\">",
-                if extra_classes.is_empty() { "" } else { " " },
-                extra_classes.join(" ")
-            ),
-        );
-    } else {
-        write_str(
-            out,
-            format_args!(
-                "<pre class=\"rust {class}{}{}\">",
-                if extra_classes.is_empty() { "" } else { " " },
-                extra_classes.join(" ")
-            ),
-        );
-    }
-    write_str(out, format_args!("<code>"));
+            write!(f, "<a href=\"#\" class=\"tooltip\" title=\"{tooltip}\">ⓘ</a>")?;
+        }
+
+        let classes = fmt::from_fn(|f| {
+            iter::once("rust")
+                .chain(Some(class).filter(|class| !class.is_empty()))
+                .chain(extra_classes.iter().map(String::as_str))
+                .joined(" ", f)
+        });
+
+        write!(f, "<pre class=\"{classes}\"><code>")
+    })
 }
 
 /// Check if two `Class` can be merged together. In the following rules, "unclassified" means `None`
@@ -577,8 +559,8 @@ pub(super) fn write_code(
     });
 }
 
-fn write_footer(out: &mut String, playground_button: Option<&str>) {
-    write_str(out, format_args!("</code></pre>{}</div>", playground_button.unwrap_or_default()));
+fn write_footer(playground_button: Option<&str>) -> impl Display {
+    fmt::from_fn(move |f| write!(f, "</code></pre>{}</div>", playground_button.unwrap_or_default()))
 }
 
 /// How a span of text is classified. Mostly corresponds to token kinds.
@@ -1262,6 +1244,64 @@ fn string<W: Write>(
     }
 }
 
+fn generate_link_to_def(
+    out: &mut impl Write,
+    text_s: &str,
+    klass: Class,
+    href_context: &Option<HrefContext<'_, '_>>,
+    def_span: Span,
+    open_tag: bool,
+) -> bool {
+    if let Some(href_context) = href_context
+        && let Some(href) =
+            href_context.context.shared.span_correspondence_map.get(&def_span).and_then(|href| {
+                let context = href_context.context;
+                // FIXME: later on, it'd be nice to provide two links (if possible) for all items:
+                // one to the documentation page and one to the source definition.
+                // FIXME: currently, external items only generate a link to their documentation,
+                // a link to their definition can be generated using this:
+                // https://github.com/rust-lang/rust/blob/60f1a2fc4b535ead9c85ce085fdce49b1b097531/src/librustdoc/html/render/context.rs#L315-L338
+                match href {
+                    LinkFromSrc::Local(span) => {
+                        context.href_from_span_relative(*span, &href_context.current_href)
+                    }
+                    LinkFromSrc::External(def_id) => {
+                        format::href_with_root_path(*def_id, context, Some(href_context.root_path))
+                            .ok()
+                            .map(|(url, _, _)| url)
+                    }
+                    LinkFromSrc::Primitive(prim) => format::href_with_root_path(
+                        PrimitiveType::primitive_locations(context.tcx())[prim],
+                        context,
+                        Some(href_context.root_path),
+                    )
+                    .ok()
+                    .map(|(url, _, _)| url),
+                    LinkFromSrc::Doc(def_id) => {
+                        format::href_with_root_path(*def_id, context, Some(href_context.root_path))
+                            .ok()
+                            .map(|(doc_link, _, _)| doc_link)
+                    }
+                }
+            })
+    {
+        if !open_tag {
+            // We're already inside an element which has the same klass, no need to give it
+            // again.
+            write!(out, "<a href=\"{href}\">{text_s}").unwrap();
+        } else {
+            let klass_s = klass.as_html();
+            if klass_s.is_empty() {
+                write!(out, "<a href=\"{href}\">{text_s}").unwrap();
+            } else {
+                write!(out, "<a class=\"{klass_s}\" href=\"{href}\">{text_s}").unwrap();
+            }
+        }
+        return true;
+    }
+    false
+}
+
 /// This function writes `text` into `out` with some modifications depending on `klass`:
 ///
 /// * If `klass` is `None`, `text` is written into `out` with no modification.
@@ -1291,10 +1331,14 @@ fn string_without_closing_tag<T: Display>(
         return Some("</span>");
     };
 
+    let mut added_links = false;
     let mut text_s = text.to_string();
     if text_s.contains("::") {
+        let mut span = def_span.with_hi(def_span.lo());
         text_s = text_s.split("::").intersperse("::").fold(String::new(), |mut path, t| {
+            span = span.with_hi(span.hi() + BytePos(t.len() as _));
             match t {
+                "::" => write!(&mut path, "::"),
                 "self" | "Self" => write!(
                     &mut path,
                     "<span class=\"{klass}\">{t}</span>",
@@ -1307,58 +1351,24 @@ fn string_without_closing_tag<T: Display>(
                         klass = Class::KeyWord.as_html(),
                     )
                 }
-                t => write!(&mut path, "{t}"),
+                t => {
+                    if !t.is_empty()
+                        && generate_link_to_def(&mut path, t, klass, href_context, span, open_tag)
+                    {
+                        added_links = true;
+                        write!(&mut path, "</a>")
+                    } else {
+                        write!(&mut path, "{t}")
+                    }
+                }
             }
             .expect("Failed to build source HTML path");
+            span = span.with_lo(span.lo() + BytePos(t.len() as _));
             path
         });
     }
 
-    if let Some(href_context) = href_context
-        && let Some(href) = href_context.context.shared.span_correspondence_map.get(&def_span)
-        && let Some(href) = {
-            let context = href_context.context;
-            // FIXME: later on, it'd be nice to provide two links (if possible) for all items:
-            // one to the documentation page and one to the source definition.
-            // FIXME: currently, external items only generate a link to their documentation,
-            // a link to their definition can be generated using this:
-            // https://github.com/rust-lang/rust/blob/60f1a2fc4b535ead9c85ce085fdce49b1b097531/src/librustdoc/html/render/context.rs#L315-L338
-            match href {
-                LinkFromSrc::Local(span) => {
-                    context.href_from_span_relative(*span, &href_context.current_href)
-                }
-                LinkFromSrc::External(def_id) => {
-                    format::href_with_root_path(*def_id, context, Some(href_context.root_path))
-                        .ok()
-                        .map(|(url, _, _)| url)
-                }
-                LinkFromSrc::Primitive(prim) => format::href_with_root_path(
-                    PrimitiveType::primitive_locations(context.tcx())[prim],
-                    context,
-                    Some(href_context.root_path),
-                )
-                .ok()
-                .map(|(url, _, _)| url),
-                LinkFromSrc::Doc(def_id) => {
-                    format::href_with_root_path(*def_id, context, Some(href_context.root_path))
-                        .ok()
-                        .map(|(doc_link, _, _)| doc_link)
-                }
-            }
-        }
-    {
-        if !open_tag {
-            // We're already inside an element which has the same klass, no need to give it
-            // again.
-            write!(out, "<a href=\"{href}\">{text_s}").unwrap();
-        } else {
-            let klass_s = klass.as_html();
-            if klass_s.is_empty() {
-                write!(out, "<a href=\"{href}\">{text_s}").unwrap();
-            } else {
-                write!(out, "<a class=\"{klass_s}\" href=\"{href}\">{text_s}").unwrap();
-            }
-        }
+    if !added_links && generate_link_to_def(out, &text_s, klass, href_context, def_span, open_tag) {
         return Some("</a>");
     }
     if !open_tag {

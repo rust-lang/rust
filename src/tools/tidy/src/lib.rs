@@ -167,12 +167,16 @@ pub fn ensure_version_or_cargo_install(
     bin_name: &str,
     version: &str,
 ) -> io::Result<PathBuf> {
+    let tool_root_dir = build_dir.join("misc-tools");
+    let tool_bin_dir = tool_root_dir.join("bin");
+    let bin_path = tool_bin_dir.join(bin_name).with_extension(env::consts::EXE_EXTENSION);
+
     // ignore the process exit code here and instead just let the version number check fail.
     // we also importantly don't return if the program wasn't installed,
     // instead we want to continue to the fallback.
     'ck: {
         // FIXME: rewrite as if-let chain once this crate is 2024 edition.
-        let Ok(output) = Command::new(bin_name).arg("--version").output() else {
+        let Ok(output) = Command::new(&bin_path).arg("--version").output() else {
             break 'ck;
         };
         let Ok(s) = str::from_utf8(&output.stdout) else {
@@ -182,12 +186,10 @@ pub fn ensure_version_or_cargo_install(
             break 'ck;
         };
         if v == version {
-            return Ok(PathBuf::from(bin_name));
+            return Ok(bin_path);
         }
     }
 
-    let tool_root_dir = build_dir.join("misc-tools");
-    let tool_bin_dir = tool_root_dir.join("bin");
     eprintln!("building external tool {bin_name} from package {pkg_name}@{version}");
     // use --force to ensure that if the required version is bumped, we update it.
     // use --target-dir to ensure we have a build cache so repeated invocations aren't slow.
@@ -213,7 +215,6 @@ pub fn ensure_version_or_cargo_install(
     if !cargo_exit_code.success() {
         return Err(io::Error::other("cargo install failed"));
     }
-    let bin_path = tool_bin_dir.join(bin_name).with_extension(env::consts::EXE_EXTENSION);
     assert!(
         matches!(bin_path.try_exists(), Ok(true)),
         "cargo install did not produce the expected binary"
