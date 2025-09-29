@@ -35,6 +35,7 @@ impl Reg {
 
     reg_ctor!(f32, Float, 32);
     reg_ctor!(f64, Float, 64);
+    reg_ctor!(f128, Float, 128);
 }
 
 impl Reg {

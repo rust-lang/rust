@@ -119,7 +119,7 @@ pub extern "C" fn returns_twou16s() -> TwoU16s {
 // aarch64-SAME:     ([[ABI_TYPE:\[2 x i64\]]] {{.*}}[[ABI_VALUE:%.+]])
 // loongarch64-SAME: ([[ABI_TYPE:\[2 x i64\]]] {{.*}}[[ABI_VALUE:%.+]])
 // powerpc64-SAME:   ([[ABI_TYPE:\[2 x i64\]]] {{.*}}[[ABI_VALUE:%.+]])
-// sparc64-SAME:     ([[ABI_TYPE:\[2 x i64\]]] {{.*}}[[ABI_VALUE:%.+]])
+// sparc64-SAME:     ([[ABI_TYPE:{ i64, i64 }]] {{.*}}[[ABI_VALUE:%.+]])
 // x86_64-SAME:      ([[ABI_TYPE:{ i64, i16 }]] {{.*}}[[ABI_VALUE:%.+]])
 #[no_mangle]
 #[inline(never)]
@@ -148,7 +148,7 @@ pub extern "C" fn returns_fiveu16s() -> FiveU16s {
 
     // aarch64:     [[ABI_VALUE:%.+]] = load [[ABI_TYPE:\[2 x i64\]]], ptr [[ABI_ALLOCA]], align [[ABI_ALIGN]]
     // loongarch64: [[ABI_VALUE:%.+]] = load [[ABI_TYPE:\[2 x i64\]]], ptr [[ABI_ALLOCA]], align [[ABI_ALIGN]]
-    // sparc64:     [[ABI_VALUE:%.+]] = load [[ABI_TYPE:\[2 x i64\]]], ptr [[ABI_ALLOCA]], align [[ABI_ALIGN]]
+    // sparc64:     [[ABI_VALUE:%.+]] = load [[ABI_TYPE:{ i64, i64 }]], ptr [[ABI_ALLOCA]], align [[ABI_ALIGN]]
     // x86_64:      [[ABI_VALUE:%.+]] = load [[ABI_TYPE:{ i64, i16 }]], ptr [[ABI_ALLOCA]], align [[ABI_ALIGN]]
 
     // aarch64:     ret [[ABI_TYPE]] [[ABI_VALUE]]
@@ -217,7 +217,7 @@ pub extern "C" fn returns_doubledouble() -> DoubleDouble {
 // aarch64-SAME:     ([[ABI_TYPE:\[2 x i64\]]] {{.*}}[[ABI_VALUE:%.+]])
 // loongarch64-SAME: ([[ABI_TYPE:\[2 x i64\]]] {{.*}}[[ABI_VALUE:%.+]])
 // powerpc64-SAME:   ([[ABI_TYPE:\[2 x i64\]]] {{.*}}[[ABI_VALUE:%.+]])
-// sparc64-SAME:     ([[ABI_TYPE:\[2 x i64\]]] {{.*}}[[ABI_VALUE:%.+]])
+// sparc64-SAME:     ([[ABI_TYPE:{ i64, i64 }]] {{.*}}[[ABI_VALUE:%.+]])
 // x86_64-SAME:      ([[ABI_TYPE:{ i64, i32 }]] {{.*}}[[ABI_VALUE:%.+]])
 #[no_mangle]
 #[inline(never)]
@@ -246,7 +246,7 @@ pub extern "C" fn returns_three32s() -> Three32s {
 
     // aarch64:     [[ABI_VALUE:%.+]] = load [[ABI_TYPE:\[2 x i64\]]], ptr [[ABI_ALLOCA]], align [[ABI_ALIGN]]
     // loongarch64: [[ABI_VALUE:%.+]] = load [[ABI_TYPE:\[2 x i64\]]], ptr [[ABI_ALLOCA]], align [[ABI_ALIGN]]
-    // sparc64:     [[ABI_VALUE:%.+]] = load [[ABI_TYPE:\[2 x i64\]]], ptr [[ABI_ALLOCA]], align [[ABI_ALIGN]]
+    // sparc64:     [[ABI_VALUE:%.+]] = load [[ABI_TYPE:{ i64, i64 }]], ptr [[ABI_ALLOCA]], align [[ABI_ALIGN]]
     // x86_64:      [[ABI_VALUE:%.+]] = load [[ABI_TYPE:{ i64, i32 }]], ptr [[ABI_ALLOCA]], align [[ABI_ALIGN]]
 
     // aarch64:     ret [[ABI_TYPE]] [[ABI_VALUE]]
@@ -399,7 +399,7 @@ pub fn call_fiveu16s() {
     // aarch64:     [[ABI_VALUE:%.+]] = load [[ABI_TYPE:\[2 x i64\]]], ptr [[ABI_ALLOCA]], align [[ABI_ALIGN]]
     // loongarch64: [[ABI_VALUE:%.+]] = load [[ABI_TYPE:\[2 x i64\]]], ptr [[ABI_ALLOCA]], align [[ABI_ALIGN]]
     // powerpc64:   [[ABI_VALUE:%.+]] = load [[ABI_TYPE:\[2 x i64\]]], ptr [[ABI_ALLOCA]], align [[ABI_ALIGN]]
-    // sparc64:     [[ABI_VALUE:%.+]] = load [[ABI_TYPE:\[2 x i64\]]], ptr [[ABI_ALLOCA]], align [[ABI_ALIGN]]
+    // sparc64:     [[ABI_VALUE:%.+]] = load [[ABI_TYPE:{ i64, i64 }]], ptr [[ABI_ALLOCA]], align [[ABI_ALIGN]]
     // x86_64:      [[ABI_VALUE:%.+]] = load [[ABI_TYPE:{ i64, i16 }]], ptr [[ABI_ALLOCA]], align [[ABI_ALIGN]]
 
     // CHECK: call void @receives_fiveu16s([[ABI_TYPE]] [[ABI_VALUE]])
@@ -424,7 +424,7 @@ pub fn return_fiveu16s() -> FiveU16s {
 
     // aarch64:     [[ABI_VALUE:%.+]] = call [[ABI_TYPE:\[2 x i64\]]] @returns_fiveu16s()
     // loongarch64: [[ABI_VALUE:%.+]] = call [[ABI_TYPE:\[2 x i64\]]] @returns_fiveu16s()
-    // sparc64:     [[ABI_VALUE:%.+]] = call [[ABI_TYPE:\[2 x i64\]]] @returns_fiveu16s()
+    // sparc64:     [[ABI_VALUE:%.+]] = call [[ABI_TYPE:{ i64, i64 }]] @returns_fiveu16s()
     // x86_64:      [[ABI_VALUE:%.+]] = call [[ABI_TYPE:{ i64, i16 }]] @returns_fiveu16s()
 
     // aarch64:     store [[ABI_TYPE]] [[ABI_VALUE]], ptr [[ABI_ALLOCA]], align [[ABI_ALIGN]]
@@ -595,7 +595,7 @@ pub fn call_three32s() {
     // aarch64:     [[ABI_VALUE:%.+]] = load [[ABI_TYPE:\[2 x i64\]]], ptr [[ABI_ALLOCA]], align [[ABI_ALIGN]]
     // loongarch64: [[ABI_VALUE:%.+]] = load [[ABI_TYPE:\[2 x i64\]]], ptr [[ABI_ALLOCA]], align [[ABI_ALIGN]]
     // powerpc64:   [[ABI_VALUE:%.+]] = load [[ABI_TYPE:\[2 x i64\]]], ptr [[ABI_ALLOCA]], align [[ABI_ALIGN]]
-    // sparc64:     [[ABI_VALUE:%.+]] = load [[ABI_TYPE:\[2 x i64\]]], ptr [[ABI_ALLOCA]], align [[ABI_ALIGN]]
+    // sparc64:     [[ABI_VALUE:%.+]] = load [[ABI_TYPE:{ i64, i64 }]], ptr [[ABI_ALLOCA]], align [[ABI_ALIGN]]
     // x86_64:      [[ABI_VALUE:%.+]] = load [[ABI_TYPE:{ i64, i32 }]], ptr [[ABI_ALLOCA]], align [[ABI_ALIGN]]
 
     // CHECK: call void @receives_three32s([[ABI_TYPE]] [[ABI_VALUE]])
@@ -619,7 +619,7 @@ pub fn return_three32s() -> Three32s {
 
     // aarch64:     [[ABI_VALUE:%.+]] = call [[ABI_TYPE:\[2 x i64\]]] @returns_three32s()
     // loongarch64: [[ABI_VALUE:%.+]] = call [[ABI_TYPE:\[2 x i64\]]] @returns_three32s()
-    // sparc64:     [[ABI_VALUE:%.+]] = call [[ABI_TYPE:\[2 x i64\]]] @returns_three32s()
+    // sparc64:     [[ABI_VALUE:%.+]] = call [[ABI_TYPE:{ i64, i64 }]] @returns_three32s()
     // x86_64:      [[ABI_VALUE:%.+]] = call [[ABI_TYPE:{ i64, i32 }]] @returns_three32s()
 
     // aarch64:     store [[ABI_TYPE]] [[ABI_VALUE]], ptr [[ABI_ALLOCA]], align [[ABI_ALIGN]]
