@@ -767,7 +767,7 @@ impl Evaluator<'_> {
                         "align_of generic arg is not provided".into(),
                     ));
                 };
-                let align = self.layout(ty.to_nextsolver(interner))?.align.abi.bytes();
+                let align = self.layout(ty.to_nextsolver(interner))?.align.bytes();
                 destination.write_from_bytes(self, &align.to_le_bytes()[0..destination.size])
             }
             "size_of_val" => {
@@ -1431,7 +1431,7 @@ impl Evaluator<'_> {
                     field_types.iter().next_back().unwrap().1.clone().substitute(Interner, subst);
                 let sized_part_size =
                     layout.fields.offset(field_types.iter().count() - 1).bytes_usize();
-                let sized_part_align = layout.align.abi.bytes() as usize;
+                let sized_part_align = layout.align.bytes() as usize;
                 let (unsized_part_size, unsized_part_align) =
                     self.size_align_of_unsized(&last_field_ty, metadata, locals)?;
                 let align = sized_part_align.max(unsized_part_align) as isize;

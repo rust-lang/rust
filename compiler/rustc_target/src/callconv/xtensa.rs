@@ -48,7 +48,7 @@ where
     }
 
     let size = arg.layout.size.bits();
-    let needed_align = arg.layout.align.abi.bits();
+    let needed_align = arg.layout.align.bits();
     let mut must_use_stack = false;
 
     // Determine the number of GPRs needed to pass the current argument

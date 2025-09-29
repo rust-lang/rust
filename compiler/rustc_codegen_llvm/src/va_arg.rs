@@ -193,7 +193,7 @@ fn emit_aapcs_va_arg<'ll, 'tcx>(
     // the offset again.
 
     bx.switch_to_block(maybe_reg);
-    if gr_type && layout.align.abi.bytes() > 8 {
+    if gr_type && layout.align.bytes() > 8 {
         reg_off_v = bx.add(reg_off_v, bx.const_i32(15));
         reg_off_v = bx.and(reg_off_v, bx.const_i32(-16));
     }
@@ -761,7 +761,7 @@ fn x86_64_sysv64_va_arg_from_memory<'ll, 'tcx>(
     // byte boundary if alignment needed by type exceeds 8 byte boundary.
     // It isn't stated explicitly in the standard, but in practice we use
     // alignment greater than 16 where necessary.
-    if layout.layout.align.abi.bytes() > 8 {
+    if layout.layout.align.bytes() > 8 {
         unreachable!("all instances of VaArgSafe have an alignment <= 8");
     }
 

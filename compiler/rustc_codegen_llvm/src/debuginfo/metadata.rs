@@ -1043,7 +1043,7 @@ fn create_member_type<'ll, 'tcx>(
             file_metadata,
             line_number,
             layout.size.bits(),
-            layout.align.abi.bits() as u32,
+            layout.align.bits() as u32,
             offset.bits(),
             flags,
             type_di_node,

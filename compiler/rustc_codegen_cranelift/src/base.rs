@@ -846,7 +846,7 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
                     let layout = fx.layout_of(fx.monomorphize(ty));
                     let val = match null_op {
                         NullOp::SizeOf => layout.size.bytes(),
-                        NullOp::AlignOf => layout.align.abi.bytes(),
+                        NullOp::AlignOf => layout.align.bytes(),
                         NullOp::OffsetOf(fields) => fx
                             .tcx
                             .offset_of_subfield(

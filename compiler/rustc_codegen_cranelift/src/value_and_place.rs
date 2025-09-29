@@ -383,7 +383,7 @@ impl<'tcx> CPlace<'tcx> {
 
         let stack_slot = fx.create_stack_slot(
             u32::try_from(layout.size.bytes()).unwrap(),
-            u32::try_from(layout.align.abi.bytes()).unwrap(),
+            u32::try_from(layout.align.bytes()).unwrap(),
         );
         CPlace { inner: CPlaceInner::Addr(stack_slot, None), layout }
     }
@@ -641,8 +641,8 @@ impl<'tcx> CPlace<'tcx> {
                         let size = dst_layout.size.bytes();
                         // `emit_small_memory_copy` uses `u8` for alignments, just use the maximum
                         // alignment that fits in a `u8` if the actual alignment is larger.
-                        let src_align = src_layout.align.abi.bytes().try_into().unwrap_or(128);
-                        let dst_align = dst_layout.align.abi.bytes().try_into().unwrap_or(128);
+                        let src_align = src_layout.align.bytes().try_into().unwrap_or(128);
+                        let dst_align = dst_layout.align.bytes().try_into().unwrap_or(128);
                         fx.bcx.emit_small_memory_copy(
                             fx.target_config,
                             to_addr,

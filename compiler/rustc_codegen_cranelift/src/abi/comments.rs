@@ -89,7 +89,7 @@ pub(super) fn add_local_place_comments<'tcx>(
         format!("{:?}", local),
         format!("{:?}", ty),
         size.bytes(),
-        align.abi.bytes(),
+        align.bytes(),
         if extra.is_empty() { "" } else { "                " },
         extra,
     ));
