@@ -1755,13 +1755,21 @@ where
     }
 }
 
+/// The `Target` type is restricted to `Unpin` types as it's not safe to obtain a mutable reference
+/// to a pinned value.
+///
+/// For soundness reasons, implementations of `DerefMut` for `Pin<T>` are rejected even when `T` is
+/// a local type not covered by this impl block. (Since `Pin` is [fundamental], such implementations
+/// would normally be possible.)
+///
+/// [fundamental]: ../../reference/items/implementations.html#r-items.impl.trait.fundamental
 #[stable(feature = "pin", since = "1.33.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 #[cfg(doc)]
 impl<Ptr> const DerefMut for Pin<Ptr>
 where
     Ptr: [const] DerefMut,
-    Ptr::Target: Unpin,
+    <Ptr as Deref>::Target: Unpin,
 {
     fn deref_mut(&mut self) -> &mut Ptr::Target {
         Pin::get_mut(Pin::as_mut(self))
