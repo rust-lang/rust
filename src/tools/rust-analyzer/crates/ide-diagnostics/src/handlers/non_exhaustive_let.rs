@@ -1,4 +1,11 @@
-use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
+use either::Either;
+use hir::Semantics;
+use ide_db::text_edit::TextEdit;
+use ide_db::ty_filter::TryEnum;
+use ide_db::{RootDatabase, source_change::SourceChange};
+use syntax::{AstNode, ast};
+
+use crate::{Assist, Diagnostic, DiagnosticCode, DiagnosticsContext, fix};
 
 // Diagnostic: non-exhaustive-let
 //
@@ -15,11 +22,68 @@ pub(crate) fn non_exhaustive_let(
         d.pat.map(Into::into),
     )
     .stable()
+    .with_fixes(fixes(&ctx.sema, d))
+}
+fn fixes(sema: &Semantics<'_, RootDatabase>, d: &hir::NonExhaustiveLet) -> Option<Vec<Assist>> {
+    let root = sema.parse_or_expand(d.pat.file_id);
+    let pat = d.pat.value.to_node(&root);
+    let let_stmt = ast::LetStmt::cast(pat.syntax().parent()?)?;
+    let early_node = let_stmt.syntax().ancestors().find_map(AstNode::cast)?;
+    let early_text = early_text(sema, &early_node);
+
+    if let_stmt.let_else().is_some() {
+        return None;
+    }
+
+    let file_id = d.pat.file_id.file_id()?.file_id(sema.db);
+    let semicolon = if let_stmt.semicolon_token().is_none() { ";" } else { "" };
+    let else_block = format!(" else {{ {early_text} }}{semicolon}");
+    let insert_offset = let_stmt
+        .semicolon_token()
+        .map(|it| it.text_range().start())
+        .unwrap_or_else(|| let_stmt.syntax().text_range().end());
+
+    let source_change =
+        SourceChange::from_text_edit(file_id, TextEdit::insert(insert_offset, else_block));
+    let target = sema.original_range(let_stmt.syntax()).range;
+    Some(vec![fix("add_let_else_block", "Add let-else block", source_change, target)])
+}
+
+fn early_text(
+    sema: &Semantics<'_, RootDatabase>,
+    early_node: &Either<ast::AnyHasLoopBody, Either<ast::Fn, ast::ClosureExpr>>,
+) -> &'static str {
+    match early_node {
+        Either::Left(_any_loop) => "continue",
+        Either::Right(Either::Left(fn_)) => sema
+            .to_def(fn_)
+            .map(|fn_def| fn_def.ret_type(sema.db))
+            .map(|ty| return_text(&ty, sema))
+            .unwrap_or("return"),
+        Either::Right(Either::Right(closure)) => closure
+            .body()
+            .and_then(|expr| sema.type_of_expr(&expr))
+            .map(|ty| return_text(&ty.adjusted(), sema))
+            .unwrap_or("return"),
+    }
+}
+
+fn return_text(ty: &hir::Type<'_>, sema: &Semantics<'_, RootDatabase>) -> &'static str {
+    if ty.is_unit() {
+        "return"
+    } else if let Some(try_enum) = TryEnum::from_ty(sema, ty) {
+        match try_enum {
+            TryEnum::Option => "return None",
+            TryEnum::Result => "return Err($0)",
+        }
+    } else {
+        "return $0"
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::check_diagnostics;
+    use crate::tests::{check_diagnostics, check_fix};
 
     #[test]
     fn option_nonexhaustive() {
@@ -28,7 +92,7 @@ mod tests {
 //- minicore: option
 fn main() {
     let None = Some(5);
-      //^^^^ error: non-exhaustive pattern: `Some(_)` not covered
+      //^^^^ 💡 error: non-exhaustive pattern: `Some(_)` not covered
 }
 "#,
         );
@@ -54,7 +118,7 @@ fn main() {
 fn main() {
     '_a: {
         let None = Some(5);
-          //^^^^ error: non-exhaustive pattern: `Some(_)` not covered
+          //^^^^ 💡 error: non-exhaustive pattern: `Some(_)` not covered
     }
 }
 "#,
@@ -66,7 +130,7 @@ fn main() {
 fn main() {
     let _ = async {
         let None = Some(5);
-          //^^^^ error: non-exhaustive pattern: `Some(_)` not covered
+          //^^^^ 💡 error: non-exhaustive pattern: `Some(_)` not covered
     };
 }
 "#,
@@ -78,7 +142,7 @@ fn main() {
 fn main() {
     unsafe {
         let None = Some(5);
-          //^^^^ error: non-exhaustive pattern: `Some(_)` not covered
+          //^^^^ 💡 error: non-exhaustive pattern: `Some(_)` not covered
     }
 }
 "#,
@@ -101,7 +165,7 @@ fn test(x: Result<i32, !>) {
 //- minicore: result
 fn test(x: Result<i32, &'static !>) {
     let Ok(_y) = x;
-      //^^^^^^ error: non-exhaustive pattern: `Err(_)` not covered
+      //^^^^^^ 💡 error: non-exhaustive pattern: `Err(_)` not covered
 }
 "#,
         );
@@ -129,6 +193,113 @@ fn foo(v: Enum<()>) {
     let Enum::A = v;
 }
         "#,
+        );
+    }
+
+    #[test]
+    fn fix_return_in_loop() {
+        check_fix(
+            r#"
+//- minicore: option
+fn foo() {
+    while cond {
+        let None$0 = Some(5);
+    }
+}
+"#,
+            r#"
+fn foo() {
+    while cond {
+        let None = Some(5) else { continue };
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn fix_return_in_fn() {
+        check_fix(
+            r#"
+//- minicore: option
+fn foo() {
+    let None$0 = Some(5);
+}
+"#,
+            r#"
+fn foo() {
+    let None = Some(5) else { return };
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn fix_return_in_incomplete_let() {
+        check_fix(
+            r#"
+//- minicore: option
+fn foo() {
+    let None$0 = Some(5)
+}
+"#,
+            r#"
+fn foo() {
+    let None = Some(5) else { return };
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn fix_return_in_closure() {
+        check_fix(
+            r#"
+//- minicore: option
+fn foo() -> Option<()> {
+    let _f = || {
+        let None$0 = Some(5);
+    };
+}
+"#,
+            r#"
+fn foo() -> Option<()> {
+    let _f = || {
+        let None = Some(5) else { return };
+    };
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn fix_return_try_in_fn() {
+        check_fix(
+            r#"
+//- minicore: option
+fn foo() -> Option<()> {
+    let None$0 = Some(5);
+}
+"#,
+            r#"
+fn foo() -> Option<()> {
+    let None = Some(5) else { return None };
+}
+"#,
+        );
+
+        check_fix(
+            r#"
+//- minicore: option, result
+fn foo() -> Result<(), i32> {
+    let None$0 = Some(5);
+}
+"#,
+            r#"
+fn foo() -> Result<(), i32> {
+    let None = Some(5) else { return Err($0) };
+}
+"#,
         );
     }
 
