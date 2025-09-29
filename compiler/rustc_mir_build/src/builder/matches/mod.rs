@@ -15,7 +15,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::{BindingMode, ByRef, LetStmt, LocalSource, Node};
 use rustc_middle::bug;
-use rustc_middle::middle::region;
+use rustc_middle::middle::region::{self, ScopeCompatibility};
 use rustc_middle::mir::*;
 use rustc_middle::thir::{self, *};
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, ValTree, ValTreeKind};
@@ -807,10 +807,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.cfg.push(block, Statement::new(source_info, StatementKind::StorageLive(local_id)));
         // Although there is almost always scope for given variable in corner cases
         // like #92893 we might get variable with no scope.
-        if let Some(region_scope) = self.region_scope_tree.var_scope(var.0.local_id)
-            && matches!(schedule_drop, ScheduleDrops::Yes)
-        {
-            self.schedule_drop(span, region_scope, local_id, DropKind::Storage);
+        if matches!(schedule_drop, ScheduleDrops::Yes) {
+            let (var_scope, var_scope_compat) = self.region_scope_tree.var_scope(var.0.local_id);
+            if let Some(region_scope) = var_scope {
+                self.schedule_drop(span, region_scope, local_id, DropKind::Storage);
+            }
+            if let ScopeCompatibility::FutureIncompatible { shortens_to } = var_scope_compat {
+                self.schedule_backwards_incompatible_drop(
+                    span,
+                    shortens_to,
+                    local_id,
+                    BackwardIncompatibleDropReason::MacroExtendedScope,
+                );
+            }
         }
         Place::from(local_id)
     }
@@ -822,7 +831,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         for_guard: ForGuard,
     ) {
         let local_id = self.var_local_id(var, for_guard);
-        if let Some(region_scope) = self.region_scope_tree.var_scope(var.0.local_id) {
+        // We can ignore the var scope's future-compatibility information since we've already taken
+        // it into account when scheduling the storage drop in `storage_live_binding`.
+        if let (Some(region_scope), _) = self.region_scope_tree.var_scope(var.0.local_id) {
             self.schedule_drop(span, region_scope, local_id, DropKind::Value);
         }
     }
