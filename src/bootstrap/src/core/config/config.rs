@@ -44,7 +44,7 @@ use crate::core::config::toml::rust::{
     BootstrapOverrideLld, Rust, RustOptimize, check_incompatible_options_for_ci_rustc,
     default_lld_opt_in_targets, parse_codegen_backends,
 };
-use crate::core::config::toml::target::Target;
+use crate::core::config::toml::target::{Target, TomlTarget};
 use crate::core::config::{
     CompilerBuiltins, DebuginfoLevel, DryRun, GccCiMode, LlvmLibunwind, Merge, ReplaceOpt,
     RustcLto, SplitDebuginfo, StringOrBool, threads_from_config,
@@ -831,9 +831,36 @@ impl Config {
 
         if let Some(t) = toml.target {
             for (triple, cfg) in t {
+                let TomlTarget {
+                    cc: target_cc,
+                    cxx: target_cxx,
+                    ar: target_ar,
+                    ranlib: target_ranlib,
+                    default_linker: target_default_linker,
+                    linker: target_linker,
+                    split_debuginfo: target_split_debuginfo,
+                    llvm_config: target_llvm_config,
+                    llvm_has_rust_patches: target_llvm_has_rust_patches,
+                    llvm_filecheck: target_llvm_filecheck,
+                    llvm_libunwind: target_llvm_libunwind,
+                    sanitizers: target_sanitizers,
+                    profiler: target_profiler,
+                    rpath: target_rpath,
+                    crt_static: target_crt_static,
+                    musl_root: target_musl_root,
+                    musl_libdir: target_musl_libdir,
+                    wasi_root: target_wasi_root,
+                    qemu_rootfs: target_qemu_rootfs,
+                    no_std: target_no_std,
+                    codegen_backends: target_codegen_backends,
+                    runner: target_runner,
+                    optimized_compiler_builtins: target_optimized_compiler_builtins,
+                    jemalloc: target_jemalloc,
+                } = cfg;
+
                 let mut target = Target::from_triple(&triple);
 
-                if let Some(ref s) = cfg.llvm_config {
+                if let Some(ref s) = target_llvm_config {
                     if download_rustc_commit.is_some() && triple == *host_target.triple {
                         panic!(
                             "setting llvm_config for the host is incompatible with download-rustc"
@@ -841,46 +868,47 @@ impl Config {
                     }
                     target.llvm_config = Some(src.join(s));
                 }
-                if let Some(patches) = cfg.llvm_has_rust_patches {
+                if let Some(patches) = target_llvm_has_rust_patches {
                     assert!(
-                        build_submodules == Some(false) || cfg.llvm_config.is_some(),
+                        build_submodules == Some(false) || target_llvm_config.is_some(),
                         "use of `llvm-has-rust-patches` is restricted to cases where either submodules are disabled or llvm-config been provided"
                     );
                     target.llvm_has_rust_patches = Some(patches);
                 }
-                if let Some(ref s) = cfg.llvm_filecheck {
+                if let Some(ref s) = target_llvm_filecheck {
                     target.llvm_filecheck = Some(src.join(s));
                 }
-                target.llvm_libunwind = cfg.llvm_libunwind.as_ref().map(|v| {
+                target.llvm_libunwind = target_llvm_libunwind.as_ref().map(|v| {
                     v.parse().unwrap_or_else(|_| {
                         panic!("failed to parse target.{triple}.llvm-libunwind")
                     })
                 });
-                if let Some(s) = cfg.no_std {
+                if let Some(s) = target_no_std {
                     target.no_std = s;
                 }
-                target.cc = cfg.cc.map(PathBuf::from);
-                target.cxx = cfg.cxx.map(PathBuf::from);
-                target.ar = cfg.ar.map(PathBuf::from);
-                target.ranlib = cfg.ranlib.map(PathBuf::from);
-                target.linker = cfg.linker.map(PathBuf::from);
-                target.crt_static = cfg.crt_static;
-                target.musl_root = cfg.musl_root.map(PathBuf::from);
-                target.musl_libdir = cfg.musl_libdir.map(PathBuf::from);
-                target.wasi_root = cfg.wasi_root.map(PathBuf::from);
-                target.qemu_rootfs = cfg.qemu_rootfs.map(PathBuf::from);
-                target.runner = cfg.runner;
-                target.sanitizers = cfg.sanitizers;
-                target.profiler = cfg.profiler;
-                target.rpath = cfg.rpath;
-                target.optimized_compiler_builtins = cfg.optimized_compiler_builtins;
-                target.jemalloc = cfg.jemalloc;
-                if let Some(backends) = cfg.codegen_backends {
+                target.cc = target_cc.map(PathBuf::from);
+                target.cxx = target_cxx.map(PathBuf::from);
+                target.ar = target_ar.map(PathBuf::from);
+                target.ranlib = target_ranlib.map(PathBuf::from);
+                target.linker = target_linker.map(PathBuf::from);
+                target.crt_static = target_crt_static;
+                target.default_linker = target_default_linker;
+                target.musl_root = target_musl_root.map(PathBuf::from);
+                target.musl_libdir = target_musl_libdir.map(PathBuf::from);
+                target.wasi_root = target_wasi_root.map(PathBuf::from);
+                target.qemu_rootfs = target_qemu_rootfs.map(PathBuf::from);
+                target.runner = target_runner;
+                target.sanitizers = target_sanitizers;
+                target.profiler = target_profiler;
+                target.rpath = target_rpath;
+                target.optimized_compiler_builtins = target_optimized_compiler_builtins;
+                target.jemalloc = target_jemalloc;
+                if let Some(backends) = target_codegen_backends {
                     target.codegen_backends =
                         Some(parse_codegen_backends(backends, &format!("target.{triple}")))
                 }
 
-                target.split_debuginfo = cfg.split_debuginfo.as_ref().map(|v| {
+                target.split_debuginfo = target_split_debuginfo.as_ref().map(|v| {
                     v.parse().unwrap_or_else(|_| {
                         panic!("invalid value for target.{triple}.split-debuginfo")
                     })
