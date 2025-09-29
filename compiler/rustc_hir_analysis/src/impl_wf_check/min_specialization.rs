@@ -275,7 +275,7 @@ fn check_duplicate_params<'tcx>(
     span: Span,
 ) -> Result<(), ErrorGuaranteed> {
     let mut base_params = cgp::parameters_for(tcx, parent_args, true);
-    base_params.sort_by_key(|param| param.0);
+    base_params.sort_unstable();
     if let (_, [duplicate, ..]) = base_params.partition_dedup() {
         let param = impl1_args[duplicate.0 as usize];
         return Err(tcx
