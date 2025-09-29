@@ -85,11 +85,29 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         T: Debug + TypeFoldable<TyCtxt<'tcx>>,
     {
+        // While we ignore region constraints and pending obligations,
+        // we do return constrained opaque types to avoid unconstrained
+        // inference variables in the response. This is important as we want
+        // to check that opaques in deref steps stay unconstrained.
+        //
+        // This doesn't handle the more general case for non-opaques as
+        // ambiguous `Projection` obligations have same the issue.
+        let opaque_types = if self.next_trait_solver() {
+            self.inner
+                .borrow_mut()
+                .opaque_type_storage
+                .iter_opaque_types()
+                .map(|(k, v)| (k, v.ty))
+                .collect()
+        } else {
+            vec![]
+        };
+
         self.canonicalize_response(QueryResponse {
             var_values: inference_vars,
             region_constraints: QueryRegionConstraints::default(),
             certainty: Certainty::Proven, // Ambiguities are OK!
-            opaque_types: vec![],
+            opaque_types,
             value: answer,
         })
     }

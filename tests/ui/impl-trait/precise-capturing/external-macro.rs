@@ -6,6 +6,7 @@
 //@ aux-crate: no_use_macro=no-use-macro.rs
 //@ edition: 2024
 //@ check-pass
+//@ ignore-backends: gcc
 
 no_use_pm::pm_rpit!{}
 

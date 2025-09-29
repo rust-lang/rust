@@ -492,14 +492,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         _ => Err(Determinacy::Determined),
                     },
                     Scope::Module(module, derive_fallback_lint_id) => {
-                        // FIXME: use `finalize_scope` here.
                         let (adjusted_parent_scope, adjusted_finalize) =
                             if matches!(scope_set, ScopeSet::ModuleAndExternPrelude(..)) {
-                                (parent_scope, finalize)
+                                (parent_scope, finalize_scope!())
                             } else {
                                 (
                                     &ParentScope { module, ..*parent_scope },
-                                    finalize.map(|f| Finalize { used: Used::Scope, ..f }),
+                                    finalize_scope!().map(|f| Finalize { used: Used::Scope, ..f }),
                                 )
                             };
                         let binding = this.reborrow().resolve_ident_in_module_unadjusted(
@@ -557,8 +556,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         None => Err(Determinacy::Determined),
                     },
                     Scope::ExternPreludeItems => {
-                        // FIXME: use `finalize_scope` here.
-                        match this.reborrow().extern_prelude_get_item(ident, finalize.is_some()) {
+                        match this
+                            .reborrow()
+                            .extern_prelude_get_item(ident, finalize_scope!().is_some())
+                        {
                             Some(binding) => {
                                 extern_prelude_item_binding = Some(binding);
                                 Ok((binding, Flags::empty()))

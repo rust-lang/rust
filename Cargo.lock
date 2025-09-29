@@ -334,8 +334,10 @@ dependencies = [
  "anyhow",
  "build_helper",
  "curl",
+ "hex",
  "indexmap",
  "serde",
+ "sha2",
  "toml 0.8.23",
 ]
 
@@ -5239,9 +5241,9 @@ dependencies = [
 
 [[package]]
 name = "stringdex"
-version = "0.0.1-alpha9"
+version = "0.0.1-alpha10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7081029913fd7d591c0112182aba8c98ae886b4f12edb208130496cd17dc3c15"
+checksum = "0fa846a7d509d1828a4f90962dc09810e161abcada7fc6a921e92c168d0811d7"
 dependencies = [
  "stacker",
 ]

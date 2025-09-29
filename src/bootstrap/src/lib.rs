@@ -35,7 +35,7 @@ use utils::exec::ExecutionContext;
 
 use crate::core::builder;
 use crate::core::builder::Kind;
-use crate::core::config::{DryRun, LldMode, LlvmLibunwind, TargetSelection, flags};
+use crate::core::config::{BootstrapOverrideLld, DryRun, LlvmLibunwind, TargetSelection, flags};
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{self, dir_is_empty, exe, libdir, set_file_times, split_debuginfo};
 
@@ -415,7 +415,7 @@ macro_rules! forward {
 }
 
 forward! {
-    verbose(f: impl Fn()),
+    do_if_verbose(f: impl Fn()),
     is_verbose() -> bool,
     create(path: &Path, s: &str),
     remove(f: &Path),
@@ -601,11 +601,11 @@ impl Build {
             .unwrap()
             .trim();
         if local_release.split('.').take(2).eq(version.split('.').take(2)) {
-            build.verbose(|| println!("auto-detected local-rebuild {local_release}"));
+            build.do_if_verbose(|| println!("auto-detected local-rebuild {local_release}"));
             build.local_rebuild = true;
         }
 
-        build.verbose(|| println!("finding compilers"));
+        build.do_if_verbose(|| println!("finding compilers"));
         utils::cc_detect::fill_compilers(&mut build);
         // When running `setup`, the profile is about to change, so any requirements we have now may
         // be different on the next invocation. Don't check for them until the next time x.py is
@@ -613,7 +613,7 @@ impl Build {
         //
         // Similarly, for `setup` we don't actually need submodules or cargo metadata.
         if !matches!(build.config.cmd, Subcommand::Setup { .. }) {
-            build.verbose(|| println!("running sanity check"));
+            build.do_if_verbose(|| println!("running sanity check"));
             crate::core::sanity::check(&mut build);
 
             // Make sure we update these before gathering metadata so we don't get an error about missing
@@ -631,7 +631,7 @@ impl Build {
             // Now, update all existing submodules.
             build.update_existing_submodules();
 
-            build.verbose(|| println!("learning about cargo"));
+            build.do_if_verbose(|| println!("learning about cargo"));
             crate::core::metadata::build(&mut build);
         }
 
@@ -1087,18 +1087,6 @@ impl Build {
         })
     }
 
-    /// Check if verbosity is greater than the `level`
-    pub fn is_verbose_than(&self, level: usize) -> bool {
-        self.verbosity > level
-    }
-
-    /// Runs a function if verbosity is greater than `level`.
-    fn verbose_than(&self, level: usize, f: impl Fn()) {
-        if self.is_verbose_than(level) {
-            f()
-        }
-    }
-
     fn info(&self, msg: &str) {
         match self.config.get_dry_run() {
             DryRun::SelfCheck => (),
@@ -1370,14 +1358,14 @@ impl Build {
             && !target.is_msvc()
         {
             Some(self.cc(target))
-        } else if self.config.lld_mode.is_used()
+        } else if self.config.bootstrap_override_lld.is_used()
             && self.is_lld_direct_linker(target)
             && self.host_target == target
         {
-            match self.config.lld_mode {
-                LldMode::SelfContained => Some(self.initial_lld.clone()),
-                LldMode::External => Some("lld".into()),
-                LldMode::Unused => None,
+            match self.config.bootstrap_override_lld {
+                BootstrapOverrideLld::SelfContained => Some(self.initial_lld.clone()),
+                BootstrapOverrideLld::External => Some("lld".into()),
+                BootstrapOverrideLld::None => None,
             }
         } else {
             None
@@ -1816,7 +1804,6 @@ impl Build {
         if self.config.dry_run() {
             return;
         }
-        self.verbose_than(1, || println!("Copy/Link {src:?} to {dst:?}"));
         if src == dst {
             return;
         }
@@ -1933,7 +1920,10 @@ impl Build {
             return;
         }
         let dst = dstdir.join(src.file_name().unwrap());
-        self.verbose_than(1, || println!("Install {src:?} to {dst:?}"));
+
+        #[cfg(feature = "tracing")]
+        let _span = trace_io!("install", ?src, ?dst);
+
         t!(fs::create_dir_all(dstdir));
         if !src.exists() {
             panic!("ERROR: File \"{}\" not found!", src.display());

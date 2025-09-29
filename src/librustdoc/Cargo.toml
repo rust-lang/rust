@@ -12,7 +12,7 @@ path = "lib.rs"
 arrayvec = { version = "0.7", default-features = false }
 askama = { version = "0.14", default-features = false, features = ["alloc", "config", "derive"] }
 base64 = "0.21.7"
-indexmap = "2"
+indexmap = { version = "2", features = ["serde"] }
 itertools = "0.12"
 minifier = { version = "0.3.5", default-features = false }
 pulldown-cmark-escape = { version = "0.11.0", features = ["simd"] }
@@ -21,7 +21,7 @@ rustdoc-json-types = { path = "../rustdoc-json-types" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 smallvec = "1.8.1"
-stringdex = { version = "0.0.1-alpha9" }
+stringdex = { version = "0.0.1-alpha10" }
 tempfile = "3"
 threadpool = "1.8.1"
 tracing = "0.1"

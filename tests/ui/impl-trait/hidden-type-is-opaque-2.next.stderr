@@ -5,7 +5,7 @@ LL |     Thunk::new(|mut cont| {
    |                 ^^^^^^^^
 LL |
 LL |         cont.reify_as();
-   |         ---- type must be known at this point
+   |              -------- type must be known at this point
    |
 help: consider giving this closure parameter an explicit type
    |
@@ -19,7 +19,7 @@ LL |     Thunk::new(|mut cont| {
    |                 ^^^^^^^^
 LL |
 LL |         cont.reify_as();
-   |         ---- type must be known at this point
+   |              -------- type must be known at this point
    |
 help: consider giving this closure parameter an explicit type
    |

@@ -11,9 +11,7 @@ use crate::inherent::*;
 use crate::ir_print::IrPrint;
 use crate::lang_items::{SolverAdtLangItem, SolverLangItem, SolverTraitLangItem};
 use crate::relate::Relate;
-use crate::solve::{
-    CanonicalInput, ExternalConstraintsData, PredefinedOpaquesData, QueryResult, inspect,
-};
+use crate::solve::{CanonicalInput, ExternalConstraintsData, QueryResult, inspect};
 use crate::visit::{Flags, TypeVisitable};
 use crate::{self as ty, CanonicalParamEnvCacheEntry, search_graph};
 
@@ -70,10 +68,10 @@ pub trait Interner:
         + Hash
         + Eq
         + TypeFoldable<Self>
-        + Deref<Target = PredefinedOpaquesData<Self>>;
+        + SliceLike<Item = (ty::OpaqueTypeKey<Self>, Self::Ty)>;
     fn mk_predefined_opaques_in_body(
         self,
-        data: PredefinedOpaquesData<Self>,
+        data: &[(ty::OpaqueTypeKey<Self>, Self::Ty)],
     ) -> Self::PredefinedOpaques;
 
     type LocalDefIds: Copy

@@ -356,7 +356,7 @@ impl<'a> Tarball<'a> {
 
         // For `x install` tarball files aren't needed, so we can speed up the process by not producing them.
         let compression_profile = if self.builder.kind == Kind::Install {
-            self.builder.verbose(|| {
+            self.builder.do_if_verbose(|| {
                 println!("Forcing dist.compression-profile = 'no-op' for `x install`.")
             });
             // "no-op" indicates that the rust-installer won't produce compressed tarball sources.
