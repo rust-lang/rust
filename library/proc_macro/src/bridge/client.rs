@@ -144,7 +144,7 @@ macro_rules! define_client_side {
 
                     buf.clear();
                     api_tags::Method::$name(api_tags::$name::$method).encode(&mut buf, &mut ());
-                    reverse_encode!(buf; $($arg),*);
+                    $($arg.encode(&mut buf, &mut ());)*
 
                     buf = bridge.dispatch.call(buf);
 

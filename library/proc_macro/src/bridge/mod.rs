@@ -119,26 +119,6 @@ macro_rules! with_api_handle_types {
     };
 }
 
-// FIXME(eddyb) this calls `encode` for each argument, but in reverse,
-// to match the ordering in `reverse_decode`.
-macro_rules! reverse_encode {
-    ($writer:ident;) => {};
-    ($writer:ident; $first:ident $(, $rest:ident)*) => {
-        reverse_encode!($writer; $($rest),*);
-        $first.encode(&mut $writer, &mut ());
-    }
-}
-
-// FIXME(eddyb) this calls `decode` for each argument, but in reverse,
-// to avoid borrow conflicts from borrows started by `&mut` arguments.
-macro_rules! reverse_decode {
-    ($reader:ident, $s:ident;) => {};
-    ($reader:ident, $s:ident; $first:ident: $first_ty:ty $(, $rest:ident: $rest_ty:ty)*) => {
-        reverse_decode!($reader, $s; $($rest: $rest_ty),*);
-        let $first = <$first_ty>::decode(&mut $reader, $s);
-    }
-}
-
 #[allow(unsafe_code)]
 mod arena;
 #[allow(unsafe_code)]

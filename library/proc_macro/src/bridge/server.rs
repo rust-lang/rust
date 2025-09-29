@@ -178,7 +178,7 @@ macro_rules! define_dispatcher_impl {
                     $(api_tags::Method::$name(m) => match m {
                         $(api_tags::$name::$method => {
                             let mut call_method = || {
-                                reverse_decode!(reader, handle_store; $($arg: $arg_ty),*);
+                                $(let $arg = <$arg_ty>::decode(&mut reader, handle_store);)*
                                 $name::$method(server, $($arg),*)
                             };
                             // HACK(eddyb) don't use `panic::catch_unwind` in a panic.
