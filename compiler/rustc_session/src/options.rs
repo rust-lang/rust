@@ -2634,6 +2634,8 @@ written to standard error output)"),
                  file which is ignored by the linker
         `single`: sections which do not require relocation are written into object file but ignored
                   by the linker"),
+    split_dwarf_out_dir : Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
+        "location for writing split DWARF objects (`.dwo`) if enabled"),
     split_lto_unit: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "enable LTO unit splitting (default: no)"),
     src_hash_algorithm: Option<SourceFileHashAlgorithm> = (None, parse_src_file_hash, [TRACKED],
