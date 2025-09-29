@@ -55,6 +55,7 @@ mod iter_skip_zero;
 mod iter_with_drain;
 mod iterator_step_by_zero;
 mod join_absolute_paths;
+mod lib;
 mod manual_c_str_literals;
 mod manual_contains;
 mod manual_inspect;
@@ -102,6 +103,7 @@ mod return_and_then;
 mod search_is_some;
 mod seek_from_current;
 mod seek_to_start_instead_of_rewind;
+mod should_implement_trait;
 mod single_char_add_str;
 mod skip_while_next;
 mod sliced_string_as_bytes;
@@ -146,20 +148,18 @@ mod zst_offset;
 
 use clippy_config::Conf;
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
-use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
+use clippy_utils::diagnostics::span_lint;
 use clippy_utils::macros::FormatArgsStorage;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::ty::{contains_ty_adt_constructor_opaque, implements_trait, is_copy, is_type_diagnostic_item};
-use clippy_utils::{contains_return, is_bool, is_trait_method, iter_input_pats, peel_blocks, return_ty, sym};
+use clippy_utils::ty::contains_ty_adt_constructor_opaque;
+use clippy_utils::{contains_return, is_trait_method, iter_input_pats, peel_blocks, return_ty, sym};
 pub use path_ends_with_ext::DEFAULT_ALLOWED_DOTFILES;
-use rustc_abi::ExternAbi;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir as hir;
-use rustc_hir::{Expr, ExprKind, Node, Stmt, StmtKind, TraitItem, TraitItemKind};
+use rustc_hir::{self as hir, Expr, ExprKind, Node, Stmt, StmtKind, TraitItem, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::ty::{self, TraitRef, Ty};
+use rustc_middle::ty::TraitRef;
 use rustc_session::impl_lint_pass;
-use rustc_span::{Span, Symbol, kw};
+use rustc_span::{Span, Symbol};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -4889,48 +4889,17 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         if impl_item.span.in_external_macro(cx.sess().source_map()) {
             return;
         }
-        let name = impl_item.ident.name;
-        let parent = cx.tcx.hir_get_parent_item(impl_item.hir_id()).def_id;
-        let item = cx.tcx.hir_expect_item(parent);
-        let self_ty = cx.tcx.type_of(item.owner_id).instantiate_identity();
 
-        let implements_trait = matches!(item.kind, hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }));
         if let hir::ImplItemKind::Fn(ref sig, id) = impl_item.kind {
+            let parent = cx.tcx.hir_get_parent_item(impl_item.hir_id()).def_id;
+            let item = cx.tcx.hir_expect_item(parent);
+            let self_ty = cx.tcx.type_of(item.owner_id).instantiate_identity();
+            let implements_trait = matches!(item.kind, hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }));
+
             let method_sig = cx.tcx.fn_sig(impl_item.owner_id).instantiate_identity();
             let method_sig = cx.tcx.instantiate_bound_regions_with_erased(method_sig);
             let first_arg_ty_opt = method_sig.inputs().iter().next().copied();
-            // if this impl block implements a trait, lint in trait definition instead
-            if !implements_trait && cx.effective_visibilities.is_exported(impl_item.owner_id.def_id) {
-                // check missing trait implementations
-                for method_config in &TRAIT_METHODS {
-                    if name == method_config.method_name
-                        && sig.decl.inputs.len() == method_config.param_count
-                        && method_config.output_type.matches(&sig.decl.output)
-                        // in case there is no first arg, since we already have checked the number of arguments
-                        // it's should be always true
-                        && first_arg_ty_opt.is_none_or(|first_arg_ty| method_config
-                            .self_kind.matches(cx, self_ty, first_arg_ty)
-                            )
-                        && fn_header_equals(method_config.fn_header, sig.header)
-                        && method_config.lifetime_param_cond(impl_item)
-                    {
-                        span_lint_and_help(
-                            cx,
-                            SHOULD_IMPLEMENT_TRAIT,
-                            impl_item.span,
-                            format!(
-                                "method `{}` can be confused for the standard trait method `{}::{}`",
-                                method_config.method_name, method_config.trait_name, method_config.method_name
-                            ),
-                            None,
-                            format!(
-                                "consider implementing the trait `{}` or choosing a less ambiguous method name",
-                                method_config.trait_name
-                            ),
-                        );
-                    }
-                }
-            }
+            should_implement_trait::check_impl_item(cx, impl_item, self_ty, implements_trait, first_arg_ty_opt, sig);
 
             if sig.decl.implicit_self.has_implicit_self()
                 && !(self.avoid_breaking_exported_api
@@ -4940,7 +4909,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             {
                 wrong_self_convention::check(
                     cx,
-                    name,
+                    impl_item.ident.name,
                     self_ty,
                     first_arg_ty,
                     first_arg.pat.span,
@@ -4948,21 +4917,14 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                     false,
                 );
             }
-        }
 
-        // if this impl block implements a trait, lint in trait definition instead
-        if implements_trait {
-            return;
-        }
-
-        if let hir::ImplItemKind::Fn(_, _) = impl_item.kind {
-            let ret_ty = return_ty(cx, impl_item.owner_id);
-
-            if contains_ty_adt_constructor_opaque(cx, ret_ty, self_ty) {
-                return;
-            }
-
-            if name == sym::new && ret_ty != self_ty {
+            // if this impl block implements a trait, lint in trait definition instead
+            if !implements_trait
+                && impl_item.ident.name == sym::new
+                && let ret_ty = return_ty(cx, impl_item.owner_id)
+                && ret_ty != self_ty
+                && !contains_ty_adt_constructor_opaque(cx, ret_ty, self_ty)
+            {
                 span_lint(
                     cx,
                     NEW_RET_NO_SELF,
@@ -4978,41 +4940,41 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             return;
         }
 
-        if let TraitItemKind::Fn(ref sig, _) = item.kind
-            && sig.decl.implicit_self.has_implicit_self()
-            && let Some(first_arg_hir_ty) = sig.decl.inputs.first()
-            && let Some(&first_arg_ty) = cx
-                .tcx
-                .fn_sig(item.owner_id)
-                .instantiate_identity()
-                .inputs()
-                .skip_binder()
-                .first()
-        {
-            let self_ty = TraitRef::identity(cx.tcx, item.owner_id.to_def_id()).self_ty();
-            wrong_self_convention::check(
-                cx,
-                item.ident.name,
-                self_ty,
-                first_arg_ty,
-                first_arg_hir_ty.span,
-                false,
-                true,
-            );
-        }
+        if let TraitItemKind::Fn(ref sig, _) = item.kind {
+            if sig.decl.implicit_self.has_implicit_self()
+                && let Some(first_arg_hir_ty) = sig.decl.inputs.first()
+                && let Some(&first_arg_ty) = cx
+                    .tcx
+                    .fn_sig(item.owner_id)
+                    .instantiate_identity()
+                    .inputs()
+                    .skip_binder()
+                    .first()
+            {
+                let self_ty = TraitRef::identity(cx.tcx, item.owner_id.to_def_id()).self_ty();
+                wrong_self_convention::check(
+                    cx,
+                    item.ident.name,
+                    self_ty,
+                    first_arg_ty,
+                    first_arg_hir_ty.span,
+                    false,
+                    true,
+                );
+            }
 
-        if item.ident.name == sym::new
-            && let TraitItemKind::Fn(_, _) = item.kind
-            && let ret_ty = return_ty(cx, item.owner_id)
-            && let self_ty = TraitRef::identity(cx.tcx, item.owner_id.to_def_id()).self_ty()
-            && !ret_ty.contains(self_ty)
-        {
-            span_lint(
-                cx,
-                NEW_RET_NO_SELF,
-                item.span,
-                "methods called `new` usually return `Self`",
-            );
+            if item.ident.name == sym::new
+                && let ret_ty = return_ty(cx, item.owner_id)
+                && let self_ty = TraitRef::identity(cx.tcx, item.owner_id.to_def_id()).self_ty()
+                && !ret_ty.contains(self_ty)
+            {
+                span_lint(
+                    cx,
+                    NEW_RET_NO_SELF,
+                    item.span,
+                    "methods called `new` usually return `Self`",
+                );
+            }
         }
     }
 }
@@ -5719,184 +5681,4 @@ fn lint_binary_expr_with_method_call(cx: &LateContext<'_>, info: &mut BinaryExpr
     lint_with_both_lhs_and_rhs!(chars_last_cmp::check, cx, info);
     lint_with_both_lhs_and_rhs!(chars_next_cmp_with_unwrap::check, cx, info);
     lint_with_both_lhs_and_rhs!(chars_last_cmp_with_unwrap::check, cx, info);
-}
-
-const FN_HEADER: hir::FnHeader = hir::FnHeader {
-    safety: hir::HeaderSafety::Normal(hir::Safety::Safe),
-    constness: hir::Constness::NotConst,
-    asyncness: hir::IsAsync::NotAsync,
-    abi: ExternAbi::Rust,
-};
-
-struct ShouldImplTraitCase {
-    trait_name: &'static str,
-    method_name: Symbol,
-    param_count: usize,
-    fn_header: hir::FnHeader,
-    // implicit self kind expected (none, self, &self, ...)
-    self_kind: SelfKind,
-    // checks against the output type
-    output_type: OutType,
-    // certain methods with explicit lifetimes can't implement the equivalent trait method
-    lint_explicit_lifetime: bool,
-}
-impl ShouldImplTraitCase {
-    const fn new(
-        trait_name: &'static str,
-        method_name: Symbol,
-        param_count: usize,
-        fn_header: hir::FnHeader,
-        self_kind: SelfKind,
-        output_type: OutType,
-        lint_explicit_lifetime: bool,
-    ) -> ShouldImplTraitCase {
-        ShouldImplTraitCase {
-            trait_name,
-            method_name,
-            param_count,
-            fn_header,
-            self_kind,
-            output_type,
-            lint_explicit_lifetime,
-        }
-    }
-
-    fn lifetime_param_cond(&self, impl_item: &hir::ImplItem<'_>) -> bool {
-        self.lint_explicit_lifetime
-            || !impl_item.generics.params.iter().any(|p| {
-                matches!(
-                    p.kind,
-                    hir::GenericParamKind::Lifetime {
-                        kind: hir::LifetimeParamKind::Explicit
-                    }
-                )
-            })
-    }
-}
-
-#[rustfmt::skip]
-const TRAIT_METHODS: [ShouldImplTraitCase; 30] = [
-    ShouldImplTraitCase::new("std::ops::Add", sym::add,  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::convert::AsMut", sym::as_mut,  1,  FN_HEADER,  SelfKind::RefMut,  OutType::Ref, true),
-    ShouldImplTraitCase::new("std::convert::AsRef", sym::as_ref,  1,  FN_HEADER,  SelfKind::Ref,  OutType::Ref, true),
-    ShouldImplTraitCase::new("std::ops::BitAnd", sym::bitand,  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::ops::BitOr", sym::bitor,  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::ops::BitXor", sym::bitxor,  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::borrow::Borrow", sym::borrow,  1,  FN_HEADER,  SelfKind::Ref,  OutType::Ref, true),
-    ShouldImplTraitCase::new("std::borrow::BorrowMut", sym::borrow_mut,  1,  FN_HEADER,  SelfKind::RefMut,  OutType::Ref, true),
-    ShouldImplTraitCase::new("std::clone::Clone", sym::clone,  1,  FN_HEADER,  SelfKind::Ref,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::cmp::Ord", sym::cmp,  2,  FN_HEADER,  SelfKind::Ref,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::default::Default", kw::Default,  0,  FN_HEADER,  SelfKind::No,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::ops::Deref", sym::deref,  1,  FN_HEADER,  SelfKind::Ref,  OutType::Ref, true),
-    ShouldImplTraitCase::new("std::ops::DerefMut", sym::deref_mut,  1,  FN_HEADER,  SelfKind::RefMut,  OutType::Ref, true),
-    ShouldImplTraitCase::new("std::ops::Div", sym::div,  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::ops::Drop", sym::drop,  1,  FN_HEADER,  SelfKind::RefMut,  OutType::Unit, true),
-    ShouldImplTraitCase::new("std::cmp::PartialEq", sym::eq,  2,  FN_HEADER,  SelfKind::Ref,  OutType::Bool, true),
-    ShouldImplTraitCase::new("std::iter::FromIterator", sym::from_iter,  1,  FN_HEADER,  SelfKind::No,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::str::FromStr", sym::from_str,  1,  FN_HEADER,  SelfKind::No,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::hash::Hash", sym::hash,  2,  FN_HEADER,  SelfKind::Ref,  OutType::Unit, true),
-    ShouldImplTraitCase::new("std::ops::Index", sym::index,  2,  FN_HEADER,  SelfKind::Ref,  OutType::Ref, true),
-    ShouldImplTraitCase::new("std::ops::IndexMut", sym::index_mut,  2,  FN_HEADER,  SelfKind::RefMut,  OutType::Ref, true),
-    ShouldImplTraitCase::new("std::iter::IntoIterator", sym::into_iter,  1,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::ops::Mul", sym::mul,  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::ops::Neg", sym::neg,  1,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::iter::Iterator", sym::next,  1,  FN_HEADER,  SelfKind::RefMut,  OutType::Any, false),
-    ShouldImplTraitCase::new("std::ops::Not", sym::not,  1,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::ops::Rem", sym::rem,  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::ops::Shl", sym::shl,  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::ops::Shr", sym::shr,  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::ops::Sub", sym::sub,  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-];
-
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-enum SelfKind {
-    Value,
-    Ref,
-    RefMut,
-    No, // When we want the first argument type to be different than `Self`
-}
-
-impl SelfKind {
-    fn matches<'a>(self, cx: &LateContext<'a>, parent_ty: Ty<'a>, ty: Ty<'a>) -> bool {
-        fn matches_value<'a>(cx: &LateContext<'a>, parent_ty: Ty<'a>, ty: Ty<'a>) -> bool {
-            if ty == parent_ty {
-                true
-            } else if let Some(boxed_ty) = ty.boxed_ty() {
-                boxed_ty == parent_ty
-            } else if is_type_diagnostic_item(cx, ty, sym::Rc) || is_type_diagnostic_item(cx, ty, sym::Arc) {
-                if let ty::Adt(_, args) = ty.kind() {
-                    args.types().next() == Some(parent_ty)
-                } else {
-                    false
-                }
-            } else {
-                false
-            }
-        }
-
-        fn matches_ref<'a>(cx: &LateContext<'a>, mutability: hir::Mutability, parent_ty: Ty<'a>, ty: Ty<'a>) -> bool {
-            if let ty::Ref(_, t, m) = *ty.kind() {
-                return m == mutability && t == parent_ty;
-            }
-
-            let trait_sym = match mutability {
-                hir::Mutability::Not => sym::AsRef,
-                hir::Mutability::Mut => sym::AsMut,
-            };
-
-            let Some(trait_def_id) = cx.tcx.get_diagnostic_item(trait_sym) else {
-                return false;
-            };
-            implements_trait(cx, ty, trait_def_id, &[parent_ty.into()])
-        }
-
-        fn matches_none<'a>(cx: &LateContext<'a>, parent_ty: Ty<'a>, ty: Ty<'a>) -> bool {
-            !matches_value(cx, parent_ty, ty)
-                && !matches_ref(cx, hir::Mutability::Not, parent_ty, ty)
-                && !matches_ref(cx, hir::Mutability::Mut, parent_ty, ty)
-        }
-
-        match self {
-            Self::Value => matches_value(cx, parent_ty, ty),
-            Self::Ref => matches_ref(cx, hir::Mutability::Not, parent_ty, ty) || ty == parent_ty && is_copy(cx, ty),
-            Self::RefMut => matches_ref(cx, hir::Mutability::Mut, parent_ty, ty),
-            Self::No => matches_none(cx, parent_ty, ty),
-        }
-    }
-
-    #[must_use]
-    fn description(self) -> &'static str {
-        match self {
-            Self::Value => "`self` by value",
-            Self::Ref => "`self` by reference",
-            Self::RefMut => "`self` by mutable reference",
-            Self::No => "no `self`",
-        }
-    }
-}
-
-#[derive(Clone, Copy)]
-enum OutType {
-    Unit,
-    Bool,
-    Any,
-    Ref,
-}
-
-impl OutType {
-    fn matches(self, ty: &hir::FnRetTy<'_>) -> bool {
-        let is_unit = |ty: &hir::Ty<'_>| matches!(ty.kind, hir::TyKind::Tup(&[]));
-        match (self, ty) {
-            (Self::Unit, &hir::FnRetTy::DefaultReturn(_)) => true,
-            (Self::Unit, &hir::FnRetTy::Return(ty)) if is_unit(ty) => true,
-            (Self::Bool, &hir::FnRetTy::Return(ty)) if is_bool(ty) => true,
-            (Self::Any, &hir::FnRetTy::Return(ty)) if !is_unit(ty) => true,
-            (Self::Ref, &hir::FnRetTy::Return(ty)) => matches!(ty.kind, hir::TyKind::Ref(_, _)),
-            _ => false,
-        }
-    }
-}
-
-fn fn_header_equals(expected: hir::FnHeader, actual: hir::FnHeader) -> bool {
-    expected.constness == actual.constness && expected.safety == actual.safety && expected.asyncness == actual.asyncness
 }
