@@ -72,19 +72,29 @@ pub trait SupportedArchitectureTest {
                     return Err(format!("Error writing to mod_{i}.cpp: {error:?}"));
                 }
 
+                println!("Finished writing mod_{i}.cpp");
+
+                Ok(())
+            })
+            .collect::<Result<(), String>>()
+            .unwrap();
+
+        (0..chunk_count)
+            .map(|i| {
                 // compile this cpp file into a .o file.
                 //
                 // This is done because `cpp_compiler_wrapped` is None when
                 // the --generate-only flag is passed
+                println!("compiling mod_{i}.cpp");
                 if let Some(cpp_compiler) = cpp_compiler_wrapped.as_ref() {
                     let compile_output = cpp_compiler
                         .compile_object_file(&format!("mod_{i}.cpp"), &format!("mod_{i}.o"));
 
+                    println!("finished compiling mod_{i}.cpp");
                     if let Err(compile_error) = compile_output {
                         return Err(format!("Error compiling mod_{i}.cpp: {compile_error:?}"));
                     }
                 }
-
                 Ok(())
             })
             .collect::<Result<(), String>>()
