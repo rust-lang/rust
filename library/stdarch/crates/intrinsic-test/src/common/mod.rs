@@ -49,7 +49,7 @@ pub trait SupportedArchitectureTest {
     fn cpp_compilation(&self) -> Option<CppCompilation>;
 
     fn build_c_file(&self) -> bool {
-        let (chunk_size, chunk_count) = chunk_info(self.intrinsics().len());
+        let (chunk_size, chunk_count) = manual_chunk(self.intrinsics().len(), 100);
 
         let cpp_compiler_wrapped = self.cpp_compilation();
 
@@ -72,15 +72,6 @@ pub trait SupportedArchitectureTest {
                     return Err(format!("Error writing to mod_{i}.cpp: {error:?}"));
                 }
 
-                println!("Finished writing mod_{i}.cpp");
-
-                Ok(())
-            })
-            .collect::<Result<(), String>>()
-            .unwrap();
-
-        (0..chunk_count)
-            .map(|i| {
                 // compile this cpp file into a .o file.
                 //
                 // This is done because `cpp_compiler_wrapped` is None when
@@ -135,7 +126,7 @@ pub trait SupportedArchitectureTest {
     fn build_rust_file(&self) -> bool {
         std::fs::create_dir_all("rust_programs/src").unwrap();
 
-        let (chunk_size, chunk_count) = chunk_info(self.intrinsics().len());
+        let (chunk_size, chunk_count) = manual_chunk(self.intrinsics().len(), 100);
 
         let mut cargo = File::create("rust_programs/Cargo.toml").unwrap();
         write_bin_cargo_toml(&mut cargo, chunk_count).unwrap();
@@ -205,9 +196,13 @@ pub trait SupportedArchitectureTest {
     }
 }
 
-pub fn chunk_info(intrinsic_count: usize) -> (usize, usize) {
-    let available_parallelism = std::thread::available_parallelism().unwrap().get();
-    let chunk_size = intrinsic_count.div_ceil(Ord::min(available_parallelism, intrinsic_count));
+// pub fn chunk_info(intrinsic_count: usize) -> (usize, usize) {
+//     let available_parallelism = std::thread::available_parallelism().unwrap().get();
+//     let chunk_size = intrinsic_count.div_ceil(Ord::min(available_parallelism, intrinsic_count));
 
+//     (chunk_size, intrinsic_count.div_ceil(chunk_size))
+// }
+
+pub fn manual_chunk(intrinsic_count: usize, chunk_size: usize) -> (usize, usize) {
     (chunk_size, intrinsic_count.div_ceil(chunk_size))
 }
