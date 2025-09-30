@@ -111,7 +111,7 @@ pub(super) mod netc {
     }
 }
 
-pub use crate::sys::pal::winsock::{cleanup, cvt, cvt_gai, cvt_r, startup as init};
+pub use crate::sys::pal::winsock::{cvt, cvt_gai, cvt_r, startup as init};
 
 #[expect(missing_debug_implementations)]
 pub struct Socket(OwnedSocket);
