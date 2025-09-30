@@ -4,7 +4,6 @@
     clippy::let_unit_value,
     clippy::no_effect,
     clippy::toplevel_ref_arg,
-    clippy::uninlined_format_args,
     clippy::useless_vec
 )]
 
@@ -32,11 +31,11 @@ fn main() {
     // Lint
     let (x, y, z) = (a, b, c);
     {
-        println!("{} {} {}", x, y, z);
+        println!("{x} {y} {z}");
     }
     // Lint
     let (x, y, z) = (a, b, c);
-    println!("{} {} {}", x, y, z);
+    println!("{x} {y} {z}");
     // Ok
     foo!(a);
     // Ok
@@ -47,7 +46,7 @@ fn main() {
     // Ok
     let d = Some(5);
     match d {
-        Some(d) => println!("{}", d),
+        Some(d) => println!("{d}"),
         _ => println!("None"),
     }
     // Lint
@@ -55,7 +54,7 @@ fn main() {
     // Lint
     {
         let x = 29;
-        println!("x has a value of {}", x);
+        println!("x has a value of {x}");
     }
     // Lint
     {
@@ -67,18 +66,18 @@ fn main() {
     // Lint
     let p = Point { x: 0, y: 7 };
     let Point { x, y } = p;
-    println!("Coords: ({}, {})", x, y);
+    println!("Coords: ({x}, {y})");
     // Lint
     let Point { x: x1, y: y1 } = p;
-    println!("Coords: ({}, {})", x1, y1);
+    println!("Coords: ({x1}, {y1})");
     // Lint
     let x = 5;
     let ref r = x;
-    println!("Got a reference to {}", r);
+    println!("Got a reference to {r}");
     // Lint
     let mut x = 5;
     let ref mut mr = x;
-    println!("Got a mutable reference to {}", mr);
+    println!("Got a mutable reference to {mr}");
     // Lint
     let Point { x, y } = coords();
     let product = x * y;
@@ -122,7 +121,7 @@ fn issue_8723() {
 
     let (pre, suf) = val.split_at(idx);
     val = {
-        println!("{}", pre);
+        println!("{pre}");
         suf
     };
 
@@ -210,20 +209,20 @@ mod issue15018 {
         let x = 1;
         {
             let (x, y, z) = (a, b, c);
-            println!("{} {} {}", x, y, z);
+            println!("{x} {y} {z}");
         }
         println!("x = {x}");
     }
 
     fn not_used_later(a: i32, b: i32, c: i32) {
         let (x, y, z) = (a, b, c);
-        println!("{} {} {}", x, y, z)
+        println!("{x} {y} {z}")
     }
 
     #[allow(irrefutable_let_patterns)]
     fn not_used_later_but_shadowed(a: i32, b: i32, c: i32) {
         let (x, y, z) = (a, b, c);
-        println!("{} {} {}", x, y, z);
+        println!("{x} {y} {z}");
         let x = 1;
         println!("x = {x}");
     }
@@ -231,27 +230,27 @@ mod issue15018 {
     #[allow(irrefutable_let_patterns)]
     fn not_used_later_but_shadowed_nested(a: i32, b: i32, c: i32) {
         let (x, y, z) = (a, b, c);
-        println!("{} {} {}", x, y, z);
+        println!("{x} {x} {y}");
         if let (x, y, z) = (a, b, c) {
-            println!("{} {} {}", x, y, z)
+            println!("{x} {y} {z}")
         }
 
         {
             let x: i32 = 1;
             {
                 let (x, y, z) = (a, b, c);
-                println!("{} {} {}", x, y, z);
+                println!("{x} {y} {z}");
             }
             if let (x, y, z) = (a, x, c) {
-                println!("{} {} {}", x, y, z)
+                println!("{x} {y} {z}")
             }
         }
 
         {
             let (x, y, z) = (a, b, c);
-            println!("{} {} {}", x, y, z);
+            println!("{x} {y} {z}");
             let fn_ = |y| {
-                println!("{} {} {}", a, b, y);
+                println!("{a} {b} {y}");
             };
             fn_(c);
         }
