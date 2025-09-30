@@ -12,9 +12,7 @@ use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::{LangItem, Node, attrs, find_attr, intravisit};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::{Obligation, ObligationCauseCode, WellFormedLoc};
-use rustc_lint_defs::builtin::{
-    REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS, UNSUPPORTED_CALLING_CONVENTIONS,
-};
+use rustc_lint_defs::builtin::UNSUPPORTED_CALLING_CONVENTIONS;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
 use rustc_middle::middle::stability::EvalResult;
@@ -1510,9 +1508,27 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
         return;
     }
 
+    // For each field, figure out if it has "trivial" layout (i.e., is a 1-ZST).
+    // Even some 1-ZST fields are not allowed though, if they have `non_exhaustive` or private
+    // fields or `repr(C)`. We call those fields "unsuited".
+    struct FieldInfo<'tcx> {
+        span: Span,
+        trivial: bool,
+        unsuited: Option<UnsuitedInfo<'tcx>>,
+    }
+    struct UnsuitedInfo<'tcx> {
+        /// The source of the problem, a type that is found somewhere within the field type.
+        ty: Ty<'tcx>,
+        reason: UnsuitedReason,
+    }
+    enum UnsuitedReason {
+        NonExhaustive,
+        PrivateField,
+        ReprC,
+        Uninhabited,
+    }
+
     let typing_env = ty::TypingEnv::non_body_analysis(tcx, adt.did());
-    // For each field, figure out if it's known to have "trivial" layout (i.e., is a 1-ZST), with
-    // "known" respecting #[non_exhaustive] attributes.
     let field_infos = adt.all_fields().map(|field| {
         let ty = field.ty(tcx, GenericArgs::identity_for_item(tcx, field.did));
         let layout = tcx.layout_of(typing_env.as_query_input(ty));
@@ -1520,22 +1536,18 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
         let span = tcx.hir_span_if_local(field.did).unwrap();
         let trivial = layout.is_ok_and(|layout| layout.is_1zst());
         if !trivial {
-            return (span, trivial, None);
+            // No need to even compute `unsuited`.
+            return FieldInfo { span, trivial, unsuited: None };
         }
-        // Even some 1-ZST fields are not allowed though, if they have `non_exhaustive`.
 
-        fn check_non_exhaustive<'tcx>(
+        fn check_unsuited<'tcx>(
             tcx: TyCtxt<'tcx>,
-            typing_env: ty::TypingEnv<'tcx>,
-            t: Ty<'tcx>,
-        ) -> ControlFlow<(&'static str, DefId, GenericArgsRef<'tcx>, bool)> {
-            // We can encounter projections during traversal, so ensure the type is normalized.
-            let t = tcx.try_normalize_erasing_regions(typing_env, t).unwrap_or(t);
-            match t.kind() {
-                ty::Tuple(list) => {
-                    list.iter().try_for_each(|t| check_non_exhaustive(tcx, typing_env, t))
-                }
-                ty::Array(ty, _) => check_non_exhaustive(tcx, typing_env, *ty),
+            adt: DefId,
+            ty: Ty<'tcx>,
+        ) -> ControlFlow<UnsuitedInfo<'tcx>> {
+            match ty.kind() {
+                ty::Tuple(list) => list.iter().try_for_each(|t| check_unsuited(tcx, adt, t)),
+                ty::Array(ty, _) => check_unsuited(tcx, adt, *ty),
                 ty::Adt(def, args) => {
                     if !def.did().is_local()
                         && !find_attr!(
@@ -1550,28 +1562,44 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
                                 .any(ty::VariantDef::is_field_list_non_exhaustive);
                         let has_priv = def.all_fields().any(|f| !f.vis.is_public());
                         if non_exhaustive || has_priv {
-                            return ControlFlow::Break((
-                                def.descr(),
-                                def.did(),
-                                args,
-                                non_exhaustive,
-                            ));
+                            return ControlFlow::Break(UnsuitedInfo {
+                                ty,
+                                reason: if non_exhaustive {
+                                    UnsuitedReason::NonExhaustive
+                                } else {
+                                    UnsuitedReason::PrivateField
+                                },
+                            });
                         }
+                    }
+                    if def.repr().c() {
+                        return ControlFlow::Break(UnsuitedInfo {
+                            ty,
+                            reason: UnsuitedReason::ReprC,
+                        });
                     }
                     def.all_fields()
                         .map(|field| field.ty(tcx, args))
-                        .try_for_each(|t| check_non_exhaustive(tcx, typing_env, t))
+                        .try_for_each(|t| check_unsuited(tcx, adt, t))
                 }
                 _ => ControlFlow::Continue(()),
             }
         }
 
-        (span, trivial, check_non_exhaustive(tcx, typing_env, ty).break_value())
+        FieldInfo {
+            span,
+            trivial,
+            unsuited: check_unsuited(tcx, adt.did(), ty).break_value().or_else(|| {
+                // We don't need to check this recursively, a single top-level check suffices.
+                let uninhabited = layout.is_ok_and(|layout| layout.is_uninhabited());
+                uninhabited.then_some(UnsuitedInfo { ty, reason: UnsuitedReason::Uninhabited })
+            }),
+        }
     });
 
     let non_trivial_fields = field_infos
         .clone()
-        .filter_map(|(span, trivial, _non_exhaustive)| if !trivial { Some(span) } else { None });
+        .filter_map(|field| if !field.trivial { Some(field.span) } else { None });
     let non_trivial_count = non_trivial_fields.clone().count();
     if non_trivial_count >= 2 {
         bad_non_zero_sized_fields(
@@ -1583,36 +1611,34 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
         );
         return;
     }
-    let mut prev_non_exhaustive_1zst = false;
-    for (span, _trivial, non_exhaustive_1zst) in field_infos {
-        if let Some((descr, def_id, args, non_exhaustive)) = non_exhaustive_1zst {
+
+    let mut prev_unsuited_1zst = false;
+    for field in field_infos {
+        if let Some(unsuited) = field.unsuited {
+            assert!(field.trivial);
             // If there are any non-trivial fields, then there can be no non-exhaustive 1-zsts.
             // Otherwise, it's only an issue if there's >1 non-exhaustive 1-zst.
-            if non_trivial_count > 0 || prev_non_exhaustive_1zst {
-                tcx.node_span_lint(
-                    REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS,
-                    tcx.local_def_id_to_hir_id(adt.did().expect_local()),
-                    span,
-                    |lint| {
-                        lint.primary_message(
-                            "zero-sized fields in `repr(transparent)` cannot \
+            if non_trivial_count > 0 || prev_unsuited_1zst {
+                let mut diag = tcx.dcx().struct_span_err(
+                    field.span,
+                    "zero-sized fields in `repr(transparent)` cannot \
                              contain external non-exhaustive types",
-                        );
-                        let note = if non_exhaustive {
-                            "is marked with `#[non_exhaustive]`"
-                        } else {
-                            "contains private fields"
-                        };
-                        let field_ty = tcx.def_path_str_with_args(def_id, args);
-                        lint.note(format!(
-                            "this {descr} contains `{field_ty}`, which {note}, \
+                );
+                let note = match unsuited.reason {
+                    UnsuitedReason::NonExhaustive => "is marked with `#[non_exhaustive]`",
+                    UnsuitedReason::PrivateField => "contains private fields",
+                    UnsuitedReason::ReprC => "is marked with `#[repr(C)]`",
+                    UnsuitedReason::Uninhabited => "is not inhabited",
+                };
+                diag.note(format!(
+                    "this field contains `{field_ty}`, which {note}, \
                                 and makes it not a breaking change to become \
-                                non-zero-sized in the future."
-                        ));
-                    },
-                )
+                                non-zero-sized in the future.",
+                    field_ty = unsuited.ty,
+                ));
+                diag.emit();
             } else {
-                prev_non_exhaustive_1zst = true;
+                prev_unsuited_1zst = true;
             }
         }
     }

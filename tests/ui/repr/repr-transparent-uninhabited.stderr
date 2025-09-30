@@ -1,0 +1,18 @@
+error: zero-sized fields in `repr(transparent)` cannot contain external non-exhaustive types
+  --> $DIR/repr-transparent-uninhabited.rs:16:22
+   |
+LL | pub struct T5(Sized, Void);
+   |                      ^^^^
+   |
+   = note: this field contains `Void`, which is not inhabited, and makes it not a breaking change to become non-zero-sized in the future.
+
+error: zero-sized fields in `repr(transparent)` cannot contain external non-exhaustive types
+  --> $DIR/repr-transparent-uninhabited.rs:20:15
+   |
+LL | pub struct T6(!, Sized);
+   |               ^
+   |
+   = note: this field contains `!`, which is not inhabited, and makes it not a breaking change to become non-zero-sized in the future.
+
+error: aborting due to 2 previous errors
+
