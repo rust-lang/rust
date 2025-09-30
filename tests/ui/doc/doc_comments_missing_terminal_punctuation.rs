@@ -80,9 +80,10 @@ mod module {
 }
 
 enum Trailers {
-    /// (Sometimes the last sentence is in parentheses, and that's ok.)
-    ParensPassing,
-    /// (But sometimes it is missing a period)
+    /// Sometimes the doc comment ends with parentheses (like this)
+    //~^ doc_comments_missing_terminal_punctuation
+    EndsWithParens,
+    /// (Sometimes the last sentence is in parentheses, but there is no special treatment of this.)
     //~^ doc_comments_missing_terminal_punctuation
     ParensFailing,
     /// **Sometimes the last sentence is in bold, and that's ok.**

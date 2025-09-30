@@ -27,8 +27,7 @@ pub fn check(cx: &LateContext<'_>, doc: &str, fragments: Fragments<'_>) {
 }
 
 #[must_use]
-/// If punctuation is missing, returns the docstring and the offset
-/// where new punctuation should be inserted.
+/// If punctuation is missing, returns the offset where new punctuation should be inserted.
 fn is_missing_punctuation(doc_string: &str) -> Option<usize> {
     const TERMINAL_PUNCTUATION_MARKS: &[char] = &['.', '?', '!', '…'];
 
@@ -63,19 +62,19 @@ fn is_missing_punctuation(doc_string: &str) -> Option<usize> {
             Event::Code(..) | Event::Text(..) | Event::Start(Tag::Link { .. }) | Event::End(TagEnd::Link)
                 if no_report_depth == 0 && !offset.is_empty() =>
             {
-                text_offset = Some(offset);
+                text_offset = Some(offset.end);
             },
             _ => {},
         }
     }
 
     let text_offset = text_offset?;
-    if doc_string[..text_offset.end]
-        .trim_end_matches(|c: char| c.is_whitespace() || c == ')' || c == ']' || c == '}')
+    if doc_string[..text_offset]
+        .trim_end()
         .ends_with(TERMINAL_PUNCTUATION_MARKS)
     {
         None
     } else {
-        Some(text_offset.end)
+        Some(text_offset)
     }
 }
