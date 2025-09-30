@@ -708,7 +708,7 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// These qualifiers have no effect.
+    /// These qualifiers have no effect, as `const _` items are unnameable.
     pub UNUSED_VISIBILITIES,
     Warn,
     "detect visibility qualifiers on `const _` items"
