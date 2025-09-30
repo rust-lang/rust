@@ -341,7 +341,7 @@ pub struct Weak<
     // but it is not necessarily a valid pointer.
     // `Weak::new` sets this to `usize::MAX` so that it doesn’t need
     // to allocate space on the heap. That's not a value a real pointer
-    // will ever have because RcInner has alignment at least 2.
+    // will ever have because ArcInner has alignment at least 2.
     ptr: NonNull<ArcInner<T>>,
     alloc: A,
 }
@@ -366,7 +366,9 @@ impl<T: ?Sized, A: Allocator> fmt::Debug for Weak<T, A> {
 // This is repr(C) to future-proof against possible field-reordering, which
 // would interfere with otherwise safe [into|from]_raw() of transmutable
 // inner types.
-#[repr(C)]
+// Unlike RcInner, repr(align(2)) is not strictly required because atomic types
+// have the alignment same as its size, but we use it for consistency and clarity.
+#[repr(C, align(2))]
 struct ArcInner<T: ?Sized> {
     strong: Atomic<usize>,
 
@@ -1613,9 +1615,9 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     pub fn as_ptr(this: &Self) -> *const T {
         let ptr: *mut ArcInner<T> = NonNull::as_ptr(this.ptr);
 
-        // SAFETY: This cannot go through Deref::deref or RcInnerPtr::inner because
+        // SAFETY: This cannot go through Deref::deref or ArcInnerPtr::inner because
         // this is required to retain raw/mut provenance such that e.g. `get_mut` can
-        // write through the pointer after the Rc is recovered through `from_raw`.
+        // write through the pointer after the Arc is recovered through `from_raw`.
         unsafe { &raw mut (*ptr).data }
     }
 
@@ -2450,7 +2452,7 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     /// If any other `Arc` or [`Weak`] pointers to the same allocation exist, then
     /// they must not be dereferenced or have active borrows for the duration
     /// of the returned borrow, and their inner type must be exactly the same as the
-    /// inner type of this Rc (including lifetimes). This is trivially the case if no
+    /// inner type of this Arc (including lifetimes). This is trivially the case if no
     /// such pointers exist, for example immediately after `Arc::new`.
     ///
     /// # Examples
@@ -3022,7 +3024,7 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
             // Otherwise, we're guaranteed the pointer came from a nondangling Weak.
             // SAFETY: data_offset is safe to call, as ptr references a real (potentially dropped) T.
             let offset = unsafe { data_offset(ptr) };
-            // Thus, we reverse the offset to get the whole RcInner.
+            // Thus, we reverse the offset to get the whole ArcInner.
             // SAFETY: the pointer originated from a Weak, so this offset is safe.
             unsafe { ptr.byte_sub(offset) as *mut ArcInner<T> }
         };
@@ -4015,7 +4017,7 @@ impl<T: ?Sized, A: Allocator> Unpin for Arc<T, A> {}
 /// valid instance of T, but the T is allowed to be dropped.
 unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> usize {
     // Align the unsized value to the end of the ArcInner.
-    // Because RcInner is repr(C), it will always be the last field in memory.
+    // Because ArcInner is repr(C), it will always be the last field in memory.
     // SAFETY: since the only unsized types possible are slices, trait objects,
     // and extern types, the input safety requirement is currently enough to
     // satisfy the requirements of align_of_val_raw; this is an implementation
