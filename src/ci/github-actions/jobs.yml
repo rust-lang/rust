@@ -90,6 +90,10 @@ envs:
   pr:
     PR_CI_JOB: 1
 
+  env-macos-xcode: &env-macos-xcode
+    SELECT_XCODE: /Applications/Xcode_15.4.app
+    USE_XCODE_CLANG: 1
+
 jobs:
   dist-x86_64-linux: &job-dist-x86_64-linux
     name: dist-x86_64-linux
@@ -430,8 +434,7 @@ auto:
       # Ensure that host tooling is built to support our minimum support macOS version.
       MACOSX_DEPLOYMENT_TARGET: 10.12
       MACOSX_STD_DEPLOYMENT_TARGET: 10.12
-      SELECT_XCODE: /Applications/Xcode_15.4.app
-      USE_XCODE_CLANG: 1
+      <<: *env-macos-xcode
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-macos
@@ -446,8 +449,7 @@ auto:
       # FIXME(madsmtm): This might be redundant, as we're not building host tooling here (?)
       MACOSX_DEPLOYMENT_TARGET: 10.12
       MACOSX_STD_DEPLOYMENT_TARGET: 10.12
-      SELECT_XCODE: /Applications/Xcode_15.4.app
-      USE_XCODE_CLANG: 1
+      <<: *env-macos-xcode
     <<: *job-macos
 
   - name: dist-aarch64-apple
@@ -468,8 +470,7 @@ auto:
       # supports the hardware.
       MACOSX_DEPLOYMENT_TARGET: 11.0
       MACOSX_STD_DEPLOYMENT_TARGET: 11.0
-      SELECT_XCODE: /Applications/Xcode_15.4.app
-      USE_XCODE_CLANG: 1
+      <<: *env-macos-xcode
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-macos
@@ -483,12 +484,11 @@ auto:
         --enable-sanitizers
         --enable-profiler
         --set rust.jemalloc
-      SELECT_XCODE: /Applications/Xcode_15.4.app
-      USE_XCODE_CLANG: 1
       # Aarch64 tooling only needs to support macOS 11.0 and up as nothing else
       # supports the hardware, so only need to test it there.
       MACOSX_DEPLOYMENT_TARGET: 11.0
       MACOSX_STD_DEPLOYMENT_TARGET: 11.0
+      <<: *env-macos-xcode
     <<: *job-macos
 
   ######################
