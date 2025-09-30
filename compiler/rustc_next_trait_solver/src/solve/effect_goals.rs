@@ -234,12 +234,12 @@ where
         let self_ty = goal.predicate.self_ty();
         let (inputs_and_output, def_id, args) =
             structural_traits::extract_fn_def_from_const_callable(cx, self_ty)?;
+        let (inputs, output) = ecx.instantiate_binder_with_infer(inputs_and_output);
 
         // A built-in `Fn` impl only holds if the output is sized.
         // (FIXME: technically we only need to check this if the type is a fn ptr...)
-        let output_is_sized_pred = inputs_and_output.map_bound(|(_, output)| {
-            ty::TraitRef::new(cx, cx.require_trait_lang_item(SolverTraitLangItem::Sized), [output])
-        });
+        let output_is_sized_pred =
+            ty::TraitRef::new(cx, cx.require_trait_lang_item(SolverTraitLangItem::Sized), [output]);
         let requirements = cx
             .const_conditions(def_id.into())
             .iter_instantiated(cx, args)
@@ -251,15 +251,12 @@ where
             })
             .chain([(GoalSource::ImplWhereBound, goal.with(cx, output_is_sized_pred))]);
 
-        let pred = inputs_and_output
-            .map_bound(|(inputs, _)| {
-                ty::TraitRef::new(
-                    cx,
-                    goal.predicate.def_id(),
-                    [goal.predicate.self_ty(), Ty::new_tup(cx, inputs.as_slice())],
-                )
-            })
-            .to_host_effect_clause(cx, goal.predicate.constness);
+        let pred = ty::Binder::dummy(ty::TraitRef::new(
+            cx,
+            goal.predicate.def_id(),
+            [goal.predicate.self_ty(), inputs],
+        ))
+        .to_host_effect_clause(cx, goal.predicate.constness);
 
         Self::probe_and_consider_implied_clause(
             ecx,
