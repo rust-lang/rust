@@ -459,6 +459,7 @@ auto:
         --stage 2
         --host=x86_64-apple-darwin
         --target=x86_64-apple-darwin
+        --set llvm.download-ci-llvm=false
         &&
         ./x.py test
         --stage 2
