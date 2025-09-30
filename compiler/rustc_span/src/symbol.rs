@@ -191,6 +191,7 @@ symbols! {
         Borrow,
         BorrowMut,
         Break,
+        BuildHasher,
         C,
         CStr,
         C_dash_unwind: "C-unwind",
