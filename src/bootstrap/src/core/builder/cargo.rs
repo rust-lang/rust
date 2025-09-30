@@ -664,23 +664,15 @@ impl Builder<'_> {
             rustflags.arg(sysroot_str);
         }
 
-        let use_new_symbol_mangling = match self.config.rust_new_symbol_mangling {
-            Some(setting) => {
-                // If an explicit setting is given, use that
-                setting
+        let use_new_symbol_mangling = self.config.rust_new_symbol_mangling.or_else(|| {
+            if mode != Mode::Std {
+                // The compiler and tools default to the new scheme
+                Some(true)
+            } else {
+                // std follows the flag's default, which per compiler-team#938 is v0 on nightly
+                None
             }
-            // Per compiler-team#938, v0 mangling is used on nightly
-            None if self.config.channel == "dev" || self.config.channel == "nightly" => true,
-            None => {
-                if mode == Mode::Std {
-                    // The standard library defaults to the legacy scheme
-                    false
-                } else {
-                    // The compiler and tools default to the new scheme
-                    true
-                }
-            }
-        };
+        });
 
         // By default, windows-rs depends on a native library that doesn't get copied into the
         // sysroot. Passing this cfg enables raw-dylib support instead, which makes the native
@@ -691,11 +683,11 @@ impl Builder<'_> {
             rustflags.arg("--cfg=windows_raw_dylib");
         }
 
-        if use_new_symbol_mangling {
-            rustflags.arg("-Csymbol-mangling-version=v0");
-        } else {
-            rustflags.arg("-Csymbol-mangling-version=legacy");
-        }
+        rustflags.arg(match use_new_symbol_mangling {
+            Some(true) => "-Csymbol-mangling-version=v0",
+            Some(false) => "-Csymbol-mangling-version=legacy",
+            None => "",
+        });
 
         // Always enable move/copy annotations for profiler visibility (non-stage0 only).
         // Note that -Zannotate-moves is only effective with debugging info enabled.
