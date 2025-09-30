@@ -130,7 +130,7 @@ either:
 
 ## Cross-compilation toolchains and C code
 
-This target requires the [Hexagon SDK toolchain for C interoperability](https://softwarecenter.qualcomm.com/api/download/software/sdks/Hexagon_SDK/Linux/Debian/6.3.0.0/Hexagon_SDK.zip):
+This target requires the proprietary [Hexagon SDK toolchain for C interoperability](https://softwarecenter.qualcomm.com/catalog/item/Hexagon_SDK):
 
 - **SDK Path**: `/opt/Hexagon_SDK/6.3.0.0/`
 - **Toolchain**: Use `hexagon-clang` from the Hexagon SDK
@@ -144,7 +144,7 @@ This target requires the [Hexagon SDK toolchain for C interoperability](https://
 #![no_std]
 extern crate std;
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn rust_function() -> i32 {
     // Your Rust code here
     42

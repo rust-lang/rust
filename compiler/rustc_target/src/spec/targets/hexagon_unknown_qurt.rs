@@ -5,7 +5,7 @@ pub(crate) fn target() -> Target {
     pre_link_args
         .entry(LinkerFlavor::Unix(Cc::Yes))
         .or_default()
-        .extend(["-G0".into()].into_iter());
+        .extend(["-G0".into()]);
 
     Target {
         llvm_target: "hexagon-unknown-elf".into(),
