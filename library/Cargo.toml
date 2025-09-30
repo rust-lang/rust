@@ -59,6 +59,8 @@ rustflags = ["-Cpanic=abort"]
 # in the user's profile.
 [profile.dist]
 inherits = "release"
+codegen-units = 1
+debug = 1 # "limited"
 rustflags = [
     # Unconditionally embedding bitcode is necessary for when users enable LTO.
     # Until Cargo can rebuild the standard library with the user profile's `lto`
