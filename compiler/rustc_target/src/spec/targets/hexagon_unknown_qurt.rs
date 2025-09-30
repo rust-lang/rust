@@ -2,10 +2,7 @@ use crate::spec::{Cc, LinkerFlavor, Target, TargetMetadata, TargetOptions, cvs};
 
 pub(crate) fn target() -> Target {
     let mut pre_link_args = std::collections::BTreeMap::<LinkerFlavor, Vec<_>>::new();
-    pre_link_args
-        .entry(LinkerFlavor::Unix(Cc::Yes))
-        .or_default()
-        .extend(["-G0".into()]);
+    pre_link_args.entry(LinkerFlavor::Unix(Cc::Yes)).or_default().extend(["-G0".into()]);
 
     Target {
         llvm_target: "hexagon-unknown-elf".into(),
