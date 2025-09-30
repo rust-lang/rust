@@ -139,6 +139,17 @@ impl TryFrom<SolverDefId> for GenericDefId {
     }
 }
 
+impl SolverDefId {
+    #[inline]
+    #[track_caller]
+    pub fn expect_opaque_ty(self) -> InternedOpaqueTyId {
+        match self {
+            SolverDefId::InternedOpaqueTyId(it) => it,
+            _ => panic!("expected opaque type, found {self:?}"),
+        }
+    }
+}
+
 impl<'db> inherent::DefId<DbInterner<'db>> for SolverDefId {
     fn as_local(self) -> Option<SolverDefId> {
         Some(self)

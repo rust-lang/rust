@@ -22,8 +22,8 @@ macro_rules! not_supported {
     };
 }
 
-impl Evaluator<'_> {
-    fn detect_simd_ty(&self, ty: &Ty) -> Result<(usize, Ty)> {
+impl<'db> Evaluator<'db> {
+    fn detect_simd_ty(&self, ty: &Ty) -> Result<'db, (usize, Ty)> {
         match ty.kind(Interner) {
             TyKind::Adt(id, subst) => {
                 let len = match subst.as_slice(Interner).get(1).and_then(|it| it.constant(Interner))
@@ -74,7 +74,7 @@ impl Evaluator<'_> {
         destination: Interval,
         _locals: &Locals,
         _span: MirSpan,
-    ) -> Result<()> {
+    ) -> Result<'db, ()> {
         match name {
             "and" | "or" | "xor" => {
                 let [left, right] = args else {

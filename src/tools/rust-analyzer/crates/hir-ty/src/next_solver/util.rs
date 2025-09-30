@@ -413,7 +413,7 @@ pub(crate) fn for_trait_impls(
     let trait_module = trait_id.module(db);
     let type_module = match self_ty_fp {
         Some(TyFingerprint::Adt(adt_id)) => Some(adt_id.module(db)),
-        Some(TyFingerprint::ForeignType(type_id)) => Some(from_foreign_def_id(type_id).module(db)),
+        Some(TyFingerprint::ForeignType(type_id)) => Some(type_id.module(db)),
         Some(TyFingerprint::Dyn(trait_id)) => Some(trait_id.module(db)),
         _ => None,
     };

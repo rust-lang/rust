@@ -1,7 +1,8 @@
 //! Things related to generic args in the next-trait-solver.
 
-use hir_def::GenericParamId;
+use hir_def::{GenericDefId, GenericParamId};
 use intern::{Interned, Symbol};
+use rustc_type_ir::inherent::Const as _;
 use rustc_type_ir::{
     ClosureArgs, CollectAndApply, ConstVid, CoroutineArgs, CoroutineClosureArgs, FnSig, FnSigTys,
     GenericArgKind, IntTy, Interner, TermKind, TyKind, TyVid, TypeFoldable, TypeVisitable,
@@ -216,6 +217,59 @@ impl<'db> GenericArgs<'db> {
         interner.mk_args(&args)
     }
 
+    /// Like `for_item`, but prefers the default of a parameter if it has any.
+    pub fn for_item_with_defaults<F>(
+        interner: DbInterner<'db>,
+        def_id: GenericDefId,
+        mut fallback: F,
+    ) -> GenericArgs<'db>
+    where
+        F: FnMut(&Symbol, u32, GenericParamId, &[GenericArg<'db>]) -> GenericArg<'db>,
+    {
+        let defaults = interner.db.generic_defaults_ns(def_id);
+        Self::for_item(interner, def_id.into(), |name, idx, id, prev| {
+            match defaults.get(idx as usize) {
+                Some(default) => default.instantiate(interner, prev),
+                None => fallback(name, idx, id, prev),
+            }
+        })
+    }
+
+    /// Like `for_item()`, but calls first uses the args from `first`.
+    pub fn fill_rest<F>(
+        interner: DbInterner<'db>,
+        def_id: SolverDefId,
+        first: impl IntoIterator<Item = GenericArg<'db>>,
+        mut fallback: F,
+    ) -> GenericArgs<'db>
+    where
+        F: FnMut(&Symbol, u32, GenericParamId, &[GenericArg<'db>]) -> GenericArg<'db>,
+    {
+        let mut iter = first.into_iter();
+        Self::for_item(interner, def_id, |name, idx, id, prev| {
+            iter.next().unwrap_or_else(|| fallback(name, idx, id, prev))
+        })
+    }
+
+    /// Appends default param values to `first` if needed. Params without default will call `fallback()`.
+    pub fn fill_with_defaults<F>(
+        interner: DbInterner<'db>,
+        def_id: GenericDefId,
+        first: impl IntoIterator<Item = GenericArg<'db>>,
+        mut fallback: F,
+    ) -> GenericArgs<'db>
+    where
+        F: FnMut(&Symbol, u32, GenericParamId, &[GenericArg<'db>]) -> GenericArg<'db>,
+    {
+        let defaults = interner.db.generic_defaults_ns(def_id);
+        Self::fill_rest(interner, def_id.into(), first, |name, idx, id, prev| {
+            defaults
+                .get(idx as usize)
+                .map(|default| default.instantiate(interner, prev))
+                .unwrap_or_else(|| fallback(name, idx, id, prev))
+        })
+    }
+
     fn fill_item<F>(
         args: &mut SmallVec<[GenericArg<'db>; 8]>,
         interner: DbInterner<'_>,
@@ -270,6 +324,18 @@ impl<'db> GenericArgs<'db> {
                 unreachable!("unexpected closure sig");
             }
         }
+    }
+
+    pub fn types(self) -> impl Iterator<Item = Ty<'db>> {
+        self.iter().filter_map(|it| it.as_type())
+    }
+
+    pub fn consts(self) -> impl Iterator<Item = Const<'db>> {
+        self.iter().filter_map(|it| it.as_const())
+    }
+
+    pub fn regions(self) -> impl Iterator<Item = Region<'db>> {
+        self.iter().filter_map(|it| it.as_region())
     }
 }
 

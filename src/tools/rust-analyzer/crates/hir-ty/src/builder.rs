@@ -15,7 +15,10 @@ use crate::{
     error_lifetime,
     generics::generics,
     infer::unify::InferenceTable,
-    next_solver::{DbInterner, EarlyBinder, mapping::ChalkToNextSolver},
+    next_solver::{
+        DbInterner, EarlyBinder,
+        mapping::{ChalkToNextSolver, NextSolverToChalk},
+    },
     primitive, to_assoc_type_id, to_chalk_trait_id,
 };
 
@@ -141,10 +144,13 @@ impl<D> TyBuilder<D> {
 
     #[tracing::instrument(skip_all)]
     pub(crate) fn fill_with_inference_vars(self, table: &mut InferenceTable<'_>) -> Self {
-        self.fill(|x| match x {
-            ParamKind::Type => table.new_type_var().cast(Interner),
-            ParamKind::Const(ty) => table.new_const_var(ty.clone()).cast(Interner),
-            ParamKind::Lifetime => table.new_lifetime_var().cast(Interner),
+        self.fill(|x| {
+            match x {
+                ParamKind::Type => crate::next_solver::GenericArg::Ty(table.next_ty_var()),
+                ParamKind::Const(_) => table.next_const_var().into(),
+                ParamKind::Lifetime => table.next_region_var().into(),
+            }
+            .to_chalk(table.interner())
         })
     }
 

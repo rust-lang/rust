@@ -11,7 +11,7 @@ use crate::{
 
 use super::{MirEvalError, interpret_mir};
 
-fn eval_main(db: &TestDB, file_id: EditionedFileId) -> Result<(String, String), MirEvalError> {
+fn eval_main(db: &TestDB, file_id: EditionedFileId) -> Result<(String, String), MirEvalError<'_>> {
     salsa::attach(db, || {
         let module_id = db.module_for_file(file_id.file_id(db));
         let def_map = module_id.def_map(db);
@@ -114,7 +114,7 @@ fn check_panic(#[rust_analyzer::rust_fixture] ra_fixture: &str, expected_panic: 
 
 fn check_error_with(
     #[rust_analyzer::rust_fixture] ra_fixture: &str,
-    expect_err: impl FnOnce(MirEvalError) -> bool,
+    expect_err: impl FnOnce(MirEvalError<'_>) -> bool,
 ) {
     let (db, file_ids) = TestDB::with_many_files(ra_fixture);
     salsa::attach(&db, || {

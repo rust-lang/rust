@@ -4,8 +4,8 @@ use base_db::Crate;
 use chalk_ir::{BoundVar, DebruijnIndex, cast::Cast};
 use hir_def::{
     EnumVariantId, GeneralConstId, HasModule as _, StaticId,
-    expr_store::{Body, HygieneId, path::Path},
-    hir::{Expr, ExprId},
+    expr_store::{HygieneId, path::Path},
+    hir::Expr,
     resolver::{Resolver, ValueNs},
     type_ref::LiteralConstRef,
 };
@@ -19,13 +19,12 @@ use crate::{
     db::HirDatabase,
     display::DisplayTarget,
     generics::Generics,
-    infer::InferenceContext,
     lower::ParamLoweringMode,
     next_solver::{DbInterner, mapping::ChalkToNextSolver},
     to_placeholder_idx,
 };
 
-use super::mir::{MirEvalError, MirLowerError, interpret_mir, lower_to_mir, pad16};
+use super::mir::{MirEvalError, MirLowerError, interpret_mir, pad16};
 
 /// Extension trait for [`Const`]
 pub trait ConstExt {
@@ -56,12 +55,12 @@ impl ConstExt for Const {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ConstEvalError {
-    MirLowerError(MirLowerError),
-    MirEvalError(MirEvalError),
+pub enum ConstEvalError<'db> {
+    MirLowerError(MirLowerError<'db>),
+    MirEvalError(MirEvalError<'db>),
 }
 
-impl ConstEvalError {
+impl ConstEvalError<'_> {
     pub fn pretty_print(
         &self,
         f: &mut String,
@@ -80,8 +79,8 @@ impl ConstEvalError {
     }
 }
 
-impl From<MirLowerError> for ConstEvalError {
-    fn from(value: MirLowerError) -> Self {
+impl<'db> From<MirLowerError<'db>> for ConstEvalError<'db> {
+    fn from(value: MirLowerError<'db>) -> Self {
         match value {
             MirLowerError::ConstEvalError(_, e) => *e,
             _ => ConstEvalError::MirLowerError(value),
@@ -89,8 +88,8 @@ impl From<MirLowerError> for ConstEvalError {
     }
 }
 
-impl From<MirEvalError> for ConstEvalError {
-    fn from(value: MirEvalError) -> Self {
+impl<'db> From<MirEvalError<'db>> for ConstEvalError<'db> {
+    fn from(value: MirEvalError<'db>) -> Self {
         ConstEvalError::MirEvalError(value)
     }
 }
@@ -225,35 +224,35 @@ pub fn try_const_isize(db: &dyn HirDatabase, c: &Const) -> Option<i128> {
     }
 }
 
-pub(crate) fn const_eval_cycle_result(
-    _: &dyn HirDatabase,
+pub(crate) fn const_eval_cycle_result<'db>(
+    _: &'db dyn HirDatabase,
     _: GeneralConstId,
     _: Substitution,
-    _: Option<Arc<TraitEnvironment<'_>>>,
-) -> Result<Const, ConstEvalError> {
+    _: Option<Arc<TraitEnvironment<'db>>>,
+) -> Result<Const, ConstEvalError<'db>> {
     Err(ConstEvalError::MirLowerError(MirLowerError::Loop))
 }
 
-pub(crate) fn const_eval_static_cycle_result(
-    _: &dyn HirDatabase,
+pub(crate) fn const_eval_static_cycle_result<'db>(
+    _: &'db dyn HirDatabase,
     _: StaticId,
-) -> Result<Const, ConstEvalError> {
+) -> Result<Const, ConstEvalError<'db>> {
     Err(ConstEvalError::MirLowerError(MirLowerError::Loop))
 }
 
-pub(crate) fn const_eval_discriminant_cycle_result(
-    _: &dyn HirDatabase,
+pub(crate) fn const_eval_discriminant_cycle_result<'db>(
+    _: &'db dyn HirDatabase,
     _: EnumVariantId,
-) -> Result<i128, ConstEvalError> {
+) -> Result<i128, ConstEvalError<'db>> {
     Err(ConstEvalError::MirLowerError(MirLowerError::Loop))
 }
 
-pub(crate) fn const_eval_query(
-    db: &dyn HirDatabase,
+pub(crate) fn const_eval_query<'db>(
+    db: &'db dyn HirDatabase,
     def: GeneralConstId,
     subst: Substitution,
-    trait_env: Option<Arc<TraitEnvironment<'_>>>,
-) -> Result<Const, ConstEvalError> {
+    trait_env: Option<Arc<TraitEnvironment<'db>>>,
+) -> Result<Const, ConstEvalError<'db>> {
     let body = match def {
         GeneralConstId::ConstId(c) => {
             db.monomorphized_mir_body(c.into(), subst, db.trait_environment(c.into()))?
@@ -267,10 +266,10 @@ pub(crate) fn const_eval_query(
     Ok(c)
 }
 
-pub(crate) fn const_eval_static_query(
-    db: &dyn HirDatabase,
+pub(crate) fn const_eval_static_query<'db>(
+    db: &'db dyn HirDatabase,
     def: StaticId,
-) -> Result<Const, ConstEvalError> {
+) -> Result<Const, ConstEvalError<'db>> {
     let body = db.monomorphized_mir_body(
         def.into(),
         Substitution::empty(Interner),
@@ -280,10 +279,10 @@ pub(crate) fn const_eval_static_query(
     Ok(c)
 }
 
-pub(crate) fn const_eval_discriminant_variant(
-    db: &dyn HirDatabase,
+pub(crate) fn const_eval_discriminant_variant<'db>(
+    db: &'db dyn HirDatabase,
     variant_id: EnumVariantId,
-) -> Result<i128, ConstEvalError> {
+) -> Result<i128, ConstEvalError<'db>> {
     let def = variant_id.into();
     let body = db.body(def);
     let loc = variant_id.lookup(db);
@@ -315,45 +314,6 @@ pub(crate) fn const_eval_discriminant_variant(
         try_const_usize(db, &c).unwrap() as i128
     };
     Ok(c)
-}
-
-// FIXME: Ideally constants in const eval should have separate body (issue #7434), and this function should
-// get an `InferenceResult` instead of an `InferenceContext`. And we should remove `ctx.clone().resolve_all()` here
-// and make this function private. See the fixme comment on `InferenceContext::resolve_all`.
-pub(crate) fn eval_to_const(
-    expr: ExprId,
-    mode: ParamLoweringMode,
-    ctx: &mut InferenceContext<'_>,
-    debruijn: DebruijnIndex,
-) -> Const {
-    let db = ctx.db;
-    let infer = ctx.fixme_resolve_all_clone();
-    fn has_closure(body: &Body, expr: ExprId) -> bool {
-        if matches!(body[expr], Expr::Closure { .. }) {
-            return true;
-        }
-        let mut r = false;
-        body.walk_child_exprs(expr, |idx| r |= has_closure(body, idx));
-        r
-    }
-    if has_closure(ctx.body, expr) {
-        // Type checking clousres need an isolated body (See the above FIXME). Bail out early to prevent panic.
-        return unknown_const(infer[expr].clone());
-    }
-    if let Expr::Path(p) = &ctx.body[expr] {
-        let resolver = &ctx.resolver;
-        if let Some(c) =
-            path_to_const(db, resolver, p, mode, || ctx.generics(), debruijn, infer[expr].clone())
-        {
-            return c;
-        }
-    }
-    if let Ok(mir_body) = lower_to_mir(ctx.db, ctx.owner, ctx.body, &infer, expr)
-        && let Ok((Ok(result), _)) = interpret_mir(db, Arc::new(mir_body), true, None)
-    {
-        return result;
-    }
-    unknown_const(infer[expr].clone())
 }
 
 #[cfg(test)]

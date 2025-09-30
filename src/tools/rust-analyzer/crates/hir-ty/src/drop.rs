@@ -8,7 +8,7 @@ use stdx::never;
 use triomphe::Arc;
 
 use crate::next_solver::DbInterner;
-use crate::next_solver::mapping::NextSolverToChalk;
+use crate::next_solver::mapping::{ChalkToNextSolver, NextSolverToChalk};
 use crate::{
     AliasTy, Canonical, CanonicalVarKinds, ConcreteConst, ConstScalar, ConstValue, InEnvironment,
     Interner, ProjectionTy, TraitEnvironment, Ty, TyBuilder, TyKind, db::HirDatabase,
@@ -120,13 +120,20 @@ pub(crate) fn has_drop_glue(
         }
         TyKind::Slice(ty) => db.has_drop_glue(ty.clone(), env),
         TyKind::Closure(closure_id, subst) => {
-            let owner = db.lookup_intern_closure((*closure_id).into()).0;
+            let closure_id = (*closure_id).into();
+            let owner = db.lookup_intern_closure(closure_id).0;
             let infer = db.infer(owner);
             let (captures, _) = infer.closure_info(closure_id);
             let env = db.trait_environment_for_body(owner);
+            let interner = DbInterner::conjure();
             captures
                 .iter()
-                .map(|capture| db.has_drop_glue(capture.ty(db, subst), env.clone()))
+                .map(|capture| {
+                    db.has_drop_glue(
+                        capture.ty(db, subst.to_nextsolver(interner)).to_chalk(interner),
+                        env.clone(),
+                    )
+                })
                 .max()
                 .unwrap_or(DropGlue::None)
         }

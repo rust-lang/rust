@@ -1545,14 +1545,17 @@ impl<'db> HirDisplay for crate::next_solver::Ty<'db> {
                         never!("Only `impl Fn` is valid for displaying closures in source code");
                     }
                 }
-                let chalk_id: chalk_ir::ClosureId<_> = id.into();
                 match f.closure_style {
                     ClosureStyle::Hide => return write!(f, "{TYPE_HINT_TRUNCATION}"),
                     ClosureStyle::ClosureWithId => {
-                        return write!(f, "{{closure#{:?}}}", chalk_id.0.index());
+                        return write!(
+                            f,
+                            "{{closure#{:?}}}",
+                            salsa::plumbing::AsId::as_id(&id).index()
+                        );
                     }
                     ClosureStyle::ClosureWithSubst => {
-                        write!(f, "{{closure#{:?}}}", chalk_id.0.index())?;
+                        write!(f, "{{closure#{:?}}}", salsa::plumbing::AsId::as_id(&id).index())?;
                         return hir_fmt_generics(f, substs.as_slice(Interner), None, None);
                     }
                     _ => (),
@@ -1561,7 +1564,7 @@ impl<'db> HirDisplay for crate::next_solver::Ty<'db> {
                 if let Some(sig) = sig {
                     let InternedClosure(def, _) = db.lookup_intern_closure(id);
                     let infer = db.infer(def);
-                    let (_, kind) = infer.closure_info(&chalk_id);
+                    let (_, kind) = infer.closure_info(id);
                     match f.closure_style {
                         ClosureStyle::ImplFn => write!(f, "impl {kind:?}(")?,
                         ClosureStyle::RANotation => write!(f, "|")?,

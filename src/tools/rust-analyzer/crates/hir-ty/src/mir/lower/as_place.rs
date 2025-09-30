@@ -12,12 +12,12 @@ macro_rules! not_supported {
     };
 }
 
-impl MirLowerCtx<'_> {
+impl<'db> MirLowerCtx<'_, 'db> {
     fn lower_expr_to_some_place_without_adjust(
         &mut self,
         expr_id: ExprId,
         prev_block: BasicBlockId,
-    ) -> Result<Option<(Place, BasicBlockId)>> {
+    ) -> Result<'db, Option<(Place, BasicBlockId)>> {
         let ty = self.expr_ty_without_adjust(expr_id);
         let place = self.temp(ty, prev_block, expr_id.into())?;
         let Some(current) =
@@ -32,11 +32,11 @@ impl MirLowerCtx<'_> {
         &mut self,
         expr_id: ExprId,
         prev_block: BasicBlockId,
-        adjustments: &[Adjustment],
-    ) -> Result<Option<(Place, BasicBlockId)>> {
+        adjustments: &[Adjustment<'db>],
+    ) -> Result<'db, Option<(Place, BasicBlockId)>> {
         let ty = adjustments
             .last()
-            .map(|it| it.target.clone())
+            .map(|it| it.target.to_chalk(self.interner))
             .unwrap_or_else(|| self.expr_ty_without_adjust(expr_id));
         let place = self.temp(ty, prev_block, expr_id.into())?;
         let Some(current) =
@@ -52,9 +52,9 @@ impl MirLowerCtx<'_> {
         current: BasicBlockId,
         expr_id: ExprId,
         upgrade_rvalue: bool,
-        adjustments: &[Adjustment],
-    ) -> Result<Option<(Place, BasicBlockId)>> {
-        let try_rvalue = |this: &mut MirLowerCtx<'_>| {
+        adjustments: &[Adjustment<'db>],
+    ) -> Result<'db, Option<(Place, BasicBlockId)>> {
+        let try_rvalue = |this: &mut MirLowerCtx<'_, 'db>| {
             if !upgrade_rvalue {
                 return Err(MirLowerError::MutatingRvalue);
             }
@@ -89,11 +89,11 @@ impl MirLowerCtx<'_> {
                         current,
                         r,
                         rest.last()
-                            .map(|it| it.target.clone())
+                            .map(|it| it.target.to_chalk(self.interner))
                             .unwrap_or_else(|| self.expr_ty_without_adjust(expr_id)),
-                        last.target.clone(),
+                        last.target.to_chalk(self.interner),
                         expr_id.into(),
-                        match od.0 {
+                        match od.0.to_chalk(self.interner) {
                             Some(Mutability::Mut) => true,
                             Some(Mutability::Not) => false,
                             None => {
@@ -114,7 +114,7 @@ impl MirLowerCtx<'_> {
         current: BasicBlockId,
         expr_id: ExprId,
         upgrade_rvalue: bool,
-    ) -> Result<Option<(Place, BasicBlockId)>> {
+    ) -> Result<'db, Option<(Place, BasicBlockId)>> {
         match self.infer.expr_adjustments.get(&expr_id) {
             Some(a) => self.lower_expr_as_place_with_adjust(current, expr_id, upgrade_rvalue, a),
             None => self.lower_expr_as_place_without_adjust(current, expr_id, upgrade_rvalue),
@@ -126,8 +126,8 @@ impl MirLowerCtx<'_> {
         current: BasicBlockId,
         expr_id: ExprId,
         upgrade_rvalue: bool,
-    ) -> Result<Option<(Place, BasicBlockId)>> {
-        let try_rvalue = |this: &mut MirLowerCtx<'_>| {
+    ) -> Result<'db, Option<(Place, BasicBlockId)>> {
+        let try_rvalue = |this: &mut MirLowerCtx<'_, 'db>| {
             if !upgrade_rvalue {
                 return Err(MirLowerError::MutatingRvalue);
             }
@@ -230,6 +230,7 @@ impl MirLowerCtx<'_> {
                             "[overloaded index]".to_owned(),
                         ));
                     };
+                    let index_fn = (index_fn.0, index_fn.1.to_chalk(self.interner));
                     let Some((base_place, current)) =
                         self.lower_expr_as_place(current, *base, true)?
                     else {
@@ -285,7 +286,7 @@ impl MirLowerCtx<'_> {
         index_operand: Operand,
         span: MirSpan,
         index_fn: (FunctionId, Substitution),
-    ) -> Result<Option<(Place, BasicBlockId)>> {
+    ) -> Result<'db, Option<(Place, BasicBlockId)>> {
         let mutability = match base_ty.as_reference() {
             Some((_, _, mutability)) => mutability,
             None => Mutability::Not,
@@ -319,7 +320,7 @@ impl MirLowerCtx<'_> {
         target_ty: Ty,
         span: MirSpan,
         mutability: bool,
-    ) -> Result<Option<(Place, BasicBlockId)>> {
+    ) -> Result<'db, Option<(Place, BasicBlockId)>> {
         let (chalk_mut, trait_lang_item, trait_method_name, borrow_kind) = if !mutability {
             (
                 Mutability::Not,

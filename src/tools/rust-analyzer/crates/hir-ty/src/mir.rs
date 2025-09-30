@@ -708,10 +708,10 @@ impl BorrowKind {
         }
     }
 
-    fn from_chalk(m: Mutability) -> Self {
+    fn from_rustc(m: rustc_ast_ir::Mutability) -> Self {
         match m {
-            Mutability::Not => BorrowKind::Shared,
-            Mutability::Mut => BorrowKind::Mut { kind: MutBorrowKind::Default },
+            rustc_ast_ir::Mutability::Not => BorrowKind::Shared,
+            rustc_ast_ir::Mutability::Mut => BorrowKind::Mut { kind: MutBorrowKind::Default },
         }
     }
 }

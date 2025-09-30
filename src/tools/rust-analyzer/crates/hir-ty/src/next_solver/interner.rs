@@ -1616,7 +1616,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
         mut f: impl FnMut(Self::ImplId),
     ) {
         let trait_ = trait_.0;
-        let self_ty_fp = TyFingerprint::for_trait_impl_ns(&self_ty);
+        let self_ty_fp = TyFingerprint::for_trait_impl(self_ty);
         let fps: &[TyFingerprint] = match self_ty.kind() {
             TyKind::Infer(InferTy::IntVar(..)) => &ALL_INT_FPS,
             TyKind::Infer(InferTy::FloatVar(..)) => &ALL_FLOAT_FPS,
@@ -1907,7 +1907,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
                 match impl_trait_id {
                     crate::ImplTraitId::ReturnTypeImplTrait(func, idx) => {
                         let infer = self.db().infer(func.into());
-                        EarlyBinder::bind(infer.type_of_rpit[idx].to_nextsolver(self))
+                        EarlyBinder::bind(infer.type_of_rpit[idx.to_nextsolver(self)])
                     }
                     crate::ImplTraitId::TypeAliasImplTrait(..)
                     | crate::ImplTraitId::AsyncBlockTypeImplTrait(_, _) => {
