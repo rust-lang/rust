@@ -4,7 +4,6 @@ error[E0308]: `if` and `else` have incompatible types
 LL |       let x = if true {
    |               ------- `if` and `else` have incompatible types
 LL |           &()
-   |           --- expected because of this
 LL |       } else if false {
    |  ____________^
 LL | |

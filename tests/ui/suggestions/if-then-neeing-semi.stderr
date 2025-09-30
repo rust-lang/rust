@@ -5,7 +5,7 @@ LL |       let _ = if true {
    |  _____________-
 LL | |
 LL | |         async_dummy();
-   | |         -------------- expected because of this
+   | |         -------------- expected `()` because of this
 ...  |
 LL | |         async_dummy()
    | |         ^^^^^^^^^^^^^ expected `()`, found future
@@ -35,7 +35,7 @@ LL |       let _ = if true {
    |  _____________-
 LL | |
 LL | |         async_dummy();
-   | |         -------------- expected because of this
+   | |         -------------- expected `()` because of this
 ...  |
 LL | |         async_dummy2()
    | |         ^^^^^^^^^^^^^^ expected `()`, found future
@@ -67,7 +67,7 @@ LL |       let _ = if true {
    |  _____________-
 LL | |
 LL | |         async_dummy()
-   | |         ------------- expected because of this
+   | |         ------------- expected `impl Future<Output = ()>` because of this
 ...  |
 LL | |         async_dummy2()
    | |         ^^^^^^^^^^^^^^ expected future, found a different future
@@ -94,7 +94,7 @@ LL | |         dummy();
    | |         --------
    | |         |      |
    | |         |      help: consider removing this semicolon
-   | |         expected because of this
+   | |         expected `()` because of this
 ...  |
 LL | |         dummy()
    | |         ^^^^^^^ expected `()`, found `i32`

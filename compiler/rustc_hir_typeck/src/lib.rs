@@ -8,6 +8,7 @@
 #![feature(never_type)]
 // tidy-alphabetical-end
 
+mod _if;
 mod _match;
 mod autoderef;
 mod callee;

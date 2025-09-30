@@ -4,7 +4,7 @@ error[E0308]: `if` and `else` have incompatible types
 LL |   let t = if true { s[..2] } else { s };
    |                     ------          ^ expected `str`, found `&str`
    |                     |
-   |                     expected because of this
+   |                     expected `str` because of this
 
 error[E0308]: mismatched types
   --> $DIR/str-array-assignment.rs:5:27

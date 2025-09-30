@@ -6,7 +6,7 @@ LL | |                 yield ();
    | |                 ---------
    | |                 |       |
    | |                 |       help: consider removing this semicolon
-   | |                 expected because of this
+   | |                 expected `()` because of this
 LL | |             } else {
 LL | |                 a
    | |                 ^ expected `()`, found `u8`

@@ -640,7 +640,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     err.note("`if` expressions without `else` evaluate to `()`");
                     err.note("consider adding an `else` block that evaluates to the expected type");
                 }
-                err.span_label(then_span, "expected because of this");
+                // err.span_label(then_span, "expected because of this");
 
                 let outer_span = if self.tcx.sess.source_map().is_multiline(expr_span) {
                     if then_span.hi() == expr_span.hi() || else_span.hi() == expr_span.hi() {

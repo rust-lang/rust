@@ -4,7 +4,6 @@ error[E0308]: `if` and `else` have incompatible types
 LL |       let x = if let Ok(x) = res {
    |               ------------------ `if` and `else` have incompatible types
 LL |           x
-   |           - expected because of this
 LL |       } else if let Err(e) = res {
    |  ____________^
 LL | |         return Err(e);

@@ -4,7 +4,7 @@ error[E0308]: `if` and `else` have incompatible types
 LL |     let g = if n % 2 == 0 { &foo } else { &bar };
    |                             ----          ^^^^ expected `&fn(u32) -> u32 {foo}`, found `&fn(u32) -> u32 {bar}`
    |                             |
-   |                             expected because of this
+   |                             expected `&fn(u32) -> u32 {foo}` because of this
    |
    = note: expected reference `&fn(_) -> _ {foo}`
               found reference `&fn(_) -> _ {bar}`

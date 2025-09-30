@@ -24,7 +24,7 @@ error[E0308]: `if` and `else` have incompatible types
 LL |       let _ = if let Some(x) = Some(42) {
    |  _____________-
 LL | |         x
-   | |         - expected because of this
+   | |         - expected `{integer}` because of this
 LL | |     } else {
 LL | |         0;
    | |         ^-

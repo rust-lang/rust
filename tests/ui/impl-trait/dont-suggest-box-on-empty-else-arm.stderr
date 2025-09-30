@@ -4,7 +4,7 @@ error[E0308]: `if` and `else` have incompatible types
 LL |       if true {
    |       ------- `if` and `else` have incompatible types
 LL |           "boo2"
-   |           ------ expected because of this
+   |           ------ expected `&str` because of this
 LL |       } else {
    |  ____________^
 LL | |

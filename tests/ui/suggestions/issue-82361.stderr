@@ -3,7 +3,7 @@ error[E0308]: `if` and `else` have incompatible types
    |
 LL | /     if true {
 LL | |         a
-   | |         - expected because of this
+   | |         - expected `usize` because of this
 LL | |     } else {
 LL | |         b
    | |         ^ expected `usize`, found `&usize`
@@ -20,7 +20,7 @@ error[E0308]: `if` and `else` have incompatible types
    |
 LL | /     if true {
 LL | |         1
-   | |         - expected because of this
+   | |         - expected `{integer}` because of this
 LL | |     } else {
 LL | |         &1
    | |         ^^ expected integer, found `&{integer}`
@@ -38,7 +38,7 @@ error[E0308]: `if` and `else` have incompatible types
    |
 LL | /     if true {
 LL | |         1
-   | |         - expected because of this
+   | |         - expected `{integer}` because of this
 LL | |     } else {
 LL | |         &mut 1
    | |         ^^^^^^ expected integer, found `&mut {integer}`
