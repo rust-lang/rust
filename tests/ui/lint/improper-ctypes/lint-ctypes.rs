@@ -1,6 +1,6 @@
 #![feature(rustc_private)]
 
-#![allow(private_interfaces)]
+#![allow(private_interfaces, repr_transparent_external_private_fields)]
 #![deny(improper_ctypes)]
 
 use std::cell::UnsafeCell;

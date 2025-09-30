@@ -7,6 +7,7 @@ enum Void {}
 
 // Should be ABI-compatible with T, but wasn't prior to the PR adding this test.
 #[repr(transparent)]
+#[allow(repr_transparent_external_private_fields)]
 struct NoReturn<T>(T, Void);
 
 // Returned by invisible reference (in most ABIs)
