@@ -1024,12 +1024,9 @@ macro_rules! tool_doc {
                         run.builder.ensure(Rustc::from_build_compiler(run.builder, compilers.build_compiler(), target));
                         compilers.build_compiler()
                     }
-                    Mode::ToolBootstrap => {
-                        // bootstrap/host tools should be documented with the stage 0 compiler
-                        prepare_doc_compiler(run.builder, run.builder.host_target, 1)
-                    }
                     Mode::ToolTarget => {
-                        // target tools should be documented with the in-tree compiler
+                        // when shipping multiple docs together in one folder,
+                        // they all need to use the same rustdoc version
                         prepare_doc_compiler(run.builder, run.builder.host_target, run.builder.top_stage)
                     }
                     _ => {
@@ -1132,7 +1129,11 @@ macro_rules! tool_doc {
 tool_doc!(
     BuildHelper,
     "src/build_helper",
-    mode = Mode::ToolBootstrap,
+    // ideally, this would use ToolBootstrap,
+    // but we distribute these docs together in the same folder
+    // as a bunch of stage1 tools, and you can't mix rustdoc versions
+    // because that breaks cross-crate data (particularly search)
+    mode = Mode::ToolTarget,
     is_library = true,
     crates = ["build_helper"]
 );
@@ -1175,25 +1176,25 @@ tool_doc!(
     // "specialization" feature in its build script when it detects a nightly toolchain.
     allow_features: "specialization"
 );
-tool_doc!(Tidy, "src/tools/tidy", mode = Mode::ToolBootstrap, crates = ["tidy"]);
+tool_doc!(Tidy, "src/tools/tidy", mode = Mode::ToolTarget, crates = ["tidy"]);
 tool_doc!(
     Bootstrap,
     "src/bootstrap",
-    mode = Mode::ToolBootstrap,
+    mode = Mode::ToolTarget,
     is_library = true,
     crates = ["bootstrap"]
 );
 tool_doc!(
     RunMakeSupport,
     "src/tools/run-make-support",
-    mode = Mode::ToolBootstrap,
+    mode = Mode::ToolTarget,
     is_library = true,
     crates = ["run_make_support"]
 );
 tool_doc!(
     Compiletest,
     "src/tools/compiletest",
-    mode = Mode::ToolBootstrap,
+    mode = Mode::ToolTarget,
     is_library = true,
     crates = ["compiletest"]
 );

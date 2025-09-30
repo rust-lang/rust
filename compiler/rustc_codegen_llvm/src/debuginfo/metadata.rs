@@ -1611,16 +1611,12 @@ pub(crate) fn apply_vcall_visibility_metadata<'ll, 'tcx>(
         let v = [llvm::LLVMValueAsMetadata(cx.const_usize(0)), typeid];
         llvm::LLVMRustGlobalAddMetadata(
             vtable,
-            llvm::MD_type as c_uint,
+            llvm::MD_type,
             llvm::LLVMMDNodeInContext2(cx.llcx, v.as_ptr(), v.len()),
         );
         let vcall_visibility = llvm::LLVMValueAsMetadata(cx.const_u64(vcall_visibility as u64));
         let vcall_visibility_metadata = llvm::LLVMMDNodeInContext2(cx.llcx, &vcall_visibility, 1);
-        llvm::LLVMGlobalSetMetadata(
-            vtable,
-            llvm::MetadataType::MD_vcall_visibility as c_uint,
-            vcall_visibility_metadata,
-        );
+        llvm::LLVMGlobalSetMetadata(vtable, llvm::MD_vcall_visibility, vcall_visibility_metadata);
     }
 }
 
