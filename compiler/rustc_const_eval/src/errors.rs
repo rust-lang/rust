@@ -466,51 +466,50 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
     fn diagnostic_message(&self) -> DiagMessage {
         use UndefinedBehaviorInfo::*;
 
-        use crate::fluent_generated::*;
         match self {
             Ub(msg) => msg.clone().into(),
             Custom(x) => (x.msg)(),
             ValidationError(e) => e.diagnostic_message(),
 
-            Unreachable => const_eval_unreachable,
-            BoundsCheckFailed { .. } => const_eval_bounds_check_failed,
-            DivisionByZero => const_eval_division_by_zero,
-            RemainderByZero => const_eval_remainder_by_zero,
-            DivisionOverflow => const_eval_division_overflow,
-            RemainderOverflow => const_eval_remainder_overflow,
-            PointerArithOverflow => const_eval_pointer_arithmetic_overflow,
-            ArithOverflow { .. } => const_eval_overflow_arith,
-            ShiftOverflow { .. } => const_eval_overflow_shift,
-            InvalidMeta(InvalidMetaKind::SliceTooBig) => const_eval_invalid_meta_slice,
-            InvalidMeta(InvalidMetaKind::TooBig) => const_eval_invalid_meta,
-            UnterminatedCString(_) => const_eval_unterminated_c_string,
-            PointerUseAfterFree(_, _) => const_eval_pointer_use_after_free,
-            PointerOutOfBounds { .. } => const_eval_pointer_out_of_bounds,
-            DanglingIntPointer { addr: 0, .. } => const_eval_dangling_null_pointer,
-            DanglingIntPointer { .. } => const_eval_dangling_int_pointer,
-            AlignmentCheckFailed { .. } => const_eval_alignment_check_failed,
-            WriteToReadOnly(_) => const_eval_write_to_read_only,
-            DerefFunctionPointer(_) => const_eval_deref_function_pointer,
-            DerefVTablePointer(_) => const_eval_deref_vtable_pointer,
-            DerefTypeIdPointer(_) => const_eval_deref_typeid_pointer,
-            InvalidBool(_) => const_eval_invalid_bool,
-            InvalidChar(_) => const_eval_invalid_char,
-            InvalidTag(_) => const_eval_invalid_tag,
-            InvalidFunctionPointer(_) => const_eval_invalid_function_pointer,
-            InvalidVTablePointer(_) => const_eval_invalid_vtable_pointer,
-            InvalidVTableTrait { .. } => const_eval_invalid_vtable_trait,
-            InvalidStr(_) => const_eval_invalid_str,
-            InvalidUninitBytes(None) => const_eval_invalid_uninit_bytes_unknown,
-            InvalidUninitBytes(Some(_)) => const_eval_invalid_uninit_bytes,
-            DeadLocal => const_eval_dead_local,
-            ScalarSizeMismatch(_) => const_eval_scalar_size_mismatch,
-            UninhabitedEnumVariantWritten(_) => const_eval_uninhabited_enum_variant_written,
-            UninhabitedEnumVariantRead(_) => const_eval_uninhabited_enum_variant_read,
+            Unreachable => fluent::const_eval_unreachable,
+            BoundsCheckFailed { .. } => fluent::const_eval_bounds_check_failed,
+            DivisionByZero => fluent::const_eval_division_by_zero,
+            RemainderByZero => fluent::const_eval_remainder_by_zero,
+            DivisionOverflow => fluent::const_eval_division_overflow,
+            RemainderOverflow => fluent::const_eval_remainder_overflow,
+            PointerArithOverflow => fluent::const_eval_pointer_arithmetic_overflow,
+            ArithOverflow { .. } => fluent::const_eval_overflow_arith,
+            ShiftOverflow { .. } => fluent::const_eval_overflow_shift,
+            InvalidMeta(InvalidMetaKind::SliceTooBig) => fluent::const_eval_invalid_meta_slice,
+            InvalidMeta(InvalidMetaKind::TooBig) => fluent::const_eval_invalid_meta,
+            UnterminatedCString(_) => fluent::const_eval_unterminated_c_string,
+            PointerUseAfterFree(_, _) => fluent::const_eval_pointer_use_after_free,
+            PointerOutOfBounds { .. } => fluent::const_eval_pointer_out_of_bounds,
+            DanglingIntPointer { addr: 0, .. } => fluent::const_eval_dangling_null_pointer,
+            DanglingIntPointer { .. } => fluent::const_eval_dangling_int_pointer,
+            AlignmentCheckFailed { .. } => fluent::const_eval_alignment_check_failed,
+            WriteToReadOnly(_) => fluent::const_eval_write_to_read_only,
+            DerefFunctionPointer(_) => fluent::const_eval_deref_function_pointer,
+            DerefVTablePointer(_) => fluent::const_eval_deref_vtable_pointer,
+            DerefTypeIdPointer(_) => fluent::const_eval_deref_typeid_pointer,
+            InvalidBool(_) => fluent::const_eval_invalid_bool,
+            InvalidChar(_) => fluent::const_eval_invalid_char,
+            InvalidTag(_) => fluent::const_eval_invalid_tag,
+            InvalidFunctionPointer(_) => fluent::const_eval_invalid_function_pointer,
+            InvalidVTablePointer(_) => fluent::const_eval_invalid_vtable_pointer,
+            InvalidVTableTrait { .. } => fluent::const_eval_invalid_vtable_trait,
+            InvalidStr(_) => fluent::const_eval_invalid_str,
+            InvalidUninitBytes(None) => fluent::const_eval_invalid_uninit_bytes_unknown,
+            InvalidUninitBytes(Some(_)) => fluent::const_eval_invalid_uninit_bytes,
+            DeadLocal => fluent::const_eval_dead_local,
+            ScalarSizeMismatch(_) => fluent::const_eval_scalar_size_mismatch,
+            UninhabitedEnumVariantWritten(_) => fluent::const_eval_uninhabited_enum_variant_written,
+            UninhabitedEnumVariantRead(_) => fluent::const_eval_uninhabited_enum_variant_read,
             InvalidNichedEnumVariantWritten { .. } => {
-                const_eval_invalid_niched_enum_variant_written
+                fluent::const_eval_invalid_niched_enum_variant_written
             }
-            AbiMismatchArgument { .. } => const_eval_incompatible_arg_types,
-            AbiMismatchReturn { .. } => const_eval_incompatible_return_types,
+            AbiMismatchArgument { .. } => fluent::const_eval_incompatible_arg_types,
+            AbiMismatchReturn { .. } => fluent::const_eval_incompatible_return_types,
         }
     }
 
@@ -653,79 +652,78 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
     fn diagnostic_message(&self) -> DiagMessage {
         use rustc_middle::mir::interpret::ValidationErrorKind::*;
 
-        use crate::fluent_generated::*;
         match self.kind {
             PtrToUninhabited { ptr_kind: PointerKind::Box, .. } => {
-                const_eval_validation_box_to_uninhabited
+                fluent::const_eval_validation_box_to_uninhabited
             }
             PtrToUninhabited { ptr_kind: PointerKind::Ref(_), .. } => {
-                const_eval_validation_ref_to_uninhabited
+                fluent::const_eval_validation_ref_to_uninhabited
             }
 
-            PointerAsInt { .. } => const_eval_validation_pointer_as_int,
-            PartialPointer => const_eval_validation_partial_pointer,
-            MutableRefToImmutable => const_eval_validation_mutable_ref_to_immutable,
-            MutableRefInConst => const_eval_validation_mutable_ref_in_const,
-            NullFnPtr => const_eval_validation_null_fn_ptr,
-            NeverVal => const_eval_validation_never_val,
-            NonnullPtrMaybeNull { .. } => const_eval_validation_nonnull_ptr_out_of_range,
-            PtrOutOfRange { .. } => const_eval_validation_ptr_out_of_range,
-            OutOfRange { .. } => const_eval_validation_out_of_range,
-            UnsafeCellInImmutable => const_eval_validation_unsafe_cell,
-            UninhabitedVal { .. } => const_eval_validation_uninhabited_val,
-            InvalidEnumTag { .. } => const_eval_validation_invalid_enum_tag,
-            UninhabitedEnumVariant => const_eval_validation_uninhabited_enum_variant,
-            Uninit { .. } => const_eval_validation_uninit,
-            InvalidVTablePtr { .. } => const_eval_validation_invalid_vtable_ptr,
-            InvalidMetaWrongTrait { .. } => const_eval_validation_invalid_vtable_trait,
+            PointerAsInt { .. } => fluent::const_eval_validation_pointer_as_int,
+            PartialPointer => fluent::const_eval_validation_partial_pointer,
+            MutableRefToImmutable => fluent::const_eval_validation_mutable_ref_to_immutable,
+            MutableRefInConst => fluent::const_eval_validation_mutable_ref_in_const,
+            NullFnPtr => fluent::const_eval_validation_null_fn_ptr,
+            NeverVal => fluent::const_eval_validation_never_val,
+            NonnullPtrMaybeNull { .. } => fluent::const_eval_validation_nonnull_ptr_out_of_range,
+            PtrOutOfRange { .. } => fluent::const_eval_validation_ptr_out_of_range,
+            OutOfRange { .. } => fluent::const_eval_validation_out_of_range,
+            UnsafeCellInImmutable => fluent::const_eval_validation_unsafe_cell,
+            UninhabitedVal { .. } => fluent::const_eval_validation_uninhabited_val,
+            InvalidEnumTag { .. } => fluent::const_eval_validation_invalid_enum_tag,
+            UninhabitedEnumVariant => fluent::const_eval_validation_uninhabited_enum_variant,
+            Uninit { .. } => fluent::const_eval_validation_uninit,
+            InvalidVTablePtr { .. } => fluent::const_eval_validation_invalid_vtable_ptr,
+            InvalidMetaWrongTrait { .. } => fluent::const_eval_validation_invalid_vtable_trait,
             InvalidMetaSliceTooLarge { ptr_kind: PointerKind::Box } => {
-                const_eval_validation_invalid_box_slice_meta
+                fluent::const_eval_validation_invalid_box_slice_meta
             }
             InvalidMetaSliceTooLarge { ptr_kind: PointerKind::Ref(_) } => {
-                const_eval_validation_invalid_ref_slice_meta
+                fluent::const_eval_validation_invalid_ref_slice_meta
             }
 
             InvalidMetaTooLarge { ptr_kind: PointerKind::Box } => {
-                const_eval_validation_invalid_box_meta
+                fluent::const_eval_validation_invalid_box_meta
             }
             InvalidMetaTooLarge { ptr_kind: PointerKind::Ref(_) } => {
-                const_eval_validation_invalid_ref_meta
+                fluent::const_eval_validation_invalid_ref_meta
             }
             UnalignedPtr { ptr_kind: PointerKind::Ref(_), .. } => {
-                const_eval_validation_unaligned_ref
+                fluent::const_eval_validation_unaligned_ref
             }
-            UnalignedPtr { ptr_kind: PointerKind::Box, .. } => const_eval_validation_unaligned_box,
+            UnalignedPtr { ptr_kind: PointerKind::Box, .. } => {
+                fluent::const_eval_validation_unaligned_box
+            }
 
-            NullPtr { ptr_kind: PointerKind::Box, .. } => const_eval_validation_null_box,
-            NullPtr { ptr_kind: PointerKind::Ref(_), .. } => const_eval_validation_null_ref,
+            NullPtr { ptr_kind: PointerKind::Box, .. } => fluent::const_eval_validation_null_box,
+            NullPtr { ptr_kind: PointerKind::Ref(_), .. } => fluent::const_eval_validation_null_ref,
             DanglingPtrNoProvenance { ptr_kind: PointerKind::Box, .. } => {
-                const_eval_validation_dangling_box_no_provenance
+                fluent::const_eval_validation_dangling_box_no_provenance
             }
             DanglingPtrNoProvenance { ptr_kind: PointerKind::Ref(_), .. } => {
-                const_eval_validation_dangling_ref_no_provenance
+                fluent::const_eval_validation_dangling_ref_no_provenance
             }
             DanglingPtrOutOfBounds { ptr_kind: PointerKind::Box } => {
-                const_eval_validation_dangling_box_out_of_bounds
+                fluent::const_eval_validation_dangling_box_out_of_bounds
             }
             DanglingPtrOutOfBounds { ptr_kind: PointerKind::Ref(_) } => {
-                const_eval_validation_dangling_ref_out_of_bounds
+                fluent::const_eval_validation_dangling_ref_out_of_bounds
             }
             DanglingPtrUseAfterFree { ptr_kind: PointerKind::Box } => {
-                const_eval_validation_dangling_box_use_after_free
+                fluent::const_eval_validation_dangling_box_use_after_free
             }
             DanglingPtrUseAfterFree { ptr_kind: PointerKind::Ref(_) } => {
-                const_eval_validation_dangling_ref_use_after_free
+                fluent::const_eval_validation_dangling_ref_use_after_free
             }
-            InvalidBool { .. } => const_eval_validation_invalid_bool,
-            InvalidChar { .. } => const_eval_validation_invalid_char,
-            InvalidFnPtr { .. } => const_eval_validation_invalid_fn_ptr,
+            InvalidBool { .. } => fluent::const_eval_validation_invalid_bool,
+            InvalidChar { .. } => fluent::const_eval_validation_invalid_char,
+            InvalidFnPtr { .. } => fluent::const_eval_validation_invalid_fn_ptr,
         }
     }
 
     fn add_args<G: EmissionGuarantee>(self, err: &mut Diag<'_, G>) {
         use rustc_middle::mir::interpret::ValidationErrorKind::*;
-
-        use crate::fluent_generated as fluent;
 
         if let PointerAsInt { .. } | PartialPointer = self.kind {
             err.help(fluent::const_eval_ptr_as_bytes_1);
@@ -841,25 +839,23 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
 
 impl ReportErrorExt for UnsupportedOpInfo {
     fn diagnostic_message(&self) -> DiagMessage {
-        use crate::fluent_generated::*;
         match self {
             UnsupportedOpInfo::Unsupported(s) => s.clone().into(),
-            UnsupportedOpInfo::ExternTypeField => const_eval_extern_type_field,
-            UnsupportedOpInfo::UnsizedLocal => const_eval_unsized_local,
-            UnsupportedOpInfo::ReadPartialPointer(_) => const_eval_partial_pointer_read,
-            UnsupportedOpInfo::ReadPointerAsInt(_) => const_eval_read_pointer_as_int,
-            UnsupportedOpInfo::ThreadLocalStatic(_) => const_eval_thread_local_static,
-            UnsupportedOpInfo::ExternStatic(_) => const_eval_extern_static,
+            UnsupportedOpInfo::ExternTypeField => fluent::const_eval_extern_type_field,
+            UnsupportedOpInfo::UnsizedLocal => fluent::const_eval_unsized_local,
+            UnsupportedOpInfo::ReadPartialPointer(_) => fluent::const_eval_partial_pointer_read,
+            UnsupportedOpInfo::ReadPointerAsInt(_) => fluent::const_eval_read_pointer_as_int,
+            UnsupportedOpInfo::ThreadLocalStatic(_) => fluent::const_eval_thread_local_static,
+            UnsupportedOpInfo::ExternStatic(_) => fluent::const_eval_extern_static,
         }
     }
 
     fn add_args<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         use UnsupportedOpInfo::*;
 
-        use crate::fluent_generated::*;
         if let ReadPointerAsInt(_) | ReadPartialPointer(_) = self {
-            diag.help(const_eval_ptr_as_bytes_1);
-            diag.help(const_eval_ptr_as_bytes_2);
+            diag.help(fluent::const_eval_ptr_as_bytes_1);
+            diag.help(fluent::const_eval_ptr_as_bytes_2);
         }
         match self {
             // `ReadPointerAsInt(Some(info))` is never printed anyway, it only serves as an error to
@@ -904,10 +900,9 @@ impl<'tcx> ReportErrorExt for InterpErrorKind<'tcx> {
 
 impl<'tcx> ReportErrorExt for InvalidProgramInfo<'tcx> {
     fn diagnostic_message(&self) -> DiagMessage {
-        use crate::fluent_generated::*;
         match self {
-            InvalidProgramInfo::TooGeneric => const_eval_too_generic,
-            InvalidProgramInfo::AlreadyReported(_) => const_eval_already_reported,
+            InvalidProgramInfo::TooGeneric => fluent::const_eval_too_generic,
+            InvalidProgramInfo::AlreadyReported(_) => fluent::const_eval_already_reported,
             InvalidProgramInfo::Layout(e) => e.diagnostic_message(),
         }
     }
@@ -929,12 +924,13 @@ impl<'tcx> ReportErrorExt for InvalidProgramInfo<'tcx> {
 
 impl ReportErrorExt for ResourceExhaustionInfo {
     fn diagnostic_message(&self) -> DiagMessage {
-        use crate::fluent_generated::*;
         match self {
-            ResourceExhaustionInfo::StackFrameLimitReached => const_eval_stack_frame_limit_reached,
-            ResourceExhaustionInfo::MemoryExhausted => const_eval_memory_exhausted,
-            ResourceExhaustionInfo::AddressSpaceFull => const_eval_address_space_full,
-            ResourceExhaustionInfo::Interrupted => const_eval_interrupted,
+            ResourceExhaustionInfo::StackFrameLimitReached => {
+                fluent::const_eval_stack_frame_limit_reached
+            }
+            ResourceExhaustionInfo::MemoryExhausted => fluent::const_eval_memory_exhausted,
+            ResourceExhaustionInfo::AddressSpaceFull => fluent::const_eval_address_space_full,
+            ResourceExhaustionInfo::Interrupted => fluent::const_eval_interrupted,
         }
     }
     fn add_args<G: EmissionGuarantee>(self, _: &mut Diag<'_, G>) {}

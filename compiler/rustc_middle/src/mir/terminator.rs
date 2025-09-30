@@ -336,18 +336,18 @@ impl<O> AssertKind<O> {
     pub fn diagnostic_message(&self) -> DiagMessage {
         use AssertKind::*;
 
-        use crate::fluent_generated::*;
+        use crate::fluent_generated as fluent;
 
         match self {
-            BoundsCheck { .. } => middle_bounds_check,
-            Overflow(BinOp::Shl, _, _) => middle_assert_shl_overflow,
-            Overflow(BinOp::Shr, _, _) => middle_assert_shr_overflow,
-            Overflow(_, _, _) => middle_assert_op_overflow,
-            OverflowNeg(_) => middle_assert_overflow_neg,
-            DivisionByZero(_) => middle_assert_divide_by_zero,
-            RemainderByZero(_) => middle_assert_remainder_by_zero,
+            BoundsCheck { .. } => fluent::middle_bounds_check,
+            Overflow(BinOp::Shl, _, _) => fluent::middle_assert_shl_overflow,
+            Overflow(BinOp::Shr, _, _) => fluent::middle_assert_shr_overflow,
+            Overflow(_, _, _) => fluent::middle_assert_op_overflow,
+            OverflowNeg(_) => fluent::middle_assert_overflow_neg,
+            DivisionByZero(_) => fluent::middle_assert_divide_by_zero,
+            RemainderByZero(_) => fluent::middle_assert_remainder_by_zero,
             ResumedAfterReturn(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) => {
-                middle_assert_async_resume_after_return
+                fluent::middle_assert_async_resume_after_return
             }
             ResumedAfterReturn(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)) => {
                 todo!()
@@ -356,36 +356,36 @@ impl<O> AssertKind<O> {
                 bug!("gen blocks can be resumed after they return and will keep returning `None`")
             }
             ResumedAfterReturn(CoroutineKind::Coroutine(_)) => {
-                middle_assert_coroutine_resume_after_return
+                fluent::middle_assert_coroutine_resume_after_return
             }
             ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) => {
-                middle_assert_async_resume_after_panic
+                fluent::middle_assert_async_resume_after_panic
             }
             ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)) => {
                 todo!()
             }
             ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::Gen, _)) => {
-                middle_assert_gen_resume_after_panic
+                fluent::middle_assert_gen_resume_after_panic
             }
             ResumedAfterPanic(CoroutineKind::Coroutine(_)) => {
-                middle_assert_coroutine_resume_after_panic
+                fluent::middle_assert_coroutine_resume_after_panic
             }
-            NullPointerDereference => middle_assert_null_ptr_deref,
-            InvalidEnumConstruction(_) => middle_assert_invalid_enum_construction,
+            NullPointerDereference => fluent::middle_assert_null_ptr_deref,
+            InvalidEnumConstruction(_) => fluent::middle_assert_invalid_enum_construction,
             ResumedAfterDrop(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) => {
-                middle_assert_async_resume_after_drop
+                fluent::middle_assert_async_resume_after_drop
             }
             ResumedAfterDrop(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)) => {
                 todo!()
             }
             ResumedAfterDrop(CoroutineKind::Desugared(CoroutineDesugaring::Gen, _)) => {
-                middle_assert_gen_resume_after_drop
+                fluent::middle_assert_gen_resume_after_drop
             }
             ResumedAfterDrop(CoroutineKind::Coroutine(_)) => {
-                middle_assert_coroutine_resume_after_drop
+                fluent::middle_assert_coroutine_resume_after_drop
             }
 
-            MisalignedPointerDereference { .. } => middle_assert_misaligned_ptr_deref,
+            MisalignedPointerDereference { .. } => fluent::middle_assert_misaligned_ptr_deref,
         }
     }
 
