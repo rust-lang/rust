@@ -22,7 +22,8 @@ pub mod os;
 pub mod pipe;
 pub mod time;
 cfg_select! {
-    not(target_vendor = "uwp") => {
+    // We don't care about printing nice error messages for panic=immediate-abort
+    all(not(target_vendor = "uwp"), not(panic = "immediate-abort")) => {
         pub mod stack_overflow;
     }
     _ => {

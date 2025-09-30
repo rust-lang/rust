@@ -129,7 +129,7 @@ fn check_validity_requirement_lax<'tcx>(
     if let Some(pointee) = this.ty.builtin_deref(false) {
         let pointee = cx.layout_of(pointee)?;
         // We need to ensure that the LLVM attributes `aligned` and `dereferenceable(size)` are satisfied.
-        if pointee.align.abi.bytes() > 1 {
+        if pointee.align.bytes() > 1 {
             // 0x01-filling is not aligned.
             return Ok(false);
         }

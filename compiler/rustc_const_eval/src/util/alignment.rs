@@ -37,7 +37,7 @@ where
             debug!(
                 "is_disaligned({:?}) - align = {}, packed = {}; not disaligned",
                 place,
-                layout.align.abi.bytes(),
+                layout.align.bytes(),
                 pack.bytes()
             );
             false
