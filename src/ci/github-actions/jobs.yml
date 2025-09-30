@@ -26,6 +26,10 @@ runners:
     os: macos-15
     <<: *base-job
 
+  - &job-macos-x86_64
+    os: macos-15-intel
+    <<: *base-job
+
   - &job-windows
     os: windows-2025
     <<: *base-job
@@ -447,6 +451,26 @@ auto:
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-macos
+
+  - name: x86_64-apple
+    env:
+      SCRIPT: >-
+        ./x.py test
+        --stage 2
+        --host=x86_64-apple-darwin
+        --target=x86_64-apple-darwin
+        &&
+        ./x.py test
+        --stage 2
+        --host=x86_64-apple-darwin
+        --target=x86_64-apple-darwin
+        src/tools/cargo
+      RUST_CONFIGURE_ARGS: >-
+        --enable-profiler
+        --enable-sanitizers
+        --set rust.jemalloc
+      <<: [*env-macos-x86_64-target, *env-macos-xcode]
+    <<: *job-macos-x86_64
 
   - name: dist-apple-various
     env:
