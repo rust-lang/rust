@@ -1,10 +1,13 @@
+use clippy_config::Conf;
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::is_inside_always_const_context;
-use clippy_utils::macros::{PanicExpn, find_assert_args, root_macro_call_first_node};
+use clippy_utils::macros::{find_assert_args, root_macro_call_first_node};
+use clippy_utils::msrvs::Msrv;
+use clippy_utils::{is_inside_always_const_context, msrvs};
+use rustc_ast::LitKind;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_session::impl_lint_pass;
 use rustc_span::sym;
 
 declare_clippy_lint! {
@@ -28,56 +31,59 @@ declare_clippy_lint! {
     "`assert!(true)` / `assert!(false)` will be optimized out by the compiler, and should probably be replaced by a `panic!()` or `unreachable!()`"
 }
 
-declare_lint_pass!(AssertionsOnConstants => [ASSERTIONS_ON_CONSTANTS]);
+impl_lint_pass!(AssertionsOnConstants => [ASSERTIONS_ON_CONSTANTS]);
+pub struct AssertionsOnConstants {
+    msrv: Msrv,
+}
+impl AssertionsOnConstants {
+    pub fn new(conf: &Conf) -> Self {
+        Self { msrv: conf.msrv }
+    }
+}
 
 impl<'tcx> LateLintPass<'tcx> for AssertionsOnConstants {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
-        let Some(macro_call) = root_macro_call_first_node(cx, e) else {
-            return;
-        };
-        let is_debug = match cx.tcx.get_diagnostic_name(macro_call.def_id) {
-            Some(sym::debug_assert_macro) => true,
-            Some(sym::assert_macro) => false,
-            _ => return,
-        };
-        let Some((condition, panic_expn)) = find_assert_args(cx, e, macro_call.expn) else {
-            return;
-        };
-        let Some(Constant::Bool(val)) = ConstEvalCtxt::new(cx).eval(condition) else {
-            return;
-        };
-
-        match condition.kind {
-            ExprKind::Path(..) | ExprKind::Lit(_) => {},
-            _ if is_inside_always_const_context(cx.tcx, e.hir_id) => return,
-            _ => {},
-        }
-
-        if val {
-            span_lint_and_help(
-                cx,
-                ASSERTIONS_ON_CONSTANTS,
-                macro_call.span,
-                format!(
-                    "`{}!(true)` will be optimized out by the compiler",
-                    cx.tcx.item_name(macro_call.def_id)
-                ),
-                None,
-                "remove it",
-            );
-        } else if !is_debug {
-            let (assert_arg, panic_arg) = match panic_expn {
-                PanicExpn::Empty => ("", ""),
-                _ => (", ..", ".."),
+        if let Some(macro_call) = root_macro_call_first_node(cx, e)
+            && let is_debug = match cx.tcx.get_diagnostic_name(macro_call.def_id) {
+                Some(sym::debug_assert_macro) => true,
+                Some(sym::assert_macro) => false,
+                _ => return,
+            }
+            && let Some((condition, _)) = find_assert_args(cx, e, macro_call.expn)
+            && let Some((Constant::Bool(assert_val), const_src)) = ConstEvalCtxt::new(cx).eval_with_source(condition)
+            && let in_const_context = is_inside_always_const_context(cx.tcx, e.hir_id)
+            && (const_src.is_local() || !in_const_context)
+            && !(is_debug && as_bool_lit(condition) == Some(false))
+        {
+            let (msg, help) = if !const_src.is_local() {
+                let help = if self.msrv.meets(cx, msrvs::CONST_BLOCKS) {
+                    "consider moving this into a const block: `const { assert!(..) }`"
+                } else if self.msrv.meets(cx, msrvs::CONST_PANIC) {
+                    "consider moving this to an anonymous constant: `const _: () = { assert!(..); }`"
+                } else {
+                    return;
+                };
+                ("this assertion has a constant value", help)
+            } else if assert_val {
+                ("this assertion is always `true`", "remove the assertion")
+            } else {
+                (
+                    "this assertion is always `false`",
+                    "replace this with `panic!()` or `unreachable!()`",
+                )
             };
-            span_lint_and_help(
-                cx,
-                ASSERTIONS_ON_CONSTANTS,
-                macro_call.span,
-                format!("`assert!(false{assert_arg})` should probably be replaced"),
-                None,
-                format!("use `panic!({panic_arg})` or `unreachable!({panic_arg})`"),
-            );
+
+            span_lint_and_help(cx, ASSERTIONS_ON_CONSTANTS, macro_call.span, msg, None, help);
         }
+    }
+}
+
+fn as_bool_lit(e: &Expr<'_>) -> Option<bool> {
+    if let ExprKind::Lit(l) = e.kind
+        && let LitKind::Bool(b) = l.node
+    {
+        Some(b)
+    } else {
+        None
     }
 }
