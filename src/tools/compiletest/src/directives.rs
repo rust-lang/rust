@@ -1117,10 +1117,6 @@ impl Config {
             && matches!(line.as_bytes().get(directive.len()), None | Some(&b' ') | Some(&b':'))
     }
 
-    fn parse_negative_name_directive(&self, line: &str, directive: &str) -> bool {
-        line.starts_with("no-") && self.parse_name_directive(&line[3..], directive)
-    }
-
     fn parse_name_value_directive(
         &self,
         line: &str,
@@ -1149,18 +1145,8 @@ impl Config {
     }
 
     fn set_name_directive(&self, line: &str, directive: &str, value: &mut bool) {
-        match value {
-            true => {
-                if self.parse_negative_name_directive(line, directive) {
-                    *value = false;
-                }
-            }
-            false => {
-                if self.parse_name_directive(line, directive) {
-                    *value = true;
-                }
-            }
-        }
+        // If the flag is already true, don't bother looking at the directive.
+        *value = *value || self.parse_name_directive(line, directive);
     }
 
     fn set_name_value_directive<T>(
