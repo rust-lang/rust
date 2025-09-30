@@ -3,6 +3,7 @@ mod tests;
 
 use crate::ffi::{c_int, c_void};
 use crate::io::{self, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut};
+use crate::mem::MaybeUninit;
 use crate::net::{
     Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr, SocketAddrV4, SocketAddrV6, ToSocketAddrs,
 };
@@ -177,6 +178,11 @@ fn socket_addr_to_c(addr: &SocketAddr) -> (SocketAddrCRepr, c::socklen_t) {
     }
 }
 
+/// Converts the C socket address stored in `storage` to a Rust `SocketAddr`.
+///
+/// # Safety
+/// * `storage` must contain a valid C socket address whose length is no larger
+///   than `len`.
 unsafe fn socket_addr_from_c(
     storage: *const c::sockaddr_storage,
     len: usize,
@@ -202,49 +208,85 @@ unsafe fn socket_addr_from_c(
 // sockaddr and misc bindings
 ////////////////////////////////////////////////////////////////////////////////
 
-pub fn setsockopt<T>(
+/// Sets the value of a socket option.
+///
+/// # Safety
+/// `T` must be the type associated with the given socket option.
+pub unsafe fn setsockopt<T>(
     sock: &Socket,
     level: c_int,
     option_name: c_int,
     option_value: T,
 ) -> io::Result<()> {
-    unsafe {
-        cvt(c::setsockopt(
+    let option_len = size_of::<T>() as c::socklen_t;
+    // SAFETY:
+    // * `sock` is opened for the duration of this call, as `sock` owns the socket.
+    // * the pointer to `option_value` is readable at a size of `size_of::<T>`
+    //   bytes
+    // * the value of `option_value` has a valid type for the given socket option
+    //   (guaranteed by caller).
+    cvt(unsafe {
+        c::setsockopt(
             sock.as_raw(),
             level,
             option_name,
             (&raw const option_value) as *const _,
-            size_of::<T>() as c::socklen_t,
-        ))?;
-        Ok(())
-    }
+            option_len,
+        )
+    })?;
+    Ok(())
 }
 
-pub fn getsockopt<T: Copy>(sock: &Socket, level: c_int, option_name: c_int) -> io::Result<T> {
-    unsafe {
-        let mut option_value: T = mem::zeroed();
-        let mut option_len = size_of::<T>() as c::socklen_t;
-        cvt(c::getsockopt(
+/// Gets the value of a socket option.
+///
+/// # Safety
+/// `T` must be the type associated with the given socket option.
+pub unsafe fn getsockopt<T: Copy>(
+    sock: &Socket,
+    level: c_int,
+    option_name: c_int,
+) -> io::Result<T> {
+    let mut option_value = MaybeUninit::<T>::zeroed();
+    let mut option_len = size_of::<T>() as c::socklen_t;
+
+    // SAFETY:
+    // * `sock` is opened for the duration of this call, as `sock` owns the socket.
+    // * the pointer to `option_value` is writable and the stack allocation has
+    //   space for `size_of::<T>` bytes.
+    cvt(unsafe {
+        c::getsockopt(
             sock.as_raw(),
             level,
             option_name,
-            (&raw mut option_value) as *mut _,
+            option_value.as_mut_ptr().cast(),
             &mut option_len,
-        ))?;
-        Ok(option_value)
-    }
+        )
+    })?;
+
+    // SAFETY: the `getsockopt` call succeeded and the caller guarantees that
+    //         `T` is the type of this option, thus `option_value` must have
+    //         been initialized by the system.
+    Ok(unsafe { option_value.assume_init() })
 }
 
-fn sockname<F>(f: F) -> io::Result<SocketAddr>
+/// Wraps a call to a platform function that returns a socket address.
+///
+/// # Safety
+/// * if `f` returns a success (i.e. `cvt` returns `Ok` when called on the
+///   return value), the buffer provided to `f` must have been initialized
+///   with a valid C socket address, the length of which must be written
+///   to the second argument.
+unsafe fn sockname<F>(f: F) -> io::Result<SocketAddr>
 where
     F: FnOnce(*mut c::sockaddr, *mut c::socklen_t) -> c_int,
 {
-    unsafe {
-        let mut storage: c::sockaddr_storage = mem::zeroed();
-        let mut len = size_of_val(&storage) as c::socklen_t;
-        cvt(f((&raw mut storage) as *mut _, &mut len))?;
-        socket_addr_from_c(&storage, len as usize)
-    }
+    let mut storage = MaybeUninit::<c::sockaddr_storage>::zeroed();
+    let mut len = size_of::<c::sockaddr_storage>() as c::socklen_t;
+    cvt(f(storage.as_mut_ptr().cast(), &mut len))?;
+    // SAFETY:
+    // The caller guarantees that the storage has been successfully initialized
+    // and its size written to `len` if `f` returns a success.
+    unsafe { socket_addr_from_c(storage.as_ptr(), len as usize) }
 }
 
 #[cfg(target_os = "android")]
@@ -546,8 +588,8 @@ impl TcpListener {
         // The `accept` function will fill in the storage with the address,
         // so we don't need to zero it here.
         // reference: https://linux.die.net/man/2/accept4
-        let mut storage: mem::MaybeUninit<c::sockaddr_storage> = mem::MaybeUninit::uninit();
-        let mut len = size_of_val(&storage) as c::socklen_t;
+        let mut storage = MaybeUninit::<c::sockaddr_storage>::uninit();
+        let mut len = size_of::<c::sockaddr_storage>() as c::socklen_t;
         let sock = self.inner.accept(storage.as_mut_ptr() as *mut _, &mut len)?;
         let addr = unsafe { socket_addr_from_c(storage.as_ptr(), len as usize)? };
         Ok((TcpStream { inner: sock }, addr))
