@@ -277,7 +277,9 @@ use crate::vec::Vec;
 // This is repr(C) to future-proof against possible field-reordering, which
 // would interfere with otherwise safe [into|from]_raw() of transmutable
 // inner types.
-#[repr(C)]
+// repr(align(2)) (forcing alignment to at least 2) is required because usize
+// has 1-byte alignment on AVR.
+#[repr(C, align(2))]
 struct RcInner<T: ?Sized> {
     strong: Cell<usize>,
     weak: Cell<usize>,
