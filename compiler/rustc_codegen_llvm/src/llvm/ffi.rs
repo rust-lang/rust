@@ -29,6 +29,7 @@ use super::debuginfo::{
     DITemplateTypeParameter, DIType, DebugEmissionKind, DebugNameTableKind,
 };
 use crate::llvm;
+use crate::llvm::MetadataKindId;
 
 /// In the LLVM-C API, boolean values are passed as `typedef int LLVMBool`,
 /// which has a different ABI from Rust or C++ `bool`.
@@ -511,31 +512,6 @@ impl AtomicOrdering {
 pub(crate) enum FileType {
     AssemblyFile,
     ObjectFile,
-}
-
-/// LLVMMetadataType
-#[derive(Copy, Clone)]
-#[repr(C)]
-#[expect(dead_code, reason = "Some variants are unused, but are kept to match LLVM-C")]
-pub(crate) enum MetadataType {
-    MD_dbg = 0,
-    MD_tbaa = 1,
-    MD_prof = 2,
-    MD_fpmath = 3,
-    MD_range = 4,
-    MD_tbaa_struct = 5,
-    MD_invariant_load = 6,
-    MD_alias_scope = 7,
-    MD_noalias = 8,
-    MD_nontemporal = 9,
-    MD_mem_parallel_loop_access = 10,
-    MD_nonnull = 11,
-    MD_unpredictable = 15,
-    MD_align = 17,
-    MD_type = 19,
-    MD_vcall_visibility = 28,
-    MD_noundef = 29,
-    MD_kcfi_type = 36,
 }
 
 /// Must match the layout of `LLVMInlineAsmDialect`.
@@ -1035,16 +1011,6 @@ pub(crate) type GetSymbolsCallback =
     unsafe extern "C" fn(*mut c_void, *const c_char) -> *mut c_void;
 pub(crate) type GetSymbolsErrorCallback = unsafe extern "C" fn(*const c_char) -> *mut c_void;
 
-#[derive(Copy, Clone)]
-#[repr(transparent)]
-pub(crate) struct MetadataKindId(c_uint);
-
-impl From<MetadataType> for MetadataKindId {
-    fn from(value: MetadataType) -> Self {
-        Self(value as c_uint)
-    }
-}
-
 unsafe extern "C" {
     // Create and destroy contexts.
     pub(crate) fn LLVMContextDispose(C: &'static mut Context);
@@ -1139,7 +1105,11 @@ unsafe extern "C" {
     pub(crate) fn LLVMSetValueName2(Val: &Value, Name: *const c_char, NameLen: size_t);
     pub(crate) fn LLVMReplaceAllUsesWith<'a>(OldVal: &'a Value, NewVal: &'a Value);
     pub(crate) safe fn LLVMSetMetadata<'a>(Val: &'a Value, KindID: MetadataKindId, Node: &'a Value);
-    pub(crate) fn LLVMGlobalSetMetadata<'a>(Val: &'a Value, KindID: c_uint, Metadata: &'a Metadata);
+    pub(crate) fn LLVMGlobalSetMetadata<'a>(
+        Val: &'a Value,
+        KindID: MetadataKindId,
+        Metadata: &'a Metadata,
+    );
     pub(crate) safe fn LLVMValueAsMetadata(Node: &Value) -> &Metadata;
 
     // Operations on constants of any type
@@ -2059,7 +2029,7 @@ unsafe extern "C" {
     // Operations on all values
     pub(crate) fn LLVMRustGlobalAddMetadata<'a>(
         Val: &'a Value,
-        KindID: c_uint,
+        KindID: MetadataKindId,
         Metadata: &'a Metadata,
     );
     pub(crate) fn LLVMRustIsNonGVFunctionPointerTy(Val: &Value) -> bool;

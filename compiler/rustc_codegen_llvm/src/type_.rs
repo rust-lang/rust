@@ -306,7 +306,7 @@ impl<'ll, 'tcx> TypeMembershipCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             let v = [llvm::LLVMValueAsMetadata(self.const_usize(0)), typeid_metadata];
             llvm::LLVMRustGlobalAddMetadata(
                 function,
-                llvm::MD_type as c_uint,
+                llvm::MD_type,
                 llvm::LLVMMDNodeInContext2(self.llcx, v.as_ptr(), v.len()),
             )
         }
@@ -318,7 +318,7 @@ impl<'ll, 'tcx> TypeMembershipCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             let v = [llvm::LLVMValueAsMetadata(self.const_usize(0)), typeid_metadata];
             llvm::LLVMGlobalSetMetadata(
                 function,
-                llvm::MD_type as c_uint,
+                llvm::MD_type,
                 llvm::LLVMMDNodeInContext2(self.llcx, v.as_ptr(), v.len()),
             )
         }
@@ -333,7 +333,7 @@ impl<'ll, 'tcx> TypeMembershipCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         unsafe {
             llvm::LLVMRustGlobalAddMetadata(
                 function,
-                llvm::MD_kcfi_type as c_uint,
+                llvm::MD_kcfi_type,
                 llvm::LLVMMDNodeInContext2(
                     self.llcx,
                     &llvm::LLVMValueAsMetadata(kcfi_type_metadata),
@@ -348,7 +348,7 @@ impl<'ll, 'tcx> TypeMembershipCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         unsafe {
             llvm::LLVMGlobalSetMetadata(
                 function,
-                llvm::MD_kcfi_type as c_uint,
+                llvm::MD_kcfi_type,
                 llvm::LLVMMDNodeInContext2(
                     self.llcx,
                     &llvm::LLVMValueAsMetadata(kcfi_type_metadata),

@@ -34,7 +34,7 @@ use smallvec::SmallVec;
 use crate::back::write::to_llvm_code_model;
 use crate::callee::get_fn;
 use crate::debuginfo::metadata::apply_vcall_visibility_metadata;
-use crate::llvm::Metadata;
+use crate::llvm::{Metadata, MetadataKindId};
 use crate::type_::Type;
 use crate::value::Value;
 use crate::{attributes, common, coverageinfo, debuginfo, llvm, llvm_util};
@@ -1006,11 +1006,11 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     pub(crate) fn set_metadata<'a>(
         &self,
         val: &'a Value,
-        kind_id: impl Into<llvm::MetadataKindId>,
+        kind_id: MetadataKindId,
         md: &'ll Metadata,
     ) {
         let node = self.get_metadata_value(md);
-        llvm::LLVMSetMetadata(val, kind_id.into(), node);
+        llvm::LLVMSetMetadata(val, kind_id, node);
     }
 }
 
