@@ -117,11 +117,7 @@ pub use crate::sys::pal::winsock::{cvt, cvt_gai, cvt_r, startup as init};
 pub struct Socket(OwnedSocket);
 
 impl Socket {
-    pub fn new(addr: &SocketAddr, ty: c_int) -> io::Result<Socket> {
-        let family = match *addr {
-            SocketAddr::V4(..) => netc::AF_INET,
-            SocketAddr::V6(..) => netc::AF_INET6,
-        };
+    pub fn new(family: c_int, ty: c_int) -> io::Result<Socket> {
         let socket = unsafe {
             c::WSASocketW(
                 family,

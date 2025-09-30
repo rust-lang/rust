@@ -37,15 +37,7 @@ pub fn init() {}
 pub struct Socket(FileDesc);
 
 impl Socket {
-    pub fn new(addr: &SocketAddr, ty: i32) -> io::Result<Socket> {
-        let fam = match *addr {
-            SocketAddr::V4(..) => netc::AF_INET,
-            SocketAddr::V6(..) => netc::AF_INET6,
-        };
-        Socket::new_raw(fam, ty)
-    }
-
-    pub fn new_raw(fam: i32, ty: i32) -> io::Result<Socket> {
+    pub fn new(fam: i32, ty: i32) -> io::Result<Socket> {
         let fd = cvt(unsafe { netc::socket(fam, ty, 0) })?;
         Ok(Socket(unsafe { FileDesc::from_raw_fd(fd) }))
     }

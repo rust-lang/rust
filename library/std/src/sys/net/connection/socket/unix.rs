@@ -63,15 +63,7 @@ pub fn cvt_gai(err: c_int) -> io::Result<()> {
 }
 
 impl Socket {
-    pub fn new(addr: &SocketAddr, ty: c_int) -> io::Result<Socket> {
-        let fam = match *addr {
-            SocketAddr::V4(..) => libc::AF_INET,
-            SocketAddr::V6(..) => libc::AF_INET6,
-        };
-        Socket::new_raw(fam, ty)
-    }
-
-    pub fn new_raw(fam: c_int, ty: c_int) -> io::Result<Socket> {
+    pub fn new(family: c_int, ty: c_int) -> io::Result<Socket> {
         cfg_select! {
             any(
                 target_os = "android",
@@ -89,7 +81,7 @@ impl Socket {
                 // On platforms that support it we pass the SOCK_CLOEXEC
                 // flag to atomically create the socket and set it as
                 // CLOEXEC. On Linux this was added in 2.6.27.
-                let fd = cvt(unsafe { libc::socket(fam, ty | libc::SOCK_CLOEXEC, 0) })?;
+                let fd = cvt(unsafe { libc::socket(family, ty | libc::SOCK_CLOEXEC, 0) })?;
                 let socket = Socket(unsafe { FileDesc::from_raw_fd(fd) });
 
                 // DragonFlyBSD, FreeBSD and NetBSD use `SO_NOSIGPIPE` as a `setsockopt`
@@ -100,7 +92,7 @@ impl Socket {
                 Ok(socket)
             }
             _ => {
-                let fd = cvt(unsafe { libc::socket(fam, ty, 0) })?;
+                let fd = cvt(unsafe { libc::socket(family, ty, 0) })?;
                 let fd = unsafe { FileDesc::from_raw_fd(fd) };
                 fd.set_cloexec()?;
                 let socket = Socket(fd);

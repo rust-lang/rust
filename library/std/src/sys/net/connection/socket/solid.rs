@@ -115,19 +115,9 @@ pub fn init() {}
 pub struct Socket(OwnedFd);
 
 impl Socket {
-    pub fn new(addr: &SocketAddr, ty: c_int) -> io::Result<Socket> {
-        let fam = match *addr {
-            SocketAddr::V4(..) => netc::AF_INET,
-            SocketAddr::V6(..) => netc::AF_INET6,
-        };
-        Socket::new_raw(fam, ty)
-    }
-
-    pub fn new_raw(fam: c_int, ty: c_int) -> io::Result<Socket> {
-        unsafe {
-            let fd = cvt(netc::socket(fam, ty, 0))?;
-            Ok(Self::from_raw_fd(fd))
-        }
+    pub fn new(fam: c_int, ty: c_int) -> io::Result<Socket> {
+        let fd = cvt(unsafe { netc::socket(fam, ty, 0) })?;
+        Ok(unsafe { Self::from_raw_fd(fd) })
     }
 
     pub fn connect(&self, addr: &SocketAddr) -> io::Result<()> {

@@ -178,6 +178,13 @@ fn socket_addr_to_c(addr: &SocketAddr) -> (SocketAddrCRepr, c::socklen_t) {
     }
 }
 
+fn addr_family(addr: &SocketAddr) -> c_int {
+    match addr {
+        SocketAddr::V4(..) => c::AF_INET,
+        SocketAddr::V6(..) => c::AF_INET6,
+    }
+}
+
 /// Converts the C socket address stored in `storage` to a Rust `SocketAddr`.
 ///
 /// # Safety
@@ -364,7 +371,7 @@ impl TcpStream {
         return each_addr(addr, inner);
 
         fn inner(addr: &SocketAddr) -> io::Result<TcpStream> {
-            let sock = Socket::new(addr, c::SOCK_STREAM)?;
+            let sock = Socket::new(addr_family(addr), c::SOCK_STREAM)?;
             sock.connect(addr)?;
             Ok(TcpStream { inner: sock })
         }
@@ -373,7 +380,7 @@ impl TcpStream {
     pub fn connect_timeout(addr: &SocketAddr, timeout: Duration) -> io::Result<TcpStream> {
         init();
 
-        let sock = Socket::new(addr, c::SOCK_STREAM)?;
+        let sock = Socket::new(addr_family(addr), c::SOCK_STREAM)?;
         sock.connect_timeout(addr, timeout)?;
         Ok(TcpStream { inner: sock })
     }
@@ -535,7 +542,7 @@ impl TcpListener {
         return each_addr(addr, inner);
 
         fn inner(addr: &SocketAddr) -> io::Result<TcpListener> {
-            let sock = Socket::new(addr, c::SOCK_STREAM)?;
+            let sock = Socket::new(addr_family(addr), c::SOCK_STREAM)?;
 
             // On platforms with Berkeley-derived sockets, this allows to quickly
             // rebind a socket, without needing to wait for the OS to clean up the
@@ -661,7 +668,7 @@ impl UdpSocket {
         return each_addr(addr, inner);
 
         fn inner(addr: &SocketAddr) -> io::Result<UdpSocket> {
-            let sock = Socket::new(addr, c::SOCK_DGRAM)?;
+            let sock = Socket::new(addr_family(addr), c::SOCK_DGRAM)?;
             let (addr, len) = socket_addr_to_c(addr);
             cvt(unsafe { c::bind(sock.as_raw(), addr.as_ptr(), len as _) })?;
             Ok(UdpSocket { inner: sock })
