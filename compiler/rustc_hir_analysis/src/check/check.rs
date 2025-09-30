@@ -1510,8 +1510,7 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
         return;
     }
 
-    // For each field, figure out if it's known to have "trivial" layout (i.e., is a 1-ZST), with
-    // "known" respecting #[non_exhaustive] attributes.
+    // For each field, figure out if it has "trivial" layout (i.e., is a 1-ZST).
     let field_infos = adt.all_fields().map(|field| {
         let ty = field.ty(tcx, GenericArgs::identity_for_item(tcx, field.did));
         let typing_env = ty::TypingEnv::non_body_analysis(tcx, field.did);
@@ -1519,49 +1518,7 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
         // We are currently checking the type this field came from, so it must be local
         let span = tcx.hir_span_if_local(field.did).unwrap();
         let trivial = layout.is_ok_and(|layout| layout.is_1zst());
-        if !trivial {
-            return (span, trivial, None);
-        }
-        // Even some 1-ZST fields are not allowed though, if they have `non_exhaustive`.
-
-        fn check_non_exhaustive<'tcx>(
-            tcx: TyCtxt<'tcx>,
-            t: Ty<'tcx>,
-        ) -> ControlFlow<(&'static str, DefId, GenericArgsRef<'tcx>, bool)> {
-            match t.kind() {
-                ty::Tuple(list) => list.iter().try_for_each(|t| check_non_exhaustive(tcx, t)),
-                ty::Array(ty, _) => check_non_exhaustive(tcx, *ty),
-                ty::Adt(def, args) => {
-                    if !def.did().is_local()
-                        && !find_attr!(
-                            tcx.get_all_attrs(def.did()),
-                            AttributeKind::PubTransparent(_)
-                        )
-                    {
-                        let non_exhaustive = def.is_variant_list_non_exhaustive()
-                            || def
-                                .variants()
-                                .iter()
-                                .any(ty::VariantDef::is_field_list_non_exhaustive);
-                        let has_priv = def.all_fields().any(|f| !f.vis.is_public());
-                        if non_exhaustive || has_priv {
-                            return ControlFlow::Break((
-                                def.descr(),
-                                def.did(),
-                                args,
-                                non_exhaustive,
-                            ));
-                        }
-                    }
-                    def.all_fields()
-                        .map(|field| field.ty(tcx, args))
-                        .try_for_each(|t| check_non_exhaustive(tcx, t))
-                }
-                _ => ControlFlow::Continue(()),
-            }
-        }
-
-        (span, trivial, check_non_exhaustive(tcx, ty).break_value())
+        (span, trivial, ty)
     });
 
     let non_trivial_fields = field_infos
@@ -1578,12 +1535,74 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
         );
         return;
     }
-    let mut prev_non_exhaustive_1zst = false;
-    for (span, _trivial, non_exhaustive_1zst) in field_infos {
-        if let Some((descr, def_id, args, non_exhaustive)) = non_exhaustive_1zst {
+
+    // Even some 1-ZST fields are not allowed though, if they have `non_exhaustive` or private
+    // fields or `repr(C)`. We call those fields "unsuited". Search for unsuited fields and
+    // error if the repr(transparent) condition relies on them.
+    enum UnsuitedReason {
+        NonExhaustive,
+        PrivateField,
+        ReprC,
+    }
+    struct UnsuitedInfo<'tcx> {
+        descr: &'static str,
+        def_id: DefId,
+        args: GenericArgsRef<'tcx>,
+        reason: UnsuitedReason,
+    }
+
+    fn check_unsuited_1zst<'tcx>(
+        tcx: TyCtxt<'tcx>,
+        t: Ty<'tcx>,
+    ) -> ControlFlow<UnsuitedInfo<'tcx>> {
+        match t.kind() {
+            ty::Tuple(list) => list.iter().try_for_each(|t| check_unsuited_1zst(tcx, t)),
+            ty::Array(ty, _) => check_unsuited_1zst(tcx, *ty),
+            ty::Adt(def, args) => {
+                if !def.did().is_local()
+                    && !find_attr!(tcx.get_all_attrs(def.did()), AttributeKind::PubTransparent(_))
+                {
+                    let non_exhaustive = def.is_variant_list_non_exhaustive()
+                        || def.variants().iter().any(ty::VariantDef::is_field_list_non_exhaustive);
+                    let has_priv = def.all_fields().any(|f| !f.vis.is_public());
+                    if non_exhaustive || has_priv {
+                        return ControlFlow::Break(UnsuitedInfo {
+                            descr: def.descr(),
+                            def_id: def.did(),
+                            args,
+                            reason: if non_exhaustive {
+                                UnsuitedReason::NonExhaustive
+                            } else {
+                                UnsuitedReason::PrivateField
+                            },
+                        });
+                    }
+                }
+                if def.repr().c() {
+                    return ControlFlow::Break(UnsuitedInfo {
+                        descr: def.descr(),
+                        def_id: def.did(),
+                        args,
+                        reason: UnsuitedReason::ReprC,
+                    });
+                }
+                def.all_fields()
+                    .map(|field| field.ty(tcx, args))
+                    .try_for_each(|t| check_unsuited_1zst(tcx, t))
+            }
+            _ => ControlFlow::Continue(()),
+        }
+    }
+
+    let mut prev_unsuited_1zst = false;
+    for (span, trivial, ty) in field_infos {
+        if !trivial {
+            continue;
+        }
+        if let Some(unsuited) = check_unsuited_1zst(tcx, ty).break_value() {
             // If there are any non-trivial fields, then there can be no non-exhaustive 1-zsts.
             // Otherwise, it's only an issue if there's >1 non-exhaustive 1-zst.
-            if non_trivial_count > 0 || prev_non_exhaustive_1zst {
+            if non_trivial_count > 0 || prev_unsuited_1zst {
                 tcx.node_span_lint(
                     REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS,
                     tcx.local_def_id_to_hir_id(adt.did().expect_local()),
@@ -1593,21 +1612,22 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
                             "zero-sized fields in `repr(transparent)` cannot \
                              contain external non-exhaustive types",
                         );
-                        let note = if non_exhaustive {
-                            "is marked with `#[non_exhaustive]`"
-                        } else {
-                            "contains private fields"
+                        let note = match unsuited.reason {
+                            UnsuitedReason::NonExhaustive => "is marked with `#[non_exhaustive]`",
+                            UnsuitedReason::PrivateField => "contains private fields",
+                            UnsuitedReason::ReprC => "is marked with `#[repr(C)]`",
                         };
-                        let field_ty = tcx.def_path_str_with_args(def_id, args);
+                        let field_ty = tcx.def_path_str_with_args(unsuited.def_id, unsuited.args);
                         lint.note(format!(
                             "this {descr} contains `{field_ty}`, which {note}, \
                                 and makes it not a breaking change to become \
-                                non-zero-sized in the future."
+                                non-zero-sized in the future.",
+                            descr = unsuited.descr,
                         ));
                     },
                 )
             } else {
-                prev_non_exhaustive_1zst = true;
+                prev_unsuited_1zst = true;
             }
         }
     }

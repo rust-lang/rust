@@ -1,0 +1,37 @@
+error: zero-sized fields in `repr(transparent)` cannot contain external non-exhaustive types
+  --> $DIR/repr-transparent-repr-c.rs:18:22
+   |
+LL | pub struct T5(Sized, ReprC1Zst);
+   |                      ^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #78586 <https://github.com/rust-lang/rust/issues/78586>
+   = note: this struct contains `ReprC1Zst`, which is marked with `#[repr(C)]`, and makes it not a breaking change to become non-zero-sized in the future.
+note: the lint level is defined here
+  --> $DIR/repr-transparent-repr-c.rs:1:9
+   |
+LL | #![deny(repr_transparent_external_private_fields)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: zero-sized fields in `repr(transparent)` cannot contain external non-exhaustive types
+  --> $DIR/repr-transparent-repr-c.rs:23:15
+   |
+LL | pub struct T6(ReprC1Zst, Sized);
+   |               ^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #78586 <https://github.com/rust-lang/rust/issues/78586>
+   = note: this struct contains `ReprC1Zst`, which is marked with `#[repr(C)]`, and makes it not a breaking change to become non-zero-sized in the future.
+
+error: zero-sized fields in `repr(transparent)` cannot contain external non-exhaustive types
+  --> $DIR/repr-transparent-repr-c.rs:28:15
+   |
+LL | pub struct T7(T1, Sized); // still wrong, even when the repr(C) is hidden inside another type
+   |               ^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #78586 <https://github.com/rust-lang/rust/issues/78586>
+   = note: this struct contains `ReprC1Zst`, which is marked with `#[repr(C)]`, and makes it not a breaking change to become non-zero-sized in the future.
+
+error: aborting due to 3 previous errors
+
