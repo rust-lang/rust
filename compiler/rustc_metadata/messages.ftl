@@ -237,11 +237,5 @@ metadata_unknown_target_modifier_unsafe_allowed = unknown target modifier `{$fla
 metadata_wasm_c_abi =
     older versions of the `wasm-bindgen` crate are incompatible with current versions of Rust; please update to `wasm-bindgen` v0.2.88
 
-metadata_wasm_import_form =
-    wasm import module must be of the form `wasm_import_module = "string"`
-
-metadata_whole_archive_needs_static =
-    linking modifier `whole-archive` is only compatible with `static` linking kind
-
 metadata_raw_dylib_malformed =
     link name must be well-formed if link kind is `raw-dylib`

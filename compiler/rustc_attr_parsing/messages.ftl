@@ -242,8 +242,6 @@ attr_parsing_link_requires_name =
 attr_parsing_multiple_modifiers =
     multiple `{$modifier}` modifiers in a single `modifiers` argument
 
-attr_parsing_multiple_renamings =
-    multiple renamings were specified for library `{$lib_name}`
 attr_parsing_raw_dylib_no_nul =
     link name must not contain NUL characters if link kind is `raw-dylib`
 
