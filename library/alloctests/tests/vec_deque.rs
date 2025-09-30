@@ -1,3 +1,4 @@
+use core::cell::Cell;
 use core::num::NonZero;
 use std::assert_matches::assert_matches;
 use std::collections::TryReserveErrorKind::*;
@@ -1848,4 +1849,200 @@ fn test_truncate_front() {
     assert_eq!(v.as_slices(), ([9].as_slice(), [0, 1, 2, 3, 4, 5, 6].as_slice()));
     v.truncate_front(5);
     assert_eq!(v.as_slices(), ([2, 3, 4, 5, 6].as_slice(), [].as_slice()));
+}
+
+#[test]
+fn test_extend_from_within() {
+    let mut v = VecDeque::with_capacity(8);
+    v.extend(0..6);
+    v.truncate_front(4);
+    v.extend_from_within(1..4);
+    assert_eq!(v.as_slices(), ([2, 3, 4, 5, 3, 4].as_slice(), [5].as_slice()));
+    v.extend_from_within(1..=2);
+    assert_eq!(v, [2, 3, 4, 5, 3, 4, 5, 3, 4]);
+    v.extend_from_within(..3);
+    assert_eq!(v, [2, 3, 4, 5, 3, 4, 5, 3, 4, 2, 3, 4]);
+}
+
+struct CloneTracker<'a> {
+    clone: &'a Cell<u32>,
+    drop: &'a Cell<u32>,
+    panic: bool,
+}
+
+impl<'a> Clone for CloneTracker<'a> {
+    fn clone(&self) -> Self {
+        self.clone.set(self.clone.get() + 1);
+        if self.panic {
+            panic!();
+        }
+        Self { clone: self.clone, drop: self.drop, panic: false }
+    }
+}
+
+impl<'a> Drop for CloneTracker<'a> {
+    fn drop(&mut self) {
+        self.drop.set(self.drop.get() + 1);
+    }
+}
+
+#[test]
+fn test_extend_from_within_clone() {
+    let clone_counts = [const { Cell::new(0) }; 6];
+    let drop_count = Cell::new(0);
+    let mut v = VecDeque::with_capacity(10);
+    v.extend(clone_counts.iter().map(|clone_count| CloneTracker {
+        clone: clone_count,
+        drop: &drop_count,
+        panic: false,
+    }));
+    v.truncate_front(4);
+
+    v.extend_from_within(2..);
+    v.extend_from_within(1..5);
+    assert_eq!(
+        v.iter().map(|tr| tr.clone.get()).collect::<Vec<_>>(),
+        [0, 1, 3, 2, 3, 2, 1, 3, 2, 3],
+    );
+    assert_eq!(
+        clone_counts.each_ref().map(|c| {
+            let old = c.get();
+            c.set(0);
+            old
+        }),
+        [0, 0, 0, 1, 3, 2],
+    );
+}
+
+#[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+fn test_extend_from_within_clone_panic() {
+    let clone_counts = [const { Cell::new(0) }; 6];
+    let drop_count = Cell::new(0);
+    let mut v = VecDeque::with_capacity(8);
+    v.extend(clone_counts.iter().map(|clone_count| CloneTracker {
+        clone: clone_count,
+        drop: &drop_count,
+        panic: false,
+    }));
+
+    v.truncate_front(4);
+
+    // panic after wrapping
+    v[2].panic = true;
+    catch_unwind(AssertUnwindSafe(|| {
+        v.extend_from_within(..);
+    }))
+    .unwrap_err();
+    v[2].panic = false;
+    assert_eq!(v.iter().map(|tr| tr.clone.get()).collect::<Vec<_>>(), [1, 1, 1, 0, 1, 1]);
+    assert_eq!(clone_counts.each_ref().map(|c| c.get()), [0, 0, 1, 1, 1, 0]);
+    assert_eq!(drop_count.get(), 2);
+
+    v.truncate_front(2);
+
+    // panic before wrapping
+    v[1].panic = true;
+    catch_unwind(AssertUnwindSafe(|| {
+        v.extend_from_within(..);
+    }))
+    .unwrap_err();
+    v[1].panic = false;
+    assert_eq!(v.iter().map(|tr| tr.clone.get()).collect::<Vec<_>>(), [2, 2, 2]);
+    assert_eq!(clone_counts.each_ref().map(|c| c.get()), [0, 0, 2, 2, 1, 0]);
+    assert_eq!(drop_count.get(), 6);
+}
+
+#[test]
+fn test_prepend_from_within() {
+    let mut v = VecDeque::with_capacity(8);
+    v.extend(0..6);
+    v.truncate_front(4);
+    v.prepend_from_within(..=0);
+    assert_eq!(v.as_slices(), ([2, 2, 3, 4, 5].as_slice(), [].as_slice()));
+    v.prepend_from_within(2..);
+    assert_eq!(v.as_slices(), ([3, 4].as_slice(), [5, 2, 2, 3, 4, 5].as_slice()));
+    v.prepend_from_within(..);
+    assert_eq!(v, [[3, 4, 5, 2, 2, 3, 4, 5]; 2].as_flattened());
+}
+
+#[test]
+fn test_prepend_from_within_clone() {
+    let clone_counts = [const { Cell::new(0) }; 6];
+    let drop_count = Cell::new(0);
+    let mut v = VecDeque::with_capacity(10);
+    v.extend(clone_counts.iter().map(|clone_count| CloneTracker {
+        clone: clone_count,
+        drop: &drop_count,
+        panic: false,
+    }));
+    v.truncate_front(4);
+
+    v.prepend_from_within(..2);
+    v.prepend_from_within(1..5);
+    assert_eq!(
+        v.iter().map(|tr| tr.clone.get()).collect::<Vec<_>>(),
+        [3, 2, 3, 1, 2, 3, 2, 3, 1, 0],
+    );
+    assert_eq!(
+        clone_counts.each_ref().map(|c| {
+            let old = c.get();
+            c.set(0);
+            old
+        }),
+        [0, 0, 2, 3, 1, 0],
+    );
+}
+
+#[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+fn test_prepend_from_within_clone_panic() {
+    let clone_counts = [const { Cell::new(0) }; 6];
+    let drop_count = Cell::new(0);
+    let mut v = VecDeque::with_capacity(8);
+    v.extend(clone_counts.iter().map(|clone_count| CloneTracker {
+        clone: clone_count,
+        drop: &drop_count,
+        panic: false,
+    }));
+
+    v.truncate_front(4);
+
+    // panic after wrapping
+    v[1].panic = true;
+    catch_unwind(AssertUnwindSafe(|| {
+        v.prepend_from_within(..);
+    }))
+    .unwrap_err();
+    v[1].panic = false;
+    assert_eq!(v.iter().map(|tr| tr.clone.get()).collect::<Vec<_>>(), [1, 1, 0, 1, 1, 1]);
+    assert_eq!(clone_counts.each_ref().map(|c| c.get()), [0, 0, 0, 1, 1, 1]);
+    assert_eq!(drop_count.get(), 2);
+
+    v.truncate_front(2);
+
+    // panic before wrapping
+    v[0].panic = true;
+    catch_unwind(AssertUnwindSafe(|| {
+        v.prepend_from_within(..);
+    }))
+    .unwrap_err();
+    v[0].panic = false;
+    assert_eq!(v.iter().map(|tr| tr.clone.get()).collect::<Vec<_>>(), [2, 2, 2]);
+    assert_eq!(clone_counts.each_ref().map(|c| c.get()), [0, 0, 0, 1, 2, 2]);
+    assert_eq!(drop_count.get(), 6);
+}
+
+#[test]
+fn test_extend_and_prepend_from_within() {
+    let mut v = ('0'..='9').map(String::from).collect::<VecDeque<_>>();
+    v.truncate_front(5);
+    v.extend_from_within(4..);
+    v.prepend_from_within(..2);
+    assert_eq!(v.iter().map(|s| &**s).collect::<String>(), "56567899");
+    v.clear();
+    v.extend(['1', '2', '3'].into_iter().map(String::from));
+    v.prepend_from_within(..);
+    v.extend_from_within(..);
+    assert_eq!(v.iter().map(|s| &**s).collect::<String>(), "123123123123");
 }

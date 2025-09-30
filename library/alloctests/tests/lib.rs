@@ -6,6 +6,7 @@
 #![feature(char_max_len)]
 #![feature(cow_is_borrowed)]
 #![feature(core_intrinsics)]
+#![feature(deque_extend_front)]
 #![feature(downcast_unchecked)]
 #![feature(exact_size_is_empty)]
 #![feature(hashmap_internals)]
