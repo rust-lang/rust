@@ -1395,8 +1395,8 @@ def main():
     # process has to happen before anything is printed out.
     if help_triggered:
         eprint(
-            "INFO: Downloading and building bootstrap before processing --help command.\n",
-            "See src/bootstrap/README.md for help with common commands.",
+            "INFO: Downloading and building bootstrap before processing --help command.\n"
+            "      See src/bootstrap/README.md for help with common commands."
         )
 
     exit_code = 0
