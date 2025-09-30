@@ -550,13 +550,12 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     fn visit_opaque_types_next(&mut self) {
         let mut fcx_typeck_results = self.fcx.typeck_results.borrow_mut();
         assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
-        for hidden_ty in fcx_typeck_results.concrete_opaque_types.values() {
+        for hidden_ty in fcx_typeck_results.hidden_types.values() {
             assert!(!hidden_ty.has_infer());
         }
 
-        assert_eq!(self.typeck_results.concrete_opaque_types.len(), 0);
-        self.typeck_results.concrete_opaque_types =
-            mem::take(&mut fcx_typeck_results.concrete_opaque_types);
+        assert_eq!(self.typeck_results.hidden_types.len(), 0);
+        self.typeck_results.hidden_types = mem::take(&mut fcx_typeck_results.hidden_types);
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -588,7 +587,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 hidden_type.span,
                 DefiningScopeKind::HirTypeck,
             ) {
-                self.typeck_results.concrete_opaque_types.insert(
+                self.typeck_results.hidden_types.insert(
                     opaque_type_key.def_id,
                     ty::OpaqueHiddenType::new_error(tcx, err.report(self.fcx)),
                 );
@@ -600,16 +599,11 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 DefiningScopeKind::HirTypeck,
             );
 
-            if let Some(prev) = self
-                .typeck_results
-                .concrete_opaque_types
-                .insert(opaque_type_key.def_id, hidden_type)
+            if let Some(prev) =
+                self.typeck_results.hidden_types.insert(opaque_type_key.def_id, hidden_type)
             {
-                let entry = &mut self
-                    .typeck_results
-                    .concrete_opaque_types
-                    .get_mut(&opaque_type_key.def_id)
-                    .unwrap();
+                let entry =
+                    &mut self.typeck_results.hidden_types.get_mut(&opaque_type_key.def_id).unwrap();
                 if prev.ty != hidden_type.ty {
                     if let Some(guar) = self.typeck_results.tainted_by_errors {
                         entry.ty = Ty::new_error(tcx, guar);
@@ -628,7 +622,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
         let recursive_opaques: Vec<_> = self
             .typeck_results
-            .concrete_opaque_types
+            .hidden_types
             .iter()
             .filter(|&(&def_id, hidden_ty)| {
                 hidden_ty
@@ -636,7 +630,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                     .visit_with(&mut HasRecursiveOpaque {
                         def_id,
                         seen: Default::default(),
-                        opaques: &self.typeck_results.concrete_opaque_types,
+                        opaques: &self.typeck_results.hidden_types,
                         tcx,
                     })
                     .is_break()
@@ -651,7 +645,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 .with_code(E0720)
                 .emit();
             self.typeck_results
-                .concrete_opaque_types
+                .hidden_types
                 .insert(def_id, OpaqueHiddenType { span, ty: Ty::new_error(tcx, guar) });
         }
     }
