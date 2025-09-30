@@ -1131,3 +1131,6 @@ pub trait FnPtr: Copy + Clone {
     #[lang = "fn_ptr_addr"]
     fn addr(self) -> *const ();
 }
+
+#[unstable(feature = "derive_coerce_pointee", issue = "123430")]
+pub use crate::ops::CoercePointee;
