@@ -47,6 +47,7 @@ pub fn with_bolt_instrumented<F: FnOnce(&Utf8Path) -> anyhow::Result<R>, R>(
 }
 
 /// Optimizes the file at `path` with BOLT in-place using the given `profile`.
+#[allow(unused)]
 pub fn bolt_optimize(
     path: &Utf8Path,
     profile: &BoltProfile,
