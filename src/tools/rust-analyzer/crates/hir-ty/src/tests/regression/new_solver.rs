@@ -1,6 +1,6 @@
 use expect_test::expect;
 
-use crate::tests::{check_infer, check_no_mismatches};
+use crate::tests::{check_infer, check_no_mismatches, check_types};
 
 #[test]
 fn regression_20365() {
@@ -448,5 +448,27 @@ fn main() {
     let st = coercion(tt);
 }
     "#,
+    );
+}
+
+#[test]
+fn double_into_iter() {
+    check_types(
+        r#"
+//- minicore: iterator
+
+fn intoiter_issue<A, B>(foo: A)
+where
+    A: IntoIterator<Item = B>,
+    B: IntoIterator<Item = usize>,
+{
+    for x in foo {
+    //  ^ B
+        for m in x {
+        //  ^ usize
+        }
+    }
+}
+"#,
     );
 }
