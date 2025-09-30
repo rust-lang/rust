@@ -114,5 +114,19 @@ LL |
 LL ~     takes_unit(());
    |
 
-error: aborting due to 8 previous errors
+error: this let-binding has unit value
+  --> tests/ui/let_unit.rs:235:5
+   |
+LL |     let value = println!();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: omit the `let` binding and replace variable usages with `()`
+   |
+LL ~     println!();
+LL |
+LL |
+LL ~     Foo { value: () };
+   |
+
+error: aborting due to 9 previous errors
 
