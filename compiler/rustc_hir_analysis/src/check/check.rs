@@ -12,9 +12,7 @@ use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::{LangItem, Node, attrs, find_attr, intravisit};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::{Obligation, ObligationCauseCode, WellFormedLoc};
-use rustc_lint_defs::builtin::{
-    REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS, UNSUPPORTED_CALLING_CONVENTIONS,
-};
+use rustc_lint_defs::builtin::UNSUPPORTED_CALLING_CONVENTIONS;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
 use rustc_middle::middle::stability::EvalResult;
@@ -1603,29 +1601,24 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
             // If there are any non-trivial fields, then there can be no non-exhaustive 1-zsts.
             // Otherwise, it's only an issue if there's >1 non-exhaustive 1-zst.
             if non_trivial_count > 0 || prev_unsuited_1zst {
-                tcx.node_span_lint(
-                    REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS,
-                    tcx.local_def_id_to_hir_id(adt.did().expect_local()),
+                let mut diag = tcx.dcx().struct_span_err(
                     span,
-                    |lint| {
-                        lint.primary_message(
-                            "zero-sized fields in `repr(transparent)` cannot \
+                    "zero-sized fields in `repr(transparent)` cannot \
                              contain external non-exhaustive types",
-                        );
-                        let note = match unsuited.reason {
-                            UnsuitedReason::NonExhaustive => "is marked with `#[non_exhaustive]`",
-                            UnsuitedReason::PrivateField => "contains private fields",
-                            UnsuitedReason::ReprC => "is marked with `#[repr(C)]`",
-                        };
-                        let field_ty = tcx.def_path_str_with_args(unsuited.def_id, unsuited.args);
-                        lint.note(format!(
-                            "this {descr} contains `{field_ty}`, which {note}, \
+                );
+                let note = match unsuited.reason {
+                    UnsuitedReason::NonExhaustive => "is marked with `#[non_exhaustive]`",
+                    UnsuitedReason::PrivateField => "contains private fields",
+                    UnsuitedReason::ReprC => "is marked with `#[repr(C)]`",
+                };
+                let field_ty = tcx.def_path_str_with_args(unsuited.def_id, unsuited.args);
+                diag.note(format!(
+                    "this {descr} contains `{field_ty}`, which {note}, \
                                 and makes it not a breaking change to become \
                                 non-zero-sized in the future.",
-                            descr = unsuited.descr,
-                        ));
-                    },
-                )
+                    descr = unsuited.descr,
+                ));
+                diag.emit();
             } else {
                 prev_unsuited_1zst = true;
             }
