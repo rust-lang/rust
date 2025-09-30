@@ -23,9 +23,7 @@ use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Spanned;
-use rustc_span::{
-    BytePos, DUMMY_SP, DesugaringKind, ErrorGuaranteed, Ident, Span, Symbol, kw, sym,
-};
+use rustc_span::{BytePos, DUMMY_SP, ErrorGuaranteed, Ident, Span, Symbol, kw, sym};
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use smallvec::SmallVec;
 use thin_vec::ThinVec;
@@ -2713,8 +2711,31 @@ impl Expr<'_> {
 /// Checks if the specified expression is a built-in range literal.
 /// (See: `LoweringContext::lower_expr()`).
 pub fn is_range_literal(expr: &Expr<'_>) -> bool {
-    matches!(expr.kind, ExprKind::Call(..) | ExprKind::Struct(..))
-        && expr.span.desugaring_kind() == Some(DesugaringKind::RangeExpr)
+    match expr.kind {
+        // All built-in range literals but `..=` and `..` desugar to `Struct`s.
+        ExprKind::Struct(ref qpath, _, _) => matches!(
+            **qpath,
+            QPath::LangItem(
+                LangItem::Range
+                    | LangItem::RangeTo
+                    | LangItem::RangeFrom
+                    | LangItem::RangeFull
+                    | LangItem::RangeToInclusive
+                    | LangItem::RangeCopy
+                    | LangItem::RangeFromCopy
+                    | LangItem::RangeInclusiveCopy
+                    | LangItem::RangeToInclusiveCopy,
+                ..
+            )
+        ),
+
+        // `..=` desugars into `::std::ops::RangeInclusive::new(...)`.
+        ExprKind::Call(ref func, _) => {
+            matches!(func.kind, ExprKind::Path(QPath::LangItem(LangItem::RangeInclusiveNew, ..)))
+        }
+
+        _ => false,
+    }
 }
 
 /// Checks if the specified expression needs parentheses for prefix
