@@ -90,6 +90,12 @@ envs:
   pr:
     PR_CI_JOB: 1
 
+  # Ensure that host tooling is tested on our minimum supported macOS
+  # version.
+  env-macos-x86_64-target: &env-macos-x86_64-target
+    MACOSX_DEPLOYMENT_TARGET: 10.12
+    MACOSX_STD_DEPLOYMENT_TARGET: 10.12
+
 jobs:
   dist-x86_64-linux: &job-dist-x86_64-linux
     name: dist-x86_64-linux
@@ -456,10 +462,8 @@ auto:
         --set rust.jemalloc
         --set rust.lto=thin
         --set rust.codegen-units=1
-      # Ensure that host tooling is built to support our minimum support macOS version.
-      MACOSX_DEPLOYMENT_TARGET: 10.12
-      MACOSX_STD_DEPLOYMENT_TARGET: 10.12
       DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
+      <<: *env-macos-x86_64-target
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-macos
@@ -494,11 +498,9 @@ auto:
         --set target.aarch64-apple-tvos-sim.profiler=false
         --set target.aarch64-apple-watchos.profiler=false
         --set target.aarch64-apple-watchos-sim.profiler=false
-      # Ensure that host tooling is built to support our minimum support macOS version.
-      # FIXME(madsmtm): This might be redundant, as we're not building host tooling here (?)
-      MACOSX_DEPLOYMENT_TARGET: 10.12
-      MACOSX_STD_DEPLOYMENT_TARGET: 10.12
       DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
+      # FIXME(madsmtm): Setting the target might be redundant, as we're not building host tooling here (?)
+      <<: *env-macos-x86_64-target
     <<: *job-macos
 
   - name: dist-aarch64-apple
