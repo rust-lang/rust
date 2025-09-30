@@ -28,7 +28,7 @@ use crate::core::builder::{
     crate_description,
 };
 use crate::core::config::TargetSelection;
-use crate::core::config::flags::{Subcommand, get_completion, get_help};
+use crate::core::config::flags::{Subcommand, get_completion, top_level_help};
 use crate::utils::build_stamp::{self, BuildStamp};
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{
@@ -1295,12 +1295,20 @@ HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
         }
 
         builder.info("x.py help check");
-        let help_path = get_help_path(builder);
         if builder.config.cmd.bless() {
             builder.ensure(crate::core::build_steps::run::GenerateHelp);
-        } else if get_help(&help_path).is_some() {
-            eprintln!("x.py help was changed; run `x.py run generate-help` to update them");
-            crate::exit!(1);
+        } else {
+            let help_path = get_help_path(builder);
+            let cur_help = std::fs::read_to_string(&help_path).unwrap_or_else(|err| {
+                eprintln!("couldn't read {}: {}", help_path.display(), err.to_string());
+                crate::exit!(1);
+            });
+            let new_help = top_level_help();
+
+            if new_help != cur_help {
+                eprintln!("x.py help was changed; run `x.py run generate-help` to update it");
+                crate::exit!(1);
+            }
         }
     }
 

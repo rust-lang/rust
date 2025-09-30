@@ -702,24 +702,8 @@ pub fn get_completion(shell: &dyn Generator, path: &Path) -> Option<String> {
     Some(String::from_utf8(buf).expect("completion script should be UTF-8"))
 }
 
-/// Return the help of the bootstrap if the result differs from the current
-/// help in `path`. It always returns the help if `path` does not exist.
-pub fn get_help(path: &Path) -> Option<String> {
+/// Return the top level help of the bootstrap.
+pub fn top_level_help() -> String {
     let mut cmd = Flags::command();
-    let cur_help = if !path.exists() {
-        String::new()
-    } else {
-        std::fs::read_to_string(path).unwrap_or_else(|_| {
-            eprintln!("couldn't read {}", path.display());
-            crate::exit!(1)
-        })
-    };
-
-    let new_help = cmd.render_help();
-
-    if new_help.to_string() == cur_help {
-        return None;
-    }
-
-    Some(new_help.to_string())
+    cmd.render_help().to_string()
 }
