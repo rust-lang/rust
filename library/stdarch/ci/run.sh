@@ -95,6 +95,8 @@ case ${TARGET} in
         TEST_RUNNER="${CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER}"
         TEST_SKIP_INTRINSICS=crates/intrinsic-test/missing_x86.txt
         export STDARCH_DISABLE_ASSERT_INSTR=1
+        PATH="$PATH":"$(pwd)"/c_programs
+        export PATH
 
         export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+avx"
         cargo_test "${PROFILE}"
