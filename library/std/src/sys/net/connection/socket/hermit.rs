@@ -242,11 +242,11 @@ impl Socket {
             None => netc::timeval { tv_sec: 0, tv_usec: 0 },
         };
 
-        setsockopt(self, netc::SOL_SOCKET, kind, timeout)
+        unsafe { setsockopt(self, netc::SOL_SOCKET, kind, timeout) }
     }
 
     pub fn timeout(&self, kind: i32) -> io::Result<Option<Duration>> {
-        let raw: netc::timeval = getsockopt(self, netc::SOL_SOCKET, kind)?;
+        let raw: netc::timeval = unsafe { getsockopt(self, netc::SOL_SOCKET, kind)? };
         if raw.tv_sec == 0 && raw.tv_usec == 0 {
             Ok(None)
         } else {
@@ -272,22 +272,22 @@ impl Socket {
             l_linger: linger.unwrap_or_default().as_secs() as libc::c_int,
         };
 
-        setsockopt(self, netc::SOL_SOCKET, netc::SO_LINGER, linger)
+        unsafe { setsockopt(self, netc::SOL_SOCKET, netc::SO_LINGER, linger) }
     }
 
     pub fn linger(&self) -> io::Result<Option<Duration>> {
-        let val: netc::linger = getsockopt(self, netc::SOL_SOCKET, netc::SO_LINGER)?;
+        let val: netc::linger = unsafe { getsockopt(self, netc::SOL_SOCKET, netc::SO_LINGER)? };
 
         Ok((val.l_onoff != 0).then(|| Duration::from_secs(val.l_linger as u64)))
     }
 
     pub fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
         let value: i32 = if nodelay { 1 } else { 0 };
-        setsockopt(self, netc::IPPROTO_TCP, netc::TCP_NODELAY, value)
+        unsafe { setsockopt(self, netc::IPPROTO_TCP, netc::TCP_NODELAY, value) }
     }
 
     pub fn nodelay(&self) -> io::Result<bool> {
-        let raw: i32 = getsockopt(self, netc::IPPROTO_TCP, netc::TCP_NODELAY)?;
+        let raw: i32 = unsafe { getsockopt(self, netc::IPPROTO_TCP, netc::TCP_NODELAY)? };
         Ok(raw != 0)
     }
 
@@ -304,7 +304,7 @@ impl Socket {
     }
 
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
-        let raw: c_int = getsockopt(self, libc::SOL_SOCKET, libc::SO_ERROR)?;
+        let raw: c_int = unsafe { getsockopt(self, libc::SOL_SOCKET, libc::SO_ERROR)? };
         if raw == 0 { Ok(None) } else { Ok(Some(io::Error::from_raw_os_error(raw as i32))) }
     }
 

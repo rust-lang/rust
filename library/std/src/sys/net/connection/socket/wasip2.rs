@@ -270,11 +270,11 @@ impl Socket {
             }
             None => netc::timeval { tv_sec: 0, tv_usec: 0 },
         };
-        setsockopt(self, netc::SOL_SOCKET, kind, timeout)
+        unsafe { setsockopt(self, netc::SOL_SOCKET, kind, timeout) }
     }
 
     pub fn timeout(&self, kind: c_int) -> io::Result<Option<Duration>> {
-        let raw: netc::timeval = getsockopt(self, netc::SOL_SOCKET, kind)?;
+        let raw: netc::timeval = unsafe { getsockopt(self, netc::SOL_SOCKET, kind)? };
         if raw.tv_sec == 0 && raw.tv_usec == 0 {
             Ok(None)
         } else {
@@ -303,11 +303,11 @@ impl Socket {
     }
 
     pub fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
-        setsockopt(self, netc::IPPROTO_TCP, netc::TCP_NODELAY, nodelay as c_int)
+        unsafe { setsockopt(self, netc::IPPROTO_TCP, netc::TCP_NODELAY, nodelay as c_int) }
     }
 
     pub fn nodelay(&self) -> io::Result<bool> {
-        let raw: c_int = getsockopt(self, netc::IPPROTO_TCP, netc::TCP_NODELAY)?;
+        let raw: c_int = unsafe { getsockopt(self, netc::IPPROTO_TCP, netc::TCP_NODELAY)? };
         Ok(raw != 0)
     }
 
@@ -317,7 +317,7 @@ impl Socket {
     }
 
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
-        let raw: c_int = getsockopt(self, netc::SOL_SOCKET, netc::SO_ERROR)?;
+        let raw: c_int = unsafe { getsockopt(self, netc::SOL_SOCKET, netc::SO_ERROR)? };
         if raw == 0 { Ok(None) } else { Ok(Some(io::Error::from_raw_os_error(raw as i32))) }
     }
 

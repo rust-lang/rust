@@ -442,11 +442,11 @@ impl TcpStream {
     }
 
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
-        sockname(|buf, len| unsafe { c::getpeername(self.inner.as_raw(), buf, len) })
+        unsafe { sockname(|buf, len| c::getpeername(self.inner.as_raw(), buf, len)) }
     }
 
     pub fn socket_addr(&self) -> io::Result<SocketAddr> {
-        sockname(|buf, len| unsafe { c::getsockname(self.inner.as_raw(), buf, len) })
+        unsafe { sockname(|buf, len| c::getsockname(self.inner.as_raw(), buf, len)) }
     }
 
     pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
@@ -474,11 +474,11 @@ impl TcpStream {
     }
 
     pub fn set_ttl(&self, ttl: u32) -> io::Result<()> {
-        setsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL, ttl as c_int)
+        unsafe { setsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL, ttl as c_int) }
     }
 
     pub fn ttl(&self) -> io::Result<u32> {
-        let raw: c_int = getsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL)?;
+        let raw: c_int = unsafe { getsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL)? };
         Ok(raw as u32)
     }
 
@@ -545,7 +545,9 @@ impl TcpListener {
             // which allows “socket hijacking”, so we explicitly don't set it here.
             // https://docs.microsoft.com/en-us/windows/win32/winsock/using-so-reuseaddr-and-so-exclusiveaddruse
             #[cfg(not(windows))]
-            setsockopt(&sock, c::SOL_SOCKET, c::SO_REUSEADDR, 1 as c_int)?;
+            unsafe {
+                setsockopt(&sock, c::SOL_SOCKET, c::SO_REUSEADDR, 1 as c_int)?
+            };
 
             // Bind our new socket
             let (addr, len) = socket_addr_to_c(addr);
@@ -581,7 +583,7 @@ impl TcpListener {
     }
 
     pub fn socket_addr(&self) -> io::Result<SocketAddr> {
-        sockname(|buf, len| unsafe { c::getsockname(self.inner.as_raw(), buf, len) })
+        unsafe { sockname(|buf, len| c::getsockname(self.inner.as_raw(), buf, len)) }
     }
 
     pub fn accept(&self) -> io::Result<(TcpStream, SocketAddr)> {
@@ -600,20 +602,20 @@ impl TcpListener {
     }
 
     pub fn set_ttl(&self, ttl: u32) -> io::Result<()> {
-        setsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL, ttl as c_int)
+        unsafe { setsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL, ttl as c_int) }
     }
 
     pub fn ttl(&self) -> io::Result<u32> {
-        let raw: c_int = getsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL)?;
+        let raw: c_int = unsafe { getsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL)? };
         Ok(raw as u32)
     }
 
     pub fn set_only_v6(&self, only_v6: bool) -> io::Result<()> {
-        setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_V6ONLY, only_v6 as c_int)
+        unsafe { setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_V6ONLY, only_v6 as c_int) }
     }
 
     pub fn only_v6(&self) -> io::Result<bool> {
-        let raw: c_int = getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_V6ONLY)?;
+        let raw: c_int = unsafe { getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_V6ONLY)? };
         Ok(raw != 0)
     }
 
@@ -676,11 +678,11 @@ impl UdpSocket {
     }
 
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
-        sockname(|buf, len| unsafe { c::getpeername(self.inner.as_raw(), buf, len) })
+        unsafe { sockname(|buf, len| c::getpeername(self.inner.as_raw(), buf, len)) }
     }
 
     pub fn socket_addr(&self) -> io::Result<SocketAddr> {
-        sockname(|buf, len| unsafe { c::getsockname(self.inner.as_raw(), buf, len) })
+        unsafe { sockname(|buf, len| c::getsockname(self.inner.as_raw(), buf, len)) }
     }
 
     pub fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
@@ -728,48 +730,62 @@ impl UdpSocket {
     }
 
     pub fn set_broadcast(&self, broadcast: bool) -> io::Result<()> {
-        setsockopt(&self.inner, c::SOL_SOCKET, c::SO_BROADCAST, broadcast as c_int)
+        unsafe { setsockopt(&self.inner, c::SOL_SOCKET, c::SO_BROADCAST, broadcast as c_int) }
     }
 
     pub fn broadcast(&self) -> io::Result<bool> {
-        let raw: c_int = getsockopt(&self.inner, c::SOL_SOCKET, c::SO_BROADCAST)?;
+        let raw: c_int = unsafe { getsockopt(&self.inner, c::SOL_SOCKET, c::SO_BROADCAST)? };
         Ok(raw != 0)
     }
 
     pub fn set_multicast_loop_v4(&self, multicast_loop_v4: bool) -> io::Result<()> {
-        setsockopt(
-            &self.inner,
-            c::IPPROTO_IP,
-            c::IP_MULTICAST_LOOP,
-            multicast_loop_v4 as IpV4MultiCastType,
-        )
+        unsafe {
+            setsockopt(
+                &self.inner,
+                c::IPPROTO_IP,
+                c::IP_MULTICAST_LOOP,
+                multicast_loop_v4 as IpV4MultiCastType,
+            )
+        }
     }
 
     pub fn multicast_loop_v4(&self) -> io::Result<bool> {
-        let raw: IpV4MultiCastType = getsockopt(&self.inner, c::IPPROTO_IP, c::IP_MULTICAST_LOOP)?;
+        let raw: IpV4MultiCastType =
+            unsafe { getsockopt(&self.inner, c::IPPROTO_IP, c::IP_MULTICAST_LOOP)? };
         Ok(raw != 0)
     }
 
     pub fn set_multicast_ttl_v4(&self, multicast_ttl_v4: u32) -> io::Result<()> {
-        setsockopt(
-            &self.inner,
-            c::IPPROTO_IP,
-            c::IP_MULTICAST_TTL,
-            multicast_ttl_v4 as IpV4MultiCastType,
-        )
+        unsafe {
+            setsockopt(
+                &self.inner,
+                c::IPPROTO_IP,
+                c::IP_MULTICAST_TTL,
+                multicast_ttl_v4 as IpV4MultiCastType,
+            )
+        }
     }
 
     pub fn multicast_ttl_v4(&self) -> io::Result<u32> {
-        let raw: IpV4MultiCastType = getsockopt(&self.inner, c::IPPROTO_IP, c::IP_MULTICAST_TTL)?;
+        let raw: IpV4MultiCastType =
+            unsafe { getsockopt(&self.inner, c::IPPROTO_IP, c::IP_MULTICAST_TTL)? };
         Ok(raw as u32)
     }
 
     pub fn set_multicast_loop_v6(&self, multicast_loop_v6: bool) -> io::Result<()> {
-        setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_MULTICAST_LOOP, multicast_loop_v6 as c_int)
+        unsafe {
+            setsockopt(
+                &self.inner,
+                c::IPPROTO_IPV6,
+                c::IPV6_MULTICAST_LOOP,
+                multicast_loop_v6 as c_int,
+            )
+        }
     }
 
     pub fn multicast_loop_v6(&self) -> io::Result<bool> {
-        let raw: c_int = getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_MULTICAST_LOOP)?;
+        let raw: c_int =
+            unsafe { getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_MULTICAST_LOOP)? };
         Ok(raw != 0)
     }
 
@@ -778,7 +794,7 @@ impl UdpSocket {
             imr_multiaddr: ip_v4_addr_to_c(multiaddr),
             imr_interface: ip_v4_addr_to_c(interface),
         };
-        setsockopt(&self.inner, c::IPPROTO_IP, c::IP_ADD_MEMBERSHIP, mreq)
+        unsafe { setsockopt(&self.inner, c::IPPROTO_IP, c::IP_ADD_MEMBERSHIP, mreq) }
     }
 
     pub fn join_multicast_v6(&self, multiaddr: &Ipv6Addr, interface: u32) -> io::Result<()> {
@@ -786,7 +802,7 @@ impl UdpSocket {
             ipv6mr_multiaddr: ip_v6_addr_to_c(multiaddr),
             ipv6mr_interface: to_ipv6mr_interface(interface),
         };
-        setsockopt(&self.inner, c::IPPROTO_IPV6, IPV6_ADD_MEMBERSHIP, mreq)
+        unsafe { setsockopt(&self.inner, c::IPPROTO_IPV6, IPV6_ADD_MEMBERSHIP, mreq) }
     }
 
     pub fn leave_multicast_v4(&self, multiaddr: &Ipv4Addr, interface: &Ipv4Addr) -> io::Result<()> {
@@ -794,7 +810,7 @@ impl UdpSocket {
             imr_multiaddr: ip_v4_addr_to_c(multiaddr),
             imr_interface: ip_v4_addr_to_c(interface),
         };
-        setsockopt(&self.inner, c::IPPROTO_IP, c::IP_DROP_MEMBERSHIP, mreq)
+        unsafe { setsockopt(&self.inner, c::IPPROTO_IP, c::IP_DROP_MEMBERSHIP, mreq) }
     }
 
     pub fn leave_multicast_v6(&self, multiaddr: &Ipv6Addr, interface: u32) -> io::Result<()> {
@@ -802,15 +818,15 @@ impl UdpSocket {
             ipv6mr_multiaddr: ip_v6_addr_to_c(multiaddr),
             ipv6mr_interface: to_ipv6mr_interface(interface),
         };
-        setsockopt(&self.inner, c::IPPROTO_IPV6, IPV6_DROP_MEMBERSHIP, mreq)
+        unsafe { setsockopt(&self.inner, c::IPPROTO_IPV6, IPV6_DROP_MEMBERSHIP, mreq) }
     }
 
     pub fn set_ttl(&self, ttl: u32) -> io::Result<()> {
-        setsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL, ttl as c_int)
+        unsafe { setsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL, ttl as c_int) }
     }
 
     pub fn ttl(&self) -> io::Result<u32> {
-        let raw: c_int = getsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL)?;
+        let raw: c_int = unsafe { getsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL)? };
         Ok(raw as u32)
     }
 
