@@ -1,3 +1,5 @@
+#[cfg(not(test))]
+use core::iter::Rev;
 use core::iter::TrustedLen;
 use core::slice;
 
@@ -112,5 +114,98 @@ where
             self.copy_slice(self.to_physical_idx(self.len), slice);
             self.len += slice.len();
         }
+    }
+}
+
+// Specialization trait used for VecDeque::extend_front
+pub(super) trait SpecExtendFront<T, I> {
+    #[track_caller]
+    fn spec_extend_front(&mut self, iter: I);
+}
+
+impl<T, I, A: Allocator> SpecExtendFront<T, I> for VecDeque<T, A>
+where
+    I: Iterator<Item = T>,
+{
+    #[track_caller]
+    default fn spec_extend_front(&mut self, mut iter: I) {
+        // This function should be the moral equivalent of:
+        //
+        // for item in iter {
+        //     self.push_front(item);
+        // }
+
+        while let Some(element) = iter.next() {
+            let (lower, _) = iter.size_hint();
+            self.reserve(lower.saturating_add(1));
+
+            // SAFETY: We just reserved space for at least one element.
+            unsafe { self.push_front_unchecked(element) };
+
+            // Inner loop to avoid repeatedly calling `reserve`.
+            while self.len < self.capacity() {
+                let Some(element) = iter.next() else {
+                    return;
+                };
+                // SAFETY: The loop condition guarantees that `self.len() < self.capacity()`.
+                unsafe { self.push_front_unchecked(element) };
+            }
+        }
+    }
+}
+
+#[cfg(not(test))]
+impl<T, A: Allocator> SpecExtendFront<T, vec::IntoIter<T>> for VecDeque<T, A> {
+    #[track_caller]
+    fn spec_extend_front(&mut self, mut iterator: vec::IntoIter<T>) {
+        let slice = iterator.as_mut_slice();
+        slice.reverse();
+        unsafe { prepend(self, slice) };
+        iterator.forget_remaining_elements();
+    }
+}
+
+#[cfg(not(test))]
+impl<T, A: Allocator> SpecExtendFront<T, Rev<vec::IntoIter<T>>> for VecDeque<T, A> {
+    #[track_caller]
+    fn spec_extend_front(&mut self, iterator: Rev<vec::IntoIter<T>>) {
+        let mut iterator = iterator.into_inner();
+        unsafe { prepend(self, iterator.as_slice()) };
+        iterator.forget_remaining_elements();
+    }
+}
+
+// impl<T, A: Allocator> SpecExtendFront<T, Copied<slice::Iter<'_, T>>> for VecDeque<T, A>
+// where
+//     T: Copy,
+// {
+//     #[track_caller]
+//     fn spec_extend_front(&mut self, _iter: Copied<slice::Iter<'_, T>>) {
+//         // unsafe { prepend(self, slice) };
+//         // reverse in place?
+//     }
+// }
+
+// impl<T, A: Allocator> SpecExtendFront<T, Rev<Copied<slice::Iter<'_, T>>>> for VecDeque<T, A>
+// where
+//     T: Copy,
+// {
+//     #[track_caller]
+//     fn spec_extend_front(&mut self, iter: Rev<Copied<slice::Iter<'_, T>>>) {
+//         unsafe { prepend(self, iter.into_inner().it.as_slice()) };
+//     }
+// }
+
+/// # Safety
+///
+/// `slice` will be copied into the deque, make sure to forget the items if `T` is not `Copy`.
+#[cfg(not(test))]
+unsafe fn prepend<T, A: Allocator>(deque: &mut VecDeque<T, A>, slice: &[T]) {
+    deque.reserve(slice.len());
+
+    unsafe {
+        deque.head = deque.wrap_sub(deque.head, slice.len());
+        deque.copy_slice(deque.head, slice);
+        deque.len += slice.len();
     }
 }
