@@ -1125,7 +1125,9 @@ impl<'tcx> InferCtxt<'tcx> {
                     // Note: if these two lines are combined into one we get
                     // dynamic borrow errors on `self.inner`.
                     let known = self.inner.borrow_mut().type_variables().probe(v).known();
-                    known.map_or(ty, |t| self.shallow_resolve(t))
+                    known.map_or(Ty::new_var(self.tcx, self.root_var(v)), |t| {
+                        self.shallow_resolve(t)
+                    })
                 }
 
                 ty::IntVar(v) => {
