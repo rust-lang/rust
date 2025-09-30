@@ -96,6 +96,12 @@ envs:
     MACOSX_DEPLOYMENT_TARGET: 10.12
     MACOSX_STD_DEPLOYMENT_TARGET: 10.12
 
+  # Aarch64 tooling only needs to support macOS 11.0 as this is the
+  # first OS version to support the hardware.
+  env-macos-aarch64-target: &env-macos-aarch64-target
+    MACOSX_DEPLOYMENT_TARGET: 11.0
+    MACOSX_STD_DEPLOYMENT_TARGET: 11.0
+
 jobs:
   dist-x86_64-linux: &job-dist-x86_64-linux
     name: dist-x86_64-linux
@@ -517,11 +523,8 @@ auto:
         --set rust.jemalloc
         --set rust.lto=thin
         --set rust.codegen-units=1
-      # Aarch64 tooling only needs to support macOS 11.0 and up as nothing else
-      # supports the hardware.
-      MACOSX_DEPLOYMENT_TARGET: 11.0
-      MACOSX_STD_DEPLOYMENT_TARGET: 11.0
       DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
+      <<: *env-macos-aarch64-target
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-macos
@@ -544,10 +547,7 @@ auto:
         --enable-profiler
         --set rust.jemalloc
       DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
-      # Aarch64 tooling only needs to support macOS 11.0 and up as nothing else
-      # supports the hardware, so only need to test it there.
-      MACOSX_DEPLOYMENT_TARGET: 11.0
-      MACOSX_STD_DEPLOYMENT_TARGET: 11.0
+      <<: *env-macos-aarch64-target
     <<: *job-macos
 
   ######################
