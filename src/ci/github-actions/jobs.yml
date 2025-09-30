@@ -26,6 +26,10 @@ runners:
     os: macos-15 # macOS 15 Arm64
     <<: *base-job
 
+  - &job-macos-x86_64
+    os: macos-15-intel
+    <<: *base-job
+
   - &job-windows
     os: windows-2025
     <<: *base-job
@@ -473,6 +477,32 @@ auto:
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-macos
+
+  - name: x86_64-apple
+    env:
+      SCRIPT: >-
+        ./x.py test
+        --stage 2
+        --host=x86_64-apple-darwin
+        --target=x86_64-apple-darwin
+        &&
+        ./x.py test
+        --stage 2
+        --host=x86_64-apple-darwin
+        --target=x86_64-apple-darwin
+        src/tools/cargo
+      RUST_CONFIGURE_ARGS: >-
+        --enable-sanitizers
+        --enable-profiler
+        --set rust.jemalloc
+      DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
+      # The x86_64 macOS builders are relatively slow, so we disable
+      # extra assertions/checks to get back a bit of speed.
+      NO_LLVM_ASSERTIONS: 1
+      NO_DEBUG_ASSERTIONS: 1
+      NO_OVERFLOW_CHECKS: 1
+      <<: *env-macos-x86_64-target
+    <<: *job-macos-x86_64
 
   - name: dist-apple-various
     env:
