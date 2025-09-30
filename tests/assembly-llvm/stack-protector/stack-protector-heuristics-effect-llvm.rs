@@ -55,7 +55,7 @@ pub fn test1(a: *const u8) {
 
     unsafe {
         strcpy(buf.as_mut_ptr(), a);
-        printf(b"%s\0".as_ptr(), buf.as_ptr());
+        printf(STR.as_ptr(), buf.as_ptr());
     }
 
     // all: __stack_chk_fail
@@ -74,7 +74,7 @@ pub fn test3(a: *const u8) {
 
     unsafe {
         strcpy(buf.as_mut_ptr(), a);
-        printf(b"%s\0".as_ptr(), buf.as_ptr());
+        printf(STR.as_ptr(), buf.as_ptr());
     }
 
     // all: __stack_chk_fail
@@ -90,7 +90,7 @@ pub fn test3(a: *const u8) {
 #[no_mangle]
 pub fn test5(a: *const u8) {
     unsafe {
-        printf(b"%s\0".as_ptr(), a);
+        printf(STR.as_ptr(), a);
     }
 
     // all: __stack_chk_fail
