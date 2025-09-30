@@ -165,6 +165,10 @@ impl CodegenBackend for CraneliftCodegenBackend {
         ""
     }
 
+    fn name(&self) -> &'static str {
+        "cranelift"
+    }
+
     fn init(&self, sess: &Session) {
         use rustc_session::config::{InstrumentCoverage, Lto};
         match sess.lto() {

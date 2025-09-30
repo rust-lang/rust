@@ -297,7 +297,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 let align = if name == sym::unaligned_volatile_load {
                     1
                 } else {
-                    result.layout.align.abi.bytes() as u32
+                    result.layout.align.bytes() as u32
                 };
                 unsafe {
                     llvm::LLVMSetAlignment(load, align);
