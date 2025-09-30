@@ -23,7 +23,7 @@ runners:
     <<: *base-job
 
   - &job-macos
-    os: macos-14
+    os: macos-15
     <<: *base-job
 
   - &job-windows
