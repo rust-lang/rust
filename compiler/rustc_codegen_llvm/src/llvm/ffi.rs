@@ -2226,8 +2226,11 @@ unsafe extern "C" {
         ConstraintsLen: size_t,
     ) -> bool;
 
+    /// A list of pointer-length strings is passed as two pointer-length slices,
+    /// one slice containing pointers and one slice containing their corresponding
+    /// lengths. The implementation will check that both slices have the same length.
     pub(crate) fn LLVMRustCoverageWriteFilenamesToBuffer(
-        Filenames: *const *const c_char,
+        Filenames: *const *const c_uchar, // See "PTR_LEN_STR".
         FilenamesLen: size_t,
         Lengths: *const size_t,
         LengthsLen: size_t,
@@ -2250,18 +2253,25 @@ unsafe extern "C" {
 
     pub(crate) fn LLVMRustCoverageCreatePGOFuncNameVar(
         F: &Value,
-        FuncName: *const c_char,
+        FuncName: *const c_uchar, // See "PTR_LEN_STR".
         FuncNameLen: size_t,
     ) -> &Value;
-    pub(crate) fn LLVMRustCoverageHashBytes(Bytes: *const c_char, NumBytes: size_t) -> u64;
+    pub(crate) fn LLVMRustCoverageHashBytes(
+        Bytes: *const c_uchar, // See "PTR_LEN_STR".
+        NumBytes: size_t,
+    ) -> u64;
 
-    pub(crate) fn LLVMRustCoverageWriteCovmapSectionNameToString(M: &Module, OutStr: &RustString);
+    pub(crate) safe fn LLVMRustCoverageWriteCovmapSectionNameToString(
+        M: &Module,
+        OutStr: &RustString,
+    );
+    pub(crate) safe fn LLVMRustCoverageWriteCovfunSectionNameToString(
+        M: &Module,
+        OutStr: &RustString,
+    );
+    pub(crate) safe fn LLVMRustCoverageWriteCovmapVarNameToString(OutStr: &RustString);
 
-    pub(crate) fn LLVMRustCoverageWriteCovfunSectionNameToString(M: &Module, OutStr: &RustString);
-
-    pub(crate) fn LLVMRustCoverageWriteCovmapVarNameToString(OutStr: &RustString);
-
-    pub(crate) fn LLVMRustCoverageMappingVersion() -> u32;
+    pub(crate) safe fn LLVMRustCoverageMappingVersion() -> u32;
     pub(crate) fn LLVMRustDebugMetadataVersion() -> u32;
     pub(crate) fn LLVMRustVersionMajor() -> u32;
     pub(crate) fn LLVMRustVersionMinor() -> u32;
