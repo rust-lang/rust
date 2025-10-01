@@ -475,6 +475,9 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for usage of `ok().expect(..)`.
     ///
+    /// Note: This lint only triggers for code marked compatible
+    /// with versions of the compiler older than Rust 1.82.0.
+    ///
     /// ### Why is this bad?
     /// Because you usually call `expect()` on the `Result`
     /// directly to get a better error message.
@@ -1078,9 +1081,9 @@ declare_clippy_lint! {
     /// `T` implements `ToString` directly (like `&&str` or `&&String`).
     ///
     /// ### Why is this bad?
-    /// This bypasses the specialized implementation of
-    /// `ToString` and instead goes through the more expensive string formatting
-    /// facilities.
+    /// In versions of the compiler before Rust 1.82.0, this bypasses the specialized
+    /// implementation of`ToString` and instead goes through the more expensive string
+    /// formatting facilities.
     ///
     /// ### Example
     /// ```no_run
@@ -4866,7 +4869,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 );
                 clone_on_copy::check(cx, expr, method_call.ident.name, receiver, args);
                 clone_on_ref_ptr::check(cx, expr, method_call.ident.name, receiver, args);
-                inefficient_to_string::check(cx, expr, method_call.ident.name, receiver, args);
+                inefficient_to_string::check(cx, expr, method_call.ident.name, receiver, args, self.msrv);
                 single_char_add_str::check(cx, expr, receiver, args);
                 into_iter_on_ref::check(cx, expr, method_span, method_call.ident.name, receiver);
                 unnecessary_to_owned::check(cx, expr, method_call.ident.name, receiver, args, self.msrv);
