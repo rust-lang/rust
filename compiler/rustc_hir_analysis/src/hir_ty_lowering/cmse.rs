@@ -165,9 +165,23 @@ fn is_valid_cmse_output<'tcx>(
     // this type is only used for layout computation, which does not rely on regions
     let fn_sig = tcx.instantiate_bound_regions_with_erased(fn_sig);
     let fn_sig = tcx.erase_and_anonymize_regions(fn_sig);
+    let return_type = fn_sig.output();
+
+    // `impl Trait` is already disallowed with `cmse-nonsecure-call`, because that ABI is only
+    // allowed on function pointers, and function pointers cannot contain `impl Trait` in their
+    // signature.
+    //
+    // Here we explicitly disallow `impl Trait` as a `cmse-nonsecure-entry` return type too, to
+    // prevent query cycles when calculating the layout. This ABI is meant to be used with
+    // `#[no_mangle]` or similar, so generics in the type really don't make sense.
+    //
+    // see also https://github.com/rust-lang/rust/issues/147242.
+    if return_type.is_impl_trait() {
+        return Err(tcx.arena.alloc(LayoutError::TooGeneric(return_type)));
+    }
 
     let typing_env = ty::TypingEnv::fully_monomorphized();
-    let layout = tcx.layout_of(typing_env.as_query_input(fn_sig.output()))?;
+    let layout = tcx.layout_of(typing_env.as_query_input(return_type))?;
 
     Ok(is_valid_cmse_output_layout(layout))
 }
