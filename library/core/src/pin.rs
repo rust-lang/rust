@@ -1711,20 +1711,21 @@ mod helper {
     #[repr(transparent)]
     #[unstable(feature = "pin_derefmut_internals", issue = "none")]
     #[allow(missing_debug_implementations)]
-    pub struct Pin<Ptr> {
+    pub struct PinHelper<Ptr> {
         pointer: Ptr,
     }
 
     #[unstable(feature = "pin_derefmut_internals", issue = "none")]
     #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-    pub const trait DerefMut {
+    #[rustc_diagnostic_item = "PinDerefMutHelper"]
+    pub const trait PinDerefMutHelper {
         type Target: ?Sized;
         fn deref_mut(&mut self) -> &mut Self::Target;
     }
 
     #[unstable(feature = "pin_derefmut_internals", issue = "none")]
     #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-    impl<Ptr: [const] super::DerefMut> const DerefMut for Pin<Ptr>
+    impl<Ptr: [const] super::DerefMut> const PinDerefMutHelper for PinHelper<Ptr>
     where
         Ptr::Target: crate::marker::Unpin,
     {
@@ -1743,14 +1744,14 @@ mod helper {
 impl<Ptr> const DerefMut for Pin<Ptr>
 where
     Ptr: [const] Deref,
-    helper::Pin<Ptr>: [const] helper::DerefMut<Target = Self::Target>,
+    helper::PinHelper<Ptr>: [const] helper::PinDerefMutHelper<Target = Self::Target>,
 {
     #[inline]
     fn deref_mut(&mut self) -> &mut Ptr::Target {
-        // SAFETY: Pin and helper::Pin have the same layout, so this is equivalent to
+        // SAFETY: Pin and PinHelper have the same layout, so this is equivalent to
         // `&mut self.pointer` which is safe because `Target: Unpin`.
-        helper::DerefMut::deref_mut(unsafe {
-            &mut *(self as *mut Pin<Ptr> as *mut helper::Pin<Ptr>)
+        helper::PinDerefMutHelper::deref_mut(unsafe {
+            &mut *(self as *mut Pin<Ptr> as *mut helper::PinHelper<Ptr>)
         })
     }
 }
