@@ -1234,7 +1234,10 @@ pub fn _mm_permute_pd<const IMM2: i32>(a: __m128d) -> __m128d {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_permute2f128_ps<const IMM8: i32>(a: __m256, b: __m256) -> __m256 {
     static_assert_uimm_bits!(IMM8, 8);
-    unsafe { vperm2f128ps256(a, b, IMM8 as i8) }
+    _mm256_castsi256_ps(_mm256_permute2f128_si256::<IMM8>(
+        _mm256_castps_si256(a),
+        _mm256_castps_si256(b),
+    ))
 }
 
 /// Shuffles 256 bits (composed of 4 packed double-precision (64-bit)
@@ -1248,7 +1251,10 @@ pub fn _mm256_permute2f128_ps<const IMM8: i32>(a: __m256, b: __m256) -> __m256 {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_permute2f128_pd<const IMM8: i32>(a: __m256d, b: __m256d) -> __m256d {
     static_assert_uimm_bits!(IMM8, 8);
-    unsafe { vperm2f128pd256(a, b, IMM8 as i8) }
+    _mm256_castsi256_pd(_mm256_permute2f128_si256::<IMM8>(
+        _mm256_castpd_si256(a),
+        _mm256_castpd_si256(b),
+    ))
 }
 
 /// Shuffles 128-bits (composed of integer data) selected by `imm8`
@@ -1262,7 +1268,35 @@ pub fn _mm256_permute2f128_pd<const IMM8: i32>(a: __m256d, b: __m256d) -> __m256
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_permute2f128_si256<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
     static_assert_uimm_bits!(IMM8, 8);
-    unsafe { transmute(vperm2f128si256(a.as_i32x8(), b.as_i32x8(), IMM8 as i8)) }
+    const fn idx(imm8: i32, pos: u32) -> u32 {
+        let part = if pos < 2 {
+            imm8 & 0xf
+        } else {
+            (imm8 & 0xf0) >> 4
+        };
+        2 * (part as u32 & 0b11) + (pos & 1)
+    }
+    const fn idx0(imm8: i32, pos: u32) -> u32 {
+        let part = if pos < 2 {
+            imm8 & 0xf
+        } else {
+            (imm8 & 0xf0) >> 4
+        };
+        if part & 0b1000 != 0 { 4 } else { pos }
+    }
+    unsafe {
+        let r = simd_shuffle!(
+            a.as_i64x4(),
+            b.as_i64x4(),
+            [idx(IMM8, 0), idx(IMM8, 1), idx(IMM8, 2), idx(IMM8, 3)]
+        );
+        let r: i64x4 = simd_shuffle!(
+            r,
+            i64x4::ZERO,
+            [idx0(IMM8, 0), idx0(IMM8, 1), idx0(IMM8, 2), idx0(IMM8, 3)]
+        );
+        r.as_m256i()
+    }
 }
 
 /// Broadcasts a single-precision (32-bit) floating-point element from memory
@@ -3092,12 +3126,6 @@ unsafe extern "C" {
     fn vpermilpd256(a: __m256d, b: i64x4) -> __m256d;
     #[link_name = "llvm.x86.avx.vpermilvar.pd"]
     fn vpermilpd(a: __m128d, b: i64x2) -> __m128d;
-    #[link_name = "llvm.x86.avx.vperm2f128.ps.256"]
-    fn vperm2f128ps256(a: __m256, b: __m256, imm8: i8) -> __m256;
-    #[link_name = "llvm.x86.avx.vperm2f128.pd.256"]
-    fn vperm2f128pd256(a: __m256d, b: __m256d, imm8: i8) -> __m256d;
-    #[link_name = "llvm.x86.avx.vperm2f128.si.256"]
-    fn vperm2f128si256(a: i32x8, b: i32x8, imm8: i8) -> i32x8;
     #[link_name = "llvm.x86.avx.maskload.pd.256"]
     fn maskloadpd256(mem_addr: *const i8, mask: i64x4) -> __m256d;
     #[link_name = "llvm.x86.avx.maskstore.pd.256"]

@@ -2330,7 +2330,7 @@ pub fn _mm256_permute4x64_epi64<const IMM8: i32>(a: __m256i) -> __m256i {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_permute2x128_si256<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
     static_assert_uimm_bits!(IMM8, 8);
-    unsafe { transmute(vperm2i128(a.as_i64x4(), b.as_i64x4(), IMM8 as i8)) }
+    _mm256_permute2f128_si256::<IMM8>(a, b)
 }
 
 /// Shuffles 64-bit floating-point elements in `a` across lanes using the
@@ -3703,8 +3703,6 @@ unsafe extern "C" {
     fn permd(a: u32x8, b: u32x8) -> u32x8;
     #[link_name = "llvm.x86.avx2.permps"]
     fn permps(a: __m256, b: i32x8) -> __m256;
-    #[link_name = "llvm.x86.avx2.vperm2i128"]
-    fn vperm2i128(a: i64x4, b: i64x4, imm8: i8) -> i64x4;
     #[link_name = "llvm.x86.avx2.gather.d.d"]
     fn pgatherdd(src: i32x4, slice: *const i8, offsets: i32x4, mask: i32x4, scale: i8) -> i32x4;
     #[link_name = "llvm.x86.avx2.gather.d.d.256"]
