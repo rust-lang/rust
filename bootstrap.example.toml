@@ -476,9 +476,6 @@
 # when the stage 0 compiler is actually built from in-tree sources.
 #build.compiletest-allow-stage0 = false
 
-# Whether to use the precompiled stage0 libtest with compiletest.
-#build.compiletest-use-stage0-libtest = true
-
 # Default value for the `--extra-checks` flag of tidy.
 #
 # See `./x test tidy --help` for details.
