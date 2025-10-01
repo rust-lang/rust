@@ -362,9 +362,14 @@ impl Socket {
     }
 
     #[cfg(any(target_os = "android", target_os = "linux", target_os = "cygwin"))]
-    pub fn recv_msg(&self, msg: &mut libc::msghdr) -> io::Result<usize> {
-        let n = cvt(unsafe { libc::recvmsg(self.as_raw_fd(), msg, libc::MSG_CMSG_CLOEXEC) })?;
+    pub fn recv_msg_with_flags(&self, msg: &mut libc::msghdr, flags: c_int) -> io::Result<usize> {
+        let n = cvt(unsafe { libc::recvmsg(self.as_raw_fd(), msg, flags) })?;
         Ok(n as usize)
+    }
+
+    #[cfg(any(target_os = "android", target_os = "linux", target_os = "cygwin"))]
+    pub fn recv_msg(&self, msg: &mut libc::msghdr) -> io::Result<usize> {
+        self.recv_msg_with_flags(msg, libc::MSG_CMSG_CLOEXEC)
     }
 
     pub fn peek_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
@@ -385,9 +390,14 @@ impl Socket {
     }
 
     #[cfg(any(target_os = "android", target_os = "linux", target_os = "cygwin"))]
-    pub fn send_msg(&self, msg: &libc::msghdr) -> io::Result<usize> {
-        let n = cvt(unsafe { libc::sendmsg(self.as_raw_fd(), msg, 0) })?;
+    pub fn send_msg_with_flags(&self, msg: &libc::msghdr, flags: c_int) -> io::Result<usize> {
+        let n = cvt(unsafe { libc::sendmsg(self.as_raw_fd(), msg, flags) })?;
         Ok(n as usize)
+    }
+
+    #[cfg(any(target_os = "android", target_os = "linux", target_os = "cygwin"))]
+    pub fn send_msg(&self, msg: &libc::msghdr) -> io::Result<usize> {
+        self.send_msg_with_flags(msg, 0)
     }
 
     pub fn set_timeout(&self, dur: Option<Duration>, kind: libc::c_int) -> io::Result<()> {
