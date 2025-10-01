@@ -36,7 +36,7 @@ mod ordered_json;
 mod print_item;
 pub(crate) mod sidebar;
 mod sorted_template;
-mod span_map;
+pub(crate) mod span_map;
 mod type_layout;
 mod write_shared;
 
