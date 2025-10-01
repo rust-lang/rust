@@ -291,7 +291,7 @@ pub macro cfg_select($($tt:tt)*) {
 #[allow_internal_unstable(edition_panic)]
 macro_rules! debug_assert {
     ($($arg:tt)*) => {
-        if $crate::cfg!(debug_assertions) {
+        #[cfg(debug_assertions)] {
             $crate::assert!($($arg)*);
         }
     };
@@ -321,7 +321,7 @@ macro_rules! debug_assert {
 #[rustc_diagnostic_item = "debug_assert_eq_macro"]
 macro_rules! debug_assert_eq {
     ($($arg:tt)*) => {
-        if $crate::cfg!(debug_assertions) {
+        #[cfg(debug_assertions)] {
             $crate::assert_eq!($($arg)*);
         }
     };
@@ -351,7 +351,7 @@ macro_rules! debug_assert_eq {
 #[rustc_diagnostic_item = "debug_assert_ne_macro"]
 macro_rules! debug_assert_ne {
     ($($arg:tt)*) => {
-        if $crate::cfg!(debug_assertions) {
+        #[cfg(debug_assertions)] {
             $crate::assert_ne!($($arg)*);
         }
     };
@@ -403,7 +403,7 @@ macro_rules! debug_assert_ne {
 #[allow_internal_unstable(assert_matches)]
 #[rustc_macro_transparency = "semitransparent"]
 pub macro debug_assert_matches($($arg:tt)*) {
-    if $crate::cfg!(debug_assertions) {
+    #[cfg(debug_assertions)] {
         $crate::assert_matches::assert_matches!($($arg)*);
     }
 }
