@@ -215,6 +215,7 @@ mod tests {
             let x = _mm_setr_pd(3.0, 4.0);
 
             _mm_stream_sd(d, x);
+            _mm_sfence();
         }
         assert_eq!(mem.data[0], 3.0);
         assert_eq!(mem.data[1], 2.0);
@@ -240,6 +241,7 @@ mod tests {
             let x = _mm_setr_ps(5.0, 6.0, 7.0, 8.0);
 
             _mm_stream_ss(d, x);
+            _mm_sfence();
         }
         assert_eq!(mem.data[0], 5.0);
         assert_eq!(mem.data[1], 2.0);

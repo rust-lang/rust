@@ -3329,6 +3329,7 @@ mod tests {
         let mut mem = Memory { data: [-1.0; 4] };
 
         _mm_stream_ps(ptr::addr_of_mut!(mem.data[0]), a);
+        _mm_sfence();
         for i in 0..4 {
             assert_eq!(mem.data[i], get_m128(a, i));
         }

@@ -200,6 +200,7 @@ mod tests {
         let a: i64 = 7;
         let mut mem = boxed::Box::<i64>::new(-1);
         _mm_stream_si64(ptr::addr_of_mut!(*mem), a);
+        _mm_sfence();
         assert_eq!(a, *mem);
     }
 

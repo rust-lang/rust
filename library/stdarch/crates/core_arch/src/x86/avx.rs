@@ -4291,6 +4291,7 @@ mod tests {
         let a = _mm256_setr_epi64x(1, 2, 3, 4);
         let mut r = _mm256_undefined_si256();
         _mm256_stream_si256(ptr::addr_of_mut!(r), a);
+        _mm_sfence();
         assert_eq_m256i(r, a);
     }
 
@@ -4305,6 +4306,7 @@ mod tests {
         let mut mem = Memory { data: [-1.0; 4] };
 
         _mm256_stream_pd(ptr::addr_of_mut!(mem.data[0]), a);
+        _mm_sfence();
         for i in 0..4 {
             assert_eq!(mem.data[i], get_m256d(a, i));
         }
@@ -4321,6 +4323,7 @@ mod tests {
         let mut mem = Memory { data: [-1.0; 8] };
 
         _mm256_stream_ps(ptr::addr_of_mut!(mem.data[0]), a);
+        _mm_sfence();
         for i in 0..8 {
             assert_eq!(mem.data[i], get_m256(a, i));
         }
