@@ -6,7 +6,6 @@
 // Regression test for trait-system-refactor-initiative#240. Hidden types should
 // equate *before* inference var fallback, otherwise we can get mismatched types.
 
-
 #[derive(Clone, Copy)]
 struct FileSystem;
 impl FileSystem {

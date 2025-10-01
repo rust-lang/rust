@@ -128,31 +128,24 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                 }
             }
 
-            if let UsageKind::HasDefiningUse(first_use) = usage_kind {
+            if let UsageKind::HasDefiningUse(ty) = usage_kind {
                 for &(opaque_type_key, hidden_type) in opaque_types {
                     if opaque_type_key.def_id != def_id {
                         continue;
                     }
 
-                    let expected =
-                        EarlyBinder::bind(first_use.ty).instantiate(tcx, opaque_type_key.args);
+                    let expected = EarlyBinder::bind(ty.ty).instantiate(tcx, opaque_type_key.args);
                     self.demand_eqtype(hidden_type.span, expected, hidden_type.ty);
                 }
-            }
 
-            match usage_kind {
-                UsageKind::HasDefiningUse(hidden_type) => {
-                    let prev =
-                        self.typeck_results.borrow_mut().hidden_types.insert(def_id, hidden_type);
+                let prev = self.typeck_results.borrow_mut().hidden_types.insert(def_id, ty);
 
-                    // We do want to insert opaque types the first pass, because
-                    // we want to equate them. So, the second pass (where we
-                    // report errors) may have a hidden type inserted.
-                    if first_pass {
-                        assert!(prev.is_none());
-                    }
+                // We do want to insert opaque types the first pass, because
+                // we want to equate them. So, the second pass (where we
+                // report errors) may have a hidden type inserted.
+                if first_pass {
+                    assert!(prev.is_none());
                 }
-                _ => {}
             }
 
             // If this the first pass (`try_handle_opaque_type_uses_next`),
