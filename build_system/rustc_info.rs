@@ -2,19 +2,13 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 pub(crate) fn get_host_triple(rustc: &Path) -> String {
-    let version_info =
-        Command::new(rustc).stderr(Stdio::inherit()).args(&["-vV"]).output().unwrap().stdout;
-    String::from_utf8(version_info)
+    let version_info = Command::new(rustc)
+        .stderr(Stdio::inherit())
+        .args(&["--print", "host-tuple"])
+        .output()
         .unwrap()
-        .lines()
-        .to_owned()
-        .find(|line| line.starts_with("host"))
-        .unwrap()
-        .split(":")
-        .nth(1)
-        .unwrap()
-        .trim()
-        .to_owned()
+        .stdout;
+    String::from_utf8(version_info).unwrap().trim().to_owned()
 }
 
 pub(crate) fn get_toolchain_name() -> String {
