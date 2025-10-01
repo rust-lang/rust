@@ -646,6 +646,8 @@ impl Builder<'_> {
         if let Mode::Rustc | Mode::ToolRustcPrivate | Mode::ToolBootstrap | Mode::ToolTarget = mode
         {
             rustflags.arg("--cfg=windows_raw_dylib");
+        } else if mode == Mode::Std && target.ends_with("gnullvm") {
+            rustflags.arg("--cfg=windows_raw_dylib");
         }
 
         if use_new_symbol_mangling {
