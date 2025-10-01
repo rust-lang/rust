@@ -140,7 +140,6 @@ impl SysrootTarget {
 static STDLIB_SRC: RelPath = RelPath::build("stdlib");
 static STANDARD_LIBRARY: CargoProject =
     CargoProject::new(&RelPath::build("stdlib/library/sysroot"), "stdlib_target");
-static RTSTARTUP_SYSROOT: RelPath = RelPath::build("rtstartup");
 
 fn build_sysroot_for_triple(
     dirs: &Dirs,
@@ -150,8 +149,7 @@ fn build_sysroot_for_triple(
     panic_unwind_support: bool,
 ) -> SysrootTarget {
     match sysroot_kind {
-        SysrootKind::None => build_rtstartup(dirs, &compiler)
-            .unwrap_or(SysrootTarget { triple: compiler.triple, libs: vec![] }),
+        SysrootKind::None => SysrootTarget { triple: compiler.triple, libs: vec![] },
         SysrootKind::Llvm => build_llvm_sysroot_for_triple(compiler),
         SysrootKind::Clif => {
             build_clif_sysroot_for_triple(dirs, compiler, cg_clif_dylib_path, panic_unwind_support)
@@ -201,15 +199,14 @@ fn build_clif_sysroot_for_triple(
 ) -> SysrootTarget {
     let mut target_libs = SysrootTarget { triple: compiler.triple.clone(), libs: vec![] };
 
-    if let Some(rtstartup_target_libs) = build_rtstartup(dirs, &compiler) {
-        rtstartup_target_libs.install_into_sysroot(&RTSTARTUP_SYSROOT.to_path(dirs));
-
-        target_libs.libs.extend(rtstartup_target_libs.libs);
-    }
-
     let build_dir = STANDARD_LIBRARY.target_dir(dirs).join(&compiler.triple).join("release");
 
     if !config::get_bool("keep_sysroot") {
+        let sysroot_src_orig = get_default_sysroot(&compiler.rustc).join("lib/rustlib/src/rust");
+        assert!(sysroot_src_orig.exists());
+
+        apply_patches(dirs, "stdlib", &sysroot_src_orig, &STDLIB_SRC.to_path(dirs));
+
         // Cleanup the deps dir, but keep build scripts and the incremental cache for faster
         // recompilation as they are not affected by changes in cg_clif.
         ensure_empty_dir(&build_dir.join("deps"));
@@ -228,9 +225,7 @@ fn build_clif_sysroot_for_triple(
             rustflags.push(format!("-Zcodegen-backend={name}"));
         }
     };
-    // Necessary for MinGW to find rsbegin.o and rsend.o
-    rustflags.push("--sysroot".to_owned());
-    rustflags.push(RTSTARTUP_SYSROOT.to_path(dirs).to_str().unwrap().to_owned());
+    rustflags.push("--sysroot=/dev/null".to_owned());
 
     // Incremental compilation by default disables mir inlining. This leads to both a decent
     // compile perf and a significant runtime perf regression. As such forcefully enable mir
@@ -270,39 +265,4 @@ fn build_clif_sysroot_for_triple(
     }
 
     target_libs
-}
-
-fn build_rtstartup(dirs: &Dirs, compiler: &Compiler) -> Option<SysrootTarget> {
-    if !config::get_bool("keep_sysroot") {
-        let sysroot_src_orig = get_default_sysroot(&compiler.rustc).join("lib/rustlib/src/rust");
-        assert!(sysroot_src_orig.exists());
-
-        apply_patches(dirs, "stdlib", &sysroot_src_orig, &STDLIB_SRC.to_path(dirs));
-    }
-
-    if !compiler.triple.ends_with("windows-gnu") {
-        return None;
-    }
-
-    let rtstartup_sysroot = RTSTARTUP_SYSROOT.to_path(dirs);
-    ensure_empty_dir(&rtstartup_sysroot);
-
-    let rtstartup_src = STDLIB_SRC.to_path(dirs).join("library").join("rtstartup");
-    let mut target_libs = SysrootTarget { triple: compiler.triple.clone(), libs: vec![] };
-
-    for file in ["rsbegin", "rsend"] {
-        let obj = rtstartup_sysroot.join(format!("{file}.o"));
-        let mut build_rtstartup_cmd = Command::new(&compiler.rustc);
-        build_rtstartup_cmd
-            .arg("--target")
-            .arg(&compiler.triple)
-            .arg("--emit=obj")
-            .arg("-o")
-            .arg(&obj)
-            .arg(rtstartup_src.join(format!("{file}.rs")));
-        spawn_and_wait(build_rtstartup_cmd);
-        target_libs.libs.push(obj.clone());
-    }
-
-    Some(target_libs)
 }
