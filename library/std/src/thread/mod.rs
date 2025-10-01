@@ -1307,14 +1307,13 @@ impl ThreadId {
 
                 // SAFETY: we have an exclusive lock on the counter.
                 unsafe {
-                    if *COUNTER.get() == u64::MAX {
-                        COUNTER_LOCKED.store(false, Ordering::Release);
-                        exhausted()
-                    } else {
-                        let id = *COUNTER.get() + 1;
+                    if let Some(id) = (*COUNTER.get()).checked_add(1) {
                         *COUNTER.get() = id;
                         COUNTER_LOCKED.store(false, Ordering::Release);
                         ThreadId(NonZero::new(id).unwrap())
+                    } else {
+                        COUNTER_LOCKED.store(false, Ordering::Release);
+                        exhausted()
                     }
                 }
             }
