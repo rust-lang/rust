@@ -18,7 +18,9 @@ use super::item_bounds::explicit_item_bounds_with_filter;
 use crate::collect::ItemCtxt;
 use crate::constrained_generic_params as cgp;
 use crate::delegation::inherit_predicates_for_delegation_item;
-use crate::hir_ty_lowering::{HirTyLowerer, PredicateFilter, RegionInferReason};
+use crate::hir_ty_lowering::{
+    HirTyLowerer, OverlappingAsssocItemConstraints, PredicateFilter, RegionInferReason,
+};
 
 /// Returns a list of all type predicates (explicit and implicit) for the definition with
 /// ID `def_id`. This includes all predicates returned by `explicit_predicates_of`, plus
@@ -187,6 +189,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             &mut bounds,
             ty::List::empty(),
             PredicateFilter::All,
+            OverlappingAsssocItemConstraints::Allowed,
         );
         icx.lowerer().add_sizedness_bounds(
             &mut bounds,
@@ -289,6 +292,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                     &mut bounds,
                     bound_vars,
                     PredicateFilter::All,
+                    OverlappingAsssocItemConstraints::Allowed,
                 );
                 predicates.extend(bounds);
             }
@@ -659,7 +663,14 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
 
     let self_param_ty = tcx.types.self_param;
     let mut bounds = Vec::new();
-    icx.lowerer().lower_bounds(self_param_ty, superbounds, &mut bounds, ty::List::empty(), filter);
+    icx.lowerer().lower_bounds(
+        self_param_ty,
+        superbounds,
+        &mut bounds,
+        ty::List::empty(),
+        filter,
+        OverlappingAsssocItemConstraints::Allowed,
+    );
     match filter {
         PredicateFilter::All
         | PredicateFilter::SelfOnly
@@ -984,6 +995,7 @@ impl<'tcx> ItemCtxt<'tcx> {
                 &mut bounds,
                 bound_vars,
                 filter,
+                OverlappingAsssocItemConstraints::Allowed,
             );
         }
 
@@ -1063,6 +1075,7 @@ pub(super) fn const_conditions<'tcx>(
                     &mut bounds,
                     bound_vars,
                     PredicateFilter::ConstIfConst,
+                    OverlappingAsssocItemConstraints::Allowed,
                 );
             }
             _ => {}
@@ -1083,6 +1096,7 @@ pub(super) fn const_conditions<'tcx>(
             &mut bounds,
             ty::List::empty(),
             PredicateFilter::ConstIfConst,
+            OverlappingAsssocItemConstraints::Allowed,
         );
     }
 

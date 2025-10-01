@@ -332,6 +332,15 @@ pub(crate) enum GenericArgPosition {
     MethodCall,
 }
 
+/// Whether to allow duplicate associated iten constraints in a trait ref, e.g.
+/// `Trait<Assoc = Ty, Assoc = Ty>`. This is forbidden in `dyn Trait<...>`
+/// but allowed everywhere else.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum OverlappingAsssocItemConstraints {
+    Allowed,
+    Forbidden,
+}
+
 /// A marker denoting that the generic arguments that were
 /// provided did not match the respective generic parameters.
 #[derive(Clone, Debug)]
@@ -752,6 +761,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         self_ty: Ty<'tcx>,
         bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
         predicate_filter: PredicateFilter,
+        overlapping_assoc_item_constraints: OverlappingAsssocItemConstraints,
     ) -> GenericArgCountResult {
         let tcx = self.tcx();
 
@@ -908,7 +918,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
         }
 
-        let mut dup_constraints = FxIndexMap::default();
+        let mut dup_constraints = (overlapping_assoc_item_constraints
+            == OverlappingAsssocItemConstraints::Forbidden)
+            .then_some(FxIndexMap::default());
+
         for constraint in trait_segment.args().constraints {
             // Don't register any associated item constraints for negative bounds,
             // since we should have emitted an error for them earlier, and they
@@ -927,7 +940,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 poly_trait_ref,
                 constraint,
                 bounds,
-                &mut dup_constraints,
+                dup_constraints.as_mut(),
                 constraint.span,
                 predicate_filter,
             );
@@ -2484,6 +2497,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     &mut bounds,
                     ty::List::empty(),
                     PredicateFilter::All,
+                    OverlappingAsssocItemConstraints::Allowed,
                 );
                 self.add_sizedness_bounds(
                     &mut bounds,
