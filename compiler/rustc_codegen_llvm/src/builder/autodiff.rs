@@ -378,5 +378,12 @@ pub(crate) fn generate_enzyme_call<'ll, 'tcx>(
 
     let call = builder.call(enzyme_ty, None, None, ad_fn, &args, None, None);
 
-    builder.store_to_place(call, dest.val);
+    let fn_ret_ty = builder.cx.val_ty(call);
+    if fn_ret_ty != builder.cx.type_void() && fn_ret_ty != builder.cx.type_struct(&[], false) {
+        // If we return void or an empty struct, then our caller (due to how we generated it)
+        // does not expect a return value. As such, we have no pointer (or place) into which
+        // we could store our value, and would store into an undef, which would cause UB.
+        // As such, we just ignore the return value in those cases.
+        builder.store_to_place(call, dest.val);
+    }
 }

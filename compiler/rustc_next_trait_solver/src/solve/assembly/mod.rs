@@ -473,7 +473,10 @@ where
         // fails to reach a fixpoint but ends up getting an error after
         // running for some additional step.
         //
-        // cc trait-system-refactor-initiative#105
+        // FIXME(@lcnr): While I believe an error here to be possible, we
+        // currently don't have any test which actually triggers it. @lqd
+        // created a minimization for an ICE in typenum, but that one no
+        // longer fails here. cc trait-system-refactor-initiative#105.
         let source = CandidateSource::BuiltinImpl(BuiltinImplSource::Misc);
         let certainty = Certainty::Maybe { cause, opaque_types_jank: OpaqueTypesJank::AllGood };
         self.probe_trait_candidate(source)

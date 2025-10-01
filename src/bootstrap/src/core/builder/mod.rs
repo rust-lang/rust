@@ -1145,7 +1145,7 @@ impl<'a> Builder<'a> {
                 test::RunMakeCargo,
             ),
             Kind::Miri => describe!(test::Crate),
-            Kind::Bench => describe!(test::Crate, test::CrateLibrustc),
+            Kind::Bench => describe!(test::Crate, test::CrateLibrustc, test::CrateRustdoc),
             Kind::Doc => describe!(
                 doc::UnstableBook,
                 doc::UnstableBookGen,
