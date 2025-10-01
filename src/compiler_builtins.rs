@@ -3,10 +3,33 @@ use std::ffi::c_int;
 #[cfg(feature = "jit")]
 use std::ffi::c_void;
 
+use cranelift_codegen::ir::{Type, types};
+
 // FIXME replace with core::ffi::c_size_t once stabilized
 #[allow(non_camel_case_types)]
 #[cfg(feature = "jit")]
 type size_t = usize;
+
+// Needs to stay in sync with compiler-builtins
+
+// Aarch64 uses `int` rather than a pointer-sized value.
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
+#[cfg(feature = "jit")]
+type CmpResult = i32;
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
+pub(crate) const CMP_RESULT_TY: Type = types::I32;
+
+// In compiler-rt, LLP64 ABIs use `long long` and everything else uses `long`. In effect,
+// this means the return value is always pointer-sized.
+#[cfg(not(any(target_arch = "aarch64", target_arch = "arm64ec")))]
+#[cfg(feature = "jit")]
+type CmpResult = isize;
+#[cfg(not(any(target_arch = "aarch64", target_arch = "arm64ec")))]
+#[cfg(target_pointer_width = "32")]
+pub(crate) const CMP_RESULT_TY: Type = types::I32;
+#[cfg(not(any(target_arch = "aarch64", target_arch = "arm64ec")))]
+#[cfg(target_pointer_width = "64")]
+pub(crate) const CMP_RESULT_TY: Type = types::I64;
 
 macro_rules! builtin_functions {
     (
@@ -88,12 +111,12 @@ builtin_functions! {
     #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
     fn fmodf128(a: f128, b: f128) -> f128;
     // float comparison
-    fn __eqtf2(a: f128, b: f128) -> i32;
-    fn __netf2(a: f128, b: f128) -> i32;
-    fn __lttf2(a: f128, b: f128) -> i32;
-    fn __letf2(a: f128, b: f128) -> i32;
-    fn __gttf2(a: f128, b: f128) -> i32;
-    fn __getf2(a: f128, b: f128) -> i32;
+    fn __eqtf2(a: f128, b: f128) -> CmpResult;
+    fn __netf2(a: f128, b: f128) -> CmpResult;
+    fn __lttf2(a: f128, b: f128) -> CmpResult;
+    fn __letf2(a: f128, b: f128) -> CmpResult;
+    fn __gttf2(a: f128, b: f128) -> CmpResult;
+    fn __getf2(a: f128, b: f128) -> CmpResult;
     #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
     fn fminimumf128(a: f128, b: f128) -> f128;
     #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
