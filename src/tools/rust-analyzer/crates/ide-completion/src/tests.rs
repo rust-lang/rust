@@ -26,6 +26,7 @@ mod visibility;
 
 use base_db::{SourceDatabase, salsa};
 use expect_test::Expect;
+use hir::db::HirDatabase;
 use hir::{PrefixKind, setup_tracing};
 use ide_db::{
     FilePosition, RootDatabase, SnippetCap,
@@ -306,8 +307,11 @@ pub(crate) fn get_all_items(
     trigger_character: Option<char>,
 ) -> Vec<CompletionItem> {
     let (db, position) = position(code);
-    let res = salsa::attach(&db, || crate::completions(&db, &config, position, trigger_character))
-        .map_or_else(Vec::default, Into::into);
+    let res = salsa::attach(&db, || {
+        HirDatabase::zalsa_register_downcaster(&db);
+        crate::completions(&db, &config, position, trigger_character)
+    })
+    .map_or_else(Vec::default, Into::into);
     // validate
     res.iter().for_each(|it| {
         let sr = it.source_range;

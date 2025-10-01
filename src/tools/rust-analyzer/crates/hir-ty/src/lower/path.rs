@@ -28,6 +28,10 @@ use crate::{
     error_lifetime,
     generics::{Generics, generics},
     lower::{LifetimeElisionKind, named_associated_type_shorthand_candidates},
+    next_solver::{
+        DbInterner,
+        mapping::{ChalkToNextSolver, NextSolverToChalk},
+    },
     static_lifetime, to_assoc_type_id, to_chalk_trait_id, to_placeholder_idx,
     utils::associated_type_by_name_including_super_traits,
 };
@@ -251,12 +255,20 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                         // `def` can be either impl itself or item within, and we need impl itself
                         // now.
                         let generics = generics.parent_or_self();
+                        let interner = DbInterner::new_with(self.ctx.db, None, None);
                         let subst = generics.placeholder_subst(self.ctx.db);
-                        self.ctx.db.impl_self_ty(impl_id).substitute(Interner, &subst)
+                        let args: crate::next_solver::GenericArgs<'_> =
+                            subst.to_nextsolver(interner);
+                        self.ctx
+                            .db
+                            .impl_self_ty(impl_id)
+                            .instantiate(interner, args)
+                            .to_chalk(interner)
                     }
                     ParamLoweringMode::Variable => TyBuilder::impl_self_ty(self.ctx.db, impl_id)
                         .fill_with_bound_vars(self.ctx.in_binders, 0)
-                        .build(),
+                        .build(DbInterner::conjure())
+                        .to_chalk(DbInterner::conjure()),
                 }
             }
             TypeNs::AdtSelfType(adt) => {
@@ -267,7 +279,9 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                         generics.bound_vars_subst(self.ctx.db, self.ctx.in_binders)
                     }
                 };
-                self.ctx.db.ty(adt.into()).substitute(Interner, &substs)
+                let interner = DbInterner::conjure();
+                let args: crate::next_solver::GenericArgs<'_> = substs.to_nextsolver(interner);
+                self.ctx.db.ty(adt.into()).instantiate(interner, args).to_chalk(interner)
             }
 
             TypeNs::AdtId(it) => self.lower_path_inner(it.into(), infer_args),
@@ -537,7 +551,9 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
             TyDefId::TypeAliasId(it) => it.into(),
         };
         let substs = self.substs_from_path_segment(generic_def, infer_args, None, false);
-        self.ctx.db.ty(typeable).substitute(Interner, &substs)
+        let interner = DbInterner::conjure();
+        let args: crate::next_solver::GenericArgs<'_> = substs.to_nextsolver(interner);
+        self.ctx.db.ty(typeable).instantiate(interner, args).to_chalk(interner)
     }
 
     /// Collect generic arguments from a path into a `Substs`. See also
@@ -603,7 +619,7 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
         explicit_self_ty: Option<Ty>,
         lowering_assoc_type_generics: bool,
     ) -> Substitution {
-        let mut lifetime_elision = self.ctx.lifetime_elision.clone();
+        let old_lifetime_elision = self.ctx.lifetime_elision.clone();
 
         if let Some(args) = self.current_or_prev_segment.args_and_bindings
             && args.parenthesized != GenericArgsParentheses::No
@@ -633,19 +649,21 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
             }
 
             // `Fn()`-style generics are treated like functions for the purpose of lifetime elision.
-            lifetime_elision =
+            self.ctx.lifetime_elision =
                 LifetimeElisionKind::AnonymousCreateParameter { report_in_path: false };
         }
 
-        self.substs_from_args_and_bindings(
+        let result = self.substs_from_args_and_bindings(
             self.current_or_prev_segment.args_and_bindings,
             def,
             infer_args,
             explicit_self_ty,
             PathGenericsSource::Segment(self.current_segment_u32()),
             lowering_assoc_type_generics,
-            lifetime_elision,
-        )
+            self.ctx.lifetime_elision.clone(),
+        );
+        self.ctx.lifetime_elision = old_lifetime_elision;
+        result
     }
 
     pub(super) fn substs_from_args_and_bindings(

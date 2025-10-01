@@ -2050,10 +2050,10 @@ impl dyn Error + Send {
     /// Attempts to downcast the box to a concrete type.
     pub fn downcast<T: Error + 'static>(self: Box<Self>) -> Result<Box<T>, Box<dyn Error + Send>> {
         let err: Box<dyn Error> = self;
-                               // ^^^^ expected Box<dyn Error + '?>, got Box<dyn Error + Send + '?>
+                               // ^^^^ expected Box<dyn Error + '?>, got Box<dyn Error + Send + 'static>
                                // FIXME, type mismatch should not occur
         <dyn Error>::downcast(err).map_err(|_| loop {})
-      //^^^^^^^^^^^^^^^^^^^^^ type: fn downcast<{unknown}>(Box<dyn Error + '?>) -> Result<Box<{unknown}>, Box<dyn Error + '?>>
+      //^^^^^^^^^^^^^^^^^^^^^ type: fn downcast<{unknown}>(Box<dyn Error + 'static>) -> Result<Box<{unknown}>, Box<dyn Error + 'static>>
     }
 }
 "#,

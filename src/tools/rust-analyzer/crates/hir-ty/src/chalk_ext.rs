@@ -15,8 +15,13 @@ use crate::{
     AdtId, AliasEq, AliasTy, Binders, CallableDefId, CallableSig, Canonical, CanonicalVarKinds,
     ClosureId, DynTy, FnPointer, ImplTraitId, InEnvironment, Interner, Lifetime, ProjectionTy,
     QuantifiedWhereClause, Substitution, ToChalk, TraitRef, Ty, TyBuilder, TyKind, TypeFlags,
-    WhereClause, db::HirDatabase, from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id,
-    from_placeholder_idx, generics::generics, to_chalk_trait_id, utils::ClosureSubst,
+    WhereClause,
+    db::HirDatabase,
+    from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id, from_placeholder_idx,
+    generics::generics,
+    next_solver::{DbInterner, mapping::NextSolverToChalk},
+    to_chalk_trait_id,
+    utils::ClosureSubst,
 };
 
 pub trait TyExt {
@@ -372,7 +377,10 @@ impl TyExt for Ty {
         let trait_ref = TyBuilder::trait_ref(db, copy_trait).push(self).build();
         let env = db.trait_environment_for_body(owner);
         let goal = Canonical {
-            value: InEnvironment::new(&env.env, trait_ref.cast(Interner)),
+            value: InEnvironment::new(
+                &env.env.to_chalk(DbInterner::new_with(db, Some(env.krate), env.block)),
+                trait_ref.cast(Interner),
+            ),
             binders: CanonicalVarKinds::empty(Interner),
         };
         !db.trait_solve(crate_id, None, goal).no_solution()

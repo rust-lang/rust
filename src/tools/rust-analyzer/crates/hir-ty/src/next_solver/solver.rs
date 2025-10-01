@@ -156,16 +156,16 @@ impl<'db> SolverDelegate for SolverContext<'db> {
             SolverDefId::TypeAliasId(id) => id,
             _ => panic!("Unexpected SolverDefId"),
         };
-        let trait_ref = self
+        let trait_ = self
             .0
             .interner
             .db()
             .impl_trait(impl_id.0)
             // ImplIds for impls where the trait ref can't be resolved should never reach solver
             .expect("invalid impl passed to next-solver")
-            .into_value_and_skipped_binders()
+            .skip_binder()
+            .def_id
             .0;
-        let trait_ = trait_ref.hir_trait_id();
         let trait_data = trait_.trait_items(self.0.interner.db());
         let id =
             impl_id.0.impl_items(self.0.interner.db()).items.iter().find_map(|item| -> Option<_> {

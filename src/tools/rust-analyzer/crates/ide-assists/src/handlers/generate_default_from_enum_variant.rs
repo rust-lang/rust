@@ -39,6 +39,9 @@ pub(crate) fn generate_default_from_enum_variant(
         cov_mark::hit!(test_gen_default_on_non_unit_variant_not_implemented);
         return None;
     }
+    if !variant.syntax().text_range().contains_range(ctx.selection_trimmed()) {
+        return None;
+    }
 
     if existing_default_impl(&ctx.sema, &variant).is_some() {
         cov_mark::hit!(test_gen_default_impl_already_exists);
@@ -109,6 +112,49 @@ impl Default for Variant {
     fn default() -> Self {
         Self::Minor
     }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_generate_default_selected_variant() {
+        check_assist(
+            generate_default_from_enum_variant,
+            r#"
+//- minicore: default
+enum Variant {
+    Undefined,
+    $0Minor$0,
+    Major,
+}
+"#,
+            r#"
+enum Variant {
+    Undefined,
+    Minor,
+    Major,
+}
+
+impl Default for Variant {
+    fn default() -> Self {
+        Self::Minor
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_generate_default_not_applicable_with_multiple_variant_selection() {
+        check_assist_not_applicable(
+            generate_default_from_enum_variant,
+            r#"
+//- minicore: default
+enum Variant {
+    Undefined,
+    $0Minor,
+    M$0ajor,
 }
 "#,
         );

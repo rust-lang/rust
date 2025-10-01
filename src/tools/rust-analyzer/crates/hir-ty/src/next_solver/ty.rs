@@ -7,6 +7,7 @@ use hir_def::{GenericDefId, TypeOrConstParamId, TypeParamId};
 use intern::{Interned, Symbol, sym};
 use rustc_abi::{Float, Integer, Size};
 use rustc_ast_ir::{Mutability, try_visit, visit::VisitorResult};
+use rustc_type_ir::TyVid;
 use rustc_type_ir::{
     BoundVar, ClosureKind, CollectAndApply, FlagComputation, Flags, FloatTy, FloatVid, InferTy,
     IntTy, IntVid, Interner, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable,
@@ -334,6 +335,14 @@ impl<'db> Ty<'db> {
     #[inline]
     pub fn is_unit(self) -> bool {
         matches!(self.kind(), TyKind::Tuple(tys) if tys.inner().is_empty())
+    }
+
+    #[inline]
+    pub fn ty_vid(self) -> Option<TyVid> {
+        match self.kind() {
+            TyKind::Infer(rustc_type_ir::TyVar(vid)) => Some(vid),
+            _ => None,
+        }
     }
 
     /// Given a `fn` type, returns an equivalent `unsafe fn` type;
