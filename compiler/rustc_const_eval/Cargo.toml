@@ -16,6 +16,7 @@ rustc_hir = { path = "../rustc_hir" }
 rustc_index = { path = "../rustc_index" }
 rustc_infer = { path = "../rustc_infer" }
 rustc_macros = { path = "../rustc_macros" }
+rustc_metadata = { path = "../rustc_metadata" }
 rustc_middle = { path = "../rustc_middle" }
 rustc_mir_dataflow = { path = "../rustc_mir_dataflow" }
 rustc_session = { path = "../rustc_session" }

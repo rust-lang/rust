@@ -93,6 +93,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Expr, HirId, HirIdMap, HirIdSet, find_attr};
 use rustc_index::IndexVec;
+use rustc_metadata::TyCtxtMetadataExt;
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::print::with_no_trimmed_paths;

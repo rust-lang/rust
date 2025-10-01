@@ -3431,14 +3431,6 @@ impl<'tcx> TyCtxt<'tcx> {
         self.sess.opts.unstable_opts.build_sdylib_interface
     }
 
-    pub fn intrinsic(self, def_id: impl IntoQueryParam<DefId> + Copy) -> Option<ty::IntrinsicDef> {
-        match self.def_kind(def_id) {
-            DefKind::Fn | DefKind::AssocFn => {}
-            _ => return None,
-        }
-        self.intrinsic_raw(def_id)
-    }
-
     pub fn next_trait_solver_globally(self) -> bool {
         self.sess.opts.unstable_opts.next_solver.globally
     }

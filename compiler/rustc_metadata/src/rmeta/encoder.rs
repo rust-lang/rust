@@ -36,6 +36,7 @@ use rustc_span::{
 use tracing::{debug, instrument, trace};
 
 use crate::errors::{FailCreateFileEncoder, FailWriteFile};
+use crate::optimized_queries::TyCtxtMetadataExt;
 use crate::rmeta::*;
 
 pub(super) struct EncodeContext<'a, 'tcx> {

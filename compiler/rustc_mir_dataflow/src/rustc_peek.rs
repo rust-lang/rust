@@ -1,4 +1,5 @@
 use rustc_ast::MetaItem;
+use rustc_metadata::TyCtxtMetadataExt;
 use rustc_middle::mir::{self, Body, Local, Location};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::DefId;

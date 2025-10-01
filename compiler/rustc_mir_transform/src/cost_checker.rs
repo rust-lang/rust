@@ -1,3 +1,4 @@
+use rustc_metadata::TyCtxtMetadataExt;
 use rustc_middle::bug;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;

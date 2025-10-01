@@ -9,6 +9,7 @@ pub use self::atomic::AtomicRmwOp;
 #[rustfmt::skip] // prevent `use` reordering
 use rand::Rng;
 use rustc_abi::Size;
+use rustc_metadata::TyCtxtMetadataExt;
 use rustc_middle::{mir, ty};
 use rustc_span::{Symbol, sym};
 

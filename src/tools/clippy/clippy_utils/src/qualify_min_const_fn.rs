@@ -16,6 +16,7 @@ use rustc_middle::mir::{
     Body, CastKind, NonDivergingIntrinsic, NullOp, Operand, Place, ProjectionElem, Rvalue, Statement, StatementKind,
     Terminator, TerminatorKind,
 };
+use rustc_metadata::TyCtxtMetadataExt;
 use rustc_middle::traits::{BuiltinImplSource, ImplSource, ObligationCause};
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::{self, GenericArgKind, Instance, TraitRef, Ty, TyCtxt};

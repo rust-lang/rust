@@ -18,6 +18,7 @@ mod llvm_x86;
 mod simd;
 
 use cranelift_codegen::ir::AtomicRmwOp;
+use rustc_metadata::TyCtxtMetadataExt;
 use rustc_middle::ty;
 use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::layout::ValidityRequirement;
