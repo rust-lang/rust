@@ -309,6 +309,7 @@ symbols! {
         PathBuf,
         Pending,
         PinCoerceUnsized,
+        PinDerefMutHelper,
         Pointer,
         Poll,
         ProcMacro,

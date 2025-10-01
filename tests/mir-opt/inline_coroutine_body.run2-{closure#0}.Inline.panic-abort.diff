@@ -63,9 +63,9 @@
 +                             let mut _44: &mut std::future::Ready<()>;
 +                             let mut _45: &mut std::pin::Pin<&mut std::future::Ready<()>>;
 +                             scope 14 (inlined <Pin<&mut std::future::Ready<()>> as DerefMut>::deref_mut) {
-+                                 let mut _46: *mut std::pin::helper::Pin<&mut std::future::Ready<()>>;
++                                 let mut _46: *mut std::pin::helper::PinHelper<&mut std::future::Ready<()>>;
 +                                 let mut _47: *mut std::pin::Pin<&mut std::future::Ready<()>>;
-+                                 scope 15 (inlined <pin::helper::Pin<&mut std::future::Ready<()>> as pin::helper::DerefMut>::deref_mut) {
++                                 scope 15 (inlined <pin::helper::PinHelper<&mut std::future::Ready<()>> as pin::helper::PinDerefMutHelper>::deref_mut) {
 +                                     let mut _48: &mut &mut std::future::Ready<()>;
 +                                     scope 16 (inlined <&mut std::future::Ready<()> as DerefMut>::deref_mut) {
 +                                     }
@@ -221,7 +221,7 @@
 +         StorageLive(_42);
 +         StorageLive(_47);
 +         _47 = &raw mut _19;
-+         _46 = copy _47 as *mut std::pin::helper::Pin<&mut std::future::Ready<()>> (PtrToPtr);
++         _46 = copy _47 as *mut std::pin::helper::PinHelper<&mut std::future::Ready<()>> (PtrToPtr);
 +         StorageDead(_47);
 +         _44 = copy ((*_46).0: &mut std::future::Ready<()>);
 +         StorageLive(_49);
