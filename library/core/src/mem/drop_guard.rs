@@ -34,8 +34,12 @@ pub struct DropGuard<T, F>
 where
     F: FnOnce(T),
 {
-    inner: ManuallyDrop<T>,
-    f: ManuallyDrop<F>,
+    inner: ManuallyDrop<DropGuardInner<T, F>>,
+}
+
+struct DropGuardInner<T, F> {
+    value: T,
+    f: F,
 }
 
 impl<T, F> DropGuard<T, F>
@@ -57,8 +61,8 @@ where
     /// ```
     #[unstable(feature = "drop_guard", issue = "144426")]
     #[must_use]
-    pub const fn new(inner: T, f: F) -> Self {
-        Self { inner: ManuallyDrop::new(inner), f: ManuallyDrop::new(f) }
+    pub const fn new(value: T, f: F) -> Self {
+        DropGuard { inner: ManuallyDrop::new(DropGuardInner { value, f }) }
     }
 
     /// Consumes the `DropGuard`, returning the wrapped value.
@@ -86,21 +90,14 @@ where
     #[unstable(feature = "drop_guard", issue = "144426")]
     #[inline]
     pub fn into_inner(guard: Self) -> T {
-        // First we ensure that dropping the guard will not trigger
-        // its destructor
         let mut guard = ManuallyDrop::new(guard);
-
-        // Next we manually read the stored value from the guard.
-        //
-        // SAFETY: this is safe because we've taken ownership of the guard.
-        let value = unsafe { ManuallyDrop::take(&mut guard.inner) };
-
-        // Finally we drop the stored closure. We do this *after* having read
-        // the value, so that even if the closure's `drop` function panics,
-        // unwinding still tries to drop the value.
-        //
-        // SAFETY: this is safe because we've taken ownership of the guard.
-        unsafe { ManuallyDrop::drop(&mut guard.f) };
+        // SAFETY: This ManuallyDrop is owned by another ManuallyDrop which is
+        // dropped at the end of this function.
+        let DropGuardInner { value, f } = unsafe { ManuallyDrop::take(&mut guard.inner) };
+        // FIXME(#47949): `value` should drop if dropping `f` panics.
+        // If #47949 is fixed, this can be removed.
+        // This is tested in mem::drop_guard_always_drops_value_if_closure_drop_unwinds.
+        drop(f);
         value
     }
 }
@@ -113,7 +110,7 @@ where
     type Target = T;
 
     fn deref(&self) -> &T {
-        &*self.inner
+        &self.inner.value
     }
 }
 
@@ -123,7 +120,7 @@ where
     F: FnOnce(T),
 {
     fn deref_mut(&mut self) -> &mut T {
-        &mut *self.inner
+        &mut self.inner.value
     }
 }
 
@@ -134,12 +131,8 @@ where
 {
     fn drop(&mut self) {
         // SAFETY: `DropGuard` is in the process of being dropped.
-        let inner = unsafe { ManuallyDrop::take(&mut self.inner) };
-
-        // SAFETY: `DropGuard` is in the process of being dropped.
-        let f = unsafe { ManuallyDrop::take(&mut self.f) };
-
-        f(inner);
+        let DropGuardInner { value, f } = unsafe { ManuallyDrop::take(&mut self.inner) };
+        f(value);
     }
 }
 
