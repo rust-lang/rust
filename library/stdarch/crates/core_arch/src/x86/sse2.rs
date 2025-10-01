@@ -2422,7 +2422,10 @@ pub fn _mm_cvtsd_f64(a: __m128d) -> f64 {
 #[cfg_attr(test, assert_instr(cvtss2sd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_cvtss_sd(a: __m128d, b: __m128) -> __m128d {
-    unsafe { cvtss2sd(a, b) }
+    unsafe {
+        let elt: f32 = simd_extract!(b, 0);
+        simd_insert!(a, 0, elt as f64)
+    }
 }
 
 /// Converts packed double-precision (64-bit) floating-point elements in `a` to
@@ -3118,8 +3121,6 @@ unsafe extern "C" {
     fn cvtsd2si(a: __m128d) -> i32;
     #[link_name = "llvm.x86.sse2.cvtsd2ss"]
     fn cvtsd2ss(a: __m128, b: __m128d) -> __m128;
-    #[link_name = "llvm.x86.sse2.cvtss2sd"]
-    fn cvtss2sd(a: __m128d, b: __m128) -> __m128d;
     #[link_name = "llvm.x86.sse2.cvttpd2dq"]
     fn cvttpd2dq(a: __m128d) -> i32x4;
     #[link_name = "llvm.x86.sse2.cvttsd2si"]

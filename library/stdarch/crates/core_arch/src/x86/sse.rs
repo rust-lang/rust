@@ -882,7 +882,7 @@ pub fn _mm_cvtss_f32(a: __m128) -> f32 {
 #[cfg_attr(test, assert_instr(cvtsi2ss))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_cvtsi32_ss(a: __m128, b: i32) -> __m128 {
-    unsafe { cvtsi2ss(a, b) }
+    unsafe { simd_insert!(a, 0, b as f32) }
 }
 
 /// Alias for [`_mm_cvtsi32_ss`](fn._mm_cvtsi32_ss.html).
@@ -1989,8 +1989,6 @@ unsafe extern "C" {
     fn cvtss2si(a: __m128) -> i32;
     #[link_name = "llvm.x86.sse.cvttss2si"]
     fn cvttss2si(a: __m128) -> i32;
-    #[link_name = "llvm.x86.sse.cvtsi2ss"]
-    fn cvtsi2ss(a: __m128, b: i32) -> __m128;
     #[link_name = "llvm.x86.sse.sfence"]
     fn sfence();
     #[link_name = "llvm.x86.sse.stmxcsr"]
