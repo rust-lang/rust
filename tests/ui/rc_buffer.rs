@@ -31,4 +31,9 @@ fn func_bad4(_: Rc<OsString>) {}
 // does not trigger lint
 fn func_good1(_: Rc<RefCell<String>>) {}
 
+mod issue_15802 {
+    fn foo(_: std::rc::Rc<Vec<u8>>) {}
+    //~^ rc_buffer
+}
+
 fn main() {}

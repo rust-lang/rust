@@ -30,4 +30,9 @@ fn func_bad4(_: Arc<OsString>) {}
 // does not trigger lint
 fn func_good1(_: Arc<Mutex<String>>) {}
 
+mod issue_15802 {
+    fn foo(_: std::sync::Arc<Vec<u8>>) {}
+    //~^ rc_buffer
+}
+
 fn main() {}

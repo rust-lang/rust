@@ -4,26 +4,27 @@ use clippy_utils::res::MaybeResPath;
 use clippy_utils::source::snippet_with_applicability;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, QPath, TyKind};
+use rustc_hir::{QPath, Ty, TyKind};
 use rustc_lint::LateContext;
 use rustc_span::symbol::sym;
 use std::borrow::Cow;
 
 use super::RC_BUFFER;
 
-pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_>, def_id: DefId) -> bool {
+pub(super) fn check(cx: &LateContext<'_>, hir_ty: &Ty<'_>, qpath: &QPath<'_>, def_id: DefId) -> bool {
     let mut app = Applicability::Unspecified;
     let name = cx.tcx.get_diagnostic_name(def_id);
     if name == Some(sym::Rc) {
-        if let Some(alternate) = match_buffer_type(cx, qpath, &mut app) {
-            #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
+        if let Some(ty) = qpath_generic_tys(qpath).next()
+            && let Some(alternate) = match_buffer_type(cx, ty, &mut app)
+        {
             span_lint_and_then(
                 cx,
                 RC_BUFFER,
                 hir_ty.span,
                 "usage of `Rc<T>` when `T` is a buffer type",
                 |diag| {
-                    diag.span_suggestion(hir_ty.span, "try", format!("Rc<{alternate}>"), app);
+                    diag.span_suggestion_verbose(ty.span, "try", alternate, app);
                 },
             );
             true
@@ -31,15 +32,16 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
             false
         }
     } else if name == Some(sym::Arc) {
-        if let Some(alternate) = match_buffer_type(cx, qpath, &mut app) {
-            #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
+        if let Some(ty) = qpath_generic_tys(qpath).next()
+            && let Some(alternate) = match_buffer_type(cx, ty, &mut app)
+        {
             span_lint_and_then(
                 cx,
                 RC_BUFFER,
                 hir_ty.span,
                 "usage of `Arc<T>` when `T` is a buffer type",
                 |diag| {
-                    diag.span_suggestion(hir_ty.span, "try", format!("Arc<{alternate}>"), app);
+                    diag.span_suggestion_verbose(ty.span, "try", alternate, app);
                 },
             );
             true
@@ -53,10 +55,9 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
 
 fn match_buffer_type(
     cx: &LateContext<'_>,
-    qpath: &QPath<'_>,
+    ty: &Ty<'_>,
     applicability: &mut Applicability,
 ) -> Option<Cow<'static, str>> {
-    let ty = qpath_generic_tys(qpath).next()?;
     let id = ty.basic_res().opt_def_id()?;
     let path = match cx.tcx.get_diagnostic_name(id) {
         Some(sym::OsString) => "std::ffi::OsStr".into(),
