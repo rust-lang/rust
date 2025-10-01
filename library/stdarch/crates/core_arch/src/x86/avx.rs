@@ -587,7 +587,11 @@ pub fn _mm256_dp_ps<const IMM8: i32>(a: __m256, b: __m256) -> __m256 {
 #[cfg_attr(test, assert_instr(vhaddpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_hadd_pd(a: __m256d, b: __m256d) -> __m256d {
-    unsafe { vhaddpd(a, b) }
+    unsafe {
+        let even = simd_shuffle!(a, b, [0, 4, 2, 6]);
+        let odd = simd_shuffle!(a, b, [1, 5, 3, 7]);
+        simd_add(even, odd)
+    }
 }
 
 /// Horizontal addition of adjacent pairs in the two packed vectors
@@ -602,7 +606,11 @@ pub fn _mm256_hadd_pd(a: __m256d, b: __m256d) -> __m256d {
 #[cfg_attr(test, assert_instr(vhaddps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_hadd_ps(a: __m256, b: __m256) -> __m256 {
-    unsafe { vhaddps(a, b) }
+    unsafe {
+        let even = simd_shuffle!(a, b, [0, 2, 8, 10, 4, 6, 12, 14]);
+        let odd = simd_shuffle!(a, b, [1, 3, 9, 11, 5, 7, 13, 15]);
+        simd_add(even, odd)
+    }
 }
 
 /// Horizontal subtraction of adjacent pairs in the two packed vectors
@@ -616,7 +624,11 @@ pub fn _mm256_hadd_ps(a: __m256, b: __m256) -> __m256 {
 #[cfg_attr(test, assert_instr(vhsubpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_hsub_pd(a: __m256d, b: __m256d) -> __m256d {
-    unsafe { vhsubpd(a, b) }
+    unsafe {
+        let even = simd_shuffle!(a, b, [0, 4, 2, 6]);
+        let odd = simd_shuffle!(a, b, [1, 5, 3, 7]);
+        simd_sub(even, odd)
+    }
 }
 
 /// Horizontal subtraction of adjacent pairs in the two packed vectors
@@ -631,7 +643,11 @@ pub fn _mm256_hsub_pd(a: __m256d, b: __m256d) -> __m256d {
 #[cfg_attr(test, assert_instr(vhsubps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_hsub_ps(a: __m256, b: __m256) -> __m256 {
-    unsafe { vhsubps(a, b) }
+    unsafe {
+        let even = simd_shuffle!(a, b, [0, 2, 8, 10, 4, 6, 12, 14]);
+        let odd = simd_shuffle!(a, b, [1, 3, 9, 11, 5, 7, 13, 15]);
+        simd_sub(even, odd)
+    }
 }
 
 /// Computes the bitwise XOR of packed double-precision (64-bit) floating-point
@@ -3044,14 +3060,6 @@ unsafe extern "C" {
     fn roundps256(a: __m256, b: i32) -> __m256;
     #[link_name = "llvm.x86.avx.dp.ps.256"]
     fn vdpps(a: __m256, b: __m256, imm8: i8) -> __m256;
-    #[link_name = "llvm.x86.avx.hadd.pd.256"]
-    fn vhaddpd(a: __m256d, b: __m256d) -> __m256d;
-    #[link_name = "llvm.x86.avx.hadd.ps.256"]
-    fn vhaddps(a: __m256, b: __m256) -> __m256;
-    #[link_name = "llvm.x86.avx.hsub.pd.256"]
-    fn vhsubpd(a: __m256d, b: __m256d) -> __m256d;
-    #[link_name = "llvm.x86.avx.hsub.ps.256"]
-    fn vhsubps(a: __m256, b: __m256) -> __m256;
     #[link_name = "llvm.x86.sse2.cmp.pd"]
     fn vcmppd(a: __m128d, b: __m128d, imm8: i8) -> __m128d;
     #[link_name = "llvm.x86.avx.cmp.pd.256"]

@@ -891,7 +891,21 @@ pub fn _mm256_extracti128_si256<const IMM1: i32>(a: __m256i) -> __m128i {
 #[cfg_attr(test, assert_instr(vphaddw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_hadd_epi16(a: __m256i, b: __m256i) -> __m256i {
-    unsafe { transmute(phaddw(a.as_i16x16(), b.as_i16x16())) }
+    let a = a.as_i16x16();
+    let b = b.as_i16x16();
+    unsafe {
+        let even: i16x16 = simd_shuffle!(
+            a,
+            b,
+            [0, 2, 4, 6, 16, 18, 20, 22, 8, 10, 12, 14, 24, 26, 28, 30]
+        );
+        let odd: i16x16 = simd_shuffle!(
+            a,
+            b,
+            [1, 3, 5, 7, 17, 19, 21, 23, 9, 11, 13, 15, 25, 27, 29, 31]
+        );
+        simd_add(even, odd).as_m256i()
+    }
 }
 
 /// Horizontally adds adjacent pairs of 32-bit integers in `a` and `b`.
@@ -902,7 +916,13 @@ pub fn _mm256_hadd_epi16(a: __m256i, b: __m256i) -> __m256i {
 #[cfg_attr(test, assert_instr(vphaddd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_hadd_epi32(a: __m256i, b: __m256i) -> __m256i {
-    unsafe { transmute(phaddd(a.as_i32x8(), b.as_i32x8())) }
+    let a = a.as_i32x8();
+    let b = b.as_i32x8();
+    unsafe {
+        let even: i32x8 = simd_shuffle!(a, b, [0, 2, 8, 10, 4, 6, 12, 14]);
+        let odd: i32x8 = simd_shuffle!(a, b, [1, 3, 9, 11, 5, 7, 13, 15]);
+        simd_add(even, odd).as_m256i()
+    }
 }
 
 /// Horizontally adds adjacent pairs of 16-bit integers in `a` and `b`
@@ -925,7 +945,21 @@ pub fn _mm256_hadds_epi16(a: __m256i, b: __m256i) -> __m256i {
 #[cfg_attr(test, assert_instr(vphsubw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_hsub_epi16(a: __m256i, b: __m256i) -> __m256i {
-    unsafe { transmute(phsubw(a.as_i16x16(), b.as_i16x16())) }
+    let a = a.as_i16x16();
+    let b = b.as_i16x16();
+    unsafe {
+        let even: i16x16 = simd_shuffle!(
+            a,
+            b,
+            [0, 2, 4, 6, 16, 18, 20, 22, 8, 10, 12, 14, 24, 26, 28, 30]
+        );
+        let odd: i16x16 = simd_shuffle!(
+            a,
+            b,
+            [1, 3, 5, 7, 17, 19, 21, 23, 9, 11, 13, 15, 25, 27, 29, 31]
+        );
+        simd_sub(even, odd).as_m256i()
+    }
 }
 
 /// Horizontally subtract adjacent pairs of 32-bit integers in `a` and `b`.
@@ -936,7 +970,13 @@ pub fn _mm256_hsub_epi16(a: __m256i, b: __m256i) -> __m256i {
 #[cfg_attr(test, assert_instr(vphsubd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_hsub_epi32(a: __m256i, b: __m256i) -> __m256i {
-    unsafe { transmute(phsubd(a.as_i32x8(), b.as_i32x8())) }
+    let a = a.as_i32x8();
+    let b = b.as_i32x8();
+    unsafe {
+        let even: i32x8 = simd_shuffle!(a, b, [0, 2, 8, 10, 4, 6, 12, 14]);
+        let odd: i32x8 = simd_shuffle!(a, b, [1, 3, 9, 11, 5, 7, 13, 15]);
+        simd_sub(even, odd).as_m256i()
+    }
 }
 
 /// Horizontally subtract adjacent pairs of 16-bit integers in `a` and `b`
@@ -1714,7 +1754,12 @@ pub fn _mm256_inserti128_si256<const IMM1: i32>(a: __m256i, b: __m128i) -> __m25
 #[cfg_attr(test, assert_instr(vpmaddwd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_madd_epi16(a: __m256i, b: __m256i) -> __m256i {
-    unsafe { transmute(pmaddwd(a.as_i16x16(), b.as_i16x16())) }
+    unsafe {
+        let r: i32x16 = simd_mul(simd_cast(a.as_i16x16()), simd_cast(b.as_i16x16()));
+        let even: i32x8 = simd_shuffle!(r, r, [0, 2, 4, 6, 8, 10, 12, 14]);
+        let odd: i32x8 = simd_shuffle!(r, r, [1, 3, 5, 7, 9, 11, 13, 15]);
+        simd_add(even, odd).as_m256i()
+    }
 }
 
 /// Vertically multiplies each unsigned 8-bit integer from `a` with the
@@ -3594,20 +3639,10 @@ pub fn _mm256_extract_epi16<const INDEX: i32>(a: __m256i) -> i32 {
 
 #[allow(improper_ctypes)]
 unsafe extern "C" {
-    #[link_name = "llvm.x86.avx2.phadd.w"]
-    fn phaddw(a: i16x16, b: i16x16) -> i16x16;
-    #[link_name = "llvm.x86.avx2.phadd.d"]
-    fn phaddd(a: i32x8, b: i32x8) -> i32x8;
     #[link_name = "llvm.x86.avx2.phadd.sw"]
     fn phaddsw(a: i16x16, b: i16x16) -> i16x16;
-    #[link_name = "llvm.x86.avx2.phsub.w"]
-    fn phsubw(a: i16x16, b: i16x16) -> i16x16;
-    #[link_name = "llvm.x86.avx2.phsub.d"]
-    fn phsubd(a: i32x8, b: i32x8) -> i32x8;
     #[link_name = "llvm.x86.avx2.phsub.sw"]
     fn phsubsw(a: i16x16, b: i16x16) -> i16x16;
-    #[link_name = "llvm.x86.avx2.pmadd.wd"]
-    fn pmaddwd(a: i16x16, b: i16x16) -> i32x8;
     #[link_name = "llvm.x86.avx2.pmadd.ub.sw"]
     fn pmaddubsw(a: u8x32, b: u8x32) -> i16x16;
     #[link_name = "llvm.x86.avx2.maskload.d"]

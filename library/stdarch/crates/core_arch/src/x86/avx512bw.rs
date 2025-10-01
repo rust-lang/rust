@@ -5835,7 +5835,20 @@ pub unsafe fn _mm_mask_storeu_epi8(mem_addr: *mut i8, mask: __mmask16, a: __m128
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmaddwd))]
 pub fn _mm512_madd_epi16(a: __m512i, b: __m512i) -> __m512i {
-    unsafe { transmute(vpmaddwd(a.as_i16x32(), b.as_i16x32())) }
+    unsafe {
+        let r: i32x32 = simd_mul(simd_cast(a.as_i16x32()), simd_cast(b.as_i16x32()));
+        let even: i32x16 = simd_shuffle!(
+            r,
+            r,
+            [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30]
+        );
+        let odd: i32x16 = simd_shuffle!(
+            r,
+            r,
+            [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31]
+        );
+        simd_add(even, odd).as_m512i()
+    }
 }
 
 /// Multiply packed signed 16-bit integers in a and b, producing intermediate signed 32-bit integers. Horizontally add adjacent pairs of intermediate 32-bit integers, and pack the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -11617,8 +11630,6 @@ unsafe extern "C" {
     #[link_name = "llvm.x86.avx512.pmul.hr.sw.512"]
     fn vpmulhrsw(a: i16x32, b: i16x32) -> i16x32;
 
-    #[link_name = "llvm.x86.avx512.pmaddw.d.512"]
-    fn vpmaddwd(a: i16x32, b: i16x32) -> i32x16;
     #[link_name = "llvm.x86.avx512.pmaddubs.w.512"]
     fn vpmaddubsw(a: i8x64, b: i8x64) -> i16x32;
 
