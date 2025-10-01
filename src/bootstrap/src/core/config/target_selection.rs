@@ -86,6 +86,10 @@ impl TargetSelection {
         self.ends_with("windows-gnu")
     }
 
+    pub fn is_windows_gnullvm(&self) -> bool {
+        self.ends_with("windows-gnullvm")
+    }
+
     pub fn is_cygwin(&self) -> bool {
         self.is_windows() &&
         // ref. https://cygwin.com/pipermail/cygwin/2022-February/250802.html

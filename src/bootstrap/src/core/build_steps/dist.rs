@@ -295,6 +295,44 @@ fn make_win_dist(plat_root: &Path, target: TargetSelection, builder: &Builder<'_
     }
 }
 
+fn make_win_llvm_dist(plat_root: &Path, target: TargetSelection, builder: &Builder<'_>) {
+    if builder.config.dry_run() {
+        return;
+    }
+
+    let (_, lib_path) = get_cc_search_dirs(target, builder);
+
+    // Libraries necessary to link the windows-gnullvm toolchains.
+    // System libraries will be preferred if they are available (see #67429).
+    let target_libs = [
+        // MinGW libs
+        "libunwind.a",
+        "libunwind.dll.a",
+        "libmingw32.a",
+        "libmingwex.a",
+        "libmsvcrt.a",
+        // Windows import libs, remove them once std transitions to raw-dylib
+        "libkernel32.a",
+        "libuser32.a",
+        "libntdll.a",
+        "libuserenv.a",
+        "libws2_32.a",
+        "libdbghelp.a",
+    ];
+
+    //Find mingw artifacts we want to bundle
+    let target_libs = find_files(&target_libs, &lib_path);
+
+    //Copy platform libs to platform-specific lib directory
+    let plat_target_lib_self_contained_dir =
+        plat_root.join("lib/rustlib").join(target).join("lib/self-contained");
+    fs::create_dir_all(&plat_target_lib_self_contained_dir)
+        .expect("creating plat_target_lib_self_contained_dir failed");
+    for src in target_libs {
+        builder.copy_link_to_folder(&src, &plat_target_lib_self_contained_dir);
+    }
+}
+
 fn runtime_dll_dist(rust_root: &Path, target: TargetSelection, builder: &Builder<'_>) {
     if builder.config.dry_run() {
         return;
@@ -394,14 +432,20 @@ impl Step for Mingw {
 
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let target = self.target;
-        if !target.ends_with("pc-windows-gnu") || !builder.config.dist_include_mingw_linker {
+        if !target.contains("pc-windows-gnu") || !builder.config.dist_include_mingw_linker {
             return None;
         }
 
         let mut tarball = Tarball::new(builder, "rust-mingw", &target.triple);
         tarball.set_product_name("Rust MinGW");
 
-        make_win_dist(tarball.image_dir(), target, builder);
+        if target.ends_with("pc-windows-gnu") {
+            make_win_dist(tarball.image_dir(), target, builder);
+        } else if target.ends_with("pc-windows-gnullvm") {
+            make_win_llvm_dist(tarball.image_dir(), target, builder);
+        } else {
+            unreachable!();
+        }
 
         Some(tarball.generate())
     }
