@@ -73,59 +73,58 @@
   -->
   <!-- alloc::rc::Rc<T> -->
   <Type Name="alloc::rc::Rc&lt;*&gt;">
-    <DisplayString Optional="true">{ptr.pointer->value}</DisplayString>
+    <DisplayString Optional="true">{*raw_rc.weak.ptr.pointer}</DisplayString>
     <Expand>
       <!-- thin -->
-      <ExpandedItem Optional="true">ptr.pointer->value</ExpandedItem>
-      <Item Name="[Reference count]" Optional="true">ptr.pointer->strong</Item>
-      <Item Name="[Weak reference count]" Optional="true">ptr.pointer->weak</Item>
+      <ExpandedItem Optional="true">*raw_rc.weak.ptr.pointer</ExpandedItem>
+      <Item Name="[Reference count]" Optional="true">((alloc::raw_rc::RefCounts *)raw_rc.weak.ptr.pointer - 1)->strong</Item>
+      <Item Name="[Weak reference count]" Optional="true">((alloc::raw_rc::RefCounts *)raw_rc.weak.ptr.pointer - 1)->weak</Item>
 
       <!-- dyn -->
-      <Item Name="[Reference count]" Optional="true">ptr.pointer.pointer->strong</Item>
-      <Item Name="[Weak reference count]" Optional="true">ptr.pointer.pointer->weak</Item>
+      <Item Name="[Reference count]" Optional="true">((alloc::raw_rc::RefCounts *)raw_rc.weak.ptr.pointer.pointer - 1)->strong</Item>
+      <Item Name="[Weak reference count]" Optional="true">((alloc::raw_rc::RefCounts *)raw_rc.weak.ptr.pointer.pointer - 1)->weak</Item>
     </Expand>
   </Type>
 
   <!-- alloc::rc::Rc<[T]> -->
   <Type Name="alloc::rc::Rc&lt;slice2$&lt;*&gt;,*&gt;">
-    <DisplayString>{{ len={ptr.pointer.length} }}</DisplayString>
+    <DisplayString>{{ len={raw_rc.weak.ptr.pointer.length} }}</DisplayString>
     <Expand>
-      <Item Name="[Length]" ExcludeView="simple">ptr.pointer.length</Item>
-      <Item Name="[Reference count]">ptr.pointer.data_ptr->strong</Item>
-      <Item Name="[Weak reference count]">ptr.pointer.data_ptr->weak</Item>
+      <Item Name="[Length]" ExcludeView="simple">raw_rc.weak.ptr.pointer.length</Item>
+      <Item Name="[Reference count]">((alloc::raw_rc::RefCounts *)raw_rc.weak.ptr.pointer.data_ptr - 1)->strong</Item>
+      <Item Name="[Weak reference count]">((alloc::raw_rc::RefCounts *)raw_rc.weak.ptr.pointer.data_ptr - 1)->weak</Item>
       <ArrayItems>
-        <Size>ptr.pointer.length</Size>
-        <!-- We add +2 to the data_ptr in order to skip the ref count fields in the RcInner -->
-        <ValuePointer>($T1*)(((size_t*)ptr.pointer.data_ptr) + 2)</ValuePointer>
+        <Size>raw_rc.weak.ptr.pointer.length</Size>
+        <ValuePointer>($T1*)raw_rc.weak.ptr.pointer.data_ptr</ValuePointer>
       </ArrayItems>
     </Expand>
   </Type>
 
   <!-- alloc::rc::Weak<T> -->
   <Type Name="alloc::rc::Weak&lt;*&gt;">
-    <DisplayString Optional="true">{ptr.pointer->value}</DisplayString>
+    <DisplayString Optional="true">{*raw_weak.ptr.pointer}</DisplayString>
     <Expand>
       <!-- thin -->
-      <ExpandedItem Optional="true">ptr.pointer->value</ExpandedItem>
-      <Item Name="[Reference count]" Optional="true">ptr.pointer->strong</Item>
-      <Item Name="[Weak reference count]" Optional="true">ptr.pointer->weak</Item>
+      <ExpandedItem Optional="true">*raw_weak.ptr.pointer</ExpandedItem>
+      <Item Name="[Reference count]" Optional="true">((alloc::raw_rc::RefCounts *)raw_weak.ptr.pointer - 1)->strong</Item>
+      <Item Name="[Weak reference count]" Optional="true">((alloc::raw_rc::RefCounts *)raw_weak.ptr.pointer - 1)->weak</Item>
 
       <!-- dyn -->
-      <Item Name="[Reference count]" Optional="true">ptr.pointer.pointer->strong</Item>
-      <Item Name="[Weak reference count]" Optional="true">ptr.pointer.pointer->weak</Item>
+      <Item Name="[Reference count]" Optional="true">((alloc::raw_rc::RefCounts *)raw_weak.ptr.pointer.pointer - 1)->strong</Item>
+      <Item Name="[Weak reference count]" Optional="true">((alloc::raw_rc::RefCounts *)raw_weak.ptr.pointer.pointer - 1)->weak</Item>
     </Expand>
   </Type>
 
   <!-- alloc::rc::Weak<[T]> -->
   <Type Name="alloc::rc::Weak&lt;slice2$&lt;*&gt;,*&gt;">
-    <DisplayString>{{ len={ptr.pointer.length} }}</DisplayString>
+    <DisplayString>{{ len={raw_weak.ptr.pointer.length} }}</DisplayString>
     <Expand>
-      <Item Name="[Length]" ExcludeView="simple">ptr.pointer.length</Item>
-      <Item Name="[Reference count]">ptr.pointer.data_ptr->strong</Item>
-      <Item Name="[Weak reference count]">ptr.pointer.data_ptr->weak</Item>
+      <Item Name="[Length]" ExcludeView="simple">raw_weak.ptr.pointer.length</Item>
+      <Item Name="[Reference count]">((alloc::raw_rc::RefCounts *)raw_weak.ptr.pointer.data_ptr - 1)->strong</Item>
+      <Item Name="[Weak reference count]">((alloc::raw_rc::RefCounts *)raw_weak.ptr.pointer.data_ptr - 1)->weak</Item>
       <ArrayItems>
-        <Size>ptr.pointer.length</Size>
-        <ValuePointer>($T1*)(((size_t*)ptr.pointer.data_ptr) + 2)</ValuePointer>
+        <Size>raw_weak.ptr.pointer.length</Size>
+        <ValuePointer>($T1*)raw_weak.ptr.pointer.data_ptr</ValuePointer>
       </ArrayItems>
     </Expand>
   </Type>
