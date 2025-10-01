@@ -67,6 +67,7 @@ rm -r tests/run-make/used-proc-macro # used(linker) isn't supported yet
 rm tests/ui/linking/no-gc-encapsulation-symbols.rs # same
 rm tests/ui/attributes/fn-align-dyn.rs # per-function alignment not supported
 rm -r tests/ui/explicit-tail-calls # tail calls
+rm -r tests/run-make/pointer-auth-link-with-c # pointer auth
 
 # requires LTO
 rm -r tests/run-make/cdylib
@@ -131,6 +132,8 @@ rm -r tests/run-make/remap-path-prefix-dwarf # requires llvm-dwarfdump
 rm -r tests/run-make/strip # same
 rm -r tests/run-make-cargo/compiler-builtins # Expects lib/rustlib/src/rust to contains the standard library source
 rm -r tests/run-make/translation # same
+rm -r tests/run-make-cargo/panic-immediate-abort-works # same
+rm -r tests/run-make-cargo/panic-immediate-abort-codegen # same
 rm -r tests/run-make/missing-unstable-trait-bound # This disables support for unstable features, but running cg_clif needs some unstable features
 rm -r tests/run-make/const-trait-stable-toolchain # same
 rm -r tests/run-make/print-request-help-stable-unstable # same
