@@ -128,6 +128,7 @@ use visitors::{Visitable, for_each_unconsumed_temporary};
 use crate::ast_utils::unordered_over;
 use crate::consts::{ConstEvalCtxt, Constant, mir_to_const};
 use crate::higher::Range;
+use crate::msrvs::Msrv;
 use crate::ty::{adt_and_variant_of_res, can_partially_move_ty, expr_sig, is_copy, is_recursively_primitive_type};
 use crate::visitors::for_each_expr_without_closures;
 
@@ -3648,4 +3649,9 @@ pub fn is_expr_async_block(expr: &Expr<'_>) -> bool {
             ..
         })
     )
+}
+
+/// Checks if the chosen edition and `msrv` allows using `if let` chains.
+pub fn can_use_if_let_chains(cx: &LateContext<'_>, msrv: Msrv) -> bool {
+    cx.tcx.sess.edition().at_least_rust_2024() && msrv.meets(cx, msrvs::LET_CHAINS)
 }

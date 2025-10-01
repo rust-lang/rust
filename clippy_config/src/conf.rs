@@ -794,6 +794,7 @@ define_Conf! {
         unchecked_time_subtraction,
         uninlined_format_args,
         unnecessary_lazy_evaluations,
+        unnecessary_unwrap,
         unnested_or_patterns,
         unused_trait_names,
         use_self,
