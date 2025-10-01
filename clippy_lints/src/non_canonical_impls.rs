@@ -5,7 +5,7 @@ use clippy_utils::{is_from_proc_macro, last_path_segment, std_or_core};
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Body, Expr, ExprKind, ImplItem, ImplItemKind, Item, LangItem, Node, UnOp};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::ty::{EarlyBinder, TraitRef, TypeckResults};
+use rustc_middle::ty::{EarlyBinder, TypeckResults};
 use rustc_session::declare_lint_pass;
 use rustc_span::sym;
 use rustc_span::symbol::kw;
@@ -129,11 +129,14 @@ impl LateLintPass<'_> for NonCanonicalImpls {
             {
                 check_clone_on_copy(cx, impl_item, block);
             } else if trait_name == Some(sym::PartialOrd)
+                // If `Self` and `Rhs` are not the same type, then a corresponding `Ord` impl is not possible,
+                // since it doesn't have an `Rhs`
+                && let [lhs, rhs] = trait_impl.args.as_slice() && lhs == rhs
                 && impl_item.ident.name == sym::partial_cmp
                 && let Some(ord_def_id) = cx.tcx.get_diagnostic_item(sym::Ord)
                 && implements_trait(cx, trait_impl.self_ty(), ord_def_id, &[])
             {
-                check_partial_ord_on_ord(cx, impl_item, item, &trait_impl, body, block);
+                check_partial_ord_on_ord(cx, impl_item, item, body, block);
             }
         }
     }
@@ -179,7 +182,6 @@ fn check_partial_ord_on_ord<'tcx>(
     cx: &LateContext<'tcx>,
     impl_item: &ImplItem<'_>,
     item: &Item<'_>,
-    trait_impl: &TraitRef<'_>,
     body: &Body<'_>,
     block: &Block<'tcx>,
 ) {
@@ -202,13 +204,6 @@ fn check_partial_ord_on_ord<'tcx>(
             ..
         }) = stmt.kind
         && expr_is_cmp(cx, ret, impl_item, &mut needs_fully_qualified)
-    {
-        return;
-    }
-    // If `Self` and `Rhs` are not the same type, bail. This makes creating a valid
-    // suggestion tons more complex.
-    else if let [lhs, rhs, ..] = trait_impl.args.as_slice()
-        && lhs != rhs
     {
         return;
     }
