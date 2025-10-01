@@ -1983,7 +1983,10 @@ pub fn _mm256_unpacklo_ps(a: __m256, b: __m256) -> __m256 {
 #[cfg_attr(test, assert_instr(vptest))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_testz_si256(a: __m256i, b: __m256i) -> i32 {
-    unsafe { ptestz256(a.as_i64x4(), b.as_i64x4()) }
+    unsafe {
+        let r = simd_and(a.as_i64x4(), b.as_i64x4());
+        (0i64 == simd_reduce_or(r)) as i32
+    }
 }
 
 /// Computes the bitwise AND of 256 bits (representing integer data) in `a` and
@@ -1997,7 +2000,10 @@ pub fn _mm256_testz_si256(a: __m256i, b: __m256i) -> i32 {
 #[cfg_attr(test, assert_instr(vptest))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_testc_si256(a: __m256i, b: __m256i) -> i32 {
-    unsafe { ptestc256(a.as_i64x4(), b.as_i64x4()) }
+    unsafe {
+        let r = simd_and(simd_xor(a.as_i64x4(), i64x4::splat(!0)), b.as_i64x4());
+        (0i64 == simd_reduce_or(r)) as i32
+    }
 }
 
 /// Computes the bitwise AND of 256 bits (representing integer data) in `a` and
@@ -2081,7 +2087,10 @@ pub fn _mm256_testnzc_pd(a: __m256d, b: __m256d) -> i32 {
 #[cfg_attr(test, assert_instr(vtestpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_testz_pd(a: __m128d, b: __m128d) -> i32 {
-    unsafe { vtestzpd(a, b) }
+    unsafe {
+        let r: i64x2 = simd_lt(transmute(_mm_and_pd(a, b)), i64x2::ZERO);
+        (0i64 == simd_reduce_or(r)) as i32
+    }
 }
 
 /// Computes the bitwise AND of 128 bits (representing double-precision (64-bit)
@@ -2098,7 +2107,10 @@ pub fn _mm_testz_pd(a: __m128d, b: __m128d) -> i32 {
 #[cfg_attr(test, assert_instr(vtestpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_testc_pd(a: __m128d, b: __m128d) -> i32 {
-    unsafe { vtestcpd(a, b) }
+    unsafe {
+        let r: i64x2 = simd_lt(transmute(_mm_andnot_pd(a, b)), i64x2::ZERO);
+        (0i64 == simd_reduce_or(r)) as i32
+    }
 }
 
 /// Computes the bitwise AND of 128 bits (representing double-precision (64-bit)
@@ -2185,7 +2197,10 @@ pub fn _mm256_testnzc_ps(a: __m256, b: __m256) -> i32 {
 #[cfg_attr(test, assert_instr(vtestps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_testz_ps(a: __m128, b: __m128) -> i32 {
-    unsafe { vtestzps(a, b) }
+    unsafe {
+        let r: i32x4 = simd_lt(transmute(_mm_and_ps(a, b)), i32x4::ZERO);
+        (0i32 == simd_reduce_or(r)) as i32
+    }
 }
 
 /// Computes the bitwise AND of 128 bits (representing single-precision (32-bit)
@@ -2202,7 +2217,10 @@ pub fn _mm_testz_ps(a: __m128, b: __m128) -> i32 {
 #[cfg_attr(test, assert_instr(vtestps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_testc_ps(a: __m128, b: __m128) -> i32 {
-    unsafe { vtestcps(a, b) }
+    unsafe {
+        let r: i32x4 = simd_lt(transmute(_mm_andnot_ps(a, b)), i32x4::ZERO);
+        (0i32 == simd_reduce_or(r)) as i32
+    }
 }
 
 /// Computes the bitwise AND of 128 bits (representing single-precision (32-bit)
@@ -3148,10 +3166,6 @@ unsafe extern "C" {
     fn vrcpps(a: __m256) -> __m256;
     #[link_name = "llvm.x86.avx.rsqrt.ps.256"]
     fn vrsqrtps(a: __m256) -> __m256;
-    #[link_name = "llvm.x86.avx.ptestz.256"]
-    fn ptestz256(a: i64x4, b: i64x4) -> i32;
-    #[link_name = "llvm.x86.avx.ptestc.256"]
-    fn ptestc256(a: i64x4, b: i64x4) -> i32;
     #[link_name = "llvm.x86.avx.ptestnzc.256"]
     fn ptestnzc256(a: i64x4, b: i64x4) -> i32;
     #[link_name = "llvm.x86.avx.vtestz.pd.256"]
@@ -3160,10 +3174,6 @@ unsafe extern "C" {
     fn vtestcpd256(a: __m256d, b: __m256d) -> i32;
     #[link_name = "llvm.x86.avx.vtestnzc.pd.256"]
     fn vtestnzcpd256(a: __m256d, b: __m256d) -> i32;
-    #[link_name = "llvm.x86.avx.vtestz.pd"]
-    fn vtestzpd(a: __m128d, b: __m128d) -> i32;
-    #[link_name = "llvm.x86.avx.vtestc.pd"]
-    fn vtestcpd(a: __m128d, b: __m128d) -> i32;
     #[link_name = "llvm.x86.avx.vtestnzc.pd"]
     fn vtestnzcpd(a: __m128d, b: __m128d) -> i32;
     #[link_name = "llvm.x86.avx.vtestz.ps.256"]
@@ -3172,10 +3182,6 @@ unsafe extern "C" {
     fn vtestcps256(a: __m256, b: __m256) -> i32;
     #[link_name = "llvm.x86.avx.vtestnzc.ps.256"]
     fn vtestnzcps256(a: __m256, b: __m256) -> i32;
-    #[link_name = "llvm.x86.avx.vtestz.ps"]
-    fn vtestzps(a: __m128, b: __m128) -> i32;
-    #[link_name = "llvm.x86.avx.vtestc.ps"]
-    fn vtestcps(a: __m128, b: __m128) -> i32;
     #[link_name = "llvm.x86.avx.vtestnzc.ps"]
     fn vtestnzcps(a: __m128, b: __m128) -> i32;
     #[link_name = "llvm.x86.avx.min.ps.256"]
