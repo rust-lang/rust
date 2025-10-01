@@ -214,9 +214,10 @@ struct MiriGenmcShim : private GenMCDriver {
      * Automatically calls `inc_pos` and `dec_pos` where needed for the given thread.
      */
     template <EventLabel::EventLabelKind k, typename... Ts>
-    auto handle_load_reset_if_none(ThreadId tid, Ts&&... params) -> HandleResult<SVal> {
+    auto handle_load_reset_if_none(ThreadId tid, std::optional<SVal> old_val, Ts&&... params)
+        -> HandleResult<SVal> {
         const auto pos = inc_pos(tid);
-        const auto ret = GenMCDriver::handleLoad<k>(pos, std::forward<Ts>(params)...);
+        const auto ret = GenMCDriver::handleLoad<k>(pos, old_val, std::forward<Ts>(params)...);
         // If we didn't get a value, we have to reset the index of the current thread.
         if (!std::holds_alternative<SVal>(ret)) {
             dec_pos(tid);
@@ -273,6 +274,12 @@ inline GenmcScalar from_sval(SVal sval) {
 inline SVal to_sval(GenmcScalar scalar) {
     ERROR_ON(!scalar.is_init, "Cannot convert an uninitialized `GenmcScalar` into an `SVal`\n");
     return SVal(scalar.value, scalar.extra);
+}
+
+inline std::optional<SVal> try_to_sval(GenmcScalar scalar) {
+    if (scalar.is_init)
+        return { SVal(scalar.value, scalar.extra) };
+    return std::nullopt;
 }
 } // namespace GenmcScalarExt
 

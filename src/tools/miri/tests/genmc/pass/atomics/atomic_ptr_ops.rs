@@ -37,18 +37,22 @@ unsafe fn pointers_equal(a: *mut u64, b: *mut u64) {
 
 unsafe fn test_load_store_exchange() {
     let atomic_ptr: AtomicPtr<u64> = AtomicPtr::new(&raw mut X);
-    // FIXME(genmc,HACK): remove this initializing write once Miri-GenMC supports mixed atomic-non-atomic accesses.
-    // FIXME(genmc): Add test cases with temporal mixing of atomics/non-atomics.
-    atomic_ptr.store(&raw mut X, SeqCst);
 
-    // Load can read the initial value.
+    // Atomic load can read the initial value.
     pointers_equal(atomic_ptr.load(SeqCst), &raw mut X);
-    // Store works as expected.
+    // Atomic store works as expected.
     atomic_ptr.store(&raw mut Y, SeqCst);
     pointers_equal(atomic_ptr.load(SeqCst), &raw mut Y);
+    // We can read the value of the atomic store non-atomically.
+    pointers_equal(*atomic_ptr.as_ptr(), &raw mut Y);
+    // We can read the value of a non-atomic store atomically.
+    *atomic_ptr.as_ptr() = &raw mut X;
+    pointers_equal(atomic_ptr.load(SeqCst), &raw mut X);
 
     // Atomic swap must return the old value and store the new one.
+    *atomic_ptr.as_ptr() = &raw mut Y; // Test that we can read this non-atomic store using `swap`.
     pointers_equal(atomic_ptr.swap(&raw mut X, SeqCst), &raw mut Y);
+    pointers_equal(*atomic_ptr.as_ptr(), &raw mut X);
     pointers_equal(atomic_ptr.load(SeqCst), &raw mut X);
 
     // Failing compare_exchange (wrong expected pointer).
@@ -56,11 +60,17 @@ unsafe fn test_load_store_exchange() {
         Ok(_ptr) => std::process::abort(),
         Err(ptr) => pointers_equal(ptr, &raw mut X),
     }
+    // Non-atomic read value should also be unchanged by a failing compare_exchange.
+    pointers_equal(*atomic_ptr.as_ptr(), &raw mut X);
+
     // Failing compare_exchange (null).
     match atomic_ptr.compare_exchange(std::ptr::null_mut(), std::ptr::null_mut(), SeqCst, SeqCst) {
         Ok(_ptr) => std::process::abort(),
         Err(ptr) => pointers_equal(ptr, &raw mut X),
     }
+    // Non-atomic read value should also be unchanged by a failing compare_exchange.
+    pointers_equal(*atomic_ptr.as_ptr(), &raw mut X);
+
     // Successful compare_exchange.
     match atomic_ptr.compare_exchange(&raw mut X, &raw mut Y, SeqCst, SeqCst) {
         Ok(ptr) => pointers_equal(ptr, &raw mut X),
@@ -68,15 +78,13 @@ unsafe fn test_load_store_exchange() {
     }
     // compare_exchange should update the pointer.
     pointers_equal(atomic_ptr.load(SeqCst), &raw mut Y);
+    pointers_equal(*atomic_ptr.as_ptr(), &raw mut Y);
 }
 
 unsafe fn test_add_sub() {
     const LEN: usize = 16;
     let mut array: [u64; LEN] = std::array::from_fn(|i| i as u64);
-
     let atomic_ptr: AtomicPtr<u64> = AtomicPtr::new(&raw mut array[0]);
-    // FIXME(genmc,HACK): remove this initializing write once Miri-GenMC supports mixed atomic-non-atomic accesses.
-    atomic_ptr.store(&raw mut array[0], SeqCst);
 
     // Each element of the array should be reachable using `fetch_ptr_add`.
     // All pointers must stay valid.
@@ -110,10 +118,7 @@ unsafe fn test_and_or_xor() {
 
     let mut array = AlignedArray(std::array::from_fn(|i| i as u64 * 10));
     let array_ptr = &raw mut array.0[0];
-
     let atomic_ptr: AtomicPtr<u64> = AtomicPtr::new(array_ptr);
-    // FIXME(genmc,HACK): remove this initializing write once Miri-GenMC supports mixed atomic-non-atomic accesses.
-    atomic_ptr.store(array_ptr, SeqCst);
 
     // Test no-op arguments.
     assert_equals(array_ptr, atomic_ptr.fetch_or(0, SeqCst));

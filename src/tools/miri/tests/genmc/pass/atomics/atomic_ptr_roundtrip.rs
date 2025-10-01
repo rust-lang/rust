@@ -23,9 +23,6 @@ static mut X: [u8; 16] = [0; 16];
 
 #[unsafe(no_mangle)]
 fn miri_start(_argc: isize, _argv: *const *const u8) -> isize {
-    // FIXME(genmc,HACK): remove this initializing write once Miri-GenMC supports mixed atomic-non-atomic accesses.
-    PTR.store(std::ptr::null_mut(), SeqCst);
-
     unsafe {
         let ids = [
             spawn_pthread_closure(|| {

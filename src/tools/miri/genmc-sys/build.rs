@@ -28,7 +28,7 @@ mod downloading {
     /// The GenMC repository the we get our commit from.
     pub(crate) const GENMC_GITHUB_URL: &str = "https://gitlab.inf.ethz.ch/public-plf/genmc.git";
     /// The GenMC commit we depend on. It must be available on the specified GenMC repository.
-    pub(crate) const GENMC_COMMIT: &str = "cd01c12032bdd71df742b41c7817f99acc72e7ab";
+    pub(crate) const GENMC_COMMIT: &str = "ce775ccd7866db820fa12ffca66463087a11dd96";
 
     /// Ensure that a local GenMC repo is present and set to the correct commit.
     /// Return the path of the GenMC repo and whether the checked out commit was changed.

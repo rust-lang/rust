@@ -104,9 +104,6 @@ impl MyStack {
 
 #[unsafe(no_mangle)]
 fn miri_start(_argc: isize, _argv: *const *const u8) -> isize {
-    // FIXME(genmc,HACK): remove this initializing write once Miri-GenMC supports mixed atomic-non-atomic accesses.
-    unsafe { STACK.top.store(std::ptr::null_mut(), Relaxed) };
-
     // We try multiple different parameters for the number and types of threads:
     let (readers, writers) = if cfg!(any(default_R1W3, spinloop_assume_R1W3)) {
         (1, 3)
