@@ -17,6 +17,34 @@ LL | extern "cmse-nonsecure-entry" fn impl_trait(_: impl Copy, _: u32, _: u32, _
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0798]: functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
+  --> $DIR/generics.rs:69:1
+   |
+LL | extern "cmse-nonsecure-entry" fn return_impl_trait(_: impl Copy) -> impl Copy {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0798]: functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
+  --> $DIR/generics.rs:69:1
+   |
+LL | extern "cmse-nonsecure-entry" fn return_impl_trait(_: impl Copy) -> impl Copy {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0798]: functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
+  --> $DIR/generics.rs:75:1
+   |
+LL | extern "cmse-nonsecure-entry" fn return_impl_trait_nested(v: (impl Copy, i32)) -> (impl Copy, i32) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0798]: functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
+  --> $DIR/generics.rs:75:1
+   |
+LL | extern "cmse-nonsecure-entry" fn return_impl_trait_nested(v: (impl Copy, i32)) -> (impl Copy, i32) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0798]: functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
   --> $DIR/generics.rs:14:5
    |
 LL |     extern "cmse-nonsecure-entry" fn ambient_generic(_: T, _: u32, _: u32, _: u32) -> u64 {
@@ -61,6 +89,6 @@ LL | extern "cmse-nonsecure-entry" fn wrapped_trait_object(x: WrapperTransparent
    = note: functions with the `"cmse-nonsecure-entry"` ABI must pass their result via the available return registers
    = note: the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
 
-error: aborting due to 7 previous errors
+error: aborting due to 11 previous errors
 
 For more information about this error, try `rustc --explain E0798`.
