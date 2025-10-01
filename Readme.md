@@ -66,7 +66,7 @@ For more docs on how to build and test see [build_system/usage.txt](build_system
 |OS \ architecture|x86\_64|AArch64|Riscv64|s390x (System-Z)|
 |---|---|---|---|---|
 |Linux|✅|✅|✅[^no-rustup]|✅[^no-rustup]|
-|FreeBSD|✅[^no-rustup]|❓|❓|❓|
+|FreeBSD|✅[^no-rustup][^tls]|❓|❓|❓|
 |AIX|❌[^xcoff]|N/A|N/A|❌[^xcoff]|
 |Other unixes|❓|❓|❓|❓|
 |macOS|✅|✅|N/A|N/A|
@@ -80,6 +80,7 @@ Not all targets are available as rustup component for nightly. See notes in the 
 
 [^xcoff]: XCOFF object file format is not supported.
 [^no-rustup]: Not available as [rustup component for nightly](https://rust-lang.github.io/rustup-components-history/). You can build it yourself.
+[^tls]: FreeBSD requires setting `LD_STATIC_TLS_EXTRA=4096` to build cg_clif. In addition you need at least FreeBSD 14.
 
 ## Usage
 
