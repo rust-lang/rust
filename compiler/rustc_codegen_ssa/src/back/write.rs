@@ -1295,7 +1295,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
     // Each LLVM module is automatically sent back to the coordinator for LTO if
     // necessary. There's already optimizations in place to avoid sending work
     // back to the coordinator if LTO isn't requested.
-    let sysroot = sess.opts.sysroot.clone();
     return B::spawn_named_thread(cgcx.time_trace, "coordinator".to_string(), move || {
         // This is where we collect codegen units that have gone all the way
         // through codegen and LLVM.
@@ -1375,7 +1374,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                         let (item, _) =
                             work_items.pop().expect("queue empty - queue_full_enough() broken?");
                         main_thread_state = MainThreadState::Lending;
-                        spawn_work(sysroot.clone(), &cgcx, coordinator_send.clone(), &mut llvm_start_time, item);
+                        spawn_work(&cgcx, coordinator_send.clone(), &mut llvm_start_time, item);
                     }
                 }
             } else if codegen_state == Completed {
@@ -1448,7 +1447,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     MainThreadState::Idle => {
                         if let Some((item, _)) = work_items.pop() {
                             main_thread_state = MainThreadState::Lending;
-                            spawn_work(sysroot.clone(), &cgcx, coordinator_send.clone(), &mut llvm_start_time, item);
+                            spawn_work(&cgcx, coordinator_send.clone(), &mut llvm_start_time, item);
                         } else {
                             // There is no unstarted work, so let the main thread
                             // take over for a running worker. Otherwise the
@@ -1484,7 +1483,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                 while running_with_own_token < tokens.len()
                     && let Some((item, _)) = work_items.pop()
                 {
-                    spawn_work(sysroot.clone(), &cgcx, coordinator_send.clone(), &mut llvm_start_time, item);
+                    spawn_work(&cgcx, coordinator_send.clone(), &mut llvm_start_time, item);
                     running_with_own_token += 1;
                 }
             }
@@ -1866,7 +1865,6 @@ unsafe impl Send for EnzymeWrapper {}
     }
 
 fn spawn_work<'a, B: ExtraBackendMethods>(
-    sysroot: Sysroot,
     cgcx: &'a CodegenContext<B>,
     coordinator_send: Sender<Message<B>>,
     llvm_start_time: &mut Option<VerboseTimingGuard<'a>>,
