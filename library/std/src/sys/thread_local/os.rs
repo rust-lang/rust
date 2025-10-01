@@ -1,9 +1,12 @@
 use super::key::{Key, LazyKey, get, set};
 use super::{abort_on_dtor_unwind, guard};
-use crate::alloc::Layout;
+use crate::alloc::{self, Layout};
 use crate::cell::Cell;
 use crate::marker::PhantomData;
-use crate::ptr;
+use crate::mem::ManuallyDrop;
+use crate::ops::Deref;
+use crate::panic::{AssertUnwindSafe, catch_unwind, resume_unwind};
+use crate::ptr::{self, NonNull};
 
 #[doc(hidden)]
 #[allow_internal_unstable(thread_local_internals)]
@@ -110,6 +113,60 @@ pub const fn value_align<T: 'static>() -> usize {
     crate::mem::align_of::<Value<T>>()
 }
 
+/// Equivalent to `Box<Value<T>>`, but potentially over-aligned.
+struct AlignedBox<T: 'static, const ALIGN: usize> {
+    ptr: NonNull<Value<T>>,
+}
+
+impl<T: 'static, const ALIGN: usize> AlignedBox<T, ALIGN> {
+    #[inline]
+    fn new(v: Value<T>) -> Self {
+        let layout = Layout::new::<Value<T>>().align_to(ALIGN).unwrap();
+
+        let ptr: *mut Value<T> = (unsafe { alloc::alloc(layout) }).cast();
+        let Some(ptr) = NonNull::new(ptr) else {
+            alloc::handle_alloc_error(layout);
+        };
+        unsafe { ptr.write(v) };
+        Self { ptr }
+    }
+
+    #[inline]
+    fn into_raw(b: Self) -> *mut Value<T> {
+        let md = ManuallyDrop::new(b);
+        md.ptr.as_ptr()
+    }
+
+    #[inline]
+    unsafe fn from_raw(ptr: *mut Value<T>) -> Self {
+        Self { ptr: unsafe { NonNull::new_unchecked(ptr) } }
+    }
+}
+
+impl<T: 'static, const ALIGN: usize> Deref for AlignedBox<T, ALIGN> {
+    type Target = Value<T>;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        unsafe { &*(self.ptr.as_ptr()) }
+    }
+}
+
+impl<T: 'static, const ALIGN: usize> Drop for AlignedBox<T, ALIGN> {
+    #[inline]
+    fn drop(&mut self) {
+        let layout = Layout::new::<Value<T>>().align_to(ALIGN).unwrap();
+
+        unsafe {
+            let unwind_result = catch_unwind(AssertUnwindSafe(|| self.ptr.drop_in_place()));
+            alloc::dealloc(self.ptr.as_ptr().cast(), layout);
+            if let Err(payload) = unwind_result {
+                resume_unwind(payload);
+            }
+        }
+    }
+}
+
 impl<T: 'static, const ALIGN: usize> Storage<T, ALIGN> {
     pub const fn new() -> Storage<T, ALIGN> {
         Storage { key: LazyKey::new(Some(destroy_value::<T, ALIGN>)), marker: PhantomData }
@@ -148,15 +205,11 @@ impl<T: 'static, const ALIGN: usize> Storage<T, ALIGN> {
             return ptr::null();
         }
 
-        // Manually allocate with the requested alignment
-        let layout = Layout::new::<Value<T>>().align_to(ALIGN).unwrap();
-        let ptr: *mut Value<T> = (unsafe { crate::alloc::alloc(layout) }).cast();
-        if ptr.is_null() {
-            crate::alloc::handle_alloc_error(layout);
-        }
-        unsafe {
-            ptr.write(Value { value: i.and_then(Option::take).unwrap_or_else(f), key });
-        }
+        let value = AlignedBox::<T, ALIGN>::new(Value {
+            value: i.and_then(Option::take).unwrap_or_else(f),
+            key,
+        });
+        let ptr = AlignedBox::into_raw(value);
 
         // SAFETY:
         // * key came from a `LazyKey` and is thus correct.
@@ -174,10 +227,7 @@ impl<T: 'static, const ALIGN: usize> Storage<T, ALIGN> {
             // initializer has already returned and the next scope only starts
             // after we return the pointer. Therefore, there can be no references
             // to the old value.
-            unsafe {
-                old.drop_in_place();
-                crate::alloc::dealloc(old.cast(), layout);
-            }
+            drop(unsafe { AlignedBox::<T, ALIGN>::from_raw(old) });
         }
 
         // SAFETY: We just created this value above.
@@ -196,22 +246,13 @@ unsafe extern "C" fn destroy_value<T: 'static, const ALIGN: usize>(ptr: *mut u8)
     // Note that to prevent an infinite loop we reset it back to null right
     // before we return from the destructor ourselves.
     abort_on_dtor_unwind(|| {
-        let value_ptr: *mut Value<T> = ptr.cast();
-        unsafe {
-            let key = (*value_ptr).key;
-
-            // SAFETY: `key` is the TLS key `ptr` was stored under.
-            set(key, ptr::without_provenance_mut(1));
-
-            // drop and deallocate the value
-            let layout =
-                Layout::from_size_align_unchecked(crate::mem::size_of::<Value<T>>(), ALIGN);
-            value_ptr.drop_in_place();
-            crate::alloc::dealloc(ptr, layout);
-
-            // SAFETY: `key` is the TLS key `ptr` was stored under.
-            set(key, ptr::null_mut());
-        };
+        let ptr = unsafe { AlignedBox::<T, ALIGN>::from_raw(ptr as *mut Value<T>) };
+        let key = ptr.key;
+        // SAFETY: `key` is the TLS key `ptr` was stored under.
+        unsafe { set(key, ptr::without_provenance_mut(1)) };
+        drop(ptr);
+        // SAFETY: `key` is the TLS key `ptr` was stored under.
+        unsafe { set(key, ptr::null_mut()) };
         // Make sure that the runtime cleanup will be performed
         // after the next round of TLS destruction.
         guard::enable();
