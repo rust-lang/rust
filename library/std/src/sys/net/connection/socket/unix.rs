@@ -385,7 +385,7 @@ impl Socket {
     }
 
     #[cfg(any(target_os = "android", target_os = "linux", target_os = "cygwin"))]
-    pub fn send_msg(&self, msg: &mut libc::msghdr) -> io::Result<usize> {
+    pub fn send_msg(&self, msg: &libc::msghdr) -> io::Result<usize> {
         let n = cvt(unsafe { libc::sendmsg(self.as_raw_fd(), msg, 0) })?;
         Ok(n as usize)
     }
