@@ -5,8 +5,6 @@ use stdarch_test::assert_instr;
 unsafe extern "unadjusted" {
     #[link_name = "llvm.x86.addcarry.64"]
     fn llvm_addcarry_u64(a: u8, b: u64, c: u64) -> (u8, u64);
-    #[link_name = "llvm.x86.addcarryx.u64"]
-    fn llvm_addcarryx_u64(a: u8, b: u64, c: u64, d: *mut u64) -> u8;
     #[link_name = "llvm.x86.subborrow.64"]
     fn llvm_subborrow_u64(a: u8, b: u64, c: u64) -> (u8, u64);
 }
@@ -35,7 +33,7 @@ pub unsafe fn _addcarry_u64(c_in: u8, a: u64, b: u64, out: &mut u64) -> u8 {
 #[cfg_attr(test, assert_instr(adc))]
 #[stable(feature = "simd_x86_adx", since = "1.33.0")]
 pub unsafe fn _addcarryx_u64(c_in: u8, a: u64, b: u64, out: &mut u64) -> u8 {
-    llvm_addcarryx_u64(c_in, a, b, out as *mut _)
+    _addcarry_u64(c_in, a, b, out)
 }
 
 /// Adds unsigned 64-bit integers `a` and `b` with unsigned 8-bit carry-in `c_in`.
@@ -95,27 +93,27 @@ mod tests {
         let a = u64::MAX;
         let mut out = 0;
 
-        let r = _addcarry_u64(0, a, 1, &mut out);
+        let r = _addcarryx_u64(0, a, 1, &mut out);
         assert_eq!(r, 1);
         assert_eq!(out, 0);
 
-        let r = _addcarry_u64(0, a, 0, &mut out);
+        let r = _addcarryx_u64(0, a, 0, &mut out);
         assert_eq!(r, 0);
         assert_eq!(out, a);
 
-        let r = _addcarry_u64(1, a, 1, &mut out);
+        let r = _addcarryx_u64(1, a, 1, &mut out);
         assert_eq!(r, 1);
         assert_eq!(out, 1);
 
-        let r = _addcarry_u64(1, a, 0, &mut out);
+        let r = _addcarryx_u64(1, a, 0, &mut out);
         assert_eq!(r, 1);
         assert_eq!(out, 0);
 
-        let r = _addcarry_u64(0, 3, 4, &mut out);
+        let r = _addcarryx_u64(0, 3, 4, &mut out);
         assert_eq!(r, 0);
         assert_eq!(out, 7);
 
-        let r = _addcarry_u64(1, 3, 4, &mut out);
+        let r = _addcarryx_u64(1, 3, 4, &mut out);
         assert_eq!(r, 0);
         assert_eq!(out, 8);
     }
