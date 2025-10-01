@@ -1,5 +1,5 @@
 error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
-  --> $DIR/transmute.rs:20:14
+  --> $DIR/transmute.rs:23:14
    |
 LL |     unsafe { std::mem::transmute(x) }
    |              ^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     unsafe { std::mem::transmute(x) }
    = note: target type: `u32` (32 bits)
 
 error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
-  --> $DIR/transmute.rs:28:14
+  --> $DIR/transmute.rs:31:14
    |
 LL |     unsafe { std::mem::transmute(x) }
    |              ^^^^^^^^^^^^^^^^^^^

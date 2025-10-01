@@ -347,6 +347,7 @@ impl<I: Interner> FlagComputation<I> {
 
     fn add_ty_pat(&mut self, pat: <I as Interner>::Pat) {
         self.add_flags(pat.flags());
+        self.add_exclusive_binder(pat.outer_exclusive_binder());
     }
 
     fn add_predicate(&mut self, binder: ty::Binder<I, ty::PredicateKind<I>>) {
