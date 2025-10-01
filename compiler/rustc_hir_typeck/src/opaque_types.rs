@@ -4,7 +4,6 @@ use rustc_middle::ty::{
     self, DefiningScopeKind, EarlyBinder, OpaqueHiddenType, OpaqueTypeKey, TypeVisitableExt,
     TypingMode,
 };
-use rustc_span::ErrorGuaranteed;
 use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
 use rustc_trait_selection::opaque_types::{
     NonDefiningUseReason, opaque_type_has_defining_use_args, report_item_does_not_constrain_error,
@@ -69,8 +68,6 @@ enum UsageKind<'tcx> {
     NonDefiningUse(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>),
     UnconstrainedHiddenType(OpaqueHiddenType<'tcx>),
     HasDefiningUse(OpaqueHiddenType<'tcx>),
-    // `type_of_opaque_hir_typeck` reported an error
-    HasError(ErrorGuaranteed),
 }
 
 impl<'tcx> UsageKind<'tcx> {
@@ -78,11 +75,6 @@ impl<'tcx> UsageKind<'tcx> {
         match (&*self, &other) {
             (UsageKind::HasDefiningUse(_), _) | (_, UsageKind::None) => unreachable!(),
             (UsageKind::None, _) => *self = other,
-            // If `type_of_opaque_hir_typeck` reported an error, then the hidden
-            // type is an error, but we also want to still report errors for
-            // remaining hidden types (really just normalization errors).
-            (UsageKind::HasError(_), _) => {}
-            (_, UsageKind::HasError(_)) => *self = other,
             // When mergining non-defining uses, prefer earlier ones. This means
             // the error happens as early as possible.
             (
@@ -160,12 +152,6 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                         assert!(prev.is_none());
                     }
                 }
-                UsageKind::HasError(guar) => {
-                    self.typeck_results
-                        .borrow_mut()
-                        .hidden_types
-                        .insert(def_id, OpaqueHiddenType::new_error(self.tcx, guar));
-                }
                 _ => {}
             }
 
@@ -176,7 +162,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             }
 
             let guar = match usage_kind {
-                UsageKind::HasDefiningUse(_) | UsageKind::HasError(_) => continue,
+                UsageKind::HasDefiningUse(_) => continue,
                 UsageKind::None => {
                     if let Some(guar) = self.tainted_by_errors() {
                         guar
@@ -237,7 +223,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         ) {
             match err {
                 NonDefiningUseReason::Tainted(guar) => {
-                    return UsageKind::HasError(guar);
+                    return UsageKind::HasDefiningUse(OpaqueHiddenType::new_error(self.tcx, guar));
                 }
                 _ => return UsageKind::NonDefiningUse(opaque_type_key, hidden_type),
             };
