@@ -2155,3 +2155,74 @@ fn test_extend_front_specialization_copy_slice() {
     // check it really wrapped
     assert_eq!(v.as_slices(), ([5].as_slice(), [4, 3, 2].as_slice()));
 }
+
+#[test]
+fn test_splice() {
+    let mut v = VecDeque::from(vec![1, 2, 3, 4, 5]);
+    let a = [10, 11, 12];
+    v.splice(2..4, a);
+    assert_eq!(v, &[1, 2, 10, 11, 12, 5]);
+    v.splice(1..3, Some(20));
+    assert_eq!(v, &[1, 20, 11, 12, 5]);
+}
+
+#[test]
+fn test_splice_inclusive_range() {
+    let mut v = VecDeque::from(vec![1, 2, 3, 4, 5]);
+    let a = [10, 11, 12];
+    let t1: Vec<_> = v.splice(2..=3, a).collect();
+    assert_eq!(v, &[1, 2, 10, 11, 12, 5]);
+    assert_eq!(t1, &[3, 4]);
+    let t2: Vec<_> = v.splice(1..=2, Some(20)).collect();
+    assert_eq!(v, &[1, 20, 11, 12, 5]);
+    assert_eq!(t2, &[2, 10]);
+}
+
+#[test]
+fn test_splice_inclusive_range2() {
+    let mut v = VecDeque::from(vec![1, 2, 10, 11, 12, 5]);
+    let t2: Vec<_> = v.splice(1..=2, Some(20)).collect();
+    assert_eq!(v, &[1, 20, 11, 12, 5]);
+    assert_eq!(t2, &[2, 10]);
+}
+
+#[test]
+#[should_panic]
+fn test_splice_out_of_bounds() {
+    let mut v = VecDeque::from(vec![1, 2, 3, 4, 5]);
+    let a = [10, 11, 12];
+    v.splice(5..6, a);
+}
+
+#[test]
+#[should_panic]
+fn test_splice_inclusive_out_of_bounds() {
+    let mut v = VecDeque::from(vec![1, 2, 3, 4, 5]);
+    let a = [10, 11, 12];
+    v.splice(5..=5, a);
+}
+
+#[test]
+fn test_splice_items_zero_sized() {
+    let mut vec = VecDeque::from(vec![(), (), ()]);
+    let vec2 = VecDeque::from(vec![]);
+    let t: Vec<_> = vec.splice(1..2, vec2.iter().cloned()).collect();
+    assert_eq!(vec, &[(), ()]);
+    assert_eq!(t, &[()]);
+}
+
+#[test]
+fn test_splice_unbounded() {
+    let mut vec = VecDeque::from(vec![1, 2, 3, 4, 5]);
+    let t: Vec<_> = vec.splice(.., None).collect();
+    assert_eq!(vec, &[]);
+    assert_eq!(t, &[1, 2, 3, 4, 5]);
+}
+
+#[test]
+fn test_splice_forget() {
+    let mut v = VecDeque::from(vec![1, 2, 3, 4, 5]);
+    let a = [10, 11, 12];
+    std::mem::forget(v.splice(2..4, a));
+    assert_eq!(v, &[1, 2]);
+}

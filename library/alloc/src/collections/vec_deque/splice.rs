@@ -1,23 +1,26 @@
-use core::ptr::{self};
-use core::slice::{self};
+use core::alloc::Allocator;
 
-use super::{Drain, Vec};
-use crate::alloc::{Allocator, Global};
+use crate::alloc::Global;
+use crate::collections::vec_deque::Drain;
+use crate::vec::Vec;
 
-/// A splicing iterator for `Vec`.
+/// A splicing iterator for `VecDeque`.
 ///
-/// This struct is created by [`Vec::splice()`].
+/// This struct is created by [`VecDeque::splice()`][super::VecDeque::splice].
 /// See its documentation for more.
 ///
 /// # Example
 ///
 /// ```
-/// let mut v = vec![0, 1, 2];
+/// # #![feature(deque_extend_front)]
+/// # use std::collections::VecDeque;
+///
+/// let mut v = VecDeque::from(vec![0, 1, 2]);
 /// let new = [7, 8];
-/// let iter: std::vec::Splice<'_, _> = v.splice(1.., new);
+/// let iter: std::collections::vec_deque::Splice<'_, _> = v.splice(1.., new);
 /// ```
+#[unstable(feature = "deque_extend_front", issue = "146975")]
 #[derive(Debug)]
-#[stable(feature = "vec_splice", since = "1.21.0")]
 pub struct Splice<
     'a,
     I: Iterator + 'a,
@@ -27,7 +30,7 @@ pub struct Splice<
     pub(super) replace_with: I,
 }
 
-#[stable(feature = "vec_splice", since = "1.21.0")]
+#[unstable(feature = "deque_extend_front", issue = "146975")]
 impl<I: Iterator, A: Allocator> Iterator for Splice<'_, I, A> {
     type Item = I::Item;
 
@@ -40,31 +43,32 @@ impl<I: Iterator, A: Allocator> Iterator for Splice<'_, I, A> {
     }
 }
 
-#[stable(feature = "vec_splice", since = "1.21.0")]
+#[unstable(feature = "deque_extend_front", issue = "146975")]
 impl<I: Iterator, A: Allocator> DoubleEndedIterator for Splice<'_, I, A> {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.drain.next_back()
     }
 }
 
-#[stable(feature = "vec_splice", since = "1.21.0")]
+#[unstable(feature = "deque_extend_front", issue = "146975")]
 impl<I: Iterator, A: Allocator> ExactSizeIterator for Splice<'_, I, A> {}
 
-// See also: [`crate::collections::vec_deque::Splice`].
-#[stable(feature = "vec_splice", since = "1.21.0")]
+// See also: [`crate::vec::Splice`].
+#[unstable(feature = "deque_extend_front", issue = "146975")]
 impl<I: Iterator, A: Allocator> Drop for Splice<'_, I, A> {
     fn drop(&mut self) {
+        // This will set drain.remaining to 0, so its drop won't try to read deallocated memory on
+        // drop.
         self.drain.by_ref().for_each(drop);
+
         // At this point draining is done and the only remaining tasks are splicing
         // and moving things into the final place.
-        // Which means we can replace the slice::Iter with pointers that won't point to deallocated
-        // memory, so that Drain::drop is still allowed to call iter.len(), otherwise it would break
-        // the ptr.offset_from_unsigned contract.
-        self.drain.iter = (&[]).iter();
 
         unsafe {
-            if self.drain.tail_len == 0 {
-                self.drain.vec.as_mut().extend(self.replace_with.by_ref());
+            let tail_len = self.drain.tail_len; // #elements behind the drain
+
+            if tail_len == 0 {
+                self.drain.deque.as_mut().extend(self.replace_with.by_ref());
                 return;
             }
 
@@ -94,46 +98,53 @@ impl<I: Iterator, A: Allocator> Drop for Splice<'_, I, A> {
                 debug_assert_eq!(collected.len(), 0);
             }
         }
-        // Let `Drain::drop` move the tail back if necessary and restore `vec.len`.
+        // Let `Drain::drop` move the tail back if necessary and restore `deque.len`.
     }
 }
 
 /// Private helper methods for `Splice::drop`
 impl<T, A: Allocator> Drain<'_, T, A> {
-    /// The range from `self.vec.len` to `self.tail_start` contains elements
-    /// that have been moved out.
+    /// The range from `self.deque.len` to `self.deque.len + self.drain_len` contains elements that
+    /// have been moved out.
     /// Fill that range as much as possible with new elements from the `replace_with` iterator.
     /// Returns `true` if we filled the entire range. (`replace_with.next()` didn’t return `None`.)
+    ///
+    /// # Safety
+    ///
+    /// self.deque must be valid. self.deque.len and self.deque.len + self.drain_len must be less
+    /// than twice the deque's capacity.
     unsafe fn fill<I: Iterator<Item = T>>(&mut self, replace_with: &mut I) -> bool {
-        let vec = unsafe { self.vec.as_mut() };
-        let range_start = vec.len;
-        let range_end = self.tail_start;
-        let range_slice = unsafe {
-            slice::from_raw_parts_mut(vec.as_mut_ptr().add(range_start), range_end - range_start)
-        };
+        let deque = unsafe { self.deque.as_mut() };
+        let range_start = deque.len;
+        let range_end = range_start + self.drain_len;
 
-        for place in range_slice {
-            let Some(new_item) = replace_with.next() else {
+        for idx in range_start..range_end {
+            if let Some(new_item) = replace_with.next() {
+                let index = deque.to_physical_idx(idx);
+                unsafe { deque.buffer_write(index, new_item) };
+                deque.len += 1;
+                self.drain_len -= 1;
+            } else {
                 return false;
-            };
-            unsafe { ptr::write(place, new_item) };
-            vec.len += 1;
+            }
         }
         true
     }
 
     /// Makes room for inserting more elements before the tail.
+    ///
+    /// # Safety
+    ///
+    /// self.deque must be valid.
     unsafe fn move_tail(&mut self, additional: usize) {
-        let vec = unsafe { self.vec.as_mut() };
-        let len = self.tail_start + self.tail_len;
-        vec.buf.reserve(len, additional);
+        let deque = unsafe { self.deque.as_mut() };
+        let tail_start = deque.len + self.drain_len;
+        deque.buf.reserve(tail_start + self.tail_len, additional);
 
-        let new_tail_start = self.tail_start + additional;
+        let new_tail_start = tail_start + additional;
         unsafe {
-            let src = vec.as_ptr().add(self.tail_start);
-            let dst = vec.as_mut_ptr().add(new_tail_start);
-            ptr::copy(src, dst, self.tail_len);
+            deque.wrap_copy(tail_start, new_tail_start, self.tail_len);
         }
-        self.tail_start = new_tail_start;
+        self.drain_len += additional;
     }
 }
