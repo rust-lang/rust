@@ -15,10 +15,6 @@ unsafe extern "C" {
     fn insertq(x: i64x2, y: i64x2) -> i64x2;
     #[link_name = "llvm.x86.sse4a.insertqi"]
     fn insertqi(x: i64x2, y: i64x2, len: u8, idx: u8) -> i64x2;
-    #[link_name = "llvm.x86.sse4a.movnt.sd"]
-    fn movntsd(x: *mut f64, y: __m128d);
-    #[link_name = "llvm.x86.sse4a.movnt.ss"]
-    fn movntss(x: *mut f32, y: __m128);
 }
 
 /// Extracts the bit range specified by `y` from the lower 64 bits of `x`.
@@ -114,7 +110,12 @@ pub fn _mm_inserti_si64<const LEN: i32, const IDX: i32>(x: __m128i, y: __m128i) 
 #[cfg_attr(test, assert_instr(movntsd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_stream_sd(p: *mut f64, a: __m128d) {
-    movntsd(p, a);
+    crate::arch::asm!(
+        vps!("movntsd",  ",{a}"),
+        p = in(reg) p,
+        a = in(xmm_reg) a,
+        options(nostack, preserves_flags),
+    );
 }
 
 /// Non-temporal store of `a.0` into `p`.
@@ -134,7 +135,12 @@ pub unsafe fn _mm_stream_sd(p: *mut f64, a: __m128d) {
 #[cfg_attr(test, assert_instr(movntss))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_stream_ss(p: *mut f32, a: __m128) {
-    movntss(p, a);
+    crate::arch::asm!(
+        vps!("movntss",  ",{a}"),
+        p = in(reg) p,
+        a = in(xmm_reg) a,
+        options(nostack, preserves_flags),
+    );
 }
 
 #[cfg(test)]
