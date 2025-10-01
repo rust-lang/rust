@@ -52,7 +52,7 @@ jobs:
             target: arm-unknown-linux-gnueabihf
             zig_target: arm-unknown-linux-gnueabihf.2.28
             code-target: linux-armhf
-          - os: macos-13
+          - os: macos-14
             target: x86_64-apple-darwin
             code-target: darwin-x64
             pgo: clap-rs/clap@v4.5.36
