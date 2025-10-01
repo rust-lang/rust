@@ -12,7 +12,7 @@ use tracing::{debug, instrument};
 
 use super::ItemCtxt;
 use super::predicates_of::assert_only_contains_predicates_from;
-use crate::hir_ty_lowering::{HirTyLowerer, PredicateFilter};
+use crate::hir_ty_lowering::{HirTyLowerer, OverlappingAsssocItemConstraints, PredicateFilter};
 
 /// For associated types we include both bounds written on the type
 /// (`type X: Trait`) and predicates from the trait: `where Self::X: Trait`.
@@ -37,7 +37,14 @@ fn associated_type_bounds<'tcx>(
 
         let icx = ItemCtxt::new(tcx, assoc_item_def_id);
         let mut bounds = Vec::new();
-        icx.lowerer().lower_bounds(item_ty, hir_bounds, &mut bounds, ty::List::empty(), filter);
+        icx.lowerer().lower_bounds(
+            item_ty,
+            hir_bounds,
+            &mut bounds,
+            ty::List::empty(),
+            filter,
+            OverlappingAsssocItemConstraints::Allowed,
+        );
 
         match filter {
             PredicateFilter::All
@@ -347,7 +354,14 @@ fn opaque_type_bounds<'tcx>(
     ty::print::with_reduced_queries!({
         let icx = ItemCtxt::new(tcx, opaque_def_id);
         let mut bounds = Vec::new();
-        icx.lowerer().lower_bounds(item_ty, hir_bounds, &mut bounds, ty::List::empty(), filter);
+        icx.lowerer().lower_bounds(
+            item_ty,
+            hir_bounds,
+            &mut bounds,
+            ty::List::empty(),
+            filter,
+            OverlappingAsssocItemConstraints::Allowed,
+        );
         // Implicit bounds are added to opaque types unless a `?Trait` bound is found
         match filter {
             PredicateFilter::All
