@@ -551,7 +551,7 @@ mod llvm_enzyme {
             .filter_map(|p| match &p.kind {
                 GenericParamKind::Type { .. } => {
                     let path = ast::Path::from_ident(p.ident);
-                    let ty = ecx.ty_path(path);
+                    let ty = Box::new(ecx.ty_path(path));
                     Some(AngleBracketedArg::Arg(GenericArg::Type(ty)))
                 }
                 GenericParamKind::Const { .. } => {
@@ -758,7 +758,7 @@ mod llvm_enzyme {
             match x.ret_activity {
                 DiffActivity::Active | DiffActivity::ActiveOnly => {
                     let ty = match d_decl.output {
-                        FnRetTy::Ty(ref ty) => ty.clone(),
+                        FnRetTy::Ty(ref ty) => (&**ty).clone(),
                         FnRetTy::Default(span) => {
                             panic!("Did not expect Default ret ty: {:?}", span);
                         }
@@ -767,7 +767,7 @@ mod llvm_enzyme {
                     let ident = Ident::from_str_and_span(&name, ty.span);
                     let shadow_arg = ast::Param {
                         attrs: ThinVec::new(),
-                        ty: ty.clone(),
+                        ty: Box::new(ty.clone()),
                         pat: Box::new(ast::Pat {
                             id: ast::DUMMY_NODE_ID,
                             kind: PatKind::Ident(BindingMode::NONE, ident, None),

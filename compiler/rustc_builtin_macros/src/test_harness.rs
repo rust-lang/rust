@@ -328,7 +328,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> Box<ast::Item> {
         ecx.block(sp, thin_vec![call_test_main])
     };
 
-    let decl = ecx.fn_decl(ThinVec::new(), ast::FnRetTy::Ty(main_ret_ty));
+    let decl = ecx.fn_decl(ThinVec::new(), ast::FnRetTy::Ty(Box::new(main_ret_ty)));
     let sig = ast::FnSig { decl, header: ast::FnHeader::default(), span: sp };
     let defaultness = ast::Defaultness::Implicit;
 

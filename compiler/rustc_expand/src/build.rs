@@ -73,21 +73,21 @@ impl<'a> ExtCtxt<'a> {
         ast::MutTy { ty, mutbl }
     }
 
-    pub fn ty(&self, span: Span, kind: ast::TyKind) -> Box<ast::Ty> {
-        Box::new(ast::Ty { id: ast::DUMMY_NODE_ID, span, kind, tokens: None })
+    pub fn ty(&self, span: Span, kind: ast::TyKind) -> ast::Ty {
+        ast::Ty { id: ast::DUMMY_NODE_ID, span, kind, tokens: None }
     }
 
-    pub fn ty_infer(&self, span: Span) -> Box<ast::Ty> {
+    pub fn ty_infer(&self, span: Span) -> ast::Ty {
         self.ty(span, ast::TyKind::Infer)
     }
 
-    pub fn ty_path(&self, path: ast::Path) -> Box<ast::Ty> {
+    pub fn ty_path(&self, path: ast::Path) -> ast::Ty {
         self.ty(path.span, ast::TyKind::Path(None, path))
     }
 
     // Might need to take bounds as an argument in the future, if you ever want
     // to generate a bounded existential trait type.
-    pub fn ty_ident(&self, span: Span, ident: Ident) -> Box<ast::Ty> {
+    pub fn ty_ident(&self, span: Span, ident: Ident) -> ast::Ty {
         self.ty_path(self.path_ident(span, ident))
     }
 
@@ -119,11 +119,11 @@ impl<'a> ExtCtxt<'a> {
         ty: Box<ast::Ty>,
         lifetime: Option<ast::Lifetime>,
         mutbl: ast::Mutability,
-    ) -> Box<ast::Ty> {
+    ) -> ast::Ty {
         self.ty(span, ast::TyKind::Ref(lifetime, self.ty_mt(ty, mutbl)))
     }
 
-    pub fn ty_ptr(&self, span: Span, ty: Box<ast::Ty>, mutbl: ast::Mutability) -> Box<ast::Ty> {
+    pub fn ty_ptr(&self, span: Span, ty: Box<ast::Ty>, mutbl: ast::Mutability) -> ast::Ty {
         self.ty(span, ast::TyKind::Ptr(self.ty_mt(ty, mutbl)))
     }
 
@@ -665,14 +665,14 @@ impl<'a> ExtCtxt<'a> {
         self.lambda1(span, self.expr_block(self.block(span, stmts)), ident)
     }
 
-    pub fn param(&self, span: Span, ident: Ident, ty: Box<ast::Ty>) -> ast::Param {
+    pub fn param(&self, span: Span, ident: Ident, ty: ast::Ty) -> ast::Param {
         let pat = Box::new(self.pat_ident(span, ident));
         ast::Param {
             attrs: AttrVec::default(),
             id: ast::DUMMY_NODE_ID,
             pat,
             span,
-            ty,
+            ty: Box::new(ty),
             is_placeholder: false,
         }
     }
@@ -726,7 +726,7 @@ impl<'a> ExtCtxt<'a> {
         &self,
         span: Span,
         ident: Ident,
-        ty: Box<ast::Ty>,
+        ty: ast::Ty,
         rhs_kind: ast::ConstItemRhsKind,
     ) -> Box<ast::Item> {
         let defaultness = ast::Defaultness::Implicit;
@@ -739,7 +739,7 @@ impl<'a> ExtCtxt<'a> {
                     ident,
                     // FIXME(generic_const_items): Pass the generics as a parameter.
                     generics: ast::Generics::default(),
-                    ty,
+                    ty: Box::new(ty),
                     rhs_kind,
                     define_opaque: None,
                 }

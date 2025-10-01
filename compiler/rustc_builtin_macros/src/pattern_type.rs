@@ -18,7 +18,7 @@ pub(crate) fn expand<'cx>(
         }
     };
 
-    ExpandResult::Ready(base::MacEager::ty(cx.ty(sp, ast::TyKind::Pat(ty, pat))))
+    ExpandResult::Ready(base::MacEager::ty(Box::new(cx.ty(sp, ast::TyKind::Pat(ty, pat)))))
 }
 
 fn parse_pat_ty<'a>(

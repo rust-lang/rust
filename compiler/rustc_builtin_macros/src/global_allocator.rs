@@ -72,7 +72,7 @@ impl AllocFnFactory<'_, '_> {
         let args = method.inputs.iter().map(|input| self.arg_ty(input, &mut abi_args)).collect();
         let result = self.call_allocator(method.name, args);
         let output_ty = self.ret_ty(&method.output);
-        let decl = self.cx.fn_decl(abi_args, ast::FnRetTy::Ty(output_ty));
+        let decl = self.cx.fn_decl(abi_args, ast::FnRetTy::Ty(Box::new(output_ty)));
         let header = FnHeader { safety: Safety::Unsafe(self.span), ..FnHeader::default() };
         let sig = FnSig { decl, header, span: self.span };
         let body = Some(self.cx.block_expr(result));
@@ -162,7 +162,7 @@ impl AllocFnFactory<'_, '_> {
         }
     }
 
-    fn ret_ty(&self, ty: &AllocatorTy) -> Box<Ty> {
+    fn ret_ty(&self, ty: &AllocatorTy) -> Ty {
         match *ty {
             AllocatorTy::ResultPtr => self.ptr_u8(),
 
@@ -174,20 +174,20 @@ impl AllocFnFactory<'_, '_> {
         }
     }
 
-    fn usize(&self) -> Box<Ty> {
+    fn usize(&self) -> Ty {
         let usize = self.cx.path_ident(self.span, Ident::new(sym::usize, self.span));
         self.cx.ty_path(usize)
     }
 
-    fn ptr_alignment(&self) -> Box<Ty> {
+    fn ptr_alignment(&self) -> Ty {
         let path = self.cx.std_path(&[sym::ptr, sym::Alignment]);
         let path = self.cx.path(self.span, path);
         self.cx.ty_path(path)
     }
 
-    fn ptr_u8(&self) -> Box<Ty> {
+    fn ptr_u8(&self) -> Ty {
         let u8 = self.cx.path_ident(self.span, Ident::new(sym::u8, self.span));
-        let ty_u8 = self.cx.ty_path(u8);
+        let ty_u8 = Box::new(self.cx.ty_path(u8));
         self.cx.ty_ptr(self.span, ty_u8, Mutability::Mut)
     }
 }

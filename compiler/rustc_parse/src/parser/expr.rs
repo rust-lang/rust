@@ -275,7 +275,7 @@ impl<'a> Parser<'a> {
             let op = op.node;
             // Special cases:
             if op == AssocOp::Cast {
-                lhs = self.parse_assoc_op_cast(lhs, lhs_span, op_span, ExprKind::Cast)?;
+                lhs = self.parse_assoc_op_cast(lhs, lhs_span, op_span)?;
                 continue;
             } else if let AssocOp::Range(limits) = op {
                 // If we didn't have to handle `x..`/`x..=`, it would be pretty easy to
@@ -664,10 +664,12 @@ impl<'a> Parser<'a> {
         lhs: Box<Expr>,
         lhs_span: Span,
         op_span: Span,
-        expr_kind: fn(Box<Expr>, Box<Ty>) -> ExprKind,
     ) -> PResult<'a, Box<Expr>> {
         let mk_expr = |this: &mut Self, lhs: Box<Expr>, rhs: Box<Ty>| {
-            this.mk_expr(this.mk_expr_sp(&lhs, lhs_span, op_span, rhs.span), expr_kind(lhs, rhs))
+            this.mk_expr(
+                this.mk_expr_sp(&lhs, lhs_span, op_span, rhs.span),
+                ExprKind::Cast(lhs, rhs),
+            )
         };
 
         // Save the state of the parser before parsing type normally, in case there is a

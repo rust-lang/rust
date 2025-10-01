@@ -57,7 +57,7 @@ pub(crate) fn expand_deriving_from(
 
     let from_type = Ty::AstTy(match field {
         Ok(ref field) => field.ty.clone(),
-        Err(guar) => cx.ty(span, ast::TyKind::Err(guar)),
+        Err(guar) => Box::new(cx.ty(span, ast::TyKind::Err(guar))),
     });
 
     let path =
