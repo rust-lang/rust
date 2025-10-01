@@ -8,48 +8,46 @@ use rustc_hir::{QPath, Ty, TyKind};
 use rustc_lint::LateContext;
 use rustc_span::symbol::sym;
 use std::borrow::Cow;
+use std::fmt;
 
 use super::RC_BUFFER;
 
 pub(super) fn check(cx: &LateContext<'_>, hir_ty: &Ty<'_>, qpath: &QPath<'_>, def_id: DefId) -> bool {
     let mut app = Applicability::Unspecified;
-    let name = cx.tcx.get_diagnostic_name(def_id);
-    if name == Some(sym::Rc) {
-        if let Some(ty) = qpath_generic_tys(qpath).next()
-            && let Some(alternate) = match_buffer_type(cx, ty, &mut app)
-        {
-            span_lint_and_then(
-                cx,
-                RC_BUFFER,
-                hir_ty.span,
-                "usage of `Rc<T>` when `T` is a buffer type",
-                |diag| {
-                    diag.span_suggestion_verbose(ty.span, "try", alternate, app);
-                },
-            );
-            true
-        } else {
-            false
-        }
-    } else if name == Some(sym::Arc) {
-        if let Some(ty) = qpath_generic_tys(qpath).next()
-            && let Some(alternate) = match_buffer_type(cx, ty, &mut app)
-        {
-            span_lint_and_then(
-                cx,
-                RC_BUFFER,
-                hir_ty.span,
-                "usage of `Arc<T>` when `T` is a buffer type",
-                |diag| {
-                    diag.span_suggestion_verbose(ty.span, "try", alternate, app);
-                },
-            );
-            true
-        } else {
-            false
-        }
+    let kind = match cx.tcx.get_diagnostic_name(def_id) {
+        Some(sym::Rc) => RcKind::Rc,
+        Some(sym::Arc) => RcKind::Arc,
+        _ => return false,
+    };
+    if let Some(ty) = qpath_generic_tys(qpath).next()
+        && let Some(alternate) = match_buffer_type(cx, ty, &mut app)
+    {
+        span_lint_and_then(
+            cx,
+            RC_BUFFER,
+            hir_ty.span,
+            format!("usage of `{kind}<T>` when `T` is a buffer type"),
+            |diag| {
+                diag.span_suggestion_verbose(ty.span, "try", alternate, app);
+            },
+        );
+        true
     } else {
         false
+    }
+}
+
+enum RcKind {
+    Rc,
+    Arc,
+}
+
+impl fmt::Display for RcKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Rc => f.write_str("Rc"),
+            Self::Arc => f.write_str("Arc"),
+        }
     }
 }
 
