@@ -761,7 +761,8 @@ class MSVCTupleSyntheticProvider:
 
     def get_child_at_index(self, index: int) -> SBValue:
         child: SBValue = self.valobj.GetChildAtIndex(index)
-        return child.CreateChildAtOffset(str(index), 0, child.GetType())
+        offset = self.valobj.GetType().GetFieldAtIndex(index).byte_offset
+        return self.valobj.CreateChildAtOffset(str(index), offset, child.GetType())
 
     def update(self):
         pass
@@ -772,7 +773,7 @@ class MSVCTupleSyntheticProvider:
     def get_type_name(self) -> str:
         name = self.valobj.GetTypeName()
         # remove "tuple$<" and ">", str.removeprefix and str.removesuffix require python 3.9+
-        name = name[7:-1]
+        name = name[7:-1].strip()
         return "(" + name + ")"
 
 
