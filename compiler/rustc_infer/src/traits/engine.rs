@@ -72,6 +72,7 @@ pub trait TraitEngine<'tcx, E: 'tcx>: 'tcx {
             self.register_predicate_obligation(infcx, obligation);
         }
     }
+
     /// Go over the list of pending obligations and try to evaluate them.
     ///
     /// For each result:
@@ -81,7 +82,7 @@ pub trait TraitEngine<'tcx, E: 'tcx>: 'tcx {
     ///
     /// Returns a list of errors from obligations that evaluated to Err.
     #[must_use]
-    fn select_where_possible(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E>;
+    fn try_evaluate_obligations(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E>;
 
     fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E>;
 
@@ -94,8 +95,8 @@ pub trait TraitEngine<'tcx, E: 'tcx>: 'tcx {
     ///
     /// Returns a list of errors from obligations that evaluated to Ambiguous or Err.
     #[must_use]
-    fn select_all_or_error(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E> {
-        let errors = self.select_where_possible(infcx);
+    fn evaluate_obligations_error_on_ambiguity(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E> {
+        let errors = self.try_evaluate_obligations(infcx);
         if !errors.is_empty() {
             return errors;
         }
@@ -108,7 +109,7 @@ pub trait TraitEngine<'tcx, E: 'tcx>: 'tcx {
     fn pending_obligations(&self) -> PredicateObligations<'tcx>;
 
     /// Among all pending obligations, collect those are stalled on a inference variable which has
-    /// changed since the last call to `select_where_possible`. Those obligations are marked as
+    /// changed since the last call to `try_evaluate_obligations`. Those obligations are marked as
     /// successful and returned.
     fn drain_stalled_obligations_for_coroutines(
         &mut self,

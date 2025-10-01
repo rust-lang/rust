@@ -144,13 +144,13 @@ impl<'a, 'db> ObligationCtxt<'a, 'db> {
     }
 
     #[must_use]
-    pub fn select_where_possible(&mut self) -> Vec<NextSolverError<'db>> {
-        self.engine.select_where_possible(self.infcx)
+    pub fn try_evaluate_obligations(&mut self) -> Vec<NextSolverError<'db>> {
+        self.engine.try_evaluate_obligations(self.infcx)
     }
 
     #[must_use]
-    pub fn select_all_or_error(&mut self) -> Vec<NextSolverError<'db>> {
-        self.engine.select_all_or_error(self.infcx)
+    pub fn evaluate_obligations_error_on_ambiguity(&mut self) -> Vec<NextSolverError<'db>> {
+        self.engine.evaluate_obligations_error_on_ambiguity(self.infcx)
     }
 
     /// Returns the not-yet-processed and stalled obligations from the

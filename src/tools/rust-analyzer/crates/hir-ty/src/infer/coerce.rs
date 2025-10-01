@@ -160,7 +160,7 @@ impl<'a, 'b, 'db> Coerce<'a, 'b, 'db> {
                 Ok(InferOk { value, obligations }) => {
                     let mut ocx = ObligationCtxt::new(this.infer_ctxt());
                     ocx.register_obligations(obligations);
-                    if ocx.select_where_possible().is_empty() {
+                    if ocx.try_evaluate_obligations().is_empty() {
                         Ok(InferOk { value, obligations: ocx.into_pending_obligations() })
                     } else {
                         Err(TypeError::Mismatch)
@@ -744,7 +744,7 @@ impl<'a, 'b, 'db> Coerce<'a, 'b, 'db> {
                 Some(PredicateKind::AliasRelate(..)) => {
                     let mut ocx = ObligationCtxt::new(self.infer_ctxt());
                     ocx.register_obligation(obligation);
-                    if !ocx.select_where_possible().is_empty() {
+                    if !ocx.try_evaluate_obligations().is_empty() {
                         return Err(TypeError::Mismatch);
                     }
                     coercion.obligations.extend(ocx.into_pending_obligations());
@@ -1116,7 +1116,7 @@ impl<'db> InferenceContext<'db> {
                             let mut ocx = ObligationCtxt::new(&table.infer_ctxt);
                             let value =
                                 ocx.lub(&ObligationCause::new(), table.param_env, prev_ty, new_ty)?;
-                            if ocx.select_where_possible().is_empty() {
+                            if ocx.try_evaluate_obligations().is_empty() {
                                 Ok(InferOk { value, obligations: ocx.into_pending_obligations() })
                             } else {
                                 Err(TypeError::Mismatch)

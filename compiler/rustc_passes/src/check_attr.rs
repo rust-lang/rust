@@ -2013,7 +2013,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         let sig = ocx.normalize(&cause, param_env, sig);
 
         // proc macro is not WF.
-        let errors = ocx.select_where_possible();
+        let errors = ocx.try_evaluate_obligations();
         if !errors.is_empty() {
             return;
         }
@@ -2081,7 +2081,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             self.abort.set(true);
         }
 
-        let errors = ocx.select_all_or_error();
+        let errors = ocx.evaluate_obligations_error_on_ambiguity();
         if !errors.is_empty() {
             infcx.err_ctxt().report_fulfillment_errors(errors);
             self.abort.set(true);

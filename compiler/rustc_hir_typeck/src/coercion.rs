@@ -140,7 +140,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 Ok(InferOk { value, obligations }) if self.next_trait_solver() => {
                     let ocx = ObligationCtxt::new(self);
                     ocx.register_obligations(obligations);
-                    if ocx.select_where_possible().is_empty() {
+                    if ocx.try_evaluate_obligations().is_empty() {
                         Ok(InferOk { value, obligations: ocx.into_pending_obligations() })
                     } else {
                         Err(TypeError::Mismatch)
@@ -677,7 +677,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 Some(ty::PredicateKind::AliasRelate(..)) => {
                     let ocx = ObligationCtxt::new(self);
                     ocx.register_obligation(obligation);
-                    if !ocx.select_where_possible().is_empty() {
+                    if !ocx.try_evaluate_obligations().is_empty() {
                         return Err(TypeError::Mismatch);
                     }
                     coercion.obligations.extend(ocx.into_pending_obligations());
@@ -1099,7 +1099,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return false;
             };
             ocx.register_obligations(ok.obligations);
-            ocx.select_where_possible().is_empty()
+            ocx.try_evaluate_obligations().is_empty()
         })
     }
 
@@ -1203,7 +1203,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             if self.next_trait_solver() {
                                 let ocx = ObligationCtxt::new(self);
                                 let value = ocx.lub(cause, self.param_env, prev_ty, new_ty)?;
-                                if ocx.select_where_possible().is_empty() {
+                                if ocx.try_evaluate_obligations().is_empty() {
                                     Ok(InferOk {
                                         value,
                                         obligations: ocx.into_pending_obligations(),
@@ -1818,7 +1818,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                         ))
                     }),
                 );
-                ocx.select_where_possible().is_empty()
+                ocx.try_evaluate_obligations().is_empty()
             })
         };
 

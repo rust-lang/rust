@@ -90,7 +90,7 @@ impl<'tcx> LateLintPass<'tcx> for FutureNotSend {
             let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
             let cause = traits::ObligationCause::misc(span, fn_def_id);
             ocx.register_bound(cause, cx.param_env, ret_ty, send_trait);
-            let send_errors = ocx.select_all_or_error();
+            let send_errors = ocx.evaluate_obligations_error_on_ambiguity();
 
             // Allow errors that try to prove `Send` for types that "mention" a generic parameter at the "top
             // level".

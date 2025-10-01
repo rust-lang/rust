@@ -119,7 +119,7 @@ impl Qualif for HasMutInterior {
             ty::TraitRef::new(cx.tcx, freeze_def_id, [ty::GenericArg::from(ty)]),
         );
         ocx.register_obligation(obligation);
-        let errors = ocx.select_all_or_error();
+        let errors = ocx.evaluate_obligations_error_on_ambiguity();
         !errors.is_empty()
     }
 
@@ -197,7 +197,7 @@ impl Qualif for NeedsNonConstDrop {
                     },
                 ),
         ));
-        !ocx.select_all_or_error().is_empty()
+        !ocx.evaluate_obligations_error_on_ambiguity().is_empty()
     }
 
     fn is_structural_in_adt_value<'tcx>(cx: &ConstCx<'_, 'tcx>, adt: AdtDef<'tcx>) -> bool {

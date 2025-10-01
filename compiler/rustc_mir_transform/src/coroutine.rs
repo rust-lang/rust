@@ -1429,7 +1429,7 @@ fn check_field_tys_sized<'tcx>(
         );
     }
 
-    let errors = ocx.select_all_or_error();
+    let errors = ocx.evaluate_obligations_error_on_ambiguity();
     debug!(?errors);
     if !errors.is_empty() {
         infcx.err_ctxt().report_fulfillment_errors(errors);

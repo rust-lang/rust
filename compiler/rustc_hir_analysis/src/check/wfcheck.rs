@@ -142,7 +142,7 @@ where
     }
     f(&mut wfcx)?;
 
-    let errors = wfcx.select_all_or_error();
+    let errors = wfcx.evaluate_obligations_error_on_ambiguity();
     if !errors.is_empty() {
         return Err(infcx.err_ctxt().report_fulfillment_errors(errors));
     }
@@ -1803,7 +1803,11 @@ fn receiver_is_valid<'tcx>(
     if let Ok(()) = wfcx.infcx.commit_if_ok(|_| {
         let ocx = ObligationCtxt::new(wfcx.infcx);
         ocx.eq(&cause, wfcx.param_env, self_ty, receiver_ty)?;
-        if ocx.select_all_or_error().is_empty() { Ok(()) } else { Err(NoSolution) }
+        if ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
+            Ok(())
+        } else {
+            Err(NoSolution)
+        }
     }) {
         return Ok(());
     }
@@ -1838,7 +1842,11 @@ fn receiver_is_valid<'tcx>(
         if let Ok(()) = wfcx.infcx.commit_if_ok(|_| {
             let ocx = ObligationCtxt::new(wfcx.infcx);
             ocx.eq(&cause, wfcx.param_env, self_ty, potential_self_ty)?;
-            if ocx.select_all_or_error().is_empty() { Ok(()) } else { Err(NoSolution) }
+            if ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
+                Ok(())
+            } else {
+                Err(NoSolution)
+            }
         }) {
             wfcx.register_obligations(autoderef.into_obligations());
             return Ok(());

@@ -76,7 +76,7 @@ impl<'tcx> NormalizesToTermHack<'tcx> {
             self.unconstrained_term,
         )?;
         f(&ocx);
-        let errors = ocx.select_all_or_error();
+        let errors = ocx.evaluate_obligations_error_on_ambiguity();
         if errors.is_empty() {
             Ok(Certainty::Yes)
         } else if errors.iter().all(|e| !e.is_true_error()) {

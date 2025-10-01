@@ -315,7 +315,7 @@ fn orphan_check<'tcx>(
         let ocx = traits::ObligationCtxt::new(&infcx);
         let ty = ocx.normalize(&cause, ty::ParamEnv::empty(), user_ty);
         let ty = infcx.resolve_vars_if_possible(ty);
-        let errors = ocx.select_where_possible();
+        let errors = ocx.try_evaluate_obligations();
         if !errors.is_empty() {
             return Ok(user_ty);
         }

@@ -1772,7 +1772,7 @@ fn is_valid_trait_method_candidate(
                             ctxt.register_predicate_obligation(&table.infer_ctxt, pred);
                         }
                         // FIXME: Are we doing this correctly? Probably better to follow rustc more closely.
-                        check_that!(ctxt.select_where_possible(&table.infer_ctxt).is_empty());
+                        check_that!(ctxt.try_evaluate_obligations(&table.infer_ctxt).is_empty());
                     }
 
                     check_that!(table.unify(receiver_ty, &expected_receiver));

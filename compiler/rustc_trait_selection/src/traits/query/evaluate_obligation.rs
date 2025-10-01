@@ -96,7 +96,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 let ocx = ObligationCtxt::new(self);
                 ocx.register_obligation(obligation.clone());
                 let mut result = EvaluationResult::EvaluatedToOk;
-                for error in ocx.select_all_or_error() {
+                for error in ocx.evaluate_obligations_error_on_ambiguity() {
                     if error.is_true_error() {
                         return Ok(EvaluationResult::EvaluatedToErr);
                     } else {
