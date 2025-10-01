@@ -1,12 +1,14 @@
 use std::collections::HashSet;
 
 use crate::common::{CompareMode, Config, Debugger};
-use crate::directives::IgnoreDecision;
+use crate::directives::{DirectiveLine, IgnoreDecision};
 
 const EXTRA_ARCHS: &[&str] = &["spirv"];
 
-pub(super) fn handle_ignore(config: &Config, line: &str) -> IgnoreDecision {
+pub(super) fn handle_ignore(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
     let parsed = parse_cfg_name_directive(config, line, "ignore");
+    let &DirectiveLine { raw_directive: line, .. } = line;
+
     match parsed.outcome {
         MatchOutcome::NoMatch => IgnoreDecision::Continue,
         MatchOutcome::Match => IgnoreDecision::Ignore {
@@ -21,8 +23,10 @@ pub(super) fn handle_ignore(config: &Config, line: &str) -> IgnoreDecision {
     }
 }
 
-pub(super) fn handle_only(config: &Config, line: &str) -> IgnoreDecision {
+pub(super) fn handle_only(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
     let parsed = parse_cfg_name_directive(config, line, "only");
+    let &DirectiveLine { raw_directive: line, .. } = line;
+
     match parsed.outcome {
         MatchOutcome::Match => IgnoreDecision::Continue,
         MatchOutcome::NoMatch => IgnoreDecision::Ignore {
@@ -43,9 +47,11 @@ pub(super) fn handle_only(config: &Config, line: &str) -> IgnoreDecision {
 /// or `only-windows`.
 fn parse_cfg_name_directive<'a>(
     config: &Config,
-    line: &'a str,
+    line: &'a DirectiveLine<'a>,
     prefix: &str,
 ) -> ParsedNameDirective<'a> {
+    let &DirectiveLine { raw_directive: line, .. } = line;
+
     if !line.as_bytes().starts_with(prefix.as_bytes()) {
         return ParsedNameDirective::not_a_directive();
     }
