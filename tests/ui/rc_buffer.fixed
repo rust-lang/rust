@@ -1,5 +1,4 @@
 #![warn(clippy::rc_buffer)]
-#![allow(dead_code, unused_imports)]
 
 use std::cell::RefCell;
 use std::ffi::OsString;

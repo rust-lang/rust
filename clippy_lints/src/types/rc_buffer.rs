@@ -20,7 +20,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
                 cx,
                 RC_BUFFER,
                 hir_ty.span,
-                "usage of `Rc<T>` when T is a buffer type",
+                "usage of `Rc<T>` when `T` is a buffer type",
                 |diag| {
                     diag.span_suggestion(hir_ty.span, "try", format!("Rc<{alternate}>"), app);
                 },
@@ -41,7 +41,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
                 cx,
                 RC_BUFFER,
                 hir_ty.span,
-                "usage of `Rc<T>` when T is a buffer type",
+                "usage of `Rc<T>` when `T` is a buffer type",
                 |diag| {
                     let mut applicability = app;
                     diag.span_suggestion(
@@ -64,7 +64,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
                 cx,
                 RC_BUFFER,
                 hir_ty.span,
-                "usage of `Arc<T>` when T is a buffer type",
+                "usage of `Arc<T>` when `T` is a buffer type",
                 |diag| {
                     diag.span_suggestion(hir_ty.span, "try", format!("Arc<{alternate}>"), app);
                 },
@@ -82,7 +82,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
                 cx,
                 RC_BUFFER,
                 hir_ty.span,
-                "usage of `Arc<T>` when T is a buffer type",
+                "usage of `Arc<T>` when `T` is a buffer type",
                 |diag| {
                     let mut applicability = app;
                     diag.span_suggestion(
