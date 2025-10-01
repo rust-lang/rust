@@ -1305,20 +1305,17 @@ impl ThreadId {
                     spin += 1;
                 }
 
-                let id;
                 // SAFETY: we have an exclusive lock on the counter.
                 unsafe {
-                    id = (*COUNTER.get()).saturating_add(1);
-                    (*COUNTER.get()) = id;
-                };
-
-                // Release the lock.
-                COUNTER_LOCKED.store(false, Ordering::Release);
-
-                if id == u64::MAX {
-                    exhausted()
-                } else {
-                    ThreadId(NonZero::new(id).unwrap())
+                    if *COUNTER.get() == u64::MAX {
+                        COUNTER_LOCKED.store(false, Ordering::Release);
+                        exhausted()
+                    } else {
+                        let id = *COUNTER.get() + 1;
+                        *COUNTER.get() = id;
+                        COUNTER_LOCKED.store(false, Ordering::Release);
+                        ThreadId(NonZero::new(id).unwrap())
+                    }
                 }
             }
         }
