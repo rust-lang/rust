@@ -3,6 +3,7 @@
 use rustc_abi::ExternAbi;
 use rustc_ast::attr;
 use rustc_hir::LangItem;
+use rustc_metadata::TyCtxtMetadataExt;
 use rustc_middle::bug;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::ValidityRequirement;

@@ -1681,7 +1681,8 @@ pub fn is_doc_notable_trait(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 /// We double check the feature gate here because whether a function may be defined as an intrinsic causes
 /// the compiler to make some assumptions about its shape; if the user doesn't use a feature gate, they may
 /// cause an ICE that we otherwise may want to prevent.
-pub fn intrinsic_raw(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::IntrinsicDef> {
+#[inline]
+pub fn intrinsic_local(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::IntrinsicDef> {
     if tcx.features().intrinsics() && tcx.has_attr(def_id, sym::rustc_intrinsic) {
         let must_be_overridden = match tcx.hir_node_by_def_id(def_id) {
             hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn { has_body, .. }, .. }) => {
@@ -1704,7 +1705,7 @@ pub fn provide(providers: &mut Providers) {
         reveal_opaque_types_in_bounds,
         is_doc_hidden,
         is_doc_notable_trait,
-        intrinsic_raw,
+        intrinsic_raw_q: intrinsic_local,
         ..*providers
     }
 }

@@ -7,6 +7,7 @@ use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::find_attr;
 use rustc_index::Idx;
+use rustc_metadata::TyCtxtMetadataExt;
 use rustc_middle::hir::place::{
     Place as HirPlace, PlaceBase as HirPlaceBase, ProjectionKind as HirProjectionKind,
 };

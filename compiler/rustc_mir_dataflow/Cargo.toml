@@ -15,6 +15,7 @@ rustc_fluent_macro = { path = "../rustc_fluent_macro" }
 rustc_graphviz = { path = "../rustc_graphviz" }
 rustc_index = { path = "../rustc_index" }
 rustc_macros = { path = "../rustc_macros" }
+rustc_metadata = { path = "../rustc_metadata" }
 rustc_middle = { path = "../rustc_middle" }
 rustc_span = { path = "../rustc_span" }
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }

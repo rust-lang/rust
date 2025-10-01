@@ -18,6 +18,7 @@ use rustc_hir::{self as hir, BindingMode, ByRef, HirId, ItemLocalId, Node, find_
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
+use rustc_metadata::TyCtxtMetadataExt;
 use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;

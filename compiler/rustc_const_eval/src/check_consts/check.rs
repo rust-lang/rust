@@ -12,6 +12,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_metadata::TyCtxtMetadataExt;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;

@@ -1836,7 +1836,7 @@ impl<'a> CrateMetadataRef<'a> {
         self.root.tables.attr_flags.get(self, index)
     }
 
-    fn get_intrinsic(self, index: DefIndex) -> Option<ty::IntrinsicDef> {
+    pub(crate) fn get_intrinsic(self, index: DefIndex) -> Option<ty::IntrinsicDef> {
         self.root.tables.intrinsic.get(self, index).map(|d| d.decode(self))
     }
 

@@ -2,6 +2,7 @@
 //! that target feature is enabled both on the callee and all callers.
 use rustc_abi::{BackendRepr, CanonAbi, RegKind, X86Call};
 use rustc_hir::{CRATE_HIR_ID, HirId};
+use rustc_metadata::TyCtxtMetadataExt;
 use rustc_middle::mir::{self, Location, traversal};
 use rustc_middle::ty::{self, Instance, InstanceKind, Ty, TyCtxt};
 use rustc_span::def_id::DefId;
