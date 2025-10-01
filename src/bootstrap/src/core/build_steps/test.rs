@@ -1300,7 +1300,7 @@ HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
         } else {
             let help_path = get_help_path(builder);
             let cur_help = std::fs::read_to_string(&help_path).unwrap_or_else(|err| {
-                eprintln!("couldn't read {}: {}", help_path.display(), err.to_string());
+                eprintln!("couldn't read {}: {}", help_path.display(), err);
                 crate::exit!(1);
             });
             let new_help = top_level_help();
