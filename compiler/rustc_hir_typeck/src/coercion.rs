@@ -1164,10 +1164,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             exprs.len()
         );
 
-        // The following check fixes #88097, where the compiler erroneously
-        // attempted to coerce a closure type to itself via a function pointer.
-        if prev_ty == new_ty {
-            return Ok(prev_ty);
+        // If the prev and new ty can be lub'd then just do that instead of
+        // trying to coerce them. This avoids coercing closures and FnDefs
+        // to function pointers when we have two closures or FnDefs of the
+        // same DefId. E.g. `FooFnDef<?x> coerce-lub FooFnDef<?y>` will
+        // result in relating `?x` and `?y` rather than coercing both to
+        // some shared `fn(?z)` type. This check fixed #88097.
+        match self.commit_if_ok(|_| {
+            // We need to eagerly handle nested obligations due to lazy norm.
+            if self.next_trait_solver() {
+                let ocx = ObligationCtxt::new(self);
+                let value = ocx.lub(cause, self.param_env, prev_ty, new_ty)?;
+                if ocx.select_where_possible().is_empty() {
+                    Ok(InferOk { value, obligations: ocx.into_pending_obligations() })
+                } else {
+                    Err(TypeError::Mismatch)
+                }
+            } else {
+                self.at(cause, self.param_env).lub(prev_ty, new_ty)
+            }
+        }) {
+            // We have a LUB of prev_ty and new_ty, just return it.
+            Ok(ok) => return Ok(self.register_infer_ok_obligations(ok)),
+            Err(_) => {}
         }
 
         let is_force_inline = |ty: Ty<'tcx>| {
@@ -1196,31 +1215,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else {
                 match (prev_ty.kind(), new_ty.kind()) {
                     (ty::FnDef(..), ty::FnDef(..)) => {
-                        // Don't reify if the function types have a LUB, i.e., they
-                        // are the same function and their parameters have a LUB.
-                        match self.commit_if_ok(|_| {
-                            // We need to eagerly handle nested obligations due to lazy norm.
-                            if self.next_trait_solver() {
-                                let ocx = ObligationCtxt::new(self);
-                                let value = ocx.lub(cause, self.param_env, prev_ty, new_ty)?;
-                                if ocx.select_where_possible().is_empty() {
-                                    Ok(InferOk {
-                                        value,
-                                        obligations: ocx.into_pending_obligations(),
-                                    })
-                                } else {
-                                    Err(TypeError::Mismatch)
-                                }
-                            } else {
-                                self.at(cause, self.param_env).lub(prev_ty, new_ty)
-                            }
-                        }) {
-                            // We have a LUB of prev_ty and new_ty, just return it.
-                            Ok(ok) => return Ok(self.register_infer_ok_obligations(ok)),
-                            Err(_) => {
-                                (Some(prev_ty.fn_sig(self.tcx)), Some(new_ty.fn_sig(self.tcx)))
-                            }
-                        }
+                        (Some(prev_ty.fn_sig(self.tcx)), Some(new_ty.fn_sig(self.tcx)))
                     }
                     (ty::Closure(_, args), ty::FnDef(..)) => {
                         let b_sig = new_ty.fn_sig(self.tcx);
