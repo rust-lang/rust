@@ -178,10 +178,10 @@ pub fn try_const_isize<'db>(db: &'db dyn HirDatabase, c: &Const<'db>) -> Option<
     }
 }
 
-pub(crate) fn const_eval_discriminant_variant(
-    db: &dyn HirDatabase,
+pub(crate) fn const_eval_discriminant_variant<'db>(
+    db: &'db dyn HirDatabase,
     variant_id: EnumVariantId,
-) -> Result<i128, ConstEvalError> {
+) -> Result<i128, ConstEvalError<'db>> {
     let interner = DbInterner::new_with(db, None, None);
     let def = variant_id.into();
     let body = db.body(def);
@@ -220,7 +220,7 @@ pub(crate) fn const_eval_discriminant_variant(
 // FIXME: Ideally constants in const eval should have separate body (issue #7434), and this function should
 // get an `InferenceResult` instead of an `InferenceContext`. And we should remove `ctx.clone().resolve_all()` here
 // and make this function private. See the fixme comment on `InferenceContext::resolve_all`.
-pub(crate) fn eval_to_const<'db>(expr: ExprId, ctx: &mut InferenceContext<'db>) -> Const<'db> {
+pub(crate) fn eval_to_const<'db>(expr: ExprId, ctx: &mut InferenceContext<'_, 'db>) -> Const<'db> {
     let interner = DbInterner::new_with(ctx.db, None, None);
     let infer = ctx.fixme_resolve_all_clone();
     fn has_closure(body: &Body, expr: ExprId) -> bool {
@@ -233,17 +233,11 @@ pub(crate) fn eval_to_const<'db>(expr: ExprId, ctx: &mut InferenceContext<'db>) 
     }
     if has_closure(ctx.body, expr) {
         // Type checking clousres need an isolated body (See the above FIXME). Bail out early to prevent panic.
-        return unknown_const(infer[expr].clone().to_nextsolver(interner));
+        return unknown_const(infer[expr]);
     }
     if let Expr::Path(p) = &ctx.body[expr] {
         let resolver = &ctx.resolver;
-        if let Some(c) = path_to_const(
-            ctx.db,
-            resolver,
-            p,
-            || ctx.generics(),
-            infer[expr].to_nextsolver(interner),
-        ) {
+        if let Some(c) = path_to_const(ctx.db, resolver, p, || ctx.generics(), infer[expr]) {
             return c;
         }
     }
@@ -252,5 +246,5 @@ pub(crate) fn eval_to_const<'db>(expr: ExprId, ctx: &mut InferenceContext<'db>) 
     {
         return result.to_nextsolver(interner);
     }
-    unknown_const(infer[expr].to_nextsolver(interner))
+    unknown_const(infer[expr])
 }

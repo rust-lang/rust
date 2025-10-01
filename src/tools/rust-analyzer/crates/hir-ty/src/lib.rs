@@ -64,7 +64,6 @@ use chalk_ir::{
     fold::{Shift, TypeFoldable},
     interner::HasInterner,
 };
-use either::Either;
 use hir_def::{CallableDefId, GeneralConstId, TypeOrConstParamId, hir::ExprId, type_ref::Rawness};
 use hir_expand::name::Name;
 use indexmap::{IndexMap, map::Entry};
@@ -233,7 +232,7 @@ impl ComplexMemoryMap<'_> {
 }
 
 impl<'db> MemoryMap<'db> {
-    pub fn vtable_ty(&self, id: usize) -> Result<crate::next_solver::Ty<'db>, MirEvalError> {
+    pub fn vtable_ty(&self, id: usize) -> Result<crate::next_solver::Ty<'db>, MirEvalError<'db>> {
         match self {
             MemoryMap::Empty | MemoryMap::Simple(_) => Err(MirEvalError::InvalidVTableId(id)),
             MemoryMap::Complex(cm) => cm.vtable.ty(id),
@@ -249,8 +248,8 @@ impl<'db> MemoryMap<'db> {
     /// allocator function as `f` and it will return a mapping of old addresses to new addresses.
     fn transform_addresses(
         &self,
-        mut f: impl FnMut(&[u8], usize) -> Result<usize, MirEvalError>,
-    ) -> Result<FxHashMap<usize, usize>, MirEvalError> {
+        mut f: impl FnMut(&[u8], usize) -> Result<usize, MirEvalError<'db>>,
+    ) -> Result<FxHashMap<usize, usize>, MirEvalError<'db>> {
         let mut transform = |(addr, val): (&usize, &[u8])| {
             let addr = *addr;
             let align = if addr == 0 { 64 } else { (addr - (addr & (addr - 1))).min(64) };
@@ -646,7 +645,7 @@ impl TypeFoldable<Interner> for CallableSig {
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub enum ImplTraitId {
-    ReturnTypeImplTrait(hir_def::FunctionId, ImplTraitIdx),
+    ReturnTypeImplTrait(hir_def::FunctionId, ImplTraitIdx), // FIXME(next-solver): Should be crate::nextsolver::ImplTraitIdx.
     TypeAliasImplTrait(hir_def::TypeAliasId, ImplTraitIdx),
     AsyncBlockTypeImplTrait(hir_def::DefWithBodyId, ExprId),
 }
@@ -711,102 +710,6 @@ pub(crate) fn fold_free_vars<T: HasInterner<Interner = Interner> + TypeFoldable<
         }
     }
     t.fold_with(&mut FreeVarFolder(for_ty, for_const), DebruijnIndex::INNERMOST)
-}
-
-pub(crate) fn fold_tys<T: HasInterner<Interner = Interner> + TypeFoldable<Interner>>(
-    t: T,
-    mut for_ty: impl FnMut(Ty, DebruijnIndex) -> Ty,
-    binders: DebruijnIndex,
-) -> T {
-    fold_tys_and_consts(
-        t,
-        |x, d| match x {
-            Either::Left(x) => Either::Left(for_ty(x, d)),
-            Either::Right(x) => Either::Right(x),
-        },
-        binders,
-    )
-}
-
-pub(crate) fn fold_tys_and_consts<T: HasInterner<Interner = Interner> + TypeFoldable<Interner>>(
-    t: T,
-    f: impl FnMut(Either<Ty, Const>, DebruijnIndex) -> Either<Ty, Const>,
-    binders: DebruijnIndex,
-) -> T {
-    use chalk_ir::fold::{TypeFolder, TypeSuperFoldable};
-    #[derive(chalk_derive::FallibleTypeFolder)]
-    #[has_interner(Interner)]
-    struct TyFolder<F: FnMut(Either<Ty, Const>, DebruijnIndex) -> Either<Ty, Const>>(F);
-    impl<F: FnMut(Either<Ty, Const>, DebruijnIndex) -> Either<Ty, Const>> TypeFolder<Interner>
-        for TyFolder<F>
-    {
-        fn as_dyn(&mut self) -> &mut dyn TypeFolder<Interner> {
-            self
-        }
-
-        fn interner(&self) -> Interner {
-            Interner
-        }
-
-        fn fold_ty(&mut self, ty: Ty, outer_binder: DebruijnIndex) -> Ty {
-            let ty = ty.super_fold_with(self.as_dyn(), outer_binder);
-            self.0(Either::Left(ty), outer_binder).left().unwrap()
-        }
-
-        fn fold_const(&mut self, c: Const, outer_binder: DebruijnIndex) -> Const {
-            self.0(Either::Right(c), outer_binder).right().unwrap()
-        }
-    }
-    t.fold_with(&mut TyFolder(f), binders)
-}
-
-pub(crate) fn fold_generic_args<T: HasInterner<Interner = Interner> + TypeFoldable<Interner>>(
-    t: T,
-    f: impl FnMut(GenericArgData, DebruijnIndex) -> GenericArgData,
-    binders: DebruijnIndex,
-) -> T {
-    use chalk_ir::fold::{TypeFolder, TypeSuperFoldable};
-    #[derive(chalk_derive::FallibleTypeFolder)]
-    #[has_interner(Interner)]
-    struct TyFolder<F: FnMut(GenericArgData, DebruijnIndex) -> GenericArgData>(F);
-    impl<F: FnMut(GenericArgData, DebruijnIndex) -> GenericArgData> TypeFolder<Interner>
-        for TyFolder<F>
-    {
-        fn as_dyn(&mut self) -> &mut dyn TypeFolder<Interner> {
-            self
-        }
-
-        fn interner(&self) -> Interner {
-            Interner
-        }
-
-        fn fold_ty(&mut self, ty: Ty, outer_binder: DebruijnIndex) -> Ty {
-            let ty = ty.super_fold_with(self.as_dyn(), outer_binder);
-            self.0(GenericArgData::Ty(ty), outer_binder)
-                .intern(Interner)
-                .ty(Interner)
-                .unwrap()
-                .clone()
-        }
-
-        fn fold_const(&mut self, c: Const, outer_binder: DebruijnIndex) -> Const {
-            self.0(GenericArgData::Const(c), outer_binder)
-                .intern(Interner)
-                .constant(Interner)
-                .unwrap()
-                .clone()
-        }
-
-        fn fold_lifetime(&mut self, lt: Lifetime, outer_binder: DebruijnIndex) -> Lifetime {
-            let lt = lt.super_fold_with(self.as_dyn(), outer_binder);
-            self.0(GenericArgData::Lifetime(lt), outer_binder)
-                .intern(Interner)
-                .lifetime(Interner)
-                .unwrap()
-                .clone()
-        }
-    }
-    t.fold_with(&mut TyFolder(f), binders)
 }
 
 /// 'Canonicalizes' the `t` by replacing any errors with new variables. Also
@@ -942,31 +845,31 @@ pub fn callable_sig_from_fn_trait<'db>(
     // - Self: FnOnce<?args_ty>
     // - <Self as FnOnce<?args_ty>>::Output == ?ret_ty
     let args_ty = table.next_ty_var();
-    let args = [self_ty.to_nextsolver(table.interner), args_ty];
-    let trait_ref = crate::next_solver::TraitRef::new(table.interner, fn_once_trait.into(), args);
+    let args = [self_ty.to_nextsolver(table.interner()), args_ty];
+    let trait_ref = crate::next_solver::TraitRef::new(table.interner(), fn_once_trait.into(), args);
     let projection = crate::next_solver::Ty::new_alias(
-        table.interner,
+        table.interner(),
         rustc_type_ir::AliasTyKind::Projection,
-        crate::next_solver::AliasTy::new(table.interner, output_assoc_type.into(), args),
+        crate::next_solver::AliasTy::new(table.interner(), output_assoc_type.into(), args),
     );
 
-    let pred = crate::next_solver::Predicate::upcast_from(trait_ref, table.interner);
+    let pred = crate::next_solver::Predicate::upcast_from(trait_ref, table.interner());
     if !table.try_obligation(pred).no_solution() {
         table.register_obligation(pred);
         let return_ty = table.normalize_alias_ty(projection);
         for fn_x in [FnTrait::Fn, FnTrait::FnMut, FnTrait::FnOnce] {
             let fn_x_trait = fn_x.get_id(db, krate)?;
             let trait_ref =
-                crate::next_solver::TraitRef::new(table.interner, fn_x_trait.into(), args);
+                crate::next_solver::TraitRef::new(table.interner(), fn_x_trait.into(), args);
             if !table
                 .try_obligation(crate::next_solver::Predicate::upcast_from(
                     trait_ref,
-                    table.interner,
+                    table.interner(),
                 ))
                 .no_solution()
             {
-                let ret_ty = table.resolve_completely(return_ty.to_chalk(table.interner));
-                let args_ty = table.resolve_completely(args_ty.to_chalk(table.interner));
+                let ret_ty = table.resolve_completely(return_ty).to_chalk(table.interner());
+                let args_ty = table.resolve_completely(args_ty).to_chalk(table.interner());
                 let params = args_ty
                     .as_tuple()?
                     .iter(Interner)

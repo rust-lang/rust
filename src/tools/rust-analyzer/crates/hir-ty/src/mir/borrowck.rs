@@ -11,6 +11,8 @@ use rustc_hash::FxHashMap;
 use stdx::never;
 use triomphe::Arc;
 
+use crate::next_solver::DbInterner;
+use crate::next_solver::mapping::{ChalkToNextSolver, NextSolverToChalk};
 use crate::{
     ClosureId, Interner, Substitution, Ty, TyExt, TypeFlags,
     db::{HirDatabase, InternedClosure},
@@ -61,16 +63,16 @@ pub struct BorrowckResult {
     pub borrow_regions: Vec<BorrowRegion>,
 }
 
-fn all_mir_bodies(
-    db: &dyn HirDatabase,
+fn all_mir_bodies<'db>(
+    db: &'db dyn HirDatabase,
     def: DefWithBodyId,
     mut cb: impl FnMut(Arc<MirBody>),
-) -> Result<(), MirLowerError> {
-    fn for_closure(
-        db: &dyn HirDatabase,
+) -> Result<(), MirLowerError<'db>> {
+    fn for_closure<'db>(
+        db: &'db dyn HirDatabase,
         c: ClosureId,
         cb: &mut impl FnMut(Arc<MirBody>),
-    ) -> Result<(), MirLowerError> {
+    ) -> Result<(), MirLowerError<'db>> {
         match db.mir_body_for_closure(c.into()) {
             Ok(body) => {
                 cb(body.clone());
@@ -88,10 +90,10 @@ fn all_mir_bodies(
     }
 }
 
-pub fn borrowck_query(
-    db: &dyn HirDatabase,
+pub fn borrowck_query<'db>(
+    db: &'db dyn HirDatabase,
     def: DefWithBodyId,
-) -> Result<Arc<[BorrowckResult]>, MirLowerError> {
+) -> Result<Arc<[BorrowckResult]>, MirLowerError<'db>> {
     let _p = tracing::info_span!("borrowck_query").entered();
     let mut res = vec![];
     all_mir_bodies(db, def, |body| {
@@ -112,14 +114,17 @@ fn make_fetch_closure_field(
     |c: ClosureId, subst: &Substitution, f: usize| {
         let InternedClosure(def, _) = db.lookup_intern_closure(c.into());
         let infer = db.infer(def);
-        let (captures, _) = infer.closure_info(&c);
+        let (captures, _) = infer.closure_info(c.into());
         let parent_subst = ClosureSubst(subst).parent_subst(db);
+        let interner = DbInterner::new_with(db, None, None);
+        let parent_subst: crate::next_solver::GenericArgs<'_> =
+            parent_subst.to_nextsolver(interner);
         captures
             .get(f)
             .expect("broken closure field")
             .ty
-            .clone()
-            .substitute(Interner, &parent_subst)
+            .instantiate(interner, parent_subst)
+            .to_chalk(interner)
     }
 }
 

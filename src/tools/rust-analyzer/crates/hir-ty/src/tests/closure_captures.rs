@@ -2,15 +2,16 @@ use expect_test::{Expect, expect};
 use hir_def::db::DefDatabase;
 use hir_expand::{HirFileId, files::InFileWrapper};
 use itertools::Itertools;
-use salsa::plumbing::FromId;
 use span::TextRange;
 use syntax::{AstNode, AstPtr};
 use test_fixture::WithFixture;
 
-use crate::db::{HirDatabase, InternedClosureId};
-use crate::display::{DisplayTarget, HirDisplay};
-use crate::mir::MirSpan;
-use crate::test_db::TestDB;
+use crate::{
+    db::HirDatabase,
+    display::{DisplayTarget, HirDisplay},
+    mir::MirSpan,
+    test_db::TestDB,
+};
 
 use super::{setup_tracing, visit_module};
 
@@ -35,7 +36,7 @@ fn check_closure_captures(#[rust_analyzer::rust_fixture] ra_fixture: &str, expec
         let infer = db.infer(def);
         let db = &db;
         captures_info.extend(infer.closure_info.iter().flat_map(|(closure_id, (captures, _))| {
-            let closure = db.lookup_intern_closure(InternedClosureId::from_id(closure_id.0));
+            let closure = db.lookup_intern_closure(*closure_id);
             let source_map = db.body_with_source_map(closure.0).1;
             let closure_text_range = source_map
                 .expr_syntax(closure.1)
@@ -70,7 +71,7 @@ fn check_closure_captures(#[rust_analyzer::rust_fixture] ra_fixture: &str, expec
                 let capture_ty = salsa::attach(db, || {
                     capture
                         .ty
-                        .skip_binders()
+                        .skip_binder()
                         .display_test(db, DisplayTarget::from_crate(db, module.krate()))
                         .to_string()
                 });

@@ -12,7 +12,7 @@ use intern::sym;
 use rustc_next_trait_solver::solve::{HasChanged, SolverDelegateEvalExt};
 use rustc_type_ir::{
     InferCtxtLike, TypingMode,
-    inherent::{SliceLike, Span as _},
+    inherent::{SliceLike, Span as _, Ty as _},
     solve::Certainty,
 };
 use span::Edition;
@@ -23,11 +23,11 @@ use crate::{
     AliasEq, AliasTy, Canonical, DomainGoal, Goal, InEnvironment, Interner, ProjectionTy,
     ProjectionTyExt, TraitRefExt, Ty, TyKind, TypeFlags, WhereClause,
     db::HirDatabase,
-    infer::unify::InferenceTable,
+    from_assoc_type_id,
     next_solver::{
         DbInterner, GenericArg, ParamEnv, Predicate, SolverContext, Span,
-        infer::{DbInternerInferExt, InferCtxt},
-        mapping::{ChalkToNextSolver, convert_canonical_args_for_result},
+        infer::{DbInternerInferExt, InferCtxt, traits::ObligationCause},
+        mapping::{ChalkToNextSolver, NextSolverToChalk, convert_canonical_args_for_result},
         util::mini_canonicalize,
     },
     utils::UnevaluatedConstEvaluatorFolder,
@@ -93,9 +93,30 @@ pub(crate) fn normalize_projection_query<'db>(
         return TyKind::Error.intern(Interner);
     }
 
-    let mut table = InferenceTable::new(db, env);
-    let ty = table.normalize_projection_ty(projection);
-    table.resolve_completely(ty)
+    let interner = DbInterner::new_with(db, Some(env.krate), env.block);
+    // FIXME(next-solver): I believe this should use `PostAnalysis` (this is only used for IDE things),
+    // but this causes some bug because of our incorrect impl of `type_of_opaque_hir_typeck()` for TAIT
+    // and async blocks.
+    let infcx = interner.infer_ctxt().build(TypingMode::Analysis {
+        defining_opaque_types_and_generators: crate::next_solver::SolverDefIds::new_from_iter(
+            interner,
+            [],
+        ),
+    });
+    let alias_ty = crate::next_solver::Ty::new_alias(
+        interner,
+        rustc_type_ir::AliasTyKind::Projection,
+        crate::next_solver::AliasTy::new(
+            interner,
+            from_assoc_type_id(projection.associated_ty_id).into(),
+            <crate::Substitution as ChalkToNextSolver<crate::next_solver::GenericArgs<'_>>>::to_nextsolver(&projection.substitution, interner),
+        ),
+    );
+    let mut ctxt = crate::next_solver::obligation_ctxt::ObligationCtxt::new(&infcx);
+    let normalized = ctxt
+        .structurally_normalize_ty(&ObligationCause::dummy(), env.env, alias_ty)
+        .unwrap_or(alias_ty);
+    normalized.replace_infer_with_error(interner).to_chalk(interner)
 }
 
 fn identity_subst(

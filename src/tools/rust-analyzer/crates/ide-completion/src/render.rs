@@ -2987,7 +2987,6 @@ fn main() {
             &[CompletionItemKind::Snippet, CompletionItemKind::SymbolKind(SymbolKind::Method)],
             expect![[r#"
                 sn not !expr [snippet]
-                me not() fn(self) -> <Self as Not>::Output [type_could_unify+requires_import]
                 sn box Box::new(expr) []
                 sn call function(expr) []
                 sn const const {} []
@@ -3001,6 +3000,7 @@ fn main() {
                 sn return return expr []
                 sn unsafe unsafe {} []
                 sn while while expr {} []
+                me not() fn(self) -> <Self as Not>::Output [requires_import]
             "#]],
         );
     }

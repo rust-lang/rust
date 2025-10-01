@@ -4,16 +4,11 @@ use span::Edition;
 use test_fixture::WithFixture;
 use triomphe::Arc;
 
-use crate::{
-    db::HirDatabase,
-    mir::{MirBody, MirLowerError},
-    setup_tracing,
-    test_db::TestDB,
-};
+use crate::{db::HirDatabase, mir::MirBody, setup_tracing, test_db::TestDB};
 
 fn lower_mir(
     #[rust_analyzer::rust_fixture] ra_fixture: &str,
-) -> FxHashMap<String, Result<Arc<MirBody>, MirLowerError>> {
+) -> FxHashMap<String, Result<Arc<MirBody>, ()>> {
     let _tracing = setup_tracing();
     let (db, file_ids) = TestDB::with_many_files(ra_fixture);
     let file_id = *file_ids.last().unwrap();
@@ -28,7 +23,7 @@ fn lower_mir(
         .map(|func| {
             let name = db.function_signature(func).name.display(&db, Edition::CURRENT).to_string();
             let mir = db.mir_body(func.into());
-            (name, mir)
+            (name, mir.map_err(drop))
         })
         .collect()
 }

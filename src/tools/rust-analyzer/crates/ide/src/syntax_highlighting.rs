@@ -426,9 +426,12 @@ fn traverse(
         let edition = descended_element.file_id.edition(sema.db);
         let (unsafe_ops, bindings_shadow_count) = match current_body {
             Some(current_body) => {
-                let (ops, bindings) = per_body_cache
-                    .entry(current_body)
-                    .or_insert_with(|| (sema.get_unsafe_ops(current_body), Default::default()));
+                let (ops, bindings) = per_body_cache.entry(current_body).or_insert_with(|| {
+                    (
+                        salsa::attach(sema.db, || sema.get_unsafe_ops(current_body)),
+                        Default::default(),
+                    )
+                });
                 (&*ops, Some(bindings))
             }
             None => (&empty, None),

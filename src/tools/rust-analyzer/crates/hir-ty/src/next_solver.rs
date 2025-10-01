@@ -33,6 +33,9 @@ pub use region::*;
 pub use solver::*;
 pub use ty::*;
 
+pub use crate::lower_nextsolver::ImplTraitIdx;
+pub use rustc_ast_ir::Mutability;
+
 pub type Binder<'db, T> = rustc_type_ir::Binder<DbInterner<'db>, T>;
 pub type EarlyBinder<'db, T> = rustc_type_ir::EarlyBinder<DbInterner<'db>, T>;
 pub type Canonical<'db, T> = rustc_type_ir::Canonical<DbInterner<'db>, T>;

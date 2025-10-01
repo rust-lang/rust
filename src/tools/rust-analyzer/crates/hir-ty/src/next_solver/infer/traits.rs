@@ -7,16 +7,18 @@ use std::{
     hash::{Hash, Hasher},
 };
 
+use hir_def::TraitId;
 use rustc_type_ir::elaborate::Elaboratable;
 use rustc_type_ir::{
     PredicatePolarity, Upcast,
     solve::{Certainty, NoSolution},
 };
 use rustc_type_ir::{TypeFoldable, TypeVisitable};
+use tracing::debug;
 
 use crate::next_solver::{
     Binder, Clause, DbInterner, Goal, ParamEnv, PolyTraitPredicate, Predicate, SolverDefId, Span,
-    TraitPredicate, Ty,
+    TraitPredicate, TraitRef, Ty,
 };
 
 use super::InferCtxt;
@@ -236,4 +238,36 @@ impl<'db, O> Obligation<'db, O> {
     ) -> Obligation<'db, P> {
         Obligation::with_depth(tcx, self.cause.clone(), self.recursion_depth, self.param_env, value)
     }
+}
+
+/// Determines whether the type `ty` is known to meet `bound` and
+/// returns true if so. Returns false if `ty` either does not meet
+/// `bound` or is not known to meet bound (note that this is
+/// conservative towards *no impl*, which is the opposite of the
+/// `evaluate` methods).
+pub fn type_known_to_meet_bound_modulo_regions<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    param_env: ParamEnv<'tcx>,
+    ty: Ty<'tcx>,
+    def_id: TraitId,
+) -> bool {
+    let trait_ref = TraitRef::new(infcx.interner, def_id.into(), [ty]);
+    pred_known_to_hold_modulo_regions(infcx, param_env, trait_ref)
+}
+
+/// FIXME(@lcnr): this function doesn't seem right and shouldn't exist?
+///
+/// Ping me on zulip if you want to use this method and need help with finding
+/// an appropriate replacement.
+fn pred_known_to_hold_modulo_regions<'db>(
+    infcx: &InferCtxt<'db>,
+    param_env: ParamEnv<'db>,
+    pred: impl Upcast<DbInterner<'db>, Predicate<'db>>,
+) -> bool {
+    let obligation = Obligation::new(infcx.interner, ObligationCause::dummy(), param_env, pred);
+
+    let result = infcx.evaluate_obligation(&obligation);
+    debug!(?result);
+
+    result.must_apply_modulo_regions()
 }

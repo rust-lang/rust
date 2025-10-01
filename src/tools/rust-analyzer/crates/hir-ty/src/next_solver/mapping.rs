@@ -143,8 +143,27 @@ pub trait ChalkToNextSolver<'db, Out> {
     fn to_nextsolver(&self, interner: DbInterner<'db>) -> Out;
 }
 
+impl<'db, A, OutA, B, OutB> ChalkToNextSolver<'db, (OutA, OutB)> for (A, B)
+where
+    A: ChalkToNextSolver<'db, OutA>,
+    B: ChalkToNextSolver<'db, OutB>,
+{
+    fn to_nextsolver(&self, interner: DbInterner<'db>) -> (OutA, OutB) {
+        (self.0.to_nextsolver(interner), self.1.to_nextsolver(interner))
+    }
+}
+
 pub trait NextSolverToChalk<'db, Out> {
     fn to_chalk(self, interner: DbInterner<'db>) -> Out;
+}
+
+impl<'db, T, Out> NextSolverToChalk<'db, Option<Out>> for Option<T>
+where
+    T: NextSolverToChalk<'db, Out>,
+{
+    fn to_chalk(self, interner: DbInterner<'db>) -> Option<Out> {
+        self.map(|it| it.to_chalk(interner))
+    }
 }
 
 impl NextSolverToChalk<'_, chalk_ir::Mutability> for rustc_ast_ir::Mutability {
@@ -633,12 +652,33 @@ impl<'db> ChalkToNextSolver<'db, GenericArg<'db>> for chalk_ir::GenericArg<Inter
     }
 }
 
+impl<'db> NextSolverToChalk<'db, crate::GenericArg> for GenericArg<'db> {
+    fn to_chalk(self, interner: DbInterner<'db>) -> crate::GenericArg {
+        match self {
+            GenericArg::Ty(ty) => ty.to_chalk(interner).cast(Interner),
+            GenericArg::Lifetime(region) => region.to_chalk(interner).cast(Interner),
+            GenericArg::Const(konst) => konst.to_chalk(interner).cast(Interner),
+        }
+    }
+}
+
 impl<'db> ChalkToNextSolver<'db, GenericArgs<'db>> for chalk_ir::Substitution<Interner> {
     fn to_nextsolver(&self, interner: DbInterner<'db>) -> GenericArgs<'db> {
         GenericArgs::new_from_iter(
             interner,
             self.iter(Interner).map(|arg| -> GenericArg<'db> { arg.to_nextsolver(interner) }),
         )
+    }
+}
+
+impl<'db> ChalkToNextSolver<'db, crate::lower_nextsolver::ImplTraitIdx<'db>>
+    for crate::ImplTraitIdx
+{
+    fn to_nextsolver(
+        &self,
+        interner: DbInterner<'db>,
+    ) -> crate::lower_nextsolver::ImplTraitIdx<'db> {
+        crate::lower_nextsolver::ImplTraitIdx::from_raw(self.into_raw())
     }
 }
 

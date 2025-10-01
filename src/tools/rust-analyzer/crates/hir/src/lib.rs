@@ -157,7 +157,7 @@ pub use {
         tt,
     },
     hir_ty::{
-        CastError, DropGlue, FnAbi, PointerCast, Safety, Variance,
+        CastError, DropGlue, FnAbi, PointerCast, Variance,
         consteval::ConstEvalError,
         diagnostics::UnsafetyReason,
         display::{ClosureStyle, DisplayTarget, HirDisplay, HirDisplayError, HirWrite},
@@ -165,6 +165,7 @@ pub use {
         layout::LayoutError,
         method_resolution::TyFingerprint,
         mir::{MirEvalError, MirLowerError},
+        next_solver::abi::Safety,
     },
     // FIXME: Properly encapsulate mir
     hir_ty::{Interner as ChalkTyInterner, mir},
@@ -1287,9 +1288,11 @@ impl TupleField {
     }
 
     pub fn ty<'db>(&self, db: &'db dyn HirDatabase) -> Type<'db> {
+        let interner = DbInterner::new_with(db, None, None);
         let ty = db
             .infer(self.owner)
             .tuple_field_access_type(self.tuple)
+            .to_chalk(interner)
             .as_slice(Interner)
             .get(self.index as usize)
             .and_then(|arg| arg.ty(Interner))
@@ -1720,7 +1723,7 @@ impl Variant {
         self.source(db)?.value.expr()
     }
 
-    pub fn eval(self, db: &dyn HirDatabase) -> Result<i128, ConstEvalError> {
+    pub fn eval(self, db: &dyn HirDatabase) -> Result<i128, ConstEvalError<'_>> {
         db.const_eval_discriminant(self.into())
     }
 
@@ -2012,6 +2015,7 @@ impl DefWithBody {
         style_lints: bool,
     ) {
         let krate = self.module(db).id.krate();
+        let interner = DbInterner::new_with(db, Some(krate), None);
 
         let (body, source_map) = db.body_with_source_map(self.into());
         let sig_source_map = match self {
@@ -2061,8 +2065,16 @@ impl DefWithBody {
             acc.push(
                 TypeMismatch {
                     expr_or_pat,
-                    expected: Type::new(db, DefWithBodyId::from(self), mismatch.expected.clone()),
-                    actual: Type::new(db, DefWithBodyId::from(self), mismatch.actual.clone()),
+                    expected: Type::new(
+                        db,
+                        DefWithBodyId::from(self),
+                        mismatch.expected.to_chalk(interner),
+                    ),
+                    actual: Type::new(
+                        db,
+                        DefWithBodyId::from(self),
+                        mismatch.actual.to_chalk(interner),
+                    ),
                 }
                 .into(),
             );
@@ -2628,7 +2640,7 @@ impl Function {
         self,
         db: &dyn HirDatabase,
         span_formatter: impl Fn(FileId, TextRange) -> String,
-    ) -> Result<String, ConstEvalError> {
+    ) -> Result<String, ConstEvalError<'_>> {
         let body = db.monomorphized_mir_body(
             self.id.into(),
             Substitution::empty(Interner),
@@ -2912,7 +2924,7 @@ impl Const {
     }
 
     /// Evaluate the constant.
-    pub fn eval(self, db: &dyn HirDatabase) -> Result<EvaluatedConst, ConstEvalError> {
+    pub fn eval(self, db: &dyn HirDatabase) -> Result<EvaluatedConst, ConstEvalError<'_>> {
         db.const_eval(self.id.into(), Substitution::empty(Interner), None)
             .map(|it| EvaluatedConst { const_: it, def: self.id.into() })
     }
@@ -2934,7 +2946,7 @@ impl EvaluatedConst {
         format!("{}", self.const_.display(db, display_target))
     }
 
-    pub fn render_debug(&self, db: &dyn HirDatabase) -> Result<String, MirEvalError> {
+    pub fn render_debug<'db>(&self, db: &'db dyn HirDatabase) -> Result<String, MirEvalError<'db>> {
         let data = self.const_.data(Interner);
         if let TyKind::Scalar(s) = data.ty.kind(Interner)
             && matches!(s, Scalar::Int(_) | Scalar::Uint(_))
@@ -2990,7 +3002,7 @@ impl Static {
     }
 
     /// Evaluate the static initializer.
-    pub fn eval(self, db: &dyn HirDatabase) -> Result<EvaluatedConst, ConstEvalError> {
+    pub fn eval(self, db: &dyn HirDatabase) -> Result<EvaluatedConst, ConstEvalError<'_>> {
         db.const_eval(self.id.into(), Substitution::empty(Interner), None)
             .map(|it| EvaluatedConst { const_: it, def: self.id.into() })
     }
@@ -4021,8 +4033,9 @@ impl Local {
     pub fn ty(self, db: &dyn HirDatabase) -> Type<'_> {
         let def = self.parent;
         let infer = db.infer(def);
-        let ty = infer[self.binding_id].clone();
-        Type::new(db, def, ty)
+        let ty = infer[self.binding_id];
+        let interner = DbInterner::new_with(db, None, None);
+        Type::new(db, def, ty.to_chalk(interner))
     }
 
     /// All definitions for this local. Example: `let (a$0, _) | (_, a$0) = it;`
@@ -4466,7 +4479,9 @@ impl Impl {
         db: &'db dyn HirDatabase,
         Type { ty, env, _pd: _ }: Type<'db>,
     ) -> Vec<Impl> {
-        let def_crates = match method_resolution::def_crates(db, &ty, env.krate) {
+        let interner = DbInterner::new_with(db, None, None);
+        let ty_ns = ty.to_nextsolver(interner);
+        let def_crates = match method_resolution::def_crates(db, ty_ns, env.krate) {
             Some(def_crates) => def_crates,
             None => return Vec::new(),
         };
@@ -4477,7 +4492,7 @@ impl Impl {
             ty.equals_ctor(rref.as_ref().map_or(&self_ty.ty, |it| &it.ty))
         };
 
-        let fp = TyFingerprint::for_inherent_impl(&ty);
+        let fp = TyFingerprint::for_inherent_impl(ty_ns);
         let fp = match fp {
             Some(fp) => fp,
             None => return Vec::new(),
@@ -4487,7 +4502,7 @@ impl Impl {
         def_crates.iter().for_each(|&id| {
             all.extend(
                 db.inherent_impls_in_crate(id)
-                    .for_self_ty(&ty)
+                    .for_self_ty(ty_ns)
                     .iter()
                     .cloned()
                     .map(Self::from)
@@ -4512,7 +4527,12 @@ impl Impl {
         {
             if let Some(inherent_impls) = db.inherent_impls_in_block(block) {
                 all.extend(
-                    inherent_impls.for_self_ty(&ty).iter().cloned().map(Self::from).filter(filter),
+                    inherent_impls
+                        .for_self_ty(ty_ns)
+                        .iter()
+                        .cloned()
+                        .map(Self::from)
+                        .filter(filter),
                 );
             }
             if let Some(trait_impls) = db.trait_impls_in_block(block) {
@@ -4691,10 +4711,10 @@ impl Closure {
             .to_string()
     }
 
-    pub fn captured_items(&self, db: &dyn HirDatabase) -> Vec<ClosureCapture> {
+    pub fn captured_items<'db>(&self, db: &'db dyn HirDatabase) -> Vec<ClosureCapture<'db>> {
         let owner = db.lookup_intern_closure((self.id).into()).0;
         let infer = &db.infer(owner);
-        let info = infer.closure_info(&self.id);
+        let info = infer.closure_info(self.id.into());
         info.0
             .iter()
             .cloned()
@@ -4705,12 +4725,13 @@ impl Closure {
     pub fn capture_types<'db>(&self, db: &'db dyn HirDatabase) -> Vec<Type<'db>> {
         let owner = db.lookup_intern_closure((self.id).into()).0;
         let infer = &db.infer(owner);
-        let (captures, _) = infer.closure_info(&self.id);
+        let (captures, _) = infer.closure_info(self.id.into());
+        let interner = DbInterner::new_with(db, None, None);
         captures
             .iter()
             .map(|capture| Type {
                 env: db.trait_environment_for_body(owner),
-                ty: capture.ty(db, &self.subst),
+                ty: capture.ty(db, self.subst.to_nextsolver(interner)).to_chalk(interner),
                 _pd: PhantomCovariantLifetime::new(),
             })
             .collect()
@@ -4719,19 +4740,19 @@ impl Closure {
     pub fn fn_trait(&self, db: &dyn HirDatabase) -> FnTrait {
         let owner = db.lookup_intern_closure((self.id).into()).0;
         let infer = &db.infer(owner);
-        let info = infer.closure_info(&self.id);
+        let info = infer.closure_info(self.id.into());
         info.1
     }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ClosureCapture {
+pub struct ClosureCapture<'db> {
     owner: DefWithBodyId,
     closure: ClosureId,
-    capture: hir_ty::CapturedItem,
+    capture: hir_ty::CapturedItem<'db>,
 }
 
-impl ClosureCapture {
+impl<'db> ClosureCapture<'db> {
     pub fn local(&self) -> Local {
         Local { parent: self.owner, binding_id: self.capture.local() }
     }
@@ -5443,7 +5464,8 @@ impl<'db> Type<'db> {
     }
 
     pub fn fingerprint_for_trait_impl(&self) -> Option<TyFingerprint> {
-        TyFingerprint::for_trait_impl(&self.ty)
+        let interner = DbInterner::conjure();
+        TyFingerprint::for_trait_impl(self.ty.to_nextsolver(interner))
     }
 
     pub(crate) fn canonical(&self) -> Canonical<Ty> {
@@ -5487,14 +5509,16 @@ impl<'db> Type<'db> {
         krate: Crate,
         callback: &mut dyn FnMut(AssocItemId) -> bool,
     ) {
-        let def_crates = match method_resolution::def_crates(db, &self.ty, krate.id) {
+        let interner = DbInterner::new_with(db, None, None);
+        let ty_ns = self.ty.to_nextsolver(interner);
+        let def_crates = match method_resolution::def_crates(db, ty_ns, krate.id) {
             Some(it) => it,
             None => return,
         };
         for krate in def_crates {
             let impls = db.inherent_impls_in_crate(krate);
 
-            for impl_def in impls.for_self_ty(&self.ty) {
+            for impl_def in impls.for_self_ty(ty_ns) {
                 for &(_, item) in impl_def.impl_items(db).items.iter() {
                     if callback(item) {
                         return;

@@ -49,7 +49,7 @@ macro_rules! not_supported {
     };
 }
 
-impl Evaluator<'_> {
+impl<'db> Evaluator<'db> {
     pub(super) fn detect_and_exec_special_function(
         &mut self,
         def: FunctionId,
@@ -58,7 +58,7 @@ impl Evaluator<'_> {
         locals: &Locals,
         destination: Interval,
         span: MirSpan,
-    ) -> Result<bool> {
+    ) -> Result<'db, bool> {
         if self.not_special_fn_cache.borrow().contains(&def) {
             return Ok(false);
         }
@@ -142,7 +142,7 @@ impl Evaluator<'_> {
     pub(super) fn detect_and_redirect_special_function(
         &mut self,
         def: FunctionId,
-    ) -> Result<Option<FunctionId>> {
+    ) -> Result<'db, Option<FunctionId>> {
         // `PanicFmt` is redirected to `ConstPanicFmt`
         if let Some(LangItem::PanicFmt) = self.db.lang_attr(def.into()) {
             let resolver = CrateRootModuleId::from(self.crate_id).resolver(self.db);
@@ -166,8 +166,8 @@ impl Evaluator<'_> {
         locals: &Locals,
         destination: Interval,
         span: MirSpan,
-    ) -> Result<()> {
-        let interner = DbInterner::new_with(self.db, None, None);
+    ) -> Result<'db, ()> {
+        let interner = self.interner;
         match self_ty.kind(Interner) {
             TyKind::Function(_) => {
                 let [arg] = args else {
@@ -184,9 +184,12 @@ impl Evaluator<'_> {
                 let addr = Address::from_bytes(arg.get(self)?)?;
                 let InternedClosure(closure_owner, _) = self.db.lookup_intern_closure((*id).into());
                 let infer = self.db.infer(closure_owner);
-                let (captures, _) = infer.closure_info(id);
+                let (captures, _) = infer.closure_info((*id).into());
                 let layout = self.layout(self_ty.to_nextsolver(interner))?;
-                let ty_iter = captures.iter().map(|c| c.ty(self.db, subst));
+                let db = self.db;
+                let ty_iter = captures
+                    .iter()
+                    .map(|c| c.ty(db, subst.to_nextsolver(interner)).to_chalk(interner));
                 self.exec_clone_for_fields(ty_iter, layout, addr, def, locals, destination, span)?;
             }
             TyKind::Tuple(_, subst) => {
@@ -222,7 +225,7 @@ impl Evaluator<'_> {
         locals: &Locals,
         destination: Interval,
         span: MirSpan,
-    ) -> Result<()> {
+    ) -> Result<'db, ()> {
         let interner = DbInterner::new_with(self.db, None, None);
         for (i, ty) in ty_iter.enumerate() {
             let size = self.layout(ty.to_nextsolver(interner))?.size.bytes_usize();
@@ -250,7 +253,7 @@ impl Evaluator<'_> {
         alloc_fn: &Symbol,
         args: &[IntervalAndTy],
         destination: Interval,
-    ) -> Result<()> {
+    ) -> Result<'db, ()> {
         match alloc_fn {
             _ if *alloc_fn == sym::rustc_allocator_zeroed || *alloc_fn == sym::rustc_allocator => {
                 let [size, align] = args else {
@@ -314,7 +317,7 @@ impl Evaluator<'_> {
         args: &[IntervalAndTy],
         locals: &Locals,
         span: MirSpan,
-    ) -> Result<Vec<u8>> {
+    ) -> Result<'db, Vec<u8>> {
         use LangItem::*;
         let mut args = args.iter();
         match it {
@@ -391,7 +394,7 @@ impl Evaluator<'_> {
         destination: Interval,
         _locals: &Locals,
         _span: MirSpan,
-    ) -> Result<()> {
+    ) -> Result<'db, ()> {
         match id {
             318 => {
                 // SYS_getrandom
@@ -422,7 +425,7 @@ impl Evaluator<'_> {
         destination: Interval,
         locals: &Locals,
         span: MirSpan,
-    ) -> Result<()> {
+    ) -> Result<'db, ()> {
         match as_str {
             "memcmp" => {
                 let [ptr1, ptr2, size] = args else {
@@ -589,7 +592,7 @@ impl Evaluator<'_> {
         locals: &Locals,
         span: MirSpan,
         needs_override: bool,
-    ) -> Result<bool> {
+    ) -> Result<'db, bool> {
         let interner = DbInterner::new_with(self.db, None, None);
         if let Some(name) = name.strip_prefix("atomic_") {
             return self
@@ -1405,7 +1408,7 @@ impl Evaluator<'_> {
         ty: &Ty,
         metadata: Interval,
         locals: &Locals,
-    ) -> Result<(usize, usize)> {
+    ) -> Result<'db, (usize, usize)> {
         let interner = DbInterner::new_with(self.db, None, None);
         Ok(match ty.kind(Interner) {
             TyKind::Str => (from_bytes!(usize, metadata.get(self)?), 1),
@@ -1461,7 +1464,7 @@ impl Evaluator<'_> {
         destination: Interval,
         locals: &Locals,
         _span: MirSpan,
-    ) -> Result<()> {
+    ) -> Result<'db, ()> {
         let interner = DbInterner::new_with(self.db, None, None);
         // We are a single threaded runtime with no UB checking and no optimization, so
         // we can implement atomic intrinsics as normal functions.

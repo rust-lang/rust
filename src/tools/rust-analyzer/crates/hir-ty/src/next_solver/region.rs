@@ -17,10 +17,16 @@ use super::{
 
 pub type RegionKind<'db> = rustc_type_ir::RegionKind<DbInterner<'db>>;
 
-#[salsa::interned(constructor = new_, debug)]
+#[salsa::interned(constructor = new_)]
 pub struct Region<'db> {
     #[returns(ref)]
     kind_: RegionKind<'db>,
+}
+
+impl std::fmt::Debug for Region<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.kind().fmt(f)
+    }
 }
 
 impl<'db> Region<'db> {
@@ -67,6 +73,10 @@ impl<'db> Region<'db> {
 
     pub fn is_var(&self) -> bool {
         matches!(self.inner(), RegionKind::ReVar(_))
+    }
+
+    pub fn is_error(&self) -> bool {
+        matches!(self.inner(), RegionKind::ReError(_))
     }
 
     pub fn error(interner: DbInterner<'db>) -> Self {

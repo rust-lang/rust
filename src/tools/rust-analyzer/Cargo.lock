@@ -2040,6 +2040,7 @@ dependencies = [
  "process-wrap",
  "profile",
  "project-model",
+ "ra-ap-rustc_type_ir",
  "rayon",
  "rustc-hash 2.1.1",
  "scip",

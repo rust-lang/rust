@@ -25,14 +25,14 @@ use chalk_ir::{
 use either::Either;
 use hir_def::{
     AdtId, AssocItemId, ConstId, ConstParamId, EnumId, EnumVariantId, FunctionId, GenericDefId,
-    GenericParamId, ItemContainerId, LocalFieldId, Lookup, StaticId, StructId, TypeAliasId,
-    TypeOrConstParamId, UnionId, VariantId,
+    GenericParamId, LocalFieldId, Lookup, StaticId, StructId, TypeAliasId, TypeOrConstParamId,
+    UnionId, VariantId,
     builtin_type::BuiltinType,
     expr_store::{ExpressionStore, path::Path},
     hir::generics::{GenericParamDataRef, TypeOrConstParamData, WherePredicate},
     lang_item::LangItem,
     resolver::{HasResolver, LifetimeNs, Resolver, TypeNs},
-    signatures::{FunctionSignature, TraitFlags},
+    signatures::TraitFlags,
     type_ref::{
         ConstRef, LifetimeRefId, LiteralConstRef, PathId, TraitBoundModifier, TypeBound, TypeRef,
         TypeRefId,
@@ -124,26 +124,6 @@ pub enum LifetimeElisionKind {
 }
 
 impl LifetimeElisionKind {
-    #[inline]
-    pub(crate) fn for_const(const_parent: ItemContainerId) -> LifetimeElisionKind {
-        match const_parent {
-            ItemContainerId::ExternBlockId(_) | ItemContainerId::ModuleId(_) => {
-                LifetimeElisionKind::Elided(static_lifetime())
-            }
-            ItemContainerId::ImplId(_) => {
-                LifetimeElisionKind::StaticIfNoLifetimeInScope { only_lint: true }
-            }
-            ItemContainerId::TraitId(_) => {
-                LifetimeElisionKind::StaticIfNoLifetimeInScope { only_lint: false }
-            }
-        }
-    }
-
-    #[inline]
-    pub(crate) fn for_fn_params(data: &FunctionSignature) -> LifetimeElisionKind {
-        LifetimeElisionKind::AnonymousCreateParameter { report_in_path: data.is_async() }
-    }
-
     #[inline]
     pub(crate) fn for_fn_ret() -> LifetimeElisionKind {
         // FIXME: We should use the elided lifetime here, or `ElisionFailure`.
@@ -268,7 +248,7 @@ pub enum ParamLoweringMode {
     Variable,
 }
 
-impl<'a> TyLoweringContext<'a> {
+impl<'db> TyLoweringContext<'db> {
     pub fn lower_ty(&mut self, type_ref: TypeRefId) -> Ty {
         self.lower_ty_ext(type_ref).0
     }
@@ -512,7 +492,7 @@ impl<'a> TyLoweringContext<'a> {
     }
 
     #[inline]
-    fn on_path_diagnostic_callback(type_ref: TypeRefId) -> PathDiagnosticCallback<'static> {
+    fn on_path_diagnostic_callback<'a>(type_ref: TypeRefId) -> PathDiagnosticCallback<'a, 'db> {
         PathDiagnosticCallback {
             data: Either::Left(PathDiagnosticCallbackData(type_ref)),
             callback: |data, this, diag| {
@@ -523,7 +503,7 @@ impl<'a> TyLoweringContext<'a> {
     }
 
     #[inline]
-    fn at_path(&mut self, path_id: PathId) -> PathLoweringContext<'_, 'a> {
+    fn at_path(&mut self, path_id: PathId) -> PathLoweringContext<'_, 'db> {
         PathLoweringContext::new(
             self,
             Self::on_path_diagnostic_callback(path_id.type_ref()),
@@ -559,7 +539,7 @@ impl<'a> TyLoweringContext<'a> {
         &mut self,
         path_id: PathId,
         explicit_self_ty: Ty,
-    ) -> Option<(TraitRef, PathLoweringContext<'_, 'a>)> {
+    ) -> Option<(TraitRef, PathLoweringContext<'_, 'db>)> {
         let mut ctx = self.at_path(path_id);
         let resolved = match ctx.resolve_path_in_type_ns_fully()? {
             // FIXME(trait_alias): We need to handle trait alias here.
@@ -576,7 +556,7 @@ impl<'a> TyLoweringContext<'a> {
         &'b mut self,
         where_predicate: &'b WherePredicate,
         ignore_bindings: bool,
-    ) -> impl Iterator<Item = QuantifiedWhereClause> + use<'a, 'b> {
+    ) -> impl Iterator<Item = QuantifiedWhereClause> + use<'db, 'b> {
         match where_predicate {
             WherePredicate::ForLifetime { target, bound, .. }
             | WherePredicate::TypeBound { target, bound } => {
@@ -598,7 +578,7 @@ impl<'a> TyLoweringContext<'a> {
         bound: &'b TypeBound,
         self_ty: Ty,
         ignore_bindings: bool,
-    ) -> impl Iterator<Item = QuantifiedWhereClause> + use<'b, 'a> {
+    ) -> impl Iterator<Item = QuantifiedWhereClause> + use<'b, 'db> {
         let mut assoc_bounds = None;
         let mut clause = None;
         match bound {

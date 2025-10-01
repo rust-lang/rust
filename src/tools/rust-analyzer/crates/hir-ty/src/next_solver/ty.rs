@@ -3,7 +3,8 @@
 use std::iter;
 use std::ops::ControlFlow;
 
-use hir_def::{GenericDefId, TypeOrConstParamId, TypeParamId};
+use hir_def::type_ref::Rawness;
+use hir_def::{AdtId, GenericDefId, TypeOrConstParamId, TypeParamId};
 use intern::{Interned, Symbol, sym};
 use rustc_abi::{Float, Integer, Size};
 use rustc_ast_ir::{Mutability, try_visit, visit::VisitorResult};
@@ -13,7 +14,7 @@ use rustc_type_ir::{
     IntTy, IntVid, Interner, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor, UintTy, WithCachedTypeInfo,
     inherent::{
-        Abi, AdtDef, BoundVarLike, Const as _, GenericArgs as _, IntoKind, ParamLike,
+        Abi, AdtDef as _, BoundVarLike, Const as _, GenericArgs as _, IntoKind, ParamLike,
         PlaceholderLike, Safety as _, SliceLike, Ty as _,
     },
     relate::Relate,
@@ -23,6 +24,7 @@ use rustc_type_ir::{
 use salsa::plumbing::{AsId, FromId};
 use smallvec::SmallVec;
 
+use crate::next_solver::{AdtDef, Binder};
 use crate::{
     FnAbi,
     db::HirDatabase,
@@ -73,6 +75,10 @@ impl<'db> Ty<'db> {
             unsafe { std::mem::transmute(inner) }
         })
         .unwrap()
+    }
+
+    pub fn new_adt(interner: DbInterner<'db>, adt_id: AdtId, args: GenericArgs<'db>) -> Self {
+        Ty::new(interner, TyKind::Adt(AdtDef::new(adt_id, interner), args))
     }
 
     pub fn new_param(interner: DbInterner<'db>, id: TypeParamId, index: u32, name: Symbol) -> Self {
@@ -338,6 +344,23 @@ impl<'db> Ty<'db> {
     }
 
     #[inline]
+    pub fn is_raw_ptr(self) -> bool {
+        matches!(self.kind(), TyKind::RawPtr(..))
+    }
+
+    pub fn is_union(self) -> bool {
+        self.as_adt().is_some_and(|(adt, _)| matches!(adt, AdtId::UnionId(_)))
+    }
+
+    #[inline]
+    pub fn as_adt(self) -> Option<(AdtId, GenericArgs<'db>)> {
+        match self.kind() {
+            TyKind::Adt(adt_def, args) => Some((adt_def.def_id().0, args)),
+            _ => None,
+        }
+    }
+
+    #[inline]
     pub fn ty_vid(self) -> Option<TyVid> {
         match self.kind() {
             TyKind::Infer(rustc_type_ir::TyVar(vid)) => Some(vid),
@@ -371,6 +394,38 @@ impl<'db> Ty<'db> {
     /// Whether the type contains some non-lifetime, aka. type or const, error type.
     pub fn references_non_lt_error(self) -> bool {
         self.references_error() && self.visit_with(&mut ReferencesNonLifetimeError).is_break()
+    }
+
+    pub fn callable_sig(self, interner: DbInterner<'db>) -> Option<Binder<'db, FnSig<'db>>> {
+        match self.kind() {
+            TyKind::FnDef(callable, args) => {
+                Some(interner.fn_sig(callable).instantiate(interner, args))
+            }
+            TyKind::FnPtr(sig, hdr) => Some(sig.with(hdr)),
+            TyKind::Closure(closure_id, closure_args) => closure_args
+                .split_closure_args_untupled()
+                .closure_sig_as_fn_ptr_ty
+                .callable_sig(interner),
+            _ => None,
+        }
+    }
+
+    pub fn as_reference_or_ptr(self) -> Option<(Ty<'db>, Rawness, Mutability)> {
+        match self.kind() {
+            TyKind::Ref(_, ty, mutability) => Some((ty, Rawness::Ref, mutability)),
+            TyKind::RawPtr(ty, mutability) => Some((ty, Rawness::RawPtr, mutability)),
+            _ => None,
+        }
+    }
+
+    /// Replace infer vars with errors.
+    ///
+    /// This needs to be called for every type that may contain infer vars and is yielded to outside inference,
+    /// as things other than inference do not expect to see infer vars.
+    pub fn replace_infer_with_error(self, interner: DbInterner<'db>) -> Ty<'db> {
+        self.fold_with(&mut crate::next_solver::infer::resolve::ReplaceInferWithError::new(
+            interner,
+        ))
     }
 }
 
@@ -928,11 +983,17 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
 
 interned_vec_db!(Tys, Ty);
 
+impl<'db> Tys<'db> {
+    pub fn inputs(&self) -> &[Ty<'db>] {
+        self.as_slice().split_last().unwrap().1
+    }
+}
+
 impl<'db> rustc_type_ir::inherent::Tys<DbInterner<'db>> for Tys<'db> {
     fn inputs(self) -> <DbInterner<'db> as rustc_type_ir::Interner>::FnInputTys {
         Tys::new_from_iter(
             DbInterner::conjure(),
-            self.as_slice().split_last().unwrap().1.iter().cloned(),
+            self.as_slice().split_last().unwrap().1.iter().copied(),
         )
     }
 

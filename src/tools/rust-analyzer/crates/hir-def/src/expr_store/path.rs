@@ -88,7 +88,7 @@ pub struct AssociatedTypeBinding {
 }
 
 /// A single generic argument.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum GenericArg {
     Type(TypeRefId),
     Lifetime(LifetimeRefId),
