@@ -2136,9 +2136,7 @@ impl<'db> Evaluator<'db> {
             return Ok(Some((0, 1)));
         }
         let layout = layout?;
-        Ok(layout
-            .is_sized()
-            .then(|| (layout.size.bytes_usize(), layout.align.bytes() as usize)))
+        Ok(layout.is_sized().then(|| (layout.size.bytes_usize(), layout.align.bytes() as usize)))
     }
 
     /// A version of `self.size_of` which returns error if the type is unsized. `what` argument should
