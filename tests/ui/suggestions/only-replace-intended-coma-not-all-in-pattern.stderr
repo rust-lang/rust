@@ -8,7 +8,7 @@ help: try adding parentheses to match on a tuple...
    |
 LL |         (Foo { x: 2, ch: ',' }, Foo { x: 3, ch: '@' }) => (),
    |         +                                            +
-help: ...or a vertical bar to match on alternative
+help: ...or a vertical bar to match on alternatives
    |
 LL -         Foo { x: 2, ch: ',' }, Foo { x: 3, ch: '@' } => (),
 LL +         Foo { x: 2, ch: ',' } | Foo { x: 3, ch: '@' } => (),

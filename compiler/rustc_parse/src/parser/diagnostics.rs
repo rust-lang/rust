@@ -2961,7 +2961,7 @@ impl<'a> Parser<'a> {
         if let CommaRecoveryMode::EitherTupleOrPipe = rt {
             err.span_suggestion(
                 comma_span,
-                "...or a vertical bar to match on alternative",
+                "...or a vertical bar to match on alternatives",
                 " |",
                 Applicability::MachineApplicable,
             );
