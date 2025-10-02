@@ -798,8 +798,8 @@ impl<'tcx> IsIdentity for CanonicalUserType<'tcx> {
                     match arg.kind() {
                         GenericArgKind::Type(ty) => match ty.kind() {
                             ty::Bound(debruijn, b) => {
-                                // We only allow a `ty::INNERMOST` index in generic parameters.
-                                assert_eq!(*debruijn, ty::INNERMOST);
+                                // We only allow a `ty::BoundVarIndexKind::Canonical` index in generic parameters.
+                                assert_eq!(*debruijn, ty::BoundVarIndexKind::Canonical);
                                 cvar == b.var
                             }
                             _ => false,
@@ -807,8 +807,8 @@ impl<'tcx> IsIdentity for CanonicalUserType<'tcx> {
 
                         GenericArgKind::Lifetime(r) => match r.kind() {
                             ty::ReBound(debruijn, b) => {
-                                // We only allow a `ty::INNERMOST` index in generic parameters.
-                                assert_eq!(debruijn, ty::INNERMOST);
+                                // We only allow a `ty::BoundVarIndexKind::Canonical` index in generic parameters.
+                                assert_eq!(debruijn, ty::BoundVarIndexKind::Canonical);
                                 cvar == b.var
                             }
                             _ => false,
@@ -816,8 +816,8 @@ impl<'tcx> IsIdentity for CanonicalUserType<'tcx> {
 
                         GenericArgKind::Const(ct) => match ct.kind() {
                             ty::ConstKind::Bound(debruijn, b) => {
-                                // We only allow a `ty::INNERMOST` index in generic parameters.
-                                assert_eq!(debruijn, ty::INNERMOST);
+                                // We only allow a `ty::BoundVarIndexKind::Canonical` index in generic parameters.
+                                assert_eq!(debruijn, ty::BoundVarIndexKind::Canonical);
                                 cvar == b.var
                             }
                             _ => false,

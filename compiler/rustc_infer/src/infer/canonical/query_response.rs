@@ -440,28 +440,28 @@ impl<'tcx> InferCtxt<'tcx> {
                     // and only use it for placeholders. We need to handle the
                     // `sub_root` of type inference variables which would make this
                     // more involved. They are also a lot rarer than region variables.
-                    if let ty::Bound(debruijn, b) = *result_value.kind()
+                    if let ty::Bound(index_kind, b) = *result_value.kind()
                         && !matches!(
                             query_response.variables[b.var.as_usize()],
                             CanonicalVarKind::Ty { .. }
                         )
                     {
-                        // We only allow a `ty::INNERMOST` index in generic parameters.
-                        assert_eq!(debruijn, ty::INNERMOST);
+                        // We only allow a `Canonical` index in generic parameters.
+                        assert!(matches!(index_kind, ty::BoundVarIndexKind::Canonical));
                         opt_values[b.var] = Some(*original_value);
                     }
                 }
                 GenericArgKind::Lifetime(result_value) => {
-                    if let ty::ReBound(debruijn, b) = result_value.kind() {
-                        // We only allow a `ty::INNERMOST` index in generic parameters.
-                        assert_eq!(debruijn, ty::INNERMOST);
+                    if let ty::ReBound(index_kind, b) = result_value.kind() {
+                        // We only allow a `Canonical` index in generic parameters.
+                        assert!(matches!(index_kind, ty::BoundVarIndexKind::Canonical));
                         opt_values[b.var] = Some(*original_value);
                     }
                 }
                 GenericArgKind::Const(result_value) => {
-                    if let ty::ConstKind::Bound(debruijn, b) = result_value.kind() {
-                        // We only allow a `ty::INNERMOST` index in generic parameters.
-                        assert_eq!(debruijn, ty::INNERMOST);
+                    if let ty::ConstKind::Bound(index_kind, b) = result_value.kind() {
+                        // We only allow a `Canonical` index in generic parameters.
+                        assert!(matches!(index_kind, ty::BoundVarIndexKind::Canonical));
                         opt_values[b.var] = Some(*original_value);
                     }
                 }
