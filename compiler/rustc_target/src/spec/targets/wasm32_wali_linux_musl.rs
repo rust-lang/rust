@@ -6,11 +6,18 @@ use crate::spec::{Cc, LinkerFlavor, Target, TargetMetadata, base};
 pub(crate) fn target() -> Target {
     let mut options = base::linux_wasm::opts();
 
-    options
-        .add_pre_link_args(LinkerFlavor::WasmLld(Cc::No), &["--export-memory", "--shared-memory"]);
+    options.add_pre_link_args(
+        LinkerFlavor::WasmLld(Cc::No),
+        &["--export-memory", "--shared-memory", "--max-memory=1073741824"],
+    );
     options.add_pre_link_args(
         LinkerFlavor::WasmLld(Cc::Yes),
-        &["--target=wasm32-wasi-threads", "-Wl,--export-memory,", "-Wl,--shared-memory"],
+        &[
+            "--target=wasm32-wasi-threads",
+            "-Wl,--export-memory,",
+            "-Wl,--shared-memory",
+            "-Wl,--max-memory=1073741824",
+        ],
     );
 
     Target {
