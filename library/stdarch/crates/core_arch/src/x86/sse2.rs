@@ -201,7 +201,12 @@ pub fn _mm_avg_epu16(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(pmaddwd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_madd_epi16(a: __m128i, b: __m128i) -> __m128i {
-    unsafe { transmute(pmaddwd(a.as_i16x8(), b.as_i16x8())) }
+    unsafe {
+        let r: i32x8 = simd_mul(simd_cast(a.as_i16x8()), simd_cast(b.as_i16x8()));
+        let even: i32x4 = simd_shuffle!(r, r, [0, 2, 4, 6]);
+        let odd: i32x4 = simd_shuffle!(r, r, [1, 3, 5, 7]);
+        simd_add(even, odd).as_m128i()
+    }
 }
 
 /// Compares packed 16-bit integers in `a` and `b`, and returns the packed
@@ -2417,7 +2422,10 @@ pub fn _mm_cvtsd_f64(a: __m128d) -> f64 {
 #[cfg_attr(test, assert_instr(cvtss2sd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_cvtss_sd(a: __m128d, b: __m128) -> __m128d {
-    unsafe { cvtss2sd(a, b) }
+    unsafe {
+        let elt: f32 = simd_extract!(b, 0);
+        simd_insert!(a, 0, elt as f64)
+    }
 }
 
 /// Converts packed double-precision (64-bit) floating-point elements in `a` to
@@ -3043,8 +3051,6 @@ unsafe extern "C" {
     fn lfence();
     #[link_name = "llvm.x86.sse2.mfence"]
     fn mfence();
-    #[link_name = "llvm.x86.sse2.pmadd.wd"]
-    fn pmaddwd(a: i16x8, b: i16x8) -> i32x4;
     #[link_name = "llvm.x86.sse2.psad.bw"]
     fn psadbw(a: u8x16, b: u8x16) -> u64x2;
     #[link_name = "llvm.x86.sse2.psll.w"]
@@ -3115,8 +3121,6 @@ unsafe extern "C" {
     fn cvtsd2si(a: __m128d) -> i32;
     #[link_name = "llvm.x86.sse2.cvtsd2ss"]
     fn cvtsd2ss(a: __m128, b: __m128d) -> __m128;
-    #[link_name = "llvm.x86.sse2.cvtss2sd"]
-    fn cvtss2sd(a: __m128d, b: __m128) -> __m128d;
     #[link_name = "llvm.x86.sse2.cvttpd2dq"]
     fn cvttpd2dq(a: __m128d) -> i32x4;
     #[link_name = "llvm.x86.sse2.cvttsd2si"]

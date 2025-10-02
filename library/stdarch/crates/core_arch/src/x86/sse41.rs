@@ -1006,7 +1006,10 @@ pub fn _mm_mpsadbw_epu8<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(ptest))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_testz_si128(a: __m128i, mask: __m128i) -> i32 {
-    unsafe { ptestz(a.as_i64x2(), mask.as_i64x2()) }
+    unsafe {
+        let r = simd_reduce_or(simd_and(a.as_i64x2(), mask.as_i64x2()));
+        (0i64 == r) as i32
+    }
 }
 
 /// Tests whether the specified bits in a 128-bit integer vector are all
@@ -1029,7 +1032,13 @@ pub fn _mm_testz_si128(a: __m128i, mask: __m128i) -> i32 {
 #[cfg_attr(test, assert_instr(ptest))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_testc_si128(a: __m128i, mask: __m128i) -> i32 {
-    unsafe { ptestc(a.as_i64x2(), mask.as_i64x2()) }
+    unsafe {
+        let r = simd_reduce_or(simd_and(
+            simd_xor(a.as_i64x2(), i64x2::splat(!0)),
+            mask.as_i64x2(),
+        ));
+        (0i64 == r) as i32
+    }
 }
 
 /// Tests whether the specified bits in a 128-bit integer vector are
@@ -1165,10 +1174,6 @@ unsafe extern "C" {
     fn phminposuw(a: u16x8) -> u16x8;
     #[link_name = "llvm.x86.sse41.mpsadbw"]
     fn mpsadbw(a: u8x16, b: u8x16, imm8: u8) -> u16x8;
-    #[link_name = "llvm.x86.sse41.ptestz"]
-    fn ptestz(a: i64x2, mask: i64x2) -> i32;
-    #[link_name = "llvm.x86.sse41.ptestc"]
-    fn ptestc(a: i64x2, mask: i64x2) -> i32;
     #[link_name = "llvm.x86.sse41.ptestnzc"]
     fn ptestnzc(a: i64x2, mask: i64x2) -> i32;
 }
