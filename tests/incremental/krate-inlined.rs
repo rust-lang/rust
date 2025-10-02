@@ -4,6 +4,7 @@
 
 //@ revisions: rpass1 rpass2
 //@ compile-flags: -Z query-dep-graph
+//@ ignore-backends: gcc
 
 #![allow(warnings)]
 #![feature(rustc_attrs)]
