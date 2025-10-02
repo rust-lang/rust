@@ -1942,44 +1942,77 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     return true;
                 };
 
+                let update_message =
+                    |this: &mut Self, err: &mut Diag<'_>, source: &PathSource<'_, '_, '_>| {
+                        match source {
+                            // e.g. `if let Enum::TupleVariant(field1, field2) = _`
+                            PathSource::TupleStruct(_, pattern_spans) => {
+                                err.primary_message(
+                                "cannot match against a tuple struct which contains private fields",
+                            );
+
+                                // Use spans of the tuple struct pattern.
+                                Some(Vec::from(*pattern_spans))
+                            }
+                            // e.g. `let _ = Enum::TupleVariant(field1, field2);`
+                            PathSource::Expr(Some(Expr {
+                                kind: ExprKind::Call(path, args),
+                                span: call_span,
+                                ..
+                            })) => {
+                                err.primary_message(
+                                "cannot initialize a tuple struct which contains private fields",
+                            );
+                                this.suggest_alternative_construction_methods(
+                                    def_id,
+                                    err,
+                                    path.span,
+                                    *call_span,
+                                    &args[..],
+                                );
+                                // Use spans of the tuple struct definition.
+                                this.r
+                                    .field_idents(def_id)
+                                    .map(|fields| fields.iter().map(|f| f.span).collect::<Vec<_>>())
+                            }
+                            _ => None,
+                        }
+                    };
                 let is_accessible = self.r.is_accessible_from(ctor_vis, self.parent_scope.module);
+                if let Some(use_span) = self.r.inaccessible_ctor_reexport.get(&span)
+                    && is_accessible
+                {
+                    err.span_note(
+                        *use_span,
+                        "the type is accessed through this re-export, but the type's constructor \
+                         is not visible in this import's scope due to private fields",
+                    );
+                    if is_accessible
+                        && fields
+                            .iter()
+                            .all(|vis| self.r.is_accessible_from(*vis, self.parent_scope.module))
+                    {
+                        err.span_suggestion_verbose(
+                            span,
+                            "the type can be constructed directly, because its fields are \
+                             available from the current scope",
+                            // Using `tcx.def_path_str` causes the compiler to hang.
+                            // We don't need to handle foreign crate types because in that case you
+                            // can't access the ctor either way.
+                            format!(
+                                "crate{}", // The method already has leading `::`.
+                                self.r.tcx.def_path(def_id).to_string_no_crate_verbose(),
+                            ),
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                    update_message(self, err, &source);
+                }
                 if !is_expected(ctor_def) || is_accessible {
                     return true;
                 }
 
-                let field_spans = match source {
-                    // e.g. `if let Enum::TupleVariant(field1, field2) = _`
-                    PathSource::TupleStruct(_, pattern_spans) => {
-                        err.primary_message(
-                            "cannot match against a tuple struct which contains private fields",
-                        );
-
-                        // Use spans of the tuple struct pattern.
-                        Some(Vec::from(pattern_spans))
-                    }
-                    // e.g. `let _ = Enum::TupleVariant(field1, field2);`
-                    PathSource::Expr(Some(Expr {
-                        kind: ExprKind::Call(path, args),
-                        span: call_span,
-                        ..
-                    })) => {
-                        err.primary_message(
-                            "cannot initialize a tuple struct which contains private fields",
-                        );
-                        self.suggest_alternative_construction_methods(
-                            def_id,
-                            err,
-                            path.span,
-                            *call_span,
-                            &args[..],
-                        );
-                        // Use spans of the tuple struct definition.
-                        self.r
-                            .field_idents(def_id)
-                            .map(|fields| fields.iter().map(|f| f.span).collect::<Vec<_>>())
-                    }
-                    _ => None,
-                };
+                let field_spans = update_message(self, err, &source);
 
                 if let Some(spans) =
                     field_spans.filter(|spans| spans.len() > 0 && fields.len() == spans.len())

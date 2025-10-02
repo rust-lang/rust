@@ -1914,9 +1914,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if let Some(ref args) = call_args
                             && fn_sig.inputs()[1..]
                                 .iter()
-                                .zip(args.into_iter())
-                                .all(|(expected, found)| self.may_coerce(*expected, *found))
-                            && fn_sig.inputs()[1..].len() == args.len()
+                                .eq_by(args, |expected, found| self.may_coerce(*expected, *found))
                         {
                             err.span_suggestion_verbose(
                                 item_name.span,

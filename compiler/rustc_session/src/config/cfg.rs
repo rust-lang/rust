@@ -259,11 +259,11 @@ pub(crate) fn default_configuration(sess: &Session) -> Cfg {
     });
     let mut has_atomic = false;
     for (i, align) in [
-        (8, layout.i8_align.abi),
-        (16, layout.i16_align.abi),
-        (32, layout.i32_align.abi),
-        (64, layout.i64_align.abi),
-        (128, layout.i128_align.abi),
+        (8, layout.i8_align),
+        (16, layout.i16_align),
+        (32, layout.i32_align),
+        (64, layout.i64_align),
+        (128, layout.i128_align),
     ] {
         if i >= sess.target.min_atomic_width() && i <= sess.target.max_atomic_width() {
             if !has_atomic {

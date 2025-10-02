@@ -184,6 +184,10 @@ impl CodegenBackend for GccCodegenBackend {
         crate::DEFAULT_LOCALE_RESOURCE
     }
 
+    fn name(&self) -> &'static str {
+        "gcc"
+    }
+
     fn init(&self, _sess: &Session) {
         #[cfg(feature = "master")]
         {

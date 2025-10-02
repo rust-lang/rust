@@ -27,7 +27,6 @@
 #![feature(panic_can_unwind)]
 #![feature(restricted_std)]
 #![feature(rustc_attrs)]
-#![feature(stmt_expr_attributes)]
 #![feature(extend_one)]
 #![recursion_limit = "256"]
 #![allow(internal_features)]

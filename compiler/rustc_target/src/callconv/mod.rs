@@ -332,7 +332,7 @@ impl CastTarget {
         self.prefix
             .iter()
             .filter_map(|x| x.map(|reg| reg.align(cx)))
-            .fold(cx.data_layout().aggregate_align.abi.max(self.rest.align(cx)), |acc, align| {
+            .fold(cx.data_layout().aggregate_align.max(self.rest.align(cx)), |acc, align| {
                 acc.max(align)
             })
     }

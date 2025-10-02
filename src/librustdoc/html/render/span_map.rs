@@ -8,10 +8,47 @@ use rustc_hir::{ExprKind, HirId, Item, ItemKind, Mod, Node, QPath};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::hygiene::MacroKind;
-use rustc_span::{BytePos, ExpnKind, Span};
+use rustc_span::{BytePos, ExpnKind};
 
 use crate::clean::{self, PrimitiveType, rustc_span};
 use crate::html::sources;
+
+/// This is a stripped down version of [`rustc_span::Span`] that only contains the start and end byte positions of the span.
+///
+/// Profiling showed that the `Span` interner was taking up a lot of the run-time when highlighting, and since we
+/// never actually use the context and parent that are stored in a normal `Span`, we can replace its usages with this
+/// one, which is much cheaper to construct.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) struct Span {
+    lo: BytePos,
+    hi: BytePos,
+}
+
+impl From<rustc_span::Span> for Span {
+    fn from(value: rustc_span::Span) -> Self {
+        Self { lo: value.lo(), hi: value.hi() }
+    }
+}
+
+impl Span {
+    pub(crate) fn lo(self) -> BytePos {
+        self.lo
+    }
+
+    pub(crate) fn hi(self) -> BytePos {
+        self.hi
+    }
+
+    pub(crate) fn with_lo(self, lo: BytePos) -> Self {
+        Self { lo, hi: self.hi() }
+    }
+
+    pub(crate) fn with_hi(self, hi: BytePos) -> Self {
+        Self { lo: self.lo(), hi }
+    }
+}
+
+pub(crate) const DUMMY_SP: Span = Span { lo: BytePos(0), hi: BytePos(0) };
 
 /// This enum allows us to store two different kinds of information:
 ///
@@ -96,7 +133,7 @@ impl SpanMapVisitor<'_> {
                         })
                         .unwrap_or(path.span)
                 };
-                self.matches.insert(span, link);
+                self.matches.insert(span.into(), link);
             }
             Res::Local(_) if let Some(span) = self.tcx.hir_res_span(path.res) => {
                 let path_span = if only_use_last_segment
@@ -106,11 +143,12 @@ impl SpanMapVisitor<'_> {
                 } else {
                     path.span
                 };
-                self.matches.insert(path_span, LinkFromSrc::Local(clean::Span::new(span)));
+                self.matches.insert(path_span.into(), LinkFromSrc::Local(clean::Span::new(span)));
             }
             Res::PrimTy(p) => {
                 // FIXME: Doesn't handle "path-like" primitives like arrays or tuples.
-                self.matches.insert(path.span, LinkFromSrc::Primitive(PrimitiveType::from(p)));
+                self.matches
+                    .insert(path.span.into(), LinkFromSrc::Primitive(PrimitiveType::from(p)));
             }
             Res::Err => {}
             _ => {}
@@ -127,7 +165,7 @@ impl SpanMapVisitor<'_> {
             if cspan.inner().is_dummy() || cspan.cnum(self.tcx.sess) != LOCAL_CRATE {
                 return;
             }
-            self.matches.insert(span, LinkFromSrc::Doc(item.owner_id.to_def_id()));
+            self.matches.insert(span.into(), LinkFromSrc::Doc(item.owner_id.to_def_id()));
         }
     }
 
@@ -138,7 +176,7 @@ impl SpanMapVisitor<'_> {
     /// so, we loop until we find the macro definition by using `outer_expn_data` in a loop.
     /// Finally, we get the information about the macro itself (`span` if "local", `DefId`
     /// otherwise) and store it inside the span map.
-    fn handle_macro(&mut self, span: Span) -> bool {
+    fn handle_macro(&mut self, span: rustc_span::Span) -> bool {
         if !span.from_expansion() {
             return false;
         }
@@ -176,7 +214,7 @@ impl SpanMapVisitor<'_> {
         // The "call_site" includes the whole macro with its "arguments". We only want
         // the macro name.
         let new_span = new_span.with_hi(new_span.lo() + BytePos(macro_name.len() as u32));
-        self.matches.insert(new_span, link_from_src);
+        self.matches.insert(new_span.into(), link_from_src);
         true
     }
 
@@ -233,7 +271,7 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
         intravisit::walk_path(self, path);
     }
 
-    fn visit_qpath(&mut self, qpath: &QPath<'tcx>, id: HirId, _span: Span) {
+    fn visit_qpath(&mut self, qpath: &QPath<'tcx>, id: HirId, _span: rustc_span::Span) {
         match *qpath {
             QPath::TypeRelative(qself, path) => {
                 if matches!(path.res, Res::Err) {
@@ -249,7 +287,7 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
                         self.handle_path(&path, false);
                     }
                 } else {
-                    self.infer_id(path.hir_id, Some(id), path.ident.span);
+                    self.infer_id(path.hir_id, Some(id), path.ident.span.into());
                 }
 
                 rustc_ast::visit::try_visit!(self.visit_ty_unambig(qself));
@@ -267,7 +305,7 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
         }
     }
 
-    fn visit_mod(&mut self, m: &'tcx Mod<'tcx>, span: Span, id: HirId) {
+    fn visit_mod(&mut self, m: &'tcx Mod<'tcx>, span: rustc_span::Span, id: HirId) {
         // To make the difference between "mod foo {}" and "mod foo;". In case we "import" another
         // file, we want to link to it. Otherwise no need to create a link.
         if !span.overlaps(m.spans.inner_span) {
@@ -275,8 +313,10 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
             // name only and not all the "mod foo;".
             if let Node::Item(item) = self.tcx.hir_node(id) {
                 let (ident, _) = item.expect_mod();
-                self.matches
-                    .insert(ident.span, LinkFromSrc::Local(clean::Span::new(m.spans.inner_span)));
+                self.matches.insert(
+                    ident.span.into(),
+                    LinkFromSrc::Local(clean::Span::new(m.spans.inner_span)),
+                );
             }
         } else {
             // If it's a "mod foo {}", we want to look to its documentation page.
@@ -288,9 +328,9 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
     fn visit_expr(&mut self, expr: &'tcx rustc_hir::Expr<'tcx>) {
         match expr.kind {
             ExprKind::MethodCall(segment, ..) => {
-                self.infer_id(segment.hir_id, Some(expr.hir_id), segment.ident.span)
+                self.infer_id(segment.hir_id, Some(expr.hir_id), segment.ident.span.into())
             }
-            ExprKind::Call(call, ..) => self.infer_id(call.hir_id, None, call.span),
+            ExprKind::Call(call, ..) => self.infer_id(call.hir_id, None, call.span.into()),
             _ => {
                 if self.handle_macro(expr.span) {
                     // We don't want to go deeper into the macro.

@@ -167,7 +167,7 @@ pub struct TypeckResults<'tcx> {
     /// We also store the type here, so that the compiler can use it as a hint
     /// for figuring out hidden types, even if they are only set in dead code
     /// (which doesn't show up in MIR).
-    pub concrete_opaque_types: FxIndexMap<LocalDefId, ty::OpaqueHiddenType<'tcx>>,
+    pub hidden_types: FxIndexMap<LocalDefId, ty::OpaqueHiddenType<'tcx>>,
 
     /// Tracks the minimum captures required for a closure;
     /// see `MinCaptureInformationMap` for more details.
@@ -250,7 +250,7 @@ impl<'tcx> TypeckResults<'tcx> {
             coercion_casts: Default::default(),
             used_trait_imports: Default::default(),
             tainted_by_errors: None,
-            concrete_opaque_types: Default::default(),
+            hidden_types: Default::default(),
             closure_min_captures: Default::default(),
             closure_fake_reads: Default::default(),
             rvalue_scopes: Default::default(),

@@ -369,18 +369,16 @@ where
                     return ecx.forced_ambiguity(MaybeCause::Ambiguity);
                 }
             };
+        let (inputs, output) = ecx.instantiate_binder_with_infer(tupled_inputs_and_output);
 
         // A built-in `Fn` impl only holds if the output is sized.
         // (FIXME: technically we only need to check this if the type is a fn ptr...)
-        let output_is_sized_pred = tupled_inputs_and_output.map_bound(|(_, output)| {
-            ty::TraitRef::new(cx, cx.require_trait_lang_item(SolverTraitLangItem::Sized), [output])
-        });
+        let output_is_sized_pred =
+            ty::TraitRef::new(cx, cx.require_trait_lang_item(SolverTraitLangItem::Sized), [output]);
 
-        let pred = tupled_inputs_and_output
-            .map_bound(|(inputs, _)| {
-                ty::TraitRef::new(cx, goal.predicate.def_id(), [goal.predicate.self_ty(), inputs])
-            })
-            .upcast(cx);
+        let pred =
+            ty::TraitRef::new(cx, goal.predicate.def_id(), [goal.predicate.self_ty(), inputs])
+                .upcast(cx);
         Self::probe_and_consider_implied_clause(
             ecx,
             CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
@@ -408,28 +406,26 @@ where
                 // This region doesn't matter because we're throwing away the coroutine type
                 Region::new_static(cx),
             )?;
+        let AsyncCallableRelevantTypes {
+            tupled_inputs_ty,
+            output_coroutine_ty,
+            coroutine_return_ty: _,
+        } = ecx.instantiate_binder_with_infer(tupled_inputs_and_output_and_coroutine);
 
         // A built-in `AsyncFn` impl only holds if the output is sized.
         // (FIXME: technically we only need to check this if the type is a fn ptr...)
-        let output_is_sized_pred = tupled_inputs_and_output_and_coroutine.map_bound(
-            |AsyncCallableRelevantTypes { output_coroutine_ty, .. }| {
-                ty::TraitRef::new(
-                    cx,
-                    cx.require_trait_lang_item(SolverTraitLangItem::Sized),
-                    [output_coroutine_ty],
-                )
-            },
+        let output_is_sized_pred = ty::TraitRef::new(
+            cx,
+            cx.require_trait_lang_item(SolverTraitLangItem::Sized),
+            [output_coroutine_ty],
         );
 
-        let pred = tupled_inputs_and_output_and_coroutine
-            .map_bound(|AsyncCallableRelevantTypes { tupled_inputs_ty, .. }| {
-                ty::TraitRef::new(
-                    cx,
-                    goal.predicate.def_id(),
-                    [goal.predicate.self_ty(), tupled_inputs_ty],
-                )
-            })
-            .upcast(cx);
+        let pred = ty::TraitRef::new(
+            cx,
+            goal.predicate.def_id(),
+            [goal.predicate.self_ty(), tupled_inputs_ty],
+        )
+        .upcast(cx);
         Self::probe_and_consider_implied_clause(
             ecx,
             CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
