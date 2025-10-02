@@ -218,13 +218,13 @@ pub mod local_impl {
 /// the global allocator works.
 pub(crate) struct ThreadInit {
     pub handle: Thread,
-    pub rust_start: Box<dyn FnOnce()>,
+    pub rust_start: Box<dyn FnOnce() + Send>,
 }
 
 impl ThreadInit {
     /// Initialize the 'current thread' mechanism on this thread, returning the
     /// Rust entry point.
-    pub fn init(self: Box<Self>) -> Box<dyn FnOnce()> {
+    pub fn init(self: Box<Self>) -> Box<dyn FnOnce() + Send> {
         // Set the current thread before any (de)allocations on the global allocator occur,
         // so that it may call std::thread::current() in its implementation. This is also
         // why we take Box<Self>, to ensure the Box is not destroyed until after this point.
