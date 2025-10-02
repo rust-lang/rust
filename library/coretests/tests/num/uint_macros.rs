@@ -443,6 +443,17 @@ macro_rules! uint_module {
                     assert_eq_const_safe!($T: R.saturating_pow(129), $T::MAX);
                 }
 
+                // overflow in the shift caclculation should result in the final
+                // result being 0 rather than accidentally succeeding due to a
+                // shift within the word size
+                // ie `4 ** 0x8000_0000` should give 0 rather than 1 << 0
+                {
+                    const R: $T = 4;
+                    const HALF: u32 = u32::MAX / 2 + 1;
+                    assert_eq_const_safe!($T: R.wrapping_pow(HALF), 0 as $T);
+                    assert_eq_const_safe!(($T, bool): R.overflowing_pow(HALF), (0 as $T, true));
+                }
+
                 {
                     const R: $T = $T::MAX;
                     assert_eq_const_safe!($T: R.wrapping_pow(0), 1 as $T);

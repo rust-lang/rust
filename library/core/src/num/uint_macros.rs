@@ -2078,6 +2078,17 @@ macro_rules! uint_impl {
             let mut base = self;
             let mut acc: Self = 1;
 
+            if intrinsics::is_val_statically_known(base) && base.is_power_of_two() {
+                // change of base:
+                // if base == 2 ** k, then
+                //    (2 ** k) ** n
+                // == 2 ** (k * n)
+                // == 1 << (k * n)
+                let k = base.ilog2();
+                let shift = try_opt!(k.checked_mul(exp));
+                return (1 as Self).checked_shl(shift);
+            }
+
             if intrinsics::is_val_statically_known(exp) {
                 while exp > 1 {
                     if (exp & 1) == 1 {
@@ -3246,6 +3257,19 @@ macro_rules! uint_impl {
             let mut overflow = false;
             let mut tmp_overflow;
 
+            if intrinsics::is_val_statically_known(base) && base.is_power_of_two() {
+                // change of base:
+                // if base == 2 ** k, then
+                //    (2 ** k) ** n
+                // == 2 ** (k * n)
+                // == 1 << (k * n)
+                let k = base.ilog2();
+                let Some(shift) = k.checked_mul(exp) else {
+                    return (0, true)
+                };
+                return ((1 as Self).unbounded_shl(shift), shift >= Self::BITS)
+            }
+
             if intrinsics::is_val_statically_known(exp) {
                 while exp > 1 {
                     if (exp & 1) == 1 {
@@ -3300,6 +3324,20 @@ macro_rules! uint_impl {
             }
             let mut base = self;
             let mut acc = 1;
+
+            if intrinsics::is_val_statically_known(base) && base.is_power_of_two() {
+                // change of base:
+                // if base == 2 ** k, then
+                //    (2 ** k) ** n
+                // == 2 ** (k * n)
+                // == 1 << (k * n)
+                let k = base.ilog2();
+                let shift = k * exp;
+                // Panic on overflow if `-C overflow-checks` is enabled.
+                // Otherwise will be optimized out
+                let _overflow_check = (1 as Self) << shift;
+                return (1 as Self).unbounded_shl(shift)
+            }
 
             if intrinsics::is_val_statically_known(exp) {
                 while exp > 1 {
