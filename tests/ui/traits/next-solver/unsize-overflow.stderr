@@ -1,0 +1,12 @@
+error[E0275]: overflow evaluating the requirement `Box<&&&&&&&i32>: CoerceUnsized<Box<dyn Send>>`
+  --> $DIR/unsize-overflow.rs:5:28
+   |
+LL |     let _: Box<dyn Send> = Box::new(&&&&&&&1);
+   |                            ^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "16"]` attribute to your crate (`unsize_overflow`)
+   = note: required for the cast from `Box<&&&&&&&i32>` to `Box<dyn Send>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0275`.
