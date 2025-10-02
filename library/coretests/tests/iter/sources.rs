@@ -37,6 +37,7 @@ fn test_repeat_count() {
 }
 
 #[test]
+#[should_panic = "iterator is infinite"]
 fn test_repeat_last() {
     assert_eq!(repeat(42).last(), Some(42));
 }
