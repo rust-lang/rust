@@ -671,7 +671,7 @@ mod llvm_enzyme {
             d_inputs.push(arg.clone());
             match activity {
                 DiffActivity::Active => {
-                    act_ret.push((&*arg.ty).clone());
+                    act_ret.push(arg.ty.clone());
                     // if width =/= 1, then push [arg.ty; width] to act_ret
                 }
                 DiffActivity::ActiveOnly => {
@@ -682,7 +682,7 @@ mod llvm_enzyme {
                     for i in 0..x.width {
                         let mut shadow_arg = arg.clone();
                         // We += into the shadow in reverse mode.
-                        shadow_arg.ty = Box::new(assure_mut_ref(&arg.ty));
+                        shadow_arg.ty = assure_mut_ref(&arg.ty);
                         let old_name = if let PatKind::Ident(_, ident, _) = arg.pat.kind {
                             ident.name
                         } else {
@@ -767,7 +767,7 @@ mod llvm_enzyme {
                     let ident = Ident::from_str_and_span(&name, ty.span);
                     let shadow_arg = ast::Param {
                         attrs: ThinVec::new(),
-                        ty: Box::new(ty.clone()),
+                        ty: ty.clone(),
                         pat: Box::new(ast::Pat {
                             id: ast::DUMMY_NODE_ID,
                             kind: PatKind::Ident(BindingMode::NONE, ident, None),

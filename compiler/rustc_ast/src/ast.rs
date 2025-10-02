@@ -2912,7 +2912,7 @@ pub struct InlineAsm {
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct Param {
     pub attrs: AttrVec,
-    pub ty: Box<Ty>,
+    pub ty: Ty,
     pub pat: Box<Pat>,
     pub id: NodeId,
     pub span: Span,
@@ -2931,7 +2931,7 @@ pub enum SelfKind {
     /// `&'lt pin const self`, `&'lt pin mut self`
     Pinned(Option<Lifetime>, Mutability),
     /// `self: TYPE`, `mut self: TYPE`
-    Explicit(Box<Ty>, Mutability),
+    Explicit(Ty, Mutability),
 }
 
 impl SelfKind {
@@ -2987,32 +2987,32 @@ impl Param {
     /// Builds a `Param` object from `ExplicitSelf`.
     pub fn from_self(attrs: AttrVec, eself: ExplicitSelf, eself_ident: Ident) -> Param {
         let span = eself.span.to(eself_ident.span);
-        let infer_ty = Box::new(Ty {
+        let infer_ty = Ty {
             id: DUMMY_NODE_ID,
             kind: TyKind::ImplicitSelf,
             span: eself_ident.span,
             tokens: None,
-        });
+        };
         let (mutbl, ty) = match eself.node {
             SelfKind::Explicit(ty, mutbl) => (mutbl, ty),
             SelfKind::Value(mutbl) => (mutbl, infer_ty),
             SelfKind::Region(lt, mutbl) => (
                 Mutability::Not,
-                Box::new(Ty {
+                Ty {
                     id: DUMMY_NODE_ID,
-                    kind: TyKind::Ref(lt, MutTy { ty: infer_ty, mutbl }),
+                    kind: TyKind::Ref(lt, MutTy { ty: Box::new(infer_ty), mutbl }),
                     span,
                     tokens: None,
-                }),
+                },
             ),
             SelfKind::Pinned(lt, mutbl) => (
                 mutbl,
-                Box::new(Ty {
+                Ty {
                     id: DUMMY_NODE_ID,
-                    kind: TyKind::PinnedRef(lt, MutTy { ty: infer_ty, mutbl }),
+                    kind: TyKind::PinnedRef(lt, MutTy { ty: Box::new(infer_ty), mutbl }),
                     span,
                     tokens: None,
-                }),
+                },
             ),
         };
         Param {
@@ -4267,7 +4267,7 @@ mod size_asserts {
     static_assert_size!(LitKind, 24);
     static_assert_size!(Local, 96);
     static_assert_size!(MetaItemLit, 40);
-    static_assert_size!(Param, 40);
+    static_assert_size!(Param, 96);
     static_assert_size!(Pat, 80);
     static_assert_size!(PatKind, 56);
     static_assert_size!(Path, 24);

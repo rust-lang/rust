@@ -1409,7 +1409,7 @@ impl<'a> Parser<'a> {
                         args: Some(Box::new(ast::GenericArgs::Parenthesized(
                             ast::ParenthesizedArgs {
                                 span: args_lo.to(self.prev_token.span),
-                                inputs: decl.inputs.iter().map(|a| (&*a.ty).clone()).collect(),
+                                inputs: decl.inputs.iter().map(|a| a.ty.clone()).collect(),
                                 inputs_span: args_lo.until(decl.output.span()),
                                 output: decl.output.clone(),
                             }
@@ -1509,7 +1509,7 @@ impl<'a> Parser<'a> {
                 }
             }
         };
-        let inputs: ThinVec<_> = params.into_iter().map(|input| *input.ty).collect();
+        let inputs: ThinVec<_> = params.into_iter().map(|input| input.ty).collect();
         let inputs_span = inputs_lo.to(self.prev_token.span);
         let output = match self.parse_ret_ty(AllowPlus::No, RecoverQPath::No, RecoverReturnSign::No)
         {

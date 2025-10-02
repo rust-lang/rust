@@ -3319,7 +3319,6 @@ impl<'a> Parser<'a> {
             };
 
             let span = lo.to(this.prev_token.span);
-            let ty = Box::new(ty);
 
             Ok((
                 Param { attrs, id: ast::DUMMY_NODE_ID, is_placeholder: false, pat, span, ty },
@@ -3365,7 +3364,7 @@ impl<'a> Parser<'a> {
             let eself_ident = expect_self_ident(this);
             let eself_hi = this.prev_token.span;
             let eself = if this.eat(exp!(Colon)) {
-                SelfKind::Explicit(this.parse_ty()?, m)
+                SelfKind::Explicit(this.parse_ty_mut()?, m)
             } else {
                 SelfKind::Value(m)
             };

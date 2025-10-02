@@ -42,9 +42,7 @@ pub(crate) fn placeholder(
             tokens: None,
         })
     };
-    let ty = || {
-        Box::new(ast::Ty { id, kind: ast::TyKind::MacCall(mac_placeholder()), span, tokens: None })
-    };
+    let ty = || ast::Ty { id, kind: ast::TyKind::MacCall(mac_placeholder()), span, tokens: None };
     let pat = || {
         Box::new(ast::Pat {
             id,
@@ -183,7 +181,7 @@ pub(crate) fn placeholder(
             id,
             ident: None,
             span,
-            ty: ty(),
+            ty: Box::new(ty()),
             vis,
             is_placeholder: true,
             safety: Safety::Default,
@@ -209,7 +207,7 @@ pub(crate) fn placeholder(
                 span,
                 kind: ast::WherePredicateKind::BoundPredicate(ast::WhereBoundPredicate {
                     bound_generic_params: Default::default(),
-                    bounded_ty: ty(),
+                    bounded_ty: Box::new(ty()),
                     bounds: Default::default(),
                 }),
                 is_placeholder: true,

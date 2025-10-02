@@ -60,7 +60,7 @@ pub(super) fn dummy_arg(ident: Ident, guar: ErrorGuaranteed) -> Param {
         id: ast::DUMMY_NODE_ID,
         pat,
         span: ident.span,
-        ty: Box::new(ty),
+        ty,
         is_placeholder: false,
     }
 }

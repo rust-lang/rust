@@ -665,10 +665,10 @@ impl<'a> Parser<'a> {
         lhs_span: Span,
         op_span: Span,
     ) -> PResult<'a, Box<Expr>> {
-        let mk_expr = |this: &mut Self, lhs: Box<Expr>, rhs: Ty| {
+        let mk_expr = |this: &mut Self, lhs: Box<Expr>, rhs: Box<Ty>| {
             this.mk_expr(
                 this.mk_expr_sp(&lhs, lhs_span, op_span, rhs.span),
-                ExprKind::Cast(lhs, Box::new(rhs)),
+                ExprKind::Cast(lhs, rhs),
             )
         };
 
@@ -676,7 +676,7 @@ impl<'a> Parser<'a> {
         // LessThan comparison after this cast.
         let parser_snapshot_before_type = self.clone();
         let cast_expr = match self.parse_as_cast_ty() {
-            Ok(rhs) => mk_expr(self, lhs, rhs),
+            Ok(rhs) => mk_expr(self, lhs, Box::new(rhs)),
             Err(type_err) => {
                 if !self.may_recover() {
                     return Err(type_err);
@@ -725,7 +725,7 @@ impl<'a> Parser<'a> {
                         let expr = mk_expr(
                             self,
                             lhs,
-                            self.mk_ty_mut(path.span, TyKind::Path(None, path.clone())),
+                            Box::new(self.mk_ty_mut(path.span, TyKind::Path(None, path.clone()))),
                         );
 
                         let args_span = self.look_ahead(1, |t| t.span).to(span_after_type);
@@ -2606,9 +2606,9 @@ impl<'a> Parser<'a> {
         self.collect_tokens(None, attrs, ForceCollect::No, |this, attrs| {
             let pat = Box::new(this.parse_pat_no_top_alt(Some(Expected::ParameterName), None)?);
             let ty = if this.eat(exp!(Colon)) {
-                this.parse_ty()?
+                this.parse_ty_mut()?
             } else {
-                this.mk_ty(pat.span, TyKind::Infer)
+                this.mk_ty_mut(pat.span, TyKind::Infer)
             };
 
             Ok((

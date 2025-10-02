@@ -672,7 +672,7 @@ impl<'a> ExtCtxt<'a> {
             id: ast::DUMMY_NODE_ID,
             pat,
             span,
-            ty: Box::new(ty),
+            ty,
             is_placeholder: false,
         }
     }
