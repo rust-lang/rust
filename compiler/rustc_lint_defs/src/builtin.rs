@@ -5217,7 +5217,7 @@ declare_lint! {
 
 declare_lint! {
     /// The `repr_c_enums_larger_than_int` lint detects `repr(C)` enums with discriminant
-    /// values that do not fit into a C `int`.
+    /// values that do not fit into a C `int` or `unsigned int`.
     ///
     /// ### Example
     ///
@@ -5231,7 +5231,7 @@ declare_lint! {
     /// This will produce:
     ///
     /// ```text
-    /// error: `repr(C)` enum discriminant does not fit into C `int`
+    /// error: `repr(C)` enum discriminant does not fit into C `int` nor into C `unsigned int`
     ///   --> $DIR/repr-c-big-discriminant1.rs:16:5
     ///    |
     /// LL |     A = 9223372036854775807, // i64::MAX
@@ -5243,15 +5243,17 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// In C, enums with discriminants that do not fit into an `int` are a portability hazard: such
-    /// enums are only permitted since C23, and not supported e.g. by MSVC. Furthermore, Rust
-    /// interprets the discriminant values of `repr(C)` enums as expressions of type `isize`, which
-    /// cannot be changed in a backwards-compatible way. If the discriminant is given as a literal
-    /// that does not fit into `isize`, it is wrapped (with a warning). This makes it impossible to
-    /// implement the C23 behavior of enums where the enum discriminants have no predefined type and
-    /// instead the enum uses a type large enough to hold all discriminants.
+    /// In C, enums with discriminants that do not all fit into an `int` or all fit into an
+    /// `unsigned int` are a portability hazard: such enums are only permitted since C23, and not
+    /// supported e.g. by MSVC.
     ///
-    /// Therefore, `repr(C)` enums require all discriminants to fit into a C `int`.
+    /// Furthermore, Rust interprets the discriminant values of `repr(C)` enums as expressions of
+    /// type `isize`. This makes it impossible to implement the C23 behavior of enums where the enum
+    /// discriminants have no predefined type and instead the enum uses a type large enough to hold
+    /// all discriminants.
+    ///
+    /// Therefore, `repr(C)` enums in Rust require that either all discriminants to fit into a C
+    /// `int` or they all fit into an `unsigned int`.
     pub REPR_C_ENUMS_LARGER_THAN_INT,
     Warn,
     "repr(C) enums with discriminant values that do not fit into a C int",
