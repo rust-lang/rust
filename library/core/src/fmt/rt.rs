@@ -150,7 +150,7 @@ impl Argument<'_> {
     #[track_caller]
     pub const fn from_usize(x: &usize) -> Argument<'_> {
         if *x > u16::MAX as usize {
-            panic!("Formatting argument out of range");
+            panic!("Formatting argument out of range: `{x}` is bigger than `u16::MAX`");
         }
         Argument { ty: ArgumentType::Count(*x as u16) }
     }
