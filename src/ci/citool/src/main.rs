@@ -24,7 +24,7 @@ use crate::github::JobInfoResolver;
 use crate::jobs::RunType;
 use crate::metrics::{JobMetrics, download_auto_job_metrics, download_job_metrics, load_metrics};
 use crate::test_dashboard::generate_test_dashboard;
-use crate::utils::{load_env_var, output_details};
+use crate::utils::{init_submodule_if_needed, load_env_var, output_details};
 
 const CI_DIRECTORY: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/..");
 pub const DOCKER_DIRECTORY: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../docker");
@@ -120,6 +120,8 @@ fn run_workflow_locally(db: JobDatabase, job_type: JobType, name: String) -> any
         };
         (key.clone(), value)
     }));
+
+    init_submodule_if_needed("src/llvm-project/")?;
 
     let mut cmd = Command::new(Path::new(DOCKER_DIRECTORY).join("run.sh"));
     cmd.arg(job.image());
