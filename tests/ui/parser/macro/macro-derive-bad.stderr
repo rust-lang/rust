@@ -86,5 +86,11 @@ LL | macro_rules! derive_dup_matcher { derive() {$x:ident $x:ident} => {} }
    |                                             |
    |                                             previous binding
 
-error: aborting due to 12 previous errors
+error: `unsafe` is only supported on `attr` rules
+  --> $DIR/macro-derive-bad.rs:45:30
+   |
+LL | macro_rules! derive_unsafe { unsafe derive() {} => {} }
+   |                              ^^^^^^
+
+error: aborting due to 13 previous errors
 
