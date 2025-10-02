@@ -1002,6 +1002,11 @@ impl CodegenCx<'_, '_> {
 }
 
 impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
+    /// Wrapper for `LLVMMDNodeInContext2`, i.e. `llvm::MDNode::get`.
+    pub(crate) fn md_node_in_context(&self, md_list: &[&'ll Metadata]) -> &'ll Metadata {
+        unsafe { llvm::LLVMMDNodeInContext2(self.llcx(), md_list.as_ptr(), md_list.len()) }
+    }
+
     /// A wrapper for [`llvm::LLVMSetMetadata`], but it takes `Metadata` as a parameter instead of `Value`.
     pub(crate) fn set_metadata<'a>(
         &self,
@@ -1011,6 +1016,20 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     ) {
         let node = self.get_metadata_value(md);
         llvm::LLVMSetMetadata(val, kind_id, node);
+    }
+
+    /// Helper method for the sequence of calls:
+    /// - `LLVMMDNodeInContext2` (to create an `llvm::MDNode` from a list of metadata)
+    /// - `LLVMMetadataAsValue` (to adapt that node to an `llvm::Value`)
+    /// - `LLVMSetMetadata` (to set that node as metadata of `kind_id` for `instruction`)
+    pub(crate) fn set_metadata_node(
+        &self,
+        instruction: &'ll Value,
+        kind_id: MetadataKindId,
+        md_list: &[&'ll Metadata],
+    ) {
+        let md = self.md_node_in_context(md_list);
+        self.set_metadata(instruction, kind_id, md);
     }
 }
 
