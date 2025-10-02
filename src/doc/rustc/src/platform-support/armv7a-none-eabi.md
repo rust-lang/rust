@@ -19,9 +19,12 @@ See [`arm-none-eabi`](arm-none-eabi.md) for information applicable to all
 
 ## Target maintainers
 
-[Rust Embedded Devices Working Group Arm Team]
+- [Rust Embedded Devices Working Group Arm Team]
+- [@rust-lang/arm-maintainers][arm_maintainers] ([rust@arm.com][arm_email])
 
 [Rust Embedded Devices Working Group Arm Team]: https://github.com/rust-embedded/wg?tab=readme-ov-file#the-arm-team
+[arm_maintainers]: https://github.com/rust-lang/team/blob/master/teams/arm-maintainers.toml
+[arm_email]: mailto:rust@arm.com
 
 ## Requirements
 

@@ -23,7 +23,11 @@ only option because there is no FPU support in [Armv7-M].
 
 ## Target maintainers
 
-[Rust Embedded Devices Working Group Arm Team](https://github.com/rust-embedded/wg?tab=readme-ov-file#the-arm-team)
+- [Rust Embedded Devices Working Group Arm Team](https://github.com/rust-embedded/wg?tab=readme-ov-file#the-arm-team)
+- [@rust-lang/arm-maintainers][arm_maintainers] ([rust@arm.com][arm_email])
+
+[arm_maintainers]: https://github.com/rust-lang/team/blob/master/teams/arm-maintainers.toml
+[arm_email]: mailto:rust@arm.com
 
 ## Target CPU and Target Feature options
 
