@@ -222,6 +222,7 @@ pub const PLATFORM_C_FORWARD_DECLARATIONS: &str = r#"
     std::ostream& operator<<(std::ostream& os, __m128i value);
     std::ostream& operator<<(std::ostream& os, __m256i value);
     std::ostream& operator<<(std::ostream& os, __m512i value);
+    std::ostream& operator<<(std::ostream& os, __mmask8 value);
     
     #define _mm512_extract_intrinsic_test_epi8(m, lane) \
         _mm_extract_epi8(_mm512_extracti64x2_epi64((m), (lane) / 16), (lane) % 16)
@@ -341,6 +342,11 @@ std::ostream& operator<<(std::ostream& os, __m512i value) {
         ss << std::setfill('0') << std::setw(2) << std::hex << ((char*)temp)[i];
     }
     os << ss.str();
+    return os;
+}
+
+std::ostream& operator<<(std::ostream& os, __mmask8 value) {
+    os << static_cast<int>(value);
     return os;
 }
 "#;
