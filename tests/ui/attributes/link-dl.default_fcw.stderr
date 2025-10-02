@@ -1,26 +1,23 @@
-error[E0539]: malformed `link` attribute input
+error: valid forms for the attribute are `#[link(name = "...")]`, `#[link(name = "...", import_name_type = "decorated|noprefix|undecorated")]`, `#[link(name = "...", kind = "dylib|static|...")]`, `#[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated")]`, and `#[link(name = "...", wasm_import_module = "...")]`
   --> $DIR/link-dl.rs:14:1
    |
 LL | #[link="dl"]
-   | ^^^^^^^^^^^^ expected this to be a list
+   | ^^^^^^^^^^^^
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL - #[link="dl"]
-LL + #[link(name = "...")]
-   |
-LL - #[link="dl"]
-LL + #[link(name = "...", import_name_type = "decorated|noprefix|undecorated")]
-   |
-LL - #[link="dl"]
-LL + #[link(name = "...", kind = "dylib|static|...")]
-   |
-LL - #[link="dl"]
-LL + #[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated")]
-   |
-   = and 1 other candidate
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+   = note: `#[deny(ill_formed_attribute_input)]` (part of `#[deny(future_incompatible)]`) on by default
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0539`.
+Future incompatibility report: Future breakage diagnostic:
+error: valid forms for the attribute are `#[link(name = "...")]`, `#[link(name = "...", import_name_type = "decorated|noprefix|undecorated")]`, `#[link(name = "...", kind = "dylib|static|...")]`, `#[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated")]`, and `#[link(name = "...", wasm_import_module = "...")]`
+  --> $DIR/link-dl.rs:14:1
+   |
+LL | #[link="dl"]
+   | ^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+   = note: `#[deny(ill_formed_attribute_input)]` (part of `#[deny(future_incompatible)]`) on by default
+
