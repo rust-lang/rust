@@ -1,12 +1,12 @@
-# `hexagon-unknown-qurt`
+# `hexagon-qurt`
 
 **Tier: 3**
 
 Rust for Hexagon QuRT (Qualcomm Real-Time OS).
 
-| Target               | Description                                  |
-| -------------------- | -------------------------------------------- |
-| hexagon-unknown-qurt | Hexagon 32-bit QuRT (position independent)  |
+| Target               | Description |
+| -------------------- | ------------|
+| hexagon-qurt | Hexagon 32-bit QuRT |
 
 ## Target maintainers
 
@@ -28,6 +28,13 @@ Functions marked `extern "C"` use the [Hexagon architecture calling convention](
 This target generates position-independent ELF binaries by default, making it
 suitable for both static images and dynamic shared objects.
 
+## Linking
+
+This target selects `rust-lld` by default.  Another option to use is
+[eld](https://github.com/qualcomm/eld), which is also provided with
+[the opensource hexagon toolchain](https://github.com/quic/toolchain_for_hexagon)
+and the [Hexagon SDK](https://softwarecenter.qualcomm.com/catalog/item/Hexagon_SDK).
+
 ## Building the target
 
 You can build Rust with support for the target by adding it to the `target`
@@ -37,9 +44,9 @@ list in `bootstrap.toml`:
 [build]
 build-stage = 1
 host = ["<target for your host>"]
-target = ["<target for your host>", "hexagon-unknown-qurt"]
+target = ["<target for your host>", "hexagon-qurt"]
 
-[target.hexagon-unknown-qurt]
+[target.hexagon-qurt]
 cc = "hexagon-clang"
 cxx = "hexagon-clang++"
 ranlib = "hexagon-ranlib"
@@ -64,7 +71,7 @@ configuration with additional linker flags:
 
 ```sh
 # Build a static executable for QuRT
-cargo build --target hexagon-unknown-qurt \
+cargo build --target hexagon-qurt \
     -C link-args="-static -nostdlib" \
     -C link-args="-L/opt/Hexagon_SDK/6.3.0.0/rtos/qurt/computev69/lib" \
     -C link-args="-lqurt -lc"
@@ -82,7 +89,7 @@ For shared libraries that can be dynamically loaded by QuRT applications:
 
 ```sh
 # Build a shared object for QuRT
-cargo build --target hexagon-unknown-qurt \
+cargo build --target hexagon-qurt \
     --crate-type=cdylib \
     -C link-args="-shared -fPIC" \
     -C link-args="-L/opt/Hexagon_SDK/6.3.0.0/rtos/qurt/computev69/lib"
@@ -101,7 +108,7 @@ The target can be customized for different use cases:
 ### For Static Images
 ```toml
 # In .cargo/config.toml
-[target.hexagon-unknown-qurt]
+[target.hexagon-qurt]
 rustflags = [
     "-C", "link-args=-static",
     "-C", "link-args=-nostdlib",
@@ -112,7 +119,7 @@ rustflags = [
 ### For Shared Objects
 ```toml
 # In .cargo/config.toml
-[target.hexagon-unknown-qurt]
+[target.hexagon-qurt]
 rustflags = [
     "-C", "link-args=-shared",
     "-C", "link-args=-fPIC",
@@ -122,7 +129,7 @@ rustflags = [
 
 ## Testing
 
-Since `hexagon-unknown-qurt` requires the QuRT runtime environment, testing requires
+Since `hexagon-qurt` requires the QuRT runtime environment, testing requires
 either:
 - Hexagon hardware with QuRT
 - `hexagon-sim`
@@ -132,9 +139,8 @@ either:
 
 This target requires the proprietary [Hexagon SDK toolchain for C interoperability](https://softwarecenter.qualcomm.com/catalog/item/Hexagon_SDK):
 
-- **SDK Path**: `/opt/Hexagon_SDK/6.3.0.0/`
+- **Sample SDK Path**: `/opt/Hexagon_SDK/6.3.0.0/`
 - **Toolchain**: Use `hexagon-clang` from the Hexagon SDK
-- **Headers**: QuRT and POSIX headers are automatically included
 - **Libraries**: Link against QuRT system libraries as needed
 
 ### C Interoperability Example
