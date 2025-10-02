@@ -207,8 +207,9 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         from_entry(entry)
     }
 
-    fn evaluation_is_concurrent(&self) -> bool {
-        self.sess.threads() > 1
+    fn assert_evaluation_is_concurrent(&self) {
+        // Turns out, the assumption for this function isn't perfect.
+        // See trait-system-refactor-initiative#234.
     }
 
     fn expand_abstract_consts<T: TypeFoldable<TyCtxt<'tcx>>>(self, t: T) -> T {

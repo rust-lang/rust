@@ -53,7 +53,7 @@ pub trait Cx: Copy {
 
     fn with_global_cache<R>(self, f: impl FnOnce(&mut GlobalCache<Self>) -> R) -> R;
 
-    fn evaluation_is_concurrent(&self) -> bool;
+    fn assert_evaluation_is_concurrent(&self);
 }
 
 pub trait Delegate: Sized {
