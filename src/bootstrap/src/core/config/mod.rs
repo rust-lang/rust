@@ -47,11 +47,17 @@ use crate::str::FromStr;
 #[macro_export]
 macro_rules! define_config {
     ($(#[$attr:meta])* struct $name:ident {
-        $($field:ident: Option<$field_ty:ty> = $field_key:literal,)*
+        $(
+            $(#[$field_attr:meta])*
+            $field:ident: Option<$field_ty:ty> = $field_key:literal,
+        )*
     }) => {
         $(#[$attr])*
         pub struct $name {
-            $(pub $field: Option<$field_ty>,)*
+            $(
+                $(#[$field_attr])*
+                pub $field: Option<$field_ty>,
+            )*
         }
 
         impl Merge for $name {

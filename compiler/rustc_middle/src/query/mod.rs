@@ -1244,7 +1244,7 @@ rustc_queries! {
 
     /// Borrow-checks the given typeck root, e.g. functions, const/static items,
     /// and its children, e.g. closures, inline consts.
-    query mir_borrowck(key: LocalDefId) -> Result<&'tcx mir::ConcreteOpaqueTypes<'tcx>, ErrorGuaranteed> {
+    query mir_borrowck(key: LocalDefId) -> Result<&'tcx mir::DefinitionSiteHiddenTypes<'tcx>, ErrorGuaranteed> {
         desc { |tcx| "borrow-checking `{}`", tcx.def_path_str(key) }
     }
 

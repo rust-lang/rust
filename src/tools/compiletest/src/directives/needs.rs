@@ -1,10 +1,10 @@
 use crate::common::{Config, KNOWN_CRATE_TYPES, KNOWN_TARGET_HAS_ATOMIC_WIDTHS, Sanitizer};
-use crate::directives::{IgnoreDecision, llvm_has_libzstd};
+use crate::directives::{DirectiveLine, IgnoreDecision, llvm_has_libzstd};
 
 pub(super) fn handle_needs(
     cache: &CachedNeedsConditions,
     config: &Config,
-    ln: &str,
+    ln: &DirectiveLine<'_>,
 ) -> IgnoreDecision {
     // Note that we intentionally still put the needs- prefix here to make the file show up when
     // grepping for a directive name, even though we could technically strip that.
@@ -181,6 +181,8 @@ pub(super) fn handle_needs(
         },
     ];
 
+    let &DirectiveLine { raw_directive: ln, .. } = ln;
+
     let (name, rest) = match ln.split_once([':', ' ']) {
         Some((name, rest)) => (name, Some(rest)),
         None => (ln, None),
@@ -279,10 +281,7 @@ pub(super) fn handle_needs(
 
     // Handled elsewhere.
     if name == "needs-llvm-components" {
-        if config.default_codegen_backend.is_llvm() {
-            return IgnoreDecision::Continue;
-        }
-        return IgnoreDecision::Ignore { reason: "LLVM specific test".into() };
+        return IgnoreDecision::Continue;
     }
 
     let mut found_valid = false;

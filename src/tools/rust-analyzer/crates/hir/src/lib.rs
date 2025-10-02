@@ -6205,7 +6205,7 @@ impl Layout {
     }
 
     pub fn align(&self) -> u64 {
-        self.0.align.abi.bytes()
+        self.0.align.bytes()
     }
 
     pub fn niches(&self) -> Option<u128> {

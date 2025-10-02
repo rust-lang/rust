@@ -310,9 +310,6 @@ pub struct Config {
     /// sources.
     pub compiletest_allow_stage0: bool,
 
-    /// Whether to use the precompiled stage0 libtest with compiletest.
-    pub compiletest_use_stage0_libtest: bool,
-
     /// Default value for `--extra-checks`
     pub tidy_extra_checks: Option<String>,
     pub is_running_on_ci: bool,
@@ -497,7 +494,8 @@ impl Config {
             optimized_compiler_builtins: build_optimized_compiler_builtins,
             jobs: build_jobs,
             compiletest_diff_tool: build_compiletest_diff_tool,
-            compiletest_use_stage0_libtest: build_compiletest_use_stage0_libtest,
+            // No longer has any effect; kept (for now) to avoid breaking people's configs.
+            compiletest_use_stage0_libtest: _,
             tidy_extra_checks: build_tidy_extra_checks,
             ccache: build_ccache,
             exclude: build_exclude,
@@ -1197,7 +1195,6 @@ impl Config {
             compiler_docs: build_compiler_docs.unwrap_or(false),
             compiletest_allow_stage0: build_compiletest_allow_stage0.unwrap_or(false),
             compiletest_diff_tool: build_compiletest_diff_tool,
-            compiletest_use_stage0_libtest: build_compiletest_use_stage0_libtest.unwrap_or(true),
             config: toml_path,
             configure_args: build_configure_args.unwrap_or_default(),
             control_flow_guard: rust_control_flow_guard.unwrap_or(false),

@@ -12,15 +12,16 @@ use std::iter;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_lexer::{Cursor, FrontmatterAllowed, LiteralKind, TokenKind};
+use rustc_span::BytePos;
 use rustc_span::edition::Edition;
 use rustc_span::symbol::Symbol;
-use rustc_span::{BytePos, DUMMY_SP, Span};
 
 use super::format;
 use crate::clean::PrimitiveType;
 use crate::display::Joined as _;
 use crate::html::escape::EscapeBodyText;
 use crate::html::macro_expansion::ExpandedCode;
+use crate::html::render::span_map::{DUMMY_SP, Span};
 use crate::html::render::{Context, LinkFromSrc};
 
 /// This type is needed in case we want to render links on items to allow to go to their definition.

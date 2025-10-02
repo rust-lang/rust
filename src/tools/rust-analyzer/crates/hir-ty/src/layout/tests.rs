@@ -146,7 +146,7 @@ fn check_size_and_align(
 ) {
     let l = eval_goal(ra_fixture, minicore).unwrap();
     assert_eq!(l.size.bytes(), size, "size mismatch");
-    assert_eq!(l.align.abi.bytes(), align, "align mismatch");
+    assert_eq!(l.align.bytes(), align, "align mismatch");
 }
 
 #[track_caller]
@@ -158,7 +158,7 @@ fn check_size_and_align_expr(
 ) {
     let l = eval_expr(ra_fixture, minicore).unwrap();
     assert_eq!(l.size.bytes(), size, "size mismatch");
-    assert_eq!(l.align.abi.bytes(), align, "align mismatch");
+    assert_eq!(l.align.bytes(), align, "align mismatch");
 }
 
 #[track_caller]

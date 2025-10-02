@@ -2119,7 +2119,7 @@ impl<'db> Evaluator<'db> {
         if let Some(layout) = self.layout_cache.borrow().get(&ty.to_nextsolver(interner)) {
             return Ok(layout
                 .is_sized()
-                .then(|| (layout.size.bytes_usize(), layout.align.abi.bytes() as usize)));
+                .then(|| (layout.size.bytes_usize(), layout.align.bytes() as usize)));
         }
         if let DefWithBodyId::VariantId(f) = locals.body.owner
             && let Some((AdtId::EnumId(e), _)) = ty.as_adt()
@@ -2136,9 +2136,7 @@ impl<'db> Evaluator<'db> {
             return Ok(Some((0, 1)));
         }
         let layout = layout?;
-        Ok(layout
-            .is_sized()
-            .then(|| (layout.size.bytes_usize(), layout.align.abi.bytes() as usize)))
+        Ok(layout.is_sized().then(|| (layout.size.bytes_usize(), layout.align.bytes() as usize)))
     }
 
     /// A version of `self.size_of` which returns error if the type is unsized. `what` argument should
@@ -2841,7 +2839,7 @@ impl<'db> Evaluator<'db> {
                     )?;
                     // FIXME: there is some leak here
                     let size = layout.size.bytes_usize();
-                    let addr = self.heap_allocate(size, layout.align.abi.bytes() as usize)?;
+                    let addr = self.heap_allocate(size, layout.align.bytes() as usize)?;
                     self.write_memory(addr, &result)?;
                     IntervalAndTy { interval: Interval { addr, size }, ty }
                 };

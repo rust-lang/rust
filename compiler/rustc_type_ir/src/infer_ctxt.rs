@@ -80,7 +80,7 @@ pub enum TypingMode<I: Interner> {
     /// the old solver as well.
     PostBorrowckAnalysis { defined_opaque_types: I::LocalDefIds },
     /// After analysis, mostly during codegen and MIR optimizations, we're able to
-    /// reveal all opaque types. As the concrete type should *never* be observable
+    /// reveal all opaque types. As the hidden type should *never* be observable
     /// directly by the user, this should not be used by checks which may expose
     /// such details to the user.
     ///

@@ -22,7 +22,8 @@ pub mod os;
 pub mod pipe;
 pub mod time;
 cfg_select! {
-    not(target_vendor = "uwp") => {
+    // We don't care about printing nice error messages for panic=immediate-abort
+    all(not(target_vendor = "uwp"), not(panic = "immediate-abort")) => {
         pub mod stack_overflow;
     }
     _ => {
@@ -30,6 +31,7 @@ cfg_select! {
         pub use self::stack_overflow_uwp as stack_overflow;
     }
 }
+pub mod winsock;
 
 /// Map a [`Result<T, WinError>`] to [`io::Result<T>`](crate::io::Result<T>).
 pub trait IoResult<T> {

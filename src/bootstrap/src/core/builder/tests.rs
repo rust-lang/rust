@@ -1158,13 +1158,12 @@ mod snapshot {
         [doc] embedded-book (book) <host>
         [doc] edition-guide (book) <host>
         [doc] style-guide (book) <host>
-        [build] rustdoc 0 <host>
-        [doc] rustc 0 <host> -> Tidy 1 <host>
-        [doc] rustc 0 <host> -> Bootstrap 1 <host>
+        [doc] rustc 1 <host> -> Tidy 2 <host>
+        [doc] rustc 1 <host> -> Bootstrap 2 <host>
         [doc] rustc 1 <host> -> releases 2 <host>
-        [doc] rustc 0 <host> -> RunMakeSupport 1 <host>
-        [doc] rustc 0 <host> -> BuildHelper 1 <host>
-        [doc] rustc 0 <host> -> Compiletest 1 <host>
+        [doc] rustc 1 <host> -> RunMakeSupport 2 <host>
+        [doc] rustc 1 <host> -> BuildHelper 2 <host>
+        [doc] rustc 1 <host> -> Compiletest 2 <host>
         [build] rustc 0 <host> -> RustInstaller 1 <host>
         "
         );
@@ -2005,21 +2004,6 @@ mod snapshot {
     }
 
     #[test]
-    fn check_compiletest_stage1_libtest() {
-        let ctx = TestCtx::new();
-        insta::assert_snapshot!(
-            ctx.config("check")
-                .path("compiletest")
-                .args(&["--set", "build.compiletest-use-stage0-libtest=false"])
-                .render_steps(), @r"
-        [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 1 <host> -> std 1 <host>
-        [check] rustc 1 <host> -> Compiletest 2 <host>
-        ");
-    }
-
-    #[test]
     fn check_codegen() {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
@@ -2142,6 +2126,17 @@ mod snapshot {
         [test] compiletest-run-make 1 <host>
         [build] rustc 0 <host> -> cargo 1 <host>
         [test] compiletest-run-make-cargo 1 <host>
+        ");
+    }
+
+    #[test]
+    fn test_compiletest_self_test() {
+        let ctx = TestCtx::new();
+        let steps = ctx.config("test").arg("compiletest").render_steps();
+        insta::assert_snapshot!(steps, @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustdoc 0 <host>
         ");
     }
 
@@ -2690,8 +2685,11 @@ mod snapshot {
                 .path("src/tools/compiletest")
                 .stage(2)
                 .render_steps(), @r"
-        [build] rustdoc 0 <host>
-        [doc] rustc 0 <host> -> Compiletest 1 <host>
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustdoc 1 <host>
+        [doc] rustc 1 <host> -> Compiletest 2 <host>
         ");
     }
 

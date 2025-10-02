@@ -2992,6 +2992,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         self.buffer_error(err);
     }
 
+    #[tracing::instrument(level = "debug", skip(self, explanation))]
     fn report_local_value_does_not_live_long_enough(
         &self,
         location: Location,
@@ -3001,13 +3002,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         borrow_spans: UseSpans<'tcx>,
         explanation: BorrowExplanation<'tcx>,
     ) -> Diag<'infcx> {
-        debug!(
-            "report_local_value_does_not_live_long_enough(\
-             {:?}, {:?}, {:?}, {:?}, {:?}\
-             )",
-            location, name, borrow, drop_span, borrow_spans
-        );
-
         let borrow_span = borrow_spans.var_or_use_path_span();
         if let BorrowExplanation::MustBeValidFor {
             category,
