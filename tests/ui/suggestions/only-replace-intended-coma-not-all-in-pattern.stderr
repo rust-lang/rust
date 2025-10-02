@@ -1,5 +1,5 @@
 error: unexpected `,` in pattern
-  --> $DIR/only-replace-intended-bar-not-all-in-pattern.rs:12:30
+  --> $DIR/only-replace-intended-coma-not-all-in-pattern.rs:12:30
    |
 LL |         Foo { x: 2, ch: ',' }, Foo { x: 3, ch: '@' } => (),
    |                              ^
