@@ -65,10 +65,22 @@ impl<S: Stage> CombineAttributeParser<S> for LinkParser {
         cx: &'c mut AcceptContext<'_, '_, S>,
         args: &'c ArgParser<'_>,
     ) -> impl IntoIterator<Item = Self::Item> + 'c {
-        let mut result = None;
-        let Some(items) = args.list() else {
-            cx.expected_list(cx.attr_span);
-            return result;
+        let items = match args {
+            ArgParser::List(list) => list,
+            // This is an edgecase added because making this a hard error would break too many crates
+            // Specifically `#[link = "dl"]` is accepted with a FCW
+            // For more information, see https://github.com/rust-lang/rust/pull/143193
+            ArgParser::NameValue(nv) if nv.value_as_str().is_some_and(|v| v == sym::dl) => {
+                let suggestions = <Self as CombineAttributeParser<S>>::TEMPLATE
+                    .suggestions(cx.attr_style, "link");
+                let span = cx.attr_span;
+                cx.emit_lint(AttributeLintKind::IllFormedAttributeInput { suggestions }, span);
+                return None;
+            }
+            _ => {
+                cx.expected_list(cx.attr_span);
+                return None;
+            }
         };
 
         let sess = cx.sess();
@@ -113,7 +125,7 @@ impl<S: Stage> CombineAttributeParser<S> for LinkParser {
                 }
             };
             if !cont {
-                return result;
+                return None;
             }
         }
 
@@ -202,7 +214,7 @@ impl<S: Stage> CombineAttributeParser<S> for LinkParser {
         }
         let Some((name, name_span)) = name else {
             cx.emit_err(LinkRequiresName { span: cx.attr_span });
-            return result;
+            return None;
         };
 
         // Do this outside of the loop so that `import_name_type` can be specified before `kind`.
@@ -218,15 +230,14 @@ impl<S: Stage> CombineAttributeParser<S> for LinkParser {
             cx.emit_err(RawDylibNoNul { span: name_span });
         }
 
-        result = Some(LinkEntry {
+        Some(LinkEntry {
             span: cx.attr_span,
             kind: kind.unwrap_or(NativeLibKind::Unspecified),
             name,
             cfg,
             verbatim,
             import_name_type,
-        });
-        result
+        })
     }
 }
 

@@ -871,6 +871,7 @@ symbols! {
         div,
         div_assign,
         diverging_block_default,
+        dl,
         do_not_recommend,
         doc,
         doc_alias,
