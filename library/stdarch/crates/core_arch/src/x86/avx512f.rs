@@ -29090,7 +29090,7 @@ pub fn _kortestz_mask16_u8(a: __mmask16, b: __mmask16) -> u8 {
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _kshiftli_mask16<const COUNT: u32>(a: __mmask16) -> __mmask16 {
-    a << COUNT
+    a.unbounded_shl(COUNT)
 }
 
 /// Shift 16-bit mask a right by count bits while shifting in zeros, and store the result in dst.
@@ -29101,7 +29101,7 @@ pub fn _kshiftli_mask16<const COUNT: u32>(a: __mmask16) -> __mmask16 {
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _kshiftri_mask16<const COUNT: u32>(a: __mmask16) -> __mmask16 {
-    a >> COUNT
+    a.unbounded_shr(COUNT)
 }
 
 /// Load 16-bit mask from memory
@@ -56001,13 +56001,37 @@ mod tests {
         let r = _kshiftli_mask16::<3>(a);
         let e: __mmask16 = 0b1011011000011000;
         assert_eq!(r, e);
+
+        let r = _kshiftli_mask16::<15>(a);
+        let e: __mmask16 = 0b1000000000000000;
+        assert_eq!(r, e);
+
+        let r = _kshiftli_mask16::<16>(a);
+        let e: __mmask16 = 0b0000000000000000;
+        assert_eq!(r, e);
+
+        let r = _kshiftli_mask16::<17>(a);
+        let e: __mmask16 = 0b0000000000000000;
+        assert_eq!(r, e);
     }
 
     #[simd_test(enable = "avx512dq")]
     unsafe fn test_kshiftri_mask16() {
-        let a: __mmask16 = 0b0110100100111100;
+        let a: __mmask16 = 0b1010100100111100;
         let r = _kshiftri_mask16::<3>(a);
-        let e: __mmask16 = 0b0000110100100111;
+        let e: __mmask16 = 0b0001010100100111;
+        assert_eq!(r, e);
+
+        let r = _kshiftri_mask16::<15>(a);
+        let e: __mmask16 = 0b0000000000000001;
+        assert_eq!(r, e);
+
+        let r = _kshiftri_mask16::<16>(a);
+        let e: __mmask16 = 0b0000000000000000;
+        assert_eq!(r, e);
+
+        let r = _kshiftri_mask16::<17>(a);
+        let e: __mmask16 = 0b0000000000000000;
         assert_eq!(r, e);
     }
 
