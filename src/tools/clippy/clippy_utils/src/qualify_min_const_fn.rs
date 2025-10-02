@@ -141,7 +141,8 @@ fn check_rvalue<'tcx>(
             | CastKind::FloatToFloat
             | CastKind::FnPtrToPtr
             | CastKind::PtrToPtr
-            | CastKind::PointerCoercion(PointerCoercion::MutToConstPointer | PointerCoercion::ArrayToPointer, _),
+            | CastKind::PointerCoercion(PointerCoercion::MutToConstPointer | PointerCoercion::ArrayToPointer, _)
+            | CastKind::Subtype,
             operand,
             _,
         ) => check_operand(cx, operand, span, body, msrv),
@@ -312,7 +313,6 @@ fn check_place<'tcx>(
             | ProjectionElem::OpaqueCast(..)
             | ProjectionElem::Downcast(..)
             | ProjectionElem::Subslice { .. }
-            | ProjectionElem::Subtype(_)
             | ProjectionElem::Index(_)
             | ProjectionElem::UnwrapUnsafeBinder(_) => {},
         }

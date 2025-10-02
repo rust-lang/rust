@@ -292,7 +292,6 @@ impl<'tcx> Validator<'_, 'tcx> {
         match elem {
             // Recurse directly.
             ProjectionElem::ConstantIndex { .. }
-            | ProjectionElem::Subtype(_)
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::UnwrapUnsafeBinder(_) => {}
 
