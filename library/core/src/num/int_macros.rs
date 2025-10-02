@@ -1740,11 +1740,25 @@ macro_rules! int_impl {
                       without modifying the original"]
         #[inline]
         pub const fn checked_pow(self, mut exp: u32) -> Option<Self> {
+            let mut base = self;
+            let mut acc: Self = 1;
+
+            if intrinsics::is_val_statically_known(base) {
+                if base.unsigned_abs().is_power_of_two() {
+                    let k = base.unsigned_abs().ilog2();
+                    let shift = try_opt!(k.checked_mul(exp));
+                    let magnitude = try_opt!((1 as Self).checked_shl(shift));
+                    return if base < 0 && (exp % 2) == 1 {
+                        Some(magnitude.wrapping_neg())
+                    } else {
+                        Some(magnitude)
+                    }
+                }
+            }
+
             if exp == 0 {
                 return Some(1);
             }
-            let mut base = self;
-            let mut acc: Self = 1;
 
             if intrinsics::is_val_statically_known(exp) {
                 while exp > 1 {
@@ -2959,14 +2973,29 @@ macro_rules! int_impl {
                       without modifying the original"]
         #[inline]
         pub const fn overflowing_pow(self, mut exp: u32) -> (Self, bool) {
-            if exp == 0 {
-                return (1, false);
-            }
-
             let mut base = self;
             let mut acc: Self = 1;
             let mut overflow = false;
             let mut tmp_overflow;
+
+            if intrinsics::is_val_statically_known(base) {
+                if base.unsigned_abs().is_power_of_two() {
+                    let k = base.unsigned_abs().ilog2();
+                    let Some(shift) = k.checked_mul(exp) else {
+                        return (0, true)
+                    };
+                    let magnitude = (1 as Self).unbounded_shl(shift);
+                    return if base < 0 && (exp % 2) == 1 {
+                        (magnitude.wrapping_neg(), shift >= Self::BITS)
+                    } else {
+                        (magnitude, shift >= Self::BITS)
+                    }
+                }
+            }
+
+            if exp == 0 {
+                return (1, false);
+            }
 
             if intrinsics::is_val_statically_known(exp) {
                 while exp > 1 {

@@ -2085,11 +2085,23 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         pub const fn checked_pow(self, mut exp: u32) -> Option<Self> {
+            let mut base = self;
+            let mut acc: Self = 1;
+
+            if intrinsics::is_val_statically_known(base) && base.is_power_of_two() {
+                // change of base:
+                // if base == 2 ** k, then
+                //    (2 ** k) ** n
+                // == 2 ** (k * n)
+                // == 1 << (k * n)
+                let k = base.ilog2();
+                let shift = try_opt!(k.checked_mul(exp));
+                return (1 as Self).checked_shl(shift);
+            }
+
             if exp == 0 {
                 return Some(1);
             }
-            let mut base = self;
-            let mut acc: Self = 1;
 
             if intrinsics::is_val_statically_known(exp) {
                 while exp > 1 {
@@ -3255,13 +3267,27 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         pub const fn overflowing_pow(self, mut exp: u32) -> (Self, bool) {
-            if exp == 0 {
-                return (1, false);
-            }
             let mut base = self;
             let mut acc: Self = 1;
             let mut overflow = false;
             let mut tmp_overflow;
+
+            if intrinsics::is_val_statically_known(base) && base.is_power_of_two() {
+                // change of base:
+                // if base == 2 ** k, then
+                //    (2 ** k) ** n
+                // == 2 ** (k * n)
+                // == 1 << (k * n)
+                let k = base.ilog2();
+                let Some(shift) = k.checked_mul(exp) else {
+                    return (0, true)
+                };
+                return ((1 as Self).unbounded_shl(shift), shift >= Self::BITS)
+            }
+
+            if exp == 0 {
+                return (1, false);
+            }
 
             if intrinsics::is_val_statically_known(exp) {
                 while exp > 1 {
