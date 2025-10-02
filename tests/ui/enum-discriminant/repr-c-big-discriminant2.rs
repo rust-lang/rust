@@ -11,10 +11,13 @@
 extern crate minicore;
 use minicore::*;
 
-// Separate test since it suppresses other errors on ptr32
+// Separate test since it suppresses other errors on ptr32:
+// ensure we find the bad discriminant when it is implicitly computed by incrementing
+// the previous discriminant.
 
 #[repr(C)]
 enum OverflowingEnum {
+    NEG = -1,
     A = 2147483647, // i32::MAX
     B, // +1
     //[ptr32]~^ ERROR: enum discriminant overflowed

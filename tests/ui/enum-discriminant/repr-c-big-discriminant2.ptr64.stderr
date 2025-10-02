@@ -1,5 +1,5 @@
-error: `repr(C)` enum discriminant does not fit into C `int`
-  --> $DIR/repr-c-big-discriminant2.rs:19:5
+error: `repr(C)` enum discriminant does not fit into C `int`, and a previous discriminant does not fit into C `unsigned int`
+  --> $DIR/repr-c-big-discriminant2.rs:22:5
    |
 LL |     B, // +1
    |     ^
