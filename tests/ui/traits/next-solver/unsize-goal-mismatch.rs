@@ -1,4 +1,3 @@
-//@ check-pass
 //@ revisions: current next
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
@@ -10,10 +9,11 @@
 
 trait Super<'a> {}
 trait Trait<'a>: Super<'a> + for<'hr> Super<'hr> {}
+//[current]~^ ERROR type annotations needed: cannot satisfy `Self: Super<'a>`
 
 fn foo<'a>(x: Box<dyn Trait<'a>>) -> Box<dyn Super<'a>> {
     x
-    //~^ ERROR type annotations needed: cannot satisfy `dyn Trait<'_>: Unsize<dyn Super<'_>>
+    //[next]~^ ERROR type annotations needed: cannot satisfy `dyn Trait<'_>: Unsize<dyn Super<'_>>
 }
 
 fn main() {}
