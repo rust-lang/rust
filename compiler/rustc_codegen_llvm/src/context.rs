@@ -34,7 +34,7 @@ use smallvec::SmallVec;
 use crate::back::write::to_llvm_code_model;
 use crate::callee::get_fn;
 use crate::debuginfo::metadata::apply_vcall_visibility_metadata;
-use crate::llvm::{Metadata, MetadataKindId};
+use crate::llvm::{Metadata, MetadataKindId, Module};
 use crate::type_::Type;
 use crate::value::Value;
 use crate::{attributes, common, coverageinfo, debuginfo, llvm, llvm_util};
@@ -495,14 +495,7 @@ pub(crate) unsafe fn create_module<'ll>(
         format!("rustc version {}", option_env!("CFG_VERSION").expect("CFG_VERSION"));
 
     let name_metadata = cx.create_metadata(rustc_producer.as_bytes());
-
-    unsafe {
-        llvm::LLVMAddNamedMetadataOperand(
-            llmod,
-            c"llvm.ident".as_ptr(),
-            &cx.get_metadata_value(llvm::LLVMMDNodeInContext2(llcx, &name_metadata, 1)),
-        );
-    }
+    cx.module_add_named_metadata_node(llmod, c"llvm.ident", &[name_metadata]);
 
     // Emit RISC-V specific target-abi metadata
     // to workaround lld as the LTO plugin not
@@ -1002,6 +995,11 @@ impl CodegenCx<'_, '_> {
 }
 
 impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
+    /// Wrapper for `LLVMMDNodeInContext2`, i.e. `llvm::MDNode::get`.
+    pub(crate) fn md_node_in_context(&self, md_list: &[&'ll Metadata]) -> &'ll Metadata {
+        unsafe { llvm::LLVMMDNodeInContext2(self.llcx(), md_list.as_ptr(), md_list.len()) }
+    }
+
     /// A wrapper for [`llvm::LLVMSetMetadata`], but it takes `Metadata` as a parameter instead of `Value`.
     pub(crate) fn set_metadata<'a>(
         &self,
@@ -1011,6 +1009,61 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     ) {
         let node = self.get_metadata_value(md);
         llvm::LLVMSetMetadata(val, kind_id, node);
+    }
+
+    /// Helper method for the sequence of calls:
+    /// - `LLVMMDNodeInContext2` (to create an `llvm::MDNode` from a list of metadata)
+    /// - `LLVMMetadataAsValue` (to adapt that node to an `llvm::Value`)
+    /// - `LLVMSetMetadata` (to set that node as metadata of `kind_id` for `instruction`)
+    pub(crate) fn set_metadata_node(
+        &self,
+        instruction: &'ll Value,
+        kind_id: MetadataKindId,
+        md_list: &[&'ll Metadata],
+    ) {
+        let md = self.md_node_in_context(md_list);
+        self.set_metadata(instruction, kind_id, md);
+    }
+
+    /// Helper method for the sequence of calls:
+    /// - `LLVMMDNodeInContext2` (to create an `llvm::MDNode` from a list of metadata)
+    /// - `LLVMMetadataAsValue` (to adapt that node to an `llvm::Value`)
+    /// - `LLVMAddNamedMetadataOperand` (to set that node as metadata of `kind_name` for `module`)
+    pub(crate) fn module_add_named_metadata_node(
+        &self,
+        module: &'ll Module,
+        kind_name: &CStr,
+        md_list: &[&'ll Metadata],
+    ) {
+        let md = self.md_node_in_context(md_list);
+        let md_as_val = self.get_metadata_value(md);
+        unsafe { llvm::LLVMAddNamedMetadataOperand(module, kind_name.as_ptr(), md_as_val) };
+    }
+
+    /// Helper method for the sequence of calls:
+    /// - `LLVMMDNodeInContext2` (to create an `llvm::MDNode` from a list of metadata)
+    /// - `LLVMRustGlobalAddMetadata` (to set that node as metadata of `kind_id` for `global`)
+    pub(crate) fn global_add_metadata_node(
+        &self,
+        global: &'ll Value,
+        kind_id: MetadataKindId,
+        md_list: &[&'ll Metadata],
+    ) {
+        let md = self.md_node_in_context(md_list);
+        unsafe { llvm::LLVMRustGlobalAddMetadata(global, kind_id, md) };
+    }
+
+    /// Helper method for the sequence of calls:
+    /// - `LLVMMDNodeInContext2` (to create an `llvm::MDNode` from a list of metadata)
+    /// - `LLVMGlobalSetMetadata` (to set that node as metadata of `kind_id` for `global`)
+    pub(crate) fn global_set_metadata_node(
+        &self,
+        global: &'ll Value,
+        kind_id: MetadataKindId,
+        md_list: &[&'ll Metadata],
+    ) {
+        let md = self.md_node_in_context(md_list);
+        unsafe { llvm::LLVMGlobalSetMetadata(global, kind_id, md) };
     }
 }
 
