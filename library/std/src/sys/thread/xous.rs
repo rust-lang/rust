@@ -69,6 +69,12 @@ impl Thread {
         )
         .map_err(|code| io::Error::from_raw_os_error(code as i32))?;
 
+        #[inline(never)]
+        fn rust_main_thread_not_inlined(init: Box<ThreadInit>) {
+            let rust_start = init.init();
+            rust_start();
+        }
+
         extern "C" fn thread_start(
             data: *mut usize,
             guard_page_pre: usize,
@@ -76,8 +82,12 @@ impl Thread {
         ) -> ! {
             // SAFETY: we are simply recreating the box that was leaked earlier.
             let init = unsafe { Box::from_raw(data as *mut ThreadInit) };
-            let rust_start = init.init();
-            rust_start();
+
+            // Run the main thread with an inline(never) barrier to prevent
+            // dealloc calls from being reordered to after the TLS has been destroyed.
+            // See https://github.com/rust-lang/rust/pull/144465#pullrequestreview-3289729950
+            // for more context.
+            run_main_thread_not_inlined(init);
 
             // Destroy TLS, which will free the TLS page and call the destructor for
             // any thread local storage (if any).
