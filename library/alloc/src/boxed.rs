@@ -619,6 +619,37 @@ impl<T, A: Allocator> Box<T, A> {
     pub fn into_inner(boxed: Self) -> T {
         *boxed
     }
+
+    /// Consumes the `Box` without consuming its allocation, returning the wrapped value and a `Box`
+    /// to the uninitialized memory where the wrapped value used to live.
+    ///
+    /// This can be used together with [`write`](Box::write) to reuse the allocation for multiple
+    /// boxed values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(box_take)]
+    ///
+    /// let c = Box::new(5);
+    ///
+    /// // take the value out of the box
+    /// let (value, uninit) = Box::take(c);
+    /// assert_eq!(value, 5);
+    ///
+    /// // reuse the box for a second value
+    /// let c = Box::write(uninit, 6);
+    /// assert_eq!(*c, 6);
+    /// ```
+    #[unstable(feature = "box_take", issue = "147212")]
+    pub fn take(boxed: Self) -> (T, Box<mem::MaybeUninit<T>, A>) {
+        unsafe {
+            let (raw, alloc) = Box::into_raw_with_allocator(boxed);
+            let value = raw.read();
+            let uninit = Box::from_raw_in(raw.cast::<mem::MaybeUninit<T>>(), alloc);
+            (value, uninit)
+        }
+    }
 }
 
 impl<T> Box<[T]> {
