@@ -1,5 +1,6 @@
 //@ known-bug: #134479
 //@ compile-flags: -Csymbol-mangling-version=v0 -Cdebuginfo=1
+//@ ignore-backends: gcc
 
 #![feature(generic_const_exprs)]
 
