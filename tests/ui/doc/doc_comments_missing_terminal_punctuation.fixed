@@ -96,6 +96,11 @@ enum Trailers {
     /// _But sometimes it is missing a period._
     //~^ doc_comments_missing_terminal_punctuation
     UnderscoreFailing,
+    /// This comment ends with "a quote."
+    QuotePassing,
+    /// This comment ends with "a quote."
+    //~^ doc_comments_missing_terminal_punctuation
+    QuoteFailing,
 }
 
 /// Doc comments can end with an [inline link](#anchor).

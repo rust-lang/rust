@@ -59,10 +59,18 @@ fn is_missing_punctuation(doc_string: &str) -> Option<usize> {
             Event::InlineHtml(_) | Event::Start(Tag::Image { .. }) | Event::End(TagEnd::Image) => {
                 text_offset = None;
             },
-            Event::Code(..) | Event::Text(..) | Event::Start(Tag::Link { .. }) | Event::End(TagEnd::Link)
+            Event::Code(..) | Event::Start(Tag::Link { .. }) | Event::End(TagEnd::Link)
                 if no_report_depth == 0 && !offset.is_empty() =>
             {
                 text_offset = Some(offset.end);
+            },
+            Event::Text(..) if no_report_depth == 0 && !offset.is_empty() => {
+                // American-style quotes require punctuation to be placed inside closing quotation marks.
+                if doc_string[..offset.end].trim_end().ends_with('"') {
+                    text_offset = Some(offset.end - 1);
+                } else {
+                    text_offset = Some(offset.end);
+                }
             },
             _ => {},
         }
