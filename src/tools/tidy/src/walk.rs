@@ -1,8 +1,10 @@
+use std::collections::HashSet;
 use std::ffi::OsStr;
 use std::fs::File;
 use std::io::Read;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
+use build_helper::git::get_git_untracked_files;
 use ignore::DirEntry;
 
 /// The default directory filter.
@@ -75,12 +77,20 @@ pub(crate) fn walk_no_read(
     skip: impl Send + Sync + 'static + Fn(&Path, bool) -> bool,
     f: &mut dyn FnMut(&DirEntry),
 ) {
+    let untracked_files: HashSet<PathBuf> = match get_git_untracked_files(Some(paths[0])) {
+        Ok(Some(untracked_paths)) => {
+            untracked_paths.into_iter().map(|s| PathBuf::from(paths[0]).join(s)).collect()
+        }
+        _ => HashSet::new(),
+    };
+
     let mut walker = ignore::WalkBuilder::new(paths[0]);
     for path in &paths[1..] {
         walker.add(path);
     }
     let walker = walker.filter_entry(move |e| {
         !skip(e.path(), e.file_type().map(|ft| ft.is_dir()).unwrap_or(false))
+            && !untracked_files.contains(e.path())
     });
     for entry in walker.build().flatten() {
         if entry.file_type().is_none_or(|kind| kind.is_dir() || kind.is_symlink()) {
