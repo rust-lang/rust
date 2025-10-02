@@ -3314,6 +3314,18 @@ macro_rules! uint_impl {
             let mut base = self;
             let mut acc = 1;
 
+            if intrinsics::is_val_statically_known(base) {
+                // change of base:
+                // if base == 2 ** k, then
+                //    (2 ** k) ** n
+                // == 2 ** (k * n)
+                // == 1 << (k * n)
+                if self.is_power_of_two() {
+                    let k = base.ilog2();
+                    return 1 << (k * exp)
+                }
+            }
+
             if intrinsics::is_val_statically_known(exp) {
                 while exp > 1 {
                     if (exp & 1) == 1 {
