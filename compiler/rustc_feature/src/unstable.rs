@@ -93,6 +93,16 @@ impl Features {
         &self.enabled_features
     }
 
+    /// Returns a iterator of enabled features in stable order.
+    pub fn enabled_features_iter_stable_order(
+        &self,
+    ) -> impl Iterator<Item = (Symbol, Span)> + Clone {
+        self.enabled_lang_features
+            .iter()
+            .map(|feat| (feat.gate_name, feat.attr_sp))
+            .chain(self.enabled_lib_features.iter().map(|feat| (feat.gate_name, feat.attr_sp)))
+    }
+
     /// Is the given feature enabled (via `#[feature(...)]`)?
     pub fn enabled(&self, feature: Symbol) -> bool {
         self.enabled_features.contains(&feature)
