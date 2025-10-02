@@ -21152,7 +21152,13 @@ pub fn _mm_maskz_srav_epi64(k: __mmask8, a: __m128i, count: __m128i) -> __m128i 
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vprolvd))]
 pub fn _mm512_rolv_epi32(a: __m512i, b: __m512i) -> __m512i {
-    unsafe { transmute(simd_funnel_shl(a.as_u32x16(), a.as_u32x16(), b.as_u32x16())) }
+    unsafe {
+        transmute(simd_funnel_shl(
+            a.as_u32x16(),
+            a.as_u32x16(),
+            simd_and(b.as_u32x16(), u32x16::splat(31)),
+        ))
+    }
 }
 
 /// Rotate the bits in each packed 32-bit integer in a to the left by the number of bits specified in the corresponding element of b, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -21191,7 +21197,13 @@ pub fn _mm512_maskz_rolv_epi32(k: __mmask16, a: __m512i, b: __m512i) -> __m512i 
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vprolvd))]
 pub fn _mm256_rolv_epi32(a: __m256i, b: __m256i) -> __m256i {
-    unsafe { transmute(simd_funnel_shl(a.as_u32x8(), a.as_u32x8(), b.as_u32x8())) }
+    unsafe {
+        transmute(simd_funnel_shl(
+            a.as_u32x8(),
+            a.as_u32x8(),
+            simd_and(b.as_u32x8(), u32x8::splat(31)),
+        ))
+    }
 }
 
 /// Rotate the bits in each packed 32-bit integer in a to the left by the number of bits specified in the corresponding element of b, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -21230,7 +21242,13 @@ pub fn _mm256_maskz_rolv_epi32(k: __mmask8, a: __m256i, b: __m256i) -> __m256i {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vprolvd))]
 pub fn _mm_rolv_epi32(a: __m128i, b: __m128i) -> __m128i {
-    unsafe { transmute(simd_funnel_shl(a.as_u32x4(), a.as_u32x4(), b.as_u32x4())) }
+    unsafe {
+        transmute(simd_funnel_shl(
+            a.as_u32x4(),
+            a.as_u32x4(),
+            simd_and(b.as_u32x4(), u32x4::splat(31)),
+        ))
+    }
 }
 
 /// Rotate the bits in each packed 32-bit integer in a to the left by the number of bits specified in the corresponding element of b, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -21269,7 +21287,13 @@ pub fn _mm_maskz_rolv_epi32(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vprorvd))]
 pub fn _mm512_rorv_epi32(a: __m512i, b: __m512i) -> __m512i {
-    unsafe { transmute(simd_funnel_shr(a.as_u32x16(), a.as_u32x16(), b.as_u32x16())) }
+    unsafe {
+        transmute(simd_funnel_shr(
+            a.as_u32x16(),
+            a.as_u32x16(),
+            simd_and(b.as_u32x16(), u32x16::splat(31)),
+        ))
+    }
 }
 
 /// Rotate the bits in each packed 32-bit integer in a to the right by the number of bits specified in the corresponding element of b, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -21308,7 +21332,13 @@ pub fn _mm512_maskz_rorv_epi32(k: __mmask16, a: __m512i, b: __m512i) -> __m512i 
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vprorvd))]
 pub fn _mm256_rorv_epi32(a: __m256i, b: __m256i) -> __m256i {
-    unsafe { transmute(simd_funnel_shr(a.as_u32x8(), a.as_u32x8(), b.as_u32x8())) }
+    unsafe {
+        transmute(simd_funnel_shr(
+            a.as_u32x8(),
+            a.as_u32x8(),
+            simd_and(b.as_u32x8(), u32x8::splat(31)),
+        ))
+    }
 }
 
 /// Rotate the bits in each packed 32-bit integer in a to the right by the number of bits specified in the corresponding element of b, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -21347,7 +21377,13 @@ pub fn _mm256_maskz_rorv_epi32(k: __mmask8, a: __m256i, b: __m256i) -> __m256i {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vprorvd))]
 pub fn _mm_rorv_epi32(a: __m128i, b: __m128i) -> __m128i {
-    unsafe { transmute(simd_funnel_shr(a.as_u32x4(), a.as_u32x4(), b.as_u32x4())) }
+    unsafe {
+        transmute(simd_funnel_shr(
+            a.as_u32x4(),
+            a.as_u32x4(),
+            simd_and(b.as_u32x4(), u32x4::splat(31)),
+        ))
+    }
 }
 
 /// Rotate the bits in each packed 32-bit integer in a to the right by the number of bits specified in the corresponding element of b, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -21386,7 +21422,13 @@ pub fn _mm_maskz_rorv_epi32(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vprolvq))]
 pub fn _mm512_rolv_epi64(a: __m512i, b: __m512i) -> __m512i {
-    unsafe { transmute(simd_funnel_shl(a.as_u64x8(), a.as_u64x8(), b.as_u64x8())) }
+    unsafe {
+        transmute(simd_funnel_shl(
+            a.as_u64x8(),
+            a.as_u64x8(),
+            simd_and(b.as_u64x8(), u64x8::splat(63)),
+        ))
+    }
 }
 
 /// Rotate the bits in each packed 64-bit integer in a to the left by the number of bits specified in the corresponding element of b, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -21425,7 +21467,13 @@ pub fn _mm512_maskz_rolv_epi64(k: __mmask8, a: __m512i, b: __m512i) -> __m512i {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vprolvq))]
 pub fn _mm256_rolv_epi64(a: __m256i, b: __m256i) -> __m256i {
-    unsafe { transmute(simd_funnel_shl(a.as_u64x4(), a.as_u64x4(), b.as_u64x4())) }
+    unsafe {
+        transmute(simd_funnel_shl(
+            a.as_u64x4(),
+            a.as_u64x4(),
+            simd_and(b.as_u64x4(), u64x4::splat(63)),
+        ))
+    }
 }
 
 /// Rotate the bits in each packed 64-bit integer in a to the left by the number of bits specified in the corresponding element of b, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -21464,7 +21512,13 @@ pub fn _mm256_maskz_rolv_epi64(k: __mmask8, a: __m256i, b: __m256i) -> __m256i {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vprolvq))]
 pub fn _mm_rolv_epi64(a: __m128i, b: __m128i) -> __m128i {
-    unsafe { transmute(simd_funnel_shl(a.as_u64x2(), a.as_u64x2(), b.as_u64x2())) }
+    unsafe {
+        transmute(simd_funnel_shl(
+            a.as_u64x2(),
+            a.as_u64x2(),
+            simd_and(b.as_u64x2(), u64x2::splat(63)),
+        ))
+    }
 }
 
 /// Rotate the bits in each packed 64-bit integer in a to the left by the number of bits specified in the corresponding element of b, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -21503,7 +21557,13 @@ pub fn _mm_maskz_rolv_epi64(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vprorvq))]
 pub fn _mm512_rorv_epi64(a: __m512i, b: __m512i) -> __m512i {
-    unsafe { transmute(simd_funnel_shr(a.as_u64x8(), a.as_u64x8(), b.as_u64x8())) }
+    unsafe {
+        transmute(simd_funnel_shr(
+            a.as_u64x8(),
+            a.as_u64x8(),
+            simd_and(b.as_u64x8(), u64x8::splat(63)),
+        ))
+    }
 }
 
 /// Rotate the bits in each packed 64-bit integer in a to the right by the number of bits specified in the corresponding element of b, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -21542,7 +21602,13 @@ pub fn _mm512_maskz_rorv_epi64(k: __mmask8, a: __m512i, b: __m512i) -> __m512i {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vprorvq))]
 pub fn _mm256_rorv_epi64(a: __m256i, b: __m256i) -> __m256i {
-    unsafe { transmute(simd_funnel_shr(a.as_u64x4(), a.as_u64x4(), b.as_u64x4())) }
+    unsafe {
+        transmute(simd_funnel_shr(
+            a.as_u64x4(),
+            a.as_u64x4(),
+            simd_and(b.as_u64x4(), u64x4::splat(63)),
+        ))
+    }
 }
 
 /// Rotate the bits in each packed 64-bit integer in a to the right by the number of bits specified in the corresponding element of b, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -21581,7 +21647,13 @@ pub fn _mm256_maskz_rorv_epi64(k: __mmask8, a: __m256i, b: __m256i) -> __m256i {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vprorvq))]
 pub fn _mm_rorv_epi64(a: __m128i, b: __m128i) -> __m128i {
-    unsafe { transmute(simd_funnel_shr(a.as_u64x2(), a.as_u64x2(), b.as_u64x2())) }
+    unsafe {
+        transmute(simd_funnel_shr(
+            a.as_u64x2(),
+            a.as_u64x2(),
+            simd_and(b.as_u64x2(), u64x2::splat(63)),
+        ))
+    }
 }
 
 /// Rotate the bits in each packed 64-bit integer in a to the right by the number of bits specified in the corresponding element of b, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
