@@ -2043,7 +2043,7 @@ enum SimplifiedParam {
 /// frontend search engine can use.
 ///
 /// For example, `[T, U, i32]]` where you have the bounds: `T: Display, U: Option<T>` will return
-/// `[-1, -2, i32] where -1: Display, -2: Option<-1>`. If a type parameter has no traid bound, it
+/// `[-1, -2, i32] where -1: Display, -2: Option<-1>`. If a type parameter has no trait bound, it
 /// will still get a number. If a constraint is present but not used in the actual types, it will
 /// not be added to the map.
 ///
