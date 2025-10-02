@@ -73,12 +73,14 @@ where
 
 // ***** Others *****
 
+//spellchecker:off
 /// All possible captured `assert!` elements
 ///
 /// # Types
 ///
 /// * `E`: **E**lement that is going to be displayed.
 /// * `M`: **M**arker used to differentiate [Capture]s in regards to [Debug].
+//spellchecker:on
 #[unstable(feature = "generic_assert_internals", issue = "44838")]
 pub struct Capture<E, M> {
     // If None, then `E` does not implements [Printable] or `E` wasn't evaluated (`assert!( ... )`

@@ -283,7 +283,7 @@ builtin_macros_requires_cfg_pattern =
     macro requires a cfg-pattern as an argument
     .label = cfg-pattern required
 
-builtin_macros_source_uitls_expected_item = expected item, found `{$token}`
+builtin_macros_source_utils_expected_item = expected item, found `{$token}`
 
 builtin_macros_takes_no_arguments = {$name} takes no arguments
 
