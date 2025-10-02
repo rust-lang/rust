@@ -40,6 +40,7 @@ pub use global_cache::GlobalCache;
 pub trait Cx: Copy {
     type Input: Debug + Eq + Hash + Copy;
     type Result: Debug + Eq + Hash + Copy;
+    type AmbiguityInfo: Debug + Eq + Hash + Copy;
 
     type DepNodeIndex;
     type Tracked<T: Debug + Clone>: Debug;
@@ -96,11 +97,13 @@ pub trait Delegate: Sized {
         input: <Self::Cx as Cx>::Input,
     ) -> <Self::Cx as Cx>::Result;
 
-    fn is_ambiguous_result(result: <Self::Cx as Cx>::Result) -> bool;
+    fn is_ambiguous_result(
+        result: <Self::Cx as Cx>::Result,
+    ) -> Option<<Self::Cx as Cx>::AmbiguityInfo>;
     fn propagate_ambiguity(
         cx: Self::Cx,
         for_input: <Self::Cx as Cx>::Input,
-        from_result: <Self::Cx as Cx>::Result,
+        ambiguity_info: <Self::Cx as Cx>::AmbiguityInfo,
     ) -> <Self::Cx as Cx>::Result;
 
     fn compute_goal(
@@ -913,9 +916,9 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
 /// heads from the stack. This may not necessarily mean that we've actually
 /// reached a fixpoint for that cycle head, which impacts the way we rebase
 /// provisional cache entries.
-enum RebaseReason {
+enum RebaseReason<X: Cx> {
     NoCycleUsages,
-    Ambiguity,
+    Ambiguity(X::AmbiguityInfo),
     Overflow,
     /// We've actually reached a fixpoint.
     ///
@@ -951,7 +954,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
         &mut self,
         cx: X,
         stack_entry: &StackEntry<X>,
-        rebase_reason: RebaseReason,
+        rebase_reason: RebaseReason<X>,
     ) {
         let popped_head_index = self.stack.next_index();
         #[allow(rustc::potential_query_instability)]
@@ -1029,8 +1032,8 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
                         // is not actually equal to the final provisional result. We
                         // need to discard the provisional cache entry in this case.
                         RebaseReason::NoCycleUsages => return false,
-                        RebaseReason::Ambiguity => {
-                            *result = D::propagate_ambiguity(cx, input, *result);
+                        RebaseReason::Ambiguity(info) => {
+                            *result = D::propagate_ambiguity(cx, input, info);
                         }
                         RebaseReason::Overflow => *result = D::fixpoint_overflow_result(cx, input),
                         RebaseReason::ReachedFixpoint(None) => {}
@@ -1268,6 +1271,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
     }
 
     /// Whether we've reached a fixpoint when evaluating a cycle head.
+    #[instrument(level = "trace", skip(self, stack_entry), ret)]
     fn reached_fixpoint(
         &mut self,
         stack_entry: &StackEntry<X>,
@@ -1355,8 +1359,12 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
             // As we only get to this branch if we haven't yet reached a fixpoint,
             // we also taint all provisional cache entries which depend on the
             // current goal.
-            if D::is_ambiguous_result(result) {
-                self.rebase_provisional_cache_entries(cx, &stack_entry, RebaseReason::Ambiguity);
+            if let Some(info) = D::is_ambiguous_result(result) {
+                self.rebase_provisional_cache_entries(
+                    cx,
+                    &stack_entry,
+                    RebaseReason::Ambiguity(info),
+                );
                 return EvaluationResult::finalize(stack_entry, encountered_overflow, result);
             };
 
