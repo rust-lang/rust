@@ -1,4 +1,4 @@
-error: `repr(C)` enum discriminant does not fit into C `int`
+error: `repr(C)` enum discriminant does not fit into C `int` nor into C `unsigned int`
   --> $DIR/repr-c-big-discriminant1.rs:16:5
    |
 LL |     A = 9223372036854775807, // i64::MAX
@@ -7,7 +7,7 @@ LL |     A = 9223372036854775807, // i64::MAX
    = note: `repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C
    = help: use `repr($int_ty)` instead to explicitly set the size of this enum
 
-error: `repr(C)` enum discriminant does not fit into C `int`
+error: `repr(C)` enum discriminant does not fit into C `int` nor into C `unsigned int`
   --> $DIR/repr-c-big-discriminant1.rs:23:5
    |
 LL |     A = -2147483649, // i32::MIN-1
@@ -16,8 +16,26 @@ LL |     A = -2147483649, // i32::MIN-1
    = note: `repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C
    = help: use `repr($int_ty)` instead to explicitly set the size of this enum
 
-error: `repr(C)` enum discriminant does not fit into C `int`
+error: `repr(C)` enum discriminant does not fit into C `unsigned int`, and a previous discriminant does not fit into C `int`
   --> $DIR/repr-c-big-discriminant1.rs:32:5
+   |
+LL |     B = -1,
+   |     ^
+   |
+   = note: `repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C
+   = help: use `repr($int_ty)` instead to explicitly set the size of this enum
+
+error: `repr(C)` enum discriminant does not fit into C `int`, and a previous discriminant does not fit into C `unsigned int`
+  --> $DIR/repr-c-big-discriminant1.rs:38:5
+   |
+LL |     A = 2147483648, // i32::MAX+1
+   |     ^
+   |
+   = note: `repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C
+   = help: use `repr($int_ty)` instead to explicitly set the size of this enum
+
+error: `repr(C)` enum discriminant does not fit into C `int` nor into C `unsigned int`
+  --> $DIR/repr-c-big-discriminant1.rs:47:5
    |
 LL |     A = I64_MAX as isize,
    |     ^
@@ -25,5 +43,5 @@ LL |     A = I64_MAX as isize,
    = note: `repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C
    = help: use `repr($int_ty)` instead to explicitly set the size of this enum
 
-error: aborting due to 3 previous errors
+error: aborting due to 5 previous errors
 
