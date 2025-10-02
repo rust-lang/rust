@@ -1052,6 +1052,19 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         let md = self.md_node_in_context(md_list);
         unsafe { llvm::LLVMRustGlobalAddMetadata(global, kind_id, md) };
     }
+
+    /// Helper method for the sequence of calls:
+    /// - `LLVMMDNodeInContext2` (to create an `llvm::MDNode` from a list of metadata)
+    /// - `LLVMGlobalSetMetadata` (to set that node as metadata of `kind_id` for `global`)
+    pub(crate) fn global_set_metadata_node(
+        &self,
+        global: &'ll Value,
+        kind_id: MetadataKindId,
+        md_list: &[&'ll Metadata],
+    ) {
+        let md = self.md_node_in_context(md_list);
+        unsafe { llvm::LLVMGlobalSetMetadata(global, kind_id, md) };
+    }
 }
 
 impl HasDataLayout for CodegenCx<'_, '_> {
