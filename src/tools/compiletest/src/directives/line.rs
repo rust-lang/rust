@@ -1,3 +1,7 @@
+#![expect(dead_code)] // (removed later in this PR)
+
+use std::fmt;
+
 const COMPILETEST_DIRECTIVE_PREFIX: &str = "//@";
 
 /// If the given line begins with the appropriate comment prefix for a directive,
@@ -28,7 +32,10 @@ pub(crate) fn line_directive<'line>(
         raw_directive = after_comment;
     };
 
-    Some(DirectiveLine { line_number, revision, raw_directive })
+    // The directive name ends at the first occurrence of colon, space, or end-of-string.
+    let name = raw_directive.split([':', ' ']).next().expect("split is never empty");
+
+    Some(DirectiveLine { line_number, revision, raw_directive, name })
 }
 
 /// The (partly) broken-down contents of a line containing a test directive,
@@ -39,10 +46,12 @@ pub(crate) fn line_directive<'line>(
 /// ```text
 /// //@ compile-flags: -O
 ///     ^^^^^^^^^^^^^^^^^ raw_directive
+///     ^^^^^^^^^^^^^     name
 ///
 /// //@ [foo] compile-flags: -O
 ///      ^^^                    revision
 ///           ^^^^^^^^^^^^^^^^^ raw_directive
+///           ^^^^^^^^^^^^^     name
 /// ```
 pub(crate) struct DirectiveLine<'ln> {
     pub(crate) line_number: usize,
@@ -58,10 +67,44 @@ pub(crate) struct DirectiveLine<'ln> {
     /// This is "raw" because the directive's name and colon-separated value
     /// (if present) have not yet been extracted or checked.
     pub(crate) raw_directive: &'ln str,
+
+    /// Name of the directive.
+    ///
+    /// Invariant: `self.raw_directive.starts_with(self.name)`
+    pub(crate) name: &'ln str,
 }
 
 impl<'ln> DirectiveLine<'ln> {
     pub(crate) fn applies_to_test_revision(&self, test_revision: Option<&str>) -> bool {
         self.revision.is_none() || self.revision == test_revision
+    }
+
+    /// Helper method used by `value_after_colon` and `remark_after_space`.
+    /// Don't call this directly.
+    fn rest_after_separator(&self, separator: u8) -> Option<&'ln str> {
+        let n = self.name.len();
+        if self.raw_directive.as_bytes().get(n) != Some(&separator) {
+            return None;
+        }
+
+        Some(&self.raw_directive[n + 1..])
+    }
+
+    /// If this directive uses `name: value` syntax, returns the part after
+    /// the colon character.
+    pub(crate) fn value_after_colon(&self) -> Option<&'ln str> {
+        self.rest_after_separator(b':')
+    }
+
+    /// If this directive uses `name remark` syntax, returns the part after
+    /// the separating space.
+    pub(crate) fn remark_after_space(&self) -> Option<&'ln str> {
+        self.rest_after_separator(b' ')
+    }
+
+    /// Allows callers to print `raw_directive` if necessary,
+    /// without accessing the field directly.
+    pub(crate) fn display(&self) -> impl fmt::Display {
+        self.raw_directive
     }
 }
