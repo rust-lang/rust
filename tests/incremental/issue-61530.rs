@@ -1,6 +1,7 @@
 #![feature(repr_simd, core_intrinsics)]
 
 //@ revisions:rpass1 rpass2
+//@ ignore-backends: gcc
 
 use std::intrinsics::simd::simd_shuffle;
 
