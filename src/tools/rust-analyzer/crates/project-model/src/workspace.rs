@@ -16,8 +16,9 @@ use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
 use rustc_hash::{FxHashMap, FxHashSet};
 use semver::Version;
 use span::{Edition, FileId};
-use toolchain::Tool;
+use toolchain::{NO_RUSTUP_AUTO_INSTALL_ENV, Tool};
 use tracing::instrument;
+use tracing::{debug, error, info};
 use triomphe::Arc;
 
 use crate::{
@@ -33,7 +34,6 @@ use crate::{
     toolchain_info::{QueryConfig, rustc_cfg, target_data, target_tuple, version},
     utf8_stdout,
 };
-use tracing::{debug, error, info};
 
 pub type FileLoader<'a> = &'a mut dyn for<'b> FnMut(&'b AbsPath) -> Option<FileId>;
 
@@ -1907,6 +1907,7 @@ fn cargo_target_dir(
 ) -> Option<Utf8PathBuf> {
     let cargo = sysroot.tool(Tool::Cargo, manifest.parent(), extra_env);
     let mut meta = cargo_metadata::MetadataCommand::new();
+    meta.env(NO_RUSTUP_AUTO_INSTALL_ENV.0, NO_RUSTUP_AUTO_INSTALL_ENV.1);
     meta.cargo_path(cargo.get_program());
     meta.manifest_path(manifest);
     // `--no-deps` doesn't (over)write lockfiles as it doesn't do any package resolve.
