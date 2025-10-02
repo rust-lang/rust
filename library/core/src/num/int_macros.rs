@@ -1845,11 +1845,22 @@ macro_rules! int_impl {
                       without modifying the original"]
         #[inline]
         pub const fn checked_pow(self, mut exp: u32) -> Option<Self> {
+            let mut base = self;
+            let mut acc: Self = 1;
+
+            if intrinsics::is_val_statically_known(base) && base.unsigned_abs().is_power_of_two() {
+                let k = base.unsigned_abs().ilog2();
+                let shift = try_opt!(k.checked_mul(exp));
+                return if base < 0 && (exp % 2) == 1 {
+                    (-1 as Self).shl_exact(shift)
+                } else {
+                    (1 as Self).shl_exact(shift)
+                }
+            }
+
             if exp == 0 {
                 return Some(1);
             }
-            let mut base = self;
-            let mut acc: Self = 1;
 
             if intrinsics::is_val_statically_known(exp) {
                 while exp > 1 {
@@ -3096,14 +3107,23 @@ macro_rules! int_impl {
                       without modifying the original"]
         #[inline]
         pub const fn overflowing_pow(self, mut exp: u32) -> (Self, bool) {
-            if exp == 0 {
-                return (1, false);
-            }
-
             let mut base = self;
             let mut acc: Self = 1;
             let mut overflow = false;
             let mut tmp_overflow;
+
+            if intrinsics::is_val_statically_known(base) && base.unsigned_abs().is_power_of_two() {
+                let k = base.unsigned_abs().ilog2();
+                let Some(shift) = k.checked_mul(exp) else {
+                    return (0, true)
+                };
+                let base: Self = if base < 0 && (exp % 2) != 0 { -1 } else { 1 };
+                return (base.unbounded_shl(shift), base.shl_exact(shift).is_none());
+            }
+
+            if exp == 0 {
+                return (1, false);
+            }
 
             if intrinsics::is_val_statically_known(exp) {
                 while exp > 1 {
