@@ -415,9 +415,17 @@ impl TestProps {
                         config.parse_name_value_directive(ln, COMPILE_FLAGS, testfile)
                     {
                         let flags = split_flags(&flags);
-                        for flag in &flags {
+                        for (i, flag) in flags.iter().enumerate() {
                             if flag == "--edition" || flag.starts_with("--edition=") {
                                 panic!("you must use `//@ edition` to configure the edition");
+                            }
+                            if (flag == "-C"
+                                && flags.get(i + 1).is_some_and(|v| v.starts_with("incremental=")))
+                                || flag.starts_with("-Cincremental=")
+                            {
+                                panic!(
+                                    "you must use `//@ incremental` to enable incremental compilation"
+                                );
                             }
                         }
                         self.compile_flags.extend(flags);
