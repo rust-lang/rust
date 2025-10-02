@@ -969,10 +969,6 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
                     return true;
                 };
 
-                let Some(new_highest_head_index) = heads.opt_highest_cycle_head_index() else {
-                    return false;
-                };
-
                 // We're rebasing an entry `e` over a head `p`. This head
                 // has a number of own heads `h` it depends on.
                 //
@@ -1045,6 +1041,10 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
                         }
                     };
                 }
+
+                let Some(new_highest_head_index) = heads.opt_highest_cycle_head_index() else {
+                    return false;
+                };
 
                 // We now care about the path from the next highest cycle head to the
                 // provisional cache entry.
