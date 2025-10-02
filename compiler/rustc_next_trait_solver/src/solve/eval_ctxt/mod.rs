@@ -246,7 +246,7 @@ where
             return Ok(res);
         }
 
-        let result = EvalCtxt::enter_root(self, self.cx().recursion_limit(), span, |ecx| {
+        let result = EvalCtxt::enter_root(self, self.cx().recursion_limit() * 2, span, |ecx| {
             // Fast paths handled above
             ecx.evaluate_goal_no_fast_paths(GoalSource::Misc, goal)
         });
@@ -1705,7 +1705,7 @@ pub fn evaluate_root_goal_for_proof_tree_raw_provider<
     let mut inspect = inspect::ProofTreeBuilder::new();
     let (canonical_result, accessed_opaques) = SearchGraph::<D>::evaluate_root_goal_for_proof_tree(
         cx,
-        cx.recursion_limit(),
+        cx.recursion_limit() * 2,
         canonical_goal,
         &mut inspect,
     );
