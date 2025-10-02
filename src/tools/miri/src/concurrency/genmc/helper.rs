@@ -37,7 +37,11 @@ pub(super) fn emit_warning<'tcx>(
     cache: &WarningCache,
     diagnostic: impl FnOnce() -> NonHaltingDiagnostic,
 ) {
-    let span = ecx.machine.current_span();
+    // FIXME: This is not the right span to use (it's always inside the local crates so if the same
+    // operation is invoked from multiple places it will warn multiple times). `cur_span` is not
+    // right either though (we should honor `#[track_caller]`). Ultimately what we want is "the
+    // primary span the warning would point at".
+    let span = ecx.machine.current_user_relevant_span();
     if cache.read().unwrap().contains(&span) {
         return;
     }
