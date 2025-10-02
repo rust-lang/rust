@@ -32,7 +32,6 @@ use stdx::never;
 use syntax::{SyntaxNodePtr, TextRange};
 use triomphe::Arc;
 
-use crate::next_solver::mapping::NextSolverToChalk;
 use crate::{
     AliasTy, CallableDefId, ClosureId, ComplexMemoryMap, Const, ConstData, ConstScalar, Interner,
     MemoryMap, Substitution, ToChalk, TraitEnvironment, Ty, TyBuilder, TyExt, TyKind,
@@ -44,8 +43,11 @@ use crate::{
     layout::{Layout, LayoutError, RustcEnumVariantIdx},
     method_resolution::{is_dyn_method, lookup_impl_const},
     next_solver::{
-        DbInterner,
-        mapping::{ChalkToNextSolver, convert_args_for_result, convert_ty_for_result},
+        DbInterner, TypingMode,
+        infer::{DbInternerInferExt, InferCtxt},
+        mapping::{
+            ChalkToNextSolver, NextSolverToChalk, convert_args_for_result, convert_ty_for_result,
+        },
     },
     static_lifetime,
     traits::FnTrait,
@@ -204,6 +206,7 @@ pub struct Evaluator<'a> {
     /// Maximum count of bytes that heap and stack can grow
     memory_limit: usize,
     interner: DbInterner<'a>,
+    infcx: InferCtxt<'a>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -690,6 +693,7 @@ impl<'db> Evaluator<'db> {
                 x.trait_items(db).method_by_name(&Name::new_symbol_root(sym::call_once))
             }),
             interner,
+            infcx: interner.infer_ctxt().build(TypingMode::non_body_analysis()),
         })
     }
 

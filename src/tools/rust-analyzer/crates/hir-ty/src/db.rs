@@ -19,7 +19,6 @@ use crate::{
     Binders, Const, ImplTraitId, ImplTraits, InferenceResult, Substitution, TraitEnvironment, Ty,
     TyDefId, ValueTyDefId, chalk_db,
     consteval::ConstEvalError,
-    drop::DropGlue,
     dyn_compatibility::DynCompatibilityViolation,
     layout::{Layout, LayoutError},
     lower::{Diagnostics, GenericDefaults, GenericPredicates},
@@ -333,10 +332,6 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
         block: Option<BlockId>,
         goal: crate::Canonical<crate::InEnvironment<crate::Goal>>,
     ) -> NextTraitSolveResult;
-
-    #[salsa::invoke(crate::drop::has_drop_glue)]
-    #[salsa::cycle(cycle_result = crate::drop::has_drop_glue_cycle_result)]
-    fn has_drop_glue(&self, ty: Ty, env: Arc<TraitEnvironment<'_>>) -> DropGlue;
 
     // next trait solver
 
