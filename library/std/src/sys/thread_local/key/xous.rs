@@ -186,6 +186,11 @@ pub unsafe fn destroy_tls() {
     };
 }
 
+// This is marked inline(never) to prevent dealloc calls from being reordered
+// to after the TLS has been destroyed.
+// See https://github.com/rust-lang/rust/pull/144465#pullrequestreview-3289729950
+// for more context.
+#[inline(never)]
 unsafe fn run_dtors() {
     let mut any_run = true;
 
