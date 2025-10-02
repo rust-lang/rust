@@ -1571,9 +1571,14 @@ macro_rules! uint_impl {
             // applied by the compiler. If you want those specific bases,
             // use `.checked_ilog2()` or `.checked_ilog10()` directly.
             if core::intrinsics::is_val_statically_known(base) {
-                if base == 2 {
-                    return self.checked_ilog2();
-                } else if base == 10 {
+                // change of base:
+                // if base == 2 ** k, then
+                // log(base, n) == log(2, n) / k
+                if base.is_power_of_two() && base > 1 {
+                    let k = base.ilog2();
+                    return Some(try_opt!(self.checked_ilog2()) / k);
+                }
+                if base == 10 {
                     return self.checked_ilog10();
                 }
             }
