@@ -63,6 +63,7 @@
 #![debugger_visualizer(gdb_script_file = "embedded-visualizer.py")]
 
 //@ aux-build: dependency-with-embedded-visualizers.rs
+//@ ignore-backends: gcc
 extern crate dependency_with_embedded_visualizers;
 
 use dependency_with_embedded_visualizers::Person;
