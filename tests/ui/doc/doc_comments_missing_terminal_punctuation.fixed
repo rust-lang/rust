@@ -80,12 +80,10 @@ mod module {
 }
 
 enum Trailers {
-    /// Sometimes the doc comment ends with parentheses (like this).
-    //~^ doc_comments_missing_terminal_punctuation
-    EndsWithParens,
-    /// (Sometimes the last sentence is in parentheses, but there is no special treatment of this.).
-    //~^ doc_comments_missing_terminal_punctuation
-    ParensFailing,
+    /// Sometimes the last sentence ends with parentheses (and that's ok).
+    ParensPassing,
+    /// (Sometimes the last sentence is in parentheses.)
+    SentenceInParensPassing,
     /// **Sometimes the last sentence is in bold, and that's ok.**
     DoubleStarPassing,
     /// **But sometimes it is missing a period.**
@@ -97,10 +95,9 @@ enum Trailers {
     //~^ doc_comments_missing_terminal_punctuation
     UnderscoreFailing,
     /// This comment ends with "a quote."
-    QuotePassing,
-    /// This comment ends with "a quote."
-    //~^ doc_comments_missing_terminal_punctuation
-    QuoteFailing,
+    AmericanStyleQuotePassing,
+    /// This comment ends with "a quote".
+    BritishStyleQuotePassing,
 }
 
 /// Doc comments can end with an [inline link](#anchor).

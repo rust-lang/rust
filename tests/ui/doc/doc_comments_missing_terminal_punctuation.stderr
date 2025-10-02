@@ -44,70 +44,52 @@ LL |     //! inner attributes too
    |                             ^ help: end the doc comment with some punctuation: `.`
 
 error: doc comments should end with a terminal punctuation mark
-  --> tests/ui/doc/doc_comments_missing_terminal_punctuation.rs:83:68
-   |
-LL |     /// Sometimes the doc comment ends with parentheses (like this)
-   |                                                                    ^ help: end the doc comment with some punctuation: `.`
-
-error: doc comments should end with a terminal punctuation mark
-  --> tests/ui/doc/doc_comments_missing_terminal_punctuation.rs:86:100
-   |
-LL |     /// (Sometimes the last sentence is in parentheses, but there is no special treatment of this.)
-   |                                                                                                    ^ help: end the doc comment with some punctuation: `.`
-
-error: doc comments should end with a terminal punctuation mark
-  --> tests/ui/doc/doc_comments_missing_terminal_punctuation.rs:91:47
+  --> tests/ui/doc/doc_comments_missing_terminal_punctuation.rs:89:47
    |
 LL |     /// **But sometimes it is missing a period**
    |                                               ^ help: end the doc comment with some punctuation: `.`
 
 error: doc comments should end with a terminal punctuation mark
-  --> tests/ui/doc/doc_comments_missing_terminal_punctuation.rs:96:46
+  --> tests/ui/doc/doc_comments_missing_terminal_punctuation.rs:94:46
    |
 LL |     /// _But sometimes it is missing a period_
    |                                              ^ help: end the doc comment with some punctuation: `.`
 
 error: doc comments should end with a terminal punctuation mark
-  --> tests/ui/doc/doc_comments_missing_terminal_punctuation.rs:101:40
-   |
-LL |     /// This comment ends with "a quote"
-   |                                        ^ help: end the doc comment with some punctuation: `.`
-
-error: doc comments should end with a terminal punctuation mark
-  --> tests/ui/doc/doc_comments_missing_terminal_punctuation.rs:106:56
+  --> tests/ui/doc/doc_comments_missing_terminal_punctuation.rs:103:56
    |
 LL | /// Doc comments can end with an [inline link](#anchor)
    |                                                        ^ help: end the doc comment with some punctuation: `.`
 
 error: doc comments should end with a terminal punctuation mark
-  --> tests/ui/doc/doc_comments_missing_terminal_punctuation.rs:110:65
+  --> tests/ui/doc/doc_comments_missing_terminal_punctuation.rs:107:65
    |
 LL | /// Some doc comments contain [link reference definitions][spec]
    |                                                                 ^ help: end the doc comment with some punctuation: `.`
 
 error: doc comments should end with a terminal punctuation mark
-  --> tests/ui/doc/doc_comments_missing_terminal_punctuation.rs:135:57
+  --> tests/ui/doc/doc_comments_missing_terminal_punctuation.rs:132:57
    |
 LL | /// Doc comments with trailing blank lines are supported
    |                                                         ^ help: end the doc comment with some punctuation: `.`
 
 error: doc comments should end with a terminal punctuation mark
-  --> tests/ui/doc/doc_comments_missing_terminal_punctuation.rs:143:30
+  --> tests/ui/doc/doc_comments_missing_terminal_punctuation.rs:140:30
    |
 LL | /// Only the last sentence is
    |                              ^ help: end the doc comment with some punctuation: `.`
 
 error: doc comments should end with a terminal punctuation mark
-  --> tests/ui/doc/doc_comments_missing_terminal_punctuation.rs:150:33
+  --> tests/ui/doc/doc_comments_missing_terminal_punctuation.rs:147:33
    |
 LL | /// This ends with a code `span`
    |                                 ^ help: end the doc comment with some punctuation: `.`
 
 error: doc comments should end with a terminal punctuation mark
-  --> tests/ui/doc/doc_comments_missing_terminal_punctuation.rs:159:27
+  --> tests/ui/doc/doc_comments_missing_terminal_punctuation.rs:156:27
    |
 LL |  * Block doc comments work
    |                           ^ help: end the doc comment with some punctuation: `.`
 
-error: aborting due to 18 previous errors
+error: aborting due to 15 previous errors
 
