@@ -1590,6 +1590,15 @@ impl Step for Coverage {
         let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
         let target = run.target;
 
+        // GCC cannot run coverage tests.
+        if let Some(codegen_backend) = run.builder.config.cmd.test_codegen_backend() {
+            if codegen_backend.is_gcc() {
+                return;
+            }
+        } else if run.builder.config.default_codegen_backend(compiler.host).is_gcc() {
+            return;
+        }
+
         // List of (coverage) test modes that the coverage test suite will be
         // run in. It's OK for this to contain duplicates, because the call to
         // `Builder::ensure` below will take care of deduplication.
