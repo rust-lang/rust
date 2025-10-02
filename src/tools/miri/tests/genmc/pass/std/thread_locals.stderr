@@ -12,7 +12,7 @@ LL |                 intrinsics::atomic_cxchgweak::<T, { AO::Relaxed }, { AO::Re
    = note: inside closure at RUSTLIB/std/src/thread/current.rs:LL:CC
    = note: inside `std::option::Option::<std::thread::ThreadId>::unwrap_or_else::<{closure@std::thread::current::id::get_or_init::{closure#0}}>` at RUSTLIB/core/src/option.rs:LL:CC
    = note: inside `std::thread::current::id::get_or_init` at RUSTLIB/std/src/thread/current.rs:LL:CC
-   = note: inside `std::thread::current::current_id` at RUSTLIB/std/src/thread/current.rs:LL:CC
+   = note: inside `std::thread::current_id` at RUSTLIB/std/src/thread/current.rs:LL:CC
    = note: inside `std::rt::init` at RUSTLIB/std/src/rt.rs:LL:CC
    = note: inside closure at RUSTLIB/std/src/rt.rs:LL:CC
    = note: inside `std::panicking::catch_unwind::do_call::<{closure@std::rt::lang_start_internal::{closure#0}}, isize>` at RUSTLIB/std/src/panicking.rs:LL:CC
