@@ -5,6 +5,7 @@
 
 //@ [lto] compile-flags:-C lto
 //@ [lto] no-prefer-dynamic
+//@ ignore-backends: gcc
 
 // gdb-command:run
 // gdb-command:print B
