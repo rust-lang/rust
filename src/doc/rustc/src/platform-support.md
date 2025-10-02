@@ -34,7 +34,7 @@ target | notes
 -------|-------
 [`aarch64-apple-darwin`](platform-support/apple-darwin.md) | ARM64 macOS (11.0+, Big Sur+)
 [`aarch64-pc-windows-msvc`](platform-support/windows-msvc.md) | ARM64 Windows MSVC
-`aarch64-unknown-linux-gnu` | ARM64 Linux (kernel 4.1+, glibc 2.17+)
+[`aarch64-unknown-linux-gnu`](platform-support/aarch64-unknown-linux-gnu.md) | ARM64 Linux (kernel 4.1+, glibc 2.17+)
 [`i686-pc-windows-msvc`](platform-support/windows-msvc.md) | 32-bit MSVC (Windows 10+, Windows Server 2016+, Pentium 4) [^x86_32-floats-return-ABI] [^win32-msvc-alignment]
 `i686-unknown-linux-gnu` | 32-bit Linux (kernel 3.2+, glibc 2.17+, Pentium 4) [^x86_32-floats-return-ABI]
 [`x86_64-pc-windows-gnu`](platform-support/windows-gnu.md) | 64-bit MinGW (Windows 10+, Windows Server 2016+)
@@ -93,7 +93,7 @@ target | notes
 [`aarch64-unknown-linux-ohos`](platform-support/openharmony.md) | ARM64 OpenHarmony
 `arm-unknown-linux-gnueabi` | Armv6 Linux (kernel 3.2+, glibc 2.17)
 `arm-unknown-linux-gnueabihf` | Armv6 Linux, hardfloat (kernel 3.2+, glibc 2.17)
-`armv7-unknown-linux-gnueabihf` | Armv7-A Linux, hardfloat (kernel 3.2+, glibc 2.17)
+[`armv7-unknown-linux-gnueabihf`](platform-support/armv7-unknown-linux-gnueabi.md) | Armv7-A Linux, hardfloat (kernel 3.2+, glibc 2.17)
 [`armv7-unknown-linux-ohos`](platform-support/openharmony.md) | Armv7-A OpenHarmony
 [`loongarch64-unknown-linux-gnu`](platform-support/loongarch-linux.md) | LoongArch64 Linux, LP64D ABI (kernel 5.19+, glibc 2.36), LSX required
 [`loongarch64-unknown-linux-musl`](platform-support/loongarch-linux.md) | LoongArch64 Linux, LP64D ABI (kernel 5.19+, musl 1.2.5), LSX required
@@ -159,7 +159,7 @@ target | std | notes
 [`armv5te-unknown-linux-gnueabi`](platform-support/armv5te-unknown-linux-gnueabi.md) | ✓ | Armv5TE Linux (kernel 4.4+, glibc 2.23)
 `armv5te-unknown-linux-musleabi` | ✓ | Armv5TE Linux with musl 1.2.3
 [`armv7-linux-androideabi`](platform-support/android.md) | ✓ | Armv7-A Android
-`armv7-unknown-linux-gnueabi` | ✓ | Armv7-A Linux (kernel 4.15+, glibc 2.27)
+[`armv7-unknown-linux-gnueabi`](platform-support/armv7-unknown-linux-gnueabi.md) | ✓ | Armv7-A Linux (kernel 4.15+, glibc 2.27)
 `armv7-unknown-linux-musleabi` | ✓ | Armv7-A Linux with musl 1.2.3
 `armv7-unknown-linux-musleabihf` | ✓ | Armv7-A Linux with musl 1.2.3, hardfloat
 [`armv7a-none-eabi`](platform-support/armv7a-none-eabi.md) | * | Bare Armv7-A
