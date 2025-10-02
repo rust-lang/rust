@@ -1,5 +1,3 @@
-#![expect(dead_code)] // (removed later in this PR)
-
 use std::fmt;
 
 const COMPILETEST_DIRECTIVE_PREFIX: &str = "//@";
@@ -66,7 +64,7 @@ pub(crate) struct DirectiveLine<'ln> {
     ///
     /// This is "raw" because the directive's name and colon-separated value
     /// (if present) have not yet been extracted or checked.
-    pub(crate) raw_directive: &'ln str,
+    raw_directive: &'ln str,
 
     /// Name of the directive.
     ///
