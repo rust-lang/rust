@@ -13,7 +13,7 @@ Vim](./other_editors.md#coc-rust-analyzer) provide `rust-analyzer` specific conf
 UIs. Others may require you to know a bit more about the interaction
 with `rust-analyzer`.
 
-For the later category, it might help to know that the initial
+For the latter category, it might help to know that the initial
 configuration is specified as a value of the `initializationOptions`
 field of the [`InitializeParams` message, in the LSP
 protocol](https://microsoft.github.io/language-server-protocol/specifications/specification-current/#initialize).
