@@ -1,5 +1,5 @@
 error[E0370]: enum discriminant overflowed
-  --> $DIR/repr-c-big-discriminant2.rs:19:5
+  --> $DIR/repr-c-big-discriminant2.rs:24:5
    |
 LL |     B, // +1
    |     ^ overflowed on value after 2147483647
