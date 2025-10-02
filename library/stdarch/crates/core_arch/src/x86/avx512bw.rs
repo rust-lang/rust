@@ -10440,7 +10440,7 @@ pub fn _kortestz_mask64_u8(a: __mmask64, b: __mmask64) -> u8 {
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _kshiftli_mask32<const COUNT: u32>(a: __mmask32) -> __mmask32 {
-    a << COUNT
+    a.unbounded_shl(COUNT)
 }
 
 /// Shift the bits of 64-bit mask a left by count while shifting in zeros, and store the least significant 32 bits of the result in k.
@@ -10451,7 +10451,7 @@ pub fn _kshiftli_mask32<const COUNT: u32>(a: __mmask32) -> __mmask32 {
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _kshiftli_mask64<const COUNT: u32>(a: __mmask64) -> __mmask64 {
-    a << COUNT
+    a.unbounded_shl(COUNT)
 }
 
 /// Shift the bits of 32-bit mask a right by count while shifting in zeros, and store the least significant 32 bits of the result in k.
@@ -10462,7 +10462,7 @@ pub fn _kshiftli_mask64<const COUNT: u32>(a: __mmask64) -> __mmask64 {
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _kshiftri_mask32<const COUNT: u32>(a: __mmask32) -> __mmask32 {
-    a >> COUNT
+    a.unbounded_shr(COUNT)
 }
 
 /// Shift the bits of 64-bit mask a right by count while shifting in zeros, and store the least significant 32 bits of the result in k.
@@ -10473,7 +10473,7 @@ pub fn _kshiftri_mask32<const COUNT: u32>(a: __mmask32) -> __mmask32 {
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _kshiftri_mask64<const COUNT: u32>(a: __mmask64) -> __mmask64 {
-    a >> COUNT
+    a.unbounded_shr(COUNT)
 }
 
 /// Compute the bitwise AND of 32-bit masks a and b, and if the result is all zeros, store 1 in dst,
@@ -20315,6 +20315,18 @@ mod tests {
         let r = _kshiftli_mask32::<3>(a);
         let e: __mmask32 = 0b0100101101001011_0100101101001000;
         assert_eq!(r, e);
+
+        let r = _kshiftli_mask32::<31>(a);
+        let e: __mmask32 = 0b1000000000000000_0000000000000000;
+        assert_eq!(r, e);
+
+        let r = _kshiftli_mask32::<32>(a);
+        let e: __mmask32 = 0b0000000000000000_0000000000000000;
+        assert_eq!(r, e);
+
+        let r = _kshiftli_mask32::<33>(a);
+        let e: __mmask32 = 0b0000000000000000_0000000000000000;
+        assert_eq!(r, e);
     }
 
     #[simd_test(enable = "avx512bw")]
@@ -20323,21 +20335,61 @@ mod tests {
         let r = _kshiftli_mask64::<3>(a);
         let e: __mmask64 = 0b0110100101101001011_0100101101001000;
         assert_eq!(r, e);
+
+        let r = _kshiftli_mask64::<63>(a);
+        let e: __mmask64 = 0b1000000000000000_0000000000000000_0000000000000000_0000000000000000;
+        assert_eq!(r, e);
+
+        let r = _kshiftli_mask64::<64>(a);
+        let e: __mmask64 = 0b0000000000000000_0000000000000000_0000000000000000_0000000000000000;
+        assert_eq!(r, e);
+
+        let r = _kshiftli_mask64::<65>(a);
+        let e: __mmask64 = 0b0000000000000000_0000000000000000_0000000000000000_0000000000000000;
+        assert_eq!(r, e);
     }
 
     #[simd_test(enable = "avx512bw")]
     unsafe fn test_kshiftri_mask32() {
-        let a: __mmask32 = 0b0110100101101001_0110100101101001;
+        let a: __mmask32 = 0b1010100101101001_0110100101101001;
         let r = _kshiftri_mask32::<3>(a);
-        let e: __mmask32 = 0b0000110100101101_0010110100101101;
+        let e: __mmask32 = 0b0001010100101101_0010110100101101;
+        assert_eq!(r, e);
+
+        let r = _kshiftri_mask32::<31>(a);
+        let e: __mmask32 = 0b0000000000000000_0000000000000001;
+        assert_eq!(r, e);
+
+        let r = _kshiftri_mask32::<32>(a);
+        let e: __mmask32 = 0b0000000000000000_0000000000000000;
+        assert_eq!(r, e);
+
+        let r = _kshiftri_mask32::<33>(a);
+        let e: __mmask32 = 0b0000000000000000_0000000000000000;
         assert_eq!(r, e);
     }
 
     #[simd_test(enable = "avx512bw")]
     unsafe fn test_kshiftri_mask64() {
-        let a: __mmask64 = 0b0110100101101001011_0100101101001000;
+        let a: __mmask64 = 0b1010100101101001011_0100101101001000;
         let r = _kshiftri_mask64::<3>(a);
-        let e: __mmask64 = 0b0110100101101001_0110100101101001;
+        let e: __mmask64 = 0b1010100101101001_0110100101101001;
+        assert_eq!(r, e);
+
+        let r = _kshiftri_mask64::<34>(a);
+        let e: __mmask64 = 0b0000000000000000_0000000000000000_0000000000000000_0000000000000001;
+        assert_eq!(r, e);
+
+        let r = _kshiftri_mask64::<35>(a);
+        let e: __mmask64 = 0b0000000000000000_0000000000000000_0000000000000000_0000000000000000;
+        assert_eq!(r, e);
+
+        let r = _kshiftri_mask64::<64>(a);
+        let e: __mmask64 = 0b0000000000000000_0000000000000000_0000000000000000_0000000000000000;
+        assert_eq!(r, e);
+
+        let r = _kshiftri_mask64::<65>(a);
+        let e: __mmask64 = 0b0000000000000000_0000000000000000_0000000000000000_0000000000000000;
         assert_eq!(r, e);
     }
 
