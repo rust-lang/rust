@@ -754,7 +754,7 @@ impl Module {
             GenericDef::Impl(impl_def).diagnostics(db, acc);
 
             let loc = impl_def.id.lookup(db);
-            let source_map = db.impl_signature_with_source_map(impl_def.id).1;
+            let (impl_signature, source_map) = db.impl_signature_with_source_map(impl_def.id);
             expr_store_diagnostics(db, acc, &source_map);
 
             let file_id = loc.id.file_id;
@@ -783,9 +783,16 @@ impl Module {
             }
 
             let trait_ = impl_def.trait_(db);
-            let trait_is_unsafe = trait_.is_some_and(|t| t.is_unsafe(db));
+            let mut trait_is_unsafe = trait_.is_some_and(|t| t.is_unsafe(db));
             let impl_is_negative = impl_def.is_negative(db);
             let impl_is_unsafe = impl_def.is_unsafe(db);
+
+            let trait_is_unresolved = trait_.is_none() && impl_signature.target_trait.is_some();
+            if trait_is_unresolved {
+                // Ignore trait safety errors when the trait is unresolved, as otherwise we'll treat it as safe,
+                // which may not be correct.
+                trait_is_unsafe = impl_is_unsafe;
+            }
 
             let drop_maybe_dangle = (|| {
                 // FIXME: This can be simplified a lot by exposing hir-ty's utils.rs::Generics helper
