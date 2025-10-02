@@ -39,7 +39,7 @@ pub(crate) fn complete_cfg(acc: &mut Completions, ctx: &CompletionContext<'_>) {
             "target_os" => KNOWN_OS.iter().copied().for_each(add_completion),
             "target_vendor" => KNOWN_VENDOR.iter().copied().for_each(add_completion),
             "target_endian" => ["little", "big"].into_iter().for_each(add_completion),
-            name => ctx.krate.potential_cfg(ctx.db).get_cfg_values(name).cloned().for_each(|s| {
+            name => ctx.krate.potential_cfg(ctx.db).get_cfg_values(name).for_each(|s| {
                 let s = s.as_str();
                 let insert_text = format!(r#""{s}""#);
                 let mut item = CompletionItem::new(
