@@ -919,7 +919,7 @@ impl<'tcx> MiriMachine<'tcx> {
                         &ecx.machine.threads,
                         size,
                         kind,
-                        ecx.machine.current_span(),
+                        ecx.machine.current_user_relevant_span(),
                     ),
                     data_race.weak_memory.then(weak_memory::AllocState::new_allocation),
                 ),
@@ -943,7 +943,7 @@ impl<'tcx> MiriMachine<'tcx> {
             ecx.machine
                 .allocation_spans
                 .borrow_mut()
-                .insert(id, (ecx.machine.current_span(), None));
+                .insert(id, (ecx.machine.current_user_relevant_span(), None));
         }
 
         interp_ok(AllocExtra { borrow_tracker, data_race, backtrace, sync: FxHashMap::default() })
@@ -1566,7 +1566,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         }
         if let Some((_, deallocated_at)) = machine.allocation_spans.borrow_mut().get_mut(&alloc_id)
         {
-            *deallocated_at = Some(machine.current_span());
+            *deallocated_at = Some(machine.current_user_relevant_span());
         }
         machine.free_alloc_id(alloc_id, size, align, kind);
         interp_ok(())

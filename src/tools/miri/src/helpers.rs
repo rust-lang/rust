@@ -1128,8 +1128,8 @@ impl<'tcx> MiriMachine<'tcx> {
     /// `#[track_caller]`.
     /// This function is backed by a cache, and can be assumed to be very fast.
     /// It will work even when the stack is empty.
-    pub fn current_span(&self) -> Span {
-        self.threads.active_thread_ref().current_span()
+    pub fn current_user_relevant_span(&self) -> Span {
+        self.threads.active_thread_ref().current_user_relevant_span()
     }
 
     /// Returns the span of the *caller* of the current operation, again

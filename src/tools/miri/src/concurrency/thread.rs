@@ -263,7 +263,7 @@ impl<'tcx> Thread<'tcx> {
         self.top_user_relevant_frame.or_else(|| self.stack.len().checked_sub(1))
     }
 
-    pub fn current_span(&self) -> Span {
+    pub fn current_user_relevant_span(&self) -> Span {
         self.top_user_relevant_frame()
             .map(|frame_idx| self.stack[frame_idx].current_span())
             .unwrap_or(rustc_span::DUMMY_SP)
@@ -867,7 +867,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             let mut state = tls::TlsDtorsState::default();
             Box::new(move |m| state.on_stack_empty(m))
         });
-        let current_span = this.machine.current_span();
+        let current_span = this.machine.current_user_relevant_span();
         match &mut this.machine.data_race {
             GlobalDataRaceHandler::None => {}
             GlobalDataRaceHandler::Vclocks(data_race) =>
