@@ -52,12 +52,6 @@ macro_rules! define_client_handles {
                 }
             }
 
-            impl<S> Encode<S> for &mut $oty {
-                fn encode(self, w: &mut Writer, s: &mut S) {
-                    self.handle.encode(w, s);
-                }
-            }
-
             impl<S> Decode<'_, '_, S> for $oty {
                 fn decode(r: &mut Reader<'_>, s: &mut S) -> Self {
                     $oty {
