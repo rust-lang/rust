@@ -16,10 +16,11 @@ use crate::directives::directive_names::{
     KNOWN_DIRECTIVE_NAMES, KNOWN_HTMLDOCCK_DIRECTIVE_NAMES, KNOWN_JSONDOCCK_DIRECTIVE_NAMES,
 };
 use crate::directives::needs::CachedNeedsConditions;
+use crate::edition::{Edition, parse_edition};
 use crate::errors::ErrorKind;
 use crate::executor::{CollectedTestDesc, ShouldPanic};
-use crate::help;
 use crate::util::static_regex;
+use crate::{fatal, help};
 
 pub(crate) mod auxiliary;
 mod cfg;
@@ -437,10 +438,13 @@ impl TestProps {
                         panic!("`compiler-flags` directive should be spelled `compile-flags`");
                     }
 
-                    if let Some(edition) = config.parse_edition(ln, testfile) {
+                    if let Some(range) = parse_edition_range(config, ln, testfile) {
                         // The edition is added at the start, since flags from //@compile-flags must
                         // be passed to rustc last.
-                        self.compile_flags.insert(0, format!("--edition={}", edition.trim()));
+                        self.compile_flags.insert(
+                            0,
+                            format!("--edition={}", range.edition_to_test(config.edition)),
+                        );
                         has_edition = true;
                     }
 
@@ -1124,10 +1128,6 @@ impl Config {
         }
     }
 
-    fn parse_edition(&self, line: &DirectiveLine<'_>, testfile: &Utf8Path) -> Option<String> {
-        self.parse_name_value_directive(line, "edition", testfile)
-    }
-
     fn set_name_directive(&self, line: &DirectiveLine<'_>, directive: &str, value: &mut bool) {
         // If the flag is already true, don't bother looking at the directive.
         *value = *value || self.parse_name_directive(line, directive);
@@ -1768,4 +1768,87 @@ enum IgnoreDecision {
     Ignore { reason: String },
     Continue,
     Error { message: String },
+}
+
+fn parse_edition_range(
+    config: &Config,
+    line: &DirectiveLine<'_>,
+    testfile: &Utf8Path,
+) -> Option<EditionRange> {
+    let raw = config.parse_name_value_directive(line, "edition", testfile)?;
+    let line_number = line.line_number;
+
+    // Edition range is half-open: `[lower_bound, upper_bound)`
+    if let Some((lower_bound, upper_bound)) = raw.split_once("..") {
+        Some(match (maybe_parse_edition(lower_bound), maybe_parse_edition(upper_bound)) {
+            (Some(lower_bound), Some(upper_bound)) if upper_bound <= lower_bound => {
+                fatal!(
+                    "{testfile}:{line_number}: the left side of `//@ edition` cannot be greater than or equal to the right side"
+                );
+            }
+            (Some(lower_bound), Some(upper_bound)) => {
+                EditionRange::Range { lower_bound, upper_bound }
+            }
+            (Some(lower_bound), None) => EditionRange::RangeFrom(lower_bound),
+            (None, Some(_)) => {
+                fatal!(
+                    "{testfile}:{line_number}: `..edition` is not a supported range in `//@ edition`"
+                );
+            }
+            (None, None) => {
+                fatal!("{testfile}:{line_number}: `..` is not a supported range in `//@ edition`");
+            }
+        })
+    } else {
+        match maybe_parse_edition(&raw) {
+            Some(edition) => Some(EditionRange::Exact(edition)),
+            None => {
+                fatal!("{testfile}:{line_number}: empty value for `//@ edition`");
+            }
+        }
+    }
+}
+
+fn maybe_parse_edition(mut input: &str) -> Option<Edition> {
+    input = input.trim();
+    if input.is_empty() {
+        return None;
+    }
+    Some(parse_edition(input))
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+enum EditionRange {
+    Exact(Edition),
+    RangeFrom(Edition),
+    /// Half-open range: `[lower_bound, upper_bound)`
+    Range {
+        lower_bound: Edition,
+        upper_bound: Edition,
+    },
+}
+
+impl EditionRange {
+    fn edition_to_test(&self, requested: impl Into<Option<Edition>>) -> Edition {
+        let min_edition = Edition::Year(2015);
+        let requested = requested.into().unwrap_or(min_edition);
+
+        match *self {
+            EditionRange::Exact(exact) => exact,
+            EditionRange::RangeFrom(lower_bound) => {
+                if requested >= lower_bound {
+                    requested
+                } else {
+                    lower_bound
+                }
+            }
+            EditionRange::Range { lower_bound, upper_bound } => {
+                if requested >= lower_bound && requested < upper_bound {
+                    requested
+                } else {
+                    lower_bound
+                }
+            }
+        }
+    }
 }

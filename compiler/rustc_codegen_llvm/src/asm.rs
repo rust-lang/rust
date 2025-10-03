@@ -538,9 +538,7 @@ pub(crate) fn inline_asm_call<'ll>(
             bx.const_u64(u64::from(span.lo().to_u32()) | (u64::from(span.hi().to_u32()) << 32)),
         )
     }));
-    let md = unsafe { llvm::LLVMMDNodeInContext2(bx.llcx, srcloc.as_ptr(), srcloc.len()) };
-    let md = bx.get_metadata_value(md);
-    llvm::LLVMSetMetadata(call, kind, md);
+    bx.cx.set_metadata_node(call, kind, &srcloc);
 
     Some(call)
 }

@@ -7,6 +7,7 @@ pub mod common;
 mod debuggers;
 pub mod diagnostics;
 pub mod directives;
+pub mod edition;
 pub mod errors;
 mod executor;
 mod json;
@@ -39,6 +40,7 @@ use crate::common::{
     expected_output_path, output_base_dir, output_relative_path,
 };
 use crate::directives::DirectivesCache;
+use crate::edition::parse_edition;
 use crate::executor::{CollectedTest, ColorConfig};
 
 /// Creates the `Config` instance for this invocation of compiletest.
@@ -449,7 +451,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         has_enzyme,
         channel: matches.opt_str("channel").unwrap(),
         git_hash: matches.opt_present("git-hash"),
-        edition: matches.opt_str("edition"),
+        edition: matches.opt_str("edition").as_deref().map(parse_edition),
 
         cc: matches.opt_str("cc").unwrap(),
         cxx: matches.opt_str("cxx").unwrap(),
