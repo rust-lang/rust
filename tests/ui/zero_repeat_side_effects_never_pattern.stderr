@@ -1,0 +1,16 @@
+error: expression with side effects as the initial value in a zero-sized array initializer
+  --> tests/ui/zero_repeat_side_effects_never_pattern.rs:7:5
+   |
+LL |     let _data = [panic!(); 0];
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::zero-repeat-side-effects` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::zero_repeat_side_effects)]`
+help: consider performing the side effect separately
+   |
+LL -     let _data = [panic!(); 0];
+LL +     panic!(); let _data: [!; 0] = [];
+   |
+
+error: aborting due to 1 previous error
+
