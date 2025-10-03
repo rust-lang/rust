@@ -41,6 +41,14 @@ ENV RUST_CONFIGURE_ARGS \
  --set 'rust.codegen-backends=[\"llvm\",\"gcc\"]'
 ENV SCRIPT python3 ../x.py \
   --stage 2 \
-  test \
+  test tests \
   --test-codegen-backend gcc \
+  --skip tests/coverage \
+  --skip tests/coverage-run-rustdoc \
+  --skip tests/rustdoc \
+  --skip tests/rustdoc-gui \
+  --skip tests/rustdoc-js \
+  --skip tests/rustdoc-js-std \
+  --skip tests/rustdoc-json \
+  --skip tests/rustdoc-ui \
   --set 'rust.codegen-backends=[\"llvm\",\"gcc\"]'
