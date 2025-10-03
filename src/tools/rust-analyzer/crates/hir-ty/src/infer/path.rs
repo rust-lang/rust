@@ -95,14 +95,23 @@ impl<'db> InferenceContext<'_, 'db> {
             return Some(ValuePathResolution::NonGeneric(ty));
         };
 
-        let substs = self.with_body_ty_lowering(|ctx| {
-            let mut path_ctx = ctx.at_path(path, id);
-            let last_segment = path.segments().len().checked_sub(1);
-            if let Some(last_segment) = last_segment {
-                path_ctx.set_current_segment(last_segment)
-            }
-            path_ctx.substs_from_path(value_def, true, false)
-        });
+        let substs = if self_subst.is_some_and(|it| !it.is_empty())
+            && matches!(value_def, ValueTyDefId::EnumVariantId(_))
+        {
+            // This is something like `TypeAlias::<Args>::EnumVariant`. Do not call `substs_from_path()`,
+            // as it'll try to re-lower the previous segment assuming it refers to the enum, but it refers
+            // to the type alias and they may have different generics.
+            self.types.empty_args
+        } else {
+            self.with_body_ty_lowering(|ctx| {
+                let mut path_ctx = ctx.at_path(path, id);
+                let last_segment = path.segments().len().checked_sub(1);
+                if let Some(last_segment) = last_segment {
+                    path_ctx.set_current_segment(last_segment)
+                }
+                path_ctx.substs_from_path(value_def, true, false)
+            })
+        };
 
         let parent_substs_len = self_subst.map_or(0, |it| it.len());
         let substs = GenericArgs::fill_rest(
