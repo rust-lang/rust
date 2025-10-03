@@ -2017,9 +2017,7 @@ impl AsCoercionSite for hir::Arm<'_> {
     }
 }
 
-/// Recursively visit goals to decide whether an unsizing is possible.
-/// `Break`s when it isn't, and an error should be raised.
-/// `Continue`s when an unsizing ok based on an implementation of the `Unsize` trait / lang item.
+/// Visitor that checks whether an unsizing coercion is
 struct CoerceVisitor<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
     span: Span,
@@ -2037,6 +2035,8 @@ impl<'tcx> ProofTreeVisitor<'tcx> for CoerceVisitor<'_, 'tcx> {
             return ControlFlow::Continue(());
         };
 
+        // Make sure this predicate is refering to either an `Unsize` or `CoerceUnsized` trait,
+        // Otherwise there's nothing to do.
         if !self.fcx.tcx.is_lang_item(pred.def_id(), LangItem::Unsize)
             && !self.fcx.tcx.is_lang_item(pred.def_id(), LangItem::CoerceUnsized)
         {
@@ -2044,8 +2044,19 @@ impl<'tcx> ProofTreeVisitor<'tcx> for CoerceVisitor<'_, 'tcx> {
         }
 
         match goal.result() {
+            // If we prove the `Unsize` or `CoerceUnsized` goal, continue recursing.
             Ok(Certainty::Yes) => ControlFlow::Continue(()),
-            Err(NoSolution) => ControlFlow::Break(()),
+            Err(NoSolution) => {
+                // Even if we find no solution, continue recursing if we find a single candidate
+                // for which we're shallowly certain it holds to get the right error source.
+                if let [only_candidate] = &goal.candidates()[..]
+                    && only_candidate.shallow_certainty() == Certainty::Yes
+                {
+                    only_candidate.visit_nested_no_probe(self)
+                } else {
+                    ControlFlow::Break(())
+                }
+            }
             Ok(Certainty::Maybe { .. }) => {
                 // FIXME: structurally normalize?
                 if self.fcx.tcx.is_lang_item(pred.def_id(), LangItem::Unsize)
@@ -2053,6 +2064,7 @@ impl<'tcx> ProofTreeVisitor<'tcx> for CoerceVisitor<'_, 'tcx> {
                     && let ty::Infer(ty::TyVar(vid)) = *pred.self_ty().skip_binder().kind()
                     && self.fcx.type_var_is_sized(vid)
                 {
+                    // Here we detected that an unszing to `dyn Trait` is possible, yay!
                     ControlFlow::Continue(())
                 } else if let Some(cand) = goal.unique_applicable_candidate()
                     && cand.shallow_certainty() == Certainty::Yes
