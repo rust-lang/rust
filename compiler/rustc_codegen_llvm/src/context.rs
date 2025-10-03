@@ -31,6 +31,7 @@ use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::spec::{HasTargetSpec, RelocModel, SmallDataThresholdSupport, Target, TlsModel};
 use smallvec::SmallVec;
 
+use crate::abi::to_llvm_calling_convention;
 use crate::back::write::to_llvm_code_model;
 use crate::callee::get_fn;
 use crate::debuginfo::metadata::apply_vcall_visibility_metadata;
@@ -901,10 +902,7 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         if self.get_declared_value(entry_name).is_none() {
             let llfn = self.declare_entry_fn(
                 entry_name,
-                llvm::CallConv::from_conv(
-                    self.sess().target.entry_abi,
-                    self.sess().target.arch.borrow(),
-                ),
+                to_llvm_calling_convention(self.sess(), self.sess().target.entry_abi),
                 llvm::UnnamedAddr::Global,
                 fn_type,
             );
