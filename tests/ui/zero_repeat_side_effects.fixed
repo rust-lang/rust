@@ -1,7 +1,5 @@
 #![warn(clippy::zero_repeat_side_effects)]
-#![allow(clippy::unnecessary_operation)]
-#![allow(clippy::useless_vec)]
-#![allow(clippy::needless_late_init)]
+#![expect(clippy::unnecessary_operation, clippy::useless_vec, clippy::needless_late_init)]
 
 fn f() -> i32 {
     println!("side effect");
