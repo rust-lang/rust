@@ -1,41 +1,57 @@
-error[E0308]: mismatched types
+error[E0277]: the trait bound `&T: CoerceUnsized<&dyn Foo>` is not satisfied in `T`
   --> $DIR/dst-object-from-unsized-type.rs:11:23
    |
 LL | fn test1<T: ?Sized + Foo>(t: &T) {
-   |          - found this type parameter
+   |          - this type parameter needs to be `Sized`
 LL |     let u: &dyn Foo = t;
-   |            --------   ^ expected `&dyn Foo`, found `&T`
-   |            |
-   |            expected due to this
+   |                       ^ within `T`, the trait `Sized` is not implemented for `T`
    |
-   = note: expected reference `&dyn Foo`
-              found reference `&T`
-   = help: type parameters must be constrained to match other types
-   = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
+   = note: required because it appears within the type `T`
+   = note: required for `&T` to implement `CoerceUnsized<&dyn Foo>`
+   = note: required for the cast from `&T` to `&dyn Foo`
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - fn test1<T: ?Sized + Foo>(t: &T) {
+LL + fn test1<T: Foo>(t: &T) {
+   |
 
-error[E0605]: non-primitive cast: `&T` as `&dyn Foo`
-  --> $DIR/dst-object-from-unsized-type.rs:16:23
+error[E0277]: the trait bound `&T: CoerceUnsized<&dyn Foo>` is not satisfied in `T`
+  --> $DIR/dst-object-from-unsized-type.rs:17:23
    |
+LL | fn test2<T: ?Sized + Foo>(t: &T) {
+   |          - this type parameter needs to be `Sized`
 LL |     let v: &dyn Foo = t as &dyn Foo;
-   |                       ^^^^^^^^^^^^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
+   |                       ^ within `T`, the trait `Sized` is not implemented for `T`
+   |
+   = note: required because it appears within the type `T`
+   = note: required for `&T` to implement `CoerceUnsized<&dyn Foo>`
+   = note: required for the cast from `&T` to `&dyn Foo`
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - fn test2<T: ?Sized + Foo>(t: &T) {
+LL + fn test2<T: Foo>(t: &T) {
+   |
 
-error[E0308]: mismatched types
-  --> $DIR/dst-object-from-unsized-type.rs:21:28
+error[E0277]: the trait bound `&str: CoerceUnsized<&dyn Foo>` is not satisfied in `str`
+  --> $DIR/dst-object-from-unsized-type.rs:23:28
    |
 LL |     let _: &[&dyn Foo] = &["hi"];
-   |                            ^^^^ expected `&dyn Foo`, found `&str`
+   |                            ^^^^ within `str`, the trait `Sized` is not implemented for `str`
    |
-   = note: expected reference `&dyn Foo`
-              found reference `&'static str`
-   = help: `str` implements `Foo` so you could box the found value and coerce it to the trait object `Box<dyn Foo>`, you will have to change the expected type as well
+   = note: `str` is considered to contain a `[u8]` slice for auto trait purposes
+   = note: required for `&str` to implement `CoerceUnsized<&dyn Foo>`
+   = note: required for the cast from `&'static str` to `&dyn Foo`
 
-error[E0605]: non-primitive cast: `&[u8]` as `&dyn Foo`
-  --> $DIR/dst-object-from-unsized-type.rs:26:23
+error[E0277]: the trait bound `&[u8]: CoerceUnsized<&dyn Foo>` is not satisfied in `[u8]`
+  --> $DIR/dst-object-from-unsized-type.rs:29:23
    |
 LL |     let _: &dyn Foo = x as &dyn Foo;
-   |                       ^^^^^^^^^^^^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
+   |                       ^ within `[u8]`, the trait `Sized` is not implemented for `[u8]`
+   |
+   = note: required because it appears within the type `[u8]`
+   = note: required for `&[u8]` to implement `CoerceUnsized<&dyn Foo>`
+   = note: required for the cast from `&[u8]` to `&dyn Foo`
 
 error: aborting due to 4 previous errors
 
-Some errors have detailed explanations: E0308, E0605.
-For more information about an error, try `rustc --explain E0308`.
+For more information about this error, try `rustc --explain E0277`.
