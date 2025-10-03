@@ -21,7 +21,7 @@ pub const CFG_TEMPLATE: AttributeTemplate = template!(
     "https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute"
 );
 
-pub fn parse_cfg_attr<'c, S: Stage>(
+pub fn parse_cfg<'c, S: Stage>(
     cx: &'c mut AcceptContext<'_, '_, S>,
     args: &'c ArgParser<'_>,
 ) -> Option<CfgEntry> {
@@ -300,3 +300,4 @@ impl EvalConfigResult {
         }
     }
 }
+
