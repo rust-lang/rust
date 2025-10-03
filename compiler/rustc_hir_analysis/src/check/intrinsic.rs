@@ -73,6 +73,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::assert_inhabited
         | sym::assert_mem_uninitialized_valid
         | sym::assert_zero_valid
+        | sym::assert_zst
         | sym::autodiff
         | sym::bitreverse
         | sym::black_box
@@ -289,9 +290,10 @@ pub(crate) fn check_intrinsic_type(
         }
         sym::rustc_peek => (1, 0, vec![param(0)], param(0)),
         sym::caller_location => (0, 0, vec![], tcx.caller_location_ty()),
-        sym::assert_inhabited | sym::assert_zero_valid | sym::assert_mem_uninitialized_valid => {
-            (1, 0, vec![], tcx.types.unit)
-        }
+        sym::assert_inhabited
+        | sym::assert_zero_valid
+        | sym::assert_mem_uninitialized_valid
+        | sym::assert_zst => (1, 0, vec![], tcx.types.unit),
         sym::forget => (1, 0, vec![param(0)], tcx.types.unit),
         sym::transmute | sym::transmute_unchecked => (2, 0, vec![param(0)], param(1)),
         sym::prefetch_read_data

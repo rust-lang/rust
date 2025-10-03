@@ -194,6 +194,7 @@ pub enum ValidityRequirement {
     UninitMitigated0x01Fill,
     /// True uninitialized memory.
     Uninit,
+    Zst,
 }
 
 impl ValidityRequirement {
@@ -202,6 +203,7 @@ impl ValidityRequirement {
             sym::assert_inhabited => Some(Self::Inhabited),
             sym::assert_zero_valid => Some(Self::Zero),
             sym::assert_mem_uninitialized_valid => Some(Self::UninitMitigated0x01Fill),
+            sym::assert_zst => Some(Self::Zst),
             _ => None,
         }
     }
@@ -214,6 +216,7 @@ impl fmt::Display for ValidityRequirement {
             Self::Zero => f.write_str("allows being left zeroed"),
             Self::UninitMitigated0x01Fill => f.write_str("allows being filled with 0x01"),
             Self::Uninit => f.write_str("allows being left uninitialized"),
+            Self::Zst => f.write_str("is zero-sized"),
         }
     }
 }

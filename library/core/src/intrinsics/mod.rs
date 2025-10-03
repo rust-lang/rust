@@ -516,6 +516,16 @@ pub const fn assert_zero_valid<T>();
 #[rustc_intrinsic]
 pub const fn assert_mem_uninitialized_valid<T>();
 
+/// A guard for `std::mem::conjure_zst`. This will statically either panic, or do nothing. It does
+/// not *guarantee* to ever panic, and should only be called if an assertion failure will imply
+/// language UB in the following code.
+///
+/// This intrinsic does not have a stable counterpart.
+#[rustc_intrinsic_const_stable_indirect]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const fn assert_zst<T>();
+
 /// Gets a reference to a static `Location` indicating where it was called.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;

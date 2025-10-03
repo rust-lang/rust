@@ -557,7 +557,8 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
             // We handle these here since Miri does not want to have them.
             sym::assert_inhabited
             | sym::assert_zero_valid
-            | sym::assert_mem_uninitialized_valid => {
+            | sym::assert_mem_uninitialized_valid
+            | sym::assert_zst => {
                 let ty = instance.args.type_at(0);
                 let requirement = ValidityRequirement::from_intrinsic(intrinsic_name).unwrap();
 
@@ -581,6 +582,9 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                         ),
                         ValidityRequirement::UninitMitigated0x01Fill => format!(
                             "aborted execution: attempted to leave type `{ty}` uninitialized, which is invalid"
+                        ),
+                        ValidityRequirement::Zst => format!(
+                            "aborted execution: attempted to conjure type `{ty}` when it is not zero-sized"
                         ),
                         ValidityRequirement::Uninit => bug!("assert_uninit_valid doesn't exist"),
                     };

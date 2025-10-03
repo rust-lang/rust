@@ -945,10 +945,11 @@ fn visit_instance_use<'tcx>(
         collect_autodiff_fn(tcx, instance, intrinsic, output);
 
         if let Some(_requirement) = ValidityRequirement::from_intrinsic(intrinsic.name) {
-            // The intrinsics assert_inhabited, assert_zero_valid, and assert_mem_uninitialized_valid will
-            // be lowered in codegen to nothing or a call to panic_nounwind. So if we encounter any
-            // of those intrinsics, we need to include a mono item for panic_nounwind, else we may try to
-            // codegen a call to that function without generating code for the function itself.
+            // The intrinsics assert_inhabited, assert_zero_valid, assert_mem_uninitialized_valid,
+            // and assert_zst will be lowered in codegen to nothing or a call to panic_nounwind.
+            // So if we encounter any of those intrinsics, we need to include a mono item for
+            // panic_nounwind, else we may try to codegen a call to that function without generating
+            // code for the function itself.
             let def_id = tcx.require_lang_item(LangItem::PanicNounwind, source);
             let panic_instance = Instance::mono(tcx, def_id);
             if tcx.should_codegen_locally(panic_instance) {

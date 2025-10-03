@@ -6,6 +6,7 @@
       let _1: ();
       let _2: ();
       let _3: ();
+      let _4: ();
   
       bb0: {
           StorageLive(_1);
@@ -16,19 +17,26 @@
       bb1: {
           StorageDead(_1);
           StorageLive(_2);
--         _2 = assert_zero_valid::<u8>() -> [return: bb2, unwind unreachable];
+-         _2 = assert_zst::<()>() -> [return: bb2, unwind unreachable];
 +         goto -> bb2;
       }
   
       bb2: {
           StorageDead(_2);
           StorageLive(_3);
--         _3 = assert_mem_uninitialized_valid::<u8>() -> [return: bb3, unwind unreachable];
+-         _3 = assert_zero_valid::<u8>() -> [return: bb3, unwind unreachable];
 +         goto -> bb3;
       }
   
       bb3: {
           StorageDead(_3);
+          StorageLive(_4);
+-         _4 = assert_mem_uninitialized_valid::<u8>() -> [return: bb4, unwind unreachable];
++         goto -> bb4;
+      }
+  
+      bb4: {
+          StorageDead(_4);
           _0 = const ();
           return;
       }

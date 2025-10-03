@@ -8,9 +8,11 @@
 pub fn removable() {
     // CHECK-LABEL: fn removable(
     // CHECK-NOT: assert_inhabited
+    // CHECK-NOT: assert_zst
     // CHECK-NOT: assert_zero_valid
     // CHECK-NOT: assert_mem_uninitialized_valid
     core::intrinsics::assert_inhabited::<()>();
+    core::intrinsics::assert_zst::<()>();
     core::intrinsics::assert_zero_valid::<u8>();
     core::intrinsics::assert_mem_uninitialized_valid::<u8>();
 }
@@ -22,9 +24,11 @@ enum Never {}
 pub fn panics() {
     // CHECK-LABEL: fn panics(
     // CHECK: assert_inhabited::<Never>() -> unwind
+    // CHECK: assert_zst::<&()>() -> unwind
     // CHECK: assert_zero_valid::<&u8>() -> unwind
     // CHECK: assert_mem_uninitialized_valid::<&u8>() -> unwind
     core::intrinsics::assert_inhabited::<Never>();
+    core::intrinsics::assert_zst::<&()>();
     core::intrinsics::assert_zero_valid::<&u8>();
     core::intrinsics::assert_mem_uninitialized_valid::<&u8>();
 }
@@ -34,9 +38,11 @@ pub fn panics() {
 pub fn generic<T>() {
     // CHECK-LABEL: fn generic(
     // CHECK: assert_inhabited::<T>() -> [return:
+    // CHECK: assert_zst::<T>() -> [return:
     // CHECK: assert_zero_valid::<T>() -> [return:
     // CHECK: assert_mem_uninitialized_valid::<T>() -> [return:
     core::intrinsics::assert_inhabited::<T>();
+    core::intrinsics::assert_zst::<T>();
     core::intrinsics::assert_zero_valid::<T>();
     core::intrinsics::assert_mem_uninitialized_valid::<T>();
 }

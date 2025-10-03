@@ -1111,7 +1111,7 @@ impl Evaluator<'_> {
                 let ans = ptr + offset * size;
                 destination.write_from_bytes(self, &ans.to_le_bytes()[0..destination.size])
             }
-            "assert_inhabited" | "assert_zero_valid" | "assert_uninit_valid" | "assume" => {
+            "assert_inhabited" | "assert_zero_valid" | "assert_uninit_valid" | "assert_zst" | "assume" => {
                 // FIXME: We should actually implement these checks
                 Ok(())
             }

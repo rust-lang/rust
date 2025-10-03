@@ -28,9 +28,11 @@ pub fn check_validity_requirement<'tcx>(
 ) -> Result<bool, &'tcx LayoutError<'tcx>> {
     let layout = tcx.layout_of(input)?;
 
-    // There is nothing strict or lax about inhabitedness.
+    // There is nothing strict or lax about inhabitedness, or being a ZST.
     if kind == ValidityRequirement::Inhabited {
         return Ok(!layout.is_uninhabited());
+    } else if kind == ValidityRequirement::Zst {
+        return Ok(!layout.is_uninhabited() && layout.is_zst());
     }
 
     let layout_cx = LayoutCx::new(tcx, input.typing_env);
@@ -90,6 +92,9 @@ fn check_validity_requirement_lax<'tcx>(
         match init_kind {
             ValidityRequirement::Inhabited => {
                 bug!("ValidityRequirement::Inhabited should have been handled above")
+            }
+            ValidityRequirement::Zst => {
+                bug!("ValidityRequirement::Zst should have been handled above")
             }
             ValidityRequirement::Zero => {
                 // The range must contain 0.

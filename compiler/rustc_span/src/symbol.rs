@@ -488,6 +488,7 @@ symbols! {
         assert_ne_macro,
         assert_receiver_is_total_eq,
         assert_zero_valid,
+        assert_zst,
         asserting,
         associated_const_equality,
         associated_consts,

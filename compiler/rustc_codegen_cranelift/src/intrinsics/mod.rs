@@ -749,7 +749,10 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let res = CValue::by_val(res, arg.layout());
             ret.write_cvalue(fx, res);
         }
-        sym::assert_inhabited | sym::assert_zero_valid | sym::assert_mem_uninitialized_valid => {
+        sym::assert_inhabited
+        | sym::assert_zero_valid
+        | sym::assert_mem_uninitialized_valid
+        | sym::assert_zst => {
             intrinsic_args!(fx, args => (); intrinsic);
 
             let ty = generic_args.type_at(0);
@@ -775,6 +778,11 @@ fn codegen_regular_intrinsic_call<'tcx>(
                             } else if intrinsic == sym::assert_zero_valid {
                                 format!(
                                     "attempted to zero-initialize type `{}`, which is invalid",
+                                    ty
+                                )
+                            } else if intrinsic == sym::assert_zst {
+                                format!(
+                                    "attempted to conjure type `{}` when it is not zero-sized",
                                     ty
                                 )
                             } else {
