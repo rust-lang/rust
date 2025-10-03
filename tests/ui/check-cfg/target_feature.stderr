@@ -29,6 +29,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `amx-tf32`
 `amx-tile`
 `apxf`
+`atomctl`
 `atomics`
 `avx`
 `avx10.1`
@@ -65,11 +66,13 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `cache`
 `cmpxchg16b`
 `concurrent-functions`
+`coprocessor`
 `crc`
 `crt-static`
 `cssc`
 `d`
 `d32`
+`debug`
 `deflate-conversion`
 `dit`
 `div32`
@@ -91,8 +94,10 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `elrw`
 `enhanced-sort`
 `ermsb`
+`exception`
 `exception-handling`
 `extended-const`
+`extendedl32r`
 `f`
 `f16c`
 `f32mm`
@@ -109,6 +114,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `float7e60`
 `floate1`
 `fma`
+`fp`
 `fp-armv8`
 `fp16`
 `fp64`
@@ -135,6 +141,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `hbc`
 `high-registers`
 `high-word`
+`highpriinterrupts`
 `hvx`
 `hvx-ieee-fp`
 `hvx-length128b`
@@ -154,6 +161,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `hwdiv`
 `i8mm`
 `ijmpcall`
+`interrupt`
 `isa-68000`
 `isa-68010`
 `isa-68020`
@@ -172,6 +180,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `lbt`
 `ld-seq-sa`
 `leoncasa`
+`loop`
 `lor`
 `lowbytefirst`
 `lpm`
@@ -184,7 +193,9 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `lvz`
 `lzcnt`
 `m`
+`mac16`
 `mclass`
+`memctl`
 `message-security-assist-extension12`
 `message-security-assist-extension3`
 `message-security-assist-extension4`
@@ -194,6 +205,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `miscellaneous-extensions-2`
 `miscellaneous-extensions-3`
 `miscellaneous-extensions-4`
+`miscsr`
 `mops`
 `movbe`
 `movrs`
@@ -204,11 +216,14 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `msync`
 `mte`
 `mul`
+`mul32`
+`mul32high`
 `multivalue`
 `mutable-globals`
 `neon`
 `nnp-assist`
 `nontrapping-fptoint`
+`nsa`
 `nvic`
 `outline-atomics`
 `paca`
@@ -226,6 +241,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `power9-altivec`
 `power9-vector`
 `prfchw`
+`prid`
 `ptx32`
 `ptx40`
 `ptx41`
@@ -266,13 +282,17 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `rdrand`
 `rdseed`
 `reference-types`
+`regprotect`
 `relax`
 `relaxed-simd`
 `rmw`
 `rtm`
 `rva23u64`
+`rvector`
+`s32c1i`
 `sb`
 `scq`
+`sext`
 `sha`
 `sha2`
 `sha3`
@@ -345,8 +365,10 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `sve2p1`
 `tail-call`
 `tbm`
+`threadptr`
 `thumb-mode`
 `thumb2`
+`timerint`
 `tinyencoding`
 `tme`
 `transactional-execution`
@@ -402,6 +424,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `wfxt`
 `wide-arithmetic`
 `widekl`
+`windowed`
 `x87`
 `xop`
 `xsave`

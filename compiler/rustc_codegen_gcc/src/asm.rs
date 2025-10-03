@@ -738,6 +738,11 @@ fn reg_class_to_gcc(reg_class: InlineAsmRegClass) -> &'static str {
             | X86InlineAsmRegClass::mmx_reg
             | X86InlineAsmRegClass::tmm_reg,
         ) => unreachable!("clobber-only"),
+        InlineAsmRegClass::Xtensa(XtensaInlineAsmRegClass::reg) => "r",
+        InlineAsmRegClass::Xtensa(XtensaInlineAsmRegClass::freg) => "f",
+        InlineAsmRegClass::Xtensa(
+            XtensaInlineAsmRegClass::sreg | XtensaInlineAsmRegClass::breg,
+        ) => unreachable!("clobber-only"),
         InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
             bug!("GCC backend does not support SPIR-V")
         }
@@ -849,6 +854,11 @@ fn dummy_output_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, reg: InlineAsmRegCl
         InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
             bug!("GCC backend does not support SPIR-V")
         }
+        InlineAsmRegClass::Xtensa(XtensaInlineAsmRegClass::reg) => cx.type_i32(),
+        InlineAsmRegClass::Xtensa(XtensaInlineAsmRegClass::freg) => cx.type_f32(),
+        InlineAsmRegClass::Xtensa(
+            XtensaInlineAsmRegClass::sreg | XtensaInlineAsmRegClass::breg,
+        ) => unreachable!("clobber-only"),
         InlineAsmRegClass::Err => unreachable!(),
     }
 }
@@ -1040,6 +1050,7 @@ fn modifier_to_gcc(
         InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
             bug!("LLVM backend does not support SPIR-V")
         }
+        InlineAsmRegClass::Xtensa(_) => None,
         InlineAsmRegClass::Err => unreachable!(),
     }
 }
