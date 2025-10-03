@@ -1057,6 +1057,21 @@ fn test_string_suffix() {
     assert_eq!(Some("i32"), string_suffix(r##"r#""#i32"##));
 }
 
+/// Calculate the string literal prefix length
+pub(crate) fn string_prefix(s: &str) -> Option<&str> {
+    s.split_once(['"', '\'', '#']).map(|(prefix, _)| prefix)
+}
+#[test]
+fn test_string_prefix() {
+    assert_eq!(Some(""), string_prefix(r#""abc""#));
+    assert_eq!(Some(""), string_prefix(r#""""#));
+    assert_eq!(Some(""), string_prefix(r#"""suffix"#));
+    assert_eq!(Some("c"), string_prefix(r#"c"""#));
+    assert_eq!(Some("r"), string_prefix(r#"r"""#));
+    assert_eq!(Some("cr"), string_prefix(r#"cr"""#));
+    assert_eq!(Some("r"), string_prefix(r##"r#""#"##));
+}
+
 /// Replaces the record expression, handling field shorthands including inside macros.
 pub(crate) fn replace_record_field_expr(
     ctx: &AssistContext<'_>,
