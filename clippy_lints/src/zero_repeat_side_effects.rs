@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::VecArgs;
 use clippy_utils::source::snippet;
-use clippy_utils::visitors::for_each_expr_without_closures;
 use rustc_ast::LitKind;
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::Applicability;
@@ -11,7 +10,7 @@ use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for array or vec initializations which call a function or method,
+    /// Checks for array or vec initializations which contain an expression with side effects,
     /// but which have a repeat count of zero.
     ///
     /// ### Why is this bad?
@@ -71,15 +70,7 @@ impl LateLintPass<'_> for ZeroRepeatSideEffects {
 
 fn inner_check(cx: &LateContext<'_>, expr: &'_ rustc_hir::Expr<'_>, inner_expr: &'_ rustc_hir::Expr<'_>, is_vec: bool) {
     // check if expr is a call or has a call inside it
-    if for_each_expr_without_closures(inner_expr, |x| {
-        if let ExprKind::Call(_, _) | ExprKind::MethodCall(_, _, _, _) = x.kind {
-            std::ops::ControlFlow::Break(())
-        } else {
-            std::ops::ControlFlow::Continue(())
-        }
-    })
-    .is_some()
-    {
+    if inner_expr.can_have_side_effects() {
         let parent_hir_node = cx.tcx.parent_hir_node(expr.hir_id);
         let return_type = cx.typeck_results().expr_ty(expr);
 
@@ -107,7 +98,7 @@ fn inner_check(cx: &LateContext<'_>, expr: &'_ rustc_hir::Expr<'_>, inner_expr: 
             cx,
             ZERO_REPEAT_SIDE_EFFECTS,
             span.source_callsite(),
-            "function or method calls as the initial value in zero-sized array initializers may cause side effects",
+            "expression with side effects as the initial value in a zero-sized array initializer",
             |diag| {
                 diag.span_suggestion_verbose(
                     span.source_callsite(),
