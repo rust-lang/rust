@@ -49,7 +49,6 @@ macro_rules! with_api {
     ($S:ident, $self:ident, $m:ident) => {
         $m! {
             FreeFunctions {
-                fn drop($self: $S::FreeFunctions);
                 fn injected_env_var(var: &str) -> Option<String>;
                 fn track_env_var(var: &str, value: Option<&str>);
                 fn track_path(path: &str);
@@ -109,7 +108,7 @@ macro_rules! with_api_handle_types {
     ($m:ident) => {
         $m! {
             'owned:
-            FreeFunctions,
+            // FreeFunctions is handled manually
             TokenStream,
 
             'interned:
@@ -118,6 +117,8 @@ macro_rules! with_api_handle_types {
         }
     };
 }
+
+pub(crate) struct FreeFunctions;
 
 #[allow(unsafe_code)]
 mod arena;
