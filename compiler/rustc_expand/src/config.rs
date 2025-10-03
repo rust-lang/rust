@@ -303,7 +303,7 @@ impl<'a> StripUnconfigured<'a> {
         let trace_attr = attr_into_trace(cfg_attr.clone(), sym::cfg_attr_trace);
 
         let Some((cfg_predicate, expanded_attrs)) =
-            rustc_parse::parse_cfg_attr(cfg_attr, &self.sess.psess)
+            rustc_attr_parsing::parse_cfg_attr(cfg_attr, &self.sess.psess)
         else {
             return vec![trace_attr];
         };

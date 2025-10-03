@@ -1,17 +1,23 @@
-use rustc_ast::{LitKind, NodeId};
+use rustc_ast::token::Delimiter;
+use rustc_ast::tokenstream::DelimSpan;
+use rustc_ast::{AttrItem, Attribute, LitKind, MetaItemInner, NodeId, ast, token};
+use rustc_errors::PResult;
 use rustc_feature::{AttributeTemplate, Features, template};
 use rustc_hir::RustcVersion;
 use rustc_hir::attrs::CfgEntry;
+use rustc_parse::parser::{ForceCollect, Parser};
+use rustc_parse::{exp, parse_in};
 use rustc_session::Session;
 use rustc_session::config::ExpectedValues;
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::UNEXPECTED_CFGS;
-use rustc_session::parse::feature_err;
+use rustc_session::parse::{ParseSess, feature_err};
 use rustc_span::{Span, Symbol, sym};
 use thin_vec::ThinVec;
 
 use crate::context::{AcceptContext, ShouldEmit, Stage};
 use crate::parser::{ArgParser, MetaItemListParser, MetaItemOrLitParser, NameValueParser};
+use crate::session_diagnostics::{CfgAttrBadDelim, MalformedCfgAttr, MetaBadDelimSugg};
 use crate::{
     CfgMatchesLintEmitter, fluent_generated, parse_version, session_diagnostics, try_gate_cfg,
 };
@@ -301,3 +307,66 @@ impl EvalConfigResult {
     }
 }
 
+pub fn parse_cfg_attr(
+    cfg_attr: &Attribute,
+    psess: &ParseSess,
+) -> Option<(MetaItemInner, Vec<(AttrItem, Span)>)> {
+    const CFG_ATTR_GRAMMAR_HELP: &str = "#[cfg_attr(condition, attribute, other_attribute, ...)]";
+    const CFG_ATTR_NOTE_REF: &str = "for more information, visit \
+        <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>";
+
+    match cfg_attr.get_normal_item().args {
+        ast::AttrArgs::Delimited(ast::DelimArgs { dspan, delim, ref tokens })
+            if !tokens.is_empty() =>
+        {
+            check_cfg_attr_bad_delim(psess, dspan, delim);
+            match parse_in(psess, tokens.clone(), "`cfg_attr` input", |p| {
+                parse_cfg_attr_internal(p)
+            }) {
+                Ok(r) => return Some(r),
+                Err(e) => {
+                    e.with_help(format!("the valid syntax is `{CFG_ATTR_GRAMMAR_HELP}`"))
+                        .with_note(CFG_ATTR_NOTE_REF)
+                        .emit();
+                }
+            }
+        }
+        _ => {
+            psess
+                .dcx()
+                .emit_err(MalformedCfgAttr { span: cfg_attr.span, sugg: CFG_ATTR_GRAMMAR_HELP });
+        }
+    }
+    None
+}
+
+fn check_cfg_attr_bad_delim(psess: &ParseSess, span: DelimSpan, delim: Delimiter) {
+    if let Delimiter::Parenthesis = delim {
+        return;
+    }
+    psess.dcx().emit_err(CfgAttrBadDelim {
+        span: span.entire(),
+        sugg: MetaBadDelimSugg { open: span.open, close: span.close },
+    });
+}
+
+/// Parses `cfg_attr(pred, attr_item_list)` where `attr_item_list` is comma-delimited.
+fn parse_cfg_attr_internal<'a>(
+    parser: &mut Parser<'a>,
+) -> PResult<'a, (ast::MetaItemInner, Vec<(ast::AttrItem, Span)>)> {
+    let cfg_predicate = parser.parse_meta_item_inner()?;
+    parser.expect(exp!(Comma))?;
+
+    // Presumably, the majority of the time there will only be one attr.
+    let mut expanded_attrs = Vec::with_capacity(1);
+    while parser.token != token::Eof {
+        let lo = parser.token.span;
+        let item = parser.parse_attr_item(ForceCollect::Yes)?;
+        expanded_attrs.push((item, lo.to(parser.prev_token.span)));
+        if !parser.eat(exp!(Comma)) {
+            break;
+        }
+    }
+
+    Ok((cfg_predicate, expanded_attrs))
+}

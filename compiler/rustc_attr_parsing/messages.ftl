@@ -264,3 +264,13 @@ attr_parsing_unused_multiple =
 
 attr_parsing_whole_archive_needs_static =
     linking modifier `whole-archive` is only compatible with `static` linking kind
+
+attr_parsing_limit_invalid =
+    `limit` must be a non-negative integer
+    .label = {$error_str}
+
+attr_parsing_cfg_attr_bad_delim = wrong `cfg_attr` delimiters
+
+attr_parsing_malformed_cfg_attr = malformed `cfg_attr` attribute input
+    .suggestion = missing condition and attribute
+    .note = for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
