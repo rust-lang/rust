@@ -411,7 +411,7 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
             if let StatementKind::StorageLive(l) | StatementKind::StorageDead(l) = s.kind
                 && self.remap.contains(l)
             {
-                s.make_nop();
+                s.make_nop(true);
             }
         }
 

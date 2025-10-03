@@ -156,7 +156,7 @@ impl<'ll> DebugInfoBuilderMethods for Builder<'_, 'll, '_> {
         variable_alloca: Self::Value,
         direct_offset: Size,
         indirect_offsets: &[Size],
-        fragment: Option<Range<Size>>,
+        fragment: &Option<Range<Size>>,
     ) {
         use dwarf_const::{DW_OP_LLVM_fragment, DW_OP_deref, DW_OP_plus_uconst};
 
@@ -187,7 +187,6 @@ impl<'ll> DebugInfoBuilderMethods for Builder<'_, 'll, '_> {
             llvm::LLVMDIBuilderCreateExpression(di_builder, addr_ops.as_ptr(), addr_ops.len())
         };
         unsafe {
-            // FIXME(eddyb) replace `llvm.dbg.declare` with `llvm.dbg.addr`.
             llvm::LLVMDIBuilderInsertDeclareRecordAtEnd(
                 di_builder,
                 variable_alloca,
@@ -197,6 +196,56 @@ impl<'ll> DebugInfoBuilderMethods for Builder<'_, 'll, '_> {
                 self.llbb(),
             )
         };
+    }
+
+    fn dbg_var_value(
+        &mut self,
+        dbg_var: &'ll DIVariable,
+        dbg_loc: &'ll DILocation,
+        value: Self::Value,
+        direct_offset: Size,
+        indirect_offsets: &[Size],
+        fragment: &Option<Range<Size>>,
+    ) {
+        use dwarf_const::{DW_OP_LLVM_fragment, DW_OP_deref, DW_OP_plus_uconst, DW_OP_stack_value};
+
+        // Convert the direct and indirect offsets and fragment byte range to address ops.
+        let mut addr_ops = SmallVec::<[u64; 8]>::new();
+
+        if direct_offset.bytes() > 0 {
+            addr_ops.push(DW_OP_plus_uconst);
+            addr_ops.push(direct_offset.bytes() as u64);
+            addr_ops.push(DW_OP_stack_value);
+        }
+        for &offset in indirect_offsets {
+            addr_ops.push(DW_OP_deref);
+            if offset.bytes() > 0 {
+                addr_ops.push(DW_OP_plus_uconst);
+                addr_ops.push(offset.bytes() as u64);
+            }
+        }
+        if let Some(fragment) = fragment {
+            // `DW_OP_LLVM_fragment` takes as arguments the fragment's
+            // offset and size, both of them in bits.
+            addr_ops.push(DW_OP_LLVM_fragment);
+            addr_ops.push(fragment.start.bits() as u64);
+            addr_ops.push((fragment.end - fragment.start).bits() as u64);
+        }
+
+        let di_builder = DIB(self.cx());
+        let addr_expr = unsafe {
+            llvm::LLVMDIBuilderCreateExpression(di_builder, addr_ops.as_ptr(), addr_ops.len())
+        };
+        unsafe {
+            llvm::LLVMDIBuilderInsertDbgValueRecordAtEnd(
+                di_builder,
+                value,
+                dbg_var,
+                addr_expr,
+                dbg_loc,
+                self.llbb(),
+            );
+        }
     }
 
     fn set_dbg_loc(&mut self, dbg_loc: &'ll DILocation) {

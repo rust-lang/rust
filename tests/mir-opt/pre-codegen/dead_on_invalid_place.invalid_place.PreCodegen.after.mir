@@ -1,0 +1,13 @@
+// MIR for `invalid_place` after PreCodegen
+
+fn invalid_place(_1: bool) -> bool {
+    debug c1_ref => _2;
+    let mut _0: bool;
+    let mut _2: &bool;
+
+    bb0: {
+        // DBG: _2 = &?;
+        _0 = copy _1;
+        return;
+    }
+}
