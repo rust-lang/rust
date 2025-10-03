@@ -341,7 +341,10 @@ pub(crate) fn check_intrinsic_type(
             let byte_ptr = Ty::new_imm_ptr(tcx, tcx.types.u8);
             (0, 0, vec![byte_ptr, byte_ptr, tcx.types.usize], tcx.types.i32)
         }
-        sym::write_bytes | sym::volatile_set_memory => (
+        sym::write_bytes => {
+            (2, 0, vec![Ty::new_mut_ptr(tcx, param(0)), param(1), tcx.types.usize], tcx.types.unit)
+        }
+        sym::volatile_set_memory => (
             1,
             0,
             vec![Ty::new_mut_ptr(tcx, param(0)), tcx.types.u8, tcx.types.usize],

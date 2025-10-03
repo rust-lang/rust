@@ -2882,6 +2882,8 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
 pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize);
 
 /// This is an accidentally-stable alias to [`ptr::write_bytes`]; use that instead.
+///
+/// `val` must be 1 byte wide, it is allowed to be uninit.
 // Note (intentionally not in the doc comment): `ptr::write_bytes` adds some extra
 // debug assertions; if you are writing compiler tests or code inside the standard library
 // that wants to avoid those debug assertions, directly call this intrinsic instead.
@@ -2890,7 +2892,7 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize);
 #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
+pub const unsafe fn write_bytes<T, B>(dst: *mut T, val: B, count: usize);
 
 /// Returns the minimum (IEEE 754-2008 minNum) of two `f16` values.
 ///

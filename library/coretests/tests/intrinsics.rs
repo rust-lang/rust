@@ -1,5 +1,7 @@
 use core::any::TypeId;
+use core::hint::black_box;
 use core::intrinsics::assume;
+use core::mem::MaybeUninit;
 
 #[test]
 fn test_typeid_sized_types() {
@@ -43,7 +45,7 @@ const fn test_write_bytes_in_const_contexts() {
     const TEST: [u32; 3] = {
         let mut arr = [1u32, 2, 3];
         unsafe {
-            write_bytes(arr.as_mut_ptr(), 0, 2);
+            write_bytes(arr.as_mut_ptr(), 0u8, 2);
         }
         arr
     };
@@ -55,7 +57,7 @@ const fn test_write_bytes_in_const_contexts() {
     const TEST2: [u32; 3] = {
         let mut arr = [1u32, 2, 3];
         unsafe {
-            write_bytes(arr.as_mut_ptr(), 1, 2);
+            write_bytes(arr.as_mut_ptr(), 1u8, 2);
         }
         arr
     };
@@ -63,6 +65,17 @@ const fn test_write_bytes_in_const_contexts() {
     assert!(TEST2[0] == 16843009);
     assert!(TEST2[1] == 16843009);
     assert!(TEST2[2] == 3);
+
+    const TEST3: [MaybeUninit<u32>; 2] = {
+        let mut arr: [MaybeUninit<u32>; 2] = [MaybeUninit::uninit(), MaybeUninit::new(1)];
+        unsafe {
+            write_bytes(arr.as_mut_ptr(), MaybeUninit::<u8>::uninit(), 2);
+        }
+        arr
+    };
+
+    // can't do much with uninitialized values, just make sure it compiles
+    black_box(TEST3);
 }
 
 #[test]

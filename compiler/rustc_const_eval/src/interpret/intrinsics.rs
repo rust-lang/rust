@@ -4,6 +4,7 @@
 
 use std::assert_matches::assert_matches;
 
+use either::Either;
 use rustc_abi::{FieldIdx, HasDataLayout, Size};
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, read_target_uint, write_target_uint};
@@ -866,18 +867,43 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         count: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
         name: &'static str,
     ) -> InterpResult<'tcx> {
-        let layout = self.layout_of(dst.layout.ty.builtin_deref(true).unwrap())?;
+        let dst_layout = self.layout_of(dst.layout.ty.builtin_deref(true).unwrap())?;
+        let src_layout = self.layout_of(byte.layout.ty)?;
+
+        if src_layout.size.bytes_usize() != 1 {
+            throw_ub_custom!(
+                fluent::const_eval_scalar_size_mismatch,
+                target_size = 1,
+                data_size = src_layout.size.bytes(),
+            );
+        }
 
         let dst = self.read_pointer(dst)?;
-        let byte = self.read_scalar(byte)?.to_u8()?;
+
         let count = self.read_target_usize(count)?;
 
         // `checked_mul` enforces a too small bound (the correct one would probably be target_isize_max),
         // but no actual allocation can be big enough for the difference to be noticeable.
         let len = self
-            .compute_size_in_bytes(layout.size, count)
+            .compute_size_in_bytes(dst_layout.size, count)
             .ok_or_else(|| err_ub_custom!(fluent::const_eval_size_overflow, name = name))?;
 
+        let byte = match self.read_immediate_raw(byte)? {
+            Either::Left(src_place) => {
+                // val is not an immediate, possibly uninit.
+                self.mem_copy_repeatedly(
+                    src_place.ptr(),
+                    dst,
+                    Size::from_bytes(1),
+                    len.bytes(),
+                    /* nonoverlapping: */ false,
+                )?;
+                return interp_ok(());
+            }
+            Either::Right(imm) => imm,
+        };
+
+        let byte = byte.to_scalar().to_u8()?;
         let bytes = std::iter::repeat(byte).take(len.bytes_usize());
         self.write_bytes_ptr(dst, bytes)
     }
