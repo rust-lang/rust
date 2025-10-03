@@ -4,7 +4,6 @@ use std::process::Command;
 use crate::common::intrinsic::Intrinsic;
 
 use super::indentation::Indentation;
-use super::intrinsic::format_f16_return_value;
 use super::intrinsic_helpers::IntrinsicTypeDefinition;
 
 // The number of times each intrinsic will be called.
@@ -233,7 +232,6 @@ pub fn generate_rust_test_loop<T: IntrinsicTypeDefinition>(
         }
     }
 
-    let return_value = format_f16_return_value(intrinsic);
     let indentation2 = indentation.nested();
     let indentation3 = indentation2.nested();
     writeln!(
@@ -250,6 +248,7 @@ pub fn generate_rust_test_loop<T: IntrinsicTypeDefinition>(
             }}",
         loaded_args = intrinsic.arguments.load_values_rust(indentation3),
         args = intrinsic.arguments.as_call_param_rust(),
+        return_value = intrinsic.results.print_result_rust(),
     )
 }
 

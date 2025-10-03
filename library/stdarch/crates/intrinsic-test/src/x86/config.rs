@@ -206,7 +206,49 @@ impl DebugHexF16 for __m512i {
         debug_simd_finish(f, "__m512i", &array)
     }
 }
- "#;
+
+trait DebugI16 {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result;
+}
+
+impl DebugI16 for i16 {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", self)
+    }
+}
+
+impl DebugI16 for __m128i {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let array = unsafe { core::mem::transmute::<_, [i16; 8]>(*self) };
+        debug_simd_finish(f, "__m128i", &array)
+    }
+}
+
+impl DebugI16 for __m256i {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let array = unsafe { core::mem::transmute::<_, [i16; 16]>(*self) };
+        debug_simd_finish(f, "__m256i", &array)
+    }
+}
+
+impl DebugI16 for __m512i {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let array = unsafe { core::mem::transmute::<_, [i16; 32]>(*self) };
+        debug_simd_finish(f, "__m512i", &array)
+    }
+}
+
+fn debug_i16<T: DebugI16>(x: T) -> impl core::fmt::Debug {
+    struct DebugWrapper<T>(T);
+    impl<T: DebugI16> core::fmt::Debug for DebugWrapper<T> {
+        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+            self.0.fmt(f)
+        }
+    }
+    DebugWrapper(x)
+}
+
+"#;
 
 pub const PLATFORM_C_FORWARD_DECLARATIONS: &str = r#"
 #ifndef X86_DECLARATIONS
