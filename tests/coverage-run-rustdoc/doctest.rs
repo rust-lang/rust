@@ -1,4 +1,5 @@
 //@ aux-build:doctest_crate.rs
+//@ ignore-backends: gcc
 
 //! This test ensures that code from doctests is properly re-mapped.
 //! See <https://github.com/rust-lang/rust/issues/79417> for more info.
