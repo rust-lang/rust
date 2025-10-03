@@ -28,12 +28,15 @@ Functions marked `extern "C"` use the [Hexagon architecture calling convention](
 This target generates position-independent ELF binaries by default, making it
 suitable for both static images and dynamic shared objects.
 
+The [Hexagon SDK](https://softwarecenter.qualcomm.com/catalog/item/Hexagon_SDK) is
+required for building programs for this target.
+
 ## Linking
 
 This target selects `rust-lld` by default.  Another option to use is
 [eld](https://github.com/qualcomm/eld), which is also provided with
 [the opensource hexagon toolchain](https://github.com/quic/toolchain_for_hexagon)
-and the [Hexagon SDK](https://softwarecenter.qualcomm.com/catalog/item/Hexagon_SDK).
+and the Hexagon SDK.
 
 ## Building the target
 
@@ -49,8 +52,8 @@ target = ["<target for your host>", "hexagon-qurt"]
 [target.hexagon-qurt]
 cc = "hexagon-clang"
 cxx = "hexagon-clang++"
-ranlib = "hexagon-ranlib"
-ar = "hexagon-ar"
+ranlib = "llvm-ranlib"
+ar = "llvm-ar"
 llvm-libunwind = 'in-tree'
 ```
 
@@ -71,7 +74,7 @@ configuration with additional linker flags:
 
 ```sh
 # Build a static executable for QuRT
-cargo build --target hexagon-qurt \
+cargo rustc --target hexagon-qurt -- \
     -C link-args="-static -nostdlib" \
     -C link-args="-L/opt/Hexagon_SDK/6.3.0.0/rtos/qurt/computev69/lib" \
     -C link-args="-lqurt -lc"
@@ -89,8 +92,8 @@ For shared libraries that can be dynamically loaded by QuRT applications:
 
 ```sh
 # Build a shared object for QuRT
-cargo build --target hexagon-qurt \
-    --crate-type=cdylib \
+cargo rustc --target hexagon-qurt \
+    --crate-type=cdylib -- \
     -C link-args="-shared -fPIC" \
     -C link-args="-L/opt/Hexagon_SDK/6.3.0.0/rtos/qurt/computev69/lib"
 ```
