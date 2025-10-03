@@ -90,11 +90,12 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, format_args: &FormatArgsStorag
 
                         let mut has_in_format_capture = false;
                         suggestions.extend(visitor.spans.into_iter().filter_map(|span| match span {
-                            MaybeInFormatCapture::Yes => {
+                            VariableUsage::FormatCapture => {
                                 has_in_format_capture = true;
                                 None
                             },
-                            MaybeInFormatCapture::No(span) => Some((span, "()".to_string())),
+                            VariableUsage::Normal(span) => Some((span, "()".to_string())),
+                            VariableUsage::FieldShorthand(span) => Some((span.shrink_to_hi(), ": ()".to_string())),
                         }));
 
                         if has_in_format_capture {
@@ -141,19 +142,30 @@ struct UnitVariableCollector<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     format_args: &'a FormatArgsStorage,
     id: HirId,
-    spans: Vec<MaybeInFormatCapture>,
+    spans: Vec<VariableUsage>,
     macro_call: Option<&'a FormatArgs>,
 }
 
-/// Whether the unit variable is captured in a `format!`:
-///
-/// ```ignore
-/// let unit = ();
-/// eprintln!("{unit}");
-/// ```
-enum MaybeInFormatCapture {
-    Yes,
-    No(Span),
+/// How the unit variable is used
+enum VariableUsage {
+    Normal(Span),
+    /// Captured in a `format!`:
+    ///
+    /// ```ignore
+    /// let unit = ();
+    /// eprintln!("{unit}");
+    /// ```
+    FormatCapture,
+    /// In a field shorthand init:
+    ///
+    /// ```ignore
+    /// struct Foo {
+    ///    unit: (),
+    /// }
+    /// let unit = ();
+    /// Foo { unit };
+    /// ```
+    FieldShorthand(Span),
 }
 
 impl<'a, 'tcx> UnitVariableCollector<'a, 'tcx> {
@@ -193,9 +205,17 @@ impl<'tcx> Visitor<'tcx> for UnitVariableCollector<'_, 'tcx> {
                     matches!(arg.kind, FormatArgumentKind::Captured(_)) && find_format_arg_expr(ex, arg).is_some()
                 })
             {
-                self.spans.push(MaybeInFormatCapture::Yes);
+                self.spans.push(VariableUsage::FormatCapture);
             } else {
-                self.spans.push(MaybeInFormatCapture::No(path.span));
+                let parent = self.cx.tcx.parent_hir_node(ex.hir_id);
+                match parent {
+                    Node::ExprField(expr_field) if expr_field.is_shorthand => {
+                        self.spans.push(VariableUsage::FieldShorthand(ex.span));
+                    },
+                    _ => {
+                        self.spans.push(VariableUsage::Normal(path.span));
+                    },
+                }
             }
         }
 

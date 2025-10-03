@@ -227,3 +227,13 @@ fn issue_15784() {
     takes_unit(res);
     println!("{res:?}");
 }
+
+fn issue15789() {
+    struct Foo {
+        value: (),
+    }
+    let value = println!();
+    //~^ let_unit_value
+
+    Foo { value };
+}
