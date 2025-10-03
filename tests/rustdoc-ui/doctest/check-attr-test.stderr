@@ -1,5 +1,5 @@
 error: unknown attribute `compile-fail`
-  --> $DIR/check-attr-test.rs:5:1
+  --> $DIR/check-attr-test.rs:8:1
    |
 LL | / /// foo
 LL | | ///
@@ -17,7 +17,7 @@ LL | #![deny(rustdoc::invalid_codeblock_attributes)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: unknown attribute `compilefail`
-  --> $DIR/check-attr-test.rs:5:1
+  --> $DIR/check-attr-test.rs:8:1
    |
 LL | / /// foo
 LL | | ///
@@ -30,7 +30,7 @@ LL | | /// ```
    = help: this code block may be skipped during testing, because unknown attributes are treated as markers for code samples written in other programming languages, unless it is also explicitly marked as `rust`
 
 error: unknown attribute `comPile_fail`
-  --> $DIR/check-attr-test.rs:5:1
+  --> $DIR/check-attr-test.rs:8:1
    |
 LL | / /// foo
 LL | | ///
@@ -43,7 +43,7 @@ LL | | /// ```
    = help: this code block may be skipped during testing, because unknown attributes are treated as markers for code samples written in other programming languages, unless it is also explicitly marked as `rust`
 
 error: unknown attribute `should-panic`
-  --> $DIR/check-attr-test.rs:12:1
+  --> $DIR/check-attr-test.rs:18:1
    |
 LL | / /// bar
 LL | | ///
@@ -56,7 +56,7 @@ LL | | /// ```
    = help: this code block may be skipped during testing, because unknown attributes are treated as markers for code samples written in other programming languages, unless it is also explicitly marked as `rust`
 
 error: unknown attribute `shouldpanic`
-  --> $DIR/check-attr-test.rs:12:1
+  --> $DIR/check-attr-test.rs:18:1
    |
 LL | / /// bar
 LL | | ///
@@ -69,7 +69,7 @@ LL | | /// ```
    = help: this code block may be skipped during testing, because unknown attributes are treated as markers for code samples written in other programming languages, unless it is also explicitly marked as `rust`
 
 error: unknown attribute `shOuld_panic`
-  --> $DIR/check-attr-test.rs:12:1
+  --> $DIR/check-attr-test.rs:18:1
    |
 LL | / /// bar
 LL | | ///
@@ -82,7 +82,7 @@ LL | | /// ```
    = help: this code block may be skipped during testing, because unknown attributes are treated as markers for code samples written in other programming languages, unless it is also explicitly marked as `rust`
 
 error: unknown attribute `no-run`
-  --> $DIR/check-attr-test.rs:19:1
+  --> $DIR/check-attr-test.rs:28:1
    |
 LL | / /// foobar
 LL | | ///
@@ -95,7 +95,7 @@ LL | | /// ```
    = help: this code block may be skipped during testing, because unknown attributes are treated as markers for code samples written in other programming languages, unless it is also explicitly marked as `rust`
 
 error: unknown attribute `norun`
-  --> $DIR/check-attr-test.rs:19:1
+  --> $DIR/check-attr-test.rs:28:1
    |
 LL | / /// foobar
 LL | | ///
@@ -108,7 +108,7 @@ LL | | /// ```
    = help: this code block may be skipped during testing, because unknown attributes are treated as markers for code samples written in other programming languages, unless it is also explicitly marked as `rust`
 
 error: unknown attribute `nO_run`
-  --> $DIR/check-attr-test.rs:19:1
+  --> $DIR/check-attr-test.rs:28:1
    |
 LL | / /// foobar
 LL | | ///
@@ -121,7 +121,7 @@ LL | | /// ```
    = help: this code block may be skipped during testing, because unknown attributes are treated as markers for code samples written in other programming languages, unless it is also explicitly marked as `rust`
 
 error: unknown attribute `test-harness`
-  --> $DIR/check-attr-test.rs:26:1
+  --> $DIR/check-attr-test.rs:38:1
    |
 LL | / /// b
 LL | | ///
@@ -134,7 +134,7 @@ LL | | /// ```
    = help: this code block may be skipped during testing, because unknown attributes are treated as markers for code samples written in other programming languages, unless it is also explicitly marked as `rust`
 
 error: unknown attribute `testharness`
-  --> $DIR/check-attr-test.rs:26:1
+  --> $DIR/check-attr-test.rs:38:1
    |
 LL | / /// b
 LL | | ///
@@ -147,7 +147,7 @@ LL | | /// ```
    = help: this code block may be skipped during testing, because unknown attributes are treated as markers for code samples written in other programming languages, unless it is also explicitly marked as `rust`
 
 error: unknown attribute `tesT_harness`
-  --> $DIR/check-attr-test.rs:26:1
+  --> $DIR/check-attr-test.rs:38:1
    |
 LL | / /// b
 LL | | ///
