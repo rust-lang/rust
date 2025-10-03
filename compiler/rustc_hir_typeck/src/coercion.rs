@@ -2055,6 +2055,8 @@ impl<'tcx> ProofTreeVisitor<'tcx> for CoerceVisitor<'_, 'tcx> {
             return ControlFlow::Continue(());
         };
 
+        // Make sure this predicate is referring to either an `Unsize` or `CoerceUnsized` trait,
+        // Otherwise there's nothing to do.
         if !self.fcx.tcx.is_lang_item(pred.def_id(), LangItem::Unsize)
             && !self.fcx.tcx.is_lang_item(pred.def_id(), LangItem::CoerceUnsized)
         {
@@ -2062,8 +2064,19 @@ impl<'tcx> ProofTreeVisitor<'tcx> for CoerceVisitor<'_, 'tcx> {
         }
 
         match goal.result() {
+            // If we prove the `Unsize` or `CoerceUnsized` goal, continue recursing.
             Ok(Certainty::Yes) => ControlFlow::Continue(()),
-            Err(NoSolution) => ControlFlow::Break(()),
+            Err(NoSolution) => {
+                // Even if we find no solution, continue recursing if we find a single candidate
+                // for which we're shallowly certain it holds to get the right error source.
+                if let [only_candidate] = &goal.candidates()[..]
+                    && only_candidate.shallow_certainty() == Certainty::Yes
+                {
+                    only_candidate.visit_nested_no_probe(self)
+                } else {
+                    ControlFlow::Break(())
+                }
+            }
             Ok(Certainty::Maybe { .. }) => {
                 // FIXME: structurally normalize?
                 if self.fcx.tcx.is_lang_item(pred.def_id(), LangItem::Unsize)
@@ -2071,6 +2084,10 @@ impl<'tcx> ProofTreeVisitor<'tcx> for CoerceVisitor<'_, 'tcx> {
                     && let ty::Infer(ty::TyVar(vid)) = *pred.self_ty().skip_binder().kind()
                     && self.fcx.type_var_is_sized(vid)
                 {
+                    // We get here when trying to unsize a type variable to a `dyn Trait`,
+                    // knowing that that variable is sized. Unsizing definitely has to happen in that case.
+                    // If the variable weren't sized, we may not need an unsizing coercion.
+                    // In general, we don't want to add coercions too eagerly since it makes error messages much worse.
                     ControlFlow::Continue(())
                 } else if let Some(cand) = goal.unique_applicable_candidate()
                     && cand.shallow_certainty() == Certainty::Yes
