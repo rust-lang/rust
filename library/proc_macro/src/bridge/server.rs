@@ -5,68 +5,53 @@ use std::marker::PhantomData;
 
 use super::*;
 
-macro_rules! define_server_handles {
-    (
-        'owned: $($oty:ident,)*
-        'interned: $($ity:ident,)*
-    ) => {
-        #[allow(non_snake_case)]
-        pub(super) struct HandleStore<S: Types> {
-            $($oty: handle::OwnedStore<S::$oty>,)*
-            $($ity: handle::InternedStore<S::$ity>,)*
+pub(super) struct HandleStore<S: Types> {
+    token_stream: handle::OwnedStore<S::TokenStream>,
+    span: handle::InternedStore<S::Span>,
+}
+
+impl<S: Types> HandleStore<S> {
+    fn new(handle_counters: &'static client::HandleCounters) -> Self {
+        HandleStore {
+            token_stream: handle::OwnedStore::new(&handle_counters.token_stream),
+            span: handle::InternedStore::new(&handle_counters.span),
         }
-
-        impl<S: Types> HandleStore<S> {
-            fn new(handle_counters: &'static client::HandleCounters) -> Self {
-                HandleStore {
-                    $($oty: handle::OwnedStore::new(&handle_counters.$oty),)*
-                    $($ity: handle::InternedStore::new(&handle_counters.$ity),)*
-                }
-            }
-        }
-
-        $(
-            impl<S: Types> Encode<HandleStore<MarkedTypes<S>>> for Marked<S::$oty, client::$oty> {
-                fn encode(self, w: &mut Writer, s: &mut HandleStore<MarkedTypes<S>>) {
-                    s.$oty.alloc(self).encode(w, s);
-                }
-            }
-
-            impl<S: Types> Decode<'_, '_, HandleStore<MarkedTypes<S>>>
-                for Marked<S::$oty, client::$oty>
-            {
-                fn decode(r: &mut Reader<'_>, s: &mut HandleStore<MarkedTypes<S>>) -> Self {
-                    s.$oty.take(handle::Handle::decode(r, &mut ()))
-                }
-            }
-
-            impl<'s, S: Types> Decode<'_, 's, HandleStore<MarkedTypes<S>>>
-                for &'s Marked<S::$oty, client::$oty>
-            {
-                fn decode(r: &mut Reader<'_>, s: &'s mut HandleStore<MarkedTypes<S>>) -> Self {
-                    &s.$oty[handle::Handle::decode(r, &mut ())]
-                }
-            }
-        )*
-
-        $(
-            impl<S: Types> Encode<HandleStore<MarkedTypes<S>>> for Marked<S::$ity, client::$ity> {
-                fn encode(self, w: &mut Writer, s: &mut HandleStore<MarkedTypes<S>>) {
-                    s.$ity.alloc(self).encode(w, s);
-                }
-            }
-
-            impl<S: Types> Decode<'_, '_, HandleStore<MarkedTypes<S>>>
-                for Marked<S::$ity, client::$ity>
-            {
-                fn decode(r: &mut Reader<'_>, s: &mut HandleStore<MarkedTypes<S>>) -> Self {
-                    s.$ity.copy(handle::Handle::decode(r, &mut ()))
-                }
-            }
-        )*
     }
 }
-with_api_handle_types!(define_server_handles);
+
+impl<S: Types> Encode<HandleStore<MarkedTypes<S>>> for Marked<S::TokenStream, client::TokenStream> {
+    fn encode(self, w: &mut Writer, s: &mut HandleStore<MarkedTypes<S>>) {
+        s.token_stream.alloc(self).encode(w, s);
+    }
+}
+
+impl<S: Types> Decode<'_, '_, HandleStore<MarkedTypes<S>>>
+    for Marked<S::TokenStream, client::TokenStream>
+{
+    fn decode(r: &mut Reader<'_>, s: &mut HandleStore<MarkedTypes<S>>) -> Self {
+        s.token_stream.take(handle::Handle::decode(r, &mut ()))
+    }
+}
+
+impl<'s, S: Types> Decode<'_, 's, HandleStore<MarkedTypes<S>>>
+    for &'s Marked<S::TokenStream, client::TokenStream>
+{
+    fn decode(r: &mut Reader<'_>, s: &'s mut HandleStore<MarkedTypes<S>>) -> Self {
+        &s.token_stream[handle::Handle::decode(r, &mut ())]
+    }
+}
+
+impl<S: Types> Encode<HandleStore<MarkedTypes<S>>> for Marked<S::Span, client::Span> {
+    fn encode(self, w: &mut Writer, s: &mut HandleStore<MarkedTypes<S>>) {
+        s.span.alloc(self).encode(w, s);
+    }
+}
+
+impl<S: Types> Decode<'_, '_, HandleStore<MarkedTypes<S>>> for Marked<S::Span, client::Span> {
+    fn decode(r: &mut Reader<'_>, s: &mut HandleStore<MarkedTypes<S>>) -> Self {
+        s.span.copy(handle::Handle::decode(r, &mut ()))
+    }
+}
 
 pub trait Types {
     type FreeFunctions: 'static;

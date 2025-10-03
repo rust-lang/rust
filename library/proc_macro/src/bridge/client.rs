@@ -6,87 +6,66 @@ use std::sync::atomic::AtomicU32;
 
 use super::*;
 
-macro_rules! define_client_handles {
-    (
-        'owned: $($oty:ident,)*
-        'interned: $($ity:ident,)*
-    ) => {
-        #[repr(C)]
-        #[allow(non_snake_case)]
-        pub(super) struct HandleCounters {
-            $(pub(super) $oty: AtomicU32,)*
-            $(pub(super) $ity: AtomicU32,)*
-        }
+#[repr(C)]
+pub(super) struct HandleCounters {
+    pub(super) token_stream: AtomicU32,
+    pub(super) span: AtomicU32,
+}
 
-        static COUNTERS: HandleCounters = HandleCounters {
-            $($oty: AtomicU32::new(1),)*
-            $($ity: AtomicU32::new(1),)*
-        };
+static COUNTERS: HandleCounters =
+    HandleCounters { token_stream: AtomicU32::new(1), span: AtomicU32::new(1) };
 
-        $(
-            pub(crate) struct $oty {
-                handle: handle::Handle,
-            }
+pub(crate) struct TokenStream {
+    handle: handle::Handle,
+}
 
-            impl !Send for $oty {}
-            impl !Sync for $oty {}
+impl !Send for TokenStream {}
+impl !Sync for TokenStream {}
 
-            // Forward `Drop::drop` to the inherent `drop` method.
-            impl Drop for $oty {
-                fn drop(&mut self) {
-                    $oty {
-                        handle: self.handle,
-                    }.drop();
-                }
-            }
-
-            impl<S> Encode<S> for $oty {
-                fn encode(self, w: &mut Writer, s: &mut S) {
-                    mem::ManuallyDrop::new(self).handle.encode(w, s);
-                }
-            }
-
-            impl<S> Encode<S> for &$oty {
-                fn encode(self, w: &mut Writer, s: &mut S) {
-                    self.handle.encode(w, s);
-                }
-            }
-
-            impl<S> Decode<'_, '_, S> for $oty {
-                fn decode(r: &mut Reader<'_>, s: &mut S) -> Self {
-                    $oty {
-                        handle: handle::Handle::decode(r, s),
-                    }
-                }
-            }
-        )*
-
-        $(
-            #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-            pub(crate) struct $ity {
-                handle: handle::Handle,
-            }
-
-            impl !Send for $ity {}
-            impl !Sync for $ity {}
-
-            impl<S> Encode<S> for $ity {
-                fn encode(self, w: &mut Writer, s: &mut S) {
-                    self.handle.encode(w, s);
-                }
-            }
-
-            impl<S> Decode<'_, '_, S> for $ity {
-                fn decode(r: &mut Reader<'_>, s: &mut S) -> Self {
-                    $ity {
-                        handle: handle::Handle::decode(r, s),
-                    }
-                }
-            }
-        )*
+// Forward `Drop::drop` to the inherent `drop` method.
+impl Drop for TokenStream {
+    fn drop(&mut self) {
+        TokenStream { handle: self.handle }.drop();
     }
 }
-with_api_handle_types!(define_client_handles);
+
+impl<S> Encode<S> for TokenStream {
+    fn encode(self, w: &mut Writer, s: &mut S) {
+        mem::ManuallyDrop::new(self).handle.encode(w, s);
+    }
+}
+
+impl<S> Encode<S> for &TokenStream {
+    fn encode(self, w: &mut Writer, s: &mut S) {
+        self.handle.encode(w, s);
+    }
+}
+
+impl<S> Decode<'_, '_, S> for TokenStream {
+    fn decode(r: &mut Reader<'_>, s: &mut S) -> Self {
+        TokenStream { handle: handle::Handle::decode(r, s) }
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+pub(crate) struct Span {
+    handle: handle::Handle,
+}
+
+impl !Send for Span {}
+impl !Sync for Span {}
+
+impl<S> Encode<S> for Span {
+    fn encode(self, w: &mut Writer, s: &mut S) {
+        self.handle.encode(w, s);
+    }
+}
+
+impl<S> Decode<'_, '_, S> for Span {
+    fn decode(r: &mut Reader<'_>, s: &mut S) -> Self {
+        Span { handle: handle::Handle::decode(r, s) }
+    }
+}
 
 // FIXME(eddyb) generate these impls by pattern-matching on the
 // names of methods - also could use the presence of `fn drop`

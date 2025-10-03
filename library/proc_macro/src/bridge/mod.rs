@@ -102,22 +102,6 @@ macro_rules! with_api {
     };
 }
 
-// Similar to `with_api`, but only lists the types requiring handles, and they
-// are divided into the two storage categories.
-macro_rules! with_api_handle_types {
-    ($m:ident) => {
-        $m! {
-            'owned:
-            // FreeFunctions is handled manually
-            TokenStream,
-
-            'interned:
-            Span,
-            // Symbol is handled manually
-        }
-    };
-}
-
 pub(crate) struct FreeFunctions;
 
 #[allow(unsafe_code)]
