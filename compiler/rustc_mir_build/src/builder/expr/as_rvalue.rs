@@ -491,6 +491,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         this.as_operand(block, scope, expr, LocalInfo::Boring, NeedsTemporary::No)
                 );
                 block.and(Rvalue::Use(operand))
+            },
+            ExprKind::Reborrow { source:_, mutability: _, ty: _ } => {
+                todo!();
             }
         }
     }
