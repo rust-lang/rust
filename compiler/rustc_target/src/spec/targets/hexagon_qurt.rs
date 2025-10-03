@@ -18,7 +18,6 @@ pub(crate) fn target() -> Target {
             :32-i16:16:16-i1:8:8-f32:32:32-f64:64:64-v32\
             :32:32-v64:64:64-v512:512:512-v1024:1024:1024-v2048\
             :2048:2048"
-            .into()
             .into(),
         arch: "hexagon".into(),
         options: TargetOptions {
