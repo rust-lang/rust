@@ -470,6 +470,11 @@ auto:
         --enable-profiler
         --enable-sanitizers
         --set rust.jemalloc
+      # The x86_64 macOS builders are relatively slow, so we disable
+      # extra assertions/checks to get back a bit of speed.
+      NO_LLVM_ASSERTIONS: 1
+      NO_DEBUG_ASSERTIONS: 1
+      NO_OVERFLOW_CHECKS: 1
       <<: [*env-macos-x86_64-target, *env-macos-xcode]
     <<: *job-macos-x86_64
 
