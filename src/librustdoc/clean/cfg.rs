@@ -671,7 +671,8 @@ fn handle_auto_cfg_hide_show(
         && let MetaItemKind::List(items) = &item.kind
     {
         for item in items {
-            // FIXME: Report in case `Cfg::parse` reports an error?
+            // No need to report `Cfg::parse` errors, they are already handled in `rustc_passes`
+            // and tested in `tests/rustdoc-ui/doc-cfg.rs`.
             if let Ok(Cfg::Cfg(key, value)) = Cfg::parse(item) {
                 if is_show {
                     if let Some(span) = new_hide_attrs.get(&(key, value)) {
@@ -840,6 +841,7 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
             && let Some(ident) = attr.ident()
             && matches!(ident.name, sym::cfg | sym::cfg_trace)
             && let Some(attr) = single(attr.meta_item_list()?)
+            // `cfg` attributes are already checked so no need to check `Cfg::parse` returned value.
             && let Ok(new_cfg) = Cfg::parse(&attr)
         {
             cfg_info.current_cfg &= new_cfg;
