@@ -7,7 +7,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
-use rustc_middle::ty::{Ty, TyCtxt};
+use rustc_middle::ty::{PatternKind, Ty, TyCtxt};
 
 use crate::patch::MirPatch;
 
@@ -17,13 +17,14 @@ fn build_ptr_tys<'tcx>(
     pointee: Ty<'tcx>,
     unique_did: DefId,
     nonnull_did: DefId,
-) -> (Ty<'tcx>, Ty<'tcx>, Ty<'tcx>) {
+) -> (Ty<'tcx>, Ty<'tcx>, Ty<'tcx>, Ty<'tcx>) {
     let args = tcx.mk_args(&[pointee.into()]);
     let unique_ty = tcx.type_of(unique_did).instantiate(tcx, args);
     let nonnull_ty = tcx.type_of(nonnull_did).instantiate(tcx, args);
     let ptr_ty = Ty::new_imm_ptr(tcx, pointee);
+    let pat_ty = Ty::new_pat(tcx, ptr_ty, tcx.mk_pat(PatternKind::NotNull));
 
-    (unique_ty, nonnull_ty, ptr_ty)
+    (unique_ty, nonnull_ty, pat_ty, ptr_ty)
 }
 
 /// Constructs the projection needed to access a Box's pointer
@@ -63,7 +64,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for ElaborateBoxDerefVisitor<'a, 'tcx> {
         {
             let source_info = self.local_decls[place.local].source_info;
 
-            let (unique_ty, nonnull_ty, ptr_ty) =
+            let (unique_ty, nonnull_ty, _pat_ty, ptr_ty) =
                 build_ptr_tys(tcx, boxed_ty, self.unique_did, self.nonnull_did);
 
             let ptr_local = self.patch.new_temp(ptr_ty, source_info.span);
@@ -130,10 +131,11 @@ impl<'tcx> crate::MirPass<'tcx> for ElaborateBoxDerefs {
                         let new_projections =
                             new_projections.get_or_insert_with(|| base.projection.to_vec());
 
-                        let (unique_ty, nonnull_ty, ptr_ty) =
+                        let (unique_ty, nonnull_ty, pat_ty, ptr_ty) =
                             build_ptr_tys(tcx, boxed_ty, unique_did, nonnull_did);
 
                         new_projections.extend_from_slice(&build_projection(unique_ty, nonnull_ty));
+                        new_projections.push(PlaceElem::Field(FieldIdx::ZERO, pat_ty));
                         // While we can't project into `NonNull<_>` in a basic block
                         // due to MCP#807, this is debug info where it's fine.
                         new_projections.push(PlaceElem::Field(FieldIdx::ZERO, ptr_ty));

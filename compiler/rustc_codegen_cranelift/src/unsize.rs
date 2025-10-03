@@ -131,6 +131,11 @@ pub(crate) fn coerce_unsized_into<'tcx>(
         dst.write_cvalue(fx, CValue::by_val_pair(base, info, dst.layout()));
     };
     match (&src_ty.kind(), &dst_ty.kind()) {
+        (ty::Pat(a, _), ty::Pat(b, _)) => {
+            let src = src.cast_pat_ty_to_base(fx.layout_of(*a));
+            let dst = dst.place_transmute_type(fx, *b);
+            return coerce_unsized_into(fx, src, dst);
+        }
         (&ty::Ref(..), &ty::Ref(..))
         | (&ty::Ref(..), &ty::RawPtr(..))
         | (&ty::RawPtr(..), &ty::RawPtr(..)) => coerce_ptr(),

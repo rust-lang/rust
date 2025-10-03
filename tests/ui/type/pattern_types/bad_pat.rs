@@ -10,4 +10,15 @@ type Positive2 = pattern_type!(i32 is 0..=);
 type Wild = pattern_type!(() is _);
 //~^ ERROR: pattern not supported in pattern types
 
+// FIXME: confusing diagnostic because `not` can be a binding
+type NonNull = pattern_type!(*const () is not null);
+//~^ ERROR: expected one of `@` or `|`, found `null`
+//~| ERROR: pattern not supported in pattern types
+
+type NonNull2 = pattern_type!(*const () is !nil);
+//~^ ERROR: expected `null`, found `nil`
+
+// FIXME: reject with a type mismatch
+type Mismatch2 = pattern_type!(() is !null);
+
 fn main() {}

@@ -30,6 +30,24 @@ error: pattern not supported in pattern types
 LL | type Wild = pattern_type!(() is _);
    |                                 ^
 
-error: aborting due to 3 previous errors
+error: pattern not supported in pattern types
+  --> $DIR/bad_pat.rs:14:43
+   |
+LL | type NonNull = pattern_type!(*const () is not null);
+   |                                           ^^^
+
+error: expected one of `@` or `|`, found `null`
+  --> $DIR/bad_pat.rs:14:47
+   |
+LL | type NonNull = pattern_type!(*const () is not null);
+   |                                               ^^^^ expected one of `@` or `|`
+
+error: expected `null`, found `nil`
+  --> $DIR/bad_pat.rs:18:45
+   |
+LL | type NonNull2 = pattern_type!(*const () is !nil);
+   |                                             ^^^ expected `null`
+
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0586`.
