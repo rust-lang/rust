@@ -120,6 +120,7 @@ impl fmt::Debug for Span {
     }
 }
 
+pub(crate) use super::FreeFunctions;
 pub(crate) use super::symbol::Symbol;
 
 macro_rules! define_client_side {
