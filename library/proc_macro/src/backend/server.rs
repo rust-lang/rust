@@ -12,15 +12,15 @@ macro_rules! define_server_handles {
     ) => {
         #[allow(non_snake_case)]
         pub(super) struct HandleStore<S: Types> {
-            $($oty: handle::OwnedStore<S::$oty>,)*
-            $($ity: handle::InternedStore<S::$ity>,)*
+            $($oty: OwnedStore<S::$oty>,)*
+            $($ity: InternedStore<S::$ity>,)*
         }
 
         impl<S: Types> HandleStore<S> {
             fn new(handle_counters: &'static client::HandleCounters) -> Self {
                 HandleStore {
-                    $($oty: handle::OwnedStore::new(&handle_counters.$oty),)*
-                    $($ity: handle::InternedStore::new(&handle_counters.$ity),)*
+                    $($oty: OwnedStore::new(&handle_counters.$oty),)*
+                    $($ity: InternedStore::new(&handle_counters.$ity),)*
                 }
             }
         }
@@ -36,7 +36,7 @@ macro_rules! define_server_handles {
                 for Marked<S::$oty, client::$oty>
             {
                 fn decode(r: &mut Reader<'_>, s: &mut HandleStore<MarkedTypes<S>>) -> Self {
-                    s.$oty.take(handle::Handle::decode(r, &mut ()))
+                    s.$oty.take(Handle::decode(r, &mut ()))
                 }
             }
 
@@ -44,7 +44,7 @@ macro_rules! define_server_handles {
                 for &'s Marked<S::$oty, client::$oty>
             {
                 fn decode(r: &mut Reader<'_>, s: &'s HandleStore<MarkedTypes<S>>) -> Self {
-                    &s.$oty[handle::Handle::decode(r, &mut ())]
+                    &s.$oty[Handle::decode(r, &mut ())]
                 }
             }
 
@@ -55,7 +55,7 @@ macro_rules! define_server_handles {
                     r: &mut Reader<'_>,
                     s: &'s mut HandleStore<MarkedTypes<S>>
                 ) -> Self {
-                    &mut s.$oty[handle::Handle::decode(r, &mut ())]
+                    &mut s.$oty[Handle::decode(r, &mut ())]
                 }
             }
         )*
@@ -71,7 +71,7 @@ macro_rules! define_server_handles {
                 for Marked<S::$ity, client::$ity>
             {
                 fn decode(r: &mut Reader<'_>, s: &mut HandleStore<MarkedTypes<S>>) -> Self {
-                    s.$ity.copy(handle::Handle::decode(r, &mut ()))
+                    s.$ity.copy(Handle::decode(r, &mut ()))
                 }
             }
         )*

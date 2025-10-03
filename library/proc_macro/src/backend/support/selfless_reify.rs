@@ -44,7 +44,7 @@ macro_rules! define_reify_functions {
         fn $name:ident $(<$($param:ident),*>)?
             for $(extern $abi:tt)? fn($($arg:ident: $arg_ty:ty),*) -> $ret_ty:ty;
     )+) => {
-        $(pub(super) const fn $name<
+        $(pub(crate) const fn $name<
             $($($param,)*)?
             F: Fn($($arg_ty),*) -> $ret_ty + Copy
         >(f: F) -> $(extern $abi)? fn($($arg_ty),*) -> $ret_ty {
@@ -80,5 +80,5 @@ define_reify_functions! {
     // because of the `fn` pointer type being "higher-ranked" (i.e. the
     // `for<'a>` binder).
     // FIXME(eddyb) try to remove the lifetime from `BridgeConfig`, that'd help.
-    fn reify_to_extern_c_fn_hrt_bridge<R> for extern "C" fn(bridge: super::BridgeConfig<'_>) -> R;
+    fn reify_to_extern_c_fn_hrt_bridge<R> for extern "C" fn(bridge: crate::backend::BridgeConfig<'_>) -> R;
 }

@@ -3,7 +3,7 @@
 use std::marker::PhantomData;
 
 #[repr(C)]
-pub(super) struct Closure<'a, A, R> {
+pub(crate) struct Closure<'a, A, R> {
     call: unsafe extern "C" fn(*mut Env, A) -> R,
     env: *mut Env,
     // Prevent Send and Sync impls.
@@ -24,7 +24,7 @@ impl<'a, A, R, F: FnMut(A) -> R> From<&'a mut F> for Closure<'a, A, R> {
 }
 
 impl<'a, A, R> Closure<'a, A, R> {
-    pub(super) fn call(&mut self, arg: A) -> R {
+    pub(crate) fn call(&mut self, arg: A) -> R {
         unsafe { (self.call)(self.env, arg) }
     }
 }
