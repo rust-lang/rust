@@ -771,6 +771,8 @@ declare_features! (
     (unstable, x87_target_feature, "1.85.0", Some(150261)),
     /// Allows use of the `xop` target-feature
     (unstable, xop_target_feature, "1.81.0", Some(127208)),
+    /// Allows use of the Xtensa target-features
+    (unstable, xtensa_target_feature, "CURRENT_RUSTC_VERSION", Some(157063)),
     /// Allows `do yeet` expressions
     (unstable, yeet_expr, "1.62.0", Some(96373)),
     (unstable, yield_expr, "1.87.0", Some(43122)),
