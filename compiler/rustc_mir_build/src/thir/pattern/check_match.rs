@@ -366,7 +366,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             | VarRef { .. }
             | ZstLiteral { .. }
             | Yield { .. } => true,
-            ExprKind::Reborrow { source:_, mutability: _, ty: _ } => {
+            ExprKind::Reborrow { source: _, mutability: _, ty: _ } => {
                 todo!();
             }
         }

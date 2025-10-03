@@ -591,8 +591,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let temp_lifetime = this.region_scope_tree.temporary_scope(expr.temp_scope_id);
                 let temp = unpack!(block = this.as_temp(block, temp_lifetime, expr_id, mutability));
                 block.and(PlaceBuilder::from(temp))
-            },
-            ExprKind::Reborrow { source:_, mutability: _, ty: _ } => {
+            }
+            ExprKind::Reborrow { source: _, mutability: _, ty: _ } => {
                 todo!();
             }
         }

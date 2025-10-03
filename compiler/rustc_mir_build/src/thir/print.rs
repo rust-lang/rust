@@ -604,7 +604,7 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 self.print_expr(*value, depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl);
             }
-            ExprKind::Reborrow { source:_, mutability: _, ty: _ } => {
+            ExprKind::Reborrow { source: _, mutability: _, ty: _ } => {
                 print_indented!(self, "Reborrow {", depth_lvl);
                 print_indented!(self, "source:", depth_lvl + 1);
                 // self.print_expr(*value, depth_lvl + 2);

@@ -801,7 +801,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let rvalue = unpack!(block = this.as_local_rvalue(block, expr_id));
                 this.cfg.push_assign(block, source_info, destination, rvalue);
                 block.unit()
-            },
+            }
             ExprKind::Reborrow { source, mutability, ty } => {
                 if !this.tcx.type_is_copy_modulo_regions(this.typing_env(), ty) {
                     panic!("Reborrow currently requires self to be Copy");
@@ -814,10 +814,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // };
                 // let borrow = Rvalue::Ref(this.tcx.lifetimes.re_erased, borrow_kind, arg_place);
                 let _1 = unpack!(
-                    block =
-                        this.as_temp(block, this.local_temp_lifetime(), source, mutability)
+                    block = this.as_temp(block, this.local_temp_lifetime(), source, mutability)
                 );
-                this.cfg.push_assign(block, source_info, destination, Rvalue::Use(Operand::Copy(_1.into())));
+                this.cfg.push_assign(
+                    block,
+                    source_info,
+                    destination,
+                    Rvalue::Use(Operand::Copy(_1.into())),
+                );
                 block.unit()
             }
         };

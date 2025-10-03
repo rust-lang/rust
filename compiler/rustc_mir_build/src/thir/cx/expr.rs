@@ -243,14 +243,10 @@ impl<'tcx> ThirBuildCx<'tcx> {
             Adjust::GenericReborrow(ty::Mutability::Mut) => {
                 let ty = expr.ty;
                 let expr = self.thir.exprs.push(expr);
-                let kind = ExprKind::Reborrow {
-                    source: expr,
-                    mutability: rustc_ast::Mutability::Mut,
-                    ty,
-                };
+                let kind =
+                    ExprKind::Reborrow { source: expr, mutability: rustc_ast::Mutability::Mut, ty };
 
                 kind
-
             }
             Adjust::GenericReborrow(ty::Mutability::Not) => {
                 todo!("CoerceShared");
