@@ -372,8 +372,10 @@ fn run_ruff(
         cache_dir.as_os_str(),
     ]);
 
+    let files;
     if file_args_ruff.is_empty() {
-        file_args_ruff.push(root_path.as_os_str());
+        files = find_with_extension(root_path, None, &[OsStr::new("py")])?;
+        file_args_ruff.extend(files.iter().map(|f| f.as_os_str()));
     }
 
     let mut args: Vec<&OsStr> = ruff_args.to_vec();
