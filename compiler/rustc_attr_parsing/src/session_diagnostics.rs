@@ -980,13 +980,3 @@ pub(crate) struct CfgAttrBadDelim {
     #[subdiagnostic]
     pub sugg: MetaBadDelimSugg,
 }
-
-#[derive(Diagnostic)]
-#[diag(attr_parsing_malformed_cfg_attr)]
-#[note]
-pub(crate) struct MalformedCfgAttr {
-    #[primary_span]
-    #[suggestion(style = "verbose", code = "{sugg}")]
-    pub span: Span,
-    pub sugg: &'static str,
-}
