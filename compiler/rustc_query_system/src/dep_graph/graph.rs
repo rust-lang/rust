@@ -875,11 +875,9 @@ impl<D: Deps> DepGraphData<D> {
         parent_dep_node_index: SerializedDepNodeIndex,
         frame: Option<&MarkFrame<'_>>,
     ) -> Option<()> {
-        let dep_dep_node_color = self.colors.get(parent_dep_node_index);
-
         let get_dep_dep_node = || self.previous.index_to_node(parent_dep_node_index);
 
-        match dep_dep_node_color {
+        match self.colors.get(parent_dep_node_index) {
             Some(DepNodeColor::Green(_)) => {
                 // This dependency has been marked as green before, we are
                 // still fine and can continue with checking the other
@@ -929,9 +927,7 @@ impl<D: Deps> DepGraphData<D> {
             return None;
         }
 
-        let dep_dep_node_color = self.colors.get(parent_dep_node_index);
-
-        match dep_dep_node_color {
+        match self.colors.get(parent_dep_node_index) {
             Some(DepNodeColor::Green(_)) => {
                 debug!("managed to FORCE dependency {dep_dep_node:?} to green");
                 return Some(());
