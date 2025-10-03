@@ -1592,10 +1592,16 @@ impl Step for Coverage {
 
         // GCC cannot run coverage tests.
         if let Some(codegen_backend) = run.builder.config.cmd.test_codegen_backend() {
+            eprintln!(
+                "WARNING: Already testing with GCC backend so ignoring `rustc_codegen_gcc` testsuite"
+            );
             if codegen_backend.is_gcc() {
                 return;
             }
         } else if run.builder.config.default_codegen_backend(compiler.host).is_gcc() {
+            eprintln!(
+                "WARNING: Already testing with GCC backend so ignoring `rustc_codegen_gcc` testsuite"
+            );
             return;
         }
 
@@ -3761,6 +3767,20 @@ impl Step for CodegenGCC {
         let compilers = RustcPrivateCompilers::new(run.builder, run.builder.top_stage, host);
 
         if builder.doc_tests == DocTests::Only {
+            return;
+        }
+
+        // It we were running with GCC backend tests, no need to run these tests.
+        if let Some(codegen_backend) = run.builder.config.cmd.test_codegen_backend() {
+            if codegen_backend.is_gcc() {
+                return;
+            }
+        } else if run
+            .builder
+            .config
+            .default_codegen_backend(compilers.target_compiler().host)
+            .is_gcc()
+        {
             return;
         }
 
