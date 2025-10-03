@@ -685,6 +685,12 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
         sym::write_bytes | sym::volatile_set_memory => {
             intrinsic_args!(fx, args => (dst, val, count); intrinsic);
+            if val.layout().size.bytes() != 1 {
+                // incorrect sizes can be encountered on dead branches
+                fx.bcx.ins().trap(TrapCode::user(1).unwrap());
+                return Ok(());
+            };
+
             let val = val.load_scalar(fx);
             let count = count.load_scalar(fx);
 
