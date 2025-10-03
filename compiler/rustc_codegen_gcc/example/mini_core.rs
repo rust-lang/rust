@@ -677,7 +677,7 @@ pub mod intrinsics {
     #[rustc_intrinsic]
     pub fn bswap<T>(x: T) -> T;
     #[rustc_intrinsic]
-    pub unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
+    pub unsafe fn write_bytes<T, B>(dst: *mut T, val: B, count: usize);
     #[rustc_intrinsic]
     pub unsafe fn unreachable() -> !;
 }

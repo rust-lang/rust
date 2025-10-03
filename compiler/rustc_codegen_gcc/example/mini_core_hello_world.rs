@@ -127,7 +127,7 @@ impl<T: ?Sized, U: ?Sized> CoerceUnsized<Unique<U>> for Unique<T> where T: Unsiz
 
 unsafe fn zeroed<T>() -> T {
     let mut uninit = MaybeUninit { uninit: () };
-    intrinsics::write_bytes(&mut uninit.value.value as *mut T, 0, 1);
+    intrinsics::write_bytes(&mut uninit.value.value as *mut T, 0u8, 1);
     uninit.value.value
 }
 
