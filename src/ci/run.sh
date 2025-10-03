@@ -188,9 +188,7 @@ else
   fi
 
   # Download GCC from CI on test builders
-  # FIXME: Temporarily commented out until the GCC build/download strategy is cleared out or
-  # made dependent on GCC submodule changes.
-  # RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set gcc.download-ci-gcc=true"
+  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set gcc.download-ci-gcc=true"
 
   # download-rustc seems to be broken on CI after the stage0 redesign
   # Disable it until these issues are debugged and resolved
