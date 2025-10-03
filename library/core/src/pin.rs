@@ -1689,9 +1689,89 @@ impl<Ptr: [const] Deref> const Deref for Pin<Ptr> {
     }
 }
 
+mod helper {
+    /// Helper that prevents downstream crates from implementing `DerefMut` for `Pin`.
+    ///
+    /// The `Pin` type implements the unsafe trait `PinCoerceUnsized`, which essentially requires
+    /// that the type does not have a malicious `Deref` or `DerefMut` impl. However, without this
+    /// helper module, downstream crates are able to write `impl DerefMut for Pin<LocalType>` as
+    /// long as it does not overlap with the impl provided by stdlib. This is because `Pin` is
+    /// `#[fundamental]`, so stdlib promises to never implement traits for `Pin` that it does not
+    /// implement today.
+    ///
+    /// However, this is problematic. Downstream crates could implement `DerefMut` for
+    /// `Pin<&LocalType>`, and they could do so maliciously. To prevent this, the implementation for
+    /// `Pin` delegates to this helper module. Since `helper::Pin` is not `#[fundamental]`, the
+    /// orphan rules assume that stdlib might implement `helper::DerefMut` for `helper::Pin<&_>` in
+    /// the future. Because of this, downstream crates can no longer provide an implementation of
+    /// `DerefMut` for `Pin<&_>`, as it might overlap with a trait impl that, according to the
+    /// orphan rules, the stdlib could introduce without a breaking change in a future release.
+    ///
+    /// See <https://github.com/rust-lang/rust/issues/85099> for the issue this fixes.
+    #[repr(transparent)]
+    #[unstable(feature = "pin_derefmut_internals", issue = "none")]
+    #[allow(missing_debug_implementations)]
+    pub struct PinHelper<Ptr> {
+        pointer: Ptr,
+    }
+
+    #[unstable(feature = "pin_derefmut_internals", issue = "none")]
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    #[rustc_diagnostic_item = "PinDerefMutHelper"]
+    pub const trait PinDerefMutHelper {
+        type Target: ?Sized;
+        fn deref_mut(&mut self) -> &mut Self::Target;
+    }
+
+    #[unstable(feature = "pin_derefmut_internals", issue = "none")]
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    impl<Ptr: [const] super::DerefMut> const PinDerefMutHelper for PinHelper<Ptr>
+    where
+        Ptr::Target: crate::marker::Unpin,
+    {
+        type Target = Ptr::Target;
+
+        #[inline(always)]
+        fn deref_mut(&mut self) -> &mut Ptr::Target {
+            &mut self.pointer
+        }
+    }
+}
+
 #[stable(feature = "pin", since = "1.33.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<Ptr: [const] DerefMut<Target: Unpin>> const DerefMut for Pin<Ptr> {
+#[cfg(not(doc))]
+impl<Ptr> const DerefMut for Pin<Ptr>
+where
+    Ptr: [const] Deref,
+    helper::PinHelper<Ptr>: [const] helper::PinDerefMutHelper<Target = Self::Target>,
+{
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Ptr::Target {
+        // SAFETY: Pin and PinHelper have the same layout, so this is equivalent to
+        // `&mut self.pointer` which is safe because `Target: Unpin`.
+        helper::PinDerefMutHelper::deref_mut(unsafe {
+            &mut *(self as *mut Pin<Ptr> as *mut helper::PinHelper<Ptr>)
+        })
+    }
+}
+
+/// The `Target` type is restricted to `Unpin` types as it's not safe to obtain a mutable reference
+/// to a pinned value.
+///
+/// For soundness reasons, implementations of `DerefMut` for `Pin<T>` are rejected even when `T` is
+/// a local type not covered by this impl block. (Since `Pin` is [fundamental], such implementations
+/// would normally be possible.)
+///
+/// [fundamental]: ../../reference/items/implementations.html#r-items.impl.trait.fundamental
+#[stable(feature = "pin", since = "1.33.0")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[cfg(doc)]
+impl<Ptr> const DerefMut for Pin<Ptr>
+where
+    Ptr: [const] DerefMut,
+    <Ptr as Deref>::Target: Unpin,
+{
     fn deref_mut(&mut self) -> &mut Ptr::Target {
         Pin::get_mut(Pin::as_mut(self))
     }
