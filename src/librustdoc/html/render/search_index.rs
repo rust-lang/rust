@@ -610,6 +610,7 @@ impl SerializedSearchIndex {
                          module_path,
                          exact_module_path,
                          parent,
+                         trait_parent,
                          deprecated,
                          associated_item_disambiguator,
                      }| EntryData {
@@ -619,6 +620,7 @@ impl SerializedSearchIndex {
                         exact_module_path: exact_module_path
                             .and_then(|path_id| map.get(&path_id).copied()),
                         parent: parent.and_then(|path_id| map.get(&path_id).copied()),
+                        trait_parent: trait_parent.and_then(|path_id| map.get(&path_id).copied()),
                         deprecated: *deprecated,
                         associated_item_disambiguator: associated_item_disambiguator.clone(),
                     },
@@ -900,6 +902,7 @@ struct EntryData {
     module_path: Option<usize>,
     exact_module_path: Option<usize>,
     parent: Option<usize>,
+    trait_parent: Option<usize>,
     deprecated: bool,
     associated_item_disambiguator: Option<String>,
 }
@@ -915,6 +918,7 @@ impl Serialize for EntryData {
         seq.serialize_element(&self.module_path.map(|id| id + 1).unwrap_or(0))?;
         seq.serialize_element(&self.exact_module_path.map(|id| id + 1).unwrap_or(0))?;
         seq.serialize_element(&self.parent.map(|id| id + 1).unwrap_or(0))?;
+        seq.serialize_element(&self.trait_parent.map(|id| id + 1).unwrap_or(0))?;
         seq.serialize_element(&if self.deprecated { 1 } else { 0 })?;
         if let Some(disambig) = &self.associated_item_disambiguator {
             seq.serialize_element(&disambig)?;
@@ -946,6 +950,9 @@ impl<'de> Deserialize<'de> for EntryData {
                     .ok_or_else(|| A::Error::missing_field("exact_module_path"))?;
                 let parent: SerializedOptional32 =
                     v.next_element()?.ok_or_else(|| A::Error::missing_field("parent"))?;
+                let trait_parent: SerializedOptional32 =
+                    v.next_element()?.ok_or_else(|| A::Error::missing_field("trait_parent"))?;
+
                 let deprecated: u32 = v.next_element()?.unwrap_or(0);
                 let associated_item_disambiguator: Option<String> = v.next_element()?;
                 Ok(EntryData {
@@ -955,6 +962,7 @@ impl<'de> Deserialize<'de> for EntryData {
                     exact_module_path: Option::<i32>::from(exact_module_path)
                         .map(|path| path as usize),
                     parent: Option::<i32>::from(parent).map(|path| path as usize),
+                    trait_parent: Option::<i32>::from(trait_parent).map(|path| path as usize),
                     deprecated: deprecated != 0,
                     associated_item_disambiguator,
                 })
@@ -1305,7 +1313,8 @@ pub(crate) fn build_index(
 
     // Attach all orphan items to the type's definition if the type
     // has since been learned.
-    for &OrphanImplItem { impl_id, parent, ref item, ref impl_generics } in &cache.orphan_impl_items
+    for &OrphanImplItem { impl_id, parent, trait_parent, ref item, ref impl_generics } in
+        &cache.orphan_impl_items
     {
         if let Some((fqp, _)) = cache.paths.get(&parent) {
             let desc = short_markdown_summary(&item.doc_value(), &item.link_names(cache));
@@ -1317,6 +1326,8 @@ pub(crate) fn build_index(
                 desc,
                 parent: Some(parent),
                 parent_idx: None,
+                trait_parent,
+                trait_parent_idx: None,
                 exact_module_path: None,
                 impl_id,
                 search_type: get_function_type_for_search(
@@ -1421,6 +1432,7 @@ pub(crate) fn build_index(
                         module_path: None,
                         exact_module_path: None,
                         parent: None,
+                        trait_parent: None,
                         deprecated: false,
                         associated_item_disambiguator: None,
                     }),
@@ -1434,39 +1446,46 @@ pub(crate) fn build_index(
         }
     };
 
-    // First, populate associated item parents
+    // First, populate associated item parents and trait parents
     let crate_items: Vec<&mut IndexItem> = search_index
         .iter_mut()
         .map(|item| {
-            item.parent_idx = item.parent.and_then(|defid| {
-                cache.paths.get(&defid).map(|&(ref fqp, ty)| {
-                    let pathid = serialized_index.names.len();
-                    match serialized_index.crate_paths_index.entry((ty, fqp.clone())) {
-                        Entry::Occupied(entry) => *entry.get(),
-                        Entry::Vacant(entry) => {
-                            entry.insert(pathid);
-                            let (name, path) = fqp.split_last().unwrap();
-                            serialized_index.push_path(
-                                name.as_str().to_string(),
-                                PathData {
-                                    ty,
-                                    module_path: path.to_vec(),
-                                    exact_module_path: if let Some(exact_path) =
-                                        cache.exact_paths.get(&defid)
-                                        && let Some((name2, exact_path)) = exact_path.split_last()
-                                        && name == name2
-                                    {
-                                        Some(exact_path.to_vec())
-                                    } else {
-                                        None
+            let mut defid_to_rowid = |defid, check_external: bool| {
+                cache
+                    .paths
+                    .get(&defid)
+                    .or_else(|| check_external.then(|| cache.external_paths.get(&defid)).flatten())
+                    .map(|&(ref fqp, ty)| {
+                        let pathid = serialized_index.names.len();
+                        match serialized_index.crate_paths_index.entry((ty, fqp.clone())) {
+                            Entry::Occupied(entry) => *entry.get(),
+                            Entry::Vacant(entry) => {
+                                entry.insert(pathid);
+                                let (name, path) = fqp.split_last().unwrap();
+                                serialized_index.push_path(
+                                    name.as_str().to_string(),
+                                    PathData {
+                                        ty,
+                                        module_path: path.to_vec(),
+                                        exact_module_path: if let Some(exact_path) =
+                                            cache.exact_paths.get(&defid)
+                                            && let Some((name2, exact_path)) =
+                                                exact_path.split_last()
+                                            && name == name2
+                                        {
+                                            Some(exact_path.to_vec())
+                                        } else {
+                                            None
+                                        },
                                     },
-                                },
-                            );
-                            usize::try_from(pathid).unwrap()
+                                );
+                                usize::try_from(pathid).unwrap()
+                            }
                         }
-                    }
-                })
-            });
+                    })
+            };
+            item.parent_idx = item.parent.and_then(|p| defid_to_rowid(p, false));
+            item.trait_parent_idx = item.trait_parent.and_then(|p| defid_to_rowid(p, true));
 
             if let Some(defid) = item.defid
                 && item.parent_idx.is_none()
@@ -1549,6 +1568,7 @@ pub(crate) fn build_index(
             EntryData {
                 ty: item.ty,
                 parent: item.parent_idx,
+                trait_parent: item.trait_parent_idx,
                 module_path,
                 exact_module_path,
                 deprecated: item.deprecation.is_some(),
