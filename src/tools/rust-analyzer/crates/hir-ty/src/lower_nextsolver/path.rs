@@ -287,7 +287,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                     }
                 }
             }
-            TypeNs::SelfType(impl_id) => self.ctx.db.impl_self_ty_ns(impl_id).skip_binder(),
+            TypeNs::SelfType(impl_id) => self.ctx.db.impl_self_ty(impl_id).skip_binder(),
             TypeNs::AdtSelfType(adt) => {
                 let args = crate::next_solver::GenericArgs::identity_for_item(
                     self.ctx.interner,
@@ -616,7 +616,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
         explicit_self_ty: Option<Ty<'db>>,
         lowering_assoc_type_generics: bool,
     ) -> crate::next_solver::GenericArgs<'db> {
-        let mut lifetime_elision = self.ctx.lifetime_elision.clone();
+        let old_lifetime_elision = self.ctx.lifetime_elision.clone();
 
         if let Some(args) = self.current_or_prev_segment.args_and_bindings
             && args.parenthesized != GenericArgsParentheses::No
@@ -646,19 +646,21 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
             }
 
             // `Fn()`-style generics are treated like functions for the purpose of lifetime elision.
-            lifetime_elision =
+            self.ctx.lifetime_elision =
                 LifetimeElisionKind::AnonymousCreateParameter { report_in_path: false };
         }
 
-        self.substs_from_args_and_bindings(
+        let result = self.substs_from_args_and_bindings(
             self.current_or_prev_segment.args_and_bindings,
             def,
             infer_args,
             explicit_self_ty,
             PathGenericsSource::Segment(self.current_segment_u32()),
             lowering_assoc_type_generics,
-            lifetime_elision,
-        )
+            self.ctx.lifetime_elision.clone(),
+        );
+        self.ctx.lifetime_elision = old_lifetime_elision;
+        result
     }
 
     pub(super) fn substs_from_args_and_bindings(
@@ -915,22 +917,36 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                     binding.type_ref.as_ref().map_or(0, |_| 1) + binding.bounds.len(),
                 );
                 if let Some(type_ref) = binding.type_ref {
-                    match (&self.ctx.store[type_ref], self.ctx.impl_trait_mode.mode) {
-                        (TypeRef::ImplTrait(_), ImplTraitLoweringMode::Disallowed) => (),
-                        (_, ImplTraitLoweringMode::Disallowed | ImplTraitLoweringMode::Opaque) => {
-                            let ty = self.ctx.lower_ty(type_ref);
-                            let pred = Clause(Predicate::new(
-                                interner,
-                                Binder::dummy(rustc_type_ir::PredicateKind::Clause(
-                                    rustc_type_ir::ClauseKind::Projection(ProjectionPredicate {
-                                        projection_term,
-                                        term: ty.into(),
-                                    }),
-                                )),
-                            ));
-                            predicates.push(pred);
+                    let lifetime_elision =
+                        if args_and_bindings.parenthesized == GenericArgsParentheses::ParenSugar {
+                            // `Fn()`-style generics are elided like functions. This is `Output` (we lower to it in hir-def).
+                            LifetimeElisionKind::for_fn_ret(self.ctx.interner)
+                        } else {
+                            self.ctx.lifetime_elision.clone()
+                        };
+                    self.with_lifetime_elision(lifetime_elision, |this| {
+                        match (&this.ctx.store[type_ref], this.ctx.impl_trait_mode.mode) {
+                            (TypeRef::ImplTrait(_), ImplTraitLoweringMode::Disallowed) => (),
+                            (
+                                _,
+                                ImplTraitLoweringMode::Disallowed | ImplTraitLoweringMode::Opaque,
+                            ) => {
+                                let ty = this.ctx.lower_ty(type_ref);
+                                let pred = Clause(Predicate::new(
+                                    interner,
+                                    Binder::dummy(rustc_type_ir::PredicateKind::Clause(
+                                        rustc_type_ir::ClauseKind::Projection(
+                                            ProjectionPredicate {
+                                                projection_term,
+                                                term: ty.into(),
+                                            },
+                                        ),
+                                    )),
+                                ));
+                                predicates.push(pred);
+                            }
                         }
-                    }
+                    })
                 }
                 for bound in binding.bounds.iter() {
                     predicates.extend(self.ctx.lower_type_bound(

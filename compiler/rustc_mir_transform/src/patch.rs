@@ -11,6 +11,8 @@ use tracing::debug;
 /// once with `apply`. This is useful for MIR transformation passes.
 pub(crate) struct MirPatch<'tcx> {
     term_patch_map: FxHashMap<BasicBlock, TerminatorKind<'tcx>>,
+    /// Set of statements that should be replaced by `Nop`.
+    nop_statements: Vec<Location>,
     new_blocks: Vec<BasicBlockData<'tcx>>,
     new_statements: Vec<(Location, StatementKind<'tcx>)>,
     new_locals: Vec<LocalDecl<'tcx>>,
@@ -33,6 +35,7 @@ impl<'tcx> MirPatch<'tcx> {
     pub(crate) fn new(body: &Body<'tcx>) -> Self {
         let mut result = MirPatch {
             term_patch_map: Default::default(),
+            nop_statements: vec![],
             new_blocks: vec![],
             new_statements: vec![],
             new_locals: vec![],
@@ -212,6 +215,15 @@ impl<'tcx> MirPatch<'tcx> {
         self.term_patch_map.insert(block, new);
     }
 
+    /// Mark given statement to be replaced by a `Nop`.
+    ///
+    /// This method only works on statements from the initial body, and cannot be used to remove
+    /// statements from `add_statement` or `add_assign`.
+    #[tracing::instrument(level = "debug", skip(self))]
+    pub(crate) fn nop_statement(&mut self, loc: Location) {
+        self.nop_statements.push(loc);
+    }
+
     /// Queues the insertion of a statement at a given location. The statement
     /// currently at that location, and all statements that follow, are shifted
     /// down. If multiple statements are queued for addition at the same
@@ -257,11 +269,8 @@ impl<'tcx> MirPatch<'tcx> {
         bbs.extend(self.new_blocks);
         body.local_decls.extend(self.new_locals);
 
-        // The order in which we patch terminators does not change the result.
-        #[allow(rustc::potential_query_instability)]
-        for (src, patch) in self.term_patch_map {
-            debug!("MirPatch: patching block {:?}", src);
-            bbs[src].terminator_mut().kind = patch;
+        for loc in self.nop_statements {
+            bbs[loc.block].statements[loc.statement_index].make_nop();
         }
 
         let mut new_statements = self.new_statements;
@@ -284,6 +293,17 @@ impl<'tcx> MirPatch<'tcx> {
                 .statements
                 .insert(loc.statement_index, Statement::new(source_info, stmt));
             delta += 1;
+        }
+
+        // The order in which we patch terminators does not change the result.
+        #[allow(rustc::potential_query_instability)]
+        for (src, patch) in self.term_patch_map {
+            debug!("MirPatch: patching block {:?}", src);
+            let bb = &mut bbs[src];
+            if let TerminatorKind::Unreachable = patch {
+                bb.statements.clear();
+            }
+            bb.terminator_mut().kind = patch;
         }
     }
 

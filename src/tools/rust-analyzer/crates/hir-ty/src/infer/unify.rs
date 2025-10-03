@@ -3,47 +3,42 @@
 use std::fmt;
 
 use chalk_ir::{
-    CanonicalVarKind, FloatTy, IntTy, TyVariableKind, cast::Cast, fold::TypeFoldable,
-    interner::HasInterner,
+    CanonicalVarKind, TyVariableKind, cast::Cast, fold::TypeFoldable, interner::HasInterner,
 };
 use either::Either;
 use hir_def::{AdtId, lang_item::LangItem};
 use hir_expand::name::Name;
 use intern::sym;
 use rustc_hash::{FxHashMap, FxHashSet};
-use rustc_type_ir::inherent::Ty as _;
 use rustc_type_ir::{
-    FloatVid, IntVid, TyVid, TypeVisitableExt,
-    inherent::{IntoKind, Span, Term as _},
+    TyVid, TypeVisitableExt, UpcastFrom,
+    inherent::{IntoKind, Span, Term as _, Ty as _},
     relate::{Relate, solver_relating::RelateExt},
-    solve::{Certainty, GoalSource, NoSolution},
+    solve::{Certainty, GoalSource},
 };
 use smallvec::SmallVec;
 use triomphe::Arc;
 
 use super::{InferResult, InferenceContext, TypeError};
-use crate::next_solver::ErrorGuaranteed;
 use crate::{
     AliasTy, BoundVar, Canonical, Const, ConstValue, DebruijnIndex, GenericArg, GenericArgData,
-    Goal, GoalData, InEnvironment, InferenceVar, Interner, Lifetime, OpaqueTyId, ParamKind,
-    ProjectionTy, Scalar, Substitution, TraitEnvironment, TraitRef, Ty, TyBuilder, TyExt, TyKind,
-    VariableKind, WhereClause,
+    InferenceVar, Interner, Lifetime, OpaqueTyId, ProjectionTy, Substitution, TraitEnvironment, Ty,
+    TyExt, TyKind, VariableKind,
     consteval::unknown_const,
     db::HirDatabase,
     fold_generic_args, fold_tys_and_consts,
-    next_solver::infer::InferOk,
     next_solver::{
-        self, ClauseKind, DbInterner, ParamEnv, Predicate, PredicateKind, SolverDefIds, Term,
+        self, ClauseKind, DbInterner, ErrorGuaranteed, Predicate, PredicateKind, SolverDefIds,
+        Term, TraitRef,
         fulfill::FulfillmentCtxt,
         infer::{
-            DbInternerInferExt, InferCtxt,
+            DbInternerInferExt, InferCtxt, InferOk,
             snapshot::CombinedSnapshot,
             traits::{Obligation, ObligationCause},
         },
         inspect::{InspectConfig, InspectGoal, ProofTreeVisitor},
         mapping::{ChalkToNextSolver, NextSolverToChalk},
     },
-    to_chalk_trait_id,
     traits::{
         FnTrait, NextTraitSolveResult, next_trait_solve_canonical_in_ctxt, next_trait_solve_in_ctxt,
     },
@@ -125,7 +120,7 @@ impl<'a, 'db> ProofTreeVisitor<'db> for NestedObligationsForSelfTy<'a, 'db> {
 /// unresolved goal `T = U`.
 pub fn could_unify(
     db: &dyn HirDatabase,
-    env: Arc<TraitEnvironment>,
+    env: Arc<TraitEnvironment<'_>>,
     tys: &Canonical<(Ty, Ty)>,
 ) -> bool {
     unify(db, env, tys).is_some()
@@ -137,7 +132,7 @@ pub fn could_unify(
 /// them. For example `Option<T>` and `Option<U>` do not unify as we cannot show that `T = U`
 pub fn could_unify_deeply(
     db: &dyn HirDatabase,
-    env: Arc<TraitEnvironment>,
+    env: Arc<TraitEnvironment<'_>>,
     tys: &Canonical<(Ty, Ty)>,
 ) -> bool {
     let mut table = InferenceTable::new(db, env);
@@ -147,7 +142,6 @@ pub fn could_unify_deeply(
     let ty1_with_vars = table.normalize_associated_types_in(ty1_with_vars);
     let ty2_with_vars = table.normalize_associated_types_in(ty2_with_vars);
     table.select_obligations_where_possible();
-    table.propagate_diverging_flag();
     let ty1_with_vars = table.resolve_completely(ty1_with_vars);
     let ty2_with_vars = table.resolve_completely(ty2_with_vars);
     table.unify_deeply(&ty1_with_vars, &ty2_with_vars)
@@ -155,7 +149,7 @@ pub fn could_unify_deeply(
 
 pub(crate) fn unify(
     db: &dyn HirDatabase,
-    env: Arc<TraitEnvironment>,
+    env: Arc<TraitEnvironment<'_>>,
     tys: &Canonical<(Ty, Ty)>,
 ) -> Option<Substitution> {
     let mut table = InferenceTable::new(db, env);
@@ -174,13 +168,19 @@ pub(crate) fn unify(
             GenericArgData::Const(c) => c.inference_var(Interner),
         } == Some(iv))
     };
-    let fallback = |iv, kind, default, binder| match kind {
-        chalk_ir::VariableKind::Ty(_ty_kind) => find_var(iv)
-            .map_or(default, |i| BoundVar::new(binder, i).to_ty(Interner).cast(Interner)),
-        chalk_ir::VariableKind::Lifetime => find_var(iv)
-            .map_or(default, |i| BoundVar::new(binder, i).to_lifetime(Interner).cast(Interner)),
-        chalk_ir::VariableKind::Const(ty) => find_var(iv)
-            .map_or(default, |i| BoundVar::new(binder, i).to_const(Interner, ty).cast(Interner)),
+    let fallback = |iv, kind, binder| match kind {
+        chalk_ir::VariableKind::Ty(_ty_kind) => find_var(iv).map_or_else(
+            || TyKind::Error.intern(Interner).cast(Interner),
+            |i| BoundVar::new(binder, i).to_ty(Interner).cast(Interner),
+        ),
+        chalk_ir::VariableKind::Lifetime => find_var(iv).map_or_else(
+            || crate::error_lifetime().cast(Interner),
+            |i| BoundVar::new(binder, i).to_lifetime(Interner).cast(Interner),
+        ),
+        chalk_ir::VariableKind::Const(ty) => find_var(iv).map_or_else(
+            || crate::unknown_const(ty.clone()).cast(Interner),
+            |i| BoundVar::new(binder, i).to_const(Interner, ty.clone()).cast(Interner),
+        ),
     };
     Some(Substitution::from_iter(
         Interner,
@@ -216,22 +216,20 @@ bitflags::bitflags! {
 pub(crate) struct InferenceTable<'db> {
     pub(crate) db: &'db dyn HirDatabase,
     pub(crate) interner: DbInterner<'db>,
-    pub(crate) trait_env: Arc<TraitEnvironment>,
-    pub(crate) param_env: ParamEnv<'db>,
+    pub(crate) trait_env: Arc<TraitEnvironment<'db>>,
     pub(crate) tait_coercion_table: Option<FxHashMap<OpaqueTyId, Ty>>,
     pub(crate) infer_ctxt: InferCtxt<'db>,
-    diverging_tys: FxHashSet<Ty>,
     pub(super) fulfillment_cx: FulfillmentCtxt<'db>,
+    pub(super) diverging_type_vars: FxHashSet<crate::next_solver::Ty<'db>>,
 }
 
 pub(crate) struct InferenceTableSnapshot<'db> {
     ctxt_snapshot: CombinedSnapshot,
     obligations: FulfillmentCtxt<'db>,
-    diverging_tys: FxHashSet<Ty>,
 }
 
 impl<'db> InferenceTable<'db> {
-    pub(crate) fn new(db: &'db dyn HirDatabase, trait_env: Arc<TraitEnvironment>) -> Self {
+    pub(crate) fn new(db: &'db dyn HirDatabase, trait_env: Arc<TraitEnvironment<'db>>) -> Self {
         let interner = DbInterner::new_with(db, Some(trait_env.krate), trait_env.block);
         let infer_ctxt = interner.infer_ctxt().build(rustc_type_ir::TypingMode::Analysis {
             defining_opaque_types_and_generators: SolverDefIds::new_from_iter(interner, []),
@@ -239,12 +237,11 @@ impl<'db> InferenceTable<'db> {
         InferenceTable {
             db,
             interner,
-            param_env: trait_env.env.to_nextsolver(interner),
             trait_env,
             tait_coercion_table: None,
             fulfillment_cx: FulfillmentCtxt::new(&infer_ctxt),
             infer_ctxt,
-            diverging_tys: FxHashSet::default(),
+            diverging_type_vars: FxHashSet::default(),
         }
     }
 
@@ -327,74 +324,8 @@ impl<'db> InferenceTable<'db> {
         }
     }
 
-    /// Chalk doesn't know about the `diverging` flag, so when it unifies two
-    /// type variables of which one is diverging, the chosen root might not be
-    /// diverging and we have no way of marking it as such at that time. This
-    /// function goes through all type variables and make sure their root is
-    /// marked as diverging if necessary, so that resolving them gives the right
-    /// result.
-    pub(super) fn propagate_diverging_flag(&mut self) {
-        let mut new_tys = FxHashSet::default();
-        for ty in self.diverging_tys.iter() {
-            match ty.kind(Interner) {
-                TyKind::InferenceVar(var, kind) => match kind {
-                    TyVariableKind::General => {
-                        let root = InferenceVar::from(
-                            self.infer_ctxt.root_var(TyVid::from_u32(var.index())).as_u32(),
-                        );
-                        if root.index() != var.index() {
-                            new_tys.insert(TyKind::InferenceVar(root, *kind).intern(Interner));
-                        }
-                    }
-                    TyVariableKind::Integer => {
-                        let root = InferenceVar::from(
-                            self.infer_ctxt
-                                .inner
-                                .borrow_mut()
-                                .int_unification_table()
-                                .find(IntVid::from_usize(var.index() as usize))
-                                .as_u32(),
-                        );
-                        if root.index() != var.index() {
-                            new_tys.insert(TyKind::InferenceVar(root, *kind).intern(Interner));
-                        }
-                    }
-                    TyVariableKind::Float => {
-                        let root = InferenceVar::from(
-                            self.infer_ctxt
-                                .inner
-                                .borrow_mut()
-                                .float_unification_table()
-                                .find(FloatVid::from_usize(var.index() as usize))
-                                .as_u32(),
-                        );
-                        if root.index() != var.index() {
-                            new_tys.insert(TyKind::InferenceVar(root, *kind).intern(Interner));
-                        }
-                    }
-                },
-                _ => {}
-            }
-        }
-        self.diverging_tys.extend(new_tys);
-    }
-
-    pub(super) fn set_diverging(&mut self, iv: InferenceVar, kind: TyVariableKind) {
-        self.diverging_tys.insert(TyKind::InferenceVar(iv, kind).intern(Interner));
-    }
-
-    fn fallback_value(&self, iv: InferenceVar, kind: TyVariableKind) -> Ty {
-        let is_diverging =
-            self.diverging_tys.contains(&TyKind::InferenceVar(iv, kind).intern(Interner));
-        if is_diverging {
-            return TyKind::Never.intern(Interner);
-        }
-        match kind {
-            TyVariableKind::General => TyKind::Error,
-            TyVariableKind::Integer => TyKind::Scalar(Scalar::Int(IntTy::I32)),
-            TyVariableKind::Float => TyKind::Scalar(Scalar::Float(FloatTy::F64)),
-        }
-        .intern(Interner)
+    pub(super) fn set_diverging(&mut self, ty: crate::next_solver::Ty<'db>) {
+        self.diverging_type_vars.insert(ty);
     }
 
     pub(crate) fn canonicalize<T>(&mut self, t: T) -> rustc_type_ir::Canonical<DbInterner<'db>, T>
@@ -430,7 +361,7 @@ impl<'db> InferenceTable<'db> {
     {
         let ty = self.resolve_vars_with_obligations(ty);
         self.infer_ctxt
-            .at(&ObligationCause::new(), self.param_env)
+            .at(&ObligationCause::new(), self.trait_env.env)
             .deeply_normalize(ty.clone())
             .unwrap_or(ty)
     }
@@ -535,7 +466,7 @@ impl<'db> InferenceTable<'db> {
 
         let ty = var.to_ty(Interner, kind);
         if diverging {
-            self.diverging_tys.insert(ty.clone());
+            self.diverging_type_vars.insert(ty.to_nextsolver(self.interner));
         }
         ty
     }
@@ -579,7 +510,7 @@ impl<'db> InferenceTable<'db> {
     pub(crate) fn resolve_with_fallback<T>(
         &mut self,
         t: T,
-        fallback: &dyn Fn(InferenceVar, VariableKind, GenericArg, DebruijnIndex) -> GenericArg,
+        fallback: &dyn Fn(InferenceVar, VariableKind, DebruijnIndex) -> GenericArg,
     ) -> T
     where
         T: HasInterner<Interner = Interner> + TypeFoldable<Interner>,
@@ -621,7 +552,7 @@ impl<'db> InferenceTable<'db> {
     fn resolve_with_fallback_inner<T>(
         &mut self,
         t: T,
-        fallback: &dyn Fn(InferenceVar, VariableKind, GenericArg, DebruijnIndex) -> GenericArg,
+        fallback: &dyn Fn(InferenceVar, VariableKind, DebruijnIndex) -> GenericArg,
     ) -> T
     where
         T: HasInterner<Interner = Interner> + TypeFoldable<Interner>,
@@ -638,53 +569,15 @@ impl<'db> InferenceTable<'db> {
         T: HasInterner<Interner = Interner> + TypeFoldable<Interner> + ChalkToNextSolver<'db, U>,
         U: NextSolverToChalk<'db, T> + rustc_type_ir::TypeFoldable<DbInterner<'db>>,
     {
-        let t = self.resolve_with_fallback(t, &|_, _, d, _| d);
-        let t = self.normalize_associated_types_in(t);
-        // let t = self.resolve_opaque_tys_in(t);
-        // Resolve again, because maybe normalization inserted infer vars.
-        self.resolve_with_fallback(t, &|_, _, d, _| d)
-    }
+        let value = t.to_nextsolver(self.interner);
+        let value = self.infer_ctxt.resolve_vars_if_possible(value);
 
-    /// Apply a fallback to unresolved scalar types. Integer type variables and float type
-    /// variables are replaced with i32 and f64, respectively.
-    ///
-    /// This method is only intended to be called just before returning inference results (i.e. in
-    /// `InferenceContext::resolve_all()`).
-    ///
-    /// FIXME: This method currently doesn't apply fallback to unconstrained general type variables
-    /// whereas rustc replaces them with `()` or `!`.
-    pub(super) fn fallback_if_possible(&mut self) {
-        let int_fallback = TyKind::Scalar(Scalar::Int(IntTy::I32)).intern(Interner);
-        let float_fallback = TyKind::Scalar(Scalar::Float(FloatTy::F64)).intern(Interner);
+        let mut goals = vec![];
+        let value = value.fold_with(&mut resolve_completely::Resolver::new(self, true, &mut goals));
 
-        let int_vars = self.infer_ctxt.inner.borrow_mut().int_unification_table().len();
-        for v in 0..int_vars {
-            let var = InferenceVar::from(v as u32).to_ty(Interner, TyVariableKind::Integer);
-            let maybe_resolved = self.resolve_ty_shallow(&var);
-            if let TyKind::InferenceVar(_, kind) = maybe_resolved.kind(Interner) {
-                // I don't think we can ever unify these vars with float vars, but keep this here for now
-                let fallback = match kind {
-                    TyVariableKind::Integer => &int_fallback,
-                    TyVariableKind::Float => &float_fallback,
-                    TyVariableKind::General => unreachable!(),
-                };
-                self.unify(&var, fallback);
-            }
-        }
-        let float_vars = self.infer_ctxt.inner.borrow_mut().float_unification_table().len();
-        for v in 0..float_vars {
-            let var = InferenceVar::from(v as u32).to_ty(Interner, TyVariableKind::Float);
-            let maybe_resolved = self.resolve_ty_shallow(&var);
-            if let TyKind::InferenceVar(_, kind) = maybe_resolved.kind(Interner) {
-                // I don't think we can ever unify these vars with float vars, but keep this here for now
-                let fallback = match kind {
-                    TyVariableKind::Integer => &int_fallback,
-                    TyVariableKind::Float => &float_fallback,
-                    TyVariableKind::General => unreachable!(),
-                };
-                self.unify(&var, fallback);
-            }
-        }
+        // FIXME(next-solver): Handle `goals`.
+
+        value.to_chalk(self.interner)
     }
 
     /// Unify two relatable values (e.g. `Ty`) and register new trait goals that arise from that.
@@ -745,7 +638,7 @@ impl<'db> InferenceTable<'db> {
     ) -> InferResult<'db, ()> {
         let variance = rustc_type_ir::Variance::Invariant;
         let span = crate::next_solver::Span::dummy();
-        match self.infer_ctxt.relate(self.param_env, lhs, variance, rhs, span) {
+        match self.infer_ctxt.relate(self.trait_env.env, lhs, variance, rhs, span) {
             Ok(goals) => Ok(crate::infer::InferOk { goals, value: () }),
             Err(_) => Err(TypeError),
         }
@@ -786,7 +679,7 @@ impl<'db> InferenceTable<'db> {
     }
 
     pub(crate) fn structurally_resolve_type(&mut self, ty: &Ty) -> Ty {
-        if let TyKind::Alias(..) = ty.kind(Interner) {
+        if let TyKind::Alias(chalk_ir::AliasTy::Projection(..)) = ty.kind(Interner) {
             self.structurally_normalize_ty(ty)
         } else {
             self.resolve_vars_with_obligations(ty.to_nextsolver(self.interner))
@@ -802,7 +695,7 @@ impl<'db> InferenceTable<'db> {
 
     fn structurally_normalize_term(&mut self, term: Term<'db>) -> Term<'db> {
         self.infer_ctxt
-            .at(&ObligationCause::new(), self.param_env)
+            .at(&ObligationCause::new(), self.trait_env.env)
             .structurally_normalize_term(term, &mut self.fulfillment_cx)
             .unwrap_or(term)
     }
@@ -822,7 +715,7 @@ impl<'db> InferenceTable<'db> {
             // in a reentrant borrow, causing an ICE.
             let result = self
                 .infer_ctxt
-                .at(&ObligationCause::misc(), self.param_env)
+                .at(&ObligationCause::misc(), self.trait_env.env)
                 .structurally_normalize_ty(ty, &mut self.fulfillment_cx);
             match result {
                 Ok(normalized_ty) => normalized_ty,
@@ -835,15 +728,13 @@ impl<'db> InferenceTable<'db> {
 
     pub(crate) fn snapshot(&mut self) -> InferenceTableSnapshot<'db> {
         let ctxt_snapshot = self.infer_ctxt.start_snapshot();
-        let diverging_tys = self.diverging_tys.clone();
         let obligations = self.fulfillment_cx.clone();
-        InferenceTableSnapshot { ctxt_snapshot, diverging_tys, obligations }
+        InferenceTableSnapshot { ctxt_snapshot, obligations }
     }
 
     #[tracing::instrument(skip_all)]
     pub(crate) fn rollback_to(&mut self, snapshot: InferenceTableSnapshot<'db>) {
         self.infer_ctxt.rollback_to(snapshot.ctxt_snapshot);
-        self.diverging_tys = snapshot.diverging_tys;
         self.fulfillment_cx = snapshot.obligations;
     }
 
@@ -877,26 +768,15 @@ impl<'db> InferenceTable<'db> {
     /// whether a trait *might* be implemented before deciding to 'lock in' the
     /// choice (during e.g. method resolution or deref).
     #[tracing::instrument(level = "debug", skip(self))]
-    pub(crate) fn try_obligation(&mut self, goal: Goal) -> NextTraitSolveResult {
-        let in_env = InEnvironment::new(&self.trait_env.env, goal);
-        let canonicalized = self.canonicalize(in_env.to_nextsolver(self.interner));
+    pub(crate) fn try_obligation(&mut self, predicate: Predicate<'db>) -> NextTraitSolveResult {
+        let goal = next_solver::Goal { param_env: self.trait_env.env, predicate };
+        let canonicalized = self.canonicalize(goal);
 
         next_trait_solve_canonical_in_ctxt(&self.infer_ctxt, canonicalized)
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
-    pub(crate) fn solve_obligation(&mut self, goal: Goal) -> Result<Certainty, NoSolution> {
-        let goal = InEnvironment::new(&self.trait_env.env, goal);
-        let goal = goal.to_nextsolver(self.interner);
-        let result = next_trait_solve_in_ctxt(&self.infer_ctxt, goal);
-        result.map(|m| m.1)
-    }
-
     pub(crate) fn register_obligation(&mut self, predicate: Predicate<'db>) {
-        let goal = next_solver::Goal {
-            param_env: self.trait_env.env.to_nextsolver(self.interner),
-            predicate,
-        };
+        let goal = next_solver::Goal { param_env: self.trait_env.env, predicate };
         self.register_obligation_in_env(goal)
     }
 
@@ -984,7 +864,7 @@ impl<'db> InferenceTable<'db> {
         &mut self,
         ty: &Ty,
         num_args: usize,
-    ) -> Option<(FnTrait, Vec<crate::next_solver::Ty<'db>>, crate::next_solver::Ty<'db>)> {
+    ) -> Option<(FnTrait, Vec<next_solver::Ty<'db>>, next_solver::Ty<'db>)> {
         for (fn_trait_name, output_assoc_name, subtraits) in [
             (FnTrait::FnOnce, sym::Output, &[FnTrait::Fn, FnTrait::FnMut][..]),
             (FnTrait::AsyncFnMut, sym::CallRefFuture, &[FnTrait::AsyncFn]),
@@ -997,42 +877,34 @@ impl<'db> InferenceTable<'db> {
                 trait_data.associated_type_by_name(&Name::new_symbol_root(output_assoc_name))?;
 
             let mut arg_tys = Vec::with_capacity(num_args);
-            let arg_ty = TyBuilder::tuple(num_args)
-                .fill(|it| {
-                    let arg = match it {
-                        ParamKind::Type => self.new_type_var(),
-                        ParamKind::Lifetime => unreachable!("Tuple with lifetime parameter"),
-                        ParamKind::Const(_) => unreachable!("Tuple with const parameter"),
-                    };
-                    arg_tys.push(arg.to_nextsolver(self.interner));
-                    arg.cast(Interner)
+            let arg_ty = next_solver::Ty::new_tup_from_iter(
+                self.interner,
+                std::iter::repeat_with(|| {
+                    let ty = self.next_ty_var();
+                    arg_tys.push(ty);
+                    ty
                 })
-                .build();
+                .take(num_args),
+            );
+            let args = [ty.to_nextsolver(self.interner), arg_ty];
+            let trait_ref = crate::next_solver::TraitRef::new(self.interner, fn_trait.into(), args);
 
-            let b = TyBuilder::trait_ref(self.db, fn_trait);
-            if b.remaining() != 2 {
-                return None;
-            }
-            let mut trait_ref = b.push(ty.clone()).push(arg_ty).build();
+            let projection = crate::next_solver::Ty::new_alias(
+                self.interner,
+                rustc_type_ir::AliasTyKind::Projection,
+                crate::next_solver::AliasTy::new(self.interner, output_assoc_type.into(), args),
+            );
 
-            let projection = TyBuilder::assoc_type_projection(
-                self.db,
-                output_assoc_type,
-                Some(trait_ref.substitution.clone()),
-            )
-            .fill_with_unknown()
-            .build();
-
-            let goal: Goal = trait_ref.clone().cast(Interner);
-            if !self.try_obligation(goal.clone()).no_solution() {
-                self.register_obligation(goal.to_nextsolver(self.interner));
-                let return_ty =
-                    self.normalize_projection_ty(projection).to_nextsolver(self.interner);
+            let pred = crate::next_solver::Predicate::upcast_from(trait_ref, self.interner);
+            if !self.try_obligation(pred).no_solution() {
+                self.register_obligation(pred);
+                let return_ty = self.normalize_alias_ty(projection);
                 for &fn_x in subtraits {
                     let fn_x_trait = fn_x.get_id(self.db, krate)?;
-                    trait_ref.trait_id = to_chalk_trait_id(fn_x_trait);
-                    let goal = trait_ref.clone().cast(Interner);
-                    if !self.try_obligation(goal).no_solution() {
+                    let trait_ref =
+                        crate::next_solver::TraitRef::new(self.interner, fn_x_trait.into(), args);
+                    let pred = crate::next_solver::Predicate::upcast_from(trait_ref, self.interner);
+                    if !self.try_obligation(pred).no_solution() {
                         return Some((fn_x, arg_tys, return_ty));
                     }
                 }
@@ -1171,12 +1043,11 @@ impl<'db> InferenceTable<'db> {
         let Some(sized) = LangItem::Sized.resolve_trait(self.db, self.trait_env.krate) else {
             return false;
         };
-        let sized_pred = WhereClause::Implemented(TraitRef {
-            trait_id: to_chalk_trait_id(sized),
-            substitution: Substitution::from1(Interner, ty),
-        });
-        let goal = GoalData::DomainGoal(chalk_ir::DomainGoal::Holds(sized_pred)).intern(Interner);
-        self.try_obligation(goal).certain()
+        let sized_pred = Predicate::upcast_from(
+            TraitRef::new(self.interner, sized.into(), [ty.to_nextsolver(self.interner)]),
+            self.interner,
+        );
+        self.try_obligation(sized_pred).certain()
     }
 }
 
@@ -1192,14 +1063,10 @@ impl fmt::Debug for InferenceTable<'_> {
 mod resolve {
     use super::InferenceTable;
     use crate::{
-        ConcreteConst, Const, ConstData, ConstScalar, ConstValue, DebruijnIndex, GenericArg,
-        InferenceVar, Interner, Lifetime, Ty, TyVariableKind, VariableKind,
-        next_solver::mapping::NextSolverToChalk,
+        Const, DebruijnIndex, GenericArg, InferenceVar, Interner, Lifetime, Ty, TyVariableKind,
+        VariableKind, next_solver::mapping::NextSolverToChalk,
     };
-    use chalk_ir::{
-        cast::Cast,
-        fold::{TypeFoldable, TypeFolder},
-    };
+    use chalk_ir::fold::{TypeFoldable, TypeFolder};
     use rustc_type_ir::{FloatVid, IntVid, TyVid};
 
     #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -1213,7 +1080,7 @@ mod resolve {
     pub(super) struct Resolver<
         'a,
         'b,
-        F: Fn(InferenceVar, VariableKind, GenericArg, DebruijnIndex) -> GenericArg,
+        F: Fn(InferenceVar, VariableKind, DebruijnIndex) -> GenericArg,
     > {
         pub(super) table: &'a mut InferenceTable<'b>,
         pub(super) var_stack: &'a mut Vec<(InferenceVar, VarKind)>,
@@ -1221,7 +1088,7 @@ mod resolve {
     }
     impl<F> TypeFolder<Interner> for Resolver<'_, '_, F>
     where
-        F: Fn(InferenceVar, VariableKind, GenericArg, DebruijnIndex) -> GenericArg,
+        F: Fn(InferenceVar, VariableKind, DebruijnIndex) -> GenericArg,
     {
         fn as_dyn(&mut self) -> &mut dyn TypeFolder<Interner> {
             self
@@ -1243,8 +1110,7 @@ mod resolve {
                     let var = InferenceVar::from(vid.as_u32());
                     if self.var_stack.contains(&(var, VarKind::Ty(kind))) {
                         // recursive type
-                        let default = self.table.fallback_value(var, kind).cast(Interner);
-                        return (self.fallback)(var, VariableKind::Ty(kind), default, outer_binder)
+                        return (self.fallback)(var, VariableKind::Ty(kind), outer_binder)
                             .assert_ty_ref(Interner)
                             .clone();
                     }
@@ -1256,8 +1122,7 @@ mod resolve {
                         self.var_stack.pop();
                         result
                     } else {
-                        let default = self.table.fallback_value(var, kind).cast(Interner);
-                        (self.fallback)(var, VariableKind::Ty(kind), default, outer_binder)
+                        (self.fallback)(var, VariableKind::Ty(kind), outer_binder)
                             .assert_ty_ref(Interner)
                             .clone()
                     }
@@ -1273,8 +1138,7 @@ mod resolve {
                     let var = InferenceVar::from(vid.as_u32());
                     if self.var_stack.contains(&(var, VarKind::Ty(kind))) {
                         // recursive type
-                        let default = self.table.fallback_value(var, kind).cast(Interner);
-                        return (self.fallback)(var, VariableKind::Ty(kind), default, outer_binder)
+                        return (self.fallback)(var, VariableKind::Ty(kind), outer_binder)
                             .assert_ty_ref(Interner)
                             .clone();
                     }
@@ -1286,8 +1150,7 @@ mod resolve {
                         self.var_stack.pop();
                         result
                     } else {
-                        let default = self.table.fallback_value(var, kind).cast(Interner);
-                        (self.fallback)(var, VariableKind::Ty(kind), default, outer_binder)
+                        (self.fallback)(var, VariableKind::Ty(kind), outer_binder)
                             .assert_ty_ref(Interner)
                             .clone()
                     }
@@ -1303,8 +1166,7 @@ mod resolve {
                     let var = InferenceVar::from(vid.as_u32());
                     if self.var_stack.contains(&(var, VarKind::Ty(kind))) {
                         // recursive type
-                        let default = self.table.fallback_value(var, kind).cast(Interner);
-                        return (self.fallback)(var, VariableKind::Ty(kind), default, outer_binder)
+                        return (self.fallback)(var, VariableKind::Ty(kind), outer_binder)
                             .assert_ty_ref(Interner)
                             .clone();
                     }
@@ -1316,8 +1178,7 @@ mod resolve {
                         self.var_stack.pop();
                         result
                     } else {
-                        let default = self.table.fallback_value(var, kind).cast(Interner);
-                        (self.fallback)(var, VariableKind::Ty(kind), default, outer_binder)
+                        (self.fallback)(var, VariableKind::Ty(kind), outer_binder)
                             .assert_ty_ref(Interner)
                             .clone()
                     }
@@ -1336,15 +1197,9 @@ mod resolve {
                 .infer_ctxt
                 .root_const_var(rustc_type_ir::ConstVid::from_u32(var.index()));
             let var = InferenceVar::from(vid.as_u32());
-            let default = ConstData {
-                ty: ty.clone(),
-                value: ConstValue::Concrete(ConcreteConst { interned: ConstScalar::Unknown }),
-            }
-            .intern(Interner)
-            .cast(Interner);
             if self.var_stack.contains(&(var, VarKind::Const)) {
                 // recursive
-                return (self.fallback)(var, VariableKind::Const(ty), default, outer_binder)
+                return (self.fallback)(var, VariableKind::Const(ty), outer_binder)
                     .assert_const_ref(Interner)
                     .clone();
             }
@@ -1356,7 +1211,7 @@ mod resolve {
                 self.var_stack.pop();
                 result
             } else {
-                (self.fallback)(var, VariableKind::Const(ty), default, outer_binder)
+                (self.fallback)(var, VariableKind::Const(ty), outer_binder)
                     .assert_const_ref(Interner)
                     .clone()
             }
@@ -1372,6 +1227,127 @@ mod resolve {
             // variables through Chalk's unification, and this at least makes
             // sure we don't leak them outside of inference
             crate::error_lifetime()
+        }
+    }
+}
+
+mod resolve_completely {
+    use rustc_type_ir::{
+        DebruijnIndex, Flags, TypeFolder, TypeSuperFoldable,
+        inherent::{Const as _, Ty as _},
+    };
+
+    use crate::next_solver::Region;
+    use crate::{
+        infer::unify::InferenceTable,
+        next_solver::{
+            Const, DbInterner, ErrorGuaranteed, Goal, Predicate, Term, Ty,
+            infer::traits::ObligationCause,
+            normalize::deeply_normalize_with_skipped_universes_and_ambiguous_coroutine_goals,
+        },
+    };
+
+    pub(super) struct Resolver<'a, 'db> {
+        ctx: &'a mut InferenceTable<'db>,
+        /// Whether we should normalize, disabled when resolving predicates.
+        should_normalize: bool,
+        nested_goals: &'a mut Vec<Goal<'db, Predicate<'db>>>,
+    }
+
+    impl<'a, 'db> Resolver<'a, 'db> {
+        pub(super) fn new(
+            ctx: &'a mut InferenceTable<'db>,
+            should_normalize: bool,
+            nested_goals: &'a mut Vec<Goal<'db, Predicate<'db>>>,
+        ) -> Resolver<'a, 'db> {
+            Resolver { ctx, nested_goals, should_normalize }
+        }
+
+        fn handle_term<T>(
+            &mut self,
+            value: T,
+            outer_exclusive_binder: impl FnOnce(T) -> DebruijnIndex,
+        ) -> T
+        where
+            T: Into<Term<'db>> + TypeSuperFoldable<DbInterner<'db>> + Copy,
+        {
+            let value = if self.should_normalize {
+                let cause = ObligationCause::new();
+                let at = self.ctx.infer_ctxt.at(&cause, self.ctx.trait_env.env);
+                let universes = vec![None; outer_exclusive_binder(value).as_usize()];
+                match deeply_normalize_with_skipped_universes_and_ambiguous_coroutine_goals(
+                    at, value, universes,
+                ) {
+                    Ok((value, goals)) => {
+                        self.nested_goals.extend(goals);
+                        value
+                    }
+                    Err(_errors) => {
+                        // FIXME: Report the error.
+                        value
+                    }
+                }
+            } else {
+                value
+            };
+
+            value.fold_with(&mut ReplaceInferWithError { interner: self.ctx.interner })
+        }
+    }
+
+    impl<'cx, 'db> TypeFolder<DbInterner<'db>> for Resolver<'cx, 'db> {
+        fn cx(&self) -> DbInterner<'db> {
+            self.ctx.interner
+        }
+
+        fn fold_region(&mut self, r: Region<'db>) -> Region<'db> {
+            if r.is_var() { Region::error(self.ctx.interner) } else { r }
+        }
+
+        fn fold_ty(&mut self, ty: Ty<'db>) -> Ty<'db> {
+            self.handle_term(ty, |it| it.outer_exclusive_binder())
+        }
+
+        fn fold_const(&mut self, ct: Const<'db>) -> Const<'db> {
+            self.handle_term(ct, |it| it.outer_exclusive_binder())
+        }
+
+        fn fold_predicate(&mut self, predicate: Predicate<'db>) -> Predicate<'db> {
+            assert!(
+                !self.should_normalize,
+                "normalizing predicates in writeback is not generally sound"
+            );
+            predicate.super_fold_with(self)
+        }
+    }
+
+    struct ReplaceInferWithError<'db> {
+        interner: DbInterner<'db>,
+    }
+
+    impl<'db> TypeFolder<DbInterner<'db>> for ReplaceInferWithError<'db> {
+        fn cx(&self) -> DbInterner<'db> {
+            self.interner
+        }
+
+        fn fold_ty(&mut self, t: Ty<'db>) -> Ty<'db> {
+            if t.is_infer() {
+                Ty::new_error(self.interner, ErrorGuaranteed)
+            } else {
+                t.super_fold_with(self)
+            }
+        }
+
+        fn fold_const(&mut self, c: Const<'db>) -> Const<'db> {
+            if c.is_ct_infer() {
+                Const::new_error(self.interner, ErrorGuaranteed)
+            } else {
+                c.super_fold_with(self)
+            }
+        }
+
+        fn fold_region(&mut self, r: Region<'db>) -> Region<'db> {
+            if r.is_var() { Region::error(self.interner) } else { r }
         }
     }
 }

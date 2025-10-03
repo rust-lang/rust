@@ -61,10 +61,6 @@ required-issue-label = "regression-from-stable-to-beta"
 # if the above conditions matches, the PR will receive these labels
 add-labels = ["beta-nominated"]
 
-[backport.t-compiler-stable-backport]
-required-pr-labels = ["T-compiler"]
-required-issue-label = "regression-from-stable-to-stable"
-add-labels = ["stable-nominated"]
 
 # ------------------------------------------------------------------------------
 # Ping groups

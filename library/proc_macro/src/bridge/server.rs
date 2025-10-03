@@ -178,7 +178,7 @@ macro_rules! define_dispatcher_impl {
                     $(api_tags::Method::$name(m) => match m {
                         $(api_tags::$name::$method => {
                             let mut call_method = || {
-                                reverse_decode!(reader, handle_store; $($arg: $arg_ty),*);
+                                $(let $arg = <$arg_ty>::decode(&mut reader, handle_store);)*
                                 $name::$method(server, $($arg),*)
                             };
                             // HACK(eddyb) don't use `panic::catch_unwind` in a panic.
@@ -295,12 +295,7 @@ impl ExecutionStrategy for SameThread {
 
         let mut dispatch = |buf| dispatcher.dispatch(buf);
 
-        run_client(BridgeConfig {
-            input,
-            dispatch: (&mut dispatch).into(),
-            force_show_panics,
-            _marker: marker::PhantomData,
-        })
+        run_client(BridgeConfig { input, dispatch: (&mut dispatch).into(), force_show_panics })
     }
 }
 
@@ -331,12 +326,7 @@ where
                 client.recv().expect("server died while client waiting for reply")
             };
 
-            run_client(BridgeConfig {
-                input,
-                dispatch: (&mut dispatch).into(),
-                force_show_panics,
-                _marker: marker::PhantomData,
-            })
+            run_client(BridgeConfig { input, dispatch: (&mut dispatch).into(), force_show_panics })
         });
 
         while let Some(b) = server.recv() {

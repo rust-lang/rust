@@ -7,6 +7,7 @@ use build_helper::git::GitConfig;
 use camino::{Utf8Path, Utf8PathBuf};
 use semver::Version;
 
+use crate::edition::Edition;
 use crate::executor::ColorConfig;
 use crate::fatal;
 use crate::util::{Utf8PathBufExt, add_dylib_path, string_enum};
@@ -612,10 +613,7 @@ pub struct Config {
     pub git_hash: bool,
 
     /// The default Rust edition.
-    ///
-    /// FIXME: perform stronger validation for this. There are editions that *definitely* exists,
-    /// but there might also be "future" edition.
-    pub edition: Option<String>,
+    pub edition: Option<Edition>,
 
     // Configuration for various run-make tests frobbing things like C compilers or querying about
     // various LLVM component information.

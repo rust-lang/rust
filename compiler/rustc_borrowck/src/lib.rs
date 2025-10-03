@@ -119,7 +119,7 @@ pub fn provide(providers: &mut Providers) {
 fn mir_borrowck(
     tcx: TyCtxt<'_>,
     def: LocalDefId,
-) -> Result<&ConcreteOpaqueTypes<'_>, ErrorGuaranteed> {
+) -> Result<&DefinitionSiteHiddenTypes<'_>, ErrorGuaranteed> {
     assert!(!tcx.is_typeck_child(def.to_def_id()));
     let (input_body, _) = tcx.mir_promoted(def);
     debug!("run query mir_borrowck: {}", tcx.def_path_str(def));
@@ -130,7 +130,7 @@ fn mir_borrowck(
         Err(guar)
     } else if input_body.should_skip() {
         debug!("Skipping borrowck because of injected body");
-        let opaque_types = ConcreteOpaqueTypes(Default::default());
+        let opaque_types = DefinitionSiteHiddenTypes(Default::default());
         Ok(tcx.arena.alloc(opaque_types))
     } else {
         let mut root_cx = BorrowCheckRootCtxt::new(tcx, def, None);
@@ -278,7 +278,7 @@ impl<'tcx> ClosureOutlivesSubjectTy<'tcx> {
         mut map: impl FnMut(ty::RegionVid) -> ty::Region<'tcx>,
     ) -> Ty<'tcx> {
         fold_regions(tcx, self.inner, |r, depth| match r.kind() {
-            ty::ReBound(debruijn, br) => {
+            ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), br) => {
                 debug_assert_eq!(debruijn, depth);
                 map(ty::RegionVid::from_usize(br.var.index()))
             }
@@ -1989,10 +1989,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 },
                 // `OpaqueCast`: only transmutes the type, so no moves there.
                 // `Downcast`  : only changes information about a `Place` without moving.
-                // `Subtype`   : only transmutes the type, so no moves.
                 // So it's safe to skip these.
                 ProjectionElem::OpaqueCast(_)
-                | ProjectionElem::Subtype(_)
                 | ProjectionElem::Downcast(_, _)
                 | ProjectionElem::UnwrapUnsafeBinder(_) => (),
             }
@@ -2218,7 +2216,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         for (place_base, elem) in place.iter_projections().rev() {
             match elem {
                 ProjectionElem::Index(_/*operand*/) |
-                ProjectionElem::Subtype(_) |
                 ProjectionElem::OpaqueCast(_) |
                 ProjectionElem::ConstantIndex { .. } |
                 // assigning to P[i] requires P to be valid.
@@ -2610,7 +2607,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     | ProjectionElem::Index(..)
                     | ProjectionElem::ConstantIndex { .. }
                     | ProjectionElem::Subslice { .. }
-                    | ProjectionElem::Subtype(..)
                     | ProjectionElem::OpaqueCast { .. }
                     | ProjectionElem::Downcast(..)
                     | ProjectionElem::UnwrapUnsafeBinder(_) => {

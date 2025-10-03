@@ -440,7 +440,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                     FlatSet::Top => FlatSet::Top,
                 }
             }
-            Rvalue::Cast(CastKind::Transmute, operand, _) => {
+            Rvalue::Cast(CastKind::Transmute | CastKind::Subtype, operand, _) => {
                 match self.eval_operand(operand, state) {
                     FlatSet::Elem(op) => self.wrap_immediate(*op),
                     FlatSet::Bottom => FlatSet::Bottom,

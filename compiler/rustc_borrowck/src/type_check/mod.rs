@@ -1558,6 +1558,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             ),
                         }
                     }
+                    CastKind::Subtype => {
+                        bug!("CastKind::Subtype shouldn't exist in borrowck")
+                    }
                 }
             }
 
@@ -1881,9 +1884,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     ConstraintCategory::Boring,
                 )
                 .unwrap();
-            }
-            ProjectionElem::Subtype(_) => {
-                bug!("ProjectionElem::Subtype shouldn't exist in borrowck")
             }
         }
     }
@@ -2411,9 +2411,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 | ProjectionElem::Subslice { .. }
                 | ProjectionElem::UnwrapUnsafeBinder(_) => {
                     // other field access
-                }
-                ProjectionElem::Subtype(_) => {
-                    bug!("ProjectionElem::Subtype shouldn't exist in borrowck")
                 }
             }
         }

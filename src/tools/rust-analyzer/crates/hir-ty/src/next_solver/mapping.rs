@@ -575,6 +575,17 @@ impl<
     }
 }
 
+impl<'db, T: NextSolverToChalk<'db, U>, U: HasInterner<Interner = Interner>>
+    NextSolverToChalk<'db, chalk_ir::Binders<U>> for rustc_type_ir::Binder<DbInterner<'db>, T>
+{
+    fn to_chalk(self, interner: DbInterner<'db>) -> chalk_ir::Binders<U> {
+        chalk_ir::Binders::new(
+            self.bound_vars().to_chalk(interner),
+            self.skip_binder().to_chalk(interner),
+        )
+    }
+}
+
 impl<'db> ChalkToNextSolver<'db, BoundVarKinds> for chalk_ir::VariableKinds<Interner> {
     fn to_nextsolver(&self, interner: DbInterner<'db>) -> BoundVarKinds {
         BoundVarKinds::new_from_iter(
@@ -584,12 +595,30 @@ impl<'db> ChalkToNextSolver<'db, BoundVarKinds> for chalk_ir::VariableKinds<Inte
     }
 }
 
+impl<'db> NextSolverToChalk<'db, chalk_ir::VariableKinds<Interner>> for BoundVarKinds {
+    fn to_chalk(self, interner: DbInterner<'db>) -> chalk_ir::VariableKinds<Interner> {
+        chalk_ir::VariableKinds::from_iter(Interner, self.iter().map(|v| v.to_chalk(interner)))
+    }
+}
+
 impl<'db> ChalkToNextSolver<'db, BoundVarKind> for chalk_ir::VariableKind<Interner> {
     fn to_nextsolver(&self, interner: DbInterner<'db>) -> BoundVarKind {
         match self {
             chalk_ir::VariableKind::Ty(_ty_variable_kind) => BoundVarKind::Ty(BoundTyKind::Anon),
             chalk_ir::VariableKind::Lifetime => BoundVarKind::Region(BoundRegionKind::Anon),
             chalk_ir::VariableKind::Const(_ty) => BoundVarKind::Const,
+        }
+    }
+}
+
+impl<'db> NextSolverToChalk<'db, chalk_ir::VariableKind<Interner>> for BoundVarKind {
+    fn to_chalk(self, interner: DbInterner<'db>) -> chalk_ir::VariableKind<Interner> {
+        match self {
+            BoundVarKind::Ty(_) => chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General),
+            BoundVarKind::Region(_) => chalk_ir::VariableKind::Lifetime,
+            BoundVarKind::Const => {
+                chalk_ir::VariableKind::Const(chalk_ir::TyKind::Error.intern(Interner))
+            }
         }
     }
 }
@@ -1233,6 +1262,22 @@ where
     }
 }
 
+impl<'db> NextSolverToChalk<'db, crate::CallableSig> for rustc_type_ir::FnSig<DbInterner<'db>> {
+    fn to_chalk(self, interner: DbInterner<'db>) -> crate::CallableSig {
+        crate::CallableSig {
+            abi: self.abi,
+            is_varargs: self.c_variadic,
+            safety: match self.safety {
+                super::abi::Safety::Safe => chalk_ir::Safety::Safe,
+                super::abi::Safety::Unsafe => chalk_ir::Safety::Unsafe,
+            },
+            params_and_return: triomphe::Arc::from_iter(
+                self.inputs_and_output.iter().map(|ty| convert_ty_for_result(interner, ty)),
+            ),
+        }
+    }
+}
+
 pub fn convert_canonical_args_for_result<'db>(
     interner: DbInterner<'db>,
     args: Canonical<'db, Vec<GenericArg<'db>>>,
@@ -1266,7 +1311,7 @@ pub fn convert_args_for_result<'db>(
     Substitution::from_iter(Interner, substs)
 }
 
-pub(crate) fn convert_ty_for_result<'db>(interner: DbInterner<'db>, ty: Ty<'db>) -> crate::Ty {
+pub fn convert_ty_for_result<'db>(interner: DbInterner<'db>, ty: Ty<'db>) -> crate::Ty {
     use crate::{Scalar, TyKind};
     use chalk_ir::{FloatTy, IntTy, UintTy};
     match ty.kind() {

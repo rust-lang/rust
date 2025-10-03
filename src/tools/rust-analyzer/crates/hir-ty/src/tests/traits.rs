@@ -1487,8 +1487,8 @@ fn test(x: Box<dyn Trait<u64>>, y: &dyn Trait<u64>) {
             268..269 'x': Box<dyn Trait<u64> + '?>
             275..276 'y': &'? (dyn Trait<u64> + '?)
             286..287 'z': Box<dyn Trait<u64> + '?>
-            290..293 'bar': fn bar() -> Box<dyn Trait<u64> + '?>
-            290..295 'bar()': Box<dyn Trait<u64> + '?>
+            290..293 'bar': fn bar() -> Box<dyn Trait<u64> + 'static>
+            290..295 'bar()': Box<dyn Trait<u64> + 'static>
             301..302 'x': Box<dyn Trait<u64> + '?>
             301..308 'x.foo()': u64
             314..315 'y': &'? (dyn Trait<u64> + '?)
@@ -1535,7 +1535,7 @@ fn test(s: S<u32, i32>) {
             251..252 's': S<u32, i32>
             267..289 '{     ...z(); }': ()
             273..274 's': S<u32, i32>
-            273..280 's.bar()': &'? (dyn Trait<u32, i32> + '?)
+            273..280 's.bar()': &'? (dyn Trait<u32, i32> + 'static)
             273..286 's.bar().baz()': (u32, i32)
         "#]],
     );
@@ -1568,8 +1568,8 @@ fn test(x: Trait, y: &Trait) -> u64 {
             106..107 'x': dyn Trait + '?
             113..114 'y': &'? (dyn Trait + '?)
             124..125 'z': dyn Trait + '?
-            128..131 'bar': fn bar() -> dyn Trait + '?
-            128..133 'bar()': dyn Trait + '?
+            128..131 'bar': fn bar() -> dyn Trait + 'static
+            128..133 'bar()': dyn Trait + 'static
             139..140 'x': dyn Trait + '?
             139..146 'x.foo()': u64
             152..153 'y': &'? (dyn Trait + '?)
@@ -1597,7 +1597,7 @@ fn main() {
             47..48 '_': &'? (dyn Fn(S) + '?)
             58..60 '{}': ()
             71..105 '{     ...()); }': ()
-            77..78 'f': fn f(&'? (dyn Fn(S) + '?))
+            77..78 'f': fn f(&'? (dyn Fn(S) + 'static))
             77..102 'f(&|nu...foo())': ()
             79..101 '&|numb....foo()': &'? impl Fn(S)
             80..101 '|numbe....foo()': impl Fn(S)
@@ -2952,7 +2952,7 @@ fn test(x: &dyn Foo) {
             34..36 '{}': ()
             46..47 'x': &'? (dyn Foo + '?)
             59..74 '{     foo(x); }': ()
-            65..68 'foo': fn foo(&'? (dyn Foo + '?))
+            65..68 'foo': fn foo(&'? (dyn Foo + 'static))
             65..71 'foo(x)': ()
             69..70 'x': &'? (dyn Foo + '?)
         "#]],

@@ -90,5 +90,4 @@ ENV HOST_TARGET x86_64-unknown-linux-gnu
 COPY scripts/shared.sh /scripts/
 
 ENV SCRIPT /tmp/checktools.sh ../x.py && \
-  python3 ../x.py check compiletest --set build.compiletest-use-stage0-libtest=true && \
   python3 ../x.py test tests/rustdoc-gui --stage 2 --test-args "'--jobs 1'"

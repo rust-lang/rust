@@ -70,7 +70,7 @@ pub(crate) fn complete_known_attribute_input(
 
             lint::complete_lint(acc, ctx, colon_prefix, &existing_lints, &lints);
         }
-        ["cfg"] => cfg::complete_cfg(acc, ctx),
+        ["cfg"] | ["cfg_attr"] => cfg::complete_cfg(acc, ctx),
         ["macro_use"] => macro_use::complete_macro_use(
             acc,
             ctx,

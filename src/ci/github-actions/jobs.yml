@@ -430,7 +430,8 @@ auto:
       # Ensure that host tooling is built to support our minimum support macOS version.
       MACOSX_DEPLOYMENT_TARGET: 10.12
       MACOSX_STD_DEPLOYMENT_TARGET: 10.12
-      SELECT_XCODE: /Applications/Xcode_15.2.app
+      SELECT_XCODE: /Applications/Xcode_15.4.app
+      USE_XCODE_CLANG: 1
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-macos
@@ -450,21 +451,24 @@ auto:
 
   - name: dist-aarch64-apple
     env:
-      SCRIPT: ./x.py dist bootstrap --include-default-paths --host=aarch64-apple-darwin --target=aarch64-apple-darwin
+      SCRIPT: >-
+        ./x.py dist bootstrap
+        --include-default-paths
+        --host=aarch64-apple-darwin
+        --target=aarch64-apple-darwin
       RUST_CONFIGURE_ARGS: >-
         --enable-full-tools
         --enable-sanitizers
         --enable-profiler
         --set rust.jemalloc
-        --set llvm.ninja=false
         --set rust.lto=thin
         --set rust.codegen-units=1
-      SELECT_XCODE: /Applications/Xcode_15.4.app
-      USE_XCODE_CLANG: 1
       # Aarch64 tooling only needs to support macOS 11.0 and up as nothing else
       # supports the hardware.
       MACOSX_DEPLOYMENT_TARGET: 11.0
       MACOSX_STD_DEPLOYMENT_TARGET: 11.0
+      SELECT_XCODE: /Applications/Xcode_15.4.app
+      USE_XCODE_CLANG: 1
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-macos

@@ -3,17 +3,20 @@
 use chalk_ir::{
     AdtId, DebruijnIndex, Scalar,
     cast::{Cast, CastTo, Caster},
-    fold::TypeFoldable,
-    interner::HasInterner,
 };
 use hir_def::{GenericDefId, GenericParamId, TraitId, TypeAliasId, builtin_type::BuiltinType};
 use smallvec::SmallVec;
 
 use crate::{
-    Binders, BoundVar, CallableSig, GenericArg, GenericArgData, Interner, ProjectionTy,
-    Substitution, TraitRef, Ty, TyDefId, TyExt, TyKind, consteval::unknown_const_as_generic,
-    db::HirDatabase, error_lifetime, generics::generics, infer::unify::InferenceTable, primitive,
-    to_assoc_type_id, to_chalk_trait_id,
+    BoundVar, CallableSig, GenericArg, GenericArgData, Interner, ProjectionTy, Substitution,
+    TraitRef, Ty, TyDefId, TyExt, TyKind,
+    consteval::unknown_const_as_generic,
+    db::HirDatabase,
+    error_lifetime,
+    generics::generics,
+    infer::unify::InferenceTable,
+    next_solver::{DbInterner, EarlyBinder, mapping::ChalkToNextSolver},
+    primitive, to_assoc_type_id, to_chalk_trait_id,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -345,19 +348,20 @@ impl TyBuilder<TypeAliasId> {
     }
 }
 
-impl<T: HasInterner<Interner = Interner> + TypeFoldable<Interner>> TyBuilder<Binders<T>> {
-    pub fn build(self) -> T {
+impl<'db, T: rustc_type_ir::TypeFoldable<DbInterner<'db>>> TyBuilder<EarlyBinder<'db, T>> {
+    pub fn build(self, interner: DbInterner<'db>) -> T {
         let (b, subst) = self.build_internal();
-        b.substitute(Interner, &subst)
+        let args: crate::next_solver::GenericArgs<'db> = subst.to_nextsolver(interner);
+        b.instantiate(interner, args)
     }
 }
 
-impl TyBuilder<Binders<Ty>> {
+impl<'db> TyBuilder<EarlyBinder<'db, crate::next_solver::Ty<'db>>> {
     pub fn def_ty(
-        db: &dyn HirDatabase,
+        db: &'db dyn HirDatabase,
         def: TyDefId,
         parent_subst: Option<Substitution>,
-    ) -> TyBuilder<Binders<Ty>> {
+    ) -> TyBuilder<EarlyBinder<'db, crate::next_solver::Ty<'db>>> {
         let poly_ty = db.ty(def);
         let id: GenericDefId = match def {
             TyDefId::BuiltinType(_) => {
@@ -370,7 +374,10 @@ impl TyBuilder<Binders<Ty>> {
         TyBuilder::subst_for_def(db, id, parent_subst).with_data(poly_ty)
     }
 
-    pub fn impl_self_ty(db: &dyn HirDatabase, def: hir_def::ImplId) -> TyBuilder<Binders<Ty>> {
+    pub fn impl_self_ty(
+        db: &'db dyn HirDatabase,
+        def: hir_def::ImplId,
+    ) -> TyBuilder<EarlyBinder<'db, crate::next_solver::Ty<'db>>> {
         TyBuilder::subst_for_def(db, def, None).with_data(db.impl_self_ty(def))
     }
 }

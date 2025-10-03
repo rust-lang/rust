@@ -1,4 +1,4 @@
-//! Trait solving using Chalk.
+//! Trait solving using next trait solver.
 
 use core::fmt;
 use std::hash::Hash;
@@ -25,7 +25,7 @@ use crate::{
     db::HirDatabase,
     infer::unify::InferenceTable,
     next_solver::{
-        DbInterner, GenericArg, Predicate, SolverContext, Span,
+        DbInterner, GenericArg, ParamEnv, Predicate, SolverContext, Span,
         infer::{DbInternerInferExt, InferCtxt},
         mapping::{ChalkToNextSolver, convert_canonical_args_for_result},
         util::mini_canonicalize,
@@ -39,21 +39,21 @@ use crate::{
 /// ```
 /// we assume that `T: Default`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TraitEnvironment {
+pub struct TraitEnvironment<'db> {
     pub krate: Crate,
     pub block: Option<BlockId>,
     // FIXME make this a BTreeMap
     traits_from_clauses: Box<[(Ty, TraitId)]>,
-    pub env: chalk_ir::Environment<Interner>,
+    pub env: ParamEnv<'db>,
 }
 
-impl TraitEnvironment {
+impl<'db> TraitEnvironment<'db> {
     pub fn empty(krate: Crate) -> Arc<Self> {
         Arc::new(TraitEnvironment {
             krate,
             block: None,
             traits_from_clauses: Box::default(),
-            env: chalk_ir::Environment::new(Interner),
+            env: ParamEnv::empty(),
         })
     }
 
@@ -61,7 +61,7 @@ impl TraitEnvironment {
         krate: Crate,
         block: Option<BlockId>,
         traits_from_clauses: Box<[(Ty, TraitId)]>,
-        env: chalk_ir::Environment<Interner>,
+        env: ParamEnv<'db>,
     ) -> Arc<Self> {
         Arc::new(TraitEnvironment { krate, block, traits_from_clauses, env })
     }
@@ -78,10 +78,10 @@ impl TraitEnvironment {
     }
 }
 
-pub(crate) fn normalize_projection_query(
-    db: &dyn HirDatabase,
+pub(crate) fn normalize_projection_query<'db>(
+    db: &'db dyn HirDatabase,
     projection: ProjectionTy,
-    env: Arc<TraitEnvironment>,
+    env: Arc<TraitEnvironment<'db>>,
 ) -> Ty {
     if projection.substitution.iter(Interner).any(|arg| {
         arg.ty(Interner)
@@ -128,7 +128,7 @@ fn identity_subst(
     chalk_ir::Canonical { binders, value: identity_subst }
 }
 
-/// Solve a trait goal using Chalk.
+/// Solve a trait goal using next trait solver.
 pub(crate) fn trait_solve_query(
     db: &dyn HirDatabase,
     krate: Crate,
@@ -325,7 +325,7 @@ pub fn next_trait_solve_canonical_in_ctxt<'db>(
     }
 }
 
-/// Solve a trait goal using Chalk.
+/// Solve a trait goal using next trait solver.
 pub fn next_trait_solve_in_ctxt<'db, 'a>(
     infer_ctxt: &'a InferCtxt<'db>,
     goal: crate::next_solver::Goal<'db, crate::next_solver::Predicate<'db>>,

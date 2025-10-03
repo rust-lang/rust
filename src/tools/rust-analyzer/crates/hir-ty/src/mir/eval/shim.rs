@@ -14,6 +14,7 @@ use hir_expand::name::Name;
 use intern::{Symbol, sym};
 use stdx::never;
 
+use crate::next_solver::mapping::NextSolverToChalk;
 use crate::{
     DropGlue,
     display::DisplayTarget,
@@ -1371,9 +1372,8 @@ impl Evaluator<'_> {
                     result = (l as i8).cmp(&(r as i8));
                 }
                 if let Some(e) = LangItem::Ordering.resolve_enum(self.db, self.crate_id) {
-                    let ty = self.db.ty(e.into());
-                    let r = self
-                        .compute_discriminant(ty.skip_binders().clone(), &[result as i8 as u8])?;
+                    let ty = self.db.ty(e.into()).skip_binder().to_chalk(interner);
+                    let r = self.compute_discriminant(ty.clone(), &[result as i8 as u8])?;
                     destination.write_from_bytes(self, &r.to_le_bytes()[0..destination.size])?;
                     Ok(())
                 } else {

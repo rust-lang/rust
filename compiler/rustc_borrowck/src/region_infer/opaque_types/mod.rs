@@ -8,7 +8,7 @@ use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin, OpaqueTypeStorageEntries};
 use rustc_infer::traits::ObligationCause;
 use rustc_macros::extension;
-use rustc_middle::mir::{Body, ConcreteOpaqueTypes, ConstraintCategory};
+use rustc_middle::mir::{Body, ConstraintCategory, DefinitionSiteHiddenTypes};
 use rustc_middle::ty::{
     self, DefiningScopeKind, EarlyBinder, FallibleTypeFolder, GenericArg, GenericArgsRef,
     OpaqueHiddenType, OpaqueTypeKey, Region, RegionVid, Ty, TyCtxt, TypeFoldable,
@@ -129,9 +129,9 @@ fn nll_var_to_universal_region<'tcx>(
 /// Collect all defining uses of opaque types inside of this typeck root. This
 /// expects the hidden type to be mapped to the definition parameters of the opaque
 /// and errors if we end up with distinct hidden types.
-fn add_concrete_opaque_type<'tcx>(
+fn add_hidden_type<'tcx>(
     tcx: TyCtxt<'tcx>,
-    concrete_opaque_types: &mut ConcreteOpaqueTypes<'tcx>,
+    hidden_types: &mut DefinitionSiteHiddenTypes<'tcx>,
     def_id: LocalDefId,
     hidden_ty: OpaqueHiddenType<'tcx>,
 ) {
@@ -139,7 +139,7 @@ fn add_concrete_opaque_type<'tcx>(
     // back to the opaque type definition. E.g. we may have `OpaqueType<X, Y>` mapped to
     // `(X, Y)` and `OpaqueType<Y, X>` mapped to `(Y, X)`, and those are the same, but we
     // only know that once we convert the generic parameters to those of the opaque type.
-    if let Some(prev) = concrete_opaque_types.0.get_mut(&def_id) {
+    if let Some(prev) = hidden_types.0.get_mut(&def_id) {
         if prev.ty != hidden_ty.ty {
             let guar = hidden_ty.ty.error_reported().err().unwrap_or_else(|| {
                 let (Ok(e) | Err(e)) = prev.build_mismatch_error(&hidden_ty, tcx).map(|d| d.emit());
@@ -151,15 +151,15 @@ fn add_concrete_opaque_type<'tcx>(
         // FIXME(oli-obk): collect multiple spans for better diagnostics down the road.
         prev.span = prev.span.substitute_dummy(hidden_ty.span);
     } else {
-        concrete_opaque_types.0.insert(def_id, hidden_ty);
+        hidden_types.0.insert(def_id, hidden_ty);
     }
 }
 
-fn get_concrete_opaque_type<'tcx>(
-    concrete_opaque_types: &ConcreteOpaqueTypes<'tcx>,
+fn get_hidden_type<'tcx>(
+    hidden_types: &DefinitionSiteHiddenTypes<'tcx>,
     def_id: LocalDefId,
 ) -> Option<EarlyBinder<'tcx, OpaqueHiddenType<'tcx>>> {
-    concrete_opaque_types.0.get(&def_id).map(|ty| EarlyBinder::bind(*ty))
+    hidden_types.0.get(&def_id).map(|ty| EarlyBinder::bind(*ty))
 }
 
 #[derive(Debug)]
@@ -173,22 +173,22 @@ struct DefiningUse<'tcx> {
 }
 
 /// This computes the actual hidden types of the opaque types and maps them to their
-/// definition sites. Outside of registering the computed concrete types this function
+/// definition sites. Outside of registering the computed hidden types this function
 /// does not mutate the current borrowck state.
 ///
 /// While it may fail to infer the hidden type and return errors, we always apply
-/// the computed concrete hidden type to all opaque type uses to check whether they
+/// the computed hidden type to all opaque type uses to check whether they
 /// are correct. This is necessary to support non-defining uses of opaques in their
 /// defining scope.
 ///
 /// It also means that this whole function is not really soundness critical as we
 /// recheck all uses of the opaques regardless.
-pub(crate) fn compute_concrete_opaque_types<'tcx>(
+pub(crate) fn compute_definition_site_hidden_types<'tcx>(
     infcx: &BorrowckInferCtxt<'tcx>,
     universal_region_relations: &Frozen<UniversalRegionRelations<'tcx>>,
     constraints: &MirTypeckRegionConstraints<'tcx>,
     location_map: Rc<DenseLocationMap>,
-    concrete_opaque_types: &mut ConcreteOpaqueTypes<'tcx>,
+    hidden_types: &mut DefinitionSiteHiddenTypes<'tcx>,
     opaque_types: &[(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)],
 ) -> Vec<DeferredOpaqueTypeError<'tcx>> {
     let mut errors = Vec::new();
@@ -201,8 +201,7 @@ pub(crate) fn compute_concrete_opaque_types<'tcx>(
     // We start by checking each use of an opaque type during type check and
     // check whether the generic arguments of the opaque type are fully
     // universal, if so, it's a defining use.
-    let defining_uses =
-        collect_defining_uses(&mut rcx, concrete_opaque_types, opaque_types, &mut errors);
+    let defining_uses = collect_defining_uses(&mut rcx, hidden_types, opaque_types, &mut errors);
 
     // We now compute and apply member constraints for all regions in the hidden
     // types of each defining use. This mutates the region values of the `rcx` which
@@ -210,11 +209,11 @@ pub(crate) fn compute_concrete_opaque_types<'tcx>(
     apply_member_constraints(&mut rcx, &defining_uses);
 
     // After applying member constraints, we now check whether all member regions ended
-    // up equal to one of their choice regions and compute the actual concrete type of
+    // up equal to one of their choice regions and compute the actual hidden type of
     // the opaque type definition. This is stored in the `root_cx`.
-    compute_concrete_types_from_defining_uses(
+    compute_definition_site_hidden_types_from_defining_uses(
         &rcx,
-        concrete_opaque_types,
+        hidden_types,
         &defining_uses,
         &mut errors,
     );
@@ -224,7 +223,7 @@ pub(crate) fn compute_concrete_opaque_types<'tcx>(
 #[instrument(level = "debug", skip_all, ret)]
 fn collect_defining_uses<'tcx>(
     rcx: &mut RegionCtxt<'_, 'tcx>,
-    concrete_opaque_types: &mut ConcreteOpaqueTypes<'tcx>,
+    hidden_types: &mut DefinitionSiteHiddenTypes<'tcx>,
     opaque_types: &[(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)],
     errors: &mut Vec<DeferredOpaqueTypeError<'tcx>>,
 ) -> Vec<DefiningUse<'tcx>> {
@@ -244,9 +243,9 @@ fn collect_defining_uses<'tcx>(
             // with `TypingMode::Borrowck`.
             if infcx.tcx.use_typing_mode_borrowck() {
                 match err {
-                    NonDefiningUseReason::Tainted(guar) => add_concrete_opaque_type(
+                    NonDefiningUseReason::Tainted(guar) => add_hidden_type(
                         infcx.tcx,
-                        concrete_opaque_types,
+                        hidden_types,
                         opaque_type_key.def_id,
                         OpaqueHiddenType::new_error(infcx.tcx, guar),
                     ),
@@ -277,9 +276,9 @@ fn collect_defining_uses<'tcx>(
     defining_uses
 }
 
-fn compute_concrete_types_from_defining_uses<'tcx>(
+fn compute_definition_site_hidden_types_from_defining_uses<'tcx>(
     rcx: &RegionCtxt<'_, 'tcx>,
-    concrete_opaque_types: &mut ConcreteOpaqueTypes<'tcx>,
+    hidden_types: &mut DefinitionSiteHiddenTypes<'tcx>,
     defining_uses: &[DefiningUse<'tcx>],
     errors: &mut Vec<DeferredOpaqueTypeError<'tcx>>,
 ) {
@@ -358,9 +357,9 @@ fn compute_concrete_types_from_defining_uses<'tcx>(
                 },
             ));
         }
-        add_concrete_opaque_type(
+        add_hidden_type(
             tcx,
-            concrete_opaque_types,
+            hidden_types,
             opaque_type_key.def_id,
             OpaqueHiddenType { span: hidden_type.span, ty },
         );
@@ -489,20 +488,20 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for ToArgRegionsFolder<'_, 'tcx> {
 ///
 /// It does this by equating the hidden type of each use with the instantiated final
 /// hidden type of the opaque.
-pub(crate) fn apply_computed_concrete_opaque_types<'tcx>(
+pub(crate) fn apply_definition_site_hidden_types<'tcx>(
     infcx: &BorrowckInferCtxt<'tcx>,
     body: &Body<'tcx>,
     universal_regions: &UniversalRegions<'tcx>,
     region_bound_pairs: &RegionBoundPairs<'tcx>,
     known_type_outlives_obligations: &[ty::PolyTypeOutlivesPredicate<'tcx>],
     constraints: &mut MirTypeckRegionConstraints<'tcx>,
-    concrete_opaque_types: &mut ConcreteOpaqueTypes<'tcx>,
+    hidden_types: &mut DefinitionSiteHiddenTypes<'tcx>,
     opaque_types: &[(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)],
 ) -> Vec<DeferredOpaqueTypeError<'tcx>> {
     let tcx = infcx.tcx;
     let mut errors = Vec::new();
     for &(key, hidden_type) in opaque_types {
-        let Some(expected) = get_concrete_opaque_type(concrete_opaque_types, key.def_id) else {
+        let Some(expected) = get_hidden_type(hidden_types, key.def_id) else {
             if !tcx.use_typing_mode_borrowck() {
                 if let ty::Alias(ty::Opaque, alias_ty) = hidden_type.ty.kind()
                     && alias_ty.def_id == key.def_id.to_def_id()
@@ -521,12 +520,7 @@ pub(crate) fn apply_computed_concrete_opaque_types<'tcx>(
                 hidden_type.span,
                 "non-defining use in the defining scope with no defining uses",
             );
-            add_concrete_opaque_type(
-                tcx,
-                concrete_opaque_types,
-                key.def_id,
-                OpaqueHiddenType::new_error(tcx, guar),
-            );
+            add_hidden_type(tcx, hidden_types, key.def_id, OpaqueHiddenType::new_error(tcx, guar));
             continue;
         };
 
@@ -566,18 +560,13 @@ pub(crate) fn apply_computed_concrete_opaque_types<'tcx>(
                 "equating opaque types",
             ),
         ) {
-            add_concrete_opaque_type(
-                tcx,
-                concrete_opaque_types,
-                key.def_id,
-                OpaqueHiddenType::new_error(tcx, guar),
-            );
+            add_hidden_type(tcx, hidden_types, key.def_id, OpaqueHiddenType::new_error(tcx, guar));
         }
     }
     errors
 }
 
-/// In theory `apply_concrete_opaque_types` could introduce new uses of opaque types.
+/// In theory `apply_definition_site_hidden_types` could introduce new uses of opaque types.
 /// We do not check these new uses so this could be unsound.
 ///
 /// We detect any new uses and simply delay a bug if they occur. If this results in
@@ -682,13 +671,6 @@ impl<'tcx> InferCtxt<'tcx> {
     ///
     /// (*) C1 and C2 were introduced in the comments on
     /// `register_member_constraints`. Read that comment for more context.
-    ///
-    /// # Parameters
-    ///
-    /// - `def_id`, the `impl Trait` type
-    /// - `args`, the args used to instantiate this opaque type
-    /// - `instantiated_ty`, the inferred type C1 -- fully resolved, lifted version of
-    ///   `opaque_defn.concrete_ty`
     #[instrument(level = "debug", skip(self))]
     fn infer_opaque_definition_from_instantiation(
         &self,

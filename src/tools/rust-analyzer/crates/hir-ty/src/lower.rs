@@ -24,19 +24,18 @@ use chalk_ir::{
 
 use either::Either;
 use hir_def::{
-    AdtId, AssocItemId, CallableDefId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId,
-    FunctionId, GenericDefId, GenericParamId, HasModule, ImplId, ItemContainerId, LocalFieldId,
-    Lookup, StaticId, StructId, TypeAliasId, TypeOrConstParamId, UnionId, VariantId,
+    AdtId, AssocItemId, ConstId, ConstParamId, EnumId, EnumVariantId, FunctionId, GenericDefId,
+    GenericParamId, ItemContainerId, LocalFieldId, Lookup, StaticId, StructId, TypeAliasId,
+    TypeOrConstParamId, UnionId, VariantId,
     builtin_type::BuiltinType,
     expr_store::{ExpressionStore, path::Path},
     hir::generics::{GenericParamDataRef, TypeOrConstParamData, WherePredicate},
-    item_tree::FieldsShape,
     lang_item::LangItem,
     resolver::{HasResolver, LifetimeNs, Resolver, TypeNs},
-    signatures::{FunctionSignature, TraitFlags, TypeAliasFlags},
+    signatures::{FunctionSignature, TraitFlags},
     type_ref::{
-        ConstRef, LifetimeRefId, LiteralConstRef, PathId, TraitBoundModifier,
-        TraitRef as HirTraitRef, TypeBound, TypeRef, TypeRefId,
+        ConstRef, LifetimeRefId, LiteralConstRef, PathId, TraitBoundModifier, TypeBound, TypeRef,
+        TypeRefId,
     },
 };
 use hir_expand::name::Name;
@@ -46,11 +45,10 @@ use stdx::{impl_from, never};
 use triomphe::{Arc, ThinArc};
 
 use crate::{
-    AliasTy, Binders, BoundVar, CallableSig, Const, DebruijnIndex, DomainGoal, DynTy, FnAbi,
-    FnPointer, FnSig, FnSubst, ImplTrait, ImplTraitId, ImplTraits, Interner, Lifetime,
-    LifetimeData, LifetimeOutlives, PolyFnSig, QuantifiedWhereClause, QuantifiedWhereClauses,
-    Substitution, TraitEnvironment, TraitRef, TraitRefExt, Ty, TyBuilder, TyKind, WhereClause,
-    all_super_traits,
+    AliasTy, Binders, BoundVar, Const, DebruijnIndex, DynTy, FnAbi, FnPointer, FnSig, FnSubst,
+    ImplTrait, ImplTraitId, ImplTraits, Interner, Lifetime, LifetimeData, LifetimeOutlives,
+    QuantifiedWhereClause, QuantifiedWhereClauses, Substitution, TraitRef, TraitRefExt, Ty,
+    TyBuilder, TyKind, WhereClause, all_super_traits,
     consteval::{intern_const_ref, path_to_const, unknown_const, unknown_const_as_generic},
     db::HirDatabase,
     error_lifetime,
@@ -60,7 +58,11 @@ use crate::{
         path::{PathDiagnosticCallback, PathLoweringContext},
     },
     make_binders,
-    mapping::{ToChalk, from_chalk_trait_id, lt_to_placeholder_idx},
+    mapping::{from_chalk_trait_id, lt_to_placeholder_idx},
+    next_solver::{
+        DbInterner,
+        mapping::{ChalkToNextSolver, NextSolverToChalk},
+    },
     static_lifetime, to_chalk_trait_id, to_placeholder_idx,
     utils::all_super_trait_refs,
     variable_kinds_from_iter,
@@ -567,14 +569,6 @@ impl<'a> TyLoweringContext<'a> {
         Some((ctx.lower_trait_ref_from_resolved_path(resolved, explicit_self_ty, false), ctx))
     }
 
-    fn lower_trait_ref(
-        &mut self,
-        trait_ref: &HirTraitRef,
-        explicit_self_ty: Ty,
-    ) -> Option<TraitRef> {
-        self.lower_trait_ref_from_path(trait_ref.path, explicit_self_ty).map(|it| it.0)
-    }
-
     /// When lowering predicates from parents (impl, traits) for children defs (fns, consts, types), `generics` should
     /// contain the `Generics` for the **child**, while `predicate_owner` should contain the `GenericDefId` of the
     /// **parent**. This is important so we generate the correct bound var/placeholder.
@@ -826,15 +820,6 @@ impl<'a> TyLoweringContext<'a> {
     }
 }
 
-/// Build the signature of a callable item (function, struct or enum variant).
-pub(crate) fn callable_item_signature_query(db: &dyn HirDatabase, def: CallableDefId) -> PolyFnSig {
-    match def {
-        CallableDefId::FunctionId(f) => fn_sig_for_fn(db, f),
-        CallableDefId::StructId(s) => fn_sig_for_struct_constructor(db, s),
-        CallableDefId::EnumVariantId(e) => fn_sig_for_enum_variant_constructor(db, e),
-    }
-}
-
 fn named_associated_type_shorthand_candidates<R>(
     db: &dyn HirDatabase,
     // If the type parameter is defined in an impl and we're in a method, there
@@ -862,21 +847,21 @@ fn named_associated_type_shorthand_candidates<R>(
         })
     };
 
+    let interner = DbInterner::new_with(db, None, None);
     match res {
         TypeNs::SelfType(impl_id) => {
-            // we're _in_ the impl -- the binders get added back later. Correct,
-            // but it would be nice to make this more explicit
-            let trait_ref = db.impl_trait(impl_id)?.into_value_and_skipped_binders().0;
+            let trait_ref = db.impl_trait(impl_id)?;
 
             let impl_id_as_generic_def: GenericDefId = impl_id.into();
             if impl_id_as_generic_def != def {
                 let subst = TyBuilder::subst_for_def(db, impl_id, None)
                     .fill_with_bound_vars(DebruijnIndex::INNERMOST, 0)
                     .build();
-                let trait_ref = subst.apply(trait_ref, Interner);
+                let args: crate::next_solver::GenericArgs<'_> = subst.to_nextsolver(interner);
+                let trait_ref = trait_ref.instantiate(interner, args).to_chalk(interner);
                 search(trait_ref)
             } else {
-                search(trait_ref)
+                search(trait_ref.skip_binder().to_chalk(interner))
             }
         }
         TypeNs::GenericParam(param_id) => {
@@ -919,7 +904,7 @@ pub(crate) fn field_types_query(
     db: &dyn HirDatabase,
     variant_id: VariantId,
 ) -> Arc<ArenaMap<LocalFieldId, Binders<Ty>>> {
-    db.field_types_with_diagnostics(variant_id).0
+    field_types_with_diagnostics_query(db, variant_id).0
 }
 
 /// Build the type of all specific fields of a struct or enum variant.
@@ -1084,102 +1069,6 @@ pub(crate) fn generic_predicates_for_param_cycle_result(
     _assoc_name: Option<Name>,
 ) -> GenericPredicates {
     GenericPredicates(None)
-}
-
-pub(crate) fn trait_environment_for_body_query(
-    db: &dyn HirDatabase,
-    def: DefWithBodyId,
-) -> Arc<TraitEnvironment> {
-    let Some(def) = def.as_generic_def_id(db) else {
-        let krate = def.module(db).krate();
-        return TraitEnvironment::empty(krate);
-    };
-    db.trait_environment(def)
-}
-
-pub(crate) fn trait_environment_query(
-    db: &dyn HirDatabase,
-    def: GenericDefId,
-) -> Arc<TraitEnvironment> {
-    let generics = generics(db, def);
-    if generics.has_no_predicates() && generics.is_empty() {
-        return TraitEnvironment::empty(def.krate(db));
-    }
-
-    let resolver = def.resolver(db);
-    let mut ctx = TyLoweringContext::new(
-        db,
-        &resolver,
-        generics.store(),
-        def,
-        LifetimeElisionKind::AnonymousReportError,
-    )
-    .with_type_param_mode(ParamLoweringMode::Placeholder);
-    let mut traits_in_scope = Vec::new();
-    let mut clauses = Vec::new();
-    for maybe_parent_generics in
-        std::iter::successors(Some(&generics), |generics| generics.parent_generics())
-    {
-        ctx.store = maybe_parent_generics.store();
-        for pred in maybe_parent_generics.where_predicates() {
-            for pred in ctx.lower_where_predicate(pred, false) {
-                if let WhereClause::Implemented(tr) = pred.skip_binders() {
-                    traits_in_scope
-                        .push((tr.self_type_parameter(Interner).clone(), tr.hir_trait_id()));
-                }
-                let program_clause: Binders<DomainGoal> =
-                    pred.map(|pred| pred.into_from_env_goal(Interner).cast(Interner));
-                clauses.push(program_clause);
-            }
-        }
-    }
-
-    if let Some(trait_id) = def.assoc_trait_container(db) {
-        // add `Self: Trait<T1, T2, ...>` to the environment in trait
-        // function default implementations (and speculative code
-        // inside consts or type aliases)
-        cov_mark::hit!(trait_self_implements_self);
-        let substs = TyBuilder::placeholder_subst(db, trait_id);
-        let trait_ref = TraitRef { trait_id: to_chalk_trait_id(trait_id), substitution: substs };
-        let pred = WhereClause::Implemented(trait_ref);
-        clauses.push(Binders::empty(
-            Interner,
-            pred.cast::<DomainGoal>(Interner).into_from_env_goal(Interner),
-        ));
-    }
-
-    let subst = generics.placeholder_subst(db);
-    if !subst.is_empty(Interner) {
-        let explicitly_unsized_tys = ctx.unsized_types;
-        if let Some(implicitly_sized_clauses) =
-            implicitly_sized_clauses(db, def, &explicitly_unsized_tys, &subst, &resolver)
-        {
-            clauses.extend(implicitly_sized_clauses.map(|pred| {
-                Binders::empty(
-                    Interner,
-                    pred.into_from_env_goal(Interner).cast::<DomainGoal>(Interner),
-                )
-            }));
-        };
-    }
-
-    let clauses = chalk_ir::ProgramClauses::from_iter(
-        Interner,
-        clauses.into_iter().map(|g| {
-            chalk_ir::ProgramClause::new(
-                Interner,
-                chalk_ir::ProgramClauseData(g.map(|g| chalk_ir::ProgramClauseImplication {
-                    consequence: g,
-                    conditions: chalk_ir::Goals::empty(Interner),
-                    constraints: chalk_ir::Constraints::empty(Interner),
-                    priority: chalk_ir::ClausePriority::High,
-                })),
-            )
-        }),
-    );
-    let env = chalk_ir::Environment { clauses };
-
-    TraitEnvironment::new(resolver.krate(), None, traits_in_scope.into_boxed_slice(), env)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1410,208 +1299,6 @@ pub(crate) fn generic_defaults_with_diagnostics_cycle_result(
     (GenericDefaults(None), None)
 }
 
-fn fn_sig_for_fn(db: &dyn HirDatabase, def: FunctionId) -> PolyFnSig {
-    let data = db.function_signature(def);
-    let resolver = def.resolver(db);
-    let mut ctx_params = TyLoweringContext::new(
-        db,
-        &resolver,
-        &data.store,
-        def.into(),
-        LifetimeElisionKind::for_fn_params(&data),
-    )
-    .with_type_param_mode(ParamLoweringMode::Variable);
-    let params = data.params.iter().map(|&tr| ctx_params.lower_ty(tr));
-
-    let ret = match data.ret_type {
-        Some(ret_type) => {
-            let mut ctx_ret = TyLoweringContext::new(
-                db,
-                &resolver,
-                &data.store,
-                def.into(),
-                LifetimeElisionKind::for_fn_ret(),
-            )
-            .with_impl_trait_mode(ImplTraitLoweringMode::Opaque)
-            .with_type_param_mode(ParamLoweringMode::Variable);
-            ctx_ret.lower_ty(ret_type)
-        }
-        None => TyKind::Tuple(0, Substitution::empty(Interner)).intern(Interner),
-    };
-    let generics = generics(db, def.into());
-    let sig = CallableSig::from_params_and_return(
-        params,
-        ret,
-        data.is_varargs(),
-        if data.is_unsafe() { Safety::Unsafe } else { Safety::Safe },
-        data.abi.as_ref().map_or(FnAbi::Rust, FnAbi::from_symbol),
-    );
-    make_binders(db, &generics, sig)
-}
-
-/// Build the declared type of a function. This should not need to look at the
-/// function body.
-fn type_for_fn(db: &dyn HirDatabase, def: FunctionId) -> Binders<Ty> {
-    let generics = generics(db, def.into());
-    let substs = generics.bound_vars_subst(db, DebruijnIndex::INNERMOST);
-    make_binders(
-        db,
-        &generics,
-        TyKind::FnDef(CallableDefId::FunctionId(def).to_chalk(db), substs).intern(Interner),
-    )
-}
-
-/// Build the declared type of a const.
-fn type_for_const(db: &dyn HirDatabase, def: ConstId) -> Binders<Ty> {
-    let data = db.const_signature(def);
-    let generics = generics(db, def.into());
-    let resolver = def.resolver(db);
-    let parent = def.loc(db).container;
-    let mut ctx = TyLoweringContext::new(
-        db,
-        &resolver,
-        &data.store,
-        def.into(),
-        LifetimeElisionKind::for_const(parent),
-    )
-    .with_type_param_mode(ParamLoweringMode::Variable);
-
-    make_binders(db, &generics, ctx.lower_ty(data.type_ref))
-}
-
-/// Build the declared type of a static.
-fn type_for_static(db: &dyn HirDatabase, def: StaticId) -> Binders<Ty> {
-    let data = db.static_signature(def);
-    let resolver = def.resolver(db);
-    let mut ctx = TyLoweringContext::new(
-        db,
-        &resolver,
-        &data.store,
-        def.into(),
-        LifetimeElisionKind::Elided(static_lifetime()),
-    );
-
-    Binders::empty(Interner, ctx.lower_ty(data.type_ref))
-}
-
-fn fn_sig_for_struct_constructor(db: &dyn HirDatabase, def: StructId) -> PolyFnSig {
-    let field_tys = db.field_types(def.into());
-    let params = field_tys.iter().map(|(_, ty)| ty.skip_binders().clone());
-    let (ret, binders) = type_for_adt(db, def.into()).into_value_and_skipped_binders();
-    Binders::new(
-        binders,
-        CallableSig::from_params_and_return(params, ret, false, Safety::Safe, FnAbi::RustCall),
-    )
-}
-
-/// Build the type of a tuple struct constructor.
-fn type_for_struct_constructor(db: &dyn HirDatabase, def: StructId) -> Option<Binders<Ty>> {
-    let struct_data = def.fields(db);
-    match struct_data.shape {
-        FieldsShape::Record => None,
-        FieldsShape::Unit => Some(type_for_adt(db, def.into())),
-        FieldsShape::Tuple => {
-            let generics = generics(db, AdtId::from(def).into());
-            let substs = generics.bound_vars_subst(db, DebruijnIndex::INNERMOST);
-            Some(make_binders(
-                db,
-                &generics,
-                TyKind::FnDef(CallableDefId::StructId(def).to_chalk(db), substs).intern(Interner),
-            ))
-        }
-    }
-}
-
-fn fn_sig_for_enum_variant_constructor(db: &dyn HirDatabase, def: EnumVariantId) -> PolyFnSig {
-    let field_tys = db.field_types(def.into());
-    let params = field_tys.iter().map(|(_, ty)| ty.skip_binders().clone());
-    let parent = def.lookup(db).parent;
-    let (ret, binders) = type_for_adt(db, parent.into()).into_value_and_skipped_binders();
-    Binders::new(
-        binders,
-        CallableSig::from_params_and_return(params, ret, false, Safety::Safe, FnAbi::RustCall),
-    )
-}
-
-/// Build the type of a tuple enum variant constructor.
-fn type_for_enum_variant_constructor(
-    db: &dyn HirDatabase,
-    def: EnumVariantId,
-) -> Option<Binders<Ty>> {
-    let e = def.lookup(db).parent;
-    match def.fields(db).shape {
-        FieldsShape::Record => None,
-        FieldsShape::Unit => Some(type_for_adt(db, e.into())),
-        FieldsShape::Tuple => {
-            let generics = generics(db, e.into());
-            let substs = generics.bound_vars_subst(db, DebruijnIndex::INNERMOST);
-            Some(make_binders(
-                db,
-                &generics,
-                TyKind::FnDef(CallableDefId::EnumVariantId(def).to_chalk(db), substs)
-                    .intern(Interner),
-            ))
-        }
-    }
-}
-
-#[salsa_macros::tracked(cycle_result = type_for_adt_cycle_result)]
-fn type_for_adt_tracked(db: &dyn HirDatabase, adt: AdtId) -> Binders<Ty> {
-    type_for_adt(db, adt)
-}
-
-fn type_for_adt_cycle_result(db: &dyn HirDatabase, adt: AdtId) -> Binders<Ty> {
-    let generics = generics(db, adt.into());
-    make_binders(db, &generics, TyKind::Error.intern(Interner))
-}
-
-fn type_for_adt(db: &dyn HirDatabase, adt: AdtId) -> Binders<Ty> {
-    let generics = generics(db, adt.into());
-    let subst = generics.bound_vars_subst(db, DebruijnIndex::INNERMOST);
-    let ty = TyKind::Adt(crate::AdtId(adt), subst).intern(Interner);
-    make_binders(db, &generics, ty)
-}
-
-pub(crate) fn type_for_type_alias_with_diagnostics_query(
-    db: &dyn HirDatabase,
-    t: TypeAliasId,
-) -> (Binders<Ty>, Diagnostics) {
-    let generics = generics(db, t.into());
-    let type_alias_data = db.type_alias_signature(t);
-    let mut diags = None;
-    let inner = if type_alias_data.flags.contains(TypeAliasFlags::IS_EXTERN) {
-        TyKind::Foreign(crate::to_foreign_def_id(t)).intern(Interner)
-    } else {
-        let resolver = t.resolver(db);
-        let alias = db.type_alias_signature(t);
-        let mut ctx = TyLoweringContext::new(
-            db,
-            &resolver,
-            &alias.store,
-            t.into(),
-            LifetimeElisionKind::AnonymousReportError,
-        )
-        .with_impl_trait_mode(ImplTraitLoweringMode::Opaque)
-        .with_type_param_mode(ParamLoweringMode::Variable);
-        let res = alias
-            .ty
-            .map(|type_ref| ctx.lower_ty(type_ref))
-            .unwrap_or_else(|| TyKind::Error.intern(Interner));
-        diags = create_diagnostics(ctx.diagnostics);
-        res
-    };
-
-    (make_binders(db, &generics, inner), diags)
-}
-
-pub(crate) fn type_for_type_alias_with_diagnostics_cycle_result(
-    db: &dyn HirDatabase,
-    adt: TypeAliasId,
-) -> (Binders<Ty>, Diagnostics) {
-    let generics = generics(db, adt.into());
-    (make_binders(db, &generics, TyKind::Error.intern(Interner)), None)
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TyDefId {
     BuiltinType(BuiltinType),
@@ -1644,64 +1331,8 @@ impl ValueTyDefId {
     }
 }
 
-/// Build the declared type of an item. This depends on the namespace; e.g. for
-/// `struct Foo(usize)`, we have two types: The type of the struct itself, and
-/// the constructor function `(usize) -> Foo` which lives in the values
-/// namespace.
-pub(crate) fn ty_query(db: &dyn HirDatabase, def: TyDefId) -> Binders<Ty> {
-    match def {
-        TyDefId::BuiltinType(it) => Binders::empty(Interner, TyBuilder::builtin(it)),
-        TyDefId::AdtId(it) => type_for_adt_tracked(db, it),
-        TyDefId::TypeAliasId(it) => db.type_for_type_alias_with_diagnostics(it).0,
-    }
-}
-
-pub(crate) fn value_ty_query(db: &dyn HirDatabase, def: ValueTyDefId) -> Option<Binders<Ty>> {
-    match def {
-        ValueTyDefId::FunctionId(it) => Some(type_for_fn(db, it)),
-        ValueTyDefId::StructId(it) => type_for_struct_constructor(db, it),
-        ValueTyDefId::UnionId(it) => Some(type_for_adt(db, it.into())),
-        ValueTyDefId::EnumVariantId(it) => type_for_enum_variant_constructor(db, it),
-        ValueTyDefId::ConstId(it) => Some(type_for_const(db, it)),
-        ValueTyDefId::StaticId(it) => Some(type_for_static(db, it)),
-    }
-}
-
-pub(crate) fn impl_self_ty_query(db: &dyn HirDatabase, impl_id: ImplId) -> Binders<Ty> {
-    db.impl_self_ty_with_diagnostics(impl_id).0
-}
-
-pub(crate) fn impl_self_ty_with_diagnostics_query(
-    db: &dyn HirDatabase,
-    impl_id: ImplId,
-) -> (Binders<Ty>, Diagnostics) {
-    let impl_data = db.impl_signature(impl_id);
-    let resolver = impl_id.resolver(db);
-    let generics = generics(db, impl_id.into());
-    let mut ctx = TyLoweringContext::new(
-        db,
-        &resolver,
-        &impl_data.store,
-        impl_id.into(),
-        LifetimeElisionKind::AnonymousCreateParameter { report_in_path: true },
-    )
-    .with_type_param_mode(ParamLoweringMode::Variable);
-    (
-        make_binders(db, &generics, ctx.lower_ty(impl_data.self_ty)),
-        create_diagnostics(ctx.diagnostics),
-    )
-}
-
-pub(crate) fn impl_self_ty_with_diagnostics_cycle_result(
-    db: &dyn HirDatabase,
-    impl_id: ImplId,
-) -> (Binders<Ty>, Diagnostics) {
-    let generics = generics(db, impl_id.into());
-    (make_binders(db, &generics, TyKind::Error.intern(Interner)), None)
-}
-
 pub(crate) fn const_param_ty_query(db: &dyn HirDatabase, def: ConstParamId) -> Ty {
-    db.const_param_ty_with_diagnostics(def).0
+    const_param_ty_with_diagnostics_query(db, def).0
 }
 
 // returns None if def is a type arg
@@ -1729,36 +1360,12 @@ pub(crate) fn const_param_ty_with_diagnostics_query(
     (ty, create_diagnostics(ctx.diagnostics))
 }
 
-pub(crate) fn const_param_ty_with_diagnostics_cycle_result(
+pub(crate) fn const_param_ty_cycle_result(
     _: &dyn HirDatabase,
     _: crate::db::HirDatabaseData,
     _: ConstParamId,
-) -> (Ty, Diagnostics) {
-    (TyKind::Error.intern(Interner), None)
-}
-
-pub(crate) fn impl_trait_query(db: &dyn HirDatabase, impl_id: ImplId) -> Option<Binders<TraitRef>> {
-    db.impl_trait_with_diagnostics(impl_id).map(|it| it.0)
-}
-
-pub(crate) fn impl_trait_with_diagnostics_query(
-    db: &dyn HirDatabase,
-    impl_id: ImplId,
-) -> Option<(Binders<TraitRef>, Diagnostics)> {
-    let impl_data = db.impl_signature(impl_id);
-    let resolver = impl_id.resolver(db);
-    let mut ctx = TyLoweringContext::new(
-        db,
-        &resolver,
-        &impl_data.store,
-        impl_id.into(),
-        LifetimeElisionKind::AnonymousCreateParameter { report_in_path: true },
-    )
-    .with_type_param_mode(ParamLoweringMode::Variable);
-    let (self_ty, binders) = db.impl_self_ty(impl_id).into_value_and_skipped_binders();
-    let target_trait = impl_data.target_trait.as_ref()?;
-    let trait_ref = Binders::new(binders, ctx.lower_trait_ref(target_trait, self_ty)?);
-    Some((trait_ref, create_diagnostics(ctx.diagnostics)))
+) -> Ty {
+    TyKind::Error.intern(Interner)
 }
 
 pub(crate) fn return_type_impl_traits(

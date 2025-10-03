@@ -15,7 +15,7 @@ use crate::FnCtxt;
 
 impl<'tcx> FnCtxt<'_, 'tcx> {
     /// This takes all the opaque type uses during HIR typeck. It first computes
-    /// the concrete hidden type by iterating over all defining uses.
+    /// the hidden type by iterating over all defining uses.
     ///
     /// A use during HIR typeck is defining if all non-lifetime arguments are
     /// unique generic parameters and the hidden type does not reference any
@@ -35,8 +35,8 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         }
         debug!(?opaque_types);
 
-        self.compute_concrete_opaque_types(&opaque_types);
-        self.apply_computed_concrete_opaque_types(&opaque_types);
+        self.compute_definition_site_hidden_types(&opaque_types);
+        self.apply_definition_site_hidden_types(&opaque_types);
     }
 }
 
@@ -71,7 +71,7 @@ impl<'tcx> UsageKind<'tcx> {
 }
 
 impl<'tcx> FnCtxt<'_, 'tcx> {
-    fn compute_concrete_opaque_types(
+    fn compute_definition_site_hidden_types(
         &mut self,
         opaque_types: &[(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)],
     ) {
@@ -142,7 +142,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
 
             self.typeck_results
                 .borrow_mut()
-                .concrete_opaque_types
+                .hidden_types
                 .insert(def_id, OpaqueHiddenType::new_error(tcx, guar));
             self.set_tainted_by_errors(guar);
         }
@@ -161,7 +161,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         ) {
             match err {
                 NonDefiningUseReason::Tainted(guar) => {
-                    self.typeck_results.borrow_mut().concrete_opaque_types.insert(
+                    self.typeck_results.borrow_mut().hidden_types.insert(
                         opaque_type_key.def_id,
                         OpaqueHiddenType::new_error(self.tcx, guar),
                     );
@@ -197,20 +197,19 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         let prev = self
             .typeck_results
             .borrow_mut()
-            .concrete_opaque_types
+            .hidden_types
             .insert(opaque_type_key.def_id, hidden_type);
         assert!(prev.is_none());
         UsageKind::HasDefiningUse
     }
 
-    fn apply_computed_concrete_opaque_types(
+    fn apply_definition_site_hidden_types(
         &mut self,
         opaque_types: &[(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)],
     ) {
         let tcx = self.tcx;
         for &(key, hidden_type) in opaque_types {
-            let expected =
-                *self.typeck_results.borrow_mut().concrete_opaque_types.get(&key.def_id).unwrap();
+            let expected = *self.typeck_results.borrow_mut().hidden_types.get(&key.def_id).unwrap();
 
             let expected = EarlyBinder::bind(expected.ty).instantiate(tcx, key.args);
             self.demand_eqtype(hidden_type.span, expected, hidden_type.ty);
