@@ -1,33 +1,5 @@
 error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
-  --> $DIR/E0719.rs:1:33
-   |
-LL | trait Foo: Iterator<Item = i32, Item = i32> {}
-   |                     ----------  ^^^^^^^^^^ re-bound here
-   |                     |
-   |                     `Item` bound here first
-
-error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
-  --> $DIR/E0719.rs:1:33
-   |
-LL | trait Foo: Iterator<Item = i32, Item = i32> {}
-   |                     ----------  ^^^^^^^^^^ re-bound here
-   |                     |
-   |                     `Item` bound here first
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
-  --> $DIR/E0719.rs:1:33
-   |
-LL | trait Foo: Iterator<Item = i32, Item = i32> {}
-   |                     ----------  ^^^^^^^^^^ re-bound here
-   |                     |
-   |                     `Item` bound here first
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
-  --> $DIR/E0719.rs:8:42
+  --> $DIR/E0719.rs:3:42
    |
 LL | fn test() -> Box<dyn Iterator<Item = (), Item = Unit>> {
    |                               ---------  ^^^^^^^^^^^ re-bound here
@@ -35,13 +7,13 @@ LL | fn test() -> Box<dyn Iterator<Item = (), Item = Unit>> {
    |                               `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
-  --> $DIR/E0719.rs:14:38
+  --> $DIR/E0719.rs:9:38
    |
 LL |     let _: &dyn Iterator<Item = i32, Item = i32>;
    |                          ----------  ^^^^^^^^^^ re-bound here
    |                          |
    |                          `Item` bound here first
 
-error: aborting due to 5 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0719`.

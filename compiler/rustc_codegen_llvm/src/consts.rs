@@ -494,16 +494,7 @@ impl<'ll> CodegenCx<'ll, '_> {
                 let bytes = alloc.inspect_with_uninit_and_ptr_outside_interpreter(0..alloc.len());
                 let alloc = self.create_metadata(bytes);
                 let data = [section, alloc];
-                let meta =
-                    unsafe { llvm::LLVMMDNodeInContext2(self.llcx, data.as_ptr(), data.len()) };
-                let val = self.get_metadata_value(meta);
-                unsafe {
-                    llvm::LLVMAddNamedMetadataOperand(
-                        self.llmod,
-                        c"wasm.custom_sections".as_ptr(),
-                        val,
-                    )
-                };
+                self.module_add_named_metadata_node(self.llmod(), c"wasm.custom_sections", &data);
             }
         } else {
             base::set_link_section(g, attrs);

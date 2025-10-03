@@ -660,7 +660,7 @@ impl<'tcx> CPlace<'tcx> {
         }
     }
 
-    /// Used for `ProjectionElem::Subtype`, `ty` has to be monomorphized before
+    /// Used for `ProjectionElem::UnwrapUnsafeBinder`, `ty` has to be monomorphized before
     /// passed on.
     pub(crate) fn place_transmute_type(
         self,

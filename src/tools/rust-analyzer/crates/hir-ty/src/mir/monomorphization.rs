@@ -35,7 +35,7 @@ macro_rules! not_supported {
 
 struct Filler<'a> {
     db: &'a dyn HirDatabase,
-    trait_env: Arc<TraitEnvironment>,
+    trait_env: Arc<TraitEnvironment<'a>>,
     subst: &'a Substitution,
     generics: Option<Generics>,
 }
@@ -301,11 +301,11 @@ impl Filler<'_> {
     }
 }
 
-pub fn monomorphized_mir_body_query(
-    db: &dyn HirDatabase,
+pub fn monomorphized_mir_body_query<'db>(
+    db: &'db dyn HirDatabase,
     owner: DefWithBodyId,
     subst: Substitution,
-    trait_env: Arc<crate::TraitEnvironment>,
+    trait_env: Arc<crate::TraitEnvironment<'db>>,
 ) -> Result<Arc<MirBody>, MirLowerError> {
     let generics = owner.as_generic_def_id(db).map(|g_def| generics(db, g_def));
     let filler = &mut Filler { db, subst: &subst, trait_env, generics };
@@ -315,20 +315,20 @@ pub fn monomorphized_mir_body_query(
     Ok(Arc::new(body))
 }
 
-pub(crate) fn monomorphized_mir_body_cycle_result(
-    _db: &dyn HirDatabase,
+pub(crate) fn monomorphized_mir_body_cycle_result<'db>(
+    _db: &'db dyn HirDatabase,
     _: DefWithBodyId,
     _: Substitution,
-    _: Arc<crate::TraitEnvironment>,
+    _: Arc<crate::TraitEnvironment<'db>>,
 ) -> Result<Arc<MirBody>, MirLowerError> {
     Err(MirLowerError::Loop)
 }
 
-pub fn monomorphized_mir_body_for_closure_query(
-    db: &dyn HirDatabase,
+pub fn monomorphized_mir_body_for_closure_query<'db>(
+    db: &'db dyn HirDatabase,
     closure: InternedClosureId,
     subst: Substitution,
-    trait_env: Arc<crate::TraitEnvironment>,
+    trait_env: Arc<crate::TraitEnvironment<'db>>,
 ) -> Result<Arc<MirBody>, MirLowerError> {
     let InternedClosure(owner, _) = db.lookup_intern_closure(closure);
     let generics = owner.as_generic_def_id(db).map(|g_def| generics(db, g_def));

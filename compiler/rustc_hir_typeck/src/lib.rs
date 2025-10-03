@@ -243,18 +243,15 @@ fn typeck_with_inspect<'tcx>(
 
     debug!(pending_obligations = ?fcx.fulfillment_cx.borrow().pending_obligations());
 
-    // This must be the last thing before `report_ambiguity_errors`.
-    fcx.resolve_coroutine_interiors();
-
-    debug!(pending_obligations = ?fcx.fulfillment_cx.borrow().pending_obligations());
-
     // We need to handle opaque types before emitting ambiguity errors as applying
     // defining uses may guide type inference.
     if fcx.next_trait_solver() {
         fcx.handle_opaque_type_uses_next();
     }
 
-    fcx.select_obligations_where_possible(|_| {});
+    // This must be the last thing before `report_ambiguity_errors` below except `select_obligations_where_possible`.
+    // So don't put anything after this.
+    fcx.drain_stalled_coroutine_obligations();
     if fcx.infcx.tainted_by_errors().is_none() {
         fcx.report_ambiguity_errors();
     }

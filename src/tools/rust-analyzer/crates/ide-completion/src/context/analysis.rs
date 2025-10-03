@@ -1,6 +1,7 @@
 //! Module responsible for analyzing the code surrounding the cursor for completion.
 use std::iter;
 
+use base_db::salsa;
 use hir::{ExpandResult, InFile, Semantics, Type, TypeInfo, Variant};
 use ide_db::{RootDatabase, active_parameter::ActiveParameter};
 use itertools::Either;
@@ -85,9 +86,15 @@ pub(super) fn expand_and_analyze<'db>(
     let original_offset = expansion.original_offset + relative_offset;
     let token = expansion.original_file.token_at_offset(original_offset).left_biased()?;
 
-    analyze(sema, expansion, original_token, &token).map(|(analysis, expected, qualifier_ctx)| {
-        AnalysisResult { analysis, expected, qualifier_ctx, token, original_offset }
-    })
+    salsa::attach(sema.db, || analyze(sema, expansion, original_token, &token)).map(
+        |(analysis, expected, qualifier_ctx)| AnalysisResult {
+            analysis,
+            expected,
+            qualifier_ctx,
+            token,
+            original_offset,
+        },
+    )
 }
 
 fn token_at_offset_ignore_whitespace(file: &SyntaxNode, offset: TextSize) -> Option<SyntaxToken> {
@@ -637,6 +644,9 @@ fn expected_type_and_name<'db>(
                             .or_else(|| it.rhs().and_then(|rhs| sema.type_of_expr(&rhs)))
                             .map(TypeInfo::original);
                         (ty, None)
+                    } else if let Some(ast::BinaryOp::LogicOp(_)) = it.op_kind() {
+                        let ty = sema.type_of_expr(&it.clone().into()).map(TypeInfo::original);
+                        (ty, None)
                     } else {
                         (None, None)
                     }
@@ -707,9 +717,13 @@ fn expected_type_and_name<'db>(
                     (ty, None)
                 },
                 ast::IfExpr(it) => {
-                    let ty = it.condition()
-                        .and_then(|e| sema.type_of_expr(&e))
-                        .map(TypeInfo::original);
+                    let ty = if let Some(body) = it.then_branch()
+                        && token.text_range().end() > body.syntax().text_range().start()
+                    {
+                        sema.type_of_expr(&body.into())
+                    } else {
+                        it.condition().and_then(|e| sema.type_of_expr(&e))
+                    }.map(TypeInfo::original);
                     (ty, None)
                 },
                 ast::IdentPat(it) => {
@@ -1282,11 +1296,12 @@ fn classify_name_ref<'db>(
         let after_incomplete_let = after_incomplete_let(it.clone()).is_some();
         let incomplete_expr_stmt =
             it.parent().and_then(ast::ExprStmt::cast).map(|it| it.semicolon_token().is_none());
+        let before_else_kw = before_else_kw(it);
         let incomplete_let = it
             .parent()
             .and_then(ast::LetStmt::cast)
             .is_some_and(|it| it.semicolon_token().is_none())
-            || after_incomplete_let && incomplete_expr_stmt.unwrap_or(true) && !before_else_kw(it);
+            || after_incomplete_let && incomplete_expr_stmt.unwrap_or(true) && !before_else_kw;
         let in_value = it.parent().and_then(Either::<ast::LetStmt, ast::ArgList>::cast).is_some();
         let impl_ = fetch_immediate_impl(sema, original_file, expr.syntax());
 
@@ -1302,6 +1317,7 @@ fn classify_name_ref<'db>(
                 in_block_expr,
                 in_breakable: in_loop_body,
                 after_if_expr,
+                before_else_kw,
                 in_condition,
                 ref_expr_parent,
                 after_amp,

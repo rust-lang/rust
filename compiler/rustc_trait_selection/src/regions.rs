@@ -77,6 +77,8 @@ impl<'tcx> InferCtxt<'tcx> {
     ///
     /// Prefer this method over `resolve_regions_with_normalize`, unless you are
     /// doing something specific for normalization.
+    ///
+    /// This function assumes that all infer variables are already constrained.
     fn resolve_regions(
         &self,
         body_id: LocalDefId,

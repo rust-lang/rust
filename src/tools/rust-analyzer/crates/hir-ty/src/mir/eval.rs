@@ -165,7 +165,7 @@ enum MirOrDynIndex {
 
 pub struct Evaluator<'a> {
     db: &'a dyn HirDatabase,
-    trait_env: Arc<TraitEnvironment>,
+    trait_env: Arc<TraitEnvironment<'a>>,
     target_data_layout: Arc<TargetDataLayout>,
     stack: Vec<u8>,
     heap: Vec<u8>,
@@ -432,9 +432,12 @@ impl MirEvalError {
                 let self_ = match func.lookup(db).container {
                     ItemContainerId::ImplId(impl_id) => Some({
                         let generics = crate::generics::generics(db, impl_id.into());
+                        let interner = DbInterner::new_with(db, None, None);
                         let substs = generics.placeholder_subst(db);
+                        let args: crate::next_solver::GenericArgs<'_> =
+                            substs.to_nextsolver(interner);
                         db.impl_self_ty(impl_id)
-                            .substitute(Interner, &substs)
+                            .instantiate(interner, args)
                             .display(db, display_target)
                             .to_string()
                     }),
@@ -582,8 +585,8 @@ impl MirOutput {
     }
 }
 
-pub fn interpret_mir(
-    db: &dyn HirDatabase,
+pub fn interpret_mir<'db>(
+    db: &'db dyn HirDatabase,
     body: Arc<MirBody>,
     // FIXME: This is workaround. Ideally, const generics should have a separate body (issue #7434), but now
     // they share their body with their parent, so in MIR lowering we have locals of the parent body, which
@@ -591,7 +594,7 @@ pub fn interpret_mir(
     // a zero size, hoping that they are all outside of our current body. Even without a fix for #7434, we can
     // (and probably should) do better here, for example by excluding bindings outside of the target expression.
     assert_placeholder_ty_is_unused: bool,
-    trait_env: Option<Arc<TraitEnvironment>>,
+    trait_env: Option<Arc<TraitEnvironment<'db>>>,
 ) -> Result<(Result<Const>, MirOutput)> {
     let ty = body.locals[return_slot()].ty.clone();
     let mut evaluator = Evaluator::new(db, body.owner, assert_placeholder_ty_is_unused, trait_env)?;
@@ -632,11 +635,11 @@ const EXECUTION_LIMIT: usize = 10_000_000;
 
 impl<'db> Evaluator<'db> {
     pub fn new(
-        db: &dyn HirDatabase,
+        db: &'db dyn HirDatabase,
         owner: DefWithBodyId,
         assert_placeholder_ty_is_unused: bool,
-        trait_env: Option<Arc<TraitEnvironment>>,
-    ) -> Result<Evaluator<'_>> {
+        trait_env: Option<Arc<TraitEnvironment<'db>>>,
+    ) -> Result<Evaluator<'db>> {
         let crate_id = owner.module(db).krate();
         let target_data_layout = match db.target_data_layout(crate_id) {
             Ok(target_data_layout) => target_data_layout,

@@ -9,6 +9,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+use cargo_metadata::PackageId;
 use crossbeam_channel::{Receiver, Sender, unbounded};
 use hir::ChangeWithProcMacros;
 use ide::{Analysis, AnalysisHost, Cancellable, FileId, SourceRootId};
@@ -784,6 +785,7 @@ impl GlobalStateSnapshot {
                         cargo_toml: package_data.manifest.clone(),
                         crate_id,
                         package: cargo.package_flag(package_data),
+                        package_id: package_data.id.clone(),
                         target: target_data.name.clone(),
                         target_kind: target_data.kind,
                         required_features: target_data.required_features.clone(),
@@ -809,6 +811,27 @@ impl GlobalStateSnapshot {
             };
         }
 
+        None
+    }
+
+    pub(crate) fn all_workspace_dependencies_for_package(
+        &self,
+        package: &Arc<PackageId>,
+    ) -> Option<FxHashSet<Arc<PackageId>>> {
+        for workspace in self.workspaces.iter() {
+            match &workspace.kind {
+                ProjectWorkspaceKind::Cargo { cargo, .. }
+                | ProjectWorkspaceKind::DetachedFile { cargo: Some((cargo, _, _)), .. } => {
+                    let package = cargo.packages().find(|p| cargo[*p].id == *package)?;
+
+                    return cargo[package]
+                        .all_member_deps
+                        .as_ref()
+                        .map(|deps| deps.iter().map(|dep| cargo[*dep].id.clone()).collect());
+                }
+                _ => {}
+            }
+        }
         None
     }
 

@@ -134,6 +134,7 @@ fn is_valid_cmse_inputs<'tcx>(
 
     // this type is only used for layout computation, which does not rely on regions
     let fn_sig = tcx.instantiate_bound_regions_with_erased(fn_sig);
+    let fn_sig = tcx.erase_and_anonymize_regions(fn_sig);
 
     for (index, ty) in fn_sig.inputs().iter().enumerate() {
         let layout = tcx.layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(*ty))?;

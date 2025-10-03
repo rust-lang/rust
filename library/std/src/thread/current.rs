@@ -133,12 +133,32 @@ pub(super) fn set_current(thread: Thread) -> Result<(), Thread> {
     Ok(())
 }
 
-/// Gets the id of the thread that invokes it.
+/// Gets the unique identifier of the thread which invokes it.
+///
+/// Calling this function may be more efficient than accessing the current
+/// thread id through the current thread handle. i.e. `thread::current().id()`.
 ///
 /// This function will always succeed, will always return the same value for
 /// one thread and is guaranteed not to call the global allocator.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(current_thread_id)]
+///
+/// use std::thread;
+///
+/// let other_thread = thread::spawn(|| {
+///     thread::current_id()
+/// });
+///
+/// let other_thread_id = other_thread.join().unwrap();
+/// assert_ne!(thread::current_id(), other_thread_id);
+/// ```
 #[inline]
-pub(crate) fn current_id() -> ThreadId {
+#[must_use]
+#[unstable(feature = "current_thread_id", issue = "147194")]
+pub fn current_id() -> ThreadId {
     // If accessing the persistent thread ID takes multiple TLS accesses, try
     // to retrieve it from the current thread handle, which will only take one
     // TLS access.

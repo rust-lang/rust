@@ -1158,13 +1158,12 @@ mod snapshot {
         [doc] embedded-book (book) <host>
         [doc] edition-guide (book) <host>
         [doc] style-guide (book) <host>
-        [build] rustdoc 0 <host>
-        [doc] rustc 0 <host> -> Tidy 1 <host>
-        [doc] rustc 0 <host> -> Bootstrap 1 <host>
+        [doc] rustc 1 <host> -> Tidy 2 <host>
+        [doc] rustc 1 <host> -> Bootstrap 2 <host>
         [doc] rustc 1 <host> -> releases 2 <host>
-        [doc] rustc 0 <host> -> RunMakeSupport 1 <host>
-        [doc] rustc 0 <host> -> BuildHelper 1 <host>
-        [doc] rustc 0 <host> -> Compiletest 1 <host>
+        [doc] rustc 1 <host> -> RunMakeSupport 2 <host>
+        [doc] rustc 1 <host> -> BuildHelper 2 <host>
+        [doc] rustc 1 <host> -> Compiletest 2 <host>
         [build] rustc 0 <host> -> RustInstaller 1 <host>
         "
         );
@@ -2686,8 +2685,11 @@ mod snapshot {
                 .path("src/tools/compiletest")
                 .stage(2)
                 .render_steps(), @r"
-        [build] rustdoc 0 <host>
-        [doc] rustc 0 <host> -> Compiletest 1 <host>
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustdoc 1 <host>
+        [doc] rustc 1 <host> -> Compiletest 2 <host>
         ");
     }
 

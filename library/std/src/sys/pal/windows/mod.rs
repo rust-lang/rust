@@ -31,6 +31,7 @@ cfg_select! {
         pub use self::stack_overflow_uwp as stack_overflow;
     }
 }
+pub mod winsock;
 
 /// Map a [`Result<T, WinError>`] to [`io::Result<T>`](crate::io::Result<T>).
 pub trait IoResult<T> {

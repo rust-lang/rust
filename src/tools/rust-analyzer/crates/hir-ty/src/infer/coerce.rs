@@ -144,7 +144,7 @@ impl<'a, 'b, 'db> Coerce<'a, 'b, 'db> {
     fn unify_raw(&mut self, a: Ty<'db>, b: Ty<'db>) -> InferResult<'db, Ty<'db>> {
         debug!("unify(a: {:?}, b: {:?}, use_lub: {})", a, b, self.use_lub);
         self.commit_if_ok(|this| {
-            let at = this.infer_ctxt().at(&this.cause, this.table.param_env);
+            let at = this.infer_ctxt().at(&this.cause, this.table.trait_env.env);
 
             let res = if this.use_lub {
                 at.lub(b, a)
@@ -210,9 +210,8 @@ impl<'a, 'b, 'db> Coerce<'a, 'b, 'db> {
         // Coercing from `!` to any type is allowed:
         if a.is_never() {
             // If we're coercing into an inference var, mark it as possibly diverging.
-            // FIXME: rustc does this differently.
-            if let TyKind::Infer(rustc_type_ir::TyVar(b)) = b.kind() {
-                self.table.set_diverging(b.as_u32().into(), chalk_ir::TyVariableKind::General);
+            if b.is_infer() {
+                self.table.set_diverging(b);
             }
 
             if self.coerce_never {
@@ -330,7 +329,7 @@ impl<'a, 'b, 'db> Coerce<'a, 'b, 'db> {
                     obligations.push(Obligation::new(
                         self.interner(),
                         self.cause.clone(),
-                        self.table.param_env,
+                        self.table.trait_env.env,
                         Binder::dummy(PredicateKind::Coerce(CoercePredicate {
                             a: source_ty,
                             b: target_ty,
@@ -718,7 +717,7 @@ impl<'a, 'b, 'db> Coerce<'a, 'b, 'db> {
         let mut queue: SmallVec<[PredicateObligation<'db>; 4]> = smallvec![Obligation::new(
             self.interner(),
             cause,
-            self.table.param_env,
+            self.table.trait_env.env,
             TraitRef::new(
                 self.interner(),
                 coerce_unsized_did.into(),
@@ -1114,8 +1113,12 @@ impl<'db> InferenceContext<'db> {
                         match self.table.commit_if_ok(|table| {
                             // We need to eagerly handle nested obligations due to lazy norm.
                             let mut ocx = ObligationCtxt::new(&table.infer_ctxt);
-                            let value =
-                                ocx.lub(&ObligationCause::new(), table.param_env, prev_ty, new_ty)?;
+                            let value = ocx.lub(
+                                &ObligationCause::new(),
+                                table.trait_env.env,
+                                prev_ty,
+                                new_ty,
+                            )?;
                             if ocx.select_where_possible().is_empty() {
                                 Ok(InferOk { value, obligations: ocx.into_pending_obligations() })
                             } else {
@@ -1158,7 +1161,7 @@ impl<'db> InferenceContext<'db> {
             let sig = self
                 .table
                 .infer_ctxt
-                .at(&ObligationCause::new(), self.table.param_env)
+                .at(&ObligationCause::new(), self.table.trait_env.env)
                 .lub(a_sig, b_sig)
                 .map(|ok| self.table.register_infer_ok(ok))?;
 
@@ -1248,7 +1251,7 @@ impl<'db> InferenceContext<'db> {
                         .commit_if_ok(|table| {
                             table
                                 .infer_ctxt
-                                .at(&ObligationCause::new(), table.param_env)
+                                .at(&ObligationCause::new(), table.trait_env.env)
                                 .lub(prev_ty, new_ty)
                         })
                         .unwrap_err())
@@ -1498,7 +1501,7 @@ impl<'db, 'exprs> CoerceMany<'db, 'exprs> {
             assert!(expression_ty.is_unit(), "if let hack without unit type");
             icx.table
                 .infer_ctxt
-                .at(cause, icx.table.param_env)
+                .at(cause, icx.table.trait_env.env)
                 .eq(
                     // needed for tests/ui/type-alias-impl-trait/issue-65679-inst-opaque-ty-from-val-twice.rs
                     DefineOpaqueTypes::Yes,
@@ -1564,9 +1567,9 @@ impl<'db, 'exprs> CoerceMany<'db, 'exprs> {
     }
 }
 
-pub fn could_coerce(
-    db: &dyn HirDatabase,
-    env: Arc<TraitEnvironment>,
+pub fn could_coerce<'db>(
+    db: &'db dyn HirDatabase,
+    env: Arc<TraitEnvironment<'db>>,
     tys: &crate::Canonical<(crate::Ty, crate::Ty)>,
 ) -> bool {
     coerce(db, env, tys).is_ok()
@@ -1574,7 +1577,7 @@ pub fn could_coerce(
 
 fn coerce<'db>(
     db: &'db dyn HirDatabase,
-    env: Arc<TraitEnvironment>,
+    env: Arc<TraitEnvironment<'db>>,
     tys: &crate::Canonical<(crate::Ty, crate::Ty)>,
 ) -> Result<(Vec<Adjustment>, crate::Ty), TypeError<DbInterner<'db>>> {
     let mut table = InferenceTable::new(db, env);
@@ -1609,16 +1612,21 @@ fn coerce<'db>(
             chalk_ir::GenericArgData::Const(c) => c.inference_var(Interner),
         } == Some(iv))
     };
-    let fallback = |iv, kind, default, binder| match kind {
-        chalk_ir::VariableKind::Ty(_ty_kind) => find_var(iv)
-            .map_or(default, |i| crate::BoundVar::new(binder, i).to_ty(Interner).cast(Interner)),
-        chalk_ir::VariableKind::Lifetime => find_var(iv).map_or(default, |i| {
-            crate::BoundVar::new(binder, i).to_lifetime(Interner).cast(Interner)
-        }),
-        chalk_ir::VariableKind::Const(ty) => find_var(iv).map_or(default, |i| {
-            crate::BoundVar::new(binder, i).to_const(Interner, ty).cast(Interner)
-        }),
+    let fallback = |iv, kind, binder| match kind {
+        chalk_ir::VariableKind::Ty(_ty_kind) => find_var(iv).map_or_else(
+            || chalk_ir::TyKind::Error.intern(Interner).cast(Interner),
+            |i| crate::BoundVar::new(binder, i).to_ty(Interner).cast(Interner),
+        ),
+        chalk_ir::VariableKind::Lifetime => find_var(iv).map_or_else(
+            || crate::LifetimeData::Error.intern(Interner).cast(Interner),
+            |i| crate::BoundVar::new(binder, i).to_lifetime(Interner).cast(Interner),
+        ),
+        chalk_ir::VariableKind::Const(ty) => find_var(iv).map_or_else(
+            || crate::unknown_const(ty.clone()).cast(Interner),
+            |i| crate::BoundVar::new(binder, i).to_const(Interner, ty.clone()).cast(Interner),
+        ),
     };
     // FIXME also map the types in the adjustments
+    // FIXME: We don't fallback correctly since this is done on `InferenceContext` and we only have `InferenceTable`.
     Ok((adjustments, table.resolve_with_fallback(ty.to_chalk(table.interner), &fallback)))
 }

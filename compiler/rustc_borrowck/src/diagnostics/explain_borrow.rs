@@ -416,6 +416,26 @@ impl<'tcx> BorrowExplanation<'tcx> {
                 {
                     self.add_object_lifetime_default_note(tcx, err, unsize_ty);
                 }
+
+                let mut preds = path
+                    .iter()
+                    .filter_map(|constraint| match constraint.category {
+                        ConstraintCategory::Predicate(pred) if !pred.is_dummy() => Some(pred),
+                        _ => None,
+                    })
+                    .collect::<Vec<Span>>();
+                preds.sort();
+                preds.dedup();
+                if !preds.is_empty() {
+                    let s = if preds.len() == 1 { "" } else { "s" };
+                    err.span_note(
+                        preds,
+                        format!(
+                            "requirement{s} that the value outlives `{region_name}` introduced here"
+                        ),
+                    );
+                }
+
                 self.add_lifetime_bound_suggestion_to_diagnostic(err, &category, span, region_name);
             }
             _ => {}

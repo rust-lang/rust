@@ -516,4 +516,5 @@ define_symbols! {
     flags,
     precision,
     width,
+    never_type_fallback,
 }

@@ -34,6 +34,7 @@ rustc_apfloat = "0.2.3"
 query-group.workspace = true
 salsa.workspace = true
 salsa-macros.workspace = true
+petgraph.workspace = true
 
 ra-ap-rustc_abi.workspace = true
 ra-ap-rustc_index.workspace = true
