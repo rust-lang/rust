@@ -1625,19 +1625,19 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
             let mut drop_shim =
                 create_coroutine_drop_shim_async(tcx, &transform, body, drop_clean, can_unwind);
             // Run derefer to fix Derefs that are not in the first place
-            deref_finder(tcx, &mut drop_shim);
+            deref_finder(tcx, &mut drop_shim, false);
             body.coroutine.as_mut().unwrap().coroutine_drop_async = Some(drop_shim);
         } else {
             // If coroutine has no async drops, generating sync drop shim
             let mut drop_shim =
                 create_coroutine_drop_shim(tcx, &transform, coroutine_ty, body, drop_clean);
             // Run derefer to fix Derefs that are not in the first place
-            deref_finder(tcx, &mut drop_shim);
+            deref_finder(tcx, &mut drop_shim, false);
             body.coroutine.as_mut().unwrap().coroutine_drop = Some(drop_shim);
 
             // For coroutine with sync drop, generating async proxy for `future_drop_poll` call
             let mut proxy_shim = create_coroutine_drop_shim_proxy_async(tcx, body);
-            deref_finder(tcx, &mut proxy_shim);
+            deref_finder(tcx, &mut proxy_shim, false);
             body.coroutine.as_mut().unwrap().coroutine_drop_proxy_async = Some(proxy_shim);
         }
 
@@ -1645,7 +1645,7 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
         create_coroutine_resume_function(tcx, transform, body, can_return, can_unwind);
 
         // Run derefer to fix Derefs that are not in the first place
-        deref_finder(tcx, body);
+        deref_finder(tcx, body, false);
     }
 
     fn is_required(&self) -> bool {
