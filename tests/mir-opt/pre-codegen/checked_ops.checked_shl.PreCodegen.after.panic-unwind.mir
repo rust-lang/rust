@@ -7,7 +7,11 @@ fn checked_shl(_1: u32, _2: u32) -> Option<u32> {
     scope 1 (inlined core::num::<impl u32>::checked_shl) {
         let mut _3: bool;
         let mut _4: u32;
+        let mut _8: u32;
         scope 2 (inlined #[track_caller] core::num::<impl u32>::unchecked_shl) {
+            let mut _5: &u32;
+            let mut _6: {closure@core::num::<impl u32>::unchecked_shl::{closure#0}};
+            let _7: ();
             scope 3 (inlined core::ub_checks::check_language_ub) {
                 scope 4 (inlined core::ub_checks::check_language_ub::runtime) {
                 }
@@ -23,18 +27,31 @@ fn checked_shl(_1: u32, _2: u32) -> Option<u32> {
 
     bb1: {
         _0 = const Option::<u32>::None;
-        goto -> bb3;
+        goto -> bb4;
     }
 
     bb2: {
+        StorageLive(_8);
         StorageLive(_4);
-        _4 = ShlUnchecked(copy _1, copy _2);
-        _0 = Option::<u32>::Some(move _4);
-        StorageDead(_4);
-        goto -> bb3;
+        _4 = copy _2;
+        StorageLive(_6);
+        StorageLive(_5);
+        _5 = &_4;
+        _6 = {closure@$SRC_DIR/core/src/num/uint_macros.rs:LL:COL} { 0: copy _5 };
+        StorageDead(_5);
+        _7 = contract_check_requires::<{closure@core::num::<impl u32>::unchecked_shl::{closure#0}}>(move _6) -> [return: bb3, unwind continue];
     }
 
     bb3: {
+        StorageDead(_6);
+        _8 = ShlUnchecked(copy _1, copy _2);
+        StorageDead(_4);
+        _0 = Option::<u32>::Some(move _8);
+        StorageDead(_8);
+        goto -> bb4;
+    }
+
+    bb4: {
         StorageDead(_3);
         return;
     }

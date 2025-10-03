@@ -4,7 +4,11 @@ fn unchecked_shr_signed_bigger(_1: i64, _2: u32) -> i64 {
     debug a => _1;
     debug b => _2;
     let mut _0: i64;
+    let mut _3: u32;
     scope 1 (inlined #[track_caller] core::num::<impl i64>::unchecked_shr) {
+        let mut _4: &u32;
+        let mut _5: {closure@core::num::<impl i64>::unchecked_shr::{closure#0}};
+        let _6: ();
         scope 2 (inlined core::ub_checks::check_language_ub) {
             scope 3 (inlined core::ub_checks::check_language_ub::runtime) {
             }
@@ -12,7 +16,20 @@ fn unchecked_shr_signed_bigger(_1: i64, _2: u32) -> i64 {
     }
 
     bb0: {
+        StorageLive(_3);
+        _3 = copy _2;
+        StorageLive(_5);
+        StorageLive(_4);
+        _4 = &_3;
+        _5 = {closure@$SRC_DIR/core/src/num/int_macros.rs:LL:COL} { 0: copy _4 };
+        StorageDead(_4);
+        _6 = contract_check_requires::<{closure@core::num::<impl i64>::unchecked_shr::{closure#0}}>(move _5) -> [return: bb1, unwind continue];
+    }
+
+    bb1: {
+        StorageDead(_5);
         _0 = ShrUnchecked(copy _1, copy _2);
+        StorageDead(_3);
         return;
     }
 }

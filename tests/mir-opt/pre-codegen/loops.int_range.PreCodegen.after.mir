@@ -7,13 +7,15 @@ fn int_range(_1: usize, _2: usize) -> () {
     let mut _3: std::ops::Range<usize>;
     let mut _4: std::ops::Range<usize>;
     let mut _5: &mut std::ops::Range<usize>;
-    let mut _13: std::option::Option<usize>;
-    let _15: ();
+    let mut _12: usize;
+    let mut _13: usize;
+    let mut _25: std::option::Option<usize>;
+    let _27: ();
     scope 1 {
         debug iter => _4;
-        let _14: usize;
+        let _26: usize;
         scope 2 {
-            debug i => _14;
+            debug i => _26;
         }
         scope 4 (inlined iter::range::<impl Iterator for std::ops::Range<usize>>::next) {
             debug self => _5;
@@ -23,15 +25,25 @@ fn int_range(_1: usize, _2: usize) -> () {
                 let mut _7: &usize;
                 let mut _10: bool;
                 let _11: usize;
-                let mut _12: usize;
+                let mut _24: usize;
                 scope 6 {
                     debug old => _11;
                     scope 8 (inlined <usize as Step>::forward_unchecked) {
-                        debug start => _11;
-                        debug n => const 1_usize;
+                        debug start => _12;
+                        debug n => _13;
+                        let mut _14: &usize;
+                        let mut _15: &usize;
+                        let mut _16: {closure@<usize as std::iter::Step>::forward_unchecked::{closure#0}};
+                        let _17: ();
+                        let mut _18: usize;
+                        let mut _19: usize;
                         scope 9 (inlined #[track_caller] core::num::<impl usize>::unchecked_add) {
-                            debug self => _11;
-                            debug rhs => const 1_usize;
+                            debug self => _18;
+                            debug rhs => _19;
+                            let mut _20: &usize;
+                            let mut _21: &usize;
+                            let mut _22: {closure@core::num::<impl usize>::unchecked_add::{closure#0}};
+                            let _23: ();
                             scope 10 (inlined core::ub_checks::check_language_ub) {
                                 scope 11 (inlined core::ub_checks::check_language_ub::runtime) {
                                 }
@@ -60,7 +72,7 @@ fn int_range(_1: usize, _2: usize) -> () {
     }
 
     bb1: {
-        StorageLive(_13);
+        StorageLive(_25);
         _5 = &mut _4;
         StorageLive(_10);
         StorageLive(_6);
@@ -81,7 +93,7 @@ fn int_range(_1: usize, _2: usize) -> () {
         StorageDead(_7);
         StorageDead(_6);
         StorageDead(_10);
-        StorageDead(_13);
+        StorageDead(_25);
         StorageDead(_4);
         return;
     }
@@ -90,18 +102,56 @@ fn int_range(_1: usize, _2: usize) -> () {
         StorageDead(_7);
         StorageDead(_6);
         _11 = copy (_4.0: usize);
+        StorageLive(_24);
         StorageLive(_12);
-        _12 = AddUnchecked(copy _11, const 1_usize);
-        (_4.0: usize) = move _12;
-        StorageDead(_12);
-        _13 = Option::<usize>::Some(copy _11);
-        StorageDead(_10);
-        _14 = copy ((_13 as Some).0: usize);
-        _15 = opaque::<usize>(move _14) -> [return: bb4, unwind continue];
+        _12 = copy _11;
+        StorageLive(_13);
+        _13 = const 1_usize;
+        StorageLive(_16);
+        StorageLive(_14);
+        _14 = &_12;
+        StorageLive(_15);
+        _15 = &_13;
+        _16 = {closure@$SRC_DIR/core/src/iter/range.rs:LL:COL} { 0: copy _14, 1: copy _15 };
+        StorageDead(_15);
+        StorageDead(_14);
+        _17 = contract_check_requires::<{closure@<usize as Step>::forward_unchecked::{closure#0}}>(move _16) -> [return: bb4, unwind continue];
     }
 
     bb4: {
+        StorageDead(_16);
+        StorageLive(_18);
+        _18 = copy _11;
+        StorageLive(_19);
+        _19 = const 1_usize;
+        StorageLive(_22);
+        StorageLive(_20);
+        _20 = &_18;
+        StorageLive(_21);
+        _21 = &_19;
+        _22 = {closure@$SRC_DIR/core/src/num/uint_macros.rs:LL:COL} { 0: copy _20, 1: copy _21 };
+        StorageDead(_21);
+        StorageDead(_20);
+        _23 = contract_check_requires::<{closure@core::num::<impl usize>::unchecked_add::{closure#0}}>(move _22) -> [return: bb5, unwind continue];
+    }
+
+    bb5: {
+        StorageDead(_22);
+        _24 = AddUnchecked(copy _11, const 1_usize);
+        StorageDead(_19);
+        StorageDead(_18);
         StorageDead(_13);
+        StorageDead(_12);
+        (_4.0: usize) = move _24;
+        StorageDead(_24);
+        _25 = Option::<usize>::Some(copy _11);
+        StorageDead(_10);
+        _26 = copy ((_25 as Some).0: usize);
+        _27 = opaque::<usize>(move _26) -> [return: bb6, unwind continue];
+    }
+
+    bb6: {
+        StorageDead(_25);
         goto -> bb1;
     }
 }

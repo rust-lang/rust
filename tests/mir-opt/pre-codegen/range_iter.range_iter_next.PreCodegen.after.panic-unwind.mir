@@ -3,14 +3,26 @@
 fn range_iter_next(_1: &mut std::ops::Range<u32>) -> Option<u32> {
     debug it => _1;
     let mut _0: std::option::Option<u32>;
+    let mut _6: u32;
+    let mut _7: usize;
     scope 1 (inlined iter::range::<impl Iterator for std::ops::Range<u32>>::next) {
         scope 2 (inlined <std::ops::Range<u32> as iter::range::RangeIteratorImpl>::spec_next) {
             let mut _4: bool;
             let _5: u32;
-            let mut _6: u32;
+            let mut _18: u32;
             scope 3 {
                 scope 5 (inlined <u32 as Step>::forward_unchecked) {
+                    let mut _8: &u32;
+                    let mut _9: &usize;
+                    let mut _10: {closure@<u32 as std::iter::Step>::forward_unchecked::{closure#0}};
+                    let _11: ();
+                    let mut _12: u32;
+                    let mut _13: u32;
                     scope 6 (inlined #[track_caller] core::num::<impl u32>::unchecked_add) {
+                        let mut _14: &u32;
+                        let mut _15: &u32;
+                        let mut _16: {closure@core::num::<impl u32>::unchecked_add::{closure#0}};
+                        let _17: ();
                         scope 7 (inlined core::ub_checks::check_language_ub) {
                             scope 8 (inlined core::ub_checks::check_language_ub::runtime) {
                             }
@@ -39,20 +51,58 @@ fn range_iter_next(_1: &mut std::ops::Range<u32>) -> Option<u32> {
 
     bb1: {
         _0 = const Option::<u32>::None;
-        goto -> bb3;
+        goto -> bb5;
     }
 
     bb2: {
         _5 = copy ((*_1).0: u32);
+        StorageLive(_18);
         StorageLive(_6);
-        _6 = AddUnchecked(copy _5, const 1_u32);
-        ((*_1).0: u32) = move _6;
-        StorageDead(_6);
-        _0 = Option::<u32>::Some(copy _5);
-        goto -> bb3;
+        _6 = copy _5;
+        StorageLive(_7);
+        _7 = const 1_usize;
+        StorageLive(_10);
+        StorageLive(_8);
+        _8 = &_6;
+        StorageLive(_9);
+        _9 = &_7;
+        _10 = {closure@$SRC_DIR/core/src/iter/range.rs:LL:COL} { 0: copy _8, 1: copy _9 };
+        StorageDead(_9);
+        StorageDead(_8);
+        _11 = contract_check_requires::<{closure@<u32 as Step>::forward_unchecked::{closure#0}}>(move _10) -> [return: bb3, unwind continue];
     }
 
     bb3: {
+        StorageDead(_10);
+        StorageLive(_12);
+        _12 = copy _5;
+        StorageLive(_13);
+        _13 = const 1_u32;
+        StorageLive(_16);
+        StorageLive(_14);
+        _14 = &_12;
+        StorageLive(_15);
+        _15 = &_13;
+        _16 = {closure@$SRC_DIR/core/src/num/uint_macros.rs:LL:COL} { 0: copy _14, 1: copy _15 };
+        StorageDead(_15);
+        StorageDead(_14);
+        _17 = contract_check_requires::<{closure@core::num::<impl u32>::unchecked_add::{closure#0}}>(move _16) -> [return: bb4, unwind continue];
+    }
+
+    bb4: {
+        StorageDead(_16);
+        _18 = AddUnchecked(copy _5, const 1_u32);
+        StorageDead(_13);
+        StorageDead(_12);
+        StorageDead(_7);
+        StorageDead(_6);
+        ((*_1).0: u32) = move _18;
+        StorageDead(_18);
+        _0 = Option::<u32>::Some(copy _5);
+        goto -> bb5;
+    }
+
+    bb5: {
         StorageDead(_4);
         return;
     }
