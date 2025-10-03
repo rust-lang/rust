@@ -1,5 +1,7 @@
-//@ edition:2024
 //@ check-pass
+//@ edition: 2018..
+//@ reference: lex.keywords.strict
+//@ reference: lex.keywords.weak
 
 #![allow(unused_imports)]
 #![allow(missing_abi)]
