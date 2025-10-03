@@ -6,20 +6,19 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     let mut _0: ();
     let mut _10: std::slice::Iter<'_, T>;
     let mut _11: std::iter::Rev<std::slice::Iter<'_, T>>;
-    let mut _12: std::iter::Rev<std::slice::Iter<'_, T>>;
-    let mut _14: std::option::Option<&T>;
-    let mut _15: isize;
-    let mut _17: &impl Fn(&T);
-    let mut _18: (&T,);
-    let _19: ();
+    let mut _13: std::option::Option<&T>;
+    let mut _14: isize;
+    let mut _16: &impl Fn(&T);
+    let mut _17: (&T,);
+    let _18: ();
     scope 1 {
-        debug iter => _12;
-        let _16: &T;
+        debug iter => _11;
+        let _15: &T;
         scope 2 {
-            debug x => _16;
+            debug x => _15;
         }
         scope 18 (inlined <Rev<std::slice::Iter<'_, T>> as Iterator>::next) {
-            let mut _13: &mut std::slice::Iter<'_, T>;
+            let mut _12: &mut std::slice::Iter<'_, T>;
         }
     }
     scope 3 (inlined core::slice::<impl [T]>::iter) {
@@ -99,27 +98,24 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         StorageDead(_3);
         _11 = Rev::<std::slice::Iter<'_, T>> { iter: copy _10 };
         StorageDead(_10);
-        StorageLive(_12);
-        _12 = copy _11;
         goto -> bb4;
     }
 
     bb4: {
-        StorageLive(_14);
         StorageLive(_13);
-        _13 = &mut (_12.0: std::slice::Iter<'_, T>);
-        _14 = <std::slice::Iter<'_, T> as DoubleEndedIterator>::next_back(move _13) -> [return: bb5, unwind: bb11];
+        StorageLive(_12);
+        _12 = &mut (_11.0: std::slice::Iter<'_, T>);
+        _13 = <std::slice::Iter<'_, T> as DoubleEndedIterator>::next_back(move _12) -> [return: bb5, unwind: bb11];
     }
 
     bb5: {
-        StorageDead(_13);
-        _15 = discriminant(_14);
-        switchInt(move _15) -> [0: bb6, 1: bb8, otherwise: bb10];
+        StorageDead(_12);
+        _14 = discriminant(_13);
+        switchInt(move _14) -> [0: bb6, 1: bb8, otherwise: bb10];
     }
 
     bb6: {
-        StorageDead(_14);
-        StorageDead(_12);
+        StorageDead(_13);
         drop(_2) -> [return: bb7, unwind continue];
     }
 
@@ -128,18 +124,18 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     }
 
     bb8: {
-        _16 = copy ((_14 as Some).0: &T);
+        _15 = copy ((_13 as Some).0: &T);
+        StorageLive(_16);
+        _16 = &_2;
         StorageLive(_17);
-        _17 = &_2;
-        StorageLive(_18);
-        _18 = (copy _16,);
-        _19 = <impl Fn(&T) as Fn<(&T,)>>::call(move _17, move _18) -> [return: bb9, unwind: bb11];
+        _17 = (copy _15,);
+        _18 = <impl Fn(&T) as Fn<(&T,)>>::call(move _16, move _17) -> [return: bb9, unwind: bb11];
     }
 
     bb9: {
-        StorageDead(_18);
         StorageDead(_17);
-        StorageDead(_14);
+        StorageDead(_16);
+        StorageDead(_13);
         goto -> bb4;
     }
 

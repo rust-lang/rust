@@ -53,8 +53,9 @@ pub fn sanity_check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
     }
 
     if has_rustc_mir_with(tcx, def_id, sym::rustc_peek_liveness).is_some() {
-        let flow_liveness =
-            MaybeLiveLocals.iterate_to_fixpoint(tcx, body, None).into_results_cursor(body);
+        let flow_liveness = MaybeLiveLocals(|_| std::iter::empty())
+            .iterate_to_fixpoint(tcx, body, None)
+            .into_results_cursor(body);
         sanity_check_via_rustc_peek(tcx, flow_liveness);
     }
 
@@ -245,7 +246,11 @@ where
     }
 }
 
-impl<'tcx> RustcPeekAt<'tcx> for MaybeLiveLocals {
+impl<'tcx, F, I> RustcPeekAt<'tcx> for MaybeLiveLocals<F>
+where
+    F: Fn(Location) -> I,
+    I: Iterator<Item = Local>,
+{
     fn peek_at(
         &self,
         tcx: TyCtxt<'tcx>,
