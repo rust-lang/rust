@@ -4,6 +4,8 @@ attr_parsing_as_needed_compatibility =
 attr_parsing_bundle_needs_static =
     linking modifier `bundle` is only compatible with `static` linking kind
 
+attr_parsing_cfg_attr_bad_delim = wrong `cfg_attr` delimiters
+
 attr_parsing_cfg_predicate_identifier =
     `cfg` predicate key must be an identifier
 
@@ -150,6 +152,9 @@ attr_parsing_link_requires_name =
     `#[link]` attribute requires a `name = "string"` argument
     .label = missing `name` argument
 
+attr_parsing_malformed_cfg_attr = malformed `cfg_attr` attribute input
+    .suggestion = missing condition and attribute
+    .note = for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
 attr_parsing_meta_bad_delim = wrong meta list delimiters
 attr_parsing_meta_bad_delim_suggestion = the delimiters should be `(` and `)`
 
@@ -264,13 +269,3 @@ attr_parsing_unused_multiple =
 
 attr_parsing_whole_archive_needs_static =
     linking modifier `whole-archive` is only compatible with `static` linking kind
-
-attr_parsing_limit_invalid =
-    `limit` must be a non-negative integer
-    .label = {$error_str}
-
-attr_parsing_cfg_attr_bad_delim = wrong `cfg_attr` delimiters
-
-attr_parsing_malformed_cfg_attr = malformed `cfg_attr` attribute input
-    .suggestion = missing condition and attribute
-    .note = for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>

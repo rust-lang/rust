@@ -303,7 +303,7 @@ impl<'a> StripUnconfigured<'a> {
         let trace_attr = attr_into_trace(cfg_attr.clone(), sym::cfg_attr_trace);
 
         let Some((cfg_predicate, expanded_attrs)) =
-            rustc_attr_parsing::parse_cfg_attr(cfg_attr, &self.sess.psess)
+            rustc_attr_parsing::parse_cfg_attr(cfg_attr, &self.sess, self.features)
         else {
             return vec![trace_attr];
         };
@@ -318,7 +318,15 @@ impl<'a> StripUnconfigured<'a> {
             );
         }
 
-        if !attr::cfg_matches(&cfg_predicate, &self.sess, self.lint_node_id, self.features) {
+        if !attr::eval_config_entry(
+            self.sess,
+            &cfg_predicate,
+            ast::CRATE_NODE_ID,
+            self.features,
+            ShouldEmit::ErrorsAndLints,
+        )
+        .as_bool()
+        {
             return vec![trace_attr];
         }
 
