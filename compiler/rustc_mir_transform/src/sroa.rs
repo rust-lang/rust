@@ -269,12 +269,15 @@ impl<'tcx> ReplacementVisitor<'tcx, '_> {
                 VarDebugInfoContents::Place(ref mut place) => place,
             };
 
-            if let Some(repl) = self.replacements.replace_place(self.tcx, place.as_ref()) {
-                *place = repl;
+            let base_place = place.base_place();
+
+            if let Some(repl) = self.replacements.replace_place(self.tcx, base_place.as_ref()) {
+                place.local = repl.local;
+                place.direct_projection = repl.projection;
                 return vec![var_debug_info];
             }
 
-            let Some(parts) = self.replacements.place_fragments(*place) else {
+            let Some(parts) = self.replacements.place_fragments(base_place) else {
                 return vec![var_debug_info];
             };
 

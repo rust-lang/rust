@@ -9,7 +9,7 @@ use rustc_index::bit_set::DenseBitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_middle::mir::coverage::CoverageKind;
-use rustc_middle::mir::visit::{NonUseContext, PlaceContext, Visitor};
+use rustc_middle::mir::visit::{PlaceContext, ProjectionBase, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -646,13 +646,15 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         self.super_operand(operand, location);
     }
 
-    fn visit_projection_elem(
+    fn visit_projection_elem<P>(
         &mut self,
-        place_ref: PlaceRef<'tcx>,
+        place_ref: P,
         elem: PlaceElem<'tcx>,
         context: PlaceContext,
         location: Location,
-    ) {
+    ) where
+        P: ProjectionBase<'tcx>,
+    {
         match elem {
             ProjectionElem::OpaqueCast(ty)
                 if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) =>
@@ -865,7 +867,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         match debuginfo.value {
             VarDebugInfoContents::Const(_) => {}
             VarDebugInfoContents::Place(place) => {
-                if place.projection.iter().any(|p| !p.can_use_in_debuginfo()) {
+                if place.iter_projection_elems().any(|p| !p.can_use_in_debuginfo()) {
                     self.fail(
                         START_BLOCK.start_location(),
                         format!("illegal place {:?} in debuginfo for {:?}", place, debuginfo.name),
@@ -882,7 +884,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
         if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial)
             && place.projection.len() > 1
-            && cntxt != PlaceContext::NonUse(NonUseContext::VarDebugInfo)
             && place.projection[1..].contains(&ProjectionElem::Deref)
         {
             self.fail(
@@ -907,6 +908,42 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         }
 
         self.super_place(place, cntxt, location);
+    }
+
+    fn visit_compound_place(
+        &mut self,
+        place: &CompoundPlace<'tcx>,
+        cntxt: PlaceContext,
+        location: Location,
+    ) {
+        // Set off any `bug!`s in the type computation code
+        let _ = place.ty(&self.body.local_decls, self.tcx);
+
+        if place.direct_projection.contains(&PlaceElem::Deref) {
+            self.fail(location, format!("compound place {place:?} has deref in direct_projection"));
+        }
+
+        for (i, projection) in place.projection_chain.iter().enumerate() {
+            if projection.is_empty() {
+                self.fail(location, format!("compound place {place:?} has empty segment {i}"));
+            }
+
+            if projection.first() != Some(&ProjectionElem::Deref) {
+                self.fail(
+                    location,
+                    format!("compound place {place:?} missing deref in segment {i}"),
+                );
+            }
+
+            if projection[1..].contains(&ProjectionElem::Deref) {
+                self.fail(
+                location,
+                format!("compound place {place:?} has deref as a later projection in segment {i} (it is only permitted as the first projection)"),
+            );
+            }
+        }
+
+        self.super_compound_place(place, cntxt, location);
     }
 
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
