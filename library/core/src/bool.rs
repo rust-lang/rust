@@ -1,5 +1,7 @@
 //! impl bool {}
 
+use crate::marker::Destruct;
+
 impl bool {
     /// Returns `Some(t)` if the `bool` is [`true`](../std/keyword.true.html),
     /// or `None` otherwise.
@@ -29,6 +31,7 @@ impl bool {
     /// assert_eq!(a, 2);
     /// ```
     #[stable(feature = "bool_to_option", since = "1.62.0")]
+    #[rustc_const_stable(feature = "bool_to_option", since = "1.62.0")]
     #[inline]
     pub const fn then_some<T>(self, t: T) -> Option<T> {
         if self { Some(t) } else { None }
@@ -56,11 +59,12 @@ impl bool {
     /// ```
     #[doc(alias = "then_with")]
     #[stable(feature = "lazy_bool_to_option", since = "1.50.0")]
+    #[rustc_const_unstable(feature = "const_option_ops", issue = "143956")]
     #[rustc_diagnostic_item = "bool_then"]
     #[inline]
     pub const fn then<T, F: FnOnce() -> T>(self, f: F) -> Option<T>
     where
-        F: [const] FnOnce() -> T,
+        F: [const] FnOnce() -> T + [const] Destruct,
     {
         if self { Some(f()) } else { None }
     }
