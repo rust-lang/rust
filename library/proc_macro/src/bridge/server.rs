@@ -47,17 +47,6 @@ macro_rules! define_server_handles {
                     &s.$oty[handle::Handle::decode(r, &mut ())]
                 }
             }
-
-            impl<'s, S: Types> Decode<'_, 's, HandleStore<MarkedTypes<S>>>
-                for &'s mut Marked<S::$oty, client::$oty>
-            {
-                fn decode(
-                    r: &mut Reader<'_>,
-                    s: &'s mut HandleStore<MarkedTypes<S>>
-                ) -> Self {
-                    &mut s.$oty[handle::Handle::decode(r, &mut ())]
-                }
-            }
         )*
 
         $(
