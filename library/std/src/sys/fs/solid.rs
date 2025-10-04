@@ -9,7 +9,8 @@ use crate::os::raw::{c_int, c_short};
 use crate::os::solid::ffi::OsStrExt;
 use crate::path::{Path, PathBuf};
 use crate::sync::Arc;
-pub use crate::sys::fs::common::exists;
+pub use crate::sys::fs::common::{Dir, exists};
+use crate::sys::fs::{remove_dir, remove_file};
 use crate::sys::pal::{abi, error};
 use crate::sys::time::SystemTime;
 use crate::sys::{unsupported, unsupported_err};
@@ -218,6 +219,32 @@ impl DirEntry {
             abi::DT_BLK => Ok(FileType(abi::S_IFBLK)),
             _ => lstat(&self.path()).map(|m| m.file_type()),
         }
+    }
+
+    pub fn open_file(&self) -> io::Result<File> {
+        let mut opts = OpenOptions::new();
+        opts.read(true);
+        File::open(&self.path(), &opts)
+    }
+
+    pub fn open_file_with(&self, opts: &OpenOptions) -> io::Result<File> {
+        File::open(&self.path(), opts)
+    }
+
+    pub fn open_dir(&self) -> io::Result<Dir> {
+        Dir::new(self.path())
+    }
+
+    pub fn open_dir_with(&self, opts: &OpenOptions) -> io::Result<Dir> {
+        Dir::new_with(self.path(), opts)
+    }
+
+    pub fn remove_file(&self) -> io::Result<()> {
+        remove_file(&self.path())
+    }
+
+    pub fn remove_dir(&self) -> io::Result<()> {
+        remove_dir(&self.path())
     }
 }
 
