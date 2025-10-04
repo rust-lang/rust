@@ -7184,7 +7184,11 @@ pub fn _mm_maskz_fnmsub_round_sh<const ROUNDING: i32>(
 #[cfg_attr(test, assert_instr(vfmaddsub))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_fmaddsub_ph(a: __m128h, b: __m128h, c: __m128h) -> __m128h {
-    unsafe { vfmaddsubph_128(a, b, c) }
+    unsafe {
+        let add = simd_fma(a, b, c);
+        let sub = simd_fma(a, b, simd_neg(c));
+        simd_shuffle!(sub, add, [0, 9, 2, 11, 4, 13, 6, 15])
+    }
 }
 
 /// Multiply packed half-precision (16-bit) floating-point elements in a and b, alternatively add and
@@ -7235,7 +7239,15 @@ pub fn _mm_maskz_fmaddsub_ph(k: __mmask8, a: __m128h, b: __m128h, c: __m128h) ->
 #[cfg_attr(test, assert_instr(vfmaddsub))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm256_fmaddsub_ph(a: __m256h, b: __m256h, c: __m256h) -> __m256h {
-    unsafe { vfmaddsubph_256(a, b, c) }
+    unsafe {
+        let add = simd_fma(a, b, c);
+        let sub = simd_fma(a, b, simd_neg(c));
+        simd_shuffle!(
+            sub,
+            add,
+            [0, 17, 2, 19, 4, 21, 6, 23, 8, 25, 10, 27, 12, 29, 14, 31]
+        )
+    }
 }
 
 /// Multiply packed half-precision (16-bit) floating-point elements in a and b, alternatively add and
@@ -7286,7 +7298,18 @@ pub fn _mm256_maskz_fmaddsub_ph(k: __mmask16, a: __m256h, b: __m256h, c: __m256h
 #[cfg_attr(test, assert_instr(vfmaddsub))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm512_fmaddsub_ph(a: __m512h, b: __m512h, c: __m512h) -> __m512h {
-    _mm512_fmaddsub_round_ph::<_MM_FROUND_CUR_DIRECTION>(a, b, c)
+    unsafe {
+        let add = simd_fma(a, b, c);
+        let sub = simd_fma(a, b, simd_neg(c));
+        simd_shuffle!(
+            sub,
+            add,
+            [
+                0, 33, 2, 35, 4, 37, 6, 39, 8, 41, 10, 43, 12, 45, 14, 47, 16, 49, 18, 51, 20, 53,
+                22, 55, 24, 57, 26, 59, 28, 61, 30, 63
+            ]
+        )
+    }
 }
 
 /// Multiply packed half-precision (16-bit) floating-point elements in a and b, alternatively add and
@@ -7459,7 +7482,7 @@ pub fn _mm512_maskz_fmaddsub_round_ph<const ROUNDING: i32>(
 #[cfg_attr(test, assert_instr(vfmsubadd))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_fmsubadd_ph(a: __m128h, b: __m128h, c: __m128h) -> __m128h {
-    unsafe { vfmaddsubph_128(a, b, simd_neg(c)) }
+    _mm_fmaddsub_ph(a, b, unsafe { simd_neg(c) })
 }
 
 /// Multiply packed half-precision (16-bit) floating-point elements in a and b, alternatively subtract
@@ -7510,7 +7533,7 @@ pub fn _mm_maskz_fmsubadd_ph(k: __mmask8, a: __m128h, b: __m128h, c: __m128h) ->
 #[cfg_attr(test, assert_instr(vfmsubadd))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm256_fmsubadd_ph(a: __m256h, b: __m256h, c: __m256h) -> __m256h {
-    unsafe { vfmaddsubph_256(a, b, simd_neg(c)) }
+    _mm256_fmaddsub_ph(a, b, unsafe { simd_neg(c) })
 }
 
 /// Multiply packed half-precision (16-bit) floating-point elements in a and b, alternatively subtract
@@ -7561,7 +7584,7 @@ pub fn _mm256_maskz_fmsubadd_ph(k: __mmask16, a: __m256h, b: __m256h, c: __m256h
 #[cfg_attr(test, assert_instr(vfmsubadd))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm512_fmsubadd_ph(a: __m512h, b: __m512h, c: __m512h) -> __m512h {
-    _mm512_fmsubadd_round_ph::<_MM_FROUND_CUR_DIRECTION>(a, b, c)
+    _mm512_fmaddsub_ph(a, b, unsafe { simd_neg(c) })
 }
 
 /// Multiply packed half-precision (16-bit) floating-point elements in a and b, alternatively subtract
@@ -16409,10 +16432,6 @@ unsafe extern "C" {
     #[link_name = "llvm.x86.avx512fp16.vfmadd.f16"]
     fn vfmaddsh(a: f16, b: f16, c: f16, rounding: i32) -> f16;
 
-    #[link_name = "llvm.x86.avx512fp16.vfmaddsub.ph.128"]
-    fn vfmaddsubph_128(a: __m128h, b: __m128h, c: __m128h) -> __m128h;
-    #[link_name = "llvm.x86.avx512fp16.vfmaddsub.ph.256"]
-    fn vfmaddsubph_256(a: __m256h, b: __m256h, c: __m256h) -> __m256h;
     #[link_name = "llvm.x86.avx512fp16.vfmaddsub.ph.512"]
     fn vfmaddsubph_512(a: __m512h, b: __m512h, c: __m512h, rounding: i32) -> __m512h;
 
