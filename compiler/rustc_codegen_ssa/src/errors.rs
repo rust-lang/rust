@@ -1100,6 +1100,13 @@ pub enum InvalidMonomorphization<'tcx> {
         expected_element: Ty<'tcx>,
         vector_type: Ty<'tcx>,
     },
+
+    #[diag(codegen_ssa_invalid_monomorphization_non_power_of_two_alignment, code = E0511)]
+    AlignmentNotPowerOfTwo {
+        #[primary_span]
+        span: Span,
+        name: Symbol,
+    },
 }
 
 pub enum ExpectedPointerMutability {

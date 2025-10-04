@@ -19,7 +19,7 @@ pub unsafe fn load_f32x2(mask: Vec2<i32>, pointer: *const f32, values: Vec2<f32>
     // CHECK: [[A:%[0-9]+]] = lshr <2 x i32> {{.*}}, {{<i32 31, i32 31>|splat \(i32 31\)}}
     // CHECK: [[B:%[0-9]+]] = trunc <2 x i32> [[A]] to <2 x i1>
     // CHECK: call <2 x float> @llvm.masked.load.v2f32.p0(ptr {{.*}}, i32 4, <2 x i1> [[B]], <2 x float> {{.*}})
-    simd_masked_load(mask, pointer, values)
+    simd_masked_load(mask, pointer, values, 4)
 }
 
 // CHECK-LABEL: @load_f32x2_unsigned
@@ -32,7 +32,20 @@ pub unsafe fn load_f32x2_unsigned(
     // CHECK: [[A:%[0-9]+]] = lshr <2 x i32> {{.*}}, {{<i32 31, i32 31>|splat \(i32 31\)}}
     // CHECK: [[B:%[0-9]+]] = trunc <2 x i32> [[A]] to <2 x i1>
     // CHECK: call <2 x float> @llvm.masked.load.v2f32.p0(ptr {{.*}}, i32 4, <2 x i1> [[B]], <2 x float> {{.*}})
-    simd_masked_load(mask, pointer, values)
+    simd_masked_load(mask, pointer, values, 4)
+}
+
+// CHECK-LABEL: @load_f32x2_unaligned
+#[no_mangle]
+pub unsafe fn load_f32x2_unaligned(
+    mask: Vec2<u32>,
+    pointer: *const f32,
+    values: Vec2<f32>,
+) -> Vec2<f32> {
+    // CHECK: [[A:%[0-9]+]] = lshr <2 x i32> {{.*}}, {{<i32 31, i32 31>|splat \(i32 31\)}}
+    // CHECK: [[B:%[0-9]+]] = trunc <2 x i32> [[A]] to <2 x i1>
+    // CHECK: call <2 x float> @llvm.masked.load.v2f32.p0(ptr {{.*}}, i32 1, <2 x i1> [[B]], <2 x float> {{.*}})
+    simd_masked_load(mask, pointer, values, 1)
 }
 
 // CHECK-LABEL: @load_pf32x4
@@ -44,6 +57,6 @@ pub unsafe fn load_pf32x4(
 ) -> Vec4<*const f32> {
     // CHECK: [[A:%[0-9]+]] = lshr <4 x i32> {{.*}}, {{<i32 31, i32 31, i32 31, i32 31>|splat \(i32 31\)}}
     // CHECK: [[B:%[0-9]+]] = trunc <4 x i32> [[A]] to <4 x i1>
-    // CHECK: call <4 x ptr> @llvm.masked.load.v4p0.p0(ptr {{.*}}, i32 {{.*}}, <4 x i1> [[B]], <4 x ptr> {{.*}})
-    simd_masked_load(mask, pointer, values)
+    // CHECK: call <4 x ptr> @llvm.masked.load.v4p0.p0(ptr {{.*}}, i32 8, <4 x i1> [[B]], <4 x ptr> {{.*}})
+    simd_masked_load(mask, pointer, values, 8)
 }

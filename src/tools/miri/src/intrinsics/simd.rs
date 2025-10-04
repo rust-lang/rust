@@ -733,7 +733,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
             }
             "masked_load" => {
-                let [mask, ptr, default] = check_intrinsic_arg_count(args)?;
+                let [mask, ptr, default, _alignment] = check_intrinsic_arg_count(args)?;
                 let (mask, mask_len) = this.project_to_simd(mask)?;
                 let ptr = this.read_pointer(ptr)?;
                 let (default, default_len) = this.project_to_simd(default)?;
@@ -759,7 +759,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
             }
             "masked_store" => {
-                let [mask, ptr, vals] = check_intrinsic_arg_count(args)?;
+                let [mask, ptr, vals, _alignment] = check_intrinsic_arg_count(args)?;
                 let (mask, mask_len) = this.project_to_simd(mask)?;
                 let ptr = this.read_pointer(ptr)?;
                 let (vals, vals_len) = this.project_to_simd(vals)?;
