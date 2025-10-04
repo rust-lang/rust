@@ -230,6 +230,7 @@ pub mod deps;
 pub mod diagnostics;
 pub mod edition;
 pub mod error_codes;
+pub mod error_messages;
 pub mod extdeps;
 pub mod extra_checks;
 pub mod features;

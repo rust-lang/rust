@@ -44,20 +44,22 @@ impl MachineStopType for ConstEvalErrKind {
     fn diagnostic_message(&self) -> DiagMessage {
         use ConstEvalErrKind::*;
 
-        use crate::fluent_generated::*;
+        use crate::fluent_generated as fluent;
         match self {
-            ConstAccessesMutGlobal => const_eval_const_accesses_mut_global,
-            ModifiedGlobal => const_eval_modified_global,
-            Panic { .. } => const_eval_panic,
-            RecursiveStatic => const_eval_recursive_static,
+            ConstAccessesMutGlobal => fluent::const_eval_const_accesses_mut_global,
+            ModifiedGlobal => fluent::const_eval_modified_global,
+            Panic { .. } => fluent::const_eval_panic,
+            RecursiveStatic => fluent::const_eval_recursive_static,
             AssertFailure(x) => x.diagnostic_message(),
-            WriteThroughImmutablePointer => const_eval_write_through_immutable_pointer,
+            WriteThroughImmutablePointer => fluent::const_eval_write_through_immutable_pointer,
             ConstMakeGlobalPtrAlreadyMadeGlobal { .. } => {
-                const_eval_const_make_global_ptr_already_made_global
+                fluent::const_eval_const_make_global_ptr_already_made_global
             }
-            ConstMakeGlobalPtrIsNonHeap(_) => const_eval_const_make_global_ptr_is_non_heap,
-            ConstMakeGlobalWithDanglingPtr(_) => const_eval_const_make_global_with_dangling_ptr,
-            ConstMakeGlobalWithOffset(_) => const_eval_const_make_global_with_offset,
+            ConstMakeGlobalPtrIsNonHeap(_) => fluent::const_eval_const_make_global_ptr_is_non_heap,
+            ConstMakeGlobalWithDanglingPtr(_) => {
+                fluent::const_eval_const_make_global_with_dangling_ptr
+            }
+            ConstMakeGlobalWithOffset(_) => fluent::const_eval_const_make_global_with_offset,
         }
     }
     fn add_args(self: Box<Self>, adder: &mut dyn FnMut(DiagArgName, DiagArgValue)) {
