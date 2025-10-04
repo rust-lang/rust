@@ -25,8 +25,9 @@ use crate::attributes::codegen_attrs::{
 };
 use crate::attributes::confusables::ConfusablesParser;
 use crate::attributes::crate_level::{
-    CrateNameParser, MoveSizeLimitParser, NoCoreParser, NoStdParser, PatternComplexityLimitParser,
-    RecursionLimitParser, RustcCoherenceIsCoreParser, TypeLengthLimitParser,
+    CrateNameParser, FeatureParser, MoveSizeLimitParser, NoCoreParser, NoStdParser,
+    PatternComplexityLimitParser, RecursionLimitParser, RustcCoherenceIsCoreParser,
+    TypeLengthLimitParser,
 };
 use crate::attributes::debugger::DebuggerViualizerParser;
 use crate::attributes::deprecation::DeprecationParser;
@@ -165,6 +166,7 @@ attribute_parsers!(
         Combine<AllowConstFnUnstableParser>,
         Combine<AllowInternalUnstableParser>,
         Combine<DebuggerViualizerParser>,
+        Combine<FeatureParser>,
         Combine<ForceTargetFeatureParser>,
         Combine<LinkParser>,
         Combine<ReprParser>,
@@ -509,6 +511,21 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
             template: self.template.clone(),
             attribute: self.attr_path.clone(),
             reason: AttributeParseErrorReason::UnexpectedLiteral,
+            attr_style: self.attr_style,
+        })
+    }
+
+    /// Expected the end of an argument list.
+    ///
+    /// Note: only useful when arguments in an attribute are ordered and we've seen the last one we expected.
+    /// Most attributes shouldn't care about their argument order.
+    pub(crate) fn expected_end_of_list(&self, last_item_span: Span, span: Span) -> ErrorGuaranteed {
+        self.emit_err(AttributeParseError {
+            span,
+            attr_span: self.attr_span,
+            template: self.template.clone(),
+            attribute: self.attr_path.clone(),
+            reason: AttributeParseErrorReason::ExpectedEnd { last: last_item_span },
             attr_style: self.attr_style,
         })
     }

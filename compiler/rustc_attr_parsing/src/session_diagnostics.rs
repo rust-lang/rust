@@ -608,6 +608,9 @@ pub(crate) enum AttributeParseErrorReason<'a> {
         list: bool,
     },
     ExpectedIdentifier,
+    ExpectedEnd {
+        last: Span,
+    },
 }
 
 pub(crate) struct AttributeParseError<'a> {
@@ -746,6 +749,10 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
             }
             AttributeParseErrorReason::ExpectedIdentifier => {
                 diag.span_label(self.span, "expected a valid identifier here");
+            }
+            AttributeParseErrorReason::ExpectedEnd { last } => {
+                diag.span_label(last, "expected no more arguments after this");
+                diag.span_label(self.span, "remove this argument");
             }
         }
 
@@ -970,4 +977,15 @@ pub(crate) struct LimitInvalid<'a> {
     #[label]
     pub value_span: Span,
     pub error_str: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_feature_single_word)]
+pub(crate) struct FeatureExpectedSingleWord {
+    #[primary_span]
+    pub span: Span,
+
+    #[help]
+    pub first_segment_span: Span,
+    pub first_segment: Symbol,
 }
