@@ -9,10 +9,6 @@
     feature(stdarch_aarch64_feature_detection)
 )]
 #![cfg_attr(
-    all(target_arch = "s390x", target_os = "linux"),
-    feature(stdarch_s390x_feature_detection)
-)]
-#![cfg_attr(
     all(target_arch = "powerpc", target_os = "linux"),
     feature(stdarch_powerpc_feature_detection)
 )]
