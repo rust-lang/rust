@@ -996,7 +996,8 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         | LangItem::FnOnce
                         | LangItem::AsyncFn
                         | LangItem::AsyncFnMut
-                        | LangItem::AsyncFnOnce,
+                        | LangItem::AsyncFnOnce
+                        | LangItem::Field,
                     ) => true,
                     Some(LangItem::AsyncFnKindHelper) => {
                         // FIXME(async_closures): Validity constraints here could be cleaned up.
@@ -1023,6 +1024,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         | ty::Uint(_)
                         | ty::Float(_)
                         | ty::Adt(..)
+                        | ty::Field(..)
                         | ty::Foreign(_)
                         | ty::Str
                         | ty::Array(..)
@@ -1098,6 +1100,8 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                             // If returned by `struct_tail` this is a unit struct
                             // without any fields, or not a struct, and therefore is Sized.
                             | ty::Adt(..)
+                            // field traits are always sized
+                            | ty::Field(..)
                             // If returned by `struct_tail` this is the empty tuple.
                             | ty::Tuple(..)
                             // Integers and floats are always Sized, and so have unit type metadata.
@@ -1551,6 +1555,17 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
             }
         });
         (metadata_ty.into(), obligations)
+    } else if tcx.is_lang_item(trait_def_id, LangItem::Field) {
+        let &ty::Field(container, field_path) = self_ty.kind() else {
+            bug!("only `field_of!()` can implement `Field`")
+        };
+        if tcx.is_lang_item(item_def_id, LangItem::FieldBase) {
+            (container.into(), PredicateObligations::new())
+        } else if tcx.is_lang_item(item_def_id, LangItem::FieldType) {
+            (field_path.field_ty(tcx, container).into(), PredicateObligations::new())
+        } else {
+            bug!("unexpected associated type {:?} in `Field`", obligation.predicate);
+        }
     } else {
         bug!("unexpected builtin trait with associated type: {:?}", obligation.predicate);
     };

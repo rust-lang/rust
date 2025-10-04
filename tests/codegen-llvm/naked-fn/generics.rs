@@ -20,11 +20,11 @@ fn test(x: u64) {
 }
 
 // CHECK: .balign 4
-// CHECK: add rax, 2
+// CHECK: add rax, 1
 // CHECK: add rax, 42
 
 // CHECK: .balign 4
-// CHECK: add rax, 1
+// CHECK: add rax, 2
 // CHECK: add rax, 42
 
 #[unsafe(naked)]

@@ -15,16 +15,17 @@
 //! crate as a kind of pass. This should eventually be factored away.
 
 use std::assert_matches::assert_matches;
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::iter;
 use std::ops::Bound;
 
-use rustc_abi::ExternAbi;
+use rustc_abi::{ExternAbi, FIRST_VARIANT};
 use rustc_ast::Recovered;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{
-    Applicability, Diag, DiagCtxtHandle, E0228, ErrorGuaranteed, StashKey, struct_span_code_err,
+    Applicability, Diag, DiagCtxtHandle, E0228, E0616, ErrorGuaranteed, StashKey,
+    struct_span_code_err,
 };
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::DefKind;
@@ -32,22 +33,25 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt};
 use rustc_hir::{self as hir, GenericParamKind, HirId, Node, PreciseCapturingArgKind, find_attr};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
-use rustc_infer::traits::{DynCompatibilityViolation, ObligationCause};
+use rustc_infer::traits::{DynCompatibilityViolation, ObligationCause, TraitEngine};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
 use rustc_middle::ty::{
-    self, AdtKind, Const, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, TypingMode, fold_regions,
+    self, AdtKind, Const, FieldPath, FieldPathKind, IsSuggestable, ParamEnv, Ty, TyCtxt,
+    TypeVisitableExt, TypingMode, fold_regions,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
+use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::traits::suggestions::NextTypeParamName;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{
-    FulfillmentError, ObligationCtxt, hir_ty_lowering_dyn_compatibility_violations,
+    FulfillmentError, ObligationCtxt, StructurallyNormalizeExt, TraitEngineExt,
+    hir_ty_lowering_dyn_compatibility_violations,
 };
 use tracing::{debug, instrument};
 
-use crate::errors;
+use crate::errors::{self, NoFieldOnType};
 use crate::hir_ty_lowering::{
     FeedConstTy, HirTyLowerer, InherentAssocCandidate, RegionInferReason,
 };
@@ -344,6 +348,94 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
     fn ct_infer(&self, _: Option<&ty::GenericParamDef>, span: Span) -> Const<'tcx> {
         self.report_placeholder_type_error(vec![span], vec![]);
         ty::Const::new_error_with_message(self.tcx(), span, "bad placeholder constant")
+    }
+
+    fn lower_field_path(
+        &self,
+        container: &rustc_hir::Ty<'tcx>,
+        fields: &[Ident],
+        span: Span,
+        hir_id: HirId,
+        field_path_kind: FieldPathKind,
+    ) -> Result<(Ty<'tcx>, FieldPath<'tcx>), ErrorGuaranteed> {
+        assert_eq!(field_path_kind, FieldPathKind::FieldOf);
+        let container = self.lower_ty(container);
+
+        let mut field_indices = Vec::with_capacity(fields.len());
+        let mut current_container = container;
+        let mut fields = fields.into_iter().peekable();
+        let mut infcx = None;
+        let infcx = self.infcx().unwrap_or_else(|| {
+            assert!(!container.has_infer());
+            infcx = Some(self.tcx().infer_ctxt().build(ty::TypingMode::non_body_analysis()));
+            infcx.as_ref().unwrap()
+        });
+        let cause = ObligationCause::misc(span, self.item_def_id);
+        let at = infcx.at(&cause, ParamEnv::empty());
+        let ty_ch_cx = RefCell::new(<dyn TraitEngine<'_, FulfillmentError<'tcx>>>::new(&infcx));
+
+        while let Some(&field) = fields.next() {
+            let last = fields.peek().is_none();
+            let result =
+                at.structurally_normalize_ty(current_container, &mut **ty_ch_cx.borrow_mut());
+            let container = match result {
+                Ok(normalized_ty) => normalized_ty,
+                Err(errors) => return Err(infcx.err_ctxt().report_fulfillment_errors(errors)),
+            };
+            match container.kind() {
+                ty::Adt(def, args) if !def.is_enum() => {
+                    let block = self.tcx.local_def_id_to_hir_id(self.item_def_id);
+                    let (ident, def_scope) =
+                        self.tcx.adjust_ident_and_get_scope(field, def.did(), block);
+
+                    let fields = &def.non_enum_variant().fields;
+                    if let Some((index, field)) = fields
+                        .iter_enumerated()
+                        .find(|(_, f)| f.ident(self.tcx).normalize_to_macros_2_0() == ident)
+                    {
+                        if field.vis.is_accessible_from(def_scope, self.tcx) {
+                            self.tcx.check_stability(field.did, Some(hir_id), span, None);
+                        } else {
+                            let base_did = def.did();
+                            let struct_path = self.tcx().def_path_str(base_did);
+                            let kind_name = self.tcx().def_descr(base_did);
+                            struct_span_code_err!(
+                                self.dcx(),
+                                ident.span,
+                                E0616,
+                                "field `{ident}` of {kind_name} `{struct_path}` is private",
+                            )
+                            .with_span_label(ident.span, "private field")
+                            .emit();
+                        }
+
+                        field_indices.push((FIRST_VARIANT, index));
+                        if field_path_kind == FieldPathKind::OffsetOf || !last {
+                            let field_ty = field.ty(self.tcx, args);
+                            current_container = field_ty;
+                        }
+
+                        continue;
+                    }
+                }
+                ty::Tuple(tys) => {
+                    if let Ok(index) = field.as_str().parse::<usize>()
+                        && field.name == sym::integer(index)
+                        && let Some(&field_ty) = tys.get(index)
+                    {
+                        field_indices.push((FIRST_VARIANT, index.into()));
+                        current_container = field_ty;
+                        continue;
+                    }
+                }
+                _ => {}
+            }
+            return Err(self
+                .dcx()
+                .create_err(NoFieldOnType { span: field.span, ty: container, field })
+                .emit());
+        }
+        Ok((container, self.tcx.mk_field_path_from_iter(field_indices.into_iter())))
     }
 
     fn register_trait_ascription_bounds(

@@ -445,6 +445,23 @@ impl<'a> State<'a> {
                 self.print_const_arg(length);
                 self.word("]");
             }
+            hir::TyKind::FieldOf(container, fields) => {
+                self.word("field_of!(");
+                self.print_type(container);
+                self.word(",");
+                self.space();
+
+                if let Some((&first, rest)) = fields.split_first() {
+                    self.print_ident(first);
+
+                    for &field in rest {
+                        self.word(".");
+                        self.print_ident(field);
+                    }
+                }
+
+                self.word(")");
+            }
             hir::TyKind::Typeof(ref e) => {
                 self.word("typeof(");
                 self.print_anon_const(e);

@@ -817,6 +817,7 @@ impl TyCoercionStability {
                 | TyKind::FnPtr(_)
                 | TyKind::Pat(..)
                 | TyKind::Never
+                | TyKind::FieldOf(..)
                 | TyKind::Tup(_)
                 | TyKind::Path(_) => Self::Deref,
                 TyKind::OpaqueDef(..)
@@ -875,6 +876,7 @@ impl TyCoercionStability {
                 | ty::Str
                 | ty::Slice(..)
                 | ty::Adt(..)
+                | ty::Field(..)
                 | ty::Foreign(_)
                 | ty::FnDef(..)
                 | ty::Coroutine(..)

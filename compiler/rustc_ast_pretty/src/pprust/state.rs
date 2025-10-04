@@ -1324,6 +1324,25 @@ impl<'a> State<'a> {
                 self.print_expr(&length.value, FixupContext::default());
                 self.word("]");
             }
+            ast::TyKind::FieldOf(container, fields) => {
+                self.word("builtin # field_of");
+                self.popen();
+                let ib = self.ibox(0);
+                self.print_type(container);
+                self.word(",");
+                self.space();
+
+                if let Some((&first, rest)) = fields.split_first() {
+                    self.print_ident(first);
+
+                    for &field in rest {
+                        self.word(".");
+                        self.print_ident(field);
+                    }
+                }
+                self.end(ib);
+                self.pclose();
+            }
             ast::TyKind::Typeof(e) => {
                 self.word("typeof(");
                 self.print_expr(&e.value, FixupContext::default());
