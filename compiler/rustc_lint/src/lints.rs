@@ -2870,11 +2870,11 @@ pub(crate) struct ExternCrateNotIdiomatic {
 }
 
 // FIXME: make this translatable
-pub(crate) struct AmbiguousGlobImports {
+pub(crate) struct AmbiguousImports {
     pub ambiguity: AmbiguityErrorDiag,
 }
 
-impl<'a, G: EmissionGuarantee> LintDiagnostic<'a, G> for AmbiguousGlobImports {
+impl<'a, G: EmissionGuarantee> LintDiagnostic<'a, G> for AmbiguousImports {
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, G>) {
         diag.primary_message(self.ambiguity.msg.clone());
         rustc_errors::report_ambiguity_error(diag, self.ambiguity);

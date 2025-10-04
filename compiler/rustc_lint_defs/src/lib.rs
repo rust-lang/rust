@@ -682,7 +682,7 @@ pub enum BuiltinLintDiag {
         vis_span: Span,
         ident_span: Span,
     },
-    AmbiguousGlobImports {
+    AmbiguousImports {
         diag: AmbiguityErrorDiag,
     },
     AmbiguousGlobReexports {

@@ -21,7 +21,7 @@ use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::lint::builtin::{
-    ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE, AMBIGUOUS_GLOB_IMPORTS,
+    ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE, AMBIGUOUS_GLOB_IMPORTS, AMBIGUOUS_PANIC_IMPORTS,
     MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
 };
 use rustc_session::lint::{AmbiguityErrorDiag, BuiltinLintDiag};
@@ -42,9 +42,9 @@ use crate::errors::{
 use crate::imports::{Import, ImportKind};
 use crate::late::{DiagMetadata, PatternSource, Rib};
 use crate::{
-    AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, BindingError, BindingKey, Finalize,
-    ForwardGenericParamBanReason, HasGenericParams, LexicalScopeBinding, MacroRulesScope, Module,
-    ModuleKind, ModuleOrUniformRoot, NameBinding, NameBindingKind, ParentScope, PathResult,
+    AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, AmbiguityWarning, BindingError, BindingKey,
+    Finalize, ForwardGenericParamBanReason, HasGenericParams, LexicalScopeBinding, MacroRulesScope,
+    Module, ModuleKind, ModuleOrUniformRoot, NameBinding, NameBindingKind, ParentScope, PathResult,
     PrivacyError, ResolutionError, Resolver, Scope, ScopeSet, Segment, UseError, Used,
     VisResolutionError, errors as errs, path_names_to_string,
 };
@@ -144,15 +144,21 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         for ambiguity_error in &self.ambiguity_errors {
             let diag = self.ambiguity_diagnostics(ambiguity_error);
-            if ambiguity_error.warning {
+            if let Some(ambiguity_warning) = ambiguity_error.warning {
                 let NameBindingKind::Import { import, .. } = ambiguity_error.b1.0.kind else {
                     unreachable!()
                 };
+
+                let lint = match ambiguity_warning {
+                    AmbiguityWarning::GlobImport => AMBIGUOUS_GLOB_IMPORTS,
+                    AmbiguityWarning::PanicImport => AMBIGUOUS_PANIC_IMPORTS,
+                };
+
                 self.lint_buffer.buffer_lint(
-                    AMBIGUOUS_GLOB_IMPORTS,
+                    lint,
                     import.root_id,
                     ambiguity_error.ident.span,
-                    BuiltinLintDiag::AmbiguousGlobImports { diag },
+                    BuiltinLintDiag::AmbiguousImports { diag },
                 );
             } else {
                 let mut err = struct_span_code_err!(self.dcx(), diag.span, E0659, "{}", diag.msg);
