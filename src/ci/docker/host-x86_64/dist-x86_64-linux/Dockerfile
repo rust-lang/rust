@@ -93,6 +93,8 @@ ENV RUST_CONFIGURE_ARGS \
       --set llvm.libzstd=true \
       --set rust.jemalloc \
       --set rust.bootstrap-override-lld=true \
+      --set rust.lld=true \
+      --set target.x86_64-unknown-linux-gnu.default-linker-linux="self-contained-lld-cc" \
       --set rust.lto=thin \
       --set rust.codegen-units=1
 

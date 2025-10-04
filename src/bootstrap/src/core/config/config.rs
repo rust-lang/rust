@@ -42,9 +42,9 @@ use crate::core::config::toml::install::Install;
 use crate::core::config::toml::llvm::Llvm;
 use crate::core::config::toml::rust::{
     BootstrapOverrideLld, Rust, RustOptimize, check_incompatible_options_for_ci_rustc,
-    default_lld_opt_in_targets, parse_codegen_backends,
+    parse_codegen_backends,
 };
-use crate::core::config::toml::target::Target;
+use crate::core::config::toml::target::{DefaultLinuxLinkerOverride, Target, TomlTarget};
 use crate::core::config::{
     CompilerBuiltins, DebuginfoLevel, DryRun, GccCiMode, LlvmLibunwind, Merge, ReplaceOpt,
     RustcLto, SplitDebuginfo, StringOrBool, threads_from_config,
@@ -623,6 +623,8 @@ impl Config {
         let bootstrap_override_lld =
             rust_bootstrap_override_lld.or(rust_bootstrap_override_lld_legacy).unwrap_or_default();
 
+        let lld_enabled = rust_lld_enabled.unwrap_or(false);
+
         if rust_optimize.as_ref().is_some_and(|v| matches!(v, RustOptimize::Bool(false))) {
             eprintln!(
                 "WARNING: setting `optimize` to `false` is known to cause errors and \
@@ -831,9 +833,59 @@ impl Config {
 
         if let Some(t) = toml.target {
             for (triple, cfg) in t {
+                let TomlTarget {
+                    cc: target_cc,
+                    cxx: target_cxx,
+                    ar: target_ar,
+                    ranlib: target_ranlib,
+                    default_linker: target_default_linker,
+                    default_linker_linux: target_default_linker_linux,
+                    linker: target_linker,
+                    split_debuginfo: target_split_debuginfo,
+                    llvm_config: target_llvm_config,
+                    llvm_has_rust_patches: target_llvm_has_rust_patches,
+                    llvm_filecheck: target_llvm_filecheck,
+                    llvm_libunwind: target_llvm_libunwind,
+                    sanitizers: target_sanitizers,
+                    profiler: target_profiler,
+                    rpath: target_rpath,
+                    crt_static: target_crt_static,
+                    musl_root: target_musl_root,
+                    musl_libdir: target_musl_libdir,
+                    wasi_root: target_wasi_root,
+                    qemu_rootfs: target_qemu_rootfs,
+                    no_std: target_no_std,
+                    codegen_backends: target_codegen_backends,
+                    runner: target_runner,
+                    optimized_compiler_builtins: target_optimized_compiler_builtins,
+                    jemalloc: target_jemalloc,
+                } = cfg;
+
                 let mut target = Target::from_triple(&triple);
 
-                if let Some(ref s) = cfg.llvm_config {
+                if let Some(linux_override) = target_default_linker_linux.as_ref() {
+                    if target_default_linker.is_some() || rust_default_linker.is_some() {
+                        panic!(
+                            "cannot set both `default-linker` and `default-linker-linux` for target {triple}"
+                        );
+                    }
+                    if !triple.contains("linux-gnu") {
+                        panic!(
+                            "`default-linker-linux` can only be set for Linux GNU targets, not for {triple}"
+                        );
+                    }
+                    match linux_override {
+                        DefaultLinuxLinkerOverride::SelfContainedLldCc => {
+                            if !lld_enabled {
+                                panic!(
+                                    "Trying to override the default Linux linker for {triple} to be self-contained LLD, but LLD is not being built. Enable it with rust.lld = true."
+                                );
+                            }
+                        }
+                    }
+                }
+
+                if let Some(ref s) = target_llvm_config {
                     if download_rustc_commit.is_some() && triple == *host_target.triple {
                         panic!(
                             "setting llvm_config for the host is incompatible with download-rustc"
@@ -841,46 +893,48 @@ impl Config {
                     }
                     target.llvm_config = Some(src.join(s));
                 }
-                if let Some(patches) = cfg.llvm_has_rust_patches {
+                if let Some(patches) = target_llvm_has_rust_patches {
                     assert!(
-                        build_submodules == Some(false) || cfg.llvm_config.is_some(),
+                        build_submodules == Some(false) || target_llvm_config.is_some(),
                         "use of `llvm-has-rust-patches` is restricted to cases where either submodules are disabled or llvm-config been provided"
                     );
                     target.llvm_has_rust_patches = Some(patches);
                 }
-                if let Some(ref s) = cfg.llvm_filecheck {
+                if let Some(ref s) = target_llvm_filecheck {
                     target.llvm_filecheck = Some(src.join(s));
                 }
-                target.llvm_libunwind = cfg.llvm_libunwind.as_ref().map(|v| {
+                target.llvm_libunwind = target_llvm_libunwind.as_ref().map(|v| {
                     v.parse().unwrap_or_else(|_| {
                         panic!("failed to parse target.{triple}.llvm-libunwind")
                     })
                 });
-                if let Some(s) = cfg.no_std {
+                if let Some(s) = target_no_std {
                     target.no_std = s;
                 }
-                target.cc = cfg.cc.map(PathBuf::from);
-                target.cxx = cfg.cxx.map(PathBuf::from);
-                target.ar = cfg.ar.map(PathBuf::from);
-                target.ranlib = cfg.ranlib.map(PathBuf::from);
-                target.linker = cfg.linker.map(PathBuf::from);
-                target.crt_static = cfg.crt_static;
-                target.musl_root = cfg.musl_root.map(PathBuf::from);
-                target.musl_libdir = cfg.musl_libdir.map(PathBuf::from);
-                target.wasi_root = cfg.wasi_root.map(PathBuf::from);
-                target.qemu_rootfs = cfg.qemu_rootfs.map(PathBuf::from);
-                target.runner = cfg.runner;
-                target.sanitizers = cfg.sanitizers;
-                target.profiler = cfg.profiler;
-                target.rpath = cfg.rpath;
-                target.optimized_compiler_builtins = cfg.optimized_compiler_builtins;
-                target.jemalloc = cfg.jemalloc;
-                if let Some(backends) = cfg.codegen_backends {
+                target.cc = target_cc.map(PathBuf::from);
+                target.cxx = target_cxx.map(PathBuf::from);
+                target.ar = target_ar.map(PathBuf::from);
+                target.ranlib = target_ranlib.map(PathBuf::from);
+                target.linker = target_linker.map(PathBuf::from);
+                target.crt_static = target_crt_static;
+                target.default_linker = target_default_linker;
+                target.default_linker_linux = target_default_linker_linux;
+                target.musl_root = target_musl_root.map(PathBuf::from);
+                target.musl_libdir = target_musl_libdir.map(PathBuf::from);
+                target.wasi_root = target_wasi_root.map(PathBuf::from);
+                target.qemu_rootfs = target_qemu_rootfs.map(PathBuf::from);
+                target.runner = target_runner;
+                target.sanitizers = target_sanitizers;
+                target.profiler = target_profiler;
+                target.rpath = target_rpath;
+                target.optimized_compiler_builtins = target_optimized_compiler_builtins;
+                target.jemalloc = target_jemalloc;
+                if let Some(backends) = target_codegen_backends {
                     target.codegen_backends =
                         Some(parse_codegen_backends(backends, &format!("target.{triple}")))
                 }
 
-                target.split_debuginfo = cfg.split_debuginfo.as_ref().map(|v| {
+                target.split_debuginfo = target_split_debuginfo.as_ref().map(|v| {
                     v.parse().unwrap_or_else(|_| {
                         panic!("invalid value for target.{triple}.split-debuginfo")
                     })
@@ -897,28 +951,6 @@ impl Config {
             llvm_download_ci_llvm,
             llvm_assertions,
         );
-
-        // We make `x86_64-unknown-linux-gnu` use the self-contained linker by default, so we will
-        // build our internal lld and use it as the default linker, by setting the `rust.lld` config
-        // to true by default:
-        // - on the `x86_64-unknown-linux-gnu` target
-        // - when building our in-tree llvm (i.e. the target has not set an `llvm-config`), so that
-        //   we're also able to build the corresponding lld
-        // - or when using an external llvm that's downloaded from CI, which also contains our prebuilt
-        //   lld
-        // - otherwise, we'd be using an external llvm, and lld would not necessarily available and
-        //   thus, disabled
-        // - similarly, lld will not be built nor used by default when explicitly asked not to, e.g.
-        //   when the config sets `rust.lld = false`
-        let lld_enabled = if default_lld_opt_in_targets().contains(&host_target.triple.to_string())
-            && hosts == [host_target]
-        {
-            let no_llvm_config =
-                target_config.get(&host_target).is_none_or(|config| config.llvm_config.is_none());
-            rust_lld_enabled.unwrap_or(llvm_from_ci || no_llvm_config)
-        } else {
-            rust_lld_enabled.unwrap_or(false)
-        };
 
         if llvm_from_ci {
             let warn = |option: &str| {
