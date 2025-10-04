@@ -2000,14 +2000,6 @@ pub(crate) struct TraitAliasCannotBeAuto {
 }
 
 #[derive(Diagnostic)]
-#[diag(parse_trait_alias_cannot_be_const)]
-pub(crate) struct TraitAliasCannotBeConst {
-    #[primary_span]
-    #[label(parse_trait_alias_cannot_be_const)]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(parse_trait_alias_cannot_be_unsafe)]
 pub(crate) struct TraitAliasCannotBeUnsafe {
     #[primary_span]
