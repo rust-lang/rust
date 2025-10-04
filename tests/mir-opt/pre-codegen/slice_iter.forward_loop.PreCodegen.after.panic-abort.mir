@@ -5,16 +5,15 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     debug f => _2;
     let mut _0: ();
     let mut _22: std::option::Option<&T>;
-    let mut _24: &impl Fn(&T);
-    let mut _25: (&T,);
-    let _26: ();
+    let mut _23: &impl Fn(&T);
+    let mut _24: (&T,);
+    let _25: ();
     scope 1 {
         debug ((iter: std::slice::Iter<'_, T>).0: std::ptr::NonNull<T>) => _6;
         debug ((iter: std::slice::Iter<'_, T>).1: *const T) => _9;
         debug ((iter: std::slice::Iter<'_, T>).2: std::marker::PhantomData<&T>) => const ZeroSized: PhantomData<&T>;
-        let _23: &T;
         scope 2 {
-            debug x => _23;
+            debug x => ((_22 as Some).0: &T);
         }
         scope 16 (inlined <std::slice::Iter<'_, T> as Iterator>::next) {
             let mut _6: std::ptr::NonNull<T>;
@@ -134,7 +133,6 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     }
 
     bb4: {
-        StorageLive(_22);
         StorageLive(_10);
         StorageLive(_11);
         StorageLive(_18);
@@ -198,7 +196,6 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     }
 
     bb10: {
-        StorageDead(_22);
         drop(_2) -> [return: bb11, unwind unreachable];
     }
 
@@ -224,18 +221,16 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         StorageDead(_18);
         StorageDead(_11);
         StorageDead(_10);
-        _23 = copy ((_22 as Some).0: &T);
+        StorageLive(_23);
+        _23 = &_2;
         StorageLive(_24);
-        _24 = &_2;
-        StorageLive(_25);
-        _25 = (copy _23,);
-        _26 = <impl Fn(&T) as Fn<(&T,)>>::call(move _24, move _25) -> [return: bb14, unwind unreachable];
+        _24 = (copy ((_22 as Some).0: &T),);
+        _25 = <impl Fn(&T) as Fn<(&T,)>>::call(move _23, move _24) -> [return: bb14, unwind unreachable];
     }
 
     bb14: {
-        StorageDead(_25);
         StorageDead(_24);
-        StorageDead(_22);
+        StorageDead(_23);
         goto -> bb4;
     }
 }

@@ -30,8 +30,7 @@ pub fn use_checked_sub(x: u32, rhs: u32) {
     // CHECK: inlined{{.+}}u32{{.+}}checked_sub
     // CHECK: [[DELTA:_[0-9]+]] = SubUnchecked(copy _1, copy _2)
     // CHECK: [[TEMP1:_.+]] = Option::<u32>::Some(move [[DELTA]]);
-    // CHECK: [[TEMP2:_.+]] = {{move|copy}} (([[TEMP1]] as Some).0: u32);
-    // CHECK: do_something({{move|copy}} [[TEMP2]])
+    // CHECK: do_something(move (([[TEMP1]] as Some).0: u32))
     if let Some(delta) = x.checked_sub(rhs) {
         do_something(delta);
     }
