@@ -8,9 +8,9 @@ use rustc_middle::{bug, mir};
 use rustc_span::DUMMY_SP;
 use tracing::{debug, instrument, trace};
 
-use super::VALTREE_MAX_NODES;
 use super::eval_queries::{mk_eval_cx_to_read_const_val, op_to_const};
 use super::machine::CompileTimeInterpCx;
+use super::{InterpretationResult as _, VALTREE_MAX_NODES};
 use crate::const_eval::CanAccessMutGlobal;
 use crate::interpret::{
     ImmTy, Immediate, InternKind, MPlaceTy, MemPlaceMeta, MemoryKind, PlaceTy, Projectable, Scalar,
@@ -347,6 +347,20 @@ pub fn valtree_to_const_value<'tcx>(
             bug!("no ValTree should have been created for type {:?}", cv.ty.kind())
         }
     }
+}
+
+#[instrument(skip(tcx), level = "debug", ret)]
+pub(crate) fn valtree_to_const_alloc<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    env: ty::TypingEnv<'tcx>,
+    val: ty::Value<'tcx>,
+) -> mir::ConstAlloc<'tcx> {
+    let mut ecx = mk_eval_cx_to_read_const_val(tcx, DUMMY_SP, env, CanAccessMutGlobal::No);
+    let layout = ecx.layout_of(val.ty).unwrap();
+    let mplace = create_valtree_place(&mut ecx, layout, val.valtree);
+    valtree_into_mplace(&mut ecx, &mplace, val.valtree);
+    intern_const_alloc_recursive(&mut ecx, InternKind::Constant, &mplace).unwrap();
+    mir::ConstAlloc::make_result(mplace, &mut ecx)
 }
 
 /// Put a valtree into memory and return a reference to that.

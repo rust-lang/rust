@@ -95,9 +95,8 @@ use rustc_hir::def::DefKind;
 use rustc_hir::lints::DelayedLint;
 use rustc_hir::{self as hir};
 use rustc_middle::middle;
-use rustc_middle::mir::interpret::GlobalId;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, Const, Ty, TyCtxt};
+use rustc_middle::ty::{Const, Ty, TyCtxt};
 use rustc_session::parse::feature_err;
 use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::traits;
@@ -227,11 +226,22 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
                 tcx.ensure_ok().eval_static_initializer(item_def_id);
                 check::maybe_check_static_with_link_section(tcx, item_def_id);
             }
-            DefKind::Const if !tcx.generics_of(item_def_id).own_requires_monomorphization() => {
+            // FIXME(mgca): move this to `wfcheck`?
+            DefKind::AnonConst
+                if tcx.anon_const_kind(item_def_id)
+                    == rustc_middle::ty::AnonConstKind::ItemBody
+                    && tcx.def_kind(tcx.parent(item_def_id.to_def_id())) == DefKind::Const
+                    && !tcx.generics_of(item_def_id).requires_monomorphization(tcx) =>
+            {
+                // Make sure the anon const is lowered
+                let const_item = tcx.parent(item_def_id.to_def_id());
+                let _ = tcx.const_of_item(const_item);
+
+                use rustc_middle::ty;
                 // FIXME(generic_const_items): Passing empty instead of identity args is fishy but
                 //                             seems to be fine for now. Revisit this!
                 let instance = ty::Instance::new_raw(item_def_id.into(), ty::GenericArgs::empty());
-                let cid = GlobalId { instance, promoted: None };
+                let cid = rustc_middle::mir::interpret::GlobalId { instance, promoted: None };
                 let typing_env = ty::TypingEnv::fully_monomorphized();
                 tcx.ensure_ok().eval_to_const_value_raw(typing_env.as_query_input(cid));
             }

@@ -2204,6 +2204,12 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
         def_id: DefId,
         args: &'tcx [GenericArg<'tcx>],
     ) -> Result<(), PrintError> {
+        if let DefKind::AnonConst = self.tcx().def_kind(def_id)
+            && let ty::AnonConstKind::ItemBody = self.tcx().anon_const_kind(def_id)
+        {
+            return self.print_def_path(self.tcx().parent(def_id), args);
+        }
+
         if args.is_empty() {
             match self.try_print_trimmed_def_path(def_id)? {
                 true => return Ok(()),

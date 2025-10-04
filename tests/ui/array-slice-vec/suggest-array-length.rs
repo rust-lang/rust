@@ -1,11 +1,14 @@
-//@ run-rustfix
 #![allow(unused_variables, dead_code, non_upper_case_globals)]
 
 fn main() {
     const Foo: [i32; _] = [1, 2, 3];
     //~^ ERROR the placeholder `_` is not allowed within types on item signatures for constants
+    //~| ERROR cycle detected when
+    //~| ERROR cycle detected when
     const REF_FOO: &[u8; _] = &[1];
     //~^ ERROR the placeholder `_` is not allowed within types on item signatures for constants
+    //~| ERROR cycle detected when
+    //~| ERROR cycle detected when
     static Statik: [i32; _] = [1, 2, 3];
     //~^ ERROR the placeholder `_` is not allowed within types on item signatures for static variables
     static REF_STATIK: &[u8; _] = &[1];

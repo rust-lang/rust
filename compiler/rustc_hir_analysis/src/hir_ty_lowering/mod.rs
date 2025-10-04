@@ -2174,7 +2174,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
             // We error when the type contains unsubstituted generics since we do not currently
             // give the anon const any of the generics from the parent.
-            if anon_const_type.has_non_region_param() {
+            if tcx.features().generic_const_parameter_types()
+                && anon_const_type.has_non_region_param()
+            {
                 let e = self.dcx().span_err(
                     const_arg.span(),
                     "anonymous constants referencing generics are not yet supported",
@@ -2217,6 +2219,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
             hir::ConstArgKind::Anon(anon) => self.lower_anon_const(anon),
             hir::ConstArgKind::Infer(span, ()) => self.ct_infer(None, span),
+            hir::ConstArgKind::Error(_, e) => ty::Const::new_error(tcx, e),
         }
     }
 
@@ -2339,15 +2342,27 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // generic arguments, just weaker type inference.
         let ty = tcx.type_of(anon.def_id).instantiate_identity();
 
-        match self.try_lower_anon_const_lit(ty, expr) {
-            Some(v) => v,
-            None => ty::Const::new_unevaluated(
+        let mk_uv = || {
+            ty::Const::new_unevaluated(
                 tcx,
                 ty::UnevaluatedConst {
                     def: anon.def_id.to_def_id(),
                     args: ty::GenericArgs::identity_for_item(tcx, anon.def_id.to_def_id()),
                 },
-            ),
+            )
+        };
+
+        // On stable we always lower the anon const on the rhs of const items
+        // to be an anon const.
+        if tcx.anon_const_kind(anon.def_id) == ty::AnonConstKind::ItemBody
+            && !tcx.features().min_generic_const_args()
+        {
+            return mk_uv();
+        }
+
+        match self.try_lower_anon_const_lit(ty, expr) {
+            Some(v) => v,
+            None => mk_uv(),
         }
     }
 

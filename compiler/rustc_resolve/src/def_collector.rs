@@ -13,7 +13,7 @@ use rustc_span::hygiene::LocalExpnId;
 use rustc_span::{Span, Symbol, sym};
 use tracing::debug;
 
-use crate::{ImplTraitContext, InvocationParent, Resolver};
+use crate::{FxHashMap, ImplTraitContext, InvocationParent, Resolver};
 
 pub(crate) fn collect_definitions(
     resolver: &mut Resolver<'_, '_>,
@@ -21,7 +21,7 @@ pub(crate) fn collect_definitions(
     expansion: LocalExpnId,
 ) {
     let invocation_parent = resolver.invocation_parents[&expansion];
-    let mut visitor = DefCollector { resolver, expansion, invocation_parent };
+    let mut visitor = DefCollector { resolver, expansion, invocation_parent, overriden_anon_const_spans: FxHashMap::default(), };
     fragment.visit_with(&mut visitor);
 }
 
@@ -30,6 +30,7 @@ struct DefCollector<'a, 'ra, 'tcx> {
     resolver: &'a mut Resolver<'ra, 'tcx>,
     invocation_parent: InvocationParent,
     expansion: LocalExpnId,
+    overriden_anon_const_spans: FxHashMap<NodeId, Span>,
 }
 
 impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
@@ -121,7 +122,13 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 mutability: s.mutability,
                 nested: false,
             },
-            ItemKind::Const(..) => DefKind::Const,
+            ItemKind::Const(box ConstItem { body, .. }) => {
+                if let Some(anon) = body {
+                    self.overriden_anon_const_spans.insert(anon.id, i.span);
+                }
+                
+                DefKind::Const
+            }
             ItemKind::Fn(..) | ItemKind::Delegation(..) => DefKind::Fn,
             ItemKind::MacroDef(ident, def) => {
                 let edition = i.span.edition();
@@ -338,7 +345,13 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
         let (ident, def_kind) = match &i.kind {
             AssocItemKind::Fn(box Fn { ident, .. })
             | AssocItemKind::Delegation(box Delegation { ident, .. }) => (*ident, DefKind::AssocFn),
-            AssocItemKind::Const(box ConstItem { ident, .. }) => (*ident, DefKind::AssocConst),
+            AssocItemKind::Const(box ConstItem { ident, body, .. }) => {
+                if let Some(anon) = body {
+                    self.overriden_anon_const_spans.insert(anon.id, i.span);
+                }
+
+                (*ident, DefKind::AssocConst)
+            },
             AssocItemKind::Type(box TyAlias { ident, .. }) => (*ident, DefKind::AssocTy),
             AssocItemKind::MacCall(..) | AssocItemKind::DelegationMac(..) => {
                 return self.visit_macro_invoc(i.id);
@@ -357,7 +370,10 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
     }
 
     fn visit_anon_const(&mut self, constant: &'a AnonConst) {
-        let parent = self.create_def(constant.id, None, DefKind::AnonConst, constant.value.span);
+        // TODO: i dont think this actually does anything?? what does this span even correspond to
+        let span = self.overriden_anon_const_spans.get(&constant.id).copied().unwrap_or(constant.value.span);
+
+        let parent = self.create_def(constant.id, None, DefKind::AnonConst, span);
         self.with_parent(parent, |this| visit::walk_anon_const(this, constant));
     }
 

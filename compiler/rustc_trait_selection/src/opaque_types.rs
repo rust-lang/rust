@@ -1,5 +1,6 @@
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::OpaqueTyOrigin;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
@@ -211,10 +212,16 @@ impl<'tcx> LazyOpaqueTyEnv<'tcx> {
 
 pub fn report_item_does_not_constrain_error<'tcx>(
     tcx: TyCtxt<'tcx>,
-    item_def_id: LocalDefId,
+    mut item_def_id: LocalDefId,
     def_id: LocalDefId,
     non_defining_use: Option<(OpaqueTypeKey<'tcx>, Span)>,
 ) -> ErrorGuaranteed {
+    if let DefKind::AnonConst = tcx.def_kind(item_def_id)
+        && let ty::AnonConstKind::ItemBody = tcx.anon_const_kind(item_def_id)
+    {
+        item_def_id = tcx.parent(item_def_id.to_def_id()).expect_local();
+    }
+
     let span = tcx.def_ident_span(item_def_id).unwrap_or_else(|| tcx.def_span(item_def_id));
     let opaque_type_span = tcx.def_span(def_id);
     let opaque_type_name = tcx.def_path_str(def_id);

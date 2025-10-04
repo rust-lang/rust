@@ -416,11 +416,9 @@ fn mir_promoted(
         {
             tcx.mir_const_qualif(def)
         }
-        DefKind::AssocConst
-        | DefKind::Const
-        | DefKind::Static { .. }
-        | DefKind::InlineConst
-        | DefKind::AnonConst => tcx.mir_const_qualif(def),
+        DefKind::Static { .. } | DefKind::InlineConst | DefKind::AnonConst => {
+            tcx.mir_const_qualif(def)
+        }
         _ => ConstQualifs::default(),
     };
 
@@ -525,12 +523,14 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
     // in borrowck cycles if WF requires looking into an opaque hidden type.
     let root = tcx.typeck_root_def_id(def.to_def_id());
     match tcx.def_kind(root) {
-        DefKind::Fn
-        | DefKind::AssocFn
-        | DefKind::Static { .. }
-        | DefKind::Const
-        | DefKind::AssocConst => {
+        DefKind::Fn | DefKind::AssocFn | DefKind::Static { .. } => {
             if let Err(guar) = tcx.ensure_ok().check_well_formed(root.expect_local()) {
+                body.tainted_by_errors = Some(guar);
+            }
+        }
+        // FIXME(const_generics): this probably should be more general
+        DefKind::AnonConst if let ty::AnonConstKind::ItemBody = tcx.anon_const_kind(root) => {
+            if let Err(guar) = tcx.ensure_ok().check_well_formed(tcx.parent(root).expect_local()) {
                 body.tainted_by_errors = Some(guar);
             }
         }

@@ -73,9 +73,17 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
         }
 
         let def_id = item.owner_id.def_id.into();
-        let parent = cx.tcx.parent(def_id);
-        let parent_def_kind = cx.tcx.def_kind(parent);
-        let parent_opt_item_name = cx.tcx.opt_item_name(parent);
+        let mut parent = cx.tcx.parent(def_id);
+        let mut parent_def_kind = cx.tcx.def_kind(parent);
+        let mut parent_opt_item_name = cx.tcx.opt_item_name(parent);
+
+        if parent_def_kind == DefKind::AnonConst
+            && cx.tcx.anon_const_kind(parent) == rustc_middle::ty::AnonConstKind::ItemBody
+        {
+            parent = cx.tcx.parent(parent);
+            parent_def_kind = cx.tcx.def_kind(parent);
+            parent_opt_item_name = cx.tcx.opt_item_name(parent);
+        }
 
         // Per RFC we (currently) ignore anon-const (`const _: Ty = ...`) in top-level module.
         if self.body_depth == 1
@@ -159,9 +167,14 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                 // item parent as transparent to module and for consistency we have to do the same
                 // for impl, otherwise the item-def and impl-def won't have the same parent.
                 let outermost_impl_parent = peel_parent_while(cx.tcx, parent, |tcx, did| {
-                    tcx.def_kind(did) == DefKind::Mod
+                    let is_underscore_const = tcx.def_kind(did) == DefKind::Mod
                         || (tcx.def_kind(did) == DefKind::Const
-                            && tcx.opt_item_name(did) == Some(kw::Underscore))
+                            && tcx.opt_item_name(did) == Some(kw::Underscore));
+
+                    let is_const_body = tcx.def_kind(did) == DefKind::AnonConst
+                        && tcx.anon_const_kind(did) == rustc_middle::ty::AnonConstKind::ItemBody;
+
+                    is_underscore_const || is_const_body
                 });
 
                 // 2. We check if any of the paths reference a the `impl`-parent.
@@ -317,9 +330,14 @@ fn did_has_local_parent(
     };
 
     peel_parent_while(tcx, parent_did, |tcx, did| {
-        tcx.def_kind(did) == DefKind::Mod
+        let is_underscore_const = tcx.def_kind(did) == DefKind::Mod
             || (tcx.def_kind(did) == DefKind::Const
-                && tcx.opt_item_name(did) == Some(kw::Underscore))
+                && tcx.opt_item_name(did) == Some(kw::Underscore));
+
+        let is_const_body = tcx.def_kind(did) == DefKind::AnonConst
+            && tcx.anon_const_kind(did) == rustc_middle::ty::AnonConstKind::ItemBody;
+
+        is_underscore_const || is_const_body
     })
     .map(|parent_did| parent_did == impl_parent || Some(parent_did) == outermost_impl_parent)
     .unwrap_or(false)

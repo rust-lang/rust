@@ -137,7 +137,28 @@ impl<'tcx> TaitConstraintLocator<'tcx> {
     }
 
     #[instrument(skip(self), level = "debug")]
-    fn check(&mut self, item_def_id: LocalDefId) {
+    fn check(&mut self, mut item_def_id: LocalDefId) {
+        let def_kind = self.tcx.def_kind(item_def_id);
+
+        let has_const_body = if let DefKind::AssocConst = def_kind {
+            let assoc_item = self.tcx.associated_item(item_def_id);
+            match assoc_item.container {
+                ty::AssocContainer::InherentImpl | ty::AssocContainer::TraitImpl(_) => true,
+                ty::AssocContainer::Trait => assoc_item.defaultness(self.tcx).has_value(),
+            }
+        } else {
+            matches!(def_kind, DefKind::Const)
+        };
+
+        if has_const_body {
+            let const_body = self.tcx.const_of_item(item_def_id).instantiate_identity();
+            match const_body.kind() {
+                ty::ConstKind::Unevaluated(uv) => item_def_id = uv.def.expect_local(),
+                ty::ConstKind::Error(_) => return,
+                _ => bug!("unexpected non anon const const body"),
+            }
+        }
+
         // Don't try to check items that cannot possibly constrain the type.
         let tcx = self.tcx;
         if !tcx.has_typeck_results(item_def_id) {
