@@ -1691,7 +1691,10 @@ impl<'tcx> Liveness<'_, 'tcx> {
                 if ln == self.exit_ln { false } else { self.assigned_on_exit(ln, var) };
 
             let mut typo = None;
-            for (hir_id, _, span) in &hir_ids_and_spans {
+            let filtered_hir_ids_and_spans = hir_ids_and_spans.iter().filter(|(hir_id, ..)| {
+                !matches!(self.ir.tcx.parent_hir_node(*hir_id), hir::Node::Param(_))
+            });
+            for (hir_id, _, span) in filtered_hir_ids_and_spans.clone() {
                 let ty = self.typeck_results.node_type(*hir_id);
                 if let ty::Adt(adt, _) = ty.peel_refs().kind() {
                     let name = Symbol::intern(&name);
@@ -1717,7 +1720,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
                 }
             }
             if typo.is_none() {
-                for (hir_id, _, span) in &hir_ids_and_spans {
+                for (hir_id, _, span) in filtered_hir_ids_and_spans {
                     let ty = self.typeck_results.node_type(*hir_id);
                     // Look for consts of the same type with similar names as well, not just unit
                     // structs and variants.

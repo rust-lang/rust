@@ -58,16 +58,7 @@ warning: unused variable: `Foo`
   --> $DIR/lint-uppercase-variables.rs:33:17
    |
 LL |     fn in_param(Foo: foo::Foo) {}
-   |                 ^^^
-   |
-help: if this is intentional, prefix it with an underscore
-   |
-LL |     fn in_param(_Foo: foo::Foo) {}
-   |                 +
-help: you might have meant to pattern match on the similarly named variant `Foo`
-   |
-LL |     fn in_param(foo::Foo::Foo: foo::Foo) {}
-   |                 ++++++++++
+   |                 ^^^ help: if this is intentional, prefix it with an underscore: `_Foo`
 
 error: structure field `X` should have a snake case name
   --> $DIR/lint-uppercase-variables.rs:10:5
