@@ -57,12 +57,35 @@ pub(crate) fn write_filenames_to_buffer(filenames: &[impl AsRef<str>]) -> Vec<u8
     })
 }
 
+/// Holds tables of the various region types in one struct.
+///
+/// Don't pass this struct across FFI; pass the individual region tables as
+/// pointer/length pairs instead.
+///
+/// Each field name has a `_regions` suffix for improved readability after
+/// exhaustive destructing, which ensures that all region types are handled.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct Regions {
+    pub(crate) code_regions: Vec<ffi::CodeRegion>,
+    pub(crate) expansion_regions: Vec<ffi::ExpansionRegion>,
+    pub(crate) branch_regions: Vec<ffi::BranchRegion>,
+}
+
+impl Regions {
+    /// Returns true if none of this structure's tables contain any regions.
+    pub(crate) fn has_no_regions(&self) -> bool {
+        let Self { code_regions, expansion_regions, branch_regions } = self;
+
+        code_regions.is_empty() && expansion_regions.is_empty() && branch_regions.is_empty()
+    }
+}
+
 pub(crate) fn write_function_mappings_to_buffer(
     virtual_file_mapping: &[u32],
     expressions: &[ffi::CounterExpression],
-    regions: &ffi::Regions,
+    regions: &Regions,
 ) -> Vec<u8> {
-    let ffi::Regions { code_regions, expansion_regions, branch_regions } = regions;
+    let Regions { code_regions, expansion_regions, branch_regions } = regions;
 
     // SAFETY:
     // - All types are FFI-compatible and have matching representations in Rust/C++.

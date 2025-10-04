@@ -63,7 +63,7 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
 
     ///x Creates an integer type with the given number of bits, e.g., i24
     pub(crate) fn type_ix(&self, num_bits: u64) -> &'ll Type {
-        unsafe { llvm::LLVMIntTypeInContext(self.llcx(), num_bits as c_uint) }
+        llvm::LLVMIntTypeInContext(self.llcx(), num_bits as c_uint)
     }
 
     pub(crate) fn type_vector(&self, ty: &'ll Type, len: u64) -> &'ll Type {
@@ -178,7 +178,7 @@ impl<'ll, CX: Borrow<SCx<'ll>>> BaseTypeCodegenMethods for GenericCx<'ll, CX> {
     }
 
     fn type_i128(&self) -> &'ll Type {
-        unsafe { llvm::LLVMIntTypeInContext(self.llcx(), 128) }
+        self.type_ix(128)
     }
 
     fn type_isize(&self) -> &'ll Type {
@@ -210,11 +210,11 @@ impl<'ll, CX: Borrow<SCx<'ll>>> BaseTypeCodegenMethods for GenericCx<'ll, CX> {
     }
 
     fn type_ptr(&self) -> &'ll Type {
-        self.type_ptr_ext(AddressSpace::ZERO)
+        llvm_type_ptr(self.llcx())
     }
 
     fn type_ptr_ext(&self, address_space: AddressSpace) -> &'ll Type {
-        unsafe { llvm::LLVMPointerTypeInContext(self.llcx(), address_space.0) }
+        llvm_type_ptr_in_address_space(self.llcx(), address_space)
     }
 
     fn element_type(&self, ty: &'ll Type) -> &'ll Type {
@@ -253,15 +253,15 @@ impl<'ll, CX: Borrow<SCx<'ll>>> BaseTypeCodegenMethods for GenericCx<'ll, CX> {
     }
 }
 
-impl Type {
-    /// Creates an integer type with the given number of bits, e.g., i24
-    pub(crate) fn ix_llcx(llcx: &llvm::Context, num_bits: u64) -> &Type {
-        unsafe { llvm::LLVMIntTypeInContext(llcx, num_bits as c_uint) }
-    }
+pub(crate) fn llvm_type_ptr(llcx: &llvm::Context) -> &Type {
+    llvm_type_ptr_in_address_space(llcx, AddressSpace::ZERO)
+}
 
-    pub(crate) fn ptr_llcx(llcx: &llvm::Context) -> &Type {
-        unsafe { llvm::LLVMPointerTypeInContext(llcx, AddressSpace::ZERO.0) }
-    }
+pub(crate) fn llvm_type_ptr_in_address_space<'ll>(
+    llcx: &'ll llvm::Context,
+    addr_space: AddressSpace,
+) -> &'ll Type {
+    llvm::LLVMPointerTypeInContext(llcx, addr_space.0)
 }
 
 impl<'ll, 'tcx> LayoutTypeCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {

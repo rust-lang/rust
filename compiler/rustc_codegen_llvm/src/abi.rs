@@ -1,4 +1,3 @@
-use std::borrow::Borrow;
 use std::cmp;
 
 use libc::c_uint;
@@ -13,7 +12,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::{bug, ty};
-use rustc_session::config;
+use rustc_session::{Session, config};
 use rustc_target::callconv::{
     ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, CastTarget, FnAbi, PassMode,
 };
@@ -400,7 +399,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
     }
 
     fn llvm_cconv(&self, cx: &CodegenCx<'ll, 'tcx>) -> llvm::CallConv {
-        llvm::CallConv::from_conv(self.conv, cx.tcx.sess.target.arch.borrow())
+        to_llvm_calling_convention(cx.tcx.sess, self.conv)
     }
 
     fn apply_attrs_llfn(
@@ -663,43 +662,44 @@ impl AbiBuilderMethods for Builder<'_, '_, '_> {
     }
 }
 
-impl llvm::CallConv {
-    pub(crate) fn from_conv(conv: CanonAbi, arch: &str) -> Self {
-        match conv {
-            CanonAbi::C | CanonAbi::Rust => llvm::CCallConv,
-            CanonAbi::RustCold => llvm::PreserveMost,
-            // Functions with this calling convention can only be called from assembly, but it is
-            // possible to declare an `extern "custom"` block, so the backend still needs a calling
-            // convention for declaring foreign functions.
-            CanonAbi::Custom => llvm::CCallConv,
-            CanonAbi::GpuKernel => {
-                if arch == "amdgpu" {
-                    llvm::AmdgpuKernel
-                } else if arch == "nvptx64" {
-                    llvm::PtxKernel
-                } else {
-                    panic!("Architecture {arch} does not support GpuKernel calling convention");
-                }
+/// Determines the appropriate [`llvm::CallConv`] to use for a given function
+/// ABI, for the current target.
+pub(crate) fn to_llvm_calling_convention(sess: &Session, abi: CanonAbi) -> llvm::CallConv {
+    match abi {
+        CanonAbi::C | CanonAbi::Rust => llvm::CCallConv,
+        CanonAbi::RustCold => llvm::PreserveMost,
+        // Functions with this calling convention can only be called from assembly, but it is
+        // possible to declare an `extern "custom"` block, so the backend still needs a calling
+        // convention for declaring foreign functions.
+        CanonAbi::Custom => llvm::CCallConv,
+        CanonAbi::GpuKernel => {
+            let arch = sess.target.arch.as_ref();
+            if arch == "amdgpu" {
+                llvm::AmdgpuKernel
+            } else if arch == "nvptx64" {
+                llvm::PtxKernel
+            } else {
+                panic!("Architecture {arch} does not support GpuKernel calling convention");
             }
-            CanonAbi::Interrupt(interrupt_kind) => match interrupt_kind {
-                InterruptKind::Avr => llvm::AvrInterrupt,
-                InterruptKind::AvrNonBlocking => llvm::AvrNonBlockingInterrupt,
-                InterruptKind::Msp430 => llvm::Msp430Intr,
-                InterruptKind::RiscvMachine | InterruptKind::RiscvSupervisor => llvm::CCallConv,
-                InterruptKind::X86 => llvm::X86_Intr,
-            },
-            CanonAbi::Arm(arm_call) => match arm_call {
-                ArmCall::Aapcs => llvm::ArmAapcsCallConv,
-                ArmCall::CCmseNonSecureCall | ArmCall::CCmseNonSecureEntry => llvm::CCallConv,
-            },
-            CanonAbi::X86(x86_call) => match x86_call {
-                X86Call::Fastcall => llvm::X86FastcallCallConv,
-                X86Call::Stdcall => llvm::X86StdcallCallConv,
-                X86Call::SysV64 => llvm::X86_64_SysV,
-                X86Call::Thiscall => llvm::X86_ThisCall,
-                X86Call::Vectorcall => llvm::X86_VectorCall,
-                X86Call::Win64 => llvm::X86_64_Win64,
-            },
         }
+        CanonAbi::Interrupt(interrupt_kind) => match interrupt_kind {
+            InterruptKind::Avr => llvm::AvrInterrupt,
+            InterruptKind::AvrNonBlocking => llvm::AvrNonBlockingInterrupt,
+            InterruptKind::Msp430 => llvm::Msp430Intr,
+            InterruptKind::RiscvMachine | InterruptKind::RiscvSupervisor => llvm::CCallConv,
+            InterruptKind::X86 => llvm::X86_Intr,
+        },
+        CanonAbi::Arm(arm_call) => match arm_call {
+            ArmCall::Aapcs => llvm::ArmAapcsCallConv,
+            ArmCall::CCmseNonSecureCall | ArmCall::CCmseNonSecureEntry => llvm::CCallConv,
+        },
+        CanonAbi::X86(x86_call) => match x86_call {
+            X86Call::Fastcall => llvm::X86FastcallCallConv,
+            X86Call::Stdcall => llvm::X86StdcallCallConv,
+            X86Call::SysV64 => llvm::X86_64_SysV,
+            X86Call::Thiscall => llvm::X86_ThisCall,
+            X86Call::Vectorcall => llvm::X86_VectorCall,
+            X86Call::Win64 => llvm::X86_64_Win64,
+        },
     }
 }

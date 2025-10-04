@@ -11,10 +11,12 @@ use rustc_llvm::RustString;
 
 pub(crate) use self::CallConv::*;
 pub(crate) use self::CodeGenOptSize::*;
+pub(crate) use self::conversions::*;
 pub(crate) use self::ffi::*;
 pub(crate) use self::metadata_kind::*;
 use crate::common::AsCCharPtr;
 
+mod conversions;
 pub(crate) mod diagnostic;
 pub(crate) mod enzyme_ffi;
 mod ffi;
