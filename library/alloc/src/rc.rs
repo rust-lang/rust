@@ -242,7 +242,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use core::any::Any;
-use core::cell::Cell;
+use core::cell::{Cell, CloneFromCell};
 #[cfg(not(no_global_oom_handling))]
 use core::clone::CloneToUninit;
 use core::clone::UseCloned;
@@ -339,6 +339,10 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized, A: Allocator> CoerceUnsized<Rc<U, A>> for
 
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Rc<U>> for Rc<T> {}
+
+// SAFETY: `Rc::clone` doesn't access any `Cell`s which could contain the `Rc` being cloned.
+#[unstable(feature = "cell_get_cloned", issue = "145329")]
+unsafe impl<T: ?Sized> CloneFromCell for Rc<T> {}
 
 impl<T: ?Sized> Rc<T> {
     #[inline]
@@ -3012,6 +3016,10 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized, A: Allocator> CoerceUnsized<Weak<U, A>> f
 
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Weak<U>> for Weak<T> {}
+
+// SAFETY: `Weak::clone` doesn't access any `Cell`s which could contain the `Weak` being cloned.
+#[unstable(feature = "cell_get_cloned", issue = "145329")]
+unsafe impl<T: ?Sized> CloneFromCell for Weak<T> {}
 
 impl<T> Weak<T> {
     /// Constructs a new `Weak<T>`, without allocating any memory.
