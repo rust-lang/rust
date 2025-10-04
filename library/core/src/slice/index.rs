@@ -134,6 +134,11 @@ mod private_slice_index {
     impl Sealed for range::RangeFrom<usize> {}
 
     impl Sealed for ops::IndexRange {}
+
+    #[unstable(feature = "sliceindex_wrappers", issue = "146179")]
+    impl Sealed for crate::index::Last {}
+    #[unstable(feature = "sliceindex_wrappers", issue = "146179")]
+    impl<T> Sealed for crate::index::Clamp<T> where T: Sealed {}
 }
 
 /// A helper trait used for indexing operations.
