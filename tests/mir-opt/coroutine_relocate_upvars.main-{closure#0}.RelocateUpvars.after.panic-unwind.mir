@@ -1,0 +1,143 @@
+// MIR for `main::{closure#0}` after RelocateUpvars
+
+fn main::{closure#0}(_1: {coroutine@$DIR/coroutine_relocate_upvars.rs:12:5: 12:7}, _2: ()) -> ()
+yields ()
+ {
+    debug x => (*_9);
+    debug x => _9;
+    let mut _0: ();
+    let mut _3: std::string::String;
+    let _4: ();
+    let mut _5: ();
+    let mut _6: &mut std::string::String;
+    let mut _7: &mut std::string::String;
+    let mut _8: &mut std::string::String;
+    let mut _9: &mut std::string::String;
+    let _10: &mut std::string::String;
+
+    bb0: {
+        goto -> bb24;
+    }
+
+    bb1: {
+        _6 = deref_copy _9;
+        drop((*_6)) -> [return: bb2, unwind: bb3];
+    }
+
+    bb2: {
+        _7 = deref_copy _9;
+        (*_7) = move _3;
+        goto -> bb4;
+    }
+
+    bb3 (cleanup): {
+        _8 = deref_copy _9;
+        (*_8) = move _3;
+        goto -> bb10;
+    }
+
+    bb4: {
+        StorageDead(_3);
+        StorageLive(_4);
+        StorageLive(_5);
+        _5 = ();
+        _4 = yield(move _5) -> [resume: bb5, drop: bb7];
+    }
+
+    bb5: {
+        StorageDead(_5);
+        StorageDead(_4);
+        _0 = const ();
+        goto -> bb16;
+    }
+
+    bb6: {
+        return;
+    }
+
+    bb7: {
+        StorageDead(_5);
+        StorageDead(_4);
+        goto -> bb8;
+    }
+
+    bb8: {
+        goto -> bb20;
+    }
+
+    bb9: {
+        coroutine_drop;
+    }
+
+    bb10 (cleanup): {
+        StorageDead(_3);
+        goto -> bb23;
+    }
+
+    bb11 (cleanup): {
+        resume;
+    }
+
+    bb12: {
+        StorageLive(_3);
+        _3 = String::new() -> [return: bb1, unwind: bb10];
+    }
+
+    bb13 (cleanup): {
+        StorageDead(_9);
+        goto -> bb11;
+    }
+
+    bb14 (cleanup): {
+        goto -> bb13;
+    }
+
+    bb15: {
+        StorageDead(_9);
+        goto -> bb6;
+    }
+
+    bb16: {
+        goto -> bb15;
+    }
+
+    bb17 (cleanup): {
+        StorageDead(_9);
+        goto -> bb11;
+    }
+
+    bb18 (cleanup): {
+        goto -> bb17;
+    }
+
+    bb19: {
+        StorageDead(_9);
+        goto -> bb9;
+    }
+
+    bb20: {
+        goto -> bb19;
+    }
+
+    bb21 (cleanup): {
+        terminate(cleanup);
+    }
+
+    bb22 (cleanup): {
+        StorageDead(_9);
+        goto -> bb11;
+    }
+
+    bb23 (cleanup): {
+        goto -> bb22;
+    }
+
+    bb24: {
+        StorageLive(_9);
+        StorageLive(_10);
+        _10 = move (_1.0: &mut std::string::String);
+        _9 = move _10;
+        StorageDead(_10);
+        goto -> bb12;
+    }
+}
