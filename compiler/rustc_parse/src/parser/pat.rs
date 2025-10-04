@@ -199,8 +199,8 @@ impl<'a> Parser<'a> {
             // This complicated procedure is done purely for diagnostics UX.
 
             // Check if the user wrote `foo:bar` instead of `foo::bar`.
-            if ra == RecoverColon::Yes {
-                first_pat = self.maybe_recover_colon_colon_in_pat_typo(first_pat, expected);
+            if ra == RecoverColon::Yes && token::Colon == self.token.kind {
+                first_pat = self.recover_colon_colon_in_pat_typo(first_pat, expected);
             }
 
             if let Some(leading_vert_span) = leading_vert_span {
@@ -874,9 +874,12 @@ impl<'a> Parser<'a> {
             }
         };
 
-        let pat = self.mk_pat(lo.to(self.prev_token.span), pat);
-        let pat = self.maybe_recover_from_bad_qpath(pat)?;
-        let pat = self.recover_intersection_pat(pat)?;
+        let mut pat = self.mk_pat(lo.to(self.prev_token.span), pat);
+
+        pat = self.maybe_recover_from_bad_qpath(pat)?;
+        if self.eat_noexpect(&token::At) {
+            pat = self.recover_intersection_pat(pat)?;
+        }
 
         if !allow_range_pat {
             self.ban_pat_range_if_ambiguous(&pat)
@@ -922,14 +925,8 @@ impl<'a> Parser<'a> {
     /// e.g. [F#][and] where they are called AND-patterns.
     ///
     /// [and]: https://docs.microsoft.com/en-us/dotnet/fsharp/language-reference/pattern-matching
+    #[cold]
     fn recover_intersection_pat(&mut self, lhs: Pat) -> PResult<'a, Pat> {
-        if self.token != token::At {
-            // Next token is not `@` so it's not going to be an intersection pattern.
-            return Ok(lhs);
-        }
-
-        // At this point we attempt to parse `@ $pat_rhs` and emit an error.
-        self.bump(); // `@`
         let mut rhs = self.parse_pat_no_top_alt(None, None)?;
         let whole_span = lhs.span.to(rhs.span);
 

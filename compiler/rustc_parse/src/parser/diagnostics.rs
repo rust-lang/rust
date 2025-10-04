@@ -1845,15 +1845,17 @@ impl<'a> Parser<'a> {
         &mut self,
         base: T,
     ) -> PResult<'a, T> {
-        if !self.may_recover() {
-            return Ok(base);
-        }
-
         // Do not add `::` to expected tokens.
-        if self.token == token::PathSep {
-            if let Some(ty) = base.to_ty() {
-                return self.maybe_recover_from_bad_qpath_stage_2(ty.span, ty);
-            }
+        if self.may_recover() && self.token == token::PathSep {
+            return self.recover_from_bad_qpath(base);
+        }
+        Ok(base)
+    }
+
+    #[cold]
+    fn recover_from_bad_qpath<T: RecoverQPath>(&mut self, base: T) -> PResult<'a, T> {
+        if let Some(ty) = base.to_ty() {
+            return self.maybe_recover_from_bad_qpath_stage_2(ty.span, ty);
         }
         Ok(base)
     }
@@ -2370,6 +2372,7 @@ impl<'a> Parser<'a> {
         None
     }
 
+    #[cold]
     pub(super) fn recover_arg_parse(&mut self) -> PResult<'a, (Box<ast::Pat>, Box<ast::Ty>)> {
         let pat = self.parse_pat_no_top_alt(Some(Expected::ArgumentName), None)?;
         self.expect(exp!(Colon))?;
@@ -2750,7 +2753,8 @@ impl<'a> Parser<'a> {
 
     /// Some special error handling for the "top-level" patterns in a match arm,
     /// `for` loop, `let`, &c. (in contrast to subpatterns within such).
-    pub(crate) fn maybe_recover_colon_colon_in_pat_typo(
+    #[cold]
+    pub(crate) fn recover_colon_colon_in_pat_typo(
         &mut self,
         mut first_pat: Pat,
         expected: Option<Expected>,
@@ -2935,7 +2939,11 @@ impl<'a> Parser<'a> {
         if self.token != token::Comma {
             return Ok(());
         }
+        self.recover_unexpected_comma(lo, rt)
+    }
 
+    #[cold]
+    fn recover_unexpected_comma(&mut self, lo: Span, rt: CommaRecoveryMode) -> PResult<'a, ()> {
         // An unexpected comma after a top-level pattern is a clue that the
         // user (perhaps more accustomed to some other language) forgot the
         // parentheses in what should have been a tuple pattern; return a
