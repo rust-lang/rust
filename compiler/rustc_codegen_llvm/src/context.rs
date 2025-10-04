@@ -740,7 +740,7 @@ impl<'ll> SimpleCx<'ll> {
         llcx: &'ll llvm::Context,
         pointer_size: Size,
     ) -> Self {
-        let isize_ty = llvm::Type::ix_llcx(llcx, pointer_size.bits());
+        let isize_ty = llvm::LLVMIntTypeInContext(llcx, pointer_size.bits() as c_uint);
         Self(SCx { llmod, llcx, isize_ty }, PhantomData)
     }
 }

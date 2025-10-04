@@ -954,7 +954,7 @@ unsafe extern "C" {
     pub(crate) fn LLVMInt16TypeInContext(C: &Context) -> &Type;
     pub(crate) fn LLVMInt32TypeInContext(C: &Context) -> &Type;
     pub(crate) fn LLVMInt64TypeInContext(C: &Context) -> &Type;
-    pub(crate) fn LLVMIntTypeInContext(C: &Context, NumBits: c_uint) -> &Type;
+    pub(crate) safe fn LLVMIntTypeInContext(C: &Context, NumBits: c_uint) -> &Type;
 
     pub(crate) fn LLVMGetIntTypeWidth(IntegerTy: &Type) -> c_uint;
 
@@ -983,7 +983,7 @@ unsafe extern "C" {
     ) -> &'a Type;
 
     // Operations on array, pointer, and vector types (sequence types)
-    pub(crate) fn LLVMPointerTypeInContext(C: &Context, AddressSpace: c_uint) -> &Type;
+    pub(crate) safe fn LLVMPointerTypeInContext(C: &Context, AddressSpace: c_uint) -> &Type;
     pub(crate) fn LLVMVectorType(ElementType: &Type, ElementCount: c_uint) -> &Type;
 
     pub(crate) fn LLVMGetElementType(Ty: &Type) -> &Type;
