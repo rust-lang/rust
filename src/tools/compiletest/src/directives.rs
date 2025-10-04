@@ -644,11 +644,9 @@ impl TestProps {
 
                     self.update_add_core_stubs(ln, config);
 
-                    if let Some(flags) = config.parse_name_value_directive(
-                        ln,
-                        directives::CORE_STUBS_COMPILE_FLAGS,
-                        testfile,
-                    ) {
+                    if let Some(flags) =
+                        config.parse_name_value_directive(ln, CORE_STUBS_COMPILE_FLAGS, testfile)
+                    {
                         let flags = split_flags(&flags);
                         for flag in &flags {
                             if flag == "--edition" || flag.starts_with("--edition=") {
