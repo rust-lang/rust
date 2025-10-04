@@ -335,15 +335,15 @@ impl flags::AnalysisStats {
             if !self.skip_const_eval {
                 self.run_const_eval(db, &bodies, verbosity);
             }
-
-            if self.run_all_ide_things {
-                self.run_ide_things(host.analysis(), file_ids.clone(), db, &vfs, verbosity);
-            }
-
-            if self.run_term_search {
-                self.run_term_search(&workspace, db, &vfs, file_ids, verbosity);
-            }
         });
+
+        if self.run_all_ide_things {
+            self.run_ide_things(host.analysis(), file_ids.clone(), db, &vfs, verbosity);
+        }
+
+        if self.run_term_search {
+            self.run_term_search(&workspace, db, &vfs, file_ids, verbosity);
+        }
 
         let db = host.raw_database_mut();
         db.trigger_lru_eviction();
