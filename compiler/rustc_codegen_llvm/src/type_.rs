@@ -13,12 +13,10 @@ use rustc_middle::ty::{self, Ty};
 use rustc_target::callconv::{CastTarget, FnAbi};
 
 use crate::abi::{FnAbiLlvmExt, LlvmType};
+use crate::common;
 use crate::context::{CodegenCx, GenericCx, SCx};
-pub(crate) use crate::llvm::Type;
-use crate::llvm::{FALSE, Metadata, TRUE, ToLlvmBool};
+use crate::llvm::{self, FALSE, Metadata, TRUE, ToLlvmBool, Type, Value};
 use crate::type_of::LayoutLlvmExt;
-use crate::value::Value;
-use crate::{common, llvm};
 
 impl PartialEq for Type {
     fn eq(&self, other: &Self) -> bool {

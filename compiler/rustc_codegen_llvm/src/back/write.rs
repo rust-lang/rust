@@ -43,8 +43,7 @@ use crate::errors::{
     WithLlvmError, WriteBytecode,
 };
 use crate::llvm::diagnostic::OptimizationDiagnosticKind::*;
-use crate::llvm::{self, DiagnosticInfo};
-use crate::type_::Type;
+use crate::llvm::{self, DiagnosticInfo, Type};
 use crate::{LlvmCodegenBackend, ModuleLlvm, base, common, llvm_util};
 
 pub(crate) fn llvm_err<'a>(dcx: DiagCtxtHandle<'_>, err: LlvmError<'a>) -> ! {
