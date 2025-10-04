@@ -370,6 +370,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for NoMangleParser {
 pub(crate) struct UsedParser {
     first_compiler: Option<Span>,
     first_linker: Option<Span>,
+    first_default: Option<Span>,
 }
 
 // A custom `AttributeParser` is used rather than a Simple attribute parser because
@@ -382,7 +383,7 @@ impl<S: Stage> AttributeParser<S> for UsedParser {
         template!(Word, List: &["compiler", "linker"]),
         |group: &mut Self, cx, args| {
             let used_by = match args {
-                ArgParser::NoArgs => UsedBy::Linker,
+                ArgParser::NoArgs => UsedBy::Default,
                 ArgParser::List(list) => {
                     let Some(l) = list.single() else {
                         cx.expected_single_argument(list.span);
@@ -423,12 +424,29 @@ impl<S: Stage> AttributeParser<S> for UsedParser {
                 ArgParser::NameValue(_) => return,
             };
 
+            let attr_span = cx.attr_span;
+
+            // `#[used]` is interpreted as `#[used(linker)]` (though depending on target OS the
+            // circumstances are more complicated). While we're checking `used_by`, also report
+            // these cross-`UsedBy` duplicates to warn.
             let target = match used_by {
                 UsedBy::Compiler => &mut group.first_compiler,
-                UsedBy::Linker => &mut group.first_linker,
+                UsedBy::Linker => {
+                    if let Some(prev) = group.first_default {
+                        cx.warn_unused_duplicate(prev, attr_span);
+                        return;
+                    }
+                    &mut group.first_linker
+                }
+                UsedBy::Default => {
+                    if let Some(prev) = group.first_linker {
+                        cx.warn_unused_duplicate(prev, attr_span);
+                        return;
+                    }
+                    &mut group.first_default
+                }
             };
 
-            let attr_span = cx.attr_span;
             if let Some(prev) = *target {
                 cx.warn_unused_duplicate(prev, attr_span);
             } else {
@@ -440,11 +458,13 @@ impl<S: Stage> AttributeParser<S> for UsedParser {
         AllowedTargets::AllowList(&[Allow(Target::Static), Warn(Target::MacroCall)]);
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
-        // Ratcheting behaviour, if both `linker` and `compiler` are specified, use `linker`
-        Some(match (self.first_compiler, self.first_linker) {
-            (_, Some(span)) => AttributeKind::Used { used_by: UsedBy::Linker, span },
-            (Some(span), _) => AttributeKind::Used { used_by: UsedBy::Compiler, span },
-            (None, None) => return None,
+        // If a specific form of `used` is specified, it takes precedence over generic `#[used]`.
+        // If both `linker` and `compiler` are specified, use `linker`.
+        Some(match (self.first_compiler, self.first_linker, self.first_default) {
+            (_, Some(span), _) => AttributeKind::Used { used_by: UsedBy::Linker, span },
+            (Some(span), _, _) => AttributeKind::Used { used_by: UsedBy::Compiler, span },
+            (_, _, Some(span)) => AttributeKind::Used { used_by: UsedBy::Default, span },
+            (None, None, None) => return None,
         })
     }
 }

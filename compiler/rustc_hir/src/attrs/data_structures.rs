@@ -146,12 +146,13 @@ impl Deprecation {
 }
 
 /// There are three valid forms of the attribute:
-/// `#[used]`, which is semantically equivalent to `#[used(linker)]` except that the latter is currently unstable.
+/// `#[used]`, which is equivalent to `#[used(linker)]` on targets that support it, but `#[used(compiler)]` if not.
 /// `#[used(compiler)]`
 /// `#[used(linker)]`
 #[derive(Encodable, Decodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[derive(HashStable_Generic, PrintAttribute)]
 pub enum UsedBy {
+    Default,
     Compiler,
     Linker,
 }
