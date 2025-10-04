@@ -46,3 +46,12 @@ pub unsafe fn select_bitmask(m: i8, a: f32x8, b: f32x8) -> f32x8 {
     // CHECK: select <8 x i1> [[A]]
     simd_select_bitmask(m, a, b)
 }
+
+// CHECK-LABEL: @select_bitmask_small
+#[no_mangle]
+pub unsafe fn select_bitmask_small(m: i8, a: f32x4, b: f32x4) -> f32x4 {
+    // CHECK: [[A:%[0-9]+]] = bitcast i8 {{.*}} to <8 x i1>
+    // CHECK: [[B:%[0-9]+]] = shufflevector <8 x i1> [[A]], <8 x i1> poison, <4 x i32> <i32 0, i32 1, i32 2, i32 3>
+    // CHECK: select <4 x i1> [[B]]
+    simd_select_bitmask(m, a, b)
+}
