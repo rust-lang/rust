@@ -4,7 +4,7 @@
 extern crate core;
 extern crate malicious_macro;
 
-use std::marker::CoercePointee;
+use std::ops::CoercePointee;
 
 #[derive(CoercePointee)]
 //~^ ERROR: `CoercePointee` can only be derived on `struct`s with `#[repr(transparent)]`
