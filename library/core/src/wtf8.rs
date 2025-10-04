@@ -562,14 +562,35 @@ impl Iterator for EncodeWide<'_> {
     }
 }
 
-impl fmt::Debug for EncodeWide<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("EncodeWide").finish_non_exhaustive()
-    }
-}
-
 #[stable(feature = "encode_wide_fused_iterator", since = "1.62.0")]
 impl FusedIterator for EncodeWide<'_> {}
+
+#[stable(feature = "encode_wide_debug", since = "CURRENT_RUSTC_VERSION")]
+impl fmt::Debug for EncodeWide<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        struct CodeUnit(u16);
+        impl fmt::Debug for CodeUnit {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                // This output attempts to balance readability with precision.
+                // Render characters which take only one WTF-16 code unit using
+                // `char` syntax and everything else as code units with hex
+                // integer syntax (including paired and unpaired surrogate
+                // halves). Since Rust has no `char`-like type for WTF-16, this
+                // isn't perfect, so if this output isn't suitable, it is open
+                // to being changed (see #140153).
+                match char::from_u32(self.0 as u32) {
+                    Some(c) => write!(f, "{c:?}"),
+                    None => write!(f, "0x{:04X}", self.0),
+                }
+            }
+        }
+
+        write!(f, "EncodeWide(")?;
+        f.debug_list().entries(self.clone().map(CodeUnit)).finish()?;
+        write!(f, ")")?;
+        Ok(())
+    }
+}
 
 impl Hash for CodePoint {
     #[inline]
