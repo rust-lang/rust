@@ -135,7 +135,7 @@ pub enum Command {
     },
     /// Update and activate the rustup toolchain 'miri'.
     ///
-    /// The `rust-version` file is used to determine the commit that will be intsalled.
+    /// The `rust-version` file is used to determine the commit that will be installed.
     /// `rustup-toolchain-install-master` must be installed for this to work.
     Toolchain {
         /// Flags that are passed through to `rustup-toolchain-install-master`.
