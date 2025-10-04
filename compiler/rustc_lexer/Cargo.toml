@@ -14,7 +14,7 @@ Rust lexer used by rustc. No stability guarantees are provided.
 
 # Note that this crate purposefully does not depend on other rustc crates
 [dependencies]
-memchr = "2.7.4"
+memchr = "2.7.6"
 unicode-properties = { version = "0.1.0", default-features = false, features = ["emoji"] }
 unicode-xid = "0.2.0"
 
