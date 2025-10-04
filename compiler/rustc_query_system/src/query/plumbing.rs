@@ -520,7 +520,7 @@ where
     Q: QueryConfig<Qcx>,
     Qcx: QueryContext,
 {
-    if !query.anon() && !query.eval_always() {
+    if !query.anon() && !query.no_incremental() {
         // `to_dep_node` is expensive for some `DepKind`s.
         let dep_node =
             dep_node_opt.get_or_insert_with(|| query.construct_dep_node(*qcx.dep_context(), &key));
@@ -761,7 +761,7 @@ where
     Q: QueryConfig<Qcx>,
     Qcx: QueryContext,
 {
-    if query.eval_always() {
+    if query.no_incremental() {
         return (true, None);
     }
 

@@ -33,7 +33,7 @@
 //! - `cycle_stash`: If a dependency cycle is detected, stash the error for later handling.
 //! - `no_hash`: Do not hash the query result for incremental compilation; just mark as dirty if recomputed.
 //! - `anon`: Make the query anonymous in the dependency graph (no dep node is created).
-//! - `eval_always`: Always evaluate the query, ignoring its dependencies and cached results.
+//! - `no_incremental`: Don't save the result to disk, just cache it for use exclusively in the same compilation.
 //! - `depth_limit`: Impose a recursion depth limit on the query to prevent stack overflows.
 //! - `separate_provide_extern`: Use separate provider functions for local and external crates.
 //! - `feedable`: Allow the query result to be set from another query ("fed" externally).
@@ -190,7 +190,7 @@ rustc_queries! {
     /// `rustc_interface::passes::write_dep_info` to make that work.
     query env_var_os(key: &'tcx OsStr) -> Option<&'tcx OsStr> {
         // Environment variables are global state
-        eval_always
+        no_incremental
         desc { "get the value of an environment variable" }
     }
 
@@ -199,7 +199,7 @@ rustc_queries! {
     }
 
     query resolver_for_lowering_raw(_: ()) -> (&'tcx Steal<(ty::ResolverAstLowering, Arc<ast::Crate>)>, &'tcx ty::ResolverGlobalCtxt) {
-        eval_always
+        no_incremental
         no_hash
         desc { "getting the resolver for lowering" }
     }
@@ -211,7 +211,7 @@ rustc_queries! {
     /// of rustc_middle::hir::source_map.
     query source_span(key: LocalDefId) -> Span {
         // Accesses untracked data
-        eval_always
+        no_incremental
         desc { "getting the source span" }
     }
 
@@ -224,14 +224,14 @@ rustc_queries! {
     /// [`TyCtxt::hir_visit_all_item_likes_in_crate`].
     query hir_crate(key: ()) -> &'tcx Crate<'tcx> {
         arena_cache
-        eval_always
+        no_incremental
         desc { "getting the crate HIR" }
     }
 
     /// All items in the crate.
     query hir_crate_items(_: ()) -> &'tcx rustc_middle::hir::ModuleItems {
         arena_cache
-        eval_always
+        no_incremental
         desc { "getting HIR crate items" }
     }
 
@@ -397,7 +397,7 @@ rustc_queries! {
 
     /// The root query triggering all analysis passes like typeck or borrowck.
     query analysis(key: ()) {
-        eval_always
+        no_incremental
         desc { "running analysis passes on this crate" }
     }
 
@@ -416,7 +416,7 @@ rustc_queries! {
     /// was called. With the default `None` all registered lints will also
     /// be checked for expectation fulfillment.
     query check_expectations(key: Option<Symbol>) {
-        eval_always
+        no_incremental
         desc { "checking lint expectations (RFC 2383)" }
     }
 
@@ -1409,7 +1409,7 @@ rustc_queries! {
 
     /// Performs part of the privacy check and computes effective visibilities.
     query effective_visibilities(_: ()) -> &'tcx EffectiveVisibilities {
-        eval_always
+        no_incremental
         desc { "checking effective visibilities" }
     }
     query check_private_in_public(module_def_id: LocalModDefId) {
@@ -1814,14 +1814,14 @@ rustc_queries! {
     }
     query has_global_allocator(_: CrateNum) -> bool {
         // This query depends on untracked global state in CStore
-        eval_always
+        no_incremental
         fatal_cycle
         desc { "checking if the crate has_global_allocator" }
         separate_provide_extern
     }
     query has_alloc_error_handler(_: CrateNum) -> bool {
         // This query depends on untracked global state in CStore
-        eval_always
+        no_incremental
         fatal_cycle
         desc { "checking if the crate has_alloc_error_handler" }
         separate_provide_extern
@@ -1862,7 +1862,7 @@ rustc_queries! {
     }
 
     query extern_crate(def_id: CrateNum) -> Option<&'tcx ExternCrate> {
-        eval_always
+        no_incremental
         desc { "getting crate's ExternCrateData" }
         separate_provide_extern
     }
@@ -2033,14 +2033,14 @@ rustc_queries! {
     // compilation is enabled calculating this hash can freeze this structure too early in
     // compilation and cause subsequent crashes when attempting to write to `definitions`
     query crate_hash(_: CrateNum) -> Svh {
-        eval_always
+        no_incremental
         desc { "looking up the hash a crate" }
         separate_provide_extern
     }
 
     /// Gets the hash for the host proc macro. Used to support -Z dual-proc-macro.
     query crate_host_hash(_: CrateNum) -> Option<Svh> {
-        eval_always
+        no_incremental
         desc { "looking up the hash of a host version of a crate" }
         separate_provide_extern
     }
@@ -2049,7 +2049,7 @@ rustc_queries! {
     /// For example, compiling the `foo` crate with `extra-filename=-a` creates a `libfoo-b.rlib` file.
     query extra_filename(_: CrateNum) -> &'tcx String {
         arena_cache
-        eval_always
+        no_incremental
         desc { "looking up the extra filename for a crate" }
         separate_provide_extern
     }
@@ -2057,7 +2057,7 @@ rustc_queries! {
     /// Gets the paths where the crate came from in the file system.
     query crate_extern_paths(_: CrateNum) -> &'tcx Vec<PathBuf> {
         arena_cache
-        eval_always
+        no_incremental
         desc { "looking up the paths for extern crates" }
         separate_provide_extern
     }
@@ -2168,7 +2168,7 @@ rustc_queries! {
     }
 
     query dep_kind(_: CrateNum) -> CrateDepKind {
-        eval_always
+        no_incremental
         desc { "fetching what a dependency looks like" }
         separate_provide_extern
     }
@@ -2224,14 +2224,14 @@ rustc_queries! {
     /// Returns the lang items defined in another crate by loading it from metadata.
     query get_lang_items(_: ()) -> &'tcx LanguageItems {
         arena_cache
-        eval_always
+        no_incremental
         desc { "calculating the lang items map" }
     }
 
     /// Returns all diagnostic items defined in all crates.
     query all_diagnostic_items(_: ()) -> &'tcx rustc_hir::diagnostic_items::DiagnosticItems {
         arena_cache
-        eval_always
+        no_incremental
         desc { "calculating the diagnostic items map" }
     }
 
@@ -2268,45 +2268,45 @@ rustc_queries! {
         desc { "calculating trimmed def paths" }
     }
     query missing_extern_crate_item(_: CrateNum) -> bool {
-        eval_always
+        no_incremental
         desc { "seeing if we're missing an `extern crate` item for this crate" }
         separate_provide_extern
     }
     query used_crate_source(_: CrateNum) -> &'tcx Arc<CrateSource> {
         arena_cache
-        eval_always
+        no_incremental
         desc { "looking at the source for a crate" }
         separate_provide_extern
     }
 
     /// Returns the debugger visualizers defined for this crate.
-    /// NOTE: This query has to be marked `eval_always` because it reads data
+    /// NOTE: This query has to be marked `no_incremental` because it reads data
     ///       directly from disk that is not tracked anywhere else. I.e. it
     ///       represents a genuine input to the query system.
     query debugger_visualizers(_: CrateNum) -> &'tcx Vec<DebuggerVisualizerFile> {
         arena_cache
         desc { "looking up the debugger visualizers for this crate" }
         separate_provide_extern
-        eval_always
+        no_incremental
     }
 
     query postorder_cnums(_: ()) -> &'tcx [CrateNum] {
-        eval_always
+        no_incremental
         desc { "generating a postorder list of CrateNums" }
     }
     /// Returns whether or not the crate with CrateNum 'cnum'
     /// is marked as a private dependency
     query is_private_dep(c: CrateNum) -> bool {
-        eval_always
+        no_incremental
         desc { "checking whether crate `{}` is a private dependency", c }
         separate_provide_extern
     }
     query allocator_kind(_: ()) -> Option<AllocatorKind> {
-        eval_always
+        no_incremental
         desc { "getting the allocator kind for the current crate" }
     }
     query alloc_error_handler_kind(_: ()) -> Option<AllocatorKind> {
-        eval_always
+        no_incremental
         desc { "alloc error handler kind for the current crate" }
     }
 
@@ -2317,14 +2317,14 @@ rustc_queries! {
     /// All available crates in the graph, including those that should not be user-facing
     /// (such as private crates).
     query crates(_: ()) -> &'tcx [CrateNum] {
-        eval_always
+        no_incremental
         desc { "fetching all foreign CrateNum instances" }
     }
     // Crates that are loaded non-speculatively (not for diagnostics or doc links).
     // FIXME: This is currently only used for collecting lang items, but should be used instead of
     // `crates` in most other cases too.
     query used_crates(_: ()) -> &'tcx [CrateNum] {
-        eval_always
+        no_incremental
         desc { "fetching `CrateNum`s for all crates loaded non-speculatively" }
     }
 
@@ -2380,7 +2380,7 @@ rustc_queries! {
     }
 
     query collect_and_partition_mono_items(_: ()) -> MonoItemPartitions<'tcx> {
-        eval_always
+        no_incremental
         desc { "collect_and_partition_mono_items" }
     }
 
@@ -2575,13 +2575,13 @@ rustc_queries! {
     /// Returns the Rust target features for the current target. These are not always the same as LLVM target features!
     query rust_target_features(_: CrateNum) -> &'tcx UnordMap<String, rustc_target::target_features::Stability> {
         arena_cache
-        eval_always
+        no_incremental
         desc { "looking up Rust target features" }
     }
 
     query implied_target_features(feature: Symbol) -> &'tcx Vec<Symbol> {
         arena_cache
-        eval_always
+        no_incremental
         desc { "looking up implied target features" }
     }
 
@@ -2631,7 +2631,7 @@ rustc_queries! {
         key: (ty::Predicate<'tcx>, WellFormedLoc)
     ) -> Option<&'tcx ObligationCause<'tcx>> {
         arena_cache
-        eval_always
+        no_incremental
         no_hash
         desc { "performing HIR wf-checking for predicate `{:?}` at item `{:?}`", key.0, key.1 }
     }
@@ -2640,7 +2640,7 @@ rustc_queries! {
     /// `--target` and similar).
     query global_backend_features(_: ()) -> &'tcx Vec<String> {
         arena_cache
-        eval_always
+        no_incremental
         desc { "computing the backend features for CLI flags" }
     }
 
@@ -2663,13 +2663,13 @@ rustc_queries! {
     }
 
     query doc_link_resolutions(def_id: DefId) -> &'tcx DocLinkResMap {
-        eval_always
+        no_incremental
         desc { "resolutions for documentation links for a module" }
         separate_provide_extern
     }
 
     query doc_link_traits_in_scope(def_id: DefId) -> &'tcx [DefId] {
-        eval_always
+        no_incremental
         desc { "traits in scope for documentation links for a module" }
         separate_provide_extern
     }

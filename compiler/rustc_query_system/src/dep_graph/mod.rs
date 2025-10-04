@@ -48,8 +48,8 @@ pub trait DepContext: Copy {
 
     #[inline(always)]
     /// Return whether this kind always require evaluation.
-    fn is_eval_always(self, kind: DepKind) -> bool {
-        self.dep_kind_info(kind).is_eval_always
+    fn is_no_incremental(self, kind: DepKind) -> bool {
+        self.dep_kind_info(kind).is_no_incremental
     }
 
     /// Try to force a dep node to execute and see if it's green.
