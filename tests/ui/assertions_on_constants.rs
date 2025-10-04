@@ -43,6 +43,7 @@ fn main() {
     assert_const!(-1);
 
     assert!(cfg!(feature = "hey") || cfg!(not(feature = "asdf")));
+    //~^ assertions_on_constants
 
     let flag: bool = cfg!(not(feature = "asdf"));
     assert!(flag);

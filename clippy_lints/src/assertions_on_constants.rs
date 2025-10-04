@@ -50,7 +50,8 @@ impl<'tcx> LateLintPass<'tcx> for AssertionsOnConstants {
                 _ => return,
             }
             && let Some((condition, _)) = find_assert_args(cx, e, macro_call.expn)
-            && let Some((Constant::Bool(assert_val), const_src)) = ConstEvalCtxt::new(cx).eval_with_source(condition)
+            && let Some((Constant::Bool(assert_val), const_src)) =
+                ConstEvalCtxt::new(cx).eval_with_source(condition, macro_call.span.ctxt())
             && let in_const_context = is_inside_always_const_context(cx.tcx, e.hir_id)
             && (const_src.is_local() || !in_const_context)
             && !(is_debug && as_bool_lit(condition) == Some(false))

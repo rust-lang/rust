@@ -72,8 +72,16 @@ LL |     debug_assert!(true);
    |
    = help: remove the assertion
 
+error: this assertion has a constant value
+  --> tests/ui/assertions_on_constants.rs:45:5
+   |
+LL |     assert!(cfg!(feature = "hey") || cfg!(not(feature = "asdf")));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider moving this into a const block: `const { assert!(..) }`
+
 error: this assertion is always `true`
-  --> tests/ui/assertions_on_constants.rs:53:19
+  --> tests/ui/assertions_on_constants.rs:54:19
    |
 LL |     const _: () = assert!(true);
    |                   ^^^^^^^^^^^^^
@@ -81,7 +89,7 @@ LL |     const _: () = assert!(true);
    = help: remove the assertion
 
 error: this assertion is always `true`
-  --> tests/ui/assertions_on_constants.rs:56:5
+  --> tests/ui/assertions_on_constants.rs:57:5
    |
 LL |     assert!(8 == (7 + 1));
    |     ^^^^^^^^^^^^^^^^^^^^^
@@ -89,7 +97,7 @@ LL |     assert!(8 == (7 + 1));
    = help: remove the assertion
 
 error: this assertion is always `true`
-  --> tests/ui/assertions_on_constants.rs:67:5
+  --> tests/ui/assertions_on_constants.rs:68:5
    |
 LL |     assert!(true);
    |     ^^^^^^^^^^^^^
@@ -97,7 +105,7 @@ LL |     assert!(true);
    = help: remove the assertion
 
 error: this assertion is always `true`
-  --> tests/ui/assertions_on_constants.rs:70:5
+  --> tests/ui/assertions_on_constants.rs:71:5
    |
 LL |     assert!(8 == (7 + 1));
    |     ^^^^^^^^^^^^^^^^^^^^^
@@ -105,7 +113,7 @@ LL |     assert!(8 == (7 + 1));
    = help: remove the assertion
 
 error: this assertion has a constant value
-  --> tests/ui/assertions_on_constants.rs:78:5
+  --> tests/ui/assertions_on_constants.rs:79:5
    |
 LL |     assert!(C);
    |     ^^^^^^^^^^
@@ -113,7 +121,7 @@ LL |     assert!(C);
    = help: consider moving this to an anonymous constant: `const _: () = { assert!(..); }`
 
 error: this assertion has a constant value
-  --> tests/ui/assertions_on_constants.rs:89:5
+  --> tests/ui/assertions_on_constants.rs:90:5
    |
 LL |     assert!(C);
    |     ^^^^^^^^^^
@@ -121,12 +129,12 @@ LL |     assert!(C);
    = help: consider moving this into a const block: `const { assert!(..) }`
 
 error: this assertion has a constant value
-  --> tests/ui/assertions_on_constants.rs:95:5
+  --> tests/ui/assertions_on_constants.rs:96:5
    |
 LL |     assert!(C);
    |     ^^^^^^^^^^
    |
    = help: consider moving this to an anonymous constant: `const _: () = { assert!(..); }`
 
-error: aborting due to 16 previous errors
+error: aborting due to 17 previous errors
 
