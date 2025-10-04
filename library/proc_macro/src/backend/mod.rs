@@ -119,31 +119,24 @@ macro_rules! with_api_handle_types {
     };
 }
 
-#[allow(unsafe_code)]
-mod arena;
-#[allow(unsafe_code)]
-mod buffer;
 #[deny(unsafe_code)]
 pub mod client;
-#[allow(unsafe_code)]
-mod closure;
-#[forbid(unsafe_code)]
-mod fxhash;
-#[forbid(unsafe_code)]
-mod handle;
 #[macro_use]
 #[forbid(unsafe_code)]
 mod rpc;
-#[allow(unsafe_code)]
-mod selfless_reify;
 #[forbid(unsafe_code)]
 pub mod server;
+mod support;
 #[allow(unsafe_code)]
 mod symbol;
-
-use buffer::Buffer;
 pub use rpc::PanicMessage;
 use rpc::{Decode, DecodeMut, Encode, Reader, Writer};
+pub(crate) use support::arena::Arena;
+pub(crate) use support::buffer::Buffer;
+pub(crate) use support::closure::Closure;
+pub(crate) use support::fxhash::FxHashMap;
+pub(crate) use support::handle::{Handle, InternedStore, OwnedStore};
+pub(crate) use support::selfless_reify::reify_to_extern_c_fn_hrt_bridge;
 
 /// Configuration for establishing an active connection between a server and a
 /// client.  The server creates the bridge config (`run_server` in `server.rs`),
@@ -156,7 +149,7 @@ pub struct BridgeConfig<'a> {
     input: Buffer,
 
     /// Server-side function that the client uses to make requests.
-    dispatch: closure::Closure<'a, Buffer, Buffer>,
+    dispatch: Closure<'a, Buffer, Buffer>,
 
     /// If 'true', always invoke the default panic hook
     force_show_panics: bool,

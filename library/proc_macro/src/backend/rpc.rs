@@ -5,7 +5,7 @@ use std::io::Write;
 use std::num::NonZero;
 use std::str;
 
-pub(super) type Writer = super::buffer::Buffer;
+pub(super) type Writer = super::Buffer;
 
 pub(super) trait Encode<S>: Sized {
     fn encode(self, w: &mut Writer, s: &mut S);

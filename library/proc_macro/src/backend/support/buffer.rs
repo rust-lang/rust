@@ -41,17 +41,17 @@ impl DerefMut for Buffer {
 
 impl Buffer {
     #[inline]
-    pub(super) fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self::default()
     }
 
     #[inline]
-    pub(super) fn clear(&mut self) {
+    pub(crate) fn clear(&mut self) {
         self.len = 0;
     }
 
     #[inline]
-    pub(super) fn take(&mut self) -> Self {
+    pub(crate) fn take(&mut self) -> Self {
         mem::take(self)
     }
 
@@ -60,7 +60,7 @@ impl Buffer {
     // (avoiding a memmove call). With extend_from_slice, LLVM at least
     // currently is not able to make that optimization.
     #[inline]
-    pub(super) fn extend_from_array<const N: usize>(&mut self, xs: &[u8; N]) {
+    pub(crate) fn extend_from_array<const N: usize>(&mut self, xs: &[u8; N]) {
         if xs.len() > (self.capacity - self.len) {
             let b = self.take();
             *self = (b.reserve)(b, xs.len());
@@ -72,7 +72,7 @@ impl Buffer {
     }
 
     #[inline]
-    pub(super) fn extend_from_slice(&mut self, xs: &[u8]) {
+    pub(crate) fn extend_from_slice(&mut self, xs: &[u8]) {
         if xs.len() > (self.capacity - self.len) {
             let b = self.take();
             *self = (b.reserve)(b, xs.len());
@@ -84,7 +84,7 @@ impl Buffer {
     }
 
     #[inline]
-    pub(super) fn push(&mut self, v: u8) {
+    pub(crate) fn push(&mut self, v: u8) {
         // The code here is taken from Vec::push, and we know that reserve()
         // will panic if we're exceeding isize::MAX bytes and so there's no need
         // to check for overflow.
