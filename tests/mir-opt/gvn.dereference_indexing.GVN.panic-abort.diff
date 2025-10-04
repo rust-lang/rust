@@ -21,8 +21,7 @@
   
       bb0: {
           StorageLive(_3);
--         StorageLive(_4);
-+         nop;
+          StorageLive(_4);
           StorageLive(_5);
           _5 = copy _2;
 -         _4 = Add(move _5, const 1_usize);
@@ -38,14 +37,11 @@
   
       bb1: {
 -         _3 = &_1[_6];
--         StorageDead(_4);
 +         _3 = &_1[_4];
-+         nop;
-          StorageDead(_6);
+          StorageDead(_4);
           StorageLive(_8);
           StorageLive(_9);
--         _9 = copy (*_3);
-+         _9 = copy _1[_4];
+          _9 = copy (*_3);
           _8 = opaque::<u8>(move _9) -> [return: bb2, unwind unreachable];
       }
   
@@ -53,6 +49,7 @@
           StorageDead(_9);
           StorageDead(_8);
           _0 = const ();
+          StorageDead(_6);
           StorageDead(_3);
           return;
       }
