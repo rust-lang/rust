@@ -1,5 +1,6 @@
 //@ edition:2018
 //@ revisions: rpass1 rpass2
+//@ ignore-backends: gcc
 
 pub struct Stmt {
     pub stmt_type: StmtKind,

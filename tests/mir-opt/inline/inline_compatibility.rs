@@ -1,6 +1,7 @@
 // Checks that only functions with compatible attributes are inlined.
 //@ only-x86_64
 //@ compile-flags: -Cpanic=abort
+//@ ignore-backends: gcc
 
 #![crate_type = "lib"]
 #![feature(sanitize)]

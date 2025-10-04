@@ -6,6 +6,7 @@
 
 //@ run-pass
 //@ needs-subprocess
+//@ ignore-backends: gcc
 
 #![allow(overflowing_literals)]
 #![allow(unused_variables)]

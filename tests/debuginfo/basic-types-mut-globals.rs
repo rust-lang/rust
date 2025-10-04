@@ -6,6 +6,7 @@
 
 //@ compile-flags:-g
 //@ disable-gdb-pretty-printers
+//@ ignore-backends: gcc
 
 // gdb-command:run
 

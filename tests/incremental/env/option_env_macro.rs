@@ -12,6 +12,7 @@
 //@ [rpass3]exec-env:EXAMPLE_ENV=two
 //@ [rpass4]unset-rustc-env:EXAMPLE_ENV
 //@ [rpass4]unset-exec-env:EXAMPLE_ENV
+//@ ignore-backends: gcc
 
 fn main() {
     assert_eq!(option_env!("EXAMPLE_ENV"), std::env::var("EXAMPLE_ENV").ok().as_deref());
