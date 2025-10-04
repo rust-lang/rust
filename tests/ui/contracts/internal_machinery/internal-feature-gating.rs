@@ -1,9 +1,6 @@
 // gate-test-contracts_internals
 
 fn main() {
-    // intrinsics are guarded by contracts_internals feature gate.
-    core::intrinsics::contract_checks();
-    //~^ ERROR use of unstable library feature `contracts_internals`
     core::intrinsics::contract_check_requires(|| true);
     //~^ ERROR use of unstable library feature `contracts_internals`
     core::intrinsics::contract_check_ensures( |_|true, &1);

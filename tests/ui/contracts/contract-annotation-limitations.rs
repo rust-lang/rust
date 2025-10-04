@@ -1,6 +1,8 @@
 //! Test for some of the existing limitations and the current error messages.
 //! Some of these limitations may be removed in the future.
 
+//@ compile-flags: -Zcontract-checks=yes
+
 #![feature(contracts)]
 //~^ WARN the feature `contracts` is incomplete and may not be safe to use and/or cause compiler crashes [incomplete_features]
 #![allow(dead_code)]
