@@ -77,11 +77,13 @@ fn check_bar(item: CrateItem) {
 
     let alloc_id_0 = alloc.provenance.ptrs[0].1.0;
     let GlobalAlloc::Memory(allocation) = GlobalAlloc::from(alloc_id_0) else { unreachable!() };
-    assert_eq!(allocation.bytes.len(), 3);
+    assert_eq!(allocation.bytes.len(), 5);
     assert_eq!(allocation.bytes[0].unwrap(), Char::CapitalB.to_u8());
     assert_eq!(allocation.bytes[1].unwrap(), Char::SmallA.to_u8());
     assert_eq!(allocation.bytes[2].unwrap(), Char::SmallR.to_u8());
-    assert_eq!(std::str::from_utf8(&allocation.raw_bytes().unwrap()), Ok("Bar"));
+    assert_eq!(allocation.bytes[3].unwrap(), 0xff);
+    assert_eq!(allocation.bytes[4].unwrap(), Char::Null.to_u8());
+    assert_eq!(allocation.raw_bytes().unwrap(), b"Bar\xff\0");
 }
 
 /// Check the allocation data for static `C_STR`.
