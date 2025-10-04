@@ -1,0 +1,46 @@
+// MIR for `direct` after PreCodegen
+
+fn direct(_1: Option<std::cmp::Ordering>) -> bool {
+    debug e => _1;
+    let mut _0: bool;
+    scope 1 (inlined <Option<std::cmp::Ordering> as PartialEq>::eq) {
+        let mut _2: isize;
+        scope 2 {
+            scope 3 (inlined <std::cmp::Ordering as PartialEq>::eq) {
+                let _3: i8;
+                scope 4 {
+                    scope 5 {
+                    }
+                }
+            }
+        }
+    }
+
+    bb0: {
+        StorageLive(_2);
+        _2 = discriminant(_1);
+        switchInt(move _2) -> [0: bb1, 1: bb2, otherwise: bb4];
+    }
+
+    bb1: {
+        _0 = const false;
+        goto -> bb3;
+    }
+
+    bb2: {
+        StorageLive(_3);
+        _3 = discriminant(((_1 as Some).0: std::cmp::Ordering));
+        _0 = Eq(copy _3, const 0_i8);
+        StorageDead(_3);
+        goto -> bb3;
+    }
+
+    bb3: {
+        StorageDead(_2);
+        return;
+    }
+
+    bb4: {
+        unreachable;
+    }
+}
