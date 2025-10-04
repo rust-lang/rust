@@ -1246,6 +1246,7 @@ rustc_queries! {
     /// and its children, e.g. closures, inline consts.
     query mir_borrowck(key: LocalDefId) -> Result<&'tcx mir::DefinitionSiteHiddenTypes<'tcx>, ErrorGuaranteed> {
         desc { |tcx| "borrow-checking `{}`", tcx.def_path_str(key) }
+        return_result_from_ensure_ok
     }
 
     /// Gets a complete map from all types to their inherent impls.
