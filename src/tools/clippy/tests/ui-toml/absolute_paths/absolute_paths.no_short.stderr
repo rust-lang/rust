@@ -71,10 +71,10 @@ LL |         impl<T: core::cmp::Eq> core::fmt::Display for X<T>
    |                                ^^^^^^^^^^^^^^^^^^
 
 error: consider bringing this path into scope with the `use` keyword
-  --> tests/ui-toml/absolute_paths/absolute_paths.rs:113:14
+  --> tests/ui-toml/absolute_paths/absolute_paths.rs:113:10
    |
-LL | pub const _: crate::S = {
-   |              ^^^^^^^^
+LL | const _: crate::S = {
+   |          ^^^^^^^^
 
 error: consider bringing this path into scope with the `use` keyword
   --> tests/ui-toml/absolute_paths/absolute_paths.rs:114:9

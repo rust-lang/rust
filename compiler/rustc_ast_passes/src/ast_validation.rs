@@ -33,7 +33,7 @@ use rustc_session::Session;
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{
     DEPRECATED_WHERE_CLAUSE_LOCATION, MISSING_ABI, MISSING_UNSAFE_ON_EXTERN,
-    PATTERNS_IN_FNS_WITHOUT_BODY,
+    PATTERNS_IN_FNS_WITHOUT_BODY, UNUSED_VISIBILITIES,
 };
 use rustc_span::{Ident, Span, kw, sym};
 use rustc_target::spec::{AbiMap, AbiMapping};
@@ -1236,7 +1236,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     }
                 });
             }
-            ItemKind::Const(box ConstItem { defaultness, expr, .. }) => {
+            ItemKind::Const(box ConstItem { defaultness, ident, expr, .. }) => {
                 self.check_defaultness(item.span, *defaultness);
                 if expr.is_none() {
                     self.dcx().emit_err(errors::ConstWithoutBody {
@@ -1244,6 +1244,17 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         replace_span: self.ending_semi_or_hi(item.span),
                     });
                 }
+                if ident.name == kw::Underscore
+                    && !matches!(item.vis.kind, VisibilityKind::Inherited)
+                {
+                    self.lint_buffer.buffer_lint(
+                        UNUSED_VISIBILITIES,
+                        item.id,
+                        item.vis.span,
+                        BuiltinLintDiag::UnusedVisibility(item.vis.span),
+                    )
+                }
+
                 visit::walk_item(self, item);
             }
             ItemKind::Static(box StaticItem { expr, safety, .. }) => {
