@@ -169,3 +169,17 @@ mod issue14716 {
         };
     }
 }
+
+fn issue_15807() {
+    let uncopyable_res: Result<usize, String> = Ok(1);
+    let _ = if let Ok(v) = uncopyable_res { v } else { 0 };
+
+    let x = uncopyable_res;
+    let _ = if let Ok(v) = x { v } else { 0 };
+    //~^ manual_unwrap_or_default
+
+    let copyable_res: Result<usize, ()> = Ok(1);
+    let _ = if let Ok(v) = copyable_res { v } else { 0 };
+    //~^ manual_unwrap_or_default
+    let _ = copyable_res;
+}
