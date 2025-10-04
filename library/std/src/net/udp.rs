@@ -177,8 +177,7 @@ impl UdpSocket {
 
     /// Sends data on the socket to the given address. On success, returns the
     /// number of bytes written. Note that the operating system may refuse
-    /// buffers larger than 65507. However, partial writes are not possible
-    /// until buffer sizes above `i32::MAX`.
+    /// buffers larger than 65507.
     ///
     /// Address type can be any implementor of [`ToSocketAddrs`] trait. See its
     /// documentation for concrete examples.
@@ -682,8 +681,7 @@ impl UdpSocket {
 
     /// Sends data on the socket to the remote address to which it is connected.
     /// On success, returns the number of bytes written. Note that the operating
-    /// system may refuse buffers larger than 65507. However, partial writes are
-    /// not possible until buffer sizes above `i32::MAX`.
+    /// system may refuse buffers larger than 65507.
     ///
     /// [`UdpSocket::connect`] will connect this socket to a remote address. This
     /// method will fail if the socket is not connected.
