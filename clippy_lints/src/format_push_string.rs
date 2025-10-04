@@ -1,5 +1,4 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::higher;
 use clippy_utils::res::MaybeDef;
 use rustc_hir::{AssignOpKind, Expr, ExprKind, LangItem, MatchSource};
 use rustc_lint::{LateContext, LateLintPass};
@@ -49,22 +48,15 @@ fn is_string(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
 fn is_format(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
     let e = e.peel_blocks().peel_borrows();
 
-    if e.span.from_expansion()
-        && let Some(macro_def_id) = e.span.ctxt().outer_expn_data().macro_def_id
-    {
-        cx.tcx.get_diagnostic_name(macro_def_id) == Some(sym::format_macro)
-    } else if let Some(higher::If { then, r#else, .. }) = higher::If::hir(e) {
-        is_format(cx, then) || r#else.is_some_and(|e| is_format(cx, e))
-    } else {
-        match higher::IfLetOrMatch::parse(cx, e) {
-            Some(higher::IfLetOrMatch::Match(_, arms, MatchSource::Normal)) => {
-                arms.iter().any(|arm| is_format(cx, arm.body))
-            },
-            Some(higher::IfLetOrMatch::IfLet(_, _, then, r#else, _)) => {
-                is_format(cx, then) || r#else.is_some_and(|e| is_format(cx, e))
-            },
-            _ => false,
-        }
+    match e.kind {
+        _ if e.span.from_expansion()
+            && let Some(macro_def_id) = e.span.ctxt().outer_expn_data().macro_def_id =>
+        {
+            cx.tcx.is_diagnostic_item(sym::format_macro, macro_def_id)
+        },
+        ExprKind::Match(_, arms, MatchSource::Normal) => arms.iter().any(|arm| is_format(cx, arm.body)),
+        ExprKind::If(_, then, els) => is_format(cx, then) || els.is_some_and(|e| is_format(cx, e)),
+        _ => false,
     }
 }
 
