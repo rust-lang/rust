@@ -13,6 +13,8 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         instance_kind: InstanceKind<'_>,
     ) -> Cow<'tcx, CodegenFnAttrs> {
+        // NOTE: we try to not clone the `CodegenFnAttrs` when that is not needed.
+        // The `to_mut` method used below clones the inner value.
         let mut attrs = Cow::Borrowed(self.codegen_fn_attrs(instance_kind.def_id()));
 
         // Drop the `#[naked]` attribute on non-item `InstanceKind`s, like the shims that
@@ -20,6 +22,28 @@ impl<'tcx> TyCtxt<'tcx> {
         if !matches!(instance_kind, InstanceKind::Item(_)) {
             if attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
                 attrs.to_mut().flags.remove(CodegenFnAttrFlags::NAKED);
+            }
+        }
+
+        // A shim created by `#[track_caller]` should not inherit any attributes
+        // that modify the symbol name. Failing to remove these attributes from
+        // the shim leads to errors like `symbol `foo` is already defined`.
+        //
+        // A `ClosureOnceShim` with the track_caller attribute does not have a symbol,
+        // and therefore can be skipped here.
+        if let InstanceKind::ReifyShim(_, _) = instance_kind
+            && attrs.flags.contains(CodegenFnAttrFlags::TRACK_CALLER)
+        {
+            if attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE) {
+                attrs.to_mut().flags.remove(CodegenFnAttrFlags::NO_MANGLE);
+            }
+
+            if attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL) {
+                attrs.to_mut().flags.remove(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL);
+            }
+
+            if attrs.symbol_name.is_some() {
+                attrs.to_mut().symbol_name = None;
             }
         }
 
