@@ -467,7 +467,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             span,
                             leaf_trait_predicate,
                         );
-                        self.note_version_mismatch(&mut err, leaf_trait_predicate);
+                        self.note_trait_version_mismatch(&mut err, leaf_trait_predicate);
+                        self.note_adt_version_mismatch(&mut err, leaf_trait_predicate);
                         self.suggest_remove_await(&obligation, &mut err);
                         self.suggest_derive(&obligation, &mut err, leaf_trait_predicate);
 
@@ -2424,7 +2425,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     /// If the `Self` type of the unsatisfied trait `trait_ref` implements a trait
     /// with the same path as `trait_ref`, a help message about
     /// a probable version mismatch is added to `err`
-    fn note_version_mismatch(
+    fn note_trait_version_mismatch(
         &self,
         err: &mut Diag<'_>,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
@@ -2464,13 +2465,85 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 impl_spans,
                 format!("trait impl{} with same name found", pluralize!(trait_impls.len())),
             );
-            let trait_crate = self.tcx.crate_name(trait_with_same_path.krate);
-            let crate_msg =
-                format!("perhaps two different versions of crate `{trait_crate}` are being used?");
-            err.note(crate_msg);
+            self.note_two_crate_versions(trait_with_same_path, err);
             suggested = true;
         }
         suggested
+    }
+
+    fn note_two_crate_versions(&self, did: DefId, err: &mut Diag<'_>) {
+        let crate_name = self.tcx.crate_name(did.krate);
+        let crate_msg =
+            format!("perhaps two different versions of crate `{crate_name}` are being used?");
+        err.note(crate_msg);
+    }
+
+    fn note_adt_version_mismatch(
+        &self,
+        err: &mut Diag<'_>,
+        trait_pred: ty::PolyTraitPredicate<'tcx>,
+    ) {
+        let ty::Adt(impl_self_def, _) = trait_pred.self_ty().skip_binder().peel_refs().kind()
+        else {
+            return;
+        };
+
+        let impl_self_did = impl_self_def.did();
+
+        // We only want to warn about different versions of a dependency.
+        // If no dependency is involved, bail.
+        if impl_self_did.krate == LOCAL_CRATE {
+            return;
+        }
+
+        let impl_self_path = self.comparable_path(impl_self_did);
+        let impl_self_crate_name = self.tcx.crate_name(impl_self_did.krate);
+        let similar_items: UnordSet<_> = self
+            .tcx
+            .visible_parent_map(())
+            .items()
+            .filter_map(|(&item, _)| {
+                // If we found ourselves, ignore.
+                if impl_self_did == item {
+                    return None;
+                }
+                // We only want to warn about different versions of a dependency.
+                // Ignore items from our own crate.
+                if item.krate == LOCAL_CRATE {
+                    return None;
+                }
+                // We want to warn about different versions of a dependency.
+                // So make sure the crate names are the same.
+                if impl_self_crate_name != self.tcx.crate_name(item.krate) {
+                    return None;
+                }
+                // Filter out e.g. constructors that often have the same path
+                // str as the relevant ADT.
+                if !self.tcx.def_kind(item).is_adt() {
+                    return None;
+                }
+                let path = self.comparable_path(item);
+                // We don't know if our item or the one we found is the re-exported one.
+                // Check both cases.
+                let is_similar = path.ends_with(&impl_self_path) || impl_self_path.ends_with(&path);
+                is_similar.then_some((item, path))
+            })
+            .collect();
+
+        let mut similar_items =
+            similar_items.into_items().into_sorted_stable_ord_by_key(|(_, path)| path);
+        similar_items.dedup();
+
+        for (similar_item, _) in similar_items {
+            err.span_help(self.tcx.def_span(similar_item), "item with same name found");
+            self.note_two_crate_versions(similar_item, err);
+        }
+    }
+
+    /// Add a `::` prefix when comparing paths so that paths with just one item
+    /// like "Foo" does not equal the end of "OtherFoo".
+    fn comparable_path(&self, did: DefId) -> String {
+        format!("::{}", self.tcx.def_path_str(did))
     }
 
     /// Creates a `PredicateObligation` with `new_self_ty` replacing the existing type in the
