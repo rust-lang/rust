@@ -51,11 +51,6 @@ pub(super) fn variances_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Va
             let crate_map = tcx.crate_variances(());
             return crate_map.variances.get(&item_def_id.to_def_id()).copied().unwrap_or(&[]);
         }
-        DefKind::TyAlias if tcx.type_alias_is_lazy(item_def_id) => {
-            // These are inferred.
-            let crate_map = tcx.crate_variances(());
-            return crate_map.variances.get(&item_def_id.to_def_id()).copied().unwrap_or(&[]);
-        }
         DefKind::AssocTy => match tcx.opt_rpitit_info(item_def_id.to_def_id()) {
             Some(ty::ImplTraitInTraitData::Trait { opaque_def_id, .. }) => {
                 return variance_of_opaque(
