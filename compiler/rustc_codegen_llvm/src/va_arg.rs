@@ -9,9 +9,8 @@ use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 
 use crate::builder::Builder;
-use crate::type_::Type;
+use crate::llvm::{Type, Value};
 use crate::type_of::LayoutLlvmExt;
-use crate::value::Value;
 
 fn round_up_to_alignment<'ll>(
     bx: &mut Builder<'_, 'll, '_>,

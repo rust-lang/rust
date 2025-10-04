@@ -28,10 +28,10 @@ use rustc_span::Symbol;
 use rustc_target::spec::SanitizerSet;
 
 use super::ModuleLlvm;
+use crate::attributes;
 use crate::builder::Builder;
 use crate::context::CodegenCx;
-use crate::value::Value;
-use crate::{attributes, llvm};
+use crate::llvm::{self, Value};
 
 pub(crate) struct ValueIter<'ll> {
     cur: Option<&'ll Value>,

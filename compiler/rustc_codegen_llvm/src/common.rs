@@ -20,9 +20,7 @@ use tracing::debug;
 use crate::consts::const_alloc_to_llvm;
 pub(crate) use crate::context::CodegenCx;
 use crate::context::{GenericCx, SCx};
-use crate::llvm::{self, BasicBlock, ConstantInt, FALSE, Metadata, TRUE, ToLlvmBool};
-use crate::type_::Type;
-use crate::value::Value;
+use crate::llvm::{self, BasicBlock, ConstantInt, FALSE, Metadata, TRUE, ToLlvmBool, Type, Value};
 
 /*
 * A note on nomenclature of linking: "extern", "foreign", and "upcall".
