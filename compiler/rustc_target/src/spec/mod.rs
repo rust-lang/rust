@@ -3182,6 +3182,7 @@ impl Target {
             "avr" => (Architecture::Avr, None),
             "msp430" => (Architecture::Msp430, None),
             "hexagon" => (Architecture::Hexagon, None),
+            "xtensa" => (Architecture::Xtensa, None),
             "bpf" => (Architecture::Bpf, None),
             "loongarch32" => (Architecture::LoongArch32, None),
             "loongarch64" => (Architecture::LoongArch64, None),
