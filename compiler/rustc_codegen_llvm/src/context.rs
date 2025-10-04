@@ -35,10 +35,8 @@ use crate::abi::to_llvm_calling_convention;
 use crate::back::write::to_llvm_code_model;
 use crate::callee::get_fn;
 use crate::debuginfo::metadata::apply_vcall_visibility_metadata;
-use crate::llvm::{Metadata, MetadataKindId, Module};
-use crate::type_::Type;
-use crate::value::Value;
-use crate::{attributes, common, coverageinfo, debuginfo, llvm, llvm_util};
+use crate::llvm::{self, Metadata, MetadataKindId, Module, Type, Value};
+use crate::{attributes, common, coverageinfo, debuginfo, llvm_util};
 
 /// `TyCtxt` (and related cache datastructures) can't be move between threads.
 /// However, there are various cx related functions which we want to be available to the builder and

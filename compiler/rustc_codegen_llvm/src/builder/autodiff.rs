@@ -12,9 +12,7 @@ use tracing::debug;
 use crate::builder::{Builder, PlaceRef, UNNAMED};
 use crate::context::SimpleCx;
 use crate::declare::declare_simple_fn;
-use crate::llvm;
-use crate::llvm::{Metadata, TRUE, Type};
-use crate::value::Value;
+use crate::llvm::{self, Metadata, TRUE, Type, Value};
 
 pub(crate) fn adjust_activity_to_abi<'tcx>(
     tcx: TyCtxt<'tcx>,
