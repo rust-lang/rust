@@ -1,19 +1,16 @@
+use crate::alloc::System;
 use crate::cell::RefCell;
 use crate::sys::thread_local::guard;
 
 #[thread_local]
-static DTORS: RefCell<Vec<(*mut u8, unsafe extern "C" fn(*mut u8))>> = RefCell::new(Vec::new());
+static DTORS: RefCell<Vec<(*mut u8, unsafe extern "C" fn(*mut u8)), System>> =
+    RefCell::new(Vec::new_in(System));
 
 pub unsafe fn register(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
     let Ok(mut dtors) = DTORS.try_borrow_mut() else {
-        // This point can only be reached if the global allocator calls this
-        // function again.
-        // FIXME: maybe use the system allocator instead?
-        rtabort!("the global allocator may not use TLS with destructors");
+        rtabort!("the System allocator may not use TLS with destructors")
     };
-
     guard::enable();
-
     dtors.push((t, dtor));
 }
 
@@ -36,7 +33,7 @@ pub unsafe fn run() {
             }
             None => {
                 // Free the list memory.
-                *dtors = Vec::new();
+                *dtors = Vec::new_in(System);
                 break;
             }
         }
