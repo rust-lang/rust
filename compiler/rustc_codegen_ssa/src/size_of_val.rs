@@ -68,7 +68,7 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             // Generate the call. Cannot use `do_call` since we don't have a MIR terminator so we
             // can't create a `TerminationCodegenHelper`. (But we are in good company, this code is
             // duplicated plenty of times.)
-            let fn_ty = bx.fn_decl_backend_type(fn_abi);
+            let fn_ty = bx.fn_decl_backend_type(fn_abi, llfn);
 
             bx.call(
                 fn_ty,
