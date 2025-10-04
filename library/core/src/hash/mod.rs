@@ -633,6 +633,7 @@ impl<H: Hasher + ?Sized> Hasher for &mut H {
 ///
 /// [`build_hasher`]: BuildHasher::build_hasher
 /// [`HashMap`]: ../../std/collections/struct.HashMap.html
+#[cfg_attr(not(test), rustc_diagnostic_item = "BuildHasher")]
 #[stable(since = "1.7.0", feature = "build_hasher")]
 pub trait BuildHasher {
     /// Type of the hasher that will be created.
