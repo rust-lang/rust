@@ -17,7 +17,8 @@
       let mut _13: bool;
       let mut _14: T;
       scope 1 {
-          debug a => _2;
+-         debug a => _2;
++         debug a => const usize::MAX;
           let _3: T;
           scope 2 {
               debug b => _3;

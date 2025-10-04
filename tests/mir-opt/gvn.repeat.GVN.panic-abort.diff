@@ -15,7 +15,8 @@
       let mut _11: i32;
       let mut _12: i32;
       scope 1 {
-          debug val => _1;
+-         debug val => _1;
++         debug val => const 5_i32;
           let _2: [i32; 10];
           scope 2 {
               debug array => _2;
