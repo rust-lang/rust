@@ -1,3 +1,4 @@
+use crate::marker::{Destruct, PhantomData};
 use crate::ops::ControlFlow;
 
 /// The `?` operator and `try {}` blocks.
@@ -380,6 +381,24 @@ pub(crate) type ChangeOutputType<T: Try<Residual: Residual<V>>, V> =
 /// Not currently planned to be exposed publicly, so just `pub(crate)`.
 #[repr(transparent)]
 pub(crate) struct NeverShortCircuit<T>(pub T);
+pub(crate) struct Wrapped<T, A, F: FnMut(A) -> T> {
+    f: F,
+    p: PhantomData<(T, A)>,
+}
+#[rustc_const_unstable(feature = "const_never_short_circuit", issue = "none")]
+impl<T, A, F: [const] FnMut(A) -> T + [const] Destruct> const FnOnce<(A,)> for Wrapped<T, A, F> {
+    type Output = NeverShortCircuit<T>;
+
+    extern "rust-call" fn call_once(mut self, args: (A,)) -> Self::Output {
+        self.call_mut(args)
+    }
+}
+#[rustc_const_unstable(feature = "const_never_short_circuit", issue = "none")]
+impl<T, A, F: [const] FnMut(A) -> T> const FnMut<(A,)> for Wrapped<T, A, F> {
+    extern "rust-call" fn call_mut(&mut self, (args,): (A,)) -> Self::Output {
+        NeverShortCircuit((self.f)(args))
+    }
+}
 
 impl<T> NeverShortCircuit<T> {
     /// Wraps a unary function to produce one that wraps the output into a `NeverShortCircuit`.
@@ -387,10 +406,11 @@ impl<T> NeverShortCircuit<T> {
     /// This is useful for implementing infallible functions in terms of the `try_` ones,
     /// without accidentally capturing extra generic parameters in a closure.
     #[inline]
-    pub(crate) fn wrap_mut_1<A>(
-        mut f: impl FnMut(A) -> T,
-    ) -> impl FnMut(A) -> NeverShortCircuit<T> {
-        move |a| NeverShortCircuit(f(a))
+    pub(crate) const fn wrap_mut_1<A, F>(f: F) -> Wrapped<T, A, F>
+    where
+        F: [const] FnMut(A) -> T,
+    {
+        Wrapped { f, p: PhantomData }
     }
 
     #[inline]
@@ -401,7 +421,8 @@ impl<T> NeverShortCircuit<T> {
 
 pub(crate) enum NeverShortCircuitResidual {}
 
-impl<T> Try for NeverShortCircuit<T> {
+#[rustc_const_unstable(feature = "const_never_short_circuit", issue = "none")]
+impl<T> const Try for NeverShortCircuit<T> {
     type Output = T;
     type Residual = NeverShortCircuitResidual;
 
@@ -415,15 +436,15 @@ impl<T> Try for NeverShortCircuit<T> {
         NeverShortCircuit(x)
     }
 }
-
-impl<T> FromResidual for NeverShortCircuit<T> {
+#[rustc_const_unstable(feature = "const_never_short_circuit", issue = "none")]
+impl<T> const FromResidual for NeverShortCircuit<T> {
     #[inline]
     fn from_residual(never: NeverShortCircuitResidual) -> Self {
         match never {}
     }
 }
-
-impl<T> Residual<T> for NeverShortCircuitResidual {
+#[rustc_const_unstable(feature = "const_never_short_circuit", issue = "none")]
+impl<T> const Residual<T> for NeverShortCircuitResidual {
     type TryType = NeverShortCircuit<T>;
 }
 
