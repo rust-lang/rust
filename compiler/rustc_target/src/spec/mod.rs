@@ -659,7 +659,7 @@ bitflags::bitflags! {
         const LIBC        = 1 << 1;
         /// libgcc/libunwind (e.g. on `windows-gnu`, `fuchsia`, `fortanix`, `gnullvm` targets)
         const UNWIND      = 1 << 2;
-        /// Linker, dlltool, and their necessary libraries (e.g. on `windows-gnu` and for `rust-lld`)
+        /// Linker and its necessary libraries (e.g. on `windows-gnu` and for `rust-lld`)
         const LINKER      = 1 << 3;
         /// Sanitizer runtime libraries
         const SANITIZERS  = 1 << 4;

@@ -28,25 +28,14 @@ codegen_ssa_cpu_required = target requires explicitly specifying a cpu with `-C 
 
 codegen_ssa_create_temp_dir = couldn't create a temp dir: {$error}
 
-codegen_ssa_dlltool_fail_import_library =
-    dlltool could not create import library with {$dlltool_path} {$dlltool_args}:
-    {$stdout}
-    {$stderr}
-
 codegen_ssa_dynamic_linking_with_lto =
     cannot prefer dynamic linking when performing LTO
     .note = only 'staticlib', 'bin', and 'cdylib' outputs are supported with LTO
-
-codegen_ssa_error_calling_dlltool =
-    error calling dlltool '{$dlltool_path}': {$error}
 
 codegen_ssa_error_creating_import_library =
     error creating import library for {$lib_name}: {$error}
 
 codegen_ssa_error_creating_remark_dir = failed to create remark directory: {$error}
-
-codegen_ssa_error_writing_def_file =
-    error writing .DEF file: {$error}
 
 codegen_ssa_expected_name_value_pair = expected name value pair
 
