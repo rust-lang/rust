@@ -17,10 +17,6 @@ LL |     type T = &'missing ();
    |
 help: consider introducing lifetime `'missing` here
    |
-LL |     type T<'missing> = &'missing ();
-   |           ++++++++++
-help: consider introducing lifetime `'missing` here
-   |
 LL | impl<'missing> Lt<'missing> for () {
    |     ++++++++++
 
