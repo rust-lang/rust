@@ -50,9 +50,7 @@ pub(super) fn parse_and_update_aux(
     testfile: &Utf8Path,
     aux: &mut AuxProps,
 ) {
-    let &DirectiveLine { raw_directive: ln, .. } = directive_line;
-
-    if !(ln.starts_with("aux-") || ln.starts_with("proc-macro")) {
+    if !(directive_line.name.starts_with("aux-") || directive_line.name == "proc-macro") {
         return;
     }
 

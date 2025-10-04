@@ -6,8 +6,8 @@ use crate::directives::{DirectiveLine, IgnoreDecision};
 const EXTRA_ARCHS: &[&str] = &["spirv"];
 
 pub(super) fn handle_ignore(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
-    let parsed = parse_cfg_name_directive(config, line, "ignore");
-    let &DirectiveLine { raw_directive: line, .. } = line;
+    let parsed = parse_cfg_name_directive(config, line, "ignore-");
+    let line = line.display();
 
     match parsed.outcome {
         MatchOutcome::NoMatch => IgnoreDecision::Continue,
@@ -24,8 +24,8 @@ pub(super) fn handle_ignore(config: &Config, line: &DirectiveLine<'_>) -> Ignore
 }
 
 pub(super) fn handle_only(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
-    let parsed = parse_cfg_name_directive(config, line, "only");
-    let &DirectiveLine { raw_directive: line, .. } = line;
+    let parsed = parse_cfg_name_directive(config, line, "only-");
+    let line = line.display();
 
     match parsed.outcome {
         MatchOutcome::Match => IgnoreDecision::Continue,
@@ -50,18 +50,14 @@ fn parse_cfg_name_directive<'a>(
     line: &'a DirectiveLine<'a>,
     prefix: &str,
 ) -> ParsedNameDirective<'a> {
-    let &DirectiveLine { raw_directive: line, .. } = line;
-
-    if !line.as_bytes().starts_with(prefix.as_bytes()) {
+    let Some(name) = line.name.strip_prefix(prefix) else {
         return ParsedNameDirective::not_a_directive();
-    }
-    if line.as_bytes().get(prefix.len()) != Some(&b'-') {
-        return ParsedNameDirective::not_a_directive();
-    }
-    let line = &line[prefix.len() + 1..];
+    };
 
-    let (name, comment) =
-        line.split_once(&[':', ' ']).map(|(l, c)| (l, Some(c))).unwrap_or((line, None));
+    // FIXME(Zalathar): This currently allows either a space or a colon, and
+    // treats any "value" after a colon as though it were a remark.
+    // We should instead forbid the colon syntax for these directives.
+    let comment = line.remark_after_space().or_else(|| line.value_after_colon());
 
     // Some of the matchers might be "" depending on what the target information is. To avoid
     // problems we outright reject empty directives.
@@ -269,7 +265,7 @@ fn parse_cfg_name_directive<'a>(
         message: "when performing tests on dist toolchain"
     }
 
-    if prefix == "ignore" && outcome == MatchOutcome::Invalid {
+    if prefix == "ignore-" && outcome == MatchOutcome::Invalid {
         // Don't error out for ignore-tidy-* diretives, as those are not handled by compiletest.
         if name.starts_with("tidy-") {
             outcome = MatchOutcome::External;
