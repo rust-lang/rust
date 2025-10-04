@@ -141,7 +141,7 @@ fn expand_requires_tts(
         new_tts.push_tree(TokenTree::Delimited(
             DelimSpan::from_single(attr_span),
             DelimSpacing::new(Spacing::JointHidden, Spacing::JointHidden),
-            token::Delimiter::Parenthesis,
+            token::Delimiter::Brace,
             annotation,
         ));
         Ok(())
@@ -163,7 +163,7 @@ fn expand_ensures_tts(
         new_tts.push_tree(TokenTree::Delimited(
             DelimSpan::from_single(attr_span),
             DelimSpacing::new(Spacing::JointHidden, Spacing::JointHidden),
-            token::Delimiter::Parenthesis,
+            token::Delimiter::Brace,
             annotation,
         ));
         Ok(())
