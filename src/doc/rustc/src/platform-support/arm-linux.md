@@ -70,7 +70,7 @@ Targets that start with `armv4t` are for processors implementing the Armv4T
 architecture from 1994. These include the ARM7TDMI, as found in the Nokia 6110
 brick-phone and the Game Boy Advance. The 'T' stands for *Thumb* and indicate
 that the processors can execute smaller 16-bit versions of some of the 32-bit
-Arm instructions. A Thumb is like a small version of an Arm.
+Arm instructions. This is because a Thumb is like a small version of an Arm.
 
 Targets that start with `armv5te` are for processors implementing the Armv5TE
 architecture. These are mostly from the ARM9 family, like the ARM946E-S found
