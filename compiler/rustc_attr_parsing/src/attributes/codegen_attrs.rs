@@ -226,7 +226,7 @@ impl<S: Stage> AttributeParser<S> for NakedParser {
     const ATTRIBUTES: AcceptMapping<Self, S> =
         &[(&[sym::naked], template!(Word), |this, cx, args| {
             if let Err(span) = args.no_args() {
-                cx.expected_no_args(span);
+                cx.expected_no_args(&cx.attr_path, span);
                 return;
             }
 

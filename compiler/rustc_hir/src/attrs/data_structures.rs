@@ -529,6 +529,9 @@ pub enum AttributeKind {
     /// Represents `#[export_stable]`.
     ExportStable,
 
+    /// Represents `#[feature(...)]`
+    Feature(ThinVec<Ident>, Span),
+
     /// Represents `#[ffi_const]`.
     FfiConst(Span),
 

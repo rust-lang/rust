@@ -42,7 +42,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcObjectLifetimeDefaultParser {
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         if let Err(span) = args.no_args() {
-            cx.expected_no_args(span);
+            cx.expected_no_args(&cx.attr_path, span);
             return None;
         }
 
