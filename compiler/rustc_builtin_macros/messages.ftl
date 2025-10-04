@@ -135,6 +135,15 @@ builtin_macros_concat_missing_literal = expected a literal
 builtin_macros_default_arg = `#[default]` attribute does not accept a value
     .suggestion = try using `#[default]`
 
+builtin_macros_derive_from_usage_note = `#[derive(From)]` can only be used on structs with exactly one field
+
+builtin_macros_derive_from_wrong_field_count = `#[derive(From)]` used on a struct with {$multiple_fields ->
+    [true] multiple fields
+    *[false] no fields
+}
+
+builtin_macros_derive_from_wrong_target = `#[derive(From)]` used on {$kind}
+
 builtin_macros_derive_macro_call = `derive` cannot be used on items with type macros
 
 builtin_macros_derive_path_args_list = traits in `#[derive(...)]` don't accept arguments
@@ -228,15 +237,6 @@ builtin_macros_format_unused_args = multiple unused formatting arguments
     .label = multiple missing formatting specifiers
 
 builtin_macros_format_use_positional = consider using a positional formatting argument instead
-
-builtin_macros_derive_from_wrong_target = `#[derive(From)]` used on {$kind}
-
-builtin_macros_derive_from_wrong_field_count = `#[derive(From)]` used on a struct with {$multiple_fields ->
-    [true] multiple fields
-    *[false] no fields
-}
-
-builtin_macros_derive_from_usage_note = `#[derive(From)]` can only be used on structs with exactly one field
 
 builtin_macros_incomplete_include = include macro expected single expression in source
 
