@@ -83,6 +83,9 @@ cfg_select! {
     target_os = "hermit" => {
         mod hermit;
     }
+    target_os = "motor" => {
+        mod motor;
+    }
     all(target_vendor = "fortanix", target_env = "sgx") => {
         mod sgx;
     }
