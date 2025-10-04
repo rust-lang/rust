@@ -55,7 +55,7 @@ pub macro thread_local_inner {
 
     // Used to generate the `LocalKey` value for const-initialized thread locals.
     (@key $t:ty, $(#[$align_attr:meta])*, const $init:expr) => {{
-        const __INIT: $t = $init;
+        const __RUST_STD_INTERNAL_INIT: $t = $init;
 
         unsafe {
             $crate::thread::LocalKey::new(const {
@@ -63,16 +63,16 @@ pub macro thread_local_inner {
                     |_| {
                         #[thread_local]
                         $(#[$align_attr])*
-                        static VAL: $crate::thread::local_impl::EagerStorage<$t>
-                            = $crate::thread::local_impl::EagerStorage::new(__INIT);
-                        VAL.get()
+                        static __RUST_STD_INTERNAL_VAL: $crate::thread::local_impl::EagerStorage<$t>
+                            = $crate::thread::local_impl::EagerStorage::new(__RUST_STD_INTERNAL_INIT);
+                        __RUST_STD_INTERNAL_VAL.get()
                     }
                 } else {
                     |_| {
                         #[thread_local]
                         $(#[$align_attr])*
-                        static VAL: $t = __INIT;
-                        &VAL
+                        static __RUST_STD_INTERNAL_VAL: $t = __RUST_STD_INTERNAL_INIT;
+                        &__RUST_STD_INTERNAL_VAL
                     }
                 }
             })
@@ -82,27 +82,27 @@ pub macro thread_local_inner {
     // used to generate the `LocalKey` value for `thread_local!`
     (@key $t:ty, $(#[$align_attr:meta])*, $init:expr) => {{
         #[inline]
-        fn __init() -> $t {
+        fn __rust_std_internal_init_fn() -> $t {
             $init
         }
 
         unsafe {
             $crate::thread::LocalKey::new(const {
                 if $crate::mem::needs_drop::<$t>() {
-                    |init| {
+                    |__rust_std_internal_init| {
                         #[thread_local]
                         $(#[$align_attr])*
-                        static VAL: $crate::thread::local_impl::LazyStorage<$t, ()>
+                        static __RUST_STD_INTERNAL_VAL: $crate::thread::local_impl::LazyStorage<$t, ()>
                             = $crate::thread::local_impl::LazyStorage::new();
-                        VAL.get_or_init(init, __init)
+                        __RUST_STD_INTERNAL_VAL.get_or_init(__rust_std_internal_init, __rust_std_internal_init_fn)
                     }
                 } else {
-                    |init| {
+                    |__rust_std_internal_init| {
                         #[thread_local]
                         $(#[$align_attr])*
-                        static VAL: $crate::thread::local_impl::LazyStorage<$t, !>
+                        static __RUST_STD_INTERNAL_VAL: $crate::thread::local_impl::LazyStorage<$t, !>
                             = $crate::thread::local_impl::LazyStorage::new();
-                        VAL.get_or_init(init, __init)
+                        __RUST_STD_INTERNAL_VAL.get_or_init(__rust_std_internal_init, __rust_std_internal_init_fn)
                     }
                 }
             })
