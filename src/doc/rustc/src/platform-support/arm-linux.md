@@ -1,7 +1,7 @@
 # Arm Linux support in Rust
 
 The Arm Architecture has been around since the mid-1980s, going through nine
-major revisions, many minor revisions, and spanning both 32-bith and 64-bit
+major revisions, many minor revisions, and spanning both 32-bit and 64-bit
 architectures. This page covers 32-bit Arm platforms that run some form of
 Linux (but not Android). Those targets are:
 
@@ -49,7 +49,7 @@ The architecture component simply called `arm` corresponds to the Armv6
 architecture - that is, version 6 of the Arm Architecture as defined in
 version 6 of the Arm Architecture Reference Manual (the Arm ARM). This was the
 last 'legacy' release of the Arm architecture, before they split into
-Application, Real-Time and Microcontroller profiles (leading to Armv7-A,
+Application, Real-Time, and Microcontroller profiles (leading to Armv7-A,
 Armv7-R and Armv7-M). Processors that implement the Armv6 architecture include
 the ARM1176JZF-S, as found in BCM2835 SoC that powers the Raspberry Pi Zero.
 Arm processors are generally fairly backwards compatible, especially for
@@ -59,7 +59,7 @@ on newer ARMv7-A systems, or even 64/32-bit Armv8-A systems.
 The `armeb` architecture component specifies an Armv6 processor running in Big
 Endian mode (`eb` is for big-endian - the letters are backwards because
 engineers used to little-endian systems perceive big-endian numbers to be
-written into memory backwards, and they thought it was funnier like that).
+written into memory backwards, and they thought it was funny like that).
 Most Arm processors can operate in either little-endian or big-endian mode and
 little-endian mode is by far the most common. However, if for whatever reason
 you wish to store your Most Significant Bytes first, these targets are
@@ -70,7 +70,7 @@ Targets that start with `armv4t` are for processors implementing the Armv4T
 architecture from 1994. These include the ARM7TDMI, as found in the Nokia 6110
 brick-phone and the Game Boy Advance. The 'T' stands for *Thumb* and indicate
 that the processors can execute smaller 16-bit versions of some of the 32-bit
-Arm instructions. Because a Thumb is like a small version of an Arm.
+Arm instructions. This is because a Thumb is like a small version of an Arm.
 
 Targets that start with `armv5te` are for processors implementing the Armv5TE
 architecture. These are mostly from the ARM9 family, like the ARM946E-S found
@@ -111,11 +111,11 @@ The `gnueabi` ABI component indicates support for using the GNU C Library
 (glibc), and the Arm Embedded ABI (EABI). The EABI is a replacement for the
 original ABI (now called the Old ABI or OABI), and it is the standard ABI for
 32-bit Arm systems. With this ABI, function parameters that are `f32` or `f64`
-are passed as if they were integers, instead of being passed via in FPU
-registers. Generally these targets also disable the use of the FPU entirely,
+are passed as if they were integers, instead of being passed in FPU
+registers. Generally, these targets also disable the use of the FPU entirely,
 although that isn't always true.
 
-The `gnueabihf` ABI component is like `gnueabi`, except that it support the
+The `gnueabihf` ABI component is like `gnueabi`, except that it supports the
 'hard-float' of the EABI. That is, function parameters that are `f32` or `f64`
 are passed in FPU registers. Naturally, this makes the FPU mandatory.
 
@@ -147,7 +147,7 @@ the Arm architecture, and more importantly, knows where to find a suitable C
 Library to link against.
 
 To do that, you can add the `linker` property to your `.cargo/config.toml`.
-Typically you would refer to a suitable copy of GCC that has built as a
+Typically, you would refer to a suitable copy of GCC that was built as a
 cross-compiler, alongside a C library.
 
 ```toml
@@ -155,7 +155,7 @@ cross-compiler, alongside a C library.
 linker = "arm-linux-gnueabi-gcc"
 ```
 
-On Debian Linux, you could install such a cross-compilation toolchain with
+On Debian, you could install such a cross-compilation toolchain with
 `apt install gcc-arm-linux-gnueabi`. For more exotic combinations, you might
 need to build a bespoke version of GCC using [crosstool-ng].
 
