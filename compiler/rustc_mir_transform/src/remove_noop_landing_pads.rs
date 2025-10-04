@@ -34,8 +34,8 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveNoopLandingPads {
 
         // This is a post-order traversal, so that if A post-dominates B
         // then A will be visited before B.
-        for &bb in body.basic_blocks.reverse_postorder().iter().rev() {
-            let is_nop_landing_pad = self.is_nop_landing_pad(bb, body, &nop_landing_pads);
+        for (bb, bbdata) in traversal::postorder(body) {
+            let is_nop_landing_pad = self.is_nop_landing_pad(bbdata, &nop_landing_pads);
             debug!("is_nop_landing_pad({bb:?}) = {is_nop_landing_pad}");
             if is_nop_landing_pad {
                 nop_landing_pads.insert(bb);
@@ -85,11 +85,10 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveNoopLandingPads {
 impl RemoveNoopLandingPads {
     fn is_nop_landing_pad(
         &self,
-        bb: BasicBlock,
-        body: &Body<'_>,
+        bbdata: &BasicBlockData<'_>,
         nop_landing_pads: &DenseBitSet<BasicBlock>,
     ) -> bool {
-        for stmt in &body[bb].statements {
+        for stmt in &bbdata.statements {
             match &stmt.kind {
                 StatementKind::FakeRead(..)
                 | StatementKind::StorageLive(_)
@@ -122,7 +121,7 @@ impl RemoveNoopLandingPads {
             }
         }
 
-        let terminator = body[bb].terminator();
+        let terminator = bbdata.terminator();
         match terminator.kind {
             TerminatorKind::Goto { .. }
             | TerminatorKind::UnwindResume
