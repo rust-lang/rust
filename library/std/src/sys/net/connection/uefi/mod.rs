@@ -82,12 +82,11 @@ impl TcpStream {
     }
 
     pub fn write_vectored(&self, buf: &[IoSlice<'_>]) -> io::Result<usize> {
-        // FIXME: UEFI does support vectored write, so implement that.
-        crate::io::default_write_vectored(|b| self.write(b), buf)
+        self.inner.write_vectored(buf, self.write_timeout()?)
     }
 
     pub fn is_write_vectored(&self) -> bool {
-        false
+        true
     }
 
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
