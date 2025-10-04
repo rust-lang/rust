@@ -53,6 +53,8 @@ channels: stable, beta, and nightly.
 - **Stable**: this is the latest stable release for general usage.
 - **Beta**: this is the next release (will be stable within 6 weeks).
 - **Nightly**: follows the `master` branch of the repo.
+  This is the only channel where unstable, incomplete, or experimental features
+  should be used (with feature gates).
 
 See [this chapter on implementing new features](./implementing_new_features.md) for more
 information.
