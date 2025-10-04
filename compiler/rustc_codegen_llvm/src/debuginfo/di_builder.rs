@@ -1,9 +1,8 @@
 use libc::c_uint;
 use rustc_abi::Align;
 
-use crate::common::AsCCharPtr;
-use crate::llvm;
 use crate::llvm::debuginfo::DIBuilder;
+use crate::llvm::{self, ToLlvmBool};
 
 /// Extension trait for defining safe wrappers and helper methods on
 /// `&DIBuilder<'ll>`, without requiring it to be defined in the same crate.
@@ -31,23 +30,33 @@ pub(crate) trait DIBuilderExt<'ll> {
         let this = self.as_di_builder();
         let align_in_bits = align.map_or(0, |align| align.bits() as u32);
 
-        unsafe {
-            llvm::LLVMRustDIBuilderCreateStaticVariable(
+        // `LLVMDIBuilderCreateGlobalVariableExpression` would assert if we
+        // gave it a null `Expr` pointer, so give it an empty expression
+        // instead, which is what the C++ `createGlobalVariableExpression`
+        // method would do if given a null `DIExpression` pointer.
+        let expr = self.create_expression(&[]);
+
+        let global_var_expr = unsafe {
+            llvm::LLVMDIBuilderCreateGlobalVariableExpression(
                 this,
                 scope,
-                name.as_c_char_ptr(),
+                name.as_ptr(),
                 name.len(),
-                linkage_name.as_c_char_ptr(),
+                linkage_name.as_ptr(),
                 linkage_name.len(),
                 file,
                 line_number,
                 ty,
-                is_local_to_unit,
-                val,
+                is_local_to_unit.to_llvm_bool(),
+                expr,
                 decl,
                 align_in_bits,
             )
-        }
+        };
+
+        unsafe { llvm::LLVMGlobalSetMetadata(val, llvm::MD_dbg, global_var_expr) };
+
+        global_var_expr
     }
 }
 
