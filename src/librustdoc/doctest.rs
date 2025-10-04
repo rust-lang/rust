@@ -12,7 +12,7 @@ use std::process::{self, Command, Stdio};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
-use std::{fmt, panic, str};
+use std::{panic, str};
 
 pub(crate) use make::{BuildDocTestBuilder, DocTestBuilder};
 pub(crate) use markdown::test as test_markdown;
@@ -60,24 +60,15 @@ impl MergedDoctestTimes {
         self.added_compilation_times += 1;
     }
 
-    fn display_times(&self) {
+    /// Returns `(total_time, compilation_time)`.
+    fn times_in_secs(&self) -> Option<(f64, f64)> {
         // If no merged doctest was compiled, then there is nothing to display since the numbers
         // displayed by `libtest` for standalone tests are already accurate (they include both
         // compilation and runtime).
-        if self.added_compilation_times > 0 {
-            println!("{self}");
+        if self.added_compilation_times == 0 {
+            return None;
         }
-    }
-}
-
-impl fmt::Display for MergedDoctestTimes {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "all doctests ran in {:.2}s; merged doctests compilation took {:.2}s",
-            self.total_time.elapsed().as_secs_f64(),
-            self.compilation_time.as_secs_f64(),
-        )
+        Some((self.total_time.elapsed().as_secs_f64(), self.compilation_time.as_secs_f64()))
     }
 }
 
@@ -402,15 +393,20 @@ pub(crate) fn run_tests(
     if ran_edition_tests == 0 || !standalone_tests.is_empty() {
         standalone_tests.sort_by(|a, b| a.desc.name.as_slice().cmp(b.desc.name.as_slice()));
         test::test_main_with_exit_callback(&test_args, standalone_tests, None, || {
+            let times = times.times_in_secs();
             // We ensure temp dir destructor is called.
             std::mem::drop(temp_dir.take());
-            times.display_times();
+            if let Some((total_time, compilation_time)) = times {
+                test::print_merged_doctests_times(&test_args, total_time, compilation_time);
+            }
         });
     } else {
         // If the first condition branch exited successfully, `test_main_with_exit_callback` will
         // not exit the process. So to prevent displaying the times twice, we put it behind an
         // `else` condition.
-        times.display_times();
+        if let Some((total_time, compilation_time)) = times.times_in_secs() {
+            test::print_merged_doctests_times(&test_args, total_time, compilation_time);
+        }
     }
     // We ensure temp dir destructor is called.
     std::mem::drop(temp_dir);
