@@ -28,6 +28,8 @@ use rustc_target::spec::DebuginfoKind;
 use smallvec::SmallVec;
 use tracing::debug;
 
+use self::create_scope_map::compute_mir_scopes;
+pub(crate) use self::metadata::build_global_var_di_node;
 use self::metadata::{
     UNKNOWN_COLUMN_NUMBER, UNKNOWN_LINE_NUMBER, file_metadata, spanned_type_di_node, type_di_node,
 };
@@ -47,9 +49,6 @@ mod gdb;
 pub(crate) mod metadata;
 mod namespace;
 mod utils;
-
-use self::create_scope_map::compute_mir_scopes;
-pub(crate) use self::metadata::build_global_var_di_node;
 
 /// A context object for maintaining all state needed by the debuginfo module.
 pub(crate) struct CodegenUnitDebugContext<'ll, 'tcx> {
