@@ -51,6 +51,33 @@
 
 // lldb-command:run
 
+// lldb-command: v btree_set
+// lldb-check:[...] size=15 { [0] = 0 [1] = 1 [2] = 2 [3] = 3 [4] = 4 [5] = 5 [6] = 6 [7] = 7 [8] = 8 [9] = 9 [10] = 10 [11] = 11 [12] = 12 [13] = 13 [14] = 14 }
+
+// lldb-command: v empty_btree_set
+// lldb-check:[...] size=0
+
+// lldb-command: v btree_map
+// lldb-check:[...] size=15 { [0] = { 0 = 0 1 = 0 } [1] = { 0 = 1 1 = 1 } [2] = { 0 = 2 1 = 2 } [3] = { 0 = 3 1 = 3 } [4] = { 0 = 4 1 = 4 } [5] = { 0 = 5 1 = 5 } [6] = { 0 = 6 1 = 6 } [7] = { 0 = 7 1 = 7 } [8] = { 0 = 8 1 = 8 } [9] = { 0 = 9 1 = 9 } [10] = { 0 = 10 1 = 10 } [11] = { 0 = 11 1 = 11 } [12] = { 0 = 12 1 = 12 } [13] = { 0 = 13 1 = 13 } [14] = { 0 = 14 1 = 14 } }
+
+// lldb-command: v option_btree_map
+// lldb-check:[...] size=2 { [0] = { 0 = false 1 = [...] } [1] = { 0 = true 1 = [...]
+// (The matching here is lazy, so we cannot add braces at the end because they would match
+// intermediate braces and fail because not the entire input was consumed.)
+
+// lldb-command: v nasty_btree_map
+// lldb-check:[...] size=15 { [0] = { 0 = 0 1 = { 0 = 0 } } [1] = { 0 = 1 1 = { 0 = 1 } } [2] = { 0 = 2 1 = { 0 = 2 } } [3] = { 0 = 3 1 = { 0 = 3 } } [4] = { 0 = 4 1 = { 0 = 4 } } [5] = { 0 = 5 1 = { 0 = 5 } } [6] = { 0 = 6 1 = { 0 = 6 } } [7] = { 0 = 7 1 = { 0 = 7 } } [8] = { 0 = 8 1 = { 0 = 8 } } [9] = { 0 = 9 1 = { 0 = 9 } } [10] = { 0 = 10 1 = { 0 = 10 } } [11] = { 0 = 11 1 = { 0 = 11 } } [12] = { 0 = 12 1 = { 0 = 12 } } [13] = { 0 = 13 1 = { 0 = 13 } } [14] = { 0 = 14 1 = { 0 = 14 } } }
+// (Does not print out the type name in lldb)
+
+// lldb-command: v zst_key_btree_map
+// lldb-check:[...] size=1 { [0] = { 1 = 1 } }
+
+// lldb-command: v zst_val_btree_map
+// lldb-check:[...] size=1 { [0] = { 0 = 1 } }
+
+// lldb-command: v zst_key_val_btree_map
+// lldb-check:[...] size=1 { [0] = {} }
+
 // lldb-command:v vec_deque
 // lldb-check:[...] size=3 { [0] = 5 [1] = 3 [2] = 7 }
 
