@@ -9,7 +9,7 @@ use std::path::PathBuf;
 
 use hir::Expr;
 use rustc_ast::ast::Mutability;
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
@@ -2988,40 +2988,46 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let foreign_def_ids = foreign_preds
             .iter()
             .filter_map(|pred| match pred.self_ty().kind() {
-                ty::Adt(def, _) => Some(def.did()),
+                ty::Adt(def, _) => Some((pred, def.did())),
                 _ => None,
             })
-            .collect::<FxIndexSet<_>>();
+            .collect::<Vec<_>>();
         let mut foreign_spans: MultiSpan = foreign_def_ids
             .iter()
-            .filter_map(|def_id| {
+            .filter_map(|(_, def_id)| {
                 let span = self.tcx.def_span(*def_id);
-                if span.is_dummy() { None } else { Some(span) }
+                (!span.is_dummy()).then_some(span)
             })
             .collect::<Vec<_>>()
             .into();
-        for pred in &foreign_preds {
-            if let ty::Adt(def, _) = pred.self_ty().kind() {
+
+        let unique_traits =
+            foreign_preds.iter().map(|pred| pred.def_id()).collect::<FxHashSet<_>>().len();
+
+        if foreign_def_ids.len() > 1 {
+            for (pred, def_id) in foreign_def_ids {
                 foreign_spans.push_span_label(
-                    self.tcx.def_span(def.did()),
-                    format!("not implement `{}`", pred.trait_ref.print_trait_sugared()),
+                    self.tcx.def_span(def_id),
+                    format!(
+                        "`{}` does not implement `{}`",
+                        pred.self_ty(),
+                        pred.trait_ref.print_trait_sugared()
+                    ),
                 );
             }
         }
+
         if foreign_spans.primary_span().is_some() {
             let msg = if let [foreign_pred] = foreign_preds.as_slice() {
                 format!(
-                    "the foreign item type `{}` doesn't implement `{}`",
+                    "`{}`, which is defined in another crate, doesn't implement `{}`",
                     foreign_pred.self_ty(),
                     foreign_pred.trait_ref.print_trait_sugared()
                 )
             } else {
                 format!(
-                    "the foreign item type{} {} implement required trait{} for this \
-                     operation to be valid",
-                    pluralize!(foreign_def_ids.len()),
-                    if foreign_def_ids.len() > 1 { "don't" } else { "doesn't" },
-                    pluralize!(foreign_preds.len()),
+                    "these types, defined in other crates, do not implement the required trait{}",
+                    pluralize!(unique_traits),
                 )
             };
             err.span_note(foreign_spans, msg);

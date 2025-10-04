@@ -19,10 +19,8 @@ LL |     x.lock().unwrap() += 1;
    |     |
    |     cannot use `+=` on type `std::sync::MutexGuard<'_, usize>`
    |
-note: the foreign item type `std::sync::MutexGuard<'_, usize>` doesn't implement `AddAssign<{integer}>`
+note: `std::sync::MutexGuard<'_, usize>`, which is defined in another crate, doesn't implement `AddAssign<{integer}>`
   --> $SRC_DIR/std/src/sync/poison/mutex.rs:LL:COL
-   |
-   = note: not implement `AddAssign<{integer}>`
 help: `+=` can be used on `usize` if you dereference the left-hand side
    |
 LL |     *x.lock().unwrap() += 1;
@@ -51,10 +49,8 @@ LL |     y += 1;
    |     |
    |     cannot use `+=` on type `std::sync::MutexGuard<'_, usize>`
    |
-note: the foreign item type `std::sync::MutexGuard<'_, usize>` doesn't implement `AddAssign<{integer}>`
+note: `std::sync::MutexGuard<'_, usize>`, which is defined in another crate, doesn't implement `AddAssign<{integer}>`
   --> $SRC_DIR/std/src/sync/poison/mutex.rs:LL:COL
-   |
-   = note: not implement `AddAssign<{integer}>`
 help: `+=` can be used on `usize` if you dereference the left-hand side
    |
 LL |     *y += 1;
