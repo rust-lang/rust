@@ -246,7 +246,7 @@ impl SocketAddr {
         {
             AddressKind::Unnamed
         } else if self.addr.sun_path[0] == 0 {
-            AddressKind::Abstract(ByteStr::from_bytes(&path[1..len]))
+            AddressKind::Abstract(ByteStr::new(&path[1..len]))
         } else {
             AddressKind::Pathname(OsStr::from_bytes(&path[..len - 1]).as_ref())
         }
