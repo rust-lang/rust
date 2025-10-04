@@ -8,8 +8,8 @@ extern "C" {
 }
 
 const _SIZE: usize = unsafe { size_of_val(&4 as *const i32 as *const Opaque) };
-//~^ ERROR `extern type` does not have known layout
+//~^ ERROR: the size for values of type `Opaque` cannot be known
 const _ALIGN: usize = unsafe { align_of_val(&4 as *const i32 as *const Opaque) };
-//~^ ERROR `extern type` does not have known layout
+//~^ ERROR: the size for values of type `Opaque` cannot be known
 
 fn main() {}

@@ -4,6 +4,20 @@ error[E0275]: overflow evaluating the requirement `<T as Trait>::Assoc: Trait`
 LL |     <T as Trait>::Assoc: Trait,
    |                          ^^^^^
 
-error: aborting due to 1 previous error
+error[E0275]: overflow evaluating the requirement `<T as Trait>::Assoc: MetaSized`
+  --> $DIR/normalize-param-env-4.rs:19:26
+   |
+LL |     <T as Trait>::Assoc: Trait,
+   |                          ^^^^^
+   |
+note: required by a bound in `Trait`
+  --> $DIR/normalize-param-env-4.rs:7:1
+   |
+LL | / trait Trait {
+LL | |     type Assoc;
+LL | | }
+   | |_^ required by this bound in `Trait`
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0275`.
