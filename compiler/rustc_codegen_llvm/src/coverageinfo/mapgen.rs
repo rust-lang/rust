@@ -6,7 +6,6 @@ use rustc_abi::Align;
 use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, ConstCodegenMethods};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_index::IndexVec;
-use rustc_macros::TryFromU32;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::RemapFileNameExt;
 use rustc_session::config::RemapPathScopeComponents;
@@ -16,7 +15,7 @@ use tracing::debug;
 use crate::common::CodegenCx;
 use crate::coverageinfo::llvm_cov;
 use crate::coverageinfo::mapgen::covfun::prepare_covfun_record;
-use crate::llvm;
+use crate::{TryFromU32, llvm};
 
 mod covfun;
 mod spans;
