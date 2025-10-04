@@ -5,7 +5,11 @@ LL |     do_something(SomeImplementation(), test);
    |                                        ^^^^ cannot infer type of the type parameter `I` declared on the function `test`
    |
    = note: cannot satisfy `_: Iterable`
-   = help: the trait `Iterable` is implemented for `SomeImplementation`
+help: the trait `Iterable` is implemented for `SomeImplementation`
+  --> $DIR/issue-88382.rs:13:1
+   |
+LL | impl Iterable for SomeImplementation {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: required by a bound in `test`
   --> $DIR/issue-88382.rs:29:16
    |

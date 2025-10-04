@@ -25,7 +25,11 @@ LL |     takes(|_: Argument| -> Return { todo!() });
    |     required by a bound introduced by this call
    |
    = help: the trait `Trait` is not implemented for closure `{closure@$DIR/bare-fn-no-impl-fn-ptr-99875.rs:16:11: 16:34}`
-   = help: the trait `Trait` is implemented for fn pointer `fn(Argument) -> Return`
+help: the trait `Trait` is implemented for fn pointer `fn(Argument) -> Return`
+  --> $DIR/bare-fn-no-impl-fn-ptr-99875.rs:9:1
+   |
+LL | impl Trait for fn(Argument) -> Return {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: required by a bound in `takes`
   --> $DIR/bare-fn-no-impl-fn-ptr-99875.rs:11:18
    |
