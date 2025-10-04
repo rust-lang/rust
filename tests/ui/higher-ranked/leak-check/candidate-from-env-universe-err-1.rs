@@ -1,6 +1,7 @@
 //@ revisions: old next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
-//@[old] check-pass
+//@ check-pass
 
 // cc #119820
 
@@ -25,7 +26,6 @@ where
     // the leak check both candidates may apply and we prefer the
     // `param_env` candidate in winnowing.
     hr_bound::<&T>();
-    //[next]~^ ERROR the trait bound `for<'a> &'a &T: Trait` is not satisfied
 }
 
 fn main() {}
