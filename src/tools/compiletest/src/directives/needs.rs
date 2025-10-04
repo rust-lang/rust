@@ -281,10 +281,7 @@ pub(super) fn handle_needs(
 
     // Handled elsewhere.
     if name == "needs-llvm-components" {
-        if config.default_codegen_backend.is_llvm() {
-            return IgnoreDecision::Continue;
-        }
-        return IgnoreDecision::Ignore { reason: "LLVM specific test".into() };
+        return IgnoreDecision::Continue;
     }
 
     let mut found_valid = false;
