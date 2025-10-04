@@ -17,8 +17,7 @@ pub fn ezmap(x: Option<i32>) -> Option<i32> {
     // combinator and without the closure, using just a plain match.
 
     // CHECK-LABEL: fn ezmap
-    // CHECK: [[INNER:_.+]] = copy ((_1 as Some).0: i32);
-    // CHECK: [[SUCC:_.+]] = Add({{copy|move}} [[INNER]], const 1_i32);
+    // CHECK: [[SUCC:_.+]] = Add(copy ((_1 as Some).0: i32), const 1_i32);
     // CHECK: _0 = Option::<i32>::Some({{copy|move}} [[SUCC]]);
     map(x, |n| n + 1)
 }
@@ -28,10 +27,8 @@ pub fn map_via_question_mark(x: Option<i32>) -> Option<i32> {
     // FIXME(#138544): Ideally this would optimize out the `ControlFlow` local.
 
     // CHECK-LABEL: fn map_via_question_mark
-    // CHECK: [[INNER:_.+]] = copy ((_1 as Some).0: i32);
-    // CHECK: [[TEMP1:_.+]] = ControlFlow::<Option<Infallible>, i32>::Continue(copy [[INNER]]);
-    // CHECK: [[TEMP2:_.+]] = copy (([[TEMP1]] as Continue).0: i32);
-    // CHECK: [[SUCC:_.+]] = Add({{copy|move}} [[TEMP2]], const 1_i32);
+    // CHECK: [[TEMP1:_.+]] = ControlFlow::<Option<Infallible>, i32>::Continue(copy ((_1 as Some).0: i32));
+    // CHECK: [[SUCC:_.+]] = Add(copy (([[TEMP1]] as Continue).0: i32), const 1_i32);
     // CHECK: _0 = Option::<i32>::Some({{copy|move}} [[SUCC]]);
     Some(x? + 1)
 }
