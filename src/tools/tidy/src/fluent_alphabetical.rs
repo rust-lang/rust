@@ -15,7 +15,7 @@ fn message() -> &'static Regex {
 }
 
 fn is_fluent(path: &Path) -> bool {
-    path.extension().is_some_and(|ext| ext == "flt")
+    path.extension().is_some_and(|ext| ext == "ftl")
 }
 
 fn check_alphabetic(

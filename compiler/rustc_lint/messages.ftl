@@ -392,6 +392,14 @@ lint_improper_ctypes_union_layout_help = consider adding a `#[repr(C)]` or `#[re
 lint_improper_ctypes_union_layout_reason = this union has unspecified layout
 lint_improper_ctypes_union_non_exhaustive = this union is non-exhaustive
 
+lint_int_to_ptr_transmutes = transmuting an integer to a pointer creates a pointer without provenance
+    .note = this is dangerous because dereferencing the resulting pointer is undefined behavior
+    .note_exposed_provenance = exposed provenance semantics can be used to create a pointer based on some previously exposed provenance
+    .help_transmute = for more information about transmute, see <https://doc.rust-lang.org/std/mem/fn.transmute.html#transmutation-between-pointers-and-integers>
+    .help_exposed_provenance = for more information about exposed provenance, see <https://doc.rust-lang.org/std/ptr/index.html#exposed-provenance>
+    .suggestion_with_exposed_provenance = use `std::ptr::with_exposed_provenance{$suffix}` instead to use a previously exposed provenance
+    .suggestion_without_provenance_mut = if you truly mean to create a pointer without provenance, use `std::ptr::without_provenance_mut`
+
 lint_invalid_asm_label_binary = avoid using labels containing only the digits `0` and `1` in inline assembly
     .label = use a different label that doesn't start with `0` or `1`
     .help = start numbering with `2` instead
@@ -438,14 +446,6 @@ lint_invalid_reference_casting_borrow_as_mut = casting `&T` to `&mut T` is undef
 lint_invalid_reference_casting_note_book = for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 lint_invalid_reference_casting_note_ty_has_interior_mutability = even for types with interior mutability, the only legal way to obtain a mutable pointer from a shared reference is through `UnsafeCell::get`
-
-lint_int_to_ptr_transmutes = transmuting an integer to a pointer creates a pointer without provenance
-    .note = this is dangerous because dereferencing the resulting pointer is undefined behavior
-    .note_exposed_provenance = exposed provenance semantics can be used to create a pointer based on some previously exposed provenance
-    .help_transmute = for more information about transmute, see <https://doc.rust-lang.org/std/mem/fn.transmute.html#transmutation-between-pointers-and-integers>
-    .help_exposed_provenance = for more information about exposed provenance, see <https://doc.rust-lang.org/std/ptr/index.html#exposed-provenance>
-    .suggestion_with_exposed_provenance = use `std::ptr::with_exposed_provenance{$suffix}` instead to use a previously exposed provenance
-    .suggestion_without_provenance_mut = if you truly mean to create a pointer without provenance, use `std::ptr::without_provenance_mut`
 
 lint_lintpass_by_hand = implementing `LintPass` by hand
     .help = try using `declare_lint_pass!` or `impl_lint_pass!` instead
