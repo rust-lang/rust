@@ -167,6 +167,28 @@ macro_rules! int_impl {
             (self as $UnsignedT).trailing_ones()
         }
 
+        /// Returns whether the `k`-th least-significant bit in the binary
+        /// representation of `self` is a one.
+        ///
+        /// Returns `false` if the supplied index is greater than or equal to the
+        /// number of bits of the binary representation of `self`.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        #[doc = concat!("let n = 0b00000101", stringify!($SelfT), ";")]
+        /// assert_eq!(n.is_bit_one(0), true);
+        /// assert_eq!(n.is_bit_one(1), false);
+        /// assert_eq!(n.is_bit_one(2), true);
+        /// assert_eq!(n.is_bit_one(99999), false);
+        /// ```
+        #[stable(feature = "leading_trailing_ones", since = "1.46.0")]
+        #[rustc_const_stable(feature = "leading_trailing_ones", since = "1.46.0")]
+        #[inline(always)]
+        pub const fn is_bit_one(self, k: usize) -> bool {
+            ((1 << k) & self) > 0
+        }
+
         /// Returns `self` with only the most significant bit set, or `0` if
         /// the input is `0`.
         ///
