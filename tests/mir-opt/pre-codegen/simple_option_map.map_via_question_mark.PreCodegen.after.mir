@@ -29,13 +29,11 @@ fn map_via_question_mark(_1: Option<i32>) -> Option<i32> {
         StorageLive(_6);
         StorageLive(_4);
         StorageLive(_2);
-        StorageLive(_3);
         _2 = discriminant(_1);
         switchInt(move _2) -> [0: bb1, 1: bb2, otherwise: bb4];
     }
 
     bb1: {
-        StorageDead(_3);
         StorageDead(_2);
         _0 = const Option::<i32>::None;
         StorageDead(_6);
@@ -44,6 +42,7 @@ fn map_via_question_mark(_1: Option<i32>) -> Option<i32> {
     }
 
     bb2: {
+        StorageLive(_3);
         _3 = copy ((_1 as Some).0: i32);
         _4 = ControlFlow::<Option<Infallible>, i32>::Continue(copy _3);
         StorageDead(_3);

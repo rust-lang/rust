@@ -22,7 +22,7 @@
       }
   
       bb0: {
--         StorageLive(_2);
+          StorageLive(_2);
           _2 = &raw mut _1;
           StorageLive(_3);
           StorageLive(_4);
@@ -44,7 +44,7 @@
           _0 = const ();
 -         StorageDead(_5);
           StorageDead(_3);
--         StorageDead(_2);
+          StorageDead(_2);
           return;
       }
   }
