@@ -1,5 +1,5 @@
 error: function `foo` is never used
-  --> $DIR/with-core-crate.rs:7:4
+  --> $DIR/with-core-crate.rs:6:4
    |
 LL | fn foo() {
    |    ^^^

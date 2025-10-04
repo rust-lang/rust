@@ -3,7 +3,8 @@
 //@ needs-enzyme
 
 #![feature(autodiff)]
-#[macro_use]
+#[prelude_import]
+use ::std::prelude::rust_2015::*;
 extern crate std;
 #[prelude_import]
 use ::std::prelude::rust_2015::*;
