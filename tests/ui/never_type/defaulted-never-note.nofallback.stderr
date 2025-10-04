@@ -1,5 +1,5 @@
-warning: this function depends on never type fallback being `()`
-  --> $DIR/defaulted-never-note.rs:28:1
+error: this function depends on never type fallback being `()`
+  --> $DIR/defaulted-never-note.rs:26:1
    |
 LL | fn smeg() {
    | ^^^^^^^^^
@@ -8,21 +8,21 @@ LL | fn smeg() {
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `!: ImplementedForUnitButNotNever` will fail
-  --> $DIR/defaulted-never-note.rs:32:9
+  --> $DIR/defaulted-never-note.rs:30:9
    |
 LL |     foo(_x);
    |         ^^
-   = note: `#[warn(dependency_on_unit_never_type_fallback)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
+   = note: `#[deny(dependency_on_unit_never_type_fallback)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
 help: use `()` annotations to avoid fallback changes
    |
 LL |     let _x: () = return;
    |           ++++
 
-warning: 1 warning emitted
+error: aborting due to 1 previous error
 
 Future incompatibility report: Future breakage diagnostic:
-warning: this function depends on never type fallback being `()`
-  --> $DIR/defaulted-never-note.rs:28:1
+error: this function depends on never type fallback being `()`
+  --> $DIR/defaulted-never-note.rs:26:1
    |
 LL | fn smeg() {
    | ^^^^^^^^^
@@ -31,11 +31,11 @@ LL | fn smeg() {
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `!: ImplementedForUnitButNotNever` will fail
-  --> $DIR/defaulted-never-note.rs:32:9
+  --> $DIR/defaulted-never-note.rs:30:9
    |
 LL |     foo(_x);
    |         ^^
-   = note: `#[warn(dependency_on_unit_never_type_fallback)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
+   = note: `#[deny(dependency_on_unit_never_type_fallback)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
 help: use `()` annotations to avoid fallback changes
    |
 LL |     let _x: () = return;
