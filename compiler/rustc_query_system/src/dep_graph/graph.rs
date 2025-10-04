@@ -875,15 +875,18 @@ impl<D: Deps> DepGraphData<D> {
         parent_dep_node_index: SerializedDepNodeIndex,
         frame: Option<&MarkFrame<'_>>,
     ) -> Option<()> {
-        let dep_dep_node_color = self.colors.get(parent_dep_node_index);
-        let dep_dep_node = &self.previous.index_to_node(parent_dep_node_index);
+        let get_dep_dep_node = || self.previous.index_to_node(parent_dep_node_index);
 
-        match dep_dep_node_color {
+        match self.colors.get(parent_dep_node_index) {
             Some(DepNodeColor::Green(_)) => {
                 // This dependency has been marked as green before, we are
                 // still fine and can continue with checking the other
                 // dependencies.
-                debug!("dependency {dep_dep_node:?} was immediately green");
+                //
+                // This path is extremely hot. We don't want to get the
+                // `dep_dep_node` unless it's necessary. Hence the
+                // `get_dep_dep_node` closure.
+                debug!("dependency {:?} was immediately green", get_dep_dep_node());
                 return Some(());
             }
             Some(DepNodeColor::Red) => {
@@ -891,11 +894,13 @@ impl<D: Deps> DepGraphData<D> {
                 // compared to the previous compilation session. We cannot
                 // mark the DepNode as green and also don't need to bother
                 // with checking any of the other dependencies.
-                debug!("dependency {dep_dep_node:?} was immediately red");
+                debug!("dependency {:?} was immediately red", get_dep_dep_node());
                 return None;
             }
             None => {}
         }
+
+        let dep_dep_node = &get_dep_dep_node();
 
         // We don't know the state of this dependency. If it isn't
         // an eval_always node, let's try to mark it green recursively.
@@ -922,9 +927,7 @@ impl<D: Deps> DepGraphData<D> {
             return None;
         }
 
-        let dep_dep_node_color = self.colors.get(parent_dep_node_index);
-
-        match dep_dep_node_color {
+        match self.colors.get(parent_dep_node_index) {
             Some(DepNodeColor::Green(_)) => {
                 debug!("managed to FORCE dependency {dep_dep_node:?} to green");
                 return Some(());
