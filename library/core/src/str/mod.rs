@@ -58,7 +58,7 @@ pub use lossy::{Utf8Chunk, Utf8Chunks};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use traits::FromStr;
 #[unstable(feature = "str_internals", issue = "none")]
-pub use validations::{next_code_point, utf8_char_width};
+pub use validations::{next_code_point, next_code_point_reverse, utf8_char_width};
 
 #[inline(never)]
 #[cold]
