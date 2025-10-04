@@ -836,8 +836,7 @@ fn run_test(
     match result {
         Err(e) => return (duration, Err(TestFailure::ExecutionError(e))),
         Ok(out) => {
-            // FIXME: use test::ERROR_EXIT_CODE once public
-            if langstr.should_panic && out.status.code() != Some(101) {
+            if langstr.should_panic && out.status.code() != Some(test::ERROR_EXIT_CODE) {
                 return (duration, Err(TestFailure::UnexpectedRunPass));
             } else if !langstr.should_panic && !out.status.success() {
                 return (duration, Err(TestFailure::ExecutionFailure(out)));
