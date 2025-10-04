@@ -5,18 +5,18 @@
 $ErrorActionPreference = "Stop"
 
 # syntax check
-Get-Command -syntax ${PSCommandPath} >$null
+Get-Command -Syntax $PSCommandPath > $null
 
 $xpy = Join-Path $PSScriptRoot x.py
 $xpy_args = @($xpy) + $args
 
-function Get-Application($app) {
+function Get-Application { param($app)
     $cmd = Get-Command $app -ErrorAction SilentlyContinue -CommandType Application | Select-Object -First 1
     return $cmd
 }
 
-function Invoke-Application($application, $arguments) {
-    & $application $arguments
+function Invoke-Application { param($application, $arguments)
+    & $application @arguments
     Exit $LASTEXITCODE
 }
 
@@ -33,13 +33,13 @@ foreach ($python in "py", "python3", "python", "python2") {
     }
 }
 
-$found = (Get-Application "python*" | Where-Object {$_.name -match '^python[2-3]\.[0-9]+(\.exe)?$'})
+$found = Get-Application "python*" | Where-Object { $_.Name -match '^python[2-3]\.[0-9]+(\.exe)?$' }
 if (($null -ne $found) -and ($found.Length -ge 1)) {
     $python = $found[0]
     Invoke-Application $python $xpy_args
 }
 
-$msg = "${PSCommandPath}: error: did not find python installed`n"
+$msg = "$PSCommandPath: error: did not find python installed`n"
 $msg += "help: consider installing it from https://www.python.org/downloads/"
 Write-Error $msg -Category NotInstalled
 Exit 1
