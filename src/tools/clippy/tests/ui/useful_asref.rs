@@ -7,7 +7,7 @@ trait Trait {
     fn as_ptr(&self);
 }
 
-impl<'a> Trait for &'a [u8] {
+impl<'a> Trait for &'a [u32] {
     fn as_ptr(&self) {
         self.as_ref().as_ptr();
     }
