@@ -3,7 +3,7 @@ cfg_select! {
         all(target_family = "unix", not(target_os = "l4re")),
         target_os = "windows",
         target_os = "hermit",
-        all(target_os = "wasi", target_env = "p2"),
+        all(target_os = "wasi", any(target_env = "p2", target_env = "p3")),
         target_os = "solid_asp3",
     ) => {
         mod socket;

@@ -85,6 +85,11 @@ wasip2 = { version = '0.14.4', features = [
     'rustc-dep-of-std',
 ], default-features = false, package = 'wasi' }
 
+[target.'cfg(all(target_os = "wasi", target_env = "p3"))'.dependencies]
+wasip2 = { version = '0.14.4', features = [
+    'rustc-dep-of-std',
+], default-features = false, package = 'wasi' }
+
 [target.'cfg(target_os = "uefi")'.dependencies]
 r-efi = { version = "5.2.0", features = ['rustc-dep-of-std'] }
 r-efi-alloc = { version = "2.0.0", features = ['rustc-dep-of-std'] }

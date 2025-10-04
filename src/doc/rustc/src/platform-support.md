@@ -198,6 +198,7 @@ target | std | notes
 [`wasm32-wasip1`](platform-support/wasm32-wasip1.md) | ✓ | WebAssembly with WASIp1
 [`wasm32-wasip1-threads`](platform-support/wasm32-wasip1-threads.md) | ✓ | WebAssembly with WASI Preview 1 and threads
 [`wasm32-wasip2`](platform-support/wasm32-wasip2.md) | ✓ | WebAssembly with WASIp2
+[`wasm32-wasip3`](platform-support/wasm32-wasip3.md) | ✓ | WebAssembly with WASIp3
 [`wasm32v1-none`](platform-support/wasm32v1-none.md) | * | WebAssembly limited to 1.0 features and no imports
 [`x86_64-apple-ios`](platform-support/apple-ios.md) | ✓ | 64-bit x86 iOS
 [`x86_64-apple-ios-macabi`](platform-support/apple-ios-macabi.md) | ✓ | Mac Catalyst on x86_64
