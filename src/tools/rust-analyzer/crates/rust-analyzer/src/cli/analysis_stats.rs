@@ -337,12 +337,15 @@ impl flags::AnalysisStats {
             }
         });
 
+        file_ids.sort();
+        file_ids.dedup();
+
         if self.run_all_ide_things {
-            self.run_ide_things(host.analysis(), file_ids.clone(), db, &vfs, verbosity);
+            self.run_ide_things(host.analysis(), &file_ids, db, &vfs, verbosity);
         }
 
         if self.run_term_search {
-            self.run_term_search(&workspace, db, &vfs, file_ids, verbosity);
+            self.run_term_search(&workspace, db, &vfs, &file_ids, verbosity);
         }
 
         let db = host.raw_database_mut();
@@ -438,12 +441,13 @@ impl flags::AnalysisStats {
         report_metric("const eval time", const_eval_time.time.as_millis() as u64, "ms");
     }
 
+    /// Invariant: `file_ids` must be sorted and deduped before passing into here
     fn run_term_search(
         &self,
         ws: &ProjectWorkspace,
         db: &RootDatabase,
         vfs: &Vfs,
-        mut file_ids: Vec<EditionedFileId>,
+        file_ids: &[EditionedFileId],
         verbosity: Verbosity,
     ) {
         let cargo_config = CargoConfig {
@@ -461,9 +465,6 @@ impl flags::AnalysisStats {
             _ => ProgressReport::new(file_ids.len()),
         };
 
-        file_ids.sort();
-        file_ids.dedup();
-
         #[derive(Debug, Default)]
         struct Acc {
             tail_expr_syntax_hits: u64,
@@ -477,7 +478,7 @@ impl flags::AnalysisStats {
         bar.tick();
         let mut sw = self.stop_watch();
 
-        for &file_id in &file_ids {
+        for &file_id in file_ids {
             let file_id = file_id.editioned_file_id(db);
             let sema = hir::Semantics::new(db);
             let display_target = match sema.first_crate(file_id.file_id()) {
@@ -1109,10 +1110,11 @@ impl flags::AnalysisStats {
         report_metric("body lowering time", body_lowering_time.time.as_millis() as u64, "ms");
     }
 
+    /// Invariant: `file_ids` must be sorted and deduped before passing into here
     fn run_ide_things(
         &self,
         analysis: Analysis,
-        mut file_ids: Vec<EditionedFileId>,
+        file_ids: &[EditionedFileId],
         db: &RootDatabase,
         vfs: &Vfs,
         verbosity: Verbosity,
@@ -1124,12 +1126,10 @@ impl flags::AnalysisStats {
             _ => ProgressReport::new(len),
         };
 
-        file_ids.sort();
-        file_ids.dedup();
         let mut sw = self.stop_watch();
 
         let mut bar = create_bar();
-        for &file_id in &file_ids {
+        for &file_id in file_ids {
             let msg = format!("diagnostics: {}", vfs.file_path(file_id.file_id(db)));
             bar.set_message(move || msg.clone());
             _ = analysis.full_diagnostics(
@@ -1163,7 +1163,7 @@ impl flags::AnalysisStats {
         bar.finish_and_clear();
 
         let mut bar = create_bar();
-        for &file_id in &file_ids {
+        for &file_id in file_ids {
             let msg = format!("inlay hints: {}", vfs.file_path(file_id.file_id(db)));
             bar.set_message(move || msg.clone());
             _ = analysis.inlay_hints(
@@ -1206,7 +1206,7 @@ impl flags::AnalysisStats {
         bar.finish_and_clear();
 
         let mut bar = create_bar();
-        for &file_id in &file_ids {
+        for &file_id in file_ids {
             let msg = format!("annotations: {}", vfs.file_path(file_id.file_id(db)));
             bar.set_message(move || msg.clone());
             analysis
