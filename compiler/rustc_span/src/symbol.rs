@@ -236,6 +236,7 @@ symbols! {
         File,
         FileType,
         FmtArgumentsNew,
+        FmtWrite,
         Fn,
         FnMut,
         FnOnce,
