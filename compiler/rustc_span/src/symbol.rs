@@ -885,7 +885,6 @@ symbols! {
         doc_primitive,
         doc_spotlight,
         doctest,
-        document_private_items,
         dotdot: "..",
         dotdot_in_tuple_patterns,
         dotdoteq_in_patterns,
