@@ -521,6 +521,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.is_default_trait(def_id)
     }
 
+    fn is_sizedness_trait(self, def_id: DefId) -> bool {
+        self.is_sizedness_trait(def_id)
+    }
+
     fn as_lang_item(self, def_id: DefId) -> Option<SolverLangItem> {
         lang_item_to_solver_lang_item(self.lang_items().from_def_id(def_id)?)
     }
@@ -1785,6 +1789,10 @@ impl<'tcx> TyCtxt<'tcx> {
         self.default_traits()
             .iter()
             .any(|&default_trait| self.lang_items().get(default_trait) == Some(def_id))
+    }
+
+    pub fn is_sizedness_trait(self, def_id: DefId) -> bool {
+        matches!(self.as_lang_item(def_id), Some(LangItem::Sized | LangItem::MetaSized))
     }
 
     /// Returns a range of the start/end indices specified with the
