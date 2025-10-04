@@ -789,14 +789,14 @@ pub struct PatField {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[derive(Encodable, Decodable, HashStable_Generic, Walkable)]
 pub enum ByRef {
-    Yes(Mutability),
+    Yes(Pinnedness, Mutability),
     No,
 }
 
 impl ByRef {
     #[must_use]
     pub fn cap_ref_mutability(mut self, mutbl: Mutability) -> Self {
-        if let ByRef::Yes(old_mutbl) = &mut self {
+        if let ByRef::Yes(_, old_mutbl) = &mut self {
             *old_mutbl = cmp::min(*old_mutbl, mutbl);
         }
         self
@@ -814,20 +814,33 @@ pub struct BindingMode(pub ByRef, pub Mutability);
 
 impl BindingMode {
     pub const NONE: Self = Self(ByRef::No, Mutability::Not);
-    pub const REF: Self = Self(ByRef::Yes(Mutability::Not), Mutability::Not);
+    pub const REF: Self = Self(ByRef::Yes(Pinnedness::Not, Mutability::Not), Mutability::Not);
+    pub const REF_PIN: Self =
+        Self(ByRef::Yes(Pinnedness::Pinned, Mutability::Not), Mutability::Not);
     pub const MUT: Self = Self(ByRef::No, Mutability::Mut);
-    pub const REF_MUT: Self = Self(ByRef::Yes(Mutability::Mut), Mutability::Not);
-    pub const MUT_REF: Self = Self(ByRef::Yes(Mutability::Not), Mutability::Mut);
-    pub const MUT_REF_MUT: Self = Self(ByRef::Yes(Mutability::Mut), Mutability::Mut);
+    pub const REF_MUT: Self = Self(ByRef::Yes(Pinnedness::Not, Mutability::Mut), Mutability::Not);
+    pub const REF_PIN_MUT: Self =
+        Self(ByRef::Yes(Pinnedness::Pinned, Mutability::Mut), Mutability::Not);
+    pub const MUT_REF: Self = Self(ByRef::Yes(Pinnedness::Not, Mutability::Not), Mutability::Mut);
+    pub const MUT_REF_PIN: Self =
+        Self(ByRef::Yes(Pinnedness::Pinned, Mutability::Not), Mutability::Mut);
+    pub const MUT_REF_MUT: Self =
+        Self(ByRef::Yes(Pinnedness::Not, Mutability::Mut), Mutability::Mut);
+    pub const MUT_REF_PIN_MUT: Self =
+        Self(ByRef::Yes(Pinnedness::Pinned, Mutability::Mut), Mutability::Mut);
 
     pub fn prefix_str(self) -> &'static str {
         match self {
             Self::NONE => "",
             Self::REF => "ref ",
+            Self::REF_PIN => "ref pin const ",
             Self::MUT => "mut ",
             Self::REF_MUT => "ref mut ",
+            Self::REF_PIN_MUT => "ref pin mut ",
             Self::MUT_REF => "mut ref ",
+            Self::MUT_REF_PIN => "mut ref pin ",
             Self::MUT_REF_MUT => "mut ref mut ",
+            Self::MUT_REF_PIN_MUT => "mut ref pin mut ",
         }
     }
 }
