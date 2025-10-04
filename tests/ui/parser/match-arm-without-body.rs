@@ -17,13 +17,13 @@ fn main() {
         Some(_),
         //~^ ERROR unexpected `,` in pattern
         //~| HELP try adding parentheses to match on a tuple
-        //~| HELP or a vertical bar to match on multiple alternatives
+        //~| HELP or a vertical bar to match on alternative
     }
     match Some(false) {
         Some(_),
         //~^ ERROR unexpected `,` in pattern
         //~| HELP try adding parentheses to match on a tuple
-        //~| HELP or a vertical bar to match on multiple alternatives
+        //~| HELP or a vertical bar to match on alternative
         _ => {}
     }
     match Some(false) {
