@@ -1363,6 +1363,7 @@ pub unsafe fn _mm_storel_epi64(mem_addr: *mut __m128i, a: __m128i) {
 #[cfg_attr(test, assert_instr(movntdq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_stream_si128(mem_addr: *mut __m128i, a: __m128i) {
+    // see #1541, we should use inline asm to be sure, because LangRef isn't clear enough
     crate::arch::asm!(
         vps!("movntdq",  ",{a}"),
         p = in(reg) mem_addr,
@@ -1390,6 +1391,7 @@ pub unsafe fn _mm_stream_si128(mem_addr: *mut __m128i, a: __m128i) {
 #[cfg_attr(test, assert_instr(movnti))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_stream_si32(mem_addr: *mut i32, a: i32) {
+    // see #1541, we should use inline asm to be sure, because LangRef isn't clear enough
     crate::arch::asm!(
         vps!("movnti", ",{a:e}"), // `:e` for 32bit value
         p = in(reg) mem_addr,
@@ -2627,6 +2629,7 @@ pub unsafe fn _mm_loadl_pd(a: __m128d, mem_addr: *const f64) -> __m128d {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm_stream_pd(mem_addr: *mut f64, a: __m128d) {
+    // see #1541, we should use inline asm to be sure, because LangRef isn't clear enough
     crate::arch::asm!(
         vps!("movntpd", ",{a}"),
         p = in(reg) mem_addr,
@@ -4070,6 +4073,7 @@ mod tests {
         );
         let mut r = _mm_set1_epi8(0);
         _mm_maskmoveu_si128(a, mask, ptr::addr_of_mut!(r) as *mut i8);
+        _mm_sfence();
         let e = _mm_set_epi8(0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         assert_eq_m128i(r, e);
     }
@@ -4106,6 +4110,7 @@ mod tests {
         let a = _mm_setr_epi32(1, 2, 3, 4);
         let mut r = _mm_undefined_si128();
         _mm_stream_si128(ptr::addr_of_mut!(r), a);
+        _mm_sfence();
         assert_eq_m128i(r, a);
     }
 
@@ -4117,6 +4122,7 @@ mod tests {
         let a: i32 = 7;
         let mut mem = boxed::Box::<i32>::new(-1);
         _mm_stream_si32(ptr::addr_of_mut!(*mem), a);
+        _mm_sfence();
         assert_eq!(a, *mem);
     }
 
@@ -4813,6 +4819,7 @@ mod tests {
         let mut mem = Memory { data: [-1.0; 2] };
 
         _mm_stream_pd(ptr::addr_of_mut!(mem.data[0]), a);
+        _mm_sfence();
         for i in 0..2 {
             assert_eq!(mem.data[i], get_m128d(a, i));
         }

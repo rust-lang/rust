@@ -29593,6 +29593,7 @@ pub fn _mm_mask_testn_epi64_mask(k: __mmask8, a: __m128i, b: __m128i) -> __mmask
 #[cfg_attr(test, assert_instr(vmovntps))]
 #[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm512_stream_ps(mem_addr: *mut f32, a: __m512) {
+    // see #1541, we should use inline asm to be sure, because LangRef isn't clear enough
     crate::arch::asm!(
         vps!("vmovntps", ",{a}"),
         p = in(reg) mem_addr,
@@ -29619,6 +29620,7 @@ pub unsafe fn _mm512_stream_ps(mem_addr: *mut f32, a: __m512) {
 #[cfg_attr(test, assert_instr(vmovntpd))]
 #[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm512_stream_pd(mem_addr: *mut f64, a: __m512d) {
+    // see #1541, we should use inline asm to be sure, because LangRef isn't clear enough
     crate::arch::asm!(
         vps!("vmovntpd", ",{a}"),
         p = in(reg) mem_addr,
@@ -29645,6 +29647,7 @@ pub unsafe fn _mm512_stream_pd(mem_addr: *mut f64, a: __m512d) {
 #[cfg_attr(test, assert_instr(vmovntdq))]
 #[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm512_stream_si512(mem_addr: *mut __m512i, a: __m512i) {
+    // see #1541, we should use inline asm to be sure, because LangRef isn't clear enough
     crate::arch::asm!(
         vps!("vmovntdq", ",{a}"),
         p = in(reg) mem_addr,
@@ -56328,6 +56331,7 @@ mod tests {
         let mut mem = Memory { data: [-1.0; 16] };
 
         _mm512_stream_ps(&mut mem.data[0] as *mut f32, a);
+        _mm_sfence();
         for i in 0..16 {
             assert_eq!(mem.data[i], get_m512(a, i));
         }
@@ -56344,6 +56348,7 @@ mod tests {
         let mut mem = Memory { data: [-1.0; 8] };
 
         _mm512_stream_pd(&mut mem.data[0] as *mut f64, a);
+        _mm_sfence();
         for i in 0..8 {
             assert_eq!(mem.data[i], get_m512d(a, i));
         }
@@ -56360,6 +56365,7 @@ mod tests {
         let mut mem = Memory { data: [-1; 8] };
 
         _mm512_stream_si512(mem.data.as_mut_ptr().cast(), a);
+        _mm_sfence();
         for i in 0..8 {
             assert_eq!(mem.data[i], get_m512i(a, i));
         }
