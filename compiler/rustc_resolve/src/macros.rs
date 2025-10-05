@@ -5,8 +5,9 @@ use std::cell::Cell;
 use std::mem;
 use std::sync::Arc;
 
-use rustc_ast::{self as ast, Crate, NodeId, attr};
+use rustc_ast::{self as ast, Crate, DUMMY_NODE_ID, NodeId};
 use rustc_ast_pretty::pprust;
+use rustc_attr_parsing::AttributeParser;
 use rustc_errors::{Applicability, DiagCtxtHandle, StashKey};
 use rustc_expand::base::{
     Annotatable, DeriveResolution, Indeterminate, ResolverExpand, SyntaxExtension,
@@ -16,12 +17,15 @@ use rustc_expand::compile_declarative_macro;
 use rustc_expand::expand::{
     AstFragment, AstFragmentKind, Invocation, InvocationKind, SupportsMacroExpansion,
 };
-use rustc_hir::StabilityLevel;
-use rustc_hir::attrs::{CfgEntry, StrippedCfgItem};
+use rustc_feature::Features;
+use rustc_hir::attrs::{AttributeKind, CfgEntry, StrippedCfgItem};
 use rustc_hir::def::{self, DefKind, MacroKinds, Namespace, NonMacroAttrKind};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
+use rustc_hir::{Attribute, StabilityLevel};
+use rustc_middle::dep_graph::DepContext;
 use rustc_middle::middle::stability;
 use rustc_middle::ty::{RegisteredTools, TyCtxt};
+use rustc_session::Session;
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{
     LEGACY_DERIVE_HELPERS, OUT_OF_SCOPE_MACRO_CALLS, UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
@@ -122,35 +126,38 @@ fn fast_print_path(path: &ast::Path) -> Symbol {
 
 pub(crate) fn registered_tools(tcx: TyCtxt<'_>, (): ()) -> RegisteredTools {
     let (_, pre_configured_attrs) = &*tcx.crate_for_resolver(()).borrow();
-    registered_tools_ast(tcx.dcx(), pre_configured_attrs)
+    registered_tools_ast(tcx.dcx(), pre_configured_attrs, tcx.sess(), tcx.features())
 }
 
 pub fn registered_tools_ast(
     dcx: DiagCtxtHandle<'_>,
     pre_configured_attrs: &[ast::Attribute],
+    sess: &Session,
+    features: &Features,
 ) -> RegisteredTools {
     let mut registered_tools = RegisteredTools::default();
-    for attr in attr::filter_by_name(pre_configured_attrs, sym::register_tool) {
-        for meta_item_inner in attr.meta_item_list().unwrap_or_default() {
-            match meta_item_inner.ident() {
-                Some(ident) => {
-                    if let Some(old_ident) = registered_tools.replace(ident) {
-                        dcx.emit_err(errors::ToolWasAlreadyRegistered {
-                            span: ident.span,
-                            tool: ident,
-                            old_ident_span: old_ident.span,
-                        });
-                    }
-                }
-                None => {
-                    dcx.emit_err(errors::ToolOnlyAcceptsIdentifiers {
-                        span: meta_item_inner.span(),
-                        tool: sym::register_tool,
-                    });
-                }
+
+    if let Some(Attribute::Parsed(AttributeKind::RegisterTool(tools, _))) =
+        AttributeParser::parse_limited(
+            sess,
+            pre_configured_attrs,
+            sym::register_tool,
+            DUMMY_SP,
+            DUMMY_NODE_ID,
+            Some(features),
+        )
+    {
+        for tool in tools {
+            if let Some(old_tool) = registered_tools.replace(tool) {
+                dcx.emit_err(errors::ToolWasAlreadyRegistered {
+                    span: tool.span,
+                    tool,
+                    old_ident_span: old_tool.span,
+                });
             }
         }
     }
+
     // We implicitly add `rustfmt`, `clippy`, `diagnostic`, `miri` and `rust_analyzer` to known
     // tools, but it's not an error to register them explicitly.
     let predefined_tools =

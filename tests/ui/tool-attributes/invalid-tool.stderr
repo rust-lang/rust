@@ -1,8 +1,12 @@
-error: `register_tool` only accepts identifiers
-  --> $DIR/invalid-tool.rs:3:18
+error[E0539]: malformed `register_tool` attribute input
+  --> $DIR/invalid-tool.rs:3:1
    |
 LL | #![register_tool(1)]
-   |                  ^ not an identifier
+   | ^^^^^^^^^^^^^^^^^-^^
+   | |                |
+   | |                expected a valid identifier here
+   | help: must be of the form: `#![register_tool(tool1, tool2, ...)]`
 
 error: aborting due to 1 previous error
 
+For more information about this error, try `rustc --explain E0539`.
