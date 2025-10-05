@@ -794,8 +794,7 @@ struct T(S);
 
 impl T {
     fn foo(&self) {
-        // FIXME: This doesn't work without the trailing `a` as `0.` is a float
-        self.0.a$0
+        self.0.$0
     }
 }
 "#,
