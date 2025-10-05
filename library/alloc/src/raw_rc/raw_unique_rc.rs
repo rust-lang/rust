@@ -73,3 +73,28 @@ where
         }
     }
 }
+
+impl<T, A> RawUniqueRc<T, A> {
+    #[cfg(not(no_global_oom_handling))]
+    pub(super) unsafe fn from_weak_with_value(weak: RawWeak<T, A>, value: T) -> Self {
+        unsafe { weak.as_ptr().write(value) };
+
+        Self { weak, _marker: PhantomData, _marker2: PhantomData }
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    pub(crate) fn new(value: T) -> Self
+    where
+        A: Allocator + Default,
+    {
+        unsafe { Self::from_weak_with_value(RawWeak::new_uninit::<0>(), value) }
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    pub(crate) fn new_in(value: T, alloc: A) -> Self
+    where
+        A: Allocator,
+    {
+        unsafe { Self::from_weak_with_value(RawWeak::new_uninit_in::<0>(alloc), value) }
+    }
+}
