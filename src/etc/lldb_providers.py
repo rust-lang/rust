@@ -256,7 +256,7 @@ def vec_to_string(vec: SBValue) -> str:
     )
 
 
-def StdStringSummaryProvider(valobj, dict):
+def StdStringSummaryProvider(valobj: SBValue, dict: LLDBOpaque):
     inner_vec = (
         valobj.GetNonSyntheticValue()
         .GetChildMemberWithName("vec")
