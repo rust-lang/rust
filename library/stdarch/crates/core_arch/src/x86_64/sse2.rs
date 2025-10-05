@@ -78,6 +78,7 @@ pub fn _mm_cvttsd_si64x(a: __m128d) -> i64 {
 #[cfg_attr(test, assert_instr(movnti))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_stream_si64(mem_addr: *mut i64, a: i64) {
+    // see #1541, we should use inline asm to be sure, because LangRef isn't clear enough
     crate::arch::asm!(
         vps!("movnti", ",{a}"),
         p = in(reg) mem_addr,

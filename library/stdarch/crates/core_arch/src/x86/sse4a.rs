@@ -110,6 +110,7 @@ pub fn _mm_inserti_si64<const LEN: i32, const IDX: i32>(x: __m128i, y: __m128i) 
 #[cfg_attr(test, assert_instr(movntsd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_stream_sd(p: *mut f64, a: __m128d) {
+    // see #1541, we should use inline asm to be sure, because LangRef isn't clear enough
     crate::arch::asm!(
         vps!("movntsd",  ",{a}"),
         p = in(reg) p,
@@ -135,6 +136,7 @@ pub unsafe fn _mm_stream_sd(p: *mut f64, a: __m128d) {
 #[cfg_attr(test, assert_instr(movntss))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_stream_ss(p: *mut f32, a: __m128) {
+    // see #1541, we should use inline asm to be sure, because LangRef isn't clear enough
     crate::arch::asm!(
         vps!("movntss",  ",{a}"),
         p = in(reg) p,

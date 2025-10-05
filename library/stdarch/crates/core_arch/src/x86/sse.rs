@@ -2022,6 +2022,7 @@ unsafe extern "C" {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm_stream_ps(mem_addr: *mut f32, a: __m128) {
+    // see #1541, we should use inline asm to be sure, because LangRef isn't clear enough
     crate::arch::asm!(
         vps!("movntps", ",{a}"),
         p = in(reg) mem_addr,

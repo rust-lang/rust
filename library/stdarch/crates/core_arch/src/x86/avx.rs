@@ -1833,6 +1833,7 @@ pub unsafe fn _mm256_lddqu_si256(mem_addr: *const __m256i) -> __m256i {
 #[cfg_attr(test, assert_instr(vmovntdq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_stream_si256(mem_addr: *mut __m256i, a: __m256i) {
+    // see #1541, we should use inline asm to be sure, because LangRef isn't clear enough
     crate::arch::asm!(
         vps!("vmovntdq", ",{a}"),
         p = in(reg) mem_addr,
@@ -1861,6 +1862,7 @@ pub unsafe fn _mm256_stream_si256(mem_addr: *mut __m256i, a: __m256i) {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm256_stream_pd(mem_addr: *mut f64, a: __m256d) {
+    // see #1541, we should use inline asm to be sure, because LangRef isn't clear enough
     crate::arch::asm!(
         vps!("vmovntpd", ",{a}"),
         p = in(reg) mem_addr,
@@ -1890,6 +1892,7 @@ pub unsafe fn _mm256_stream_pd(mem_addr: *mut f64, a: __m256d) {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm256_stream_ps(mem_addr: *mut f32, a: __m256) {
+    // see #1541, we should use inline asm to be sure, because LangRef isn't clear enough
     crate::arch::asm!(
         vps!("vmovntps", ",{a}"),
         p = in(reg) mem_addr,

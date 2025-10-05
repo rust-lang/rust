@@ -1363,6 +1363,7 @@ pub unsafe fn _mm_storel_epi64(mem_addr: *mut __m128i, a: __m128i) {
 #[cfg_attr(test, assert_instr(movntdq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_stream_si128(mem_addr: *mut __m128i, a: __m128i) {
+    // see #1541, we should use inline asm to be sure, because LangRef isn't clear enough
     crate::arch::asm!(
         vps!("movntdq",  ",{a}"),
         p = in(reg) mem_addr,
@@ -1390,6 +1391,7 @@ pub unsafe fn _mm_stream_si128(mem_addr: *mut __m128i, a: __m128i) {
 #[cfg_attr(test, assert_instr(movnti))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_stream_si32(mem_addr: *mut i32, a: i32) {
+    // see #1541, we should use inline asm to be sure, because LangRef isn't clear enough
     crate::arch::asm!(
         vps!("movnti", ",{a:e}"), // `:e` for 32bit value
         p = in(reg) mem_addr,
@@ -2627,6 +2629,7 @@ pub unsafe fn _mm_loadl_pd(a: __m128d, mem_addr: *const f64) -> __m128d {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm_stream_pd(mem_addr: *mut f64, a: __m128d) {
+    // see #1541, we should use inline asm to be sure, because LangRef isn't clear enough
     crate::arch::asm!(
         vps!("movntpd", ",{a}"),
         p = in(reg) mem_addr,
