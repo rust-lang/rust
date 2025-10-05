@@ -328,8 +328,8 @@ provide! { tcx, def_id, other, cdata,
     is_private_dep => { cdata.private_dep }
     is_panic_runtime => { cdata.root.panic_runtime }
     is_compiler_builtins => { cdata.root.compiler_builtins }
-    has_global_allocator => { cdata.root.has_global_allocator }
-    has_alloc_error_handler => { cdata.root.has_alloc_error_handler }
+    has_global_allocator_q => { cdata.root.has_global_allocator }
+    has_alloc_error_handler_q => { cdata.root.has_alloc_error_handler }
     has_panic_handler => { cdata.root.has_panic_handler }
     is_profiler_runtime => { cdata.root.profiler_runtime }
     required_panic_strategy => { cdata.root.required_panic_strategy }
@@ -407,8 +407,8 @@ provide! { tcx, def_id, other, cdata,
 pub(in crate::rmeta) fn provide(providers: &mut Providers) {
     provide_cstore_hooks(providers);
     providers.queries = rustc_middle::query::Providers {
-        allocator_kind: |tcx, ()| CStore::from_tcx(tcx).allocator_kind(),
-        alloc_error_handler_kind: |tcx, ()| CStore::from_tcx(tcx).alloc_error_handler_kind(),
+        allocator_kind_q: |tcx, ()| CStore::from_tcx(tcx).allocator_kind(),
+        alloc_error_handler_kind_q: |tcx, ()| CStore::from_tcx(tcx).alloc_error_handler_kind(),
         is_private_dep: |_tcx, LocalCrate| false,
         native_library: |tcx, id| {
             tcx.native_libraries(id.krate)
@@ -519,8 +519,10 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
         },
 
         dependency_formats: |tcx, ()| Arc::new(crate::dependency_format::calculate(tcx)),
-        has_global_allocator: |tcx, LocalCrate| CStore::from_tcx(tcx).has_global_allocator(),
-        has_alloc_error_handler: |tcx, LocalCrate| CStore::from_tcx(tcx).has_alloc_error_handler(),
+        has_global_allocator_q: |tcx, LocalCrate| CStore::from_tcx(tcx).has_global_allocator(),
+        has_alloc_error_handler_q: |tcx, LocalCrate| {
+            CStore::from_tcx(tcx).has_alloc_error_handler()
+        },
         postorder_cnums: |tcx, ()| {
             tcx.arena.alloc_from_iter(
                 CStore::from_tcx(tcx).crate_dependencies_in_postorder(LOCAL_CRATE).into_iter(),
@@ -704,6 +706,46 @@ fn provide_cstore_hooks(providers: &mut Providers) {
         let cdata = cstore.get_crate_data(cnum);
         for file_index in 0..cdata.root.source_map.size() {
             cdata.imported_source_file(file_index as u32, tcx.sess);
+        }
+    };
+    providers.hooks.allocator_kind = |tcx| {
+        if tcx.dep_graph.is_fully_enabled() {
+            tcx.allocator_kind_q(())
+        } else {
+            CStore::from_tcx(tcx).allocator_kind()
+        }
+    };
+    providers.hooks.alloc_error_handler_kind = |tcx| {
+        if tcx.dep_graph.is_fully_enabled() {
+            tcx.alloc_error_handler_kind_q(())
+        } else {
+            CStore::from_tcx(tcx).alloc_error_handler_kind()
+        }
+    };
+    providers.hooks.has_global_allocator = |tcx, krate: CrateNum| {
+        if tcx.dep_graph.is_fully_enabled() {
+            tcx.has_global_allocator_q(krate)
+        } else {
+            if krate == LOCAL_CRATE {
+                CStore::from_tcx(tcx).has_global_allocator()
+            } else {
+                *rustc_data_structures::sync::FreezeReadGuard::map(CStore::from_tcx(tcx), |c| {
+                    &c.get_crate_data(krate).cdata.root.has_global_allocator
+                })
+            }
+        }
+    };
+    providers.hooks.has_alloc_error_handler = |tcx, krate: CrateNum| {
+        if tcx.dep_graph.is_fully_enabled() {
+            tcx.has_alloc_error_handler_q(krate)
+        } else {
+            if krate == LOCAL_CRATE {
+                CStore::from_tcx(tcx).has_alloc_error_handler()
+            } else {
+                *rustc_data_structures::sync::FreezeReadGuard::map(CStore::from_tcx(tcx), |c| {
+                    &c.get_crate_data(krate).cdata.root.has_alloc_error_handler
+                })
+            }
         }
     };
 }

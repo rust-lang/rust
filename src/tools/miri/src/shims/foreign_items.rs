@@ -53,7 +53,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         match link_name.as_str() {
             name if name == this.mangle_internal_symbol("__rust_alloc_error_handler") => {
                 // Forward to the right symbol that implements this function.
-                let Some(handler_kind) = this.tcx.alloc_error_handler_kind(()) else {
+                let Some(handler_kind) = this.tcx.alloc_error_handler_kind() else {
                     // in real code, this symbol does not exist without an allocator
                     throw_unsup_format!(
                         "`__rust_alloc_error_handler` cannot be called when no alloc error handler is set"

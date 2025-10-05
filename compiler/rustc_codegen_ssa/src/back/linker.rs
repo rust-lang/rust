@@ -1857,7 +1857,7 @@ fn exported_symbols_for_non_proc_macro(
     // Mark allocator shim symbols as exported only if they were generated.
     if export_threshold == SymbolExportLevel::Rust
         && needs_allocator_shim_for_linking(tcx.dependency_formats(()), crate_type)
-        && tcx.allocator_kind(()).is_some()
+        && tcx.allocator_kind().is_some()
     {
         symbols.extend(allocator_shim_symbols(tcx));
     }

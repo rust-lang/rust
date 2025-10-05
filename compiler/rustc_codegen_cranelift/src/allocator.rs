@@ -19,7 +19,7 @@ pub(crate) fn codegen(tcx: TyCtxt<'_>, module: &mut dyn Module) -> bool {
         tcx,
         module,
         kind,
-        tcx.alloc_error_handler_kind(()).unwrap(),
+        tcx.alloc_error_handler_kind().unwrap(),
         tcx.sess.opts.unstable_opts.oom,
     );
     true

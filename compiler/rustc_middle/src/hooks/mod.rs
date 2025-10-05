@@ -3,6 +3,7 @@
 //! similar to queries, but queries come with a lot of machinery for caching and incremental
 //! compilation, whereas hooks are just plain function pointers without any of the query magic.
 
+use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_hir::def_id::{DefId, DefPathHash};
 use rustc_session::StableCrateId;
 use rustc_span::def_id::{CrateNum, LocalDefId};
@@ -102,6 +103,11 @@ declare_hooks! {
     /// Ensure the given scalar is valid for the given type.
     /// This checks non-recursive runtime validity.
     hook validate_scalar_in_layout(scalar: crate::ty::ScalarInt, ty: Ty<'tcx>) -> bool;
+
+    hook allocator_kind() -> Option<AllocatorKind>;
+    hook alloc_error_handler_kind() -> Option<AllocatorKind>;
+    hook has_global_allocator(krate: CrateNum) -> bool;
+    hook has_alloc_error_handler(krate: CrateNum) -> bool;
 }
 
 #[cold]

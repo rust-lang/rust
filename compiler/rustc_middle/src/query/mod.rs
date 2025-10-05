@@ -1812,14 +1812,14 @@ rustc_queries! {
         desc { "checking if the crate is_compiler_builtins" }
         separate_provide_extern
     }
-    query has_global_allocator(_: CrateNum) -> bool {
+    query has_global_allocator_q(_: CrateNum) -> bool {
         // This query depends on untracked global state in CStore
         eval_always
         fatal_cycle
         desc { "checking if the crate has_global_allocator" }
         separate_provide_extern
     }
-    query has_alloc_error_handler(_: CrateNum) -> bool {
+    query has_alloc_error_handler_q(_: CrateNum) -> bool {
         // This query depends on untracked global state in CStore
         eval_always
         fatal_cycle
@@ -2301,11 +2301,11 @@ rustc_queries! {
         desc { "checking whether crate `{}` is a private dependency", c }
         separate_provide_extern
     }
-    query allocator_kind(_: ()) -> Option<AllocatorKind> {
+    query allocator_kind_q(_: ()) -> Option<AllocatorKind> {
         eval_always
         desc { "getting the allocator kind for the current crate" }
     }
-    query alloc_error_handler_kind(_: ()) -> Option<AllocatorKind> {
+    query alloc_error_handler_kind_q(_: ()) -> Option<AllocatorKind> {
         eval_always
         desc { "alloc error handler kind for the current crate" }
     }

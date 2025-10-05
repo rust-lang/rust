@@ -639,7 +639,7 @@ pub fn allocator_kind_for_codegen(tcx: TyCtxt<'_>) -> Option<AllocatorKind> {
         use rustc_middle::middle::dependency_format::Linkage;
         list.iter().any(|&linkage| linkage == Linkage::Dynamic)
     });
-    if all_crate_types_any_dynamic_crate { None } else { tcx.allocator_kind(()) }
+    if all_crate_types_any_dynamic_crate { None } else { tcx.allocator_kind() }
 }
 
 /// Decide if this particular crate type needs an allocator shim linked in.
@@ -705,7 +705,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                 kind,
                 // If allocator_kind is Some then alloc_error_handler_kind must
                 // also be Some.
-                tcx.alloc_error_handler_kind(()).unwrap(),
+                tcx.alloc_error_handler_kind().unwrap(),
             );
             Some(ModuleCodegen::new_allocator(llmod_id, module))
         })

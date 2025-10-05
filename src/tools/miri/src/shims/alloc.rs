@@ -61,7 +61,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
 
-        let Some(allocator_kind) = this.tcx.allocator_kind(()) else {
+        let Some(allocator_kind) = this.tcx.allocator_kind() else {
             // in real code, this symbol does not exist without an allocator
             return interp_ok(EmulateItemResult::NotSupported);
         };
