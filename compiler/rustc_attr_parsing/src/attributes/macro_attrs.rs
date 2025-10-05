@@ -89,7 +89,10 @@ impl<S: Stage> AttributeParser<S> for MacroUseParser {
                                     continue;
                                 };
                                 if let Err(err_span) = item.args().no_args() {
-                                    cx.expected_no_args(err_span);
+                                    cx.expected_no_args(
+                                        &item.path().get_attribute_path(),
+                                        err_span,
+                                    );
                                     continue;
                                 }
                                 let Some(item) = item.path().word() else {

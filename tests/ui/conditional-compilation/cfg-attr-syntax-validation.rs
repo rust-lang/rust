@@ -36,8 +36,9 @@ struct S7;
 //~| NOTE for more information, visit
 struct S8;
 
-#[cfg(a = b"hi")]  //~ ERROR malformed `cfg` attribute input
+#[cfg(a = b"hi")] //~ ERROR malformed `cfg` attribute input
 //~^ NOTE expected a normal string literal, not a byte string literal
+//~| NOTE: for more information, visit
 struct S9;
 
 macro_rules! generate_s10 {
@@ -45,7 +46,7 @@ macro_rules! generate_s10 {
         #[cfg(feature = $expr)]
         //~^ ERROR expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found `expr` metavariable
         struct S10;
-    }
+    };
 }
 
 generate_s10!(concat!("nonexistent"));
