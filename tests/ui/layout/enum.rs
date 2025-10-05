@@ -115,3 +115,95 @@ enum AllUninhabitedVariantsAlignedZst { //~ERROR: size: Size(0 bytes)
     A(AlignedNever),
     B(AlignedNever),
 }
+
+
+#[repr(transparent)]
+struct NPONever(&'static (), !);
+
+#[repr(transparent)]
+struct NPONeverI16(std::num::NonZero<i16>, !);
+
+// All of these should be NPO-optimized, despite uninhabitedness of one or more variants
+#[rustc_layout(abi)]
+type NPONever1 = Result<NPONever, ()>;
+//~^ ERROR: abi: Scalar(Initialized { value: Pointer
+
+#[rustc_layout(abi)]
+type NPONever2 = Result<(), NPONever>;
+//~^ ERROR: abi: Scalar(Initialized { value: Pointer
+
+#[rustc_layout(abi)]
+type NPONever3 = Result<NPONever, !>;
+//~^ ERROR: abi: Scalar(Initialized { value: Pointer
+
+#[rustc_layout(abi)]
+type NPONever4 = Result<!, NPONever>;
+//~^ ERROR: abi: Scalar(Initialized { value: Pointer
+
+#[rustc_layout(abi)]
+type NPONever5 = Result<&'static (), !>;
+//~^ ERROR: abi: Scalar(Initialized { value: Pointer
+
+#[rustc_layout(abi)]
+type NPONever6 = Result<!, &'static ()>;
+//~^ ERROR: abi: Scalar(Initialized { value: Pointer
+
+#[rustc_layout(abi)]
+type NPONever7 = Result<std::num::NonZero<i16>, !>;
+//~^ERROR: abi: Scalar(Initialized { value: Int(I16
+
+#[rustc_layout(abi)]
+type NPONever8 = Result<!, std::num::NonZero<i16>>;
+//~^ERROR: abi: Scalar(Initialized { value: Int(I16
+
+#[rustc_layout(abi)]
+type NPONever9 = Result<NPONeverI16, !>;
+//~^ERROR: abi: Scalar(Initialized { value: Int(I16
+
+#[rustc_layout(abi)]
+type NPONever10 = Result<!, NPONeverI16>;
+//~^ERROR: abi: Scalar(Initialized { value: Int(I16
+
+#[rustc_layout(abi)]
+type NPONever11 = Result<NPONeverI16, ()>;
+//~^ERROR: abi: Scalar(Initialized { value: Int(I16
+
+#[rustc_layout(abi)]
+type NPONever12 = Result<(), NPONeverI16>;
+//~^ERROR: abi: Scalar(Initialized { value: Int(I16
+
+#[rustc_layout(abi)]
+enum NPONever13 { //~ERROR: abi: Scalar(Initialized { value: Pointer
+    A(!, &'static (), !),
+    B((), !, [u8; 0]),
+}
+
+#[rustc_layout(abi)]
+enum NPONever14 { //~ERROR: abi: Scalar(Initialized { value: Pointer
+    A(!, &'static (), !),
+    B((), (), [u8; 0]),
+}
+
+#[rustc_layout(abi)]
+enum NPONever15 { //~ERROR: abi: Scalar(Initialized { value: Pointer
+    A((), &'static (), ()),
+    B((), !, [u8; 0]),
+}
+
+
+// These are not guaranteed to be NPO-optimized
+#[rustc_layout(abi)]
+type NotNPONever1 = Result<NPONever, NPONever>;
+//~^ERROR: abi: Scalar(
+
+#[rustc_layout(abi)]
+type NotNPONever2 = Result<NPONever, AlignedNever>;
+//~^ERROR: abi: Memory
+
+#[rustc_layout(abi)]
+type NotNPONever3 = Result<NPONever, &'static ()>;
+//~^ERROR: abi: Scalar(
+
+#[rustc_layout(abi)]
+type NotNPONever4 = Result<&'static (), AlignedNever>;
+//~^ERROR: abi: Scalar(

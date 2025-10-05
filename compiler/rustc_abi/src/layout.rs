@@ -646,7 +646,10 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             return Err(LayoutCalculatorError::ReprConflict);
         }
 
-        let calculate_niche_filling_layout = || -> Option<LayoutData<FieldIdx, VariantIdx>> {
+        // Returns `(layout, is_this_maybe_npo)`.
+        // If `is_this_maybe_npo` is true, this layout is preferred over the tagged and
+        // no-tag layouts.
+        let calculate_niche_filling_layout = || -> Option<(LayoutData<_, _>, bool)> {
             if repr.inhibit_enum_layout_opt() {
                 return None;
             }
@@ -658,16 +661,12 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             let mut align = dl.aggregate_align;
             let mut max_repr_align = repr.align;
             let mut unadjusted_abi_align = align;
-            let mut inhabited_variants = 0;
 
             let mut variant_layouts = variants
                 .iter_enumerated()
                 .map(|(j, v)| {
                     let mut st = self.univariant(v, repr, StructKind::AlwaysSized).ok()?;
                     st.variants = Variants::Single { index: j, variants: None };
-                    if !st.uninhabited {
-                        inhabited_variants += 1;
-                    }
 
                     align = align.max(st.align.abi);
                     max_repr_align = max_repr_align.max(st.max_repr_align);
@@ -677,41 +676,66 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 })
                 .collect::<Option<IndexVec<VariantIdx, _>>>()?;
 
-            if inhabited_variants < 2 {
-                // If there's only one inhabited variant, the no-tag layout will be equivalent to
-                // what the niched layout would be. Returning `None` here lets us assume there is
-                // another inhabited variant which simplifies the rest of the layout computation.
-                return None;
-            }
-
-            // Choose the largest variant, picking an inhabited variant in a tie
+            // Choose the largest variant, picking an inhabited variant in a tie.
+            // We still need to compute the niche-filling layout even if the largest variant
+            // is uninhabited, because `Result<UninhabitedReprTransparentPtr, 1ZST>` needs to
+            // still be NPO-optimized.
             let largest_variant_index = variant_layouts
                 .iter_enumerated()
                 .max_by_key(|(_i, layout)| (layout.size.bytes(), !layout.uninhabited))
                 .map(|(i, _layout)| i)?;
 
-            if variant_layouts[largest_variant_index].uninhabited {
-                // If the largest variant is uninhabited, then filling its niche would give
-                // a worse layout than the tagged layout.
-                return None;
-            }
+            // Use the largest niche in the largest variant.
+            let niche = variant_layouts[largest_variant_index].largest_niche?;
+            let niche_offset = niche.offset;
+            let niche_size = niche.value.size(dl);
+            let size = variant_layouts[largest_variant_index].size.align_to(align);
+            // If the niche occupies the whole size of the enum,
+            // this could be a case of NPO, so we should prefer this layout over the
+            // tagged and no-tag layouts, even if it has a worse niche (due to the
+            // niched variant being uninhabited)
+            let is_maybe_npo = niche_size == size;
 
             let all_indices = variants.indices();
             let needs_disc = |index: VariantIdx| {
                 index != largest_variant_index && !variant_layouts[index].uninhabited
             };
-            let niche_variants = all_indices.clone().find(|v| needs_disc(*v)).unwrap()
-                ..=all_indices.rev().find(|v| needs_disc(*v)).unwrap();
+            let first_niche_variant = all_indices.clone().find(|v| needs_disc(*v));
+            let last_niche_variant = all_indices.clone().rev().find(|v| needs_disc(*v));
+            let niche_variants = match Option::zip(first_niche_variant, last_niche_variant) {
+                Some((f, l)) => f..=l,
+                // All non-largest variants are uninhabited.
+                // If there are exactly 2 variants, and the largest variant's niche covers its
+                // whole size, and the non-largest variant is 1-aligned and zero-sized,
+                // this could be NPO.
+                // However, that only happens if the non-largest variant is "absent",
+                // which was already handled in `layout_of_struct_or_enum`, so we just debug_assert
+                // that that is not the case.
+                None if variants.len() == 2 && is_maybe_npo => {
+                    if cfg!(debug_assertions) {
+                        let non_largest_variant_index =
+                            all_indices.clone().find(|v| *v != largest_variant_index).unwrap();
+                        let non_largest_variant_layout =
+                            &variant_layouts[non_largest_variant_index];
+                        debug_assert!(
+                            non_largest_variant_layout.size > Size::ZERO
+                                || non_largest_variant_layout.align.abi > Align::ONE
+                        );
+                    }
+                    // The non-largest variant is not 1-ZST, this cannot be NPO,
+                    // use the no-tag layout.
+                    return None;
+                }
+                // All non-largest variants are uninhabited.
+                // This cannot be NPO, use the no-tag layout.
+                None => return None,
+            };
 
             let count =
                 (niche_variants.end().index() as u128 - niche_variants.start().index() as u128) + 1;
 
-            // Use the largest niche in the largest variant.
-            let niche = variant_layouts[largest_variant_index].largest_niche?;
+            // Calculate the new niche.
             let (niche_start, niche_scalar) = niche.reserve(dl, count)?;
-            let niche_offset = niche.offset;
-            let niche_size = niche.value.size(dl);
-            let size = variant_layouts[largest_variant_index].size.align_to(align);
 
             let all_variants_fit = variant_layouts.iter_enumerated_mut().all(|(i, layout)| {
                 if i == largest_variant_index {
@@ -821,10 +845,19 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 randomization_seed: combined_seed,
             };
 
-            Some(layout)
+            Some((layout, is_maybe_npo))
         };
 
-        let niche_filling_layout = calculate_niche_filling_layout();
+        let niche_filling_layout = match calculate_niche_filling_layout() {
+            // If this is possibly NPO, we prefer this layout over the others,
+            // even if they might have a better niche.
+            // (They could never be smaller, since possibly-npo only occurs
+            // when the niche fills the whole size of the enum.)
+            Some((layout, true)) => return Ok(layout),
+            // This is definitely not NPO, try the other layouts.
+            Some((layout, false)) => Some(layout),
+            None => None,
+        };
 
         let discr_type = repr.discr_type();
         let discr_int = Integer::from_attr(dl, discr_type);

@@ -242,5 +242,119 @@ error: abi: Memory { sized: true }
 LL | enum AllUninhabitedVariantsAlignedZst {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 22 previous errors
+error: abi: Scalar(Initialized { value: Pointer(AddressSpace(0)), valid_range: (..=0) | (1..) })
+  --> $DIR/enum.rs:128:1
+   |
+LL | type NPONever1 = Result<NPONever, ()>;
+   | ^^^^^^^^^^^^^^
+
+error: abi: Scalar(Initialized { value: Pointer(AddressSpace(0)), valid_range: (..=0) | (1..) })
+  --> $DIR/enum.rs:132:1
+   |
+LL | type NPONever2 = Result<(), NPONever>;
+   | ^^^^^^^^^^^^^^
+
+error: abi: Scalar(Initialized { value: Pointer(AddressSpace(0)), valid_range: 1..=18446744073709551615 })
+  --> $DIR/enum.rs:136:1
+   |
+LL | type NPONever3 = Result<NPONever, !>;
+   | ^^^^^^^^^^^^^^
+
+error: abi: Scalar(Initialized { value: Pointer(AddressSpace(0)), valid_range: 1..=18446744073709551615 })
+  --> $DIR/enum.rs:140:1
+   |
+LL | type NPONever4 = Result<!, NPONever>;
+   | ^^^^^^^^^^^^^^
+
+error: abi: Scalar(Initialized { value: Pointer(AddressSpace(0)), valid_range: 1..=18446744073709551615 })
+  --> $DIR/enum.rs:144:1
+   |
+LL | type NPONever5 = Result<&'static (), !>;
+   | ^^^^^^^^^^^^^^
+
+error: abi: Scalar(Initialized { value: Pointer(AddressSpace(0)), valid_range: 1..=18446744073709551615 })
+  --> $DIR/enum.rs:148:1
+   |
+LL | type NPONever6 = Result<!, &'static ()>;
+   | ^^^^^^^^^^^^^^
+
+error: abi: Scalar(Initialized { value: Int(I16, true), valid_range: 1..=65535 })
+  --> $DIR/enum.rs:152:1
+   |
+LL | type NPONever7 = Result<std::num::NonZero<i16>, !>;
+   | ^^^^^^^^^^^^^^
+
+error: abi: Scalar(Initialized { value: Int(I16, true), valid_range: 1..=65535 })
+  --> $DIR/enum.rs:156:1
+   |
+LL | type NPONever8 = Result<!, std::num::NonZero<i16>>;
+   | ^^^^^^^^^^^^^^
+
+error: abi: Scalar(Initialized { value: Int(I16, true), valid_range: 1..=65535 })
+  --> $DIR/enum.rs:160:1
+   |
+LL | type NPONever9 = Result<NPONeverI16, !>;
+   | ^^^^^^^^^^^^^^
+
+error: abi: Scalar(Initialized { value: Int(I16, true), valid_range: 1..=65535 })
+  --> $DIR/enum.rs:164:1
+   |
+LL | type NPONever10 = Result<!, NPONeverI16>;
+   | ^^^^^^^^^^^^^^^
+
+error: abi: Scalar(Initialized { value: Int(I16, true), valid_range: (..=0) | (1..) })
+  --> $DIR/enum.rs:168:1
+   |
+LL | type NPONever11 = Result<NPONeverI16, ()>;
+   | ^^^^^^^^^^^^^^^
+
+error: abi: Scalar(Initialized { value: Int(I16, true), valid_range: (..=0) | (1..) })
+  --> $DIR/enum.rs:172:1
+   |
+LL | type NPONever12 = Result<(), NPONeverI16>;
+   | ^^^^^^^^^^^^^^^
+
+error: abi: Scalar(Initialized { value: Pointer(AddressSpace(0)), valid_range: 1..=18446744073709551615 })
+  --> $DIR/enum.rs:176:1
+   |
+LL | enum NPONever13 {
+   | ^^^^^^^^^^^^^^^
+
+error: abi: Scalar(Initialized { value: Pointer(AddressSpace(0)), valid_range: (..=0) | (1..) })
+  --> $DIR/enum.rs:182:1
+   |
+LL | enum NPONever14 {
+   | ^^^^^^^^^^^^^^^
+
+error: abi: Scalar(Initialized { value: Pointer(AddressSpace(0)), valid_range: 1..=18446744073709551615 })
+  --> $DIR/enum.rs:188:1
+   |
+LL | enum NPONever15 {
+   | ^^^^^^^^^^^^^^^
+
+error: abi: Scalar(Initialized { value: Int(I64, false), valid_range: 0..=0 })
+  --> $DIR/enum.rs:196:1
+   |
+LL | type NotNPONever1 = Result<NPONever, NPONever>;
+   | ^^^^^^^^^^^^^^^^^
+
+error: abi: Memory { sized: true }
+  --> $DIR/enum.rs:200:1
+   |
+LL | type NotNPONever2 = Result<NPONever, AlignedNever>;
+   | ^^^^^^^^^^^^^^^^^
+
+error: abi: Scalar(Initialized { value: Pointer(AddressSpace(0)), valid_range: 1..=18446744073709551615 })
+  --> $DIR/enum.rs:204:1
+   |
+LL | type NotNPONever3 = Result<NPONever, &'static ()>;
+   | ^^^^^^^^^^^^^^^^^
+
+error: abi: Scalar(Initialized { value: Pointer(AddressSpace(0)), valid_range: 1..=18446744073709551615 })
+  --> $DIR/enum.rs:208:1
+   |
+LL | type NotNPONever4 = Result<&'static (), AlignedNever>;
+   | ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 41 previous errors
 
