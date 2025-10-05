@@ -173,3 +173,19 @@ pub struct M {
     b: K,
     c: L,
 }
+
+// The lint ignores unions
+#[repr(C)]
+pub union Union {
+    a: f64,
+    b: u8,
+    c: f64,
+    d: f32,
+}
+
+// The lint ignores enums
+#[repr(C)]
+pub enum Enum {
+    A { a: f64, b: u8, c: f64, d: f32 },
+    B,
+}
