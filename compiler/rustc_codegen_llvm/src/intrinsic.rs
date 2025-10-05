@@ -1829,10 +1829,11 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     }
 
     if name == sym::simd_masked_load {
-        // simd_masked_load(mask: <N x i{M}>, pointer: *_ T, values: <N x T>) -> <N x T>
+        // simd_masked_load(mask: <N x i{M}>, pointer: *_ T, values: <N x T>, alignment: u32) -> <N x T>
         // * N: number of elements in the input vectors
         // * T: type of the element to load
         // * M: any integer width is supported, will be truncated to i1
+        // * `alignment`: must be a power of two constant
         // Loads contiguous elements from memory behind `pointer`, but only for
         // those lanes whose `mask` bit is enabled.
         // The memory addresses corresponding to the “off” lanes are not accessed.
@@ -1844,9 +1845,17 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         // The second argument must be a pointer matching the element type
         let pointer_ty = args[1].layout.ty;
 
-        // The last argument is a passthrough vector providing values for disabled lanes
+        // The third argument is a passthrough vector providing values for disabled lanes
         let values_ty = args[2].layout.ty;
         let (values_len, values_elem) = require_simd!(values_ty, SimdThird);
+
+        // The fourth argument is the alignment, must be a power of two integer constant
+        let alignment = bx
+            .const_to_opt_u128(args[3].immediate(), false)
+            .expect("typeck should have ensure that this is a const");
+        if !alignment.is_power_of_two() {
+            return_error!(InvalidMonomorphization::AlignmentNotPowerOfTwo { span, name });
+        }
 
         require_simd!(ret_ty, SimdReturn);
 
@@ -1893,7 +1902,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         let mask = vector_mask_to_bitmask(bx, args[0].immediate(), m_elem_bitwidth, mask_len);
 
         // Alignment of T, must be a constant integer value:
-        let alignment = bx.const_i32(bx.align_of(values_elem).bytes() as i32);
+        let alignment = bx.const_i32(alignment as i32);
 
         let llvm_pointer = bx.type_ptr();
 
@@ -1908,10 +1917,11 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     }
 
     if name == sym::simd_masked_store {
-        // simd_masked_store(mask: <N x i{M}>, pointer: *mut T, values: <N x T>) -> ()
+        // simd_masked_store(mask: <N x i{M}>, pointer: *mut T, values: <N x T>, alignment: u32) -> ()
         // * N: number of elements in the input vectors
         // * T: type of the element to load
         // * M: any integer width is supported, will be truncated to i1
+        // * `alignment`: must be a power of two constant
         // Stores contiguous elements to memory behind `pointer`, but only for
         // those lanes whose `mask` bit is enabled.
         // The memory addresses corresponding to the “off” lanes are not accessed.
@@ -1923,9 +1933,17 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         // The second argument must be a pointer matching the element type
         let pointer_ty = args[1].layout.ty;
 
-        // The last argument specifies the values to store to memory
+        // The third argument specifies the values to store to memory
         let values_ty = args[2].layout.ty;
         let (values_len, values_elem) = require_simd!(values_ty, SimdThird);
+
+        // The fourth argument is the alignment, must be a power of two integer constant
+        let alignment = bx
+            .const_to_opt_u128(args[3].immediate(), false)
+            .expect("typeck should have ensure that this is a const");
+        if !alignment.is_power_of_two() {
+            return_error!(InvalidMonomorphization::AlignmentNotPowerOfTwo { span, name });
+        }
 
         // Of the same length:
         require!(
@@ -1965,8 +1983,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
 
         let mask = vector_mask_to_bitmask(bx, args[0].immediate(), m_elem_bitwidth, mask_len);
 
-        // Alignment of T, must be a constant integer value:
-        let alignment = bx.const_i32(bx.align_of(values_elem).bytes() as i32);
+        let alignment = bx.const_i32(alignment as i32);
 
         let llvm_pointer = bx.type_ptr();
 

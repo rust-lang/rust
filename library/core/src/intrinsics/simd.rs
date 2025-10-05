@@ -392,13 +392,14 @@ pub unsafe fn simd_scatter<T, U, V>(val: T, ptr: U, mask: V);
 /// `val`.
 ///
 /// # Safety
-/// Unmasked values in `T` must be readable as if by `<ptr>::read` (e.g. aligned to the element
-/// type).
+/// `alignment` must be a **const** power of two, and specifies the alignment of `ptr`.
+///
+/// Unmasked values in `T` must be readable as if by `<ptr>::read_unaligned` (aligned to `alignment`).
 ///
 /// `mask` must only contain `0` or `!0` values.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn simd_masked_load<V, U, T>(mask: V, ptr: U, val: T) -> T;
+pub unsafe fn simd_masked_load<V, U, T>(mask: V, ptr: U, val: T, alignment: u32) -> T;
 
 /// Writes to a vector of pointers.
 ///
@@ -414,13 +415,14 @@ pub unsafe fn simd_masked_load<V, U, T>(mask: V, ptr: U, val: T) -> T;
 /// Otherwise if the corresponding value in `mask` is `0`, do nothing.
 ///
 /// # Safety
-/// Unmasked values in `T` must be writeable as if by `<ptr>::write` (e.g. aligned to the element
-/// type).
+/// `alignment` must be a **const** power of two, and specifies the alignment of `ptr`.
+///
+/// Unmasked values in `T` must be writeable as if by `<ptr>::write_unaligned` (aligned to `alignment`).
 ///
 /// `mask` must only contain `0` or `!0` values.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn simd_masked_store<V, U, T>(mask: V, ptr: U, val: T);
+pub unsafe fn simd_masked_store<V, U, T>(mask: V, ptr: U, val: T, alignment: u32);
 
 /// Adds two simd vectors elementwise, with saturation.
 ///

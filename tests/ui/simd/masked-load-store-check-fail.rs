@@ -12,11 +12,16 @@ fn main() {
         let mut arr = [4u8, 5, 6, 7];
         let default = Simd::<u8, 4>([9; 4]);
 
-        let _x: Simd<u8, 2> =
-            simd_masked_load(Simd::<i8, 4>([-1, 0, -1, -1]), arr.as_ptr(), Simd::<u8, 4>([9; 4]));
-        //~^ ERROR mismatched types
+        let _x: Simd<u8, 2> = simd_masked_load(
+            Simd::<i8, 4>([-1, 0, -1, -1]),
+            arr.as_ptr(),
+            Simd::<u8, 4>([9; 4]),
+            1,
+        );
+        //~^^^ ERROR mismatched types
 
-        let _x: Simd<u32, 4> = simd_masked_load(Simd::<u8, 4>([1, 0, 1, 1]), arr.as_ptr(), default);
+        let _x: Simd<u32, 4> =
+            simd_masked_load(Simd::<u8, 4>([1, 0, 1, 1]), arr.as_ptr(), default, 1);
         //~^ ERROR mismatched types
     }
 }

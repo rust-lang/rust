@@ -684,21 +684,21 @@ fn simd_masked_loadstore() {
     let buf = [3i32; 3];
     let default = i32x4::splat(0);
     let mask = i32x4::from_array([!0, !0, !0, 0]);
-    let vals = unsafe { intrinsics::simd_masked_load(mask, buf.as_ptr(), default) };
+    let vals = unsafe { intrinsics::simd_masked_load(mask, buf.as_ptr(), default, 4) };
     assert_eq!(vals, i32x4::from_array([3, 3, 3, 0]));
     // Also read in a way that the *first* element is OOB.
     let mask2 = i32x4::from_array([0, !0, !0, !0]);
     let vals =
-        unsafe { intrinsics::simd_masked_load(mask2, buf.as_ptr().wrapping_sub(1), default) };
+        unsafe { intrinsics::simd_masked_load(mask2, buf.as_ptr().wrapping_sub(1), default, 4) };
     assert_eq!(vals, i32x4::from_array([0, 3, 3, 3]));
 
     // The buffer is deliberarely too short, so writing the last element would be UB.
     let mut buf = [42i32; 3];
     let vals = i32x4::from_array([1, 2, 3, 4]);
-    unsafe { intrinsics::simd_masked_store(mask, buf.as_mut_ptr(), vals) };
+    unsafe { intrinsics::simd_masked_store(mask, buf.as_mut_ptr(), vals, 4) };
     assert_eq!(buf, [1, 2, 3]);
     // Also write in a way that the *first* element is OOB.
-    unsafe { intrinsics::simd_masked_store(mask2, buf.as_mut_ptr().wrapping_sub(1), vals) };
+    unsafe { intrinsics::simd_masked_store(mask2, buf.as_mut_ptr().wrapping_sub(1), vals, 4) };
     assert_eq!(buf, [2, 3, 4]);
 }
 
