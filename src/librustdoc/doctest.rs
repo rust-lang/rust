@@ -803,6 +803,22 @@ fn run_test(
     let duration = instant.elapsed();
     if doctest.no_run {
         return (duration, Ok(()));
+    } else if doctest.langstr.should_panic
+        // Equivalent of:
+        //
+        // ```
+        // (cfg!(target_family = "wasm") || cfg!(target_os = "zkvm"))
+        //     && !cfg!(target_os = "emscripten")
+        // ```
+        && let TargetTuple::TargetTuple(ref s) = rustdoc_options.target
+        && let mut iter = s.split('-')
+        && let Some(arch) = iter.next()
+        && iter.next().is_some()
+        && let os = iter.next()
+        && (arch.starts_with("wasm") || os == Some("zkvm")) && os != Some("emscripten")
+    {
+        // We cannot correctly handle `should_panic` in some wasm targets so we exit early.
+        return (duration, Ok(()));
     }
 
     // Run the code!

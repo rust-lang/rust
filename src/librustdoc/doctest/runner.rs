@@ -129,6 +129,9 @@ mod __doctest_mod {{
 
     pub static BINARY_PATH: OnceLock<PathBuf> = OnceLock::new();
     pub const RUN_OPTION: &str = \"RUSTDOC_DOCTEST_RUN_NB_TEST\";
+    pub const SHOULD_PANIC_DISABLED: bool = (
+        cfg!(target_family = \"wasm\") || cfg!(target_os = \"zkvm\")
+    ) && !cfg!(target_os = \"emscripten\");
 
     #[allow(unused)]
     pub fn doctest_path() -> Option<&'static PathBuf> {{
@@ -266,13 +269,14 @@ fn main() {returns_result} {{
         )
         .unwrap();
     }
+    let should_panic = scraped_test.langstr.should_panic;
     let not_running = ignore || scraped_test.no_run(opts);
     writeln!(
         output_merged_tests,
         "
 mod {test_id} {{
 pub const TEST: test::TestDescAndFn = test::TestDescAndFn::new_doctest(
-{test_name:?}, {ignore}, {file:?}, {line}, {no_run}, false,
+{test_name:?}, {ignore} || ({should_panic} && crate::__doctest_mod::SHOULD_PANIC_DISABLED), {file:?}, {line}, {no_run}, false,
 test::StaticTestFn(
     || {{{runner}}},
 ));
@@ -288,13 +292,14 @@ test::StaticTestFn(
         } else {
             format!(
                 "
-if let Some(bin_path) = crate::__doctest_mod::doctest_path() {{
+if {should_panic} && crate::__doctest_mod::SHOULD_PANIC_DISABLED {{
+    test::assert_test_result(Ok::<(), String>(()))
+}} else if let Some(bin_path) = crate::__doctest_mod::doctest_path() {{
     test::assert_test_result(crate::__doctest_mod::doctest_runner(bin_path, {id}, {should_panic}))
 }} else {{
     test::assert_test_result(doctest_bundle::{test_id}::__main_fn())
 }}
 ",
-                should_panic = scraped_test.langstr.should_panic,
             )
         },
     )
