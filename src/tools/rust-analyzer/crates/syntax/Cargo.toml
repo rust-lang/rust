@@ -33,6 +33,7 @@ rustc_apfloat = "0.2.3"
 test-utils.workspace = true
 
 [features]
+default = []
 in-rust-tree = []
 
 [lints]

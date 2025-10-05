@@ -1,5 +1,10 @@
 //! base_db defines basic database traits. The concrete DB is defined by ide.
 
+#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_driver as _;
+
 pub use salsa;
 pub use salsa_macros;
 

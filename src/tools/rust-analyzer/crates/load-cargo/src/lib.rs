@@ -2,6 +2,12 @@
 //! for incorporating changes.
 // Note, don't remove any public api from this. This API is consumed by external tools
 // to run rust-analyzer as a library.
+
+#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_driver as _;
+
 use std::{any::Any, collections::hash_map::Entry, mem, path::Path, sync};
 
 use crossbeam_channel::{Receiver, unbounded};
