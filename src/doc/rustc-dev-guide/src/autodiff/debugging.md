@@ -30,6 +30,7 @@ To confirm that your previous step worked, we will use llvm's `opt` tool. find y
 ```sh
 <path/to/opt> out.ll -load-pass-plugin=/path/to/build/<target-triple>/stage1/lib/libEnzyme-21.so -passes="enzyme" -enzyme-strict-aliasing=0  -s
 ```
+This command might fail for future versions or on your system, in which case you should replace libEnzyme-21.so with LLVMEnzyme-21.so. Look at the Enzyme docs for instructions on how to build it. You might need to also adjust how to build your LLVM version.
 
 If the previous step succeeded, you are going to see the same error that you saw when compiling your rust code with cargo. 
 
