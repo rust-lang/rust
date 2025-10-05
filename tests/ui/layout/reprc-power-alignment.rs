@@ -5,12 +5,12 @@
 #![feature(no_core)]
 #![no_core]
 #![no_std]
+#![crate_type = "lib"]
 
 extern crate minicore;
 use minicore::*;
 
 #[warn(uses_power_alignment)]
-
 #[repr(C)]
 pub struct Floats {
     a: f64,
@@ -96,32 +96,32 @@ pub struct FloatAgg7 {
 
 #[repr(C)]
 pub struct A {
-  d: f64,
+    d: f64,
 }
 #[repr(C)]
 pub struct B {
-  a: A,
-  f: f32,
-  d: f64, //~ WARNING repr(C) does not follow the power alignment rule. This may affect platform C ABI compatibility for this type
+    a: A,
+    f: f32,
+    d: f64, //~ WARNING repr(C) does not follow the power alignment rule. This may affect platform C ABI compatibility for this type
 }
 #[repr(C)]
 pub struct C {
-  c: u8,
-  b: B, //~ WARNING repr(C) does not follow the power alignment rule. This may affect platform C ABI compatibility for this type
+    c: u8,
+    b: B, //~ WARNING repr(C) does not follow the power alignment rule. This may affect platform C ABI compatibility for this type
 }
 #[repr(C)]
 pub struct D {
-  x: f64,
+    x: f64,
 }
 #[repr(C)]
 pub struct E {
-  x: i32,
-  d: D, //~ WARNING repr(C) does not follow the power alignment rule. This may affect platform C ABI compatibility for this type
+    x: i32,
+    d: D, //~ WARNING repr(C) does not follow the power alignment rule. This may affect platform C ABI compatibility for this type
 }
 #[repr(C)]
 pub struct F {
-  a: u8,
-  b: f64, //~ WARNING repr(C) does not follow the power alignment rule. This may affect platform C ABI compatibility for this type
+    a: u8,
+    b: f64, //~ WARNING repr(C) does not follow the power alignment rule. This may affect platform C ABI compatibility for this type
 }
 #[repr(C)]
 pub struct G {
@@ -173,4 +173,19 @@ pub struct M {
     b: K,
     c: L,
 }
-fn main() { }
+
+// The lint ignores unions
+#[repr(C)]
+pub union Union {
+    a: f64,
+    b: u8,
+    c: f64,
+    d: f32,
+}
+
+// The lint ignores enums
+#[repr(C)]
+pub enum Enum {
+    A { a: f64, b: u8, c: f64, d: f32 },
+    B,
+}
