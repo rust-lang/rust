@@ -2,8 +2,8 @@
 //@ pretty-mode:hir
 //@ pp-exact:pin-ergonomics-hir.pp
 
-#![feature(pin_ergonomics)]
 #![allow(dead_code, incomplete_features)]
+#![attr = Feature([pin_ergonomics#0])]
 #[attr = MacroUse {arguments: UseAll}]
 extern crate std;
 #[prelude_import]

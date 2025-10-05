@@ -862,26 +862,26 @@ mod crate_type {
 
 #[feature(x0600)]
 //~^ WARN crate-level attribute should be an inner attribute
-//~| HELP add a `!`
 mod feature {
+//~^ NOTE This attribute does not have an `!`, which means it is applied to this module
     mod inner { #![feature(x0600)] }
-//~^ WARN crate-level attribute should be in the root module
+    //~^ WARN the `#![feature]` attribute can only be used at the crate root
 
     #[feature(x0600)] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this function
 
     #[feature(x0600)] struct S;
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this struct
 
     #[feature(x0600)] type T = S;
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this type alias
 
     #[feature(x0600)] impl S { }
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this implementation block
 }
 
 

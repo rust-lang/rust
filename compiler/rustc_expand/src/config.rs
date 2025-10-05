@@ -7,8 +7,8 @@ use rustc_ast::tokenstream::{
     AttrTokenStream, AttrTokenTree, LazyAttrTokenStream, Spacing, TokenTree,
 };
 use rustc_ast::{
-    self as ast, AttrKind, AttrStyle, Attribute, HasAttrs, HasTokens, MetaItem, MetaItemInner,
-    NodeId, NormalAttr,
+    self as ast, AttrKind, AttrStyle, Attribute, DUMMY_NODE_ID, HasAttrs, HasTokens, MetaItem,
+    MetaItemInner, NodeId, NormalAttr,
 };
 use rustc_attr_parsing as attr;
 use rustc_attr_parsing::validate_attr::deny_builtin_meta_unsafety;
@@ -21,16 +21,16 @@ use rustc_feature::{
     ACCEPTED_LANG_FEATURES, AttributeSafety, EnabledLangFeature, EnabledLibFeature, Features,
     REMOVED_LANG_FEATURES, UNSTABLE_LANG_FEATURES,
 };
+use rustc_hir::attrs::AttributeKind;
+use rustc_hir::{self as hir};
 use rustc_session::Session;
 use rustc_session::parse::feature_err;
-use rustc_span::{STDLIB_STABLE_CRATES, Span, Symbol, sym};
-use thin_vec::ThinVec;
+use rustc_span::{DUMMY_SP, STDLIB_STABLE_CRATES, Span, Symbol, sym};
 use tracing::instrument;
 
 use crate::errors::{
     CrateNameInCfgAttr, CrateTypeInCfgAttr, FeatureNotAllowed, FeatureRemoved,
-    FeatureRemovedReason, InvalidCfg, MalformedFeatureAttribute, MalformedFeatureAttributeHelp,
-    RemoveExprNotSupported,
+    FeatureRemovedReason, InvalidCfg, RemoveExprNotSupported,
 };
 
 /// A folder that strips out items that do not belong in the current configuration.
@@ -45,44 +45,23 @@ pub struct StripUnconfigured<'a> {
 }
 
 pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -> Features {
-    fn feature_list(attr: &Attribute) -> ThinVec<ast::MetaItemInner> {
-        if attr.has_name(sym::feature)
-            && let Some(list) = attr.meta_item_list()
-        {
-            list
-        } else {
-            ThinVec::new()
-        }
-    }
-
     let mut features = Features::default();
 
-    // Process all features enabled in the code.
-    for attr in krate_attrs {
-        for mi in feature_list(attr) {
-            let name = match mi.ident() {
-                Some(ident) if mi.is_word() => ident.name,
-                Some(ident) => {
-                    sess.dcx().emit_err(MalformedFeatureAttribute {
-                        span: mi.span(),
-                        help: MalformedFeatureAttributeHelp::Suggestion {
-                            span: mi.span(),
-                            suggestion: ident.name,
-                        },
-                    });
-                    continue;
-                }
-                None => {
-                    sess.dcx().emit_err(MalformedFeatureAttribute {
-                        span: mi.span(),
-                        help: MalformedFeatureAttributeHelp::Label { span: mi.span() },
-                    });
-                    continue;
-                }
-            };
-
+    if let Some(hir::Attribute::Parsed(AttributeKind::Feature(feature_idents, _))) =
+        AttributeParser::parse_limited(
+            sess,
+            krate_attrs,
+            sym::feature,
+            DUMMY_SP,
+            DUMMY_NODE_ID,
+            Some(&features),
+        )
+    {
+        for feature_ident in feature_idents {
             // If the enabled feature has been removed, issue an error.
-            if let Some(f) = REMOVED_LANG_FEATURES.iter().find(|f| name == f.feature.name) {
+            if let Some(f) =
+                REMOVED_LANG_FEATURES.iter().find(|f| feature_ident.name == f.feature.name)
+            {
                 let pull_note = if let Some(pull) = f.pull {
                     format!(
                         "; see <https://github.com/rust-lang/rust/pull/{}> for more information",
@@ -92,7 +71,7 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
                     "".to_owned()
                 };
                 sess.dcx().emit_err(FeatureRemoved {
-                    span: mi.span(),
+                    span: feature_ident.span,
                     reason: f.reason.map(|reason| FeatureRemovedReason { reason }),
                     removed_rustc_version: f.feature.since,
                     pull_note,
@@ -101,10 +80,10 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
             }
 
             // If the enabled feature is stable, record it.
-            if let Some(f) = ACCEPTED_LANG_FEATURES.iter().find(|f| name == f.name) {
+            if let Some(f) = ACCEPTED_LANG_FEATURES.iter().find(|f| feature_ident.name == f.name) {
                 features.set_enabled_lang_feature(EnabledLangFeature {
-                    gate_name: name,
-                    attr_sp: mi.span(),
+                    gate_name: feature_ident.name,
+                    attr_sp: feature_ident.span,
                     stable_since: Some(Symbol::intern(f.since)),
                 });
                 continue;
@@ -114,25 +93,30 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
             // unstable and not also listed as one of the allowed features,
             // issue an error.
             if let Some(allowed) = sess.opts.unstable_opts.allow_features.as_ref() {
-                if allowed.iter().all(|f| name.as_str() != f) {
-                    sess.dcx().emit_err(FeatureNotAllowed { span: mi.span(), name });
+                if allowed.iter().all(|f| feature_ident.name.as_str() != f) {
+                    sess.dcx().emit_err(FeatureNotAllowed {
+                        span: feature_ident.span,
+                        name: feature_ident.name,
+                    });
                     continue;
                 }
             }
 
             // If the enabled feature is unstable, record it.
-            if UNSTABLE_LANG_FEATURES.iter().find(|f| name == f.name).is_some() {
+            if UNSTABLE_LANG_FEATURES.iter().find(|f| feature_ident.name == f.name).is_some() {
                 // When the ICE comes a standard library crate, there's a chance that the person
                 // hitting the ICE may be using -Zbuild-std or similar with an untested target.
                 // The bug is probably in the standard library and not the compiler in that case,
                 // but that doesn't really matter - we want a bug report.
-                if features.internal(name) && !STDLIB_STABLE_CRATES.contains(&crate_name) {
+                if features.internal(feature_ident.name)
+                    && !STDLIB_STABLE_CRATES.contains(&crate_name)
+                {
                     sess.using_internal_features.store(true, std::sync::atomic::Ordering::Relaxed);
                 }
 
                 features.set_enabled_lang_feature(EnabledLangFeature {
-                    gate_name: name,
-                    attr_sp: mi.span(),
+                    gate_name: feature_ident.name,
+                    attr_sp: feature_ident.span,
                     stable_since: None,
                 });
                 continue;
@@ -140,12 +124,15 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
 
             // Otherwise, the feature is unknown. Enable it as a lib feature.
             // It will be checked later whether the feature really exists.
-            features
-                .set_enabled_lib_feature(EnabledLibFeature { gate_name: name, attr_sp: mi.span() });
+            features.set_enabled_lib_feature(EnabledLibFeature {
+                gate_name: feature_ident.name,
+                attr_sp: feature_ident.span,
+            });
 
             // Similar to above, detect internal lib features to suppress
             // the ICE message that asks for a report.
-            if features.internal(name) && !STDLIB_STABLE_CRATES.contains(&crate_name) {
+            if features.internal(feature_ident.name) && !STDLIB_STABLE_CRATES.contains(&crate_name)
+            {
                 sess.using_internal_features.store(true, std::sync::atomic::Ordering::Relaxed);
             }
         }
