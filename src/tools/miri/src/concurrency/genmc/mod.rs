@@ -14,18 +14,15 @@ use tracing::{debug, info};
 
 use self::global_allocations::{EvalContextExt as _, GlobalAllocationHandler};
 use self::helper::{
-    MAX_ACCESS_SIZE, Warnings, emit_warning, genmc_scalar_to_scalar,
-    maybe_upgrade_compare_exchange_success_orderings, scalar_to_genmc_scalar, to_genmc_rmw_op,
+    MAX_ACCESS_SIZE, genmc_scalar_to_scalar, maybe_upgrade_compare_exchange_success_orderings,
+    scalar_to_genmc_scalar, to_genmc_rmw_op,
 };
 use self::run::GenmcMode;
 use self::thread_id_map::ThreadIdMap;
 use crate::concurrency::genmc::helper::split_access;
+use crate::diagnostics::SpanDedupDiagnostic;
 use crate::intrinsics::AtomicRmwOp;
-use crate::{
-    AtomicFenceOrd, AtomicReadOrd, AtomicRwOrd, AtomicWriteOrd, MemoryKind, MiriConfig,
-    MiriMachine, MiriMemoryKind, NonHaltingDiagnostic, Scalar, TerminationInfo, ThreadId,
-    ThreadManager, VisitProvenance, VisitWith,
-};
+use crate::*;
 
 mod config;
 mod global_allocations;
@@ -104,18 +101,11 @@ struct GlobalState {
     /// Keep track of global allocations, to ensure they keep the same address across different executions, even if the order of allocations changes.
     /// The `AllocId` for globals is stable across executions, so we can use it as an identifier.
     global_allocations: GlobalAllocationHandler,
-
-    /// Cache for which warnings have already been shown to the user.
-    /// `None` if warnings are disabled.
-    warning_cache: Option<Warnings>,
 }
 
 impl GlobalState {
-    fn new(target_usize_max: u64, print_warnings: bool) -> Self {
-        Self {
-            global_allocations: GlobalAllocationHandler::new(target_usize_max),
-            warning_cache: print_warnings.then(Default::default),
-        }
+    fn new(target_usize_max: u64) -> Self {
+        Self { global_allocations: GlobalAllocationHandler::new(target_usize_max) }
     }
 }
 
@@ -412,27 +402,24 @@ impl GenmcCtx {
         let upgraded_success_ordering =
             maybe_upgrade_compare_exchange_success_orderings(success, fail);
 
-        if let Some(warning_cache) = &self.global_state.warning_cache {
-            // FIXME(genmc): remove once GenMC supports failure memory ordering in `compare_exchange`.
-            let (effective_failure_ordering, _) =
-                upgraded_success_ordering.split_memory_orderings();
-            // Return a warning if the actual orderings don't match the upgraded ones.
-            if success != upgraded_success_ordering || effective_failure_ordering != fail {
-                emit_warning(ecx, &warning_cache.compare_exchange_failure_ordering, || {
-                    NonHaltingDiagnostic::GenmcCompareExchangeOrderingMismatch {
-                        success_ordering: success,
-                        upgraded_success_ordering,
-                        failure_ordering: fail,
-                        effective_failure_ordering,
-                    }
-                });
-            }
-            // FIXME(genmc): remove once GenMC implements spurious failures for `compare_exchange_weak`.
-            if can_fail_spuriously {
-                emit_warning(ecx, &warning_cache.compare_exchange_weak, || {
-                    NonHaltingDiagnostic::GenmcCompareExchangeWeak
-                });
-            }
+        // FIXME(genmc): remove once GenMC supports failure memory ordering in `compare_exchange`.
+        let (effective_failure_ordering, _) = upgraded_success_ordering.split_memory_orderings();
+        // Return a warning if the actual orderings don't match the upgraded ones.
+        if success != upgraded_success_ordering || effective_failure_ordering != fail {
+            static DEDUP: SpanDedupDiagnostic = SpanDedupDiagnostic::new();
+            ecx.dedup_diagnostic(&DEDUP, |_first| {
+                NonHaltingDiagnostic::GenmcCompareExchangeOrderingMismatch {
+                    success_ordering: success,
+                    upgraded_success_ordering,
+                    failure_ordering: fail,
+                    effective_failure_ordering,
+                }
+            });
+        }
+        // FIXME(genmc): remove once GenMC implements spurious failures for `compare_exchange_weak`.
+        if can_fail_spuriously {
+            static DEDUP: SpanDedupDiagnostic = SpanDedupDiagnostic::new();
+            ecx.dedup_diagnostic(&DEDUP, |_first| NonHaltingDiagnostic::GenmcCompareExchangeWeak);
         }
 
         debug!(

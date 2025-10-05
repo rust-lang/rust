@@ -649,16 +649,6 @@ pub struct MiriMachine<'tcx> {
     pub(crate) pthread_rwlock_sanity: Cell<bool>,
     pub(crate) pthread_condvar_sanity: Cell<bool>,
 
-    /// Remembers whether we already warned about an extern type with Stacked Borrows.
-    pub(crate) sb_extern_type_warned: Cell<bool>,
-    /// Remember whether we already warned about sharing memory with a native call.
-    #[allow(unused)]
-    pub(crate) native_call_mem_warned: Cell<bool>,
-    /// Remembers which shims have already shown the warning about erroring in isolation.
-    pub(crate) reject_in_isolation_warned: RefCell<FxHashSet<String>>,
-    /// Remembers which int2ptr casts we have already warned about.
-    pub(crate) int2ptr_warned: RefCell<FxHashSet<Span>>,
-
     /// Cache for `mangle_internal_symbol`.
     pub(crate) mangle_internal_symbol_cache: FxHashMap<&'static str, String>,
 
@@ -826,10 +816,6 @@ impl<'tcx> MiriMachine<'tcx> {
             pthread_mutex_sanity: Cell::new(false),
             pthread_rwlock_sanity: Cell::new(false),
             pthread_condvar_sanity: Cell::new(false),
-            sb_extern_type_warned: Cell::new(false),
-            native_call_mem_warned: Cell::new(false),
-            reject_in_isolation_warned: Default::default(),
-            int2ptr_warned: Default::default(),
             mangle_internal_symbol_cache: Default::default(),
             force_intrinsic_fallback: config.force_intrinsic_fallback,
             float_nondet: config.float_nondet,
@@ -1003,10 +989,6 @@ impl VisitProvenance for MiriMachine<'_> {
             pthread_mutex_sanity: _,
             pthread_rwlock_sanity: _,
             pthread_condvar_sanity: _,
-            sb_extern_type_warned: _,
-            native_call_mem_warned: _,
-            reject_in_isolation_warned: _,
-            int2ptr_warned: _,
             mangle_internal_symbol_cache: _,
             force_intrinsic_fallback: _,
             float_nondet: _,

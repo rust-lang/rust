@@ -13,6 +13,7 @@ use rustc_middle::ty::TyCtxt;
 pub use self::address_generator::AddressGenerator;
 use self::reuse_pool::ReusePool;
 use crate::concurrency::VClock;
+use crate::diagnostics::SpanDedupDiagnostic;
 use crate::*;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -341,12 +342,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         match global_state.provenance_mode {
             ProvenanceMode::Default => {
                 // The first time this happens at a particular location, print a warning.
-                let mut int2ptr_warned = this.machine.int2ptr_warned.borrow_mut();
-                let first = int2ptr_warned.is_empty();
-                if int2ptr_warned.insert(this.cur_span()) {
-                    // Newly inserted, so first time we see this span.
-                    this.emit_diagnostic(NonHaltingDiagnostic::Int2Ptr { details: first });
-                }
+                static DEDUP: SpanDedupDiagnostic = SpanDedupDiagnostic::new();
+                this.dedup_diagnostic(&DEDUP, |first| {
+                    NonHaltingDiagnostic::Int2Ptr { details: first }
+                });
             }
             ProvenanceMode::Strict => {
                 throw_machine_stop!(TerminationInfo::Int2PtrWithStrictProvenance);
