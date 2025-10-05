@@ -117,26 +117,26 @@ jobs:
         with:
           fetch-depth: 2
 
-      - name: install typos-clik 0
-        run: time RUSTFLAGS="-Copt-level=0" cargo install typos-cli@1.34.0 --force
+      - name: install typos-cli 0
+        run: time RUSTFLAGS="-Copt-level=0" cargo install typos-cli@1.34.0 --force --quiet --locked
 
       - name: run typos-cli 0
         run: time typos compiler library src/bootstrap src/librustdoc
 
-      - name: install typos-clik 1
-        run: time RUSTFLAGS="-Copt-level=1" cargo install typos-cli@1.34.0 --force
+      - name: install typos-cli 1
+        run: time RUSTFLAGS="-Copt-level=1" cargo install typos-cli@1.34.0 --force --quiet --locked
 
       - name: run typos-cli 1
         run: time typos compiler library src/bootstrap src/librustdoc
 
-      - name: install typos-clik 2
-        run: time RUSTFLAGS="-Copt-level=2" cargo install typos-cli@1.34.0 --force
+      - name: install typos-cli 2
+        run: time RUSTFLAGS="-Copt-level=2" cargo install typos-cli@1.34.0 --force --quiet --locked
 
       - name: run typos-cli 2
         run: time typos compiler library src/bootstrap src/librustdoc
 
-      - name: install typos-clik 3 (default)
-        run: time cargo install typos-cli@1.34.0 --force
+      - name: install typos-cli 3 (default)
+        run: time cargo install typos-cli@1.34.0 --force --quiet --locked
 
       - name: run typos-cli 3
         run: time typos compiler library src/bootstrap src/librustdoc
