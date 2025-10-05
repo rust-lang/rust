@@ -266,7 +266,7 @@ rustc_queries! {
     ///
     /// This can be conveniently accessed by `tcx.hir_*` methods.
     /// Avoid calling this query directly.
-    query hir_owner_parent(key: hir::OwnerId) -> hir::HirId {
+    query hir_owner_parent_q(key: hir::OwnerId) -> hir::HirId {
         desc { |tcx| "getting HIR parent of `{}`", tcx.def_path_str(key) }
     }
 
