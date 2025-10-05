@@ -137,13 +137,12 @@ rayon = "1.10.0"
 rowan = "=0.15.15"
 # Ideally we'd not enable the macros feature but unfortunately the `tracked` attribute does not work
 # on impls without it
-salsa = { git = "https://github.com/salsa-rs/salsa.git", rev = "e257df12eabd566825ba53bb12d782560b9a4dcd", default-features = true, features = [
+salsa = { version = "0.24.0", default-features = true, features = [
     "rayon",
     "salsa_unstable",
     "macros",
 ] }
-# salsa-macros = "0.23.0"
-salsa-macros = { git = "https://github.com/salsa-rs/salsa.git", rev = "e257df12eabd566825ba53bb12d782560b9a4dcd" }
+salsa-macros = "0.24.0"
 semver = "1.0.26"
 serde = { version = "1.0.219" }
 serde_derive = { version = "1.0.219" }

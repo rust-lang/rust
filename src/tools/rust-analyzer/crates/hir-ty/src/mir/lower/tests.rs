@@ -11,21 +11,24 @@ fn lower_mir(
 ) -> FxHashMap<String, Result<Arc<MirBody>, ()>> {
     let _tracing = setup_tracing();
     let (db, file_ids) = TestDB::with_many_files(ra_fixture);
-    let file_id = *file_ids.last().unwrap();
-    let module_id = db.module_for_file(file_id.file_id(&db));
-    let def_map = module_id.def_map(&db);
-    let scope = &def_map[module_id.local_id].scope;
-    let funcs = scope.declarations().filter_map(|x| match x {
-        hir_def::ModuleDefId::FunctionId(it) => Some(it),
-        _ => None,
-    });
-    funcs
-        .map(|func| {
-            let name = db.function_signature(func).name.display(&db, Edition::CURRENT).to_string();
-            let mir = db.mir_body(func.into());
-            (name, mir.map_err(drop))
-        })
-        .collect()
+    crate::attach_db(&db, || {
+        let file_id = *file_ids.last().unwrap();
+        let module_id = db.module_for_file(file_id.file_id(&db));
+        let def_map = module_id.def_map(&db);
+        let scope = &def_map[module_id.local_id].scope;
+        let funcs = scope.declarations().filter_map(|x| match x {
+            hir_def::ModuleDefId::FunctionId(it) => Some(it),
+            _ => None,
+        });
+        funcs
+            .map(|func| {
+                let name =
+                    db.function_signature(func).name.display(&db, Edition::CURRENT).to_string();
+                let mir = db.mir_body(func.into());
+                (name, mir.map_err(drop))
+            })
+            .collect()
+    })
 }
 
 #[test]

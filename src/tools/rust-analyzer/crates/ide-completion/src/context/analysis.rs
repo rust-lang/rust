@@ -1,7 +1,6 @@
 //! Module responsible for analyzing the code surrounding the cursor for completion.
 use std::iter;
 
-use base_db::salsa;
 use hir::{ExpandResult, InFile, Semantics, Type, TypeInfo, Variant};
 use ide_db::{RootDatabase, active_parameter::ActiveParameter};
 use itertools::Either;
@@ -86,7 +85,7 @@ pub(super) fn expand_and_analyze<'db>(
     let original_offset = expansion.original_offset + relative_offset;
     let token = expansion.original_file.token_at_offset(original_offset).left_biased()?;
 
-    salsa::attach(sema.db, || analyze(sema, expansion, original_token, &token)).map(
+    hir::attach_db(sema.db, || analyze(sema, expansion, original_token, &token)).map(
         |(analysis, expected, qualifier_ctx)| AnalysisResult {
             analysis,
             expected,

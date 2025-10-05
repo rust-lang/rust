@@ -10,7 +10,7 @@ use hir::{
 };
 use ide_db::{
     FileId, FileRange, RootDatabase, SymbolKind,
-    base_db::{CrateOrigin, LangCrateOrigin, RootQueryDb, salsa},
+    base_db::{CrateOrigin, LangCrateOrigin, RootQueryDb},
     defs::{Definition, find_std_module},
     documentation::{Documentation, HasDocs},
     famous_defs::FamousDefs,
@@ -399,7 +399,7 @@ where
             )
             .map(|mut res| {
                 res.docs = self.docs(db);
-                res.description = salsa::attach(db, || {
+                res.description = hir::attach_db(db, || {
                     Some(self.display(db, self.krate(db).to_display_target(db)).to_string())
                 });
                 res.container_name = self.container_name(db);
@@ -520,7 +520,7 @@ impl TryToNav for hir::Field {
                 NavigationTarget::from_named(db, src.with_value(it), SymbolKind::Field).map(
                     |mut res| {
                         res.docs = self.docs(db);
-                        res.description = salsa::attach(db, || {
+                        res.description = hir::attach_db(db, || {
                             Some(self.display(db, krate.to_display_target(db)).to_string())
                         });
                         res

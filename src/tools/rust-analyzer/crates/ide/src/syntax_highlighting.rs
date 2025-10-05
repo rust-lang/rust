@@ -16,7 +16,7 @@ use std::ops::ControlFlow;
 
 use either::Either;
 use hir::{DefWithBody, EditionedFileId, InFile, InRealFile, MacroKind, Name, Semantics};
-use ide_db::{FxHashMap, FxHashSet, Ranker, RootDatabase, SymbolKind, base_db::salsa};
+use ide_db::{FxHashMap, FxHashSet, Ranker, RootDatabase, SymbolKind};
 use syntax::{
     AstNode, AstToken, NodeOrToken,
     SyntaxKind::*,
@@ -428,7 +428,7 @@ fn traverse(
             Some(current_body) => {
                 let (ops, bindings) = per_body_cache.entry(current_body).or_insert_with(|| {
                     (
-                        salsa::attach(sema.db, || sema.get_unsafe_ops(current_body)),
+                        hir::attach_db(sema.db, || sema.get_unsafe_ops(current_body)),
                         Default::default(),
                     )
                 });
@@ -440,7 +440,7 @@ fn traverse(
             |node| unsafe_ops.contains(&InFile::new(descended_element.file_id, node));
         let element = match descended_element.value {
             NodeOrToken::Node(name_like) => {
-                let hl = salsa::attach(sema.db, || {
+                let hl = hir::attach_db(sema.db, || {
                     highlight::name_like(
                         sema,
                         krate,
@@ -458,7 +458,7 @@ fn traverse(
                 }
                 hl
             }
-            NodeOrToken::Token(token) => salsa::attach(sema.db, || {
+            NodeOrToken::Token(token) => hir::attach_db(sema.db, || {
                 highlight::token(sema, token, edition, &is_unsafe_node, tt_level > 0)
                     .zip(Some(None))
             }),

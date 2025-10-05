@@ -213,14 +213,13 @@ mod tests {
 
     use crate::fixture;
     use expect_test::expect;
-    use ide_db::base_db::salsa;
 
     fn make_memory_layout(
         #[rust_analyzer::rust_fixture] ra_fixture: &str,
     ) -> Option<RecursiveMemoryLayout> {
         let (analysis, position, _) = fixture::annotations(ra_fixture);
 
-        salsa::attach(&analysis.db, || view_memory_layout(&analysis.db, position))
+        hir::attach_db(&analysis.db, || view_memory_layout(&analysis.db, position))
     }
 
     #[test]

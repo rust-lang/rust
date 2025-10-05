@@ -114,6 +114,7 @@ pub use mapping::{
     to_foreign_def_id, to_placeholder_idx, to_placeholder_idx_no_index,
 };
 pub use method_resolution::check_orphan_rules;
+pub use next_solver::interner::{attach_db, attach_db_allow_change, with_attached_db};
 pub use target_feature::TargetFeatures;
 pub use traits::TraitEnvironment;
 pub use utils::{

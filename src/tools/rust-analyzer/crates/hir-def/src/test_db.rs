@@ -1,6 +1,5 @@
 //! Database used for testing `hir_def`.
 
-use salsa::database::AsDynDatabase;
 use std::{fmt, panic, sync::Mutex};
 
 use base_db::{
@@ -8,7 +7,7 @@ use base_db::{
     SourceDatabase, SourceRoot, SourceRootId, SourceRootInput,
 };
 use hir_expand::{InFile, files::FilePosition};
-use salsa::{Durability, database::AsDynDatabase};
+use salsa::Durability;
 use span::FileId;
 use syntax::{AstNode, algo, ast};
 use triomphe::Arc;
@@ -304,8 +303,7 @@ impl TestDB {
                 // This is pretty horrible, but `Debug` is the only way to inspect
                 // QueryDescriptor at the moment.
                 salsa::EventKind::WillExecute { database_key } => {
-                    let ingredient = self
-                        .as_dyn_database()
+                    let ingredient = (self as &dyn salsa::Database)
                         .ingredient_debug_name(database_key.ingredient_index());
                     Some(ingredient.to_string())
                 }

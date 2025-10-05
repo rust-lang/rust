@@ -79,7 +79,7 @@ fn check_impl(
     let _tracing = setup_tracing();
     let (db, files) = TestDB::with_many_files(ra_fixture);
 
-    salsa::attach(&db, || {
+    crate::attach_db(&db, || {
         let mut had_annotations = false;
         let mut mismatches = FxHashMap::default();
         let mut types = FxHashMap::default();
@@ -283,7 +283,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
     let _tracing = setup_tracing();
     let (db, file_id) = TestDB::with_single_file(content);
 
-    salsa::attach(&db, || {
+    crate::attach_db(&db, || {
         let mut buf = String::new();
 
         let mut infer_def = |inference_result: Arc<InferenceResult<'_>>,
@@ -558,15 +558,17 @@ fn salsa_bug() {
     ",
     );
 
-    let module = db.module_for_file(pos.file_id.file_id(&db));
-    let crate_def_map = module.def_map(&db);
-    visit_module(&db, crate_def_map, module.local_id, &mut |def| {
-        db.infer(match def {
-            ModuleDefId::FunctionId(it) => it.into(),
-            ModuleDefId::EnumVariantId(it) => it.into(),
-            ModuleDefId::ConstId(it) => it.into(),
-            ModuleDefId::StaticId(it) => it.into(),
-            _ => return,
+    crate::attach_db(&db, || {
+        let module = db.module_for_file(pos.file_id.file_id(&db));
+        let crate_def_map = module.def_map(&db);
+        visit_module(&db, crate_def_map, module.local_id, &mut |def| {
+            db.infer(match def {
+                ModuleDefId::FunctionId(it) => it.into(),
+                ModuleDefId::EnumVariantId(it) => it.into(),
+                ModuleDefId::ConstId(it) => it.into(),
+                ModuleDefId::StaticId(it) => it.into(),
+                _ => return,
+            });
         });
     });
 
@@ -597,15 +599,17 @@ fn salsa_bug() {
 
     db.set_file_text(pos.file_id.file_id(&db), new_text);
 
-    let module = db.module_for_file(pos.file_id.file_id(&db));
-    let crate_def_map = module.def_map(&db);
-    visit_module(&db, crate_def_map, module.local_id, &mut |def| {
-        db.infer(match def {
-            ModuleDefId::FunctionId(it) => it.into(),
-            ModuleDefId::EnumVariantId(it) => it.into(),
-            ModuleDefId::ConstId(it) => it.into(),
-            ModuleDefId::StaticId(it) => it.into(),
-            _ => return,
+    crate::attach_db(&db, || {
+        let module = db.module_for_file(pos.file_id.file_id(&db));
+        let crate_def_map = module.def_map(&db);
+        visit_module(&db, crate_def_map, module.local_id, &mut |def| {
+            db.infer(match def {
+                ModuleDefId::FunctionId(it) => it.into(),
+                ModuleDefId::EnumVariantId(it) => it.into(),
+                ModuleDefId::ConstId(it) => it.into(),
+                ModuleDefId::StaticId(it) => it.into(),
+                _ => return,
+            });
         });
-    });
+    })
 }

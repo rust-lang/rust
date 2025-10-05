@@ -36,7 +36,7 @@ fn check_fail(
     error: impl FnOnce(ConstEvalError<'_>) -> bool,
 ) {
     let (db, file_id) = TestDB::with_single_file(ra_fixture);
-    salsa::attach(&db, || match eval_goal(&db, file_id) {
+    crate::attach_db(&db, || match eval_goal(&db, file_id) {
         Ok(_) => panic!("Expected fail, but it succeeded"),
         Err(e) => {
             assert!(error(simplify(e.clone())), "Actual error was: {}", pretty_print_err(e, &db))
@@ -79,7 +79,7 @@ fn check_answer(
     check: impl FnOnce(&[u8], &MemoryMap<'_>),
 ) {
     let (db, file_ids) = TestDB::with_many_files(ra_fixture);
-    salsa::attach(&db, || {
+    crate::attach_db(&db, || {
         let file_id = *file_ids.last().unwrap();
         let r = match eval_goal(&db, file_id) {
             Ok(t) => t,
@@ -2506,8 +2506,10 @@ fn enums() {
         const GOAL: E = E::A;
         "#,
     );
-    let r = eval_goal(&db, file_id).unwrap();
-    assert_eq!(try_const_usize(&db, &r), Some(1));
+    crate::attach_db(&db, || {
+        let r = eval_goal(&db, file_id).unwrap();
+        assert_eq!(try_const_usize(&db, &r), Some(1));
+    })
 }
 
 #[test]

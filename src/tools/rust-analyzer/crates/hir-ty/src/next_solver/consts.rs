@@ -41,13 +41,12 @@ impl<'db> Const<'db> {
     }
 
     pub fn inner(&self) -> &WithCachedTypeInfo<ConstKind<'db>> {
-        salsa::with_attached_database(|db| {
+        crate::with_attached_db(|db| {
             let inner = &self.kind_(db).0;
             // SAFETY: The caller already has access to a `Const<'db>`, so borrowchecking will
             // make sure that our returned value is valid for the lifetime `'db`.
             unsafe { std::mem::transmute(inner) }
         })
-        .unwrap()
     }
 
     pub fn error(interner: DbInterner<'db>) -> Self {
@@ -197,21 +196,19 @@ pub struct Valtree<'db> {
 
 impl<'db> Valtree<'db> {
     pub fn new(bytes: ConstBytes<'db>) -> Self {
-        salsa::with_attached_database(|db| unsafe {
+        crate::with_attached_db(|db| unsafe {
             // SAFETY: ¯\_(ツ)_/¯
             std::mem::transmute(Valtree::new_(db, bytes))
         })
-        .unwrap()
     }
 
     pub fn inner(&self) -> &ConstBytes<'db> {
-        salsa::with_attached_database(|db| {
+        crate::with_attached_db(|db| {
             let inner = self.bytes_(db);
             // SAFETY: The caller already has access to a `Valtree<'db>`, so borrowchecking will
             // make sure that our returned value is valid for the lifetime `'db`.
             unsafe { std::mem::transmute(inner) }
         })
-        .unwrap()
     }
 }
 

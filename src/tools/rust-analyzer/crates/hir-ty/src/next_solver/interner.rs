@@ -1,6 +1,8 @@
 //! Things related to the Interner in the next-trait-solver.
 #![allow(unused)]
 
+pub use tls_db::{attach_db, attach_db_allow_change, with_attached_db};
+
 use base_db::Crate;
 use chalk_ir::{ProgramClauseImplication, SeparatorTraitRef, Variances};
 use hir_def::lang_item::LangItem;
@@ -127,11 +129,10 @@ macro_rules! _interned_vec_nolifetime_salsa {
 
             pub fn inner(&self) -> &smallvec::SmallVec<[$ty; 2]> {
                 // SAFETY: ¯\_(ツ)_/¯
-                salsa::with_attached_database(|db| {
+                $crate::with_attached_db(|db| {
                     let inner = self.inner_(db);
                     unsafe { std::mem::transmute(inner) }
                 })
-                .unwrap()
             }
         }
 
@@ -230,11 +231,10 @@ macro_rules! _interned_vec_db {
 
             pub fn inner(&self) -> &smallvec::SmallVec<[$ty<'db>; 2]> {
                 // SAFETY: ¯\_(ツ)_/¯
-                salsa::with_attached_database(|db| {
+                $crate::with_attached_db(|db| {
                     let inner = self.inner_(db);
                     unsafe { std::mem::transmute(inner) }
                 })
-                .unwrap()
             }
         }
 
@@ -285,12 +285,11 @@ unsafe impl Sync for DbInterner<'_> {}
 impl<'db> DbInterner<'db> {
     // FIXME(next-solver): remove this method
     pub fn conjure() -> DbInterner<'db> {
-        salsa::with_attached_database(|db| DbInterner {
-            db: unsafe { std::mem::transmute::<&dyn salsa::Database, &'db dyn HirDatabase>(db) },
+        crate::with_attached_db(|db| DbInterner {
+            db: unsafe { std::mem::transmute::<&dyn HirDatabase, &'db dyn HirDatabase>(db) },
             krate: None,
             block: None,
         })
-        .expect("db is expected to be attached")
     }
 
     pub fn new_with(
@@ -583,12 +582,11 @@ impl AdtDef {
     }
 
     pub fn inner(&self) -> &AdtDefInner {
-        salsa::with_attached_database(|db| {
+        crate::with_attached_db(|db| {
             let inner = self.data_(db);
             // SAFETY: ¯\_(ツ)_/¯
             unsafe { std::mem::transmute(inner) }
         })
-        .unwrap()
     }
 
     pub fn is_enum(&self) -> bool {
@@ -706,21 +704,20 @@ impl<'db> inherent::AdtDef<DbInterner<'db>> for AdtDef {
 
 impl fmt::Debug for AdtDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        salsa::with_attached_database(|db| match self.inner().id {
+        crate::with_attached_db(|db| match self.inner().id {
             AdtId::StructId(struct_id) => {
-                let data = db.as_view::<dyn HirDatabase>().struct_signature(struct_id);
+                let data = db.struct_signature(struct_id);
                 f.write_str(data.name.as_str())
             }
             AdtId::UnionId(union_id) => {
-                let data = db.as_view::<dyn HirDatabase>().union_signature(union_id);
+                let data = db.union_signature(union_id);
                 f.write_str(data.name.as_str())
             }
             AdtId::EnumId(enum_id) => {
-                let data = db.as_view::<dyn HirDatabase>().enum_signature(enum_id);
+                let data = db.enum_signature(enum_id);
                 f.write_str(data.name.as_str())
             }
         })
-        .unwrap_or_else(|| f.write_str(&format!("AdtDef({:?})", self.inner().id)))
     }
 }
 
@@ -776,13 +773,12 @@ impl<'db> Pattern<'db> {
     }
 
     pub fn inner(&self) -> &PatternKind<'db> {
-        salsa::with_attached_database(|db| {
+        crate::with_attached_db(|db| {
             let inner = &self.kind_(db).0;
             // SAFETY: The caller already has access to a `Ty<'db>`, so borrowchecking will
             // make sure that our returned value is valid for the lifetime `'db`.
             unsafe { std::mem::transmute(inner) }
         })
-        .unwrap()
     }
 }
 
@@ -1018,17 +1014,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
         self,
         f: impl FnOnce(&mut rustc_type_ir::search_graph::GlobalCache<Self>) -> R,
     ) -> R {
-        salsa::with_attached_database(|db| {
-            tls_cache::with_cache(
-                unsafe {
-                    std::mem::transmute::<&dyn HirDatabase, &'db dyn HirDatabase>(
-                        db.as_view::<dyn HirDatabase>(),
-                    )
-                },
-                f,
-            )
-        })
-        .unwrap()
+        tls_cache::with_cache(self.db, f)
     }
 
     fn canonical_param_env_cache_get_or_insert<R>(
@@ -2102,6 +2088,117 @@ TrivialTypeTraversalImpls! {
     Placeholder<BoundRegion>,
     Placeholder<BoundTy>,
     Placeholder<BoundVar>,
+}
+
+mod tls_db {
+    use std::{cell::Cell, ptr::NonNull};
+
+    use crate::db::HirDatabase;
+
+    struct Attached {
+        database: Cell<Option<NonNull<dyn HirDatabase>>>,
+    }
+
+    impl Attached {
+        #[inline]
+        fn attach<R>(&self, db: &dyn HirDatabase, op: impl FnOnce() -> R) -> R {
+            struct DbGuard<'s> {
+                state: Option<&'s Attached>,
+            }
+
+            impl<'s> DbGuard<'s> {
+                #[inline]
+                fn new(attached: &'s Attached, db: &dyn HirDatabase) -> Self {
+                    match attached.database.get() {
+                        Some(current_db) => {
+                            let new_db = NonNull::from(db);
+                            if !std::ptr::addr_eq(current_db.as_ptr(), new_db.as_ptr()) {
+                                panic!(
+                                    "Cannot change attached database. This is likely a bug.\n\
+                                    If this is not a bug, you can use `attach_db_allow_change()`."
+                                );
+                            }
+                            Self { state: None }
+                        }
+                        None => {
+                            // Otherwise, set the database.
+                            attached.database.set(Some(NonNull::from(db)));
+                            Self { state: Some(attached) }
+                        }
+                    }
+                }
+            }
+
+            impl Drop for DbGuard<'_> {
+                #[inline]
+                fn drop(&mut self) {
+                    // Reset database to null if we did anything in `DbGuard::new`.
+                    if let Some(attached) = self.state {
+                        attached.database.set(None);
+                    }
+                }
+            }
+
+            let _guard = DbGuard::new(self, db);
+            op()
+        }
+
+        #[inline]
+        fn attach_allow_change<R>(&self, db: &dyn HirDatabase, op: impl FnOnce() -> R) -> R {
+            struct DbGuard<'s> {
+                state: &'s Attached,
+                prev: Option<NonNull<dyn HirDatabase>>,
+            }
+
+            impl<'s> DbGuard<'s> {
+                #[inline]
+                fn new(attached: &'s Attached, db: &dyn HirDatabase) -> Self {
+                    let prev = attached.database.replace(Some(NonNull::from(db)));
+                    Self { state: attached, prev }
+                }
+            }
+
+            impl Drop for DbGuard<'_> {
+                #[inline]
+                fn drop(&mut self) {
+                    self.state.database.set(self.prev);
+                }
+            }
+
+            let _guard = DbGuard::new(self, db);
+            op()
+        }
+
+        #[inline]
+        fn with<R>(&self, op: impl FnOnce(&dyn HirDatabase) -> R) -> R {
+            let db = self.database.get().expect("Try to use attached db, but not db is attached");
+
+            // SAFETY: The db is attached, so it must be valid.
+            op(unsafe { db.as_ref() })
+        }
+    }
+
+    thread_local! {
+        static GLOBAL_DB: Attached = const { Attached { database: Cell::new(None) } };
+    }
+
+    #[inline]
+    pub fn attach_db<R>(db: &dyn HirDatabase, op: impl FnOnce() -> R) -> R {
+        GLOBAL_DB.with(|global_db| global_db.attach(db, op))
+    }
+
+    #[inline]
+    pub fn attach_db_allow_change<R>(db: &dyn HirDatabase, op: impl FnOnce() -> R) -> R {
+        GLOBAL_DB.with(|global_db| global_db.attach_allow_change(db, op))
+    }
+
+    #[inline]
+    pub fn with_attached_db<R>(op: impl FnOnce(&dyn HirDatabase) -> R) -> R {
+        GLOBAL_DB.with(
+            #[inline]
+            |a| a.with(op),
+        )
+    }
 }
 
 mod tls_cache {

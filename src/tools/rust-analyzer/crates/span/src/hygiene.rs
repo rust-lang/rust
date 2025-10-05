@@ -67,6 +67,16 @@ const _: () = {
             self.parent.hash(state);
         }
     }
+
+    impl zalsa_::HasJar for SyntaxContext {
+        type Jar = zalsa_struct_::JarImpl<SyntaxContext>;
+        const KIND: zalsa_::JarKind = zalsa_::JarKind::Struct;
+    }
+
+    zalsa_::register_jar! {
+        zalsa_::ErasedJar::erase::<SyntaxContext>()
+    }
+
     /// Key to use during hash lookups. Each field is some type that implements `Lookup<T>`
     /// for the owned type. This permits interning with an `&str` when a `String` is required and so forth.
     #[derive(Hash)]

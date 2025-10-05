@@ -235,7 +235,6 @@ name = "cfg"
 version = "0.0.0"
 dependencies = [
  "arbitrary",
- "derive_arbitrary",
  "expect-test",
  "intern",
  "oorandom",
@@ -1615,7 +1614,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "54acf3a685220b533e437e264e4d932cfbdc4cc7ec0cd232ed73c08d03b8a7ca"
 dependencies = [
  "fixedbitset",
- "hashbrown 0.15.4",
+ "hashbrown 0.15.5",
  "indexmap",
 ]
 
@@ -2145,8 +2144,9 @@ checksum = "28d3b2b1366ec20994f1fd18c3c594f05c5dd4bc44d8bb0c1c632c8d6829481f"
 
 [[package]]
 name = "salsa"
-version = "0.23.0"
-source = "git+https://github.com/salsa-rs/salsa.git?rev=e257df12eabd566825ba53bb12d782560b9a4dcd#e257df12eabd566825ba53bb12d782560b9a4dcd"
+version = "0.24.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "27956164373aeec733ac24ff1736de8541234e3a8e7e6f916b28175b5752af3b"
 dependencies = [
  "boxcar",
  "crossbeam-queue",
@@ -2169,13 +2169,15 @@ dependencies = [
 
 [[package]]
 name = "salsa-macro-rules"
-version = "0.23.0"
-source = "git+https://github.com/salsa-rs/salsa.git?rev=e257df12eabd566825ba53bb12d782560b9a4dcd#e257df12eabd566825ba53bb12d782560b9a4dcd"
+version = "0.24.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6ca3b9d6e47c08b5de4b218e0c5f7ec910b51bce6314e651c8e7b9d154d174da"
 
 [[package]]
 name = "salsa-macros"
-version = "0.23.0"
-source = "git+https://github.com/salsa-rs/salsa.git?rev=e257df12eabd566825ba53bb12d782560b9a4dcd#e257df12eabd566825ba53bb12d782560b9a4dcd"
+version = "0.24.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6337b62f2968be6b8afa30017d7564ecbde6832ada47ed2261fb14d0fd402ff4"
 dependencies = [
  "proc-macro2",
  "quote",
