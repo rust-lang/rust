@@ -179,9 +179,18 @@ fn insert_use_with_alias_option(
             ImportGranularityGuess::Unknown => mb,
             ImportGranularityGuess::Item => None,
             ImportGranularityGuess::Module => Some(MergeBehavior::Module),
-            ImportGranularityGuess::ModuleOrItem => mb.and(Some(MergeBehavior::Module)),
+            // We use the user's setting to infer if this is module or item.
+            ImportGranularityGuess::ModuleOrItem => match mb {
+                Some(MergeBehavior::Module) | None => mb,
+                // There isn't really a way to decide between module or item here, so we just pick one.
+                // FIXME: Maybe it is possible to infer based on semantic analysis?
+                Some(MergeBehavior::One | MergeBehavior::Crate) => Some(MergeBehavior::Module),
+            },
             ImportGranularityGuess::Crate => Some(MergeBehavior::Crate),
-            ImportGranularityGuess::CrateOrModule => mb.or(Some(MergeBehavior::Crate)),
+            ImportGranularityGuess::CrateOrModule => match mb {
+                Some(MergeBehavior::Crate | MergeBehavior::Module) => mb,
+                Some(MergeBehavior::One) | None => Some(MergeBehavior::Crate),
+            },
             ImportGranularityGuess::One => Some(MergeBehavior::One),
         };
     }
