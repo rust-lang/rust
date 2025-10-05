@@ -1,0 +1,14 @@
+error[E0308]: mismatched types
+  --> $DIR/implied-bounds-on-nested-references-plus-variance-2.rs:9:46
+   |
+LL |     let f: fn(_, &'a T, &()) -> &'static T = foo;
+   |            -------------------------------   ^^^ types differ
+   |            |
+   |            expected due to this
+   |
+   = note: expected fn pointer `for<'b> fn(_, &'a T, &'b ()) -> &'static T`
+                 found fn item `for<'a, 'b, 'c> fn(&'a &'b (), &'b _, &'c ()) -> &'a _ {foo::<_>}`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

@@ -878,7 +878,98 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         debug!(?fn_ty_a, ?b, "coerce_from_fn_pointer");
         debug_assert!(self.shallow_resolve(b) == b);
 
+        // Check implied bounds for HRTB function pointer coercions (issue #25860)
+        if let ty::FnPtr(sig_tys_b, hdr_b) = b.kind() {
+            let target_sig = sig_tys_b.with(*hdr_b);
+            self.check_hrtb_implied_bounds(fn_ty_a, target_sig)?;
+        }
+
         self.coerce_from_safe_fn(fn_ty_a, b, None)
+    }
+
+    /// Validates that implied bounds from nested references in the source
+    /// function signature are satisfied when coercing to an HRTB function pointer.
+    ///
+    /// This prevents the soundness hole in issue #25860 where lifetime bounds
+    /// can be circumvented through HRTB function pointer coercion.
+    ///
+    /// For example, a function with signature `fn<'a, 'b>(_: &'a &'b (), v: &'b T) -> &'a T`
+    /// has an implied bound `'b: 'a` from the type `&'a &'b ()`. When coercing to
+    /// `for<'x> fn(_, &'x T) -> &'static T`, we must ensure that the implied bound
+    /// can be satisfied, which it cannot in this case.
+    fn check_hrtb_implied_bounds(
+        &self,
+        source_sig: ty::PolyFnSig<'tcx>,
+        target_sig: ty::PolyFnSig<'tcx>,
+    ) -> Result<(), TypeError<'tcx>> {
+        use rustc_infer::infer::outlives::implied_bounds;
+
+        // Only check if target has HRTB (bound variables)
+        if target_sig.bound_vars().is_empty() {
+            return Ok(());
+        }
+
+        // Extract implied bounds from the source signature's input types and return type
+        let source_sig_unbound = source_sig.skip_binder();
+        let target_sig_unbound = target_sig.skip_binder();
+        let source_inputs = source_sig_unbound.inputs();
+        let target_inputs = target_sig_unbound.inputs();
+        let source_output = source_sig_unbound.output();
+        let target_output = target_sig_unbound.output();
+
+        // If the number of inputs differs, let normal type checking handle this
+        if source_inputs.len() != target_inputs.len() {
+            return Ok(());
+        }
+
+        // Check inputs: whether the source carries nested-reference implied bounds
+        let source_has_nested = source_inputs
+            .iter()
+            .any(|ty| implied_bounds::has_nested_reference_implied_bounds(self.tcx, *ty));
+
+        // Check if target inputs also have nested references with the same structure.
+        // If both source and target preserve the nested reference structure, the coercion is
+        // sound.
+        // The unsoundness only occurs when we're "collapsing" nested lifetimes.
+        let target_has_nested_refs = target_inputs
+            .iter()
+            .any(|ty| implied_bounds::has_nested_reference_implied_bounds(self.tcx, *ty));
+
+        if source_has_nested && !target_has_nested_refs {
+            // Source inputs have implied bounds from nested refs but target inputs don't
+            // preserve them. This is the unsound case (e.g., cve-rs: fn(&'a &'b T) -> for<'x> fn(&'x T)).
+            return Err(TypeError::Mismatch);
+        }
+
+        // Additionally, validate RETURN types. If the source return has nested references
+        // with distinct regions (implying an outlives relation), then the target return must
+        // preserve that distinguishing structure; otherwise lifetimes can be "collapsed" away.
+        let source_ret_nested_distinct =
+            implied_bounds::has_nested_reference_with_distinct_regions(self.tcx, source_output);
+        if source_ret_nested_distinct {
+            let target_ret_nested_distinct =
+                implied_bounds::has_nested_reference_with_distinct_regions(self.tcx, target_output);
+            if !target_ret_nested_distinct {
+                // Reject: collapsing nested return structure (e.g., &'a &'b -> &'x &'x or no nested)
+                return Err(TypeError::Mismatch);
+            }
+        } else {
+            // If there is nested structure in the source return (not necessarily distinct),
+            // require the target to keep nested structure too.
+            let source_ret_nested =
+                implied_bounds::has_nested_reference_implied_bounds(self.tcx, source_output);
+            if source_ret_nested {
+                let target_ret_nested =
+                    implied_bounds::has_nested_reference_implied_bounds(self.tcx, target_output);
+                if !target_ret_nested {
+                    return Err(TypeError::Mismatch);
+                }
+            }
+        }
+
+        // Source inputs had implied bounds but target did not preserve them (handled above), or
+        // return types collapsed. If neither condition triggered, accept the coercion.
+        Ok(())
     }
 
     fn coerce_from_fn_item(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
@@ -890,8 +981,12 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             self.at(&self.cause, self.param_env).normalize(b);
 
         match b.kind() {
-            ty::FnPtr(_, b_hdr) => {
+            ty::FnPtr(sig_tys_b, b_hdr) => {
                 let mut a_sig = a.fn_sig(self.tcx);
+
+                // Check implied bounds for HRTB function pointer coercions (issue #25860)
+                let target_sig = sig_tys_b.with(*b_hdr);
+                self.check_hrtb_implied_bounds(a_sig, target_sig)?;
                 if let ty::FnDef(def_id, _) = *a.kind() {
                     // Intrinsics are not coercible to function pointers
                     if self.tcx.intrinsic(def_id).is_some() {
