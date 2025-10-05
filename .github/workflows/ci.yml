@@ -69,7 +69,7 @@ jobs:
         id: jobs
   job:
     name: ${{ matrix.full_name }}
-    needs: [ calculate_matrix ]
+    needs: [calculate_matrix]
     runs-on: "${{ matrix.os }}"
     timeout-minutes: 360
     # The bors environment contains secrets required for elevated workflows (try and auto builds),
@@ -117,11 +117,18 @@ jobs:
         with:
           fetch-depth: 2
 
+      # Clear cargo cache between runs to avoid cache effects
+      - name: clear cargo cache
+        run: rm -rf ~/.cargo/registry ~/.cargo/git /tmp/cargo-install*
+
       - name: install typos-cli 0
         run: time RUSTFLAGS="-Copt-level=0" cargo install typos-cli@1.34.0 --force --quiet --locked
 
       - name: run typos-cli 0
         run: time typos compiler library src/bootstrap src/librustdoc
+
+      - name: clear cargo cache
+        run: rm -rf ~/.cargo/registry ~/.cargo/git /tmp/cargo-install*
 
       - name: install typos-cli 1
         run: time RUSTFLAGS="-Copt-level=1" cargo install typos-cli@1.34.0 --force --quiet --locked
@@ -129,18 +136,23 @@ jobs:
       - name: run typos-cli 1
         run: time typos compiler library src/bootstrap src/librustdoc
 
+      - name: clear cargo cache
+        run: rm -rf ~/.cargo/registry ~/.cargo/git /tmp/cargo-install*
+
       - name: install typos-cli 2
         run: time RUSTFLAGS="-Copt-level=2" cargo install typos-cli@1.34.0 --force --quiet --locked
 
       - name: run typos-cli 2
         run: time typos compiler library src/bootstrap src/librustdoc
 
+      - name: clear cargo cache
+        run: rm -rf ~/.cargo/registry ~/.cargo/git /tmp/cargo-install*
+
       - name: install typos-cli 3 (default)
-        run: time cargo install typos-cli@1.34.0 --force --quiet --locked
+        run: time RUSTFLAGS="-Copt-level=3" cargo install typos-cli@1.34.0 --force --quiet --locked
 
       - name: run typos-cli 3
         run: time typos compiler library src/bootstrap src/librustdoc
-
 
       # Free up disk space on Linux by removing preinstalled components that
       # we do not need. We do this to enable some of the less resource
@@ -333,7 +345,7 @@ jobs:
   outcome:
     name: bors build finished
     runs-on: ubuntu-24.04
-    needs: [ calculate_matrix, job ]
+    needs: [calculate_matrix, job]
     # !cancelled() executes the job regardless of whether the previous jobs passed or failed
     if: ${{ !cancelled() && contains(fromJSON('["auto", "try"]'), needs.calculate_matrix.outputs.run_type) }}
     steps:
