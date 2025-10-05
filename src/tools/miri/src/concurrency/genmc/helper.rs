@@ -1,57 +1,18 @@
-use std::sync::RwLock;
-
 use genmc_sys::{MemOrdering, RMWBinOp};
 use rustc_abi::Size;
 use rustc_const_eval::interpret::{InterpResult, interp_ok};
-use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret;
 use rustc_middle::ty::ScalarInt;
-use rustc_span::Span;
 use tracing::debug;
 
 use super::GenmcScalar;
 use crate::alloc_addresses::EvalContextExt as _;
-use crate::diagnostics::EvalContextExt as _;
 use crate::intrinsics::AtomicRmwOp;
-use crate::{
-    AtomicFenceOrd, AtomicReadOrd, AtomicRwOrd, AtomicWriteOrd, BorTag, GenmcCtx, InterpCx,
-    MiriInterpCx, MiriMachine, NonHaltingDiagnostic, Scalar, machine, throw_unsup_format,
-};
+use crate::*;
 
 /// Maximum size memory access in bytes that GenMC supports.
 pub(super) const MAX_ACCESS_SIZE: u64 = 8;
-
-/// Type for storing spans for already emitted warnings.
-pub(super) type WarningCache = RwLock<FxHashSet<Span>>;
-
-#[derive(Default)]
-pub(super) struct Warnings {
-    pub(super) compare_exchange_failure_ordering: WarningCache,
-    pub(super) compare_exchange_weak: WarningCache,
-}
-
-/// Emit a warning if it hasn't already been reported for current span.
-pub(super) fn emit_warning<'tcx>(
-    ecx: &InterpCx<'tcx, MiriMachine<'tcx>>,
-    cache: &WarningCache,
-    diagnostic: impl FnOnce() -> NonHaltingDiagnostic,
-) {
-    // FIXME: This is not the right span to use (it's always inside the local crates so if the same
-    // operation is invoked from multiple places it will warn multiple times). `cur_span` is not
-    // right either though (we should honor `#[track_caller]`). Ultimately what we want is "the
-    // primary span the warning would point at".
-    let span = ecx.machine.current_user_relevant_span();
-    if cache.read().unwrap().contains(&span) {
-        return;
-    }
-    // This span has not yet been reported, so we insert it into the cache and report it.
-    let mut cache = cache.write().unwrap();
-    if cache.insert(span) {
-        // Some other thread may have added this span while we didn't hold the lock, so we only emit it if the insertions succeeded.
-        ecx.emit_diagnostic(diagnostic());
-    }
-}
 
 /// This function is used to split up a large memory access into aligned, non-overlapping chunks of a limited size.
 /// Returns an iterator over the chunks, yielding `(base address, size)` of each chunk, ordered by address.

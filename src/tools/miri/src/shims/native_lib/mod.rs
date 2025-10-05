@@ -1,6 +1,7 @@
 //! Implements calling functions from a native library.
 
 use std::ops::Deref;
+use std::sync::atomic::AtomicBool;
 
 use libffi::low::CodePtr;
 use libffi::middle::Type as FfiType;
@@ -279,8 +280,8 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Helper to print a warning when a pointer is shared with the native code.
         let expose = |prov: Provenance| -> InterpResult<'tcx> {
-            // The first time this happens, print a warning.
-            if !this.machine.native_call_mem_warned.replace(true) {
+            static DEDUP: AtomicBool = AtomicBool::new(false);
+            if !DEDUP.swap(true, std::sync::atomic::Ordering::Relaxed) {
                 // Newly set, so first time we get here.
                 this.emit_diagnostic(NonHaltingDiagnostic::NativeCallSharedMem { tracing });
             }
