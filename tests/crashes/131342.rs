@@ -1,4 +1,5 @@
 //@ known-bug: #131342
+//@ compile-flags: -Copt-level=0
 
 fn main() {
     let mut items = vec![1, 2, 3, 4, 5].into_iter();
