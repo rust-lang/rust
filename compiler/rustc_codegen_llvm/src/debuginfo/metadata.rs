@@ -37,11 +37,11 @@ use crate::common::{AsCCharPtr, CodegenCx};
 use crate::debuginfo::dwarf_const;
 use crate::debuginfo::metadata::type_map::build_type_with_children;
 use crate::debuginfo::utils::{WidePtrKind, wide_pointer_kind};
-use crate::llvm;
 use crate::llvm::debuginfo::{
     DIBasicType, DIBuilder, DICompositeType, DIDescriptor, DIFile, DIFlags, DILexicalBlock,
     DIScope, DIType, DebugEmissionKind, DebugNameTableKind,
 };
+use crate::llvm::{self, FromGeneric};
 use crate::value::Value;
 
 impl PartialEq for llvm::Metadata {
