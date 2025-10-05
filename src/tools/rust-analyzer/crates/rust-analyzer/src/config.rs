@@ -895,7 +895,7 @@ config_data! {
         /// [custom test harness](https://doc.rust-lang.org/cargo/reference/cargo-targets.html#the-harness-field),
         /// they will end up being interpreted as options to
         /// [`rustc`’s built-in test harness (“libtest”)](https://doc.rust-lang.org/rustc/tests/index.html#cli-arguments).
-        runnables_extraTestBinaryArgs: Vec<String> = vec!["--show-output".to_owned()],
+        runnables_extraTestBinaryArgs: Vec<String> = vec!["--nocapture".to_owned()],
 
         /// Path to the Cargo.toml of the rust compiler workspace, for usage in rustc_private
         /// projects, or "discover" to try to automatically find it if the `rustc-dev` component
