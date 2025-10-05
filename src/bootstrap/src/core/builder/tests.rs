@@ -1270,12 +1270,12 @@ mod snapshot {
         [doc] book/first-edition (book) <host>
         [doc] book/second-edition (book) <host>
         [doc] book/2018-edition (book) <host>
-        [build] rustdoc 1 <host>
         [build] rustc 1 <host> -> std 1 <target1>
         [doc] book (book) <target1>
         [doc] book/first-edition (book) <target1>
         [doc] book/second-edition (book) <target1>
         [doc] book/2018-edition (book) <target1>
+        [build] rustdoc 1 <host>
         [doc] rustc 1 <host> -> standalone 2 <host>
         [doc] rustc 1 <host> -> standalone 2 <target1>
         [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
@@ -1409,12 +1409,12 @@ mod snapshot {
         [doc] book/first-edition (book) <host>
         [doc] book/second-edition (book) <host>
         [doc] book/2018-edition (book) <host>
-        [build] rustdoc 1 <host>
         [build] rustc 1 <host> -> std 1 <target1>
         [doc] book (book) <target1>
         [doc] book/first-edition (book) <target1>
         [doc] book/second-edition (book) <target1>
         [doc] book/2018-edition (book) <target1>
+        [build] rustdoc 1 <host>
         [doc] rustc 1 <host> -> standalone 2 <host>
         [doc] rustc 1 <host> -> standalone 2 <target1>
         [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
@@ -1493,8 +1493,8 @@ mod snapshot {
         [doc] book/first-edition (book) <target1>
         [doc] book/second-edition (book) <target1>
         [doc] book/2018-edition (book) <target1>
-        [build] rustdoc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
+        [build] rustdoc 1 <host>
         [doc] rustc 1 <host> -> standalone 2 <target1>
         [doc] rustc 1 <host> -> std 1 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
         [doc] nomicon (book) <target1>
@@ -1537,8 +1537,8 @@ mod snapshot {
         [doc] book/first-edition (book) <target1>
         [doc] book/second-edition (book) <target1>
         [doc] book/2018-edition (book) <target1>
-        [build] rustdoc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
+        [build] rustdoc 1 <host>
         [doc] rustc 1 <host> -> standalone 2 <target1>
         [doc] rustc 1 <host> -> std 1 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
         [build] llvm <target1>
