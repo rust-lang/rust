@@ -207,45 +207,45 @@ impl DebugHexF16 for __m512i {
     }
 }
 
-trait DebugI16 {
+trait DebugAs<T> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result;
 }
 
-impl DebugI16 for i16 {
+impl<T: core::fmt::Display> DebugAs<T> for T {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self)
     }
 }
 
-impl DebugI16 for __m128i {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        let array = unsafe { core::mem::transmute::<_, [i16; 8]>(*self) };
-        debug_simd_finish(f, "__m128i", &array)
-    }
+macro_rules! impl_debug_as {
+    ($simd:ty, $name:expr, $bits:expr, [$($type:ty),+]) => {
+        $(
+            impl DebugAs<$type> for $simd {
+                fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                    const ELEMENT_BITS: usize = core::mem::size_of::<$type>() * 8;
+                    const NUM_ELEMENTS: usize = $bits / ELEMENT_BITS;
+                    let array = unsafe { core::mem::transmute::<_, [$type; NUM_ELEMENTS]>(*self) };
+                    debug_simd_finish(f, $name, &array)
+                }
+            }
+        )+
+    };
 }
 
-impl DebugI16 for __m256i {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        let array = unsafe { core::mem::transmute::<_, [i16; 16]>(*self) };
-        debug_simd_finish(f, "__m256i", &array)
-    }
-}
+impl_debug_as!(__m128i, "__m128i", 128, [u8, i8, u16, i16, u32, i32, u64, i64]);
+impl_debug_as!(__m256i, "__m256i", 256, [u8, i8, u16, i16, u32, i32, u64, i64]);
+impl_debug_as!(__m512i, "__m512i", 512, [u8, i8, u16, i16, u32, i32, u64, i64]);
 
-impl DebugI16 for __m512i {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        let array = unsafe { core::mem::transmute::<_, [i16; 32]>(*self) };
-        debug_simd_finish(f, "__m512i", &array)
-    }
-}
-
-fn debug_i16<T: DebugI16>(x: T) -> impl core::fmt::Debug {
-    struct DebugWrapper<T>(T);
-    impl<T: DebugI16> core::fmt::Debug for DebugWrapper<T> {
+fn debug_as<V, T>(x: V) -> impl core::fmt::Debug 
+where V: DebugAs<T>
+{
+    struct DebugWrapper<V, T>(V, core::marker::PhantomData<T>);
+    impl<V: DebugAs<T>, T> core::fmt::Debug for DebugWrapper<V, T> {
         fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
             self.0.fmt(f)
         }
     }
-    DebugWrapper(x)
+    DebugWrapper(x, core::marker::PhantomData)
 }
 
 "#;

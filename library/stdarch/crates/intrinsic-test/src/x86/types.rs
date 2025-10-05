@@ -295,14 +295,16 @@ impl IntrinsicTypeDefinition for X86IntrinsicType {
 
     fn print_result_rust(&self) -> String {
         let return_value = match self.kind() {
-            TypeKind::Float if self.inner_size() == 16 => "debug_f16(__return_value)",
-            _ if ["__m128i", "__m256i", "__m512i"].contains(&self.param.type_data.as_str()) => {
-                "debug_i16(__return_value)"
+            TypeKind::Float if self.inner_size() == 16 => "debug_f16(__return_value)".to_string(),
+            TypeKind::Int(_)
+                if ["__m128i", "__m256i", "__m512i"].contains(&self.param.type_data.as_str()) =>
+            {
+                format!("debug_as::<_, u{}>(__return_value)", self.inner_size())
             }
-            _ => "format_args!(\"{__return_value:.150?}\")",
+            _ => "format_args!(\"{__return_value:.150?}\")".to_string(),
         };
 
-        String::from(return_value)
+        return_value
     }
 }
 
