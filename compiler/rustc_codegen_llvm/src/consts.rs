@@ -217,14 +217,6 @@ fn check_and_apply_linkage<'ll, 'tcx>(
 }
 
 impl<'ll> CodegenCx<'ll, '_> {
-    pub(crate) fn const_bitcast(&self, val: &'ll Value, ty: &'ll Type) -> &'ll Value {
-        unsafe { llvm::LLVMConstBitCast(val, ty) }
-    }
-
-    pub(crate) fn const_pointercast(&self, val: &'ll Value, ty: &'ll Type) -> &'ll Value {
-        unsafe { llvm::LLVMConstPointerCast(val, ty) }
-    }
-
     /// Create a global variable.
     ///
     /// The returned global variable is a pointer in the default address space for globals.
@@ -255,7 +247,7 @@ impl<'ll> CodegenCx<'ll, '_> {
     /// Create a global constant.
     ///
     /// The returned global variable is a pointer in the default address space for globals.
-    pub(crate) fn static_addr_of_impl(
+    pub(crate) fn static_addr_of_const(
         &self,
         cv: &'ll Value,
         align: Align,
@@ -766,14 +758,25 @@ impl<'ll> StaticCodegenMethods for CodegenCx<'ll, '_> {
     ///
     /// The pointer will always be in the default address space. If global variables default to a
     /// different address space, an addrspacecast is inserted.
-    fn static_addr_of(&self, cv: &'ll Value, align: Align, kind: Option<&str>) -> &'ll Value {
-        let gv = self.static_addr_of_impl(cv, align, kind);
-        // static_addr_of_impl returns the bare global variable, which might not be in the default
+    fn static_addr_of(&self, alloc: ConstAllocation<'_>, kind: Option<&str>) -> &'ll Value {
+        let cv = const_alloc_to_llvm(self, alloc.inner(), /*static*/ false);
+        let gv = self.static_addr_of_const(cv, alloc.inner().align, kind);
+        // static_addr_of_const returns the bare global variable, which might not be in the default
         // address space. Cast to the default address space if necessary.
         self.const_pointercast(gv, self.type_ptr())
     }
 
     fn codegen_static(&mut self, def_id: DefId) {
         self.codegen_static_item(def_id)
+    }
+
+    fn get_value_name(&self, val: Self::Value) -> &[u8] {
+        llvm::get_value_name(val)
+    }
+    fn set_value_name(&self, val: Self::Value, name: &[u8]) {
+        llvm::set_value_name(val, name)
+    }
+    fn get_static(&self, def_id: DefId) -> Self::Value {
+        self.get_static(def_id)
     }
 }
