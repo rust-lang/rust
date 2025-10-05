@@ -1,4 +1,7 @@
 //@ normalize-stderr: "pref: Align\([1-8] bytes\)" -> "pref: $$PREF_ALIGN"
+//@ revisions: bit32 bit64
+//@[bit32] only-32bit
+//@[bit64] only-64bit
 //! Various enum layout tests.
 
 #![feature(rustc_attrs)]
@@ -194,7 +197,7 @@ enum NPONever15 { //~ERROR: abi: Scalar(Initialized { value: Pointer
 // These are not guaranteed to be NPO-optimized
 #[rustc_layout(abi)]
 type NotNPONever1 = Result<NPONever, NPONever>;
-//~^ERROR: abi: Scalar(
+//~^ERROR: abi: Scalar(Initialized { value: Int
 
 #[rustc_layout(abi)]
 type NotNPONever2 = Result<NPONever, AlignedNever>;
