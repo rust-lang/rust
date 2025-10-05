@@ -63,10 +63,10 @@
 //!    type, but not the all-important methods.
 //!
 //! So for example there is a [page for the primitive type
-//! `i32`](primitive::i32) that lists all the methods that can be called on
-//! 32-bit integers (very useful), and there is a [page for the module
-//! `std::i32`] that documents the constant values [`MIN`] and [`MAX`] (rarely
-//! useful).
+//! `char`](primitive::char) that lists all the methods that can be called on
+//! characters (very useful), and there is a [page for the module
+//! `std::char`] that documents iterator and error types created by these methods
+//! (rarely useful).
 //!
 //! Note the documentation for the primitives [`str`] and [`[T]`][prim@slice] (also
 //! called 'slice'). Many method calls on [`String`] and [`Vec<T>`] are actually
