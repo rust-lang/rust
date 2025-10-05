@@ -1294,7 +1294,7 @@ rustc_queries! {
     }
 
     /// Return the set of (transitive) callees that may result in a recursive call to `key`.
-    query mir_callgraph_cyclic(key: LocalDefId) -> &'tcx UnordSet<LocalDefId> {
+    query mir_callgraph_cyclic(key: LocalDefId) -> &'tcx Option<UnordSet<LocalDefId>> {
         fatal_cycle
         arena_cache
         desc { |tcx|
