@@ -25,11 +25,7 @@ impl<'tcx> crate::MirPass<'tcx> for StripDebugInfo {
         }
 
         body.var_debug_info.retain(|vdi| {
-            matches!(
-                vdi.value,
-                VarDebugInfoContents::Place(place)
-                    if place.local.as_usize() <= body.arg_count && place.local != RETURN_PLACE,
-            )
+            vdi.place.local.as_usize() <= body.arg_count && vdi.place.local != RETURN_PLACE
         });
 
         drop_invalid_debuginfos(body);

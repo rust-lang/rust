@@ -1207,22 +1207,6 @@ impl<'tcx> LocalDecl<'tcx> {
     }
 }
 
-#[derive(Clone, TyEncodable, TyDecodable, StableHash, TypeFoldable, TypeVisitable)]
-pub enum VarDebugInfoContents<'tcx> {
-    /// This `Place` only contains projection which satisfy `can_use_in_debuginfo`.
-    Place(Place<'tcx>),
-    Const(ConstOperand<'tcx>),
-}
-
-impl<'tcx> Debug for VarDebugInfoContents<'tcx> {
-    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            VarDebugInfoContents::Const(c) => write!(fmt, "{c}"),
-            VarDebugInfoContents::Place(p) => write!(fmt, "{p:?}"),
-        }
-    }
-}
-
 #[derive(Clone, Debug, TyEncodable, TyDecodable, StableHash, TypeFoldable, TypeVisitable)]
 pub struct VarDebugInfoFragment<'tcx> {
     /// Type of the original user variable.
@@ -1259,7 +1243,7 @@ pub struct VarDebugInfo<'tcx> {
     pub composite: Option<Box<VarDebugInfoFragment<'tcx>>>,
 
     /// Where the data for this user variable is to be found.
-    pub value: VarDebugInfoContents<'tcx>,
+    pub place: Place<'tcx>,
 
     /// When present, indicates what argument number this variable is in the function that it
     /// originated from (starting from 1). Note, if MIR inlining is enabled, then this is the
@@ -1739,6 +1723,6 @@ mod size_asserts {
     static_assert_size!(SourceScopeData<'_>, 64);
     static_assert_size!(Statement<'_>, 56);
     static_assert_size!(Terminator<'_>, 104);
-    static_assert_size!(VarDebugInfo<'_>, 88);
+    static_assert_size!(VarDebugInfo<'_>, 48);
     // tidy-alphabetical-end
 }

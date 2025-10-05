@@ -16,10 +16,10 @@
               debug _invalid_tag => _3;
               let _6: [Empty; 1];
               scope 3 {
-                  debug _enum_without_variants => const [ZeroSized: Empty];
+                  debug _enum_without_variants => _6;
                   let _9: main::Str<"���">;
                   scope 4 {
-                      debug _non_utf8_str => const main::Str::<"���">;
+                      debug _non_utf8_str => _9;
                   }
               }
           }
@@ -49,7 +49,9 @@
           StorageLive(_8);
 -         _8 = NoVariants { int: const 0_u32 };
 +         _8 = const NoVariants {{ int: 0_u32, empty: ZeroSized: Empty }};
+          // DBG: _7 = const ZeroSized: Empty;
           nop;
+          // DBG: _6 = const [ZeroSized: Empty];
           nop;
           nop;
           StorageDead(_8);

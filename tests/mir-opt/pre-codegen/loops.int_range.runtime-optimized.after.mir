@@ -8,6 +8,7 @@ fn int_range(_1: usize, _2: usize) -> () {
     let mut _9: std::option::Option<usize>;
     let _11: ();
     let mut _12: &mut std::ops::Range<usize>;
+    let mut _15: usize;
     scope 1 {
         debug iter => _3;
         let _10: usize;
@@ -27,10 +28,10 @@ fn int_range(_1: usize, _2: usize) -> () {
                     debug old => _7;
                     scope 8 (inlined <usize as Step>::forward_unchecked) {
                         debug start => _7;
-                        debug n => const 1_usize;
+                        debug n => _15;
                         scope 9 (inlined #[track_caller] core::num::<impl usize>::unchecked_add) {
                             debug self => _7;
-                            debug rhs => const 1_usize;
+                            debug rhs => _15;
                             scope 10 (inlined core::ub_checks::check_language_ub) {
                                 scope 11 (inlined core::ub_checks::check_language_ub::runtime) {
                                 }
@@ -83,6 +84,7 @@ fn int_range(_1: usize, _2: usize) -> () {
         StorageLive(_7);
         _7 = copy (_3.0: usize);
         StorageLive(_8);
+        // DBG: _15 = const 1_usize;
         _8 = AddUnchecked(copy _7, const 1_usize);
         (_3.0: usize) = move _8;
         StorageDead(_8);

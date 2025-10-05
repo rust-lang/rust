@@ -262,21 +262,18 @@ impl<'tcx> ReplacementVisitor<'tcx, '_> {
     #[instrument(level = "trace", skip(self))]
     fn expand_var_debug_info(&mut self, var_debug_info: &mut Vec<VarDebugInfo<'tcx>>) {
         var_debug_info.flat_map_in_place(|mut var_debug_info| {
-            let place = match var_debug_info.value {
-                VarDebugInfoContents::Const(_) => return vec![var_debug_info],
-                VarDebugInfoContents::Place(ref mut place) => place,
-            };
-
-            if let Some(repl) = self.replacements.replace_place(self.tcx, place.as_ref()) {
-                *place = repl;
+            if let Some(repl) =
+                self.replacements.replace_place(self.tcx, var_debug_info.place.as_ref())
+            {
+                var_debug_info.place = repl;
                 return vec![var_debug_info];
             }
 
-            let Some(parts) = self.replacements.place_fragments(*place) else {
+            let Some(parts) = self.replacements.place_fragments(var_debug_info.place) else {
                 return vec![var_debug_info];
             };
 
-            let ty = place.ty(self.local_decls, self.tcx).ty;
+            let ty = var_debug_info.place.ty(self.local_decls, self.tcx).ty;
 
             parts
                 .map(|(field, field_ty, replacement_local)| {
@@ -286,7 +283,7 @@ impl<'tcx> ReplacementVisitor<'tcx, '_> {
                     });
                     composite.projection.push(PlaceElem::Field(field, field_ty));
 
-                    var_debug_info.value = VarDebugInfoContents::Place(replacement_local.into());
+                    var_debug_info.place = replacement_local.into();
                     var_debug_info
                 })
                 .collect()

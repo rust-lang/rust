@@ -5,13 +5,13 @@
       let mut _0: ();
       let _1: i32;
       scope 1 {
--         debug my_int => _1;
-+         debug my_int => const <T as MyTrait>::ASSOC_INT;
+          debug my_int => _1;
       }
   
       bb0: {
           StorageLive(_1);
 -         _1 = const <T as MyTrait>::ASSOC_INT;
++         // DBG: _1 = const <T as MyTrait>::ASSOC_INT;
 +         nop;
           _0 = const ();
           StorageDead(_1);

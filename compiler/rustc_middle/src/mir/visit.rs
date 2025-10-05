@@ -913,7 +913,7 @@ macro_rules! make_mir_visitor {
                     name: _,
                     source_info,
                     composite,
-                    value,
+                    place,
                     argument_index: _,
                 } = var_debug_info;
 
@@ -929,15 +929,11 @@ macro_rules! make_mir_visitor {
                         self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
                     }
                 }
-                match value {
-                    VarDebugInfoContents::Const(c) => self.visit_const_operand(c, location),
-                    VarDebugInfoContents::Place(place) =>
-                        self.visit_place(
-                            place,
-                            PlaceContext::NonUse(NonUseContext::VarDebugInfo),
-                            location
-                        ),
-                }
+                self.visit_place(
+                    place,
+                    PlaceContext::NonUse(NonUseContext::VarDebugInfo),
+                    location
+                )
             }
 
             fn super_source_scope(&mut self, _scope: $(& $mutability)? SourceScope) {}

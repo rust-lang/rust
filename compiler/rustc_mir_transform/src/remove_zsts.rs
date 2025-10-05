@@ -95,18 +95,6 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
         self.tcx
     }
 
-    fn visit_var_debug_info(&mut self, var_debug_info: &mut VarDebugInfo<'tcx>) {
-        match var_debug_info.value {
-            VarDebugInfoContents::Const(_) => {}
-            VarDebugInfoContents::Place(place) => {
-                let place_ty = place.ty(self.local_decls, self.tcx).ty;
-                if self.known_to_be_zst(place_ty) {
-                    var_debug_info.value = VarDebugInfoContents::Const(self.make_zst(place_ty))
-                }
-            }
-        }
-    }
-
     fn visit_operand(&mut self, operand: &mut Operand<'tcx>, _: Location) {
         if let Operand::Constant(_) = operand {
             return;
@@ -117,7 +105,20 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
         }
     }
 
+    fn visit_rvalue(&mut self, rvalue: &mut Rvalue<'tcx>, loc: Location) {
+        if let Rvalue::Use(Operand::Constant(_), _) = rvalue {
+            return;
+        }
+        let rv_ty = rvalue.ty(self.local_decls, self.tcx);
+        if rvalue.is_safe_to_remove() && self.known_to_be_zst(rv_ty) {
+            *rvalue = Rvalue::Use(Operand::Constant(Box::new(self.make_zst(rv_ty))), WithRetag::Yes)
+        } else {
+            self.super_rvalue(rvalue, loc);
+        }
+    }
+
     fn visit_statement(&mut self, statement: &mut Statement<'tcx>, loc: Location) {
+        self.super_statement(statement, loc);
         let place_for_ty = match statement.kind {
             StatementKind::Assign((place, ref rvalue)) => {
                 rvalue.is_safe_to_remove().then_some(place)
@@ -141,8 +142,6 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
             && self.known_to_be_zst(ty)
         {
             statement.make_nop();
-        } else {
-            self.super_statement(statement, loc);
         }
     }
 }

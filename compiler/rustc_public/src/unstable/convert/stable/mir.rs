@@ -7,7 +7,7 @@ use rustc_public_bridge::{Tables, bridge};
 
 use crate::compiler_interface::BridgeTys;
 use crate::mir::alloc::GlobalAlloc;
-use crate::mir::{ConstOperand, Statement, UserTypeProjection, VarDebugInfoFragment};
+use crate::mir::{Statement, UserTypeProjection, VarDebugInfoFragment};
 use crate::ty::{Allocation, ConstantKind, MirConst};
 use crate::unstable::Stable;
 use crate::{Error, alloc, opaque};
@@ -59,7 +59,7 @@ impl<'tcx> Stable<'tcx> for mir::VarDebugInfo<'tcx> {
             name: self.name.to_string(),
             source_info: self.source_info.stable(tables, cx),
             composite: self.composite.as_ref().map(|composite| composite.stable(tables, cx)),
-            value: self.value.stable(tables, cx),
+            place: self.place.stable(tables, cx),
             argument_index: self.argument_index,
         }
     }
@@ -100,29 +100,6 @@ impl<'tcx> Stable<'tcx> for mir::VarDebugInfoFragment<'tcx> {
         VarDebugInfoFragment {
             ty: self.ty.stable(tables, cx),
             projection: self.projection.iter().map(|e| e.stable(tables, cx)).collect(),
-        }
-    }
-}
-
-impl<'tcx> Stable<'tcx> for mir::VarDebugInfoContents<'tcx> {
-    type T = crate::mir::VarDebugInfoContents;
-    fn stable<'cx>(
-        &self,
-        tables: &mut Tables<'cx, BridgeTys>,
-        cx: &CompilerCtxt<'cx, BridgeTys>,
-    ) -> Self::T {
-        match self {
-            mir::VarDebugInfoContents::Place(place) => {
-                crate::mir::VarDebugInfoContents::Place(place.stable(tables, cx))
-            }
-            mir::VarDebugInfoContents::Const(const_operand) => {
-                let op = ConstOperand {
-                    span: const_operand.span.stable(tables, cx),
-                    user_ty: const_operand.user_ty.map(|index| index.as_usize()),
-                    const_: const_operand.const_.stable(tables, cx),
-                };
-                crate::mir::VarDebugInfoContents::Const(op)
-            }
         }
     }
 }

@@ -1,5 +1,4 @@
 use std::collections::hash_map::Entry;
-use std::marker::PhantomData;
 use std::ops::Range;
 
 use rustc_abi::{BackendRepr, FieldIdx, FieldsShape, Size, VariantIdx};
@@ -47,17 +46,6 @@ pub struct PerLocalVarDebugInfo<'tcx, D> {
 
     /// `.place.projection` from `mir::VarDebugInfo`.
     pub projection: &'tcx ty::List<mir::PlaceElem<'tcx>>,
-}
-
-/// Information needed to emit a constant.
-pub struct ConstDebugInfo<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
-    pub name: String,
-    pub source_info: mir::SourceInfo,
-    pub operand: OperandRef<'tcx, Bx::Value>,
-    pub dbg_var: Bx::DIVariable,
-    pub dbg_loc: Bx::DILocation,
-    pub fragment: Option<Range<Size>>,
-    pub _phantom: PhantomData<&'a ()>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -538,24 +526,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
     }
 
-    pub(crate) fn debug_introduce_locals(
-        &self,
-        bx: &mut Bx,
-        consts: Vec<ConstDebugInfo<'a, 'tcx, Bx>>,
-    ) {
+    pub(crate) fn debug_introduce_locals(&self, bx: &mut Bx) {
         if bx.sess().opts.debuginfo == DebugInfo::Full || !bx.sess().fewer_names() {
             for local in self.locals.indices() {
                 self.debug_introduce_local(bx, local);
-            }
-
-            for ConstDebugInfo { name, source_info, operand, dbg_var, dbg_loc, fragment, .. } in
-                consts.into_iter()
-            {
-                self.set_debug_loc(bx, source_info);
-                let base = FunctionCx::spill_operand_to_stack(operand, Some(name), bx);
-                bx.clear_dbg_loc();
-
-                bx.dbg_var_addr(dbg_var, dbg_loc, base.val.llval, Size::ZERO, &[], &fragment);
             }
         }
     }
@@ -564,10 +538,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub(crate) fn compute_per_local_var_debug_info(
         &self,
         bx: &mut Bx,
-    ) -> Option<(
-        PerLocalVarDebugInfoIndexVec<'tcx, Bx::DIVariable>,
-        Vec<ConstDebugInfo<'a, 'tcx, Bx>>,
-    )> {
+    ) -> Option<PerLocalVarDebugInfoIndexVec<'tcx, Bx::DIVariable>> {
         let full_debug_info = self.cx.sess().opts.debuginfo == DebugInfo::Full;
 
         let target_is_msvc = self.cx.sess().target.is_like_msvc;
@@ -577,7 +548,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
 
         let mut per_local = IndexVec::from_elem(vec![], &self.mir.local_decls);
-        let mut constants = vec![];
         let mut params_seen: FxHashMap<_, Bx::DIVariable> = Default::default();
         for var in &self.mir.var_debug_info {
             let dbg_scope_and_span = if full_debug_info {
@@ -589,19 +559,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let var_ty = if let Some(ref fragment) = var.composite {
                 self.monomorphize(fragment.ty)
             } else {
-                match var.value {
-                    mir::VarDebugInfoContents::Place(place) => {
-                        self.monomorphized_place_ty(place.as_ref())
-                    }
-                    mir::VarDebugInfoContents::Const(c) => self.monomorphize(c.ty()),
-                }
+                self.monomorphized_place_ty(var.place.as_ref())
             };
 
             let dbg_var = dbg_scope_and_span.map(|(dbg_scope, _, span)| {
                 let var_kind = if let Some(arg_index) = var.argument_index
                     && var.composite.is_none()
-                    && let mir::VarDebugInfoContents::Place(place) = var.value
-                    && place.projection.is_empty()
+                    && var.place.projection.is_empty()
                 {
                     let arg_index = arg_index as usize;
                     if target_is_msvc {
@@ -657,35 +621,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 None
             };
 
-            match var.value {
-                mir::VarDebugInfoContents::Place(place) => {
-                    per_local[place.local].push(PerLocalVarDebugInfo {
-                        name: var.name,
-                        source_info: var.source_info,
-                        dbg_var,
-                        fragment,
-                        projection: place.projection,
-                    });
-                }
-                mir::VarDebugInfoContents::Const(c) => {
-                    if let Some(dbg_var) = dbg_var {
-                        let Some(dbg_loc) = self.dbg_loc(bx, var.source_info) else { continue };
-
-                        let operand = self.eval_mir_constant_to_operand(bx, &c);
-                        constants.push(ConstDebugInfo {
-                            name: var.name.to_string(),
-                            source_info: var.source_info,
-                            operand,
-                            dbg_var,
-                            dbg_loc,
-                            fragment,
-                            _phantom: PhantomData,
-                        });
-                    }
-                }
-            }
+            per_local[var.place.local].push(PerLocalVarDebugInfo {
+                name: var.name,
+                source_info: var.source_info,
+                dbg_var,
+                fragment,
+                projection: var.place.projection,
+            });
         }
-        Some((per_local, constants))
+        Some(per_local)
     }
 
     pub(crate) fn codegen_stmt_debuginfo(

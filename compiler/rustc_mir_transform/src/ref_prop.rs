@@ -393,10 +393,8 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
     }
 
     fn visit_var_debug_info(&mut self, debuginfo: &mut VarDebugInfo<'tcx>) {
-        if let VarDebugInfoContents::Place(ref mut place) = debuginfo.value
-            && place.projection.is_empty()
-        {
-            let mut new_local = place.local;
+        if debuginfo.place.projection.is_empty() {
+            let mut new_local = debuginfo.place.local;
 
             // If the debuginfo is a pointer to another place
             // and it's a reborrow: see through it
@@ -405,9 +403,9 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
             {
                 new_local = target.local;
             }
-            if place.local != new_local {
-                self.remap_var_debug_infos[place.local] = Some(new_local);
-                place.local = new_local;
+            if debuginfo.place.local != new_local {
+                self.remap_var_debug_infos[debuginfo.place.local] = Some(new_local);
+                debuginfo.place.local = new_local;
 
                 self.any_replacement = true;
             }

@@ -917,16 +917,14 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 );
             }
         }
-        match debuginfo.value {
-            VarDebugInfoContents::Const(_) => {}
-            VarDebugInfoContents::Place(place) => {
-                if place.projection.iter().any(|p| !p.can_use_in_debuginfo()) {
-                    self.fail(
-                        START_BLOCK.start_location(),
-                        format!("illegal place {:?} in debuginfo for {:?}", place, debuginfo.name),
-                    );
-                }
-            }
+        if debuginfo.place.projection.iter().any(|p| !p.can_use_in_debuginfo()) {
+            self.fail(
+                START_BLOCK.start_location(),
+                format!(
+                    "illegal place {:?} in debuginfo for {:?}",
+                    debuginfo.place, debuginfo.name
+                ),
+            );
         }
         self.super_var_debug_info(debuginfo);
     }

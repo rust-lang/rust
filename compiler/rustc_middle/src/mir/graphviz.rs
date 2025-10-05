@@ -116,7 +116,7 @@ fn write_graph_label<'tcx, W: std::fmt::Write>(
             w,
             r#"debug {} =&gt; {};<br align="left"/>"#,
             var_debug_info.name,
-            escape(&var_debug_info.value),
+            escape(&var_debug_info.place),
         )?;
     }
 

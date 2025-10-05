@@ -32,7 +32,6 @@ impl<'tcx> crate::MirPass<'tcx> for SingleUseConsts {
         let mut finder = SingleUseConstsFinder {
             ineligible_locals: DenseBitSet::new_empty(body.local_decls.len()),
             locations: IndexVec::from_elem(LocationPair::new(), &body.local_decls),
-            locals_in_debug_info: DenseBitSet::new_empty(body.local_decls.len()),
         };
 
         finder.ineligible_locals.insert_range(..Local::arg(body.arg_count));
@@ -50,39 +49,30 @@ impl<'tcx> crate::MirPass<'tcx> for SingleUseConsts {
 
             // We're only changing an operand, not the terminator kinds or successors
             let basic_blocks = body.basic_blocks.as_mut_preserves_cfg();
-            let init_statement_kind = std::mem::replace(
-                &mut basic_blocks[init_loc.block].statements[init_loc.statement_index].kind,
-                StatementKind::Nop,
-            );
-            let StatementKind::Assign(place_and_rvalue) = init_statement_kind else {
-                bug!("No longer an assign?");
-            };
-            let (place, rvalue) = *place_and_rvalue;
-            assert_eq!(place.as_local(), Some(local));
-            let Rvalue::Use(operand, _) = rvalue else { bug!("No longer a use?") };
+            if let Some(use_loc) = locations.use_loc {
+                let init_stmt = &basic_blocks[init_loc.block].statements[init_loc.statement_index];
+                let StatementKind::Assign((place, ref rvalue)) = init_stmt.kind else {
+                    bug!("No longer an assign?");
+                };
+                assert_eq!(place.as_local(), Some(local));
+                let Rvalue::Use(operand, _) = rvalue else { bug!("No longer a use?") };
 
-            let mut replacer = LocalReplacer { tcx, local, operand: Some(operand) };
+                let mut replacer = LocalReplacer { tcx, local, operand: Some(operand.clone()) };
 
-            if finder.locals_in_debug_info.contains(local) {
-                for var_debug_info in &mut body.var_debug_info {
-                    replacer.visit_var_debug_info(var_debug_info);
+                let use_block = &mut basic_blocks[use_loc.block];
+                if let Some(use_statement) = use_block.statements.get_mut(use_loc.statement_index) {
+                    replacer.visit_statement(use_statement, use_loc);
+                } else {
+                    replacer.visit_terminator(use_block.terminator_mut(), use_loc);
+                }
+                if replacer.operand.is_some() {
+                    bug!(
+                        "operand wasn't used replacing local {local:?} with locations {locations:?} in body {body:#?}"
+                    );
                 }
             }
 
-            let Some(use_loc) = locations.use_loc else { continue };
-
-            let use_block = &mut basic_blocks[use_loc.block];
-            if let Some(use_statement) = use_block.statements.get_mut(use_loc.statement_index) {
-                replacer.visit_statement(use_statement, use_loc);
-            } else {
-                replacer.visit_terminator(use_block.terminator_mut(), use_loc);
-            }
-
-            if replacer.operand.is_some() {
-                bug!(
-                    "operand wasn't used replacing local {local:?} with locations {locations:?} in body {body:#?}"
-                );
-            }
+            basic_blocks[init_loc.block].statements[init_loc.statement_index].make_nop();
         }
 
         drop_invalid_debuginfos(body);
@@ -108,7 +98,6 @@ impl LocationPair {
 struct SingleUseConstsFinder {
     ineligible_locals: DenseBitSet<Local>,
     locations: IndexVec<Local, LocationPair>,
-    locals_in_debug_info: DenseBitSet<Local>,
 }
 
 impl<'tcx> Visitor<'tcx> for SingleUseConstsFinder {
@@ -151,20 +140,12 @@ impl<'tcx> Visitor<'tcx> for SingleUseConstsFinder {
         }
     }
 
-    fn visit_var_debug_info(&mut self, var_debug_info: &VarDebugInfo<'tcx>) {
-        if let VarDebugInfoContents::Place(place) = &var_debug_info.value
-            && let Some(local) = place.as_local()
-        {
-            self.locals_in_debug_info.insert(local);
-        } else {
-            self.super_var_debug_info(var_debug_info);
+    fn visit_local(&mut self, local: Local, context: PlaceContext, _location: Location) {
+        if context.is_use() {
+            // If there's any path that gets here, rather than being understood elsewhere,
+            // then we'd better not do anything with this local.
+            self.ineligible_locals.insert(local);
         }
-    }
-
-    fn visit_local(&mut self, local: Local, _context: PlaceContext, _location: Location) {
-        // If there's any path that gets here, rather than being understood elsewhere,
-        // then we'd better not do anything with this local.
-        self.ineligible_locals.insert(local);
     }
 }
 
@@ -187,23 +168,6 @@ impl<'tcx> MutVisitor<'tcx> for LocalReplacer<'tcx> {
             *operand = self.operand.take().unwrap_or_else(|| {
                 bug!("there was a second use of the operand");
             });
-        }
-    }
-
-    fn visit_var_debug_info(&mut self, var_debug_info: &mut VarDebugInfo<'tcx>) {
-        if let VarDebugInfoContents::Place(place) = &var_debug_info.value
-            && let Some(local) = place.as_local()
-            && local == self.local
-        {
-            let const_op = *self
-                .operand
-                .as_ref()
-                .unwrap_or_else(|| {
-                    bug!("the operand was already stolen");
-                })
-                .constant()
-                .unwrap();
-            var_debug_info.value = VarDebugInfoContents::Const(const_op);
         }
     }
 }

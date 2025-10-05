@@ -905,7 +905,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.var_debug_info.push(VarDebugInfo {
                     name,
                     source_info: SourceInfo::outermost(captured_place.var_ident.span),
-                    value: VarDebugInfoContents::Place(use_place),
+                    place: use_place,
                     composite: None,
                     argument_index: None,
                 });
@@ -938,7 +938,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.var_debug_info.push(VarDebugInfo {
                     name,
                     source_info,
-                    value: VarDebugInfoContents::Place(arg_local.into()),
+                    place: arg_local.into(),
                     composite: None,
                     argument_index: Some(argument_index as u16 + 1),
                 });

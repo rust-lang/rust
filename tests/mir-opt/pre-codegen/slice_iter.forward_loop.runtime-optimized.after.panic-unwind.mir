@@ -8,10 +8,11 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     let mut _25: &impl Fn(&T);
     let mut _26: (&T,);
     let _27: ();
+    let mut _28: std::marker::PhantomData<&T>;
     scope 1 {
         debug ((iter: std::slice::Iter<'_, T>).0: std::ptr::NonNull<T>) => _8;
         debug ((iter: std::slice::Iter<'_, T>).1: *const T) => _11;
-        debug ((iter: std::slice::Iter<'_, T>).2: std::marker::PhantomData<&T>) => const ZeroSized: PhantomData<&T>;
+        debug ((iter: std::slice::Iter<'_, T>).2: std::marker::PhantomData<&T>) => _28;
         let _24: &T;
         scope 2 {
             debug x => _24;
@@ -137,6 +138,7 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
 
     bb3: {
         StorageDead(_3);
+        // DBG: _28 = const ZeroSized: PhantomData<&T>;
         goto -> bb4;
     }
 

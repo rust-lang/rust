@@ -3,8 +3,9 @@
 fn with_let(_1: Option<std::cmp::Ordering>) -> bool {
     debug e => _1;
     let mut _0: bool;
+    let _4: std::cmp::Ordering;
     scope 1 {
-        debug eq => const Equal;
+        debug eq => _4;
         scope 2 (inlined <Option<std::cmp::Ordering> as PartialEq>::eq) {
             let mut _2: isize;
             scope 3 {
@@ -20,6 +21,8 @@ fn with_let(_1: Option<std::cmp::Ordering>) -> bool {
     }
 
     bb0: {
+        StorageLive(_4);
+        // DBG: _4 = const Equal;
         StorageLive(_2);
         _2 = discriminant(_1);
         switchInt(move _2) -> [0: bb1, 1: bb2, otherwise: bb4];
@@ -40,6 +43,7 @@ fn with_let(_1: Option<std::cmp::Ordering>) -> bool {
 
     bb3: {
         StorageDead(_2);
+        StorageDead(_4);
         return;
     }
 

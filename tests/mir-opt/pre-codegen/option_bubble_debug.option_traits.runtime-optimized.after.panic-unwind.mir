@@ -7,8 +7,9 @@ fn option_traits(_1: Option<u32>) -> Option<u32> {
     let mut _3: isize;
     let _4: u32;
     let mut _5: u32;
+    let _6: std::option::Option<std::convert::Infallible>;
     scope 1 {
-        debug residual => const Option::<Infallible>::None;
+        debug residual => _6;
         scope 2 {
         }
     }
@@ -34,6 +35,7 @@ fn option_traits(_1: Option<u32>) -> Option<u32> {
     }
 
     bb3: {
+        // DBG: _6 = const Option::<Infallible>::None;
         _0 = ops::try_trait::residual_into_try_type::<Option<Infallible>, u32>(const Option::<Infallible>::None) -> [return: bb4, unwind continue];
     }
 

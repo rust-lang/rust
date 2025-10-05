@@ -549,7 +549,7 @@ impl Debug for VarDebugInfo<'_> {
             write!(fmt, "{}", self.name)?;
         }
 
-        write!(fmt, " => {:?}", self.value)
+        write!(fmt, " => {:?}", self.place)
     }
 }
 
