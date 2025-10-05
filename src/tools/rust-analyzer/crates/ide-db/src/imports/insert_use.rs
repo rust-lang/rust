@@ -27,9 +27,6 @@ pub use hir::PrefixKind;
 /// How imports should be grouped into use statements.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ImportGranularity {
-    /// Do not change the granularity of any imports and preserve the original structure written
-    /// by the developer.
-    Preserve,
     /// Merge imports from the same crate into a single use statement.
     Crate,
     /// Merge imports from the same module into a single use statement.
@@ -174,7 +171,7 @@ fn insert_use_with_alias_option(
         ImportGranularity::Crate => Some(MergeBehavior::Crate),
         ImportGranularity::Module => Some(MergeBehavior::Module),
         ImportGranularity::One => Some(MergeBehavior::One),
-        ImportGranularity::Item | ImportGranularity::Preserve => None,
+        ImportGranularity::Item => None,
     };
     if !cfg.enforce_granularity {
         let file_granularity = guess_granularity_from_scope(scope);

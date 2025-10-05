@@ -2009,19 +2009,30 @@
                         "markdownDescription": "How imports should be grouped into use statements.",
                         "default": "crate",
                         "type": "string",
-                        "enum": [
-                            "preserve",
-                            "crate",
-                            "module",
-                            "item",
-                            "one"
-                        ],
-                        "enumDescriptions": [
-                            "Do not change the granularity of any imports and preserve the original structure written by the developer.",
-                            "Merge imports from the same crate into a single use statement. Conversely, imports from different crates are split into separate statements.",
-                            "Merge imports from the same module into a single use statement. Conversely, imports from different modules are split into separate statements.",
-                            "Flatten imports so that each has its own use statement.",
-                            "Merge all imports into a single use statement as long as they have the same visibility and attributes."
+                        "anyOf": [
+                            {
+                                "enum": [
+                                    "crate",
+                                    "module",
+                                    "item",
+                                    "one"
+                                ],
+                                "enumDescriptions": [
+                                    "Merge imports from the same crate into a single use statement. Conversely, imports from different crates are split into separate statements.",
+                                    "Merge imports from the same module into a single use statement. Conversely, imports from different modules are split into separate statements.",
+                                    "Flatten imports so that each has its own use statement.",
+                                    "Merge all imports into a single use statement as long as they have the same visibility and attributes."
+                                ]
+                            },
+                            {
+                                "enum": [
+                                    "preserve"
+                                ],
+                                "enumDescriptions": [
+                                    "Deprecated - unless `enforceGranularity` is `true`, the style of the current file is preferred over this setting. Behaves like `item`."
+                                ],
+                                "deprecated": true
+                            }
                         ]
                     }
                 }
