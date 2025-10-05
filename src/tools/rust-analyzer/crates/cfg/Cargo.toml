@@ -33,5 +33,9 @@ derive_arbitrary = "1.4.1"
 syntax-bridge.workspace = true
 syntax.workspace = true
 
+[features]
+default = []
+in-rust-tree = []
+
 [lints]
 workspace = true
