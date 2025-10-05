@@ -3,7 +3,6 @@
 use std::any::Any;
 use std::io::Write;
 use std::num::NonZero;
-use std::str;
 
 pub(super) type Writer = super::buffer::Buffer;
 
@@ -31,7 +30,7 @@ macro_rules! rpc_encode_decode {
 
         impl<S> DecodeMut<'_, '_, S> for $ty {
             fn decode(r: &mut Reader<'_>, _: &mut S) -> Self {
-                const N: usize = ::std::mem::size_of::<$ty>();
+                const N: usize = size_of::<$ty>();
 
                 let mut bytes = [0; N];
                 bytes.copy_from_slice(&r[..N]);

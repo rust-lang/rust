@@ -7,7 +7,7 @@
 use std::cell::{Cell, RefCell};
 use std::mem::MaybeUninit;
 use std::ops::Range;
-use std::{cmp, ptr, slice, str};
+use std::{cmp, ptr, slice};
 
 // The arenas start with PAGE-sized chunks, and then each new chunk is twice as
 // big as its predecessor, up until we reach HUGE_PAGE-sized chunks, whereupon
