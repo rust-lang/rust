@@ -16,6 +16,8 @@
 #![feature(try_blocks)]
 // tidy-alphabetical-end
 
+use rustc_parse::parser::item::{OUTPUT_NAME, jot_output_name};
+
 use std::cmp::max;
 use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsString;
@@ -279,6 +281,31 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
     interface::run_compiler(config, |compiler| {
         let sess = &compiler.sess;
         let codegen_backend = &*compiler.codegen_backend;
+
+        // get output name for decls, dtrace, and pp
+        // try input/output file names first. Prefer output to input.
+        match &sess.io.output_file {
+            None => match &sess.io.input {
+                Input::File(path) => {
+                    jot_output_name(String::from(path.to_str().unwrap()));
+                }
+                _ => {}
+            },
+            Some(ofile) => match &ofile {
+                OutFileName::Real(path) => {
+                    *OUTPUT_NAME.lock().unwrap() = String::from(path.to_str().unwrap());
+                }
+                _ => {}
+            },
+        }
+
+        // this is the expected path for builds with cargo
+        match &sess.opts.crate_name {
+            Some(name) => {
+                *OUTPUT_NAME.lock().unwrap() = String::from(name);
+            }
+            _ => {}
+        }
 
         // This is used for early exits unrelated to errors. E.g. when just
         // printing some information without compiling, or exiting immediately

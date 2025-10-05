@@ -2,7 +2,7 @@
 resolver = "2"
 members = [
 # tidy-alphabetical-start
-  "compiler/rustc",
+  "compiler/rustc", "daikon-tests",
   "src/build_helper",
   "src/rustc-std-workspace/rustc-std-workspace-alloc",
   "src/rustc-std-workspace/rustc-std-workspace-core",

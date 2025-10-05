@@ -1,0 +1,3 @@
+struct X {}
+
+fn main() {}
