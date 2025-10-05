@@ -16,7 +16,7 @@ Before generating the llvm-ir, keep in mind two techniques that can help ensure 
 ## 1) Generate an llvm-ir reproducer
 
 ```sh
-rustflags="-z autodiff=enable,printmodbefore" cargo +enzyme build --release &> out.ll 
+RUSTFLAGS="-Z autodiff=Enable,PrintModbefore" cargo +enzyme build --release &> out.ll 
 ```
 
 This also captures a few warnings and info messages above and below your module. open out.ll and remove every line above `; moduleid = <somehash>`. Now look at the end of the file and remove everything that's not part of llvm-ir, i.e. remove errors and warnings. The last line of your llvm-ir should now start with `!<somenumber> = `, i.e. `!40831 = !{i32 0, i32 1037508, i32 1037538, i32 1037559}` or `!43760 = !dilocation(line: 297, column: 5, scope: !43746)`.
@@ -25,10 +25,10 @@ The actual numbers will depend on your code.
 
 ## 2) Check your llvm-ir reproducer
 
-To confirm that your previous step worked, we will use llvm's `opt` tool. find your path to the opt binary, with a path similar to `<some_dir>/rust/build/<x86/arm/...-target-tripple>/build/bin/opt`. also find `llvmenzyme-19.<so/dll/dylib>` path, similar to `/rust/build/target-tripple/enzyme/build/enzyme/llvmenzyme-19`. Please keep in mind that llvm frequently updates it's llvm backend, so the version number might be higher (20, 21, ...). Once you have both, run the following command:
+To confirm that your previous step worked, we will use llvm's `opt` tool. find your path to the opt binary, with a path similar to `<some_dir>/rust/build/<x86/arm/...-target-triple>/build/bin/opt`. also find `llvmenzyme-19.<so/dll/dylib>` path, similar to `/rust/build/target-triple/enzyme/build/enzyme/llvmenzyme-19`. Please keep in mind that llvm frequently updates it's llvm backend, so the version number might be higher (20, 21, ...). Once you have both, run the following command:
 
 ```sh
-<path/to/opt> out.ll -load-pass-plugin=/path/to/llvmenzyme-19.so -passes="enzyme" -s
+<path/to/opt> out.ll -load-pass-plugin=/path/to/build/<target-triple>/stage1/lib/libEnzyme-21.so -passes="enzyme" -enzyme-strict-aliasing=0  -s
 ```
 
 If the previous step succeeded, you are going to see the same error that you saw when compiling your rust code with cargo. 
