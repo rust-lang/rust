@@ -1,5 +1,5 @@
 error: unused `Result` that must be used
-  --> $DIR/must_use-result-unit-uninhabited.rs:48:5
+  --> $DIR/must_use-result-unit-uninhabited.rs:67:5
    |
 LL |     f1();
    |     ^^^^
@@ -16,7 +16,7 @@ LL |     let _ = f1();
    |     +++++++
 
 error: unused `Result` that must be used
-  --> $DIR/must_use-result-unit-uninhabited.rs:52:5
+  --> $DIR/must_use-result-unit-uninhabited.rs:71:5
    |
 LL |     f5();
    |     ^^^^
@@ -28,7 +28,7 @@ LL |     let _ = f5();
    |     +++++++
 
 error: unused `Result` that must be used
-  --> $DIR/must_use-result-unit-uninhabited.rs:54:5
+  --> $DIR/must_use-result-unit-uninhabited.rs:73:5
    |
 LL |     f6(S2);
    |     ^^^^^^
@@ -39,5 +39,17 @@ help: use `let _ = ...` to ignore the resulting value
 LL |     let _ = f6(S2);
    |     +++++++
 
-error: aborting due to 3 previous errors
+error: unused `Result` that must be used
+  --> $DIR/must_use-result-unit-uninhabited.rs:75:5
+   |
+LL |     S2.method();
+   |     ^^^^^^^^^^^
+   |
+   = note: this `Result` may be an `Err` variant, which should be handled
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = S2.method();
+   |     +++++++
+
+error: aborting due to 4 previous errors
 

@@ -44,6 +44,25 @@ fn f6<AT: AssocType>(_: AT) -> Result<(), AT::Error> {
     Ok(())
 }
 
+trait UsesAssocType {
+    type Error;
+    fn method(&self) -> Result<(), Self::Error>;
+}
+
+impl UsesAssocType for S1 {
+    type Error = !;
+    fn method(&self) -> Result<(), Self::Error> {
+        Ok(())
+    }
+}
+
+impl UsesAssocType for S2 {
+    type Error = ();
+    fn method(&self) -> Result<(), Self::Error> {
+        Err(())
+    }
+}
+
 fn main() {
     f1(); //~ ERROR: unused `Result` that must be used
     f2();
@@ -52,4 +71,6 @@ fn main() {
     f5(); //~ ERROR: unused `Result` that must be used
     f6(S1);
     f6(S2); //~ ERROR: unused `Result` that must be used
+    S1.method();
+    S2.method(); //~ ERROR: unused `Result` that must be used
 }
