@@ -95,14 +95,14 @@ expand_malformed_feature_attribute =
     malformed `feature` attribute input
     .expected = expected just one word
 
+expand_meta_var_dif_seq_matchers = {$msg}
+
 expand_metavar_still_repeating = variable `{$ident}` is still repeating at this depth
     .label = expected repetition
 
 expand_metavariable_wrong_operator = meta-variable repeats with different Kleene operator
     .binder_label = expected repetition
     .occurrence_label = conflicting repetition
-
-expand_meta_var_dif_seq_matchers = {$msg}
 
 expand_missing_fragment_specifier = missing fragment specifier
     .note = fragment specifiers must be provided
@@ -198,12 +198,12 @@ expand_trailing_semi_macro = trailing semicolon in macro used in expression posi
 
 expand_unknown_macro_variable = unknown macro variable `{$name}`
 
+expand_unsupported_key_value =
+    key-value macro attributes are not supported
+
 expand_unused_builtin_attribute = unused attribute `{$attr_name}`
     .note = the built-in attribute `{$attr_name}` will be ignored, since it's applied to the macro invocation `{$macro_name}`
     .suggestion = remove the attribute
-
-expand_unsupported_key_value =
-    key-value macro attributes are not supported
 
 expand_wrong_fragment_kind =
     non-{$kind} macro in {$kind} position: {$name}

@@ -98,13 +98,6 @@ metadata_full_metadata_not_found =
 metadata_global_alloc_required =
     no global memory allocator found but one is required; link to std or add `#[global_allocator]` to a static item that implements the GlobalAlloc trait
 
-metadata_incompatible_with_immediate_abort =
-    the crate `{$crate_name}` was compiled with a panic strategy which is incompatible with `immediate-abort`
-
-metadata_incompatible_with_immediate_abort_core =
-    the crate `core` was compiled with a panic strategy which is incompatible with `immediate-abort`
-    .help = consider building the standard library from source with `cargo build -Zbuild-std`
-
 metadata_incompatible_panic_in_drop_strategy =
     the crate `{$crate_name}` is compiled with the panic-in-drop strategy `{$found_strategy}` which is incompatible with this crate's strategy of `{$desired_strategy}`
 
@@ -131,6 +124,13 @@ metadata_incompatible_target_modifiers_r_missed =
     mixing `{$flag_name_prefixed}` will cause an ABI mismatch in crate `{$local_crate}`
     .note = `{$flag_name_prefixed}={$local_value}` in this crate is incompatible with unset `{$flag_name_prefixed}` in dependency `{$extern_crate}`
     .help = the `{$flag_name_prefixed}` flag modifies the ABI so Rust crates compiled with different values of this flag cannot be used together safely
+
+metadata_incompatible_with_immediate_abort =
+    the crate `{$crate_name}` was compiled with a panic strategy which is incompatible with `immediate-abort`
+
+metadata_incompatible_with_immediate_abort_core =
+    the crate `core` was compiled with a panic strategy which is incompatible with `immediate-abort`
+    .help = consider building the standard library from source with `cargo build -Zbuild-std`
 
 metadata_install_missing_components =
     maybe you need to install the missing components with: `rustup component add rust-src rustc-dev llvm-tools-preview`
@@ -197,6 +197,8 @@ metadata_prev_alloc_error_handler =
 metadata_prev_global_alloc =
     previous global allocator defined here
 
+metadata_raw_dylib_malformed =
+    link name must be well-formed if link kind is `raw-dylib`
 metadata_raw_dylib_unsupported_abi =
     ABI not supported by `#[link(kind = "raw-dylib")]` on this architecture
 
@@ -236,12 +238,3 @@ metadata_unknown_target_modifier_unsafe_allowed = unknown target modifier `{$fla
 
 metadata_wasm_c_abi =
     older versions of the `wasm-bindgen` crate are incompatible with current versions of Rust; please update to `wasm-bindgen` v0.2.88
-
-metadata_wasm_import_form =
-    wasm import module must be of the form `wasm_import_module = "string"`
-
-metadata_whole_archive_needs_static =
-    linking modifier `whole-archive` is only compatible with `static` linking kind
-
-metadata_raw_dylib_malformed =
-    link name must be well-formed if link kind is `raw-dylib`
