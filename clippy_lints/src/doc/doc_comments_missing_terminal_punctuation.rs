@@ -47,6 +47,11 @@ pub fn check(cx: &LateContext<'_>, doc: &str, fragments: Fragments<'_>) {
 fn is_missing_punctuation(doc_string: &str) -> IsMissingPunctuation {
     const TERMINAL_PUNCTUATION_MARKS: &[char] = &['.', '?', '!', '…'];
 
+    // Short-circuit in simple, common cases to avoid Markdown parsing.
+    if doc_string.trim_end().ends_with(TERMINAL_PUNCTUATION_MARKS) {
+        return IsMissingPunctuation::No;
+    }
+
     let mut no_report_depth = 0;
     let mut missing_punctuation = IsMissingPunctuation::No;
     for (event, offset) in
