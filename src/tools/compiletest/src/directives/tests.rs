@@ -3,12 +3,11 @@ use std::io::Read;
 use camino::Utf8Path;
 use semver::Version;
 
-use super::{
-    DirectivesCache, EarlyProps, Edition, EditionRange, extract_llvm_version,
-    extract_version_range, iter_directives, parse_normalize_rule,
-};
 use crate::common::{Config, Debugger, TestMode};
-use crate::directives::parse_edition;
+use crate::directives::{
+    DirectivesCache, EarlyProps, Edition, EditionRange, extract_llvm_version,
+    extract_version_range, iter_directives, line_directive, parse_edition, parse_normalize_rule,
+};
 use crate::executor::{CollectedTestDesc, ShouldPanic};
 
 fn make_test_description<R: Read>(
@@ -955,7 +954,9 @@ fn test_needs_target_std() {
 
 fn parse_edition_range(line: &str) -> Option<EditionRange> {
     let config = cfg().build();
-    let line = super::DirectiveLine { line_number: 0, revision: None, raw_directive: line };
+
+    let line_with_comment = format!("//@ {line}");
+    let line = line_directive(0, &line_with_comment).unwrap();
 
     super::parse_edition_range(&config, &line, "tmp.rs".into())
 }
