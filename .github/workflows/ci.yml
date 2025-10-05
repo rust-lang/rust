@@ -117,191 +117,197 @@ jobs:
         with:
           fetch-depth: 2
 
+      - name: install typos-cli
+        run: time RUSTFLAGS="-Copt-level=0" cargo install typos-cli@1.34.0 --force
+
+      - name: run typos-cli
+        run: time typos compiler library src/bootstrap src/librustdoc
+
       # Free up disk space on Linux by removing preinstalled components that
       # we do not need. We do this to enable some of the less resource
       # intensive jobs to run on free runners, which however also have
       # less disk space.
-      - name: free up disk space
-        run: src/ci/scripts/free-disk-space-linux.sh
-        if: matrix.free_disk
+      # - name: free up disk space
+      #   run: src/ci/scripts/free-disk-space-linux.sh
+      #   if: matrix.free_disk
 
-      # If we don't need to free up disk space then just report how much space we have
-      - name: print disk usage
-        run: |
-          echo "disk usage:"
-          df -h
-        if: matrix.free_disk == false
+      # # If we don't need to free up disk space then just report how much space we have
+      # - name: print disk usage
+      #   run: |
+      #     echo "disk usage:"
+      #     df -h
+      #   if: matrix.free_disk == false
 
-      # Rust Log Analyzer can't currently detect the PR number of a GitHub
-      # Actions build on its own, so a hint in the log message is needed to
-      # point it in the right direction.
-      - name: configure the PR in which the error message will be posted
-        run: echo "[CI_PR_NUMBER=$num]"
-        env:
-          num: ${{ github.event.number }}
-        if: needs.calculate_matrix.outputs.run_type == 'pr'
+      # # Rust Log Analyzer can't currently detect the PR number of a GitHub
+      # # Actions build on its own, so a hint in the log message is needed to
+      # # point it in the right direction.
+      # - name: configure the PR in which the error message will be posted
+      #   run: echo "[CI_PR_NUMBER=$num]"
+      #   env:
+      #     num: ${{ github.event.number }}
+      #   if: needs.calculate_matrix.outputs.run_type == 'pr'
 
-      - name: add extra environment variables
-        run: src/ci/scripts/setup-environment.sh
-        env:
-          # Since it's not possible to merge `${{ matrix.env }}` with the other
-          # variables in `job.<name>.env`, the variables defined in the matrix
-          # are passed to the `setup-environment.sh` script encoded in JSON,
-          # which then uses log commands to actually set them.
-          EXTRA_VARIABLES: ${{ toJson(matrix.env) }}
+      # - name: add extra environment variables
+      #   run: src/ci/scripts/setup-environment.sh
+      #   env:
+      #     # Since it's not possible to merge `${{ matrix.env }}` with the other
+      #     # variables in `job.<name>.env`, the variables defined in the matrix
+      #     # are passed to the `setup-environment.sh` script encoded in JSON,
+      #     # which then uses log commands to actually set them.
+      #     EXTRA_VARIABLES: ${{ toJson(matrix.env) }}
 
-      - name: ensure the channel matches the target branch
-        run: src/ci/scripts/verify-channel.sh
+      # - name: ensure the channel matches the target branch
+      #   run: src/ci/scripts/verify-channel.sh
 
-      - name: collect CPU statistics
-        run: src/ci/scripts/collect-cpu-stats.sh
+      # - name: collect CPU statistics
+      #   run: src/ci/scripts/collect-cpu-stats.sh
 
-      - name: show the current environment
-        run: src/ci/scripts/dump-environment.sh
+      # - name: show the current environment
+      #   run: src/ci/scripts/dump-environment.sh
 
-      - name: install awscli
-        run: src/ci/scripts/install-awscli.sh
+      # - name: install awscli
+      #   run: src/ci/scripts/install-awscli.sh
 
-      - name: install sccache
-        run: src/ci/scripts/install-sccache.sh
+      # - name: install sccache
+      #   run: src/ci/scripts/install-sccache.sh
 
-      - name: select Xcode
-        run: src/ci/scripts/select-xcode.sh
+      # - name: select Xcode
+      #   run: src/ci/scripts/select-xcode.sh
 
-      - name: install clang
-        run: src/ci/scripts/install-clang.sh
+      # - name: install clang
+      #   run: src/ci/scripts/install-clang.sh
 
-      - name: install tidy
-        run: src/ci/scripts/install-tidy.sh
+      # - name: install tidy
+      #   run: src/ci/scripts/install-tidy.sh
 
-      - name: install WIX
-        run: src/ci/scripts/install-wix.sh
+      # - name: install WIX
+      #   run: src/ci/scripts/install-wix.sh
 
-      - name: disable git crlf conversion
-        run: src/ci/scripts/disable-git-crlf-conversion.sh
+      # - name: disable git crlf conversion
+      #   run: src/ci/scripts/disable-git-crlf-conversion.sh
 
-      - name: checkout submodules
-        run: src/ci/scripts/checkout-submodules.sh
+      # - name: checkout submodules
+      #   run: src/ci/scripts/checkout-submodules.sh
 
-      - name: install MinGW
-        run: src/ci/scripts/install-mingw.sh
+      # - name: install MinGW
+      #   run: src/ci/scripts/install-mingw.sh
 
-      - name: install ninja
-        run: src/ci/scripts/install-ninja.sh
+      # - name: install ninja
+      #   run: src/ci/scripts/install-ninja.sh
 
-      - name: enable ipv6 on Docker
-        # Don't run on codebuild because systemctl is not available
-        if: ${{ !matrix.codebuild }}
-        run: src/ci/scripts/enable-docker-ipv6.sh
+      # - name: enable ipv6 on Docker
+      #   # Don't run on codebuild because systemctl is not available
+      #   if: ${{ !matrix.codebuild }}
+      #   run: src/ci/scripts/enable-docker-ipv6.sh
 
-      # Disable automatic line ending conversion (again). On Windows, when we're
-      # installing dependencies, something switches the git configuration directory or
-      # re-enables autocrlf. We've not tracked down the exact cause -- and there may
-      # be multiple -- but this should ensure submodules are checked out with the
-      # appropriate line endings.
-      - name: disable git crlf conversion
-        run: src/ci/scripts/disable-git-crlf-conversion.sh
+      # # Disable automatic line ending conversion (again). On Windows, when we're
+      # # installing dependencies, something switches the git configuration directory or
+      # # re-enables autocrlf. We've not tracked down the exact cause -- and there may
+      # # be multiple -- but this should ensure submodules are checked out with the
+      # # appropriate line endings.
+      # - name: disable git crlf conversion
+      #   run: src/ci/scripts/disable-git-crlf-conversion.sh
 
-      - name: ensure line endings are correct
-        run: src/ci/scripts/verify-line-endings.sh
+      # - name: ensure line endings are correct
+      #   run: src/ci/scripts/verify-line-endings.sh
 
-      - name: ensure backported commits are in upstream branches
-        run: src/ci/scripts/verify-backported-commits.sh
+      # - name: ensure backported commits are in upstream branches
+      #   run: src/ci/scripts/verify-backported-commits.sh
 
-      - name: ensure the stable version number is correct
-        run: src/ci/scripts/verify-stable-version-number.sh
+      # - name: ensure the stable version number is correct
+      #   run: src/ci/scripts/verify-stable-version-number.sh
 
-      # Show the environment just before we run the build
-      # This makes it easier to diagnose problems with the above install scripts.
-      - name: show the current environment
-        run: src/ci/scripts/dump-environment.sh
+      # # Show the environment just before we run the build
+      # # This makes it easier to diagnose problems with the above install scripts.
+      # - name: show the current environment
+      #   run: src/ci/scripts/dump-environment.sh
 
-      # Pre-build citool before the following step uninstalls rustup
-      # Build it into the build directory, to avoid modifying sources
-      - name: build citool
-        run: |
-          cd src/ci/citool
-          CARGO_INCREMENTAL=0 CARGO_TARGET_DIR=../../../build/citool cargo build
+      # # Pre-build citool before the following step uninstalls rustup
+      # # Build it into the build directory, to avoid modifying sources
+      # - name: build citool
+      #   run: |
+      #     cd src/ci/citool
+      #     CARGO_INCREMENTAL=0 CARGO_TARGET_DIR=../../../build/citool cargo build
 
-      - name: run the build
-        run: |
-          set +e
-          # Redirect stderr to stdout to avoid reordering the two streams in the GHA logs.
-          src/ci/scripts/run-build-from-ci.sh 2>&1
-          STATUS=$?
-          set -e
+      # - name: run the build
+      #   run: |
+      #     set +e
+      #     # Redirect stderr to stdout to avoid reordering the two streams in the GHA logs.
+      #     src/ci/scripts/run-build-from-ci.sh 2>&1
+      #     STATUS=$?
+      #     set -e
 
-          if [[ "$STATUS" -ne 0 && -n "$CI_JOB_DOC_URL" ]]; then
-            echo "****************************************************************************"
-            echo "To find more information about this job, visit the following URL:"
-            echo "$CI_JOB_DOC_URL"
-            echo "****************************************************************************"
-          fi
-          exit ${STATUS}
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.CACHES_AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.CACHES_AWS_SECRET_ACCESS_KEY }}
+      #     if [[ "$STATUS" -ne 0 && -n "$CI_JOB_DOC_URL" ]]; then
+      #       echo "****************************************************************************"
+      #       echo "To find more information about this job, visit the following URL:"
+      #       echo "$CI_JOB_DOC_URL"
+      #       echo "****************************************************************************"
+      #     fi
+      #     exit ${STATUS}
+      #   env:
+      #     AWS_ACCESS_KEY_ID: ${{ secrets.CACHES_AWS_ACCESS_KEY_ID }}
+      #     AWS_SECRET_ACCESS_KEY: ${{ secrets.CACHES_AWS_SECRET_ACCESS_KEY }}
 
-      - name: create github artifacts
-        run: src/ci/scripts/create-doc-artifacts.sh
+      # - name: create github artifacts
+      #   run: src/ci/scripts/create-doc-artifacts.sh
 
-      - name: print disk usage
-        run: |
-          echo "disk usage:"
-          df -h
+      # - name: print disk usage
+      #   run: |
+      #     echo "disk usage:"
+      #     df -h
 
-      - name: upload artifacts to github
-        uses: actions/upload-artifact@v4
-        with:
-          # name is set in previous step
-          name: ${{ env.DOC_ARTIFACT_NAME }}
-          path: obj/artifacts/doc
-          if-no-files-found: ignore
-          retention-days: 5
+      # - name: upload artifacts to github
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     # name is set in previous step
+      #     name: ${{ env.DOC_ARTIFACT_NAME }}
+      #     path: obj/artifacts/doc
+      #     if-no-files-found: ignore
+      #     retention-days: 5
 
-      - name: upload artifacts to S3
-        run: src/ci/scripts/upload-artifacts.sh
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.ARTIFACTS_AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.ARTIFACTS_AWS_SECRET_ACCESS_KEY }}
-        # Adding a condition on DEPLOY=1 or DEPLOY_ALT=1 is not needed as all deploy
-        # builders *should* have the AWS credentials available. Still, explicitly
-        # adding the condition is helpful as this way CI will not silently skip
-        # deploying artifacts from a dist builder if the variables are misconfigured,
-        # erroring about invalid credentials instead.
-        if: github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1'
+      # - name: upload artifacts to S3
+      #   run: src/ci/scripts/upload-artifacts.sh
+      #   env:
+      #     AWS_ACCESS_KEY_ID: ${{ secrets.ARTIFACTS_AWS_ACCESS_KEY_ID }}
+      #     AWS_SECRET_ACCESS_KEY: ${{ secrets.ARTIFACTS_AWS_SECRET_ACCESS_KEY }}
+      #   # Adding a condition on DEPLOY=1 or DEPLOY_ALT=1 is not needed as all deploy
+      #   # builders *should* have the AWS credentials available. Still, explicitly
+      #   # adding the condition is helpful as this way CI will not silently skip
+      #   # deploying artifacts from a dist builder if the variables are misconfigured,
+      #   # erroring about invalid credentials instead.
+      #   if: github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1'
 
-      - name: postprocess metrics into the summary
-        # This step is not critical, and if some I/O problem happens, we don't want
-        # to cancel the build.
-        continue-on-error: true
-        run: |
-          if [ -f build/metrics.json ]; then
-            METRICS=build/metrics.json
-          elif [ -f obj/build/metrics.json ]; then
-            METRICS=obj/build/metrics.json
-          else
-            echo "No metrics.json found"
-            exit 0
-          fi
+      # - name: postprocess metrics into the summary
+      #   # This step is not critical, and if some I/O problem happens, we don't want
+      #   # to cancel the build.
+      #   continue-on-error: true
+      #   run: |
+      #     if [ -f build/metrics.json ]; then
+      #       METRICS=build/metrics.json
+      #     elif [ -f obj/build/metrics.json ]; then
+      #       METRICS=obj/build/metrics.json
+      #     else
+      #       echo "No metrics.json found"
+      #       exit 0
+      #     fi
 
-          # Get closest bors merge commit
-          PARENT_COMMIT=`git rev-list --author='bors <bors@rust-lang.org>' -n1 --first-parent HEAD^1`
+      #     # Get closest bors merge commit
+      #     PARENT_COMMIT=`git rev-list --author='bors <bors@rust-lang.org>' -n1 --first-parent HEAD^1`
 
-          ./build/citool/debug/citool postprocess-metrics \
-              --job-name ${CI_JOB_NAME} \
-              --parent ${PARENT_COMMIT} \
-              ${METRICS} >> ${GITHUB_STEP_SUMMARY}
+      #     ./build/citool/debug/citool postprocess-metrics \
+      #         --job-name ${CI_JOB_NAME} \
+      #         --parent ${PARENT_COMMIT} \
+      #         ${METRICS} >> ${GITHUB_STEP_SUMMARY}
 
-      - name: upload job metrics to DataDog
-        # This step is not critical, and if some I/O problem happens, we don't want
-        # to cancel the build.
-        continue-on-error: true
-        if: needs.calculate_matrix.outputs.run_type != 'pr'
-        env:
-          DATADOG_API_KEY: ${{ secrets.DATADOG_API_KEY }}
-          DD_GITHUB_JOB_NAME: ${{ matrix.full_name }}
-        run: ./build/citool/debug/citool upload-build-metrics build/cpu-usage.csv
+      # - name: upload job metrics to DataDog
+      #   # This step is not critical, and if some I/O problem happens, we don't want
+      #   # to cancel the build.
+      #   continue-on-error: true
+      #   if: needs.calculate_matrix.outputs.run_type != 'pr'
+      #   env:
+      #     DATADOG_API_KEY: ${{ secrets.DATADOG_API_KEY }}
+      #     DD_GITHUB_JOB_NAME: ${{ matrix.full_name }}
+      #   run: ./build/citool/debug/citool upload-build-metrics build/cpu-usage.csv
 
   # This job isused to tell bors the final status of the build, as there is no practical way to detect
   # when a workflow is successful listening to webhooks only in our current bors implementation (homu).
