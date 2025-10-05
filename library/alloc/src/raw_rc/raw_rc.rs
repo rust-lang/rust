@@ -1,10 +1,11 @@
-use core::alloc::Allocator;
+use core::alloc::{AllocError, Allocator};
 use core::cell::UnsafeCell;
 #[cfg(not(no_global_oom_handling))]
 use core::clone::CloneToUninit;
 use core::marker::PhantomData;
 #[cfg(not(no_global_oom_handling))]
-use core::mem::{self, DropGuard};
+use core::mem;
+use core::mem::DropGuard;
 #[cfg(not(no_global_oom_handling))]
 use core::ops::DerefMut;
 #[cfg(not(no_global_oom_handling))]
@@ -20,7 +21,7 @@ use crate::raw_rc::raw_weak::RawWeak;
 #[cfg(not(no_global_oom_handling))]
 use crate::raw_rc::rc_alloc;
 #[cfg(not(no_global_oom_handling))]
-use crate::raw_rc::rc_layout::RcLayout;
+use crate::raw_rc::rc_layout::{RcLayout, RcLayoutExt};
 use crate::raw_rc::rc_value_pointer::RcValuePointer;
 
 /// Decrements strong reference count in a reference-counted allocation with a value object that is
@@ -353,5 +354,128 @@ where
     fn value_ptr(&self) -> RcValuePointer {
         // SAFETY: `self.weak` is guaranteed to be non-dangling.
         unsafe { self.weak.value_ptr_unchecked() }
+    }
+}
+
+impl<T, A> RawRc<T, A> {
+    /// # Safety
+    ///
+    /// `weak` must be non-dangling.
+    unsafe fn from_weak_with_value(weak: RawWeak<T, A>, value: T) -> Self {
+        unsafe {
+            weak.as_ptr().write(value);
+
+            Self::from_weak(weak)
+        }
+    }
+
+    #[inline]
+    pub(crate) fn try_new(value: T) -> Result<Self, AllocError>
+    where
+        A: Allocator + Default,
+    {
+        RawWeak::try_new_uninit::<1>()
+            .map(|weak| unsafe { Self::from_weak_with_value(weak, value) })
+    }
+
+    #[inline]
+    pub(crate) fn try_new_in(value: T, alloc: A) -> Result<Self, AllocError>
+    where
+        A: Allocator,
+    {
+        RawWeak::try_new_uninit_in::<1>(alloc)
+            .map(|weak| unsafe { Self::from_weak_with_value(weak, value) })
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    #[inline]
+    pub(crate) fn new(value: T) -> Self
+    where
+        A: Allocator + Default,
+    {
+        unsafe { Self::from_weak_with_value(RawWeak::new_uninit::<1>(), value) }
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    #[inline]
+    pub(crate) fn new_in(value: T, alloc: A) -> Self
+    where
+        A: Allocator,
+    {
+        unsafe { Self::from_weak_with_value(RawWeak::new_uninit_in::<1>(alloc), value) }
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    fn new_with<F>(f: F) -> Self
+    where
+        A: Allocator + Default,
+        F: FnOnce() -> T,
+    {
+        let (ptr, alloc) = rc_alloc::allocate_with::<A, _, 1>(T::RC_LAYOUT, |ptr| unsafe {
+            ptr.as_ptr().cast().write(f())
+        });
+
+        unsafe { Self::from_raw_parts(ptr.as_ptr().cast(), alloc) }
+    }
+
+    /// # Safety
+    ///
+    /// All accesses to `self` must use the same `RefCounter` implementation for `R`.
+    pub(crate) unsafe fn into_inner<R>(self) -> Option<T>
+    where
+        A: Allocator,
+        R: RefCounter,
+    {
+        let is_last_strong_ref = unsafe { decrement_strong_ref_count::<R>(self.value_ptr()) };
+
+        is_last_strong_ref.then(|| unsafe { self.weak.assume_init_into_inner::<R>() })
+    }
+
+    /// # Safety
+    ///
+    /// All accesses to `self` must use the same `RefCounter` implementation for `R`.
+    pub(crate) unsafe fn try_unwrap<R>(self) -> Result<T, RawRc<T, A>>
+    where
+        A: Allocator,
+        R: RefCounter,
+    {
+        unsafe fn inner<R>(value_ptr: RcValuePointer) -> bool
+        where
+            R: RefCounter,
+        {
+            unsafe {
+                R::from_raw_counter(value_ptr.strong_count_ptr().as_ref()).try_lock_strong_count()
+            }
+        }
+
+        let is_last_strong_ref = unsafe { inner::<R>(self.value_ptr()) };
+
+        if is_last_strong_ref {
+            Ok(unsafe { self.weak.assume_init_into_inner::<R>() })
+        } else {
+            Err(self)
+        }
+    }
+
+    /// # Safety
+    ///
+    /// All accesses to `self` must use the same `RefCounter` implementation for `R`.
+    pub(crate) unsafe fn unwrap_or_clone<R>(self) -> T
+    where
+        T: Clone,
+        A: Allocator,
+        R: RefCounter,
+    {
+        // SAFETY: Caller guarantees `rc` will only be accessed with the same `RefCounter`
+        // implementation.
+        unsafe { self.try_unwrap::<R>() }.unwrap_or_else(|rc| {
+            // SAFETY: Caller guarantees `rc` will only be accessed with the same `RefCounter`
+            // implementation, and the `rc` local variable will not be accessed again after the
+            // drop guard being triggered.
+            let guard = DropGuard::new(rc, |mut rc| unsafe { rc.drop::<R>() });
+
+            // SAFETY: `RawRc<T, A>` is guaranteed to contain a valid `T` value.
+            T::clone(unsafe { guard.as_ptr().as_ref() })
+        })
     }
 }
