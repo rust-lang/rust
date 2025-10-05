@@ -273,13 +273,11 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             expr: &hir::Expr<'_>,
             span: Span,
         ) -> Option<MustUsePath> {
-            if ty.is_unit()
-                || !ty.is_inhabited_from(
-                    cx.tcx,
-                    cx.tcx.parent_module(expr.hir_id).to_def_id(),
-                    cx.typing_env(),
-                )
-            {
+            if ty.is_unit() {
+                return Some(MustUsePath::Suppressed);
+            }
+            let parent_mod_did = cx.tcx.parent_module(expr.hir_id).to_def_id();
+            if !ty.is_inhabited_from(cx.tcx, parent_mod_did, cx.typing_env()) {
                 return Some(MustUsePath::Suppressed);
             }
 
