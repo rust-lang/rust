@@ -44,7 +44,7 @@ use crate::errors::{
 };
 use crate::llvm::diagnostic::OptimizationDiagnosticKind::*;
 use crate::llvm::{self, DiagnosticInfo};
-use crate::type_::Type;
+use crate::type_::llvm_type_ptr;
 use crate::{LlvmCodegenBackend, ModuleLlvm, base, common, llvm_util};
 
 pub(crate) fn llvm_err<'a>(dcx: DiagCtxtHandle<'_>, err: LlvmError<'a>) -> ! {
@@ -1160,7 +1160,7 @@ fn create_msvc_imps(
     // underscores added in front).
     let prefix = if cgcx.target_arch == "x86" { "\x01__imp__" } else { "\x01__imp_" };
 
-    let ptr_ty = Type::ptr_llcx(llcx);
+    let ptr_ty = llvm_type_ptr(llcx);
     let globals = base::iter_globals(llmod)
         .filter(|&val| {
             llvm::get_linkage(val) == llvm::Linkage::ExternalLinkage && !llvm::is_declaration(val)

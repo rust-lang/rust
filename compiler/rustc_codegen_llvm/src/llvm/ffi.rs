@@ -20,7 +20,6 @@ use std::ptr;
 use bitflags::bitflags;
 use libc::{c_char, c_int, c_uchar, c_uint, c_ulonglong, c_void, size_t};
 use rustc_macros::TryFromU32;
-use rustc_target::spec::SymbolVisibility;
 
 use super::RustString;
 use super::debuginfo::{
@@ -220,16 +219,6 @@ pub(crate) enum Visibility {
     Protected = 2,
 }
 
-impl Visibility {
-    pub(crate) fn from_generic(visibility: SymbolVisibility) -> Self {
-        match visibility {
-            SymbolVisibility::Hidden => Visibility::Hidden,
-            SymbolVisibility::Protected => Visibility::Protected,
-            SymbolVisibility::Interposable => Visibility::Default,
-        }
-    }
-}
-
 /// LLVMUnnamedAddr
 #[repr(C)]
 pub(crate) enum UnnamedAddr {
@@ -319,24 +308,6 @@ pub(crate) enum IntPredicate {
     IntSLE = 41,
 }
 
-impl IntPredicate {
-    pub(crate) fn from_generic(intpre: rustc_codegen_ssa::common::IntPredicate) -> Self {
-        use rustc_codegen_ssa::common::IntPredicate as Common;
-        match intpre {
-            Common::IntEQ => Self::IntEQ,
-            Common::IntNE => Self::IntNE,
-            Common::IntUGT => Self::IntUGT,
-            Common::IntUGE => Self::IntUGE,
-            Common::IntULT => Self::IntULT,
-            Common::IntULE => Self::IntULE,
-            Common::IntSGT => Self::IntSGT,
-            Common::IntSGE => Self::IntSGE,
-            Common::IntSLT => Self::IntSLT,
-            Common::IntSLE => Self::IntSLE,
-        }
-    }
-}
-
 /// LLVMRealPredicate
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -357,30 +328,6 @@ pub(crate) enum RealPredicate {
     RealULE = 13,
     RealUNE = 14,
     RealPredicateTrue = 15,
-}
-
-impl RealPredicate {
-    pub(crate) fn from_generic(realp: rustc_codegen_ssa::common::RealPredicate) -> Self {
-        use rustc_codegen_ssa::common::RealPredicate as Common;
-        match realp {
-            Common::RealPredicateFalse => Self::RealPredicateFalse,
-            Common::RealOEQ => Self::RealOEQ,
-            Common::RealOGT => Self::RealOGT,
-            Common::RealOGE => Self::RealOGE,
-            Common::RealOLT => Self::RealOLT,
-            Common::RealOLE => Self::RealOLE,
-            Common::RealONE => Self::RealONE,
-            Common::RealORD => Self::RealORD,
-            Common::RealUNO => Self::RealUNO,
-            Common::RealUEQ => Self::RealUEQ,
-            Common::RealUGT => Self::RealUGT,
-            Common::RealUGE => Self::RealUGE,
-            Common::RealULT => Self::RealULT,
-            Common::RealULE => Self::RealULE,
-            Common::RealUNE => Self::RealUNE,
-            Common::RealPredicateTrue => Self::RealPredicateTrue,
-        }
-    }
 }
 
 /// Must match the layout of `LLVMTypeKind`.
@@ -458,25 +405,6 @@ pub(crate) enum AtomicRmwBinOp {
     AtomicUMin = 10,
 }
 
-impl AtomicRmwBinOp {
-    pub(crate) fn from_generic(op: rustc_codegen_ssa::common::AtomicRmwBinOp) -> Self {
-        use rustc_codegen_ssa::common::AtomicRmwBinOp as Common;
-        match op {
-            Common::AtomicXchg => Self::AtomicXchg,
-            Common::AtomicAdd => Self::AtomicAdd,
-            Common::AtomicSub => Self::AtomicSub,
-            Common::AtomicAnd => Self::AtomicAnd,
-            Common::AtomicNand => Self::AtomicNand,
-            Common::AtomicOr => Self::AtomicOr,
-            Common::AtomicXor => Self::AtomicXor,
-            Common::AtomicMax => Self::AtomicMax,
-            Common::AtomicMin => Self::AtomicMin,
-            Common::AtomicUMax => Self::AtomicUMax,
-            Common::AtomicUMin => Self::AtomicUMin,
-        }
-    }
-}
-
 /// LLVMAtomicOrdering
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -491,19 +419,6 @@ pub(crate) enum AtomicOrdering {
     Release = 5,
     AcquireRelease = 6,
     SequentiallyConsistent = 7,
-}
-
-impl AtomicOrdering {
-    pub(crate) fn from_generic(ao: rustc_middle::ty::AtomicOrdering) -> Self {
-        use rustc_middle::ty::AtomicOrdering as Common;
-        match ao {
-            Common::Relaxed => Self::Monotonic,
-            Common::Acquire => Self::Acquire,
-            Common::Release => Self::Release,
-            Common::AcqRel => Self::AcquireRelease,
-            Common::SeqCst => Self::SequentiallyConsistent,
-        }
-    }
 }
 
 /// LLVMRustFileType
@@ -940,28 +855,6 @@ pub(crate) mod debuginfo {
         DebugDirectivesOnly,
     }
 
-    impl DebugEmissionKind {
-        pub(crate) fn from_generic(kind: rustc_session::config::DebugInfo) -> Self {
-            // We should be setting LLVM's emission kind to `LineTablesOnly` if
-            // we are compiling with "limited" debuginfo. However, some of the
-            // existing tools relied on slightly more debuginfo being generated than
-            // would be the case with `LineTablesOnly`, and we did not want to break
-            // these tools in a "drive-by fix", without a good idea or plan about
-            // what limited debuginfo should exactly look like. So for now we are
-            // instead adding a new debuginfo option "line-tables-only" so as to
-            // not break anything and to allow users to have 'limited' debug info.
-            //
-            // See https://github.com/rust-lang/rust/issues/60020 for details.
-            use rustc_session::config::DebugInfo;
-            match kind {
-                DebugInfo::None => DebugEmissionKind::NoDebug,
-                DebugInfo::LineDirectivesOnly => DebugEmissionKind::DebugDirectivesOnly,
-                DebugInfo::LineTablesOnly => DebugEmissionKind::LineTablesOnly,
-                DebugInfo::Limited | DebugInfo::Full => DebugEmissionKind::FullDebug,
-            }
-        }
-    }
-
     /// LLVMRustDebugNameTableKind
     #[derive(Clone, Copy)]
     #[repr(C)]
@@ -1061,7 +954,7 @@ unsafe extern "C" {
     pub(crate) fn LLVMInt16TypeInContext(C: &Context) -> &Type;
     pub(crate) fn LLVMInt32TypeInContext(C: &Context) -> &Type;
     pub(crate) fn LLVMInt64TypeInContext(C: &Context) -> &Type;
-    pub(crate) fn LLVMIntTypeInContext(C: &Context, NumBits: c_uint) -> &Type;
+    pub(crate) safe fn LLVMIntTypeInContext(C: &Context, NumBits: c_uint) -> &Type;
 
     pub(crate) fn LLVMGetIntTypeWidth(IntegerTy: &Type) -> c_uint;
 
@@ -1090,7 +983,7 @@ unsafe extern "C" {
     ) -> &'a Type;
 
     // Operations on array, pointer, and vector types (sequence types)
-    pub(crate) fn LLVMPointerTypeInContext(C: &Context, AddressSpace: c_uint) -> &Type;
+    pub(crate) safe fn LLVMPointerTypeInContext(C: &Context, AddressSpace: c_uint) -> &Type;
     pub(crate) fn LLVMVectorType(ElementType: &Type, ElementCount: c_uint) -> &Type;
 
     pub(crate) fn LLVMGetElementType(Ty: &Type) -> &Type;
