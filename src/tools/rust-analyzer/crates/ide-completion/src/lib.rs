@@ -1,5 +1,10 @@
 //! `completions` crate provides utilities for generating completions of user input.
 
+#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_driver as _;
+
 mod completions;
 mod config;
 mod context;
