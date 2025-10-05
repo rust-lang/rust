@@ -11,8 +11,16 @@ use core::ptr;
 mod windows_sys;
 pub use windows_sys::*;
 
-pub type WCHAR = u16;
+use crate::os::raw::c_char;
 
+pub type WCHAR = u16;
+pub const AF_UNIX: ADDRESS_FAMILY = 1;
+#[derive(Clone, Copy)]
+#[repr(C)]
+pub struct sockaddr_un {
+    pub sun_family: ADDRESS_FAMILY,
+    pub sun_path: [c_char; 108],
+}
 pub const INVALID_HANDLE_VALUE: HANDLE = ::core::ptr::without_provenance_mut(-1i32 as _);
 
 // https://learn.microsoft.com/en-us/cpp/c-runtime-library/exit-success-exit-failure?view=msvc-170
