@@ -501,56 +501,23 @@ macro_rules! define_feedable {
             $(#[$attr])*
             #[inline(always)]
             pub fn $name(self, value: queries::$name::ProvidedValue<'tcx>) {
-                #![allow(unused_imports)] // Removed later in this PR.
-                use rustc_data_structures::fingerprint::Fingerprint;
-                use rustc_query_system::query::{QueryCache, try_get_cached};
-
                 let key = self.key().into_query_param();
 
                 let tcx = self.tcx;
                 let erased = queries::$name::provided_to_erased(tcx, value);
-                let value = erase::restore::<$V>(erased);
                 let cache = &tcx.query_system.caches.$name;
 
                 let dep_kind: dep_graph::DepKind = dep_graph::dep_kinds::$name;
                 let hasher: Option<fn(&mut StableHashingContext<'_>, &_) -> _> = hash_result!([$($modifiers)*]);
-                match try_get_cached(tcx, cache, &key) {
-                    Some(old) => {
-                        let old = erase::restore::<$V>(old);
-                        if let Some(hasher) = hasher {
-                            let (value_hash, old_hash): (Fingerprint, Fingerprint) = tcx.with_stable_hashing_context(|mut hcx|
-                                (hasher(&mut hcx, &value), hasher(&mut hcx, &old))
-                            );
-                            if old_hash != value_hash {
-                                // We have an inconsistency. This can happen if one of the two
-                                // results is tainted by errors. In this case, delay a bug to
-                                // ensure compilation is doomed, and keep the `old` value.
-                                tcx.dcx().delayed_bug(format!(
-                                    "Trying to feed an already recorded value for query {dep_kind:?} key={key:?}:\n\
-                                    old value: {old:?}\nnew value: {value:?}",
-                                ));
-                            }
-                        } else {
-                            // The query is `no_hash`, so we have no way to perform a sanity check.
-                            // If feeding the same value multiple times needs to be supported,
-                            // the query should not be marked `no_hash`.
-                            bug!(
-                                "Trying to feed an already recorded value for query {dep_kind:?} key={key:?}:\n\
-                                old value: {old:?}\nnew value: {value:?}",
-                            )
-                        }
-                    }
-                    None => {
-                        let dep_node = dep_graph::DepNode::construct(tcx, dep_kind, &key);
-                        let dep_node_index = tcx.dep_graph.with_feed_task(
-                            dep_node,
-                            tcx,
-                            &value,
-                            hasher,
-                        );
-                        cache.complete(key, erased, dep_node_index);
-                    }
-                }
+
+                $crate::query::inner::query_feed(
+                    tcx,
+                    dep_kind,
+                    hasher,
+                    cache,
+                    key,
+                    erased,
+                );
             }
         })*
     }
