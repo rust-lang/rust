@@ -1,7 +1,9 @@
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_hir_and_then;
-use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::msrvs::Msrv;
+use clippy_utils::ty::get_type_diagnostic_name;
 use clippy_utils::usage::is_potentially_local_place;
-use clippy_utils::{higher, path_to_local, sym};
+use clippy_utils::{can_use_if_let_chains, higher, path_to_local, sym};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{FnKind, Visitor, walk_expr, walk_fn};
 use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, HirId, Node, UnOp};
@@ -10,7 +12,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_session::declare_lint_pass;
+use rustc_session::impl_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, Symbol};
 
@@ -72,10 +74,21 @@ declare_clippy_lint! {
     "checks for calls of `unwrap[_err]()` that will always fail"
 }
 
+pub(crate) struct Unwrap {
+    msrv: Msrv,
+}
+
+impl Unwrap {
+    pub fn new(conf: &'static Conf) -> Self {
+        Self { msrv: conf.msrv }
+    }
+}
+
 /// Visitor that keeps track of which variables are unwrappable.
 struct UnwrappableVariablesVisitor<'a, 'tcx> {
     unwrappables: Vec<UnwrapInfo<'tcx>>,
     cx: &'a LateContext<'tcx>,
+    msrv: Msrv,
 }
 
 /// What kind of unwrappable this is.
@@ -133,12 +146,14 @@ fn collect_unwrap_info<'tcx>(
     invert: bool,
     is_entire_condition: bool,
 ) -> Vec<UnwrapInfo<'tcx>> {
-    fn is_relevant_option_call(cx: &LateContext<'_>, ty: Ty<'_>, method_name: Symbol) -> bool {
-        is_type_diagnostic_item(cx, ty, sym::Option) && matches!(method_name, sym::is_none | sym::is_some)
-    }
-
-    fn is_relevant_result_call(cx: &LateContext<'_>, ty: Ty<'_>, method_name: Symbol) -> bool {
-        is_type_diagnostic_item(cx, ty, sym::Result) && matches!(method_name, sym::is_err | sym::is_ok)
+    fn option_or_result_call(cx: &LateContext<'_>, ty: Ty<'_>, method_name: Symbol) -> Option<(UnwrappableKind, bool)> {
+        match (get_type_diagnostic_name(cx, ty)?, method_name) {
+            (sym::Option, sym::is_some) => Some((UnwrappableKind::Option, true)),
+            (sym::Option, sym::is_none) => Some((UnwrappableKind::Option, false)),
+            (sym::Result, sym::is_ok) => Some((UnwrappableKind::Result, true)),
+            (sym::Result, sym::is_err) => Some((UnwrappableKind::Result, false)),
+            _ => None,
+        }
     }
 
     match expr.kind {
@@ -157,15 +172,9 @@ fn collect_unwrap_info<'tcx>(
             if let Some(local_id) = path_to_local(receiver)
                 && let ty = cx.typeck_results().expr_ty(receiver)
                 && let name = method_name.ident.name
-                && (is_relevant_option_call(cx, ty, name) || is_relevant_result_call(cx, ty, name)) =>
+                && let Some((kind, unwrappable)) = option_or_result_call(cx, ty, name) =>
         {
-            let unwrappable = matches!(name, sym::is_some | sym::is_ok);
             let safe_to_unwrap = unwrappable != invert;
-            let kind = if is_type_diagnostic_item(cx, ty, sym::Option) {
-                UnwrappableKind::Option
-            } else {
-                UnwrappableKind::Result
-            };
 
             vec![UnwrapInfo {
                 local_id,
@@ -357,7 +366,11 @@ impl<'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'_, 'tcx> {
                                 );
                             } else {
                                 diag.span_label(unwrappable.check.span, "the check is happening here");
-                                diag.help("try using `if let` or `match`");
+                                if can_use_if_let_chains(self.cx, self.msrv) {
+                                    diag.help("try using `if let` or `match`");
+                                } else {
+                                    diag.help("try using `match`");
+                                }
                             }
                         },
                     );
@@ -383,7 +396,7 @@ impl<'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'_, 'tcx> {
     }
 }
 
-declare_lint_pass!(Unwrap => [PANICKING_UNWRAP, UNNECESSARY_UNWRAP]);
+impl_lint_pass!(Unwrap => [PANICKING_UNWRAP, UNNECESSARY_UNWRAP]);
 
 impl<'tcx> LateLintPass<'tcx> for Unwrap {
     fn check_fn(
@@ -402,6 +415,7 @@ impl<'tcx> LateLintPass<'tcx> for Unwrap {
         let mut v = UnwrappableVariablesVisitor {
             unwrappables: Vec::new(),
             cx,
+            msrv: self.msrv,
         };
 
         walk_fn(&mut v, kind, decl, body.id(), fn_id);

@@ -17,7 +17,7 @@ Current stable, released 2025-09-18
 Note: This Clippy release does not introduce many new lints and is focused entirely on bug fixes — see
 [#15086](https://github.com/rust-lang/rust-clippy/issues/15086) for more details.
 
-## New Lints
+### New Lints
 
 * Added [`manual_is_multiple_of`] to `complexity` [#14292](https://github.com/rust-lang/rust-clippy/pull/14292)
 * Added [`doc_broken_link`] to `pedantic` [#13696](https://github.com/rust-lang/rust-clippy/pull/13696)
@@ -6598,6 +6598,7 @@ Released 2018-09-13
 [`self_assignment`]: https://rust-lang.github.io/rust-clippy/master/index.html#self_assignment
 [`self_named_constructors`]: https://rust-lang.github.io/rust-clippy/master/index.html#self_named_constructors
 [`self_named_module_files`]: https://rust-lang.github.io/rust-clippy/master/index.html#self_named_module_files
+[`self_only_used_in_recursion`]: https://rust-lang.github.io/rust-clippy/master/index.html#self_only_used_in_recursion
 [`semicolon_if_nothing_returned`]: https://rust-lang.github.io/rust-clippy/master/index.html#semicolon_if_nothing_returned
 [`semicolon_inside_block`]: https://rust-lang.github.io/rust-clippy/master/index.html#semicolon_inside_block
 [`semicolon_outside_block`]: https://rust-lang.github.io/rust-clippy/master/index.html#semicolon_outside_block
@@ -6703,6 +6704,7 @@ Released 2018-09-13
 [`type_repetition_in_bounds`]: https://rust-lang.github.io/rust-clippy/master/index.html#type_repetition_in_bounds
 [`unbuffered_bytes`]: https://rust-lang.github.io/rust-clippy/master/index.html#unbuffered_bytes
 [`unchecked_duration_subtraction`]: https://rust-lang.github.io/rust-clippy/master/index.html#unchecked_duration_subtraction
+[`unchecked_time_subtraction`]: https://rust-lang.github.io/rust-clippy/master/index.html#unchecked_time_subtraction
 [`unconditional_recursion`]: https://rust-lang.github.io/rust-clippy/master/index.html#unconditional_recursion
 [`undocumented_unsafe_blocks`]: https://rust-lang.github.io/rust-clippy/master/index.html#undocumented_unsafe_blocks
 [`undropped_manually_drops`]: https://rust-lang.github.io/rust-clippy/master/index.html#undropped_manually_drops

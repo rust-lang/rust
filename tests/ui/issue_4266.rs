@@ -1,5 +1,4 @@
 #![allow(dead_code)]
-#![allow(clippy::uninlined_format_args)]
 
 async fn sink1<'a>(_: &'a str) {} // lint
 //~^ needless_lifetimes
@@ -39,7 +38,7 @@ impl Foo {
 // rust-lang/rust#61115
 // ok
 async fn print(s: &str) {
-    println!("{}", s);
+    println!("{s}");
 }
 
 fn main() {}

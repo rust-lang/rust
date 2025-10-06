@@ -1,5 +1,5 @@
-use clippy_utils::diagnostics::span_lint_and_then;
-use rustc_hir as hir;
+use clippy_utils::diagnostics::span_lint_hir_and_then;
+use rustc_hir::{self as hir, HirId};
 use rustc_lint::LateContext;
 use rustc_middle::ty::Ty;
 use rustc_span::{Span, sym};
@@ -12,6 +12,7 @@ pub(super) fn check<'tcx>(
     span: Span,
     trait_ref: &hir::TraitRef<'_>,
     ty: Ty<'tcx>,
+    adt_hir_id: HirId,
     ord_is_automatically_derived: bool,
 ) {
     if let Some(ord_trait_def_id) = cx.tcx.get_diagnostic_item(sym::Ord)
@@ -38,7 +39,7 @@ pub(super) fn check<'tcx>(
                     "you are deriving `Ord` but have implemented `PartialOrd` explicitly"
                 };
 
-                span_lint_and_then(cx, DERIVE_ORD_XOR_PARTIAL_ORD, span, mess, |diag| {
+                span_lint_hir_and_then(cx, DERIVE_ORD_XOR_PARTIAL_ORD, adt_hir_id, span, mess, |diag| {
                     if let Some(local_def_id) = impl_id.as_local() {
                         let hir_id = cx.tcx.local_def_id_to_hir_id(local_def_id);
                         diag.span_note(cx.tcx.hir_span(hir_id), "`PartialOrd` implemented here");

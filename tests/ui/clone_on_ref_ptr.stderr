@@ -1,0 +1,41 @@
+error: using `.clone()` on a ref-counted pointer
+  --> tests/ui/clone_on_ref_ptr.rs:9:5
+   |
+LL |     rc.clone();
+   |     ^^^^^^^^^^ help: try: `std::rc::Rc::<str>::clone(&rc)`
+   |
+   = note: `-D clippy::clone-on-ref-ptr` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::clone_on_ref_ptr)]`
+
+error: using `.clone()` on a ref-counted pointer
+  --> tests/ui/clone_on_ref_ptr.rs:11:5
+   |
+LL |     rc_weak.clone();
+   |     ^^^^^^^^^^^^^^^ help: try: `std::rc::Weak::<str>::clone(&rc_weak)`
+
+error: using `.clone()` on a ref-counted pointer
+  --> tests/ui/clone_on_ref_ptr.rs:13:5
+   |
+LL |     arc.clone();
+   |     ^^^^^^^^^^^ help: try: `std::sync::Arc::<str>::clone(&arc)`
+
+error: using `.clone()` on a ref-counted pointer
+  --> tests/ui/clone_on_ref_ptr.rs:15:5
+   |
+LL |     arc_weak.clone();
+   |     ^^^^^^^^^^^^^^^^ help: try: `std::sync::Weak::<str>::clone(&arc_weak)`
+
+error: using `.clone()` on a ref-counted pointer
+  --> tests/ui/clone_on_ref_ptr.rs:30:33
+   |
+LL |     let _: Arc<dyn SomeTrait> = x.clone();
+   |                                 ^^^^^^^^^ help: try: `std::sync::Arc::<SomeImpl>::clone(&x)`
+
+error: using `.clone()` on a ref-counted pointer
+  --> tests/ui/clone_on_ref_ptr.rs:48:14
+   |
+LL |         Some(try_opt!(Some(rc)).clone())
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::rc::Rc::<u8>::clone(&try_opt!(Some(rc)))`
+
+error: aborting due to 6 previous errors
+

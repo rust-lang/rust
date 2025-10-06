@@ -11,6 +11,7 @@ use rustc_hir::{BinOpKind, Expr, ExprKind, PathSegment, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
+use rustc_span::SyntaxContext;
 use rustc_span::source_map::Spanned;
 use std::f32::consts as f32_consts;
 use std::f64::consts as f64_consts;
@@ -110,8 +111,8 @@ declare_lint_pass!(FloatingPointArithmetic => [
 
 // Returns the specialized log method for a given base if base is constant
 // and is one of 2, 10 and e
-fn get_specialized_log_method(cx: &LateContext<'_>, base: &Expr<'_>) -> Option<&'static str> {
-    if let Some(value) = ConstEvalCtxt::new(cx).eval(base) {
+fn get_specialized_log_method(cx: &LateContext<'_>, base: &Expr<'_>, ctxt: SyntaxContext) -> Option<&'static str> {
+    if let Some(value) = ConstEvalCtxt::new(cx).eval_local(base, ctxt) {
         if F32(2.0) == value || F64(2.0) == value {
             return Some("log2");
         } else if F32(10.0) == value || F64(10.0) == value {
@@ -157,7 +158,7 @@ fn prepare_receiver_sugg<'a>(cx: &LateContext<'_>, mut expr: &'a Expr<'a>) -> Su
 }
 
 fn check_log_base(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>, args: &[Expr<'_>]) {
-    if let Some(method) = get_specialized_log_method(cx, &args[0]) {
+    if let Some(method) = get_specialized_log_method(cx, &args[0], expr.span.ctxt()) {
         span_lint_and_sugg(
             cx,
             SUBOPTIMAL_FLOPS,
@@ -205,7 +206,7 @@ fn check_ln1p(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>) {
 // ranges [-16777215, 16777216) for type f32 as whole number floats outside
 // this range are lossy and ambiguous.
 #[expect(clippy::cast_possible_truncation)]
-fn get_integer_from_float_constant(value: &Constant<'_>) -> Option<i32> {
+fn get_integer_from_float_constant(value: &Constant) -> Option<i32> {
     match value {
         F32(num) if num.fract() == 0.0 => {
             if (-16_777_215.0..16_777_216.0).contains(num) {
@@ -517,8 +518,8 @@ fn check_mul_add(cx: &LateContext<'_>, expr: &Expr<'_>) {
 fn is_testing_positive(cx: &LateContext<'_>, expr: &Expr<'_>, test: &Expr<'_>) -> bool {
     if let ExprKind::Binary(Spanned { node: op, .. }, left, right) = expr.kind {
         match op {
-            BinOpKind::Gt | BinOpKind::Ge => is_zero(cx, right) && eq_expr_value(cx, left, test),
-            BinOpKind::Lt | BinOpKind::Le => is_zero(cx, left) && eq_expr_value(cx, right, test),
+            BinOpKind::Gt | BinOpKind::Ge => is_zero(cx, right, expr.span.ctxt()) && eq_expr_value(cx, left, test),
+            BinOpKind::Lt | BinOpKind::Le => is_zero(cx, left, expr.span.ctxt()) && eq_expr_value(cx, right, test),
             _ => false,
         }
     } else {
@@ -530,8 +531,8 @@ fn is_testing_positive(cx: &LateContext<'_>, expr: &Expr<'_>, test: &Expr<'_>) -
 fn is_testing_negative(cx: &LateContext<'_>, expr: &Expr<'_>, test: &Expr<'_>) -> bool {
     if let ExprKind::Binary(Spanned { node: op, .. }, left, right) = expr.kind {
         match op {
-            BinOpKind::Gt | BinOpKind::Ge => is_zero(cx, left) && eq_expr_value(cx, right, test),
-            BinOpKind::Lt | BinOpKind::Le => is_zero(cx, right) && eq_expr_value(cx, left, test),
+            BinOpKind::Gt | BinOpKind::Ge => is_zero(cx, left, expr.span.ctxt()) && eq_expr_value(cx, right, test),
+            BinOpKind::Lt | BinOpKind::Le => is_zero(cx, right, expr.span.ctxt()) && eq_expr_value(cx, left, test),
             _ => false,
         }
     } else {
@@ -540,8 +541,8 @@ fn is_testing_negative(cx: &LateContext<'_>, expr: &Expr<'_>, test: &Expr<'_>) -
 }
 
 /// Returns true iff expr is some zero literal
-fn is_zero(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    match ConstEvalCtxt::new(cx).eval_simple(expr) {
+fn is_zero(cx: &LateContext<'_>, expr: &Expr<'_>, ctxt: SyntaxContext) -> bool {
+    match ConstEvalCtxt::new(cx).eval_local(expr, ctxt) {
         Some(Int(i)) => i == 0,
         Some(F32(f)) => f == 0.0,
         Some(F64(f)) => f == 0.0,

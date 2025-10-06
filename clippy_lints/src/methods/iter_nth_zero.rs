@@ -14,7 +14,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr
     if let OwnerNode::Item(item) = cx.tcx.hir_owner_node(cx.tcx.hir_get_parent_item(expr.hir_id))
         && let def_id = item.owner_id.to_def_id()
         && is_trait_method(cx, expr, sym::Iterator)
-        && let Some(Constant::Int(0)) = ConstEvalCtxt::new(cx).eval(arg)
+        && let Some(Constant::Int(0)) = ConstEvalCtxt::new(cx).eval_local(arg, expr.span.ctxt())
         && !is_lang_item_or_ctor(cx, def_id, LangItem::IteratorNext)
     {
         let mut app = Applicability::MachineApplicable;

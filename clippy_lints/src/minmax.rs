@@ -4,6 +4,7 @@ use clippy_utils::{is_trait_method, sym};
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
+use rustc_span::SyntaxContext;
 use std::cmp::Ordering::{Equal, Greater, Less};
 
 declare_clippy_lint! {
@@ -60,7 +61,7 @@ enum MinMax {
     Max,
 }
 
-fn min_max<'a, 'tcx>(cx: &LateContext<'tcx>, expr: &'a Expr<'a>) -> Option<(MinMax, Constant<'tcx>, &'a Expr<'a>)> {
+fn min_max<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<(MinMax, Constant, &'a Expr<'a>)> {
     match expr.kind {
         ExprKind::Call(path, args) => {
             if let ExprKind::Path(ref qpath) = path.kind {
@@ -68,8 +69,8 @@ fn min_max<'a, 'tcx>(cx: &LateContext<'tcx>, expr: &'a Expr<'a>) -> Option<(MinM
                     .qpath_res(qpath, path.hir_id)
                     .opt_def_id()
                     .and_then(|def_id| match cx.tcx.get_diagnostic_name(def_id) {
-                        Some(sym::cmp_min) => fetch_const(cx, None, args, MinMax::Min),
-                        Some(sym::cmp_max) => fetch_const(cx, None, args, MinMax::Max),
+                        Some(sym::cmp_min) => fetch_const(cx, expr.span.ctxt(), None, args, MinMax::Min),
+                        Some(sym::cmp_max) => fetch_const(cx, expr.span.ctxt(), None, args, MinMax::Max),
                         _ => None,
                     })
             } else {
@@ -79,8 +80,8 @@ fn min_max<'a, 'tcx>(cx: &LateContext<'tcx>, expr: &'a Expr<'a>) -> Option<(MinM
         ExprKind::MethodCall(path, receiver, args @ [_], _) => {
             if cx.typeck_results().expr_ty(receiver).is_floating_point() || is_trait_method(cx, expr, sym::Ord) {
                 match path.ident.name {
-                    sym::max => fetch_const(cx, Some(receiver), args, MinMax::Max),
-                    sym::min => fetch_const(cx, Some(receiver), args, MinMax::Min),
+                    sym::max => fetch_const(cx, expr.span.ctxt(), Some(receiver), args, MinMax::Max),
+                    sym::min => fetch_const(cx, expr.span.ctxt(), Some(receiver), args, MinMax::Min),
                     _ => None,
                 }
             } else {
@@ -91,12 +92,13 @@ fn min_max<'a, 'tcx>(cx: &LateContext<'tcx>, expr: &'a Expr<'a>) -> Option<(MinM
     }
 }
 
-fn fetch_const<'a, 'tcx>(
-    cx: &LateContext<'tcx>,
+fn fetch_const<'a>(
+    cx: &LateContext<'_>,
+    ctxt: SyntaxContext,
     receiver: Option<&'a Expr<'a>>,
     args: &'a [Expr<'a>],
     m: MinMax,
-) -> Option<(MinMax, Constant<'tcx>, &'a Expr<'a>)> {
+) -> Option<(MinMax, Constant, &'a Expr<'a>)> {
     let mut args = receiver.into_iter().chain(args);
     let first_arg = args.next()?;
     let second_arg = args.next()?;
@@ -104,7 +106,7 @@ fn fetch_const<'a, 'tcx>(
         return None;
     }
     let ecx = ConstEvalCtxt::new(cx);
-    match (ecx.eval_simple(first_arg), ecx.eval_simple(second_arg)) {
+    match (ecx.eval_local(first_arg, ctxt), ecx.eval_local(second_arg, ctxt)) {
         (Some(c), None) => Some((m, c, second_arg)),
         (None, Some(c)) => Some((m, c, first_arg)),
         // otherwise ignore
