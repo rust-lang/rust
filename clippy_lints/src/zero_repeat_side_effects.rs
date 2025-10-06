@@ -95,6 +95,8 @@ fn inner_check(cx: &LateContext<'_>, expr: &'_ rustc_hir::Expr<'_>, inner_expr: 
                     var_name = snippet(cx, l.span.source_callsite(), "..")
                 ),
             ),
+            // NOTE: don't use the stmt span to avoid touching the trailing semicolon
+            Node::Stmt(_) => (expr.span, format!("{inner_expr};\n{indent}{vec}[] as {return_type}")),
             _ => (
                 expr.span,
                 format!(
