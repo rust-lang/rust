@@ -11,7 +11,7 @@ use rustc_data_structures::outline;
 use rustc_data_structures::profiling::QueryInvocationId;
 use rustc_data_structures::sharded::{self, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::{AtomicU64, Lock, is_dyn_thread_safe};
+use rustc_data_structures::sync::{AtomicU64, Lock};
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::DiagInner;
 use rustc_index::IndexVec;
@@ -1308,11 +1308,11 @@ impl Default for TaskDeps {
         }
     }
 }
+
 // A data structure that stores Option<DepNodeColor> values as a contiguous
 // array, using one u32 per entry.
 pub(super) struct DepNodeColorMap {
     values: IndexVec<SerializedDepNodeIndex, AtomicU32>,
-    sync: bool,
 }
 
 // All values below `COMPRESSED_RED` are green.
@@ -1322,10 +1322,7 @@ const COMPRESSED_UNKNOWN: u32 = u32::MAX;
 impl DepNodeColorMap {
     fn new(size: usize) -> DepNodeColorMap {
         debug_assert!(COMPRESSED_RED > DepNodeIndex::MAX_AS_U32);
-        DepNodeColorMap {
-            values: (0..size).map(|_| AtomicU32::new(COMPRESSED_UNKNOWN)).collect(),
-            sync: is_dyn_thread_safe(),
-        }
+        DepNodeColorMap { values: (0..size).map(|_| AtomicU32::new(COMPRESSED_UNKNOWN)).collect() }
     }
 
     #[inline]
@@ -1344,24 +1341,14 @@ impl DepNodeColorMap {
         index: DepNodeIndex,
     ) -> Result<(), DepNodeIndex> {
         let value = &self.values[prev_index];
-        if self.sync {
-            match value.compare_exchange(
-                COMPRESSED_UNKNOWN,
-                index.as_u32(),
-                Ordering::Relaxed,
-                Ordering::Relaxed,
-            ) {
-                Ok(_) => Ok(()),
-                Err(v) => Err(DepNodeIndex::from_u32(v)),
-            }
-        } else {
-            let v = value.load(Ordering::Relaxed);
-            if v == COMPRESSED_UNKNOWN {
-                value.store(index.as_u32(), Ordering::Relaxed);
-                Ok(())
-            } else {
-                Err(DepNodeIndex::from_u32(v))
-            }
+        match value.compare_exchange(
+            COMPRESSED_UNKNOWN,
+            index.as_u32(),
+            Ordering::Relaxed,
+            Ordering::Relaxed,
+        ) {
+            Ok(_) => Ok(()),
+            Err(v) => Err(DepNodeIndex::from_u32(v)),
         }
     }
 
