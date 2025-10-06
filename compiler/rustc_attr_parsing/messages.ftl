@@ -1,5 +1,5 @@
 attr_parsing_as_needed_compatibility =
-    linking modifier `as-needed` is only compatible with `dylib` and `framework` linking kinds
+    linking modifier `as-needed` is only compatible with `dylib`, `framework` and `raw-dylib` linking kinds
 
 attr_parsing_bundle_needs_static =
     linking modifier `bundle` is only compatible with `static` linking kind
