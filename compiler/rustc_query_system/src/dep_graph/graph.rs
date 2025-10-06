@@ -68,9 +68,9 @@ pub struct MarkFrame<'a> {
 
 #[derive(Debug)]
 pub(super) enum DepNodeColor {
-    Unknown,
-    Red,
     Green(DepNodeIndex),
+    Red,
+    Unknown,
 }
 
 pub(crate) struct DepGraphData<D: Deps> {
@@ -1315,8 +1315,9 @@ pub(super) struct DepNodeColorMap {
     sync: bool,
 }
 
-const COMPRESSED_UNKNOWN: u32 = u32::MAX;
+// All values below `COMPRESSED_RED` are green.
 const COMPRESSED_RED: u32 = u32::MAX - 1;
+const COMPRESSED_UNKNOWN: u32 = u32::MAX;
 
 impl DepNodeColorMap {
     fn new(size: usize) -> DepNodeColorMap {
@@ -1366,10 +1367,16 @@ impl DepNodeColorMap {
 
     #[inline]
     pub(super) fn get(&self, index: SerializedDepNodeIndex) -> DepNodeColor {
-        match self.values[index].load(Ordering::Acquire) {
-            COMPRESSED_UNKNOWN => DepNodeColor::Unknown,
-            COMPRESSED_RED => DepNodeColor::Red,
-            value => DepNodeColor::Green(DepNodeIndex::from_u32(value)),
+        let value = self.values[index].load(Ordering::Acquire);
+        // Green is by far the most common case. Check for that first so we can succeed with a
+        // single comparison.
+        if value < COMPRESSED_RED {
+            DepNodeColor::Green(DepNodeIndex::from_u32(value))
+        } else if value == COMPRESSED_RED {
+            DepNodeColor::Red
+        } else {
+            debug_assert_eq!(value, COMPRESSED_UNKNOWN);
+            DepNodeColor::Unknown
         }
     }
 
