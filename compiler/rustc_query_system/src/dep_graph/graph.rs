@@ -873,7 +873,7 @@ impl<D: Deps> DepGraphData<D> {
         &self,
         qcx: Qcx,
         parent_dep_node_index: SerializedDepNodeIndex,
-        frame: Option<&MarkFrame<'_>>,
+        frame: &MarkFrame<'_>,
     ) -> Option<()> {
         let get_dep_dep_node = || self.previous.index_to_node(parent_dep_node_index);
 
@@ -911,7 +911,7 @@ impl<D: Deps> DepGraphData<D> {
             );
 
             let node_index =
-                self.try_mark_previous_green(qcx, parent_dep_node_index, dep_dep_node, frame);
+                self.try_mark_previous_green(qcx, parent_dep_node_index, dep_dep_node, Some(frame));
 
             if node_index.is_some() {
                 debug!("managed to MARK dependency {dep_dep_node:?} as green");
@@ -976,7 +976,7 @@ impl<D: Deps> DepGraphData<D> {
         let prev_deps = self.previous.edge_targets_from(prev_dep_node_index);
 
         for dep_dep_node_index in prev_deps {
-            self.try_mark_parent_green(qcx, dep_dep_node_index, Some(&frame))?;
+            self.try_mark_parent_green(qcx, dep_dep_node_index, &frame)?;
         }
 
         // If we got here without hitting a `return` that means that all
@@ -1397,14 +1397,14 @@ impl DepNodeColorMap {
 
 #[inline(never)]
 #[cold]
-pub(crate) fn print_markframe_trace<D: Deps>(graph: &DepGraph<D>, frame: Option<&MarkFrame<'_>>) {
+pub(crate) fn print_markframe_trace<D: Deps>(graph: &DepGraph<D>, frame: &MarkFrame<'_>) {
     let data = graph.data.as_ref().unwrap();
 
     eprintln!("there was a panic while trying to force a dep node");
     eprintln!("try_mark_green dep node stack:");
 
     let mut i = 0;
-    let mut current = frame;
+    let mut current = Some(frame);
     while let Some(frame) = current {
         let node = data.previous.index_to_node(frame.index);
         eprintln!("#{i} {node:?}");
