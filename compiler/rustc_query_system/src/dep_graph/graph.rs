@@ -148,10 +148,9 @@ impl<D: Deps> DepGraph<D> {
         );
         assert_eq!(red_node_index, DepNodeIndex::FOREVER_RED_NODE);
         if prev_graph_node_count > 0 {
-            colors.insert(
-                SerializedDepNodeIndex::from_u32(DepNodeIndex::FOREVER_RED_NODE.as_u32()),
-                DepNodeColor::Red,
-            );
+            colors.insert_red(SerializedDepNodeIndex::from_u32(
+                DepNodeIndex::FOREVER_RED_NODE.as_u32(),
+            ));
         }
 
         DepGraph {
@@ -1384,14 +1383,8 @@ impl DepNodeColorMap {
     }
 
     #[inline]
-    pub(super) fn insert(&self, index: SerializedDepNodeIndex, color: DepNodeColor) {
-        self.values[index].store(
-            match color {
-                DepNodeColor::Red => COMPRESSED_RED,
-                DepNodeColor::Green(index) => index.as_u32(),
-            },
-            Ordering::Release,
-        )
+    pub(super) fn insert_red(&self, index: SerializedDepNodeIndex) {
+        self.values[index].store(COMPRESSED_RED, Ordering::Release)
     }
 }
 
