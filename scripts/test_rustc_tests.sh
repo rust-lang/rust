@@ -141,6 +141,7 @@ rm -r tests/run-make/incr-add-rust-src-component
 rm tests/ui/errors/remap-path-prefix-sysroot.rs # different sysroot source path
 rm -r tests/run-make/export/extern-opt # something about rustc version mismatches
 rm -r tests/run-make/export # same
+rm -r tests/ui/compiletest-self-test/compile-flags-incremental.rs # needs compiletest compiled with panic=unwind
 
 # genuine bugs
 # ============
