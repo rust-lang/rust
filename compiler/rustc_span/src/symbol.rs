@@ -2464,9 +2464,10 @@ pub const STDLIB_STABLE_CRATES: &[Symbol] = &[sym::std, sym::core, sym::alloc, s
 
 #[derive(Copy, Clone, Eq, HashStable_Generic, Encodable, Decodable)]
 pub struct Ident {
-    // `name` should never be the empty symbol. If you are considering that,
-    // you are probably conflating "empty identifier with "no identifier" and
-    // you should use `Option<Ident>` instead.
+    /// `name` should never be the empty symbol. If you are considering that,
+    /// you are probably conflating "empty identifier with "no identifier" and
+    /// you should use `Option<Ident>` instead.
+    /// Trying to construct an `Ident` with an empty name will trigger debug assertions.
     pub name: Symbol,
     pub span: Span,
 }
@@ -2509,6 +2510,8 @@ impl Ident {
         Ident::new(self.name, span.with_ctxt(self.span.ctxt()))
     }
 
+    /// Creates a new ident with the same span and name with leading quote removed, if any.
+    /// If called on an empty ident, or with name just a single quote, returns an empty ident which is invalid.
     pub fn without_first_quote(self) -> Ident {
         Ident::new(Symbol::intern(self.as_str().trim_start_matches('\'')), self.span)
     }
@@ -3096,10 +3099,15 @@ impl Ident {
     }
 
     pub fn is_raw_lifetime_guess(self) -> bool {
-        let name_without_apostrophe = self.without_first_quote();
-        name_without_apostrophe.name != self.name
-            && name_without_apostrophe.name.can_be_raw()
-            && name_without_apostrophe.is_reserved_lifetime()
+        // Check that the name isn't just a single quote.
+        // `self.without_first_quote()` would return empty ident, which triggers debug assert.
+        if self.name.as_str() == "'" {
+            return false;
+        }
+        let ident_without_apostrophe = self.without_first_quote();
+        ident_without_apostrophe.name != self.name
+            && ident_without_apostrophe.name.can_be_raw()
+            && ident_without_apostrophe.is_reserved_lifetime()
     }
 
     pub fn guess_print_mode(self) -> IdentPrintMode {
