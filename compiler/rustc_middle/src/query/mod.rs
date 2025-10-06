@@ -70,7 +70,6 @@ use std::sync::Arc;
 use rustc_abi::Align;
 use rustc_arena::TypedArena;
 use rustc_ast::expand::allocator::AllocatorKind;
-use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::steal::Steal;
@@ -88,9 +87,7 @@ use rustc_index::IndexVec;
 use rustc_lint_defs::LintId;
 use rustc_macros::rustc_queries;
 use rustc_query_system::ich::StableHashingContext;
-use rustc_query_system::query::{
-    QueryCache, QueryMode, QueryStackDeferred, QueryState, try_get_cached,
-};
+use rustc_query_system::query::{QueryMode, QueryStackDeferred, QueryState};
 use rustc_session::Limits;
 use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
 use rustc_session::cstore::{
