@@ -7,23 +7,23 @@
 use core::ops::{ControlFlow, ControlFlow::Continue};
 use dep::{MyUninhabited, MyUninhabitedNonexhaustive};
 
-fn f1() -> Result<(), ()> {
+fn result_unit_unit() -> Result<(), ()> {
     Ok(())
 }
 
-fn f2() -> Result<(), core::convert::Infallible> {
+fn result_unit_infallible() -> Result<(), core::convert::Infallible> {
     Ok(())
 }
 
-fn f3() -> Result<(), !> {
+fn result_unit_never() -> Result<(), !> {
     Ok(())
 }
 
-fn f4() -> Result<(), MyUninhabited> {
+fn result_unit_myuninhabited() -> Result<(), MyUninhabited> {
     Ok(())
 }
 
-fn f5() -> Result<(), MyUninhabitedNonexhaustive> {
+fn result_unit_myuninhabited_nonexhaustive() -> Result<(), MyUninhabitedNonexhaustive> {
     Ok(())
 }
 
@@ -41,53 +41,53 @@ impl AssocType for S2 {
     type Error = ();
 }
 
-fn f6<AT: AssocType>(_: AT) -> Result<(), AT::Error> {
+fn result_unit_assoctype<AT: AssocType>(_: AT) -> Result<(), AT::Error> {
     Ok(())
 }
 
 trait UsesAssocType {
     type Error;
-    fn method(&self) -> Result<(), Self::Error>;
+    fn method_use_assoc_type(&self) -> Result<(), Self::Error>;
 }
 
 impl UsesAssocType for S1 {
     type Error = !;
-    fn method(&self) -> Result<(), Self::Error> {
+    fn method_use_assoc_type(&self) -> Result<(), Self::Error> {
         Ok(())
     }
 }
 
 impl UsesAssocType for S2 {
     type Error = ();
-    fn method(&self) -> Result<(), Self::Error> {
+    fn method_use_assoc_type(&self) -> Result<(), Self::Error> {
         Err(())
     }
 }
 
-fn c1() -> ControlFlow<()> {
+fn controlflow_unit() -> ControlFlow<()> {
     Continue(())
 }
 
-fn c2() -> ControlFlow<core::convert::Infallible, ()> {
+fn controlflow_infallible_unit() -> ControlFlow<core::convert::Infallible, ()> {
     Continue(())
 }
 
-fn c3() -> ControlFlow<!> {
+fn controlflow_never() -> ControlFlow<!> {
     Continue(())
 }
 
 fn main() {
-    f1(); //~ ERROR: unused `Result` that must be used
-    f2();
-    f3();
-    f4();
-    f5(); //~ ERROR: unused `Result` that must be used
-    f6(S1);
-    f6(S2); //~ ERROR: unused `Result` that must be used
-    S1.method();
-    S2.method(); //~ ERROR: unused `Result` that must be used
+    result_unit_unit(); //~ ERROR: unused `Result` that must be used
+    result_unit_infallible();
+    result_unit_never();
+    result_unit_myuninhabited();
+    result_unit_myuninhabited_nonexhaustive(); //~ ERROR: unused `Result` that must be used
+    result_unit_assoctype(S1);
+    result_unit_assoctype(S2); //~ ERROR: unused `Result` that must be used
+    S1.method_use_assoc_type();
+    S2.method_use_assoc_type(); //~ ERROR: unused `Result` that must be used
 
-    c1(); //~ ERROR: unused `ControlFlow` that must be used
-    c2();
-    c3();
+    controlflow_unit(); //~ ERROR: unused `ControlFlow` that must be used
+    controlflow_infallible_unit();
+    controlflow_never();
 }
