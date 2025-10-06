@@ -62,5 +62,17 @@ help: use `let _ = ...` to ignore the resulting value
 LL |     let _ = controlflow_unit();
    |     +++++++
 
-error: aborting due to 5 previous errors
+error: unused `Result` that must be used
+  --> $DIR/must_use-result-unit-uninhabited.rs:99:9
+   |
+LL |         self.generate();
+   |         ^^^^^^^^^^^^^^^
+   |
+   = note: this `Result` may be an `Err` variant, which should be handled
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |         let _ = self.generate();
+   |         +++++++
+
+error: aborting due to 6 previous errors
 

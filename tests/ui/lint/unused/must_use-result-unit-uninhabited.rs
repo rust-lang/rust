@@ -91,3 +91,11 @@ fn main() {
     controlflow_infallible_unit();
     controlflow_never();
 }
+
+trait AssocTypeBeforeMonomorphisation {
+    type Error;
+    fn generate(&self) -> Result<(), Self::Error>;
+    fn process(&self) {
+        self.generate(); //~ ERROR: unused `Result` that must be used
+    }
+}
