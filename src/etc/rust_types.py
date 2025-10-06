@@ -58,8 +58,6 @@ STD_NONZERO_NUMBER_REGEX = re.compile(r"^(core::([a-z_]+::)+)NonZero<.+>$")
 STD_PATHBUF_REGEX = re.compile(r"^(std::([a-z_]+::)+)PathBuf$")
 STD_PATH_REGEX = re.compile(r"^&(mut )?(std::([a-z_]+::)+)Path$")
 
-TUPLE_ITEM_REGEX = re.compile(r"__\d+$")
-
 ENCODED_ENUM_PREFIX = "RUST$ENCODED$ENUM$"
 ENUM_DISR_FIELD_NAME = "<<variant>>"
 ENUM_LLDB_ENCODED_VARIANTS = "$variants$"
@@ -88,7 +86,12 @@ STD_TYPE_TO_REGEX = {
 
 
 def is_tuple_fields(fields: List) -> bool:
-    return all(TUPLE_ITEM_REGEX.match(str(field.name)) for field in fields)
+    for f in fields:
+        name = str(f.name)
+        if not name.startswith("__") or not name[2:].isdigit():
+            return False
+
+    return True
 
 
 def classify_struct(name: str, fields: List) -> RustType:
