@@ -1219,7 +1219,7 @@ LL | #[link_section = "1800"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[link_section]` can be applied to statics and functions
+   = help: `#[link_section]` can be applied to functions and statics
 
 warning: `#[link_section]` attribute cannot be used on modules
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:665:17
@@ -1228,7 +1228,7 @@ LL |     mod inner { #![link_section="1800"] }
    |                 ^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[link_section]` can be applied to statics and functions
+   = help: `#[link_section]` can be applied to functions and statics
 
 warning: `#[link_section]` attribute cannot be used on structs
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:673:5
@@ -1237,7 +1237,7 @@ LL |     #[link_section = "1800"] struct S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[link_section]` can be applied to statics and functions
+   = help: `#[link_section]` can be applied to functions and statics
 
 warning: `#[link_section]` attribute cannot be used on type aliases
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:679:5
@@ -1246,7 +1246,7 @@ LL |     #[link_section = "1800"] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[link_section]` can be applied to statics and functions
+   = help: `#[link_section]` can be applied to functions and statics
 
 warning: `#[link_section]` attribute cannot be used on inherent impl blocks
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:685:5
@@ -1255,7 +1255,7 @@ LL |     #[link_section = "1800"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[link_section]` can be applied to statics and functions
+   = help: `#[link_section]` can be applied to functions and statics
 
 warning: `#[must_use]` attribute cannot be used on modules
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:746:1
@@ -1555,7 +1555,7 @@ LL | #![link_section = "1800"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[link_section]` can be applied to statics and functions
+   = help: `#[link_section]` can be applied to functions and statics
 
 warning: `#[must_use]` attribute cannot be used on crates
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:84:1
