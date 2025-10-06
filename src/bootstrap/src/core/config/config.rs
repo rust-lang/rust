@@ -42,9 +42,11 @@ use crate::core::config::toml::install::Install;
 use crate::core::config::toml::llvm::Llvm;
 use crate::core::config::toml::rust::{
     BootstrapOverrideLld, Rust, RustOptimize, check_incompatible_options_for_ci_rustc,
-    default_lld_opt_in_targets, parse_codegen_backends,
+    parse_codegen_backends,
 };
-use crate::core::config::toml::target::{Target, TomlTarget};
+use crate::core::config::toml::target::{
+    DefaultLinuxLinkerOverride, Target, TomlTarget, default_linux_linker_overrides,
+};
 use crate::core::config::{
     CompilerBuiltins, DebuginfoLevel, DryRun, GccCiMode, LlvmLibunwind, Merge, ReplaceOpt,
     RustcLto, SplitDebuginfo, StringOrBool, threads_from_config,
@@ -829,6 +831,11 @@ impl Config {
                     .to_owned();
         }
 
+        let mut lld_enabled = rust_lld_enabled.unwrap_or(false);
+
+        // Linux targets for which the user explicitly overrode the used linker
+        let mut targets_with_user_linker_override = HashSet::new();
+
         if let Some(t) = toml.target {
             for (triple, cfg) in t {
                 let TomlTarget {
@@ -837,6 +844,7 @@ impl Config {
                     ar: target_ar,
                     ranlib: target_ranlib,
                     default_linker: target_default_linker,
+                    default_linker_linux: target_default_linker_linux_override,
                     linker: target_linker,
                     split_debuginfo: target_split_debuginfo,
                     llvm_config: target_llvm_config,
@@ -859,6 +867,33 @@ impl Config {
                 } = cfg;
 
                 let mut target = Target::from_triple(&triple);
+
+                if target_default_linker_linux_override.is_some() {
+                    targets_with_user_linker_override.insert(triple.clone());
+                }
+
+                let default_linker_linux_override = match target_default_linker_linux_override {
+                    Some(DefaultLinuxLinkerOverride::SelfContainedLldCc) => {
+                        if rust_default_linker.is_some() {
+                            panic!(
+                                "cannot set both `default-linker` and `default-linker-linux` for target `{triple}`"
+                            );
+                        }
+                        if !triple.contains("linux-gnu") {
+                            panic!(
+                                "`default-linker-linux` can only be set for Linux GNU targets, not for `{triple}`"
+                            );
+                        }
+                        if !lld_enabled {
+                            panic!(
+                                "Trying to override the default Linux linker for `{triple}` to be self-contained LLD, but LLD is not being built. Enable it with rust.lld = true."
+                            );
+                        }
+                        DefaultLinuxLinkerOverride::SelfContainedLldCc
+                    }
+                    Some(DefaultLinuxLinkerOverride::Off) => DefaultLinuxLinkerOverride::Off,
+                    None => DefaultLinuxLinkerOverride::default(),
+                };
 
                 if let Some(ref s) = target_llvm_config {
                     if download_rustc_commit.is_some() && triple == *host_target.triple {
@@ -893,6 +928,7 @@ impl Config {
                 target.linker = target_linker.map(PathBuf::from);
                 target.crt_static = target_crt_static;
                 target.default_linker = target_default_linker;
+                target.default_linker_linux_override = default_linker_linux_override;
                 target.musl_root = target_musl_root.map(PathBuf::from);
                 target.musl_libdir = target_musl_libdir.map(PathBuf::from);
                 target.wasi_root = target_wasi_root.map(PathBuf::from);
@@ -918,6 +954,38 @@ impl Config {
             }
         }
 
+        for (target, linker_override) in default_linux_linker_overrides() {
+            // If the user overrode the default Linux linker, do not apply bootstrap defaults
+            if targets_with_user_linker_override.contains(&target) {
+                continue;
+            }
+            let default_linux_linker_override = match linker_override {
+                DefaultLinuxLinkerOverride::Off => continue,
+                DefaultLinuxLinkerOverride::SelfContainedLldCc => {
+                    // If we automatically default to the self-contained LLD linker,
+                    // we also need to handle the rust.lld option.
+                    match rust_lld_enabled {
+                        // If LLD was not enabled explicitly, we enable it
+                        None => {
+                            lld_enabled = true;
+                            Some(DefaultLinuxLinkerOverride::SelfContainedLldCc)
+                        }
+                        // If it was enabled already, we don't need to do anything
+                        Some(true) => Some(DefaultLinuxLinkerOverride::SelfContainedLldCc),
+                        // If it was explicitly disabled, we do not apply the
+                        // linker override
+                        Some(false) => None,
+                    }
+                }
+            };
+            if let Some(linker_override) = default_linux_linker_override {
+                target_config
+                    .entry(TargetSelection::from_user(&target))
+                    .or_default()
+                    .default_linker_linux_override = linker_override;
+            }
+        }
+
         let llvm_from_ci = parse_download_ci_llvm(
             &dwn_ctx,
             &rust_info,
@@ -925,28 +993,6 @@ impl Config {
             llvm_download_ci_llvm,
             llvm_assertions,
         );
-
-        // We make `x86_64-unknown-linux-gnu` use the self-contained linker by default, so we will
-        // build our internal lld and use it as the default linker, by setting the `rust.lld` config
-        // to true by default:
-        // - on the `x86_64-unknown-linux-gnu` target
-        // - when building our in-tree llvm (i.e. the target has not set an `llvm-config`), so that
-        //   we're also able to build the corresponding lld
-        // - or when using an external llvm that's downloaded from CI, which also contains our prebuilt
-        //   lld
-        // - otherwise, we'd be using an external llvm, and lld would not necessarily available and
-        //   thus, disabled
-        // - similarly, lld will not be built nor used by default when explicitly asked not to, e.g.
-        //   when the config sets `rust.lld = false`
-        let lld_enabled = if default_lld_opt_in_targets().contains(&host_target.triple.to_string())
-            && hosts == [host_target]
-        {
-            let no_llvm_config =
-                target_config.get(&host_target).is_none_or(|config| config.llvm_config.is_none());
-            rust_lld_enabled.unwrap_or(llvm_from_ci || no_llvm_config)
-        } else {
-            rust_lld_enabled.unwrap_or(false)
-        };
 
         if llvm_from_ci {
             let warn = |option: &str| {
