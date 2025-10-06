@@ -154,6 +154,24 @@ fn layout_check() -> u32 {
     //~^^^^^ collapsible_if
 }
 
+fn issue13365() {
+    // all the `expect`s that we should fulfill
+    if true {
+        #[expect(clippy::collapsible_if)]
+        if true {}
+    }
+
+    if true {
+        #[expect(clippy::style)]
+        if true {}
+    }
+
+    if true {
+        #[expect(clippy::all)]
+        if true {}
+    }
+}
+
 fn issue14722() {
     let x = if true {
         Some(1)
