@@ -61,6 +61,8 @@ use rustc_middle::ty::print::PrintTraitRefExt;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::symbol::{Symbol, sym};
 use rustc_span::{BytePos, DUMMY_SP, FileName, RealFileName};
+use serde::ser::SerializeSeq as _;
+use serde::{Deserialize, Serialize};
 use tracing::{debug, info};
 
 pub(crate) use self::context::*;
@@ -144,7 +146,7 @@ pub(crate) struct IndexItem {
 }
 
 /// A type used for the search index.
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 struct RenderType {
     id: Option<RenderTypeId>,
     generics: Option<Vec<RenderType>>,
@@ -301,7 +303,7 @@ impl RenderTypeId {
 }
 
 /// Full type of functions/methods in the search index.
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct IndexItemFunctionType {
     inputs: Vec<RenderType>,
     output: Vec<RenderType>,
@@ -420,6 +422,75 @@ impl IndexItemFunctionType {
             }
             string.push('}');
         }
+    }
+}
+
+impl Serialize for IndexItemFunctionType {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut seq = serializer.serialize_seq(Some(2))?;
+        let mut fn_type = String::new();
+        self.write_to_string_without_param_names(&mut fn_type);
+        seq.serialize_element(&fn_type)?;
+
+        struct ParamNames<'a>(&'a [Option<Symbol>]);
+
+        impl<'a> Serialize for ParamNames<'a> {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: serde::Serializer,
+            {
+                serializer.collect_seq(
+                    self.0
+                        .iter()
+                        .map(|symbol| symbol.as_ref().map(ToString::to_string).unwrap_or_default()),
+                )
+            }
+        }
+
+        seq.serialize_element(&ParamNames(&self.param_names))?;
+        seq.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for IndexItemFunctionType {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use serde::de::{self, Error as _};
+
+        struct FunctionDataVisitor;
+        impl<'de> de::Visitor<'de> for FunctionDataVisitor {
+            type Value = IndexItemFunctionType;
+            fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> fmt::Result {
+                write!(formatter, "fn data")
+            }
+            fn visit_seq<A: de::SeqAccess<'de>>(self, mut v: A) -> Result<Self::Value, A::Error> {
+                let (mut function_signature, _) = v
+                    .next_element()?
+                    .map(|fn_: String| {
+                        IndexItemFunctionType::read_from_string_without_param_names(fn_.as_bytes())
+                    })
+                    .ok_or_else(|| A::Error::missing_field("function_signature"))?;
+                let param_names: Vec<Option<Symbol>> = v
+                    .next_element()?
+                    .map(|param_names: Vec<String>| {
+                        param_names
+                            .into_iter()
+                            .map(|symbol| {
+                                if symbol.is_empty() { None } else { Some(Symbol::intern(&symbol)) }
+                            })
+                            .collect()
+                    })
+                    .ok_or_else(|| A::Error::missing_field("param_names"))?;
+                function_signature.param_names = param_names;
+                Ok(function_signature)
+            }
+        }
+        deserializer.deserialize_any(FunctionDataVisitor)
     }
 }
 
