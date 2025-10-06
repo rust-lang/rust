@@ -1,11 +1,11 @@
 #![warn(clippy::cast_abs_to_unsigned)]
-#![allow(clippy::uninlined_format_args, unused)]
+#![allow(unused)]
 
 fn main() {
     let x: i32 = -42;
     let y: u32 = x.abs() as u32;
     //~^ cast_abs_to_unsigned
-    println!("The absolute value of {} is {}", x, y);
+    println!("The absolute value of {x} is {y}");
 
     let a: i32 = -3;
     let _: usize = a.abs() as usize;

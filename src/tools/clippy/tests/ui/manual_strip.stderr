@@ -98,9 +98,6 @@ help: try using the `strip_prefix` method
    |
 LL ~     if let Some(<stripped>) = s.strip_prefix(PREFIX) {
 LL ~         str::to_string(<stripped>);
-LL |
-LL |
-LL ~         str::to_string(<stripped>);
    |
 
 error: stripping a prefix manually

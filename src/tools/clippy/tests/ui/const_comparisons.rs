@@ -1,9 +1,11 @@
-#![allow(unused)]
-#![warn(clippy::impossible_comparisons)]
-#![warn(clippy::redundant_comparisons)]
-#![allow(clippy::no_effect)]
-#![allow(clippy::short_circuit_statement)]
-#![allow(clippy::manual_range_contains)]
+#![allow(
+    unused,
+    clippy::identity_op,
+    clippy::manual_range_contains,
+    clippy::no_effect,
+    clippy::short_circuit_statement
+)]
+#![warn(clippy::impossible_comparisons, clippy::redundant_comparisons)]
 
 const STATUS_BAD_REQUEST: u16 = 400;
 const STATUS_SERVER_ERROR: u16 = 500;

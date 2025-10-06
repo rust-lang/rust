@@ -181,7 +181,7 @@ jobs:
 
     # Download
     - name: Download target dir
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         name: binaries
         path: target/debug

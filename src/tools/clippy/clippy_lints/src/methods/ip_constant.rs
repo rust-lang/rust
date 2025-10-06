@@ -17,10 +17,12 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, func: &Expr<'_>, args
             cx.tcx.get_diagnostic_name(func_def_id),
             Some(sym::Ipv4Addr | sym::Ipv6Addr)
         )
+        && let ecx = ConstEvalCtxt::new(cx)
+        && let ctxt = expr.span.ctxt()
         && let Some(args) = args
             .iter()
             .map(|arg| {
-                if let Some(Constant::Int(constant @ (0 | 1 | 127 | 255))) = ConstEvalCtxt::new(cx).eval(arg) {
+                if let Some(Constant::Int(constant @ (0 | 1 | 127 | 255))) = ecx.eval_local(arg, ctxt) {
                     u8::try_from(constant).ok()
                 } else {
                     None
