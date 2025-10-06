@@ -264,7 +264,8 @@ Consider writing the test as a proper incremental test instead.
 
 #### The edition directive
 
-The `//@ edition` directive can take an exact edition, a bounded range of editions, or a left-bounded half-open range of editions.
+The `//@ edition` directive can take an exact edition, a bounded range of editions,
+or a left-bounded half-open range of editions.
 This affects which edition is used by `./x test` to run the test.
 
 For example:
@@ -275,7 +276,9 @@ For example:
 - A test with the `//@ edition: 2018..` directive will run under 2018 edition or greater.
   However, CI will only run the test with the lowest edition in the range (which is 2018 in this example).
 
-You can also force `./x test` to use a specific edition by passing the `-- --edition=` argument. However, tests with the `//@ edition` directive will clamp the value passed to the argument. For example, if we run `./x test -- --edition=2015`:
+You can also force `./x test` to use a specific edition by passing the `-- --edition=` argument.
+However, tests with the `//@ edition` directive will clamp the value passed to the argument.
+For example, if we run `./x test -- --edition=2015`:
 
 - A test with the `//@ edition: 2018` will run with the 2018 edition. 
 - A test with the `//@ edition: 2015..2021` will be run with the 2015 edition. 
