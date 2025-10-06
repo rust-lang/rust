@@ -4,6 +4,7 @@
 #![deny(unused_must_use)]
 #![feature(never_type)]
 
+use core::ops::{ControlFlow, ControlFlow::Continue};
 use dep::{MyUninhabited, MyUninhabitedNonexhaustive};
 
 fn f1() -> Result<(), ()> {
@@ -63,6 +64,18 @@ impl UsesAssocType for S2 {
     }
 }
 
+fn c1() -> ControlFlow<()> {
+    Continue(())
+}
+
+fn c2() -> ControlFlow<core::convert::Infallible, ()> {
+    Continue(())
+}
+
+fn c3() -> ControlFlow<!> {
+    Continue(())
+}
+
 fn main() {
     f1(); //~ ERROR: unused `Result` that must be used
     f2();
@@ -73,4 +86,8 @@ fn main() {
     f6(S2); //~ ERROR: unused `Result` that must be used
     S1.method();
     S2.method(); //~ ERROR: unused `Result` that must be used
+
+    c1(); //~ ERROR: unused `ControlFlow` that must be used
+    c2();
+    c3();
 }

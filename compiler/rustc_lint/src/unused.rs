@@ -303,6 +303,18 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                 {
                     Some(MustUsePath::Suppressed)
                 }
+                // Suppress warnings on `ControlFlow<Uninhabited, ()>` (e.g. `ControlFlow<!, ()>`).
+                ty::Adt(def, args)
+                    if cx.tcx.is_diagnostic_item(sym::ControlFlow, def.did())
+                        && args.type_at(1).is_unit()
+                        && !args.type_at(0).is_inhabited_from(
+                            cx.tcx,
+                            parent_mod_did,
+                            cx.typing_env(),
+                        ) =>
+                {
+                    Some(MustUsePath::Suppressed)
+                }
                 ty::Adt(def, _) => is_def_must_use(cx, def.did(), span),
                 ty::Alias(ty::Opaque | ty::Projection, ty::AliasTy { def_id: def, .. }) => {
                     elaborate(cx.tcx, cx.tcx.explicit_item_self_bounds(def).iter_identity_copied())
