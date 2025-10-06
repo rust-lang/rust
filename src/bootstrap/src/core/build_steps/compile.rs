@@ -626,12 +626,6 @@ pub fn std_cargo(
         CompilerBuiltins::BuildRustOnly => "",
     };
 
-    // `libtest` uses this to know whether or not to support
-    // `-Zunstable-options`.
-    if !builder.unstable_features() {
-        cargo.env("CFG_DISABLE_UNSTABLE_FEATURES", "1");
-    }
-
     for krate in crates {
         cargo.args(["-p", krate]);
     }
