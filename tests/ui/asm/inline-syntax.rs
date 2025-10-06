@@ -7,7 +7,6 @@
 //@[arm] compile-flags: --target armv7-unknown-linux-gnueabihf
 //@[arm] build-fail
 //@[arm] needs-llvm-components: arm
-//@ needs-asm-support
 //@ ignore-backends: gcc
 
 #![feature(no_core)]

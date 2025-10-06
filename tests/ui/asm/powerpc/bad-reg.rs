@@ -8,7 +8,6 @@
 //@[powerpc64le] needs-llvm-components: powerpc
 //@[aix64] compile-flags: --target powerpc64-ibm-aix
 //@[aix64] needs-llvm-components: powerpc
-//@ needs-asm-support
 //@ ignore-backends: gcc
 // ignore-tidy-linelength
 
