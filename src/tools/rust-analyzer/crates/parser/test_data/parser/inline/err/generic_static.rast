@@ -30,7 +30,7 @@ SOURCE_FILE
   ERROR
     SEMICOLON ";"
   WHITESPACE "\n"
-error 8: missing type for `const` or `static`
+error 8: `static` may not have generic parameters
 error 8: expected SEMICOLON
 error 8: expected an item
 error 12: expected an item

@@ -32,14 +32,22 @@ fn const_or_static(p: &mut Parser<'_>, m: Marker, is_const: bool) {
         //     const C<'a>: &'a () = &();
         // }
         generic_params::opt_generic_param_list(p);
+    } else if p.at(T![<]) {
+        p.error("`static` may not have generic parameters");
     }
     // test_err generic_static
     // static C<i32>: u32 = 0;
 
     if p.at(T![:]) {
         types::ascription(p);
-    } else {
-        p.error("missing type for `const` or `static`");
+    } else if is_const {
+        // test_err missing_const_type
+        // const C = 0;
+        p.error("missing type for `const`");
+    } else if !p.at(T![<]) {
+        // test_err missing_static_type
+        // static C = 0;
+        p.error("missing type for `static`");
     }
     if p.eat(T![=]) {
         expressions::expr(p);
