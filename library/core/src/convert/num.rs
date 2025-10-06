@@ -327,11 +327,37 @@ macro_rules! impl_try_from_both_bounded {
     )*}
 }
 
+/// Implement `TryFrom<integer>` for `bool`
+macro_rules! impl_try_from_integer_for_bool {
+    ($($source:ty)+) => {$(
+        #[stable(feature = "try_from", since = "1.34.0")]
+        #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+        impl const TryFrom<$source> for bool {
+            type Error = TryFromIntError;
+
+            /// Tries to create a bool from a source number type.
+            /// Returns an error if the source value is not 0 or 1.
+            #[inline]
+            fn try_from(i: $source) -> Result<Self, Self::Error> {
+                match i {
+                    0 => Ok(false),
+                    1 => Ok(true),
+                    _ => Err(TryFromIntError(())),
+                }
+            }
+        }
+    )*}
+}
+
 macro_rules! rev {
     ($mac:ident, $source:ty => $($target:ty),+) => {$(
         $mac!($target => $source);
     )*}
 }
+
+// integer -> bool
+impl_try_from_integer_for_bool!(u128 u64 u32 u16 u8);
+impl_try_from_integer_for_bool!(i128 i64 i32 i16 i8);
 
 // unsigned integer -> unsigned integer
 impl_try_from_upper_bounded!(u16 => u8);
