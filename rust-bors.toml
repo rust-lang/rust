@@ -15,5 +15,12 @@ labels_blocking_approval = [
     "S-waiting-on-crater",
     "S-waiting-on-fcp",
     "S-waiting-on-MCP",
-    "S-waiting-on-team"
+    "S-waiting-on-lang",
+    "S-waiting-on-compiler",
+    "S-waiting-on-libs-api",
+    "S-waiting-on-types",
+    "S-waiting-on-opsem",
+    "S-waiting-on-rustdoc",
+    "S-waiting-on-rustdoc-frontend",
+    "S-waiting-on-clippy"
 ]
