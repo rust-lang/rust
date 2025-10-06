@@ -327,11 +327,47 @@ macro_rules! impl_try_from_both_bounded {
     )*}
 }
 
+/// Implement `TryFrom<integer>` for `bool`
+macro_rules! impl_try_from_integer_for_bool {
+    ($($int:ty)+) => {$(
+        #[stable(feature = "try_from", since = "1.34.0")]
+        #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+        impl const TryFrom<$int> for bool {
+            type Error = TryFromIntError;
+
+            /// Tries to create a bool from an integer type.
+            /// Returns an error if the integer is not 0 or 1.
+            ///
+            /// # Examples
+            ///
+            /// ```
+            #[doc = concat!("assert_eq!(0_", stringify!($int), ".try_into(), Ok(false));")]
+            ///
+            #[doc = concat!("assert_eq!(1_", stringify!($int), ".try_into(), Ok(true));")]
+            ///
+            #[doc = concat!("assert!(<", stringify!($int), " as TryInto<bool>>::try_into(2).is_err());")]
+            /// ```
+            #[inline]
+            fn try_from(i: $int) -> Result<Self, Self::Error> {
+                match i {
+                    0 => Ok(false),
+                    1 => Ok(true),
+                    _ => Err(TryFromIntError(())),
+                }
+            }
+        }
+    )*}
+}
+
 macro_rules! rev {
     ($mac:ident, $source:ty => $($target:ty),+) => {$(
         $mac!($target => $source);
     )*}
 }
+
+// integer -> bool
+impl_try_from_integer_for_bool!(u128 u64 u32 u16 u8);
+impl_try_from_integer_for_bool!(i128 i64 i32 i16 i8);
 
 // unsigned integer -> unsigned integer
 impl_try_from_upper_bounded!(u16 => u8);
