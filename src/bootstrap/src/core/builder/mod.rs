@@ -1591,6 +1591,14 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
         }
     }
 
+    /// Gets a command to run the compiler specified, including the dynamic library
+    /// path in case the executable has not been build with `rpath` enabled.
+    pub fn rustc_cmd(&self, compiler: Compiler) -> BootstrapCommand {
+        let mut cmd = command(self.rustc(compiler));
+        self.add_rustc_lib_path(compiler, &mut cmd);
+        cmd
+    }
+
     /// Gets the paths to all of the compiler's codegen backends.
     fn codegen_backends(&self, compiler: Compiler) -> impl Iterator<Item = PathBuf> {
         fs::read_dir(self.sysroot_codegen_backends(compiler))
