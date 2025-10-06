@@ -118,5 +118,7 @@ pub fn check(path: &Path, bless: bool, diag_ctx: DiagCtx) {
         },
     );
 
+    assert!(!all_defined_msgs.is_empty());
+
     crate::fluent_used::check(path, all_defined_msgs, diag_ctx);
 }
