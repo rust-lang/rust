@@ -157,7 +157,7 @@ pub use {
         tt,
     },
     hir_ty::{
-        CastError, DropGlue, FnAbi, PointerCast, Variance,
+        CastError, DropGlue, FnAbi, PointerCast, Variance, attach_db, attach_db_allow_change,
         consteval::ConstEvalError,
         diagnostics::UnsafetyReason,
         display::{ClosureStyle, DisplayTarget, HirDisplay, HirDisplayError, HirWrite},

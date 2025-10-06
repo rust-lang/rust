@@ -12,7 +12,7 @@ use crate::{
 use super::{MirEvalError, interpret_mir};
 
 fn eval_main(db: &TestDB, file_id: EditionedFileId) -> Result<(String, String), MirEvalError<'_>> {
-    salsa::attach(db, || {
+    crate::attach_db(db, || {
         let module_id = db.module_for_file(file_id.file_id(db));
         let def_map = module_id.def_map(db);
         let scope = &def_map[module_id.local_id].scope;
@@ -56,7 +56,7 @@ fn check_pass_and_stdio(
 ) {
     let _tracing = setup_tracing();
     let (db, file_ids) = TestDB::with_many_files(ra_fixture);
-    salsa::attach(&db, || {
+    crate::attach_db(&db, || {
         let file_id = *file_ids.last().unwrap();
         let x = eval_main(&db, file_id);
         match x {
@@ -102,7 +102,7 @@ fn check_pass_and_stdio(
 
 fn check_panic(#[rust_analyzer::rust_fixture] ra_fixture: &str, expected_panic: &str) {
     let (db, file_ids) = TestDB::with_many_files(ra_fixture);
-    salsa::attach(&db, || {
+    crate::attach_db(&db, || {
         let file_id = *file_ids.last().unwrap();
         let e = eval_main(&db, file_id).unwrap_err();
         assert_eq!(
@@ -117,7 +117,7 @@ fn check_error_with(
     expect_err: impl FnOnce(MirEvalError<'_>) -> bool,
 ) {
     let (db, file_ids) = TestDB::with_many_files(ra_fixture);
-    salsa::attach(&db, || {
+    crate::attach_db(&db, || {
         let file_id = *file_ids.last().unwrap();
         let e = eval_main(&db, file_id).unwrap_err();
         assert!(expect_err(e));

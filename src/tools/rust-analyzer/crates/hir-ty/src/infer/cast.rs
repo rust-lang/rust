@@ -400,7 +400,7 @@ fn pointer_kind<'db>(
                 Ok(Some(PointerKind::Thin))
             }
         }
-        TyKind::Tuple(subst) => match subst.iter().last() {
+        TyKind::Tuple(subst) => match subst.iter().next_back() {
             None => Ok(Some(PointerKind::Thin)),
             Some(ty) => pointer_kind(ty, ctx),
         },

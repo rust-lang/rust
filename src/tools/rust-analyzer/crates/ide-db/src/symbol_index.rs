@@ -134,7 +134,7 @@ fn library_symbols(db: &dyn SymbolsDatabase, source_root_id: SourceRootId) -> Ar
     let _p = tracing::info_span!("library_symbols").entered();
 
     // We call this without attaching because this runs in parallel, so we need to attach here.
-    salsa::attach(db, || {
+    hir::attach_db(db, || {
         let mut symbol_collector = SymbolCollector::new(db);
 
         db.source_root_crates(source_root_id)
@@ -153,7 +153,7 @@ fn module_symbols(db: &dyn SymbolsDatabase, module: Module) -> Arc<SymbolIndex> 
     let _p = tracing::info_span!("module_symbols").entered();
 
     // We call this without attaching because this runs in parallel, so we need to attach here.
-    salsa::attach(db, || Arc::new(SymbolIndex::new(SymbolCollector::new_module(db, module))))
+    hir::attach_db(db, || Arc::new(SymbolIndex::new(SymbolCollector::new_module(db, module))))
 }
 
 pub fn crate_symbols(db: &dyn SymbolsDatabase, krate: Crate) -> Box<[Arc<SymbolIndex>]> {

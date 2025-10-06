@@ -79,7 +79,7 @@ fn eval_goal(
             Some(adt_or_type_alias_id)
         })
         .unwrap();
-    salsa::attach(&db, || {
+    crate::attach_db(&db, || {
         let interner = DbInterner::new_with(&db, None, None);
         let goal_ty = match adt_or_type_alias_id {
             Either::Left(adt_id) => crate::next_solver::Ty::new_adt(
@@ -112,29 +112,34 @@ fn eval_expr(
     );
 
     let (db, file_id) = TestDB::with_single_file(&ra_fixture);
-    let module_id = db.module_for_file(file_id.file_id(&db));
-    let def_map = module_id.def_map(&db);
-    let scope = &def_map[module_id.local_id].scope;
-    let function_id = scope
-        .declarations()
-        .find_map(|x| match x {
-            hir_def::ModuleDefId::FunctionId(x) => {
-                let name =
-                    db.function_signature(x).name.display_no_db(file_id.edition(&db)).to_smolstr();
-                (name == "main").then_some(x)
-            }
-            _ => None,
-        })
-        .unwrap();
-    let hir_body = db.body(function_id.into());
-    let b = hir_body
-        .bindings()
-        .find(|x| x.1.name.display_no_db(file_id.edition(&db)).to_smolstr() == "goal")
-        .unwrap()
-        .0;
-    let infer = db.infer(function_id.into());
-    let goal_ty = infer.type_of_binding[b];
-    salsa::attach(&db, || db.layout_of_ty(goal_ty, db.trait_environment(function_id.into())))
+    crate::attach_db(&db, || {
+        let module_id = db.module_for_file(file_id.file_id(&db));
+        let def_map = module_id.def_map(&db);
+        let scope = &def_map[module_id.local_id].scope;
+        let function_id = scope
+            .declarations()
+            .find_map(|x| match x {
+                hir_def::ModuleDefId::FunctionId(x) => {
+                    let name = db
+                        .function_signature(x)
+                        .name
+                        .display_no_db(file_id.edition(&db))
+                        .to_smolstr();
+                    (name == "main").then_some(x)
+                }
+                _ => None,
+            })
+            .unwrap();
+        let hir_body = db.body(function_id.into());
+        let b = hir_body
+            .bindings()
+            .find(|x| x.1.name.display_no_db(file_id.edition(&db)).to_smolstr() == "goal")
+            .unwrap()
+            .0;
+        let infer = db.infer(function_id.into());
+        let goal_ty = infer.type_of_binding[b];
+        db.layout_of_ty(goal_ty, db.trait_environment(function_id.into()))
+    })
 }
 
 #[track_caller]

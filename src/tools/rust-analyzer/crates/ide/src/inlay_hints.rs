@@ -8,9 +8,7 @@ use hir::{
     ClosureStyle, DisplayTarget, EditionedFileId, HasVisibility, HirDisplay, HirDisplayError,
     HirWrite, InRealFile, ModuleDef, ModuleDefId, Semantics, sym,
 };
-use ide_db::{
-    FileRange, RootDatabase, base_db::salsa, famous_defs::FamousDefs, text_edit::TextEditBuilder,
-};
+use ide_db::{FileRange, RootDatabase, famous_defs::FamousDefs, text_edit::TextEditBuilder};
 use ide_db::{FxHashSet, text_edit::TextEdit};
 use itertools::Itertools;
 use smallvec::{SmallVec, smallvec};
@@ -107,7 +105,7 @@ pub(crate) fn inlay_hints(
         }
     };
     let mut preorder = file.preorder();
-    salsa::attach(sema.db, || {
+    hir::attach_db(sema.db, || {
         while let Some(event) = preorder.next() {
             if matches!((&event, range_limit), (WalkEvent::Enter(node), Some(range)) if range.intersect(node.text_range()).is_none())
             {
@@ -739,7 +737,7 @@ fn label_of_ty(
         config: &InlayHintsConfig,
         display_target: DisplayTarget,
     ) -> Result<(), HirDisplayError> {
-        salsa::attach(sema.db, || {
+        hir::attach_db(sema.db, || {
             let iter_item_type = hint_iterator(sema, famous_defs, ty);
             match iter_item_type {
                 Some((iter_trait, item, ty)) => {

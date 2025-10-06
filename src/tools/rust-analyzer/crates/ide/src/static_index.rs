@@ -5,7 +5,7 @@ use arrayvec::ArrayVec;
 use hir::{Crate, Module, Semantics, db::HirDatabase};
 use ide_db::{
     FileId, FileRange, FxHashMap, FxHashSet, RootDatabase,
-    base_db::{RootQueryDb, SourceDatabase, VfsPath, salsa},
+    base_db::{RootQueryDb, SourceDatabase, VfsPath},
     defs::{Definition, IdentClass},
     documentation::Documentation,
     famous_defs::FamousDefs,
@@ -276,7 +276,7 @@ impl StaticIndex<'_> {
         for token in tokens {
             let range = token.text_range();
             let node = token.parent().unwrap();
-            match salsa::attach(self.db, || get_definitions(&sema, token.clone())) {
+            match hir::attach_db(self.db, || get_definitions(&sema, token.clone())) {
                 Some(it) => {
                     for i in it {
                         add_token(i, range, &node);
@@ -293,7 +293,7 @@ impl StaticIndex<'_> {
         vendored_libs_config: VendoredLibrariesConfig<'_>,
     ) -> StaticIndex<'a> {
         let db = &analysis.db;
-        salsa::attach(db, || {
+        hir::attach_db(db, || {
             let work = all_modules(db).into_iter().filter(|module| {
                 let file_id = module.definition_source_file_id(db).original_file(db);
                 let source_root =

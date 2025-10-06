@@ -385,7 +385,7 @@ fn struct_tail_erasing_lifetimes<'a>(db: &'a dyn HirDatabase, pointee: Ty<'a>) -
             }
         }
         TyKind::Tuple(tys) => {
-            if let Some(last_field_ty) = tys.iter().last() {
+            if let Some(last_field_ty) = tys.iter().next_back() {
                 struct_tail_erasing_lifetimes(db, last_field_ty)
             } else {
                 pointee

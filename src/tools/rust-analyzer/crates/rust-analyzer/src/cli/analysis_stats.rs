@@ -26,10 +26,7 @@ use ide::{
 };
 use ide_db::{
     EditionedFileId, LineIndexDatabase, SnippetCap,
-    base_db::{
-        SourceDatabase,
-        salsa::{self, Database},
-    },
+    base_db::{SourceDatabase, salsa::Database},
 };
 use itertools::Itertools;
 use load_cargo::{LoadCargoConfig, ProcMacroServerChoice, load_workspace};
@@ -315,7 +312,7 @@ impl flags::AnalysisStats {
             shuffle(&mut rng, &mut bodies);
         }
 
-        salsa::attach(db, || {
+        hir::attach_db(db, || {
             if !self.skip_lowering {
                 self.run_body_lowering(db, &vfs, &bodies, verbosity);
             }

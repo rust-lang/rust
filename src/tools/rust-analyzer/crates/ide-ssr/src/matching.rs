@@ -791,8 +791,6 @@ impl PatternIterator {
 
 #[cfg(test)]
 mod tests {
-    use ide_db::base_db::salsa;
-
     use crate::{MatchFinder, SsrRule};
 
     #[test]
@@ -801,7 +799,7 @@ mod tests {
         let input = "fn foo() {} fn bar() {} fn main() { foo(1+2); }";
 
         let (db, position, selections) = crate::tests::single_file(input);
-        salsa::attach(&db, || {
+        hir::attach_db(&db, || {
             let position = ide_db::FilePosition {
                 file_id: position.file_id.file_id(&db),
                 offset: position.offset,

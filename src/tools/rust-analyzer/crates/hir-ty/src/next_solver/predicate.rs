@@ -232,13 +232,12 @@ impl<'db> Predicate<'db> {
     }
 
     pub fn inner(&self) -> &WithCachedTypeInfo<Binder<'db, PredicateKind<'db>>> {
-        salsa::with_attached_database(|db| {
+        crate::with_attached_db(|db| {
             let inner = &self.kind_(db).0;
             // SAFETY: The caller already has access to a `Predicate<'db>`, so borrowchecking will
             // make sure that our returned value is valid for the lifetime `'db`.
             unsafe { std::mem::transmute(inner) }
         })
-        .unwrap()
     }
 
     /// Flips the polarity of a Predicate.
@@ -303,13 +302,12 @@ impl<'db> Clauses<'db> {
     }
 
     pub fn inner(&self) -> &InternedClausesWrapper<'db> {
-        salsa::with_attached_database(|db| {
+        crate::with_attached_db(|db| {
             let inner = self.inner_(db);
             // SAFETY: The caller already has access to a `Clauses<'db>`, so borrowchecking will
             // make sure that our returned value is valid for the lifetime `'db`.
             unsafe { std::mem::transmute(inner) }
         })
-        .unwrap()
     }
 }
 

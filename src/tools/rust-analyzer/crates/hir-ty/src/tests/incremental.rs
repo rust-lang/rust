@@ -710,8 +710,8 @@ fn execute_assert_events(
     required: &[(&str, usize)],
     expect: Expect,
 ) {
-    let (executed, events) = db.log_executed(f);
-    salsa::attach(db, || {
+    crate::attach_db(db, || {
+        let (executed, events) = db.log_executed(f);
         for (event, count) in required {
             let n = executed.iter().filter(|it| it.contains(event)).count();
             assert_eq!(

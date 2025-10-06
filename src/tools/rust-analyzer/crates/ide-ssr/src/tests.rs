@@ -2,10 +2,7 @@ use expect_test::{Expect, expect};
 use hir::{FilePosition, FileRange};
 use ide_db::{
     EditionedFileId, FxHashSet,
-    base_db::{
-        SourceDatabase,
-        salsa::{self, Durability},
-    },
+    base_db::{SourceDatabase, salsa::Durability},
 };
 use test_utils::RangeOrOffset;
 use triomphe::Arc;
@@ -101,7 +98,7 @@ fn assert_ssr_transform(rule: &str, input: &str, expected: Expect) {
 
 fn assert_ssr_transforms(rules: &[&str], input: &str, expected: Expect) {
     let (db, position, selections) = single_file(input);
-    salsa::attach(&db, || {
+    hir::attach_db(&db, || {
         let position = ide_db::FilePosition {
             file_id: position.file_id.file_id(&db),
             offset: position.offset,
@@ -149,7 +146,7 @@ fn print_match_debug_info(match_finder: &MatchFinder<'_>, file_id: EditionedFile
 
 fn assert_matches(pattern: &str, code: &str, expected: &[&str]) {
     let (db, position, selections) = single_file(code);
-    salsa::attach(&db, || {
+    hir::attach_db(&db, || {
         let mut match_finder = MatchFinder::in_context(
             &db,
             ide_db::FilePosition {
@@ -177,7 +174,7 @@ fn assert_matches(pattern: &str, code: &str, expected: &[&str]) {
 
 fn assert_no_match(pattern: &str, code: &str) {
     let (db, position, selections) = single_file(code);
-    salsa::attach(&db, || {
+    hir::attach_db(&db, || {
         let mut match_finder = MatchFinder::in_context(
             &db,
             ide_db::FilePosition {
