@@ -9,7 +9,9 @@ use rustc_query_system::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
 pub(crate) use rustc_query_system::query::QueryJobId;
 use rustc_query_system::query::*;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
+pub use sealed::IntoQueryParam;
 
+use super::erase::EraseType;
 use crate::dep_graph;
 use crate::dep_graph::DepKind;
 use crate::query::on_disk_cache::{CacheEncoder, EncodedDepNodeIndex, OnDiskCache};
@@ -693,10 +695,6 @@ mod sealed {
         }
     }
 }
-
-pub use sealed::IntoQueryParam;
-
-use super::erase::EraseType;
 
 #[derive(Copy, Clone, Debug, HashStable)]
 pub struct CyclePlaceholder(pub ErrorGuaranteed);

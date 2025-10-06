@@ -103,6 +103,8 @@ use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_target::spec::{PanicStrategy, SanitizerSet};
 use {rustc_abi as abi, rustc_ast as ast, rustc_hir as hir};
 
+pub use self::keys::{AsLocalKey, Key, LocalCrate};
+pub use self::plumbing::{IntoQueryParam, TyCtxtAt, TyCtxtEnsureDone, TyCtxtEnsureOk};
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintExpectation;
 use crate::metadata::ModChild;
@@ -146,11 +148,9 @@ use crate::{dep_graph, mir, thir};
 mod arena_cached;
 pub mod erase;
 mod keys;
-pub use keys::{AsLocalKey, Key, LocalCrate};
 pub mod on_disk_cache;
 #[macro_use]
 pub mod plumbing;
-pub use plumbing::{IntoQueryParam, TyCtxtAt, TyCtxtEnsureDone, TyCtxtEnsureOk};
 
 // Each of these queries corresponds to a function pointer field in the
 // `Providers` struct for requesting a value of that type, and a method
