@@ -265,6 +265,7 @@ generate! {
     read_to_end,
     read_to_string,
     read_unaligned,
+    read_volatile,
     redundant_imports,
     redundant_pub_crate,
     regex,
@@ -374,6 +375,7 @@ generate! {
     wrapping_offset,
     write,
     write_unaligned,
+    write_volatile,
     writeln,
     zip,
 }

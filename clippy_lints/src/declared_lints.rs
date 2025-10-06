@@ -780,6 +780,7 @@ pub static LINTS: &[&::declare_clippy_lint::LintInfo] = &[
     crate::visibility::NEEDLESS_PUB_SELF_INFO,
     crate::visibility::PUB_WITHOUT_SHORTHAND_INFO,
     crate::visibility::PUB_WITH_SHORTHAND_INFO,
+    crate::volatile_composites::VOLATILE_COMPOSITES_INFO,
     crate::wildcard_imports::ENUM_GLOB_USE_INFO,
     crate::wildcard_imports::WILDCARD_IMPORTS_INFO,
     crate::write::PRINTLN_EMPTY_STRING_INFO,

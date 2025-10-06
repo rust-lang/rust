@@ -399,6 +399,7 @@ mod useless_conversion;
 mod vec;
 mod vec_init_then_push;
 mod visibility;
+mod volatile_composites;
 mod wildcard_imports;
 mod write;
 mod zero_div_zero;
@@ -830,5 +831,6 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
     store.register_late_pass(|_| Box::new(infallible_try_from::InfallibleTryFrom));
     store.register_late_pass(|_| Box::new(coerce_container_to_any::CoerceContainerToAny));
     store.register_late_pass(|_| Box::new(toplevel_ref_arg::ToplevelRefArg));
+    store.register_late_pass(|_| Box::new(volatile_composites::VolatileComposites));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
