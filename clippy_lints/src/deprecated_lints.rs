@@ -18,11 +18,11 @@ declare_with_version! { DEPRECATED(DEPRECATED_VERSION) = [
     ("clippy::assign_ops", "compound operators are harmless and linting on them is not in scope for clippy"),
     #[clippy::version = "pre 1.29.0"]
     ("clippy::extend_from_slice", "`Vec::extend_from_slice` is no longer faster than `Vec::extend` due to specialization"),
-    #[clippy::version = "1.86.0"]
+    #[clippy::version = "1.88.0"]
     ("clippy::match_on_vec_items", "`clippy::indexing_slicing` covers indexing and slicing on `Vec<_>`"),
     #[clippy::version = "pre 1.29.0"]
     ("clippy::misaligned_transmute", "split into `clippy::cast_ptr_alignment` and `clippy::transmute_ptr_to_ptr`"),
-    #[clippy::version = "1.86.0"]
+    #[clippy::version = "1.87.0"]
     ("clippy::option_map_or_err_ok", "`clippy::manual_ok_or` covers this case"),
     #[clippy::version = "1.54.0"]
     ("clippy::pub_enum_variant_names", "`clippy::enum_variant_names` now covers this case via the `avoid-breaking-exported-api` config"),
@@ -34,7 +34,7 @@ declare_with_version! { DEPRECATED(DEPRECATED_VERSION) = [
     ("clippy::replace_consts", "`min_value` and `max_value` are now deprecated"),
     #[clippy::version = "pre 1.29.0"]
     ("clippy::should_assert_eq", "`assert!(a == b)` can now print the values the same way `assert_eq!(a, b) can"),
-    #[clippy::version = "1.90.0"]
+    #[clippy::version = "1.91.0"]
     ("clippy::string_to_string", "`clippy:implicit_clone` covers those cases"),
     #[clippy::version = "pre 1.29.0"]
     ("clippy::unsafe_vector_initialization", "the suggested alternative could be substantially slower"),
@@ -184,6 +184,8 @@ declare_with_version! { RENAMED(RENAMED_VERSION) = [
     ("clippy::transmute_int_to_float", "unnecessary_transmutes"),
     #[clippy::version = "1.88.0"]
     ("clippy::transmute_num_to_bytes", "unnecessary_transmutes"),
+    #[clippy::version = "1.90.0"]
+    ("clippy::unchecked_duration_subtraction", "clippy::unchecked_time_subtraction"),
     #[clippy::version = ""]
     ("clippy::undropped_manually_drops", "undropped_manually_drops"),
     #[clippy::version = ""]

@@ -63,7 +63,6 @@ pub mod mir;
 pub mod msrvs;
 pub mod numeric_literal;
 pub mod paths;
-pub mod ptr;
 pub mod qualify_min_const_fn;
 pub mod source;
 pub mod str_utils;
@@ -99,7 +98,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::definitions::{DefPath, DefPathData};
 use rustc_hir::hir_id::{HirIdMap, HirIdSet};
-use rustc_hir::intravisit::{FnKind, Visitor, walk_expr};
+use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{
     self as hir, Arm, BindingMode, Block, BlockCheckMode, Body, ByRef, Closure, ConstArgKind, CoroutineDesugaring,
     CoroutineKind, CoroutineSource, Destination, Expr, ExprField, ExprKind, FnDecl, FnRetTy, GenericArg, GenericArgs,
@@ -127,8 +126,9 @@ use source::{SpanRangeExt, walk_span_to_context};
 use visitors::{Visitable, for_each_unconsumed_temporary};
 
 use crate::ast_utils::unordered_over;
-use crate::consts::{ConstEvalCtxt, Constant, mir_to_const};
+use crate::consts::{ConstEvalCtxt, Constant};
 use crate::higher::Range;
+use crate::msrvs::Msrv;
 use crate::ty::{adt_and_variant_of_res, can_partially_move_ty, expr_sig, is_copy, is_recursively_primitive_type};
 use crate::visitors::for_each_expr_without_closures;
 
@@ -1423,11 +1423,9 @@ pub fn is_range_full(cx: &LateContext<'_>, expr: &Expr<'_>, container_path: Opti
         let start_is_none_or_min = start.is_none_or(|start| {
             if let rustc_ty::Adt(_, subst) = ty.kind()
                 && let bnd_ty = subst.type_at(0)
-                && let Some(min_const) = bnd_ty.numeric_min_val(cx.tcx)
-                && let Some(min_const) = mir_to_const(cx.tcx, min_const)
                 && let Some(start_const) = ConstEvalCtxt::new(cx).eval(start)
             {
-                start_const == min_const
+                start_const.is_numeric_min(cx.tcx, bnd_ty)
             } else {
                 false
             }
@@ -1436,11 +1434,9 @@ pub fn is_range_full(cx: &LateContext<'_>, expr: &Expr<'_>, container_path: Opti
             RangeLimits::Closed => {
                 if let rustc_ty::Adt(_, subst) = ty.kind()
                     && let bnd_ty = subst.type_at(0)
-                    && let Some(max_const) = bnd_ty.numeric_max_val(cx.tcx)
-                    && let Some(max_const) = mir_to_const(cx.tcx, max_const)
                     && let Some(end_const) = ConstEvalCtxt::new(cx).eval(end)
                 {
-                    end_const == max_const
+                    end_const.is_numeric_max(cx.tcx, bnd_ty)
                 } else {
                     false
                 }
@@ -1853,15 +1849,6 @@ pub fn if_sequence<'tcx>(mut expr: &'tcx Expr<'tcx>) -> (Vec<&'tcx Expr<'tcx>>, 
     }
 
     (conds, blocks)
-}
-
-/// Checks if the given function kind is an async function.
-pub fn is_async_fn(kind: FnKind<'_>) -> bool {
-    match kind {
-        FnKind::ItemFn(_, _, header) => header.asyncness.is_async(),
-        FnKind::Method(_, sig) => sig.header.asyncness.is_async(),
-        FnKind::Closure => false,
-    }
 }
 
 /// Peels away all the compiler generated code surrounding the body of an async closure.
@@ -3658,4 +3645,9 @@ pub fn is_expr_async_block(expr: &Expr<'_>) -> bool {
             ..
         })
     )
+}
+
+/// Checks if the chosen edition and `msrv` allows using `if let` chains.
+pub fn can_use_if_let_chains(cx: &LateContext<'_>, msrv: Msrv) -> bool {
+    cx.tcx.sess.edition().at_least_rust_2024() && msrv.meets(cx, msrvs::LET_CHAINS)
 }

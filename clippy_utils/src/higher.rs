@@ -454,7 +454,7 @@ pub fn get_vec_init_kind<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -
                     return Some(VecInitKind::Default);
                 } else if name.ident.name == sym::with_capacity {
                     let arg = args.first()?;
-                    return match ConstEvalCtxt::new(cx).eval_simple(arg) {
+                    return match ConstEvalCtxt::new(cx).eval_local(arg, expr.span.ctxt()) {
                         Some(Constant::Int(num)) => Some(VecInitKind::WithConstCapacity(num)),
                         _ => Some(VecInitKind::WithExprCapacity(arg.hir_id)),
                     };

@@ -8,9 +8,6 @@
 #[macro_use]
 extern crate proc_macros;
 
-const INFINITE: f32 = f32::INFINITY;
-const NEG_INFINITE: f32 = f32::NEG_INFINITY;
-
 fn fn_test() -> f64 {
     f64::NEG_INFINITY
 }
@@ -24,10 +21,6 @@ fn main() {
     if x == f32::INFINITY || x == f32::NEG_INFINITY {}
     //~^ manual_is_infinite
     if x != f32::INFINITY && x != f32::NEG_INFINITY {}
-    //~^ manual_is_finite
-    if x == INFINITE || x == NEG_INFINITE {}
-    //~^ manual_is_infinite
-    if x != INFINITE && x != NEG_INFINITE {}
     //~^ manual_is_finite
     let x = 1.0f64;
     if x == f64::INFINITY || x == f64::NEG_INFINITY {}
@@ -63,5 +56,13 @@ fn main() {
         let x = 1.0;
         if x == f32::INFINITY || x == f32::NEG_INFINITY {}
         if x != f32::INFINITY && x != f32::NEG_INFINITY {}
+    }
+
+    {
+        let x = 1.0f32;
+        const X: f32 = f32::INFINITY;
+        const Y: f32 = f32::NEG_INFINITY;
+        if x == X || x == Y {}
+        if x != X && x != Y {}
     }
 }

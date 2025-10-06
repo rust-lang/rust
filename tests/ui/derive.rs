@@ -9,7 +9,6 @@
 #![expect(incomplete_features)] // `unsafe_fields` is incomplete for the time being
 #![feature(unsafe_fields)] // `clone()` cannot be derived automatically on unsafe fields
 
-
 #[derive(Copy)]
 struct Qux;
 
@@ -131,3 +130,16 @@ fn issue14558() {
 }
 
 fn main() {}
+
+mod issue15708 {
+    // Check that the lint posts on the type definition node
+    #[expect(clippy::expl_impl_clone_on_copy)]
+    #[derive(Copy)]
+    struct S;
+
+    impl Clone for S {
+        fn clone(&self) -> Self {
+            S
+        }
+    }
+}

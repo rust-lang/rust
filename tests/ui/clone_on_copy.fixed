@@ -1,25 +1,16 @@
+#![warn(clippy::clone_on_copy)]
 #![allow(
-    unused,
     clippy::redundant_clone,
     clippy::deref_addrof,
     clippy::no_effect,
     clippy::unnecessary_operation,
-    clippy::vec_init_then_push,
     clippy::toplevel_ref_arg,
     clippy::needless_borrow
 )]
 
 use std::cell::RefCell;
-use std::rc::{self, Rc};
-use std::sync::{self, Arc};
 
-fn main() {}
-
-fn is_ascii(ch: char) -> bool {
-    ch.is_ascii()
-}
-
-fn clone_on_copy() -> Option<(i32)> {
+fn main() {
     42;
     //~^ clone_on_copy
 
@@ -65,20 +56,66 @@ fn clone_on_copy() -> Option<(i32)> {
     let x = 42;
     let ref y = x.clone(); // ok, binds by reference
     let ref mut y = x.clone(); // ok, binds by reference
+}
 
-    // Issue #4348
+mod issue3052 {
+    struct A;
+    struct B;
+    struct C;
+    struct D;
+    #[derive(Copy, Clone)]
+    struct E;
+
+    macro_rules! impl_deref {
+        ($src:ident, $dst:ident) => {
+            impl std::ops::Deref for $src {
+                type Target = $dst;
+                fn deref(&self) -> &Self::Target {
+                    &$dst
+                }
+            }
+        };
+    }
+
+    impl_deref!(A, B);
+    impl_deref!(B, C);
+    impl_deref!(C, D);
+    impl std::ops::Deref for D {
+        type Target = &'static E;
+        fn deref(&self) -> &Self::Target {
+            &&E
+        }
+    }
+
+    fn go1() {
+        let a = A;
+        let _: E = *****a;
+        //~^ clone_on_copy
+
+        let _: E = *****a;
+    }
+}
+
+fn issue4348() {
+    fn is_ascii(ch: char) -> bool {
+        ch.is_ascii()
+    }
+
     let mut x = 43;
     let _ = &x.clone(); // ok, getting a ref
     'a'.clone().make_ascii_uppercase(); // ok, clone and then mutate
     is_ascii('z');
     //~^ clone_on_copy
+}
 
-    // Issue #5436
+#[expect(clippy::vec_init_then_push)]
+fn issue5436() {
     let mut vec = Vec::new();
     vec.push(42);
     //~^ clone_on_copy
+}
 
-    //  Issue #9277
+fn issue9277() -> Option<i32> {
     let opt: &Option<i32> = &None;
     let value = (*opt)?; // operator precedence needed (*opt)?
     //

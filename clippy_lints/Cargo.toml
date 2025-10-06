@@ -18,11 +18,16 @@ itertools = "0.12"
 quine-mc_cluskey = "0.2"
 regex-syntax = "0.8"
 serde = { version = "1.0", features = ["derive"] }
-toml = "0.7.3"
 unicode-normalization = "0.1"
 unicode-script = { version = "0.5", default-features = false }
 semver = "1.0"
 url = "2.2"
+
+[dependencies.toml]
+version = "0.9.7"
+default-features = false
+# preserve_order keeps diagnostic output in file order
+features = ["parse", "preserve_order"]
 
 [dev-dependencies]
 walkdir = "2.3"
