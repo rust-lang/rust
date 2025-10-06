@@ -28,6 +28,8 @@ use crate::{io, iter, option, slice, vec};
 ///    [`SocketAddr`] as expected by its [`FromStr`] implementation or a string like
 ///    `<host_name>:<port>` pair where `<port>` is a [`u16`] value.
 ///
+///  * <code>&[[SocketAddr]]</code>: all [`SocketAddr`] values in the slice will be used.
+///
 /// This trait allows constructing network objects like [`TcpStream`] or
 /// [`UdpSocket`] easily with values of various types for the bind/connection
 /// address. It is needed because sometimes one type is more appropriate than

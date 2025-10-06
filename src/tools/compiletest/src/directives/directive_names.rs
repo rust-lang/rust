@@ -19,6 +19,7 @@ pub(crate) const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "check-test-line-numbers-match",
     "compare-output-by-lines",
     "compile-flags",
+    "core-stubs-compile-flags",
     "disable-gdb-pretty-printers",
     "doc-flags",
     "dont-check-compiler-stderr",

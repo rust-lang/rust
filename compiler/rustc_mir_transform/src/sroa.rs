@@ -318,7 +318,7 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
                     for (_, _, fl) in final_locals {
                         self.patch.add_statement(location, StatementKind::StorageLive(fl));
                     }
-                    statement.make_nop();
+                    statement.make_nop(true);
                 }
                 return;
             }
@@ -327,7 +327,7 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
                     for (_, _, fl) in final_locals {
                         self.patch.add_statement(location, StatementKind::StorageDead(fl));
                     }
-                    statement.make_nop();
+                    statement.make_nop(true);
                 }
                 return;
             }
@@ -337,7 +337,7 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
                         self.patch
                             .add_statement(location, StatementKind::Deinit(Box::new(fl.into())));
                     }
-                    statement.make_nop();
+                    statement.make_nop(true);
                     return;
                 }
             }
@@ -367,7 +367,7 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
                             );
                         }
                     }
-                    statement.make_nop();
+                    statement.make_nop(true);
                     return;
                 }
             }
@@ -429,7 +429,7 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
                             StatementKind::Assign(Box::new((new_local.into(), rvalue))),
                         );
                     }
-                    statement.make_nop();
+                    statement.make_nop(true);
                     return;
                 }
             }

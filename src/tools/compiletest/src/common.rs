@@ -7,6 +7,7 @@ use build_helper::git::GitConfig;
 use camino::{Utf8Path, Utf8PathBuf};
 use semver::Version;
 
+use crate::edition::Edition;
 use crate::executor::ColorConfig;
 use crate::fatal;
 use crate::util::{Utf8PathBufExt, add_dylib_path, string_enum};
@@ -612,10 +613,7 @@ pub struct Config {
     pub git_hash: bool,
 
     /// The default Rust edition.
-    ///
-    /// FIXME: perform stronger validation for this. There are editions that *definitely* exists,
-    /// but there might also be "future" edition.
-    pub edition: Option<String>,
+    pub edition: Option<Edition>,
 
     // Configuration for various run-make tests frobbing things like C compilers or querying about
     // various LLVM component information.
@@ -661,17 +659,9 @@ pub struct Config {
     pub builtin_cfg_names: OnceLock<HashSet<String>>,
     pub supported_crate_types: OnceLock<HashSet<String>>,
 
-    /// FIXME: this is why we still need to depend on *staged* `std`, it's because we currently rely
-    /// on `#![feature(internal_output_capture)]` for [`std::io::set_output_capture`] to implement
-    /// `libtest`-esque `--no-capture`.
-    ///
     /// FIXME: rename this to the more canonical `no_capture`, or better, invert this to `capture`
     /// to avoid `!nocapture` double-negatives.
     pub nocapture: bool,
-
-    /// True if the experimental new output-capture implementation should be
-    /// used, avoiding the need for `#![feature(internal_output_capture)]`.
-    pub new_output_capture: bool,
 
     /// Needed both to construct [`build_helper::git::GitConfig`].
     pub nightly_branch: String,
@@ -790,7 +780,6 @@ impl Config {
             builtin_cfg_names: Default::default(),
             supported_crate_types: Default::default(),
             nocapture: Default::default(),
-            new_output_capture: Default::default(),
             nightly_branch: Default::default(),
             git_merge_commit_email: Default::default(),
             profiler_runtime: Default::default(),

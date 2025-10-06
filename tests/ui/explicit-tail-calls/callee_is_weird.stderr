@@ -12,7 +12,7 @@ error: tail calls can only be performed with function definitions or pointers
 LL |     become (&mut &std::sync::Exclusive::new(f))()
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: callee has type `Exclusive<fn() {f}>`
+   = note: callee has type `&Exclusive<fn() {f}>`
 
 error: tail calls can only be performed with function definitions or pointers
   --> $DIR/callee_is_weird.rs:22:12

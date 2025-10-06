@@ -1,0 +1,57 @@
+error[E0658]: use of an internal attribute
+  --> $DIR/no-unstable.rs:1:1
+   |
+LL | / thread_local! {
+...  |
+LL | |     pub static BAZ: () = ();
+LL | | }
+   | |_^
+   |
+   = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
+   = note: the `#[rustc_dummy]` attribute is an internal implementation detail that will never be stable
+   = note: the `#[rustc_dummy]` attribute is used for rustc unit tests
+   = note: this error originates in the macro `$crate::thread::local_impl::thread_local_process_attrs` which comes from the expansion of the macro `thread_local` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0658]: use of an internal attribute
+  --> $DIR/no-unstable.rs:1:1
+   |
+LL | / thread_local! {
+...  |
+LL | |     pub static BAZ: () = ();
+LL | | }
+   | |_^
+   |
+   = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
+   = note: the `#[rustc_dummy]` attribute is an internal implementation detail that will never be stable
+   = note: the `#[rustc_dummy]` attribute is used for rustc unit tests
+   = note: this error originates in the macro `$crate::thread::local_impl::thread_local_process_attrs` which comes from the expansion of the macro `thread_local` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0658]: `#[used(linker)]` is currently unstable
+  --> $DIR/no-unstable.rs:1:1
+   |
+LL | / thread_local! {
+...  |
+LL | |     pub static BAZ: () = ();
+LL | | }
+   | |_^
+   |
+   = note: see issue #93798 <https://github.com/rust-lang/rust/issues/93798> for more information
+   = help: add `#![feature(used_with_arg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: this error originates in the macro `$crate::thread::local_impl::thread_local_process_attrs` which comes from the expansion of the macro `thread_local` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `#[used]` attribute cannot be used on constants
+  --> $DIR/no-unstable.rs:1:1
+   |
+LL | / thread_local! {
+...  |
+LL | |     pub static BAZ: () = ();
+LL | | }
+   | |_^
+   |
+   = help: `#[used]` can only be applied to statics
+   = note: this error originates in the macro `$crate::thread::local_impl::thread_local_process_attrs` which comes from the expansion of the macro `thread_local` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

@@ -381,6 +381,7 @@ where
 }
 
 /// The result of evaluating a goal.
+#[derive_where(Debug; I: Interner)]
 pub struct GoalEvaluation<I: Interner> {
     /// The goal we've evaluated. This is the input goal, but potentially with its
     /// inference variables resolved. This never applies any inference constraints

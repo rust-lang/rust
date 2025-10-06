@@ -47,7 +47,7 @@ interface_out_dir_error =
     failed to find or create the directory specified by `--out-dir`
 
 interface_proc_macro_crate_panic_abort =
-    building proc macro crate with `panic=abort` may crash the compiler should the proc-macro panic
+    building proc macro crate with `panic=abort` or `panic=immediate-abort` may crash the compiler should the proc-macro panic
 
 interface_temps_dir_error =
     failed to find or create the directory specified by `--temps-dir`

@@ -1081,7 +1081,7 @@ pub trait Read {
         default_read_buf_exact(self, cursor)
     }
 
-    /// Creates a "by reference" adaptor for this instance of `Read`.
+    /// Creates a "by reference" adapter for this instance of `Read`.
     ///
     /// The returned adapter also implements `Read` and will simply borrow this
     /// current reader.
@@ -3234,7 +3234,7 @@ fn inlined_slow_read_byte<R: Read>(reader: &mut R) -> Option<Result<u8>> {
     }
 }
 
-// Used by `BufReader::spec_read_byte`, for which the `inline(ever)` is
+// Used by `BufReader::spec_read_byte`, for which the `inline(never)` is
 // important.
 #[inline(never)]
 fn uninlined_slow_read_byte<R: Read>(reader: &mut R) -> Option<Result<u8>> {

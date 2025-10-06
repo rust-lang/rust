@@ -1,6 +1,7 @@
 //@ run-pass
 //@ needs-subprocess
 //@ needs-unwind
+//@ ignore-backends: gcc
 
 fn check_for_no_backtrace(test: std::process::Output) {
     assert!(!test.status.success());

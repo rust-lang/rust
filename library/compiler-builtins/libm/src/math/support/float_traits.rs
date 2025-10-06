@@ -289,7 +289,7 @@ macro_rules! float_impl {
                 cfg_if! {
                     // fma is not yet available in `core`
                     if #[cfg(intrinsics_enabled)] {
-                        unsafe{ core::intrinsics::$fma_intrinsic(self, y, z) }
+                        core::intrinsics::$fma_intrinsic(self, y, z)
                     } else {
                         super::super::$fma_fn(self, y, z)
                     }

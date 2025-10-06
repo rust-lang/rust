@@ -7,6 +7,7 @@
 
 use crate::alloc::Layout;
 use crate::marker::DiscriminantKind;
+use crate::panic::const_assert;
 use crate::{clone, cmp, fmt, hash, intrinsics, ptr};
 
 mod manually_drop;
@@ -1406,4 +1407,61 @@ impl<T> SizedTypeProperties for T {}
 pub macro offset_of($Container:ty, $($fields:expr)+ $(,)?) {
     // The `{}` is for better error messages
     {builtin # offset_of($Container, $($fields)+)}
+}
+
+/// Create a fresh instance of the inhabited ZST type `T`.
+///
+/// Prefer this to [`zeroed`] or [`uninitialized`] or [`transmute_copy`]
+/// in places where you know that `T` is zero-sized, but don't have a bound
+/// (such as [`Default`]) that would allow you to instantiate it using safe code.
+///
+/// If you're not sure whether `T` is an inhabited ZST, then you should be
+/// using [`MaybeUninit`], not this function.
+///
+/// # Panics
+///
+/// If `size_of::<T>() != 0`.
+///
+/// # Safety
+///
+/// - `T` must be *[inhabited]*, i.e. possible to construct. This means that types
+///   like zero-variant enums and [`!`] are unsound to conjure.
+/// - You must use the value only in ways which do not violate any *safety*
+///   invariants of the type.
+///
+/// While it's easy to create a *valid* instance of an inhabited ZST, since having
+/// no bits in its representation means there's only one possible value, that
+/// doesn't mean that it's always *sound* to do so.
+///
+/// For example, a library could design zero-sized tokens that are `!Default + !Clone`, limiting
+/// their creation to functions that initialize some state or establish a scope. Conjuring such a
+/// token could break invariants and lead to unsoundness.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(mem_conjure_zst)]
+/// use std::mem::conjure_zst;
+///
+/// assert_eq!(unsafe { conjure_zst::<()>() }, ());
+/// assert_eq!(unsafe { conjure_zst::<[i32; 0]>() }, []);
+/// ```
+///
+/// [inhabited]: https://doc.rust-lang.org/reference/glossary.html#inhabited
+#[unstable(feature = "mem_conjure_zst", issue = "95383")]
+pub const unsafe fn conjure_zst<T>() -> T {
+    const_assert!(
+        size_of::<T>() == 0,
+        "mem::conjure_zst invoked on a nonzero-sized type",
+        "mem::conjure_zst invoked on type {t}, which is not zero-sized",
+        t: &str = stringify!(T)
+    );
+
+    // SAFETY: because the caller must guarantee that it's inhabited and zero-sized,
+    // there's nothing in the representation that needs to be set.
+    // `assume_init` calls `assert_inhabited`, so we don't need to here.
+    unsafe {
+        #[allow(clippy::uninit_assumed_init)]
+        MaybeUninit::uninit().assume_init()
+    }
 }

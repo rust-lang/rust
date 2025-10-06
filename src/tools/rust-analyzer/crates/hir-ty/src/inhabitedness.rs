@@ -20,7 +20,7 @@ pub(crate) fn is_ty_uninhabited_from(
     db: &dyn HirDatabase,
     ty: &Ty,
     target_mod: ModuleId,
-    env: Arc<TraitEnvironment>,
+    env: Arc<TraitEnvironment<'_>>,
 ) -> bool {
     let _p = tracing::info_span!("is_ty_uninhabited_from", ?ty).entered();
     let mut uninhabited_from =
@@ -36,7 +36,7 @@ pub(crate) fn is_enum_variant_uninhabited_from(
     variant: EnumVariantId,
     subst: &Substitution,
     target_mod: ModuleId,
-    env: Arc<TraitEnvironment>,
+    env: Arc<TraitEnvironment<'_>>,
 ) -> bool {
     let _p = tracing::info_span!("is_enum_variant_uninhabited_from").entered();
 
@@ -52,7 +52,7 @@ struct UninhabitedFrom<'a> {
     // guard for preventing stack overflow in non trivial non terminating types
     max_depth: usize,
     db: &'a dyn HirDatabase,
-    env: Arc<TraitEnvironment>,
+    env: Arc<TraitEnvironment<'a>>,
 }
 
 const CONTINUE_OPAQUELY_INHABITED: ControlFlow<VisiblyUninhabited> = Continue(());

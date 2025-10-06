@@ -515,7 +515,7 @@ impl AsciiChar {
     #[track_caller]
     pub const unsafe fn digit_unchecked(d: u8) -> Self {
         assert_unsafe_precondition!(
-            check_language_ub,
+            check_library_ub,
             "`ascii::Char::digit_unchecked` input cannot exceed 9.",
             (d: u8 = d) => d < 10
         );

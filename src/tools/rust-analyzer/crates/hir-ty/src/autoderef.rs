@@ -32,11 +32,11 @@ const AUTODEREF_RECURSION_LIMIT: usize = 20;
 /// - the yielded types don't contain inference variables (but may contain `TyKind::Error`).
 /// - a type won't be yielded more than once; in other words, the returned iterator will stop if it
 ///   detects a cycle in the deref chain.
-pub fn autoderef(
-    db: &dyn HirDatabase,
-    env: Arc<TraitEnvironment>,
+pub fn autoderef<'db>(
+    db: &'db dyn HirDatabase,
+    env: Arc<TraitEnvironment<'db>>,
     ty: crate::Canonical<crate::Ty>,
-) -> impl Iterator<Item = crate::Ty> {
+) -> impl Iterator<Item = crate::Ty> + use<> {
     let mut table = InferenceTable::new(db, env);
     let interner = table.interner;
     let ty = table.instantiate_canonical(ty);
@@ -298,7 +298,7 @@ fn structurally_normalize_ty<'db>(
 ) -> Option<(Ty<'db>, PredicateObligations<'db>)> {
     let mut ocx = ObligationCtxt::new(&table.infer_ctxt);
     let Ok(normalized_ty) =
-        ocx.structurally_normalize_ty(&ObligationCause::misc(), table.param_env, ty)
+        ocx.structurally_normalize_ty(&ObligationCause::misc(), table.trait_env.env, ty)
     else {
         // We shouldn't have errors here in the old solver, except for
         // evaluate/fulfill mismatches, but that's not a reason for an ICE.

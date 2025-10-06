@@ -1,7 +1,6 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
-#![cfg_attr(bootstrap, feature(strict_overflow_ops))]
 #![doc(rust_logo)]
 #![feature(array_try_map)]
 #![feature(assert_matches)]

@@ -83,7 +83,9 @@ fn compute_dbg_replacement(
     let input_expressions = input_expressions
         .into_iter()
         .filter_map(|(is_sep, group)| (!is_sep).then_some(group))
-        .map(|mut tokens| syntax::hacks::parse_expr_from_str(&tokens.join(""), Edition::CURRENT))
+        .map(|tokens| tokens.collect::<Vec<_>>())
+        .filter(|tokens| !tokens.iter().all(|it| it.kind().is_trivia()))
+        .map(|tokens| syntax::hacks::parse_expr_from_str(&tokens.iter().join(""), Edition::CURRENT))
         .collect::<Option<Vec<ast::Expr>>>()?;
 
     let parent = macro_expr.syntax().parent()?;
@@ -268,6 +270,8 @@ fn foo() {
     dbg!('x');
     dbg!(&n);
     dbg!(n);
+    dbg!(n,);
+    dbg!(n, );
     // needless comment
     dbg!("foo");$0
 }
@@ -279,6 +283,17 @@ fn foo() {
 }
 "#,
         );
+    }
+
+    #[test]
+    fn test_remove_trailing_comma_dbg() {
+        check("$0dbg!(1 + 1,)", "1 + 1");
+        check("$0dbg!(1 + 1, )", "1 + 1");
+        check("$0dbg!(1 + 1,\n)", "1 + 1");
+        check("$0dbg!(1 + 1, 2 + 3)", "(1 + 1, 2 + 3)");
+        check("$0dbg!(1 + 1, 2 + 3 )", "(1 + 1, 2 + 3)");
+        check("$0dbg!(1 + 1, 2 + 3, )", "(1 + 1, 2 + 3)");
+        check("$0dbg!(1 + 1, 2 + 3 ,)", "(1 + 1, 2 + 3)");
     }
 
     #[test]

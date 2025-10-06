@@ -75,7 +75,7 @@ use crate::thir::Thir;
 use crate::traits;
 use crate::traits::solve::{
     self, CanonicalInput, ExternalConstraints, ExternalConstraintsData, PredefinedOpaques,
-    PredefinedOpaquesData, QueryResult, inspect,
+    QueryResult, inspect,
 };
 use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
 use crate::ty::{
@@ -116,7 +116,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     fn mk_predefined_opaques_in_body(
         self,
-        data: PredefinedOpaquesData<Self>,
+        data: &[(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)],
     ) -> Self::PredefinedOpaques {
         self.mk_predefined_opaques_in_body(data)
     }
@@ -207,8 +207,9 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         from_entry(entry)
     }
 
-    fn evaluation_is_concurrent(&self) -> bool {
-        self.sess.threads() > 1
+    fn assert_evaluation_is_concurrent(&self) {
+        // Turns out, the assumption for this function isn't perfect.
+        // See trait-system-refactor-initiative#234.
     }
 
     fn expand_abstract_consts<T: TypeFoldable<TyCtxt<'tcx>>>(self, t: T) -> T {
@@ -941,7 +942,7 @@ pub struct CtxtInterners<'tcx> {
     layout: InternedSet<'tcx, LayoutData<FieldIdx, VariantIdx>>,
     adt_def: InternedSet<'tcx, AdtDefData>,
     external_constraints: InternedSet<'tcx, ExternalConstraintsData<TyCtxt<'tcx>>>,
-    predefined_opaques_in_body: InternedSet<'tcx, PredefinedOpaquesData<TyCtxt<'tcx>>>,
+    predefined_opaques_in_body: InternedSet<'tcx, List<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)>>,
     fields: InternedSet<'tcx, List<FieldIdx>>,
     local_def_ids: InternedSet<'tcx, List<LocalDefId>>,
     captures: InternedSet<'tcx, List<&'tcx ty::CapturedPlace<'tcx>>>,
@@ -1110,6 +1111,15 @@ const NUM_PREINTERNED_FRESH_TYS: u32 = 20;
 const NUM_PREINTERNED_FRESH_INT_TYS: u32 = 3;
 const NUM_PREINTERNED_FRESH_FLOAT_TYS: u32 = 3;
 const NUM_PREINTERNED_ANON_BOUND_TYS_I: u32 = 3;
+
+// From general profiling of the *max vars during canonicalization* of a value:
+// - about 90% of the time, there are no canonical vars
+// - about 9% of the time, there is only one canonical var
+// - there are rarely more than 3-5 canonical vars (with exceptions in particularly pathological cases)
+// This may not match the number of bound vars found in `for`s.
+// Given that this is all heap interned, it seems likely that interning fewer
+// vars here won't make an appreciable difference. Though, if we were to inline the data (in an array),
+// we may want to consider reducing the number for canonicalized vars down to 4 or so.
 const NUM_PREINTERNED_ANON_BOUND_TYS_V: u32 = 20;
 
 // This number may seem high, but it is reached in all but the smallest crates.
@@ -1160,9 +1170,14 @@ pub struct CommonTypes<'tcx> {
     pub fresh_float_tys: Vec<Ty<'tcx>>,
 
     /// Pre-interned values of the form:
-    /// `Bound(DebruijnIndex(i), BoundTy { var: v, kind: BoundTyKind::Anon})`
+    /// `Bound(BoundVarIndexKind::Bound(DebruijnIndex(i)), BoundTy { var: v, kind: BoundTyKind::Anon})`
     /// for small values of `i` and `v`.
     pub anon_bound_tys: Vec<Vec<Ty<'tcx>>>,
+
+    // Pre-interned values of the form:
+    // `Bound(BoundVarIndexKind::Canonical, BoundTy { var: v, kind: BoundTyKind::Anon })`
+    // for small values of `v`.
+    pub anon_canonical_bound_tys: Vec<Ty<'tcx>>,
 }
 
 pub struct CommonLifetimes<'tcx> {
@@ -1176,9 +1191,14 @@ pub struct CommonLifetimes<'tcx> {
     pub re_vars: Vec<Region<'tcx>>,
 
     /// Pre-interned values of the form:
-    /// `ReBound(DebruijnIndex(i), BoundRegion { var: v, kind: BoundRegionKind::Anon })`
+    /// `ReBound(BoundVarIndexKind::Bound(DebruijnIndex(i)), BoundRegion { var: v, kind: BoundRegionKind::Anon })`
     /// for small values of `i` and `v`.
     pub anon_re_bounds: Vec<Vec<Region<'tcx>>>,
+
+    // Pre-interned values of the form:
+    // `ReBound(BoundVarIndexKind::Canonical, BoundRegion { var: v, kind: BoundRegionKind::Anon })`
+    // for small values of `v`.
+    pub anon_re_canonical_bounds: Vec<Region<'tcx>>,
 }
 
 pub struct CommonConsts<'tcx> {
@@ -1211,11 +1231,20 @@ impl<'tcx> CommonTypes<'tcx> {
                 (0..NUM_PREINTERNED_ANON_BOUND_TYS_V)
                     .map(|v| {
                         mk(ty::Bound(
-                            ty::DebruijnIndex::from(i),
+                            ty::BoundVarIndexKind::Bound(ty::DebruijnIndex::from(i)),
                             ty::BoundTy { var: ty::BoundVar::from(v), kind: ty::BoundTyKind::Anon },
                         ))
                     })
                     .collect()
+            })
+            .collect();
+
+        let anon_canonical_bound_tys = (0..NUM_PREINTERNED_ANON_BOUND_TYS_V)
+            .map(|v| {
+                mk(ty::Bound(
+                    ty::BoundVarIndexKind::Canonical,
+                    ty::BoundTy { var: ty::BoundVar::from(v), kind: ty::BoundTyKind::Anon },
+                ))
             })
             .collect();
 
@@ -1250,6 +1279,7 @@ impl<'tcx> CommonTypes<'tcx> {
             fresh_int_tys,
             fresh_float_tys,
             anon_bound_tys,
+            anon_canonical_bound_tys,
         }
     }
 }
@@ -1270,7 +1300,7 @@ impl<'tcx> CommonLifetimes<'tcx> {
                 (0..NUM_PREINTERNED_ANON_RE_BOUNDS_V)
                     .map(|v| {
                         mk(ty::ReBound(
-                            ty::DebruijnIndex::from(i),
+                            ty::BoundVarIndexKind::Bound(ty::DebruijnIndex::from(i)),
                             ty::BoundRegion {
                                 var: ty::BoundVar::from(v),
                                 kind: ty::BoundRegionKind::Anon,
@@ -1281,11 +1311,21 @@ impl<'tcx> CommonLifetimes<'tcx> {
             })
             .collect();
 
+        let anon_re_canonical_bounds = (0..NUM_PREINTERNED_ANON_RE_BOUNDS_V)
+            .map(|v| {
+                mk(ty::ReBound(
+                    ty::BoundVarIndexKind::Canonical,
+                    ty::BoundRegion { var: ty::BoundVar::from(v), kind: ty::BoundRegionKind::Anon },
+                ))
+            })
+            .collect();
+
         CommonLifetimes {
             re_static: mk(ty::ReStatic),
             re_erased: mk(ty::ReErased),
             re_vars,
             anon_re_bounds,
+            anon_re_canonical_bounds,
         }
     }
 }
@@ -2012,7 +2052,7 @@ impl<'tcx> TyCtxt<'tcx> {
         if stable_crate_id == self.stable_crate_id(LOCAL_CRATE) {
             Some(self.untracked.definitions.read().local_def_path_hash_to_def_id(hash)?.to_def_id())
         } else {
-            Some(self.def_path_hash_to_def_id_extern(hash, stable_crate_id))
+            self.def_path_hash_to_def_id_extern(hash, stable_crate_id)
         }
     }
 
@@ -2748,8 +2788,6 @@ direct_interners! {
     adt_def: pub mk_adt_def_from_data(AdtDefData): AdtDef -> AdtDef<'tcx>,
     external_constraints: pub mk_external_constraints(ExternalConstraintsData<TyCtxt<'tcx>>):
         ExternalConstraints -> ExternalConstraints<'tcx>,
-    predefined_opaques_in_body: pub mk_predefined_opaques_in_body(PredefinedOpaquesData<TyCtxt<'tcx>>):
-        PredefinedOpaques -> PredefinedOpaques<'tcx>,
 }
 
 macro_rules! slice_interners {
@@ -2786,6 +2824,7 @@ slice_interners!(
     offset_of: pub mk_offset_of((VariantIdx, FieldIdx)),
     patterns: pub mk_patterns(Pattern<'tcx>),
     outlives: pub mk_outlives(ty::ArgOutlivesPredicate<'tcx>),
+    predefined_opaques_in_body: pub mk_predefined_opaques_in_body((ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)),
 );
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -3127,6 +3166,14 @@ impl<'tcx> TyCtxt<'tcx> {
             >,
     {
         T::collect_and_apply(iter, |xs| self.mk_poly_existential_predicates(xs))
+    }
+
+    pub fn mk_predefined_opaques_in_body_from_iter<I, T>(self, iter: I) -> T::Output
+    where
+        I: Iterator<Item = T>,
+        T: CollectAndApply<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>), PredefinedOpaques<'tcx>>,
+    {
+        T::collect_and_apply(iter, |xs| self.mk_predefined_opaques_in_body(xs))
     }
 
     pub fn mk_clauses_from_iter<I, T>(self, iter: I) -> T::Output

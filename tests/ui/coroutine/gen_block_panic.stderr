@@ -1,5 +1,5 @@
 warning: unreachable statement
-  --> $DIR/gen_block_panic.rs:10:9
+  --> $DIR/gen_block_panic.rs:11:9
    |
 LL |         panic!("foo");
    |         ------------- any code following this expression is unreachable

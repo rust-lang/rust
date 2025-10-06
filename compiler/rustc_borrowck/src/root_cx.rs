@@ -12,12 +12,12 @@ use smallvec::SmallVec;
 use crate::consumers::BorrowckConsumer;
 use crate::nll::compute_closure_requirements_modulo_opaques;
 use crate::region_infer::opaque_types::{
-    apply_computed_concrete_opaque_types, clone_and_resolve_opaque_types,
-    compute_concrete_opaque_types, detect_opaque_types_added_while_handling_opaque_types,
+    apply_definition_site_hidden_types, clone_and_resolve_opaque_types,
+    compute_definition_site_hidden_types, detect_opaque_types_added_while_handling_opaque_types,
 };
 use crate::type_check::{Locations, constraint_conversion};
 use crate::{
-    ClosureRegionRequirements, CollectRegionConstraintsResult, ConcreteOpaqueTypes,
+    ClosureRegionRequirements, CollectRegionConstraintsResult, DefinitionSiteHiddenTypes,
     PropagatedBorrowCheckResults, borrowck_check_region_constraints,
     borrowck_collect_region_constraints,
 };
@@ -27,7 +27,7 @@ use crate::{
 pub(super) struct BorrowCheckRootCtxt<'tcx> {
     pub tcx: TyCtxt<'tcx>,
     root_def_id: LocalDefId,
-    concrete_opaque_types: ConcreteOpaqueTypes<'tcx>,
+    hidden_types: DefinitionSiteHiddenTypes<'tcx>,
     /// The region constraints computed by [borrowck_collect_region_constraints]. This uses
     /// an [FxIndexMap] to guarantee that iterating over it visits nested bodies before
     /// their parents.
@@ -49,7 +49,7 @@ impl<'tcx> BorrowCheckRootCtxt<'tcx> {
         BorrowCheckRootCtxt {
             tcx,
             root_def_id,
-            concrete_opaque_types: Default::default(),
+            hidden_types: Default::default(),
             collect_region_constraints_results: Default::default(),
             propagated_borrowck_results: Default::default(),
             tainted_by_errors: None,
@@ -72,11 +72,11 @@ impl<'tcx> BorrowCheckRootCtxt<'tcx> {
         &self.propagated_borrowck_results[&nested_body_def_id].used_mut_upvars
     }
 
-    pub(super) fn finalize(self) -> Result<&'tcx ConcreteOpaqueTypes<'tcx>, ErrorGuaranteed> {
+    pub(super) fn finalize(self) -> Result<&'tcx DefinitionSiteHiddenTypes<'tcx>, ErrorGuaranteed> {
         if let Some(guar) = self.tainted_by_errors {
             Err(guar)
         } else {
-            Ok(self.tcx.arena.alloc(self.concrete_opaque_types))
+            Ok(self.tcx.arena.alloc(self.hidden_types))
         }
     }
 
@@ -88,12 +88,12 @@ impl<'tcx> BorrowCheckRootCtxt<'tcx> {
                 &input.universal_region_relations,
                 &mut input.constraints,
             );
-            input.deferred_opaque_type_errors = compute_concrete_opaque_types(
+            input.deferred_opaque_type_errors = compute_definition_site_hidden_types(
                 &input.infcx,
                 &input.universal_region_relations,
                 &input.constraints,
                 Rc::clone(&input.location_map),
-                &mut self.concrete_opaque_types,
+                &mut self.hidden_types,
                 &opaque_types,
             );
             per_body_info.push((num_entries, opaque_types));
@@ -103,14 +103,14 @@ impl<'tcx> BorrowCheckRootCtxt<'tcx> {
             self.collect_region_constraints_results.values_mut().zip(per_body_info)
         {
             if input.deferred_opaque_type_errors.is_empty() {
-                input.deferred_opaque_type_errors = apply_computed_concrete_opaque_types(
+                input.deferred_opaque_type_errors = apply_definition_site_hidden_types(
                     &input.infcx,
                     &input.body_owned,
                     &input.universal_region_relations.universal_regions,
                     &input.region_bound_pairs,
                     &input.known_type_outlives_obligations,
                     &mut input.constraints,
-                    &mut self.concrete_opaque_types,
+                    &mut self.hidden_types,
                     &opaque_types,
                 );
             }

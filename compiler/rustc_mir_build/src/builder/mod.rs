@@ -395,12 +395,10 @@ enum NeedsTemporary {
     Maybe,
 }
 
-///////////////////////////////////////////////////////////////////////////
 /// The `BlockAnd` "monad" packages up the new basic block along with a
 /// produced value (sometimes just unit, of course). The `unpack!`
 /// macro (and methods below) makes working with `BlockAnd` much more
 /// convenient.
-
 #[must_use = "if you don't use one of these results, you're leaving a dangling edge"]
 struct BlockAnd<T>(BasicBlock, T);
 
@@ -438,9 +436,7 @@ macro_rules! unpack {
     }};
 }
 
-///////////////////////////////////////////////////////////////////////////
-/// the main entry point for building MIR for a function
-
+/// The main entry point for building MIR for a function.
 fn construct_fn<'tcx>(
     tcx: TyCtxt<'tcx>,
     fn_def: LocalDefId,

@@ -440,7 +440,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                     FlatSet::Top => FlatSet::Top,
                 }
             }
-            Rvalue::Cast(CastKind::Transmute, operand, _) => {
+            Rvalue::Cast(CastKind::Transmute | CastKind::Subtype, operand, _) => {
                 match self.eval_operand(operand, state) {
                     FlatSet::Elem(op) => self.wrap_immediate(*op),
                     FlatSet::Bottom => FlatSet::Bottom,
@@ -476,7 +476,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 };
                 let val = match null_op {
                     NullOp::SizeOf if layout.is_sized() => layout.size.bytes(),
-                    NullOp::AlignOf if layout.is_sized() => layout.align.abi.bytes(),
+                    NullOp::AlignOf if layout.is_sized() => layout.align.bytes(),
                     NullOp::OffsetOf(fields) => self
                         .ecx
                         .tcx

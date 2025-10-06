@@ -658,6 +658,9 @@
 //@ revisions: x86_64_unknown_managarm_mlibc
 //@ [x86_64_unknown_managarm_mlibc] compile-flags: --target x86_64-unknown-managarm-mlibc
 //@ [x86_64_unknown_managarm_mlibc] needs-llvm-components: x86
+//@ revisions: x86_64_unknown_motor
+//@ [x86_64_unknown_motor] compile-flags: --target x86_64-unknown-motor
+//@ [x86_64_unknown_motor] needs-llvm-components: x86
 //@ revisions: x86_64_unknown_netbsd
 //@ [x86_64_unknown_netbsd] compile-flags: --target x86_64-unknown-netbsd
 //@ [x86_64_unknown_netbsd] needs-llvm-components: x86

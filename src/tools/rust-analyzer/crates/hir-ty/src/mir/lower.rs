@@ -43,7 +43,10 @@ use crate::{
         Terminator, TerminatorKind, TupleFieldId, Ty, UnOp, VariantId, intern_const_scalar,
         return_slot,
     },
-    next_solver::{DbInterner, mapping::ChalkToNextSolver},
+    next_solver::{
+        DbInterner,
+        mapping::{ChalkToNextSolver, NextSolverToChalk},
+    },
     static_lifetime,
     traits::FnTrait,
     utils::ClosureSubst,
@@ -82,7 +85,7 @@ struct MirLowerCtx<'db> {
     infer: &'db InferenceResult,
     resolver: Resolver<'db>,
     drop_scopes: Vec<DropScope>,
-    env: Arc<TraitEnvironment>,
+    env: Arc<TraitEnvironment<'db>>,
 }
 
 // FIXME: Make this smaller, its stored in database queries
@@ -2207,8 +2210,13 @@ pub fn lower_to_mir(
             // otherwise it's an inline const, and has no parameter
             if let DefWithBodyId::FunctionId(fid) = owner {
                 let substs = TyBuilder::placeholder_subst(db, fid);
-                let callable_sig =
-                    db.callable_item_signature(fid.into()).substitute(Interner, &substs);
+                let interner = DbInterner::new_with(db, None, None);
+                let args: crate::next_solver::GenericArgs<'_> = substs.to_nextsolver(interner);
+                let callable_sig = db
+                    .callable_item_signature(fid.into())
+                    .instantiate(interner, args)
+                    .skip_binder()
+                    .to_chalk(interner);
                 let mut params = callable_sig.params().iter();
                 let self_param = body.self_param.and_then(|id| Some((id, params.next()?.clone())));
                 break 'b ctx.lower_params_and_bindings(

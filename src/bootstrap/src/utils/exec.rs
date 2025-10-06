@@ -630,7 +630,7 @@ impl ExecutionContext {
         &self.dry_run
     }
 
-    pub fn verbose(&self, f: impl Fn()) {
+    pub fn do_if_verbose(&self, f: impl Fn()) {
         if self.is_verbose() {
             f()
         }
@@ -686,7 +686,7 @@ impl ExecutionContext {
 
         if let Some(cached_output) = self.command_cache.get(&fingerprint) {
             command.mark_as_executed();
-            self.verbose(|| println!("Cache hit: {command:?}"));
+            self.do_if_verbose(|| println!("Cache hit: {command:?}"));
             self.profiler.record_cache_hit(fingerprint);
             return DeferredCommand { state: CommandState::Cached(cached_output) };
         }
@@ -713,7 +713,7 @@ impl ExecutionContext {
             };
         }
 
-        self.verbose(|| {
+        self.do_if_verbose(|| {
             println!("running: {command:?} (created at {created_at}, executed at {executed_at})")
         });
 

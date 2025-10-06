@@ -1,6 +1,6 @@
 use expect_test::expect;
 
-use crate::tests::{check_infer, check_no_mismatches};
+use crate::tests::{check_infer, check_no_mismatches, check_types};
 
 #[test]
 fn regression_20365() {
@@ -416,5 +416,59 @@ fn foo() {
             249..259 'to_bytes()': [u8; _]
             249..268 'to_byt..._vec()': Vec<<[u8; _] as Foo>::Item>
         "#]],
+    );
+}
+
+#[test]
+fn regression_19637() {
+    check_no_mismatches(
+        r#"
+//- minicore: coerce_unsized
+pub trait Any {}
+
+impl<T: 'static> Any for T {}
+
+pub trait Trait: Any {
+    type F;
+}
+
+pub struct TT {}
+
+impl Trait for TT {
+    type F = f32;
+}
+
+pub fn coercion(x: &mut dyn Any) -> &mut dyn Any {
+    x
+}
+
+fn main() {
+    let mut t = TT {};
+    let tt = &mut t as &mut dyn Trait<F = f32>;
+    let st = coercion(tt);
+}
+    "#,
+    );
+}
+
+#[test]
+fn double_into_iter() {
+    check_types(
+        r#"
+//- minicore: iterator
+
+fn intoiter_issue<A, B>(foo: A)
+where
+    A: IntoIterator<Item = B>,
+    B: IntoIterator<Item = usize>,
+{
+    for x in foo {
+    //  ^ B
+        for m in x {
+        //  ^ usize
+        }
+    }
+}
+"#,
     );
 }

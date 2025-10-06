@@ -128,7 +128,7 @@ fn try_download_gcc(builder: &Builder<'_>, target: TargetSelection) -> Option<Pa
         &builder.config,
         builder.config.rust_info.is_managed_git_subrepository(),
     );
-    builder.verbose(|| {
+    builder.do_if_verbose(|| {
         eprintln!("GCC freshness: {source:?}");
     });
     match source {

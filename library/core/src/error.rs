@@ -16,12 +16,18 @@ use crate::fmt::{self, Debug, Display, Formatter};
 /// assert_eq!(err.to_string(), "invalid digit found in string");
 /// ```
 ///
+/// # Error source
+///
 /// Errors may provide cause information. [`Error::source()`] is generally
 /// used when errors cross "abstraction boundaries". If one module must report
 /// an error that is caused by an error from a lower-level module, it can allow
-/// accessing that error via [`Error::source()`]. This makes it possible for the
+/// accessing that error via `Error::source()`. This makes it possible for the
 /// high-level module to provide its own errors while also revealing some of the
 /// implementation for debugging.
+///
+/// In error types that wrap an underlying error, the underlying error
+/// should be either returned by the outer error's `Error::source()`, or rendered
+/// by the outer error's `Display` implementation, but not both.
 ///
 /// # Example
 ///

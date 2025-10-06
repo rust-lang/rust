@@ -174,11 +174,11 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             // Non-power-of-two vectors have padding up to the next power-of-two.
             // If we're a packed repr, remove the padding while keeping the alignment as close
             // to a vector as possible.
-            (BackendRepr::Memory { sized: true }, AbiAlign { abi: Align::max_aligned_factor(size) })
+            (BackendRepr::Memory { sized: true }, Align::max_aligned_factor(size))
         } else {
             (BackendRepr::SimdVector { element: e_repr, count }, dl.llvmlike_vector_align(size))
         };
-        let size = size.align_to(align.abi);
+        let size = size.align_to(align);
 
         Ok(LayoutData {
             variants: Variants::Single { index: VariantIdx::new(0) },
@@ -190,7 +190,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             largest_niche: elt.largest_niche,
             uninhabited: false,
             size,
-            align,
+            align: AbiAlign::new(align),
             max_repr_align: None,
             unadjusted_abi_align: elt.align.abi,
             randomization_seed: elt.randomization_seed.wrapping_add(Hash64::new(count)),
@@ -388,7 +388,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 return Err(LayoutCalculatorError::UnexpectedUnsized(*field));
             }
 
-            align = align.max(field.align);
+            align = align.max(field.align.abi);
             max_repr_align = max_repr_align.max(field.max_repr_align);
             size = cmp::max(size, field.size);
 
@@ -423,13 +423,13 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         }
 
         if let Some(pack) = repr.pack {
-            align = align.min(AbiAlign::new(pack));
+            align = align.min(pack);
         }
         // The unadjusted ABI alignment does not include repr(align), but does include repr(pack).
         // See documentation on `LayoutData::unadjusted_abi_align`.
-        let unadjusted_abi_align = align.abi;
+        let unadjusted_abi_align = align;
         if let Some(repr_align) = repr.align {
-            align = align.max(AbiAlign::new(repr_align));
+            align = align.max(repr_align);
         }
         // `align` must not be modified after this, or `unadjusted_abi_align` could be inaccurate.
         let align = align;
@@ -441,14 +441,12 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             Ok(Some((repr, _))) => match repr {
                 // Mismatched alignment (e.g. union is #[repr(packed)]): disable opt
                 BackendRepr::Scalar(_) | BackendRepr::ScalarPair(_, _)
-                    if repr.scalar_align(dl).unwrap() != align.abi =>
+                    if repr.scalar_align(dl).unwrap() != align =>
                 {
                     BackendRepr::Memory { sized: true }
                 }
                 // Vectors require at least element alignment, else disable the opt
-                BackendRepr::SimdVector { element, count: _ }
-                    if element.align(dl).abi > align.abi =>
-                {
+                BackendRepr::SimdVector { element, count: _ } if element.align(dl).abi > align => {
                     BackendRepr::Memory { sized: true }
                 }
                 // the alignment tests passed and we can use this
@@ -474,8 +472,8 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             backend_repr,
             largest_niche: None,
             uninhabited: false,
-            align,
-            size: size.align_to(align.abi),
+            align: AbiAlign::new(align),
+            size: size.align_to(align),
             max_repr_align,
             unadjusted_abi_align,
             randomization_seed: combined_seed,
@@ -611,7 +609,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
 
             let mut align = dl.aggregate_align;
             let mut max_repr_align = repr.align;
-            let mut unadjusted_abi_align = align.abi;
+            let mut unadjusted_abi_align = align;
 
             let mut variant_layouts = variants
                 .iter_enumerated()
@@ -619,7 +617,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                     let mut st = self.univariant(v, repr, StructKind::AlwaysSized).ok()?;
                     st.variants = Variants::Single { index: j };
 
-                    align = align.max(st.align);
+                    align = align.max(st.align.abi);
                     max_repr_align = max_repr_align.max(st.max_repr_align);
                     unadjusted_abi_align = unadjusted_abi_align.max(st.unadjusted_abi_align);
 
@@ -646,7 +644,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             let (niche_start, niche_scalar) = niche.reserve(dl, count)?;
             let niche_offset = niche.offset;
             let niche_size = niche.value.size(dl);
-            let size = variant_layouts[largest_variant_index].size.align_to(align.abi);
+            let size = variant_layouts[largest_variant_index].size.align_to(align);
 
             let all_variants_fit = variant_layouts.iter_enumerated_mut().all(|(i, layout)| {
                 if i == largest_variant_index {
@@ -699,7 +697,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 .iter_enumerated()
                 .all(|(i, layout)| i == largest_variant_index || layout.size == Size::ZERO);
             let same_size = size == variant_layouts[largest_variant_index].size;
-            let same_align = align == variant_layouts[largest_variant_index].align;
+            let same_align = align == variant_layouts[largest_variant_index].align.abi;
 
             let uninhabited = variant_layouts.iter().all(|v| v.is_uninhabited());
             let abi = if same_size && same_align && others_zst {
@@ -746,7 +744,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 largest_niche,
                 uninhabited,
                 size,
-                align,
+                align: AbiAlign::new(align),
                 max_repr_align,
                 unadjusted_abi_align,
                 randomization_seed: combined_seed,
@@ -818,7 +816,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
 
         let mut align = dl.aggregate_align;
         let mut max_repr_align = repr.align;
-        let mut unadjusted_abi_align = align.abi;
+        let mut unadjusted_abi_align = align;
 
         let mut size = Size::ZERO;
 
@@ -860,7 +858,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                     }
                 }
                 size = cmp::max(size, st.size);
-                align = align.max(st.align);
+                align = align.max(st.align.abi);
                 max_repr_align = max_repr_align.max(st.max_repr_align);
                 unadjusted_abi_align = unadjusted_abi_align.max(st.unadjusted_abi_align);
                 Ok(st)
@@ -868,7 +866,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             .collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
 
         // Align the maximum variant size to the largest alignment.
-        size = size.align_to(align.abi);
+        size = size.align_to(align);
 
         // FIXME(oli-obk): deduplicate and harden these checks
         if size.bytes() >= dl.obj_size_bound() {
@@ -1042,7 +1040,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 };
                 if pair_offsets[FieldIdx::new(0)] == Size::ZERO
                     && pair_offsets[FieldIdx::new(1)] == *offset
-                    && align == pair.align
+                    && align == pair.align.abi
                     && size == pair.size
                 {
                     // We can use `ScalarPair` only when it matches our
@@ -1066,7 +1064,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                     // Also need to bump up the size and alignment, so that the entire value fits
                     // in here.
                     variant.size = cmp::max(variant.size, size);
-                    variant.align.abi = cmp::max(variant.align.abi, align.abi);
+                    variant.align.abi = cmp::max(variant.align.abi, align);
                 }
             }
         }
@@ -1092,7 +1090,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             largest_niche,
             uninhabited,
             backend_repr: abi,
-            align,
+            align: AbiAlign::new(align),
             size,
             max_repr_align,
             unadjusted_abi_align,
@@ -1169,7 +1167,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 // To allow unsizing `&Foo<Type>` -> `&Foo<dyn Trait>`, the layout of the struct must
                 // not depend on the layout of the tail.
                 let max_field_align =
-                    fields_excluding_tail.iter().map(|f| f.align.abi.bytes()).max().unwrap_or(1);
+                    fields_excluding_tail.iter().map(|f| f.align.bytes()).max().unwrap_or(1);
                 let largest_niche_size = fields_excluding_tail
                     .iter()
                     .filter_map(|f| f.largest_niche)
@@ -1189,7 +1187,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                     } else {
                         // Returns `log2(effective-align)`. The calculation assumes that size is an
                         // integer multiple of align, except for ZSTs.
-                        let align = layout.align.abi.bytes();
+                        let align = layout.align.bytes();
                         let size = layout.size.bytes();
                         let niche_size = layout.largest_niche.map(|n| n.available(dl)).unwrap_or(0);
                         // Group [u8; 4] with align-4 or [u8; 6] with align-2 fields.
@@ -1288,7 +1286,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         if let StructKind::Prefixed(prefix_size, prefix_align) = kind {
             let prefix_align =
                 if let Some(pack) = pack { prefix_align.min(pack) } else { prefix_align };
-            align = align.max(AbiAlign::new(prefix_align));
+            align = align.max(prefix_align);
             offset = prefix_size.align_to(prefix_align);
         }
         for &i in &inverse_memory_index {
@@ -1312,7 +1310,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 field.align
             };
             offset = offset.align_to(field_align.abi);
-            align = align.max(field_align);
+            align = align.max(field_align.abi);
             max_repr_align = max_repr_align.max(field.max_repr_align);
 
             debug!("univariant offset: {:?} field: {:#?}", offset, field);
@@ -1339,9 +1337,9 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
 
         // The unadjusted ABI alignment does not include repr(align), but does include repr(pack).
         // See documentation on `LayoutData::unadjusted_abi_align`.
-        let unadjusted_abi_align = align.abi;
+        let unadjusted_abi_align = align;
         if let Some(repr_align) = repr.align {
-            align = align.max(AbiAlign::new(repr_align));
+            align = align.max(repr_align);
         }
         // `align` must not be modified after this point, or `unadjusted_abi_align` could be inaccurate.
         let align = align;
@@ -1360,7 +1358,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             debug_assert!(inverse_memory_index.iter().copied().eq(fields.indices()));
             inverse_memory_index.into_iter().map(|it| it.index() as u32).collect()
         };
-        let size = min_size.align_to(align.abi);
+        let size = min_size.align_to(align);
         // FIXME(oli-obk): deduplicate and harden these checks
         if size.bytes() >= dl.obj_size_bound() {
             return Err(LayoutCalculatorError::SizeOverflow);
@@ -1383,8 +1381,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                     layout_of_single_non_zst_field = Some(field);
 
                     // Field fills the struct and it has a scalar or scalar pair ABI.
-                    if offsets[i].bytes() == 0 && align.abi == field.align.abi && size == field.size
-                    {
+                    if offsets[i].bytes() == 0 && align == field.align.abi && size == field.size {
                         match field.backend_repr {
                             // For plain scalars, or vectors of them, we can't unpack
                             // newtypes for `#[repr(C)]`, as that affects C ABIs.
@@ -1428,7 +1425,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                             };
                             if offsets[i] == pair_offsets[FieldIdx::new(0)]
                                 && offsets[j] == pair_offsets[FieldIdx::new(1)]
-                                && align == pair.align
+                                && align == pair.align.abi
                                 && size == pair.size
                             {
                                 // We can use `ScalarPair` only when it matches our
@@ -1450,7 +1447,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 Some(l) => l.unadjusted_abi_align,
                 None => {
                     // `repr(transparent)` with all ZST fields.
-                    align.abi
+                    align
                 }
             }
         } else {
@@ -1465,7 +1462,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             backend_repr: abi,
             largest_niche,
             uninhabited,
-            align,
+            align: AbiAlign::new(align),
             size,
             max_repr_align,
             unadjusted_abi_align,
@@ -1488,7 +1485,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         for i in layout.fields.index_by_increasing_offset() {
             let offset = layout.fields.offset(i);
             let f = &fields[FieldIdx::new(i)];
-            write!(s, "[o{}a{}s{}", offset.bytes(), f.align.abi.bytes(), f.size.bytes()).unwrap();
+            write!(s, "[o{}a{}s{}", offset.bytes(), f.align.bytes(), f.size.bytes()).unwrap();
             if let Some(n) = f.largest_niche {
                 write!(
                     s,

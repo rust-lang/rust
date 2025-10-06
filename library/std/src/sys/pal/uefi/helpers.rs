@@ -92,6 +92,9 @@ pub(crate) fn locate_handles(mut guid: Guid) -> io::Result<Vec<NonNull<crate::ff
 ///
 /// Queries a handle to determine if it supports a specified protocol. If the protocol is
 /// supported by the handle, it opens the protocol on behalf of the calling agent.
+///
+/// The protocol is opened with the attribute GET_PROTOCOL, which means the caller is not required
+/// to close the protocol interface with `EFI_BOOT_SERVICES.CloseProtocol()`
 pub(crate) fn open_protocol<T>(
     handle: NonNull<crate::ffi::c_void>,
     mut protocol_guid: Guid,
@@ -473,6 +476,7 @@ impl<'a> crate::fmt::Debug for DevicePathNode<'a> {
     }
 }
 
+/// Protocols installed by Rust side on a handle.
 pub(crate) struct OwnedProtocol<T> {
     guid: r_efi::efi::Guid,
     handle: NonNull<crate::ffi::c_void>,

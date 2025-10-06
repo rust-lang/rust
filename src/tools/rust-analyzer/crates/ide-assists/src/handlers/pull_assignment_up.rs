@@ -53,6 +53,10 @@ pub(crate) fn pull_assignment_up(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
     };
 
     let tgt: ast::Expr = if let Some(if_expr) = ctx.find_node_at_offset::<ast::IfExpr>() {
+        let if_expr = std::iter::successors(Some(if_expr), |it| {
+            it.syntax().parent().and_then(ast::IfExpr::cast)
+        })
+        .last()?;
         collector.collect_if(&if_expr)?;
         if_expr.into()
     } else if let Some(match_expr) = ctx.find_node_at_offset::<ast::MatchExpr>() {
@@ -232,6 +236,37 @@ fn foo() {
         2
     } else {
         3
+    };
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_pull_assignment_up_inner_if() {
+        check_assist(
+            pull_assignment_up,
+            r#"
+fn foo() {
+    let mut a = 1;
+
+    if true {
+        a = 2;
+    } else if true {
+        $0a = 3;
+    } else {
+        a = 4;
+    }
+}"#,
+            r#"
+fn foo() {
+    let mut a = 1;
+
+    a = if true {
+        2
+    } else if true {
+        3
+    } else {
+        4
     };
 }"#,
         );

@@ -377,8 +377,7 @@ mod llvm_enzyme {
                 (ast::AttrKind::Normal(a), ast::AttrKind::Normal(b)) => {
                     let a = &a.item.path;
                     let b = &b.item.path;
-                    a.segments.len() == b.segments.len()
-                        && a.segments.iter().zip(b.segments.iter()).all(|(a, b)| a.ident == b.ident)
+                    a.segments.iter().eq_by(&b.segments, |a, b| a.ident == b.ident)
                 }
                 _ => false,
             }

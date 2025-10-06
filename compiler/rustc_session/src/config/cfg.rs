@@ -125,7 +125,9 @@ pub(crate) fn disallow_cfgs(sess: &Session, user_cfgs: &Cfg) {
                 None | Some(_),
             ) => disallow(cfg, "-Z sanitizer=cfi"),
             (sym::proc_macro, None) => disallow(cfg, "--crate-type proc-macro"),
-            (sym::panic, Some(sym::abort | sym::unwind)) => disallow(cfg, "-C panic"),
+            (sym::panic, Some(sym::abort | sym::unwind | sym::immediate_abort)) => {
+                disallow(cfg, "-C panic")
+            }
             (sym::target_feature, Some(_)) => disallow(cfg, "-C target-feature"),
             (sym::unix, None)
             | (sym::windows, None)
@@ -203,7 +205,14 @@ pub(crate) fn default_configuration(sess: &Session) -> Cfg {
         ins_none!(sym::overflow_checks);
     }
 
+    // We insert a cfg for the name of session's panic strategy.
+    // Since the ImmediateAbort strategy is new, it also sets cfg(panic="abort"), so that code
+    // which is trying to detect whether unwinding is enabled by checking for cfg(panic="abort")
+    // does not need to be updated.
     ins_sym!(sym::panic, sess.panic_strategy().desc_symbol());
+    if sess.panic_strategy() == PanicStrategy::ImmediateAbort {
+        ins_sym!(sym::panic, PanicStrategy::Abort.desc_symbol());
+    }
 
     // JUSTIFICATION: before wrapper fn is available
     #[allow(rustc::bad_opt_access)]
@@ -250,11 +259,11 @@ pub(crate) fn default_configuration(sess: &Session) -> Cfg {
     });
     let mut has_atomic = false;
     for (i, align) in [
-        (8, layout.i8_align.abi),
-        (16, layout.i16_align.abi),
-        (32, layout.i32_align.abi),
-        (64, layout.i64_align.abi),
-        (128, layout.i128_align.abi),
+        (8, layout.i8_align),
+        (16, layout.i16_align),
+        (32, layout.i32_align),
+        (64, layout.i64_align),
+        (128, layout.i128_align),
     ] {
         if i >= sess.target.min_atomic_width() && i <= sess.target.max_atomic_width() {
             if !has_atomic {

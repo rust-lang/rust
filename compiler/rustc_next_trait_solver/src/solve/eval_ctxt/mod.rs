@@ -194,7 +194,7 @@ where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self), ret)]
     fn evaluate_root_goal(
         &self,
         goal: Goal<I, I::Predicate>,
@@ -206,6 +206,7 @@ where
         })
     }
 
+    #[instrument(level = "debug", skip(self), ret)]
     fn root_goal_may_hold_opaque_types_jank(
         &self,
         goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
@@ -357,7 +358,7 @@ where
         f: impl FnOnce(&mut EvalCtxt<'_, D>, Goal<I, I::Predicate>) -> R,
     ) -> R {
         let (ref delegate, input, var_values) = D::build_with_canonical(cx, &canonical_input);
-        for &(key, ty) in &input.predefined_opaques_in_body.opaque_types {
+        for (key, ty) in input.predefined_opaques_in_body.iter() {
             let prev = delegate.register_hidden_type_in_storage(key, ty, I::Span::dummy());
             // It may be possible that two entries in the opaque type storage end up
             // with the same key after resolving contained inference variables.
@@ -467,7 +468,7 @@ where
         let opaque_types = self.delegate.clone_opaque_types_lookup_table();
         let (goal, opaque_types) = eager_resolve_vars(self.delegate, (goal, opaque_types));
 
-        let (orig_values, canonical_goal) = canonicalize_goal(self.delegate, goal, opaque_types);
+        let (orig_values, canonical_goal) = canonicalize_goal(self.delegate, goal, &opaque_types);
         let canonical_result = self.search_graph.evaluate_goal(
             self.cx(),
             canonical_goal,
@@ -548,7 +549,6 @@ where
                             .canonical
                             .value
                             .predefined_opaques_in_body
-                            .opaque_types
                             .len(),
                         stalled_vars,
                         sub_roots,
@@ -633,28 +633,19 @@ where
     // the certainty of all the goals.
     #[instrument(level = "trace", skip(self))]
     pub(super) fn try_evaluate_added_goals(&mut self) -> Result<Certainty, NoSolution> {
-        let mut response = Ok(Certainty::overflow(false));
         for _ in 0..FIXPOINT_STEP_LIMIT {
-            // FIXME: This match is a bit ugly, it might be nice to change the inspect
-            // stuff to use a closure instead. which should hopefully simplify this a bit.
             match self.evaluate_added_goals_step() {
-                Ok(Some(cert)) => {
-                    response = Ok(cert);
-                    break;
-                }
                 Ok(None) => {}
+                Ok(Some(cert)) => return Ok(cert),
                 Err(NoSolution) => {
-                    response = Err(NoSolution);
-                    break;
+                    self.tainted = Err(NoSolution);
+                    return Err(NoSolution);
                 }
             }
         }
 
-        if response.is_err() {
-            self.tainted = Err(NoSolution);
-        }
-
-        response
+        debug!("try_evaluate_added_goals: encountered overflow");
+        Ok(Certainty::overflow(false))
     }
 
     /// Iterate over all added goals: returning `Ok(Some(_))` in case we can stop rerunning.
@@ -1557,7 +1548,7 @@ pub(super) fn evaluate_root_goal_for_proof_tree<D: SolverDelegate<Interner = I>,
     let opaque_types = delegate.clone_opaque_types_lookup_table();
     let (goal, opaque_types) = eager_resolve_vars(delegate, (goal, opaque_types));
 
-    let (orig_values, canonical_goal) = canonicalize_goal(delegate, goal, opaque_types);
+    let (orig_values, canonical_goal) = canonicalize_goal(delegate, goal, &opaque_types);
 
     let (canonical_result, final_revision) =
         delegate.cx().evaluate_root_goal_for_proof_tree_raw(canonical_goal);

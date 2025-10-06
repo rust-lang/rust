@@ -381,8 +381,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // We need to drop our mutex borrow before unblock_thread
                 // because it will be borrowed again in the unblock callback.
                 drop(mutex);
-                if thread_id.is_some() {
-                    this.unblock_thread(thread_id.unwrap(), BlockReason::Mutex)?;
+                if let Some(thread_id) = thread_id {
+                    this.unblock_thread(thread_id, BlockReason::Mutex)?;
                 }
             }
             Some(old_lock_count)

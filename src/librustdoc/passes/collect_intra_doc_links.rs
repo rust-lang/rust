@@ -130,6 +130,7 @@ impl Res {
             DefKind::Static { .. } => "static",
             DefKind::Field => "field",
             DefKind::Variant | DefKind::Ctor(..) => "variant",
+            DefKind::TyAlias => "tyalias",
             // Now handle things that don't have a specific disambiguator
             _ => match kind
                 .ns()
@@ -1708,6 +1709,7 @@ impl Disambiguator {
                 "value" => NS(Namespace::ValueNS),
                 "macro" => NS(Namespace::MacroNS),
                 "prim" | "primitive" => Primitive,
+                "tyalias" | "typealias" => Kind(DefKind::TyAlias),
                 _ => return Err((format!("unknown disambiguator `{prefix}`"), 0..idx)),
             };
 

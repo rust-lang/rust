@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Output, Stdio};
 use std::{env, fmt, fs, io, mem, str};
 
-use cc::windows_registry;
+use find_msvc_tools;
 use itertools::Itertools;
 use regex::Regex;
 use rustc_arena::TypedArena;
@@ -47,8 +47,8 @@ use rustc_span::Symbol;
 use rustc_target::spec::crt_objects::CrtObjects;
 use rustc_target::spec::{
     BinaryFormat, Cc, LinkOutputKind, LinkSelfContainedComponents, LinkSelfContainedDefault,
-    LinkerFeatures, LinkerFlavor, LinkerFlavorCli, Lld, PanicStrategy, RelocModel, RelroLevel,
-    SanitizerSet, SplitDebuginfo,
+    LinkerFeatures, LinkerFlavor, LinkerFlavorCli, Lld, RelocModel, RelroLevel, SanitizerSet,
+    SplitDebuginfo,
 };
 use tracing::{debug, info, warn};
 
@@ -79,6 +79,7 @@ pub fn link_binary(
     codegen_results: CodegenResults,
     metadata: EncodedMetadata,
     outputs: &OutputFilenames,
+    codegen_backend: &'static str,
 ) {
     let _timer = sess.timer("link_binary");
     let output_metadata = sess.opts.output_types.contains_key(&OutputType::Metadata);
@@ -154,6 +155,7 @@ pub fn link_binary(
                         &codegen_results,
                         &metadata,
                         path.as_ref(),
+                        codegen_backend,
                     );
                 }
             }
@@ -680,6 +682,7 @@ fn link_natively(
     codegen_results: &CodegenResults,
     metadata: &EncodedMetadata,
     tmpdir: &Path,
+    codegen_backend: &'static str,
 ) {
     info!("preparing {:?} to {:?}", crate_type, out_filename);
     let (linker_path, flavor) = linker_and_flavor(sess);
@@ -705,6 +708,7 @@ fn link_natively(
         codegen_results,
         metadata,
         self_contained_components,
+        codegen_backend,
     );
 
     linker::disable_localization(&mut cmd);
@@ -877,9 +881,9 @@ fn link_natively(
                     // All Microsoft `link.exe` linking ror codes are
                     // four digit numbers in the range 1000 to 9999 inclusive
                     if is_msvc_link_exe && (code < 1000 || code > 9999) {
-                        let is_vs_installed = windows_registry::find_vs_version().is_ok();
+                        let is_vs_installed = find_msvc_tools::find_vs_version().is_ok();
                         let has_linker =
-                            windows_registry::find_tool(&sess.target.arch, "link.exe").is_some();
+                            find_msvc_tools::find_tool(&sess.target.arch, "link.exe").is_some();
 
                         sess.dcx().emit_note(errors::LinkExeUnexpectedError);
 
@@ -2208,6 +2212,7 @@ fn linker_with_args(
     codegen_results: &CodegenResults,
     metadata: &EncodedMetadata,
     self_contained_components: LinkSelfContainedComponents,
+    codegen_backend: &'static str,
 ) -> Command {
     let self_contained_crt_objects = self_contained_components.is_crt_objects_enabled();
     let cmd = &mut *super::linker::get_linker(
@@ -2216,6 +2221,7 @@ fn linker_with_args(
         flavor,
         self_contained_components.are_any_components_enabled(),
         &codegen_results.crate_info.target_cpu,
+        codegen_backend,
     );
     let link_output_kind = link_output_kind(sess, crate_type);
 
@@ -2512,10 +2518,10 @@ fn add_order_independent_options(
     if sess.target.os == "emscripten" {
         cmd.cc_arg(if sess.opts.unstable_opts.emscripten_wasm_eh {
             "-fwasm-exceptions"
-        } else if sess.panic_strategy() == PanicStrategy::Abort {
-            "-sDISABLE_EXCEPTION_CATCHING=1"
-        } else {
+        } else if sess.panic_strategy().unwinds() {
             "-sDISABLE_EXCEPTION_CATCHING=0"
+        } else {
+            "-sDISABLE_EXCEPTION_CATCHING=1"
         });
     }
 

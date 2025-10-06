@@ -1298,6 +1298,10 @@ pub struct BasicBlockData<'tcx> {
     /// List of statements in this block.
     pub statements: Vec<Statement<'tcx>>,
 
+    /// All debuginfos happen before the statement.
+    /// Put debuginfos here when the last statement is eliminated.
+    pub after_last_stmt_debuginfos: StmtDebugInfos<'tcx>,
+
     /// Terminator for this block.
     ///
     /// N.B., this should generally ONLY be `None` during construction.
@@ -1325,7 +1329,12 @@ impl<'tcx> BasicBlockData<'tcx> {
         terminator: Option<Terminator<'tcx>>,
         is_cleanup: bool,
     ) -> BasicBlockData<'tcx> {
-        BasicBlockData { statements, terminator, is_cleanup }
+        BasicBlockData {
+            statements,
+            after_last_stmt_debuginfos: StmtDebugInfos::default(),
+            terminator,
+            is_cleanup,
+        }
     }
 
     /// Accessor for terminator.
@@ -1358,6 +1367,36 @@ impl<'tcx> BasicBlockData<'tcx> {
             targets.successors_for_value(bits)
         } else {
             self.terminator().successors()
+        }
+    }
+
+    pub fn retain_statements<F>(&mut self, mut f: F)
+    where
+        F: FnMut(&Statement<'tcx>) -> bool,
+    {
+        // Place debuginfos into the next retained statement,
+        // this `debuginfos` variable is used to cache debuginfos between two retained statements.
+        let mut debuginfos = StmtDebugInfos::default();
+        self.statements.retain_mut(|stmt| {
+            let retain = f(stmt);
+            if retain {
+                stmt.debuginfos.prepend(&mut debuginfos);
+            } else {
+                debuginfos.append(&mut stmt.debuginfos);
+            }
+            retain
+        });
+        self.after_last_stmt_debuginfos.prepend(&mut debuginfos);
+    }
+
+    pub fn strip_nops(&mut self) {
+        self.retain_statements(|stmt| !matches!(stmt.kind, StatementKind::Nop))
+    }
+
+    pub fn drop_debuginfo(&mut self) {
+        self.after_last_stmt_debuginfos.drop_debuginfo();
+        for stmt in self.statements.iter_mut() {
+            stmt.debuginfos.drop_debuginfo();
         }
     }
 }
@@ -1664,10 +1703,10 @@ mod size_asserts {
 
     use super::*;
     // tidy-alphabetical-start
-    static_assert_size!(BasicBlockData<'_>, 128);
+    static_assert_size!(BasicBlockData<'_>, 152);
     static_assert_size!(LocalDecl<'_>, 40);
     static_assert_size!(SourceScopeData<'_>, 64);
-    static_assert_size!(Statement<'_>, 32);
+    static_assert_size!(Statement<'_>, 56);
     static_assert_size!(Terminator<'_>, 96);
     static_assert_size!(VarDebugInfo<'_>, 88);
     // tidy-alphabetical-end

@@ -104,7 +104,7 @@ pub(super) fn vtable_allocation_provider<'tcx>(
         .expect("failed to build vtable representation");
     assert!(layout.is_sized(), "can't create a vtable for an unsized type");
     let size = layout.size.bytes();
-    let align = layout.align.abi.bytes();
+    let align = layout.align.bytes();
 
     let ptr_size = tcx.data_layout.pointer_size();
     let ptr_align = tcx.data_layout.pointer_align().abi;

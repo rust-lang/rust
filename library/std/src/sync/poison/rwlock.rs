@@ -667,7 +667,7 @@ impl<T: ?Sized> RwLock<T> {
     /// are properly synchronized to avoid data races, and that it is not read
     /// or written through after the lock is dropped.
     #[unstable(feature = "rwlock_data_ptr", issue = "140368")]
-    pub fn data_ptr(&self) -> *mut T {
+    pub const fn data_ptr(&self) -> *mut T {
         self.data.get()
     }
 }

@@ -1,0 +1,13 @@
+CHECK: force_memcpy
+
+CHECK: @llvm.memcpy.p0.p0.i64
+
+CHECK: test_memcpy - {[-1]:Float@double} |{[-1]:Pointer}:{}
+
+CHECK-DAG: ptr %{{[0-9]+}}: {[-1]:Pointer, [-1,0]:Float@double, [-1,8]:Float@double, [-1,16]:Float@double, [-1,24]:Float@double}
+
+CHECK-DAG: load double{{.*}}: {[-1]:Float@double}
+
+CHECK-DAG: fmul double{{.*}}: {[-1]:Float@double}
+
+CHECK-DAG: fadd double{{.*}}: {[-1]:Float@double}

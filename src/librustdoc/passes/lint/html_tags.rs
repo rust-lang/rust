@@ -364,6 +364,7 @@ impl TagParser {
             } else {
                 if !self.tag_name.is_empty() {
                     self.in_attrs = true;
+                    // range of the entire tag within dox
                     let mut r = Range { start: range.start + start_pos, end: range.start + pos };
                     if c == '>' {
                         // In case we have a tag without attribute, we can consider the span to
@@ -381,7 +382,7 @@ impl TagParser {
                             for (new_pos, c) in text[pos..].char_indices() {
                                 if !c.is_whitespace() {
                                     if c == '>' {
-                                        r.end = range.start + new_pos + 1;
+                                        r.end = range.start + pos + new_pos + 1;
                                         found = true;
                                     } else if c == '<' {
                                         self.handle_lt_in_tag(range.clone(), pos + new_pos, f);

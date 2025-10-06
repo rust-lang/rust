@@ -39,11 +39,11 @@ fn __rust_abort() {
 // - nothing (so this macro is a no-op)
 macro_rules! rtprintpanic {
     ($($t:tt)*) => {
-        #[cfg(not(feature = "panic_immediate_abort"))]
+        #[cfg(not(panic = "immediate-abort"))]
         if let Some(mut out) = crate::sys::stdio::panic_output() {
             let _ = crate::io::Write::write_fmt(&mut out, format_args!($($t)*));
         }
-        #[cfg(feature = "panic_immediate_abort")]
+        #[cfg(panic = "immediate-abort")]
         {
             let _ = format_args!($($t)*);
         }

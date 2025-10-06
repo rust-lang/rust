@@ -1510,3 +1510,28 @@ fn foo<T>() {
         "#]],
     );
 }
+
+#[test]
+fn fn_generic_params_const_param_snippet() {
+    check_edit("const", "fn foo<c$0>() {}", "fn foo<const $1: $0>() {}");
+    check_edit("const", "fn foo<T, c$0>() {}", "fn foo<T, const $1: $0>() {}");
+    check(
+        r#"
+fn foo<T: $0>() {}
+"#,
+        expect![[r#"
+            kw crate::
+            kw self::
+        "#]],
+    );
+    check(
+        r#"
+fn foo<const N: $0>() {}
+"#,
+        expect![[r#"
+            bt u32 u32
+            kw crate::
+            kw self::
+        "#]],
+    );
+}

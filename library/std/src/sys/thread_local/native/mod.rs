@@ -54,7 +54,7 @@ pub macro thread_local_inner {
     // test in `tests/thread.rs` if these types are renamed.
 
     // Used to generate the `LocalKey` value for const-initialized thread locals.
-    (@key $t:ty, const $init:expr) => {{
+    (@key $t:ty, $(#[$align_attr:meta])*, const $init:expr) => {{
         const __INIT: $t = $init;
 
         unsafe {
@@ -62,6 +62,7 @@ pub macro thread_local_inner {
                 if $crate::mem::needs_drop::<$t>() {
                     |_| {
                         #[thread_local]
+                        $(#[$align_attr])*
                         static VAL: $crate::thread::local_impl::EagerStorage<$t>
                             = $crate::thread::local_impl::EagerStorage::new(__INIT);
                         VAL.get()
@@ -69,6 +70,7 @@ pub macro thread_local_inner {
                 } else {
                     |_| {
                         #[thread_local]
+                        $(#[$align_attr])*
                         static VAL: $t = __INIT;
                         &VAL
                     }
@@ -78,7 +80,7 @@ pub macro thread_local_inner {
     }},
 
     // used to generate the `LocalKey` value for `thread_local!`
-    (@key $t:ty, $init:expr) => {{
+    (@key $t:ty, $(#[$align_attr:meta])*, $init:expr) => {{
         #[inline]
         fn __init() -> $t {
             $init
@@ -89,6 +91,7 @@ pub macro thread_local_inner {
                 if $crate::mem::needs_drop::<$t>() {
                     |init| {
                         #[thread_local]
+                        $(#[$align_attr])*
                         static VAL: $crate::thread::local_impl::LazyStorage<$t, ()>
                             = $crate::thread::local_impl::LazyStorage::new();
                         VAL.get_or_init(init, __init)
@@ -96,6 +99,7 @@ pub macro thread_local_inner {
                 } else {
                     |init| {
                         #[thread_local]
+                        $(#[$align_attr])*
                         static VAL: $crate::thread::local_impl::LazyStorage<$t, !>
                             = $crate::thread::local_impl::LazyStorage::new();
                         VAL.get_or_init(init, __init)
@@ -104,10 +108,6 @@ pub macro thread_local_inner {
             })
         }
     }},
-    ($(#[$attr:meta])* $vis:vis $name:ident, $t:ty, $($init:tt)*) => {
-        $(#[$attr])* $vis const $name: $crate::thread::LocalKey<$t> =
-            $crate::thread::local_impl::thread_local_inner!(@key $t, $($init)*);
-    },
 }
 
 #[rustc_macro_transparency = "semitransparent"]

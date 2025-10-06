@@ -1,11 +1,12 @@
 use std::borrow::{Borrow, Cow};
+use std::iter;
 use std::ops::Deref;
-use std::{iter, ptr};
 
+use rustc_ast::expand::typetree::FncTree;
 pub(crate) mod autodiff;
 pub(crate) mod gpu_offload;
 
-use libc::{c_char, c_uint, size_t};
+use libc::{c_char, c_uint};
 use rustc_abi as abi;
 use rustc_abi::{Align, Size, WrappingRange};
 use rustc_codegen_ssa::MemFlags;
@@ -35,7 +36,8 @@ use crate::attributes;
 use crate::common::Funclet;
 use crate::context::{CodegenCx, FullCx, GenericCx, SCx};
 use crate::llvm::{
-    self, AtomicOrdering, AtomicRmwBinOp, BasicBlock, GEPNoWrapFlags, Metadata, TRUE, ToLlvmBool,
+    self, AtomicOrdering, AtomicRmwBinOp, BasicBlock, FromGeneric, GEPNoWrapFlags, Metadata, TRUE,
+    ToLlvmBool,
 };
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
@@ -395,10 +397,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             md.push(weight(is_cold));
         }
 
-        unsafe {
-            let md_node = llvm::LLVMMDNodeInContext2(self.cx.llcx, md.as_ptr(), md.len() as size_t);
-            self.cx.set_metadata(switch, llvm::MD_prof, md_node);
-        }
+        self.cx.set_metadata_node(switch, llvm::MD_prof, &md);
     }
 
     fn invoke(
@@ -800,22 +799,16 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             return;
         }
 
-        unsafe {
-            let llty = self.cx.val_ty(load);
-            let md = [
-                llvm::LLVMValueAsMetadata(self.cx.const_uint_big(llty, range.start)),
-                llvm::LLVMValueAsMetadata(self.cx.const_uint_big(llty, range.end.wrapping_add(1))),
-            ];
-            let md = llvm::LLVMMDNodeInContext2(self.cx.llcx, md.as_ptr(), md.len());
-            self.set_metadata(load, llvm::MD_range, md);
-        }
+        let llty = self.cx.val_ty(load);
+        let md = [
+            llvm::LLVMValueAsMetadata(self.cx.const_uint_big(llty, range.start)),
+            llvm::LLVMValueAsMetadata(self.cx.const_uint_big(llty, range.end.wrapping_add(1))),
+        ];
+        self.set_metadata_node(load, llvm::MD_range, &md);
     }
 
     fn nonnull_metadata(&mut self, load: &'ll Value) {
-        unsafe {
-            let md = llvm::LLVMMDNodeInContext2(self.cx.llcx, ptr::null(), 0);
-            self.set_metadata(load, llvm::MD_nonnull, md);
-        }
+        self.set_metadata_node(load, llvm::MD_nonnull, &[]);
     }
 
     fn store(&mut self, val: &'ll Value, ptr: &'ll Value, align: Align) -> &'ll Value {
@@ -864,8 +857,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                     //
                     // [1]: https://llvm.org/docs/LangRef.html#store-instruction
                     let one = llvm::LLVMValueAsMetadata(self.cx.const_i32(1));
-                    let md = llvm::LLVMMDNodeInContext2(self.cx.llcx, &one, 1);
-                    self.set_metadata(store, llvm::MD_nontemporal, md);
+                    self.set_metadata_node(store, llvm::MD_nontemporal, &[one]);
                 }
             }
             store
@@ -1107,11 +1099,12 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         src_align: Align,
         size: &'ll Value,
         flags: MemFlags,
+        tt: Option<FncTree>,
     ) {
         assert!(!flags.contains(MemFlags::NONTEMPORAL), "non-temporal memcpy not supported");
         let size = self.intcast(size, self.type_isize(), false);
         let is_volatile = flags.contains(MemFlags::VOLATILE);
-        unsafe {
+        let memcpy = unsafe {
             llvm::LLVMRustBuildMemCpy(
                 self.llbuilder,
                 dst,
@@ -1120,7 +1113,16 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 src_align.bytes() as c_uint,
                 size,
                 is_volatile,
-            );
+            )
+        };
+
+        // TypeTree metadata for memcpy is especially important: when Enzyme encounters
+        // a memcpy during autodiff, it needs to know the structure of the data being
+        // copied to properly track derivatives. For example, copying an array of floats
+        // vs. copying a struct with mixed types requires different derivative handling.
+        // The TypeTree tells Enzyme exactly what memory layout to expect.
+        if let Some(tt) = tt {
+            crate::typetree::add_tt(self.cx().llmod, self.cx().llcx, memcpy, tt);
         }
     }
 
@@ -1370,10 +1372,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn set_invariant_load(&mut self, load: &'ll Value) {
-        unsafe {
-            let md = llvm::LLVMMDNodeInContext2(self.cx.llcx, ptr::null(), 0);
-            self.set_metadata(load, llvm::MD_invariant_load, md);
-        }
+        self.set_metadata_node(load, llvm::MD_invariant_load, &[]);
     }
 
     fn lifetime_start(&mut self, ptr: &'ll Value, size: Size) {
@@ -1433,7 +1432,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 // If there is an inline attribute and a target feature that matches
                 // we will add the attribute to the callsite otherwise we'll omit
                 // this and not add the attribute to prevent soundness issues.
-                && let Some(inlining_rule) = attributes::inline_attr(&self.cx, instance)
+                && let Some(inlining_rule) = attributes::inline_attr(&self.cx, self.cx.tcx, instance)
                 && self.cx.tcx.is_target_feature_call_safe(
                     &fn_call_attrs.target_features,
                     &fn_defn_attrs.target_features,
@@ -1517,25 +1516,16 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
 }
 impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     fn align_metadata(&mut self, load: &'ll Value, align: Align) {
-        unsafe {
-            let md = [llvm::LLVMValueAsMetadata(self.cx.const_u64(align.bytes()))];
-            let md = llvm::LLVMMDNodeInContext2(self.cx.llcx, md.as_ptr(), md.len());
-            self.set_metadata(load, llvm::MD_align, md);
-        }
+        let md = [llvm::LLVMValueAsMetadata(self.cx.const_u64(align.bytes()))];
+        self.set_metadata_node(load, llvm::MD_align, &md);
     }
 
     fn noundef_metadata(&mut self, load: &'ll Value) {
-        unsafe {
-            let md = llvm::LLVMMDNodeInContext2(self.cx.llcx, ptr::null(), 0);
-            self.set_metadata(load, llvm::MD_noundef, md);
-        }
+        self.set_metadata_node(load, llvm::MD_noundef, &[]);
     }
 
     pub(crate) fn set_unpredictable(&mut self, inst: &'ll Value) {
-        unsafe {
-            let md = llvm::LLVMMDNodeInContext2(self.cx.llcx, ptr::null(), 0);
-            self.set_metadata(inst, llvm::MD_unpredictable, md);
-        }
+        self.set_metadata_node(inst, llvm::MD_unpredictable, &[]);
     }
 }
 impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {

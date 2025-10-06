@@ -1,5 +1,6 @@
 // skip-filecheck
 //@ compile-flags: -O -Zmir-opt-level=2 -g
+//@ ignore-std-debug-assertions (debug assertions result in different inlines)
 //@ needs-unwind
 
 #![crate_type = "lib"]

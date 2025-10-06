@@ -1,5 +1,5 @@
 warning: tail calling a function marked with `#[track_caller]` has no special effect
-  --> $DIR/callee_is_track_caller.rs:7:12
+  --> $DIR/callee_is_track_caller.rs:8:12
    |
 LL |     become b(x);
    |            ^^^^

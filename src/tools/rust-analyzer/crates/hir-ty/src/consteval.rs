@@ -229,7 +229,7 @@ pub(crate) fn const_eval_cycle_result(
     _: &dyn HirDatabase,
     _: GeneralConstId,
     _: Substitution,
-    _: Option<Arc<TraitEnvironment>>,
+    _: Option<Arc<TraitEnvironment<'_>>>,
 ) -> Result<Const, ConstEvalError> {
     Err(ConstEvalError::MirLowerError(MirLowerError::Loop))
 }
@@ -252,7 +252,7 @@ pub(crate) fn const_eval_query(
     db: &dyn HirDatabase,
     def: GeneralConstId,
     subst: Substitution,
-    trait_env: Option<Arc<TraitEnvironment>>,
+    trait_env: Option<Arc<TraitEnvironment<'_>>>,
 ) -> Result<Const, ConstEvalError> {
     let body = match def {
         GeneralConstId::ConstId(c) => {
@@ -327,7 +327,7 @@ pub(crate) fn eval_to_const(
     debruijn: DebruijnIndex,
 ) -> Const {
     let db = ctx.db;
-    let infer = ctx.clone().resolve_all();
+    let infer = ctx.fixme_resolve_all_clone();
     fn has_closure(body: &Body, expr: ExprId) -> bool {
         if matches!(body[expr], Expr::Closure { .. }) {
             return true;

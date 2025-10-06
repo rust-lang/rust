@@ -16,7 +16,7 @@ LL | |             Poll::<()>::Pending
 LL | |         })
 LL | |         .await
    | |______________^
-help: the accessed tag <TAG> later transitioned to Active due to a child write access at offsets [OFFSET]
+help: the accessed tag <TAG> later transitioned to Unique due to a child write access at offsets [OFFSET]
   --> tests/fail/async-shared-mutable.rs:LL:CC
    |
 LL |             *x = 1;

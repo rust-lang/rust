@@ -95,8 +95,6 @@ impl Drop for OwnedTargetMachine {
         // SAFETY: constructing ensures we have a valid pointer created by
         // llvm::LLVMRustCreateTargetMachine OwnedTargetMachine is not copyable so there is no
         // double free or use after free.
-        unsafe {
-            llvm::LLVMRustDisposeTargetMachine(self.tm_unique.as_ptr());
-        }
+        unsafe { llvm::LLVMDisposeTargetMachine(self.tm_unique) };
     }
 }

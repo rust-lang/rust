@@ -11,9 +11,7 @@ use crate::inherent::*;
 use crate::ir_print::IrPrint;
 use crate::lang_items::{SolverAdtLangItem, SolverLangItem, SolverTraitLangItem};
 use crate::relate::Relate;
-use crate::solve::{
-    CanonicalInput, ExternalConstraintsData, PredefinedOpaquesData, QueryResult, inspect,
-};
+use crate::solve::{CanonicalInput, ExternalConstraintsData, QueryResult, inspect};
 use crate::visit::{Flags, TypeVisitable};
 use crate::{self as ty, CanonicalParamEnvCacheEntry, search_graph};
 
@@ -70,10 +68,10 @@ pub trait Interner:
         + Hash
         + Eq
         + TypeFoldable<Self>
-        + Deref<Target = PredefinedOpaquesData<Self>>;
+        + SliceLike<Item = (ty::OpaqueTypeKey<Self>, Self::Ty)>;
     fn mk_predefined_opaques_in_body(
         self,
-        data: PredefinedOpaquesData<Self>,
+        data: &[(ty::OpaqueTypeKey<Self>, Self::Ty)],
     ) -> Self::PredefinedOpaques;
 
     type LocalDefIds: Copy
@@ -185,7 +183,9 @@ pub trait Interner:
         from_entry: impl FnOnce(&CanonicalParamEnvCacheEntry<Self>) -> R,
     ) -> R;
 
-    fn evaluation_is_concurrent(&self) -> bool;
+    /// Useful for testing. If a cache entry is replaced, this should
+    /// (in theory) only happen when concurrent.
+    fn assert_evaluation_is_concurrent(&self);
 
     fn expand_abstract_consts<T: TypeFoldable<Self>>(self, t: T) -> T;
 
@@ -569,7 +569,7 @@ impl<I: Interner> search_graph::Cx for I {
     fn with_global_cache<R>(self, f: impl FnOnce(&mut search_graph::GlobalCache<Self>) -> R) -> R {
         I::with_global_cache(self, f)
     }
-    fn evaluation_is_concurrent(&self) -> bool {
-        self.evaluation_is_concurrent()
+    fn assert_evaluation_is_concurrent(&self) {
+        self.assert_evaluation_is_concurrent()
     }
 }

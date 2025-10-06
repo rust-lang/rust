@@ -1,0 +1,59 @@
+error[E0391]: cycle detected when computing type of `opaque::<impl at $DIR/unsupported.rs:29:5: 29:24>::opaque_ret::{anon_assoc#0}`
+  --> $DIR/unsupported.rs:30:25
+   |
+LL |         reuse to_reuse::opaque_ret;
+   |                         ^^^^^^^^^^
+   |
+note: ...which requires comparing an impl and trait method signature, inferring any hidden `impl Trait` types in the process...
+  --> $DIR/unsupported.rs:30:25
+   |
+LL |         reuse to_reuse::opaque_ret;
+   |                         ^^^^^^^^^^
+   = note: ...which again requires computing type of `opaque::<impl at $DIR/unsupported.rs:29:5: 29:24>::opaque_ret::{anon_assoc#0}`, completing the cycle
+note: cycle used when checking assoc item `opaque::<impl at $DIR/unsupported.rs:29:5: 29:24>::opaque_ret` is compatible with trait definition
+  --> $DIR/unsupported.rs:30:25
+   |
+LL |         reuse to_reuse::opaque_ret;
+   |                         ^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error[E0391]: cycle detected when computing type of `opaque::<impl at $DIR/unsupported.rs:32:5: 32:25>::opaque_ret::{anon_assoc#0}`
+  --> $DIR/unsupported.rs:33:24
+   |
+LL |         reuse ToReuse::opaque_ret;
+   |                        ^^^^^^^^^^
+   |
+note: ...which requires comparing an impl and trait method signature, inferring any hidden `impl Trait` types in the process...
+  --> $DIR/unsupported.rs:33:24
+   |
+LL |         reuse ToReuse::opaque_ret;
+   |                        ^^^^^^^^^^
+   = note: ...which again requires computing type of `opaque::<impl at $DIR/unsupported.rs:32:5: 32:25>::opaque_ret::{anon_assoc#0}`, completing the cycle
+note: cycle used when checking assoc item `opaque::<impl at $DIR/unsupported.rs:32:5: 32:25>::opaque_ret` is compatible with trait definition
+  --> $DIR/unsupported.rs:33:24
+   |
+LL |         reuse ToReuse::opaque_ret;
+   |                        ^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: recursive delegation is not supported yet
+  --> $DIR/unsupported.rs:46:22
+   |
+LL |         pub reuse to_reuse2::foo;
+   |                              --- callee defined here
+...
+LL |     reuse to_reuse1::foo;
+   |                      ^^^
+
+error[E0283]: type annotations needed
+  --> $DIR/unsupported.rs:56:18
+   |
+LL |     reuse Trait::foo;
+   |                  ^^^ cannot infer type
+   |
+   = note: cannot satisfy `_: effects::Trait`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0283, E0391.
+For more information about an error, try `rustc --explain E0283`.

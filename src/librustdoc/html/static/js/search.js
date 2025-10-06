@@ -1077,6 +1077,34 @@ function isPathSeparator(c) {
 }
 
 /**
+ * Given an array and an ascending list of indices,
+ * efficiently removes each index in the array.
+ *
+ * @template T
+ * @param {Array<T>} a
+ * @param {Array<number>} idxList
+ */
+function removeIdxListAsc(a, idxList) {
+    if (idxList.length === 0) {
+        return;
+    }
+    let removed = 0;
+    let i = idxList[0];
+    let nextToRemove = idxList[0];
+    while (i < a.length - idxList.length) {
+        while (i === nextToRemove && removed < idxList.length) {
+            removed++;
+            i++;
+            nextToRemove = idxList[removed];
+        }
+        a[i] = a[i + removed];
+        i++;
+    }
+    // truncate array
+    a.length -= idxList.length;
+}
+
+/**
  * @template T
  */
 class VlqHexDecoder {
@@ -1598,11 +1626,13 @@ class DocSearch {
          * module_path,
          * exact_module_path,
          * parent,
+         * trait_parent,
          * deprecated,
          * associated_item_disambiguator
          * @type {rustdoc.ArrayWithOptionals<[
          *     number,
          *     rustdoc.ItemType,
+         *     number,
          *     number,
          *     number,
          *     number,
@@ -1616,8 +1646,9 @@ class DocSearch {
             modulePath: raw[2] === 0 ? null : raw[2] - 1,
             exactModulePath: raw[3] === 0 ? null : raw[3] - 1,
             parent: raw[4] === 0 ? null : raw[4] - 1,
-            deprecated: raw[5] === 1 ? true : false,
-            associatedItemDisambiguator: raw.length === 6 ? null : raw[6],
+            traitParent: raw[5] === 0 ? null : raw[5] - 1,
+            deprecated: raw[6] === 1 ? true : false,
+            associatedItemDisambiguator: raw.length === 7 ? null : raw[7],
         };
     }
 
@@ -1853,14 +1884,25 @@ class DocSearch {
         if (!entry && !path) {
             return null;
         }
+        /** @type {function("parent" | "traitParent"): Promise<rustdoc.RowParent>} */
+        const buildParentLike = async field => {
+            const [name, path] = entry !== null && entry[field] !== null ?
+                await Promise.all([this.getName(entry[field]), this.getPathData(entry[field])]) :
+                [null, null];
+            if (name !== null && path !== null) {
+                return { name, path };
+            }
+            return null;
+        };
+
         const [
             moduleName,
             modulePathData,
             exactModuleName,
             exactModulePathData,
-            parentName,
-            parentPath,
-            crate,
+            parent,
+            traitParent,
+            crateOrNull,
         ] = await Promise.all([
             entry && entry.modulePath !== null ? this.getName(entry.modulePath) : null,
             entry && entry.modulePath !== null ? this.getPathData(entry.modulePath) : null,
@@ -1870,14 +1912,11 @@ class DocSearch {
             entry && entry.exactModulePath !== null ?
                 this.getPathData(entry.exactModulePath) :
                 null,
-            entry && entry.parent !== null ?
-                this.getName(entry.parent) :
-                null,
-            entry && entry.parent !== null ?
-                this.getPathData(entry.parent) :
-                null,
-            entry ? nonnull(await this.getName(entry.krate)) : "",
+            buildParentLike("parent"),
+            buildParentLike("traitParent"),
+            entry ? this.getName(entry.krate) : "",
         ]);
+        const crate = crateOrNull === null ? "" : crateOrNull;
         const name = name_ === null ? "" : name_;
         const normalizedName = (name.indexOf("_") === -1 ?
             name :
@@ -1886,6 +1925,7 @@ class DocSearch {
             (modulePathData.modulePath === "" ?
                 moduleName :
                 `${modulePathData.modulePath}::${moduleName}`);
+
         return {
             id,
             crate,
@@ -1901,9 +1941,8 @@ class DocSearch {
             path,
             functionData,
             deprecated: entry ? entry.deprecated : false,
-            parent: parentName !== null && parentPath !== null ?
-                { name: parentName, path: parentPath } :
-                null,
+            parent,
+            traitParent,
         };
     }
 
@@ -2101,11 +2140,12 @@ class DocSearch {
 
         /**
          * @param {rustdoc.Row} item
-         * @returns {[string, string, string]}
+         * @returns {[string, string, string, string|null]}
          */
         const buildHrefAndPath = item => {
             let displayPath;
             let href;
+            let traitPath = null;
             const type = itemTypes[item.ty];
             const name = item.name;
             let path = item.modulePath;
@@ -2163,7 +2203,11 @@ class DocSearch {
                 href = this.rootPath + item.modulePath.replace(/::/g, "/") +
                     "/" + type + "." + name + ".html";
             }
-            return [displayPath, href, `${exactPath}::${name}`];
+            if (item.traitParent) {
+                const tparent = item.traitParent;
+                traitPath = `${tparent.path.exactModulePath}::${tparent.name}::${name}`;
+            }
+            return [displayPath, href, `${exactPath}::${name}`, traitPath];
         };
 
         /**
@@ -2598,7 +2642,13 @@ class DocSearch {
          * @returns {rustdoc.ResultObject[]}
          */
         const transformResults = (results, typeInfo, duplicates) => {
+            /** @type {rustdoc.ResultObject[]} */
             const out = [];
+
+            // if we match a trait-associated item, we want to go back and
+            // remove all the items that are their equivalent but in an impl block.
+            /** @type {Map<string, number[]>} */
+            const traitImplIdxMap = new Map();
 
             for (const result of results) {
                 const item = result.item;
@@ -2630,14 +2680,32 @@ class DocSearch {
                         item,
                         displayPath: pathSplitter(res[0]),
                         fullPath: "",
+                        traitPath: null,
                         href: "",
                         displayTypeSignature: null,
                     }, result);
 
+                    // unlike other items, methods have a different ty when they are
+                    // in an impl block vs a trait.  want to normalize this away.
+                    let ty = obj.item.ty;
+                    if (ty === TY_TYMETHOD) {
+                        ty = TY_METHOD;
+                    }
                     // To be sure than it some items aren't considered as duplicate.
-                    obj.fullPath = res[2] + "|" + obj.item.ty;
+                    obj.fullPath = res[2] + "|" + ty;
+                    if (res[3]) {
+                        // "tymethod" is never used on impl blocks
+                        // (this is the reason we need to normalize tymethod away).
+                        obj.traitPath = res[3] + "|" + obj.item.ty;
+                    }
 
                     if (duplicates.has(obj.fullPath)) {
+                        continue;
+                    }
+
+                    // If we're showing something like `Iterator::next`,
+                    // we don't want to also show a bunch of `<SomeType as Iterator>::next`
+                    if (obj.traitPath && duplicates.has(obj.traitPath)) {
                         continue;
                     }
 
@@ -2661,14 +2729,29 @@ class DocSearch {
                         );
                     }
 
+                    // FIXME: if the trait item matches but is cut off due to MAX_RESULTS,
+                    // this deduplication will not happen.
                     obj.href = res[1];
+                    if (obj.traitPath) {
+                        let list = traitImplIdxMap.get(obj.traitPath);
+                        if (list === undefined) {
+                            list = [];
+                        }
+                        list.push(out.length);
+                        traitImplIdxMap.set(obj.traitPath, list);
+                    } else {
+                        const toRemoveList = traitImplIdxMap.get(obj.fullPath);
+                        if (toRemoveList) {
+                            removeIdxListAsc(out, toRemoveList);
+                        }
+                        traitImplIdxMap.delete(obj.fullPath);
+                    }
                     out.push(obj);
                     if (out.length >= MAX_RESULTS) {
                         break;
                     }
                 }
             }
-
             return out;
         };
 
