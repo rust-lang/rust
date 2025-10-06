@@ -13,7 +13,7 @@ use crate::builder::Builder;
 use crate::common::CodegenCx;
 use crate::llvm;
 
-pub(crate) mod ffi;
+pub(crate) mod coverage_ffi;
 mod llvm_cov;
 mod mapgen;
 

@@ -2,7 +2,7 @@
 
 use std::ffi::CString;
 
-use crate::coverageinfo::ffi;
+use crate::coverageinfo::coverage_ffi as ffi;
 use crate::llvm;
 
 pub(crate) fn covmap_var_name() -> CString {

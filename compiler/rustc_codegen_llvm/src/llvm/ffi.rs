@@ -19,15 +19,16 @@ use std::ptr;
 
 use bitflags::bitflags;
 use libc::{c_char, c_int, c_uchar, c_uint, c_ulonglong, c_void, size_t};
+use rustc_llvm::RustString;
 
-use super::RustString;
-use super::debuginfo::{
+use self::debuginfo::{
     DIArray, DIBuilder, DIDerivedType, DIDescriptor, DIEnumerator, DIFile, DIFlags,
     DIGlobalVariableExpression, DILocation, DISPFlags, DIScope, DISubprogram,
     DITemplateTypeParameter, DIType, DebugEmissionKind, DebugNameTableKind,
 };
+use crate::TryFromU32;
+use crate::coverageinfo::coverage_ffi;
 use crate::llvm::MetadataKindId;
-use crate::{TryFromU32, llvm};
 
 /// In the LLVM-C API, boolean values are passed as `typedef int LLVMBool`,
 /// which has a different ABI from Rust or C++ `bool`.
@@ -75,13 +76,13 @@ impl Debug for Bool {
 /// Being able to write `b.to_llvm_bool()` is less noisy than `llvm::Bool::from(b)`,
 /// while being more explicit and less mistake-prone than something like `b.into()`.
 pub(crate) trait ToLlvmBool: Copy {
-    fn to_llvm_bool(self) -> llvm::Bool;
+    fn to_llvm_bool(self) -> Bool;
 }
 
 impl ToLlvmBool for bool {
     #[inline(always)]
-    fn to_llvm_bool(self) -> llvm::Bool {
-        llvm::Bool::from_bool(self)
+    fn to_llvm_bool(self) -> Bool {
+        Bool::from_bool(self)
     }
 }
 
@@ -882,10 +883,10 @@ unsafe extern "C" {
         AsmStringSize: size_t,
         Constraints: *const c_uchar, // See "PTR_LEN_STR".
         ConstraintsSize: size_t,
-        HasSideEffects: llvm::Bool,
-        IsAlignStack: llvm::Bool,
+        HasSideEffects: Bool,
+        IsAlignStack: Bool,
         Dialect: AsmDialect,
-        CanThrow: llvm::Bool,
+        CanThrow: Bool,
     ) -> &'ll Value;
 
     pub(crate) safe fn LLVMGetTypeKind(Ty: &Type) -> RawEnum<TypeKind>;
@@ -1655,7 +1656,7 @@ unsafe extern "C" {
         ParentScope: Option<&'ll Metadata>,
         Name: *const c_uchar, // See "PTR_LEN_STR".
         NameLen: size_t,
-        ExportSymbols: llvm::Bool,
+        ExportSymbols: Bool,
     ) -> &'ll Metadata;
 
     pub(crate) fn LLVMDIBuilderCreateLexicalBlock<'ll>(
@@ -1843,7 +1844,7 @@ unsafe extern "C" {
         File: &'ll Metadata,
         LineNo: c_uint,
         Ty: &'ll Metadata,
-        AlwaysPreserve: llvm::Bool, // "If true, this descriptor will survive optimizations."
+        AlwaysPreserve: Bool, // "If true, this descriptor will survive optimizations."
         Flags: DIFlags,
         AlignInBits: u32,
     ) -> &'ll Metadata;
@@ -1857,7 +1858,7 @@ unsafe extern "C" {
         File: &'ll Metadata,
         LineNo: c_uint,
         Ty: &'ll Metadata,
-        AlwaysPreserve: llvm::Bool, // "If true, this descriptor will survive optimizations."
+        AlwaysPreserve: Bool, // "If true, this descriptor will survive optimizations."
         Flags: DIFlags,
     ) -> &'ll Metadata;
 }
@@ -2084,13 +2085,13 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustCoverageWriteFunctionMappingsToBuffer(
         VirtualFileMappingIDs: *const c_uint,
         NumVirtualFileMappingIDs: size_t,
-        Expressions: *const crate::coverageinfo::ffi::CounterExpression,
+        Expressions: *const coverage_ffi::CounterExpression,
         NumExpressions: size_t,
-        CodeRegions: *const crate::coverageinfo::ffi::CodeRegion,
+        CodeRegions: *const coverage_ffi::CodeRegion,
         NumCodeRegions: size_t,
-        ExpansionRegions: *const crate::coverageinfo::ffi::ExpansionRegion,
+        ExpansionRegions: *const coverage_ffi::ExpansionRegion,
         NumExpansionRegions: size_t,
-        BranchRegions: *const crate::coverageinfo::ffi::BranchRegion,
+        BranchRegions: *const coverage_ffi::BranchRegion,
         NumBranchRegions: size_t,
         BufferOut: &RustString,
     );
