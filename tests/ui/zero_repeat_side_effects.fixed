@@ -13,36 +13,51 @@ fn main() {
     // should trigger
 
     // on arrays
-    f(); let a: [i32; 0] = [];
+    f();
+    let a: [i32; 0] = [];
     //~^ zero_repeat_side_effects
     let mut b;
-    f(); b = [] as [i32; 0];
+    f();
+    b = [] as [i32; 0];
     //~^ zero_repeat_side_effects
 
     // on vecs
     // vecs dont support inferring value of consts
-    f(); let c: std::vec::Vec<i32> = vec![];
+    f();
+    let c: std::vec::Vec<i32> = vec![];
     //~^ zero_repeat_side_effects
     let d;
-    f(); d = vec![] as std::vec::Vec<i32>;
+    f();
+    d = vec![] as std::vec::Vec<i32>;
     //~^ zero_repeat_side_effects
 
     // for macros
-    println!("side effect"); let e: [(); 0] = [];
+    println!("side effect");
+    let e: [(); 0] = [];
     //~^ zero_repeat_side_effects
 
     // for nested calls
-    { f() }; let g: [i32; 0] = [];
+    { f() };
+    let g: [i32; 0] = [];
     //~^ zero_repeat_side_effects
 
     // as function param
-    drop({ f(); vec![] as std::vec::Vec<i32> });
+    drop({
+        f();
+        vec![] as std::vec::Vec<i32>
+    });
     //~^ zero_repeat_side_effects
 
     // when singled out/not part of assignment/local
-    { f(); vec![] as std::vec::Vec<i32> };
+    {
+        f();
+        vec![] as std::vec::Vec<i32>
+    };
     //~^ zero_repeat_side_effects
-    { f(); [] as [i32; 0] };
+    {
+        f();
+        [] as [i32; 0]
+    };
     //~^ zero_repeat_side_effects
 
     // should not trigger
@@ -96,8 +111,14 @@ fn issue_14681() {
 
     foo(&[Some(0i64); 0]);
     foo(&[Some(Some(0i64)); 0]);
-    foo(&{ Some(f()); [] as [std::option::Option<i32>; 0] });
+    foo(&{
+        Some(f());
+        [] as [std::option::Option<i32>; 0]
+    });
     //~^ zero_repeat_side_effects
-    foo(&{ Some(Some(S::new())); [] as [std::option::Option<std::option::Option<S>>; 0] });
+    foo(&{
+        Some(Some(S::new()));
+        [] as [std::option::Option<std::option::Option<S>>; 0]
+    });
     //~^ zero_repeat_side_effects
 }

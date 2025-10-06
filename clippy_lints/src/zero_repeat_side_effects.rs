@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::VecArgs;
-use clippy_utils::source::snippet;
+use clippy_utils::source::{snippet, snippet_indent};
 use rustc_ast::LitKind;
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::Applicability;
@@ -77,24 +77,34 @@ fn inner_check(cx: &LateContext<'_>, expr: &'_ rustc_hir::Expr<'_>, inner_expr: 
         let return_type = cx.typeck_results().expr_ty(expr);
 
         let inner_expr = snippet(cx, inner_expr.span.source_callsite(), "..");
+        let indent = snippet_indent(cx, expr.span).unwrap_or_default();
         let vec = if is_vec { "vec!" } else { "" };
 
         let (span, sugg) = match parent_hir_node {
             Node::LetStmt(l) => (
                 l.span,
                 format!(
-                    "{inner_expr}; let {var_name}: {return_type} = {vec}[];",
+                    "{inner_expr};\n{indent}let {var_name}: {return_type} = {vec}[];",
                     var_name = snippet(cx, l.pat.span.source_callsite(), "..")
                 ),
             ),
             Node::Expr(x) if let ExprKind::Assign(l, _, _) = x.kind => (
                 x.span,
                 format!(
-                    "{inner_expr}; {var_name} = {vec}[] as {return_type}",
+                    "{inner_expr};\n{indent}{var_name} = {vec}[] as {return_type}",
                     var_name = snippet(cx, l.span.source_callsite(), "..")
                 ),
             ),
-            _ => (expr.span, format!("{{ {inner_expr}; {vec}[] as {return_type} }}")),
+            _ => (
+                expr.span,
+                format!(
+                    "\
+{{
+{indent}    {inner_expr};
+{indent}    {vec}[] as {return_type}
+{indent}}}"
+                ),
+            ),
         };
         let span = span.source_callsite();
         span_lint_and_then(
