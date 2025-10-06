@@ -861,6 +861,7 @@ impl<'tcx> LateLintPass<'tcx> for Loops {
         // check for `loop { if let {} else break }` that could be `while let`
         // (also matches an explicit "match" instead of "if let")
         // (even if the "match" or "if let" is used for declaration)
+        // (also matches on `let {} else break`)
         if let ExprKind::Loop(block, label, LoopSource::Loop, _) = expr.kind {
             // also check for empty `loop {}` statements, skipping those in #[panic_handler]
             empty_loop::check(cx, expr, block);
