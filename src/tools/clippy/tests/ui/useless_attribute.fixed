@@ -153,7 +153,7 @@ pub mod redundant_imports_issue {
         () => {};
     }
 
-    #[expect(redundant_imports)]
+    #[expect(unused_imports)]
     pub(crate) use empty;
 
     empty!();

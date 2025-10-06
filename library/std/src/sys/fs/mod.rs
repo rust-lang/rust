@@ -35,6 +35,10 @@ cfg_select! {
         mod uefi;
         use uefi as imp;
     }
+    target_os = "vexos" => {
+        mod vexos;
+        use vexos as imp;
+    }
     target_os = "wasi" => {
         mod wasi;
         use wasi as imp;

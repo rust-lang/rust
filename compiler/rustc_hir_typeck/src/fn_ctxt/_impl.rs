@@ -611,19 +611,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         typeck_results.rvalue_scopes = rvalue_scopes;
     }
 
-    /// Unify the inference variables corresponding to coroutine witnesses, and save all the
-    /// predicates that were stalled on those inference variables.
-    ///
-    /// This process allows to conservatively save all predicates that do depend on the coroutine
-    /// interior types, for later processing by `check_coroutine_obligations`.
-    ///
-    /// We must not attempt to select obligations after this method has run, or risk query cycle
-    /// ICE.
+    /// Drain all obligations that are stalled on coroutines defined in this body.
     #[instrument(level = "debug", skip(self))]
-    pub(crate) fn resolve_coroutine_interiors(&self) {
-        // Try selecting all obligations that are not blocked on inference variables.
-        // Once we start unifying coroutine witnesses, trying to select obligations on them will
-        // trigger query cycle ICEs, as doing so requires MIR.
+    pub(crate) fn drain_stalled_coroutine_obligations(&self) {
+        // Make as much inference progress as possible before
+        // draining the stalled coroutine obligations as this may
+        // change obligations from being stalled on infer vars to
+        // being stalled on a coroutine.
         self.select_obligations_where_possible(|_| {});
 
         let ty::TypingMode::Analysis { defining_opaque_types_and_generators } = self.typing_mode()

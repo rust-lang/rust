@@ -1320,6 +1320,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             for statement in &data.statements {
                 self.codegen_statement(bx, statement);
             }
+            self.codegen_stmt_debuginfos(bx, &data.after_last_stmt_debuginfos);
 
             let merging_succ = self.codegen_terminator(bx, bb, data.terminator());
             if let MergingSucc::False = merging_succ {
@@ -1626,6 +1627,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     align,
                     bx.const_usize(copy_bytes),
                     MemFlags::empty(),
+                    None,
                 );
                 // ...and then load it with the ABI type.
                 llval = load_cast(bx, cast, llscratch, scratch_align);

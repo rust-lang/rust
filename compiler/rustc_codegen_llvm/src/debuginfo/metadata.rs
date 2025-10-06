@@ -37,11 +37,11 @@ use crate::common::{AsCCharPtr, CodegenCx};
 use crate::debuginfo::dwarf_const;
 use crate::debuginfo::metadata::type_map::build_type_with_children;
 use crate::debuginfo::utils::{WidePtrKind, wide_pointer_kind};
-use crate::llvm;
 use crate::llvm::debuginfo::{
     DIBasicType, DIBuilder, DICompositeType, DIDescriptor, DIFile, DIFlags, DILexicalBlock,
     DIScope, DIType, DebugEmissionKind, DebugNameTableKind,
 };
+use crate::llvm::{self, FromGeneric};
 use crate::value::Value;
 
 impl PartialEq for llvm::Metadata {
@@ -117,7 +117,7 @@ fn build_fixed_size_array_di_node<'ll, 'tcx>(
         .try_to_target_usize(cx.tcx)
         .expect("expected monomorphic const in codegen") as c_longlong;
 
-    let subrange = unsafe { llvm::LLVMRustDIBuilderGetOrCreateSubrange(DIB(cx), 0, upper_bound) };
+    let subrange = unsafe { llvm::LLVMDIBuilderGetOrCreateSubrange(DIB(cx), 0, upper_bound) };
     let subscripts = &[subrange];
 
     let di_node = unsafe {
@@ -477,8 +477,8 @@ pub(crate) fn spanned_type_di_node<'ll, 'tcx>(
         ty::CoroutineClosure(..) => build_closure_env_di_node(cx, unique_type_id),
         ty::Coroutine(..) => enums::build_coroutine_di_node(cx, unique_type_id),
         ty::Adt(def, ..) => match def.adt_kind() {
-            AdtKind::Struct => build_struct_type_di_node(cx, unique_type_id),
-            AdtKind::Union => build_union_type_di_node(cx, unique_type_id),
+            AdtKind::Struct => build_struct_type_di_node(cx, unique_type_id, span),
+            AdtKind::Union => build_union_type_di_node(cx, unique_type_id, span),
             AdtKind::Enum => enums::build_enum_type_di_node(cx, unique_type_id, span),
         },
         ty::Tuple(_) => build_tuple_type_di_node(cx, unique_type_id),
@@ -1043,7 +1043,7 @@ fn create_member_type<'ll, 'tcx>(
             file_metadata,
             line_number,
             layout.size.bits(),
-            layout.align.abi.bits() as u32,
+            layout.align.bits() as u32,
             offset.bits(),
             flags,
             type_di_node,
@@ -1076,6 +1076,7 @@ fn visibility_di_flags<'ll, 'tcx>(
 fn build_struct_type_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     unique_type_id: UniqueTypeId<'tcx>,
+    span: Span,
 ) -> DINodeCreationResult<'ll> {
     let struct_type = unique_type_id.expect_ty();
     let ty::Adt(adt_def, _) = struct_type.kind() else {
@@ -1083,7 +1084,7 @@ fn build_struct_type_di_node<'ll, 'tcx>(
     };
     assert!(adt_def.is_struct());
     let containing_scope = get_namespace_for_item(cx, adt_def.did());
-    let struct_type_and_layout = cx.layout_of(struct_type);
+    let struct_type_and_layout = cx.spanned_layout_of(struct_type, span);
     let variant_def = adt_def.non_enum_variant();
     let def_location = if cx.sess().opts.unstable_opts.debug_info_type_line_numbers {
         Some(file_metadata_from_def_id(cx, Some(adt_def.did())))
@@ -1276,6 +1277,7 @@ fn build_closure_env_di_node<'ll, 'tcx>(
 fn build_union_type_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     unique_type_id: UniqueTypeId<'tcx>,
+    span: Span,
 ) -> DINodeCreationResult<'ll> {
     let union_type = unique_type_id.expect_ty();
     let (union_def_id, variant_def) = match union_type.kind() {
@@ -1283,7 +1285,7 @@ fn build_union_type_di_node<'ll, 'tcx>(
         _ => bug!("build_union_type_di_node on a non-ADT"),
     };
     let containing_scope = get_namespace_for_item(cx, union_def_id);
-    let union_ty_and_layout = cx.layout_of(union_type);
+    let union_ty_and_layout = cx.spanned_layout_of(union_type, span);
     let type_name = compute_debuginfo_type_name(cx.tcx, union_type, false);
     let def_location = if cx.sess().opts.unstable_opts.debug_info_type_line_numbers {
         Some(file_metadata_from_def_id(cx, Some(union_def_id)))
@@ -1605,21 +1607,11 @@ pub(crate) fn apply_vcall_visibility_metadata<'ll, 'tcx>(
     let trait_ref_typeid = typeid_for_trait_ref(cx.tcx, trait_ref);
     let typeid = cx.create_metadata(trait_ref_typeid.as_bytes());
 
-    unsafe {
-        let v = [llvm::LLVMValueAsMetadata(cx.const_usize(0)), typeid];
-        llvm::LLVMRustGlobalAddMetadata(
-            vtable,
-            llvm::MD_type as c_uint,
-            llvm::LLVMMDNodeInContext2(cx.llcx, v.as_ptr(), v.len()),
-        );
-        let vcall_visibility = llvm::LLVMValueAsMetadata(cx.const_u64(vcall_visibility as u64));
-        let vcall_visibility_metadata = llvm::LLVMMDNodeInContext2(cx.llcx, &vcall_visibility, 1);
-        llvm::LLVMGlobalSetMetadata(
-            vtable,
-            llvm::MetadataType::MD_vcall_visibility as c_uint,
-            vcall_visibility_metadata,
-        );
-    }
+    let type_ = [llvm::LLVMValueAsMetadata(cx.const_usize(0)), typeid];
+    cx.global_add_metadata_node(vtable, llvm::MD_type, &type_);
+
+    let vcall_visibility = [llvm::LLVMValueAsMetadata(cx.const_u64(vcall_visibility as u64))];
+    cx.global_set_metadata_node(vtable, llvm::MD_vcall_visibility, &vcall_visibility);
 }
 
 /// Creates debug information for the given vtable, which is for the

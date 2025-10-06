@@ -48,7 +48,7 @@ pub(crate) fn try_run_tests(
 }
 
 fn run_tests(builder: &Builder<'_>, cmd: &mut BootstrapCommand, stream: bool) -> bool {
-    builder.verbose(|| println!("running: {cmd:?}"));
+    builder.do_if_verbose(|| println!("running: {cmd:?}"));
 
     let Some(mut streaming_command) = cmd.stream_capture_stdout(&builder.config.exec_ctx) else {
         return true;

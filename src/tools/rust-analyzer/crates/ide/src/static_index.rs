@@ -278,7 +278,7 @@ impl StaticIndex<'_> {
         for token in tokens {
             let range = token.text_range();
             let node = token.parent().unwrap();
-            match get_definitions(&sema, token.clone()) {
+            match salsa::attach(self.db, || get_definitions(&sema, token.clone())) {
                 Some(it) => {
                     for i in it {
                         add_token(i, range, &node);

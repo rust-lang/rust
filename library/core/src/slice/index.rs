@@ -31,8 +31,8 @@ where
     }
 }
 
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
-#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[cfg_attr(not(panic = "immediate-abort"), inline(never), cold)]
+#[cfg_attr(panic = "immediate-abort", inline)]
 #[track_caller]
 const fn slice_index_fail(start: usize, end: usize, len: usize) -> ! {
     if start > len {
@@ -233,7 +233,7 @@ unsafe impl<T> const SliceIndex<[T]> for usize {
     #[track_caller]
     unsafe fn get_unchecked(self, slice: *const [T]) -> *const T {
         assert_unsafe_precondition!(
-            check_language_ub,
+            check_language_ub, // okay because of the `assume` below
             "slice::get_unchecked requires that the index is within the slice",
             (this: usize = self, len: usize = slice.len()) => this < len
         );

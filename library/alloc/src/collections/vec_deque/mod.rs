@@ -103,7 +103,6 @@ pub struct VecDeque<
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone, A: Allocator + Clone> Clone for VecDeque<T, A> {
-    #[track_caller]
     fn clone(&self) -> Self {
         let mut deq = Self::with_capacity_in(self.len(), self.allocator().clone());
         deq.extend(self.iter().cloned());
@@ -114,7 +113,6 @@ impl<T: Clone, A: Allocator + Clone> Clone for VecDeque<T, A> {
     ///
     /// This method is preferred over simply assigning `source.clone()` to `self`,
     /// as it avoids reallocation if possible.
-    #[track_caller]
     fn clone_from(&mut self, source: &Self) {
         self.clear();
         self.extend(source.iter().cloned());
@@ -577,7 +575,6 @@ impl<T> VecDeque<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    #[track_caller]
     pub fn with_capacity(capacity: usize) -> VecDeque<T> {
         Self::with_capacity_in(capacity, Global)
     }
@@ -633,7 +630,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// let deque: VecDeque<u32> = VecDeque::with_capacity(10);
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
-    #[track_caller]
     pub fn with_capacity_in(capacity: usize, alloc: A) -> VecDeque<T, A> {
         VecDeque { head: 0, len: 0, buf: RawVec::with_capacity_in(capacity, alloc) }
     }
@@ -799,7 +795,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// [`reserve`]: VecDeque::reserve
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[track_caller]
     pub fn reserve_exact(&mut self, additional: usize) {
         let new_cap = self.len.checked_add(additional).expect("capacity overflow");
         let old_cap = self.capacity();
@@ -830,7 +825,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg_attr(not(test), rustc_diagnostic_item = "vecdeque_reserve")]
-    #[track_caller]
     pub fn reserve(&mut self, additional: usize) {
         let new_cap = self.len.checked_add(additional).expect("capacity overflow");
         let old_cap = self.capacity();
@@ -962,7 +956,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert!(buf.capacity() >= 4);
     /// ```
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
-    #[track_caller]
     pub fn shrink_to_fit(&mut self) {
         self.shrink_to(0);
     }
@@ -988,7 +981,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert!(buf.capacity() >= 4);
     /// ```
     #[stable(feature = "shrink_to", since = "1.56.0")]
-    #[track_caller]
     pub fn shrink_to(&mut self, min_capacity: usize) {
         let target_cap = min_capacity.max(self.len);
 
@@ -1891,7 +1883,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(d.front(), Some(&2));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[track_caller]
     pub fn push_front(&mut self, value: T) {
         let _ = self.push_front_mut(value);
     }
@@ -1910,7 +1901,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(d.front(), Some(&7));
     /// ```
     #[unstable(feature = "push_mut", issue = "135974")]
-    #[track_caller]
     #[must_use = "if you don't need a reference to the value, use `VecDeque::push_front` instead"]
     pub fn push_front_mut(&mut self, value: T) -> &mut T {
         if self.is_full() {
@@ -1937,7 +1927,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_confusables("push", "put", "append")]
-    #[track_caller]
     pub fn push_back(&mut self, value: T) {
         let _ = self.push_back_mut(value);
     }
@@ -1956,7 +1945,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(d.back(), Some(&10));
     /// ```
     #[unstable(feature = "push_mut", issue = "135974")]
-    #[track_caller]
     #[must_use = "if you don't need a reference to the value, use `VecDeque::push_back` instead"]
     pub fn push_back_mut(&mut self, value: T) -> &mut T {
         if self.is_full() {
@@ -2071,7 +2059,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(vec_deque, &['a', 'd', 'b', 'c', 'e']);
     /// ```
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
-    #[track_caller]
     pub fn insert(&mut self, index: usize, value: T) {
         let _ = self.insert_mut(index, value);
     }
@@ -2099,7 +2086,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(vec_deque, &[1, 12, 2, 3]);
     /// ```
     #[unstable(feature = "push_mut", issue = "135974")]
-    #[track_caller]
     #[must_use = "if you don't need a reference to the value, use `VecDeque::insert` instead"]
     pub fn insert_mut(&mut self, index: usize, value: T) -> &mut T {
         assert!(index <= self.len(), "index out of bounds");
@@ -2205,7 +2191,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
     #[inline]
     #[must_use = "use `.truncate()` if you don't need the other half"]
     #[stable(feature = "split_off", since = "1.4.0")]
-    #[track_caller]
     pub fn split_off(&mut self, at: usize) -> Self
     where
         A: Clone,
@@ -2272,7 +2257,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "append", since = "1.4.0")]
-    #[track_caller]
     pub fn append(&mut self, other: &mut Self) {
         if T::IS_ZST {
             self.len = self.len.checked_add(other.len).expect("capacity overflow");
@@ -2395,7 +2379,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
     // be called in cold paths.
     // This may panic or abort
     #[inline(never)]
-    #[track_caller]
     fn grow(&mut self) {
         // Extend or possibly remove this assertion when valid use-cases for growing the
         // buffer without it being full emerge
@@ -2434,7 +2417,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf, [5, 10, 101, 102, 103]);
     /// ```
     #[stable(feature = "vec_resize_with", since = "1.33.0")]
-    #[track_caller]
     pub fn resize_with(&mut self, new_len: usize, generator: impl FnMut() -> T) {
         let len = self.len;
 
@@ -2981,7 +2963,6 @@ impl<T: Clone, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf, [5, 10, 20, 20, 20]);
     /// ```
     #[stable(feature = "deque_extras", since = "1.16.0")]
-    #[track_caller]
     pub fn resize(&mut self, new_len: usize, value: T) {
         if new_len > self.len() {
             let extra = new_len - self.len();
@@ -3101,7 +3082,6 @@ impl<T, A: Allocator> IndexMut<usize> for VecDeque<T, A> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> FromIterator<T> for VecDeque<T> {
-    #[track_caller]
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> VecDeque<T> {
         SpecFromIter::spec_from_iter(iter.into_iter())
     }
@@ -3141,19 +3121,16 @@ impl<'a, T, A: Allocator> IntoIterator for &'a mut VecDeque<T, A> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator> Extend<T> for VecDeque<T, A> {
-    #[track_caller]
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         <Self as SpecExtend<T, I::IntoIter>>::spec_extend(self, iter.into_iter());
     }
 
     #[inline]
-    #[track_caller]
     fn extend_one(&mut self, elem: T) {
         self.push_back(elem);
     }
 
     #[inline]
-    #[track_caller]
     fn extend_reserve(&mut self, additional: usize) {
         self.reserve(additional);
     }
@@ -3169,19 +3146,16 @@ impl<T, A: Allocator> Extend<T> for VecDeque<T, A> {
 
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a, T: 'a + Copy, A: Allocator> Extend<&'a T> for VecDeque<T, A> {
-    #[track_caller]
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.spec_extend(iter.into_iter());
     }
 
     #[inline]
-    #[track_caller]
     fn extend_one(&mut self, &elem: &'a T) {
         self.push_back(elem);
     }
 
     #[inline]
-    #[track_caller]
     fn extend_reserve(&mut self, additional: usize) {
         self.reserve(additional);
     }
@@ -3279,7 +3253,6 @@ impl<T, const N: usize> From<[T; N]> for VecDeque<T> {
     /// let deq2: VecDeque<_> = [1, 2, 3, 4].into();
     /// assert_eq!(deq1, deq2);
     /// ```
-    #[track_caller]
     fn from(arr: [T; N]) -> Self {
         let mut deq = VecDeque::with_capacity(N);
         let arr = ManuallyDrop::new(arr);

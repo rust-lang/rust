@@ -590,7 +590,12 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, cargo: &mut Car
                 ),
             );
             let compiler_builtins_root = builder.src.join("src/llvm-project/compiler-rt");
-            assert!(compiler_builtins_root.exists());
+            if !builder.config.dry_run() {
+                // This assertion would otherwise trigger during tests if `llvm-project` is not
+                // checked out.
+                assert!(compiler_builtins_root.exists());
+            }
+
             // The path to `compiler-rt` is also used by `profiler_builtins` (above),
             // so if you're changing something here please also change that as appropriate.
             cargo.env("RUST_COMPILER_RT_ROOT", &compiler_builtins_root);
@@ -895,6 +900,8 @@ impl Step for StartupObjects {
     fn run(self, builder: &Builder<'_>) -> Vec<(PathBuf, DependencyType)> {
         let for_compiler = self.compiler;
         let target = self.target;
+        // Even though no longer necessary on x86_64, they are kept for now to
+        // avoid potential issues in downstream crates.
         if !target.is_windows_gnu() {
             return vec![];
         }
@@ -1219,7 +1226,7 @@ pub fn rustc_cargo(
     // us a faster startup time. However GNU ld < 2.40 will error if we try to link a shared object
     // with direct references to protected symbols, so for now we only use protected symbols if
     // linking with LLD is enabled.
-    if builder.build.config.lld_mode.is_used() {
+    if builder.build.config.bootstrap_override_lld.is_used() {
         cargo.rustflag("-Zdefault-visibility=protected");
     }
 
@@ -1256,7 +1263,7 @@ pub fn rustc_cargo(
     // is already on by default in MSVC optimized builds, which is interpreted as --icf=all:
     // https://github.com/llvm/llvm-project/blob/3329cec2f79185bafd678f310fafadba2a8c76d2/lld/COFF/Driver.cpp#L1746
     // https://github.com/rust-lang/rust/blob/f22819bcce4abaff7d1246a56eec493418f9f4ee/compiler/rustc_codegen_ssa/src/back/linker.rs#L827
-    if builder.config.lld_mode.is_used() && !build_compiler.host.is_msvc() {
+    if builder.config.bootstrap_override_lld.is_used() && !build_compiler.host.is_msvc() {
         cargo.rustflag("-Clink-args=-Wl,--icf=all");
     }
 
@@ -1832,8 +1839,9 @@ impl Step for Sysroot {
         let sysroot = sysroot_dir(compiler.stage);
         trace!(stage = ?compiler.stage, ?sysroot);
 
-        builder
-            .verbose(|| println!("Removing sysroot {} to avoid caching bugs", sysroot.display()));
+        builder.do_if_verbose(|| {
+            println!("Removing sysroot {} to avoid caching bugs", sysroot.display())
+        });
         let _ = fs::remove_dir_all(&sysroot);
         t!(fs::create_dir_all(&sysroot));
 
@@ -1902,12 +1910,7 @@ impl Step for Sysroot {
                 if !path.parent().is_none_or(|p| p.ends_with(&suffix)) {
                     return true;
                 }
-                if !filtered_files.iter().all(|f| f != path.file_name().unwrap()) {
-                    builder.verbose_than(1, || println!("ignoring {}", path.display()));
-                    false
-                } else {
-                    true
-                }
+                filtered_files.iter().all(|f| f != path.file_name().unwrap())
             });
         }
 
@@ -2596,7 +2599,7 @@ pub fn stream_cargo(
         cmd.arg(arg);
     }
 
-    builder.verbose(|| println!("running: {cmd:?}"));
+    builder.do_if_verbose(|| println!("running: {cmd:?}"));
 
     let streaming_command = cmd.stream_capture_stdout(&builder.config.exec_ctx);
 

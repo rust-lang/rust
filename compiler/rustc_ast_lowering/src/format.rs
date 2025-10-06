@@ -487,26 +487,6 @@ fn expand_format_args<'hir>(
         // Generate:
         //     []
         (vec![], ctx.arena.alloc(ctx.expr(macsp, hir::ExprKind::Array(&[]))))
-    } else if argmap.len() == 1 && arguments.len() == 1 {
-        // Only one argument, so we don't need to make the `args` tuple.
-        //
-        // Generate:
-        //     super let args = [<core::fmt::Argument>::new_display(&arg)];
-        let args = ctx.arena.alloc_from_iter(argmap.iter().map(
-            |(&(arg_index, ty), &placeholder_span)| {
-                let arg = &arguments[arg_index];
-                let placeholder_span =
-                    placeholder_span.unwrap_or(arg.expr.span).with_ctxt(macsp.ctxt());
-                let arg = ctx.lower_expr(&arg.expr);
-                let ref_arg = ctx.arena.alloc(ctx.expr_ref(arg.span.with_ctxt(macsp.ctxt()), arg));
-                make_argument(ctx, placeholder_span, ref_arg, ty)
-            },
-        ));
-        let args = ctx.arena.alloc(ctx.expr(macsp, hir::ExprKind::Array(args)));
-        let args_ident = Ident::new(sym::args, macsp);
-        let (args_pat, args_hir_id) = ctx.pat_ident(macsp, args_ident);
-        let let_statement = ctx.stmt_super_let_pat(macsp, args_pat, Some(args));
-        (vec![let_statement], ctx.arena.alloc(ctx.expr_ident_mut(macsp, args_ident, args_hir_id)))
     } else {
         // Generate:
         //     super let args = (&arg0, &arg1, &…);

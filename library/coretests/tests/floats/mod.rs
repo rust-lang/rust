@@ -34,6 +34,10 @@ trait TestableFloat: Sized {
     const RAW_12_DOT_5: Self;
     const RAW_1337: Self;
     const RAW_MINUS_14_DOT_25: Self;
+    /// The result of 12.3.mul_add(4.5, 6.7)
+    const MUL_ADD_RESULT: Self;
+    /// The result of (-12.3).mul_add(-4.5, -6.7)
+    const NEG_MUL_ADD_RESULT: Self;
 }
 
 impl TestableFloat for f16 {
@@ -58,6 +62,8 @@ impl TestableFloat for f16 {
     const RAW_12_DOT_5: Self = Self::from_bits(0x4a40);
     const RAW_1337: Self = Self::from_bits(0x6539);
     const RAW_MINUS_14_DOT_25: Self = Self::from_bits(0xcb20);
+    const MUL_ADD_RESULT: Self = 62.031;
+    const NEG_MUL_ADD_RESULT: Self = 48.625;
 }
 
 impl TestableFloat for f32 {
@@ -84,6 +90,8 @@ impl TestableFloat for f32 {
     const RAW_12_DOT_5: Self = Self::from_bits(0x41480000);
     const RAW_1337: Self = Self::from_bits(0x44a72000);
     const RAW_MINUS_14_DOT_25: Self = Self::from_bits(0xc1640000);
+    const MUL_ADD_RESULT: Self = 62.05;
+    const NEG_MUL_ADD_RESULT: Self = 48.65;
 }
 
 impl TestableFloat for f64 {
@@ -106,6 +114,8 @@ impl TestableFloat for f64 {
     const RAW_12_DOT_5: Self = Self::from_bits(0x4029000000000000);
     const RAW_1337: Self = Self::from_bits(0x4094e40000000000);
     const RAW_MINUS_14_DOT_25: Self = Self::from_bits(0xc02c800000000000);
+    const MUL_ADD_RESULT: Self = 62.050000000000004;
+    const NEG_MUL_ADD_RESULT: Self = 48.650000000000006;
 }
 
 impl TestableFloat for f128 {
@@ -128,6 +138,8 @@ impl TestableFloat for f128 {
     const RAW_12_DOT_5: Self = Self::from_bits(0x40029000000000000000000000000000);
     const RAW_1337: Self = Self::from_bits(0x40094e40000000000000000000000000);
     const RAW_MINUS_14_DOT_25: Self = Self::from_bits(0xc002c800000000000000000000000000);
+    const MUL_ADD_RESULT: Self = 62.0500000000000000000000000000000037;
+    const NEG_MUL_ADD_RESULT: Self = 48.6500000000000000000000000000000049;
 }
 
 /// Determine the tolerance for values of the argument type.
@@ -359,8 +371,6 @@ macro_rules! float_test {
 
 mod f128;
 mod f16;
-mod f32;
-mod f64;
 
 float_test! {
     name: num,
@@ -1180,15 +1190,12 @@ float_test! {
     }
 }
 
-// FIXME(f16_f128,miri): many of these have to be disabled since miri does not yet support
-// the intrinsics.
-
 float_test! {
     name: sqrt_domain,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
-        f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+        f16: #[cfg(any(miri, target_has_reliable_f16_math))],
+        f128: #[cfg(any(miri, target_has_reliable_f128_math))],
     },
     test<Float> {
         assert!(Float::NAN.sqrt().is_nan());
@@ -1246,104 +1253,103 @@ float_test! {
 float_test! {
     name: total_cmp,
     attrs: {
-        const: #[cfg(false)],
-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
-        f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+        f16: #[cfg(any(miri, target_has_reliable_f16_math))],
+        f128: #[cfg(any(miri, target_has_reliable_f128_math))],
     },
     test<Float> {
         use core::cmp::Ordering;
 
-        fn quiet_bit_mask() -> <Float as TestableFloat>::Int {
+        const fn quiet_bit_mask() -> <Float as TestableFloat>::Int {
             1 << (Float::MANTISSA_DIGITS - 2)
         }
 
-        fn q_nan() -> Float {
+        const fn q_nan() -> Float {
             Float::from_bits(Float::NAN.to_bits() | quiet_bit_mask())
         }
 
-        assert_eq!(Ordering::Equal, Float::total_cmp(&-q_nan(), &-q_nan()));
-        assert_eq!(Ordering::Equal, Float::total_cmp(&-Float::INFINITY, &-Float::INFINITY));
-        assert_eq!(Ordering::Equal, Float::total_cmp(&-Float::MAX, &-Float::MAX));
-        assert_eq!(Ordering::Equal, Float::total_cmp(&-2.5, &-2.5));
-        assert_eq!(Ordering::Equal, Float::total_cmp(&-1.0, &-1.0));
-        assert_eq!(Ordering::Equal, Float::total_cmp(&-1.5, &-1.5));
-        assert_eq!(Ordering::Equal, Float::total_cmp(&-0.5, &-0.5));
-        assert_eq!(Ordering::Equal, Float::total_cmp(&-Float::MIN_POSITIVE, &-Float::MIN_POSITIVE));
-        assert_eq!(Ordering::Equal, Float::total_cmp(&-Float::MAX_SUBNORMAL, &-Float::MAX_SUBNORMAL));
-        assert_eq!(Ordering::Equal, Float::total_cmp(&-Float::TINY, &-Float::TINY));
-        assert_eq!(Ordering::Equal, Float::total_cmp(&-0.0, &-0.0));
-        assert_eq!(Ordering::Equal, Float::total_cmp(&0.0, &0.0));
-        assert_eq!(Ordering::Equal, Float::total_cmp(&Float::TINY, &Float::TINY));
-        assert_eq!(Ordering::Equal, Float::total_cmp(&Float::MAX_SUBNORMAL, &Float::MAX_SUBNORMAL));
-        assert_eq!(Ordering::Equal, Float::total_cmp(&Float::MIN_POSITIVE, &Float::MIN_POSITIVE));
-        assert_eq!(Ordering::Equal, Float::total_cmp(&0.5, &0.5));
-        assert_eq!(Ordering::Equal, Float::total_cmp(&1.0, &1.0));
-        assert_eq!(Ordering::Equal, Float::total_cmp(&1.5, &1.5));
-        assert_eq!(Ordering::Equal, Float::total_cmp(&2.5, &2.5));
-        assert_eq!(Ordering::Equal, Float::total_cmp(&Float::MAX, &Float::MAX));
-        assert_eq!(Ordering::Equal, Float::total_cmp(&Float::INFINITY, &Float::INFINITY));
-        assert_eq!(Ordering::Equal, Float::total_cmp(&q_nan(), &q_nan()));
+        assert!(matches!(Float::total_cmp(&-q_nan(), &-q_nan()), Ordering::Equal));
+        assert!(matches!(Float::total_cmp(&-Float::INFINITY, &-Float::INFINITY), Ordering::Equal));
+        assert!(matches!(Float::total_cmp(&-Float::MAX, &-Float::MAX), Ordering::Equal));
+        assert!(matches!(Float::total_cmp(&-2.5, &-2.5), Ordering::Equal));
+        assert!(matches!(Float::total_cmp(&-1.0, &-1.0), Ordering::Equal));
+        assert!(matches!(Float::total_cmp(&-1.5, &-1.5), Ordering::Equal));
+        assert!(matches!(Float::total_cmp(&-0.5, &-0.5), Ordering::Equal));
+        assert!(matches!(Float::total_cmp(&-Float::MIN_POSITIVE, &-Float::MIN_POSITIVE), Ordering::Equal));
+        assert!(matches!(Float::total_cmp(&-Float::MAX_SUBNORMAL, &-Float::MAX_SUBNORMAL), Ordering::Equal));
+        assert!(matches!(Float::total_cmp(&-Float::TINY, &-Float::TINY), Ordering::Equal));
+        assert!(matches!(Float::total_cmp(&-0.0, &-0.0), Ordering::Equal));
+        assert!(matches!(Float::total_cmp(&0.0, &0.0), Ordering::Equal));
+        assert!(matches!(Float::total_cmp(&Float::TINY, &Float::TINY), Ordering::Equal));
+        assert!(matches!(Float::total_cmp(&Float::MAX_SUBNORMAL, &Float::MAX_SUBNORMAL), Ordering::Equal));
+        assert!(matches!(Float::total_cmp(&Float::MIN_POSITIVE, &Float::MIN_POSITIVE), Ordering::Equal));
+        assert!(matches!(Float::total_cmp(&0.5, &0.5), Ordering::Equal));
+        assert!(matches!(Float::total_cmp(&1.0, &1.0), Ordering::Equal));
+        assert!(matches!(Float::total_cmp(&1.5, &1.5), Ordering::Equal));
+        assert!(matches!(Float::total_cmp(&2.5, &2.5), Ordering::Equal));
+        assert!(matches!(Float::total_cmp(&Float::MAX, &Float::MAX), Ordering::Equal));
+        assert!(matches!(Float::total_cmp(&Float::INFINITY, &Float::INFINITY), Ordering::Equal));
+        assert!(matches!(Float::total_cmp(&q_nan(), &q_nan()), Ordering::Equal));
 
-        assert_eq!(Ordering::Less, Float::total_cmp(&-Float::INFINITY, &-Float::MAX));
-        assert_eq!(Ordering::Less, Float::total_cmp(&-Float::MAX, &-2.5));
-        assert_eq!(Ordering::Less, Float::total_cmp(&-2.5, &-1.5));
-        assert_eq!(Ordering::Less, Float::total_cmp(&-1.5, &-1.0));
-        assert_eq!(Ordering::Less, Float::total_cmp(&-1.0, &-0.5));
-        assert_eq!(Ordering::Less, Float::total_cmp(&-0.5, &-Float::MIN_POSITIVE));
-        assert_eq!(Ordering::Less, Float::total_cmp(&-Float::MIN_POSITIVE, &-Float::MAX_SUBNORMAL));
-        assert_eq!(Ordering::Less, Float::total_cmp(&-Float::MAX_SUBNORMAL, &-Float::TINY));
-        assert_eq!(Ordering::Less, Float::total_cmp(&-Float::TINY, &-0.0));
-        assert_eq!(Ordering::Less, Float::total_cmp(&-0.0, &0.0));
-        assert_eq!(Ordering::Less, Float::total_cmp(&0.0, &Float::TINY));
-        assert_eq!(Ordering::Less, Float::total_cmp(&Float::TINY, &Float::MAX_SUBNORMAL));
-        assert_eq!(Ordering::Less, Float::total_cmp(&Float::MAX_SUBNORMAL, &Float::MIN_POSITIVE));
-        assert_eq!(Ordering::Less, Float::total_cmp(&Float::MIN_POSITIVE, &0.5));
-        assert_eq!(Ordering::Less, Float::total_cmp(&0.5, &1.0));
-        assert_eq!(Ordering::Less, Float::total_cmp(&1.0, &1.5));
-        assert_eq!(Ordering::Less, Float::total_cmp(&1.5, &2.5));
-        assert_eq!(Ordering::Less, Float::total_cmp(&2.5, &Float::MAX));
-        assert_eq!(Ordering::Less, Float::total_cmp(&Float::MAX, &Float::INFINITY));
+        assert!(matches!(Float::total_cmp(&-Float::INFINITY, &-Float::MAX), Ordering::Less));
+        assert!(matches!(Float::total_cmp(&-Float::MAX, &-2.5), Ordering::Less));
+        assert!(matches!(Float::total_cmp(&-2.5, &-1.5), Ordering::Less));
+        assert!(matches!(Float::total_cmp(&-1.5, &-1.0), Ordering::Less));
+        assert!(matches!(Float::total_cmp(&-1.0, &-0.5), Ordering::Less));
+        assert!(matches!(Float::total_cmp(&-0.5, &-Float::MIN_POSITIVE), Ordering::Less));
+        assert!(matches!(Float::total_cmp(&-Float::MIN_POSITIVE, &-Float::MAX_SUBNORMAL), Ordering::Less));
+        assert!(matches!(Float::total_cmp(&-Float::MAX_SUBNORMAL, &-Float::TINY), Ordering::Less));
+        assert!(matches!(Float::total_cmp(&-Float::TINY, &-0.0), Ordering::Less));
+        assert!(matches!(Float::total_cmp(&-0.0, &0.0), Ordering::Less));
+        assert!(matches!(Float::total_cmp(&0.0, &Float::TINY), Ordering::Less));
+        assert!(matches!(Float::total_cmp(&Float::TINY, &Float::MAX_SUBNORMAL), Ordering::Less));
+        assert!(matches!(Float::total_cmp(&Float::MAX_SUBNORMAL, &Float::MIN_POSITIVE), Ordering::Less));
+        assert!(matches!(Float::total_cmp(&Float::MIN_POSITIVE, &0.5), Ordering::Less));
+        assert!(matches!(Float::total_cmp(&0.5, &1.0), Ordering::Less));
+        assert!(matches!(Float::total_cmp(&1.0, &1.5), Ordering::Less));
+        assert!(matches!(Float::total_cmp(&1.5, &2.5), Ordering::Less));
+        assert!(matches!(Float::total_cmp(&2.5, &Float::MAX), Ordering::Less));
+        assert!(matches!(Float::total_cmp(&Float::MAX, &Float::INFINITY), Ordering::Less));
 
-        assert_eq!(Ordering::Greater, Float::total_cmp(&-Float::MAX, &-Float::INFINITY));
-        assert_eq!(Ordering::Greater, Float::total_cmp(&-2.5, &-Float::MAX));
-        assert_eq!(Ordering::Greater, Float::total_cmp(&-1.5, &-2.5));
-        assert_eq!(Ordering::Greater, Float::total_cmp(&-1.0, &-1.5));
-        assert_eq!(Ordering::Greater, Float::total_cmp(&-0.5, &-1.0));
-        assert_eq!(Ordering::Greater, Float::total_cmp(&-Float::MIN_POSITIVE, &-0.5));
-        assert_eq!(Ordering::Greater, Float::total_cmp(&-Float::MAX_SUBNORMAL, &-Float::MIN_POSITIVE));
-        assert_eq!(Ordering::Greater, Float::total_cmp(&-Float::TINY, &-Float::MAX_SUBNORMAL));
-        assert_eq!(Ordering::Greater, Float::total_cmp(&-0.0, &-Float::TINY));
-        assert_eq!(Ordering::Greater, Float::total_cmp(&0.0, &-0.0));
-        assert_eq!(Ordering::Greater, Float::total_cmp(&Float::TINY, &0.0));
-        assert_eq!(Ordering::Greater, Float::total_cmp(&Float::MAX_SUBNORMAL, &Float::TINY));
-        assert_eq!(Ordering::Greater, Float::total_cmp(&Float::MIN_POSITIVE, &Float::MAX_SUBNORMAL));
-        assert_eq!(Ordering::Greater, Float::total_cmp(&0.5, &Float::MIN_POSITIVE));
-        assert_eq!(Ordering::Greater, Float::total_cmp(&1.0, &0.5));
-        assert_eq!(Ordering::Greater, Float::total_cmp(&1.5, &1.0));
-        assert_eq!(Ordering::Greater, Float::total_cmp(&2.5, &1.5));
-        assert_eq!(Ordering::Greater, Float::total_cmp(&Float::MAX, &2.5));
-        assert_eq!(Ordering::Greater, Float::total_cmp(&Float::INFINITY, &Float::MAX));
+        assert!(matches!(Float::total_cmp(&-Float::MAX, &-Float::INFINITY), Ordering::Greater));
+        assert!(matches!(Float::total_cmp(&-2.5, &-Float::MAX), Ordering::Greater));
+        assert!(matches!(Float::total_cmp(&-1.5, &-2.5), Ordering::Greater));
+        assert!(matches!(Float::total_cmp(&-1.0, &-1.5), Ordering::Greater));
+        assert!(matches!(Float::total_cmp(&-0.5, &-1.0), Ordering::Greater));
+        assert!(matches!(Float::total_cmp(&-Float::MIN_POSITIVE, &-0.5), Ordering::Greater));
+        assert!(matches!(Float::total_cmp(&-Float::MAX_SUBNORMAL, &-Float::MIN_POSITIVE), Ordering::Greater));
+        assert!(matches!(Float::total_cmp(&-Float::TINY, &-Float::MAX_SUBNORMAL), Ordering::Greater));
+        assert!(matches!(Float::total_cmp(&-0.0, &-Float::TINY), Ordering::Greater));
+        assert!(matches!(Float::total_cmp(&0.0, &-0.0), Ordering::Greater));
+        assert!(matches!(Float::total_cmp(&Float::TINY, &0.0), Ordering::Greater));
+        assert!(matches!(Float::total_cmp(&Float::MAX_SUBNORMAL, &Float::TINY), Ordering::Greater));
+        assert!(matches!(Float::total_cmp(&Float::MIN_POSITIVE, &Float::MAX_SUBNORMAL), Ordering::Greater));
+        assert!(matches!(Float::total_cmp(&0.5, &Float::MIN_POSITIVE), Ordering::Greater));
+        assert!(matches!(Float::total_cmp(&1.0, &0.5), Ordering::Greater));
+        assert!(matches!(Float::total_cmp(&1.5, &1.0), Ordering::Greater));
+        assert!(matches!(Float::total_cmp(&2.5, &1.5), Ordering::Greater));
+        assert!(matches!(Float::total_cmp(&Float::MAX, &2.5), Ordering::Greater));
+        assert!(matches!(Float::total_cmp(&Float::INFINITY, &Float::MAX), Ordering::Greater));
 
-        assert_eq!(Ordering::Less, Float::total_cmp(&-q_nan(), &-Float::INFINITY));
-        assert_eq!(Ordering::Less, Float::total_cmp(&-q_nan(), &-Float::MAX));
-        assert_eq!(Ordering::Less, Float::total_cmp(&-q_nan(), &-2.5));
-        assert_eq!(Ordering::Less, Float::total_cmp(&-q_nan(), &-1.5));
-        assert_eq!(Ordering::Less, Float::total_cmp(&-q_nan(), &-1.0));
-        assert_eq!(Ordering::Less, Float::total_cmp(&-q_nan(), &-0.5));
-        assert_eq!(Ordering::Less, Float::total_cmp(&-q_nan(), &-Float::MIN_POSITIVE));
-        assert_eq!(Ordering::Less, Float::total_cmp(&-q_nan(), &-Float::MAX_SUBNORMAL));
-        assert_eq!(Ordering::Less, Float::total_cmp(&-q_nan(), &-Float::TINY));
-        assert_eq!(Ordering::Less, Float::total_cmp(&-q_nan(), &-0.0));
-        assert_eq!(Ordering::Less, Float::total_cmp(&-q_nan(), &0.0));
-        assert_eq!(Ordering::Less, Float::total_cmp(&-q_nan(), &Float::TINY));
-        assert_eq!(Ordering::Less, Float::total_cmp(&-q_nan(), &Float::MAX_SUBNORMAL));
-        assert_eq!(Ordering::Less, Float::total_cmp(&-q_nan(), &Float::MIN_POSITIVE));
-        assert_eq!(Ordering::Less, Float::total_cmp(&-q_nan(), &0.5));
-        assert_eq!(Ordering::Less, Float::total_cmp(&-q_nan(), &1.0));
-        assert_eq!(Ordering::Less, Float::total_cmp(&-q_nan(), &1.5));
-        assert_eq!(Ordering::Less, Float::total_cmp(&-q_nan(), &2.5));
-        assert_eq!(Ordering::Less, Float::total_cmp(&-q_nan(), &Float::MAX));
-        assert_eq!(Ordering::Less, Float::total_cmp(&-q_nan(), &Float::INFINITY));
+        assert!(matches!(Float::total_cmp(&-q_nan(), &-Float::INFINITY), Ordering::Less));
+        assert!(matches!(Float::total_cmp(&-q_nan(), &-Float::MAX), Ordering::Less));
+        assert!(matches!(Float::total_cmp(&-q_nan(), &-2.5), Ordering::Less));
+        assert!(matches!(Float::total_cmp(&-q_nan(), &-1.5), Ordering::Less));
+        assert!(matches!(Float::total_cmp(&-q_nan(), &-1.0), Ordering::Less));
+        assert!(matches!(Float::total_cmp(&-q_nan(), &-0.5), Ordering::Less));
+        assert!(matches!(Float::total_cmp(&-q_nan(), &-Float::MIN_POSITIVE), Ordering::Less));
+        assert!(matches!(Float::total_cmp(&-q_nan(), &-Float::MAX_SUBNORMAL), Ordering::Less));
+        assert!(matches!(Float::total_cmp(&-q_nan(), &-Float::TINY), Ordering::Less));
+        assert!(matches!(Float::total_cmp(&-q_nan(), &-0.0), Ordering::Less));
+        assert!(matches!(Float::total_cmp(&-q_nan(), &0.0), Ordering::Less));
+        assert!(matches!(Float::total_cmp(&-q_nan(), &Float::TINY), Ordering::Less));
+        assert!(matches!(Float::total_cmp(&-q_nan(), &Float::MAX_SUBNORMAL), Ordering::Less));
+        assert!(matches!(Float::total_cmp(&-q_nan(), &Float::MIN_POSITIVE), Ordering::Less));
+        assert!(matches!(Float::total_cmp(&-q_nan(), &0.5), Ordering::Less));
+        assert!(matches!(Float::total_cmp(&-q_nan(), &1.0), Ordering::Less));
+        assert!(matches!(Float::total_cmp(&-q_nan(), &1.5), Ordering::Less));
+        assert!(matches!(Float::total_cmp(&-q_nan(), &2.5), Ordering::Less));
+        assert!(matches!(Float::total_cmp(&-q_nan(), &Float::MAX), Ordering::Less));
+        assert!(matches!(Float::total_cmp(&-q_nan(), &Float::INFINITY), Ordering::Less));
 
     }
 }
@@ -1356,8 +1362,8 @@ float_test! {
     name: total_cmp_s_nan,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(false)],
-        f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+        f16: #[cfg(miri)],
+        f128: #[cfg(any(miri, target_has_reliable_f128_math))],
     },
     test<Float> {
         use core::cmp::Ordering;
@@ -1433,6 +1439,7 @@ float_test! {
     name: powi,
     attrs: {
         const: #[cfg(false)],
+        // FIXME(f16_f128): `powi` does not work in Miri for these types
         f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
         f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
     },
@@ -1453,8 +1460,8 @@ float_test! {
 float_test! {
     name: to_degrees,
     attrs: {
-        f16: #[cfg(target_has_reliable_f16)],
-        f128: #[cfg(target_has_reliable_f128)],
+        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        f128: #[cfg(any(miri, target_has_reliable_f128))],
     },
     test<Float> {
         let pi: Float = Float::PI;
@@ -1474,8 +1481,8 @@ float_test! {
 float_test! {
     name: to_radians,
     attrs: {
-        f16: #[cfg(target_has_reliable_f16)],
-        f128: #[cfg(target_has_reliable_f128)],
+        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        f128: #[cfg(any(miri, target_has_reliable_f128))],
     },
     test<Float> {
         let pi: Float = Float::PI;
@@ -1495,8 +1502,8 @@ float_test! {
 float_test! {
     name: to_algebraic,
     attrs: {
-        f16: #[cfg(target_has_reliable_f16)],
-        f128: #[cfg(target_has_reliable_f128)],
+        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        f128: #[cfg(any(miri, target_has_reliable_f128))],
     },
     test<Float> {
         let a: Float = 123.0;
@@ -1519,8 +1526,8 @@ float_test! {
 float_test! {
     name: to_bits_conv,
     attrs: {
-        f16: #[cfg(target_has_reliable_f16)],
-        f128: #[cfg(target_has_reliable_f128)],
+        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        f128: #[cfg(any(miri, target_has_reliable_f128))],
     },
     test<Float> {
         assert_biteq!(flt(1.0), Float::RAW_1);
@@ -1540,5 +1547,30 @@ float_test! {
 
         assert_biteq!(Float::from_bits(masked_nan1), Float::from_bits(masked_nan1));
         assert_biteq!(Float::from_bits(masked_nan2), Float::from_bits(masked_nan2));
+    }
+}
+
+float_test! {
+    name: mul_add,
+    attrs: {
+        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        // FIXME(#140515): mingw has an incorrect fma https://sourceforge.net/p/mingw-w64/bugs/848/
+        f32: #[cfg_attr(all(target_os = "windows", target_env = "gnu", not(target_abi = "llvm")), ignore)],
+        f64: #[cfg_attr(all(target_os = "windows", target_env = "gnu", not(target_abi = "llvm")), ignore)],
+        f128: #[cfg(any(miri, target_has_reliable_f128))],
+    },
+    test<Float> {
+        let nan: Float = Float::NAN;
+        let inf: Float = Float::INFINITY;
+        let neg_inf: Float = Float::NEG_INFINITY;
+        assert_biteq!(flt(12.3).mul_add(4.5, 6.7), Float::MUL_ADD_RESULT);
+        assert_biteq!((flt(-12.3)).mul_add(-4.5, -6.7), Float::NEG_MUL_ADD_RESULT);
+        assert_biteq!(flt(0.0).mul_add(8.9, 1.2), 1.2);
+        assert_biteq!(flt(3.4).mul_add(-0.0, 5.6), 5.6);
+        assert!(nan.mul_add(7.8, 9.0).is_nan());
+        assert_biteq!(inf.mul_add(7.8, 9.0), inf);
+        assert_biteq!(neg_inf.mul_add(7.8, 9.0), neg_inf);
+        assert_biteq!(flt(8.9).mul_add(inf, 3.2), inf);
+        assert_biteq!((flt(-3.2)).mul_add(2.4, neg_inf), neg_inf);
     }
 }

@@ -24,7 +24,7 @@ use crate::{
     Adt, AsAssocItem, AssocItem, AssocItemContainer, Const, ConstParam, Crate, Enum,
     ExternCrateDecl, Field, Function, GenericParam, HasCrate, HasVisibility, Impl, LifetimeParam,
     Macro, Module, SelfParam, Static, Struct, StructKind, Trait, TraitRef, TupleField, TyBuilder,
-    Type, TypeAlias, TypeOrConstParam, TypeParam, Union, Variant,
+    Type, TypeAlias, TypeNs, TypeOrConstParam, TypeParam, Union, Variant,
 };
 
 impl HirDisplay for Function {
@@ -432,6 +432,12 @@ impl HirDisplay for Variant {
 }
 
 impl HirDisplay for Type<'_> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
+        self.ty.hir_fmt(f)
+    }
+}
+
+impl HirDisplay for TypeNs<'_> {
     fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         self.ty.hir_fmt(f)
     }

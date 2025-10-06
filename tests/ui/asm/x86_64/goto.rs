@@ -1,6 +1,7 @@
 //@ only-x86_64
 //@ run-pass
 //@ needs-asm-support
+//@ ignore-backends: gcc
 
 #![deny(unreachable_code)]
 #![feature(asm_goto_with_outputs)]

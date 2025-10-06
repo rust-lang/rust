@@ -12,6 +12,8 @@ LL |     x = unconstrained_map();
              where A: Tuple, F: Fn<A>, F: ?Sized;
            - impl<Args, F, A> Fn<Args> for Box<F, A>
              where Args: Tuple, F: Fn<Args>, A: Allocator, F: ?Sized;
+           - impl<F, Args> Fn<Args> for Exclusive<F>
+             where F: Sync, F: Fn<Args>, Args: Tuple;
 note: required by a bound in `unconstrained_map`
   --> $DIR/well-formed-in-relate.rs:21:25
    |

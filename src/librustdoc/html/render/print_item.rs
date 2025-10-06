@@ -21,7 +21,7 @@ use super::{
     collect_paths_for_type, document, ensure_trailing_slash, get_filtered_impls_for_reference,
     item_ty_to_section, notable_traits_button, notable_traits_json, render_all_impls,
     render_assoc_item, render_assoc_items, render_attributes_in_code, render_impl,
-    render_repr_attributes_in_code, render_rightside, render_stability_since_raw,
+    render_repr_attribute_in_code, render_rightside, render_stability_since_raw,
     render_stability_since_raw_with_extra, write_section_heading,
 };
 use crate::clean;
@@ -1555,7 +1555,7 @@ impl<'clean> DisplayEnum<'clean> {
         wrap_item(w, |w| {
             if is_type_alias {
                 // For now the only attributes we render for type aliases are `repr` attributes.
-                render_repr_attributes_in_code(w, cx, self.def_id, ItemType::Enum);
+                render_repr_attribute_in_code(w, cx, self.def_id);
             } else {
                 render_attributes_in_code(w, it, "", cx);
             }
@@ -2017,7 +2017,7 @@ impl<'a> DisplayStruct<'a> {
         wrap_item(w, |w| {
             if is_type_alias {
                 // For now the only attributes we render for type aliases are `repr` attributes.
-                render_repr_attributes_in_code(w, cx, self.def_id, ItemType::Struct);
+                render_repr_attribute_in_code(w, cx, self.def_id);
             } else {
                 render_attributes_in_code(w, it, "", cx);
             }
@@ -2371,7 +2371,7 @@ fn render_union(
     fmt::from_fn(move |mut f| {
         if is_type_alias {
             // For now the only attributes we render for type aliases are `repr` attributes.
-            render_repr_attributes_in_code(f, cx, def_id, ItemType::Union);
+            render_repr_attribute_in_code(f, cx, def_id);
         } else {
             render_attributes_in_code(f, it, "", cx);
         }

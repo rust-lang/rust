@@ -1,0 +1,25 @@
+- // MIR for `tuple` before DeadStoreElimination-initial
++ // MIR for `tuple` after DeadStoreElimination-initial
+  
+  fn tuple(_1: (i32, &Foo)) -> i32 {
+      debug v => _1;
+      let mut _0: i32;
+      let _2: &i32;
+      let mut _3: &Foo;
+      let mut _4: &Foo;
+      scope 1 {
+          debug _dead => _2;
+      }
+  
+      bb0: {
+-         StorageLive(_2);
+-         _3 = deref_copy (_1.1: &Foo);
+-         _2 = &((*_3).2: i32);
++         // DBG: _2 = &((*_3).2: i32);
+          _4 = deref_copy (_1.1: &Foo);
+          _0 = copy ((*_4).0: i32);
+-         StorageDead(_2);
+          return;
+      }
+  }
+  

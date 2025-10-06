@@ -1260,11 +1260,12 @@ impl InlineAsmClobberAbi {
                     v8, v9, v10, v11, v12, v13, v14,
                     v15, v16, v17, v18, v19,
 
-                    // cr0-cr1, cr5-cr7, xer
+                    // cr0-cr1, cr5-cr7, ctr, lr, xer
                     cr0, cr1,
                     cr5, cr6, cr7,
+                    ctr,
+                    lr,
                     xer,
-                    // lr and ctr are reserved
                 }
             },
             InlineAsmClobberAbi::S390x => clobbered_regs! {

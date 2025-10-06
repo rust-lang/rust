@@ -318,7 +318,7 @@ impl<'db> InferenceContext<'db> {
                     _ = self
                         .table
                         .infer_ctxt
-                        .at(&ObligationCause::new(), self.table.param_env)
+                        .at(&ObligationCause::new(), self.table.trait_env.env)
                         .eq(DefineOpaqueTypes::Yes, inferred_fnptr_sig, generalized_fnptr_sig)
                         .map(|infer_ok| self.table.register_infer_ok(infer_ok));
 
@@ -703,7 +703,7 @@ impl<'db> InferenceContext<'db> {
                 let cause = ObligationCause::new();
                 let InferOk { value: (), obligations } = table
                     .infer_ctxt
-                    .at(&cause, table.param_env)
+                    .at(&cause, table.trait_env.env)
                     .eq(DefineOpaqueTypes::Yes, expected_ty, supplied_ty)?;
                 all_obligations.extend(obligations);
             }
@@ -711,7 +711,7 @@ impl<'db> InferenceContext<'db> {
             let supplied_output_ty = supplied_sig.output();
             let cause = ObligationCause::new();
             let InferOk { value: (), obligations } =
-                table.infer_ctxt.at(&cause, table.param_env).eq(
+                table.infer_ctxt.at(&cause, table.trait_env.env).eq(
                     DefineOpaqueTypes::Yes,
                     expected_sigs.liberated_sig.output(),
                     supplied_output_ty,

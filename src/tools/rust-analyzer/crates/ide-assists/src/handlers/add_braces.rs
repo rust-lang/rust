@@ -1,3 +1,4 @@
+use either::Either;
 use syntax::{
     AstNode,
     ast::{self, edit_in_place::Indent, syntax_factory::SyntaxFactory},
@@ -59,7 +60,8 @@ enum ParentType {
 }
 
 fn get_replacement_node(ctx: &AssistContext<'_>) -> Option<(ParentType, ast::Expr)> {
-    if let Some(match_arm) = ctx.find_node_at_offset::<ast::MatchArm>() {
+    let node = ctx.find_node_at_offset::<Either<ast::MatchArm, ast::ClosureExpr>>()?;
+    if let Either::Left(match_arm) = &node {
         let match_arm_expr = match_arm.expr()?;
 
         if matches!(match_arm_expr, ast::Expr::BlockExpr(_)) {
@@ -67,7 +69,7 @@ fn get_replacement_node(ctx: &AssistContext<'_>) -> Option<(ParentType, ast::Exp
         }
 
         return Some((ParentType::MatchArmExpr, match_arm_expr));
-    } else if let Some(closure_expr) = ctx.find_node_at_offset::<ast::ClosureExpr>() {
+    } else if let Either::Right(closure_expr) = &node {
         let body = closure_expr.body()?;
 
         if matches!(body, ast::Expr::BlockExpr(_)) {
@@ -100,6 +102,33 @@ fn foo() {
     t(|n| {
         n + 100
     });
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn suggest_add_braces_for_closure_in_match() {
+        check_assist(
+            add_braces,
+            r#"
+fn foo() {
+    match () {
+        () => {
+            t(|n|$0 n + 100);
+        }
+    }
+}
+"#,
+            r#"
+fn foo() {
+    match () {
+        () => {
+            t(|n| {
+                n + 100
+            });
+        }
+    }
 }
 "#,
         );

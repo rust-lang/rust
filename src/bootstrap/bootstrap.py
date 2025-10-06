@@ -596,6 +596,7 @@ class RustBuild(object):
         self.download_url = (
             os.getenv("RUSTUP_DIST_SERVER") or self.stage0_data["dist_server"]
         )
+        self.jobs = self.get_toml("jobs", "build") or "default"
 
         self.build = args.build or self.build_triple()
 
@@ -1144,6 +1145,7 @@ class RustBuild(object):
         args = [
             self.cargo(),
             "build",
+            "--jobs=" + self.jobs,
             "--manifest-path",
             os.path.join(self.rust_root, "src/bootstrap/Cargo.toml"),
             "-Zroot-dir=" + self.rust_root,

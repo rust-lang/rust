@@ -12,7 +12,7 @@ help: the accessed tag <TAG> was created here, in the initial state Reserved
    |
 LL |     let y = unsafe { &mut *(x as *mut u8) };
    |                      ^^^^^^^^^^^^^^^^^^^^
-help: the accessed tag <TAG> later transitioned to Active due to a child write access at offsets [0x0..0x1]
+help: the accessed tag <TAG> later transitioned to Unique due to a child write access at offsets [0x0..0x1]
   --> tests/fail/tree_borrows/alternate-read-write.rs:LL:CC
    |
 LL |     *y += 1; // Success

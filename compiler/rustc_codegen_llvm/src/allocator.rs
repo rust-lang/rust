@@ -5,15 +5,17 @@ use rustc_ast::expand::allocator::{
 };
 use rustc_codegen_ssa::traits::BaseTypeCodegenMethods as _;
 use rustc_middle::bug;
+use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{DebugInfo, OomStrategy};
+use rustc_span::sym;
 use rustc_symbol_mangling::mangle_internal_symbol;
-use smallvec::SmallVec;
 
+use crate::attributes::llfn_attrs_from_instance;
 use crate::builder::SBuilder;
 use crate::declare::declare_simple_fn;
-use crate::llvm::{self, FALSE, TRUE, Type, Value};
-use crate::{SimpleCx, attributes, debuginfo, llvm_util};
+use crate::llvm::{self, FALSE, FromGeneric, TRUE, Type, Value};
+use crate::{SimpleCx, attributes, debuginfo};
 
 pub(crate) unsafe fn codegen(
     tcx: TyCtxt<'_>,
@@ -58,7 +60,26 @@ pub(crate) unsafe fn codegen(
             let from_name = mangle_internal_symbol(tcx, &global_fn_name(method.name));
             let to_name = mangle_internal_symbol(tcx, &default_fn_name(method.name));
 
-            create_wrapper_function(tcx, &cx, &from_name, Some(&to_name), &args, output, false);
+            let alloc_attr_flag = match method.name {
+                sym::alloc => CodegenFnAttrFlags::ALLOCATOR,
+                sym::dealloc => CodegenFnAttrFlags::DEALLOCATOR,
+                sym::realloc => CodegenFnAttrFlags::REALLOCATOR,
+                sym::alloc_zeroed => CodegenFnAttrFlags::ALLOCATOR_ZEROED,
+                _ => unreachable!("Unknown allocator method!"),
+            };
+
+            let mut attrs = CodegenFnAttrs::new();
+            attrs.flags |= alloc_attr_flag;
+            create_wrapper_function(
+                tcx,
+                &cx,
+                &from_name,
+                Some(&to_name),
+                &args,
+                output,
+                false,
+                &attrs,
+            );
         }
     }
 
@@ -71,6 +92,7 @@ pub(crate) unsafe fn codegen(
         &[usize, usize], // size, align
         None,
         true,
+        &CodegenFnAttrs::new(),
     );
 
     unsafe {
@@ -92,6 +114,7 @@ pub(crate) unsafe fn codegen(
             &[],
             None,
             false,
+            &CodegenFnAttrs::new(),
         );
     }
 
@@ -138,6 +161,7 @@ fn create_wrapper_function(
     args: &[&Type],
     output: Option<&Type>,
     no_return: bool,
+    attrs: &CodegenFnAttrs,
 ) {
     let ty = cx.type_func(args, output.unwrap_or_else(|| cx.type_void()));
     let llfn = declare_simple_fn(
@@ -149,18 +173,7 @@ fn create_wrapper_function(
         ty,
     );
 
-    let mut attrs = SmallVec::<[_; 2]>::new();
-
-    let target_cpu = llvm_util::target_cpu(tcx.sess);
-    let target_cpu_attr = llvm::CreateAttrStringValue(cx.llcx, "target-cpu", target_cpu);
-
-    let tune_cpu_attr = llvm_util::tune_cpu(tcx.sess)
-        .map(|tune_cpu| llvm::CreateAttrStringValue(cx.llcx, "tune-cpu", tune_cpu));
-
-    attrs.push(target_cpu_attr);
-    attrs.extend(tune_cpu_attr);
-
-    attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &attrs);
+    llfn_attrs_from_instance(cx, tcx, llfn, attrs, None);
 
     let no_return = if no_return {
         // -> ! DIFlagNoReturn
@@ -170,12 +183,6 @@ fn create_wrapper_function(
     } else {
         None
     };
-
-    if tcx.sess.must_emit_unwind_tables() {
-        let uwtable =
-            attributes::uwtable_attr(cx.llcx, tcx.sess.opts.unstable_opts.use_sync_unwind);
-        attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &[uwtable]);
-    }
 
     let llbb = unsafe { llvm::LLVMAppendBasicBlockInContext(cx.llcx, llfn, c"entry".as_ptr()) };
     let mut bx = SBuilder::build(&cx, llbb);

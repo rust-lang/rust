@@ -100,9 +100,9 @@ where
         } else if let Err(guar) = infcx.tcx.check_potentially_region_dependent_goals(root_def_id) {
             Err(guar)
         } else {
-            Err(infcx
-                .dcx()
-                .delayed_bug(format!("errors selecting obligation during MIR typeck: {errors:?}")))
+            Err(infcx.dcx().delayed_bug(format!(
+                "errors selecting obligation during MIR typeck: {name} {root_def_id:?} {errors:?}"
+            )))
         }
     })?;
 

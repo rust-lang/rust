@@ -7,12 +7,14 @@ use rustc_abi::{
     VariantIdx, Variants, WrappingRange,
 };
 use rustc_hashes::Hash64;
+use rustc_hir::attrs::AttributeKind;
+use rustc_hir::find_attr;
 use rustc_index::IndexVec;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::layout::{
-    FloatExt, HasTyCtxt, IntegerExt, LayoutCx, LayoutError, LayoutOf, TyAndLayout,
+    FloatExt, HasTyCtxt, IntegerExt, LayoutCx, LayoutError, LayoutOf, SimdLayoutError, TyAndLayout,
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
@@ -23,7 +25,7 @@ use rustc_span::{Symbol, sym};
 use tracing::{debug, instrument};
 use {rustc_abi as abi, rustc_hir as hir};
 
-use crate::errors::{NonPrimitiveSimdType, OversizedSimdType, ZeroLengthSimdType};
+use crate::errors::NonPrimitiveSimdType;
 
 mod invariant;
 
@@ -121,11 +123,11 @@ fn map_error<'tcx>(
         }
         LayoutCalculatorError::ZeroLengthSimdType => {
             // Can't be caught in typeck if the array length is generic.
-            cx.tcx().dcx().emit_fatal(ZeroLengthSimdType { ty })
+            LayoutError::InvalidSimd { ty, kind: SimdLayoutError::ZeroLength }
         }
         LayoutCalculatorError::OversizedSimdType { max_lanes } => {
             // Can't be caught in typeck if the array length is generic.
-            cx.tcx().dcx().emit_fatal(OversizedSimdType { ty, max_lanes })
+            LayoutError::InvalidSimd { ty, kind: SimdLayoutError::TooManyLanes(max_lanes) }
         }
         LayoutCalculatorError::NonPrimitiveSimdType(field) => {
             // This error isn't caught in typeck, e.g., if
@@ -563,6 +565,22 @@ fn layout_of_uncached<'tcx>(
 
             let e_ly = cx.layout_of(e_ty)?;
 
+            // Check for the rustc_simd_monomorphize_lane_limit attribute and check the lane limit
+            if let Some(limit) = find_attr!(
+                tcx.get_all_attrs(def.did()),
+                AttributeKind::RustcSimdMonomorphizeLaneLimit(limit) => limit
+            ) {
+                if !limit.value_within_limit(e_len as usize) {
+                    return Err(map_error(
+                        &cx,
+                        ty,
+                        rustc_abi::LayoutCalculatorError::OversizedSimdType {
+                            max_lanes: limit.0 as u64,
+                        },
+                    ));
+                }
+            }
+
             map_layout(cx.calc.simd_type(e_ly, e_len, def.repr().packed()))?
         }
 
@@ -777,7 +795,7 @@ fn variant_info_for_adt<'tcx>(
                     name,
                     offset: offset.bytes(),
                     size: field_layout.size.bytes(),
-                    align: field_layout.align.abi.bytes(),
+                    align: field_layout.align.bytes(),
                     type_name: None,
                 }
             })
@@ -786,7 +804,7 @@ fn variant_info_for_adt<'tcx>(
         VariantInfo {
             name: n,
             kind: if layout.is_unsized() { SizeKind::Min } else { SizeKind::Exact },
-            align: layout.align.abi.bytes(),
+            align: layout.align.bytes(),
             size: if min_size.bytes() == 0 { layout.size.bytes() } else { min_size.bytes() },
             fields: field_info,
         }
@@ -859,7 +877,7 @@ fn variant_info_for_coroutine<'tcx>(
                 name: *name,
                 offset: offset.bytes(),
                 size: field_layout.size.bytes(),
-                align: field_layout.align.abi.bytes(),
+                align: field_layout.align.bytes(),
                 type_name: None,
             }
         })
@@ -887,7 +905,7 @@ fn variant_info_for_coroutine<'tcx>(
                         }),
                         offset: offset.bytes(),
                         size: field_layout.size.bytes(),
-                        align: field_layout.align.abi.bytes(),
+                        align: field_layout.align.bytes(),
                         // Include the type name if there is no field name, or if the name is the
                         // __awaitee placeholder symbol which means a child future being `.await`ed.
                         type_name: (field_name.is_none() || field_name == Some(sym::__awaitee))
@@ -928,7 +946,7 @@ fn variant_info_for_coroutine<'tcx>(
                 name: Some(Symbol::intern(&ty::CoroutineArgs::variant_name(variant_idx))),
                 kind: SizeKind::Exact,
                 size: variant_size.bytes(),
-                align: variant_layout.align.abi.bytes(),
+                align: variant_layout.align.bytes(),
                 fields,
             }
         })

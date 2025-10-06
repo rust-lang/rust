@@ -177,7 +177,7 @@ impl<'tcx> TaitConstraintLocator<'tcx> {
                 let tables = tcx.typeck(item_def_id);
                 if let Some(guar) = tables.tainted_by_errors {
                     self.insert_found(ty::OpaqueHiddenType::new_error(tcx, guar));
-                } else if let Some(&hidden_type) = tables.concrete_opaque_types.get(&self.def_id) {
+                } else if let Some(&hidden_type) = tables.hidden_types.get(&self.def_id) {
                     self.insert_found(hidden_type);
                 } else {
                     self.non_defining_use_in_defining_scope(item_def_id);
@@ -185,8 +185,8 @@ impl<'tcx> TaitConstraintLocator<'tcx> {
             }
             DefiningScopeKind::MirBorrowck => match tcx.mir_borrowck(item_def_id) {
                 Err(guar) => self.insert_found(ty::OpaqueHiddenType::new_error(tcx, guar)),
-                Ok(concrete_opaque_types) => {
-                    if let Some(&hidden_type) = concrete_opaque_types.0.get(&self.def_id) {
+                Ok(hidden_types) => {
+                    if let Some(&hidden_type) = hidden_types.0.get(&self.def_id) {
                         debug!(?hidden_type, "found constraint");
                         self.insert_found(hidden_type);
                     } else if let Err(guar) = tcx
@@ -247,7 +247,7 @@ pub(super) fn find_opaque_ty_constraints_for_rpit<'tcx>(
             let tables = tcx.typeck(owner_def_id);
             if let Some(guar) = tables.tainted_by_errors {
                 Ty::new_error(tcx, guar)
-            } else if let Some(hidden_ty) = tables.concrete_opaque_types.get(&def_id) {
+            } else if let Some(hidden_ty) = tables.hidden_types.get(&def_id) {
                 hidden_ty.ty
             } else {
                 assert!(!tcx.next_trait_solver_globally());
@@ -261,8 +261,8 @@ pub(super) fn find_opaque_ty_constraints_for_rpit<'tcx>(
             }
         }
         DefiningScopeKind::MirBorrowck => match tcx.mir_borrowck(owner_def_id) {
-            Ok(concrete_opaque_types) => {
-                if let Some(hidden_ty) = concrete_opaque_types.0.get(&def_id) {
+            Ok(hidden_types) => {
+                if let Some(hidden_ty) = hidden_types.0.get(&def_id) {
                     hidden_ty.ty
                 } else {
                     let hir_ty = tcx.type_of_opaque_hir_typeck(def_id).instantiate_identity();

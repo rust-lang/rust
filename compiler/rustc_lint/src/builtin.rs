@@ -2331,13 +2331,9 @@ declare_lint_pass!(
 impl EarlyLintPass for IncompleteInternalFeatures {
     fn check_crate(&mut self, cx: &EarlyContext<'_>, _: &ast::Crate) {
         let features = cx.builder.features();
-        let lang_features =
-            features.enabled_lang_features().iter().map(|feat| (feat.gate_name, feat.attr_sp));
-        let lib_features =
-            features.enabled_lib_features().iter().map(|feat| (feat.gate_name, feat.attr_sp));
 
-        lang_features
-            .chain(lib_features)
+        features
+            .enabled_features_iter_stable_order()
             .filter(|(name, _)| features.incomplete(*name) || features.internal(*name))
             .for_each(|(name, span)| {
                 if features.incomplete(name) {

@@ -1,2 +1,2 @@
-error: codegen option `panic` requires either `unwind` or `abort` (C panic=<value>)
+error: codegen option `panic` requires either `unwind`, `abort`, or `immediate-abort` (C panic=<value>)
 

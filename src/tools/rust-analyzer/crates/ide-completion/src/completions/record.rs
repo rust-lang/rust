@@ -28,7 +28,11 @@ pub(crate) fn complete_record_pattern_fields(
                     record_pat.record_pat_field_list().and_then(|fl| fl.fields().next()).is_some();
 
                 match were_fields_specified {
-                    false => un.fields(ctx.db).into_iter().map(|f| (f, f.ty(ctx.db))).collect(),
+                    false => un
+                        .fields(ctx.db)
+                        .into_iter()
+                        .map(|f| (f, f.ty(ctx.db).to_type(ctx.db)))
+                        .collect(),
                     true => return,
                 }
             }
@@ -56,7 +60,11 @@ pub(crate) fn complete_record_expr_fields(
                 record_expr.record_expr_field_list().and_then(|fl| fl.fields().next()).is_some();
 
             match were_fields_specified {
-                false => un.fields(ctx.db).into_iter().map(|f| (f, f.ty(ctx.db))).collect(),
+                false => un
+                    .fields(ctx.db)
+                    .into_iter()
+                    .map(|f| (f, f.ty(ctx.db).to_type(ctx.db)))
+                    .collect(),
                 true => return,
             }
         }

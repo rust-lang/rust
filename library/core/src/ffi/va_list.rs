@@ -25,7 +25,7 @@ crate::cfg_select! {
         ///
         /// [AArch64 Procedure Call Standard]:
         /// http://infocenter.arm.com/help/topic/com.arm.doc.ihi0055b/IHI0055B_aapcs64.pdf
-        #[cfg_attr(not(doc), repr(C))] // work around https://github.com/rust-lang/rust/issues/66401
+        #[repr(C)]
         #[derive(Debug)]
         #[lang = "va_list"]
         pub struct VaListImpl<'f> {
@@ -39,7 +39,7 @@ crate::cfg_select! {
     }
     all(target_arch = "powerpc", not(target_os = "uefi"), not(windows)) => {
         /// PowerPC ABI implementation of a `va_list`.
-        #[cfg_attr(not(doc), repr(C))] // work around https://github.com/rust-lang/rust/issues/66401
+        #[repr(C)]
         #[derive(Debug)]
         #[lang = "va_list"]
         pub struct VaListImpl<'f> {
@@ -53,7 +53,7 @@ crate::cfg_select! {
     }
     target_arch = "s390x" => {
         /// s390x ABI implementation of a `va_list`.
-        #[cfg_attr(not(doc), repr(C))] // work around https://github.com/rust-lang/rust/issues/66401
+        #[repr(C)]
         #[derive(Debug)]
         #[lang = "va_list"]
         pub struct VaListImpl<'f> {
@@ -66,7 +66,7 @@ crate::cfg_select! {
     }
     all(target_arch = "x86_64", not(target_os = "uefi"), not(windows)) => {
         /// x86_64 ABI implementation of a `va_list`.
-        #[cfg_attr(not(doc), repr(C))] // work around https://github.com/rust-lang/rust/issues/66401
+        #[repr(C)]
         #[derive(Debug)]
         #[lang = "va_list"]
         pub struct VaListImpl<'f> {

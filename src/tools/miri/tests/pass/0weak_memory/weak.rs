@@ -13,6 +13,10 @@ use std::sync::atomic::Ordering::*;
 use std::sync::atomic::{AtomicUsize, fence};
 use std::thread::spawn;
 
+#[path = "../../utils/mod.rs"]
+mod utils;
+use utils::check_all_outcomes;
+
 #[allow(dead_code)]
 #[derive(Copy, Clone)]
 struct EvilSend<T>(pub T);
@@ -31,35 +35,6 @@ fn spin_until(loc: &AtomicUsize, val: usize) -> usize {
         std::hint::spin_loop();
     }
     val
-}
-
-/// Check that the function produces the intended set of outcomes.
-#[track_caller]
-fn check_all_outcomes<T: Eq + std::hash::Hash + std::fmt::Debug>(
-    expected: impl IntoIterator<Item = T>,
-    generate: impl Fn() -> T,
-) {
-    use std::collections::HashSet;
-
-    let expected: HashSet<T> = HashSet::from_iter(expected);
-    let mut seen = HashSet::new();
-    // Let's give it N times as many tries as we are expecting values.
-    let tries = expected.len() * 16;
-    for i in 0..tries {
-        let val = generate();
-        assert!(expected.contains(&val), "got an unexpected value: {val:?}");
-        seen.insert(val);
-        if i > tries / 2 && expected.len() == seen.len() {
-            // We saw everything and we did quite a few tries, let's avoid wasting time.
-            return;
-        }
-    }
-    // Let's see if we saw them all.
-    for val in expected {
-        if !seen.contains(&val) {
-            panic!("did not get value that should be possible: {val:?}");
-        }
-    }
 }
 
 fn relaxed() {

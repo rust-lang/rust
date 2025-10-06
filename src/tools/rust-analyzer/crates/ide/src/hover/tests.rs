@@ -4797,6 +4797,48 @@ fn main() {
 }
 
 #[test]
+fn const_generic_negative_literal_macro_expansion() {
+    // Test that negative literals work correctly in const generics
+    // when used through macro expansion. This ensures the transcriber
+    // doesn't wrap negative literals in parentheses, which would create
+    // invalid syntax like Foo::<(-1)> instead of Foo::<-1>.
+    check(
+        r#"
+struct Foo<const I: i16> {
+    pub value: i16,
+}
+
+impl<const I: i16> Foo<I> {
+    pub fn new(value: i16) -> Self {
+        Self { value }
+    }
+}
+
+macro_rules! create_foo {
+    ($val:expr) => {
+        Foo::<$val>::new($val)
+    };
+}
+
+fn main() {
+    let v$0alue = create_foo!(-1);
+}
+"#,
+        expect![[r#"
+            *value*
+
+            ```rust
+            let value: Foo<-1>
+            ```
+
+            ---
+
+            size = 2, align = 2, no Drop
+        "#]],
+    );
+}
+
+#[test]
 fn hover_self_param_shows_type() {
     check(
         r#"

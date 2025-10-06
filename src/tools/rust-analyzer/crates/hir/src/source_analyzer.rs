@@ -46,6 +46,10 @@ use hir_ty::{
     from_assoc_type_id,
     lang_items::lang_items_for_bin_op,
     method_resolution,
+    next_solver::{
+        DbInterner,
+        mapping::{ChalkToNextSolver, NextSolverToChalk},
+    },
 };
 use intern::sym;
 use itertools::Itertools;
@@ -219,7 +223,7 @@ impl<'db> SourceAnalyzer<'db> {
         })
     }
 
-    fn trait_environment(&self, db: &'db dyn HirDatabase) -> Arc<TraitEnvironment> {
+    fn trait_environment(&self, db: &'db dyn HirDatabase) -> Arc<TraitEnvironment<'db>> {
         self.body_().map(|(def, ..)| def).map_or_else(
             || TraitEnvironment::empty(self.resolver.krate()),
             |def| db.trait_environment_for_body(def),
@@ -372,8 +376,10 @@ impl<'db> SourceAnalyzer<'db> {
     ) -> Option<Callable<'db>> {
         let expr_id = self.expr_id(call.clone().into())?.as_expr()?;
         let (func, substs) = self.infer()?.method_resolution(expr_id)?;
-        let ty = db.value_ty(func.into())?.substitute(Interner, &substs);
-        let ty = Type::new_with_resolver(db, &self.resolver, ty);
+        let interner = DbInterner::new_with(db, None, None);
+        let args: hir_ty::next_solver::GenericArgs<'_> = substs.to_nextsolver(interner);
+        let ty = db.value_ty(func.into())?.instantiate(interner, args);
+        let ty = Type::new_with_resolver(db, &self.resolver, ty.to_chalk(interner));
         let mut res = ty.as_callable(db)?;
         res.is_bound_method = true;
         Some(res)

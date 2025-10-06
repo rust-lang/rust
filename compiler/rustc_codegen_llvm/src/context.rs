@@ -31,10 +31,11 @@ use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::spec::{HasTargetSpec, RelocModel, SmallDataThresholdSupport, Target, TlsModel};
 use smallvec::SmallVec;
 
+use crate::abi::to_llvm_calling_convention;
 use crate::back::write::to_llvm_code_model;
 use crate::callee::get_fn;
 use crate::debuginfo::metadata::apply_vcall_visibility_metadata;
-use crate::llvm::Metadata;
+use crate::llvm::{Metadata, MetadataKindId, Module};
 use crate::type_::Type;
 use crate::value::Value;
 use crate::{attributes, common, coverageinfo, debuginfo, llvm, llvm_util};
@@ -370,7 +371,8 @@ pub(crate) unsafe fn create_module<'ll>(
         );
     }
 
-    if let Some(BranchProtection { bti, pac_ret }) = sess.opts.unstable_opts.branch_protection {
+    if let Some(BranchProtection { bti, pac_ret, gcs }) = sess.opts.unstable_opts.branch_protection
+    {
         if sess.target.arch == "aarch64" {
             llvm::add_module_flag_u32(
                 llmod,
@@ -402,6 +404,12 @@ pub(crate) unsafe fn create_module<'ll>(
                 llvm::ModuleFlagMergeBehavior::Min,
                 "sign-return-address-with-bkey",
                 u32::from(pac_opts.key == PAuthKey::B),
+            );
+            llvm::add_module_flag_u32(
+                llmod,
+                llvm::ModuleFlagMergeBehavior::Min,
+                "guarded-control-stack",
+                gcs.into(),
             );
         } else {
             bug!(
@@ -488,14 +496,7 @@ pub(crate) unsafe fn create_module<'ll>(
         format!("rustc version {}", option_env!("CFG_VERSION").expect("CFG_VERSION"));
 
     let name_metadata = cx.create_metadata(rustc_producer.as_bytes());
-
-    unsafe {
-        llvm::LLVMAddNamedMetadataOperand(
-            llmod,
-            c"llvm.ident".as_ptr(),
-            &cx.get_metadata_value(llvm::LLVMMDNodeInContext2(llcx, &name_metadata, 1)),
-        );
-    }
+    cx.module_add_named_metadata_node(llmod, c"llvm.ident", &[name_metadata]);
 
     // Emit RISC-V specific target-abi metadata
     // to workaround lld as the LTO plugin not
@@ -740,7 +741,7 @@ impl<'ll> SimpleCx<'ll> {
         llcx: &'ll llvm::Context,
         pointer_size: Size,
     ) -> Self {
-        let isize_ty = llvm::Type::ix_llcx(llcx, pointer_size.bits());
+        let isize_ty = llvm::LLVMIntTypeInContext(llcx, pointer_size.bits() as c_uint);
         Self(SCx { llmod, llcx, isize_ty }, PhantomData)
     }
 }
@@ -869,7 +870,7 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 } else {
                     let fty = self.type_variadic_func(&[], self.type_i32());
                     let llfn = self.declare_cfn(name, llvm::UnnamedAddr::Global, fty);
-                    let target_cpu = attributes::target_cpu_attr(self);
+                    let target_cpu = attributes::target_cpu_attr(self, self.sess());
                     attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &[target_cpu]);
                     llfn
                 }
@@ -884,15 +885,15 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     }
 
     fn set_frame_pointer_type(&self, llfn: &'ll Value) {
-        if let Some(attr) = attributes::frame_pointer_type_attr(self) {
+        if let Some(attr) = attributes::frame_pointer_type_attr(self, self.sess()) {
             attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &[attr]);
         }
     }
 
     fn apply_target_cpu_attr(&self, llfn: &'ll Value) {
         let mut attrs = SmallVec::<[_; 2]>::new();
-        attrs.push(attributes::target_cpu_attr(self));
-        attrs.extend(attributes::tune_cpu_attr(self));
+        attrs.push(attributes::target_cpu_attr(self, self.sess()));
+        attrs.extend(attributes::tune_cpu_attr(self, self.sess()));
         attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &attrs);
     }
 
@@ -901,17 +902,14 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         if self.get_declared_value(entry_name).is_none() {
             let llfn = self.declare_entry_fn(
                 entry_name,
-                llvm::CallConv::from_conv(
-                    self.sess().target.entry_abi,
-                    self.sess().target.arch.borrow(),
-                ),
+                to_llvm_calling_convention(self.sess(), self.sess().target.entry_abi),
                 llvm::UnnamedAddr::Global,
                 fn_type,
             );
             attributes::apply_to_llfn(
                 llfn,
                 llvm::AttributePlace::Function,
-                attributes::target_features_attr(self, vec![]).as_slice(),
+                attributes::target_features_attr(self, self.tcx, vec![]).as_slice(),
             );
             Some(llfn)
         } else {
@@ -995,15 +993,75 @@ impl CodegenCx<'_, '_> {
 }
 
 impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
+    /// Wrapper for `LLVMMDNodeInContext2`, i.e. `llvm::MDNode::get`.
+    pub(crate) fn md_node_in_context(&self, md_list: &[&'ll Metadata]) -> &'ll Metadata {
+        unsafe { llvm::LLVMMDNodeInContext2(self.llcx(), md_list.as_ptr(), md_list.len()) }
+    }
+
     /// A wrapper for [`llvm::LLVMSetMetadata`], but it takes `Metadata` as a parameter instead of `Value`.
     pub(crate) fn set_metadata<'a>(
         &self,
         val: &'a Value,
-        kind_id: impl Into<llvm::MetadataKindId>,
+        kind_id: MetadataKindId,
         md: &'ll Metadata,
     ) {
         let node = self.get_metadata_value(md);
-        llvm::LLVMSetMetadata(val, kind_id.into(), node);
+        llvm::LLVMSetMetadata(val, kind_id, node);
+    }
+
+    /// Helper method for the sequence of calls:
+    /// - `LLVMMDNodeInContext2` (to create an `llvm::MDNode` from a list of metadata)
+    /// - `LLVMMetadataAsValue` (to adapt that node to an `llvm::Value`)
+    /// - `LLVMSetMetadata` (to set that node as metadata of `kind_id` for `instruction`)
+    pub(crate) fn set_metadata_node(
+        &self,
+        instruction: &'ll Value,
+        kind_id: MetadataKindId,
+        md_list: &[&'ll Metadata],
+    ) {
+        let md = self.md_node_in_context(md_list);
+        self.set_metadata(instruction, kind_id, md);
+    }
+
+    /// Helper method for the sequence of calls:
+    /// - `LLVMMDNodeInContext2` (to create an `llvm::MDNode` from a list of metadata)
+    /// - `LLVMMetadataAsValue` (to adapt that node to an `llvm::Value`)
+    /// - `LLVMAddNamedMetadataOperand` (to set that node as metadata of `kind_name` for `module`)
+    pub(crate) fn module_add_named_metadata_node(
+        &self,
+        module: &'ll Module,
+        kind_name: &CStr,
+        md_list: &[&'ll Metadata],
+    ) {
+        let md = self.md_node_in_context(md_list);
+        let md_as_val = self.get_metadata_value(md);
+        unsafe { llvm::LLVMAddNamedMetadataOperand(module, kind_name.as_ptr(), md_as_val) };
+    }
+
+    /// Helper method for the sequence of calls:
+    /// - `LLVMMDNodeInContext2` (to create an `llvm::MDNode` from a list of metadata)
+    /// - `LLVMRustGlobalAddMetadata` (to set that node as metadata of `kind_id` for `global`)
+    pub(crate) fn global_add_metadata_node(
+        &self,
+        global: &'ll Value,
+        kind_id: MetadataKindId,
+        md_list: &[&'ll Metadata],
+    ) {
+        let md = self.md_node_in_context(md_list);
+        unsafe { llvm::LLVMRustGlobalAddMetadata(global, kind_id, md) };
+    }
+
+    /// Helper method for the sequence of calls:
+    /// - `LLVMMDNodeInContext2` (to create an `llvm::MDNode` from a list of metadata)
+    /// - `LLVMGlobalSetMetadata` (to set that node as metadata of `kind_id` for `global`)
+    pub(crate) fn global_set_metadata_node(
+        &self,
+        global: &'ll Value,
+        kind_id: MetadataKindId,
+        md_list: &[&'ll Metadata],
+    ) {
+        let md = self.md_node_in_context(md_list);
+        unsafe { llvm::LLVMGlobalSetMetadata(global, kind_id, md) };
     }
 }
 
@@ -1037,7 +1095,10 @@ impl<'tcx, 'll> HasTypingEnv<'tcx> for CodegenCx<'ll, 'tcx> {
 impl<'tcx> LayoutOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
     #[inline]
     fn handle_layout_err(&self, err: LayoutError<'tcx>, span: Span, ty: Ty<'tcx>) -> ! {
-        if let LayoutError::SizeOverflow(_) | LayoutError::ReferencesError(_) = err {
+        if let LayoutError::SizeOverflow(_)
+        | LayoutError::ReferencesError(_)
+        | LayoutError::InvalidSimd { .. } = err
+        {
             self.tcx.dcx().emit_fatal(Spanned { span, node: err.into_diagnostic() })
         } else {
             self.tcx.dcx().emit_fatal(ssa_errors::FailedToGetLayout { span, ty, err })
@@ -1054,7 +1115,11 @@ impl<'tcx> FnAbiOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
         fn_abi_request: FnAbiRequest<'tcx>,
     ) -> ! {
         match err {
-            FnAbiError::Layout(LayoutError::SizeOverflow(_) | LayoutError::Cycle(_)) => {
+            FnAbiError::Layout(
+                LayoutError::SizeOverflow(_)
+                | LayoutError::Cycle(_)
+                | LayoutError::InvalidSimd { .. },
+            ) => {
                 self.tcx.dcx().emit_fatal(Spanned { span, node: err });
             }
             _ => match fn_abi_request {

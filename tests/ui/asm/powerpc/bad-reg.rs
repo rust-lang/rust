@@ -45,10 +45,6 @@ fn f() {
         //~^ ERROR invalid register `r30`: r30 is used internally by LLVM and cannot be used as an operand for inline asm
         asm!("", out("fp") _);
         //~^ ERROR invalid register `fp`: the frame pointer cannot be used as an operand for inline asm
-        asm!("", out("lr") _);
-        //~^ ERROR invalid register `lr`: the link register cannot be used as an operand for inline asm
-        asm!("", out("ctr") _);
-        //~^ ERROR invalid register `ctr`: the counter register cannot be used as an operand for inline asm
         asm!("", out("vrsave") _);
         //~^ ERROR invalid register `vrsave`: the vrsave register cannot be used as an operand for inline asm
 
@@ -107,6 +103,32 @@ fn f() {
         //~^ ERROR can only be used as a clobber
         //~| ERROR type `i32` cannot be used with this register class
         asm!("/* {} */", out(cr) _);
+        //~^ ERROR can only be used as a clobber
+        // ctr
+        asm!("", out("ctr") _); // ok
+        asm!("", in("ctr") x);
+        //~^ ERROR can only be used as a clobber
+        //~| ERROR type `i32` cannot be used with this register class
+        asm!("", out("ctr") x);
+        //~^ ERROR can only be used as a clobber
+        //~| ERROR type `i32` cannot be used with this register class
+        asm!("/* {} */", in(ctr) x);
+        //~^ ERROR can only be used as a clobber
+        //~| ERROR type `i32` cannot be used with this register class
+        asm!("/* {} */", out(ctr) _);
+        //~^ ERROR can only be used as a clobber
+        // lr
+        asm!("", out("lr") _); // ok
+        asm!("", in("lr") x);
+        //~^ ERROR can only be used as a clobber
+        //~| ERROR type `i32` cannot be used with this register class
+        asm!("", out("lr") x);
+        //~^ ERROR can only be used as a clobber
+        //~| ERROR type `i32` cannot be used with this register class
+        asm!("/* {} */", in(lr) x);
+        //~^ ERROR can only be used as a clobber
+        //~| ERROR type `i32` cannot be used with this register class
+        asm!("/* {} */", out(lr) _);
         //~^ ERROR can only be used as a clobber
         // xer
         asm!("", out("xer") _); // ok

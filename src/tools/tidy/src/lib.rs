@@ -167,12 +167,16 @@ pub fn ensure_version_or_cargo_install(
     bin_name: &str,
     version: &str,
 ) -> io::Result<PathBuf> {
+    let tool_root_dir = build_dir.join("misc-tools");
+    let tool_bin_dir = tool_root_dir.join("bin");
+    let bin_path = tool_bin_dir.join(bin_name).with_extension(env::consts::EXE_EXTENSION);
+
     // ignore the process exit code here and instead just let the version number check fail.
     // we also importantly don't return if the program wasn't installed,
     // instead we want to continue to the fallback.
     'ck: {
         // FIXME: rewrite as if-let chain once this crate is 2024 edition.
-        let Ok(output) = Command::new(bin_name).arg("--version").output() else {
+        let Ok(output) = Command::new(&bin_path).arg("--version").output() else {
             break 'ck;
         };
         let Ok(s) = str::from_utf8(&output.stdout) else {
@@ -182,18 +186,16 @@ pub fn ensure_version_or_cargo_install(
             break 'ck;
         };
         if v == version {
-            return Ok(PathBuf::from(bin_name));
+            return Ok(bin_path);
         }
     }
 
-    let tool_root_dir = build_dir.join("misc-tools");
-    let tool_bin_dir = tool_root_dir.join("bin");
     eprintln!("building external tool {bin_name} from package {pkg_name}@{version}");
     // use --force to ensure that if the required version is bumped, we update it.
     // use --target-dir to ensure we have a build cache so repeated invocations aren't slow.
     // modify PATH so that cargo doesn't print a warning telling the user to modify the path.
-    let cargo_exit_code = Command::new(cargo)
-        .args(["install", "--locked", "--force", "--quiet"])
+    let mut cmd = Command::new(cargo);
+    cmd.args(["install", "--locked", "--force", "--quiet"])
         .arg("--root")
         .arg(&tool_root_dir)
         .arg("--target-dir")
@@ -206,14 +208,19 @@ pub fn ensure_version_or_cargo_install(
                     .chain(std::iter::once(tool_bin_dir.clone())),
             )
             .expect("build dir contains invalid char"),
-        )
-        .env("RUSTFLAGS", "-Copt-level=0")
-        .spawn()?
-        .wait()?;
+        );
+
+    // On CI, we set opt-level flag for quicker installation.
+    // Since lower opt-level decreases the tool's performance,
+    // we don't set this option on local.
+    if CiEnv::is_ci() {
+        cmd.env("RUSTFLAGS", "-Copt-level=0");
+    }
+
+    let cargo_exit_code = cmd.spawn()?.wait()?;
     if !cargo_exit_code.success() {
         return Err(io::Error::other("cargo install failed"));
     }
-    let bin_path = tool_bin_dir.join(bin_name).with_extension(env::consts::EXE_EXTENSION);
     assert!(
         matches!(bin_path.try_exists(), Ok(true)),
         "cargo install did not produce the expected binary"

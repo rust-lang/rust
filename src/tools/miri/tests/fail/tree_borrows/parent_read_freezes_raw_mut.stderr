@@ -12,7 +12,7 @@ help: the accessed tag <TAG> was created here, in the initial state Reserved
    |
 LL |         let mref = &mut root;
    |                    ^^^^^^^^^
-help: the accessed tag <TAG> later transitioned to Active due to a child write access at offsets [0x0..0x1]
+help: the accessed tag <TAG> later transitioned to Unique due to a child write access at offsets [0x0..0x1]
   --> tests/fail/tree_borrows/parent_read_freezes_raw_mut.rs:LL:CC
    |
 LL |         *ptr = 0; // Write

@@ -1046,6 +1046,8 @@ Default: `25`
 
 Maximum length for inlay hints. Set to null to have an unlimited length.
 
+**Note:** This is mostly a hint, and we don't guarantee to strictly follow the limit.
+
 
 ## rust-analyzer.inlayHints.parameterHints.enable {#inlayHints.parameterHints.enable}
 

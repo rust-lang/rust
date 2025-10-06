@@ -5,6 +5,10 @@
 use std::fmt;
 use std::hint::black_box;
 
+#[path = "../utils/mod.rs"]
+mod utils;
+use utils::check_all_outcomes;
+
 fn ldexp(a: f64, b: i32) -> f64 {
     extern "C" {
         fn ldexp(x: f64, n: i32) -> f64;
@@ -25,35 +29,6 @@ enum NaNKind {
     Signaling = 0,
 }
 use NaNKind::*;
-
-/// Check that the function produces the intended set of outcomes.
-#[track_caller]
-fn check_all_outcomes<T: Eq + std::hash::Hash + fmt::Display>(
-    expected: impl IntoIterator<Item = T>,
-    generate: impl Fn() -> T,
-) {
-    use std::collections::HashSet;
-
-    let expected: HashSet<T> = HashSet::from_iter(expected);
-    let mut seen = HashSet::new();
-    // Let's give it N times as many tries as we are expecting values.
-    let tries = expected.len() * 12;
-    for i in 0..tries {
-        let val = generate();
-        assert!(expected.contains(&val), "got an unexpected value: {val}");
-        seen.insert(val);
-        if i > tries / 2 && expected.len() == seen.len() {
-            // We saw everything and we did quite a few tries, let's avoid wasting time.
-            return;
-        }
-    }
-    // Let's see if we saw them all.
-    for val in expected {
-        if !seen.contains(&val) {
-            panic!("did not get value that should be possible: {val}");
-        }
-    }
-}
 
 // -- f32 support
 #[repr(C)]
@@ -81,7 +56,7 @@ const F32_EXP: u32 = 8; // 8 bits of exponent
 const F32_MANTISSA: u32 = F32_SIGN_BIT - F32_EXP;
 const F32_NAN_PAYLOAD: u32 = F32_MANTISSA - 1;
 
-impl fmt::Display for F32 {
+impl fmt::Debug for F32 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Alaways show raw bits.
         write!(f, "0x{:08x} ", self.0)?;
@@ -154,7 +129,7 @@ const F64_EXP: u32 = 11; // 11 bits of exponent
 const F64_MANTISSA: u32 = F64_SIGN_BIT - F64_EXP;
 const F64_NAN_PAYLOAD: u32 = F64_MANTISSA - 1;
 
-impl fmt::Display for F64 {
+impl fmt::Debug for F64 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Alaways show raw bits.
         write!(f, "0x{:08x} ", self.0)?;

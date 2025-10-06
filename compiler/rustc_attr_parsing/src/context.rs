@@ -28,6 +28,7 @@ use crate::attributes::crate_level::{
     CrateNameParser, MoveSizeLimitParser, NoCoreParser, NoStdParser, PatternComplexityLimitParser,
     RecursionLimitParser, RustcCoherenceIsCoreParser, TypeLengthLimitParser,
 };
+use crate::attributes::debugger::DebuggerViualizerParser;
 use crate::attributes::deprecation::DeprecationParser;
 use crate::attributes::dummy::DummyParser;
 use crate::attributes::inline::{InlineParser, RustcForceInlineParser};
@@ -53,7 +54,7 @@ use crate::attributes::prototype::CustomMirParser;
 use crate::attributes::repr::{AlignParser, AlignStaticParser, ReprParser};
 use crate::attributes::rustc_internal::{
     RustcLayoutScalarValidRangeEnd, RustcLayoutScalarValidRangeStart,
-    RustcObjectLifetimeDefaultParser,
+    RustcObjectLifetimeDefaultParser, RustcSimdMonomorphizeLaneLimitParser,
 };
 use crate::attributes::semantics::MayDangleParser;
 use crate::attributes::stability::{
@@ -163,6 +164,7 @@ attribute_parsers!(
         // tidy-alphabetical-start
         Combine<AllowConstFnUnstableParser>,
         Combine<AllowInternalUnstableParser>,
+        Combine<DebuggerViualizerParser>,
         Combine<ForceTargetFeatureParser>,
         Combine<LinkParser>,
         Combine<ReprParser>,
@@ -198,6 +200,7 @@ attribute_parsers!(
         Single<RustcLayoutScalarValidRangeEnd>,
         Single<RustcLayoutScalarValidRangeStart>,
         Single<RustcObjectLifetimeDefaultParser>,
+        Single<RustcSimdMonomorphizeLaneLimitParser>,
         Single<SanitizeParser>,
         Single<ShouldPanicParser>,
         Single<SkipDuringMethodDispatchParser>,
@@ -594,7 +597,12 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
     }
 
     pub(crate) fn warn_empty_attribute(&mut self, span: Span) {
-        self.emit_lint(AttributeLintKind::EmptyAttribute { first_span: span }, span);
+        let attr_path = self.attr_path.clone();
+        let valid_without_list = self.template.word;
+        self.emit_lint(
+            AttributeLintKind::EmptyAttribute { first_span: span, attr_path, valid_without_list },
+            span,
+        );
     }
 }
 

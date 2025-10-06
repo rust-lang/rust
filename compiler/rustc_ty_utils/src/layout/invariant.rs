@@ -8,7 +8,7 @@ use rustc_middle::ty::layout::{HasTyCtxt, LayoutCx, TyAndLayout};
 pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayout<'tcx>) {
     let tcx = cx.tcx();
 
-    if !layout.size.bytes().is_multiple_of(layout.align.abi.bytes()) {
+    if !layout.size.bytes().is_multiple_of(layout.align.bytes()) {
         bug!("size is not a multiple of align, in the following layout:\n{layout:#?}");
     }
     if layout.size.bytes() >= tcx.data_layout.obj_size_bound() {
@@ -300,8 +300,8 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                 if variant.align.abi > layout.align.abi {
                     bug!(
                         "Type with alignment {} bytes has variant with alignment {} bytes: {layout:#?}",
-                        layout.align.abi.bytes(),
-                        variant.align.abi.bytes(),
+                        layout.align.bytes(),
+                        variant.align.bytes(),
                     )
                 }
                 // Skip empty variants.

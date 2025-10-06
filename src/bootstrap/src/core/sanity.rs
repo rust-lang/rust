@@ -33,11 +33,8 @@ pub struct Finder {
 //
 // Targets can be removed from this list once they are present in the stage0 compiler (usually by updating the beta compiler of the bootstrap).
 const STAGE0_MISSING_TARGETS: &[&str] = &[
-    "armv7a-vex-v5",
-    "riscv64a23-unknown-linux-gnu",
     // just a dummy comment so the list doesn't get onelined
-    "aarch64_be-unknown-hermit",
-    "aarch64_be-unknown-none-softfloat",
+    "x86_64-unknown-motor",
 ];
 
 /// Minimum version threshold for libstdc++ required when using prebuilt LLVM
@@ -236,6 +233,10 @@ than building it.
 
         // We don't use a C compiler on wasm32
         if target.contains("wasm32") {
+            continue;
+        }
+
+        if target.contains("motor") {
             continue;
         }
 

@@ -9,6 +9,7 @@
 //! `#[cfg(target_has_atomic = "ptr")]`.
 
 use core::any::Any;
+use core::cell::CloneFromCell;
 #[cfg(not(no_global_oom_handling))]
 use core::clone::CloneToUninit;
 use core::clone::UseCloned;
@@ -281,6 +282,10 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized, A: Allocator> CoerceUnsized<Arc<U, A>> fo
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Arc<U>> for Arc<T> {}
 
+// SAFETY: `Arc::clone` doesn't access any `Cell`s which could contain the `Arc` being cloned.
+#[unstable(feature = "cell_get_cloned", issue = "145329")]
+unsafe impl<T: ?Sized> CloneFromCell for Arc<T> {}
+
 impl<T: ?Sized> Arc<T> {
     unsafe fn from_inner(ptr: NonNull<ArcInner<T>>) -> Self {
         unsafe { Self::from_inner_in(ptr, Global) }
@@ -341,7 +346,7 @@ pub struct Weak<
     // but it is not necessarily a valid pointer.
     // `Weak::new` sets this to `usize::MAX` so that it doesn’t need
     // to allocate space on the heap. That's not a value a real pointer
-    // will ever have because RcInner has alignment at least 2.
+    // will ever have because ArcInner has alignment at least 2.
     ptr: NonNull<ArcInner<T>>,
     alloc: A,
 }
@@ -356,6 +361,10 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized, A: Allocator> CoerceUnsized<Weak<U, A>> f
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Weak<U>> for Weak<T> {}
 
+// SAFETY: `Weak::clone` doesn't access any `Cell`s which could contain the `Weak` being cloned.
+#[unstable(feature = "cell_get_cloned", issue = "145329")]
+unsafe impl<T: ?Sized> CloneFromCell for Weak<T> {}
+
 #[stable(feature = "arc_weak", since = "1.4.0")]
 impl<T: ?Sized, A: Allocator> fmt::Debug for Weak<T, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -366,7 +375,9 @@ impl<T: ?Sized, A: Allocator> fmt::Debug for Weak<T, A> {
 // This is repr(C) to future-proof against possible field-reordering, which
 // would interfere with otherwise safe [into|from]_raw() of transmutable
 // inner types.
-#[repr(C)]
+// Unlike RcInner, repr(align(2)) is not strictly required because atomic types
+// have the alignment same as its size, but we use it for consistency and clarity.
+#[repr(C, align(2))]
 struct ArcInner<T: ?Sized> {
     strong: Atomic<usize>,
 
@@ -480,8 +491,6 @@ impl<T> Arc<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(get_mut_unchecked)]
-    ///
     /// use std::sync::Arc;
     ///
     /// let mut five = Arc::<u32>::new_uninit();
@@ -586,7 +595,6 @@ impl<T> Arc<T> {
     ///
     /// ```
     /// #![feature(allocator_api)]
-    /// #![feature(get_mut_unchecked)]
     ///
     /// use std::sync::Arc;
     ///
@@ -1156,8 +1164,6 @@ impl<T> Arc<[T]> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(get_mut_unchecked)]
-    ///
     /// use std::sync::Arc;
     ///
     /// let mut values = Arc::<[u32]>::new_uninit_slice(3);
@@ -1326,8 +1332,6 @@ impl<T, A: Allocator> Arc<mem::MaybeUninit<T>, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(get_mut_unchecked)]
-    ///
     /// use std::sync::Arc;
     ///
     /// let mut five = Arc::<u32>::new_uninit();
@@ -1364,8 +1368,6 @@ impl<T, A: Allocator> Arc<[mem::MaybeUninit<T>], A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(get_mut_unchecked)]
-    ///
     /// use std::sync::Arc;
     ///
     /// let mut values = Arc::<[u32]>::new_uninit_slice(3);
@@ -1622,9 +1624,9 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     pub fn as_ptr(this: &Self) -> *const T {
         let ptr: *mut ArcInner<T> = NonNull::as_ptr(this.ptr);
 
-        // SAFETY: This cannot go through Deref::deref or RcInnerPtr::inner because
+        // SAFETY: This cannot go through Deref::deref or ArcInnerPtr::inner because
         // this is required to retain raw/mut provenance such that e.g. `get_mut` can
-        // write through the pointer after the Rc is recovered through `from_raw`.
+        // write through the pointer after the Arc is recovered through `from_raw`.
         unsafe { &raw mut (*ptr).data }
     }
 
@@ -2459,7 +2461,7 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     /// If any other `Arc` or [`Weak`] pointers to the same allocation exist, then
     /// they must not be dereferenced or have active borrows for the duration
     /// of the returned borrow, and their inner type must be exactly the same as the
-    /// inner type of this Rc (including lifetimes). This is trivially the case if no
+    /// inner type of this Arc (including lifetimes). This is trivially the case if no
     /// such pointers exist, for example immediately after `Arc::new`.
     ///
     /// # Examples
@@ -3031,7 +3033,7 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
             // Otherwise, we're guaranteed the pointer came from a nondangling Weak.
             // SAFETY: data_offset is safe to call, as ptr references a real (potentially dropped) T.
             let offset = unsafe { data_offset(ptr) };
-            // Thus, we reverse the offset to get the whole RcInner.
+            // Thus, we reverse the offset to get the whole ArcInner.
             // SAFETY: the pointer originated from a Weak, so this offset is safe.
             unsafe { ptr.byte_sub(offset) as *mut ArcInner<T> }
         };
@@ -3645,7 +3647,7 @@ impl<T> Default for Arc<[T]> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "pin_default_impls", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "pin_default_impls", since = "1.91.0")]
 impl<T> Default for Pin<Arc<T>>
 where
     T: ?Sized,
@@ -4024,7 +4026,7 @@ impl<T: ?Sized, A: Allocator> Unpin for Arc<T, A> {}
 /// valid instance of T, but the T is allowed to be dropped.
 unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> usize {
     // Align the unsized value to the end of the ArcInner.
-    // Because RcInner is repr(C), it will always be the last field in memory.
+    // Because ArcInner is repr(C), it will always be the last field in memory.
     // SAFETY: since the only unsized types possible are slices, trait objects,
     // and extern types, the input safety requirement is currently enough to
     // satisfy the requirements of align_of_val_raw; this is an implementation

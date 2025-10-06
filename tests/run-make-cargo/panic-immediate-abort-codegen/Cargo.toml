@@ -1,0 +1,12 @@
+cargo-features = ["profile-rustflags"]
+
+[package]
+name = "panic_scenarios"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+path = "lib.rs"
+
+[profile.release]
+rustflags = ["-Zmerge-functions=disabled", "-Zcodegen-source-order", "--emit=llvm-ir"]

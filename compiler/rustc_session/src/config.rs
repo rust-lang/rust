@@ -29,7 +29,8 @@ use rustc_span::{
     SourceFileHashAlgorithm, Symbol, sym,
 };
 use rustc_target::spec::{
-    FramePointer, LinkSelfContainedComponents, LinkerFeatures, SplitDebuginfo, Target, TargetTuple,
+    FramePointer, LinkSelfContainedComponents, LinkerFeatures, PanicStrategy, SplitDebuginfo,
+    Target, TargetTuple,
 };
 use tracing::debug;
 
@@ -257,6 +258,8 @@ pub enum AutoDiff {
     LooseTypes,
     /// Runs Enzyme's aggressive inlining
     Inline,
+    /// Disable Type Tree
+    NoTT,
 }
 
 /// Settings for `-Z instrument-xray` flag.
@@ -1192,6 +1195,7 @@ pub struct OutputFilenames {
     filestem: String,
     pub single_output_file: Option<OutFileName>,
     temps_directory: Option<PathBuf>,
+    explicit_dwo_out_directory: Option<PathBuf>,
     pub outputs: OutputTypes,
 }
 
@@ -1224,6 +1228,7 @@ impl OutputFilenames {
         out_filestem: String,
         single_output_file: Option<OutFileName>,
         temps_directory: Option<PathBuf>,
+        explicit_dwo_out_directory: Option<PathBuf>,
         extra: String,
         outputs: OutputTypes,
     ) -> Self {
@@ -1231,6 +1236,7 @@ impl OutputFilenames {
             out_directory,
             single_output_file,
             temps_directory,
+            explicit_dwo_out_directory,
             outputs,
             crate_stem: format!("{out_crate_name}{extra}"),
             filestem: format!("{out_filestem}{extra}"),
@@ -1280,7 +1286,14 @@ impl OutputFilenames {
         codegen_unit_name: &str,
         invocation_temp: Option<&str>,
     ) -> PathBuf {
-        self.temp_path_ext_for_cgu(DWARF_OBJECT_EXT, codegen_unit_name, invocation_temp)
+        let p = self.temp_path_ext_for_cgu(DWARF_OBJECT_EXT, codegen_unit_name, invocation_temp);
+        if let Some(dwo_out) = &self.explicit_dwo_out_directory {
+            let mut o = dwo_out.clone();
+            o.push(p.file_name().unwrap());
+            o
+        } else {
+            p
+        }
     }
 
     /// Like `temp_path`, but also supports things where there is no corresponding
@@ -1620,6 +1633,7 @@ pub struct PacRet {
 pub struct BranchProtection {
     pub bti: bool,
     pub pac_ret: Option<PacRet>,
+    pub gcs: bool,
 }
 
 pub(crate) const fn default_lib_output() -> CrateType {
@@ -2797,6 +2811,12 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         if let Err(error) = cg.linker_features.check_unstable_variants(&target_triple) {
             early_dcx.early_fatal(error);
         }
+    }
+
+    if !unstable_options_enabled && cg.panic == Some(PanicStrategy::ImmediateAbort) {
+        early_dcx.early_fatal(
+            "`-Cpanic=immediate-abort` requires `-Zunstable-options` and a nightly compiler",
+        )
     }
 
     let crate_name = matches.opt_str("crate-name");

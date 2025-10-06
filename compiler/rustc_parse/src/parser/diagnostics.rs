@@ -2748,28 +2748,7 @@ impl<'a> Parser<'a> {
         if token::Colon != self.token.kind {
             return first_pat;
         }
-        if !matches!(first_pat.kind, PatKind::Ident(_, _, None) | PatKind::Path(..))
-            || !self.look_ahead(1, |token| token.is_non_reserved_ident())
-        {
-            let mut snapshot_type = self.create_snapshot_for_diagnostic();
-            snapshot_type.bump(); // `:`
-            match snapshot_type.parse_ty() {
-                Err(inner_err) => {
-                    inner_err.cancel();
-                }
-                Ok(ty) => {
-                    let Err(mut err) = self.expected_one_of_not_found(&[], &[]) else {
-                        return first_pat;
-                    };
-                    err.span_label(ty.span, "specifying the type of a pattern isn't supported");
-                    self.restore_snapshot(snapshot_type);
-                    let span = first_pat.span.to(ty.span);
-                    first_pat = self.mk_pat(span, PatKind::Wild);
-                    err.emit();
-                }
-            }
-            return first_pat;
-        }
+
         // The pattern looks like it might be a path with a `::` -> `:` typo:
         // `match foo { bar:baz => {} }`
         let colon_span = self.token.span;
@@ -2857,7 +2836,13 @@ impl<'a> Parser<'a> {
                                 Applicability::MaybeIncorrect,
                             );
                         } else {
-                            first_pat = self.mk_pat(new_span, PatKind::Wild);
+                            first_pat = self.mk_pat(
+                                new_span,
+                                PatKind::Err(
+                                    self.dcx()
+                                        .span_delayed_bug(colon_span, "recovered bad path pattern"),
+                                ),
+                            );
                         }
                         self.restore_snapshot(snapshot_pat);
                     }
@@ -2870,7 +2855,14 @@ impl<'a> Parser<'a> {
                         err.span_label(ty.span, "specifying the type of a pattern isn't supported");
                         self.restore_snapshot(snapshot_type);
                         let new_span = first_pat.span.to(ty.span);
-                        first_pat = self.mk_pat(new_span, PatKind::Wild);
+                        first_pat =
+                            self.mk_pat(
+                                new_span,
+                                PatKind::Err(self.dcx().span_delayed_bug(
+                                    colon_span,
+                                    "recovered bad pattern with type",
+                                )),
+                            );
                     }
                 }
                 err.emit();
@@ -2947,26 +2939,24 @@ impl<'a> Parser<'a> {
         }
         let seq_span = lo.to(self.prev_token.span);
         let mut err = self.dcx().struct_span_err(comma_span, "unexpected `,` in pattern");
-        if let Ok(seq_snippet) = self.span_to_snippet(seq_span) {
-            err.multipart_suggestion(
-                format!(
-                    "try adding parentheses to match on a tuple{}",
-                    if let CommaRecoveryMode::LikelyTuple = rt { "" } else { "..." },
-                ),
-                vec![
-                    (seq_span.shrink_to_lo(), "(".to_string()),
-                    (seq_span.shrink_to_hi(), ")".to_string()),
-                ],
+        err.multipart_suggestion(
+            format!(
+                "try adding parentheses to match on a tuple{}",
+                if let CommaRecoveryMode::LikelyTuple = rt { "" } else { "..." },
+            ),
+            vec![
+                (seq_span.shrink_to_lo(), "(".to_string()),
+                (seq_span.shrink_to_hi(), ")".to_string()),
+            ],
+            Applicability::MachineApplicable,
+        );
+        if let CommaRecoveryMode::EitherTupleOrPipe = rt {
+            err.span_suggestion(
+                comma_span,
+                "...or a vertical bar to match on alternatives",
+                " |",
                 Applicability::MachineApplicable,
             );
-            if let CommaRecoveryMode::EitherTupleOrPipe = rt {
-                err.span_suggestion(
-                    seq_span,
-                    "...or a vertical bar to match on multiple alternatives",
-                    seq_snippet.replace(',', " |"),
-                    Applicability::MachineApplicable,
-                );
-            }
         }
         Err(err)
     }

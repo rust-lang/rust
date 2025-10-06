@@ -758,7 +758,8 @@ impl Session {
         //     ELF x86-64 abi, but it can be disabled for some compilation units.
         //
         // Typically when we're compiling with `-C panic=abort` we don't need
-        // `uwtable` because we can't generate any exceptions!
+        // `uwtable` because we can't generate any exceptions! But note that
+        // some targets require unwind tables to generate backtraces.
         // Unwind tables are needed when compiling with `-C panic=unwind`, but
         // LLVM won't omit unwind tables unless the function is also marked as
         // `nounwind`, so users are allowed to disable `uwtable` emission.
@@ -777,9 +778,11 @@ impl Session {
         // Otherwise, we can defer to the `-C force-unwind-tables=<yes/no>`
         // value, if it is provided, or disable them, if not.
         self.target.requires_uwtable
-            || self.opts.cg.force_unwind_tables.unwrap_or(
-                self.panic_strategy() == PanicStrategy::Unwind || self.target.default_uwtable,
-            )
+            || self
+                .opts
+                .cg
+                .force_unwind_tables
+                .unwrap_or(self.panic_strategy().unwinds() || self.target.default_uwtable)
     }
 
     /// Returns the number of query threads that should be used for this
@@ -1229,7 +1232,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     }
 
     // KCFI requires panic=abort
-    if sess.is_sanitizer_kcfi_enabled() && sess.panic_strategy() != PanicStrategy::Abort {
+    if sess.is_sanitizer_kcfi_enabled() && sess.panic_strategy().unwinds() {
         sess.dcx().emit_err(errors::SanitizerKcfiRequiresPanicAbort);
     }
 

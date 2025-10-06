@@ -22,7 +22,7 @@ LL | #[cfg_attr(condition, attribute, other_attribute, ...)]
    |           ++++++++++++++++++++++++++++++++++++++++++++
 
 error[E0463]: can't find crate for `wloop`
-  --> $DIR/malformed-attrs.rs:210:1
+  --> $DIR/malformed-attrs.rs:209:1
    |
 LL | extern crate wloop;
    | ^^^^^^^^^^^^^^^^^^^ can't find crate
@@ -156,22 +156,14 @@ LL | #[forbid(lint1, lint2, ...)]
 LL | #[forbid(lint1, lint2, lint3, reason = "...")]
    |         +++++++++++++++++++++++++++++++++++++
 
-error: malformed `debugger_visualizer` attribute input
-  --> $DIR/malformed-attrs.rs:187:1
-   |
-LL | #[debugger_visualizer]
-   | ^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[debugger_visualizer(natvis_file = "...", gdb_script_file = "...")]`
-   |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/debugger.html#the-debugger_visualizer-attribute>
-
 error: malformed `thread_local` attribute input
-  --> $DIR/malformed-attrs.rs:202:1
+  --> $DIR/malformed-attrs.rs:201:1
    |
 LL | #[thread_local()]
    | ^^^^^^^^^^^^^^^^^ help: must be of the form: `#[thread_local]`
 
 error: malformed `no_link` attribute input
-  --> $DIR/malformed-attrs.rs:206:1
+  --> $DIR/malformed-attrs.rs:205:1
    |
 LL | #[no_link()]
    | ^^^^^^^^^^^^ help: must be of the form: `#[no_link]`
@@ -197,7 +189,7 @@ LL | #[proc_macro_derive]
    | ^^^^^^^^^^^^^^^^^^^^
 
 error[E0658]: allow_internal_unsafe side-steps the unsafe_code lint
-  --> $DIR/malformed-attrs.rs:215:1
+  --> $DIR/malformed-attrs.rs:214:1
    |
 LL | #[allow_internal_unsafe = 1]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -225,16 +217,6 @@ LL | #[doc]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
    = note: for more information, visit <https://doc.rust-lang.org/rustdoc/write-documentation/the-doc-attribute.html>
-
-error: invalid argument
-  --> $DIR/malformed-attrs.rs:187:1
-   |
-LL | #[debugger_visualizer]
-   | ^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: expected: `natvis_file = "..."`
-   = note: OR
-   = note: expected: `gdb_script_file = "..."`
 
 error[E0539]: malformed `export_name` attribute input
   --> $DIR/malformed-attrs.rs:29:1
@@ -685,8 +667,19 @@ LL |     #[linkage = "external"]
    |               ++++++++++++
    = and 5 other candidates
 
+error[E0539]: malformed `debugger_visualizer` attribute input
+  --> $DIR/malformed-attrs.rs:187:1
+   |
+LL | #[debugger_visualizer]
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | expected this to be a list
+   | help: must be of the form: `#[debugger_visualizer(natvis_file = "...", gdb_script_file = "...")]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/debugger.html#the-debugger_visualizer-attribute>
+
 error[E0565]: malformed `automatically_derived` attribute input
-  --> $DIR/malformed-attrs.rs:190:1
+  --> $DIR/malformed-attrs.rs:189:1
    |
 LL | #[automatically_derived = 18]
    | ^^^^^^^^^^^^^^^^^^^^^^^^----^
@@ -695,7 +688,7 @@ LL | #[automatically_derived = 18]
    | help: must be of the form: `#[automatically_derived]`
 
 error[E0565]: malformed `non_exhaustive` attribute input
-  --> $DIR/malformed-attrs.rs:196:1
+  --> $DIR/malformed-attrs.rs:195:1
    |
 LL | #[non_exhaustive = 1]
    | ^^^^^^^^^^^^^^^^^---^
@@ -704,19 +697,19 @@ LL | #[non_exhaustive = 1]
    | help: must be of the form: `#[non_exhaustive]`
 
 error: valid forms for the attribute are `#[macro_use(name1, name2, ...)]` and `#[macro_use]`
-  --> $DIR/malformed-attrs.rs:208:1
+  --> $DIR/malformed-attrs.rs:207:1
    |
 LL | #[macro_use = 1]
    | ^^^^^^^^^^^^^^^^
 
 error: valid forms for the attribute are `#![macro_export(local_inner_macros)]` and `#![macro_export]`
-  --> $DIR/malformed-attrs.rs:213:1
+  --> $DIR/malformed-attrs.rs:212:1
    |
 LL | #[macro_export = 18]
    | ^^^^^^^^^^^^^^^^^^^^
 
 error[E0565]: malformed `allow_internal_unsafe` attribute input
-  --> $DIR/malformed-attrs.rs:215:1
+  --> $DIR/malformed-attrs.rs:214:1
    |
 LL | #[allow_internal_unsafe = 1]
    | ^^^^^^^^^^^^^^^^^^^^^^^^---^
@@ -800,7 +793,7 @@ LL | #[ignore()]
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
 
 error: valid forms for the attribute are `#[ignore = "reason"]` and `#[ignore]`
-  --> $DIR/malformed-attrs.rs:222:1
+  --> $DIR/malformed-attrs.rs:221:1
    |
 LL | #[ignore = 1]
    | ^^^^^^^^^^^^^
@@ -819,7 +812,7 @@ LL |     #[coroutine = 63] || {}
    = note: expected unit type `()`
               found coroutine `{coroutine@$DIR/malformed-attrs.rs:110:23: 110:25}`
 
-error: aborting due to 77 previous errors; 3 warnings emitted
+error: aborting due to 76 previous errors; 3 warnings emitted
 
 Some errors have detailed explanations: E0308, E0463, E0539, E0565, E0658, E0805.
 For more information about an error, try `rustc --explain E0308`.
@@ -871,7 +864,7 @@ LL | #[ignore()]
 
 Future breakage diagnostic:
 error: valid forms for the attribute are `#[ignore = "reason"]` and `#[ignore]`
-  --> $DIR/malformed-attrs.rs:222:1
+  --> $DIR/malformed-attrs.rs:221:1
    |
 LL | #[ignore = 1]
    | ^^^^^^^^^^^^^

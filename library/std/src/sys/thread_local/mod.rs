@@ -29,6 +29,7 @@ cfg_select! {
         target_os = "uefi",
         target_os = "zkvm",
         target_os = "trusty",
+        target_os = "vexos",
     ) => {
         mod no_threads;
         pub use no_threads::{EagerStorage, LazyStorage, thread_local_inner};
@@ -41,7 +42,7 @@ cfg_select! {
     }
     _ => {
         mod os;
-        pub use os::{Storage, thread_local_inner};
+        pub use os::{Storage, thread_local_inner, value_align};
         pub(crate) use os::{LocalPointer, local_pointer};
     }
 }
@@ -98,6 +99,7 @@ pub(crate) mod guard {
             target_os = "uefi",
             target_os = "zkvm",
             target_os = "trusty",
+            target_os = "vexos",
         ) => {
             pub(crate) fn enable() {
                 // FIXME: Right now there is no concept of "thread exit" on
