@@ -914,8 +914,9 @@ impl<D: Deps> GraphEncoder<D> {
         index
     }
 
-    /// Encodes a node that was promoted from the previous graph. It reads the information directly from
-    /// the previous dep graph and expects all edges to already have a new dep node index assigned.
+    /// Encodes a node that was promoted from the previous graph. It reads the information directly
+    /// from the previous dep graph and expects all edges to already have a new dep node index
+    /// assigned.
     ///
     /// This will also ensure the dep node is marked green.
     #[inline]
