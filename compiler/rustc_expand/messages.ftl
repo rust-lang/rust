@@ -118,8 +118,9 @@ expand_module_file_not_found =
     .note = if there is a `mod {$name}` elsewhere in the crate already, import it with `use crate::...` instead
 
 expand_module_in_block =
-    cannot declare a non-inline module inside a block unless it has a path attribute
-    .note = maybe `use` the module `{$name}` instead of redeclaring it
+    cannot declare a file module inside a block unless it has a path attribute
+    .help = maybe `use` the module `{$name}` instead of redeclaring it
+    .note = file modules are usually placed outside of blocks, at the top level of the file
 
 expand_module_multiple_candidates =
     file for module `{$name}` found at both "{$default_path}" and "{$secondary_path}"
