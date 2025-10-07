@@ -54,7 +54,7 @@ They are held on [Zulip][zulip-meetings]. It works roughly as follows:
   those that are sufficiently important for us to actively track
   progress. P-critical and P-high bugs should ideally always have an
   assignee.
-- **Check `S-waiting-on-compiler` and `I-compiler-nominated` issues:** These are issues where
+- **Check `S-waiting-on-t-compiler` and `I-compiler-nominated` issues:** These are issues where
   feedback from the team is desired.
 - **Look over the performance triage report:** We check for PRs that made the
     performance worse and try to decide if it's worth reverting the performance regression or if
