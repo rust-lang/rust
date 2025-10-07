@@ -1,9 +1,13 @@
 pub(crate) mod encode;
+mod serde;
 
 use std::collections::BTreeSet;
 use std::collections::hash_map::Entry;
 use std::path::Path;
 
+use ::serde::de::{self, Deserializer, Error as _};
+use ::serde::ser::{SerializeSeq, Serializer};
+use ::serde::{Deserialize, Serialize};
 use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_hir::attrs::AttributeKind;
@@ -12,9 +16,6 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
 use rustc_span::sym;
 use rustc_span::symbol::{Symbol, kw};
-use serde::de::{self, Deserializer, Error as _};
-use serde::ser::{SerializeSeq, Serializer};
-use serde::{Deserialize, Serialize};
 use stringdex::internals as stringdex_internals;
 use thin_vec::ThinVec;
 use tracing::instrument;
