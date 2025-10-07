@@ -1,14 +1,17 @@
-// EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 //! Tests that we can propagate into places that are projections into unions
-//@ compile-flags: -Zunsound-mir-opts -C debuginfo=full
+//@ test-mir-pass: GVN
+//@ compile-flags: -Zinline-mir
+
 fn val() -> u32 {
     1
 }
 
-// EMIT_MIR union.main.DestinationPropagation.diff
+// EMIT_MIR union.main.GVN.diff
 fn main() {
     // CHECK-LABEL: fn main(
-    // CHECK: {{_.*}} = Un { us: const 1_u32 };
+    // CHECK: debug un => [[un:_.*]];
+    // CHECK: bb0: {
+    // CHECK: [[un]] = const Un {{{{ us: 1_u32 }}}};
     union Un {
         us: u32,
     }
