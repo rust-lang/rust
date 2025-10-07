@@ -90,14 +90,13 @@ impl Arena {
             return &mut [];
         }
 
-        loop {
-            if let Some(a) = self.alloc_raw_without_grow(bytes) {
-                break a;
-            }
-            // No free space left. Allocate a new chunk to satisfy the request.
-            // On failure the grow will panic or abort.
-            self.grow(bytes);
+        if let Some(a) = self.alloc_raw_without_grow(bytes) {
+            return a;
         }
+        // No free space left. Allocate a new chunk to satisfy the request.
+        // On failure the grow will panic or abort.
+        self.grow(bytes);
+        self.alloc_raw_without_grow(bytes).unwrap()
     }
 
     #[allow(clippy::mut_from_ref)] // arena allocator
