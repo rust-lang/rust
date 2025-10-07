@@ -304,7 +304,7 @@ fn structurally_normalize_ty<'db>(
         // evaluate/fulfill mismatches, but that's not a reason for an ICE.
         return None;
     };
-    let errors = ocx.select_where_possible();
+    let errors = ocx.try_evaluate_obligations();
     if !errors.is_empty() {
         unreachable!();
     }

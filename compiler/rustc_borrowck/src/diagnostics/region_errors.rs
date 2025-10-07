@@ -1134,7 +1134,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             Obligation::misc(tcx, span, self.mir_def_id(), self.infcx.param_env, pred)
         }));
 
-        if ocx.select_all_or_error().is_empty() && count > 0 {
+        if ocx.evaluate_obligations_error_on_ambiguity().is_empty() && count > 0 {
             diag.span_suggestion_verbose(
                 tcx.hir_body(*body).value.peel_blocks().span.shrink_to_lo(),
                 fluent::borrowck_dereference_suggestion,

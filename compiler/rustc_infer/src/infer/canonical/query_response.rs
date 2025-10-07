@@ -125,7 +125,7 @@ impl<'tcx> InferCtxt<'tcx> {
         T: Debug + TypeFoldable<TyCtxt<'tcx>>,
     {
         // Select everything, returning errors.
-        let errors = fulfill_cx.select_all_or_error(self);
+        let errors = fulfill_cx.evaluate_obligations_error_on_ambiguity(self);
 
         // True error!
         if errors.iter().any(|e| e.is_true_error()) {
