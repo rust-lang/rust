@@ -708,21 +708,31 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         // In GenMC mode, we let GenMC do the scheduling.
-        if let Some(genmc_ctx) = this.machine.data_race.as_genmc_ref() {
-            let Some(next_thread_id) = genmc_ctx.schedule_thread(this)? else {
-                return interp_ok(SchedulingAction::ExecuteStep);
-            };
-            // If a thread is blocked on GenMC, we have to implicitly unblock it when it gets scheduled again.
-            if this.machine.threads.threads[next_thread_id].state.is_blocked_on(BlockReason::Genmc)
-            {
-                info!("GenMC: scheduling blocked thread {next_thread_id:?}, so we unblock it now.");
-                this.unblock_thread(next_thread_id, BlockReason::Genmc)?;
+        if this.machine.data_race.as_genmc_ref().is_some() {
+            loop {
+                let genmc_ctx = this.machine.data_race.as_genmc_ref().unwrap();
+                let Some(next_thread_id) = genmc_ctx.schedule_thread(this)? else {
+                    return interp_ok(SchedulingAction::ExecuteStep);
+                };
+                // If a thread is blocked on GenMC, we have to implicitly unblock it when it gets scheduled again.
+                if this.machine.threads.threads[next_thread_id]
+                    .state
+                    .is_blocked_on(BlockReason::Genmc)
+                {
+                    info!(
+                        "GenMC: scheduling blocked thread {next_thread_id:?}, so we unblock it now."
+                    );
+                    this.unblock_thread(next_thread_id, BlockReason::Genmc)?;
+                }
+                // The thread we just unblocked may have been blocked again during the unblocking callback.
+                // In that case, we need to ask for a different thread to run next.
+                let thread_manager = &mut this.machine.threads;
+                if thread_manager.threads[next_thread_id].state.is_enabled() {
+                    // Set the new active thread.
+                    thread_manager.active_thread = next_thread_id;
+                    return interp_ok(SchedulingAction::ExecuteStep);
+                }
             }
-            // Set the new active thread.
-            let thread_manager = &mut this.machine.threads;
-            thread_manager.active_thread = next_thread_id;
-            assert!(thread_manager.threads[thread_manager.active_thread].state.is_enabled());
-            return interp_ok(SchedulingAction::ExecuteStep);
         }
 
         // We are not in GenMC mode, so we control the scheduling.
