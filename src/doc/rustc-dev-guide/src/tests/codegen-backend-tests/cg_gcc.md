@@ -1,11 +1,16 @@
 # GCC codegen backend
 
 If you ran into an error related to tests executed with the GCC codegen backend on CI,
-you can use the following command to run tests locally using the GCC backend:
+you can use the following command to run UI tests locally using the GCC backend:
 
 ```bash
-./x test tests/ui --set 'rust.codegen-backends = ["llvm", "gcc"]' --test-codegen-backend gcc
+./x test tests/ui \
+  --set 'rust.codegen-backends = ["llvm", "gcc"]' \
+  --set 'rust.debug-assertions = false' \
+  --test-codegen-backend gcc
 ```
+
+If a different test suite has failed on CI, you will have to modify the `tests/ui` part.
 
 Below, you can find more information about how to configure the GCC backend in bootstrap.
 
