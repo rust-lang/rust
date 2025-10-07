@@ -37,11 +37,6 @@ extern "cmse-nonsecure-entry" fn introduced_generic<U: Copy>(
     0
 }
 
-extern "cmse-nonsecure-entry" fn impl_trait(_: impl Copy, _: u32, _: u32, _: u32) -> u64 {
-    //~^ ERROR [E0798]
-    0
-}
-
 extern "cmse-nonsecure-entry" fn reference(x: &usize) -> usize {
     *x
 }
@@ -66,14 +61,31 @@ extern "cmse-nonsecure-entry" fn wrapped_trait_object(x: WrapperTransparent) -> 
     x
 }
 
-extern "cmse-nonsecure-entry" fn return_impl_trait(_: impl Copy) -> impl Copy {
+extern "cmse-nonsecure-entry" fn impl_trait(_: impl Copy, _: u32, _: u32, _: u32) -> u64 {
+    //~^ ERROR [E0798]
+    0
+}
+
+extern "cmse-nonsecure-entry" fn return_impl_trait() -> impl Copy {
     //~^ ERROR functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
-    //~| ERROR functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
     0u128
 }
 
-extern "cmse-nonsecure-entry" fn return_impl_trait_nested(v: (impl Copy, i32)) -> (impl Copy, i32) {
+extern "cmse-nonsecure-entry" fn return_impl_trait_nested() -> (impl Copy, i32) {
+    //~^ ERROR functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
+    (0u128, 0i32)
+}
+
+extern "cmse-nonsecure-entry" fn identity_impl_trait(v: impl Copy) -> impl Copy {
     //~^ ERROR functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
     //~| ERROR functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
+    v
+}
+
+extern "cmse-nonsecure-entry" fn identity_impl_trait_nested(
+    //~^ ERROR functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
+    //~| ERROR functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
+    v: (impl Copy, i32),
+) -> (impl Copy, i32) {
     v
 }

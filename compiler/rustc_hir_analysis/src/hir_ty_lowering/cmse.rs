@@ -216,7 +216,7 @@ fn should_emit_generic_error<'tcx>(abi: ExternAbi, layout_err: &'tcx LayoutError
             match abi {
                 ExternAbi::CmseNonSecureCall => {
                     // prevent double reporting of this error
-                    !ty.is_impl_trait()
+                    !ty.has_opaque_types()
                 }
                 ExternAbi::CmseNonSecureEntry => true,
                 _ => bug!("invalid ABI: {abi}"),

@@ -11,36 +11,44 @@ LL | | ) -> u64 {
    | |________^
 
 error[E0798]: functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
-  --> $DIR/generics.rs:40:1
+  --> $DIR/generics.rs:64:1
    |
 LL | extern "cmse-nonsecure-entry" fn impl_trait(_: impl Copy, _: u32, _: u32, _: u32) -> u64 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0798]: functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
-  --> $DIR/generics.rs:69:1
+  --> $DIR/generics.rs:79:1
    |
-LL | extern "cmse-nonsecure-entry" fn return_impl_trait(_: impl Copy) -> impl Copy {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | extern "cmse-nonsecure-entry" fn identity_impl_trait(v: impl Copy) -> impl Copy {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0798]: functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
-  --> $DIR/generics.rs:69:1
+  --> $DIR/generics.rs:79:1
    |
-LL | extern "cmse-nonsecure-entry" fn return_impl_trait(_: impl Copy) -> impl Copy {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | extern "cmse-nonsecure-entry" fn identity_impl_trait(v: impl Copy) -> impl Copy {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0798]: functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
-  --> $DIR/generics.rs:75:1
+  --> $DIR/generics.rs:85:1
    |
-LL | extern "cmse-nonsecure-entry" fn return_impl_trait_nested(v: (impl Copy, i32)) -> (impl Copy, i32) {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | / extern "cmse-nonsecure-entry" fn identity_impl_trait_nested(
+LL | |
+LL | |
+LL | |     v: (impl Copy, i32),
+LL | | ) -> (impl Copy, i32) {
+   | |_____________________^
 
 error[E0798]: functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
-  --> $DIR/generics.rs:75:1
+  --> $DIR/generics.rs:85:1
    |
-LL | extern "cmse-nonsecure-entry" fn return_impl_trait_nested(v: (impl Copy, i32)) -> (impl Copy, i32) {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | / extern "cmse-nonsecure-entry" fn identity_impl_trait_nested(
+LL | |
+LL | |
+LL | |     v: (impl Copy, i32),
+LL | | ) -> (impl Copy, i32) {
+   | |_____________________^
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
@@ -63,7 +71,7 @@ LL | |     ) -> u64 {
    | |____________^
 
 error[E0798]: return value of `"cmse-nonsecure-entry"` function too large to pass via registers
-  --> $DIR/generics.rs:51:65
+  --> $DIR/generics.rs:46:65
    |
 LL | extern "cmse-nonsecure-entry" fn trait_object(x: &dyn Trait) -> &dyn Trait {
    |                                                                 ^^^^^^^^^^ this type doesn't fit in the available registers
@@ -72,7 +80,7 @@ LL | extern "cmse-nonsecure-entry" fn trait_object(x: &dyn Trait) -> &dyn Trait 
    = note: the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
 
 error[E0798]: return value of `"cmse-nonsecure-entry"` function too large to pass via registers
-  --> $DIR/generics.rs:56:80
+  --> $DIR/generics.rs:51:80
    |
 LL | extern "cmse-nonsecure-entry" fn static_trait_object(x: &'static dyn Trait) -> &'static dyn Trait {
    |                                                                                ^^^^^^^^^^^^^^^^^^ this type doesn't fit in the available registers
@@ -81,7 +89,7 @@ LL | extern "cmse-nonsecure-entry" fn static_trait_object(x: &'static dyn Trait)
    = note: the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
 
 error[E0798]: return value of `"cmse-nonsecure-entry"` function too large to pass via registers
-  --> $DIR/generics.rs:64:81
+  --> $DIR/generics.rs:59:81
    |
 LL | extern "cmse-nonsecure-entry" fn wrapped_trait_object(x: WrapperTransparent) -> WrapperTransparent {
    |                                                                                 ^^^^^^^^^^^^^^^^^^ this type doesn't fit in the available registers
@@ -89,6 +97,18 @@ LL | extern "cmse-nonsecure-entry" fn wrapped_trait_object(x: WrapperTransparent
    = note: functions with the `"cmse-nonsecure-entry"` ABI must pass their result via the available return registers
    = note: the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
 
-error: aborting due to 11 previous errors
+error[E0798]: functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
+  --> $DIR/generics.rs:69:1
+   |
+LL | extern "cmse-nonsecure-entry" fn return_impl_trait() -> impl Copy {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0798]: functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
+  --> $DIR/generics.rs:74:1
+   |
+LL | extern "cmse-nonsecure-entry" fn return_impl_trait_nested() -> (impl Copy, i32) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 13 previous errors
 
 For more information about this error, try `rustc --explain E0798`.
