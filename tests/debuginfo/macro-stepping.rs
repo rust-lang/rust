@@ -10,8 +10,7 @@
 #[macro_use]
 extern crate macro_stepping; // exports new_scope!()
 
-//@ compile-flags:-g -Zmir-enable-passes=-SingleUseConsts
-// SingleUseConsts shouldn't need to be disabled, see #128945
+//@ compile-flags:-g
 
 // === GDB TESTS ===================================================================================
 
