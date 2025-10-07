@@ -339,8 +339,7 @@ fn check_with_condition<'tcx>(
             ExprKind::Path(QPath::TypeRelative(_, name)) => {
                 if name.ident.name == sym::MIN
                     && let Some(const_id) = cx.typeck_results().type_dependent_def_id(cond_num_val.hir_id)
-                    && let Some(impl_id) = cx.tcx.impl_of_assoc(const_id)
-                    && let None = cx.tcx.impl_trait_ref(impl_id) // An inherent impl
+                    && let Some(impl_id) = cx.tcx.inherent_impl_of_assoc(const_id)
                     && cx.tcx.type_of(impl_id).instantiate_identity().is_integral()
                 {
                     print_lint_and_sugg(cx, var_name, expr);
@@ -350,8 +349,7 @@ fn check_with_condition<'tcx>(
                 if let ExprKind::Path(QPath::TypeRelative(_, name)) = func.kind
                     && name.ident.name == sym::min_value
                     && let Some(func_id) = cx.typeck_results().type_dependent_def_id(func.hir_id)
-                    && let Some(impl_id) = cx.tcx.impl_of_assoc(func_id)
-                    && let None = cx.tcx.impl_trait_ref(impl_id) // An inherent impl
+                    && let Some(impl_id) = cx.tcx.inherent_impl_of_assoc(func_id)
                     && cx.tcx.type_of(impl_id).instantiate_identity().is_integral()
                 {
                     print_lint_and_sugg(cx, var_name, expr);

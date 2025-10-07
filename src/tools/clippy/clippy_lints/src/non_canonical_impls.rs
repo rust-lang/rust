@@ -6,7 +6,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Block, Body, Expr, ExprKind, ImplItem, ImplItemKind, Item, ItemKind, LangItem, UnOp};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::ty::{EarlyBinder, TyCtxt, TypeckResults};
+use rustc_middle::ty::{TyCtxt, TypeckResults};
 use rustc_session::impl_lint_pass;
 use rustc_span::sym;
 use rustc_span::symbol::kw;
@@ -173,10 +173,11 @@ impl LateLintPass<'_> for NonCanonicalImpls {
                     }
                 });
 
+            let trait_impl = cx.tcx.impl_trait_ref(item.owner_id).skip_binder();
+
             match trait_ {
                 Trait::Clone => {
                     if let Some(copy_trait) = self.copy_trait
-                        && let Some(trait_impl) = cx.tcx.impl_trait_ref(item.owner_id).map(EarlyBinder::skip_binder)
                         && implements_trait(cx, trait_impl.self_ty(), copy_trait, &[])
                     {
                         for (assoc, _, block) in assoc_fns {
@@ -185,10 +186,9 @@ impl LateLintPass<'_> for NonCanonicalImpls {
                     }
                 },
                 Trait::PartialOrd => {
-                    if let Some(trait_impl) = cx.tcx.impl_trait_ref(item.owner_id).map(EarlyBinder::skip_binder)
-                        // If `Self` and `Rhs` are not the same type, then a corresponding `Ord` impl is not possible,
-                        // since it doesn't have an `Rhs`
-                        && let [lhs, rhs] = trait_impl.args.as_slice()
+                    // If `Self` and `Rhs` are not the same type, then a corresponding `Ord` impl is not possible,
+                    // since it doesn't have an `Rhs`
+                    if let [lhs, rhs] = trait_impl.args.as_slice()
                         && lhs == rhs
                         && let Some(ord_trait) = self.ord_trait
                         && implements_trait(cx, trait_impl.self_ty(), ord_trait, &[])
