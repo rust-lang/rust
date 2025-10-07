@@ -3476,6 +3476,24 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     // can do about it. As far as they are concerned, `?` is compiler magic.
                     return;
                 }
+                if tcx.is_diagnostic_item(sym::PinDerefMutHelper, parent_def_id) {
+                    let parent_predicate =
+                        self.resolve_vars_if_possible(data.derived.parent_trait_pred);
+
+                    // Skip PinDerefMutHelper in suggestions, but still show downstream suggestions.
+                    ensure_sufficient_stack(|| {
+                        self.note_obligation_cause_code(
+                            body_id,
+                            err,
+                            parent_predicate,
+                            param_env,
+                            &data.derived.parent_code,
+                            obligated_types,
+                            seen_requirements,
+                        )
+                    });
+                    return;
+                }
                 let self_ty_str =
                     tcx.short_string(parent_trait_pred.skip_binder().self_ty(), err.long_ty_path());
                 let trait_name = tcx.short_string(
