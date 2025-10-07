@@ -2511,9 +2511,11 @@ impl Ident {
     }
 
     /// Creates a new ident with the same span and name with leading quote removed, if any.
-    /// If called on an empty ident, or with name just a single quote, returns an empty ident which is invalid.
+    /// Calling it on a `'` ident will return an empty ident, which triggers debug assertions.
     pub fn without_first_quote(self) -> Ident {
-        Ident::new(Symbol::intern(self.as_str().trim_start_matches('\'')), self.span)
+        self.as_str()
+            .strip_prefix('\'')
+            .map_or(self, |name| Ident::new(Symbol::intern(name), self.span))
     }
 
     /// "Normalize" ident for use in comparisons using "item hygiene".
