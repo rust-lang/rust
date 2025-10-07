@@ -5,10 +5,12 @@
 //!
 //! Use the `render_with_highlighting` to highlight some rust code.
 
+use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::fmt::{self, Display, Write};
-use std::{cmp, iter};
+use std::iter;
 
+use itertools::Either;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_lexer::{Cursor, FrontmatterAllowed, LiteralKind, TokenKind};
 use rustc_span::BytePos;
@@ -134,8 +136,8 @@ fn can_merge(class1: Option<Class>, class2: Option<Class>, text: &str) -> bool {
 }
 
 #[derive(Debug)]
-struct Content {
-    text: String,
+struct Content<'a> {
+    text: Cow<'a, str>,
     /// If `Some` and the `span` is different from the parent, then it might generate a link so we
     /// need to keep this information.
     class: Option<Class>,
@@ -143,15 +145,15 @@ struct Content {
 }
 
 #[derive(Debug)]
-struct Element {
+struct Element<'a> {
     /// If `class` is `None`, then it's just plain text with no HTML tag.
     class: Option<Class>,
     /// Content for the current element.
-    content: Vec<Content>,
+    content: Vec<Content<'a>>,
 }
 
-impl Element {
-    fn new(class: Option<Class>, text: String, needs_escape: bool) -> Self {
+impl<'a> Element<'a> {
+    fn new(class: Option<Class>, text: Cow<'a, str>, needs_escape: bool) -> Self {
         Self { class, content: vec![Content { text, class, needs_escape }] }
     }
 
@@ -168,8 +170,11 @@ impl Element {
         let mut prev = parent_class;
         let mut closing_tag = None;
         for part in &self.content {
-            let text: &dyn Display =
-                if part.needs_escape { &EscapeBodyText(&part.text) } else { &part.text };
+            let text = if part.needs_escape {
+                Either::Left(&EscapeBodyText(&part.text))
+            } else {
+                Either::Right(&part.text)
+            };
             if part.class.is_some() {
                 // We only try to generate links as the `<span>` should have already be generated
                 // by the caller of `write_elem_to`.
@@ -199,9 +204,9 @@ impl Element {
 }
 
 #[derive(Debug)]
-enum ElementOrStack {
-    Element(Element),
-    Stack(ElementStack),
+enum ElementOrStack<'a> {
+    Element(Element<'a>),
+    Stack(ElementStack<'a>),
 }
 
 /// This represents the stack of HTML elements. For example a macro expansion
@@ -211,14 +216,14 @@ enum ElementOrStack {
 /// This allows to easily handle HTML tags instead of having a more complicated
 /// state machine to keep track of which tags are open.
 #[derive(Debug)]
-struct ElementStack {
-    elements: Vec<ElementOrStack>,
-    parent: Option<Box<ElementStack>>,
+struct ElementStack<'a> {
+    elements: Vec<ElementOrStack<'a>>,
+    parent: Option<Box<ElementStack<'a>>>,
     class: Option<Class>,
     pending_exit: bool,
 }
 
-impl ElementStack {
+impl<'a> ElementStack<'a> {
     fn new() -> Self {
         Self::new_with_class(None)
     }
@@ -227,7 +232,7 @@ impl ElementStack {
         Self { elements: Vec::new(), parent: None, class, pending_exit: false }
     }
 
-    fn push_element(&mut self, mut elem: Element) {
+    fn push_element(&mut self, mut elem: Element<'a>) {
         if self.pending_exit
             && !can_merge(self.class, elem.class, elem.content.first().map_or("", |c| &c.text))
         {
@@ -236,15 +241,13 @@ impl ElementStack {
         if let Some(ElementOrStack::Element(last)) = self.elements.last_mut()
             && last.can_merge(&elem)
         {
-            for part in elem.content.drain(..) {
-                last.content.push(part);
-            }
+            last.content.append(&mut elem.content);
         } else {
             self.elements.push(ElementOrStack::Element(elem));
         }
     }
 
-    fn empty_stack_and_set_new_heads(&mut self, class: Class, element: Element) {
+    fn empty_stack_and_set_new_heads(&mut self, class: Class, element: Element<'a>) {
         self.elements.clear();
         if let Some(parent) = &mut self.parent {
             parent.empty_stack_and_set_new_heads(class, element);
@@ -257,14 +260,12 @@ impl ElementStack {
 
     fn enter_stack(
         &mut self,
-        ElementStack { elements, parent, class, pending_exit }: ElementStack,
+        ElementStack { elements, parent, class, pending_exit }: ElementStack<'a>,
     ) {
         if self.pending_exit {
             if can_merge(self.class, class, "") {
                 self.pending_exit = false;
-                for elem in elements {
-                    self.elements.push(elem);
-                }
+                self.elements.extend(elements);
                 // Compatible stacks, nothing to be done here!
                 return;
             }
@@ -382,7 +383,7 @@ impl ElementStack {
 /// the various functions (which became its methods).
 struct TokenHandler<'a, 'tcx, F: Write> {
     out: &'a mut F,
-    element_stack: ElementStack,
+    element_stack: ElementStack<'a>,
     /// We need to keep the `Class` for each element because it could contain a `Span` which is
     /// used to generate links.
     href_context: Option<HrefContext<'a, 'tcx>>,
@@ -397,7 +398,7 @@ impl<F: Write> std::fmt::Debug for TokenHandler<'_, '_, F> {
     }
 }
 
-impl<F: Write> TokenHandler<'_, '_, F> {
+impl<'a, F: Write> TokenHandler<'a, '_, F> {
     fn handle_backline(&mut self) -> Option<String> {
         self.line += 1;
         if self.line < self.max_lines {
@@ -409,20 +410,21 @@ impl<F: Write> TokenHandler<'_, '_, F> {
     fn push_element_without_backline_check(
         &mut self,
         class: Option<Class>,
-        text: String,
+        text: Cow<'a, str>,
         needs_escape: bool,
     ) {
         self.element_stack.push_element(Element::new(class, text, needs_escape))
     }
 
-    fn push_element(&mut self, class: Option<Class>, mut text: String) {
-        let needs_escape = if text == "\n"
+    fn push_element(&mut self, class: Option<Class>, text: Cow<'a, str>) {
+        let (needs_escape, text) = if text == "\n"
             && let Some(backline) = self.handle_backline()
         {
+            let mut text = text.into_owned();
             text.push_str(&backline);
-            false
+            (false, Cow::Owned(text))
         } else {
-            true
+            (true, text)
         };
 
         self.push_element_without_backline_check(class, text, needs_escape);
@@ -438,14 +440,14 @@ impl<F: Write> TokenHandler<'_, '_, F> {
             Element {
                 class: None,
                 content: vec![Content {
-                    text: format!(
+                    text: Cow::Owned(format!(
                         "<input id=expand-{} \
                      tabindex=0 \
                      type=checkbox \
                      aria-label=\"Collapse/expand macro\" \
                      title=\"Collapse/expand macro\">",
                         self.line,
-                    ),
+                    )),
                     class: None,
                     needs_escape: false,
                 }],
@@ -456,7 +458,7 @@ impl<F: Write> TokenHandler<'_, '_, F> {
     fn add_expanded_code(&mut self, expanded_code: &ExpandedCode) {
         self.element_stack.push_element(Element::new(
             None,
-            format!("<span class=expanded>{}</span>", expanded_code.code),
+            Cow::Owned(format!("<span class=expanded>{}</span>", expanded_code.code)),
             false,
         ));
         self.element_stack.enter_stack(ElementStack::new_with_class(Some(Class::Original)));
@@ -615,7 +617,7 @@ pub(super) fn write_code(
         token_handler.line = line_info.start_line - 1;
         token_handler.max_lines = line_info.max_lines;
         if let Some(text) = token_handler.handle_backline() {
-            token_handler.push_element_without_backline_check(None, text, false);
+            token_handler.push_element_without_backline_check(None, Cow::Owned(text), false);
         }
     }
 
@@ -635,7 +637,7 @@ pub(super) fn write_code(
     )
     .highlight(&mut |span, highlight| match highlight {
         Highlight::Token { text, class } => {
-            token_handler.push_element(class, text.to_string());
+            token_handler.push_element(class, Cow::Borrowed(text));
 
             if text == "\n" {
                 if current_expansion.is_none() {
