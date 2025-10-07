@@ -374,7 +374,7 @@ target | std | host | notes
 [`riscv32em-unknown-none-elf`](platform-support/riscv32e-unknown-none-elf.md) | * |  | Bare RISC-V (RV32EM ISA)
 [`riscv32emc-unknown-none-elf`](platform-support/riscv32e-unknown-none-elf.md) | * |  | Bare RISC-V (RV32EMC ISA)
 `riscv32gc-unknown-linux-gnu` | ✓ |   | RISC-V Linux (kernel 5.4, glibc 2.33)
-`riscv32gc-unknown-linux-musl` | ? |   | RISC-V Linux (kernel 5.4, musl 1.2.5 + RISCV32 support patches)
+`riscv32gc-unknown-linux-musl` | ? |   | RISC-V Linux (kernel 5.4, musl 1.2.5)
 [`riscv32im-risc0-zkvm-elf`](platform-support/riscv32im-risc0-zkvm-elf.md) | ? |  | RISC Zero's zero-knowledge Virtual Machine (RV32IM ISA)
 [`riscv32ima-unknown-none-elf`](platform-support/riscv32-unknown-none-elf.md) | * |  | Bare RISC-V (RV32IMA ISA)
 [`riscv32imac-esp-espidf`](platform-support/esp-idf.md) | ✓ |  | RISC-V ESP-IDF
