@@ -3,9 +3,8 @@ use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{is_default_equivalent_call, local_is_initialized, path_def_id, path_to_local};
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, LangItem, QPath};
+use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{self, Ty};
 use rustc_session::declare_lint_pass;
 use rustc_span::sym;
 
@@ -43,7 +42,7 @@ impl LateLintPass<'_> for ReplaceBox {
             && let lhs_ty = cx.typeck_results().expr_ty(lhs)
             // No diagnostic for late-initialized locals
             && path_to_local(lhs).is_none_or(|local| local_is_initialized(cx, local))
-            && let Some(inner_ty) = get_box_inner_type(cx, lhs_ty)
+            && let Some(inner_ty) = lhs_ty.boxed_ty()
         {
             if let Some(default_trait_id) = cx.tcx.get_diagnostic_item(sym::Default)
                 && implements_trait(cx, inner_ty, default_trait_id, &[])
@@ -91,16 +90,6 @@ impl LateLintPass<'_> for ReplaceBox {
                 });
             }
         }
-    }
-}
-
-fn get_box_inner_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
-    if let ty::Adt(def, args) = ty.kind()
-        && cx.tcx.is_lang_item(def.did(), LangItem::OwnedBox)
-    {
-        Some(args.type_at(0))
-    } else {
-        None
     }
 }
 
