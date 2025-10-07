@@ -1,5 +1,5 @@
 // ignore-tidy-filelength
-/* global addClass, getNakedUrl, getVar, nonnull, getSettingValue */
+/* global addClass, getNakedUrl, getVar, getSettingValue, hasClass, nonnull */
 /* global onEachLazy, removeClass, searchState, browserSupportsHistoryApi */
 
 "use strict";
@@ -4804,6 +4804,15 @@ function printTab(nb) {
         if (nb === iter) {
             addClass(elem, "selected");
             foundCurrentTab = true;
+            onEachLazy(document.querySelectorAll(
+                ".search-form",
+            ), form => {
+                if (hasClass(elem.firstElementChild, "loading")) {
+                    addClass(form, "loading");
+                } else {
+                    removeClass(form, "loading");
+                }
+            });
         } else {
             removeClass(elem, "selected");
         }
@@ -4903,11 +4912,6 @@ async function addTab(results, query, display, finishedCallback, isTypeSearch) {
     /** @type {HTMLElement} */
     let output = document.createElement("ul");
     output.className = "search-results " + extraClass;
-
-    const throbber = document.createElement("div");
-    throbber.className = "search-throbber";
-    throbber.innerHTML = "Loading...";
-    output.appendChild(throbber);
 
     let count = 0;
 
@@ -5015,7 +5019,7 @@ ${obj.displayPath}<span class="${type}">${name}</span>\
         }
 
         link.appendChild(description);
-        output.insertBefore(link, throbber);
+        output.appendChild(link);
 
         results.next().then(async nextResult => {
             if (nextResult.value) {
@@ -5026,7 +5030,6 @@ ${obj.displayPath}<span class="${type}">${name}</span>\
                 // running this callback
                 yieldToBrowser().then(() => {
                     finishedCallback(count, output);
-                    throbber.remove();
                 });
             }
         });
@@ -5164,6 +5167,7 @@ function makeTab(tabNb, text, results, query, isTypeSearch, goToFirst) {
                 count < 100 ? `\u{2007}(${count})\u{2007}` : `\u{2007}(${count})`;
             tabCount.innerHTML = fmtNbElems;
             tabCount.className = "count";
+            printTab(window.searchState.currentTab);
         }, isTypeSearch),
     ];
 }
@@ -5227,9 +5231,7 @@ async function showResults(docSearch, results, goToFirst, filterCrates) {
         tabsElem.appendChild(tab);
         const isCurrentTab = window.searchState.currentTab === tabNb;
         const placeholder = document.createElement("div");
-        placeholder.className = isCurrentTab ?
-            "search-throbber search-results active" :
-            "search-throbber search-results";
+        placeholder.className = isCurrentTab ? "search-results active" : "search-results";
         placeholder.innerHTML = "Loading...";
         output.then(output => {
             if (placeholder.parentElement) {
@@ -5487,11 +5489,6 @@ if (ROOT_PATH === null) {
 const database = await Stringdex.loadDatabase(hooks);
 if (typeof window !== "undefined") {
     docSearch = new DocSearch(ROOT_PATH, database);
-    onEachLazy(document.querySelectorAll(
-        ".search-form.loading",
-    ), form => {
-        removeClass(form, "loading");
-    });
     registerSearchEvents();
     // If there's a search term in the URL, execute the search now.
     if (window.searchState.getQueryStringParams().search !== undefined) {

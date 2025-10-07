@@ -339,7 +339,6 @@ summary.hideme,
 .scraped-example-list,
 .rustdoc-breadcrumbs,
 .search-switcher,
-.search-throbber,
 /* This selector is for the items listed in the "all items" page. */
 ul.all-items {
 	font-family: "Fira Sans", Arial, NanumBarunGothic, sans-serif;
@@ -2007,12 +2006,6 @@ a.tooltip:hover::after {
 	color: transparent;
 }
 
-.search-throbber {
-	position: relative;
-	height: 34px;
-}
-
-.search-throbber::after,
 .search-form.loading::after
 {
 	width: 18px;
