@@ -351,7 +351,7 @@ pub(crate) fn run_tests(
         );
 
         for (doctest, scraped_test) in &doctests {
-            tests_runner.add_test(doctest, scraped_test, &target_str);
+            tests_runner.add_test(doctest, scraped_test, &target_str, rustdoc_options);
         }
         let (duration, ret) = tests_runner.run_merged_tests(
             rustdoc_test_options,
@@ -801,6 +801,22 @@ fn run_test(
     let duration = instant.elapsed();
     if doctest.no_run {
         return (duration, Ok(()));
+    } else if doctest.langstr.should_panic
+        // Equivalent of:
+        //
+        // ```
+        // (cfg!(target_family = "wasm") || cfg!(target_os = "zkvm"))
+        //     && !cfg!(target_os = "emscripten")
+        // ```
+        && let TargetTuple::TargetTuple(ref s) = rustdoc_options.target
+        && let mut iter = s.split('-')
+        && let Some(arch) = iter.next()
+        && iter.next().is_some()
+        && let os = iter.next()
+        && (arch.starts_with("wasm") || os == Some("zkvm")) && os != Some("emscripten")
+    {
+        // We cannot correctly handle `should_panic` in some wasm targets so we exit early.
+        return (duration, Ok(()));
     }
 
     // Run the code!
@@ -834,7 +850,7 @@ fn run_test(
     match result {
         Err(e) => return (duration, Err(TestFailure::ExecutionError(e))),
         Ok(out) => {
-            if langstr.should_panic && out.status.success() {
+            if langstr.should_panic && out.status.code() != Some(test::ERROR_EXIT_CODE) {
                 return (duration, Err(TestFailure::UnexpectedRunPass));
             } else if !langstr.should_panic && !out.status.success() {
                 return (duration, Err(TestFailure::ExecutionFailure(out)));
@@ -1144,7 +1160,7 @@ fn doctest_run_fn(
                 eprint!("Test compiled successfully, but it's marked `compile_fail`.");
             }
             TestFailure::UnexpectedRunPass => {
-                eprint!("Test executable succeeded, but it's marked `should_panic`.");
+                eprint!("Test didn't panic, but it's marked `should_panic`.");
             }
             TestFailure::MissingErrorCodes(codes) => {
                 eprint!("Some expected error codes were not found: {codes:?}");
