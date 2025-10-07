@@ -85,9 +85,8 @@ impl<'tcx> LateLintPass<'tcx> for UnusedIoAmount {
     /// get desugared to match.
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx hir::Block<'tcx>) {
         let fn_def_id = block.hir_id.owner.to_def_id();
-        if let Some(impl_id) = cx.tcx.impl_of_assoc(fn_def_id)
-            && let Some(trait_id) = cx.tcx.trait_id_of_impl(impl_id)
-        {
+        if let Some(impl_id) = cx.tcx.trait_impl_of_assoc(fn_def_id) {
+            let trait_id = cx.tcx.impl_trait_id(impl_id);
             // We don't want to lint inside io::Read or io::Write implementations, as the author has more
             // information about their trait implementation than our lint, see https://github.com/rust-lang/rust-clippy/issues/4836
             if let Some(trait_name) = cx.tcx.get_diagnostic_name(trait_id)
