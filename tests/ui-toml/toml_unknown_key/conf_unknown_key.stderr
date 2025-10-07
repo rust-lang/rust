@@ -49,6 +49,7 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            excessive-nesting-threshold
            future-size-threshold
            ignore-interior-mutability
+           inherent-impl-lint-scope
            large-error-threshold
            lint-commented-code
            literal-representation-threshold
@@ -144,6 +145,7 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            excessive-nesting-threshold
            future-size-threshold
            ignore-interior-mutability
+           inherent-impl-lint-scope
            large-error-threshold
            lint-commented-code
            literal-representation-threshold
@@ -239,6 +241,7 @@ error: error reading Clippy's configuration file: unknown field `allow_mixed_uni
            excessive-nesting-threshold
            future-size-threshold
            ignore-interior-mutability
+           inherent-impl-lint-scope
            large-error-threshold
            lint-commented-code
            literal-representation-threshold

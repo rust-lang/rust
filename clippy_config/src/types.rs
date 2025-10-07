@@ -698,3 +698,11 @@ pub enum PubUnderscoreFieldsBehaviour {
     PubliclyExported,
     AllPubFields,
 }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum InherentImplLintScope {
+    Crate,
+    File,
+    Module,
+}
