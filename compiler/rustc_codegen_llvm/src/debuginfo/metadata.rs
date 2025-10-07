@@ -41,8 +41,7 @@ use crate::llvm::debuginfo::{
     DIBasicType, DIBuilder, DICompositeType, DIDescriptor, DIFile, DIFlags, DILexicalBlock,
     DIScope, DIType, DebugEmissionKind, DebugNameTableKind,
 };
-use crate::llvm::{self, FromGeneric};
-use crate::value::Value;
+use crate::llvm::{self, FromGeneric, Value};
 
 impl PartialEq for llvm::Metadata {
     fn eq(&self, other: &Self) -> bool {

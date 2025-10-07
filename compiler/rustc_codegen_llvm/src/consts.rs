@@ -21,10 +21,9 @@ use tracing::{debug, instrument, trace};
 
 use crate::common::CodegenCx;
 use crate::errors::SymbolAlreadyDefined;
-use crate::type_::Type;
+use crate::llvm::{self, Type, Value};
 use crate::type_of::LayoutLlvmExt;
-use crate::value::Value;
-use crate::{base, debuginfo, llvm};
+use crate::{base, debuginfo};
 
 pub(crate) fn const_alloc_to_llvm<'ll>(
     cx: &CodegenCx<'ll, '_>,
