@@ -1,5 +1,5 @@
 use crate::simd::{
-    LaneCount, Mask, Simd, SimdElement, SupportedLaneCount,
+    Mask, Simd, SimdElement,
     ptr::{SimdConstPtr, SimdMutPtr},
 };
 
@@ -21,8 +21,6 @@ macro_rules! impl_number {
     { $($number:ty),* } => {
         $(
         impl<const N: usize> SimdPartialEq for Simd<$number, N>
-        where
-            LaneCount<N>: SupportedLaneCount,
         {
             type Mask = Mask<<$number as SimdElement>::Mask, N>;
 
@@ -50,8 +48,6 @@ macro_rules! impl_mask {
     { $($integer:ty),* } => {
         $(
         impl<const N: usize> SimdPartialEq for Mask<$integer, N>
-        where
-            LaneCount<N>: SupportedLaneCount,
         {
             type Mask = Self;
 
@@ -75,10 +71,7 @@ macro_rules! impl_mask {
 
 impl_mask! { i8, i16, i32, i64, isize }
 
-impl<T, const N: usize> SimdPartialEq for Simd<*const T, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<T, const N: usize> SimdPartialEq for Simd<*const T, N> {
     type Mask = Mask<isize, N>;
 
     #[inline]
@@ -92,10 +85,7 @@ where
     }
 }
 
-impl<T, const N: usize> SimdPartialEq for Simd<*mut T, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<T, const N: usize> SimdPartialEq for Simd<*mut T, N> {
     type Mask = Mask<isize, N>;
 
     #[inline]

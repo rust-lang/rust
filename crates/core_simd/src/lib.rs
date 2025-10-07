@@ -9,7 +9,8 @@
     simd_ffi,
     staged_api,
     prelude_import,
-    ptr_metadata
+    ptr_metadata,
+    rustc_attrs
 )]
 #![cfg_attr(
     all(

@@ -1,6 +1,4 @@
-use crate::simd::{
-    FixEndianness, LaneCount, Mask, MaskElement, Simd, SimdElement, SupportedLaneCount,
-};
+use crate::simd::{FixEndianness, Mask, MaskElement, Simd, SimdElement};
 
 /// Choose elements from two vectors using a mask.
 ///
@@ -59,7 +57,6 @@ impl<T, U, const N: usize> Select<Simd<T, N>> for Mask<U, N>
 where
     T: SimdElement,
     U: MaskElement,
-    LaneCount<N>: SupportedLaneCount,
 {
     #[inline]
     fn select(self, true_values: Simd<T, N>, false_values: Simd<T, N>) -> Simd<T, N> {
@@ -76,7 +73,6 @@ where
 impl<T, const N: usize> Select<Simd<T, N>> for u64
 where
     T: SimdElement,
-    LaneCount<N>: SupportedLaneCount,
 {
     #[inline]
     fn select(self, true_values: Simd<T, N>, false_values: Simd<T, N>) -> Simd<T, N> {
@@ -92,8 +88,6 @@ where
         ) -> Simd<T, N>
         where
             T: SimdElement,
-            LaneCount<M>: SupportedLaneCount,
-            LaneCount<N>: SupportedLaneCount,
         {
             let default = true_values[0];
             let true_values = true_values.resize::<M>(default);
@@ -135,7 +129,6 @@ impl<T, U, const N: usize> Select<Mask<T, N>> for Mask<U, N>
 where
     T: MaskElement,
     U: MaskElement,
-    LaneCount<N>: SupportedLaneCount,
 {
     #[inline]
     fn select(self, true_values: Mask<T, N>, false_values: Mask<T, N>) -> Mask<T, N> {
@@ -150,7 +143,6 @@ where
 impl<T, const N: usize> Select<Mask<T, N>> for u64
 where
     T: MaskElement,
-    LaneCount<N>: SupportedLaneCount,
 {
     #[inline]
     fn select(self, true_values: Mask<T, N>, false_values: Mask<T, N>) -> Mask<T, N> {

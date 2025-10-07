@@ -13,7 +13,6 @@ macro_rules! deref_lhs {
         where
             T: SimdElement,
             $simd: $trait<$simd, Output = $simd>,
-            LaneCount<N>: SupportedLaneCount,
         {
             type Output = Simd<T, N>;
 
@@ -33,7 +32,6 @@ macro_rules! deref_rhs {
         where
             T: SimdElement,
             $simd: $trait<$simd, Output = $simd>,
-            LaneCount<N>: SupportedLaneCount,
         {
             type Output = Simd<T, N>;
 
@@ -64,7 +62,6 @@ macro_rules! deref_ops {
             where
                 T: SimdElement,
                 $simd: $trait<$simd, Output = $simd>,
-                LaneCount<N>: SupportedLaneCount,
             {
                 type Output = $simd;
 

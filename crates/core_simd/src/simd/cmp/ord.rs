@@ -1,5 +1,5 @@
 use crate::simd::{
-    LaneCount, Mask, Select, Simd, SupportedLaneCount,
+    Mask, Select, Simd,
     cmp::SimdPartialEq,
     ptr::{SimdConstPtr, SimdMutPtr},
 };
@@ -49,8 +49,6 @@ macro_rules! impl_integer {
     { $($integer:ty),* } => {
         $(
         impl<const N: usize> SimdPartialOrd for Simd<$integer, N>
-        where
-            LaneCount<N>: SupportedLaneCount,
         {
             #[inline]
             fn simd_lt(self, other: Self) -> Self::Mask {
@@ -82,8 +80,6 @@ macro_rules! impl_integer {
         }
 
         impl<const N: usize> SimdOrd for Simd<$integer, N>
-        where
-            LaneCount<N>: SupportedLaneCount,
         {
             #[inline]
             fn simd_max(self, other: Self) -> Self {
@@ -115,8 +111,6 @@ macro_rules! impl_float {
     { $($float:ty),* } => {
         $(
         impl<const N: usize> SimdPartialOrd for Simd<$float, N>
-        where
-            LaneCount<N>: SupportedLaneCount,
         {
             #[inline]
             fn simd_lt(self, other: Self) -> Self::Mask {
@@ -156,8 +150,6 @@ macro_rules! impl_mask {
     { $($integer:ty),* } => {
         $(
         impl<const N: usize> SimdPartialOrd for Mask<$integer, N>
-        where
-            LaneCount<N>: SupportedLaneCount,
         {
             #[inline]
             fn simd_lt(self, other: Self) -> Self::Mask {
@@ -189,8 +181,6 @@ macro_rules! impl_mask {
         }
 
         impl<const N: usize> SimdOrd for Mask<$integer, N>
-        where
-            LaneCount<N>: SupportedLaneCount,
         {
             #[inline]
             fn simd_max(self, other: Self) -> Self {
@@ -218,10 +208,7 @@ macro_rules! impl_mask {
 
 impl_mask! { i8, i16, i32, i64, isize }
 
-impl<T, const N: usize> SimdPartialOrd for Simd<*const T, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<T, const N: usize> SimdPartialOrd for Simd<*const T, N> {
     #[inline]
     fn simd_lt(self, other: Self) -> Self::Mask {
         self.addr().simd_lt(other.addr())
@@ -243,10 +230,7 @@ where
     }
 }
 
-impl<T, const N: usize> SimdOrd for Simd<*const T, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<T, const N: usize> SimdOrd for Simd<*const T, N> {
     #[inline]
     fn simd_max(self, other: Self) -> Self {
         self.simd_lt(other).select(other, self)
@@ -268,10 +252,7 @@ where
     }
 }
 
-impl<T, const N: usize> SimdPartialOrd for Simd<*mut T, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<T, const N: usize> SimdPartialOrd for Simd<*mut T, N> {
     #[inline]
     fn simd_lt(self, other: Self) -> Self::Mask {
         self.addr().simd_lt(other.addr())
@@ -293,10 +274,7 @@ where
     }
 }
 
-impl<T, const N: usize> SimdOrd for Simd<*mut T, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<T, const N: usize> SimdOrd for Simd<*mut T, N> {
     #[inline]
     fn simd_max(self, other: Self) -> Self {
         self.simd_lt(other).select(other, self)

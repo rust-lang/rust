@@ -11,7 +11,7 @@ use core_simd::simd;
 
 use core::intrinsics::simd as intrinsics;
 
-use simd::{LaneCount, Simd, SupportedLaneCount};
+use simd::Simd;
 
 #[cfg(feature = "as_crate")]
 mod experimental {
@@ -140,16 +140,14 @@ pub trait StdFloat: Sealed + Sized {
     fn fract(self) -> Self;
 }
 
-impl<const N: usize> Sealed for Simd<f32, N> where LaneCount<N>: SupportedLaneCount {}
-impl<const N: usize> Sealed for Simd<f64, N> where LaneCount<N>: SupportedLaneCount {}
+impl<const N: usize> Sealed for Simd<f32, N> {}
+impl<const N: usize> Sealed for Simd<f64, N> {}
 
 macro_rules! impl_float {
     {
         $($fn:ident: $intrinsic:ident,)*
     } => {
         impl<const N: usize> StdFloat for Simd<f32, N>
-        where
-            LaneCount<N>: SupportedLaneCount,
         {
             #[inline]
             fn fract(self) -> Self {
@@ -165,8 +163,6 @@ macro_rules! impl_float {
         }
 
         impl<const N: usize> StdFloat for Simd<f64, N>
-        where
-            LaneCount<N>: SupportedLaneCount,
         {
             #[inline]
             fn fract(self) -> Self {

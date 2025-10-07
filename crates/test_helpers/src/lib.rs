@@ -604,8 +604,6 @@ macro_rules! test_lanes {
                 use super::*;
 
                 fn implementation<const $lanes: usize>()
-                where
-                    core_simd::simd::LaneCount<$lanes>: core_simd::simd::SupportedLaneCount,
                 $body
 
                 #[cfg(target_arch = "wasm32")]
@@ -704,8 +702,6 @@ macro_rules! test_lanes_panic {
                 use super::*;
 
                 fn implementation<const $lanes: usize>()
-                where
-                    core_simd::simd::LaneCount<$lanes>: core_simd::simd::SupportedLaneCount,
                 $body
 
                 // test some odd and even non-power-of-2 lengths on miri
