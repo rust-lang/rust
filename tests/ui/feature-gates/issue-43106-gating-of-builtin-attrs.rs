@@ -705,6 +705,32 @@ mod link_section {
     //~| WARN previously accepted
     //~| HELP can be applied to
     //~| HELP remove the attribute
+
+    #[link_section = "1800"]
+    //~^ WARN attribute cannot be used on
+    //~| WARN previously accepted
+    //~| HELP can be applied to
+    //~| HELP remove the attribute
+    trait Tr {
+        #[link_section = "1800"]
+        fn inside_tr_no_default(&self);
+
+        #[link_section = "1800"]
+        fn inside_tr_default(&self) { }
+    }
+
+    impl S {
+        #[link_section = "1800"]
+        fn inside_abc_123(&self) { }
+    }
+
+    impl Tr for S {
+        #[link_section = "1800"]
+        fn inside_tr_no_default(&self) { }
+    }
+
+    #[link_section = "1800"]
+    fn should_always_link() { }
 }
 
 

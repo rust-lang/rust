@@ -689,7 +689,9 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
         print_indented!(self, "kind: PatKind {", depth_lvl);
 
         match pat_kind {
-            PatKind::Missing => unreachable!(),
+            PatKind::Missing => {
+                print_indented!(self, "Missing", depth_lvl + 1);
+            }
             PatKind::Wild => {
                 print_indented!(self, "Wild", depth_lvl + 1);
             }
