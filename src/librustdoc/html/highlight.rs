@@ -408,7 +408,13 @@ pub(super) fn write_code(
     line_info: Option<LineInfo>,
 ) {
     // This replace allows to fix how the code source with DOS backline characters is displayed.
-    let src = src.replace("\r\n", "\n");
+    let src =
+        // The first "\r\n" should be fairly close to the beginning of the string relatively
+        // to its overall length, and most strings handled by rustdoc likely don't have
+        // DOS backlines anyway.
+        // Checking for the single ASCII character '\r' is much more efficient than checking for
+        // the whole string "\r\n".
+        if src.contains('\r') { src.replace("\r\n", "\n").into() } else { Cow::Borrowed(src) };
     let mut token_handler = TokenHandler {
         out,
         closing_tags: Vec::new(),
