@@ -40,20 +40,11 @@ impl LateLintPass<'_> for ReplaceBox {
         if let ExprKind::Assign(lhs, rhs, _) = &expr.kind
             && !lhs.span.from_expansion()
             && !rhs.span.from_expansion()
-        {
-            let lhs_ty = cx.typeck_results().expr_ty(lhs);
-
+            && let lhs_ty = cx.typeck_results().expr_ty(lhs)
             // No diagnostic for late-initialized locals
-            if let Some(local) = path_to_local(lhs)
-                && !local_is_initialized(cx, local)
-            {
-                return;
-            }
-
-            let Some(inner_ty) = get_box_inner_type(cx, lhs_ty) else {
-                return;
-            };
-
+            && path_to_local(lhs).is_none_or(|local| local_is_initialized(cx, local))
+            && let Some(inner_ty) = get_box_inner_type(cx, lhs_ty)
+        {
             if let Some(default_trait_id) = cx.tcx.get_diagnostic_item(sym::Default)
                 && implements_trait(cx, inner_ty, default_trait_id, &[])
                 && is_default_call(cx, rhs)
