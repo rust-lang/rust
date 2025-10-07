@@ -562,10 +562,10 @@ fn analyze<'db>(
 /// Calculate the expected type and name of the cursor position.
 fn expected_type_and_name<'db>(
     sema: &Semantics<'db, RootDatabase>,
-    token: &SyntaxToken,
+    self_token: &SyntaxToken,
     name_like: &ast::NameLike,
 ) -> (Option<Type<'db>>, Option<NameOrNameRef>) {
-    let token = prev_special_biased_token_at_trivia(token.clone());
+    let token = prev_special_biased_token_at_trivia(self_token.clone());
     let mut node = match token.parent() {
         Some(it) => it,
         None => return (None, None),
@@ -755,7 +755,15 @@ fn expected_type_and_name<'db>(
                         .map(|c| (Some(c.return_type()), None))
                         .unwrap_or((None, None))
                 },
-                ast::ParamList(_) => (None, None),
+                ast::ParamList(it) => {
+                    let closure = it.syntax().parent().and_then(ast::ClosureExpr::cast);
+                    let ty = closure
+                        .filter(|_| it.syntax().text_range().end() <= self_token.text_range().start())
+                        .and_then(|it| sema.type_of_expr(&it.into()));
+                    ty.and_then(|ty| ty.original.as_callable(sema.db))
+                        .map(|c| (Some(c.return_type()), None))
+                        .unwrap_or((None, None))
+                },
                 ast::Stmt(_) => (None, None),
                 ast::Item(_) => (None, None),
                 _ => {
@@ -1940,6 +1948,7 @@ fn prev_special_biased_token_at_trivia(mut token: SyntaxToken) -> SyntaxToken {
         | T![|=]
         | T![&=]
         | T![^=]
+        | T![|]
         | T![return]
         | T![break]
         | T![continue] = prev.kind()
