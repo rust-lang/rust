@@ -25,11 +25,9 @@ use crate::builder::Builder;
 use crate::builder::autodiff::{adjust_activity_to_abi, generate_enzyme_call};
 use crate::context::CodegenCx;
 use crate::errors::AutoDiffWithoutEnable;
-use crate::llvm::{self, Metadata};
-use crate::type_::Type;
+use crate::llvm::{self, Metadata, Type, Value};
 use crate::type_of::LayoutLlvmExt;
 use crate::va_arg::emit_va_arg;
-use crate::value::Value;
 
 fn call_simple_intrinsic<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,

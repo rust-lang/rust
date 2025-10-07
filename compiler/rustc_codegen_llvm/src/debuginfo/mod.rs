@@ -35,12 +35,11 @@ use self::namespace::mangled_name_of_instance;
 use self::utils::{DIB, create_DIArray, is_node_local_to_unit};
 use crate::builder::Builder;
 use crate::common::{AsCCharPtr, CodegenCx};
-use crate::llvm;
 use crate::llvm::debuginfo::{
     DIArray, DIBuilderBox, DIFile, DIFlags, DILexicalBlock, DILocation, DISPFlags, DIScope,
     DITemplateTypeParameter, DIType, DIVariable,
 };
-use crate::value::Value;
+use crate::llvm::{self, Value};
 
 mod create_scope_map;
 mod dwarf_const;
