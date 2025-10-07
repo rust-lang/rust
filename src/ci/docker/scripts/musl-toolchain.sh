@@ -46,7 +46,7 @@ export CFLAGS="-fPIC -g1 $CFLAGS"
 git clone https://github.com/richfelker/musl-cross-make # -b v0.9.9
 cd musl-cross-make
 # A version that includes support for building musl 1.2.5
-git checkout e149c31c48b4f4a4c9349ddf7bc0027b90245afc
+git checkout 3635262e4524c991552789af6f36211a335a77b3
 
 hide_output make -j$(nproc) TARGET=$TARGET MUSL_VER=1.2.5 LINUX_HEADERS_SITE=$LINUX_HEADERS_SITE LINUX_VER=$LINUX_VER
 hide_output make install TARGET=$TARGET MUSL_VER=1.2.5 LINUX_HEADERS_SITE=$LINUX_HEADERS_SITE LINUX_VER=$LINUX_VER OUTPUT=$OUTPUT
