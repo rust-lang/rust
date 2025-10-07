@@ -644,7 +644,7 @@ LL |     #[macro_use] fn f() { }
    |     ^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[macro_use]` can be applied to modules, extern crates, and crates
+   = help: `#[macro_use]` can be applied to crates, extern crates, and modules
 
 warning: `#[macro_use]` attribute cannot be used on structs
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:197:5
@@ -653,7 +653,7 @@ LL |     #[macro_use] struct S;
    |     ^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[macro_use]` can be applied to modules, extern crates, and crates
+   = help: `#[macro_use]` can be applied to crates, extern crates, and modules
 
 warning: `#[macro_use]` attribute cannot be used on type aliases
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:203:5
@@ -662,7 +662,7 @@ LL |     #[macro_use] type T = S;
    |     ^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[macro_use]` can be applied to modules, extern crates, and crates
+   = help: `#[macro_use]` can be applied to crates, extern crates, and modules
 
 warning: `#[macro_use]` attribute cannot be used on inherent impl blocks
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:209:5
@@ -671,7 +671,7 @@ LL |     #[macro_use] impl S { }
    |     ^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[macro_use]` can be applied to modules, extern crates, and crates
+   = help: `#[macro_use]` can be applied to crates, extern crates, and modules
 
 warning: `#[macro_export]` attribute cannot be used on modules
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:216:1
@@ -878,7 +878,7 @@ LL |         #[no_mangle] fn foo();
    |         ^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[no_mangle]` can be applied to functions, statics, inherent methods, and trait methods in impl blocks
+   = help: `#[no_mangle]` can be applied to functions, inherent methods, statics, and trait methods in impl blocks
 
 warning: `#[no_mangle]` attribute cannot be used on provided trait methods
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:398:9
@@ -887,7 +887,7 @@ LL |         #[no_mangle] fn bar() {}
    |         ^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[no_mangle]` can be applied to functions, statics, inherent methods, and trait methods in impl blocks
+   = help: `#[no_mangle]` can be applied to functions, inherent methods, statics, and trait methods in impl blocks
 
 warning: `#[should_panic]` attribute cannot be used on modules
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:406:1
@@ -986,7 +986,7 @@ LL |     #[no_implicit_prelude] fn f() { }
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[no_implicit_prelude]` can be applied to modules and crates
+   = help: `#[no_implicit_prelude]` can be applied to crates and modules
 
 warning: `#[no_implicit_prelude]` attribute cannot be used on structs
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:482:5
@@ -995,7 +995,7 @@ LL |     #[no_implicit_prelude] struct S;
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[no_implicit_prelude]` can be applied to modules and crates
+   = help: `#[no_implicit_prelude]` can be applied to crates and modules
 
 warning: `#[no_implicit_prelude]` attribute cannot be used on type aliases
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:488:5
@@ -1004,7 +1004,7 @@ LL |     #[no_implicit_prelude] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[no_implicit_prelude]` can be applied to modules and crates
+   = help: `#[no_implicit_prelude]` can be applied to crates and modules
 
 warning: `#[no_implicit_prelude]` attribute cannot be used on inherent impl blocks
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:494:5
@@ -1013,7 +1013,7 @@ LL |     #[no_implicit_prelude] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[no_implicit_prelude]` can be applied to modules and crates
+   = help: `#[no_implicit_prelude]` can be applied to crates and modules
 
 warning: `#[macro_escape]` attribute cannot be used on functions
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:533:5
@@ -1022,7 +1022,7 @@ LL |     #[macro_escape] fn f() { }
    |     ^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[macro_escape]` can be applied to modules, extern crates, and crates
+   = help: `#[macro_escape]` can be applied to crates, extern crates, and modules
 
 warning: `#[macro_escape]` attribute cannot be used on structs
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:539:5
@@ -1031,7 +1031,7 @@ LL |     #[macro_escape] struct S;
    |     ^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[macro_escape]` can be applied to modules, extern crates, and crates
+   = help: `#[macro_escape]` can be applied to crates, extern crates, and modules
 
 warning: `#[macro_escape]` attribute cannot be used on type aliases
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:545:5
@@ -1040,7 +1040,7 @@ LL |     #[macro_escape] type T = S;
    |     ^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[macro_escape]` can be applied to modules, extern crates, and crates
+   = help: `#[macro_escape]` can be applied to crates, extern crates, and modules
 
 warning: `#[macro_escape]` attribute cannot be used on inherent impl blocks
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:551:5
@@ -1049,7 +1049,7 @@ LL |     #[macro_escape] impl S { }
    |     ^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[macro_escape]` can be applied to modules, extern crates, and crates
+   = help: `#[macro_escape]` can be applied to crates, extern crates, and modules
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![no_std]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:558:1
@@ -1290,7 +1290,7 @@ LL | #[must_use]
    | ^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[must_use]` can be applied to functions, data types, unions, and traits
+   = help: `#[must_use]` can be applied to data types, functions, traits, and unions
 
 warning: `#[must_use]` attribute cannot be used on modules
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:795:17
@@ -1299,7 +1299,7 @@ LL |     mod inner { #![must_use] }
    |                 ^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[must_use]` can be applied to functions, data types, unions, and traits
+   = help: `#[must_use]` can be applied to data types, functions, traits, and unions
 
 warning: `#[must_use]` attribute cannot be used on type aliases
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:804:5
@@ -1308,7 +1308,7 @@ LL |     #[must_use] type T = S;
    |     ^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[must_use]` can be applied to functions, data types, unions, and traits
+   = help: `#[must_use]` can be applied to data types, functions, traits, and unions
 
 warning: `#[must_use]` attribute cannot be used on inherent impl blocks
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:809:5
@@ -1317,7 +1317,7 @@ LL |     #[must_use] impl S { }
    |     ^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[must_use]` can be applied to functions, data types, unions, and traits
+   = help: `#[must_use]` can be applied to data types, functions, traits, and unions
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![crate_name]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:841:1
@@ -1590,7 +1590,7 @@ LL | #![must_use]
    | ^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[must_use]` can be applied to functions, data types, unions, and traits
+   = help: `#[must_use]` can be applied to data types, functions, traits, and unions
 
 warning: 174 warnings emitted
 
