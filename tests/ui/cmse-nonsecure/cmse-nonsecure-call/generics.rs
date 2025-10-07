@@ -14,8 +14,9 @@ struct Test<T: Copy> {
     f1: extern "cmse-nonsecure-call" fn<U: Copy>(U, u32, u32, u32) -> u64,
     //~^ ERROR cannot find type `U` in this scope
     //~| ERROR function pointer types may not have generic parameters
-    f2: extern "cmse-nonsecure-call" fn(impl Copy, u32, u32, u32) -> u64,
+    f2: extern "cmse-nonsecure-call" fn(impl Copy, u32, u32, u32) -> impl Copy,
     //~^ ERROR `impl Trait` is not allowed in `fn` pointer parameters
+    //~| ERROR `impl Trait` is not allowed in `fn` pointer return types
     f3: extern "cmse-nonsecure-call" fn(T, u32, u32, u32) -> u64, //~ ERROR [E0798]
     f4: extern "cmse-nonsecure-call" fn(Wrapper<T>, u32, u32, u32) -> u64, //~ ERROR [E0798]
 }
