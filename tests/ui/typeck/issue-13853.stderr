@@ -18,10 +18,10 @@ LL |     for node in graph.iter() {
    |                       ^^^^ method not found in `&G`
 
 error[E0282]: type annotations needed
-  --> $DIR/issue-13853.rs:28:14
+  --> $DIR/issue-13853.rs:28:9
    |
 LL |         node.zomg();
-   |              ^^^^ cannot infer type
+   |         ^^^^ cannot infer type
 
 error[E0308]: mismatched types
   --> $DIR/issue-13853.rs:37:13
