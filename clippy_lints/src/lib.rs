@@ -619,7 +619,7 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
     store.register_late_pass(|_| Box::new(items_after_statements::ItemsAfterStatements));
     store.register_early_pass(|| Box::new(precedence::Precedence));
     store.register_late_pass(|_| Box::new(needless_parens_on_range_literals::NeedlessParensOnRangeLiterals));
-    store.register_early_pass(|| Box::new(needless_continue::NeedlessContinue));
+    store.register_late_pass(|_| Box::new(needless_continue::NeedlessContinue));
     store.register_early_pass(|| Box::new(redundant_else::RedundantElse));
     store.register_late_pass(|_| Box::new(create_dir::CreateDir));
     store.register_early_pass(|| Box::new(needless_arbitrary_self_type::NeedlessArbitrarySelfType));
