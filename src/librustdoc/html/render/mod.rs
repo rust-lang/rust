@@ -144,7 +144,7 @@ pub(crate) struct IndexItem {
 }
 
 /// A type used for the search index.
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 struct RenderType {
     id: Option<RenderTypeId>,
     generics: Option<Vec<RenderType>>,
@@ -301,7 +301,7 @@ impl RenderTypeId {
 }
 
 /// Full type of functions/methods in the search index.
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct IndexItemFunctionType {
     inputs: Vec<RenderType>,
     output: Vec<RenderType>,
