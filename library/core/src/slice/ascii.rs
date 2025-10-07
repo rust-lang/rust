@@ -103,6 +103,7 @@ impl [u8] {
         let (other_chunks, _) = other.as_chunks::<N>();
 
         // Branchless check to encourage auto-vectorization
+        #[inline(always)]
         const fn eq_ignore_ascii_inner(lhs: &[u8; N], rhs: &[u8; N]) -> bool {
             let mut equal_ascii = true;
             let mut j = 0;
