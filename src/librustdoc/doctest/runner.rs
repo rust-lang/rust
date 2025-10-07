@@ -123,9 +123,11 @@ impl DocTestRunner {
 {output}
 
 mod __doctest_mod {{
-    use std::sync::OnceLock;
+    #[cfg(unix)]
+    use std::os::unix::process::ExitStatusExt;
     use std::path::PathBuf;
     use std::process::ExitCode;
+    use std::sync::OnceLock;
 
     pub static BINARY_PATH: OnceLock<PathBuf> = OnceLock::new();
     pub const RUN_OPTION: &str = \"RUSTDOC_DOCTEST_RUN_NB_TEST\";
@@ -146,11 +148,35 @@ mod __doctest_mod {{
             .output()
             .expect(\"failed to run command\");
         if should_panic {{
-            if out.status.code() != Some(test::ERROR_EXIT_CODE) {{
-                eprintln!(\"Test didn't panic, but it's marked `should_panic`.\");
-                ExitCode::FAILURE
-            }} else {{
-                ExitCode::SUCCESS
+            // FIXME: Make `test::get_result_from_exit_code` public and use this code instead of this.
+            //
+            // On Zircon (the Fuchsia kernel), an abort from userspace calls the
+            // LLVM implementation of __builtin_trap(), e.g., ud2 on x86, which
+            // raises a kernel exception. If a userspace process does not
+            // otherwise arrange exception handling, the kernel kills the process
+            // with this return code.
+            #[cfg(target_os = \"fuchsia\")]
+            const ZX_TASK_RETCODE_EXCEPTION_KILL: i32 = -1028;
+            // On Windows we use __fastfail to abort, which is documented to use this
+            // exception code.
+            #[cfg(windows)]
+            const STATUS_FAIL_FAST_EXCEPTION: i32 = 0xC0000409u32 as i32;
+            #[cfg(unix)]
+            const SIGABRT: std::ffi::c_int = 6;
+
+            match out.status.code() {{
+                Some(test::ERROR_EXIT_CODE) => ExitCode::SUCCESS,
+                #[cfg(windows)]
+                Some(STATUS_FAIL_FAST_EXCEPTION) => ExitCode::SUCCESS,
+                #[cfg(unix)]
+                None if out.status.signal() == Some(SIGABRT) => ExitCode::SUCCESS,
+                // Upon an abort, Fuchsia returns the status code ZX_TASK_RETCODE_EXCEPTION_KILL.
+                #[cfg(target_os = \"fuchsia\")]
+                Some(ZX_TASK_RETCODE_EXCEPTION_KILL) => ExitCode::SUCCESS,
+                _ => {{
+                    eprintln!(\"Test didn't panic, but it's marked `should_panic`.\");
+                    ExitCode::FAILURE
+                }}
             }}
         }} else if !out.status.success() {{
             if let Some(code) = out.status.code() {{

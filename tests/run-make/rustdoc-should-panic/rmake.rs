@@ -5,7 +5,13 @@
 
 use run_make_support::rustdoc;
 
-fn check_output(output: String, edition: &str) {
+fn check_output(edition: &str, panic_abort: bool) {
+    let mut rustdoc_cmd = rustdoc();
+    rustdoc_cmd.input("test.rs").arg("--test").edition(edition);
+    if panic_abort {
+        rustdoc_cmd.args(["-C", "panic=abort"]);
+    }
+    let output = rustdoc_cmd.run_fail().stdout_utf8();
     let should_contain = &[
         "test test.rs - bad_exit_code (line 1) ... FAILED",
         "test test.rs - did_not_panic (line 6) ... FAILED",
@@ -26,11 +32,12 @@ Test didn't panic, but it's marked `should_panic`.",
 }
 
 fn main() {
-    check_output(rustdoc().input("test.rs").arg("--test").run_fail().stdout_utf8(), "2015");
+    check_output("2015", false);
 
     // Same check with the merged doctest feature (enabled with the 2024 edition).
-    check_output(
-        rustdoc().input("test.rs").arg("--test").edition("2024").run_fail().stdout_utf8(),
-        "2024",
-    );
+    check_output("2024", false);
+
+    // Checking that `-C panic=abort` is working too.
+    check_output("2015", true);
+    check_output("2024", true);
 }

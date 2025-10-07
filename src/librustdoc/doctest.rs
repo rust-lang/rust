@@ -7,6 +7,8 @@ mod rust;
 use std::fs::File;
 use std::hash::{Hash, Hasher};
 use std::io::{self, Write};
+#[cfg(unix)]
+use std::os::unix::process::ExitStatusExt;
 use std::path::{Path, PathBuf};
 use std::process::{self, Command, Stdio};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -849,12 +851,39 @@ fn run_test(
     } else {
         cmd.output()
     };
+
+    // FIXME: Make `test::get_result_from_exit_code` public and use this code instead of this.
+    //
+    // On Zircon (the Fuchsia kernel), an abort from userspace calls the
+    // LLVM implementation of __builtin_trap(), e.g., ud2 on x86, which
+    // raises a kernel exception. If a userspace process does not
+    // otherwise arrange exception handling, the kernel kills the process
+    // with this return code.
+    #[cfg(target_os = "fuchsia")]
+    const ZX_TASK_RETCODE_EXCEPTION_KILL: i32 = -1028;
+    // On Windows we use __fastfail to abort, which is documented to use this
+    // exception code.
+    #[cfg(windows)]
+    const STATUS_FAIL_FAST_EXCEPTION: i32 = 0xC0000409u32 as i32;
+    #[cfg(unix)]
+    const SIGABRT: std::ffi::c_int = 6;
     match result {
         Err(e) => return (duration, Err(TestFailure::ExecutionError(e))),
         Ok(out) => {
-            if langstr.should_panic && out.status.code() != Some(test::ERROR_EXIT_CODE) {
-                return (duration, Err(TestFailure::UnexpectedRunPass));
-            } else if !langstr.should_panic && !out.status.success() {
+            if langstr.should_panic {
+                match out.status.code() {
+                    Some(test::ERROR_EXIT_CODE) => {}
+                    #[cfg(windows)]
+                    Some(STATUS_FAIL_FAST_EXCEPTION) => {}
+                    #[cfg(unix)]
+                    None if out.status.signal() == Some(SIGABRT) => {}
+                    // Upon an abort, Fuchsia returns the status code
+                    // `ZX_TASK_RETCODE_EXCEPTION_KILL`.
+                    #[cfg(target_os = "fuchsia")]
+                    Some(ZX_TASK_RETCODE_EXCEPTION_KILL) => {}
+                    _ => return (duration, Err(TestFailure::UnexpectedRunPass)),
+                }
+            } else if !out.status.success() {
                 return (duration, Err(TestFailure::ExecutionFailure(out)));
             }
         }
