@@ -12,10 +12,6 @@ pub(super) trait Encode<S>: Sized {
 
 pub(super) type Reader<'a> = &'a [u8];
 
-pub(super) trait Decode<'a, 's, S>: Sized {
-    fn decode(r: &mut Reader<'a>, s: &'s S) -> Self;
-}
-
 pub(super) trait DecodeMut<'a, 's, S>: Sized {
     fn decode(r: &mut Reader<'a>, s: &'s mut S) -> Self;
 }
