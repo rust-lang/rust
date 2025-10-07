@@ -5,6 +5,8 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::Path;
 
+use fluent_syntax::ast::Entry;
+use fluent_syntax::parser;
 use regex::Regex;
 
 use crate::diagnostics::{CheckId, DiagCtx, RunningCheck};
@@ -24,30 +26,31 @@ fn check_alphabetic(
     check: &mut RunningCheck,
     all_defined_msgs: &mut HashMap<String, String>,
 ) {
-    let mut matches = message().captures_iter(fluent).peekable();
-    while let Some(m) = matches.next() {
-        let name = m.get(1).unwrap();
-        if let Some(defined_filename) = all_defined_msgs.get(name.as_str()) {
-            check.error(format!(
-                "{filename}: message `{}` is already defined in {defined_filename}",
-                name.as_str(),
-            ));
-        }
+    let Ok(resource) = parser::parse(fluent) else {
+        panic!("Errors encountered while parsing fluent file `{filename}`");
+    };
 
-        all_defined_msgs.insert(name.as_str().to_owned(), filename.to_owned());
+    let mut prev: Option<&str> = None;
 
-        if let Some(next) = matches.peek() {
-            let next = next.get(1).unwrap();
-            if name.as_str() > next.as_str() {
+    for entry in &resource.body {
+        if let Entry::Message(msg) = entry {
+            let name: &str = msg.id.name;
+            if let Some(defined_filename) = all_defined_msgs.get(name) {
                 check.error(format!(
-                    "{filename}: message `{}` appears before `{}`, but is alphabetically later than it
-run `./x.py test tidy --bless` to sort the file correctly",
-                    name.as_str(),
-                    next.as_str()
+                    "{filename}: message `{name}` is already defined in {defined_filename}",
+                ));
+            } else {
+                all_defined_msgs.insert(name.to_string(), filename.to_owned());
+            }
+            if let Some(prev) = prev
+                && prev > name
+            {
+                check.error(format!(
+                    "{filename}: message `{prev}` appears before `{name}`, but is alphabetically \
+later than it. Run `./x.py test tidy --bless` to sort the file correctly",
                 ));
             }
-        } else {
-            break;
+            prev = Some(name);
         }
     }
 }
@@ -114,6 +117,8 @@ pub fn check(path: &Path, bless: bool, diag_ctx: DiagCtx) {
             }
         },
     );
+
+    assert!(!all_defined_msgs.is_empty());
 
     crate::fluent_used::check(path, all_defined_msgs, diag_ctx);
 }
