@@ -5,12 +5,16 @@ import * as vscode from "vscode";
 import { expectNotUndefined, log, normalizeDriveLetter, unwrapUndefinable } from "./util";
 import type { Env } from "./util";
 import type { Disposable } from "vscode";
+import { get } from "lodash";
 
 export type RunnableEnvCfgItem = {
     mask?: string;
     env: { [key: string]: { toString(): string } | null };
     platform?: string | string[];
 };
+
+export type ConfigurationTree = { [key: string]: ConfigurationValue };
+export type ConfigurationValue = undefined | null | boolean | number | string | ConfigurationValue[] | ConfigurationTree;
 
 type ShowStatusBar = "always" | "never" | { documentSelector: vscode.DocumentSelector };
 
@@ -197,7 +201,7 @@ export class Config {
      * So this getter handles this quirk by not requiring the caller to use postfix `!`
      */
     private get<T>(path: string): T | undefined {
-        return prepareVSCodeConfig(this.cfg.get<T>(path));
+        return prepareVSCodeConfig(get(this.cfg, path)) as T;
     }
 
     get serverPath() {
@@ -371,22 +375,20 @@ export class Config {
     }
 }
 
-export function prepareVSCodeConfig<T>(resp: T): T {
+export function prepareVSCodeConfig(resp: ConfigurationValue): ConfigurationValue {
     if (Is.string(resp)) {
-        return substituteVSCodeVariableInString(resp) as T;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } else if (resp && Is.array<any>(resp)) {
+        return substituteVSCodeVariableInString(resp);
+    } else if (resp && Is.array(resp)) {
         return resp.map((val) => {
             return prepareVSCodeConfig(val);
-        }) as T;
+        });
     } else if (resp && typeof resp === "object") {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const res: { [key: string]: any } = {};
+        const res: ConfigurationTree = {};
         for (const key in resp) {
             const val = resp[key];
             res[key] = prepareVSCodeConfig(val);
         }
-        return res as T;
+        return res;
     }
     return resp;
 }
