@@ -150,6 +150,10 @@ export class Ctx implements RustAnalyzerExtensionApi {
         });
     }
 
+    async addConfiguration(extensionId: string, configuration: Record<string, unknown>): Promise<void> {
+        await this.config.addExtensionConfiguration(extensionId, configuration);
+    }
+
     dispose() {
         this.config.dispose();
         this.statusBar.dispose();
@@ -230,7 +234,7 @@ export class Ctx implements RustAnalyzerExtensionApi {
                 debug: run,
             };
 
-            let rawInitializationOptions = vscode.workspace.getConfiguration("rust-analyzer");
+            let rawInitializationOptions = this.config.cfg;
 
             if (this.workspace.kind === "Detached Files") {
                 rawInitializationOptions = {
