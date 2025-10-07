@@ -1,3 +1,4 @@
+mod eq_ignore_ascii_case;
 mod is_ascii;
 
 // Lower-case ASCII 'a' is the first byte that has its highest bit set

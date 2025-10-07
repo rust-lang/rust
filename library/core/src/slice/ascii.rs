@@ -60,6 +60,18 @@ impl [u8] {
             return false;
         }
 
+        #[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
+        if self.len() >= 16 {
+            return self.eq_ignore_ascii_case_chunks(other);
+        }
+
+        self.eq_ignore_ascii_case_simple(other)
+    }
+
+    /// ASCII case-insensitive equality check without chunk-at-a-time
+    /// optimization.
+    #[inline]
+    const fn eq_ignore_ascii_case_simple(&self, other: &[u8]) -> bool {
         // FIXME(const-hack): This implementation can be reverted when
         // `core::iter::zip` is allowed in const. The original implementation:
         //  self.len() == other.len() && iter::zip(self, other).all(|(a, b)| a.eq_ignore_ascii_case(b))
@@ -76,6 +88,37 @@ impl [u8] {
         }
 
         true
+    }
+
+    /// Optimized version of `eq_ignore_ascii_case` which processes chunks at a
+    /// time.
+    ///
+    /// Platforms that have SIMD instructions may benefit from this
+    /// implementation over `eq_ignore_ascii_case_simple`.
+    #[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
+    #[inline]
+    const fn eq_ignore_ascii_case_chunks(&self, other: &[u8]) -> bool {
+        const N: usize = 16;
+        let (a, a_rem) = self.as_chunks::<N>();
+        let (b, b_rem) = other.as_chunks::<N>();
+
+        let mut i = 0;
+        while i < a.len() && i < b.len() {
+            let mut equal_ascii = true;
+            let mut j = 0;
+            while j < N {
+                equal_ascii &= a[i][j].eq_ignore_ascii_case(&b[i][j]);
+                j += 1;
+            }
+
+            if !equal_ascii {
+                return false;
+            }
+
+            i += 1;
+        }
+
+        a_rem.eq_ignore_ascii_case_simple(b_rem)
     }
 
     /// Converts this slice to its ASCII upper case equivalent in-place.
