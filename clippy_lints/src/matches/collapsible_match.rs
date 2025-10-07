@@ -13,6 +13,7 @@ use rustc_hir::LangItem::OptionNone;
 use rustc_hir::{Arm, Expr, ExprKind, HirId, Pat, PatExpr, PatExprKind, PatKind};
 use rustc_lint::LateContext;
 use rustc_span::Span;
+use rustc_span::symbol::Ident;
 
 use super::{COLLAPSIBLE_MATCH, pat_contains_disallowed_or};
 
@@ -50,15 +51,17 @@ fn check_arm<'tcx>(
     if let Some(inner) = IfLetOrMatch::parse(cx, inner_expr)
         && let Some((inner_scrutinee, inner_then_pat, inner_else_body)) = match inner {
             IfLetOrMatch::IfLet(scrutinee, pat, _, els, _) => Some((scrutinee, pat, els)),
-            IfLetOrMatch::Match(scrutinee, arms, ..) => if arms.len() == 2 && arms.iter().all(|a| a.guard.is_none())
-                // if there are more than two arms, collapsing would be non-trivial
-                // one of the arms must be "wild-like"
-                && let Some(wild_idx) = arms.iter().rposition(|a| arm_is_wild_like(cx, a))
-            {
-                let (then, els) = (&arms[1 - wild_idx], &arms[wild_idx]);
-                Some((scrutinee, then.pat, Some(els.body)))
-            } else {
-                None
+            IfLetOrMatch::Match(scrutinee, arms, ..) => {
+                if arms.len() == 2 && arms.iter().all(|a| a.guard.is_none())
+                    // if there are more than two arms, collapsing would be non-trivial
+                    // one of the arms must be "wild-like"
+                    && let Some(wild_idx) = arms.iter().rposition(|a| arm_is_wild_like(cx, a))
+                {
+                    let (then, els) = (&arms[1 - wild_idx], &arms[wild_idx]);
+                    Some((scrutinee, then.pat, Some(els.body)))
+                } else {
+                    None
+                }
             },
         }
         && outer_pat.span.eq_ctxt(inner_scrutinee.span)
@@ -68,8 +71,8 @@ fn check_arm<'tcx>(
         && !pat_contains_disallowed_or(cx, inner_then_pat, msrv)
         // the binding must come from the pattern of the containing match arm
         // ..<local>.. => match <local> { .. }
-        && let (Some(binding_span), is_innermost_parent_pat_struct)
-            = find_pat_binding_and_is_innermost_parent_pat_struct(outer_pat, binding_id)
+        && let (Some((binding_ident, binding_span)), is_innermost_parent_pat_struct) =
+            find_pat_binding_and_is_innermost_parent_pat_struct(outer_pat, binding_id)
         // the "else" branches must be equal
         && match (outer_else_body, inner_else_body) {
             (None, None) => true,
@@ -77,9 +80,7 @@ fn check_arm<'tcx>(
             (Some(a), Some(b)) => SpanlessEq::new(cx).eq_expr(a, b),
         }
         // the binding must not be used in the if guard
-        && outer_guard.is_none_or(
-            |e| !is_local_used(cx, e, binding_id)
-        )
+        && outer_guard.is_none_or(|e| !is_local_used(cx, e, binding_id))
         // ...or anywhere in the inner expression
         && match inner {
             IfLetOrMatch::IfLet(_, _, body, els, _) => {
@@ -103,7 +104,7 @@ fn check_arm<'tcx>(
         // collapsing patterns need an explicit field name in struct pattern matching
         // ex: Struct {x: Some(1)}
         let replace_msg = if is_innermost_parent_pat_struct {
-            format!(", prefixed by `{}`:", snippet(cx, binding_span, "their field name"))
+            format!(", prefixed by `{binding_ident}: `")
         } else {
             String::new()
         };
@@ -140,16 +141,16 @@ fn arm_is_wild_like(cx: &LateContext<'_>, arm: &Arm<'_>) -> bool {
     }
 }
 
-fn find_pat_binding_and_is_innermost_parent_pat_struct(pat: &Pat<'_>, hir_id: HirId) -> (Option<Span>, bool) {
-    let mut span = None;
+fn find_pat_binding_and_is_innermost_parent_pat_struct(pat: &Pat<'_>, hir_id: HirId) -> (Option<(Ident, Span)>, bool) {
+    let mut binding = None;
     let mut is_innermost_parent_pat_struct = false;
-    pat.walk_short(|p| match &p.kind {
+    pat.walk_short(|p| match p.kind {
         // ignore OR patterns
         PatKind::Or(_) => false,
-        PatKind::Binding(_bm, _, _ident, _) => {
+        PatKind::Binding(_bm, _, ident, _) => {
             let found = p.hir_id == hir_id;
             if found {
-                span = Some(p.span);
+                binding = Some((ident, p.span));
             }
             !found
         },
@@ -158,7 +159,7 @@ fn find_pat_binding_and_is_innermost_parent_pat_struct(pat: &Pat<'_>, hir_id: Hi
             true
         },
     });
-    (span, is_innermost_parent_pat_struct)
+    (binding, is_innermost_parent_pat_struct)
 }
 
 /// Builds a chain of reference-manipulation method calls (e.g., `.as_ref()`, `.as_mut()`,
