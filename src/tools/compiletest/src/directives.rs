@@ -1,9 +1,6 @@
 use std::collections::HashSet;
-use std::env;
-use std::fs::File;
-use std::io::BufReader;
-use std::io::prelude::*;
 use std::process::Command;
+use std::{env, fs};
 
 use camino::{Utf8Path, Utf8PathBuf};
 use semver::Version;
@@ -54,18 +51,19 @@ pub struct EarlyProps {
 
 impl EarlyProps {
     pub fn from_file(config: &Config, testfile: &Utf8Path) -> Self {
-        let file = File::open(testfile.as_std_path()).expect("open test file to parse earlyprops");
-        Self::from_reader(config, testfile, file)
+        let file_contents =
+            fs::read_to_string(testfile).expect("read test file to parse earlyprops");
+        Self::from_file_contents(config, testfile, &file_contents)
     }
 
-    pub fn from_reader<R: Read>(config: &Config, testfile: &Utf8Path, rdr: R) -> Self {
+    pub fn from_file_contents(config: &Config, testfile: &Utf8Path, file_contents: &str) -> Self {
         let mut props = EarlyProps::default();
         let mut poisoned = false;
         iter_directives(
             config.mode,
             &mut poisoned,
             testfile,
-            rdr,
+            file_contents,
             // (dummy comment to force args into vertical layout)
             &mut |ref ln: DirectiveLine<'_>| {
                 parse_and_update_aux(config, ln, testfile, &mut props.aux);
@@ -362,7 +360,7 @@ impl TestProps {
     fn load_from(&mut self, testfile: &Utf8Path, test_revision: Option<&str>, config: &Config) {
         let mut has_edition = false;
         if !testfile.is_dir() {
-            let file = File::open(testfile.as_std_path()).unwrap();
+            let file_contents = fs::read_to_string(testfile).unwrap();
 
             let mut poisoned = false;
 
@@ -370,7 +368,7 @@ impl TestProps {
                 config.mode,
                 &mut poisoned,
                 testfile,
-                file,
+                &file_contents,
                 &mut |ref ln: DirectiveLine<'_>| {
                     if !ln.applies_to_test_revision(test_revision) {
                         return;
@@ -859,7 +857,7 @@ fn iter_directives(
     mode: TestMode,
     poisoned: &mut bool,
     testfile: &Utf8Path,
-    rdr: impl Read,
+    file_contents: &str,
     it: &mut dyn FnMut(DirectiveLine<'_>),
 ) {
     if testfile.is_dir() {
@@ -886,16 +884,7 @@ fn iter_directives(
         }
     }
 
-    let mut rdr = BufReader::with_capacity(1024, rdr);
-    let mut ln = String::new();
-    let mut line_number = 0;
-
-    loop {
-        line_number += 1;
-        ln.clear();
-        if rdr.read_line(&mut ln).unwrap() == 0 {
-            break;
-        }
+    for (line_number, ln) in (1..).zip(file_contents.lines()) {
         let ln = ln.trim();
 
         let Some(directive_line) = line_directive(line_number, ln) else {
@@ -1359,13 +1348,13 @@ where
     Some((min, max))
 }
 
-pub(crate) fn make_test_description<R: Read>(
+pub(crate) fn make_test_description(
     config: &Config,
     cache: &DirectivesCache,
     name: String,
     path: &Utf8Path,
     filterable_path: &Utf8Path,
-    src: R,
+    file_contents: &str,
     test_revision: Option<&str>,
     poisoned: &mut bool,
 ) -> CollectedTestDesc {
@@ -1380,7 +1369,7 @@ pub(crate) fn make_test_description<R: Read>(
         config.mode,
         &mut local_poisoned,
         path,
-        src,
+        file_contents,
         &mut |ref ln @ DirectiveLine { line_number, .. }| {
             if !ln.applies_to_test_revision(test_revision) {
                 return;
