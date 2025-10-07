@@ -432,7 +432,7 @@ Tests for miscellaneous suggestions.
 
 ## `tests/ui/directory_ownership/`: Declaring `mod` inside a block
 
-Exercises diagnostics for when a code block attempts to gain ownership of a non-inline module with a `mod` keyword placed inside of it.
+Exercises diagnostics for when a code block attempts to gain ownership of a file module with a `mod` keyword placed inside of it.
 
 ## `tests/ui/disallowed-deconstructing/`: Incorrect struct deconstruction
 
