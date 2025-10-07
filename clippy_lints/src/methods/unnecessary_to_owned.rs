@@ -66,7 +66,7 @@ pub fn check<'tcx>(
 
 /// Checks whether `expr` is a referent in an `AddrOf` expression and, if so, determines whether its
 /// call of a `to_owned`-like function is unnecessary.
-#[allow(clippy::too_many_lines)]
+#[expect(clippy::too_many_lines)]
 fn check_addr_of_expr(
     cx: &LateContext<'_>,
     expr: &Expr<'_>,

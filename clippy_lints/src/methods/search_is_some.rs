@@ -14,7 +14,7 @@ use super::SEARCH_IS_SOME;
 
 /// lint searching an Iterator followed by `is_some()`
 /// or calling `find()` on a string followed by `is_some()` or `is_none()`
-#[allow(clippy::too_many_arguments, clippy::too_many_lines)]
+#[expect(clippy::too_many_arguments, clippy::too_many_lines)]
 pub(super) fn check<'tcx>(
     cx: &LateContext<'_>,
     expr: &'tcx hir::Expr<'_>,

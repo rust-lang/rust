@@ -248,7 +248,7 @@ macro_rules! define_Conf {
 
         #[derive(Deserialize)]
         #[serde(field_identifier, rename_all = "kebab-case")]
-        #[allow(non_camel_case_types)]
+        #[expect(non_camel_case_types)]
         enum Field { $($name,)* third_party, }
 
         struct ConfVisitor<'a>(&'a SourceFile);
@@ -1213,7 +1213,7 @@ mod tests {
 
         for entry in toml_files {
             let file = fs::read_to_string(entry.path()).unwrap();
-            #[allow(clippy::zero_sized_map_values)]
+            #[expect(clippy::zero_sized_map_values)]
             if let Ok(map) = toml::from_str::<HashMap<String, IgnoredAny>>(&file) {
                 for name in map.keys() {
                     names.remove(name.as_str());

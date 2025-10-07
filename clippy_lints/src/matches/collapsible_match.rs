@@ -35,7 +35,7 @@ pub(super) fn check_if_let<'tcx>(
     check_arm(cx, false, pat, let_expr, body, None, else_expr, msrv);
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 fn check_arm<'tcx>(
     cx: &LateContext<'tcx>,
     outer_is_match: bool,

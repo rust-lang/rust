@@ -131,7 +131,7 @@ impl DisallowedPathEnum {
 }
 
 /// Creates a map of disallowed items to the reason they were disallowed.
-#[allow(clippy::type_complexity)]
+#[expect(clippy::type_complexity)]
 pub fn create_disallowed_map<const REPLACEMENT_ALLOWED: bool>(
     tcx: TyCtxt<'_>,
     disallowed_paths: &'static [DisallowedPath<REPLACEMENT_ALLOWED>],

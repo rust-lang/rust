@@ -8,7 +8,7 @@ use rustc_span::{Span, sym};
 
 use super::MAP_ALL_ANY_IDENTITY;
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub(super) fn check(
     cx: &LateContext<'_>,
     expr: &Expr<'_>,

@@ -2,7 +2,7 @@
 //!
 //! This cannot use rustc's const eval, aka miri, as arbitrary HIR expressions cannot be lowered to
 //! executable MIR bodies, so we have to do this instead.
-#![allow(clippy::float_cmp)]
+#![expect(clippy::float_cmp)]
 
 use crate::source::{SpanRangeExt, walk_span_to_context};
 use crate::{clip, is_direct_expn_of, paths, sext, sym, unsext};
