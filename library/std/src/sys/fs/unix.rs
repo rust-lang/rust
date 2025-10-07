@@ -1604,24 +1604,6 @@ impl File {
     }
 
     pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
-        #[cfg(not(any(
-            target_os = "redox",
-            target_os = "espidf",
-            target_os = "horizon",
-            target_os = "nuttx",
-        )))]
-        let to_timespec = |time: Option<SystemTime>| match time {
-            Some(time) if let Some(ts) = time.t.to_timespec() => Ok(ts),
-            Some(time) if time > crate::sys::time::UNIX_EPOCH => Err(io::const_error!(
-                io::ErrorKind::InvalidInput,
-                "timestamp is too large to set as a file time",
-            )),
-            Some(_) => Err(io::const_error!(
-                io::ErrorKind::InvalidInput,
-                "timestamp is too small to set as a file time",
-            )),
-            None => Ok(libc::timespec { tv_sec: 0, tv_nsec: libc::UTIME_OMIT as _ }),
-        };
         cfg_select! {
             any(target_os = "redox", target_os = "espidf", target_os = "horizon", target_os = "nuttx") => {
                 // Redox doesn't appear to support `UTIME_OMIT`.
@@ -1639,17 +1621,17 @@ impl File {
                 let mut attrlist: libc::attrlist = unsafe { mem::zeroed() };
                 attrlist.bitmapcount = libc::ATTR_BIT_MAP_COUNT;
                 if times.created.is_some() {
-                    buf[num_times].write(to_timespec(times.created)?);
+                    buf[num_times].write(file_time_to_timespec(times.created)?);
                     num_times += 1;
                     attrlist.commonattr |= libc::ATTR_CMN_CRTIME;
                 }
                 if times.modified.is_some() {
-                    buf[num_times].write(to_timespec(times.modified)?);
+                    buf[num_times].write(file_time_to_timespec(times.modified)?);
                     num_times += 1;
                     attrlist.commonattr |= libc::ATTR_CMN_MODTIME;
                 }
                 if times.accessed.is_some() {
-                    buf[num_times].write(to_timespec(times.accessed)?);
+                    buf[num_times].write(file_time_to_timespec(times.accessed)?);
                     num_times += 1;
                     attrlist.commonattr |= libc::ATTR_CMN_ACCTIME;
                 }
@@ -1663,7 +1645,7 @@ impl File {
                 Ok(())
             }
             target_os = "android" => {
-                let times = [to_timespec(times.accessed)?, to_timespec(times.modified)?];
+                let times = [file_time_to_timespec(times.accessed)?, file_time_to_timespec(times.modified)?];
                 // futimens requires Android API level 19
                 cvt(unsafe {
                     weak!(
@@ -1697,13 +1679,34 @@ impl File {
                         return Ok(());
                     }
                 }
-                let times = [to_timespec(times.accessed)?, to_timespec(times.modified)?];
+                let times = [file_time_to_timespec(times.accessed)?, file_time_to_timespec(times.modified)?];
                 cvt(unsafe { libc::futimens(self.as_raw_fd(), times.as_ptr()) })?;
                 Ok(())
             }
         }
     }
 }
+
+#[cfg(not(any(
+    target_os = "redox",
+    target_os = "espidf",
+    target_os = "horizon",
+    target_os = "nuttx",
+)))]
+fn file_time_to_timespec(time: Option<SystemTime>) -> io::Result<libc::timespec> {
+    match time {
+        Some(time) if let Some(ts) = time.t.to_timespec() => Ok(ts),
+        Some(time) if time > crate::sys::time::UNIX_EPOCH => Err(io::const_error!(
+            io::ErrorKind::InvalidInput,
+            "timestamp is too large to set as a file time",
+        )),
+        Some(_) => Err(io::const_error!(
+            io::ErrorKind::InvalidInput,
+            "timestamp is too small to set as a file time",
+        )),
+        None => Ok(libc::timespec { tv_sec: 0, tv_nsec: libc::UTIME_OMIT as _ }),
+    }
+};
 
 impl DirBuilder {
     pub fn new() -> DirBuilder {
