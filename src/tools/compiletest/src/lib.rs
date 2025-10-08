@@ -41,7 +41,7 @@ use crate::common::{
     CodegenBackend, CompareMode, Config, Debugger, PassMode, TestMode, TestPaths, UI_EXTENSIONS,
     expected_output_path, output_base_dir, output_relative_path,
 };
-use crate::directives::DirectivesCache;
+use crate::directives::{DirectivesCache, FileDirectives};
 use crate::edition::parse_edition;
 use crate::executor::{CollectedTest, ColorConfig};
 
@@ -868,7 +868,10 @@ fn make_test(cx: &TestCollectorCx, collector: &mut TestCollector, testpaths: &Te
     };
 
     // Scan the test file to discover its revisions, if any.
-    let early_props = EarlyProps::from_file(&cx.config, &test_path);
+    let file_contents =
+        fs::read_to_string(&test_path).expect("reading test file for directives should succeed");
+    let file_directives = FileDirectives::from_file_contents(&test_path, &file_contents);
+    let early_props = EarlyProps::from_file_directives(&cx.config, &file_directives);
 
     // Normally we create one structure per revision, with two exceptions:
     // - If a test doesn't use revisions, create a dummy revision (None) so that
@@ -886,8 +889,6 @@ fn make_test(cx: &TestCollectorCx, collector: &mut TestCollector, testpaths: &Te
     // `CollectedTest` that can be handed over to the test executor.
     collector.tests.extend(revisions.into_iter().map(|revision| {
         // Create a test name and description to hand over to the executor.
-        let file_contents =
-            fs::read_to_string(&test_path).expect("read test file to parse ignores");
         let (test_name, filterable_path) =
             make_test_name_and_filterable_path(&cx.config, testpaths, revision);
         // Create a description struct for the test/revision.
@@ -899,7 +900,7 @@ fn make_test(cx: &TestCollectorCx, collector: &mut TestCollector, testpaths: &Te
             test_name,
             &test_path,
             &filterable_path,
-            &file_contents,
+            &file_directives,
             revision,
             &mut collector.poisoned,
         );

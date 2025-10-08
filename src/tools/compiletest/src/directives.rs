@@ -12,6 +12,7 @@ use crate::directives::auxiliary::{AuxProps, parse_and_update_aux};
 use crate::directives::directive_names::{
     KNOWN_DIRECTIVE_NAMES, KNOWN_HTMLDOCCK_DIRECTIVE_NAMES, KNOWN_JSONDOCCK_DIRECTIVE_NAMES,
 };
+pub(crate) use crate::directives::file::FileDirectives;
 use crate::directives::line::{DirectiveLine, line_directive};
 use crate::directives::needs::CachedNeedsConditions;
 use crate::edition::{Edition, parse_edition};
@@ -23,6 +24,7 @@ use crate::{fatal, help};
 pub(crate) mod auxiliary;
 mod cfg;
 mod directive_names;
+mod file;
 mod line;
 mod needs;
 #[cfg(test)]
@@ -41,31 +43,29 @@ impl DirectivesCache {
 /// Properties which must be known very early, before actually running
 /// the test.
 #[derive(Default)]
-pub struct EarlyProps {
+pub(crate) struct EarlyProps {
     /// Auxiliary crates that should be built and made available to this test.
     /// Included in [`EarlyProps`] so that the indicated files can participate
     /// in up-to-date checking. Building happens via [`TestProps::aux`] instead.
     pub(crate) aux: AuxProps,
-    pub revisions: Vec<String>,
+    pub(crate) revisions: Vec<String>,
 }
 
 impl EarlyProps {
-    pub fn from_file(config: &Config, testfile: &Utf8Path) -> Self {
-        let file_contents =
-            fs::read_to_string(testfile).expect("read test file to parse earlyprops");
-        Self::from_file_contents(config, testfile, &file_contents)
-    }
-
-    pub fn from_file_contents(config: &Config, testfile: &Utf8Path, file_contents: &str) -> Self {
+    pub(crate) fn from_file_directives(
+        config: &Config,
+        file_directives: &FileDirectives<'_>,
+    ) -> Self {
+        let testfile = file_directives.path;
         let mut props = EarlyProps::default();
         let mut poisoned = false;
+
         iter_directives(
             config.mode,
             &mut poisoned,
-            testfile,
-            file_contents,
+            file_directives,
             // (dummy comment to force args into vertical layout)
-            &mut |ref ln: DirectiveLine<'_>| {
+            &mut |ln: &DirectiveLine<'_>| {
                 parse_and_update_aux(config, ln, testfile, &mut props.aux);
                 config.parse_and_update_revisions(testfile, ln, &mut props.revisions);
             },
@@ -358,15 +358,15 @@ impl TestProps {
         let mut has_edition = false;
         if !testfile.is_dir() {
             let file_contents = fs::read_to_string(testfile).unwrap();
+            let file_directives = FileDirectives::from_file_contents(testfile, &file_contents);
 
             let mut poisoned = false;
 
             iter_directives(
                 config.mode,
                 &mut poisoned,
-                testfile,
-                &file_contents,
-                &mut |ref ln: DirectiveLine<'_>| {
+                &file_directives,
+                &mut |ln: &DirectiveLine<'_>| {
                     if !ln.applies_to_test_revision(test_revision) {
                         return;
                     }
@@ -851,13 +851,10 @@ fn check_directive<'a>(
 fn iter_directives(
     mode: TestMode,
     poisoned: &mut bool,
-    testfile: &Utf8Path,
-    file_contents: &str,
-    it: &mut dyn FnMut(DirectiveLine<'_>),
+    file_directives: &FileDirectives<'_>,
+    it: &mut dyn FnMut(&DirectiveLine<'_>),
 ) {
-    if testfile.is_dir() {
-        return;
-    }
+    let testfile = file_directives.path;
 
     // Coverage tests in coverage-run mode always have these extra directives, without needing to
     // specify them manually in every test file.
@@ -875,21 +872,15 @@ fn iter_directives(
         for directive_str in extra_directives {
             let directive_line = line_directive(0, directive_str)
                 .unwrap_or_else(|| panic!("bad extra-directive line: {directive_str:?}"));
-            it(directive_line);
+            it(&directive_line);
         }
     }
 
-    for (line_number, ln) in (1..).zip(file_contents.lines()) {
-        let ln = ln.trim();
-
-        let Some(directive_line) = line_directive(line_number, ln) else {
-            continue;
-        };
-
+    for directive_line @ &DirectiveLine { line_number, .. } in &file_directives.lines {
         // Perform unknown directive check on Rust files.
         if testfile.extension() == Some("rs") {
             let CheckDirectiveResult { is_known_directive, trailing_directive } =
-                check_directive(&directive_line, mode);
+                check_directive(directive_line, mode);
 
             if !is_known_directive {
                 *poisoned = true;
@@ -1349,7 +1340,7 @@ pub(crate) fn make_test_description(
     name: String,
     path: &Utf8Path,
     filterable_path: &Utf8Path,
-    file_contents: &str,
+    file_directives: &FileDirectives<'_>,
     test_revision: Option<&str>,
     poisoned: &mut bool,
 ) -> CollectedTestDesc {
@@ -1363,9 +1354,8 @@ pub(crate) fn make_test_description(
     iter_directives(
         config.mode,
         &mut local_poisoned,
-        path,
-        file_contents,
-        &mut |ref ln @ DirectiveLine { line_number, .. }| {
+        file_directives,
+        &mut |ln @ &DirectiveLine { line_number, .. }| {
             if !ln.applies_to_test_revision(test_revision) {
                 return;
             }
