@@ -15,7 +15,7 @@ use crate::sys::net::Socket;
 pub struct UnixListener(Socket);
 
 impl UnixListener {
-    pub fn bind<P: AsRef<Path>>(path: &Path) -> io::Result<UnixListener> {
+    pub fn bind<P: AsRef<Path>>(path: P) -> io::Result<UnixListener> {
         unsafe {
             let inner = Socket::new_unix()?;
             let (addr, len) = sockaddr_un(path)?;
