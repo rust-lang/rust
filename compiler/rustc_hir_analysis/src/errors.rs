@@ -1617,7 +1617,6 @@ pub(crate) struct CmseInputsStackSpill {
     #[primary_span]
     #[label]
     pub spans: Vec<Span>,
-    pub plural: bool,
     pub abi: ExternAbi,
 }
 

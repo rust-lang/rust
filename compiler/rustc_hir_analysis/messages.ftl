@@ -80,11 +80,8 @@ hir_analysis_cmse_entry_generic =
 
 hir_analysis_cmse_inputs_stack_spill =
     arguments for `{$abi}` function too large to pass via registers
-    .label = {$plural ->
-        [false] this argument doesn't
-        *[true] these arguments don't
-    } fit in the available registers
-    .note = functions with the `{$abi}` ABI must pass all their arguments via the 4 32-bit available argument registers
+    .label = does not fit in the available registers
+    .note = functions with the `{$abi}` ABI must pass all their arguments via the 4 32-bit argument registers
 
 hir_analysis_cmse_output_stack_spill =
     return value of `{$abi}` function too large to pass via registers

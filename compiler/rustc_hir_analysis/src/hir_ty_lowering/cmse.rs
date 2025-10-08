@@ -124,8 +124,7 @@ fn is_valid_cmse_inputs<'tcx>(
     if !excess_argument_spans.is_empty() {
         // fn f(x: u32, y: u32, z: u32, w: u16, q: u16) -> u32,
         //                                      ^^^^^^
-        let plural = excess_argument_spans.len() != 1;
-        dcx.emit_err(errors::CmseInputsStackSpill { spans: excess_argument_spans, plural, abi });
+        dcx.emit_err(errors::CmseInputsStackSpill { spans: excess_argument_spans, abi });
     }
 
     Ok(())
