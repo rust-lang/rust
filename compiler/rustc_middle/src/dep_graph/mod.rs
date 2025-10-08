@@ -37,6 +37,7 @@ impl Deps for DepsType {
         })
     }
 
+    #[inline]
     fn read_deps<OP>(op: OP)
     where
         OP: for<'a> FnOnce(TaskDepsRef<'a>),
