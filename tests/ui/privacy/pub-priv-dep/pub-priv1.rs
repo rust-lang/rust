@@ -145,7 +145,6 @@ impl From<PublicWithStdImpl> for OtherType {
     //~| ERROR type `OtherType` from private dependency 'priv_dep' in public interface
     fn from(val: PublicWithStdImpl) -> Self { Self }
     //~^ ERROR type `OtherType` from private dependency 'priv_dep' in public interface
-    //~| ERROR type `OtherType` from private dependency 'priv_dep' in public interface
 }
 
 pub struct AllowedPrivType {
