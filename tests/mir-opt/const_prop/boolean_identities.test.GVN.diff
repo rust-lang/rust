@@ -11,10 +11,12 @@
       let mut _7: bool;
       let mut _8: bool;
       scope 1 {
-          debug a => _3;
+-         debug a => _3;
++         debug a => const true;
           let _5: bool;
           scope 2 {
-              debug b => _5;
+-             debug b => _5;
++             debug b => const false;
           }
       }
   

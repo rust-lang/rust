@@ -5,10 +5,12 @@
       let mut _0: ();
       let _1: u32;
       scope 1 {
-          debug x => _1;
+-         debug x => _1;
++         debug x => const 42_u32;
           let _2: u8;
           scope 2 {
-              debug y => _2;
+-             debug y => _2;
++             debug y => const 42_u8;
           }
       }
   

@@ -11,10 +11,12 @@
               debug gy => _2;
               let _3: usize;
               scope 3 {
-                  debug dx => _3;
+-                 debug dx => _3;
++                 debug dx => const 0_usize;
                   let _4: usize;
                   scope 4 {
-                      debug dy => _4;
+-                     debug dy => _4;
++                     debug dy => const 2_usize;
                       let _5: usize;
                       scope 5 {
                           debug zA0 => _5;

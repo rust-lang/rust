@@ -12,7 +12,8 @@
       let mut _7: &std::alloc::Global;
       let mut _8: std::alloc::Layout;
       scope 1 {
-          debug layout => _1;
+-         debug layout => _1;
++         debug layout => const Layout {{ size: Indirect { alloc_id: ALLOC0, offset: Size(8 bytes) }: usize, align: std::ptr::Alignment(Scalar(0x0000000000000000): std::ptr::alignment::AlignmentEnum) }};
           let mut _9: &std::alloc::Global;
           scope 2 {
               debug ptr => _3;
