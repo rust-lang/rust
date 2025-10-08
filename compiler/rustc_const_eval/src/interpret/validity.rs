@@ -757,14 +757,12 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                     );
                     // FIXME: Check if the signature matches
                 } else {
-                    // Otherwise (for standalone Miri), we have to still check it to be non-null.
+                    // Otherwise (for standalone Miri and for `-Zextra-const-ub-checks`),
+                    // we have to still check it to be non-null.
                     if self.ecx.scalar_may_be_null(scalar)? {
                         let maybe =
                             !M::Provenance::OFFSET_IS_ADDR && matches!(scalar, Scalar::Ptr(..));
-                        // This can't be a "maybe-null" pointer since the check for this being
-                        // a fn ptr at all already ensures that the pointer is inbounds.
-                        assert!(!maybe);
-                        throw_validation_failure!(self.path, NullFnPtr);
+                        throw_validation_failure!(self.path, NullFnPtr { maybe });
                     }
                 }
                 if self.reset_provenance_and_padding {
