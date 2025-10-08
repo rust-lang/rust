@@ -1316,7 +1316,33 @@ impl fmt::Debug for Duration {
             // normal floating point numbers. However, we only need to do work
             // when rounding up. This happens if the first digit of the
             // remaining ones is >= 5.
-            let integer_part = if fractional_part > 0 && fractional_part >= divisor * 5 {
+            let integer_part = if fractional_part > 0 && fractional_part == divisor * 5 {
+                let last_digit_is_odd = if pos > 0 {
+                    (buf[pos - 1] - b'0') % 2 == 1
+                } else {
+                    // No fractional digits - check the integer part
+                    (integer_part % 2) == 1
+                };
+
+                if last_digit_is_odd {
+                    let mut rev_pos = pos;
+                    let mut carry = true;
+                    while carry && rev_pos > 0 {
+                        rev_pos -= 1;
+
+                        if buf[rev_pos] < b'9' {
+                            buf[rev_pos] += 1;
+                            carry = false;
+                        } else {
+                            buf[rev_pos] = b'0';
+                        }
+                    }
+
+                    if carry { integer_part.checked_add(1) } else { Some(integer_part) }
+                } else {
+                    Some(integer_part)
+                }
+            } else if fractional_part > 0 && fractional_part > divisor * 5 {
                 // Round up the number contained in the buffer. We go through
                 // the buffer backwards and keep track of the carry.
                 let mut rev_pos = pos;
