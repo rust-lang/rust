@@ -187,7 +187,7 @@ Alternatively, you can write `bootstrap.toml` by hand. See `bootstrap.example.to
 settings and explanations of them. See `src/bootstrap/defaults` for common settings to change.
 
 If you have already built `rustc` and you change settings related to LLVM, then you may have to
-execute `rm -rf build` for subsequent configuration changes to take effect. Note that `./x
+execute `./x clean --all` for subsequent configuration changes to take effect. Note that `./x
 clean` will not cause a rebuild of LLVM.
 
 ## Common `x` commands
@@ -226,16 +226,17 @@ Once you've created a `bootstrap.toml`, you are now ready to run
 `x`. There are a lot of options here, but let's start with what is
 probably the best "go to" command for building a local compiler:
 
-```bash
-./x build library
+```console
+./x build rustc
 ```
 
-This may *look* like it only builds the standard library, but that is not the case.
-What this command does is the following:
+What this command does is build `rustc` using the stage0 compiler and stage0 `std`.
 
-- Build `rustc` using the stage0 compiler
-  - This produces the stage1 compiler
-- Build `std` using the stage1 compiler
+To build `rustc` with the in-tree `std`, use this command instead:
+
+```console
+./x build rustc --stage 2
+```
 
 This final product (stage1 compiler + libs built using that compiler)
 is what you need to build other Rust programs (unless you use `#![no_std]` or
@@ -253,7 +254,7 @@ signature of some function, you can use `./x check` instead for a much faster bu
 
 Note that this whole command just gives you a subset of the full `rustc`
 build. The **full** `rustc` build (what you get with `./x build
---stage 2 compiler/rustc`) has quite a few more steps:
+--stage 2 rustc`) has quite a few more steps:
 
 - Build `rustc` with the stage1 compiler.
   - The resulting compiler here is called the "stage2" compiler, which uses stage1 std from the previous command.

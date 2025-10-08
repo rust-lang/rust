@@ -1,7 +1,7 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::source::{snippet, snippet_with_applicability};
+use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_non_aggregate_primitive_type;
 use clippy_utils::{
@@ -269,14 +269,11 @@ fn check_replace_with_default(
             ),
             |diag| {
                 if !expr.span.from_expansion() {
-                    let suggestion = format!("{top_crate}::mem::take({})", snippet(cx, dest.span, ""));
+                    let mut applicability = Applicability::MachineApplicable;
+                    let (dest_snip, _) = snippet_with_context(cx, dest.span, expr.span.ctxt(), "", &mut applicability);
+                    let suggestion = format!("{top_crate}::mem::take({dest_snip})");
 
-                    diag.span_suggestion(
-                        expr.span,
-                        "consider using",
-                        suggestion,
-                        Applicability::MachineApplicable,
-                    );
+                    diag.span_suggestion(expr.span, "consider using", suggestion, applicability);
                 }
             },
         );

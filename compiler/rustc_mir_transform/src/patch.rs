@@ -270,7 +270,7 @@ impl<'tcx> MirPatch<'tcx> {
         body.local_decls.extend(self.new_locals);
 
         for loc in self.nop_statements {
-            bbs[loc.block].statements[loc.statement_index].make_nop();
+            bbs[loc.block].statements[loc.statement_index].make_nop(true);
         }
 
         let mut new_statements = self.new_statements;

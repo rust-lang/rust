@@ -13,6 +13,7 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{ItemKind, Node, UseKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::fast_reject::SimplifiedType;
+use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::{FloatTy, IntTy, Ty, TyCtxt, UintTy};
 use rustc_span::{Ident, STDLIB_STABLE_CRATES, Symbol};
 use std::sync::OnceLock;
@@ -74,8 +75,8 @@ impl PathLookup {
     }
 
     /// Returns the list of [`DefId`]s that the path resolves to
-    pub fn get(&self, cx: &LateContext<'_>) -> &[DefId] {
-        self.once.get_or_init(|| lookup_path(cx.tcx, self.ns, self.path))
+    pub fn get<'tcx>(&self, tcx: &impl HasTyCtxt<'tcx>) -> &[DefId] {
+        self.once.get_or_init(|| lookup_path(tcx.tcx(), self.ns, self.path))
     }
 
     /// Returns the single [`DefId`] that the path resolves to, this can only be used for paths into
@@ -90,8 +91,8 @@ impl PathLookup {
     }
 
     /// Checks if the path resolves to the given `def_id`
-    pub fn matches(&self, cx: &LateContext<'_>, def_id: DefId) -> bool {
-        self.get(cx).contains(&def_id)
+    pub fn matches<'tcx>(&self, tcx: &impl HasTyCtxt<'tcx>, def_id: DefId) -> bool {
+        self.get(&tcx.tcx()).contains(&def_id)
     }
 
     /// Resolves `maybe_path` to a [`DefId`] and checks if the [`PathLookup`] matches it
@@ -100,8 +101,8 @@ impl PathLookup {
     }
 
     /// Checks if the path resolves to `ty`'s definition, must be an `Adt`
-    pub fn matches_ty(&self, cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
-        ty.ty_adt_def().is_some_and(|adt| self.matches(cx, adt.did()))
+    pub fn matches_ty<'tcx>(&self, tcx: &impl HasTyCtxt<'tcx>, ty: Ty<'_>) -> bool {
+        ty.ty_adt_def().is_some_and(|adt| self.matches(&tcx.tcx(), adt.did()))
     }
 }
 
@@ -125,6 +126,11 @@ path_macros! {
     value_path: PathNS::Value,
     macro_path: PathNS::Macro,
 }
+
+pub static F16_CONSTS: PathLookup = type_path!(core::f16::consts);
+pub static F32_CONSTS: PathLookup = type_path!(core::f32::consts);
+pub static F64_CONSTS: PathLookup = type_path!(core::f64::consts);
+pub static F128_CONSTS: PathLookup = type_path!(core::f128::consts);
 
 // Paths in external crates
 pub static FUTURES_IO_ASYNCREADEXT: PathLookup = type_path!(futures_util::AsyncReadExt);

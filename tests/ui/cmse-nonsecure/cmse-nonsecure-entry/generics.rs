@@ -65,3 +65,15 @@ extern "cmse-nonsecure-entry" fn wrapped_trait_object(x: WrapperTransparent) -> 
     //~^ ERROR return value of `"cmse-nonsecure-entry"` function too large to pass via registers [E0798]
     x
 }
+
+extern "cmse-nonsecure-entry" fn return_impl_trait(_: impl Copy) -> impl Copy {
+    //~^ ERROR functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
+    //~| ERROR functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
+    0u128
+}
+
+extern "cmse-nonsecure-entry" fn return_impl_trait_nested(v: (impl Copy, i32)) -> (impl Copy, i32) {
+    //~^ ERROR functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
+    //~| ERROR functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
+    v
+}

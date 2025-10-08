@@ -63,56 +63,46 @@ pub fn cvt_gai(err: c_int) -> io::Result<()> {
 }
 
 impl Socket {
-    pub fn new(addr: &SocketAddr, ty: c_int) -> io::Result<Socket> {
-        let fam = match *addr {
-            SocketAddr::V4(..) => libc::AF_INET,
-            SocketAddr::V6(..) => libc::AF_INET6,
-        };
-        Socket::new_raw(fam, ty)
-    }
+    pub fn new(family: c_int, ty: c_int) -> io::Result<Socket> {
+        cfg_select! {
+            any(
+                target_os = "android",
+                target_os = "dragonfly",
+                target_os = "freebsd",
+                target_os = "illumos",
+                target_os = "hurd",
+                target_os = "linux",
+                target_os = "netbsd",
+                target_os = "openbsd",
+                target_os = "cygwin",
+                target_os = "nto",
+                target_os = "solaris",
+            ) => {
+                // On platforms that support it we pass the SOCK_CLOEXEC
+                // flag to atomically create the socket and set it as
+                // CLOEXEC. On Linux this was added in 2.6.27.
+                let fd = cvt(unsafe { libc::socket(family, ty | libc::SOCK_CLOEXEC, 0) })?;
+                let socket = Socket(unsafe { FileDesc::from_raw_fd(fd) });
 
-    pub fn new_raw(fam: c_int, ty: c_int) -> io::Result<Socket> {
-        unsafe {
-            cfg_select! {
-                any(
-                    target_os = "android",
-                    target_os = "dragonfly",
-                    target_os = "freebsd",
-                    target_os = "illumos",
-                    target_os = "hurd",
-                    target_os = "linux",
-                    target_os = "netbsd",
-                    target_os = "openbsd",
-                    target_os = "cygwin",
-                    target_os = "nto",
-                    target_os = "solaris",
-                ) => {
-                    // On platforms that support it we pass the SOCK_CLOEXEC
-                    // flag to atomically create the socket and set it as
-                    // CLOEXEC. On Linux this was added in 2.6.27.
-                    let fd = cvt(libc::socket(fam, ty | libc::SOCK_CLOEXEC, 0))?;
-                    let socket = Socket(FileDesc::from_raw_fd(fd));
+                // DragonFlyBSD, FreeBSD and NetBSD use `SO_NOSIGPIPE` as a `setsockopt`
+                // flag to disable `SIGPIPE` emission on socket.
+                #[cfg(any(target_os = "freebsd", target_os = "netbsd", target_os = "dragonfly"))]
+                unsafe { setsockopt(&socket, libc::SOL_SOCKET, libc::SO_NOSIGPIPE, 1)? };
 
-                    // DragonFlyBSD, FreeBSD and NetBSD use `SO_NOSIGPIPE` as a `setsockopt`
-                    // flag to disable `SIGPIPE` emission on socket.
-                    #[cfg(any(target_os = "freebsd", target_os = "netbsd", target_os = "dragonfly"))]
-                    setsockopt(&socket, libc::SOL_SOCKET, libc::SO_NOSIGPIPE, 1)?;
+                Ok(socket)
+            }
+            _ => {
+                let fd = cvt(unsafe { libc::socket(family, ty, 0) })?;
+                let fd = unsafe { FileDesc::from_raw_fd(fd) };
+                fd.set_cloexec()?;
+                let socket = Socket(fd);
 
-                    Ok(socket)
-                }
-                _ => {
-                    let fd = cvt(libc::socket(fam, ty, 0))?;
-                    let fd = FileDesc::from_raw_fd(fd);
-                    fd.set_cloexec()?;
-                    let socket = Socket(fd);
+                // macOS and iOS use `SO_NOSIGPIPE` as a `setsockopt`
+                // flag to disable `SIGPIPE` emission on socket.
+                #[cfg(target_vendor = "apple")]
+                unsafe { setsockopt(&socket, libc::SOL_SOCKET, libc::SO_NOSIGPIPE, 1)? };
 
-                    // macOS and iOS use `SO_NOSIGPIPE` as a `setsockopt`
-                    // flag to disable `SIGPIPE` emission on socket.
-                    #[cfg(target_vendor = "apple")]
-                    setsockopt(&socket, libc::SOL_SOCKET, libc::SO_NOSIGPIPE, 1)?;
-
-                    Ok(socket)
-                }
+                Ok(socket)
             }
         }
     }
@@ -413,11 +403,11 @@ impl Socket {
             }
             None => libc::timeval { tv_sec: 0, tv_usec: 0 },
         };
-        setsockopt(self, libc::SOL_SOCKET, kind, timeout)
+        unsafe { setsockopt(self, libc::SOL_SOCKET, kind, timeout) }
     }
 
     pub fn timeout(&self, kind: libc::c_int) -> io::Result<Option<Duration>> {
-        let raw: libc::timeval = getsockopt(self, libc::SOL_SOCKET, kind)?;
+        let raw: libc::timeval = unsafe { getsockopt(self, libc::SOL_SOCKET, kind)? };
         if raw.tv_sec == 0 && raw.tv_usec == 0 {
             Ok(None)
         } else {
@@ -444,7 +434,7 @@ impl Socket {
             l_linger: linger.unwrap_or_default().as_secs() as libc::c_int,
         };
 
-        setsockopt(self, libc::SOL_SOCKET, SO_LINGER, linger)
+        unsafe { setsockopt(self, libc::SOL_SOCKET, SO_LINGER, linger) }
     }
 
     #[cfg(target_os = "cygwin")]
@@ -454,32 +444,32 @@ impl Socket {
             l_linger: linger.unwrap_or_default().as_secs() as libc::c_ushort,
         };
 
-        setsockopt(self, libc::SOL_SOCKET, SO_LINGER, linger)
+        unsafe { setsockopt(self, libc::SOL_SOCKET, SO_LINGER, linger) }
     }
 
     pub fn linger(&self) -> io::Result<Option<Duration>> {
-        let val: libc::linger = getsockopt(self, libc::SOL_SOCKET, SO_LINGER)?;
+        let val: libc::linger = unsafe { getsockopt(self, libc::SOL_SOCKET, SO_LINGER)? };
 
         Ok((val.l_onoff != 0).then(|| Duration::from_secs(val.l_linger as u64)))
     }
 
     pub fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
-        setsockopt(self, libc::IPPROTO_TCP, libc::TCP_NODELAY, nodelay as c_int)
+        unsafe { setsockopt(self, libc::IPPROTO_TCP, libc::TCP_NODELAY, nodelay as c_int) }
     }
 
     pub fn nodelay(&self) -> io::Result<bool> {
-        let raw: c_int = getsockopt(self, libc::IPPROTO_TCP, libc::TCP_NODELAY)?;
+        let raw: c_int = unsafe { getsockopt(self, libc::IPPROTO_TCP, libc::TCP_NODELAY)? };
         Ok(raw != 0)
     }
 
     #[cfg(any(target_os = "android", target_os = "linux", target_os = "cygwin"))]
     pub fn set_quickack(&self, quickack: bool) -> io::Result<()> {
-        setsockopt(self, libc::IPPROTO_TCP, libc::TCP_QUICKACK, quickack as c_int)
+        unsafe { setsockopt(self, libc::IPPROTO_TCP, libc::TCP_QUICKACK, quickack as c_int) }
     }
 
     #[cfg(any(target_os = "android", target_os = "linux", target_os = "cygwin"))]
     pub fn quickack(&self) -> io::Result<bool> {
-        let raw: c_int = getsockopt(self, libc::IPPROTO_TCP, libc::TCP_QUICKACK)?;
+        let raw: c_int = unsafe { getsockopt(self, libc::IPPROTO_TCP, libc::TCP_QUICKACK)? };
         Ok(raw != 0)
     }
 
@@ -487,12 +477,12 @@ impl Socket {
     #[cfg(target_os = "linux")]
     pub fn set_deferaccept(&self, accept: Duration) -> io::Result<()> {
         let val = cmp::min(accept.as_secs(), c_int::MAX as u64) as c_int;
-        setsockopt(self, libc::IPPROTO_TCP, libc::TCP_DEFER_ACCEPT, val)
+        unsafe { setsockopt(self, libc::IPPROTO_TCP, libc::TCP_DEFER_ACCEPT, val) }
     }
 
     #[cfg(target_os = "linux")]
     pub fn deferaccept(&self) -> io::Result<Duration> {
-        let raw: c_int = getsockopt(self, libc::IPPROTO_TCP, libc::TCP_DEFER_ACCEPT)?;
+        let raw: c_int = unsafe { getsockopt(self, libc::IPPROTO_TCP, libc::TCP_DEFER_ACCEPT)? };
         Ok(Duration::from_secs(raw as _))
     }
 
@@ -506,21 +496,23 @@ impl Socket {
             }
             let mut arg: libc::accept_filter_arg = unsafe { mem::zeroed() };
             arg.af_name = buf;
-            setsockopt(self, libc::SOL_SOCKET, libc::SO_ACCEPTFILTER, &mut arg)
+            unsafe { setsockopt(self, libc::SOL_SOCKET, libc::SO_ACCEPTFILTER, &mut arg) }
         } else {
-            setsockopt(
-                self,
-                libc::SOL_SOCKET,
-                libc::SO_ACCEPTFILTER,
-                core::ptr::null_mut() as *mut c_void,
-            )
+            unsafe {
+                setsockopt(
+                    self,
+                    libc::SOL_SOCKET,
+                    libc::SO_ACCEPTFILTER,
+                    core::ptr::null_mut() as *mut c_void,
+                )
+            }
         }
     }
 
     #[cfg(any(target_os = "freebsd", target_os = "netbsd"))]
     pub fn acceptfilter(&self) -> io::Result<&CStr> {
         let arg: libc::accept_filter_arg =
-            getsockopt(self, libc::SOL_SOCKET, libc::SO_ACCEPTFILTER)?;
+            unsafe { getsockopt(self, libc::SOL_SOCKET, libc::SO_ACCEPTFILTER)? };
         let s: &[u8] =
             unsafe { core::slice::from_raw_parts(arg.af_name.as_ptr() as *const u8, 16) };
         let name = CStr::from_bytes_with_nul(s).unwrap();
@@ -531,53 +523,57 @@ impl Socket {
     pub fn set_exclbind(&self, excl: bool) -> io::Result<()> {
         // not yet on libc crate
         const SO_EXCLBIND: i32 = 0x1015;
-        setsockopt(self, libc::SOL_SOCKET, SO_EXCLBIND, excl)
+        unsafe { setsockopt(self, libc::SOL_SOCKET, SO_EXCLBIND, excl) }
     }
 
     #[cfg(any(target_os = "solaris", target_os = "illumos"))]
     pub fn exclbind(&self) -> io::Result<bool> {
         // not yet on libc crate
         const SO_EXCLBIND: i32 = 0x1015;
-        let raw: c_int = getsockopt(self, libc::SOL_SOCKET, SO_EXCLBIND)?;
+        let raw: c_int = unsafe { getsockopt(self, libc::SOL_SOCKET, SO_EXCLBIND)? };
         Ok(raw != 0)
     }
 
     #[cfg(any(target_os = "android", target_os = "linux", target_os = "cygwin"))]
     pub fn set_passcred(&self, passcred: bool) -> io::Result<()> {
-        setsockopt(self, libc::SOL_SOCKET, libc::SO_PASSCRED, passcred as libc::c_int)
+        unsafe { setsockopt(self, libc::SOL_SOCKET, libc::SO_PASSCRED, passcred as libc::c_int) }
     }
 
     #[cfg(any(target_os = "android", target_os = "linux", target_os = "cygwin"))]
     pub fn passcred(&self) -> io::Result<bool> {
-        let passcred: libc::c_int = getsockopt(self, libc::SOL_SOCKET, libc::SO_PASSCRED)?;
+        let passcred: libc::c_int =
+            unsafe { getsockopt(self, libc::SOL_SOCKET, libc::SO_PASSCRED)? };
         Ok(passcred != 0)
     }
 
     #[cfg(target_os = "netbsd")]
     pub fn set_local_creds(&self, local_creds: bool) -> io::Result<()> {
-        setsockopt(self, 0 as libc::c_int, libc::LOCAL_CREDS, local_creds as libc::c_int)
+        unsafe { setsockopt(self, 0 as libc::c_int, libc::LOCAL_CREDS, local_creds as libc::c_int) }
     }
 
     #[cfg(target_os = "netbsd")]
     pub fn local_creds(&self) -> io::Result<bool> {
-        let local_creds: libc::c_int = getsockopt(self, 0 as libc::c_int, libc::LOCAL_CREDS)?;
+        let local_creds: libc::c_int =
+            unsafe { getsockopt(self, 0 as libc::c_int, libc::LOCAL_CREDS)? };
         Ok(local_creds != 0)
     }
 
     #[cfg(target_os = "freebsd")]
     pub fn set_local_creds_persistent(&self, local_creds_persistent: bool) -> io::Result<()> {
-        setsockopt(
-            self,
-            libc::AF_LOCAL,
-            libc::LOCAL_CREDS_PERSISTENT,
-            local_creds_persistent as libc::c_int,
-        )
+        unsafe {
+            setsockopt(
+                self,
+                libc::AF_LOCAL,
+                libc::LOCAL_CREDS_PERSISTENT,
+                local_creds_persistent as libc::c_int,
+            )
+        }
     }
 
     #[cfg(target_os = "freebsd")]
     pub fn local_creds_persistent(&self) -> io::Result<bool> {
         let local_creds_persistent: libc::c_int =
-            getsockopt(self, libc::AF_LOCAL, libc::LOCAL_CREDS_PERSISTENT)?;
+            unsafe { getsockopt(self, libc::AF_LOCAL, libc::LOCAL_CREDS_PERSISTENT)? };
         Ok(local_creds_persistent != 0)
     }
 
@@ -590,7 +586,7 @@ impl Socket {
     #[cfg(target_os = "vita")]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         let option = nonblocking as libc::c_int;
-        setsockopt(self, libc::SOL_SOCKET, libc::SO_NONBLOCK, option)
+        unsafe { setsockopt(self, libc::SOL_SOCKET, libc::SO_NONBLOCK, option) }
     }
 
     #[cfg(any(target_os = "solaris", target_os = "illumos"))]
@@ -608,11 +604,11 @@ impl Socket {
         let option = libc::SO_USER_COOKIE;
         #[cfg(target_os = "openbsd")]
         let option = libc::SO_RTABLE;
-        setsockopt(self, libc::SOL_SOCKET, option, mark as libc::c_int)
+        unsafe { setsockopt(self, libc::SOL_SOCKET, option, mark as libc::c_int) }
     }
 
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
-        let raw: c_int = getsockopt(self, libc::SOL_SOCKET, libc::SO_ERROR)?;
+        let raw: c_int = unsafe { getsockopt(self, libc::SOL_SOCKET, libc::SO_ERROR)? };
         if raw == 0 { Ok(None) } else { Ok(Some(io::Error::from_raw_os_error(raw as i32))) }
     }
 

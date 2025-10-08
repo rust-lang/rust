@@ -1365,7 +1365,7 @@ pub(crate) struct UnusedVarAssignedOnly {
 #[multipart_suggestion(
     passes_unused_var_typo,
     style = "verbose",
-    applicability = "machine-applicable"
+    applicability = "maybe-incorrect"
 )]
 pub(crate) struct PatternTypo {
     #[suggestion_part(code = "{code}")]

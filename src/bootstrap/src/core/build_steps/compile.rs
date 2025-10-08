@@ -427,6 +427,16 @@ fn copy_self_contained_objects(
                 target.triple
             )
         });
+
+        // wasm32-wasip3 doesn't exist in wasi-libc yet, so instead use libs
+        // from the wasm32-wasip2 target. Once wasi-libc supports wasip3 this
+        // should be deleted and the native objects should be used.
+        let srcdir = if target == "wasm32-wasip3" {
+            assert!(!srcdir.exists(), "wasip3 support is in wasi-libc, this should be updated now");
+            builder.wasi_libdir(TargetSelection::from_user("wasm32-wasip2")).unwrap()
+        } else {
+            srcdir
+        };
         for &obj in &["libc.a", "crt1-command.o", "crt1-reactor.o"] {
             copy_and_stamp(
                 builder,
@@ -592,7 +602,12 @@ pub fn std_cargo(
                 ),
             );
             let compiler_builtins_root = builder.src.join("src/llvm-project/compiler-rt");
-            assert!(compiler_builtins_root.exists());
+            if !builder.config.dry_run() {
+                // This assertion would otherwise trigger during tests if `llvm-project` is not
+                // checked out.
+                assert!(compiler_builtins_root.exists());
+            }
+
             // The path to `compiler-rt` is also used by `profiler_builtins` (above),
             // so if you're changing something here please also change that as appropriate.
             cargo.env("RUST_COMPILER_RT_ROOT", &compiler_builtins_root);

@@ -36,11 +36,10 @@ use crate::attributes;
 use crate::common::Funclet;
 use crate::context::{CodegenCx, FullCx, GenericCx, SCx};
 use crate::llvm::{
-    self, AtomicOrdering, AtomicRmwBinOp, BasicBlock, GEPNoWrapFlags, Metadata, TRUE, ToLlvmBool,
+    self, AtomicOrdering, AtomicRmwBinOp, BasicBlock, FromGeneric, GEPNoWrapFlags, Metadata, TRUE,
+    ToLlvmBool, Type, Value,
 };
-use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
-use crate::value::Value;
 
 #[must_use]
 pub(crate) struct GenericBuilder<'a, 'll, CX: Borrow<SCx<'ll>>> {

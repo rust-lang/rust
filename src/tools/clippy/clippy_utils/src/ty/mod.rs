@@ -21,9 +21,9 @@ use rustc_middle::traits::EvaluationResult;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment};
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{
-    self, AdtDef, AliasTy, AssocItem, AssocTag, Binder, BoundRegion, BoundVarIndexKind, FnSig, GenericArg, GenericArgKind, GenericArgsRef,
-    GenericParamDefKind, IntTy, Region, RegionKind, TraitRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt, TypeVisitor, UintTy, Upcast, VariantDef, VariantDiscr,
+    self, AdtDef, AliasTy, AssocItem, AssocTag, Binder, BoundRegion, BoundVarIndexKind, FnSig, GenericArg,
+    GenericArgKind, GenericArgsRef, GenericParamDefKind, IntTy, Region, RegionKind, TraitRef, Ty, TyCtxt,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, UintTy, Upcast, VariantDef, VariantDiscr,
 };
 use rustc_span::symbol::Ident;
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};

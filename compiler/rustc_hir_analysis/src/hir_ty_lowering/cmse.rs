@@ -1,9 +1,9 @@
-use rustc_abi::ExternAbi;
+use rustc_abi::{BackendRepr, ExternAbi, Float, Integer, Primitive, Scalar};
 use rustc_errors::{DiagCtxtHandle, E0781, struct_span_code_err};
 use rustc_hir::{self as hir, HirId};
 use rustc_middle::bug;
-use rustc_middle::ty::layout::LayoutError;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::layout::{LayoutError, TyAndLayout};
+use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 
 use crate::errors;
 
@@ -164,44 +164,48 @@ fn is_valid_cmse_output<'tcx>(
 ) -> Result<bool, &'tcx LayoutError<'tcx>> {
     // this type is only used for layout computation, which does not rely on regions
     let fn_sig = tcx.instantiate_bound_regions_with_erased(fn_sig);
+    let fn_sig = tcx.erase_and_anonymize_regions(fn_sig);
+    let return_type = fn_sig.output();
+
+    // `impl Trait` is already disallowed with `cmse-nonsecure-call`, because that ABI is only
+    // allowed on function pointers, and function pointers cannot contain `impl Trait` in their
+    // signature.
+    //
+    // Here we explicitly disallow `impl Trait` in the `cmse-nonsecure-entry` return type too, to
+    // prevent query cycles when calculating the layout. This ABI is meant to be used with
+    // `#[no_mangle]` or similar, so generics in the type really don't make sense.
+    //
+    // see also https://github.com/rust-lang/rust/issues/147242.
+    if return_type.has_opaque_types() {
+        return Err(tcx.arena.alloc(LayoutError::TooGeneric(return_type)));
+    }
 
     let typing_env = ty::TypingEnv::fully_monomorphized();
+    let layout = tcx.layout_of(typing_env.as_query_input(return_type))?;
 
-    let mut ret_ty = fn_sig.output();
-    let layout = tcx.layout_of(typing_env.as_query_input(ret_ty))?;
+    Ok(is_valid_cmse_output_layout(layout))
+}
+
+/// Returns whether the output will fit into the available registers
+fn is_valid_cmse_output_layout<'tcx>(layout: TyAndLayout<'tcx>) -> bool {
     let size = layout.layout.size().bytes();
 
     if size <= 4 {
-        return Ok(true);
+        return true;
     } else if size > 8 {
-        return Ok(false);
+        return false;
     }
 
-    // next we need to peel any repr(transparent) layers off
-    'outer: loop {
-        let ty::Adt(adt_def, args) = ret_ty.kind() else {
-            break;
-        };
+    // Accept scalar 64-bit types.
+    let BackendRepr::Scalar(scalar) = layout.layout.backend_repr else {
+        return false;
+    };
 
-        if !adt_def.repr().transparent() {
-            break;
-        }
+    let Scalar::Initialized { value, .. } = scalar else {
+        return false;
+    };
 
-        // the first field with non-trivial size and alignment must be the data
-        for variant_def in adt_def.variants() {
-            for field_def in variant_def.fields.iter() {
-                let ty = field_def.ty(tcx, args);
-                let layout = tcx.layout_of(typing_env.as_query_input(ty))?;
-
-                if !layout.layout.is_1zst() {
-                    ret_ty = ty;
-                    continue 'outer;
-                }
-            }
-        }
-    }
-
-    Ok(ret_ty == tcx.types.i64 || ret_ty == tcx.types.u64 || ret_ty == tcx.types.f64)
+    matches!(value, Primitive::Int(Integer::I64, _) | Primitive::Float(Float::F64))
 }
 
 fn should_emit_generic_error<'tcx>(abi: ExternAbi, layout_err: &'tcx LayoutError<'tcx>) -> bool {

@@ -13,10 +13,6 @@ passes_abi_ne =
 passes_abi_of =
     fn_abi_of({$fn_name}) = {$fn_abi}
 
-passes_macro_only_attribute =
-    attribute should be applied to a macro
-    .label = not a macro
-
 passes_attr_application_enum =
     attribute should be applied to an enum
     .label = not an enum
@@ -391,6 +387,10 @@ passes_loop_match_attr =
 passes_macro_export_on_decl_macro =
     `#[macro_export]` has no effect on declarative macro definitions
     .note = declarative macros follow the same exporting rules as regular items
+
+passes_macro_only_attribute =
+    attribute should be applied to a macro
+    .label = not a macro
 
 passes_may_dangle =
     `#[may_dangle]` must be applied to a lifetime or type generic parameter in `Drop` impl

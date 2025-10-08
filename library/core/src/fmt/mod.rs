@@ -115,6 +115,7 @@ pub struct Error;
 /// [`std::io::Write`]: ../../std/io/trait.Write.html
 /// [flushable]: ../../std/io/trait.Write.html#tymethod.flush
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_diagnostic_item = "FmtWrite"]
 pub trait Write {
     /// Writes a string slice into this writer, returning whether the write
     /// succeeded.

@@ -263,6 +263,19 @@ fn process_builtin_attrs(
                 AttributeKind::Used { used_by, .. } => match used_by {
                     UsedBy::Compiler => codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED_COMPILER,
                     UsedBy::Linker => codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED_LINKER,
+                    UsedBy::Default => {
+                        let used_form = if tcx.sess.target.os == "illumos" {
+                            // illumos' `ld` doesn't support a section header that would represent
+                            // `#[used(linker)]`, see
+                            // https://github.com/rust-lang/rust/issues/146169. For that target,
+                            // downgrade as if `#[used(compiler)]` was requested and hope for the
+                            // best.
+                            CodegenFnAttrFlags::USED_COMPILER
+                        } else {
+                            CodegenFnAttrFlags::USED_LINKER
+                        };
+                        codegen_fn_attrs.flags |= used_form;
+                    }
                 },
                 AttributeKind::FfiConst(_) => {
                     codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_CONST

@@ -8,7 +8,7 @@
 use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::fmt::{self, Display, Write};
-use std::iter;
+use std::{cmp, iter};
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_lexer::{Cursor, FrontmatterAllowed, LiteralKind, TokenKind};
@@ -345,33 +345,26 @@ fn end_expansion<'a, W: Write>(
         token_handler.pending_elems.push((Cow::Borrowed("</span>"), Some(Class::Expansion)));
         return Some(expanded_code);
     }
-    if expansion_start_tags.is_empty() && token_handler.closing_tags.is_empty() {
-        // No need tag opened so we can just close expansion.
-        token_handler.pending_elems.push((Cow::Borrowed("</span></span>"), Some(Class::Expansion)));
-        return None;
+
+    let skip = iter::zip(token_handler.closing_tags.as_slice(), expansion_start_tags)
+        .position(|(tag, start_tag)| tag != start_tag)
+        .unwrap_or_else(|| cmp::min(token_handler.closing_tags.len(), expansion_start_tags.len()));
+
+    let tags = iter::chain(
+        expansion_start_tags.iter().skip(skip),
+        token_handler.closing_tags.iter().skip(skip),
+    );
+
+    let mut elem = Cow::Borrowed("</span></span>");
+
+    for (tag, _) in tags.clone() {
+        elem.to_mut().push_str(tag);
+    }
+    for (_, class) in tags {
+        write!(elem.to_mut(), "<span class=\"{}\">", class.as_html()).unwrap();
     }
 
-    // If tags were opened inside the expansion, we need to close them and re-open them outside
-    // of the expansion span.
-    let mut out = String::new();
-    let mut end = String::new();
-
-    let mut closing_tags = token_handler.closing_tags.iter().peekable();
-    let mut start_closing_tags = expansion_start_tags.iter().peekable();
-
-    while let (Some(tag), Some(start_tag)) = (closing_tags.peek(), start_closing_tags.peek())
-        && tag == start_tag
-    {
-        closing_tags.next();
-        start_closing_tags.next();
-    }
-    for (tag, class) in start_closing_tags.chain(closing_tags) {
-        out.push_str(tag);
-        end.push_str(&format!("<span class=\"{}\">", class.as_html()));
-    }
-    token_handler
-        .pending_elems
-        .push((Cow::Owned(format!("</span></span>{out}{end}")), Some(Class::Expansion)));
+    token_handler.pending_elems.push((elem, Some(Class::Expansion)));
     None
 }
 

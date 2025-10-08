@@ -99,7 +99,7 @@ cfg_select! {
         #[cfg(not(target_feature = "atomics"))]
         pub use unsupported::{Thread, available_parallelism};
     }
-    all(target_os = "wasi", target_env = "p2") => {
+    all(target_os = "wasi", any(target_env = "p2", target_env = "p3")) => {
         mod wasip2;
         pub use wasip2::{sleep, sleep_until};
         #[expect(dead_code)]
@@ -146,7 +146,7 @@ cfg_select! {
     target_os = "hurd",
     target_os = "fuchsia",
     target_os = "vxworks",
-    all(target_os = "wasi", target_env = "p2"),
+    all(target_os = "wasi", not(target_env = "p1")),
 )))]
 pub fn sleep_until(deadline: crate::time::Instant) {
     use crate::time::Instant;
