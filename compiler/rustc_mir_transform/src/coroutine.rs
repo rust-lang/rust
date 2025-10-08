@@ -546,8 +546,15 @@ fn make_coroutine_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body
     let source_info = SourceInfo::outermost(body.span);
     let pin_field = tcx.mk_place_field(SELF_ARG.into(), FieldIdx::ZERO, ref_coroutine_ty);
 
-    body.basic_blocks_mut()[START_BLOCK].statements.insert(
-        0,
+    let statements = &mut body.basic_blocks.as_mut_preserves_cfg()[START_BLOCK].statements;
+    // Miri requires retags to be the very first thing in the body.
+    // We insert this assignment just after.
+    let insert_point = statements
+        .iter()
+        .position(|stmt| !matches!(stmt.kind, StatementKind::Retag(..)))
+        .unwrap_or(statements.len());
+    statements.insert(
+        insert_point,
         Statement::new(
             source_info,
             StatementKind::Assign(Box::new((
