@@ -203,7 +203,7 @@ impl IntrinsicTypeDefinition for X86IntrinsicType {
                     let cast_type = self.c_promotion();
                     let lane_fn = self.get_lane_function();
                     if cast_type.len() > 2 {
-                        format!("({cast_type})({lane_fn}(__return_value, {idx}))")
+                        format!("cast<{cast_type}>({lane_fn}(__return_value, {idx}))")
                     } else {
                         format!("{lane_fn}(__return_value, {idx})")
                     }
@@ -227,7 +227,7 @@ impl IntrinsicTypeDefinition for X86IntrinsicType {
                     ),
                     _ => self.c_scalar_type(),
                 },
-                promote = self.c_promotion(),
+                promote = self.generate_final_type_cast(),
             )
         };
 
