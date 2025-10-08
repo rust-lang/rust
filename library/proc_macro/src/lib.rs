@@ -1017,7 +1017,7 @@ impl PartialEq<Punct> for char {
 }
 
 /// An identifier (`ident`).
-#[derive(Clone)]
+#[derive(Clone, Hash)]
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 pub struct Ident(bridge::Ident<bridge::client::Span, bridge::client::Symbol>);
 
@@ -1082,10 +1082,7 @@ impl Ident {
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl fmt::Display for Ident {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.0.is_raw {
-            f.write_str("r#")?;
-        }
-        fmt::Display::fmt(&self.0.sym, f)
+        self.0.fmt(f)
     }
 }
 
@@ -1096,6 +1093,13 @@ impl fmt::Debug for Ident {
             .field("ident", &self.to_string())
             .field("span", &self.span())
             .finish()
+    }
+}
+
+#[stable(feature = "proc_macro_ident_impls", since = "CURRENT_RUSTC_VERSION")]
+impl<T: AsRef<str> + ?Sized> PartialEq<T> for Ident {
+    fn eq(&self, other: &T) -> bool {
+        self.0 == other
     }
 }
 
