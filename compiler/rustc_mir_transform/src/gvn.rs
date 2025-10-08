@@ -1852,6 +1852,13 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, '_, 'tcx> {
         self.tcx
     }
 
+    fn visit_basic_block_data(&mut self, block: BasicBlock, bbdata: &mut BasicBlockData<'tcx>) {
+        // We do not track which block we would execute between the last and this one.
+        // In doubt, consider one of them may contain an indirect assignment and invalidate derefs.
+        self.invalidate_derefs();
+        self.super_basic_block_data(block, bbdata);
+    }
+
     fn visit_place(&mut self, place: &mut Place<'tcx>, context: PlaceContext, location: Location) {
         self.simplify_place_projection(place, location);
         if context.is_mutating_use() && place.is_indirect() {
