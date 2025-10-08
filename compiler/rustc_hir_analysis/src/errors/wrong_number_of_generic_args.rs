@@ -386,9 +386,12 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             })
             | hir::Node::AnonConst(..) = node
             {
-                return std::iter::repeat_n("'static".to_owned(), num_params_to_take.saturating_sub(ret.len()))
-                    .collect::<Vec<_>>()
-                    .join(", ");
+                return std::iter::repeat_n(
+                    "'static".to_owned(),
+                    num_params_to_take.saturating_sub(ret.len()),
+                )
+                .collect::<Vec<_>>()
+                .join(", ");
             }
 
             let params = if let Some(generics) = node.generics() {
