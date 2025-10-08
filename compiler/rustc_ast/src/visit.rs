@@ -368,6 +368,7 @@ macro_rules! common_visitor_and_walkers {
             crate::tokenstream::TokenStream,
             Movability,
             Mutability,
+            Pinnedness,
             Result<(), rustc_span::ErrorGuaranteed>,
             rustc_data_structures::fx::FxHashMap<Symbol, usize>,
             rustc_span::ErrorGuaranteed,
