@@ -7,7 +7,7 @@ use stdx::never;
 use triomphe::Arc;
 
 use crate::{
-    TraitEnvironment, consteval_nextsolver,
+    TraitEnvironment, consteval,
     db::HirDatabase,
     method_resolution::TyFingerprint,
     next_solver::{
@@ -128,7 +128,7 @@ fn has_drop_glue_impl<'db>(
             .max()
             .unwrap_or(DropGlue::None),
         TyKind::Array(ty, len) => {
-            if consteval_nextsolver::try_const_usize(db, len) == Some(0) {
+            if consteval::try_const_usize(db, len) == Some(0) {
                 // Arrays of size 0 don't have drop glue.
                 return DropGlue::None;
             }

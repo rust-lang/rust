@@ -1,14 +1,8 @@
-use hir_def::db::DefDatabase;
-use rustc_hash::FxHashMap;
-use span::Edition;
 use test_fixture::WithFixture;
-use triomphe::Arc;
 
-use crate::{db::HirDatabase, mir::MirBody, setup_tracing, test_db::TestDB};
+use crate::{db::HirDatabase, setup_tracing, test_db::TestDB};
 
-fn lower_mir(
-    #[rust_analyzer::rust_fixture] ra_fixture: &str,
-) -> FxHashMap<String, Result<Arc<MirBody>, ()>> {
+fn lower_mir(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
     let _tracing = setup_tracing();
     let (db, file_ids) = TestDB::with_many_files(ra_fixture);
     crate::attach_db(&db, || {
@@ -20,14 +14,9 @@ fn lower_mir(
             hir_def::ModuleDefId::FunctionId(it) => Some(it),
             _ => None,
         });
-        funcs
-            .map(|func| {
-                let name =
-                    db.function_signature(func).name.display(&db, Edition::CURRENT).to_string();
-                let mir = db.mir_body(func.into());
-                (name, mir.map_err(drop))
-            })
-            .collect()
+        for func in funcs {
+            _ = db.mir_body(func.into());
+        }
     })
 }
 

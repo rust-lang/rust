@@ -1,8 +1,8 @@
 //! Definition of `SolverDefId`
 
 use hir_def::{
-    AdtId, CallableDefId, ConstId, EnumId, EnumVariantId, FunctionId, GenericDefId, ImplId,
-    StaticId, StructId, TraitId, TypeAliasId, UnionId,
+    AdtId, CallableDefId, ConstId, EnumId, EnumVariantId, FunctionId, GeneralConstId, GenericDefId,
+    ImplId, StaticId, StructId, TraitId, TypeAliasId, UnionId,
 };
 use rustc_type_ir::inherent;
 use stdx::impl_from;
@@ -115,6 +115,16 @@ impl From<GenericDefId> for SolverDefId {
             GenericDefId::StaticId(static_id) => SolverDefId::StaticId(static_id),
             GenericDefId::TraitId(trait_id) => SolverDefId::TraitId(trait_id),
             GenericDefId::TypeAliasId(type_alias_id) => SolverDefId::TypeAliasId(type_alias_id),
+        }
+    }
+}
+
+impl From<GeneralConstId> for SolverDefId {
+    #[inline]
+    fn from(value: GeneralConstId) -> Self {
+        match value {
+            GeneralConstId::ConstId(const_id) => SolverDefId::ConstId(const_id),
+            GeneralConstId::StaticId(static_id) => SolverDefId::StaticId(static_id),
         }
     }
 }

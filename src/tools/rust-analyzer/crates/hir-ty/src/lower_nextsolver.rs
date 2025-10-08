@@ -62,7 +62,7 @@ use crate::next_solver::ParamConst;
 use crate::{
     FnAbi, ImplTraitId, Interner, ParamKind, TraitEnvironment, TyDefId, TyLoweringDiagnostic,
     TyLoweringDiagnosticKind,
-    consteval_nextsolver::{intern_const_ref, path_to_const, unknown_const_as_generic},
+    consteval::{intern_const_ref, path_to_const, unknown_const_as_generic},
     db::HirDatabase,
     generics::{Generics, generics, trait_self_param_idx},
     lower::{Diagnostics, PathDiagnosticCallbackData, create_diagnostics},

@@ -28,7 +28,7 @@ use crate::{
     Adjust, Adjustment, AutoBorrow, CallableDefId, DeclContext, DeclOrigin,
     IncorrectGenericsLenKind, Rawness, TraitEnvironment,
     autoderef::overloaded_deref_ty,
-    consteval_nextsolver,
+    consteval,
     generics::generics,
     infer::{
         AllowTwoPhase, BreakableKind,
@@ -896,7 +896,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 Literal::ByteString(bs) => {
                     let byte_type = self.types.u8;
 
-                    let len = consteval_nextsolver::usize_const(
+                    let len = consteval::usize_const(
                         self.db,
                         Some(bs.len() as u128),
                         self.resolver.krate(),
@@ -1221,7 +1221,7 @@ impl<'db> InferenceContext<'_, 'db> {
         let expected = Expectation::has_type(elem_ty);
         let (elem_ty, len) = match array {
             Array::ElementList { elements, .. } if elements.is_empty() => {
-                (elem_ty, consteval_nextsolver::usize_const(self.db, Some(0), krate))
+                (elem_ty, consteval::usize_const(self.db, Some(0), krate))
             }
             Array::ElementList { elements, .. } => {
                 let mut coerce = CoerceMany::with_coercion_sites(elem_ty, elements);
@@ -1231,7 +1231,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 }
                 (
                     coerce.complete(self),
-                    consteval_nextsolver::usize_const(self.db, Some(elements.len() as u128), krate),
+                    consteval::usize_const(self.db, Some(elements.len() as u128), krate),
                 )
             }
             &Array::Repeat { initializer, repeat } => {
@@ -1248,7 +1248,7 @@ impl<'db> InferenceContext<'_, 'db> {
                     _ => _ = self.infer_expr(repeat, &Expectation::HasType(usize), ExprIsRead::Yes),
                 }
 
-                (elem_ty, consteval_nextsolver::eval_to_const(repeat, self))
+                (elem_ty, consteval::eval_to_const(repeat, self))
             }
         };
         // Try to evaluate unevaluated constant, and insert variable if is not possible.

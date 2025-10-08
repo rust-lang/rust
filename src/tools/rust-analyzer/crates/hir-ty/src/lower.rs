@@ -49,7 +49,7 @@ use crate::{
     ImplTrait, ImplTraitId, ImplTraits, Interner, Lifetime, LifetimeData, LifetimeOutlives,
     QuantifiedWhereClause, QuantifiedWhereClauses, Substitution, TraitRef, TraitRefExt, Ty,
     TyBuilder, TyKind, WhereClause, all_super_traits,
-    consteval::{intern_const_ref, path_to_const, unknown_const, unknown_const_as_generic},
+    consteval_chalk::{intern_const_ref, path_to_const, unknown_const, unknown_const_as_generic},
     db::HirDatabase,
     error_lifetime,
     generics::{Generics, generics, trait_self_param_idx},

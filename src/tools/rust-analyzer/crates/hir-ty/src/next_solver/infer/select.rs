@@ -1,6 +1,7 @@
 use std::ops::ControlFlow;
 
 use hir_def::{ImplId, TraitId};
+use macros::{TypeFoldable, TypeVisitable};
 use rustc_type_ir::{
     Interner,
     solve::{BuiltinImplSource, CandidateSource, Certainty, inspect::ProbeKind},
@@ -177,7 +178,7 @@ pub type SelectionResult<'db, T> = Result<Option<T>, SelectionError<'db>>;
 /// ### The type parameter `N`
 ///
 /// See explanation on `ImplSourceUserDefinedData`.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, TypeVisitable, TypeFoldable)]
 pub enum ImplSource<'db, N> {
     /// ImplSource identifying a particular impl.
     UserDefined(ImplSourceUserDefinedData<'db, N>),
@@ -242,8 +243,10 @@ impl<'db, N> ImplSource<'db, N> {
 /// is `Obligation`, as one might expect. During codegen, however, this
 /// is `()`, because codegen only requires a shallow resolution of an
 /// impl, and nested obligations are satisfied later.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, TypeVisitable, TypeFoldable)]
 pub struct ImplSourceUserDefinedData<'db, N> {
+    #[type_visitable(ignore)]
+    #[type_foldable(identity)]
     pub impl_def_id: ImplId,
     pub args: GenericArgs<'db>,
     pub nested: Vec<N>,

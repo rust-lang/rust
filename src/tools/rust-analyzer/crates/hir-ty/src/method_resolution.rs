@@ -4,13 +4,12 @@
 //! and the corresponding code mostly in rustc_hir_analysis/check/method/probe.rs.
 use std::ops::ControlFlow;
 
-use arrayvec::ArrayVec;
 use base_db::Crate;
 use chalk_ir::{UniverseIndex, WithKind, cast::Cast};
 use hir_def::{
     AdtId, AssocItemId, BlockId, ConstId, FunctionId, HasModule, ImplId, ItemContainerId, Lookup,
     ModuleId, TraitId, TypeAliasId,
-    nameres::{DefMap, assoc::ImplItems, block_def_map, crate_def_map},
+    nameres::{DefMap, block_def_map, crate_def_map},
     signatures::{ConstFlags, EnumFlags, FnFlags, StructFlags, TraitFlags, TypeAliasFlags},
 };
 use hir_expand::name::Name;
@@ -18,7 +17,7 @@ use intern::sym;
 use rustc_ast_ir::Mutability;
 use rustc_hash::{FxHashMap, FxHashSet};
 use rustc_type_ir::{
-    FloatTy, IntTy, UintTy,
+    FloatTy, IntTy, TypeVisitableExt, UintTy,
     inherent::{
         AdtDef, BoundExistentialPredicates, GenericArgs as _, IntoKind, SliceLike, Ty as _,
     },
@@ -27,6 +26,8 @@ use smallvec::{SmallVec, smallvec};
 use stdx::never;
 use triomphe::Arc;
 
+use crate::next_solver::infer::InferCtxt;
+use crate::next_solver::infer::select::ImplSource;
 use crate::{
     CanonicalVarKinds, DebruijnIndex, GenericArgData, InEnvironment, Interner, TraitEnvironment,
     TyBuilder, VariableKind,
@@ -36,10 +37,10 @@ use crate::{
     lang_items::is_box,
     next_solver::{
         Canonical, DbInterner, ErrorGuaranteed, GenericArgs, Goal, Predicate, Region, SolverDefId,
-        TraitRef, Ty, TyKind,
+        TraitRef, Ty, TyKind, TypingMode,
         infer::{
-            DefineOpaqueTypes,
-            traits::{ObligationCause, PredicateObligation},
+            DbInternerInferExt, DefineOpaqueTypes,
+            traits::{Obligation, ObligationCause, PredicateObligation},
         },
         mapping::NextSolverToChalk,
         obligation_ctxt::ObligationCtxt,
@@ -689,11 +690,12 @@ pub(crate) fn iterate_method_candidates<'db, T>(
 }
 
 pub fn lookup_impl_const<'db>(
-    interner: DbInterner<'db>,
+    infcx: &InferCtxt<'db>,
     env: Arc<TraitEnvironment<'db>>,
     const_id: ConstId,
     subs: GenericArgs<'db>,
 ) -> (ConstId, GenericArgs<'db>) {
+    let interner = infcx.interner;
     let db = interner.db;
 
     let trait_id = match const_id.lookup(db).container {
@@ -708,7 +710,7 @@ pub fn lookup_impl_const<'db>(
         None => return (const_id, subs),
     };
 
-    lookup_impl_assoc_item_for_trait_ref(trait_ref, db, env, name)
+    lookup_impl_assoc_item_for_trait_ref(infcx, trait_ref, env, name)
         .and_then(
             |assoc| if let (AssocItemId::ConstId(id), s) = assoc { Some((id, s)) } else { None },
         )
@@ -759,6 +761,7 @@ pub(crate) fn lookup_impl_method_query<'db>(
     fn_subst: GenericArgs<'db>,
 ) -> (FunctionId, GenericArgs<'db>) {
     let interner = DbInterner::new_with(db, Some(env.krate), env.block);
+    let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
 
     let ItemContainerId::TraitId(trait_id) = func.lookup(db).container else {
         return (func, fn_subst);
@@ -772,7 +775,7 @@ pub(crate) fn lookup_impl_method_query<'db>(
 
     let name = &db.function_signature(func).name;
     let Some((impl_fn, impl_subst)) =
-        lookup_impl_assoc_item_for_trait_ref(trait_ref, db, env, name).and_then(|assoc| {
+        lookup_impl_assoc_item_for_trait_ref(&infcx, trait_ref, env, name).and_then(|assoc| {
             if let (AssocItemId::FunctionId(id), subst) = assoc { Some((id, subst)) } else { None }
         })
     else {
@@ -789,78 +792,53 @@ pub(crate) fn lookup_impl_method_query<'db>(
 }
 
 fn lookup_impl_assoc_item_for_trait_ref<'db>(
+    infcx: &InferCtxt<'db>,
     trait_ref: TraitRef<'db>,
-    db: &'db dyn HirDatabase,
     env: Arc<TraitEnvironment<'db>>,
     name: &Name,
 ) -> Option<(AssocItemId, GenericArgs<'db>)> {
-    let hir_trait_id = trait_ref.def_id.0;
-    let self_ty = trait_ref.self_ty();
-    let self_ty_fp = TyFingerprint::for_trait_impl(self_ty)?;
-    let impls = db.trait_impls_in_deps(env.krate);
-
-    let trait_module = hir_trait_id.module(db);
-    let type_module = match self_ty_fp {
-        TyFingerprint::Adt(adt_id) => Some(adt_id.module(db)),
-        TyFingerprint::ForeignType(type_id) => Some(type_id.module(db)),
-        TyFingerprint::Dyn(trait_id) => Some(trait_id.module(db)),
-        _ => None,
-    };
-
-    let def_blocks: ArrayVec<_, 2> =
-        [trait_module.containing_block(), type_module.and_then(|it| it.containing_block())]
-            .into_iter()
-            .flatten()
-            .filter_map(|block_id| db.trait_impls_in_block(block_id))
-            .collect();
-
-    let impls = impls
-        .iter()
-        .chain(&def_blocks)
-        .flat_map(|impls| impls.for_trait_and_self_ty(hir_trait_id, self_ty_fp));
-
-    let table = InferenceTable::new(db, env);
-
-    let (impl_data, impl_subst) = find_matching_impl(impls, table, trait_ref)?;
-    let item = impl_data.items.iter().find_map(|(n, it)| match *it {
-        AssocItemId::FunctionId(f) => (n == name).then_some(AssocItemId::FunctionId(f)),
-        AssocItemId::ConstId(c) => (n == name).then_some(AssocItemId::ConstId(c)),
-        AssocItemId::TypeAliasId(_) => None,
-    })?;
+    let (impl_id, impl_subst) = find_matching_impl(infcx, &env, trait_ref)?;
+    let item =
+        impl_id.impl_items(infcx.interner.db).items.iter().find_map(|(n, it)| match *it {
+            AssocItemId::FunctionId(f) => (n == name).then_some(AssocItemId::FunctionId(f)),
+            AssocItemId::ConstId(c) => (n == name).then_some(AssocItemId::ConstId(c)),
+            AssocItemId::TypeAliasId(_) => None,
+        })?;
     Some((item, impl_subst))
 }
 
-fn find_matching_impl<'db>(
-    mut impls: impl Iterator<Item = ImplId>,
-    mut table: InferenceTable<'db>,
-    actual_trait_ref: TraitRef<'db>,
-) -> Option<(&'db ImplItems, GenericArgs<'db>)> {
-    let db = table.db;
-    impls.find_map(|impl_| {
-        table.run_in_snapshot(|table| {
-            let impl_substs = table.fresh_args_for_item(impl_.into());
-            let trait_ref = db
-                .impl_trait(impl_)
-                .expect("non-trait method in find_matching_impl")
-                .instantiate(table.interner(), impl_substs);
+pub(crate) fn find_matching_impl<'db>(
+    infcx: &InferCtxt<'db>,
+    env: &TraitEnvironment<'db>,
+    trait_ref: TraitRef<'db>,
+) -> Option<(ImplId, GenericArgs<'db>)> {
+    let trait_ref =
+        infcx.at(&ObligationCause::dummy(), env.env).deeply_normalize(trait_ref).ok()?;
 
-            if !table.unify(trait_ref, actual_trait_ref) {
-                return None;
-            }
+    let obligation = Obligation::new(infcx.interner, ObligationCause::dummy(), env.env, trait_ref);
 
-            if let Some(predicates) =
-                db.generic_predicates_ns(impl_.into()).instantiate(table.interner(), impl_substs)
-            {
-                for predicate in predicates {
-                    if table.try_obligation(predicate.0).no_solution() {
-                        return None;
-                    }
-                    table.register_obligation(predicate.0);
-                }
-            }
-            Some((impl_.impl_items(db), table.resolve_completely(impl_substs)))
-        })
-    })
+    let selection = infcx.select(&obligation).ok()??;
+
+    // Currently, we use a fulfillment context to completely resolve
+    // all nested obligations. This is because they can inform the
+    // inference of the impl's type parameters.
+    let mut ocx = ObligationCtxt::new(infcx);
+    let impl_source = selection.map(|obligation| ocx.register_obligation(obligation));
+
+    let errors = ocx.select_all_or_error();
+    if !errors.is_empty() {
+        return None;
+    }
+
+    let impl_source = infcx.resolve_vars_if_possible(impl_source);
+    if impl_source.has_non_region_infer() {
+        return None;
+    }
+
+    match impl_source {
+        ImplSource::UserDefined(impl_source) => Some((impl_source.impl_def_id, impl_source.args)),
+        ImplSource::Param(_) | ImplSource::Builtin(..) => None,
+    }
 }
 
 fn is_inherent_impl_coherent<'db>(

@@ -20,11 +20,10 @@ use hir_expand::name::Name;
 use intern::sym;
 use rustc_abi::TargetDataLayout;
 use rustc_hash::FxHashSet;
-use rustc_type_ir::inherent::{GenericArgs, IntoKind, SliceLike};
+use rustc_type_ir::inherent::{IntoKind, SliceLike};
 use smallvec::{SmallVec, smallvec};
 use span::Edition;
 
-use crate::next_solver::mapping::NextSolverToChalk;
 use crate::{
     ChalkTraitId, Const, ConstScalar, Interner, Substitution, TargetFeatures, TraitRef,
     TraitRefExt, Ty,
@@ -34,7 +33,7 @@ use crate::{
     mir::pad16,
     next_solver::{
         DbInterner,
-        mapping::{ChalkToNextSolver, convert_args_for_result},
+        mapping::{ChalkToNextSolver, NextSolverToChalk, convert_args_for_result},
     },
     to_chalk_trait_id,
 };
@@ -196,15 +195,6 @@ pub(super) fn associated_type_by_name_including_super_traits(
 pub(crate) struct ClosureSubst<'a>(pub(crate) &'a Substitution);
 
 impl<'a> ClosureSubst<'a> {
-    pub(crate) fn parent_subst(&self, db: &dyn HirDatabase) -> Substitution {
-        let interner = DbInterner::new_with(db, None, None);
-        let subst =
-            <Substitution as ChalkToNextSolver<crate::next_solver::GenericArgs<'_>>>::to_nextsolver(
-                self.0, interner,
-            );
-        subst.split_closure_args().parent_args.to_chalk(interner)
-    }
-
     pub(crate) fn sig_ty(&self, db: &dyn HirDatabase) -> Ty {
         let interner = DbInterner::new_with(db, None, None);
         let subst =
@@ -310,10 +300,12 @@ impl FallibleTypeFolder<Interner> for UnevaluatedConstEvaluatorFolder<'_> {
         if let chalk_ir::ConstValue::Concrete(c) = &constant.data(Interner).value
             && let ConstScalar::UnevaluatedConst(id, subst) = &c.interned
         {
-            if let Ok(eval) = self.db.const_eval(*id, subst.clone(), None) {
-                return Ok(eval);
+            let interner = DbInterner::conjure();
+            if let Ok(eval) = self.db.const_eval(*id, subst.to_nextsolver(interner), None) {
+                return Ok(eval.to_chalk(interner));
             } else {
-                return Ok(unknown_const(constant.data(Interner).ty.clone()));
+                return Ok(unknown_const(constant.data(Interner).ty.to_nextsolver(interner))
+                    .to_chalk(interner));
             }
         }
         Ok(constant)

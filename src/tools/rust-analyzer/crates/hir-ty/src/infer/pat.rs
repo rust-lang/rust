@@ -14,7 +14,7 @@ use stdx::TupleExt;
 
 use crate::{
     DeclContext, DeclOrigin, InferenceDiagnostic,
-    consteval_nextsolver::{self, try_const_usize, usize_const},
+    consteval::{self, try_const_usize, usize_const},
     infer::{
         AllowTwoPhase, BindingMode, Expectation, InferenceContext, TypeMismatch,
         coerce::CoerceNever, expr::ExprIsRead,
@@ -591,11 +591,7 @@ impl<'db> InferenceContext<'_, 'db> {
         }
 
         let len = before.len() + suffix.len();
-        let size = consteval_nextsolver::usize_const(
-            self.db,
-            Some(len as u128),
-            self.owner.krate(self.db),
-        );
+        let size = consteval::usize_const(self.db, Some(len as u128), self.owner.krate(self.db));
 
         let elem_ty = self.table.next_ty_var();
         let array_ty = Ty::new_array_with_const_len(self.interner(), elem_ty, size);

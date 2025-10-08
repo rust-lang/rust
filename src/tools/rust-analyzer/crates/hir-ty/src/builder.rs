@@ -130,11 +130,14 @@ impl<D> TyBuilder<D> {
     }
 
     pub fn fill_with_unknown(self) -> Self {
+        let interner = DbInterner::conjure();
         // self.fill is inlined to make borrow checker happy
         let mut this = self;
         let filler = this.param_kinds[this.vec.len()..].iter().map(|x| match x {
             ParamKind::Type => TyKind::Error.intern(Interner).cast(Interner),
-            ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
+            ParamKind::Const(ty) => {
+                unknown_const_as_generic(ty.to_nextsolver(interner)).to_chalk(interner)
+            }
             ParamKind::Lifetime => error_lifetime().cast(Interner),
         });
         this.vec.extend(filler.casted(Interner));
@@ -219,13 +222,16 @@ impl TyBuilder<()> {
     }
 
     pub fn unknown_subst(db: &dyn HirDatabase, def: impl Into<GenericDefId>) -> Substitution {
+        let interner = DbInterner::conjure();
         let params = generics(db, def.into());
         Substitution::from_iter(
             Interner,
             params.iter_id().map(|id| match id {
                 GenericParamId::TypeParamId(_) => TyKind::Error.intern(Interner).cast(Interner),
                 GenericParamId::ConstParamId(id) => {
-                    unknown_const_as_generic(db.const_param_ty(id)).cast(Interner)
+                    unknown_const_as_generic(db.const_param_ty_ns(id))
+                        .to_chalk(interner)
+                        .cast(Interner)
                 }
                 GenericParamId::LifetimeParamId(_) => error_lifetime().cast(Interner),
             }),
@@ -267,6 +273,7 @@ impl TyBuilder<hir_def::AdtId> {
         db: &dyn HirDatabase,
         mut fallback: impl FnMut() -> Ty,
     ) -> Self {
+        let interner = DbInterner::conjure();
         // Note that we're building ADT, so we never have parent generic parameters.
         let defaults = db.generic_defaults(self.data.into());
 
@@ -287,7 +294,9 @@ impl TyBuilder<hir_def::AdtId> {
         // The defaults may be missing if no param has default, so fill that.
         let filler = self.param_kinds[self.vec.len()..].iter().map(|x| match x {
             ParamKind::Type => fallback().cast(Interner),
-            ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
+            ParamKind::Const(ty) => {
+                unknown_const_as_generic(ty.to_nextsolver(interner)).to_chalk(interner)
+            }
             ParamKind::Lifetime => error_lifetime().cast(Interner),
         });
         self.vec.extend(filler.casted(Interner));

@@ -1,17 +1,23 @@
 use base_db::RootQueryDb;
-use chalk_ir::Substitution;
 use hir_def::db::DefDatabase;
 use hir_expand::EditionedFileId;
 use rustc_apfloat::{
     Float,
     ieee::{Half as f16, Quad as f128},
 };
+use rustc_type_ir::inherent::IntoKind;
 use test_fixture::WithFixture;
 use test_utils::skip_slow_tests;
 
 use crate::{
-    Const, ConstScalar, Interner, MemoryMap, consteval::try_const_usize, db::HirDatabase,
-    display::DisplayTarget, mir::pad16, setup_tracing, test_db::TestDB,
+    MemoryMap,
+    consteval::try_const_usize,
+    db::HirDatabase,
+    display::DisplayTarget,
+    mir::pad16,
+    next_solver::{Const, ConstBytes, ConstKind, DbInterner, GenericArgs},
+    setup_tracing,
+    test_db::TestDB,
 };
 
 use super::{
@@ -88,14 +94,12 @@ fn check_answer(
                 panic!("Error in evaluating goal: {err}");
             }
         };
-        match &r.data(Interner).value {
-            chalk_ir::ConstValue::Concrete(c) => match &c.interned {
-                ConstScalar::Bytes(b, mm) => {
-                    check(b, mm);
-                }
-                x => panic!("Expected number but found {x:?}"),
-            },
-            _ => panic!("result of const eval wasn't a concrete const"),
+        match r.kind() {
+            ConstKind::Value(value) => {
+                let ConstBytes { memory, memory_map } = value.value.inner();
+                check(memory, memory_map);
+            }
+            _ => panic!("Expected number but found {r:?}"),
         }
     });
 }
@@ -117,8 +121,9 @@ fn pretty_print_err(e: ConstEvalError<'_>, db: &TestDB) -> String {
     err
 }
 
-fn eval_goal(db: &TestDB, file_id: EditionedFileId) -> Result<Const, ConstEvalError<'_>> {
+fn eval_goal(db: &TestDB, file_id: EditionedFileId) -> Result<Const<'_>, ConstEvalError<'_>> {
     let _tracing = setup_tracing();
+    let interner = DbInterner::new_with(db, None, None);
     let module_id = db.module_for_file(file_id.file_id(db));
     let def_map = module_id.def_map(db);
     let scope = &def_map[module_id.local_id].scope;
@@ -137,7 +142,7 @@ fn eval_goal(db: &TestDB, file_id: EditionedFileId) -> Result<Const, ConstEvalEr
             _ => None,
         })
         .expect("No const named GOAL found in the test");
-    db.const_eval(const_id.into(), Substitution::empty(Interner), None)
+    db.const_eval(const_id.into(), GenericArgs::new_from_iter(interner, []), None)
 }
 
 #[test]
@@ -2508,7 +2513,7 @@ fn enums() {
     );
     crate::attach_db(&db, || {
         let r = eval_goal(&db, file_id).unwrap();
-        assert_eq!(try_const_usize(&db, &r), Some(1));
+        assert_eq!(try_const_usize(&db, r), Some(1));
     })
 }
 

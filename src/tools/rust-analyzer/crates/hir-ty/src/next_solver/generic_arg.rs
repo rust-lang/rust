@@ -2,6 +2,7 @@
 
 use hir_def::{GenericDefId, GenericParamId};
 use intern::{Interned, Symbol};
+use macros::{TypeFoldable, TypeVisitable};
 use rustc_type_ir::inherent::Const as _;
 use rustc_type_ir::{
     ClosureArgs, CollectAndApply, ConstVid, CoroutineArgs, CoroutineClosureArgs, FnSig, FnSigTys,
@@ -23,7 +24,7 @@ use super::{
     interned_vec_db,
 };
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, TypeVisitable, TypeFoldable)]
 pub enum GenericArg<'db> {
     Ty(Ty<'db>),
     Lifetime(Region<'db>),
@@ -55,6 +56,13 @@ impl<'db> GenericArg<'db> {
         }
     }
 
+    pub fn konst(self) -> Option<Const<'db>> {
+        match self.kind() {
+            GenericArgKind::Const(konst) => Some(konst),
+            _ => None,
+        }
+    }
+
     pub fn region(self) -> Option<Region<'db>> {
         match self.kind() {
             GenericArgKind::Lifetime(r) => Some(r),
@@ -72,7 +80,7 @@ impl<'db> From<Term<'db>> for GenericArg<'db> {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, TypeVisitable, TypeFoldable)]
 pub enum Term<'db> {
     Ty(Ty<'db>),
     Const(Const<'db>),
@@ -126,39 +134,6 @@ impl<'db> IntoKind for GenericArg<'db> {
             GenericArg::Ty(ty) => GenericArgKind::Type(ty),
             GenericArg::Lifetime(region) => GenericArgKind::Lifetime(region),
             GenericArg::Const(c) => GenericArgKind::Const(c),
-        }
-    }
-}
-
-impl<'db> TypeVisitable<DbInterner<'db>> for GenericArg<'db> {
-    fn visit_with<V: rustc_type_ir::TypeVisitor<DbInterner<'db>>>(
-        &self,
-        visitor: &mut V,
-    ) -> V::Result {
-        match self {
-            GenericArg::Lifetime(lt) => lt.visit_with(visitor),
-            GenericArg::Ty(ty) => ty.visit_with(visitor),
-            GenericArg::Const(ct) => ct.visit_with(visitor),
-        }
-    }
-}
-
-impl<'db> TypeFoldable<DbInterner<'db>> for GenericArg<'db> {
-    fn try_fold_with<F: rustc_type_ir::FallibleTypeFolder<DbInterner<'db>>>(
-        self,
-        folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        match self.kind() {
-            GenericArgKind::Lifetime(lt) => lt.try_fold_with(folder).map(Into::into),
-            GenericArgKind::Type(ty) => ty.try_fold_with(folder).map(Into::into),
-            GenericArgKind::Const(ct) => ct.try_fold_with(folder).map(Into::into),
-        }
-    }
-    fn fold_with<F: rustc_type_ir::TypeFolder<DbInterner<'db>>>(self, folder: &mut F) -> Self {
-        match self.kind() {
-            GenericArgKind::Lifetime(lt) => lt.fold_with(folder).into(),
-            GenericArgKind::Type(ty) => ty.fold_with(folder).into(),
-            GenericArgKind::Const(ct) => ct.fold_with(folder).into(),
         }
     }
 }
@@ -550,36 +525,6 @@ impl<'db> From<Ty<'db>> for Term<'db> {
 impl<'db> From<Const<'db>> for Term<'db> {
     fn from(value: Const<'db>) -> Self {
         Self::Const(value)
-    }
-}
-
-impl<'db> TypeVisitable<DbInterner<'db>> for Term<'db> {
-    fn visit_with<V: rustc_type_ir::TypeVisitor<DbInterner<'db>>>(
-        &self,
-        visitor: &mut V,
-    ) -> V::Result {
-        match self {
-            Term::Ty(ty) => ty.visit_with(visitor),
-            Term::Const(ct) => ct.visit_with(visitor),
-        }
-    }
-}
-
-impl<'db> TypeFoldable<DbInterner<'db>> for Term<'db> {
-    fn try_fold_with<F: rustc_type_ir::FallibleTypeFolder<DbInterner<'db>>>(
-        self,
-        folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        match self.kind() {
-            TermKind::Ty(ty) => ty.try_fold_with(folder).map(Into::into),
-            TermKind::Const(ct) => ct.try_fold_with(folder).map(Into::into),
-        }
-    }
-    fn fold_with<F: rustc_type_ir::TypeFolder<DbInterner<'db>>>(self, folder: &mut F) -> Self {
-        match self.kind() {
-            TermKind::Ty(ty) => ty.fold_with(folder).into(),
-            TermKind::Const(ct) => ct.fold_with(folder).into(),
-        }
     }
 }
 
