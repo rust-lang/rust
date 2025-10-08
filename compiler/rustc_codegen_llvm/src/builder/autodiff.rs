@@ -12,7 +12,7 @@ use tracing::debug;
 use crate::builder::{Builder, PlaceRef, UNNAMED};
 use crate::context::SimpleCx;
 use crate::declare::declare_simple_fn;
-use crate::llvm::{self, Metadata, TRUE, Type, Value};
+use crate::llvm::{self, TRUE, Type, Value};
 
 pub(crate) fn adjust_activity_to_abi<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -143,9 +143,9 @@ fn match_args_from_caller_to_enzyme<'ll, 'tcx>(
     cx: &SimpleCx<'ll>,
     builder: &mut Builder<'_, 'll, 'tcx>,
     width: u32,
-    args: &mut Vec<&'ll llvm::Value>,
+    args: &mut Vec<&'ll Value>,
     inputs: &[DiffActivity],
-    outer_args: &[&'ll llvm::Value],
+    outer_args: &[&'ll Value],
 ) {
     debug!("matching autodiff arguments");
     // We now handle the issue that Rust level arguments not always match the llvm-ir level
@@ -157,32 +157,36 @@ fn match_args_from_caller_to_enzyme<'ll, 'tcx>(
     let mut outer_pos: usize = 0;
     let mut activity_pos = 0;
 
-    let enzyme_const = cx.create_metadata(b"enzyme_const");
-    let enzyme_out = cx.create_metadata(b"enzyme_out");
-    let enzyme_dup = cx.create_metadata(b"enzyme_dup");
-    let enzyme_dupv = cx.create_metadata(b"enzyme_dupv");
-    let enzyme_dupnoneed = cx.create_metadata(b"enzyme_dupnoneed");
-    let enzyme_dupnoneedv = cx.create_metadata(b"enzyme_dupnoneedv");
+    // We used to use llvm's metadata to instruct enzyme how to differentiate a function.
+    // In debug mode we would use incremental compilation which caused the metadata to be
+    // dropped. This is prevented by now using named globals, which are also understood
+    // by Enzyme.
+    let global_const = cx.declare_global("enzyme_const", cx.type_ptr());
+    let global_out = cx.declare_global("enzyme_out", cx.type_ptr());
+    let global_dup = cx.declare_global("enzyme_dup", cx.type_ptr());
+    let global_dupv = cx.declare_global("enzyme_dupv", cx.type_ptr());
+    let global_dupnoneed = cx.declare_global("enzyme_dupnoneed", cx.type_ptr());
+    let global_dupnoneedv = cx.declare_global("enzyme_dupnoneedv", cx.type_ptr());
 
     while activity_pos < inputs.len() {
         let diff_activity = inputs[activity_pos as usize];
         // Duplicated arguments received a shadow argument, into which enzyme will write the
         // gradient.
-        let (activity, duplicated): (&Metadata, bool) = match diff_activity {
+        let (activity, duplicated): (&Value, bool) = match diff_activity {
             DiffActivity::None => panic!("not a valid input activity"),
-            DiffActivity::Const => (enzyme_const, false),
-            DiffActivity::Active => (enzyme_out, false),
-            DiffActivity::ActiveOnly => (enzyme_out, false),
-            DiffActivity::Dual => (enzyme_dup, true),
-            DiffActivity::Dualv => (enzyme_dupv, true),
-            DiffActivity::DualOnly => (enzyme_dupnoneed, true),
-            DiffActivity::DualvOnly => (enzyme_dupnoneedv, true),
-            DiffActivity::Duplicated => (enzyme_dup, true),
-            DiffActivity::DuplicatedOnly => (enzyme_dupnoneed, true),
-            DiffActivity::FakeActivitySize(_) => (enzyme_const, false),
+            DiffActivity::Const => (global_const, false),
+            DiffActivity::Active => (global_out, false),
+            DiffActivity::ActiveOnly => (global_out, false),
+            DiffActivity::Dual => (global_dup, true),
+            DiffActivity::Dualv => (global_dupv, true),
+            DiffActivity::DualOnly => (global_dupnoneed, true),
+            DiffActivity::DualvOnly => (global_dupnoneedv, true),
+            DiffActivity::Duplicated => (global_dup, true),
+            DiffActivity::DuplicatedOnly => (global_dupnoneed, true),
+            DiffActivity::FakeActivitySize(_) => (global_const, false),
         };
         let outer_arg = outer_args[outer_pos];
-        args.push(cx.get_metadata_value(activity));
+        args.push(activity);
         if matches!(diff_activity, DiffActivity::Dualv) {
             let next_outer_arg = outer_args[outer_pos + 1];
             let elem_bytes_size: u64 = match inputs[activity_pos + 1] {
@@ -242,7 +246,7 @@ fn match_args_from_caller_to_enzyme<'ll, 'tcx>(
                     assert_eq!(cx.type_kind(next_outer_ty3), TypeKind::Integer);
                     args.push(next_outer_arg2);
                 }
-                args.push(cx.get_metadata_value(enzyme_const));
+                args.push(global_const);
                 args.push(next_outer_arg);
                 outer_pos += 2 + 2 * iterations;
                 activity_pos += 2;
@@ -351,13 +355,13 @@ pub(crate) fn generate_enzyme_call<'ll, 'tcx>(
     let mut args = Vec::with_capacity(num_args as usize + 1);
     args.push(fn_to_diff);
 
-    let enzyme_primal_ret = cx.create_metadata(b"enzyme_primal_return");
+    let global_primal_ret = cx.declare_global("enzyme_primal_return", cx.type_ptr());
     if matches!(attrs.ret_activity, DiffActivity::Dual | DiffActivity::Active) {
-        args.push(cx.get_metadata_value(enzyme_primal_ret));
+        args.push(global_primal_ret);
     }
     if attrs.width > 1 {
-        let enzyme_width = cx.create_metadata(b"enzyme_width");
-        args.push(cx.get_metadata_value(enzyme_width));
+        let global_width = cx.declare_global("enzyme_width", cx.type_ptr());
+        args.push(global_width);
         args.push(cx.get_const_int(cx.type_i64(), attrs.width as u64));
     }
 
