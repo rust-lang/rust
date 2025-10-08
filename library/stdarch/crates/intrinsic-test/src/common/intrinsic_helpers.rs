@@ -173,9 +173,9 @@ impl IntrinsicType {
                 bit_len: Some(8),
                 ..
             } => match kind {
-                TypeKind::Int(Sign::Signed) => "(int)",
-                TypeKind::Int(Sign::Unsigned) => "(unsigned int)",
-                TypeKind::Poly => "(unsigned int)(uint8_t)",
+                TypeKind::Int(Sign::Signed) => "int",
+                TypeKind::Int(Sign::Unsigned) => "unsigned int",
+                TypeKind::Poly => "uint8_t",
                 _ => "",
             },
             IntrinsicType {
@@ -184,9 +184,9 @@ impl IntrinsicType {
                 ..
             } => match bit_len {
                 8 => unreachable!("handled above"),
-                16 => "(uint16_t)",
-                32 => "(uint32_t)",
-                64 => "(uint64_t)",
+                16 => "uint16_t",
+                32 => "uint32_t",
+                64 => "uint64_t",
                 128 => "",
                 _ => panic!("invalid bit_len"),
             },
@@ -195,16 +195,16 @@ impl IntrinsicType {
                 bit_len: Some(bit_len),
                 ..
             } => match bit_len {
-                16 => "(float16_t)",
-                32 => "(float)",
-                64 => "(double)",
+                16 => "float16_t",
+                32 => "float",
+                64 => "double",
                 128 => "",
                 _ => panic!("invalid bit_len"),
             },
             IntrinsicType {
                 kind: TypeKind::Char(_),
                 ..
-            } => "(char)",
+            } => "char",
             _ => "",
         }
     }
@@ -390,5 +390,14 @@ pub trait IntrinsicTypeDefinition: Deref<Target = IntrinsicType> {
             prefix = self.kind().rust_prefix(),
             bits = self.inner_size()
         )
+    }
+
+    fn generate_final_type_cast(&self) -> String {
+        let type_data = self.c_promotion();
+        if type_data.len() > 2 {
+            format!("({type_data})")
+        } else {
+            String::new()
+        }
     }
 }

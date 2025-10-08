@@ -185,7 +185,7 @@ impl IntrinsicTypeDefinition for X86IntrinsicType {
                             .map(move |idx| -> std::string::String {
                                 format!(
                                     "{cast}{lane_fn}(__return_value.val[{vector}], {lane})",
-                                    cast = self.c_promotion(),
+                                    cast = self.generate_final_type_cast(),
                                     lane_fn = self.get_lane_function(),
                                     lane = idx,
                                     vector = vector,
@@ -200,12 +200,13 @@ impl IntrinsicTypeDefinition for X86IntrinsicType {
         } else if self.num_lanes() > 1 {
             (0..self.num_lanes())
                 .map(|idx| -> std::string::String {
-                    format!(
-                        "{cast}{lane_fn}(__return_value, {lane})",
-                        cast = self.c_promotion(),
-                        lane_fn = self.get_lane_function(),
-                        lane = idx
-                    )
+                    let cast_type = self.c_promotion();
+                    let lane_fn = self.get_lane_function();
+                    if cast_type.len() > 2 {
+                        format!("({cast_type})({lane_fn}(__return_value, {idx}))")
+                    } else {
+                        format!("{lane_fn}(__return_value, {idx})")
+                    }
                 })
                 .collect::<Vec<_>>()
                 .join(r#" << ", " << "#)
@@ -224,13 +225,6 @@ impl IntrinsicTypeDefinition for X86IntrinsicType {
                         "__m{}i",
                         self.bit_len.expect(format!("self: {:#?}", self).as_str())
                     ),
-                    // TypeKind::Float if self.results().inner_size() == 16 => "float16_t".to_string(),
-                    // TypeKind::Int(true) if self.results().inner_size() == 64 => "long".to_string(),
-                    // TypeKind::Int(false) if self.results().inner_size() == 64 => "unsigned long".to_string(),
-                    // TypeKind::Int(true) if self.results().inner_size() == 32 => "int".to_string(),
-                    // TypeKind::Int(false) if self.results().inner_size() == 32 => "unsigned int".to_string(),
-                    // TypeKind::Int(true) if self.results().inner_size() == 16 => "short".to_string(),
-                    // TypeKind::Int(false) if self.results().inner_size() == 16 => "unsigned short".to_string(),
                     _ => self.c_scalar_type(),
                 },
                 promote = self.c_promotion(),

@@ -112,12 +112,10 @@ impl IntrinsicTypeDefinition for ArmIntrinsicType {
                         ty = self.c_single_vector_type(),
                         lanes = (0..self.num_lanes())
                             .map(move |idx| -> std::string::String {
+                                let lane_fn = self.get_lane_function();
+                                let final_cast = self.generate_final_type_cast();
                                 format!(
-                                    "{cast}{lane_fn}(__return_value.val[{vector}], {lane})",
-                                    cast = self.c_promotion(),
-                                    lane_fn = self.get_lane_function(),
-                                    lane = idx,
-                                    vector = vector,
+                                    "{final_cast}{lane_fn}(__return_value.val[{vector}], {idx})"
                                 )
                             })
                             .collect::<Vec<_>>()
@@ -129,12 +127,9 @@ impl IntrinsicTypeDefinition for ArmIntrinsicType {
         } else if self.num_lanes() > 1 {
             (0..self.num_lanes())
                 .map(|idx| -> std::string::String {
-                    format!(
-                        "{cast}{lane_fn}(__return_value, {lane})",
-                        cast = self.c_promotion(),
-                        lane_fn = self.get_lane_function(),
-                        lane = idx
-                    )
+                    let lane_fn = self.get_lane_function();
+                    let final_cast = self.generate_final_type_cast();
+                    format!("{final_cast}{lane_fn}(__return_value, {idx})")
                 })
                 .collect::<Vec<_>>()
                 .join(r#" << ", " << "#)
@@ -150,7 +145,7 @@ impl IntrinsicTypeDefinition for ArmIntrinsicType {
                     TypeKind::Poly => format!("poly{}_t", self.inner_size()),
                     ty => todo!("print_result_c - Unknown type: {:#?}", ty),
                 },
-                promote = self.c_promotion(),
+                promote = self.generate_final_type_cast(),
             )
         };
 
