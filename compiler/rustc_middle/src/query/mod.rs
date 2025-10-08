@@ -121,9 +121,7 @@ use crate::mir::interpret::{
 };
 use crate::mir::mono::{CodegenUnit, CollectionMode, MonoItem, MonoItemPartitions};
 use crate::query::erase::{Erase, erase, restore};
-use crate::query::plumbing::{
-    CyclePlaceholder, DynamicQuery, query_ensure, query_ensure_error_guaranteed, query_get_at,
-};
+use crate::query::plumbing::{CyclePlaceholder, DynamicQuery};
 use crate::traits::query::{
     CanonicalAliasGoal, CanonicalDropckOutlivesGoal, CanonicalImpliedOutlivesBoundsGoal,
     CanonicalMethodAutoderefStepsGoal, CanonicalPredicateGoal, CanonicalTypeOpAscribeUserTypeGoal,
@@ -147,6 +145,7 @@ use crate::{dep_graph, mir, thir};
 
 mod arena_cached;
 pub mod erase;
+pub(crate) mod inner;
 mod keys;
 pub mod on_disk_cache;
 #[macro_use]
