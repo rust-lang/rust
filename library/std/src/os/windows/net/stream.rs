@@ -10,7 +10,9 @@ use crate::os::windows::io::{
 };
 use crate::os::windows::net::{SocketAddr, sockaddr_un};
 use crate::path::Path;
-use crate::sys::c::{SO_RCVTIMEO, SO_SNDTIMEO, connect, getpeername, getsockname};
+use crate::sys::c::{
+    AF_UNIX, SO_RCVTIMEO, SO_SNDTIMEO, SOCK_STREAM, connect, getpeername, getsockname,
+};
 use crate::sys::net::Socket;
 use crate::sys::winsock::startup;
 pub struct UnixStream(pub Socket);
@@ -18,7 +20,7 @@ impl UnixStream {
     pub fn connect<P: AsRef<Path>>(path: P) -> io::Result<UnixStream> {
         unsafe {
             startup();
-            let inner = Socket::new_unix()?;
+            let inner = Socket::new(AF_UNIX as i32, SOCK_STREAM)?;
             let (addr, len) = sockaddr_un(path.as_ref())?;
             if connect(inner.as_raw() as _, &addr as *const _ as *const _, len) != 0 {
                 panic!("err: {}", io::Error::last_os_error())

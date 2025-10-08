@@ -9,7 +9,6 @@ use crate::os::windows::io::{
     AsRawSocket, AsSocket, BorrowedSocket, FromRawSocket, IntoRawSocket, OwnedSocket, RawSocket,
 };
 use crate::sys::c;
-use crate::sys::c::{AF_UNIX, INVALID_SOCKET, SOCK_STREAM, WSA_FLAG_OVERLAPPED, WSASocketW};
 use crate::sys::pal::winsock::last_error;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::time::Duration;
@@ -118,23 +117,6 @@ pub use crate::sys::pal::winsock::{cvt, cvt_gai, cvt_r, startup as init};
 pub struct Socket(OwnedSocket);
 
 impl Socket {
-    pub fn new_unix() -> io::Result<Socket> {
-        let socket = unsafe {
-            match WSASocketW(
-                AF_UNIX as i32,
-                SOCK_STREAM,
-                0,
-                ptr::null_mut(),
-                0,
-                WSA_FLAG_OVERLAPPED,
-            ) {
-                INVALID_SOCKET => Err(last_error()),
-                n => Ok(Socket::from_raw(n)),
-            }
-        }?;
-        socket.0.set_no_inherit()?;
-        Ok(socket)
-    }
     pub fn new(family: c_int, ty: c_int) -> io::Result<Socket> {
         let socket = unsafe {
             c::WSASocketW(

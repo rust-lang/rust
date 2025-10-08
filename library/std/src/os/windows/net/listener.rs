@@ -8,7 +8,7 @@ use crate::os::raw::c_int;
 use crate::os::windows::io::{AsRawSocket, FromRawSocket, IntoRawSocket, RawSocket};
 use crate::os::windows::net::{SocketAddr, UnixStream, from_sockaddr_un};
 use crate::path::Path;
-use crate::sys::c::{self, bind, getsockname, listen};
+use crate::sys::c::{self, AF_UNIX, SOCK_STREAM, bind, getsockname, listen};
 use crate::sys::net::Socket;
 use crate::sys::winsock::startup;
 pub struct UnixListener(Socket);
@@ -17,7 +17,7 @@ impl UnixListener {
     pub fn bind<P: AsRef<Path>>(path: P) -> io::Result<UnixListener> {
         unsafe {
             startup();
-            let inner = Socket::new_unix()?;
+            let inner = Socket::new(AF_UNIX as i32, SOCK_STREAM)?;
             let (addr, len) = sockaddr_un(path.as_ref())?;
             if bind(inner.as_raw(), &addr as *const _ as *const _, len) != 0 {
                 panic!("err: {}", io::Error::last_os_error())
