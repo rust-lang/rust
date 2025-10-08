@@ -15,6 +15,7 @@ use ide_db::{
     FilePosition, FxHashMap, FxHashSet, RootDatabase, famous_defs::FamousDefs,
     helpers::is_editable_crate,
 };
+use itertools::Either;
 use syntax::{
     AstNode, Edition, SmolStr,
     SyntaxKind::{self, *},
@@ -282,7 +283,7 @@ pub(crate) struct PatternContext {
     pub(crate) mut_token: Option<SyntaxToken>,
     /// The record pattern this name or ref is a field of
     pub(crate) record_pat: Option<ast::RecordPat>,
-    pub(crate) impl_: Option<ast::Impl>,
+    pub(crate) impl_or_trait: Option<Either<ast::Impl, ast::Trait>>,
     /// List of missing variants in a match expr
     pub(crate) missing_variants: Vec<hir::Variant>,
 }

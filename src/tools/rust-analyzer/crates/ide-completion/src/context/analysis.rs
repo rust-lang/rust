@@ -1302,7 +1302,8 @@ fn classify_name_ref<'db>(
             .is_some_and(|it| it.semicolon_token().is_none())
             || after_incomplete_let && incomplete_expr_stmt.unwrap_or(true) && !before_else_kw;
         let in_value = it.parent().and_then(Either::<ast::LetStmt, ast::ArgList>::cast).is_some();
-        let impl_ = fetch_immediate_impl(sema, original_file, expr.syntax());
+        let impl_ = fetch_immediate_impl_or_trait(sema, original_file, expr.syntax())
+            .and_then(Either::left);
 
         let in_match_guard = match it.parent().and_then(ast::MatchArm::cast) {
             Some(arm) => arm
@@ -1755,27 +1756,29 @@ fn pattern_context_for(
         mut_token,
         ref_token,
         record_pat: None,
-        impl_: fetch_immediate_impl(sema, original_file, pat.syntax()),
+        impl_or_trait: fetch_immediate_impl_or_trait(sema, original_file, pat.syntax()),
         missing_variants,
     }
 }
 
-fn fetch_immediate_impl(
+fn fetch_immediate_impl_or_trait(
     sema: &Semantics<'_, RootDatabase>,
     original_file: &SyntaxNode,
     node: &SyntaxNode,
-) -> Option<ast::Impl> {
+) -> Option<Either<ast::Impl, ast::Trait>> {
     let mut ancestors = ancestors_in_file_compensated(sema, original_file, node)?
         .filter_map(ast::Item::cast)
         .filter(|it| !matches!(it, ast::Item::MacroCall(_)));
 
     match ancestors.next()? {
         ast::Item::Const(_) | ast::Item::Fn(_) | ast::Item::TypeAlias(_) => (),
-        ast::Item::Impl(it) => return Some(it),
+        ast::Item::Impl(it) => return Some(Either::Left(it)),
+        ast::Item::Trait(it) => return Some(Either::Right(it)),
         _ => return None,
     }
     match ancestors.next()? {
-        ast::Item::Impl(it) => Some(it),
+        ast::Item::Impl(it) => Some(Either::Left(it)),
+        ast::Item::Trait(it) => Some(Either::Right(it)),
         _ => None,
     }
 }
