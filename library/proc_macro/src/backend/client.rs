@@ -25,7 +25,7 @@ macro_rules! define_client_handles {
 
         $(
             pub(crate) struct $oty {
-                handle: handle::Handle,
+                handle: Handle,
             }
 
             impl !Send for $oty {}
@@ -61,7 +61,7 @@ macro_rules! define_client_handles {
             impl<S> DecodeMut<'_, '_, S> for $oty {
                 fn decode(r: &mut Reader<'_>, s: &mut S) -> Self {
                     $oty {
-                        handle: handle::Handle::decode(r, s),
+                        handle: Handle::decode(r, s),
                     }
                 }
             }
@@ -70,7 +70,7 @@ macro_rules! define_client_handles {
         $(
             #[derive(Copy, Clone, PartialEq, Eq, Hash)]
             pub(crate) struct $ity {
-                handle: handle::Handle,
+                handle: Handle,
             }
 
             impl !Send for $ity {}
@@ -85,7 +85,7 @@ macro_rules! define_client_handles {
             impl<S> DecodeMut<'_, '_, S> for $ity {
                 fn decode(r: &mut Reader<'_>, s: &mut S) -> Self {
                     $ity {
-                        handle: handle::Handle::decode(r, s),
+                        handle: Handle::decode(r, s),
                     }
                 }
             }
@@ -161,7 +161,7 @@ struct Bridge<'a> {
     cached_buffer: Buffer,
 
     /// Server-side function that the client uses to make requests.
-    dispatch: closure::Closure<'a, Buffer, Buffer>,
+    dispatch: Closure<'a, Buffer, Buffer>,
 
     /// Provided globals for this macro expansion.
     globals: ExpnGlobals<Span>,
@@ -327,7 +327,7 @@ impl Client<crate::TokenStream, crate::TokenStream> {
     pub const fn expand1(f: impl Fn(crate::TokenStream) -> crate::TokenStream + Copy) -> Self {
         Client {
             handle_counters: &COUNTERS,
-            run: super::selfless_reify::reify_to_extern_c_fn_hrt_bridge(move |bridge| {
+            run: reify_to_extern_c_fn_hrt_bridge(move |bridge| {
                 run_client(bridge, |input| f(crate::TokenStream(Some(input))).0)
             }),
             _marker: PhantomData,
@@ -341,7 +341,7 @@ impl Client<(crate::TokenStream, crate::TokenStream), crate::TokenStream> {
     ) -> Self {
         Client {
             handle_counters: &COUNTERS,
-            run: super::selfless_reify::reify_to_extern_c_fn_hrt_bridge(move |bridge| {
+            run: reify_to_extern_c_fn_hrt_bridge(move |bridge| {
                 run_client(bridge, |(input, input2)| {
                     f(crate::TokenStream(Some(input)), crate::TokenStream(Some(input2))).0
                 })
