@@ -465,8 +465,8 @@ enum TestFailure {
     ///
     /// This typically means an assertion in the test failed or another form of panic occurred.
     ExecutionFailure(process::Output),
-    /// The test is marked `should_panic` but the test binary executed successfully.
-    UnexpectedRunPass,
+    /// The test is marked `should_panic` but the test binary didn't panic.
+    NoPanic(Option<String>),
 }
 
 enum DirState {
@@ -812,6 +812,9 @@ fn run_test(
         // (cfg!(target_family = "wasm") || cfg!(target_os = "zkvm"))
         //     && !cfg!(target_os = "emscripten")
         // ```
+        //
+        // FIXME: All this code is terrible and doesn't take into account `TargetTuple::TargetJson`.
+        // If `libtest` doesn't allow to handle this case, we'll need to use a rustc's API instead.
         && let TargetTuple::TargetTuple(ref s) = rustdoc_options.target
         && let mut iter = s.split('-')
         && let Some(arch) = iter.next()
@@ -876,12 +879,41 @@ fn run_test(
                     #[cfg(windows)]
                     Some(STATUS_FAIL_FAST_EXCEPTION) => {}
                     #[cfg(unix)]
-                    None if out.status.signal() == Some(SIGABRT) => {}
+                    None => match out.status.signal() {
+                        Some(SIGABRT) => {}
+                        Some(signal) => {
+                            return (
+                                duration,
+                                Err(TestFailure::NoPanic(Some(format!(
+                                    "Test didn't panic, but it's marked `should_panic` (exit signal: {signal}).",
+                                )))),
+                            );
+                        }
+                        None => {
+                            return (
+                                duration,
+                                Err(TestFailure::NoPanic(Some(format!(
+                                    "Test didn't panic, but it's marked `should_panic` and exited with no error code and no signal.",
+                                )))),
+                            );
+                        }
+                    },
+                    #[cfg(not(unix))]
+                    None => return (duration, Err(TestFailure::NoPanic(None))),
                     // Upon an abort, Fuchsia returns the status code
                     // `ZX_TASK_RETCODE_EXCEPTION_KILL`.
                     #[cfg(target_os = "fuchsia")]
                     Some(ZX_TASK_RETCODE_EXCEPTION_KILL) => {}
-                    _ => return (duration, Err(TestFailure::UnexpectedRunPass)),
+                    Some(exit_code) => {
+                        let err_msg = if !out.status.success() {
+                            Some(format!(
+                                "Test didn't panic, but it's marked `should_panic` (exit status: {exit_code}).",
+                            ))
+                        } else {
+                            None
+                        };
+                        return (duration, Err(TestFailure::NoPanic(err_msg)));
+                    }
                 }
             } else if !out.status.success() {
                 return (duration, Err(TestFailure::ExecutionFailure(out)));
@@ -1190,8 +1222,12 @@ fn doctest_run_fn(
             TestFailure::UnexpectedCompilePass => {
                 eprint!("Test compiled successfully, but it's marked `compile_fail`.");
             }
-            TestFailure::UnexpectedRunPass => {
-                eprint!("Test didn't panic, but it's marked `should_panic`.");
+            TestFailure::NoPanic(msg) => {
+                if let Some(msg) = msg {
+                    eprint!("{msg}");
+                } else {
+                    eprint!("Test didn't panic, but it's marked `should_panic`.");
+                }
             }
             TestFailure::MissingErrorCodes(codes) => {
                 eprint!("Some expected error codes were not found: {codes:?}");

@@ -19,7 +19,7 @@ fn check_output(edition: &str, panic_abort: bool) {
         "---- test.rs - bad_exit_code (line 1) stdout ----
 Test executable failed (exit status: 1).",
         "---- test.rs - did_not_panic (line 6) stdout ----
-Test didn't panic, but it's marked `should_panic`.",
+Test didn't panic, but it's marked `should_panic` (exit status: 1).",
         "test result: FAILED. 1 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out;",
     ];
     for text in should_contain {

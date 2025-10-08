@@ -169,12 +169,31 @@ mod __doctest_mod {{
                 #[cfg(windows)]
                 Some(STATUS_FAIL_FAST_EXCEPTION) => ExitCode::SUCCESS,
                 #[cfg(unix)]
-                None if out.status.signal() == Some(SIGABRT) => ExitCode::SUCCESS,
+                None => match out.status.signal() {{
+                    Some(SIGABRT) => ExitCode::SUCCESS,
+                    Some(signal) => {{
+                        eprintln!(\"Test didn't panic, but it's marked `should_panic` (exit signal: {{signal}}).\");
+                        ExitCode::FAILURE
+                    }}
+                    None => {{
+                        eprintln!(\"Test didn't panic, but it's marked `should_panic` and exited with no error code and no signal.\");
+                        ExitCode::FAILURE
+                    }}
+                }},
+                #[cfg(not(unix))]
+                None => {{
+                    eprintln!(\"Test didn't panic, but it's marked `should_panic`.\");
+                    ExitCode::FAILURE
+                }}
                 // Upon an abort, Fuchsia returns the status code ZX_TASK_RETCODE_EXCEPTION_KILL.
                 #[cfg(target_os = \"fuchsia\")]
                 Some(ZX_TASK_RETCODE_EXCEPTION_KILL) => ExitCode::SUCCESS,
-                _ => {{
-                    eprintln!(\"Test didn't panic, but it's marked `should_panic`.\");
+                Some(exit_code) => {{
+                    if !out.status.success() {{
+                        eprintln!(\"Test didn't panic, but it's marked `should_panic` (exit status: {{exit_code}}).\");
+                    }} else {{
+                        eprintln!(\"Test didn't panic, but it's marked `should_panic`.\");
+                    }}
                     ExitCode::FAILURE
                 }}
             }}
