@@ -2019,7 +2019,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
 
         let expected_sig = tcx.mk_fn_sig(
-            std::iter::repeat(token_stream).take(match kind {
+            std::iter::repeat_n(token_stream, match kind {
                 ProcMacroKind::Attribute => 2,
                 ProcMacroKind::Derive | ProcMacroKind::FunctionLike => 1,
             }),
