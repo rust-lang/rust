@@ -26,6 +26,7 @@
     decl_macro,
     f16,
     f128,
+    transparent_unions,
     asm_experimental_arch,
     unboxed_closures
 )]
@@ -118,6 +119,25 @@ pub struct ManuallyDrop<T: PointeeSized> {
     value: T,
 }
 impl<T: Copy + PointeeSized> Copy for ManuallyDrop<T> {}
+
+#[lang = "maybe_uninit"]
+#[repr(transparent)]
+pub union MaybeUninit<T> {
+    uninit: (),
+    value: ManuallyDrop<T>,
+}
+
+impl<T: Copy + PointeeSized> Copy for MaybeUninit<T> {}
+
+impl<T> MaybeUninit<T> {
+    pub const fn uninit() -> Self {
+        Self { uninit: () }
+    }
+
+    pub const fn new(value: T) -> Self {
+        Self { value: ManuallyDrop { value } }
+    }
+}
 
 #[lang = "unsafe_cell"]
 #[repr(transparent)]
