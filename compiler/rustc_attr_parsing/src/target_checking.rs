@@ -198,16 +198,20 @@ pub(crate) fn allowed_targets_applied(
     filter_targets(&mut allowed_targets, IMPL_LIKE, "impl blocks", target, &mut added_fake_targets);
     filter_targets(&mut allowed_targets, ADT_LIKE, "data types", target, &mut added_fake_targets);
 
+    let mut target_strings: Vec<_> = added_fake_targets
+        .iter()
+        .copied()
+        .chain(allowed_targets.iter().map(|t| t.plural_name()))
+        .map(|i| i.to_string())
+        .collect();
+
+    // ensure a consistent order
+    target_strings.sort();
+
     // If there is now only 1 target left, show that as the only possible target
-    (
-        added_fake_targets
-            .iter()
-            .copied()
-            .chain(allowed_targets.iter().map(|t| t.plural_name()))
-            .map(|i| i.to_string())
-            .collect(),
-        allowed_targets.len() + added_fake_targets.len() == 1,
-    )
+    let only_target = target_strings.len() == 1;
+
+    (target_strings, only_target)
 }
 
 fn filter_targets(
