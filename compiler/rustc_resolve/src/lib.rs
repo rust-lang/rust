@@ -2226,16 +2226,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // Some non-controversial subset of ambiguities "modularized macro name" vs "macro_rules"
         // is disambiguated to mitigate regressions from macro modularization.
         // Scoping for `macro_rules` behaves like scoping for `let` at module level, in general.
-        match (
-            self.binding_parent_modules.get(&macro_rules),
-            self.binding_parent_modules.get(&modularized),
-        ) {
-            (Some(macro_rules), Some(modularized)) => {
-                macro_rules.nearest_parent_mod() == modularized.nearest_parent_mod()
-                    && modularized.is_ancestor_of(*macro_rules)
-            }
-            _ => false,
-        }
+        //
+        // panic on index should be impossible, the only name_bindings passed in should be from
+        // `resolve_ident_in_scope_set` which will always refer to a local binding from an
+        // import or macro definition
+        let macro_rules = &self.binding_parent_modules[&macro_rules];
+        let modularized = &self.binding_parent_modules[&modularized];
+        macro_rules.nearest_parent_mod() == modularized.nearest_parent_mod()
+            && modularized.is_ancestor_of(*macro_rules)
     }
 
     fn extern_prelude_get_item<'r>(
