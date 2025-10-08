@@ -892,7 +892,8 @@ fn make_test(cx: &TestCollectorCx, collector: &mut TestCollector, testpaths: &Te
     // `CollectedTest` that can be handed over to the test executor.
     collector.tests.extend(revisions.into_iter().map(|revision| {
         // Create a test name and description to hand over to the executor.
-        let src_file = fs::File::open(&test_path).expect("open test file to parse ignores");
+        let file_contents =
+            fs::read_to_string(&test_path).expect("read test file to parse ignores");
         let (test_name, filterable_path) =
             make_test_name_and_filterable_path(&cx.config, testpaths, revision);
         // Create a description struct for the test/revision.
@@ -904,7 +905,7 @@ fn make_test(cx: &TestCollectorCx, collector: &mut TestCollector, testpaths: &Te
             test_name,
             &test_path,
             &filterable_path,
-            src_file,
+            &file_contents,
             revision,
             &mut collector.poisoned,
         );

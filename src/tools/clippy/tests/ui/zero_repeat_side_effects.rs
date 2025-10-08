@@ -1,7 +1,5 @@
 #![warn(clippy::zero_repeat_side_effects)]
-#![allow(clippy::unnecessary_operation)]
-#![allow(clippy::useless_vec)]
-#![allow(clippy::needless_late_init)]
+#![expect(clippy::unnecessary_operation, clippy::useless_vec, clippy::needless_late_init)]
 
 fn f() -> i32 {
     println!("side effect");
@@ -78,4 +76,28 @@ fn issue_13110() {
     let _data = [f(); LEN!()];
     const LENGTH: usize = LEN!();
     let _data = [f(); LENGTH];
+}
+
+// TODO: consider moving the defintion+impl inside `issue_14681`
+// once https://github.com/rust-lang/rust/issues/146786 is fixed
+#[derive(Clone, Copy)]
+struct S;
+
+impl S {
+    fn new() -> Self {
+        println!("This is a side effect");
+        S
+    }
+}
+
+// should not trigger on non-function calls
+fn issue_14681() {
+    fn foo<T>(_s: &[Option<T>]) {}
+
+    foo(&[Some(0i64); 0]);
+    foo(&[Some(Some(0i64)); 0]);
+    foo(&[Some(f()); 0]);
+    //~^ zero_repeat_side_effects
+    foo(&[Some(Some(S::new())); 0]);
+    //~^ zero_repeat_side_effects
 }

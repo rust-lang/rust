@@ -5,7 +5,7 @@ LL |     c: f64,
    |     ^^^^^^
    |
 note: the lint level is defined here
-  --> $DIR/reprc-power-alignment.rs:12:8
+  --> $DIR/reprc-power-alignment.rs:13:8
    |
 LL | #[warn(uses_power_alignment)]
    |        ^^^^^^^^^^^^^^^^^^^^
@@ -73,28 +73,28 @@ LL |     y: Floats,
    |     ^^^^^^^^^
 
 warning: repr(C) does not follow the power alignment rule. This may affect platform C ABI compatibility for this type
-  --> $DIR/reprc-power-alignment.rs:105:3
+  --> $DIR/reprc-power-alignment.rs:105:5
    |
-LL |   d: f64,
-   |   ^^^^^^
+LL |     d: f64,
+   |     ^^^^^^
 
 warning: repr(C) does not follow the power alignment rule. This may affect platform C ABI compatibility for this type
-  --> $DIR/reprc-power-alignment.rs:110:3
+  --> $DIR/reprc-power-alignment.rs:110:5
    |
-LL |   b: B,
-   |   ^^^^
+LL |     b: B,
+   |     ^^^^
 
 warning: repr(C) does not follow the power alignment rule. This may affect platform C ABI compatibility for this type
-  --> $DIR/reprc-power-alignment.rs:119:3
+  --> $DIR/reprc-power-alignment.rs:119:5
    |
-LL |   d: D,
-   |   ^^^^
+LL |     d: D,
+   |     ^^^^
 
 warning: repr(C) does not follow the power alignment rule. This may affect platform C ABI compatibility for this type
-  --> $DIR/reprc-power-alignment.rs:124:3
+  --> $DIR/reprc-power-alignment.rs:124:5
    |
-LL |   b: f64,
-   |   ^^^^^^
+LL |     b: f64,
+   |     ^^^^^^
 
 warning: repr(C) does not follow the power alignment rule. This may affect platform C ABI compatibility for this type
   --> $DIR/reprc-power-alignment.rs:130:5

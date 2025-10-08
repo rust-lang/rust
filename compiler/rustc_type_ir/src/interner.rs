@@ -183,7 +183,9 @@ pub trait Interner:
         from_entry: impl FnOnce(&CanonicalParamEnvCacheEntry<Self>) -> R,
     ) -> R;
 
-    fn evaluation_is_concurrent(&self) -> bool;
+    /// Useful for testing. If a cache entry is replaced, this should
+    /// (in theory) only happen when concurrent.
+    fn assert_evaluation_is_concurrent(&self);
 
     fn expand_abstract_consts<T: TypeFoldable<Self>>(self, t: T) -> T;
 
@@ -567,7 +569,7 @@ impl<I: Interner> search_graph::Cx for I {
     fn with_global_cache<R>(self, f: impl FnOnce(&mut search_graph::GlobalCache<Self>) -> R) -> R {
         I::with_global_cache(self, f)
     }
-    fn evaluation_is_concurrent(&self) -> bool {
-        self.evaluation_is_concurrent()
+    fn assert_evaluation_is_concurrent(&self) {
+        self.assert_evaluation_is_concurrent()
     }
 }

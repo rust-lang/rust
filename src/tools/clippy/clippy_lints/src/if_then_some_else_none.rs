@@ -79,6 +79,7 @@ impl<'tcx> LateLintPass<'tcx> for IfThenSomeElseNone {
             && !is_in_const_context(cx)
             && self.msrv.meets(cx, msrvs::BOOL_THEN)
             && !contains_return(then_block.stmts)
+            && then_block.expr.is_none_or(|expr| !contains_return(expr))
         {
             let method_name = if switch_to_eager_eval(cx, expr) && self.msrv.meets(cx, msrvs::BOOL_THEN_SOME) {
                 sym::then_some

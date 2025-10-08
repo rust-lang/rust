@@ -260,6 +260,10 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> Visitor<'tcx> for LocalAnalyzer
             PlaceContext::MutatingUse(MutatingUseContext::Yield) => bug!(),
         }
     }
+
+    fn visit_statement_debuginfo(&mut self, _: &mir::StmtDebugInfo<'tcx>, _: Location) {
+        // Debuginfo does not generate actual code.
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

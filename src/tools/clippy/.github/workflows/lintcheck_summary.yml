@@ -27,7 +27,7 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Download artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: summary
           path: untrusted
@@ -35,7 +35,7 @@ jobs:
           github-token: ${{ github.token }}
 
       - name: Format comment
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const fs = require("fs");

@@ -1,5 +1,5 @@
 error: using `Option.and_then(Some)`, which is a no-op
-  --> tests/ui/bind_instead_of_map.rs:8:13
+  --> tests/ui/bind_instead_of_map.rs:7:13
    |
 LL |     let _ = x.and_then(Some);
    |             ^^^^^^^^^^^^^^^^ help: use the expression directly: `x`
@@ -11,13 +11,13 @@ LL | #![deny(clippy::bind_instead_of_map)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: using `Option.and_then(|x| Some(y))`, which is more succinctly expressed as `map(|x| y)`
-  --> tests/ui/bind_instead_of_map.rs:10:13
+  --> tests/ui/bind_instead_of_map.rs:9:13
    |
 LL |     let _ = x.and_then(|o| Some(o + 1));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `x.map(|o| o + 1)`
 
 error: using `Result.and_then(Ok)`, which is a no-op
-  --> tests/ui/bind_instead_of_map.rs:17:13
+  --> tests/ui/bind_instead_of_map.rs:16:13
    |
 LL |     let _ = x.and_then(Ok);
    |             ^^^^^^^^^^^^^^ help: use the expression directly: `x`

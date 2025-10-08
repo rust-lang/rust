@@ -290,8 +290,10 @@ impl HirEqInterExpr<'_, '_, '_> {
         if let Some((typeck_lhs, typeck_rhs)) = self.inner.maybe_typeck_results
             && typeck_lhs.expr_ty(left) == typeck_rhs.expr_ty(right)
             && let (Some(l), Some(r)) = (
-                ConstEvalCtxt::with_env(self.inner.cx.tcx, self.inner.cx.typing_env(), typeck_lhs).eval_simple(left),
-                ConstEvalCtxt::with_env(self.inner.cx.tcx, self.inner.cx.typing_env(), typeck_rhs).eval_simple(right),
+                ConstEvalCtxt::with_env(self.inner.cx.tcx, self.inner.cx.typing_env(), typeck_lhs)
+                    .eval_local(left, self.left_ctxt),
+                ConstEvalCtxt::with_env(self.inner.cx.tcx, self.inner.cx.typing_env(), typeck_rhs)
+                    .eval_local(right, self.right_ctxt),
             )
             && l == r
         {
@@ -842,7 +844,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
     #[expect(clippy::too_many_lines)]
     pub fn hash_expr(&mut self, e: &Expr<'_>) {
         let simple_const = self.maybe_typeck_results.and_then(|typeck_results| {
-            ConstEvalCtxt::with_env(self.cx.tcx, self.cx.typing_env(), typeck_results).eval_simple(e)
+            ConstEvalCtxt::with_env(self.cx.tcx, self.cx.typing_env(), typeck_results).eval_local(e, e.span.ctxt())
         });
 
         // const hashing may result in the same hash as some unrelated node, so add a sort of

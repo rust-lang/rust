@@ -549,3 +549,17 @@ fn panic_while_mapping_unlocked_poison() {
 
     drop(lock);
 }
+
+#[test]
+fn test_mutex_with_mut() {
+    let mutex = std::sync::nonpoison::Mutex::new(2);
+
+    let result = mutex.with_mut(|value| {
+        *value += 3;
+
+        *value + 5
+    });
+
+    assert_eq!(*mutex.lock(), 5);
+    assert_eq!(result, 10);
+}

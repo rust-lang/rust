@@ -1,5 +1,7 @@
 //! Functionality for statements, operands, places, and things that appear in them.
 
+use std::ops;
+
 use tracing::{debug, instrument};
 
 use super::interpret::GlobalAlloc;
@@ -15,17 +17,28 @@ use crate::ty::CoroutineArgsExt;
 pub struct Statement<'tcx> {
     pub source_info: SourceInfo,
     pub kind: StatementKind<'tcx>,
+    /// Some debuginfos appearing before the primary statement.
+    pub debuginfos: StmtDebugInfos<'tcx>,
 }
 
 impl<'tcx> Statement<'tcx> {
     /// Changes a statement to a nop. This is both faster than deleting instructions and avoids
     /// invalidating statement indices in `Location`s.
-    pub fn make_nop(&mut self) {
-        self.kind = StatementKind::Nop
+    pub fn make_nop(&mut self, drop_debuginfo: bool) {
+        if matches!(self.kind, StatementKind::Nop) {
+            return;
+        }
+        let replaced_stmt = std::mem::replace(&mut self.kind, StatementKind::Nop);
+        if !drop_debuginfo {
+            let Some(debuginfo) = replaced_stmt.as_debuginfo() else {
+                bug!("debuginfo is not yet supported.")
+            };
+            self.debuginfos.push(debuginfo);
+        }
     }
 
     pub fn new(source_info: SourceInfo, kind: StatementKind<'tcx>) -> Self {
-        Statement { source_info, kind }
+        Statement { source_info, kind, debuginfos: StmtDebugInfos::default() }
     }
 }
 
@@ -60,6 +73,17 @@ impl<'tcx> StatementKind<'tcx> {
     pub fn as_assign(&self) -> Option<&(Place<'tcx>, Rvalue<'tcx>)> {
         match self {
             StatementKind::Assign(x) => Some(x),
+            _ => None,
+        }
+    }
+
+    pub fn as_debuginfo(&self) -> Option<StmtDebugInfo<'tcx>> {
+        match self {
+            StatementKind::Assign(box (place, Rvalue::Ref(_, _, ref_place)))
+                if let Some(local) = place.as_local() =>
+            {
+                Some(StmtDebugInfo::AssignRef(local, *ref_place))
+            }
             _ => None,
         }
     }
@@ -501,6 +525,20 @@ impl<'tcx> PlaceRef<'tcx> {
             let base = PlaceRef { local: self.local, projection: &self.projection[..i] };
             (base, *proj)
         })
+    }
+
+    /// Return the place accessed locals that include the base local.
+    pub fn accessed_locals(self) -> impl Iterator<Item = Local> {
+        std::iter::once(self.local).chain(self.projection.iter().filter_map(|proj| match proj {
+            ProjectionElem::Index(local) => Some(*local),
+            ProjectionElem::Deref
+            | ProjectionElem::Field(_, _)
+            | ProjectionElem::ConstantIndex { .. }
+            | ProjectionElem::Subslice { .. }
+            | ProjectionElem::Downcast(_, _)
+            | ProjectionElem::OpaqueCast(_)
+            | ProjectionElem::UnwrapUnsafeBinder(_) => None,
+        }))
     }
 
     /// Generates a new place by appending `more_projections` to the existing ones
@@ -966,4 +1004,72 @@ impl RawPtrKind {
             RawPtrKind::FakeForPtrMetadata => "const (fake)",
         }
     }
+}
+
+#[derive(Default, Debug, Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
+pub struct StmtDebugInfos<'tcx>(Vec<StmtDebugInfo<'tcx>>);
+
+impl<'tcx> StmtDebugInfos<'tcx> {
+    pub fn push(&mut self, debuginfo: StmtDebugInfo<'tcx>) {
+        self.0.push(debuginfo);
+    }
+
+    pub fn drop_debuginfo(&mut self) {
+        self.0.clear();
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    pub fn prepend(&mut self, debuginfos: &mut Self) {
+        if debuginfos.is_empty() {
+            return;
+        };
+        debuginfos.0.append(self);
+        std::mem::swap(debuginfos, self);
+    }
+
+    pub fn append(&mut self, debuginfos: &mut Self) {
+        if debuginfos.is_empty() {
+            return;
+        };
+        self.0.append(debuginfos);
+    }
+
+    pub fn extend(&mut self, debuginfos: &Self) {
+        if debuginfos.is_empty() {
+            return;
+        };
+        self.0.extend_from_slice(debuginfos);
+    }
+
+    pub fn retain<F>(&mut self, f: F)
+    where
+        F: FnMut(&StmtDebugInfo<'tcx>) -> bool,
+    {
+        self.0.retain(f);
+    }
+}
+
+impl<'tcx> ops::Deref for StmtDebugInfos<'tcx> {
+    type Target = Vec<StmtDebugInfo<'tcx>>;
+
+    #[inline]
+    fn deref(&self) -> &Vec<StmtDebugInfo<'tcx>> {
+        &self.0
+    }
+}
+
+impl<'tcx> ops::DerefMut for StmtDebugInfos<'tcx> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Vec<StmtDebugInfo<'tcx>> {
+        &mut self.0
+    }
+}
+
+#[derive(Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
+pub enum StmtDebugInfo<'tcx> {
+    AssignRef(Local, Place<'tcx>),
+    InvalidAssign(Local),
 }

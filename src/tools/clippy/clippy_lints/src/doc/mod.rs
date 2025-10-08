@@ -315,7 +315,7 @@ declare_clippy_lint! {
     /// /// [example of a good link](https://github.com/rust-lang/rust-clippy/)
     /// pub fn do_something() {}
     /// ```
-    #[clippy::version = "1.84.0"]
+    #[clippy::version = "1.90.0"]
     pub DOC_BROKEN_LINK,
     pedantic,
     "broken document link"

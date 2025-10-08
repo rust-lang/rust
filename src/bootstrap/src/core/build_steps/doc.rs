@@ -274,6 +274,10 @@ impl Step for TheBook {
 
         // build the redirect pages
         let _guard = builder.msg(Kind::Doc, "book redirect pages", None, build_compiler, target);
+        if builder.config.dry_run() {
+            return;
+        }
+
         for file in t!(fs::read_dir(redirect_path)) {
             let file = t!(file);
             let path = file.path();

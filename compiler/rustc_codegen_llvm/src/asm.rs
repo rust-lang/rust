@@ -13,14 +13,12 @@ use rustc_target::asm::*;
 use smallvec::SmallVec;
 use tracing::debug;
 
+use crate::attributes;
 use crate::builder::Builder;
 use crate::common::Funclet;
 use crate::context::CodegenCx;
-use crate::llvm::ToLlvmBool;
-use crate::type_::Type;
+use crate::llvm::{self, ToLlvmBool, Type, Value};
 use crate::type_of::LayoutLlvmExt;
-use crate::value::Value;
-use crate::{attributes, llvm};
 
 impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     fn codegen_inline_asm(

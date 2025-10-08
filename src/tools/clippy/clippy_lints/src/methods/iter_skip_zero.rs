@@ -11,13 +11,15 @@ use super::ITER_SKIP_ZERO;
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, arg_expr: &Expr<'_>) {
     if !expr.span.from_expansion()
         && is_trait_method(cx, expr, sym::Iterator)
-        && let Some(arg) = ConstEvalCtxt::new(cx).eval(arg_expr).and_then(|constant| {
-            if let Constant::Int(arg) = constant {
-                Some(arg)
-            } else {
-                None
-            }
-        })
+        && let Some(arg) = ConstEvalCtxt::new(cx)
+            .eval_local(arg_expr, expr.span.ctxt())
+            .and_then(|constant| {
+                if let Constant::Int(arg) = constant {
+                    Some(arg)
+                } else {
+                    None
+                }
+            })
         && arg == 0
         && !is_from_proc_macro(cx, expr)
     {

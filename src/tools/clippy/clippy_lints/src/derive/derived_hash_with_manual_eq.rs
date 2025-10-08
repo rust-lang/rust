@@ -1,5 +1,5 @@
-use clippy_utils::diagnostics::span_lint_and_then;
-use rustc_hir as hir;
+use clippy_utils::diagnostics::span_lint_hir_and_then;
+use rustc_hir::{HirId, TraitRef};
 use rustc_lint::LateContext;
 use rustc_middle::ty::Ty;
 use rustc_span::{Span, sym};
@@ -10,8 +10,9 @@ use super::DERIVED_HASH_WITH_MANUAL_EQ;
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
     span: Span,
-    trait_ref: &hir::TraitRef<'_>,
+    trait_ref: &TraitRef<'_>,
     ty: Ty<'tcx>,
+    adt_hir_id: HirId,
     hash_is_automatically_derived: bool,
 ) {
     if let Some(peq_trait_def_id) = cx.tcx.lang_items().eq_trait()
@@ -31,9 +32,10 @@ pub(super) fn check<'tcx>(
             // Only care about `impl PartialEq<Foo> for Foo`
             // For `impl PartialEq<B> for A, input_types is [A, B]
             if trait_ref.instantiate_identity().args.type_at(1) == ty {
-                span_lint_and_then(
+                span_lint_hir_and_then(
                     cx,
                     DERIVED_HASH_WITH_MANUAL_EQ,
+                    adt_hir_id,
                     span,
                     "you are deriving `Hash` but have implemented `PartialEq` explicitly",
                     |diag| {

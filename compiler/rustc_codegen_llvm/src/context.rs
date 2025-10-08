@@ -31,13 +31,12 @@ use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::spec::{HasTargetSpec, RelocModel, SmallDataThresholdSupport, Target, TlsModel};
 use smallvec::SmallVec;
 
+use crate::abi::to_llvm_calling_convention;
 use crate::back::write::to_llvm_code_model;
 use crate::callee::get_fn;
 use crate::debuginfo::metadata::apply_vcall_visibility_metadata;
-use crate::llvm::{Metadata, MetadataKindId, Module};
-use crate::type_::Type;
-use crate::value::Value;
-use crate::{attributes, common, coverageinfo, debuginfo, llvm, llvm_util};
+use crate::llvm::{self, Metadata, MetadataKindId, Module, Type, Value};
+use crate::{attributes, common, coverageinfo, debuginfo, llvm_util};
 
 /// `TyCtxt` (and related cache datastructures) can't be move between threads.
 /// However, there are various cx related functions which we want to be available to the builder and
@@ -740,7 +739,7 @@ impl<'ll> SimpleCx<'ll> {
         llcx: &'ll llvm::Context,
         pointer_size: Size,
     ) -> Self {
-        let isize_ty = llvm::Type::ix_llcx(llcx, pointer_size.bits());
+        let isize_ty = llvm::LLVMIntTypeInContext(llcx, pointer_size.bits() as c_uint);
         Self(SCx { llmod, llcx, isize_ty }, PhantomData)
     }
 }
@@ -901,10 +900,7 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         if self.get_declared_value(entry_name).is_none() {
             let llfn = self.declare_entry_fn(
                 entry_name,
-                llvm::CallConv::from_conv(
-                    self.sess().target.entry_abi,
-                    self.sess().target.arch.borrow(),
-                ),
+                to_llvm_calling_convention(self.sess(), self.sess().target.entry_abi),
                 llvm::UnnamedAddr::Global,
                 fn_type,
             );

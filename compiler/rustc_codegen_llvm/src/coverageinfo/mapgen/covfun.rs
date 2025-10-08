@@ -10,8 +10,8 @@ use std::sync::Arc;
 use rustc_abi::Align;
 use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods as _, ConstCodegenMethods};
 use rustc_middle::mir::coverage::{
-    BasicCoverageBlock, CovTerm, CoverageIdsInfo, Expression, FunctionCoverageInfo, Mapping,
-    MappingKind, Op,
+    BasicCoverageBlock, CounterId, CovTerm, CoverageIdsInfo, Expression, ExpressionId,
+    FunctionCoverageInfo, Mapping, MappingKind, Op,
 };
 use rustc_middle::ty::{Instance, TyCtxt};
 use rustc_span::{SourceFile, Span};
@@ -36,7 +36,7 @@ pub(crate) struct CovfunRecord<'tcx> {
 
     virtual_file_mapping: VirtualFileMapping,
     expressions: Vec<ffi::CounterExpression>,
-    regions: ffi::Regions,
+    regions: llvm_cov::Regions,
 }
 
 impl<'tcx> CovfunRecord<'tcx> {
@@ -64,7 +64,7 @@ pub(crate) fn prepare_covfun_record<'tcx>(
         is_used,
         virtual_file_mapping: VirtualFileMapping::default(),
         expressions,
-        regions: ffi::Regions::default(),
+        regions: llvm_cov::Regions::default(),
     };
 
     fill_region_tables(tcx, fn_cov_info, ids_info, &mut covfun);
@@ -77,10 +77,21 @@ pub(crate) fn prepare_covfun_record<'tcx>(
     Some(covfun)
 }
 
+pub(crate) fn counter_for_term(term: CovTerm) -> ffi::Counter {
+    use ffi::Counter;
+    match term {
+        CovTerm::Zero => Counter::ZERO,
+        CovTerm::Counter(id) => {
+            Counter { kind: ffi::CounterKind::CounterValueReference, id: CounterId::as_u32(id) }
+        }
+        CovTerm::Expression(id) => {
+            Counter { kind: ffi::CounterKind::Expression, id: ExpressionId::as_u32(id) }
+        }
+    }
+}
+
 /// Convert the function's coverage-counter expressions into a form suitable for FFI.
 fn prepare_expressions(ids_info: &CoverageIdsInfo) -> Vec<ffi::CounterExpression> {
-    let counter_for_term = ffi::Counter::from_term;
-
     // We know that LLVM will optimize out any unused expressions before
     // producing the final coverage map, so there's no need to do the same
     // thing on the Rust side unless we're confident we can do much better.
@@ -113,7 +124,7 @@ fn fill_region_tables<'tcx>(
         } else {
             CovTerm::Zero
         };
-        ffi::Counter::from_term(term)
+        counter_for_term(term)
     };
 
     // Currently a function's mappings must all be in the same file, so use the
@@ -136,7 +147,7 @@ fn fill_region_tables<'tcx>(
         if discard_all { None } else { spans::make_coords(source_map, &source_file, span) }
     };
 
-    let ffi::Regions {
+    let llvm_cov::Regions {
         code_regions,
         expansion_regions: _, // FIXME(Zalathar): Fill out support for expansion regions
         branch_regions,

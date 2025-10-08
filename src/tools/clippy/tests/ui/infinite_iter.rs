@@ -1,4 +1,4 @@
-#![allow(clippy::uninlined_format_args, clippy::double_ended_iterator_last)]
+#![allow(clippy::double_ended_iterator_last)]
 
 use std::iter::repeat;
 fn square_is_lower_64(x: &u32) -> bool {
@@ -30,7 +30,7 @@ fn infinite_iters() {
         .rev()
         .cycle()
         .map(|x| x + 1_u32)
-        .for_each(|x| println!("{}", x));
+        .for_each(|x| println!("{x}"));
     // infinite iter
     (0..3_u32).flat_map(|x| x..).sum::<u32>();
     // infinite iter

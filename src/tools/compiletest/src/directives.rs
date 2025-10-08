@@ -1,9 +1,6 @@
 use std::collections::HashSet;
-use std::env;
-use std::fs::File;
-use std::io::BufReader;
-use std::io::prelude::*;
 use std::process::Command;
+use std::{env, fs};
 
 use camino::{Utf8Path, Utf8PathBuf};
 use semver::Version;
@@ -15,6 +12,7 @@ use crate::directives::auxiliary::{AuxProps, parse_and_update_aux};
 use crate::directives::directive_names::{
     KNOWN_DIRECTIVE_NAMES, KNOWN_HTMLDOCCK_DIRECTIVE_NAMES, KNOWN_JSONDOCCK_DIRECTIVE_NAMES,
 };
+use crate::directives::line::{DirectiveLine, line_directive};
 use crate::directives::needs::CachedNeedsConditions;
 use crate::edition::{Edition, parse_edition};
 use crate::errors::ErrorKind;
@@ -25,6 +23,7 @@ use crate::{fatal, help};
 pub(crate) mod auxiliary;
 mod cfg;
 mod directive_names;
+mod line;
 mod needs;
 #[cfg(test)]
 mod tests;
@@ -52,18 +51,19 @@ pub struct EarlyProps {
 
 impl EarlyProps {
     pub fn from_file(config: &Config, testfile: &Utf8Path) -> Self {
-        let file = File::open(testfile.as_std_path()).expect("open test file to parse earlyprops");
-        Self::from_reader(config, testfile, file)
+        let file_contents =
+            fs::read_to_string(testfile).expect("read test file to parse earlyprops");
+        Self::from_file_contents(config, testfile, &file_contents)
     }
 
-    pub fn from_reader<R: Read>(config: &Config, testfile: &Utf8Path, rdr: R) -> Self {
+    pub fn from_file_contents(config: &Config, testfile: &Utf8Path, file_contents: &str) -> Self {
         let mut props = EarlyProps::default();
         let mut poisoned = false;
         iter_directives(
             config.mode,
             &mut poisoned,
             testfile,
-            rdr,
+            file_contents,
             // (dummy comment to force args into vertical layout)
             &mut |ref ln: DirectiveLine<'_>| {
                 parse_and_update_aux(config, ln, testfile, &mut props.aux);
@@ -360,7 +360,7 @@ impl TestProps {
     fn load_from(&mut self, testfile: &Utf8Path, test_revision: Option<&str>, config: &Config) {
         let mut has_edition = false;
         if !testfile.is_dir() {
-            let file = File::open(testfile.as_std_path()).unwrap();
+            let file_contents = fs::read_to_string(testfile).unwrap();
 
             let mut poisoned = false;
 
@@ -368,7 +368,7 @@ impl TestProps {
                 config.mode,
                 &mut poisoned,
                 testfile,
-                file,
+                &file_contents,
                 &mut |ref ln: DirectiveLine<'_>| {
                     if !ln.applies_to_test_revision(test_revision) {
                         return;
@@ -824,70 +824,6 @@ impl TestProps {
     }
 }
 
-/// If the given line begins with the appropriate comment prefix for a directive,
-/// returns a struct containing various parts of the directive.
-fn line_directive<'line>(
-    line_number: usize,
-    original_line: &'line str,
-) -> Option<DirectiveLine<'line>> {
-    // Ignore lines that don't start with the comment prefix.
-    let after_comment =
-        original_line.trim_start().strip_prefix(COMPILETEST_DIRECTIVE_PREFIX)?.trim_start();
-
-    let revision;
-    let raw_directive;
-
-    if let Some(after_open_bracket) = after_comment.strip_prefix('[') {
-        // A comment like `//@[foo]` only applies to revision `foo`.
-        let Some((line_revision, after_close_bracket)) = after_open_bracket.split_once(']') else {
-            panic!(
-                "malformed condition directive: expected `{COMPILETEST_DIRECTIVE_PREFIX}[foo]`, found `{original_line}`"
-            )
-        };
-
-        revision = Some(line_revision);
-        raw_directive = after_close_bracket.trim_start();
-    } else {
-        revision = None;
-        raw_directive = after_comment;
-    };
-
-    Some(DirectiveLine { line_number, revision, raw_directive })
-}
-
-/// The (partly) broken-down contents of a line containing a test directive,
-/// which [`iter_directives`] passes to its callback function.
-///
-/// For example:
-///
-/// ```text
-/// //@ compile-flags: -O
-///     ^^^^^^^^^^^^^^^^^ raw_directive
-///
-/// //@ [foo] compile-flags: -O
-///      ^^^                    revision
-///           ^^^^^^^^^^^^^^^^^ raw_directive
-/// ```
-struct DirectiveLine<'ln> {
-    line_number: usize,
-    /// Some test directives start with a revision name in square brackets
-    /// (e.g. `[foo]`), and only apply to that revision of the test.
-    /// If present, this field contains the revision name (e.g. `foo`).
-    revision: Option<&'ln str>,
-    /// The main part of the directive, after removing the comment prefix
-    /// and the optional revision specifier.
-    ///
-    /// This is "raw" because the directive's name and colon-separated value
-    /// (if present) have not yet been extracted or checked.
-    raw_directive: &'ln str,
-}
-
-impl<'ln> DirectiveLine<'ln> {
-    fn applies_to_test_revision(&self, test_revision: Option<&str>) -> bool {
-        self.revision.is_none() || self.revision == test_revision
-    }
-}
-
 pub(crate) struct CheckDirectiveResult<'ln> {
     is_known_directive: bool,
     trailing_directive: Option<&'ln str>,
@@ -897,9 +833,7 @@ fn check_directive<'a>(
     directive_ln: &DirectiveLine<'a>,
     mode: TestMode,
 ) -> CheckDirectiveResult<'a> {
-    let &DirectiveLine { raw_directive: directive_ln, .. } = directive_ln;
-
-    let (directive_name, post) = directive_ln.split_once([':', ' ']).unwrap_or((directive_ln, ""));
+    let &DirectiveLine { name: directive_name, .. } = directive_ln;
 
     let is_known_directive = KNOWN_DIRECTIVE_NAMES.contains(&directive_name)
         || match mode {
@@ -908,25 +842,22 @@ fn check_directive<'a>(
             _ => false,
         };
 
-    let trailing = post.trim().split_once(' ').map(|(pre, _)| pre).unwrap_or(post);
-    let trailing_directive = {
-        // 1. is the directive name followed by a space? (to exclude `:`)
-        directive_ln.get(directive_name.len()..).is_some_and(|s| s.starts_with(' '))
-            // 2. is what is after that directive also a directive (ex: "only-x86 only-arm")
-            && KNOWN_DIRECTIVE_NAMES.contains(&trailing)
-    }
-    .then_some(trailing);
+    // If it looks like the user tried to put two directives on the same line
+    // (e.g. `//@ only-linux only-x86_64`), signal an error, because the
+    // second "directive" would actually be ignored with no effect.
+    let trailing_directive = directive_ln
+        .remark_after_space()
+        .map(|remark| remark.trim_start().split(' ').next().unwrap())
+        .filter(|token| KNOWN_DIRECTIVE_NAMES.contains(token));
 
     CheckDirectiveResult { is_known_directive, trailing_directive }
 }
-
-const COMPILETEST_DIRECTIVE_PREFIX: &str = "//@";
 
 fn iter_directives(
     mode: TestMode,
     poisoned: &mut bool,
     testfile: &Utf8Path,
-    rdr: impl Read,
+    file_contents: &str,
     it: &mut dyn FnMut(DirectiveLine<'_>),
 ) {
     if testfile.is_dir() {
@@ -939,28 +870,21 @@ fn iter_directives(
     // FIXME(jieyouxu): I feel like there's a better way to do this, leaving for later.
     if mode == TestMode::CoverageRun {
         let extra_directives: &[&str] = &[
-            "needs-profiler-runtime",
+            "//@ needs-profiler-runtime",
             // FIXME(pietroalbini): this test currently does not work on cross-compiled targets
             // because remote-test is not capable of sending back the *.profraw files generated by
             // the LLVM instrumentation.
-            "ignore-cross-compile",
+            "//@ ignore-cross-compile",
         ];
         // Process the extra implied directives, with a dummy line number of 0.
-        for raw_directive in extra_directives {
-            it(DirectiveLine { line_number: 0, revision: None, raw_directive });
+        for directive_str in extra_directives {
+            let directive_line = line_directive(0, directive_str)
+                .unwrap_or_else(|| panic!("bad extra-directive line: {directive_str:?}"));
+            it(directive_line);
         }
     }
 
-    let mut rdr = BufReader::with_capacity(1024, rdr);
-    let mut ln = String::new();
-    let mut line_number = 0;
-
-    loop {
-        line_number += 1;
-        ln.clear();
-        if rdr.read_line(&mut ln).unwrap() == 0 {
-            break;
-        }
+    for (line_number, ln) in (1..).zip(file_contents.lines()) {
         let ln = ln.trim();
 
         let Some(directive_line) = line_directive(line_number, ln) else {
@@ -977,7 +901,7 @@ fn iter_directives(
 
                 error!(
                     "{testfile}:{line_number}: detected unknown compiletest test directive `{}`",
-                    directive_line.raw_directive,
+                    directive_line.display(),
                 );
 
                 return;
@@ -1073,13 +997,9 @@ impl Config {
     }
 
     fn parse_custom_normalization(&self, line: &DirectiveLine<'_>) -> Option<NormalizeRule> {
-        let &DirectiveLine { raw_directive, .. } = line;
+        let &DirectiveLine { name, .. } = line;
 
-        // FIXME(Zalathar): Integrate name/value splitting into `DirectiveLine`
-        // instead of doing it here.
-        let (directive_name, raw_value) = raw_directive.split_once(':')?;
-
-        let kind = match directive_name {
+        let kind = match name {
             "normalize-stdout" => NormalizeKind::Stdout,
             "normalize-stderr" => NormalizeKind::Stderr,
             "normalize-stderr-32bit" => NormalizeKind::Stderr32bit,
@@ -1087,21 +1007,20 @@ impl Config {
             _ => return None,
         };
 
-        let Some((regex, replacement)) = parse_normalize_rule(raw_value) else {
-            error!("couldn't parse custom normalization rule: `{raw_directive}`");
-            help!("expected syntax is: `{directive_name}: \"REGEX\" -> \"REPLACEMENT\"`");
+        let Some((regex, replacement)) = line.value_after_colon().and_then(parse_normalize_rule)
+        else {
+            error!("couldn't parse custom normalization rule: `{}`", line.display());
+            help!("expected syntax is: `{name}: \"REGEX\" -> \"REPLACEMENT\"`");
             panic!("invalid normalization rule detected");
         };
         Some(NormalizeRule { kind, regex, replacement })
     }
 
     fn parse_name_directive(&self, line: &DirectiveLine<'_>, directive: &str) -> bool {
-        let &DirectiveLine { raw_directive: line, .. } = line;
-
-        // Ensure the directive is a whole word. Do not match "ignore-x86" when
-        // the line says "ignore-x86_64".
-        line.starts_with(directive)
-            && matches!(line.as_bytes().get(directive.len()), None | Some(&b' ') | Some(&b':'))
+        // FIXME(Zalathar): Ideally, this should raise an error if a name-only
+        // directive is followed by a colon, since that's the wrong syntax.
+        // But we would need to fix tests that rely on the current behaviour.
+        line.name == directive
     }
 
     fn parse_name_value_directive(
@@ -1110,22 +1029,26 @@ impl Config {
         directive: &str,
         testfile: &Utf8Path,
     ) -> Option<String> {
-        let &DirectiveLine { line_number, raw_directive: line, .. } = line;
+        let &DirectiveLine { line_number, .. } = line;
 
-        let colon = directive.len();
-        if line.starts_with(directive) && line.as_bytes().get(colon) == Some(&b':') {
-            let value = line[(colon + 1)..].to_owned();
-            debug!("{}: {}", directive, value);
-            let value = expand_variables(value, self);
-            if value.is_empty() {
-                error!("{testfile}:{line_number}: empty value for directive `{directive}`");
-                help!("expected syntax is: `{directive}: value`");
-                panic!("empty directive value detected");
-            }
-            Some(value)
-        } else {
-            None
+        if line.name != directive {
+            return None;
+        };
+
+        // FIXME(Zalathar): This silently discards directives with a matching
+        // name but no colon. Unfortunately, some directives (e.g. "pp-exact")
+        // currently rely on _not_ panicking here.
+        let value = line.value_after_colon()?;
+        debug!("{}: {}", directive, value);
+        let value = expand_variables(value.to_owned(), self);
+
+        if value.is_empty() {
+            error!("{testfile}:{line_number}: empty value for directive `{directive}`");
+            help!("expected syntax is: `{directive}: value`");
+            panic!("empty directive value detected");
         }
+
+        Some(value)
     }
 
     fn set_name_directive(&self, line: &DirectiveLine<'_>, directive: &str, value: &mut bool) {
@@ -1425,13 +1348,13 @@ where
     Some((min, max))
 }
 
-pub(crate) fn make_test_description<R: Read>(
+pub(crate) fn make_test_description(
     config: &Config,
     cache: &DirectivesCache,
     name: String,
     path: &Utf8Path,
     filterable_path: &Utf8Path,
-    src: R,
+    file_contents: &str,
     test_revision: Option<&str>,
     poisoned: &mut bool,
 ) -> CollectedTestDesc {
@@ -1446,7 +1369,7 @@ pub(crate) fn make_test_description<R: Read>(
         config.mode,
         &mut local_poisoned,
         path,
-        src,
+        file_contents,
         &mut |ref ln @ DirectiveLine { line_number, .. }| {
             if !ln.applies_to_test_revision(test_revision) {
                 return;
@@ -1515,14 +1438,14 @@ pub(crate) fn make_test_description<R: Read>(
 }
 
 fn ignore_cdb(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
-    let &DirectiveLine { raw_directive: line, .. } = line;
-
     if config.debugger != Some(Debugger::Cdb) {
         return IgnoreDecision::Continue;
     }
 
     if let Some(actual_version) = config.cdb_version {
-        if let Some(rest) = line.strip_prefix("min-cdb-version:").map(str::trim) {
+        if line.name == "min-cdb-version"
+            && let Some(rest) = line.value_after_colon().map(str::trim)
+        {
             let min_version = extract_cdb_version(rest).unwrap_or_else(|| {
                 panic!("couldn't parse version range: {:?}", rest);
             });
@@ -1540,14 +1463,14 @@ fn ignore_cdb(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
 }
 
 fn ignore_gdb(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
-    let &DirectiveLine { raw_directive: line, .. } = line;
-
     if config.debugger != Some(Debugger::Gdb) {
         return IgnoreDecision::Continue;
     }
 
     if let Some(actual_version) = config.gdb_version {
-        if let Some(rest) = line.strip_prefix("min-gdb-version:").map(str::trim) {
+        if line.name == "min-gdb-version"
+            && let Some(rest) = line.value_after_colon().map(str::trim)
+        {
             let (start_ver, end_ver) = extract_version_range(rest, extract_gdb_version)
                 .unwrap_or_else(|| {
                     panic!("couldn't parse version range: {:?}", rest);
@@ -1563,7 +1486,9 @@ fn ignore_gdb(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
                     reason: format!("ignored when the GDB version is lower than {rest}"),
                 };
             }
-        } else if let Some(rest) = line.strip_prefix("ignore-gdb-version:").map(str::trim) {
+        } else if line.name == "ignore-gdb-version"
+            && let Some(rest) = line.value_after_colon().map(str::trim)
+        {
             let (min_version, max_version) = extract_version_range(rest, extract_gdb_version)
                 .unwrap_or_else(|| {
                     panic!("couldn't parse version range: {:?}", rest);
@@ -1590,14 +1515,14 @@ fn ignore_gdb(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
 }
 
 fn ignore_lldb(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
-    let &DirectiveLine { raw_directive: line, .. } = line;
-
     if config.debugger != Some(Debugger::Lldb) {
         return IgnoreDecision::Continue;
     }
 
     if let Some(actual_version) = config.lldb_version {
-        if let Some(rest) = line.strip_prefix("min-lldb-version:").map(str::trim) {
+        if line.name == "min-lldb-version"
+            && let Some(rest) = line.value_after_colon().map(str::trim)
+        {
             let min_version = rest.parse().unwrap_or_else(|e| {
                 panic!("Unexpected format of LLDB version string: {}\n{:?}", rest, e);
             });

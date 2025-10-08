@@ -38,4 +38,13 @@ mod bar {
     mod bar {}
 }
 
+mod with_inner_impl {
+    struct S;
+    impl S {
+        fn f() {
+            mod with_inner_impl {}
+        }
+    }
+}
+
 fn main() {}

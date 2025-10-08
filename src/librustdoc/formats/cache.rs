@@ -146,6 +146,14 @@ impl Cache {
         Cache { document_private, document_hidden, ..Cache::default() }
     }
 
+    fn parent_stack_last_impl_and_trait_id(&self) -> (Option<DefId>, Option<DefId>) {
+        if let Some(ParentStackItem::Impl { item_id, trait_, .. }) = self.parent_stack.last() {
+            (item_id.as_def_id(), trait_.as_ref().map(|tr| tr.def_id()))
+        } else {
+            (None, None)
+        }
+    }
+
     /// Populates the `Cache` with more data. The returned `Crate` will be missing some data that was
     /// in `krate` due to the data being moved into the `Cache`.
     pub(crate) fn populate(cx: &mut DocContext<'_>, mut krate: clean::Crate) -> clean::Crate {
@@ -572,11 +580,7 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
         clean::ItemKind::ImportItem(import) => import.source.did.unwrap_or(item_def_id),
         _ => item_def_id,
     };
-    let impl_id = if let Some(ParentStackItem::Impl { item_id, .. }) = cache.parent_stack.last() {
-        item_id.as_def_id()
-    } else {
-        None
-    };
+    let (impl_id, trait_parent) = cache.parent_stack_last_impl_and_trait_id();
     let search_type = get_function_type_for_search(
         item,
         tcx,
@@ -594,12 +598,15 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
         desc,
         parent: parent_did,
         parent_idx: None,
+        trait_parent,
+        trait_parent_idx: None,
         exact_module_path: None,
         impl_id,
         search_type,
         aliases,
         deprecation,
     };
+
     cache.search_index.push(index_item);
 }
 
@@ -608,19 +615,21 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
 /// See [`Cache::orphan_impl_items`].
 fn handle_orphan_impl_child(cache: &mut Cache, item: &clean::Item, parent_did: DefId) {
     let impl_generics = clean_impl_generics(cache.parent_stack.last());
-    let impl_id = if let Some(ParentStackItem::Impl { item_id, .. }) = cache.parent_stack.last() {
-        item_id.as_def_id()
-    } else {
-        None
+    let (impl_id, trait_parent) = cache.parent_stack_last_impl_and_trait_id();
+    let orphan_item = OrphanImplItem {
+        parent: parent_did,
+        trait_parent,
+        item: item.clone(),
+        impl_generics,
+        impl_id,
     };
-    let orphan_item =
-        OrphanImplItem { parent: parent_did, item: item.clone(), impl_generics, impl_id };
     cache.orphan_impl_items.push(orphan_item);
 }
 
 pub(crate) struct OrphanImplItem {
     pub(crate) parent: DefId,
     pub(crate) impl_id: Option<DefId>,
+    pub(crate) trait_parent: Option<DefId>,
     pub(crate) item: clean::Item,
     pub(crate) impl_generics: Option<(clean::Type, clean::Generics)>,
 }
