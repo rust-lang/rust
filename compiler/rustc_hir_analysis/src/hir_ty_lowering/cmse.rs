@@ -48,14 +48,14 @@ pub(crate) fn validate_cmse_abi<'tcx>(
                 Ok(()) => {}
                 Err(layout_err) => {
                     if should_emit_generic_error(abi, layout_err) {
-                        dcx.emit_err(errors::CmseCallGeneric { span: *fn_ptr_span });
+                        dcx.emit_err(errors::CmseGeneric { span: *fn_ptr_span, abi });
                     }
                 }
             }
 
             if let Err(layout_err) = is_valid_cmse_output(tcx, dcx, fn_sig, fn_ptr_ty.decl, abi) {
                 if should_emit_generic_error(abi, layout_err) {
-                    dcx.emit_err(errors::CmseCallGeneric { span: *fn_ptr_span });
+                    dcx.emit_err(errors::CmseGeneric { span: *fn_ptr_span, abi });
                 }
             }
         }
@@ -76,14 +76,14 @@ pub(crate) fn validate_cmse_abi<'tcx>(
                 Ok(()) => {}
                 Err(layout_err) => {
                     if should_emit_generic_error(abi, layout_err) {
-                        dcx.emit_err(errors::CmseEntryGeneric { span: *fn_sig_span });
+                        dcx.emit_err(errors::CmseGeneric { span: *fn_sig_span, abi });
                     }
                 }
             }
 
             if let Err(layout_err) = is_valid_cmse_output(tcx, dcx, fn_sig, decl, abi) {
                 if should_emit_generic_error(abi, layout_err) {
-                    dcx.emit_err(errors::CmseEntryGeneric { span: *fn_sig_span });
+                    dcx.emit_err(errors::CmseGeneric { span: *fn_sig_span, abi });
                 }
             }
         }
@@ -152,8 +152,9 @@ fn is_valid_cmse_output<'tcx>(
     // `#[no_mangle]` or similar, so generics in the type really don't make sense.
     //
     // see also https://github.com/rust-lang/rust/issues/147242.
-    if return_type.has_opaque_types() {
-        return Err(tcx.arena.alloc(LayoutError::TooGeneric(return_type)));
+    if abi == ExternAbi::CmseNonSecureEntry && return_type.has_opaque_types() {
+        dcx.emit_err(errors::CmseImplTrait { span: fn_decl.output.span(), abi });
+        return Ok(());
     }
 
     let typing_env = ty::TypingEnv::fully_monomorphized();

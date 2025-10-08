@@ -54,13 +54,13 @@ LL |     f3: extern "cmse-nonsecure-call" fn((impl Copy, u32), u32, u32, u32) ->
    |
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
-error[E0798]: function pointers with the `"cmse-nonsecure-call"` ABI cannot contain generics in their type
+error[E0798]: generics are not allowed in `extern "cmse-nonsecure-call"` signatures
   --> $DIR/generics.rs:23:9
    |
 LL |     f4: extern "cmse-nonsecure-call" fn(T, u32, u32, u32) -> u64,
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0798]: function pointers with the `"cmse-nonsecure-call"` ABI cannot contain generics in their type
+error[E0798]: generics are not allowed in `extern "cmse-nonsecure-call"` signatures
   --> $DIR/generics.rs:24:9
    |
 LL |     f5: extern "cmse-nonsecure-call" fn(Wrapper<T>, u32, u32, u32) -> u64,

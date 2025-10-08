@@ -1,4 +1,4 @@
-error[E0798]: functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
+error[E0798]: generics are not allowed in `extern "cmse-nonsecure-entry"` signatures
   --> $DIR/generics.rs:30:1
    |
 LL | / extern "cmse-nonsecure-entry" fn introduced_generic<U: Copy>(
@@ -10,55 +10,46 @@ LL | |     _: u32,
 LL | | ) -> u64 {
    | |________^
 
-error[E0798]: functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
+error[E0798]: generics are not allowed in `extern "cmse-nonsecure-entry"` signatures
   --> $DIR/generics.rs:64:1
    |
 LL | extern "cmse-nonsecure-entry" fn impl_trait(_: impl Copy, _: u32, _: u32, _: u32) -> u64 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0798]: functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
+error[E0798]: generics are not allowed in `extern "cmse-nonsecure-entry"` signatures
   --> $DIR/generics.rs:79:1
    |
 LL | extern "cmse-nonsecure-entry" fn identity_impl_trait(v: impl Copy) -> impl Copy {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0798]: functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
-  --> $DIR/generics.rs:79:1
+error[E0798]: `impl Trait` is not allowed in `extern "cmse-nonsecure-entry"` signatures
+  --> $DIR/generics.rs:79:71
    |
 LL | extern "cmse-nonsecure-entry" fn identity_impl_trait(v: impl Copy) -> impl Copy {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+   |                                                                       ^^^^^^^^^
 
-error[E0798]: functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
+error[E0798]: generics are not allowed in `extern "cmse-nonsecure-entry"` signatures
   --> $DIR/generics.rs:85:1
    |
 LL | / extern "cmse-nonsecure-entry" fn identity_impl_trait_nested(
-LL | |
 LL | |
 LL | |     v: (impl Copy, i32),
 LL | | ) -> (impl Copy, i32) {
    | |_____________________^
 
-error[E0798]: functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
-  --> $DIR/generics.rs:85:1
+error[E0798]: `impl Trait` is not allowed in `extern "cmse-nonsecure-entry"` signatures
+  --> $DIR/generics.rs:88:6
    |
-LL | / extern "cmse-nonsecure-entry" fn identity_impl_trait_nested(
-LL | |
-LL | |
-LL | |     v: (impl Copy, i32),
-LL | | ) -> (impl Copy, i32) {
-   | |_____________________^
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+LL | ) -> (impl Copy, i32) {
+   |      ^^^^^^^^^^^^^^^^
 
-error[E0798]: functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
+error[E0798]: generics are not allowed in `extern "cmse-nonsecure-entry"` signatures
   --> $DIR/generics.rs:14:5
    |
 LL |     extern "cmse-nonsecure-entry" fn ambient_generic(_: T, _: u32, _: u32, _: u32) -> u64 {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0798]: functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
+error[E0798]: generics are not allowed in `extern "cmse-nonsecure-entry"` signatures
   --> $DIR/generics.rs:19:5
    |
 LL | /     extern "cmse-nonsecure-entry" fn ambient_generic_nested(
@@ -97,17 +88,17 @@ LL | extern "cmse-nonsecure-entry" fn wrapped_trait_object(x: WrapperTransparent
    = note: functions with the `"cmse-nonsecure-entry"` ABI must pass their result via the available return registers
    = note: the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
 
-error[E0798]: functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
-  --> $DIR/generics.rs:69:1
+error[E0798]: `impl Trait` is not allowed in `extern "cmse-nonsecure-entry"` signatures
+  --> $DIR/generics.rs:69:57
    |
 LL | extern "cmse-nonsecure-entry" fn return_impl_trait() -> impl Copy {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                                         ^^^^^^^^^
 
-error[E0798]: functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
-  --> $DIR/generics.rs:74:1
+error[E0798]: `impl Trait` is not allowed in `extern "cmse-nonsecure-entry"` signatures
+  --> $DIR/generics.rs:74:64
    |
 LL | extern "cmse-nonsecure-entry" fn return_impl_trait_nested() -> (impl Copy, i32) {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                                                ^^^^^^^^^^^^^^^^
 
 error: aborting due to 13 previous errors
 

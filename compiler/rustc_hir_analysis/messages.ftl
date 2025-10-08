@@ -72,11 +72,11 @@ hir_analysis_cannot_capture_late_bound_ty =
 hir_analysis_closure_implicit_hrtb = implicit types in closure signatures are forbidden when `for<...>` is present
     .label = `for<...>` is here
 
-hir_analysis_cmse_call_generic =
-    function pointers with the `"cmse-nonsecure-call"` ABI cannot contain generics in their type
+hir_analysis_cmse_generic =
+    generics are not allowed in `extern {$abi}` signatures
 
-hir_analysis_cmse_entry_generic =
-    functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
+hir_analysis_cmse_impl_trait =
+    `impl Trait` is not allowed in `extern {$abi}` signatures
 
 hir_analysis_cmse_inputs_stack_spill =
     arguments for `{$abi}` function too large to pass via registers

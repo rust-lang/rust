@@ -67,25 +67,25 @@ extern "cmse-nonsecure-entry" fn impl_trait(_: impl Copy, _: u32, _: u32, _: u32
 }
 
 extern "cmse-nonsecure-entry" fn return_impl_trait() -> impl Copy {
-    //~^ ERROR functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
+    //~^ ERROR `impl Trait` is not allowed in `extern "cmse-nonsecure-entry"` signatures
     0u128
 }
 
 extern "cmse-nonsecure-entry" fn return_impl_trait_nested() -> (impl Copy, i32) {
-    //~^ ERROR functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
+    //~^ ERROR `impl Trait` is not allowed in `extern "cmse-nonsecure-entry"` signatures
     (0u128, 0i32)
 }
 
 extern "cmse-nonsecure-entry" fn identity_impl_trait(v: impl Copy) -> impl Copy {
-    //~^ ERROR functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
-    //~| ERROR functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
+    //~^ ERROR generics are not allowed in `extern "cmse-nonsecure-entry"` signatures
+    //~| ERROR `impl Trait` is not allowed in `extern "cmse-nonsecure-entry"` signatures
     v
 }
 
 extern "cmse-nonsecure-entry" fn identity_impl_trait_nested(
-    //~^ ERROR functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
-    //~| ERROR functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
+    //~^ ERROR generics are not allowed in `extern "cmse-nonsecure-entry"` signatures
     v: (impl Copy, i32),
 ) -> (impl Copy, i32) {
+    //~^ ERROR `impl Trait` is not allowed in `extern "cmse-nonsecure-entry"` signatures
     v
 }
