@@ -55,16 +55,16 @@ LL |     f3: extern "cmse-nonsecure-call" fn((impl Copy, u32), u32, u32, u32) ->
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error[E0798]: generics are not allowed in `extern "cmse-nonsecure-call"` signatures
-  --> $DIR/generics.rs:23:9
+  --> $DIR/generics.rs:23:41
    |
 LL |     f4: extern "cmse-nonsecure-call" fn(T, u32, u32, u32) -> u64,
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                         ^
 
 error[E0798]: generics are not allowed in `extern "cmse-nonsecure-call"` signatures
-  --> $DIR/generics.rs:24:9
+  --> $DIR/generics.rs:24:41
    |
 LL |     f5: extern "cmse-nonsecure-call" fn(Wrapper<T>, u32, u32, u32) -> u64,
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                         ^^^^^^^^^^
 
 error[E0798]: return value of `"cmse-nonsecure-call"` function too large to pass via registers
   --> $DIR/generics.rs:30:71

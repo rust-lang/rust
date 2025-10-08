@@ -17,8 +17,8 @@ impl<T: Copy> Wrapper<T> {
     }
 
     extern "cmse-nonsecure-entry" fn ambient_generic_nested(
-        //~^ ERROR [E0798]
         _: Wrapper<T>,
+        //~^ ERROR [E0798]
         _: u32,
         _: u32,
         _: u32,
@@ -28,8 +28,8 @@ impl<T: Copy> Wrapper<T> {
 }
 
 extern "cmse-nonsecure-entry" fn introduced_generic<U: Copy>(
-    //~^ ERROR [E0798]
     _: U,
+    //~^ ERROR [E0798]
     _: u32,
     _: u32,
     _: u32,
@@ -83,8 +83,8 @@ extern "cmse-nonsecure-entry" fn identity_impl_trait(v: impl Copy) -> impl Copy 
 }
 
 extern "cmse-nonsecure-entry" fn identity_impl_trait_nested(
-    //~^ ERROR generics are not allowed in `extern "cmse-nonsecure-entry"` signatures
     v: (impl Copy, i32),
+    //~^ ERROR generics are not allowed in `extern "cmse-nonsecure-entry"` signatures
 ) -> (impl Copy, i32) {
     //~^ ERROR `impl Trait` is not allowed in `extern "cmse-nonsecure-entry"` signatures
     v

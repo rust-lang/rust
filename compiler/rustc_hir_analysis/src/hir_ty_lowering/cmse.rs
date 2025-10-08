@@ -4,6 +4,7 @@ use rustc_hir::{self as hir, HirId};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutError, TyAndLayout};
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
+use rustc_span::Span;
 
 use crate::errors;
 
@@ -20,11 +21,7 @@ pub(crate) fn validate_cmse_abi<'tcx>(
     match abi {
         ExternAbi::CmseNonSecureCall => {
             let hir_node = tcx.hir_node(hir_id);
-            let hir::Node::Ty(hir::Ty {
-                span: fn_ptr_span,
-                kind: hir::TyKind::FnPtr(fn_ptr_ty),
-                ..
-            }) = hir_node
+            let hir::Node::Ty(hir::Ty { kind: hir::TyKind::FnPtr(fn_ptr_ty), .. }) = hir_node
             else {
                 let span = match tcx.parent_hir_node(hir_id) {
                     hir::Node::Item(hir::Item {
@@ -44,24 +41,24 @@ pub(crate) fn validate_cmse_abi<'tcx>(
                 return;
             };
 
-            match is_valid_cmse_inputs(tcx, dcx, fn_sig, fn_ptr_ty.decl, abi) {
-                Ok(()) => {}
-                Err(layout_err) => {
-                    if should_emit_generic_error(abi, layout_err) {
-                        dcx.emit_err(errors::CmseGeneric { span: *fn_ptr_span, abi });
-                    }
+            if let Err((span, layout_err)) =
+                is_valid_cmse_inputs(tcx, dcx, fn_sig, fn_ptr_ty.decl, abi)
+            {
+                if should_emit_layout_error(abi, layout_err) {
+                    dcx.emit_err(errors::CmseGeneric { span, abi });
                 }
             }
 
             if let Err(layout_err) = is_valid_cmse_output(tcx, dcx, fn_sig, fn_ptr_ty.decl, abi) {
-                if should_emit_generic_error(abi, layout_err) {
-                    dcx.emit_err(errors::CmseGeneric { span: *fn_ptr_span, abi });
+                if should_emit_layout_error(abi, layout_err) {
+                    let span = fn_ptr_ty.decl.output.span();
+                    dcx.emit_err(errors::CmseGeneric { span, abi });
                 }
             }
         }
         ExternAbi::CmseNonSecureEntry => {
             let hir_node = tcx.hir_node(hir_id);
-            let Some(hir::FnSig { decl, span: fn_sig_span, .. }) = hir_node.fn_sig() else {
+            let Some(hir::FnSig { decl, .. }) = hir_node.fn_sig() else {
                 // might happen when this ABI is used incorrectly. That will be handled elsewhere
                 return;
             };
@@ -72,18 +69,15 @@ pub(crate) fn validate_cmse_abi<'tcx>(
                 return;
             }
 
-            match is_valid_cmse_inputs(tcx, dcx, fn_sig, decl, abi) {
-                Ok(()) => {}
-                Err(layout_err) => {
-                    if should_emit_generic_error(abi, layout_err) {
-                        dcx.emit_err(errors::CmseGeneric { span: *fn_sig_span, abi });
-                    }
+            if let Err((span, layout_err)) = is_valid_cmse_inputs(tcx, dcx, fn_sig, decl, abi) {
+                if should_emit_layout_error(abi, layout_err) {
+                    dcx.emit_err(errors::CmseGeneric { span, abi });
                 }
             }
 
             if let Err(layout_err) = is_valid_cmse_output(tcx, dcx, fn_sig, decl, abi) {
-                if should_emit_generic_error(abi, layout_err) {
-                    dcx.emit_err(errors::CmseGeneric { span: *fn_sig_span, abi });
+                if should_emit_layout_error(abi, layout_err) {
+                    dcx.emit_err(errors::CmseGeneric { span: decl.output.span(), abi });
                 }
             }
         }
@@ -98,7 +92,7 @@ fn is_valid_cmse_inputs<'tcx>(
     fn_sig: ty::PolyFnSig<'tcx>,
     fn_decl: &hir::FnDecl<'tcx>,
     abi: ExternAbi,
-) -> Result<(), &'tcx LayoutError<'tcx>> {
+) -> Result<(), (Span, &'tcx LayoutError<'tcx>)> {
     let mut accum = 0u64;
     let mut excess_argument_spans = Vec::new();
 
@@ -107,7 +101,9 @@ fn is_valid_cmse_inputs<'tcx>(
     let fn_sig = tcx.erase_and_anonymize_regions(fn_sig);
 
     for (ty, hir_ty) in fn_sig.inputs().iter().zip(fn_decl.inputs) {
-        let layout = tcx.layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(*ty))?;
+        let layout = tcx
+            .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(*ty))
+            .map_err(|e| (hir_ty.span, e))?;
 
         let align = layout.layout.align().bytes();
         let size = layout.layout.size().bytes();
@@ -189,7 +185,7 @@ fn is_valid_cmse_output_layout<'tcx>(layout: TyAndLayout<'tcx>) -> bool {
     matches!(value, Primitive::Int(Integer::I64, _) | Primitive::Float(Float::F64))
 }
 
-fn should_emit_generic_error<'tcx>(abi: ExternAbi, layout_err: &'tcx LayoutError<'tcx>) -> bool {
+fn should_emit_layout_error<'tcx>(abi: ExternAbi, layout_err: &'tcx LayoutError<'tcx>) -> bool {
     use LayoutError::*;
 
     match layout_err {
