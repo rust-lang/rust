@@ -18,11 +18,10 @@ pub(crate) fn validate_cmse_abi<'tcx>(
     abi: ExternAbi,
     fn_sig: ty::PolyFnSig<'tcx>,
 ) {
-    match abi {
-        ExternAbi::CmseNonSecureCall => {
-            let hir_node = tcx.hir_node(hir_id);
-            let hir::Node::Ty(hir::Ty { kind: hir::TyKind::FnPtr(fn_ptr_ty), .. }) = hir_node
-            else {
+    let fn_decl = match abi {
+        ExternAbi::CmseNonSecureCall => match tcx.hir_node(hir_id) {
+            hir::Node::Ty(hir::Ty { kind: hir::TyKind::FnPtr(fn_ptr_ty), .. }) => fn_ptr_ty.decl,
+            _ => {
                 let span = match tcx.parent_hir_node(hir_id) {
                     hir::Node::Item(hir::Item {
                         kind: hir::ItemKind::ForeignMod { .. },
@@ -39,26 +38,10 @@ pub(crate) fn validate_cmse_abi<'tcx>(
                 )
                 .emit();
                 return;
-            };
-
-            if let Err((span, layout_err)) =
-                is_valid_cmse_inputs(tcx, dcx, fn_sig, fn_ptr_ty.decl, abi)
-            {
-                if should_emit_layout_error(abi, layout_err) {
-                    dcx.emit_err(errors::CmseGeneric { span, abi });
-                }
             }
-
-            if let Err(layout_err) = is_valid_cmse_output(tcx, dcx, fn_sig, fn_ptr_ty.decl, abi) {
-                if should_emit_layout_error(abi, layout_err) {
-                    let span = fn_ptr_ty.decl.output.span();
-                    dcx.emit_err(errors::CmseGeneric { span, abi });
-                }
-            }
-        }
+        },
         ExternAbi::CmseNonSecureEntry => {
-            let hir_node = tcx.hir_node(hir_id);
-            let Some(hir::FnSig { decl, .. }) = hir_node.fn_sig() else {
+            let Some(hir::FnSig { decl, .. }) = tcx.hir_node(hir_id).fn_sig() else {
                 // might happen when this ABI is used incorrectly. That will be handled elsewhere
                 return;
             };
@@ -69,19 +52,21 @@ pub(crate) fn validate_cmse_abi<'tcx>(
                 return;
             }
 
-            if let Err((span, layout_err)) = is_valid_cmse_inputs(tcx, dcx, fn_sig, decl, abi) {
-                if should_emit_layout_error(abi, layout_err) {
-                    dcx.emit_err(errors::CmseGeneric { span, abi });
-                }
-            }
-
-            if let Err(layout_err) = is_valid_cmse_output(tcx, dcx, fn_sig, decl, abi) {
-                if should_emit_layout_error(abi, layout_err) {
-                    dcx.emit_err(errors::CmseGeneric { span: decl.output.span(), abi });
-                }
-            }
+            decl
         }
-        _ => (),
+        _ => return,
+    };
+
+    if let Err((span, layout_err)) = is_valid_cmse_inputs(tcx, dcx, fn_sig, fn_decl, abi) {
+        if should_emit_layout_error(abi, layout_err) {
+            dcx.emit_err(errors::CmseGeneric { span, abi });
+        }
+    }
+
+    if let Err(layout_err) = is_valid_cmse_output(tcx, dcx, fn_sig, fn_decl, abi) {
+        if should_emit_layout_error(abi, layout_err) {
+            dcx.emit_err(errors::CmseGeneric { span: fn_decl.output.span(), abi });
+        }
     }
 }
 
