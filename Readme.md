@@ -76,7 +76,7 @@ If you want to run libgccjit tests, you will need to
 ```bash
 --enable-languages=jit,c++
 ```
-* Install [dejagnu](https://www.gnu.org/software/dejagnu/#downloading) to run the tests
+* Install [dejagnu](https://www.gnu.org/software/dejagnu/#downloading) to run the tests:
 
 ```bash
 $ sudo apt install dejagnu
