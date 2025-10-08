@@ -179,7 +179,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         })
     }
 
-    #[instrument(skip(self))]
+    #[instrument(skip(self), ret)]
     fn coerce(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
         // First, remove any resolved type variables (at the top level, at least):
         let a = self.shallow_resolve(a);
@@ -223,21 +223,20 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             }
         }
 
-        // Examine the supertype and consider type-specific coercions, such
-        // as auto-borrowing, coercing pointer mutability, a `dyn*` coercion,
-        // or pin-ergonomics.
+        // Examine the target type and consider type-specific coercions, such
+        // as auto-borrowing, coercing pointer mutability, or pin-ergonomics.
         match *b.kind() {
             ty::RawPtr(_, b_mutbl) => {
-                return self.coerce_raw_ptr(a, b, b_mutbl);
+                return self.coerce_to_raw_ptr(a, b, b_mutbl);
             }
             ty::Ref(r_b, _, mutbl_b) => {
-                return self.coerce_borrowed_pointer(a, b, r_b, mutbl_b);
+                return self.coerce_to_ref(a, b, mutbl_b, r_b);
             }
             ty::Adt(pin, _)
                 if self.tcx.features().pin_ergonomics()
                     && self.tcx.is_lang_item(pin.did(), hir::LangItem::Pin) =>
             {
-                let pin_coerce = self.commit_if_ok(|_| self.coerce_pin_ref(a, b));
+                let pin_coerce = self.commit_if_ok(|_| self.coerce_to_pin_ref(a, b));
                 if pin_coerce.is_ok() {
                     return pin_coerce;
                 }
@@ -281,22 +280,21 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         debug_assert!(self.shallow_resolve(b) == b);
 
         if b.is_ty_var() {
-            // Two unresolved type variables: create a `Coerce` predicate.
-            let target_ty = if self.use_lub { self.next_ty_var(self.cause.span) } else { b };
-
             let mut obligations = PredicateObligations::with_capacity(2);
-            for &source_ty in &[a, b] {
-                if source_ty != target_ty {
-                    obligations.push(Obligation::new(
-                        self.tcx(),
-                        self.cause.clone(),
-                        self.param_env,
-                        ty::Binder::dummy(ty::PredicateKind::Coerce(ty::CoercePredicate {
-                            a: source_ty,
-                            b: target_ty,
-                        })),
-                    ));
-                }
+            let mut push_coerce_obligation = |a, b| {
+                obligations.push(Obligation::new(
+                    self.tcx(),
+                    self.cause.clone(),
+                    self.param_env,
+                    ty::Binder::dummy(ty::PredicateKind::Coerce(ty::CoercePredicate { a, b })),
+                ));
+            };
+
+            let target_ty = self.use_lub.then(|| self.next_ty_var(self.cause.span)).unwrap_or(b);
+
+            push_coerce_obligation(a, target_ty);
+            if self.use_lub {
+                push_coerce_obligation(b, target_ty);
             }
 
             debug!(
@@ -311,159 +309,99 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         }
     }
 
-    /// Reborrows `&mut A` to `&mut B` and `&(mut) A` to `&B`.
-    /// To match `A` with `B`, autoderef will be performed,
-    /// calling `deref`/`deref_mut` where necessary.
-    fn coerce_borrowed_pointer(
+    /// Handles coercing some arbitrary type `a` to some reference (`b`). This
+    /// handles a few cases:
+    /// - Introducing reborrows to give more flexible lifetimes
+    /// - Deref coercions to allow `&T` to coerce to `&T::Target`
+    /// - Coercing mutable references to immutable references
+    /// These coercions can be freely intermixed, for example we are able to
+    /// coerce `&mut T` to `&mut T::Target`.
+    fn coerce_to_ref(
         &self,
         a: Ty<'tcx>,
         b: Ty<'tcx>,
-        r_b: ty::Region<'tcx>,
         mutbl_b: hir::Mutability,
+        r_b: ty::Region<'tcx>,
     ) -> CoerceResult<'tcx> {
-        debug!("coerce_borrowed_pointer(a={:?}, b={:?})", a, b);
+        debug!("coerce_to_ref(a={:?}, b={:?})", a, b);
         debug_assert!(self.shallow_resolve(a) == a);
         debug_assert!(self.shallow_resolve(b) == b);
 
-        // If we have a parameter of type `&M T_a` and the value
-        // provided is `expr`, we will be adding an implicit borrow,
-        // meaning that we convert `f(expr)` to `f(&M *expr)`. Therefore,
-        // to type check, we will construct the type that `&M*expr` would
-        // yield.
-
         let (r_a, mt_a) = match *a.kind() {
             ty::Ref(r_a, ty, mutbl) => {
-                let mt_a = ty::TypeAndMut { ty, mutbl };
-                coerce_mutbls(mt_a.mutbl, mutbl_b)?;
-                (r_a, mt_a)
+                coerce_mutbls(mutbl, mutbl_b)?;
+                (r_a, ty::TypeAndMut { ty, mutbl })
             }
             _ => return self.unify(a, b),
         };
 
-        let span = self.cause.span;
-
+        // Look at each step in the `Deref` chain and check if
+        // any of the autoref'd `Target` types unify with the
+        // coercion target.
+        //
+        // For example when coercing from `&mut Vec<T>` to `&M [T]` we
+        // have three deref steps:
+        // 1. `&mut Vec<T>`, skip autoref
+        // 2. `Vec<T>`, autoref'd ty: `&M Vec<T>`
+        //     - `&M Vec<T>` does not unify with `&M [T]`
+        // 3. `[T]`, autoref'd ty: `&M [T]`
+        //     - `&M [T]` does unify with `&M [T]`
         let mut first_error = None;
         let mut r_borrow_var = None;
-        let mut autoderef = self.autoderef(span, a);
-        let mut found = None;
-
-        for (referent_ty, autoderefs) in autoderef.by_ref() {
+        let mut autoderef = self.autoderef(self.cause.span, a);
+        let found = autoderef.by_ref().find_map(|(deref_ty, autoderefs)| {
             if autoderefs == 0 {
-                // Don't let this pass, otherwise it would cause
-                // &T to autoref to &&T.
-                continue;
+                // Don't autoref the first step as otherwise we'd allow
+                // coercing `&T` to `&&T`.
+                return None;
             }
 
-            // At this point, we have deref'd `a` to `referent_ty`. So
-            // imagine we are coercing from `&'a mut Vec<T>` to `&'b mut [T]`.
-            // In the autoderef loop for `&'a mut Vec<T>`, we would get
-            // three callbacks:
+            // The logic here really shouldn't exist. We don't care about free
+            // lifetimes during HIR typeck. Unfortunately later parts of this
+            // function rely on structural identity of the autoref'd deref'd ty.
             //
-            // - `&'a mut Vec<T>` -- 0 derefs, just ignore it
-            // - `Vec<T>` -- 1 deref
-            // - `[T]` -- 2 deref
-            //
-            // At each point after the first callback, we want to
-            // check to see whether this would match out target type
-            // (`&'b mut [T]`) if we autoref'd it. We can't just
-            // compare the referent types, though, because we still
-            // have to consider the mutability. E.g., in the case
-            // we've been considering, we have an `&mut` reference, so
-            // the `T` in `[T]` needs to be unified with equality.
-            //
-            // Therefore, we construct reference types reflecting what
-            // the types will be after we do the final auto-ref and
-            // compare those. Note that this means we use the target
-            // mutability [1], since it may be that we are coercing
-            // from `&mut T` to `&U`.
-            //
-            // One fine point concerns the region that we use. We
-            // choose the region such that the region of the final
-            // type that results from `unify` will be the region we
-            // want for the autoref:
-            //
-            // - if in sub mode, that means we want to use `'b` (the
-            //   region from the target reference) for both
-            //   pointers [2]. This is because sub mode (somewhat
-            //   arbitrarily) returns the subtype region. In the case
-            //   where we are coercing to a target type, we know we
-            //   want to use that target type region (`'b`) because --
-            //   for the program to type-check -- it must be the
-            //   smaller of the two.
-            //   - One fine point. It may be surprising that we can
-            //     use `'b` without relating `'a` and `'b`. The reason
-            //     that this is ok is that what we produce is
-            //     effectively a `&'b *x` expression (if you could
-            //     annotate the region of a borrow), and regionck has
-            //     code that adds edges from the region of a borrow
-            //     (`'b`, here) into the regions in the borrowed
-            //     expression (`*x`, here). (Search for "link".)
-            // - if in lub mode, things can get fairly complicated. The
-            //   easiest thing is just to make a fresh
-            //   region variable [4], which effectively means we defer
-            //   the decision to region inference (and regionck, which will add
-            //   some more edges to this variable). However, this can wind up
-            //   creating a crippling number of variables in some cases --
-            //   e.g., #32278 -- so we optimize one particular case [3].
-            //   Let me try to explain with some examples:
-            //   - The "running example" above represents the simple case,
-            //     where we have one `&` reference at the outer level and
-            //     ownership all the rest of the way down. In this case,
-            //     we want `LUB('a, 'b)` as the resulting region.
-            //   - However, if there are nested borrows, that region is
-            //     too strong. Consider a coercion from `&'a &'x Rc<T>` to
-            //     `&'b T`. In this case, `'a` is actually irrelevant.
-            //     The pointer we want is `LUB('x, 'b`). If we choose `LUB('a,'b)`
-            //     we get spurious errors (`ui/regions-lub-ref-ref-rc.rs`).
-            //     (The errors actually show up in borrowck, typically, because
-            //     this extra edge causes the region `'a` to be inferred to something
-            //     too big, which then results in borrowck errors.)
-            //   - We could track the innermost shared reference, but there is already
-            //     code in regionck that has the job of creating links between
-            //     the region of a borrow and the regions in the thing being
-            //     borrowed (here, `'a` and `'x`), and it knows how to handle
-            //     all the various cases. So instead we just make a region variable
-            //     and let regionck figure it out.
+            // This means that what region we use here actually impacts whether
+            // we emit a reborrow coercion or not which can affect diagnostics
+            // and capture analysis (which in turn affects borrowck).
             let r = if !self.use_lub {
-                r_b // [2] above
+                r_b
             } else if autoderefs == 1 {
-                r_a // [3] above
+                r_a
             } else {
                 if r_borrow_var.is_none() {
                     // create var lazily, at most once
-                    let coercion = RegionVariableOrigin::Coercion(span);
+                    let coercion = RegionVariableOrigin::Coercion(self.cause.span);
                     let r = self.next_region_var(coercion);
-                    r_borrow_var = Some(r); // [4] above
+                    r_borrow_var = Some(r);
                 }
                 r_borrow_var.unwrap()
             };
-            let derefd_ty_a = Ty::new_ref(
-                self.tcx,
-                r,
-                referent_ty,
-                mutbl_b, // [1] above
-            );
-            match self.unify_raw(derefd_ty_a, b) {
-                Ok(ok) => {
-                    found = Some(ok);
-                    break;
-                }
+
+            let autorefd_deref_ty = Ty::new_ref(self.tcx, r, deref_ty, mutbl_b);
+
+            // Note that we unify the autoref'd `Target` type with `b` rather than
+            // the `Target` type with the pointee of `b`. This is necessary
+            // to properly account for the differing variances of the pointees
+            // of `&` vs `&mut` references.
+            match self.unify_raw(autorefd_deref_ty, b) {
+                Ok(ok) => Some(ok),
                 Err(err) => {
                     if first_error.is_none() {
                         first_error = Some(err);
                     }
+                    None
                 }
             }
-        }
+        });
 
         // Extract type or return an error. We return the first error
         // we got, which should be from relating the "base" type
         // (e.g., in example above, the failure from relating `Vec<T>`
         // to the target type), since that should be the least
         // confusing.
-        let Some(InferOk { value: ty, mut obligations }) = found else {
+        let Some(InferOk { value: coerced_a, mut obligations }) = found else {
             if let Some(first_error) = first_error {
-                debug!("coerce_borrowed_pointer: failed with err = {:?}", first_error);
+                debug!("coerce_to_ref: failed with err = {:?}", first_error);
                 return Err(first_error);
             } else {
                 // This may happen in the new trait solver since autoderef requires
@@ -475,11 +413,15 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             }
         };
 
-        if ty == a && mt_a.mutbl.is_not() && autoderef.step_count() == 1 {
+        if coerced_a == a && mt_a.mutbl.is_not() && autoderef.step_count() == 1 {
             // As a special case, if we would produce `&'a *x`, that's
             // a total no-op. We end up with the type `&'a T` just as
-            // we started with. In that case, just skip it
-            // altogether. This is just an optimization.
+            // we started with. In that case, just skip it altogether.
+            //
+            // Unfortunately, this can actually effect capture analysis
+            // which in turn means this effects borrow checking. This can
+            // also effect diagnostics.
+            // FIXME(BoxyUwU): we should always emit reborrow coercions
             //
             // Note that for `&mut`, we DO want to reborrow --
             // otherwise, this would be a move, which might be an
@@ -488,7 +430,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             // `self.x`, but we auto-coerce it to `foo(&mut *self.x)`,
             // which is a borrow.
             assert!(mutbl_b.is_not()); // can only coerce &T -> &U
-            return success(vec![], ty, obligations);
+            return success(vec![], coerced_a, obligations);
         }
 
         let InferOk { value: mut adjustments, obligations: o } =
@@ -496,17 +438,17 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         obligations.extend(o);
         obligations.extend(autoderef.into_obligations());
 
-        // Now apply the autoref. We have to extract the region out of
-        // the final ref type we got.
-        let ty::Ref(..) = ty.kind() else {
-            span_bug!(span, "expected a ref type, got {:?}", ty);
+        // Now apply the autoref
+        let ty::Ref(..) = coerced_a.kind() else {
+            span_bug!(self.cause.span, "expected a ref type, got {:?}", coerced_a);
         };
         let mutbl = AutoBorrowMutability::new(mutbl_b, self.allow_two_phase);
-        adjustments.push(Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(mutbl)), target: ty });
+        adjustments
+            .push(Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(mutbl)), target: coerced_a });
 
-        debug!("coerce_borrowed_pointer: succeeded ty={:?} adjustments={:?}", ty, adjustments);
+        debug!("coerce_to_ref: succeeded coerced_a={:?} adjustments={:?}", coerced_a, adjustments);
 
-        success(adjustments, ty, obligations)
+        success(adjustments, coerced_a, obligations)
     }
 
     /// Performs [unsized coercion] by emulating a fulfillment loop on a
@@ -569,9 +511,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             | ty::Tuple(_) => return Err(TypeError::Mismatch),
             _ => {}
         }
-        // Additionally, we ignore `&str -> &str` coercions, which happen very
-        // commonly since strings are one of the most used argument types in Rust,
-        // we do coercions when type checking call expressions.
+        // `&str: CoerceUnsized<&str>` does not hold but is encountered frequently
+        // so we fast path bail out here
         if let ty::Ref(_, source_pointee, ty::Mutability::Not) = *source.kind()
             && source_pointee.is_str()
             && let ty::Ref(_, target_pointee, ty::Mutability::Not) = *target.kind()
@@ -810,7 +751,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     /// - `Pin<Box<T>>` as `Pin<&T>`
     /// - `Pin<Box<T>>` as `Pin<&mut T>`
     #[instrument(skip(self), level = "trace")]
-    fn coerce_pin_ref(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
+    fn coerce_to_pin_ref(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
         debug_assert!(self.shallow_resolve(a) == a);
         debug_assert!(self.shallow_resolve(b) == b);
 
@@ -1013,13 +954,13 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         }
     }
 
-    fn coerce_raw_ptr(
+    fn coerce_to_raw_ptr(
         &self,
         a: Ty<'tcx>,
         b: Ty<'tcx>,
         mutbl_b: hir::Mutability,
     ) -> CoerceResult<'tcx> {
-        debug!("coerce_raw_ptr(a={:?}, b={:?})", a, b);
+        debug!("coerce_to_raw_ptr(a={:?}, b={:?})", a, b);
         debug_assert!(self.shallow_resolve(a) == a);
         debug_assert!(self.shallow_resolve(b) == b);
 
