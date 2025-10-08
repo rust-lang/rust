@@ -16,8 +16,8 @@ use stdx::never;
 
 use crate::next_solver::mapping::NextSolverToChalk;
 use crate::{
-    DropGlue,
     display::DisplayTarget,
+    drop::{DropGlue, has_drop_glue},
     error_lifetime,
     mir::eval::{
         Address, AdtId, Arc, BuiltinType, Evaluator, FunctionId, HasModule, HirDisplay,
@@ -855,7 +855,11 @@ impl<'db> Evaluator<'db> {
                         "size_of generic arg is not provided".into(),
                     ));
                 };
-                let result = match self.db.has_drop_glue(ty.clone(), self.trait_env.clone()) {
+                let result = match has_drop_glue(
+                    &self.infcx,
+                    ty.to_nextsolver(self.interner),
+                    self.trait_env.clone(),
+                ) {
                     DropGlue::HasDropGlue => true,
                     DropGlue::None => false,
                     DropGlue::DependOnParams => {

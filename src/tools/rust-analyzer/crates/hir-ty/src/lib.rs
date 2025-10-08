@@ -24,7 +24,6 @@ extern crate ra_ap_rustc_next_trait_solver as rustc_next_trait_solver;
 mod builder;
 mod chalk_db;
 mod chalk_ext;
-mod drop;
 mod infer;
 mod inhabitedness;
 mod interner;
@@ -42,6 +41,7 @@ pub mod consteval_nextsolver;
 pub mod db;
 pub mod diagnostics;
 pub mod display;
+pub mod drop;
 pub mod dyn_compatibility;
 pub mod generics;
 pub mod lang_items;
@@ -94,7 +94,6 @@ use crate::{
 pub use autoderef::autoderef;
 pub use builder::{ParamKind, TyBuilder};
 pub use chalk_ext::*;
-pub use drop::DropGlue;
 pub use infer::{
     Adjust, Adjustment, AutoBorrow, BindingMode, InferenceDiagnostic, InferenceResult,
     InferenceTyDiagnosticSource, OverloadedDeref, PointerCast,

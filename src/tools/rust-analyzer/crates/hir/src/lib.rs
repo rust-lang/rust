@@ -82,8 +82,8 @@ use hir_ty::{
     method_resolution,
     mir::{MutBorrowKind, interpret_mir},
     next_solver::{
-        ClauseKind, DbInterner, GenericArgs,
-        infer::InferCtxt,
+        ClauseKind, DbInterner, GenericArgs, TypingMode,
+        infer::{DbInternerInferExt, InferCtxt},
         mapping::{ChalkToNextSolver, NextSolverToChalk, convert_ty_for_result},
     },
     primitive::UintTy,
@@ -157,10 +157,11 @@ pub use {
         tt,
     },
     hir_ty::{
-        CastError, DropGlue, FnAbi, PointerCast, Variance, attach_db, attach_db_allow_change,
+        CastError, FnAbi, PointerCast, Variance, attach_db, attach_db_allow_change,
         consteval::ConstEvalError,
         diagnostics::UnsafetyReason,
         display::{ClosureStyle, DisplayTarget, HirDisplay, HirDisplayError, HirWrite},
+        drop::DropGlue,
         dyn_compatibility::{DynCompatibilityViolation, MethodViolationCode},
         layout::LayoutError,
         method_resolution::TyFingerprint,
@@ -6043,7 +6044,10 @@ impl<'db> Type<'db> {
     }
 
     pub fn drop_glue(&self, db: &'db dyn HirDatabase) -> DropGlue {
-        db.has_drop_glue(self.ty.clone(), self.env.clone())
+        let interner = DbInterner::new_with(db, Some(self.env.krate), self.env.block);
+        // FIXME: This should be `PostAnalysis` I believe.
+        let infcx = interner.infer_ctxt().build(TypingMode::non_body_analysis());
+        hir_ty::drop::has_drop_glue(&infcx, self.ty.to_nextsolver(interner), self.env.clone())
     }
 }
 
