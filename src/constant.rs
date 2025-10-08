@@ -318,7 +318,7 @@ fn data_id_for_static(
         let mut data = DataDescription::new();
         data.set_align(align);
         let data_gv = module.declare_data_in_data(data_id, &mut data);
-        data.define(std::iter::repeat(0).take(pointer_ty(tcx).bytes() as usize).collect());
+        data.define(std::iter::repeat_n(0, pointer_ty(tcx).bytes() as usize).collect());
         data.write_data_addr(0, data_gv, 0);
         match module.define_data(ref_data_id, &data) {
             // Every time the static is referenced there will be another definition of this global,
