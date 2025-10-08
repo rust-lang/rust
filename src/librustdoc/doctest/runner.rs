@@ -39,6 +39,7 @@ impl DocTestRunner {
         doctest: &DocTestBuilder,
         scraped_test: &ScrapedDocTest,
         target_str: &str,
+        opts: &RustdocOptions,
     ) {
         let ignore = match scraped_test.langstr.ignore {
             Ignore::All => true,
@@ -62,6 +63,7 @@ impl DocTestRunner {
                 self.nb_tests,
                 &mut self.output,
                 &mut self.output_merged_tests,
+                opts,
             ),
         ));
         self.supports_color &= doctest.supports_color;
@@ -121,12 +123,17 @@ impl DocTestRunner {
 {output}
 
 mod __doctest_mod {{
-    use std::sync::OnceLock;
+    #[cfg(unix)]
+    use std::os::unix::process::ExitStatusExt;
     use std::path::PathBuf;
     use std::process::ExitCode;
+    use std::sync::OnceLock;
 
     pub static BINARY_PATH: OnceLock<PathBuf> = OnceLock::new();
     pub const RUN_OPTION: &str = \"RUSTDOC_DOCTEST_RUN_NB_TEST\";
+    pub const SHOULD_PANIC_DISABLED: bool = (
+        cfg!(target_family = \"wasm\") || cfg!(target_os = \"zkvm\")
+    ) && !cfg!(target_os = \"emscripten\");
 
     #[allow(unused)]
     pub fn doctest_path() -> Option<&'static PathBuf> {{
@@ -134,13 +141,63 @@ mod __doctest_mod {{
     }}
 
     #[allow(unused)]
-    pub fn doctest_runner(bin: &std::path::Path, test_nb: usize) -> ExitCode {{
+    pub fn doctest_runner(bin: &std::path::Path, test_nb: usize, should_panic: bool) -> ExitCode {{
         let out = std::process::Command::new(bin)
             .env(self::RUN_OPTION, test_nb.to_string())
             .args(std::env::args().skip(1).collect::<Vec<_>>())
             .output()
             .expect(\"failed to run command\");
-        if !out.status.success() {{
+        if should_panic {{
+            // FIXME: Make `test::get_result_from_exit_code` public and use this code instead of this.
+            //
+            // On Zircon (the Fuchsia kernel), an abort from userspace calls the
+            // LLVM implementation of __builtin_trap(), e.g., ud2 on x86, which
+            // raises a kernel exception. If a userspace process does not
+            // otherwise arrange exception handling, the kernel kills the process
+            // with this return code.
+            #[cfg(target_os = \"fuchsia\")]
+            const ZX_TASK_RETCODE_EXCEPTION_KILL: i32 = -1028;
+            // On Windows we use __fastfail to abort, which is documented to use this
+            // exception code.
+            #[cfg(windows)]
+            const STATUS_FAIL_FAST_EXCEPTION: i32 = 0xC0000409u32 as i32;
+            #[cfg(unix)]
+            const SIGABRT: std::ffi::c_int = 6;
+
+            match out.status.code() {{
+                Some(test::ERROR_EXIT_CODE) => ExitCode::SUCCESS,
+                #[cfg(windows)]
+                Some(STATUS_FAIL_FAST_EXCEPTION) => ExitCode::SUCCESS,
+                #[cfg(unix)]
+                None => match out.status.signal() {{
+                    Some(SIGABRT) => ExitCode::SUCCESS,
+                    Some(signal) => {{
+                        eprintln!(\"Test didn't panic, but it's marked `should_panic` (exit signal: {{signal}}).\");
+                        ExitCode::FAILURE
+                    }}
+                    None => {{
+                        eprintln!(\"Test didn't panic, but it's marked `should_panic` and exited with no error code and no signal.\");
+                        ExitCode::FAILURE
+                    }}
+                }},
+                #[cfg(not(unix))]
+                None => {{
+                    eprintln!(\"Test didn't panic, but it's marked `should_panic`.\");
+                    ExitCode::FAILURE
+                }}
+                // Upon an abort, Fuchsia returns the status code ZX_TASK_RETCODE_EXCEPTION_KILL.
+                #[cfg(target_os = \"fuchsia\")]
+                Some(ZX_TASK_RETCODE_EXCEPTION_KILL) => ExitCode::SUCCESS,
+                Some(exit_code) => {{
+                    if !out.status.success() {{
+                        eprintln!(\"Test didn't panic, but it's marked `should_panic` (exit status: {{exit_code}}).\");
+                    }} else {{
+                        eprintln!(\"Test didn't panic, but it's marked `should_panic`.\");
+                    }}
+                    ExitCode::FAILURE
+                }}
+            }}
+        }} else if !out.status.success() {{
             if let Some(code) = out.status.code() {{
                 eprintln!(\"Test executable failed (exit status: {{code}}).\");
             }} else {{
@@ -223,6 +280,7 @@ fn generate_mergeable_doctest(
     id: usize,
     output: &mut String,
     output_merged_tests: &mut String,
+    opts: &RustdocOptions,
 ) -> String {
     let test_id = format!("__doctest_{id}");
 
@@ -256,13 +314,14 @@ fn main() {returns_result} {{
         )
         .unwrap();
     }
-    let not_running = ignore || scraped_test.langstr.no_run;
+    let should_panic = scraped_test.langstr.should_panic;
+    let not_running = ignore || scraped_test.no_run(opts);
     writeln!(
         output_merged_tests,
         "
 mod {test_id} {{
 pub const TEST: test::TestDescAndFn = test::TestDescAndFn::new_doctest(
-{test_name:?}, {ignore}, {file:?}, {line}, {no_run}, {should_panic},
+{test_name:?}, {ignore} || ({should_panic} && crate::__doctest_mod::SHOULD_PANIC_DISABLED), {file:?}, {line}, {no_run}, false,
 test::StaticTestFn(
     || {{{runner}}},
 ));
@@ -270,8 +329,7 @@ test::StaticTestFn(
         test_name = scraped_test.name,
         file = scraped_test.path(),
         line = scraped_test.line,
-        no_run = scraped_test.langstr.no_run,
-        should_panic = !scraped_test.langstr.no_run && scraped_test.langstr.should_panic,
+        no_run = scraped_test.no_run(opts),
         // Setting `no_run` to `true` in `TestDesc` still makes the test run, so we simply
         // don't give it the function to run.
         runner = if not_running {
@@ -279,8 +337,10 @@ test::StaticTestFn(
         } else {
             format!(
                 "
-if let Some(bin_path) = crate::__doctest_mod::doctest_path() {{
-    test::assert_test_result(crate::__doctest_mod::doctest_runner(bin_path, {id}))
+if {should_panic} && crate::__doctest_mod::SHOULD_PANIC_DISABLED {{
+    test::assert_test_result(Ok::<(), String>(()))
+}} else if let Some(bin_path) = crate::__doctest_mod::doctest_path() {{
+    test::assert_test_result(crate::__doctest_mod::doctest_runner(bin_path, {id}, {should_panic}))
 }} else {{
     test::assert_test_result(doctest_bundle::{test_id}::__main_fn())
 }}
