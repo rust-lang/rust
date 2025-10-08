@@ -1,5 +1,8 @@
+use std::sync::RwLock;
+
+use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{DefId, DefIdSet};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdSet};
 use rustc_middle::ty::TyCtxt;
 
 use crate::core::DocContext;
@@ -8,6 +11,13 @@ use crate::core::DocContext;
 
 #[derive(Default)]
 pub(crate) struct RustdocEffectiveVisibilities {
+    inner: RwLock<VisInner>,
+    pub(crate) document_hidden: bool,
+}
+
+#[derive(Default)]
+struct VisInner {
+    visited: FxHashSet<CrateNum>,
     extern_public: DefIdSet,
 }
 
@@ -16,7 +26,18 @@ macro_rules! define_method {
         pub(crate) fn $method(&self, tcx: TyCtxt<'_>, def_id: DefId) -> bool {
             match def_id.as_local() {
                 Some(def_id) => tcx.effective_visibilities(()).$method(def_id),
-                None => self.extern_public.contains(&def_id),
+                None => {
+                    let vis = self.inner.read().unwrap();
+                    if vis.visited.contains(&def_id.krate) {
+                        vis.extern_public.contains(&def_id)
+                    } else {
+                        std::mem::drop(vis);
+                        lib_embargo_visit_item_(&self, tcx, def_id.krate.as_def_id());
+                        let mut vis = self.inner.write().unwrap();
+                        vis.visited.insert(def_id.krate);
+                        vis.extern_public.contains(&def_id)
+                    }
+                }
             }
         }
     };
@@ -28,15 +49,24 @@ impl RustdocEffectiveVisibilities {
     define_method!(is_reachable);
 }
 
-pub(crate) fn lib_embargo_visit_item(cx: &mut DocContext<'_>, def_id: DefId) {
+pub(crate) fn lib_embargo_visit_item_(
+    vis: &RustdocEffectiveVisibilities,
+    tcx: TyCtxt<'_>,
+    def_id: DefId,
+) {
     assert!(!def_id.is_local());
     LibEmbargoVisitor {
-        tcx: cx.tcx,
-        extern_public: &mut cx.cache.effective_visibilities.extern_public,
+        tcx,
+        extern_public: &mut vis.inner.write().unwrap().extern_public,
         visited_mods: Default::default(),
-        document_hidden: cx.render_options.document_hidden,
+        document_hidden: vis.document_hidden,
     }
     .visit_item(def_id)
+}
+
+pub(crate) fn lib_embargo_visit_item(cx: &mut DocContext<'_>, def_id: DefId) {
+    assert_eq!(cx.cache.effective_visibilities.document_hidden, cx.render_options.document_hidden);
+    lib_embargo_visit_item_(&cx.cache.effective_visibilities, cx.tcx, def_id)
 }
 
 /// Similar to `librustc_privacy::EmbargoVisitor`, but also takes
