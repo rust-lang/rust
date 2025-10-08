@@ -643,6 +643,18 @@ pub fn set_perm(_p: &Path, _perm: FilePermissions) -> io::Result<()> {
     unsupported()
 }
 
+pub fn set_times(_p: &Path, _times: FileTimes) -> io::Result<()> {
+    // File times haven't been fully figured out in wasi yet, so this is
+    // likely temporary
+    unsupported()
+}
+
+pub fn set_times_nofollow(_p: &Path, _times: FileTimes) -> io::Result<()> {
+    // File times haven't been fully figured out in wasi yet, so this is
+    // likely temporary
+    unsupported()
+}
+
 pub fn rmdir(p: &Path) -> io::Result<()> {
     let (dir, file) = open_parent(p)?;
     dir.remove_directory(osstr2str(file.as_ref())?)
