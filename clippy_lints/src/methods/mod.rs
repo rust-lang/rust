@@ -5501,7 +5501,14 @@ impl Methods {
                             option_map_unwrap_or::check(cx, expr, m_recv, m_arg, recv, u_arg, span, self.msrv);
                         },
                         Some((then_method @ (sym::then | sym::then_some), t_recv, [t_arg], _, _)) => {
-                            obfuscated_if_else::check(cx, expr, t_recv, t_arg, Some(u_arg), then_method, name);
+                            obfuscated_if_else::check(
+                                cx,
+                                expr,
+                                t_recv,
+                                t_arg,
+                                then_method,
+                                obfuscated_if_else::Unwrap::Or(u_arg),
+                            );
                         },
                         _ => {},
                     }
@@ -5518,9 +5525,8 @@ impl Methods {
                                 expr,
                                 t_recv,
                                 t_arg,
-                                None,
                                 then_method,
-                                sym::unwrap_or_default,
+                                obfuscated_if_else::Unwrap::OrDefault,
                             );
                         },
                         _ => {},
@@ -5537,9 +5543,8 @@ impl Methods {
                                 expr,
                                 t_recv,
                                 t_arg,
-                                Some(u_arg),
                                 then_method,
-                                sym::unwrap_or_else,
+                                obfuscated_if_else::Unwrap::OrElse(u_arg),
                             );
                         },
                         _ => {
