@@ -75,6 +75,8 @@ pub trait DefIdVisitor<'tcx> {
     }
 
     fn tcx(&self) -> TyCtxt<'tcx>;
+    /// NOTE: Def-id visiting should be idempotent, because `DefIdVisitorSkeleton` will avoid
+    /// visiting duplicate def-ids. All the current visitors follow this rule.
     fn visit_def_id(&mut self, def_id: DefId, kind: &str, descr: &dyn fmt::Display)
     -> Self::Result;
 
@@ -82,7 +84,7 @@ pub trait DefIdVisitor<'tcx> {
     fn skeleton(&mut self) -> DefIdVisitorSkeleton<'_, 'tcx, Self> {
         DefIdVisitorSkeleton {
             def_id_visitor: self,
-            visited_opaque_tys: Default::default(),
+            visited_def_ids: Default::default(),
             dummy: Default::default(),
         }
     }
@@ -102,7 +104,7 @@ pub trait DefIdVisitor<'tcx> {
 
 pub struct DefIdVisitorSkeleton<'v, 'tcx, V: ?Sized> {
     def_id_visitor: &'v mut V,
-    visited_opaque_tys: FxHashSet<DefId>,
+    visited_def_ids: FxHashSet<DefId>,
     dummy: PhantomData<TyCtxt<'tcx>>,
 }
 
@@ -112,11 +114,13 @@ where
 {
     fn visit_trait(&mut self, trait_ref: TraitRef<'tcx>) -> V::Result {
         let TraitRef { def_id, args, .. } = trait_ref;
-        try_visit!(self.def_id_visitor.visit_def_id(
-            def_id,
-            "trait",
-            &trait_ref.print_only_trait_path()
-        ));
+        if self.visited_def_ids.insert(def_id) {
+            try_visit!(self.def_id_visitor.visit_def_id(
+                def_id,
+                "trait",
+                &trait_ref.print_only_trait_path()
+            ));
+        }
         if V::SHALLOW { V::Result::output() } else { args.visit_with(self) }
     }
 
@@ -190,7 +194,9 @@ where
             | ty::Closure(def_id, ..)
             | ty::CoroutineClosure(def_id, ..)
             | ty::Coroutine(def_id, ..) => {
-                try_visit!(self.def_id_visitor.visit_def_id(def_id, "type", &ty));
+                if self.visited_def_ids.insert(def_id) {
+                    try_visit!(self.def_id_visitor.visit_def_id(def_id, "type", &ty));
+                }
                 if V::SHALLOW {
                     return V::Result::output();
                 }
@@ -221,15 +227,17 @@ where
                     return V::Result::output();
                 }
 
-                try_visit!(self.def_id_visitor.visit_def_id(
-                    data.def_id,
-                    match kind {
-                        ty::Inherent | ty::Projection => "associated type",
-                        ty::Free => "type alias",
-                        ty::Opaque => unreachable!(),
-                    },
-                    &LazyDefPathStr { def_id: data.def_id, tcx },
-                ));
+                if self.visited_def_ids.insert(data.def_id) {
+                    try_visit!(self.def_id_visitor.visit_def_id(
+                        data.def_id,
+                        match kind {
+                            ty::Inherent | ty::Projection => "associated type",
+                            ty::Free => "type alias",
+                            ty::Opaque => unreachable!(),
+                        },
+                        &LazyDefPathStr { def_id: data.def_id, tcx },
+                    ));
+                }
 
                 // This will also visit args if necessary, so we don't need to recurse.
                 return if V::SHALLOW {
@@ -254,12 +262,14 @@ where
                         }
                     };
                     let ty::ExistentialTraitRef { def_id, .. } = trait_ref;
-                    try_visit!(self.def_id_visitor.visit_def_id(def_id, "trait", &trait_ref));
+                    if self.visited_def_ids.insert(def_id) {
+                        try_visit!(self.def_id_visitor.visit_def_id(def_id, "trait", &trait_ref));
+                    }
                 }
             }
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) => {
                 // Skip repeated `Opaque`s to avoid infinite recursion.
-                if self.visited_opaque_tys.insert(def_id) {
+                if self.visited_def_ids.insert(def_id) {
                     // The intent is to treat `impl Trait1 + Trait2` identically to
                     // `dyn Trait1 + Trait2`. Therefore we ignore def-id of the opaque type itself
                     // (it either has no visibility, or its visibility is insignificant, like
