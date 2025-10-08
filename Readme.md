@@ -85,7 +85,6 @@ $ sudo apt install dejagnu
 Then to run libgccjit tests:
 
 ```bash
-$ sudo apt install dejagnu
 $ cd gcc # from the `gcc-build` folder
 $ make check-jit
 # To run one specific test:
