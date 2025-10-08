@@ -342,7 +342,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             && (vis == import_vis
                 || max_vis.get().is_none_or(|max_vis| vis.is_at_least(max_vis, self.tcx)))
         {
-            max_vis.set_unchecked(Some(vis.expect_local()))
+            max_vis.set(Some(vis.expect_local()), self)
         }
 
         self.arenas.alloc_name_binding(NameBindingData {
@@ -980,8 +980,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         import: Import<'ra>,
     ) -> (Option<SideEffect<'ra>>, usize) {
         debug!(
-            "(resolving import for module) resolving import `{}::...` in `{}`",
+            "(resolving import for module) resolving import `{}::{}` in `{}`",
             Segment::names_to_string(&import.module_path),
+            import_kind_to_string(&import.kind),
             module_to_string(import.parent_scope.module).unwrap_or_else(|| "???".to_string()),
         );
         let module = if let Some(module) = import.imported_module.get() {
@@ -1048,7 +1049,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         None
                     }
                 };
-                // FIXME(batched): Will be fixed in batched import resolution.
                 import_bindings[ns] = pending_binding;
             }
         }
@@ -1653,7 +1653,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         module.for_each_child(self, |this, ident, _, binding| {
             let res = binding.res().expect_non_local();
-            if res != def::Res::Err && !binding.is_ambiguity_recursive() {
+            let error_ambiguity = binding.is_ambiguity_recursive() && !binding.warn_ambiguity;
+            if res != def::Res::Err && !error_ambiguity {
                 let mut reexport_chain = SmallVec::new();
                 let mut next_binding = binding;
                 while let NameBindingKind::Import { binding, import, .. } = next_binding.kind {

@@ -2609,6 +2609,13 @@ mod ref_mut {
             CmCell(Cell::new(value))
         }
 
+        pub(crate) fn set<'ra, 'tcx>(&self, val: T, r: &Resolver<'ra, 'tcx>) {
+            if r.assert_speculative {
+                panic!()
+            }
+            self.0.set(val);
+        }
+
         pub(crate) fn set_unchecked(&self, val: T) {
             self.0.set(val);
         }
