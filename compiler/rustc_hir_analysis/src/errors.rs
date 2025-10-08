@@ -1616,7 +1616,7 @@ pub(crate) struct InvalidGenericReceiverTy<'tcx> {
 pub(crate) struct CmseInputsStackSpill {
     #[primary_span]
     #[label]
-    pub span: Span,
+    pub spans: Vec<Span>,
     pub plural: bool,
     pub abi: ExternAbi,
 }
