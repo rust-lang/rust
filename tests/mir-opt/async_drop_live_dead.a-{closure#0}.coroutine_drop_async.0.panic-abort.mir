@@ -27,7 +27,7 @@ fn a::{closure#0}(_1: Pin<&mut {async fn body of a<T>()}>, _2: &mut Context<'_>)
     }
 
     bb0: {
-        _20 = deref_copy (_1.0: &mut {async fn body of a<T>()});
+        _20 = copy (_1.0: &mut {async fn body of a<T>()});
         _19 = discriminant((*_20));
         switchInt(move _19) -> [0: bb9, 3: bb12, 4: bb13, otherwise: bb14];
     }

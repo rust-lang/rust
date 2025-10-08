@@ -125,7 +125,7 @@
 +         StorageLive(_30);
 +         StorageLive(_31);
 +         StorageLive(_32);
-+         _32 = deref_copy (_8.0: &mut {async fn body of ActionPermit<'_, T>::perform()});
++         _32 = copy (_8.0: &mut {async fn body of ActionPermit<'_, T>::perform()});
 +         _31 = discriminant((*_32));
 +         switchInt(move _31) -> [0: bb3, 1: bb10, 3: bb9, otherwise: bb5];
       }

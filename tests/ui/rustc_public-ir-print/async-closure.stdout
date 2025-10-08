@@ -46,7 +46,7 @@ fn foo::{closure#0}::{closure#0}(_1: Pin<&mut {async closure body@$DIR/async-clo
     debug y => (*((*_7).0: &i32));
     debug y => _3;
     bb0: {
-        _7 = CopyForDeref((_1.0: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6}));
+        _7 = (_1.0: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6});
         _6 = discriminant((*_7));
         switchInt(move _6) -> [0: bb1, 1: bb2, otherwise: bb3];
     }
@@ -78,7 +78,7 @@ fn foo::{closure#0}::{synthetic#0}(_1: Pin<&mut {async closure body@$DIR/async-c
     debug y => (*((*_7).0: &i32));
     debug y => _3;
     bb0: {
-        _7 = CopyForDeref((_1.0: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6}));
+        _7 = (_1.0: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6});
         _6 = discriminant((*_7));
         switchInt(move _6) -> [0: bb1, 1: bb2, otherwise: bb3];
     }

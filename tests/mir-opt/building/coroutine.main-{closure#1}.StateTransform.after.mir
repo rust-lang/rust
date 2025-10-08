@@ -43,7 +43,7 @@ fn main::{closure#1}(_1: Pin<&mut {coroutine@$DIR/coroutine.rs:25:5: 25:18}>, _2
     let mut _18: &mut {coroutine@$DIR/coroutine.rs:25:5: 25:18};
 
     bb0: {
-        _18 = deref_copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:25:5: 25:18});
+        _18 = copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:25:5: 25:18});
         _17 = discriminant((*_18));
         switchInt(move _17) -> [0: bb1, 1: bb19, 3: bb17, 4: bb18, otherwise: bb20];
     }

@@ -512,17 +512,15 @@ fn make_coroutine_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body
     SelfArgVisitor::new(tcx, tcx.mk_place_deref(unpinned_local.into())).visit_body(body);
 
     let source_info = SourceInfo::outermost(body.span);
+    let pin_field = tcx.mk_place_field(SELF_ARG.into(), FieldIdx::ZERO, ref_coroutine_ty);
+
     body.basic_blocks_mut()[START_BLOCK].statements.insert(
         0,
         Statement::new(
             source_info,
             StatementKind::Assign(Box::new((
                 unpinned_local.into(),
-                Rvalue::CopyForDeref(tcx.mk_place_field(
-                    SELF_ARG.into(),
-                    FieldIdx::ZERO,
-                    ref_coroutine_ty,
-                )),
+                Rvalue::Use(Operand::Copy(pin_field)),
             ))),
         ),
     );

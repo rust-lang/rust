@@ -103,7 +103,7 @@ fn b::{closure#0}(_1: Pin<&mut {async fn body of b()}>, _2: &mut Context<'_>) ->
     }
 
     bb0: {
-        _39 = deref_copy (_1.0: &mut {async fn body of b()});
+        _39 = copy (_1.0: &mut {async fn body of b()});
         _38 = discriminant((*_39));
         switchInt(move _38) -> [0: bb1, 1: bb29, 3: bb27, 4: bb28, otherwise: bb8];
     }
