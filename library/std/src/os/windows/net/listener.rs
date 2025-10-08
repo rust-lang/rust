@@ -18,7 +18,7 @@ impl UnixListener {
     pub fn bind<P: AsRef<Path>>(path: P) -> io::Result<UnixListener> {
         unsafe {
             let inner = Socket::new_unix()?;
-            let (addr, len) = sockaddr_un(path)?;
+            let (addr, len) = sockaddr_un(path.as_ref())?;
             cvt(bind(inner.as_raw(), &addr as *const _ as *const _, len))?;
             cvt(listen(inner.as_raw(), 128))?;
             Ok(UnixListener(inner))
