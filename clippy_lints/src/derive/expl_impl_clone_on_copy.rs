@@ -1,4 +1,5 @@
-use clippy_utils::diagnostics::span_lint_hir_and_then;
+use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::fulfill_or_allowed;
 use clippy_utils::ty::{implements_trait, is_copy};
 use rustc_hir::{self as hir, HirId, Item};
 use rustc_lint::LateContext;
@@ -60,14 +61,16 @@ pub(super) fn check<'tcx>(
         return;
     }
 
-    span_lint_hir_and_then(
+    if fulfill_or_allowed(cx, EXPL_IMPL_CLONE_ON_COPY, [adt_hir_id]) {
+        return;
+    }
+
+    span_lint_and_help(
         cx,
         EXPL_IMPL_CLONE_ON_COPY,
-        adt_hir_id,
         item.span,
         "you are implementing `Clone` explicitly on a `Copy` type",
-        |diag| {
-            diag.span_help(item.span, "consider deriving `Clone` or removing `Copy`");
-        },
+        None,
+        "consider deriving `Clone` or removing `Copy`",
     );
 }
