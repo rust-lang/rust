@@ -1151,6 +1151,7 @@ unsafe extern "C" {
 
     // Operations on load/store instructions (only)
     pub(crate) fn LLVMSetVolatile(MemoryAccessInst: &Value, volatile: Bool);
+    pub(crate) fn LLVMSetOrdering(MemoryAccessInst: &Value, Ordering: AtomicOrdering);
 
     // Operations on phi nodes
     pub(crate) fn LLVMAddIncoming<'a>(
@@ -2088,22 +2089,6 @@ unsafe extern "C" {
         B: &Builder<'a>,
         LHS: &'a Value,
         RHS: &'a Value,
-    ) -> &'a Value;
-
-    // Atomic Operations
-    pub(crate) fn LLVMRustBuildAtomicLoad<'a>(
-        B: &Builder<'a>,
-        ElementType: &'a Type,
-        PointerVal: &'a Value,
-        Name: *const c_char,
-        Order: AtomicOrdering,
-    ) -> &'a Value;
-
-    pub(crate) fn LLVMRustBuildAtomicStore<'a>(
-        B: &Builder<'a>,
-        Val: &'a Value,
-        Ptr: &'a Value,
-        Order: AtomicOrdering,
     ) -> &'a Value;
 
     pub(crate) fn LLVMRustTimeTraceProfilerInitialize();
