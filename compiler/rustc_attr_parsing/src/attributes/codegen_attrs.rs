@@ -362,6 +362,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for NoMangleParser {
         Allow(Target::Static),
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::TraitImpl)),
+        Error(Target::Closure),
     ]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::NoMangle;
 }
