@@ -279,22 +279,21 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         debug_assert!(self.shallow_resolve(b) == b);
 
         if b.is_ty_var() {
-            // Two unresolved type variables: create a `Coerce` predicate.
-            let target_ty = if self.use_lub { self.next_ty_var(self.cause.span) } else { b };
-
             let mut obligations = PredicateObligations::with_capacity(2);
-            for &source_ty in &[a, b] {
-                if source_ty != target_ty {
-                    obligations.push(Obligation::new(
-                        self.tcx(),
-                        self.cause.clone(),
-                        self.param_env,
-                        ty::Binder::dummy(ty::PredicateKind::Coerce(ty::CoercePredicate {
-                            a: source_ty,
-                            b: target_ty,
-                        })),
-                    ));
-                }
+            let mut push_coerce_obligation = |a, b| {
+                obligations.push(Obligation::new(
+                    self.tcx(),
+                    self.cause.clone(),
+                    self.param_env,
+                    ty::Binder::dummy(ty::PredicateKind::Coerce(ty::CoercePredicate { a, b })),
+                ));
+            };
+
+            let target_ty = self.use_lub.then(|| self.next_ty_var(self.cause.span)).unwrap_or(b);
+
+            push_coerce_obligation(a, target_ty);
+            if self.use_lub {
+                push_coerce_obligation(b, target_ty);
             }
 
             debug!(
