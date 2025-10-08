@@ -407,13 +407,26 @@ impl<'a, F: Write> TokenHandler<'a, '_, F> {
         None
     }
 
+    fn maybe_write_content(&mut self) {
+        if self.element_stack.parent.is_none()
+            && self.element_stack.class.is_none()
+            && !self.element_stack.pending_exit
+            // Completely random number.
+            && self.element_stack.elements.len() > 30
+        {
+            self.element_stack.write_content(self.out, &self.href_context);
+            self.element_stack.elements.clear();
+        }
+    }
+
     fn push_element_without_backline_check(
         &mut self,
         class: Option<Class>,
         text: Cow<'a, str>,
         needs_escape: bool,
     ) {
-        self.element_stack.push_element(Element::new(class, text, needs_escape))
+        self.element_stack.push_element(Element::new(class, text, needs_escape));
+        self.maybe_write_content();
     }
 
     fn push_element(&mut self, class: Option<Class>, text: Cow<'a, str>) {
@@ -486,6 +499,7 @@ impl<'a, F: Write> TokenHandler<'a, '_, F> {
         for class in old_stack.iter().rev() {
             self.element_stack.enter_stack(ElementStack::new_with_class(Some(*class)));
         }
+        self.maybe_write_content();
     }
 }
 
