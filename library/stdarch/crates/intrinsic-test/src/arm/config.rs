@@ -9,6 +9,7 @@ std::ostream& operator<<(std::ostream& os, poly128_t value);
 #endif
 
 std::ostream& operator<<(std::ostream& os, float16_t value);
+std::ostream& operator<<(std::ostream& os, uint8_t value);
 
 // T1 is the `To` type, T2 is the `From` type
 template<typename T1, typename T2> T1 cast(T2 x) {
@@ -42,6 +43,11 @@ std::ostream& operator<<(std::ostream& os, float16_t value) {
     std::stringstream ss;
     ss << "0x" << std::setfill('0') << std::setw(4) << std::hex << temp;
     os << ss.str();
+    return os;
+}
+
+std::ostream& operator<<(std::ostream& os, uint8_t value) {
+    os << (unsigned int) value;
     return os;
 }
 "#;
