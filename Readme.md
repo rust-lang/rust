@@ -57,7 +57,7 @@ To build it (most of these instructions come from [here](https://gcc.gnu.org/onl
 
 ```bash
 $ git clone https://github.com/rust-lang/gcc
-$ sudo apt install flex libmpfr-dev libgmp-dev libmpc3 libmpc-dev
+$ sudo apt install flex libmpfr-dev libgmp-dev libmpc3 libmpc-dev dejagnu
 $ mkdir gcc-build gcc-install
 $ cd gcc-build
 $ ../gcc/configure \
