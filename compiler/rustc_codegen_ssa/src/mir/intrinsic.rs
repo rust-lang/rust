@@ -198,12 +198,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 return Ok(());
             }
             sym::write_bytes => {
+                // invalid types may be encountered on dead branches after a size check.
+                if args[1].layout.size.bytes() != 1 {
+                    bx.unreachable_nonterminator();
+                    return Ok(());
+                }
+                let val = bx.from_immediate(args[1].immediate());
                 memset_intrinsic(
                     bx,
                     false,
                     fn_args.type_at(0),
                     args[0].immediate(),
-                    args[1].immediate(),
+                    val,
                     args[2].immediate(),
                 );
                 return Ok(());
