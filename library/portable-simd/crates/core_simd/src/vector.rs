@@ -474,7 +474,14 @@ where
         or: Self,
     ) -> Self {
         // SAFETY: The safety of reading elements through `ptr` is ensured by the caller.
-        unsafe { core::intrinsics::simd::simd_masked_load(enable.to_int(), ptr, or) }
+        unsafe {
+            core::intrinsics::simd::simd_masked_load::<
+                _,
+                _,
+                _,
+                { core::intrinsics::simd::SimdAlign::Element },
+            >(enable.to_int(), ptr, or)
+        }
     }
 
     /// Reads from potentially discontiguous indices in `slice` to construct a SIMD vector.
@@ -723,7 +730,14 @@ where
     #[inline]
     pub unsafe fn store_select_ptr(self, ptr: *mut T, enable: Mask<<T as SimdElement>::Mask, N>) {
         // SAFETY: The safety of writing elements through `ptr` is ensured by the caller.
-        unsafe { core::intrinsics::simd::simd_masked_store(enable.to_int(), ptr, self) }
+        unsafe {
+            core::intrinsics::simd::simd_masked_store::<
+                _,
+                _,
+                _,
+                { core::intrinsics::simd::SimdAlign::Element },
+            >(enable.to_int(), ptr, self)
+        }
     }
 
     /// Writes the values in a SIMD vector to potentially discontiguous indices in `slice`.
