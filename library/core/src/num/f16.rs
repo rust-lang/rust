@@ -20,6 +20,7 @@ use crate::{intrinsics, mem};
 
 /// Basic mathematical constants.
 #[unstable(feature = "f16", issue = "116909")]
+#[rustc_diagnostic_item = "f16_consts_mod"]
 pub mod consts {
     // FIXME: replace with mathematical constants from cmath.
 
