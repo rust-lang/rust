@@ -177,14 +177,7 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
 
     fn memset(&mut self, ptr: &'ll Value, fill_byte: &'ll Value, size: &'ll Value, align: Align) {
         unsafe {
-            llvm::LLVMRustBuildMemSet(
-                self.llbuilder,
-                ptr,
-                align.bytes() as c_uint,
-                fill_byte,
-                size,
-                false,
-            );
+            llvm::LLVMBuildMemSet(self.llbuilder, ptr, align.bytes() as c_uint, fill_byte, size);
         }
     }
 }
@@ -1103,16 +1096,21 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let size = self.intcast(size, self.type_isize(), false);
         let is_volatile = flags.contains(MemFlags::VOLATILE);
         let memcpy = unsafe {
-            llvm::LLVMRustBuildMemCpy(
+            llvm::LLVMBuildMemCpy(
                 self.llbuilder,
                 dst,
                 dst_align.bytes() as c_uint,
                 src,
                 src_align.bytes() as c_uint,
                 size,
-                is_volatile,
             )
         };
+
+        if is_volatile {
+            unsafe {
+                llvm::LLVMSetVolatile(memcpy, llvm::TRUE);
+            }
+        }
 
         // TypeTree metadata for memcpy is especially important: when Enzyme encounters
         // a memcpy during autodiff, it needs to know the structure of the data being
@@ -1136,16 +1134,21 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         assert!(!flags.contains(MemFlags::NONTEMPORAL), "non-temporal memmove not supported");
         let size = self.intcast(size, self.type_isize(), false);
         let is_volatile = flags.contains(MemFlags::VOLATILE);
-        unsafe {
-            llvm::LLVMRustBuildMemMove(
+        let memmove = unsafe {
+            llvm::LLVMBuildMemMove(
                 self.llbuilder,
                 dst,
                 dst_align.bytes() as c_uint,
                 src,
                 src_align.bytes() as c_uint,
                 size,
-                is_volatile,
-            );
+            )
+        };
+
+        if is_volatile {
+            unsafe {
+                llvm::LLVMSetVolatile(memmove, llvm::TRUE);
+            }
         }
     }
 
@@ -1159,15 +1162,14 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     ) {
         assert!(!flags.contains(MemFlags::NONTEMPORAL), "non-temporal memset not supported");
         let is_volatile = flags.contains(MemFlags::VOLATILE);
-        unsafe {
-            llvm::LLVMRustBuildMemSet(
-                self.llbuilder,
-                ptr,
-                align.bytes() as c_uint,
-                fill_byte,
-                size,
-                is_volatile,
-            );
+        let memset = unsafe {
+            llvm::LLVMBuildMemSet(self.llbuilder, ptr, align.bytes() as c_uint, fill_byte, size)
+        };
+
+        if is_volatile {
+            unsafe {
+                llvm::LLVMSetVolatile(memset, llvm::TRUE);
+            }
         }
     }
 

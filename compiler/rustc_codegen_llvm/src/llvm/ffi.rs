@@ -1693,6 +1693,31 @@ unsafe extern "C" {
         NumBundles: c_uint,
         Name: *const c_char,
     ) -> &'a Value;
+
+    // Memory operations
+    pub(crate) fn LLVMBuildMemCpy<'a>(
+        B: &Builder<'a>,
+        Dst: &'a Value,
+        DstAlign: c_uint,
+        Src: &'a Value,
+        SrcAlign: c_uint,
+        Size: &'a Value,
+    ) -> &'a Value;
+    pub(crate) fn LLVMBuildMemMove<'a>(
+        B: &Builder<'a>,
+        Dst: &'a Value,
+        DstAlign: c_uint,
+        Src: &'a Value,
+        SrcAlign: c_uint,
+        Size: &'a Value,
+    ) -> &'a Value;
+    pub(crate) fn LLVMBuildMemSet<'a>(
+        B: &Builder<'a>,
+        Dst: &'a Value,
+        DstAlign: c_uint,
+        Val: &'a Value,
+        Size: &'a Value,
+    ) -> &'a Value;
 }
 
 // FFI bindings for `DIBuilder` functions in the LLVM-C API.
@@ -2016,33 +2041,6 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustSetAllowReassoc(Instr: &Value);
 
     // Miscellaneous instructions
-    pub(crate) fn LLVMRustBuildMemCpy<'a>(
-        B: &Builder<'a>,
-        Dst: &'a Value,
-        DstAlign: c_uint,
-        Src: &'a Value,
-        SrcAlign: c_uint,
-        Size: &'a Value,
-        IsVolatile: bool,
-    ) -> &'a Value;
-    pub(crate) fn LLVMRustBuildMemMove<'a>(
-        B: &Builder<'a>,
-        Dst: &'a Value,
-        DstAlign: c_uint,
-        Src: &'a Value,
-        SrcAlign: c_uint,
-        Size: &'a Value,
-        IsVolatile: bool,
-    ) -> &'a Value;
-    pub(crate) fn LLVMRustBuildMemSet<'a>(
-        B: &Builder<'a>,
-        Dst: &'a Value,
-        DstAlign: c_uint,
-        Val: &'a Value,
-        Size: &'a Value,
-        IsVolatile: bool,
-    ) -> &'a Value;
-
     pub(crate) fn LLVMRustBuildVectorReduceFAdd<'a>(
         B: &Builder<'a>,
         Acc: &'a Value,
