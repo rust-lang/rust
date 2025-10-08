@@ -70,10 +70,16 @@ $ ../gcc/configure \
 $ make -j4 # You can replace `4` with another number depending on how many cores you have.
 ```
 
-If you want to run libgccjit tests, you will need to also enable the C++ language in the `configure`:
+If you want to run libgccjit tests, you will need to
+* Enable the C++ language in the `configure` step:
 
 ```bash
 --enable-languages=jit,c++
+```
+* Install [dejagnu](https://www.gnu.org/software/dejagnu/#downloading) to run the tests:
+
+```bash
+$ sudo apt install dejagnu
 ```
 
 Then to run libgccjit tests:
