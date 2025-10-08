@@ -58,16 +58,11 @@ macro_rules! rpc_encode_decode {
             fn encode(self, w: &mut Writer, s: &mut S) {
                 // HACK(eddyb): `Tag` enum duplicated between the
                 // two impls as there's no other place to stash it.
-                #[allow(non_upper_case_globals)]
-                mod tag {
-                    #[repr(u8)] enum Tag { $($variant),* }
-
-                    $(pub(crate) const $variant: u8 = Tag::$variant as u8;)*
-                }
+                #[repr(u8)] enum Tag { $($variant),* }
 
                 match self {
                     $($name::$variant $(($field))* => {
-                        tag::$variant.encode(w, s);
+                        (Tag::$variant as u8).encode(w, s);
                         $($field.encode(w, s);)*
                     })*
                 }
