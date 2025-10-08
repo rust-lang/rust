@@ -165,5 +165,11 @@ LL | |         .checked_sub(-1)
 LL | |         .unwrap_or(170_141_183_460_469_231_731_687_303_715_884_105_727);
    | |_______________________________________________________________________^ help: consider using `saturating_sub`: `1i128.saturating_sub(-1)`
 
-error: aborting due to 24 previous errors
+error: manual saturating arithmetic
+  --> tests/ui/manual_saturating_arithmetic.rs:78:13
+   |
+LL |     let _ = 5u32.checked_sub(1u32).unwrap_or_default();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `saturating_sub`: `5u32.saturating_sub(1u32)`
+
+error: aborting due to 25 previous errors
 
