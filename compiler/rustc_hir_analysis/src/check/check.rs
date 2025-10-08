@@ -1541,21 +1541,24 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
         NonExhaustive,
         PrivateField,
         ReprC,
+        Uninhabited,
     }
     struct UnsuitedInfo<'tcx> {
-        descr: &'static str,
-        def_id: DefId,
-        args: GenericArgsRef<'tcx>,
+        ty: Ty<'tcx>,
         reason: UnsuitedReason,
     }
 
     fn check_unsuited_1zst<'tcx>(
         tcx: TyCtxt<'tcx>,
-        t: Ty<'tcx>,
+        adt: DefId,
+        ty: Ty<'tcx>,
     ) -> ControlFlow<UnsuitedInfo<'tcx>> {
-        match t.kind() {
-            ty::Tuple(list) => list.iter().try_for_each(|t| check_unsuited_1zst(tcx, t)),
-            ty::Array(ty, _) => check_unsuited_1zst(tcx, *ty),
+        if !ty.is_inhabited_from(tcx, adt, ty::TypingEnv::non_body_analysis(tcx, adt)) {
+            return ControlFlow::Break(UnsuitedInfo { ty, reason: UnsuitedReason::Uninhabited });
+        }
+        match ty.kind() {
+            ty::Tuple(list) => list.iter().try_for_each(|t| check_unsuited_1zst(tcx, adt, t)),
+            ty::Array(ty, _) => check_unsuited_1zst(tcx, adt, *ty),
             ty::Adt(def, args) => {
                 if !def.did().is_local()
                     && !find_attr!(tcx.get_all_attrs(def.did()), AttributeKind::PubTransparent(_))
@@ -1565,9 +1568,7 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
                     let has_priv = def.all_fields().any(|f| !f.vis.is_public());
                     if non_exhaustive || has_priv {
                         return ControlFlow::Break(UnsuitedInfo {
-                            descr: def.descr(),
-                            def_id: def.did(),
-                            args,
+                            ty,
                             reason: if non_exhaustive {
                                 UnsuitedReason::NonExhaustive
                             } else {
@@ -1577,16 +1578,11 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
                     }
                 }
                 if def.repr().c() {
-                    return ControlFlow::Break(UnsuitedInfo {
-                        descr: def.descr(),
-                        def_id: def.did(),
-                        args,
-                        reason: UnsuitedReason::ReprC,
-                    });
+                    return ControlFlow::Break(UnsuitedInfo { ty, reason: UnsuitedReason::ReprC });
                 }
                 def.all_fields()
                     .map(|field| field.ty(tcx, args))
-                    .try_for_each(|t| check_unsuited_1zst(tcx, t))
+                    .try_for_each(|t| check_unsuited_1zst(tcx, adt, t))
             }
             _ => ControlFlow::Continue(()),
         }
@@ -1597,7 +1593,7 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
         if !trivial {
             continue;
         }
-        if let Some(unsuited) = check_unsuited_1zst(tcx, ty).break_value() {
+        if let Some(unsuited) = check_unsuited_1zst(tcx, adt.did(), ty).break_value() {
             // If there are any non-trivial fields, then there can be no non-exhaustive 1-zsts.
             // Otherwise, it's only an issue if there's >1 non-exhaustive 1-zst.
             if non_trivial_count > 0 || prev_unsuited_1zst {
@@ -1610,13 +1606,13 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
                     UnsuitedReason::NonExhaustive => "is marked with `#[non_exhaustive]`",
                     UnsuitedReason::PrivateField => "contains private fields",
                     UnsuitedReason::ReprC => "is marked with `#[repr(C)]`",
+                    UnsuitedReason::Uninhabited => "is not (publicly) inhabited",
                 };
-                let field_ty = tcx.def_path_str_with_args(unsuited.def_id, unsuited.args);
                 diag.note(format!(
-                    "this {descr} contains `{field_ty}`, which {note}, \
+                    "this field contains `{field_ty}`, which {note}, \
                                 and makes it not a breaking change to become \
                                 non-zero-sized in the future.",
-                    descr = unsuited.descr,
+                    field_ty = unsuited.ty,
                 ));
                 diag.emit();
             } else {

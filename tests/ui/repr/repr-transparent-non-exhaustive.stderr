@@ -4,7 +4,7 @@ error: zero-sized fields in `repr(transparent)` cannot contain external non-exha
 LL | pub struct T5(Sized, Private);
    |                      ^^^^^^^
    |
-   = note: this struct contains `Private`, which contains private fields, and makes it not a breaking change to become non-zero-sized in the future.
+   = note: this field contains `Private`, which contains private fields, and makes it not a breaking change to become non-zero-sized in the future.
 
 error: zero-sized fields in `repr(transparent)` cannot contain external non-exhaustive types
   --> $DIR/repr-transparent-non-exhaustive.rs:41:22
@@ -12,7 +12,7 @@ error: zero-sized fields in `repr(transparent)` cannot contain external non-exha
 LL | pub struct T6(Sized, NonExhaustive);
    |                      ^^^^^^^^^^^^^
    |
-   = note: this struct contains `NonExhaustive`, which is marked with `#[non_exhaustive]`, and makes it not a breaking change to become non-zero-sized in the future.
+   = note: this field contains `NonExhaustive`, which is marked with `#[non_exhaustive]`, and makes it not a breaking change to become non-zero-sized in the future.
 
 error: zero-sized fields in `repr(transparent)` cannot contain external non-exhaustive types
   --> $DIR/repr-transparent-non-exhaustive.rs:45:22
@@ -20,7 +20,7 @@ error: zero-sized fields in `repr(transparent)` cannot contain external non-exha
 LL | pub struct T7(Sized, NonExhaustiveEnum);
    |                      ^^^^^^^^^^^^^^^^^
    |
-   = note: this enum contains `NonExhaustiveEnum`, which is marked with `#[non_exhaustive]`, and makes it not a breaking change to become non-zero-sized in the future.
+   = note: this field contains `NonExhaustiveEnum`, which is marked with `#[non_exhaustive]`, and makes it not a breaking change to become non-zero-sized in the future.
 
 error: zero-sized fields in `repr(transparent)` cannot contain external non-exhaustive types
   --> $DIR/repr-transparent-non-exhaustive.rs:49:22
@@ -28,7 +28,7 @@ error: zero-sized fields in `repr(transparent)` cannot contain external non-exha
 LL | pub struct T8(Sized, NonExhaustiveVariant);
    |                      ^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this enum contains `NonExhaustiveVariant`, which is marked with `#[non_exhaustive]`, and makes it not a breaking change to become non-zero-sized in the future.
+   = note: this field contains `NonExhaustiveVariant`, which is marked with `#[non_exhaustive]`, and makes it not a breaking change to become non-zero-sized in the future.
 
 error: zero-sized fields in `repr(transparent)` cannot contain external non-exhaustive types
   --> $DIR/repr-transparent-non-exhaustive.rs:53:22
@@ -36,7 +36,7 @@ error: zero-sized fields in `repr(transparent)` cannot contain external non-exha
 LL | pub struct T9(Sized, InternalIndirection<Private>);
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this struct contains `Private`, which contains private fields, and makes it not a breaking change to become non-zero-sized in the future.
+   = note: this field contains `Private`, which contains private fields, and makes it not a breaking change to become non-zero-sized in the future.
 
 error: zero-sized fields in `repr(transparent)` cannot contain external non-exhaustive types
   --> $DIR/repr-transparent-non-exhaustive.rs:57:23
@@ -44,7 +44,7 @@ error: zero-sized fields in `repr(transparent)` cannot contain external non-exha
 LL | pub struct T10(Sized, InternalIndirection<NonExhaustive>);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this struct contains `NonExhaustive`, which is marked with `#[non_exhaustive]`, and makes it not a breaking change to become non-zero-sized in the future.
+   = note: this field contains `NonExhaustive`, which is marked with `#[non_exhaustive]`, and makes it not a breaking change to become non-zero-sized in the future.
 
 error: zero-sized fields in `repr(transparent)` cannot contain external non-exhaustive types
   --> $DIR/repr-transparent-non-exhaustive.rs:61:23
@@ -52,7 +52,7 @@ error: zero-sized fields in `repr(transparent)` cannot contain external non-exha
 LL | pub struct T11(Sized, InternalIndirection<NonExhaustiveEnum>);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this enum contains `NonExhaustiveEnum`, which is marked with `#[non_exhaustive]`, and makes it not a breaking change to become non-zero-sized in the future.
+   = note: this field contains `NonExhaustiveEnum`, which is marked with `#[non_exhaustive]`, and makes it not a breaking change to become non-zero-sized in the future.
 
 error: zero-sized fields in `repr(transparent)` cannot contain external non-exhaustive types
   --> $DIR/repr-transparent-non-exhaustive.rs:65:23
@@ -60,7 +60,7 @@ error: zero-sized fields in `repr(transparent)` cannot contain external non-exha
 LL | pub struct T12(Sized, InternalIndirection<NonExhaustiveVariant>);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this enum contains `NonExhaustiveVariant`, which is marked with `#[non_exhaustive]`, and makes it not a breaking change to become non-zero-sized in the future.
+   = note: this field contains `NonExhaustiveVariant`, which is marked with `#[non_exhaustive]`, and makes it not a breaking change to become non-zero-sized in the future.
 
 error: zero-sized fields in `repr(transparent)` cannot contain external non-exhaustive types
   --> $DIR/repr-transparent-non-exhaustive.rs:69:23
@@ -68,7 +68,7 @@ error: zero-sized fields in `repr(transparent)` cannot contain external non-exha
 LL | pub struct T13(Sized, ExternalIndirection<Private>);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this struct contains `Private`, which contains private fields, and makes it not a breaking change to become non-zero-sized in the future.
+   = note: this field contains `Private`, which contains private fields, and makes it not a breaking change to become non-zero-sized in the future.
 
 error: zero-sized fields in `repr(transparent)` cannot contain external non-exhaustive types
   --> $DIR/repr-transparent-non-exhaustive.rs:73:23
@@ -76,7 +76,7 @@ error: zero-sized fields in `repr(transparent)` cannot contain external non-exha
 LL | pub struct T14(Sized, ExternalIndirection<NonExhaustive>);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this struct contains `NonExhaustive`, which is marked with `#[non_exhaustive]`, and makes it not a breaking change to become non-zero-sized in the future.
+   = note: this field contains `NonExhaustive`, which is marked with `#[non_exhaustive]`, and makes it not a breaking change to become non-zero-sized in the future.
 
 error: zero-sized fields in `repr(transparent)` cannot contain external non-exhaustive types
   --> $DIR/repr-transparent-non-exhaustive.rs:77:23
@@ -84,7 +84,7 @@ error: zero-sized fields in `repr(transparent)` cannot contain external non-exha
 LL | pub struct T15(Sized, ExternalIndirection<NonExhaustiveEnum>);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this enum contains `NonExhaustiveEnum`, which is marked with `#[non_exhaustive]`, and makes it not a breaking change to become non-zero-sized in the future.
+   = note: this field contains `NonExhaustiveEnum`, which is marked with `#[non_exhaustive]`, and makes it not a breaking change to become non-zero-sized in the future.
 
 error: zero-sized fields in `repr(transparent)` cannot contain external non-exhaustive types
   --> $DIR/repr-transparent-non-exhaustive.rs:81:23
@@ -92,7 +92,7 @@ error: zero-sized fields in `repr(transparent)` cannot contain external non-exha
 LL | pub struct T16(Sized, ExternalIndirection<NonExhaustiveVariant>);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this enum contains `NonExhaustiveVariant`, which is marked with `#[non_exhaustive]`, and makes it not a breaking change to become non-zero-sized in the future.
+   = note: this field contains `NonExhaustiveVariant`, which is marked with `#[non_exhaustive]`, and makes it not a breaking change to become non-zero-sized in the future.
 
 error: zero-sized fields in `repr(transparent)` cannot contain external non-exhaustive types
   --> $DIR/repr-transparent-non-exhaustive.rs:85:16
@@ -100,7 +100,7 @@ error: zero-sized fields in `repr(transparent)` cannot contain external non-exha
 LL | pub struct T17(NonExhaustive, Sized);
    |                ^^^^^^^^^^^^^
    |
-   = note: this struct contains `NonExhaustive`, which is marked with `#[non_exhaustive]`, and makes it not a breaking change to become non-zero-sized in the future.
+   = note: this field contains `NonExhaustive`, which is marked with `#[non_exhaustive]`, and makes it not a breaking change to become non-zero-sized in the future.
 
 error: zero-sized fields in `repr(transparent)` cannot contain external non-exhaustive types
   --> $DIR/repr-transparent-non-exhaustive.rs:89:31
@@ -108,7 +108,7 @@ error: zero-sized fields in `repr(transparent)` cannot contain external non-exha
 LL | pub struct T18(NonExhaustive, NonExhaustive);
    |                               ^^^^^^^^^^^^^
    |
-   = note: this struct contains `NonExhaustive`, which is marked with `#[non_exhaustive]`, and makes it not a breaking change to become non-zero-sized in the future.
+   = note: this field contains `NonExhaustive`, which is marked with `#[non_exhaustive]`, and makes it not a breaking change to become non-zero-sized in the future.
 
 error: zero-sized fields in `repr(transparent)` cannot contain external non-exhaustive types
   --> $DIR/repr-transparent-non-exhaustive.rs:93:31
@@ -116,7 +116,7 @@ error: zero-sized fields in `repr(transparent)` cannot contain external non-exha
 LL | pub struct T19(NonExhaustive, Private);
    |                               ^^^^^^^
    |
-   = note: this struct contains `Private`, which contains private fields, and makes it not a breaking change to become non-zero-sized in the future.
+   = note: this field contains `Private`, which contains private fields, and makes it not a breaking change to become non-zero-sized in the future.
 
 error: zero-sized fields in `repr(transparent)` cannot contain external non-exhaustive types
   --> $DIR/repr-transparent-non-exhaustive.rs:97:32
@@ -124,7 +124,7 @@ error: zero-sized fields in `repr(transparent)` cannot contain external non-exha
 LL | pub struct T19Flipped(Private, NonExhaustive);
    |                                ^^^^^^^^^^^^^
    |
-   = note: this struct contains `NonExhaustive`, which is marked with `#[non_exhaustive]`, and makes it not a breaking change to become non-zero-sized in the future.
+   = note: this field contains `NonExhaustive`, which is marked with `#[non_exhaustive]`, and makes it not a breaking change to become non-zero-sized in the future.
 
 error: aborting due to 16 previous errors
 
