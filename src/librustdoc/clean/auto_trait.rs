@@ -25,11 +25,10 @@ pub(crate) fn synthesize_auto_trait_impls<'tcx>(
     let ty = tcx.type_of(item_def_id).instantiate_identity();
 
     let finder = auto_trait::AutoTraitFinder::new(tcx);
-    let mut auto_trait_impls: Vec<_> = cx
-        .auto_traits
-        .clone()
-        .into_iter()
-        .filter_map(|trait_def_id| {
+    let auto_traits = std::mem::take(&mut cx.auto_traits);
+    let mut auto_trait_impls: Vec<_> = auto_traits
+        .iter()
+        .filter_map(|&trait_def_id| {
             synthesize_auto_trait_impl(
                 cx,
                 ty,
@@ -41,6 +40,7 @@ pub(crate) fn synthesize_auto_trait_impls<'tcx>(
             )
         })
         .collect();
+    cx.auto_traits = auto_traits;
     // We are only interested in case the type *doesn't* implement the `Sized` trait.
     if !ty.is_sized(tcx, typing_env)
         && let Some(sized_trait_def_id) = tcx.lang_items().sized_trait()
