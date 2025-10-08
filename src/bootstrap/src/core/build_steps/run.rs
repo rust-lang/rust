@@ -6,6 +6,7 @@
 use std::path::PathBuf;
 
 use build_helper::exit;
+use build_helper::git::get_git_untracked_files;
 use clap_complete::{Generator, shells};
 
 use crate::core::build_steps::dist::distdir;
@@ -207,6 +208,16 @@ impl Step for CollectLicenseMetadata {
         };
 
         let dest = builder.src.join("license-metadata.json");
+
+        if !builder.config.dry_run() {
+            builder.require_and_update_all_submodules();
+            if let Ok(Some(untracked)) = get_git_untracked_files(None) {
+                eprintln!(
+                    "Warning: {} untracked files may cause the license report to be incorrect.",
+                    untracked.len()
+                );
+            }
+        }
 
         let mut cmd = builder.tool_cmd(Tool::CollectLicenseMetadata);
         cmd.env("REUSE_EXE", reuse);
