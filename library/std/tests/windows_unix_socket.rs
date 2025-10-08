@@ -9,8 +9,9 @@ use std::thread;
 fn smoke_bind_connect() {
     let tmp = std::env::temp_dir();
     let sock_path = tmp.join("rust-test-uds.sock");
+    let _ = std::fs::remove_file(&sock_path);
     let listener = UnixListener::bind(&sock_path).expect("bind failed");
-    let sock_path_clone = sock_path.clone(); 
+    let sock_path_clone = sock_path.clone();
     let tx = thread::spawn(move || {
         let mut stream = UnixStream::connect(&sock_path_clone).expect("connect failed");
         stream.write_all(b"hello").expect("write failed");
