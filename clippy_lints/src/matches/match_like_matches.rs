@@ -65,28 +65,28 @@ pub(super) fn check_match<'tcx>(
     scrutinee: &'tcx Expr<'_>,
     arms: &'tcx [Arm<'tcx>],
 ) -> bool {
-    let mut arms = arms
-        .iter()
-        .map(|arm| (cx.tcx.hir_attrs(arm.hir_id), arm.pat, arm.body, arm.guard));
-    if !span_contains_comment(cx.sess().source_map(), e.span)
-        && arms.len() >= 2
+    if let Some((last_arm, arms_without_last)) = arms.split_last()
+        && let Some((first_arm, middle_arms)) = arms_without_last.split_first()
+        && !span_contains_comment(cx.sess().source_map(), e.span)
         && cx.typeck_results().expr_ty(e).is_bool()
-        && let Some((_, last_pat, last_expr, _)) = arms.next_back()
-        && let arms_without_last = arms.clone()
-        && let Some((first_attrs, _, first_expr, first_guard)) = arms.next()
+        && let (last_pat, last_expr) = (last_arm.pat, last_arm.body)
+        && let (first_attrs, first_expr, first_guard) =
+            (cx.tcx.hir_attrs(first_arm.hir_id), first_arm.body, first_arm.guard)
         && let Some(b0) = find_bool_lit(first_expr)
         && let Some(b1) = find_bool_lit(last_expr)
         && b0 != b1
-        && (first_guard.is_none() || arms.len() == 0)
+        && (first_guard.is_none() || middle_arms.is_empty())
         && first_attrs.is_empty()
-        && arms.all(|(attrs, _, expr, guard)| attrs.is_empty() && guard.is_none() && find_bool_lit(expr) == Some(b0))
+        && middle_arms.iter().all(|arm| {
+            cx.tcx.hir_attrs(arm.hir_id).is_empty() && arm.guard.is_none() && find_bool_lit(arm.body) == Some(b0)
+        })
     {
         if !is_wild(last_pat) {
             return false;
         }
 
-        for arm in arms_without_last.clone() {
-            let pat = arm.1;
+        for arm in arms_without_last {
+            let pat = arm.pat;
             if !is_lint_allowed(cx, REDUNDANT_PATTERN_MATCHING, pat.hir_id) && is_some_wild(pat.kind) {
                 return false;
             }
@@ -98,10 +98,8 @@ pub(super) fn check_match<'tcx>(
         let pat = {
             use itertools::Itertools as _;
             arms_without_last
-                .map(|arm| {
-                    let pat_span = arm.1.span;
-                    snippet_with_applicability(cx, pat_span, "..", &mut applicability)
-                })
+                .iter()
+                .map(|arm| snippet_with_applicability(cx, arm.pat.span, "..", &mut applicability))
                 .join(" | ")
         };
         let pat_and_guard = if let Some(g) = first_guard {
