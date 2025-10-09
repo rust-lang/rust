@@ -432,8 +432,9 @@ pub fn set_times<P: AsRef<Path>>(path: P, times: FileTimes) -> io::Result<()> {
 ///
 /// # Platform-specific behavior
 ///
-/// This function currently corresponds to the `utimensat` function with `AT_SYMLINK_NOFOLLOW`
-/// on Unix platforms and the `SetFileTime` function on Windows after opening the symlink.
+/// This function currently corresponds to the `utimensat` function with `AT_SYMLINK_NOFOLLOW` on
+/// Unix platforms, the `setattrlist` function with `FSOPT_NOFOLLOW` on Apple platforms, and the
+/// `SetFileTime` function on Windows.
 ///
 /// # Errors
 ///
