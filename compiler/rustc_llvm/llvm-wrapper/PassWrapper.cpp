@@ -283,7 +283,11 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   std::string Error;
   auto Trip = Triple(Triple::normalize(TripleStr));
   const llvm::Target *TheTarget =
+#if LLVM_VERSION_GE(21, 0)
+      TargetRegistry::lookupTarget(Trip, Error);
+#else
       TargetRegistry::lookupTarget(Trip.getTriple(), Error);
+#endif
   if (TheTarget == nullptr) {
     LLVMRustSetLastError(Error.c_str());
     return nullptr;
