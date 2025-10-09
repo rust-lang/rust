@@ -631,8 +631,6 @@ pub struct Config {
 
     /// Path to a NodeJS executable. Used for JS doctests, emscripten and WASM tests.
     pub nodejs: Option<String>,
-    /// Path to a npm executable. Used for rustdoc GUI tests.
-    pub npm: Option<String>,
 
     /// Whether to rerun tests even if the inputs are unchanged.
     pub force_rerun: bool,
@@ -721,7 +719,8 @@ impl Config {
         self.target_cfg().abi == abi
     }
 
-    pub fn matches_family(&self, family: &str) -> bool {
+    #[cfg_attr(not(test), expect(dead_code, reason = "only used by tests for `ignore-{family}`"))]
+    pub(crate) fn matches_family(&self, family: &str) -> bool {
         self.target_cfg().families.iter().any(|f| f == family)
     }
 

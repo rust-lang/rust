@@ -125,7 +125,6 @@ fn incomplete_config_for_rustdoc_gui_test() -> Config {
         host_linker: Default::default(),
         llvm_components: Default::default(),
         nodejs: Default::default(),
-        npm: Default::default(),
         force_rerun: Default::default(),
         only_modified: Default::default(),
         target_cfgs: Default::default(),

@@ -198,8 +198,6 @@ pub struct TestProps {
     pub filecheck_flags: Vec<String>,
     /// Don't automatically insert any `--check-cfg` args
     pub no_auto_check_cfg: bool,
-    /// Run tests which require enzyme being build
-    pub has_enzyme: bool,
     /// Build and use `minicore` as `core` stub for `no_core` tests in cross-compilation scenarios
     /// that don't otherwise want/need `-Z build-std`.
     pub add_core_stubs: bool,
@@ -314,7 +312,6 @@ impl TestProps {
             llvm_cov_flags: vec![],
             filecheck_flags: vec![],
             no_auto_check_cfg: false,
-            has_enzyme: false,
             add_core_stubs: false,
             core_stubs_compile_flags: vec![],
             dont_require_annotations: Default::default(),
