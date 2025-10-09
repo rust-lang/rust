@@ -2043,53 +2043,6 @@ unsafe extern "C" {
         IsVolatile: bool,
     ) -> &'a Value;
 
-    pub(crate) fn LLVMRustBuildVectorReduceFAdd<'a>(
-        B: &Builder<'a>,
-        Acc: &'a Value,
-        Src: &'a Value,
-    ) -> &'a Value;
-    pub(crate) fn LLVMRustBuildVectorReduceFMul<'a>(
-        B: &Builder<'a>,
-        Acc: &'a Value,
-        Src: &'a Value,
-    ) -> &'a Value;
-    pub(crate) fn LLVMRustBuildVectorReduceAdd<'a>(B: &Builder<'a>, Src: &'a Value) -> &'a Value;
-    pub(crate) fn LLVMRustBuildVectorReduceMul<'a>(B: &Builder<'a>, Src: &'a Value) -> &'a Value;
-    pub(crate) fn LLVMRustBuildVectorReduceAnd<'a>(B: &Builder<'a>, Src: &'a Value) -> &'a Value;
-    pub(crate) fn LLVMRustBuildVectorReduceOr<'a>(B: &Builder<'a>, Src: &'a Value) -> &'a Value;
-    pub(crate) fn LLVMRustBuildVectorReduceXor<'a>(B: &Builder<'a>, Src: &'a Value) -> &'a Value;
-    pub(crate) fn LLVMRustBuildVectorReduceMin<'a>(
-        B: &Builder<'a>,
-        Src: &'a Value,
-        IsSigned: bool,
-    ) -> &'a Value;
-    pub(crate) fn LLVMRustBuildVectorReduceMax<'a>(
-        B: &Builder<'a>,
-        Src: &'a Value,
-        IsSigned: bool,
-    ) -> &'a Value;
-    pub(crate) fn LLVMRustBuildVectorReduceFMin<'a>(
-        B: &Builder<'a>,
-        Src: &'a Value,
-        IsNaN: bool,
-    ) -> &'a Value;
-    pub(crate) fn LLVMRustBuildVectorReduceFMax<'a>(
-        B: &Builder<'a>,
-        Src: &'a Value,
-        IsNaN: bool,
-    ) -> &'a Value;
-
-    pub(crate) fn LLVMRustBuildMinNum<'a>(
-        B: &Builder<'a>,
-        LHS: &'a Value,
-        RHS: &'a Value,
-    ) -> &'a Value;
-    pub(crate) fn LLVMRustBuildMaxNum<'a>(
-        B: &Builder<'a>,
-        LHS: &'a Value,
-        RHS: &'a Value,
-    ) -> &'a Value;
-
     pub(crate) fn LLVMRustTimeTraceProfilerInitialize();
 
     pub(crate) fn LLVMRustTimeTraceProfilerFinishThread();

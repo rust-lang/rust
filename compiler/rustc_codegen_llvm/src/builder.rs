@@ -1518,14 +1518,13 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     pub(crate) fn set_unpredictable(&mut self, inst: &'ll Value) {
         self.set_metadata_node(inst, llvm::MD_unpredictable, &[]);
     }
-}
-impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
+
     pub(crate) fn minnum(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
-        unsafe { llvm::LLVMRustBuildMinNum(self.llbuilder, lhs, rhs) }
+        self.call_intrinsic("llvm.minnum", &[self.val_ty(lhs)], &[lhs, rhs])
     }
 
     pub(crate) fn maxnum(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
-        unsafe { llvm::LLVMRustBuildMaxNum(self.llbuilder, lhs, rhs) }
+        self.call_intrinsic("llvm.maxnum", &[self.val_ty(lhs)], &[lhs, rhs])
     }
 
     pub(crate) fn insert_element(
@@ -1547,10 +1546,10 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
     }
 
     pub(crate) fn vector_reduce_fadd(&mut self, acc: &'ll Value, src: &'ll Value) -> &'ll Value {
-        unsafe { llvm::LLVMRustBuildVectorReduceFAdd(self.llbuilder, acc, src) }
+        self.call_intrinsic("llvm.vector.reduce.fadd", &[self.val_ty(src)], &[acc, src])
     }
     pub(crate) fn vector_reduce_fmul(&mut self, acc: &'ll Value, src: &'ll Value) -> &'ll Value {
-        unsafe { llvm::LLVMRustBuildVectorReduceFMul(self.llbuilder, acc, src) }
+        self.call_intrinsic("llvm.vector.reduce.fmul", &[self.val_ty(src)], &[acc, src])
     }
     pub(crate) fn vector_reduce_fadd_reassoc(
         &mut self,
@@ -1558,7 +1557,8 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
         src: &'ll Value,
     ) -> &'ll Value {
         unsafe {
-            let instr = llvm::LLVMRustBuildVectorReduceFAdd(self.llbuilder, acc, src);
+            let instr =
+                self.call_intrinsic("llvm.vector.reduce.fadd", &[self.val_ty(src)], &[acc, src]);
             llvm::LLVMRustSetAllowReassoc(instr);
             instr
         }
@@ -1569,43 +1569,49 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
         src: &'ll Value,
     ) -> &'ll Value {
         unsafe {
-            let instr = llvm::LLVMRustBuildVectorReduceFMul(self.llbuilder, acc, src);
+            let instr =
+                self.call_intrinsic("llvm.vector.reduce.fmul", &[self.val_ty(src)], &[acc, src]);
             llvm::LLVMRustSetAllowReassoc(instr);
             instr
         }
     }
     pub(crate) fn vector_reduce_add(&mut self, src: &'ll Value) -> &'ll Value {
-        unsafe { llvm::LLVMRustBuildVectorReduceAdd(self.llbuilder, src) }
+        self.call_intrinsic("llvm.vector.reduce.add", &[self.val_ty(src)], &[src])
     }
     pub(crate) fn vector_reduce_mul(&mut self, src: &'ll Value) -> &'ll Value {
-        unsafe { llvm::LLVMRustBuildVectorReduceMul(self.llbuilder, src) }
+        self.call_intrinsic("llvm.vector.reduce.mul", &[self.val_ty(src)], &[src])
     }
     pub(crate) fn vector_reduce_and(&mut self, src: &'ll Value) -> &'ll Value {
-        unsafe { llvm::LLVMRustBuildVectorReduceAnd(self.llbuilder, src) }
+        self.call_intrinsic("llvm.vector.reduce.and", &[self.val_ty(src)], &[src])
     }
     pub(crate) fn vector_reduce_or(&mut self, src: &'ll Value) -> &'ll Value {
-        unsafe { llvm::LLVMRustBuildVectorReduceOr(self.llbuilder, src) }
+        self.call_intrinsic("llvm.vector.reduce.or", &[self.val_ty(src)], &[src])
     }
     pub(crate) fn vector_reduce_xor(&mut self, src: &'ll Value) -> &'ll Value {
-        unsafe { llvm::LLVMRustBuildVectorReduceXor(self.llbuilder, src) }
+        self.call_intrinsic("llvm.vector.reduce.xor", &[self.val_ty(src)], &[src])
     }
     pub(crate) fn vector_reduce_fmin(&mut self, src: &'ll Value) -> &'ll Value {
-        unsafe {
-            llvm::LLVMRustBuildVectorReduceFMin(self.llbuilder, src, /*NoNaNs:*/ false)
-        }
+        self.call_intrinsic("llvm.vector.reduce.fmin", &[self.val_ty(src)], &[src])
     }
     pub(crate) fn vector_reduce_fmax(&mut self, src: &'ll Value) -> &'ll Value {
-        unsafe {
-            llvm::LLVMRustBuildVectorReduceFMax(self.llbuilder, src, /*NoNaNs:*/ false)
-        }
+        self.call_intrinsic("llvm.vector.reduce.fmax", &[self.val_ty(src)], &[src])
     }
     pub(crate) fn vector_reduce_min(&mut self, src: &'ll Value, is_signed: bool) -> &'ll Value {
-        unsafe { llvm::LLVMRustBuildVectorReduceMin(self.llbuilder, src, is_signed) }
+        self.call_intrinsic(
+            if is_signed { "llvm.vector.reduce.smin" } else { "llvm.vector.reduce.umin" },
+            &[self.val_ty(src)],
+            &[src],
+        )
     }
     pub(crate) fn vector_reduce_max(&mut self, src: &'ll Value, is_signed: bool) -> &'ll Value {
-        unsafe { llvm::LLVMRustBuildVectorReduceMax(self.llbuilder, src, is_signed) }
+        self.call_intrinsic(
+            if is_signed { "llvm.vector.reduce.smax" } else { "llvm.vector.reduce.umax" },
+            &[self.val_ty(src)],
+            &[src],
+        )
     }
-
+}
+impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
     pub(crate) fn add_clause(&mut self, landing_pad: &'ll Value, clause: &'ll Value) {
         unsafe {
             llvm::LLVMAddClause(landing_pad, clause);

@@ -28,7 +28,6 @@ RUN sh /scripts/sccache.sh
 
 ENV SCRIPT \
         python3 ../x.py check && \
-        python3 ../x.py check src/tools/bump-stage0 && \
         python3 ../x.py clippy ci --stage 2 && \
         python3 ../x.py test --stage 1 core alloc std test proc_macro && \
         python3 ../x.py test --stage 1 src/tools/compiletest && \
