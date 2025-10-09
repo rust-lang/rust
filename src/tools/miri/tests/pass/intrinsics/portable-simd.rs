@@ -970,6 +970,59 @@ fn simd_masked_loadstore() {
         )
     };
     assert_eq!(buf, [2, 3, 4]);
+
+    // we use a purposely misaliged buffer to make sure Miri doesn't error in this case
+    let buf = [0x03030303_i32; 5];
+    let default = i32x4::splat(0);
+    let mask = i32x4::splat(!0);
+    let vals = unsafe {
+        simd_masked_load::<_, _, _, { SimdAlign::Unaligned }>(
+            mask,
+            buf.as_ptr().byte_offset(1), // this is guaranteed to be unaligned
+            default,
+        )
+    };
+    assert_eq!(vals, i32x4::splat(0x03030303));
+
+    let mut buf = [0i32; 5];
+    let mask = i32x4::splat(!0);
+    unsafe {
+        simd_masked_store::<_, _, _, { SimdAlign::Unaligned }>(
+            mask,
+            buf.as_mut_ptr().byte_offset(1), // this is guaranteed to be unaligned
+            vals,
+        )
+    };
+    assert_eq!(
+        buf,
+        [
+            i32::from_ne_bytes([0, 3, 3, 3]),
+            0x03030303,
+            0x03030303,
+            0x03030303,
+            i32::from_ne_bytes([3, 0, 0, 0])
+        ]
+    );
+
+    // `repr(simd)` types like `Simd<T, N>` have the correct alignment for vectors
+    let buf = i32x4::splat(3);
+    let default = i32x4::splat(0);
+    let mask = i32x4::splat(!0);
+    let vals = unsafe {
+        simd_masked_load::<_, _, _, { SimdAlign::Vector }>(
+            mask,
+            &raw const buf as *const i32,
+            default,
+        )
+    };
+    assert_eq!(vals, buf);
+
+    let mut buf = i32x4::splat(0);
+    let mask = i32x4::splat(!0);
+    unsafe {
+        simd_masked_store::<_, _, _, { SimdAlign::Vector }>(mask, &raw mut buf as *mut i32, vals)
+    };
+    assert_eq!(buf, vals);
 }
 
 fn simd_ops_non_pow2() {
