@@ -21,15 +21,11 @@ pub(crate) fn check_if_let<'tcx>(
     then_expr: &'tcx Expr<'_>,
     else_expr: &'tcx Expr<'_>,
 ) {
-    let mut arms = [(Some(let_pat), then_expr), (None, else_expr)].into_iter();
     if !span_contains_comment(cx.sess().source_map(), expr.span)
         && cx.typeck_results().expr_ty(expr).is_bool()
-        && let Some((None, else_expr)) = arms.next_back()
-        && let Some((_, first_expr)) = arms.next()
-        && let Some(b0) = find_bool_lit(first_expr)
+        && let Some(b0) = find_bool_lit(then_expr)
         && let Some(b1) = find_bool_lit(else_expr)
         && b0 != b1
-        && arms.all(|(_, expr)| find_bool_lit(expr) == Some(b0))
     {
         if !is_lint_allowed(cx, REDUNDANT_PATTERN_MATCHING, let_pat.hir_id) && is_some_wild(let_pat.kind) {
             return;
