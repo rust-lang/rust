@@ -1,42 +1,44 @@
 error[E0798]: arguments for `"cmse-nonsecure-call"` function too large to pass via registers
-  --> $DIR/params-via-stack.rs:16:61
+  --> $DIR/params-via-stack.rs:16:64
    |
 LL |     f1: extern "cmse-nonsecure-call" fn(u32, u32, u32, u32, x: u32, y: u32),
-   |                                                             ^^^^^^^^^^^^^^ these arguments don't fit in the available registers
+   |                                                                ^^^     ^^^ does not fit in the available registers
+   |                                                                |
+   |                                                                does not fit in the available registers
    |
-   = note: functions with the `"cmse-nonsecure-call"` ABI must pass all their arguments via the 4 32-bit available argument registers
+   = note: functions with the `"cmse-nonsecure-call"` ABI must pass all their arguments via the 4 32-bit argument registers
 
 error[E0798]: arguments for `"cmse-nonsecure-call"` function too large to pass via registers
   --> $DIR/params-via-stack.rs:17:61
    |
 LL |     f2: extern "cmse-nonsecure-call" fn(u32, u32, u32, u16, u16),
-   |                                                             ^^^ this argument doesn't fit in the available registers
+   |                                                             ^^^ does not fit in the available registers
    |
-   = note: functions with the `"cmse-nonsecure-call"` ABI must pass all their arguments via the 4 32-bit available argument registers
+   = note: functions with the `"cmse-nonsecure-call"` ABI must pass all their arguments via the 4 32-bit argument registers
 
 error[E0798]: arguments for `"cmse-nonsecure-call"` function too large to pass via registers
   --> $DIR/params-via-stack.rs:18:51
    |
 LL |     f3: extern "cmse-nonsecure-call" fn(u32, u64, u32),
-   |                                                   ^^^ this argument doesn't fit in the available registers
+   |                                                   ^^^ does not fit in the available registers
    |
-   = note: functions with the `"cmse-nonsecure-call"` ABI must pass all their arguments via the 4 32-bit available argument registers
+   = note: functions with the `"cmse-nonsecure-call"` ABI must pass all their arguments via the 4 32-bit argument registers
 
 error[E0798]: arguments for `"cmse-nonsecure-call"` function too large to pass via registers
   --> $DIR/params-via-stack.rs:19:56
    |
 LL |     f4: extern "cmse-nonsecure-call" fn(AlignRelevant, u32),
-   |                                                        ^^^ this argument doesn't fit in the available registers
+   |                                                        ^^^ does not fit in the available registers
    |
-   = note: functions with the `"cmse-nonsecure-call"` ABI must pass all their arguments via the 4 32-bit available argument registers
+   = note: functions with the `"cmse-nonsecure-call"` ABI must pass all their arguments via the 4 32-bit argument registers
 
 error[E0798]: arguments for `"cmse-nonsecure-call"` function too large to pass via registers
   --> $DIR/params-via-stack.rs:20:41
    |
 LL |     f5: extern "cmse-nonsecure-call" fn([u32; 5]),
-   |                                         ^^^^^^^^ this argument doesn't fit in the available registers
+   |                                         ^^^^^^^^ does not fit in the available registers
    |
-   = note: functions with the `"cmse-nonsecure-call"` ABI must pass all their arguments via the 4 32-bit available argument registers
+   = note: functions with the `"cmse-nonsecure-call"` ABI must pass all their arguments via the 4 32-bit argument registers
 
 error: aborting due to 5 previous errors
 
