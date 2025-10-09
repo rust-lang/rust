@@ -539,14 +539,11 @@ pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {
 }
 
 pub fn set_times(_p: &Path, _times: FileTimes) -> io::Result<()> {
-    Err(io::const_error!(io::ErrorKind::Unsupported, "setting file times not supported",))
+    unsupported()
 }
 
 pub fn set_times_nofollow(_p: &Path, _times: FileTimes) -> io::Result<()> {
-    Err(io::const_error!(
-        io::ErrorKind::Unsupported,
-        "setting file times on symlinks not supported",
-    ))
+    unsupported()
 }
 
 pub fn rmdir(p: &Path) -> io::Result<()> {

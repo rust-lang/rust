@@ -1201,6 +1201,7 @@ impl fmt::Debug for OpenOptions {
     target_os = "horizon",
     target_os = "nuttx",
 )))]
+#[inline(always)]
 fn to_timespec(time: Option<SystemTime>) -> io::Result<libc::timespec> {
     match time {
         Some(time) if let Some(ts) = time.t.to_timespec() => Ok(ts),
@@ -1217,6 +1218,7 @@ fn to_timespec(time: Option<SystemTime>) -> io::Result<libc::timespec> {
 }
 
 #[cfg(target_vendor = "apple")]
+#[inline(always)]
 fn set_attrlist_with_times(
     times: &FileTimes,
 ) -> io::Result<(libc::attrlist, [mem::MaybeUninit<libc::timespec>; 3], usize)> {
