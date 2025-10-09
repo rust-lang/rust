@@ -1,4 +1,3 @@
-// skip-filecheck
 //@ test-mir-pass: ReferencePropagation
 //@ compile-flags: -g -Zub_checks=false -Zinline-mir -Zmir-enable-passes=+DeadStoreElimination-initial
 
@@ -9,6 +8,11 @@ use std::intrinsics::mir::*;
 
 // EMIT_MIR ref_prop.remap_debuginfo_locals.ReferencePropagation.diff
 pub fn remap_debuginfo_locals() {
+    // CHECK-LABEL: fn remap_debuginfo_locals()
+    // CHECK: debug a => [[a:_.*]];
+    // CHECK: bb0:
+    // CHECK-NEXT: [[a]] = const
+    // CHECK-NEXT: DBG: [[a]] = &(*[[a]]);
     foo(&0);
 }
 

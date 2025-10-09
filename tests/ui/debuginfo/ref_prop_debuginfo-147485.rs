@@ -1,5 +1,7 @@
-//@ known-bug: #147485
+//@ build-pass
 //@ compile-flags: -g -O
+
+// Regression test for #147485.
 
 #![crate_type = "lib"]
 
