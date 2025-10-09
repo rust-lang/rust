@@ -408,33 +408,39 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
         }
     }
 
+    #[tracing::instrument(level = "trace", skip(self, stmt), ret)]
+    fn visit_statement(&mut self, stmt: &mut Statement<'tcx>, location: Location) {
+        // Remove StorageLive and StorageDead statements for remapped locals
+        if let StatementKind::StorageLive(l) | StatementKind::StorageDead(l) = stmt.kind
+            && self.remap.contains(l)
+        {
+            stmt.make_nop(true);
+        }
+        self.super_statement(stmt, location);
+    }
+
     #[tracing::instrument(level = "trace", skip(self, data), ret)]
     fn visit_basic_block_data(&mut self, block: BasicBlock, data: &mut BasicBlockData<'tcx>) {
-        // Remove StorageLive and StorageDead statements for remapped locals
-        for s in &mut data.statements {
-            if let StatementKind::StorageLive(l) | StatementKind::StorageDead(l) = s.kind
-                && self.remap.contains(l)
-            {
-                s.make_nop(true);
-            }
-        }
-
-        let ret_val = match data.terminator().kind {
+        match data.terminator().kind {
             TerminatorKind::Return => {
-                Some((true, None, Operand::Move(Place::from(self.old_ret_local)), None))
+                let source_info = data.terminator().source_info;
+                // We must assign the value first in case it gets declared dead below
+                self.make_state(
+                    Operand::Move(Place::from(self.old_ret_local)),
+                    source_info,
+                    true,
+                    &mut data.statements,
+                );
+                // Return state.
+                let state = VariantIdx::new(CoroutineArgs::RETURNED);
+                data.statements.push(self.set_discr(state, source_info));
+                data.terminator_mut().kind = TerminatorKind::Return;
             }
-            TerminatorKind::Yield { ref value, resume, resume_arg, drop } => {
-                Some((false, Some((resume, resume_arg)), value.clone(), drop))
-            }
-            _ => None,
-        };
-
-        if let Some((is_return, resume, v, drop)) = ret_val {
-            let source_info = data.terminator().source_info;
-            // We must assign the value first in case it gets declared dead below
-            self.make_state(v, source_info, is_return, &mut data.statements);
-            let state = if let Some((resume, mut resume_arg)) = resume {
-                // Yield
+            TerminatorKind::Yield { ref value, resume, mut resume_arg, drop } => {
+                let source_info = data.terminator().source_info;
+                // We must assign the value first in case it gets declared dead below
+                self.make_state(value.clone(), source_info, false, &mut data.statements);
+                // Yield state.
                 let state = CoroutineArgs::RESERVED_VARIANTS + self.suspension_points.len();
 
                 // The resume arg target location might itself be remapped if its base local is
@@ -465,13 +471,11 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
                     storage_liveness,
                 });
 
-                VariantIdx::new(state)
-            } else {
-                // Return
-                VariantIdx::new(CoroutineArgs::RETURNED) // state for returned
-            };
-            data.statements.push(self.set_discr(state, source_info));
-            data.terminator_mut().kind = TerminatorKind::Return;
+                let state = VariantIdx::new(state);
+                data.statements.push(self.set_discr(state, source_info));
+                data.terminator_mut().kind = TerminatorKind::Return;
+            }
+            _ => {}
         }
 
         self.super_basic_block_data(block, data);
