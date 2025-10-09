@@ -1974,9 +1974,6 @@ HELP: You can add it into `bootstrap.toml` in `rust.codegen-backends = [{name:?}
         } else if mode == "rustdoc-js" {
             panic!("need nodejs to run rustdoc-js suite");
         }
-        if let Some(ref npm) = builder.config.npm {
-            cmd.arg("--npm").arg(npm);
-        }
         if builder.config.rust_optimize_tests {
             cmd.arg("--optimize-tests");
         }
