@@ -7,7 +7,7 @@ use rustc_session::Session;
 
 /// Tries to infer the path of a binary for the target toolchain from the linker name.
 pub(crate) fn get_toolchain_binary(sess: &Session, tool: &str) -> PathBuf {
-    let (mut linker, _linker_flavor) = linker_and_flavor(sess);
+    let (mut linker, _linker_flavor) = linker_and_flavor(sess, false);
     let linker_file_name =
         linker.file_name().unwrap().to_str().expect("linker filename should be valid UTF-8");
 
