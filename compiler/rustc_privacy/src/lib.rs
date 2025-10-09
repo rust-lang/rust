@@ -182,9 +182,6 @@ where
     }
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
-        if !self.visited_tys.insert(ty) {
-            return V::Result::output();
-        }
         let tcx = self.def_id_visitor.tcx();
         // GenericArgs are not visited here because they are visited below
         // in `super_visit_with`.
@@ -195,6 +192,9 @@ where
             | ty::Closure(def_id, ..)
             | ty::CoroutineClosure(def_id, ..)
             | ty::Coroutine(def_id, ..) => {
+                if !self.visited_tys.insert(ty) {
+                    return V::Result::output();
+                }
                 try_visit!(self.def_id_visitor.visit_def_id(def_id, "type", &ty));
                 if V::SHALLOW {
                     return V::Result::output();
@@ -217,6 +217,9 @@ where
                 }
             }
             ty::Alias(kind @ (ty::Inherent | ty::Free | ty::Projection), data) => {
+                if !self.visited_tys.insert(ty) {
+                    return V::Result::output();
+                }
                 if self.def_id_visitor.skip_assoc_tys() {
                     // Visitors searching for minimal visibility/reachability want to
                     // conservatively approximate associated types like `Type::Alias`
@@ -248,6 +251,9 @@ where
                 };
             }
             ty::Dynamic(predicates, ..) => {
+                if !self.visited_tys.insert(ty) {
+                    return V::Result::output();
+                }
                 // All traits in the list are considered the "primary" part of the type
                 // and are visited by shallow visitors.
                 for predicate in predicates {
@@ -263,6 +269,9 @@ where
                 }
             }
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) => {
+                if !self.visited_tys.insert(ty) {
+                    return V::Result::output();
+                }
                 // The intent is to treat `impl Trait1 + Trait2` identically to
                 // `dyn Trait1 + Trait2`. Therefore we ignore def-id of the opaque type itself
                 // (it either has no visibility, or its visibility is insignificant, like
@@ -272,8 +281,7 @@ where
                 // and are visited by shallow visitors.
                 try_visit!(self.visit_clauses(tcx.explicit_item_bounds(def_id).skip_binder()));
             }
-            // These types don't have their own def-ids (but may have subcomponents
-            // with def-ids that should be visited recursively).
+            // These types have neither their own def-ids nor subcomponents.
             ty::Bool
             | ty::Char
             | ty::Int(..)
@@ -281,7 +289,12 @@ where
             | ty::Float(..)
             | ty::Str
             | ty::Never
-            | ty::Array(..)
+            | ty::Bound(..)
+            | ty::Param(..) => return V::Result::output(),
+
+            // These types don't have their own def-ids (but may have subcomponents
+            // with def-ids that should be visited recursively).
+            ty::Array(..)
             | ty::Slice(..)
             | ty::Tuple(..)
             | ty::RawPtr(..)
@@ -289,10 +302,12 @@ where
             | ty::Pat(..)
             | ty::FnPtr(..)
             | ty::UnsafeBinder(_)
-            | ty::Param(..)
-            | ty::Bound(..)
             | ty::Error(_)
-            | ty::CoroutineWitness(..) => {}
+            | ty::CoroutineWitness(..) => {
+                if !self.visited_tys.insert(ty) {
+                    return V::Result::output();
+                }
+            }
             ty::Placeholder(..) | ty::Infer(..) => {
                 bug!("unexpected type: {:?}", ty)
             }
