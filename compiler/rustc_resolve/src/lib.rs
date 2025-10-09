@@ -25,7 +25,7 @@
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
 
-use std::cell::{Cell, Ref, RefCell};
+use std::cell::Ref;
 use std::collections::BTreeSet;
 use std::fmt::{self};
 use std::sync::Arc;
@@ -572,7 +572,7 @@ impl BindingKey {
     }
 }
 
-type Resolutions<'ra> = RefCell<FxIndexMap<BindingKey, &'ra RefCell<NameResolution<'ra>>>>;
+type Resolutions<'ra> = CmRefCell<FxIndexMap<BindingKey, &'ra CmRefCell<NameResolution<'ra>>>>;
 
 /// One node in the tree of modules.
 ///
@@ -595,7 +595,7 @@ struct ModuleData<'ra> {
     /// Resolutions in modules from other crates are not populated until accessed.
     lazy_resolutions: Resolutions<'ra>,
     /// True if this is a module from other crate that needs to be populated on access.
-    populate_on_access: Cell<bool>, // FIXME(parallel): Use an atomic in parallel import resolution
+    populate_on_access: CacheCell<bool>,
     /// Used to disambiguate underscore items (`const _: T = ...`) in the module.
     underscore_disambiguator: CmCell<u32>,
 
@@ -658,7 +658,7 @@ impl<'ra> ModuleData<'ra> {
             parent,
             kind,
             lazy_resolutions: Default::default(),
-            populate_on_access: Cell::new(is_foreign),
+            populate_on_access: CacheCell::new(is_foreign),
             underscore_disambiguator: CmCell::new(0),
             unexpanded_invocations: Default::default(),
             no_implicit_prelude,
@@ -1034,7 +1034,7 @@ struct ExternPreludeEntry<'ra> {
     /// `flag_binding` is `None`, or when `extern crate` introducing `item_binding` used renaming.
     item_binding: Option<(NameBinding<'ra>, /* introduced by item */ bool)>,
     /// Binding from an `--extern` flag, lazily populated on first use.
-    flag_binding: Option<Cell<(PendingBinding<'ra>, /* finalized */ bool)>>,
+    flag_binding: Option<CacheCell<(PendingBinding<'ra>, /* finalized */ bool)>>,
 }
 
 impl ExternPreludeEntry<'_> {
@@ -1045,7 +1045,7 @@ impl ExternPreludeEntry<'_> {
     fn flag() -> Self {
         ExternPreludeEntry {
             item_binding: None,
-            flag_binding: Some(Cell::new((PendingBinding::Pending, false))),
+            flag_binding: Some(CacheCell::new((PendingBinding::Pending, false))),
         }
     }
 }
@@ -1150,7 +1150,7 @@ pub struct Resolver<'ra, 'tcx> {
     /// Eagerly populated map of all local non-block modules.
     local_module_map: FxIndexMap<LocalDefId, Module<'ra>>,
     /// Lazily populated cache of modules loaded from external crates.
-    extern_module_map: RefCell<FxIndexMap<DefId, Module<'ra>>>,
+    extern_module_map: CacheRefCell<FxIndexMap<DefId, Module<'ra>>>,
     binding_parent_modules: FxHashMap<NameBinding<'ra>, Module<'ra>>,
 
     /// Maps glob imports to the names of items actually imported.
@@ -1186,7 +1186,7 @@ pub struct Resolver<'ra, 'tcx> {
     /// Eagerly populated map of all local macro definitions.
     local_macro_map: FxHashMap<LocalDefId, &'ra MacroData>,
     /// Lazily populated cache of macro definitions loaded from external crates.
-    extern_macro_map: RefCell<FxHashMap<DefId, &'ra MacroData>>,
+    extern_macro_map: CacheRefCell<FxHashMap<DefId, &'ra MacroData>>,
     dummy_ext_bang: Arc<SyntaxExtension>,
     dummy_ext_derive: Arc<SyntaxExtension>,
     non_macro_attr: &'ra MacroData,
@@ -1197,11 +1197,10 @@ pub struct Resolver<'ra, 'tcx> {
     unused_macro_rules: FxIndexMap<NodeId, DenseBitSet<usize>>,
     proc_macro_stubs: FxHashSet<LocalDefId>,
     /// Traces collected during macro resolution and validated when it's complete.
-    // FIXME: Remove interior mutability when speculative resolution produces these as outputs.
     single_segment_macro_resolutions:
-        RefCell<Vec<(Ident, MacroKind, ParentScope<'ra>, Option<NameBinding<'ra>>, Option<Span>)>>,
+        CmRefCell<Vec<(Ident, MacroKind, ParentScope<'ra>, Option<NameBinding<'ra>>, Option<Span>)>>,
     multi_segment_macro_resolutions:
-        RefCell<Vec<(Vec<Segment>, Span, MacroKind, ParentScope<'ra>, Option<Res>, Namespace)>>,
+        CmRefCell<Vec<(Vec<Segment>, Span, MacroKind, ParentScope<'ra>, Option<Res>, Namespace)>>,
     builtin_attrs: Vec<(Ident, ParentScope<'ra>)>,
     /// `derive(Copy)` marks items they are applied to so they are treated specially later.
     /// Derive macros cannot modify the item themselves and have to store the markers in the global
@@ -1301,7 +1300,7 @@ pub struct Resolver<'ra, 'tcx> {
 pub struct ResolverArenas<'ra> {
     modules: TypedArena<ModuleData<'ra>>,
     imports: TypedArena<ImportData<'ra>>,
-    name_resolutions: TypedArena<RefCell<NameResolution<'ra>>>,
+    name_resolutions: TypedArena<CmRefCell<NameResolution<'ra>>>,
     ast_paths: TypedArena<ast::Path>,
     macros: TypedArena<MacroData>,
     dropless: DroplessArena,
@@ -1363,11 +1362,11 @@ impl<'ra> ResolverArenas<'ra> {
     fn alloc_import(&'ra self, import: ImportData<'ra>) -> Import<'ra> {
         Interned::new_unchecked(self.imports.alloc(import))
     }
-    fn alloc_name_resolution(&'ra self) -> &'ra RefCell<NameResolution<'ra>> {
+    fn alloc_name_resolution(&'ra self) -> &'ra CmRefCell<NameResolution<'ra>> {
         self.name_resolutions.alloc(Default::default())
     }
     fn alloc_macro_rules_scope(&'ra self, scope: MacroRulesScope<'ra>) -> MacroRulesScopeRef<'ra> {
-        self.dropless.alloc(Cell::new(scope))
+        self.dropless.alloc(CacheCell::new(scope))
     }
     fn alloc_macro_rules_binding(
         &'ra self,
@@ -1978,7 +1977,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     fn resolutions(&self, module: Module<'ra>) -> &'ra Resolutions<'ra> {
         if module.populate_on_access.get() {
-            // FIXME(batched): Will be fixed in batched import resolution.
             module.populate_on_access.set(false);
             self.build_reduced_graph_external(module);
         }
@@ -1997,9 +1995,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         &self,
         module: Module<'ra>,
         key: BindingKey,
-    ) -> &'ra RefCell<NameResolution<'ra>> {
+    ) -> &'ra CmRefCell<NameResolution<'ra>> {
         self.resolutions(module)
-            .borrow_mut()
+            .borrow_mut_unchecked()
             .entry(key)
             .or_insert_with(|| self.arenas.alloc_name_resolution())
     }
@@ -2514,6 +2512,13 @@ pub fn provide(providers: &mut Providers) {
 /// Prefer constructing it through [`Resolver::cm`] to ensure correctness.
 type CmResolver<'r, 'ra, 'tcx> = ref_mut::RefOrMut<'r, Resolver<'ra, 'tcx>>;
 
+// FIXME: These are cells for caches that can be populated even during speculative resolution,
+// and should be replaced with mutexes, atomics, or other synchronized data when migrating to
+// parallel name resolution.
+use std::cell::{Cell as CacheCell, RefCell as CacheRefCell};
+
+// FIXME: `*_unchecked` methods in the module below should be eliminated in the process
+// of migration to parallel name resolution.
 mod ref_mut {
     use std::cell::{BorrowMutError, Cell, Ref, RefCell, RefMut};
     use std::fmt;
@@ -2581,7 +2586,6 @@ mod ref_mut {
     }
 
     impl<T: Copy> Clone for CmCell<T> {
-        #[inline]
         fn clone(&self) -> CmCell<T> {
             CmCell::new(self.get())
         }
@@ -2624,13 +2628,11 @@ mod ref_mut {
             CmRefCell(RefCell::new(value))
         }
 
-        #[inline]
         #[track_caller]
         pub(crate) fn borrow_mut_unchecked(&self) -> RefMut<'_, T> {
             self.0.borrow_mut()
         }
 
-        #[inline]
         #[track_caller]
         pub(crate) fn borrow_mut<'ra, 'tcx>(&self, r: &Resolver<'ra, 'tcx>) -> RefMut<'_, T> {
             if r.assert_speculative {
@@ -2639,16 +2641,23 @@ mod ref_mut {
             self.borrow_mut_unchecked()
         }
 
-        #[inline]
         #[track_caller]
         pub(crate) fn try_borrow_mut_unchecked(&self) -> Result<RefMut<'_, T>, BorrowMutError> {
             self.0.try_borrow_mut()
         }
 
-        #[inline]
         #[track_caller]
         pub(crate) fn borrow(&self) -> Ref<'_, T> {
             self.0.borrow()
+        }
+    }
+
+    impl<T: Default> CmRefCell<T> {
+        pub(crate) fn take<'ra, 'tcx>(&self, r: &Resolver<'ra, 'tcx>) -> T {
+            if r.assert_speculative {
+                panic!("Not allowed to mutate a CmRefCell during speculative resolution");
+            }
+            self.0.take()
         }
     }
 }
