@@ -72,11 +72,65 @@ pub(super) fn check_match<'tcx>(
         && let Some(b0) = find_bool_lit(first_arm.body)
         && let Some(b1) = find_bool_lit(last_arm.body)
         && b0 != b1
-        && (first_arm.guard.is_none() || middle_arms.is_empty())
-        && cx.tcx.hir_attrs(first_arm.hir_id).is_empty()
-        && middle_arms.iter().all(|arm| {
-            cx.tcx.hir_attrs(arm.hir_id).is_empty() && arm.guard.is_none() && find_bool_lit(arm.body) == Some(b0)
-        })
+        // We handle two cases:
+        && (
+            // - There are no middle arms, i.e., 2 arms in total
+            //
+            // In that case, the first arm may or may not have a guard, because this:
+            // ```rs
+            // match e {
+            //     Either::Left $(if $guard)|+ => true, // or `false`, but then we'll need `!matches!(..)`
+            //     _ => false,
+            // }
+            // ```
+            // can always become this:
+            // ```rs
+            // matches!(e, Either::Left $(if $guard)|+)
+            // ```
+            middle_arms.is_empty()
+
+            // - (added in #6216) There are middle arms
+            //
+            // In that case, neither they nor the first arm may have guards
+            // -- otherwise, they couldn't be combined into an or-pattern in `matches!`
+            //
+            // This:
+            // ```rs
+            // match e {
+            //     Either3::First => true,
+            //     Either3::Second => true,
+            //     _ /* matches `Either3::Third` */ => false,
+            // }
+            // ```
+            // can become this:
+            // ```rs
+            // matches!(e, Either3::First | Either3::Second)
+            // ```
+            //
+            // But this:
+            // ```rs
+            // match e {
+            //     Either3::First if X => true,
+            //     Either3::Second => true,
+            //     _ => false,
+            // }
+            // ```
+            // cannot be transformed.
+            //
+            // We set an additional constraint of all of them needing to return the same bool,
+            // so we don't lint things like:
+            // ```rs
+            // match e {
+            //     Either3::First => true,
+            //     Either3::Second => false,
+            //     _ => false,
+            // }
+            // ```
+            // This is not *strictly* necessary, but it simplifies the logic a bit
+            || arms_without_last.iter().all(|arm| {
+                cx.tcx.hir_attrs(arm.hir_id).is_empty() && arm.guard.is_none() && find_bool_lit(arm.body) == Some(b0)
+            })
+        )
     {
         if !is_wild(last_arm.pat) {
             return false;
