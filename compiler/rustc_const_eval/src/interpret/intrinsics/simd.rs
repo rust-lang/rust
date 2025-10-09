@@ -1,5 +1,6 @@
 use either::Either;
 use rustc_abi::Endian;
+use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::{Float, Round};
 use rustc_middle::mir::interpret::{InterpErrorKind, UndefinedBehaviorInfo};
 use rustc_middle::ty::FloatTy;
@@ -8,8 +9,8 @@ use rustc_span::{Symbol, sym};
 use tracing::trace;
 
 use super::{
-    ImmTy, InterpCx, InterpResult, Machine, OpTy, PlaceTy, Provenance, Scalar, Size, interp_ok,
-    throw_ub_format,
+    ImmTy, InterpCx, InterpResult, Machine, MulAddType, OpTy, PlaceTy, Provenance, Scalar, Size,
+    interp_ok, throw_ub_format,
 };
 use crate::interpret::Writeable;
 
@@ -699,6 +700,43 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         let place = self.ptr_to_mplace(ptr, val.layout);
                         self.write_immediate(*val, &place)?
                     };
+                }
+            }
+            sym::simd_fma | sym::simd_relaxed_fma => {
+                // `simd_fma` should always deterministically use `mul_add`, whereas `relaxed_fma`
+                // is non-deterministic, and can use either `mul_add` or `a * b + c`
+                let typ = match intrinsic_name {
+                    sym::simd_fma => MulAddType::Fused,
+                    sym::simd_relaxed_fma => MulAddType::Nondeterministic,
+                    _ => unreachable!(),
+                };
+
+                let (a, a_len) = self.project_to_simd(&args[0])?;
+                let (b, b_len) = self.project_to_simd(&args[1])?;
+                let (c, c_len) = self.project_to_simd(&args[2])?;
+                let (dest, dest_len) = self.project_to_simd(&dest)?;
+
+                assert_eq!(dest_len, a_len);
+                assert_eq!(dest_len, b_len);
+                assert_eq!(dest_len, c_len);
+
+                for i in 0..dest_len {
+                    let a = self.read_scalar(&self.project_index(&a, i)?)?;
+                    let b = self.read_scalar(&self.project_index(&b, i)?)?;
+                    let c = self.read_scalar(&self.project_index(&c, i)?)?;
+                    let dest = self.project_index(&dest, i)?;
+
+                    let ty::Float(float_ty) = dest.layout.ty.kind() else {
+                        span_bug!(self.cur_span(), "{} operand is not a float", intrinsic_name)
+                    };
+
+                    let val = match float_ty {
+                        FloatTy::F16 => unimplemented!("f16_f128"),
+                        FloatTy::F32 => self.float_muladd::<Single>(a, b, c, typ)?,
+                        FloatTy::F64 => self.float_muladd::<Double>(a, b, c, typ)?,
+                        FloatTy::F128 => unimplemented!("f16_f128"),
+                    };
+                    self.write_scalar(val, &dest)?;
                 }
             }
 
