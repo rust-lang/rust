@@ -1516,12 +1516,13 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
         // We are currently checking the type this field came from, so it must be local
         let span = tcx.hir_span_if_local(field.did).unwrap();
         let trivial = layout.is_ok_and(|layout| layout.is_1zst());
-        (span, trivial, ty)
+        let uninhabited = layout.is_ok_and(|layout| layout.is_uninhabited());
+        (span, trivial, uninhabited, ty)
     });
 
-    let non_trivial_fields = field_infos
-        .clone()
-        .filter_map(|(span, trivial, _non_exhaustive)| if !trivial { Some(span) } else { None });
+    let non_trivial_fields = field_infos.clone().filter_map(
+        |(span, trivial, _uninhabited, _non_exhaustive)| if !trivial { Some(span) } else { None },
+    );
     let non_trivial_count = non_trivial_fields.clone().count();
     if non_trivial_count >= 2 {
         bad_non_zero_sized_fields(
@@ -1553,9 +1554,6 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
         adt: DefId,
         ty: Ty<'tcx>,
     ) -> ControlFlow<UnsuitedInfo<'tcx>> {
-        if !ty.is_inhabited_from(tcx, adt, ty::TypingEnv::non_body_analysis(tcx, adt)) {
-            return ControlFlow::Break(UnsuitedInfo { ty, reason: UnsuitedReason::Uninhabited });
-        }
         match ty.kind() {
             ty::Tuple(list) => list.iter().try_for_each(|t| check_unsuited_1zst(tcx, adt, t)),
             ty::Array(ty, _) => check_unsuited_1zst(tcx, adt, *ty),
@@ -1589,11 +1587,15 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
     }
 
     let mut prev_unsuited_1zst = false;
-    for (span, trivial, ty) in field_infos {
+    for (span, trivial, uninhabited, ty) in field_infos {
         if !trivial {
             continue;
         }
-        if let Some(unsuited) = check_unsuited_1zst(tcx, adt.did(), ty).break_value() {
+        if let Some(unsuited) =
+            check_unsuited_1zst(tcx, adt.did(), ty).break_value().or_else(|| {
+                uninhabited.then_some(UnsuitedInfo { ty, reason: UnsuitedReason::Uninhabited })
+            })
+        {
             // If there are any non-trivial fields, then there can be no non-exhaustive 1-zsts.
             // Otherwise, it's only an issue if there's >1 non-exhaustive 1-zst.
             if non_trivial_count > 0 || prev_unsuited_1zst {
@@ -1606,7 +1608,7 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
                     UnsuitedReason::NonExhaustive => "is marked with `#[non_exhaustive]`",
                     UnsuitedReason::PrivateField => "contains private fields",
                     UnsuitedReason::ReprC => "is marked with `#[repr(C)]`",
-                    UnsuitedReason::Uninhabited => "is not (publicly) inhabited",
+                    UnsuitedReason::Uninhabited => "is not inhabited",
                 };
                 diag.note(format!(
                     "this field contains `{field_ty}`, which {note}, \
