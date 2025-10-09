@@ -6,7 +6,7 @@ use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{is_lint_allowed, is_wild, span_contains_comment};
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
-use rustc_hir::{Arm, Attribute, BorrowKind, Expr, ExprKind, Pat, PatKind, QPath};
+use rustc_hir::{Arm, BorrowKind, Expr, ExprKind, Pat, PatKind, QPath};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty;
 use rustc_span::source_map::Spanned;
@@ -65,27 +65,12 @@ pub(super) fn check_match<'tcx>(
     scrutinee: &'tcx Expr<'_>,
     arms: &'tcx [Arm<'tcx>],
 ) -> bool {
-    find_matches_sugg(
-        cx,
-        scrutinee,
-        arms.iter()
-            .map(|arm| (cx.tcx.hir_attrs(arm.hir_id), Some(arm.pat), arm.body, arm.guard)),
-        e,
-    )
-}
-
-/// Lint a `match` or `if let` for replacement by `matches!`
-fn find_matches_sugg<'a, 'b, I>(cx: &LateContext<'_>, ex: &Expr<'_>, mut arms: I, expr: &Expr<'_>) -> bool
-where
-    'b: 'a,
-    I: Clone
-        + DoubleEndedIterator
-        + ExactSizeIterator
-        + Iterator<Item = (&'a [Attribute], Option<&'a Pat<'b>>, &'a Expr<'b>, Option<&'a Expr<'b>>)>,
-{
-    if !span_contains_comment(cx.sess().source_map(), expr.span)
+    let mut arms = arms
+        .iter()
+        .map(|arm| (cx.tcx.hir_attrs(arm.hir_id), Some(arm.pat), arm.body, arm.guard));
+    if !span_contains_comment(cx.sess().source_map(), e.span)
         && arms.len() >= 2
-        && cx.typeck_results().expr_ty(expr).is_bool()
+        && cx.typeck_results().expr_ty(e).is_bool()
         && let Some((_, last_pat_opt, last_expr, _)) = arms.next_back()
         && let arms_without_last = arms.clone()
         && let Some((first_attrs, _, first_expr, first_guard)) = arms.next()
@@ -133,8 +118,8 @@ where
         };
 
         // strip potential borrows (#6503), but only if the type is a reference
-        let mut ex_new = ex;
-        if let ExprKind::AddrOf(BorrowKind::Ref, .., ex_inner) = ex.kind
+        let mut ex_new = scrutinee;
+        if let ExprKind::AddrOf(BorrowKind::Ref, .., ex_inner) = scrutinee.kind
             && let ty::Ref(..) = cx.typeck_results().expr_ty(ex_inner).kind()
         {
             ex_new = ex_inner;
@@ -142,7 +127,7 @@ where
         span_lint_and_sugg(
             cx,
             MATCH_LIKE_MATCHES_MACRO,
-            expr.span,
+            e.span,
             "match expression looks like `matches!` macro",
             "try",
             format!(
