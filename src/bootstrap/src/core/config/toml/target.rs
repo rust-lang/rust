@@ -27,7 +27,7 @@ define_config! {
         ar: Option<String> = "ar",
         ranlib: Option<String> = "ranlib",
         default_linker: Option<PathBuf> = "default-linker",
-        default_linker_linux: Option<DefaultLinuxLinkerOverride> = "default-linker-linux-override",
+        default_linker_linux_override: Option<DefaultLinuxLinkerOverride> = "default-linker-linux-override",
         linker: Option<String> = "linker",
         split_debuginfo: Option<String> = "split-debuginfo",
         llvm_config: Option<String> = "llvm-config",
@@ -95,7 +95,7 @@ impl Target {
     }
 }
 
-/// Overrides the default linker used on a Linux linker.
+/// Overrides the default linker used on a Linux target.
 /// On Linux, the linker is usually invoked through `cc`, therefore this exists as a separate
 /// configuration from simply setting `default-linker`, which corresponds to `-Clinker`.
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq)]

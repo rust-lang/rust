@@ -844,7 +844,7 @@ impl Config {
                     ar: target_ar,
                     ranlib: target_ranlib,
                     default_linker: target_default_linker,
-                    default_linker_linux: target_default_linker_linux_override,
+                    default_linker_linux_override: target_default_linker_linux_override,
                     linker: target_linker,
                     split_debuginfo: target_split_debuginfo,
                     llvm_config: target_llvm_config,
