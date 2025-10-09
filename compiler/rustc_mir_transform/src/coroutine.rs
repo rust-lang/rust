@@ -159,6 +159,7 @@ impl<'tcx> MutVisitor<'tcx> for SelfArgVisitor<'tcx> {
     }
 }
 
+#[tracing::instrument(level = "trace", skip(tcx))]
 fn replace_base<'tcx>(place: &mut Place<'tcx>, new_base: Place<'tcx>, tcx: TyCtxt<'tcx>) {
     place.local = new_base.local;
 
@@ -166,6 +167,7 @@ fn replace_base<'tcx>(place: &mut Place<'tcx>, new_base: Place<'tcx>, tcx: TyCtx
     new_projection.append(&mut place.projection.to_vec());
 
     place.projection = tcx.mk_place_elems(&new_projection);
+    tracing::trace!(?place);
 }
 
 const SELF_ARG: Local = Local::from_u32(1);
@@ -270,6 +272,7 @@ impl<'tcx> TransformVisitor<'tcx> {
     // `core::ops::CoroutineState` only has single element tuple variants,
     // so we can just write to the downcasted first field and then set the
     // discriminant to the appropriate variant.
+    #[tracing::instrument(level = "trace", skip(self, statements))]
     fn make_state(
         &self,
         val: Operand<'tcx>,
@@ -348,6 +351,7 @@ impl<'tcx> TransformVisitor<'tcx> {
     }
 
     // Create a Place referencing a coroutine struct field
+    #[tracing::instrument(level = "trace", skip(self), ret)]
     fn make_field(&self, variant_index: VariantIdx, idx: FieldIdx, ty: Ty<'tcx>) -> Place<'tcx> {
         let self_place = Place::from(SELF_ARG);
         let base = self.tcx.mk_place_downcast_unnamed(self_place, variant_index);
@@ -358,6 +362,7 @@ impl<'tcx> TransformVisitor<'tcx> {
     }
 
     // Create a statement which changes the discriminant
+    #[tracing::instrument(level = "trace", skip(self))]
     fn set_discr(&self, state_disc: VariantIdx, source_info: SourceInfo) -> Statement<'tcx> {
         let self_place = Place::from(SELF_ARG);
         Statement::new(
@@ -370,6 +375,7 @@ impl<'tcx> TransformVisitor<'tcx> {
     }
 
     // Create a statement which reads the discriminant into a temporary
+    #[tracing::instrument(level = "trace", skip(self, body))]
     fn get_discr(&self, body: &mut Body<'tcx>) -> (Statement<'tcx>, Place<'tcx>) {
         let temp_decl = LocalDecl::new(self.discr_ty, body.span);
         let local_decls_len = body.local_decls.push(temp_decl);
@@ -389,22 +395,20 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
         self.tcx
     }
 
-    fn visit_local(&mut self, local: &mut Local, _: PlaceContext, _: Location) {
+    #[tracing::instrument(level = "trace", skip(self), ret)]
+    fn visit_local(&mut self, local: &mut Local, _: PlaceContext, _location: Location) {
         assert!(!self.remap.contains(*local));
     }
 
-    fn visit_place(
-        &mut self,
-        place: &mut Place<'tcx>,
-        _context: PlaceContext,
-        _location: Location,
-    ) {
+    #[tracing::instrument(level = "trace", skip(self), ret)]
+    fn visit_place(&mut self, place: &mut Place<'tcx>, _: PlaceContext, _location: Location) {
         // Replace an Local in the remap with a coroutine struct access
         if let Some(&Some((ty, variant_index, idx))) = self.remap.get(place.local) {
             replace_base(place, self.make_field(variant_index, idx, ty), self.tcx);
         }
     }
 
+    #[tracing::instrument(level = "trace", skip(self, data), ret)]
     fn visit_basic_block_data(&mut self, block: BasicBlock, data: &mut BasicBlockData<'tcx>) {
         // Remove StorageLive and StorageDead statements for remapped locals
         for s in &mut data.statements {
@@ -483,6 +487,7 @@ fn make_aggregate_adt<'tcx>(
     Rvalue::Aggregate(Box::new(AggregateKind::Adt(def_id, variant_idx, args, None, None)), operands)
 }
 
+#[tracing::instrument(level = "trace", skip(tcx, body))]
 fn make_coroutine_state_argument_indirect<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let coroutine_ty = body.local_decls.raw[1].ty;
 
@@ -495,6 +500,7 @@ fn make_coroutine_state_argument_indirect<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Bo
     SelfArgVisitor::new(tcx, ProjectionElem::Deref).visit_body(body);
 }
 
+#[tracing::instrument(level = "trace", skip(tcx, body))]
 fn make_coroutine_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let ref_coroutine_ty = body.local_decls.raw[1].ty;
 
@@ -553,6 +559,7 @@ fn replace_local<'tcx>(
 /// The async lowering step and the type / lifetime inference / checking are
 /// still using the `ResumeTy` indirection for the time being, and that indirection
 /// is removed here. After this transform, the coroutine body only knows about `&mut Context<'_>`.
+#[tracing::instrument(level = "trace", skip(tcx, body), ret)]
 fn transform_async_context<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> Ty<'tcx> {
     let context_mut_ref = Ty::new_task_context(tcx);
 
@@ -606,6 +613,7 @@ fn eliminate_get_context_call<'tcx>(bb_data: &mut BasicBlockData<'tcx>) -> Local
 }
 
 #[cfg_attr(not(debug_assertions), allow(unused))]
+#[tracing::instrument(level = "trace", skip(tcx, body), ret)]
 fn replace_resume_ty_local<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &mut Body<'tcx>,
@@ -670,6 +678,7 @@ struct LivenessInfo {
 ///   case none exist, the local is considered to be always live.
 /// - a local has to be stored if it is either directly used after the
 ///   the suspend point, or if it is live and has been previously borrowed.
+#[tracing::instrument(level = "trace", skip(tcx, body))]
 fn locals_live_across_suspend_points<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
@@ -945,6 +954,7 @@ impl StorageConflictVisitor<'_, '_> {
     }
 }
 
+#[tracing::instrument(level = "trace", skip(liveness, body))]
 fn compute_layout<'tcx>(
     liveness: LivenessInfo,
     body: &Body<'tcx>,
@@ -1049,7 +1059,9 @@ fn compute_layout<'tcx>(
         variant_source_info,
         storage_conflicts,
     };
+    debug!(?remap);
     debug!(?layout);
+    debug!(?storage_liveness);
 
     (remap, layout, storage_liveness)
 }
@@ -1221,6 +1233,7 @@ fn generate_poison_block_and_redirect_unwinds_there<'tcx>(
     }
 }
 
+#[tracing::instrument(level = "trace", skip(tcx, transform, body))]
 fn create_coroutine_resume_function<'tcx>(
     tcx: TyCtxt<'tcx>,
     transform: TransformVisitor<'tcx>,
@@ -1299,7 +1312,7 @@ fn create_coroutine_resume_function<'tcx>(
 }
 
 /// An operation that can be performed on a coroutine.
-#[derive(PartialEq, Copy, Clone)]
+#[derive(PartialEq, Copy, Clone, Debug)]
 enum Operation {
     Resume,
     Drop,
@@ -1314,6 +1327,7 @@ impl Operation {
     }
 }
 
+#[tracing::instrument(level = "trace", skip(transform, body))]
 fn create_cases<'tcx>(
     body: &mut Body<'tcx>,
     transform: &TransformVisitor<'tcx>,
@@ -1445,6 +1459,8 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
             // This only applies to coroutines
             return;
         };
+        tracing::trace!(def_id = ?body.source.def_id());
+
         let old_ret_ty = body.return_ty();
 
         assert!(body.coroutine_drop().is_none() && body.coroutine_drop_async().is_none());
