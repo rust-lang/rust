@@ -22,7 +22,6 @@ pub(crate) fn check_if_let<'tcx>(
     else_expr: &'tcx Expr<'_>,
 ) {
     let mut arms = [(Some(let_pat), then_expr), (None, else_expr)].into_iter();
-    let is_if_let = true;
     if !span_contains_comment(cx.sess().source_map(), expr.span)
         && cx.typeck_results().expr_ty(expr).is_bool()
         && let Some((None, else_expr)) = arms.next_back()
@@ -66,10 +65,7 @@ pub(crate) fn check_if_let<'tcx>(
             cx,
             MATCH_LIKE_MATCHES_MACRO,
             expr.span,
-            format!(
-                "{} expression looks like `matches!` macro",
-                if is_if_let { "if let .. else" } else { "match" }
-            ),
+            "if let .. else expression looks like `matches!` macro",
             "try",
             format!(
                 "{}matches!({}, {pat_and_guard})",
@@ -93,18 +89,11 @@ pub(super) fn check_match<'tcx>(
         arms.iter()
             .map(|arm| (cx.tcx.hir_attrs(arm.hir_id), Some(arm.pat), arm.body, arm.guard)),
         e,
-        false,
     )
 }
 
 /// Lint a `match` or `if let` for replacement by `matches!`
-fn find_matches_sugg<'a, 'b, I>(
-    cx: &LateContext<'_>,
-    ex: &Expr<'_>,
-    mut arms: I,
-    expr: &Expr<'_>,
-    is_if_let: bool,
-) -> bool
+fn find_matches_sugg<'a, 'b, I>(cx: &LateContext<'_>, ex: &Expr<'_>, mut arms: I, expr: &Expr<'_>) -> bool
 where
     'b: 'a,
     I: Clone
@@ -172,10 +161,7 @@ where
             cx,
             MATCH_LIKE_MATCHES_MACRO,
             expr.span,
-            format!(
-                "{} expression looks like `matches!` macro",
-                if is_if_let { "if let .. else" } else { "match" }
-            ),
+            "match expression looks like `matches!` macro",
             "try",
             format!(
                 "{}matches!({}, {pat_and_guard})",
