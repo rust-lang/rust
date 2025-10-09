@@ -737,6 +737,11 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 // WfScalar, WfParameter, etc
             }
 
+            ty::Field(..) => {
+                // Only need to make sure that the container is well-formed, which is done by the
+                // recursive call below.
+            }
+
             // Can only infer to `ty::Int(_) | ty::Uint(_)`.
             ty::Infer(ty::IntVar(_)) => {}
 

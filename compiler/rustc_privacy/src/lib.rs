@@ -273,6 +273,7 @@ where
             // These types don't have their own def-ids (but may have subcomponents
             // with def-ids that should be visited recursively).
             ty::Bool
+            | ty::Field(..)
             | ty::Char
             | ty::Int(..)
             | ty::Uint(..)

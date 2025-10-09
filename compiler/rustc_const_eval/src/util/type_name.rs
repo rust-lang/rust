@@ -1,4 +1,5 @@
 use std::fmt::Write;
+use std::ops::ControlFlow;
 
 use rustc_data_structures::intern::Interned;
 use rustc_hir::def_id::{CrateNum, DefId};
@@ -58,6 +59,29 @@ impl<'tcx> Printer<'tcx> for TypeNamePrinter<'tcx> {
             | ty::CoroutineClosure(def_id, args)
             | ty::Coroutine(def_id, args) => self.print_def_path(def_id, args),
             ty::Foreign(def_id) => self.print_def_path(def_id, &[]),
+            ty::Field(container, field_path) => {
+                write!(self, "field_of!(")?;
+                self.print_type(container)?;
+                write!(self, ", ")?;
+                field_path
+                    .walk(self.tcx, container, |_, name, _, last| {
+                        match write!(self, "{name}") {
+                            Ok(()) => ControlFlow::Continue(()),
+                            Err(err) => ControlFlow::Break(Err(err)),
+                        }?;
+                        if !last {
+                            match write!(self, ".") {
+                                Ok(()) => ControlFlow::Continue(()),
+                                Err(err) => ControlFlow::Break(Err(err)),
+                            }
+                        } else {
+                            ControlFlow::Continue(())
+                        }
+                    })
+                    .unwrap_or(Ok(()))?;
+                write!(self, ")")?;
+                Ok(())
+            }
 
             ty::Alias(ty::Free, _) => bug!("type_name: unexpected free alias"),
             ty::Alias(ty::Inherent, _) => bug!("type_name: unexpected inherent projection"),

@@ -164,6 +164,10 @@ impl Visitable for RigidTy {
                 reg.visit(visitor)?;
                 ty.visit(visitor)
             }
+            RigidTy::Field(ty, _field_path) => {
+                ty.visit(visitor)
+                // FIXME(field_projections): also visit _field_path?
+            }
             RigidTy::Adt(_, args)
             | RigidTy::Closure(_, args)
             | RigidTy::Coroutine(_, args)

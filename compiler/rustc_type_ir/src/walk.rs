@@ -139,6 +139,9 @@ fn push_inner<I: Interner>(stack: &mut TypeWalkerStack<I>, parent: I::GenericArg
             | ty::FnDef(_, args) => {
                 stack.extend(args.iter().rev());
             }
+            ty::Field(ty, _) => {
+                stack.push(ty.into());
+            }
             ty::Tuple(ts) => stack.extend(ts.iter().rev().map(|ty| ty.into())),
             ty::FnPtr(sig_tys, _hdr) => {
                 stack.extend(

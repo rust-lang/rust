@@ -38,7 +38,7 @@
 // Const generic parameter
 // gdb-command:info functions -q function_names::const_generic_fn.*
 // gdb-check:[...]static fn function_names::const_generic_fn_bool<false>();
-// gdb-check:[...]static fn function_names::const_generic_fn_non_int<{CONST#ffa3db4ca1d52dce}>();
+// gdb-check:[...]static fn function_names::const_generic_fn_non_int<{CONST#5177fe61e1757625}>();
 // gdb-check:[...]static fn function_names::const_generic_fn_signed_int<-7>();
 // gdb-check:[...]static fn function_names::const_generic_fn_unsigned_int<14>();
 

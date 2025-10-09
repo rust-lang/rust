@@ -26,8 +26,9 @@ use crate::infer::canonical::Canonical;
 use crate::traits::ObligationCause;
 use crate::ty::InferTy::*;
 use crate::ty::{
-    self, AdtDef, BoundRegionKind, Discr, GenericArg, GenericArgs, GenericArgsRef, List, ParamEnv,
-    Region, Ty, TyCtxt, TypeFlags, TypeSuperVisitable, TypeVisitable, TypeVisitor, UintTy,
+    self, AdtDef, BoundRegionKind, Discr, FieldPath, GenericArg, GenericArgs, GenericArgsRef, List,
+    ParamEnv, Region, Ty, TyCtxt, TypeFlags, TypeSuperVisitable, TypeVisitable, TypeVisitor,
+    UintTy,
 };
 
 // Re-export and re-parameterize some `I = TyCtxt<'tcx>` types here
@@ -684,6 +685,15 @@ impl<'tcx> Ty<'tcx> {
         Ty::new(tcx, Adt(def, args))
     }
 
+    pub fn new_field_type(
+        tcx: TyCtxt<'tcx>,
+        container: Ty<'tcx>,
+        field_path: FieldPath<'tcx>,
+    ) -> Ty<'tcx> {
+        assert!(!field_path.0.is_empty());
+        Ty::new(tcx, Field(container, field_path))
+    }
+
     #[inline]
     pub fn new_foreign(tcx: TyCtxt<'tcx>, def_id: DefId) -> Ty<'tcx> {
         Ty::new(tcx, Foreign(def_id))
@@ -990,6 +1000,14 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
         args: ty::GenericArgsRef<'tcx>,
     ) -> Self {
         Ty::new_adt(interner, adt_def, args)
+    }
+
+    fn new_field_type(
+        interner: TyCtxt<'tcx>,
+        container: Ty<'tcx>,
+        field_path: FieldPath<'tcx>,
+    ) -> Self {
+        Ty::new_field_type(interner, container, field_path)
     }
 
     fn new_foreign(interner: TyCtxt<'tcx>, def_id: DefId) -> Self {
@@ -1626,6 +1644,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Uint(_)
             | ty::Float(_)
             | ty::Adt(..)
+            | ty::Field(..)
             | ty::Foreign(_)
             | ty::Str
             | ty::Array(..)
@@ -1684,6 +1703,7 @@ impl<'tcx> Ty<'tcx> {
             // If returned by `struct_tail_raw` this is a unit struct
             // without any fields, or not a struct, and therefore is Sized.
             | ty::Adt(..)
+            | ty::Field(..)
             // If returned by `struct_tail_raw` this is the empty tuple,
             // a.k.a. unit type, which is Sized
             | ty::Tuple(..) => Ok(tcx.types.unit),
@@ -1870,6 +1890,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Never
+            | ty::Field(..)
             | ty::Error(_) => true,
 
             ty::Str | ty::Slice(_) | ty::Dynamic(_, _) => match sizedness {
@@ -1943,7 +1964,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Coroutine(..) | ty::CoroutineWitness(..) => false,
 
             // Might be, but not "trivial" so just giving the safe answer.
-            ty::Adt(..) | ty::Closure(..) | ty::CoroutineClosure(..) => false,
+            ty::Adt(..) | ty::Field(..) | ty::Closure(..) | ty::CoroutineClosure(..) => false,
 
             ty::UnsafeBinder(_) => false,
 
@@ -1986,6 +2007,7 @@ impl<'tcx> Ty<'tcx> {
             },
 
             ty::Adt(_, _)
+            | ty::Field(_, _)
             | ty::Tuple(_)
             | ty::Array(..)
             | ty::Foreign(_)

@@ -145,6 +145,8 @@ pub trait Interner:
     type Safety: Safety<Self>;
     type Abi: Abi<Self>;
 
+    type FieldPath: FieldPath<Self>;
+
     // Kinds of consts
     type Const: Const<Self>;
     type ParamConst: Copy + Debug + Hash + Eq + ParamLike;
