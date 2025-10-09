@@ -1771,8 +1771,16 @@ fn link_output_kind(sess: &Session, crate_type: CrateType) -> LinkOutputKind {
 
 // Returns true if linker is located within sysroot
 fn detect_self_contained_mingw(sess: &Session) -> bool {
-    let linker = if let Some(linker) = &sess.target.linker {
-        Path::new(linker.as_ref())
+    // FIXME: this sort of duplicates `infer_from()` inside `linker_and_flavor()`
+    let path_buf = sess
+        .opts
+        .cg
+        .linker
+        .as_ref()
+        .map(|l| l.as_path())
+        .or_else(|| sess.target.linker.as_ref().map(|linker| Path::new(linker.as_ref())));
+    let linker = if let Some(linker) = path_buf {
+        linker
     } else {
         return false;
     };
