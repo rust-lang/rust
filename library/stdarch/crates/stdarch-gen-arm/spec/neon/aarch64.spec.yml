@@ -14267,3 +14267,20 @@ intrinsics:
                 - 'vluti4q_laneq_{neon_type[5]}_x2::<LANE>'
                 - - FnCall: [transmute, [a]]
                   - b
+
+  - name: "fjcvtzs"
+    doc: "Floating-point JavaScript convert to signed fixed-point, rounding toward zero"
+    arguments: ["a: {type}"]
+    return_type: "i32"
+    attr:
+      - FnCall: [target_feature, ['enable = "jsconv"']]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fjcvtzs]]}]]
+    safety: safe
+    types:
+      - f64
+    compose:
+      - LLVMLink:
+          name: "fjcvtzs"
+          links:
+            - link: "llvm.aarch64.fjcvtzs"
+              arch: aarch64,arm64ec
