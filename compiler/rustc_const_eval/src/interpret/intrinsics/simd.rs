@@ -9,16 +9,10 @@ use rustc_span::{Symbol, sym};
 use tracing::trace;
 
 use super::{
-    ImmTy, InterpCx, InterpResult, Machine, MulAddType, OpTy, PlaceTy, Provenance, Scalar, Size,
-    interp_ok, throw_ub_format,
+    ImmTy, InterpCx, InterpResult, Machine, MinMax, MulAddType, OpTy, PlaceTy, Provenance, Scalar,
+    Size, interp_ok, throw_ub_format,
 };
 use crate::interpret::Writeable;
-
-#[derive(Copy, Clone)]
-pub(crate) enum MinMax {
-    Min,
-    Max,
-}
 
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Returns `true` if emulation happened.
@@ -217,8 +211,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     sym::simd_le => Op::MirOp(BinOp::Le),
                     sym::simd_gt => Op::MirOp(BinOp::Gt),
                     sym::simd_ge => Op::MirOp(BinOp::Ge),
-                    sym::simd_fmax => Op::FMinMax(MinMax::Max),
-                    sym::simd_fmin => Op::FMinMax(MinMax::Min),
+                    sym::simd_fmax => Op::FMinMax(MinMax::MaxNum),
+                    sym::simd_fmin => Op::FMinMax(MinMax::MinNum),
                     sym::simd_saturating_add => Op::SaturatingOp(BinOp::Add),
                     sym::simd_saturating_sub => Op::SaturatingOp(BinOp::Sub),
                     sym::simd_arith_offset => Op::WrappingOffset,
@@ -310,8 +304,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     sym::simd_reduce_xor => Op::MirOp(BinOp::BitXor),
                     sym::simd_reduce_any => Op::MirOpBool(BinOp::BitOr),
                     sym::simd_reduce_all => Op::MirOpBool(BinOp::BitAnd),
-                    sym::simd_reduce_max => Op::MinMax(MinMax::Max),
-                    sym::simd_reduce_min => Op::MinMax(MinMax::Min),
+                    sym::simd_reduce_max => Op::MinMax(MinMax::MaxNum),
+                    sym::simd_reduce_min => Op::MinMax(MinMax::MinNum),
                     _ => unreachable!(),
                 };
 
@@ -333,10 +327,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                             if matches!(res.layout.ty.kind(), ty::Float(_)) {
                                 ImmTy::from_scalar(self.fminmax_op(mmop, &res, &op)?, res.layout)
                             } else {
-                                // Just boring integers, so NaNs to worry about
+                                // Just boring integers, no NaNs to worry about.
                                 let mirop = match mmop {
-                                    MinMax::Min => BinOp::Le,
-                                    MinMax::Max => BinOp::Ge,
+                                    MinMax::MinNum | MinMax::Minimum => BinOp::Le,
+                                    MinMax::MaxNum | MinMax::Maximum => BinOp::Ge,
                                 };
                                 if self.binary_op(mirop, &res, &op)?.to_scalar().to_bool()? {
                                     res
@@ -749,12 +743,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         interp_ok(true)
     }
 
-    fn fminmax_op<Prov: Provenance>(
+    fn fminmax_op(
         &self,
         op: MinMax,
-        left: &ImmTy<'tcx, Prov>,
-        right: &ImmTy<'tcx, Prov>,
-    ) -> InterpResult<'tcx, Scalar<Prov>> {
+        left: &ImmTy<'tcx, M::Provenance>,
+        right: &ImmTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, Scalar<M::Provenance>> {
         assert_eq!(left.layout.ty, right.layout.ty);
         let ty::Float(float_ty) = left.layout.ty.kind() else {
             bug!("fmax operand is not a float")
@@ -763,26 +757,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let right = right.to_scalar();
         interp_ok(match float_ty {
             FloatTy::F16 => unimplemented!("f16_f128"),
-            FloatTy::F32 => {
-                let left = left.to_f32()?;
-                let right = right.to_f32()?;
-                let res = match op {
-                    MinMax::Min => left.min(right),
-                    MinMax::Max => left.max(right),
-                };
-                let res = self.adjust_nan(res, &[left, right]);
-                Scalar::from_f32(res)
-            }
-            FloatTy::F64 => {
-                let left = left.to_f64()?;
-                let right = right.to_f64()?;
-                let res = match op {
-                    MinMax::Min => left.min(right),
-                    MinMax::Max => left.max(right),
-                };
-                let res = self.adjust_nan(res, &[left, right]);
-                Scalar::from_f64(res)
-            }
+            FloatTy::F32 => self.float_minmax::<Single>(left, right, op)?,
+            FloatTy::F64 => self.float_minmax::<Double>(left, right, op)?,
             FloatTy::F128 => unimplemented!("f16_f128"),
         })
     }
