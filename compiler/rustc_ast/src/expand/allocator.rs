@@ -18,14 +18,17 @@ pub fn default_fn_name(base: Symbol) -> String {
 pub const ALLOC_ERROR_HANDLER: Symbol = sym::alloc_error_handler;
 pub const NO_ALLOC_SHIM_IS_UNSTABLE: &str = "__rust_no_alloc_shim_is_unstable_v2";
 
+#[derive(Copy, Clone)]
 pub enum AllocatorTy {
     Layout,
+    Never,
     Ptr,
     ResultPtr,
     Unit,
     Usize,
 }
 
+#[derive(Copy, Clone)]
 pub struct AllocatorMethod {
     pub name: Symbol,
     pub inputs: &'static [AllocatorMethodInput],

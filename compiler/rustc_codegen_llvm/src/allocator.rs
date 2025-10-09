@@ -1,7 +1,6 @@
 use libc::c_uint;
 use rustc_ast::expand::allocator::{
-    ALLOC_ERROR_HANDLER, ALLOCATOR_METHODS, AllocatorKind, AllocatorTy, NO_ALLOC_SHIM_IS_UNSTABLE,
-    default_fn_name, global_fn_name,
+    AllocatorMethod, AllocatorTy, NO_ALLOC_SHIM_IS_UNSTABLE, default_fn_name, global_fn_name,
 };
 use rustc_codegen_ssa::traits::BaseTypeCodegenMethods as _;
 use rustc_middle::bug;
@@ -21,8 +20,7 @@ pub(crate) unsafe fn codegen(
     tcx: TyCtxt<'_>,
     cx: SimpleCx<'_>,
     module_name: &str,
-    kind: AllocatorKind,
-    alloc_error_handler_kind: AllocatorKind,
+    methods: &[AllocatorMethod],
 ) {
     let usize = match tcx.sess.target.pointer_width {
         16 => cx.type_i16(),
@@ -33,67 +31,59 @@ pub(crate) unsafe fn codegen(
     let i8 = cx.type_i8();
     let i8p = cx.type_ptr();
 
-    if kind == AllocatorKind::Default {
-        for method in ALLOCATOR_METHODS {
-            let mut args = Vec::with_capacity(method.inputs.len());
-            for input in method.inputs.iter() {
-                match input.ty {
-                    AllocatorTy::Layout => {
-                        args.push(usize); // size
-                        args.push(usize); // align
-                    }
-                    AllocatorTy::Ptr => args.push(i8p),
-                    AllocatorTy::Usize => args.push(usize),
+    for method in methods {
+        let mut args = Vec::with_capacity(method.inputs.len());
+        for input in method.inputs.iter() {
+            match input.ty {
+                AllocatorTy::Layout => {
+                    args.push(usize); // size
+                    args.push(usize); // align
+                }
+                AllocatorTy::Ptr => args.push(i8p),
+                AllocatorTy::Usize => args.push(usize),
 
-                    AllocatorTy::ResultPtr | AllocatorTy::Unit => panic!("invalid allocator arg"),
+                AllocatorTy::Never | AllocatorTy::ResultPtr | AllocatorTy::Unit => {
+                    panic!("invalid allocator arg")
                 }
             }
-            let output = match method.output {
-                AllocatorTy::ResultPtr => Some(i8p),
-                AllocatorTy::Unit => None,
-
-                AllocatorTy::Layout | AllocatorTy::Usize | AllocatorTy::Ptr => {
-                    panic!("invalid allocator output")
-                }
-            };
-
-            let from_name = mangle_internal_symbol(tcx, &global_fn_name(method.name));
-            let to_name = mangle_internal_symbol(tcx, &default_fn_name(method.name));
-
-            let alloc_attr_flag = match method.name {
-                sym::alloc => CodegenFnAttrFlags::ALLOCATOR,
-                sym::dealloc => CodegenFnAttrFlags::DEALLOCATOR,
-                sym::realloc => CodegenFnAttrFlags::REALLOCATOR,
-                sym::alloc_zeroed => CodegenFnAttrFlags::ALLOCATOR_ZEROED,
-                _ => unreachable!("Unknown allocator method!"),
-            };
-
-            let mut attrs = CodegenFnAttrs::new();
-            attrs.flags |= alloc_attr_flag;
-            create_wrapper_function(
-                tcx,
-                &cx,
-                &from_name,
-                Some(&to_name),
-                &args,
-                output,
-                false,
-                &attrs,
-            );
         }
-    }
 
-    if alloc_error_handler_kind == AllocatorKind::Default {
-        // rust alloc error handler
+        let mut no_return = false;
+        let output = match method.output {
+            AllocatorTy::ResultPtr => Some(i8p),
+            AllocatorTy::Unit => None,
+            AllocatorTy::Never => {
+                no_return = true;
+                None
+            }
+
+            AllocatorTy::Layout | AllocatorTy::Usize | AllocatorTy::Ptr => {
+                panic!("invalid allocator output")
+            }
+        };
+
+        let from_name = mangle_internal_symbol(tcx, &global_fn_name(method.name));
+        let to_name = mangle_internal_symbol(tcx, &default_fn_name(method.name));
+
+        let alloc_attr_flag = match method.name {
+            sym::alloc => CodegenFnAttrFlags::ALLOCATOR,
+            sym::dealloc => CodegenFnAttrFlags::DEALLOCATOR,
+            sym::realloc => CodegenFnAttrFlags::REALLOCATOR,
+            sym::alloc_zeroed => CodegenFnAttrFlags::ALLOCATOR_ZEROED,
+            _ => CodegenFnAttrFlags::empty(),
+        };
+
+        let mut attrs = CodegenFnAttrs::new();
+        attrs.flags |= alloc_attr_flag;
         create_wrapper_function(
             tcx,
             &cx,
-            &mangle_internal_symbol(tcx, &global_fn_name(ALLOC_ERROR_HANDLER)),
-            Some(&mangle_internal_symbol(tcx, &default_fn_name(ALLOC_ERROR_HANDLER))),
-            &[usize, usize], // size, align
-            None,
-            true,
-            &CodegenFnAttrs::new(),
+            &from_name,
+            Some(&to_name),
+            &args,
+            output,
+            no_return,
+            &attrs,
         );
     }
 
