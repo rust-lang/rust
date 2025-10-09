@@ -395,8 +395,8 @@ pub fn write<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) -> io::Result
 ///
 /// # Platform-specific behavior
 ///
-/// This function currently corresponds to the `utimensat` function on Unix platforms
-/// and the `SetFileTime` function on Windows.
+/// This function currently corresponds to the `utimensat` function on Unix platforms, the
+/// `setattrlist` function on Apple platforms, and the `SetFileTime` function on Windows.
 ///
 /// # Errors
 ///
