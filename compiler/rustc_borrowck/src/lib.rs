@@ -74,7 +74,9 @@ use crate::region_infer::opaque_types::DeferredOpaqueTypeError;
 use crate::renumber::RegionCtxt;
 use crate::session_diagnostics::VarNeedNotMut;
 use crate::type_check::free_region_relations::UniversalRegionRelations;
-use crate::type_check::{Locations, MirTypeckRegionConstraints, MirTypeckResults};
+use crate::type_check::{
+    Locations, MirTypeckRegionConstraints, MirTypeckResults, PlaceholderToRegion,
+};
 
 mod borrow_set;
 mod borrowck_errors;
@@ -303,6 +305,7 @@ struct CollectRegionConstraintsResult<'tcx> {
     deferred_opaque_type_errors: Vec<DeferredOpaqueTypeError<'tcx>>,
     polonius_facts: Option<AllFacts<RustcFacts>>,
     polonius_context: Option<PoloniusContext>,
+    placeholder_to_region: PlaceholderToRegion<'tcx>,
 }
 
 /// Start borrow checking by collecting the region constraints for
@@ -353,6 +356,7 @@ fn borrowck_collect_region_constraints<'tcx>(
         known_type_outlives_obligations,
         deferred_closure_requirements,
         polonius_context,
+        placeholder_to_region,
     } = type_check::type_check(
         root_cx,
         &infcx,
@@ -382,6 +386,7 @@ fn borrowck_collect_region_constraints<'tcx>(
         deferred_opaque_type_errors: Default::default(),
         polonius_facts,
         polonius_context,
+        placeholder_to_region,
     }
 }
 
@@ -406,6 +411,7 @@ fn borrowck_check_region_constraints<'tcx>(
         deferred_opaque_type_errors,
         polonius_facts,
         polonius_context,
+        placeholder_to_region: _,
     }: CollectRegionConstraintsResult<'tcx>,
 ) -> PropagatedBorrowCheckResults<'tcx> {
     assert!(!infcx.has_opaque_types_in_storage());

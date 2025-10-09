@@ -17,10 +17,10 @@ use tracing::{debug, instrument};
 use super::{Locations, NormalizeLocation, TypeChecker};
 use crate::BorrowckInferCtxt;
 use crate::diagnostics::ToUniverseInfo;
-use crate::type_check::{MirTypeckRegionConstraints, constraint_conversion};
+use crate::type_check::{MirTypeckRegionConstraints, PlaceholderToRegion, constraint_conversion};
 use crate::universal_regions::UniversalRegions;
 
-#[instrument(skip(infcx, constraints, op), level = "trace")]
+#[instrument(skip(infcx, constraints, op, placeholder_to_region), level = "trace")]
 pub(crate) fn fully_perform_op_raw<'tcx, R: fmt::Debug, Op>(
     infcx: &BorrowckInferCtxt<'tcx>,
     body: &Body<'tcx>,
@@ -29,6 +29,7 @@ pub(crate) fn fully_perform_op_raw<'tcx, R: fmt::Debug, Op>(
     known_type_outlives_obligations: &[ty::PolyTypeOutlivesPredicate<'tcx>],
     constraints: &mut MirTypeckRegionConstraints<'tcx>,
     locations: Locations,
+    placeholder_to_region: &mut PlaceholderToRegion<'tcx>,
     category: ConstraintCategory<'tcx>,
     op: Op,
 ) -> Result<R, ErrorGuaranteed>
@@ -59,6 +60,7 @@ where
             locations.span(body),
             category,
             constraints,
+            placeholder_to_region,
         )
         .convert_all(data);
     }
@@ -108,6 +110,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             self.known_type_outlives_obligations,
             self.constraints,
             locations,
+            self.placeholder_to_region,
             category,
             op,
         )

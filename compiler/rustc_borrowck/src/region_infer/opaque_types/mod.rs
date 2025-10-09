@@ -29,7 +29,7 @@ use crate::consumers::RegionInferenceContext;
 use crate::session_diagnostics::LifetimeMismatchOpaqueParam;
 use crate::type_check::canonical::fully_perform_op_raw;
 use crate::type_check::free_region_relations::UniversalRegionRelations;
-use crate::type_check::{Locations, MirTypeckRegionConstraints};
+use crate::type_check::{Locations, MirTypeckRegionConstraints, PlaceholderToRegion};
 use crate::universal_regions::{RegionClassification, UniversalRegions};
 
 mod member_constraints;
@@ -66,7 +66,7 @@ pub(crate) enum DeferredOpaqueTypeError<'tcx> {
 pub(crate) fn clone_and_resolve_opaque_types<'tcx>(
     infcx: &BorrowckInferCtxt<'tcx>,
     universal_region_relations: &Frozen<UniversalRegionRelations<'tcx>>,
-    constraints: &mut MirTypeckRegionConstraints<'tcx>,
+    placeholder_to_region: &mut PlaceholderToRegion<'tcx>,
 ) -> (OpaqueTypeStorageEntries, Vec<(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)>) {
     let opaque_types = infcx.clone_opaque_types();
     let opaque_types_storage_num_entries = infcx.inner.borrow_mut().opaque_types().num_entries();
@@ -75,7 +75,7 @@ pub(crate) fn clone_and_resolve_opaque_types<'tcx>(
         .map(|entry| {
             fold_regions(infcx.tcx, infcx.resolve_vars_if_possible(entry), |r, _| {
                 let vid = if let ty::RePlaceholder(placeholder) = r.kind() {
-                    constraints.placeholder_region(infcx, placeholder).as_var()
+                    placeholder_to_region.placeholder_region(infcx, placeholder).as_var()
                 } else {
                     universal_region_relations.universal_regions.to_region_vid(r)
                 };
@@ -497,6 +497,7 @@ pub(crate) fn apply_computed_concrete_opaque_types<'tcx>(
     known_type_outlives_obligations: &[ty::PolyTypeOutlivesPredicate<'tcx>],
     constraints: &mut MirTypeckRegionConstraints<'tcx>,
     concrete_opaque_types: &mut ConcreteOpaqueTypes<'tcx>,
+    placeholder_to_region: &mut PlaceholderToRegion<'tcx>,
     opaque_types: &[(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)],
 ) -> Vec<DeferredOpaqueTypeError<'tcx>> {
     let tcx = infcx.tcx;
@@ -551,6 +552,7 @@ pub(crate) fn apply_computed_concrete_opaque_types<'tcx>(
             known_type_outlives_obligations,
             constraints,
             locations,
+            placeholder_to_region,
             ConstraintCategory::OpaqueType,
             CustomTypeOp::new(
                 |ocx| {
@@ -625,15 +627,17 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
                 // Special handling of higher-ranked regions.
                 if !self.max_nameable_universe(scc).is_root() {
-                    match self.scc_values.placeholders_contained_in(scc).enumerate().last() {
+                    // FIXME: consider if `self.placeholder_representative(scc)` is enough here.
+                    // That will simplify the logic quite a bit, but won't work if the placeholder
+                    // isn't *in* `scc` but rather was *reached from* `scc`, presumably because
+                    // `scc` is some transient boring region that's essentially a placeholder
+                    // under a different name.
+                    return match self.reaches_single_placeholder(scc) {
                         // If the region contains a single placeholder then they're equal.
-                        Some((0, placeholder)) => {
-                            return ty::Region::new_placeholder(tcx, placeholder);
-                        }
-
+                        Some(placeholder) => ty::Region::new_placeholder(tcx, placeholder),
                         // Fallback: this will produce a cryptic error message.
-                        _ => return region,
-                    }
+                        _ => region,
+                    };
                 }
 
                 // Find something that we can name

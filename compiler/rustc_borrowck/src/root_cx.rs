@@ -86,7 +86,7 @@ impl<'tcx> BorrowCheckRootCtxt<'tcx> {
             let (num_entries, opaque_types) = clone_and_resolve_opaque_types(
                 &input.infcx,
                 &input.universal_region_relations,
-                &mut input.constraints,
+                &mut input.placeholder_to_region,
             );
             input.deferred_opaque_type_errors = compute_concrete_opaque_types(
                 &input.infcx,
@@ -111,6 +111,7 @@ impl<'tcx> BorrowCheckRootCtxt<'tcx> {
                     &input.known_type_outlives_obligations,
                     &mut input.constraints,
                     &mut self.concrete_opaque_types,
+                    &mut input.placeholder_to_region,
                     &opaque_types,
                 );
             }
@@ -232,6 +233,7 @@ impl<'tcx> BorrowCheckRootCtxt<'tcx> {
                 input.body_owned.span,      // irrelevant; will be overridden.
                 ConstraintCategory::Boring, // same as above.
                 &mut input.constraints,
+                &mut input.placeholder_to_region,
             )
             .apply_closure_requirements(closure_requirements, closure_def_id, args);
         }

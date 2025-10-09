@@ -16,7 +16,7 @@ use tracing::{debug, instrument};
 
 use crate::constraints::OutlivesConstraint;
 use crate::region_infer::TypeTest;
-use crate::type_check::{Locations, MirTypeckRegionConstraints};
+use crate::type_check::{Locations, MirTypeckRegionConstraints, PlaceholderToRegion};
 use crate::universal_regions::UniversalRegions;
 use crate::{
     BorrowckInferCtxt, ClosureOutlivesSubject, ClosureRegionRequirements, ConstraintCategory,
@@ -42,6 +42,7 @@ pub(crate) struct ConstraintConversion<'a, 'tcx> {
     category: ConstraintCategory<'tcx>,
     from_closure: bool,
     constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
+    placeholder_to_region: &'a mut PlaceholderToRegion<'tcx>,
 }
 
 impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
@@ -54,6 +55,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         span: Span,
         category: ConstraintCategory<'tcx>,
         constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
+        placeholder_to_region: &'a mut PlaceholderToRegion<'tcx>,
     ) -> Self {
         Self {
             infcx,
@@ -65,6 +67,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
             category,
             constraints,
             from_closure: false,
+            placeholder_to_region,
         }
     }
 
@@ -224,7 +227,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         if value.has_placeholders() {
             fold_regions(self.infcx.tcx, value, |r, _| match r.kind() {
                 ty::RePlaceholder(placeholder) => {
-                    self.constraints.placeholder_region(self.infcx, placeholder)
+                    self.placeholder_to_region.placeholder_region(self.infcx, placeholder)
                 }
                 _ => r,
             })
@@ -245,7 +248,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
 
     fn to_region_vid(&mut self, r: ty::Region<'tcx>) -> ty::RegionVid {
         if let ty::RePlaceholder(placeholder) = r.kind() {
-            self.constraints.placeholder_region(self.infcx, placeholder).as_var()
+            self.placeholder_to_region.placeholder_region(self.infcx, placeholder).as_var()
         } else {
             self.universal_regions.to_region_vid(r)
         }

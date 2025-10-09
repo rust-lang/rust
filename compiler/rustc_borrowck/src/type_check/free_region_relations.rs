@@ -15,7 +15,9 @@ use tracing::{debug, instrument};
 use type_op::TypeOpOutput;
 
 use crate::BorrowckInferCtxt;
-use crate::type_check::{Locations, MirTypeckRegionConstraints, constraint_conversion};
+use crate::type_check::{
+    Locations, MirTypeckRegionConstraints, PlaceholderToRegion, constraint_conversion,
+};
 use crate::universal_regions::UniversalRegions;
 
 #[derive(Debug)]
@@ -52,6 +54,7 @@ pub(crate) fn create<'tcx>(
     infcx: &BorrowckInferCtxt<'tcx>,
     universal_regions: UniversalRegions<'tcx>,
     constraints: &mut MirTypeckRegionConstraints<'tcx>,
+    placeholder_to_region: &mut PlaceholderToRegion<'tcx>,
 ) -> CreateResult<'tcx> {
     UniversalRegionRelationsBuilder {
         infcx,
@@ -60,6 +63,7 @@ pub(crate) fn create<'tcx>(
         region_bound_pairs: Default::default(),
         outlives: Default::default(),
         inverse_outlives: Default::default(),
+        placeholder_to_region,
     }
     .create()
 }
@@ -180,6 +184,7 @@ struct UniversalRegionRelationsBuilder<'a, 'tcx> {
     infcx: &'a BorrowckInferCtxt<'tcx>,
     universal_regions: UniversalRegions<'tcx>,
     constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
+    placeholder_to_region: &'a mut PlaceholderToRegion<'tcx>,
 
     // outputs:
     outlives: TransitiveRelationBuilder<RegionVid>,
@@ -323,6 +328,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
                 span,
                 ConstraintCategory::Internal,
                 self.constraints,
+                self.placeholder_to_region,
             )
             .convert_all(c);
         }
