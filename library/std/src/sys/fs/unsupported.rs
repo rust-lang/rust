@@ -312,8 +312,8 @@ pub fn set_perm(_p: &Path, perm: FilePermissions) -> io::Result<()> {
     match perm.0 {}
 }
 
-pub fn set_times(_p: &Path, times: FileTimes) -> io::Result<()> {
-    match times {}
+pub fn set_times(_p: &Path, _times: FileTimes) -> io::Result<()> {
+    unsupported()
 }
 
 pub fn set_times_nofollow(_p: &Path, times: FileTimes) -> io::Result<()> {
