@@ -4,26 +4,14 @@ use clippy_utils::ty::is_copy;
 use rustc_errors::Applicability;
 use rustc_hir::{BindingMode, ByRef, Expr, ExprKind, MatchSource, Node, PatKind, QPath};
 use rustc_lint::LateContext;
+use rustc_middle::ty;
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::print::with_forced_trimmed_paths;
-use rustc_middle::ty::{self};
-use rustc_span::symbol::{Symbol, sym};
 
 use super::CLONE_ON_COPY;
 
 /// Checks for the `CLONE_ON_COPY` lint.
-pub(super) fn check(
-    cx: &LateContext<'_>,
-    expr: &Expr<'_>,
-    method_name: Symbol,
-    receiver: &Expr<'_>,
-    args: &[Expr<'_>],
-) {
-    let arg = if method_name == sym::clone && args.is_empty() {
-        receiver
-    } else {
-        return;
-    };
+pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>) {
     if cx
         .typeck_results()
         .type_dependent_def_id(expr.hir_id)
@@ -33,10 +21,10 @@ pub(super) fn check(
     {
         return;
     }
-    let arg_adjustments = cx.typeck_results().expr_adjustments(arg);
+    let arg_adjustments = cx.typeck_results().expr_adjustments(receiver);
     let arg_ty = arg_adjustments
         .last()
-        .map_or_else(|| cx.typeck_results().expr_ty(arg), |a| a.target);
+        .map_or_else(|| cx.typeck_results().expr_ty(receiver), |a| a.target);
 
     let ty = cx.typeck_results().expr_ty(expr);
     if let ty::Ref(_, inner, _) = arg_ty.kind()
@@ -75,7 +63,7 @@ pub(super) fn check(
         };
 
         let mut app = Applicability::MachineApplicable;
-        let snip = snippet_with_context(cx, arg.span, expr.span.ctxt(), "_", &mut app).0;
+        let snip = snippet_with_context(cx, receiver.span, expr.span.ctxt(), "_", &mut app).0;
 
         let deref_count = arg_adjustments
             .iter()

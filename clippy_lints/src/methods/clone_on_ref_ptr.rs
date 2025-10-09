@@ -4,20 +4,11 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::symbol::sym;
 
 use super::CLONE_ON_REF_PTR;
 
-pub(super) fn check(
-    cx: &LateContext<'_>,
-    expr: &hir::Expr<'_>,
-    method_name: Symbol,
-    receiver: &hir::Expr<'_>,
-    args: &[hir::Expr<'_>],
-) {
-    if !(args.is_empty() && method_name == sym::clone) {
-        return;
-    }
+pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, receiver: &hir::Expr<'_>) {
     let obj_ty = cx.typeck_results().expr_ty(receiver).peel_refs();
 
     if let ty::Adt(adt, subst) = obj_ty.kind()
