@@ -324,7 +324,7 @@ pub const PLATFORM_C_FORWARD_DECLARATIONS: &str = r#"
     template<typename T1, typename T2> T1 cast(T2 x) {
       if constexpr ((std::is_integral_v<T1> && std::is_integral_v<T2>) || (std::is_floating_point_v<T1> && std::is_floating_point_v<T2>)) {
           return x;
-      } else if constexpr (sizeof(T1) == sizeof(T2)) {
+      } else if constexpr (sizeof(T1) <= sizeof(T2)) {
         T1 ret{};
         std::memcpy(&ret, &x, sizeof(T1));
         return ret;
