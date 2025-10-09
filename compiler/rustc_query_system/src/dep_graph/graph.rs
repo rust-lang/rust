@@ -385,6 +385,8 @@ impl<D: Deps> DepGraphData<D> {
     {
         debug_assert!(!cx.is_eval_always(dep_kind));
 
+        // Large numbers of reads are common enough here that pre-sizing `read_set`
+        // to 128 actually helps perf on some benchmarks.
         let task_deps = Lock::new(TaskDeps::new(
             #[cfg(debug_assertions)]
             None,
@@ -483,18 +485,17 @@ impl<D: Deps> DepGraph<D> {
                     data.current.total_read_count.fetch_add(1, Ordering::Relaxed);
                 }
 
-                // As long as we only have a low number of reads we can avoid doing a hash
-                // insert and potentially allocating/reallocating the hashmap
-                let new_read = if task_deps.reads.len() < EdgesVec::INLINE_CAPACITY {
+                // Has `dep_node_index` been seen before? Use either a linear scan or a hashset
+                // lookup to determine this. See `TaskDeps::read_set` for details.
+                let new_read = if task_deps.reads.len() <= TaskDeps::LINEAR_SCAN_MAX {
                     !task_deps.reads.contains(&dep_node_index)
                 } else {
                     task_deps.read_set.insert(dep_node_index)
                 };
                 if new_read {
                     task_deps.reads.push(dep_node_index);
-                    if task_deps.reads.len() == EdgesVec::INLINE_CAPACITY {
-                        // Fill `read_set` with what we have so far so we can use the hashset
-                        // next time
+                    if task_deps.reads.len() == TaskDeps::LINEAR_SCAN_MAX + 1 {
+                        // Fill `read_set` with what we have so far. Future lookups will use it.
                         task_deps.read_set.extend(task_deps.reads.iter().copied());
                     }
 
@@ -1304,12 +1305,23 @@ pub enum TaskDepsRef<'a> {
 pub struct TaskDeps {
     #[cfg(debug_assertions)]
     node: Option<DepNode>,
+
+    /// A vector of `DepNodeIndex`, basically.
     reads: EdgesVec,
+
+    /// When adding new edges to `reads` in `DepGraph::read_index` we need to determine if the edge
+    /// has been seen before. If the number of elements in `reads` is small, we just do a linear
+    /// scan. If the number is higher, a hashset has better perf. This field is that hashset. It's
+    /// only used if the number of elements in `reads` exceeds `LINEAR_SCAN_MAX`.
     read_set: FxHashSet<DepNodeIndex>,
+
     phantom_data: PhantomData<DepNode>,
 }
 
 impl TaskDeps {
+    /// See `TaskDeps::read_set` above.
+    const LINEAR_SCAN_MAX: usize = 16;
+
     #[inline]
     fn new(#[cfg(debug_assertions)] node: Option<DepNode>, read_set_capacity: usize) -> Self {
         TaskDeps {
