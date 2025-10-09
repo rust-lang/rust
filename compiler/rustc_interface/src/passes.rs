@@ -968,6 +968,11 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
 
     let incremental = dep_graph.is_fully_enabled();
 
+    // is_doc_hidden hook is reset to query call for incremental build (fallback for optimization)
+    if incremental {
+        providers.hooks.is_doc_hidden = |tcx, def_id| tcx.is_doc_hidden_q(def_id);
+    }
+
     // Note: this function body is the origin point of the widely-used 'tcx lifetime.
     //
     // `gcx_cell` is defined here and `&gcx_cell` is passed to `create_global_ctxt`, which then

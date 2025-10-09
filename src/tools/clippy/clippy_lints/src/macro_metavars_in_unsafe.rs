@@ -148,7 +148,7 @@ struct BodyVisitor<'a, 'tcx> {
 
 fn is_public_macro(cx: &LateContext<'_>, def_id: LocalDefId) -> bool {
     (cx.effective_visibilities.is_exported(def_id) || find_attr!(cx.tcx, def_id, MacroExport { .. }))
-        && !cx.tcx.is_doc_hidden(def_id)
+        && !cx.tcx.is_doc_hidden(def_id.to_def_id())
 }
 
 impl<'tcx> Visitor<'tcx> for BodyVisitor<'_, 'tcx> {

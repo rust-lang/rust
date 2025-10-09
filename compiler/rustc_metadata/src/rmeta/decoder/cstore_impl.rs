@@ -4,8 +4,9 @@ use std::sync::Arc;
 
 use rustc_hir::attrs::Deprecation;
 use rustc_hir::def::{CtorKind, DefKind};
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE, LocalDefId};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
+use rustc_hir::find_attr;
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::bug;
 use rustc_middle::metadata::{AmbigModChild, ModChild};
@@ -408,7 +409,7 @@ provide! { tcx, def_id, other, cdata,
     crate_extern_paths => { cdata.source().paths().cloned().collect() }
     expn_that_defined => { cdata.get_expn_that_defined(tcx, def_id.index) }
     default_field => { cdata.get_default_field(tcx, def_id.index) }
-    is_doc_hidden => { cdata.get_attr_flags(def_id.index).contains(AttrFlags::IS_DOC_HIDDEN) }
+    is_doc_hidden_q => { cdata.get_attr_flags(def_id.index).contains(AttrFlags::IS_DOC_HIDDEN) }
     doc_link_resolutions => { tcx.arena.alloc(cdata.get_doc_link_resolutions(tcx, def_id.index)) }
     doc_link_traits_in_scope => {
         tcx.arena.alloc_from_iter(cdata.get_doc_link_traits_in_scope(tcx, def_id.index))
@@ -723,6 +724,24 @@ impl CrateStore for CStore {
     }
 }
 
+/// Determines whether an item is directly annotated with `doc(hidden)`.
+fn is_doc_hidden_local(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
+    find_attr!(tcx, def_id, Doc(doc) if doc.hidden.is_some())
+}
+
+// Optimization of is_doc_hidden query in case of non-incremental build.
+// is_doc_hidden query itself renamed into is_doc_hidden_q.
+#[inline]
+fn is_doc_hidden(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+    if let Some(local) = def_id.as_local() {
+        is_doc_hidden_local(tcx, local)
+    } else {
+        let cstore = CStore::from_tcx(tcx);
+        let cdata = cstore.get_crate_data(def_id.krate);
+        cdata.get_attr_flags(def_id.index).contains(AttrFlags::IS_DOC_HIDDEN)
+    }
+}
+
 fn provide_cstore_hooks(providers: &mut Providers) {
     providers.hooks.def_path_hash_to_def_id_extern = |tcx, hash, stable_crate_id| {
         // If this is a DefPathHash from an upstream crate, let the CrateStore map
@@ -750,4 +769,6 @@ fn provide_cstore_hooks(providers: &mut Providers) {
             cdata.imported_source_file(tcx, file_index as u32);
         }
     };
+    providers.hooks.is_doc_hidden = is_doc_hidden;
+    providers.queries.is_doc_hidden_q = is_doc_hidden_local;
 }
