@@ -46,6 +46,22 @@ pub fn __crc32d(crc: u32, data: u64) -> u32 {
     }
     unsafe { ___crc32d(crc, data) }
 }
+#[doc = "Floating-point JavaScript convert to signed fixed-point, rounding toward zero"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/__jcvt)"]
+#[inline]
+#[target_feature(enable = "jsconv")]
+#[cfg_attr(test, assert_instr(fjcvtzs))]
+#[unstable(feature = "stdarch_aarch64_jscvt", issue = "147555")]
+pub fn __jcvt(a: f64) -> i32 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.fjcvtzs"
+        )]
+        fn ___jcvt(a: f64) -> i32;
+    }
+    unsafe { ___jcvt(a) }
+}
 #[doc = "Signed Absolute difference and Accumulate Long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabal_high_s8)"]
 #[inline]
