@@ -253,5 +253,24 @@ LL -     };
 LL +     let _y = matches!(Some(5), Some(0));
    |
 
-error: aborting due to 14 previous errors
+error: match expression looks like `matches!` macro
+  --> tests/ui/match_like_matches_macro.rs:274:13
+   |
+LL |       let _ = match opt {
+   |  _____________^
+LL | |         Some(first) if (if let Some(second) = first { true } else { todo!() }) => true,
+LL | |         _ => false,
+LL | |     };
+   | |_____^
+   |
+help: use `matches!` directly
+   |
+LL -     let _ = match opt {
+LL -         Some(first) if (if let Some(second) = first { true } else { todo!() }) => true,
+LL -         _ => false,
+LL -     };
+LL +     let _ = matches!(opt, Some(first) if (if let Some(second) = first { true } else { todo!() }));
+   |
+
+error: aborting due to 15 previous errors
 

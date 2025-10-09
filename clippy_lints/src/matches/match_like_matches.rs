@@ -2,6 +2,7 @@
 
 use super::REDUNDANT_PATTERN_MATCHING;
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::higher::has_let_expr;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{is_lint_allowed, is_wild, span_contains_comment};
 use rustc_ast::LitKind;
@@ -92,7 +93,10 @@ pub(super) fn check_match<'tcx>(
             // ```rs
             // matches!(e, Either::Left $(if $guard)|+)
             // ```
-            middle_arms.is_empty()
+            //
+            // But if the guard _is_ present, it may not be an `if-let` guard, as `matches!` doesn't
+            // support these (currently?)
+            (middle_arms.is_empty() && first_arm.guard.is_none_or(|g| !has_let_expr(g)))
 
             // - (added in #6216) There are middle arms
             //

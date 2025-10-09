@@ -267,3 +267,13 @@ fn msrv_1_42() {
     };
     //~^^^^ match_like_matches_macro
 }
+
+#[expect(clippy::option_option)]
+fn issue15841(opt: Option<Option<Option<i32>>>, value: i32) {
+    // Lint: no if-let _in the guard_
+    let _ = match opt {
+        Some(first) if (if let Some(second) = first { true } else { todo!() }) => true,
+        _ => false,
+    };
+    //~^^^^ match_like_matches_macro
+}
