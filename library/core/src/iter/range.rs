@@ -1014,6 +1014,11 @@ impl<A: Step> Iterator for ops::RangeFrom<A> {
 
     #[inline]
     fn next(&mut self) -> Option<A> {
+        // Panic when at max-2, rather than at max-1 as usual
+        if crate::intrinsics::overflow_checks() {
+            Step::forward(self.start.clone(), 2);
+        }
+
         let n = Step::forward(self.start.clone(), 1);
         Some(mem::replace(&mut self.start, n))
     }
