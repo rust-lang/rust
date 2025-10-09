@@ -277,6 +277,7 @@ pub const NEG_INFINITY: f32 = f32::NEG_INFINITY;
 
 /// Basic mathematical constants.
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_diagnostic_item = "f32_consts_mod"]
 pub mod consts {
     // FIXME: replace with mathematical constants from cmath.
 
