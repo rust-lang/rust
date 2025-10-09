@@ -420,6 +420,9 @@ pub fn write<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) -> io::Result
 /// }
 /// ```
 #[unstable(feature = "fs_set_times", issue = "147455")]
+#[doc(alias = "utimens")]
+#[doc(alias = "utimes")]
+#[doc(alias = "utime")]
 pub fn set_times<P: AsRef<Path>>(path: P, times: FileTimes) -> io::Result<()> {
     fs_imp::set_times(path.as_ref(), times.0)
 }
