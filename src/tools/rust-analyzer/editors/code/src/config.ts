@@ -4,8 +4,7 @@ import * as path from "path";
 import * as vscode from "vscode";
 import { expectNotUndefined, log, normalizeDriveLetter, unwrapUndefinable } from "./util";
 import type { Env } from "./util";
-import type { Disposable } from "vscode";
-import { cloneDeep, get, merge } from "lodash";
+import { cloneDeep, get, merge, pickBy } from "lodash";
 
 export type RunnableEnvCfgItem = {
     mask?: string;
@@ -20,6 +19,7 @@ type ShowStatusBar = "always" | "never" | { documentSelector: vscode.DocumentSel
 
 export class Config {
     readonly extensionId = "rust-lang.rust-analyzer";
+    readonly workspaceState: vscode.Memento;
     configureLang: vscode.Disposable | undefined;
 
     readonly rootSection = "rust-analyzer";
@@ -31,27 +31,41 @@ export class Config {
         (opt) => `${this.rootSection}.${opt}`,
     );
 
-    extensionConfigurations: Map<string, Record<string, unknown>> = new Map();
-
-    async addExtensionConfiguration(extensionId: string, configuration: Record<string, unknown>): Promise<void> {
-        this.extensionConfigurations.set(extensionId, configuration);
-        const prefix = `${this.rootSection}.`;
-        await this.onDidChangeConfiguration({
-            affectsConfiguration(section: string, _scope?: vscode.ConfigurationScope): boolean {
-                // FIXME: questionable
-                return section.startsWith(prefix) && section.slice(prefix.length) in configuration;
-            },
-        });
-    }
-
-    constructor(disposables: Disposable[]) {
-        vscode.workspace.onDidChangeConfiguration(this.onDidChangeConfiguration, this, disposables);
+    constructor(ctx: vscode.ExtensionContext) {
+        this.workspaceState = ctx.workspaceState;
+        vscode.workspace.onDidChangeConfiguration(this.onDidChangeConfiguration, this, ctx.subscriptions);
         this.refreshLogging();
         this.configureLanguage();
     }
 
     dispose() {
         this.configureLang?.dispose();
+    }
+
+    /// Returns the rust-analyzer-specific workspace configuration, incl. any
+    /// configuration items overridden by (present) extensions.
+    get extensionConfigurations(): Record<string, Record<string, unknown>> {
+        return pickBy(
+            this.workspaceState.get<Record<string, ConfigurationTree>>("extensionConfigurations", {}),
+            (_, extensionId) => vscode.extensions.getExtension(extensionId) !== undefined,
+        );
+    }
+
+    async addExtensionConfiguration(extensionId: string, configuration: Record<string, unknown>): Promise<void> {
+        const oldConfiguration = this.cfg;
+
+        const extCfgs = this.extensionConfigurations;
+        extCfgs[extensionId] = configuration;
+        await this.workspaceState.update("extensionConfigurations", extCfgs);
+
+        const newConfiguration = this.cfg;
+        const prefix = `${this.rootSection}.`;
+        await this.onDidChangeConfiguration({
+            affectsConfiguration(section: string, _scope?: vscode.ConfigurationScope): boolean {
+                return section.startsWith(prefix) &&
+                    get(oldConfiguration, section.slice(prefix.length)) !== get(newConfiguration, section.slice(prefix.length));
+            },
+        });
     }
 
     private refreshLogging() {
@@ -198,8 +212,7 @@ export class Config {
     }
 
     public get cfg(): ConfigurationTree {
-        const vsCodeConfig = cloneDeep<ConfigurationTree>(this.rawCfg);
-        return merge(vsCodeConfig, ...this.extensionConfigurations.values());
+        return merge(cloneDeep(this.rawCfg), ...Object.values(this.extensionConfigurations));
     }
 
     /**
@@ -209,7 +222,6 @@ export class Config {
      * ```ts
      * const nullableNum = vscode
      *  .workspace
-     *  .getConfiguration
      *  .getConfiguration("rust-analyzer")
      *  .get<number | null>(path)!;
      *

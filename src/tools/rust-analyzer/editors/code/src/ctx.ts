@@ -125,7 +125,7 @@ export class Ctx implements RustAnalyzerExtensionApi {
         extCtx.subscriptions.push(this);
         this.version = extCtx.extension.packageJSON.version ?? "<unknown>";
         this._serverVersion = "<not running>";
-        this.config = new Config(extCtx.subscriptions);
+        this.config = new Config(extCtx);
         this.statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
         this.updateStatusBarVisibility(vscode.window.activeTextEditor);
         this.statusBarActiveEditorListener = vscode.window.onDidChangeActiveTextEditor((editor) =>
