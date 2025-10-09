@@ -14,7 +14,7 @@ use tracing::{debug, instrument, trace};
 use crate::constraints::{ConstraintSccIndex, OutlivesConstraintSet};
 use crate::consumers::OutlivesConstraint;
 use crate::diagnostics::{RegionErrorKind, RegionErrors, UniverseInfo};
-use crate::region_infer::values::{LivenessValues, PlaceholderIndices};
+use crate::region_infer::values::LivenessValues;
 use crate::region_infer::{ConstraintSccs, RegionDefinition, Representative, TypeTest};
 use crate::ty::VarianceDiagInfo;
 use crate::type_check::free_region_relations::UniversalRegionRelations;
@@ -32,7 +32,6 @@ pub(crate) struct LoweredConstraints<'tcx> {
     pub(crate) type_tests: Vec<TypeTest<'tcx>>,
     pub(crate) liveness_constraints: LivenessValues,
     pub(crate) universe_causes: FxIndexMap<UniverseIndex, UniverseInfo<'tcx>>,
-    pub(crate) placeholder_indices: PlaceholderIndices,
 }
 
 impl<'d, 'tcx, A: scc::Annotation> SccAnnotations<'d, 'tcx, A> {
@@ -62,7 +61,7 @@ impl scc::Annotations<RegionVid> for SccAnnotations<'_, '_, RegionTracker> {
 }
 
 #[derive(Copy, Debug, Clone, PartialEq, Eq)]
-enum PlaceholderReachability {
+pub(crate) enum PlaceholderReachability {
     /// This SCC reaches no placeholders.
     NoPlaceholders,
     /// This SCC reaches at least one placeholder.
@@ -120,7 +119,7 @@ impl PlaceholderReachability {
 /// the values of its elements. This annotates a single SCC.
 #[derive(Copy, Debug, Clone)]
 pub(crate) struct RegionTracker {
-    reachable_placeholders: PlaceholderReachability,
+    pub(crate) reachable_placeholders: PlaceholderReachability,
 
     /// The smallest max nameable universe of all
     /// regions reachable from this SCC.
@@ -245,6 +244,16 @@ impl RegionTracker {
             PlaceholderReachability::Placeholders { min_placeholder, .. } => Some(min_placeholder),
         }
     }
+
+    /// If this SCC reaches at least one placeholder, return
+    /// its region vid. If there's more than one, return the one
+    /// with the smallest vid.
+    pub(crate) fn reached_placeholder(&self) -> Option<RegionVid> {
+        match self.reachable_placeholders {
+            PlaceholderReachability::NoPlaceholders => None,
+            PlaceholderReachability::Placeholders { min_placeholder, .. } => Some(min_placeholder),
+        }
+    }
 }
 
 impl scc::Annotation for RegionTracker {
@@ -350,12 +359,11 @@ pub(crate) fn compute_sccs_applying_placeholder_outlives_constraints<'tcx>(
     let (definitions, has_placeholders) = region_definitions(infcx, universal_regions);
 
     let MirTypeckRegionConstraints {
-        placeholder_indices,
-        placeholder_index_to_region: _,
         liveness_constraints,
         mut outlives_constraints,
         universe_causes,
         type_tests,
+        placeholder_to_region: _
     } = constraints;
 
     let fr_static = universal_regions.fr_static;
@@ -385,7 +393,6 @@ pub(crate) fn compute_sccs_applying_placeholder_outlives_constraints<'tcx>(
             outlives_constraints: Frozen::freeze(outlives_constraints),
             liveness_constraints,
             universe_causes,
-            placeholder_indices,
         };
     }
     debug!("Placeholders present; activating placeholder handling logic!");
@@ -426,7 +433,6 @@ pub(crate) fn compute_sccs_applying_placeholder_outlives_constraints<'tcx>(
         type_tests,
         liveness_constraints,
         universe_causes,
-        placeholder_indices,
     }
 }
 
