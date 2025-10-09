@@ -699,8 +699,8 @@ pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
             &o1(simplify::SimplifyCfg::AfterUnreachableEnumBranching),
             &multiple_return_terminators::MultipleReturnTerminators,
             // After simplifycfg, it allows us to discover new opportunities for peephole
-            // optimizations. This invalidates CFG caches, so avoid putting between two SSA
-            // analyses.
+            // optimizations. This invalidates CFG caches, so avoid putting between
+            // `ReferencePropagation` and `GVN` which both use the dominator tree.
             &instsimplify::InstSimplify::AfterSimplifyCfg,
             &ref_prop::ReferencePropagation,
             &sroa::ScalarReplacementOfAggregates,
