@@ -1,3 +1,5 @@
+//! Lint a `match` or `if let .. { .. } else { .. }` expr that could be replaced by `matches!`
+
 use super::REDUNDANT_PATTERN_MATCHING;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
@@ -11,7 +13,6 @@ use rustc_span::source_map::Spanned;
 
 use super::MATCH_LIKE_MATCHES_MACRO;
 
-/// Lint a `match` or `if let .. { .. } else { .. }` expr that could be replaced by `matches!`
 pub(crate) fn check_if_let<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'_>,
@@ -23,10 +24,11 @@ pub(crate) fn check_if_let<'tcx>(
     find_matches_sugg(
         cx,
         let_expr,
-        IntoIterator::into_iter([
+        [
             (&[][..], Some(let_pat), then_expr, None),
             (&[][..], None, else_expr, None),
-        ]),
+        ]
+        .into_iter(),
         expr,
         true,
     );
@@ -52,7 +54,7 @@ pub(super) fn check_match<'tcx>(
 fn find_matches_sugg<'a, 'b, I>(
     cx: &LateContext<'_>,
     ex: &Expr<'_>,
-    mut iter: I,
+    mut arms: I,
     expr: &Expr<'_>,
     is_if_let: bool,
 ) -> bool
@@ -64,17 +66,17 @@ where
         + Iterator<Item = (&'a [Attribute], Option<&'a Pat<'b>>, &'a Expr<'b>, Option<&'a Expr<'b>>)>,
 {
     if !span_contains_comment(cx.sess().source_map(), expr.span)
-        && iter.len() >= 2
+        && arms.len() >= 2
         && cx.typeck_results().expr_ty(expr).is_bool()
-        && let Some((_, last_pat_opt, last_expr, _)) = iter.next_back()
-        && let iter_without_last = iter.clone()
-        && let Some((first_attrs, _, first_expr, first_guard)) = iter.next()
-        && let Some(b0) = find_bool_lit(&first_expr.kind)
-        && let Some(b1) = find_bool_lit(&last_expr.kind)
+        && let Some((_, last_pat_opt, last_expr, _)) = arms.next_back()
+        && let arms_without_last = arms.clone()
+        && let Some((first_attrs, _, first_expr, first_guard)) = arms.next()
+        && let Some(b0) = find_bool_lit(first_expr)
+        && let Some(b1) = find_bool_lit(last_expr)
         && b0 != b1
-        && (first_guard.is_none() || iter.len() == 0)
+        && (first_guard.is_none() || arms.len() == 0)
         && first_attrs.is_empty()
-        && iter.all(|arm| find_bool_lit(&arm.2.kind).is_some_and(|b| b == b0) && arm.3.is_none() && arm.0.is_empty())
+        && arms.all(|(attrs, _, expr, guard)| attrs.is_empty() && guard.is_none() && find_bool_lit(expr) == Some(b0))
     {
         if let Some(last_pat) = last_pat_opt
             && !is_wild(last_pat)
@@ -82,10 +84,10 @@ where
             return false;
         }
 
-        for arm in iter_without_last.clone() {
+        for arm in arms_without_last.clone() {
             if let Some(pat) = arm.1
                 && !is_lint_allowed(cx, REDUNDANT_PATTERN_MATCHING, pat.hir_id)
-                && is_some(pat.kind)
+                && is_some_wild(pat.kind)
             {
                 return false;
             }
@@ -96,7 +98,7 @@ where
         let mut applicability = Applicability::MaybeIncorrect;
         let pat = {
             use itertools::Itertools as _;
-            iter_without_last
+            arms_without_last
                 .filter_map(|arm| {
                     let pat_span = arm.1?.span;
                     Some(snippet_with_applicability(cx, pat_span, "..", &mut applicability))
@@ -142,11 +144,11 @@ where
 }
 
 /// Extract a `bool` or `{ bool }`
-fn find_bool_lit(ex: &ExprKind<'_>) -> Option<bool> {
-    match ex {
+fn find_bool_lit(ex: &Expr<'_>) -> Option<bool> {
+    match ex.kind {
         ExprKind::Lit(Spanned {
             node: LitKind::Bool(b), ..
-        }) => Some(*b),
+        }) => Some(b),
         ExprKind::Block(
             rustc_hir::Block {
                 stmts: [],
@@ -168,8 +170,9 @@ fn find_bool_lit(ex: &ExprKind<'_>) -> Option<bool> {
     }
 }
 
-fn is_some(path_kind: PatKind<'_>) -> bool {
-    match path_kind {
+/// Checks whether a pattern is `Some(_)`
+fn is_some_wild(pat_kind: PatKind<'_>) -> bool {
+    match pat_kind {
         PatKind::TupleStruct(QPath::Resolved(_, path), [first, ..], _) if is_wild(first) => {
             let name = path.segments[0].ident;
             name.name == rustc_span::sym::Some

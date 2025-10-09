@@ -1,7 +1,6 @@
 #![warn(clippy::match_like_matches_macro)]
 #![allow(
     unreachable_patterns,
-    dead_code,
     clippy::equatable_if_let,
     clippy::needless_borrowed_reference,
     clippy::redundant_guards
@@ -11,23 +10,35 @@ fn main() {
     let x = Some(5);
 
     // Lint
-    let _y = matches!(x, Some(0));
+    let _y = match x {
+        Some(0) => true,
+        _ => false,
+    };
+    //~^^^^ match_like_matches_macro
+
+    // No lint: covered by `redundant_pattern_matching`
+    let _w = match x {
+        Some(_) => true,
+        _ => false,
+    };
+    //~^^^^ redundant_pattern_matching
+
+    // No lint: covered by `redundant_pattern_matching`
+    let _z = match x {
+        Some(_) => false,
+        None => true,
+    };
+    //~^^^^ redundant_pattern_matching
+
+    // Lint
+    let _zz = match x {
+        Some(r) if r == 0 => false,
+        _ => true,
+    };
     //~^^^^ match_like_matches_macro
 
     // Lint
-    let _w = x.is_some();
-    //~^^^^ redundant_pattern_matching
-
-    // Turn into is_none
-    let _z = x.is_none();
-    //~^^^^ redundant_pattern_matching
-
-    // Lint
-    let _zz = !matches!(x, Some(r) if r == 0);
-    //~^^^^ match_like_matches_macro
-
-    // Lint
-    let _zzz = matches!(x, Some(5));
+    let _zzz = if let Some(5) = x { true } else { false };
     //~^ match_like_matches_macro
 
     // No lint
@@ -52,19 +63,33 @@ fn main() {
     let x = E::A(2);
     {
         // lint
-        let _ans = matches!(x, E::A(_) | E::B(_));
+        let _ans = match x {
+            E::A(_) => true,
+            E::B(_) => true,
+            _ => false,
+        };
         //~^^^^^ match_like_matches_macro
     }
     {
         // lint
         // skip rustfmt to prevent removing block for first pattern
         #[rustfmt::skip]
-        let _ans = matches!(x, E::A(_) | E::B(_));
+        let _ans = match x {
+            E::A(_) => {
+                true
+            }
+            E::B(_) => true,
+            _ => false,
+        };
         //~^^^^^^^ match_like_matches_macro
     }
     {
         // lint
-        let _ans = !matches!(x, E::B(_) | E::C);
+        let _ans = match x {
+            E::B(_) => false,
+            E::C => false,
+            _ => true,
+        };
         //~^^^^^ match_like_matches_macro
     }
     {
@@ -121,14 +146,20 @@ fn main() {
     {
         // should print "z" in suggestion (#6503)
         let z = &Some(3);
-        let _z = matches!(z, Some(3));
+        let _z = match &z {
+            Some(3) => true,
+            _ => false,
+        };
         //~^^^^ match_like_matches_macro
     }
 
     {
         // this could also print "z" in suggestion..?
         let z = Some(3);
-        let _z = matches!(&z, Some(3));
+        let _z = match &z {
+            Some(3) => true,
+            _ => false,
+        };
         //~^^^^ match_like_matches_macro
     }
 
@@ -143,7 +174,10 @@ fn main() {
         fn main() {
             let z = AnEnum::X;
             // we can't remove the reference here!
-            let _ = matches!(&z, AnEnum::X);
+            let _ = match &z {
+                AnEnum::X => true,
+                _ => false,
+            };
             //~^^^^ match_like_matches_macro
             foo(z);
         }
@@ -155,7 +189,10 @@ fn main() {
         fn fun(_val: Option<S>) {}
         let val = Some(S(42));
         // we need the reference here because later val is consumed by fun()
-        let _res = matches!(&val, &Some(ref _a));
+        let _res = match &val {
+            &Some(ref _a) => true,
+            _ => false,
+        };
         //~^^^^ match_like_matches_macro
         fun(val);
     }
@@ -165,7 +202,10 @@ fn main() {
 
         fn fun(_val: Option<S>) {}
         let val = Some(S(42));
-        let _res = matches!(&val, &Some(ref _a));
+        let _res = match &val {
+            &Some(ref _a) => true,
+            _ => false,
+        };
         //~^^^^ match_like_matches_macro
         fun(val);
     }
@@ -221,6 +261,9 @@ fn msrv_1_41() {
 
 #[clippy::msrv = "1.42"]
 fn msrv_1_42() {
-    let _y = matches!(Some(5), Some(0));
+    let _y = match Some(5) {
+        Some(0) => true,
+        _ => false,
+    };
     //~^^^^ match_like_matches_macro
 }
