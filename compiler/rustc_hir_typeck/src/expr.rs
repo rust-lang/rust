@@ -2017,7 +2017,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.fudge_inference_if_ok(|| {
                 let ocx = ObligationCtxt::new(self);
                 ocx.sup(&self.misc(path_span), self.param_env, expected, adt_ty)?;
-                if !ocx.select_where_possible().is_empty() {
+                if !ocx.try_evaluate_obligations().is_empty() {
                     return Err(TypeError::Mismatch);
                 }
                 Ok(self.resolve_vars_if_possible(adt_ty))
@@ -3551,34 +3551,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
                     // Try to give some advice about indexing tuples.
                     if let ty::Tuple(types) = base_t.kind() {
-                        let mut needs_note = true;
-                        // If the index is an integer, we can show the actual
-                        // fixed expression:
+                        err.help(
+                            "tuples are indexed with a dot and a literal index: `tuple.0`, `tuple.1`, etc.",
+                        );
+                        // If index is an unsuffixed integer, show the fixed expression:
                         if let ExprKind::Lit(lit) = idx.kind
                             && let ast::LitKind::Int(i, ast::LitIntType::Unsuffixed) = lit.node
-                            && i.get()
-                                < types
-                                    .len()
-                                    .try_into()
-                                    .expect("expected tuple index to be < usize length")
+                            && i.get() < types.len().try_into().expect("tuple length fits in u128")
                         {
                             err.span_suggestion(
                                 brackets_span,
-                                "to access tuple elements, use",
+                                format!("to access tuple element `{i}`, use"),
                                 format!(".{i}"),
                                 Applicability::MachineApplicable,
-                            );
-                            needs_note = false;
-                        } else if let ExprKind::Path(..) = idx.peel_borrows().kind {
-                            err.span_label(
-                                idx.span,
-                                "cannot access tuple elements at a variable index",
-                            );
-                        }
-                        if needs_note {
-                            err.help(
-                                "to access tuple elements, use tuple indexing \
-                                        syntax (e.g., `tuple.0`)",
                             );
                         }
                     }
@@ -3678,7 +3663,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ),
             );
 
-            let true_errors = ocx.select_where_possible();
+            let true_errors = ocx.try_evaluate_obligations();
 
             // Do a leak check -- we can't really report a useful error here,
             // but it at least avoids an ICE when the error has to do with higher-ranked
@@ -3686,7 +3671,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.leak_check(outer_universe, Some(snapshot))?;
 
             // Bail if we have ambiguity errors, which we can't report in a useful way.
-            let ambiguity_errors = ocx.select_all_or_error();
+            let ambiguity_errors = ocx.evaluate_obligations_error_on_ambiguity();
             if true_errors.is_empty() && !ambiguity_errors.is_empty() {
                 return Err(NoSolution);
             }

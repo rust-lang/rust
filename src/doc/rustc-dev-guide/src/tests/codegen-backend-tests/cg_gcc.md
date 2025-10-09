@@ -20,7 +20,7 @@ rust.codegen-backends = ["llvm", "gcc"]
 ```
 
 If you don't want to change your `bootstrap.toml` file, you can alternatively run your `x`
-commands with `--set rust.codegen-backends=["llvm", "gcc"]'`. For example:
+commands with `--set 'rust.codegen-backends=["llvm", "gcc"]'`. For example:
 
 ```bash
 ./x build --set 'rust.codegen-backends=["llvm", "gcc"]'

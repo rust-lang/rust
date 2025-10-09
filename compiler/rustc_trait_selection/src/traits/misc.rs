@@ -156,7 +156,7 @@ pub fn type_allowed_to_implement_const_param_ty<'tcx>(
                 ty::ClauseKind::UnstableFeature(sym::unsized_const_params),
             ));
 
-            if !ocx.select_all_or_error().is_empty() {
+            if !ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
                 return Err(ConstParamTyImplementationError::UnsizedConstParamsFeatureRequired);
             }
         }
@@ -168,7 +168,7 @@ pub fn type_allowed_to_implement_const_param_ty<'tcx>(
             tcx.require_lang_item(LangItem::ConstParamTy, parent_cause.span),
         );
 
-        let errors = ocx.select_all_or_error();
+        let errors = ocx.evaluate_obligations_error_on_ambiguity();
         if !errors.is_empty() {
             infringing_inner_tys.push((inner_ty, InfringingFieldsReason::Fulfill(errors)));
             continue;
@@ -235,7 +235,7 @@ pub fn all_fields_implement_trait<'tcx>(
                 ObligationCause::dummy_with_span(field_ty_span)
             };
             let ty = ocx.normalize(&normalization_cause, param_env, unnormalized_ty);
-            let normalization_errors = ocx.select_where_possible();
+            let normalization_errors = ocx.try_evaluate_obligations();
 
             // NOTE: The post-normalization type may also reference errors,
             // such as when we project to a missing type or we have a mismatch
@@ -252,7 +252,7 @@ pub fn all_fields_implement_trait<'tcx>(
                 ty,
                 trait_def_id,
             );
-            let errors = ocx.select_all_or_error();
+            let errors = ocx.evaluate_obligations_error_on_ambiguity();
             if !errors.is_empty() {
                 infringing.push((field, ty, InfringingFieldsReason::Fulfill(errors)));
             }

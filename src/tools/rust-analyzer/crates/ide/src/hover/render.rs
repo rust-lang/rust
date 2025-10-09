@@ -692,14 +692,14 @@ pub(super) fn definition(
         }
         let drop_info = match def {
             Definition::Field(field) => {
-                DropInfo { drop_glue: field.ty(db).drop_glue(db), has_dtor: None }
+                DropInfo { drop_glue: field.ty(db).to_type(db).drop_glue(db), has_dtor: None }
             }
             Definition::Adt(Adt::Struct(strukt)) => {
                 let struct_drop_glue = strukt.ty_placeholders(db).drop_glue(db);
                 let mut fields_drop_glue = strukt
                     .fields(db)
                     .iter()
-                    .map(|field| field.ty(db).drop_glue(db))
+                    .map(|field| field.ty(db).to_type(db).drop_glue(db))
                     .max()
                     .unwrap_or(DropGlue::None);
                 let has_dtor = match (fields_drop_glue, struct_drop_glue) {
@@ -727,7 +727,7 @@ pub(super) fn definition(
                         variant
                             .fields(db)
                             .iter()
-                            .map(|field| field.ty(db).drop_glue(db))
+                            .map(|field| field.ty(db).to_type(db).drop_glue(db))
                             .max()
                             .unwrap_or(DropGlue::None)
                     })
@@ -742,7 +742,7 @@ pub(super) fn definition(
                 let fields_drop_glue = variant
                     .fields(db)
                     .iter()
-                    .map(|field| field.ty(db).drop_glue(db))
+                    .map(|field| field.ty(db).to_type(db).drop_glue(db))
                     .max()
                     .unwrap_or(DropGlue::None);
                 DropInfo { drop_glue: fields_drop_glue, has_dtor: None }

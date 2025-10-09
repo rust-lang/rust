@@ -1,4 +1,4 @@
-//@ compile-flags: -Zautodiff=Enable -C opt-level=3  -Clto=fat
+//@ compile-flags: -Zautodiff=Enable,NoTT,NoPostopt -C opt-level=3  -Clto=fat
 //@ no-prefer-dynamic
 //@ needs-enzyme
 //
@@ -23,7 +23,7 @@ fn square(x: &f32) -> f32 {
 }
 
 // d_square2
-// CHECK: define internal fastcc [4 x float] @fwddiffe4square(float %x.0.val, [4 x ptr] %"x'")
+// CHECK: define internal [4 x float] @fwddiffe4square(ptr noalias noundef readonly align 4 captures(none) dereferenceable(4) %x, [4 x ptr] %"x'")
 // CHECK-NEXT: start:
 // CHECK-NEXT:   %0 = extractvalue [4 x ptr] %"x'", 0
 // CHECK-NEXT:   %"_2'ipl" = load float, ptr %0, align 4
@@ -33,23 +33,28 @@ fn square(x: &f32) -> f32 {
 // CHECK-NEXT:   %"_2'ipl2" = load float, ptr %2, align 4
 // CHECK-NEXT:   %3 = extractvalue [4 x ptr] %"x'", 3
 // CHECK-NEXT:   %"_2'ipl3" = load float, ptr %3, align 4
-// CHECK-NEXT:   %4 = fmul float %"_2'ipl", 2.000000e+00
-// CHECK-NEXT:   %5 = fmul fast float %4, %x.0.val
-// CHECK-NEXT:   %6 = insertvalue [4 x float] undef, float %5, 0
-// CHECK-NEXT:   %7 = fmul float %"_2'ipl1", 2.000000e+00
-// CHECK-NEXT:   %8 = fmul fast float %7, %x.0.val
-// CHECK-NEXT:   %9 = insertvalue [4 x float] %6, float %8, 1
-// CHECK-NEXT:   %10 = fmul float %"_2'ipl2", 2.000000e+00
-// CHECK-NEXT:   %11 = fmul fast float %10, %x.0.val
-// CHECK-NEXT:   %12 = insertvalue [4 x float] %9, float %11, 2
-// CHECK-NEXT:   %13 = fmul float %"_2'ipl3", 2.000000e+00
-// CHECK-NEXT:   %14 = fmul fast float %13, %x.0.val
-// CHECK-NEXT:   %15 = insertvalue [4 x float] %12, float %14, 3
-// CHECK-NEXT:   ret [4 x float] %15
+// CHECK-NEXT:   %_2 = load float, ptr %x, align 4
+// CHECK-NEXT:   %4 = fmul fast float %"_2'ipl", %_2
+// CHECK-NEXT:   %5 = fmul fast float %"_2'ipl1", %_2
+// CHECK-NEXT:   %6 = fmul fast float %"_2'ipl2", %_2
+// CHECK-NEXT:   %7 = fmul fast float %"_2'ipl3", %_2
+// CHECK-NEXT:   %8 = fmul fast float %"_2'ipl", %_2
+// CHECK-NEXT:   %9 = fmul fast float %"_2'ipl1", %_2
+// CHECK-NEXT:   %10 = fmul fast float %"_2'ipl2", %_2
+// CHECK-NEXT:   %11 = fmul fast float %"_2'ipl3", %_2
+// CHECK-NEXT:   %12 = fadd fast float %4, %8
+// CHECK-NEXT:   %13 = insertvalue [4 x float] undef, float %12, 0
+// CHECK-NEXT:   %14 = fadd fast float %5, %9
+// CHECK-NEXT:   %15 = insertvalue [4 x float] %13, float %14, 1
+// CHECK-NEXT:   %16 = fadd fast float %6, %10
+// CHECK-NEXT:   %17 = insertvalue [4 x float] %15, float %16, 2
+// CHECK-NEXT:   %18 = fadd fast float %7, %11
+// CHECK-NEXT:   %19 = insertvalue [4 x float] %17, float %18, 3
+// CHECK-NEXT:   ret [4 x float] %19
 // CHECK-NEXT:   }
 
 // d_square3, the extra float is the original return value (x * x)
-// CHECK: define internal fastcc { float, [4 x float] } @fwddiffe4square.1(float %x.0.val, [4 x ptr] %"x'")
+// CHECK: define internal { float, [4 x float] } @fwddiffe4square.1(ptr noalias noundef readonly align 4 captures(none) dereferenceable(4) %x, [4 x ptr] %"x'")
 // CHECK-NEXT: start:
 // CHECK-NEXT:   %0 = extractvalue [4 x ptr] %"x'", 0
 // CHECK-NEXT:   %"_2'ipl" = load float, ptr %0, align 4
@@ -59,22 +64,27 @@ fn square(x: &f32) -> f32 {
 // CHECK-NEXT:   %"_2'ipl2" = load float, ptr %2, align 4
 // CHECK-NEXT:   %3 = extractvalue [4 x ptr] %"x'", 3
 // CHECK-NEXT:   %"_2'ipl3" = load float, ptr %3, align 4
-// CHECK-NEXT:   %_0 = fmul float %x.0.val, %x.0.val
-// CHECK-NEXT:   %4 = fmul float %"_2'ipl", 2.000000e+00
-// CHECK-NEXT:   %5 = fmul fast float %4, %x.0.val
-// CHECK-NEXT:   %6 = insertvalue [4 x float] undef, float %5, 0
-// CHECK-NEXT:   %7 = fmul float %"_2'ipl1", 2.000000e+00
-// CHECK-NEXT:   %8 = fmul fast float %7, %x.0.val
-// CHECK-NEXT:   %9 = insertvalue [4 x float] %6, float %8, 1
-// CHECK-NEXT:   %10 = fmul float %"_2'ipl2", 2.000000e+00
-// CHECK-NEXT:   %11 = fmul fast float %10, %x.0.val
-// CHECK-NEXT:   %12 = insertvalue [4 x float] %9, float %11, 2
-// CHECK-NEXT:   %13 = fmul float %"_2'ipl3", 2.000000e+00
-// CHECK-NEXT:   %14 = fmul fast float %13, %x.0.val
-// CHECK-NEXT:   %15 = insertvalue [4 x float] %12, float %14, 3
-// CHECK-NEXT:   %16 = insertvalue { float, [4 x float] } undef, float %_0, 0
-// CHECK-NEXT:   %17 = insertvalue { float, [4 x float] } %16, [4 x float] %15, 1
-// CHECK-NEXT:   ret { float, [4 x float] } %17
+// CHECK-NEXT:   %_2 = load float, ptr %x, align 4
+// CHECK-NEXT:   %_0 = fmul float %_2, %_2
+// CHECK-NEXT:   %4 = fmul fast float %"_2'ipl", %_2
+// CHECK-NEXT:   %5 = fmul fast float %"_2'ipl1", %_2
+// CHECK-NEXT:   %6 = fmul fast float %"_2'ipl2", %_2
+// CHECK-NEXT:   %7 = fmul fast float %"_2'ipl3", %_2
+// CHECK-NEXT:   %8 = fmul fast float %"_2'ipl", %_2
+// CHECK-NEXT:   %9 = fmul fast float %"_2'ipl1", %_2
+// CHECK-NEXT:   %10 = fmul fast float %"_2'ipl2", %_2
+// CHECK-NEXT:   %11 = fmul fast float %"_2'ipl3", %_2
+// CHECK-NEXT:   %12 = fadd fast float %4, %8
+// CHECK-NEXT:   %13 = insertvalue [4 x float] undef, float %12, 0
+// CHECK-NEXT:   %14 = fadd fast float %5, %9
+// CHECK-NEXT:   %15 = insertvalue [4 x float] %13, float %14, 1
+// CHECK-NEXT:   %16 = fadd fast float %6, %10
+// CHECK-NEXT:   %17 = insertvalue [4 x float] %15, float %16, 2
+// CHECK-NEXT:   %18 = fadd fast float %7, %11
+// CHECK-NEXT:   %19 = insertvalue [4 x float] %17, float %18, 3
+// CHECK-NEXT:   %20 = insertvalue { float, [4 x float] } undef, float %_0, 0
+// CHECK-NEXT:   %21 = insertvalue { float, [4 x float] } %20, [4 x float] %19, 1
+// CHECK-NEXT:   ret { float, [4 x float] } %21
 // CHECK-NEXT:   }
 
 fn main() {

@@ -183,7 +183,7 @@ fn get_impl_args(
         &ObligationCause::misc(impl1_span, impl1_def_id),
     );
 
-    let errors = ocx.select_all_or_error();
+    let errors = ocx.evaluate_obligations_error_on_ambiguity();
     if !errors.is_empty() {
         let guar = ocx.infcx.err_ctxt().report_fulfillment_errors(errors);
         return Err(guar);

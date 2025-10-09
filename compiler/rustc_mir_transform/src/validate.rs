@@ -623,7 +623,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             param_env,
             pred,
         ));
-        ocx.select_all_or_error().is_empty()
+        ocx.evaluate_obligations_error_on_ambiguity().is_empty()
     }
 }
 
@@ -812,22 +812,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     _ => {
                         self.fail(location, format!("{:?} does not have fields", parent_ty.ty));
                     }
-                }
-            }
-            ProjectionElem::Subtype(ty) => {
-                if !util::sub_types(
-                    self.tcx,
-                    self.typing_env,
-                    ty,
-                    place_ref.ty(&self.body.local_decls, self.tcx).ty,
-                ) {
-                    self.fail(
-                        location,
-                        format!(
-                            "Failed subtyping {ty} and {}",
-                            place_ref.ty(&self.body.local_decls, self.tcx).ty
-                        ),
-                    )
                 }
             }
             ProjectionElem::UnwrapUnsafeBinder(unwrapped_ty) => {
@@ -1329,6 +1313,14 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                 location,
                                 format!("Cannot transmute to non-`Sized` type {target_type:?}"),
                             );
+                        }
+                    }
+                    CastKind::Subtype => {
+                        if !util::sub_types(self.tcx, self.typing_env, op_ty, *target_type) {
+                            self.fail(
+                                location,
+                                format!("Failed subtyping {op_ty} and {target_type}"),
+                            )
                         }
                     }
                 }

@@ -1,19 +1,16 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::VecArgs;
 use clippy_utils::source::snippet;
-use clippy_utils::visitors::for_each_expr_without_closures;
 use rustc_ast::LitKind;
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::Applicability;
 use rustc_hir::{ConstArgKind, ExprKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::Ty;
 use rustc_session::declare_lint_pass;
-use rustc_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for array or vec initializations which call a function or method,
+    /// Checks for array or vec initializations which contain an expression with side effects,
     /// but which have a repeat count of zero.
     ///
     /// ### Why is this bad?
@@ -73,89 +70,43 @@ impl LateLintPass<'_> for ZeroRepeatSideEffects {
 
 fn inner_check(cx: &LateContext<'_>, expr: &'_ rustc_hir::Expr<'_>, inner_expr: &'_ rustc_hir::Expr<'_>, is_vec: bool) {
     // check if expr is a call or has a call inside it
-    if for_each_expr_without_closures(inner_expr, |x| {
-        if let ExprKind::Call(_, _) | ExprKind::MethodCall(_, _, _, _) = x.kind {
-            std::ops::ControlFlow::Break(())
-        } else {
-            std::ops::ControlFlow::Continue(())
-        }
-    })
-    .is_some()
-    {
+    if inner_expr.can_have_side_effects() {
         let parent_hir_node = cx.tcx.parent_hir_node(expr.hir_id);
         let return_type = cx.typeck_results().expr_ty(expr);
 
-        if let Node::LetStmt(l) = parent_hir_node {
-            array_span_lint(
-                cx,
+        let inner_expr = snippet(cx, inner_expr.span.source_callsite(), "..");
+        let vec = if is_vec { "vec!" } else { "" };
+
+        let (span, sugg) = match parent_hir_node {
+            Node::LetStmt(l) => (
                 l.span,
-                inner_expr.span,
-                l.pat.span,
-                Some(return_type),
-                is_vec,
-                false,
-            );
-        } else if let Node::Expr(x) = parent_hir_node
-            && let ExprKind::Assign(l, _, _) = x.kind
-        {
-            array_span_lint(cx, x.span, inner_expr.span, l.span, Some(return_type), is_vec, true);
-        } else {
-            span_lint_and_sugg(
-                cx,
-                ZERO_REPEAT_SIDE_EFFECTS,
-                expr.span.source_callsite(),
-                "function or method calls as the initial value in zero-sized array initializers may cause side effects",
-                "consider using",
                 format!(
-                    "{{ {}; {}[] as {return_type} }}",
-                    snippet(cx, inner_expr.span.source_callsite(), ".."),
-                    if is_vec { "vec!" } else { "" },
+                    "{inner_expr}; let {var_name}: {return_type} = {vec}[];",
+                    var_name = snippet(cx, l.pat.span.source_callsite(), "..")
                 ),
-                Applicability::Unspecified,
-            );
-        }
+            ),
+            Node::Expr(x) if let ExprKind::Assign(l, _, _) = x.kind => (
+                x.span,
+                format!(
+                    "{inner_expr}; {var_name} = {vec}[] as {return_type}",
+                    var_name = snippet(cx, l.span.source_callsite(), "..")
+                ),
+            ),
+            _ => (expr.span, format!("{{ {inner_expr}; {vec}[] as {return_type} }}")),
+        };
+        span_lint_and_then(
+            cx,
+            ZERO_REPEAT_SIDE_EFFECTS,
+            span.source_callsite(),
+            "expression with side effects as the initial value in a zero-sized array initializer",
+            |diag| {
+                diag.span_suggestion_verbose(
+                    span.source_callsite(),
+                    "consider performing the side effect separately",
+                    sugg,
+                    Applicability::Unspecified,
+                );
+            },
+        );
     }
-}
-
-fn array_span_lint(
-    cx: &LateContext<'_>,
-    expr_span: Span,
-    func_call_span: Span,
-    variable_name_span: Span,
-    expr_ty: Option<Ty<'_>>,
-    is_vec: bool,
-    is_assign: bool,
-) {
-    let has_ty = expr_ty.is_some();
-
-    span_lint_and_sugg(
-        cx,
-        ZERO_REPEAT_SIDE_EFFECTS,
-        expr_span.source_callsite(),
-        "function or method calls as the initial value in zero-sized array initializers may cause side effects",
-        "consider using",
-        format!(
-            "{}; {}{}{} = {}[]{}{}",
-            snippet(cx, func_call_span.source_callsite(), ".."),
-            if has_ty && !is_assign { "let " } else { "" },
-            snippet(cx, variable_name_span.source_callsite(), ".."),
-            if let Some(ty) = expr_ty
-                && !is_assign
-            {
-                format!(": {ty}")
-            } else {
-                String::new()
-            },
-            if is_vec { "vec!" } else { "" },
-            if let Some(ty) = expr_ty
-                && is_assign
-            {
-                format!(" as {ty}")
-            } else {
-                String::new()
-            },
-            if is_assign { "" } else { ";" }
-        ),
-        Applicability::Unspecified,
-    );
 }

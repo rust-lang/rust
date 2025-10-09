@@ -1,12 +1,12 @@
 use std::borrow::{Borrow, Cow};
+use std::iter;
 use std::ops::Deref;
-use std::{iter, ptr};
 
 use rustc_ast::expand::typetree::FncTree;
 pub(crate) mod autodiff;
 pub(crate) mod gpu_offload;
 
-use libc::{c_char, c_uint, size_t};
+use libc::{c_char, c_uint};
 use rustc_abi as abi;
 use rustc_abi::{Align, Size, WrappingRange};
 use rustc_codegen_ssa::MemFlags;
@@ -36,11 +36,10 @@ use crate::attributes;
 use crate::common::Funclet;
 use crate::context::{CodegenCx, FullCx, GenericCx, SCx};
 use crate::llvm::{
-    self, AtomicOrdering, AtomicRmwBinOp, BasicBlock, GEPNoWrapFlags, Metadata, TRUE, ToLlvmBool,
+    self, AtomicOrdering, AtomicRmwBinOp, BasicBlock, FromGeneric, GEPNoWrapFlags, Metadata, TRUE,
+    ToLlvmBool, Type, Value,
 };
-use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
-use crate::value::Value;
 
 #[must_use]
 pub(crate) struct GenericBuilder<'a, 'll, CX: Borrow<SCx<'ll>>> {
@@ -396,10 +395,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             md.push(weight(is_cold));
         }
 
-        unsafe {
-            let md_node = llvm::LLVMMDNodeInContext2(self.cx.llcx, md.as_ptr(), md.len() as size_t);
-            self.cx.set_metadata(switch, llvm::MD_prof, md_node);
-        }
+        self.cx.set_metadata_node(switch, llvm::MD_prof, &md);
     }
 
     fn invoke(
@@ -643,13 +639,9 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         size: Size,
     ) -> &'ll Value {
         unsafe {
-            let load = llvm::LLVMRustBuildAtomicLoad(
-                self.llbuilder,
-                ty,
-                ptr,
-                UNNAMED,
-                AtomicOrdering::from_generic(order),
-            );
+            let load = llvm::LLVMBuildLoad2(self.llbuilder, ty, ptr, UNNAMED);
+            // Set atomic ordering
+            llvm::LLVMSetOrdering(load, AtomicOrdering::from_generic(order));
             // LLVM requires the alignment of atomic loads to be at least the size of the type.
             llvm::LLVMSetAlignment(load, size.bytes() as c_uint);
             load
@@ -801,22 +793,16 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             return;
         }
 
-        unsafe {
-            let llty = self.cx.val_ty(load);
-            let md = [
-                llvm::LLVMValueAsMetadata(self.cx.const_uint_big(llty, range.start)),
-                llvm::LLVMValueAsMetadata(self.cx.const_uint_big(llty, range.end.wrapping_add(1))),
-            ];
-            let md = llvm::LLVMMDNodeInContext2(self.cx.llcx, md.as_ptr(), md.len());
-            self.set_metadata(load, llvm::MD_range, md);
-        }
+        let llty = self.cx.val_ty(load);
+        let md = [
+            llvm::LLVMValueAsMetadata(self.cx.const_uint_big(llty, range.start)),
+            llvm::LLVMValueAsMetadata(self.cx.const_uint_big(llty, range.end.wrapping_add(1))),
+        ];
+        self.set_metadata_node(load, llvm::MD_range, &md);
     }
 
     fn nonnull_metadata(&mut self, load: &'ll Value) {
-        unsafe {
-            let md = llvm::LLVMMDNodeInContext2(self.cx.llcx, ptr::null(), 0);
-            self.set_metadata(load, llvm::MD_nonnull, md);
-        }
+        self.set_metadata_node(load, llvm::MD_nonnull, &[]);
     }
 
     fn store(&mut self, val: &'ll Value, ptr: &'ll Value, align: Align) -> &'ll Value {
@@ -865,8 +851,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                     //
                     // [1]: https://llvm.org/docs/LangRef.html#store-instruction
                     let one = llvm::LLVMValueAsMetadata(self.cx.const_i32(1));
-                    let md = llvm::LLVMMDNodeInContext2(self.cx.llcx, &one, 1);
-                    self.set_metadata(store, llvm::MD_nontemporal, md);
+                    self.set_metadata_node(store, llvm::MD_nontemporal, &[one]);
                 }
             }
             store
@@ -883,12 +868,9 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         debug!("Store {:?} -> {:?}", val, ptr);
         assert_eq!(self.cx.type_kind(self.cx.val_ty(ptr)), TypeKind::Pointer);
         unsafe {
-            let store = llvm::LLVMRustBuildAtomicStore(
-                self.llbuilder,
-                val,
-                ptr,
-                AtomicOrdering::from_generic(order),
-            );
+            let store = llvm::LLVMBuildStore(self.llbuilder, val, ptr);
+            // Set atomic ordering
+            llvm::LLVMSetOrdering(store, AtomicOrdering::from_generic(order));
             // LLVM requires the alignment of atomic stores to be at least the size of the type.
             llvm::LLVMSetAlignment(store, size.bytes() as c_uint);
         }
@@ -1381,10 +1363,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn set_invariant_load(&mut self, load: &'ll Value) {
-        unsafe {
-            let md = llvm::LLVMMDNodeInContext2(self.cx.llcx, ptr::null(), 0);
-            self.set_metadata(load, llvm::MD_invariant_load, md);
-        }
+        self.set_metadata_node(load, llvm::MD_invariant_load, &[]);
     }
 
     fn lifetime_start(&mut self, ptr: &'ll Value, size: Size) {
@@ -1528,25 +1507,16 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
 }
 impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     fn align_metadata(&mut self, load: &'ll Value, align: Align) {
-        unsafe {
-            let md = [llvm::LLVMValueAsMetadata(self.cx.const_u64(align.bytes()))];
-            let md = llvm::LLVMMDNodeInContext2(self.cx.llcx, md.as_ptr(), md.len());
-            self.set_metadata(load, llvm::MD_align, md);
-        }
+        let md = [llvm::LLVMValueAsMetadata(self.cx.const_u64(align.bytes()))];
+        self.set_metadata_node(load, llvm::MD_align, &md);
     }
 
     fn noundef_metadata(&mut self, load: &'ll Value) {
-        unsafe {
-            let md = llvm::LLVMMDNodeInContext2(self.cx.llcx, ptr::null(), 0);
-            self.set_metadata(load, llvm::MD_noundef, md);
-        }
+        self.set_metadata_node(load, llvm::MD_noundef, &[]);
     }
 
     pub(crate) fn set_unpredictable(&mut self, inst: &'ll Value) {
-        unsafe {
-            let md = llvm::LLVMMDNodeInContext2(self.cx.llcx, ptr::null(), 0);
-            self.set_metadata(inst, llvm::MD_unpredictable, md);
-        }
+        self.set_metadata_node(inst, llvm::MD_unpredictable, &[]);
     }
 }
 impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {

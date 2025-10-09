@@ -18,7 +18,7 @@ error: `#[naked]` attribute cannot be used on foreign functions
 LL |     #[unsafe(naked)]
    |     ^^^^^^^^^^^^^^^^
    |
-   = help: `#[naked]` can be applied to methods and functions
+   = help: `#[naked]` can be applied to functions and methods
 
 error: `#[naked]` attribute cannot be used on structs
   --> $DIR/naked-invalid-attr.rs:13:1
@@ -50,7 +50,7 @@ error: `#[naked]` attribute cannot be used on closures
 LL |     #[unsafe(naked)]
    |     ^^^^^^^^^^^^^^^^
    |
-   = help: `#[naked]` can be applied to methods and functions
+   = help: `#[naked]` can be applied to functions and methods
 
 error[E0736]: attribute incompatible with `#[unsafe(naked)]`
   --> $DIR/naked-invalid-attr.rs:56:3

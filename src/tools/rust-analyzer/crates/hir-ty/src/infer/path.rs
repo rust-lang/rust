@@ -17,7 +17,10 @@ use crate::{
     generics::generics,
     infer::diagnostics::InferenceTyLoweringContext as TyLoweringContext,
     method_resolution::{self, VisibleFromModule},
-    next_solver::mapping::ChalkToNextSolver,
+    next_solver::{
+        DbInterner,
+        mapping::{ChalkToNextSolver, NextSolverToChalk},
+    },
     to_chalk_trait_id,
 };
 
@@ -36,7 +39,9 @@ impl<'db> InferenceContext<'db> {
 
         self.add_required_obligations_for_value_path(generic_def, &substs);
 
-        let ty = self.db.value_ty(value_def)?.substitute(Interner, &substs);
+        let interner = DbInterner::new_with(self.db, None, None);
+        let args: crate::next_solver::GenericArgs<'_> = substs.to_nextsolver(interner);
+        let ty = self.db.value_ty(value_def)?.instantiate(interner, args).to_chalk(interner);
         let ty = self.process_remote_user_written_ty(ty);
         Some(ty)
     }
@@ -69,8 +74,11 @@ impl<'db> InferenceContext<'db> {
             }
             ValueNs::ImplSelf(impl_id) => {
                 let generics = crate::generics::generics(self.db, impl_id.into());
+                let interner = DbInterner::new_with(self.db, None, None);
                 let substs = generics.placeholder_subst(self.db);
-                let ty = self.db.impl_self_ty(impl_id).substitute(Interner, &substs);
+                let args: crate::next_solver::GenericArgs<'_> = substs.to_nextsolver(interner);
+                let ty =
+                    self.db.impl_self_ty(impl_id).instantiate(interner, args).to_chalk(interner);
                 return if let Some((AdtId::StructId(struct_id), substs)) = ty.as_adt() {
                     Some(ValuePathResolution::GenericDef(
                         struct_id.into(),
@@ -89,9 +97,9 @@ impl<'db> InferenceContext<'db> {
 
         let generic_def = value_def.to_generic_def_id(self.db);
         if let GenericDefId::StaticId(_) = generic_def {
+            let interner = DbInterner::new_with(self.db, None, None);
             // `Static` is the kind of item that can never be generic currently. We can just skip the binders to get its type.
-            let (ty, binders) = self.db.value_ty(value_def)?.into_value_and_skipped_binders();
-            stdx::always!(binders.is_empty(Interner), "non-empty binders for non-generic def",);
+            let ty = self.db.value_ty(value_def)?.skip_binder().to_chalk(interner);
             return Some(ValuePathResolution::NonGeneric(ty));
         };
 
@@ -354,10 +362,13 @@ impl<'db> InferenceContext<'db> {
         };
         let substs = match container {
             ItemContainerId::ImplId(impl_id) => {
+                let interner = DbInterner::new_with(self.db, None, None);
                 let impl_substs = TyBuilder::subst_for_def(self.db, impl_id, None)
                     .fill_with_inference_vars(&mut self.table)
                     .build();
-                let impl_self_ty = self.db.impl_self_ty(impl_id).substitute(Interner, &impl_substs);
+                let args: crate::next_solver::GenericArgs<'_> = impl_substs.to_nextsolver(interner);
+                let impl_self_ty =
+                    self.db.impl_self_ty(impl_id).instantiate(interner, args).to_chalk(interner);
                 self.unify(&impl_self_ty, &ty);
                 impl_substs
             }

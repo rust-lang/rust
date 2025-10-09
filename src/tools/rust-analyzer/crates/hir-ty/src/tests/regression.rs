@@ -632,7 +632,7 @@ fn issue_4053_diesel_where_clauses() {
             488..522 '{     ...     }': <SelectStatement<F, S, D, W, O, LOf, {unknown}, {unknown}> as BoxedDsl<DB>>::Output
             498..502 'self': SelectStatement<F, S, D, W, O, LOf, {unknown}, {unknown}>
             498..508 'self.order': O
-            498..515 'self.o...into()': dyn QueryFragment<DB> + '?
+            498..515 'self.o...into()': dyn QueryFragment<DB> + 'static
         "#]],
     );
 }
@@ -1951,7 +1951,7 @@ fn main() {
     Alias::Braced;
   //^^^^^^^^^^^^^ {unknown}
     let Alias::Braced = loop {};
-      //^^^^^^^^^^^^^ {unknown}
+      //^^^^^^^^^^^^^ !
   let Alias::Braced(..) = loop {};
     //^^^^^^^^^^^^^^^^^ Enum
 

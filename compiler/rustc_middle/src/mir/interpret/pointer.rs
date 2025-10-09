@@ -167,7 +167,7 @@ impl CtfeProvenance {
 }
 
 impl Provenance for CtfeProvenance {
-    // With the `AllocId` as provenance, the `offset` is interpreted *relative to the allocation*,
+    // With the `CtfeProvenance` as provenance, the `offset` is interpreted *relative to the allocation*,
     // so ptr-to-int casts are not possible (since we do not know the global physical offset).
     const OFFSET_IS_ADDR: bool = false;
 

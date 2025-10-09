@@ -2664,7 +2664,7 @@ impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         let name = &mut self.name;
         let region = match r.kind() {
-            ty::ReBound(db, br) if db >= self.current_index => {
+            ty::ReBound(ty::BoundVarIndexKind::Bound(db), br) if db >= self.current_index => {
                 *self.region_map.entry(br).or_insert_with(|| name(Some(db), self.current_index, br))
             }
             ty::RePlaceholder(ty::PlaceholderRegion {
@@ -2687,7 +2687,7 @@ impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
             }
             _ => return r,
         };
-        if let ty::ReBound(debruijn1, br) = region.kind() {
+        if let ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn1), br) = region.kind() {
             assert_eq!(debruijn1, ty::INNERMOST);
             ty::Region::new_bound(self.tcx, self.current_index, br)
         } else {

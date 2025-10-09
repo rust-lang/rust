@@ -371,7 +371,7 @@ fn impl_intersection_has_impossible_obligation<'a, 'cx, 'tcx>(
 
         let ocx = ObligationCtxt::new(infcx);
         ocx.register_obligations(obligations.iter().cloned());
-        let hard_errors = ocx.select_where_possible();
+        let hard_errors = ocx.try_evaluate_obligations();
         if !hard_errors.is_empty() {
             assert!(
                 hard_errors.iter().all(|e| e.is_true_error()),
@@ -386,7 +386,7 @@ fn impl_intersection_has_impossible_obligation<'a, 'cx, 'tcx>(
         let ambiguities = ocx.into_pending_obligations();
         let ocx = ObligationCtxt::new_with_diagnostics(infcx);
         ocx.register_obligations(ambiguities);
-        let errors_and_ambiguities = ocx.select_all_or_error();
+        let errors_and_ambiguities = ocx.evaluate_obligations_error_on_ambiguity();
         // We only care about the obligations that are *definitely* true errors.
         // Ambiguities do not prove the disjointness of two impls.
         let (errors, ambiguities): (Vec<_>, Vec<_>) =
@@ -623,7 +623,7 @@ fn try_prove_negated_where_clause<'tcx>(
         param_env,
         negative_predicate,
     ));
-    if !ocx.select_all_or_error().is_empty() {
+    if !ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
         return false;
     }
 
@@ -743,7 +743,7 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
                 ty = ocx
                     .structurally_normalize_ty(&ObligationCause::dummy(), param_env, ty)
                     .map_err(|_| ())?;
-                if !ocx.select_where_possible().is_empty() {
+                if !ocx.try_evaluate_obligations().is_empty() {
                     return Err(());
                 }
             }

@@ -71,16 +71,23 @@ pub enum OperandValue<V> {
 }
 
 impl<V: CodegenObject> OperandValue<V> {
+    /// Return the data pointer and optional metadata as backend values
+    /// if this value can be treat as a pointer.
+    pub(crate) fn try_pointer_parts(self) -> Option<(V, Option<V>)> {
+        match self {
+            OperandValue::Immediate(llptr) => Some((llptr, None)),
+            OperandValue::Pair(llptr, llextra) => Some((llptr, Some(llextra))),
+            OperandValue::Ref(_) | OperandValue::ZeroSized => None,
+        }
+    }
+
     /// Treat this value as a pointer and return the data pointer and
     /// optional metadata as backend values.
     ///
     /// If you're making a place, use [`Self::deref`] instead.
     pub(crate) fn pointer_parts(self) -> (V, Option<V>) {
-        match self {
-            OperandValue::Immediate(llptr) => (llptr, None),
-            OperandValue::Pair(llptr, llextra) => (llptr, Some(llextra)),
-            _ => bug!("OperandValue cannot be a pointer: {self:?}"),
-        }
+        self.try_pointer_parts()
+            .unwrap_or_else(|| bug!("OperandValue cannot be a pointer: {self:?}"))
     }
 
     /// Treat this value as a pointer and return the place to which it points.
@@ -954,11 +961,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 abi::Variants::Single { index: vidx },
                             );
                             let layout = o.layout.for_variant(bx.cx(), vidx);
-                            o = OperandRef { val: o.val, layout }
-                        }
-                        mir::PlaceElem::Subtype(subtype_ty) => {
-                            let subtype_ty = self.monomorphize(subtype_ty);
-                            let layout = self.cx.layout_of(subtype_ty);
                             o = OperandRef { val: o.val, layout }
                         }
                         _ => return None,

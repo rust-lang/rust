@@ -37,12 +37,11 @@ use crate::common::{AsCCharPtr, CodegenCx};
 use crate::debuginfo::dwarf_const;
 use crate::debuginfo::metadata::type_map::build_type_with_children;
 use crate::debuginfo::utils::{WidePtrKind, wide_pointer_kind};
-use crate::llvm;
 use crate::llvm::debuginfo::{
     DIBasicType, DIBuilder, DICompositeType, DIDescriptor, DIFile, DIFlags, DILexicalBlock,
     DIScope, DIType, DebugEmissionKind, DebugNameTableKind,
 };
-use crate::value::Value;
+use crate::llvm::{self, FromGeneric, Value};
 
 impl PartialEq for llvm::Metadata {
     fn eq(&self, other: &Self) -> bool {
@@ -1607,17 +1606,11 @@ pub(crate) fn apply_vcall_visibility_metadata<'ll, 'tcx>(
     let trait_ref_typeid = typeid_for_trait_ref(cx.tcx, trait_ref);
     let typeid = cx.create_metadata(trait_ref_typeid.as_bytes());
 
-    unsafe {
-        let v = [llvm::LLVMValueAsMetadata(cx.const_usize(0)), typeid];
-        llvm::LLVMRustGlobalAddMetadata(
-            vtable,
-            llvm::MD_type,
-            llvm::LLVMMDNodeInContext2(cx.llcx, v.as_ptr(), v.len()),
-        );
-        let vcall_visibility = llvm::LLVMValueAsMetadata(cx.const_u64(vcall_visibility as u64));
-        let vcall_visibility_metadata = llvm::LLVMMDNodeInContext2(cx.llcx, &vcall_visibility, 1);
-        llvm::LLVMGlobalSetMetadata(vtable, llvm::MD_vcall_visibility, vcall_visibility_metadata);
-    }
+    let type_ = [llvm::LLVMValueAsMetadata(cx.const_usize(0)), typeid];
+    cx.global_add_metadata_node(vtable, llvm::MD_type, &type_);
+
+    let vcall_visibility = [llvm::LLVMValueAsMetadata(cx.const_u64(vcall_visibility as u64))];
+    cx.global_set_metadata_node(vtable, llvm::MD_vcall_visibility, &vcall_visibility);
 }
 
 /// Creates debug information for the given vtable, which is for the

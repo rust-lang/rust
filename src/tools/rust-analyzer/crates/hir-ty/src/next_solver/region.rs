@@ -15,7 +15,7 @@ use super::{
     interner::{BoundVarKind, DbInterner, Placeholder},
 };
 
-type RegionKind<'db> = rustc_type_ir::RegionKind<DbInterner<'db>>;
+pub type RegionKind<'db> = rustc_type_ir::RegionKind<DbInterner<'db>>;
 
 #[salsa::interned(constructor = new_, debug)]
 pub struct Region<'db> {
@@ -53,12 +53,20 @@ impl<'db> Region<'db> {
         Region::new(interner, RegionKind::ReVar(v))
     }
 
+    pub fn new_erased(interner: DbInterner<'db>) -> Region<'db> {
+        Region::new(interner, RegionKind::ReErased)
+    }
+
     pub fn is_placeholder(&self) -> bool {
         matches!(self.inner(), RegionKind::RePlaceholder(..))
     }
 
     pub fn is_static(&self) -> bool {
         matches!(self.inner(), RegionKind::ReStatic)
+    }
+
+    pub fn is_var(&self) -> bool {
+        matches!(self.inner(), RegionKind::ReVar(_))
     }
 
     pub fn error(interner: DbInterner<'db>) -> Self {

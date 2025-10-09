@@ -267,6 +267,8 @@ config_data! {
         inlayHints_lifetimeElisionHints_useParameterNames: bool = false,
 
         /// Maximum length for inlay hints. Set to null to have an unlimited length.
+        ///
+        /// **Note:** This is mostly a hint, and we don't guarantee to strictly follow the limit.
         inlayHints_maxLength: Option<usize> = Some(25),
 
         /// Show function parameter name inlay hints at the call site.

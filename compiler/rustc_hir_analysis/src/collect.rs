@@ -1267,7 +1267,7 @@ pub fn suggest_impl_trait<'tcx>(
                 Ty::new_projection_from_args(infcx.tcx, assoc_item_def_id, args),
             );
             // FIXME(compiler-errors): We may benefit from resolving regions here.
-            if ocx.select_where_possible().is_empty()
+            if ocx.try_evaluate_obligations().is_empty()
                 && let item_ty = infcx.resolve_vars_if_possible(item_ty)
                 && let Some(item_ty) = item_ty.make_suggestable(infcx.tcx, false, None)
                 && let Some(sugg) = formatter(

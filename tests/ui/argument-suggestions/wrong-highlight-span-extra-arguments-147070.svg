@@ -1,0 +1,72 @@
+<svg width="970px" height="434px" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .fg { fill: #AAAAAA }
+    .bg { fill: #000000 }
+    .fg-ansi256-009 { fill: #FF5555 }
+    .fg-ansi256-010 { fill: #55FF55 }
+    .fg-ansi256-012 { fill: #5555FF }
+    .fg-ansi256-014 { fill: #55FFFF }
+    .container {
+      padding: 0 10px;
+      line-height: 18px;
+    }
+    .bold { font-weight: bold; }
+    tspan {
+      font: 14px SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace;
+      white-space: pre;
+      line-height: 18px;
+    }
+  </style>
+
+  <rect width="100%" height="100%" y="0" rx="4.5" class="bg" />
+
+  <text xml:space="preserve" class="container fg">
+    <tspan x="10px" y="28px"><tspan class="fg-ansi256-009 bold">error[E0061]</tspan><tspan class="bold">: this function takes 6 arguments but 7 arguments were supplied</tspan>
+</tspan>
+    <tspan x="10px" y="46px"><tspan>  </tspan><tspan class="fg-ansi256-012 bold">--&gt; </tspan><tspan>$DIR/wrong-highlight-span-extra-arguments-147070.rs:21:15</tspan>
+</tspan>
+    <tspan x="10px" y="64px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="82px"><tspan class="fg-ansi256-012 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan>     let foo = Thingie::new(</tspan>
+</tspan>
+    <tspan x="10px" y="100px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan>               </tspan><tspan class="fg-ansi256-009 bold">^^^^^^^^^^^^</tspan>
+</tspan>
+    <tspan x="10px" y="118px"><tspan class="fg-ansi256-012 bold">...</tspan>
+</tspan>
+    <tspan x="10px" y="136px"><tspan class="fg-ansi256-012 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan>         String::from(""),</tspan>
+</tspan>
+    <tspan x="10px" y="154px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan>         </tspan><tspan class="fg-ansi256-012 bold">----------------</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">unexpected argument #7 of type `String`</tspan>
+</tspan>
+    <tspan x="10px" y="172px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="190px"><tspan class="fg-ansi256-010 bold">note</tspan><tspan>: associated function defined here</tspan>
+</tspan>
+    <tspan x="10px" y="208px"><tspan>  </tspan><tspan class="fg-ansi256-012 bold">--&gt; </tspan><tspan>$DIR/wrong-highlight-span-extra-arguments-147070.rs:8:19</tspan>
+</tspan>
+    <tspan x="10px" y="226px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="244px"><tspan class="fg-ansi256-012 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan>     pub(crate) fn new(</tspan>
+</tspan>
+    <tspan x="10px" y="262px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan>                   </tspan><tspan class="fg-ansi256-010 bold">^^^</tspan>
+</tspan>
+    <tspan x="10px" y="280px"><tspan class="fg-ansi256-014 bold">help</tspan><tspan>: remove the extra argument</tspan>
+</tspan>
+    <tspan x="10px" y="298px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="316px"><tspan class="fg-ansi256-012 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-009">-         String::from(""),</tspan>
+</tspan>
+    <tspan x="10px" y="334px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan>
+</tspan>
+    <tspan x="10px" y="352px">
+</tspan>
+    <tspan x="10px" y="370px"><tspan class="fg-ansi256-009 bold">error</tspan><tspan class="bold">: aborting due to 1 previous error</tspan>
+</tspan>
+    <tspan x="10px" y="388px">
+</tspan>
+    <tspan x="10px" y="406px"><tspan class="bold">For more information about this error, try `rustc --explain E0061`.</tspan>
+</tspan>
+    <tspan x="10px" y="424px">
+</tspan>
+  </text>
+
+</svg>

@@ -411,7 +411,7 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
             if let StatementKind::StorageLive(l) | StatementKind::StorageDead(l) = s.kind
                 && self.remap.contains(l)
             {
-                s.make_nop();
+                s.make_nop(true);
             }
         }
 
@@ -1429,7 +1429,7 @@ fn check_field_tys_sized<'tcx>(
         );
     }
 
-    let errors = ocx.select_all_or_error();
+    let errors = ocx.evaluate_obligations_error_on_ambiguity();
     debug!(?errors);
     if !errors.is_empty() {
         infcx.err_ctxt().report_fulfillment_errors(errors);

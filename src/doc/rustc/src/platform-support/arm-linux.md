@@ -14,8 +14,8 @@ Linux (but not Android). Those targets are:
 * [`armv5te-unknown-linux-gnueabi`](armv5te-unknown-linux-gnueabi.md)
 * `armv5te-unknown-linux-musleabi`
 * `armv5te-unknown-linux-uclibceabi`
-* `armv7-unknown-linux-gnueabi`
-* `armv7-unknown-linux-gnueabihf`
+* [`armv7-unknown-linux-gnueabi`](armv7-unknown-linux-gnueabi.md)
+* [`armv7-unknown-linux-gnueabihf`](armv7-unknown-linux-gnueabi.md)
 * `armv7-unknown-linux-musleabi`
 * `armv7-unknown-linux-musleabihf`
 * `armv7-unknown-linux-ohos`

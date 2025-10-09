@@ -440,7 +440,7 @@ pub(crate) fn hover_for_definition(
         Definition::Local(it) => Some(it.ty(db)),
         Definition::GenericParam(hir::GenericParam::ConstParam(it)) => Some(it.ty(db)),
         Definition::GenericParam(hir::GenericParam::TypeParam(it)) => Some(it.ty(db)),
-        Definition::Field(field) => Some(field.ty(db)),
+        Definition::Field(field) => Some(field.ty(db).to_type(db)),
         Definition::TupleField(it) => Some(it.ty(db)),
         Definition::Function(it) => Some(it.ty(db)),
         Definition::Adt(it) => Some(it.ty(db)),
@@ -602,7 +602,7 @@ fn goto_type_action_for_def(
 
     let ty = match def {
         Definition::Local(it) => Some(it.ty(db)),
-        Definition::Field(field) => Some(field.ty(db)),
+        Definition::Field(field) => Some(field.ty(db).to_type(db)),
         Definition::TupleField(field) => Some(field.ty(db)),
         Definition::Const(it) => Some(it.ty(db)),
         Definition::Static(it) => Some(it.ty(db)),

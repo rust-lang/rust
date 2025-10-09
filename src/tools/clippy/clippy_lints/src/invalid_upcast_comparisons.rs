@@ -101,7 +101,7 @@ fn upcast_comparison_bounds_err<'tcx>(
     invert: bool,
 ) {
     if let Some((lb, ub)) = lhs_bounds
-        && let Some(norm_rhs_val) = ConstEvalCtxt::new(cx).eval_full_int(rhs)
+        && let Some(norm_rhs_val) = ConstEvalCtxt::new(cx).eval_full_int(rhs, span.ctxt())
     {
         if rel == Rel::Eq || rel == Rel::Ne {
             if norm_rhs_val < lb || norm_rhs_val > ub {

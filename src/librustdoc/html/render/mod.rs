@@ -36,7 +36,7 @@ mod ordered_json;
 mod print_item;
 pub(crate) mod sidebar;
 mod sorted_template;
-mod span_map;
+pub(crate) mod span_map;
 mod type_layout;
 mod write_shared;
 
@@ -134,6 +134,8 @@ pub(crate) struct IndexItem {
     pub(crate) desc: String,
     pub(crate) parent: Option<DefId>,
     pub(crate) parent_idx: Option<usize>,
+    pub(crate) trait_parent: Option<DefId>,
+    pub(crate) trait_parent_idx: Option<usize>,
     pub(crate) exact_module_path: Option<Vec<Symbol>>,
     pub(crate) impl_id: Option<DefId>,
     pub(crate) search_type: Option<IndexItemFunctionType>,
@@ -142,7 +144,7 @@ pub(crate) struct IndexItem {
 }
 
 /// A type used for the search index.
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 struct RenderType {
     id: Option<RenderTypeId>,
     generics: Option<Vec<RenderType>>,
@@ -299,7 +301,7 @@ impl RenderTypeId {
 }
 
 /// Full type of functions/methods in the search index.
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct IndexItemFunctionType {
     inputs: Vec<RenderType>,
     output: Vec<RenderType>,

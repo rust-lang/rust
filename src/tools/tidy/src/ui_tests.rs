@@ -81,21 +81,20 @@ fn deny_new_top_level_ui_tests(check: &mut RunningCheck, tests_path: &Path) {
     // - <https://github.com/rust-lang/rust/issues/73494>
     // - <https://github.com/rust-lang/rust/issues/133895>
 
-    let top_level_ui_tests = walkdir::WalkDir::new(tests_path)
-        .min_depth(1)
-        .max_depth(1)
+    let top_level_ui_tests = ignore::WalkBuilder::new(tests_path)
+        .max_depth(Some(1))
         .follow_links(false)
-        .same_file_system(true)
-        .into_iter()
+        .build()
         .flatten()
         .filter(|e| {
             let file_name = e.file_name();
             file_name != ".gitattributes" && file_name != "README.md"
         })
-        .filter(|e| !e.file_type().is_dir());
+        .filter(|e| !e.file_type().is_some_and(|f| f.is_dir()));
+
     for entry in top_level_ui_tests {
         check.error(format!(
-            "ui tests should be added under meaningful subdirectories: `{}`",
+            "ui tests should be added under meaningful subdirectories: `{}`, see https://github.com/rust-lang/compiler-team/issues/902",
             entry.path().display()
         ));
     }

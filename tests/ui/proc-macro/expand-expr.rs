@@ -1,6 +1,6 @@
 //@ proc-macro: expand-expr.rs
 //@ ignore-backends: gcc
-// no-remap-src-base: check_expand_expr_file!() fails when enabled.
+// No `remap-src-base`, since `check_expand_expr_file!()` fails when enabled.
 
 #![feature(concat_bytes)]
 extern crate expand_expr;

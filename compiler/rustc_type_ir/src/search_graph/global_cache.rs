@@ -56,13 +56,13 @@ impl<X: Cx> GlobalCache<X> {
             let with_overflow = WithOverflow { nested_goals, result };
             let prev = entry.with_overflow.insert(required_depth, with_overflow);
             if let Some(prev) = &prev {
-                assert!(cx.evaluation_is_concurrent());
+                cx.assert_evaluation_is_concurrent();
                 assert_eq!(cx.get_tracked(&prev.result), evaluation_result.result);
             }
         } else {
             let prev = entry.success.replace(Success { required_depth, nested_goals, result });
             if let Some(prev) = &prev {
-                assert!(cx.evaluation_is_concurrent());
+                cx.assert_evaluation_is_concurrent();
                 assert_eq!(cx.get_tracked(&prev.result), evaluation_result.result);
             }
         }

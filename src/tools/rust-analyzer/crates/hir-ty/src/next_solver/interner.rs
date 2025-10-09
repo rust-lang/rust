@@ -1091,23 +1091,21 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
                     ItemContainerId::ImplId(it) => it,
                     _ => panic!("assoc ty value should be in impl"),
                 };
-                self.db().ty_ns(id.into())
+                self.db().ty(id.into())
             }
-            SolverDefId::AdtId(id) => self.db().ty_ns(id.into()),
+            SolverDefId::AdtId(id) => self.db().ty(id.into()),
             // FIXME(next-solver): This uses the types of `query mir_borrowck` in rustc.
             //
             // We currently always use the type from HIR typeck which ignores regions. This
             // should be fine.
             SolverDefId::InternedOpaqueTyId(_) => self.type_of_opaque_hir_typeck(def_id),
-            SolverDefId::FunctionId(id) => self.db.value_ty_ns(id.into()).unwrap(),
+            SolverDefId::FunctionId(id) => self.db.value_ty(id.into()).unwrap(),
             SolverDefId::Ctor(id) => {
                 let id = match id {
                     Ctor::Struct(id) => id.into(),
                     Ctor::Enum(id) => id.into(),
                 };
-                self.db
-                    .value_ty_ns(id)
-                    .expect("`SolverDefId::Ctor` should have a function-like ctor")
+                self.db.value_ty(id).expect("`SolverDefId::Ctor` should have a function-like ctor")
             }
             _ => panic!("Unexpected def_id `{def_id:?}` provided for `type_of`"),
         }
@@ -1227,7 +1225,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
         self,
         def_id: Self::FunctionId,
     ) -> EarlyBinder<Self, rustc_type_ir::Binder<Self, rustc_type_ir::FnSig<Self>>> {
-        self.db().callable_item_signature_ns(def_id.0)
+        self.db().callable_item_signature(def_id.0)
     }
 
     fn coroutine_movability(self, def_id: Self::CoroutineId) -> rustc_ast_ir::Movability {
@@ -1322,7 +1320,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
         self,
         def_id: Self::DefId,
     ) -> EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>> {
-        let predicates = self.db().generic_predicates_without_parent_ns(def_id.try_into().unwrap());
+        let predicates = self.db().generic_predicates_without_parent(def_id.try_into().unwrap());
         let predicates: Vec<_> = predicates.iter().cloned().collect();
         EarlyBinder::bind(predicates.into_iter())
     }
@@ -1396,7 +1394,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
         self,
         impl_id: Self::ImplId,
     ) -> EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>> {
-        let trait_ref = self.db().impl_trait_ns(impl_id.0).expect("expected an impl of trait");
+        let trait_ref = self.db().impl_trait(impl_id.0).expect("expected an impl of trait");
         trait_ref.map_bound(|trait_ref| {
             let clause: Clause<'_> = trait_ref.upcast(self);
             Clauses::new_from_iter(
@@ -1635,7 +1633,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
                 |impls| {
                     for i in impls.for_trait(trait_) {
                         use rustc_type_ir::TypeVisitable;
-                        let contains_errors = self.db().impl_trait_ns(i).map_or(false, |b| {
+                        let contains_errors = self.db().impl_trait(i).map_or(false, |b| {
                             b.skip_binder().visit_with(&mut ContainsTypeErrors).is_break()
                         });
                         if contains_errors {
@@ -1658,7 +1656,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
                     for fp in fps {
                         for i in impls.for_trait_and_self_ty(trait_, *fp) {
                             use rustc_type_ir::TypeVisitable;
-                            let contains_errors = self.db().impl_trait_ns(i).map_or(false, |b| {
+                            let contains_errors = self.db().impl_trait(i).map_or(false, |b| {
                                 b.skip_binder().visit_with(&mut ContainsTypeErrors).is_break()
                             });
                             if contains_errors {
@@ -1704,7 +1702,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
         impl_id: Self::ImplId,
     ) -> EarlyBinder<Self, rustc_type_ir::TraitRef<Self>> {
         let db = self.db();
-        db.impl_trait_ns(impl_id.0)
+        db.impl_trait(impl_id.0)
             // ImplIds for impls where the trait ref can't be resolved should never reach trait solving
             .expect("invalid impl passed to trait solver")
     }

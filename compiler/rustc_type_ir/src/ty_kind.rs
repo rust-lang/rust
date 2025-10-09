@@ -15,7 +15,7 @@ pub use self::closure::*;
 use crate::inherent::*;
 #[cfg(feature = "nightly")]
 use crate::visit::TypeVisitable;
-use crate::{self as ty, DebruijnIndex, FloatTy, IntTy, Interner, UintTy};
+use crate::{self as ty, BoundVarIndexKind, FloatTy, IntTy, Interner, UintTy};
 
 mod closure;
 
@@ -229,7 +229,7 @@ pub enum TyKind<I: Interner> {
     ///
     /// [1]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
     /// [2]: https://rustc-dev-guide.rust-lang.org/traits/canonical-queries.html
-    Bound(DebruijnIndex, I::BoundTy),
+    Bound(BoundVarIndexKind, I::BoundTy),
 
     /// A placeholder type, used during higher ranked subtyping to instantiate
     /// bound variables.
