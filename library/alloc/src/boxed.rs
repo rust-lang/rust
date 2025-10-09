@@ -2058,7 +2058,7 @@ unsafe impl<T: ?Sized, A: Allocator> PinCoerceUnsized for Box<T, A> {}
 // Handling arbitrary custom allocators (which can affect the `Box` layout heavily!)
 // would need a lot of codegen and interpreter adjustments.
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
-impl<T: ?Sized + Unsize<U> + ?core::marker::Move, U: ?Sized + ?core::marker::Move>
+impl<T: ?Sized + Unsize<U> + ?core::marker::Forget, U: ?Sized + ?core::marker::Forget>
     DispatchFromDyn<Box<U>> for Box<T, Global>
 {
 }
@@ -2163,6 +2163,3 @@ impl<E: Error> Error for Box<E> {
         Error::provide(&**self, request);
     }
 }
-
-#[unstable(feature = "move_trait", issue = "none")]
-unsafe impl<T: ?Sized + ?core::marker::Move, A: Allocator> core::marker::Move for Box<T, A> {}

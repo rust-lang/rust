@@ -236,7 +236,7 @@ pub trait PointeeSized {
 #[lang = "unsize"]
 #[rustc_deny_explicit_impl]
 #[rustc_do_not_implement_via_object]
-pub trait Unsize<T: PointeeSized + ?crate::marker::Move>: PointeeSized {
+pub trait Unsize<T: PointeeSized + ?crate::marker::Forget>: PointeeSized {
     // Empty.
 }
 
@@ -819,7 +819,7 @@ impl<T: PointeeSized> !Sync for *mut T {}
 /// [drop check]: Drop#drop-check
 #[lang = "phantom_data"]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct PhantomData<T: PointeeSized + ?crate::marker::Move>;
+pub struct PhantomData<T: PointeeSized + ?crate::marker::Forget>;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PointeeSized> Hash for PhantomData<T> {
@@ -913,7 +913,7 @@ pub trait DiscriminantKind {
 pub unsafe auto trait Freeze {}
 
 #[unstable(feature = "freeze", issue = "121675")]
-impl<T: PointeeSized + ?crate::marker::Move> !Freeze for UnsafeCell<T> {}
+impl<T: PointeeSized + ?crate::marker::Forget> !Freeze for UnsafeCell<T> {}
 marker_impls! {
     #[unstable(feature = "freeze", issue = "121675")]
     unsafe Freeze for
@@ -933,7 +933,7 @@ marker_impls! {
 #[lang = "unsafe_unpin"]
 pub(crate) unsafe auto trait UnsafeUnpin {}
 
-impl<T: ?Sized + ?crate::marker::Move> !UnsafeUnpin for UnsafePinned<T> {}
+impl<T: ?Sized + ?crate::marker::Forget> !UnsafeUnpin for UnsafePinned<T> {}
 unsafe impl<T: ?Sized> UnsafeUnpin for PhantomData<T> {}
 unsafe impl<T: ?Sized> UnsafeUnpin for *const T {}
 unsafe impl<T: ?Sized> UnsafeUnpin for *mut T {}
@@ -1346,16 +1346,15 @@ pub trait CoercePointeeValidated {
 /// `move`d.
 #[lang = "default_trait1"]
 #[rustc_unsafe_specialization_marker]
-#[unstable(feature = "move_trait", issue = "none")]
-pub unsafe auto trait Move {
+#[unstable(feature = "forget_trait", issue = "none")]
+pub unsafe auto trait Forget {
     // empty.
 }
 marker_impls! {
-    #[unstable(feature = "move_trait", issue = "none")]
-    unsafe Move for
-        {T: ?Sized + PointeeSized + ?Move} *const T,
-        {T: ?Sized + PointeeSized + ?Move} *mut T,
-        {T: ?Sized + PointeeSized + ?Move} &T,
-        {T: ?Sized + PointeeSized + ?Move} &mut T,
-        {T: ?Sized + PointeeSized + ?Move} PhantomData<T>,
+    #[unstable(feature = "forget_trait", issue = "none")]
+    unsafe Forget for
+        {T: ?Sized + ?Forget} *const T,
+        {T: ?Sized + ?Forget} *mut T,
+        {T: ?Sized + ?Forget} &T,
+        {T: ?Sized + ?Forget} &mut T,
 }

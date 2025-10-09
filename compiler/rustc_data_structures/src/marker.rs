@@ -1,6 +1,6 @@
 use std::alloc::Allocator;
 #[cfg(not(bootstrap))]
-use std::marker::Move;
+use std::marker::Forget;
 use std::marker::PointeeSized;
 
 #[diagnostic::on_unimplemented(message = "`{Self}` doesn't implement `DynSend`. \
@@ -47,14 +47,14 @@ impls_dyn_send_neg!(
 impls_dyn_send_neg!(
     [std::env::Args]
     [std::env::ArgsOs]
-    [*const T where T: ?Sized + ?Move + PointeeSized]
-    [*mut T where T: ?Sized + ?Move + PointeeSized]
-    [std::ptr::NonNull<T> where T: ?Sized + ?Move + PointeeSized]
-    [std::rc::Rc<T, A> where T: ?Sized + ?Move, A: Allocator]
-    [std::rc::Weak<T, A> where T: ?Sized + ?Move, A: Allocator]
-    [std::sync::MutexGuard<'_, T> where T: ?Sized + ?Move]
-    [std::sync::RwLockReadGuard<'_, T> where T: ?Sized + ?Move]
-    [std::sync::RwLockWriteGuard<'_, T> where T: ?Sized + ?Move]
+    [*const T where T: ?Sized + ?Forget + PointeeSized]
+    [*mut T where T: ?Sized + ?Forget + PointeeSized]
+    [std::ptr::NonNull<T> where T: ?Sized + ?Forget + PointeeSized]
+    [std::rc::Rc<T, A> where T: ?Sized + ?Forget, A: Allocator]
+    [std::rc::Weak<T, A> where T: ?Sized + ?Forget, A: Allocator]
+    [std::sync::MutexGuard<'_, T> where T: ?Sized + ?Forget]
+    [std::sync::RwLockReadGuard<'_, T> where T: ?Sized + ?Forget]
+    [std::sync::RwLockWriteGuard<'_, T> where T: ?Sized + ?Forget]
     [std::io::StdoutLock<'_>]
     [std::io::StderrLock<'_>]
 );
@@ -138,14 +138,14 @@ impls_dyn_sync_neg!(
 impls_dyn_sync_neg!(
     [std::env::Args]
     [std::env::ArgsOs]
-    [*const T where T: ?Sized + ?Move + PointeeSized]
-    [*mut T where T: ?Sized + ?Move  + PointeeSized]
-    [std::cell::Cell<T> where T: ?Sized + ?Move ]
-    [std::cell::RefCell<T> where T: ?Sized + ?Move ]
-    [std::cell::UnsafeCell<T> where T: ?Sized + ?Move ]
-    [std::ptr::NonNull<T> where T: ?Sized + ?Move  + PointeeSized]
-    [std::rc::Rc<T, A> where T: ?Sized + ?Move , A: Allocator]
-    [std::rc::Weak<T, A> where T: ?Sized + ?Move , A: Allocator]
+    [*const T where T: ?Sized + ?Forget + PointeeSized]
+    [*mut T where T: ?Sized + ?Forget  + PointeeSized]
+    [std::cell::Cell<T> where T: ?Sized + ?Forget ]
+    [std::cell::RefCell<T> where T: ?Sized + ?Forget ]
+    [std::cell::UnsafeCell<T> where T: ?Sized + ?Forget ]
+    [std::ptr::NonNull<T> where T: ?Sized + ?Forget  + PointeeSized]
+    [std::rc::Rc<T, A> where T: ?Sized + ?Forget , A: Allocator]
+    [std::rc::Weak<T, A> where T: ?Sized + ?Forget , A: Allocator]
     [std::cell::OnceCell<T> where T]
     [std::sync::mpsc::Receiver<T> where T]
     [std::sync::mpsc::Sender<T> where T]

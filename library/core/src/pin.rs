@@ -1091,7 +1091,7 @@ pub use self::unsafe_pinned::UnsafePinned;
 #[repr(transparent)]
 #[rustc_pub_transparent]
 #[derive(Copy, Clone)]
-pub struct Pin<Ptr: ?crate::marker::Move> {
+pub struct Pin<Ptr: ?crate::marker::Forget> {
     pointer: Ptr,
 }
 
@@ -1821,7 +1821,7 @@ where
 impl<Ptr, U> DispatchFromDyn<Pin<U>> for Pin<Ptr>
 where
     Ptr: DispatchFromDyn<U> + PinCoerceUnsized,
-    U: PinCoerceUnsized + ?crate::marker::Move,
+    U: PinCoerceUnsized + ?crate::marker::Forget,
 {
 }
 

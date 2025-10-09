@@ -1,5 +1,5 @@
 use crate::fmt;
-use crate::marker::{Move, PhantomData, PointeeSized, Unsize};
+use crate::marker::{Forget, PhantomData, PointeeSized, Unsize};
 use crate::ops::{CoerceUnsized, DispatchFromDyn};
 use crate::pin::PinCoerceUnsized;
 use crate::ptr::NonNull;
@@ -32,7 +32,7 @@ use crate::ptr::NonNull;
 )]
 #[doc(hidden)]
 #[repr(transparent)]
-pub struct Unique<T: PointeeSized + ?Move> {
+pub struct Unique<T: PointeeSized + ?Forget> {
     pointer: NonNull<T>,
     // NOTE: this marker has no consequences for variance, but is necessary
     // for dropck to understand that we logically own a `T`.
@@ -169,7 +169,7 @@ impl<T: PointeeSized> Copy for Unique<T> {}
 impl<T: PointeeSized, U: PointeeSized> CoerceUnsized<Unique<U>> for Unique<T> where T: Unsize<U> {}
 
 #[unstable(feature = "ptr_internals", issue = "none")]
-impl<T: PointeeSized, U: PointeeSized + ?Move> DispatchFromDyn<Unique<U>> for Unique<T> where
+impl<T: PointeeSized, U: PointeeSized + ?Forget> DispatchFromDyn<Unique<U>> for Unique<T> where
     T: Unsize<U>
 {
 }

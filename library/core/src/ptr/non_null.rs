@@ -1,4 +1,4 @@
-use core::marker::Move;
+use core::marker::Forget;
 
 use crate::cmp::Ordering;
 use crate::marker::{Destruct, PointeeSized, Unsize};
@@ -74,7 +74,7 @@ use crate::{fmt, hash, intrinsics, mem, ptr};
 #[rustc_layout_scalar_valid_range_start(1)]
 #[rustc_nonnull_optimization_guaranteed]
 #[rustc_diagnostic_item = "NonNull"]
-pub struct NonNull<T: PointeeSized + ?crate::marker::Move> {
+pub struct NonNull<T: PointeeSized + ?crate::marker::Forget> {
     // Remember to use `.as_ptr()` instead of `.pointer`, as field projecting to
     // this is banned by <https://github.com/rust-lang/compiler-team/issues/807>.
     pointer: *const T,
@@ -83,12 +83,12 @@ pub struct NonNull<T: PointeeSized + ?crate::marker::Move> {
 /// `NonNull` pointers are not `Send` because the data they reference may be aliased.
 // N.B., this impl is unnecessary, but should provide better error messages.
 #[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: PointeeSized + ?crate::marker::Move> !Send for NonNull<T> {}
+impl<T: PointeeSized + ?crate::marker::Forget> !Send for NonNull<T> {}
 
 /// `NonNull` pointers are not `Sync` because the data they reference may be aliased.
 // N.B., this impl is unnecessary, but should provide better error messages.
 #[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: PointeeSized + ?crate::marker::Move> !Sync for NonNull<T> {}
+impl<T: PointeeSized + ?crate::marker::Forget> !Sync for NonNull<T> {}
 
 impl<T: Sized> NonNull<T> {
     /// Creates a pointer with the given address and no [provenance][crate::ptr#provenance].
@@ -1659,7 +1659,7 @@ impl<T: PointeeSized> Copy for NonNull<T> {}
 impl<T: PointeeSized, U: PointeeSized> CoerceUnsized<NonNull<U>> for NonNull<T> where T: Unsize<U> {}
 
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
-impl<T: PointeeSized, U: PointeeSized + ?Move> DispatchFromDyn<NonNull<U>> for NonNull<T> where
+impl<T: PointeeSized, U: PointeeSized + ?Forget> DispatchFromDyn<NonNull<U>> for NonNull<T> where
     T: Unsize<U>
 {
 }
