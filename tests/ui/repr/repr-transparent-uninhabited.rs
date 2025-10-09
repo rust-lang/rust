@@ -15,9 +15,11 @@ pub struct T3(!, ());
 #[repr(transparent)]
 pub struct T5(Sized, Void);
 //~^ ERROR zero-sized fields in `repr(transparent)` cannot contain external non-exhaustive types
+//~| WARN this was previously accepted by the compiler
 
 #[repr(transparent)]
 pub struct T6(!, Sized);
 //~^ ERROR zero-sized fields in `repr(transparent)` cannot contain external non-exhaustive types
+//~| WARN this was previously accepted by the compiler
 
 fn main() {}

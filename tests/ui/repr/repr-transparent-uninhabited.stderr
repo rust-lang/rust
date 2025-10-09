@@ -4,14 +4,23 @@ error: zero-sized fields in `repr(transparent)` cannot contain external non-exha
 LL | pub struct T5(Sized, Void);
    |                      ^^^^
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #78586 <https://github.com/rust-lang/rust/issues/78586>
    = note: this field contains `Void`, which is not inhabited, and makes it not a breaking change to become non-zero-sized in the future.
+note: the lint level is defined here
+  --> $DIR/repr-transparent-uninhabited.rs:2:9
+   |
+LL | #![deny(repr_transparent_external_private_fields)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: zero-sized fields in `repr(transparent)` cannot contain external non-exhaustive types
-  --> $DIR/repr-transparent-uninhabited.rs:20:15
+  --> $DIR/repr-transparent-uninhabited.rs:21:15
    |
 LL | pub struct T6(!, Sized);
    |               ^
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #78586 <https://github.com/rust-lang/rust/issues/78586>
    = note: this field contains `!`, which is not inhabited, and makes it not a breaking change to become non-zero-sized in the future.
 
 error: aborting due to 2 previous errors
