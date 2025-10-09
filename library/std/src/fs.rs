@@ -458,6 +458,9 @@ pub fn set_times<P: AsRef<Path>>(path: P, times: FileTimes) -> io::Result<()> {
 /// }
 /// ```
 #[unstable(feature = "fs_set_times", issue = "147455")]
+#[doc(alias = "utimensat")]
+#[doc(alias = "lutimens")]
+#[doc(alias = "lutimes")]
 pub fn set_times_nofollow<P: AsRef<Path>>(path: P, times: FileTimes) -> io::Result<()> {
     fs_imp::set_times_nofollow(path.as_ref(), times.0)
 }
