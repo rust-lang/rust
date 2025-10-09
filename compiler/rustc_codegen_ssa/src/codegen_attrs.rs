@@ -19,7 +19,6 @@ use rustc_span::{Ident, Span, sym};
 use rustc_target::spec::SanitizerSet;
 
 use crate::errors;
-use crate::errors::NoMangleNameless;
 use crate::target_features::{
     check_target_feature_trait_unsafe, check_tied_features, from_target_feature_attr,
 };
@@ -182,14 +181,10 @@ fn process_builtin_attrs(
                     if tcx.opt_item_name(did.to_def_id()).is_some() {
                         codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE;
                     } else {
-                        tcx.dcx().emit_err(NoMangleNameless {
-                            span: *attr_span,
-                            definition: format!(
-                                "{} {}",
-                                tcx.def_descr_article(did.to_def_id()),
-                                tcx.def_descr(did.to_def_id())
-                            ),
-                        });
+                        tcx.dcx().span_delayed_bug(
+                            *attr_span,
+                            "no_mangle should be on a named function",
+                        );
                     }
                 }
                 AttributeKind::Optimize(optimize, _) => codegen_fn_attrs.optimize = *optimize,

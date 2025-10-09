@@ -31,7 +31,9 @@ impl AllowedTargets {
     pub(crate) fn is_allowed(&self, target: Target) -> AllowedResult {
         match self {
             AllowedTargets::AllowList(list) => {
-                if list.contains(&Policy::Allow(target)) {
+                if list.contains(&Policy::Allow(target))
+                    || list.contains(&Policy::AllowSilent(target))
+                {
                     AllowedResult::Allowed
                 } else if list.contains(&Policy::Warn(target)) {
                     AllowedResult::Warn
@@ -40,7 +42,9 @@ impl AllowedTargets {
                 }
             }
             AllowedTargets::AllowListWarnRest(list) => {
-                if list.contains(&Policy::Allow(target)) {
+                if list.contains(&Policy::Allow(target))
+                    || list.contains(&Policy::AllowSilent(target))
+                {
                     AllowedResult::Allowed
                 } else if list.contains(&Policy::Error(target)) {
                     AllowedResult::Error
@@ -61,6 +65,7 @@ impl AllowedTargets {
         .iter()
         .filter_map(|target| match target {
             Policy::Allow(target) => Some(*target),
+            Policy::AllowSilent(_) => None, // Not listed in possible targets
             Policy::Warn(_) => None,
             Policy::Error(_) => None,
         })
@@ -68,10 +73,18 @@ impl AllowedTargets {
     }
 }
 
+/// This policy determines what diagnostics should be emitted based on the `Target` of the attribute.
 #[derive(Debug, Eq, PartialEq)]
 pub(crate) enum Policy {
+    /// A target that is allowed.
     Allow(Target),
+    /// A target that is allowed and not listed in the possible targets.
+    /// This is useful if the target is checked elsewhere.
+    AllowSilent(Target),
+    /// Emits a FCW on this target.
+    /// This is useful if the target was previously allowed but should not be.
     Warn(Target),
+    /// Emits an error on this target.
     Error(Target),
 }
 
