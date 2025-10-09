@@ -390,9 +390,9 @@ impl<D: Deps> DepGraphData<D> {
         let task_deps = Lock::new(TaskDeps::default());
         let result = D::with_deps(TaskDepsRef::Allow(&task_deps), op);
         let task_deps = task_deps.into_inner();
-        let task_deps = task_deps.reads;
+        let reads = task_deps.reads;
 
-        let dep_node_index = match task_deps.len() {
+        let dep_node_index = match reads.len() {
             0 => {
                 // Because the dep-node id of anon nodes is computed from the sets of its
                 // dependencies we already know what the ID of this dependency-less node is
@@ -403,7 +403,7 @@ impl<D: Deps> DepGraphData<D> {
             }
             1 => {
                 // When there is only one dependency, don't bother creating a node.
-                task_deps[0]
+                reads[0]
             }
             _ => {
                 // The dep node indices are hashed here instead of hashing the dep nodes of the
@@ -412,7 +412,7 @@ impl<D: Deps> DepGraphData<D> {
                 // combining it with the per session random number `anon_id_seed`. This hash only need
                 // to map the dependencies to a single value on a per session basis.
                 let mut hasher = StableHasher::new();
-                task_deps.hash(&mut hasher);
+                reads.hash(&mut hasher);
 
                 let target_dep_node = DepNode {
                     kind: dep_kind,
@@ -430,7 +430,7 @@ impl<D: Deps> DepGraphData<D> {
                 // memory impact of this `anon_node_to_index` map remains tolerable, and helps
                 // us avoid useless growth of the graph with almost-equivalent nodes.
                 self.current.anon_node_to_index.get_or_insert_with(target_dep_node, || {
-                    self.current.alloc_new_node(target_dep_node, task_deps, Fingerprint::ZERO)
+                    self.current.alloc_new_node(target_dep_node, reads, Fingerprint::ZERO)
                 })
             }
         };
