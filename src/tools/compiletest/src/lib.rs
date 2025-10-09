@@ -16,6 +16,7 @@ mod panic_hook;
 mod raise_fd_limit;
 mod read2;
 pub mod runtest;
+pub mod rustdoc_gui_test;
 pub mod util;
 
 use core::panic;
