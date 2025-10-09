@@ -17,8 +17,11 @@ struct Test<T: Copy> {
     f2: extern "cmse-nonsecure-call" fn(impl Copy, u32, u32, u32) -> impl Copy,
     //~^ ERROR `impl Trait` is not allowed in `fn` pointer parameters
     //~| ERROR `impl Trait` is not allowed in `fn` pointer return types
-    f3: extern "cmse-nonsecure-call" fn(T, u32, u32, u32) -> u64, //~ ERROR [E0798]
-    f4: extern "cmse-nonsecure-call" fn(Wrapper<T>, u32, u32, u32) -> u64, //~ ERROR [E0798]
+    f3: extern "cmse-nonsecure-call" fn((impl Copy, u32), u32, u32, u32) -> (impl Copy, u32),
+    //~^ ERROR `impl Trait` is not allowed in `fn` pointer parameters
+    //~| ERROR `impl Trait` is not allowed in `fn` pointer return types
+    f4: extern "cmse-nonsecure-call" fn(T, u32, u32, u32) -> u64, //~ ERROR [E0798]
+    f5: extern "cmse-nonsecure-call" fn(Wrapper<T>, u32, u32, u32) -> u64, //~ ERROR [E0798]
 }
 
 type WithReference = extern "cmse-nonsecure-call" fn(&usize);
