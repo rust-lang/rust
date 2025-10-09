@@ -133,6 +133,7 @@ mod unnecessary_lazy_eval;
 mod unnecessary_literal_unwrap;
 mod unnecessary_map_or;
 mod unnecessary_min_or_max;
+mod unnecessary_option_map_or_else;
 mod unnecessary_result_map_or_else;
 mod unnecessary_sort_by;
 mod unnecessary_to_owned;
@@ -4639,6 +4640,30 @@ declare_clippy_lint! {
     "detects redundant calls to `Iterator::cloned`"
 }
 
+declare_clippy_lint! {
+    /// Checks for usage of `.map_or_else()` "map closure" for `Option` type.
+    ///
+    /// ### Why is this bad?
+    /// This can be written more concisely by using `unwrap_or_else()`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let k = 10;
+    /// let x: Option<u32> = Some(4);
+    /// let y = x.map_or_else(|| 2 * k, |n| n);
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let k = 10;
+    /// let x: Option<u32> = Some(4);
+    /// let y = x.unwrap_or_else(|| 2 * k);
+    /// ```
+    #[clippy::version = "1.88.0"]
+    pub UNNECESSARY_OPTION_MAP_OR_ELSE,
+    suspicious,
+    "making no use of the \"map closure\" when calling `.map_or_else(|| 2 * k, |n| n)`"
+}
+
 #[expect(clippy::struct_excessive_bools)]
 pub struct Methods {
     avoid_breaking_exported_api: bool,
@@ -4820,6 +4845,7 @@ impl_lint_pass!(Methods => [
     SWAP_WITH_TEMPORARY,
     IP_CONSTANT,
     REDUNDANT_ITER_CLONED,
+    UNNECESSARY_OPTION_MAP_OR_ELSE,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -5275,6 +5301,7 @@ impl Methods {
                 },
                 (sym::map_or_else, [def, map]) => {
                     result_map_or_else_none::check(cx, expr, recv, def, map);
+                    unnecessary_option_map_or_else::check(cx, expr, recv, def, map);
                     unnecessary_result_map_or_else::check(cx, expr, recv, def, map);
                 },
                 (sym::next, []) => {
