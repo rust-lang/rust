@@ -6,6 +6,7 @@ use crate::session_diagnostics::{
     NakedFunctionIncompatibleAttribute, NullOnExport, NullOnObjcClass, NullOnObjcSelector,
     ObjcClassExpectedStringLiteral, ObjcSelectorExpectedStringLiteral,
 };
+use crate::target_checking::Policy::AllowSilent;
 
 pub(crate) struct OptimizeParser;
 
@@ -362,6 +363,8 @@ impl<S: Stage> NoArgsAttributeParser<S> for NoMangleParser {
         Allow(Target::Static),
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::TraitImpl)),
+        AllowSilent(Target::Const), // Handled in the `InvalidNoMangleItems` pass
+        Error(Target::Closure),
     ]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::NoMangle;
 }
