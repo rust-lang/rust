@@ -349,13 +349,11 @@ impl<D: Deps> DepGraphData<D> {
         let (result, edges) = if cx.dep_context().is_eval_always(key.kind) {
             (with_deps(TaskDepsRef::EvalAlways), EdgesVec::new())
         } else {
-            let task_deps = Lock::new(TaskDeps {
+            let task_deps = Lock::new(TaskDeps::new(
                 #[cfg(debug_assertions)]
-                node: Some(key),
-                reads: EdgesVec::new(),
-                read_set: Default::default(),
-                phantom_data: PhantomData,
-            });
+                Some(key),
+                0,
+            ));
             (with_deps(TaskDepsRef::Allow(&task_deps)), task_deps.into_inner().reads)
         };
 
@@ -387,7 +385,11 @@ impl<D: Deps> DepGraphData<D> {
     {
         debug_assert!(!cx.is_eval_always(dep_kind));
 
-        let task_deps = Lock::new(TaskDeps::default());
+        let task_deps = Lock::new(TaskDeps::new(
+            #[cfg(debug_assertions)]
+            None,
+            128,
+        ));
         let result = D::with_deps(TaskDepsRef::Allow(&task_deps), op);
         let task_deps = task_deps.into_inner();
         let reads = task_deps.reads;
@@ -1307,17 +1309,19 @@ pub struct TaskDeps {
     phantom_data: PhantomData<DepNode>,
 }
 
-impl Default for TaskDeps {
-    fn default() -> Self {
-        Self {
+impl TaskDeps {
+    #[inline]
+    fn new(#[cfg(debug_assertions)] node: Option<DepNode>, read_set_capacity: usize) -> Self {
+        TaskDeps {
             #[cfg(debug_assertions)]
-            node: None,
+            node,
             reads: EdgesVec::new(),
-            read_set: FxHashSet::with_capacity_and_hasher(128, Default::default()),
+            read_set: FxHashSet::with_capacity_and_hasher(read_set_capacity, Default::default()),
             phantom_data: PhantomData,
         }
     }
 }
+
 // A data structure that stores Option<DepNodeColor> values as a contiguous
 // array, using one u32 per entry.
 pub(super) struct DepNodeColorMap {
