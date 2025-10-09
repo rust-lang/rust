@@ -326,8 +326,7 @@ pub(crate) mod rustc {
                     let inner_layout = layout_of(cx, *inner_ty)?;
                     assert_eq!(*stride, inner_layout.size);
                     let elt = Tree::from_ty(*inner_ty, cx)?;
-                    Ok(std::iter::repeat(elt)
-                        .take(*count as usize)
+                    Ok(std::iter::repeat_n(elt, *count as usize)
                         .fold(Tree::unit(), |tree, elt| tree.then(elt)))
                 }
 

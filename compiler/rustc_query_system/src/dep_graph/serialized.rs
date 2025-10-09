@@ -566,7 +566,7 @@ impl<D: Deps> EncoderState<D> {
                     edge_count: 0,
                     node_count: 0,
                     encoder: MemEncoder::new(),
-                    kind_stats: iter::repeat(0).take(D::DEP_KIND_MAX as usize + 1).collect(),
+                    kind_stats: iter::repeat_n(0, D::DEP_KIND_MAX as usize + 1).collect(),
                 })
             }),
             marker: PhantomData,
@@ -735,7 +735,7 @@ impl<D: Deps> EncoderState<D> {
 
         let mut encoder = self.file.lock().take().unwrap();
 
-        let mut kind_stats: Vec<u32> = iter::repeat(0).take(D::DEP_KIND_MAX as usize + 1).collect();
+        let mut kind_stats: Vec<u32> = iter::repeat_n(0, D::DEP_KIND_MAX as usize + 1).collect();
 
         let mut node_max = 0;
         let mut node_count = 0;
