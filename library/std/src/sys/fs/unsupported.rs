@@ -316,8 +316,8 @@ pub fn set_times(_p: &Path, _times: FileTimes) -> io::Result<()> {
     unsupported()
 }
 
-pub fn set_times_nofollow(_p: &Path, times: FileTimes) -> io::Result<()> {
-    match times {}
+pub fn set_times_nofollow(_p: &Path, _times: FileTimes) -> io::Result<()> {
+    unsupported()
 }
 
 pub fn rmdir(_p: &Path) -> io::Result<()> {
