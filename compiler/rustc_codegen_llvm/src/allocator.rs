@@ -95,28 +95,28 @@ pub(crate) unsafe fn codegen(
         &CodegenFnAttrs::new(),
     );
 
-    unsafe {
-        // __rust_alloc_error_handler_should_panic_v2
-        create_const_value_function(
-            tcx,
-            &cx,
-            &mangle_internal_symbol(tcx, OomStrategy::SYMBOL),
-            &i8,
-            &llvm::LLVMConstInt(i8, tcx.sess.opts.unstable_opts.oom.should_panic() as u64, FALSE),
-        );
+    // __rust_alloc_error_handler_should_panic_v2
+    create_const_value_function(
+        tcx,
+        &cx,
+        &mangle_internal_symbol(tcx, OomStrategy::SYMBOL),
+        &i8,
+        unsafe {
+            llvm::LLVMConstInt(i8, tcx.sess.opts.unstable_opts.oom.should_panic() as u64, FALSE)
+        },
+    );
 
-        // __rust_no_alloc_shim_is_unstable_v2
-        create_wrapper_function(
-            tcx,
-            &cx,
-            &mangle_internal_symbol(tcx, NO_ALLOC_SHIM_IS_UNSTABLE),
-            None,
-            &[],
-            None,
-            false,
-            &CodegenFnAttrs::new(),
-        );
-    }
+    // __rust_no_alloc_shim_is_unstable_v2
+    create_wrapper_function(
+        tcx,
+        &cx,
+        &mangle_internal_symbol(tcx, NO_ALLOC_SHIM_IS_UNSTABLE),
+        None,
+        &[],
+        None,
+        false,
+        &CodegenFnAttrs::new(),
+    );
 
     if tcx.sess.opts.debuginfo != DebugInfo::None {
         let dbg_cx = debuginfo::CodegenUnitDebugContext::new(cx.llmod);
