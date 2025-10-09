@@ -320,10 +320,9 @@ pub const PLATFORM_C_FORWARD_DECLARATIONS: &str = r#"
     #define _mm256_loadu_epi64_to___m256(mem_addr) _mm256_castsi256_ps(_mm256_loadu_si256((__m256i const*)(mem_addr)))
     #define _mm512_loadu_epi64_to___m512(mem_addr) _mm512_castsi512_ps(_mm512_loadu_si512((__m512i const*)(mem_addr)))
     
-    
     // T1 is the `To` type, T2 is the `From` type
     template<typename T1, typename T2> T1 cast(T2 x) {
-      if constexpr (std::is_convertible_v<T2, T1>) {
+      if constexpr ((std::is_integral_v<T1> && std::is_integral_v<T2>) || (std::is_floating_point_v<T1> && std::is_floating_point_v<T2>)) {
           return x;
       } else if constexpr (sizeof(T1) == sizeof(T2)) {
         T1 ret{};
