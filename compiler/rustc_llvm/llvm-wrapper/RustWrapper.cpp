@@ -205,12 +205,6 @@ extern "C" LLVMValueRef LLVMRustGetOrInsertGlobal(LLVMModuleRef M,
   return wrap(GV);
 }
 
-extern "C" LLVMValueRef LLVMRustInsertPrivateGlobal(LLVMModuleRef M,
-                                                    LLVMTypeRef Ty) {
-  return wrap(new GlobalVariable(*unwrap(M), unwrap(Ty), false,
-                                 GlobalValue::PrivateLinkage, nullptr));
-}
-
 // Must match the layout of `rustc_codegen_llvm::llvm::ffi::AttributeKind`.
 enum class LLVMRustAttributeKind {
   AlwaysInline = 0,
