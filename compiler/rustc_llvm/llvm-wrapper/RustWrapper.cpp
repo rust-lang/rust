@@ -1331,33 +1331,6 @@ LLVMRustUnpackSMDiagnostic(LLVMSMDiagnosticRef DRef, RustStringRef MessageOut,
   return true;
 }
 
-extern "C" LLVMValueRef LLVMRustBuildMemCpy(LLVMBuilderRef B, LLVMValueRef Dst,
-                                            unsigned DstAlign, LLVMValueRef Src,
-                                            unsigned SrcAlign,
-                                            LLVMValueRef Size,
-                                            bool IsVolatile) {
-  return wrap(unwrap(B)->CreateMemCpy(unwrap(Dst), MaybeAlign(DstAlign),
-                                      unwrap(Src), MaybeAlign(SrcAlign),
-                                      unwrap(Size), IsVolatile));
-}
-
-extern "C" LLVMValueRef
-LLVMRustBuildMemMove(LLVMBuilderRef B, LLVMValueRef Dst, unsigned DstAlign,
-                     LLVMValueRef Src, unsigned SrcAlign, LLVMValueRef Size,
-                     bool IsVolatile) {
-  return wrap(unwrap(B)->CreateMemMove(unwrap(Dst), MaybeAlign(DstAlign),
-                                       unwrap(Src), MaybeAlign(SrcAlign),
-                                       unwrap(Size), IsVolatile));
-}
-
-extern "C" LLVMValueRef LLVMRustBuildMemSet(LLVMBuilderRef B, LLVMValueRef Dst,
-                                            unsigned DstAlign, LLVMValueRef Val,
-                                            LLVMValueRef Size,
-                                            bool IsVolatile) {
-  return wrap(unwrap(B)->CreateMemSet(unwrap(Dst), unwrap(Val), unwrap(Size),
-                                      MaybeAlign(DstAlign), IsVolatile));
-}
-
 extern "C" void LLVMRustPositionBuilderPastAllocas(LLVMBuilderRef B,
                                                    LLVMValueRef Fn) {
   Function *F = unwrap<Function>(Fn);
