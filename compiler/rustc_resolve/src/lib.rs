@@ -1145,6 +1145,8 @@ pub struct Resolver<'ra, 'tcx> {
     /// some AST passes can generate identifiers that only resolve to local or
     /// lang items.
     empty_module: Module<'ra>,
+    /// All local modules, including blocks.
+    local_modules: Vec<Module<'ra>>,
     /// Eagerly populated map of all local non-block modules.
     local_module_map: FxIndexMap<LocalDefId, Module<'ra>>,
     /// Lazily populated cache of modules loaded from external crates.
@@ -1298,7 +1300,6 @@ pub struct Resolver<'ra, 'tcx> {
 #[derive(Default)]
 pub struct ResolverArenas<'ra> {
     modules: TypedArena<ModuleData<'ra>>,
-    local_modules: RefCell<Vec<Module<'ra>>>,
     imports: TypedArena<ImportData<'ra>>,
     name_resolutions: TypedArena<RefCell<NameResolution<'ra>>>,
     ast_paths: TypedArena<ast::Path>,
@@ -1341,28 +1342,20 @@ impl<'ra> ResolverArenas<'ra> {
         span: Span,
         no_implicit_prelude: bool,
     ) -> Module<'ra> {
-        let (def_id, self_binding) = match kind {
-            ModuleKind::Def(def_kind, def_id, _) => (
-                Some(def_id),
-                Some(self.new_pub_res_binding(Res::Def(def_kind, def_id), span, LocalExpnId::ROOT)),
-            ),
-            ModuleKind::Block => (None, None),
+        let self_binding = match kind {
+            ModuleKind::Def(def_kind, def_id, _) => {
+                Some(self.new_pub_res_binding(Res::Def(def_kind, def_id), span, LocalExpnId::ROOT))
+            }
+            ModuleKind::Block => None,
         };
-        let module = Module(Interned::new_unchecked(self.modules.alloc(ModuleData::new(
+        Module(Interned::new_unchecked(self.modules.alloc(ModuleData::new(
             parent,
             kind,
             expn_id,
             span,
             no_implicit_prelude,
             self_binding,
-        ))));
-        if def_id.is_none_or(|def_id| def_id.is_local()) {
-            self.local_modules.borrow_mut().push(module);
-        }
-        module
-    }
-    fn local_modules(&'ra self) -> std::cell::Ref<'ra, Vec<Module<'ra>>> {
-        self.local_modules.borrow()
+        ))))
     }
     fn alloc_name_binding(&'ra self, name_binding: NameBindingData<'ra>) -> NameBinding<'ra> {
         Interned::new_unchecked(self.dropless.alloc(name_binding))
@@ -1505,7 +1498,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         arenas: &'ra ResolverArenas<'ra>,
     ) -> Resolver<'ra, 'tcx> {
         let root_def_id = CRATE_DEF_ID.to_def_id();
-        let mut local_module_map = FxIndexMap::default();
         let graph_root = arenas.new_module(
             None,
             ModuleKind::Def(DefKind::Mod, root_def_id, None),
@@ -1513,7 +1505,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             crate_span,
             attr::contains_name(attrs, sym::no_implicit_prelude),
         );
-        local_module_map.insert(CRATE_DEF_ID, graph_root);
+        let local_modules = vec![graph_root];
+        let local_module_map = FxIndexMap::from_iter([(CRATE_DEF_ID, graph_root)]);
         let empty_module = arenas.new_module(
             None,
             ModuleKind::Def(DefKind::Mod, root_def_id, None),
@@ -1591,6 +1584,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             module_children: Default::default(),
             trait_map: NodeMap::default(),
             empty_module,
+            local_modules,
             local_module_map,
             extern_module_map: Default::default(),
             block_map: Default::default(),
@@ -1694,6 +1688,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         no_implicit_prelude: bool,
     ) -> Module<'ra> {
         let module = self.arenas.new_module(parent, kind, expn_id, span, no_implicit_prelude);
+        self.local_modules.push(module);
         if let Some(def_id) = module.opt_def_id() {
             self.local_module_map.insert(def_id.expect_local(), module);
         }

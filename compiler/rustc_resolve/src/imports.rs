@@ -8,7 +8,7 @@ use rustc_data_structures::intern::Interned;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, MultiSpan, pluralize, struct_span_code_err};
 use rustc_hir::def::{self, DefKind, PartialRes};
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefIdMap};
 use rustc_middle::metadata::{ModChild, Reexport};
 use rustc_middle::span_bug;
 use rustc_middle::ty::Visibility;
@@ -572,9 +572,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     pub(crate) fn finalize_imports(&mut self) {
-        for module in self.arenas.local_modules().iter() {
-            self.finalize_resolutions_in(*module);
+        let mut module_children = Default::default();
+        for module in &self.local_modules {
+            self.finalize_resolutions_in(*module, &mut module_children);
         }
+        self.module_children = module_children;
 
         let mut seen_spans = FxHashSet::default();
         let mut errors = vec![];
@@ -651,7 +653,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     pub(crate) fn lint_reexports(&mut self, exported_ambiguities: FxHashSet<NameBinding<'ra>>) {
-        for module in self.arenas.local_modules().iter() {
+        for module in &self.local_modules {
             for (key, resolution) in self.resolutions(*module).borrow().iter() {
                 let resolution = resolution.borrow();
                 let Some(binding) = resolution.best_binding() else { continue };
@@ -1548,7 +1550,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     // Miscellaneous post-processing, including recording re-exports,
     // reporting conflicts, and reporting unresolved imports.
-    fn finalize_resolutions_in(&mut self, module: Module<'ra>) {
+    fn finalize_resolutions_in(
+        &self,
+        module: Module<'ra>,
+        module_children: &mut LocalDefIdMap<Vec<ModChild>>,
+    ) {
         // Since import resolution is finished, globs will not define any more names.
         *module.globs.borrow_mut(self) = Vec::new();
 
@@ -1573,7 +1579,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         if !children.is_empty() {
             // Should be fine because this code is only called for local modules.
-            self.module_children.insert(def_id.expect_local(), children);
+            module_children.insert(def_id.expect_local(), children);
         }
     }
 }
