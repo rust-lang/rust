@@ -69,19 +69,16 @@ pub(super) fn check_match<'tcx>(
         && let Some((first_arm, middle_arms)) = arms_without_last.split_first()
         && !span_contains_comment(cx.sess().source_map(), e.span)
         && cx.typeck_results().expr_ty(e).is_bool()
-        && let (last_pat, last_expr) = (last_arm.pat, last_arm.body)
-        && let (first_attrs, first_expr, first_guard) =
-            (cx.tcx.hir_attrs(first_arm.hir_id), first_arm.body, first_arm.guard)
-        && let Some(b0) = find_bool_lit(first_expr)
-        && let Some(b1) = find_bool_lit(last_expr)
+        && let Some(b0) = find_bool_lit(first_arm.body)
+        && let Some(b1) = find_bool_lit(last_arm.body)
         && b0 != b1
-        && (first_guard.is_none() || middle_arms.is_empty())
-        && first_attrs.is_empty()
+        && (first_arm.guard.is_none() || middle_arms.is_empty())
+        && cx.tcx.hir_attrs(first_arm.hir_id).is_empty()
         && middle_arms.iter().all(|arm| {
             cx.tcx.hir_attrs(arm.hir_id).is_empty() && arm.guard.is_none() && find_bool_lit(arm.body) == Some(b0)
         })
     {
-        if !is_wild(last_pat) {
+        if !is_wild(last_arm.pat) {
             return false;
         }
 
@@ -102,7 +99,7 @@ pub(super) fn check_match<'tcx>(
                 .map(|arm| snippet_with_applicability(cx, arm.pat.span, "..", &mut applicability))
                 .join(" | ")
         };
-        let pat_and_guard = if let Some(g) = first_guard {
+        let pat_and_guard = if let Some(g) = first_arm.guard {
             format!(
                 "{pat} if {}",
                 snippet_with_applicability(cx, g.span, "..", &mut applicability)
