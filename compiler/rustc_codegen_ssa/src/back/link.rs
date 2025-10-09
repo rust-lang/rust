@@ -686,7 +686,8 @@ fn link_natively(
 ) {
     info!("preparing {:?} to {:?}", crate_type, out_filename);
     let self_contained_components = self_contained_components(sess, crate_type);
-    let (linker_path, flavor) = linker_and_flavor(sess);
+    let (linker_path, flavor) =
+        linker_and_flavor(sess, self_contained_components.is_linker_enabled());
 
     // On AIX, we ship all libraries as .a big_af archive
     // the expected format is lib<name>.a(libname.so) for the actual
@@ -1314,7 +1315,7 @@ pub fn ignored_for_lto(sess: &Session, info: &CrateInfo, cnum: CrateNum) -> bool
 }
 
 /// This functions tries to determine the appropriate linker (and corresponding LinkerFlavor) to use
-pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
+pub fn linker_and_flavor(sess: &Session, self_contained: bool) -> (PathBuf, LinkerFlavor) {
     fn infer_from(
         sess: &Session,
         linker: Option<PathBuf>,
@@ -1411,6 +1412,15 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
     };
     if let Some(ret) = infer_from(sess, sess.opts.cg.linker.clone(), linker_flavor, features) {
         return ret;
+    }
+
+    // FIXME: do it better
+    if sess.target.os == "windows"
+        && sess.target.env == "gnu"
+        && sess.target.abi == "llvm"
+        && self_contained
+    {
+        return (PathBuf::from("rust-lld.exe"), LinkerFlavor::Gnu(Cc::No, Lld::Yes));
     }
 
     if let Some(ret) = infer_from(
