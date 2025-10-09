@@ -25,18 +25,17 @@ fn const_or_static(p: &mut Parser<'_>, m: Marker, is_const: bool) {
     }
 
     // FIXME: Recover on statics with generic params/where clause.
-    if is_const {
-        // test generic_const
-        // const C<i32>: u32 = 0;
-        // impl Foo {
-        //     const C<'a>: &'a () = &();
-        // }
-        generic_params::opt_generic_param_list(p);
-    } else if p.at(T![<]) {
+    if !is_const && p.at(T![<]) {
+        // test_err generic_static
+        // static C<i32>: u32 = 0;
         p.error("`static` may not have generic parameters");
     }
-    // test_err generic_static
-    // static C<i32>: u32 = 0;
+    // test generic_const
+    // const C<i32>: u32 = 0;
+    // impl Foo {
+    //     const C<'a>: &'a () = &();
+    // }
+    generic_params::opt_generic_param_list(p);
 
     if p.at(T![:]) {
         types::ascription(p);
@@ -44,7 +43,7 @@ fn const_or_static(p: &mut Parser<'_>, m: Marker, is_const: bool) {
         // test_err missing_const_type
         // const C = 0;
         p.error("missing type for `const`");
-    } else if !p.at(T![<]) {
+    } else {
         // test_err missing_static_type
         // static C = 0;
         p.error("missing type for `static`");
