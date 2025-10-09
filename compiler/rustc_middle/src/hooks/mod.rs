@@ -102,6 +102,9 @@ declare_hooks! {
     /// Ensure the given scalar is valid for the given type.
     /// This checks non-recursive runtime validity.
     hook validate_scalar_in_layout(scalar: crate::ty::ScalarInt, ty: Ty<'tcx>) -> bool;
+
+    /// Determines whether an item is annotated with `#[doc(hidden)]`.
+    hook is_doc_hidden(def_id: DefId) -> bool;
 }
 
 #[cold]

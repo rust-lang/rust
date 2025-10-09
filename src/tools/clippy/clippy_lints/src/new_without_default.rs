@@ -84,7 +84,7 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                             // can't be implemented for unsafe new
                             return;
                         }
-                        if cx.tcx.is_doc_hidden(impl_item.owner_id.def_id) {
+                        if cx.tcx.is_doc_hidden(impl_item.owner_id.def_id.to_def_id()) {
                             // shouldn't be implemented when it is hidden in docs
                             return;
                         }
