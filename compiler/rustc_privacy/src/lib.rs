@@ -84,7 +84,7 @@ pub trait DefIdVisitor<'tcx> {
     fn skeleton(&mut self) -> DefIdVisitorSkeleton<'_, 'tcx, Self> {
         DefIdVisitorSkeleton {
             def_id_visitor: self,
-            visited_def_ids: Default::default(),
+            visited_tys: Default::default(),
             dummy: Default::default(),
         }
     }
@@ -104,7 +104,7 @@ pub trait DefIdVisitor<'tcx> {
 
 pub struct DefIdVisitorSkeleton<'v, 'tcx, V: ?Sized> {
     def_id_visitor: &'v mut V,
-    visited_def_ids: FxHashSet<DefId>,
+    visited_tys: FxHashSet<Ty<'tcx>>,
     dummy: PhantomData<TyCtxt<'tcx>>,
 }
 
@@ -114,13 +114,11 @@ where
 {
     fn visit_trait(&mut self, trait_ref: TraitRef<'tcx>) -> V::Result {
         let TraitRef { def_id, args, .. } = trait_ref;
-        if self.visited_def_ids.insert(def_id) {
-            try_visit!(self.def_id_visitor.visit_def_id(
-                def_id,
-                "trait",
-                &trait_ref.print_only_trait_path()
-            ));
-        }
+        try_visit!(self.def_id_visitor.visit_def_id(
+            def_id,
+            "trait",
+            &trait_ref.print_only_trait_path()
+        ));
         if V::SHALLOW { V::Result::output() } else { args.visit_with(self) }
     }
 
@@ -184,6 +182,9 @@ where
     }
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
+        if !self.visited_tys.insert(ty) {
+            return V::Result::output();
+        }
         let tcx = self.def_id_visitor.tcx();
         // GenericArgs are not visited here because they are visited below
         // in `super_visit_with`.
@@ -194,9 +195,7 @@ where
             | ty::Closure(def_id, ..)
             | ty::CoroutineClosure(def_id, ..)
             | ty::Coroutine(def_id, ..) => {
-                if self.visited_def_ids.insert(def_id) {
-                    try_visit!(self.def_id_visitor.visit_def_id(def_id, "type", &ty));
-                }
+                try_visit!(self.def_id_visitor.visit_def_id(def_id, "type", &ty));
                 if V::SHALLOW {
                     return V::Result::output();
                 }
@@ -227,17 +226,15 @@ where
                     return V::Result::output();
                 }
 
-                if self.visited_def_ids.insert(data.def_id) {
-                    try_visit!(self.def_id_visitor.visit_def_id(
-                        data.def_id,
-                        match kind {
-                            ty::Inherent | ty::Projection => "associated type",
-                            ty::Free => "type alias",
-                            ty::Opaque => unreachable!(),
-                        },
-                        &LazyDefPathStr { def_id: data.def_id, tcx },
-                    ));
-                }
+                try_visit!(self.def_id_visitor.visit_def_id(
+                    data.def_id,
+                    match kind {
+                        ty::Inherent | ty::Projection => "associated type",
+                        ty::Free => "type alias",
+                        ty::Opaque => unreachable!(),
+                    },
+                    &LazyDefPathStr { def_id: data.def_id, tcx },
+                ));
 
                 // This will also visit args if necessary, so we don't need to recurse.
                 return if V::SHALLOW {
@@ -262,23 +259,18 @@ where
                         }
                     };
                     let ty::ExistentialTraitRef { def_id, .. } = trait_ref;
-                    if self.visited_def_ids.insert(def_id) {
-                        try_visit!(self.def_id_visitor.visit_def_id(def_id, "trait", &trait_ref));
-                    }
+                    try_visit!(self.def_id_visitor.visit_def_id(def_id, "trait", &trait_ref));
                 }
             }
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) => {
-                // Skip repeated `Opaque`s to avoid infinite recursion.
-                if self.visited_def_ids.insert(def_id) {
-                    // The intent is to treat `impl Trait1 + Trait2` identically to
-                    // `dyn Trait1 + Trait2`. Therefore we ignore def-id of the opaque type itself
-                    // (it either has no visibility, or its visibility is insignificant, like
-                    // visibilities of type aliases) and recurse into bounds instead to go
-                    // through the trait list (default type visitor doesn't visit those traits).
-                    // All traits in the list are considered the "primary" part of the type
-                    // and are visited by shallow visitors.
-                    try_visit!(self.visit_clauses(tcx.explicit_item_bounds(def_id).skip_binder()));
-                }
+                // The intent is to treat `impl Trait1 + Trait2` identically to
+                // `dyn Trait1 + Trait2`. Therefore we ignore def-id of the opaque type itself
+                // (it either has no visibility, or its visibility is insignificant, like
+                // visibilities of type aliases) and recurse into bounds instead to go
+                // through the trait list (default type visitor doesn't visit those traits).
+                // All traits in the list are considered the "primary" part of the type
+                // and are visited by shallow visitors.
+                try_visit!(self.visit_clauses(tcx.explicit_item_bounds(def_id).skip_binder()));
             }
             // These types don't have their own def-ids (but may have subcomponents
             // with def-ids that should be visited recursively).
