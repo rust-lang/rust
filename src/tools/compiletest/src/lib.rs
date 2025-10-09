@@ -3,6 +3,7 @@
 #[cfg(test)]
 mod tests;
 
+pub mod cli;
 pub mod common;
 mod debuggers;
 pub mod diagnostics;
