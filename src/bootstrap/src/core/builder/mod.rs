@@ -1071,6 +1071,7 @@ impl<'a> Builder<'a> {
                 check::Bootstrap,
                 check::RunMakeSupport,
                 check::Compiletest,
+                check::RustdocGuiTest,
                 check::FeaturesStatusDump,
                 check::CoverageDump,
                 check::Linkchecker,
