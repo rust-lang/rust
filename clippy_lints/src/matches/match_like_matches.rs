@@ -67,11 +67,11 @@ pub(super) fn check_match<'tcx>(
 ) -> bool {
     let mut arms = arms
         .iter()
-        .map(|arm| (cx.tcx.hir_attrs(arm.hir_id), Some(arm.pat), arm.body, arm.guard));
+        .map(|arm| (cx.tcx.hir_attrs(arm.hir_id), arm.pat, arm.body, arm.guard));
     if !span_contains_comment(cx.sess().source_map(), e.span)
         && arms.len() >= 2
         && cx.typeck_results().expr_ty(e).is_bool()
-        && let Some((_, last_pat_opt, last_expr, _)) = arms.next_back()
+        && let Some((_, last_pat, last_expr, _)) = arms.next_back()
         && let arms_without_last = arms.clone()
         && let Some((first_attrs, _, first_expr, first_guard)) = arms.next()
         && let Some(b0) = find_bool_lit(first_expr)
@@ -81,17 +81,13 @@ pub(super) fn check_match<'tcx>(
         && first_attrs.is_empty()
         && arms.all(|(attrs, _, expr, guard)| attrs.is_empty() && guard.is_none() && find_bool_lit(expr) == Some(b0))
     {
-        if let Some(last_pat) = last_pat_opt
-            && !is_wild(last_pat)
-        {
+        if !is_wild(last_pat) {
             return false;
         }
 
         for arm in arms_without_last.clone() {
-            if let Some(pat) = arm.1
-                && !is_lint_allowed(cx, REDUNDANT_PATTERN_MATCHING, pat.hir_id)
-                && is_some_wild(pat.kind)
-            {
+            let pat = arm.1;
+            if !is_lint_allowed(cx, REDUNDANT_PATTERN_MATCHING, pat.hir_id) && is_some_wild(pat.kind) {
                 return false;
             }
         }
@@ -102,9 +98,9 @@ pub(super) fn check_match<'tcx>(
         let pat = {
             use itertools::Itertools as _;
             arms_without_last
-                .filter_map(|arm| {
-                    let pat_span = arm.1?.span;
-                    Some(snippet_with_applicability(cx, pat_span, "..", &mut applicability))
+                .map(|arm| {
+                    let pat_span = arm.1.span;
+                    snippet_with_applicability(cx, pat_span, "..", &mut applicability)
                 })
                 .join(" | ")
         };
