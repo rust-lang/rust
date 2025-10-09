@@ -484,7 +484,7 @@ impl<D: Deps> DepGraph<D> {
                 // As long as we only have a low number of reads we can avoid doing a hash
                 // insert and potentially allocating/reallocating the hashmap
                 let new_read = if task_deps.reads.len() < EdgesVec::INLINE_CAPACITY {
-                    task_deps.reads.iter().all(|other| *other != dep_node_index)
+                    !task_deps.reads.contains(&dep_node_index)
                 } else {
                     task_deps.read_set.insert(dep_node_index)
                 };
