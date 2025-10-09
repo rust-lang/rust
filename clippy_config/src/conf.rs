@@ -809,6 +809,9 @@ define_Conf! {
     /// exported visibility, or whether they are marked as "pub".
     #[lints(pub_underscore_fields)]
     pub_underscore_fields_behavior: PubUnderscoreFieldsBehaviour = PubUnderscoreFieldsBehaviour::PubliclyExported,
+    /// Whether the type itself in a struct or enum should be replaced with `Self` when encountering recursive types.
+    #[lints(use_self)]
+    recursive_self_in_type_definitions: bool = true,
     /// Whether to lint only if it's multiline.
     #[lints(semicolon_inside_block)]
     semicolon_inside_block_ignore_singleline: bool = false,

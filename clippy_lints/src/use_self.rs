@@ -58,6 +58,7 @@ declare_clippy_lint! {
 pub struct UseSelf {
     msrv: Msrv,
     stack: Vec<StackItem>,
+    recursive_self_in_type_definitions: bool,
 }
 
 impl UseSelf {
@@ -65,6 +66,7 @@ impl UseSelf {
         Self {
             msrv: conf.msrv,
             stack: Vec::new(),
+            recursive_self_in_type_definitions: conf.recursive_self_in_type_definitions,
         }
     }
 }
@@ -84,10 +86,10 @@ const SEGMENTS_MSG: &str = "segments should be composed of at least 1 element";
 
 impl<'tcx> LateLintPass<'tcx> for UseSelf {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &Item<'tcx>) {
-        // We push the self types of `impl`s on a stack here. Only the top type on the stack is
-        // relevant for linting, since this is the self type of the `impl` we're currently in. To
-        // avoid linting on nested items, we push `StackItem::NoCheck` on the stack to signal, that
-        // we're in an `impl` or nested item, that we don't want to lint
+        // We push the self types of items on a stack here. Only the top type on the stack is
+        // relevant for linting, since this is the self type of the item we're currently in. To
+        // avoid linting on nested items, we push `StackItem::NoCheck` on the stack to signal that
+        // we're in an item or nested item that we don't want to lint
         let stack_item = if let ItemKind::Impl(Impl { self_ty, generics, .. }) = item.kind
             && let TyKind::Path(QPath::Resolved(_, item_path)) = self_ty.kind
             && let parameters = &item_path.segments.last().expect(SEGMENTS_MSG).args
@@ -111,6 +113,15 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             StackItem::Check {
                 impl_id: item.owner_id.def_id,
                 types_to_skip,
+            }
+        } else if let ItemKind::Struct(..) | ItemKind::Enum(..) = item.kind
+            && self.recursive_self_in_type_definitions
+            && !item.span.from_expansion()
+            && !is_from_proc_macro(cx, item)
+        {
+            StackItem::Check {
+                impl_id: item.owner_id.def_id,
+                types_to_skip: FxHashSet::default(),
             }
         } else {
             StackItem::NoCheck
