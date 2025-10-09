@@ -1,7 +1,7 @@
 //! Lint a `match` or `if let .. { .. } else { .. }` expr that could be replaced by `matches!`
 
 use super::REDUNDANT_PATTERN_MATCHING;
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{is_lint_allowed, is_wild, span_contains_comment};
 use rustc_ast::LitKind;
@@ -43,18 +43,23 @@ pub(crate) fn check_if_let<'tcx>(
         {
             ex_new = ex_inner;
         }
-        span_lint_and_sugg(
+        span_lint_and_then(
             cx,
             MATCH_LIKE_MATCHES_MACRO,
             expr.span,
-            "if let .. else expression looks like `matches!` macro",
-            "try",
-            format!(
-                "{}matches!({}, {pat})",
-                if b0 { "" } else { "!" },
-                snippet_with_applicability(cx, ex_new.span, "..", &mut applicability),
-            ),
-            applicability,
+            "`if let .. else` expression looks like `matches!` macro",
+            |diag| {
+                diag.span_suggestion_verbose(
+                    expr.span,
+                    "use `matches!` directly",
+                    format!(
+                        "{}matches!({}, {pat})",
+                        if b0 { "" } else { "!" },
+                        snippet_with_applicability(cx, ex_new.span, "..", &mut applicability),
+                    ),
+                    applicability,
+                );
+            },
         );
     }
 }
@@ -169,18 +174,23 @@ pub(super) fn check_match<'tcx>(
         {
             ex_new = ex_inner;
         }
-        span_lint_and_sugg(
+        span_lint_and_then(
             cx,
             MATCH_LIKE_MATCHES_MACRO,
             e.span,
             "match expression looks like `matches!` macro",
-            "try",
-            format!(
-                "{}matches!({}, {pat_and_guard})",
-                if b0 { "" } else { "!" },
-                snippet_with_applicability(cx, ex_new.span, "..", &mut applicability),
-            ),
-            applicability,
+            |diag| {
+                diag.span_suggestion_verbose(
+                    e.span,
+                    "use `matches!` directly",
+                    format!(
+                        "{}matches!({}, {pat_and_guard})",
+                        if b0 { "" } else { "!" },
+                        snippet_with_applicability(cx, ex_new.span, "..", &mut applicability),
+                    ),
+                    applicability,
+                );
+            },
         );
         true
     } else {
