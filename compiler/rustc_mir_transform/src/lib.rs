@@ -684,6 +684,8 @@ pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
             &inline::ForceInline,
             // Perform inlining, which may add a lot of code.
             &inline::Inline,
+            // Inlining may have introduced a lot of redundant code and a large move pattern.
+            // Now, we need to shrink the generated MIR.
             // Code from other crates may have storage markers, so this needs to happen after
             // inlining.
             &remove_storage_markers::RemoveStorageMarkers,
@@ -695,14 +697,13 @@ pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
             &unreachable_enum_branching::UnreachableEnumBranching,
             &unreachable_prop::UnreachablePropagation,
             &o1(simplify::SimplifyCfg::AfterUnreachableEnumBranching),
-            // Inlining may have introduced a lot of redundant code and a large move pattern.
-            // Now, we need to shrink the generated MIR.
-            &ref_prop::ReferencePropagation,
-            &sroa::ScalarReplacementOfAggregates,
             &multiple_return_terminators::MultipleReturnTerminators,
             // After simplifycfg, it allows us to discover new opportunities for peephole
-            // optimizations.
+            // optimizations. This invalidates CFG caches, so avoid putting between
+            // `ReferencePropagation` and `GVN` which both use the dominator tree.
             &instsimplify::InstSimplify::AfterSimplifyCfg,
+            &ref_prop::ReferencePropagation,
+            &sroa::ScalarReplacementOfAggregates,
             &simplify::SimplifyLocals::BeforeConstProp,
             &dead_store_elimination::DeadStoreElimination::Initial,
             &gvn::GVN,
