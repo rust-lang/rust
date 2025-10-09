@@ -116,7 +116,7 @@ pub struct HighlightConfig {
 // |arithmetic| Emitted for the arithmetic operators `+`, `-`, `*`, `/`, `+=`, `-=`, `*=`, `/=`.|
 // |bitwise| Emitted for the bitwise operators `|`, `&`, `!`, `^`, `|=`, `&=`, `^=`.|
 // |comparison| Emitted for the comparison oerators `>`, `<`, `==`, `>=`, `<=`, `!=`.|
-// |logical| Emitted for the logical operatos `||`, `&&`, `!`.|
+// |logical| Emitted for the logical operators `||`, `&&`, `!`.|
 //
 // - For punctuation:
 //

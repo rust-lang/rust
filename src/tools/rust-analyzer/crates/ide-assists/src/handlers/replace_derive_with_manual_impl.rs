@@ -71,7 +71,7 @@ pub(crate) fn replace_derive_with_manual_impl(
     let current_module = ctx.sema.scope(adt.syntax())?.module();
     let current_crate = current_module.krate();
     let current_edition = current_crate.edition(ctx.db());
-    let cfg = ctx.config.find_path_confg(ctx.sema.is_nightly(current_crate));
+    let cfg = ctx.config.find_path_config(ctx.sema.is_nightly(current_crate));
 
     let found_traits = items_locator::items_with_name(
         ctx.db(),
