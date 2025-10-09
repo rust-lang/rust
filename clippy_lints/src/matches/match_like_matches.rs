@@ -21,17 +21,64 @@ pub(crate) fn check_if_let<'tcx>(
     then_expr: &'tcx Expr<'_>,
     else_expr: &'tcx Expr<'_>,
 ) {
-    find_matches_sugg(
-        cx,
-        let_expr,
-        [
-            (&[][..], Some(let_pat), then_expr, None),
-            (&[][..], None, else_expr, None),
-        ]
-        .into_iter(),
-        expr,
-        true,
-    );
+    let mut arms = [(Some(let_pat), then_expr), (None, else_expr)].into_iter();
+    let is_if_let = true;
+    if !span_contains_comment(cx.sess().source_map(), expr.span)
+        && cx.typeck_results().expr_ty(expr).is_bool()
+        && let Some((None, else_expr)) = arms.next_back()
+        && let arms_without_last = [(Some(let_pat), then_expr)]
+        && let Some((_, first_expr)) = arms.next()
+        && let Some(b0) = find_bool_lit(first_expr)
+        && let Some(b1) = find_bool_lit(else_expr)
+        && b0 != b1
+        && arms.all(|(_, expr)| find_bool_lit(expr) == Some(b0))
+    {
+        for arm in &arms_without_last {
+            if let Some(pat) = arm.0
+                && !is_lint_allowed(cx, REDUNDANT_PATTERN_MATCHING, pat.hir_id)
+                && is_some_wild(pat.kind)
+            {
+                return;
+            }
+        }
+
+        // The suggestion may be incorrect, because some arms can have `cfg` attributes
+        // evaluated into `false` and so such arms will be stripped before.
+        let mut applicability = Applicability::MaybeIncorrect;
+        let pat = {
+            use itertools::Itertools as _;
+            arms_without_last
+                .into_iter()
+                .filter_map(|arm| arm.0)
+                .map(|pat| snippet_with_applicability(cx, pat.span, "..", &mut applicability))
+                .join(" | ")
+        };
+        let pat_and_guard = pat;
+
+        // strip potential borrows (#6503), but only if the type is a reference
+        let mut ex_new = let_expr;
+        if let ExprKind::AddrOf(BorrowKind::Ref, .., ex_inner) = let_expr.kind
+            && let ty::Ref(..) = cx.typeck_results().expr_ty(ex_inner).kind()
+        {
+            ex_new = ex_inner;
+        }
+        span_lint_and_sugg(
+            cx,
+            MATCH_LIKE_MATCHES_MACRO,
+            expr.span,
+            format!(
+                "{} expression looks like `matches!` macro",
+                if is_if_let { "if let .. else" } else { "match" }
+            ),
+            "try",
+            format!(
+                "{}matches!({}, {pat_and_guard})",
+                if b0 { "" } else { "!" },
+                snippet_with_applicability(cx, ex_new.span, "..", &mut applicability),
+            ),
+            applicability,
+        );
+    }
 }
 
 pub(super) fn check_match<'tcx>(
