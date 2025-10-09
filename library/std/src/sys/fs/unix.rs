@@ -1195,57 +1195,6 @@ impl fmt::Debug for OpenOptions {
     }
 }
 
-#[cfg(not(any(
-    target_os = "redox",
-    target_os = "espidf",
-    target_os = "horizon",
-    target_os = "nuttx",
-)))]
-#[inline(always)]
-fn to_timespec(time: Option<SystemTime>) -> io::Result<libc::timespec> {
-    match time {
-        Some(time) if let Some(ts) = time.t.to_timespec() => Ok(ts),
-        Some(time) if time > crate::sys::time::UNIX_EPOCH => Err(io::const_error!(
-            io::ErrorKind::InvalidInput,
-            "timestamp is too large to set as a file time",
-        )),
-        Some(_) => Err(io::const_error!(
-            io::ErrorKind::InvalidInput,
-            "timestamp is too small to set as a file time",
-        )),
-        None => Ok(libc::timespec { tv_sec: 0, tv_nsec: libc::UTIME_OMIT as _ }),
-    }
-}
-
-#[cfg(target_vendor = "apple")]
-#[inline(always)]
-fn set_attrlist_with_times(
-    times: &FileTimes,
-) -> io::Result<(libc::attrlist, [mem::MaybeUninit<libc::timespec>; 3], usize)> {
-    let mut buf = [mem::MaybeUninit::<libc::timespec>::uninit(); 3];
-    let mut num_times = 0;
-    let mut attrlist: libc::attrlist = unsafe { mem::zeroed() };
-    attrlist.bitmapcount = libc::ATTR_BIT_MAP_COUNT;
-
-    if times.created.is_some() {
-        buf[num_times].write(to_timespec(times.created)?);
-        num_times += 1;
-        attrlist.commonattr |= libc::ATTR_CMN_CRTIME;
-    }
-    if times.modified.is_some() {
-        buf[num_times].write(to_timespec(times.modified)?);
-        num_times += 1;
-        attrlist.commonattr |= libc::ATTR_CMN_MODTIME;
-    }
-    if times.accessed.is_some() {
-        buf[num_times].write(to_timespec(times.accessed)?);
-        num_times += 1;
-        attrlist.commonattr |= libc::ATTR_CMN_ACCTIME;
-    }
-
-    Ok((attrlist, buf, num_times))
-}
-
 impl File {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
         run_path_with_cstr(path, &|path| File::open_c(path, opts))
@@ -1760,18 +1709,19 @@ impl TimesAttrlist {
         if times.created.is_some() {
             this.buf[this.num_times].write(file_time_to_timespec(times.created)?);
             this.num_times += 1;
-            attrlist.commonattr |= libc::ATTR_CMN_CRTIME;
+            this.attrlist.commonattr |= libc::ATTR_CMN_CRTIME;
         }
         if times.modified.is_some() {
             this.buf[this.num_times].write(file_time_to_timespec(times.modified)?);
             this.num_times += 1;
-            attrlist.commonattr |= libc::ATTR_CMN_MODTIME;
+            this.attrlist.commonattr |= libc::ATTR_CMN_MODTIME;
         }
         if times.accessed.is_some() {
             this.buf[this.num_times].write(file_time_to_timespec(times.accessed)?);
             this.num_times += 1;
-            attrlist.commonattr |= libc::ATTR_CMN_ACCTIME;
+            this.attrlist.commonattr |= libc::ATTR_CMN_ACCTIME;
         }
+        Ok(this)
     }
 
     fn attrlist(&self) -> *mut libc::c_void {
@@ -2174,7 +2124,8 @@ fn set_times_impl(p: &CStr, times: FileTimes, flags: c_int) -> io::Result<()> {
        }
        target_vendor = "apple" => {
             // Apple platforms use setattrlist which supports setting times on symlinks
-            let (attrlist, buf, num_times) = set_attrlist_with_times(&times)?;
+            //let (attrlist, buf, num_times) = set_attrlist_with_times(&times)?;
+            let ta = TimesAttrlist::from_times(&times)?;
             let options = if flags == libc::AT_SYMLINK_NOFOLLOW {
                 libc::FSOPT_NOFOLLOW
             } else {
@@ -2183,15 +2134,15 @@ fn set_times_impl(p: &CStr, times: FileTimes, flags: c_int) -> io::Result<()> {
 
             cvt(unsafe { libc::setattrlist(
                 p.as_ptr(),
-                (&raw const attrlist).cast::<libc::c_void>().cast_mut(),
-                buf.as_ptr().cast::<libc::c_void>().cast_mut(),
-                num_times * size_of::<libc::timespec>(),
+                ta.attrlist(),
+                ta.times_buf(),
+                ta.times_buf_size(),
                 options as u32
             ) })?;
             Ok(())
        }
        target_os = "android" => {
-            let times = [to_timespec(times.accessed)?, to_timespec(times.modified)?];
+            let times = [file_time_to_timespec(times.accessed)?, file_time_to_timespec(times.modified)?];
             // utimensat requires Android API level 19
             cvt(unsafe {
                 weak!(
@@ -2225,18 +2176,20 @@ fn set_times_impl(p: &CStr, times: FileTimes, flags: c_int) -> io::Result<()> {
                     return Ok(());
                 }
             }
-            let times = [to_timespec(times.accessed)?, to_timespec(times.modified)?];
+            let times = [file_time_to_timespec(times.accessed)?, file_time_to_timespec(times.modified)?];
             cvt(unsafe { libc::utimensat(libc::AT_FDCWD, p.as_ptr(), times.as_ptr(), flags) })?;
             Ok(())
          }
     }
 }
 
+#[inline(always)]
 pub fn set_times(p: &CStr, times: FileTimes) -> io::Result<()> {
     // flags = 0 means follow symlinks
     set_times_impl(p, times, 0)
 }
 
+#[inline(always)]
 pub fn set_times_nofollow(p: &CStr, times: FileTimes) -> io::Result<()> {
     set_times_impl(p, times, libc::AT_SYMLINK_NOFOLLOW)
 }
