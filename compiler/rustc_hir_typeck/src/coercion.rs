@@ -874,19 +874,17 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         debug_assert!(self.shallow_resolve(b) == b);
 
         // We need to make sure the two types are compatible for reborrow.
-        if a == b {
-            // Exclusive reborrowing goes from T -> T.
-            return self.unify_and(
-                a,
-                b,
-                [],
-                Adjust::GenericReborrow(ty::Mutability::Mut),
-                ForceLeakCheck::No,
-            );
+        let (ty::Adt(a_def, _), ty::Adt(b_def, _)) = (a.kind(), b.kind()) else {
+            return Err(TypeError::Mismatch);
+        };
+        if a_def.did() == b_def.did() {
+            // Reborrow is applicable here
+            self.unify_and(a, b, [], Adjust::GenericReborrow(ty::Mutability::Mut), ForceLeakCheck::No)
+        } else {
+            // FIXME: CoerceShared check goes here, error for now
+            Err(TypeError::Mismatch)
         }
-
-        // FIXME(reborrow): this we should check equality.
-        self.unify_and(a, b, [], Adjust::GenericReborrow(ty::Mutability::Mut), ForceLeakCheck::No)
+    }
     }
 
     fn coerce_from_fn_pointer(
