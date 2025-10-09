@@ -16,7 +16,6 @@ use super::*;
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/__crc32cd)"]
 #[inline]
 #[target_feature(enable = "crc")]
-#[cfg(not(target_arch = "arm"))]
 #[cfg_attr(test, assert_instr(crc32cx))]
 #[stable(feature = "stdarch_aarch64_crc32", since = "1.80.0")]
 pub fn __crc32cd(crc: u32, data: u64) -> u32 {
@@ -33,7 +32,6 @@ pub fn __crc32cd(crc: u32, data: u64) -> u32 {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/__crc32d)"]
 #[inline]
 #[target_feature(enable = "crc")]
-#[cfg(not(target_arch = "arm"))]
 #[cfg_attr(test, assert_instr(crc32x))]
 #[stable(feature = "stdarch_aarch64_crc32", since = "1.80.0")]
 pub fn __crc32d(crc: u32, data: u64) -> u32 {
