@@ -34,7 +34,7 @@ pub fn build_cpp_compilation(config: &ProcessedCli) -> Option<CppCompilation> {
             "-mavx512vnni",
             "-mavx512vpopcntdq",
             "-ferror-limit=1000",
-            "-std=c++17",
+            "-std=c++23",
         ]);
 
     if !cpp_compiler.contains("clang") {
