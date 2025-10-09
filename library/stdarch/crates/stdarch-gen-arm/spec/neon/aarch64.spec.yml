@@ -13,10 +13,6 @@ auto_llvm_sign_conversion: false
 neon-stable: &neon-stable
   FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
 
-# #[cfg(not(target_arch = "arm"))]
-target-not-arm: &target-not-arm
-  FnCall: [cfg, [{ FnCall: [not, ['target_arch = "arm"']]}]]
-
 # #[cfg(not(target_arch = "arm64ec"))]
 target-not-arm64ec: &target-not-arm64ec
   FnCall: [cfg, [{ FnCall: [not, ['target_arch = "arm64ec"']]}]]
@@ -13080,7 +13076,6 @@ intrinsics:
     return_type: "{type[0]}"
     attr:
       - FnCall: [target_feature, ['enable = "crc"']]
-      - *target-not-arm
       - FnCall: [cfg_attr, [test, { FnCall: [assert_instr, ["crc32x"]] }]]
       - *aarch64-crc-stable
     safety: safe
@@ -13102,7 +13097,6 @@ intrinsics:
     return_type: "{type[0]}"
     attr:
       - FnCall: [target_feature, ['enable = "crc"']]
-      - *target-not-arm
       - FnCall: [cfg_attr, [test, { FnCall: [assert_instr, ["crc32cx"]] }]]
       - *aarch64-crc-stable
     safety: safe
