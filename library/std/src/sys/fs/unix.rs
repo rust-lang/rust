@@ -2146,7 +2146,7 @@ fn set_times_impl(p: &CStr, times: FileTimes, flags: c_int) -> io::Result<()> {
             // utimensat requires Android API level 19
             cvt(unsafe {
                 weak!(
-                    fn utimensat(dirfd: c_int, path: *const c_char, times: *const libc::timespec, flags: c_int) -> c_int;
+                    fn utimensat(dirfd: c_int, path: *const libc::c_char, times: *const libc::timespec, flags: c_int) -> c_int;
                 );
                 match utimensat.get() {
                     Some(utimensat) => utimensat(libc::AT_FDCWD, p.as_ptr(), times.as_ptr(), flags),
