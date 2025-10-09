@@ -202,39 +202,14 @@ impl CodegenBackend for GccCodegenBackend {
             **self.target_info.info.lock().expect("lock") = context.get_target_info();
         }
 
-        // While not required by the API, we gate this code on the master feature to make sure we
-        // don't abort the process while checking if LTO is supported.
-        // The following could will emit a fatal error if LTO is not supported and older versions
-        // of libgccjit (the ones without this commit:
-        // https://github.com/rust-lang/gcc/commit/a073b06800f064b3917a6113d4cc2a0c19a10fda) will
-        // abort on fatal errors.
         #[cfg(feature = "master")]
         {
-            // NOTE: try the LTO frontend and check if it errors out. If so, do not embed the bitcode.
-            let temp_dir = TempDir::new().expect("cannot create temporary directory");
-            let temp_file = temp_dir.keep().join("result.asm");
-            let context = Context::default();
-            let object_file_path = temp_file.to_str().expect("path to str");
-            context.compile_to_file(gccjit::OutputKind::ObjectFile, object_file_path);
-
-            //let temp_dir = TempDir::new().expect("cannot create temporary directory");
-            //let temp_file = temp_dir.into_path().join("result.asm");
-            let check_context = Context::default();
-            check_context.add_driver_option("-x");
-            check_context.add_driver_option("lto");
-            check_context.add_driver_option(object_file_path);
-            check_context.set_print_errors_to_stderr(false);
-            //context.compile_to_file(gccjit::OutputKind::ObjectFile, temp_file.to_str().expect("path to str"));
-            // FIXME: compile gives the error as expected, but compile_to_file doesn't.
-            check_context.compile();
-            let error = check_context.get_last_error();
-            let lto_supported = error == Ok(None);
+            let lto_supported = gccjit::is_lto_supported();
             LTO_SUPPORTED.store(lto_supported, Ordering::SeqCst);
             self.lto_supported.store(lto_supported, Ordering::SeqCst);
-        }
 
-        #[cfg(feature = "master")]
-        gccjit::set_global_personality_function_name(b"rust_eh_personality\0");
+            gccjit::set_global_personality_function_name(b"rust_eh_personality\0");
+        }
 
         #[cfg(not(feature = "master"))]
         {

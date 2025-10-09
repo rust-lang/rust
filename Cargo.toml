@@ -24,7 +24,7 @@ default = ["master"]
 [dependencies]
 object = { version = "0.37.0", default-features = false, features = ["std", "read"] }
 tempfile = "3.20"
-gccjit = "2.8"
+gccjit = "2.10"
 #gccjit = { git = "https://github.com/rust-lang/gccjit.rs" }
 
 # Local copy.
@@ -33,7 +33,6 @@ gccjit = "2.8"
 [dev-dependencies]
 boml = "0.3.1"
 lang_tester = "0.8.0"
-tempfile = "3.20.0"
 
 [profile.dev]
 # By compiling dependencies with optimizations, performing tests gets much faster.
