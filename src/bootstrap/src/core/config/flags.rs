@@ -391,6 +391,12 @@ pub enum Subcommand {
         /// whether to automatically update stderr/stdout files
         bless: bool,
         #[arg(long)]
+        /// Whether to run Tidy on the most recent commit, used in the pre-push git-hook.
+        pre_push: bool,
+        #[arg(long)]
+        /// Whether to include files untracked by git when running Tidy.
+        include_untracked: bool,
+        #[arg(long)]
         /// comma-separated list of other files types to check (accepts py, py:lint,
         /// py:fmt, shell, cpp, cpp:fmt, js, js:lint, js:typecheck, spellcheck)
         ///
@@ -567,6 +573,20 @@ impl Subcommand {
     pub fn bless(&self) -> bool {
         match *self {
             Subcommand::Test { bless, .. } => bless,
+            _ => false,
+        }
+    }
+
+    pub fn pre_push(&self) -> bool {
+        match *self {
+            Subcommand::Test { pre_push, .. } => pre_push,
+            _ => false,
+        }
+    }
+
+    pub fn include_untracked(&self) -> bool {
+        match *self {
+            Subcommand::Test { include_untracked, .. } => include_untracked,
             _ => false,
         }
     }

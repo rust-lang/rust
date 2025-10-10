@@ -1235,6 +1235,12 @@ impl Step for Tidy {
         if builder.config.cmd.bless() {
             cmd.arg("--bless");
         }
+        if builder.config.cmd.pre_push() {
+            cmd.arg("--pre-push");
+        }
+        if builder.config.cmd.include_untracked() {
+            cmd.arg("--include-untracked");
+        }
         if let Some(s) =
             builder.config.cmd.extra_checks().or(builder.config.tidy_extra_checks.as_deref())
         {

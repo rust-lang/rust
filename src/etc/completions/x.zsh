@@ -379,6 +379,8 @@ _arguments "${_arguments_options[@]}" : \
 '--no-doc[do not run doc tests]' \
 '--doc[only run doc tests]' \
 '--bless[whether to automatically update stderr/stdout files]' \
+'--pre-push[Whether to run Tidy on the most recent commit, used in the pre-push git-hook]' \
+'--include-untracked[Whether to include files untracked by git when running Tidy]' \
 '--force-rerun[rerun tests even if the inputs are unchanged]' \
 '--only-modified[only run tests that result has been changed]' \
 '--rustfix-coverage[enable this to generate a Rustfix coverage file, which is saved in \`/<build_base>/rustfix_missing_coverage.txt\`]' \

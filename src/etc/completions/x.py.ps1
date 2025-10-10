@@ -379,6 +379,8 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--no-doc', '--no-doc', [CompletionResultType]::ParameterName, 'do not run doc tests')
             [CompletionResult]::new('--doc', '--doc', [CompletionResultType]::ParameterName, 'only run doc tests')
             [CompletionResult]::new('--bless', '--bless', [CompletionResultType]::ParameterName, 'whether to automatically update stderr/stdout files')
+            [CompletionResult]::new('--pre-push', '--pre-push', [CompletionResultType]::ParameterName, 'Whether to run Tidy on the most recent commit, used in the pre-push git-hook')
+            [CompletionResult]::new('--include-untracked', '--include-untracked', [CompletionResultType]::ParameterName, 'Whether to include files untracked by git when running Tidy')
             [CompletionResult]::new('--force-rerun', '--force-rerun', [CompletionResultType]::ParameterName, 'rerun tests even if the inputs are unchanged')
             [CompletionResult]::new('--only-modified', '--only-modified', [CompletionResultType]::ParameterName, 'only run tests that result has been changed')
             [CompletionResult]::new('--rustfix-coverage', '--rustfix-coverage', [CompletionResultType]::ParameterName, 'enable this to generate a Rustfix coverage file, which is saved in `/<build_base>/rustfix_missing_coverage.txt`')

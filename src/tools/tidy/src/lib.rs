@@ -44,6 +44,31 @@ macro_rules! t {
     };
 }
 
+// CLI flags used for Tidy.
+#[derive(Copy, Clone, Debug, Default)]
+pub struct TidyFlags {
+    pub bless: bool,
+    pub include_untracked: bool,
+    pub pre_push: bool,
+}
+
+impl TidyFlags {
+    pub fn new(cfg_args: &[String]) -> Self {
+        let mut flags = Self::default();
+
+        for arg in cfg_args {
+            match arg.as_str() {
+                "--bless" => flags.bless = true,
+                "--include-untracked" => flags.include_untracked = true,
+                "--pre-push" => flags.pre_push = true,
+                _ => continue,
+            }
+        }
+
+        flags
+    }
+}
+
 pub struct CiInfo {
     pub git_merge_commit_email: String,
     pub nightly_branch: String,

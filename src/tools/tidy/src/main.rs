@@ -11,6 +11,7 @@ use std::str::FromStr;
 use std::thread::{self, ScopedJoinHandle, scope};
 use std::{env, process};
 
+use build_helper::git::get_git_untracked_files;
 use tidy::diagnostics::{COLOR_ERROR, COLOR_SUCCESS, DiagCtx, output_message};
 use tidy::*;
 
@@ -46,7 +47,17 @@ fn main() {
         None => (&args[..], [].as_slice()),
     };
     let verbose = cfg_args.iter().any(|s| *s == "--verbose");
-    let bless = cfg_args.iter().any(|s| *s == "--bless");
+
+    let tidy_flags = TidyFlags::new(cfg_args);
+
+    if !tidy_flags.include_untracked {
+        if let Ok(Some(untracked_files)) = get_git_untracked_files(Some(&root_path)) {
+            let num_untracked = untracked_files.len();
+            println!("tidy: skipped {num_untracked} untracked files");
+            println!("tidy: to include untracked files use `--include-untracked`");
+        }
+    }
+
     let extra_checks =
         cfg_args.iter().find(|s| s.starts_with("--extra-checks=")).map(String::as_str);
 
@@ -94,61 +105,61 @@ fn main() {
             }
         }
 
-        check!(target_specific_tests, &tests_path);
+        check!(target_specific_tests, &tests_path, tidy_flags);
 
         // Checks that are done on the cargo workspace.
-        check!(deps, &root_path, &cargo, bless);
+        check!(deps, &root_path, &cargo, tidy_flags);
         check!(extdeps, &root_path);
 
         // Checks over tests.
         check!(tests_placement, &root_path);
         check!(tests_revision_unpaired_stdout_stderr, &tests_path);
-        check!(debug_artifacts, &tests_path);
-        check!(ui_tests, &root_path, bless);
-        check!(mir_opt_tests, &tests_path, bless);
-        check!(rustdoc_gui_tests, &tests_path);
+        check!(debug_artifacts, &tests_path, tidy_flags);
+        check!(ui_tests, &root_path, tidy_flags);
+        check!(mir_opt_tests, &tests_path, tidy_flags);
+        check!(rustdoc_gui_tests, &tests_path, tidy_flags);
         check!(rustdoc_css_themes, &librustdoc_path);
-        check!(rustdoc_templates, &librustdoc_path);
+        check!(rustdoc_templates, &librustdoc_path, tidy_flags);
         check!(rustdoc_json, &src_path, &ci_info);
-        check!(known_bug, &crashes_path);
-        check!(unknown_revision, &tests_path);
+        check!(known_bug, &crashes_path, tidy_flags);
+        check!(unknown_revision, &tests_path, tidy_flags);
 
         // Checks that only make sense for the compiler.
-        check!(error_codes, &root_path, &[&compiler_path, &librustdoc_path], &ci_info);
-        check!(fluent_alphabetical, &compiler_path, bless);
-        check!(fluent_period, &compiler_path);
-        check!(fluent_lowercase, &compiler_path);
-        check!(target_policy, &root_path);
+        check!(error_codes, &root_path, &[&compiler_path, &librustdoc_path], &ci_info, tidy_flags);
+        check!(fluent_alphabetical, &compiler_path, tidy_flags);
+        check!(fluent_period, &compiler_path, tidy_flags);
+        check!(fluent_lowercase, &compiler_path, tidy_flags);
+        check!(target_policy, &root_path, tidy_flags);
         check!(gcc_submodule, &root_path, &compiler_path);
 
         // Checks that only make sense for the std libs.
-        check!(pal, &library_path);
+        check!(pal, &library_path, tidy_flags);
 
         // Checks that need to be done for both the compiler and std libraries.
-        check!(unit_tests, &src_path, false);
-        check!(unit_tests, &compiler_path, false);
-        check!(unit_tests, &library_path, true);
+        check!(unit_tests, &src_path, false, tidy_flags);
+        check!(unit_tests, &compiler_path, false, tidy_flags);
+        check!(unit_tests, &library_path, true, tidy_flags);
 
         if bins::check_filesystem_support(&[&root_path], &output_directory) {
-            check!(bins, &root_path);
+            check!(bins, &root_path, tidy_flags);
         }
 
-        check!(style, &src_path);
-        check!(style, &tests_path);
-        check!(style, &compiler_path);
-        check!(style, &library_path);
+        check!(style, &src_path, tidy_flags);
+        check!(style, &tests_path, tidy_flags);
+        check!(style, &compiler_path, tidy_flags);
+        check!(style, &library_path, tidy_flags);
 
-        check!(edition, &src_path);
-        check!(edition, &compiler_path);
-        check!(edition, &library_path);
+        check!(edition, &src_path, tidy_flags);
+        check!(edition, &compiler_path, tidy_flags);
+        check!(edition, &library_path, tidy_flags);
 
-        check!(alphabetical, &root_manifest);
-        check!(alphabetical, &src_path);
-        check!(alphabetical, &tests_path);
-        check!(alphabetical, &compiler_path);
-        check!(alphabetical, &library_path);
+        check!(alphabetical, &root_manifest, tidy_flags);
+        check!(alphabetical, &src_path, tidy_flags);
+        check!(alphabetical, &tests_path, tidy_flags);
+        check!(alphabetical, &compiler_path, tidy_flags);
+        check!(alphabetical, &library_path, tidy_flags);
 
-        check!(x_version, &root_path, &cargo);
+        check!(x_version, &root_path, &cargo, tidy_flags);
 
         check!(triagebot, &root_path);
         check!(filenames, &root_path);
@@ -156,7 +167,14 @@ fn main() {
         let collected = {
             drain_handles(&mut handles);
 
-            features::check(&src_path, &tests_path, &compiler_path, &library_path, diag_ctx.clone())
+            features::check(
+                &src_path,
+                &tests_path,
+                &compiler_path,
+                &library_path,
+                tidy_flags,
+                diag_ctx.clone(),
+            )
         };
         check!(unstable_book, &src_path, collected);
 
@@ -169,9 +187,9 @@ fn main() {
             &tools_path,
             &npm,
             &cargo,
-            bless,
             extra_checks,
-            pos_args
+            pos_args,
+            tidy_flags
         );
     });
 

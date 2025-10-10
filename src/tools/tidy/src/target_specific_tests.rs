@@ -4,6 +4,7 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
+use crate::TidyFlags;
 use crate::diagnostics::{CheckId, DiagCtx};
 use crate::iter_header::{HeaderLine, iter_header};
 use crate::walk::filter_not_rust;
@@ -17,75 +18,81 @@ struct RevisionInfo<'a> {
     llvm_components: Option<Vec<&'a str>>,
 }
 
-pub fn check(tests_path: &Path, diag_ctx: DiagCtx) {
+pub fn check(tests_path: &Path, tidy_flags: TidyFlags, diag_ctx: DiagCtx) {
     let mut check = diag_ctx.start_check(CheckId::new("target-specific-tests").path(tests_path));
 
-    crate::walk::walk(tests_path, |path, _is_dir| filter_not_rust(path), &mut |entry, content| {
-        if content.contains("// ignore-tidy-target-specific-tests") {
-            return;
-        }
+    crate::walk::walk(
+        tests_path,
+        tidy_flags,
+        |path, _is_dir| filter_not_rust(path),
+        &mut |entry, content| {
+            if content.contains("// ignore-tidy-target-specific-tests") {
+                return;
+            }
 
-        let file = entry.path().display();
-        let mut header_map = BTreeMap::new();
-        iter_header(content, &mut |HeaderLine { revision, directive, .. }| {
-            if let Some(value) = directive.strip_prefix(LLVM_COMPONENTS_HEADER) {
-                let info = header_map.entry(revision).or_insert(RevisionInfo::default());
-                let comp_vec = info.llvm_components.get_or_insert(Vec::new());
-                for component in value.split(' ') {
-                    let component = component.trim();
-                    if !component.is_empty() {
-                        comp_vec.push(component);
+            let file = entry.path().display();
+            let mut header_map = BTreeMap::new();
+            iter_header(content, &mut |HeaderLine { revision, directive, .. }| {
+                if let Some(value) = directive.strip_prefix(LLVM_COMPONENTS_HEADER) {
+                    let info = header_map.entry(revision).or_insert(RevisionInfo::default());
+                    let comp_vec = info.llvm_components.get_or_insert(Vec::new());
+                    for component in value.split(' ') {
+                        let component = component.trim();
+                        if !component.is_empty() {
+                            comp_vec.push(component);
+                        }
+                    }
+                } else if let Some(compile_flags) = directive.strip_prefix(COMPILE_FLAGS_HEADER)
+                    && let Some((_, v)) = compile_flags.split_once("--target")
+                {
+                    let v = v.trim_start_matches([' ', '=']);
+                    let info = header_map.entry(revision).or_insert(RevisionInfo::default());
+                    if v.starts_with("{{") {
+                        info.target_arch.replace(None);
+                    } else if let Some((arch, _)) = v.split_once("-") {
+                        info.target_arch.replace(Some(arch));
+                    } else {
+                        check.error(format!("{file}: seems to have a malformed --target value"));
                     }
                 }
-            } else if let Some(compile_flags) = directive.strip_prefix(COMPILE_FLAGS_HEADER)
-                && let Some((_, v)) = compile_flags.split_once("--target")
+            });
+
+            // Skip run-make tests as revisions are not supported.
+            if entry.path().strip_prefix(tests_path).is_ok_and(|rest| rest.starts_with("run-make"))
             {
-                let v = v.trim_start_matches([' ', '=']);
-                let info = header_map.entry(revision).or_insert(RevisionInfo::default());
-                if v.starts_with("{{") {
-                    info.target_arch.replace(None);
-                } else if let Some((arch, _)) = v.split_once("-") {
-                    info.target_arch.replace(Some(arch));
-                } else {
-                    check.error(format!("{file}: seems to have a malformed --target value"));
-                }
+                return;
             }
-        });
 
-        // Skip run-make tests as revisions are not supported.
-        if entry.path().strip_prefix(tests_path).is_ok_and(|rest| rest.starts_with("run-make")) {
-            return;
-        }
-
-        for (rev, RevisionInfo { target_arch, llvm_components }) in &header_map {
-            let rev = rev.unwrap_or("[unspecified]");
-            match (target_arch, llvm_components) {
-                (None, None) => {}
-                (Some(target_arch), None) => {
-                    let llvm_component =
-                        target_arch.map_or_else(|| "<arch>".to_string(), arch_to_llvm_component);
-                    check.error(format!(
+            for (rev, RevisionInfo { target_arch, llvm_components }) in &header_map {
+                let rev = rev.unwrap_or("[unspecified]");
+                match (target_arch, llvm_components) {
+                    (None, None) => {}
+                    (Some(target_arch), None) => {
+                        let llvm_component = target_arch
+                            .map_or_else(|| "<arch>".to_string(), arch_to_llvm_component);
+                        check.error(format!(
                         "{file}: revision {rev} should specify `{LLVM_COMPONENTS_HEADER} {llvm_component}` as it has `--target` set"
                     ));
-                }
-                (None, Some(_)) => {
-                    check.error(format!(
+                    }
+                    (None, Some(_)) => {
+                        check.error(format!(
                         "{file}: revision {rev} should not specify `{LLVM_COMPONENTS_HEADER}` as it doesn't need `--target`"
                     ));
-                }
-                (Some(target_arch), Some(llvm_components)) => {
-                    if let Some(target_arch) = target_arch {
-                        let llvm_component = arch_to_llvm_component(target_arch);
-                        if !llvm_components.contains(&llvm_component.as_str()) {
-                            check.error(format!(
+                    }
+                    (Some(target_arch), Some(llvm_components)) => {
+                        if let Some(target_arch) = target_arch {
+                            let llvm_component = arch_to_llvm_component(target_arch);
+                            if !llvm_components.contains(&llvm_component.as_str()) {
+                                check.error(format!(
                                 "{file}: revision {rev} should specify `{LLVM_COMPONENTS_HEADER} {llvm_component}` as it has `--target` set"
                             ));
+                            }
                         }
                     }
                 }
             }
-        }
-    });
+        },
+    );
 }
 
 fn arch_to_llvm_component(arch: &str) -> String {

@@ -24,6 +24,7 @@ use std::fmt::Display;
 use std::iter::Peekable;
 use std::path::Path;
 
+use crate::TidyFlags;
 use crate::diagnostics::{CheckId, DiagCtx, RunningCheck};
 use crate::walk::{filter_dirs, walk};
 
@@ -130,13 +131,13 @@ fn check_lines<'a>(
     }
 }
 
-pub fn check(path: &Path, diag_ctx: DiagCtx) {
+pub fn check(path: &Path, tidy_flags: TidyFlags, diag_ctx: DiagCtx) {
     let mut check = diag_ctx.start_check(CheckId::new("alphabetical").path(path));
 
     let skip =
         |path: &_, _is_dir| filter_dirs(path) || path.ends_with("tidy/src/alphabetical/tests.rs");
 
-    walk(path, skip, &mut |entry, contents| {
+    walk(path, tidy_flags, skip, &mut |entry, contents| {
         let file = &entry.path().display();
         let lines = contents.lines().enumerate();
         check_lines(file, lines, &mut check)

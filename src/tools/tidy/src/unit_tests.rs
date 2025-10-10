@@ -11,10 +11,11 @@
 
 use std::path::Path;
 
+use crate::TidyFlags;
 use crate::diagnostics::{CheckId, DiagCtx};
 use crate::walk::{filter_dirs, walk};
 
-pub fn check(root_path: &Path, stdlib: bool, diag_ctx: DiagCtx) {
+pub fn check(root_path: &Path, stdlib: bool, tidy_flags: TidyFlags, diag_ctx: DiagCtx) {
     let mut check = diag_ctx.start_check(CheckId::new("unit_tests").path(root_path));
 
     let skip = move |path: &Path, is_dir| {
@@ -68,7 +69,7 @@ pub fn check(root_path: &Path, stdlib: bool, diag_ctx: DiagCtx) {
         }
     };
 
-    walk(root_path, skip, &mut |entry, contents| {
+    walk(root_path, tidy_flags, skip, &mut |entry, contents| {
         let path = entry.path();
         let package = path
             .strip_prefix(root_path)

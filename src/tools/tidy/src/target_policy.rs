@@ -5,6 +5,7 @@
 use std::collections::HashSet;
 use std::path::Path;
 
+use crate::TidyFlags;
 use crate::diagnostics::DiagCtx;
 use crate::walk::{filter_not_rust, walk};
 
@@ -24,7 +25,7 @@ const EXCEPTIONS: &[&str] = &[
     "xtensa_esp32s3_espidf",
 ];
 
-pub fn check(root_path: &Path, diag_ctx: DiagCtx) {
+pub fn check(root_path: &Path, tidy_flags: TidyFlags, diag_ctx: DiagCtx) {
     let mut check = diag_ctx.start_check("target_policy");
 
     let mut targets_to_find = HashSet::new();
@@ -46,7 +47,7 @@ pub fn check(root_path: &Path, diag_ctx: DiagCtx) {
         let _ = targets_to_find.insert(target_name);
     }
 
-    walk(&root_path.join(ASSEMBLY_LLVM_TEST_PATH), |_, _| false, &mut |_, contents| {
+    walk(&root_path.join(ASSEMBLY_LLVM_TEST_PATH), tidy_flags, |_, _| false, &mut |_, contents| {
         for line in contents.lines() {
             let Some(_) = line.find(REVISION_LINE_START) else {
                 continue;

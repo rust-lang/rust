@@ -24,6 +24,7 @@ use std::sync::LazyLock;
 use regex::RegexSetBuilder;
 use rustc_hash::FxHashMap;
 
+use crate::TidyFlags;
 use crate::diagnostics::{CheckId, DiagCtx};
 use crate::walk::{filter_dirs, walk};
 
@@ -339,7 +340,7 @@ fn is_unexplained_ignore(extension: &str, line: &str) -> bool {
     true
 }
 
-pub fn check(path: &Path, diag_ctx: DiagCtx) {
+pub fn check(path: &Path, tidy_flags: TidyFlags, diag_ctx: DiagCtx) {
     let mut check = diag_ctx.start_check(CheckId::new("style").path(path));
 
     fn skip(path: &Path, is_dir: bool) -> bool {
@@ -379,7 +380,7 @@ pub fn check(path: &Path, diag_ctx: DiagCtx) {
     // or comments. A simple workaround is to just allowlist this file.
     let this_file = Path::new(file!());
 
-    walk(path, skip, &mut |entry, contents| {
+    walk(path, tidy_flags, skip, &mut |entry, contents| {
         let file = entry.path();
         let path_str = file.to_string_lossy();
         let filename = file.file_name().unwrap().to_string_lossy();

@@ -3,9 +3,10 @@ use std::process::{Command, Stdio};
 
 use semver::Version;
 
+use crate::TidyFlags;
 use crate::diagnostics::{CheckId, DiagCtx};
 
-pub fn check(root: &Path, cargo: &Path, diag_ctx: DiagCtx) {
+pub fn check(root: &Path, cargo: &Path, _tidy_flags: TidyFlags, diag_ctx: DiagCtx) {
     let mut check = diag_ctx.start_check(CheckId::new("x_version").path(root));
     let cargo_list = Command::new(cargo).args(["install", "--list"]).stdout(Stdio::piped()).spawn();
 

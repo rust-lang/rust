@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 
+use crate::TidyFlags;
 use crate::diagnostics::{CheckId, DiagCtx};
 use crate::walk::{filter_dirs, walk};
 
@@ -28,11 +29,16 @@ fn filter_used_messages(
     }
 }
 
-pub fn check(path: &Path, mut all_defined_msgs: HashMap<String, String>, diag_ctx: DiagCtx) {
+pub fn check(
+    path: &Path,
+    mut all_defined_msgs: HashMap<String, String>,
+    tidy_flags: TidyFlags,
+    diag_ctx: DiagCtx,
+) {
     let mut check = diag_ctx.start_check(CheckId::new("fluent_used").path(path));
 
     let mut msgs_appear_only_once = HashMap::new();
-    walk(path, |path, _| filter_dirs(path), &mut |_, contents| {
+    walk(path, tidy_flags, |path, _| filter_dirs(path), &mut |_, contents| {
         filter_used_messages(contents, &mut all_defined_msgs, &mut msgs_appear_only_once);
     });
 

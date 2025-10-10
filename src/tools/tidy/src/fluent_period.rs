@@ -4,6 +4,7 @@ use std::path::Path;
 
 use fluent_syntax::ast::{Entry, PatternElement};
 
+use crate::TidyFlags;
 use crate::diagnostics::{CheckId, DiagCtx, RunningCheck};
 use crate::walk::{filter_dirs, walk};
 
@@ -75,11 +76,12 @@ fn find_line(haystack: &str, needle: &str) -> usize {
     1
 }
 
-pub fn check(path: &Path, diag_ctx: DiagCtx) {
+pub fn check(path: &Path, tidy_flags: TidyFlags, diag_ctx: DiagCtx) {
     let mut check = diag_ctx.start_check(CheckId::new("fluent_period").path(path));
 
     walk(
         path,
+        tidy_flags,
         |path, is_dir| filter_dirs(path) || (!is_dir && filter_fluent(path)),
         &mut |ent, contents| {
             check_period(ent.path().to_str().unwrap(), contents, &mut check);
