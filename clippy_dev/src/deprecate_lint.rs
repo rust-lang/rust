@@ -15,10 +15,6 @@ use std::{fs, io};
 ///
 /// If a file path could not read from or written to
 pub fn deprecate(clippy_version: Version, name: &str, reason: &str) {
-    if let Some((prefix, _)) = name.split_once("::") {
-        panic!("`{name}` should not contain the `{prefix}` prefix");
-    }
-
     let mut lints = find_lint_decls();
     let (mut deprecated_lints, renamed_lints) = read_deprecated_lints();
 

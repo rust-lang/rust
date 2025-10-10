@@ -26,13 +26,6 @@ use std::path::Path;
 /// * If `old_name` names a deprecated or renamed lint.
 #[expect(clippy::too_many_lines)]
 pub fn rename(clippy_version: Version, old_name: &str, new_name: &str, uplift: bool) {
-    if let Some((prefix, _)) = old_name.split_once("::") {
-        panic!("`{old_name}` should not contain the `{prefix}` prefix");
-    }
-    if let Some((prefix, _)) = new_name.split_once("::") {
-        panic!("`{new_name}` should not contain the `{prefix}` prefix");
-    }
-
     let mut updater = FileUpdater::default();
     let mut lints = find_lint_decls();
     let (deprecated_lints, mut renamed_lints) = read_deprecated_lints();
