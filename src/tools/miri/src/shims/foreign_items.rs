@@ -827,6 +827,23 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.mem_copy(ptr_src, ptr_dest, Size::from_bytes(n), true)?;
                 this.write_pointer(ptr_dest, dest)?;
             }
+            "memset" => {
+                let [ptr_dest, val, n] =
+                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let ptr_dest = this.read_pointer(ptr_dest)?;
+                let val = this.read_scalar(val)?.to_i32()?;
+                let n = this.read_target_usize(n)?;
+                // The docs say val is "interpreted as unsigned char".
+                #[expect(clippy::as_conversions)]
+                let val = val as u8;
+
+                // C requires that this must always be a valid pointer, even if `n` is zero, so we better check that.
+                this.ptr_get_alloc_id(ptr_dest, 0)?;
+
+                let bytes = std::iter::repeat_n(val, n.try_into().unwrap());
+                this.write_bytes_ptr(ptr_dest, bytes)?;
+                this.write_pointer(ptr_dest, dest)?;
+            }
 
             // LLVM intrinsics
             "llvm.prefetch" => {
