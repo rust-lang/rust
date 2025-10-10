@@ -14,3 +14,6 @@ RUN tar -xJf sde.tar.xz --strip-components=1 -C intel-sde
 ENV CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER="/intel-sde/sde64 \
             -cpuid-in /checkout/ci/docker/x86_64-unknown-linux-gnu/cpuid.def \
             -rtm-mode full -tsx --"
+# SDE doesn't support AMD extensions
+# FIXME: find a way to test these
+ENV STDARCH_TEST_SKIP_FEATURE="sse4a,tbm,xop"
