@@ -302,6 +302,7 @@ fn compute_replacement<'tcx>(
     return Replacer {
         tcx,
         targets: finder.targets,
+        remap_var_debug_infos: IndexVec::from_elem(None, body.local_decls()),
         storage_to_remove,
         allowed_replacements,
         any_replacement: false,
@@ -381,6 +382,7 @@ fn fully_replaceable_locals(ssa: &SsaLocals) -> DenseBitSet<Local> {
 struct Replacer<'tcx> {
     tcx: TyCtxt<'tcx>,
     targets: IndexVec<Local, Value<'tcx>>,
+    remap_var_debug_infos: IndexVec<Local, Option<Local>>,
     storage_to_remove: DenseBitSet<Local>,
     allowed_replacements: FxHashSet<(Local, Location)>,
     any_replacement: bool,
@@ -392,19 +394,43 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
     }
 
     fn visit_var_debug_info(&mut self, debuginfo: &mut VarDebugInfo<'tcx>) {
-        // If the debuginfo is a pointer to another place
-        // and it's a reborrow: see through it
-        while let VarDebugInfoContents::Place(ref mut place) = debuginfo.value
+        if let VarDebugInfoContents::Place(ref mut place) = debuginfo.value
             && place.projection.is_empty()
-            && let Value::Pointer(target, _) = self.targets[place.local]
-            && let &[PlaceElem::Deref] = &target.projection[..]
         {
-            *place = Place::from(target.local);
-            self.any_replacement = true;
+            let mut new_local = place.local;
+
+            // If the debuginfo is a pointer to another place
+            // and it's a reborrow: see through it
+            while let Value::Pointer(target, _) = self.targets[new_local]
+                && let &[PlaceElem::Deref] = &target.projection[..]
+            {
+                new_local = target.local;
+            }
+            if place.local != new_local {
+                self.remap_var_debug_infos[place.local] = Some(new_local);
+                place.local = new_local;
+
+                self.any_replacement = true;
+            }
         }
 
         // Simplify eventual projections left inside `debuginfo`.
         self.super_var_debug_info(debuginfo);
+    }
+
+    fn visit_statement_debuginfo(
+        &mut self,
+        stmt_debuginfo: &mut StmtDebugInfo<'tcx>,
+        location: Location,
+    ) {
+        let local = match stmt_debuginfo {
+            StmtDebugInfo::AssignRef(local, _) | StmtDebugInfo::InvalidAssign(local) => local,
+        };
+        if let Some(target) = self.remap_var_debug_infos[*local] {
+            *local = target;
+            self.any_replacement = true;
+        }
+        self.super_statement_debuginfo(stmt_debuginfo, location);
     }
 
     fn visit_place(&mut self, place: &mut Place<'tcx>, ctxt: PlaceContext, loc: Location) {
@@ -437,8 +463,9 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
             {
                 stmt.make_nop(true);
             }
-            // Do not remove assignments as they may still be useful for debuginfo.
-            _ => self.super_statement(stmt, loc),
+            _ => {}
         }
+        // Do not remove assignments as they may still be useful for debuginfo.
+        self.super_statement(stmt, loc);
     }
 }

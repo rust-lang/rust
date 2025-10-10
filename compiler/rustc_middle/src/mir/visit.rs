@@ -1098,6 +1098,10 @@ macro_rules! super_body {
             }
         }
 
+        for var_debug_info in &$($mutability)? $body.var_debug_info {
+            $self.visit_var_debug_info(var_debug_info);
+        }
+
         for (bb, data) in basic_blocks_iter!($body, $($mutability, $invalidate)?) {
             $self.visit_basic_block_data(bb, data);
         }
@@ -1125,10 +1129,6 @@ macro_rules! super_body {
             $self.visit_user_type_annotation(
                 index, annotation
             );
-        }
-
-        for var_debug_info in &$($mutability)? $body.var_debug_info {
-            $self.visit_var_debug_info(var_debug_info);
         }
 
         $self.visit_span($(& $mutability)? $body.span);

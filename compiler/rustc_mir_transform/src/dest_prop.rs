@@ -277,7 +277,6 @@ impl<'tcx> MutVisitor<'tcx> for Merger<'tcx> {
                 if self.merged_locals.contains(*local) =>
             {
                 statement.make_nop(true);
-                return;
             }
             _ => (),
         };
