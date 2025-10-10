@@ -1,6 +1,6 @@
 pub mod cursor;
 
-use self::cursor::Cursor;
+use self::cursor::{Capture, Cursor};
 use crate::utils::{ErrAction, File, expect_action};
 use core::range::Range;
 use std::fs;
@@ -102,13 +102,13 @@ fn parse_clippy_lint_decls(path: &Path, contents: &str, module: &str, lints: &mu
     ];
 
     let mut cursor = Cursor::new(contents);
+    let mut captures = [Capture::EMPTY; 2];
     while cursor.find_pat(Ident("declare_clippy_lint")) {
         let start = cursor.pos() as usize - "declare_clippy_lint".len();
-        let (mut name, mut group) = ("", "");
-        if cursor.match_all(DECL_TOKENS, &mut [&mut name, &mut group]) && cursor.find_pat(CloseBrace) {
+        if cursor.match_all(DECL_TOKENS, &mut captures) && cursor.find_pat(CloseBrace) {
             lints.push(Lint {
-                name: name.to_lowercase(),
-                group: group.into(),
+                name: cursor.get_text(captures[0]).to_lowercase(),
+                group: cursor.get_text(captures[1]).into(),
                 module: module.into(),
                 path: path.into(),
                 declaration_range: start..cursor.pos() as usize,
@@ -146,6 +146,7 @@ pub fn read_deprecated_lints() -> (Vec<DeprecatedLint>, Vec<RenamedLint>) {
     File::open_read_to_cleared_string(path, &mut contents);
 
     let mut cursor = Cursor::new(&contents);
+    let mut captures = [Capture::EMPTY; 3];
 
     // First instance is the macro definition.
     assert!(
@@ -154,14 +155,11 @@ pub fn read_deprecated_lints() -> (Vec<DeprecatedLint>, Vec<RenamedLint>) {
     );
 
     if cursor.find_pat(Ident("declare_with_version")) && cursor.match_all(DEPRECATED_TOKENS, &mut []) {
-        let mut version = "";
-        let mut name = "";
-        let mut reason = "";
-        while cursor.match_all(DECL_TOKENS, &mut [&mut version, &mut name, &mut reason]) {
+        while cursor.match_all(DECL_TOKENS, &mut captures) {
             deprecated.push(DeprecatedLint {
-                name: parse_str_single_line(path.as_ref(), name),
-                reason: parse_str_single_line(path.as_ref(), reason),
-                version: parse_str_single_line(path.as_ref(), version),
+                name: parse_str_single_line(path.as_ref(), cursor.get_text(captures[1])),
+                reason: parse_str_single_line(path.as_ref(), cursor.get_text(captures[2])),
+                version: parse_str_single_line(path.as_ref(), cursor.get_text(captures[0])),
             });
         }
     } else {
@@ -169,14 +167,11 @@ pub fn read_deprecated_lints() -> (Vec<DeprecatedLint>, Vec<RenamedLint>) {
     }
 
     if cursor.find_pat(Ident("declare_with_version")) && cursor.match_all(RENAMED_TOKENS, &mut []) {
-        let mut version = "";
-        let mut old_name = "";
-        let mut new_name = "";
-        while cursor.match_all(DECL_TOKENS, &mut [&mut version, &mut old_name, &mut new_name]) {
+        while cursor.match_all(DECL_TOKENS, &mut captures) {
             renamed.push(RenamedLint {
-                old_name: parse_str_single_line(path.as_ref(), old_name),
-                new_name: parse_str_single_line(path.as_ref(), new_name),
-                version: parse_str_single_line(path.as_ref(), version),
+                old_name: parse_str_single_line(path.as_ref(), cursor.get_text(captures[1])),
+                new_name: parse_str_single_line(path.as_ref(), cursor.get_text(captures[2])),
+                version: parse_str_single_line(path.as_ref(), cursor.get_text(captures[0])),
             });
         }
     } else {

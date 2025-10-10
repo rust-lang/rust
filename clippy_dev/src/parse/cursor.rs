@@ -32,6 +32,15 @@ pub enum Pat<'a> {
     Semi,
 }
 
+#[derive(Clone, Copy)]
+pub struct Capture {
+    pub pos: u32,
+    pub len: u32,
+}
+impl Capture {
+    pub const EMPTY: Self = Self { pos: 0, len: 0 };
+}
+
 /// A unidirectional cursor over a token stream that is lexed on demand.
 pub struct Cursor<'txt> {
     next_token: Token,
@@ -49,6 +58,12 @@ impl<'txt> Cursor<'txt> {
             inner,
             text,
         }
+    }
+
+    /// Gets the text of the captured token assuming it came from this cursor.
+    #[must_use]
+    pub fn get_text(&self, capture: Capture) -> &'txt str {
+        &self.text[capture.pos as usize..(capture.pos + capture.len) as usize]
     }
 
     /// Gets the text that makes up the next token in the stream, or the empty string if
@@ -97,7 +112,7 @@ impl<'txt> Cursor<'txt> {
     ///
     /// For each capture made by the pattern one item will be taken from the capture
     /// sequence with the result placed inside.
-    fn match_pat(&mut self, pat: Pat<'_>, captures: &mut slice::IterMut<'_, &mut &'txt str>) -> bool {
+    fn match_impl(&mut self, pat: Pat<'_>, captures: &mut slice::IterMut<'_, Capture>) -> bool {
         loop {
             match (pat, self.next_token.kind) {
                 #[rustfmt::skip] // rustfmt bug: https://github.com/rust-lang/rustfmt/issues/6697
@@ -154,7 +169,7 @@ impl<'txt> Cursor<'txt> {
                     },
                 )
                 | (Pat::CaptureIdent, TokenKind::Ident) => {
-                    **captures.next().unwrap() = self.peek_text();
+                    *captures.next().unwrap() = Capture { pos: self.pos, len: self.next_token.len };
                     self.step();
                     return true;
                 },
@@ -169,9 +184,9 @@ impl<'txt> Cursor<'txt> {
     /// Not generally suitable for multi-token patterns or patterns that can match
     /// nothing.
     #[must_use]
-    pub fn find_pat(&mut self, token: Pat<'_>) -> bool {
+    pub fn find_pat(&mut self, pat: Pat<'_>) -> bool {
         let mut capture = [].iter_mut();
-        while !self.match_pat(token, &mut capture) {
+        while !self.match_impl(pat, &mut capture) {
             self.step();
             if self.at_end() {
                 return false;
@@ -182,21 +197,20 @@ impl<'txt> Cursor<'txt> {
 
     /// The same as [`Self::find_pat`], but returns a capture as well.
     #[must_use]
-    pub fn find_capture_pat(&mut self, token: Pat<'_>) -> Option<&'txt str> {
-        let mut res = "";
-        let mut capture = &mut res;
-        let mut capture = slice::from_mut(&mut capture).iter_mut();
-        while !self.match_pat(token, &mut capture) {
+    pub fn find_capture_pat(&mut self, pat: Pat<'_>) -> Option<&'txt str> {
+        let mut capture = Capture::EMPTY;
+        let mut captures = slice::from_mut(&mut capture).iter_mut();
+        while !self.match_impl(pat, &mut captures) {
             self.step();
             if self.at_end() {
                 return None;
             }
         }
-        Some(res)
+        Some(self.get_text(capture))
     }
 
     /// Attempts to match a sequence of patterns at the current position. Returns whether
-    /// the match is successful.
+    /// all patterns were successfully matched.
     ///
     /// Captures will be written to the given slice in the order they're matched. If a
     /// capture is matched, but there are no more capture slots this will panic. If the
@@ -205,8 +219,8 @@ impl<'txt> Cursor<'txt> {
     ///
     /// If the match fails the cursor will be positioned at the first failing token.
     #[must_use]
-    pub fn match_all(&mut self, tokens: &[Pat<'_>], captures: &mut [&mut &'txt str]) -> bool {
+    pub fn match_all(&mut self, pats: &[Pat<'_>], captures: &mut [Capture]) -> bool {
         let mut captures = captures.iter_mut();
-        tokens.iter().all(|&t| self.match_pat(t, &mut captures))
+        pats.iter().all(|&t| self.match_impl(t, &mut captures))
     }
 }

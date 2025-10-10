@@ -1,4 +1,4 @@
-use crate::parse::cursor::{self, Cursor};
+use crate::parse::cursor::{self, Capture, Cursor};
 use crate::parse::{RenamedLint, find_lint_decls, read_deprecated_lints};
 use crate::update_lints::generate_lint_files;
 use crate::utils::{
@@ -281,7 +281,7 @@ fn file_update_fn<'a, 'b>(
         let mut copy_pos = 0u32;
         let mut changed = false;
         let mut cursor = Cursor::new(src);
-        let mut capture = "";
+        let mut captures = [Capture::EMPTY];
         loop {
             match cursor.peek() {
                 TokenKind::Eof => break,
@@ -292,12 +292,10 @@ fn file_update_fn<'a, 'b>(
                     match text {
                         // clippy::line_name or clippy::lint-name
                         "clippy" => {
-                            if cursor.match_all(
-                                &[cursor::Pat::DoubleColon, cursor::Pat::CaptureIdent],
-                                &mut [&mut capture],
-                            ) && capture == old_name
+                            if cursor.match_all(&[cursor::Pat::DoubleColon, cursor::Pat::CaptureIdent], &mut captures)
+                                && cursor.get_text(captures[0]) == old_name
                             {
-                                dst.push_str(&src[copy_pos as usize..cursor.pos() as usize - capture.len()]);
+                                dst.push_str(&src[copy_pos as usize..captures[0].pos as usize]);
                                 dst.push_str(new_name);
                                 copy_pos = cursor.pos();
                                 changed = true;
@@ -306,12 +304,12 @@ fn file_update_fn<'a, 'b>(
                         // mod lint_name
                         "mod" => {
                             if !matches!(mod_edit, ModEdit::None)
-                                && cursor.match_all(&[cursor::Pat::CaptureIdent], &mut [&mut capture])
-                                && capture == old_name
+                                && cursor.match_all(&[cursor::Pat::CaptureIdent], &mut captures)
+                                && cursor.get_text(captures[0]) == old_name
                             {
                                 match mod_edit {
                                     ModEdit::Rename => {
-                                        dst.push_str(&src[copy_pos as usize..cursor.pos() as usize - capture.len()]);
+                                        dst.push_str(&src[copy_pos as usize..captures[0].pos as usize]);
                                         dst.push_str(new_name);
                                         copy_pos = cursor.pos();
                                         changed = true;
@@ -374,12 +372,10 @@ fn file_update_fn<'a, 'b>(
                 },
                 // ::lint_name
                 TokenKind::Colon
-                    if cursor.match_all(
-                        &[cursor::Pat::DoubleColon, cursor::Pat::CaptureIdent],
-                        &mut [&mut capture],
-                    ) && capture == old_name =>
+                    if cursor.match_all(&[cursor::Pat::DoubleColon, cursor::Pat::CaptureIdent], &mut captures)
+                        && cursor.get_text(captures[0]) == old_name =>
                 {
-                    dst.push_str(&src[copy_pos as usize..cursor.pos() as usize - capture.len()]);
+                    dst.push_str(&src[copy_pos as usize..captures[0].pos as usize]);
                     dst.push_str(new_name);
                     copy_pos = cursor.pos();
                     changed = true;

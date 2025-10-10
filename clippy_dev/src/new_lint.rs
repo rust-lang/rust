@@ -1,4 +1,4 @@
-use crate::parse::cursor::{self, Cursor};
+use crate::parse::cursor::{self, Capture, Cursor};
 use crate::utils::Version;
 use clap::ValueEnum;
 use indoc::{formatdoc, writedoc};
@@ -522,6 +522,7 @@ fn parse_mod_file(path: &Path, contents: &str) -> (&'static str, usize) {
     let mut context = None;
     let mut decl_end = None;
     let mut cursor = Cursor::new(contents);
+    let mut captures = [Capture::EMPTY];
     while let Some(name) = cursor.find_capture_pat(CaptureIdent) {
         match name {
             "declare_clippy_lint" => {
@@ -530,9 +531,8 @@ fn parse_mod_file(path: &Path, contents: &str) -> (&'static str, usize) {
                 }
             },
             "impl" => {
-                let mut capture = "";
-                if cursor.match_all(&[Lt, Lifetime, Gt, CaptureIdent], &mut [&mut capture]) {
-                    match capture {
+                if cursor.match_all(&[Lt, Lifetime, Gt, CaptureIdent], &mut captures) {
+                    match cursor.get_text(captures[0]) {
                         "LateLintPass" => context = Some("LateContext"),
                         "EarlyLintPass" => context = Some("EarlyContext"),
                         _ => {},
