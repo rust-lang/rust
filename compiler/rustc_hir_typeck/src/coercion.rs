@@ -856,9 +856,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         debug_assert!(self.shallow_resolve(a) == a);
         debug_assert!(self.shallow_resolve(b) == b);
 
-        let InferOk { value: b, mut obligations } =
-            self.at(&self.cause, self.param_env).normalize(b);
-
         match b.kind() {
             ty::FnPtr(_, b_hdr) => {
                 let mut a_sig = a.fn_sig(self.tcx);
@@ -890,9 +887,10 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     }
                 }
 
-                let InferOk { value: a_sig, obligations: o1 } =
+                // FIXME: we shouldn't be normalizing here as coercion is inside of
+                // a probe. This can probably cause ICEs.
+                let InferOk { value: a_sig, mut obligations } =
                     self.at(&self.cause, self.param_env).normalize(a_sig);
-                obligations.extend(o1);
 
                 let InferOk { value, obligations: o2 } = self.coerce_from_safe_fn(
                     a_sig,
@@ -907,8 +905,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         }
     }
 
-    /// Attempts to coerce from the type of a non-capturing closure
-    /// into a function pointer.
+    /// Attempts to coerce from a closure to a function pointer. Fails
+    /// if the closure has any upvars.
     fn coerce_closure_to_fn(
         &self,
         a: Ty<'tcx>,
