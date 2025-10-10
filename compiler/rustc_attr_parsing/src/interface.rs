@@ -118,6 +118,7 @@ impl<'sess> AttributeParser<'sess, Early> {
         target_node_id: NodeId,
         features: Option<&'sess Features>,
         emit_errors: ShouldEmit,
+        parsing_cfg: bool,
         parse_fn: fn(cx: &mut AcceptContext<'_, '_, Early>, item: &ArgParser<'_>) -> Option<T>,
         template: &AttributeTemplate,
     ) -> Option<T> {
@@ -133,7 +134,8 @@ impl<'sess> AttributeParser<'sess, Early> {
         };
         let parts =
             normal_attr.item.path.segments.iter().map(|seg| seg.ident.name).collect::<Vec<_>>();
-        let meta_parser = MetaItemParser::from_attr(normal_attr, &parts, &sess.psess, emit_errors)?;
+        let meta_parser =
+            MetaItemParser::from_attr(normal_attr, &parts, &sess.psess, emit_errors, parsing_cfg)?;
         let path = meta_parser.path();
         let args = meta_parser.args();
         let mut cx: AcceptContext<'_, 'sess, Early> = AcceptContext {
@@ -251,6 +253,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                             &parts,
                             &self.sess.psess,
                             self.stage.should_emit(),
+                            false,
                         ) else {
                             continue;
                         };

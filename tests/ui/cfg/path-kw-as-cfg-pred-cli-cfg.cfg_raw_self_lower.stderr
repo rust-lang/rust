@@ -1,0 +1,2 @@
+error: invalid `--cfg` argument: `r#self` (argument key must be an identifier, but `self` cannot be a raw identifier)
+

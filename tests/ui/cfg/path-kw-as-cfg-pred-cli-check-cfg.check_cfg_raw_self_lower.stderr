@@ -1,0 +1,5 @@
+error: invalid `--check-cfg` argument: `cfg(r#self)`
+   |
+   = note: argument key must be an identifier, but `self` cannot be a raw identifier
+   = note: visit <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more details
+

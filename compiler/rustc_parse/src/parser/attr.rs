@@ -381,6 +381,7 @@ impl<'a> Parser<'a> {
     pub fn parse_cfg_attr(
         &mut self,
     ) -> PResult<'a, (ast::MetaItemInner, Vec<(ast::AttrItem, Span)>)> {
+        self.parse_cfg_pred = true;
         let cfg_predicate = self.parse_meta_item_inner()?;
         self.expect(exp!(Comma))?;
 
@@ -449,7 +450,14 @@ impl<'a> Parser<'a> {
             ast::Safety::Default
         };
 
-        let path = self.parse_path(PathStyle::Mod)?;
+        let path = if self.parse_cfg_pred {
+            let path = self.parse_path(PathStyle::CfgPred)?;
+            self.parse_cfg_pred = false;
+            path
+        } else {
+            self.parse_path(PathStyle::Mod)?
+        };
+
         let kind = self.parse_meta_item_kind()?;
         if is_unsafe {
             self.expect(exp!(CloseParen))?;

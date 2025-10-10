@@ -1,0 +1,383 @@
+error: `crate` cannot be a raw identifier
+  --> $DIR/path-kw-as-cfg-pred.rs:88:10
+   |
+LL |     cfg!(r#crate);
+   |          ^^^^^^^
+
+error: `super` cannot be a raw identifier
+  --> $DIR/path-kw-as-cfg-pred.rs:89:10
+   |
+LL |     cfg!(r#super);
+   |          ^^^^^^^
+
+error: `self` cannot be a raw identifier
+  --> $DIR/path-kw-as-cfg-pred.rs:90:10
+   |
+LL |     cfg!(r#self);
+   |          ^^^^^^
+
+error: `Self` cannot be a raw identifier
+  --> $DIR/path-kw-as-cfg-pred.rs:91:10
+   |
+LL |     cfg!(r#Self);
+   |          ^^^^^^
+
+error: `crate` cannot be a raw identifier
+  --> $DIR/path-kw-as-cfg-pred.rs:100:7
+   |
+LL | #[cfg(r#crate)]
+   |       ^^^^^^^
+
+error: `super` cannot be a raw identifier
+  --> $DIR/path-kw-as-cfg-pred.rs:102:7
+   |
+LL | #[cfg(r#super)]
+   |       ^^^^^^^
+
+error: `self` cannot be a raw identifier
+  --> $DIR/path-kw-as-cfg-pred.rs:104:7
+   |
+LL | #[cfg(r#self)]
+   |       ^^^^^^
+
+error: `Self` cannot be a raw identifier
+  --> $DIR/path-kw-as-cfg-pred.rs:106:7
+   |
+LL | #[cfg(r#Self)]
+   |       ^^^^^^
+
+error: `crate` cannot be a raw identifier
+  --> $DIR/path-kw-as-cfg-pred.rs:108:12
+   |
+LL | #[cfg_attr(r#crate, cfg(r#crate))]
+   |            ^^^^^^^
+
+error: `crate` cannot be a raw identifier
+  --> $DIR/path-kw-as-cfg-pred.rs:108:25
+   |
+LL | #[cfg_attr(r#crate, cfg(r#crate))]
+   |                         ^^^^^^^
+
+error: `super` cannot be a raw identifier
+  --> $DIR/path-kw-as-cfg-pred.rs:111:12
+   |
+LL | #[cfg_attr(r#super, cfg(r#super))]
+   |            ^^^^^^^
+
+error: `super` cannot be a raw identifier
+  --> $DIR/path-kw-as-cfg-pred.rs:111:25
+   |
+LL | #[cfg_attr(r#super, cfg(r#super))]
+   |                         ^^^^^^^
+
+error: `self` cannot be a raw identifier
+  --> $DIR/path-kw-as-cfg-pred.rs:114:12
+   |
+LL | #[cfg_attr(r#self, cfg(r#self))]
+   |            ^^^^^^
+
+error: `self` cannot be a raw identifier
+  --> $DIR/path-kw-as-cfg-pred.rs:114:24
+   |
+LL | #[cfg_attr(r#self, cfg(r#self))]
+   |                        ^^^^^^
+
+error: `Self` cannot be a raw identifier
+  --> $DIR/path-kw-as-cfg-pred.rs:117:12
+   |
+LL | #[cfg_attr(r#Self, cfg(r#Self))]
+   |            ^^^^^^
+
+error: `Self` cannot be a raw identifier
+  --> $DIR/path-kw-as-cfg-pred.rs:117:24
+   |
+LL | #[cfg_attr(r#Self, cfg(r#Self))]
+   |                        ^^^^^^
+
+error: expected identifier, found keyword `crate`
+  --> $DIR/path-kw-as-cfg-pred.rs:18:7
+   |
+LL | #[cfg(crate)]
+   |       ^^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `super`
+  --> $DIR/path-kw-as-cfg-pred.rs:20:7
+   |
+LL | #[cfg(super)]
+   |       ^^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `self`
+  --> $DIR/path-kw-as-cfg-pred.rs:22:7
+   |
+LL | #[cfg(self)]
+   |       ^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `Self`
+  --> $DIR/path-kw-as-cfg-pred.rs:24:7
+   |
+LL | #[cfg(Self)]
+   |       ^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `crate`
+  --> $DIR/path-kw-as-cfg-pred.rs:26:12
+   |
+LL | #[cfg_attr(crate, path = "foo")]
+   |            ^^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `super`
+  --> $DIR/path-kw-as-cfg-pred.rs:28:12
+   |
+LL | #[cfg_attr(super, path = "foo")]
+   |            ^^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `self`
+  --> $DIR/path-kw-as-cfg-pred.rs:30:12
+   |
+LL | #[cfg_attr(self, path = "foo")]
+   |            ^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `Self`
+  --> $DIR/path-kw-as-cfg-pred.rs:32:12
+   |
+LL | #[cfg_attr(Self, path = "foo")]
+   |            ^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `crate`
+  --> $DIR/path-kw-as-cfg-pred.rs:34:22
+   |
+LL | #[cfg_attr(true, cfg(crate))]
+   |                      ^^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `super`
+  --> $DIR/path-kw-as-cfg-pred.rs:36:22
+   |
+LL | #[cfg_attr(true, cfg(super))]
+   |                      ^^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `self`
+  --> $DIR/path-kw-as-cfg-pred.rs:38:22
+   |
+LL | #[cfg_attr(true, cfg(self))]
+   |                      ^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `Self`
+  --> $DIR/path-kw-as-cfg-pred.rs:40:22
+   |
+LL | #[cfg_attr(true, cfg(Self))]
+   |                      ^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `struct`
+  --> $DIR/path-kw-as-cfg-pred.rs:43:7
+   |
+LL | #[cfg(struct)]
+   |       ^^^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `enum`
+  --> $DIR/path-kw-as-cfg-pred.rs:45:7
+   |
+LL | #[cfg(enum)]
+   |       ^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `async`
+  --> $DIR/path-kw-as-cfg-pred.rs:47:7
+   |
+LL | #[cfg(async)]
+   |       ^^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `impl`
+  --> $DIR/path-kw-as-cfg-pred.rs:49:7
+   |
+LL | #[cfg(impl)]
+   |       ^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `trait`
+  --> $DIR/path-kw-as-cfg-pred.rs:51:7
+   |
+LL | #[cfg(trait)]
+   |       ^^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `struct`
+  --> $DIR/path-kw-as-cfg-pred.rs:53:12
+   |
+LL | #[cfg_attr(struct, path = "foo")]
+   |            ^^^^^^ expected identifier, found keyword
+   |
+help: escape `struct` to use it as an identifier
+   |
+LL | #[cfg_attr(r#struct, path = "foo")]
+   |            ++
+
+error: expected identifier, found keyword `enum`
+  --> $DIR/path-kw-as-cfg-pred.rs:55:12
+   |
+LL | #[cfg_attr(enum, path = "foo")]
+   |            ^^^^ expected identifier, found keyword
+   |
+help: escape `enum` to use it as an identifier
+   |
+LL | #[cfg_attr(r#enum, path = "foo")]
+   |            ++
+
+error: expected identifier, found keyword `async`
+  --> $DIR/path-kw-as-cfg-pred.rs:57:12
+   |
+LL | #[cfg_attr(async, path = "foo")]
+   |            ^^^^^ expected identifier, found keyword
+   |
+help: escape `async` to use it as an identifier
+   |
+LL | #[cfg_attr(r#async, path = "foo")]
+   |            ++
+
+error: expected identifier, found keyword `impl`
+  --> $DIR/path-kw-as-cfg-pred.rs:59:12
+   |
+LL | #[cfg_attr(impl, path = "foo")]
+   |            ^^^^ expected identifier, found keyword
+   |
+help: escape `impl` to use it as an identifier
+   |
+LL | #[cfg_attr(r#impl, path = "foo")]
+   |            ++
+
+error: expected identifier, found keyword `trait`
+  --> $DIR/path-kw-as-cfg-pred.rs:61:12
+   |
+LL | #[cfg_attr(trait, path = "foo")]
+   |            ^^^^^ expected identifier, found keyword
+   |
+help: escape `trait` to use it as an identifier
+   |
+LL | #[cfg_attr(r#trait, path = "foo")]
+   |            ++
+
+error: expected identifier, found keyword `struct`
+  --> $DIR/path-kw-as-cfg-pred.rs:63:22
+   |
+LL | #[cfg_attr(true, cfg(struct))]
+   |                      ^^^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `enum`
+  --> $DIR/path-kw-as-cfg-pred.rs:65:22
+   |
+LL | #[cfg_attr(true, cfg(enum))]
+   |                      ^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `async`
+  --> $DIR/path-kw-as-cfg-pred.rs:67:22
+   |
+LL | #[cfg_attr(true, cfg(async))]
+   |                      ^^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `impl`
+  --> $DIR/path-kw-as-cfg-pred.rs:69:22
+   |
+LL | #[cfg_attr(true, cfg(impl))]
+   |                      ^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `trait`
+  --> $DIR/path-kw-as-cfg-pred.rs:71:22
+   |
+LL | #[cfg_attr(true, cfg(trait))]
+   |                      ^^^^^ expected identifier, found keyword
+
+error: expected identifier, found reserved identifier `$crate`
+  --> $DIR/path-kw-as-cfg-pred.rs:7:15
+   |
+LL |         #[cfg($crate)]
+   |               ^^^^^^ expected identifier, found reserved identifier
+...
+LL |     foo!();
+   |     ------ in this macro invocation
+   |
+   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: expected identifier, found reserved identifier `$crate`
+  --> $DIR/path-kw-as-cfg-pred.rs:9:20
+   |
+LL |         #[cfg_attr($crate, path = "foo")]
+   |                    ^^^^^^ expected identifier, found reserved identifier
+...
+LL |     foo!();
+   |     ------ in this macro invocation
+   |
+   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: expected identifier, found reserved identifier `$crate`
+  --> $DIR/path-kw-as-cfg-pred.rs:11:30
+   |
+LL |         #[cfg_attr(true, cfg($crate))]
+   |                              ^^^^^^ expected identifier, found reserved identifier
+...
+LL |     foo!();
+   |     ------ in this macro invocation
+   |
+   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: expected identifier, found reserved identifier `$crate`
+  --> $DIR/path-kw-as-cfg-pred.rs:14:14
+   |
+LL |         cfg!($crate);
+   |              ^^^^^^ expected identifier, found reserved identifier
+...
+LL |     foo!();
+   |     ------ in this macro invocation
+   |
+   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: expected identifier, found keyword `crate`
+  --> $DIR/path-kw-as-cfg-pred.rs:77:10
+   |
+LL |     cfg!(crate);
+   |          ^^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `super`
+  --> $DIR/path-kw-as-cfg-pred.rs:78:10
+   |
+LL |     cfg!(super);
+   |          ^^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `self`
+  --> $DIR/path-kw-as-cfg-pred.rs:79:10
+   |
+LL |     cfg!(self);
+   |          ^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `Self`
+  --> $DIR/path-kw-as-cfg-pred.rs:80:10
+   |
+LL |     cfg!(Self);
+   |          ^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `struct`
+  --> $DIR/path-kw-as-cfg-pred.rs:82:10
+   |
+LL |     cfg!(struct);
+   |          ^^^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `enum`
+  --> $DIR/path-kw-as-cfg-pred.rs:83:10
+   |
+LL |     cfg!(enum);
+   |          ^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `async`
+  --> $DIR/path-kw-as-cfg-pred.rs:84:10
+   |
+LL |     cfg!(async);
+   |          ^^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `impl`
+  --> $DIR/path-kw-as-cfg-pred.rs:85:10
+   |
+LL |     cfg!(impl);
+   |          ^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `trait`
+  --> $DIR/path-kw-as-cfg-pred.rs:86:10
+   |
+LL |     cfg!(trait);
+   |          ^^^^^ expected identifier, found keyword
+
+error: aborting due to 56 previous errors
+

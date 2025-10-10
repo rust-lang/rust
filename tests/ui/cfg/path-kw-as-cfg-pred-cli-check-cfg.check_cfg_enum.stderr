@@ -1,0 +1,5 @@
+error: invalid `--check-cfg` argument: `cfg(enum)`
+   |
+   = note: argument key must be an identifier but found keyword `enum`, escape it using `r#enum`
+   = note: visit <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more details
+
