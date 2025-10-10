@@ -1,6 +1,6 @@
 use either::Either;
 use rustc_abi::Endian;
-use rustc_apfloat::ieee::{Double, Single};
+use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_apfloat::{Float, Round};
 use rustc_middle::mir::interpret::{InterpErrorKind, UndefinedBehaviorInfo};
 use rustc_middle::ty::FloatTy;
@@ -120,10 +120,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                             let op = op.to_scalar();
                             // "Bitwise" operation, no NaN adjustments
                             match float_ty {
-                                FloatTy::F16 => unimplemented!("f16_f128"),
+                                FloatTy::F16 => Scalar::from_f16(op.to_f16()?.abs()),
                                 FloatTy::F32 => Scalar::from_f32(op.to_f32()?.abs()),
                                 FloatTy::F64 => Scalar::from_f64(op.to_f64()?.abs()),
-                                FloatTy::F128 => unimplemented!("f16_f128"),
+                                FloatTy::F128 => Scalar::from_f128(op.to_f128()?.abs()),
                             }
                         }
                         Op::Round(rounding) => {
@@ -136,10 +136,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                             };
                             let op = op.to_scalar();
                             match float_ty {
-                                FloatTy::F16 => unimplemented!("f16_f128"),
+                                FloatTy::F16 => self.float_round::<Half>(op, rounding)?,
                                 FloatTy::F32 => self.float_round::<Single>(op, rounding)?,
                                 FloatTy::F64 => self.float_round::<Double>(op, rounding)?,
-                                FloatTy::F128 => unimplemented!("f16_f128"),
+                                FloatTy::F128 => self.float_round::<Quad>(op, rounding)?,
                             }
                         }
                         Op::Numeric(name) => {
@@ -716,10 +716,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     };
 
                     let val = match float_ty {
-                        FloatTy::F16 => unimplemented!("f16_f128"),
+                        FloatTy::F16 => self.float_muladd::<Half>(a, b, c, typ)?,
                         FloatTy::F32 => self.float_muladd::<Single>(a, b, c, typ)?,
                         FloatTy::F64 => self.float_muladd::<Double>(a, b, c, typ)?,
-                        FloatTy::F128 => unimplemented!("f16_f128"),
+                        FloatTy::F128 => self.float_muladd::<Quad>(a, b, c, typ)?,
                     };
                     self.write_scalar(val, &dest)?;
                 }
@@ -747,10 +747,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let left = left.to_scalar();
         let right = right.to_scalar();
         interp_ok(match float_ty {
-            FloatTy::F16 => unimplemented!("f16_f128"),
+            FloatTy::F16 => self.float_minmax::<Half>(left, right, op)?,
             FloatTy::F32 => self.float_minmax::<Single>(left, right, op)?,
             FloatTy::F64 => self.float_minmax::<Double>(left, right, op)?,
-            FloatTy::F128 => unimplemented!("f16_f128"),
+            FloatTy::F128 => self.float_minmax::<Quad>(left, right, op)?,
         })
     }
 }
