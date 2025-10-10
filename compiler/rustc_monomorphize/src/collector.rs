@@ -208,6 +208,7 @@
 mod autodiff;
 
 use std::cell::OnceCell;
+use std::ops::ControlFlow;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::{MTLock, par_for_each_in};
@@ -228,7 +229,7 @@ use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCoercion};
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{
     self, GenericArgs, GenericParamDefKind, Instance, InstanceKind, Ty, TyCtxt, TypeFoldable,
-    TypeVisitableExt, VtblEntry,
+    TypeVisitable, TypeVisitableExt, TypeVisitor, VtblEntry,
 };
 use rustc_middle::util::Providers;
 use rustc_middle::{bug, span_bug};
@@ -473,6 +474,23 @@ fn collect_items_rec<'tcx>(
                 recursion_limit,
             ));
 
+            // Plenty of code paths later assume that everything can be normalized.
+            // Check normalization here to provide better diagnostics.
+            // Normalization errors here are usually due to trait solving overflow.
+            // FIXME: I assume that there are few type errors at post-analysis stage, but not
+            // entirely sure.
+            if tcx.has_normalization_error_in_mono(instance) {
+                let def_id = instance.def_id();
+                let def_span = tcx.def_span(def_id);
+                let def_path_str = tcx.def_path_str(def_id);
+                tcx.dcx().emit_fatal(RecursionLimit {
+                    span: starting_item.span,
+                    instance,
+                    def_span,
+                    def_path_str,
+                });
+            }
+
             rustc_data_structures::stack::ensure_sufficient_stack(|| {
                 let (used, mentioned) = tcx.items_of_instance((instance, mode));
                 used_items.extend(used.into_iter().copied());
@@ -601,6 +619,33 @@ fn collect_items_rec<'tcx>(
     if let Some((def_id, depth)) = recursion_depth_reset {
         recursion_depths.insert(def_id, depth);
     }
+}
+
+// Check whether we can normalize the MIR body. Make it a query since decoding MIR from disk cache
+// may be expensive.
+fn has_normalization_error_in_mono<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> bool {
+    struct NormalizationChecker<'tcx> {
+        tcx: TyCtxt<'tcx>,
+        instance: Instance<'tcx>,
+    }
+    impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for NormalizationChecker<'tcx> {
+        type Result = ControlFlow<()>;
+
+        fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
+            match self.instance.try_instantiate_mir_and_normalize_erasing_regions(
+                self.tcx,
+                ty::TypingEnv::fully_monomorphized(),
+                ty::EarlyBinder::bind(t),
+            ) {
+                Ok(_) => ControlFlow::Continue(()),
+                Err(_) => ControlFlow::Break(()),
+            }
+        }
+    }
+
+    let body = tcx.instance_mir(instance.def);
+    let mut checker = NormalizationChecker { tcx, instance };
+    body.visit_with(&mut checker).is_break()
 }
 
 fn check_recursion_limit<'tcx>(
@@ -1770,4 +1815,5 @@ pub(crate) fn collect_crate_mono_items<'tcx>(
 pub(crate) fn provide(providers: &mut Providers) {
     providers.hooks.should_codegen_locally = should_codegen_locally;
     providers.items_of_instance = items_of_instance;
+    providers.has_normalization_error_in_mono = has_normalization_error_in_mono;
 }
