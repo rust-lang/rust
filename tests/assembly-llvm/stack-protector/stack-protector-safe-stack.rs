@@ -23,7 +23,6 @@ pub unsafe fn test1(src: *const u8, len: usize) -> u8 {
     std::ptr::copy_nonoverlapping(src, buf.as_mut_ptr(), len.min(buf.len()));
     buf[0]
 
-
     // none-NOT: __stack_chk_fail
     // strong: __stack_chk_fail
     // all: __stack_chk_fail
