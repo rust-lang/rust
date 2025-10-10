@@ -361,7 +361,6 @@ fn run_ruff(
 ) -> Result<(), Error> {
     let mut cfg_args_ruff = cfg_args.to_vec();
     let mut file_args_ruff = file_args.to_vec();
-    println!("file_args: {:#?}", &file_args);
 
     let mut cfg_path = root_path.to_owned();
     cfg_path.extend(RUFF_CONFIG_PATH);
