@@ -163,3 +163,17 @@ macro_rules! simd_extract {
     ($x:expr, $idx:expr $(,)?) => {{ $crate::intrinsics::simd::simd_extract($x, const { $idx }) }};
     ($x:expr, $idx:expr, $ty:ty $(,)?) => {{ $crate::intrinsics::simd::simd_extract::<_, $ty>($x, const { $idx }) }};
 }
+
+#[allow(unused)]
+macro_rules! simd_masked_load {
+    ($align:expr, $mask:expr, $ptr:expr, $default:expr) => {
+        $crate::intrinsics::simd::simd_masked_load::<_, _, _, { $align }>($mask, $ptr, $default)
+    };
+}
+
+#[allow(unused)]
+macro_rules! simd_masked_store {
+    ($align:expr, $mask:expr, $ptr:expr, $default:expr) => {
+        $crate::intrinsics::simd::simd_masked_store::<_, _, _, { $align }>($mask, $ptr, $default)
+    };
+}

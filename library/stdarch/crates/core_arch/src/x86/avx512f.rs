@@ -34715,7 +34715,8 @@ pub unsafe fn _mm512_store_pd(mem_addr: *mut f64, a: __m512d) {
 #[cfg_attr(test, assert_instr(vmovdqu32))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm512_mask_loadu_epi32(src: __m512i, k: __mmask16, mem_addr: *const i32) -> __m512i {
-    transmute(loaddqu32_512(mem_addr, src.as_i32x16(), k))
+    let mask = simd_select_bitmask(k, i32x16::splat(!0), i32x16::ZERO);
+    simd_masked_load!(SimdAlign::Unaligned, mask, mem_addr, src.as_i32x16()).as_m512i()
 }
 
 /// Load packed 32-bit integers from memory into dst using zeromask k
@@ -34741,7 +34742,8 @@ pub unsafe fn _mm512_maskz_loadu_epi32(k: __mmask16, mem_addr: *const i32) -> __
 #[cfg_attr(test, assert_instr(vmovdqu64))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm512_mask_loadu_epi64(src: __m512i, k: __mmask8, mem_addr: *const i64) -> __m512i {
-    transmute(loaddqu64_512(mem_addr, src.as_i64x8(), k))
+    let mask = simd_select_bitmask(k, i64x8::splat(!0), i64x8::ZERO);
+    simd_masked_load!(SimdAlign::Unaligned, mask, mem_addr, src.as_i64x8()).as_m512i()
 }
 
 /// Load packed 64-bit integers from memory into dst using zeromask k
@@ -34767,7 +34769,8 @@ pub unsafe fn _mm512_maskz_loadu_epi64(k: __mmask8, mem_addr: *const i64) -> __m
 #[cfg_attr(test, assert_instr(vmovups))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm512_mask_loadu_ps(src: __m512, k: __mmask16, mem_addr: *const f32) -> __m512 {
-    transmute(loadups_512(mem_addr, src.as_f32x16(), k))
+    let mask = simd_select_bitmask(k, i32x16::splat(!0), i32x16::ZERO);
+    simd_masked_load!(SimdAlign::Unaligned, mask, mem_addr, src.as_f32x16()).as_m512()
 }
 
 /// Load packed single-precision (32-bit) floating-point elements from memory into dst using zeromask k
@@ -34793,7 +34796,8 @@ pub unsafe fn _mm512_maskz_loadu_ps(k: __mmask16, mem_addr: *const f32) -> __m51
 #[cfg_attr(test, assert_instr(vmovupd))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm512_mask_loadu_pd(src: __m512d, k: __mmask8, mem_addr: *const f64) -> __m512d {
-    transmute(loadupd_512(mem_addr, src.as_f64x8(), k))
+    let mask = simd_select_bitmask(k, i64x8::splat(!0), i64x8::ZERO);
+    simd_masked_load!(SimdAlign::Unaligned, mask, mem_addr, src.as_f64x8()).as_m512d()
 }
 
 /// Load packed double-precision (64-bit) floating-point elements from memory into dst using zeromask k
@@ -34819,7 +34823,8 @@ pub unsafe fn _mm512_maskz_loadu_pd(k: __mmask8, mem_addr: *const f64) -> __m512
 #[cfg_attr(test, assert_instr(vmovdqu32))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm256_mask_loadu_epi32(src: __m256i, k: __mmask8, mem_addr: *const i32) -> __m256i {
-    transmute(loaddqu32_256(mem_addr, src.as_i32x8(), k))
+    let mask = simd_select_bitmask(k, i32x8::splat(!0), i32x8::ZERO);
+    simd_masked_load!(SimdAlign::Unaligned, mask, mem_addr, src.as_i32x8()).as_m256i()
 }
 
 /// Load packed 32-bit integers from memory into dst using zeromask k
@@ -34845,7 +34850,8 @@ pub unsafe fn _mm256_maskz_loadu_epi32(k: __mmask8, mem_addr: *const i32) -> __m
 #[cfg_attr(test, assert_instr(vmovdqu64))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm256_mask_loadu_epi64(src: __m256i, k: __mmask8, mem_addr: *const i64) -> __m256i {
-    transmute(loaddqu64_256(mem_addr, src.as_i64x4(), k))
+    let mask = simd_select_bitmask(k, i64x4::splat(!0), i64x4::ZERO);
+    simd_masked_load!(SimdAlign::Unaligned, mask, mem_addr, src.as_i64x4()).as_m256i()
 }
 
 /// Load packed 64-bit integers from memory into dst using zeromask k
@@ -34871,7 +34877,8 @@ pub unsafe fn _mm256_maskz_loadu_epi64(k: __mmask8, mem_addr: *const i64) -> __m
 #[cfg_attr(test, assert_instr(vmovups))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm256_mask_loadu_ps(src: __m256, k: __mmask8, mem_addr: *const f32) -> __m256 {
-    transmute(loadups_256(mem_addr, src.as_f32x8(), k))
+    let mask = simd_select_bitmask(k, i32x8::splat(!0), i32x8::ZERO);
+    simd_masked_load!(SimdAlign::Unaligned, mask, mem_addr, src.as_f32x8()).as_m256()
 }
 
 /// Load packed single-precision (32-bit) floating-point elements from memory into dst using zeromask k
@@ -34897,7 +34904,8 @@ pub unsafe fn _mm256_maskz_loadu_ps(k: __mmask8, mem_addr: *const f32) -> __m256
 #[cfg_attr(test, assert_instr(vmovupd))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm256_mask_loadu_pd(src: __m256d, k: __mmask8, mem_addr: *const f64) -> __m256d {
-    transmute(loadupd_256(mem_addr, src.as_f64x4(), k))
+    let mask = simd_select_bitmask(k, i64x4::splat(!0), i64x4::ZERO);
+    simd_masked_load!(SimdAlign::Unaligned, mask, mem_addr, src.as_f64x4()).as_m256d()
 }
 
 /// Load packed double-precision (64-bit) floating-point elements from memory into dst using zeromask k
@@ -34923,7 +34931,8 @@ pub unsafe fn _mm256_maskz_loadu_pd(k: __mmask8, mem_addr: *const f64) -> __m256
 #[cfg_attr(test, assert_instr(vmovdqu32))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm_mask_loadu_epi32(src: __m128i, k: __mmask8, mem_addr: *const i32) -> __m128i {
-    transmute(loaddqu32_128(mem_addr, src.as_i32x4(), k))
+    let mask = simd_select_bitmask(k, i32x4::splat(!0), i32x4::ZERO);
+    simd_masked_load!(SimdAlign::Unaligned, mask, mem_addr, src.as_i32x4()).as_m128i()
 }
 
 /// Load packed 32-bit integers from memory into dst using zeromask k
@@ -34949,7 +34958,8 @@ pub unsafe fn _mm_maskz_loadu_epi32(k: __mmask8, mem_addr: *const i32) -> __m128
 #[cfg_attr(test, assert_instr(vmovdqu64))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm_mask_loadu_epi64(src: __m128i, k: __mmask8, mem_addr: *const i64) -> __m128i {
-    transmute(loaddqu64_128(mem_addr, src.as_i64x2(), k))
+    let mask = simd_select_bitmask(k, i64x2::splat(!0), i64x2::ZERO);
+    simd_masked_load!(SimdAlign::Unaligned, mask, mem_addr, src.as_i64x2()).as_m128i()
 }
 
 /// Load packed 64-bit integers from memory into dst using zeromask k
@@ -34975,7 +34985,8 @@ pub unsafe fn _mm_maskz_loadu_epi64(k: __mmask8, mem_addr: *const i64) -> __m128
 #[cfg_attr(test, assert_instr(vmovups))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm_mask_loadu_ps(src: __m128, k: __mmask8, mem_addr: *const f32) -> __m128 {
-    transmute(loadups_128(mem_addr, src.as_f32x4(), k))
+    let mask = simd_select_bitmask(k, i32x4::splat(!0), i32x4::ZERO);
+    simd_masked_load!(SimdAlign::Unaligned, mask, mem_addr, src.as_f32x4()).as_m128()
 }
 
 /// Load packed single-precision (32-bit) floating-point elements from memory into dst using zeromask k
@@ -35001,7 +35012,8 @@ pub unsafe fn _mm_maskz_loadu_ps(k: __mmask8, mem_addr: *const f32) -> __m128 {
 #[cfg_attr(test, assert_instr(vmovupd))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm_mask_loadu_pd(src: __m128d, k: __mmask8, mem_addr: *const f64) -> __m128d {
-    transmute(loadupd_128(mem_addr, src.as_f64x2(), k))
+    let mask = simd_select_bitmask(k, i64x2::splat(!0), i64x2::ZERO);
+    simd_masked_load!(SimdAlign::Unaligned, mask, mem_addr, src.as_f64x2()).as_m128d()
 }
 
 /// Load packed double-precision (64-bit) floating-point elements from memory into dst using zeromask k
@@ -35027,7 +35039,8 @@ pub unsafe fn _mm_maskz_loadu_pd(k: __mmask8, mem_addr: *const f64) -> __m128d {
 #[cfg_attr(test, assert_instr(vmovdqa32))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm512_mask_load_epi32(src: __m512i, k: __mmask16, mem_addr: *const i32) -> __m512i {
-    transmute(loaddqa32_512(mem_addr, src.as_i32x16(), k))
+    let mask = simd_select_bitmask(k, i32x16::splat(!0), i32x16::ZERO);
+    simd_masked_load!(SimdAlign::Vector, mask, mem_addr, src.as_i32x16()).as_m512i()
 }
 
 /// Load packed 32-bit integers from memory into dst using zeromask k
@@ -35053,7 +35066,8 @@ pub unsafe fn _mm512_maskz_load_epi32(k: __mmask16, mem_addr: *const i32) -> __m
 #[cfg_attr(test, assert_instr(vmovdqa64))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm512_mask_load_epi64(src: __m512i, k: __mmask8, mem_addr: *const i64) -> __m512i {
-    transmute(loaddqa64_512(mem_addr, src.as_i64x8(), k))
+    let mask = simd_select_bitmask(k, i64x8::splat(!0), i64x8::ZERO);
+    simd_masked_load!(SimdAlign::Vector, mask, mem_addr, src.as_i64x8()).as_m512i()
 }
 
 /// Load packed 64-bit integers from memory into dst using zeromask k
@@ -35079,7 +35093,8 @@ pub unsafe fn _mm512_maskz_load_epi64(k: __mmask8, mem_addr: *const i64) -> __m5
 #[cfg_attr(test, assert_instr(vmovaps))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm512_mask_load_ps(src: __m512, k: __mmask16, mem_addr: *const f32) -> __m512 {
-    transmute(loadaps_512(mem_addr, src.as_f32x16(), k))
+    let mask = simd_select_bitmask(k, i32x16::splat(!0), i32x16::ZERO);
+    simd_masked_load!(SimdAlign::Vector, mask, mem_addr, src.as_f32x16()).as_m512()
 }
 
 /// Load packed single-precision (32-bit) floating-point elements from memory into dst using zeromask k
@@ -35105,7 +35120,8 @@ pub unsafe fn _mm512_maskz_load_ps(k: __mmask16, mem_addr: *const f32) -> __m512
 #[cfg_attr(test, assert_instr(vmovapd))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm512_mask_load_pd(src: __m512d, k: __mmask8, mem_addr: *const f64) -> __m512d {
-    transmute(loadapd_512(mem_addr, src.as_f64x8(), k))
+    let mask = simd_select_bitmask(k, i64x8::splat(!0), i64x8::ZERO);
+    simd_masked_load!(SimdAlign::Vector, mask, mem_addr, src.as_f64x8()).as_m512d()
 }
 
 /// Load packed double-precision (64-bit) floating-point elements from memory into dst using zeromask k
@@ -35131,7 +35147,8 @@ pub unsafe fn _mm512_maskz_load_pd(k: __mmask8, mem_addr: *const f64) -> __m512d
 #[cfg_attr(test, assert_instr(vmovdqa32))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm256_mask_load_epi32(src: __m256i, k: __mmask8, mem_addr: *const i32) -> __m256i {
-    transmute(loaddqa32_256(mem_addr, src.as_i32x8(), k))
+    let mask = simd_select_bitmask(k, i32x8::splat(!0), i32x8::ZERO);
+    simd_masked_load!(SimdAlign::Vector, mask, mem_addr, src.as_i32x8()).as_m256i()
 }
 
 /// Load packed 32-bit integers from memory into dst using zeromask k
@@ -35157,7 +35174,8 @@ pub unsafe fn _mm256_maskz_load_epi32(k: __mmask8, mem_addr: *const i32) -> __m2
 #[cfg_attr(test, assert_instr(vmovdqa64))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm256_mask_load_epi64(src: __m256i, k: __mmask8, mem_addr: *const i64) -> __m256i {
-    transmute(loaddqa64_256(mem_addr, src.as_i64x4(), k))
+    let mask = simd_select_bitmask(k, i64x4::splat(!0), i64x4::ZERO);
+    simd_masked_load!(SimdAlign::Vector, mask, mem_addr, src.as_i64x4()).as_m256i()
 }
 
 /// Load packed 64-bit integers from memory into dst using zeromask k
@@ -35183,7 +35201,8 @@ pub unsafe fn _mm256_maskz_load_epi64(k: __mmask8, mem_addr: *const i64) -> __m2
 #[cfg_attr(test, assert_instr(vmovaps))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm256_mask_load_ps(src: __m256, k: __mmask8, mem_addr: *const f32) -> __m256 {
-    transmute(loadaps_256(mem_addr, src.as_f32x8(), k))
+    let mask = simd_select_bitmask(k, i32x8::splat(!0), i32x8::ZERO);
+    simd_masked_load!(SimdAlign::Vector, mask, mem_addr, src.as_f32x8()).as_m256()
 }
 
 /// Load packed single-precision (32-bit) floating-point elements from memory into dst using zeromask k
@@ -35209,7 +35228,8 @@ pub unsafe fn _mm256_maskz_load_ps(k: __mmask8, mem_addr: *const f32) -> __m256 
 #[cfg_attr(test, assert_instr(vmovapd))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm256_mask_load_pd(src: __m256d, k: __mmask8, mem_addr: *const f64) -> __m256d {
-    transmute(loadapd_256(mem_addr, src.as_f64x4(), k))
+    let mask = simd_select_bitmask(k, i64x4::splat(!0), i64x4::ZERO);
+    simd_masked_load!(SimdAlign::Vector, mask, mem_addr, src.as_f64x4()).as_m256d()
 }
 
 /// Load packed double-precision (64-bit) floating-point elements from memory into dst using zeromask k
@@ -35235,7 +35255,8 @@ pub unsafe fn _mm256_maskz_load_pd(k: __mmask8, mem_addr: *const f64) -> __m256d
 #[cfg_attr(test, assert_instr(vmovdqa32))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm_mask_load_epi32(src: __m128i, k: __mmask8, mem_addr: *const i32) -> __m128i {
-    transmute(loaddqa32_128(mem_addr, src.as_i32x4(), k))
+    let mask = simd_select_bitmask(k, i32x4::splat(!0), i32x4::ZERO);
+    simd_masked_load!(SimdAlign::Vector, mask, mem_addr, src.as_i32x4()).as_m128i()
 }
 
 /// Load packed 32-bit integers from memory into dst using zeromask k
@@ -35261,7 +35282,8 @@ pub unsafe fn _mm_maskz_load_epi32(k: __mmask8, mem_addr: *const i32) -> __m128i
 #[cfg_attr(test, assert_instr(vmovdqa64))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm_mask_load_epi64(src: __m128i, k: __mmask8, mem_addr: *const i64) -> __m128i {
-    transmute(loaddqa64_128(mem_addr, src.as_i64x2(), k))
+    let mask = simd_select_bitmask(k, i64x2::splat(!0), i64x2::ZERO);
+    simd_masked_load!(SimdAlign::Vector, mask, mem_addr, src.as_i64x2()).as_m128i()
 }
 
 /// Load packed 64-bit integers from memory into dst using zeromask k
@@ -35287,7 +35309,8 @@ pub unsafe fn _mm_maskz_load_epi64(k: __mmask8, mem_addr: *const i64) -> __m128i
 #[cfg_attr(test, assert_instr(vmovaps))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm_mask_load_ps(src: __m128, k: __mmask8, mem_addr: *const f32) -> __m128 {
-    transmute(loadaps_128(mem_addr, src.as_f32x4(), k))
+    let mask = simd_select_bitmask(k, i32x4::splat(!0), i32x4::ZERO);
+    simd_masked_load!(SimdAlign::Vector, mask, mem_addr, src.as_f32x4()).as_m128()
 }
 
 /// Load packed single-precision (32-bit) floating-point elements from memory into dst using zeromask k
@@ -35313,7 +35336,8 @@ pub unsafe fn _mm_maskz_load_ps(k: __mmask8, mem_addr: *const f32) -> __m128 {
 #[cfg_attr(test, assert_instr(vmovapd))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm_mask_load_pd(src: __m128d, k: __mmask8, mem_addr: *const f64) -> __m128d {
-    transmute(loadapd_128(mem_addr, src.as_f64x2(), k))
+    let mask = simd_select_bitmask(k, i64x2::splat(!0), i64x2::ZERO);
+    simd_masked_load!(SimdAlign::Vector, mask, mem_addr, src.as_f64x2()).as_m128d()
 }
 
 /// Load packed double-precision (64-bit) floating-point elements from memory into dst using zeromask k
@@ -35426,7 +35450,8 @@ pub unsafe fn _mm_maskz_load_sd(k: __mmask8, mem_addr: *const f64) -> __m128d {
 #[cfg_attr(test, assert_instr(vmovdqu32))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm512_mask_storeu_epi32(mem_addr: *mut i32, mask: __mmask16, a: __m512i) {
-    storedqu32_512(mem_addr, a.as_i32x16(), mask)
+    let mask = simd_select_bitmask(mask, i32x16::splat(!0), i32x16::ZERO);
+    simd_masked_store!(SimdAlign::Unaligned, mask, mem_addr, a.as_i32x16());
 }
 
 /// Store packed 64-bit integers from a into memory using writemask k.
@@ -35438,7 +35463,8 @@ pub unsafe fn _mm512_mask_storeu_epi32(mem_addr: *mut i32, mask: __mmask16, a: _
 #[cfg_attr(test, assert_instr(vmovdqu64))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm512_mask_storeu_epi64(mem_addr: *mut i64, mask: __mmask8, a: __m512i) {
-    storedqu64_512(mem_addr, a.as_i64x8(), mask)
+    let mask = simd_select_bitmask(mask, i64x8::splat(!0), i64x8::ZERO);
+    simd_masked_store!(SimdAlign::Unaligned, mask, mem_addr, a.as_i64x8());
 }
 
 /// Store packed single-precision (32-bit) floating-point elements from a into memory using writemask k.
@@ -35450,7 +35476,8 @@ pub unsafe fn _mm512_mask_storeu_epi64(mem_addr: *mut i64, mask: __mmask8, a: __
 #[cfg_attr(test, assert_instr(vmovups))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm512_mask_storeu_ps(mem_addr: *mut f32, mask: __mmask16, a: __m512) {
-    storeups_512(mem_addr, a.as_f32x16(), mask)
+    let mask = simd_select_bitmask(mask, i32x16::splat(!0), i32x16::ZERO);
+    simd_masked_store!(SimdAlign::Unaligned, mask, mem_addr, a.as_f32x16());
 }
 
 /// Store packed double-precision (64-bit) floating-point elements from a into memory using writemask k.
@@ -35462,7 +35489,8 @@ pub unsafe fn _mm512_mask_storeu_ps(mem_addr: *mut f32, mask: __mmask16, a: __m5
 #[cfg_attr(test, assert_instr(vmovupd))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm512_mask_storeu_pd(mem_addr: *mut f64, mask: __mmask8, a: __m512d) {
-    storeupd_512(mem_addr, a.as_f64x8(), mask)
+    let mask = simd_select_bitmask(mask, i64x8::splat(!0), i64x8::ZERO);
+    simd_masked_store!(SimdAlign::Unaligned, mask, mem_addr, a.as_f64x8());
 }
 
 /// Store packed 32-bit integers from a into memory using writemask k.
@@ -35474,7 +35502,8 @@ pub unsafe fn _mm512_mask_storeu_pd(mem_addr: *mut f64, mask: __mmask8, a: __m51
 #[cfg_attr(test, assert_instr(vmovdqu32))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm256_mask_storeu_epi32(mem_addr: *mut i32, mask: __mmask8, a: __m256i) {
-    storedqu32_256(mem_addr, a.as_i32x8(), mask)
+    let mask = simd_select_bitmask(mask, i32x8::splat(!0), i32x8::ZERO);
+    simd_masked_store!(SimdAlign::Unaligned, mask, mem_addr, a.as_i32x8());
 }
 
 /// Store packed 64-bit integers from a into memory using writemask k.
@@ -35486,7 +35515,8 @@ pub unsafe fn _mm256_mask_storeu_epi32(mem_addr: *mut i32, mask: __mmask8, a: __
 #[cfg_attr(test, assert_instr(vmovdqu64))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm256_mask_storeu_epi64(mem_addr: *mut i64, mask: __mmask8, a: __m256i) {
-    storedqu64_256(mem_addr, a.as_i64x4(), mask)
+    let mask = simd_select_bitmask(mask, i64x4::splat(!0), i64x4::ZERO);
+    simd_masked_store!(SimdAlign::Unaligned, mask, mem_addr, a.as_i64x4());
 }
 
 /// Store packed single-precision (32-bit) floating-point elements from a into memory using writemask k.
@@ -35498,7 +35528,8 @@ pub unsafe fn _mm256_mask_storeu_epi64(mem_addr: *mut i64, mask: __mmask8, a: __
 #[cfg_attr(test, assert_instr(vmovups))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm256_mask_storeu_ps(mem_addr: *mut f32, mask: __mmask8, a: __m256) {
-    storeups_256(mem_addr, a.as_f32x8(), mask)
+    let mask = simd_select_bitmask(mask, i32x8::splat(!0), i32x8::ZERO);
+    simd_masked_store!(SimdAlign::Unaligned, mask, mem_addr, a.as_f32x8());
 }
 
 /// Store packed double-precision (64-bit) floating-point elements from a into memory using writemask k.
@@ -35510,7 +35541,8 @@ pub unsafe fn _mm256_mask_storeu_ps(mem_addr: *mut f32, mask: __mmask8, a: __m25
 #[cfg_attr(test, assert_instr(vmovupd))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm256_mask_storeu_pd(mem_addr: *mut f64, mask: __mmask8, a: __m256d) {
-    storeupd_256(mem_addr, a.as_f64x4(), mask)
+    let mask = simd_select_bitmask(mask, i64x4::splat(!0), i64x4::ZERO);
+    simd_masked_store!(SimdAlign::Unaligned, mask, mem_addr, a.as_f64x4());
 }
 
 /// Store packed 32-bit integers from a into memory using writemask k.
@@ -35522,7 +35554,8 @@ pub unsafe fn _mm256_mask_storeu_pd(mem_addr: *mut f64, mask: __mmask8, a: __m25
 #[cfg_attr(test, assert_instr(vmovdqu32))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm_mask_storeu_epi32(mem_addr: *mut i32, mask: __mmask8, a: __m128i) {
-    storedqu32_128(mem_addr, a.as_i32x4(), mask)
+    let mask = simd_select_bitmask(mask, i32x4::splat(!0), i32x4::ZERO);
+    simd_masked_store!(SimdAlign::Unaligned, mask, mem_addr, a.as_i32x4());
 }
 
 /// Store packed 64-bit integers from a into memory using writemask k.
@@ -35534,7 +35567,8 @@ pub unsafe fn _mm_mask_storeu_epi32(mem_addr: *mut i32, mask: __mmask8, a: __m12
 #[cfg_attr(test, assert_instr(vmovdqu64))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm_mask_storeu_epi64(mem_addr: *mut i64, mask: __mmask8, a: __m128i) {
-    storedqu64_128(mem_addr, a.as_i64x2(), mask)
+    let mask = simd_select_bitmask(mask, i64x2::splat(!0), i64x2::ZERO);
+    simd_masked_store!(SimdAlign::Unaligned, mask, mem_addr, a.as_i64x2());
 }
 
 /// Store packed single-precision (32-bit) floating-point elements from a into memory using writemask k.
@@ -35546,7 +35580,8 @@ pub unsafe fn _mm_mask_storeu_epi64(mem_addr: *mut i64, mask: __mmask8, a: __m12
 #[cfg_attr(test, assert_instr(vmovups))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm_mask_storeu_ps(mem_addr: *mut f32, mask: __mmask8, a: __m128) {
-    storeups_128(mem_addr, a.as_f32x4(), mask)
+    let mask = simd_select_bitmask(mask, i32x4::splat(!0), i32x4::ZERO);
+    simd_masked_store!(SimdAlign::Unaligned, mask, mem_addr, a.as_f32x4());
 }
 
 /// Store packed double-precision (64-bit) floating-point elements from a into memory using writemask k.
@@ -35558,7 +35593,8 @@ pub unsafe fn _mm_mask_storeu_ps(mem_addr: *mut f32, mask: __mmask8, a: __m128) 
 #[cfg_attr(test, assert_instr(vmovupd))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm_mask_storeu_pd(mem_addr: *mut f64, mask: __mmask8, a: __m128d) {
-    storeupd_128(mem_addr, a.as_f64x2(), mask)
+    let mask = simd_select_bitmask(mask, i64x2::splat(!0), i64x2::ZERO);
+    simd_masked_store!(SimdAlign::Unaligned, mask, mem_addr, a.as_f64x2());
 }
 
 /// Store packed 32-bit integers from a into memory using writemask k.
@@ -35570,7 +35606,8 @@ pub unsafe fn _mm_mask_storeu_pd(mem_addr: *mut f64, mask: __mmask8, a: __m128d)
 #[cfg_attr(test, assert_instr(vmovdqa32))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm512_mask_store_epi32(mem_addr: *mut i32, mask: __mmask16, a: __m512i) {
-    storedqa32_512(mem_addr, a.as_i32x16(), mask)
+    let mask = simd_select_bitmask(mask, i32x16::splat(!0), i32x16::ZERO);
+    simd_masked_store!(SimdAlign::Vector, mask, mem_addr, a.as_i32x16());
 }
 
 /// Store packed 64-bit integers from a into memory using writemask k.
@@ -35582,7 +35619,8 @@ pub unsafe fn _mm512_mask_store_epi32(mem_addr: *mut i32, mask: __mmask16, a: __
 #[cfg_attr(test, assert_instr(vmovdqa64))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm512_mask_store_epi64(mem_addr: *mut i64, mask: __mmask8, a: __m512i) {
-    storedqa64_512(mem_addr, a.as_i64x8(), mask)
+    let mask = simd_select_bitmask(mask, i64x8::splat(!0), i64x8::ZERO);
+    simd_masked_store!(SimdAlign::Vector, mask, mem_addr, a.as_i64x8());
 }
 
 /// Store packed single-precision (32-bit) floating-point elements from a into memory using writemask k.
@@ -35594,7 +35632,8 @@ pub unsafe fn _mm512_mask_store_epi64(mem_addr: *mut i64, mask: __mmask8, a: __m
 #[cfg_attr(test, assert_instr(vmovaps))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm512_mask_store_ps(mem_addr: *mut f32, mask: __mmask16, a: __m512) {
-    storeaps_512(mem_addr, a.as_f32x16(), mask)
+    let mask = simd_select_bitmask(mask, i32x16::splat(!0), i32x16::ZERO);
+    simd_masked_store!(SimdAlign::Vector, mask, mem_addr, a.as_f32x16());
 }
 
 /// Store packed double-precision (64-bit) floating-point elements from a into memory using writemask k.
@@ -35606,7 +35645,8 @@ pub unsafe fn _mm512_mask_store_ps(mem_addr: *mut f32, mask: __mmask16, a: __m51
 #[cfg_attr(test, assert_instr(vmovapd))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm512_mask_store_pd(mem_addr: *mut f64, mask: __mmask8, a: __m512d) {
-    storeapd_512(mem_addr, a.as_f64x8(), mask)
+    let mask = simd_select_bitmask(mask, i64x8::splat(!0), i64x8::ZERO);
+    simd_masked_store!(SimdAlign::Vector, mask, mem_addr, a.as_f64x8());
 }
 
 /// Store packed 32-bit integers from a into memory using writemask k.
@@ -35618,7 +35658,8 @@ pub unsafe fn _mm512_mask_store_pd(mem_addr: *mut f64, mask: __mmask8, a: __m512
 #[cfg_attr(test, assert_instr(vmovdqa32))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm256_mask_store_epi32(mem_addr: *mut i32, mask: __mmask8, a: __m256i) {
-    storedqa32_256(mem_addr, a.as_i32x8(), mask)
+    let mask = simd_select_bitmask(mask, i32x8::splat(!0), i32x8::ZERO);
+    simd_masked_store!(SimdAlign::Vector, mask, mem_addr, a.as_i32x8());
 }
 
 /// Store packed 64-bit integers from a into memory using writemask k.
@@ -35630,7 +35671,8 @@ pub unsafe fn _mm256_mask_store_epi32(mem_addr: *mut i32, mask: __mmask8, a: __m
 #[cfg_attr(test, assert_instr(vmovdqa64))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm256_mask_store_epi64(mem_addr: *mut i64, mask: __mmask8, a: __m256i) {
-    storedqa64_256(mem_addr, a.as_i64x4(), mask)
+    let mask = simd_select_bitmask(mask, i64x4::splat(!0), i64x4::ZERO);
+    simd_masked_store!(SimdAlign::Vector, mask, mem_addr, a.as_i64x4());
 }
 
 /// Store packed single-precision (32-bit) floating-point elements from a into memory using writemask k.
@@ -35642,7 +35684,8 @@ pub unsafe fn _mm256_mask_store_epi64(mem_addr: *mut i64, mask: __mmask8, a: __m
 #[cfg_attr(test, assert_instr(vmovaps))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm256_mask_store_ps(mem_addr: *mut f32, mask: __mmask8, a: __m256) {
-    storeaps_256(mem_addr, a.as_f32x8(), mask)
+    let mask = simd_select_bitmask(mask, i32x8::splat(!0), i32x8::ZERO);
+    simd_masked_store!(SimdAlign::Vector, mask, mem_addr, a.as_f32x8());
 }
 
 /// Store packed double-precision (64-bit) floating-point elements from a into memory using writemask k.
@@ -35654,7 +35697,8 @@ pub unsafe fn _mm256_mask_store_ps(mem_addr: *mut f32, mask: __mmask8, a: __m256
 #[cfg_attr(test, assert_instr(vmovapd))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm256_mask_store_pd(mem_addr: *mut f64, mask: __mmask8, a: __m256d) {
-    storeapd_256(mem_addr, a.as_f64x4(), mask)
+    let mask = simd_select_bitmask(mask, i64x4::splat(!0), i64x4::ZERO);
+    simd_masked_store!(SimdAlign::Vector, mask, mem_addr, a.as_f64x4());
 }
 
 /// Store packed 32-bit integers from a into memory using writemask k.
@@ -35666,7 +35710,8 @@ pub unsafe fn _mm256_mask_store_pd(mem_addr: *mut f64, mask: __mmask8, a: __m256
 #[cfg_attr(test, assert_instr(vmovdqa32))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm_mask_store_epi32(mem_addr: *mut i32, mask: __mmask8, a: __m128i) {
-    storedqa32_128(mem_addr, a.as_i32x4(), mask)
+    let mask = simd_select_bitmask(mask, i32x4::splat(!0), i32x4::ZERO);
+    simd_masked_store!(SimdAlign::Vector, mask, mem_addr, a.as_i32x4());
 }
 
 /// Store packed 64-bit integers from a into memory using writemask k.
@@ -35678,7 +35723,8 @@ pub unsafe fn _mm_mask_store_epi32(mem_addr: *mut i32, mask: __mmask8, a: __m128
 #[cfg_attr(test, assert_instr(vmovdqa64))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm_mask_store_epi64(mem_addr: *mut i64, mask: __mmask8, a: __m128i) {
-    storedqa64_128(mem_addr, a.as_i64x2(), mask)
+    let mask = simd_select_bitmask(mask, i64x2::splat(!0), i64x2::ZERO);
+    simd_masked_store!(SimdAlign::Vector, mask, mem_addr, a.as_i64x2());
 }
 
 /// Store packed single-precision (32-bit) floating-point elements from a into memory using writemask k.
@@ -35690,7 +35736,8 @@ pub unsafe fn _mm_mask_store_epi64(mem_addr: *mut i64, mask: __mmask8, a: __m128
 #[cfg_attr(test, assert_instr(vmovaps))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm_mask_store_ps(mem_addr: *mut f32, mask: __mmask8, a: __m128) {
-    storeaps_128(mem_addr, a.as_f32x4(), mask)
+    let mask = simd_select_bitmask(mask, i32x4::splat(!0), i32x4::ZERO);
+    simd_masked_store!(SimdAlign::Vector, mask, mem_addr, a.as_f32x4());
 }
 
 /// Store packed double-precision (64-bit) floating-point elements from a into memory using writemask k.
@@ -35702,7 +35749,8 @@ pub unsafe fn _mm_mask_store_ps(mem_addr: *mut f32, mask: __mmask8, a: __m128) {
 #[cfg_attr(test, assert_instr(vmovapd))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm_mask_store_pd(mem_addr: *mut f64, mask: __mmask8, a: __m128d) {
-    storeapd_128(mem_addr, a.as_f64x2(), mask)
+    let mask = simd_select_bitmask(mask, i64x2::splat(!0), i64x2::ZERO);
+    simd_masked_store!(SimdAlign::Vector, mask, mem_addr, a.as_f64x2());
 }
 
 /// Store a single-precision (32-bit) floating-point element from a into memory using writemask k. mem_addr
@@ -43108,106 +43156,6 @@ unsafe extern "C" {
     fn vcomiss(a: f32x4, b: f32x4, imm8: i32, sae: i32) -> i32;
     #[link_name = "llvm.x86.avx512.vcomi.sd"]
     fn vcomisd(a: f64x2, b: f64x2, imm8: i32, sae: i32) -> i32;
-
-    #[link_name = "llvm.x86.avx512.mask.loadu.d.128"]
-    fn loaddqu32_128(mem_addr: *const i32, a: i32x4, mask: u8) -> i32x4;
-    #[link_name = "llvm.x86.avx512.mask.loadu.q.128"]
-    fn loaddqu64_128(mem_addr: *const i64, a: i64x2, mask: u8) -> i64x2;
-    #[link_name = "llvm.x86.avx512.mask.loadu.ps.128"]
-    fn loadups_128(mem_addr: *const f32, a: f32x4, mask: u8) -> f32x4;
-    #[link_name = "llvm.x86.avx512.mask.loadu.pd.128"]
-    fn loadupd_128(mem_addr: *const f64, a: f64x2, mask: u8) -> f64x2;
-    #[link_name = "llvm.x86.avx512.mask.loadu.d.256"]
-    fn loaddqu32_256(mem_addr: *const i32, a: i32x8, mask: u8) -> i32x8;
-    #[link_name = "llvm.x86.avx512.mask.loadu.q.256"]
-    fn loaddqu64_256(mem_addr: *const i64, a: i64x4, mask: u8) -> i64x4;
-    #[link_name = "llvm.x86.avx512.mask.loadu.ps.256"]
-    fn loadups_256(mem_addr: *const f32, a: f32x8, mask: u8) -> f32x8;
-    #[link_name = "llvm.x86.avx512.mask.loadu.pd.256"]
-    fn loadupd_256(mem_addr: *const f64, a: f64x4, mask: u8) -> f64x4;
-    #[link_name = "llvm.x86.avx512.mask.loadu.d.512"]
-    fn loaddqu32_512(mem_addr: *const i32, a: i32x16, mask: u16) -> i32x16;
-    #[link_name = "llvm.x86.avx512.mask.loadu.q.512"]
-    fn loaddqu64_512(mem_addr: *const i64, a: i64x8, mask: u8) -> i64x8;
-    #[link_name = "llvm.x86.avx512.mask.loadu.ps.512"]
-    fn loadups_512(mem_addr: *const f32, a: f32x16, mask: u16) -> f32x16;
-    #[link_name = "llvm.x86.avx512.mask.loadu.pd.512"]
-    fn loadupd_512(mem_addr: *const f64, a: f64x8, mask: u8) -> f64x8;
-
-    #[link_name = "llvm.x86.avx512.mask.load.d.128"]
-    fn loaddqa32_128(mem_addr: *const i32, a: i32x4, mask: u8) -> i32x4;
-    #[link_name = "llvm.x86.avx512.mask.load.q.128"]
-    fn loaddqa64_128(mem_addr: *const i64, a: i64x2, mask: u8) -> i64x2;
-    #[link_name = "llvm.x86.avx512.mask.load.ps.128"]
-    fn loadaps_128(mem_addr: *const f32, a: f32x4, mask: u8) -> f32x4;
-    #[link_name = "llvm.x86.avx512.mask.load.pd.128"]
-    fn loadapd_128(mem_addr: *const f64, a: f64x2, mask: u8) -> f64x2;
-    #[link_name = "llvm.x86.avx512.mask.load.d.256"]
-    fn loaddqa32_256(mem_addr: *const i32, a: i32x8, mask: u8) -> i32x8;
-    #[link_name = "llvm.x86.avx512.mask.load.q.256"]
-    fn loaddqa64_256(mem_addr: *const i64, a: i64x4, mask: u8) -> i64x4;
-    #[link_name = "llvm.x86.avx512.mask.load.ps.256"]
-    fn loadaps_256(mem_addr: *const f32, a: f32x8, mask: u8) -> f32x8;
-    #[link_name = "llvm.x86.avx512.mask.load.pd.256"]
-    fn loadapd_256(mem_addr: *const f64, a: f64x4, mask: u8) -> f64x4;
-    #[link_name = "llvm.x86.avx512.mask.load.d.512"]
-    fn loaddqa32_512(mem_addr: *const i32, a: i32x16, mask: u16) -> i32x16;
-    #[link_name = "llvm.x86.avx512.mask.load.q.512"]
-    fn loaddqa64_512(mem_addr: *const i64, a: i64x8, mask: u8) -> i64x8;
-    #[link_name = "llvm.x86.avx512.mask.load.ps.512"]
-    fn loadaps_512(mem_addr: *const f32, a: f32x16, mask: u16) -> f32x16;
-    #[link_name = "llvm.x86.avx512.mask.load.pd.512"]
-    fn loadapd_512(mem_addr: *const f64, a: f64x8, mask: u8) -> f64x8;
-
-    #[link_name = "llvm.x86.avx512.mask.storeu.d.128"]
-    fn storedqu32_128(mem_addr: *mut i32, a: i32x4, mask: u8);
-    #[link_name = "llvm.x86.avx512.mask.storeu.q.128"]
-    fn storedqu64_128(mem_addr: *mut i64, a: i64x2, mask: u8);
-    #[link_name = "llvm.x86.avx512.mask.storeu.ps.128"]
-    fn storeups_128(mem_addr: *mut f32, a: f32x4, mask: u8);
-    #[link_name = "llvm.x86.avx512.mask.storeu.pd.128"]
-    fn storeupd_128(mem_addr: *mut f64, a: f64x2, mask: u8);
-    #[link_name = "llvm.x86.avx512.mask.storeu.d.256"]
-    fn storedqu32_256(mem_addr: *mut i32, a: i32x8, mask: u8);
-    #[link_name = "llvm.x86.avx512.mask.storeu.q.256"]
-    fn storedqu64_256(mem_addr: *mut i64, a: i64x4, mask: u8);
-    #[link_name = "llvm.x86.avx512.mask.storeu.ps.256"]
-    fn storeups_256(mem_addr: *mut f32, a: f32x8, mask: u8);
-    #[link_name = "llvm.x86.avx512.mask.storeu.pd.256"]
-    fn storeupd_256(mem_addr: *mut f64, a: f64x4, mask: u8);
-    #[link_name = "llvm.x86.avx512.mask.storeu.d.512"]
-    fn storedqu32_512(mem_addr: *mut i32, a: i32x16, mask: u16);
-    #[link_name = "llvm.x86.avx512.mask.storeu.q.512"]
-    fn storedqu64_512(mem_addr: *mut i64, a: i64x8, mask: u8);
-    #[link_name = "llvm.x86.avx512.mask.storeu.ps.512"]
-    fn storeups_512(mem_addr: *mut f32, a: f32x16, mask: u16);
-    #[link_name = "llvm.x86.avx512.mask.storeu.pd.512"]
-    fn storeupd_512(mem_addr: *mut f64, a: f64x8, mask: u8);
-
-    #[link_name = "llvm.x86.avx512.mask.store.d.128"]
-    fn storedqa32_128(mem_addr: *mut i32, a: i32x4, mask: u8);
-    #[link_name = "llvm.x86.avx512.mask.store.q.128"]
-    fn storedqa64_128(mem_addr: *mut i64, a: i64x2, mask: u8);
-    #[link_name = "llvm.x86.avx512.mask.store.ps.128"]
-    fn storeaps_128(mem_addr: *mut f32, a: f32x4, mask: u8);
-    #[link_name = "llvm.x86.avx512.mask.store.pd.128"]
-    fn storeapd_128(mem_addr: *mut f64, a: f64x2, mask: u8);
-    #[link_name = "llvm.x86.avx512.mask.store.d.256"]
-    fn storedqa32_256(mem_addr: *mut i32, a: i32x8, mask: u8);
-    #[link_name = "llvm.x86.avx512.mask.store.q.256"]
-    fn storedqa64_256(mem_addr: *mut i64, a: i64x4, mask: u8);
-    #[link_name = "llvm.x86.avx512.mask.store.ps.256"]
-    fn storeaps_256(mem_addr: *mut f32, a: f32x8, mask: u8);
-    #[link_name = "llvm.x86.avx512.mask.store.pd.256"]
-    fn storeapd_256(mem_addr: *mut f64, a: f64x4, mask: u8);
-    #[link_name = "llvm.x86.avx512.mask.store.d.512"]
-    fn storedqa32_512(mem_addr: *mut i32, a: i32x16, mask: u16);
-    #[link_name = "llvm.x86.avx512.mask.store.q.512"]
-    fn storedqa64_512(mem_addr: *mut i64, a: i64x8, mask: u8);
-    #[link_name = "llvm.x86.avx512.mask.store.ps.512"]
-    fn storeaps_512(mem_addr: *mut f32, a: f32x16, mask: u16);
-    #[link_name = "llvm.x86.avx512.mask.store.pd.512"]
-    fn storeapd_512(mem_addr: *mut f64, a: f64x8, mask: u8);
 
     #[link_name = "llvm.x86.avx512.mask.expand.load.d.128"]
     fn expandloadd_128(mem_addr: *const i32, a: i32x4, mask: u8) -> i32x4;
