@@ -1,6 +1,6 @@
 use core::fmt::{self, Display};
 use core::num::NonZero;
-use core::ops::Range;
+use core::range::Range;
 use core::str::FromStr;
 use std::ffi::OsStr;
 use std::fs::{self, OpenOptions};

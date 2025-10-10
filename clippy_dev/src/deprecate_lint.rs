@@ -132,14 +132,14 @@ fn remove_lint_declaration(name: &str, path: &Path, lints: &mut Vec<Lint>) -> io
             );
 
             assert!(
-                content[lint.declaration_range.clone()].contains(&name.to_uppercase()),
+                content[lint.declaration_range].contains(&name.to_uppercase()),
                 "error: `{}` does not contain lint `{}`'s declaration",
                 path.display(),
                 lint.name
             );
 
             // Remove lint declaration (declare_clippy_lint!)
-            content.replace_range(lint.declaration_range.clone(), "");
+            content.replace_range(lint.declaration_range, "");
 
             // Remove the module declaration (mod xyz;)
             let mod_decl = format!("\nmod {name};");

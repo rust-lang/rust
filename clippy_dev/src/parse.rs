@@ -2,7 +2,7 @@ pub mod cursor;
 
 use self::cursor::Cursor;
 use crate::utils::{ErrAction, File, expect_action};
-use core::ops::Range;
+use core::range::Range;
 use std::fs;
 use std::path::{Path, PathBuf};
 use walkdir::{DirEntry, WalkDir};
