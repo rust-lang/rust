@@ -99,7 +99,7 @@ jobs:
         ar rcs libadd.a add.o
         popd
 
-        EMBED_LTO_BITCODE=1 CHANNEL="release" CG_RUSTFLAGS="-L native=. -Clinker-plugin-lto -Clinker=gcc" ./y.sh cargo build --release --manifest-path tests/cross_lang_lto/Cargo.toml
+        CHANNEL="release" CG_RUSTFLAGS="-L native=. -Clinker-plugin-lto -Clinker=gcc" ./y.sh cargo build --release --manifest-path tests/cross_lang_lto/Cargo.toml
         call_found=$(objdump -dj .text tests/cross_lang_lto/target/release/cross_lang_lto | grep -c "call .*my_add" ) ||:
         if [ $call_found -gt 0 ]; then
           echo "ERROR: call my_add found in asm"
