@@ -1087,17 +1087,15 @@ impl CStore {
                 }
                 spans => !spans.is_empty(),
             };
-        self.has_alloc_error_handler =
-            match &*fn_spans(krate, Symbol::intern(&global_fn_name(ALLOC_ERROR_HANDLER))) {
-                [span1, span2, ..] => {
-                    tcx.dcx().emit_err(errors::NoMultipleAllocErrorHandler {
-                        span2: *span2,
-                        span1: *span1,
-                    });
-                    true
-                }
-                spans => !spans.is_empty(),
-            };
+        let alloc_error_handler = Symbol::intern(&global_fn_name(ALLOC_ERROR_HANDLER));
+        self.has_alloc_error_handler = match &*fn_spans(krate, alloc_error_handler) {
+            [span1, span2, ..] => {
+                tcx.dcx()
+                    .emit_err(errors::NoMultipleAllocErrorHandler { span2: *span2, span1: *span1 });
+                true
+            }
+            spans => !spans.is_empty(),
+        };
 
         // Check to see if we actually need an allocator. This desire comes
         // about through the `#![needs_allocator]` attribute and is typically

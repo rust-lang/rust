@@ -18,6 +18,7 @@ pub fn default_fn_name(base: Symbol) -> String {
 pub const ALLOC_ERROR_HANDLER: Symbol = sym::alloc_error_handler;
 pub const NO_ALLOC_SHIM_IS_UNSTABLE: &str = "__rust_no_alloc_shim_is_unstable_v2";
 
+/// Argument or return type for methods in the allocator shim
 #[derive(Copy, Clone)]
 pub enum AllocatorTy {
     Layout,

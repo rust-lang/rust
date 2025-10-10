@@ -664,8 +664,8 @@ pub fn allocator_shim_contents(tcx: TyCtxt<'_>, kind: AllocatorKind) -> Vec<Allo
         methods.extend(ALLOCATOR_METHODS.into_iter().copied());
     }
 
-    // If allocator_kind is Some then alloc_error_handler_kind must
-    // also be Some.
+    // If the return value of allocator_kind_for_codegen is Some then
+    // alloc_error_handler_kind must also be Some.
     if tcx.alloc_error_handler_kind(()).unwrap() == AllocatorKind::Default {
         methods.push(AllocatorMethod {
             name: ALLOC_ERROR_HANDLER,
