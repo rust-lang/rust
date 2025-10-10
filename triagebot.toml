@@ -45,6 +45,9 @@ reviewed_label = "S-waiting-on-author"
 [autolabel."S-waiting-on-review"]
 new_pr = true
 
+[autolabel."needs-fcp"]
+trigger_files = ["clippy_lints/src/declared_lints.rs"]
+
 [concern]
 # These labels are set when there are unresolved concerns, removed otherwise
 labels = ["S-waiting-on-concerns"]
