@@ -51,6 +51,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Some shims forward to other MIR bodies.
         match link_name.as_str() {
+            // This allocator function has forwarding shims synthesized during normal codegen
+            // (see `allocator_shim_contents`); this is where we emulate that behavior.
             // FIXME should use global_fn_name, but mangle_internal_symbol requires a static str.
             name if name == this.mangle_internal_symbol("__rust_alloc_error_handler") => {
                 // Forward to the right symbol that implements this function.
@@ -68,6 +70,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         .expect("missing alloc error handler symbol");
                     return interp_ok(Some(handler));
                 }
+                // Fall through to the `lookup_exported_symbol` below which should find
+                // a `__rust_alloc_error_handler`.
             }
             _ => {}
         }
