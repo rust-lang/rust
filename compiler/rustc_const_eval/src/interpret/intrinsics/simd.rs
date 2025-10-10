@@ -134,20 +134,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                                     intrinsic_name
                                 )
                             };
+                            let op = op.to_scalar();
                             match float_ty {
                                 FloatTy::F16 => unimplemented!("f16_f128"),
-                                FloatTy::F32 => {
-                                    let f = op.to_scalar().to_f32()?;
-                                    let res = f.round_to_integral(rounding).value;
-                                    let res = self.adjust_nan(res, &[f]);
-                                    Scalar::from_f32(res)
-                                }
-                                FloatTy::F64 => {
-                                    let f = op.to_scalar().to_f64()?;
-                                    let res = f.round_to_integral(rounding).value;
-                                    let res = self.adjust_nan(res, &[f]);
-                                    Scalar::from_f64(res)
-                                }
+                                FloatTy::F32 => self.float_round::<Single>(op, rounding)?,
+                                FloatTy::F64 => self.float_round::<Double>(op, rounding)?,
                                 FloatTy::F128 => unimplemented!("f16_f128"),
                             }
                         }

@@ -1036,6 +1036,20 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         interp_ok(())
     }
 
+    fn float_round<F>(
+        &mut self,
+        x: Scalar<M::Provenance>,
+        mode: rustc_apfloat::Round,
+    ) -> InterpResult<'tcx, Scalar<M::Provenance>>
+    where
+        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
+    {
+        let x: F = x.to_float()?;
+        let res = x.round_to_integral(mode).value;
+        let res = self.adjust_nan(res, &[x]);
+        interp_ok(res.into())
+    }
+
     fn float_round_intrinsic<F>(
         &mut self,
         args: &[OpTy<'tcx, M::Provenance>],
@@ -1045,9 +1059,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     where
         F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
     {
-        let x: F = self.read_scalar(&args[0])?.to_float()?;
-        let res = x.round_to_integral(mode).value;
-        let res = self.adjust_nan(res, &[x]);
+        let res = self.float_round::<F>(self.read_scalar(&args[0])?, mode)?;
         self.write_scalar(res, dest)?;
         interp_ok(())
     }
