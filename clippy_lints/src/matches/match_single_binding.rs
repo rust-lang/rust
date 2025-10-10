@@ -8,7 +8,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::{Visitor, walk_block, walk_expr, walk_path, walk_stmt};
-use rustc_hir::{Arm, Block, Expr, ExprKind, HirId, Node, PatKind, Path, Stmt, StmtKind};
+use rustc_hir::{Arm, Block, Expr, ExprKind, HirId, Item, ItemKind, Node, PatKind, Path, Stmt, StmtKind};
 use rustc_lint::LateContext;
 use rustc_span::{Span, Symbol};
 
@@ -391,7 +391,12 @@ fn sugg_with_curlies<'a>(
                     add_curlies();
                 }
             },
-            Node::Expr(..) | Node::AnonConst(..) => add_curlies(),
+            Node::Expr(..)
+            | Node::AnonConst(..)
+            | Node::Item(Item {
+                kind: ItemKind::Const(..),
+                ..
+            }) => add_curlies(),
             Node::Arm(arm) if let ExprKind::Match(..) = arm.body.kind => add_curlies(),
             _ => {},
         }

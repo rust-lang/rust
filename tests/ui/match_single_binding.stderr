@@ -526,7 +526,7 @@ LL | |         }
    | |_________^ help: consider using the match body instead: `b < c`
 
 error: this match could be replaced by its scrutinee and body
-  --> tests/ui/match_single_binding.rs:358:9
+  --> tests/ui/match_single_binding.rs:357:9
    |
 LL | /         match { a } {
 LL | |
@@ -543,7 +543,7 @@ LL ~         },
    |
 
 error: this match could be replaced by its scrutinee and body
-  --> tests/ui/match_single_binding.rs:367:9
+  --> tests/ui/match_single_binding.rs:366:9
    |
 LL | /         match { a } {
 LL | |
@@ -560,7 +560,7 @@ LL ~         },
    |
 
 error: this match could be replaced by its scrutinee and body
-  --> tests/ui/match_single_binding.rs:377:9
+  --> tests/ui/match_single_binding.rs:376:9
    |
 LL | /         match { a } {
 LL | |
@@ -577,7 +577,7 @@ LL ~         },
    |
 
 error: this match could be replaced by its scrutinee and body
-  --> tests/ui/match_single_binding.rs:391:9
+  --> tests/ui/match_single_binding.rs:390:9
    |
 LL | /         match { a } {
 LL | |
@@ -594,7 +594,7 @@ LL ~         },
    |
 
 error: this match could be replaced by its scrutinee and body
-  --> tests/ui/match_single_binding.rs:398:6
+  --> tests/ui/match_single_binding.rs:397:6
    |
 LL |       -match { a } {
    |  ______^
@@ -612,7 +612,7 @@ LL ~     };
    |
 
 error: this match could be replaced by its scrutinee and body
-  --> tests/ui/match_single_binding.rs:403:9
+  --> tests/ui/match_single_binding.rs:402:9
    |
 LL |       _ = match { a } {
    |  _________^
@@ -628,7 +628,7 @@ LL ~     1;
    |
 
 error: this match could be replaced by its scrutinee and body
-  --> tests/ui/match_single_binding.rs:408:16
+  --> tests/ui/match_single_binding.rs:407:16
    |
 LL |       if let x = match { a } {
    |  ________________^
@@ -646,7 +646,7 @@ LL ~     } {}
    |
 
 error: this match could be replaced by its scrutinee and body
-  --> tests/ui/match_single_binding.rs:413:8
+  --> tests/ui/match_single_binding.rs:412:8
    |
 LL |       if match { a } {
    |  ________^
@@ -664,7 +664,7 @@ LL ~     } {
    |
 
 error: this match could be replaced by its scrutinee and body
-  --> tests/ui/match_single_binding.rs:420:15
+  --> tests/ui/match_single_binding.rs:419:15
    |
 LL |       [1, 2, 3][match { a } {
    |  _______________^
