@@ -89,6 +89,28 @@ pub fn is_available() -> bool {
     bridge::client::is_available()
 }
 
+/// Controls the extent to which the new standalone backend is used.
+///
+/// When this will be stabilized, the default level will change from
+/// `Never` to `FallbackOnly`.
+#[unstable(feature = "proc_macro_standalone", issue = "130856")]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum StandaloneLevel {
+    /// The standalone implementation is never used. This is the default.
+    Never,
+    /// The standalone implementation is only used outside of procedural macros.
+    FallbackOnly,
+    /// The standalone implementation is always used, even in procedural macros.
+    Always,
+}
+
+/// Enables the new experimental standalone backend, which allows calling the
+/// functions in this crate outside of procedural macros.
+#[unstable(feature = "proc_macro_standalone", issue = "130856")]
+pub fn enable_standalone(level: StandaloneLevel) {
+    bridge::client::enable_standalone(level);
+}
+
 /// The main type provided by this crate, representing an abstract stream of
 /// tokens, or, more specifically, a sequence of token trees.
 /// The type provides interfaces for iterating over those token trees and, conversely,
