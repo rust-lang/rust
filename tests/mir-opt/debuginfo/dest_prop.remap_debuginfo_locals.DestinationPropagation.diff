@@ -9,11 +9,12 @@
       let mut _4: bool;
   
       bb0: {
-          // DBG: _3 = &_1;
+-         // DBG: _3 = &_1;
 -         StorageLive(_4);
 -         _4 = copy _1;
 -         _3 = copy _2;
 -         switchInt(copy _4) -> [1: bb1, otherwise: bb2];
++         // DBG: _2 = &_1;
 +         nop;
 +         nop;
 +         nop;
