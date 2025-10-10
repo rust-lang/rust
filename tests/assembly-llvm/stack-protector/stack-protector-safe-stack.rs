@@ -1,7 +1,6 @@
 //@ revisions: all strong none safestack safestack_strong safestack_all
 //@ assembly-output: emit-asm
-//@ ignore-apple slightly different policy on stack protection of arrays
-//@ ignore-msvc stack check code uses different function names
+//@ ignore-msvc safestack sanitizer not supported
 //@ ignore-nvptx64 stack protector is not supported
 //@ ignore-wasm32-bare
 //@ ignore-aarch64
