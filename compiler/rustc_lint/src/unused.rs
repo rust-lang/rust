@@ -914,7 +914,16 @@ trait UnusedDelimLint {
                 (value, UnusedDelimsCtx::ReturnValue, false, Some(left), None, true)
             }
 
-            Break(_, Some(ref value)) => {
+            Break(label, Some(ref value)) => {
+                // Don't lint on `break 'label ({...})` - the parens are necessary
+                // to disambiguate from `break 'label {...}` which would be a syntax error.
+                // This avoids conflicts with the `break_with_label_and_loop` lint.
+                if label.is_some()
+                    && matches!(value.kind, ast::ExprKind::Paren(ref inner)
+                        if matches!(inner.kind, ast::ExprKind::Block(..)))
+                {
+                    return;
+                }
                 (value, UnusedDelimsCtx::BreakValue, false, None, None, true)
             }
 
