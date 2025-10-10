@@ -4,7 +4,7 @@ use libc::{MSG_PEEK, c_int, c_void, size_t, sockaddr, socklen_t};
 use crate::ffi::CStr;
 use crate::io::{self, BorrowedBuf, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::net::{Shutdown, SocketAddr};
-use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
+use crate::os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
 use crate::sys::fd::FileDesc;
 use crate::sys::net::{getsockopt, setsockopt};
 use crate::sys::pal::IsMinusOne;
@@ -107,7 +107,7 @@ impl Socket {
         }
     }
 
-    #[cfg(not(target_os = "vxworks"))]
+    #[cfg(not(any(target_os = "vxworks", target_os = "wasi")))]
     pub fn new_pair(fam: c_int, ty: c_int) -> io::Result<(Socket, Socket)> {
         unsafe {
             let mut fds = [0, 0];
@@ -275,6 +275,7 @@ impl Socket {
         self.0.duplicate().map(Socket)
     }
 
+    #[cfg(not(target_os = "wasi"))]
     pub fn send_with_flags(&self, buf: &[u8], flags: c_int) -> io::Result<usize> {
         let len = cmp::min(buf.len(), <wrlen_t>::MAX as usize) as wrlen_t;
         let ret = cvt(unsafe {
@@ -361,6 +362,7 @@ impl Socket {
         self.recv_from_with_flags(buf, MSG_PEEK)
     }
 
+    #[cfg(not(target_os = "wasi"))]
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         self.0.write(buf)
     }
