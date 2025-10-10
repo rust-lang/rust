@@ -72,15 +72,10 @@ jobs:
         git config --global user.name "User"
         ./y.sh prepare
 
-    - name: Add more failing tests because of undefined symbol errors (FIXME)
-      run: cat tests/failing-lto-tests.txt >> tests/failing-ui-tests.txt
-
     - name: Run tests
       run: |
         # FIXME(antoyo): we cannot enable LTO for stdarch tests currently because of some failing LTO tests using proc-macros.
-        # FIXME(antoyo): this should probably not be needed since we embed the LTO bitcode.
-        printf '[profile.release]\nlto = "fat"\n' >> build/build_sysroot/sysroot_src/library/Cargo.toml
-        ./y.sh test --release --clean --release-sysroot --build-sysroot --keep-lto-tests ${{ matrix.commands }}
+        CG_RUSTFLAGS="-Cembed-bitcode=yes" ./y.sh test --release --clean --release-sysroot --build-sysroot --keep-lto-tests ${{ matrix.commands }}
 
     - name: LTO test
       run: |
@@ -99,7 +94,7 @@ jobs:
         ar rcs libadd.a add.o
         popd
 
-        EMBED_LTO_BITCODE=1 CHANNEL="release" CG_RUSTFLAGS="-L native=. -Clinker-plugin-lto -Clinker=gcc" ./y.sh cargo build --release --manifest-path tests/cross_lang_lto/Cargo.toml
+        CHANNEL="release" CG_RUSTFLAGS="-L native=. -Clinker-plugin-lto -Clinker=gcc" ./y.sh cargo build --release --manifest-path tests/cross_lang_lto/Cargo.toml
         call_found=$(objdump -dj .text tests/cross_lang_lto/target/release/cross_lang_lto | grep -c "call .*my_add" ) ||:
         if [ $call_found -gt 0 ]; then
           echo "ERROR: call my_add found in asm"

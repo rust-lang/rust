@@ -59,8 +59,6 @@ pub(crate) fn codegen(
                 if lto_supported {
                     context.add_command_line_option("-flto=auto");
                     context.add_command_line_option("-flto-partition=one");
-                    // TODO(antoyo): remove since we don't want fat objects when it is for Bitcode only.
-                    context.add_command_line_option("-ffat-lto-objects");
                 }
                 context
                     .compile_to_file(OutputKind::ObjectFile, bc_out.to_str().expect("path to str"));

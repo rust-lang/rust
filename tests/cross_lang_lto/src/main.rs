@@ -4,7 +4,7 @@
  * ar rcs libadd.a add.o
  *
  * Compile the Rust code with:
- * EMBED_LTO_BITCODE=1 CG_RUSTFLAGS="-L native=. -Clinker-plugin-lto -Clinker=gcc" y cargo run --release
+ * CG_RUSTFLAGS="-L native=. -Clinker-plugin-lto -Clinker=gcc" y cargo run --release
  */
 
 #[link(name="add")]
