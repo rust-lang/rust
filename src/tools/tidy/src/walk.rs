@@ -95,9 +95,15 @@ pub(crate) fn walk_no_read(
     f: &mut dyn FnMut(&DirEntry),
 ) {
     let include_untracked = tidy_ctx.map(|flags| flags.include_untracked).unwrap_or(false);
-    let untracked_files = match !include_untracked {
-        true => tidy_ctx.unwrap().untracked_files.clone(),
-        false => HashSet::new(),
+    let untracked_files = match include_untracked {
+        true => HashSet::new(),
+        false => {
+            if let Some(ctx) = tidy_ctx {
+                ctx.untracked_files.clone()
+            } else {
+                HashSet::new()
+            }
+        }
     };
 
     let mut walker = ignore::WalkBuilder::new(paths[0]);
