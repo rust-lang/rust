@@ -373,12 +373,23 @@ fn foo() -> u32 {
 
 #[test]
 fn expected_type_closure_param_return() {
-    // FIXME: make this work with `|| $0`
     check_expected_type_and_name(
         r#"
 //- minicore: fn
 fn foo() {
     bar(|| a$0);
+}
+
+fn bar(f: impl FnOnce() -> u32) {}
+"#,
+        expect![[r#"ty: u32, name: ?"#]],
+    );
+
+    check_expected_type_and_name(
+        r#"
+//- minicore: fn
+fn foo() {
+    bar(|| $0);
 }
 
 fn bar(f: impl FnOnce() -> u32) {}
