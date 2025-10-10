@@ -837,6 +837,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 #[expect(clippy::as_conversions)]
                 let val = val as u8;
 
+                // C requires that this must always be a valid pointer, even if `n` is zero, so we better check that.
                 this.ptr_get_alloc_id(ptr_dest, 0)?;
 
                 let bytes = std::iter::repeat_n(val, n.try_into().unwrap());
