@@ -9,8 +9,8 @@
 //!
 //! ## Adding a new cfg
 //!
-//! Adding a new feature requires two new symbols one for the cfg itself
-//! and the second one for the unstable feature gate, those are defined in
+//! Adding a new feature requires two new symbols: one for the cfg itself
+//! and the second one for the unstable feature gate; those are defined in
 //! `rustc_span::symbol`.
 //!
 //! As well as the following points,
@@ -107,8 +107,8 @@ pub(crate) fn disallow_cfgs(sess: &Session, user_cfgs: &Cfg) {
     //
     // The tests are in tests/ui/cfg/disallowed-cli-cfgs.rs.
 
-    // By-default all builtin cfgs are disallowed, only those are allowed:
-    //  - test: as it makes sense to the have the `test` cfg active without the builtin
+    // By default all builtin cfgs are disallowed, but these are allowed:
+    //  - test: as it makes sense to have the `test` cfg active without the builtin
     //          test harness. See Cargo `harness = false` config.
     //
     // Cargo `--cfg test`: https://github.com/rust-lang/cargo/blob/bc89bffa5987d4af8f71011c7557119b39e44a65/src/cargo/core/compiler/mod.rs#L1124
