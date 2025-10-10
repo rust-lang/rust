@@ -249,14 +249,23 @@ use crate::ops::ControlFlow;
 #[rustc_diagnostic_item = "PartialEq"]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 pub const trait PartialEq<Rhs: PointeeSized = Self>: PointeeSized {
-    /// Tests for `self` and `other` values to be equal, and is used by `==`.
+    /// Equality operator `==`.
+    ///
+    /// Implementation of the "is equal to" operator `==`:
+    /// tests whether its arguments are equal.
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_diagnostic_item = "cmp_partialeq_eq"]
     fn eq(&self, other: &Rhs) -> bool;
 
-    /// Tests for `!=`. The default implementation is almost always sufficient,
-    /// and should not be overridden without very good reason.
+    /// Inequality operator `!=`.
+    ///
+    /// Implementation of the "is not equal to" or "is different from" operator `!=`:
+    /// tests whether its arguments are different.
+    ///
+    /// # Default implementation
+    /// The default implementation of the inequality operator simply calls
+    /// the implementation of the equality operator and negates the result.
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1857,17 +1866,29 @@ mod impls {
     use crate::ops::ControlFlow::{self, Break, Continue};
     use crate::panic::const_assert;
 
-    macro_rules! partial_eq_impl {
+    /// Implements `PartialEq` for primitive types.
+    ///
+    /// Primitive types have a compiler-defined primitive implementation of `==` and `!=`.
+    /// This implements the `PartialEq` trait is terms of those primitive implementations.
+    ///
+    /// NOTE: Calling this on a non-primitive type (such as `()`)
+    /// leads to infinitely recursive implementations.
+    macro_rules! impl_partial_eq_for_primitive {
         ($($t:ty)*) => ($(
             #[stable(feature = "rust1", since = "1.0.0")]
             #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
             impl const PartialEq for $t {
                 #[inline]
                 fn eq(&self, other: &Self) -> bool { *self == *other }
+                // Override the default to use the primitive implementation for `!=`.
                 #[inline]
                 fn ne(&self, other: &Self) -> bool { *self != *other }
             }
         )*)
+    }
+
+    impl_partial_eq_for_primitive! {
+        bool char usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f16 f32 f64 f128
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1881,10 +1902,6 @@ mod impls {
         fn ne(&self, _other: &()) -> bool {
             false
         }
-    }
-
-    partial_eq_impl! {
-        bool char usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f16 f32 f64 f128
     }
 
     macro_rules! eq_impl {
