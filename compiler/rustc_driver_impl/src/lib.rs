@@ -276,9 +276,12 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
 
     let registered_lints = config.register_lints.is_some();
 
+    let mut crate_name = None;
     interface::run_compiler(config, |compiler| {
         let sess = &compiler.sess;
         let codegen_backend = &*compiler.codegen_backend;
+
+        crate_name = sess.opts.crate_name.clone();
 
         // This is used for early exits unrelated to errors. E.g. when just
         // printing some information without compiling, or exiting immediately
@@ -392,7 +395,9 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
         if let Some(linker) = linker {
             linker.link(sess, codegen_backend);
         }
-    })
+    });
+
+    eprintln!("{crate_name:?}: {:?}", rustc_privacy::brrr());
 }
 
 fn dump_feature_usage_metrics(tcxt: TyCtxt<'_>, metrics_dir: &Path) {

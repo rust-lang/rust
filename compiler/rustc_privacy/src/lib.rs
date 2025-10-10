@@ -12,6 +12,8 @@ mod errors;
 use std::fmt;
 use std::marker::PhantomData;
 use std::ops::ControlFlow;
+use std::sync::{Mutex, MutexGuard, OnceLock};
+use std::time::{Duration, Instant};
 
 use errors::{
     FieldIsPrivate, FieldIsPrivateLabel, FromPrivateDependencyInPublicInterface, InPublicInterface,
@@ -20,7 +22,7 @@ use errors::{
 };
 use rustc_ast::MacroDef;
 use rustc_ast::visit::{VisitorResult, try_visit};
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{MultiSpan, listify};
 use rustc_hir as hir;
@@ -86,6 +88,7 @@ pub trait DefIdVisitor<'tcx> {
             def_id_visitor: self,
             visited_tys: Default::default(),
             dummy: Default::default(),
+            // brrr: Default::default(),
         }
     }
     fn visit(&mut self, ty_fragment: impl TypeVisitable<TyCtxt<'tcx>>) -> Self::Result {
@@ -100,6 +103,82 @@ pub trait DefIdVisitor<'tcx> {
     fn visit_clauses(&mut self, clauses: &[(ty::Clause<'tcx>, Span)]) -> Self::Result {
         self.skeleton().visit_clauses(clauses)
     }
+}
+
+#[derive(PartialEq, Eq, Hash, Debug)]
+pub enum Ty2 {
+    Bool,
+    Char,
+    Int,
+    Uint,
+    Float,
+    Adt,
+    Foreign,
+    Str,
+    Array,
+    Pat,
+    Slice,
+    RawPtr,
+    Ref,
+    FnDef,
+    FnPtr,
+    UnsafeBinder,
+    Dynamic,
+    Closure,
+    CoroutineClosure,
+    Coroutine,
+    CoroutineWitness,
+    Never,
+    Tuple,
+    Alias,
+    Param,
+    Bound,
+    Placeholder,
+    Infer,
+    Error,
+}
+
+use Ty2::*;
+
+impl Ty2 {
+    fn from_ty(ty: Ty<'_>) -> Ty2 {
+        match ty.kind() {
+            ty::Bool => Bool,
+            ty::Char => Char,
+            ty::Int(..) => Int,
+            ty::Uint(..) => Uint,
+            ty::Float(..) => Float,
+            ty::Adt(..) => Adt,
+            ty::Foreign(..) => Foreign,
+            ty::Str => Str,
+            ty::Array(..) => Array,
+            ty::Pat(..) => Pat,
+            ty::Slice(_) => Slice,
+            ty::RawPtr(..) => RawPtr,
+            ty::Ref(..) => Ref,
+            ty::FnDef(..) => FnDef,
+            ty::FnPtr(..) => FnPtr,
+            ty::UnsafeBinder(..) => UnsafeBinder,
+            ty::Dynamic(..) => Dynamic,
+            ty::Closure(..) => Closure,
+            ty::CoroutineClosure(..) => CoroutineClosure,
+            ty::Coroutine(..) => Coroutine,
+            ty::CoroutineWitness(..) => CoroutineWitness,
+            ty::Never => Never,
+            ty::Tuple(..) => Tuple,
+            ty::Alias(..) => Alias,
+            ty::Param(..) => Param,
+            ty::Bound(..) => Bound,
+            ty::Placeholder(..) => Placeholder,
+            ty::Infer(..) => Infer,
+            ty::Error(..) => Error,
+        }
+    }
+}
+
+pub fn brrr() -> MutexGuard<'static, FxHashMap<Ty2, Duration>> {
+    static MAP: OnceLock<Mutex<FxHashMap<Ty2, Duration>>> = OnceLock::new();
+    MAP.get_or_init(Default::default).lock().unwrap()
 }
 
 pub struct DefIdVisitorSkeleton<'v, 'tcx, V: ?Sized> {
@@ -171,6 +250,14 @@ where
     }
 }
 
+// impl<V: ?Sized> Drop for DefIdVisitorSkeleton<'_, '_, V> {
+//     fn drop(&mut self) {
+//         if !brrr().is_empty() {
+//             dbg!(brrr());
+//         }
+//     }
+// }
+
 impl<'tcx, V> TypeVisitor<TyCtxt<'tcx>> for DefIdVisitorSkeleton<'_, 'tcx, V>
 where
     V: DefIdVisitor<'tcx> + ?Sized,
@@ -182,6 +269,8 @@ where
     }
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
+        let new = self.visited_tys.insert(ty);
+        let instant = Instant::now();
         let tcx = self.def_id_visitor.tcx();
         // GenericArgs are not visited here because they are visited below
         // in `super_visit_with`.
@@ -192,9 +281,6 @@ where
             | ty::Closure(def_id, ..)
             | ty::CoroutineClosure(def_id, ..)
             | ty::Coroutine(def_id, ..) => {
-                if !self.visited_tys.insert(ty) {
-                    return V::Result::output();
-                }
                 try_visit!(self.def_id_visitor.visit_def_id(def_id, "type", &ty));
                 if V::SHALLOW {
                     return V::Result::output();
@@ -217,9 +303,6 @@ where
                 }
             }
             ty::Alias(kind @ (ty::Inherent | ty::Free | ty::Projection), data) => {
-                if !self.visited_tys.insert(ty) {
-                    return V::Result::output();
-                }
                 if self.def_id_visitor.skip_assoc_tys() {
                     // Visitors searching for minimal visibility/reachability want to
                     // conservatively approximate associated types like `Type::Alias`
@@ -251,9 +334,6 @@ where
                 };
             }
             ty::Dynamic(predicates, ..) => {
-                if !self.visited_tys.insert(ty) {
-                    return V::Result::output();
-                }
                 // All traits in the list are considered the "primary" part of the type
                 // and are visited by shallow visitors.
                 for predicate in predicates {
@@ -269,17 +349,16 @@ where
                 }
             }
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) => {
-                if !self.visited_tys.insert(ty) {
-                    return V::Result::output();
+                if new {
+                    // The intent is to treat `impl Trait1 + Trait2` identically to
+                    // `dyn Trait1 + Trait2`. Therefore we ignore def-id of the opaque type itself
+                    // (it either has no visibility, or its visibility is insignificant, like
+                    // visibilities of type aliases) and recurse into bounds instead to go
+                    // through the trait list (default type visitor doesn't visit those traits).
+                    // All traits in the list are considered the "primary" part of the type
+                    // and are visited by shallow visitors.
+                    try_visit!(self.visit_clauses(tcx.explicit_item_bounds(def_id).skip_binder()));
                 }
-                // The intent is to treat `impl Trait1 + Trait2` identically to
-                // `dyn Trait1 + Trait2`. Therefore we ignore def-id of the opaque type itself
-                // (it either has no visibility, or its visibility is insignificant, like
-                // visibilities of type aliases) and recurse into bounds instead to go
-                // through the trait list (default type visitor doesn't visit those traits).
-                // All traits in the list are considered the "primary" part of the type
-                // and are visited by shallow visitors.
-                try_visit!(self.visit_clauses(tcx.explicit_item_bounds(def_id).skip_binder()));
             }
             // These types have neither their own def-ids nor subcomponents.
             ty::Bool
@@ -303,17 +382,20 @@ where
             | ty::FnPtr(..)
             | ty::UnsafeBinder(_)
             | ty::Error(_)
-            | ty::CoroutineWitness(..) => {
-                if !self.visited_tys.insert(ty) {
-                    return V::Result::output();
-                }
-            }
+            | ty::CoroutineWitness(..) => {}
             ty::Placeholder(..) | ty::Infer(..) => {
                 bug!("unexpected type: {:?}", ty)
             }
         }
 
-        if V::SHALLOW { V::Result::output() } else { ty.super_visit_with(self) }
+        let result = if V::SHALLOW { V::Result::output() } else { ty.super_visit_with(self) };
+
+        if !new {
+            let duration = instant.elapsed();
+            *brrr().entry(Ty2::from_ty(ty)).or_default() += duration;
+        }
+
+        result
     }
 
     fn visit_const(&mut self, c: Const<'tcx>) -> Self::Result {
