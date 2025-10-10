@@ -82,10 +82,7 @@ use std::any::Any;
 use std::fmt::Debug;
 use std::ops::Deref;
 use std::path::PathBuf;
-#[cfg(not(feature = "master"))]
-use std::sync::atomic::AtomicBool;
-#[cfg(not(feature = "master"))]
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use back::lto::{ThinBuffer, ThinData};
@@ -177,7 +174,10 @@ impl LockedTargetInfo {
 #[derive(Clone)]
 pub struct GccCodegenBackend {
     target_info: LockedTargetInfo,
+    lto_supported: Arc<AtomicBool>,
 }
+
+static LTO_SUPPORTED: AtomicBool = AtomicBool::new(false);
 
 impl CodegenBackend for GccCodegenBackend {
     fn locale_resource(&self) -> &'static str {
@@ -203,7 +203,13 @@ impl CodegenBackend for GccCodegenBackend {
         }
 
         #[cfg(feature = "master")]
-        gccjit::set_global_personality_function_name(b"rust_eh_personality\0");
+        {
+            let lto_supported = gccjit::is_lto_supported();
+            LTO_SUPPORTED.store(lto_supported, Ordering::SeqCst);
+            self.lto_supported.store(lto_supported, Ordering::SeqCst);
+
+            gccjit::set_global_personality_function_name(b"rust_eh_personality\0");
+        }
 
         #[cfg(not(feature = "master"))]
         {
@@ -287,10 +293,12 @@ impl ExtraBackendMethods for GccCodegenBackend {
         kind: AllocatorKind,
         alloc_error_handler_kind: AllocatorKind,
     ) -> Self::Module {
+        let lto_supported = self.lto_supported.load(Ordering::SeqCst);
         let mut mods = GccContext {
             context: Arc::new(SyncContext::new(new_context(tcx))),
             relocation_model: tcx.sess.relocation_model(),
-            should_combine_object_files: false,
+            lto_mode: LtoMode::None,
+            lto_supported,
             temp_dir: None,
         };
 
@@ -305,7 +313,12 @@ impl ExtraBackendMethods for GccCodegenBackend {
         tcx: TyCtxt<'_>,
         cgu_name: Symbol,
     ) -> (ModuleCodegen<Self::Module>, u64) {
-        base::compile_codegen_unit(tcx, cgu_name, self.target_info.clone())
+        base::compile_codegen_unit(
+            tcx,
+            cgu_name,
+            self.target_info.clone(),
+            self.lto_supported.load(Ordering::SeqCst),
+        )
     }
 
     fn target_machine_factory(
@@ -319,12 +332,20 @@ impl ExtraBackendMethods for GccCodegenBackend {
     }
 }
 
+#[derive(Clone, Copy, PartialEq)]
+pub enum LtoMode {
+    None,
+    Thin,
+    Fat,
+}
+
 pub struct GccContext {
     context: Arc<SyncContext>,
     /// This field is needed in order to be able to set the flag -fPIC when necessary when doing
     /// LTO.
     relocation_model: RelocModel,
-    should_combine_object_files: bool,
+    lto_mode: LtoMode,
+    lto_supported: bool,
     // Temporary directory used by LTO. We keep it here so that it's not removed before linking.
     temp_dir: Option<TempDir>,
 }
@@ -436,7 +457,10 @@ pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
         supports_128bit_integers: AtomicBool::new(false),
     })));
 
-    Box::new(GccCodegenBackend { target_info: LockedTargetInfo { info } })
+    Box::new(GccCodegenBackend {
+        lto_supported: Arc::new(AtomicBool::new(false)),
+        target_info: LockedTargetInfo { info },
+    })
 }
 
 fn to_gcc_opt_level(optlevel: Option<OptLevel>) -> OptimizationLevel {
