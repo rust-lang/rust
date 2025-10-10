@@ -926,7 +926,6 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
             // mutations of the same local via `Store`
             | MutatingUse(MutatingUseContext::Call)
             | MutatingUse(MutatingUseContext::AsmOutput)
-            | MutatingUse(MutatingUseContext::Deinit)
             // Actual store that can possibly even propagate a value
             | MutatingUse(MutatingUseContext::Store)
             | MutatingUse(MutatingUseContext::SetDiscriminant) => {

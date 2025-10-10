@@ -319,11 +319,6 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                     self.fail(location, "`SetDiscriminant`is not allowed until deaggregation");
                 }
             }
-            StatementKind::Deinit(..) => {
-                if self.body.phase < MirPhase::Runtime(RuntimePhase::Initial) {
-                    self.fail(location, "`Deinit`is not allowed until deaggregation");
-                }
-            }
             StatementKind::Retag(kind, _) => {
                 // FIXME(JakobDegen) The validator should check that `self.body.phase <
                 // DropsLowered`. However, this causes ICEs with generation of drop shims, which
@@ -1505,11 +1500,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             "`SetDiscriminant` is only allowed on ADTs and coroutines, not {pty}"
                         ),
                     );
-                }
-            }
-            StatementKind::Deinit(..) => {
-                if self.body.phase < MirPhase::Runtime(RuntimePhase::Initial) {
-                    self.fail(location, "`Deinit`is not allowed until deaggregation");
                 }
             }
             StatementKind::Retag(kind, _) => {

@@ -126,8 +126,6 @@ impl<'tcx> crate::MirPass<'tcx> for EnumSizeOpt {
                     Rvalue::Cast(CastKind::PtrToPtr, Operand::Copy(src), src_cast_ty),
                 )));
 
-                let deinit_old = StatementKind::Deinit(Box::new(dst));
-
                 let copy_bytes = StatementKind::Intrinsic(Box::new(
                     NonDivergingIntrinsic::CopyNonOverlapping(CopyNonOverlapping {
                         src: Operand::Copy(src_cast_place),
@@ -148,7 +146,6 @@ impl<'tcx> crate::MirPass<'tcx> for EnumSizeOpt {
                     dst_cast,
                     src_ptr,
                     src_cast,
-                    deinit_old,
                     copy_bytes,
                     store_dead,
                 ];

@@ -149,9 +149,6 @@ impl<'tcx> Stable<'tcx> for mir::StatementKind<'tcx> {
                     variant_index: variant_index.stable(tables, cx),
                 }
             }
-            mir::StatementKind::Deinit(place) => {
-                crate::mir::StatementKind::Deinit(place.stable(tables, cx))
-            }
 
             mir::StatementKind::StorageLive(place) => {
                 crate::mir::StatementKind::StorageLive(place.stable(tables, cx))

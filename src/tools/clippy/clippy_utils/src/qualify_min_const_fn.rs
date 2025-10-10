@@ -232,7 +232,7 @@ fn check_statement<'tcx>(
 
         StatementKind::FakeRead(box (_, place)) => check_place(cx, *place, span, body, msrv),
         // just an assignment
-        StatementKind::SetDiscriminant { place, .. } | StatementKind::Deinit(place) => {
+        StatementKind::SetDiscriminant { place, .. } => {
             check_place(cx, **place, span, body, msrv)
         },
 

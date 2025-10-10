@@ -178,10 +178,6 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                     FlatSet::<Scalar>::BOTTOM,
                 );
             }
-            StatementKind::Deinit(box place) => {
-                // Deinit makes the place uninitialized.
-                state.flood_with(place.as_ref(), &self.map, FlatSet::<Scalar>::BOTTOM);
-            }
             StatementKind::Retag(..) => {
                 // We don't track references.
             }

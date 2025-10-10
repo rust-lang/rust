@@ -135,7 +135,6 @@ pub enum RuntimePhase {
     /// And the following variants are allowed:
     /// * [`StatementKind::Retag`]
     /// * [`StatementKind::SetDiscriminant`]
-    /// * [`StatementKind::Deinit`]
     ///
     /// Furthermore, `Copy` operands are allowed for non-`Copy` types.
     Initial = 0,
@@ -361,11 +360,6 @@ pub enum StatementKind<'tcx> {
     /// entire place; instead, it writes to the minimum set of bytes as required by the layout for
     /// the type.
     SetDiscriminant { place: Box<Place<'tcx>>, variant_index: VariantIdx },
-
-    /// Deinitializes the place.
-    ///
-    /// This writes `uninit` bytes to the entire place.
-    Deinit(Box<Place<'tcx>>),
 
     /// `StorageLive` and `StorageDead` statements mark the live range of a local.
     ///

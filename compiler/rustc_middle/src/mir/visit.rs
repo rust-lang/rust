@@ -445,13 +445,6 @@ macro_rules! make_mir_visitor {
                             location
                         );
                     }
-                    StatementKind::Deinit(place) => {
-                        self.visit_place(
-                            place,
-                            PlaceContext::MutatingUse(MutatingUseContext::Deinit),
-                            location
-                        )
-                    }
                     StatementKind::StorageLive(local) => {
                         self.visit_local(
                             $(& $mutability)? *local,
@@ -1372,8 +1365,6 @@ pub enum MutatingUseContext {
     Store,
     /// Appears on `SetDiscriminant`
     SetDiscriminant,
-    /// Appears on `Deinit`
-    Deinit,
     /// Output operand of an inline assembly block.
     AsmOutput,
     /// Destination of a call.
