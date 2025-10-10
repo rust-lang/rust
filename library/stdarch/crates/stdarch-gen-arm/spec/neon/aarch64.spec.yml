@@ -59,6 +59,9 @@ neon-unstable-f16: &neon-unstable-f16
 neon-unstable-feat-lut: &neon-unstable-feat-lut
   FnCall: [unstable, ['feature = "stdarch_neon_feat_lut"', 'issue = "138050"']]
 
+aarch64-unstable-jscvt: &aarch64-unstable-jscvt
+  FnCall: [unstable, ['feature = "stdarch_aarch64_jscvt"', 'issue = "147555"']]
+
 # #[cfg(target_endian = "little")]
 little-endian: &little-endian
   FnCall: [cfg, ['target_endian = "little"']]
@@ -14259,3 +14262,21 @@ intrinsics:
                 - 'vluti4q_laneq_{neon_type[5]}_x2::<LANE>'
                 - - FnCall: [transmute, [a]]
                   - b
+
+  - name: "__jcvt"
+    doc: "Floating-point JavaScript convert to signed fixed-point, rounding toward zero"
+    arguments: ["a: {type}"]
+    return_type: "i32"
+    attr:
+      - FnCall: [target_feature, ['enable = "jsconv"']]
+      - FnCall: [cfg_attr, [test, { FnCall: [assert_instr, ["fjcvtzs"]] }]]
+      - *aarch64-unstable-jscvt
+    safety: safe
+    types:
+      - f64
+    compose:
+      - LLVMLink:
+          name: "fjcvtzs"
+          links:
+            - link: "llvm.aarch64.fjcvtzs"
+              arch: aarch64,arm64ec
