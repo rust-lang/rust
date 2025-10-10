@@ -75,9 +75,7 @@ jobs:
     - name: Run tests
       run: |
         # FIXME(antoyo): we cannot enable LTO for stdarch tests currently because of some failing LTO tests using proc-macros.
-        # FIXME(antoyo): this should probably not be needed since we embed the LTO bitcode.
-        printf '[profile.release]\nlto = "fat"\n' >> build/build_sysroot/sysroot_src/library/Cargo.toml
-        ./y.sh test --release --clean --release-sysroot --build-sysroot --keep-lto-tests ${{ matrix.commands }}
+        CG_RUSTFLAGS="-Cembed-bitcode=yes" ./y.sh test --release --clean --release-sysroot --build-sysroot --keep-lto-tests ${{ matrix.commands }}
 
     - name: LTO test
       run: |
