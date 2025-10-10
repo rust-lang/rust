@@ -3263,6 +3263,8 @@ fn distcheck_plain_source_tarball(builder: &Builder<'_>, plain_src_dir: &Path) {
         .env("GITHUB_ACTIONS", "0")
         .current_dir(plain_src_dir)
         .run(builder);
+    // Mitigate pressure on small-capacity disks.
+    builder.remove_dir(plain_src_dir);
 }
 
 /// Check that rust-src has all of libstd's dependencies
@@ -3288,6 +3290,8 @@ fn distcheck_rust_src(builder: &Builder<'_>, src_dir: &Path) {
         .arg(&toml)
         .current_dir(src_dir)
         .run(builder);
+    // Mitigate pressure on small-capacity disks.
+    builder.remove_dir(src_dir);
 }
 
 /// Check that rustc-dev's compiler crate source code can be loaded with `cargo metadata`
@@ -3312,6 +3316,8 @@ fn distcheck_rustc_dev(builder: &Builder<'_>, dir: &Path) {
         .env("RUSTC", &builder.initial_rustc)
         .current_dir(dir)
         .run(builder);
+    // Mitigate pressure on small-capacity disks.
+    builder.remove_dir(dir);
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
