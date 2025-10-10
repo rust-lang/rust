@@ -310,6 +310,8 @@ pub fn test16() {
 // CHECK-LABEL: test18{{:|\[}}
 #[no_mangle]
 pub unsafe extern "C" fn test18() -> i32 {
+    // CHECK-DAG: .seh_endprologue
+
     let mut a: i32 = 0;
 
     except(&mut a as *mut i32);
@@ -322,11 +324,15 @@ pub unsafe extern "C" fn test18() -> i32 {
     // strong-NOT: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
+
+    // CHECK-DAG: .seh_endprologue
 }
 
 // CHECK-LABEL: test19{{:|\[}}
 #[no_mangle]
 pub unsafe extern "C" fn test19() -> i32 {
+    // CHECK-DAG: .seh_endprologue
+
     let mut c = Pair { a: 0, b: 0 };
 
     except(&mut c.a as *mut i32);
@@ -339,6 +345,8 @@ pub unsafe extern "C" fn test19() -> i32 {
     // strong-NOT: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
+
+    // CHECK-DAG: .seh_endprologue
 }
 
 // CHECK-LABEL: test20{{:|\[}}
