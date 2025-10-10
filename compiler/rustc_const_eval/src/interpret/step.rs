@@ -98,11 +98,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.write_discriminant(*variant_index, &dest)?;
             }
 
-            Deinit(place) => {
-                let dest = self.eval_place(**place)?;
-                self.write_uninit(&dest)?;
-            }
-
             // Mark locals as alive
             StorageLive(local) => {
                 self.storage_live(*local)?;

@@ -332,8 +332,7 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
         stmt: &Statement<'tcx>,
     ) -> Option<(Place<'tcx>, Option<TrackElem>)> {
         match stmt.kind {
-            StatementKind::Assign(box (place, _))
-            | StatementKind::Deinit(box place) => Some((place, None)),
+            StatementKind::Assign(box (place, _)) => Some((place, None)),
             StatementKind::SetDiscriminant { box place, variant_index: _ } => {
                 Some((place, Some(TrackElem::Discriminant)))
             }

@@ -4,7 +4,6 @@ fn set_discr(_1: &mut Option<()>) -> () {
     let mut _0: ();
 
     bb0: {
-        Deinit((*_1));
         discriminant((*_1)) = 0;
         return;
     }

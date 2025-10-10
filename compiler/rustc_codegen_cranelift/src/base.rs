@@ -932,7 +932,6 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
         }
         StatementKind::StorageLive(_)
         | StatementKind::StorageDead(_)
-        | StatementKind::Deinit(_)
         | StatementKind::ConstEvalCounter
         | StatementKind::Nop
         | StatementKind::FakeRead(..)

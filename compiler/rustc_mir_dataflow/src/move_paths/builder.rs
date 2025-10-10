@@ -371,7 +371,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                     self.gather_move(Place::from(*local));
                 }
             }
-            StatementKind::SetDiscriminant { .. } | StatementKind::Deinit(..) => {
+            StatementKind::SetDiscriminant { .. } => {
                 span_bug!(
                     stmt.source_info.span,
                     "SetDiscriminant/Deinit should not exist during borrowck"

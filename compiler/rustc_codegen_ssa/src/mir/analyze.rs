@@ -229,7 +229,6 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> Visitor<'tcx> for LocalAnalyzer
 
             PlaceContext::MutatingUse(
                 MutatingUseContext::Store
-                | MutatingUseContext::Deinit
                 | MutatingUseContext::SetDiscriminant
                 | MutatingUseContext::AsmOutput
                 | MutatingUseContext::Borrow

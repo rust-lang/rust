@@ -50,7 +50,6 @@ impl<'tcx> StatementKind<'tcx> {
             StatementKind::Assign(..) => "Assign",
             StatementKind::FakeRead(..) => "FakeRead",
             StatementKind::SetDiscriminant { .. } => "SetDiscriminant",
-            StatementKind::Deinit(..) => "Deinit",
             StatementKind::StorageLive(..) => "StorageLive",
             StatementKind::StorageDead(..) => "StorageDead",
             StatementKind::Retag(..) => "Retag",
