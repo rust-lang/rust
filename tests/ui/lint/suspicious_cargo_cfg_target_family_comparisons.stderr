@@ -1,0 +1,230 @@
+warning: comparing against `CARGO_CFG_TARGET_FAMILY` directly may break in the future
+  --> $DIR/suspicious_cargo_cfg_target_family_comparisons.rs:10:19
+   |
+LL |     let is_unix = env::var("CARGO_CFG_TARGET_FAMILY").unwrap() == "unix";
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see issue #100343 <https://github.com/rust-lang/rust/issues/100343>
+   = note: `CARGO_CFG_TARGET_FAMILY` can contain multiple comma-separated values
+   = note: `#[warn(suspicious_cargo_cfg_target_family_comparisons)]` (part of `#[warn(future_incompatible)]`) on by default
+help: compare against each family instead
+   |
+LL |     let is_unix = env::var("CARGO_CFG_TARGET_FAMILY").unwrap().split(',').any(|x| x == "unix");
+   |                                                               +++++++++++++++++++++          +
+
+warning: comparing against `CARGO_CFG_TARGET_FAMILY` directly may break in the future
+  --> $DIR/suspicious_cargo_cfg_target_family_comparisons.rs:20:8
+   |
+LL |     if target_family == "unix" {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see issue #100343 <https://github.com/rust-lang/rust/issues/100343>
+   = note: `CARGO_CFG_TARGET_FAMILY` can contain multiple comma-separated values
+help: compare against each family instead
+   |
+LL |     if target_family.split(',').any(|x| x == "unix") {
+   |                     +++++++++++++++++++++          +
+
+warning: matching on `CARGO_CFG_TARGET_FAMILY` directly may break in the future
+  --> $DIR/suspicious_cargo_cfg_target_family_comparisons.rs:25:11
+   |
+LL |     match &*target_family {
+   |           ^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see issue #100343 <https://github.com/rust-lang/rust/issues/100343>
+   = note: `CARGO_CFG_TARGET_FAMILY` can contain multiple comma-separated values
+   = note: compare against each family instead
+
+warning: comparing against `CARGO_CFG_TARGET_FAMILY` directly may break in the future
+  --> $DIR/suspicious_cargo_cfg_target_family_comparisons.rs:40:13
+   |
+LL |     let _ = target_family != "unix";
+   |             ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see issue #100343 <https://github.com/rust-lang/rust/issues/100343>
+   = note: `CARGO_CFG_TARGET_FAMILY` can contain multiple comma-separated values
+help: compare against each family instead
+   |
+LL -     let _ = target_family != "unix";
+LL +     let _ = !target_family.split(',').any(|x| x == "unix");
+   |
+
+warning: comparing against `CARGO_CFG_TARGET_FAMILY` directly may break in the future
+  --> $DIR/suspicious_cargo_cfg_target_family_comparisons.rs:46:13
+   |
+LL |     let _ = target_family == "unix";
+   |             ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see issue #100343 <https://github.com/rust-lang/rust/issues/100343>
+   = note: `CARGO_CFG_TARGET_FAMILY` can contain multiple comma-separated values
+help: compare against each family instead
+   |
+LL |     let _ = target_family.split(',').any(|x| x == "unix");
+   |                          +++++++++++++++++++++          +
+
+warning: comparing against `CARGO_CFG_TARGET_FAMILY` directly may break in the future
+  --> $DIR/suspicious_cargo_cfg_target_family_comparisons.rs:56:13
+   |
+LL |     let _ = get_and_track_env_var("CARGO_CFG_TARGET_FAMILY") == "unix";
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see issue #100343 <https://github.com/rust-lang/rust/issues/100343>
+   = note: `CARGO_CFG_TARGET_FAMILY` can contain multiple comma-separated values
+help: compare against each family instead
+   |
+LL |     let _ = get_and_track_env_var("CARGO_CFG_TARGET_FAMILY").split(',').any(|x| x == "unix");
+   |                                                             +++++++++++++++++++++          +
+
+warning: comparing against `CARGO_CFG_TARGET_FAMILY` directly may break in the future
+  --> $DIR/suspicious_cargo_cfg_target_family_comparisons.rs:60:13
+   |
+LL |     let _ = ::std::env::var("CARGO_CFG_TARGET_FAMILY").unwrap() == "unix";
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see issue #100343 <https://github.com/rust-lang/rust/issues/100343>
+   = note: `CARGO_CFG_TARGET_FAMILY` can contain multiple comma-separated values
+help: compare against each family instead
+   |
+LL |     let _ = ::std::env::var("CARGO_CFG_TARGET_FAMILY").unwrap().split(',').any(|x| x == "unix");
+   |                                                                +++++++++++++++++++++          +
+
+warning: comparing against `CARGO_CFG_TARGET_FAMILY` directly may break in the future
+  --> $DIR/suspicious_cargo_cfg_target_family_comparisons.rs:62:13
+   |
+LL |     let _ = env::var("CARGO_CFG_TARGET_FAMILY").expect("should be set") == "unix";
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see issue #100343 <https://github.com/rust-lang/rust/issues/100343>
+   = note: `CARGO_CFG_TARGET_FAMILY` can contain multiple comma-separated values
+help: compare against each family instead
+   |
+LL |     let _ = env::var("CARGO_CFG_TARGET_FAMILY").expect("should be set").split(',').any(|x| x == "unix");
+   |                                                                        +++++++++++++++++++++          +
+
+warning: comparing against `CARGO_CFG_TARGET_FAMILY` directly may break in the future
+  --> $DIR/suspicious_cargo_cfg_target_family_comparisons.rs:64:13
+   |
+LL |     let _ = env::var("CARGO_CFG_TARGET_FAMILY").unwrap_or_default() == "unix";
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see issue #100343 <https://github.com/rust-lang/rust/issues/100343>
+   = note: `CARGO_CFG_TARGET_FAMILY` can contain multiple comma-separated values
+help: compare against each family instead
+   |
+LL |     let _ = env::var("CARGO_CFG_TARGET_FAMILY").unwrap_or_default().split(',').any(|x| x == "unix");
+   |                                                                    +++++++++++++++++++++          +
+
+warning: comparing against `CARGO_CFG_TARGET_FAMILY` directly may break in the future
+  --> $DIR/suspicious_cargo_cfg_target_family_comparisons.rs:66:13
+   |
+LL |     let _ = env::var_os("CARGO_CFG_TARGET_FAMILY").unwrap() == "unix";
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see issue #100343 <https://github.com/rust-lang/rust/issues/100343>
+   = note: `CARGO_CFG_TARGET_FAMILY` can contain multiple comma-separated values
+
+warning: comparing against `CARGO_CFG_TARGET_FAMILY` directly may break in the future
+  --> $DIR/suspicious_cargo_cfg_target_family_comparisons.rs:68:13
+   |
+LL |     let _ = env::var("CARGO_CFG_TARGET_FAMILY") == Ok("unix".to_string());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see issue #100343 <https://github.com/rust-lang/rust/issues/100343>
+   = note: `CARGO_CFG_TARGET_FAMILY` can contain multiple comma-separated values
+
+warning: comparing against `CARGO_CFG_TARGET_FAMILY` directly may break in the future
+  --> $DIR/suspicious_cargo_cfg_target_family_comparisons.rs:70:13
+   |
+LL |     let _ = env::var_os("CARGO_CFG_TARGET_FAMILY") == Some("unix".into());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see issue #100343 <https://github.com/rust-lang/rust/issues/100343>
+   = note: `CARGO_CFG_TARGET_FAMILY` can contain multiple comma-separated values
+
+warning: comparing against `CARGO_CFG_TARGET_FAMILY` directly may break in the future
+  --> $DIR/suspicious_cargo_cfg_target_family_comparisons.rs:72:13
+   |
+LL |     let _ = env::var("CARGO_CFG_TARGET_FAMILY").as_deref() == Ok("unix");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see issue #100343 <https://github.com/rust-lang/rust/issues/100343>
+   = note: `CARGO_CFG_TARGET_FAMILY` can contain multiple comma-separated values
+
+warning: comparing against `CARGO_CFG_TARGET_FAMILY` directly may break in the future
+  --> $DIR/suspicious_cargo_cfg_target_family_comparisons.rs:74:13
+   |
+LL |     let _ = env::var_os("CARGO_CFG_TARGET_FAMILY").as_deref() == Some("unix".as_ref());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see issue #100343 <https://github.com/rust-lang/rust/issues/100343>
+   = note: `CARGO_CFG_TARGET_FAMILY` can contain multiple comma-separated values
+
+warning: comparing against `CARGO_CFG_TARGET_FAMILY` directly may break in the future
+  --> $DIR/suspicious_cargo_cfg_target_family_comparisons.rs:76:13
+   |
+LL |     let _ = env::var("CARGO_CFG_TARGET_FAMILY").ok().as_deref() == Some("unix".as_ref());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see issue #100343 <https://github.com/rust-lang/rust/issues/100343>
+   = note: `CARGO_CFG_TARGET_FAMILY` can contain multiple comma-separated values
+
+warning: comparing against `CARGO_CFG_TARGET_FAMILY` directly may break in the future
+  --> $DIR/suspicious_cargo_cfg_target_family_comparisons.rs:119:8
+   |
+LL |     if overwritten == "unix" {}
+   |        ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see issue #100343 <https://github.com/rust-lang/rust/issues/100343>
+   = note: `CARGO_CFG_TARGET_FAMILY` can contain multiple comma-separated values
+help: compare against each family instead
+   |
+LL |     if overwritten.split(',').any(|x| x == "unix") {}
+   |                   +++++++++++++++++++++          +
+
+warning: comparing against `CARGO_CFG_TARGET_FAMILY` directly may break in the future
+  --> $DIR/suspicious_cargo_cfg_target_family_comparisons.rs:123:13
+   |
+LL |     let _ = std::convert::identity("CARGO_CFG_TARGET_FAMILY") == "unix";
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see issue #100343 <https://github.com/rust-lang/rust/issues/100343>
+   = note: `CARGO_CFG_TARGET_FAMILY` can contain multiple comma-separated values
+help: compare against each family instead
+   |
+LL |     let _ = std::convert::identity("CARGO_CFG_TARGET_FAMILY").split(',').any(|x| x == "unix");
+   |                                                              +++++++++++++++++++++          +
+
+warning: comparing against `CARGO_CFG_TARGET_FAMILY` directly may break in the future
+  --> $DIR/suspicious_cargo_cfg_target_family_comparisons.rs:127:13
+   |
+LL |     let _ = env::var_os("CARGO_CFG_TARGET_FAMILY").is_some() == true;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see issue #100343 <https://github.com/rust-lang/rust/issues/100343>
+   = note: `CARGO_CFG_TARGET_FAMILY` can contain multiple comma-separated values
+
+warning: matching on `CARGO_CFG_TARGET_FAMILY` directly may break in the future
+  --> $DIR/suspicious_cargo_cfg_target_family_comparisons.rs:131:11
+   |
+LL |     match env::var("CARGO_CFG_TARGET_FAMILY") {
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see issue #100343 <https://github.com/rust-lang/rust/issues/100343>
+   = note: `CARGO_CFG_TARGET_FAMILY` can contain multiple comma-separated values
+   = note: compare against each family instead
+
+warning: comparing against `CARGO_CFG_TARGET_FAMILY` directly may break in the future
+  --> $DIR/suspicious_cargo_cfg_target_family_comparisons.rs:144:13
+   |
+LL |     let _ = env::var("CARGO_CFG_TARGET_FAMILY").unwrap().returns_string() == "unix";
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see issue #100343 <https://github.com/rust-lang/rust/issues/100343>
+   = note: `CARGO_CFG_TARGET_FAMILY` can contain multiple comma-separated values
+help: compare against each family instead
+   |
+LL |     let _ = env::var("CARGO_CFG_TARGET_FAMILY").unwrap().returns_string().split(',').any(|x| x == "unix");
+   |                                                                          +++++++++++++++++++++          +
+
+warning: 20 warnings emitted
+
