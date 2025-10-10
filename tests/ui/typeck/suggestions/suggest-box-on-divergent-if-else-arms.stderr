@@ -4,7 +4,7 @@ error[E0308]: `if` and `else` have incompatible types
 LL |       let _ = if true {
    |  _____________-
 LL | |         Struct
-   | |         ------ expected `Struct` because of this
+   | |         ------ expected because of this
 LL | |     } else {
 LL | |         foo()
    | |         ^^^^^ expected `Struct`, found `Box<dyn Trait>`
@@ -24,7 +24,7 @@ error[E0308]: `if` and `else` have incompatible types
 LL |       let _ = if true {
    |  _____________-
 LL | |         foo()
-   | |         ----- expected `Box<dyn Trait>` because of this
+   | |         ----- expected because of this
 LL | |     } else {
 LL | |         Struct
    | |         ^^^^^^ expected `Box<dyn Trait>`, found `Struct`
@@ -48,7 +48,7 @@ LL |   fn bar() -> impl Trait {
 LL |       let _ = if true {
    |  _____________-
 LL | |         Struct
-   | |         ------ expected `Struct` because of this
+   | |         ------ expected because of this
 LL | |     } else {
 LL | |         bar()
    | |         ^^^^^ expected `Struct`, found opaque type
@@ -73,7 +73,7 @@ LL |   fn bar() -> impl Trait {
 LL |       let _ = if true {
    |  _____________-
 LL | |         bar()
-   | |         ----- expected `impl Trait` because of this
+   | |         ----- expected because of this
 LL | |     } else {
 LL | |         Struct
    | |         ^^^^^^ expected opaque type, found `Struct`

@@ -47,7 +47,7 @@ error[E0308]: `if` and `else` have incompatible types
 LL |       let _x = if true {
    |  ______________-
 LL | |         dummy()
-   | |         ------- expected `impl Future<Output = ()>` because of this
+   | |         ------- expected because of this
 LL | |
 LL | |     } else {
 LL | |         dummy().await

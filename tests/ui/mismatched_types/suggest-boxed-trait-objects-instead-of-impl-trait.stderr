@@ -3,7 +3,7 @@ error[E0308]: `if` and `else` have incompatible types
    |
 LL | /     if true {
 LL | |         S
-   | |         - expected `S` because of this
+   | |         - expected because of this
 LL | |     } else {
 LL | |         Y
    | |         ^ expected `S`, found `Y`

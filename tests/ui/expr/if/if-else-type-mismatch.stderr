@@ -4,7 +4,7 @@ error[E0308]: `if` and `else` have incompatible types
 LL |       let _ = if true {
    |  _____________-
 LL | |         1i32
-   | |         ---- expected `i32` because of this
+   | |         ---- expected because of this
 LL | |     } else {
 LL | |         2u32
    | |         ^^^^ expected `i32`, found `u32`
@@ -23,7 +23,7 @@ error[E0308]: `if` and `else` have incompatible types
 LL |     let _ = if true { 42i32 } else { 42u32 };
    |                       -----          ^^^^^ expected `i32`, found `u32`
    |                       |
-   |                       expected `i32` because of this
+   |                       expected because of this
    |
 help: change the type of the numeric literal from `u32` to `i32`
    |
@@ -40,7 +40,7 @@ LL | |         3u32;
    | |         -----
    | |         |   |
    | |         |   help: consider removing this semicolon
-   | |         expected `()` because of this
+   | |         expected because of this
 LL | |     } else {
 LL | |         4u32
    | |         ^^^^ expected `()`, found `u32`
@@ -53,7 +53,7 @@ error[E0308]: `if` and `else` have incompatible types
 LL |       let _ = if true {
    |  _____________-
 LL | |         5u32
-   | |         ---- expected `u32` because of this
+   | |         ---- expected because of this
 LL | |     } else {
 LL | |         6u32;
    | |         ^^^^-
@@ -69,7 +69,7 @@ error[E0308]: `if` and `else` have incompatible types
 LL |       let _ = if true {
    |  _____________-
 LL | |         7i32;
-   | |         ----- expected `()` because of this
+   | |         ----- expected because of this
 LL | |     } else {
 LL | |         8u32
    | |         ^^^^ expected `()`, found `u32`
@@ -82,7 +82,7 @@ error[E0308]: `if` and `else` have incompatible types
 LL |       let _ = if true {
    |  _____________-
 LL | |         9i32
-   | |         ---- expected `i32` because of this
+   | |         ---- expected because of this
 LL | |     } else {
 LL | |         10u32;
    | |         ^^^^^^ expected `i32`, found `()`
@@ -97,7 +97,7 @@ LL |        let _ = if true {
    | | _____________________|
 LL | ||
 LL | ||     } else {
-   | ||_____- expected `()` because of this
+   | ||_____- expected because of this
 LL | |          11u32
    | |          ^^^^^ expected `()`, found `u32`
 LL | |      };
@@ -109,7 +109,7 @@ error[E0308]: `if` and `else` have incompatible types
 LL |       let _ = if true {
    |               ------- `if` and `else` have incompatible types
 LL |           12i32
-   |           ----- expected `i32` because of this
+   |           ----- expected because of this
 LL |       } else {
    |  ____________^
 LL | |

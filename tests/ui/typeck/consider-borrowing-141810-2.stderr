@@ -2,7 +2,7 @@ error[E0308]: `if` and `else` have incompatible types
   --> $DIR/consider-borrowing-141810-2.rs:4:21
    |
 LL |           &()
-   |           --- expected `&()` because of this
+   |           --- expected because of this
 LL |       } else if false {
    |  ____________--------_^
    | |            |

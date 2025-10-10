@@ -359,16 +359,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         branch_span: Span,
         prior_branches: &[(Ty<'tcx>, Span)],
     ) {
-        let Some(&(prior_ty, prior_span)) =
+        let Some(&(.., prior_span)) =
             prior_branches.iter().rev().find(|&&(_, span)| span != branch_span)
         else {
             return;
         };
 
-        let expected_ty = self.resolve_vars_if_possible(prior_ty);
-        err.span_label(
-            prior_span,
-            format!("expected `{}` because of this", self.ty_to_string(expected_ty)),
-        );
+        err.span_label(prior_span, "expected because of this");
     }
 }

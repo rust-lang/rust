@@ -4,7 +4,7 @@ error[E0308]: `if` and `else` have incompatible types
 LL |       let (a, _) = if true {
    |  __________________-
 LL | |         produce()
-   | |         --------- expected `(Vec<Foo>, &[Bar])` because of this
+   | |         --------- expected because of this
 LL | |     } else {
 LL | |         (Vec::new(), &[])
    | |         ^^^^^^^^^^^^^^^^^ expected `(Vec<Foo>, &[Bar])`, found `(Vec<_>, &[_; 0])`

@@ -4,7 +4,7 @@ error[E0308]: `if` and `else` have incompatible types
 LL | /     if let Some(b) = None {
 LL | |
 LL | |         ()
-   | |         -- expected `()` because of this
+   | |         -- expected because of this
 ...  |
 LL | |         1
    | |         ^ expected `()`, found integer

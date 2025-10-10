@@ -9,7 +9,7 @@ LL |   fn thing_two() -> impl Future<Output = Result<(), ()>> {
 ...
 LL | /     if true {
 LL | |         thing_one()
-   | |         ----------- expected `impl Future<Output = Result<(), ()>>` because of this
+   | |         ----------- expected because of this
 LL | |     } else {
 LL | |         thing_two()
    | |         ^^^^^^^^^^^ expected future, found a different future
