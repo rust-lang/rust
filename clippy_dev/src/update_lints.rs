@@ -1,4 +1,5 @@
-use crate::parse::{DeprecatedLint, Lint, RenamedLint, RustSearcher, Token, find_lint_decls, read_deprecated_lints};
+use crate::parse::cursor::{self, Cursor};
+use crate::parse::{DeprecatedLint, Lint, RenamedLint, find_lint_decls, read_deprecated_lints};
 use crate::utils::{FileUpdater, UpdateMode, UpdateStatus, update_text_region_fn};
 use itertools::Itertools;
 use std::collections::HashSet;
@@ -75,13 +76,13 @@ pub fn generate_lint_files(
         update_mode,
         "clippy_lints/src/deprecated_lints.rs",
         &mut |_, src, dst| {
-            let mut searcher = RustSearcher::new(src);
+            let mut cursor = Cursor::new(src);
             assert!(
-                searcher.find_token(Token::Ident("declare_with_version"))
-                    && searcher.find_token(Token::Ident("declare_with_version")),
+                cursor.find_pat(cursor::Pat::Ident("declare_with_version"))
+                    && cursor.find_pat(cursor::Pat::Ident("declare_with_version")),
                 "error reading deprecated lints"
             );
-            dst.push_str(&src[..searcher.pos() as usize]);
+            dst.push_str(&src[..cursor.pos() as usize]);
             dst.push_str("! { DEPRECATED(DEPRECATED_VERSION) = [\n");
             for lint in deprecated {
                 write!(

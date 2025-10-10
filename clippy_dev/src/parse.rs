@@ -1,186 +1,11 @@
+pub mod cursor;
+
+use self::cursor::Cursor;
 use crate::utils::{ErrAction, File, expect_action};
 use core::ops::Range;
-use core::slice;
-use rustc_lexer::{self as lexer, FrontmatterAllowed};
 use std::fs;
 use std::path::{Path, PathBuf};
 use walkdir::{DirEntry, WalkDir};
-
-#[derive(Clone, Copy)]
-pub enum Token<'a> {
-    /// Matches any number of comments / doc comments.
-    AnyComment,
-    Ident(&'a str),
-    CaptureIdent,
-    LitStr,
-    CaptureLitStr,
-    Bang,
-    CloseBrace,
-    CloseBracket,
-    CloseParen,
-    /// This will consume the first colon even if the second doesn't exist.
-    DoubleColon,
-    Comma,
-    Eq,
-    Lifetime,
-    Lt,
-    Gt,
-    OpenBrace,
-    OpenBracket,
-    OpenParen,
-    Pound,
-    Semi,
-}
-
-pub struct RustSearcher<'txt> {
-    text: &'txt str,
-    cursor: lexer::Cursor<'txt>,
-    pos: u32,
-    next_token: lexer::Token,
-}
-impl<'txt> RustSearcher<'txt> {
-    #[must_use]
-    #[expect(clippy::inconsistent_struct_constructor)]
-    pub fn new(text: &'txt str) -> Self {
-        let mut cursor = lexer::Cursor::new(text, FrontmatterAllowed::Yes);
-        Self {
-            text,
-            pos: 0,
-            next_token: cursor.advance_token(),
-            cursor,
-        }
-    }
-
-    #[must_use]
-    pub fn peek_text(&self) -> &'txt str {
-        &self.text[self.pos as usize..(self.pos + self.next_token.len) as usize]
-    }
-
-    #[must_use]
-    pub fn peek_len(&self) -> u32 {
-        self.next_token.len
-    }
-
-    #[must_use]
-    pub fn peek(&self) -> lexer::TokenKind {
-        self.next_token.kind
-    }
-
-    #[must_use]
-    pub fn pos(&self) -> u32 {
-        self.pos
-    }
-
-    #[must_use]
-    pub fn at_end(&self) -> bool {
-        self.next_token.kind == lexer::TokenKind::Eof
-    }
-
-    pub fn step(&mut self) {
-        // `next_token.len` is zero for the eof marker.
-        self.pos += self.next_token.len;
-        self.next_token = self.cursor.advance_token();
-    }
-
-    /// Consumes the next token if it matches the requested value and captures the value if
-    /// requested. Returns true if a token was matched.
-    fn read_token(&mut self, token: Token<'_>, captures: &mut slice::IterMut<'_, &mut &'txt str>) -> bool {
-        loop {
-            match (token, self.next_token.kind) {
-                (_, lexer::TokenKind::Whitespace)
-                | (
-                    Token::AnyComment,
-                    lexer::TokenKind::BlockComment { terminated: true, .. } | lexer::TokenKind::LineComment { .. },
-                ) => self.step(),
-                (Token::AnyComment, _) => return true,
-                (Token::Bang, lexer::TokenKind::Bang)
-                | (Token::CloseBrace, lexer::TokenKind::CloseBrace)
-                | (Token::CloseBracket, lexer::TokenKind::CloseBracket)
-                | (Token::CloseParen, lexer::TokenKind::CloseParen)
-                | (Token::Comma, lexer::TokenKind::Comma)
-                | (Token::Eq, lexer::TokenKind::Eq)
-                | (Token::Lifetime, lexer::TokenKind::Lifetime { .. })
-                | (Token::Lt, lexer::TokenKind::Lt)
-                | (Token::Gt, lexer::TokenKind::Gt)
-                | (Token::OpenBrace, lexer::TokenKind::OpenBrace)
-                | (Token::OpenBracket, lexer::TokenKind::OpenBracket)
-                | (Token::OpenParen, lexer::TokenKind::OpenParen)
-                | (Token::Pound, lexer::TokenKind::Pound)
-                | (Token::Semi, lexer::TokenKind::Semi)
-                | (
-                    Token::LitStr,
-                    lexer::TokenKind::Literal {
-                        kind: lexer::LiteralKind::Str { terminated: true } | lexer::LiteralKind::RawStr { .. },
-                        ..
-                    },
-                ) => {
-                    self.step();
-                    return true;
-                },
-                (Token::Ident(x), lexer::TokenKind::Ident) if x == self.peek_text() => {
-                    self.step();
-                    return true;
-                },
-                (Token::DoubleColon, lexer::TokenKind::Colon) => {
-                    self.step();
-                    if !self.at_end() && matches!(self.next_token.kind, lexer::TokenKind::Colon) {
-                        self.step();
-                        return true;
-                    }
-                    return false;
-                },
-                #[rustfmt::skip]
-                (
-                    Token::CaptureLitStr,
-                    lexer::TokenKind::Literal {
-                        kind:
-                            lexer::LiteralKind::Str { terminated: true }
-                            | lexer::LiteralKind::RawStr { n_hashes: Some(_) },
-                        ..
-                    },
-                )
-                | (Token::CaptureIdent, lexer::TokenKind::Ident) => {
-                    **captures.next().unwrap() = self.peek_text();
-                    self.step();
-                    return true;
-                },
-                _ => return false,
-            }
-        }
-    }
-
-    #[must_use]
-    pub fn find_token(&mut self, token: Token<'_>) -> bool {
-        let mut capture = [].iter_mut();
-        while !self.read_token(token, &mut capture) {
-            self.step();
-            if self.at_end() {
-                return false;
-            }
-        }
-        true
-    }
-
-    #[must_use]
-    pub fn find_capture_token(&mut self, token: Token<'_>) -> Option<&'txt str> {
-        let mut res = "";
-        let mut capture = &mut res;
-        let mut capture = slice::from_mut(&mut capture).iter_mut();
-        while !self.read_token(token, &mut capture) {
-            self.step();
-            if self.at_end() {
-                return None;
-            }
-        }
-        Some(res)
-    }
-
-    #[must_use]
-    pub fn match_tokens(&mut self, tokens: &[Token<'_>], captures: &mut [&mut &'txt str]) -> bool {
-        let mut captures = captures.iter_mut();
-        tokens.iter().all(|&t| self.read_token(t, &mut captures))
-    }
-}
 
 pub struct Lint {
     pub name: String,
@@ -265,9 +90,9 @@ fn read_src_with_module(src_root: &Path) -> impl use<'_> + Iterator<Item = (DirE
 /// Parse a source file looking for `declare_clippy_lint` macro invocations.
 fn parse_clippy_lint_decls(path: &Path, contents: &str, module: &str, lints: &mut Vec<Lint>) {
     #[allow(clippy::enum_glob_use)]
-    use Token::*;
+    use cursor::Pat::*;
     #[rustfmt::skip]
-    static DECL_TOKENS: &[Token<'_>] = &[
+    static DECL_TOKENS: &[cursor::Pat<'_>] = &[
         // !{ /// docs
         Bang, OpenBrace, AnyComment,
         // #[clippy::version = "version"]
@@ -276,17 +101,17 @@ fn parse_clippy_lint_decls(path: &Path, contents: &str, module: &str, lints: &mu
         Ident("pub"), CaptureIdent, Comma, AnyComment, CaptureIdent, Comma,
     ];
 
-    let mut searcher = RustSearcher::new(contents);
-    while searcher.find_token(Ident("declare_clippy_lint")) {
-        let start = searcher.pos() as usize - "declare_clippy_lint".len();
+    let mut cursor = Cursor::new(contents);
+    while cursor.find_pat(Ident("declare_clippy_lint")) {
+        let start = cursor.pos() as usize - "declare_clippy_lint".len();
         let (mut name, mut group) = ("", "");
-        if searcher.match_tokens(DECL_TOKENS, &mut [&mut name, &mut group]) && searcher.find_token(CloseBrace) {
+        if cursor.match_all(DECL_TOKENS, &mut [&mut name, &mut group]) && cursor.find_pat(CloseBrace) {
             lints.push(Lint {
                 name: name.to_lowercase(),
                 group: group.into(),
                 module: module.into(),
                 path: path.into(),
-                declaration_range: start..searcher.pos() as usize,
+                declaration_range: start..cursor.pos() as usize,
             });
         }
     }
@@ -295,21 +120,21 @@ fn parse_clippy_lint_decls(path: &Path, contents: &str, module: &str, lints: &mu
 #[must_use]
 pub fn read_deprecated_lints() -> (Vec<DeprecatedLint>, Vec<RenamedLint>) {
     #[allow(clippy::enum_glob_use)]
-    use Token::*;
+    use cursor::Pat::*;
     #[rustfmt::skip]
-    static DECL_TOKENS: &[Token<'_>] = &[
+    static DECL_TOKENS: &[cursor::Pat<'_>] = &[
         // #[clippy::version = "version"]
         Pound, OpenBracket, Ident("clippy"), DoubleColon, Ident("version"), Eq, CaptureLitStr, CloseBracket,
         // ("first", "second"),
         OpenParen, CaptureLitStr, Comma, CaptureLitStr, CloseParen, Comma,
     ];
     #[rustfmt::skip]
-    static DEPRECATED_TOKENS: &[Token<'_>] = &[
+    static DEPRECATED_TOKENS: &[cursor::Pat<'_>] = &[
         // !{ DEPRECATED(DEPRECATED_VERSION) = [
         Bang, OpenBrace, Ident("DEPRECATED"), OpenParen, Ident("DEPRECATED_VERSION"), CloseParen, Eq, OpenBracket,
     ];
     #[rustfmt::skip]
-    static RENAMED_TOKENS: &[Token<'_>] = &[
+    static RENAMED_TOKENS: &[cursor::Pat<'_>] = &[
         // !{ RENAMED(RENAMED_VERSION) = [
         Bang, OpenBrace, Ident("RENAMED"), OpenParen, Ident("RENAMED_VERSION"), CloseParen, Eq, OpenBracket,
     ];
@@ -320,19 +145,19 @@ pub fn read_deprecated_lints() -> (Vec<DeprecatedLint>, Vec<RenamedLint>) {
     let mut contents = String::new();
     File::open_read_to_cleared_string(path, &mut contents);
 
-    let mut searcher = RustSearcher::new(&contents);
+    let mut cursor = Cursor::new(&contents);
 
     // First instance is the macro definition.
     assert!(
-        searcher.find_token(Ident("declare_with_version")),
+        cursor.find_pat(Ident("declare_with_version")),
         "error reading deprecated lints"
     );
 
-    if searcher.find_token(Ident("declare_with_version")) && searcher.match_tokens(DEPRECATED_TOKENS, &mut []) {
+    if cursor.find_pat(Ident("declare_with_version")) && cursor.match_all(DEPRECATED_TOKENS, &mut []) {
         let mut version = "";
         let mut name = "";
         let mut reason = "";
-        while searcher.match_tokens(DECL_TOKENS, &mut [&mut version, &mut name, &mut reason]) {
+        while cursor.match_all(DECL_TOKENS, &mut [&mut version, &mut name, &mut reason]) {
             deprecated.push(DeprecatedLint {
                 name: parse_str_single_line(path.as_ref(), name),
                 reason: parse_str_single_line(path.as_ref(), reason),
@@ -343,11 +168,11 @@ pub fn read_deprecated_lints() -> (Vec<DeprecatedLint>, Vec<RenamedLint>) {
         panic!("error reading deprecated lints");
     }
 
-    if searcher.find_token(Ident("declare_with_version")) && searcher.match_tokens(RENAMED_TOKENS, &mut []) {
+    if cursor.find_pat(Ident("declare_with_version")) && cursor.match_all(RENAMED_TOKENS, &mut []) {
         let mut version = "";
         let mut old_name = "";
         let mut new_name = "";
-        while searcher.match_tokens(DECL_TOKENS, &mut [&mut version, &mut old_name, &mut new_name]) {
+        while cursor.match_all(DECL_TOKENS, &mut [&mut version, &mut old_name, &mut new_name]) {
             renamed.push(RenamedLint {
                 old_name: parse_str_single_line(path.as_ref(), old_name),
                 new_name: parse_str_single_line(path.as_ref(), new_name),
