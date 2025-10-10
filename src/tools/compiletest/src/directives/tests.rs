@@ -3,7 +3,7 @@ use semver::Version;
 
 use crate::common::{Config, Debugger, TestMode};
 use crate::directives::{
-    DirectivesCache, EarlyProps, Edition, EditionRange, extract_llvm_version,
+    DirectivesCache, EarlyProps, Edition, EditionRange, FileDirectives, extract_llvm_version,
     extract_version_range, iter_directives, line_directive, parse_edition, parse_normalize_rule,
 };
 use crate::executor::{CollectedTestDesc, ShouldPanic};
@@ -18,13 +18,15 @@ fn make_test_description(
 ) -> CollectedTestDesc {
     let cache = DirectivesCache::load(config);
     let mut poisoned = false;
+    let file_directives = FileDirectives::from_file_contents(path, file_contents);
+
     let test = crate::directives::make_test_description(
         config,
         &cache,
         name,
         path,
         filterable_path,
-        file_contents,
+        &file_directives,
         revision,
         &mut poisoned,
     );
@@ -224,7 +226,8 @@ fn cfg() -> ConfigBuilder {
 }
 
 fn parse_rs(config: &Config, contents: &str) -> EarlyProps {
-    EarlyProps::from_file_contents(config, Utf8Path::new("a.rs"), contents)
+    let file_directives = FileDirectives::from_file_contents(Utf8Path::new("a.rs"), contents);
+    EarlyProps::from_file_directives(config, &file_directives)
 }
 
 fn check_ignore(config: &Config, contents: &str) -> bool {
@@ -776,7 +779,8 @@ fn threads_support() {
 }
 
 fn run_path(poisoned: &mut bool, path: &Utf8Path, file_contents: &str) {
-    iter_directives(TestMode::Ui, poisoned, path, file_contents, &mut |_| {});
+    let file_directives = FileDirectives::from_file_contents(path, file_contents);
+    iter_directives(TestMode::Ui, poisoned, &file_directives, &mut |_| {});
 }
 
 #[test]
