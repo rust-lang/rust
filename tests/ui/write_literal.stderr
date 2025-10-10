@@ -145,7 +145,156 @@ LL +     writeln!(v, "hello {0} {1}, world {2}", 2, 3, 4);
    |
 
 error: literal with an empty format string
-  --> tests/ui/write_literal.rs:75:23
+  --> tests/ui/write_literal.rs:76:23
+   |
+LL |     writeln!(v, "{}", "{hello}");
+   |                       ^^^^^^^^^
+   |
+help: try
+   |
+LL -     writeln!(v, "{}", "{hello}");
+LL +     writeln!(v, "{{hello}}");
+   |
+
+error: literal with an empty format string
+  --> tests/ui/write_literal.rs:79:24
+   |
+LL |     writeln!(v, r"{}", r"{hello}");
+   |                        ^^^^^^^^^^
+   |
+help: try
+   |
+LL -     writeln!(v, r"{}", r"{hello}");
+LL +     writeln!(v, r"{{hello}}");
+   |
+
+error: literal with an empty format string
+  --> tests/ui/write_literal.rs:82:23
+   |
+LL |     writeln!(v, "{}", '\'');
+   |                       ^^^^
+   |
+help: try
+   |
+LL -     writeln!(v, "{}", '\'');
+LL +     writeln!(v, "'");
+   |
+
+error: literal with an empty format string
+  --> tests/ui/write_literal.rs:85:23
+   |
+LL |     writeln!(v, "{}", '"');
+   |                       ^^^
+   |
+help: try
+   |
+LL -     writeln!(v, "{}", '"');
+LL +     writeln!(v, "\"");
+   |
+
+error: literal with an empty format string
+  --> tests/ui/write_literal.rs:88:24
+   |
+LL |     writeln!(v, r"{}", '\'');
+   |                        ^^^^
+   |
+help: try
+   |
+LL -     writeln!(v, r"{}", '\'');
+LL +     writeln!(v, r"'");
+   |
+
+error: literal with an empty format string
+  --> tests/ui/write_literal.rs:94:9
+   |
+LL | /         "hello \
+LL | |
+LL | |         world!",
+   | |_______________^
+   |
+help: try
+   |
+LL ~         "some hello \
+LL +
+LL ~         world!",
+   |
+
+error: literal with an empty format string
+  --> tests/ui/write_literal.rs:102:9
+   |
+LL | /         "1",
+LL | |         "2",
+LL | |         "3",
+   | |___________^
+   |
+help: try
+   |
+LL ~         "some 1\
+LL ~         2 \\ 3",
+   |
+
+error: literal with an empty format string
+  --> tests/ui/write_literal.rs:107:23
+   |
+LL |     writeln!(v, "{}", "\\");
+   |                       ^^^^
+   |
+help: try
+   |
+LL -     writeln!(v, "{}", "\\");
+LL +     writeln!(v, "\\");
+   |
+
+error: literal with an empty format string
+  --> tests/ui/write_literal.rs:110:24
+   |
+LL |     writeln!(v, r"{}", "\\");
+   |                        ^^^^
+   |
+help: try
+   |
+LL -     writeln!(v, r"{}", "\\");
+LL +     writeln!(v, r"\");
+   |
+
+error: literal with an empty format string
+  --> tests/ui/write_literal.rs:113:26
+   |
+LL |     writeln!(v, r#"{}"#, "\\");
+   |                          ^^^^
+   |
+help: try
+   |
+LL -     writeln!(v, r#"{}"#, "\\");
+LL +     writeln!(v, r#"\"#);
+   |
+
+error: literal with an empty format string
+  --> tests/ui/write_literal.rs:116:23
+   |
+LL |     writeln!(v, "{}", r"\");
+   |                       ^^^^
+   |
+help: try
+   |
+LL -     writeln!(v, "{}", r"\");
+LL +     writeln!(v, "\\");
+   |
+
+error: literal with an empty format string
+  --> tests/ui/write_literal.rs:119:23
+   |
+LL |     writeln!(v, "{}", "\r");
+   |                       ^^^^
+   |
+help: try
+   |
+LL -     writeln!(v, "{}", "\r");
+LL +     writeln!(v, "\r");
+   |
+
+error: literal with an empty format string
+  --> tests/ui/write_literal.rs:128:23
    |
 LL |     writeln!(v, "{}", r#"""#);
    |                       ^^^^^^
@@ -157,7 +306,7 @@ LL +     writeln!(v, "\"");
    |
 
 error: literal with an empty format string
-  --> tests/ui/write_literal.rs:80:9
+  --> tests/ui/write_literal.rs:133:9
    |
 LL | /         r#"
 LL | |
@@ -182,7 +331,7 @@ LL ~ "
    |
 
 error: literal with an empty format string
-  --> tests/ui/write_literal.rs:94:55
+  --> tests/ui/write_literal.rs:147:55
    |
 LL |     writeln!(v, "Hello {3} is {0:2$.1$}", 0.01, 2, 3, "x");
    |                                                       ^^^
@@ -194,7 +343,7 @@ LL +     writeln!(v, "Hello x is {0:2$.1$}", 0.01, 2, 3);
    |
 
 error: literal with an empty format string
-  --> tests/ui/write_literal.rs:96:52
+  --> tests/ui/write_literal.rs:149:52
    |
 LL |     writeln!(v, "Hello {2} is {0:3$.1$}", 0.01, 2, "x", 3);
    |                                                    ^^^
@@ -206,7 +355,7 @@ LL +     writeln!(v, "Hello x is {0:2$.1$}", 0.01, 2, 3);
    |
 
 error: literal with an empty format string
-  --> tests/ui/write_literal.rs:98:49
+  --> tests/ui/write_literal.rs:151:49
    |
 LL |     writeln!(v, "Hello {1} is {0:3$.2$}", 0.01, "x", 2, 3);
    |                                                 ^^^
@@ -218,7 +367,7 @@ LL +     writeln!(v, "Hello x is {0:2$.1$}", 0.01, 2, 3);
    |
 
 error: literal with an empty format string
-  --> tests/ui/write_literal.rs:100:43
+  --> tests/ui/write_literal.rs:153:43
    |
 LL |     writeln!(v, "Hello {0} is {1:3$.2$}", "x", 0.01, 2, 3);
    |                                           ^^^
@@ -229,5 +378,5 @@ LL -     writeln!(v, "Hello {0} is {1:3$.2$}", "x", 0.01, 2, 3);
 LL +     writeln!(v, "Hello x is {0:2$.1$}", 0.01, 2, 3);
    |
 
-error: aborting due to 18 previous errors
+error: aborting due to 30 previous errors
 
