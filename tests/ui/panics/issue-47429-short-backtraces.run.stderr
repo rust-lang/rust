@@ -1,5 +1,5 @@
 
-thread 'main' panicked at $DIR/issue-47429-short-backtraces.rs:24:5:
+thread 'main' ($TID) panicked at $DIR/issue-47429-short-backtraces.rs:27:5:
 explicit panic
 stack backtrace:
    0: std::panicking::begin_panic

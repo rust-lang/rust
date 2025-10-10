@@ -950,9 +950,7 @@ impl<Cx: PatCx> Constructor<Cx> {
                 }
             }
             Never => write!(f, "!")?,
-            Wildcard | Missing | NonExhaustive | Hidden | PrivateUninhabited => {
-                write!(f, "_ : {:?}", ty)?
-            }
+            Wildcard | Missing | NonExhaustive | Hidden | PrivateUninhabited => write!(f, "_")?,
         }
         Ok(())
     }
@@ -1132,15 +1130,15 @@ impl<Cx: PatCx> ConstructorSet<Cx> {
                         seen_false = true;
                     }
                 }
-                if seen_false {
-                    present.push(Bool(false));
-                } else {
-                    missing.push(Bool(false));
-                }
                 if seen_true {
                     present.push(Bool(true));
                 } else {
                     missing.push(Bool(true));
+                }
+                if seen_false {
+                    present.push(Bool(false));
+                } else {
+                    missing.push(Bool(false));
                 }
             }
             ConstructorSet::Integers { range_1, range_2 } => {

@@ -1,8 +1,8 @@
 error: eliding a lifetime that's named elsewhere is confusing
-  --> $DIR/missing-lifetime-kind.rs:3:22
+  --> $DIR/missing-lifetime-kind.rs:3:32
    |
 LL | fn ampersand<'a>(x: &'a u8) -> &u8 {
-   |                      ^^        --- the same lifetime is elided here
+   |                      --        ^^^ the same lifetime is elided here
    |                      |
    |                      the lifetime is named here
    |
@@ -18,10 +18,10 @@ LL | fn ampersand<'a>(x: &'a u8) -> &'a u8 {
    |                                 ++
 
 error: hiding a lifetime that's named elsewhere is confusing
-  --> $DIR/missing-lifetime-kind.rs:10:21
+  --> $DIR/missing-lifetime-kind.rs:10:31
    |
 LL | fn brackets<'a>(x: &'a u8) -> Brackets {
-   |                     ^^        -------- the same lifetime is hidden here
+   |                     --        ^^^^^^^^ the same lifetime is hidden here
    |                     |
    |                     the lifetime is named here
    |
@@ -32,10 +32,10 @@ LL | fn brackets<'a>(x: &'a u8) -> Brackets<'a> {
    |                                       ++++
 
 error: hiding a lifetime that's named elsewhere is confusing
-  --> $DIR/missing-lifetime-kind.rs:17:18
+  --> $DIR/missing-lifetime-kind.rs:17:28
    |
 LL | fn comma<'a>(x: &'a u8) -> Comma<u8> {
-   |                  ^^        --------- the same lifetime is hidden here
+   |                  --        ^^^^^^^^^ the same lifetime is hidden here
    |                  |
    |                  the lifetime is named here
    |
@@ -46,10 +46,10 @@ LL | fn comma<'a>(x: &'a u8) -> Comma<'a, u8> {
    |                                  +++
 
 error: eliding a lifetime that's named elsewhere is confusing
-  --> $DIR/missing-lifetime-kind.rs:22:23
+  --> $DIR/missing-lifetime-kind.rs:22:34
    |
 LL | fn underscore<'a>(x: &'a u8) -> &'_ u8 {
-   |                       ^^         -- the same lifetime is elided here
+   |                       --         ^^ the same lifetime is elided here
    |                       |
    |                       the lifetime is named here
    |

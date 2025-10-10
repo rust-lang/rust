@@ -10,6 +10,9 @@ use std::convert::TryInto;
 use std::thread;
 use std::thread::spawn;
 
+#[path = "../../utils/libc.rs"]
+mod libc_utils;
+
 #[track_caller]
 fn check_epoll_wait<const N: usize>(epfd: i32, expected_notifications: &[(u32, u64)]) {
     let epoll_event = libc::epoll_event { events: 0, u64: 0 };
@@ -69,12 +72,12 @@ fn main() {
         unsafe { VAL_ONE = 41 };
 
         let data = "abcde".as_bytes().as_ptr();
-        let res = unsafe { libc::write(fds_a[0], data as *const libc::c_void, 5) };
+        let res = unsafe { libc_utils::write_all(fds_a[0], data as *const libc::c_void, 5) };
         assert_eq!(res, 5);
 
         unsafe { VAL_TWO = 51 };
 
-        let res = unsafe { libc::write(fds_b[0], data as *const libc::c_void, 5) };
+        let res = unsafe { libc_utils::write_all(fds_b[0], data as *const libc::c_void, 5) };
         assert_eq!(res, 5);
     });
     thread::yield_now();

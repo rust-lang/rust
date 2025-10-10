@@ -1,6 +1,7 @@
 //@ min-lldb-version: 1800
 
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
 
 // === GDB TESTS ===================================================================================
 
@@ -37,8 +38,6 @@
 // lldb-check:(tuple_style_enum::Univariant) univariant = { value = { 0 = -1 } }
 
 #![allow(unused_variables)]
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 
 use self::Regular::{Case1, Case2, Case3};
 use self::Univariant::TheOnlyCase;

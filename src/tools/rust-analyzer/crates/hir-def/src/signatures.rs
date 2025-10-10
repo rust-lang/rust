@@ -20,15 +20,13 @@ use triomphe::Arc;
 
 use crate::{
     ConstId, EnumId, EnumVariantId, EnumVariantLoc, ExternBlockId, FunctionId, HasModule, ImplId,
-    ItemContainerId, ModuleId, StaticId, StructId, TraitAliasId, TraitId, TypeAliasId, UnionId,
-    VariantId,
+    ItemContainerId, ModuleId, StaticId, StructId, TraitId, TypeAliasId, UnionId, VariantId,
     attr::Attrs,
     db::DefDatabase,
     expr_store::{
         ExpressionStore, ExpressionStoreSourceMap,
         lower::{
-            ExprCollector, lower_function, lower_generic_params, lower_trait, lower_trait_alias,
-            lower_type_alias,
+            ExprCollector, lower_function, lower_generic_params, lower_trait, lower_type_alias,
         },
     },
     hir::{ExprId, PatId, generics::GenericParams},
@@ -395,7 +393,7 @@ impl ImplSignature {
 
 bitflags::bitflags! {
     #[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]
-    pub struct TraitFlags: u8 {
+    pub struct TraitFlags: u16 {
         const RUSTC_HAS_INCOHERENT_INHERENT_IMPLS = 1 << 1;
         const FUNDAMENTAL = 1 << 2;
         const UNSAFE = 1 << 3;
@@ -403,6 +401,8 @@ bitflags::bitflags! {
         const SKIP_ARRAY_DURING_METHOD_DISPATCH = 1 << 5;
         const SKIP_BOXED_SLICE_DURING_METHOD_DISPATCH = 1 << 6;
         const RUSTC_PAREN_SUGAR = 1 << 7;
+        const COINDUCTIVE = 1 << 8;
+        const ALIAS = 1 << 9;
     }
 }
 
@@ -427,6 +427,9 @@ impl TraitSignature {
         if source.value.unsafe_token().is_some() {
             flags.insert(TraitFlags::UNSAFE);
         }
+        if source.value.eq_token().is_some() {
+            flags.insert(TraitFlags::ALIAS);
+        }
         if attrs.by_key(sym::fundamental).exists() {
             flags |= TraitFlags::FUNDAMENTAL;
         }
@@ -435,6 +438,9 @@ impl TraitSignature {
         }
         if attrs.by_key(sym::rustc_paren_sugar).exists() {
             flags |= TraitFlags::RUSTC_PAREN_SUGAR;
+        }
+        if attrs.by_key(sym::rustc_coinductive).exists() {
+            flags |= TraitFlags::COINDUCTIVE;
         }
         let mut skip_array_during_method_dispatch =
             attrs.by_key(sym::rustc_skip_array_during_method_dispatch).exists();
@@ -465,31 +471,6 @@ impl TraitSignature {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
-pub struct TraitAliasSignature {
-    pub name: Name,
-    pub generic_params: Arc<GenericParams>,
-    pub store: Arc<ExpressionStore>,
-}
-
-impl TraitAliasSignature {
-    pub fn query(
-        db: &dyn DefDatabase,
-        id: TraitAliasId,
-    ) -> (Arc<Self>, Arc<ExpressionStoreSourceMap>) {
-        let loc = id.lookup(db);
-
-        let source = loc.source(db);
-        let name = as_name_opt(source.value.name());
-        let (store, source_map, generic_params) = lower_trait_alias(db, loc.container, source, id);
-
-        (
-            Arc::new(TraitAliasSignature { generic_params, store: Arc::new(store), name }),
-            Arc::new(source_map),
-        )
-    }
-}
-
 bitflags! {
     #[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]
     pub struct FnFlags: u16 {
@@ -508,6 +489,7 @@ bitflags! {
         const HAS_TARGET_FEATURE = 1 << 9;
         const DEPRECATED_SAFE_2024 = 1 << 10;
         const EXPLICIT_SAFE = 1 << 11;
+        const RUSTC_INTRINSIC = 1 << 12;
     }
 }
 
@@ -540,6 +522,9 @@ impl FunctionSignature {
 
         if attrs.by_key(sym::target_feature).exists() {
             flags.insert(FnFlags::HAS_TARGET_FEATURE);
+        }
+        if attrs.by_key(sym::rustc_intrinsic).exists() {
+            flags.insert(FnFlags::RUSTC_INTRINSIC);
         }
         let legacy_const_generics_indices = attrs.rustc_legacy_const_generics();
 
@@ -635,6 +620,21 @@ impl FunctionSignature {
 
     pub fn has_target_feature(&self) -> bool {
         self.flags.contains(FnFlags::HAS_TARGET_FEATURE)
+    }
+
+    pub fn is_intrinsic(db: &dyn DefDatabase, id: FunctionId) -> bool {
+        let data = db.function_signature(id);
+        data.flags.contains(FnFlags::RUSTC_INTRINSIC)
+            // Keep this around for a bit until extern "rustc-intrinsic" abis are no longer used
+            || match &data.abi {
+                Some(abi) => *abi == sym::rust_dash_intrinsic,
+                None => match id.lookup(db).container {
+                    ItemContainerId::ExternBlockId(block) => {
+                        block.abi(db) == Some(sym::rust_dash_intrinsic)
+                    }
+                    _ => false,
+                },
+            }
     }
 }
 

@@ -3,6 +3,7 @@
 use std::{borrow::Cow, cell::RefCell, fmt::Write, iter, mem, ops::Range};
 
 use base_db::Crate;
+use base_db::target::TargetLoadError;
 use chalk_ir::{Mutability, cast::Cast};
 use either::Either;
 use hir_def::{
@@ -25,21 +26,26 @@ use rustc_apfloat::{
     ieee::{Half as f16, Quad as f128},
 };
 use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_type_ir::inherent::{AdtDef, IntoKind, SliceLike};
 use span::FileId;
 use stdx::never;
 use syntax::{SyntaxNodePtr, TextRange};
 use triomphe::Arc;
 
 use crate::{
-    AliasTy, CallableDefId, ClosureId, ComplexMemoryMap, Const, ConstData, ConstScalar, FnDefId,
-    Interner, MemoryMap, Substitution, ToChalk, TraitEnvironment, Ty, TyBuilder, TyExt, TyKind,
+    AliasTy, CallableDefId, ClosureId, ComplexMemoryMap, Const, ConstData, ConstScalar, Interner,
+    MemoryMap, Substitution, ToChalk, TraitEnvironment, Ty, TyBuilder, TyExt, TyKind,
     consteval::{ConstEvalError, intern_const_scalar, try_const_usize},
+    consteval_nextsolver,
     db::{HirDatabase, InternedClosure},
     display::{ClosureStyle, DisplayTarget, HirDisplay},
     infer::PointerCast,
     layout::{Layout, LayoutError, RustcEnumVariantIdx},
-    mapping::from_chalk,
     method_resolution::{is_dyn_method, lookup_impl_const},
+    next_solver::{
+        DbInterner,
+        mapping::{ChalkToNextSolver, convert_args_for_result, convert_ty_for_result},
+    },
     static_lifetime,
     traits::FnTrait,
     utils::{ClosureSubst, detect_variant_from_bytes},
@@ -78,31 +84,31 @@ macro_rules! not_supported {
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub struct VTableMap {
-    ty_to_id: FxHashMap<Ty, usize>,
-    id_to_ty: Vec<Ty>,
+pub struct VTableMap<'db> {
+    ty_to_id: FxHashMap<crate::next_solver::Ty<'db>, usize>,
+    id_to_ty: Vec<crate::next_solver::Ty<'db>>,
 }
 
-impl VTableMap {
+impl<'db> VTableMap<'db> {
     const OFFSET: usize = 1000; // We should add some offset to ids to make 0 (null) an invalid id.
 
-    fn id(&mut self, ty: Ty) -> usize {
+    fn id(&mut self, ty: crate::next_solver::Ty<'db>) -> usize {
         if let Some(it) = self.ty_to_id.get(&ty) {
             return *it;
         }
         let id = self.id_to_ty.len() + VTableMap::OFFSET;
-        self.id_to_ty.push(ty.clone());
+        self.id_to_ty.push(ty);
         self.ty_to_id.insert(ty, id);
         id
     }
 
-    pub(crate) fn ty(&self, id: usize) -> Result<&Ty> {
+    pub(crate) fn ty(&self, id: usize) -> Result<crate::next_solver::Ty<'db>> {
         id.checked_sub(VTableMap::OFFSET)
-            .and_then(|id| self.id_to_ty.get(id))
+            .and_then(|id| self.id_to_ty.get(id).copied())
             .ok_or(MirEvalError::InvalidVTableId(id))
     }
 
-    fn ty_of_bytes(&self, bytes: &[u8]) -> Result<&Ty> {
+    fn ty_of_bytes(&self, bytes: &[u8]) -> Result<crate::next_solver::Ty<'db>> {
         let id = from_bytes!(usize, bytes);
         self.ty(id)
     }
@@ -159,7 +165,7 @@ enum MirOrDynIndex {
 
 pub struct Evaluator<'a> {
     db: &'a dyn HirDatabase,
-    trait_env: Arc<TraitEnvironment>,
+    trait_env: Arc<TraitEnvironment<'a>>,
     target_data_layout: Arc<TargetDataLayout>,
     stack: Vec<u8>,
     heap: Vec<u8>,
@@ -170,12 +176,12 @@ pub struct Evaluator<'a> {
     /// We don't really have function pointers, i.e. pointers to some assembly instructions that we can run. Instead, we
     /// store the type as an interned id in place of function and vtable pointers, and we recover back the type at the
     /// time of use.
-    vtable_map: VTableMap,
+    vtable_map: VTableMap<'a>,
     thread_local_storage: TlsData,
     random_state: oorandom::Rand64,
     stdout: Vec<u8>,
     stderr: Vec<u8>,
-    layout_cache: RefCell<FxHashMap<Ty, Arc<Layout>>>,
+    layout_cache: RefCell<FxHashMap<crate::next_solver::Ty<'a>, Arc<Layout>>>,
     projected_ty_cache: RefCell<FxHashMap<(Ty, PlaceElem), Ty>>,
     not_special_fn_cache: RefCell<FxHashSet<FunctionId>>,
     mir_or_dyn_index_cache: RefCell<FxHashMap<(FunctionId, Substitution), MirOrDynIndex>>,
@@ -224,7 +230,7 @@ impl Interval {
         Self { addr, size }
     }
 
-    fn get<'a>(&self, memory: &'a Evaluator<'a>) -> Result<&'a [u8]> {
+    fn get<'a, 'db>(&self, memory: &'a Evaluator<'db>) -> Result<&'a [u8]> {
         memory.read_memory(self.addr, self.size)
     }
 
@@ -242,7 +248,7 @@ impl Interval {
 }
 
 impl IntervalAndTy {
-    fn get<'a>(&self, memory: &'a Evaluator<'a>) -> Result<&'a [u8]> {
+    fn get<'a, 'db>(&self, memory: &'a Evaluator<'db>) -> Result<&'a [u8]> {
         memory.read_memory(self.interval.addr, self.interval.size)
     }
 
@@ -269,7 +275,7 @@ impl From<Interval> for IntervalOrOwned {
 }
 
 impl IntervalOrOwned {
-    fn get<'a>(&'a self, memory: &'a Evaluator<'a>) -> Result<&'a [u8]> {
+    fn get<'a, 'db>(&'a self, memory: &'a Evaluator<'db>) -> Result<&'a [u8]> {
         Ok(match self {
             IntervalOrOwned::Owned(o) => o,
             IntervalOrOwned::Borrowed(b) => b.get(memory)?,
@@ -332,7 +338,7 @@ impl Address {
 pub enum MirEvalError {
     ConstEvalError(String, Box<ConstEvalError>),
     LayoutError(LayoutError, Ty),
-    TargetDataLayoutNotAvailable(Arc<str>),
+    TargetDataLayoutNotAvailable(TargetLoadError),
     /// Means that code had undefined behavior. We don't try to actively detect UB, but if it was detected
     /// then use this type of error.
     UndefinedBehavior(String),
@@ -426,9 +432,12 @@ impl MirEvalError {
                 let self_ = match func.lookup(db).container {
                     ItemContainerId::ImplId(impl_id) => Some({
                         let generics = crate::generics::generics(db, impl_id.into());
+                        let interner = DbInterner::new_with(db, None, None);
                         let substs = generics.placeholder_subst(db);
+                        let args: crate::next_solver::GenericArgs<'_> =
+                            substs.to_nextsolver(interner);
                         db.impl_self_ty(impl_id)
-                            .substitute(Interner, &substs)
+                            .instantiate(interner, args)
                             .display(db, display_target)
                             .to_string()
                     }),
@@ -576,8 +585,8 @@ impl MirOutput {
     }
 }
 
-pub fn interpret_mir(
-    db: &dyn HirDatabase,
+pub fn interpret_mir<'db>(
+    db: &'db dyn HirDatabase,
     body: Arc<MirBody>,
     // FIXME: This is workaround. Ideally, const generics should have a separate body (issue #7434), but now
     // they share their body with their parent, so in MIR lowering we have locals of the parent body, which
@@ -585,7 +594,7 @@ pub fn interpret_mir(
     // a zero size, hoping that they are all outside of our current body. Even without a fix for #7434, we can
     // (and probably should) do better here, for example by excluding bindings outside of the target expression.
     assert_placeholder_ty_is_unused: bool,
-    trait_env: Option<Arc<TraitEnvironment>>,
+    trait_env: Option<Arc<TraitEnvironment<'db>>>,
 ) -> Result<(Result<Const>, MirOutput)> {
     let ty = body.locals[return_slot()].ty.clone();
     let mut evaluator = Evaluator::new(db, body.owner, assert_placeholder_ty_is_unused, trait_env)?;
@@ -608,7 +617,13 @@ pub fn interpret_mir(
             memory_map.vtable.shrink_to_fit();
             MemoryMap::Complex(Box::new(memory_map))
         };
-        Ok(intern_const_scalar(ConstScalar::Bytes(bytes, memory_map), ty))
+        // SAFETY: will never use this without a db
+        Ok(intern_const_scalar(
+            ConstScalar::Bytes(bytes, unsafe {
+                std::mem::transmute::<MemoryMap<'_>, MemoryMap<'static>>(memory_map)
+            }),
+            ty,
+        ))
     })();
     Ok((it, MirOutput { stdout: evaluator.stdout, stderr: evaluator.stderr }))
 }
@@ -618,13 +633,13 @@ const EXECUTION_LIMIT: usize = 100_000;
 #[cfg(not(test))]
 const EXECUTION_LIMIT: usize = 10_000_000;
 
-impl Evaluator<'_> {
+impl<'db> Evaluator<'db> {
     pub fn new(
-        db: &dyn HirDatabase,
+        db: &'db dyn HirDatabase,
         owner: DefWithBodyId,
         assert_placeholder_ty_is_unused: bool,
-        trait_env: Option<Arc<TraitEnvironment>>,
-    ) -> Result<Evaluator<'_>> {
+        trait_env: Option<Arc<TraitEnvironment<'db>>>,
+    ) -> Result<Evaluator<'db>> {
         let crate_id = owner.module(db).krate();
         let target_data_layout = match db.target_data_layout(crate_id) {
             Ok(target_data_layout) => target_data_layout,
@@ -700,13 +715,13 @@ impl Evaluator<'_> {
                 let InternedClosure(def, _) = self.db.lookup_intern_closure(c.into());
                 let infer = self.db.infer(def);
                 let (captures, _) = infer.closure_info(&c);
-                let parent_subst = ClosureSubst(subst).parent_subst();
+                let parent_subst = ClosureSubst(subst).parent_subst(self.db);
                 captures
                     .get(f)
                     .expect("broken closure field")
                     .ty
                     .clone()
-                    .substitute(Interner, parent_subst)
+                    .substitute(Interner, &parent_subst)
             },
             self.crate_id,
         );
@@ -719,6 +734,7 @@ impl Evaluator<'_> {
         p: &Place,
         locals: &'a Locals,
     ) -> Result<(Address, Ty, Option<IntervalOrOwned>)> {
+        let interner = DbInterner::new_with(self.db, None, None);
         let mut addr = locals.ptr[p.local].addr;
         let mut ty: Ty = locals.body.locals[p.local].ty.clone();
         let mut metadata: Option<IntervalOrOwned> = None; // locals are always sized
@@ -791,19 +807,19 @@ impl Evaluator<'_> {
                     addr = addr.offset(ty_size * (from as usize));
                 }
                 &ProjectionElem::ClosureField(f) => {
-                    let layout = self.layout(&prev_ty)?;
+                    let layout = self.layout(prev_ty.to_nextsolver(interner))?;
                     let offset = layout.fields.offset(f).bytes_usize();
                     addr = addr.offset(offset);
                     metadata = None;
                 }
                 ProjectionElem::Field(Either::Right(f)) => {
-                    let layout = self.layout(&prev_ty)?;
+                    let layout = self.layout(prev_ty.to_nextsolver(interner))?;
                     let offset = layout.fields.offset(f.index as usize).bytes_usize();
                     addr = addr.offset(offset);
                     metadata = None; // tuple field is always sized FIXME: This is wrong, the tail can be unsized
                 }
                 ProjectionElem::Field(Either::Left(f)) => {
-                    let layout = self.layout(&prev_ty)?;
+                    let layout = self.layout(prev_ty.to_nextsolver(interner))?;
                     let variant_layout = match &layout.variants {
                         Variants::Single { .. } | Variants::Empty => &layout,
                         Variants::Multiple { variants, .. } => {
@@ -835,20 +851,28 @@ impl Evaluator<'_> {
         Ok((addr, ty, metadata))
     }
 
-    fn layout(&self, ty: &Ty) -> Result<Arc<Layout>> {
-        if let Some(x) = self.layout_cache.borrow().get(ty) {
+    fn layout(&self, ty: crate::next_solver::Ty<'db>) -> Result<Arc<Layout>> {
+        if let Some(x) = self.layout_cache.borrow().get(&ty) {
             return Ok(x.clone());
         }
+        let interner = DbInterner::new_with(self.db, None, None);
         let r = self
             .db
-            .layout_of_ty(ty.clone(), self.trait_env.clone())
-            .map_err(|e| MirEvalError::LayoutError(e, ty.clone()))?;
-        self.layout_cache.borrow_mut().insert(ty.clone(), r.clone());
+            .layout_of_ty(ty, self.trait_env.clone())
+            .map_err(|e| MirEvalError::LayoutError(e, convert_ty_for_result(interner, ty)))?;
+        self.layout_cache.borrow_mut().insert(ty, r.clone());
         Ok(r)
     }
 
     fn layout_adt(&self, adt: AdtId, subst: Substitution) -> Result<Arc<Layout>> {
-        self.layout(&TyKind::Adt(chalk_ir::AdtId(adt), subst).intern(Interner))
+        let interner = DbInterner::new_with(self.db, None, None);
+        self.layout(crate::next_solver::Ty::new(
+            interner,
+            rustc_type_ir::TyKind::Adt(
+                crate::next_solver::AdtDef::new(adt, interner),
+                subst.to_nextsolver(interner),
+            ),
+        ))
     }
 
     fn place_ty<'a>(&'a self, p: &Place, locals: &'a Locals) -> Result<Ty> {
@@ -952,7 +976,7 @@ impl Evaluator<'_> {
                                     )?
                                 }
                                 TyKind::FnDef(def, generic_args) => self.exec_fn_def(
-                                    *def,
+                                    CallableDefId::from_chalk(self.db, *def),
                                     generic_args,
                                     destination_interval,
                                     &args,
@@ -1082,18 +1106,18 @@ impl Evaluator<'_> {
         let stack_size = {
             let mut stack_ptr = self.stack.len();
             for (id, it) in body.locals.iter() {
-                if id == return_slot() {
-                    if let Some(destination) = destination {
-                        locals.ptr.insert(id, destination);
-                        continue;
-                    }
+                if id == return_slot()
+                    && let Some(destination) = destination
+                {
+                    locals.ptr.insert(id, destination);
+                    continue;
                 }
                 let (size, align) = self.size_align_of_sized(
                     &it.ty,
                     &locals,
                     "no unsized local in extending stack",
                 )?;
-                while stack_ptr % align != 0 {
+                while !stack_ptr.is_multiple_of(align) {
                     stack_ptr += 1;
                 }
                 let my_ptr = stack_ptr;
@@ -1113,6 +1137,7 @@ impl Evaluator<'_> {
     }
 
     fn eval_rvalue(&mut self, r: &Rvalue, locals: &mut Locals) -> Result<IntervalOrOwned> {
+        let interner = DbInterner::new_with(self.db, None, None);
         use IntervalOrOwned::*;
         Ok(match r {
             Rvalue::Use(it) => Borrowed(self.eval_operand(it, locals)?),
@@ -1436,7 +1461,7 @@ impl Evaluator<'_> {
                         Owned(r)
                     }
                     AggregateKind::Tuple(ty) => {
-                        let layout = self.layout(ty)?;
+                        let layout = self.layout(ty.to_nextsolver(interner))?;
                         Owned(self.construct_with_layout(
                             layout.size.bytes_usize(),
                             &layout,
@@ -1467,7 +1492,7 @@ impl Evaluator<'_> {
                         )?)
                     }
                     AggregateKind::Closure(ty) => {
-                        let layout = self.layout(ty)?;
+                        let layout = self.layout(ty.to_nextsolver(interner))?;
                         Owned(self.construct_with_layout(
                             layout.size.bytes_usize(),
                             &layout,
@@ -1484,6 +1509,8 @@ impl Evaluator<'_> {
                         if let TyKind::FnDef(_, _) | TyKind::Closure(_, _) =
                             &current_ty.kind(Interner)
                         {
+                            let interner = DbInterner::new_with(self.db, None, None);
+                            let current_ty = current_ty.to_nextsolver(interner);
                             let id = self.vtable_map.id(current_ty);
                             let ptr_size = self.ptr_size();
                             Owned(id.to_le_bytes()[0..ptr_size].to_vec())
@@ -1623,7 +1650,8 @@ impl Evaluator<'_> {
     }
 
     fn compute_discriminant(&self, ty: Ty, bytes: &[u8]) -> Result<i128> {
-        let layout = self.layout(&ty)?;
+        let interner = DbInterner::new_with(self.db, None, None);
+        let layout = self.layout(ty.to_nextsolver(interner))?;
         let &TyKind::Adt(chalk_ir::AdtId(AdtId::EnumId(e)), _) = ty.kind(Interner) else {
             return Ok(0);
         };
@@ -1673,14 +1701,14 @@ impl Evaluator<'_> {
         if let Some(it) = goal(kind) {
             return Ok(it);
         }
-        if let TyKind::Adt(id, subst) = kind {
-            if let AdtId::StructId(struct_id) = id.0 {
-                let field_types = self.db.field_types(struct_id.into());
-                if let Some(ty) =
-                    field_types.iter().last().map(|it| it.1.clone().substitute(Interner, subst))
-                {
-                    return self.coerce_unsized_look_through_fields(&ty, goal);
-                }
+        if let TyKind::Adt(id, subst) = kind
+            && let AdtId::StructId(struct_id) = id.0
+        {
+            let field_types = self.db.field_types(struct_id.into());
+            if let Some(ty) =
+                field_types.iter().last().map(|it| it.1.clone().substitute(Interner, subst))
+            {
+                return self.coerce_unsized_look_through_fields(&ty, goal);
             }
         }
         Err(MirEvalError::CoerceUnsizedError(ty.clone()))
@@ -1732,6 +1760,8 @@ impl Evaluator<'_> {
                 }
             },
             TyKind::Dyn(_) => {
+                let interner = DbInterner::new_with(self.db, None, None);
+                let current_ty = current_ty.to_nextsolver(interner);
                 let vtable = self.vtable_map.id(current_ty);
                 let mut r = Vec::with_capacity(16);
                 let addr = addr.get(self)?;
@@ -1777,18 +1807,21 @@ impl Evaluator<'_> {
         subst: Substitution,
         locals: &Locals,
     ) -> Result<(usize, Arc<Layout>, Option<(usize, usize, i128)>)> {
+        let interner = DbInterner::new_with(self.db, None, None);
         let adt = it.adt_id(self.db);
-        if let DefWithBodyId::VariantId(f) = locals.body.owner {
-            if let VariantId::EnumVariantId(it) = it {
-                if let AdtId::EnumId(e) = adt {
-                    if f.lookup(self.db).parent == e {
-                        // Computing the exact size of enums require resolving the enum discriminants. In order to prevent loops (and
-                        // infinite sized type errors) we use a dummy layout
-                        let i = self.const_eval_discriminant(it)?;
-                        return Ok((16, self.layout(&TyBuilder::unit())?, Some((0, 16, i))));
-                    }
-                }
-            }
+        if let DefWithBodyId::VariantId(f) = locals.body.owner
+            && let VariantId::EnumVariantId(it) = it
+            && let AdtId::EnumId(e) = adt
+            && f.lookup(self.db).parent == e
+        {
+            // Computing the exact size of enums require resolving the enum discriminants. In order to prevent loops (and
+            // infinite sized type errors) we use a dummy layout
+            let i = self.const_eval_discriminant(it)?;
+            return Ok((
+                16,
+                self.layout(crate::next_solver::Ty::new_empty_tuple(interner))?,
+                Some((0, 16, i)),
+            ));
         }
         let layout = self.layout_adt(adt, subst)?;
         Ok(match &layout.variants {
@@ -1887,6 +1920,7 @@ impl Evaluator<'_> {
 
     #[allow(clippy::double_parens)]
     fn allocate_const_in_heap(&mut self, locals: &Locals, konst: &Const) -> Result<Interval> {
+        let interner = DbInterner::new_with(self.db, None, None);
         let ConstData { ty, value: chalk_ir::ConstValue::Concrete(c) } = &konst.data(Interner)
         else {
             not_supported!("evaluating non concrete constant");
@@ -1909,10 +1943,10 @@ impl Evaluator<'_> {
                         let name = const_id.name(self.db);
                         MirEvalError::ConstEvalError(name, Box::new(e))
                     })?;
-                if let chalk_ir::ConstValue::Concrete(c) = &result_owner.data(Interner).value {
-                    if let ConstScalar::Bytes(v, mm) = &c.interned {
-                        break 'b (v, mm);
-                    }
+                if let chalk_ir::ConstValue::Concrete(c) = &result_owner.data(Interner).value
+                    && let ConstScalar::Bytes(v, mm) = &c.interned
+                {
+                    break 'b (v, mm);
                 }
                 not_supported!("unevaluatable constant");
             }
@@ -1947,7 +1981,7 @@ impl Evaluator<'_> {
                 MemoryMap::Complex(cm) => cm.vtable.ty_of_bytes(bytes),
             },
             addr,
-            ty,
+            ty.to_nextsolver(interner),
             locals,
         )?;
         Ok(Interval::new(addr, size))
@@ -2050,21 +2084,21 @@ impl Evaluator<'_> {
     }
 
     fn size_align_of(&self, ty: &Ty, locals: &Locals) -> Result<Option<(usize, usize)>> {
-        if let Some(layout) = self.layout_cache.borrow().get(ty) {
+        let interner = DbInterner::new_with(self.db, None, None);
+        if let Some(layout) = self.layout_cache.borrow().get(&ty.to_nextsolver(interner)) {
             return Ok(layout
                 .is_sized()
-                .then(|| (layout.size.bytes_usize(), layout.align.abi.bytes() as usize)));
+                .then(|| (layout.size.bytes_usize(), layout.align.bytes() as usize)));
         }
-        if let DefWithBodyId::VariantId(f) = locals.body.owner {
-            if let Some((AdtId::EnumId(e), _)) = ty.as_adt() {
-                if f.lookup(self.db).parent == e {
-                    // Computing the exact size of enums require resolving the enum discriminants. In order to prevent loops (and
-                    // infinite sized type errors) we use a dummy size
-                    return Ok(Some((16, 16)));
-                }
-            }
+        if let DefWithBodyId::VariantId(f) = locals.body.owner
+            && let Some((AdtId::EnumId(e), _)) = ty.as_adt()
+            && f.lookup(self.db).parent == e
+        {
+            // Computing the exact size of enums require resolving the enum discriminants. In order to prevent loops (and
+            // infinite sized type errors) we use a dummy size
+            return Ok(Some((16, 16)));
         }
-        let layout = self.layout(ty);
+        let layout = self.layout(ty.to_nextsolver(interner));
         if self.assert_placeholder_ty_is_unused
             && matches!(layout, Err(MirEvalError::LayoutError(LayoutError::HasPlaceholder, _)))
         {
@@ -2073,7 +2107,7 @@ impl Evaluator<'_> {
         let layout = layout?;
         Ok(layout
             .is_sized()
-            .then(|| (layout.size.bytes_usize(), layout.align.abi.bytes() as usize)))
+            .then(|| (layout.size.bytes_usize(), layout.align.bytes() as usize)))
     }
 
     /// A version of `self.size_of` which returns error if the type is unsized. `what` argument should
@@ -2103,7 +2137,7 @@ impl Evaluator<'_> {
         if !align.is_power_of_two() || align > 10000 {
             return Err(MirEvalError::UndefinedBehavior(format!("Alignment {align} is invalid")));
         }
-        while self.heap.len() % align != 0 {
+        while !self.heap.len().is_multiple_of(align) {
             self.heap.push(0);
         }
         if size.checked_add(self.heap.len()).is_none_or(|x| x > self.memory_limit) {
@@ -2132,15 +2166,16 @@ impl Evaluator<'_> {
         bytes: &[u8],
         ty: &Ty,
         locals: &Locals,
-    ) -> Result<ComplexMemoryMap> {
-        fn rec(
-            this: &Evaluator<'_>,
+    ) -> Result<ComplexMemoryMap<'db>> {
+        fn rec<'db>(
+            this: &Evaluator<'db>,
             bytes: &[u8],
             ty: &Ty,
             locals: &Locals,
-            mm: &mut ComplexMemoryMap,
+            mm: &mut ComplexMemoryMap<'db>,
             stack_depth_limit: usize,
         ) -> Result<()> {
+            let interner = DbInterner::new_with(this.db, None, None);
             if stack_depth_limit.checked_sub(1).is_none() {
                 return Err(MirEvalError::StackOverflow);
             }
@@ -2161,13 +2196,14 @@ impl Evaluator<'_> {
                             let element_size = match t.kind(Interner) {
                                 TyKind::Str => 1,
                                 TyKind::Slice(t) => {
-                                    check_inner = Some(t);
+                                    check_inner = Some(t.clone());
                                     this.size_of_sized(t, locals, "slice inner type")?
                                 }
                                 TyKind::Dyn(_) => {
                                     let t = this.vtable_map.ty_of_bytes(meta)?;
-                                    check_inner = Some(t);
-                                    this.size_of_sized(t, locals, "dyn concrete type")?
+                                    let t = convert_ty_for_result(interner, t);
+                                    check_inner = Some(t.clone());
+                                    this.size_of_sized(&t, locals, "dyn concrete type")?
                                 }
                                 _ => return Ok(()),
                             };
@@ -2179,7 +2215,7 @@ impl Evaluator<'_> {
                             let addr = Address::from_bytes(addr)?;
                             let b = this.read_memory(addr, size)?;
                             mm.insert(addr.to_usize(), b.into());
-                            if let Some(ty) = check_inner {
+                            if let Some(ty) = &check_inner {
                                 for i in 0..count {
                                     let offset = element_size * i;
                                     rec(
@@ -2214,11 +2250,11 @@ impl Evaluator<'_> {
                     }
                 }
                 TyKind::Tuple(_, subst) => {
-                    let layout = this.layout(ty)?;
+                    let layout = this.layout(ty.to_nextsolver(interner))?;
                     for (id, ty) in subst.iter(Interner).enumerate() {
                         let ty = ty.assert_ty_ref(Interner); // Tuple only has type argument
                         let offset = layout.fields.offset(id).bytes_usize();
-                        let size = this.layout(ty)?.size.bytes_usize();
+                        let size = this.layout(ty.to_nextsolver(interner))?.size.bytes_usize();
                         rec(
                             this,
                             &bytes[offset..offset + size],
@@ -2232,7 +2268,7 @@ impl Evaluator<'_> {
                 TyKind::Adt(adt, subst) => match adt.0 {
                     AdtId::StructId(s) => {
                         let data = s.fields(this.db);
-                        let layout = this.layout(ty)?;
+                        let layout = this.layout(ty.to_nextsolver(interner))?;
                         let field_types = this.db.field_types(s.into());
                         for (f, _) in data.fields().iter() {
                             let offset = layout
@@ -2240,7 +2276,7 @@ impl Evaluator<'_> {
                                 .offset(u32::from(f.into_raw()) as usize)
                                 .bytes_usize();
                             let ty = &field_types[f].clone().substitute(Interner, subst);
-                            let size = this.layout(ty)?.size.bytes_usize();
+                            let size = this.layout(ty.to_nextsolver(interner))?.size.bytes_usize();
                             rec(
                                 this,
                                 &bytes[offset..offset + size],
@@ -2252,7 +2288,7 @@ impl Evaluator<'_> {
                         }
                     }
                     AdtId::EnumId(e) => {
-                        let layout = this.layout(ty)?;
+                        let layout = this.layout(ty.to_nextsolver(interner))?;
                         if let Some((v, l)) = detect_variant_from_bytes(
                             &layout,
                             this.db,
@@ -2266,7 +2302,8 @@ impl Evaluator<'_> {
                                 let offset =
                                     l.fields.offset(u32::from(f.into_raw()) as usize).bytes_usize();
                                 let ty = &field_types[f].clone().substitute(Interner, subst);
-                                let size = this.layout(ty)?.size.bytes_usize();
+                                let size =
+                                    this.layout(ty.to_nextsolver(interner))?.size.bytes_usize();
                                 rec(
                                     this,
                                     &bytes[offset..offset + size],
@@ -2293,20 +2330,26 @@ impl Evaluator<'_> {
         Ok(mm)
     }
 
-    fn patch_addresses<'vtable>(
+    fn patch_addresses(
         &mut self,
         patch_map: &FxHashMap<usize, usize>,
-        ty_of_bytes: impl Fn(&[u8]) -> Result<&'vtable Ty> + Copy,
+        ty_of_bytes: impl Fn(&[u8]) -> Result<crate::next_solver::Ty<'db>> + Copy,
         addr: Address,
-        ty: &Ty,
+        ty: crate::next_solver::Ty<'db>,
         locals: &Locals,
     ) -> Result<()> {
+        let interner = DbInterner::new_with(self.db, None, None);
         // FIXME: support indirect references
         let layout = self.layout(ty)?;
-        let my_size = self.size_of_sized(ty, locals, "value to patch address")?;
-        match ty.kind(Interner) {
-            TyKind::Ref(_, _, t) => {
-                let size = self.size_align_of(t, locals)?;
+        let my_size = self.size_of_sized(
+            &convert_ty_for_result(interner, ty),
+            locals,
+            "value to patch address",
+        )?;
+        use rustc_type_ir::TyKind;
+        match ty.kind() {
+            TyKind::Ref(_, t, _) => {
+                let size = self.size_align_of(&convert_ty_for_result(interner, t), locals)?;
                 match size {
                     Some(_) => {
                         let current = from_bytes!(usize, self.read_memory(addr, my_size)?);
@@ -2322,21 +2365,21 @@ impl Evaluator<'_> {
                     }
                 }
             }
-            TyKind::Function(_) => {
-                let ty = ty_of_bytes(self.read_memory(addr, my_size)?)?.clone();
+            TyKind::FnPtr(_, _) => {
+                let ty = ty_of_bytes(self.read_memory(addr, my_size)?)?;
                 let new_id = self.vtable_map.id(ty);
                 self.write_memory(addr, &new_id.to_le_bytes())?;
             }
-            TyKind::Adt(id, subst) => match id.0 {
+            TyKind::Adt(id, args) => match id.def_id().0 {
                 AdtId::StructId(s) => {
-                    for (i, (_, ty)) in self.db.field_types(s.into()).iter().enumerate() {
+                    for (i, (_, ty)) in self.db.field_types_ns(s.into()).iter().enumerate() {
                         let offset = layout.fields.offset(i).bytes_usize();
-                        let ty = ty.clone().substitute(Interner, subst);
+                        let ty = ty.instantiate(interner, args);
                         self.patch_addresses(
                             patch_map,
                             ty_of_bytes,
                             addr.offset(offset),
-                            &ty,
+                            ty,
                             locals,
                         )?;
                     }
@@ -2350,33 +2393,36 @@ impl Evaluator<'_> {
                         self.read_memory(addr, layout.size.bytes_usize())?,
                         e,
                     ) {
-                        for (i, (_, ty)) in self.db.field_types(ev.into()).iter().enumerate() {
+                        for (i, (_, ty)) in self.db.field_types_ns(ev.into()).iter().enumerate() {
                             let offset = layout.fields.offset(i).bytes_usize();
-                            let ty = ty.clone().substitute(Interner, subst);
+                            let ty = ty.instantiate(interner, args);
                             self.patch_addresses(
                                 patch_map,
                                 ty_of_bytes,
                                 addr.offset(offset),
-                                &ty,
+                                ty,
                                 locals,
                             )?;
                         }
                     }
                 }
             },
-            TyKind::Tuple(_, subst) => {
-                for (id, ty) in subst.iter(Interner).enumerate() {
-                    let ty = ty.assert_ty_ref(Interner); // Tuple only has type argument
+            TyKind::Tuple(tys) => {
+                for (id, ty) in tys.iter().enumerate() {
                     let offset = layout.fields.offset(id).bytes_usize();
                     self.patch_addresses(patch_map, ty_of_bytes, addr.offset(offset), ty, locals)?;
                 }
             }
             TyKind::Array(inner, len) => {
-                let len = match try_const_usize(self.db, len) {
+                let len = match consteval_nextsolver::try_const_usize(self.db, len) {
                     Some(it) => it as usize,
                     None => not_supported!("non evaluatable array len in patching addresses"),
                 };
-                let size = self.size_of_sized(inner, locals, "inner of array")?;
+                let size = self.size_of_sized(
+                    &convert_ty_for_result(interner, inner),
+                    locals,
+                    "inner of array",
+                )?;
                 for i in 0..len {
                     self.patch_addresses(
                         patch_map,
@@ -2387,11 +2433,13 @@ impl Evaluator<'_> {
                     )?;
                 }
             }
-            TyKind::AssociatedType(_, _)
-            | TyKind::Scalar(_)
+            TyKind::Bool
+            | TyKind::Char
+            | TyKind::Int(_)
+            | TyKind::Uint(_)
+            | TyKind::Float(_)
             | TyKind::Slice(_)
-            | TyKind::Raw(_, _)
-            | TyKind::OpaqueType(_, _)
+            | TyKind::RawPtr(_, _)
             | TyKind::FnDef(_, _)
             | TyKind::Str
             | TyKind::Never
@@ -2399,12 +2447,16 @@ impl Evaluator<'_> {
             | TyKind::Coroutine(_, _)
             | TyKind::CoroutineWitness(_, _)
             | TyKind::Foreign(_)
-            | TyKind::Error
+            | TyKind::Error(_)
             | TyKind::Placeholder(_)
-            | TyKind::Dyn(_)
-            | TyKind::Alias(_)
-            | TyKind::BoundVar(_)
-            | TyKind::InferenceVar(_, _) => (),
+            | TyKind::Dynamic(_, _)
+            | TyKind::Alias(_, _)
+            | TyKind::Bound(_, _)
+            | TyKind::Infer(_)
+            | TyKind::Pat(_, _)
+            | TyKind::Param(_)
+            | TyKind::UnsafeBinder(_)
+            | TyKind::CoroutineClosure(_, _) => (),
         }
         Ok(())
     }
@@ -2419,14 +2471,28 @@ impl Evaluator<'_> {
         span: MirSpan,
     ) -> Result<Option<StackFrame>> {
         let id = from_bytes!(usize, bytes.get(self)?);
-        let next_ty = self.vtable_map.ty(id)?.clone();
-        match next_ty.kind(Interner) {
-            TyKind::FnDef(def, generic_args) => {
-                self.exec_fn_def(*def, generic_args, destination, args, locals, target_bb, span)
-            }
-            TyKind::Closure(id, subst) => {
-                self.exec_closure(*id, bytes.slice(0..0), subst, destination, args, locals, span)
-            }
+        let next_ty = self.vtable_map.ty(id)?;
+        let interner = DbInterner::new_with(self.db, None, None);
+        use rustc_type_ir::TyKind;
+        match next_ty.kind() {
+            TyKind::FnDef(def, generic_args) => self.exec_fn_def(
+                def.0,
+                &convert_args_for_result(interner, generic_args.as_slice()),
+                destination,
+                args,
+                locals,
+                target_bb,
+                span,
+            ),
+            TyKind::Closure(id, generic_args) => self.exec_closure(
+                id.0.into(),
+                bytes.slice(0..0),
+                &convert_args_for_result(interner, generic_args.as_slice()),
+                destination,
+                args,
+                locals,
+                span,
+            ),
             _ => Err(MirEvalError::InternalError("function pointer to non function".into())),
         }
     }
@@ -2472,7 +2538,7 @@ impl Evaluator<'_> {
 
     fn exec_fn_def(
         &mut self,
-        def: FnDefId,
+        def: CallableDefId,
         generic_args: &Substitution,
         destination: Interval,
         args: &[IntervalAndTy],
@@ -2480,7 +2546,6 @@ impl Evaluator<'_> {
         target_bb: Option<BasicBlockId>,
         span: MirSpan,
     ) -> Result<Option<StackFrame>> {
-        let def: CallableDefId = from_chalk(self.db, def);
         let generic_args = generic_args.clone();
         match def {
             CallableDefId::FunctionId(def) => {
@@ -2577,6 +2642,7 @@ impl Evaluator<'_> {
         target_bb: Option<BasicBlockId>,
         span: MirSpan,
     ) -> Result<Option<StackFrame>> {
+        let interner = DbInterner::new_with(self.db, None, None);
         if self.detect_and_exec_special_function(
             def,
             args,
@@ -2603,6 +2669,7 @@ impl Evaluator<'_> {
                     .vtable_map
                     .ty_of_bytes(&first_arg[self.ptr_size()..self.ptr_size() * 2])?;
                 let mut args_for_target = args.to_vec();
+                let ty = convert_ty_for_result(interner, ty);
                 args_for_target[0] = IntervalAndTy {
                     interval: args_for_target[0].interval.slice(0..self.ptr_size()),
                     ty: ty.clone(),
@@ -2675,6 +2742,7 @@ impl Evaluator<'_> {
         target_bb: Option<BasicBlockId>,
         span: MirSpan,
     ) -> Result<Option<StackFrame>> {
+        let interner = DbInterner::new_with(self.db, None, None);
         let func = args
             .first()
             .ok_or_else(|| MirEvalError::InternalError("fn trait with no arg".into()))?;
@@ -2686,22 +2754,28 @@ impl Evaluator<'_> {
                 let id =
                     from_bytes!(usize, &func_data.get(self)?[self.ptr_size()..self.ptr_size() * 2]);
                 func_data = func_data.slice(0..self.ptr_size());
-                func_ty = self.vtable_map.ty(id)?.clone();
+                func_ty = convert_ty_for_result(interner, self.vtable_map.ty(id)?);
             }
             let size = self.size_of_sized(&func_ty, locals, "self type of fn trait")?;
             func_data = Interval { addr: Address::from_bytes(func_data.get(self)?)?, size };
         }
         match &func_ty.kind(Interner) {
-            TyKind::FnDef(def, subst) => {
-                self.exec_fn_def(*def, subst, destination, &args[1..], locals, target_bb, span)
-            }
+            TyKind::FnDef(def, subst) => self.exec_fn_def(
+                CallableDefId::from_chalk(self.db, *def),
+                subst,
+                destination,
+                &args[1..],
+                locals,
+                target_bb,
+                span,
+            ),
             TyKind::Function(_) => {
                 self.exec_fn_pointer(func_data, destination, &args[1..], locals, target_bb, span)
             }
             TyKind::Closure(closure, subst) => self.exec_closure(
                 *closure,
                 func_data,
-                &Substitution::from_iter(Interner, ClosureSubst(subst).parent_subst()),
+                &ClosureSubst(subst).parent_subst(self.db),
                 destination,
                 &args[1..],
                 locals,
@@ -2717,7 +2791,7 @@ impl Evaluator<'_> {
                         Substitution::from_iter(Interner, args.iter().map(|it| it.ty.clone())),
                     )
                     .intern(Interner);
-                    let layout = self.layout(&ty)?;
+                    let layout = self.layout(ty.to_nextsolver(interner))?;
                     let result = self.construct_with_layout(
                         layout.size.bytes_usize(),
                         &layout,
@@ -2726,7 +2800,7 @@ impl Evaluator<'_> {
                     )?;
                     // FIXME: there is some leak here
                     let size = layout.size.bytes_usize();
-                    let addr = self.heap_allocate(size, layout.align.abi.bytes() as usize)?;
+                    let addr = self.heap_allocate(size, layout.align.bytes() as usize)?;
                     self.write_memory(addr, &result)?;
                     IntervalAndTy { interval: Interval { addr, size }, ty }
                 };
@@ -2904,6 +2978,7 @@ pub fn render_const_using_debug_impl(
     owner: DefWithBodyId,
     c: &Const,
 ) -> Result<String> {
+    let interner = DbInterner::new_with(db, None, None);
     let mut evaluator = Evaluator::new(db, owner, false, None)?;
     let locals = &Locals {
         ptr: ArenaMap::new(),
@@ -2936,7 +3011,8 @@ pub fn render_const_using_debug_impl(
         CallableDefId::FunctionId(debug_fmt_fn).to_chalk(db),
         Substitution::from1(Interner, c.data(Interner).ty.clone()),
     )
-    .intern(Interner));
+    .intern(Interner)
+    .to_nextsolver(interner));
     evaluator.write_memory(a2.offset(evaluator.ptr_size()), &debug_fmt_fn_ptr.to_le_bytes())?;
     // a3 = ::core::fmt::Arguments::new_v1(a1, a2)
     // FIXME: similarly, we should call function here, not directly working with memory.

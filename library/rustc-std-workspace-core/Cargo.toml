@@ -11,6 +11,9 @@ edition = "2024"
 
 [lib]
 path = "lib.rs"
+test = false
+bench = false
+doc = false
 
 [dependencies]
 core = { path = "../core", public = true }

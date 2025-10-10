@@ -2,8 +2,9 @@
 
 //@ needs-sanitizer-kcfi
 //@ no-prefer-dynamic
-//@ compile-flags: -C panic=abort -Zsanitizer=kcfi -C symbol-mangling-version=v0
+//@ compile-flags: -C panic=abort -Zsanitizer=kcfi -C symbol-mangling-version=v0 -C unsafe-allow-abi-mismatch=sanitizer
 //@ build-pass
+//@ ignore-backends: gcc
 
 trait Foo {
     fn foo(&self);

@@ -31,15 +31,6 @@ pub(crate) trait FormatRenderer<'tcx>: Sized {
     /// reset the information between each call to `item` by using `restore_module_data`.
     type ModuleData;
 
-    /// Sets up any state required for the renderer. When this is called the cache has already been
-    /// populated.
-    fn init(
-        krate: clean::Crate,
-        options: RenderOptions,
-        cache: Cache,
-        tcx: TyCtxt<'tcx>,
-    ) -> Result<(Self, clean::Crate), Error>;
-
     /// This method is called right before call [`Self::item`]. This method returns a type
     /// containing information that needs to be reset after the [`Self::item`] method has been
     /// called with the [`Self::restore_module_data`] method.
@@ -105,18 +96,23 @@ fn run_format_inner<'tcx, T: FormatRenderer<'tcx>>(
 }
 
 /// Main method for rendering a crate.
-pub(crate) fn run_format<'tcx, T: FormatRenderer<'tcx>>(
+pub(crate) fn run_format<
+    'tcx,
+    T: FormatRenderer<'tcx>,
+    F: FnOnce(clean::Crate, RenderOptions, Cache, TyCtxt<'tcx>) -> Result<(T, clean::Crate), Error>,
+>(
     krate: clean::Crate,
     options: RenderOptions,
     cache: Cache,
     tcx: TyCtxt<'tcx>,
+    init: F,
 ) -> Result<(), Error> {
     let prof = &tcx.sess.prof;
 
     let emit_crate = options.should_emit_crate();
     let (mut format_renderer, krate) = prof
         .verbose_generic_activity_with_arg("create_renderer", T::descr())
-        .run(|| T::init(krate, options, cache, tcx))?;
+        .run(|| init(krate, options, cache, tcx))?;
 
     if !emit_crate {
         return Ok(());

@@ -26,7 +26,8 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Horizontally add/subtract adjacent floating point values
             // in `left` and `right`.
             "hadd.ps" | "hadd.pd" | "hsub.ps" | "hsub.pd" => {
-                let [left, right] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
+                let [left, right] =
+                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
 
                 let which = match unprefixed_name {
                     "hadd.ps" | "hadd.pd" => mir::BinOp::Add,
@@ -42,7 +43,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // the data crosses a cache line, but for Miri this is just a regular
             // unaligned read.
             "ldu.dq" => {
-                let [src_ptr] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
+                let [src_ptr] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 let src_ptr = this.read_pointer(src_ptr)?;
                 let dest = dest.force_mplace(this)?;
 

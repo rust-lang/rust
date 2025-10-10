@@ -9,7 +9,6 @@ use stdx::never;
 use syntax::{
     AstNode, Direction, SyntaxNode, SyntaxToken, T,
     ast::{self, Use, UseTree, VisibilityKind, make},
-    ted,
 };
 
 use crate::{
@@ -165,8 +164,6 @@ fn build_expanded_import(
     let filtered_defs =
         if reexport_public_items { refs_in_target } else { refs_in_target.used_refs(ctx) };
 
-    let use_tree = builder.make_mut(use_tree);
-
     let names_to_import = find_names_to_import(filtered_defs, imported_defs);
     let expanded = make::use_tree_list(names_to_import.iter().map(|n| {
         let path = make::ext::ident_path(
@@ -176,22 +173,24 @@ fn build_expanded_import(
     }))
     .clone_for_update();
 
+    let mut editor = builder.make_editor(use_tree.syntax());
     match use_tree.star_token() {
         Some(star) => {
             let needs_braces = use_tree.path().is_some() && names_to_import.len() != 1;
             if needs_braces {
-                ted::replace(star, expanded.syntax())
+                editor.replace(star, expanded.syntax())
             } else {
                 let without_braces = expanded
                     .syntax()
                     .children_with_tokens()
                     .filter(|child| !matches!(child.kind(), T!['{'] | T!['}']))
                     .collect();
-                ted::replace_with_many(star, without_braces)
+                editor.replace_with_many(star, without_braces)
             }
         }
         None => never!(),
     }
+    builder.add_file_edits(ctx.vfs_file_id(), editor);
 }
 
 fn get_export_visibility_kind(use_item: &Use) -> VisibilityKind {
@@ -272,16 +271,16 @@ impl Refs {
                 .clone()
                 .into_iter()
                 .filter(|r| {
-                    if let Definition::Trait(tr) = r.def {
-                        if tr.items(ctx.db()).into_iter().any(|ai| {
+                    if let Definition::Trait(tr) = r.def
+                        && tr.items(ctx.db()).into_iter().any(|ai| {
                             if let AssocItem::Function(f) = ai {
                                 def_is_referenced_in(Definition::Function(f), ctx)
                             } else {
                                 false
                             }
-                        }) {
-                            return true;
-                        }
+                        })
+                    {
+                        return true;
                     }
 
                     def_is_referenced_in(r.def, ctx)

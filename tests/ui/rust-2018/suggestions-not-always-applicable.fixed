@@ -3,6 +3,7 @@
 //@ run-rustfix
 //@ rustfix-only-machine-applicable
 //@ check-pass
+//@ ignore-backends: gcc
 
 #![warn(rust_2018_compatibility)]
 

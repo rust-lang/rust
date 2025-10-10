@@ -1,5 +1,6 @@
 //@ check-pass
 //@ aux-build:hygiene_example.rs
+//@ ignore-backends: gcc
 
 extern crate hygiene_example;
 use hygiene_example::hello;

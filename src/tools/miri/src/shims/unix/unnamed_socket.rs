@@ -123,6 +123,14 @@ impl FileDescription for AnonSocket {
         anonsocket_write(self, ptr, len, ecx, finish)
     }
 
+    fn short_fd_operations(&self) -> bool {
+        // Pipes guarantee that sufficiently small accesses are not broken apart:
+        // <https://pubs.opengroup.org/onlinepubs/9799919799/functions/write.html#tag_17_699_08>.
+        // For now, we don't bother checking for the size, and just entirely disable
+        // short accesses on pipes.
+        matches!(self.fd_type, AnonSocketType::Socketpair)
+    }
+
     fn as_unix<'tcx>(&self, _ecx: &MiriInterpCx<'tcx>) -> &dyn UnixFileDescription {
         self
     }
@@ -251,7 +259,7 @@ fn anonsocket_write<'tcx>(
         // Remember this clock so `read` can synchronize with us.
         ecx.release_clock(|clock| {
             writebuf.clock.join(clock);
-        });
+        })?;
         // Do full write / partial write based on the space available.
         let write_size = len.min(available_space);
         let actual_write_size = ecx.write_to_host(&mut writebuf.buf, write_size, ptr)?.unwrap();
@@ -337,7 +345,7 @@ fn anonsocket_read<'tcx>(
         // Synchronize with all previous writes to this buffer.
         // FIXME: this over-synchronizes; a more precise approach would be to
         // only sync with the writes whose data we will read.
-        ecx.acquire_clock(&readbuf.clock);
+        ecx.acquire_clock(&readbuf.clock)?;
 
         // Do full read / partial read based on the space available.
         // Conveniently, `read` exists on `VecDeque` and has exactly the desired behavior.

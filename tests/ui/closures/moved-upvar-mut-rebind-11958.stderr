@@ -1,0 +1,20 @@
+warning: value assigned to `x` is never read
+  --> $DIR/moved-upvar-mut-rebind-11958.rs:10:36
+   |
+LL |     let _thunk = Box::new(move|| { x = 2; });
+   |                                    ^
+   |
+   = help: maybe it is overwritten before being read?
+   = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `x`
+  --> $DIR/moved-upvar-mut-rebind-11958.rs:10:36
+   |
+LL |     let _thunk = Box::new(move|| { x = 2; });
+   |                                    ^
+   |
+   = help: did you mean to capture by reference instead?
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: 2 warnings emitted
+

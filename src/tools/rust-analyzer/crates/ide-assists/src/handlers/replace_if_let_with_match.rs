@@ -8,7 +8,7 @@ use ide_db::{
     ty_filter::TryEnum,
 };
 use syntax::{
-    AstNode, T, TextRange,
+    AstNode, Edition, T, TextRange,
     ast::{self, HasName, edit::IndentLevel, edit_in_place::Indent, syntax_factory::SyntaxFactory},
 };
 
@@ -187,7 +187,7 @@ fn make_else_arm(
 
 // Assist: replace_match_with_if_let
 //
-// Replaces a binary `match` with a wildcard pattern and no guards with an `if let` expression.
+// Replaces a binary `match` with a wildcard pattern with an `if let` expression.
 //
 // ```
 // enum Action { Move { distance: u32 }, Stop }
@@ -225,18 +225,24 @@ pub(crate) fn replace_match_with_if_let(acc: &mut Assists, ctx: &AssistContext<'
 
     let mut arms = match_arm_list.arms();
     let (first_arm, second_arm) = (arms.next()?, arms.next()?);
-    if arms.next().is_some() || first_arm.guard().is_some() || second_arm.guard().is_some() {
+    if arms.next().is_some() || second_arm.guard().is_some() {
+        return None;
+    }
+    if first_arm.guard().is_some() && ctx.edition() < Edition::Edition2024 {
         return None;
     }
 
-    let (if_let_pat, then_expr, else_expr) = pick_pattern_and_expr_order(
+    let (if_let_pat, guard, then_expr, else_expr) = pick_pattern_and_expr_order(
         &ctx.sema,
         first_arm.pat()?,
         second_arm.pat()?,
         first_arm.expr()?,
         second_arm.expr()?,
+        first_arm.guard(),
+        second_arm.guard(),
     )?;
     let scrutinee = match_expr.expr()?;
+    let guard = guard.and_then(|it| it.condition());
 
     let let_ = match &if_let_pat {
         ast::Pat::LiteralPat(p)
@@ -277,6 +283,11 @@ pub(crate) fn replace_match_with_if_let(acc: &mut Assists, ctx: &AssistContext<'
                 }
                 _ => make.expr_let(if_let_pat, scrutinee).into(),
             };
+            let condition = if let Some(guard) = guard {
+                make.expr_bin(condition, ast::BinaryOp::LogicOp(ast::LogicOp::And), guard).into()
+            } else {
+                condition
+            };
             let then_expr = then_expr.clone_for_update();
             then_expr.reindent_to(IndentLevel::single());
             let then_block = make_block_expr(then_expr);
@@ -303,18 +314,30 @@ fn pick_pattern_and_expr_order(
     pat2: ast::Pat,
     expr: ast::Expr,
     expr2: ast::Expr,
-) -> Option<(ast::Pat, ast::Expr, ast::Expr)> {
+    guard: Option<ast::MatchGuard>,
+    guard2: Option<ast::MatchGuard>,
+) -> Option<(ast::Pat, Option<ast::MatchGuard>, ast::Expr, ast::Expr)> {
+    if guard.is_some() && guard2.is_some() {
+        return None;
+    }
     let res = match (pat, pat2) {
         (ast::Pat::WildcardPat(_), _) => return None,
-        (pat, ast::Pat::WildcardPat(_)) => (pat, expr, expr2),
-        (pat, _) if is_empty_expr(&expr2) => (pat, expr, expr2),
-        (_, pat) if is_empty_expr(&expr) => (pat, expr2, expr),
+        (pat, ast::Pat::WildcardPat(_)) => (pat, guard, expr, expr2),
+        (pat, _) if is_empty_expr(&expr2) => (pat, guard, expr, expr2),
+        (_, pat) if is_empty_expr(&expr) => (pat, guard, expr2, expr),
         (pat, pat2) => match (binds_name(sema, &pat), binds_name(sema, &pat2)) {
             (true, true) => return None,
-            (true, false) => (pat, expr, expr2),
-            (false, true) => (pat2, expr2, expr),
-            _ if is_sad_pat(sema, &pat) => (pat2, expr2, expr),
-            (false, false) => (pat, expr, expr2),
+            (true, false) => (pat, guard, expr, expr2),
+            (false, true) => {
+                // This pattern triggers an invalid transformation.
+                // See issues #11373, #19443
+                if let ast::Pat::IdentPat(_) = pat2 {
+                    return None;
+                }
+                (pat2, guard2, expr2, expr)
+            }
+            _ if is_sad_pat(sema, &pat) => (pat2, guard2, expr2, expr),
+            (false, false) => (pat, guard, expr, expr2),
         },
     };
     Some(res)
@@ -1850,6 +1873,45 @@ fn main() {
     }
 }
 "#,
+        )
+    }
+
+    #[test]
+    fn test_replace_match_with_if_let_chain() {
+        check_assist(
+            replace_match_with_if_let,
+            r#"
+fn main() {
+    match$0 Some(0) {
+        Some(n) if n % 2 == 0 && n != 6 => (),
+        _ => code(),
+    }
+}
+"#,
+            r#"
+fn main() {
+    if let Some(n) = Some(0) && n % 2 == 0 && n != 6 {
+        ()
+    } else {
+        code()
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn test_replace_match_with_if_let_not_applicable_pat2_is_ident_pat() {
+        check_assist_not_applicable(
+            replace_match_with_if_let,
+            r"
+fn test(a: i32) {
+    match$0 a {
+        1 => code(),
+        other => code(other),
+    }
+}
+",
         )
     }
 }

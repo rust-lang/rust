@@ -1,7 +1,7 @@
 use rustc_ast::{LitKind, MetaItem, MetaItemInner, MetaItemKind, MetaItemLit, NodeId};
 use rustc_ast_pretty::pprust;
-use rustc_attr_data_structures::RustcVersion;
 use rustc_feature::{Features, GatedCfg, find_gated_cfg};
+use rustc_hir::RustcVersion;
 use rustc_session::Session;
 use rustc_session::config::ExpectedValues;
 use rustc_session::lint::builtin::UNEXPECTED_CFGS;

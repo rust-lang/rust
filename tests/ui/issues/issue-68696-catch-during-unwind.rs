@@ -4,6 +4,7 @@
 // entering the catch_unwind.
 //
 //@ run-pass
+//@ ignore-backends: gcc
 
 use std::panic::catch_unwind;
 

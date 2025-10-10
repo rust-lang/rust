@@ -103,6 +103,33 @@ fn issue_7318() {
     //~^^^ collapsible_else_if
 }
 
+fn issue_13365() {
+    // all the `expect`s that we should fulfill
+    if true {
+    } else {
+        #[expect(clippy::collapsible_else_if)]
+        if false {}
+    }
+
+    if true {
+    } else {
+        #[expect(clippy::style)]
+        if false {}
+    }
+
+    if true {
+    } else {
+        #[expect(clippy::all)]
+        if false {}
+    }
+
+    if true {
+    } else {
+        #[expect(warnings)]
+        if false {}
+    }
+}
+
 fn issue14799() {
     use std::ops::ControlFlow;
 
@@ -118,5 +145,29 @@ fn issue14799() {
         } else {
             todo!();
         }
+    }
+}
+
+fn in_parens() {
+    let x = "hello";
+    let y = "world";
+
+    if x == "hello" {
+        print!("Hello ");
+    } else {
+        (if y == "world" { println!("world") } else { println!("!") })
+    }
+    //~^^^ collapsible_else_if
+}
+
+fn in_brackets() {
+    let x = "hello";
+    let y = "world";
+
+    // There is no lint when the inner `if` is in a block.
+    if x == "hello" {
+        print!("Hello ");
+    } else {
+        { if y == "world" { println!("world") } else { println!("!") } }
     }
 }

@@ -1,4 +1,9 @@
 //@ compile-flags: -C panic=abort
+//@ revisions: NONWASM WASM WASMEXN
+//@ [NONWASM] ignore-wasm32
+//@ [WASM] only-wasm32
+//@ [WASMEXN] only-wasm32
+//@ [WASMEXN] compile-flags: -Ctarget-feature=+exception-handling
 
 // Test that `nounwind` attributes are also applied to extern `C-unwind` Rust functions
 // when the code is compiled with `panic=abort`.
@@ -9,7 +14,9 @@
 #[no_mangle]
 pub unsafe extern "C-unwind" fn rust_item_that_can_unwind() {
     // Handle both legacy and v0 symbol mangling.
-    // CHECK: call void @{{.*core9panicking19panic_cannot_unwind}}
+    // NONWASM: call void @{{.*core9panicking19panic_cannot_unwind}}
+    // WASMEXN: call void @{{.*core9panicking19panic_cannot_unwind}}
+    // WASM-NOT: call void @{{.*core9panicking19panic_cannot_unwind}}
     may_unwind();
 }
 

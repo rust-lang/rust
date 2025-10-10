@@ -11,6 +11,7 @@ use rustc_middle::ty::{self, AdtDef, Instance, Ty, VariantDef};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_span::sym;
 use rustc_target::callconv::{ArgAbi, FnAbi, PassMode};
+use tracing::field::Empty;
 use tracing::{info, instrument, trace};
 
 use super::{
@@ -18,15 +19,17 @@ use super::{
     Projectable, Provenance, ReturnAction, ReturnContinuation, Scalar, StackPopInfo, interp_ok,
     throw_ub, throw_ub_custom, throw_unsup_format,
 };
-use crate::fluent_generated as fluent;
+use crate::interpret::EnteredTraceSpan;
+use crate::{enter_trace_span, fluent_generated as fluent};
 
 /// An argument passed to a function.
 #[derive(Clone, Debug)]
 pub enum FnArg<'tcx, Prov: Provenance = CtfeProvenance> {
     /// Pass a copy of the given operand.
     Copy(OpTy<'tcx, Prov>),
-    /// Allow for the argument to be passed in-place: destroy the value originally stored at that place and
-    /// make the place inaccessible for the duration of the function call.
+    /// Allow for the argument to be passed in-place: destroy the value originally stored at that
+    /// place and make the place inaccessible for the duration of the function call. This *must* be
+    /// an in-memory place so that we can do the proper alias checks.
     InPlace(MPlaceTy<'tcx, Prov>),
 }
 
@@ -270,6 +273,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             Item = (&'x FnArg<'tcx, M::Provenance>, &'y ArgAbi<'tcx, Ty<'tcx>>),
         >,
         callee_abi: &ArgAbi<'tcx, Ty<'tcx>>,
+        callee_arg_idx: usize,
         callee_arg: &mir::Place<'tcx>,
         callee_ty: Ty<'tcx>,
         already_live: bool,
@@ -298,6 +302,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // Check compatibility
         if !self.check_argument_compat(caller_abi, callee_abi)? {
             throw_ub!(AbiMismatchArgument {
+                arg_idx: callee_arg_idx,
                 caller_ty: caller_abi.layout.ty,
                 callee_ty: callee_abi.layout.ty
             });
@@ -342,6 +347,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         destination: &PlaceTy<'tcx, M::Provenance>,
         mut cont: ReturnContinuation,
     ) -> InterpResult<'tcx> {
+        let _trace = enter_trace_span!(M, step::init_stack_frame, %instance, tracing_separate_thread = Empty);
+
         // Compute callee information.
         // FIXME: for variadic support, do we have to somehow determine callee's extra_args?
         let callee_fn_abi = self.fn_abi_of_instance(instance, ty::List::empty())?;
@@ -373,6 +380,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
         }
 
+        // *Before* pushing the new frame, determine whether the return destination is in memory.
+        // Need to use `place_to_op` to be *sure* we get the mplace if there is one.
+        let destination_mplace = self.place_to_op(destination)?.as_mplace_or_imm().left();
+
+        // Push the "raw" frame -- this leaves locals uninitialized.
         self.push_stack_frame_raw(instance, body, destination, cont)?;
 
         // If an error is raised here, pop the frame again to get an accurate backtrace.
@@ -424,7 +436,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // this is a single iterator (that handles `spread_arg`), then
             // `pass_argument` would be the loop body. It takes care to
             // not advance `caller_iter` for ignored arguments.
-            let mut callee_args_abis = callee_fn_abi.args.iter();
+            let mut callee_args_abis = callee_fn_abi.args.iter().enumerate();
             for local in body.args_iter() {
                 // Construct the destination place for this argument. At this point all
                 // locals are still dead, so we cannot construct a `PlaceTy`.
@@ -445,10 +457,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                             &[mir::ProjectionElem::Field(FieldIdx::from_usize(i), field_ty)],
                             *self.tcx,
                         );
-                        let callee_abi = callee_args_abis.next().unwrap();
+                        let (idx, callee_abi) = callee_args_abis.next().unwrap();
                         self.pass_argument(
                             &mut caller_args,
                             callee_abi,
+                            idx,
                             &dest,
                             field_ty,
                             /* already_live */ true,
@@ -456,10 +469,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     }
                 } else {
                     // Normal argument. Cannot mark it as live yet, it might be unsized!
-                    let callee_abi = callee_args_abis.next().unwrap();
+                    let (idx, callee_abi) = callee_args_abis.next().unwrap();
                     self.pass_argument(
                         &mut caller_args,
                         callee_abi,
+                        idx,
                         &dest,
                         ty,
                         /* already_live */ false,
@@ -488,7 +502,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
             // Protect return place for in-place return value passing.
             // We only need to protect anything if this is actually an in-memory place.
-            if let Left(mplace) = destination.as_mplace_or_local() {
+            if let Some(mplace) = destination_mplace {
                 M::protect_in_place_function_argument(self, &mplace)?;
             }
 
@@ -519,7 +533,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         target: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx> {
-        trace!("init_fn_call: {:#?}", fn_val);
+        let _trace =
+            enter_trace_span!(M, step::init_fn_call, tracing_separate_thread = Empty, ?fn_val)
+                .or_if_tracing_disabled(|| trace!("init_fn_call: {:#?}", fn_val));
 
         let instance = match fn_val {
             FnVal::Instance(instance) => instance,
@@ -642,7 +658,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                             let val = self.read_immediate(&receiver)?;
                             break self.ref_to_mplace(&val)?;
                         }
-                        ty::Dynamic(.., ty::Dyn) => break receiver.assert_mem_place(), // no immediate unsized values
+                        ty::Dynamic(..) => break receiver.assert_mem_place(), // no immediate unsized values
                         _ => {
                             // Not there yet, search for the only non-ZST field.
                             // (The rules for `DispatchFromDyn` ensure there's exactly one such field.)
@@ -659,7 +675,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // (For that reason we also cannot use `unpack_dyn_trait`.)
                 let receiver_tail =
                     self.tcx.struct_tail_for_codegen(receiver_place.layout.ty, self.typing_env);
-                let ty::Dynamic(receiver_trait, _, ty::Dyn) = receiver_tail.kind() else {
+                let ty::Dynamic(receiver_trait, _) = receiver_tail.kind() else {
                     span_bug!(self.cur_span(), "dynamic call on non-`dyn` type {}", receiver_tail)
                 };
                 assert!(receiver_place.layout.is_unsized());
@@ -721,18 +737,21 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ) {
         let tcx = *self.tcx;
 
-        let trait_def_id = tcx.trait_of_item(def_id).unwrap();
-        let virtual_trait_ref = ty::TraitRef::from_method(tcx, trait_def_id, virtual_instance.args);
+        let trait_def_id = tcx.parent(def_id);
+        let virtual_trait_ref = ty::TraitRef::from_assoc(tcx, trait_def_id, virtual_instance.args);
         let existential_trait_ref = ty::ExistentialTraitRef::erase_self_ty(tcx, virtual_trait_ref);
         let concrete_trait_ref = existential_trait_ref.with_self_ty(tcx, dyn_ty);
 
-        let concrete_method = Instance::expect_resolve_for_vtable(
-            tcx,
-            self.typing_env,
-            def_id,
-            virtual_instance.args.rebase_onto(tcx, trait_def_id, concrete_trait_ref.args),
-            self.cur_span(),
-        );
+        let concrete_method = {
+            let _trace = enter_trace_span!(M, resolve::expect_resolve_for_vtable, ?def_id);
+            Instance::expect_resolve_for_vtable(
+                tcx,
+                self.typing_env,
+                def_id,
+                virtual_instance.args.rebase_onto(tcx, trait_def_id, concrete_trait_ref.args),
+                self.cur_span(),
+            )
+        };
         assert_eq!(concrete_instance, concrete_method);
     }
 
@@ -803,7 +822,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // instead we do the virtual call stuff ourselves. It's easier here than in `eval_fn_call`
         // since we can just get a place of the underlying type and use `mplace_to_ref`.
         let place = match place.layout.ty.kind() {
-            ty::Dynamic(data, _, ty::Dyn) => {
+            ty::Dynamic(data, _) => {
                 // Dropping a trait object. Need to find actual drop fn.
                 self.unpack_dyn_trait(&place, data)?
             }
@@ -815,7 +834,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 place
             }
         };
-        let instance = ty::Instance::resolve_drop_in_place(*self.tcx, place.layout.ty);
+        let instance = {
+            let _trace =
+                enter_trace_span!(M, resolve::resolve_drop_in_place, ty = ?place.layout.ty);
+            ty::Instance::resolve_drop_in_place(*self.tcx, place.layout.ty)
+        };
         let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty())?;
 
         let arg = self.mplace_to_ref(&place)?;

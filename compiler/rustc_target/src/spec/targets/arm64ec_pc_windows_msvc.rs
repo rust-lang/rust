@@ -20,9 +20,9 @@ pub(crate) fn target() -> Target {
         llvm_target: "arm64ec-pc-windows-msvc".into(),
         metadata: TargetMetadata {
             description: Some("Arm64EC Windows MSVC".into()),
-            tier: Some(3),
+            tier: Some(2),
             host_tools: Some(false),
-            std: None, // ?
+            std: Some(true),
         },
         pointer_width: 64,
         data_layout:

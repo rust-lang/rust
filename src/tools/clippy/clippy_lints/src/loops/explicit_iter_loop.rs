@@ -138,9 +138,9 @@ fn is_ref_iterable<'tcx>(
             return Some((AdjustKind::None, self_ty));
         }
 
-        let res_ty = cx
-            .tcx
-            .erase_regions(EarlyBinder::bind(req_res_ty).instantiate(cx.tcx, typeck.node_args(call_expr.hir_id)));
+        let res_ty = cx.tcx.erase_and_anonymize_regions(
+            EarlyBinder::bind(req_res_ty).instantiate(cx.tcx, typeck.node_args(call_expr.hir_id)),
+        );
         let mutbl = if let ty::Ref(_, _, mutbl) = *req_self_ty.kind() {
             Some(mutbl)
         } else {

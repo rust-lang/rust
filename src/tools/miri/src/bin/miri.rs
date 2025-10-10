@@ -39,7 +39,7 @@ use std::sync::atomic::{AtomicI32, AtomicU32, Ordering};
 
 use miri::{
     BacktraceStyle, BorrowTrackerMethod, GenmcConfig, GenmcCtx, MiriConfig, MiriEntryFnType,
-    ProvenanceMode, RetagFields, TreeBorrowsParams, ValidationMode,
+    ProvenanceMode, RetagFields, TreeBorrowsParams, ValidationMode, run_genmc_mode,
 };
 use rustc_abi::ExternAbi;
 use rustc_data_structures::sync;
@@ -67,8 +67,6 @@ use crate::log::setup::{deinit_loggers, init_early_loggers, init_late_loggers};
 struct MiriCompilerCalls {
     miri_config: Option<MiriConfig>,
     many_seeds: Option<ManySeedsConfig>,
-    /// Settings for using GenMC with Miri.
-    genmc_config: Option<GenmcConfig>,
 }
 
 struct ManySeedsConfig {
@@ -77,12 +75,8 @@ struct ManySeedsConfig {
 }
 
 impl MiriCompilerCalls {
-    fn new(
-        miri_config: MiriConfig,
-        many_seeds: Option<ManySeedsConfig>,
-        genmc_config: Option<GenmcConfig>,
-    ) -> Self {
-        Self { miri_config: Some(miri_config), many_seeds, genmc_config }
+    fn new(miri_config: MiriConfig, many_seeds: Option<ManySeedsConfig>) -> Self {
+        Self { miri_config: Some(miri_config), many_seeds }
     }
 }
 
@@ -192,10 +186,18 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
                     optimizations is usually marginal at best.");
         }
 
-        if let Some(genmc_config) = &self.genmc_config {
-            let _genmc_ctx = Rc::new(GenmcCtx::new(&config, genmc_config));
-
-            todo!("GenMC mode not yet implemented");
+        // Run in GenMC mode if enabled.
+        if config.genmc_config.is_some() {
+            // This is the entry point used in GenMC mode.
+            // This closure will be called multiple times to explore the concurrent execution space of the program.
+            let eval_entry_once = |genmc_ctx: Rc<GenmcCtx>| {
+                miri::eval_entry(tcx, entry_def_id, entry_type, &config, Some(genmc_ctx))
+            };
+            let return_code = run_genmc_mode(&config, eval_entry_once, tcx).unwrap_or_else(|| {
+                tcx.dcx().abort_if_errors();
+                rustc_driver::EXIT_FAILURE
+            });
+            exit(return_code);
         };
 
         if let Some(many_seeds) = self.many_seeds.take() {
@@ -487,7 +489,6 @@ fn main() {
     let mut many_seeds_keep_going = false;
     let mut miri_config = MiriConfig::default();
     miri_config.env = env_snapshot;
-    let mut genmc_config = None;
 
     let mut rustc_args = vec![];
     let mut after_dashdash = false;
@@ -563,7 +564,11 @@ fn main() {
         } else if arg == "-Zmiri-deterministic-floats" {
             miri_config.float_nondet = false;
         } else if arg == "-Zmiri-no-extra-rounding-error" {
-            miri_config.float_rounding_error = false;
+            miri_config.float_rounding_error = miri::FloatRoundingErrorMode::None;
+        } else if arg == "-Zmiri-max-extra-rounding-error" {
+            miri_config.float_rounding_error = miri::FloatRoundingErrorMode::Max;
+        } else if arg == "-Zmiri-no-short-fd-operations" {
+            miri_config.short_fd_operations = false;
         } else if arg == "-Zmiri-strict-provenance" {
             miri_config.provenance_mode = ProvenanceMode::Strict;
         } else if arg == "-Zmiri-permissive-provenance" {
@@ -603,9 +608,9 @@ fn main() {
         } else if arg == "-Zmiri-many-seeds-keep-going" {
             many_seeds_keep_going = true;
         } else if let Some(trimmed_arg) = arg.strip_prefix("-Zmiri-genmc") {
-            // FIXME(GenMC): Currently, GenMC mode is incompatible with aliasing model checking.
-            miri_config.borrow_tracker = None;
-            GenmcConfig::parse_arg(&mut genmc_config, trimmed_arg);
+            if let Err(msg) = GenmcConfig::parse_arg(&mut miri_config.genmc_config, trimmed_arg) {
+                fatal_error!("{msg}");
+            }
         } else if let Some(param) = arg.strip_prefix("-Zmiri-env-forward=") {
             miri_config.forwarded_env_vars.push(param.to_owned());
         } else if let Some(param) = arg.strip_prefix("-Zmiri-env-set=") {
@@ -740,14 +745,11 @@ fn main() {
         many_seeds.map(|seeds| ManySeedsConfig { seeds, keep_going: many_seeds_keep_going });
 
     // Validate settings for data race detection and GenMC mode.
-    assert_eq!(genmc_config.is_some(), miri_config.genmc_mode);
-    if genmc_config.is_some() {
-        if !miri_config.data_race_detector {
-            fatal_error!("Cannot disable data race detection in GenMC mode (currently)");
-        } else if !miri_config.weak_memory_emulation {
-            fatal_error!("Cannot disable weak memory emulation in GenMC mode");
-        }
-    } else if miri_config.weak_memory_emulation && !miri_config.data_race_detector {
+    if let Err(err) = GenmcConfig::validate_genmc_mode_settings(&mut miri_config) {
+        fatal_error!("Invalid settings: {err}");
+    }
+
+    if miri_config.weak_memory_emulation && !miri_config.data_race_detector {
         fatal_error!(
             "Weak memory emulation cannot be enabled when the data race detector is disabled"
         );
@@ -765,8 +767,5 @@ fn main() {
             );
         }
     }
-    run_compiler_and_exit(
-        &rustc_args,
-        &mut MiriCompilerCalls::new(miri_config, many_seeds, genmc_config),
-    )
+    run_compiler_and_exit(&rustc_args, &mut MiriCompilerCalls::new(miri_config, many_seeds))
 }

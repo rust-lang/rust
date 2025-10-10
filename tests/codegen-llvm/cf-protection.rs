@@ -3,7 +3,7 @@
 //@ add-core-stubs
 //@ revisions: undefined none branch return full
 //@ needs-llvm-components: x86
-//@ [undefined] compile-flags:
+// [undefined] no extra compile-flags
 //@ [none] compile-flags: -Z cf-protection=none
 //@ [branch] compile-flags: -Z cf-protection=branch
 //@ [return] compile-flags: -Z cf-protection=return

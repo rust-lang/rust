@@ -1,4 +1,5 @@
 //@ proc-macro: derive-bad.rs
+//@ ignore-backends: gcc
 
 #[macro_use]
 extern crate derive_bad;

@@ -10,20 +10,23 @@ use hir_expand::name::Name;
 use stdx::never;
 
 use crate::{
-    InferenceDiagnostic, Interner, Substitution, TraitRef, TraitRefExt, Ty, TyBuilder, TyExt,
-    TyKind, ValueTyDefId,
+    InferenceDiagnostic, Interner, LifetimeElisionKind, Substitution, TraitRef, TraitRefExt, Ty,
+    TyBuilder, TyExt, TyKind, ValueTyDefId,
     builder::ParamKind,
     consteval, error_lifetime,
     generics::generics,
     infer::diagnostics::InferenceTyLoweringContext as TyLoweringContext,
-    lower::LifetimeElisionKind,
     method_resolution::{self, VisibleFromModule},
+    next_solver::{
+        DbInterner,
+        mapping::{ChalkToNextSolver, NextSolverToChalk},
+    },
     to_chalk_trait_id,
 };
 
 use super::{ExprOrPatId, InferenceContext, InferenceTyDiagnosticSource};
 
-impl InferenceContext<'_> {
+impl<'db> InferenceContext<'db> {
     pub(super) fn infer_path(&mut self, path: &Path, id: ExprOrPatId) -> Option<Ty> {
         let (value_def, generic_def, substs) = match self.resolve_value_path(path, id)? {
             ValuePathResolution::GenericDef(value_def, generic_def, substs) => {
@@ -31,13 +34,15 @@ impl InferenceContext<'_> {
             }
             ValuePathResolution::NonGeneric(ty) => return Some(ty),
         };
-        let substs = self.insert_type_vars(substs);
-        let substs = self.normalize_associated_types_in(substs);
+        let substs =
+            self.process_remote_user_written_ty::<_, crate::next_solver::GenericArgs<'db>>(substs);
 
         self.add_required_obligations_for_value_path(generic_def, &substs);
 
-        let ty = self.db.value_ty(value_def)?.substitute(Interner, &substs);
-        let ty = self.normalize_associated_types_in(ty);
+        let interner = DbInterner::new_with(self.db, None, None);
+        let args: crate::next_solver::GenericArgs<'_> = substs.to_nextsolver(interner);
+        let ty = self.db.value_ty(value_def)?.instantiate(interner, args).to_chalk(interner);
+        let ty = self.process_remote_user_written_ty(ty);
         Some(ty)
     }
 
@@ -69,8 +74,11 @@ impl InferenceContext<'_> {
             }
             ValueNs::ImplSelf(impl_id) => {
                 let generics = crate::generics::generics(self.db, impl_id.into());
+                let interner = DbInterner::new_with(self.db, None, None);
                 let substs = generics.placeholder_subst(self.db);
-                let ty = self.db.impl_self_ty(impl_id).substitute(Interner, &substs);
+                let args: crate::next_solver::GenericArgs<'_> = substs.to_nextsolver(interner);
+                let ty =
+                    self.db.impl_self_ty(impl_id).instantiate(interner, args).to_chalk(interner);
                 return if let Some((AdtId::StructId(struct_id), substs)) = ty.as_adt() {
                     Some(ValuePathResolution::GenericDef(
                         struct_id.into(),
@@ -89,9 +97,9 @@ impl InferenceContext<'_> {
 
         let generic_def = value_def.to_generic_def_id(self.db);
         if let GenericDefId::StaticId(_) = generic_def {
+            let interner = DbInterner::new_with(self.db, None, None);
             // `Static` is the kind of item that can never be generic currently. We can just skip the binders to get its type.
-            let (ty, binders) = self.db.value_ty(value_def)?.into_value_and_skipped_binders();
-            stdx::always!(binders.is_empty(Interner), "non-empty binders for non-generic def",);
+            let ty = self.db.value_ty(value_def)?.skip_binder().to_chalk(interner);
             return Some(ValuePathResolution::NonGeneric(ty));
         };
 
@@ -173,14 +181,12 @@ impl InferenceContext<'_> {
             let last = path.segments().last()?;
 
             let (ty, orig_ns) = path_ctx.ty_ctx().lower_ty_ext(type_ref);
-            let ty = self.table.insert_type_vars(ty);
-            let ty = self.table.normalize_associated_types_in(ty);
+            let ty = self.table.process_user_written_ty(ty);
 
             path_ctx.ignore_last_segment();
             let (ty, _) = path_ctx.lower_ty_relative_path(ty, orig_ns, true);
             drop_ctx(ctx, no_diagnostics);
-            let ty = self.table.insert_type_vars(ty);
-            let ty = self.table.normalize_associated_types_in(ty);
+            let ty = self.table.process_user_written_ty(ty);
             self.resolve_ty_assoc_item(ty, last.name, id).map(|(it, substs)| (it, Some(substs)))?
         } else {
             let hygiene = self.body.expr_or_pat_path_hygiene(id);
@@ -223,8 +229,7 @@ impl InferenceContext<'_> {
                                 return None;
                             }
 
-                            let ty = self.insert_type_vars(ty);
-                            let ty = self.normalize_associated_types_in(ty);
+                            let ty = self.process_user_written_ty(ty);
 
                             self.resolve_ty_assoc_item(ty, last_segment.name, id)
                         }
@@ -322,7 +327,7 @@ impl InferenceContext<'_> {
             return Some(result);
         }
 
-        let canonical_ty = self.canonicalize(ty.clone());
+        let canonical_ty = self.canonicalize(ty.clone().to_nextsolver(self.table.interner));
 
         let mut not_visible = None;
         let res = method_resolution::iterate_method_candidates(
@@ -357,10 +362,13 @@ impl InferenceContext<'_> {
         };
         let substs = match container {
             ItemContainerId::ImplId(impl_id) => {
+                let interner = DbInterner::new_with(self.db, None, None);
                 let impl_substs = TyBuilder::subst_for_def(self.db, impl_id, None)
                     .fill_with_inference_vars(&mut self.table)
                     .build();
-                let impl_self_ty = self.db.impl_self_ty(impl_id).substitute(Interner, &impl_substs);
+                let args: crate::next_solver::GenericArgs<'_> = impl_substs.to_nextsolver(interner);
+                let impl_self_ty =
+                    self.db.impl_self_ty(impl_id).instantiate(interner, args).to_chalk(interner);
                 self.unify(&impl_self_ty, &ty);
                 impl_substs
             }
@@ -392,7 +400,7 @@ impl InferenceContext<'_> {
         name: &Name,
         id: ExprOrPatId,
     ) -> Option<(ValueNs, Substitution)> {
-        let ty = self.resolve_ty_shallow(ty);
+        let ty = self.table.structurally_resolve_type(ty);
         let (enum_id, subst) = match ty.as_adt() {
             Some((AdtId::EnumId(e), subst)) => (e, subst),
             _ => return None,

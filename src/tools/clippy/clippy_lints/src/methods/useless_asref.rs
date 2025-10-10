@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::ty::{implements_trait, should_call_clone_as_function, walk_ptrs_ty_depth};
+use clippy_utils::ty::{implements_trait, peel_and_count_ty_refs, should_call_clone_as_function};
 use clippy_utils::{get_parent_expr, is_diag_trait_item, path_to_local_id, peel_blocks, strip_pat_refs};
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, LangItem};
@@ -50,8 +50,8 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, call_name: Symbo
         // check if the type after `as_ref` or `as_mut` is the same as before
         let rcv_ty = cx.typeck_results().expr_ty(recvr);
         let res_ty = cx.typeck_results().expr_ty(expr);
-        let (base_res_ty, res_depth) = walk_ptrs_ty_depth(res_ty);
-        let (base_rcv_ty, rcv_depth) = walk_ptrs_ty_depth(rcv_ty);
+        let (base_res_ty, res_depth, _) = peel_and_count_ty_refs(res_ty);
+        let (base_rcv_ty, rcv_depth, _) = peel_and_count_ty_refs(rcv_ty);
         if base_rcv_ty == base_res_ty && rcv_depth >= res_depth {
             if let Some(parent) = get_parent_expr(cx, expr) {
                 // allow the `as_ref` or `as_mut` if it is followed by another method call
@@ -79,7 +79,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, call_name: Symbo
                 applicability,
             );
         }
-    } else if let Some(impl_id) = cx.tcx.impl_of_method(def_id)
+    } else if let Some(impl_id) = cx.tcx.impl_of_assoc(def_id)
         && let Some(adt) = cx.tcx.type_of(impl_id).instantiate_identity().ty_adt_def()
         && matches!(cx.tcx.get_diagnostic_name(adt.did()), Some(sym::Option | sym::Result))
     {
@@ -131,7 +131,7 @@ fn is_calling_clone(cx: &LateContext<'_>, arg: &hir::Expr<'_>) -> bool {
                 hir::ExprKind::MethodCall(method, obj, [], _) => {
                     if method.ident.name == sym::clone
                         && let Some(fn_id) = cx.typeck_results().type_dependent_def_id(closure_expr.hir_id)
-                        && let Some(trait_id) = cx.tcx.trait_of_item(fn_id)
+                        && let Some(trait_id) = cx.tcx.trait_of_assoc(fn_id)
                         // We check it's the `Clone` trait.
                         && cx.tcx.lang_items().clone_trait().is_some_and(|id| id == trait_id)
                         // no autoderefs

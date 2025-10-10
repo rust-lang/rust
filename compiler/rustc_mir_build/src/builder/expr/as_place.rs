@@ -103,7 +103,7 @@ fn convert_to_hir_projections_and_truncate_for_capture(
             }
             ProjectionElem::UnwrapUnsafeBinder(_) => HirProjectionKind::UnwrapUnsafeBinder,
             // These do not affect anything, they just make sure we know the right type.
-            ProjectionElem::OpaqueCast(_) | ProjectionElem::Subtype(..) => continue,
+            ProjectionElem::OpaqueCast(_) => continue,
             ProjectionElem::Index(..)
             | ProjectionElem::ConstantIndex { .. }
             | ProjectionElem::Subslice { .. } => {
@@ -663,7 +663,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// For arrays it'll be `Operand::Constant` with the actual length;
     /// For slices it'll be `Operand::Move` of a local using `PtrMetadata`.
-    fn len_of_slice_or_array(
+    pub(in crate::builder) fn len_of_slice_or_array(
         &mut self,
         block: BasicBlock,
         place: Place<'tcx>,
@@ -802,7 +802,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     ProjectionElem::Field(..)
                     | ProjectionElem::Downcast(..)
                     | ProjectionElem::OpaqueCast(..)
-                    | ProjectionElem::Subtype(..)
                     | ProjectionElem::ConstantIndex { .. }
                     | ProjectionElem::Subslice { .. }
                     | ProjectionElem::UnwrapUnsafeBinder(_) => (),

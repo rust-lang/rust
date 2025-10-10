@@ -49,13 +49,13 @@ LL |     let parser: i32;
    |         ^^^^^^
 
 error: binding's name is too similar to existing binding
-  --> tests/ui/similar_names.rs:98:16
+  --> tests/ui/similar_names.rs:102:16
    |
 LL |         bpple: sprang,
    |                ^^^^^^
    |
 note: existing binding defined here
-  --> tests/ui/similar_names.rs:97:16
+  --> tests/ui/similar_names.rs:101:16
    |
 LL |         apple: spring,
    |                ^^^^^^

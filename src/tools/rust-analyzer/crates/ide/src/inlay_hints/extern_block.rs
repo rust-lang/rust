@@ -81,10 +81,10 @@ fn item_hint(
         text_edit: Some(config.lazy_text_edit(|| {
             let mut builder = TextEdit::builder();
             builder.insert(token.text_range().start(), "unsafe ".to_owned());
-            if extern_block.unsafe_token().is_none() {
-                if let Some(abi) = extern_block.abi() {
-                    builder.insert(abi.syntax().text_range().start(), "unsafe ".to_owned());
-                }
+            if extern_block.unsafe_token().is_none()
+                && let Some(abi) = extern_block.abi()
+            {
+                builder.insert(abi.syntax().text_range().start(), "unsafe ".to_owned());
             }
             builder.finish()
         })),

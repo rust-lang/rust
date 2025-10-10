@@ -1,3 +1,4 @@
+//@ ignore-backends: gcc
 //@ run-pass
 //@ needs-unwind
 

@@ -720,7 +720,7 @@ fn incremental_verify_ich_failed<Tcx>(
         static INSIDE_VERIFY_PANIC: Cell<bool> = const { Cell::new(false) };
     };
 
-    let old_in_panic = INSIDE_VERIFY_PANIC.with(|in_panic| in_panic.replace(true));
+    let old_in_panic = INSIDE_VERIFY_PANIC.replace(true);
 
     if old_in_panic {
         tcx.sess().dcx().emit_err(crate::error::Reentrant);
@@ -739,7 +739,7 @@ fn incremental_verify_ich_failed<Tcx>(
         panic!("Found unstable fingerprints for {dep_node:?}: {}", result());
     }
 
-    INSIDE_VERIFY_PANIC.with(|in_panic| in_panic.set(old_in_panic));
+    INSIDE_VERIFY_PANIC.set(old_in_panic);
 }
 
 /// Ensure that either this query has all green inputs or been executed.

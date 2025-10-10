@@ -1,5 +1,6 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::source::SpanRangeExt;
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, ExprKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -82,6 +83,19 @@ impl SemicolonBlock {
         let insert_span = tail.span.source_callsite().shrink_to_hi();
         let remove_span = semi_span.with_lo(block.span.hi());
 
+        // If the block is surrounded by parens (`({ 0 });`), the author probably knows what
+        // they're doing and why, so don't get in their way.
+        //
+        // This has the additional benefit of stopping the block being parsed as a function call:
+        // ```
+        // fn foo() {
+        //     ({ 0 }); // if we remove this `;`, this will parse as a `({ 0 })(5);` function call
+        //     (5);
+        // }
+        if remove_span.check_source_text(cx, |src| src.contains(')')) {
+            return;
+        }
+
         if self.semicolon_inside_block_ignore_singleline && get_line(cx, remove_span) == get_line(cx, insert_span) {
             return;
         }
@@ -102,7 +116,7 @@ impl SemicolonBlock {
     }
 
     fn semicolon_outside_block(&self, cx: &LateContext<'_>, block: &Block<'_>, tail_stmt_expr: &Expr<'_>) {
-        let insert_span = block.span.with_lo(block.span.hi());
+        let insert_span = block.span.shrink_to_hi();
 
         // For macro call semicolon statements (`mac!();`), the statement's span does not actually
         // include the semicolon itself, so use `mac_call_stmt_semi_span`, which finds the semicolon
@@ -144,28 +158,25 @@ impl LateLintPass<'_> for SemicolonBlock {
                 kind: ExprKind::Block(block, _),
                 ..
             }) if !block.span.from_expansion() && stmt.span.contains(block.span) => {
-                let Block {
-                    expr: None,
-                    stmts: [.., stmt],
-                    ..
-                } = block
-                else {
-                    return;
-                };
-                let &Stmt {
-                    kind: StmtKind::Semi(expr),
-                    ..
-                } = stmt
-                else {
-                    return;
-                };
-                self.semicolon_outside_block(cx, block, expr);
+                if block.expr.is_none()
+                    && let [.., stmt] = block.stmts
+                    && let StmtKind::Semi(expr) = stmt.kind
+                {
+                    self.semicolon_outside_block(cx, block, expr);
+                }
             },
             StmtKind::Semi(Expr {
-                kind: ExprKind::Block(block @ Block { expr: Some(tail), .. }, _),
+                kind: ExprKind::Block(block, _),
                 ..
             }) if !block.span.from_expansion() => {
-                self.semicolon_inside_block(cx, block, tail, stmt.span);
+                let attrs = cx.tcx.hir_attrs(stmt.hir_id);
+                if !attrs.is_empty() && !cx.tcx.features().stmt_expr_attributes() {
+                    return;
+                }
+
+                if let Some(tail) = block.expr {
+                    self.semicolon_inside_block(cx, block, tail, stmt.span);
+                }
             },
             _ => (),
         }
@@ -173,9 +184,5 @@ impl LateLintPass<'_> for SemicolonBlock {
 }
 
 fn get_line(cx: &LateContext<'_>, span: Span) -> Option<usize> {
-    if let Ok(line) = cx.sess().source_map().lookup_line(span.lo()) {
-        return Some(line.line);
-    }
-
-    None
+    cx.sess().source_map().lookup_line(span.lo()).ok().map(|line| line.line)
 }

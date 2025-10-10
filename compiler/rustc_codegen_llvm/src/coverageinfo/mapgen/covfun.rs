@@ -10,8 +10,8 @@ use std::sync::Arc;
 use rustc_abi::Align;
 use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods as _, ConstCodegenMethods};
 use rustc_middle::mir::coverage::{
-    BasicCoverageBlock, CovTerm, CoverageIdsInfo, Expression, FunctionCoverageInfo, Mapping,
-    MappingKind, Op,
+    BasicCoverageBlock, CounterId, CovTerm, CoverageIdsInfo, Expression, ExpressionId,
+    FunctionCoverageInfo, Mapping, MappingKind, Op,
 };
 use rustc_middle::ty::{Instance, TyCtxt};
 use rustc_span::{SourceFile, Span};
@@ -27,13 +27,16 @@ use crate::llvm;
 /// the final record that will be embedded in the `__llvm_covfun` section.
 #[derive(Debug)]
 pub(crate) struct CovfunRecord<'tcx> {
+    /// Not used directly, but helpful in debug messages.
+    _instance: Instance<'tcx>,
+
     mangled_function_name: &'tcx str,
     source_hash: u64,
     is_used: bool,
 
     virtual_file_mapping: VirtualFileMapping,
     expressions: Vec<ffi::CounterExpression>,
-    regions: ffi::Regions,
+    regions: llvm_cov::Regions,
 }
 
 impl<'tcx> CovfunRecord<'tcx> {
@@ -55,12 +58,13 @@ pub(crate) fn prepare_covfun_record<'tcx>(
     let expressions = prepare_expressions(ids_info);
 
     let mut covfun = CovfunRecord {
+        _instance: instance,
         mangled_function_name: tcx.symbol_name(instance).name,
         source_hash: if is_used { fn_cov_info.function_source_hash } else { 0 },
         is_used,
         virtual_file_mapping: VirtualFileMapping::default(),
         expressions,
-        regions: ffi::Regions::default(),
+        regions: llvm_cov::Regions::default(),
     };
 
     fill_region_tables(tcx, fn_cov_info, ids_info, &mut covfun);
@@ -73,10 +77,21 @@ pub(crate) fn prepare_covfun_record<'tcx>(
     Some(covfun)
 }
 
+pub(crate) fn counter_for_term(term: CovTerm) -> ffi::Counter {
+    use ffi::Counter;
+    match term {
+        CovTerm::Zero => Counter::ZERO,
+        CovTerm::Counter(id) => {
+            Counter { kind: ffi::CounterKind::CounterValueReference, id: CounterId::as_u32(id) }
+        }
+        CovTerm::Expression(id) => {
+            Counter { kind: ffi::CounterKind::Expression, id: ExpressionId::as_u32(id) }
+        }
+    }
+}
+
 /// Convert the function's coverage-counter expressions into a form suitable for FFI.
 fn prepare_expressions(ids_info: &CoverageIdsInfo) -> Vec<ffi::CounterExpression> {
-    let counter_for_term = ffi::Counter::from_term;
-
     // We know that LLVM will optimize out any unused expressions before
     // producing the final coverage map, so there's no need to do the same
     // thing on the Rust side unless we're confident we can do much better.
@@ -102,11 +117,21 @@ fn fill_region_tables<'tcx>(
     ids_info: &'tcx CoverageIdsInfo,
     covfun: &mut CovfunRecord<'tcx>,
 ) {
+    // If this function is unused, replace all counters with zero.
+    let counter_for_bcb = |bcb: BasicCoverageBlock| -> ffi::Counter {
+        let term = if covfun.is_used {
+            ids_info.term_for_bcb[bcb].expect("every BCB in a mapping was given a term")
+        } else {
+            CovTerm::Zero
+        };
+        counter_for_term(term)
+    };
+
     // Currently a function's mappings must all be in the same file, so use the
     // first mapping's span to determine the file.
     let source_map = tcx.sess.source_map();
     let Some(first_span) = (try { fn_cov_info.mappings.first()?.span }) else {
-        debug_assert!(false, "function has no mappings: {:?}", covfun.mangled_function_name);
+        debug_assert!(false, "function has no mappings: {covfun:?}");
         return;
     };
     let source_file = source_map.lookup_source_file(first_span.lo());
@@ -117,32 +142,20 @@ fn fill_region_tables<'tcx>(
     // codegen needs to handle that gracefully to avoid #133606.
     // It's hard for tests to trigger this organically, so instead we set
     // `-Zcoverage-options=discard-all-spans-in-codegen` to force it to occur.
-    let discard_all = tcx.sess.coverage_discard_all_spans_in_codegen();
+    let discard_all = tcx.sess.coverage_options().discard_all_spans_in_codegen;
     let make_coords = |span: Span| {
         if discard_all { None } else { spans::make_coords(source_map, &source_file, span) }
     };
 
-    let ffi::Regions {
+    let llvm_cov::Regions {
         code_regions,
         expansion_regions: _, // FIXME(Zalathar): Fill out support for expansion regions
         branch_regions,
-        mcdc_branch_regions,
-        mcdc_decision_regions,
     } = &mut covfun.regions;
 
     // For each counter/region pair in this function+file, convert it to a
     // form suitable for FFI.
     for &Mapping { ref kind, span } in &fn_cov_info.mappings {
-        // If this function is unused, replace all counters with zero.
-        let counter_for_bcb = |bcb: BasicCoverageBlock| -> ffi::Counter {
-            let term = if covfun.is_used {
-                ids_info.term_for_bcb[bcb].expect("every BCB in a mapping was given a term")
-            } else {
-                CovTerm::Zero
-            };
-            ffi::Counter::from_term(term)
-        };
-
         let Some(coords) = make_coords(span) else { continue };
         let cov_span = coords.make_coverage_span(local_file_id);
 
@@ -155,20 +168,6 @@ fn fill_region_tables<'tcx>(
                     cov_span,
                     true_counter: counter_for_bcb(true_bcb),
                     false_counter: counter_for_bcb(false_bcb),
-                });
-            }
-            MappingKind::MCDCBranch { true_bcb, false_bcb, mcdc_params } => {
-                mcdc_branch_regions.push(ffi::MCDCBranchRegion {
-                    cov_span,
-                    true_counter: counter_for_bcb(true_bcb),
-                    false_counter: counter_for_bcb(false_bcb),
-                    mcdc_branch_params: ffi::mcdc::BranchParameters::from(mcdc_params),
-                });
-            }
-            MappingKind::MCDCDecision(mcdc_decision_params) => {
-                mcdc_decision_regions.push(ffi::MCDCDecisionRegion {
-                    cov_span,
-                    mcdc_decision_params: ffi::mcdc::DecisionParameters::from(mcdc_decision_params),
                 });
             }
         }
@@ -184,6 +183,7 @@ pub(crate) fn generate_covfun_record<'tcx>(
     covfun: &CovfunRecord<'tcx>,
 ) {
     let &CovfunRecord {
+        _instance,
         mangled_function_name,
         source_hash,
         is_used,

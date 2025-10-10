@@ -34,8 +34,7 @@ pub use eval::{
 };
 pub use lower::{MirLowerError, lower_to_mir, mir_body_for_closure_query, mir_body_query};
 pub use monomorphization::{
-    monomorphize_mir_body_bad, monomorphized_mir_body_for_closure_query,
-    monomorphized_mir_body_query,
+    monomorphized_mir_body_for_closure_query, monomorphized_mir_body_query,
 };
 use rustc_hash::FxHashMap;
 use smallvec::{SmallVec, smallvec};
@@ -107,7 +106,7 @@ pub enum OperandKind {
 }
 
 impl Operand {
-    fn from_concrete_const(data: Box<[u8]>, memory_map: MemoryMap, ty: Ty) -> Self {
+    fn from_concrete_const(data: Box<[u8]>, memory_map: MemoryMap<'static>, ty: Ty) -> Self {
         Operand {
             kind: OperandKind::Constant(intern_const_scalar(
                 ConstScalar::Bytes(data, memory_map),

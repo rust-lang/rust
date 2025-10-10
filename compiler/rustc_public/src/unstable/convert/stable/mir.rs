@@ -215,7 +215,6 @@ impl<'tcx> Stable<'tcx> for mir::Rvalue<'tcx> {
                 mutability.stable(tables, cx),
                 place.stable(tables, cx),
             ),
-            Len(place) => crate::mir::Rvalue::Len(place.stable(tables, cx)),
             Cast(cast_kind, op, ty) => crate::mir::Rvalue::Cast(
                 cast_kind.stable(tables, cx),
                 op.stable(tables, cx),
@@ -357,6 +356,7 @@ impl<'tcx> Stable<'tcx> for mir::CastKind {
             PtrToPtr => crate::mir::CastKind::PtrToPtr,
             FnPtrToPtr => crate::mir::CastKind::FnPtrToPtr,
             Transmute => crate::mir::CastKind::Transmute,
+            Subtype => crate::mir::CastKind::Subtype,
         }
     }
 }
@@ -454,7 +454,6 @@ impl<'tcx> Stable<'tcx> for mir::PlaceElem<'tcx> {
             // found at https://github.com/rust-lang/rust/pull/117517#issuecomment-1811683486
             Downcast(_, idx) => crate::mir::ProjectionElem::Downcast(idx.stable(tables, cx)),
             OpaqueCast(ty) => crate::mir::ProjectionElem::OpaqueCast(ty.stable(tables, cx)),
-            Subtype(ty) => crate::mir::ProjectionElem::Subtype(ty.stable(tables, cx)),
             UnwrapUnsafeBinder(..) => todo!("FIXME(unsafe_binders):"),
         }
     }
@@ -653,7 +652,6 @@ impl<'tcx> Stable<'tcx> for mir::AggregateKind<'tcx> {
                 crate::mir::AggregateKind::Coroutine(
                     tables.coroutine_def(*def_id),
                     generic_arg.stable(tables, cx),
-                    cx.coroutine_movability(*def_id).stable(tables, cx),
                 )
             }
             mir::AggregateKind::CoroutineClosure(def_id, generic_args) => {

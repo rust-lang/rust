@@ -73,14 +73,30 @@ pub trait TraitEngine<'tcx, E: 'tcx>: 'tcx {
         }
     }
 
+    /// Go over the list of pending obligations and try to evaluate them.
+    ///
+    /// For each result:
+    /// Ok: remove the obligation from the list
+    /// Ambiguous: leave the obligation in the list to be evaluated later
+    /// Err: remove the obligation from the list and return an error
+    ///
+    /// Returns a list of errors from obligations that evaluated to Err.
     #[must_use]
-    fn select_where_possible(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E>;
+    fn try_evaluate_obligations(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E>;
 
     fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E>;
 
+    /// Evaluate all pending obligations, return error if they can't be evaluated.
+    ///
+    /// For each result:
+    /// Ok: remove the obligation from the list
+    /// Ambiguous: remove the obligation from the list and return an error
+    /// Err: remove the obligation from the list and return an error
+    ///
+    /// Returns a list of errors from obligations that evaluated to Ambiguous or Err.
     #[must_use]
-    fn select_all_or_error(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E> {
-        let errors = self.select_where_possible(infcx);
+    fn evaluate_obligations_error_on_ambiguity(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E> {
+        let errors = self.try_evaluate_obligations(infcx);
         if !errors.is_empty() {
             return errors;
         }
@@ -93,7 +109,7 @@ pub trait TraitEngine<'tcx, E: 'tcx>: 'tcx {
     fn pending_obligations(&self) -> PredicateObligations<'tcx>;
 
     /// Among all pending obligations, collect those are stalled on a inference variable which has
-    /// changed since the last call to `select_where_possible`. Those obligations are marked as
+    /// changed since the last call to `try_evaluate_obligations`. Those obligations are marked as
     /// successful and returned.
     fn drain_stalled_obligations_for_coroutines(
         &mut self,

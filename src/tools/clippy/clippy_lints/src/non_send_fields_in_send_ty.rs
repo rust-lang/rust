@@ -83,10 +83,10 @@ impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
         if !item.span.in_external_macro(cx.tcx.sess.source_map())
             && let Some(send_trait) = cx.tcx.get_diagnostic_item(sym::Send)
             && let ItemKind::Impl(hir_impl) = &item.kind
-            && let Some(trait_ref) = &hir_impl.of_trait
-            && let Some(trait_id) = trait_ref.trait_def_id()
+            && let Some(of_trait) = &hir_impl.of_trait
+            && let Some(trait_id) = of_trait.trait_ref.trait_def_id()
             && send_trait == trait_id
-            && hir_impl.polarity == ImplPolarity::Positive
+            && of_trait.polarity == ImplPolarity::Positive
             && let Some(ty_trait_ref) = cx.tcx.impl_trait_ref(item.owner_id)
             && let self_ty = ty_trait_ref.instantiate_identity().self_ty()
             && let ty::Adt(adt_def, impl_trait_args) = self_ty.kind()

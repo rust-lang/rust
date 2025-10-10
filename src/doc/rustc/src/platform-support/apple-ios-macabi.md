@@ -56,6 +56,17 @@ Rust programs can be built for these targets by specifying `--target`, if
 $ rustc --target aarch64-apple-ios-macabi your-code.rs
 ```
 
+The target can be differentiated from the iOS targets with the
+`target_env = "macabi"` cfg (or `target_abi = "macabi"` before Rust 1.91.0).
+
+```rust
+if cfg!(target_env = "macabi") {
+    // Do something only on Mac Catalyst.
+}
+```
+
+This is similar to the `TARGET_OS_MACCATALYST` define in C code.
+
 ## Testing
 
 Mac Catalyst binaries can be run directly on macOS 10.15 Catalina or newer.

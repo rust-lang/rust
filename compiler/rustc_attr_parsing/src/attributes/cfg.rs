@@ -1,6 +1,7 @@
 use rustc_ast::{LitKind, NodeId};
-use rustc_attr_data_structures::{CfgEntry, RustcVersion};
 use rustc_feature::{AttributeTemplate, Features, template};
+use rustc_hir::RustcVersion;
+use rustc_hir::attrs::CfgEntry;
 use rustc_session::Session;
 use rustc_session::config::ExpectedValues;
 use rustc_session::lint::BuiltinLintDiag;
@@ -15,7 +16,10 @@ use crate::{
     CfgMatchesLintEmitter, fluent_generated, parse_version, session_diagnostics, try_gate_cfg,
 };
 
-pub const CFG_TEMPLATE: AttributeTemplate = template!(List: "predicate");
+pub const CFG_TEMPLATE: AttributeTemplate = template!(
+    List: &["predicate"],
+    "https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute"
+);
 
 pub fn parse_cfg_attr<'c, S: Stage>(
     cx: &'c mut AcceptContext<'_, '_, S>,
@@ -32,7 +36,7 @@ pub fn parse_cfg_attr<'c, S: Stage>(
     parse_cfg_entry(cx, single)
 }
 
-fn parse_cfg_entry<S: Stage>(
+pub(crate) fn parse_cfg_entry<S: Stage>(
     cx: &mut AcceptContext<'_, '_, S>,
     item: &MetaItemOrLitParser<'_>,
 ) -> Option<CfgEntry> {

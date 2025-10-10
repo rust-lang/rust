@@ -6,9 +6,9 @@ use std::sync::OnceLock;
 use build_helper::git::GitConfig;
 use camino::{Utf8Path, Utf8PathBuf};
 use semver::Version;
-use serde::de::{Deserialize, Deserializer, Error as _};
 
-use crate::executor::{ColorConfig, OutputFormat};
+use crate::edition::Edition;
+use crate::executor::ColorConfig;
 use crate::fatal;
 use crate::util::{Utf8PathBufExt, add_dylib_path, string_enum};
 
@@ -68,6 +68,7 @@ string_enum! {
         MirOpt => "mir-opt",
         Pretty => "pretty",
         RunMake => "run-make",
+        RunMakeCargo => "run-make-cargo",
         Rustdoc => "rustdoc",
         RustdocGui => "rustdoc-gui",
         RustdocJs => "rustdoc-js",
@@ -203,6 +204,10 @@ impl CodegenBackend {
             Self::Llvm => "llvm",
         }
     }
+
+    pub fn is_llvm(self) -> bool {
+        matches!(self, Self::Llvm)
+    }
 }
 
 /// Configuration for `compiletest` *per invocation*.
@@ -270,14 +275,20 @@ pub struct Config {
     /// between e.g. beta `cargo` vs in-tree `cargo`.
     ///
     /// FIXME: maybe rename this to reflect that this is a *staged* host cargo.
-    ///
-    /// FIXME(#134109): split `run-make` into two test suites, a test suite *with* staged cargo, and
-    /// another test suite *without*.
     pub cargo_path: Option<Utf8PathBuf>,
 
     /// Path to the stage 0 `rustc` used to build `run-make` recipes. This must not be confused with
     /// [`Self::rustc_path`].
     pub stage0_rustc_path: Option<Utf8PathBuf>,
+
+    /// Path to the stage 1 or higher `rustc` used to obtain target information via
+    /// `--print=all-target-specs-json` and similar queries.
+    ///
+    /// Normally this is unset, because [`Self::rustc_path`] can be used instead.
+    /// But when running "stage 1" ui-fulldeps tests, `rustc_path` is a stage 0
+    /// compiler, whereas target specs must be obtained from a stage 1+ compiler
+    /// (in case the JSON format has changed since the last bootstrap bump).
+    pub query_rustc_path: Option<Utf8PathBuf>,
 
     /// Path to the `rustdoc`-under-test. Like [`Self::rustc_path`], this `rustdoc` is *staged*.
     pub rustdoc_path: Option<Utf8PathBuf>,
@@ -556,13 +567,6 @@ pub struct Config {
     /// FIXME: this is *way* too coarse; the user can't select *which* info to verbosely dump.
     pub verbose: bool,
 
-    /// (Useless) Adjust libtest output format.
-    ///
-    /// FIXME: the hand-rolled executor does not support non-JSON output, because `compiletest` need
-    /// to package test outcome as `libtest`-esque JSON that `bootstrap` can intercept *anyway*.
-    /// However, now that we don't use the `libtest` executor, this is useless.
-    pub format: OutputFormat,
-
     /// Whether to use colors in test output.
     ///
     /// Note: the exact control mechanism is delegated to [`colored`].
@@ -609,10 +613,7 @@ pub struct Config {
     pub git_hash: bool,
 
     /// The default Rust edition.
-    ///
-    /// FIXME: perform stronger validation for this. There are editions that *definitely* exists,
-    /// but there might also be "future" edition.
-    pub edition: Option<String>,
+    pub edition: Option<Edition>,
 
     // Configuration for various run-make tests frobbing things like C compilers or querying about
     // various LLVM component information.
@@ -630,8 +631,6 @@ pub struct Config {
 
     /// Path to a NodeJS executable. Used for JS doctests, emscripten and WASM tests.
     pub nodejs: Option<String>,
-    /// Path to a npm executable. Used for rustdoc GUI tests.
-    pub npm: Option<String>,
 
     /// Whether to rerun tests even if the inputs are unchanged.
     pub force_rerun: bool,
@@ -658,10 +657,6 @@ pub struct Config {
     pub builtin_cfg_names: OnceLock<HashSet<String>>,
     pub supported_crate_types: OnceLock<HashSet<String>>,
 
-    /// FIXME: this is why we still need to depend on *staged* `std`, it's because we currently rely
-    /// on `#![feature(internal_output_capture)]` for [`std::io::set_output_capture`] to implement
-    /// `libtest`-esque `--no-capture`.
-    ///
     /// FIXME: rename this to the more canonical `no_capture`, or better, invert this to `capture`
     /// to avoid `!nocapture` double-negatives.
     pub nocapture: bool,
@@ -683,113 +678,12 @@ pub struct Config {
     pub minicore_path: Utf8PathBuf,
 
     /// Current codegen backend used.
-    pub codegen_backend: CodegenBackend,
+    pub default_codegen_backend: CodegenBackend,
+    /// Name/path of the backend to use instead of `default_codegen_backend`.
+    pub override_codegen_backend: Option<String>,
 }
 
 impl Config {
-    /// Incomplete config intended for `src/tools/rustdoc-gui-test` **only** as
-    /// `src/tools/rustdoc-gui-test` wants to reuse `compiletest`'s directive -> test property
-    /// handling for `//@ {compile,run}-flags`, do not use for any other purpose.
-    ///
-    /// FIXME(#143827): this setup feels very hacky. It so happens that `tests/rustdoc-gui/`
-    /// **only** uses `//@ {compile,run}-flags` for now and not any directives that actually rely on
-    /// info that is assumed available in a fully populated [`Config`].
-    pub fn incomplete_for_rustdoc_gui_test() -> Config {
-        // FIXME(#143827): spelling this out intentionally, because this is questionable.
-        //
-        // For instance, `//@ ignore-stage1` will not work at all.
-        Config {
-            mode: TestMode::Rustdoc,
-            // E.g. this has no sensible default tbh.
-            suite: TestSuite::Ui,
-
-            // Dummy values.
-            edition: Default::default(),
-            bless: Default::default(),
-            fail_fast: Default::default(),
-            compile_lib_path: Utf8PathBuf::default(),
-            run_lib_path: Utf8PathBuf::default(),
-            rustc_path: Utf8PathBuf::default(),
-            cargo_path: Default::default(),
-            stage0_rustc_path: Default::default(),
-            rustdoc_path: Default::default(),
-            coverage_dump_path: Default::default(),
-            python: Default::default(),
-            jsondocck_path: Default::default(),
-            jsondoclint_path: Default::default(),
-            llvm_filecheck: Default::default(),
-            llvm_bin_dir: Default::default(),
-            run_clang_based_tests_with: Default::default(),
-            src_root: Utf8PathBuf::default(),
-            src_test_suite_root: Utf8PathBuf::default(),
-            build_root: Utf8PathBuf::default(),
-            build_test_suite_root: Utf8PathBuf::default(),
-            sysroot_base: Utf8PathBuf::default(),
-            stage: Default::default(),
-            stage_id: String::default(),
-            debugger: Default::default(),
-            run_ignored: Default::default(),
-            with_rustc_debug_assertions: Default::default(),
-            with_std_debug_assertions: Default::default(),
-            filters: Default::default(),
-            skip: Default::default(),
-            filter_exact: Default::default(),
-            force_pass_mode: Default::default(),
-            run: Default::default(),
-            runner: Default::default(),
-            host_rustcflags: Default::default(),
-            target_rustcflags: Default::default(),
-            rust_randomized_layout: Default::default(),
-            optimize_tests: Default::default(),
-            target: Default::default(),
-            host: Default::default(),
-            cdb: Default::default(),
-            cdb_version: Default::default(),
-            gdb: Default::default(),
-            gdb_version: Default::default(),
-            lldb_version: Default::default(),
-            llvm_version: Default::default(),
-            system_llvm: Default::default(),
-            android_cross_path: Default::default(),
-            adb_path: Default::default(),
-            adb_test_dir: Default::default(),
-            adb_device_status: Default::default(),
-            lldb_python_dir: Default::default(),
-            verbose: Default::default(),
-            format: Default::default(),
-            color: Default::default(),
-            remote_test_client: Default::default(),
-            compare_mode: Default::default(),
-            rustfix_coverage: Default::default(),
-            has_html_tidy: Default::default(),
-            has_enzyme: Default::default(),
-            channel: Default::default(),
-            git_hash: Default::default(),
-            cc: Default::default(),
-            cxx: Default::default(),
-            cflags: Default::default(),
-            cxxflags: Default::default(),
-            ar: Default::default(),
-            target_linker: Default::default(),
-            host_linker: Default::default(),
-            llvm_components: Default::default(),
-            nodejs: Default::default(),
-            npm: Default::default(),
-            force_rerun: Default::default(),
-            only_modified: Default::default(),
-            target_cfgs: Default::default(),
-            builtin_cfg_names: Default::default(),
-            supported_crate_types: Default::default(),
-            nocapture: Default::default(),
-            nightly_branch: Default::default(),
-            git_merge_commit_email: Default::default(),
-            profiler_runtime: Default::default(),
-            diff_command: Default::default(),
-            minicore_path: Default::default(),
-            codegen_backend: CodegenBackend::Llvm,
-        }
-    }
-
     /// FIXME: this run scheme is... confusing.
     pub fn run_enabled(&self) -> bool {
         self.run.unwrap_or_else(|| {
@@ -825,7 +719,8 @@ impl Config {
         self.target_cfg().abi == abi
     }
 
-    pub fn matches_family(&self, family: &str) -> bool {
+    #[cfg_attr(not(test), expect(dead_code, reason = "only used by tests for `ignore-{family}`"))]
+    pub(crate) fn matches_family(&self, family: &str) -> bool {
         self.target_cfg().families.iter().any(|f| f == family)
     }
 
@@ -917,7 +812,7 @@ pub struct TargetCfgs {
 
 impl TargetCfgs {
     fn new(config: &Config) -> TargetCfgs {
-        let mut targets: HashMap<String, TargetCfg> = serde_json::from_str(&rustc_output(
+        let mut targets: HashMap<String, TargetCfg> = serde_json::from_str(&query_rustc_output(
             config,
             &["--print=all-target-specs-json", "-Zunstable-options"],
             Default::default(),
@@ -950,7 +845,7 @@ impl TargetCfgs {
             if config.target.ends_with(".json") || !envs.is_empty() {
                 targets.insert(
                     config.target.clone(),
-                    serde_json::from_str(&rustc_output(
+                    serde_json::from_str(&query_rustc_output(
                         config,
                         &[
                             "--print=target-spec-json",
@@ -1009,10 +904,13 @@ impl TargetCfgs {
         // which are respected for `--print=cfg` but not for `--print=all-target-specs-json`. The
         // code below extracts them from `--print=cfg`: make sure to only override fields that can
         // actually be changed with `-C` flags.
-        for config in
-            rustc_output(config, &["--print=cfg", "--target", &config.target], Default::default())
-                .trim()
-                .lines()
+        for config in query_rustc_output(
+            config,
+            &["--print=cfg", "--target", &config.target],
+            Default::default(),
+        )
+        .trim()
+        .lines()
         {
             let (name, value) = config
                 .split_once("=\"")
@@ -1064,7 +962,7 @@ pub struct TargetCfg {
     pub(crate) abi: String,
     #[serde(rename = "target-family", default)]
     pub(crate) families: Vec<String>,
-    #[serde(rename = "target-pointer-width", deserialize_with = "serde_parse_u32")]
+    #[serde(rename = "target-pointer-width")]
     pub(crate) pointer_width: u32,
     #[serde(rename = "target-endian", default)]
     endian: Endian,
@@ -1113,7 +1011,7 @@ pub enum Endian {
 }
 
 fn builtin_cfg_names(config: &Config) -> HashSet<String> {
-    rustc_output(
+    query_rustc_output(
         config,
         &["--print=check-cfg", "-Zunstable-options", "--check-cfg=cfg()"],
         Default::default(),
@@ -1128,7 +1026,7 @@ pub const KNOWN_CRATE_TYPES: &[&str] =
     &["bin", "cdylib", "dylib", "lib", "proc-macro", "rlib", "staticlib"];
 
 fn supported_crate_types(config: &Config) -> HashSet<String> {
-    let crate_types: HashSet<_> = rustc_output(
+    let crate_types: HashSet<_> = query_rustc_output(
         config,
         &["--target", &config.target, "--print=supported-crate-types", "-Zunstable-options"],
         Default::default(),
@@ -1149,8 +1047,10 @@ fn supported_crate_types(config: &Config) -> HashSet<String> {
     crate_types
 }
 
-fn rustc_output(config: &Config, args: &[&str], envs: HashMap<String, String>) -> String {
-    let mut command = Command::new(&config.rustc_path);
+fn query_rustc_output(config: &Config, args: &[&str], envs: HashMap<String, String>) -> String {
+    let query_rustc_path = config.query_rustc_path.as_deref().unwrap_or(&config.rustc_path);
+
+    let mut command = Command::new(query_rustc_path);
     add_dylib_path(&mut command, iter::once(&config.compile_lib_path));
     command.args(&config.target_rustcflags).args(args);
     command.env("RUSTC_BOOTSTRAP", "1");
@@ -1170,11 +1070,6 @@ fn rustc_output(config: &Config, args: &[&str], envs: HashMap<String, String>) -
         );
     }
     String::from_utf8(output.stdout).unwrap()
-}
-
-fn serde_parse_u32<'de, D: Deserializer<'de>>(deserializer: D) -> Result<u32, D::Error> {
-    let string = String::deserialize(deserializer)?;
-    string.parse().map_err(D::Error::custom)
 }
 
 #[derive(Debug, Clone)]

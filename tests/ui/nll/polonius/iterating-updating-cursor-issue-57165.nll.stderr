@@ -1,0 +1,22 @@
+error[E0499]: cannot borrow `p.0` as mutable more than once at a time
+  --> $DIR/iterating-updating-cursor-issue-57165.rs:30:20
+   |
+LL |     while let Some(now) = p {
+   |                    ^^^    - first borrow used here, in later iteration of loop
+   |                    |
+   |                    `p.0` was mutably borrowed here in the previous iteration of the loop
+
+error[E0503]: cannot use `*p` because it was mutably borrowed
+  --> $DIR/iterating-updating-cursor-issue-57165.rs:30:27
+   |
+LL |     while let Some(now) = p {
+   |                    ---    ^
+   |                    |      |
+   |                    |      use of borrowed `p.0`
+   |                    |      borrow later used here
+   |                    `p.0` is borrowed here
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0499, E0503.
+For more information about an error, try `rustc --explain E0499`.

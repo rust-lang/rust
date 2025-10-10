@@ -8,7 +8,7 @@ LL | |
 LL | |         .filter_map(|_| foo(src))
    | |_________________________________^
    |
-   = note: hidden type `FilterMap<std::slice::Iter<'static, i32>, {closure@$DIR/explicit-lifetime-suggestion-in-proper-span-issue-121267.rs:9:21: 9:24}>` captures lifetime `'_`
+   = note: hidden type `FilterMap<std::slice::Iter<'_, i32>, {closure@$DIR/explicit-lifetime-suggestion-in-proper-span-issue-121267.rs:9:21: 9:24}>` captures lifetime `'_`
 
 error: aborting due to 1 previous error
 

@@ -16,7 +16,7 @@ use std::ops::ControlFlow;
 
 use either::Either;
 use hir::{DefWithBody, EditionedFileId, InFile, InRealFile, MacroKind, Name, Semantics};
-use ide_db::{FxHashMap, FxHashSet, Ranker, RootDatabase, SymbolKind};
+use ide_db::{FxHashMap, FxHashSet, Ranker, RootDatabase, SymbolKind, base_db::salsa};
 use syntax::{
     AstNode, AstToken, NodeOrToken,
     SyntaxKind::*,
@@ -35,6 +35,7 @@ use crate::{
 };
 
 pub(crate) use html::highlight_as_html;
+pub(crate) use html::highlight_as_html_with_config;
 
 #[derive(Debug, Clone, Copy)]
 pub struct HlRange {
@@ -47,6 +48,8 @@ pub struct HlRange {
 pub struct HighlightConfig {
     /// Whether to highlight strings
     pub strings: bool,
+    /// Whether to highlight comments
+    pub comments: bool,
     /// Whether to highlight punctuation
     pub punctuation: bool,
     /// Whether to specialize punctuation highlights
@@ -434,15 +437,17 @@ fn traverse(
             |node| unsafe_ops.contains(&InFile::new(descended_element.file_id, node));
         let element = match descended_element.value {
             NodeOrToken::Node(name_like) => {
-                let hl = highlight::name_like(
-                    sema,
-                    krate,
-                    bindings_shadow_count,
-                    &is_unsafe_node,
-                    config.syntactic_name_ref_highlighting,
-                    name_like,
-                    edition,
-                );
+                let hl = salsa::attach(sema.db, || {
+                    highlight::name_like(
+                        sema,
+                        krate,
+                        bindings_shadow_count,
+                        &is_unsafe_node,
+                        config.syntactic_name_ref_highlighting,
+                        name_like,
+                        edition,
+                    )
+                });
                 if hl.is_some() && !in_macro {
                     // skip highlighting the contained token of our name-like node
                     // as that would potentially overwrite our result
@@ -450,10 +455,10 @@ fn traverse(
                 }
                 hl
             }
-            NodeOrToken::Token(token) => {
+            NodeOrToken::Token(token) => salsa::attach(sema.db, || {
                 highlight::token(sema, token, edition, &is_unsafe_node, tt_level > 0)
                     .zip(Some(None))
-            }
+            }),
         };
         if let Some((mut highlight, binding_hash)) = element {
             if is_unlinked && highlight.tag == HlTag::UnresolvedReference {
@@ -586,6 +591,7 @@ fn descend_token(
 fn filter_by_config(highlight: &mut Highlight, config: HighlightConfig) -> bool {
     match &mut highlight.tag {
         HlTag::StringLiteral if !config.strings => return false,
+        HlTag::Comment if !config.comments => return false,
         // If punctuation is disabled, make the macro bang part of the macro call again.
         tag @ HlTag::Punctuation(HlPunct::MacroBang) => {
             if !config.macro_bang {

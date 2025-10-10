@@ -12,6 +12,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::PredicateObligations;
+use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::bug;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{CandidateSource, Certainty, Goal};
@@ -37,8 +38,20 @@ use crate::traits::{
     SelectionContext, SkipLeakCheck, util,
 };
 
+/// The "header" of an impl is everything outside the body: a Self type, a trait
+/// ref (in the case of a trait impl), and a set of predicates (from the
+/// bounds / where-clauses).
+#[derive(Clone, Debug, TypeFoldable, TypeVisitable)]
+pub struct ImplHeader<'tcx> {
+    pub impl_def_id: DefId,
+    pub impl_args: ty::GenericArgsRef<'tcx>,
+    pub self_ty: Ty<'tcx>,
+    pub trait_ref: Option<ty::TraitRef<'tcx>>,
+    pub predicates: Vec<ty::Predicate<'tcx>>,
+}
+
 pub struct OverlapResult<'tcx> {
-    pub impl_header: ty::ImplHeader<'tcx>,
+    pub impl_header: ImplHeader<'tcx>,
     pub intercrate_ambiguity_causes: FxIndexSet<IntercrateAmbiguityCause<'tcx>>,
 
     /// `true` if the overlap might've been permitted before the shift
@@ -151,11 +164,11 @@ pub fn overlapping_impls(
     }
 }
 
-fn fresh_impl_header<'tcx>(infcx: &InferCtxt<'tcx>, impl_def_id: DefId) -> ty::ImplHeader<'tcx> {
+fn fresh_impl_header<'tcx>(infcx: &InferCtxt<'tcx>, impl_def_id: DefId) -> ImplHeader<'tcx> {
     let tcx = infcx.tcx;
     let impl_args = infcx.fresh_args_for_item(DUMMY_SP, impl_def_id);
 
-    ty::ImplHeader {
+    ImplHeader {
         impl_def_id,
         impl_args,
         self_ty: tcx.type_of(impl_def_id).instantiate(tcx, impl_args),
@@ -173,7 +186,7 @@ fn fresh_impl_header_normalized<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     impl_def_id: DefId,
-) -> ty::ImplHeader<'tcx> {
+) -> ImplHeader<'tcx> {
     let header = fresh_impl_header(infcx, impl_def_id);
 
     let InferOk { value: mut header, obligations } =
@@ -287,8 +300,8 @@ fn overlap<'tcx>(
 fn equate_impl_headers<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    impl1: &ty::ImplHeader<'tcx>,
-    impl2: &ty::ImplHeader<'tcx>,
+    impl1: &ImplHeader<'tcx>,
+    impl2: &ImplHeader<'tcx>,
 ) -> Option<PredicateObligations<'tcx>> {
     let result =
         match (impl1.trait_ref, impl2.trait_ref) {
@@ -358,7 +371,7 @@ fn impl_intersection_has_impossible_obligation<'a, 'cx, 'tcx>(
 
         let ocx = ObligationCtxt::new(infcx);
         ocx.register_obligations(obligations.iter().cloned());
-        let hard_errors = ocx.select_where_possible();
+        let hard_errors = ocx.try_evaluate_obligations();
         if !hard_errors.is_empty() {
             assert!(
                 hard_errors.iter().all(|e| e.is_true_error()),
@@ -373,7 +386,7 @@ fn impl_intersection_has_impossible_obligation<'a, 'cx, 'tcx>(
         let ambiguities = ocx.into_pending_obligations();
         let ocx = ObligationCtxt::new_with_diagnostics(infcx);
         ocx.register_obligations(ambiguities);
-        let errors_and_ambiguities = ocx.select_all_or_error();
+        let errors_and_ambiguities = ocx.evaluate_obligations_error_on_ambiguity();
         // We only care about the obligations that are *definitely* true errors.
         // Ambiguities do not prove the disjointness of two impls.
         let (errors, ambiguities): (Vec<_>, Vec<_>) =
@@ -535,7 +548,10 @@ fn plug_infer_with_placeholders<'tcx>(
                         ct,
                         ty::Const::new_placeholder(
                             self.infcx.tcx,
-                            ty::Placeholder { universe: self.universe, bound: self.next_var() },
+                            ty::Placeholder {
+                                universe: self.universe,
+                                bound: ty::BoundConst { var: self.next_var() },
+                            },
                         ),
                     )
                 else {
@@ -607,7 +623,7 @@ fn try_prove_negated_where_clause<'tcx>(
         param_env,
         negative_predicate,
     ));
-    if !ocx.select_all_or_error().is_empty() {
+    if !ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
         return false;
     }
 
@@ -666,7 +682,7 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
         // was irrelevant.
         match goal.result() {
             Ok(Certainty::Yes) | Err(NoSolution) => return,
-            Ok(Certainty::Maybe(_)) => {}
+            Ok(Certainty::Maybe { .. }) => {}
         }
 
         // For bound predicates we simply call `infcx.enter_forall`
@@ -695,15 +711,14 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
                 source: CandidateSource::Impl(def_id),
                 result: Ok(_),
             } = cand.kind()
+                && let ty::ImplPolarity::Reservation = infcx.tcx.impl_polarity(def_id)
             {
-                if let ty::ImplPolarity::Reservation = infcx.tcx.impl_polarity(def_id) {
-                    let message = infcx
-                        .tcx
-                        .get_attr(def_id, sym::rustc_reservation_impl)
-                        .and_then(|a| a.value_str());
-                    if let Some(message) = message {
-                        self.causes.insert(IntercrateAmbiguityCause::ReservationImpl { message });
-                    }
+                let message = infcx
+                    .tcx
+                    .get_attr(def_id, sym::rustc_reservation_impl)
+                    .and_then(|a| a.value_str());
+                if let Some(message) = message {
+                    self.causes.insert(IntercrateAmbiguityCause::ReservationImpl { message });
                 }
             }
         }
@@ -728,7 +743,7 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
                 ty = ocx
                     .structurally_normalize_ty(&ObligationCause::dummy(), param_env, ty)
                     .map_err(|_| ())?;
-                if !ocx.select_where_possible().is_empty() {
+                if !ocx.try_evaluate_obligations().is_empty() {
                     return Err(());
                 }
             }

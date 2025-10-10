@@ -60,6 +60,7 @@ fn build_native_lib(target: &str) -> PathBuf {
             native_lib_path.to_str().unwrap(),
             // FIXME: Automate gathering of all relevant C source files in the directory.
             "tests/native-lib/scalar_arguments.c",
+            "tests/native-lib/aggregate_arguments.c",
             "tests/native-lib/ptr_read_access.c",
             "tests/native-lib/ptr_write_access.c",
             // Ensure we notice serious problems in the C code.
@@ -248,7 +249,8 @@ regexes! {
     // erase alloc ids
     "alloc[0-9]+"                    => "ALLOC",
     // erase thread ids
-    r"unnamed-[0-9]+"               => "unnamed-ID",
+    r"unnamed-[0-9]+"                => "unnamed-ID",
+    r"thread '(?P<name>.*?)' \(\d+\) panicked" => "thread '$name' ($$TID) panicked",
     // erase borrow tags
     "<[0-9]+>"                       => "<TAG>",
     "<[0-9]+="                       => "<TAG=",
@@ -275,6 +277,8 @@ regexes! {
     r"\bsys/([a-z_]+)/[a-z]+\b"     => "sys/$1/PLATFORM",
     // erase paths into the crate registry
     r"[^ ]*/\.?cargo/registry/.*/(.*\.rs)"  => "CARGO_REGISTRY/.../$1",
+    // remove time print from GenMC estimation mode output.
+    "\nExpected verification time: .* ± .*" => "\nExpected verification time: [MEAN] ± [SD]",
 }
 
 enum Dependencies {
@@ -336,6 +340,20 @@ fn main() -> Result<()> {
     if cfg!(all(unix, feature = "native-lib")) && target == host {
         ui(Mode::Pass, "tests/native-lib/pass", &target, WithoutDependencies, tmpdir.path())?;
         ui(Mode::Fail, "tests/native-lib/fail", &target, WithoutDependencies, tmpdir.path())?;
+    }
+
+    // We only enable GenMC tests when the `genmc` feature is enabled, but also only on platforms we support:
+    // FIXME(genmc,macos): Add `target_os = "macos"` once `https://github.com/dtolnay/cxx/issues/1535` is fixed.
+    // FIXME(genmc,cross-platform): remove `host == target` check once cross-platform support with GenMC is possible.
+    if cfg!(all(
+        feature = "genmc",
+        target_os = "linux",
+        target_pointer_width = "64",
+        target_endian = "little"
+    )) && host == target
+    {
+        ui(Mode::Pass, "tests/genmc/pass", &target, WithDependencies, tmpdir.path())?;
+        ui(Mode::Fail, "tests/genmc/fail", &target, WithDependencies, tmpdir.path())?;
     }
 
     Ok(())

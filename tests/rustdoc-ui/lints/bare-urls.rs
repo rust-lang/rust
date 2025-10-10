@@ -68,3 +68,17 @@ pub mod foo {
     /// https://somewhere.com/a?hello=12&bye=11#xyz
     pub fn bar() {}
 }
+
+/// [https://bloob.blob]
+//~^ ERROR this URL is not a hyperlink
+/// [ https://bloob.blob ]
+//~^ ERROR this URL is not a hyperlink
+/// [ https://bloob.blob]
+//~^ ERROR this URL is not a hyperlink
+/// [https://bloob.blob ]
+//~^ ERROR this URL is not a hyperlink
+/// [https://bloob.blob
+//~^ ERROR this URL is not a hyperlink
+/// https://bloob.blob]
+//~^ ERROR this URL is not a hyperlink
+pub fn lint_with_brackets() {}

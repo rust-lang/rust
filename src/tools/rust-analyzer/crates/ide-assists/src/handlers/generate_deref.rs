@@ -57,9 +57,9 @@ fn generate_record_deref(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<(
     };
 
     let module = ctx.sema.to_def(&strukt)?.module(ctx.db());
+    let cfg = ctx.config.find_path_confg(ctx.sema.is_nightly(module.krate()));
     let trait_ = deref_type_to_generate.to_trait(&ctx.sema, module.krate())?;
-    let trait_path =
-        module.find_path(ctx.db(), ModuleDef::Trait(trait_), ctx.config.import_path_config())?;
+    let trait_path = module.find_path(ctx.db(), ModuleDef::Trait(trait_), cfg)?;
 
     let field_type = field.ty()?;
     let field_name = field.name()?;
@@ -99,9 +99,9 @@ fn generate_tuple_deref(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()
     };
 
     let module = ctx.sema.to_def(&strukt)?.module(ctx.db());
+    let cfg = ctx.config.find_path_confg(ctx.sema.is_nightly(module.krate()));
     let trait_ = deref_type_to_generate.to_trait(&ctx.sema, module.krate())?;
-    let trait_path =
-        module.find_path(ctx.db(), ModuleDef::Trait(trait_), ctx.config.import_path_config())?;
+    let trait_path = module.find_path(ctx.db(), ModuleDef::Trait(trait_), cfg)?;
 
     let field_type = field.ty()?;
     let target = field.syntax().text_range();

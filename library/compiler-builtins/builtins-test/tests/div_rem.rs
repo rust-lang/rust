@@ -138,7 +138,7 @@ macro_rules! float {
     };
 }
 
-#[cfg(not(all(target_arch = "x86", not(target_feature = "sse"))))]
+#[cfg(not(x86_no_sse))]
 mod float_div {
     use super::*;
 

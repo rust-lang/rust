@@ -1,17 +1,17 @@
 error[E0277]: the trait bound `Vec<usize>: [const] Index<_>` is not satisfied
-  --> $DIR/issue-94675.rs:9:9
+  --> $DIR/issue-94675.rs:11:9
    |
 LL |         self.bar[0] = baz.len();
    |         ^^^^^^^^^^^
 
 error[E0277]: the trait bound `Vec<usize>: [const] IndexMut<usize>` is not satisfied
-  --> $DIR/issue-94675.rs:9:9
+  --> $DIR/issue-94675.rs:11:9
    |
 LL |         self.bar[0] = baz.len();
    |         ^^^^^^^^^^^
 
 error[E0277]: the trait bound `Vec<usize>: [const] Index<usize>` is not satisfied
-  --> $DIR/issue-94675.rs:9:9
+  --> $DIR/issue-94675.rs:11:9
    |
 LL |         self.bar[0] = baz.len();
    |         ^^^^^^^^^^^

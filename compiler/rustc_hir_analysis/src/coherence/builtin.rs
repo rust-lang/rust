@@ -1,7 +1,6 @@
 //! Check properties that are required by built-in traits and set
 //! up data structures required by type-checking/codegen.
 
-use std::assert_matches::assert_matches;
 use std::collections::BTreeMap;
 
 use rustc_data_structures::fx::FxHashSet;
@@ -40,10 +39,7 @@ pub(super) fn check_trait<'tcx>(
     checker.check(lang_items.async_drop_trait(), visit_implementation_of_drop)?;
     checker.check(lang_items.copy_trait(), visit_implementation_of_copy)?;
     checker.check(lang_items.const_param_ty_trait(), |checker| {
-        visit_implementation_of_const_param_ty(checker, LangItem::ConstParamTy)
-    })?;
-    checker.check(lang_items.unsized_const_param_ty_trait(), |checker| {
-        visit_implementation_of_const_param_ty(checker, LangItem::UnsizedConstParamTy)
+        visit_implementation_of_const_param_ty(checker)
     })?;
     checker.check(lang_items.coerce_unsized_trait(), visit_implementation_of_coerce_unsized)?;
     checker
@@ -138,12 +134,7 @@ fn visit_implementation_of_copy(checker: &Checker<'_>) -> Result<(), ErrorGuaran
     }
 }
 
-fn visit_implementation_of_const_param_ty(
-    checker: &Checker<'_>,
-    kind: LangItem,
-) -> Result<(), ErrorGuaranteed> {
-    assert_matches!(kind, LangItem::ConstParamTy | LangItem::UnsizedConstParamTy);
-
+fn visit_implementation_of_const_param_ty(checker: &Checker<'_>) -> Result<(), ErrorGuaranteed> {
     let tcx = checker.tcx;
     let header = checker.impl_header;
     let impl_did = checker.impl_def_id;
@@ -157,7 +148,7 @@ fn visit_implementation_of_const_param_ty(
     }
 
     let cause = traits::ObligationCause::misc(DUMMY_SP, impl_did);
-    match type_allowed_to_implement_const_param_ty(tcx, param_env, self_type, kind, cause) {
+    match type_allowed_to_implement_const_param_ty(tcx, param_env, self_type, cause) {
         Ok(()) => Ok(()),
         Err(ConstParamTyImplementationError::InfrigingFields(fields)) => {
             let span = tcx.hir_expect_item(impl_did).expect_impl().self_ty.span;
@@ -342,7 +333,7 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
                     param_env,
                     ty::TraitRef::new(tcx, trait_ref.def_id, [ty_a, ty_b]),
                 ));
-                let errors = ocx.select_all_or_error();
+                let errors = ocx.evaluate_obligations_error_on_ambiguity();
                 if !errors.is_empty() {
                     if is_from_coerce_pointee_derive(tcx, span) {
                         return Err(tcx.dcx().emit_err(errors::CoerceFieldValidity {
@@ -531,8 +522,10 @@ pub(crate) fn coerce_unsized_info<'tcx>(
                 }));
             } else if diff_fields.len() > 1 {
                 let item = tcx.hir_expect_item(impl_did);
-                let span = if let ItemKind::Impl(hir::Impl { of_trait: Some(t), .. }) = &item.kind {
-                    t.path.span
+                let span = if let ItemKind::Impl(hir::Impl { of_trait: Some(of_trait), .. }) =
+                    &item.kind
+                {
+                    of_trait.trait_ref.path.span
                 } else {
                     tcx.def_span(impl_did)
                 };
@@ -565,7 +558,7 @@ pub(crate) fn coerce_unsized_info<'tcx>(
         ty::TraitRef::new(tcx, trait_def_id, [source, target]),
     );
     ocx.register_obligation(obligation);
-    let errors = ocx.select_all_or_error();
+    let errors = ocx.evaluate_obligations_error_on_ambiguity();
 
     if !errors.is_empty() {
         if is_from_coerce_pointee_derive(tcx, span) {

@@ -14,10 +14,9 @@
 //! To regenerate the data, run this command:
 //!
 //! ```text
-//! icu4x-datagen -W --pretty --fingerprint --use-separate-crates \
-//! --format mod -l en es fr it ja pt ru tr zh zh-Hans zh-Hant \
-//! -k list/and@1 fallback/likelysubtags@1 fallback/parents@1 fallback/supplement/co@1 \
-//! --cldr-tag latest --icuexport-tag latest -o src/data
+//! icu4x-datagen -W --pretty --use-separate-crates \
+//! --format baked --locales @en @es @fr @it @ja @pt @ru @tr @zh @zh-Hans @zh-Hant \
+//! -m ListAndV1 -o src/data
 //! ```
 
 // tidy-alphabetical-start
@@ -29,26 +28,26 @@
 // #![warn(unreachable_pub)] // don't use because this crate is mostly generated code
 // tidy-alphabetical-end
 
-mod data {
-    include!("data/mod.rs");
-    include!("data/any.rs");
-}
+pub struct BakedDataProvider;
 
-pub use data::BakedDataProvider;
+include!("data/mod.rs");
+const _: () = {
+    impl_data_provider!(BakedDataProvider);
+};
 
 pub const fn baked_data_provider() -> BakedDataProvider {
-    data::BakedDataProvider
+    BakedDataProvider
 }
 
 pub mod supported_locales {
-    pub const EN: icu_locid::Locale = icu_locid::locale!("en");
-    pub const ES: icu_locid::Locale = icu_locid::locale!("es");
-    pub const FR: icu_locid::Locale = icu_locid::locale!("fr");
-    pub const IT: icu_locid::Locale = icu_locid::locale!("it");
-    pub const JA: icu_locid::Locale = icu_locid::locale!("ja");
-    pub const PT: icu_locid::Locale = icu_locid::locale!("pt");
-    pub const RU: icu_locid::Locale = icu_locid::locale!("ru");
-    pub const TR: icu_locid::Locale = icu_locid::locale!("tr");
-    pub const ZH_HANS: icu_locid::Locale = icu_locid::locale!("zh-Hans");
-    pub const ZH_HANT: icu_locid::Locale = icu_locid::locale!("zh-Hant");
+    pub const EN: icu_locale::Locale = icu_locale::locale!("en");
+    pub const ES: icu_locale::Locale = icu_locale::locale!("es");
+    pub const FR: icu_locale::Locale = icu_locale::locale!("fr");
+    pub const IT: icu_locale::Locale = icu_locale::locale!("it");
+    pub const JA: icu_locale::Locale = icu_locale::locale!("ja");
+    pub const PT: icu_locale::Locale = icu_locale::locale!("pt");
+    pub const RU: icu_locale::Locale = icu_locale::locale!("ru");
+    pub const TR: icu_locale::Locale = icu_locale::locale!("tr");
+    pub const ZH_HANS: icu_locale::Locale = icu_locale::locale!("zh-Hans");
+    pub const ZH_HANT: icu_locale::Locale = icu_locale::locale!("zh-Hant");
 }

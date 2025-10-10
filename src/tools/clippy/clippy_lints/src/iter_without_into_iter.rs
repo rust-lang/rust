@@ -125,8 +125,9 @@ impl LateLintPass<'_> for IterWithoutIntoIter {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &rustc_hir::Item<'_>) {
         if let ItemKind::Impl(imp) = item.kind
             && let TyKind::Ref(_, self_ty_without_ref) = &imp.self_ty.kind
-            && let Some(trait_ref) = imp.of_trait
-            && trait_ref
+            && let Some(of_trait) = imp.of_trait
+            && of_trait
+                .trait_ref
                 .trait_def_id()
                 .is_some_and(|did| cx.tcx.is_diagnostic_item(sym::IntoIterator, did))
             && !item.span.in_external_macro(cx.sess().source_map())
@@ -139,11 +140,17 @@ impl LateLintPass<'_> for IterWithoutIntoIter {
                 // We can't check inherent impls for slices, but we know that they have an `iter(_mut)` method
                 ty.peel_refs().is_slice() || get_adt_inherent_method(cx, ty, expected_method_name).is_some()
             })
-            && let Some(iter_assoc_span) = cx.tcx.associated_items(item.owner_id)
+            && let Some(iter_assoc_span) = cx
+                .tcx
+                .associated_items(item.owner_id)
                 .filter_by_name_unhygienic_and_kind(sym::IntoIter, ty::AssocTag::Type)
                 .next()
                 .map(|assoc_item| {
-                    cx.tcx.hir_node_by_def_id(assoc_item.def_id.expect_local()).expect_impl_item().expect_type().span
+                    cx.tcx
+                        .hir_node_by_def_id(assoc_item.def_id.expect_local())
+                        .expect_impl_item()
+                        .expect_type()
+                        .span
                 })
             && is_ty_exported(cx, ty)
         {

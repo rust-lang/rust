@@ -689,7 +689,9 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
         print_indented!(self, "kind: PatKind {", depth_lvl);
 
         match pat_kind {
-            PatKind::Missing => unreachable!(),
+            PatKind::Missing => {
+                print_indented!(self, "Missing", depth_lvl + 1);
+            }
             PatKind::Wild => {
                 print_indented!(self, "Wild", depth_lvl + 1);
             }
@@ -763,7 +765,7 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
             }
             PatKind::Constant { value } => {
                 print_indented!(self, "Constant {", depth_lvl + 1);
-                print_indented!(self, format!("value: {:?}", value), depth_lvl + 2);
+                print_indented!(self, format!("value: {}", value), depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl + 1);
             }
             PatKind::ExpandedConstant { def_id, subpattern } => {

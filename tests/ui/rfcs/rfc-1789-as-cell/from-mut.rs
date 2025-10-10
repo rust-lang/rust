@@ -1,7 +1,5 @@
 //@ run-pass
 
-#![feature(as_array_of_cells)]
-
 use std::cell::Cell;
 
 fn main() {

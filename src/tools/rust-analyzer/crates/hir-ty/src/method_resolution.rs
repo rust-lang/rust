@@ -16,22 +16,32 @@ use hir_def::{
 use hir_expand::name::Name;
 use intern::sym;
 use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_type_ir::inherent::{IntoKind, SliceLike, Ty as _};
 use smallvec::{SmallVec, smallvec};
 use stdx::never;
 use triomphe::Arc;
 
 use crate::{
     AdtId, Canonical, CanonicalVarKinds, DebruijnIndex, DynTyExt, ForeignDefId, GenericArgData,
-    Goal, Guidance, InEnvironment, Interner, Mutability, Scalar, Solution, Substitution,
-    TraitEnvironment, TraitRef, TraitRefExt, Ty, TyBuilder, TyExt, TyKind, TyVariableKind,
-    VariableKind, WhereClause,
+    Goal, InEnvironment, Interner, Mutability, Scalar, Substitution, TraitEnvironment, TraitRef,
+    TraitRefExt, Ty, TyBuilder, TyExt, TyKind, VariableKind, WhereClause,
     autoderef::{self, AutoderefKind},
     db::HirDatabase,
-    error_lifetime, from_chalk_trait_id, from_foreign_def_id,
+    from_chalk_trait_id, from_foreign_def_id,
     infer::{Adjust, Adjustment, OverloadedDeref, PointerCast, unify::InferenceTable},
     lang_items::is_box,
+    next_solver::{
+        self, DbInterner, SolverDefId,
+        infer::{
+            DefineOpaqueTypes,
+            traits::{ObligationCause, PredicateObligation},
+        },
+        mapping::{ChalkToNextSolver, NextSolverToChalk},
+        obligation_ctxt::ObligationCtxt,
+    },
     primitive::{FloatTy, IntTy, UintTy},
     to_chalk_trait_id,
+    traits::next_trait_solve_canonical_in_ctxt,
     utils::all_super_traits,
 };
 
@@ -43,6 +53,7 @@ pub enum TyFingerprint {
     Slice,
     Array,
     Never,
+    Ref(Mutability),
     RawPtr(Mutability),
     Scalar(Scalar),
     // These can have user-defined impls:
@@ -88,7 +99,7 @@ impl TyFingerprint {
             TyKind::Raw(mutability, ..) => TyFingerprint::RawPtr(*mutability),
             TyKind::Foreign(alias_id, ..) => TyFingerprint::ForeignType(*alias_id),
             TyKind::Dyn(_) => ty.dyn_trait().map(TyFingerprint::Dyn)?,
-            TyKind::Ref(_, _, ty) => return TyFingerprint::for_trait_impl(ty),
+            TyKind::Ref(mutability, _, _) => TyFingerprint::Ref(*mutability),
             TyKind::Tuple(_, subst) => {
                 let first_ty = subst.interned().first().map(|arg| arg.assert_ty_ref(Interner));
                 match first_ty {
@@ -97,6 +108,11 @@ impl TyFingerprint {
                 }
             }
             TyKind::AssociatedType(_, _)
+            // FIXME(next-solver): Putting `Alias` here is *probably* incorrect, AFAIK it should return `None`. But this breaks
+            // flyimport, which uses an incorrect but fast method resolution algorithm. Therefore we put it here,
+            // because this function is only called by flyimport, and anyway we should get rid of `TyFingerprint`
+            // and switch to `rustc_type_ir`'s `SimplifiedType`.
+            | TyKind::Alias(_)
             | TyKind::OpaqueType(_, _)
             | TyKind::FnDef(_, _)
             | TyKind::Closure(_, _)
@@ -105,11 +121,91 @@ impl TyFingerprint {
             TyKind::Function(fn_ptr) => {
                 TyFingerprint::Function(fn_ptr.substitution.0.len(Interner) as u32)
             }
-            TyKind::Alias(_)
-            | TyKind::Placeholder(_)
+            TyKind::Placeholder(_)
             | TyKind::BoundVar(_)
             | TyKind::InferenceVar(_, _)
             | TyKind::Error => return None,
+        };
+        Some(fp)
+    }
+
+    /// Creates a TyFingerprint for looking up a trait impl.
+    pub fn for_trait_impl_ns<'db>(ty: &next_solver::Ty<'db>) -> Option<TyFingerprint> {
+        use rustc_type_ir::TyKind;
+        let fp = match (*ty).kind() {
+            TyKind::Str => TyFingerprint::Str,
+            TyKind::Never => TyFingerprint::Never,
+            TyKind::Slice(..) => TyFingerprint::Slice,
+            TyKind::Array(..) => TyFingerprint::Array,
+            TyKind::Int(int) => TyFingerprint::Scalar(Scalar::Int(match int {
+                rustc_type_ir::IntTy::Isize => IntTy::Isize,
+                rustc_type_ir::IntTy::I8 => IntTy::I8,
+                rustc_type_ir::IntTy::I16 => IntTy::I16,
+                rustc_type_ir::IntTy::I32 => IntTy::I32,
+                rustc_type_ir::IntTy::I64 => IntTy::I64,
+                rustc_type_ir::IntTy::I128 => IntTy::I128,
+            })),
+            TyKind::Uint(uint) => TyFingerprint::Scalar(Scalar::Uint(match uint {
+                rustc_type_ir::UintTy::Usize => UintTy::Usize,
+                rustc_type_ir::UintTy::U8 => UintTy::U8,
+                rustc_type_ir::UintTy::U16 => UintTy::U16,
+                rustc_type_ir::UintTy::U32 => UintTy::U32,
+                rustc_type_ir::UintTy::U64 => UintTy::U64,
+                rustc_type_ir::UintTy::U128 => UintTy::U128,
+            })),
+            TyKind::Float(float) => TyFingerprint::Scalar(Scalar::Float(match float {
+                rustc_type_ir::FloatTy::F16 => FloatTy::F16,
+                rustc_type_ir::FloatTy::F32 => FloatTy::F32,
+                rustc_type_ir::FloatTy::F64 => FloatTy::F64,
+                rustc_type_ir::FloatTy::F128 => FloatTy::F128,
+            })),
+            TyKind::Bool => TyFingerprint::Scalar(Scalar::Bool),
+            TyKind::Char => TyFingerprint::Scalar(Scalar::Char),
+            TyKind::Adt(def, _) => TyFingerprint::Adt(def.inner().id),
+            TyKind::RawPtr(.., mutability) => match mutability {
+                rustc_ast_ir::Mutability::Mut => TyFingerprint::RawPtr(Mutability::Mut),
+                rustc_ast_ir::Mutability::Not => TyFingerprint::RawPtr(Mutability::Not),
+            },
+            TyKind::Foreign(def) => TyFingerprint::ForeignType(crate::to_foreign_def_id(def.0)),
+            TyKind::Dynamic(bounds, _) => {
+                let trait_ref = bounds
+                    .as_slice()
+                    .iter()
+                    .map(|b| (*b).skip_binder())
+                    .filter_map(|b| match b {
+                        rustc_type_ir::ExistentialPredicate::Trait(t) => Some(t.def_id),
+                        _ => None,
+                    })
+                    .next()?;
+                TyFingerprint::Dyn(trait_ref.0)
+            }
+            TyKind::Ref(_, _, mutability) => match mutability {
+                rustc_ast_ir::Mutability::Mut => TyFingerprint::Ref(Mutability::Mut),
+                rustc_ast_ir::Mutability::Not => TyFingerprint::Ref(Mutability::Not),
+            },
+            TyKind::Tuple(tys) => {
+                let first_ty = tys.as_slice().iter().next();
+                match first_ty {
+                    Some(ty) => return TyFingerprint::for_trait_impl_ns(ty),
+                    None => TyFingerprint::Unit,
+                }
+            }
+            TyKind::FnDef(_, _)
+            | TyKind::Closure(_, _)
+            | TyKind::Coroutine(..)
+            | TyKind::CoroutineWitness(..)
+            | TyKind::Pat(..)
+            | TyKind::CoroutineClosure(..) => TyFingerprint::Unnameable,
+            TyKind::FnPtr(sig, _) => {
+                TyFingerprint::Function(sig.inputs().skip_binder().len() as u32)
+            }
+            TyKind::Alias(..)
+            | TyKind::Placeholder(_)
+            | TyKind::Bound(..)
+            | TyKind::Infer(_)
+            | TyKind::Error(_)
+            | TyKind::Param(..)
+            | TyKind::UnsafeBinder(..) => return None,
         };
         Some(fp)
     }
@@ -201,11 +297,12 @@ impl TraitImpls {
                     continue;
                 }
                 let target_trait = match db.impl_trait(impl_id) {
-                    Some(tr) => tr.skip_binders().hir_trait_id(),
+                    Some(tr) => tr.skip_binder().def_id.0,
                     None => continue,
                 };
-                let self_ty = db.impl_self_ty(impl_id);
-                let self_ty_fp = TyFingerprint::for_trait_impl(self_ty.skip_binders());
+                let interner = DbInterner::new_with(db, None, None);
+                let self_ty = db.impl_self_ty(impl_id).instantiate_identity().to_chalk(interner);
+                let self_ty_fp = TyFingerprint::for_trait_impl(&self_ty);
                 map.entry(target_trait).or_default().entry(self_ty_fp).or_default().push(impl_id);
             }
 
@@ -318,8 +415,8 @@ impl InherentImpls {
                     continue;
                 }
 
-                let self_ty = db.impl_self_ty(impl_id);
-                let self_ty = self_ty.skip_binders();
+                let interner = DbInterner::new_with(db, None, None);
+                let self_ty = &db.impl_self_ty(impl_id).instantiate_identity().to_chalk(interner);
 
                 match is_inherent_impl_coherent(db, def_map, impl_id, self_ty) {
                     true => {
@@ -446,10 +543,10 @@ pub fn def_crates(db: &dyn HirDatabase, ty: &Ty, cur_crate: Crate) -> Option<Sma
 }
 
 /// Look up the method with the given name.
-pub(crate) fn lookup_method(
-    db: &dyn HirDatabase,
-    ty: &Canonical<Ty>,
-    env: Arc<TraitEnvironment>,
+pub(crate) fn lookup_method<'db>(
+    db: &'db dyn HirDatabase,
+    ty: &next_solver::Canonical<'db, crate::next_solver::Ty<'db>>,
+    env: Arc<TraitEnvironment<'db>>,
     traits_in_scope: &FxHashSet<TraitId>,
     visible_from_module: VisibleFromModule,
     name: &Name,
@@ -529,18 +626,23 @@ pub struct ReceiverAdjustments {
 }
 
 impl ReceiverAdjustments {
-    pub(crate) fn apply(&self, table: &mut InferenceTable<'_>, ty: Ty) -> (Ty, Vec<Adjustment>) {
-        let mut ty = table.resolve_ty_shallow(&ty);
+    pub(crate) fn apply(
+        &self,
+        table: &mut InferenceTable<'_>,
+        mut ty: Ty,
+    ) -> (Ty, Vec<Adjustment>) {
         let mut adjust = Vec::new();
+        let mut autoderef = table.autoderef(ty.to_nextsolver(table.interner));
+        autoderef.next();
         for _ in 0..self.autoderefs {
-            match autoderef::autoderef_step(table, ty.clone(), true, false) {
+            match autoderef.next() {
                 None => {
                     never!("autoderef not possible for {:?}", ty);
                     ty = TyKind::Error.intern(Interner);
                     break;
                 }
-                Some((kind, new_ty)) => {
-                    ty = new_ty.clone();
+                Some((new_ty, _)) => {
+                    ty = new_ty.to_chalk(autoderef.table.interner);
                     let mutbl = match self.autoref {
                         Some(AutorefOrPtrAdjustment::Autoref(m)) => Some(m),
                         Some(AutorefOrPtrAdjustment::ToConstPtr) => Some(Mutability::Not),
@@ -548,11 +650,11 @@ impl ReceiverAdjustments {
                         None => None,
                     };
                     adjust.push(Adjustment {
-                        kind: Adjust::Deref(match kind {
+                        kind: Adjust::Deref(match autoderef.steps().last().unwrap().1 {
                             AutoderefKind::Overloaded => Some(OverloadedDeref(mutbl)),
                             AutoderefKind::Builtin => None,
                         }),
-                        target: new_ty,
+                        target: ty.clone(),
                     });
                 }
             }
@@ -581,15 +683,15 @@ impl ReceiverAdjustments {
         }
         if self.unsize_array {
             ty = 'it: {
-                if let TyKind::Ref(m, l, inner) = ty.kind(Interner) {
-                    if let TyKind::Array(inner, _) = inner.kind(Interner) {
-                        break 'it TyKind::Ref(
-                            *m,
-                            l.clone(),
-                            TyKind::Slice(inner.clone()).intern(Interner),
-                        )
-                        .intern(Interner);
-                    }
+                if let TyKind::Ref(m, l, inner) = ty.kind(Interner)
+                    && let TyKind::Array(inner, _) = inner.kind(Interner)
+                {
+                    break 'it TyKind::Ref(
+                        *m,
+                        l.clone(),
+                        TyKind::Slice(inner.clone()).intern(Interner),
+                    )
+                    .intern(Interner);
                 }
                 // FIXME: report diagnostic if array unsizing happens without indirection.
                 ty
@@ -610,10 +712,10 @@ impl ReceiverAdjustments {
 // This would be nicer if it just returned an iterator, but that runs into
 // lifetime problems, because we need to borrow temp `CrateImplDefs`.
 // FIXME add a context type here?
-pub(crate) fn iterate_method_candidates<T>(
-    ty: &Canonical<Ty>,
-    db: &dyn HirDatabase,
-    env: Arc<TraitEnvironment>,
+pub(crate) fn iterate_method_candidates<'db, T>(
+    ty: &next_solver::Canonical<'db, crate::next_solver::Ty<'db>>,
+    db: &'db dyn HirDatabase,
+    env: Arc<TraitEnvironment<'db>>,
     traits_in_scope: &FxHashSet<TraitId>,
     visible_from_module: VisibleFromModule,
     name: Option<&Name>,
@@ -641,9 +743,9 @@ pub(crate) fn iterate_method_candidates<T>(
     slot
 }
 
-pub fn lookup_impl_const(
-    db: &dyn HirDatabase,
-    env: Arc<TraitEnvironment>,
+pub fn lookup_impl_const<'db>(
+    db: &'db dyn HirDatabase,
+    env: Arc<TraitEnvironment<'db>>,
     const_id: ConstId,
     subs: Substitution,
 ) -> (ConstId, Substitution) {
@@ -669,9 +771,9 @@ pub fn lookup_impl_const(
 
 /// Checks if the self parameter of `Trait` method is the `dyn Trait` and we should
 /// call the method using the vtable.
-pub fn is_dyn_method(
-    db: &dyn HirDatabase,
-    _env: Arc<TraitEnvironment>,
+pub fn is_dyn_method<'db>(
+    db: &'db dyn HirDatabase,
+    _env: Arc<TraitEnvironment<'db>>,
     func: FunctionId,
     fn_subst: Substitution,
 ) -> Option<usize> {
@@ -711,9 +813,9 @@ pub fn is_dyn_method(
 /// Looks up the impl method that actually runs for the trait method `func`.
 ///
 /// Returns `func` if it's not a method defined in a trait or the lookup failed.
-pub(crate) fn lookup_impl_method_query(
-    db: &dyn HirDatabase,
-    env: Arc<TraitEnvironment>,
+pub(crate) fn lookup_impl_method_query<'db>(
+    db: &'db dyn HirDatabase,
+    env: Arc<TraitEnvironment<'db>>,
     func: FunctionId,
     fn_subst: Substitution,
 ) -> (FunctionId, Substitution) {
@@ -744,10 +846,10 @@ pub(crate) fn lookup_impl_method_query(
     )
 }
 
-fn lookup_impl_assoc_item_for_trait_ref(
+fn lookup_impl_assoc_item_for_trait_ref<'db>(
     trait_ref: TraitRef,
-    db: &dyn HirDatabase,
-    env: Arc<TraitEnvironment>,
+    db: &'db dyn HirDatabase,
+    env: Arc<TraitEnvironment<'db>>,
     name: &Name,
 ) -> Option<(AssocItemId, Substitution)> {
     let hir_trait_id = trait_ref.hir_trait_id();
@@ -796,10 +898,13 @@ fn find_matching_impl(
         table.run_in_snapshot(|table| {
             let impl_substs =
                 TyBuilder::subst_for_def(db, impl_, None).fill_with_inference_vars(table).build();
+            let args: crate::next_solver::GenericArgs<'_> =
+                impl_substs.to_nextsolver(table.interner);
             let trait_ref = db
                 .impl_trait(impl_)
                 .expect("non-trait method in find_matching_impl")
-                .substitute(Interner, &impl_substs);
+                .instantiate(table.interner, args)
+                .to_chalk(table.interner);
 
             if !table.unify(&trait_ref, &actual_trait_ref) {
                 return None;
@@ -807,11 +912,18 @@ fn find_matching_impl(
 
             let wcs = crate::chalk_db::convert_where_clauses(db, impl_.into(), &impl_substs)
                 .into_iter()
-                .map(|b| b.cast(Interner));
-            let goal = crate::Goal::all(Interner, wcs);
-            table.try_obligation(goal.clone())?;
-            table.register_obligation(goal);
-            Some((impl_.impl_items(db), table.resolve_completely(impl_substs)))
+                .map(|b| -> Goal { b.cast(Interner) });
+            for goal in wcs {
+                let goal = goal.to_nextsolver(table.interner);
+                if table.try_obligation(goal).no_solution() {
+                    return None;
+                }
+                table.register_obligation(goal);
+            }
+            Some((
+                impl_.impl_items(db),
+                table.resolve_completely::<_, crate::next_solver::GenericArgs<'_>>(impl_substs),
+            ))
         })
     })
 }
@@ -910,7 +1022,9 @@ pub fn check_orphan_rules(db: &dyn HirDatabase, impl_: ImplId) -> bool {
     let local_crate = impl_.lookup(db).container.krate();
     let is_local = |tgt_crate| tgt_crate == local_crate;
 
-    let trait_ref = impl_trait.substitute(Interner, &substs);
+    let interner = DbInterner::new_with(db, None, None);
+    let args: crate::next_solver::GenericArgs<'_> = substs.to_nextsolver(interner);
+    let trait_ref = impl_trait.instantiate(interner, args).to_chalk(interner);
     let trait_id = from_chalk_trait_id(trait_ref.trait_id);
     if is_local(trait_id.module(db).krate()) {
         // trait to be implemented is local
@@ -956,10 +1070,10 @@ pub fn check_orphan_rules(db: &dyn HirDatabase, impl_: ImplId) -> bool {
     is_not_orphan
 }
 
-pub fn iterate_path_candidates(
-    ty: &Canonical<Ty>,
-    db: &dyn HirDatabase,
-    env: Arc<TraitEnvironment>,
+pub fn iterate_path_candidates<'db>(
+    ty: &next_solver::Canonical<'db, crate::next_solver::Ty<'db>>,
+    db: &'db dyn HirDatabase,
+    env: Arc<TraitEnvironment<'db>>,
     traits_in_scope: &FxHashSet<TraitId>,
     visible_from_module: VisibleFromModule,
     name: Option<&Name>,
@@ -978,10 +1092,10 @@ pub fn iterate_path_candidates(
     )
 }
 
-pub fn iterate_method_candidates_dyn(
-    ty: &Canonical<Ty>,
-    db: &dyn HirDatabase,
-    env: Arc<TraitEnvironment>,
+pub fn iterate_method_candidates_dyn<'db>(
+    ty: &next_solver::Canonical<'db, crate::next_solver::Ty<'db>>,
+    db: &'db dyn HirDatabase,
+    env: Arc<TraitEnvironment<'db>>,
     traits_in_scope: &FxHashSet<TraitId>,
     visible_from_module: VisibleFromModule,
     name: Option<&Name>,
@@ -1018,7 +1132,7 @@ pub fn iterate_method_candidates_dyn(
             // types*.
 
             let mut table = InferenceTable::new(db, env);
-            let ty = table.instantiate_canonical(ty.clone());
+            let ty = table.instantiate_canonical_ns(*ty);
             let deref_chain = autoderef_method_receiver(&mut table, ty);
 
             deref_chain.into_iter().try_for_each(|(receiver_ty, adj)| {
@@ -1049,19 +1163,16 @@ pub fn iterate_method_candidates_dyn(
 }
 
 #[tracing::instrument(skip_all, fields(name = ?name))]
-fn iterate_method_candidates_with_autoref(
-    table: &mut InferenceTable<'_>,
-    receiver_ty: Canonical<Ty>,
+fn iterate_method_candidates_with_autoref<'db>(
+    table: &mut InferenceTable<'db>,
+    receiver_ty: next_solver::Canonical<'db, crate::next_solver::Ty<'db>>,
     first_adjustment: ReceiverAdjustments,
     traits_in_scope: &FxHashSet<TraitId>,
     visible_from_module: VisibleFromModule,
     name: Option<&Name>,
     callback: &mut dyn MethodCandidateCallback,
 ) -> ControlFlow<()> {
-    if receiver_ty.value.is_general_var(Interner, &receiver_ty.binders) {
-        // don't try to resolve methods on unknown types
-        return ControlFlow::Continue(());
-    }
+    let interner = table.interner;
 
     let mut iterate_method_candidates_by_receiver = move |receiver_ty, first_adjustment| {
         iterate_method_candidates_by_receiver(
@@ -1076,18 +1187,27 @@ fn iterate_method_candidates_with_autoref(
     };
 
     let mut maybe_reborrowed = first_adjustment.clone();
-    if let Some((_, _, m)) = receiver_ty.value.as_reference() {
+    if let rustc_type_ir::TyKind::Ref(_, _, m) = receiver_ty.value.kind() {
+        let m = match m {
+            rustc_ast_ir::Mutability::Mut => chalk_ir::Mutability::Mut,
+            rustc_ast_ir::Mutability::Not => chalk_ir::Mutability::Not,
+        };
         // Prefer reborrow of references to move
         maybe_reborrowed.autoref = Some(AutorefOrPtrAdjustment::Autoref(m));
         maybe_reborrowed.autoderefs += 1;
     }
 
-    iterate_method_candidates_by_receiver(receiver_ty.clone(), maybe_reborrowed)?;
+    iterate_method_candidates_by_receiver(receiver_ty, maybe_reborrowed)?;
 
-    let refed = Canonical {
-        value: TyKind::Ref(Mutability::Not, error_lifetime(), receiver_ty.value.clone())
-            .intern(Interner),
-        binders: receiver_ty.binders.clone(),
+    let refed = next_solver::Canonical {
+        max_universe: receiver_ty.max_universe,
+        variables: receiver_ty.variables,
+        value: next_solver::Ty::new_ref(
+            interner,
+            next_solver::Region::error(interner),
+            receiver_ty.value,
+            rustc_ast_ir::Mutability::Not,
+        ),
     };
 
     iterate_method_candidates_by_receiver(
@@ -1095,10 +1215,15 @@ fn iterate_method_candidates_with_autoref(
         first_adjustment.with_autoref(AutorefOrPtrAdjustment::Autoref(Mutability::Not)),
     )?;
 
-    let ref_muted = Canonical {
-        value: TyKind::Ref(Mutability::Mut, error_lifetime(), receiver_ty.value.clone())
-            .intern(Interner),
-        binders: receiver_ty.binders.clone(),
+    let ref_muted = next_solver::Canonical {
+        max_universe: receiver_ty.max_universe,
+        variables: receiver_ty.variables,
+        value: next_solver::Ty::new_ref(
+            interner,
+            next_solver::Region::error(interner),
+            receiver_ty.value,
+            rustc_ast_ir::Mutability::Mut,
+        ),
     };
 
     iterate_method_candidates_by_receiver(
@@ -1106,10 +1231,13 @@ fn iterate_method_candidates_with_autoref(
         first_adjustment.with_autoref(AutorefOrPtrAdjustment::Autoref(Mutability::Mut)),
     )?;
 
-    if let Some((ty, Mutability::Mut)) = receiver_ty.value.as_raw_ptr() {
-        let const_ptr_ty = Canonical {
-            value: TyKind::Raw(Mutability::Not, ty.clone()).intern(Interner),
-            binders: receiver_ty.binders,
+    if let rustc_type_ir::TyKind::RawPtr(ty, rustc_ast_ir::Mutability::Mut) =
+        receiver_ty.value.kind()
+    {
+        let const_ptr_ty = rustc_type_ir::Canonical {
+            max_universe: rustc_type_ir::UniverseIndex::ZERO,
+            value: next_solver::Ty::new_ptr(interner, ty, rustc_ast_ir::Mutability::Not),
+            variables: receiver_ty.variables,
         };
         iterate_method_candidates_by_receiver(
             const_ptr_ty,
@@ -1160,30 +1288,35 @@ where
 }
 
 #[tracing::instrument(skip_all, fields(name = ?name))]
-fn iterate_method_candidates_by_receiver(
-    table: &mut InferenceTable<'_>,
-    receiver_ty: Canonical<Ty>,
+fn iterate_method_candidates_by_receiver<'db>(
+    table: &mut InferenceTable<'db>,
+    receiver_ty: next_solver::Canonical<'db, crate::next_solver::Ty<'db>>,
     receiver_adjustments: ReceiverAdjustments,
     traits_in_scope: &FxHashSet<TraitId>,
     visible_from_module: VisibleFromModule,
     name: Option<&Name>,
     callback: &mut dyn MethodCandidateCallback,
 ) -> ControlFlow<()> {
-    let receiver_ty = table.instantiate_canonical(receiver_ty);
+    let interner = table.interner;
+    let receiver_ty = table.instantiate_canonical_ns(receiver_ty);
+    let receiver_ty: crate::Ty = receiver_ty.to_chalk(interner);
     // We're looking for methods with *receiver* type receiver_ty. These could
     // be found in any of the derefs of receiver_ty, so we have to go through
     // that, including raw derefs.
     table.run_in_snapshot(|table| {
         let mut autoderef =
-            autoderef::Autoderef::new_no_tracking(table, receiver_ty.clone(), true, true);
+            autoderef::Autoderef::new_no_tracking(table, receiver_ty.to_nextsolver(interner))
+                .include_raw_pointers()
+                .use_receiver_trait();
         while let Some((self_ty, _)) = autoderef.next() {
             iterate_inherent_methods(
-                &self_ty,
+                &self_ty.to_chalk(interner),
                 autoderef.table,
                 name,
                 Some(&receiver_ty),
                 Some(receiver_adjustments.clone()),
                 visible_from_module,
+                LookupMode::MethodCall,
                 &mut |adjustments, item, is_visible| {
                     callback.on_inherent_method(adjustments, item, is_visible)
                 },
@@ -1193,20 +1326,24 @@ fn iterate_method_candidates_by_receiver(
     })?;
     table.run_in_snapshot(|table| {
         let mut autoderef =
-            autoderef::Autoderef::new_no_tracking(table, receiver_ty.clone(), true, true);
+            autoderef::Autoderef::new_no_tracking(table, receiver_ty.to_nextsolver(interner))
+                .include_raw_pointers()
+                .use_receiver_trait();
         while let Some((self_ty, _)) = autoderef.next() {
-            if matches!(self_ty.kind(Interner), TyKind::InferenceVar(_, TyVariableKind::General)) {
+            if matches!(self_ty.kind(), crate::next_solver::TyKind::Infer(rustc_type_ir::TyVar(_)))
+            {
                 // don't try to resolve methods on unknown types
                 return ControlFlow::Continue(());
             }
 
             iterate_trait_method_candidates(
-                &self_ty,
+                &self_ty.to_chalk(interner),
                 autoderef.table,
                 traits_in_scope,
                 name,
                 Some(&receiver_ty),
                 Some(receiver_adjustments.clone()),
+                LookupMode::MethodCall,
                 &mut |adjustments, item, is_visible| {
                     callback.on_trait_method(adjustments, item, is_visible)
                 },
@@ -1217,17 +1354,17 @@ fn iterate_method_candidates_by_receiver(
 }
 
 #[tracing::instrument(skip_all, fields(name = ?name))]
-fn iterate_method_candidates_for_self_ty(
-    self_ty: &Canonical<Ty>,
-    db: &dyn HirDatabase,
-    env: Arc<TraitEnvironment>,
+fn iterate_method_candidates_for_self_ty<'db>(
+    self_ty: &next_solver::Canonical<'db, crate::next_solver::Ty<'db>>,
+    db: &'db dyn HirDatabase,
+    env: Arc<TraitEnvironment<'db>>,
     traits_in_scope: &FxHashSet<TraitId>,
     visible_from_module: VisibleFromModule,
     name: Option<&Name>,
     callback: &mut dyn MethodCandidateCallback,
 ) -> ControlFlow<()> {
     let mut table = InferenceTable::new(db, env);
-    let self_ty = table.instantiate_canonical(self_ty.clone());
+    let self_ty = table.instantiate_canonical_ns(*self_ty).to_chalk(table.interner);
     iterate_inherent_methods(
         &self_ty,
         &mut table,
@@ -1235,6 +1372,7 @@ fn iterate_method_candidates_for_self_ty(
         None,
         None,
         visible_from_module,
+        LookupMode::Path,
         &mut |adjustments, item, is_visible| {
             callback.on_inherent_method(adjustments, item, is_visible)
         },
@@ -1246,6 +1384,7 @@ fn iterate_method_candidates_for_self_ty(
         name,
         None,
         None,
+        LookupMode::Path,
         &mut |adjustments, item, is_visible| {
             callback.on_trait_method(adjustments, item, is_visible)
         },
@@ -1260,12 +1399,13 @@ fn iterate_trait_method_candidates(
     name: Option<&Name>,
     receiver_ty: Option<&Ty>,
     receiver_adjustments: Option<ReceiverAdjustments>,
+    mode: LookupMode,
     callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId, bool) -> ControlFlow<()>,
 ) -> ControlFlow<()> {
     let db = table.db;
 
-    let canonical_self_ty = table.canonicalize(self_ty.clone());
-    let TraitEnvironment { krate, block, .. } = *table.trait_env;
+    let canonical_self_ty = table.canonicalize(self_ty.clone().to_nextsolver(table.interner));
+    let krate = table.trait_env.krate;
 
     'traits: for &t in traits_in_scope {
         let data = db.trait_signature(t);
@@ -1305,15 +1445,22 @@ fn iterate_trait_method_candidates(
         for &(_, item) in t.trait_items(db).items.iter() {
             // Don't pass a `visible_from_module` down to `is_valid_candidate`,
             // since only inherent methods should be included into visibility checking.
-            let visible =
-                match is_valid_trait_method_candidate(table, t, name, receiver_ty, item, self_ty) {
-                    IsValidCandidate::Yes => true,
-                    IsValidCandidate::NotVisible => false,
-                    IsValidCandidate::No => continue,
-                };
+            let visible = match is_valid_trait_method_candidate(
+                table,
+                t,
+                name,
+                receiver_ty,
+                item,
+                self_ty,
+                mode,
+            ) {
+                IsValidCandidate::Yes => true,
+                IsValidCandidate::NotVisible => false,
+                IsValidCandidate::No => continue,
+            };
             if !known_implemented {
-                let goal = generic_implements_goal(db, &table.trait_env, t, &canonical_self_ty);
-                if db.trait_solve(krate, block, goal.cast(Interner)).is_none() {
+                let goal = generic_implements_goal_ns(table, t, canonical_self_ty);
+                if next_trait_solve_canonical_in_ctxt(&table.infer_ctxt, goal).no_solution() {
                     continue 'traits;
                 }
             }
@@ -1332,6 +1479,7 @@ fn iterate_inherent_methods(
     receiver_ty: Option<&Ty>,
     receiver_adjustments: Option<ReceiverAdjustments>,
     visible_from_module: VisibleFromModule,
+    mode: LookupMode,
     callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId, bool) -> ControlFlow<()>,
 ) -> ControlFlow<()> {
     let db = table.db;
@@ -1355,6 +1503,7 @@ fn iterate_inherent_methods(
                 receiver_adjustments.clone(),
                 callback,
                 traits,
+                mode,
             )?;
         }
         TyKind::Dyn(_) => {
@@ -1368,6 +1517,7 @@ fn iterate_inherent_methods(
                     receiver_adjustments.clone(),
                     callback,
                     traits.into_iter(),
+                    mode,
                 )?;
             }
         }
@@ -1426,6 +1576,7 @@ fn iterate_inherent_methods(
         receiver_adjustments: Option<ReceiverAdjustments>,
         callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId, bool) -> ControlFlow<()>,
         traits: impl Iterator<Item = TraitId>,
+        mode: LookupMode,
     ) -> ControlFlow<()> {
         let db = table.db;
         for t in traits {
@@ -1439,6 +1590,7 @@ fn iterate_inherent_methods(
                     receiver_ty,
                     item,
                     self_ty,
+                    mode,
                 ) {
                     IsValidCandidate::Yes => true,
                     IsValidCandidate::NotVisible => false,
@@ -1485,21 +1637,16 @@ fn iterate_inherent_methods(
 }
 
 /// Returns the receiver type for the index trait call.
-pub(crate) fn resolve_indexing_op(
-    db: &dyn HirDatabase,
-    env: Arc<TraitEnvironment>,
-    ty: Canonical<Ty>,
+pub(crate) fn resolve_indexing_op<'db>(
+    table: &mut InferenceTable<'db>,
+    ty: next_solver::Canonical<'db, next_solver::Ty<'db>>,
     index_trait: TraitId,
 ) -> Option<ReceiverAdjustments> {
-    let mut table = InferenceTable::new(db, env);
-    let ty = table.instantiate_canonical(ty);
-    let deref_chain = autoderef_method_receiver(&mut table, ty);
+    let ty = table.instantiate_canonical_ns(ty);
+    let deref_chain = autoderef_method_receiver(table, ty);
     for (ty, adj) in deref_chain {
-        let goal = generic_implements_goal(db, &table.trait_env, index_trait, &ty);
-        if db
-            .trait_solve(table.trait_env.krate, table.trait_env.block, goal.cast(Interner))
-            .is_some()
-        {
+        let goal = generic_implements_goal_ns(table, index_trait, ty);
+        if !next_trait_solve_canonical_in_ctxt(&table.infer_ctxt, goal).no_solution() {
             return Some(adj);
         }
     }
@@ -1549,15 +1696,17 @@ fn is_valid_impl_method_candidate(
             check_that!(receiver_ty.is_none());
             check_that!(name.is_none_or(|n| n == item_name));
 
-            if let Some(from_module) = visible_from_module {
-                if !db.assoc_visibility(c.into()).is_visible_from(db, from_module) {
-                    cov_mark::hit!(const_candidate_not_visible);
-                    return IsValidCandidate::NotVisible;
-                }
+            if let Some(from_module) = visible_from_module
+                && !db.assoc_visibility(c.into()).is_visible_from(db, from_module)
+            {
+                cov_mark::hit!(const_candidate_not_visible);
+                return IsValidCandidate::NotVisible;
             }
             let self_ty_matches = table.run_in_snapshot(|table| {
-                let expected_self_ty =
-                    TyBuilder::impl_self_ty(db, impl_id).fill_with_inference_vars(table).build();
+                let expected_self_ty = TyBuilder::impl_self_ty(db, impl_id)
+                    .fill_with_inference_vars(table)
+                    .build(DbInterner::conjure())
+                    .to_chalk(DbInterner::conjure());
                 table.unify(&expected_self_ty, self_ty)
             });
             if !self_ty_matches {
@@ -1579,6 +1728,7 @@ fn is_valid_trait_method_candidate(
     receiver_ty: Option<&Ty>,
     item: AssocItemId,
     self_ty: &Ty,
+    mode: LookupMode,
 ) -> IsValidCandidate {
     let db = table.db;
     match item {
@@ -1602,9 +1752,41 @@ fn is_valid_trait_method_candidate(
                         .fill_with_inference_vars(table)
                         .build();
 
+                    let args: crate::next_solver::GenericArgs<'_> =
+                        fn_subst.to_nextsolver(table.interner);
                     let sig = db.callable_item_signature(fn_id.into());
-                    let expected_receiver =
-                        sig.map(|s| s.params()[0].clone()).substitute(Interner, &fn_subst);
+                    let expected_receiver = sig
+                        .map_bound(|s| s.skip_binder().inputs_and_output.as_slice()[0])
+                        .instantiate(table.interner, args)
+                        .to_chalk(table.interner);
+
+                    // FIXME: Clean up this mess with some context struct like rustc's `ProbeContext`
+                    let variance = match mode {
+                        LookupMode::MethodCall => rustc_type_ir::Variance::Covariant,
+                        LookupMode::Path => rustc_type_ir::Variance::Invariant,
+                    };
+                    let res = table
+                        .infer_ctxt
+                        .at(
+                            &next_solver::infer::traits::ObligationCause::dummy(),
+                            table.trait_env.env,
+                        )
+                        .relate(
+                            DefineOpaqueTypes::No,
+                            expected_receiver.to_nextsolver(table.interner),
+                            variance,
+                            receiver_ty.to_nextsolver(table.interner),
+                        );
+                    let Ok(infer_ok) = res else {
+                        return IsValidCandidate::No;
+                    };
+
+                    if !infer_ok.obligations.is_empty() {
+                        let mut ctxt = ObligationCtxt::new(&table.infer_ctxt);
+                        ctxt.register_obligations(infer_ok.into_obligations());
+                        // FIXME: Are we doing this correctly? Probably better to follow rustc more closely.
+                        check_that!(ctxt.try_evaluate_obligations().is_empty());
+                    }
 
                     check_that!(table.unify(receiver_ty, &expected_receiver));
                 }
@@ -1638,17 +1820,19 @@ fn is_valid_impl_fn_candidate(
     let db = table.db;
     let data = db.function_signature(fn_id);
 
-    if let Some(from_module) = visible_from_module {
-        if !db.assoc_visibility(fn_id.into()).is_visible_from(db, from_module) {
-            cov_mark::hit!(autoderef_candidate_not_visible);
-            return IsValidCandidate::NotVisible;
-        }
+    if let Some(from_module) = visible_from_module
+        && !db.assoc_visibility(fn_id.into()).is_visible_from(db, from_module)
+    {
+        cov_mark::hit!(autoderef_candidate_not_visible);
+        return IsValidCandidate::NotVisible;
     }
     table.run_in_snapshot(|table| {
         let _p = tracing::info_span!("subst_for_def").entered();
-        let impl_subst =
-            TyBuilder::subst_for_def(db, impl_id, None).fill_with_inference_vars(table).build();
-        let expect_self_ty = db.impl_self_ty(impl_id).substitute(Interner, &impl_subst);
+        let impl_subst = table.infer_ctxt.fresh_args_for_item(impl_id.into());
+        let expect_self_ty = db
+            .impl_self_ty(impl_id)
+            .instantiate(table.interner, &impl_subst)
+            .to_chalk(table.interner);
 
         check_that!(table.unify(&expect_self_ty, self_ty));
 
@@ -1656,99 +1840,61 @@ fn is_valid_impl_fn_candidate(
             let _p = tracing::info_span!("check_receiver_ty").entered();
             check_that!(data.has_self_param());
 
-            let fn_subst = TyBuilder::subst_for_def(db, fn_id, Some(impl_subst.clone()))
-                .fill_with_inference_vars(table)
-                .build();
+            let fn_subst: crate::Substitution =
+                table.infer_ctxt.fresh_args_for_item(fn_id.into()).to_chalk(table.interner);
 
+            let args: crate::next_solver::GenericArgs<'_> = fn_subst.to_nextsolver(table.interner);
             let sig = db.callable_item_signature(fn_id.into());
-            let expected_receiver =
-                sig.map(|s| s.params()[0].clone()).substitute(Interner, &fn_subst);
+            let expected_receiver = sig
+                .map_bound(|s| s.skip_binder().inputs_and_output.as_slice()[0])
+                .instantiate(table.interner, args)
+                .to_chalk(table.interner);
 
             check_that!(table.unify(receiver_ty, &expected_receiver));
         }
 
         // We need to consider the bounds on the impl to distinguish functions of the same name
         // for a type.
-        let predicates = db.generic_predicates(impl_id.into());
-        let goals = predicates.iter().map(|p| {
-            let (p, b) = p
-                .clone()
-                .substitute(Interner, &impl_subst)
-                // Skipping the inner binders is ok, as we don't handle quantified where
-                // clauses yet.
-                .into_value_and_skipped_binders();
-            stdx::always!(b.len(Interner) == 0);
+        let predicates = db.generic_predicates_ns(impl_id.into());
+        let Some(predicates) = predicates.instantiate(table.interner, impl_subst) else {
+            return IsValidCandidate::Yes;
+        };
 
-            p.cast::<Goal>(Interner)
-        });
+        let mut ctxt = ObligationCtxt::new(&table.infer_ctxt);
 
-        for goal in goals.clone() {
-            let in_env = InEnvironment::new(&table.trait_env.env, goal);
-            let canonicalized = table.canonicalize_with_free_vars(in_env);
-            let solution = table.db.trait_solve(
-                table.trait_env.krate,
-                table.trait_env.block,
-                canonicalized.value.clone(),
-            );
+        ctxt.register_obligations(predicates.into_iter().map(|p| {
+            PredicateObligation::new(
+                table.interner,
+                ObligationCause::new(),
+                table.trait_env.env,
+                p.0,
+            )
+        }));
 
-            match solution {
-                Some(Solution::Unique(canonical_subst)) => {
-                    canonicalized.apply_solution(
-                        table,
-                        Canonical {
-                            binders: canonical_subst.binders,
-                            value: canonical_subst.value.subst,
-                        },
-                    );
-                }
-                Some(Solution::Ambig(Guidance::Definite(substs))) => {
-                    canonicalized.apply_solution(table, substs);
-                }
-                Some(_) => (),
-                None => return IsValidCandidate::No,
-            }
+        if ctxt.try_evaluate_obligations().is_empty() {
+            IsValidCandidate::Yes
+        } else {
+            IsValidCandidate::No
         }
-
-        for goal in goals {
-            if table.try_obligation(goal).is_none() {
-                return IsValidCandidate::No;
-            }
-        }
-
-        IsValidCandidate::Yes
     })
 }
 
-pub fn implements_trait(
+pub fn implements_trait_unique<'db>(
     ty: &Canonical<Ty>,
-    db: &dyn HirDatabase,
-    env: &TraitEnvironment,
+    db: &'db dyn HirDatabase,
+    env: &TraitEnvironment<'db>,
     trait_: TraitId,
 ) -> bool {
     let goal = generic_implements_goal(db, env, trait_, ty);
-    let solution = db.trait_solve(env.krate, env.block, goal.cast(Interner));
-
-    solution.is_some()
-}
-
-pub fn implements_trait_unique(
-    ty: &Canonical<Ty>,
-    db: &dyn HirDatabase,
-    env: &TraitEnvironment,
-    trait_: TraitId,
-) -> bool {
-    let goal = generic_implements_goal(db, env, trait_, ty);
-    let solution = db.trait_solve(env.krate, env.block, goal.cast(Interner));
-
-    matches!(solution, Some(crate::Solution::Unique(_)))
+    db.trait_solve(env.krate, env.block, goal.cast(Interner)).certain()
 }
 
 /// This creates Substs for a trait with the given Self type and type variables
-/// for all other parameters, to query Chalk with it.
+/// for all other parameters, to query next solver with it.
 #[tracing::instrument(skip_all)]
-fn generic_implements_goal(
-    db: &dyn HirDatabase,
-    env: &TraitEnvironment,
+fn generic_implements_goal<'db>(
+    db: &'db dyn HirDatabase,
+    env: &TraitEnvironment<'db>,
     trait_: TraitId,
     self_ty: &Canonical<Ty>,
 ) -> Canonical<InEnvironment<super::DomainGoal>> {
@@ -1770,16 +1916,38 @@ fn generic_implements_goal(
     let binders = CanonicalVarKinds::from_iter(Interner, kinds);
 
     let obligation = trait_ref.cast(Interner);
-    let value = InEnvironment::new(&env.env, obligation);
+    let value = InEnvironment::new(
+        &env.env.to_chalk(DbInterner::new_with(db, Some(env.krate), env.block)),
+        obligation,
+    );
     Canonical { binders, value }
 }
 
-fn autoderef_method_receiver(
-    table: &mut InferenceTable<'_>,
-    ty: Ty,
-) -> Vec<(Canonical<Ty>, ReceiverAdjustments)> {
-    let mut deref_chain: Vec<_> = Vec::new();
-    let mut autoderef = autoderef::Autoderef::new_no_tracking(table, ty, false, true);
+/// This creates Substs for a trait with the given Self type and type variables
+/// for all other parameters, to query the trait solver with it.
+#[tracing::instrument(skip_all)]
+fn generic_implements_goal_ns<'db>(
+    table: &mut InferenceTable<'db>,
+    trait_: TraitId,
+    self_ty: next_solver::Canonical<'db, crate::next_solver::Ty<'db>>,
+) -> next_solver::Canonical<'db, next_solver::Goal<'db, crate::next_solver::Predicate<'db>>> {
+    let args = table.infer_ctxt.fresh_args_for_item(SolverDefId::TraitId(trait_));
+    let self_ty = table.instantiate_canonical_ns(self_ty);
+    let trait_ref =
+        rustc_type_ir::TraitRef::new_from_args(table.infer_ctxt.interner, trait_.into(), args)
+            .with_replaced_self_ty(table.infer_ctxt.interner, self_ty);
+    let goal = next_solver::Goal::new(table.infer_ctxt.interner, table.trait_env.env, trait_ref);
+
+    table.canonicalize(goal)
+}
+
+fn autoderef_method_receiver<'db>(
+    table: &mut InferenceTable<'db>,
+    ty: next_solver::Ty<'db>,
+) -> Vec<(next_solver::Canonical<'db, crate::next_solver::Ty<'db>>, ReceiverAdjustments)> {
+    let interner = table.interner;
+    let mut deref_chain = Vec::new();
+    let mut autoderef = autoderef::Autoderef::new_no_tracking(table, ty).use_receiver_trait();
     while let Some((ty, derefs)) = autoderef.next() {
         deref_chain.push((
             autoderef.table.canonicalize(ty),
@@ -1787,12 +1955,12 @@ fn autoderef_method_receiver(
         ));
     }
     // As a last step, we can do array unsizing (that's the only unsizing that rustc does for method receivers!)
-    if let Some((TyKind::Array(parameters, _), binders, adj)) =
-        deref_chain.last().map(|(ty, adj)| (ty.value.kind(Interner), ty.binders.clone(), adj))
+    if let Some((rustc_type_ir::Array(parameters, _), variables, max_universe, adj)) =
+        deref_chain.last().map(|d| (d.0.value.kind(), d.0.variables, d.0.max_universe, d.1.clone()))
     {
-        let unsized_ty = TyKind::Slice(parameters.clone()).intern(Interner);
+        let unsized_ty = next_solver::Ty::new_slice(interner, parameters);
         deref_chain.push((
-            Canonical { value: unsized_ty, binders },
+            next_solver::Canonical { max_universe, value: unsized_ty, variables },
             ReceiverAdjustments { unsize_array: true, ..adj.clone() },
         ));
     }

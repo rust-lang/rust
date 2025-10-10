@@ -5,10 +5,10 @@
 // This tests the pretty-printing of lifetimes in lots of ways.
 
 #![allow(unused)]
-#[prelude_import]
-use ::std::prelude::rust_2015::*;
 #[attr = MacroUse {arguments: UseAll}]
 extern crate std;
+#[prelude_import]
+use ::std::prelude::rust_2015::*;
 
 struct Foo<'a> {
     x: &'a u32,

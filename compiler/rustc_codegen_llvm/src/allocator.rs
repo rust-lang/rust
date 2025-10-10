@@ -5,13 +5,16 @@ use rustc_ast::expand::allocator::{
 };
 use rustc_codegen_ssa::traits::BaseTypeCodegenMethods as _;
 use rustc_middle::bug;
+use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{DebugInfo, OomStrategy};
+use rustc_span::sym;
 use rustc_symbol_mangling::mangle_internal_symbol;
 
+use crate::attributes::llfn_attrs_from_instance;
 use crate::builder::SBuilder;
 use crate::declare::declare_simple_fn;
-use crate::llvm::{self, False, True, Type, Value};
+use crate::llvm::{self, FALSE, FromGeneric, TRUE, Type, Value};
 use crate::{SimpleCx, attributes, debuginfo};
 
 pub(crate) unsafe fn codegen(
@@ -57,7 +60,26 @@ pub(crate) unsafe fn codegen(
             let from_name = mangle_internal_symbol(tcx, &global_fn_name(method.name));
             let to_name = mangle_internal_symbol(tcx, &default_fn_name(method.name));
 
-            create_wrapper_function(tcx, &cx, &from_name, Some(&to_name), &args, output, false);
+            let alloc_attr_flag = match method.name {
+                sym::alloc => CodegenFnAttrFlags::ALLOCATOR,
+                sym::dealloc => CodegenFnAttrFlags::DEALLOCATOR,
+                sym::realloc => CodegenFnAttrFlags::REALLOCATOR,
+                sym::alloc_zeroed => CodegenFnAttrFlags::ALLOCATOR_ZEROED,
+                _ => unreachable!("Unknown allocator method!"),
+            };
+
+            let mut attrs = CodegenFnAttrs::new();
+            attrs.flags |= alloc_attr_flag;
+            create_wrapper_function(
+                tcx,
+                &cx,
+                &from_name,
+                Some(&to_name),
+                &args,
+                output,
+                false,
+                &attrs,
+            );
         }
     }
 
@@ -70,6 +92,7 @@ pub(crate) unsafe fn codegen(
         &[usize, usize], // size, align
         None,
         true,
+        &CodegenFnAttrs::new(),
     );
 
     unsafe {
@@ -79,7 +102,7 @@ pub(crate) unsafe fn codegen(
             &cx,
             &mangle_internal_symbol(tcx, OomStrategy::SYMBOL),
             &i8,
-            &llvm::LLVMConstInt(i8, tcx.sess.opts.unstable_opts.oom.should_panic() as u64, False),
+            &llvm::LLVMConstInt(i8, tcx.sess.opts.unstable_opts.oom.should_panic() as u64, FALSE),
         );
 
         // __rust_no_alloc_shim_is_unstable_v2
@@ -91,6 +114,7 @@ pub(crate) unsafe fn codegen(
             &[],
             None,
             false,
+            &CodegenFnAttrs::new(),
         );
     }
 
@@ -137,6 +161,7 @@ fn create_wrapper_function(
     args: &[&Type],
     output: Option<&Type>,
     no_return: bool,
+    attrs: &CodegenFnAttrs,
 ) {
     let ty = cx.type_func(args, output.unwrap_or_else(|| cx.type_void()));
     let llfn = declare_simple_fn(
@@ -147,6 +172,9 @@ fn create_wrapper_function(
         llvm::Visibility::from_generic(tcx.sess.default_visibility()),
         ty,
     );
+
+    llfn_attrs_from_instance(cx, tcx, llfn, attrs, None);
+
     let no_return = if no_return {
         // -> ! DIFlagNoReturn
         let no_return = llvm::AttributeKind::NoReturn.create_attr(cx.llcx);
@@ -155,12 +183,6 @@ fn create_wrapper_function(
     } else {
         None
     };
-
-    if tcx.sess.must_emit_unwind_tables() {
-        let uwtable =
-            attributes::uwtable_attr(cx.llcx, tcx.sess.opts.unstable_opts.use_sync_unwind);
-        attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &[uwtable]);
-    }
 
     let llbb = unsafe { llvm::LLVMAppendBasicBlockInContext(cx.llcx, llfn, c"entry".as_ptr()) };
     let mut bx = SBuilder::build(&cx, llbb);
@@ -186,7 +208,7 @@ fn create_wrapper_function(
             .map(|(i, _)| llvm::get_param(llfn, i as c_uint))
             .collect::<Vec<_>>();
         let ret = bx.call(ty, callee, &args, None);
-        llvm::LLVMSetTailCall(ret, True);
+        llvm::LLVMSetTailCall(ret, TRUE);
         if output.is_some() {
             bx.ret(ret);
         } else {

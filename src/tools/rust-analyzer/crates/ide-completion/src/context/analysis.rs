@@ -1,6 +1,7 @@
 //! Module responsible for analyzing the code surrounding the cursor for completion.
 use std::iter;
 
+use base_db::salsa;
 use hir::{ExpandResult, InFile, Semantics, Type, TypeInfo, Variant};
 use ide_db::{RootDatabase, active_parameter::ActiveParameter};
 use itertools::Either;
@@ -85,9 +86,15 @@ pub(super) fn expand_and_analyze<'db>(
     let original_offset = expansion.original_offset + relative_offset;
     let token = expansion.original_file.token_at_offset(original_offset).left_biased()?;
 
-    analyze(sema, expansion, original_token, &token).map(|(analysis, expected, qualifier_ctx)| {
-        AnalysisResult { analysis, expected, qualifier_ctx, token, original_offset }
-    })
+    salsa::attach(sema.db, || analyze(sema, expansion, original_token, &token)).map(
+        |(analysis, expected, qualifier_ctx)| AnalysisResult {
+            analysis,
+            expected,
+            qualifier_ctx,
+            token,
+            original_offset,
+        },
+    )
 }
 
 fn token_at_offset_ignore_whitespace(file: &SyntaxNode, offset: TextSize) -> Option<SyntaxToken> {
@@ -287,24 +294,22 @@ fn expand(
                 &spec_attr,
                 fake_ident_token.clone(),
             ),
-        ) {
-            if let Some((fake_mapped_token, _)) =
-                fake_mapped_tokens.into_iter().min_by_key(|(_, rank)| *rank)
-            {
-                return Some(ExpansionResult {
-                    original_file: original_file.value,
-                    speculative_file,
-                    original_offset,
-                    speculative_offset: fake_ident_token.text_range().start(),
-                    fake_ident_token,
-                    derive_ctx: Some((
-                        actual_expansion,
-                        fake_expansion,
-                        fake_mapped_token.text_range().start(),
-                        orig_attr,
-                    )),
-                });
-            }
+        ) && let Some((fake_mapped_token, _)) =
+            fake_mapped_tokens.into_iter().min_by_key(|(_, rank)| *rank)
+        {
+            return Some(ExpansionResult {
+                original_file: original_file.value,
+                speculative_file,
+                original_offset,
+                speculative_offset: fake_ident_token.text_range().start(),
+                fake_ident_token,
+                derive_ctx: Some((
+                    actual_expansion,
+                    fake_expansion,
+                    fake_mapped_token.text_range().start(),
+                    orig_attr,
+                )),
+            });
         }
 
         if let Some(spec_adt) =
@@ -535,14 +540,13 @@ fn analyze<'db>(
                     NameRefKind::Path(PathCompletionCtx { kind: PathKind::Expr { .. }, path, .. }, ..),
                 ..
             } = &nameref_ctx
+                && is_in_token_of_for_loop(path)
             {
-                if is_in_token_of_for_loop(path) {
-                    // for pat $0
-                    // there is nothing to complete here except `in` keyword
-                    // don't bother populating the context
-                    // Ideally this special casing wouldn't be needed, but the parser recovers
-                    return None;
-                }
+                // for pat $0
+                // there is nothing to complete here except `in` keyword
+                // don't bother populating the context
+                // Ideally this special casing wouldn't be needed, but the parser recovers
+                return None;
             }
 
             qual_ctx = qualifier_ctx;
@@ -562,6 +566,7 @@ fn expected_type_and_name<'db>(
     token: &SyntaxToken,
     name_like: &ast::NameLike,
 ) -> (Option<Type<'db>>, Option<NameOrNameRef>) {
+    let token = prev_special_biased_token_at_trivia(token.clone());
     let mut node = match token.parent() {
         Some(it) => it,
         None => return (None, None),
@@ -632,6 +637,20 @@ fn expected_type_and_name<'db>(
                         .map(TypeInfo::original);
                     (ty, None)
                 },
+                ast::BinExpr(it) => {
+                    if let Some(ast::BinaryOp::Assignment { op: None }) = it.op_kind() {
+                        let ty = it.lhs()
+                            .and_then(|lhs| sema.type_of_expr(&lhs))
+                            .or_else(|| it.rhs().and_then(|rhs| sema.type_of_expr(&rhs)))
+                            .map(TypeInfo::original);
+                        (ty, None)
+                    } else if let Some(ast::BinaryOp::LogicOp(_)) = it.op_kind() {
+                        let ty = sema.type_of_expr(&it.clone().into()).map(TypeInfo::original);
+                        (ty, None)
+                    } else {
+                        (None, None)
+                    }
+                },
                 ast::ArgList(_) => {
                     cov_mark::hit!(expected_type_fn_param);
                     ActiveParameter::at_token(
@@ -698,9 +717,13 @@ fn expected_type_and_name<'db>(
                     (ty, None)
                 },
                 ast::IfExpr(it) => {
-                    let ty = it.condition()
-                        .and_then(|e| sema.type_of_expr(&e))
-                        .map(TypeInfo::original);
+                    let ty = if let Some(body) = it.then_branch()
+                        && token.text_range().end() > body.syntax().text_range().start()
+                    {
+                        sema.type_of_expr(&body.into())
+                    } else {
+                        it.condition().and_then(|e| sema.type_of_expr(&e))
+                    }.map(TypeInfo::original);
                     (ty, None)
                 },
                 ast::IdentPat(it) => {
@@ -714,6 +737,18 @@ fn expected_type_and_name<'db>(
                     cov_mark::hit!(expected_type_fn_ret_without_leading_char);
                     let def = sema.to_def(&it);
                     (def.map(|def| def.ret_type(sema.db)), None)
+                },
+                ast::ReturnExpr(it) => {
+                    let fn_ = sema.ancestors_with_macros(it.syntax().clone())
+                        .find_map(Either::<ast::Fn, ast::ClosureExpr>::cast);
+                    let ty = fn_.and_then(|f| match f {
+                        Either::Left(f) => Some(sema.to_def(&f)?.ret_type(sema.db)),
+                        Either::Right(f) => {
+                            let ty = sema.type_of_expr(&f.into())?.original.as_callable(sema.db)?;
+                            Some(ty.return_type())
+                        },
+                    });
+                    (ty, None)
                 },
                 ast::ClosureExpr(it) => {
                     let ty = sema.type_of_expr(&it.into());
@@ -926,19 +961,38 @@ fn classify_name_ref<'db>(
             None
         }
     };
-    let after_if_expr = |node: SyntaxNode| {
-        let prev_expr = (|| {
-            let node = match node.parent().and_then(ast::ExprStmt::cast) {
-                Some(stmt) => stmt.syntax().clone(),
-                None => node,
-            };
-            let prev_sibling = non_trivia_sibling(node.into(), Direction::Prev)?.into_node()?;
+    let prev_expr = |node: SyntaxNode| {
+        let node = match node.parent().and_then(ast::ExprStmt::cast) {
+            Some(stmt) => stmt.syntax().clone(),
+            None => node,
+        };
+        let prev_sibling = non_trivia_sibling(node.into(), Direction::Prev)?.into_node()?;
 
-            ast::ExprStmt::cast(prev_sibling.clone())
-                .and_then(|it| it.expr())
-                .or_else(|| ast::Expr::cast(prev_sibling))
-        })();
+        match_ast! {
+            match prev_sibling {
+                ast::ExprStmt(stmt) => stmt.expr().filter(|_| stmt.semicolon_token().is_none()),
+                ast::LetStmt(stmt) => stmt.initializer().filter(|_| stmt.semicolon_token().is_none()),
+                ast::Expr(expr) => Some(expr),
+                _ => None,
+            }
+        }
+    };
+    let after_if_expr = |node: SyntaxNode| {
+        let prev_expr = prev_expr(node);
         matches!(prev_expr, Some(ast::Expr::IfExpr(_)))
+    };
+    let after_incomplete_let = |node: SyntaxNode| {
+        prev_expr(node).and_then(|it| it.syntax().parent()).and_then(ast::LetStmt::cast)
+    };
+    let before_else_kw = |node: &SyntaxNode| {
+        node.parent()
+            .and_then(ast::ExprStmt::cast)
+            .filter(|stmt| stmt.semicolon_token().is_none())
+            .and_then(|stmt| non_trivia_sibling(stmt.syntax().clone().into(), Direction::Next))
+            .and_then(NodeOrToken::into_node)
+            .filter(|next| next.kind() == SyntaxKind::ERROR)
+            .and_then(|next| next.first_token())
+            .is_some_and(|token| token.kind() == SyntaxKind::ELSE_KW)
     };
 
     // We do not want to generate path completions when we are sandwiched between an item decl signature and its body.
@@ -951,29 +1005,26 @@ fn classify_name_ref<'db>(
     let inbetween_body_and_decl_check = |node: SyntaxNode| {
         if let Some(NodeOrToken::Node(n)) =
             syntax::algo::non_trivia_sibling(node.into(), syntax::Direction::Prev)
+            && let Some(item) = ast::Item::cast(n)
         {
-            if let Some(item) = ast::Item::cast(n) {
-                let is_inbetween = match &item {
-                    ast::Item::Const(it) => it.body().is_none() && it.semicolon_token().is_none(),
-                    ast::Item::Enum(it) => it.variant_list().is_none(),
-                    ast::Item::ExternBlock(it) => it.extern_item_list().is_none(),
-                    ast::Item::Fn(it) => it.body().is_none() && it.semicolon_token().is_none(),
-                    ast::Item::Impl(it) => it.assoc_item_list().is_none(),
-                    ast::Item::Module(it) => {
-                        it.item_list().is_none() && it.semicolon_token().is_none()
-                    }
-                    ast::Item::Static(it) => it.body().is_none(),
-                    ast::Item::Struct(it) => {
-                        it.field_list().is_none() && it.semicolon_token().is_none()
-                    }
-                    ast::Item::Trait(it) => it.assoc_item_list().is_none(),
-                    ast::Item::TypeAlias(it) => it.ty().is_none() && it.semicolon_token().is_none(),
-                    ast::Item::Union(it) => it.record_field_list().is_none(),
-                    _ => false,
-                };
-                if is_inbetween {
-                    return Some(item);
+            let is_inbetween = match &item {
+                ast::Item::Const(it) => it.body().is_none() && it.semicolon_token().is_none(),
+                ast::Item::Enum(it) => it.variant_list().is_none(),
+                ast::Item::ExternBlock(it) => it.extern_item_list().is_none(),
+                ast::Item::Fn(it) => it.body().is_none() && it.semicolon_token().is_none(),
+                ast::Item::Impl(it) => it.assoc_item_list().is_none(),
+                ast::Item::Module(it) => it.item_list().is_none() && it.semicolon_token().is_none(),
+                ast::Item::Static(it) => it.body().is_none(),
+                ast::Item::Struct(it) => {
+                    it.field_list().is_none() && it.semicolon_token().is_none()
                 }
+                ast::Item::Trait(it) => it.assoc_item_list().is_none(),
+                ast::Item::TypeAlias(it) => it.ty().is_none() && it.semicolon_token().is_none(),
+                ast::Item::Union(it) => it.record_field_list().is_none(),
+                _ => false,
+            };
+            if is_inbetween {
+                return Some(item);
             }
         }
         None
@@ -1030,9 +1081,6 @@ fn classify_name_ref<'db>(
                                             in_trait = Some(trait_);
                                             sema.source(trait_)?.value.generic_param_list()
                                         }
-                                    }
-                                    hir::ModuleDef::TraitAlias(trait_) => {
-                                        sema.source(trait_)?.value.generic_param_list()
                                     }
                                     hir::ModuleDef::TypeAlias(ty_) => {
                                         sema.source(ty_)?.value.generic_param_list()
@@ -1168,19 +1216,23 @@ fn classify_name_ref<'db>(
         Some(res)
     };
 
-    let is_in_condition = |it: &ast::Expr| {
+    fn is_in_condition(it: &ast::Expr) -> bool {
         (|| {
             let parent = it.syntax().parent()?;
             if let Some(expr) = ast::WhileExpr::cast(parent.clone()) {
                 Some(expr.condition()? == *it)
-            } else if let Some(expr) = ast::IfExpr::cast(parent) {
+            } else if let Some(expr) = ast::IfExpr::cast(parent.clone()) {
                 Some(expr.condition()? == *it)
+            } else if let Some(expr) = ast::BinExpr::cast(parent)
+                && expr.op_token()?.kind() == T![&&]
+            {
+                Some(is_in_condition(&expr.into()))
             } else {
                 None
             }
         })()
         .unwrap_or(false)
-    };
+    }
 
     let make_path_kind_expr = |expr: ast::Expr| {
         let it = expr.syntax();
@@ -1241,10 +1293,16 @@ fn classify_name_ref<'db>(
         };
         let is_func_update = func_update_record(it);
         let in_condition = is_in_condition(&expr);
+        let after_incomplete_let = after_incomplete_let(it.clone()).is_some();
+        let incomplete_expr_stmt =
+            it.parent().and_then(ast::ExprStmt::cast).map(|it| it.semicolon_token().is_none());
+        let before_else_kw = before_else_kw(it);
         let incomplete_let = it
             .parent()
             .and_then(ast::LetStmt::cast)
-            .is_some_and(|it| it.semicolon_token().is_none());
+            .is_some_and(|it| it.semicolon_token().is_none())
+            || after_incomplete_let && incomplete_expr_stmt.unwrap_or(true) && !before_else_kw;
+        let in_value = it.parent().and_then(Either::<ast::LetStmt, ast::ArgList>::cast).is_some();
         let impl_ = fetch_immediate_impl(sema, original_file, expr.syntax());
 
         let in_match_guard = match it.parent().and_then(ast::MatchArm::cast) {
@@ -1259,13 +1317,16 @@ fn classify_name_ref<'db>(
                 in_block_expr,
                 in_breakable: in_loop_body,
                 after_if_expr,
+                before_else_kw,
                 in_condition,
                 ref_expr_parent,
                 after_amp,
                 is_func_update,
                 innermost_ret_ty,
                 self_param,
+                in_value,
                 incomplete_let,
+                after_incomplete_let,
                 impl_,
                 in_match_guard,
             },
@@ -1502,10 +1563,10 @@ fn classify_name_ref<'db>(
                 }
             };
         }
-    } else if let Some(segment) = path.segment() {
-        if segment.coloncolon_token().is_some() {
-            path_ctx.qualified = Qualified::Absolute;
-        }
+    } else if let Some(segment) = path.segment()
+        && segment.coloncolon_token().is_some()
+    {
+        path_ctx.qualified = Qualified::Absolute;
     }
 
     let mut qualifier_ctx = QualifierCtx::default();
@@ -1530,38 +1591,30 @@ fn classify_name_ref<'db>(
         if let Some(top) = top_node {
             if let Some(NodeOrToken::Node(error_node)) =
                 syntax::algo::non_trivia_sibling(top.clone().into(), syntax::Direction::Prev)
+                && error_node.kind() == SyntaxKind::ERROR
             {
-                if error_node.kind() == SyntaxKind::ERROR {
-                    for token in
-                        error_node.children_with_tokens().filter_map(NodeOrToken::into_token)
-                    {
-                        match token.kind() {
-                            SyntaxKind::UNSAFE_KW => qualifier_ctx.unsafe_tok = Some(token),
-                            SyntaxKind::ASYNC_KW => qualifier_ctx.async_tok = Some(token),
-                            SyntaxKind::SAFE_KW => qualifier_ctx.safe_tok = Some(token),
-                            _ => {}
-                        }
+                for token in error_node.children_with_tokens().filter_map(NodeOrToken::into_token) {
+                    match token.kind() {
+                        SyntaxKind::UNSAFE_KW => qualifier_ctx.unsafe_tok = Some(token),
+                        SyntaxKind::ASYNC_KW => qualifier_ctx.async_tok = Some(token),
+                        SyntaxKind::SAFE_KW => qualifier_ctx.safe_tok = Some(token),
+                        _ => {}
                     }
-                    qualifier_ctx.vis_node = error_node.children().find_map(ast::Visibility::cast);
                 }
+                qualifier_ctx.vis_node = error_node.children().find_map(ast::Visibility::cast);
             }
 
-            if let PathKind::Item { .. } = path_ctx.kind {
-                if qualifier_ctx.none() {
-                    if let Some(t) = top.first_token() {
-                        if let Some(prev) = t
-                            .prev_token()
-                            .and_then(|t| syntax::algo::skip_trivia_token(t, Direction::Prev))
-                        {
-                            if ![T![;], T!['}'], T!['{']].contains(&prev.kind()) {
-                                // This was inferred to be an item position path, but it seems
-                                // to be part of some other broken node which leaked into an item
-                                // list
-                                return None;
-                            }
-                        }
-                    }
-                }
+            if let PathKind::Item { .. } = path_ctx.kind
+                && qualifier_ctx.none()
+                && let Some(t) = top.first_token()
+                && let Some(prev) =
+                    t.prev_token().and_then(|t| syntax::algo::skip_trivia_token(t, Direction::Prev))
+                && ![T![;], T!['}'], T!['{']].contains(&prev.kind())
+            {
+                // This was inferred to be an item position path, but it seems
+                // to be part of some other broken node which leaked into an item
+                // list
+                return None;
             }
         }
     }
@@ -1869,4 +1922,27 @@ fn next_non_trivia_sibling(ele: SyntaxElement) -> Option<SyntaxElement> {
         }
     }
     None
+}
+
+fn prev_special_biased_token_at_trivia(mut token: SyntaxToken) -> SyntaxToken {
+    while token.kind().is_trivia()
+        && let Some(prev) = token.prev_token()
+        && let T![=]
+        | T![+=]
+        | T![/=]
+        | T![*=]
+        | T![%=]
+        | T![>>=]
+        | T![<<=]
+        | T![-=]
+        | T![|=]
+        | T![&=]
+        | T![^=]
+        | T![return]
+        | T![break]
+        | T![continue] = prev.kind()
+    {
+        token = prev
+    }
+    token
 }

@@ -17,6 +17,7 @@
 
 //@ dont-check-compiler-stderr
 //@ dont-require-annotations: NOTE
+//@ ignore-backends: gcc
 
 #[no_mangle]
 #[inline(never)]

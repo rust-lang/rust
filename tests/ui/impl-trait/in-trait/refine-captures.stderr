@@ -6,7 +6,7 @@ LL |     fn test() -> impl Sized + use<> {}
    |
    = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
    = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
-   = note: `#[warn(refining_impl_trait_internal)]` on by default
+   = note: `#[warn(refining_impl_trait_internal)]` (part of `#[warn(refining_impl_trait)]`) on by default
 help: modify the `use<..>` bound to capture the same lifetimes that the trait does
    |
 LL |     fn test() -> impl Sized + use<'a> {}

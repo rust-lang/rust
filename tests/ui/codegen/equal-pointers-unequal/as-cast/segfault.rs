@@ -1,6 +1,7 @@
 //@ known-bug: #107975
 //@ compile-flags: -Copt-level=2
 //@ run-pass
+//@ ignore-backends: gcc
 
 // https://github.com/rust-lang/rust/issues/107975#issuecomment-1431758601
 
@@ -54,6 +55,7 @@ fn main() {
     // The `Box` has been deallocated by now, so this is a dangling reference!
     let r: &u8 = &*r;
     println!("{:p}", r);
+    println!("{}", i);
 
     // The following might segfault. Or it might not.
     // Depends on the platform semantics

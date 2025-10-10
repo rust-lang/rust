@@ -526,8 +526,7 @@ fn main() {
             fn run(_t: Rate<5>) {
             }
             fn main() {
-                run(f()) // FIXME: remove this error
-                  //^^^ error: expected Rate<5>, found Rate<_>
+                run(f())
             }
 "#,
         );

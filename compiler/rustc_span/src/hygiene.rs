@@ -46,6 +46,8 @@ use crate::symbol::{Symbol, kw, sym};
 use crate::{DUMMY_SP, HashStableContext, Span, SpanDecoder, SpanEncoder, with_session_globals};
 
 /// A `SyntaxContext` represents a chain of pairs `(ExpnId, Transparency)` named "marks".
+///
+/// See <https://rustc-dev-guide.rust-lang.org/macro-expansion.html> for more explanation.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SyntaxContext(u32);
 
@@ -61,7 +63,10 @@ pub type SyntaxContextKey = (SyntaxContext, ExpnId, Transparency);
 
 #[derive(Clone, Copy, Debug)]
 struct SyntaxContextData {
+    /// The last macro expansion in the chain.
+    /// (Here we say the most deeply nested macro expansion is the "outermost" expansion.)
     outer_expn: ExpnId,
+    /// Transparency of the last macro expansion
     outer_transparency: Transparency,
     parent: SyntaxContext,
     /// This context, but with all transparent and semi-opaque expansions filtered away.
@@ -322,6 +327,7 @@ impl ExpnId {
 
     /// `expn_id.outer_expn_is_descendant_of(ctxt)` is equivalent to but faster than
     /// `expn_id.is_descendant_of(ctxt.outer_expn())`.
+    #[inline]
     pub fn outer_expn_is_descendant_of(self, ctxt: SyntaxContext) -> bool {
         HygieneData::with(|data| data.is_descendant_of(self, data.outer_expn(ctxt)))
     }
@@ -394,6 +400,7 @@ impl HygieneData {
         }
     }
 
+    #[inline]
     fn with<R>(f: impl FnOnce(&mut HygieneData) -> R) -> R {
         with_session_globals(|session_globals| f(&mut session_globals.hygiene_data.borrow_mut()))
     }
@@ -406,6 +413,7 @@ impl HygieneData {
         }
     }
 
+    #[inline]
     fn local_expn_data(&self, expn_id: LocalExpnId) -> &ExpnData {
         self.local_expn_data[expn_id].as_ref().expect("no expansion data for an expansion ID")
     }
@@ -437,23 +445,30 @@ impl HygieneData {
         }
     }
 
+    #[inline]
     fn normalize_to_macros_2_0(&self, ctxt: SyntaxContext) -> SyntaxContext {
         self.syntax_context_data[ctxt.0 as usize].opaque
     }
 
+    #[inline]
     fn normalize_to_macro_rules(&self, ctxt: SyntaxContext) -> SyntaxContext {
         self.syntax_context_data[ctxt.0 as usize].opaque_and_semiopaque
     }
 
+    /// See [`SyntaxContextData::outer_expn`]
+    #[inline]
     fn outer_expn(&self, ctxt: SyntaxContext) -> ExpnId {
         self.syntax_context_data[ctxt.0 as usize].outer_expn
     }
 
+    /// The last macro expansion and its Transparency
+    #[inline]
     fn outer_mark(&self, ctxt: SyntaxContext) -> (ExpnId, Transparency) {
         let data = &self.syntax_context_data[ctxt.0 as usize];
         (data.outer_expn, data.outer_transparency)
     }
 
+    #[inline]
     fn parent_ctxt(&self, ctxt: SyntaxContext) -> SyntaxContext {
         self.syntax_context_data[ctxt.0 as usize].parent
     }
@@ -718,11 +733,13 @@ impl SyntaxContext {
         SyntaxContext(raw as u32)
     }
 
+    #[inline]
     fn from_usize(raw: usize) -> SyntaxContext {
         SyntaxContext(u32::try_from(raw).unwrap())
     }
 
     /// Extend a syntax context with a given expansion and transparency.
+    #[inline]
     pub fn apply_mark(self, expn_id: ExpnId, transparency: Transparency) -> SyntaxContext {
         HygieneData::with(|data| data.apply_mark(self, expn_id, transparency))
     }
@@ -743,10 +760,12 @@ impl SyntaxContext {
     /// of g (call it g1), calling remove_mark will result in the SyntaxContext for the
     /// invocation of f that created g1.
     /// Returns the mark that was removed.
+    #[inline]
     pub fn remove_mark(&mut self) -> ExpnId {
         HygieneData::with(|data| data.remove_mark(self).0)
     }
 
+    #[inline]
     pub fn marks(self) -> Vec<(ExpnId, Transparency)> {
         HygieneData::with(|data| data.marks(self))
     }
@@ -756,7 +775,9 @@ impl SyntaxContext {
     ///
     /// ```rust
     /// #![feature(decl_macro)]
-    /// mod foo { pub fn f() {} } // `f`'s `SyntaxContext` is empty.
+    /// mod foo {
+    ///     pub fn f() {} // `f`'s `SyntaxContext` is empty.
+    /// }
     /// m!(f);
     /// macro m($f:ident) {
     ///     mod bar {
@@ -776,11 +797,13 @@ impl SyntaxContext {
     /// ```
     /// This returns the expansion whose definition scope we use to privacy check the resolution,
     /// or `None` if we privacy check as usual (i.e., not w.r.t. a macro definition scope).
+    #[inline]
     pub fn adjust(&mut self, expn_id: ExpnId) -> Option<ExpnId> {
         HygieneData::with(|data| data.adjust(self, expn_id))
     }
 
     /// Like `SyntaxContext::adjust`, but also normalizes `self` to macros 2.0.
+    #[inline]
     pub(crate) fn normalize_to_macros_2_0_and_adjust(&mut self, expn_id: ExpnId) -> Option<ExpnId> {
         HygieneData::with(|data| {
             *self = data.normalize_to_macros_2_0(*self);
@@ -884,6 +907,7 @@ impl SyntaxContext {
         HygieneData::with(|data| data.normalize_to_macro_rules(self))
     }
 
+    /// See [`SyntaxContextData::outer_expn`]
     #[inline]
     pub fn outer_expn(self) -> ExpnId {
         HygieneData::with(|data| data.outer_expn(self))
@@ -896,15 +920,18 @@ impl SyntaxContext {
         HygieneData::with(|data| data.expn_data(data.outer_expn(self)).clone())
     }
 
+    /// See [`HygieneData::outer_mark`]
     #[inline]
     fn outer_mark(self) -> (ExpnId, Transparency) {
         HygieneData::with(|data| data.outer_mark(self))
     }
 
+    #[inline]
     pub(crate) fn dollar_crate_name(self) -> Symbol {
         HygieneData::with(|data| data.syntax_context_data[self.0 as usize].dollar_crate_name)
     }
 
+    #[inline]
     pub fn edition(self) -> Edition {
         HygieneData::with(|data| data.expn_data(data.outer_expn(self)).edition)
     }
@@ -964,19 +991,20 @@ impl Span {
 #[derive(Clone, Debug, Encodable, Decodable, HashStable_Generic)]
 pub struct ExpnData {
     // --- The part unique to each expansion.
-    /// The kind of this expansion - macro or compiler desugaring.
     pub kind: ExpnKind,
-    /// The expansion that produced this expansion.
+    /// The expansion that contains the definition of the macro for this expansion.
     pub parent: ExpnId,
-    /// The location of the actual macro invocation or syntax sugar , e.g.
-    /// `let x = foo!();` or `if let Some(y) = x {}`
+    /// The span of the macro call which produced this expansion.
     ///
-    /// This may recursively refer to other macro invocations, e.g., if
-    /// `foo!()` invoked `bar!()` internally, and there was an
-    /// expression inside `bar!`; the call_site of the expression in
-    /// the expansion would point to the `bar!` invocation; that
-    /// call_site span would have its own ExpnData, with the call_site
-    /// pointing to the `foo!` invocation.
+    /// This span will typically have a different `ExpnData` and `call_site`.
+    /// This recursively traces back through any macro calls which expanded into further
+    /// macro calls, until the "source call-site" is reached at the root SyntaxContext.
+    /// For example, if `food!()` expands to `fruit!()` which then expands to `grape`,
+    /// then the call-site of `grape` is `fruit!()` and the call-site of `fruit!()`
+    /// is `food!()`.
+    ///
+    /// For a desugaring expansion, this is the span of the expression or node that was
+    /// desugared.
     pub call_site: Span,
     /// Used to force two `ExpnData`s to have different `Fingerprint`s.
     /// Due to macro expansion, it's possible to end up with two `ExpnId`s

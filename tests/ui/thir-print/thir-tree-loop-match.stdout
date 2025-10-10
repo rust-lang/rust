@@ -121,7 +121,7 @@ body:
                                                                                                         span: $DIR/thir-tree-loop-match.rs:12:17: 12:21 (#0)
                                                                                                         kind: PatKind {
                                                                                                             Constant {
-                                                                                                                value: Ty(bool, true)
+                                                                                                                value: true
                                                                                                             }
                                                                                                         }
                                                                                                     }
@@ -219,7 +219,7 @@ body:
                                                                                                         span: $DIR/thir-tree-loop-match.rs:16:17: 16:22 (#0)
                                                                                                         kind: PatKind {
                                                                                                             Constant {
-                                                                                                                value: Ty(bool, false)
+                                                                                                                value: false
                                                                                                             }
                                                                                                         }
                                                                                                     }

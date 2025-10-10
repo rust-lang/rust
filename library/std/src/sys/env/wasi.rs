@@ -7,8 +7,8 @@ use crate::os::wasi::prelude::*;
 use crate::sys::common::small_c_string::run_with_cstr;
 use crate::sys::pal::os::{cvt, libc};
 
-cfg_if::cfg_if! {
-    if #[cfg(target_feature = "atomics")] {
+cfg_select! {
+    target_feature = "atomics" => {
         // Access to the environment must be protected by a lock in multi-threaded scenarios.
         use crate::sync::{PoisonError, RwLock};
         static ENV_LOCK: RwLock<()> = RwLock::new(());
@@ -18,7 +18,8 @@ cfg_if::cfg_if! {
         pub fn env_write_lock() -> impl Drop {
             ENV_LOCK.write().unwrap_or_else(PoisonError::into_inner)
         }
-    } else {
+    }
+    _ => {
         // No need for a lock if we are single-threaded.
         pub fn env_read_lock() -> impl Drop {
             Box::new(())

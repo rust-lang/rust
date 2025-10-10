@@ -48,7 +48,7 @@ pub(crate) fn try_run_tests(
 }
 
 fn run_tests(builder: &Builder<'_>, cmd: &mut BootstrapCommand, stream: bool) -> bool {
-    builder.verbose(|| println!("running: {cmd:?}"));
+    builder.do_if_verbose(|| println!("running: {cmd:?}"));
 
     let Some(mut streaming_command) = cmd.stream_capture_stdout(&builder.config.exec_ctx) else {
         return true;
@@ -250,8 +250,14 @@ impl<'a> Renderer<'a> {
                 if failure.stdout.is_some() || failure.message.is_some() {
                     println!("---- {} stdout ----", failure.name);
                     if let Some(stdout) = &failure.stdout {
-                        println!("{stdout}");
+                        // Captured test output normally ends with a newline,
+                        // so only use `println!` if it doesn't.
+                        print!("{stdout}");
+                        if !stdout.ends_with('\n') {
+                            println!("\n\\ (no newline at end of output)");
+                        }
                     }
+                    println!("---- {} stdout end ----", failure.name);
                     if let Some(message) = &failure.message {
                         println!("NOTE: {message}");
                     }

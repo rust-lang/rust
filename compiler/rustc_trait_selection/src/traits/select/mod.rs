@@ -4,9 +4,9 @@
 
 use std::assert_matches::assert_matches;
 use std::cell::{Cell, RefCell};
+use std::cmp;
 use std::fmt::{self, Display};
 use std::ops::ControlFlow;
-use std::{cmp, iter};
 
 use hir::def::DefKind;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
@@ -781,16 +781,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                         self,
                                         &project_obligation,
                                     )
-                                {
-                                    if let Some(cached_res) = self
+                                    && let Some(cached_res) = self
                                         .infcx
                                         .inner
                                         .borrow_mut()
                                         .projection_cache()
                                         .is_complete(key)
-                                    {
-                                        break 'compute_res Ok(cached_res);
-                                    }
+                                {
+                                    break 'compute_res Ok(cached_res);
                                 }
 
                                 // Need to explicitly set the depth of nested goals here as
@@ -1436,24 +1434,23 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> SelectionResult<'tcx, SelectionCandidate<'tcx>> {
         let tcx = self.tcx();
         // Treat reservation impls as ambiguity.
-        if let ImplCandidate(def_id) = candidate {
-            if let ty::ImplPolarity::Reservation = tcx.impl_polarity(def_id) {
-                if let Some(intercrate_ambiguity_clauses) = &mut self.intercrate_ambiguity_causes {
-                    let message = tcx
-                        .get_attr(def_id, sym::rustc_reservation_impl)
-                        .and_then(|a| a.value_str());
-                    if let Some(message) = message {
-                        debug!(
-                            "filter_reservation_impls: \
+        if let ImplCandidate(def_id) = candidate
+            && let ty::ImplPolarity::Reservation = tcx.impl_polarity(def_id)
+        {
+            if let Some(intercrate_ambiguity_clauses) = &mut self.intercrate_ambiguity_causes {
+                let message =
+                    tcx.get_attr(def_id, sym::rustc_reservation_impl).and_then(|a| a.value_str());
+                if let Some(message) = message {
+                    debug!(
+                        "filter_reservation_impls: \
                                  reservation impl ambiguity on {:?}",
-                            def_id
-                        );
-                        intercrate_ambiguity_clauses
-                            .insert(IntercrateAmbiguityCause::ReservationImpl { message });
-                    }
+                        def_id
+                    );
+                    intercrate_ambiguity_clauses
+                        .insert(IntercrateAmbiguityCause::ReservationImpl { message });
                 }
-                return Ok(None);
             }
+            return Ok(None);
         }
         Ok(Some(candidate))
     }
@@ -2188,28 +2185,23 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 ty::Binder::dummy(vec![ty])
             }
 
-            ty::Coroutine(coroutine_def_id, args) => {
-                match self.tcx().coroutine_movability(coroutine_def_id) {
-                    hir::Movability::Static => {
-                        unreachable!("tried to assemble `Sized` for static coroutine")
-                    }
-                    hir::Movability::Movable => {
-                        if self.tcx().features().coroutine_clone() {
-                            ty::Binder::dummy(
-                                args.as_coroutine()
-                                    .upvar_tys()
-                                    .iter()
-                                    .chain([args.as_coroutine().witness()])
-                                    .collect::<Vec<_>>(),
-                            )
-                        } else {
-                            unreachable!(
-                                "tried to assemble `Sized` for coroutine without enabled feature"
-                            )
-                        }
+            ty::Coroutine(def_id, args) => match self.tcx().coroutine_movability(def_id) {
+                hir::Movability::Static => {
+                    unreachable!("tried to assemble `Clone` for static coroutine")
+                }
+                hir::Movability::Movable => {
+                    if self.tcx().features().coroutine_clone() {
+                        ty::Binder::dummy(vec![
+                            args.as_coroutine().tupled_upvars_ty(),
+                            Ty::new_coroutine_witness_for_coroutine(self.tcx(), def_id, args),
+                        ])
+                    } else {
+                        unreachable!(
+                            "tried to assemble `Clone` for coroutine without enabled feature"
+                        )
                     }
                 }
-            }
+            },
 
             ty::CoroutineWitness(def_id, args) => self
                 .infcx
@@ -2330,11 +2322,12 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 ty::Binder::dummy(AutoImplConstituents { types: vec![ty], assumptions: vec![] })
             }
 
-            ty::Coroutine(_, args) => {
+            ty::Coroutine(def_id, args) => {
                 let ty = self.infcx.shallow_resolve(args.as_coroutine().tupled_upvars_ty());
-                let witness = args.as_coroutine().witness();
+                let tcx = self.tcx();
+                let witness = Ty::new_coroutine_witness_for_coroutine(tcx, def_id, args);
                 ty::Binder::dummy(AutoImplConstituents {
-                    types: [ty].into_iter().chain(iter::once(witness)).collect(),
+                    types: vec![ty, witness],
                     assumptions: vec![],
                 })
             }
@@ -2366,7 +2359,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 if self.infcx.can_define_opaque_ty(def_id) {
                     unreachable!()
                 } else {
-                    // We can resolve the `impl Trait` to its concrete type,
+                    // We can resolve the opaque type to its hidden type,
                     // which enforces a DAG between the functions requiring
                     // the auto trait bounds in question.
                     match self.tcx().type_of_opaque(def_id) {
@@ -2844,7 +2837,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         obligations
     }
 
-    fn should_stall_coroutine_witness(&self, def_id: DefId) -> bool {
+    fn should_stall_coroutine(&self, def_id: DefId) -> bool {
         match self.infcx.typing_mode() {
             TypingMode::Analysis { defining_opaque_types_and_generators: stalled_generators } => {
                 def_id.as_local().is_some_and(|def_id| stalled_generators.contains(&def_id))

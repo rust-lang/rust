@@ -2,14 +2,22 @@ error[E0507]: cannot move out of `self.b`, as `self` is a captured variable in a
   --> $DIR/issue-103624.rs:16:13
    |
 LL |     async fn foo(&self) {
-   |                  ----- captured outer variable
+   |                  -----
+   |                  |
+   |                  captured outer variable
+   |                  move occurs because `self.b` has type `StructB`, which does not implement the `Copy` trait
 LL |         let bar = self.b.bar().await;
 LL |         spawn_blocking(move || {
    |                        ------- captured by this `Fn` closure
 LL |
 LL |             self.b;
-   |             ^^^^^^ move occurs because `self.b` has type `StructB`, which does not implement the `Copy` trait
+   |             ^^^^^^ `self.b` is moved here
    |
+help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
+  --> $DIR/issue-103624.rs:7:36
+   |
+LL | async fn spawn_blocking<T>(f: impl (Fn() -> T) + Send + Sync + 'static) -> T {
+   |                                    ^^^^^^^^^^^
 note: if `StructB` implemented `Clone`, you could clone the value
   --> $DIR/issue-103624.rs:23:1
    |

@@ -1,0 +1,19 @@
+error[E0609]: no field `00` on type `Verdict`
+  --> $DIR/tuple-struct-field-naming-47073.rs:9:30
+   |
+LL |     let _condemned = justice.00;
+   |                              ^^ unknown field
+   |
+   = note: available fields are: `0`, `1`
+
+error[E0609]: no field `001` on type `Verdict`
+  --> $DIR/tuple-struct-field-naming-47073.rs:11:31
+   |
+LL |     let _punishment = justice.001;
+   |                               ^^^ unknown field
+   |
+   = note: available fields are: `0`, `1`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0609`.

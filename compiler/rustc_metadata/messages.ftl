@@ -1,6 +1,3 @@
-metadata_as_needed_compatibility =
-    linking modifier `as-needed` is only compatible with `dylib` and `framework` linking kinds
-
 metadata_async_drop_types_in_dependency =
     found async drop types in dependency `{$extern_crate}`, but async_drop feature is disabled for `{$local_crate}`
     .help = if async drop type will be dropped in a crate without `feature(async_drop)`, sync Drop will be used
@@ -10,9 +7,6 @@ metadata_bad_panic_strategy =
 
 metadata_binary_output_to_tty =
     option `-o` or `--emit` is used to write binary output type `metadata` to stdout, but stdout is a tty
-
-metadata_bundle_needs_static =
-    linking modifier `bundle` is only compatible with `static` linking kind
 
 metadata_cannot_find_crate =
     can't find crate for `{$crate_name}`{$add_info}
@@ -60,10 +54,6 @@ metadata_crate_not_panic_runtime =
 metadata_dl_error =
     {$path}{$err}
 
-metadata_empty_link_name =
-    link name must not be empty
-    .label = empty link name
-
 metadata_empty_renaming_target =
     an empty renaming target was specified for library `{$lib_name}`
 
@@ -108,15 +98,6 @@ metadata_full_metadata_not_found =
 metadata_global_alloc_required =
     no global memory allocator found but one is required; link to std or add `#[global_allocator]` to a static item that implements the GlobalAlloc trait
 
-metadata_import_name_type_form =
-    import name type must be of the form `import_name_type = "string"`
-
-metadata_import_name_type_raw =
-    import name type can only be used with link kind `raw-dylib`
-
-metadata_import_name_type_x86 =
-    import name type is only supported on x86
-
 metadata_incompatible_panic_in_drop_strategy =
     the crate `{$crate_name}` is compiled with the panic-in-drop strategy `{$found_strategy}` which is incompatible with this crate's strategy of `{$desired_strategy}`
 
@@ -143,14 +124,16 @@ metadata_incompatible_target_modifiers_r_missed =
     mixing `{$flag_name_prefixed}` will cause an ABI mismatch in crate `{$local_crate}`
     .note = `{$flag_name_prefixed}={$local_value}` in this crate is incompatible with unset `{$flag_name_prefixed}` in dependency `{$extern_crate}`
     .help = the `{$flag_name_prefixed}` flag modifies the ABI so Rust crates compiled with different values of this flag cannot be used together safely
-metadata_incompatible_wasm_link =
-    `wasm_import_module` is incompatible with other arguments in `#[link]` attributes
+
+metadata_incompatible_with_immediate_abort =
+    the crate `{$crate_name}` was compiled with a panic strategy which is incompatible with `immediate-abort`
+
+metadata_incompatible_with_immediate_abort_core =
+    the crate `core` was compiled with a panic strategy which is incompatible with `immediate-abort`
+    .help = consider building the standard library from source with `cargo build -Zbuild-std`
 
 metadata_install_missing_components =
     maybe you need to install the missing components with: `rustup component add rust-src rustc-dev llvm-tools-preview`
-
-metadata_invalid_link_modifier =
-    invalid linking modifier syntax, expected '+' or '-' prefix before one of: bundle, verbatim, whole-archive, as-needed
 
 metadata_invalid_meta_files =
     found invalid metadata files for crate `{$crate_name}`{$add_info}
@@ -164,36 +147,8 @@ metadata_lib_framework_apple =
 metadata_lib_required =
     crate `{$crate_name}` required to be available in {$kind} format, but was not found in this form
 
-metadata_link_arg_unstable =
-    link kind `link-arg` is unstable
-
-metadata_link_cfg_form =
-    link cfg must be of the form `cfg(/* predicate */)`
-
-metadata_link_cfg_single_predicate =
-    link cfg must have a single predicate argument
-
-metadata_link_cfg_unstable =
-    link cfg is unstable
-
-metadata_link_framework_apple =
-    link kind `framework` is only supported on Apple targets
-
-metadata_link_kind_form =
-    link kind must be of the form `kind = "string"`
-
-metadata_link_modifiers_form =
-    link modifiers must be of the form `modifiers = "string"`
-
-metadata_link_name_form =
-    link name must be of the form `name = "string"`
-
 metadata_link_ordinal_raw_dylib =
     `#[link_ordinal]` is only supported if link kind is `raw-dylib`
-
-metadata_link_requires_name =
-    `#[link]` attribute requires a `name = "string"` argument
-    .label = missing `name` argument
 
 metadata_missing_native_library =
     could not find native static library `{$libname}`, perhaps an -L flag is missing?
@@ -201,29 +156,8 @@ metadata_missing_native_library =
 metadata_multiple_candidates =
     multiple candidates for `{$flavor}` dependency `{$crate_name}` found
 
-metadata_multiple_cfgs =
-    multiple `cfg` arguments in a single `#[link]` attribute
-
-metadata_multiple_import_name_type =
-    multiple `import_name_type` arguments in a single `#[link]` attribute
-
-metadata_multiple_kinds_in_link =
-    multiple `kind` arguments in a single `#[link]` attribute
-
-metadata_multiple_link_modifiers =
-    multiple `modifiers` arguments in a single `#[link]` attribute
-
-metadata_multiple_modifiers =
-    multiple `{$modifier}` modifiers in a single `modifiers` argument
-
-metadata_multiple_names_in_link =
-    multiple `name` arguments in a single `#[link]` attribute
-
 metadata_multiple_renamings =
     multiple renamings were specified for library `{$lib_name}`
-
-metadata_multiple_wasm_import =
-    multiple `wasm_import_module` arguments in a single `#[link]` attribute
 
 metadata_newer_crate_version =
     found possibly newer version of crate `{$crate_name}`{$add_info}
@@ -263,15 +197,8 @@ metadata_prev_alloc_error_handler =
 metadata_prev_global_alloc =
     previous global allocator defined here
 
-metadata_raw_dylib_elf_unstable =
-    link kind `raw-dylib` is unstable on ELF platforms
-
-metadata_raw_dylib_no_nul =
-    link name must not contain NUL characters if link kind is `raw-dylib`
-
-metadata_raw_dylib_only_windows =
-    link kind `raw-dylib` is only supported on Windows targets
-
+metadata_raw_dylib_malformed =
+    link name must be well-formed if link kind is `raw-dylib`
 metadata_raw_dylib_unsupported_abi =
     ABI not supported by `#[link(kind = "raw-dylib")]` on this architecture
 
@@ -307,29 +234,7 @@ metadata_target_not_installed =
 metadata_two_panic_runtimes =
     cannot link together two panic runtimes: {$prev_name} and {$cur_name}
 
-metadata_unexpected_link_arg =
-    unexpected `#[link]` argument, expected one of: name, kind, modifiers, cfg, wasm_import_module, import_name_type
-
-metadata_unknown_import_name_type =
-    unknown import name type `{$import_name_type}`, expected one of: decorated, noprefix, undecorated
-
-metadata_unknown_link_kind =
-    unknown link kind `{$kind}`, expected one of: static, dylib, framework, raw-dylib, link-arg
-    .label = unknown link kind
-
-metadata_unknown_link_modifier =
-    unknown linking modifier `{$modifier}`, expected one of: bundle, verbatim, whole-archive, as-needed
-
 metadata_unknown_target_modifier_unsafe_allowed = unknown target modifier `{$flag_name}`, requested by `-Cunsafe-allow-abi-mismatch={$flag_name}`
 
 metadata_wasm_c_abi =
     older versions of the `wasm-bindgen` crate are incompatible with current versions of Rust; please update to `wasm-bindgen` v0.2.88
-
-metadata_wasm_import_form =
-    wasm import module must be of the form `wasm_import_module = "string"`
-
-metadata_whole_archive_needs_static =
-    linking modifier `whole-archive` is only compatible with `static` linking kind
-
-metadata_raw_dylib_malformed =
-    link name must be well-formed if link kind is `raw-dylib`

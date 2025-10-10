@@ -1,8 +1,8 @@
 #![feature(prelude_import)]
-#[prelude_import]
-use std::prelude::rust_2024::*;
 #[macro_use]
 extern crate std;
+#[prelude_import]
+use std::prelude::rust_2024::*;
 //@ revisions: expanded hir
 //@[expanded]compile-flags: -Zunpretty=expanded
 //@[expanded]check-pass

@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::source::{IntoSpan, SpanRangeExt};
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::for_each_expr_without_closures;
-use clippy_utils::{LimitStack, get_async_fn_body, is_async_fn, sym};
+use clippy_utils::{LimitStack, get_async_fn_body, sym};
 use core::ops::ControlFlow;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Attribute, Body, Expr, ExprKind, FnDecl};
@@ -23,8 +23,8 @@ declare_clippy_lint! {
     ///
     /// ### Known problems
     /// The true Cognitive Complexity of a method is not something we can
-    /// calculate using modern technology. This lint has been left in the
-    /// `nursery` so as to not mislead users into using this lint as a
+    /// calculate using modern technology. This lint has been left in
+    /// `restriction` so as to not mislead users into using this lint as a
     /// measurement tool.
     ///
     /// For more detailed information, see [rust-clippy#3793](https://github.com/rust-lang/rust-clippy/issues/3793)
@@ -35,7 +35,7 @@ declare_clippy_lint! {
     /// * [`too_many_lines`](https://rust-lang.github.io/rust-clippy/master/index.html#too_many_lines)
     #[clippy::version = "1.35.0"]
     pub COGNITIVE_COMPLEXITY,
-    nursery,
+    restriction,
     "functions that should be split up into multiple functions",
     @eval_always = true
 }
@@ -56,7 +56,7 @@ impl_lint_pass!(CognitiveComplexity => [COGNITIVE_COMPLEXITY]);
 
 impl CognitiveComplexity {
     fn check<'tcx>(
-        &mut self,
+        &self,
         cx: &LateContext<'tcx>,
         kind: FnKind<'tcx>,
         decl: &'tcx FnDecl<'_>,
@@ -110,7 +110,6 @@ impl CognitiveComplexity {
                 FnKind::ItemFn(ident, _, _) | FnKind::Method(ident, _) => ident.span,
                 FnKind::Closure => {
                     let header_span = body_span.with_hi(decl.output.span().lo());
-                    #[expect(clippy::range_plus_one)]
                     if let Some(range) = header_span.map_range(cx, |_, src, range| {
                         let mut idxs = src.get(range.clone())?.match_indices('|');
                         Some(range.start + idxs.next()?.0..range.start + idxs.next()?.0 + 1)
@@ -148,7 +147,7 @@ impl<'tcx> LateLintPass<'tcx> for CognitiveComplexity {
         def_id: LocalDefId,
     ) {
         if !cx.tcx.has_attr(def_id, sym::test) {
-            let expr = if is_async_fn(kind) {
+            let expr = if kind.asyncness().is_async() {
                 match get_async_fn_body(cx.tcx, body) {
                     Some(b) => b,
                     None => {

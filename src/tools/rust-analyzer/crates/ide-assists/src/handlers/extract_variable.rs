@@ -7,7 +7,9 @@ use syntax::{
     NodeOrToken, SyntaxKind, SyntaxNode, T,
     algo::ancestors_at_offset,
     ast::{
-        self, AstNode, edit::IndentLevel, edit_in_place::Indent, make,
+        self, AstNode,
+        edit::{AstNodeEdit, IndentLevel},
+        make,
         syntax_factory::SyntaxFactory,
     },
     syntax_editor::Position,
@@ -198,7 +200,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                     }
                     ExtractionKind::Constant => {
                         let ast_ty = make.ty(&ty_string);
-                        ast::Item::Const(make.item_const(None, pat_name, ast_ty, initializer))
+                        ast::Item::Const(make.item_const(None, None, pat_name, ast_ty, initializer))
                             .into()
                     }
                     ExtractionKind::Static => {
@@ -253,12 +255,11 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                             // `expr_replace` is a descendant of `to_wrap`, so we just replace it with `name_expr`.
                             editor.replace(expr_replace, name_expr.syntax());
                             make.block_expr([new_stmt], Some(to_wrap.clone()))
-                        };
+                        }
+                        // fixup indentation of block
+                        .indent_with_mapping(indent_to, &make);
 
                         editor.replace(to_wrap.syntax(), block.syntax());
-
-                        // fixup indentation of block
-                        block.indent(indent_to);
                     }
                 }
 
@@ -284,7 +285,7 @@ fn peel_parens(mut expr: ast::Expr) -> ast::Expr {
 /// In general that's true for any expression, but in some cases that would produce invalid code.
 fn valid_target_expr(node: SyntaxNode) -> Option<ast::Expr> {
     match node.kind() {
-        SyntaxKind::PATH_EXPR | SyntaxKind::LOOP_EXPR => None,
+        SyntaxKind::PATH_EXPR | SyntaxKind::LOOP_EXPR | SyntaxKind::LET_EXPR => None,
         SyntaxKind::BREAK_EXPR => ast::BreakExpr::cast(node).and_then(|e| e.expr()),
         SyntaxKind::RETURN_EXPR => ast::ReturnExpr::cast(node).and_then(|e| e.expr()),
         SyntaxKind::BLOCK_EXPR => {
@@ -403,11 +404,10 @@ impl Anchor {
                 }
                 if let Some(expr) =
                     node.parent().and_then(ast::StmtList::cast).and_then(|it| it.tail_expr())
+                    && expr.syntax() == &node
                 {
-                    if expr.syntax() == &node {
-                        cov_mark::hit!(test_extract_var_last_expr);
-                        return Some(Anchor::Before(node));
-                    }
+                    cov_mark::hit!(test_extract_var_last_expr);
+                    return Some(Anchor::Before(node));
                 }
 
                 if let Some(parent) = node.parent() {
@@ -426,10 +426,10 @@ impl Anchor {
                 }
 
                 if let Some(stmt) = ast::Stmt::cast(node.clone()) {
-                    if let ast::Stmt::ExprStmt(stmt) = stmt {
-                        if stmt.expr().as_ref() == Some(to_extract) {
-                            return Some(Anchor::Replace(stmt));
-                        }
+                    if let ast::Stmt::ExprStmt(stmt) = stmt
+                        && stmt.expr().as_ref() == Some(to_extract)
+                    {
+                        return Some(Anchor::Replace(stmt));
                     }
                     return Some(Anchor::Before(node));
                 }
@@ -1404,6 +1404,25 @@ fn main() {
     }
 
     #[test]
+    fn extract_var_let_expr() {
+        check_assist_by_label(
+            extract_variable,
+            r#"
+fn main() {
+    if $0let$0 Some(x) = Some(2+2) {}
+}
+"#,
+            r#"
+fn main() {
+    let $0var_name = Some(2+2);
+    if let Some(x) = var_name {}
+}
+"#,
+            "Extract into variable",
+        );
+    }
+
+    #[test]
     fn extract_var_for_cast() {
         check_assist_by_label(
             extract_variable,
@@ -1736,6 +1755,14 @@ fn main() {
     #[test]
     fn extract_var_for_break_not_applicable() {
         check_assist_not_applicable(extract_variable, "fn main() { loop { $0break$0; }; }");
+    }
+
+    #[test]
+    fn extract_var_for_let_expr_not_applicable() {
+        check_assist_not_applicable(
+            extract_variable,
+            "fn main() { if $0let Some(x) = Some(2+2) {} }",
+        );
     }
 
     #[test]

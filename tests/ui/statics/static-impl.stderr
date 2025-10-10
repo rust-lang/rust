@@ -7,7 +7,7 @@ LL |     fn length_(&self, ) -> usize;
 LL |     fn iter_<F>(&self, f: F) where F: FnMut(&T);
    |        ^^^^^
    |
-   = note: `#[warn(dead_code)]` on by default
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
 
 warning: 1 warning emitted
 

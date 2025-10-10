@@ -2,25 +2,29 @@ use super::cli::FailureReason;
 use rayon::prelude::*;
 use std::process::Command;
 
+fn runner_command(runner: &str) -> Command {
+    let mut it = runner.split_whitespace();
+    let mut cmd = Command::new(it.next().unwrap());
+    cmd.args(it);
+
+    cmd
+}
+
 pub fn compare_outputs(intrinsic_name_list: &Vec<String>, runner: &str, target: &str) -> bool {
-    fn runner_command(runner: &str) -> Command {
-        let mut it = runner.split_whitespace();
-        let mut cmd = Command::new(it.next().unwrap());
-        cmd.args(it);
-
-        cmd
-    }
-
     let intrinsics = intrinsic_name_list
         .par_iter()
         .filter_map(|intrinsic_name| {
+
             let c = runner_command(runner)
-                .arg("./c_programs/intrinsic-test-programs")
+                .arg("intrinsic-test-programs")
                 .arg(intrinsic_name)
+                .current_dir("c_programs")
                 .output();
 
             let rust = runner_command(runner)
-                .arg(format!("target/{target}/release/{intrinsic_name}"))
+                .arg(format!("target/{target}/release/intrinsic-test-programs"))
+                .arg(intrinsic_name)
+                .current_dir("rust_programs")
                 .output();
 
             let (c, rust) = match (c, rust) {
@@ -30,7 +34,7 @@ pub fn compare_outputs(intrinsic_name_list: &Vec<String>, runner: &str, target: 
 
             if !c.status.success() {
                 error!(
-                    "Failed to run C program for intrinsic {intrinsic_name}\nstdout: {stdout}\nstderr: {stderr}",
+                    "Failed to run C program for intrinsic `{intrinsic_name}`\nstdout: {stdout}\nstderr: {stderr}",
                     stdout = std::str::from_utf8(&c.stdout).unwrap_or(""),
                     stderr = std::str::from_utf8(&c.stderr).unwrap_or(""),
                 );
@@ -39,9 +43,9 @@ pub fn compare_outputs(intrinsic_name_list: &Vec<String>, runner: &str, target: 
 
             if !rust.status.success() {
                 error!(
-                    "Failed to run Rust program for intrinsic {intrinsic_name}\nstdout: {stdout}\nstderr: {stderr}",
-                    stdout = String::from_utf8_lossy(&rust.stdout),
-                    stderr = String::from_utf8_lossy(&rust.stderr),
+                    "Failed to run Rust program for intrinsic `{intrinsic_name}`\nstdout: {stdout}\nstderr: {stderr}",
+                    stdout = std::str::from_utf8(&rust.stdout).unwrap_or(""),
+                    stderr = std::str::from_utf8(&rust.stderr).unwrap_or(""),
                 );
                 return Some(FailureReason::RunRust(intrinsic_name.clone()));
             }

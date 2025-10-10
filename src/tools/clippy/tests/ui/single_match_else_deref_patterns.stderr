@@ -1,0 +1,188 @@
+error: you seem to be trying to use `match` for an equality check. Consider using `if`
+  --> tests/ui/single_match_else_deref_patterns.rs:13:5
+   |
+LL | /     match *"" {
+LL | |
+LL | |         "" => {},
+LL | |         _ => {},
+LL | |     }
+   | |_____^ help: try: `if *"" == *"" {}`
+   |
+   = note: you might want to preserve the comments from inside the `match`
+   = note: `-D clippy::single-match` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::single_match)]`
+
+error: you seem to be trying to use `match` for an equality check. Consider using `if`
+  --> tests/ui/single_match_else_deref_patterns.rs:19:5
+   |
+LL | /     match *&*&*&*"" {
+LL | |
+LL | |         "" => {},
+LL | |         _ => {},
+LL | |     }
+   | |_____^ help: try: `if *&*&*&*"" == *"" {}`
+   |
+   = note: you might want to preserve the comments from inside the `match`
+
+error: you seem to be trying to use `match` for an equality check. Consider using `if`
+  --> tests/ui/single_match_else_deref_patterns.rs:25:5
+   |
+LL | /     match ***&&"" {
+LL | |
+LL | |         "" => {},
+LL | |         _ => {},
+LL | |     }
+   | |_____^ help: try: `if ***&&"" == *"" {}`
+   |
+   = note: you might want to preserve the comments from inside the `match`
+
+error: you seem to be trying to use `match` for an equality check. Consider using `if`
+  --> tests/ui/single_match_else_deref_patterns.rs:31:5
+   |
+LL | /     match *&*&*"" {
+LL | |
+LL | |         "" => {},
+LL | |         _ => {},
+LL | |     }
+   | |_____^ help: try: `if *&*&*"" == *"" {}`
+   |
+   = note: you might want to preserve the comments from inside the `match`
+
+error: you seem to be trying to use `match` for an equality check. Consider using `if`
+  --> tests/ui/single_match_else_deref_patterns.rs:37:5
+   |
+LL | /     match **&&*"" {
+LL | |
+LL | |         "" => {},
+LL | |         _ => {},
+LL | |     }
+   | |_____^ help: try: `if **&&*"" == *"" {}`
+   |
+   = note: you might want to preserve the comments from inside the `match`
+
+error: you seem to be trying to use `match` for an equality check. Consider using `if`
+  --> tests/ui/single_match_else_deref_patterns.rs:45:5
+   |
+LL | /     match &&&1 {
+LL | |         &&&2 => unreachable!(),
+LL | |         _ => {
+...  |
+LL | |     }
+   | |_____^
+   |
+note: the lint level is defined here
+  --> tests/ui/single_match_else_deref_patterns.rs:10:9
+   |
+LL | #![deny(clippy::single_match_else)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+help: try
+   |
+LL ~     if &&&1 == &&&2 { unreachable!() } else {
+LL +         // ok
+LL +     }
+   |
+
+error: you seem to be trying to use `match` for an equality check. Consider using `if`
+  --> tests/ui/single_match_else_deref_patterns.rs:52:5
+   |
+LL | /     match &&&1 {
+LL | |         &&2 => unreachable!(),
+LL | |         _ => {
+...  |
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     if &&1 == &&2 { unreachable!() } else {
+LL +         // ok
+LL +     }
+   |
+
+error: you seem to be trying to use `match` for an equality check. Consider using `if`
+  --> tests/ui/single_match_else_deref_patterns.rs:59:5
+   |
+LL | /     match &&1 {
+LL | |         &&2 => unreachable!(),
+LL | |         _ => {
+...  |
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     if &&1 == &&2 { unreachable!() } else {
+LL +         // ok
+LL +     }
+   |
+
+error: you seem to be trying to use `match` for an equality check. Consider using `if`
+  --> tests/ui/single_match_else_deref_patterns.rs:66:5
+   |
+LL | /     match &&&1 {
+LL | |         &2 => unreachable!(),
+LL | |         _ => {
+...  |
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     if &1 == &2 { unreachable!() } else {
+LL +         // ok
+LL +     }
+   |
+
+error: you seem to be trying to use `match` for an equality check. Consider using `if`
+  --> tests/ui/single_match_else_deref_patterns.rs:73:5
+   |
+LL | /     match &&1 {
+LL | |         &2 => unreachable!(),
+LL | |         _ => {
+...  |
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     if &1 == &2 { unreachable!() } else {
+LL +         // ok
+LL +     }
+   |
+
+error: you seem to be trying to use `match` for an equality check. Consider using `if`
+  --> tests/ui/single_match_else_deref_patterns.rs:80:5
+   |
+LL | /     match &&&1 {
+LL | |         2 => unreachable!(),
+LL | |         _ => {
+...  |
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     if 1 == 2 { unreachable!() } else {
+LL +         // ok
+LL +     }
+   |
+
+error: you seem to be trying to use `match` for an equality check. Consider using `if`
+  --> tests/ui/single_match_else_deref_patterns.rs:87:5
+   |
+LL | /     match &&1 {
+LL | |         2 => unreachable!(),
+LL | |         _ => {
+...  |
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     if 1 == 2 { unreachable!() } else {
+LL +         // ok
+LL +     }
+   |
+
+error: aborting due to 12 previous errors
+

@@ -1,7 +1,5 @@
 # High-level overview of the compiler source
 
-<!-- toc -->
-
 Now that we have [seen what the compiler does][orgch],
 let's take a look at the structure of the [`rust-lang/rust`] repository,
 where the rustc source code lives.
@@ -155,7 +153,8 @@ The bulk of [`rustdoc`] is in [`librustdoc`]. However, the [`rustdoc`] binary
 itself is [`src/tools/rustdoc`], which does nothing except call [`rustdoc::main`].
 
 There is also `JavaScript` and `CSS` for the docs in [`src/tools/rustdoc-js`]
-and [`src/tools/rustdoc-themes`].
+and [`src/tools/rustdoc-themes`]. The type definitions for `--output-format=json`
+are in a separate crate in [`src/rustdoc-json-types`].
 
 You can read more about [`rustdoc`] in [this chapter][rustdoc-chapter].
 
@@ -164,6 +163,7 @@ You can read more about [`rustdoc`] in [this chapter][rustdoc-chapter].
 [`src/tools/rustdoc-js`]: https://github.com/rust-lang/rust/tree/master/src/tools/rustdoc-js
 [`src/tools/rustdoc-themes`]: https://github.com/rust-lang/rust/tree/master/src/tools/rustdoc-themes
 [`src/tools/rustdoc`]:  https://github.com/rust-lang/rust/tree/master/src/tools/rustdoc
+[`src/rustdoc-json-types`]: https://github.com/rust-lang/rust/tree/master/src/rustdoc-json-types
 [rustdoc-chapter]: ./rustdoc.md
 
 ## Tests

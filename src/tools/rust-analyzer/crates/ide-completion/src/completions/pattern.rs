@@ -64,18 +64,17 @@ pub(crate) fn complete_pattern(
 
     if let Some(hir::Adt::Enum(e)) =
         ctx.expected_type.as_ref().and_then(|ty| ty.strip_references().as_adt())
+        && (refutable || single_variant_enum(e))
     {
-        if refutable || single_variant_enum(e) {
-            super::enum_variants_with_paths(
-                acc,
-                ctx,
-                e,
-                &pattern_ctx.impl_,
-                |acc, ctx, variant, path| {
-                    acc.add_qualified_variant_pat(ctx, pattern_ctx, variant, path);
-                },
-            );
-        }
+        super::enum_variants_with_paths(
+            acc,
+            ctx,
+            e,
+            &pattern_ctx.impl_,
+            |acc, ctx, variant, path| {
+                acc.add_qualified_variant_pat(ctx, pattern_ctx, variant, path);
+            },
+        );
     }
 
     // FIXME: ideally, we should look at the type we are matching against and

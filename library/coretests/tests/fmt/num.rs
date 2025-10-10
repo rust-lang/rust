@@ -323,3 +323,9 @@ fn test_format_debug_hex() {
     assert_eq!(format!("{:02x?}", b"Foo\0"), "[46, 6f, 6f, 00]");
     assert_eq!(format!("{:02X?}", b"Foo\0"), "[46, 6F, 6F, 00]");
 }
+
+#[test]
+#[should_panic = "Formatting argument out of range"]
+fn test_rt_width_too_long() {
+    let _ = format!("Hello {:width$}!", "x", width = u16::MAX as usize + 1);
+}

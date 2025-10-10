@@ -137,14 +137,14 @@ where
 
         // If a local with no projections is moved from (e.g. `x` in `y = x`), record that
         // it no longer needs to be dropped.
-        if let mir::Operand::Move(place) = operand {
-            if let Some(local) = place.as_local() {
-                // For backward compatibility with the MaybeMutBorrowedLocals used in an earlier
-                // implementation we retain qualif if a local had been borrowed before. This might
-                // not be strictly necessary since the local is no longer initialized.
-                if !self.state.borrow.contains(local) {
-                    self.state.qualif.remove(local);
-                }
+        if let mir::Operand::Move(place) = operand
+            && let Some(local) = place.as_local()
+        {
+            // For backward compatibility with the MaybeMutBorrowedLocals used in an earlier
+            // implementation we retain qualif if a local had been borrowed before. This might
+            // not be strictly necessary since the local is no longer initialized.
+            if !self.state.borrow.contains(local) {
+                self.state.qualif.remove(local);
             }
         }
     }
@@ -197,7 +197,6 @@ where
             | mir::Rvalue::CopyForDeref(..)
             | mir::Rvalue::ThreadLocalRef(..)
             | mir::Rvalue::Repeat(..)
-            | mir::Rvalue::Len(..)
             | mir::Rvalue::BinaryOp(..)
             | mir::Rvalue::NullaryOp(..)
             | mir::Rvalue::UnaryOp(..)

@@ -5,7 +5,6 @@
 use std::fmt;
 use std::marker::PhantomData;
 
-use crate::ptr::P;
 use crate::tokenstream::LazyAttrTokenStream;
 use crate::{
     Arm, AssocItem, AttrItem, AttrKind, AttrVec, Attribute, Block, Crate, Expr, ExprField,
@@ -53,7 +52,7 @@ impl_has_node_id!(
     WherePredicate,
 );
 
-impl<T: HasNodeId> HasNodeId for P<T> {
+impl<T: HasNodeId> HasNodeId for Box<T> {
     fn node_id(&self) -> NodeId {
         (**self).node_id()
     }
@@ -119,7 +118,7 @@ impl<T: HasTokens> HasTokens for Option<T> {
     }
 }
 
-impl<T: HasTokens> HasTokens for P<T> {
+impl<T: HasTokens> HasTokens for Box<T> {
     fn tokens(&self) -> Option<&LazyAttrTokenStream> {
         (**self).tokens()
     }
@@ -245,7 +244,7 @@ impl_has_attrs!(
 );
 impl_has_attrs_none!(Attribute, AttrItem, Block, Pat, Path, Ty, Visibility);
 
-impl<T: HasAttrs> HasAttrs for P<T> {
+impl<T: HasAttrs> HasAttrs for Box<T> {
     const SUPPORTS_CUSTOM_INNER_ATTRS: bool = T::SUPPORTS_CUSTOM_INNER_ATTRS;
     fn attrs(&self) -> &[Attribute] {
         (**self).attrs()
@@ -322,8 +321,8 @@ impl<Wrapped, Tag> AstNodeWrapper<Wrapped, Tag> {
 }
 
 // FIXME: remove after `stmt_expr_attributes` is stabilized.
-impl<T, Tag> From<AstNodeWrapper<P<T>, Tag>> for AstNodeWrapper<T, Tag> {
-    fn from(value: AstNodeWrapper<P<T>, Tag>) -> Self {
+impl<T, Tag> From<AstNodeWrapper<Box<T>, Tag>> for AstNodeWrapper<T, Tag> {
+    fn from(value: AstNodeWrapper<Box<T>, Tag>) -> Self {
         AstNodeWrapper { wrapped: *value.wrapped, tag: value.tag }
     }
 }

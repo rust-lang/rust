@@ -14,7 +14,7 @@ use crate::mir::alloc::AllocId;
 use crate::mir::mono::{Instance, MonoItem, StaticDef};
 use crate::mir::{BinOp, Mutability, Place, ProjectionElem, RawPtrKind, Safety, UnOp};
 use crate::ty::{
-    Abi, AdtDef, Binder, BoundRegionKind, BoundTyKind, BoundVariableKind, ClosureKind, DynKind,
+    Abi, AdtDef, Binder, BoundRegionKind, BoundTyKind, BoundVariableKind, ClosureKind,
     ExistentialPredicate, ExistentialProjection, ExistentialTraitRef, FloatTy, FnSig,
     GenericArgKind, GenericArgs, IntTy, MirConst, Movability, Pattern, Region, RigidTy, Span,
     TermKind, TraitRef, Ty, TyConst, UintTy, VariantDef, VariantIdx,
@@ -177,7 +177,7 @@ impl RustcInternal for RigidTy {
             RigidTy::Closure(def, args) => {
                 rustc_ty::TyKind::Closure(def.0.internal(tables, tcx), args.internal(tables, tcx))
             }
-            RigidTy::Coroutine(def, args, _mov) => {
+            RigidTy::Coroutine(def, args) => {
                 rustc_ty::TyKind::Coroutine(def.0.internal(tables, tcx), args.internal(tables, tcx))
             }
             RigidTy::CoroutineClosure(def, args) => rustc_ty::TyKind::CoroutineClosure(
@@ -188,10 +188,9 @@ impl RustcInternal for RigidTy {
                 def.0.internal(tables, tcx),
                 args.internal(tables, tcx),
             ),
-            RigidTy::Dynamic(predicate, region, dyn_kind) => rustc_ty::TyKind::Dynamic(
+            RigidTy::Dynamic(predicate, region) => rustc_ty::TyKind::Dynamic(
                 tcx.mk_poly_existential_predicates(&predicate.internal(tables, tcx)),
                 region.internal(tables, tcx),
-                dyn_kind.internal(tables, tcx),
             ),
             RigidTy::Tuple(tys) => {
                 rustc_ty::TyKind::Tuple(tcx.mk_type_list(&tys.internal(tables, tcx)))
@@ -460,20 +459,6 @@ impl RustcInternal for BoundVariableKind {
     }
 }
 
-impl RustcInternal for DynKind {
-    type T<'tcx> = rustc_ty::DynKind;
-
-    fn internal<'tcx>(
-        &self,
-        _tables: &mut Tables<'_, BridgeTys>,
-        _tcx: impl InternalCx<'tcx>,
-    ) -> Self::T<'tcx> {
-        match self {
-            DynKind::Dyn => rustc_ty::DynKind::Dyn,
-        }
-    }
-}
-
 impl RustcInternal for ExistentialPredicate {
     type T<'tcx> = rustc_ty::ExistentialPredicate<'tcx>;
 
@@ -717,9 +702,6 @@ impl RustcInternal for ProjectionElem {
             }
             ProjectionElem::OpaqueCast(ty) => {
                 rustc_middle::mir::PlaceElem::OpaqueCast(ty.internal(tables, tcx))
-            }
-            ProjectionElem::Subtype(ty) => {
-                rustc_middle::mir::PlaceElem::Subtype(ty.internal(tables, tcx))
             }
         }
     }

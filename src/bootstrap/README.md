@@ -63,6 +63,21 @@ build/
     debug/
     release/
 
+  # Build directory for various tools like `typos` that are only ever
+  # built for the host system, and always with stage0 cargo.
+  misc-tools/
+    bin/
+    target/
+
+  # Directory where js dependencies like tsc and eslint are stored.
+  node_modules/
+    .bin/
+
+  # Copy of package.json and package-lock.json, because npm requires these
+  # to be in the same directory as `node_modules`.
+  package.json
+  package-lock.json
+
   # Output of the dist-related steps like dist-std, dist-rustc, and dist-docs
   dist/
 

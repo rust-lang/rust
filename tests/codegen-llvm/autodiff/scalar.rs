@@ -1,4 +1,4 @@
-//@ compile-flags: -Zautodiff=Enable -C opt-level=3  -Clto=fat
+//@ compile-flags: -Zautodiff=Enable,NoTT -C opt-level=3  -Clto=fat
 //@ no-prefer-dynamic
 //@ needs-enzyme
 #![feature(autodiff)]
@@ -7,11 +7,12 @@ use std::autodiff::autodiff_reverse;
 
 #[autodiff_reverse(d_square, Duplicated, Active)]
 #[no_mangle]
+#[inline(never)]
 fn square(x: &f64) -> f64 {
     x * x
 }
 
-// CHECK:define internal fastcc double @diffesquare(double %x.0.val, ptr nocapture nonnull align 8 %"x'"
+// CHECK:define internal fastcc double @diffesquare(double %x.0.val, ptr nonnull align 8 captures(none) %"x'")
 // CHECK-NEXT:invertstart:
 // CHECK-NEXT:  %_0 = fmul double %x.0.val, %x.0.val
 // CHECK-NEXT:  %0 = fadd fast double %x.0.val, %x.0.val

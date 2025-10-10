@@ -9,8 +9,8 @@ pub use rustc_infer::traits::util::*;
 use rustc_middle::bug;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::{
-    self, PolyTraitPredicate, SizedTraitKind, TraitPredicate, TraitRef, Ty, TyCtxt, TypeFoldable,
-    TypeFolder, TypeSuperFoldable, TypeVisitableExt,
+    self, PolyTraitPredicate, PredicatePolarity, SizedTraitKind, TraitPredicate, TraitRef, Ty,
+    TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
 pub use rustc_next_trait_solver::placeholder::BoundVarReplacer;
 use rustc_span::Span;
@@ -222,7 +222,7 @@ pub struct PlaceholderReplacer<'a, 'tcx> {
     infcx: &'a InferCtxt<'tcx>,
     mapped_regions: FxIndexMap<ty::PlaceholderRegion, ty::BoundRegion>,
     mapped_types: FxIndexMap<ty::PlaceholderType, ty::BoundTy>,
-    mapped_consts: FxIndexMap<ty::PlaceholderConst, ty::BoundVar>,
+    mapped_consts: FxIndexMap<ty::PlaceholderConst, ty::BoundConst>,
     universe_indices: &'a [Option<ty::UniverseIndex>],
     current_index: ty::DebruijnIndex,
 }
@@ -232,7 +232,7 @@ impl<'a, 'tcx> PlaceholderReplacer<'a, 'tcx> {
         infcx: &'a InferCtxt<'tcx>,
         mapped_regions: FxIndexMap<ty::PlaceholderRegion, ty::BoundRegion>,
         mapped_types: FxIndexMap<ty::PlaceholderType, ty::BoundTy>,
-        mapped_consts: FxIndexMap<ty::PlaceholderConst, ty::BoundVar>,
+        mapped_consts: FxIndexMap<ty::PlaceholderConst, ty::BoundConst>,
         universe_indices: &'a [Option<ty::UniverseIndex>],
         value: T,
     ) -> T {
@@ -427,7 +427,9 @@ pub(crate) fn lazily_elaborate_sizedness_candidate<'tcx>(
         return candidate;
     }
 
-    if obligation.predicate.polarity() != candidate.polarity() {
+    if obligation.predicate.polarity() != PredicatePolarity::Positive
+        || candidate.polarity() != PredicatePolarity::Positive
+    {
         return candidate;
     }
 

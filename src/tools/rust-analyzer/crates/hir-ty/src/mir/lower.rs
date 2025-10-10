@@ -31,7 +31,7 @@ use crate::{
     display::{DisplayTarget, HirDisplay, hir_display_with_store},
     error_lifetime,
     generics::generics,
-    infer::{CaptureKind, CapturedItem, TypeMismatch, cast::CastTy, unify::InferenceTable},
+    infer::{CaptureKind, CapturedItem, TypeMismatch, cast::CastTy},
     inhabitedness::is_ty_uninhabited_from,
     layout::LayoutError,
     mapping::ToChalk,
@@ -43,6 +43,10 @@ use crate::{
         Terminator, TerminatorKind, TupleFieldId, Ty, UnOp, VariantId, intern_const_scalar,
         return_slot,
     },
+    next_solver::{
+        DbInterner,
+        mapping::{ChalkToNextSolver, NextSolverToChalk},
+    },
     static_lifetime,
     traits::FnTrait,
     utils::ClosureSubst,
@@ -52,6 +56,8 @@ use super::OperandKind;
 
 mod as_place;
 mod pattern_matching;
+#[cfg(test)]
+mod tests;
 
 #[derive(Debug, Clone)]
 struct LoopBlocks {
@@ -79,7 +85,7 @@ struct MirLowerCtx<'db> {
     infer: &'db InferenceResult,
     resolver: Resolver<'db>,
     drop_scopes: Vec<DropScope>,
-    env: Arc<TraitEnvironment>,
+    env: Arc<TraitEnvironment<'db>>,
 }
 
 // FIXME: Make this smaller, its stored in database queries
@@ -320,11 +326,11 @@ impl<'ctx> MirLowerCtx<'ctx> {
         expr_id: ExprId,
         current: BasicBlockId,
     ) -> Result<Option<(Operand, BasicBlockId)>> {
-        if !self.has_adjustments(expr_id) {
-            if let Expr::Literal(l) = &self.body[expr_id] {
-                let ty = self.expr_ty_without_adjust(expr_id);
-                return Ok(Some((self.lower_literal_to_operand(ty, l)?, current)));
-            }
+        if !self.has_adjustments(expr_id)
+            && let Expr::Literal(l) = &self.body[expr_id]
+        {
+            let ty = self.expr_ty_without_adjust(expr_id);
+            return Ok(Some((self.lower_literal_to_operand(ty, l)?, current)));
         }
         let Some((p, current)) = self.lower_expr_as_place(current, expr_id, true)? else {
             return Ok(None);
@@ -947,8 +953,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                     let cast_kind = if source_ty.as_reference().is_some() {
                         CastKind::PointerCoercion(PointerCast::ArrayToPointer)
                     } else {
-                        let mut table = InferenceTable::new(self.db, self.env.clone());
-                        cast_kind(&mut table, &source_ty, &target_ty)?
+                        cast_kind(self.db, &source_ty, &target_ty)?
                     };
 
                     Rvalue::Cast(cast_kind, it, target_ty)
@@ -1039,18 +1044,18 @@ impl<'ctx> MirLowerCtx<'ctx> {
                         && rhs_ty.is_scalar()
                         && (lhs_ty == rhs_ty || builtin_inequal_impls)
                 };
-                if !is_builtin {
-                    if let Some((func_id, generic_args)) = self.infer.method_resolution(expr_id) {
-                        let func = Operand::from_fn(self.db, func_id, generic_args);
-                        return self.lower_call_and_args(
-                            func,
-                            [*lhs, *rhs].into_iter(),
-                            place,
-                            current,
-                            self.is_uninhabited(expr_id),
-                            expr_id.into(),
-                        );
-                    }
+                if !is_builtin
+                    && let Some((func_id, generic_args)) = self.infer.method_resolution(expr_id)
+                {
+                    let func = Operand::from_fn(self.db, func_id, generic_args);
+                    return self.lower_call_and_args(
+                        func,
+                        [*lhs, *rhs].into_iter(),
+                        place,
+                        current,
+                        self.is_uninhabited(expr_id),
+                        expr_id.into(),
+                    );
                 }
                 if let hir_def::hir::BinaryOp::Assignment { op: Some(op) } = op {
                     // last adjustment is `&mut` which we don't want it.
@@ -1411,8 +1416,12 @@ impl<'ctx> MirLowerCtx<'ctx> {
     }
 
     fn lower_literal_to_operand(&mut self, ty: Ty, l: &Literal) -> Result<Operand> {
-        let size =
-            || self.db.layout_of_ty(ty.clone(), self.env.clone()).map(|it| it.size.bytes_usize());
+        let interner = DbInterner::new_with(self.db, None, None);
+        let size = || {
+            self.db
+                .layout_of_ty(ty.to_nextsolver(interner), self.env.clone())
+                .map(|it| it.size.bytes_usize())
+        };
         const USIZE_SIZE: usize = size_of::<usize>();
         let bytes: Box<[_]> = match l {
             hir_def::hir::Literal::String(b) => {
@@ -1596,10 +1605,10 @@ impl<'ctx> MirLowerCtx<'ctx> {
 
     fn expr_ty_after_adjustments(&self, e: ExprId) -> Ty {
         let mut ty = None;
-        if let Some(it) = self.infer.expr_adjustments.get(&e) {
-            if let Some(it) = it.last() {
-                ty = Some(it.target.clone());
-            }
+        if let Some(it) = self.infer.expr_adjustments.get(&e)
+            && let Some(it) = it.last()
+        {
+            ty = Some(it.target.clone());
         }
         ty.unwrap_or_else(|| self.expr_ty_without_adjust(e))
     }
@@ -1848,13 +1857,13 @@ impl<'ctx> MirLowerCtx<'ctx> {
         self.result.param_locals.extend(params.clone().map(|(it, ty)| {
             let local_id = self.result.locals.alloc(Local { ty });
             self.drop_scopes.last_mut().unwrap().locals.push(local_id);
-            if let Pat::Bind { id, subpat: None } = self.body[it] {
-                if matches!(
+            if let Pat::Bind { id, subpat: None } = self.body[it]
+                && matches!(
                     self.body[id].mode,
                     BindingAnnotation::Unannotated | BindingAnnotation::Mutable
-                ) {
-                    self.result.binding_locals.insert(id, local_id);
-                }
+                )
+            {
+                self.result.binding_locals.insert(id, local_id);
             }
             local_id
         }));
@@ -1887,10 +1896,10 @@ impl<'ctx> MirLowerCtx<'ctx> {
             .into_iter()
             .skip(base_param_count + self_binding.is_some() as usize);
         for ((param, _), local) in params.zip(local_params) {
-            if let Pat::Bind { id, .. } = self.body[param] {
-                if local == self.binding_local(id)? {
-                    continue;
-                }
+            if let Pat::Bind { id, .. } = self.body[param]
+                && local == self.binding_local(id)?
+            {
+                continue;
             }
             let r = self.pattern_match(current, None, local.into(), param)?;
             if let Some(b) = r.1 {
@@ -2012,9 +2021,9 @@ impl<'ctx> MirLowerCtx<'ctx> {
     }
 }
 
-fn cast_kind(table: &mut InferenceTable<'_>, source_ty: &Ty, target_ty: &Ty) -> Result<CastKind> {
-    let from = CastTy::from_ty(table, source_ty);
-    let cast = CastTy::from_ty(table, target_ty);
+fn cast_kind(db: &dyn HirDatabase, source_ty: &Ty, target_ty: &Ty) -> Result<CastKind> {
+    let from = CastTy::from_ty(db, source_ty);
+    let cast = CastTy::from_ty(db, target_ty);
     Ok(match (from, cast) {
         (Some(CastTy::Ptr(..) | CastTy::FnPtr), Some(CastTy::Int(_))) => {
             CastKind::PointerExposeAddress
@@ -2059,7 +2068,7 @@ pub fn mir_body_for_closure_query(
         },
     });
     ctx.result.param_locals.push(closure_local);
-    let Some(sig) = ClosureSubst(substs).sig_ty().callable_sig(db) else {
+    let Some(sig) = ClosureSubst(substs).sig_ty(db).callable_sig(db) else {
         implementation_error!("closure has not callable sig");
     };
     let resolver_guard = ctx.resolver.update_to_inner_scope(db, owner, expr);
@@ -2201,8 +2210,13 @@ pub fn lower_to_mir(
             // otherwise it's an inline const, and has no parameter
             if let DefWithBodyId::FunctionId(fid) = owner {
                 let substs = TyBuilder::placeholder_subst(db, fid);
-                let callable_sig =
-                    db.callable_item_signature(fid.into()).substitute(Interner, &substs);
+                let interner = DbInterner::new_with(db, None, None);
+                let args: crate::next_solver::GenericArgs<'_> = substs.to_nextsolver(interner);
+                let callable_sig = db
+                    .callable_item_signature(fid.into())
+                    .instantiate(interner, args)
+                    .skip_binder()
+                    .to_chalk(interner);
                 let mut params = callable_sig.params().iter();
                 let self_param = body.self_param.and_then(|id| Some((id, params.next()?.clone())));
                 break 'b ctx.lower_params_and_bindings(

@@ -24,11 +24,15 @@ mod trait_goals;
 use derive_where::derive_where;
 use rustc_type_ir::inherent::*;
 pub use rustc_type_ir::solve::*;
-use rustc_type_ir::{self as ty, Interner, TypingMode};
+use rustc_type_ir::{self as ty, Interner, TyVid, TypingMode};
 use tracing::instrument;
 
-pub use self::eval_ctxt::{EvalCtxt, GenerateProofTree, SolverDelegateEvalExt};
+pub use self::eval_ctxt::{
+    EvalCtxt, GenerateProofTree, SolverDelegateEvalExt,
+    evaluate_root_goal_for_proof_tree_raw_provider,
+};
 use crate::delegate::SolverDelegate;
+use crate::solve::assembly::Candidate;
 
 /// How many fixpoint iterations we should attempt inside of the solver before bailing
 /// with overflow.
@@ -40,12 +44,6 @@ use crate::delegate::SolverDelegate;
 /// is required, we can add a new attribute for that or revert this to be dependant on the
 /// recursion limit again. However, this feels very unlikely.
 const FIXPOINT_STEP_LIMIT: usize = 8;
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-enum GoalEvaluationKind {
-    Root,
-    Nested,
-}
 
 /// Whether evaluating this goal ended up changing the
 /// inference state.
@@ -121,15 +119,19 @@ where
 
     #[instrument(level = "trace", skip(self))]
     fn compute_subtype_goal(&mut self, goal: Goal<I, ty::SubtypePredicate<I>>) -> QueryResult<I> {
-        if goal.predicate.a.is_ty_var() && goal.predicate.b.is_ty_var() {
-            self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
-        } else {
-            self.sub(goal.param_env, goal.predicate.a, goal.predicate.b)?;
-            self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        match (goal.predicate.a.kind(), goal.predicate.b.kind()) {
+            (ty::Infer(ty::TyVar(a_vid)), ty::Infer(ty::TyVar(b_vid))) => {
+                self.sub_unify_ty_vids_raw(a_vid, b_vid);
+                self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+            }
+            _ => {
+                self.sub(goal.param_env, goal.predicate.a, goal.predicate.b)?;
+                self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+            }
         }
     }
 
-    fn compute_dyn_compatible_goal(&mut self, trait_def_id: I::DefId) -> QueryResult<I> {
+    fn compute_dyn_compatible_goal(&mut self, trait_def_id: I::TraitId) -> QueryResult<I> {
         if self.cx().trait_is_dyn_compatible(trait_def_id) {
             self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         } else {
@@ -156,9 +158,10 @@ where
         if self.may_use_unstable_feature(param_env, symbol) {
             self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         } else {
-            self.evaluate_added_goals_and_make_canonical_response(Certainty::Maybe(
-                MaybeCause::Ambiguity,
-            ))
+            self.evaluate_added_goals_and_make_canonical_response(Certainty::Maybe {
+                cause: MaybeCause::Ambiguity,
+                opaque_types_jank: OpaqueTypesJank::AllGood,
+            })
         }
     }
 
@@ -235,6 +238,12 @@ where
     }
 }
 
+#[derive(Debug)]
+enum MergeCandidateInfo {
+    AlwaysApplicable(usize),
+    EqualResponse,
+}
+
 impl<D, I> EvalCtxt<'_, D>
 where
     D: SolverDelegate<Interner = I>,
@@ -244,52 +253,56 @@ where
     ///
     /// In this case we tend to flounder and return ambiguity by calling `[EvalCtxt::flounder]`.
     #[instrument(level = "trace", skip(self), ret)]
-    fn try_merge_responses(
+    fn try_merge_candidates(
         &mut self,
-        responses: &[CanonicalResponse<I>],
-    ) -> Option<CanonicalResponse<I>> {
-        if responses.is_empty() {
+        candidates: &[Candidate<I>],
+    ) -> Option<(CanonicalResponse<I>, MergeCandidateInfo)> {
+        if candidates.is_empty() {
             return None;
         }
 
-        // FIXME(-Znext-solver): Add support to merge region constraints in
-        // responses to deal with trait-system-refactor-initiative#27.
-        let one = responses[0];
-        if responses[1..].iter().all(|&resp| resp == one) {
-            return Some(one);
+        let always_applicable = candidates.iter().enumerate().find(|(_, candidate)| {
+            candidate.result.value.certainty == Certainty::Yes
+                && has_no_inference_or_external_constraints(candidate.result)
+        });
+        if let Some((i, c)) = always_applicable {
+            return Some((c.result, MergeCandidateInfo::AlwaysApplicable(i)));
         }
 
-        responses
-            .iter()
-            .find(|response| {
-                response.value.certainty == Certainty::Yes
-                    && has_no_inference_or_external_constraints(**response)
-            })
-            .copied()
+        let one: CanonicalResponse<I> = candidates[0].result;
+        if candidates[1..].iter().all(|candidate| candidate.result == one) {
+            return Some((one, MergeCandidateInfo::EqualResponse));
+        }
+
+        None
     }
 
-    fn bail_with_ambiguity(&mut self, responses: &[CanonicalResponse<I>]) -> CanonicalResponse<I> {
-        debug_assert!(responses.len() > 1);
-        let maybe_cause = responses.iter().fold(MaybeCause::Ambiguity, |maybe_cause, response| {
-            // Pull down the certainty of `Certainty::Yes` to ambiguity when combining
-            // these responses, b/c we're combining more than one response and this we
-            // don't know which one applies.
-            let candidate = match response.value.certainty {
-                Certainty::Yes => MaybeCause::Ambiguity,
-                Certainty::Maybe(candidate) => candidate,
-            };
-            maybe_cause.or(candidate)
-        });
-        self.make_ambiguous_response_no_constraints(maybe_cause)
+    fn bail_with_ambiguity(&mut self, candidates: &[Candidate<I>]) -> CanonicalResponse<I> {
+        debug_assert!(candidates.len() > 1);
+        let (cause, opaque_types_jank) = candidates.iter().fold(
+            (MaybeCause::Ambiguity, OpaqueTypesJank::AllGood),
+            |(c, jank), candidates| {
+                // We pull down the certainty of `Certainty::Yes` to ambiguity when combining
+                // these responses, b/c we're combining more than one response and this we
+                // don't know which one applies.
+                match candidates.result.value.certainty {
+                    Certainty::Yes => (c, jank),
+                    Certainty::Maybe { cause, opaque_types_jank } => {
+                        (c.or(cause), jank.or(opaque_types_jank))
+                    }
+                }
+            },
+        );
+        self.make_ambiguous_response_no_constraints(cause, opaque_types_jank)
     }
 
     /// If we fail to merge responses we flounder and return overflow or ambiguity.
     #[instrument(level = "trace", skip(self), ret)]
-    fn flounder(&mut self, responses: &[CanonicalResponse<I>]) -> QueryResult<I> {
-        if responses.is_empty() {
+    fn flounder(&mut self, candidates: &[Candidate<I>]) -> QueryResult<I> {
+        if candidates.is_empty() {
             return Err(NoSolution);
         } else {
-            Ok(self.bail_with_ambiguity(responses))
+            Ok(self.bail_with_ambiguity(candidates))
         }
     }
 
@@ -367,27 +380,26 @@ where
     }
 }
 
-fn response_no_constraints_raw<I: Interner>(
-    cx: I,
-    max_universe: ty::UniverseIndex,
-    variables: I::CanonicalVarKinds,
-    certainty: Certainty,
-) -> CanonicalResponse<I> {
-    ty::Canonical {
-        max_universe,
-        variables,
-        value: Response {
-            var_values: ty::CanonicalVarValues::make_identity(cx, variables),
-            // FIXME: maybe we should store the "no response" version in cx, like
-            // we do for cx.types and stuff.
-            external_constraints: cx.mk_external_constraints(ExternalConstraintsData::default()),
-            certainty,
-        },
-    }
-}
-
 /// The result of evaluating a goal.
+#[derive_where(Debug; I: Interner)]
 pub struct GoalEvaluation<I: Interner> {
+    /// The goal we've evaluated. This is the input goal, but potentially with its
+    /// inference variables resolved. This never applies any inference constraints
+    /// from evaluating the goal.
+    ///
+    /// We rely on this to check whether root goals in HIR typeck had an unresolved
+    /// type inference variable in the input. We must not resolve this after evaluating
+    /// the goal as even if the inference variable has been resolved by evaluating the
+    /// goal itself, this goal may still end up failing due to region uniquification
+    /// later on.
+    ///
+    /// This is used as a minor optimization to avoid re-resolving inference variables
+    /// when reevaluating ambiguous goals. E.g. if we've got a goal `?x: Trait` with `?x`
+    /// already being constrained to `Vec<?y>`, then the first evaluation resolves it to
+    /// `Vec<?y>: Trait`. If this goal is still ambiguous and we later resolve `?y` to `u32`,
+    /// then reevaluating this goal now only needs to resolve `?y` while it would otherwise
+    /// have to resolve both `?x` and `?y`,
+    pub goal: Goal<I, I::Predicate>,
     pub certainty: Certainty,
     pub has_changed: HasChanged,
     /// If the [`Certainty`] was `Maybe`, then keep track of whether the goal has changed
@@ -400,6 +412,8 @@ pub struct GoalEvaluation<I: Interner> {
 pub struct GoalStalledOn<I: Interner> {
     pub num_opaques: usize,
     pub stalled_vars: Vec<I::GenericArg>,
-    /// The cause that will be returned on subsequent evaluations if this goal remains stalled.
-    pub stalled_cause: MaybeCause,
+    pub sub_roots: Vec<TyVid>,
+    /// The certainty that will be returned on subsequent evaluations if this
+    /// goal remains stalled.
+    pub stalled_certainty: Certainty,
 }

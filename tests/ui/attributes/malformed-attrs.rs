@@ -12,7 +12,7 @@
 #![feature(min_generic_const_args)]
 #![feature(ffi_const, ffi_pure)]
 #![feature(coverage_attribute)]
-#![feature(no_sanitize)]
+#![feature(sanitize)]
 #![feature(marker_trait_attr)]
 #![feature(thread_local)]
 #![feature(must_not_suspend)]
@@ -20,12 +20,8 @@
 #![feature(linkage)]
 #![feature(cfi_encoding, extern_types)]
 #![feature(patchable_function_entry)]
-#![feature(omit_gdb_pretty_printer_section)]
 #![feature(fundamental)]
 
-
-#![omit_gdb_pretty_printer_section = 1]
-//~^ ERROR malformed `omit_gdb_pretty_printer_section` attribute input
 
 #![windows_subsystem]
 //~^ ERROR malformed
@@ -39,6 +35,7 @@
 //~^ ERROR `allow_internal_unstable` expects a list of feature names
 #[rustc_confusables]
 //~^ ERROR malformed
+//~| ERROR attribute cannot be used on
 #[deprecated = 5]
 //~^ ERROR malformed
 #[doc]
@@ -46,9 +43,10 @@
 //~| WARN this was previously accepted by the compiler
 #[rustc_macro_transparency]
 //~^ ERROR malformed
+//~| ERROR attribute cannot be used on
 #[repr]
 //~^ ERROR malformed
-//~| ERROR is not supported on function items
+//~| ERROR is not supported on functions
 #[rustc_as_ptr = 5]
 //~^ ERROR malformed
 #[inline = 5]
@@ -72,6 +70,7 @@
 //~^ ERROR malformed
 #[used()]
 //~^ ERROR malformed
+//~| ERROR attribute cannot be used on
 #[crate_name]
 //~^ ERROR malformed
 #[doc]
@@ -82,15 +81,14 @@
 #[export_stable = 1]
 //~^ ERROR malformed
 #[link]
-//~^ ERROR attribute must be of the form
-//~| WARN this was previously accepted by the compiler
+//~^ ERROR malformed
 #[link_name]
 //~^ ERROR malformed
 #[link_section]
 //~^ ERROR malformed
 #[coverage]
 //~^ ERROR malformed `coverage` attribute input
-#[no_sanitize]
+#[sanitize]
 //~^ ERROR malformed
 #[ignore()]
 //~^ ERROR valid forms for the attribute are
@@ -187,8 +185,7 @@ extern "C" {
 #[forbid]
 //~^ ERROR malformed
 #[debugger_visualizer]
-//~^ ERROR invalid argument
-//~| ERROR malformed `debugger_visualizer` attribute input
+//~^ ERROR malformed `debugger_visualizer` attribute input
 #[automatically_derived = 18]
 //~^ ERROR malformed
 mod yooo {
@@ -213,7 +210,7 @@ extern crate wloop;
 //~^ ERROR can't find crate for `wloop` [E0463]
 
 #[macro_export = 18]
-//~^ ERROR malformed `macro_export` attribute input
+//~^ ERROR valid forms for the attribute are
 #[allow_internal_unsafe = 1]
 //~^ ERROR malformed
 //~| ERROR allow_internal_unsafe side-steps the unsafe_code lint

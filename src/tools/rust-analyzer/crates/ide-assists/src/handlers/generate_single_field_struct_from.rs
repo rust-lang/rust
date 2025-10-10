@@ -1,4 +1,5 @@
 use ast::make;
+use hir::next_solver::{DbInterner, TypingMode};
 use hir::{HasCrate, ModuleDef, Semantics};
 use ide_db::{
     RootDatabase, famous_defs::FamousDefs, helpers::mod_path_to_ast,
@@ -6,13 +7,12 @@ use ide_db::{
 };
 use syntax::{
     TokenText,
-    ast::{self, AstNode, HasGenericParams, HasName, edit, edit_in_place::Indent},
+    ast::{self, AstNode, HasAttrs, HasGenericParams, HasName, edit, edit_in_place::Indent},
 };
 
 use crate::{
     AssistId,
     assist_context::{AssistContext, Assists},
-    utils::add_cfg_attrs_to,
 };
 
 // Assist: generate_single_field_struct_from
@@ -48,6 +48,7 @@ pub(crate) fn generate_single_field_struct_from(
     let strukt_name = ctx.find_node_at_offset::<ast::Name>()?;
     let adt = ast::Adt::cast(strukt_name.syntax().parent()?)?;
     let ast::Adt::Struct(strukt) = adt else {
+        tracing::debug!(?adt);
         return None;
     };
 
@@ -58,10 +59,12 @@ pub(crate) fn generate_single_field_struct_from(
     let constructors = make_constructors(ctx, module, &types);
 
     if constructors.iter().filter(|expr| expr.is_none()).count() != 1 {
+        tracing::debug!(?constructors);
         return None;
     }
     let main_field_i = constructors.iter().position(Option::is_none)?;
     if from_impl_exists(&strukt, main_field_i, &ctx.sema).is_some() {
+        tracing::debug!(?strukt, ?main_field_i);
         return None;
     }
 
@@ -90,6 +93,7 @@ pub(crate) fn generate_single_field_struct_from(
 
             let fn_ = make::fn_(
                 None,
+                None,
                 make::name("from"),
                 None,
                 None,
@@ -110,8 +114,12 @@ pub(crate) fn generate_single_field_struct_from(
             .clone_for_update();
 
             fn_.indent(1.into());
+            let cfg_attrs = strukt
+                .attrs()
+                .filter(|attr| attr.as_simple_call().is_some_and(|(name, _arg)| name == "cfg"));
 
             let impl_ = make::impl_trait(
+                cfg_attrs,
                 false,
                 None,
                 trait_gen_args,
@@ -127,8 +135,6 @@ pub(crate) fn generate_single_field_struct_from(
             .clone_for_update();
 
             impl_.get_or_create_assoc_item_list().add_item(fn_.into());
-
-            add_cfg_attrs_to(&strukt, &impl_);
 
             impl_.reindent_to(indent);
 
@@ -163,6 +169,7 @@ fn make_constructors(
     types: &[ast::Type],
 ) -> Vec<Option<ast::Expr>> {
     let (db, sema) = (ctx.db(), &ctx.sema);
+    let cfg = ctx.config.find_path_confg(ctx.sema.is_nightly(module.krate()));
     types
         .iter()
         .map(|ty| {
@@ -173,11 +180,7 @@ fn make_constructors(
             let item_in_ns = ModuleDef::Adt(ty.as_adt()?).into();
             let edition = module.krate().edition(db);
 
-            let ty_path = module.find_path(
-                db,
-                item_for_path_search(db, item_in_ns)?,
-                ctx.config.import_path_config(),
-            )?;
+            let ty_path = module.find_path(db, item_for_path_search(db, item_in_ns)?, cfg)?;
 
             use_trivial_constructor(db, mod_path_to_ast(&ty_path, edition), &ty, edition)
         })
@@ -198,6 +201,7 @@ fn get_fields(strukt: &ast::Struct) -> Option<(Option<Vec<ast::Name>>, Vec<ast::
     })
 }
 
+#[tracing::instrument(ret)]
 fn from_impl_exists(
     strukt: &ast::Struct,
     main_field_i: usize,
@@ -207,9 +211,15 @@ fn from_impl_exists(
     let strukt = sema.to_def(strukt)?;
     let krate = strukt.krate(db);
     let from_trait = FamousDefs(sema, krate).core_convert_From()?;
-    let ty = strukt.fields(db).get(main_field_i)?.ty(db);
+    let interner = DbInterner::new_with(db, Some(krate.base()), None);
+    use hir::next_solver::infer::DbInternerInferExt;
+    let infcx = interner.infer_ctxt().build(TypingMode::non_body_analysis());
 
-    strukt.ty(db).impls_trait(db, from_trait, &[ty]).then_some(())
+    let strukt = strukt.instantiate_infer(&infcx);
+    let field_ty = strukt.fields(db).get(main_field_i)?.ty(db);
+    let struct_ty = strukt.ty(db);
+    tracing::debug!(?strukt, ?field_ty, ?struct_ty);
+    struct_ty.impls_trait(infcx, from_trait, &[field_ty]).then_some(())
 }
 
 #[cfg(test)]

@@ -1,7 +1,6 @@
 use rustc_ast::expand::allocator::{
     ALLOCATOR_METHODS, AllocatorMethod, AllocatorMethodInput, AllocatorTy, global_fn_name,
 };
-use rustc_ast::ptr::P;
 use rustc_ast::{
     self as ast, AttrVec, Expr, Fn, FnHeader, FnSig, Generics, ItemKind, Mutability, Param, Safety,
     Stmt, StmtKind, Ty, TyKind,
@@ -51,7 +50,7 @@ pub(crate) fn expand(
     let const_body = ecx.expr_block(ecx.block(span, stmts));
     let const_item = ecx.item_const(span, Ident::new(kw::Underscore, span), const_ty, const_body);
     let const_item = if is_stmt {
-        Annotatable::Stmt(P(ecx.stmt_item(span, const_item)))
+        Annotatable::Stmt(Box::new(ecx.stmt_item(span, const_item)))
     } else {
         Annotatable::Item(const_item)
     };
@@ -86,11 +85,11 @@ impl AllocFnFactory<'_, '_> {
             body,
             define_opaque: None,
         }));
-        let item = self.cx.item(self.span, self.attrs(), kind);
+        let item = self.cx.item(self.span, self.attrs(method), kind);
         self.cx.stmt_item(self.ty_span, item)
     }
 
-    fn call_allocator(&self, method: Symbol, mut args: ThinVec<P<Expr>>) -> P<Expr> {
+    fn call_allocator(&self, method: Symbol, mut args: ThinVec<Box<Expr>>) -> Box<Expr> {
         let method = self.cx.std_path(&[sym::alloc, sym::GlobalAlloc, method]);
         let method = self.cx.expr_path(self.cx.path(self.ty_span, method));
         let allocator = self.cx.path_ident(self.ty_span, self.global);
@@ -101,11 +100,21 @@ impl AllocFnFactory<'_, '_> {
         self.cx.expr_call(self.ty_span, method, args)
     }
 
-    fn attrs(&self) -> AttrVec {
-        thin_vec![self.cx.attr_word(sym::rustc_std_internal_symbol, self.span)]
+    fn attrs(&self, method: &AllocatorMethod) -> AttrVec {
+        let alloc_attr = match method.name {
+            sym::alloc => sym::rustc_allocator,
+            sym::dealloc => sym::rustc_deallocator,
+            sym::realloc => sym::rustc_reallocator,
+            sym::alloc_zeroed => sym::rustc_allocator_zeroed,
+            _ => unreachable!("Unknown allocator method!"),
+        };
+        thin_vec![
+            self.cx.attr_word(sym::rustc_std_internal_symbol, self.span),
+            self.cx.attr_word(alloc_attr, self.span)
+        ]
     }
 
-    fn arg_ty(&self, input: &AllocatorMethodInput, args: &mut ThinVec<Param>) -> P<Expr> {
+    fn arg_ty(&self, input: &AllocatorMethodInput, args: &mut ThinVec<Param>) -> Box<Expr> {
         match input.ty {
             AllocatorTy::Layout => {
                 // If an allocator method is ever introduced having multiple
@@ -148,7 +157,7 @@ impl AllocFnFactory<'_, '_> {
         }
     }
 
-    fn ret_ty(&self, ty: &AllocatorTy) -> P<Ty> {
+    fn ret_ty(&self, ty: &AllocatorTy) -> Box<Ty> {
         match *ty {
             AllocatorTy::ResultPtr => self.ptr_u8(),
 
@@ -160,12 +169,12 @@ impl AllocFnFactory<'_, '_> {
         }
     }
 
-    fn usize(&self) -> P<Ty> {
+    fn usize(&self) -> Box<Ty> {
         let usize = self.cx.path_ident(self.span, Ident::new(sym::usize, self.span));
         self.cx.ty_path(usize)
     }
 
-    fn ptr_u8(&self) -> P<Ty> {
+    fn ptr_u8(&self) -> Box<Ty> {
         let u8 = self.cx.path_ident(self.span, Ident::new(sym::u8, self.span));
         let ty_u8 = self.cx.ty_path(u8);
         self.cx.ty_ptr(self.span, ty_u8, Mutability::Mut)

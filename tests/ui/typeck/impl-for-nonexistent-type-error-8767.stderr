@@ -1,0 +1,9 @@
+error[E0412]: cannot find type `B` in this scope
+  --> $DIR/impl-for-nonexistent-type-error-8767.rs:2:6
+   |
+LL | impl B {
+   |      ^ not found in this scope
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0412`.

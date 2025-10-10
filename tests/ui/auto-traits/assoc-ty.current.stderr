@@ -5,7 +5,7 @@ LL | auto trait Trait {
    |            ----- auto traits cannot have associated items
 LL |
 LL |     type Output;
-   |     -----^^^^^^- help: remove these associated items
+   |          ^^^^^^
 
 error[E0658]: auto traits are experimental and possibly buggy
   --> $DIR/assoc-ty.rs:8:1

@@ -10,7 +10,13 @@ error[E0277]: the trait bound `Cyclic: DerefPure` is not satisfied
   --> $DIR/recursion-limit.rs:18:9
    |
 LL |         () => {}
-   |         ^^ the trait `DerefPure` is not implemented for `Cyclic`
+   |         ^^ unsatisfied trait bound
+   |
+help: the trait `DerefPure` is not implemented for `Cyclic`
+  --> $DIR/recursion-limit.rs:8:1
+   |
+LL | struct Cyclic;
+   | ^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

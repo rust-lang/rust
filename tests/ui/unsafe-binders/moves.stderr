@@ -16,6 +16,15 @@ LL |         let binder: unsafe<> NotCopy = wrap_binder!(base);
    |                                                     ---- value moved here
 LL |         drop(base);
    |              ^^^^ value used here after move
+   |
+note: if `NotCopyInner` implemented `Clone`, you could clone the value
+  --> $DIR/moves.rs:8:1
+   |
+LL | struct NotCopyInner;
+   | ^^^^^^^^^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |         let binder: unsafe<> NotCopy = wrap_binder!(base);
+   |                                                     ---- you could clone this value
 
 error[E0382]: use of moved value: `binder`
   --> $DIR/moves.rs:24:14

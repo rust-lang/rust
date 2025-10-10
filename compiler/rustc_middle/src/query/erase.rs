@@ -6,6 +6,7 @@ use rustc_span::ErrorGuaranteed;
 
 use crate::mir::interpret::EvalToValTreeResult;
 use crate::query::CyclePlaceholder;
+use crate::traits::solve;
 use crate::ty::adjustment::CoerceUnsizedInfo;
 use crate::ty::{self, Ty, TyCtxt};
 use crate::{mir, traits};
@@ -219,6 +220,10 @@ impl<T0, T1> EraseType for (&'_ T0, &'_ T1) {
     type Result = [u8; size_of::<(&'static (), &'static ())>()];
 }
 
+impl<T0> EraseType for (solve::QueryResult<'_>, &'_ T0) {
+    type Result = [u8; size_of::<(solve::QueryResult<'static>, &'static ())>()];
+}
+
 impl<T0, T1> EraseType for (&'_ T0, &'_ [T1]) {
     type Result = [u8; size_of::<(&'static (), &'static [()])>()];
 }
@@ -246,9 +251,9 @@ trivial! {
     bool,
     Option<(rustc_span::def_id::DefId, rustc_session::config::EntryFnType)>,
     Option<rustc_ast::expand::allocator::AllocatorKind>,
-    Option<rustc_attr_data_structures::ConstStability>,
-    Option<rustc_attr_data_structures::DefaultBodyStability>,
-    Option<rustc_attr_data_structures::Stability>,
+    Option<rustc_hir::ConstStability>,
+    Option<rustc_hir::DefaultBodyStability>,
+    Option<rustc_hir::Stability>,
     Option<rustc_data_structures::svh::Svh>,
     Option<rustc_hir::def::DefKind>,
     Option<rustc_hir::CoroutineKind>,
@@ -272,13 +277,12 @@ trivial! {
     Result<rustc_middle::traits::EvaluationResult, rustc_middle::traits::OverflowError>,
     rustc_abi::ReprOptions,
     rustc_ast::expand::allocator::AllocatorKind,
-    rustc_attr_data_structures::ConstStability,
-    rustc_attr_data_structures::DefaultBodyStability,
-    rustc_attr_data_structures::Deprecation,
-    rustc_attr_data_structures::Stability,
+    rustc_hir::DefaultBodyStability,
+    rustc_hir::attrs::Deprecation,
     rustc_data_structures::svh::Svh,
     rustc_errors::ErrorGuaranteed,
     rustc_hir::Constness,
+    rustc_hir::ConstStability,
     rustc_hir::def_id::DefId,
     rustc_hir::def_id::DefIndex,
     rustc_hir::def_id::LocalDefId,
@@ -293,6 +297,7 @@ trivial! {
     rustc_hir::LangItem,
     rustc_hir::OpaqueTyOrigin<rustc_hir::def_id::DefId>,
     rustc_hir::OwnerId,
+    rustc_hir::Stability,
     rustc_hir::Upvar,
     rustc_index::bit_set::FiniteBitSet<u32>,
     rustc_middle::middle::dependency_format::Linkage,
@@ -313,7 +318,7 @@ trivial! {
     rustc_middle::traits::WellFormedLoc,
     rustc_middle::ty::adjustment::CoerceUnsizedInfo,
     rustc_middle::ty::AssocItem,
-    rustc_middle::ty::AssocItemContainer,
+    rustc_middle::ty::AssocContainer,
     rustc_middle::ty::Asyncness,
     rustc_middle::ty::AsyncDestructor,
     rustc_middle::ty::BoundVariableKind,
@@ -343,6 +348,7 @@ trivial! {
     rustc_span::Symbol,
     rustc_span::Ident,
     rustc_target::spec::PanicStrategy,
+    rustc_target::spec::SanitizerSet,
     rustc_type_ir::Variance,
     u32,
     usize,

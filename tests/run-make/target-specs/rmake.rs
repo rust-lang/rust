@@ -4,6 +4,7 @@
 // with the target flag's bundle of new features to check that compilation either succeeds while
 // using them correctly, or fails with the right error message when using them improperly.
 // See https://github.com/rust-lang/rust/pull/16156
+//@ needs-llvm-components: x86
 
 use run_make_support::{diff, rfs, rustc};
 

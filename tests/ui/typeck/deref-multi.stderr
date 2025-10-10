@@ -63,7 +63,7 @@ LL |     x.lock().unwrap()
    |     ^^^^^^^^^^^^^^^^^ expected `i32`, found `MutexGuard<'_, &i32>`
    |
    = note: expected type `i32`
-            found struct `MutexGuard<'_, &i32>`
+            found struct `std::sync::MutexGuard<'_, &i32>`
 help: consider dereferencing the type
    |
 LL |     **x.lock().unwrap()

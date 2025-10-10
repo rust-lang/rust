@@ -1035,7 +1035,41 @@ fn foo(bar: Bar) {
 struct Bar { y: Y, z: Z }
 
 fn foo(bar: Bar) {
-    let Bar { y, z  } = bar;
+    let Bar { y, z } = bar;
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_expand_slice_rest_pattern() {
+    check_doc_test(
+        "expand_slice_rest_pattern",
+        r#####"
+fn foo(bar: [i32; 3]) {
+    let [first, ..$0] = bar;
+}
+"#####,
+        r#####"
+fn foo(bar: [i32; 3]) {
+    let [first, _1, _2] = bar;
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_expand_tuple_rest_pattern() {
+    check_doc_test(
+        "expand_tuple_rest_pattern",
+        r#####"
+fn foo(bar: (char, i32, i32)) {
+    let (ch, ..$0) = bar;
+}
+"#####,
+        r#####"
+fn foo(bar: (char, i32, i32)) {
+    let (ch, _1, _2) = bar;
 }
 "#####,
     )
@@ -1876,6 +1910,29 @@ struct Ctx<T: Clone> {
 }
 
 impl<T: Clone> Ctx<T> {$0}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_generate_impl_trait() {
+    check_doc_test(
+        "generate_impl_trait",
+        r#####"
+trait $0Foo {
+    fn foo(&self) -> i32;
+}
+"#####,
+        r#####"
+trait Foo {
+    fn foo(&self) -> i32;
+}
+
+impl Foo for ${1:_} {
+    fn foo(&self) -> i32 {
+        $0todo!()
+    }
+}
 "#####,
     )
 }

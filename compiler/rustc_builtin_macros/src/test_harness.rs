@@ -5,14 +5,12 @@ use std::mem;
 use rustc_ast as ast;
 use rustc_ast::entry::EntryPointType;
 use rustc_ast::mut_visit::*;
-use rustc_ast::ptr::P;
 use rustc_ast::visit::Visitor;
 use rustc_ast::{ModKind, attr};
 use rustc_errors::DiagCtxtHandle;
 use rustc_expand::base::{ExtCtxt, ResolverExpand};
 use rustc_expand::expand::{AstFragment, ExpansionConfig};
 use rustc_feature::Features;
-use rustc_lint_defs::BuiltinLintDiag;
 use rustc_session::Session;
 use rustc_session::lint::builtin::UNNAMEABLE_TEST_ITEMS;
 use rustc_span::hygiene::{AstPass, SyntaxContext, Transparency};
@@ -65,8 +63,8 @@ pub fn inject(
 
     if sess.is_test_crate() {
         let panic_strategy = match (panic_strategy, sess.opts.unstable_opts.panic_abort_tests) {
-            (PanicStrategy::Abort, true) => PanicStrategy::Abort,
-            (PanicStrategy::Abort, false) => {
+            (PanicStrategy::Abort | PanicStrategy::ImmediateAbort, true) => panic_strategy,
+            (PanicStrategy::Abort | PanicStrategy::ImmediateAbort, false) => {
                 if panic_strategy == platform_panic_strategy {
                     // Silently allow compiling with panic=abort on these platforms,
                     // but with old behavior (abort if a test fails).
@@ -142,7 +140,7 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
         if let ast::ItemKind::Mod(
             _,
             _,
-            ModKind::Loaded(.., ast::ModSpans { inner_span: span, .. }, _),
+            ModKind::Loaded(.., ast::ModSpans { inner_span: span, .. }),
         ) = item.kind
         {
             let prev_tests = mem::take(&mut self.tests);
@@ -166,7 +164,7 @@ impl<'a> Visitor<'a> for InnerItemLinter<'_> {
                 UNNAMEABLE_TEST_ITEMS,
                 attr.span,
                 i.id,
-                BuiltinLintDiag::UnnameableTestItems,
+                errors::UnnameableTestItems,
             );
         }
     }
@@ -284,15 +282,13 @@ fn generate_test_harness(
 /// [`TestCtxt::reexport_test_harness_main`] provides a different name for the `main`
 /// function and [`TestCtxt::test_runner`] provides a path that replaces
 /// `test::test_main_static`.
-fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
+fn mk_main(cx: &mut TestCtxt<'_>) -> Box<ast::Item> {
     let sp = cx.def_site;
     let ecx = &cx.ext_cx;
     let test_ident = Ident::new(sym::test, sp);
 
-    let runner_name = match cx.panic_strategy {
-        PanicStrategy::Unwind => "test_main_static",
-        PanicStrategy::Abort => "test_main_static_abort",
-    };
+    let runner_name =
+        if cx.panic_strategy.unwinds() { "test_main_static" } else { "test_main_static_abort" };
 
     // test::test_main_static(...)
     let mut test_runner = cx.test_runner.clone().unwrap_or_else(|| {
@@ -348,7 +344,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
         define_opaque: None,
     }));
 
-    let main = P(ast::Item {
+    let main = Box::new(ast::Item {
         attrs: thin_vec![main_attr, coverage_attr, doc_hidden_attr],
         id: ast::DUMMY_NODE_ID,
         kind: main,
@@ -364,7 +360,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
 
 /// Creates a slice containing every test like so:
 /// &[&test1, &test2]
-fn mk_tests_slice(cx: &TestCtxt<'_>, sp: Span) -> P<ast::Expr> {
+fn mk_tests_slice(cx: &TestCtxt<'_>, sp: Span) -> Box<ast::Expr> {
     debug!("building test vector from {} tests", cx.test_cases.len());
     let ecx = &cx.ext_cx;
 

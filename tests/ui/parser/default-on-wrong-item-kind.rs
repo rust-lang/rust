@@ -19,7 +19,7 @@ mod free_items {
     default union foo {} //~ ERROR a union cannot be `default`
     default trait foo {} //~ ERROR a trait cannot be `default`
     default trait foo = Ord; //~ ERROR a trait alias cannot be `default`
-    default impl foo {}
+    default impl foo {} //~ ERROR inherent impls cannot be default
     default!();
     default::foo::bar!();
     default default!(); //~ ERROR an item macro invocation cannot be `default`
@@ -53,7 +53,7 @@ extern "C" {
     //~^ ERROR trait is not supported in `extern` blocks
     default trait foo = Ord; //~ ERROR a trait alias cannot be `default`
     //~^ ERROR trait alias is not supported in `extern` blocks
-    default impl foo {}
+    default impl foo {} //~ ERROR inherent impls cannot be default
     //~^ ERROR implementation is not supported in `extern` blocks
     default!();
     default::foo::bar!();
@@ -90,7 +90,7 @@ impl S {
     //~^ ERROR trait is not supported in `trait`s or `impl`s
     default trait foo = Ord; //~ ERROR a trait alias cannot be `default`
     //~^ ERROR trait alias is not supported in `trait`s or `impl`s
-    default impl foo {}
+    default impl foo {} //~ ERROR inherent impls cannot be default
     //~^ ERROR implementation is not supported in `trait`s or `impl`s
     default!();
     default::foo::bar!();
@@ -127,7 +127,7 @@ trait T {
     //~^ ERROR trait is not supported in `trait`s or `impl`s
     default trait foo = Ord; //~ ERROR a trait alias cannot be `default`
     //~^ ERROR trait alias is not supported in `trait`s or `impl`s
-    default impl foo {}
+    default impl foo {} //~ ERROR inherent impls cannot be default
     //~^ ERROR implementation is not supported in `trait`s or `impl`s
     default!();
     default::foo::bar!();

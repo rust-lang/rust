@@ -126,10 +126,16 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
             }
             ty::PredicateKind::Subtype(ty::SubtypePredicate { a, b, .. })
             | ty::PredicateKind::Coerce(ty::CoercePredicate { a, b }) => {
-                if self.shallow_resolve(a).is_ty_var() && self.shallow_resolve(b).is_ty_var() {
-                    // FIXME: We also need to register a subtype relation between these vars
-                    // when those are added, and if they aren't in the same sub root then
-                    // we should mark this goal as `has_changed`.
+                match (self.shallow_resolve(a).kind(), self.shallow_resolve(b).kind()) {
+                    (&ty::Infer(ty::TyVar(a_vid)), &ty::Infer(ty::TyVar(b_vid))) => {
+                        self.sub_unify_ty_vids_raw(a_vid, b_vid);
+                        Some(Certainty::AMBIGUOUS)
+                    }
+                    _ => None,
+                }
+            }
+            ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, _)) => {
+                if self.shallow_resolve_const(ct).is_ct_infer() {
                     Some(Certainty::AMBIGUOUS)
                 } else {
                     None
@@ -205,7 +211,6 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         let region_assumptions = self.0.inner.borrow().region_assumptions().to_owned();
         let region_constraints = self.0.with_region_constraints(|region_constraints| {
             make_query_region_constraints(
-                self.tcx,
                 region_obligations,
                 region_constraints,
                 region_assumptions,
@@ -232,13 +237,14 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         canonical.instantiate(self.tcx, &values)
     }
 
-    fn instantiate_canonical_var_with_infer(
+    fn instantiate_canonical_var(
         &self,
         kind: CanonicalVarKind<'tcx>,
         span: Span,
+        var_values: &[ty::GenericArg<'tcx>],
         universe_map: impl Fn(ty::UniverseIndex) -> ty::UniverseIndex,
     ) -> ty::GenericArg<'tcx> {
-        self.0.instantiate_canonical_var(span, kind, universe_map)
+        self.0.instantiate_canonical_var(span, kind, var_values, universe_map)
     }
 
     fn add_item_bounds_for_hidden_type(
@@ -294,7 +300,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
     ) -> Result<Certainty, NoSolution> {
         // Erase regions because we compute layouts in `rustc_transmute`,
         // which will ICE for region vars.
-        let (dst, src) = self.tcx.erase_regions((dst, src));
+        let (dst, src) = self.tcx.erase_and_anonymize_regions((dst, src));
 
         let Some(assume) = rustc_transmute::Assume::from_const(self.tcx, assume) else {
             return Err(NoSolution);

@@ -1,3 +1,4 @@
+use clippy_utils::desugar_await;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::visitors::{Descend, Visitable, for_each_expr};
 use core::ops::ControlFlow::Continue;
@@ -97,6 +98,13 @@ fn collect_unsafe_exprs<'tcx>(
 ) {
     for_each_expr(cx, node, |expr| {
         match expr.kind {
+            // The `await` itself will desugar to two unsafe calls, but we should ignore those.
+            // Instead, check the expression that is `await`ed
+            _ if let Some(e) = desugar_await(expr) => {
+                collect_unsafe_exprs(cx, e, unsafe_ops);
+                return Continue(Descend::No);
+            },
+
             ExprKind::InlineAsm(_) => unsafe_ops.push(("inline assembly used here", expr.span)),
 
             ExprKind::Field(e, _) => {

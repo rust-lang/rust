@@ -1,7 +1,7 @@
 use std::io;
 use std::path::Path;
 
-use rustc_macros::Diagnostic;
+use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 
 #[derive(Diagnostic)]
@@ -109,12 +109,17 @@ pub(crate) struct AbiRequiredTargetFeature<'a> {
     pub enabled: &'a str,
 }
 
-#[derive(Diagnostic)]
-#[diag(interface_limit_invalid)]
-pub(crate) struct LimitInvalid<'a> {
+#[derive(LintDiagnostic)]
+#[diag(interface_invalid_crate_type_value)]
+pub(crate) struct UnknownCrateTypes {
+    #[subdiagnostic]
+    pub sugg: Option<UnknownCrateTypesSub>,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(interface_suggestion, code = r#""{snippet}""#, applicability = "maybe-incorrect")]
+pub(crate) struct UnknownCrateTypesSub {
     #[primary_span]
     pub span: Span,
-    #[label]
-    pub value_span: Span,
-    pub error_str: &'a str,
+    pub snippet: Symbol,
 }

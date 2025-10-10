@@ -1,0 +1,2 @@
+repo = "rust-analyzer"
+filter = ":rev(55d9a533b309119c8acd13061581b43ae8840823:prefix=src/tools/rust-analyzer):/src/tools/rust-analyzer"

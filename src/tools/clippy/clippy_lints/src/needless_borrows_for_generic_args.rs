@@ -59,7 +59,7 @@ declare_clippy_lint! {
 
 pub struct NeedlessBorrowsForGenericArgs<'tcx> {
     /// Stack of (body owner, `PossibleBorrowerMap`) pairs. Used by
-    /// `needless_borrow_impl_arg_position` to determine when a borrowed expression can instead
+    /// [`needless_borrow_count`] to determine when a borrowed expression can instead
     /// be moved.
     possible_borrowers: Vec<(LocalDefId, PossibleBorrowerMap<'tcx, 'tcx>)>,
 
@@ -417,7 +417,7 @@ fn replace_types<'tcx>(
                 {
                     let projection = projection_predicate
                         .projection_term
-                        .with_self_ty(cx.tcx, new_ty)
+                        .with_replaced_self_ty(cx.tcx, new_ty)
                         .expect_ty(cx.tcx)
                         .to_ty(cx.tcx);
 

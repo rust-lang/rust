@@ -140,7 +140,9 @@ macro_rules! bad_literal_non_string {
         //~| ERROR metavariables of `${concat(..)}` must be of type
         //~| ERROR metavariables of `${concat(..)}` must be of type
         //~| ERROR metavariables of `${concat(..)}` must be of type
-        //~| ERROR metavariables of `${concat(..)}` must be of type
+        //~| ERROR floats are not supported as metavariables of `${concat(..)}`
+        //~| ERROR integer metavariables of `${concat(..)}` must not be suffixed
+        //~| ERROR integer metavariables of `${concat(..)}` must not be suffixed
     }
 }
 
@@ -148,7 +150,6 @@ macro_rules! bad_tt_literal {
     ($tt:tt) => {
         const ${concat(_foo, $tt)}: () = ();
         //~^ ERROR metavariables of `${concat(..)}` must be of type
-        //~| ERROR metavariables of `${concat(..)}` must be of type
         //~| ERROR metavariables of `${concat(..)}` must be of type
     }
 }
@@ -178,13 +179,14 @@ fn main() {
     bad_literal_string!("1.0");
     bad_literal_string!("'1'");
 
-    bad_literal_non_string!(1);
     bad_literal_non_string!(-1);
     bad_literal_non_string!(1.0);
     bad_literal_non_string!('1');
     bad_literal_non_string!(false);
+    bad_literal_non_string!(4f64);
+    bad_literal_non_string!(5u8);
+    bad_literal_non_string!(6_u8);
 
-    bad_tt_literal!(1);
     bad_tt_literal!(1.0);
     bad_tt_literal!('1');
 }

@@ -1,0 +1,12 @@
+error: Undefined Behavior: calling a function with return type i32 passing return place of type ()
+   |
+   = note: Undefined Behavior occurred here
+   = note: (no span available)
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = help: this means these two types are not *guaranteed* to be ABI-compatible across all targets
+   = help: if you think this code should be accepted anyway, please report an issue with Miri
+   = note: BACKTRACE:
+
+error: aborting due to 1 previous error
+

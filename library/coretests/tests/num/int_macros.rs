@@ -194,7 +194,7 @@ macro_rules! int_module {
         }
 
         #[test]
-        fn test_isolate_most_significant_one() {
+        fn test_isolate_highest_one() {
             const BITS: $T = -1;
             const MOST_SIG_ONE: $T = 1 << (<$T>::BITS - 1);
 
@@ -203,15 +203,15 @@ macro_rules! int_module {
             let mut i = 0;
             while i < <$T>::BITS {
                 assert_eq!(
-                    (BITS >> i).isolate_most_significant_one(),
-                    (MOST_SIG_ONE >> i).isolate_most_significant_one()
+                    (BITS >> i).isolate_highest_one(),
+                    (MOST_SIG_ONE >> i).isolate_highest_one()
                 );
                 i += 1;
             }
         }
 
         #[test]
-        fn test_isolate_least_significant_one() {
+        fn test_isolate_lowest_one() {
             const BITS: $T = -1;
             const LEAST_SIG_ONE: $T = 1;
 
@@ -220,10 +220,50 @@ macro_rules! int_module {
             let mut i = 0;
             while i < <$T>::BITS {
                 assert_eq!(
-                    (BITS << i).isolate_least_significant_one(),
-                    (LEAST_SIG_ONE << i).isolate_least_significant_one()
+                    (BITS << i).isolate_lowest_one(),
+                    (LEAST_SIG_ONE << i).isolate_lowest_one()
                 );
                 i += 1;
+            }
+        }
+
+        #[test]
+        fn test_highest_one() {
+            const ZERO: $T = 0;
+            const ONE: $T = 1;
+            const MINUS_ONE: $T = -1;
+
+            assert_eq!(ZERO.highest_one(), None);
+
+            for i in 0..<$T>::BITS {
+                // Set single bit.
+                assert_eq!((ONE << i).highest_one(), Some(i));
+                if i != <$T>::BITS - 1 {
+                    // Set lowest bits.
+                    assert_eq!((<$T>::MAX >> i).highest_one(), Some(<$T>::BITS - i - 2));
+                }
+                // Set highest bits.
+                assert_eq!((MINUS_ONE << i).highest_one(), Some(<$T>::BITS - 1));
+            }
+        }
+
+        #[test]
+        fn test_lowest_one() {
+            const ZERO: $T = 0;
+            const ONE: $T = 1;
+            const MINUS_ONE: $T = -1;
+
+            assert_eq!(ZERO.lowest_one(), None);
+
+            for i in 0..<$T>::BITS {
+                // Set single bit.
+                assert_eq!((ONE << i).lowest_one(), Some(i));
+                if i != <$T>::BITS - 1 {
+                    // Set lowest bits.
+                    assert_eq!((<$T>::MAX >> i).lowest_one(), Some(0));
+                }
+                // Set highest bits.
+                assert_eq!((MINUS_ONE << i).lowest_one(), Some(i));
             }
         }
 

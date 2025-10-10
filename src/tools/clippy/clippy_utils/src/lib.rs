@@ -28,7 +28,6 @@
 extern crate indexmap;
 extern crate rustc_abi;
 extern crate rustc_ast;
-extern crate rustc_attr_data_structures;
 extern crate rustc_attr_parsing;
 extern crate rustc_const_eval;
 extern crate rustc_data_structures;
@@ -64,7 +63,6 @@ pub mod mir;
 pub mod msrvs;
 pub mod numeric_literal;
 pub mod paths;
-pub mod ptr;
 pub mod qualify_min_const_fn;
 pub mod source;
 pub mod str_utils;
@@ -84,29 +82,29 @@ pub use self::hir_utils::{
 use core::mem;
 use core::ops::ControlFlow;
 use std::collections::hash_map::Entry;
-use std::iter::{once, repeat_n};
+use std::iter::{once, repeat_n, zip};
 use std::sync::{Mutex, MutexGuard, OnceLock};
 
 use itertools::Itertools;
 use rustc_abi::Integer;
-use rustc_ast::join_path_syms;
 use rustc_ast::ast::{self, LitKind, RangeLimits};
-use rustc_attr_data_structures::{AttributeKind, find_attr};
+use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::unhash::UnindexMap;
 use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::definitions::{DefPath, DefPathData};
 use rustc_hir::hir_id::{HirIdMap, HirIdSet};
-use rustc_hir::intravisit::{FnKind, Visitor, walk_expr};
+use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{
     self as hir, Arm, BindingMode, Block, BlockCheckMode, Body, ByRef, Closure, ConstArgKind, CoroutineDesugaring,
-    CoroutineKind, Destination, Expr, ExprField, ExprKind, FnDecl, FnRetTy, GenericArg, GenericArgs, HirId, Impl,
-    ImplItem, ImplItemKind, Item, ItemKind, LangItem, LetStmt, MatchSource, Mutability, Node, OwnerId, OwnerNode,
-    Param, Pat, PatExpr, PatExprKind, PatKind, Path, PathSegment, QPath, Stmt, StmtKind, TraitFn, TraitItem,
-    TraitItemKind, TraitRef, TyKind, UnOp, def,
+    CoroutineKind, CoroutineSource, Destination, Expr, ExprField, ExprKind, FnDecl, FnRetTy, GenericArg, GenericArgs,
+    HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, LangItem, LetStmt, MatchSource, Mutability, Node, OwnerId,
+    OwnerNode, Param, Pat, PatExpr, PatExprKind, PatKind, Path, PathSegment, QPath, Stmt, StmtKind, TraitFn, TraitItem,
+    TraitItemKind, TraitRef, TyKind, UnOp, def, find_attr,
 };
 use rustc_lexer::{FrontmatterAllowed, TokenKind, tokenize};
 use rustc_lint::{LateContext, Level, Lint, LintContext};
@@ -114,7 +112,7 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::lint::LevelAndSource;
 use rustc_middle::mir::{AggregateKind, Operand, RETURN_PLACE, Rvalue, StatementKind, TerminatorKind};
-use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
+use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, PointerCoercion};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{
     self as rustc_ty, Binder, BorrowKind, ClosureKind, EarlyBinder, GenericArgKind, GenericArgsRef, IntTy, Ty, TyCtxt,
@@ -127,8 +125,10 @@ use rustc_span::{InnerSpan, Span};
 use source::{SpanRangeExt, walk_span_to_context};
 use visitors::{Visitable, for_each_unconsumed_temporary};
 
-use crate::consts::{ConstEvalCtxt, Constant, mir_to_const};
+use crate::ast_utils::unordered_over;
+use crate::consts::{ConstEvalCtxt, Constant};
 use crate::higher::Range;
+use crate::msrvs::Msrv;
 use crate::ty::{adt_and_variant_of_res, can_partially_move_ty, expr_sig, is_copy, is_recursively_primitive_type};
 use crate::visitors::for_each_expr_without_closures;
 
@@ -309,6 +309,7 @@ pub fn is_lang_item_or_ctor(cx: &LateContext<'_>, did: DefId, item: LangItem) ->
     cx.tcx.lang_items().get(item) == Some(did)
 }
 
+/// Checks if `expr` is an empty block or an empty tuple.
 pub fn is_unit_expr(expr: &Expr<'_>) -> bool {
     matches!(
         expr.kind,
@@ -328,13 +329,17 @@ pub fn is_wild(pat: &Pat<'_>) -> bool {
     matches!(pat.kind, PatKind::Wild)
 }
 
-// Checks if arm has the form `None => None`
-pub fn is_none_arm(cx: &LateContext<'_>, arm: &Arm<'_>) -> bool {
-    matches!(
-        arm.pat.kind,
+/// Checks if the `pat` is `None`.
+pub fn is_none_pattern(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
+    matches!(pat.kind,
         PatKind::Expr(PatExpr { kind: PatExprKind::Path(qpath), .. })
-            if is_res_lang_ctor(cx, cx.qpath_res(qpath, arm.pat.hir_id), OptionNone)
-    )
+            if is_res_lang_ctor(cx, cx.qpath_res(qpath, pat.hir_id), OptionNone))
+}
+
+/// Checks if `arm` has the form `None => None`.
+pub fn is_none_arm(cx: &LateContext<'_>, arm: &Arm<'_>) -> bool {
+    is_none_pattern(cx, arm.pat)
+        && matches!(peel_blocks(arm.body).kind, ExprKind::Path(qpath) if is_res_lang_ctor(cx, cx.qpath_res(&qpath, arm.body.hir_id), OptionNone))
 }
 
 /// Checks if the given `QPath` belongs to a type alias.
@@ -349,7 +354,7 @@ pub fn is_ty_alias(qpath: &QPath<'_>) -> bool {
 /// Checks if the given method call expression calls an inherent method.
 pub fn is_inherent_method_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     if let Some(method_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) {
-        cx.tcx.trait_of_item(method_id).is_none()
+        cx.tcx.trait_of_assoc(method_id).is_none()
     } else {
         false
     }
@@ -357,7 +362,7 @@ pub fn is_inherent_method_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 
 /// Checks if a method is defined in an impl of a diagnostic item
 pub fn is_diag_item_method(cx: &LateContext<'_>, def_id: DefId, diag_item: Symbol) -> bool {
-    if let Some(impl_did) = cx.tcx.impl_of_method(def_id)
+    if let Some(impl_did) = cx.tcx.impl_of_assoc(def_id)
         && let Some(adt) = cx.tcx.type_of(impl_did).instantiate_identity().ty_adt_def()
     {
         return cx.tcx.is_diagnostic_item(diag_item, adt.did());
@@ -367,7 +372,7 @@ pub fn is_diag_item_method(cx: &LateContext<'_>, def_id: DefId, diag_item: Symbo
 
 /// Checks if a method is in a diagnostic item trait
 pub fn is_diag_trait_item(cx: &LateContext<'_>, def_id: DefId, diag_item: Symbol) -> bool {
-    if let Some(trait_did) = cx.tcx.trait_of_item(def_id) {
+    if let Some(trait_did) = cx.tcx.trait_of_assoc(def_id) {
         return cx.tcx.is_diagnostic_item(diag_item, trait_did);
     }
     false
@@ -461,6 +466,23 @@ pub fn path_to_local_id(expr: &Expr<'_>, id: HirId) -> bool {
     path_to_local(expr) == Some(id)
 }
 
+/// If the expression is a path to a local (with optional projections),
+/// returns the canonical `HirId` of the local.
+///
+/// For example, `x.field[0].field2` would return the `HirId` of `x`.
+pub fn path_to_local_with_projections(expr: &Expr<'_>) -> Option<HirId> {
+    match expr.kind {
+        ExprKind::Field(recv, _) | ExprKind::Index(recv, _, _) => path_to_local_with_projections(recv),
+        ExprKind::Path(QPath::Resolved(
+            _,
+            Path {
+                res: Res::Local(local), ..
+            },
+        )) => Some(*local),
+        _ => None,
+    }
+}
+
 pub trait MaybePath<'hir> {
     fn hir_id(&self) -> HirId;
     fn qpath_opt(&self) -> Option<&QPath<'hir>>;
@@ -529,8 +551,9 @@ pub fn path_def_id<'tcx>(cx: &LateContext<'_>, maybe_path: &impl MaybePath<'tcx>
 pub fn trait_ref_of_method<'tcx>(cx: &LateContext<'tcx>, owner: OwnerId) -> Option<&'tcx TraitRef<'tcx>> {
     if let Node::Item(item) = cx.tcx.hir_node(cx.tcx.hir_owner_parent(owner))
         && let ItemKind::Impl(impl_) = &item.kind
+        && let Some(of_trait) = impl_.of_trait
     {
-        return impl_.of_trait.as_ref();
+        return Some(&of_trait.trait_ref);
     }
     None
 }
@@ -582,7 +605,7 @@ pub fn can_mut_borrow_both(cx: &LateContext<'_>, e1: &Expr<'_>, e2: &Expr<'_>) -
         return false;
     }
 
-    for (x1, x2) in s1.iter().zip(s2.iter()) {
+    for (x1, x2) in zip(&s1, &s2) {
         if expr_custom_deref_adjustment(cx, x1).is_some() || expr_custom_deref_adjustment(cx, x2).is_some() {
             return false;
         }
@@ -620,12 +643,11 @@ fn is_default_equivalent_ctor(cx: &LateContext<'_>, def_id: DefId, path: &QPath<
 
     if let QPath::TypeRelative(_, method) = path
         && method.ident.name == sym::new
-        && let Some(impl_did) = cx.tcx.impl_of_method(def_id)
+        && let Some(impl_did) = cx.tcx.impl_of_assoc(def_id)
         && let Some(adt) = cx.tcx.type_of(impl_did).instantiate_identity().ty_adt_def()
     {
-        return std_types_symbols.iter().any(|&symbol| {
-            cx.tcx.is_diagnostic_item(symbol, adt.did()) || Some(adt.did()) == cx.tcx.lang_items().string()
-        });
+        return Some(adt.did()) == cx.tcx.lang_items().string()
+            || (cx.tcx.get_diagnostic_name(adt.did())).is_some_and(|adt_name| std_types_symbols.contains(&adt_name));
     }
     false
 }
@@ -1401,11 +1423,9 @@ pub fn is_range_full(cx: &LateContext<'_>, expr: &Expr<'_>, container_path: Opti
         let start_is_none_or_min = start.is_none_or(|start| {
             if let rustc_ty::Adt(_, subst) = ty.kind()
                 && let bnd_ty = subst.type_at(0)
-                && let Some(min_const) = bnd_ty.numeric_min_val(cx.tcx)
-                && let Some(min_const) = mir_to_const(cx.tcx, min_const)
                 && let Some(start_const) = ConstEvalCtxt::new(cx).eval(start)
             {
-                start_const == min_const
+                start_const.is_numeric_min(cx.tcx, bnd_ty)
             } else {
                 false
             }
@@ -1414,11 +1434,9 @@ pub fn is_range_full(cx: &LateContext<'_>, expr: &Expr<'_>, container_path: Opti
             RangeLimits::Closed => {
                 if let rustc_ty::Adt(_, subst) = ty.kind()
                     && let bnd_ty = subst.type_at(0)
-                    && let Some(max_const) = bnd_ty.numeric_max_val(cx.tcx)
-                    && let Some(max_const) = mir_to_const(cx.tcx, max_const)
                     && let Some(end_const) = ConstEvalCtxt::new(cx).eval(end)
                 {
-                    end_const == max_const
+                    end_const.is_numeric_max(cx.tcx, bnd_ty)
                 } else {
                     false
                 }
@@ -1833,15 +1851,6 @@ pub fn if_sequence<'tcx>(mut expr: &'tcx Expr<'tcx>) -> (Vec<&'tcx Expr<'tcx>>, 
     (conds, blocks)
 }
 
-/// Checks if the given function kind is an async function.
-pub fn is_async_fn(kind: FnKind<'_>) -> bool {
-    match kind {
-        FnKind::ItemFn(_, _, header) => header.asyncness.is_async(),
-        FnKind::Method(_, sig) => sig.header.asyncness.is_async(),
-        FnKind::Closure => false,
-    }
-}
-
 /// Peels away all the compiler generated code surrounding the body of an async closure.
 pub fn get_async_closure_expr<'tcx>(tcx: TyCtxt<'tcx>, expr: &Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
     if let ExprKind::Closure(&Closure {
@@ -1897,35 +1906,12 @@ pub fn is_must_use_func_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 /// * `|x| { return x }`
 /// * `|x| { return x; }`
 /// * `|(x, y)| (x, y)`
+/// * `|[x, y]| [x, y]`
+/// * `|Foo(bar, baz)| Foo(bar, baz)`
+/// * `|Foo { bar, baz }| Foo { bar, baz }`
 ///
 /// Consider calling [`is_expr_untyped_identity_function`] or [`is_expr_identity_function`] instead.
 fn is_body_identity_function(cx: &LateContext<'_>, func: &Body<'_>) -> bool {
-    fn check_pat(cx: &LateContext<'_>, pat: &Pat<'_>, expr: &Expr<'_>) -> bool {
-        if cx
-            .typeck_results()
-            .pat_binding_modes()
-            .get(pat.hir_id)
-            .is_some_and(|mode| matches!(mode.0, ByRef::Yes(_)))
-        {
-            // If a tuple `(x, y)` is of type `&(i32, i32)`, then due to match ergonomics,
-            // the inner patterns become references. Don't consider this the identity function
-            // as that changes types.
-            return false;
-        }
-
-        match (pat.kind, expr.kind) {
-            (PatKind::Binding(_, id, _, _), _) => {
-                path_to_local_id(expr, id) && cx.typeck_results().expr_adjustments(expr).is_empty()
-            },
-            (PatKind::Tuple(pats, dotdot), ExprKind::Tup(tup))
-                if dotdot.as_opt_usize().is_none() && pats.len() == tup.len() =>
-            {
-                pats.iter().zip(tup).all(|(pat, expr)| check_pat(cx, pat, expr))
-            },
-            _ => false,
-        }
-    }
-
     let [param] = func.params else {
         return false;
     };
@@ -1958,8 +1944,76 @@ fn is_body_identity_function(cx: &LateContext<'_>, func: &Body<'_>) -> bool {
                     return false;
                 }
             },
-            _ => return check_pat(cx, param.pat, expr),
+            _ => return is_expr_identity_of_pat(cx, param.pat, expr, true),
         }
+    }
+}
+
+/// Checks if the given expression is an identity representation of the given pattern:
+/// * `x` is the identity representation of `x`
+/// * `(x, y)` is the identity representation of `(x, y)`
+/// * `[x, y]` is the identity representation of `[x, y]`
+/// * `Foo(bar, baz)` is the identity representation of `Foo(bar, baz)`
+/// * `Foo { bar, baz }` is the identity representation of `Foo { bar, baz }`
+///
+/// Note that `by_hir` is used to determine bindings are checked by their `HirId` or by their name.
+/// This can be useful when checking patterns in `let` bindings or `match` arms.
+pub fn is_expr_identity_of_pat(cx: &LateContext<'_>, pat: &Pat<'_>, expr: &Expr<'_>, by_hir: bool) -> bool {
+    if cx
+        .typeck_results()
+        .pat_binding_modes()
+        .get(pat.hir_id)
+        .is_some_and(|mode| matches!(mode.0, ByRef::Yes(_)))
+    {
+        // If the parameter is `(x, y)` of type `&(T, T)`, or `[x, y]` of type `&[T; 2]`, then
+        // due to match ergonomics, the inner patterns become references. Don't consider this
+        // the identity function as that changes types.
+        return false;
+    }
+
+    // NOTE: we're inside a (function) body, so this won't ICE
+    let qpath_res = |qpath, hir| cx.typeck_results().qpath_res(qpath, hir);
+
+    match (pat.kind, expr.kind) {
+        (PatKind::Binding(_, id, _, _), _) if by_hir => {
+            path_to_local_id(expr, id) && cx.typeck_results().expr_adjustments(expr).is_empty()
+        },
+        (PatKind::Binding(_, _, ident, _), ExprKind::Path(QPath::Resolved(_, path))) => {
+            matches!(path.segments, [ segment] if segment.ident.name == ident.name)
+        },
+        (PatKind::Tuple(pats, dotdot), ExprKind::Tup(tup))
+            if dotdot.as_opt_usize().is_none() && pats.len() == tup.len() =>
+        {
+            over(pats, tup, |pat, expr| is_expr_identity_of_pat(cx, pat, expr, by_hir))
+        },
+        (PatKind::Slice(before, None, after), ExprKind::Array(arr)) if before.len() + after.len() == arr.len() => {
+            zip(before.iter().chain(after), arr).all(|(pat, expr)| is_expr_identity_of_pat(cx, pat, expr, by_hir))
+        },
+        (PatKind::TupleStruct(pat_ident, field_pats, dotdot), ExprKind::Call(ident, fields))
+            if dotdot.as_opt_usize().is_none() && field_pats.len() == fields.len() =>
+        {
+            // check ident
+            if let ExprKind::Path(ident) = &ident.kind
+                && qpath_res(&pat_ident, pat.hir_id) == qpath_res(ident, expr.hir_id)
+                // check fields
+                && over(field_pats, fields, |pat, expr| is_expr_identity_of_pat(cx, pat, expr,by_hir))
+            {
+                true
+            } else {
+                false
+            }
+        },
+        (PatKind::Struct(pat_ident, field_pats, None), ExprKind::Struct(ident, fields, hir::StructTailExpr::None))
+            if field_pats.len() == fields.len() =>
+        {
+            // check ident
+            qpath_res(&pat_ident, pat.hir_id) == qpath_res(ident, expr.hir_id)
+                // check fields
+                && unordered_over(field_pats, fields, |field_pat, field| {
+                    field_pat.ident == field.ident && is_expr_identity_of_pat(cx, field_pat.pat, field.expr, by_hir)
+                })
+        },
+        _ => false,
     }
 }
 
@@ -2070,17 +2124,11 @@ pub fn std_or_core(cx: &LateContext<'_>) -> Option<&'static str> {
 }
 
 pub fn is_no_std_crate(cx: &LateContext<'_>) -> bool {
-    cx.tcx
-        .hir_attrs(hir::CRATE_HIR_ID)
-        .iter()
-        .any(|attr| attr.has_name(sym::no_std))
+    find_attr!(cx.tcx.hir_attrs(hir::CRATE_HIR_ID), AttributeKind::NoStd(..))
 }
 
 pub fn is_no_core_crate(cx: &LateContext<'_>) -> bool {
-    cx.tcx
-        .hir_attrs(hir::CRATE_HIR_ID)
-        .iter()
-        .any(|attr| attr.has_name(sym::no_core))
+    find_attr!(cx.tcx.hir_attrs(hir::CRATE_HIR_ID), AttributeKind::NoCore(..))
 }
 
 /// Check if parent of a hir node is a trait implementation block.
@@ -2317,15 +2365,12 @@ pub fn peel_hir_ty_refs<'a>(mut ty: &'a hir::Ty<'a>) -> (&'a hir::Ty<'a>, usize)
     }
 }
 
-/// Peels off all references on the type. Returns the underlying type and the number of references
-/// removed.
-pub fn peel_middle_ty_refs(mut ty: Ty<'_>) -> (Ty<'_>, usize) {
-    let mut count = 0;
-    while let rustc_ty::Ref(_, dest_ty, _) = ty.kind() {
-        ty = *dest_ty;
-        count += 1;
+/// Returns the base type for HIR references and pointers.
+pub fn peel_hir_ty_refs_and_ptrs<'tcx>(ty: &'tcx hir::Ty<'tcx>) -> &'tcx hir::Ty<'tcx> {
+    match &ty.kind {
+        TyKind::Ptr(mut_ty) | TyKind::Ref(_, mut_ty) => peel_hir_ty_refs_and_ptrs(mut_ty.ty),
+        _ => ty,
     }
-    (ty, count)
 }
 
 /// Removes `AddrOf` operators (`&`) or deref operators (`*`), but only if a reference type is
@@ -2339,6 +2384,24 @@ pub fn peel_ref_operators<'hir>(cx: &LateContext<'_>, mut expr: &'hir Expr<'hir>
         }
     }
     expr
+}
+
+/// Returns a `Vec` of `Expr`s containing `AddrOf` operators (`&`) or deref operators (`*`) of a
+/// given expression.
+pub fn get_ref_operators<'hir>(cx: &LateContext<'_>, expr: &'hir Expr<'hir>) -> Vec<&'hir Expr<'hir>> {
+    let mut operators = Vec::new();
+    peel_hir_expr_while(expr, |expr| match expr.kind {
+        ExprKind::AddrOf(_, _, e) => {
+            operators.push(expr);
+            Some(e)
+        },
+        ExprKind::Unary(UnOp::Deref, e) if cx.typeck_results().expr_ty(e).is_ref() => {
+            operators.push(expr);
+            Some(e)
+        },
+        _ => None,
+    });
+    operators
 }
 
 pub fn is_hir_ty_cfg_dependant(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
@@ -3169,8 +3232,8 @@ pub fn get_path_from_caller_to_method_type<'tcx>(
     let assoc_item = tcx.associated_item(method);
     let def_id = assoc_item.container_id(tcx);
     match assoc_item.container {
-        rustc_ty::AssocItemContainer::Trait => get_path_to_callee(tcx, from, def_id),
-        rustc_ty::AssocItemContainer::Impl => {
+        rustc_ty::AssocContainer::Trait => get_path_to_callee(tcx, from, def_id),
+        rustc_ty::AssocContainer::InherentImpl | rustc_ty::AssocContainer::TraitImpl(_) => {
             let ty = tcx.type_of(def_id).instantiate_identity();
             get_path_to_ty(tcx, from, ty, args)
         },
@@ -3269,15 +3332,13 @@ fn maybe_get_relative_path(from: &DefPath, to: &DefPath, max_super: usize) -> St
 
     if go_up_by > max_super {
         // `super` chain would be too long, just use the absolute path instead
-        join_path_syms(
-            once(kw::Crate).chain(to.data.iter().filter_map(|el| {
-                if let DefPathData::TypeNs(sym) = el.data {
-                    Some(sym)
-                } else {
-                    None
-                }
-            }))
-        )
+        join_path_syms(once(kw::Crate).chain(to.data.iter().filter_map(|el| {
+            if let DefPathData::TypeNs(sym) = el.data {
+                Some(sym)
+            } else {
+                None
+            }
+        })))
     } else {
         join_path_syms(repeat_n(kw::Super, go_up_by).chain(path))
     }
@@ -3559,4 +3620,34 @@ pub fn potential_return_of_enclosing_body(cx: &LateContext<'_>, expr: &Expr<'_>)
     // `expr` is used as part of "something" and is not returned directly from its
     // enclosing body.
     false
+}
+
+/// Checks if the expression has adjustments that require coercion, for example: dereferencing with
+/// overloaded deref, coercing pointers and `dyn` objects.
+pub fn expr_adjustment_requires_coercion(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    cx.typeck_results().expr_adjustments(expr).iter().any(|adj| {
+        matches!(
+            adj.kind,
+            Adjust::Deref(Some(_)) | Adjust::Pointer(PointerCoercion::Unsize) | Adjust::NeverToAny
+        )
+    })
+}
+
+/// Checks if the expression is an async block (i.e., `async { ... }`).
+pub fn is_expr_async_block(expr: &Expr<'_>) -> bool {
+    matches!(
+        expr.kind,
+        ExprKind::Closure(Closure {
+            kind: hir::ClosureKind::Coroutine(CoroutineKind::Desugared(
+                CoroutineDesugaring::Async,
+                CoroutineSource::Block
+            )),
+            ..
+        })
+    )
+}
+
+/// Checks if the chosen edition and `msrv` allows using `if let` chains.
+pub fn can_use_if_let_chains(cx: &LateContext<'_>, msrv: Msrv) -> bool {
+    cx.tcx.sess.edition().at_least_rust_2024() && msrv.meets(cx, msrvs::LET_CHAINS)
 }

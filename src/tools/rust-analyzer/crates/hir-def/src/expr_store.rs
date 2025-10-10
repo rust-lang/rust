@@ -16,7 +16,7 @@ use std::{
 
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
-use hir_expand::{ExpandError, InFile, MacroCallId, mod_path::ModPath, name::Name};
+use hir_expand::{InFile, MacroCallId, mod_path::ModPath, name::Name};
 use la_arena::{Arena, ArenaMap};
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
@@ -281,7 +281,6 @@ struct FormatTemplate {
 #[derive(Debug, Eq, PartialEq)]
 pub enum ExpressionStoreDiagnostics {
     InactiveCode { node: InFile<SyntaxNodePtr>, cfg: CfgExpr, opts: CfgOptions },
-    MacroError { node: InFile<MacroCallPtr>, err: ExpandError },
     UnresolvedMacroCall { node: InFile<MacroCallPtr>, path: ModPath },
     UnreachableLabel { node: InFile<AstPtr<ast::Lifetime>>, name: Name },
     AwaitOutsideOfAsync { node: InFile<AstPtr<ast::AwaitExpr>>, location: String },

@@ -1,6 +1,6 @@
 use super::FILTER_MAP_BOOL_THEN;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::SpanRangeExt;
+use clippy_utils::source::{SpanRangeExt, snippet_with_context};
 use clippy_utils::ty::is_copy;
 use clippy_utils::{
     CaptureKind, can_move_expr_to_closure, contains_return, is_from_proc_macro, is_trait_method, peel_blocks,
@@ -45,9 +45,11 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, arg: &
             .filter(|adj| matches!(adj.kind, Adjust::Deref(_)))
             .count()
         && let Some(param_snippet) = param.span.get_source_text(cx)
-        && let Some(filter) = recv.span.get_source_text(cx)
-        && let Some(map) = then_body.span.get_source_text(cx)
     {
+        let mut applicability = Applicability::MachineApplicable;
+        let (filter, _) = snippet_with_context(cx, recv.span, expr.span.ctxt(), "..", &mut applicability);
+        let (map, _) = snippet_with_context(cx, then_body.span, expr.span.ctxt(), "..", &mut applicability);
+
         span_lint_and_then(
             cx,
             FILTER_MAP_BOOL_THEN,
@@ -62,7 +64,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, arg: &
                             "filter(|&{param_snippet}| {derefs}{filter}).map(|{param_snippet}| {map})",
                             derefs = "*".repeat(needed_derefs)
                         ),
-                        Applicability::MachineApplicable,
+                        applicability,
                     );
                 } else {
                     diag.help("consider using `filter` then `map` instead");

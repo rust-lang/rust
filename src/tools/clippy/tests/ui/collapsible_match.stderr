@@ -250,5 +250,74 @@ LL |     if let Issue9647::A { a: Some(a), .. } = x {
 LL |         if let Some(u) = a {
    |                ^^^^^^^ with this pattern
 
-error: aborting due to 13 previous errors
+error: this `match` can be collapsed into the outer `if let`
+  --> tests/ui/collapsible_match.rs:322:9
+   |
+LL | /         match *last {
+LL | |
+LL | |             "a" | "b" => {
+LL | |                 unimplemented!()
+LL | |             },
+LL | |             _ => (),
+LL | |         }
+   | |_________^
+   |
+help: the outer pattern can be modified to include the inner pattern
+  --> tests/ui/collapsible_match.rs:321:17
+   |
+LL |     if let Some(last) = arr.last() {
+   |                 ^^^^    ---------- use: `arr.last().copied()`
+   |                 |
+   |                 replace this binding
+...
+LL |             "a" | "b" => {
+   |             ^^^^^^^^^ with this pattern
+
+error: this `match` can be collapsed into the outer `if let`
+  --> tests/ui/collapsible_match.rs:332:9
+   |
+LL | /         match &last {
+LL | |
+LL | |             &&"a" | &&"b" => {
+LL | |                 unimplemented!()
+LL | |             },
+LL | |             _ => (),
+LL | |         }
+   | |_________^
+   |
+help: the outer pattern can be modified to include the inner pattern
+  --> tests/ui/collapsible_match.rs:331:17
+   |
+LL |     if let Some(last) = arr.last() {
+   |                 ^^^^    ---------- use: `arr.last().as_ref()`
+   |                 |
+   |                 replace this binding
+...
+LL |             &&"a" | &&"b" => {
+   |             ^^^^^^^^^^^^^ with this pattern
+
+error: this `match` can be collapsed into the outer `if let`
+  --> tests/ui/collapsible_match.rs:342:9
+   |
+LL | /         match &mut last {
+LL | |
+LL | |             &mut &mut "a" | &mut &mut "b" => {
+LL | |                 unimplemented!()
+LL | |             },
+LL | |             _ => (),
+LL | |         }
+   | |_________^
+   |
+help: the outer pattern can be modified to include the inner pattern
+  --> tests/ui/collapsible_match.rs:341:17
+   |
+LL |     if let Some(mut last) = arr.last_mut() {
+   |                 ^^^^^^^^    -------------- use: `arr.last_mut().as_mut()`
+   |                 |
+   |                 replace this binding
+...
+LL |             &mut &mut "a" | &mut &mut "b" => {
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ with this pattern
+
+error: aborting due to 16 previous errors
 

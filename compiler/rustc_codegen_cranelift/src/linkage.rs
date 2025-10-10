@@ -1,4 +1,5 @@
-use rustc_middle::mir::mono::{Linkage as RLinkage, MonoItem, Visibility};
+use rustc_hir::attrs::Linkage as RLinkage;
+use rustc_middle::mir::mono::{MonoItem, Visibility};
 
 use crate::prelude::*;
 

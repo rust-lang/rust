@@ -7,7 +7,7 @@ const P10: &[f32] = &[
 ];
 
 /// Calculates 10 raised to the power of `x` (f32).
-#[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
+#[cfg_attr(assert_no_panic, no_panic::no_panic)]
 pub fn exp10f(x: f32) -> f32 {
     let (mut y, n) = modff(x);
     let u = n.to_bits();

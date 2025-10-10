@@ -364,9 +364,6 @@ pub trait Visitor<'v>: Sized {
     /// All types are treated as ambiguous types for the purposes of hir visiting in
     /// order to ensure that visitors can handle infer vars without it being too error-prone.
     ///
-    /// See the doc comments on [`Ty`] for an explanation of what it means for a type to be
-    /// ambiguous.
-    ///
     /// The [`Visitor::visit_infer`] method should be overridden in order to handle infer vars.
     fn visit_ty(&mut self, t: &'v Ty<'v, AmbigArg>) -> Self::Result {
         walk_ty(self, t)
@@ -375,12 +372,9 @@ pub trait Visitor<'v>: Sized {
     /// All consts are treated as ambiguous consts for the purposes of hir visiting in
     /// order to ensure that visitors can handle infer vars without it being too error-prone.
     ///
-    /// See the doc comments on [`ConstArg`] for an explanation of what it means for a const to be
-    /// ambiguous.
-    ///
     /// The [`Visitor::visit_infer`] method should be overridden in order to handle infer vars.
     fn visit_const_arg(&mut self, c: &'v ConstArg<'v, AmbigArg>) -> Self::Result {
-        walk_ambig_const_arg(self, c)
+        walk_const_arg(self, c)
     }
 
     #[allow(unused_variables)]
@@ -522,7 +516,7 @@ pub trait VisitorExt<'v>: Visitor<'v> {
     /// Named `visit_const_arg_unambig` instead of `visit_unambig_const_arg` to aid in
     /// discovery by IDes when `v.visit_const_arg` is written.
     fn visit_const_arg_unambig(&mut self, c: &'v ConstArg<'v>) -> Self::Result {
-        walk_const_arg(self, c)
+        walk_unambig_const_arg(self, c)
     }
 }
 impl<'v, V: Visitor<'v>> VisitorExt<'v> for V {}
@@ -596,21 +590,21 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
             try_visit!(visitor.visit_generics(generics));
             try_visit!(visitor.visit_enum_def(enum_definition));
         }
-        ItemKind::Impl(Impl {
-            constness: _,
-            safety: _,
-            defaultness: _,
-            polarity: _,
-            defaultness_span: _,
-            generics,
-            of_trait,
-            self_ty,
-            items,
-        }) => {
+        ItemKind::Impl(Impl { generics, of_trait, self_ty, items }) => {
             try_visit!(visitor.visit_generics(generics));
-            visit_opt!(visitor, visit_trait_ref, of_trait);
+            if let Some(TraitImplHeader {
+                constness: _,
+                safety: _,
+                polarity: _,
+                defaultness: _,
+                defaultness_span: _,
+                trait_ref,
+            }) = of_trait
+            {
+                try_visit!(visitor.visit_trait_ref(trait_ref));
+            }
             try_visit!(visitor.visit_ty_unambig(self_ty));
-            walk_list!(visitor, visit_impl_item_ref, *items);
+            walk_list!(visitor, visit_impl_item_ref, items);
         }
         ItemKind::Struct(ident, ref generics, ref struct_definition)
         | ItemKind::Union(ident, ref generics, ref struct_definition) => {
@@ -985,7 +979,6 @@ pub fn walk_unambig_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v>) -> 
         Some(ambig_ty) => visitor.visit_ty(ambig_ty),
         None => {
             let Ty { hir_id, span, kind: _ } = typ;
-            try_visit!(visitor.visit_id(*hir_id));
             visitor.visit_infer(*hir_id, *span, InferKind::Ty(typ))
         }
     }
@@ -1043,7 +1036,7 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v, AmbigArg>) -
     V::Result::output()
 }
 
-pub fn walk_const_arg<'v, V: Visitor<'v>>(
+pub fn walk_unambig_const_arg<'v, V: Visitor<'v>>(
     visitor: &mut V,
     const_arg: &'v ConstArg<'v>,
 ) -> V::Result {
@@ -1051,13 +1044,12 @@ pub fn walk_const_arg<'v, V: Visitor<'v>>(
         Some(ambig_ct) => visitor.visit_const_arg(ambig_ct),
         None => {
             let ConstArg { hir_id, kind: _ } = const_arg;
-            try_visit!(visitor.visit_id(*hir_id));
             visitor.visit_infer(*hir_id, const_arg.span(), InferKind::Const(const_arg))
         }
     }
 }
 
-pub fn walk_ambig_const_arg<'v, V: Visitor<'v>>(
+pub fn walk_const_arg<'v, V: Visitor<'v>>(
     visitor: &mut V,
     const_arg: &'v ConstArg<'v, AmbigArg>,
 ) -> V::Result {
@@ -1093,7 +1085,7 @@ pub fn walk_generic_param<'v, V: Visitor<'v>>(
         GenericParamKind::Type { ref default, .. } => {
             visit_opt!(visitor, visit_ty_unambig, default)
         }
-        GenericParamKind::Const { ref ty, ref default, synthetic: _ } => {
+        GenericParamKind::Const { ref ty, ref default } => {
             try_visit!(visitor.visit_ty_unambig(ty));
             if let Some(default) = default {
                 try_visit!(visitor.visit_const_param_default(*hir_id, default));
@@ -1265,18 +1257,21 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(
         owner_id: _,
         ident,
         ref generics,
+        ref impl_kind,
         ref kind,
-        ref defaultness,
         span: _,
-        vis_span: _,
         has_delayed_lints: _,
-        trait_item_def_id: _,
     } = *impl_item;
 
     try_visit!(visitor.visit_ident(ident));
     try_visit!(visitor.visit_generics(generics));
-    try_visit!(visitor.visit_defaultness(defaultness));
     try_visit!(visitor.visit_id(impl_item.hir_id()));
+    match impl_kind {
+        ImplItemImplKind::Inherent { vis_span: _ } => {}
+        ImplItemImplKind::Trait { defaultness, trait_item_def_id: _ } => {
+            try_visit!(visitor.visit_defaultness(defaultness));
+        }
+    }
     match *kind {
         ImplItemKind::Const(ref ty, body) => {
             try_visit!(visitor.visit_ty_unambig(ty));

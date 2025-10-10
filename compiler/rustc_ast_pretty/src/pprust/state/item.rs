@@ -2,7 +2,6 @@ use ast::StaticItem;
 use itertools::{Itertools, Position};
 use rustc_ast as ast;
 use rustc_ast::ModKind;
-use rustc_ast::ptr::P;
 use rustc_span::Ident;
 
 use crate::pp::BoxMarker;
@@ -309,39 +308,41 @@ impl<'a> State<'a> {
                 let (cb, ib) = self.head(visibility_qualified(&item.vis, "union"));
                 self.print_struct(struct_def, generics, *ident, item.span, true, cb, ib);
             }
-            ast::ItemKind::Impl(box ast::Impl {
-                safety,
-                polarity,
-                defaultness,
-                constness,
-                generics,
-                of_trait,
-                self_ty,
-                items,
-            }) => {
+            ast::ItemKind::Impl(ast::Impl { generics, of_trait, self_ty, items }) => {
                 let (cb, ib) = self.head("");
                 self.print_visibility(&item.vis);
-                self.print_defaultness(*defaultness);
-                self.print_safety(*safety);
-                self.word("impl");
 
-                if generics.params.is_empty() {
-                    self.nbsp();
-                } else {
-                    self.print_generic_params(&generics.params);
-                    self.space();
-                }
+                let impl_generics = |this: &mut Self| {
+                    this.word("impl");
 
-                self.print_constness(*constness);
+                    if generics.params.is_empty() {
+                        this.nbsp();
+                    } else {
+                        this.print_generic_params(&generics.params);
+                        this.space();
+                    }
+                };
 
-                if let ast::ImplPolarity::Negative(_) = polarity {
-                    self.word("!");
-                }
-
-                if let Some(t) = of_trait {
-                    self.print_trait_ref(t);
+                if let Some(box of_trait) = of_trait {
+                    let ast::TraitImplHeader {
+                        defaultness,
+                        safety,
+                        constness,
+                        polarity,
+                        ref trait_ref,
+                    } = *of_trait;
+                    self.print_defaultness(defaultness);
+                    self.print_safety(safety);
+                    impl_generics(self);
+                    self.print_constness(constness);
+                    if let ast::ImplPolarity::Negative(_) = polarity {
+                        self.word("!");
+                    }
+                    self.print_trait_ref(trait_ref);
                     self.space();
                     self.word_space("for");
+                } else {
+                    impl_generics(self);
                 }
 
                 self.print_type(self_ty);
@@ -628,10 +629,10 @@ impl<'a> State<'a> {
         &mut self,
         attrs: &[ast::Attribute],
         vis: &ast::Visibility,
-        qself: &Option<P<ast::QSelf>>,
+        qself: &Option<Box<ast::QSelf>>,
         path: &ast::Path,
         kind: DelegationKind<'_>,
-        body: &Option<P<ast::Block>>,
+        body: &Option<Box<ast::Block>>,
     ) {
         let body_cb_ib = body.as_ref().map(|body| (body, self.head("")));
         self.print_visibility(vis);

@@ -1,7 +1,5 @@
 # Testing the compiler
 
-<!-- toc -->
-
 The Rust project runs a wide variety of different tests, orchestrated by the
 build system (`./x test`). This section gives a brief overview of the different
 testing tools. Subsequent chapters dive into [running tests](running.md) and
@@ -72,9 +70,11 @@ package tests:
 
 Tidy is a custom tool used for validating source code style and formatting
 conventions, such as rejecting long lines. There is more information in the
-[section on coding conventions](../conventions.md#formatting).
+[section on coding conventions](../conventions.md#formatting) or the [Tidy Readme].
 
 > Examples: `./x test tidy`
+
+[Tidy Readme]: https://github.com/rust-lang/rust/blob/master/src/tools/tidy/Readme.md
 
 
 ### Formatting

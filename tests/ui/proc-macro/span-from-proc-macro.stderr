@@ -7,10 +7,10 @@ LL | pub fn error_from_attribute(_args: TokenStream, _input: TokenStream) -> Tok
 LL |             field: MissingType
    |                    ^^^^^^^^^^^ not found in this scope
    |
-  ::: $DIR/span-from-proc-macro.rs:8:1
+  ::: $DIR/span-from-proc-macro.rs:9:1
    |
 LL | #[error_from_attribute]
-   | ----------------------- in this procedural macro expansion
+   | ----------------------- in this attribute macro expansion
 
 error[E0412]: cannot find type `OtherMissingType` in this scope
   --> $DIR/auxiliary/span-from-proc-macro.rs:42:21
@@ -21,7 +21,7 @@ LL | pub fn error_from_derive(_input: TokenStream) -> TokenStream {
 LL |             Variant(OtherMissingType)
    |                     ^^^^^^^^^^^^^^^^ not found in this scope
    |
-  ::: $DIR/span-from-proc-macro.rs:11:10
+  ::: $DIR/span-from-proc-macro.rs:12:10
    |
 LL | #[derive(ErrorFromDerive)]
    |          --------------- in this derive macro expansion
@@ -35,7 +35,7 @@ LL |     custom_quote::custom_quote! {
 LL |         my_ident
    |         ^^^^^^^^ not found in this scope
    |
-  ::: $DIR/span-from-proc-macro.rs:16:5
+  ::: $DIR/span-from-proc-macro.rs:17:5
    |
 LL |     other_error_from_bang!();
    |     ------------------------ in this macro invocation
@@ -51,7 +51,7 @@ LL |             let bang_error: bool = 25;
 LL | pub fn error_from_bang(_input: TokenStream) -> TokenStream {
    | ---------------------------------------------------------- in this expansion of `error_from_bang!`
    |
-  ::: $DIR/span-from-proc-macro.rs:15:5
+  ::: $DIR/span-from-proc-macro.rs:16:5
    |
 LL |     error_from_bang!();
    |     ------------------ in this macro invocation

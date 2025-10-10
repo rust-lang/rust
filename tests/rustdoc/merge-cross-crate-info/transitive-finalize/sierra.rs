@@ -12,7 +12,7 @@
 //@ has tango/trait.Tango.html
 //@ hasraw sierra/struct.Sierra.html 'Tango'
 //@ hasraw trait.impl/tango/trait.Tango.js 'struct.Sierra.html'
-//@ hasraw search-index.js 'Sierra'
+//@ hasraw search.index/name/*.js 'Sierra'
 
 // write only overwrites stuff in the output directory
 extern crate tango;

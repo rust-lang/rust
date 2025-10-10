@@ -377,22 +377,13 @@ impl CastExpr {
     #[inline]
     pub fn as_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![as]) }
 }
-pub struct ClosureBinder {
-    pub(crate) syntax: SyntaxNode,
-}
-impl ClosureBinder {
-    #[inline]
-    pub fn generic_param_list(&self) -> Option<GenericParamList> { support::child(&self.syntax) }
-    #[inline]
-    pub fn for_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![for]) }
-}
 pub struct ClosureExpr {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::HasAttrs for ClosureExpr {}
 impl ClosureExpr {
     #[inline]
-    pub fn closure_binder(&self) -> Option<ClosureBinder> { support::child(&self.syntax) }
+    pub fn for_binder(&self) -> Option<ForBinder> { support::child(&self.syntax) }
     #[inline]
     pub fn param_list(&self) -> Option<ParamList> { support::child(&self.syntax) }
     #[inline]
@@ -615,6 +606,15 @@ impl FnPtrType {
     #[inline]
     pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![unsafe]) }
 }
+pub struct ForBinder {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ForBinder {
+    #[inline]
+    pub fn generic_param_list(&self) -> Option<GenericParamList> { support::child(&self.syntax) }
+    #[inline]
+    pub fn for_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![for]) }
+}
 pub struct ForExpr {
     pub(crate) syntax: SyntaxNode,
 }
@@ -632,11 +632,9 @@ pub struct ForType {
 }
 impl ForType {
     #[inline]
-    pub fn generic_param_list(&self) -> Option<GenericParamList> { support::child(&self.syntax) }
+    pub fn for_binder(&self) -> Option<ForBinder> { support::child(&self.syntax) }
     #[inline]
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
-    #[inline]
-    pub fn for_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![for]) }
 }
 pub struct FormatArgsArg {
     pub(crate) syntax: SyntaxNode,
@@ -1616,29 +1614,15 @@ impl Trait {
     #[inline]
     pub fn assoc_item_list(&self) -> Option<AssocItemList> { support::child(&self.syntax) }
     #[inline]
+    pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
+    #[inline]
+    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
+    #[inline]
     pub fn auto_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![auto]) }
     #[inline]
     pub fn trait_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![trait]) }
     #[inline]
     pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![unsafe]) }
-}
-pub struct TraitAlias {
-    pub(crate) syntax: SyntaxNode,
-}
-impl ast::HasAttrs for TraitAlias {}
-impl ast::HasDocComments for TraitAlias {}
-impl ast::HasGenericParams for TraitAlias {}
-impl ast::HasName for TraitAlias {}
-impl ast::HasVisibility for TraitAlias {}
-impl TraitAlias {
-    #[inline]
-    pub fn type_bound_list(&self) -> Option<TypeBoundList> { support::child(&self.syntax) }
-    #[inline]
-    pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
-    #[inline]
-    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
-    #[inline]
-    pub fn trait_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![trait]) }
 }
 pub struct TryExpr {
     pub(crate) syntax: SyntaxNode,
@@ -1765,6 +1749,8 @@ pub struct TypeBound {
     pub(crate) syntax: SyntaxNode,
 }
 impl TypeBound {
+    #[inline]
+    pub fn for_binder(&self) -> Option<ForBinder> { support::child(&self.syntax) }
     #[inline]
     pub fn lifetime(&self) -> Option<Lifetime> { support::child(&self.syntax) }
     #[inline]
@@ -1938,13 +1924,11 @@ pub struct WherePred {
 impl ast::HasTypeBounds for WherePred {}
 impl WherePred {
     #[inline]
-    pub fn generic_param_list(&self) -> Option<GenericParamList> { support::child(&self.syntax) }
+    pub fn for_binder(&self) -> Option<ForBinder> { support::child(&self.syntax) }
     #[inline]
     pub fn lifetime(&self) -> Option<Lifetime> { support::child(&self.syntax) }
     #[inline]
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
-    #[inline]
-    pub fn for_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![for]) }
 }
 pub struct WhileExpr {
     pub(crate) syntax: SyntaxNode,
@@ -2109,7 +2093,6 @@ pub enum Item {
     Static(Static),
     Struct(Struct),
     Trait(Trait),
-    TraitAlias(TraitAlias),
     TypeAlias(TypeAlias),
     Union(Union),
     Use(Use),
@@ -3239,42 +3222,6 @@ impl fmt::Debug for CastExpr {
         f.debug_struct("CastExpr").field("syntax", &self.syntax).finish()
     }
 }
-impl AstNode for ClosureBinder {
-    #[inline]
-    fn kind() -> SyntaxKind
-    where
-        Self: Sized,
-    {
-        CLOSURE_BINDER
-    }
-    #[inline]
-    fn can_cast(kind: SyntaxKind) -> bool { kind == CLOSURE_BINDER }
-    #[inline]
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    #[inline]
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl hash::Hash for ClosureBinder {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
-}
-impl Eq for ClosureBinder {}
-impl PartialEq for ClosureBinder {
-    fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
-}
-impl Clone for ClosureBinder {
-    fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
-}
-impl fmt::Debug for ClosureBinder {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ClosureBinder").field("syntax", &self.syntax).finish()
-    }
-}
 impl AstNode for ClosureExpr {
     #[inline]
     fn kind() -> SyntaxKind
@@ -3813,6 +3760,42 @@ impl Clone for FnPtrType {
 impl fmt::Debug for FnPtrType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FnPtrType").field("syntax", &self.syntax).finish()
+    }
+}
+impl AstNode for ForBinder {
+    #[inline]
+    fn kind() -> SyntaxKind
+    where
+        Self: Sized,
+    {
+        FOR_BINDER
+    }
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == FOR_BINDER }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl hash::Hash for ForBinder {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
+}
+impl Eq for ForBinder {}
+impl PartialEq for ForBinder {
+    fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
+}
+impl Clone for ForBinder {
+    fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
+}
+impl fmt::Debug for ForBinder {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ForBinder").field("syntax", &self.syntax).finish()
     }
 }
 impl AstNode for ForExpr {
@@ -6803,42 +6786,6 @@ impl fmt::Debug for Trait {
         f.debug_struct("Trait").field("syntax", &self.syntax).finish()
     }
 }
-impl AstNode for TraitAlias {
-    #[inline]
-    fn kind() -> SyntaxKind
-    where
-        Self: Sized,
-    {
-        TRAIT_ALIAS
-    }
-    #[inline]
-    fn can_cast(kind: SyntaxKind) -> bool { kind == TRAIT_ALIAS }
-    #[inline]
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    #[inline]
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl hash::Hash for TraitAlias {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
-}
-impl Eq for TraitAlias {}
-impl PartialEq for TraitAlias {
-    fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
-}
-impl Clone for TraitAlias {
-    fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
-}
-impl fmt::Debug for TraitAlias {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("TraitAlias").field("syntax", &self.syntax).finish()
-    }
-}
 impl AstNode for TryExpr {
     #[inline]
     fn kind() -> SyntaxKind
@@ -8473,10 +8420,6 @@ impl From<Trait> for Item {
     #[inline]
     fn from(node: Trait) -> Item { Item::Trait(node) }
 }
-impl From<TraitAlias> for Item {
-    #[inline]
-    fn from(node: TraitAlias) -> Item { Item::TraitAlias(node) }
-}
 impl From<TypeAlias> for Item {
     #[inline]
     fn from(node: TypeAlias) -> Item { Item::TypeAlias(node) }
@@ -8508,7 +8451,6 @@ impl AstNode for Item {
                 | STATIC
                 | STRUCT
                 | TRAIT
-                | TRAIT_ALIAS
                 | TYPE_ALIAS
                 | UNION
                 | USE
@@ -8531,7 +8473,6 @@ impl AstNode for Item {
             STATIC => Item::Static(Static { syntax }),
             STRUCT => Item::Struct(Struct { syntax }),
             TRAIT => Item::Trait(Trait { syntax }),
-            TRAIT_ALIAS => Item::TraitAlias(TraitAlias { syntax }),
             TYPE_ALIAS => Item::TypeAlias(TypeAlias { syntax }),
             UNION => Item::Union(Union { syntax }),
             USE => Item::Use(Use { syntax }),
@@ -8556,7 +8497,6 @@ impl AstNode for Item {
             Item::Static(it) => &it.syntax,
             Item::Struct(it) => &it.syntax,
             Item::Trait(it) => &it.syntax,
-            Item::TraitAlias(it) => &it.syntax,
             Item::TypeAlias(it) => &it.syntax,
             Item::Union(it) => &it.syntax,
             Item::Use(it) => &it.syntax,
@@ -8986,7 +8926,6 @@ impl AstNode for AnyHasAttrs {
                 | STMT_LIST
                 | STRUCT
                 | TRAIT
-                | TRAIT_ALIAS
                 | TRY_EXPR
                 | TUPLE_EXPR
                 | TUPLE_FIELD
@@ -9259,10 +9198,6 @@ impl From<Trait> for AnyHasAttrs {
     #[inline]
     fn from(node: Trait) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
 }
-impl From<TraitAlias> for AnyHasAttrs {
-    #[inline]
-    fn from(node: TraitAlias) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
-}
 impl From<TryExpr> for AnyHasAttrs {
     #[inline]
     fn from(node: TryExpr) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
@@ -9332,7 +9267,6 @@ impl AstNode for AnyHasDocComments {
                 | STATIC
                 | STRUCT
                 | TRAIT
-                | TRAIT_ALIAS
                 | TUPLE_FIELD
                 | TYPE_ALIAS
                 | UNION
@@ -9422,10 +9356,6 @@ impl From<Trait> for AnyHasDocComments {
     #[inline]
     fn from(node: Trait) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
 }
-impl From<TraitAlias> for AnyHasDocComments {
-    #[inline]
-    fn from(node: TraitAlias) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
-}
 impl From<TupleField> for AnyHasDocComments {
     #[inline]
     fn from(node: TupleField) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
@@ -9490,7 +9420,7 @@ impl ast::HasGenericParams for AnyHasGenericParams {}
 impl AstNode for AnyHasGenericParams {
     #[inline]
     fn can_cast(kind: SyntaxKind) -> bool {
-        matches!(kind, CONST | ENUM | FN | IMPL | STRUCT | TRAIT | TRAIT_ALIAS | TYPE_ALIAS | UNION)
+        matches!(kind, CONST | ENUM | FN | IMPL | STRUCT | TRAIT | TYPE_ALIAS | UNION)
     }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -9537,10 +9467,6 @@ impl From<Struct> for AnyHasGenericParams {
 impl From<Trait> for AnyHasGenericParams {
     #[inline]
     fn from(node: Trait) -> AnyHasGenericParams { AnyHasGenericParams { syntax: node.syntax } }
-}
-impl From<TraitAlias> for AnyHasGenericParams {
-    #[inline]
-    fn from(node: TraitAlias) -> AnyHasGenericParams { AnyHasGenericParams { syntax: node.syntax } }
 }
 impl From<TypeAlias> for AnyHasGenericParams {
     #[inline]
@@ -9648,7 +9574,6 @@ impl AstNode for AnyHasName {
                 | STATIC
                 | STRUCT
                 | TRAIT
-                | TRAIT_ALIAS
                 | TYPE_ALIAS
                 | TYPE_PARAM
                 | UNION
@@ -9741,10 +9666,6 @@ impl From<Trait> for AnyHasName {
     #[inline]
     fn from(node: Trait) -> AnyHasName { AnyHasName { syntax: node.syntax } }
 }
-impl From<TraitAlias> for AnyHasName {
-    #[inline]
-    fn from(node: TraitAlias) -> AnyHasName { AnyHasName { syntax: node.syntax } }
-}
 impl From<TypeAlias> for AnyHasName {
     #[inline]
     fn from(node: TypeAlias) -> AnyHasName { AnyHasName { syntax: node.syntax } }
@@ -9834,7 +9755,6 @@ impl AstNode for AnyHasVisibility {
                 | STATIC
                 | STRUCT
                 | TRAIT
-                | TRAIT_ALIAS
                 | TUPLE_FIELD
                 | TYPE_ALIAS
                 | UNION
@@ -9911,10 +9831,6 @@ impl From<Struct> for AnyHasVisibility {
 impl From<Trait> for AnyHasVisibility {
     #[inline]
     fn from(node: Trait) -> AnyHasVisibility { AnyHasVisibility { syntax: node.syntax } }
-}
-impl From<TraitAlias> for AnyHasVisibility {
-    #[inline]
-    fn from(node: TraitAlias) -> AnyHasVisibility { AnyHasVisibility { syntax: node.syntax } }
 }
 impl From<TupleField> for AnyHasVisibility {
     #[inline]
@@ -10146,11 +10062,6 @@ impl std::fmt::Display for CastExpr {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for ClosureBinder {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl std::fmt::Display for ClosureExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
@@ -10222,6 +10133,11 @@ impl std::fmt::Display for Fn {
     }
 }
 impl std::fmt::Display for FnPtrType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for ForBinder {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -10637,11 +10553,6 @@ impl std::fmt::Display for TokenTree {
     }
 }
 impl std::fmt::Display for Trait {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for TraitAlias {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

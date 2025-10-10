@@ -1,7 +1,5 @@
 # Backend Agnostic Codegen
 
-<!-- toc -->
-
 [`rustc_codegen_ssa`]
 provides an abstract interface for all backends to implement,
 namely LLVM, [Cranelift], and [GCC].

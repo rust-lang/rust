@@ -334,9 +334,9 @@ pub fn return_f128(x: f128) -> f128 {
     // linux-NEXT: .cfi_offset
     // CHECK-NEXT: movl %esp, %ebp
     // linux-NEXT: .cfi_def_cfa_register
-    // linux-NEXT: movaps 8(%ebp), %xmm0
-    // win-NEXT: movups 8(%ebp), %xmm0
-    // CHECK-NEXT: popl %ebp
+    // linux: movaps 8(%ebp), %xmm0
+    // win: movups 8(%ebp), %xmm0
+    // CHECK: popl %ebp
     // linux-NEXT: .cfi_def_cfa
     // CHECK-NEXT: retl
     x

@@ -37,10 +37,6 @@ pub fn quicksort<T, F: FnMut(&T, &T) -> bool>(
         limit -= 1;
 
         let pivot_pos = choose_pivot(v, is_less);
-        // SAFETY: choose_pivot promises to return a valid pivot index.
-        unsafe {
-            intrinsics::assume(pivot_pos < v.len());
-        }
 
         // SAFETY: We only access the temporary copy for Freeze types, otherwise
         // self-modifications via `is_less` would not be observed and this would

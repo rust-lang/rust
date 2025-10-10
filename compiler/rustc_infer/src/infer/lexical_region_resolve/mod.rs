@@ -19,7 +19,7 @@ use tracing::{debug, instrument};
 
 use super::outlives::test_type_match;
 use crate::infer::region_constraints::{
-    Constraint, GenericKind, RegionConstraintData, VarInfos, VerifyBound,
+    Constraint, ConstraintKind, GenericKind, RegionConstraintData, VarInfos, VerifyBound,
 };
 use crate::infer::{RegionRelations, RegionVariableOrigin, SubregionOrigin};
 
@@ -187,91 +187,96 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         let mut constraints = IndexVec::from_elem(Vec::new(), &var_values.values);
         // Tracks the changed region vids.
         let mut changes = Vec::new();
-        for (constraint, _) in &self.data.constraints {
-            match *constraint {
-                Constraint::RegSubVar(a_region, b_vid) => {
-                    let b_data = var_values.value_mut(b_vid);
+        for (c, _) in &self.data.constraints {
+            match c.kind {
+                ConstraintKind::RegSubVar => {
+                    let sup_vid = c.sup.as_var();
+                    let sup_data = var_values.value_mut(sup_vid);
 
-                    if self.expand_node(a_region, b_vid, b_data) {
-                        changes.push(b_vid);
+                    if self.expand_node(c.sub, sup_vid, sup_data) {
+                        changes.push(sup_vid);
                     }
                 }
-                Constraint::VarSubVar(a_vid, b_vid) => match *var_values.value(a_vid) {
-                    VarValue::ErrorValue => continue,
-                    VarValue::Empty(a_universe) => {
-                        let b_data = var_values.value_mut(b_vid);
+                ConstraintKind::VarSubVar => {
+                    let sub_vid = c.sub.as_var();
+                    let sup_vid = c.sup.as_var();
+                    match *var_values.value(sub_vid) {
+                        VarValue::ErrorValue => continue,
+                        VarValue::Empty(sub_universe) => {
+                            let sup_data = var_values.value_mut(sup_vid);
 
-                        let changed = match *b_data {
-                            VarValue::Empty(b_universe) => {
-                                // Empty regions are ordered according to the universe
-                                // they are associated with.
-                                let ui = a_universe.min(b_universe);
+                            let changed = match *sup_data {
+                                VarValue::Empty(sup_universe) => {
+                                    // Empty regions are ordered according to the universe
+                                    // they are associated with.
+                                    let ui = sub_universe.min(sup_universe);
 
-                                debug!(
-                                    "Expanding value of {:?} \
+                                    debug!(
+                                        "Expanding value of {:?} \
                                     from empty lifetime with universe {:?} \
                                     to empty lifetime with universe {:?}",
-                                    b_vid, b_universe, ui
-                                );
+                                        sup_vid, sup_universe, ui
+                                    );
 
-                                *b_data = VarValue::Empty(ui);
-                                true
-                            }
-                            VarValue::Value(cur_region) => {
-                                match cur_region.kind() {
-                                    // If this empty region is from a universe that can name the
-                                    // placeholder universe, then the LUB is the Placeholder region
-                                    // (which is the cur_region). Otherwise, the LUB is the Static
-                                    // lifetime.
-                                    RePlaceholder(placeholder)
-                                        if !a_universe.can_name(placeholder.universe) =>
-                                    {
-                                        let lub = self.tcx().lifetimes.re_static;
-                                        debug!(
-                                            "Expanding value of {:?} from {:?} to {:?}",
-                                            b_vid, cur_region, lub
-                                        );
+                                    *sup_data = VarValue::Empty(ui);
+                                    true
+                                }
+                                VarValue::Value(cur_region) => {
+                                    match cur_region.kind() {
+                                        // If this empty region is from a universe that can name
+                                        // the placeholder universe, then the LUB is the
+                                        // Placeholder region (which is the cur_region). Otherwise,
+                                        // the LUB is the Static lifetime.
+                                        RePlaceholder(placeholder)
+                                            if !sub_universe.can_name(placeholder.universe) =>
+                                        {
+                                            let lub = self.tcx().lifetimes.re_static;
+                                            debug!(
+                                                "Expanding value of {:?} from {:?} to {:?}",
+                                                sup_vid, cur_region, lub
+                                            );
 
-                                        *b_data = VarValue::Value(lub);
-                                        true
+                                            *sup_data = VarValue::Value(lub);
+                                            true
+                                        }
+
+                                        _ => false,
                                     }
+                                }
 
-                                    _ => false,
+                                VarValue::ErrorValue => false,
+                            };
+
+                            if changed {
+                                changes.push(sup_vid);
+                            }
+                            match sup_data {
+                                VarValue::Value(Region(Interned(ReStatic, _)))
+                                | VarValue::ErrorValue => (),
+                                _ => {
+                                    constraints[sub_vid].push((sub_vid, sup_vid));
+                                    constraints[sup_vid].push((sub_vid, sup_vid));
                                 }
                             }
-
-                            VarValue::ErrorValue => false,
-                        };
-
-                        if changed {
-                            changes.push(b_vid);
                         }
-                        match b_data {
-                            VarValue::Value(Region(Interned(ReStatic, _)))
-                            | VarValue::ErrorValue => (),
-                            _ => {
-                                constraints[a_vid].push((a_vid, b_vid));
-                                constraints[b_vid].push((a_vid, b_vid));
+                        VarValue::Value(sub_region) => {
+                            let sup_data = var_values.value_mut(sup_vid);
+
+                            if self.expand_node(sub_region, sup_vid, sup_data) {
+                                changes.push(sup_vid);
+                            }
+                            match sup_data {
+                                VarValue::Value(Region(Interned(ReStatic, _)))
+                                | VarValue::ErrorValue => (),
+                                _ => {
+                                    constraints[sub_vid].push((sub_vid, sup_vid));
+                                    constraints[sup_vid].push((sub_vid, sup_vid));
+                                }
                             }
                         }
                     }
-                    VarValue::Value(a_region) => {
-                        let b_data = var_values.value_mut(b_vid);
-
-                        if self.expand_node(a_region, b_vid, b_data) {
-                            changes.push(b_vid);
-                        }
-                        match b_data {
-                            VarValue::Value(Region(Interned(ReStatic, _)))
-                            | VarValue::ErrorValue => (),
-                            _ => {
-                                constraints[a_vid].push((a_vid, b_vid));
-                                constraints[b_vid].push((a_vid, b_vid));
-                            }
-                        }
-                    }
-                },
-                Constraint::RegSubReg(..) | Constraint::VarSubReg(..) => {
+                }
+                ConstraintKind::RegSubReg | ConstraintKind::VarSubReg => {
                     // These constraints are checked after expansion
                     // is done, in `collect_errors`.
                     continue;
@@ -528,49 +533,48 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         var_data: &mut LexicalRegionResolutions<'tcx>,
         errors: &mut Vec<RegionResolutionError<'tcx>>,
     ) {
-        for (constraint, origin) in &self.data.constraints {
-            debug!(?constraint, ?origin);
-            match *constraint {
-                Constraint::RegSubVar(..) | Constraint::VarSubVar(..) => {
+        for (c, origin) in &self.data.constraints {
+            debug!(?c, ?origin);
+            match c.kind {
+                ConstraintKind::RegSubVar | ConstraintKind::VarSubVar => {
                     // Expansion will ensure that these constraints hold. Ignore.
                 }
 
-                Constraint::RegSubReg(sub, sup) => {
-                    if self.sub_concrete_regions(sub, sup) {
+                ConstraintKind::RegSubReg => {
+                    if self.sub_concrete_regions(c.sub, c.sup) {
                         continue;
                     }
 
                     debug!(
-                        "region error at {:?}: \
-                         cannot verify that {:?} <= {:?}",
-                        origin, sub, sup
+                        "region error at {:?}: cannot verify that {:?} <= {:?}",
+                        origin, c.sub, c.sup
                     );
 
                     errors.push(RegionResolutionError::ConcreteFailure(
                         (*origin).clone(),
-                        sub,
-                        sup,
+                        c.sub,
+                        c.sup,
                     ));
                 }
 
-                Constraint::VarSubReg(a_vid, b_region) => {
-                    let a_data = var_data.value_mut(a_vid);
-                    debug!("contraction: {:?} == {:?}, {:?}", a_vid, a_data, b_region);
+                ConstraintKind::VarSubReg => {
+                    let sub_vid = c.sub.as_var();
+                    let sub_data = var_data.value_mut(sub_vid);
+                    debug!("contraction: {:?} == {:?}, {:?}", sub_vid, sub_data, c.sup);
 
-                    let VarValue::Value(a_region) = *a_data else {
+                    let VarValue::Value(sub_region) = *sub_data else {
                         continue;
                     };
 
                     // Do not report these errors immediately:
                     // instead, set the variable value to error and
                     // collect them later.
-                    if !self.sub_concrete_regions(a_region, b_region) {
+                    if !self.sub_concrete_regions(sub_region, c.sup) {
                         debug!(
-                            "region error at {:?}: \
-                            cannot verify that {:?}={:?} <= {:?}",
-                            origin, a_vid, a_region, b_region
+                            "region error at {:?}: cannot verify that {:?}={:?} <= {:?}",
+                            origin, sub_vid, sub_region, c.sup
                         );
-                        *a_data = VarValue::ErrorValue;
+                        *sub_data = VarValue::ErrorValue;
                     }
                 }
             }
@@ -682,18 +686,20 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         let dummy_source = graph.add_node(());
         let dummy_sink = graph.add_node(());
 
-        for (constraint, _) in &self.data.constraints {
-            match *constraint {
-                Constraint::VarSubVar(a_id, b_id) => {
-                    graph.add_edge(NodeIndex(a_id.index()), NodeIndex(b_id.index()), *constraint);
+        for (c, _) in &self.data.constraints {
+            match c.kind {
+                ConstraintKind::VarSubVar => {
+                    let sub_vid = c.sub.as_var();
+                    let sup_vid = c.sup.as_var();
+                    graph.add_edge(NodeIndex(sub_vid.index()), NodeIndex(sup_vid.index()), *c);
                 }
-                Constraint::RegSubVar(_, b_id) => {
-                    graph.add_edge(dummy_source, NodeIndex(b_id.index()), *constraint);
+                ConstraintKind::RegSubVar => {
+                    graph.add_edge(dummy_source, NodeIndex(c.sup.as_var().index()), *c);
                 }
-                Constraint::VarSubReg(a_id, _) => {
-                    graph.add_edge(NodeIndex(a_id.index()), dummy_sink, *constraint);
+                ConstraintKind::VarSubReg => {
+                    graph.add_edge(NodeIndex(c.sub.as_var().index()), dummy_sink, *c);
                 }
-                Constraint::RegSubReg(..) => {
+                ConstraintKind::RegSubReg => {
                     // this would be an edge from `dummy_source` to
                     // `dummy_sink`; just ignore it.
                 }
@@ -878,26 +884,30 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
 
             let source_node_index = NodeIndex(source_vid.index());
             for (_, edge) in graph.adjacent_edges(source_node_index, dir) {
-                match edge.data {
-                    Constraint::VarSubVar(from_vid, to_vid) => {
+                let get_origin =
+                    || this.constraints.iter().find(|(c, _)| *c == edge.data).unwrap().1.clone();
+
+                match edge.data.kind {
+                    ConstraintKind::VarSubVar => {
+                        let from_vid = edge.data.sub.as_var();
+                        let to_vid = edge.data.sup.as_var();
                         let opp_vid = if from_vid == source_vid { to_vid } else { from_vid };
                         if state.set.insert(opp_vid) {
                             state.stack.push(opp_vid);
                         }
                     }
 
-                    Constraint::RegSubVar(region, _) | Constraint::VarSubReg(_, region) => {
-                        let origin = this
-                            .constraints
-                            .iter()
-                            .find(|(c, _)| *c == edge.data)
-                            .unwrap()
-                            .1
-                            .clone();
-                        state.result.push(RegionAndOrigin { region, origin });
+                    ConstraintKind::RegSubVar => {
+                        let origin = get_origin();
+                        state.result.push(RegionAndOrigin { region: edge.data.sub, origin });
                     }
 
-                    Constraint::RegSubReg(..) => panic!(
+                    ConstraintKind::VarSubReg => {
+                        let origin = get_origin();
+                        state.result.push(RegionAndOrigin { region: edge.data.sup, origin });
+                    }
+
+                    ConstraintKind::RegSubReg => panic!(
                         "cannot reach reg-sub-reg edge in region inference \
                          post-processing"
                     ),

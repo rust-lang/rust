@@ -36,7 +36,7 @@
 //! fn bar<T>(a: T, b: impl for<'a> Fn(&'a T)) {}
 //! fn foo<T>(x: T) {
 //!     bar(x, |y| { /* ... */})
-//!          // ^ closure arg
+//!     //      ^ closure arg
 //! }
 //! ```
 //!
@@ -170,6 +170,10 @@ impl<'tcx> InferCtxt<'tcx> {
         std::mem::take(&mut self.inner.borrow_mut().region_obligations)
     }
 
+    pub fn clone_registered_region_obligations(&self) -> Vec<TypeOutlivesConstraint<'tcx>> {
+        self.inner.borrow().region_obligations.clone()
+    }
+
     pub fn register_region_assumption(&self, assumption: ty::ArgOutlivesPredicate<'tcx>) {
         let mut inner = self.inner.borrow_mut();
         inner.undo_log.push(UndoLog::PushRegionAssumption);
@@ -177,6 +181,7 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     pub fn take_registered_region_assumptions(&self) -> Vec<ty::ArgOutlivesPredicate<'tcx>> {
+        assert!(!self.in_snapshot(), "cannot take registered region assumptions in a snapshot");
         std::mem::take(&mut self.inner.borrow_mut().region_assumptions)
     }
 

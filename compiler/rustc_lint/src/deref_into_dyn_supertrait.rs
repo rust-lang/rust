@@ -61,16 +61,16 @@ impl<'tcx> LateLintPass<'tcx> for DerefIntoDynSupertrait {
         // `Deref` is being implemented for `t`
         if let hir::ItemKind::Impl(impl_) = item.kind
             // the trait is a `Deref` implementation
-            && let Some(trait_) = &impl_.of_trait
-            && let Some(did) = trait_.trait_def_id()
+            && let Some(of_trait) = &impl_.of_trait
+            && let Some(did) = of_trait.trait_ref.trait_def_id()
             && tcx.is_lang_item(did, LangItem::Deref)
             // the self type is `dyn t_principal`
             && let self_ty = tcx.type_of(item.owner_id).instantiate_identity()
-            && let ty::Dynamic(data, _, ty::Dyn) = self_ty.kind()
+            && let ty::Dynamic(data, _) = self_ty.kind()
             && let Some(self_principal) = data.principal()
             // `<T as Deref>::Target` is `dyn target_principal`
             && let Some(target) = cx.get_associated_type(self_ty, did, sym::Target)
-            && let ty::Dynamic(data, _, ty::Dyn) = target.kind()
+            && let ty::Dynamic(data, _) = target.kind()
             && let Some(target_principal) = data.principal()
             // `target_principal` is a supertrait of `t_principal`
             && let Some(supertrait_principal) = supertraits(tcx, self_principal.with_self_ty(tcx, self_ty))
@@ -78,7 +78,7 @@ impl<'tcx> LateLintPass<'tcx> for DerefIntoDynSupertrait {
         {
             // erase regions in self type for better diagnostic presentation
             let (self_ty, target_principal, supertrait_principal) =
-                tcx.erase_regions((self_ty, target_principal, supertrait_principal));
+                tcx.erase_and_anonymize_regions((self_ty, target_principal, supertrait_principal));
             let label2 = tcx
                 .associated_items(item.owner_id)
                 .find_by_ident_and_kind(

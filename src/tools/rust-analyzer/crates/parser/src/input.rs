@@ -61,7 +61,7 @@ impl Input {
     #[inline]
     fn push_impl(&mut self, kind: SyntaxKind, contextual_kind: SyntaxKind) {
         let idx = self.len();
-        if idx % (bits::BITS as usize) == 0 {
+        if idx.is_multiple_of(bits::BITS as usize) {
             self.joint.push(0);
         }
         self.kind.push(kind);

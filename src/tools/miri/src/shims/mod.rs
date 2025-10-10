@@ -4,6 +4,7 @@ mod aarch64;
 mod alloc;
 mod backtrace;
 mod files;
+mod math;
 #[cfg(all(unix, feature = "native-lib"))]
 mod native_lib;
 mod unix;
@@ -18,6 +19,7 @@ pub mod global_ctor;
 pub mod io_error;
 pub mod os_str;
 pub mod panic;
+pub mod sig;
 pub mod time;
 pub mod tls;
 pub mod unwind;

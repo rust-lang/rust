@@ -1,7 +1,6 @@
 use std::ops::Deref;
 
 use rustc_ast::ast::{self, FnRetTy, Mutability, Term};
-use rustc_ast::ptr;
 use rustc_span::{BytePos, Pos, Span, symbol::kw};
 use tracing::debug;
 
@@ -39,7 +38,7 @@ pub(crate) enum PathContext {
 pub(crate) fn rewrite_path(
     context: &RewriteContext<'_>,
     path_context: PathContext,
-    qself: &Option<ptr::P<ast::QSelf>>,
+    qself: &Option<Box<ast::QSelf>>,
     path: &ast::Path,
     shape: Shape,
 ) -> RewriteResult {
@@ -1340,7 +1339,7 @@ fn join_bounds_inner(
     }
 }
 
-pub(crate) fn opaque_ty(ty: &Option<ptr::P<ast::Ty>>) -> Option<&ast::GenericBounds> {
+pub(crate) fn opaque_ty(ty: &Option<Box<ast::Ty>>) -> Option<&ast::GenericBounds> {
     ty.as_ref().and_then(|t| match &t.kind {
         ast::TyKind::ImplTrait(_, bounds) => Some(bounds),
         _ => None,

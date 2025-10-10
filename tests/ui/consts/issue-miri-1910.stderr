@@ -1,5 +1,5 @@
 error[E0080]: unable to turn pointer into integer
-  --> $DIR/issue-miri-1910.rs:7:5
+  --> $DIR/issue-miri-1910.rs:8:5
    |
 LL |     (&foo as *const _ as *const u8).add(one_and_a_half_pointers).read();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `C` failed here

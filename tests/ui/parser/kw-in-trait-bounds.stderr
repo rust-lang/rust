@@ -4,7 +4,7 @@ error: expected identifier, found keyword `fn`
 LL | fn _f<F: fn(), G>(_: impl fn(), _: &dyn fn())
    |          ^^
    |
-help: use `Fn` to refer to the trait (notice the capitalization difference)
+help: use `Fn` to refer to the trait (notice the capitalization)
    |
 LL - fn _f<F: fn(), G>(_: impl fn(), _: &dyn fn())
 LL + fn _f<F: Fn(), G>(_: impl fn(), _: &dyn fn())
@@ -16,7 +16,7 @@ error: expected identifier, found keyword `fn`
 LL | fn _f<F: fn(), G>(_: impl fn(), _: &dyn fn())
    |                           ^^
    |
-help: use `Fn` to refer to the trait (notice the capitalization difference)
+help: use `Fn` to refer to the trait (notice the capitalization)
    |
 LL - fn _f<F: fn(), G>(_: impl fn(), _: &dyn fn())
 LL + fn _f<F: fn(), G>(_: impl Fn(), _: &dyn fn())
@@ -28,7 +28,7 @@ error: expected identifier, found keyword `fn`
 LL | fn _f<F: fn(), G>(_: impl fn(), _: &dyn fn())
    |                                         ^^
    |
-help: use `Fn` to refer to the trait (notice the capitalization difference)
+help: use `Fn` to refer to the trait (notice the capitalization)
    |
 LL - fn _f<F: fn(), G>(_: impl fn(), _: &dyn fn())
 LL + fn _f<F: fn(), G>(_: impl fn(), _: &dyn Fn())
@@ -40,7 +40,7 @@ error: expected identifier, found keyword `fn`
 LL | G: fn(),
    |    ^^
    |
-help: use `Fn` to refer to the trait (notice the capitalization difference)
+help: use `Fn` to refer to the trait (notice the capitalization)
    |
 LL - G: fn(),
 LL + G: Fn(),

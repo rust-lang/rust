@@ -2,16 +2,17 @@ use clippy_utils::diagnostics::span_lint;
 use clippy_utils::paths;
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::{AttrStyle, DelimArgs};
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{
-    AttrArgs, AttrItem, AttrPath, Attribute, HirId, Impl, Item, ItemKind, Path, QPath, TraitRef, Ty, TyKind,
+    AttrArgs, AttrItem, AttrPath, Attribute, HirId, Impl, Item, ItemKind, Path, QPath, TraitImplHeader, TraitRef, Ty,
+    TyKind, find_attr,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_lint_defs::declare_tool_lint;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::declare_lint_pass;
-use rustc_span::sym;
 
 declare_tool_lint! {
     /// ### What it does
@@ -56,10 +57,14 @@ impl<'tcx> LateLintPass<'tcx> for DeriveDeserializeAllowingUnknown {
         // Is this an `impl` (of a certain form)?
         let ItemKind::Impl(Impl {
             of_trait:
-                Some(TraitRef {
-                    path:
-                        Path {
-                            res: Res::Def(_, trait_def_id),
+                Some(TraitImplHeader {
+                    trait_ref:
+                        TraitRef {
+                            path:
+                                Path {
+                                    res: Res::Def(_, trait_def_id),
+                                    ..
+                                },
                             ..
                         },
                     ..
@@ -88,7 +93,10 @@ impl<'tcx> LateLintPass<'tcx> for DeriveDeserializeAllowingUnknown {
         }
 
         // Is it derived?
-        if !find_attr!(cx.tcx.get_all_attrs(item.owner_id), AttributeKind::AutomaticallyDerived(..)) {
+        if !find_attr!(
+            cx.tcx.get_all_attrs(item.owner_id),
+            AttributeKind::AutomaticallyDerived(..)
+        ) {
             return;
         }
 

@@ -235,7 +235,7 @@ fn ensure_impl_predicates_are_implied_by_item_defn<'tcx>(
     // They can probably get removed with better treatment of the new `DropImpl`
     // obligation cause code, and perhaps some custom logic in `report_region_errors`.
 
-    let errors = ocx.select_all_or_error();
+    let errors = ocx.evaluate_obligations_error_on_ambiguity();
     if !errors.is_empty() {
         let mut guar = None;
         let mut root_predicates = FxHashSet::default();

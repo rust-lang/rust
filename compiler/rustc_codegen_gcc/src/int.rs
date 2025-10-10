@@ -4,12 +4,15 @@
 
 // cSpell:words cmpti divti modti mulodi muloti udivti umodti
 
-use gccjit::{BinaryOp, ComparisonOp, FunctionType, Location, RValue, ToRValue, Type, UnaryOp};
+use gccjit::{
+    BinaryOp, CType, ComparisonOp, FunctionType, Location, RValue, ToRValue, Type, UnaryOp,
+};
 use rustc_abi::{CanonAbi, Endian, ExternAbi};
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc_codegen_ssa::traits::{BackendTypes, BaseTypeCodegenMethods, BuilderMethods, OverflowOp};
 use rustc_middle::ty::{self, Ty};
 use rustc_target::callconv::{ArgAbi, ArgAttributes, FnAbi, PassMode};
+use rustc_type_ir::{Interner, TyKind};
 
 use crate::builder::{Builder, ToGccComp};
 use crate::common::{SignType, TypeReflection};
@@ -167,9 +170,9 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 if a_type.is_vector() {
                     // Vector types need to be bitcast.
                     // TODO(antoyo): perhaps use __builtin_convertvector for vector casting.
-                    b = self.context.new_bitcast(self.location, b, a.get_type());
+                    b = self.context.new_bitcast(self.location, b, a_type);
                 } else {
-                    b = self.context.new_cast(self.location, b, a.get_type());
+                    b = self.context.new_cast(self.location, b, a_type);
                 }
             }
             self.context.new_binary_op(self.location, operation, a_type, a, b)
@@ -216,13 +219,22 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         operation_name: &str,
         signed: bool,
         a: RValue<'gcc>,
-        b: RValue<'gcc>,
+        mut b: RValue<'gcc>,
     ) -> RValue<'gcc> {
         let a_type = a.get_type();
         let b_type = b.get_type();
         if (self.is_native_int_type_or_bool(a_type) && self.is_native_int_type_or_bool(b_type))
             || (a_type.is_vector() && b_type.is_vector())
         {
+            if !a_type.is_compatible_with(b_type) {
+                if a_type.is_vector() {
+                    // Vector types need to be bitcast.
+                    // TODO(antoyo): perhaps use __builtin_convertvector for vector casting.
+                    b = self.context.new_bitcast(self.location, b, a_type);
+                } else {
+                    b = self.context.new_cast(self.location, b, a_type);
+                }
+            }
             self.context.new_binary_op(self.location, operation, a_type, a, b)
         } else {
             debug_assert!(a_type.dyncast_array().is_some());
@@ -351,6 +363,11 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             // TODO(antoyo): is it correct to use rhs type instead of the parameter typ?
             .new_local(self.location, rhs.get_type(), "binopResult")
             .get_address(self.location);
+        let new_type = type_kind_to_gcc_type(new_kind);
+        let new_type = self.context.new_c_type(new_type);
+        let lhs = self.context.new_cast(self.location, lhs, new_type);
+        let rhs = self.context.new_cast(self.location, rhs, new_type);
+        let res = self.context.new_cast(self.location, res, new_type.make_pointer());
         let overflow = self.overflow_call(intrinsic, &[lhs, rhs, res], None);
         (res.dereference(self.location).to_rvalue(), overflow)
     }
@@ -477,11 +494,27 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             let lhs_low = self.context.new_cast(self.location, self.low(lhs), unsigned_type);
             let rhs_low = self.context.new_cast(self.location, self.low(rhs), unsigned_type);
 
+            let mut lhs_high = self.high(lhs);
+            let mut rhs_high = self.high(rhs);
+
+            match op {
+                IntPredicate::IntUGT
+                | IntPredicate::IntUGE
+                | IntPredicate::IntULT
+                | IntPredicate::IntULE => {
+                    lhs_high = self.context.new_cast(self.location, lhs_high, unsigned_type);
+                    rhs_high = self.context.new_cast(self.location, rhs_high, unsigned_type);
+                }
+                // TODO(antoyo): we probably need to handle signed comparison for unsigned
+                // integers.
+                _ => (),
+            }
+
             let condition = self.context.new_comparison(
                 self.location,
                 ComparisonOp::LessThan,
-                self.high(lhs),
-                self.high(rhs),
+                lhs_high,
+                rhs_high,
             );
             self.llbb().end_with_conditional(self.location, condition, block1, block2);
 
@@ -495,8 +528,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             let condition = self.context.new_comparison(
                 self.location,
                 ComparisonOp::GreaterThan,
-                self.high(lhs),
-                self.high(rhs),
+                lhs_high,
+                rhs_high,
             );
             block2.end_with_conditional(self.location, condition, block3, block4);
 
@@ -620,7 +653,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         }
     }
 
-    pub fn gcc_xor(&self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
+    pub fn gcc_xor(&self, a: RValue<'gcc>, mut b: RValue<'gcc>) -> RValue<'gcc> {
         let a_type = a.get_type();
         let b_type = b.get_type();
         if a_type.is_vector() && b_type.is_vector() {
@@ -628,6 +661,9 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             a ^ b
         } else if self.is_native_int_type_or_bool(a_type) && self.is_native_int_type_or_bool(b_type)
         {
+            if !a_type.is_compatible_with(b_type) {
+                b = self.context.new_cast(self.location, b, a_type);
+            }
             a ^ b
         } else {
             self.concat_low_high_rvalues(
@@ -1040,5 +1076,27 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             self.context.new_rvalue_from_long(native_int_type, last),
         ];
         self.context.new_array_constructor(None, typ, &values)
+    }
+}
+
+fn type_kind_to_gcc_type<I: Interner>(kind: TyKind<I>) -> CType {
+    use rustc_middle::ty::IntTy::*;
+    use rustc_middle::ty::UintTy::*;
+    use rustc_middle::ty::{Int, Uint};
+
+    match kind {
+        Int(I8) => CType::Int8t,
+        Int(I16) => CType::Int16t,
+        Int(I32) => CType::Int32t,
+        Int(I64) => CType::Int64t,
+        Int(I128) => CType::Int128t,
+
+        Uint(U8) => CType::UInt8t,
+        Uint(U16) => CType::UInt16t,
+        Uint(U32) => CType::UInt32t,
+        Uint(U64) => CType::UInt64t,
+        Uint(U128) => CType::UInt128t,
+
+        _ => unimplemented!("Kind: {:?}", kind),
     }
 }

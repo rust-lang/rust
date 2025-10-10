@@ -48,8 +48,7 @@ pub(crate) fn quicksort<'a, T, F>(
         // slice. Partition the slice into elements equal to and elements greater than the pivot.
         // This case is usually hit when the slice contains many duplicate elements.
         if let Some(p) = ancestor_pivot {
-            // SAFETY: We assume choose_pivot yields an in-bounds position.
-            if !is_less(p, unsafe { v.get_unchecked(pivot_pos) }) {
+            if !is_less(p, &v[pivot_pos]) {
                 let num_lt = partition(v, pivot_pos, &mut |a, b| !is_less(b, a));
 
                 // Continue sorting elements greater than the pivot. We know that `num_lt` contains

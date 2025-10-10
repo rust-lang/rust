@@ -1,0 +1,54 @@
+error: invalid signature for `extern "riscv-interrupt-m"` function
+  --> $DIR/interrupt-invalid-signature.rs:48:43
+   |
+LL | extern "riscv-interrupt-m" fn riscv_m_arg(_byte: u8) {}
+   |                                           ^^^^^^^^^
+   |
+   = note: functions with the "riscv-interrupt-m" ABI cannot have any parameters or return type
+help: remove the parameters and return type
+   |
+LL - extern "riscv-interrupt-m" fn riscv_m_arg(_byte: u8) {}
+LL + extern "riscv-interrupt-m" fn riscv_m_arg() {}
+   |
+
+error: invalid signature for `extern "riscv-interrupt-s"` function
+  --> $DIR/interrupt-invalid-signature.rs:52:43
+   |
+LL | extern "riscv-interrupt-s" fn riscv_s_arg(_byte: u8) {}
+   |                                           ^^^^^^^^^
+   |
+   = note: functions with the "riscv-interrupt-s" ABI cannot have any parameters or return type
+help: remove the parameters and return type
+   |
+LL - extern "riscv-interrupt-s" fn riscv_s_arg(_byte: u8) {}
+LL + extern "riscv-interrupt-s" fn riscv_s_arg() {}
+   |
+
+error: invalid signature for `extern "riscv-interrupt-m"` function
+  --> $DIR/interrupt-invalid-signature.rs:71:48
+   |
+LL | extern "riscv-interrupt-m" fn riscv_m_ret() -> u8 {
+   |                                                ^^
+   |
+   = note: functions with the "riscv-interrupt-m" ABI cannot have any parameters or return type
+help: remove the parameters and return type
+   |
+LL - extern "riscv-interrupt-m" fn riscv_m_ret() -> u8 {
+LL + extern "riscv-interrupt-m" fn riscv_m_ret() {
+   |
+
+error: invalid signature for `extern "riscv-interrupt-s"` function
+  --> $DIR/interrupt-invalid-signature.rs:77:48
+   |
+LL | extern "riscv-interrupt-s" fn riscv_s_ret() -> u8 {
+   |                                                ^^
+   |
+   = note: functions with the "riscv-interrupt-s" ABI cannot have any parameters or return type
+help: remove the parameters and return type
+   |
+LL - extern "riscv-interrupt-s" fn riscv_s_ret() -> u8 {
+LL + extern "riscv-interrupt-s" fn riscv_s_ret() {
+   |
+
+error: aborting due to 4 previous errors
+

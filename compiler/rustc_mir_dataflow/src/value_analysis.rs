@@ -6,7 +6,7 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexSet, StdEntry};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
-use rustc_middle::mir::visit::{MutatingUseContext, PlaceContext, Visitor};
+use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use tracing::debug;
@@ -215,10 +215,10 @@ impl<V: Clone + HasBottom> State<V> {
         // If both places are tracked, we copy the value to the target.
         // If the target is tracked, but the source is not, we do nothing, as invalidation has
         // already been performed.
-        if let Some(target_value) = map.places[target].value_index {
-            if let Some(source_value) = map.places[source].value_index {
-                values.insert(target_value, values.get(source_value).clone());
-            }
+        if let Some(target_value) = map.places[target].value_index
+            && let Some(source_value) = map.places[source].value_index
+        {
+            values.insert(target_value, values.get(source_value).clone());
         }
         for target_child in map.children(target) {
             // Try to find corresponding child and recurse. Reasoning is similar as above.
@@ -891,7 +891,7 @@ pub fn iter_fields<'tcx>(
                     let field_ty = f_def.ty(tcx, args);
                     let field_ty = tcx
                         .try_normalize_erasing_regions(typing_env, field_ty)
-                        .unwrap_or_else(|_| tcx.erase_regions(field_ty));
+                        .unwrap_or_else(|_| tcx.erase_and_anonymize_regions(field_ty));
                     f(variant, f_index.into(), field_ty);
                 }
             }
@@ -917,12 +917,7 @@ pub fn excluded_locals(body: &Body<'_>) -> DenseBitSet<Local> {
 
     impl<'tcx> Visitor<'tcx> for Collector {
         fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, _location: Location) {
-            if (context.is_borrow()
-                || context.is_address_of()
-                || context.is_drop()
-                || context == PlaceContext::MutatingUse(MutatingUseContext::AsmOutput))
-                && !place.is_indirect()
-            {
+            if context.may_observe_address() && !place.is_indirect() {
                 // A pointer to a place could be used to access other places with the same local,
                 // hence we have to exclude the local completely.
                 self.result.insert(place.local);

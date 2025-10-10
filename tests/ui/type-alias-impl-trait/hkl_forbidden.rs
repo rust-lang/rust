@@ -8,7 +8,9 @@ type Opaque<'a> = impl Sized + 'a;
 
 #[define_opaque(Opaque)]
 fn test(s: &str) -> (impl Fn(&str) -> Opaque<'_>, impl Fn(&str) -> Opaque<'_>) {
-    (id, id) //~ ERROR expected generic lifetime parameter, found `'_`
+    (id, id)
+    //~^ ERROR expected generic lifetime parameter, found `'_`
+    //~| ERROR expected generic lifetime parameter, found `'_`
 }
 
 fn id2<'a, 'b>(s: (&'a str, &'b str)) -> (&'a str, &'b str) {
@@ -19,7 +21,9 @@ type Opaque2<'a> = impl Sized + 'a;
 
 #[define_opaque(Opaque2)]
 fn test2() -> impl for<'a, 'b> Fn((&'a str, &'b str)) -> (Opaque2<'a>, Opaque2<'b>) {
-    id2 //~ ERROR expected generic lifetime parameter, found `'a`
+    id2
+    //~^ ERROR expected generic lifetime parameter, found `'a`
+    //~| ERROR expected generic lifetime parameter, found `'b`
 }
 
 type Opaque3<'a> = impl Sized + 'a;

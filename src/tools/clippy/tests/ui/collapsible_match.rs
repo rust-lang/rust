@@ -316,6 +316,47 @@ fn lint_emitted_at_right_node(opt: Option<Result<u64, String>>) {
     };
 }
 
+pub fn issue_14155() {
+    let mut arr = ["a", "b", "c"];
+    if let Some(last) = arr.last() {
+        match *last {
+            //~^ collapsible_match
+            "a" | "b" => {
+                unimplemented!()
+            },
+            _ => (),
+        }
+    }
+
+    if let Some(last) = arr.last() {
+        match &last {
+            //~^ collapsible_match
+            &&"a" | &&"b" => {
+                unimplemented!()
+            },
+            _ => (),
+        }
+    }
+
+    if let Some(mut last) = arr.last_mut() {
+        match &mut last {
+            //~^ collapsible_match
+            &mut &mut "a" | &mut &mut "b" => {
+                unimplemented!()
+            },
+            _ => (),
+        }
+    }
+
+    const NULL_PTR: *const &'static str = std::ptr::null();
+    if let Some(last) = arr.last() {
+        match &raw const *last {
+            NULL_PTR => unimplemented!(),
+            _ => (),
+        }
+    }
+}
+
 fn make<T>() -> T {
     unimplemented!()
 }

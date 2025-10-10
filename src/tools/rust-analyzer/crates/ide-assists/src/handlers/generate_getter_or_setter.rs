@@ -263,6 +263,7 @@ fn generate_getter_from_info(
     let body = make::block_expr([], Some(body));
 
     make::fn_(
+        None,
         strukt.visibility(),
         fn_name,
         None,
@@ -299,6 +300,7 @@ fn generate_setter_from_info(info: &AssistInfo, record_field_info: &RecordFieldI
 
     // Make the setter fn
     make::fn_(
+        None,
         strukt.visibility(),
         fn_name,
         None,
@@ -433,12 +435,11 @@ fn build_source_change(
         new_fn.indent(1.into());
 
         // Insert a tabstop only for last method we generate
-        if i == record_fields_count - 1 {
-            if let Some(cap) = ctx.config.snippet_cap {
-                if let Some(name) = new_fn.name() {
-                    builder.add_tabstop_before(cap, name);
-                }
-            }
+        if i == record_fields_count - 1
+            && let Some(cap) = ctx.config.snippet_cap
+            && let Some(name) = new_fn.name()
+        {
+            builder.add_tabstop_before(cap, name);
         }
 
         assoc_item_list.add_item(new_fn.clone().into());

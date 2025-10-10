@@ -9,7 +9,7 @@ use clippy_utils::source::SpanRangeExt;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{Visitor, walk_path};
 use rustc_hir::{
-    FnRetTy, GenericArg, GenericArgs, HirId, Impl, ImplItemKind, ImplItemId, Item, ItemKind, PatKind, Path,
+    FnRetTy, GenericArg, GenericArgs, HirId, Impl, ImplItemId, ImplItemKind, Item, ItemKind, PatKind, Path,
     PathSegment, Ty, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
@@ -67,12 +67,12 @@ impl_lint_pass!(FromOverInto => [FROM_OVER_INTO]);
 impl<'tcx> LateLintPass<'tcx> for FromOverInto {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if let ItemKind::Impl(Impl {
-            of_trait: Some(hir_trait_ref),
+            of_trait: Some(of_trait),
             self_ty,
             items: [impl_item_ref],
             ..
         }) = item.kind
-            && let Some(into_trait_seg) = hir_trait_ref.path.segments.last()
+            && let Some(into_trait_seg) = of_trait.trait_ref.path.segments.last()
             // `impl Into<target_ty> for self_ty`
             && let Some(GenericArgs { args: [GenericArg::Type(target_ty)], .. }) = into_trait_seg.args
             && span_is_local(item.span)

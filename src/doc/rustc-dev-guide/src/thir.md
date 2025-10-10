@@ -1,7 +1,5 @@
 # The THIR
 
-<!-- toc -->
-
 The THIR ("Typed High-Level Intermediate Representation"), previously called HAIR for
 "High-Level Abstract IR", is another IR used by rustc that is generated after
 [type checking]. It is (as of <!-- date-check --> January 2024) used for

@@ -199,6 +199,15 @@ where
         base.offset_with_meta(offset, OffsetMode::Inbounds, meta, field_layout, self)
     }
 
+    /// Projects multiple fields at once. See [`Self::project_field`] for details.
+    pub fn project_fields<P: Projectable<'tcx, M::Provenance>, const N: usize>(
+        &self,
+        base: &P,
+        fields: [FieldIdx; N],
+    ) -> InterpResult<'tcx, [P; N]> {
+        fields.try_map(|field| self.project_field(base, field))
+    }
+
     /// Downcasting to an enum variant.
     pub fn project_downcast<P: Projectable<'tcx, M::Provenance>>(
         &self,
@@ -386,8 +395,6 @@ where
                 span_bug!(self.cur_span(), "OpaqueCast({ty}) encountered after borrowck")
             }
             UnwrapUnsafeBinder(target) => base.transmute(self.layout_of(target)?, self)?,
-            // We don't want anything happening here, this is here as a dummy.
-            Subtype(_) => base.transmute(base.layout(), self)?,
             Field(field, _) => self.project_field(base, field)?,
             Downcast(_, variant) => self.project_downcast(base, variant)?,
             Deref => self.deref_pointer(&base.to_op(self)?)?.into(),

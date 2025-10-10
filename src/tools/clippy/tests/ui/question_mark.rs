@@ -1,6 +1,4 @@
 #![feature(try_blocks)]
-#![allow(unreachable_code)]
-#![allow(dead_code)]
 #![allow(clippy::unnecessary_wraps)]
 
 use std::sync::MutexGuard;
@@ -560,4 +558,60 @@ fn issue_13642(x: Option<i32>) -> Option<()> {
     };
 
     None
+}
+
+fn issue_15679() -> Result<i32, String> {
+    let some_result: Result<i32, &'static str> = todo!();
+
+    match some_result {
+        //~^ question_mark
+        Ok(val) => val,
+        Err(err) => return Err(err.into()),
+    };
+
+    match some_result {
+        //~^ question_mark
+        Ok(val) => val,
+        Err(err) => return Err(Into::into(err)),
+    };
+
+    match some_result {
+        //~^ question_mark
+        Ok(val) => val,
+        Err(err) => return Err(<&str as Into<String>>::into(err)),
+    };
+
+    Ok(0)
+}
+
+mod issue14894 {
+    fn use_after_question_mark(do_something_else: impl Fn() -> Result<String, ()>) -> Result<(), ()> {
+        let result = do_something_else();
+        if let Err(reason) = result {
+            return Err(reason);
+        }
+        drop(result);
+
+        let result = do_something_else();
+        let x = match result {
+            //~^ question_mark
+            Ok(v) => v,
+            Err(e) => return Err(e),
+        };
+        drop(x);
+
+        Ok(())
+    }
+
+    #[expect(dropping_copy_types)]
+    fn use_after_question_mark_but_is_copy(do_something_else: impl Fn() -> Result<i32, ()>) -> Result<(), ()> {
+        let result = do_something_else();
+        if let Err(reason) = result {
+            //~^ question_mark
+            return Err(reason);
+        }
+        drop(result);
+
+        Ok(())
+    }
 }

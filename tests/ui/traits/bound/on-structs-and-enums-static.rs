@@ -6,9 +6,7 @@ struct Foo<T:Trait> {
     x: T,
 }
 
-static X: Foo<usize> = Foo {
-//~^ ERROR E0277
-//~| ERROR E0277
+static X: Foo<usize> = Foo { //~ ERROR E0277
     x: 1, //~ ERROR: E0277
 };
 

@@ -6,7 +6,11 @@ LL |     bar(x);
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `Send` is not implemented for `Foo`
+help: the trait `Send` is not implemented for `Foo`
+  --> $DIR/no_send-struct.rs:5:1
+   |
+LL | struct Foo {
+   | ^^^^^^^^^^
 note: required by a bound in `bar`
   --> $DIR/no_send-struct.rs:11:11
    |

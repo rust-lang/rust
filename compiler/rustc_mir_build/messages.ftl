@@ -86,9 +86,15 @@ mir_build_confused = missing patterns are not covered because `{$variable}` is i
 
 mir_build_const_continue_bad_const = could not determine the target branch for this `#[const_continue]`
     .label = this value is too generic
-    .note = the value must be a literal or a monomorphic const
 
-mir_build_const_continue_missing_value = a `#[const_continue]` must break to a label with a value
+mir_build_const_continue_missing_label_or_value = a `#[const_continue]` must break to a label with a value
+
+mir_build_const_continue_not_const = could not determine the target branch for this `#[const_continue]`
+    .help = try extracting the expression into a `const` item
+
+mir_build_const_continue_not_const_const_block = `const` blocks may use generics, and are not evaluated early enough
+mir_build_const_continue_not_const_const_other = this value must be a literal or a monomorphic const
+mir_build_const_continue_not_const_constant_parameter = constant parameters may use generics, and are not evaluated early enough
 
 mir_build_const_continue_unknown_jump_target = the target of this `#[const_continue]` is not statically known
     .label = this value must be a literal or a monomorphic const
@@ -114,8 +120,6 @@ mir_build_deref_raw_pointer_requires_unsafe_unsafe_op_in_unsafe_fn_allowed =
     dereference of raw pointer is unsafe and requires unsafe function or block
     .note = raw pointers may be null, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
     .label = dereference of raw pointer
-
-mir_build_exceeds_mcdc_condition_limit = number of conditions in decision ({$num_conditions}) exceeds limit ({$max_conditions}), so MC/DC analysis will not count this expression
 
 mir_build_extern_static_requires_unsafe =
     use of extern static is unsafe and requires unsafe block
@@ -317,17 +321,6 @@ mir_build_pointer_pattern = function pointers and raw pointers not derived from 
     .note = see https://github.com/rust-lang/rust/issues/70861 for details
 
 mir_build_privately_uninhabited = pattern `{$witness_1}` is currently uninhabited, but this variant contains private fields which may become inhabited in the future
-
-mir_build_rust_2024_incompatible_pat = {$bad_modifiers ->
-        *[true] binding modifiers{$bad_ref_pats ->
-            *[true] {" "}and reference patterns
-            [false] {""}
-        }
-        [false] reference patterns
-    } may only be written when the default binding mode is `move`{$is_hard_error ->
-        *[true] {""}
-        [false] {" "}in Rust 2024
-    }
 
 mir_build_static_in_pattern = statics cannot be referenced in patterns
     .label = can't be used in patterns

@@ -7,6 +7,7 @@
 //@ ignore-s390x
 
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
 // gdb-command:run
 
 // gdb-command:print vi8x16
@@ -35,8 +36,6 @@
 // gdb-command:continue
 
 #![allow(unused_variables)]
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 #![feature(repr_simd)]
 
 #[repr(simd)]

@@ -349,7 +349,7 @@ impl AssertMessage {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub enum BinOp {
     Add,
     AddUnchecked,
@@ -384,7 +384,7 @@ impl BinOp {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub enum UnOp {
     Not,
     Neg,
@@ -490,7 +490,7 @@ pub enum StatementKind {
     Nop,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub enum Rvalue {
     /// Creates a pointer with the indicated mutability to the place.
     ///
@@ -654,9 +654,7 @@ impl Rvalue {
                 )),
                 AggregateKind::Adt(def, _, ref args, _, _) => Ok(def.ty_with_args(args)),
                 AggregateKind::Closure(def, ref args) => Ok(Ty::new_closure(def, args.clone())),
-                AggregateKind::Coroutine(def, ref args, mov) => {
-                    Ok(Ty::new_coroutine(def, args.clone(), mov))
-                }
+                AggregateKind::Coroutine(def, ref args) => Ok(Ty::new_coroutine(def, args.clone())),
                 AggregateKind::CoroutineClosure(def, ref args) => {
                     Ok(Ty::new_coroutine_closure(def, args.clone()))
                 }
@@ -668,26 +666,25 @@ impl Rvalue {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub enum AggregateKind {
     Array(Ty),
     Tuple,
     Adt(AdtDef, VariantIdx, GenericArgs, Option<UserTypeAnnotationIndex>, Option<FieldIdx>),
     Closure(ClosureDef, GenericArgs),
-    // FIXME(rustc_public): Movability here is redundant
-    Coroutine(CoroutineDef, GenericArgs, Movability),
+    Coroutine(CoroutineDef, GenericArgs),
     CoroutineClosure(CoroutineClosureDef, GenericArgs),
     RawPtr(Ty, Mutability),
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub enum Operand {
     Copy(Place),
     Move(Place),
     Constant(ConstOperand),
 }
 
-#[derive(Clone, Eq, PartialEq, Serialize)]
+#[derive(Clone, Eq, PartialEq, Hash, Serialize)]
 pub struct Place {
     pub local: Local,
     /// projection out of a place (access a field, deref a pointer, etc)
@@ -700,7 +697,7 @@ impl From<Local> for Place {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub struct ConstOperand {
     pub span: Span,
     pub user_ty: Option<UserTypeAnnotationIndex>,
@@ -773,7 +770,7 @@ pub enum VarDebugInfoContents {
 // ProjectionElem<Local, Ty>) and user-provided type annotations (for which the projection elements
 // are of type ProjectionElem<(), ()>).
 // In rustc_public's IR we don't need this generality, so we just use ProjectionElem for Places.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub enum ProjectionElem {
     /// Dereference projections (e.g. `*_1`) project to the address referenced by the base place.
     Deref,
@@ -839,14 +836,6 @@ pub enum ProjectionElem {
     /// Like an explicit cast from an opaque type to a concrete type, but without
     /// requiring an intermediate variable.
     OpaqueCast(Ty),
-
-    /// A `Subtype(T)` projection is applied to any `StatementKind::Assign` where
-    /// type of lvalue doesn't match the type of rvalue, the primary goal is making subtyping
-    /// explicit during optimizations and codegen.
-    ///
-    /// This projection doesn't impact the runtime behavior of the program except for potentially changing
-    /// some type metadata of the interpreter or codegen backend.
-    Subtype(Ty),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -916,7 +905,7 @@ impl SwitchTargets {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub enum BorrowKind {
     /// Data must be immutable and is aliasable.
     Shared,
@@ -943,7 +932,7 @@ impl BorrowKind {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub enum RawPtrKind {
     Mut,
     Const,
@@ -961,14 +950,14 @@ impl RawPtrKind {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub enum MutBorrowKind {
     Default,
     TwoPhaseBorrow,
     ClosureCapture,
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub enum FakeBorrowKind {
     /// A shared (deep) borrow. Data must be immutable and is aliasable.
     Deep,
@@ -985,13 +974,13 @@ pub enum Mutability {
     Mut,
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub enum Safety {
     Safe,
     Unsafe,
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub enum PointerCoercion {
     /// Go from a fn-item type to a fn-pointer type.
     ReifyFnPointer,
@@ -1018,7 +1007,7 @@ pub enum PointerCoercion {
     Unsize,
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub enum CastKind {
     // FIXME(smir-rename): rename this to PointerExposeProvenance
     PointerExposeAddress,
@@ -1031,9 +1020,10 @@ pub enum CastKind {
     PtrToPtr,
     FnPtrToPtr,
     Transmute,
+    Subtype,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub enum NullOp {
     /// Returns the size of a value of that type.
     SizeOf,
@@ -1092,7 +1082,7 @@ impl ProjectionElem {
                 Self::subslice_ty(ty, *from, *to, *from_end)
             }
             ProjectionElem::Downcast(_) => Ok(ty),
-            ProjectionElem::OpaqueCast(ty) | ProjectionElem::Subtype(ty) => Ok(*ty),
+            ProjectionElem::OpaqueCast(ty) => Ok(*ty),
         }
     }
 

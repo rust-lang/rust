@@ -690,6 +690,7 @@ error: expected one of `)`, `,`, `@`, `if`, or `|`, found `*`
    |
 LL |     let b = matches!(x, (x * x | x.f()) | x[0]);
    |                            ^ expected one of `)`, `,`, `@`, `if`, or `|`
+   |
   --> $SRC_DIR/core/src/macros/mod.rs:LL:COL
    |
    = note: while parsing argument for this `pat` macro fragment

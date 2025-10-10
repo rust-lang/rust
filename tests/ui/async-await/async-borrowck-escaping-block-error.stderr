@@ -6,11 +6,7 @@ LL |     Box::new(async { x } )
    |              |
    |              may outlive borrowed value `x`
    |
-note: async block is returned here
-  --> $DIR/async-borrowck-escaping-block-error.rs:6:5
-   |
-LL |     Box::new(async { x } )
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+   = note: async blocks are not executed immediately and must either take a reference or ownership of outside variables they use
 help: to force the async block to take ownership of `x` (and any other referenced variables), use the `move` keyword
    |
 LL |     Box::new(async move { x } )

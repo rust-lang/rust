@@ -75,7 +75,7 @@ fn main() {
         s4[2..].to_string();
     }
 
-    // Don't propose to reuse the `stripped` identifier as it is overriden
+    // Don't propose to reuse the `stripped` identifier as it is overridden
     if s.starts_with("ab") {
         let stripped = &s["ab".len()..];
         //~^ ERROR: stripping a prefix manually

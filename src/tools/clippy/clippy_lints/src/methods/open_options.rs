@@ -18,7 +18,7 @@ fn is_open_options(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, recv: &'tcx Expr<'_>) {
     if let Some(method_id) = cx.typeck_results().type_dependent_def_id(e.hir_id)
-        && let Some(impl_id) = cx.tcx.impl_of_method(method_id)
+        && let Some(impl_id) = cx.tcx.impl_of_assoc(method_id)
         && is_open_options(cx, cx.tcx.type_of(impl_id).instantiate_identity())
     {
         let mut options = Vec::new();
@@ -111,7 +111,7 @@ fn get_open_options(
                     // This might be a user defined extension trait with a method like `truncate_write`
                     // which would be a false positive
                     if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(argument.hir_id)
-                        && cx.tcx.trait_of_item(method_def_id).is_some()
+                        && cx.tcx.trait_of_assoc(method_def_id).is_some()
                     {
                         return false;
                     }

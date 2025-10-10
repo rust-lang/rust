@@ -2,6 +2,7 @@
 //@ compile-flags:-C panic=abort
 //@ no-prefer-dynamic
 //@ needs-subprocess
+//@ ignore-backends: gcc
 
 use std::env;
 use std::process::Command;

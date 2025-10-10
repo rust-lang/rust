@@ -11,6 +11,7 @@ use hir::{
 use ide_db::{
     FilePosition, FxIndexMap,
     active_parameter::{callable_for_arg_list, generic_def_for_node},
+    base_db::salsa,
     documentation::{Documentation, HasDocs},
 };
 use itertools::Itertools;
@@ -146,12 +147,11 @@ pub(crate) fn signature_help(
 
         // Stop at multi-line expressions, since the signature of the outer call is not very
         // helpful inside them.
-        if let Some(expr) = ast::Expr::cast(node.clone()) {
-            if !matches!(expr, ast::Expr::RecordExpr(..))
-                && expr.syntax().text().contains_char('\n')
-            {
-                break;
-            }
+        if let Some(expr) = ast::Expr::cast(node.clone())
+            && !matches!(expr, ast::Expr::RecordExpr(..))
+            && expr.syntax().text().contains_char('\n')
+        {
+            break;
         }
     }
 
@@ -267,12 +267,12 @@ fn signature_help_for_call(
             // In that case, fall back to render definitions of the respective parameters.
             // This is overly conservative: we do not substitute known type vars
             // (see FIXME in tests::impl_trait) and falling back on any unknowns.
-            match (p.ty().contains_unknown(), fn_params.as_deref()) {
+            salsa::attach(db, || match (p.ty().contains_unknown(), fn_params.as_deref()) {
                 (true, Some(fn_params)) => {
                     format_to!(buf, "{}", fn_params[idx].ty().display(db, display_target))
                 }
                 _ => format_to!(buf, "{}", p.ty().display(db, display_target)),
-            }
+            });
             res.push_call_param(&buf);
         }
     }
@@ -340,10 +340,6 @@ fn signature_help_for_generics(
             res.doc = it.docs(db);
             format_to!(res.signature, "trait {}", it.name(db).display(db, edition));
         }
-        hir::GenericDef::TraitAlias(it) => {
-            res.doc = it.docs(db);
-            format_to!(res.signature, "trait {}", it.name(db).display(db, edition));
-        }
         hir::GenericDef::TypeAlias(it) => {
             res.doc = it.docs(db);
             format_to!(res.signature, "type {}", it.name(db).display(db, edition));
@@ -366,10 +362,10 @@ fn signature_help_for_generics(
     res.signature.push('<');
     let mut buf = String::new();
     for param in params {
-        if let hir::GenericParam::TypeParam(ty) = param {
-            if ty.is_implicit(db) {
-                continue;
-            }
+        if let hir::GenericParam::TypeParam(ty) = param
+            && ty.is_implicit(db)
+        {
+            continue;
         }
 
         buf.clear();
@@ -530,7 +526,7 @@ fn signature_help_for_tuple_struct_pat(
         pat.syntax(),
         token,
         pat.fields(),
-        fields.into_iter().map(|it| it.ty(db)),
+        fields.into_iter().map(|it| it.ty(db).to_type(db)),
         display_target,
     ))
 }
@@ -734,7 +730,7 @@ fn signature_help_for_tuple_pat_ish<'db>(
 mod tests {
 
     use expect_test::{Expect, expect};
-    use ide_db::FilePosition;
+    use ide_db::{FilePosition, base_db::salsa};
     use stdx::format_to;
     use test_fixture::ChangeFixture;
 
@@ -763,7 +759,7 @@ mod tests {
             "#
         );
         let (db, position) = position(&fixture);
-        let sig_help = crate::signature_help::signature_help(&db, position);
+        let sig_help = salsa::attach(&db, || crate::signature_help::signature_help(&db, position));
         let actual = match sig_help {
             Some(sig_help) => {
                 let mut rendered = String::new();

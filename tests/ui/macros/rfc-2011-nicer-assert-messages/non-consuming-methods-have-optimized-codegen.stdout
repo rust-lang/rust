@@ -5,10 +5,10 @@
 //@ edition: 2015
 
 #![feature(core_intrinsics, generic_assert)]
-#[prelude_import]
-use ::std::prelude::rust_2015::*;
 #[macro_use]
 extern crate std;
+#[prelude_import]
+use ::std::prelude::rust_2015::*;
 
 fn arbitrary_consuming_method_for_demonstration_purposes() {
     let elem = 1i32;

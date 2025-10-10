@@ -183,7 +183,7 @@ The quick summary is:
 ### Getting help and asking questions
 
 If you have some questions, head over to the [rust-lang Zulip] and
-specifically the `#t-compiler/wg-llvm` stream.
+specifically the `#t-compiler/wg-llvm` channel.
 
 [rust-lang Zulip]: https://rust-lang.zulipchat.com/
 

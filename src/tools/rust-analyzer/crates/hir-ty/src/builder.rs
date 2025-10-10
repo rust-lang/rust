@@ -1,23 +1,22 @@
 //! `TyBuilder`, a helper for building instances of `Ty` and related types.
 
-use std::iter;
-
 use chalk_ir::{
     AdtId, DebruijnIndex, Scalar,
     cast::{Cast, CastTo, Caster},
-    fold::TypeFoldable,
-    interner::HasInterner,
 };
-use hir_def::{
-    DefWithBodyId, GenericDefId, GenericParamId, TraitId, TypeAliasId, builtin_type::BuiltinType,
-};
+use hir_def::{GenericDefId, GenericParamId, TraitId, TypeAliasId, builtin_type::BuiltinType};
 use smallvec::SmallVec;
 
 use crate::{
-    Binders, BoundVar, CallableSig, GenericArg, GenericArgData, Interner, ProjectionTy,
-    Substitution, TraitRef, Ty, TyDefId, TyExt, TyKind, consteval::unknown_const_as_generic,
-    db::HirDatabase, error_lifetime, generics::generics, infer::unify::InferenceTable, primitive,
-    to_assoc_type_id, to_chalk_trait_id,
+    BoundVar, CallableSig, GenericArg, GenericArgData, Interner, ProjectionTy, Substitution,
+    TraitRef, Ty, TyDefId, TyExt, TyKind,
+    consteval::unknown_const_as_generic,
+    db::HirDatabase,
+    error_lifetime,
+    generics::generics,
+    infer::unify::InferenceTable,
+    next_solver::{DbInterner, EarlyBinder, mapping::ChalkToNextSolver},
+    primitive, to_assoc_type_id, to_chalk_trait_id,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -246,47 +245,6 @@ impl TyBuilder<()> {
         TyBuilder::new((), params, parent_subst)
     }
 
-    /// Creates a `TyBuilder` to build `Substitution` for a coroutine defined in `parent`.
-    ///
-    /// A coroutine's substitution consists of:
-    /// - resume type of coroutine
-    /// - yield type of coroutine ([`Coroutine::Yield`](std::ops::Coroutine::Yield))
-    /// - return type of coroutine ([`Coroutine::Return`](std::ops::Coroutine::Return))
-    /// - generic parameters in scope on `parent`
-    ///
-    /// in this order.
-    ///
-    /// This method prepopulates the builder with placeholder substitution of `parent`, so you
-    /// should only push exactly 3 `GenericArg`s before building.
-    pub fn subst_for_coroutine(db: &dyn HirDatabase, parent: DefWithBodyId) -> TyBuilder<()> {
-        let parent_subst =
-            parent.as_generic_def_id(db).map(|p| generics(db, p).placeholder_subst(db));
-        // These represent resume type, yield type, and return type of coroutine.
-        let params = std::iter::repeat_n(ParamKind::Type, 3).collect();
-        TyBuilder::new((), params, parent_subst)
-    }
-
-    pub fn subst_for_closure(
-        db: &dyn HirDatabase,
-        parent: DefWithBodyId,
-        sig_ty: Ty,
-    ) -> Substitution {
-        let sig_ty = sig_ty.cast(Interner);
-        let self_subst = iter::once(&sig_ty);
-        let Some(parent) = parent.as_generic_def_id(db) else {
-            return Substitution::from_iter(Interner, self_subst);
-        };
-        Substitution::from_iter(
-            Interner,
-            generics(db, parent)
-                .placeholder_subst(db)
-                .iter(Interner)
-                .chain(self_subst)
-                .cloned()
-                .collect::<Vec<_>>(),
-        )
-    }
-
     pub fn build(self) -> Substitution {
         let ((), subst) = self.build_internal();
         subst
@@ -309,11 +267,11 @@ impl TyBuilder<hir_def::AdtId> {
         if let Some(defaults) = defaults.get(self.vec.len()..) {
             for default_ty in defaults {
                 // NOTE(skip_binders): we only check if the arg type is error type.
-                if let Some(x) = default_ty.skip_binders().ty(Interner) {
-                    if x.is_unknown() {
-                        self.vec.push(fallback().cast(Interner));
-                        continue;
-                    }
+                if let Some(x) = default_ty.skip_binders().ty(Interner)
+                    && x.is_unknown()
+                {
+                    self.vec.push(fallback().cast(Interner));
+                    continue;
                 }
                 // Each default can only depend on the previous parameters.
                 self.vec.push(default_ty.clone().substitute(Interner, &*self.vec).cast(Interner));
@@ -390,19 +348,20 @@ impl TyBuilder<TypeAliasId> {
     }
 }
 
-impl<T: HasInterner<Interner = Interner> + TypeFoldable<Interner>> TyBuilder<Binders<T>> {
-    pub fn build(self) -> T {
+impl<'db, T: rustc_type_ir::TypeFoldable<DbInterner<'db>>> TyBuilder<EarlyBinder<'db, T>> {
+    pub fn build(self, interner: DbInterner<'db>) -> T {
         let (b, subst) = self.build_internal();
-        b.substitute(Interner, &subst)
+        let args: crate::next_solver::GenericArgs<'db> = subst.to_nextsolver(interner);
+        b.instantiate(interner, args)
     }
 }
 
-impl TyBuilder<Binders<Ty>> {
+impl<'db> TyBuilder<EarlyBinder<'db, crate::next_solver::Ty<'db>>> {
     pub fn def_ty(
-        db: &dyn HirDatabase,
+        db: &'db dyn HirDatabase,
         def: TyDefId,
         parent_subst: Option<Substitution>,
-    ) -> TyBuilder<Binders<Ty>> {
+    ) -> TyBuilder<EarlyBinder<'db, crate::next_solver::Ty<'db>>> {
         let poly_ty = db.ty(def);
         let id: GenericDefId = match def {
             TyDefId::BuiltinType(_) => {
@@ -415,7 +374,10 @@ impl TyBuilder<Binders<Ty>> {
         TyBuilder::subst_for_def(db, id, parent_subst).with_data(poly_ty)
     }
 
-    pub fn impl_self_ty(db: &dyn HirDatabase, def: hir_def::ImplId) -> TyBuilder<Binders<Ty>> {
+    pub fn impl_self_ty(
+        db: &'db dyn HirDatabase,
+        def: hir_def::ImplId,
+    ) -> TyBuilder<EarlyBinder<'db, crate::next_solver::Ty<'db>>> {
         TyBuilder::subst_for_def(db, def, None).with_data(db.impl_self_ty(def))
     }
 }

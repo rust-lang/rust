@@ -462,6 +462,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
         let io_status_info = this.project_field_named(&io_status_block, "Information")?;
 
+        // It seems like short writes are not a thing on Windows, so we don't truncate `count` here.
+        // FIXME: if we are on a Unix host, short host writes are still visible to the program!
+
         let finish = {
             let io_status = io_status.clone();
             let io_status_info = io_status_info.clone();
@@ -491,7 +494,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }}
             )
         };
-
         desc.write(this.machine.communicate(), buf, count.try_into().unwrap(), this, finish)?;
 
         // Return status is written to `dest` and `io_status_block` on callback completion.
@@ -556,6 +558,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
         let io_status_info = this.project_field_named(&io_status_block, "Information")?;
 
+        let fd = match handle {
+            Handle::File(fd) => fd,
+            _ => this.invalid_handle("NtWriteFile")?,
+        };
+
+        let Some(desc) = this.machine.fds.get(fd) else { this.invalid_handle("NtReadFile")? };
+
+        // It seems like short reads are not a thing on Windows, so we don't truncate `count` here.
+        // FIXME: if we are on a Unix host, short host reads are still visible to the program!
+
         let finish = {
             let io_status = io_status.clone();
             let io_status_info = io_status_info.clone();
@@ -585,14 +597,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }}
             )
         };
-
-        let fd = match handle {
-            Handle::File(fd) => fd,
-            _ => this.invalid_handle("NtWriteFile")?,
-        };
-
-        let Some(desc) = this.machine.fds.get(fd) else { this.invalid_handle("NtReadFile")? };
-
         desc.read(this.machine.communicate(), buf, count.try_into().unwrap(), this, finish)?;
 
         // See NtWriteFile for commentary on this

@@ -1,5 +1,6 @@
 //@ run-pass
 //@ needs-unwind
+//@ ignore-backends: gcc
 //@ edition: 2024
 
 // See `mir_drop_order.rs` for more information

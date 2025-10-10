@@ -52,6 +52,15 @@ pub(crate) struct ConstHeapPtrInFinal {
 }
 
 #[derive(Diagnostic)]
+#[diag(const_eval_partial_pointer_in_final)]
+#[note]
+pub(crate) struct PartialPtrInFinal {
+    #[primary_span]
+    pub span: Span,
+    pub kind: InternKind,
+}
+
+#[derive(Diagnostic)]
 #[diag(const_eval_unstable_in_stable_exposed)]
 pub(crate) struct UnstableInStableExposed {
     pub gate: String,
@@ -500,7 +509,7 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             InvalidNichedEnumVariantWritten { .. } => {
                 const_eval_invalid_niched_enum_variant_written
             }
-            AbiMismatchArgument { .. } => const_eval_incompatible_types,
+            AbiMismatchArgument { .. } => const_eval_incompatible_arg_types,
             AbiMismatchReturn { .. } => const_eval_incompatible_return_types,
         }
     }
@@ -625,12 +634,16 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
                 diag.arg("data_size", info.data_size);
             }
             InvalidNichedEnumVariantWritten { enum_ty } => {
-                diag.arg("ty", enum_ty.to_string());
+                diag.arg("ty", enum_ty);
             }
-            AbiMismatchArgument { caller_ty, callee_ty }
-            | AbiMismatchReturn { caller_ty, callee_ty } => {
-                diag.arg("caller_ty", caller_ty.to_string());
-                diag.arg("callee_ty", callee_ty.to_string());
+            AbiMismatchArgument { arg_idx, caller_ty, callee_ty } => {
+                diag.arg("arg_idx", arg_idx + 1); // adjust for 1-indexed lists in output
+                diag.arg("caller_ty", caller_ty);
+                diag.arg("callee_ty", callee_ty);
+            }
+            AbiMismatchReturn { caller_ty, callee_ty } => {
+                diag.arg("caller_ty", caller_ty);
+                diag.arg("callee_ty", callee_ty);
             }
         }
     }
@@ -653,9 +666,9 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             PartialPointer => const_eval_validation_partial_pointer,
             MutableRefToImmutable => const_eval_validation_mutable_ref_to_immutable,
             MutableRefInConst => const_eval_validation_mutable_ref_in_const,
-            NullFnPtr => const_eval_validation_null_fn_ptr,
+            NullFnPtr { .. } => const_eval_validation_null_fn_ptr,
             NeverVal => const_eval_validation_never_val,
-            NullablePtrOutOfRange { .. } => const_eval_validation_nullable_ptr_out_of_range,
+            NonnullPtrMaybeNull { .. } => const_eval_validation_nonnull_ptr_out_of_range,
             PtrOutOfRange { .. } => const_eval_validation_ptr_out_of_range,
             OutOfRange { .. } => const_eval_validation_out_of_range,
             UnsafeCellInImmutable => const_eval_validation_unsafe_cell,
@@ -683,8 +696,8 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             }
             UnalignedPtr { ptr_kind: PointerKind::Box, .. } => const_eval_validation_unaligned_box,
 
-            NullPtr { ptr_kind: PointerKind::Box } => const_eval_validation_null_box,
-            NullPtr { ptr_kind: PointerKind::Ref(_) } => const_eval_validation_null_ref,
+            NullPtr { ptr_kind: PointerKind::Box, .. } => const_eval_validation_null_box,
+            NullPtr { ptr_kind: PointerKind::Ref(_), .. } => const_eval_validation_null_ref,
             DanglingPtrNoProvenance { ptr_kind: PointerKind::Box, .. } => {
                 const_eval_validation_dangling_box_no_provenance
             }
@@ -791,9 +804,7 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             | InvalidFnPtr { value } => {
                 err.arg("value", value);
             }
-            NullablePtrOutOfRange { range, max_value } | PtrOutOfRange { range, max_value } => {
-                add_range_arg(range, max_value, err)
-            }
+            PtrOutOfRange { range, max_value } => add_range_arg(range, max_value, err),
             OutOfRange { range, max_value, value } => {
                 err.arg("value", value);
                 add_range_arg(range, max_value, err);
@@ -809,10 +820,12 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
                 err.arg("vtable_dyn_type", vtable_dyn_type.to_string());
                 err.arg("expected_dyn_type", expected_dyn_type.to_string());
             }
-            NullPtr { .. }
-            | MutableRefToImmutable
+            NullPtr { maybe, .. } | NullFnPtr { maybe } => {
+                err.arg("maybe", maybe);
+            }
+            MutableRefToImmutable
             | MutableRefInConst
-            | NullFnPtr
+            | NonnullPtrMaybeNull
             | NeverVal
             | UnsafeCellInImmutable
             | InvalidMetaSliceTooLarge { .. }
@@ -832,8 +845,7 @@ impl ReportErrorExt for UnsupportedOpInfo {
             UnsupportedOpInfo::Unsupported(s) => s.clone().into(),
             UnsupportedOpInfo::ExternTypeField => const_eval_extern_type_field,
             UnsupportedOpInfo::UnsizedLocal => const_eval_unsized_local,
-            UnsupportedOpInfo::OverwritePartialPointer(_) => const_eval_partial_pointer_overwrite,
-            UnsupportedOpInfo::ReadPartialPointer(_) => const_eval_partial_pointer_copy,
+            UnsupportedOpInfo::ReadPartialPointer(_) => const_eval_partial_pointer_read,
             UnsupportedOpInfo::ReadPointerAsInt(_) => const_eval_read_pointer_as_int,
             UnsupportedOpInfo::ThreadLocalStatic(_) => const_eval_thread_local_static,
             UnsupportedOpInfo::ExternStatic(_) => const_eval_extern_static,
@@ -844,7 +856,7 @@ impl ReportErrorExt for UnsupportedOpInfo {
         use UnsupportedOpInfo::*;
 
         use crate::fluent_generated::*;
-        if let ReadPointerAsInt(_) | OverwritePartialPointer(_) | ReadPartialPointer(_) = self {
+        if let ReadPointerAsInt(_) | ReadPartialPointer(_) = self {
             diag.help(const_eval_ptr_as_bytes_1);
             diag.help(const_eval_ptr_as_bytes_2);
         }
@@ -856,7 +868,7 @@ impl ReportErrorExt for UnsupportedOpInfo {
             | UnsupportedOpInfo::ExternTypeField
             | Unsupported(_)
             | ReadPointerAsInt(_) => {}
-            OverwritePartialPointer(ptr) | ReadPartialPointer(ptr) => {
+            ReadPartialPointer(ptr) => {
                 diag.arg("ptr", ptr);
             }
             ThreadLocalStatic(did) | ExternStatic(did) => rustc_middle::ty::tls::with(|tcx| {

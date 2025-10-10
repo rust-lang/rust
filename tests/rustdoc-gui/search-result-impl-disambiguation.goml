@@ -1,15 +1,12 @@
 // ignore-tidy-linelength
+include: "utils.goml"
 
 // Checks that, if a type has two methods with the same name, they both get
 // linked correctly.
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 
 // This should link to the inherent impl
-write-into: (".search-input", "ZyxwvutMethodDisambiguation -> bool")
-// To be SURE that the search will be run.
-press-key: 'Enter'
-// Waiting for the search results to appear...
-wait-for: "#search-tabs"
+call-function: ("perform-search", {"query": "ZyxwvutMethodDisambiguation -> bool"})
 // Check the disambiguated link.
 assert-count: ("a.result-method", 1)
 assert-attribute: ("a.result-method", {
@@ -25,11 +22,7 @@ assert: "section:target"
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 
 // This should link to the trait impl
-write-into: (".search-input", "ZyxwvutMethodDisambiguation, usize -> usize")
-// To be SURE that the search will be run.
-press-key: 'Enter'
-// Waiting for the search results to appear...
-wait-for: "#search-tabs"
+call-function: ("perform-search", {"query": "ZyxwvutMethodDisambiguation, usize -> usize"})
 // Check the disambiguated link.
 assert-count: ("a.result-method", 1)
 assert-attribute: ("a.result-method", {
@@ -47,6 +40,7 @@ assert: "section:target"
 // impl block's disambiguator is also acted upon.
 go-to: "file://" + |DOC_PATH| + "/lib2/index.html?search=MultiImplBlockStruct->bool"
 wait-for: "#search-tabs"
+wait-for-false: "#search-tabs .count.loading"
 assert-count: ("a.result-method", 1)
 assert-attribute: ("a.result-method", {
     "href": "../lib2/another_mod/struct.MultiImplBlockStruct.html#impl-MultiImplBlockStruct/method.second_fn"
@@ -56,6 +50,7 @@ wait-for: "details:has(summary > #impl-MultiImplBlockStruct-1) > div section[id=
 
 go-to: "file://" + |DOC_PATH| + "/lib2/index.html?search=MultiImplBlockStruct->u32"
 wait-for: "#search-tabs"
+wait-for-false: "#search-tabs .count.loading"
 assert-count: ("a.result-method", 1)
 assert-attribute: ("a.result-method", {
     "href": "../lib2/another_mod/struct.MultiImplBlockStruct.html#impl-MultiImplBlockTrait-for-MultiImplBlockStruct/method.second_fn"

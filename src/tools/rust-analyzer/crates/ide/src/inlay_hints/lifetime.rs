@@ -77,17 +77,18 @@ pub(super) fn fn_ptr_hints(
         return None;
     }
 
-    let parent_for_type = func
+    let parent_for_binder = func
         .syntax()
         .ancestors()
         .skip(1)
         .take_while(|it| matches!(it.kind(), SyntaxKind::PAREN_TYPE | SyntaxKind::FOR_TYPE))
-        .find_map(ast::ForType::cast);
+        .find_map(ast::ForType::cast)
+        .and_then(|it| it.for_binder());
 
     let param_list = func.param_list()?;
-    let generic_param_list = parent_for_type.as_ref().and_then(|it| it.generic_param_list());
+    let generic_param_list = parent_for_binder.as_ref().and_then(|it| it.generic_param_list());
     let ret_type = func.ret_type();
-    let for_kw = parent_for_type.as_ref().and_then(|it| it.for_token());
+    let for_kw = parent_for_binder.as_ref().and_then(|it| it.for_token());
     hints_(
         acc,
         ctx,
@@ -143,15 +144,16 @@ pub(super) fn fn_path_hints(
 
     // FIXME: Support general path types
     let (param_list, ret_type) = func.path().as_ref().and_then(path_as_fn)?;
-    let parent_for_type = func
+    let parent_for_binder = func
         .syntax()
         .ancestors()
         .skip(1)
         .take_while(|it| matches!(it.kind(), SyntaxKind::PAREN_TYPE | SyntaxKind::FOR_TYPE))
-        .find_map(ast::ForType::cast);
+        .find_map(ast::ForType::cast)
+        .and_then(|it| it.for_binder());
 
-    let generic_param_list = parent_for_type.as_ref().and_then(|it| it.generic_param_list());
-    let for_kw = parent_for_type.as_ref().and_then(|it| it.for_token());
+    let generic_param_list = parent_for_binder.as_ref().and_then(|it| it.generic_param_list());
+    let for_kw = parent_for_binder.as_ref().and_then(|it| it.for_token());
     hints_(
         acc,
         ctx,
@@ -322,35 +324,35 @@ fn hints_(
 
     // apply hints
     // apply output if required
-    if let (Some(output_lt), Some(r)) = (&output, ret_type) {
-        if let Some(ty) = r.ty() {
-            walk_ty(&ty, &mut |ty| match ty {
-                ast::Type::RefType(ty) if ty.lifetime().is_none() => {
-                    if let Some(amp) = ty.amp_token() {
-                        is_trivial = false;
-                        acc.push(mk_lt_hint(amp, output_lt.to_string()));
-                    }
-                    false
+    if let (Some(output_lt), Some(r)) = (&output, ret_type)
+        && let Some(ty) = r.ty()
+    {
+        walk_ty(&ty, &mut |ty| match ty {
+            ast::Type::RefType(ty) if ty.lifetime().is_none() => {
+                if let Some(amp) = ty.amp_token() {
+                    is_trivial = false;
+                    acc.push(mk_lt_hint(amp, output_lt.to_string()));
                 }
-                ast::Type::FnPtrType(_) => {
+                false
+            }
+            ast::Type::FnPtrType(_) => {
+                is_trivial = false;
+                true
+            }
+            ast::Type::PathType(t) => {
+                if t.path()
+                    .and_then(|it| it.segment())
+                    .and_then(|it| it.parenthesized_arg_list())
+                    .is_some()
+                {
                     is_trivial = false;
                     true
+                } else {
+                    false
                 }
-                ast::Type::PathType(t) => {
-                    if t.path()
-                        .and_then(|it| it.segment())
-                        .and_then(|it| it.parenthesized_arg_list())
-                        .is_some()
-                    {
-                        is_trivial = false;
-                        true
-                    } else {
-                        false
-                    }
-                }
-                _ => false,
-            })
-        }
+            }
+            _ => false,
+        })
     }
 
     if config.lifetime_elision_hints == LifetimeElisionHints::SkipTrivial && is_trivial {

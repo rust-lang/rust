@@ -37,8 +37,8 @@ mod placeholder {
     //~| NOTE could not find `doesnt_exist` in `inner`
 }
 
-#[cfg(i_dont_exist_and_you_can_do_nothing_about_it)]
-pub fn vanished() {}
+#[cfg(i_dont_exist_and_you_can_do_nothing_about_it)] //~ NOTE the item is gated here
+pub fn vanished() {} //~ NOTE found an item that was configured out
 
 fn main() {
     // There is no uwu at this path - no diagnostic.
@@ -49,8 +49,7 @@ fn main() {
     inner::uwu(); //~ ERROR cannot find function
     //~| NOTE not found in `inner`
 
-    // The module isn't found - we would like to get a diagnostic, but currently don't due to
-    // the awkward way the resolver diagnostics are currently implemented.
+    // The module isn't found - we get a diagnostic.
     inner::doesnt_exist::hello(); //~ ERROR failed to resolve
     //~| NOTE could not find `doesnt_exist` in `inner`
 
@@ -58,9 +57,8 @@ fn main() {
     inner::right::meow(); //~ ERROR cannot find function
     //~| NOTE not found in `inner::right
 
-    // Exists in the crate root - we would generally want a diagnostic,
-    // but currently don't have one.
-    // Not that it matters much though, this is highly unlikely to confuse anyone.
+    // Exists in the crate root - we show a diagnostic because we treat "no module DefId" as "crate
+    // root DefId".
     vanished(); //~ ERROR cannot find function
     //~^ NOTE not found in this scope
 }

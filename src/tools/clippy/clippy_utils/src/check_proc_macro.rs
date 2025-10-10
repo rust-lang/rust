@@ -13,20 +13,24 @@
 //! if the span is not from a `macro_rules` based macro.
 
 use rustc_abi::ExternAbi;
+use rustc_ast as ast;
 use rustc_ast::AttrStyle;
-use rustc_ast::ast::{AttrKind, Attribute, IntTy, LitIntType, LitKind, StrStyle, TraitObjectSyntax, UintTy};
+use rustc_ast::ast::{
+    AttrKind, Attribute, GenericArgs, IntTy, LitIntType, LitKind, StrStyle, TraitObjectSyntax, UintTy,
+};
 use rustc_ast::token::CommentKind;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
     Block, BlockCheckMode, Body, Closure, Destination, Expr, ExprKind, FieldDef, FnHeader, FnRetTy, HirId, Impl,
-    ImplItem, ImplItemKind, IsAuto, Item, ItemKind, Lit, LoopSource, MatchSource, MutTy, Node, Path, QPath, Safety,
-    TraitItem, TraitItemKind, Ty, TyKind, UnOp, UnsafeSource, Variant, VariantData, YieldSource,
+    ImplItem, ImplItemImplKind, ImplItemKind, IsAuto, Item, ItemKind, Lit, LoopSource, MatchSource, MutTy, Node, Path,
+    QPath, Safety, TraitImplHeader, TraitItem, TraitItemKind, Ty, TyKind, UnOp, UnsafeSource, Variant, VariantData,
+    YieldSource,
 };
 use rustc_lint::{EarlyContext, LateContext, LintContext};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::symbol::{Ident, kw};
-use rustc_span::{Span, Symbol};
+use rustc_span::{Span, Symbol, sym};
 
 /// The search pattern to look for. Used by `span_matches_pat`
 #[derive(Clone)]
@@ -254,7 +258,10 @@ fn item_search_pat(item: &Item<'_>) -> (Pat, Pat) {
         ItemKind::Union(..) => (Pat::Str("union"), Pat::Str("}")),
         ItemKind::Trait(_, _, Safety::Unsafe, ..)
         | ItemKind::Impl(Impl {
-            safety: Safety::Unsafe, ..
+            of_trait: Some(TraitImplHeader {
+                safety: Safety::Unsafe, ..
+            }),
+            ..
         }) => (Pat::Str("unsafe"), Pat::Str("}")),
         ItemKind::Trait(_, IsAuto::Yes, ..) => (Pat::Str("auto"), Pat::Str("}")),
         ItemKind::Trait(..) => (Pat::Str("trait"), Pat::Str("}")),
@@ -277,16 +284,17 @@ fn trait_item_search_pat(item: &TraitItem<'_>) -> (Pat, Pat) {
 }
 
 fn impl_item_search_pat(item: &ImplItem<'_>) -> (Pat, Pat) {
-    let (start_pat, end_pat) = match &item.kind {
+    let (mut start_pat, end_pat) = match &item.kind {
         ImplItemKind::Const(..) => (Pat::Str("const"), Pat::Str(";")),
         ImplItemKind::Type(..) => (Pat::Str("type"), Pat::Str(";")),
         ImplItemKind::Fn(sig, ..) => (fn_header_search_pat(sig.header), Pat::Str("")),
     };
-    if item.vis_span.is_empty() {
-        (start_pat, end_pat)
-    } else {
-        (Pat::Str("pub"), end_pat)
+    if let ImplItemImplKind::Inherent { vis_span, .. } = item.impl_kind
+        && !vis_span.is_empty()
+    {
+        start_pat = Pat::Str("pub");
     }
+    (start_pat, end_pat)
 }
 
 fn field_def_search_pat(def: &FieldDef<'_>) -> (Pat, Pat) {
@@ -310,22 +318,24 @@ fn variant_search_pat(v: &Variant<'_>) -> (Pat, Pat) {
 }
 
 fn fn_kind_pat(tcx: TyCtxt<'_>, kind: &FnKind<'_>, body: &Body<'_>, hir_id: HirId) -> (Pat, Pat) {
-    let (start_pat, end_pat) = match kind {
+    let (mut start_pat, end_pat) = match kind {
         FnKind::ItemFn(.., header) => (fn_header_search_pat(*header), Pat::Str("")),
         FnKind::Method(.., sig) => (fn_header_search_pat(sig.header), Pat::Str("")),
         FnKind::Closure => return (Pat::Str(""), expr_search_pat(tcx, body.value).1),
     };
-    let start_pat = match tcx.hir_node(hir_id) {
-        Node::Item(Item { vis_span, .. }) | Node::ImplItem(ImplItem { vis_span, .. }) => {
-            if vis_span.is_empty() {
-                start_pat
-            } else {
-                Pat::Str("pub")
+    match tcx.hir_node(hir_id) {
+        Node::Item(Item { vis_span, .. })
+        | Node::ImplItem(ImplItem {
+            impl_kind: ImplItemImplKind::Inherent { vis_span, .. },
+            ..
+        }) => {
+            if !vis_span.is_empty() {
+                start_pat = Pat::Str("pub");
             }
         },
-        Node::TraitItem(_) => start_pat,
-        _ => Pat::Str(""),
-    };
+        Node::ImplItem(_) | Node::TraitItem(_) => {},
+        _ => start_pat = Pat::Str(""),
+    }
     (start_pat, end_pat)
 }
 
@@ -400,11 +410,133 @@ fn ty_search_pat(ty: &Ty<'_>) -> (Pat, Pat) {
         TyKind::OpaqueDef(..) => (Pat::Str("impl"), Pat::Str("")),
         TyKind::Path(qpath) => qpath_search_pat(&qpath),
         TyKind::Infer(()) => (Pat::Str("_"), Pat::Str("_")),
+        TyKind::UnsafeBinder(binder_ty) => (Pat::Str("unsafe"), ty_search_pat(binder_ty.inner_ty).1),
         TyKind::TraitObject(_, tagged_ptr) if let TraitObjectSyntax::Dyn = tagged_ptr.tag() => {
             (Pat::Str("dyn"), Pat::Str(""))
         },
         // NOTE: `TraitObject` is incomplete. It will always return true then.
         _ => (Pat::Str(""), Pat::Str("")),
+    }
+}
+
+fn ast_ty_search_pat(ty: &ast::Ty) -> (Pat, Pat) {
+    use ast::{Extern, FnRetTy, MutTy, Safety, TraitObjectSyntax, TyKind};
+
+    match &ty.kind {
+        TyKind::Slice(..) | TyKind::Array(..) => (Pat::Str("["), Pat::Str("]")),
+        TyKind::Ptr(MutTy { ty, .. }) => (Pat::Str("*"), ast_ty_search_pat(ty).1),
+        TyKind::Ref(_, MutTy { ty, .. }) | TyKind::PinnedRef(_, MutTy { ty, .. }) => {
+            (Pat::Str("&"), ast_ty_search_pat(ty).1)
+        },
+        TyKind::FnPtr(fn_ptr) => (
+            if let Safety::Unsafe(_) = fn_ptr.safety {
+                Pat::Str("unsafe")
+            } else if let Extern::Explicit(strlit, _) = fn_ptr.ext
+                && strlit.symbol == sym::rust
+            {
+                Pat::MultiStr(&["fn", "extern"])
+            } else {
+                Pat::Str("extern")
+            },
+            match &fn_ptr.decl.output {
+                FnRetTy::Default(_) => {
+                    if let [.., param] = &*fn_ptr.decl.inputs {
+                        ast_ty_search_pat(&param.ty).1
+                    } else {
+                        Pat::Str("(")
+                    }
+                },
+                FnRetTy::Ty(ty) => ast_ty_search_pat(ty).1,
+            },
+        ),
+        TyKind::Never => (Pat::Str("!"), Pat::Str("!")),
+        // Parenthesis are trimmed from the text before the search patterns are matched.
+        // See: `span_matches_pat`
+        TyKind::Tup(tup) => match &**tup {
+            [] => (Pat::Str(")"), Pat::Str("(")),
+            [ty] => ast_ty_search_pat(ty),
+            [head, .., tail] => (ast_ty_search_pat(head).0, ast_ty_search_pat(tail).1),
+        },
+        TyKind::ImplTrait(..) => (Pat::Str("impl"), Pat::Str("")),
+        TyKind::Path(qself_path, path) => {
+            let start = if qself_path.is_some() {
+                Pat::Str("<")
+            } else if let Some(first) = path.segments.first() {
+                ident_search_pat(first.ident).0
+            } else {
+                // this shouldn't be possible, but sure
+                Pat::Str("")
+            };
+            let end = if let Some(last) = path.segments.last() {
+                match last.args.as_deref() {
+                    // last `>` in `std::foo::Bar<T>`
+                    Some(GenericArgs::AngleBracketed(_)) => Pat::Str(">"),
+                    Some(GenericArgs::Parenthesized(par_args)) => match &par_args.output {
+                        FnRetTy::Default(_) => {
+                            if let Some(last) = par_args.inputs.last() {
+                                // `B` in `(A, B)` -- `)` gets stripped
+                                ast_ty_search_pat(last).1
+                            } else {
+                                // `(` in `()` -- `)` gets stripped
+                                Pat::Str("(")
+                            }
+                        },
+                        // `C` in `(A, B) -> C`
+                        FnRetTy::Ty(ty) => ast_ty_search_pat(ty).1,
+                    },
+                    // last `..` in `(..)` -- `)` gets stripped
+                    Some(GenericArgs::ParenthesizedElided(_)) => Pat::Str(".."),
+                    // `bar` in `std::foo::bar`
+                    None => ident_search_pat(last.ident).1,
+                }
+            } else {
+                // this shouldn't be possible, but sure
+                #[allow(
+                    clippy::collapsible_else_if,
+                    reason = "we want to keep these cases together, since they are both impossible"
+                )]
+                if qself_path.is_some() {
+                    // last `>` in `<Vec as IntoIterator>`
+                    Pat::Str(">")
+                } else {
+                    Pat::Str("")
+                }
+            };
+            (start, end)
+        },
+        TyKind::Infer => (Pat::Str("_"), Pat::Str("_")),
+        TyKind::Paren(ty) => ast_ty_search_pat(ty),
+        TyKind::UnsafeBinder(binder_ty) => (Pat::Str("unsafe"), ast_ty_search_pat(&binder_ty.inner_ty).1),
+        TyKind::TraitObject(_, trait_obj_syntax) => {
+            if let TraitObjectSyntax::Dyn = trait_obj_syntax {
+                (Pat::Str("dyn"), Pat::Str(""))
+            } else {
+                // NOTE: `TraitObject` is incomplete. It will always return true then.
+                (Pat::Str(""), Pat::Str(""))
+            }
+        },
+        TyKind::MacCall(mac_call) => {
+            let start = if let Some(first) = mac_call.path.segments.first() {
+                ident_search_pat(first.ident).0
+            } else {
+                Pat::Str("")
+            };
+            (start, Pat::Str(""))
+        },
+
+        // implicit, so has no contents to match against
+        TyKind::ImplicitSelf
+
+        // experimental
+        |TyKind::Pat(..)
+
+        // unused
+        | TyKind::CVarArgs
+        | TyKind::Typeof(_)
+
+        // placeholder
+        | TyKind::Dummy
+        | TyKind::Err(_) => (Pat::Str(""), Pat::Str("")),
     }
 }
 
@@ -442,6 +574,7 @@ impl_with_search_pat!((_cx: LateContext<'tcx>, self: Lit) => lit_search_pat(&sel
 impl_with_search_pat!((_cx: LateContext<'tcx>, self: Path<'_>) => path_search_pat(self));
 
 impl_with_search_pat!((_cx: EarlyContext<'tcx>, self: Attribute) => attr_search_pat(self));
+impl_with_search_pat!((_cx: EarlyContext<'tcx>, self: ast::Ty) => ast_ty_search_pat(self));
 
 impl<'cx> WithSearchPat<'cx> for (&FnKind<'cx>, &Body<'cx>, HirId, Span) {
     type Context = LateContext<'cx>;

@@ -1,7 +1,7 @@
 <svg width="886px" height="9524px" xmlns="http://www.w3.org/2000/svg">
   <style>
     .fg { fill: #AAAAAA }
-    .bg { background: #000000 }
+    .bg { fill: #000000 }
     .fg-ansi256-009 { fill: #FF5555 }
     .fg-ansi256-010 { fill: #55FF55 }
     .fg-ansi256-012 { fill: #5555FF }
@@ -455,7 +455,7 @@
 </tspan>
     <tspan x="10px" y="3916px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan>
 </tspan>
-    <tspan x="10px" y="3934px"><tspan class="fg-ansi256-014 bold">help</tspan><tspan>: there is a variant with a similar name (notice the capitalization difference)</tspan>
+    <tspan x="10px" y="3934px"><tspan class="fg-ansi256-014 bold">help</tspan><tspan>: there is a variant with a similar name (notice the capitalization)</tspan>
 </tspan>
     <tspan x="10px" y="3952px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan>
 </tspan>

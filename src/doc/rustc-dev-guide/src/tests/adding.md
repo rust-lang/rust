@@ -1,7 +1,5 @@
 # Adding new tests
 
-<!-- toc -->
-
 **In general, we expect every PR that fixes a bug in rustc to come accompanied
 by a regression test of some kind.** This test should fail in master but pass
 after the PR. These tests are really useful for preventing us from repeating the
@@ -31,6 +29,8 @@ guidelines:
     suites.
   - Need to inspect the resulting binary in some way? Or if all the other test
     suites are too limited for your purposes? Then use `run-make`.
+    - Use `run-make-cargo` if you need to exercise in-tree `cargo` in conjunction
+      with in-tree `rustc`.
   - Check out the [compiletest] chapter for more specialized test suites.
 
 After deciding on which kind of test to add, see [best

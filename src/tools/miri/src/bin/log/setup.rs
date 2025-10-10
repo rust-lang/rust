@@ -60,7 +60,7 @@ fn init_logger_once(early_dcx: &EarlyDiagCtxt) {
             #[cfg(not(feature = "tracing"))]
             {
                 crate::fatal_error!(
-                    "fatal error: cannot enable MIRI_TRACING since Miri was not built with the \"tracing\" feature"
+                    "Cannot enable MIRI_TRACING since Miri was not built with the \"tracing\" feature"
                 );
             }
 

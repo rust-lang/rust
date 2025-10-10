@@ -43,7 +43,7 @@ fn type_op_normalize<'tcx, T>(
 where
     T: fmt::Debug + TypeFoldable<TyCtxt<'tcx>>,
 {
-    let (param_env, Normalize { value }) = key.into_parts();
+    let ParamEnvAnd { param_env, value: Normalize { value } } = key;
     let Normalized { value, obligations } =
         ocx.infcx.at(&ObligationCause::dummy(), param_env).query_normalize(value)?;
     ocx.register_obligations(obligations);
@@ -96,6 +96,6 @@ pub fn type_op_prove_predicate_with_cause<'tcx>(
     key: ParamEnvAnd<'tcx, ProvePredicate<'tcx>>,
     cause: ObligationCause<'tcx>,
 ) {
-    let (param_env, ProvePredicate { predicate }) = key.into_parts();
+    let ParamEnvAnd { param_env, value: ProvePredicate { predicate } } = key;
     ocx.register_obligation(Obligation::new(ocx.infcx.tcx, cause, param_env, predicate));
 }

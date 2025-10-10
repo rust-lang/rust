@@ -8,8 +8,9 @@ use rustc_ast::{Path, Visibility};
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, Subdiagnostic,
+    SuggestionStyle,
 };
-use rustc_macros::{Diagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::edition::{Edition, LATEST_STABLE_EDITION};
 use rustc_span::{Ident, Span, Symbol};
@@ -69,6 +70,20 @@ pub(crate) struct BadQPathStage2 {
     pub span: Span,
     #[subdiagnostic]
     pub wrap: WrapType,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_trait_impl_modifier_in_inherent_impl)]
+#[note]
+pub(crate) struct TraitImplModifierInInherentImpl {
+    #[primary_span]
+    pub span: Span,
+    pub modifier: &'static str,
+    pub modifier_name: &'static str,
+    #[label(parse_because)]
+    pub modifier_span: Span,
+    #[label(parse_type)]
+    pub self_ty: Span,
 }
 
 #[derive(Subdiagnostic)]
@@ -585,14 +600,13 @@ pub(crate) struct MissingInInForLoop {
 
 #[derive(Subdiagnostic)]
 pub(crate) enum MissingInInForLoopSub {
+    // User wrote `for pat of expr {}`
     // Has been misleading, at least in the past (closed Issue #48492), thus maybe-incorrect
-    #[suggestion(
-        parse_use_in_not_of,
-        style = "verbose",
-        applicability = "maybe-incorrect",
-        code = "in"
-    )]
+    #[suggestion(parse_use_in, style = "verbose", applicability = "maybe-incorrect", code = "in")]
     InNotOf(#[primary_span] Span),
+    // User wrote `for pat = expr {}`
+    #[suggestion(parse_use_in, style = "verbose", applicability = "maybe-incorrect", code = "in")]
+    InNotEq(#[primary_span] Span),
     #[suggestion(parse_add_in, style = "verbose", applicability = "maybe-incorrect", code = " in ")]
     AddIn(#[primary_span] Span),
 }
@@ -1003,10 +1017,6 @@ pub(crate) struct InvalidLiteralSuffixOnTupleIndex {
     #[label]
     pub span: Span,
     pub suffix: Symbol,
-    #[help(parse_tuple_exception_line_1)]
-    #[help(parse_tuple_exception_line_2)]
-    #[help(parse_tuple_exception_line_3)]
-    pub exception: bool,
 }
 
 #[derive(Diagnostic)]
@@ -1484,6 +1494,34 @@ pub(crate) struct DocCommentOnParamType {
 #[derive(Diagnostic)]
 #[diag(parse_attribute_on_param_type)]
 pub(crate) struct AttributeOnParamType {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_attribute_on_type)]
+pub(crate) struct AttributeOnType {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[suggestion(code = "", applicability = "machine-applicable", style = "tool-only")]
+    pub fix_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_attribute_on_generic_arg)]
+pub(crate) struct AttributeOnGenericArg {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[suggestion(code = "", applicability = "machine-applicable", style = "tool-only")]
+    pub fix_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_attribute_on_empty_type)]
+pub(crate) struct AttributeOnEmptyType {
     #[primary_span]
     #[label]
     pub span: Span,
@@ -2187,11 +2225,10 @@ pub(crate) struct KeywordLifetime {
 }
 
 #[derive(Diagnostic)]
-#[diag(parse_invalid_label)]
-pub(crate) struct InvalidLabel {
+#[diag(parse_keyword_label)]
+pub(crate) struct KeywordLabel {
     #[primary_span]
     pub span: Span,
-    pub name: Symbol,
 }
 
 #[derive(Diagnostic)]
@@ -2620,7 +2657,7 @@ pub(crate) enum TopLevelOrPatternNotAllowedSugg {
         parse_sugg_remove_leading_vert_in_pattern,
         code = "",
         applicability = "machine-applicable",
-        style = "verbose"
+        style = "tool-only"
     )]
     RemoveLeadingVert {
         #[primary_span]
@@ -2653,12 +2690,25 @@ pub(crate) struct UnexpectedVertVertInPattern {
     pub start: Option<Span>,
 }
 
+#[derive(Subdiagnostic)]
+#[suggestion(
+    parse_trailing_vert_not_allowed,
+    code = "",
+    applicability = "machine-applicable",
+    style = "tool-only"
+)]
+pub(crate) struct TrailingVertSuggestion {
+    #[primary_span]
+    pub span: Span,
+}
+
 #[derive(Diagnostic)]
 #[diag(parse_trailing_vert_not_allowed)]
 pub(crate) struct TrailingVertNotAllowed {
     #[primary_span]
-    #[suggestion(code = "", applicability = "machine-applicable", style = "verbose")]
     pub span: Span,
+    #[subdiagnostic]
+    pub suggestion: TrailingVertSuggestion,
     #[label(parse_label_while_parsing_or_pattern_here)]
     pub start: Option<Span>,
     pub token: Token,
@@ -2673,7 +2723,9 @@ pub(crate) struct DotDotDotRestPattern {
     #[label]
     pub span: Span,
     #[suggestion(style = "verbose", code = "", applicability = "machine-applicable")]
-    pub suggestion: Span,
+    pub suggestion: Option<Span>,
+    #[note]
+    pub var_args: Option<()>,
 }
 
 #[derive(Diagnostic)]
@@ -2981,6 +3033,14 @@ pub(crate) struct NestedCVariadicType {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_dotdotdot_rest_type)]
+#[note]
+pub(crate) struct InvalidCVariadicType {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_invalid_dyn_keyword)]
 #[help]
 pub(crate) struct InvalidDynKeyword {
@@ -3107,27 +3167,6 @@ pub(crate) struct ModifierLifetime {
     #[suggestion(style = "tool-only", applicability = "maybe-incorrect", code = "")]
     pub span: Span,
     pub modifier: &'static str,
-}
-
-#[derive(Subdiagnostic)]
-#[multipart_suggestion(
-    parse_parenthesized_lifetime_suggestion,
-    applicability = "machine-applicable"
-)]
-pub(crate) struct RemoveParens {
-    #[suggestion_part(code = "")]
-    pub lo: Span,
-    #[suggestion_part(code = "")]
-    pub hi: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(parse_parenthesized_lifetime)]
-pub(crate) struct ParenthesizedLifetime {
-    #[primary_span]
-    pub span: Span,
-    #[subdiagnostic]
-    pub sugg: RemoveParens,
 }
 
 #[derive(Diagnostic)]
@@ -3313,15 +3352,6 @@ pub(crate) struct KwBadCase<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(parse_meta_bad_delim)]
-pub(crate) struct MetaBadDelim {
-    #[primary_span]
-    pub span: Span,
-    #[subdiagnostic]
-    pub sugg: MetaBadDelimSugg,
-}
-
-#[derive(Diagnostic)]
 #[diag(parse_cfg_attr_bad_delim)]
 pub(crate) struct CfgAttrBadDelim {
     #[primary_span]
@@ -3461,38 +3491,6 @@ pub(crate) struct DotDotRangeAttribute {
 }
 
 #[derive(Diagnostic)]
-#[diag(parse_invalid_attr_unsafe)]
-#[note]
-pub(crate) struct InvalidAttrUnsafe {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    pub name: Path,
-}
-
-#[derive(Diagnostic)]
-#[diag(parse_unsafe_attr_outside_unsafe)]
-pub(crate) struct UnsafeAttrOutsideUnsafe {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    #[subdiagnostic]
-    pub suggestion: UnsafeAttrOutsideUnsafeSuggestion,
-}
-
-#[derive(Subdiagnostic)]
-#[multipart_suggestion(
-    parse_unsafe_attr_outside_unsafe_suggestion,
-    applicability = "machine-applicable"
-)]
-pub(crate) struct UnsafeAttrOutsideUnsafeSuggestion {
-    #[suggestion_part(code = "unsafe(")]
-    pub left: Span,
-    #[suggestion_part(code = ")")]
-    pub right: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(parse_binder_before_modifiers)]
 pub(crate) struct BinderBeforeModifiers {
     #[primary_span]
@@ -3609,4 +3607,77 @@ pub(crate) struct AsmExpectedStringLiteral {
 pub(crate) struct ExpectedRegisterClassOrExplicitRegister {
     #[primary_span]
     pub(crate) span: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(parse_hidden_unicode_codepoints)]
+#[note]
+pub(crate) struct HiddenUnicodeCodepointsDiag {
+    pub label: String,
+    pub count: usize,
+    #[label]
+    pub span_label: Span,
+    #[subdiagnostic]
+    pub labels: Option<HiddenUnicodeCodepointsDiagLabels>,
+    #[subdiagnostic]
+    pub sub: HiddenUnicodeCodepointsDiagSub,
+}
+
+pub(crate) struct HiddenUnicodeCodepointsDiagLabels {
+    pub spans: Vec<(char, Span)>,
+}
+
+impl Subdiagnostic for HiddenUnicodeCodepointsDiagLabels {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+        for (c, span) in self.spans {
+            diag.span_label(span, format!("{c:?}"));
+        }
+    }
+}
+
+pub(crate) enum HiddenUnicodeCodepointsDiagSub {
+    Escape { spans: Vec<(char, Span)> },
+    NoEscape { spans: Vec<(char, Span)> },
+}
+
+// Used because of multiple multipart_suggestion and note
+impl Subdiagnostic for HiddenUnicodeCodepointsDiagSub {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+        match self {
+            HiddenUnicodeCodepointsDiagSub::Escape { spans } => {
+                diag.multipart_suggestion_with_style(
+                    fluent::parse_suggestion_remove,
+                    spans.iter().map(|(_, span)| (*span, "".to_string())).collect(),
+                    Applicability::MachineApplicable,
+                    SuggestionStyle::HideCodeAlways,
+                );
+                diag.multipart_suggestion(
+                    fluent::parse_suggestion_escape,
+                    spans
+                        .into_iter()
+                        .map(|(c, span)| {
+                            let c = format!("{c:?}");
+                            (span, c[1..c.len() - 1].to_string())
+                        })
+                        .collect(),
+                    Applicability::MachineApplicable,
+                );
+            }
+            HiddenUnicodeCodepointsDiagSub::NoEscape { spans } => {
+                // FIXME: in other suggestions we've reversed the inner spans of doc comments. We
+                // should do the same here to provide the same good suggestions as we do for
+                // literals above.
+                diag.arg(
+                    "escaped",
+                    spans
+                        .into_iter()
+                        .map(|(c, _)| format!("{c:?}"))
+                        .collect::<Vec<String>>()
+                        .join(", "),
+                );
+                diag.note(fluent::parse_suggestion_remove);
+                diag.note(fluent::parse_no_suggestion_note_escape);
+            }
+        }
+    }
 }

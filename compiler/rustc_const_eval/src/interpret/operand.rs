@@ -13,6 +13,7 @@ use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter};
 use rustc_middle::ty::{ConstInt, ScalarInt, Ty, TyCtxt};
 use rustc_middle::{bug, mir, span_bug, ty};
 use rustc_span::DUMMY_SP;
+use tracing::field::Empty;
 use tracing::trace;
 
 use super::{
@@ -20,6 +21,7 @@ use super::{
     OffsetMode, PlaceTy, Pointer, Projectable, Provenance, Scalar, alloc_range, err_ub,
     from_known_layout, interp_ok, mir_assign_valid_types, throw_ub,
 };
+use crate::enter_trace_span;
 
 /// An `Immediate` represents a single immediate self-contained Rust value.
 ///
@@ -173,6 +175,16 @@ impl<Prov: Provenance> Immediate<Prov> {
         }
         interp_ok(())
     }
+
+    pub fn has_provenance(&self) -> bool {
+        match self {
+            Immediate::Scalar(scalar) => matches!(scalar, Scalar::Ptr { .. }),
+            Immediate::ScalarPair(s1, s2) => {
+                matches!(s1, Scalar::Ptr { .. }) || matches!(s2, Scalar::Ptr { .. })
+            }
+            Immediate::Uninit => false,
+        }
+    }
 }
 
 // ScalarPair needs a type to interpret, so we often have an immediate and a type together
@@ -186,18 +198,18 @@ pub struct ImmTy<'tcx, Prov: Provenance = CtfeProvenance> {
 impl<Prov: Provenance> std::fmt::Display for ImmTy<'_, Prov> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         /// Helper function for printing a scalar to a FmtPrinter
-        fn p<'a, 'tcx, Prov: Provenance>(
-            cx: &mut FmtPrinter<'a, 'tcx>,
+        fn print_scalar<'a, 'tcx, Prov: Provenance>(
+            p: &mut FmtPrinter<'a, 'tcx>,
             s: Scalar<Prov>,
             ty: Ty<'tcx>,
         ) -> Result<(), std::fmt::Error> {
             match s {
-                Scalar::Int(int) => cx.pretty_print_const_scalar_int(int, ty, true),
+                Scalar::Int(int) => p.pretty_print_const_scalar_int(int, ty, true),
                 Scalar::Ptr(ptr, _sz) => {
                     // Just print the ptr value. `pretty_print_const_scalar_ptr` would also try to
                     // print what is points to, which would fail since it has no access to the local
                     // memory.
-                    cx.pretty_print_const_pointer(ptr, ty)
+                    p.pretty_print_const_pointer(ptr, ty)
                 }
             }
         }
@@ -205,8 +217,9 @@ impl<Prov: Provenance> std::fmt::Display for ImmTy<'_, Prov> {
             match self.imm {
                 Immediate::Scalar(s) => {
                     if let Some(ty) = tcx.lift(self.layout.ty) {
-                        let s =
-                            FmtPrinter::print_string(tcx, Namespace::ValueNS, |cx| p(cx, s, ty))?;
+                        let s = FmtPrinter::print_string(tcx, Namespace::ValueNS, |p| {
+                            print_scalar(p, s, ty)
+                        })?;
                         f.write_str(&s)?;
                         return Ok(());
                     }
@@ -770,6 +783,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         mir_place: mir::Place<'tcx>,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
+        let _trace = enter_trace_span!(
+            M,
+            step::eval_place_to_op,
+            ?mir_place,
+            tracing_separate_thread = Empty
+        );
+
         // Do not use the layout passed in as argument if the base we are looking at
         // here is not the entire place.
         let layout = if mir_place.projection.is_empty() { layout } else { None };
@@ -813,6 +833,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         mir_op: &mir::Operand<'tcx>,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
+        let _trace =
+            enter_trace_span!(M, step::eval_operand, ?mir_op, tracing_separate_thread = Empty);
+
         use rustc_middle::mir::Operand::*;
         let op = match mir_op {
             // FIXME: do some more logic on `move` to invalidate the old location

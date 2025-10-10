@@ -185,3 +185,60 @@ mod issue_2496 {
         unimplemented!()
     }
 }
+
+fn needless_loop() {
+    use std::hint::black_box;
+    let x = [0; 64];
+    for i in 0..64 {
+        let y = [0; 64];
+
+        black_box(x[i]);
+        black_box(y[i]);
+    }
+
+    for i in 0..64 {
+        black_box(x[i]);
+        black_box([0; 64][i]);
+    }
+
+    for i in 0..64 {
+        black_box(x[i]);
+        black_box([1, 2, 3, 4, 5, 6, 7, 8][i]);
+    }
+
+    for i in 0..64 {
+        black_box([1, 2, 3, 4, 5, 6, 7, 8][i]);
+    }
+}
+
+fn issue_15068() {
+    let a = vec![vec![0u8; MAX_LEN]; MAX_LEN];
+    let b = vec![0u8; MAX_LEN];
+
+    for i in 0..MAX_LEN {
+        // no error
+        let _ = a[0][i];
+        let _ = b[i];
+    }
+
+    for i in 0..MAX_LEN {
+        // no error
+        let _ = a[i][0];
+        let _ = b[i];
+    }
+
+    for i in 0..MAX_LEN {
+        // no error
+        let _ = a[i][b[i] as usize];
+    }
+
+    for i in 0..MAX_LEN {
+        //~^ needless_range_loop
+        let _ = a[i][i];
+    }
+
+    for i in 0..MAX_LEN {
+        //~^ needless_range_loop
+        let _ = a[0][i];
+    }
+}

@@ -127,3 +127,13 @@ mod issue14704 {
         async fn cancel(self: Arc<Self>) {}
     }
 }
+
+mod issue15305 {
+    async fn todo_task() -> Result<(), String> {
+        todo!("Implement task");
+    }
+
+    async fn unimplemented_task() -> Result<(), String> {
+        unimplemented!("Implement task");
+    }
+}

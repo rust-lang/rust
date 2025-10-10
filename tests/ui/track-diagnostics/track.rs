@@ -14,7 +14,7 @@
 //@ normalize-stderr: "note: compiler flags: .*-Z ui-testing.*-Z track-diagnostics" -> "note: compiler flags: ... -Z ui-testing ... -Z track-diagnostics"
 
 fn main() {
-    break rust
+    break rust;
     //~^ ERROR cannot find value `rust` in this scope
     //~| NOTE created at
     //~| ERROR `break` outside of a loop or labeled block

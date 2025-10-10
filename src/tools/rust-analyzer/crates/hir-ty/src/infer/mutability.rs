@@ -124,53 +124,41 @@ impl InferenceContext<'_> {
                 self.infer_mut_not_expr_iter(fields.iter().map(|it| it.expr).chain(*spread))
             }
             &Expr::Index { base, index } => {
-                if mutability == Mutability::Mut {
-                    if let Some((f, _)) = self.result.method_resolutions.get_mut(&tgt_expr) {
-                        if let Some(index_trait) =
-                            LangItem::IndexMut.resolve_trait(self.db, self.table.trait_env.krate)
-                        {
-                            if let Some(index_fn) = index_trait
-                                .trait_items(self.db)
-                                .method_by_name(&Name::new_symbol_root(sym::index_mut))
-                            {
-                                *f = index_fn;
-                                let mut base_ty = None;
-                                let base_adjustments = self
-                                    .result
-                                    .expr_adjustments
-                                    .get_mut(&base)
-                                    .and_then(|it| it.last_mut());
-                                if let Some(Adjustment {
-                                    kind: Adjust::Borrow(AutoBorrow::Ref(_, mutability)),
-                                    target,
-                                }) = base_adjustments
-                                {
-                                    if let TyKind::Ref(_, _, ty) = target.kind(Interner) {
-                                        base_ty = Some(ty.clone());
-                                    }
-                                    *mutability = Mutability::Mut;
-                                }
-
-                                // Apply `IndexMut` obligation for non-assignee expr
-                                if let Some(base_ty) = base_ty {
-                                    let index_ty =
-                                        if let Some(ty) = self.result.type_of_expr.get(index) {
-                                            ty.clone()
-                                        } else {
-                                            self.infer_expr(
-                                                index,
-                                                &Expectation::none(),
-                                                ExprIsRead::Yes,
-                                            )
-                                        };
-                                    let trait_ref = TyBuilder::trait_ref(self.db, index_trait)
-                                        .push(base_ty)
-                                        .fill(|_| index_ty.clone().cast(Interner))
-                                        .build();
-                                    self.push_obligation(trait_ref.cast(Interner));
-                                }
-                            }
+                if mutability == Mutability::Mut
+                    && let Some((f, _)) = self.result.method_resolutions.get_mut(&tgt_expr)
+                    && let Some(index_trait) =
+                        LangItem::IndexMut.resolve_trait(self.db, self.table.trait_env.krate)
+                    && let Some(index_fn) = index_trait
+                        .trait_items(self.db)
+                        .method_by_name(&Name::new_symbol_root(sym::index_mut))
+                {
+                    *f = index_fn;
+                    let mut base_ty = None;
+                    let base_adjustments =
+                        self.result.expr_adjustments.get_mut(&base).and_then(|it| it.last_mut());
+                    if let Some(Adjustment {
+                        kind: Adjust::Borrow(AutoBorrow::Ref(_, mutability)),
+                        target,
+                    }) = base_adjustments
+                    {
+                        if let TyKind::Ref(_, _, ty) = target.kind(Interner) {
+                            base_ty = Some(ty.clone());
                         }
+                        *mutability = Mutability::Mut;
+                    }
+
+                    // Apply `IndexMut` obligation for non-assignee expr
+                    if let Some(base_ty) = base_ty {
+                        let index_ty = if let Some(ty) = self.result.type_of_expr.get(index) {
+                            ty.clone()
+                        } else {
+                            self.infer_expr(index, &Expectation::none(), ExprIsRead::Yes)
+                        };
+                        let trait_ref = TyBuilder::trait_ref(self.db, index_trait)
+                            .push(base_ty)
+                            .fill(|_| index_ty.clone().cast(Interner))
+                            .build();
+                        self.push_obligation(trait_ref.cast(Interner));
                     }
                 }
                 self.infer_mut_expr(base, mutability);
@@ -178,28 +166,23 @@ impl InferenceContext<'_> {
             }
             Expr::UnaryOp { expr, op: UnaryOp::Deref } => {
                 let mut mutability = mutability;
-                if let Some((f, _)) = self.result.method_resolutions.get_mut(&tgt_expr) {
-                    if mutability == Mutability::Mut {
-                        if let Some(deref_trait) =
-                            LangItem::DerefMut.resolve_trait(self.db, self.table.trait_env.krate)
-                        {
-                            let ty = self.result.type_of_expr.get(*expr);
-                            let is_mut_ptr = ty.is_some_and(|ty| {
-                                let ty = self.table.resolve_ty_shallow(ty);
-                                matches!(
-                                    ty.kind(Interner),
-                                    chalk_ir::TyKind::Raw(Mutability::Mut, _)
-                                )
-                            });
-                            if is_mut_ptr {
-                                mutability = Mutability::Not;
-                            } else if let Some(deref_fn) = deref_trait
-                                .trait_items(self.db)
-                                .method_by_name(&Name::new_symbol_root(sym::deref_mut))
-                            {
-                                *f = deref_fn;
-                            }
-                        }
+                if let Some((f, _)) = self.result.method_resolutions.get_mut(&tgt_expr)
+                    && mutability == Mutability::Mut
+                    && let Some(deref_trait) =
+                        LangItem::DerefMut.resolve_trait(self.db, self.table.trait_env.krate)
+                {
+                    let ty = self.result.type_of_expr.get(*expr);
+                    let is_mut_ptr = ty.is_some_and(|ty| {
+                        let ty = self.table.resolve_ty_shallow(ty);
+                        matches!(ty.kind(Interner), chalk_ir::TyKind::Raw(Mutability::Mut, _))
+                    });
+                    if is_mut_ptr {
+                        mutability = Mutability::Not;
+                    } else if let Some(deref_fn) = deref_trait
+                        .trait_items(self.db)
+                        .method_by_name(&Name::new_symbol_root(sym::deref_mut))
+                    {
+                        *f = deref_fn;
                     }
                 }
                 self.infer_mut_expr(*expr, mutability);

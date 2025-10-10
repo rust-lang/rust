@@ -7,12 +7,10 @@ fn main() {
     use std::hint::black_box;
 
     macro_rules! check {
-        ($ty:ty, $expr:expr) => {
-            {
-                const EXPECTED: $ty = $expr;
-                assert_eq!($expr, EXPECTED);
-            }
-        };
+        ($ty:ty, $expr:expr) => {{
+            const EXPECTED: $ty = $expr;
+            assert_eq!($expr, EXPECTED);
+        }};
     }
 
     check!(u32, (2220326408_u32 + black_box(1)) >> (32 - 6));

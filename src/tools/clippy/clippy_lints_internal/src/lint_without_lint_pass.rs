@@ -1,7 +1,7 @@
 use crate::internal_paths;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
-use clippy_utils::is_lint_allowed;
 use clippy_utils::macros::root_macro_call_first_node;
+use clippy_utils::{is_lint_allowed, sym};
 use rustc_ast::ast::LitKind;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_hir as hir;
@@ -12,9 +12,9 @@ use rustc_hir::{ExprKind, HirId, Item, MutTy, Mutability, Path, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::Span;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Symbol;
-use rustc_span::{Span, sym};
 
 declare_tool_lint! {
     /// ### What it does
@@ -160,9 +160,8 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
                 let body = cx.tcx.hir_body_owned_by(
                     impl_item_refs
                         .iter()
-                        .find(|iiref| iiref.ident.as_str() == "lint_vec")
+                        .find(|&&iiref| cx.tcx.item_name(iiref.owner_id) == sym::lint_vec)
                         .expect("LintPass needs to implement lint_vec")
-                        .id
                         .owner_id
                         .def_id,
                 );

@@ -1,7 +1,5 @@
 # Overview of the compiler
 
-<!-- toc -->
-
 This chapter is about the overall process of compiling a program -- how
 everything fits together.
 
@@ -322,6 +320,10 @@ the name `'tcx`, which means that something is tied to the lifetime of the
 [`TyCtxt`] (usually it is stored or interned there).
 
 [`TyCtxt`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html
+
+For more information about queries in the compiler, see [the queries chapter][queries].
+
+[queries]: ./query.md
 
 ### `ty::Ty`
 

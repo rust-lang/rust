@@ -90,13 +90,8 @@ impl DefMap {
                 return true;
             }
 
-            if segments.len() == 1 {
-                if find_builtin_attr_idx(name).is_some() {
-                    return true;
-                }
-                if self.data.registered_attrs.iter().any(pred) {
-                    return true;
-                }
+            if segments.len() == 1 && find_builtin_attr_idx(name).is_some() {
+                return true;
             }
         }
         false

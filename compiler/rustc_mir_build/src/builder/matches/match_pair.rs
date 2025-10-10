@@ -124,9 +124,19 @@ impl<'tcx> MatchPairTree<'tcx> {
         let test_case = match pattern.kind {
             PatKind::Missing | PatKind::Wild | PatKind::Error(_) => None,
 
-            PatKind::Or { ref pats } => Some(TestCase::Or {
-                pats: pats.iter().map(|pat| FlatPat::new(place_builder.clone(), pat, cx)).collect(),
-            }),
+            PatKind::Or { ref pats } => {
+                let pats: Box<[FlatPat<'tcx>]> =
+                    pats.iter().map(|pat| FlatPat::new(place_builder.clone(), pat, cx)).collect();
+                if !pats[0].extra_data.bindings.is_empty() {
+                    // Hold a place for any bindings established in (possibly-nested) or-patterns.
+                    // By only holding a place when bindings are present, we skip over any
+                    // or-patterns that will be simplified by `merge_trivial_subcandidates`. In
+                    // other words, we can assume this expands into subcandidates.
+                    // FIXME(@dianne): this needs updating/removing if we always merge or-patterns
+                    extra_data.bindings.push(super::SubpatternBindings::FromOrPattern);
+                }
+                Some(TestCase::Or { pats })
+            }
 
             PatKind::Range(ref range) => {
                 if range.is_full_range(cx.tcx) == Some(true) {
@@ -194,12 +204,12 @@ impl<'tcx> MatchPairTree<'tcx> {
 
                 // Then push this binding, after any bindings in the subpattern.
                 if let Some(source) = place {
-                    extra_data.bindings.push(super::Binding {
+                    extra_data.bindings.push(super::SubpatternBindings::One(super::Binding {
                         span: pattern.span,
                         source,
                         var_id: var,
                         binding_mode: mode,
-                    });
+                    }));
                 }
 
                 None

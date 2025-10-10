@@ -151,7 +151,7 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
                     && let Node::Stmt(stmt) = node
                     && let StmtKind::Semi(e) = stmt.kind
                     && e.hir_id == expr.hir_id
-                    && let Some(arg_span) = arg.span.find_ancestor_inside(expr.span)
+                    && let Some(arg_span) = arg.span.find_ancestor_inside_same_ctxt(expr.span)
                 {
                     UseLetUnderscoreIgnoreSuggestion::Suggestion {
                         start_span: expr.span.shrink_to_lo().until(arg_span),

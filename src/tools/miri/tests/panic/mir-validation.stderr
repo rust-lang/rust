@@ -6,7 +6,7 @@ LL |             *(tuple.0) = 1;
    |             ^^^^^^^^^^^^^^
 
 
-thread 'rustc' panicked at compiler/rustc_mir_transform/src/validate.rs:LL:CC:
+thread 'rustc' ($TID) panicked at compiler/rustc_mir_transform/src/validate.rs:LL:CC:
 Box<dyn Any>
 stack backtrace:
 

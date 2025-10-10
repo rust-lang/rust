@@ -1,7 +1,8 @@
 //@ needs-sanitizer-cfi
-//@ compile-flags: -Ccodegen-units=1 -Clto -Ctarget-feature=-crt-static -Zsanitizer=cfi
+//@ compile-flags: -Ccodegen-units=1 -Clto -Ctarget-feature=-crt-static -Zsanitizer=cfi -C unsafe-allow-abi-mismatch=sanitizer
 //@ no-prefer-dynamic
 //@ only-x86_64-unknown-linux-gnu
+//@ ignore-backends: gcc
 //@ build-pass
 
 // See comment below for why this test exists.

@@ -604,13 +604,13 @@ impl<'db> AnyDiagnostic<'db> {
                 }
             }
             BodyValidationDiagnostic::RemoveUnnecessaryElse { if_expr } => {
-                if let Ok(source_ptr) = source_map.expr_syntax(if_expr) {
-                    if let Some(ptr) = source_ptr.value.cast::<ast::IfExpr>() {
-                        return Some(
-                            RemoveUnnecessaryElse { if_expr: InFile::new(source_ptr.file_id, ptr) }
-                                .into(),
-                        );
-                    }
+                if let Ok(source_ptr) = source_map.expr_syntax(if_expr)
+                    && let Some(ptr) = source_ptr.value.cast::<ast::IfExpr>()
+                {
+                    return Some(
+                        RemoveUnnecessaryElse { if_expr: InFile::new(source_ptr.file_id, ptr) }
+                            .into(),
+                    );
                 }
             }
         }

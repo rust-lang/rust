@@ -2,6 +2,10 @@
 // test_race depends on a deterministic schedule.
 //@compile-flags: -Zmiri-deterministic-concurrency
 use std::thread;
+
+#[path = "../../utils/libc.rs"]
+mod libc_utils;
+
 fn main() {
     test_pipe();
     test_pipe_threaded();
@@ -26,21 +30,29 @@ fn test_pipe() {
 
     // Read size == data available in buffer.
     let data = "12345".as_bytes().as_ptr();
-    let res = unsafe { libc::write(fds[1], data as *const libc::c_void, 5) };
+    let res = unsafe { libc_utils::write_all(fds[1], data as *const libc::c_void, 5) };
     assert_eq!(res, 5);
     let mut buf3: [u8; 5] = [0; 5];
-    let res = unsafe { libc::read(fds[0], buf3.as_mut_ptr().cast(), buf3.len() as libc::size_t) };
+    let res = unsafe {
+        libc_utils::read_all(fds[0], buf3.as_mut_ptr().cast(), buf3.len() as libc::size_t)
+    };
     assert_eq!(res, 5);
     assert_eq!(buf3, "12345".as_bytes());
 
     // Read size > data available in buffer.
-    let data = "123".as_bytes().as_ptr();
-    let res = unsafe { libc::write(fds[1], data as *const libc::c_void, 3) };
+    let data = "123".as_bytes();
+    let res = unsafe { libc_utils::write_all(fds[1], data.as_ptr() as *const libc::c_void, 3) };
     assert_eq!(res, 3);
     let mut buf4: [u8; 5] = [0; 5];
     let res = unsafe { libc::read(fds[0], buf4.as_mut_ptr().cast(), buf4.len() as libc::size_t) };
-    assert_eq!(res, 3);
-    assert_eq!(&buf4[0..3], "123".as_bytes());
+    assert!(res > 0 && res <= 3);
+    let res = res as usize;
+    assert_eq!(buf4[..res], data[..res]);
+    if res < 3 {
+        // Drain the rest from the read end.
+        let res = unsafe { libc_utils::read_all(fds[0], buf4[res..].as_mut_ptr().cast(), 3 - res) };
+        assert!(res > 0);
+    }
 }
 
 fn test_pipe_threaded() {
@@ -51,7 +63,7 @@ fn test_pipe_threaded() {
     let thread1 = thread::spawn(move || {
         let mut buf: [u8; 5] = [0; 5];
         let res: i64 = unsafe {
-            libc::read(fds[0], buf.as_mut_ptr().cast(), buf.len() as libc::size_t)
+            libc_utils::read_all(fds[0], buf.as_mut_ptr().cast(), buf.len() as libc::size_t)
                 .try_into()
                 .unwrap()
         };
@@ -60,7 +72,7 @@ fn test_pipe_threaded() {
     });
     thread::yield_now();
     let data = "abcde".as_bytes().as_ptr();
-    let res = unsafe { libc::write(fds[1], data as *const libc::c_void, 5) };
+    let res = unsafe { libc_utils::write_all(fds[1], data as *const libc::c_void, 5) };
     assert_eq!(res, 5);
     thread1.join().unwrap();
 
@@ -68,11 +80,12 @@ fn test_pipe_threaded() {
     let thread2 = thread::spawn(move || {
         thread::yield_now();
         let data = "12345".as_bytes().as_ptr();
-        let res = unsafe { libc::write(fds[1], data as *const libc::c_void, 5) };
+        let res = unsafe { libc_utils::write_all(fds[1], data as *const libc::c_void, 5) };
         assert_eq!(res, 5);
     });
     let mut buf: [u8; 5] = [0; 5];
-    let res = unsafe { libc::read(fds[0], buf.as_mut_ptr().cast(), buf.len() as libc::size_t) };
+    let res =
+        unsafe { libc_utils::read_all(fds[0], buf.as_mut_ptr().cast(), buf.len() as libc::size_t) };
     assert_eq!(res, 5);
     assert_eq!(buf, "12345".as_bytes());
     thread2.join().unwrap();
@@ -90,7 +103,7 @@ fn test_race() {
         // write() from the main thread will occur before the read() here
         // because preemption is disabled and the main thread yields after write().
         let res: i32 = unsafe {
-            libc::read(fds[0], buf.as_mut_ptr().cast(), buf.len() as libc::size_t)
+            libc_utils::read_all(fds[0], buf.as_mut_ptr().cast(), buf.len() as libc::size_t)
                 .try_into()
                 .unwrap()
         };
@@ -101,7 +114,7 @@ fn test_race() {
     });
     unsafe { VAL = 1 };
     let data = "a".as_bytes().as_ptr();
-    let res = unsafe { libc::write(fds[1], data as *const libc::c_void, 1) };
+    let res = unsafe { libc_utils::write_all(fds[1], data as *const libc::c_void, 1) };
     assert_eq!(res, 1);
     thread::yield_now();
     thread1.join().unwrap();
@@ -186,11 +199,12 @@ fn test_pipe_fcntl_threaded() {
         // the socket is now "non-blocking", the shim needs to deal correctly
         // with threads that were blocked before the socket was made non-blocking.
         let data = "abcde".as_bytes().as_ptr();
-        let res = unsafe { libc::write(fds[1], data as *const libc::c_void, 5) };
+        let res = unsafe { libc_utils::write_all(fds[1], data as *const libc::c_void, 5) };
         assert_eq!(res, 5);
     });
     // The `read` below will block.
-    let res = unsafe { libc::read(fds[0], buf.as_mut_ptr().cast(), buf.len() as libc::size_t) };
+    let res =
+        unsafe { libc_utils::read_all(fds[0], buf.as_mut_ptr().cast(), buf.len() as libc::size_t) };
     thread1.join().unwrap();
     assert_eq!(res, 5);
 }

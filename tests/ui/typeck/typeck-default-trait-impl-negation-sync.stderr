@@ -4,7 +4,11 @@ error[E0277]: `MyNotSync` cannot be shared between threads safely
 LL |     is_sync::<MyNotSync>();
    |               ^^^^^^^^^ `MyNotSync` cannot be shared between threads safely
    |
-   = help: the trait `Sync` is not implemented for `MyNotSync`
+help: the trait `Sync` is not implemented for `MyNotSync`
+  --> $DIR/typeck-default-trait-impl-negation-sync.rs:15:1
+   |
+LL | struct MyNotSync {
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `is_sync`
   --> $DIR/typeck-default-trait-impl-negation-sync.rs:29:15
    |
@@ -35,7 +39,11 @@ error[E0277]: `Managed` cannot be shared between threads safely
 LL |     is_sync::<MyTypeManaged>();
    |               ^^^^^^^^^^^^^ `Managed` cannot be shared between threads safely
    |
-   = help: within `MyTypeManaged`, the trait `Sync` is not implemented for `Managed`
+help: within `MyTypeManaged`, the trait `Sync` is not implemented for `Managed`
+  --> $DIR/typeck-default-trait-impl-negation-sync.rs:3:1
+   |
+LL | struct Managed;
+   | ^^^^^^^^^^^^^^
 note: required because it appears within the type `MyTypeManaged`
   --> $DIR/typeck-default-trait-impl-negation-sync.rs:25:8
    |

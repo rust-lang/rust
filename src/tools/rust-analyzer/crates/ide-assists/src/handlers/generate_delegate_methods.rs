@@ -2,9 +2,11 @@ use hir::{HasCrate, HasVisibility};
 use ide_db::{FxHashSet, path_transform::PathTransform};
 use syntax::{
     ast::{
-        self, AstNode, HasGenericParams, HasName, HasVisibility as _, edit_in_place::Indent, make,
+        self, AstNode, HasGenericParams, HasName, HasVisibility as _,
+        edit::{AstNodeEdit, IndentLevel},
+        make,
     },
-    ted,
+    syntax_editor::Position,
 };
 
 use crate::{
@@ -114,9 +116,13 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                         let source_scope = ctx.sema.scope(v.syntax());
                         let target_scope = ctx.sema.scope(strukt.syntax());
                         if let (Some(s), Some(t)) = (source_scope, target_scope) {
-                            PathTransform::generic_transformation(&t, &s).apply(v.syntax());
+                            ast::Fn::cast(
+                                PathTransform::generic_transformation(&t, &s).apply(v.syntax()),
+                            )
+                            .unwrap_or(v)
+                        } else {
+                            v
                         }
-                        v
                     }
                     None => return,
                 };
@@ -149,6 +155,7 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                 let ret_type = method_source.ret_type();
 
                 let f = make::fn_(
+                    None,
                     vis,
                     fn_name,
                     type_params,
@@ -161,54 +168,67 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                     is_unsafe,
                     is_gen,
                 )
-                .clone_for_update();
+                .indent(IndentLevel(1));
+                let item = ast::AssocItem::Fn(f.clone());
 
-                // Get the impl to update, or create one if we need to.
-                let impl_def = match impl_def {
-                    Some(impl_def) => edit.make_mut(impl_def),
+                let mut editor = edit.make_editor(strukt.syntax());
+                let fn_: Option<ast::AssocItem> = match impl_def {
+                    Some(impl_def) => match impl_def.assoc_item_list() {
+                        Some(assoc_item_list) => {
+                            let item = item.indent(IndentLevel::from_node(impl_def.syntax()));
+                            assoc_item_list.add_items(&mut editor, vec![item.clone()]);
+                            Some(item)
+                        }
+                        None => {
+                            let assoc_item_list = make::assoc_item_list(Some(vec![item]));
+                            editor.insert(
+                                Position::last_child_of(impl_def.syntax()),
+                                assoc_item_list.syntax(),
+                            );
+                            assoc_item_list.assoc_items().next()
+                        }
+                    },
                     None => {
                         let name = &strukt_name.to_string();
                         let ty_params = strukt.generic_param_list();
                         let ty_args = ty_params.as_ref().map(|it| it.to_generic_args());
                         let where_clause = strukt.where_clause();
+                        let assoc_item_list = make::assoc_item_list(Some(vec![item]));
 
                         let impl_def = make::impl_(
+                            None,
                             ty_params,
                             ty_args,
                             make::ty_path(make::ext::ident_path(name)),
                             where_clause,
-                            None,
+                            Some(assoc_item_list),
                         )
                         .clone_for_update();
 
                         // Fixup impl_def indentation
                         let indent = strukt.indent_level();
-                        impl_def.reindent_to(indent);
+                        let impl_def = impl_def.indent(indent);
 
                         // Insert the impl block.
                         let strukt = edit.make_mut(strukt.clone());
-                        ted::insert_all(
-                            ted::Position::after(strukt.syntax()),
+                        editor.insert_all(
+                            Position::after(strukt.syntax()),
                             vec![
                                 make::tokens::whitespace(&format!("\n\n{indent}")).into(),
                                 impl_def.syntax().clone().into(),
                             ],
                         );
-
-                        impl_def
+                        impl_def.assoc_item_list().and_then(|list| list.assoc_items().next())
                     }
                 };
 
-                // Fixup function indentation.
-                // FIXME: Should really be handled by `AssocItemList::add_item`
-                f.reindent_to(impl_def.indent_level() + 1);
-
-                let assoc_items = impl_def.get_or_create_assoc_item_list();
-                assoc_items.add_item(f.clone().into());
-
-                if let Some(cap) = ctx.config.snippet_cap {
-                    edit.add_tabstop_before(cap, f)
+                if let Some(cap) = ctx.config.snippet_cap
+                    && let Some(fn_) = fn_
+                {
+                    let tabstop = edit.make_tabstop_before(cap);
+                    editor.add_annotation(fn_.syntax(), tabstop);
                 }
+                edit.add_file_edits(ctx.vfs_file_id(), editor);
             },
         )?;
     }

@@ -563,8 +563,8 @@ impl AtomicBool {
     ///   `align_of::<AtomicBool>() == 1`).
     /// * `ptr` must be [valid] for both reads and writes for the whole lifetime `'a`.
     /// * You must adhere to the [Memory model for atomic accesses]. In particular, it is not
-    ///   allowed to mix atomic and non-atomic accesses, or atomic accesses of different sizes,
-    ///   without synchronization.
+    ///   allowed to mix conflicting atomic and non-atomic accesses, or atomic accesses of different
+    ///   sizes, without synchronization.
     ///
     /// [valid]: crate::ptr#safety
     /// [Memory model for atomic accesses]: self#memory-model-for-atomic-accesses
@@ -1245,8 +1245,8 @@ impl AtomicBool {
     /// Returning an `*mut` pointer from a shared reference to this atomic is safe because the
     /// atomic types work with interior mutability. All modifications of an atomic change the value
     /// through a shared reference, and can do so safely as long as they use atomic operations. Any
-    /// use of the returned raw pointer requires an `unsafe` block and still has to uphold the same
-    /// restriction: operations on it must be atomic.
+    /// use of the returned raw pointer requires an `unsafe` block and still has to uphold the
+    /// requirements of the [memory model].
     ///
     /// # Examples
     ///
@@ -1264,6 +1264,8 @@ impl AtomicBool {
     /// }
     /// # }
     /// ```
+    ///
+    /// [memory model]: self#memory-model-for-atomic-accesses
     #[inline]
     #[stable(feature = "atomic_as_ptr", since = "1.70.0")]
     #[rustc_const_stable(feature = "atomic_as_ptr", since = "1.70.0")]
@@ -1519,8 +1521,8 @@ impl<T> AtomicPtr<T> {
     ///   can be bigger than `align_of::<*mut T>()`).
     /// * `ptr` must be [valid] for both reads and writes for the whole lifetime `'a`.
     /// * You must adhere to the [Memory model for atomic accesses]. In particular, it is not
-    ///   allowed to mix atomic and non-atomic accesses, or atomic accesses of different sizes,
-    ///   without synchronization.
+    ///   allowed to mix conflicting atomic and non-atomic accesses, or atomic accesses of different
+    ///   sizes, without synchronization.
     ///
     /// [valid]: crate::ptr#safety
     /// [Memory model for atomic accesses]: self#memory-model-for-atomic-accesses
@@ -2197,7 +2199,6 @@ impl<T> AtomicPtr<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(strict_provenance_atomic_ptr)]
     /// use core::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let atom = AtomicPtr::<i64>::new(core::ptr::null_mut());
@@ -2207,7 +2208,7 @@ impl<T> AtomicPtr<T> {
     /// ```
     #[inline]
     #[cfg(target_has_atomic = "ptr")]
-    #[unstable(feature = "strict_provenance_atomic_ptr", issue = "99108")]
+    #[stable(feature = "strict_provenance_atomic_ptr", since = "1.91.0")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_ptr_add(&self, val: usize, order: Ordering) -> *mut T {
         self.fetch_byte_add(val.wrapping_mul(size_of::<T>()), order)
@@ -2238,7 +2239,6 @@ impl<T> AtomicPtr<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(strict_provenance_atomic_ptr)]
     /// use core::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let array = [1i32, 2i32];
@@ -2252,7 +2252,7 @@ impl<T> AtomicPtr<T> {
     /// ```
     #[inline]
     #[cfg(target_has_atomic = "ptr")]
-    #[unstable(feature = "strict_provenance_atomic_ptr", issue = "99108")]
+    #[stable(feature = "strict_provenance_atomic_ptr", since = "1.91.0")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_ptr_sub(&self, val: usize, order: Ordering) -> *mut T {
         self.fetch_byte_sub(val.wrapping_mul(size_of::<T>()), order)
@@ -2277,7 +2277,6 @@ impl<T> AtomicPtr<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(strict_provenance_atomic_ptr)]
     /// use core::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let atom = AtomicPtr::<i64>::new(core::ptr::null_mut());
@@ -2287,11 +2286,11 @@ impl<T> AtomicPtr<T> {
     /// ```
     #[inline]
     #[cfg(target_has_atomic = "ptr")]
-    #[unstable(feature = "strict_provenance_atomic_ptr", issue = "99108")]
+    #[stable(feature = "strict_provenance_atomic_ptr", since = "1.91.0")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_byte_add(&self, val: usize, order: Ordering) -> *mut T {
         // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe { atomic_add(self.p.get(), core::ptr::without_provenance_mut(val), order).cast() }
+        unsafe { atomic_add(self.p.get(), val, order).cast() }
     }
 
     /// Offsets the pointer's address by subtracting `val` *bytes*, returning the
@@ -2313,20 +2312,20 @@ impl<T> AtomicPtr<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(strict_provenance_atomic_ptr)]
     /// use core::sync::atomic::{AtomicPtr, Ordering};
     ///
-    /// let atom = AtomicPtr::<i64>::new(core::ptr::without_provenance_mut(1));
-    /// assert_eq!(atom.fetch_byte_sub(1, Ordering::Relaxed).addr(), 1);
-    /// assert_eq!(atom.load(Ordering::Relaxed).addr(), 0);
+    /// let mut arr = [0i64, 1];
+    /// let atom = AtomicPtr::<i64>::new(&raw mut arr[1]);
+    /// assert_eq!(atom.fetch_byte_sub(8, Ordering::Relaxed).addr(), (&raw const arr[1]).addr());
+    /// assert_eq!(atom.load(Ordering::Relaxed).addr(), (&raw const arr[0]).addr());
     /// ```
     #[inline]
     #[cfg(target_has_atomic = "ptr")]
-    #[unstable(feature = "strict_provenance_atomic_ptr", issue = "99108")]
+    #[stable(feature = "strict_provenance_atomic_ptr", since = "1.91.0")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_byte_sub(&self, val: usize, order: Ordering) -> *mut T {
         // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe { atomic_sub(self.p.get(), core::ptr::without_provenance_mut(val), order).cast() }
+        unsafe { atomic_sub(self.p.get(), val, order).cast() }
     }
 
     /// Performs a bitwise "or" operation on the address of the current pointer,
@@ -2358,7 +2357,6 @@ impl<T> AtomicPtr<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(strict_provenance_atomic_ptr)]
     /// use core::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let pointer = &mut 3i64 as *mut i64;
@@ -2373,11 +2371,11 @@ impl<T> AtomicPtr<T> {
     /// ```
     #[inline]
     #[cfg(target_has_atomic = "ptr")]
-    #[unstable(feature = "strict_provenance_atomic_ptr", issue = "99108")]
+    #[stable(feature = "strict_provenance_atomic_ptr", since = "1.91.0")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_or(&self, val: usize, order: Ordering) -> *mut T {
         // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe { atomic_or(self.p.get(), core::ptr::without_provenance_mut(val), order).cast() }
+        unsafe { atomic_or(self.p.get(), val, order).cast() }
     }
 
     /// Performs a bitwise "and" operation on the address of the current
@@ -2409,7 +2407,6 @@ impl<T> AtomicPtr<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(strict_provenance_atomic_ptr)]
     /// use core::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let pointer = &mut 3i64 as *mut i64;
@@ -2423,11 +2420,11 @@ impl<T> AtomicPtr<T> {
     /// ```
     #[inline]
     #[cfg(target_has_atomic = "ptr")]
-    #[unstable(feature = "strict_provenance_atomic_ptr", issue = "99108")]
+    #[stable(feature = "strict_provenance_atomic_ptr", since = "1.91.0")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_and(&self, val: usize, order: Ordering) -> *mut T {
         // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe { atomic_and(self.p.get(), core::ptr::without_provenance_mut(val), order).cast() }
+        unsafe { atomic_and(self.p.get(), val, order).cast() }
     }
 
     /// Performs a bitwise "xor" operation on the address of the current
@@ -2459,7 +2456,6 @@ impl<T> AtomicPtr<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(strict_provenance_atomic_ptr)]
     /// use core::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let pointer = &mut 3i64 as *mut i64;
@@ -2471,11 +2467,11 @@ impl<T> AtomicPtr<T> {
     /// ```
     #[inline]
     #[cfg(target_has_atomic = "ptr")]
-    #[unstable(feature = "strict_provenance_atomic_ptr", issue = "99108")]
+    #[stable(feature = "strict_provenance_atomic_ptr", since = "1.91.0")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_xor(&self, val: usize, order: Ordering) -> *mut T {
         // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe { atomic_xor(self.p.get(), core::ptr::without_provenance_mut(val), order).cast() }
+        unsafe { atomic_xor(self.p.get(), val, order).cast() }
     }
 
     /// Returns a mutable pointer to the underlying pointer.
@@ -2487,8 +2483,8 @@ impl<T> AtomicPtr<T> {
     /// Returning an `*mut` pointer from a shared reference to this atomic is safe because the
     /// atomic types work with interior mutability. All modifications of an atomic change the value
     /// through a shared reference, and can do so safely as long as they use atomic operations. Any
-    /// use of the returned raw pointer requires an `unsafe` block and still has to uphold the same
-    /// restriction: operations on it must be atomic.
+    /// use of the returned raw pointer requires an `unsafe` block and still has to uphold the
+    /// requirements of the [memory model].
     ///
     /// # Examples
     ///
@@ -2507,6 +2503,8 @@ impl<T> AtomicPtr<T> {
     ///     my_atomic_op(atomic.as_ptr());
     /// }
     /// ```
+    ///
+    /// [memory model]: self#memory-model-for-atomic-accesses
     #[inline]
     #[stable(feature = "atomic_as_ptr", since = "1.70.0")]
     #[rustc_const_stable(feature = "atomic_as_ptr", since = "1.70.0")]
@@ -2518,7 +2516,7 @@ impl<T> AtomicPtr<T> {
 
 #[cfg(target_has_atomic_load_store = "8")]
 #[stable(feature = "atomic_bool_from", since = "1.24.0")]
-#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 impl const From<bool> for AtomicBool {
     /// Converts a `bool` into an `AtomicBool`.
     ///
@@ -2537,7 +2535,8 @@ impl const From<bool> for AtomicBool {
 
 #[cfg(target_has_atomic_load_store = "ptr")]
 #[stable(feature = "atomic_from", since = "1.23.0")]
-impl<T> From<*mut T> for AtomicPtr<T> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T> const From<*mut T> for AtomicPtr<T> {
     /// Converts a `*mut T` into an `AtomicPtr<T>`.
     #[inline]
     fn from(p: *mut T) -> Self {
@@ -2616,7 +2615,7 @@ macro_rules! atomic_int {
         }
 
         #[$stable_from]
-        #[rustc_const_unstable(feature = "const_try", issue = "74935")]
+        #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
         impl const From<$int_type> for $atomic_type {
             #[doc = concat!("Converts an `", stringify!($int_type), "` into an `", stringify!($atomic_type), "`.")]
             #[inline]
@@ -2698,8 +2697,8 @@ macro_rules! atomic_int {
             }]
             /// * `ptr` must be [valid] for both reads and writes for the whole lifetime `'a`.
             /// * You must adhere to the [Memory model for atomic accesses]. In particular, it is not
-            ///   allowed to mix atomic and non-atomic accesses, or atomic accesses of different sizes,
-            ///   without synchronization.
+            ///   allowed to mix conflicting atomic and non-atomic accesses, or atomic accesses of different
+            ///   sizes, without synchronization.
             ///
             /// [valid]: crate::ptr#safety
             /// [Memory model for atomic accesses]: self#memory-model-for-atomic-accesses
@@ -3619,8 +3618,8 @@ macro_rules! atomic_int {
             /// Returning an `*mut` pointer from a shared reference to this atomic is safe because the
             /// atomic types work with interior mutability. All modifications of an atomic change the value
             /// through a shared reference, and can do so safely as long as they use atomic operations. Any
-            /// use of the returned raw pointer requires an `unsafe` block and still has to uphold the same
-            /// restriction: operations on it must be atomic.
+            /// use of the returned raw pointer requires an `unsafe` block and still has to uphold the
+            /// requirements of the [memory model].
             ///
             /// # Examples
             ///
@@ -3640,6 +3639,8 @@ macro_rules! atomic_int {
             /// }
             /// # }
             /// ```
+            ///
+            /// [memory model]: self#memory-model-for-atomic-accesses
             #[inline]
             #[stable(feature = "atomic_as_ptr", since = "1.70.0")]
             #[rustc_const_stable(feature = "atomic_as_ptr", since = "1.70.0")]
@@ -3975,15 +3976,15 @@ unsafe fn atomic_swap<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 #[inline]
 #[cfg(target_has_atomic)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-unsafe fn atomic_add<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
+unsafe fn atomic_add<T: Copy, U: Copy>(dst: *mut T, val: U, order: Ordering) -> T {
     // SAFETY: the caller must uphold the safety contract for `atomic_add`.
     unsafe {
         match order {
-            Relaxed => intrinsics::atomic_xadd::<T, { AO::Relaxed }>(dst, val),
-            Acquire => intrinsics::atomic_xadd::<T, { AO::Acquire }>(dst, val),
-            Release => intrinsics::atomic_xadd::<T, { AO::Release }>(dst, val),
-            AcqRel => intrinsics::atomic_xadd::<T, { AO::AcqRel }>(dst, val),
-            SeqCst => intrinsics::atomic_xadd::<T, { AO::SeqCst }>(dst, val),
+            Relaxed => intrinsics::atomic_xadd::<T, U, { AO::Relaxed }>(dst, val),
+            Acquire => intrinsics::atomic_xadd::<T, U, { AO::Acquire }>(dst, val),
+            Release => intrinsics::atomic_xadd::<T, U, { AO::Release }>(dst, val),
+            AcqRel => intrinsics::atomic_xadd::<T, U, { AO::AcqRel }>(dst, val),
+            SeqCst => intrinsics::atomic_xadd::<T, U, { AO::SeqCst }>(dst, val),
         }
     }
 }
@@ -3992,15 +3993,15 @@ unsafe fn atomic_add<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 #[inline]
 #[cfg(target_has_atomic)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-unsafe fn atomic_sub<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
+unsafe fn atomic_sub<T: Copy, U: Copy>(dst: *mut T, val: U, order: Ordering) -> T {
     // SAFETY: the caller must uphold the safety contract for `atomic_sub`.
     unsafe {
         match order {
-            Relaxed => intrinsics::atomic_xsub::<T, { AO::Relaxed }>(dst, val),
-            Acquire => intrinsics::atomic_xsub::<T, { AO::Acquire }>(dst, val),
-            Release => intrinsics::atomic_xsub::<T, { AO::Release }>(dst, val),
-            AcqRel => intrinsics::atomic_xsub::<T, { AO::AcqRel }>(dst, val),
-            SeqCst => intrinsics::atomic_xsub::<T, { AO::SeqCst }>(dst, val),
+            Relaxed => intrinsics::atomic_xsub::<T, U, { AO::Relaxed }>(dst, val),
+            Acquire => intrinsics::atomic_xsub::<T, U, { AO::Acquire }>(dst, val),
+            Release => intrinsics::atomic_xsub::<T, U, { AO::Release }>(dst, val),
+            AcqRel => intrinsics::atomic_xsub::<T, U, { AO::AcqRel }>(dst, val),
+            SeqCst => intrinsics::atomic_xsub::<T, U, { AO::SeqCst }>(dst, val),
         }
     }
 }
@@ -4141,15 +4142,15 @@ unsafe fn atomic_compare_exchange_weak<T: Copy>(
 #[inline]
 #[cfg(target_has_atomic)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-unsafe fn atomic_and<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
+unsafe fn atomic_and<T: Copy, U: Copy>(dst: *mut T, val: U, order: Ordering) -> T {
     // SAFETY: the caller must uphold the safety contract for `atomic_and`
     unsafe {
         match order {
-            Relaxed => intrinsics::atomic_and::<T, { AO::Relaxed }>(dst, val),
-            Acquire => intrinsics::atomic_and::<T, { AO::Acquire }>(dst, val),
-            Release => intrinsics::atomic_and::<T, { AO::Release }>(dst, val),
-            AcqRel => intrinsics::atomic_and::<T, { AO::AcqRel }>(dst, val),
-            SeqCst => intrinsics::atomic_and::<T, { AO::SeqCst }>(dst, val),
+            Relaxed => intrinsics::atomic_and::<T, U, { AO::Relaxed }>(dst, val),
+            Acquire => intrinsics::atomic_and::<T, U, { AO::Acquire }>(dst, val),
+            Release => intrinsics::atomic_and::<T, U, { AO::Release }>(dst, val),
+            AcqRel => intrinsics::atomic_and::<T, U, { AO::AcqRel }>(dst, val),
+            SeqCst => intrinsics::atomic_and::<T, U, { AO::SeqCst }>(dst, val),
         }
     }
 }
@@ -4157,15 +4158,15 @@ unsafe fn atomic_and<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 #[inline]
 #[cfg(target_has_atomic)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-unsafe fn atomic_nand<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
+unsafe fn atomic_nand<T: Copy, U: Copy>(dst: *mut T, val: U, order: Ordering) -> T {
     // SAFETY: the caller must uphold the safety contract for `atomic_nand`
     unsafe {
         match order {
-            Relaxed => intrinsics::atomic_nand::<T, { AO::Relaxed }>(dst, val),
-            Acquire => intrinsics::atomic_nand::<T, { AO::Acquire }>(dst, val),
-            Release => intrinsics::atomic_nand::<T, { AO::Release }>(dst, val),
-            AcqRel => intrinsics::atomic_nand::<T, { AO::AcqRel }>(dst, val),
-            SeqCst => intrinsics::atomic_nand::<T, { AO::SeqCst }>(dst, val),
+            Relaxed => intrinsics::atomic_nand::<T, U, { AO::Relaxed }>(dst, val),
+            Acquire => intrinsics::atomic_nand::<T, U, { AO::Acquire }>(dst, val),
+            Release => intrinsics::atomic_nand::<T, U, { AO::Release }>(dst, val),
+            AcqRel => intrinsics::atomic_nand::<T, U, { AO::AcqRel }>(dst, val),
+            SeqCst => intrinsics::atomic_nand::<T, U, { AO::SeqCst }>(dst, val),
         }
     }
 }
@@ -4173,15 +4174,15 @@ unsafe fn atomic_nand<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 #[inline]
 #[cfg(target_has_atomic)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-unsafe fn atomic_or<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
+unsafe fn atomic_or<T: Copy, U: Copy>(dst: *mut T, val: U, order: Ordering) -> T {
     // SAFETY: the caller must uphold the safety contract for `atomic_or`
     unsafe {
         match order {
-            SeqCst => intrinsics::atomic_or::<T, { AO::SeqCst }>(dst, val),
-            Acquire => intrinsics::atomic_or::<T, { AO::Acquire }>(dst, val),
-            Release => intrinsics::atomic_or::<T, { AO::Release }>(dst, val),
-            AcqRel => intrinsics::atomic_or::<T, { AO::AcqRel }>(dst, val),
-            Relaxed => intrinsics::atomic_or::<T, { AO::Relaxed }>(dst, val),
+            SeqCst => intrinsics::atomic_or::<T, U, { AO::SeqCst }>(dst, val),
+            Acquire => intrinsics::atomic_or::<T, U, { AO::Acquire }>(dst, val),
+            Release => intrinsics::atomic_or::<T, U, { AO::Release }>(dst, val),
+            AcqRel => intrinsics::atomic_or::<T, U, { AO::AcqRel }>(dst, val),
+            Relaxed => intrinsics::atomic_or::<T, U, { AO::Relaxed }>(dst, val),
         }
     }
 }
@@ -4189,15 +4190,15 @@ unsafe fn atomic_or<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 #[inline]
 #[cfg(target_has_atomic)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-unsafe fn atomic_xor<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
+unsafe fn atomic_xor<T: Copy, U: Copy>(dst: *mut T, val: U, order: Ordering) -> T {
     // SAFETY: the caller must uphold the safety contract for `atomic_xor`
     unsafe {
         match order {
-            SeqCst => intrinsics::atomic_xor::<T, { AO::SeqCst }>(dst, val),
-            Acquire => intrinsics::atomic_xor::<T, { AO::Acquire }>(dst, val),
-            Release => intrinsics::atomic_xor::<T, { AO::Release }>(dst, val),
-            AcqRel => intrinsics::atomic_xor::<T, { AO::AcqRel }>(dst, val),
-            Relaxed => intrinsics::atomic_xor::<T, { AO::Relaxed }>(dst, val),
+            SeqCst => intrinsics::atomic_xor::<T, U, { AO::SeqCst }>(dst, val),
+            Acquire => intrinsics::atomic_xor::<T, U, { AO::Acquire }>(dst, val),
+            Release => intrinsics::atomic_xor::<T, U, { AO::Release }>(dst, val),
+            AcqRel => intrinsics::atomic_xor::<T, U, { AO::AcqRel }>(dst, val),
+            Relaxed => intrinsics::atomic_xor::<T, U, { AO::Relaxed }>(dst, val),
         }
     }
 }

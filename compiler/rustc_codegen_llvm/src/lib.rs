@@ -14,6 +14,7 @@
 #![feature(if_let_guard)]
 #![feature(impl_trait_in_assoc_type)]
 #![feature(iter_intersperse)]
+#![feature(macro_derive)]
 #![feature(rustdoc_internals)]
 #![feature(slice_as_array)]
 #![feature(try_blocks)]
@@ -30,7 +31,6 @@ use context::SimpleCx;
 use errors::ParseTargetMachineConfig;
 use llvm_util::target_config;
 use rustc_ast::expand::allocator::AllocatorKind;
-use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
 use rustc_codegen_ssa::back::lto::{SerializedModule, ThinModule};
 use rustc_codegen_ssa::back::write::{
     CodegenContext, FatLtoInput, ModuleConfig, TargetMachineFactoryConfig, TargetMachineFactoryFn,
@@ -38,7 +38,7 @@ use rustc_codegen_ssa::back::write::{
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleCodegen, TargetConfig};
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_errors::{DiagCtxtHandle, FatalError};
+use rustc_errors::DiagCtxtHandle;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::TyCtxt;
@@ -46,19 +46,13 @@ use rustc_middle::util::Providers;
 use rustc_session::Session;
 use rustc_session::config::{OptLevel, OutputFilenames, PrintKind, PrintRequest};
 use rustc_span::Symbol;
-
-mod back {
-    pub(crate) mod archive;
-    pub(crate) mod lto;
-    pub(crate) mod owned_target_machine;
-    mod profiling;
-    pub(crate) mod write;
-}
+use rustc_target::spec::{RelocModel, TlsModel};
 
 mod abi;
 mod allocator;
 mod asm;
 mod attributes;
+mod back;
 mod base;
 mod builder;
 mod callee;
@@ -72,13 +66,17 @@ mod errors;
 mod intrinsic;
 mod llvm;
 mod llvm_util;
+mod macros;
 mod mono_item;
 mod type_;
 mod type_of;
+mod typetree;
 mod va_arg;
 mod value;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
+
+pub(crate) use macros::TryFromU32;
 
 #[derive(Clone)]
 pub struct LlvmCodegenBackend(());
@@ -168,32 +166,20 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         let stats = llvm::build_string(|s| unsafe { llvm::LLVMRustPrintStatistics(s) }).unwrap();
         print!("{stats}");
     }
-    fn run_link(
-        cgcx: &CodegenContext<Self>,
-        dcx: DiagCtxtHandle<'_>,
-        modules: Vec<ModuleCodegen<Self::Module>>,
-    ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
-        back::write::link(cgcx, dcx, modules)
-    }
     fn run_and_optimize_fat_lto(
         cgcx: &CodegenContext<Self>,
         exported_symbols_for_lto: &[String],
         each_linked_rlib_for_lto: &[PathBuf],
         modules: Vec<FatLtoInput<Self>>,
-        diff_fncs: Vec<AutoDiffItem>,
-    ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
+    ) -> ModuleCodegen<Self::Module> {
         let mut module =
-            back::lto::run_fat(cgcx, exported_symbols_for_lto, each_linked_rlib_for_lto, modules)?;
-
-        if !diff_fncs.is_empty() {
-            builder::autodiff::differentiate(&module, cgcx, diff_fncs)?;
-        }
+            back::lto::run_fat(cgcx, exported_symbols_for_lto, each_linked_rlib_for_lto, modules);
 
         let dcx = cgcx.create_dcx();
         let dcx = dcx.handle();
-        back::lto::run_pass_manager(cgcx, dcx, &mut module, false)?;
+        back::lto::run_pass_manager(cgcx, dcx, &mut module, false);
 
-        Ok(module)
+        module
     }
     fn run_thin_lto(
         cgcx: &CodegenContext<Self>,
@@ -201,7 +187,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         each_linked_rlib_for_lto: &[PathBuf],
         modules: Vec<(String, Self::ThinBuffer)>,
         cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
-    ) -> Result<(Vec<ThinModule<Self>>, Vec<WorkProduct>), FatalError> {
+    ) -> (Vec<ThinModule<Self>>, Vec<WorkProduct>) {
         back::lto::run_thin(
             cgcx,
             exported_symbols_for_lto,
@@ -215,27 +201,24 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         dcx: DiagCtxtHandle<'_>,
         module: &mut ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
-    ) -> Result<(), FatalError> {
+    ) {
         back::write::optimize(cgcx, dcx, module, config)
     }
     fn optimize_thin(
         cgcx: &CodegenContext<Self>,
         thin: ThinModule<Self>,
-    ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
+    ) -> ModuleCodegen<Self::Module> {
         back::lto::optimize_thin_module(thin, cgcx)
     }
     fn codegen(
         cgcx: &CodegenContext<Self>,
         module: ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
-    ) -> Result<CompiledModule, FatalError> {
+    ) -> CompiledModule {
         back::write::codegen(cgcx, module, config)
     }
-    fn prepare_thin(
-        module: ModuleCodegen<Self::Module>,
-        emit_summary: bool,
-    ) -> (String, Self::ThinBuffer) {
-        back::lto::prepare_thin(module, emit_summary)
+    fn prepare_thin(module: ModuleCodegen<Self::Module>) -> (String, Self::ThinBuffer) {
+        back::lto::prepare_thin(module)
     }
     fn serialize_module(module: ModuleCodegen<Self::Module>) -> (String, Self::ModuleBuffer) {
         (module.name, back::lto::ModuleBuffer::new(module.module_llvm.llmod()))
@@ -253,6 +236,10 @@ impl CodegenBackend for LlvmCodegenBackend {
         crate::DEFAULT_LOCALE_RESOURCE
     }
 
+    fn name(&self) -> &'static str {
+        "llvm"
+    }
+
     fn init(&self, sess: &Session) {
         llvm_util::init(sess); // Make sure llvm is inited
     }
@@ -267,16 +254,7 @@ impl CodegenBackend for LlvmCodegenBackend {
         match req.kind {
             PrintKind::RelocationModels => {
                 writeln!(out, "Available relocation models:").unwrap();
-                for name in &[
-                    "static",
-                    "pic",
-                    "pie",
-                    "dynamic-no-pic",
-                    "ropi",
-                    "rwpi",
-                    "ropi-rwpi",
-                    "default",
-                ] {
+                for name in RelocModel::ALL.iter().map(RelocModel::desc).chain(["default"]) {
                     writeln!(out, "    {name}").unwrap();
                 }
                 writeln!(out).unwrap();
@@ -290,9 +268,7 @@ impl CodegenBackend for LlvmCodegenBackend {
             }
             PrintKind::TlsModels => {
                 writeln!(out, "Available TLS models:").unwrap();
-                for name in
-                    &["global-dynamic", "local-dynamic", "initial-exec", "local-exec", "emulated"]
-                {
+                for name in TlsModel::ALL.iter().map(TlsModel::desc) {
                     writeln!(out, "    {name}").unwrap();
                 }
                 writeln!(out).unwrap();
@@ -382,7 +358,14 @@ impl CodegenBackend for LlvmCodegenBackend {
 
         // Run the linker on any artifacts that resulted from the LLVM run.
         // This should produce either a finished executable or library.
-        link_binary(sess, &LlvmArchiveBuilderBuilder, codegen_results, metadata, outputs);
+        link_binary(
+            sess,
+            &LlvmArchiveBuilderBuilder,
+            codegen_results,
+            metadata,
+            outputs,
+            self.name(),
+        );
     }
 }
 
@@ -427,12 +410,12 @@ impl ModuleLlvm {
         cgcx: &CodegenContext<LlvmCodegenBackend>,
         name: &str,
         dcx: DiagCtxtHandle<'_>,
-    ) -> Result<OwnedTargetMachine, FatalError> {
+    ) -> OwnedTargetMachine {
         let tm_factory_config = TargetMachineFactoryConfig::new(cgcx, name);
         match (cgcx.tm_factory)(tm_factory_config) {
-            Ok(m) => Ok(m),
+            Ok(m) => m,
             Err(e) => {
-                return Err(dcx.emit_almost_fatal(ParseTargetMachineConfig(e)));
+                dcx.emit_fatal(ParseTargetMachineConfig(e));
             }
         }
     }
@@ -442,13 +425,13 @@ impl ModuleLlvm {
         name: &CStr,
         buffer: &[u8],
         dcx: DiagCtxtHandle<'_>,
-    ) -> Result<Self, FatalError> {
+    ) -> Self {
         unsafe {
             let llcx = llvm::LLVMRustContextCreate(cgcx.fewer_names);
-            let llmod_raw = back::lto::parse_module(llcx, name, buffer, dcx)?;
-            let tm = ModuleLlvm::tm_from_cgcx(cgcx, name.to_str().unwrap(), dcx)?;
+            let llmod_raw = back::lto::parse_module(llcx, name, buffer, dcx);
+            let tm = ModuleLlvm::tm_from_cgcx(cgcx, name.to_str().unwrap(), dcx);
 
-            Ok(ModuleLlvm { llmod_raw, llcx, tm: ManuallyDrop::new(tm) })
+            ModuleLlvm { llmod_raw, llcx, tm: ManuallyDrop::new(tm) }
         }
     }
 

@@ -5,7 +5,7 @@ This option controls details of the coverage instrumentation performed by
 
 Multiple options can be passed, separated by commas. Valid options are:
 
-- `block`, `branch`, `condition`, `mcdc`:
+- `block`, `branch`, `condition`:
   Sets the level of coverage instrumentation.
   Setting the level will override any previously-specified level.
   - `block` (default):
@@ -15,6 +15,3 @@ Multiple options can be passed, separated by commas. Valid options are:
   - `condition`:
     In addition to branch coverage, also instruments some boolean expressions
     as branches, even if they are not directly used as branch conditions.
-  - `mcdc`:
-    In addition to condition coverage, also enables MC/DC instrumentation.
-    (Branch coverage instrumentation may differ in some cases.)

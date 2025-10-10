@@ -150,5 +150,14 @@ LL | |         if false {}
 LL | |     }
    | |_____^ help: collapse nested if block: `if false {}`
 
-error: aborting due to 8 previous errors
+error: this `else { if .. }` block can be collapsed
+  --> tests/ui/collapsible_else_if.rs:157:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |         (if y == "world" { println!("world") } else { println!("!") })
+LL | |     }
+   | |_____^ help: collapse nested if block: `if y == "world" { println!("world") } else { println!("!") }`
+
+error: aborting due to 9 previous errors
 

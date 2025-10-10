@@ -1,10 +1,9 @@
 use super::hermit_abi;
-use crate::error::Error as StdError;
 use crate::ffi::{OsStr, OsString};
 use crate::marker::PhantomData;
 use crate::path::{self, PathBuf};
 use crate::sys::unsupported;
-use crate::{fmt, io, str};
+use crate::{fmt, io};
 
 pub fn errno() -> i32 {
     unsafe { hermit_abi::get_errno() }
@@ -52,12 +51,7 @@ impl fmt::Display for JoinPathsError {
     }
 }
 
-impl StdError for JoinPathsError {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-        "not supported on hermit yet"
-    }
-}
+impl crate::error::Error for JoinPathsError {}
 
 pub fn current_exe() -> io::Result<PathBuf> {
     unsupported()

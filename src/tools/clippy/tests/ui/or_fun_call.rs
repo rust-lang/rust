@@ -1,5 +1,4 @@
 #![warn(clippy::or_fun_call)]
-#![allow(dead_code)]
 #![allow(
     clippy::borrow_as_ptr,
     clippy::uninlined_format_args,
@@ -77,6 +76,22 @@ fn or_fun_call() {
     with_default_type.unwrap_or(u64::default());
     //~^ unwrap_or_default
 
+    let with_default_literal = Some(1);
+    with_default_literal.unwrap_or(0);
+    // Do not lint because `.unwrap_or_default()` wouldn't be simpler
+
+    let with_default_literal = Some(1.0);
+    with_default_literal.unwrap_or(0.0);
+    // Do not lint because `.unwrap_or_default()` wouldn't be simpler
+
+    let with_default_literal = Some("foo");
+    with_default_literal.unwrap_or("");
+    // Do not lint because `.unwrap_or_default()` wouldn't be simpler
+
+    let with_default_vec_macro = Some(vec![1, 2, 3]);
+    with_default_vec_macro.unwrap_or(vec![]);
+    // Do not lint because `.unwrap_or_default()` wouldn't be simpler
+
     let self_default = None::<FakeDefault>;
     self_default.unwrap_or(<FakeDefault>::default());
     //~^ or_fun_call
@@ -86,7 +101,7 @@ fn or_fun_call() {
     //~^ unwrap_or_default
 
     let with_vec = Some(vec![1]);
-    with_vec.unwrap_or(vec![]);
+    with_vec.unwrap_or(Vec::new());
     //~^ unwrap_or_default
 
     let without_default = Some(Foo);
@@ -98,7 +113,7 @@ fn or_fun_call() {
     //~^ unwrap_or_default
 
     let mut map_vec = HashMap::<u64, Vec<i32>>::new();
-    map_vec.entry(42).or_insert(vec![]);
+    map_vec.entry(42).or_insert(Vec::new());
     //~^ unwrap_or_default
 
     let mut btree = BTreeMap::<u64, String>::new();
@@ -106,7 +121,7 @@ fn or_fun_call() {
     //~^ unwrap_or_default
 
     let mut btree_vec = BTreeMap::<u64, Vec<i32>>::new();
-    btree_vec.entry(42).or_insert(vec![]);
+    btree_vec.entry(42).or_insert(Vec::new());
     //~^ unwrap_or_default
 
     let stringy = Some(String::new());
@@ -283,6 +298,8 @@ mod issue8993 {
         let _ = Some(4).map_or(g(), f);
         //~^ or_fun_call
         let _ = Some(4).map_or(0, f);
+        let _ = Some(4).map_or("asd".to_string().len() as i32, f);
+        //~^ or_fun_call
     }
 }
 
@@ -426,6 +443,8 @@ mod result_map_or {
         let _ = x.map_or(g(), f);
         //~^ or_fun_call
         let _ = x.map_or(0, f);
+        let _ = x.map_or("asd".to_string().len() as i32, f);
+        //~^ or_fun_call
     }
 }
 
@@ -459,4 +478,19 @@ fn test_result_and() {
     //~^ or_fun_call
 }
 
+#[clippy::msrv = "1.15"]
+fn below_msrv(opt: Option<i32>, res: Result<i32, ()>) {
+    let _ = opt.unwrap_or(Default::default());
+    //~^ unwrap_or_default
+    let _ = res.unwrap_or(Default::default());
+    //~^ or_fun_call
+}
+
+#[clippy::msrv = "1.16"]
+fn above_msrv(opt: Option<i32>, res: Result<i32, ()>) {
+    let _ = opt.unwrap_or(Default::default());
+    //~^ unwrap_or_default
+    let _ = res.unwrap_or(Default::default());
+    //~^ unwrap_or_default
+}
 fn main() {}

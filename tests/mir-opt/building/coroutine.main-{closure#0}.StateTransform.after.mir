@@ -1,0 +1,207 @@
+// MIR for `main::{closure#0}` after StateTransform
+/* coroutine_layout = CoroutineLayout {
+    field_tys: {
+        _s0: CoroutineSavedTy {
+            ty: std::string::String,
+            source_info: SourceInfo {
+                span: $DIR/coroutine.rs:18:6: 18:9 (#0),
+                scope: scope[0],
+            },
+            ignore_for_traits: false,
+        },
+    },
+    variant_fields: {
+        Unresumed(0): [],
+        Returned (1): [],
+        Panicked (2): [],
+        Suspend0 (3): [_s0],
+        Suspend1 (4): [_s0],
+    },
+    storage_conflicts: BitMatrix(1x1) {
+        (_s0, _s0),
+    },
+} */
+
+fn main::{closure#0}(_1: Pin<&mut {coroutine@$DIR/coroutine.rs:18:5: 18:18}>, _2: String) -> CoroutineState<(&str, String, &Location<'_>), ()> {
+    debug arg => (((*(_1.0: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18})) as variant#4).0: std::string::String);
+    let mut _0: std::ops::CoroutineState<(&str, std::string::String, &std::panic::Location<'_>), ()>;
+    let _3: std::string::String;
+    let mut _4: (&str, std::string::String, &std::panic::Location<'_>);
+    let mut _5: std::string::String;
+    let mut _6: &std::string::String;
+    let mut _7: &std::panic::Location<'_>;
+    let _8: std::string::String;
+    let mut _9: (&str, std::string::String, &std::panic::Location<'_>);
+    let mut _10: &str;
+    let _11: &str;
+    let mut _12: std::string::String;
+    let mut _13: &std::string::String;
+    let mut _14: &std::panic::Location<'_>;
+    let _15: &std::panic::Location<'_>;
+    let mut _16: ();
+    let mut _17: u32;
+    let mut _18: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18};
+    let mut _19: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18};
+    let mut _20: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18};
+    let mut _21: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18};
+    let mut _22: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18};
+    let mut _23: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18};
+    let mut _24: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18};
+    let mut _25: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18};
+
+    bb0: {
+        _18 = deref_copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18});
+        _17 = discriminant((*_18));
+        switchInt(move _17) -> [0: bb1, 1: bb19, 3: bb17, 4: bb18, otherwise: bb20];
+    }
+
+    bb1: {
+        _19 = deref_copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18});
+        (((*_19) as variant#4).0: std::string::String) = move _2;
+        StorageLive(_3);
+        StorageLive(_4);
+        StorageLive(_5);
+        StorageLive(_6);
+        _20 = deref_copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18});
+        _6 = &(((*_20) as variant#4).0: std::string::String);
+        _5 = <String as Clone>::clone(move _6) -> [return: bb2, unwind unreachable];
+    }
+
+    bb2: {
+        StorageDead(_6);
+        StorageLive(_7);
+        _7 = Location::<'_>::caller() -> [return: bb3, unwind unreachable];
+    }
+
+    bb3: {
+        _4 = (const "first", move _5, move _7);
+        StorageDead(_7);
+        goto -> bb4;
+    }
+
+    bb4: {
+        StorageDead(_5);
+        _0 = CoroutineState::<(&str, String, &Location<'_>), ()>::Yielded(move _4);
+        StorageDead(_3);
+        StorageDead(_4);
+        _21 = deref_copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18});
+        discriminant((*_21)) = 3;
+        return;
+    }
+
+    bb5: {
+        goto -> bb6;
+    }
+
+    bb6: {
+        StorageDead(_4);
+        drop(_3) -> [return: bb7, unwind unreachable];
+    }
+
+    bb7: {
+        StorageDead(_3);
+        StorageLive(_8);
+        StorageLive(_9);
+        StorageLive(_10);
+        StorageLive(_11);
+        _11 = const "second";
+        _10 = &(*_11);
+        StorageLive(_12);
+        StorageLive(_13);
+        _22 = deref_copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18});
+        _13 = &(((*_22) as variant#4).0: std::string::String);
+        _12 = <String as Clone>::clone(move _13) -> [return: bb8, unwind unreachable];
+    }
+
+    bb8: {
+        StorageDead(_13);
+        StorageLive(_14);
+        StorageLive(_15);
+        _15 = Location::<'_>::caller() -> [return: bb9, unwind unreachable];
+    }
+
+    bb9: {
+        _14 = &(*_15);
+        _9 = (move _10, move _12, move _14);
+        StorageDead(_14);
+        goto -> bb10;
+    }
+
+    bb10: {
+        StorageDead(_12);
+        StorageDead(_10);
+        _0 = CoroutineState::<(&str, String, &Location<'_>), ()>::Yielded(move _9);
+        StorageDead(_8);
+        StorageDead(_9);
+        StorageDead(_11);
+        StorageDead(_15);
+        _23 = deref_copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18});
+        discriminant((*_23)) = 4;
+        return;
+    }
+
+    bb11: {
+        goto -> bb12;
+    }
+
+    bb12: {
+        StorageDead(_9);
+        drop(_8) -> [return: bb13, unwind unreachable];
+    }
+
+    bb13: {
+        StorageDead(_15);
+        StorageDead(_11);
+        StorageDead(_8);
+        _16 = const ();
+        _24 = deref_copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18});
+        drop((((*_24) as variant#4).0: std::string::String)) -> [return: bb14, unwind unreachable];
+    }
+
+    bb14: {
+        goto -> bb16;
+    }
+
+    bb15: {
+        _0 = CoroutineState::<(&str, String, &Location<'_>), ()>::Complete(move _16);
+        _25 = deref_copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18});
+        discriminant((*_25)) = 1;
+        return;
+    }
+
+    bb16: {
+        goto -> bb15;
+    }
+
+    bb17: {
+        StorageLive(_3);
+        StorageLive(_4);
+        _3 = move _2;
+        goto -> bb5;
+    }
+
+    bb18: {
+        StorageLive(_8);
+        StorageLive(_9);
+        StorageLive(_11);
+        StorageLive(_15);
+        _8 = move _2;
+        goto -> bb11;
+    }
+
+    bb19: {
+        assert(const false, "coroutine resumed after completion") -> [success: bb19, unwind unreachable];
+    }
+
+    bb20: {
+        unreachable;
+    }
+}
+
+ALLOC0 (size: 6, align: 1) {
+    73 65 63 6f 6e 64                               │ second
+}
+
+ALLOC1 (size: 5, align: 1) {
+    66 69 72 73 74                                  │ first
+}

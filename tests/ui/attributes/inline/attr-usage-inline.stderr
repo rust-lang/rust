@@ -1,10 +1,10 @@
-error[E0518]: attribute should be applied to function or closure
+error: `#[inline]` attribute cannot be used on structs
   --> $DIR/attr-usage-inline.rs:7:1
    |
 LL | #[inline]
    | ^^^^^^^^^
-LL | struct S;
-   | --------- not a function or closure
+   |
+   = help: `#[inline]` can only be applied to functions
 
 error[E0518]: attribute should be applied to function or closure
   --> $DIR/attr-usage-inline.rs:21:1

@@ -171,7 +171,7 @@ fn test_insert_presorted_non_overlapping() {
     map.insert(2, 0);
     map.insert(8, 0);
 
-    map.insert_presorted(vec![(3, 0), (7, 0)]);
+    map.insert_presorted(vec![(3, 0), (7, 0)].into_iter());
 
     let expected = vec![2, 3, 7, 8];
     assert_eq!(keys(map), expected);
@@ -183,7 +183,7 @@ fn test_insert_presorted_first_elem_equal() {
     map.insert(2, 2);
     map.insert(8, 8);
 
-    map.insert_presorted(vec![(2, 0), (7, 7)]);
+    map.insert_presorted(vec![(2, 0), (7, 7)].into_iter());
 
     let expected = vec![(2, 0), (7, 7), (8, 8)];
     assert_eq!(elements(map), expected);
@@ -195,7 +195,7 @@ fn test_insert_presorted_last_elem_equal() {
     map.insert(2, 2);
     map.insert(8, 8);
 
-    map.insert_presorted(vec![(3, 3), (8, 0)]);
+    map.insert_presorted(vec![(3, 3), (8, 0)].into_iter());
 
     let expected = vec![(2, 2), (3, 3), (8, 0)];
     assert_eq!(elements(map), expected);
@@ -207,7 +207,7 @@ fn test_insert_presorted_shuffle() {
     map.insert(2, 2);
     map.insert(7, 7);
 
-    map.insert_presorted(vec![(1, 1), (3, 3), (8, 8)]);
+    map.insert_presorted(vec![(1, 1), (3, 3), (8, 8)].into_iter());
 
     let expected = vec![(1, 1), (2, 2), (3, 3), (7, 7), (8, 8)];
     assert_eq!(elements(map), expected);
@@ -219,7 +219,7 @@ fn test_insert_presorted_at_end() {
     map.insert(1, 1);
     map.insert(2, 2);
 
-    map.insert_presorted(vec![(3, 3), (8, 8)]);
+    map.insert_presorted(vec![(3, 3), (8, 8)].into_iter());
 
     let expected = vec![(1, 1), (2, 2), (3, 3), (8, 8)];
     assert_eq!(elements(map), expected);

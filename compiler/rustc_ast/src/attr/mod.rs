@@ -13,7 +13,6 @@ use crate::ast::{
     Expr, ExprKind, LitKind, MetaItem, MetaItemInner, MetaItemKind, MetaItemLit, NormalAttr, Path,
     PathSegment, Safety,
 };
-use crate::ptr::P;
 use crate::token::{self, CommentKind, Delimiter, InvisibleOrigin, MetaVarKind, Token};
 use crate::tokenstream::{
     DelimSpan, LazyAttrTokenStream, Spacing, TokenStream, TokenStreamIter, TokenTree,
@@ -660,7 +659,7 @@ pub fn mk_attr_from_item(
     span: Span,
 ) -> Attribute {
     Attribute {
-        kind: AttrKind::Normal(P(NormalAttr { item, tokens })),
+        kind: AttrKind::Normal(Box::new(NormalAttr { item, tokens })),
         id: g.mk_attr_id(),
         style,
         span,
@@ -710,7 +709,7 @@ pub fn mk_attr_name_value_str(
     span: Span,
 ) -> Attribute {
     let lit = token::Lit::new(token::Str, escape_string_symbol(val), None);
-    let expr = P(Expr {
+    let expr = Box::new(Expr {
         id: DUMMY_NODE_ID,
         kind: ExprKind::Lit(lit),
         span,

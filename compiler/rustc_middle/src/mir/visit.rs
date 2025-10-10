@@ -95,6 +95,14 @@ macro_rules! make_mir_visitor {
                 self.super_source_scope_data(scope_data);
             }
 
+            fn visit_statement_debuginfo(
+                &mut self,
+                stmt_debuginfo: & $($mutability)? StmtDebugInfo<'tcx>,
+                location: Location
+            ) {
+                self.super_statement_debuginfo(stmt_debuginfo, location);
+            }
+
             fn visit_statement(
                 &mut self,
                 statement: & $($mutability)? Statement<'tcx>,
@@ -301,6 +309,7 @@ macro_rules! make_mir_visitor {
             {
                 let BasicBlockData {
                     statements,
+                    after_last_stmt_debuginfos,
                     terminator,
                     is_cleanup: _
                 } = data;
@@ -312,8 +321,11 @@ macro_rules! make_mir_visitor {
                     index += 1;
                 }
 
+                let location = Location { block, statement_index: index };
+                for debuginfo in after_last_stmt_debuginfos as & $($mutability)? [_] {
+                    self.visit_statement_debuginfo(debuginfo, location);
+                }
                 if let Some(terminator) = terminator {
-                    let location = Location { block, statement_index: index };
                     self.visit_terminator(terminator, location);
                 }
             }
@@ -376,14 +388,45 @@ macro_rules! make_mir_visitor {
                 }
             }
 
+            fn super_statement_debuginfo(
+                &mut self,
+                stmt_debuginfo: & $($mutability)? StmtDebugInfo<'tcx>,
+                location: Location
+            ) {
+                match stmt_debuginfo {
+                    StmtDebugInfo::AssignRef(local, place) => {
+                        self.visit_local(
+                            $(& $mutability)? *local,
+                            PlaceContext::NonUse(NonUseContext::VarDebugInfo),
+                            location
+                        );
+                        self.visit_place(
+                            place,
+                            PlaceContext::NonUse(NonUseContext::VarDebugInfo),
+                            location
+                        );
+                    },
+                    StmtDebugInfo::InvalidAssign(local) => {
+                        self.visit_local(
+                            $(& $mutability)? *local,
+                            PlaceContext::NonUse(NonUseContext::VarDebugInfo),
+                            location
+                        );
+                    }
+                }
+            }
+
             fn super_statement(
                 &mut self,
                 statement: & $($mutability)? Statement<'tcx>,
                 location: Location
             ) {
-                let Statement { source_info, kind } = statement;
+                let Statement { source_info, kind, debuginfos } = statement;
 
                 self.visit_source_info(source_info);
+                for debuginfo in debuginfos as & $($mutability)? [_] {
+                    self.visit_statement_debuginfo(debuginfo, location);
+                }
                 match kind {
                     StatementKind::Assign(box (place, rvalue)) => {
                         self.visit_assign(place, rvalue, location);
@@ -531,13 +574,20 @@ macro_rules! make_mir_visitor {
                         unwind: _,
                         replace: _,
                         drop: _,
-                        async_fut: _,
+                        async_fut,
                     } => {
                         self.visit_place(
                             place,
                             PlaceContext::MutatingUse(MutatingUseContext::Drop),
                             location
                         );
+                        if let Some(async_fut) = async_fut {
+                            self.visit_local(
+                                $(&$mutability)? *async_fut,
+                                PlaceContext::MutatingUse(MutatingUseContext::Borrow),
+                                location
+                            );
+                        }
                     }
 
                     TerminatorKind::Call {
@@ -708,14 +758,6 @@ macro_rules! make_mir_visitor {
                             ),
                         };
                         self.visit_place(path, ctx, location);
-                    }
-
-                    Rvalue::Len(path) => {
-                        self.visit_place(
-                            path,
-                            PlaceContext::NonMutatingUse(NonMutatingUseContext::Inspect),
-                            location
-                        );
                     }
 
                     Rvalue::Cast(_cast_kind, operand, ty) => {
@@ -1167,11 +1209,6 @@ macro_rules! visit_place_fns {
                     self.visit_ty(&mut new_ty, TyContext::Location(location));
                     if ty != new_ty { Some(PlaceElem::OpaqueCast(new_ty)) } else { None }
                 }
-                PlaceElem::Subtype(ty) => {
-                    let mut new_ty = ty;
-                    self.visit_ty(&mut new_ty, TyContext::Location(location));
-                    if ty != new_ty { Some(PlaceElem::Subtype(new_ty)) } else { None }
-                }
                 PlaceElem::UnwrapUnsafeBinder(ty) => {
                     let mut new_ty = ty;
                     self.visit_ty(&mut new_ty, TyContext::Location(location));
@@ -1205,18 +1242,19 @@ macro_rules! visit_place_fns {
             self.super_projection_elem(place_ref, elem, context, location);
         }
 
-        fn super_place(&mut self, place: &Place<'tcx>, context: PlaceContext, location: Location) {
-            let mut context = context;
-
-            if !place.projection.is_empty() {
-                if context.is_use() {
-                    // ^ Only change the context if it is a real use, not a "use" in debuginfo.
-                    context = if context.is_mutating_use() {
-                        PlaceContext::MutatingUse(MutatingUseContext::Projection)
-                    } else {
-                        PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection)
-                    };
-                }
+        fn super_place(
+            &mut self,
+            place: &Place<'tcx>,
+            mut context: PlaceContext,
+            location: Location,
+        ) {
+            if !place.projection.is_empty() && context.is_use() {
+                // ^ Only change the context if it is a real use, not a "use" in debuginfo.
+                context = if context.is_mutating_use() {
+                    PlaceContext::MutatingUse(MutatingUseContext::Projection)
+                } else {
+                    PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection)
+                };
             }
 
             self.visit_local(place.local, context, location);
@@ -1239,12 +1277,11 @@ macro_rules! visit_place_fns {
             &mut self,
             _place_ref: PlaceRef<'tcx>,
             elem: PlaceElem<'tcx>,
-            _context: PlaceContext,
+            context: PlaceContext,
             location: Location,
         ) {
             match elem {
                 ProjectionElem::OpaqueCast(ty)
-                | ProjectionElem::Subtype(ty)
                 | ProjectionElem::Field(_, ty)
                 | ProjectionElem::UnwrapUnsafeBinder(ty) => {
                     self.visit_ty(ty, TyContext::Location(location));
@@ -1252,7 +1289,12 @@ macro_rules! visit_place_fns {
                 ProjectionElem::Index(local) => {
                     self.visit_local(
                         local,
-                        PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy),
+                        if context.is_use() {
+                            // ^ Only change the context if it is a real use, not a "use" in debuginfo.
+                            PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy)
+                        } else {
+                            context
+                        },
                         location,
                     );
                 }
@@ -1402,6 +1444,24 @@ impl PlaceContext {
         )
     }
 
+    /// Returns `true` if this place context may be used to know the address of the given place.
+    #[inline]
+    pub fn may_observe_address(self) -> bool {
+        matches!(
+            self,
+            PlaceContext::NonMutatingUse(
+                NonMutatingUseContext::SharedBorrow
+                    | NonMutatingUseContext::RawBorrow
+                    | NonMutatingUseContext::FakeBorrow
+            ) | PlaceContext::MutatingUse(
+                MutatingUseContext::Drop
+                    | MutatingUseContext::Borrow
+                    | MutatingUseContext::RawBorrow
+                    | MutatingUseContext::AsmOutput
+            )
+        )
+    }
+
     /// Returns `true` if this place context represents a storage live or storage dead marker.
     #[inline]
     pub fn is_storage_marker(self) -> bool {
@@ -1450,5 +1510,22 @@ impl PlaceContext {
             ) => ty::Covariant,
             PlaceContext::NonUse(AscribeUserTy(variance)) => variance,
         }
+    }
+}
+
+/// Small utility to visit places and locals without manually implementing a full visitor.
+pub struct VisitPlacesWith<F>(pub F);
+
+impl<'tcx, F> Visitor<'tcx> for VisitPlacesWith<F>
+where
+    F: FnMut(Place<'tcx>, PlaceContext),
+{
+    fn visit_local(&mut self, local: Local, ctxt: PlaceContext, _: Location) {
+        (self.0)(local.into(), ctxt);
+    }
+
+    fn visit_place(&mut self, place: &Place<'tcx>, ctxt: PlaceContext, location: Location) {
+        (self.0)(*place, ctxt);
+        self.visit_projection(place.as_ref(), ctxt, location);
     }
 }

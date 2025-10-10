@@ -1,9 +1,9 @@
 //! Validates the MIR to ensure that invariants are upheld.
 
 use rustc_abi::{ExternAbi, FIRST_VARIANT, Size};
-use rustc_attr_data_structures::InlineAttr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::LangItem;
+use rustc_hir::attrs::InlineAttr;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_infer::infer::TyCtxtInferExt;
@@ -80,15 +80,14 @@ impl<'tcx> crate::MirPass<'tcx> for Validator {
             cfg_checker.fail(location, msg);
         }
 
-        if let MirPhase::Runtime(_) = body.phase {
-            if let ty::InstanceKind::Item(_) = body.source.instance {
-                if body.has_free_regions() {
-                    cfg_checker.fail(
-                        Location::START,
-                        format!("Free regions in optimized {} MIR", body.phase.name()),
-                    );
-                }
-            }
+        if let MirPhase::Runtime(_) = body.phase
+            && let ty::InstanceKind::Item(_) = body.source.instance
+            && body.has_free_regions()
+        {
+            cfg_checker.fail(
+                Location::START,
+                format!("Free regions in optimized {} MIR", body.phase.name()),
+            );
         }
     }
 
@@ -624,7 +623,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             param_env,
             pred,
         ));
-        ocx.select_all_or_error().is_empty()
+        ocx.evaluate_obligations_error_on_ambiguity().is_empty()
     }
 }
 
@@ -813,22 +812,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     _ => {
                         self.fail(location, format!("{:?} does not have fields", parent_ty.ty));
                     }
-                }
-            }
-            ProjectionElem::Subtype(ty) => {
-                if !util::sub_types(
-                    self.tcx,
-                    self.typing_env,
-                    ty,
-                    place_ref.ty(&self.body.local_decls, self.tcx).ty,
-                ) {
-                    self.fail(
-                        location,
-                        format!(
-                            "Failed subtyping {ty} and {}",
-                            place_ref.ty(&self.body.local_decls, self.tcx).ty
-                        ),
-                    )
                 }
             }
             ProjectionElem::UnwrapUnsafeBinder(unwrapped_ty) => {
@@ -1065,14 +1048,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
             Rvalue::Ref(..) => {}
-            Rvalue::Len(p) => {
-                let pty = p.ty(&self.body.local_decls, self.tcx).ty;
-                check_kinds!(
-                    pty,
-                    "Cannot compute length of non-array type {:?}",
-                    ty::Array(..) | ty::Slice(..)
-                );
-            }
             Rvalue::BinaryOp(op, vals) => {
                 use BinOp::*;
                 let a = vals.0.ty(&self.body.local_decls, self.tcx);
@@ -1338,6 +1313,14 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                 location,
                                 format!("Cannot transmute to non-`Sized` type {target_type:?}"),
                             );
+                        }
+                    }
+                    CastKind::Subtype => {
+                        if !util::sub_types(self.tcx, self.typing_env, op_ty, *target_type) {
+                            self.fail(
+                                location,
+                                format!("Failed subtyping {op_ty} and {target_type}"),
+                            )
                         }
                     }
                 }

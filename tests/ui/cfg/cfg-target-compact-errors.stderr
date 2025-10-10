@@ -6,6 +6,8 @@ LL | #[cfg(target(o::o))]
    | |            |
    | |            expected this to be of the form `... = "..."`
    | help: must be of the form: `#[cfg(predicate)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 
 error[E0539]: malformed `cfg` attribute input
   --> $DIR/cfg-target-compact-errors.rs:9:1
@@ -15,6 +17,8 @@ LL | #[cfg(target(os = 8))]
    | |                 |
    | |                 expected a string literal here
    | help: must be of the form: `#[cfg(predicate)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 
 error[E0539]: malformed `cfg` attribute input
   --> $DIR/cfg-target-compact-errors.rs:13:1
@@ -24,6 +28,8 @@ LL | #[cfg(target(os = "linux", pointer(width = "64")))]
    | |                          |
    | |                          expected this to be of the form `... = "..."`
    | help: must be of the form: `#[cfg(predicate)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 
 error[E0539]: malformed `cfg` attribute input
   --> $DIR/cfg-target-compact-errors.rs:17:1
@@ -33,6 +39,8 @@ LL | #[cfg(target(true))]
    | |            |
    | |            expected this to be of the form `... = "..."`
    | help: must be of the form: `#[cfg(predicate)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 
 error: `cfg` predicate key must be an identifier
   --> $DIR/cfg-target-compact-errors.rs:21:14

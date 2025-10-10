@@ -1,0 +1,238 @@
+error: layout_of(UnsignedAroundZero) = Layout {
+           size: Size(2 bytes),
+           align: AbiAlign {
+               abi: Align(2 bytes),
+           },
+           backend_repr: Scalar(
+               Initialized {
+                   value: Int(
+                       I16,
+                       false,
+                   ),
+                   valid_range: (..=1) | (65535..),
+               },
+           ),
+           fields: Arbitrary {
+               offsets: [
+                   Size(0 bytes),
+               ],
+               memory_index: [
+                   0,
+               ],
+           },
+           largest_niche: Some(
+               Niche {
+                   offset: Size(0 bytes),
+                   value: Int(
+                       I16,
+                       false,
+                   ),
+                   valid_range: (..=1) | (65535..),
+               },
+           ),
+           uninhabited: false,
+           variants: Multiple {
+               tag: Initialized {
+                   value: Int(
+                       I16,
+                       false,
+                   ),
+                   valid_range: (..=1) | (65535..),
+               },
+               tag_encoding: Direct,
+               tag_field: 0,
+               variants: [
+                   Layout {
+                       size: Size(2 bytes),
+                       align: AbiAlign {
+                           abi: Align(2 bytes),
+                       },
+                       backend_repr: Memory {
+                           sized: true,
+                       },
+                       fields: Arbitrary {
+                           offsets: [],
+                           memory_index: [],
+                       },
+                       largest_niche: None,
+                       uninhabited: false,
+                       variants: Single {
+                           index: 0,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(2 bytes),
+                       randomization_seed: 9885373149222004003,
+                   },
+                   Layout {
+                       size: Size(2 bytes),
+                       align: AbiAlign {
+                           abi: Align(2 bytes),
+                       },
+                       backend_repr: Memory {
+                           sized: true,
+                       },
+                       fields: Arbitrary {
+                           offsets: [],
+                           memory_index: [],
+                       },
+                       largest_niche: None,
+                       uninhabited: false,
+                       variants: Single {
+                           index: 1,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(2 bytes),
+                       randomization_seed: 9885373149222004003,
+                   },
+                   Layout {
+                       size: Size(2 bytes),
+                       align: AbiAlign {
+                           abi: Align(2 bytes),
+                       },
+                       backend_repr: Memory {
+                           sized: true,
+                       },
+                       fields: Arbitrary {
+                           offsets: [],
+                           memory_index: [],
+                       },
+                       largest_niche: None,
+                       uninhabited: false,
+                       variants: Single {
+                           index: 2,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(2 bytes),
+                       randomization_seed: 9885373149222004003,
+                   },
+               ],
+           },
+           max_repr_align: None,
+           unadjusted_abi_align: Align(2 bytes),
+           randomization_seed: 2648004449468912780,
+       }
+  --> $DIR/wrapping_niche.rs:8:1
+   |
+LL | enum UnsignedAroundZero {
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: layout_of(SignedAroundZero) = Layout {
+           size: Size(2 bytes),
+           align: AbiAlign {
+               abi: Align(2 bytes),
+           },
+           backend_repr: Scalar(
+               Initialized {
+                   value: Int(
+                       I16,
+                       true,
+                   ),
+                   valid_range: (..=1) | (65535..),
+               },
+           ),
+           fields: Arbitrary {
+               offsets: [
+                   Size(0 bytes),
+               ],
+               memory_index: [
+                   0,
+               ],
+           },
+           largest_niche: Some(
+               Niche {
+                   offset: Size(0 bytes),
+                   value: Int(
+                       I16,
+                       true,
+                   ),
+                   valid_range: (..=1) | (65535..),
+               },
+           ),
+           uninhabited: false,
+           variants: Multiple {
+               tag: Initialized {
+                   value: Int(
+                       I16,
+                       true,
+                   ),
+                   valid_range: (..=1) | (65535..),
+               },
+               tag_encoding: Direct,
+               tag_field: 0,
+               variants: [
+                   Layout {
+                       size: Size(2 bytes),
+                       align: AbiAlign {
+                           abi: Align(2 bytes),
+                       },
+                       backend_repr: Memory {
+                           sized: true,
+                       },
+                       fields: Arbitrary {
+                           offsets: [],
+                           memory_index: [],
+                       },
+                       largest_niche: None,
+                       uninhabited: false,
+                       variants: Single {
+                           index: 0,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(2 bytes),
+                       randomization_seed: 2684536712112553499,
+                   },
+                   Layout {
+                       size: Size(2 bytes),
+                       align: AbiAlign {
+                           abi: Align(2 bytes),
+                       },
+                       backend_repr: Memory {
+                           sized: true,
+                       },
+                       fields: Arbitrary {
+                           offsets: [],
+                           memory_index: [],
+                       },
+                       largest_niche: None,
+                       uninhabited: false,
+                       variants: Single {
+                           index: 1,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(2 bytes),
+                       randomization_seed: 2684536712112553499,
+                   },
+                   Layout {
+                       size: Size(2 bytes),
+                       align: AbiAlign {
+                           abi: Align(2 bytes),
+                       },
+                       backend_repr: Memory {
+                           sized: true,
+                       },
+                       fields: Arbitrary {
+                           offsets: [],
+                           memory_index: [],
+                       },
+                       largest_niche: None,
+                       uninhabited: false,
+                       variants: Single {
+                           index: 2,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(2 bytes),
+                       randomization_seed: 2684536712112553499,
+                   },
+               ],
+           },
+           max_repr_align: None,
+           unadjusted_abi_align: Align(2 bytes),
+           randomization_seed: 10738146848450213996,
+       }
+  --> $DIR/wrapping_niche.rs:17:1
+   |
+LL | enum SignedAroundZero {
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

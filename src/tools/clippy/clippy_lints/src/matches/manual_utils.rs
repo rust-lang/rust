@@ -2,7 +2,7 @@ use crate::map_unit_fn::OPTION_MAP_UNIT_FN;
 use crate::matches::MATCH_AS_REF;
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::ty::{is_copy, is_type_diagnostic_item, peel_mid_ty_refs_is_mutable, type_is_unsafe_function};
+use clippy_utils::ty::{is_copy, is_type_diagnostic_item, is_unsafe_fn, peel_and_count_ty_refs};
 use clippy_utils::{
     CaptureKind, can_move_expr_to_closure, expr_requires_coercion, is_else_clause, is_lint_allowed, is_res_lang_ctor,
     path_res, path_to_local_id, peel_blocks, peel_hir_expr_refs, peel_hir_expr_while,
@@ -30,8 +30,9 @@ pub(super) fn check_with<'tcx, F>(
 where
     F: Fn(&LateContext<'tcx>, &'tcx Pat<'_>, &'tcx Expr<'_>, SyntaxContext) -> Option<SomeExpr<'tcx>>,
 {
-    let (scrutinee_ty, ty_ref_count, ty_mutability) =
-        peel_mid_ty_refs_is_mutable(cx.typeck_results().expr_ty(scrutinee));
+    let (scrutinee_ty, ty_ref_count, ty_mutability) = peel_and_count_ty_refs(cx.typeck_results().expr_ty(scrutinee));
+    let ty_mutability = ty_mutability.unwrap_or(Mutability::Mut);
+
     if !(is_type_diagnostic_item(cx, scrutinee_ty, sym::Option)
         && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(expr), sym::Option))
     {
@@ -191,7 +192,7 @@ fn can_pass_as_func<'tcx>(cx: &LateContext<'tcx>, binding: HirId, expr: &'tcx Ex
         ExprKind::Call(func, [arg])
             if path_to_local_id(arg, binding)
                 && cx.typeck_results().expr_adjustments(arg).is_empty()
-                && !type_is_unsafe_function(cx, cx.typeck_results().expr_ty(func).peel_refs()) =>
+                && !is_unsafe_fn(cx, cx.typeck_results().expr_ty(func).peel_refs()) =>
         {
             Some(func)
         },

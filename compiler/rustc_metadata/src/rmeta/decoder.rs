@@ -1194,10 +1194,6 @@ impl<'a> CrateMetadataRef<'a> {
         self.root.tables.default_fields.get(self, id).map(|d| d.decode(self))
     }
 
-    fn get_trait_item_def_id(self, id: DefIndex) -> Option<DefId> {
-        self.root.tables.trait_item_def_id.get(self, id).map(|d| d.decode_from_cdata(self))
-    }
-
     fn get_expn_that_defined(self, id: DefIndex, sess: &Session) -> ExpnId {
         self.root
             .tables
@@ -1359,14 +1355,9 @@ impl<'a> CrateMetadataRef<'a> {
             }
             _ => bug!("cannot get associated-item of `{:?}`", self.def_key(id)),
         };
-        let container = self.root.tables.assoc_container.get(self, id).unwrap();
+        let container = self.root.tables.assoc_container.get(self, id).unwrap().decode(self);
 
-        ty::AssocItem {
-            kind,
-            def_id: self.local_def_id(id),
-            trait_item_def_id: self.get_trait_item_def_id(id),
-            container,
-        }
+        ty::AssocItem { kind, def_id: self.local_def_id(id), container }
     }
 
     fn get_ctor(self, node_id: DefIndex) -> Option<(CtorKind, DefId)> {
@@ -1530,7 +1521,7 @@ impl<'a> CrateMetadataRef<'a> {
                 let macro_rules = self.root.tables.is_macro_rules.get(self, id);
                 let body =
                     self.root.tables.macro_definition.get(self, id).unwrap().decode((self, sess));
-                ast::MacroDef { macro_rules, body: ast::ptr::P(body) }
+                ast::MacroDef { macro_rules, body: Box::new(body) }
             }
             _ => bug!(),
         }
@@ -1564,7 +1555,7 @@ impl<'a> CrateMetadataRef<'a> {
     }
 
     #[inline]
-    fn def_path_hash_to_def_index(self, hash: DefPathHash) -> DefIndex {
+    fn def_path_hash_to_def_index(self, hash: DefPathHash) -> Option<DefIndex> {
         self.def_path_hash_map.def_path_hash_to_def_index(&hash)
     }
 
@@ -1937,9 +1928,13 @@ impl CrateMetadata {
         self.root.decode_target_modifiers(&self.blob).collect()
     }
 
-    pub(crate) fn update_extern_crate(&mut self, new_extern_crate: ExternCrate) -> bool {
+    /// Keep `new_extern_crate` if it looks better in diagnostics
+    pub(crate) fn update_extern_crate_diagnostics(
+        &mut self,
+        new_extern_crate: ExternCrate,
+    ) -> bool {
         let update =
-            Some(new_extern_crate.rank()) > self.extern_crate.as_ref().map(ExternCrate::rank);
+            self.extern_crate.as_ref().is_none_or(|old| old.rank() < new_extern_crate.rank());
         if update {
             self.extern_crate = Some(new_extern_crate);
         }
@@ -2008,6 +2003,22 @@ impl CrateMetadata {
 
     pub(crate) fn is_proc_macro_crate(&self) -> bool {
         self.root.is_proc_macro_crate()
+    }
+
+    pub(crate) fn proc_macros_for_crate(
+        &self,
+        krate: CrateNum,
+        cstore: &CStore,
+    ) -> impl Iterator<Item = DefId> {
+        gen move {
+            for def_id in self.root.proc_macro_data.as_ref().into_iter().flat_map(move |data| {
+                data.macros
+                    .decode(CrateMetadataRef { cdata: self, cstore })
+                    .map(move |index| DefId { index, krate })
+            }) {
+                yield def_id;
+            }
+        }
     }
 
     pub(crate) fn name(&self) -> Symbol {

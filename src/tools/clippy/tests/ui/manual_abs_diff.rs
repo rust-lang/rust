@@ -114,3 +114,12 @@ fn non_primitive_ty() {
     let (a, b) = (S(10), S(20));
     let _ = if a < b { b - a } else { a - b };
 }
+
+fn issue15254(a: &usize, b: &usize) -> usize {
+    if a < b {
+        //~^ manual_abs_diff
+        b - a
+    } else {
+        a - b
+    }
+}

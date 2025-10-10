@@ -12,10 +12,10 @@ their own document.
 ### Tier 2 Target List
 
 - Arm A-Profile Architectures
-  - `armv7a-none-eabi`
+  - [`armv7a-none-eabi`](armv7a-none-eabi.md)
 - Arm R-Profile Architectures
   - [`armv7r-none-eabi` and `armv7r-none-eabihf`](armv7r-none-eabi.md)
-  - [`armebv7r-none-eabi` and `armebv7r-none-eabihf`](armv7r-none-eabi.md)
+  - [`armebv7r-none-eabi` and `armebv7r-none-eabihf`](armebv7r-none-eabi.md)
 - Arm M-Profile Architectures
   - [`thumbv6m-none-eabi`](thumbv6m-none-eabi.md)
   - [`thumbv7m-none-eabi`](thumbv7m-none-eabi.md)
@@ -28,7 +28,7 @@ their own document.
 ### Tier 3 Target List
 
 - Arm A-Profile Architectures
-  - `armv7a-none-eabihf`
+  - [`armv7a-none-eabihf`](armv7a-none-eabi.md)
 - Arm R-Profile Architectures
   - [`armv8r-none-eabihf`](armv8r-none-eabihf.md)
 - Arm M-Profile Architectures

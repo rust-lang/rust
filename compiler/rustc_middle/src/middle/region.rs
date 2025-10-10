@@ -96,6 +96,7 @@ impl fmt::Debug for Scope {
             ScopeData::Destruction => write!(fmt, "Destruction({:?})", self.local_id),
             ScopeData::IfThen => write!(fmt, "IfThen({:?})", self.local_id),
             ScopeData::IfThenRescope => write!(fmt, "IfThen[edition2024]({:?})", self.local_id),
+            ScopeData::MatchGuard => write!(fmt, "MatchGuard({:?})", self.local_id),
             ScopeData::Remainder(fsi) => write!(
                 fmt,
                 "Remainder {{ block: {:?}, first_statement_index: {}}}",
@@ -130,6 +131,11 @@ pub enum ScopeData {
     /// Used for variables introduced in an if-let expression,
     /// whose lifetimes do not cross beyond this scope.
     IfThenRescope,
+
+    /// Scope of the condition and body of a match arm with a guard
+    /// Used for variables introduced in an if-let guard,
+    /// whose lifetimes do not cross beyond this scope.
+    MatchGuard,
 
     /// Scope following a `let id = expr;` binding in a block.
     Remainder(FirstStatementIndex),
@@ -175,23 +181,22 @@ impl Scope {
             return DUMMY_SP;
         };
         let span = tcx.hir_span(hir_id);
-        if let ScopeData::Remainder(first_statement_index) = self.data {
-            if let Node::Block(blk) = tcx.hir_node(hir_id) {
-                // Want span for scope starting after the
-                // indexed statement and ending at end of
-                // `blk`; reuse span of `blk` and shift `lo`
-                // forward to end of indexed statement.
-                //
-                // (This is the special case alluded to in the
-                // doc-comment for this method)
+        if let ScopeData::Remainder(first_statement_index) = self.data
+            // Want span for scope starting after the
+            // indexed statement and ending at end of
+            // `blk`; reuse span of `blk` and shift `lo`
+            // forward to end of indexed statement.
+            //
+            // (This is the special case alluded to in the
+            // doc-comment for this method)
+            && let Node::Block(blk) = tcx.hir_node(hir_id)
+        {
+            let stmt_span = blk.stmts[first_statement_index.index()].span;
 
-                let stmt_span = blk.stmts[first_statement_index.index()].span;
-
-                // To avoid issues with macro-generated spans, the span
-                // of the statement must be nested in that of the block.
-                if span.lo() <= stmt_span.lo() && stmt_span.lo() <= span.hi() {
-                    return span.with_lo(stmt_span.lo());
-                }
+            // To avoid issues with macro-generated spans, the span
+            // of the statement must be nested in that of the block.
+            if span.lo() <= stmt_span.lo() && stmt_span.lo() <= span.hi() {
+                return span.with_lo(stmt_span.lo());
             }
         }
         span
@@ -293,5 +298,44 @@ impl ScopeTree {
         debug!("is_subscope_of({:?}, {:?})=true", subscope, superscope);
 
         true
+    }
+
+    /// Returns the scope of non-lifetime-extended temporaries within a given scope, as well as
+    /// whether we've recorded a potential backwards-incompatible change to lint on.
+    /// Returns `None` when no enclosing temporary scope is found, such as for static items.
+    pub fn default_temporary_scope(&self, inner: Scope) -> (Option<Scope>, Option<Scope>) {
+        let mut id = inner;
+        let mut backwards_incompatible = None;
+
+        while let Some(&p) = self.parent_map.get(&id) {
+            match p.data {
+                ScopeData::Destruction => {
+                    debug!("temporary_scope({inner:?}) = {id:?} [enclosing]");
+                    return (Some(id), backwards_incompatible);
+                }
+                ScopeData::IfThenRescope | ScopeData::MatchGuard => {
+                    debug!("temporary_scope({inner:?}) = {p:?} [enclosing]");
+                    return (Some(p), backwards_incompatible);
+                }
+                ScopeData::Node
+                | ScopeData::CallSite
+                | ScopeData::Arguments
+                | ScopeData::IfThen
+                | ScopeData::Remainder(_) => {
+                    // If we haven't already passed through a backwards-incompatible node,
+                    // then check if we are passing through one now and record it if so.
+                    // This is for now only working for cases where a temporary lifetime is
+                    // *shortened*.
+                    if backwards_incompatible.is_none() {
+                        backwards_incompatible =
+                            self.backwards_incompatible_scope.get(&p.local_id).copied();
+                    }
+                    id = p
+                }
+            }
+        }
+
+        debug!("temporary_scope({inner:?}) = None");
+        (None, backwards_incompatible)
     }
 }

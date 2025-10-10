@@ -296,10 +296,6 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     // Apply debuginfo to the newly allocated locals.
     fx.debug_introduce_locals(&mut start_bx, consts_debug_info.unwrap_or_default());
 
-    // If the backend supports coverage, and coverage is enabled for this function,
-    // do any necessary start-of-function codegen (e.g. locals for MC/DC bitmaps).
-    start_bx.init_coverage(instance);
-
     // The builders will be created separately for each basic block at `codegen_block`.
     // So drop the builder of `start_llbb` to avoid having two at the same time.
     drop(start_bx);
@@ -442,6 +438,10 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
             if fx.fn_abi.c_variadic && arg_index == fx.fn_abi.args.len() {
                 let va_list = PlaceRef::alloca(bx, bx.layout_of(arg_ty));
+
+                // Explicitly start the lifetime of the `va_list`, improves LLVM codegen.
+                bx.lifetime_start(va_list.val.llval, va_list.layout.size);
+
                 bx.va_start(va_list.val.llval);
 
                 return LocalRef::Place(va_list);

@@ -1,7 +1,7 @@
 use std::any::Any;
 use std::collections::BTreeMap;
 use std::fs::{File, Metadata};
-use std::io::{IsTerminal, Seek, SeekFrom, Write};
+use std::io::{ErrorKind, IsTerminal, Seek, SeekFrom, Write};
 use std::marker::CoercePointee;
 use std::ops::Deref;
 use std::rc::{Rc, Weak};
@@ -165,6 +165,12 @@ pub trait FileDescription: std::fmt::Debug + FileDescriptionExt {
         _finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
         throw_unsup_format!("cannot write to {}", self.name());
+    }
+
+    /// Determines whether this FD non-deterministically has its reads and writes shortened.
+    fn short_fd_operations(&self) -> bool {
+        // We only enable this for FD kinds where we think short accesses gain useful test coverage.
+        false
     }
 
     /// Seeks to the given offset (which can be relative to the beginning, end, or current position).
@@ -334,6 +340,15 @@ impl FileDescription for FileHandle {
     ) -> InterpResult<'tcx> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
 
+        if !self.writable {
+            // Linux hosts return EBADF here which we can't translate via the platform-independent
+            // code since it does not map to any `io::ErrorKind` -- so if we don't do anything
+            // special, we'd throw an "unsupported error code" here. Windows returns something that
+            // gets translated to `PermissionDenied`. That seems like a good value so let's just use
+            // this everywhere, even if it means behavior on Unix targets does not match the real
+            // thing.
+            return finish.call(ecx, Err(ErrorKind::PermissionDenied.into()));
+        }
         let result = ecx.write_to_host(&self.file, len, ptr)?;
         finish.call(ecx, result)
     }
@@ -379,6 +394,13 @@ impl FileDescription for FileHandle {
 
     fn is_tty(&self, communicate_allowed: bool) -> bool {
         communicate_allowed && self.file.is_terminal()
+    }
+
+    fn short_fd_operations(&self) -> bool {
+        // While short accesses on file-backed FDs are very rare (at least for sufficiently small
+        // accesses), they can realistically happen when a signal interrupts the syscall.
+        // FIXME: we should return `false` if this is a named pipe...
+        true
     }
 
     fn as_unix<'tcx>(&self, ecx: &MiriInterpCx<'tcx>) -> &dyn UnixFileDescription {

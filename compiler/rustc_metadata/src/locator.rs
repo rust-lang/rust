@@ -370,12 +370,11 @@ impl<'a> CrateLocator<'a> {
             return self.find_commandline_library(crate_rejections);
         }
         let mut seen_paths = FxHashSet::default();
-        if let Some(extra_filename) = self.extra_filename {
-            if let library @ Some(_) =
+        if let Some(extra_filename) = self.extra_filename
+            && let library @ Some(_) =
                 self.find_library_crate(crate_rejections, extra_filename, &mut seen_paths)?
-            {
-                return Ok(library);
-            }
+        {
+            return Ok(library);
         }
         self.find_library_crate(crate_rejections, "", &mut seen_paths)
     }

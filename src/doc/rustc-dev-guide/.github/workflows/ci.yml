@@ -3,7 +3,7 @@ name: CI
 on:
   push:
     branches:
-      - master
+      - main
   pull_request:
   schedule:
     # Run multiple times a day as the successfull cached links are not checked every time.
@@ -14,10 +14,9 @@ jobs:
     if: github.repository == 'rust-lang/rustc-dev-guide'
     runs-on: ubuntu-latest
     env:
-      MDBOOK_VERSION: 0.4.48
+      MDBOOK_VERSION: 0.4.52
       MDBOOK_LINKCHECK2_VERSION: 0.9.1
       MDBOOK_MERMAID_VERSION: 0.12.6
-      MDBOOK_TOC_VERSION: 0.11.2
       MDBOOK_OUTPUT__LINKCHECK__FOLLOW_WEB_LINKS: ${{ github.event_name != 'pull_request' }}
       DEPLOY_DIR: book/html
       BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -34,7 +33,7 @@ jobs:
         with:
           path: |
             ~/.cargo/bin
-          key: ${{ runner.os }}-${{ env.MDBOOK_VERSION }}--${{ env.MDBOOK_LINKCHECK2_VERSION }}--${{ env.MDBOOK_TOC_VERSION }}--${{ env.MDBOOK_MERMAID_VERSION }}
+          key: ${{ runner.os }}-${{ env.MDBOOK_VERSION }}--${{ env.MDBOOK_LINKCHECK2_VERSION }}--${{ env.MDBOOK_MERMAID_VERSION }}
 
       - name: Restore cached Linkcheck
         if: github.event_name == 'schedule'
@@ -57,7 +56,6 @@ jobs:
         run: |
           cargo install mdbook --version ${{ env.MDBOOK_VERSION }}
           cargo install mdbook-linkcheck2 --version ${{ env.MDBOOK_LINKCHECK2_VERSION }}
-          cargo install mdbook-toc --version ${{ env.MDBOOK_TOC_VERSION }}
           cargo install mdbook-mermaid --version ${{ env.MDBOOK_MERMAID_VERSION }}
 
       - name: Check build

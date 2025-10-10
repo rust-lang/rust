@@ -13,14 +13,11 @@ use super::{REDUNDANT_ALLOCATION, utils};
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, hir_ty: &hir::Ty<'tcx>, qpath: &QPath<'tcx>, def_id: DefId) -> bool {
     let mut applicability = Applicability::MaybeIncorrect;
-    let outer_sym = if Some(def_id) == cx.tcx.lang_items().owned_box() {
-        "Box"
-    } else if cx.tcx.is_diagnostic_item(sym::Rc, def_id) {
-        "Rc"
-    } else if cx.tcx.is_diagnostic_item(sym::Arc, def_id) {
-        "Arc"
-    } else {
-        return false;
+    let outer_sym = match cx.tcx.get_diagnostic_name(def_id) {
+        _ if Some(def_id) == cx.tcx.lang_items().owned_box() => "Box",
+        Some(sym::Rc) => "Rc",
+        Some(sym::Arc) => "Arc",
+        _ => return false,
     };
 
     if let Some(span) = utils::match_borrows_parameter(cx, qpath) {

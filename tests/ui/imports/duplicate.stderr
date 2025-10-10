@@ -89,7 +89,7 @@ note: `foo` could also refer to the function imported here
 LL |     pub use crate::b::*;
    |             ^^^^^^^^^^^
    = help: consider adding an explicit import of `foo` to disambiguate
-   = note: `#[deny(ambiguous_glob_imports)]` on by default
+   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
 
 error: aborting due to 5 previous errors
 
@@ -117,5 +117,5 @@ note: `foo` could also refer to the function imported here
 LL |     pub use crate::b::*;
    |             ^^^^^^^^^^^
    = help: consider adding an explicit import of `foo` to disambiguate
-   = note: `#[deny(ambiguous_glob_imports)]` on by default
+   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
 

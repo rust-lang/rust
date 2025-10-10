@@ -2,14 +2,13 @@
 //@ ignore-aarch64
 
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
 
 // gdb-command:run
 // gdb-command:next
-// gdb-check:[...]23[...]let s = Some(5).unwrap(); // #break
+// gdb-check:[...]22[...]let s = Some(5).unwrap(); // #break
 // gdb-command:continue
 
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 
 // IF YOU MODIFY THIS FILE, BE CAREFUL TO ADAPT THE LINE NUMBERS IN THE DEBUGGER COMMANDS
 

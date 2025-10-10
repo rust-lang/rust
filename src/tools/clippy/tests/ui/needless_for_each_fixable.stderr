@@ -148,5 +148,11 @@ error: needless use of `for_each`
 LL |         rows.iter().for_each(|x| do_something(x, 1u8));
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in rows.iter() { do_something(x, 1u8); }`
 
-error: aborting due to 10 previous errors
+error: needless use of `for_each`
+  --> tests/ui/needless_for_each_fixable.rs:149:5
+   |
+LL |     vec.iter().for_each(|v| println!("{v}"));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for v in vec.iter() { println!("{v}"); }`
+
+error: aborting due to 11 previous errors
 

@@ -9,8 +9,6 @@ For more details about how rustdoc works, see the
 
 [Rustdoc internals]: ./rustdoc-internals.md
 
-<!-- toc -->
-
 `rustdoc` uses `rustc` internals (and, of course, the standard library), so you
 will have to build the compiler and `std` once before you can build `rustdoc`.
 
@@ -62,6 +60,18 @@ does is call the `main()` that's in this crate's `lib.rs`, though.)
 * Use `./x test tests/rustdoc*` to run the tests using a stage1
   rustdoc.
   * See [Rustdoc internals] for more information about tests.
+* Use `./x.py test tidy --extra-checks=js` to run rustdoc’s JavaScript checks (`eslint`, `es-check`, and `tsc`).
+> **Note:** `./x.py test tidy` already runs these checks automatically when JS/TS sources changed; `--extra-checks=js` forces them explicitly.
+
+### JavaScript CI checks
+
+Rustdoc’s JavaScript and TypeScript are checked during CI by `eslint`, `es-check`, and `tsc` (not by compiletest). These run as part of the `tidy` job.
+
+```bash
+./x.py test tidy --extra-checks=js
+```
+
+The `--extra-checks=js` flag enables the frontend linting that runs in CI.
 
 [`bootstrap.toml`]: ./building/how-to-build-and-run.md
 
@@ -109,7 +119,7 @@ This comes with several caveats: in particular, rustdoc *cannot* run any parts o
 require type-checking bodies; for example it cannot generate `.rlib` files or run most lints.
 We want to move away from this model eventually, but we need some alternative for
 [the people using it][async-std]; see [various][zulip stop accepting broken code]
-[previous][rustdoc meeting 2024-07-08] [zulip][compiler meeting 2023-01-26] [discussion][notriddle rfc].
+[previous][rustdoc meeting 2024-07-08] [Zulip][compiler meeting 2023-01-26] [discussion][notriddle rfc].
 For examples of code that breaks if this hack is removed, see
 [`tests/rustdoc-ui/error-in-impl-trait`].
 

@@ -36,8 +36,8 @@ fn explicit_bound_path_to_implicit_path<'a>(v: ContainsLifetime<'a>) -> Contains
 
 fn explicit_bound_path_to_explicit_anonymous_path<'a>(
     v: ContainsLifetime<'a>,
-    //~^ ERROR eliding a lifetime that's named elsewhere is confusing
 ) -> ContainsLifetime<'_> {
+    //~^ ERROR eliding a lifetime that's named elsewhere is confusing
     v
 }
 
@@ -188,8 +188,8 @@ mod impl_trait {
 
     fn explicit_bound_path_to_impl_trait_precise_capture<'a>(
         v: ContainsLifetime<'a>,
-        //~^ ERROR eliding a lifetime that's named elsewhere is confusing
     ) -> impl FnOnce() + use<'_> {
+        //~^ ERROR eliding a lifetime that's named elsewhere is confusing
         move || _ = v
     }
 }
@@ -208,8 +208,8 @@ mod dyn_trait {
 
     fn explicit_bound_path_to_dyn_trait_bound<'a>(
         v: ContainsLifetime<'a>,
-        //~^ ERROR hiding a lifetime that's named elsewhere is confusing
     ) -> Box<dyn Iterator<Item = ContainsLifetime> + '_> {
+        //~^ ERROR hiding a lifetime that's named elsewhere is confusing
         Box::new(iter::once(v))
     }
 }

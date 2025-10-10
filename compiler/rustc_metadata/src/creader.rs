@@ -12,6 +12,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::owned_slice::OwnedSlice;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{self, FreezeReadGuard, FreezeWriteGuard};
+use rustc_data_structures::unord::UnordMap;
 use rustc_expand::base::SyntaxExtension;
 use rustc_fs_util::try_canonicalize;
 use rustc_hir as hir;
@@ -31,6 +32,7 @@ use rustc_session::cstore::{CrateDepKind, CrateSource, ExternCrate, ExternCrateS
 use rustc_session::lint::{self, BuiltinLintDiag};
 use rustc_session::output::validate_crate_name;
 use rustc_session::search_paths::PathKind;
+use rustc_span::def_id::DefId;
 use rustc_span::edition::Edition;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
 use rustc_target::spec::{PanicStrategy, Target};
@@ -68,6 +70,9 @@ pub struct CStore {
     has_global_allocator: bool,
     /// This crate has a `#[alloc_error_handler]` item.
     has_alloc_error_handler: bool,
+
+    /// Names that were used to load the crates via `extern crate` or paths.
+    resolved_externs: UnordMap<Symbol, CrateNum>,
 
     /// Unused externs of the crate
     unused_externs: Vec<Symbol>,
@@ -249,10 +254,30 @@ impl CStore {
         self.metas[cnum] = Some(Box::new(data));
     }
 
+    /// Save the name used to resolve the extern crate in the local crate
+    ///
+    /// The name isn't always the crate's own name, because `sess.opts.externs` can assign it another name.
+    /// It's also not always the same as the `DefId`'s symbol due to renames `extern crate resolved_name as defid_name`.
+    pub(crate) fn set_resolved_extern_crate_name(&mut self, name: Symbol, extern_crate: CrateNum) {
+        self.resolved_externs.insert(name, extern_crate);
+    }
+
+    /// Crate resolved and loaded via the given extern name
+    /// (corresponds to names in `sess.opts.externs`)
+    ///
+    /// May be `None` if the crate wasn't used
+    pub fn resolved_extern_crate(&self, externs_name: Symbol) -> Option<CrateNum> {
+        self.resolved_externs.get(&externs_name).copied()
+    }
+
     pub(crate) fn iter_crate_data(&self) -> impl Iterator<Item = (CrateNum, &CrateMetadata)> {
         self.metas
             .iter_enumerated()
             .filter_map(|(cnum, data)| data.as_deref().map(|data| (cnum, data)))
+    }
+
+    pub fn all_proc_macro_def_ids(&self) -> impl Iterator<Item = DefId> {
+        self.iter_crate_data().flat_map(|(krate, data)| data.proc_macros_for_crate(krate, self))
     }
 
     fn push_dependencies_in_postorder(&self, deps: &mut IndexSet<CrateNum>, cnum: CrateNum) {
@@ -387,7 +412,7 @@ impl CStore {
             match (&left_name_val, &right_name_val) {
                 (Some(l), Some(r)) => match l.1.opt.cmp(&r.1.opt) {
                     cmp::Ordering::Equal => {
-                        if l.0.tech_value != r.0.tech_value {
+                        if !l.1.consistent(&tcx.sess.opts, Some(&r.1)) {
                             report_diff(
                                 &l.0.prefix,
                                 &l.0.name,
@@ -399,20 +424,28 @@ impl CStore {
                         right_name_val = None;
                     }
                     cmp::Ordering::Greater => {
-                        report_diff(&r.0.prefix, &r.0.name, None, Some(&r.1.value_name));
+                        if !r.1.consistent(&tcx.sess.opts, None) {
+                            report_diff(&r.0.prefix, &r.0.name, None, Some(&r.1.value_name));
+                        }
                         right_name_val = None;
                     }
                     cmp::Ordering::Less => {
-                        report_diff(&l.0.prefix, &l.0.name, Some(&l.1.value_name), None);
+                        if !l.1.consistent(&tcx.sess.opts, None) {
+                            report_diff(&l.0.prefix, &l.0.name, Some(&l.1.value_name), None);
+                        }
                         left_name_val = None;
                     }
                 },
                 (Some(l), None) => {
-                    report_diff(&l.0.prefix, &l.0.name, Some(&l.1.value_name), None);
+                    if !l.1.consistent(&tcx.sess.opts, None) {
+                        report_diff(&l.0.prefix, &l.0.name, Some(&l.1.value_name), None);
+                    }
                     left_name_val = None;
                 }
                 (None, Some(r)) => {
-                    report_diff(&r.0.prefix, &r.0.name, None, Some(&r.1.value_name));
+                    if !r.1.consistent(&tcx.sess.opts, None) {
+                        report_diff(&r.0.prefix, &r.0.name, None, Some(&r.1.value_name));
+                    }
                     right_name_val = None;
                 }
                 (None, None) => break,
@@ -475,6 +508,7 @@ impl CStore {
             alloc_error_handler_kind: None,
             has_global_allocator: false,
             has_alloc_error_handler: false,
+            resolved_externs: UnordMap::default(),
             unused_externs: Vec::new(),
             used_extern_options: Default::default(),
         }
@@ -511,7 +545,7 @@ impl CStore {
             // We're also sure to compare *paths*, not actual byte slices. The
             // `source` stores paths which are normalized which may be different
             // from the strings on the command line.
-            let source = self.get_crate_data(cnum).cdata.source();
+            let source = data.source();
             if let Some(entry) = externs.get(name.as_str()) {
                 // Only use `--extern crate_name=path` here, not `--extern crate_name`.
                 if let Some(mut files) = entry.files() {
@@ -993,6 +1027,10 @@ impl CStore {
         let name = match desired_strategy {
             PanicStrategy::Unwind => sym::panic_unwind,
             PanicStrategy::Abort => sym::panic_abort,
+            PanicStrategy::ImmediateAbort => {
+                // Immediate-aborting panics don't use a runtime.
+                return;
+            }
         };
         info!("panic runtime not found -- loading {}", name);
 
@@ -1308,6 +1346,7 @@ impl CStore {
                 let path_len = definitions.def_path(def_id).data.len();
                 self.update_extern_crate(
                     cnum,
+                    name,
                     ExternCrate {
                         src: ExternCrateSource::Extern(def_id.to_def_id()),
                         span: item.span,
@@ -1332,6 +1371,7 @@ impl CStore {
 
         self.update_extern_crate(
             cnum,
+            name,
             ExternCrate {
                 src: ExternCrateSource::Path,
                 span,

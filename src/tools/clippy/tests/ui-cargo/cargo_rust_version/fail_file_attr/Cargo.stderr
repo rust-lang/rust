@@ -7,7 +7,7 @@ error: unnecessary structure name repetition
 note: the lint level is defined here
   --> src/main.rs:6:9
    |
-6  | #![deny(clippy::use_self)]
+ 6 | #![deny(clippy::use_self)]
    |         ^^^^^^^^^^^^^^^^
 
 error: unnecessary structure name repetition

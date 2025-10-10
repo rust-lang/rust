@@ -74,3 +74,13 @@ fn issue_12731() {
         let _ = u32::from_str_radix("123", 10);
     }
 }
+
+fn fix_str_ref_check() {
+    #![allow(clippy::needless_borrow)]
+    let s = "1";
+    let _ = s.parse::<u32>().unwrap();
+    //~^ from_str_radix_10
+    let s_ref = &s;
+    let _ = s_ref.parse::<u32>().unwrap();
+    //~^ from_str_radix_10
+}

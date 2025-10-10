@@ -39,7 +39,9 @@ fn used_in_comparison_with_zero(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
         && let BinOpKind::Eq | BinOpKind::Ne = op.node
     {
         let ecx = ConstEvalCtxt::new(cx);
-        matches!(ecx.eval(lhs), Some(Constant::Int(0))) || matches!(ecx.eval(rhs), Some(Constant::Int(0)))
+        let ctxt = expr.span.ctxt();
+        matches!(ecx.eval_local(lhs, ctxt), Some(Constant::Int(0)))
+            || matches!(ecx.eval_local(rhs, ctxt), Some(Constant::Int(0)))
     } else {
         false
     }
@@ -55,7 +57,7 @@ fn analyze_operand(operand: &Expr<'_>, cx: &LateContext<'_>, expr: &Expr<'_>) ->
     match ConstEvalCtxt::new(cx).eval(operand)? {
         Constant::Int(v) => match *cx.typeck_results().expr_ty(expr).kind() {
             ty::Int(ity) => {
-                let value = sext(cx.tcx, v, ity);
+                let value: i128 = sext(cx.tcx, v, ity);
                 Some(OperandInfo {
                     string_representation: Some(value.to_string()),
                     is_negative: value < 0,

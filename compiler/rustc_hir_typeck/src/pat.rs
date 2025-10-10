@@ -47,7 +47,7 @@ You can read more about trait objects in the Trait Objects section of the Refere
 https://doc.rust-lang.org/reference/types.html#trait-objects";
 
 fn is_number(text: &str) -> bool {
-    text.chars().all(|c: char| c.is_digit(10))
+    text.chars().all(|c: char| c.is_ascii_digit())
 }
 
 /// Information about the expected type at the top level of type checking a pattern.
@@ -262,8 +262,9 @@ enum InheritedRefMatchRule {
         /// pattern matches a given type:
         /// - If the underlying type is not a reference, a reference pattern may eat the inherited reference;
         /// - If the underlying type is a reference, a reference pattern matches if it can eat either one
-        ///    of the underlying and inherited references. E.g. a `&mut` pattern is allowed if either the
-        ///    underlying type is `&mut` or the inherited reference is `&mut`.
+        ///   of the underlying and inherited references. E.g. a `&mut` pattern is allowed if either the
+        ///   underlying type is `&mut` or the inherited reference is `&mut`.
+        ///
         /// If `false`, a reference pattern is only matched against the underlying type.
         /// This is `false` for stable Rust and `true` for both the `ref_pat_eat_one_layer_2024` and
         /// `ref_pat_eat_one_layer_2024_structural` feature gates.
@@ -605,7 +606,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             },
             PatKind::Struct(_, fields, has_rest_pat) => match opt_path_res.unwrap() {
                 Ok(ResolvedPat { ty, kind: ResolvedPatKind::Struct { variant } }) => self
-                    .check_pat_struct(pat, fields, has_rest_pat, ty, variant, expected, pat_info),
+                    .check_pat_struct(
+                        pat,
+                        fields,
+                        has_rest_pat.is_some(),
+                        ty,
+                        variant,
+                        expected,
+                        pat_info,
+                    ),
                 Err(guar) => {
                     let ty_err = Ty::new_error(self.tcx, guar);
                     for field in fields {
@@ -1061,7 +1070,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 {
                     if !self.tcx.features().mut_ref() {
                         feature_err(
-                            &self.tcx.sess,
+                            self.tcx.sess,
                             sym::mut_ref,
                             pat.span.until(ident.span),
                             "binding cannot be both mutable and by-reference",
@@ -1479,31 +1488,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         opt_def_id: Option<hir::def_id::DefId>,
         ident: Ident,
     ) -> bool {
-        match opt_def_id {
-            Some(def_id) => match self.tcx.hir_get_if_local(def_id) {
-                Some(hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Const(_, _, _, body_id),
-                    ..
-                })) => match self.tcx.hir_node(body_id.hir_id) {
-                    hir::Node::Expr(expr) => {
-                        if hir::is_range_literal(expr) {
-                            let span = self.tcx.hir_span(body_id.hir_id);
-                            if let Ok(snip) = self.tcx.sess.source_map().span_to_snippet(span) {
-                                e.span_suggestion_verbose(
-                                    ident.span,
-                                    "you may want to move the range into the match block",
-                                    snip,
-                                    Applicability::MachineApplicable,
-                                );
-                                return true;
-                            }
-                        }
-                    }
-                    _ => (),
-                },
-                _ => (),
-            },
-            _ => (),
+        if let Some(def_id) = opt_def_id
+            && let Some(hir::Node::Item(hir::Item {
+                kind: hir::ItemKind::Const(_, _, _, body_id),
+                ..
+            })) = self.tcx.hir_get_if_local(def_id)
+            && let hir::Node::Expr(expr) = self.tcx.hir_node(body_id.hir_id)
+            && hir::is_range_literal(expr)
+        {
+            let span = self.tcx.hir_span(body_id.hir_id);
+            if let Ok(snip) = self.tcx.sess.source_map().span_to_snippet(span) {
+                e.span_suggestion_verbose(
+                    ident.span,
+                    "you may want to move the range into the match block",
+                    snip,
+                    Applicability::MachineApplicable,
+                );
+                return true;
+            }
         }
         false
     }
@@ -1521,7 +1523,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if let Some(span) = self.tcx.hir_res_span(pat_res) {
             e.span_label(span, format!("{} defined here", res.descr()));
-            if let [hir::PathSegment { ident, .. }] = &*segments {
+            if let [hir::PathSegment { ident, .. }] = segments {
                 e.span_label(
                     pat_span,
                     format!(
@@ -1549,17 +1551,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             _ => (None, None),
                         };
 
-                        let is_range = match type_def_id.and_then(|id| self.tcx.as_lang_item(id)) {
+                        let is_range = matches!(
+                            type_def_id.and_then(|id| self.tcx.as_lang_item(id)),
                             Some(
                                 LangItem::Range
-                                | LangItem::RangeFrom
-                                | LangItem::RangeTo
-                                | LangItem::RangeFull
-                                | LangItem::RangeInclusiveStruct
-                                | LangItem::RangeToInclusive,
-                            ) => true,
-                            _ => false,
-                        };
+                                    | LangItem::RangeFrom
+                                    | LangItem::RangeTo
+                                    | LangItem::RangeFull
+                                    | LangItem::RangeInclusiveStruct
+                                    | LangItem::RangeToInclusive,
+                            )
+                        );
                         if is_range {
                             if !self.maybe_suggest_range_literal(&mut e, item_def_id, *ident) {
                                 let msg = "constants only support matching by type, \
@@ -1756,7 +1758,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let missing_parentheses = match (expected.kind(), fields, had_err) {
             // #67037: only do this if we could successfully type-check the expected type against
             // the tuple struct pattern. Otherwise the args could get out of range on e.g.,
-            // `let P() = U;` where `P != U` with `struct P<T>(T);`.
+            // `let P() = U;` where `P != U` with `struct Box<T>(T);`.
             (ty::Adt(_, args), [field], Ok(())) => {
                 let field_ty = self.field_ty(pat_span, field, args);
                 match field_ty.kind() {
@@ -2428,7 +2430,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let len = unmentioned_fields.len();
         let (prefix, postfix, sp) = match fields {
             [] => match &pat.kind {
-                PatKind::Struct(path, [], false) => {
+                PatKind::Struct(path, [], None) => {
                     (" { ", " }", path.span().shrink_to_hi().until(pat.span.shrink_to_hi()))
                 }
                 _ => return err,
@@ -3113,20 +3115,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // binding mode. This keeps it from making those suggestions, as doing so could panic.
         let info = table.entry(pat_id).or_insert_with(|| ty::Rust2024IncompatiblePatInfo {
             primary_labels: Vec::new(),
-            bad_modifiers: false,
+            bad_ref_modifiers: false,
+            bad_mut_modifiers: false,
             bad_ref_pats: false,
             suggest_eliding_modes: !self.tcx.features().ref_pat_eat_one_layer_2024()
                 && !self.tcx.features().ref_pat_eat_one_layer_2024_structural(),
         });
 
         let pat_kind = if let PatKind::Binding(user_bind_annot, _, _, _) = subpat.kind {
-            info.bad_modifiers = true;
             // If the user-provided binding modifier doesn't match the default binding mode, we'll
             // need to suggest reference patterns, which can affect other bindings.
             // For simplicity, we opt to suggest making the pattern fully explicit.
             info.suggest_eliding_modes &=
                 user_bind_annot == BindingMode(ByRef::Yes(def_br_mutbl), Mutability::Not);
-            "binding modifier"
+            if user_bind_annot == BindingMode(ByRef::No, Mutability::Mut) {
+                info.bad_mut_modifiers = true;
+                "`mut` binding modifier"
+            } else {
+                info.bad_ref_modifiers = true;
+                match user_bind_annot.1 {
+                    Mutability::Not => "explicit `ref` binding modifier",
+                    Mutability::Mut => "explicit `ref mut` binding modifier",
+                }
+            }
         } else {
             info.bad_ref_pats = true;
             // For simplicity, we don't try to suggest eliding reference patterns. Thus, we'll
@@ -3145,11 +3156,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // so, we may want to inspect the span's source callee or macro backtrace.
             "occurs within macro expansion".to_owned()
         } else {
-            let dbm_str = match def_br_mutbl {
-                Mutability::Not => "ref",
-                Mutability::Mut => "ref mut",
-            };
-            format!("{pat_kind} not allowed under `{dbm_str}` default binding mode")
+            format!("{pat_kind} not allowed when implicitly borrowing")
         };
         info.primary_labels.push((trimmed_span, primary_label));
     }

@@ -49,7 +49,7 @@ declare_clippy_lint! {
 /// Some functions could be replaced as well if we have replaced `Lazy` to `LazyLock`,
 /// therefore after suggesting replace the type, we need to make sure the function calls can be
 /// replaced, otherwise the suggestions cannot be applied thus the applicability should be
-/// `Unspecified` or `MaybeIncorret`.
+/// [`Applicability::Unspecified`] or [`Applicability::MaybeIncorrect`].
 static FUNCTION_REPLACEMENTS: &[(&str, Option<&str>)] = &[
     ("once_cell::sync::Lazy::force", Some("std::sync::LazyLock::force")),
     ("once_cell::sync::Lazy::get", None), // `std::sync::LazyLock::get` is experimental

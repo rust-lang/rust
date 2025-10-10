@@ -2,6 +2,7 @@
 //@ run-pass
 //@ needs-asm-support
 //@ needs-unwind
+//@ ignore-backends: gcc
 
 #![feature(asm_unwind)]
 

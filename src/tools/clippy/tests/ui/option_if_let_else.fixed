@@ -125,6 +125,16 @@ fn complex_subpat() -> DummyEnum {
     DummyEnum::Two
 }
 
+// #10335
+pub fn test_result_err_ignored_1(r: Result<&[u8], &[u8]>) -> Vec<u8> {
+    r.map_or_else(|_| Vec::new(), |s| s.to_owned())
+}
+
+// #10335
+pub fn test_result_err_ignored_2(r: Result<&[u8], &[u8]>) -> Vec<u8> {
+    r.map_or_else(|_| Vec::new(), |s| s.to_owned())
+}
+
 fn main() {
     let optional = Some(5);
     let _ = optional.map_or(5, |x| x + 2);
@@ -301,4 +311,16 @@ mod issue11059 {
     fn deref_with_overload(o: Option<&str>) -> &str {
         if let Some(o) = o { o } else { &S }
     }
+}
+
+fn issue15379() {
+    let opt = Some(0usize);
+    let opt_raw_ptr = &opt as *const Option<usize>;
+    let _ = unsafe { (*opt_raw_ptr).map_or(1, |o| o) };
+    //~^ option_if_let_else
+}
+
+fn issue15002() {
+    let res: Result<String, ()> = Ok("_".to_string());
+    let _ = res.map_or_else(|_| String::new(), |s| s.clone());
 }

@@ -75,9 +75,10 @@ fn main() {
     });
 
     let thread3 = spawn(move || {
+        // Just a single write, so we only wake up one of them.
         let data = "abcde".as_bytes().as_ptr();
         let res = unsafe { libc::write(fds[1], data as *const libc::c_void, 5) };
-        assert_eq!(res, 5);
+        assert!(res > 0 && res <= 5);
     });
 
     thread1.join().unwrap();

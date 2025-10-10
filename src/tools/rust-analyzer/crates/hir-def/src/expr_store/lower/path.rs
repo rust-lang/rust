@@ -211,16 +211,17 @@ pub(super) fn lower_path(
     // Basically, even in rustc it is quite hacky:
     // https://github.com/rust-lang/rust/blob/614f273e9388ddd7804d5cbc80b8865068a3744e/src/librustc_resolve/macros.rs#L456
     // We follow what it did anyway :)
-    if segments.len() == 1 && kind == PathKind::Plain {
-        if let Some(_macro_call) = path.syntax().parent().and_then(ast::MacroCall::cast) {
-            let syn_ctxt = collector.expander.ctx_for_range(path.segment()?.syntax().text_range());
-            if let Some(macro_call_id) = syn_ctxt.outer_expn(collector.db) {
-                if collector.db.lookup_intern_macro_call(macro_call_id.into()).def.local_inner {
-                    kind = match resolve_crate_root(collector.db, syn_ctxt) {
-                        Some(crate_root) => PathKind::DollarCrate(crate_root),
-                        None => PathKind::Crate,
-                    }
-                }
+    if segments.len() == 1
+        && kind == PathKind::Plain
+        && let Some(_macro_call) = path.syntax().parent().and_then(ast::MacroCall::cast)
+    {
+        let syn_ctxt = collector.expander.ctx_for_range(path.segment()?.syntax().text_range());
+        if let Some(macro_call_id) = syn_ctxt.outer_expn(collector.db)
+            && collector.db.lookup_intern_macro_call(macro_call_id.into()).def.local_inner
+        {
+            kind = match resolve_crate_root(collector.db, syn_ctxt) {
+                Some(crate_root) => PathKind::DollarCrate(crate_root),
+                None => PathKind::Crate,
             }
         }
     }

@@ -7,9 +7,7 @@ use clippy_utils::{is_path_lang_item, sym};
 use rustc_ast::LitKind;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{
-    Block, Expr, ExprKind, Impl, Item, ItemKind, LangItem, Node, QPath, TyKind, VariantData,
-};
+use rustc_hir::{Block, Expr, ExprKind, Impl, Item, ItemKind, LangItem, Node, QPath, TyKind, VariantData};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{Ty, TypeckResults};
 use rustc_session::declare_lint_pass;
@@ -200,8 +198,8 @@ fn check_struct<'tcx>(
 impl<'tcx> LateLintPass<'tcx> for MissingFieldsInDebug {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
         // is this an `impl Debug for X` block?
-        if let ItemKind::Impl(Impl { of_trait: Some(trait_ref), self_ty, .. }) = item.kind
-            && let Res::Def(DefKind::Trait, trait_def_id) = trait_ref.path.res
+        if let ItemKind::Impl(Impl { of_trait: Some(of_trait), self_ty, .. }) = item.kind
+            && let Res::Def(DefKind::Trait, trait_def_id) = of_trait.trait_ref.path.res
             && let TyKind::Path(QPath::Resolved(_, self_path)) = &self_ty.kind
             // make sure that the self type is either a struct, an enum or a union
             // this prevents ICEs such as when self is a type parameter or a primitive type

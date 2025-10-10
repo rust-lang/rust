@@ -1,8 +1,12 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::is_def_id_trait_method;
+use clippy_utils::usage::is_todo_unimplemented_stub;
 use rustc_hir::def::DefKind;
 use rustc_hir::intravisit::{FnKind, Visitor, walk_expr, walk_fn};
-use rustc_hir::{Body, Defaultness, Expr, ExprKind, FnDecl, HirId, Node, TraitItem, YieldSource};
+use rustc_hir::{
+    Body, Closure, ClosureKind, CoroutineDesugaring, CoroutineKind, Defaultness, Expr, ExprKind, FnDecl, HirId, Node,
+    TraitItem, YieldSource,
+};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_session::impl_lint_pass;
@@ -81,11 +85,8 @@ impl<'tcx> Visitor<'tcx> for AsyncFnVisitor<'_, 'tcx> {
 
         let is_async_block = matches!(
             ex.kind,
-            ExprKind::Closure(rustc_hir::Closure {
-                kind: rustc_hir::ClosureKind::Coroutine(rustc_hir::CoroutineKind::Desugared(
-                    rustc_hir::CoroutineDesugaring::Async,
-                    _
-                )),
+            ExprKind::Closure(Closure {
+                kind: ClosureKind::Coroutine(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)),
                 ..
             })
         );
@@ -120,6 +121,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAsync {
             && fn_kind.asyncness().is_async()
             && !is_def_id_trait_method(cx, def_id)
             && !is_default_trait_impl(cx, def_id)
+            && !async_fn_contains_todo_unimplemented_macro(cx, body)
         {
             let mut visitor = AsyncFnVisitor {
                 cx,
@@ -202,4 +204,19 @@ fn is_default_trait_impl(cx: &LateContext<'_>, def_id: LocalDefId) -> bool {
             ..
         })
     )
+}
+
+fn async_fn_contains_todo_unimplemented_macro(cx: &LateContext<'_>, body: &Body<'_>) -> bool {
+    if let ExprKind::Closure(closure) = body.value.kind
+        && let ClosureKind::Coroutine(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) = closure.kind
+        && let body = cx.tcx.hir_body(closure.body)
+        && let ExprKind::Block(block, _) = body.value.kind
+        && block.stmts.is_empty()
+        && let Some(expr) = block.expr
+        && let ExprKind::DropTemps(inner) = expr.kind
+    {
+        return is_todo_unimplemented_stub(cx, inner);
+    }
+
+    false
 }

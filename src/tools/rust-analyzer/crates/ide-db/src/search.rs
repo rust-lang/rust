@@ -295,10 +295,10 @@ impl Definition {
         }
 
         // def is crate root
-        if let &Definition::Module(module) = self {
-            if module.is_crate_root() {
-                return SearchScope::reverse_dependencies(db, module.krate());
-            }
+        if let &Definition::Module(module) = self
+            && module.is_crate_root()
+        {
+            return SearchScope::reverse_dependencies(db, module.krate());
         }
 
         let module = match self.module(db) {
@@ -352,7 +352,6 @@ impl Definition {
                 hir::GenericDef::Function(it) => it.source(db).map(|src| src.syntax().cloned()),
                 hir::GenericDef::Adt(it) => it.source(db).map(|src| src.syntax().cloned()),
                 hir::GenericDef::Trait(it) => it.source(db).map(|src| src.syntax().cloned()),
-                hir::GenericDef::TraitAlias(it) => it.source(db).map(|src| src.syntax().cloned()),
                 hir::GenericDef::TypeAlias(it) => it.source(db).map(|src| src.syntax().cloned()),
                 hir::GenericDef::Impl(it) => it.source(db).map(|src| src.syntax().cloned()),
                 hir::GenericDef::Const(it) => it.source(db).map(|src| src.syntax().cloned()),
@@ -487,9 +486,9 @@ impl<'a> FindUsages<'a> {
         scope.entries.iter().map(|(&file_id, &search_range)| {
             let text = db.file_text(file_id.file_id(db)).text(db);
             let search_range =
-                search_range.unwrap_or_else(|| TextRange::up_to(TextSize::of(&*text)));
+                search_range.unwrap_or_else(|| TextRange::up_to(TextSize::of(&**text)));
 
-            (text, file_id, search_range)
+            (text.clone(), file_id, search_range)
         })
     }
 
@@ -683,51 +682,47 @@ impl<'a> FindUsages<'a> {
                                 }
                             } else if let Some(alias) =
                                 usage.ancestors().find_map(ast::TypeAlias::cast)
+                                && let Some(name) = alias.name()
+                                && seen
+                                    .insert(InFileWrapper::new(file_id, name.syntax().text_range()))
                             {
-                                if let Some(name) = alias.name() {
-                                    if seen.insert(InFileWrapper::new(
-                                        file_id,
-                                        name.syntax().text_range(),
-                                    )) {
-                                        if let Some(def) = is_alias(&alias) {
-                                            cov_mark::hit!(container_type_alias);
-                                            insert_type_alias(
-                                                sema.db,
-                                                &mut to_process,
-                                                name.text().as_str(),
-                                                def.into(),
-                                            );
-                                        } else {
-                                            cov_mark::hit!(same_name_different_def_type_alias);
-                                        }
-                                    }
+                                if let Some(def) = is_alias(&alias) {
+                                    cov_mark::hit!(container_type_alias);
+                                    insert_type_alias(
+                                        sema.db,
+                                        &mut to_process,
+                                        name.text().as_str(),
+                                        def.into(),
+                                    );
+                                } else {
+                                    cov_mark::hit!(same_name_different_def_type_alias);
                                 }
                             }
 
                             // We need to account for `Self`. It can only refer to our type inside an impl.
                             let impl_ = 'impl_: {
                                 for ancestor in usage.ancestors() {
-                                    if let Some(parent) = ancestor.parent() {
-                                        if let Some(parent) = ast::Impl::cast(parent) {
-                                            // Only if the GENERIC_PARAM_LIST is directly under impl, otherwise it may be in the self ty.
-                                            if matches!(
-                                                ancestor.kind(),
-                                                SyntaxKind::ASSOC_ITEM_LIST
-                                                    | SyntaxKind::WHERE_CLAUSE
-                                                    | SyntaxKind::GENERIC_PARAM_LIST
-                                            ) {
-                                                break;
-                                            }
-                                            if parent
-                                                .trait_()
-                                                .is_some_and(|trait_| *trait_.syntax() == ancestor)
-                                            {
-                                                break;
-                                            }
-
-                                            // Otherwise, found an impl where its self ty may be our type.
-                                            break 'impl_ Some(parent);
+                                    if let Some(parent) = ancestor.parent()
+                                        && let Some(parent) = ast::Impl::cast(parent)
+                                    {
+                                        // Only if the GENERIC_PARAM_LIST is directly under impl, otherwise it may be in the self ty.
+                                        if matches!(
+                                            ancestor.kind(),
+                                            SyntaxKind::ASSOC_ITEM_LIST
+                                                | SyntaxKind::WHERE_CLAUSE
+                                                | SyntaxKind::GENERIC_PARAM_LIST
+                                        ) {
+                                            break;
                                         }
+                                        if parent
+                                            .trait_()
+                                            .is_some_and(|trait_| *trait_.syntax() == ancestor)
+                                        {
+                                            break;
+                                        }
+
+                                        // Otherwise, found an impl where its self ty may be our type.
+                                        break 'impl_ Some(parent);
                                     }
                                 }
                                 None
@@ -858,14 +853,7 @@ impl<'a> FindUsages<'a> {
                 &finder,
                 name,
                 is_possibly_self.into_iter().map(|position| {
-                    (
-                        self.sema
-                            .db
-                            .file_text(position.file_id.file_id(self.sema.db))
-                            .text(self.sema.db),
-                        position.file_id,
-                        position.range,
-                    )
+                    (position.file_text(self.sema.db).clone(), position.file_id, position.range)
                 }),
                 |path, name_position| {
                     let has_self = path
@@ -1071,12 +1059,12 @@ impl<'a> FindUsages<'a> {
                 let file_text = sema.db.file_text(file_id.file_id(self.sema.db));
                 let text = file_text.text(sema.db);
                 let search_range =
-                    search_range.unwrap_or_else(|| TextRange::up_to(TextSize::of(&*text)));
+                    search_range.unwrap_or_else(|| TextRange::up_to(TextSize::of(&**text)));
 
                 let tree = LazyCell::new(|| sema.parse(file_id).syntax().clone());
                 let finder = &Finder::new("self");
 
-                for offset in Self::match_indices(&text, finder, search_range) {
+                for offset in Self::match_indices(text, finder, search_range) {
                     for name_ref in Self::find_nodes(sema, "self", file_id, &tree, offset)
                         .filter_map(ast::NameRef::cast)
                     {
@@ -1356,11 +1344,10 @@ impl ReferenceCategory {
                         if matches!(expr.op_kind()?, ast::BinaryOp::Assignment { .. }) {
                             // If the variable or field ends on the LHS's end then it's a Write
                             // (covers fields and locals). FIXME: This is not terribly accurate.
-                            if let Some(lhs) = expr.lhs() {
-                                if lhs.syntax().text_range().end() == r.syntax().text_range().end() {
+                            if let Some(lhs) = expr.lhs()
+                                && lhs.syntax().text_range().end() == r.syntax().text_range().end() {
                                     return Some(ReferenceCategory::WRITE)
                                 }
-                            }
                         }
                         Some(ReferenceCategory::READ)
                     },

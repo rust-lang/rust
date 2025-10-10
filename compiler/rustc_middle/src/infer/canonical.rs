@@ -27,7 +27,6 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lock;
 use rustc_macros::{HashStable, TypeFoldable, TypeVisitable};
 pub use rustc_type_ir as ir;
-pub use rustc_type_ir::CanonicalTyVarKind;
 use smallvec::SmallVec;
 
 use crate::mir::ConstraintCategory;

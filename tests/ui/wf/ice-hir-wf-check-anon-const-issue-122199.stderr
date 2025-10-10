@@ -39,7 +39,7 @@ LL | trait Trait<const N: dyn Trait = bar> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
-error: defaults for const parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
+error: defaults for generic parameters are not allowed here
   --> $DIR/ice-hir-wf-check-anon-const-issue-122199.rs:4:12
    |
 LL |     fn fnc<const N: dyn Trait = u32>(&self) -> dyn Trait {

@@ -2,8 +2,8 @@
 
 #![warn(clippy::ptr_as_ptr)]
 
-#[macro_use]
 extern crate proc_macros;
+use proc_macros::{external, inline_macros, with_span};
 
 mod issue_11278_a {
     #[derive(Debug)]
@@ -53,11 +53,13 @@ fn main() {
     //~^ ptr_as_ptr
 
     // Make sure the lint is triggered inside a macro
+    // FIXME: `is_from_proc_macro` incorrectly stops the lint from firing here
     let _ = inline!($ptr as *const i32);
-    //~^ ptr_as_ptr
 
     // Do not lint inside macros from external crates
     let _ = external!($ptr as *const i32);
+
+    let _ = with_span!(expr $ptr as *const i32);
 }
 
 #[clippy::msrv = "1.37"]
@@ -218,4 +220,18 @@ mod null_entire_infer {
         core::ptr::null() as _
         //~^ ptr_as_ptr
     }
+}
+
+#[allow(clippy::transmute_null_to_fn)]
+fn issue15283() {
+    unsafe {
+        let _: fn() = std::mem::transmute(std::ptr::null::<()>() as *const u8);
+        //~^ ptr_as_ptr
+    }
+}
+
+fn issue15232() {
+    let mut b = Box::new(0i32);
+    let _ptr = std::ptr::addr_of_mut!(*b) as *mut ();
+    //~^ ptr_as_ptr
 }

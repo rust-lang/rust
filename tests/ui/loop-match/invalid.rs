@@ -142,6 +142,25 @@ fn break_without_value_unit() {
     }
 }
 
+fn break_without_label() {
+    let mut state = State::A;
+    let _ = {
+        #[loop_match]
+        loop {
+            state = 'blk: {
+                match state {
+                    _ => {
+                        #[const_continue]
+                        break State::A;
+                        //~^ ERROR unlabeled `break` inside of a labeled block
+                        //~| ERROR a `#[const_continue]` must break to a label with a value
+                    }
+                }
+            }
+        }
+    };
+}
+
 fn arm_has_guard(cond: bool) {
     let mut state = State::A;
     #[loop_match]

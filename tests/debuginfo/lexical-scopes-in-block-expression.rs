@@ -1,4 +1,5 @@
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
 
 // === GDB TESTS ===================================================================================
 
@@ -336,8 +337,6 @@
 
 #![allow(unused_variables)]
 #![allow(unused_assignments)]
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 
 static mut MUT_INT: isize = 0;
 

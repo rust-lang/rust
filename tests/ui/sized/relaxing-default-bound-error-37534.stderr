@@ -1,0 +1,20 @@
+error[E0404]: expected trait, found derive macro `Hash`
+  --> $DIR/relaxing-default-bound-error-37534.rs:1:16
+   |
+LL | struct Foo<T: ?Hash> {}
+   |                ^^^^ not a trait
+   |
+help: consider importing this trait instead
+   |
+LL + use std::hash::Hash;
+   |
+
+error: bound modifier `?` can only be applied to `Sized`
+  --> $DIR/relaxing-default-bound-error-37534.rs:1:15
+   |
+LL | struct Foo<T: ?Hash> {}
+   |               ^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0404`.

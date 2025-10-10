@@ -8,14 +8,9 @@ use std::ffi::OsStr;
 use std::fs::{self, OpenOptions};
 use std::io::{self, Read as _, Seek as _, SeekFrom, Write};
 use std::path::{Path, PathBuf};
-use std::process::{self, Command, ExitStatus, Stdio};
+use std::process::{self, Command, Stdio};
 use std::{env, thread};
 use walkdir::WalkDir;
-
-#[cfg(not(windows))]
-static CARGO_CLIPPY_EXE: &str = "cargo-clippy";
-#[cfg(windows)]
-static CARGO_CLIPPY_EXE: &str = "cargo-clippy.exe";
 
 #[derive(Clone, Copy)]
 pub enum ErrAction {
@@ -118,16 +113,14 @@ impl<'a> File<'a> {
     }
 }
 
-/// Returns the path to the `cargo-clippy` binary
-///
-/// # Panics
-///
-/// Panics if the path of current executable could not be retrieved.
+/// Creates a `Command` for running cargo.
 #[must_use]
-pub fn cargo_clippy_path() -> PathBuf {
-    let mut path = env::current_exe().expect("failed to get current executable name");
-    path.set_file_name(CARGO_CLIPPY_EXE);
-    path
+pub fn cargo_cmd() -> Command {
+    if let Some(path) = env::var_os("CARGO") {
+        Command::new(path)
+    } else {
+        Command::new("cargo")
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -288,19 +281,6 @@ impl ClippyInfo {
     }
 }
 
-/// # Panics
-/// Panics if given command result was failed.
-pub fn exit_if_err(status: io::Result<ExitStatus>) {
-    match status.expect("failed to run command").code() {
-        Some(0) => {},
-        Some(n) => process::exit(n),
-        None => {
-            eprintln!("Killed by signal");
-            process::exit(1);
-        },
-    }
-}
-
 #[derive(Clone, Copy)]
 pub enum UpdateStatus {
     Unchanged,
@@ -341,6 +321,7 @@ pub struct FileUpdater {
     dst_buf: String,
 }
 impl FileUpdater {
+    #[track_caller]
     fn update_file_checked_inner(
         &mut self,
         tool: &str,
@@ -364,6 +345,7 @@ impl FileUpdater {
         }
     }
 
+    #[track_caller]
     fn update_file_inner(&mut self, path: &Path, update: &mut dyn FnMut(&Path, &str, &mut String) -> UpdateStatus) {
         let mut file = File::open(path, OpenOptions::new().read(true).write(true));
         file.read_to_cleared_string(&mut self.src_buf);
@@ -373,6 +355,7 @@ impl FileUpdater {
         }
     }
 
+    #[track_caller]
     pub fn update_file_checked(
         &mut self,
         tool: &str,
@@ -383,6 +366,7 @@ impl FileUpdater {
         self.update_file_checked_inner(tool, mode, path.as_ref(), update);
     }
 
+    #[track_caller]
     pub fn update_file(
         &mut self,
         path: impl AsRef<Path>,
@@ -450,7 +434,6 @@ pub enum Token<'a> {
     OpenParen,
     Pound,
     Semi,
-    Slash,
 }
 
 pub struct RustSearcher<'txt> {
@@ -528,7 +511,6 @@ impl<'txt> RustSearcher<'txt> {
                 | (Token::OpenParen, lexer::TokenKind::OpenParen)
                 | (Token::Pound, lexer::TokenKind::Pound)
                 | (Token::Semi, lexer::TokenKind::Semi)
-                | (Token::Slash, lexer::TokenKind::Slash)
                 | (
                     Token::LitStr,
                     lexer::TokenKind::Literal {
@@ -601,7 +583,7 @@ impl<'txt> RustSearcher<'txt> {
     }
 }
 
-#[expect(clippy::must_use_candidate)]
+#[track_caller]
 pub fn try_rename_file(old_name: &Path, new_name: &Path) -> bool {
     match OpenOptions::new().create_new(true).write(true).open(new_name) {
         Ok(file) => drop(file),
@@ -623,7 +605,7 @@ pub fn try_rename_file(old_name: &Path, new_name: &Path) -> bool {
     }
 }
 
-#[expect(clippy::must_use_candidate)]
+#[track_caller]
 pub fn try_rename_dir(old_name: &Path, new_name: &Path) -> bool {
     match fs::create_dir(new_name) {
         Ok(()) => {},
@@ -649,10 +631,19 @@ pub fn try_rename_dir(old_name: &Path, new_name: &Path) -> bool {
     }
 }
 
-pub fn write_file(path: &Path, contents: &str) {
-    expect_action(fs::write(path, contents), ErrAction::Write, path);
+#[track_caller]
+pub fn run_exit_on_err(path: &(impl AsRef<Path> + ?Sized), cmd: &mut Command) {
+    match expect_action(cmd.status(), ErrAction::Run, path.as_ref()).code() {
+        Some(0) => {},
+        Some(n) => process::exit(n),
+        None => {
+            eprintln!("{} killed by signal", path.as_ref().display());
+            process::exit(1);
+        },
+    }
 }
 
+#[track_caller]
 #[must_use]
 pub fn run_with_output(path: &(impl AsRef<Path> + ?Sized), cmd: &mut Command) -> Vec<u8> {
     fn f(path: &Path, cmd: &mut Command) -> Vec<u8> {
@@ -738,7 +729,7 @@ pub fn split_args_for_threads(
     }
 }
 
-#[expect(clippy::must_use_candidate)]
+#[track_caller]
 pub fn delete_file_if_exists(path: &Path) -> bool {
     match fs::remove_file(path) {
         Ok(()) => true,
@@ -747,6 +738,7 @@ pub fn delete_file_if_exists(path: &Path) -> bool {
     }
 }
 
+#[track_caller]
 pub fn delete_dir_if_exists(path: &Path) {
     match fs::remove_dir_all(path) {
         Ok(()) => {},

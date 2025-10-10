@@ -1,5 +1,6 @@
 //@ run-pass
 //@ proc-macro: append-impl.rs
+//@ ignore-backends: gcc
 
 #![allow(warnings)]
 

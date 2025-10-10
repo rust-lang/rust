@@ -73,7 +73,7 @@ impl<'tcx> LateLintPass<'tcx> for ArcWithNonSendSync {
                         diag.note(format!(
                             "`Arc<{arg_ty}>` is not `Send` and `Sync` as `{arg_ty}` is {reason}"
                         ));
-                        diag.help("if the `Arc` will not used be across threads replace it with an `Rc`");
+                        diag.help("if the `Arc` will not be used across threads replace it with an `Rc`");
                         diag.help(format!(
                             "otherwise make `{arg_ty}` `Send` and `Sync` or consider a wrapper type such as `Mutex`"
                         ));

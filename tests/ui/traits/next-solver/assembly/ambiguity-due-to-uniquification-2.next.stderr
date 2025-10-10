@@ -1,0 +1,17 @@
+error[E0283]: type annotations needed: cannot satisfy `impl Trait<'_> + Trait<'_>: Trait<'_>`
+  --> $DIR/ambiguity-due-to-uniquification-2.rs:16:5
+   |
+LL |     impls_trait::<'y, _>(foo::<'x, 'y>());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: cannot satisfy `impl Trait<'_> + Trait<'_>: Trait<'_>`
+   = help: the trait `Trait<'t>` is implemented for `()`
+note: required by a bound in `impls_trait`
+  --> $DIR/ambiguity-due-to-uniquification-2.rs:13:23
+   |
+LL | fn impls_trait<'x, T: Trait<'x>>(_: T) {}
+   |                       ^^^^^^^^^ required by this bound in `impls_trait`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0283`.

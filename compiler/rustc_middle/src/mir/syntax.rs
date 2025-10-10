@@ -327,9 +327,11 @@ pub enum StatementKind<'tcx> {
     /// interesting for optimizations? Do we want to allow such optimizations?
     ///
     /// **Needs clarification**: We currently require that the LHS place not overlap with any place
-    /// read as part of computation of the RHS for some rvalues (generally those not producing
-    /// primitives). This requirement is under discussion in [#68364]. As a part of this discussion,
-    /// it is also unclear in what order the components are evaluated.
+    /// read as part of computation of the RHS for some rvalues. This requirement is under
+    /// discussion in [#68364]. Specifically, overlap is permitted only for assignments of a type
+    /// with `BackendRepr::Scalar | BackendRepr::ScalarPair` where all the scalar fields are
+    /// [`Scalar::Initialized`][rustc_abi::Scalar::Initialized]. As a part of this discussion, it is
+    /// also unclear in what order the components are evaluated.
     ///
     /// [#68364]: https://github.com/rust-lang/rust/issues/68364
     ///
@@ -1273,18 +1275,6 @@ pub enum ProjectionElem<V, T> {
     /// A transmute from an unsafe binder to the type that it wraps. This is a projection
     /// of a place, so it doesn't necessarily constitute a move out of the binder.
     UnwrapUnsafeBinder(T),
-
-    /// A `Subtype(T)` projection is applied to any `StatementKind::Assign` where
-    /// type of lvalue doesn't match the type of rvalue, the primary goal is making subtyping
-    /// explicit during optimizations and codegen.
-    ///
-    /// This projection doesn't impact the runtime behavior of the program except for potentially changing
-    /// some type metadata of the interpreter or codegen backend.
-    ///
-    /// This goal is achieved with mir_transform pass `Subtyper`, which runs right after
-    /// borrowchecker, as we only care about subtyping that can affect trait selection and
-    /// `TypeId`.
-    Subtype(T),
 }
 
 /// Alias for projections as they appear in places, where the base is a place
@@ -1371,12 +1361,7 @@ pub enum Rvalue<'tcx> {
 
     /// Creates an array where each element is the value of the operand.
     ///
-    /// This is the cause of a bug in the case where the repetition count is zero because the value
-    /// is not dropped, see [#74836].
-    ///
     /// Corresponds to source code like `[x; 32]`.
-    ///
-    /// [#74836]: https://github.com/rust-lang/rust/issues/74836
     Repeat(Operand<'tcx>, ty::Const<'tcx>),
 
     /// Creates a reference of the indicated kind to the place.
@@ -1409,16 +1394,6 @@ pub enum Rvalue<'tcx> {
     /// Like with references, the semantics of this operation are heavily dependent on the aliasing
     /// model.
     RawPtr(RawPtrKind, Place<'tcx>),
-
-    /// Yields the length of the place, as a `usize`.
-    ///
-    /// If the type of the place is an array, this is the array length. For slices (`[T]`, not
-    /// `&[T]`) this accesses the place's metadata to determine the length. This rvalue is
-    /// ill-formed for places of other types.
-    ///
-    /// This cannot be a `UnOp(PtrMetadata, _)` because that expects a value, and we only
-    /// have a place, and `UnOp(PtrMetadata, RawPtr(place))` is not a thing.
-    Len(Place<'tcx>),
 
     /// Performs essentially all of the casts that can be performed via `as`.
     ///
@@ -1526,6 +1501,18 @@ pub enum CastKind {
     /// MIR is well-formed if the input and output types have different sizes,
     /// but running a transmute between differently-sized types is UB.
     Transmute,
+
+    /// A `Subtype` cast is applied to any `StatementKind::Assign` where
+    /// type of lvalue doesn't match the type of rvalue, the primary goal is making subtyping
+    /// explicit during optimizations and codegen.
+    ///
+    /// This cast doesn't impact the runtime behavior of the program except for potentially changing
+    /// some type metadata of the interpreter or codegen backend.
+    ///
+    /// This goal is achieved with mir_transform pass `Subtyper`, which runs right after
+    /// borrowchecker, as we only care about subtyping that can affect trait selection and
+    /// `TypeId`.
+    Subtype,
 }
 
 /// Represents how a [`CastKind::PointerCoercion`] was constructed.

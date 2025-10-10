@@ -9,6 +9,12 @@ help: give the `break` a value of the expected type
 LL |                     break 'blk /* value */;
    |                                +++++++++++
 
+error[E0695]: unlabeled `break` inside of a labeled block
+  --> $DIR/invalid.rs:154:25
+   |
+LL |                         break State::A;
+   |                         ^^^^^^^^^^^^^^ `break` statements that would diverge to or through a labeled block need to bear a label
+
 error: invalid update of the `#[loop_match]` state
   --> $DIR/invalid.rs:18:9
    |
@@ -80,14 +86,20 @@ error: a `#[const_continue]` must break to a label with a value
 LL |                     break 'blk;
    |                     ^^^^^^^^^^
 
+error: a `#[const_continue]` must break to a label with a value
+  --> $DIR/invalid.rs:154:25
+   |
+LL |                         break State::A;
+   |                         ^^^^^^^^^^^^^^
+
 error: match arms that are part of a `#[loop_match]` cannot have guards
-  --> $DIR/invalid.rs:155:29
+  --> $DIR/invalid.rs:174:29
    |
 LL |                 State::B if cond => break 'a,
    |                             ^^^^
 
 error[E0004]: non-exhaustive patterns: `State::B` and `State::C` not covered
-  --> $DIR/invalid.rs:168:19
+  --> $DIR/invalid.rs:187:19
    |
 LL |             match state {
    |                   ^^^^^ patterns `State::B` and `State::C` not covered
@@ -110,12 +122,12 @@ LL ~                 State::B | State::C => todo!(),
    |
 
 error[E0579]: lower range bound must be less than upper
-  --> $DIR/invalid.rs:185:17
+  --> $DIR/invalid.rs:204:17
    |
 LL |                 4.0..3.0 => {
    |                 ^^^^^^^^
 
-error: aborting due to 14 previous errors
+error: aborting due to 16 previous errors
 
-Some errors have detailed explanations: E0004, E0308, E0579.
+Some errors have detailed explanations: E0004, E0308, E0579, E0695.
 For more information about an error, try `rustc --explain E0004`.

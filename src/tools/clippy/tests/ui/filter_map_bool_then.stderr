@@ -61,5 +61,11 @@ error: usage of `bool::then` in `filter_map`
 LL |     let _: Vec<usize> = bools.iter().enumerate().filter_map(|(i, b)| b.then(|| i)).collect();
    |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `filter` then `map` instead: `filter(|&(i, b)| ****b).map(|(i, b)| i)`
 
-error: aborting due to 10 previous errors
+error: usage of `bool::then` in `filter_map`
+  --> tests/ui/filter_map_bool_then.rs:110:10
+   |
+LL |         .filter_map(|(t, s, i)| matches!(t, MyEnum::A if s.starts_with("bar")).then(|| foo!(x)));
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `filter` then `map` instead: `filter(|&(t, s, i)| matches!(t, MyEnum::A if s.starts_with("bar"))).map(|(t, s, i)| foo!(x))`
+
+error: aborting due to 11 previous errors
 

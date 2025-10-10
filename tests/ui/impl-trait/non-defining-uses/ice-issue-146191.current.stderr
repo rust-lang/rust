@@ -1,0 +1,29 @@
+error[E0277]: the trait bound `(): ReturnsSend` is not satisfied
+  --> $DIR/ice-issue-146191.rs:6:52
+   |
+LL | fn create_complex_future() -> impl Future<Output = impl ReturnsSend> {
+   |                                                    ^^^^^^^^^^^^^^^^ the trait `ReturnsSend` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/ice-issue-146191.rs:13:1
+   |
+LL | trait ReturnsSend {}
+   | ^^^^^^^^^^^^^^^^^
+note: required by a bound in an opaque type
+  --> $DIR/ice-issue-146191.rs:6:57
+   |
+LL | fn create_complex_future() -> impl Future<Output = impl ReturnsSend> {
+   |                                                         ^^^^^^^^^^^
+
+error[E0733]: recursion in an async block requires boxing
+  --> $DIR/ice-issue-146191.rs:8:5
+   |
+LL |     async { create_complex_future().await }
+   |     ^^^^^   ----------------------------- recursive call here
+   |
+   = note: a recursive `async fn` call must introduce indirection such as `Box::pin` to avoid an infinitely sized future
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0733.
+For more information about an error, try `rustc --explain E0277`.

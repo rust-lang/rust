@@ -86,7 +86,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         // them with fresh ty vars.
                         resume_ty: next_ty_var(),
                         yield_ty: next_ty_var(),
-                        witness: next_ty_var(),
                     },
                 )
                 .args,

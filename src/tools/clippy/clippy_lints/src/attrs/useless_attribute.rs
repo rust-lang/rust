@@ -30,12 +30,14 @@ pub(super) fn check(cx: &EarlyContext<'_>, item: &Item, attrs: &[Attribute]) {
                                 sym::ambiguous_glob_reexports
                                     | sym::dead_code
                                     | sym::deprecated
+                                    | sym::deprecated_in_future
                                     | sym::hidden_glob_reexports
                                     | sym::unreachable_pub
                                     | sym::unused
                                     | sym::unused_braces
                                     | sym::unused_import_braces
                                     | sym::unused_imports
+                                    | sym::redundant_imports
                             )
                         {
                             return;

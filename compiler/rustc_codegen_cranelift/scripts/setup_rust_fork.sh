@@ -33,6 +33,7 @@ rustc = "$(pwd)/../dist/bin/rustc-clif"
 cargo = "$(rustup which cargo)"
 full-bootstrap = true
 local-rebuild = true
+compiletest-allow-stage0 = true
 
 [rust]
 download-rustc = false

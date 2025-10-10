@@ -214,9 +214,9 @@ impl<T> LifetimeSyntaxCategories<Vec<T>> {
         }
     }
 
-    pub fn flatten(&self) -> impl Iterator<Item = &T> {
-        let Self { hidden, elided, named } = self;
-        [hidden.iter(), elided.iter(), named.iter()].into_iter().flatten()
+    pub fn iter_unnamed(&self) -> impl Iterator<Item = &T> {
+        let Self { hidden, elided, named: _ } = self;
+        [hidden.iter(), elided.iter()].into_iter().flatten()
     }
 }
 
@@ -434,7 +434,7 @@ fn emit_mismatch_diagnostic<'tcx>(
         lints::MismatchedLifetimeSyntaxesSuggestion::Mixed {
             implicit_suggestions,
             explicit_anonymous_suggestions,
-            tool_only: false,
+            optional_alternative: false,
         }
     });
 
@@ -455,7 +455,10 @@ fn emit_mismatch_diagnostic<'tcx>(
     let implicit_suggestion = should_suggest_implicit.then(|| {
         let suggestions = make_implicit_suggestions(&suggest_change_to_implicit);
 
-        lints::MismatchedLifetimeSyntaxesSuggestion::Implicit { suggestions, tool_only: false }
+        lints::MismatchedLifetimeSyntaxesSuggestion::Implicit {
+            suggestions,
+            optional_alternative: false,
+        }
     });
 
     tracing::debug!(
@@ -492,7 +495,7 @@ fn emit_mismatch_diagnostic<'tcx>(
 
     cx.emit_span_lint(
         MISMATCHED_LIFETIME_SYNTAXES,
-        inputs.flatten().copied().collect::<Vec<_>>(),
+        inputs.iter_unnamed().chain(outputs.iter_unnamed()).copied().collect::<Vec<_>>(),
         lints::MismatchedLifetimeSyntaxes { inputs, outputs, suggestions },
     );
 }
@@ -508,7 +511,7 @@ fn build_mismatch_suggestion(
     lints::MismatchedLifetimeSyntaxesSuggestion::Explicit {
         lifetime_name,
         suggestions,
-        tool_only: false,
+        optional_alternative: false,
     }
 }
 

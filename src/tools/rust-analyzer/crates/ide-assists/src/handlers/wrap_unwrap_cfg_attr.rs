@@ -200,13 +200,12 @@ fn wrap_derive(
             ],
         );
 
-        if let Some(snippet_cap) = ctx.config.snippet_cap {
-            if let Some(first_meta) =
+        if let Some(snippet_cap) = ctx.config.snippet_cap
+            && let Some(first_meta) =
                 cfg_attr.meta().and_then(|meta| meta.token_tree()).and_then(|tt| tt.l_paren_token())
-            {
-                let tabstop = edit.make_tabstop_after(snippet_cap);
-                editor.add_annotation(first_meta, tabstop);
-            }
+        {
+            let tabstop = edit.make_tabstop_after(snippet_cap);
+            editor.add_annotation(first_meta, tabstop);
         }
 
         editor.add_mappings(make.finish_with_mappings());
@@ -256,13 +255,12 @@ fn wrap_cfg_attr(acc: &mut Assists, ctx: &AssistContext<'_>, attr: ast::Attr) ->
 
         editor.replace(attr.syntax(), cfg_attr.syntax());
 
-        if let Some(snippet_cap) = ctx.config.snippet_cap {
-            if let Some(first_meta) =
+        if let Some(snippet_cap) = ctx.config.snippet_cap
+            && let Some(first_meta) =
                 cfg_attr.meta().and_then(|meta| meta.token_tree()).and_then(|tt| tt.l_paren_token())
-            {
-                let tabstop = edit.make_tabstop_after(snippet_cap);
-                editor.add_annotation(first_meta, tabstop);
-            }
+        {
+            let tabstop = edit.make_tabstop_after(snippet_cap);
+            editor.add_annotation(first_meta, tabstop);
         }
 
         editor.add_mappings(make.finish_with_mappings());

@@ -12,6 +12,7 @@ define-function: (
         enum_hover_background, union, union_hover, union_hover_background, trait, trait_hover,
         trait_hover_background, fn, fn_hover, fn_hover_background, type, type_hover,
         type_hover_background, keyword, keyword_hover, keyword_hover_background,
+        attribute, attribute_hover, attribute_hover_background,
     ],
     block {
         call-function: ("switch-theme", {"theme": |theme|})
@@ -85,6 +86,16 @@ define-function: (
             ".sidebar .block.keyword a:hover",
             {"color": |keyword_hover|, "background-color": |keyword_hover_background|},
         )
+        // Attribute
+        assert-css: (
+            ".sidebar .block.attribute a",
+            {"color": |attribute|, "background-color": "rgba(0, 0, 0, 0)"},
+        )
+        move-cursor-to: ".sidebar .block.attribute a"
+        assert-css: (
+            ".sidebar .block.attribute a:hover",
+            {"color": |attribute_hover|, "background-color": |attribute_hover_background|},
+        )
     }
 )
 
@@ -113,6 +124,9 @@ call-function: (
         "keyword": "#53b1db",
         "keyword_hover": "#ffb44c",
         "keyword_hover_background": "transparent",
+        "attribute": "#53b1db",
+        "attribute_hover": "#ffb44c",
+        "attribute_hover_background": "transparent",
     }
 )
 call-function: (
@@ -140,6 +154,9 @@ call-function: (
         "keyword": "#fdbf35",
         "keyword_hover": "#fdbf35",
         "keyword_hover_background": "#444",
+        "attribute": "#fdbf35",
+        "attribute_hover": "#fdbf35",
+        "attribute_hover_background": "#444",
     }
 )
 call-function: (
@@ -167,5 +184,8 @@ call-function: (
         "keyword": "#356da4",
         "keyword_hover": "#356da4",
         "keyword_hover_background": "#fff",
+        "attribute": "#356da4",
+        "attribute_hover": "#356da4",
+        "attribute_hover_background": "#fff",
     }
 )

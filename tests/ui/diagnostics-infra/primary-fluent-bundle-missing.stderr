@@ -1,0 +1,47 @@
+error[E0751]: found both positive and negative implementation of trait `Send` for type `TestType<_>`:
+  --> $DIR/primary-fluent-bundle-missing.rs:15:1
+   |
+LL | unsafe impl<T: MyTrait + 'static> Send for TestType<T> {}
+   | ------------------------------------------------------ positive implementation here
+LL |
+LL | impl<T: MyTrait> !Send for TestType<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ negative implementation here
+
+error[E0119]: conflicting implementations of trait `Send` for type `TestType<_>`
+  --> $DIR/primary-fluent-bundle-missing.rs:19:1
+   |
+LL | unsafe impl<T: MyTrait + 'static> Send for TestType<T> {}
+   | ------------------------------------------------------ first implementation here
+...
+LL | unsafe impl<T: 'static> Send for TestType<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `TestType<_>`
+
+error[E0367]: `!Send` impl requires `T: MyTrait` but the struct it is implemented for does not
+  --> $DIR/primary-fluent-bundle-missing.rs:15:9
+   |
+LL | impl<T: MyTrait> !Send for TestType<T> {}
+   |         ^^^^^^^
+   |
+note: the implementor must specify the same requirement
+  --> $DIR/primary-fluent-bundle-missing.rs:11:1
+   |
+LL | struct TestType<T>(::std::marker::PhantomData<T>);
+   | ^^^^^^^^^^^^^^^^^^
+
+error[E0366]: `!Send` impls cannot be specialized
+  --> $DIR/primary-fluent-bundle-missing.rs:21:1
+   |
+LL | impl !Send for TestType<i32> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `i32` is not a generic parameter
+note: use the same sequence of generic lifetime, type and const parameters as the struct definition
+  --> $DIR/primary-fluent-bundle-missing.rs:11:1
+   |
+LL | struct TestType<T>(::std::marker::PhantomData<T>);
+   | ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0119, E0366, E0367, E0751.
+For more information about an error, try `rustc --explain E0119`.

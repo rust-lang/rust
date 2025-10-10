@@ -758,13 +758,13 @@ LL |     one.sub_assign(1);
    |     ^^^^^^^^^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> tests/ui/arithmetic_side_effects.rs:670:5
+  --> tests/ui/arithmetic_side_effects.rs:684:5
    |
 LL |     one.add(&one);
    |     ^^^^^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> tests/ui/arithmetic_side_effects.rs:672:5
+  --> tests/ui/arithmetic_side_effects.rs:686:5
    |
 LL |     Box::new(one).add(one);
    |     ^^^^^^^^^^^^^^^^^^^^^^

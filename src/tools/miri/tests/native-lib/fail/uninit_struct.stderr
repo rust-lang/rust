@@ -1,0 +1,15 @@
+error: Undefined Behavior: constructing invalid value at .part_1.high: encountered uninitialized memory, but expected an integer
+  --> tests/native-lib/fail/uninit_struct.rs:LL:CC
+   |
+LL |     unsafe { pass_struct_complex(*arg.as_ptr(), 0, 0, 0) };
+   |                                  ^^^^^^^^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside `main` at tests/native-lib/fail/uninit_struct.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

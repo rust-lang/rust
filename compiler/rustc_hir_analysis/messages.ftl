@@ -72,19 +72,16 @@ hir_analysis_cannot_capture_late_bound_ty =
 hir_analysis_closure_implicit_hrtb = implicit types in closure signatures are forbidden when `for<...>` is present
     .label = `for<...>` is here
 
-hir_analysis_cmse_call_generic =
-    function pointers with the `"cmse-nonsecure-call"` ABI cannot contain generics in their type
+hir_analysis_cmse_generic =
+    generics are not allowed in `extern {$abi}` signatures
 
-hir_analysis_cmse_entry_generic =
-    functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
+hir_analysis_cmse_impl_trait =
+    `impl Trait` is not allowed in `extern {$abi}` signatures
 
 hir_analysis_cmse_inputs_stack_spill =
     arguments for `{$abi}` function too large to pass via registers
-    .label = {$plural ->
-        [false] this argument doesn't
-        *[true] these arguments don't
-    } fit in the available registers
-    .note = functions with the `{$abi}` ABI must pass all their arguments via the 4 32-bit available argument registers
+    .label = does not fit in the available registers
+    .note = functions with the `{$abi}` ABI must pass all their arguments via the 4 32-bit argument registers
 
 hir_analysis_cmse_output_stack_spill =
     return value of `{$abi}` function too large to pass via registers
@@ -508,10 +505,6 @@ hir_analysis_supertrait_item_multiple_shadowee = items from several supertraits 
 hir_analysis_supertrait_item_shadowee = item from `{$supertrait}` is shadowed by a subtrait item
 
 hir_analysis_supertrait_item_shadowing = trait item `{$item}` from `{$subtrait}` shadows identically named item from supertrait
-
-hir_analysis_tait_forward_compat2 = item does not constrain `{$opaque_type}`
-    .note = consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
-    .opaque = this opaque type is supposed to be constrained
 
 hir_analysis_target_feature_on_main = `main` function is not allowed to have `#[target_feature]`
 

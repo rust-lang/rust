@@ -143,3 +143,134 @@ const fn issue12103(x: u32) -> Option<u32> {
     // Should not issue an error in `const` context
     if x > 42 { Some(150) } else { None }
 }
+
+mod issue15257 {
+    struct Range {
+        start: u8,
+        end: u8,
+    }
+
+    fn can_be_safely_rewrite(rs: &[&Range]) -> Option<Vec<u8>> {
+        if rs.len() == 1 && rs[0].start == rs[0].end {
+            //~^ if_then_some_else_none
+            Some(vec![rs[0].start])
+        } else {
+            None
+        }
+    }
+
+    fn reborrow_as_ptr(i: *mut i32) -> Option<*const i32> {
+        let modulo = unsafe { *i % 2 };
+        if modulo == 0 {
+            //~^ if_then_some_else_none
+            Some(i)
+        } else {
+            None
+        }
+    }
+
+    fn reborrow_as_fn_ptr(i: i32) {
+        fn do_something(fn_: Option<fn(i32)>) {
+            todo!()
+        }
+
+        fn item_fn(i: i32) {
+            todo!()
+        }
+
+        do_something(if i % 2 == 0 {
+            //~^ if_then_some_else_none
+            Some(item_fn)
+        } else {
+            None
+        });
+    }
+
+    fn reborrow_as_fn_unsafe(i: i32) {
+        fn do_something(fn_: Option<unsafe fn(i32)>) {
+            todo!()
+        }
+
+        fn item_fn(i: i32) {
+            todo!()
+        }
+
+        do_something(if i % 2 == 0 {
+            //~^ if_then_some_else_none
+            Some(item_fn)
+        } else {
+            None
+        });
+
+        let closure_fn = |i: i32| {};
+        do_something(if i % 2 == 0 {
+            //~^ if_then_some_else_none
+            Some(closure_fn)
+        } else {
+            None
+        });
+    }
+}
+
+fn issue15005() {
+    struct Counter {
+        count: u32,
+    }
+
+    impl Counter {
+        fn new() -> Counter {
+            Counter { count: 0 }
+        }
+    }
+
+    impl Iterator for Counter {
+        type Item = u32;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            //~v if_then_some_else_none
+            if self.count < 5 {
+                self.count += 1;
+                Some(self.count)
+            } else {
+                None
+            }
+        }
+    }
+}
+
+fn statements_from_macro() {
+    macro_rules! mac {
+        () => {
+            println!("foo");
+            println!("bar");
+        };
+    }
+    //~v if_then_some_else_none
+    let _ = if true {
+        mac!();
+        Some(42)
+    } else {
+        None
+    };
+}
+
+fn dont_lint_inside_macros() {
+    macro_rules! mac {
+        ($cond:expr, $res:expr) => {
+            if $cond { Some($res) } else { None }
+        };
+    }
+    let _: Option<u32> = mac!(true, 42);
+}
+
+mod issue15770 {
+    fn maybe_error() -> Result<u32, &'static str> {
+        Err("error!")
+    }
+
+    pub fn trying(b: bool) -> Result<(), &'static str> {
+        let _x: Option<u32> = if b { Some(maybe_error()?) } else { None };
+        // Process _x locally
+        Ok(())
+    }
+}

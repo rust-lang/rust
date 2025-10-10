@@ -1,6 +1,7 @@
 //@[new_precise] compile-flags: -Znext-solver
 //@[new_stock] compile-flags: -Znext-solver
 //@ revisions: new_stock old_stock new_precise old_precise
+//@ ignore-backends: gcc
 
 #![feature(const_trait_impl, const_destruct)]
 #![cfg_attr(any(new_precise, old_precise), feature(const_precise_live_drops))]

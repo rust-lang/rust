@@ -100,7 +100,7 @@ fn pretty_statement<W: Write>(writer: &mut W, statement: &StatementKind) -> io::
             writeln!(writer, "{INDENT}FakeRead({cause:?}, {place:?});")
         }
         StatementKind::SetDiscriminant { place, variant_index } => {
-            writeln!(writer, "{INDENT}discriminant({place:?} = {};", variant_index.to_index())
+            writeln!(writer, "{INDENT}discriminant({place:?}) = {};", variant_index.to_index())
         }
         StatementKind::Deinit(place) => writeln!(writer, "Deinit({place:?};"),
         StatementKind::StorageLive(local) => {
@@ -428,7 +428,7 @@ fn pretty_aggregate<W: Write>(
             write!(writer, "{{closure@{}}}(", def.span().diagnostic())?;
             ")"
         }
-        AggregateKind::Coroutine(def, _, _) => {
+        AggregateKind::Coroutine(def, _) => {
             write!(writer, "{{coroutine@{}}}(", def.span().diagnostic())?;
             ")"
         }

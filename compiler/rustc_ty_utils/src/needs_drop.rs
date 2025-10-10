@@ -2,11 +2,11 @@
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::DefId;
+use rustc_hir::limit::Limit;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::util::{AlwaysRequiresDrop, needs_drop_components};
 use rustc_middle::ty::{self, EarlyBinder, GenericArgsRef, Ty, TyCtxt};
-use rustc_session::Limit;
 use rustc_span::sym;
 use tracing::{debug, instrument};
 
@@ -101,9 +101,6 @@ fn has_significant_drop_raw<'tcx>(
 struct NeedsDropTypes<'tcx, F> {
     tcx: TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
-    /// Whether to reveal coroutine witnesses, this is set
-    /// to `false` unless we compute `needs_drop` for a coroutine witness.
-    reveal_coroutine_witnesses: bool,
     query_ty: Ty<'tcx>,
     seen_tys: FxHashSet<Ty<'tcx>>,
     /// A stack of types left to process, and the recursion depth when we
@@ -115,6 +112,15 @@ struct NeedsDropTypes<'tcx, F> {
     adt_components: F,
     /// Set this to true if an exhaustive list of types involved in
     /// drop obligation is requested.
+    // FIXME: Calling this bool `exhaustive` is confusing and possibly a footgun,
+    // since it does two things: It makes the iterator yield *all* of the types
+    // that need drop, and it also affects the computation of the drop components
+    // on `Coroutine`s. The latter is somewhat confusing, and probably should be
+    // a function of `typing_env`. See the HACK comment below for why this is
+    // necessary. If this isn't possible, then we probably should turn this into
+    // a `NeedsDropMode` so that we can have a variant like `CollectAllSignificantDrops`,
+    // which will more accurately indicate that we want *all* of the *significant*
+    // drops, which are the two important behavioral changes toggled by this bool.
     exhaustive: bool,
 }
 
@@ -131,7 +137,6 @@ impl<'tcx, F> NeedsDropTypes<'tcx, F> {
         Self {
             tcx,
             typing_env,
-            reveal_coroutine_witnesses: exhaustive,
             seen_tys,
             query_ty: ty,
             unchecked_tys: vec![(ty, 0)],
@@ -195,23 +200,27 @@ where
                     // for the coroutine witness and check whether any of the contained types
                     // need to be dropped, and only require the captured types to be live
                     // if they do.
-                    ty::Coroutine(_, args) => {
-                        if self.reveal_coroutine_witnesses {
-                            queue_type(self, args.as_coroutine().witness());
+                    ty::Coroutine(def_id, args) => {
+                        // FIXME: See FIXME on `exhaustive` field above.
+                        if self.exhaustive {
+                            for upvar in args.as_coroutine().upvar_tys() {
+                                queue_type(self, upvar);
+                            }
+                            queue_type(self, args.as_coroutine().resume_ty());
+                            if let Some(witness) = tcx.mir_coroutine_witnesses(def_id) {
+                                for field_ty in &witness.field_tys {
+                                    queue_type(
+                                        self,
+                                        EarlyBinder::bind(field_ty.ty).instantiate(tcx, args),
+                                    );
+                                }
+                            }
                         } else {
                             return Some(self.always_drop_component(ty));
                         }
                     }
-                    ty::CoroutineWitness(def_id, args) => {
-                        if let Some(witness) = tcx.mir_coroutine_witnesses(def_id) {
-                            self.reveal_coroutine_witnesses = true;
-                            for field_ty in &witness.field_tys {
-                                queue_type(
-                                    self,
-                                    EarlyBinder::bind(field_ty.ty).instantiate(tcx, args),
-                                );
-                            }
-                        }
+                    ty::CoroutineWitness(..) => {
+                        unreachable!("witness should be handled in parent");
                     }
 
                     ty::UnsafeBinder(bound_ty) => {

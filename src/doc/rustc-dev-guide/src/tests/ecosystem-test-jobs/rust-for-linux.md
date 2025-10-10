@@ -40,12 +40,8 @@ this sysroot. RfL uses several unstable compiler/language features, therefore
 this workflow notifies us if a given compiler change would break it.
 
 If you are worried that a pull request might break the Rust for Linux builder
-and want to test it out before submitting it to the bors queue, simply add this
-line to your PR description:
-
-> try-job: x86_64-rust-for-linux
-
-Then when you `@bors try` it will pick the job that builds the Rust for Linux
-integration.
+and want to test it out before submitting it to the bors queue, simply ask
+bors to run the try job that builds the Rust for Linux integration:
+`@bors try jobs=x86_64-rust-for-linux`.
 
 [rfl-ping]: ../../notification-groups/rust-for-linux.md

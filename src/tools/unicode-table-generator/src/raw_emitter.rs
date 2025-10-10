@@ -98,6 +98,7 @@ impl RawEmitter {
         self.blank_line();
 
         writeln!(&mut self.file, "pub const fn lookup(c: char) -> bool {{").unwrap();
+        writeln!(&mut self.file, "    debug_assert!(!c.is_ascii());").unwrap();
         if first_code_point > 0x7f {
             writeln!(&mut self.file, "    (c as u32) >= {first_code_point:#04x} &&").unwrap();
         }
@@ -341,7 +342,7 @@ impl Canonicalized {
         for &w in unique_words {
             unique_mapping.entry(w).or_insert_with(|| {
                 canonical_words.push(w);
-                UniqueMapping::Canonical(canonical_words.len())
+                UniqueMapping::Canonical(canonical_words.len() - 1)
             });
         }
         assert_eq!(canonicalized_words.len() + canonical_words.len(), unique_words.len());

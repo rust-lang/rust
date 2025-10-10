@@ -315,7 +315,7 @@ declare_clippy_lint! {
     /// /// [example of a good link](https://github.com/rust-lang/rust-clippy/)
     /// pub fn do_something() {}
     /// ```
-    #[clippy::version = "1.84.0"]
+    #[clippy::version = "1.90.0"]
     pub DOC_BROKEN_LINK,
     pedantic,
     "broken document link"
@@ -662,7 +662,7 @@ declare_clippy_lint! {
     /// /// [^1]: defined here
     /// fn my_fn() {}
     /// ```
-    #[clippy::version = "1.88.0"]
+    #[clippy::version = "1.89.0"]
     pub DOC_SUSPICIOUS_FOOTNOTES,
     suspicious,
     "looks like a link or footnote ref, but with no definition"
@@ -1139,12 +1139,12 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                         None,
                         "a backtick may be missing a pair",
                     );
+                    text_to_check.clear();
                 } else {
-                    for (text, range, assoc_code_level) in text_to_check {
+                    for (text, range, assoc_code_level) in text_to_check.drain(..) {
                         markdown::check(cx, valid_idents, &text, &fragments, range, assoc_code_level, blockquote_level);
                     }
                 }
-                text_to_check = Vec::new();
             },
             Start(FootnoteDefinition(..)) => in_footnote_definition = true,
             End(TagEnd::FootnoteDefinition) => in_footnote_definition = false,
@@ -1232,7 +1232,6 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
     headers
 }
 
-#[expect(clippy::range_plus_one)] // inclusive ranges aren't the same type
 fn looks_like_refdef(doc: &str, range: Range<usize>) -> Option<Range<usize>> {
     if range.end < range.start {
         return None;

@@ -12,12 +12,13 @@ jobs:
     if: github.repository == 'rust-lang/compiler-builtins'
     uses: rust-lang/josh-sync/.github/workflows/rustc-pull.yml@main
     with:
+      github-app-id: ${{ vars.APP_CLIENT_ID }}
       # https://rust-lang.zulipchat.com/#narrow/channel/219381-t-libs/topic/compiler-builtins.20subtree.20sync.20automation/with/528482375
       zulip-stream-id: 219381
       zulip-topic: 'compiler-builtins subtree sync automation'
-      zulip-bot-email:  "compiler-builtins-ci-bot@rust-lang.zulipchat.com"
+      zulip-bot-email: "compiler-builtins-ci-bot@rust-lang.zulipchat.com"
       pr-base-branch: master
       branch-name: rustc-pull
     secrets:
       zulip-api-token: ${{ secrets.ZULIP_API_TOKEN }}
-      token: ${{ secrets.GITHUB_TOKEN }}
+      github-app-secret: ${{ secrets.APP_PRIVATE_KEY }}

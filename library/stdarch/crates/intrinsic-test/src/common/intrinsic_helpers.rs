@@ -120,8 +120,6 @@ pub struct IntrinsicType {
     /// rows encoded in the type (e.g. uint8x8_t).
     /// A value of `None` can be assumed to be 1 though.
     pub vec_len: Option<u32>,
-
-    pub target: String,
 }
 
 impl IntrinsicType {
@@ -321,11 +319,6 @@ pub trait IntrinsicTypeDefinition: Deref<Target = IntrinsicType> {
     /// can be implemented in an `impl` block
     fn get_lane_function(&self) -> String;
 
-    /// can be implemented in an `impl` block
-    fn from_c(_s: &str, _target: &str) -> Result<Self, String>
-    where
-        Self: Sized;
-
     /// Gets a string containing the typename for this type in C format.
     /// can be directly defined in `impl` blocks
     fn c_type(&self) -> String;
@@ -333,6 +326,8 @@ pub trait IntrinsicTypeDefinition: Deref<Target = IntrinsicType> {
     /// can be directly defined in `impl` blocks
     fn c_single_vector_type(&self) -> String;
 
-    /// can be defined in `impl` blocks
-    fn rust_type(&self) -> String;
+    /// Generates a std::cout for the intrinsics results that will match the
+    /// rust debug output format for the return type. The generated line assumes
+    /// there is an int i in scope which is the current pass number.
+    fn print_result_c(&self, indentation: Indentation, additional: &str) -> String;
 }

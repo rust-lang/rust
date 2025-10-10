@@ -6,6 +6,9 @@
     clippy::single_match
 )]
 
+//@aux-build:external.rs
+use external::macro_with_match;
+
 fn main() {}
 
 fn syntax_match() {
@@ -158,4 +161,10 @@ fn macro_expansion() {
 
     let value = &Some(23);
     matching_macro!(value);
+}
+
+fn external_macro_expansion() {
+    macro_with_match! {
+        ()
+    };
 }

@@ -66,7 +66,7 @@ impl fmt::Display for Summary {
         } in &self.0
         {
             let html_id = to_html_id(name);
-            writeln!(f, "| [`{name}`](#{html_id}) | {added} | {changed} | {removed} |")?;
+            writeln!(f, "| [`{name}`](#{html_id}) | {added} | {removed} | {changed} |")?;
         }
 
         Ok(())

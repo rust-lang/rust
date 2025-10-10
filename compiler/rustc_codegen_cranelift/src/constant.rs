@@ -281,8 +281,8 @@ fn data_id_for_static(
             .abi
             .bytes();
 
-        let linkage = if import_linkage == rustc_middle::mir::mono::Linkage::ExternalWeak
-            || import_linkage == rustc_middle::mir::mono::Linkage::WeakAny
+        let linkage = if import_linkage == rustc_hir::attrs::Linkage::ExternalWeak
+            || import_linkage == rustc_hir::attrs::Linkage::WeakAny
         {
             Linkage::Preemptible
         } else {
@@ -310,12 +310,15 @@ fn data_id_for_static(
         // `extern_with_linkage_foo` will instead be initialized to
         // zero.
 
-        let ref_name = format!("_rust_extern_with_linkage_{}", symbol_name);
+        let ref_name = format!(
+            "_rust_extern_with_linkage_{:016x}_{symbol_name}",
+            tcx.stable_crate_id(LOCAL_CRATE)
+        );
         let ref_data_id = module.declare_data(&ref_name, Linkage::Local, false, false).unwrap();
         let mut data = DataDescription::new();
         data.set_align(align);
         let data_gv = module.declare_data_in_data(data_id, &mut data);
-        data.define(std::iter::repeat(0).take(pointer_ty(tcx).bytes() as usize).collect());
+        data.define(std::iter::repeat_n(0, pointer_ty(tcx).bytes() as usize).collect());
         data.write_data_addr(0, data_gv, 0);
         match module.define_data(ref_data_id, &data) {
             // Every time the static is referenced there will be another definition of this global,
@@ -329,8 +332,8 @@ fn data_id_for_static(
 
     let linkage = if definition {
         crate::linkage::get_static_linkage(tcx, def_id)
-    } else if attrs.linkage == Some(rustc_middle::mir::mono::Linkage::ExternalWeak)
-        || attrs.linkage == Some(rustc_middle::mir::mono::Linkage::WeakAny)
+    } else if attrs.linkage == Some(rustc_hir::attrs::Linkage::ExternalWeak)
+        || attrs.linkage == Some(rustc_hir::attrs::Linkage::WeakAny)
     {
         Linkage::Preemptible
     } else {

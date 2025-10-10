@@ -10,8 +10,7 @@ use rustc_middle::ty::{self, Instance, TypeVisitableExt};
 use tracing::debug;
 
 use crate::context::CodegenCx;
-use crate::llvm;
-use crate::value::Value;
+use crate::llvm::{self, Value};
 
 /// Codegens a reference to a fn/method item, monomorphizing and
 /// inlining as it goes.
@@ -103,7 +102,7 @@ pub(crate) fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'t
             // This is a monomorphization of a generic function.
             if !(cx.tcx.sess.opts.share_generics()
                 || tcx.codegen_instance_attrs(instance.def).inline
-                    == rustc_attr_data_structures::InlineAttr::Never)
+                    == rustc_hir::attrs::InlineAttr::Never)
             {
                 // When not sharing generics, all instances are in the same
                 // crate and have hidden visibility.

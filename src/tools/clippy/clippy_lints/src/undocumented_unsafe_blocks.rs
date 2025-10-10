@@ -8,7 +8,7 @@ use clippy_utils::source::walk_span_to_context;
 use clippy_utils::visitors::{Descend, for_each_expr};
 use hir::HirId;
 use rustc_hir as hir;
-use rustc_hir::{Block, BlockCheckMode, ItemKind, Node, UnsafeSource};
+use rustc_hir::{Block, BlockCheckMode, Impl, ItemKind, Node, UnsafeSource};
 use rustc_lexer::{FrontmatterAllowed, TokenKind, tokenize};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::impl_lint_pass;
@@ -202,79 +202,41 @@ impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
         };
 
         let item_has_safety_comment = item_has_safety_comment(cx, item);
-        match (&item.kind, item_has_safety_comment) {
-            // lint unsafe impl without safety comment
-            (ItemKind::Impl(impl_), HasSafetyComment::No) if impl_.safety.is_unsafe() => {
-                if !is_lint_allowed(cx, UNDOCUMENTED_UNSAFE_BLOCKS, item.hir_id())
-                    && !is_unsafe_from_proc_macro(cx, item.span)
-                {
-                    let source_map = cx.tcx.sess.source_map();
-                    let span = if source_map.is_multiline(item.span) {
-                        source_map.span_until_char(item.span, '\n')
-                    } else {
-                        item.span
-                    };
+        match item_has_safety_comment {
+            HasSafetyComment::Yes(pos) => check_has_safety_comment(cx, item, mk_spans(pos)),
+            HasSafetyComment::No => check_has_no_safety_comment(cx, item),
+            HasSafetyComment::Maybe => {},
+        }
+    }
+}
 
-                    #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
-                    span_lint_and_then(
-                        cx,
-                        UNDOCUMENTED_UNSAFE_BLOCKS,
-                        span,
-                        "unsafe impl missing a safety comment",
-                        |diag| {
-                            diag.help("consider adding a safety comment on the preceding line");
-                        },
-                    );
-                }
-            },
-            // lint safe impl with unnecessary safety comment
-            (ItemKind::Impl(impl_), HasSafetyComment::Yes(pos)) if impl_.safety.is_safe() => {
-                if !is_lint_allowed(cx, UNNECESSARY_SAFETY_COMMENT, item.hir_id()) {
-                    let (span, help_span) = mk_spans(pos);
-
-                    span_lint_and_then(
-                        cx,
-                        UNNECESSARY_SAFETY_COMMENT,
-                        span,
-                        "impl has unnecessary safety comment",
-                        |diag| {
-                            diag.span_help(help_span, "consider removing the safety comment");
-                        },
-                    );
-                }
-            },
-            (ItemKind::Impl(_), _) => {},
-            // const and static items only need a safety comment if their body is an unsafe block, lint otherwise
-            (&ItemKind::Const(.., body) | &ItemKind::Static(.., body), HasSafetyComment::Yes(pos)) => {
-                if !is_lint_allowed(cx, UNNECESSARY_SAFETY_COMMENT, body.hir_id) {
-                    let body = cx.tcx.hir_body(body);
-                    if !matches!(
-                        body.value.kind, hir::ExprKind::Block(block, _)
-                        if block.rules == BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided)
-                    ) {
-                        let (span, help_span) = mk_spans(pos);
-
-                        span_lint_and_then(
-                            cx,
-                            UNNECESSARY_SAFETY_COMMENT,
-                            span,
-                            format!(
-                                "{} has unnecessary safety comment",
-                                cx.tcx.def_descr(item.owner_id.to_def_id()),
-                            ),
-                            |diag| {
-                                diag.span_help(help_span, "consider removing the safety comment");
-                            },
-                        );
-                    }
-                }
-            },
-            // Aside from unsafe impls and consts/statics with an unsafe block, items in general
-            // do not have safety invariants that need to be documented, so lint those.
-            (_, HasSafetyComment::Yes(pos)) => {
-                if !is_lint_allowed(cx, UNNECESSARY_SAFETY_COMMENT, item.hir_id()) {
-                    let (span, help_span) = mk_spans(pos);
-
+fn check_has_safety_comment(cx: &LateContext<'_>, item: &hir::Item<'_>, (span, help_span): (Span, Span)) {
+    match &item.kind {
+        ItemKind::Impl(Impl {
+            of_trait: Some(of_trait),
+            ..
+        }) if of_trait.safety.is_safe() => {
+            if !is_lint_allowed(cx, UNNECESSARY_SAFETY_COMMENT, item.hir_id()) {
+                span_lint_and_then(
+                    cx,
+                    UNNECESSARY_SAFETY_COMMENT,
+                    span,
+                    "impl has unnecessary safety comment",
+                    |diag| {
+                        diag.span_help(help_span, "consider removing the safety comment");
+                    },
+                );
+            }
+        },
+        ItemKind::Impl(_) => {},
+        // const and static items only need a safety comment if their body is an unsafe block, lint otherwise
+        &ItemKind::Const(.., body) | &ItemKind::Static(.., body) => {
+            if !is_lint_allowed(cx, UNNECESSARY_SAFETY_COMMENT, body.hir_id) {
+                let body = cx.tcx.hir_body(body);
+                if !matches!(
+                    body.value.kind, hir::ExprKind::Block(block, _)
+                    if block.rules == BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided)
+                ) {
                     span_lint_and_then(
                         cx,
                         UNNECESSARY_SAFETY_COMMENT,
@@ -288,12 +250,56 @@ impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
                         },
                     );
                 }
-            },
-            _ => (),
-        }
+            }
+        },
+        // Aside from unsafe impls and consts/statics with an unsafe block, items in general
+        // do not have safety invariants that need to be documented, so lint those.
+        _ => {
+            if !is_lint_allowed(cx, UNNECESSARY_SAFETY_COMMENT, item.hir_id()) {
+                span_lint_and_then(
+                    cx,
+                    UNNECESSARY_SAFETY_COMMENT,
+                    span,
+                    format!(
+                        "{} has unnecessary safety comment",
+                        cx.tcx.def_descr(item.owner_id.to_def_id()),
+                    ),
+                    |diag| {
+                        diag.span_help(help_span, "consider removing the safety comment");
+                    },
+                );
+            }
+        },
     }
 }
+fn check_has_no_safety_comment(cx: &LateContext<'_>, item: &hir::Item<'_>) {
+    if let ItemKind::Impl(Impl {
+        of_trait: Some(of_trait),
+        ..
+    }) = item.kind
+        && of_trait.safety.is_unsafe()
+        && !is_lint_allowed(cx, UNDOCUMENTED_UNSAFE_BLOCKS, item.hir_id())
+        && !is_unsafe_from_proc_macro(cx, item.span)
+    {
+        let source_map = cx.tcx.sess.source_map();
+        let span = if source_map.is_multiline(item.span) {
+            source_map.span_until_char(item.span, '\n')
+        } else {
+            item.span
+        };
 
+        #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
+        span_lint_and_then(
+            cx,
+            UNDOCUMENTED_UNSAFE_BLOCKS,
+            span,
+            "unsafe impl missing a safety comment",
+            |diag| {
+                diag.help("consider adding a safety comment on the preceding line");
+            },
+        );
+    }
+}
 fn expr_has_unnecessary_safety_comment<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx hir::Expr<'tcx>,
@@ -505,7 +511,8 @@ fn item_has_safety_comment(cx: &LateContext<'_>, item: &hir::Item<'_>) -> HasSaf
         },
         Node::Stmt(stmt) => {
             if let Node::Block(block) = cx.tcx.parent_hir_node(stmt.hir_id) {
-                walk_span_to_context(block.span, SyntaxContext::root()).map(Span::lo)
+                walk_span_to_context(block.span, SyntaxContext::root())
+                    .map(|sp| CommentStartBeforeItem::Offset(sp.lo()))
             } else {
                 // Problem getting the parent node. Pretend a comment was found.
                 return HasSafetyComment::Maybe;
@@ -518,10 +525,12 @@ fn item_has_safety_comment(cx: &LateContext<'_>, item: &hir::Item<'_>) -> HasSaf
     };
 
     let source_map = cx.sess().source_map();
+    // If the comment is in the first line of the file, there is no preceding line
     if let Some(comment_start) = comment_start
         && let Ok(unsafe_line) = source_map.lookup_line(item.span.lo())
-        && let Ok(comment_start_line) = source_map.lookup_line(comment_start)
-        && Arc::ptr_eq(&unsafe_line.sf, &comment_start_line.sf)
+        && let Ok(comment_start_line) = source_map.lookup_line(comment_start.into())
+        && let include_first_line_of_file = matches!(comment_start, CommentStartBeforeItem::Start)
+        && (include_first_line_of_file || Arc::ptr_eq(&unsafe_line.sf, &comment_start_line.sf))
         && let Some(src) = unsafe_line.sf.src.as_deref()
     {
         return if comment_start_line.line >= unsafe_line.line {
@@ -529,7 +538,8 @@ fn item_has_safety_comment(cx: &LateContext<'_>, item: &hir::Item<'_>) -> HasSaf
         } else {
             match text_has_safety_comment(
                 src,
-                &unsafe_line.sf.lines()[comment_start_line.line + 1..=unsafe_line.line],
+                &unsafe_line.sf.lines()
+                    [(comment_start_line.line + usize::from(!include_first_line_of_file))..=unsafe_line.line],
                 unsafe_line.sf.start_pos,
             ) {
                 Some(b) => HasSafetyComment::Yes(b),
@@ -592,12 +602,27 @@ fn stmt_has_safety_comment(
     HasSafetyComment::Maybe
 }
 
+#[derive(Clone, Copy, Debug)]
+enum CommentStartBeforeItem {
+    Offset(BytePos),
+    Start,
+}
+
+impl From<CommentStartBeforeItem> for BytePos {
+    fn from(value: CommentStartBeforeItem) -> Self {
+        match value {
+            CommentStartBeforeItem::Offset(loc) => loc,
+            CommentStartBeforeItem::Start => BytePos(0),
+        }
+    }
+}
+
 fn comment_start_before_item_in_mod(
     cx: &LateContext<'_>,
     parent_mod: &hir::Mod<'_>,
     parent_mod_span: Span,
     item: &hir::Item<'_>,
-) -> Option<BytePos> {
+) -> Option<CommentStartBeforeItem> {
     parent_mod.item_ids.iter().enumerate().find_map(|(idx, item_id)| {
         if *item_id == item.item_id() {
             if idx == 0 {
@@ -605,15 +630,18 @@ fn comment_start_before_item_in_mod(
                 // ^------------------------------------------^ returns the start of this span
                 // ^---------------------^ finally checks comments in this range
                 if let Some(sp) = walk_span_to_context(parent_mod_span, SyntaxContext::root()) {
-                    return Some(sp.lo());
+                    return Some(CommentStartBeforeItem::Offset(sp.lo()));
                 }
             } else {
                 // some_item /* comment */ unsafe impl T {}
                 // ^-------^ returns the end of this span
                 //         ^---------------^ finally checks comments in this range
                 let prev_item = cx.tcx.hir_item(parent_mod.item_ids[idx - 1]);
+                if prev_item.span.is_dummy() {
+                    return Some(CommentStartBeforeItem::Start);
+                }
                 if let Some(sp) = walk_span_to_context(prev_item.span, SyntaxContext::root()) {
-                    return Some(sp.hi());
+                    return Some(CommentStartBeforeItem::Offset(sp.hi()));
                 }
             }
         }
@@ -668,7 +696,7 @@ fn get_body_search_span(cx: &LateContext<'_>) -> Option<Span> {
             }) => {
                 return maybe_mod_item
                     .and_then(|item| comment_start_before_item_in_mod(cx, mod_, *span, &item))
-                    .map(|comment_start| mod_.spans.inner_span.with_lo(comment_start))
+                    .map(|comment_start| mod_.spans.inner_span.with_lo(comment_start.into()))
                     .or(Some(*span));
             },
             node if let Some((span, _)) = span_and_hid_of_item_alike_node(&node)

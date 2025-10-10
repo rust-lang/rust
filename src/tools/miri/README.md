@@ -220,7 +220,7 @@ degree documented below):
   - `solaris` / `illumos`: maintained by @devnexen. Supports the entire test suite.
   - `freebsd`: maintained by @YohDeadfall and @LorrensP-2158466. Supports the entire test suite.
   - `android`: **maintainer wanted**. Support very incomplete, but a basic "hello world" works.
-  - `wasi`: **maintainer wanted**. Support very incomplete, not even standard output works, but an empty `main` function works.
+  - `wasi`: **maintainer wanted**. Support very incomplete, but a basic "hello world" works.
 - For targets on other operating systems, Miri might fail before even reaching the `main` function.
 
 However, even for targets that we do support, the degree of support for accessing platform APIs
@@ -319,8 +319,14 @@ environment variable. We first document the most relevant and most commonly used
   Can be used without a value; in that case the range defaults to `0..64`.
 * `-Zmiri-many-seeds-keep-going` tells Miri to really try all the seeds in the given range, even if
   a failing seed has already been found. This is useful to determine which fraction of seeds fails.
+* `-Zmiri-max-extra-rounding-error` tells Miri to always apply the maximum error to float operations
+  that do not have a guaranteed precision. The sign of the error is still non-deterministic.
 * `-Zmiri-no-extra-rounding-error` stops Miri from adding extra rounding errors to float operations
   that do not have a guaranteed precision.
+* `-Zmiri-no-short-fd-operations` stops Miri from artificially forcing `read`/`write` operations
+  to only process a part of their buffer. Note that whenever Miri uses host operations to
+  implement `read`/`write` (e.g. for file-backed file descriptors), the host system can still
+  introduce short reads/writes.
 * `-Zmiri-num-cpus` states the number of available CPUs to be reported by miri. By default, the
   number of available CPUs is `1`. Note that this flag does not affect how miri handles threads in
   any way.
@@ -600,6 +606,7 @@ Definite bugs found:
 * [A bug in the new `RwLock::downgrade` implementation](https://rust-lang.zulipchat.com/#narrow/channel/269128-miri/topic/Miri.20error.20library.20test) (caught by Miri before it landed in the Rust repo)
 * [Mockall reading uninitialized memory when mocking `std::io::Read::read`, even if all expectations are satisfied](https://github.com/asomers/mockall/issues/647) (caught by Miri running Tokio's test suite)
 * [`ReentrantLock` not correctly dealing with reuse of addresses for TLS storage of different threads](https://github.com/rust-lang/rust/pull/141248)
+* [Rare Deadlock in the thread (un)parking example code](https://github.com/rust-lang/rust/issues/145816)
 
 Violations of [Stacked Borrows] found that are likely bugs (but Stacked Borrows is currently just an experiment):
 

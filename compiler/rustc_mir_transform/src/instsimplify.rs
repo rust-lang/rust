@@ -55,6 +55,7 @@ impl<'tcx> crate::MirPass<'tcx> for InstSimplify {
 
             let terminator = block.terminator.as_mut().unwrap();
             ctx.simplify_primitive_clone(terminator, &mut block.statements);
+            ctx.simplify_align_of_slice_val(terminator, &mut block.statements);
             ctx.simplify_intrinsic_assert(terminator);
             ctx.simplify_nounwind_call(terminator);
             simplify_duplicate_switch_targets(terminator);
@@ -250,6 +251,36 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
             ))),
         ));
         terminator.kind = TerminatorKind::Goto { target: *destination_block };
+    }
+
+    // Convert `align_of_val::<[T]>(ptr)` to `align_of::<T>()`, since the
+    // alignment of a slice doesn't actually depend on metadata at all
+    // and the element type is always `Sized`.
+    //
+    // This is here so it can run after inlining, where it's more useful.
+    // (LowerIntrinsics is done in cleanup, before the optimization passes.)
+    fn simplify_align_of_slice_val(
+        &self,
+        terminator: &mut Terminator<'tcx>,
+        statements: &mut Vec<Statement<'tcx>>,
+    ) {
+        if let TerminatorKind::Call {
+            func, args, destination, target: Some(destination_block), ..
+        } = &terminator.kind
+            && args.len() == 1
+            && let Some((fn_def_id, generics)) = func.const_fn_def()
+            && self.tcx.is_intrinsic(fn_def_id, sym::align_of_val)
+            && let ty::Slice(elem_ty) = *generics.type_at(0).kind()
+        {
+            statements.push(Statement::new(
+                terminator.source_info,
+                StatementKind::Assign(Box::new((
+                    *destination,
+                    Rvalue::NullaryOp(NullOp::AlignOf, elem_ty),
+                ))),
+            ));
+            terminator.kind = TerminatorKind::Goto { target: *destination_block };
+        }
     }
 
     fn simplify_nounwind_call(&self, terminator: &mut Terminator<'tcx>) {

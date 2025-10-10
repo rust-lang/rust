@@ -1,3 +1,4 @@
+//@ ignore-backends: gcc
 //@ check-pass
 //
 // This test is complement to the test in issue-73976-polymorphic.rs.
@@ -5,7 +6,6 @@
 // will be properly rejected. This test will ensure that monomorphic use of these
 // would not be wrongly rejected in patterns.
 
-#![feature(const_type_id)]
 #![feature(const_type_name)]
 #![feature(const_trait_impl)]
 #![feature(const_cmp)]

@@ -8,11 +8,11 @@ LL |     <[X; 35] as Default>::default();
              &[T]
              &mut [T]
              [T; 0]
-             [T; 10]
-             [T; 11]
-             [T; 12]
-             [T; 13]
-             [T; 14]
+             [T; 1]
+             [T; 2]
+             [T; 3]
+             [T; 4]
+             [T; 5]
            and 27 others
 
 error: aborting due to 1 previous error

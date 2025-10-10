@@ -180,17 +180,18 @@ impl GenericParamsCollector {
                 continue;
             };
 
-            let lifetimes: Option<Box<_>> = pred.generic_param_list().map(|param_list| {
-                // Higher-Ranked Trait Bounds
-                param_list
-                    .lifetime_params()
-                    .map(|lifetime_param| {
-                        lifetime_param
-                            .lifetime()
-                            .map_or_else(Name::missing, |lt| Name::new_lifetime(&lt.text()))
-                    })
-                    .collect()
-            });
+            let lifetimes: Option<Box<_>> =
+                pred.for_binder().and_then(|it| it.generic_param_list()).map(|param_list| {
+                    // Higher-Ranked Trait Bounds
+                    param_list
+                        .lifetime_params()
+                        .map(|lifetime_param| {
+                            lifetime_param
+                                .lifetime()
+                                .map_or_else(Name::missing, |lt| Name::new_lifetime(&lt.text()))
+                        })
+                        .collect()
+                });
             for bound in pred.type_bound_list().iter().flat_map(|l| l.bounds()) {
                 self.lower_type_bound_as_predicate(ec, bound, lifetimes.as_deref(), target);
             }

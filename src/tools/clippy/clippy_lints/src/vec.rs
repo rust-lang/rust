@@ -1,4 +1,6 @@
 use std::collections::BTreeMap;
+use std::collections::btree_map::Entry;
+use std::mem;
 use std::ops::ControlFlow;
 
 use clippy_config::Conf;
@@ -20,15 +22,36 @@ use rustc_span::{DesugaringKind, Span};
 pub struct UselessVec {
     too_large_for_stack: u64,
     msrv: Msrv,
-    span_to_lint_map: BTreeMap<Span, Option<(HirId, SuggestedType, String, Applicability)>>,
+    /// Maps from a `vec![]` source callsite invocation span to the "state" (i.e., whether we can
+    /// emit a warning there or not).
+    ///
+    /// The purpose of this is to buffer lints up until `check_crate_post` so that we can cancel a
+    /// lint while visiting, because a `vec![]` invocation span can appear multiple times when
+    /// it is passed as a macro argument, once in a context that doesn't require a `Vec<_>` and
+    /// another time that does. Consider:
+    /// ```
+    /// macro_rules! m {
+    ///     ($v:expr) => {
+    ///         let a = $v;
+    ///         $v.push(3);
+    ///     }
+    /// }
+    /// m!(vec![1, 2]);
+    /// ```
+    /// The macro invocation expands to two `vec![1, 2]` invocations. If we eagerly suggest changing
+    /// the first `vec![1, 2]` (which is shared with the other expn) to an array which indeed would
+    /// work, we get a false positive warning on the `$v.push(3)` which really requires `$v` to
+    /// be a vector.
+    span_to_state: BTreeMap<Span, VecState>,
     allow_in_test: bool,
 }
+
 impl UselessVec {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
             too_large_for_stack: conf.too_large_for_stack,
             msrv: conf.msrv,
-            span_to_lint_map: BTreeMap::new(),
+            span_to_state: BTreeMap::new(),
             allow_in_test: conf.allow_useless_vec_in_tests,
         }
     }
@@ -62,17 +85,28 @@ declare_clippy_lint! {
 
 impl_lint_pass!(UselessVec => [USELESS_VEC]);
 
-impl<'tcx> LateLintPass<'tcx> for UselessVec {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        let Some(vec_args) = higher::VecArgs::hir(cx, expr.peel_borrows()) else {
-            return;
-        };
-        if self.allow_in_test && is_in_test(cx.tcx, expr.hir_id) {
-            return;
-        }
-        // the parent callsite of this `vec!` expression, or span to the borrowed one such as `&vec!`
-        let callsite = expr.span.parent_callsite().unwrap_or(expr.span);
+/// The "state" of a `vec![]` invocation, indicating whether it can or cannot be changed.
+enum VecState {
+    Change {
+        suggest_ty: SuggestedType,
+        vec_snippet: String,
+        expr_hir_id: HirId,
+    },
+    NoChange,
+}
 
+enum VecToArray {
+    /// Expression does not need to be a `Vec<_>` and its type can be changed to an array (or
+    /// slice).
+    Possible,
+    /// Expression must be a `Vec<_>`. Type cannot change.
+    Impossible,
+}
+
+impl UselessVec {
+    /// Checks if the surrounding environment requires this expression to actually be of type
+    /// `Vec<_>`, or if it can be changed to `&[]`/`[]` without causing type errors.
+    fn expr_usage_requires_vec(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) -> VecToArray {
         match cx.tcx.parent_hir_node(expr.hir_id) {
             // search for `let foo = vec![_]` expressions where all uses of `foo`
             // adjust to slices or call a method that exist on slices (e.g. len)
@@ -100,107 +134,123 @@ impl<'tcx> LateLintPass<'tcx> for UselessVec {
                 .is_continue();
 
                 if only_slice_uses {
-                    self.check_vec_macro(cx, &vec_args, callsite, expr.hir_id, SuggestedType::Array);
+                    VecToArray::Possible
                 } else {
-                    self.span_to_lint_map.insert(callsite, None);
+                    VecToArray::Impossible
                 }
             },
             // if the local pattern has a specified type, do not lint.
             Node::LetStmt(LetStmt { ty: Some(_), .. }) if higher::VecArgs::hir(cx, expr).is_some() => {
-                self.span_to_lint_map.insert(callsite, None);
+                VecToArray::Impossible
             },
             // search for `for _ in vec![...]`
             Node::Expr(Expr { span, .. })
                 if span.is_desugaring(DesugaringKind::ForLoop) && self.msrv.meets(cx, msrvs::ARRAY_INTO_ITERATOR) =>
             {
-                let suggest_slice = suggest_type(expr);
-                self.check_vec_macro(cx, &vec_args, callsite, expr.hir_id, suggest_slice);
+                VecToArray::Possible
             },
             // search for `&vec![_]` or `vec![_]` expressions where the adjusted type is `&[_]`
             _ => {
-                let suggest_slice = suggest_type(expr);
-
                 if adjusts_to_slice(cx, expr) {
-                    self.check_vec_macro(cx, &vec_args, callsite, expr.hir_id, suggest_slice);
+                    VecToArray::Possible
                 } else {
-                    self.span_to_lint_map.insert(callsite, None);
+                    VecToArray::Impossible
                 }
             },
-        }
-    }
-
-    fn check_crate_post(&mut self, cx: &LateContext<'tcx>) {
-        for (span, lint_opt) in &self.span_to_lint_map {
-            if let Some((hir_id, suggest_slice, snippet, applicability)) = lint_opt {
-                let help_msg = format!("you can use {} directly", suggest_slice.desc());
-                span_lint_hir_and_then(cx, USELESS_VEC, *hir_id, *span, "useless use of `vec!`", |diag| {
-                    // If the `vec!` macro contains comment, better not make the suggestion machine
-                    // applicable as it would remove them.
-                    let applicability = if *applicability != Applicability::Unspecified
-                        && let source_map = cx.tcx.sess.source_map()
-                        && span_contains_comment(source_map, *span)
-                    {
-                        Applicability::Unspecified
-                    } else {
-                        *applicability
-                    };
-                    diag.span_suggestion(*span, help_msg, snippet, applicability);
-                });
-            }
         }
     }
 }
 
-impl UselessVec {
-    fn check_vec_macro<'tcx>(
-        &mut self,
-        cx: &LateContext<'tcx>,
-        vec_args: &higher::VecArgs<'tcx>,
-        span: Span,
-        hir_id: HirId,
-        suggest_slice: SuggestedType,
-    ) {
-        if span.from_expansion() {
-            return;
+impl<'tcx> LateLintPass<'tcx> for UselessVec {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+        if let Some(vec_args) = higher::VecArgs::hir(cx, expr.peel_borrows())
+            // The `vec![]` or `&vec![]` invocation span.
+            && let vec_span = expr.span.parent_callsite().unwrap_or(expr.span)
+            && !vec_span.from_expansion()
+        {
+            if self.allow_in_test && is_in_test(cx.tcx, expr.hir_id) {
+                return;
+            }
+
+            match self.expr_usage_requires_vec(cx, expr) {
+                VecToArray::Possible => {
+                    let suggest_ty = suggest_type(expr);
+
+                    // Size and `Copy` checks don't depend on the enclosing usage of the expression
+                    // and don't need to be inserted into the state map.
+                    let vec_snippet = match vec_args {
+                        higher::VecArgs::Repeat(expr, len) => {
+                            if is_copy(cx, cx.typeck_results().expr_ty(expr))
+                                && let Some(Constant::Int(length)) = ConstEvalCtxt::new(cx).eval(len)
+                                && let Ok(length) = u64::try_from(length)
+                                && size_of(cx, expr)
+                                    .checked_mul(length)
+                                    .is_some_and(|size| size <= self.too_large_for_stack)
+                            {
+                                suggest_ty.snippet(
+                                    cx,
+                                    Some(expr.span.source_callsite()),
+                                    Some(len.span.source_callsite()),
+                                )
+                            } else {
+                                return;
+                            }
+                        },
+                        higher::VecArgs::Vec(args) => {
+                            if let Ok(length) = u64::try_from(args.len())
+                                && size_of(cx, expr)
+                                    .checked_mul(length)
+                                    .is_some_and(|size| size <= self.too_large_for_stack)
+                            {
+                                suggest_ty.snippet(
+                                    cx,
+                                    args.first().zip(args.last()).map(|(first, last)| {
+                                        first.span.source_callsite().to(last.span.source_callsite())
+                                    }),
+                                    None,
+                                )
+                            } else {
+                                return;
+                            }
+                        },
+                    };
+
+                    if let Entry::Vacant(entry) = self.span_to_state.entry(vec_span) {
+                        entry.insert(VecState::Change {
+                            suggest_ty,
+                            vec_snippet,
+                            expr_hir_id: expr.hir_id,
+                        });
+                    }
+                },
+                VecToArray::Impossible => {
+                    self.span_to_state.insert(vec_span, VecState::NoChange);
+                },
+            }
         }
+    }
 
-        let snippet = match *vec_args {
-            higher::VecArgs::Repeat(elem, len) => {
-                if let Some(Constant::Int(len_constant)) = ConstEvalCtxt::new(cx).eval(len) {
-                    // vec![ty; N] works when ty is Clone, [ty; N] requires it to be Copy also
-                    if !is_copy(cx, cx.typeck_results().expr_ty(elem)) {
-                        return;
-                    }
-
-                    #[expect(clippy::cast_possible_truncation)]
-                    if len_constant as u64 * size_of(cx, elem) > self.too_large_for_stack {
-                        return;
-                    }
-
-                    suggest_slice.snippet(cx, Some(elem.span), Some(len.span))
-                } else {
-                    return;
-                }
-            },
-            higher::VecArgs::Vec(args) => {
-                let args_span = if let Some(last) = args.iter().last() {
-                    if args.len() as u64 * size_of(cx, last) > self.too_large_for_stack {
-                        return;
-                    }
-                    Some(args[0].span.source_callsite().to(last.span.source_callsite()))
-                } else {
-                    None
-                };
-                suggest_slice.snippet(cx, args_span, None)
-            },
-        };
-
-        self.span_to_lint_map.entry(span).or_insert(Some((
-            hir_id,
-            suggest_slice,
-            snippet,
-            Applicability::MachineApplicable,
-        )));
+    fn check_crate_post(&mut self, cx: &LateContext<'tcx>) {
+        for (span, state) in mem::take(&mut self.span_to_state) {
+            if let VecState::Change {
+                suggest_ty,
+                vec_snippet,
+                expr_hir_id,
+            } = state
+            {
+                span_lint_hir_and_then(cx, USELESS_VEC, expr_hir_id, span, "useless use of `vec!`", |diag| {
+                    let help_msg = format!("you can use {} directly", suggest_ty.desc());
+                    // If the `vec!` macro contains comment, better not make the suggestion machine applicable as it
+                    // would remove them.
+                    let applicability = if span_contains_comment(cx.tcx.sess.source_map(), span) {
+                        Applicability::Unspecified
+                    } else {
+                        Applicability::MachineApplicable
+                    };
+                    diag.span_suggestion(span, help_msg, vec_snippet, applicability);
+                });
+            }
+        }
     }
 }
 
@@ -221,11 +271,17 @@ impl SuggestedType {
     }
 
     fn snippet(self, cx: &LateContext<'_>, args_span: Option<Span>, len_span: Option<Span>) -> String {
+        // Invariant of the lint as implemented: all spans are from the root context (and as a result,
+        // always trivially crate-local).
+        assert!(args_span.is_none_or(|s| !s.from_expansion()));
+        assert!(len_span.is_none_or(|s| !s.from_expansion()));
+
         let maybe_args = args_span
-            .and_then(|sp| sp.get_source_text(cx))
+            .map(|sp| sp.get_source_text(cx).expect("spans are always crate-local"))
             .map_or(String::new(), |x| x.to_owned());
         let maybe_len = len_span
-            .and_then(|sp| sp.get_source_text(cx).map(|s| format!("; {s}")))
+            .map(|sp| sp.get_source_text(cx).expect("spans are always crate-local"))
+            .map(|st| format!("; {st}"))
             .unwrap_or_default();
 
         match self {

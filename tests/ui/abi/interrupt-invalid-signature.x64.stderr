@@ -1,0 +1,31 @@
+error: invalid signature for `extern "x86-interrupt"` function
+  --> $DIR/interrupt-invalid-signature.rs:83:53
+   |
+LL | extern "x86-interrupt" fn x86_ret(_p: *const u8) -> u8 {
+   |                                                     ^^
+   |
+   = note: functions with the "x86-interrupt" ABI cannot have a return type
+help: remove the return type
+  --> $DIR/interrupt-invalid-signature.rs:83:53
+   |
+LL | extern "x86-interrupt" fn x86_ret(_p: *const u8) -> u8 {
+   |                                                     ^^
+
+error: invalid signature for `extern "x86-interrupt"` function
+  --> $DIR/interrupt-invalid-signature.rs:89:1
+   |
+LL | extern "x86-interrupt" fn x86_0() {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: functions with the "x86-interrupt" ABI must be have either 1 or 2 parameters (but found 0)
+
+error: invalid signature for `extern "x86-interrupt"` function
+  --> $DIR/interrupt-invalid-signature.rs:100:33
+   |
+LL | extern "x86-interrupt" fn x86_3(_p1: *const u8, _p2: *const u8, _p3: *const u8) {
+   |                                 ^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^
+   |
+   = note: functions with the "x86-interrupt" ABI must be have either 1 or 2 parameters (but found 3)
+
+error: aborting due to 3 previous errors
+

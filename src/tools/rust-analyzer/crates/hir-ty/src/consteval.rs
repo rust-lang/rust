@@ -15,8 +15,14 @@ use triomphe::Arc;
 
 use crate::{
     Const, ConstData, ConstScalar, ConstValue, GenericArg, Interner, MemoryMap, Substitution,
-    TraitEnvironment, Ty, TyBuilder, db::HirDatabase, display::DisplayTarget, generics::Generics,
-    infer::InferenceContext, lower::ParamLoweringMode, to_placeholder_idx,
+    TraitEnvironment, Ty, TyBuilder,
+    db::HirDatabase,
+    display::DisplayTarget,
+    generics::Generics,
+    infer::InferenceContext,
+    lower::ParamLoweringMode,
+    next_solver::{DbInterner, mapping::ChalkToNextSolver},
+    to_placeholder_idx,
 };
 
 use super::mir::{MirEvalError, MirLowerError, interpret_mir, lower_to_mir, pad16};
@@ -101,25 +107,24 @@ pub(crate) fn path_to_const<'g>(
     match resolver.resolve_path_in_value_ns_fully(db, path, HygieneId::ROOT) {
         Some(ValueNs::GenericParam(p)) => {
             let ty = db.const_param_ty(p);
+            let args = args();
             let value = match mode {
                 ParamLoweringMode::Placeholder => {
-                    ConstValue::Placeholder(to_placeholder_idx(db, p.into()))
+                    let idx = args.type_or_const_param_idx(p.into()).unwrap();
+                    ConstValue::Placeholder(to_placeholder_idx(db, p.into(), idx as u32))
                 }
-                ParamLoweringMode::Variable => {
-                    let args = args();
-                    match args.type_or_const_param_idx(p.into()) {
-                        Some(it) => ConstValue::BoundVar(BoundVar::new(debruijn, it)),
-                        None => {
-                            never!(
-                                "Generic list doesn't contain this param: {:?}, {:?}, {:?}",
-                                args,
-                                path,
-                                p
-                            );
-                            return None;
-                        }
+                ParamLoweringMode::Variable => match args.type_or_const_param_idx(p.into()) {
+                    Some(it) => ConstValue::BoundVar(BoundVar::new(debruijn, it)),
+                    None => {
+                        never!(
+                            "Generic list doesn't contain this param: {:?}, {:?}, {:?}",
+                            args,
+                            path,
+                            p
+                        );
+                        return None;
                     }
-                }
+                },
             };
             Some(ConstData { ty, value }.intern(Interner))
         }
@@ -157,7 +162,8 @@ pub fn intern_const_ref(
     ty: Ty,
     krate: Crate,
 ) -> Const {
-    let layout = || db.layout_of_ty(ty.clone(), TraitEnvironment::empty(krate));
+    let interner = DbInterner::new_with(db, Some(krate), None);
+    let layout = || db.layout_of_ty(ty.to_nextsolver(interner), TraitEnvironment::empty(krate));
     let bytes = match value {
         LiteralConstRef::Int(i) => {
             // FIXME: We should handle failure of layout better.
@@ -223,7 +229,7 @@ pub(crate) fn const_eval_cycle_result(
     _: &dyn HirDatabase,
     _: GeneralConstId,
     _: Substitution,
-    _: Option<Arc<TraitEnvironment>>,
+    _: Option<Arc<TraitEnvironment<'_>>>,
 ) -> Result<Const, ConstEvalError> {
     Err(ConstEvalError::MirLowerError(MirLowerError::Loop))
 }
@@ -246,7 +252,7 @@ pub(crate) fn const_eval_query(
     db: &dyn HirDatabase,
     def: GeneralConstId,
     subst: Substitution,
-    trait_env: Option<Arc<TraitEnvironment>>,
+    trait_env: Option<Arc<TraitEnvironment<'_>>>,
 ) -> Result<Const, ConstEvalError> {
     let body = match def {
         GeneralConstId::ConstId(c) => {
@@ -321,7 +327,7 @@ pub(crate) fn eval_to_const(
     debruijn: DebruijnIndex,
 ) -> Const {
     let db = ctx.db;
-    let infer = ctx.clone().resolve_all();
+    let infer = ctx.fixme_resolve_all_clone();
     fn has_closure(body: &Body, expr: ExprId) -> bool {
         if matches!(body[expr], Expr::Closure { .. }) {
             return true;
@@ -342,10 +348,10 @@ pub(crate) fn eval_to_const(
             return c;
         }
     }
-    if let Ok(mir_body) = lower_to_mir(ctx.db, ctx.owner, ctx.body, &infer, expr) {
-        if let Ok((Ok(result), _)) = interpret_mir(db, Arc::new(mir_body), true, None) {
-            return result;
-        }
+    if let Ok(mir_body) = lower_to_mir(ctx.db, ctx.owner, ctx.body, &infer, expr)
+        && let Ok((Ok(result), _)) = interpret_mir(db, Arc::new(mir_body), true, None)
+    {
+        return result;
     }
     unknown_const(infer[expr].clone())
 }

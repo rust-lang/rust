@@ -2,7 +2,7 @@
 
 enum Foo {
     #[inline]
-    //~^ ERROR attribute should be applied
+    //~^ ERROR attribute cannot be used on
     Variant,
 }
 

@@ -59,8 +59,11 @@ pub(crate) fn complete_expr_path(
         in_block_expr,
         in_breakable,
         after_if_expr,
+        before_else_kw,
         in_condition,
         incomplete_let,
+        after_incomplete_let,
+        in_value,
         ref ref_expr_parent,
         after_amp,
         ref is_func_update,
@@ -139,9 +142,8 @@ pub(crate) fn complete_expr_path(
         Qualified::With { resolution: None, .. } => {}
         Qualified::With { resolution: Some(resolution), .. } => {
             // Add associated types on type parameters and `Self`.
-            ctx.scope.assoc_type_shorthand_candidates(resolution, |_, alias| {
+            ctx.scope.assoc_type_shorthand_candidates(resolution, |alias| {
                 acc.add_type_alias(ctx, alias);
-                None::<()>
             });
             match resolution {
                 hir::PathResolution::Def(hir::ModuleDef::Module(module)) => {
@@ -254,7 +256,7 @@ pub(crate) fn complete_expr_path(
                             .find_path(
                                 ctx.db,
                                 hir::ModuleDef::from(strukt),
-                                ctx.config.import_path_config(ctx.is_nightly),
+                                ctx.config.find_path_config(ctx.is_nightly),
                             )
                             .filter(|it| it.len() > 1);
 
@@ -276,7 +278,7 @@ pub(crate) fn complete_expr_path(
                             .find_path(
                                 ctx.db,
                                 hir::ModuleDef::from(un),
-                                ctx.config.import_path_config(ctx.is_nightly),
+                                ctx.config.find_path_config(ctx.is_nightly),
                             )
                             .filter(|it| it.len() > 1);
 
@@ -361,10 +363,16 @@ pub(crate) fn complete_expr_path(
                     add_keyword("loop", "loop {\n    $0\n}");
                     if in_match_guard {
                         add_keyword("if", "if $0");
+                    } else if in_value {
+                        add_keyword("if", "if $1 {\n    $2\n} else {\n    $0\n}");
                     } else {
                         add_keyword("if", "if $1 {\n    $0\n}");
                     }
-                    add_keyword("if let", "if let $1 = $2 {\n    $0\n}");
+                    if in_value {
+                        add_keyword("if let", "if let $1 = $2 {\n    $3\n} else {\n    $0\n}");
+                    } else {
+                        add_keyword("if let", "if let $1 = $2 {\n    $0\n}");
+                    }
                     add_keyword("for", "for $1 in $2 {\n    $0\n}");
                     add_keyword("true", "true");
                     add_keyword("false", "false");
@@ -379,8 +387,11 @@ pub(crate) fn complete_expr_path(
                         add_keyword("let", "let $1 = $0;");
                     }
 
-                    if after_if_expr {
+                    if !before_else_kw && (after_if_expr || after_incomplete_let) {
                         add_keyword("else", "else {\n    $0\n}");
+                    }
+
+                    if after_if_expr {
                         add_keyword("else if", "else if $1 {\n    $0\n}");
                     }
 

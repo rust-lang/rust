@@ -101,8 +101,7 @@ fn partition_at_index_loop<'a, T, F>(
         // slice. Partition the slice into elements equal to and elements greater than the pivot.
         // This case is usually hit when the slice contains many duplicate elements.
         if let Some(p) = ancestor_pivot {
-            // SAFETY: choose_pivot promises to return a valid pivot position.
-            let pivot = unsafe { v.get_unchecked(pivot_pos) };
+            let pivot = &v[pivot_pos];
 
             if !is_less(p, pivot) {
                 let num_lt = partition(v, pivot_pos, &mut |a, b| !is_less(b, a));

@@ -1,4 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::source::SpanRangeExt as _;
+use itertools::Itertools;
 use rustc_errors::Applicability;
 use rustc_hir::Item;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -81,6 +83,14 @@ impl<'tcx> LateLintPass<'tcx> for FourForwardSlashes {
                         "turn these into doc comments by removing one `/`"
                     };
 
+                    // If the comment contains a bare CR (not followed by a LF), do not propose an auto-fix
+                    // as bare CR are not allowed in doc comments.
+                    if span.check_source_text(cx, contains_bare_cr) {
+                        diag.help(msg)
+                            .note("bare CR characters are not allowed in doc comments");
+                        return;
+                    }
+
                     diag.multipart_suggestion(
                         msg,
                         bad_comments
@@ -96,4 +106,9 @@ impl<'tcx> LateLintPass<'tcx> for FourForwardSlashes {
             );
         }
     }
+}
+
+/// Checks if `text` contains any CR not followed by a LF
+fn contains_bare_cr(text: &str) -> bool {
+    text.bytes().tuple_windows().any(|(a, b)| a == b'\r' && b != b'\n')
 }

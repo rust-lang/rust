@@ -32,65 +32,6 @@ pub enum MiriEntryFnType {
 /// will hang the program.
 const MAIN_THREAD_YIELDS_AT_SHUTDOWN: u32 = 256;
 
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum AlignmentCheck {
-    /// Do not check alignment.
-    None,
-    /// Check alignment "symbolically", i.e., using only the requested alignment for an allocation and not its real base address.
-    Symbolic,
-    /// Check alignment on the actual physical integer address.
-    Int,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum RejectOpWith {
-    /// Isolated op is rejected with an abort of the machine.
-    Abort,
-
-    /// If not Abort, miri returns an error for an isolated op.
-    /// Following options determine if user should be warned about such error.
-    /// Do not print warning about rejected isolated op.
-    NoWarning,
-
-    /// Print a warning about rejected isolated op, with backtrace.
-    Warning,
-
-    /// Print a warning about rejected isolated op, without backtrace.
-    WarningWithoutBacktrace,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum IsolatedOp {
-    /// Reject an op requiring communication with the host. By
-    /// default, miri rejects the op with an abort. If not, it returns
-    /// an error code, and prints a warning about it. Warning levels
-    /// are controlled by `RejectOpWith` enum.
-    Reject(RejectOpWith),
-
-    /// Execute op requiring communication with the host, i.e. disable isolation.
-    Allow,
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum BacktraceStyle {
-    /// Prints a terser backtrace which ideally only contains relevant information.
-    Short,
-    /// Prints a backtrace with all possible information.
-    Full,
-    /// Prints only the frame that the error occurs in.
-    Off,
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum ValidationMode {
-    /// Do not perform any kind of validation.
-    No,
-    /// Validate the interior of the value, but not things behind references.
-    Shallow,
-    /// Fully recursively validate references.
-    Deep,
-}
-
 /// Configuration needed to spawn a Miri instance.
 #[derive(Clone)]
 pub struct MiriConfig {
@@ -125,8 +66,8 @@ pub struct MiriConfig {
     pub data_race_detector: bool,
     /// Determine if weak memory emulation should be enabled. Requires data race detection to be enabled.
     pub weak_memory_emulation: bool,
-    /// Determine if we are running in GenMC mode. In this mode, Miri will explore multiple concurrent executions of the given program.
-    pub genmc_mode: bool,
+    /// Determine if we are running in GenMC mode and with which settings. In GenMC mode, Miri will explore multiple concurrent executions of the given program.
+    pub genmc_config: Option<GenmcConfig>,
     /// Track when an outdated (weak memory) load happens.
     pub track_outdated_loads: bool,
     /// Rate of spurious failures for compare_exchange_weak atomic operations,
@@ -171,7 +112,9 @@ pub struct MiriConfig {
     /// Whether floating-point operations can behave non-deterministically.
     pub float_nondet: bool,
     /// Whether floating-point operations can have a non-deterministic rounding error.
-    pub float_rounding_error: bool,
+    pub float_rounding_error: FloatRoundingErrorMode,
+    /// Whether Miri artifically introduces short reads/writes on file descriptors.
+    pub short_fd_operations: bool,
 }
 
 impl Default for MiriConfig {
@@ -192,7 +135,7 @@ impl Default for MiriConfig {
             track_alloc_accesses: false,
             data_race_detector: true,
             weak_memory_emulation: true,
-            genmc_mode: false,
+            genmc_config: None,
             track_outdated_loads: false,
             cmpxchg_weak_failure_rate: 0.8, // 80%
             measureme_out: None,
@@ -213,7 +156,8 @@ impl Default for MiriConfig {
             fixed_scheduling: false,
             force_intrinsic_fallback: false,
             float_nondet: true,
-            float_rounding_error: true,
+            float_rounding_error: FloatRoundingErrorMode::Random,
+            short_fd_operations: true,
         }
     }
 }
@@ -303,8 +247,21 @@ impl<'tcx> MainThreadState<'tcx> {
                 // to be like a global `static`, so that all memory reached by it is considered to "not leak".
                 this.terminate_active_thread(TlsAllocAction::Leak)?;
 
-                // Stop interpreter loop.
-                throw_machine_stop!(TerminationInfo::Exit { code: exit_code, leak_check: true });
+                // In GenMC mode, we do not immediately stop execution on main thread exit.
+                if let Some(genmc_ctx) = this.machine.data_race.as_genmc_ref() {
+                    // If there's no error, execution will continue (on another thread).
+                    genmc_ctx.handle_exit(
+                        ThreadId::MAIN_THREAD,
+                        exit_code,
+                        crate::concurrency::ExitType::MainThreadFinish,
+                    )?;
+                } else {
+                    // Stop interpreter loop.
+                    throw_machine_stop!(TerminationInfo::Exit {
+                        code: exit_code,
+                        leak_check: true
+                    });
+                }
             }
         }
         interp_ok(Poll::Pending)
@@ -334,8 +291,8 @@ pub fn create_ecx<'tcx>(
         helpers::try_resolve_path(tcx, &["core", "ascii", "escape_default"], Namespace::ValueNS);
     if !matches!(sentinel, Some(s) if tcx.is_mir_available(s.def.def_id())) {
         tcx.dcx().fatal(
-            "the current sysroot was built without `-Zalways-encode-mir`, or libcore seems missing. \
-            Use `cargo miri setup` to prepare a sysroot that is suitable for Miri."
+            "the current sysroot was built without `-Zalways-encode-mir`, or libcore seems missing.\n\
+            Note that directly invoking the `miri` binary is not supported; please use `cargo miri` instead."
         );
     }
 
@@ -505,10 +462,6 @@ pub fn eval_entry<'tcx>(
     // Copy setting before we move `config`.
     let ignore_leaks = config.ignore_leaks;
 
-    if let Some(genmc_ctx) = &genmc_ctx {
-        genmc_ctx.handle_execution_start();
-    }
-
     let mut ecx = match create_ecx(tcx, entry_id, entry_type, config, genmc_ctx).report_err() {
         Ok(v) => v,
         Err(err) => {
@@ -531,15 +484,6 @@ pub fn eval_entry<'tcx>(
 
     // Show diagnostic, if any.
     let (return_code, leak_check) = report_error(&ecx, err)?;
-
-    // We inform GenMC that the execution is complete.
-    if let Some(genmc_ctx) = ecx.machine.data_race.as_genmc_ref()
-        && let Err(error) = genmc_ctx.handle_execution_end(&ecx)
-    {
-        // FIXME(GenMC): Improve error reporting.
-        tcx.dcx().err(format!("GenMC returned an error: \"{error}\""));
-        return None;
-    }
 
     // If we get here there was no fatal error.
 

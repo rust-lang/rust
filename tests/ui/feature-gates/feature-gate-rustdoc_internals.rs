@@ -2,6 +2,10 @@
 /// wonderful
 mod foo {}
 
+#[doc(attribute = "repr")] //~ ERROR: `#[doc(attribute)]` is meant for internal use only
+/// wonderful
+mod foo2 {}
+
 trait Mine {}
 
 #[doc(fake_variadic)]  //~ ERROR: `#[doc(fake_variadic)]` is meant for internal use only

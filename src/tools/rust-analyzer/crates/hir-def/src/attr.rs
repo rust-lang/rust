@@ -377,10 +377,10 @@ fn parse_repr_tt(tt: &crate::tt::TopSubtree) -> Option<ReprOptions> {
                 let mut align = None;
                 if let Some(TtElement::Subtree(_, mut tt_iter)) = tts.peek() {
                     tts.next();
-                    if let Some(TtElement::Leaf(tt::Leaf::Literal(lit))) = tt_iter.next() {
-                        if let Ok(a) = lit.symbol.as_str().parse() {
-                            align = Align::from_bytes(a).ok();
-                        }
+                    if let Some(TtElement::Leaf(tt::Leaf::Literal(lit))) = tt_iter.next()
+                        && let Ok(a) = lit.symbol.as_str().parse()
+                    {
+                        align = Align::from_bytes(a).ok();
                     }
                 }
                 ReprOptions { align, ..Default::default() }
@@ -554,7 +554,6 @@ impl AttrsWithOwner {
                 AdtId::UnionId(it) => attrs_from_ast_id_loc(db, it),
             },
             AttrDefId::TraitId(it) => attrs_from_ast_id_loc(db, it),
-            AttrDefId::TraitAliasId(it) => attrs_from_ast_id_loc(db, it),
             AttrDefId::MacroId(it) => match it {
                 MacroId::Macro2Id(it) => attrs_from_ast_id_loc(db, it),
                 MacroId::MacroRulesId(it) => attrs_from_ast_id_loc(db, it),
@@ -659,7 +658,6 @@ impl AttrsWithOwner {
             AttrDefId::StaticId(id) => any_has_attrs(db, id),
             AttrDefId::ConstId(id) => any_has_attrs(db, id),
             AttrDefId::TraitId(id) => any_has_attrs(db, id),
-            AttrDefId::TraitAliasId(id) => any_has_attrs(db, id),
             AttrDefId::TypeAliasId(id) => any_has_attrs(db, id),
             AttrDefId::MacroId(id) => match id {
                 MacroId::Macro2Id(id) => any_has_attrs(db, id),

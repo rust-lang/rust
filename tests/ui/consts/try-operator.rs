@@ -1,3 +1,4 @@
+//@ ignore-backends: gcc
 //@ run-pass
 
 #![feature(try_trait_v2)]

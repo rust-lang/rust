@@ -7,9 +7,17 @@
 
 // FIXME(default_type_parameter_fallback): Consider reallowing them once they work properly.
 
-const NONE<T = ()>: Option<T> = None::<T>; //~ ERROR defaults for type parameters are only allowed
+const NONE<T = ()>: Option<T> = None::<T>;
+//~^ ERROR defaults for generic parameters are not allowed here
 
-fn main() {
-    let _ = NONE;
-    //~^ ERROR type annotations needed
+impl Host {
+    const NADA<T = ()>: Option<T> = None::<T>;
+    //~^ ERROR defaults for generic parameters are not allowed here
 }
+
+enum Host {}
+
+fn body0() { let _ = NONE; } //~ ERROR type annotations needed
+fn body1() { let _ = Host::NADA; } //~ ERROR type annotations needed
+
+fn main() {}

@@ -1,7 +1,5 @@
 # Walkthrough: a typical contribution
 
-<!-- toc -->
-
 There are _a lot_ of ways to contribute to the Rust compiler, including fixing
 bugs, improving performance, helping design features, providing feedback on
 existing features, etc. This chapter does not claim to scratch the surface.

@@ -8,13 +8,14 @@ SOURCE_FILE
     EQ "="
     WHITESPACE " "
     FOR_TYPE
-      FOR_KW "for"
-      GENERIC_PARAM_LIST
-        L_ANGLE "<"
-        LIFETIME_PARAM
-          LIFETIME
-            LIFETIME_IDENT "'a"
-        R_ANGLE ">"
+      FOR_BINDER
+        FOR_KW "for"
+        GENERIC_PARAM_LIST
+          L_ANGLE "<"
+          LIFETIME_PARAM
+            LIFETIME
+              LIFETIME_IDENT "'a"
+          R_ANGLE ">"
       WHITESPACE " "
       FN_PTR_TYPE
         FN_KW "fn"
@@ -39,13 +40,14 @@ SOURCE_FILE
     EQ "="
     WHITESPACE " "
     FOR_TYPE
-      FOR_KW "for"
-      GENERIC_PARAM_LIST
-        L_ANGLE "<"
-        LIFETIME_PARAM
-          LIFETIME
-            LIFETIME_IDENT "'a"
-        R_ANGLE ">"
+      FOR_BINDER
+        FOR_KW "for"
+        GENERIC_PARAM_LIST
+          L_ANGLE "<"
+          LIFETIME_PARAM
+            LIFETIME
+              LIFETIME_IDENT "'a"
+          R_ANGLE ">"
       WHITESPACE " "
       FN_PTR_TYPE
         UNSAFE_KW "unsafe"
@@ -86,13 +88,14 @@ SOURCE_FILE
     EQ "="
     WHITESPACE " "
     FOR_TYPE
-      FOR_KW "for"
-      GENERIC_PARAM_LIST
-        L_ANGLE "<"
-        LIFETIME_PARAM
-          LIFETIME
-            LIFETIME_IDENT "'a"
-        R_ANGLE ">"
+      FOR_BINDER
+        FOR_KW "for"
+        GENERIC_PARAM_LIST
+          L_ANGLE "<"
+          LIFETIME_PARAM
+            LIFETIME
+              LIFETIME_IDENT "'a"
+          R_ANGLE ">"
       WHITESPACE " "
       PATH_TYPE
         PATH

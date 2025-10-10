@@ -23,7 +23,7 @@ fn should_run_lint(cx: &LateContext<'_>, e: &hir::Expr<'_>, method_id: DefId) ->
         return true;
     }
     // We check if it's an `Option` or a `Result`.
-    if let Some(id) = cx.tcx.impl_of_method(method_id) {
+    if let Some(id) = cx.tcx.impl_of_assoc(method_id) {
         let identity = cx.tcx.type_of(id).instantiate_identity();
         if !is_type_diagnostic_item(cx, identity, sym::Option) && !is_type_diagnostic_item(cx, identity, sym::Result) {
             return false;
@@ -69,7 +69,7 @@ pub(super) fn check(cx: &LateContext<'_>, e: &hir::Expr<'_>, recv: &hir::Expr<'_
                             hir::ExprKind::MethodCall(method, obj, [], _) => {
                                 if ident_eq(name, obj) && method.ident.name == sym::clone
                                 && let Some(fn_id) = cx.typeck_results().type_dependent_def_id(closure_expr.hir_id)
-                                && let Some(trait_id) = cx.tcx.trait_of_item(fn_id)
+                                && let Some(trait_id) = cx.tcx.trait_of_assoc(fn_id)
                                 && cx.tcx.lang_items().clone_trait() == Some(trait_id)
                                 // no autoderefs
                                 && !cx.typeck_results().expr_adjustments(obj).iter()

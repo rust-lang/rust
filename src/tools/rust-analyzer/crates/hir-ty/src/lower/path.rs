@@ -28,6 +28,10 @@ use crate::{
     error_lifetime,
     generics::{Generics, generics},
     lower::{LifetimeElisionKind, named_associated_type_shorthand_candidates},
+    next_solver::{
+        DbInterner,
+        mapping::{ChalkToNextSolver, NextSolverToChalk},
+    },
     static_lifetime, to_assoc_type_id, to_chalk_trait_id, to_placeholder_idx,
     utils::associated_type_by_name_including_super_traits,
 };
@@ -220,13 +224,15 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                 };
                 return (ty, None);
             }
-            TypeNs::TraitAliasId(_) => {
-                // FIXME(trait_alias): Implement trait alias.
-                return (TyKind::Error.intern(Interner), None);
-            }
             TypeNs::GenericParam(param_id) => match self.ctx.type_param_mode {
                 ParamLoweringMode::Placeholder => {
-                    TyKind::Placeholder(to_placeholder_idx(self.ctx.db, param_id.into()))
+                    let generics = self.ctx.generics();
+                    let idx = generics.type_or_const_param_idx(param_id.into()).unwrap();
+                    TyKind::Placeholder(to_placeholder_idx(
+                        self.ctx.db,
+                        param_id.into(),
+                        idx as u32,
+                    ))
                 }
                 ParamLoweringMode::Variable => {
                     let idx = match self.ctx.generics().type_or_const_param_idx(param_id.into()) {
@@ -249,12 +255,20 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                         // `def` can be either impl itself or item within, and we need impl itself
                         // now.
                         let generics = generics.parent_or_self();
+                        let interner = DbInterner::new_with(self.ctx.db, None, None);
                         let subst = generics.placeholder_subst(self.ctx.db);
-                        self.ctx.db.impl_self_ty(impl_id).substitute(Interner, &subst)
+                        let args: crate::next_solver::GenericArgs<'_> =
+                            subst.to_nextsolver(interner);
+                        self.ctx
+                            .db
+                            .impl_self_ty(impl_id)
+                            .instantiate(interner, args)
+                            .to_chalk(interner)
                     }
                     ParamLoweringMode::Variable => TyBuilder::impl_self_ty(self.ctx.db, impl_id)
                         .fill_with_bound_vars(self.ctx.in_binders, 0)
-                        .build(),
+                        .build(DbInterner::conjure())
+                        .to_chalk(DbInterner::conjure()),
                 }
             }
             TypeNs::AdtSelfType(adt) => {
@@ -265,7 +279,9 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                         generics.bound_vars_subst(self.ctx.db, self.ctx.in_binders)
                     }
                 };
-                self.ctx.db.ty(adt.into()).substitute(Interner, &substs)
+                let interner = DbInterner::conjure();
+                let args: crate::next_solver::GenericArgs<'_> = substs.to_nextsolver(interner);
+                self.ctx.db.ty(adt.into()).instantiate(interner, args).to_chalk(interner)
             }
 
             TypeNs::AdtId(it) => self.lower_path_inner(it.into(), infer_args),
@@ -311,8 +327,7 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
             TypeNs::AdtId(_)
             | TypeNs::EnumVariantId(_)
             | TypeNs::TypeAliasId(_)
-            | TypeNs::TraitId(_)
-            | TypeNs::TraitAliasId(_) => {}
+            | TypeNs::TraitId(_) => {}
         }
     }
 
@@ -360,15 +375,14 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
             }
         }
 
-        if let Some(enum_segment) = enum_segment {
-            if segments.get(enum_segment).is_some_and(|it| it.args_and_bindings.is_some())
-                && segments.get(enum_segment + 1).is_some_and(|it| it.args_and_bindings.is_some())
-            {
-                self.on_diagnostic(PathLoweringDiagnostic::GenericArgsProhibited {
-                    segment: (enum_segment + 1) as u32,
-                    reason: GenericArgsProhibitedReason::EnumVariant,
-                });
-            }
+        if let Some(enum_segment) = enum_segment
+            && segments.get(enum_segment).is_some_and(|it| it.args_and_bindings.is_some())
+            && segments.get(enum_segment + 1).is_some_and(|it| it.args_and_bindings.is_some())
+        {
+            self.on_diagnostic(PathLoweringDiagnostic::GenericArgsProhibited {
+                segment: (enum_segment + 1) as u32,
+                reason: GenericArgsProhibitedReason::EnumVariant,
+            });
         }
 
         self.handle_type_ns_resolution(&resolution);
@@ -417,15 +431,14 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
             }
         }
 
-        if let Some(enum_segment) = enum_segment {
-            if segments.get(enum_segment).is_some_and(|it| it.args_and_bindings.is_some())
-                && segments.get(enum_segment + 1).is_some_and(|it| it.args_and_bindings.is_some())
-            {
-                self.on_diagnostic(PathLoweringDiagnostic::GenericArgsProhibited {
-                    segment: (enum_segment + 1) as u32,
-                    reason: GenericArgsProhibitedReason::EnumVariant,
-                });
-            }
+        if let Some(enum_segment) = enum_segment
+            && segments.get(enum_segment).is_some_and(|it| it.args_and_bindings.is_some())
+            && segments.get(enum_segment + 1).is_some_and(|it| it.args_and_bindings.is_some())
+        {
+            self.on_diagnostic(PathLoweringDiagnostic::GenericArgsProhibited {
+                segment: (enum_segment + 1) as u32,
+                reason: GenericArgsProhibitedReason::EnumVariant,
+            });
         }
 
         match &res {
@@ -538,7 +551,9 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
             TyDefId::TypeAliasId(it) => it.into(),
         };
         let substs = self.substs_from_path_segment(generic_def, infer_args, None, false);
-        self.ctx.db.ty(typeable).substitute(Interner, &substs)
+        let interner = DbInterner::conjure();
+        let args: crate::next_solver::GenericArgs<'_> = substs.to_nextsolver(interner);
+        self.ctx.db.ty(typeable).instantiate(interner, args).to_chalk(interner)
     }
 
     /// Collect generic arguments from a path into a `Substs`. See also
@@ -576,13 +591,12 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                 // This simplifies the code a bit.
                 let penultimate_idx = self.current_segment_idx.wrapping_sub(1);
                 let penultimate = self.segments.get(penultimate_idx);
-                if let Some(penultimate) = penultimate {
-                    if self.current_or_prev_segment.args_and_bindings.is_none()
-                        && penultimate.args_and_bindings.is_some()
-                    {
-                        self.current_segment_idx = penultimate_idx;
-                        self.current_or_prev_segment = penultimate;
-                    }
+                if let Some(penultimate) = penultimate
+                    && self.current_or_prev_segment.args_and_bindings.is_none()
+                    && penultimate.args_and_bindings.is_some()
+                {
+                    self.current_segment_idx = penultimate_idx;
+                    self.current_or_prev_segment = penultimate;
                 }
                 var.lookup(self.ctx.db).parent.into()
             }
@@ -605,50 +619,51 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
         explicit_self_ty: Option<Ty>,
         lowering_assoc_type_generics: bool,
     ) -> Substitution {
-        let mut lifetime_elision = self.ctx.lifetime_elision.clone();
+        let old_lifetime_elision = self.ctx.lifetime_elision.clone();
 
-        if let Some(args) = self.current_or_prev_segment.args_and_bindings {
-            if args.parenthesized != GenericArgsParentheses::No {
-                let prohibit_parens = match def {
-                    GenericDefId::TraitId(trait_) => {
-                        // RTN is prohibited anyways if we got here.
-                        let is_rtn =
-                            args.parenthesized == GenericArgsParentheses::ReturnTypeNotation;
-                        let is_fn_trait = self
-                            .ctx
-                            .db
-                            .trait_signature(trait_)
-                            .flags
-                            .contains(TraitFlags::RUSTC_PAREN_SUGAR);
-                        is_rtn || !is_fn_trait
-                    }
-                    _ => true,
-                };
-
-                if prohibit_parens {
-                    let segment = self.current_segment_u32();
-                    self.on_diagnostic(
-                        PathLoweringDiagnostic::ParenthesizedGenericArgsWithoutFnTrait { segment },
-                    );
-
-                    return TyBuilder::unknown_subst(self.ctx.db, def);
+        if let Some(args) = self.current_or_prev_segment.args_and_bindings
+            && args.parenthesized != GenericArgsParentheses::No
+        {
+            let prohibit_parens = match def {
+                GenericDefId::TraitId(trait_) => {
+                    // RTN is prohibited anyways if we got here.
+                    let is_rtn = args.parenthesized == GenericArgsParentheses::ReturnTypeNotation;
+                    let is_fn_trait = self
+                        .ctx
+                        .db
+                        .trait_signature(trait_)
+                        .flags
+                        .contains(TraitFlags::RUSTC_PAREN_SUGAR);
+                    is_rtn || !is_fn_trait
                 }
+                _ => true,
+            };
 
-                // `Fn()`-style generics are treated like functions for the purpose of lifetime elision.
-                lifetime_elision =
-                    LifetimeElisionKind::AnonymousCreateParameter { report_in_path: false };
+            if prohibit_parens {
+                let segment = self.current_segment_u32();
+                self.on_diagnostic(
+                    PathLoweringDiagnostic::ParenthesizedGenericArgsWithoutFnTrait { segment },
+                );
+
+                return TyBuilder::unknown_subst(self.ctx.db, def);
             }
+
+            // `Fn()`-style generics are treated like functions for the purpose of lifetime elision.
+            self.ctx.lifetime_elision =
+                LifetimeElisionKind::AnonymousCreateParameter { report_in_path: false };
         }
 
-        self.substs_from_args_and_bindings(
+        let result = self.substs_from_args_and_bindings(
             self.current_or_prev_segment.args_and_bindings,
             def,
             infer_args,
             explicit_self_ty,
             PathGenericsSource::Segment(self.current_segment_u32()),
             lowering_assoc_type_generics,
-            lifetime_elision,
-        )
+            self.ctx.lifetime_elision.clone(),
+        );
+        self.ctx.lifetime_elision = old_lifetime_elision;
+        result
     }
 
     pub(super) fn substs_from_args_and_bindings(
@@ -753,18 +768,20 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                 match param {
                     GenericParamDataRef::LifetimeParamData(_) => error_lifetime().cast(Interner),
                     GenericParamDataRef::TypeParamData(param) => {
-                        if !infer_args && param.default.is_some() {
-                            if let Some(default) = default() {
-                                return default;
-                            }
+                        if !infer_args
+                            && param.default.is_some()
+                            && let Some(default) = default()
+                        {
+                            return default;
                         }
                         TyKind::Error.intern(Interner).cast(Interner)
                     }
                     GenericParamDataRef::ConstParamData(param) => {
-                        if !infer_args && param.default.is_some() {
-                            if let Some(default) = default() {
-                                return default;
-                            }
+                        if !infer_args
+                            && param.default.is_some()
+                            && let Some(default) = default()
+                        {
+                            return default;
                         }
                         let GenericParamId::ConstParamId(const_id) = param_id else {
                             unreachable!("non-const param ID for const param");

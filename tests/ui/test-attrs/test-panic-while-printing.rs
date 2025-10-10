@@ -1,6 +1,7 @@
 //@ compile-flags:--test
 //@ run-pass
 //@ needs-unwind
+//@ ignore-backends: gcc
 
 use std::fmt;
 use std::fmt::{Display, Formatter};

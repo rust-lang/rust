@@ -9,6 +9,7 @@ assert-text-false: (".main-heading h1", "Struct test_docs::FooCopy item path")
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search=struct%3AFoo"
 // Waiting for the search results to appear...
 wait-for: "#search-tabs"
+wait-for-false: "#search-tabs .count.loading"
 assert-text-false: (".main-heading h1", "Struct test_docs::FooCopy item path")
 // Ensure that the search results are displayed, not the "normal" content.
 assert-css: ("#main-content", {"display": "none"})
@@ -17,4 +18,4 @@ assert-css: ("#main-content", {"display": "none"})
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search=struct%3AFoo&go_to_first=true"
 // Waiting for the page to load...
 wait-for-text: (".main-heading .rustdoc-breadcrumbs", "test_docs")
-wait-for-text: (".main-heading h1", "Struct FooCopy item path")
+wait-for-text: (".main-heading h1", "Struct Foo Copy item path")

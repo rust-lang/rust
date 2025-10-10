@@ -1,4 +1,4 @@
-use super::{Thread, ThreadId};
+use super::{Thread, ThreadId, imp};
 use crate::mem::ManuallyDrop;
 use crate::ptr;
 use crate::sys::thread_local::local_pointer;
@@ -18,8 +18,8 @@ local_pointer! {
 pub(super) mod id {
     use super::*;
 
-    cfg_if::cfg_if! {
-        if #[cfg(target_thread_local)] {
+    cfg_select! {
+        target_thread_local => {
             use crate::cell::Cell;
 
             #[thread_local]
@@ -34,7 +34,8 @@ pub(super) mod id {
             pub(super) fn set(id: ThreadId) {
                 ID.set(Some(id))
             }
-        } else if #[cfg(target_pointer_width = "16")] {
+        }
+        target_pointer_width = "16" => {
             local_pointer! {
                 static ID0;
                 static ID16;
@@ -59,7 +60,8 @@ pub(super) mod id {
                 ID32.set(ptr::without_provenance_mut((val >> 32) as usize));
                 ID48.set(ptr::without_provenance_mut((val >> 48) as usize));
             }
-        } else if #[cfg(target_pointer_width = "32")] {
+        }
+        target_pointer_width = "32" => {
             local_pointer! {
                 static ID0;
                 static ID32;
@@ -78,7 +80,8 @@ pub(super) mod id {
                 ID0.set(ptr::without_provenance_mut(val as usize));
                 ID32.set(ptr::without_provenance_mut((val >> 32) as usize));
             }
-        } else {
+        }
+        _ => {
             local_pointer! {
                 static ID;
             }
@@ -130,12 +133,32 @@ pub(super) fn set_current(thread: Thread) -> Result<(), Thread> {
     Ok(())
 }
 
-/// Gets the id of the thread that invokes it.
+/// Gets the unique identifier of the thread which invokes it.
+///
+/// Calling this function may be more efficient than accessing the current
+/// thread id through the current thread handle. i.e. `thread::current().id()`.
 ///
 /// This function will always succeed, will always return the same value for
 /// one thread and is guaranteed not to call the global allocator.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(current_thread_id)]
+///
+/// use std::thread;
+///
+/// let other_thread = thread::spawn(|| {
+///     thread::current_id()
+/// });
+///
+/// let other_thread_id = other_thread.join().unwrap();
+/// assert_ne!(thread::current_id(), other_thread_id);
+/// ```
 #[inline]
-pub(crate) fn current_id() -> ThreadId {
+#[must_use]
+#[unstable(feature = "current_thread_id", issue = "147194")]
+pub fn current_id() -> ThreadId {
     // If accessing the persistent thread ID takes multiple TLS accesses, try
     // to retrieve it from the current thread handle, which will only take one
     // TLS access.
@@ -146,6 +169,17 @@ pub(crate) fn current_id() -> ThreadId {
     }
 
     id::get_or_init()
+}
+
+/// Gets the OS thread ID of the thread that invokes it, if available. If not, return the Rust
+/// thread ID.
+///
+/// We use a `u64` to all possible platform IDs without excess `cfg`; most use `int`, some use a
+/// pointer, and Apple uses `uint64_t`. This is a "best effort" approach for diagnostics and is
+/// allowed to fall back to a non-OS ID (such as the Rust thread ID) or a non-unique ID (such as a
+/// PID) if the thread ID cannot be retrieved.
+pub(crate) fn current_os_id() -> u64 {
+    imp::current_os_id().unwrap_or_else(|| current_id().as_u64().get())
 }
 
 /// Gets a reference to the handle of the thread that invokes it, if the handle

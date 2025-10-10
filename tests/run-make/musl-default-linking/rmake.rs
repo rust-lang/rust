@@ -4,6 +4,7 @@ use run_make_support::{rustc, serde_json};
 // Per https://github.com/rust-lang/compiler-team/issues/422,
 // we should be trying to move these targets to dynamically link
 // musl libc by default.
+//@ needs-llvm-components: aarch64 arm powerpc x86
 static LEGACY_STATIC_LINKING_TARGETS: &[&'static str] = &[
     "aarch64-unknown-linux-musl",
     "arm-unknown-linux-musleabi",
@@ -13,16 +14,7 @@ static LEGACY_STATIC_LINKING_TARGETS: &[&'static str] = &[
     "armv7-unknown-linux-musleabihf",
     "i586-unknown-linux-musl",
     "i686-unknown-linux-musl",
-    "mips64-unknown-linux-musl",
-    "mips64-unknown-linux-muslabi64",
-    "mips64el-unknown-linux-muslabi64",
-    "powerpc-unknown-linux-musl",
-    "powerpc-unknown-linux-muslspe",
-    "powerpc64-unknown-linux-musl",
     "powerpc64le-unknown-linux-musl",
-    "riscv32gc-unknown-linux-musl",
-    "s390x-unknown-linux-musl",
-    "thumbv7neon-unknown-linux-musleabihf",
     "x86_64-unknown-linux-musl",
 ];
 

@@ -39,7 +39,7 @@ features = ['unprefixed_malloc_on_supported_platforms']
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
 # native-lib dependencies
-libffi = { version = "4.0.0", optional = true }
+libffi = { version = "4.1.1", optional = true }
 libloading = { version = "0.8", optional = true }
 serde = { version = "1.0.219", features = ["derive"], optional = true }
 
@@ -47,6 +47,10 @@ serde = { version = "1.0.219", features = ["derive"], optional = true }
 nix = { version = "0.30.1", features = ["mman", "ptrace", "signal"], optional = true }
 ipc-channel = { version = "0.20.0", optional = true }
 capstone = { version = "0.13", optional = true }
+
+# FIXME(genmc,macos): Add `target_os = "macos"` once https://github.com/dtolnay/cxx/issues/1535 is fixed.
+[target.'cfg(all(target_os = "linux", target_pointer_width = "64", target_endian = "little"))'.dependencies]
+genmc-sys = { path = "./genmc-sys/", version = "0.1.0", optional = true }
 
 [dev-dependencies]
 ui_test = "0.30.2"
@@ -66,7 +70,7 @@ harness = false
 
 [features]
 default = ["stack-cache", "native-lib"]
-genmc = []
+genmc = ["dep:genmc-sys"]
 stack-cache = []
 stack-cache-consistency-check = ["stack-cache"]
 tracing = ["serde_json"]
@@ -74,6 +78,7 @@ native-lib = ["dep:libffi", "dep:libloading", "dep:capstone", "dep:ipc-channel",
 
 [lints.rust.unexpected_cfgs]
 level = "warn"
+check-cfg = ['cfg(bootstrap)']
 
 # Be aware that this file is inside a workspace when used via the
 # submodule in the rustc repo. That means there are many cargo features

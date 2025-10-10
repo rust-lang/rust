@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_context;
-use clippy_utils::ty::implements_trait;
-use clippy_utils::{is_diag_item_method, is_diag_trait_item, peel_middle_ty_refs, sym};
+use clippy_utils::ty::{implements_trait, peel_and_count_ty_refs};
+use clippy_utils::{is_diag_item_method, is_diag_trait_item, sym};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
@@ -14,7 +14,7 @@ pub fn check(cx: &LateContext<'_>, method_name: Symbol, expr: &hir::Expr<'_>, re
         && is_clone_like(cx, method_name, method_def_id)
         && let return_type = cx.typeck_results().expr_ty(expr)
         && let input_type = cx.typeck_results().expr_ty(recv)
-        && let (input_type, ref_count) = peel_middle_ty_refs(input_type)
+        && let (input_type, ref_count, _) = peel_and_count_ty_refs(input_type)
         && !(ref_count > 0 && is_diag_trait_item(cx, method_def_id, sym::ToOwned))
         && let Some(ty_name) = input_type.ty_adt_def().map(|adt_def| cx.tcx.item_name(adt_def.did()))
         && return_type == input_type
@@ -40,17 +40,15 @@ pub fn check(cx: &LateContext<'_>, method_name: Symbol, expr: &hir::Expr<'_>, re
 }
 
 /// Returns true if the named method can be used to clone the receiver.
-/// Note that `to_string` is not flagged by `implicit_clone`. So other lints that call
-/// `is_clone_like` and that do flag `to_string` must handle it separately. See, e.g.,
-/// `is_to_owned_like` in `unnecessary_to_owned.rs`.
 pub fn is_clone_like(cx: &LateContext<'_>, method_name: Symbol, method_def_id: hir::def_id::DefId) -> bool {
     match method_name {
         sym::to_os_string => is_diag_item_method(cx, method_def_id, sym::OsStr),
         sym::to_owned => is_diag_trait_item(cx, method_def_id, sym::ToOwned),
         sym::to_path_buf => is_diag_item_method(cx, method_def_id, sym::Path),
+        sym::to_string => is_diag_trait_item(cx, method_def_id, sym::ToString),
         sym::to_vec => cx
             .tcx
-            .impl_of_method(method_def_id)
+            .impl_of_assoc(method_def_id)
             .filter(|&impl_did| {
                 cx.tcx.type_of(impl_did).instantiate_identity().is_slice() && cx.tcx.impl_trait_ref(impl_did).is_none()
             })

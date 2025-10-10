@@ -7,7 +7,6 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::CRATE_DEF_ID;
-use rustc_span::hygiene::MacroKind;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -89,8 +88,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantPubCrate {
 // We ignore macro exports. And `ListStem` uses, which aren't interesting.
 fn is_ignorable_export<'tcx>(item: &'tcx Item<'tcx>) -> bool {
     if let ItemKind::Use(path, kind) = item.kind {
-        let ignore = matches!(path.res.macro_ns, Some(Res::Def(DefKind::Macro(MacroKind::Bang), _)))
-            || kind == UseKind::ListStem;
+        let ignore = matches!(path.res.macro_ns, Some(Res::Def(DefKind::Macro(_), _))) || kind == UseKind::ListStem;
         if ignore {
             return true;
         }

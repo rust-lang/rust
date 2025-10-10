@@ -1,11 +1,11 @@
 error[E0053]: method `foo` has an incompatible type for trait
-  --> $DIR/dont-project-to-specializable-projection.rs:13:5
+  --> $DIR/dont-project-to-specializable-projection.rs:14:5
    |
 LL |     default async fn foo(_: T) -> &'static str {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected associated type, found future
    |
 note: type in trait
-  --> $DIR/dont-project-to-specializable-projection.rs:9:5
+  --> $DIR/dont-project-to-specializable-projection.rs:10:5
    |
 LL |     async fn foo(_: T) -> &'static str;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -13,7 +13,7 @@ LL |     async fn foo(_: T) -> &'static str;
               found signature `fn(_) -> impl Future<Output = &'static str>`
 
 error: async associated function in trait cannot be specialized
-  --> $DIR/dont-project-to-specializable-projection.rs:13:5
+  --> $DIR/dont-project-to-specializable-projection.rs:14:5
    |
 LL |     default async fn foo(_: T) -> &'static str {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -21,10 +21,11 @@ LL |     default async fn foo(_: T) -> &'static str {
    = note: specialization behaves in inconsistent and surprising ways with async functions in traits, and for now is disallowed
 
 error[E0599]: no method named `poll` found for struct `Pin<&mut impl Future<Output = ()>>` in the current scope
-  --> $DIR/dont-project-to-specializable-projection.rs:48:28
+  --> $DIR/dont-project-to-specializable-projection.rs:49:28
    |
 LL |         match fut.as_mut().poll(ctx) {
    |                            ^^^^ method not found in `Pin<&mut impl Future<Output = ()>>`
+   |
   --> $SRC_DIR/core/src/future/future.rs:LL:COL
    |
    = note: the method is available for `Pin<&mut impl Future<Output = ()>>` here

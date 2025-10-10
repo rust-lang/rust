@@ -216,10 +216,7 @@ impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::ParamEnv<'tcx> {
 #[inline]
 fn decode_arena_allocable<'tcx, D: TyDecoder<'tcx>, T: ArenaAllocatable<'tcx> + Decodable<D>>(
     decoder: &mut D,
-) -> &'tcx T
-where
-    D: TyDecoder<'tcx>,
-{
+) -> &'tcx T {
     decoder.interner().arena.alloc(Decodable::decode(decoder))
 }
 
@@ -230,10 +227,7 @@ fn decode_arena_allocable_slice<
     T: ArenaAllocatable<'tcx> + Decodable<D>,
 >(
     decoder: &mut D,
-) -> &'tcx [T]
-where
-    D: TyDecoder<'tcx>,
-{
+) -> &'tcx [T] {
     decoder.interner().arena.alloc_from_iter(<Vec<T> as Decodable<D>>::decode(decoder))
 }
 
@@ -510,12 +504,9 @@ impl_decodable_via_ref! {
     &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
     &'tcx traits::ImplSource<'tcx, ()>,
     &'tcx mir::Body<'tcx>,
-    &'tcx mir::ConcreteOpaqueTypes<'tcx>,
     &'tcx ty::List<ty::BoundVariableKind>,
     &'tcx ty::List<ty::Pattern<'tcx>>,
     &'tcx ty::ListWithCachedTypeInfo<ty::Clause<'tcx>>,
-    &'tcx ty::List<FieldIdx>,
-    &'tcx ty::List<(VariantIdx, FieldIdx)>,
 }
 
 #[macro_export]

@@ -1,5 +1,6 @@
 //@ run-pass
 //@ needs-unwind
+//@ ignore-backends: gcc
 // See https://github.com/rust-lang/rust/issues/135802
 
 enum Void {}

@@ -167,7 +167,7 @@ LL -         comment */
 LL -         /// Doc comment
 LL -         panic!("panic with comment") // comment after `panic!`
 LL -     }
-LL +     assert!(!(a > 2), "panic with comment");
+LL +     assert!(a <= 2, "panic with comment");
    |
 
 error: only a `panic!` in `if`-then statement
@@ -186,8 +186,26 @@ LL -         const BAR: () = if N == 0 {
 LL -
 LL -             panic!()
 LL -         };
-LL +         const BAR: () = assert!(!(N == 0), );
+LL +         const BAR: () = assert!(N != 0, );
    |
 
-error: aborting due to 10 previous errors
+error: only a `panic!` in `if`-then statement
+  --> tests/ui/manual_assert.rs:116:5
+   |
+LL | /     if !is_x86_feature_detected!("ssse3") {
+LL | |
+LL | |         panic!("SSSE3 is not supported");
+LL | |     }
+   | |_____^
+   |
+help: try instead
+   |
+LL -     if !is_x86_feature_detected!("ssse3") {
+LL -
+LL -         panic!("SSSE3 is not supported");
+LL -     }
+LL +     assert!(is_x86_feature_detected!("ssse3"), "SSSE3 is not supported");
+   |
+
+error: aborting due to 11 previous errors
 
