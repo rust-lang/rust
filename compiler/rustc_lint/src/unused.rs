@@ -277,7 +277,9 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                 return Some(MustUsePath::Suppressed);
             }
             let parent_mod_did = cx.tcx.parent_module(expr.hir_id).to_def_id();
-            if !ty.is_inhabited_from(cx.tcx, parent_mod_did, cx.typing_env()) {
+            let is_uninhabited =
+                |t: Ty<'tcx>| !t.is_inhabited_from(cx.tcx, parent_mod_did, cx.typing_env());
+            if is_uninhabited(ty) {
                 return Some(MustUsePath::Suppressed);
             }
 
@@ -295,11 +297,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                 ty::Adt(def, args)
                     if cx.tcx.is_diagnostic_item(sym::Result, def.did())
                         && args.type_at(0).is_unit()
-                        && !args.type_at(1).is_inhabited_from(
-                            cx.tcx,
-                            parent_mod_did,
-                            cx.typing_env(),
-                        ) =>
+                        && is_uninhabited(args.type_at(1)) =>
                 {
                     Some(MustUsePath::Suppressed)
                 }
@@ -307,11 +305,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                 ty::Adt(def, args)
                     if cx.tcx.is_diagnostic_item(sym::ControlFlow, def.did())
                         && args.type_at(1).is_unit()
-                        && !args.type_at(0).is_inhabited_from(
-                            cx.tcx,
-                            parent_mod_did,
-                            cx.typing_env(),
-                        ) =>
+                        && is_uninhabited(args.type_at(0)) =>
                 {
                     Some(MustUsePath::Suppressed)
                 }
