@@ -4,8 +4,8 @@
 
 use clap::{Args, Parser, Subcommand};
 use clippy_dev::{
-    ClippyInfo, UpdateMode, deprecate_lint, dogfood, fmt, lint, new_lint, release, rename_lint, serve, setup, sync,
-    update_lints,
+    ClippyInfo, UpdateMode, deprecate_lint, dogfood, fmt, lint, new_lint, new_parse_cx, release, rename_lint, serve,
+    setup, sync, update_lints,
 };
 use std::env;
 
@@ -27,7 +27,7 @@ fn main() {
             allow_no_vcs,
         } => dogfood::dogfood(fix, allow_dirty, allow_staged, allow_no_vcs),
         DevCommand::Fmt { check } => fmt::run(UpdateMode::from_check(check)),
-        DevCommand::UpdateLints { check } => update_lints::update(UpdateMode::from_check(check)),
+        DevCommand::UpdateLints { check } => new_parse_cx(|cx| update_lints::update(cx, UpdateMode::from_check(check))),
         DevCommand::NewLint {
             pass,
             name,
@@ -35,7 +35,7 @@ fn main() {
             r#type,
             msrv,
         } => match new_lint::create(clippy.version, pass, &name, &category, r#type.as_deref(), msrv) {
-            Ok(()) => update_lints::update(UpdateMode::Change),
+            Ok(()) => new_parse_cx(|cx| update_lints::update(cx, UpdateMode::Change)),
             Err(e) => eprintln!("Unable to create lint: {e}"),
         },
         DevCommand::Setup(SetupCommand { subcommand }) => match subcommand {
@@ -78,13 +78,18 @@ fn main() {
             old_name,
             new_name,
             uplift,
-        } => rename_lint::rename(
-            clippy.version,
-            &old_name,
-            new_name.as_ref().unwrap_or(&old_name),
-            uplift,
-        ),
-        DevCommand::Deprecate { name, reason } => deprecate_lint::deprecate(clippy.version, &name, &reason),
+        } => new_parse_cx(|cx| {
+            rename_lint::rename(
+                cx,
+                clippy.version,
+                &old_name,
+                new_name.as_ref().unwrap_or(&old_name),
+                uplift,
+            );
+        }),
+        DevCommand::Deprecate { name, reason } => {
+            new_parse_cx(|cx| deprecate_lint::deprecate(cx, clippy.version, &name, &reason));
+        },
         DevCommand::Sync(SyncCommand { subcommand }) => match subcommand {
             SyncSubcommand::UpdateNightly => sync::update_nightly(),
         },

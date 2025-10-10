@@ -1,5 +1,5 @@
 use crate::parse::cursor::{self, Capture, Cursor};
-use crate::parse::{RenamedLint, find_lint_decls, read_deprecated_lints};
+use crate::parse::{ParseCx, RenamedLint};
 use crate::update_lints::generate_lint_files;
 use crate::utils::{
     ErrAction, FileUpdater, UpdateMode, UpdateStatus, Version, delete_dir_if_exists, delete_file_if_exists,
@@ -26,10 +26,10 @@ use std::path::Path;
 /// * If `old_name` doesn't name an existing lint.
 /// * If `old_name` names a deprecated or renamed lint.
 #[expect(clippy::too_many_lines)]
-pub fn rename(clippy_version: Version, old_name: &str, new_name: &str, uplift: bool) {
+pub fn rename<'cx>(cx: ParseCx<'cx>, clippy_version: Version, old_name: &'cx str, new_name: &'cx str, uplift: bool) {
     let mut updater = FileUpdater::default();
-    let mut lints = find_lint_decls();
-    let (deprecated_lints, mut renamed_lints) = read_deprecated_lints();
+    let mut lints = cx.find_lint_decls();
+    let (deprecated_lints, mut renamed_lints) = cx.read_deprecated_lints();
 
     let Ok(lint_idx) = lints.binary_search_by(|x| x.name.as_str().cmp(old_name)) else {
         panic!("could not find lint `{old_name}`");

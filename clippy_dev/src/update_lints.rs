@@ -1,5 +1,5 @@
 use crate::parse::cursor::Cursor;
-use crate::parse::{DeprecatedLint, Lint, RenamedLint, find_lint_decls, read_deprecated_lints};
+use crate::parse::{DeprecatedLint, Lint, ParseCx, RenamedLint};
 use crate::utils::{FileUpdater, UpdateMode, UpdateStatus, update_text_region_fn};
 use itertools::Itertools;
 use std::collections::HashSet;
@@ -21,9 +21,9 @@ const DOCS_LINK: &str = "https://rust-lang.github.io/rust-clippy/master/index.ht
 /// # Panics
 ///
 /// Panics if a file path could not read from or then written to
-pub fn update(update_mode: UpdateMode) {
-    let lints = find_lint_decls();
-    let (deprecated, renamed) = read_deprecated_lints();
+pub fn update(cx: ParseCx<'_>, update_mode: UpdateMode) {
+    let lints = cx.find_lint_decls();
+    let (deprecated, renamed) = cx.read_deprecated_lints();
     generate_lint_files(update_mode, &lints, &deprecated, &renamed);
 }
 

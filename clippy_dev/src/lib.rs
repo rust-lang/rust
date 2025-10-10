@@ -34,7 +34,8 @@ pub mod setup;
 pub mod sync;
 pub mod update_lints;
 
-mod utils;
-pub use utils::{ClippyInfo, UpdateMode};
-
 mod parse;
+mod utils;
+
+pub use self::parse::{ParseCx, new_parse_cx};
+pub use self::utils::{ClippyInfo, UpdateMode};
