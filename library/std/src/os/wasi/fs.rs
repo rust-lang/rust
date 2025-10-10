@@ -1,4 +1,4 @@
-//! WASI-specific extensions to primitives in the [`std::fs`] module.
+//! WASIp1-specific extensions to primitives in the [`std::fs`] module.
 //!
 //! [`std::fs`]: crate::fs
 
@@ -9,9 +9,11 @@
 use io::{Read, Write};
 
 use crate::ffi::OsStr;
-use crate::fs::{self, File, Metadata, OpenOptions};
+use crate::fs::{self, File, OpenOptions};
 use crate::io::{self, IoSlice, IoSliceMut};
+use crate::os::fd::AsRawFd;
 use crate::path::{Path, PathBuf};
+use crate::sys::err2io;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner};
 
 /// WASI-specific extensions to [`File`].
@@ -200,7 +202,7 @@ pub trait FileExt {
     ///
     /// This corresponds to the `path_filestat_get` syscall.
     #[doc(alias = "path_filestat_get")]
-    fn metadata_at<P: AsRef<Path>>(&self, lookup_flags: u32, path: P) -> io::Result<Metadata>;
+    fn metadata_at<P: AsRef<Path>>(&self, lookup_flags: i32, path: P) -> io::Result<fs::Metadata>;
 
     /// Unlinks a file.
     ///
@@ -224,19 +226,24 @@ pub trait FileExt {
 
 impl FileExt for fs::File {
     fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
-        self.as_inner().as_inner().pread(bufs, offset)
+        let bufs = crate::sys::io::IoSliceMut::as_wasip1_slice(bufs);
+        unsafe { wasi::fd_pread(self.as_raw_fd() as wasi::Fd, bufs, offset).map_err(err2io) }
     }
 
     fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
-        self.as_inner().as_inner().pwrite(bufs, offset)
+        let bufs = crate::sys::io::IoSlice::as_wasip1_slice(bufs);
+        unsafe { wasi::fd_pwrite(self.as_raw_fd() as wasi::Fd, bufs, offset).map_err(err2io) }
     }
 
     fn fdstat_set_flags(&self, flags: u16) -> io::Result<()> {
-        self.as_inner().as_inner().set_flags(flags)
+        unsafe { wasi::fd_fdstat_set_flags(self.as_raw_fd() as wasi::Fd, flags).map_err(err2io) }
     }
 
     fn fdstat_set_rights(&self, rights: u64, inheriting: u64) -> io::Result<()> {
-        self.as_inner().as_inner().set_rights(rights, inheriting)
+        unsafe {
+            wasi::fd_fdstat_set_rights(self.as_raw_fd() as wasi::Fd, rights, inheriting)
+                .map_err(err2io)
+        }
     }
 
     fn advise(&self, offset: u64, len: u64, advice: u8) -> io::Result<()> {
@@ -255,32 +262,37 @@ impl FileExt for fs::File {
             }
         };
 
-        self.as_inner().as_inner().advise(offset, len, advice)
+        unsafe {
+            wasi::fd_advise(self.as_raw_fd() as wasi::Fd, offset, len, advice).map_err(err2io)
+        }
     }
 
     fn allocate(&self, offset: u64, len: u64) -> io::Result<()> {
-        self.as_inner().as_inner().allocate(offset, len)
+        unsafe { wasi::fd_allocate(self.as_raw_fd() as wasi::Fd, offset, len).map_err(err2io) }
     }
 
     fn create_directory<P: AsRef<Path>>(&self, dir: P) -> io::Result<()> {
-        self.as_inner().as_inner().create_directory(osstr2str(dir.as_ref().as_ref())?)
+        let path = osstr2str(dir.as_ref().as_ref())?;
+        unsafe { wasi::path_create_directory(self.as_raw_fd() as wasi::Fd, path).map_err(err2io) }
     }
 
     fn read_link<P: AsRef<Path>>(&self, path: P) -> io::Result<PathBuf> {
-        self.as_inner().read_link(path.as_ref())
+        self.as_inner().readlink_at(path.as_ref())
     }
 
-    fn metadata_at<P: AsRef<Path>>(&self, lookup_flags: u32, path: P) -> io::Result<Metadata> {
+    fn metadata_at<P: AsRef<Path>>(&self, lookup_flags: i32, path: P) -> io::Result<fs::Metadata> {
         let m = self.as_inner().metadata_at(lookup_flags, path.as_ref())?;
         Ok(FromInner::from_inner(m))
     }
 
     fn remove_file<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
-        self.as_inner().as_inner().unlink_file(osstr2str(path.as_ref().as_ref())?)
+        let path = osstr2str(path.as_ref().as_ref())?;
+        unsafe { wasi::path_unlink_file(self.as_raw_fd() as wasi::Fd, path).map_err(err2io) }
     }
 
     fn remove_directory<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
-        self.as_inner().as_inner().remove_directory(osstr2str(path.as_ref().as_ref())?)
+        let path = osstr2str(path.as_ref().as_ref())?;
+        unsafe { wasi::path_remove_directory(self.as_raw_fd() as wasi::Fd, path).map_err(err2io) }
     }
 }
 
@@ -355,42 +367,42 @@ pub trait OpenOptionsExt {
 
 impl OpenOptionsExt for OpenOptions {
     fn lookup_flags(&mut self, flags: u32) -> &mut OpenOptions {
-        self.as_inner_mut().lookup_flags(flags);
+        self.as_inner_mut().wasip1_lookup_flags(flags);
         self
     }
 
     fn directory(&mut self, dir: bool) -> &mut OpenOptions {
-        self.as_inner_mut().directory(dir);
+        self.as_inner_mut().wasip1_directory(dir);
         self
     }
 
     fn dsync(&mut self, enabled: bool) -> &mut OpenOptions {
-        self.as_inner_mut().dsync(enabled);
+        self.as_inner_mut().wasip1_dsync(enabled);
         self
     }
 
     fn nonblock(&mut self, enabled: bool) -> &mut OpenOptions {
-        self.as_inner_mut().nonblock(enabled);
+        self.as_inner_mut().wasip1_nonblock(enabled);
         self
     }
 
     fn rsync(&mut self, enabled: bool) -> &mut OpenOptions {
-        self.as_inner_mut().rsync(enabled);
+        self.as_inner_mut().wasip1_rsync(enabled);
         self
     }
 
     fn sync(&mut self, enabled: bool) -> &mut OpenOptions {
-        self.as_inner_mut().sync(enabled);
+        self.as_inner_mut().wasip1_sync(enabled);
         self
     }
 
     fn fs_rights_base(&mut self, rights: u64) -> &mut OpenOptions {
-        self.as_inner_mut().fs_rights_base(rights);
+        self.as_inner_mut().wasip1_fs_rights_base(rights);
         self
     }
 
     fn fs_rights_inheriting(&mut self, rights: u64) -> &mut OpenOptions {
-        self.as_inner_mut().fs_rights_inheriting(rights);
+        self.as_inner_mut().wasip1_fs_rights_inheriting(rights);
         self
     }
 
@@ -408,37 +420,17 @@ pub trait MetadataExt {
     fn ino(&self) -> u64;
     /// Returns the `st_nlink` field of the internal `filestat_t`
     fn nlink(&self) -> u64;
-    /// Returns the `st_size` field of the internal `filestat_t`
-    fn size(&self) -> u64;
-    /// Returns the `st_atim` field of the internal `filestat_t`
-    fn atim(&self) -> u64;
-    /// Returns the `st_mtim` field of the internal `filestat_t`
-    fn mtim(&self) -> u64;
-    /// Returns the `st_ctim` field of the internal `filestat_t`
-    fn ctim(&self) -> u64;
 }
 
 impl MetadataExt for fs::Metadata {
     fn dev(&self) -> u64 {
-        self.as_inner().as_wasi().dev
+        self.as_inner().as_libc().st_dev
     }
     fn ino(&self) -> u64 {
-        self.as_inner().as_wasi().ino
+        self.as_inner().as_libc().st_ino
     }
     fn nlink(&self) -> u64 {
-        self.as_inner().as_wasi().nlink
-    }
-    fn size(&self) -> u64 {
-        self.as_inner().as_wasi().size
-    }
-    fn atim(&self) -> u64 {
-        self.as_inner().as_wasi().atim
-    }
-    fn mtim(&self) -> u64 {
-        self.as_inner().as_wasi().mtim
-    }
-    fn ctim(&self) -> u64 {
-        self.as_inner().as_wasi().ctim
+        self.as_inner().as_libc().st_nlink
     }
 }
 
@@ -451,28 +443,19 @@ pub trait FileTypeExt {
     fn is_block_device(&self) -> bool;
     /// Returns `true` if this file type is a character device.
     fn is_char_device(&self) -> bool;
-    /// Returns `true` if this file type is a socket datagram.
-    fn is_socket_dgram(&self) -> bool;
-    /// Returns `true` if this file type is a socket stream.
-    fn is_socket_stream(&self) -> bool;
     /// Returns `true` if this file type is any type of socket.
-    fn is_socket(&self) -> bool {
-        self.is_socket_stream() || self.is_socket_dgram()
-    }
+    fn is_socket(&self) -> bool;
 }
 
 impl FileTypeExt for fs::FileType {
     fn is_block_device(&self) -> bool {
-        self.as_inner().bits() == wasi::FILETYPE_BLOCK_DEVICE
+        self.as_inner().mode() == libc::S_IFBLK
     }
     fn is_char_device(&self) -> bool {
-        self.as_inner().bits() == wasi::FILETYPE_CHARACTER_DEVICE
+        self.as_inner().mode() == libc::S_IFCHR
     }
-    fn is_socket_dgram(&self) -> bool {
-        self.as_inner().bits() == wasi::FILETYPE_SOCKET_DGRAM
-    }
-    fn is_socket_stream(&self) -> bool {
-        self.as_inner().bits() == wasi::FILETYPE_SOCKET_STREAM
+    fn is_socket(&self) -> bool {
+        self.as_inner().mode() == libc::S_IFSOCK
     }
 }
 
@@ -499,12 +482,16 @@ pub fn link<P: AsRef<Path>, U: AsRef<Path>>(
     new_fd: &File,
     new_path: U,
 ) -> io::Result<()> {
-    old_fd.as_inner().as_inner().link(
-        old_flags,
-        osstr2str(old_path.as_ref().as_ref())?,
-        new_fd.as_inner().as_inner(),
-        osstr2str(new_path.as_ref().as_ref())?,
-    )
+    unsafe {
+        wasi::path_link(
+            old_fd.as_raw_fd() as wasi::Fd,
+            old_flags,
+            osstr2str(old_path.as_ref().as_ref())?,
+            new_fd.as_raw_fd() as wasi::Fd,
+            osstr2str(new_path.as_ref().as_ref())?,
+        )
+        .map_err(err2io)
+    }
 }
 
 /// Renames a file or directory.
@@ -517,11 +504,15 @@ pub fn rename<P: AsRef<Path>, U: AsRef<Path>>(
     new_fd: &File,
     new_path: U,
 ) -> io::Result<()> {
-    old_fd.as_inner().as_inner().rename(
-        osstr2str(old_path.as_ref().as_ref())?,
-        new_fd.as_inner().as_inner(),
-        osstr2str(new_path.as_ref().as_ref())?,
-    )
+    unsafe {
+        wasi::path_rename(
+            old_fd.as_raw_fd() as wasi::Fd,
+            osstr2str(old_path.as_ref().as_ref())?,
+            new_fd.as_raw_fd() as wasi::Fd,
+            osstr2str(new_path.as_ref().as_ref())?,
+        )
+        .map_err(err2io)
+    }
 }
 
 /// Creates a symbolic link.
@@ -533,9 +524,14 @@ pub fn symlink<P: AsRef<Path>, U: AsRef<Path>>(
     fd: &File,
     new_path: U,
 ) -> io::Result<()> {
-    fd.as_inner()
-        .as_inner()
-        .symlink(osstr2str(old_path.as_ref().as_ref())?, osstr2str(new_path.as_ref().as_ref())?)
+    unsafe {
+        wasi::path_symlink(
+            osstr2str(old_path.as_ref().as_ref())?,
+            fd.as_raw_fd() as wasi::Fd,
+            osstr2str(new_path.as_ref().as_ref())?,
+        )
+        .map_err(err2io)
+    }
 }
 
 /// Creates a symbolic link.
