@@ -200,7 +200,6 @@ target | std | notes
 [`wasm32-wasip1`](platform-support/wasm32-wasip1.md) | ✓ | WebAssembly with WASIp1
 [`wasm32-wasip1-threads`](platform-support/wasm32-wasip1-threads.md) | ✓ | WebAssembly with WASI Preview 1 and threads
 [`wasm32-wasip2`](platform-support/wasm32-wasip2.md) | ✓ | WebAssembly with WASIp2
-[`wasm32-wasip3`](platform-support/wasm32-wasip3.md) | ✓ | WebAssembly with WASIp3
 [`wasm32v1-none`](platform-support/wasm32v1-none.md) | * | WebAssembly limited to 1.0 features and no imports
 [`x86_64-apple-ios`](platform-support/apple-ios.md) | ✓ | 64-bit x86 iOS
 [`x86_64-apple-ios-macabi`](platform-support/apple-ios-macabi.md) | ✓ | Mac Catalyst on x86_64
@@ -417,6 +416,7 @@ target | std | host | notes
 [`thumbv8m.main-nuttx-eabihf`](platform-support/nuttx.md) | ✓ |  | ARMv8M Mainline with NuttX, hardfloat
 [`wasm64-unknown-unknown`](platform-support/wasm64-unknown-unknown.md) | ? |  | WebAssembly
 [`wasm32-wali-linux-musl`](platform-support/wasm32-wali-linux.md) | ? |  | WebAssembly with [WALI](https://github.com/arjunr2/WALI)
+[`wasm32-wasip3`](platform-support/wasm32-wasip3.md) | ✓ | WebAssembly with WASIp3
 [`x86_64-apple-tvos`](platform-support/apple-tvos.md) | ✓ |  | x86 64-bit tvOS
 [`x86_64-apple-watchos-sim`](platform-support/apple-watchos.md) | ✓ |  | x86 64-bit Apple WatchOS simulator
 [`x86_64-lynx-lynxos178`](platform-support/lynxos178.md) |   |  | x86_64 LynxOS-178
