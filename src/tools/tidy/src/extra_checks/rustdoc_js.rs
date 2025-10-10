@@ -9,7 +9,7 @@ use std::process::{Child, Command};
 use build_helper::npm;
 use ignore::DirEntry;
 
-use crate::TidyFlags;
+use crate::TidyCtx;
 use crate::walk::walk_no_read;
 
 fn node_module_bin(outdir: &Path, name: &str) -> PathBuf {
@@ -29,11 +29,11 @@ pub(super) fn npm_install(root_path: &Path, outdir: &Path, npm: &Path) -> Result
     Ok(())
 }
 
-fn rustdoc_js_files(librustdoc_path: &Path, tidy_flags: TidyFlags) -> Vec<PathBuf> {
+fn rustdoc_js_files(librustdoc_path: &Path, tidy_ctx: Option<&TidyCtx>) -> Vec<PathBuf> {
     let mut files = Vec::new();
     walk_no_read(
         &[&librustdoc_path.join("html/static/js")],
-        tidy_flags,
+        tidy_ctx,
         |path, is_dir| is_dir || path.extension().is_none_or(|ext| ext != OsStr::new("js")),
         &mut |path: &DirEntry| {
             files.push(path.path().into());
@@ -46,10 +46,10 @@ fn run_eslint(
     outdir: &Path,
     args: &[PathBuf],
     config_folder: PathBuf,
-    tidy_flags: TidyFlags,
+    bless: bool,
 ) -> Result<(), super::Error> {
     let mut cmd = Command::new(node_module_bin(outdir, "eslint"));
-    if tidy_flags.bless {
+    if bless {
         cmd.arg("--fix");
     }
     cmd.arg("-c").arg(config_folder.join(".eslintrc.js")).args(args);
@@ -69,17 +69,18 @@ pub(super) fn lint(
     outdir: &Path,
     librustdoc_path: &Path,
     tools_path: &Path,
-    tidy_flags: TidyFlags,
+    tidy_ctx: Option<&TidyCtx>,
 ) -> Result<(), super::Error> {
-    let files_to_check = rustdoc_js_files(librustdoc_path, tidy_flags);
+    let files_to_check = rustdoc_js_files(librustdoc_path, tidy_ctx);
+    let bless = tidy_ctx.map(|flags| flags.bless).unwrap_or(false);
     println!("Running eslint on rustdoc JS files");
-    run_eslint(outdir, &files_to_check, librustdoc_path.join("html/static"), tidy_flags)?;
+    run_eslint(outdir, &files_to_check, librustdoc_path.join("html/static"), bless)?;
 
     run_eslint(
         outdir,
         &[tools_path.join("rustdoc-js/tester.js")],
         tools_path.join("rustdoc-js"),
-        tidy_flags,
+        bless,
     )?;
     Ok(())
 }
@@ -105,9 +106,9 @@ pub(super) fn typecheck(outdir: &Path, librustdoc_path: &Path) -> Result<(), sup
 pub(super) fn es_check(
     outdir: &Path,
     librustdoc_path: &Path,
-    tidy_flags: TidyFlags,
+    tidy_ctx: Option<&TidyCtx>,
 ) -> Result<(), super::Error> {
-    let files_to_check = rustdoc_js_files(librustdoc_path, tidy_flags);
+    let files_to_check = rustdoc_js_files(librustdoc_path, tidy_ctx);
     let mut cmd = Command::new(node_module_bin(outdir, "es-check"));
     cmd.arg("es2019");
     for f in files_to_check {

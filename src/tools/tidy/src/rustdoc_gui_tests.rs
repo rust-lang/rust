@@ -2,15 +2,15 @@
 
 use std::path::Path;
 
-use crate::TidyFlags;
+use crate::TidyCtx;
 use crate::diagnostics::{CheckId, DiagCtx};
 
-pub fn check(path: &Path, tidy_flags: TidyFlags, diag_ctx: DiagCtx) {
+pub fn check(path: &Path, tidy_ctx: Option<&TidyCtx>, diag_ctx: DiagCtx) {
     let mut check = diag_ctx.start_check(CheckId::new("rustdoc_gui_tests").path(path));
 
     crate::walk::walk(
         &path.join("rustdoc-gui"),
-        tidy_flags,
+        tidy_ctx,
         |p, is_dir| !is_dir && p.extension().is_none_or(|e| e != "goml"),
         &mut |entry, content| {
             for line in content.lines() {

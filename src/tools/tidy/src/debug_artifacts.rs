@@ -2,18 +2,18 @@
 
 use std::path::Path;
 
-use crate::TidyFlags;
+use crate::TidyCtx;
 use crate::diagnostics::{CheckId, DiagCtx};
 use crate::walk::{filter_dirs, filter_not_rust, walk};
 
 const GRAPHVIZ_POSTFLOW_MSG: &str = "`borrowck_graphviz_postflow` attribute in test";
 
-pub fn check(test_dir: &Path, tidy_flags: TidyFlags, diag_ctx: DiagCtx) {
+pub fn check(test_dir: &Path, tidy_ctx: Option<&TidyCtx>, diag_ctx: DiagCtx) {
     let mut check = diag_ctx.start_check(CheckId::new("debug_artifacts").path(test_dir));
 
     walk(
         test_dir,
-        tidy_flags,
+        tidy_ctx,
         |path, _is_dir| filter_dirs(path) || filter_not_rust(path),
         &mut |entry, contents| {
             for (i, line) in contents.lines().enumerate() {

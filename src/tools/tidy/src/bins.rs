@@ -29,7 +29,7 @@ mod os_impl {
     use std::process::{Command, Stdio};
 
     #[cfg(unix)]
-    use crate::TidyFlags;
+    use crate::TidyCtx;
     use crate::walk::{filter_dirs, walk_no_read};
 
     enum FilesystemSupport {
@@ -112,7 +112,7 @@ mod os_impl {
     }
 
     #[cfg(unix)]
-    pub fn check(path: &Path, tidy_flags: TidyFlags, diag_ctx: DiagCtx) {
+    pub fn check(path: &Path, tidy_ctx: Option<&TidyCtx>, diag_ctx: DiagCtx) {
         let mut check = diag_ctx.start_check("bins");
 
         use std::ffi::OsStr;
@@ -129,7 +129,7 @@ mod os_impl {
         // (e.g. using `git ls-files`).
         walk_no_read(
             &[path],
-            tidy_flags,
+            tidy_ctx,
             |path, _is_dir| {
                 filter_dirs(path)
                     || path.ends_with("src/etc")

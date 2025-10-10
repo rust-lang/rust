@@ -2,12 +2,11 @@ use std::collections::{HashMap, HashSet};
 use std::ffi::OsStr;
 use std::fs::File;
 use std::io::Read;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
-use build_helper::git::{get_git_untracked_files, output_result};
 use ignore::DirEntry;
 
-use crate::TidyFlags;
+use crate::TidyCtx;
 
 /// The default directory filter.
 pub fn filter_dirs(path: &Path) -> bool {
@@ -50,28 +49,29 @@ pub fn filter_not_rust(path: &Path) -> bool {
 
 pub fn walk(
     path: &Path,
-    tidy_flags: TidyFlags,
+    tidy_ctx: Option<&TidyCtx>,
     skip: impl Send + Sync + 'static + Fn(&Path, bool) -> bool,
     f: &mut dyn FnMut(&DirEntry, &str),
 ) {
-    walk_many(&[path], tidy_flags, skip, f);
+    walk_many(&[path], tidy_ctx, skip, f);
 }
 
 pub fn walk_many(
     paths: &[&Path],
-    tidy_flags: TidyFlags,
+    tidy_ctx: Option<&TidyCtx>,
     skip: impl Send + Sync + 'static + Fn(&Path, bool) -> bool,
     f: &mut dyn FnMut(&DirEntry, &str),
 ) {
     let mut contents = Vec::new();
 
-    let changed_files = match tidy_flags.pre_push {
-        true => get_git_last_commit_content(),
-        false => HashMap::new(),
+    let pre_push = tidy_ctx.map(|flags| flags.pre_push).unwrap_or(false);
+    let changed_files = match pre_push {
+        true => &tidy_ctx.unwrap().pre_push_file_content,
+        false => &HashMap::new(),
     };
 
-    walk_no_read(paths, tidy_flags, skip, &mut |entry| {
-        if tidy_flags.pre_push && changed_files.keys().any(|k| k == entry.path()) {
+    walk_no_read(paths, tidy_ctx, skip, &mut |entry| {
+        if pre_push && changed_files.keys().any(|k| k == entry.path()) {
             if let Some(content) = changed_files.get(entry.path().into()) {
                 f(entry, content);
             }
@@ -90,19 +90,14 @@ pub fn walk_many(
 
 pub(crate) fn walk_no_read(
     paths: &[&Path],
-    tidy_flags: TidyFlags,
+    tidy_ctx: Option<&TidyCtx>,
     skip: impl Send + Sync + 'static + Fn(&Path, bool) -> bool,
     f: &mut dyn FnMut(&DirEntry),
 ) {
-    let untracked_files: HashSet<PathBuf> = if !tidy_flags.include_untracked {
-        match get_git_untracked_files(Some(paths[0])) {
-            Ok(Some(untracked_paths)) => {
-                untracked_paths.into_iter().map(|s| PathBuf::from(paths[0]).join(s)).collect()
-            }
-            _ => HashSet::new(),
-        }
-    } else {
-        HashSet::new()
+    let include_untracked = tidy_ctx.map(|flags| flags.include_untracked).unwrap_or(false);
+    let untracked_files = match !include_untracked {
+        true => tidy_ctx.unwrap().untracked_files.clone(),
+        false => HashSet::new(),
     };
 
     let mut walker = ignore::WalkBuilder::new(paths[0]);
@@ -124,36 +119,22 @@ pub(crate) fn walk_no_read(
 // Walk through directories and skip symlinks.
 pub(crate) fn walk_dir(
     path: &Path,
+    tidy_ctx: Option<&TidyCtx>,
     skip: impl Send + Sync + 'static + Fn(&Path) -> bool,
     f: &mut dyn FnMut(&DirEntry),
 ) {
+    let include_untracked = tidy_ctx.map(|flags| flags.include_untracked).unwrap_or(false);
+    let untracked_files = match !include_untracked {
+        true => tidy_ctx.unwrap().untracked_files.clone(),
+        false => HashSet::new(),
+    };
+
     let mut walker = ignore::WalkBuilder::new(path);
-    let walker = walker.filter_entry(move |e| !skip(e.path()));
+    let walker =
+        walker.filter_entry(move |e| !skip(e.path()) && !untracked_files.contains(e.path()));
     for entry in walker.build().flatten() {
         if entry.path().is_dir() {
             f(&entry);
         }
     }
-}
-
-pub fn get_git_last_commit_content() -> HashMap<PathBuf, String> {
-    let mut content_map = HashMap::new();
-    let root_path =
-        t!(output_result(std::process::Command::new("git").args(["rev-parse", "--show-toplevel"])))
-            .trim()
-            .to_owned();
-    // Get all of the file names that have been modified in the working dir.
-    let file_names =
-        t!(output_result(std::process::Command::new("git").args(["diff", "--name-only", "HEAD"])))
-            .lines()
-            .map(|s| s.trim().to_owned())
-            .collect::<Vec<String>>();
-    for file in file_names {
-        let content = t!(output_result(
-            // Get the content of the files from the last commit. Used for '--pre-push' tidy flag.
-            std::process::Command::new("git").arg("show").arg(format!("HEAD:{}", &file))
-        ));
-        content_map.insert(PathBuf::from(&root_path).join(file), content);
-    }
-    content_map
 }

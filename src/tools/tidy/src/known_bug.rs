@@ -2,13 +2,13 @@
 
 use std::path::Path;
 
-use crate::TidyFlags;
+use crate::TidyCtx;
 use crate::diagnostics::{CheckId, DiagCtx};
 use crate::walk::*;
 
-pub fn check(filepath: &Path, tidy_flags: TidyFlags, diag_ctx: DiagCtx) {
+pub fn check(filepath: &Path, tidy_ctx: Option<&TidyCtx>, diag_ctx: DiagCtx) {
     let mut check = diag_ctx.start_check(CheckId::new("known_bug").path(filepath));
-    walk(filepath, tidy_flags, |path, _is_dir| filter_not_rust(path), &mut |entry, contents| {
+    walk(filepath, tidy_ctx, |path, _is_dir| filter_not_rust(path), &mut |entry, contents| {
         let file: &Path = entry.path();
 
         // files in "auxiliary" do not need to crash by themselves

@@ -3,13 +3,16 @@
 //! This library contains the tidy lints and exposes it
 //! to be used by tools.
 
+use std::collections::{HashMap, HashSet};
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::{env, io};
 
 use build_helper::ci::CiEnv;
-use build_helper::git::{GitConfig, get_closest_upstream_commit};
+use build_helper::git::{
+    GitConfig, get_closest_upstream_commit, get_git_untracked_files, output_result,
+};
 use build_helper::stage0_parser::{Stage0Config, parse_stage0_file};
 
 use crate::diagnostics::{DiagCtx, RunningCheck};
@@ -44,15 +47,17 @@ macro_rules! t {
     };
 }
 
-// CLI flags used for Tidy.
-#[derive(Copy, Clone, Debug, Default)]
-pub struct TidyFlags {
+// CLI flags and git context used for Tidy.
+#[derive(Clone, Debug, Default)]
+pub struct TidyCtx {
     pub bless: bool,
     pub include_untracked: bool,
     pub pre_push: bool,
+    pub pre_push_file_content: HashMap<PathBuf, String>,
+    pub untracked_files: HashSet<PathBuf>,
 }
 
-impl TidyFlags {
+impl TidyCtx {
     pub fn new(cfg_args: &[String]) -> Self {
         let mut flags = Self::default();
 
@@ -64,9 +69,53 @@ impl TidyFlags {
                 _ => continue,
             }
         }
+        let git_root = get_git_root_path();
+
+        //Get a map of file names and file content from last commit for `--pre-push`.
+        let pre_push_content = match flags.pre_push {
+            true => get_git_last_commit_content(&git_root),
+            false => HashMap::new(),
+        };
+
+        //Get all of the untracked files, used by default to exclude untracked from tidy.
+        let untracked_files = match get_git_untracked_files(Some(Path::new(&git_root))) {
+            Ok(Some(untracked_paths)) => {
+                untracked_paths.into_iter().map(|s| PathBuf::from(&git_root).join(s)).collect()
+            }
+            _ => HashSet::new(),
+        };
+
+        flags.pre_push_file_content = pre_push_content;
+        flags.untracked_files = untracked_files;
 
         flags
     }
+}
+
+fn get_git_root_path() -> String {
+    let root_path =
+        t!(output_result(std::process::Command::new("git").args(["rev-parse", "--show-toplevel"])))
+            .trim()
+            .to_owned();
+    root_path
+}
+
+fn get_git_last_commit_content(git_root: &str) -> HashMap<PathBuf, String> {
+    let mut content_map = HashMap::new();
+    // Get all of the file names that have been modified in the working dir.
+    let file_names =
+        t!(output_result(std::process::Command::new("git").args(["diff", "--name-only", "HEAD"])))
+            .lines()
+            .map(|s| s.trim().to_owned())
+            .collect::<Vec<String>>();
+    for file in file_names {
+        let content = t!(output_result(
+            // Get the content of the files from the last commit. Used for '--pre-push' tidy flag.
+            std::process::Command::new("git").arg("show").arg(format!("HEAD:{}", &file))
+        ));
+        content_map.insert(PathBuf::from(&git_root).join(file), content);
+    }
+    content_map
 }
 
 pub struct CiInfo {

@@ -7,7 +7,7 @@ use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use crate::TidyFlags;
+use crate::TidyCtx;
 use crate::diagnostics::{CheckId, DiagCtx, RunningCheck};
 
 const ISSUES_TXT_HEADER: &str = r#"============================================================
@@ -15,9 +15,10 @@ const ISSUES_TXT_HEADER: &str = r#"=============================================
 ============================================================
 "#;
 
-pub fn check(root_path: &Path, tidy_flags: TidyFlags, diag_ctx: DiagCtx) {
+pub fn check(root_path: &Path, tidy_ctx: Option<&TidyCtx>, diag_ctx: DiagCtx) {
     let path = &root_path.join("tests");
     let mut check = diag_ctx.start_check(CheckId::new("ui_tests").path(path));
+    let bless = tidy_ctx.map(|flags| flags.bless).unwrap_or(false);
 
     // the list of files in ui tests that are allowed to start with `issue-XXXX`
     // BTreeSet because we would like a stable ordering so --bless works
@@ -36,7 +37,7 @@ pub fn check(root_path: &Path, tidy_flags: TidyFlags, diag_ctx: DiagCtx) {
         })
         .collect();
 
-    if !is_sorted && !tidy_flags.bless {
+    if !is_sorted && !bless {
         check.error(
             "`src/tools/tidy/src/issues.txt` is not in order, mostly because you modified it manually,
             please only update it with command `x test tidy --bless`"
@@ -46,12 +47,12 @@ pub fn check(root_path: &Path, tidy_flags: TidyFlags, diag_ctx: DiagCtx) {
     deny_new_top_level_ui_tests(&mut check, &path.join("ui"));
 
     let remaining_issue_names =
-        recursively_check_ui_tests(&mut check, path, &allowed_issue_names, tidy_flags);
+        recursively_check_ui_tests(&mut check, path, &allowed_issue_names, tidy_ctx);
 
     // if there are any file names remaining, they were moved on the fs.
     // our data must remain up to date, so it must be removed from issues.txt
     // do this automatically on bless, otherwise issue a tidy error
-    if tidy_flags.bless && (!remaining_issue_names.is_empty() || !is_sorted) {
+    if bless && (!remaining_issue_names.is_empty() || !is_sorted) {
         let tidy_src = root_path.join("src/tools/tidy/src");
         // instead of overwriting the file, recreate it and use an "atomic rename"
         // so we don't bork things on panic or a contributor using Ctrl+C
@@ -106,13 +107,13 @@ fn recursively_check_ui_tests<'issues>(
     check: &mut RunningCheck,
     path: &Path,
     allowed_issue_names: &'issues BTreeSet<&'issues str>,
-    tidy_flags: TidyFlags,
+    tidy_ctx: Option<&TidyCtx>,
 ) -> BTreeSet<&'issues str> {
     let mut remaining_issue_names: BTreeSet<&str> = allowed_issue_names.clone();
 
     let (ui, ui_fulldeps) = (path.join("ui"), path.join("ui-fulldeps"));
     let paths = [ui.as_path(), ui_fulldeps.as_path()];
-    crate::walk::walk_no_read(&paths, tidy_flags, |_, _| false, &mut |entry| {
+    crate::walk::walk_no_read(&paths, tidy_ctx, |_, _| false, &mut |entry| {
         let file_path = entry.path();
         if let Some(ext) = file_path.extension().and_then(OsStr::to_str) {
             check_unexpected_extension(check, file_path, ext);

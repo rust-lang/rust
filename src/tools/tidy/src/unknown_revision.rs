@@ -12,16 +12,16 @@ use std::sync::OnceLock;
 use ignore::DirEntry;
 use regex::Regex;
 
-use crate::TidyFlags;
+use crate::TidyCtx;
 use crate::diagnostics::{CheckId, DiagCtx, RunningCheck};
 use crate::iter_header::{HeaderLine, iter_header};
 use crate::walk::{filter_dirs, filter_not_rust, walk};
 
-pub fn check(tests_path: &Path, tidy_flags: TidyFlags, diag_ctx: DiagCtx) {
+pub fn check(tests_path: &Path, tidy_ctx: Option<&TidyCtx>, diag_ctx: DiagCtx) {
     let mut check = diag_ctx.start_check(CheckId::new("unknown_revision").path(tests_path));
     walk(
         tests_path,
-        tidy_flags,
+        tidy_ctx,
         |path, is_dir| {
             filter_dirs(path) || filter_not_rust(path) || {
                 // Auxiliary source files for incremental tests can refer to revisions
