@@ -30,7 +30,7 @@ pub(crate) fn target() -> Target {
         llvm_target: "armv7a-none-eabihf".into(),
         metadata: TargetMetadata {
             description: Some("Bare Armv7-A, hardfloat".into()),
-            tier: Some(3),
+            tier: Some(2),
             host_tools: Some(false),
             std: Some(false),
         },
