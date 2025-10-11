@@ -6,4 +6,9 @@ fn main() {
     let _ = (0..10).filter(|&v: &i32| v.pow(2) > 0);
     //~^ ERROR can't call method `pow` on ambiguous numeric type `{integer}`
     //~| SUGGESTION &i32
+
+    let v = vec![0, 1, 2];
+    let _ = v.iter().filter(|&&v: &&i32| v.pow(2) > 0);
+    //~^ ERROR can't call method `pow` on ambiguous numeric type `{integer}`
+    //~| SUGGESTION &&i32
 }

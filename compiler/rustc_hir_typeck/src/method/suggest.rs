@@ -2577,10 +2577,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     && matches!(parent_pat.kind, hir::PatKind::Ref(..)) =>
                             {
                                 err.span_label(span, "you must specify a type for this binding");
+
+                                let mut ref_muts = Vec::new();
+                                let mut current_node = parent_node;
+
+                                while let Node::Pat(parent_pat) = current_node {
+                                    if let hir::PatKind::Ref(_, mutability) = parent_pat.kind {
+                                        ref_muts.push(mutability);
+                                        current_node = self.tcx.parent_hir_node(parent_pat.hir_id);
+                                    } else {
+                                        break;
+                                    }
+                                }
+
+                                let mut type_annotation = String::new();
+                                for mutability in ref_muts.iter().rev() {
+                                    match mutability {
+                                        hir::Mutability::Mut => type_annotation.push_str("&mut "),
+                                        hir::Mutability::Not => type_annotation.push('&'),
+                                    }
+                                }
+                                type_annotation.push_str(&concrete_type);
+
                                 err.span_suggestion_verbose(
                                     pat.span.shrink_to_hi(),
                                     "specify the type in the closure argument list",
-                                    format!(": &{concrete_type}"),
+                                    format!(": {type_annotation}"),
                                     Applicability::MaybeIncorrect,
                                 );
                             }
