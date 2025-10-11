@@ -11,135 +11,7 @@
 // to_upper        : 13656 bytes
 // Total           : 31911 bytes
 
-#[inline(always)]
-const fn bitset_search<
-    const N: usize,
-    const CHUNK_SIZE: usize,
-    const N1: usize,
-    const CANONICAL: usize,
-    const CANONICALIZED: usize,
->(
-    needle: u32,
-    chunk_idx_map: &[u8; N],
-    bitset_chunk_idx: &[[u8; CHUNK_SIZE]; N1],
-    bitset_canonical: &[u64; CANONICAL],
-    bitset_canonicalized: &[(u8, u8); CANONICALIZED],
-) -> bool {
-    let bucket_idx = (needle / 64) as usize;
-    let chunk_map_idx = bucket_idx / CHUNK_SIZE;
-    let chunk_piece = bucket_idx % CHUNK_SIZE;
-    // FIXME(const-hack): Revert to `slice::get` when slice indexing becomes possible in const.
-    let chunk_idx = if chunk_map_idx < chunk_idx_map.len() {
-        chunk_idx_map[chunk_map_idx]
-    } else {
-        return false;
-    };
-    let idx = bitset_chunk_idx[chunk_idx as usize][chunk_piece] as usize;
-    // FIXME(const-hack): Revert to `slice::get` when slice indexing becomes possible in const.
-    let word = if idx < bitset_canonical.len() {
-        bitset_canonical[idx]
-    } else {
-        let (real_idx, mapping) = bitset_canonicalized[idx - bitset_canonical.len()];
-        let mut word = bitset_canonical[real_idx as usize];
-        let should_invert = mapping & (1 << 6) != 0;
-        if should_invert {
-            word = !word;
-        }
-        // Lower 6 bits
-        let quantity = mapping & ((1 << 6) - 1);
-        if mapping & (1 << 7) != 0 {
-            // shift
-            word >>= quantity as u64;
-        } else {
-            word = word.rotate_left(quantity as u32);
-        }
-        word
-    };
-    (word & (1 << (needle % 64) as u64)) != 0
-}
-
-#[repr(transparent)]
-struct ShortOffsetRunHeader(u32);
-
-impl ShortOffsetRunHeader {
-    const fn new(start_index: usize, prefix_sum: u32) -> Self {
-        assert!(start_index < (1 << 11));
-        assert!(prefix_sum < (1 << 21));
-
-        Self((start_index as u32) << 21 | prefix_sum)
-    }
-
-    #[inline]
-    const fn start_index(&self) -> usize {
-        (self.0 >> 21) as usize
-    }
-
-    #[inline]
-    const fn prefix_sum(&self) -> u32 {
-        self.0 & ((1 << 21) - 1)
-    }
-}
-
-/// # Safety
-///
-/// - The last element of `short_offset_runs` must be greater than `std::char::MAX`.
-/// - The start indices of all elements in `short_offset_runs` must be less than `OFFSETS`.
-#[inline(always)]
-unsafe fn skip_search<const SOR: usize, const OFFSETS: usize>(
-    needle: char,
-    short_offset_runs: &[ShortOffsetRunHeader; SOR],
-    offsets: &[u8; OFFSETS],
-) -> bool {
-    let needle = needle as u32;
-
-    let last_idx =
-        match short_offset_runs.binary_search_by_key(&(needle << 11), |header| header.0 << 11) {
-            Ok(idx) => idx + 1,
-            Err(idx) => idx,
-        };
-    // SAFETY: `last_idx` *cannot* be past the end of the array, as the last
-    // element is greater than `std::char::MAX` (the largest possible needle)
-    // as guaranteed by the caller.
-    //
-    // So, we cannot have found it (i.e. `Ok(idx) => idx + 1 != length`) and the
-    // correct location cannot be past it, so `Err(idx) => idx != length` either.
-    //
-    // This means that we can avoid bounds checking for the accesses below, too.
-    //
-    // We need to use `intrinsics::assume` since the `panic_nounwind` contained
-    // in `hint::assert_unchecked` may not be optimized out.
-    unsafe { crate::intrinsics::assume(last_idx < SOR) };
-
-    let mut offset_idx = short_offset_runs[last_idx].start_index();
-    let length = if let Some(next) = short_offset_runs.get(last_idx + 1) {
-        (*next).start_index() - offset_idx
-    } else {
-        offsets.len() - offset_idx
-    };
-
-    let prev =
-        last_idx.checked_sub(1).map(|prev| short_offset_runs[prev].prefix_sum()).unwrap_or(0);
-
-    let total = needle - prev;
-    let mut prefix_sum = 0;
-    for _ in 0..(length - 1) {
-        // SAFETY: It is guaranteed that `length <= OFFSETS - offset_idx`,
-        // so it follows that `length - 1 + offset_idx < OFFSETS`, therefore
-        // `offset_idx < OFFSETS` is always true in this loop.
-        //
-        // We need to use `intrinsics::assume` since the `panic_nounwind` contained
-        // in `hint::assert_unchecked` may not be optimized out.
-        unsafe { crate::intrinsics::assume(offset_idx < OFFSETS) };
-        let offset = offsets[offset_idx];
-        prefix_sum += offset as u32;
-        if prefix_sum > total {
-            break;
-        }
-        offset_idx += 1;
-    }
-    offset_idx % 2 == 1
-}
-
+use super::rt::*;
 pub const UNICODE_VERSION: (u8, u8, u8) = (17, 0, 0);
 
 #[rustfmt::skip]
@@ -758,42 +630,32 @@ pub mod white_space {
 
 #[rustfmt::skip]
 pub mod conversions {
-    const INDEX_MASK: u32 = 0x400000;
-
+    #[inline]
     pub fn to_lower(c: char) -> [char; 3] {
-        if c.is_ascii() {
-            [(c as u8).to_ascii_lowercase() as char, '\0', '\0']
-        } else {
-            LOWERCASE_TABLE
-                .binary_search_by(|&(key, _)| key.cmp(&c))
-                .map(|i| {
-                    let u = LOWERCASE_TABLE[i].1;
-                    char::from_u32(u).map(|c| [c, '\0', '\0']).unwrap_or_else(|| {
-                        // SAFETY: Index comes from statically generated table
-                        unsafe { *LOWERCASE_TABLE_MULTI.get_unchecked((u & (INDEX_MASK - 1)) as usize) }
-                    })
-                })
-                .unwrap_or([c, '\0', '\0'])
+        const {
+            let mut i = 0;
+            while i < LOWERCASE_TABLE.len() {
+                let (_, val) = LOWERCASE_TABLE[i];
+                if val & (1 << 22) == 0 {
+                    assert!(char::from_u32(val).is_some());
+                } else {
+                    let index = val & ((1 << 22) - 1);
+                    assert!((index as usize) < LOWERCASE_TABLE_MULTI.len());
+                }
+                i += 1;
+            }
+        }
+
+        // SAFETY: Just checked that the tables are valid
+        unsafe {
+            super::case_conversion(
+                c,
+                |c| c.to_ascii_lowercase(),
+                LOWERCASE_TABLE,
+                LOWERCASE_TABLE_MULTI,
+            )
         }
     }
-
-    pub fn to_upper(c: char) -> [char; 3] {
-        if c.is_ascii() {
-            [(c as u8).to_ascii_uppercase() as char, '\0', '\0']
-        } else {
-            UPPERCASE_TABLE
-                .binary_search_by(|&(key, _)| key.cmp(&c))
-                .map(|i| {
-                    let u = UPPERCASE_TABLE[i].1;
-                    char::from_u32(u).map(|c| [c, '\0', '\0']).unwrap_or_else(|| {
-                        // SAFETY: Index comes from statically generated table
-                        unsafe { *UPPERCASE_TABLE_MULTI.get_unchecked((u & (INDEX_MASK - 1)) as usize) }
-                    })
-                })
-                .unwrap_or([c, '\0', '\0'])
-        }
-    }
-
     static LOWERCASE_TABLE: &[(char, u32); 1462] = &[
         ('\u{c0}', 224), ('\u{c1}', 225), ('\u{c2}', 226), ('\u{c3}', 227), ('\u{c4}', 228),
         ('\u{c5}', 229), ('\u{c6}', 230), ('\u{c7}', 231), ('\u{c8}', 232), ('\u{c9}', 233),
@@ -1155,6 +1017,32 @@ pub mod conversions {
         ['i', '\u{307}', '\u{0}'],
     ];
 
+    #[inline]
+    pub fn to_upper(c: char) -> [char; 3] {
+        const {
+            let mut i = 0;
+            while i < UPPERCASE_TABLE.len() {
+                let (_, val) = UPPERCASE_TABLE[i];
+                if val & (1 << 22) == 0 {
+                    assert!(char::from_u32(val).is_some());
+                } else {
+                    let index = val & ((1 << 22) - 1);
+                    assert!((index as usize) < UPPERCASE_TABLE_MULTI.len());
+                }
+                i += 1;
+            }
+        }
+
+        // SAFETY: Just checked that the tables are valid
+        unsafe {
+            super::case_conversion(
+                c,
+                |c| c.to_ascii_uppercase(),
+                UPPERCASE_TABLE,
+                UPPERCASE_TABLE_MULTI,
+            )
+        }
+    }
     static UPPERCASE_TABLE: &[(char, u32); 1554] = &[
         ('\u{b5}', 924), ('\u{df}', 4194304), ('\u{e0}', 192), ('\u{e1}', 193), ('\u{e2}', 194),
         ('\u{e3}', 195), ('\u{e4}', 196), ('\u{e5}', 197), ('\u{e6}', 198), ('\u{e7}', 199),
