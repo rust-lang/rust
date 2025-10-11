@@ -5,7 +5,7 @@ impl From<(u8,)> for Tuple {
         todo!()
     }
 }
-impl From<(u8, u8)> for Tuple {
+impl From<(u8, u8)> for Tuple { //~ HELP the following other types implement trait `From<T>`
     fn from(_: (u8, u8)) -> Self {
         todo!()
     }
@@ -22,5 +22,4 @@ fn main() {
     convert_into_tuple(42_u8);
     //~^ ERROR E0277
     //~| HELP use a unary tuple instead
-    //~| HELP the following other types implement trait `From<T>`
 }

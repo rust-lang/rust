@@ -15,7 +15,11 @@ error[E0277]: the trait bound `for<'b> i32: X<'b, i32>` is not satisfied
 LL |     <(i32,) as X<i32>>::f("abc");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `for<'b> X<'b, i32>` is not implemented for `i32`
    |
-   = help: the trait `X<'_, T>` is implemented for `(S,)`
+help: the trait `X<'_, T>` is implemented for `(S,)`
+  --> $DIR/hr-associated-type-bound-param-6.rs:12:1
+   |
+LL | impl<S, T> X<'_, T> for (S,) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `for<'b> i32: X<'b, i32>` is not satisfied
   --> $DIR/hr-associated-type-bound-param-6.rs:18:18
@@ -23,7 +27,11 @@ error[E0277]: the trait bound `for<'b> i32: X<'b, i32>` is not satisfied
 LL |     <(i32,) as X<i32>>::f("abc");
    |                  ^^^ the trait `for<'b> X<'b, i32>` is not implemented for `i32`
    |
-   = help: the trait `X<'_, T>` is implemented for `(S,)`
+help: the trait `X<'_, T>` is implemented for `(S,)`
+  --> $DIR/hr-associated-type-bound-param-6.rs:12:1
+   |
+LL | impl<S, T> X<'_, T> for (S,) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: required by a bound in `X::f`
   --> $DIR/hr-associated-type-bound-param-6.rs:3:16
    |
@@ -39,7 +47,11 @@ error[E0277]: the trait bound `i32: X<'_, i32>` is not satisfied
 LL |     <(i32,) as X<i32>>::f("abc");
    |                           ^^^^^ the trait `X<'_, i32>` is not implemented for `i32`
    |
-   = help: the trait `X<'_, T>` is implemented for `(S,)`
+help: the trait `X<'_, T>` is implemented for `(S,)`
+  --> $DIR/hr-associated-type-bound-param-6.rs:12:1
+   |
+LL | impl<S, T> X<'_, T> for (S,) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 4 previous errors
 

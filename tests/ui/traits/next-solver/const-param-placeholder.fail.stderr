@@ -4,7 +4,11 @@ error[E0277]: the trait bound `[T; N]: Foo` is not satisfied
 LL |     needs_foo::<[T; N]>();
    |                 ^^^^^^ the trait `Foo` is not implemented for `[T; N]`
    |
-   = help: the trait `Foo` is implemented for `[T; 1]`
+help: the trait `Foo` is implemented for `[T; 1]`
+  --> $DIR/const-param-placeholder.rs:11:1
+   |
+LL | impl<T> Foo for [T; 1] {}
+   | ^^^^^^^^^^^^^^^^^^^^^^
 note: required by a bound in `needs_foo`
   --> $DIR/const-param-placeholder.rs:8:17
    |

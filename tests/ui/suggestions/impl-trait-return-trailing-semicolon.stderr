@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `(): Bar` is not satisfied
-  --> $DIR/impl-trait-return-trailing-semicolon.rs:9:13
+  --> $DIR/impl-trait-return-trailing-semicolon.rs:10:13
    |
 LL | fn foo() -> impl Bar {
    |             ^^^^^^^^ the trait `Bar` is not implemented for `()`
@@ -10,14 +10,19 @@ LL |     5;
    |     this expression has type `{integer}`, which implements `Bar`
 
 error[E0277]: the trait bound `(): Bar` is not satisfied
-  --> $DIR/impl-trait-return-trailing-semicolon.rs:15:13
+  --> $DIR/impl-trait-return-trailing-semicolon.rs:16:13
    |
 LL | fn bar() -> impl Bar {
    |             ^^^^^^^^ the trait `Bar` is not implemented for `()`
    |
-   = help: the following other types implement trait `Bar`:
-             Qux
-             i32
+help: the following other types implement trait `Bar`
+  --> $DIR/impl-trait-return-trailing-semicolon.rs:3:1
+   |
+LL | impl Bar for i32 {}
+   | ^^^^^^^^^^^^^^^^ `i32`
+...
+LL | impl Bar for Qux {}
+   | ^^^^^^^^^^^^^^^^ `Qux`
 
 error: aborting due to 2 previous errors
 

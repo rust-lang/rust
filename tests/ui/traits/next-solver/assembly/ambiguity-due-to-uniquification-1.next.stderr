@@ -5,7 +5,11 @@ LL |     (&() as &dyn D<&(), &()>).f()
    |                               ^
    |
    = note: cannot satisfy `dyn D<&(), &()>: B<&()>`
-   = help: the trait `B<C>` is implemented for `()`
+help: the trait `B<C>` is implemented for `()`
+  --> $DIR/ambiguity-due-to-uniquification-1.rs:9:1
+   |
+LL | impl<C> B<C> for () {}
+   | ^^^^^^^^^^^^^^^^^^^
 note: required by a bound in `D::f`
   --> $DIR/ambiguity-due-to-uniquification-1.rs:10:16
    |
