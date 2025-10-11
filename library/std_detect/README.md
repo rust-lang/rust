@@ -66,10 +66,12 @@ crate from working on applications in which `std` is not available.
 
 * FreeBSD:
   * `arm32`, `powerpc64`: `std_detect` supports these on FreeBSD by querying ELF
-    auxiliary vectors using `sysctl`.
+    auxiliary vectors using `elf_aux_info`.
   * `arm64`: run-time feature detection is implemented by directly querying `mrs`.
 
 * OpenBSD:
+   * `powerpc64`: `std_detect` supports these on OpenBSD by querying ELF auxiliary
+     vectors using `elf_aux_info`.
   * `arm64`: run-time feature detection is implemented by querying `sysctl`.
 
 * Windows:
