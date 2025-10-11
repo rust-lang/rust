@@ -7,6 +7,8 @@ mod rust;
 use std::fs::File;
 use std::hash::{Hash, Hasher};
 use std::io::{self, Write};
+#[cfg(unix)]
+use std::os::unix::process::ExitStatusExt;
 use std::path::{Path, PathBuf};
 use std::process::{self, Command, Stdio};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -351,7 +353,7 @@ pub(crate) fn run_tests(
         );
 
         for (doctest, scraped_test) in &doctests {
-            tests_runner.add_test(doctest, scraped_test, &target_str);
+            tests_runner.add_test(doctest, scraped_test, &target_str, rustdoc_options);
         }
         let (duration, ret) = tests_runner.run_merged_tests(
             rustdoc_test_options,
@@ -461,8 +463,8 @@ enum TestFailure {
     ///
     /// This typically means an assertion in the test failed or another form of panic occurred.
     ExecutionFailure(process::Output),
-    /// The test is marked `should_panic` but the test binary executed successfully.
-    UnexpectedRunPass,
+    /// The test is marked `should_panic` but the test binary didn't panic.
+    NoPanic(Option<String>),
 }
 
 enum DirState {
@@ -801,6 +803,25 @@ fn run_test(
     let duration = instant.elapsed();
     if doctest.no_run {
         return (duration, Ok(()));
+    } else if doctest.langstr.should_panic
+        // Equivalent of:
+        //
+        // ```
+        // (cfg!(target_family = "wasm") || cfg!(target_os = "zkvm"))
+        //     && !cfg!(target_os = "emscripten")
+        // ```
+        //
+        // FIXME: All this code is terrible and doesn't take into account `TargetTuple::TargetJson`.
+        // If `libtest` doesn't allow to handle this case, we'll need to use a rustc's API instead.
+        && let TargetTuple::TargetTuple(ref s) = rustdoc_options.target
+        && let mut iter = s.split('-')
+        && let Some(arch) = iter.next()
+        && iter.next().is_some()
+        && let os = iter.next()
+        && (arch.starts_with("wasm") || os == Some("zkvm")) && os != Some("emscripten")
+    {
+        // We cannot correctly handle `should_panic` in some wasm targets so we exit early.
+        return (duration, Ok(()));
     }
 
     // Run the code!
@@ -831,12 +852,68 @@ fn run_test(
     } else {
         cmd.output()
     };
+
+    // FIXME: Make `test::get_result_from_exit_code` public and use this code instead of this.
+    //
+    // On Zircon (the Fuchsia kernel), an abort from userspace calls the
+    // LLVM implementation of __builtin_trap(), e.g., ud2 on x86, which
+    // raises a kernel exception. If a userspace process does not
+    // otherwise arrange exception handling, the kernel kills the process
+    // with this return code.
+    #[cfg(target_os = "fuchsia")]
+    const ZX_TASK_RETCODE_EXCEPTION_KILL: i32 = -1028;
+    // On Windows we use __fastfail to abort, which is documented to use this
+    // exception code.
+    #[cfg(windows)]
+    const STATUS_FAIL_FAST_EXCEPTION: i32 = 0xC0000409u32 as i32;
+    #[cfg(unix)]
+    const SIGABRT: std::ffi::c_int = 6;
     match result {
         Err(e) => return (duration, Err(TestFailure::ExecutionError(e))),
         Ok(out) => {
-            if langstr.should_panic && out.status.success() {
-                return (duration, Err(TestFailure::UnexpectedRunPass));
-            } else if !langstr.should_panic && !out.status.success() {
+            if langstr.should_panic {
+                match out.status.code() {
+                    Some(test::ERROR_EXIT_CODE) => {}
+                    #[cfg(windows)]
+                    Some(STATUS_FAIL_FAST_EXCEPTION) => {}
+                    #[cfg(unix)]
+                    None => match out.status.signal() {
+                        Some(SIGABRT) => {}
+                        Some(signal) => {
+                            return (
+                                duration,
+                                Err(TestFailure::NoPanic(Some(format!(
+                                    "Test didn't panic, but it's marked `should_panic` (exit signal: {signal}).",
+                                )))),
+                            );
+                        }
+                        None => {
+                            return (
+                                duration,
+                                Err(TestFailure::NoPanic(Some(format!(
+                                    "Test didn't panic, but it's marked `should_panic` and exited with no error code and no signal.",
+                                )))),
+                            );
+                        }
+                    },
+                    #[cfg(not(unix))]
+                    None => return (duration, Err(TestFailure::NoPanic(None))),
+                    // Upon an abort, Fuchsia returns the status code
+                    // `ZX_TASK_RETCODE_EXCEPTION_KILL`.
+                    #[cfg(target_os = "fuchsia")]
+                    Some(ZX_TASK_RETCODE_EXCEPTION_KILL) => {}
+                    Some(exit_code) => {
+                        let err_msg = if !out.status.success() {
+                            Some(format!(
+                                "Test didn't panic, but it's marked `should_panic` (exit status: {exit_code}).",
+                            ))
+                        } else {
+                            None
+                        };
+                        return (duration, Err(TestFailure::NoPanic(err_msg)));
+                    }
+                }
+            } else if !out.status.success() {
                 return (duration, Err(TestFailure::ExecutionFailure(out)));
             }
         }
@@ -1143,8 +1220,12 @@ fn doctest_run_fn(
             TestFailure::UnexpectedCompilePass => {
                 eprint!("Test compiled successfully, but it's marked `compile_fail`.");
             }
-            TestFailure::UnexpectedRunPass => {
-                eprint!("Test executable succeeded, but it's marked `should_panic`.");
+            TestFailure::NoPanic(msg) => {
+                if let Some(msg) = msg {
+                    eprint!("{msg}");
+                } else {
+                    eprint!("Test didn't panic, but it's marked `should_panic`.");
+                }
             }
             TestFailure::MissingErrorCodes(codes) => {
                 eprint!("Some expected error codes were not found: {codes:?}");
