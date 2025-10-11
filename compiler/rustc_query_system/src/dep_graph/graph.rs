@@ -339,13 +339,11 @@ impl<D: Deps> DepGraphData<D> {
         let (result, edges) = if cx.dep_context().is_eval_always(key.kind) {
             (with_deps(TaskDepsRef::EvalAlways), EdgesVec::new())
         } else {
-            let task_deps = Lock::new(TaskDeps {
+            let task_deps = Lock::new(TaskDeps::new(
                 #[cfg(debug_assertions)]
-                node: Some(key),
-                reads: EdgesVec::new(),
-                read_set: Default::default(),
-                phantom_data: PhantomData,
-            });
+                Some(key),
+                0,
+            ));
             (with_deps(TaskDepsRef::Allow(&task_deps)), task_deps.into_inner().reads)
         };
 
@@ -377,12 +375,18 @@ impl<D: Deps> DepGraphData<D> {
     {
         debug_assert!(!cx.is_eval_always(dep_kind));
 
-        let task_deps = Lock::new(TaskDeps::default());
+        // Large numbers of reads are common enough here that pre-sizing `read_set`
+        // to 128 actually helps perf on some benchmarks.
+        let task_deps = Lock::new(TaskDeps::new(
+            #[cfg(debug_assertions)]
+            None,
+            128,
+        ));
         let result = D::with_deps(TaskDepsRef::Allow(&task_deps), op);
         let task_deps = task_deps.into_inner();
-        let task_deps = task_deps.reads;
+        let reads = task_deps.reads;
 
-        let dep_node_index = match task_deps.len() {
+        let dep_node_index = match reads.len() {
             0 => {
                 // Because the dep-node id of anon nodes is computed from the sets of its
                 // dependencies we already know what the ID of this dependency-less node is
@@ -393,7 +397,7 @@ impl<D: Deps> DepGraphData<D> {
             }
             1 => {
                 // When there is only one dependency, don't bother creating a node.
-                task_deps[0]
+                reads[0]
             }
             _ => {
                 // The dep node indices are hashed here instead of hashing the dep nodes of the
@@ -402,7 +406,7 @@ impl<D: Deps> DepGraphData<D> {
                 // combining it with the per session random number `anon_id_seed`. This hash only need
                 // to map the dependencies to a single value on a per session basis.
                 let mut hasher = StableHasher::new();
-                task_deps.hash(&mut hasher);
+                reads.hash(&mut hasher);
 
                 let target_dep_node = DepNode {
                     kind: dep_kind,
@@ -420,7 +424,7 @@ impl<D: Deps> DepGraphData<D> {
                 // memory impact of this `anon_node_to_index` map remains tolerable, and helps
                 // us avoid useless growth of the graph with almost-equivalent nodes.
                 self.current.anon_node_to_index.get_or_insert_with(target_dep_node, || {
-                    self.current.alloc_new_node(target_dep_node, task_deps, Fingerprint::ZERO)
+                    self.current.alloc_new_node(target_dep_node, reads, Fingerprint::ZERO)
                 })
             }
         };
@@ -471,18 +475,17 @@ impl<D: Deps> DepGraph<D> {
                     data.current.total_read_count.fetch_add(1, Ordering::Relaxed);
                 }
 
-                // As long as we only have a low number of reads we can avoid doing a hash
-                // insert and potentially allocating/reallocating the hashmap
-                let new_read = if task_deps.reads.len() < EdgesVec::INLINE_CAPACITY {
-                    task_deps.reads.iter().all(|other| *other != dep_node_index)
+                // Has `dep_node_index` been seen before? Use either a linear scan or a hashset
+                // lookup to determine this. See `TaskDeps::read_set` for details.
+                let new_read = if task_deps.reads.len() <= TaskDeps::LINEAR_SCAN_MAX {
+                    !task_deps.reads.contains(&dep_node_index)
                 } else {
                     task_deps.read_set.insert(dep_node_index)
                 };
                 if new_read {
                     task_deps.reads.push(dep_node_index);
-                    if task_deps.reads.len() == EdgesVec::INLINE_CAPACITY {
-                        // Fill `read_set` with what we have so far so we can use the hashset
-                        // next time
+                    if task_deps.reads.len() == TaskDeps::LINEAR_SCAN_MAX + 1 {
+                        // Fill `read_set` with what we have so far. Future lookups will use it.
                         task_deps.read_set.extend(task_deps.reads.iter().copied());
                     }
 
@@ -1292,18 +1295,30 @@ pub enum TaskDepsRef<'a> {
 pub struct TaskDeps {
     #[cfg(debug_assertions)]
     node: Option<DepNode>,
+
+    /// A vector of `DepNodeIndex`, basically.
     reads: EdgesVec,
+
+    /// When adding new edges to `reads` in `DepGraph::read_index` we need to determine if the edge
+    /// has been seen before. If the number of elements in `reads` is small, we just do a linear
+    /// scan. If the number is higher, a hashset has better perf. This field is that hashset. It's
+    /// only used if the number of elements in `reads` exceeds `LINEAR_SCAN_MAX`.
     read_set: FxHashSet<DepNodeIndex>,
+
     phantom_data: PhantomData<DepNode>,
 }
 
-impl Default for TaskDeps {
-    fn default() -> Self {
-        Self {
+impl TaskDeps {
+    /// See `TaskDeps::read_set` above.
+    const LINEAR_SCAN_MAX: usize = 16;
+
+    #[inline]
+    fn new(#[cfg(debug_assertions)] node: Option<DepNode>, read_set_capacity: usize) -> Self {
+        TaskDeps {
             #[cfg(debug_assertions)]
-            node: None,
+            node,
             reads: EdgesVec::new(),
-            read_set: FxHashSet::with_capacity_and_hasher(128, Default::default()),
+            read_set: FxHashSet::with_capacity_and_hasher(read_set_capacity, Default::default()),
             phantom_data: PhantomData,
         }
     }
