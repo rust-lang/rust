@@ -332,6 +332,8 @@ complete -c x.py -n "__fish_x.py_using_subcommand test" -l no-fail-fast -d 'run 
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l no-doc -d 'do not run doc tests'
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l doc -d 'only run doc tests'
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l bless -d 'whether to automatically update stderr/stdout files'
+complete -c x.py -n "__fish_x.py_using_subcommand test" -l pre-push -d 'Whether to run Tidy on the most recent commit, used in the pre-push git-hook'
+complete -c x.py -n "__fish_x.py_using_subcommand test" -l include-untracked -d 'Whether to include files untracked by git when running Tidy'
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l force-rerun -d 'rerun tests even if the inputs are unchanged'
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l only-modified -d 'only run tests that result has been changed'
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l rustfix-coverage -d 'enable this to generate a Rustfix coverage file, which is saved in `/<build_base>/rustfix_missing_coverage.txt`'

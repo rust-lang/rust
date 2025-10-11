@@ -5,15 +5,18 @@ use std::path::{Path, PathBuf};
 
 use miropt_test_tools::PanicStrategy;
 
+use crate::TidyCtx;
 use crate::diagnostics::{CheckId, DiagCtx, RunningCheck};
 use crate::walk::walk_no_read;
 
-fn check_unused_files(path: &Path, bless: bool, check: &mut RunningCheck) {
+fn check_unused_files(path: &Path, tidy_ctx: Option<&TidyCtx>, check: &mut RunningCheck) {
     let mut rs_files = Vec::<PathBuf>::new();
     let mut output_files = HashSet::<PathBuf>::new();
+    let bless = tidy_ctx.map(|flags| flags.bless).unwrap_or(false);
 
     walk_no_read(
         &[&path.join("mir-opt")],
+        tidy_ctx,
         |path, _is_dir| path.file_name() == Some("README.md".as_ref()),
         &mut |file| {
             let filepath = file.path();
@@ -74,9 +77,10 @@ fn check_dash_files(path: &Path, bless: bool, check: &mut RunningCheck) {
     }
 }
 
-pub fn check(path: &Path, bless: bool, diag_ctx: DiagCtx) {
+pub fn check(path: &Path, tidy_ctx: Option<&TidyCtx>, diag_ctx: DiagCtx) {
     let mut check = diag_ctx.start_check(CheckId::new("mir_opt_tests").path(path));
+    let bless = tidy_ctx.map(|flags| flags.bless).unwrap_or(false);
 
-    check_unused_files(path, bless, &mut check);
+    check_unused_files(path, tidy_ctx, &mut check);
     check_dash_files(path, bless, &mut check);
 }

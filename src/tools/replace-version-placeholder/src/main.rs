@@ -16,6 +16,7 @@ fn main() {
             &root_path.join("src/doc/rustc"),
             &root_path.join("src/doc/rustdoc"),
         ],
+        None,
         |path, _is_dir| walk::filter_dirs(path),
         &mut |entry, contents| {
             if !contents.contains(VERSION_PLACEHOLDER) {
