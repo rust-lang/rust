@@ -290,7 +290,7 @@ impl<'a> Parser<'a> {
     /// The delimiters or `=` are still put into the resulting token stream.
     pub fn parse_attr_item(&mut self, force_collect: ForceCollect) -> PResult<'a, ast::AttrItem> {
         if let Some(item) = self.eat_metavar_seq_with_matcher(
-            |mv_kind| matches!(mv_kind, MetaVarKind::Meta { .. }),
+            |mv_kind| matches!(mv_kind, MetaVarKind::Meta),
             |this| this.parse_attr_item(force_collect),
         ) {
             return Ok(item);
@@ -421,17 +421,13 @@ impl<'a> Parser<'a> {
         &mut self,
         unsafe_allowed: AllowLeadingUnsafe,
     ) -> PResult<'a, ast::MetaItem> {
-        if let Some(MetaVarKind::Meta { has_meta_form }) = self.token.is_metavar_seq() {
-            return if has_meta_form {
-                let attr_item = self
-                    .eat_metavar_seq(MetaVarKind::Meta { has_meta_form: true }, |this| {
-                        this.parse_attr_item(ForceCollect::No)
-                    })
-                    .unwrap();
-                Ok(attr_item.meta(attr_item.path.span).unwrap())
-            } else {
-                self.unexpected_any()
-            };
+        if let Some(mv_kind @ (MetaVarKind::Meta | MetaVarKind::Expr { .. })) =
+            self.token.is_metavar_seq()
+        {
+            return self
+                .eat_metavar_seq(mv_kind, |this| this.parse_attr_item(ForceCollect::No))
+                .map(|attr_item| attr_item.meta(attr_item.path.span).unwrap())
+                .ok_or_else(|| self.unexpected_any::<core::convert::Infallible>().unwrap_err());
         }
 
         let lo = self.token.span;
