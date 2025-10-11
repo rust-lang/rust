@@ -253,6 +253,10 @@ fn collect_defining_uses<'tcx>(
                 }
             } else {
                 errors.push(DeferredOpaqueTypeError::InvalidOpaqueTypeArgs(err));
+                debug!(
+                    "collect_defining_uses: InvalidOpaqueTypeArgs for {:?} := {:?}",
+                    non_nll_opaque_type_key, hidden_type
+                );
             }
             continue;
         }
@@ -286,26 +290,31 @@ fn compute_definition_site_hidden_types_from_defining_uses<'tcx>(
     let tcx = infcx.tcx;
     let mut decls_modulo_regions: FxIndexMap<OpaqueTypeKey<'tcx>, (OpaqueTypeKey<'tcx>, Span)> =
         FxIndexMap::default();
-    for &DefiningUse { opaque_type_key, ref arg_regions, hidden_type } in defining_uses {
+    for this_use @ &DefiningUse { opaque_type_key, ref arg_regions, hidden_type } in defining_uses {
         // After applying member constraints, we now map all regions in the hidden type
         // to the `arg_regions` of this defining use. In case a region in the hidden type
         // ended up not being equal to any such region, we error.
-        let hidden_type =
-            match hidden_type.try_fold_with(&mut ToArgRegionsFolder::new(rcx, arg_regions)) {
-                Ok(hidden_type) => hidden_type,
-                Err(r) => {
-                    errors.push(DeferredOpaqueTypeError::UnexpectedHiddenRegion {
-                        hidden_type,
-                        opaque_type_key,
-                        member_region: ty::Region::new_var(tcx, r),
-                    });
-                    let guar = tcx.dcx().span_delayed_bug(
-                        hidden_type.span,
-                        "opaque type with non-universal region args",
-                    );
-                    ty::OpaqueHiddenType::new_error(tcx, guar)
-                }
-            };
+        let hidden_type = match hidden_type
+            .try_fold_with(&mut ToArgRegionsFolder::new(rcx, arg_regions))
+        {
+            Ok(hidden_type) => hidden_type,
+            Err(r) => {
+                errors.push(DeferredOpaqueTypeError::UnexpectedHiddenRegion {
+                    hidden_type,
+                    opaque_type_key,
+                    member_region: ty::Region::new_var(tcx, r),
+                });
+                debug!(
+                    "compute_definition_site_hidden_types_from_defining_use: UnexpectedHiddenRegion for {:?}",
+                    this_use,
+                );
+                let guar = tcx.dcx().span_delayed_bug(
+                    hidden_type.span,
+                    "opaque type with non-universal region args",
+                );
+                ty::OpaqueHiddenType::new_error(tcx, guar)
+            }
+        };
 
         // Now that we mapped the member regions to their final value,
         // map the arguments of the opaque type key back to the parameters
