@@ -271,9 +271,7 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     bool TrapUnreachable, bool Singlethread, bool VerboseAsm,
     bool EmitStackSizeSection, bool RelaxELFRelocations, bool UseInitArray,
     const char *SplitDwarfFile, const char *OutputObjFile,
-    const char *DebugInfoCompression, bool UseEmulatedTls, const char *Argv0,
-    size_t Argv0Len, const char *CommandLineArgs, size_t CommandLineArgsLen,
-    bool UseWasmEH) {
+    const char *DebugInfoCompression, bool UseEmulatedTls, bool UseWasmEH) {
 
   auto OptLevel = fromRust(RustOptLevel);
   auto RM = fromRust(RustReloc);
@@ -347,11 +345,6 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     Options.ExceptionModel = ExceptionHandling::Wasm;
 
   Options.EmitStackSizeSection = EmitStackSizeSection;
-
-  if (Argv0 != nullptr)
-    Options.MCOptions.Argv0 = {Argv0, Argv0Len};
-  if (CommandLineArgs != nullptr)
-    Options.MCOptions.CommandlineArgs = {CommandLineArgs, CommandLineArgsLen};
 
 #if LLVM_VERSION_GE(21, 0)
   TargetMachine *TM = TheTarget->createTargetMachine(Trip, CPU, Feature,

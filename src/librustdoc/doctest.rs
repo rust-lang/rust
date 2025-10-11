@@ -191,7 +191,6 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
         registry: rustc_driver::diagnostics_registry(),
         ice_file: None,
         using_internal_features: &rustc_driver::USING_INTERNAL_FEATURES,
-        expanded_args: options.expanded_args.clone(),
     };
 
     let externs = options.externs.clone();
