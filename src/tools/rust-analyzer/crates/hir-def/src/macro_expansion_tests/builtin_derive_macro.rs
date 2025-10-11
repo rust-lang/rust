@@ -661,7 +661,7 @@ fn coerce_pointee_expansion() {
         r#"
 //- minicore: coerce_pointee
 
-use core::marker::CoercePointee;
+use core::ops::CoercePointee;
 
 pub trait Trait<T: ?Sized> {}
 
@@ -672,7 +672,7 @@ where
     U: Trait<U> + ToString;"#,
         expect![[r#"
 
-use core::marker::CoercePointee;
+use core::ops::CoercePointee;
 
 pub trait Trait<T: ?Sized> {}
 
@@ -692,7 +692,7 @@ fn coerce_pointee_errors() {
         r#"
 //- minicore: coerce_pointee
 
-use core::marker::CoercePointee;
+use core::ops::CoercePointee;
 
 #[derive(CoercePointee)]
 enum Enum {}
