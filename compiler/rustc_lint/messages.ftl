@@ -257,9 +257,6 @@ lint_expectation = this lint expectation is unfulfilled
     .note = the `unfulfilled_lint_expectations` lint can't be expected and will always produce this message
     .rationale = {$rationale}
 
-lint_extern_crate_not_idiomatic = `extern crate` is not idiomatic in the new edition
-    .suggestion = convert it to a `use`
-
 lint_for_loops_over_fallibles =
     for loop over {$article} `{$ref_prefix}{$ty}`. This is more readably written as an `if let` statement
     .suggestion = consider using `if let` to clear intent
@@ -467,9 +464,6 @@ lint_lintpass_by_hand = implementing `LintPass` by hand
 lint_macro_expr_fragment_specifier_2024_migration =
     the `expr` fragment specifier will accept more expressions in the 2024 edition
     .suggestion = to keep the existing behavior, use the `expr_2021` fragment specifier
-lint_macro_is_private = macro `{$ident}` is private
-
-lint_macro_rule_never_used = rule #{$n} of macro `{$name}` is never used
 
 lint_malformed_attribute = malformed lint attribute input
 
@@ -961,8 +955,6 @@ lint_unused_imports = {$num_snippets ->
 
 lint_unused_lifetime = lifetime parameter `{$ident}` never used
     .suggestion = elide the unused lifetime
-
-lint_unused_macro_definition = unused macro definition: `{$name}`
 
 lint_unused_op = unused {$op} that must be used
     .label = the {$op} produces a value

@@ -6,7 +6,7 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::stable_hasher::{
     HashStable, StableCompare, StableHasher, ToStableHashKey,
 };
-use rustc_error_messages::{DiagArgValue, DiagMessage, IntoDiagArg, MultiSpan};
+use rustc_error_messages::{DiagArgValue, IntoDiagArg, MultiSpan};
 use rustc_hir_id::{HashStableContext, HirId, ItemLocalId};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::def_id::DefPathHash;
@@ -678,10 +678,6 @@ pub enum BuiltinLintDiag {
         /// Indicates if the named argument is used as a width/precision for formatting
         is_formatting_arg: bool,
     },
-    ExternCrateNotIdiomatic {
-        vis_span: Span,
-        ident_span: Span,
-    },
     AmbiguousGlobImports {
         diag: AmbiguityErrorDiag,
     },
@@ -731,10 +727,6 @@ pub enum BuiltinLintDiag {
         source: Ident,
         extern_crate_span: Span,
     },
-    MacroIsPrivate(Ident),
-    UnusedMacroDefinition(Symbol),
-    MacroRuleNeverUsed(usize, Symbol),
-    UnstableFeature(DiagMessage),
     UnusedCrateDependency {
         extern_crate: Symbol,
         local_crate: Symbol,

@@ -340,7 +340,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
                 UNUSED_MACROS,
                 node_id,
                 ident.span,
-                BuiltinLintDiag::UnusedMacroDefinition(ident.name),
+                errors::UnusedMacroDefinition { name: ident.name },
             );
             // Do not report unused individual rules if the entire macro is unused
             self.unused_macro_rules.swap_remove(&node_id);
@@ -361,7 +361,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
                         UNUSED_MACRO_RULES,
                         node_id,
                         rule_span,
-                        BuiltinLintDiag::MacroRuleNeverUsed(arm_i, ident.name),
+                        errors::MacroRuleNeverUsed { n: arm_i + 1, name: ident.name },
                     );
                 }
             }
@@ -1031,10 +1031,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         lint,
                         node_id,
                         span,
-                        BuiltinLintDiag::UnstableFeature(
-                            // FIXME make this translatable
-                            msg.into(),
-                        ),
+                        // FIXME make this translatable
+                        errors::UnstableFeature { msg: msg.into() },
                     )
                 };
                 stability::report_unstable(

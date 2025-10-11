@@ -2584,35 +2584,6 @@ pub(crate) struct PrivateExternCrateReexport {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_macro_is_private)]
-pub(crate) struct MacroIsPrivate {
-    pub ident: Ident,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_unused_macro_definition)]
-pub(crate) struct UnusedMacroDefinition {
-    pub name: Symbol,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_macro_rule_never_used)]
-pub(crate) struct MacroRuleNeverUsed {
-    pub n: usize,
-    pub name: Symbol,
-}
-
-pub(crate) struct UnstableFeature {
-    pub msg: DiagMessage,
-}
-
-impl<'a> LintDiagnostic<'a, ()> for UnstableFeature {
-    fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
-        diag.primary_message(self.msg);
-    }
-}
-
-#[derive(LintDiagnostic)]
 #[diag(lint_unused_crate_dependency)]
 #[help]
 pub(crate) struct UnusedCrateDependency {
@@ -2891,15 +2862,6 @@ pub(crate) struct NamedArgumentUsedPositionally {
 
     pub name: String,
     pub named_arg_name: String,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_extern_crate_not_idiomatic)]
-pub(crate) struct ExternCrateNotIdiomatic {
-    #[suggestion(style = "verbose", code = "{code}", applicability = "machine-applicable")]
-    pub span: Span,
-
-    pub code: &'static str,
 }
 
 // FIXME: make this translatable

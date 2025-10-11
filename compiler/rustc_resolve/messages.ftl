@@ -146,6 +146,9 @@ resolve_explicit_unsafe_traits =
 resolve_extern_crate_loading_macro_not_at_crate_root =
     an `extern crate` loading macros must be at the crate root
 
+resolve_extern_crate_not_idiomatic = `extern crate` is not idiomatic in the new edition
+    .suggestion = convert it to a `use`
+
 resolve_extern_crate_self_requires_renaming =
     `extern crate self;` requires renaming
     .suggestion = rename the `self` crate to be able to import it
@@ -279,6 +282,10 @@ resolve_macro_expected_found =
 resolve_macro_extern_deprecated =
     `#[macro_escape]` is a deprecated synonym for `#[macro_use]`
     .help = try an outer attribute: `#[macro_use]`
+
+resolve_macro_is_private = macro `{$ident}` is private
+
+resolve_macro_rule_never_used = rule #{$n} of macro `{$name}` is never used
 
 resolve_macro_use_deprecated =
     applying the `#[macro_use]` attribute to an `extern crate` item is deprecated
@@ -492,6 +499,8 @@ resolve_unused_extern_crate = unused extern crate
     .suggestion = remove the unused `extern crate`
 
 resolve_unused_label = unused label
+
+resolve_unused_macro_definition = unused macro definition: `{$name}`
 
 resolve_unused_macro_use = unused `#[macro_use]` import
 

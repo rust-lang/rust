@@ -1,7 +1,7 @@
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, ElidedLifetimeInPathSubdiag, EmissionGuarantee, IntoDiagArg, MultiSpan,
-    Subdiagnostic,
+    Applicability, Diag, DiagMessage, ElidedLifetimeInPathSubdiag, EmissionGuarantee, IntoDiagArg,
+    LintDiagnostic, MultiSpan, Subdiagnostic,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_span::{Ident, Span, Symbol};
@@ -1359,3 +1359,40 @@ pub(crate) struct UnusedMacroUse;
 #[diag(resolve_macro_use_deprecated)]
 #[help]
 pub(crate) struct MacroUseDeprecated;
+
+#[derive(LintDiagnostic)]
+#[diag(resolve_macro_is_private)]
+pub(crate) struct MacroIsPrivate {
+    pub ident: Ident,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(resolve_unused_macro_definition)]
+pub(crate) struct UnusedMacroDefinition {
+    pub name: Symbol,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(resolve_macro_rule_never_used)]
+pub(crate) struct MacroRuleNeverUsed {
+    pub n: usize,
+    pub name: Symbol,
+}
+
+pub(crate) struct UnstableFeature {
+    pub msg: DiagMessage,
+}
+
+impl<'a> LintDiagnostic<'a, ()> for UnstableFeature {
+    fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
+        diag.primary_message(self.msg);
+    }
+}
+
+#[derive(LintDiagnostic)]
+#[diag(resolve_extern_crate_not_idiomatic)]
+pub(crate) struct ExternCrateNotIdiomatic {
+    #[suggestion(style = "verbose", code = "{code}", applicability = "machine-applicable")]
+    pub span: Span,
+    pub code: &'static str,
+}
