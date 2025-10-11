@@ -909,6 +909,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "cty"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b365fabc795046672053e29c954733ec3b05e4be654ab130fe8f1f94d7051f35"
+
+[[package]]
 name = "curl"
 version = "0.4.49"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2159,6 +2165,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "667f4fec20f29dfc6bc7357c582d91796c169ad7e2fce709468aefeb2c099870"
 dependencies = [
  "cc",
+ "cty",
  "libc",
 ]
 
@@ -3304,7 +3311,6 @@ dependencies = [
  "rustc_public",
  "rustc_public_bridge",
  "rustc_windows_rc",
- "tikv-jemalloc-sys",
 ]
 
 [[package]]
