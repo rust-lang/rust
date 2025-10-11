@@ -85,6 +85,7 @@ pub fn to_{case_lower}(c: char) -> [char; 3] {{
     .unwrap();
 
     size += size_of_val(mappings.as_slice());
+    writeln!(tables, "#[rustfmt::skip]").unwrap();
     write!(
         tables,
         "static {}CASE_TABLE: &[(char, u32); {}] = &[{}];",
@@ -97,6 +98,7 @@ pub fn to_{case_lower}(c: char) -> [char; 3] {{
     tables.push_str("\n\n");
 
     size += size_of_val(multis.as_slice());
+    writeln!(tables, "#[rustfmt::skip]").unwrap();
     write!(
         tables,
         "static {}CASE_TABLE_MULTI: &[[char; 3]; {}] = &[{}];",
