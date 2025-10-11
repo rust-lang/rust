@@ -30,9 +30,9 @@ pub fn update(cx: ParseCx<'_>, update_mode: UpdateMode) {
 #[expect(clippy::too_many_lines)]
 pub fn generate_lint_files(
     update_mode: UpdateMode,
-    lints: &[Lint],
-    deprecated: &[DeprecatedLint],
-    renamed: &[RenamedLint],
+    lints: &[Lint<'_>],
+    deprecated: &[DeprecatedLint<'_>],
+    renamed: &[RenamedLint<'_>],
 ) {
     let mut updater = FileUpdater::default();
     updater.update_file_checked(
@@ -61,7 +61,7 @@ pub fn generate_lint_files(
             |dst| {
                 for lint in lints
                     .iter()
-                    .map(|l| &*l.name)
+                    .map(|l| l.name)
                     .chain(deprecated.iter().filter_map(|l| l.name.strip_prefix("clippy::")))
                     .chain(renamed.iter().filter_map(|l| l.old_name.strip_prefix("clippy::")))
                     .sorted()
@@ -132,13 +132,13 @@ pub fn generate_lint_files(
             dst.push_str(GENERATED_FILE_COMMENT);
             dst.push_str("#![allow(clippy::duplicated_attributes)]\n");
             for lint in renamed {
-                if seen_lints.insert(&lint.new_name) {
+                if seen_lints.insert(lint.new_name) {
                     writeln!(dst, "#![allow({})]", lint.new_name).unwrap();
                 }
             }
             seen_lints.clear();
             for lint in renamed {
-                if seen_lints.insert(&lint.old_name) {
+                if seen_lints.insert(lint.old_name) {
                     writeln!(dst, "#![warn({})] //~ ERROR: lint `{}`", lint.old_name, lint.old_name).unwrap();
                 }
             }
@@ -164,7 +164,7 @@ pub fn generate_lint_files(
                     for lint_mod in lints
                         .iter()
                         .filter(|l| !l.module.is_empty())
-                        .map(|l| l.module.split_once("::").map_or(&*l.module, |x| x.0))
+                        .map(|l| l.module.split_once("::").map_or(l.module, |x| x.0))
                         .sorted()
                         .dedup()
                     {

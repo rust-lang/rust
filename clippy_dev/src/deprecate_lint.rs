@@ -23,8 +23,11 @@ pub fn deprecate<'cx>(cx: ParseCx<'cx>, clippy_version: Version, name: &'cx str,
         return;
     };
 
-    let prefixed_name = String::from_iter(["clippy::", name]);
-    match deprecated_lints.binary_search_by(|x| x.name.cmp(&prefixed_name)) {
+    let prefixed_name = cx.str_buf.with(|buf| {
+        buf.extend(["clippy::", name]);
+        cx.arena.alloc_str(buf)
+    });
+    match deprecated_lints.binary_search_by(|x| x.name.cmp(prefixed_name)) {
         Ok(_) => {
             println!("`{name}` is already deprecated");
             return;
@@ -33,8 +36,8 @@ pub fn deprecate<'cx>(cx: ParseCx<'cx>, clippy_version: Version, name: &'cx str,
             idx,
             DeprecatedLint {
                 name: prefixed_name,
-                reason: reason.into(),
-                version: clippy_version.rust_display().to_string(),
+                reason,
+                version: cx.str_buf.alloc_display(cx.arena, clippy_version.rust_display()),
             },
         ),
     }
@@ -58,8 +61,8 @@ pub fn deprecate<'cx>(cx: ParseCx<'cx>, clippy_version: Version, name: &'cx str,
     }
 }
 
-fn remove_lint_declaration(name: &str, path: &Path, lints: &mut Vec<Lint>) -> io::Result<bool> {
-    fn remove_lint(name: &str, lints: &mut Vec<Lint>) {
+fn remove_lint_declaration(name: &str, path: &Path, lints: &mut Vec<Lint<'_>>) -> io::Result<bool> {
+    fn remove_lint(name: &str, lints: &mut Vec<Lint<'_>>) {
         lints.iter().position(|l| l.name == name).map(|pos| lints.remove(pos));
     }
 

@@ -2,42 +2,109 @@ pub mod cursor;
 
 use self::cursor::{Capture, Cursor};
 use crate::utils::{ErrAction, File, Scoped, expect_action, walk_dir_no_dot_or_target};
+use core::fmt::{Display, Write as _};
 use core::range::Range;
+use rustc_arena::DroplessArena;
 use std::fs;
 use std::path::{self, Path, PathBuf};
+use std::str::pattern::Pattern;
 
-pub struct ParseCxImpl;
-pub type ParseCx<'cx> = &'cx mut ParseCxImpl;
+pub struct ParseCxImpl<'cx> {
+    pub arena: &'cx DroplessArena,
+    pub str_buf: StrBuf,
+}
+pub type ParseCx<'cx> = &'cx mut ParseCxImpl<'cx>;
 
 /// Calls the given function inside a newly created parsing context.
-pub fn new_parse_cx<'env, T>(f: impl for<'cx> FnOnce(&'cx mut Scoped<'cx, 'env, ParseCxImpl>) -> T) -> T {
-    f(&mut Scoped::new(ParseCxImpl))
+pub fn new_parse_cx<'env, T>(f: impl for<'cx> FnOnce(&'cx mut Scoped<'cx, 'env, ParseCxImpl<'cx>>) -> T) -> T {
+    let arena = DroplessArena::default();
+    f(&mut Scoped::new(ParseCxImpl {
+        arena: &arena,
+        str_buf: StrBuf::with_capacity(128),
+    }))
 }
 
-pub struct Lint {
-    pub name: String,
-    pub group: String,
-    pub module: String,
+/// A string used as a temporary buffer used to avoid allocating for short lived strings.
+pub struct StrBuf(String);
+impl StrBuf {
+    /// Creates a new buffer with the specified initial capacity.
+    pub fn with_capacity(cap: usize) -> Self {
+        Self(String::with_capacity(cap))
+    }
+
+    /// Allocates the result of formatting the given value onto the arena.
+    pub fn alloc_display<'cx>(&mut self, arena: &'cx DroplessArena, value: impl Display) -> &'cx str {
+        self.0.clear();
+        write!(self.0, "{value}").expect("`Display` impl returned an error");
+        arena.alloc_str(&self.0)
+    }
+
+    /// Allocates the string onto the arena with all ascii characters converted to
+    /// lowercase.
+    pub fn alloc_ascii_lower<'cx>(&mut self, arena: &'cx DroplessArena, s: &str) -> &'cx str {
+        self.0.clear();
+        self.0.push_str(s);
+        self.0.make_ascii_lowercase();
+        arena.alloc_str(&self.0)
+    }
+
+    /// Allocates the result of replacing all instances the pattern with the given string
+    /// onto the arena.
+    pub fn alloc_replaced<'cx>(
+        &mut self,
+        arena: &'cx DroplessArena,
+        s: &str,
+        pat: impl Pattern,
+        replacement: &str,
+    ) -> &'cx str {
+        let mut parts = s.split(pat);
+        let Some(first) = parts.next() else {
+            return "";
+        };
+        self.0.clear();
+        self.0.push_str(first);
+        for part in parts {
+            self.0.push_str(replacement);
+            self.0.push_str(part);
+        }
+        if self.0.is_empty() {
+            ""
+        } else {
+            arena.alloc_str(&self.0)
+        }
+    }
+
+    /// Performs an operation with the freshly cleared buffer.
+    pub fn with<T>(&mut self, f: impl FnOnce(&mut String) -> T) -> T {
+        self.0.clear();
+        f(&mut self.0)
+    }
+}
+
+pub struct Lint<'cx> {
+    pub name: &'cx str,
+    pub group: &'cx str,
+    pub module: &'cx str,
     pub path: PathBuf,
     pub declaration_range: Range<usize>,
 }
 
-pub struct DeprecatedLint {
-    pub name: String,
-    pub reason: String,
-    pub version: String,
+pub struct DeprecatedLint<'cx> {
+    pub name: &'cx str,
+    pub reason: &'cx str,
+    pub version: &'cx str,
 }
 
-pub struct RenamedLint {
-    pub old_name: String,
-    pub new_name: String,
-    pub version: String,
+pub struct RenamedLint<'cx> {
+    pub old_name: &'cx str,
+    pub new_name: &'cx str,
+    pub version: &'cx str,
 }
 
-impl ParseCxImpl {
+impl<'cx> ParseCxImpl<'cx> {
     /// Finds all lint declarations (`declare_clippy_lint!`)
     #[must_use]
-    pub fn find_lint_decls(&mut self) -> Vec<Lint> {
+    pub fn find_lint_decls(&mut self) -> Vec<Lint<'cx>> {
         let mut lints = Vec::with_capacity(1000);
         let mut contents = String::new();
         for e in expect_action(fs::read_dir("."), ErrAction::Read, ".") {
@@ -63,29 +130,59 @@ impl ParseCxImpl {
                     && let Some(path) = path.get(crate_path.len() + 1..)
                 {
                     let module = if path == "lib" {
-                        String::new()
+                        ""
                     } else {
                         let path = path
                             .strip_suffix("mod")
                             .and_then(|x| x.strip_suffix(path::MAIN_SEPARATOR))
                             .unwrap_or(path);
-                        path.replace(['/', '\\'], "::")
+                        self.str_buf
+                            .alloc_replaced(self.arena, path, path::MAIN_SEPARATOR, "::")
                     };
-                    parse_clippy_lint_decls(
+                    self.parse_clippy_lint_decls(
                         e.path(),
                         File::open_read_to_cleared_string(e.path(), &mut contents),
-                        &module,
+                        module,
                         &mut lints,
                     );
                 }
             }
         }
-        lints.sort_by(|lhs, rhs| lhs.name.cmp(&rhs.name));
+        lints.sort_by(|lhs, rhs| lhs.name.cmp(rhs.name));
         lints
     }
 
+    /// Parse a source file looking for `declare_clippy_lint` macro invocations.
+    fn parse_clippy_lint_decls(&mut self, path: &Path, contents: &str, module: &'cx str, lints: &mut Vec<Lint<'cx>>) {
+        #[allow(clippy::enum_glob_use)]
+        use cursor::Pat::*;
+        #[rustfmt::skip]
+        static DECL_TOKENS: &[cursor::Pat<'_>] = &[
+            // !{ /// docs
+            Bang, OpenBrace, AnyComment,
+            // #[clippy::version = "version"]
+            Pound, OpenBracket, Ident("clippy"), DoubleColon, Ident("version"), Eq, LitStr, CloseBracket,
+            // pub NAME, GROUP,
+            Ident("pub"), CaptureIdent, Comma, AnyComment, CaptureIdent, Comma,
+        ];
+
+        let mut cursor = Cursor::new(contents);
+        let mut captures = [Capture::EMPTY; 2];
+        while let Some(start) = cursor.find_ident("declare_clippy_lint") {
+            if cursor.match_all(DECL_TOKENS, &mut captures) && cursor.find_pat(CloseBrace) {
+                lints.push(Lint {
+                    name: self.str_buf.alloc_ascii_lower(self.arena, cursor.get_text(captures[0])),
+                    group: self.arena.alloc_str(cursor.get_text(captures[1])),
+                    module,
+                    path: path.into(),
+                    declaration_range: start as usize..cursor.pos() as usize,
+                });
+            }
+        }
+    }
+
     #[must_use]
-    pub fn read_deprecated_lints(&mut self) -> (Vec<DeprecatedLint>, Vec<RenamedLint>) {
+    pub fn read_deprecated_lints(&mut self) -> (Vec<DeprecatedLint<'cx>>, Vec<RenamedLint<'cx>>) {
         #[allow(clippy::enum_glob_use)]
         use cursor::Pat::*;
         #[rustfmt::skip]
@@ -124,9 +221,9 @@ impl ParseCxImpl {
         if cursor.find_ident("declare_with_version").is_some() && cursor.match_all(DEPRECATED_TOKENS, &mut []) {
             while cursor.match_all(DECL_TOKENS, &mut captures) {
                 deprecated.push(DeprecatedLint {
-                    name: parse_str_single_line(path.as_ref(), cursor.get_text(captures[1])),
-                    reason: parse_str_single_line(path.as_ref(), cursor.get_text(captures[2])),
-                    version: parse_str_single_line(path.as_ref(), cursor.get_text(captures[0])),
+                    name: self.parse_str_single_line(path.as_ref(), cursor.get_text(captures[1])),
+                    reason: self.parse_str_single_line(path.as_ref(), cursor.get_text(captures[2])),
+                    version: self.parse_str_single_line(path.as_ref(), cursor.get_text(captures[0])),
                 });
             }
         } else {
@@ -136,81 +233,53 @@ impl ParseCxImpl {
         if cursor.find_ident("declare_with_version").is_some() && cursor.match_all(RENAMED_TOKENS, &mut []) {
             while cursor.match_all(DECL_TOKENS, &mut captures) {
                 renamed.push(RenamedLint {
-                    old_name: parse_str_single_line(path.as_ref(), cursor.get_text(captures[1])),
-                    new_name: parse_str_single_line(path.as_ref(), cursor.get_text(captures[2])),
-                    version: parse_str_single_line(path.as_ref(), cursor.get_text(captures[0])),
+                    old_name: self.parse_str_single_line(path.as_ref(), cursor.get_text(captures[1])),
+                    new_name: self.parse_str_single_line(path.as_ref(), cursor.get_text(captures[2])),
+                    version: self.parse_str_single_line(path.as_ref(), cursor.get_text(captures[0])),
                 });
             }
         } else {
             panic!("error reading renamed lints");
         }
 
-        deprecated.sort_by(|lhs, rhs| lhs.name.cmp(&rhs.name));
-        renamed.sort_by(|lhs, rhs| lhs.old_name.cmp(&rhs.old_name));
+        deprecated.sort_by(|lhs, rhs| lhs.name.cmp(rhs.name));
+        renamed.sort_by(|lhs, rhs| lhs.old_name.cmp(rhs.old_name));
         (deprecated, renamed)
     }
-}
 
-/// Parse a source file looking for `declare_clippy_lint` macro invocations.
-fn parse_clippy_lint_decls(path: &Path, contents: &str, module: &str, lints: &mut Vec<Lint>) {
-    #[allow(clippy::enum_glob_use)]
-    use cursor::Pat::*;
-    #[rustfmt::skip]
-    static DECL_TOKENS: &[cursor::Pat<'_>] = &[
-        // !{ /// docs
-        Bang, OpenBrace, AnyComment,
-        // #[clippy::version = "version"]
-        Pound, OpenBracket, Ident("clippy"), DoubleColon, Ident("version"), Eq, LitStr, CloseBracket,
-        // pub NAME, GROUP,
-        Ident("pub"), CaptureIdent, Comma, AnyComment, CaptureIdent, Comma,
-    ];
+    /// Removes the line splices and surrounding quotes from a string literal
+    fn parse_str_lit(&mut self, s: &str) -> &'cx str {
+        let (s, is_raw) = if let Some(s) = s.strip_prefix("r") {
+            (s.trim_matches('#'), true)
+        } else {
+            (s, false)
+        };
+        let s = s
+            .strip_prefix('"')
+            .and_then(|s| s.strip_suffix('"'))
+            .unwrap_or_else(|| panic!("expected quoted string, found `{s}`"));
 
-    let mut cursor = Cursor::new(contents);
-    let mut captures = [Capture::EMPTY; 2];
-    while let Some(start) = cursor.find_ident("declare_clippy_lint") {
-        if cursor.match_all(DECL_TOKENS, &mut captures) && cursor.find_pat(CloseBrace) {
-            lints.push(Lint {
-                name: cursor.get_text(captures[0]).to_lowercase(),
-                group: cursor.get_text(captures[1]).into(),
-                module: module.into(),
-                path: path.into(),
-                declaration_range: start as usize..cursor.pos() as usize,
-            });
+        if is_raw {
+            if s.is_empty() { "" } else { self.arena.alloc_str(s) }
+        } else {
+            self.str_buf.with(|buf| {
+                rustc_literal_escaper::unescape_str(s, &mut |_, ch| {
+                    if let Ok(ch) = ch {
+                        buf.push(ch);
+                    }
+                });
+                if buf.is_empty() { "" } else { self.arena.alloc_str(buf) }
+            })
         }
     }
-}
 
-/// Removes the line splices and surrounding quotes from a string literal
-fn parse_str_lit(s: &str) -> String {
-    let (s, is_raw) = if let Some(s) = s.strip_prefix("r") {
-        (s.trim_matches('#'), true)
-    } else {
-        (s, false)
-    };
-    let s = s
-        .strip_prefix('"')
-        .and_then(|s| s.strip_suffix('"'))
-        .unwrap_or_else(|| panic!("expected quoted string, found `{s}`"));
-
-    if is_raw {
-        s.into()
-    } else {
-        let mut res = String::with_capacity(s.len());
-        rustc_literal_escaper::unescape_str(s, &mut |_, ch| {
-            if let Ok(ch) = ch {
-                res.push(ch);
-            }
-        });
-        res
+    fn parse_str_single_line(&mut self, path: &Path, s: &str) -> &'cx str {
+        let value = self.parse_str_lit(s);
+        assert!(
+            !value.contains('\n'),
+            "error parsing `{}`: `{s}` should be a single line string",
+            path.display(),
+        );
+        value
     }
-}
-
-fn parse_str_single_line(path: &Path, s: &str) -> String {
-    let value = parse_str_lit(s);
-    assert!(
-        !value.contains('\n'),
-        "error parsing `{}`: `{s}` should be a single line string",
-        path.display(),
-    );
-    value
 }

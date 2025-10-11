@@ -5,6 +5,7 @@
     new_range_api,
     os_str_slice,
     os_string_truncate,
+    pattern,
     rustc_private,
     slice_split_once
 )]
@@ -17,6 +18,7 @@
 )]
 #![allow(clippy::missing_panics_doc)]
 
+extern crate rustc_arena;
 #[expect(unused_extern_crates, reason = "required to link to rustc crates")]
 extern crate rustc_driver;
 extern crate rustc_lexer;
