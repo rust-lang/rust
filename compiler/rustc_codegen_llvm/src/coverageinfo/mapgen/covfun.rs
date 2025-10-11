@@ -20,7 +20,7 @@ use tracing::debug;
 
 use crate::common::CodegenCx;
 use crate::coverageinfo::mapgen::{GlobalFileTable, VirtualFileMapping, spans};
-use crate::coverageinfo::{ffi, llvm_cov};
+use crate::coverageinfo::{coverage_ffi as ffi, llvm_cov};
 use crate::llvm;
 
 /// Intermediate coverage metadata for a single function, used to help build
