@@ -1050,7 +1050,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                             self.sess,
                             sym::proc_macro_hygiene,
                             item.span,
-                            fluent_generated::expand_non_inline_modules_in_proc_macro_input_are_unstable,
+                            fluent_generated::expand_file_modules_in_proc_macro_input_are_unstable,
                         )
                         .emit();
                     }
