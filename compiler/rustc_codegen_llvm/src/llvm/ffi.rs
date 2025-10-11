@@ -905,7 +905,9 @@ pub(crate) type GetSymbolsErrorCallback = unsafe extern "C" fn(*const c_char) ->
 
 unsafe extern "C" {
     // Create and destroy contexts.
+    pub(crate) fn LLVMContextCreate() -> &'static mut Context;
     pub(crate) fn LLVMContextDispose(C: &'static mut Context);
+    pub(crate) fn LLVMContextSetDiscardValueNames(C: &Context, Discard: Bool);
     pub(crate) fn LLVMGetMDKindIDInContext(
         C: &Context,
         Name: *const c_char,
@@ -1924,9 +1926,6 @@ unsafe extern "C" {
 unsafe extern "C" {
     pub(crate) fn LLVMRustInstallErrorHandlers();
     pub(crate) fn LLVMRustDisableSystemDialogsOnCrash();
-
-    // Create and destroy contexts.
-    pub(crate) fn LLVMRustContextCreate(shouldDiscardNames: bool) -> &'static mut Context;
 
     // Operations on all values
     pub(crate) fn LLVMRustGlobalAddMetadata<'a>(
