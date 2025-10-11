@@ -642,10 +642,6 @@ lint_opaque_hidden_inferred_bound = opaque type `{$ty}` does not satisfy its ass
 
 lint_opaque_hidden_inferred_bound_sugg = add this bound
 
-lint_out_of_scope_macro_calls = cannot find macro `{$path}` in the current scope when looking from {$location}
-    .label = not found from {$location}
-    .help = import `macro_rules` with `use` to make it callable above its definition
-
 lint_overflowing_bin_hex = literal out of range for `{$ty}`
     .negative_note = the literal `{$lit}` (decimal `{$dec}`) does not fit into the type `{$ty}`
     .negative_becomes_note = and the value `-{$lit}` will become `{$actually}{$ty}`
@@ -681,9 +677,6 @@ lint_pattern_in_bodiless = patterns aren't allowed in functions without bodies
 lint_pattern_in_foreign = patterns aren't allowed in foreign function declarations
     .label = pattern not allowed in foreign function
 
-lint_private_extern_crate_reexport = extern crate `{$ident}` is private and cannot be re-exported
-    .suggestion = consider making the `extern crate` item publicly accessible
-
 lint_query_instability = using `{$query}` can result in unstable query results
     .note = if you believe this case to be fine, allow this lint and add a comment explaining your rationale
 
@@ -708,10 +701,6 @@ lint_redundant_import = the item `{$ident}` is imported redundantly
     .label_defined_here = the item `{$ident}` is already defined here
     .label_imported_prelude = the item `{$ident}` is already imported by the extern prelude
     .label_defined_prelude = the item `{$ident}` is already defined by the extern prelude
-
-lint_redundant_import_visibility = glob import doesn't reexport anything with visibility `{$import_vis}` because no imported item is public enough
-    .note = the most public imported item is `{$max_vis}`
-    .help = reduce the glob import's visibility or increase visibility of imported items
 
 lint_redundant_semicolons =
     unnecessary trailing {$multiple ->
@@ -871,9 +860,6 @@ lint_unicode_text_flow = unicode codepoint changing visible direction of text pr
 
 lint_unit_bindings = binding has unit type `()`
     .label = this pattern is inferred to be the unit type `()`
-
-lint_unknown_diagnostic_attribute = unknown diagnostic attribute
-lint_unknown_diagnostic_attribute_typo_sugg = an attribute with a similar name exists
 
 lint_unknown_gated_lint =
     unknown lint: `{$name}`

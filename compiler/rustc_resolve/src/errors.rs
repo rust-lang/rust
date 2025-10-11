@@ -812,6 +812,14 @@ pub(crate) struct CannotBeReexportedCratePublicNS {
     pub(crate) ident: Ident,
 }
 
+#[derive(LintDiagnostic)]
+#[diag(resolve_private_extern_crate_reexport, code = E0365)]
+pub(crate) struct PrivateExternCrateReexport {
+    pub ident: Ident,
+    #[suggestion(code = "pub ", style = "verbose", applicability = "maybe-incorrect")]
+    pub sugg: Span,
+}
+
 #[derive(Subdiagnostic)]
 #[help(resolve_consider_adding_macro_export)]
 pub(crate) struct ConsiderAddingMacroExport {
@@ -1395,4 +1403,45 @@ pub(crate) struct ExternCrateNotIdiomatic {
     #[suggestion(style = "verbose", code = "{code}", applicability = "machine-applicable")]
     pub span: Span,
     pub code: &'static str,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(resolve_out_of_scope_macro_calls)]
+#[help]
+pub(crate) struct OutOfScopeMacroCalls {
+    #[label]
+    pub span: Span,
+    pub path: String,
+    pub location: String,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(resolve_redundant_import_visibility)]
+pub(crate) struct RedundantImportVisibility {
+    #[note]
+    pub span: Span,
+    #[help]
+    pub help: (),
+    pub import_vis: String,
+    pub max_vis: String,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(resolve_unknown_diagnostic_attribute)]
+pub(crate) struct UnknownDiagnosticAttribute {
+    #[subdiagnostic]
+    pub typo: Option<UnknownDiagnosticAttributeTypoSugg>,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    resolve_unknown_diagnostic_attribute_typo_sugg,
+    style = "verbose",
+    code = "{typo_name}",
+    applicability = "machine-applicable"
+)]
+pub(crate) struct UnknownDiagnosticAttributeTypoSugg {
+    #[primary_span]
+    pub span: Span,
+    pub typo_name: Symbol,
 }

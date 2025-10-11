@@ -2576,14 +2576,6 @@ pub(crate) mod unexpected_cfg_value {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_private_extern_crate_reexport, code = E0365)]
-pub(crate) struct PrivateExternCrateReexport {
-    pub ident: Ident,
-    #[suggestion(code = "pub ", style = "verbose", applicability = "maybe-incorrect")]
-    pub sugg: Span,
-}
-
-#[derive(LintDiagnostic)]
 #[diag(lint_unused_crate_dependency)]
 #[help]
 pub(crate) struct UnusedCrateDependency {
@@ -2600,26 +2592,6 @@ pub(crate) struct IllFormedAttributeInput {
     #[note]
     pub has_docs: bool,
     pub docs: &'static str,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_unknown_diagnostic_attribute)]
-pub(crate) struct UnknownDiagnosticAttribute {
-    #[subdiagnostic]
-    pub typo: Option<UnknownDiagnosticAttributeTypoSugg>,
-}
-
-#[derive(Subdiagnostic)]
-#[suggestion(
-    lint_unknown_diagnostic_attribute_typo_sugg,
-    style = "verbose",
-    code = "{typo_name}",
-    applicability = "machine-applicable"
-)]
-pub(crate) struct UnknownDiagnosticAttributeTypoSugg {
-    #[primary_span]
-    pub span: Span,
-    pub typo_name: Symbol,
 }
 
 #[derive(LintDiagnostic)]
@@ -2922,18 +2894,6 @@ pub(crate) struct AssociatedConstElidedLifetime {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_redundant_import_visibility)]
-pub(crate) struct RedundantImportVisibility {
-    #[note]
-    pub span: Span,
-    #[help]
-    pub help: (),
-
-    pub import_vis: String,
-    pub max_vis: String,
-}
-
-#[derive(LintDiagnostic)]
 #[diag(lint_unsafe_attr_outside_unsafe)]
 pub(crate) struct UnsafeAttrOutsideUnsafe {
     #[label]
@@ -2952,16 +2912,6 @@ pub(crate) struct UnsafeAttrOutsideUnsafeSuggestion {
     pub left: Span,
     #[suggestion_part(code = ")")]
     pub right: Span,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_out_of_scope_macro_calls)]
-#[help]
-pub(crate) struct OutOfScopeMacroCalls {
-    #[label]
-    pub span: Span,
-    pub path: String,
-    pub location: String,
 }
 
 #[derive(LintDiagnostic)]

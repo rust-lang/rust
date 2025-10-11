@@ -21,7 +21,6 @@ use rustc_hir::def::{self, DefKind, MacroKinds, Namespace, NonMacroAttrKind};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_middle::middle::stability;
 use rustc_middle::ty::{RegisteredTools, TyCtxt};
-use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{
     LEGACY_DERIVE_HELPERS, OUT_OF_SCOPE_MACRO_CALLS, UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
     UNUSED_MACRO_RULES, UNUSED_MACROS,
@@ -687,23 +686,24 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             feature_err(&self.tcx.sess, sym::custom_inner_attributes, path.span, msg).emit();
         }
 
+        const DIAG_ATTRS: &[Symbol] =
+            &[sym::on_unimplemented, sym::do_not_recommend, sym::on_const];
+
         if res == Res::NonMacroAttr(NonMacroAttrKind::Tool)
             && let [namespace, attribute, ..] = &*path.segments
             && namespace.ident.name == sym::diagnostic
-            && ![sym::on_unimplemented, sym::do_not_recommend, sym::on_const]
-                .contains(&attribute.ident.name)
+            && !DIAG_ATTRS.contains(&attribute.ident.name)
         {
-            let typo_name = find_best_match_for_name(
-                &[sym::on_unimplemented, sym::do_not_recommend, sym::on_const],
-                attribute.ident.name,
-                Some(5),
-            );
+            let span = attribute.span();
+
+            let typo = find_best_match_for_name(DIAG_ATTRS, attribute.ident.name, Some(5))
+                .map(|typo_name| errors::UnknownDiagnosticAttributeTypoSugg { span, typo_name });
 
             self.tcx.sess.psess.buffer_lint(
                 UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
-                attribute.span(),
+                span,
                 node_id,
-                BuiltinLintDiag::UnknownDiagnosticAttribute { span: attribute.span(), typo_name },
+                errors::UnknownDiagnosticAttribute { typo },
             );
         }
 
@@ -1130,9 +1130,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     OUT_OF_SCOPE_MACRO_CALLS,
                     path.span,
                     node_id,
-                    BuiltinLintDiag::OutOfScopeMacroCalls {
+                    errors::OutOfScopeMacroCalls {
                         span: path.span,
                         path: pprust::path_to_string(path),
+                        // FIXME: Make this translatable.
                         location,
                     },
                 );

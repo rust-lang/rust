@@ -311,21 +311,6 @@ pub fn decorate_builtin_lint(
             }
             .decorate_lint(diag);
         }
-        BuiltinLintDiag::RedundantImportVisibility { max_vis, span: vis_span, import_vis } => {
-            lints::RedundantImportVisibility { span: vis_span, help: (), max_vis, import_vis }
-                .decorate_lint(diag);
-        }
-        BuiltinLintDiag::UnknownDiagnosticAttribute { span: typo_span, typo_name } => {
-            let typo = typo_name.map(|typo_name| lints::UnknownDiagnosticAttributeTypoSugg {
-                span: typo_span,
-                typo_name,
-            });
-            lints::UnknownDiagnosticAttribute { typo }.decorate_lint(diag);
-        }
-        BuiltinLintDiag::PrivateExternCrateReexport { source: ident, extern_crate_span } => {
-            lints::PrivateExternCrateReexport { ident, sugg: extern_crate_span.shrink_to_lo() }
-                .decorate_lint(diag);
-        }
         BuiltinLintDiag::UnusedCrateDependency { extern_crate, local_crate } => {
             lints::UnusedCrateDependency { extern_crate, local_crate }.decorate_lint(diag)
         }
@@ -339,9 +324,6 @@ pub fn decorate_builtin_lint(
                 docs: docs.unwrap_or(""),
             }
             .decorate_lint(diag)
-        }
-        BuiltinLintDiag::OutOfScopeMacroCalls { span, path, location } => {
-            lints::OutOfScopeMacroCalls { span, path, location }.decorate_lint(diag)
         }
     }
 }
