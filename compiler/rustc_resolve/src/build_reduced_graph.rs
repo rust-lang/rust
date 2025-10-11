@@ -87,13 +87,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // because they can be fetched by glob imports from those modules, and bring traits
         // into scope both directly and through glob imports.
         let key = BindingKey::new_disambiguated(ident, ns, || {
-            // FIXME(batched): Will be fixed in batched resolution.
             parent.underscore_disambiguator.update_unchecked(|d| d + 1);
             parent.underscore_disambiguator.get()
         });
         if self
             .resolution_or_default(parent, key)
-            .borrow_mut()
+            .borrow_mut_unchecked()
             .non_glob_binding
             .replace(binding)
             .is_some()
@@ -499,7 +498,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                         if !type_ns_only || ns == TypeNS {
                             let key = BindingKey::new(target, ns);
                             this.resolution_or_default(current_module, key)
-                                .borrow_mut()
+                                .borrow_mut(this)
                                 .single_imports
                                 .insert(import);
                         }

@@ -891,7 +891,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // the exclusive access infinite recursion will crash the compiler with stack overflow.
         let resolution = &*self
             .resolution_or_default(module, key)
-            .try_borrow_mut()
+            .try_borrow_mut_unchecked()
             .map_err(|_| (Determined, Weak::No))?;
 
         // If the primary binding is unusable, search further and return the shadowed glob
