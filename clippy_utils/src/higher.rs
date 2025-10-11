@@ -3,7 +3,7 @@
 #![deny(clippy::missing_docs_in_private_items)]
 
 use crate::consts::{ConstEvalCtxt, Constant};
-use crate::ty::is_type_diagnostic_item;
+use crate::res::MaybeDef;
 use crate::{is_expn_of, sym};
 
 use rustc_ast::ast;
@@ -453,7 +453,7 @@ pub fn get_vec_init_kind<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -
     if let ExprKind::Call(func, args) = expr.kind {
         match func.kind {
             ExprKind::Path(QPath::TypeRelative(ty, name))
-                if is_type_diagnostic_item(cx, cx.typeck_results().node_type(ty.hir_id), sym::Vec) =>
+                if cx.typeck_results().node_type(ty.hir_id).is_diag_item(cx, sym::Vec) =>
             {
                 if name.ident.name == sym::new {
                     return Some(VecInitKind::New);
@@ -469,7 +469,7 @@ pub fn get_vec_init_kind<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -
             },
             ExprKind::Path(QPath::Resolved(_, path))
                 if cx.tcx.is_diagnostic_item(sym::default_fn, path.res.opt_def_id()?)
-                    && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(expr), sym::Vec) =>
+                    && cx.typeck_results().expr_ty(expr).is_diag_item(cx, sym::Vec) =>
             {
                 return Some(VecInitKind::Default);
             },

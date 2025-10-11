@@ -16,7 +16,7 @@ the [`ExprKind`] that we can access from `expr.kind`:
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_span::sym;
-use clippy_utils::is_trait_method;
+use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 
 impl<'tcx> LateLintPass<'tcx> for OurFancyMethodLint {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
@@ -28,7 +28,7 @@ impl<'tcx> LateLintPass<'tcx> for OurFancyMethodLint {
             // (It's necessary if we want to check that method is specifically belonging to a specific trait,
             // for example, a `map` method could belong to user-defined trait instead of to `Iterator`)
             // See the next section for more information.
-            && is_trait_method(cx, self_arg, sym::OurFancyTrait)
+            && cx.ty_based_def(self_arg).opt_parent(cx).is_diag_item(cx, sym::OurFancyTrait)
         {
             println!("`expr` is a method call for `our_fancy_method`");
         }
@@ -56,7 +56,7 @@ Let us take a look at how we might check for the implementation of
 `our_fancy_method` on a type:
 
 ```rust
-use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::res::MaybeDef;
 use clippy_utils::return_ty;
 use rustc_hir::{ImplItem, ImplItemKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -71,7 +71,7 @@ impl<'tcx> LateLintPass<'tcx> for MyTypeImpl {
             // We can also check it has a parameter `self`
             && signature.decl.implicit_self.has_implicit_self()
             // We can go even further and even check if its return type is `String`
-            && is_type_diagnostic_item(cx, return_ty(cx, impl_item.hir_id), sym::String)
+            && return_ty(cx, impl_item.hir_id).is_diag_item(cx, sym::String)
         {
             println!("`our_fancy_method` is implemented!");
         }

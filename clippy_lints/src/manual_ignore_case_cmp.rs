@@ -1,8 +1,8 @@
 use crate::manual_ignore_case_cmp::MatchType::{Literal, ToAscii};
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sym;
-use clippy_utils::ty::{get_type_diagnostic_name, is_type_diagnostic_item, is_type_lang_item};
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::ExprKind::{Binary, Lit, MethodCall};
@@ -58,7 +58,7 @@ fn get_ascii_type<'a>(cx: &LateContext<'a>, kind: rustc_hir::ExprKind<'_>) -> Op
         if needs_ref_to_cmp(cx, ty)
             || ty.is_str()
             || ty.is_slice()
-            || matches!(get_type_diagnostic_name(cx, ty), Some(sym::OsStr | sym::OsString))
+            || matches!(ty.opt_diag_name(cx), Some(sym::OsStr | sym::OsString))
         {
             return Some((expr.span, ToAscii(is_lower, ty_raw)));
         }
@@ -72,8 +72,8 @@ fn get_ascii_type<'a>(cx: &LateContext<'a>, kind: rustc_hir::ExprKind<'_>) -> Op
 fn needs_ref_to_cmp(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
     ty.is_char()
         || *ty.kind() == ty::Uint(UintTy::U8)
-        || is_type_diagnostic_item(cx, ty, sym::Vec)
-        || is_type_lang_item(cx, ty, LangItem::String)
+        || ty.is_diag_item(cx, sym::Vec)
+        || ty.is_lang_item(cx, LangItem::String)
 }
 
 impl LateLintPass<'_> for ManualIgnoreCaseCmp {

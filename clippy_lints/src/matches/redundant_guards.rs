@@ -1,9 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::matching_root_macro_call;
 use clippy_utils::msrvs::Msrv;
+use clippy_utils::res::MaybeResPath;
 use clippy_utils::source::snippet;
 use clippy_utils::visitors::{for_each_expr_without_closures, is_local_used};
-use clippy_utils::{is_in_const_context, path_to_local, sym};
+use clippy_utils::{is_in_const_context, sym};
 use rustc_ast::{BorrowKind, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
@@ -164,7 +165,7 @@ fn get_pat_binding<'tcx>(
     guard_expr: &Expr<'_>,
     outer_arm: &Arm<'tcx>,
 ) -> Option<PatBindingInfo> {
-    if let Some(local) = path_to_local(guard_expr)
+    if let Some(local) = guard_expr.res_local_id()
         && !is_local_used(cx, outer_arm.body, local)
     {
         let mut span = None;

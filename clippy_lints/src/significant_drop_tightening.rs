@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::res::MaybeResPath;
 use clippy_utils::source::{indent_of, snippet};
-use clippy_utils::{expr_or_init, get_attr, path_to_local, peel_hir_expr_unary, sym};
+use clippy_utils::{expr_or_init, get_attr, peel_hir_expr_unary, sym};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
@@ -276,7 +277,7 @@ impl<'tcx> Visitor<'tcx> for StmtsChecker<'_, '_, '_, '_, 'tcx> {
                 && let hir::PatKind::Binding(_, hir_id, ident, _) = local.pat.kind
                 && !self.ap.apas.contains_key(&hir_id)
                 && {
-                    if let Some(local_hir_id) = path_to_local(expr) {
+                    if let Some(local_hir_id) = expr.res_local_id() {
                         local_hir_id == hir_id
                     } else {
                         true
@@ -301,7 +302,7 @@ impl<'tcx> Visitor<'tcx> for StmtsChecker<'_, '_, '_, '_, 'tcx> {
                 modify_apa_params(&mut apa);
                 let _ = self.ap.apas.insert(hir_id, apa);
             } else {
-                let Some(hir_id) = path_to_local(expr) else {
+                let Some(hir_id) = expr.res_local_id() else {
                     return;
                 };
                 let Some(apa) = self.ap.apas.get_mut(&hir_id) else {

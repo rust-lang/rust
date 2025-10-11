@@ -1,13 +1,11 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::res::{MaybeDef, MaybeQPath};
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{
-    is_diag_trait_item, is_from_proc_macro, is_res_lang_ctor, last_path_segment, path_res, std_or_core,
-};
+use clippy_utils::{is_from_proc_macro, last_path_segment, std_or_core};
 use rustc_errors::Applicability;
-use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{Block, Body, Expr, ExprKind, ImplItem, ImplItemKind, Item, LangItem, Node, UnOp};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::ty::{EarlyBinder, TraitRef};
+use rustc_middle::ty::{EarlyBinder, TraitRef, TypeckResults};
 use rustc_session::declare_lint_pass;
 use rustc_span::sym;
 use rustc_span::symbol::kw;
@@ -261,7 +259,7 @@ fn expr_is_cmp<'tcx>(
     impl_item: &ImplItem<'_>,
     needs_fully_qualified: &mut bool,
 ) -> bool {
-    let impl_item_did = impl_item.owner_id.def_id;
+    let typeck = cx.tcx.typeck(impl_item.owner_id.def_id);
     match expr.kind {
         ExprKind::Call(
             Expr {
@@ -271,16 +269,16 @@ fn expr_is_cmp<'tcx>(
             },
             [cmp_expr],
         ) => {
-            is_res_lang_ctor(cx, cx.qpath_res(some_path, *some_hir_id), LangItem::OptionSome)
-            // Fix #11178, allow `Self::cmp(self, ..)` too
-            && self_cmp_call(cx, cmp_expr, impl_item_did, needs_fully_qualified)
+            typeck.qpath_res(some_path, *some_hir_id).ctor_parent(cx).is_lang_item(cx, LangItem::OptionSome)
+                // Fix #11178, allow `Self::cmp(self, ..)`
+                && self_cmp_call(cx, typeck, cmp_expr, needs_fully_qualified)
         },
         ExprKind::MethodCall(_, recv, [], _) => {
-            cx.tcx
-                .typeck(impl_item_did)
-                .type_dependent_def_id(expr.hir_id)
-                .is_some_and(|def_id| is_diag_trait_item(cx, def_id, sym::Into))
-                && self_cmp_call(cx, recv, impl_item_did, needs_fully_qualified)
+            typeck
+                .type_dependent_def(expr.hir_id)
+                .assoc_parent(cx)
+                .is_diag_item(cx, sym::Into)
+                && self_cmp_call(cx, typeck, recv, needs_fully_qualified)
         },
         _ => false,
     }
@@ -289,12 +287,13 @@ fn expr_is_cmp<'tcx>(
 /// Returns whether this is any of `self.cmp(..)`, `Self::cmp(self, ..)` or `Ord::cmp(self, ..)`.
 fn self_cmp_call<'tcx>(
     cx: &LateContext<'tcx>,
+    typeck: &TypeckResults<'tcx>,
     cmp_expr: &'tcx Expr<'tcx>,
-    def_id: LocalDefId,
     needs_fully_qualified: &mut bool,
 ) -> bool {
     match cmp_expr.kind {
-        ExprKind::Call(path, [_, _]) => path_res(cx, path)
+        ExprKind::Call(path, [_, _]) => path
+            .res(typeck)
             .opt_def_id()
             .is_some_and(|def_id| cx.tcx.is_diagnostic_item(sym::ord_cmp_method, def_id)),
         ExprKind::MethodCall(_, recv, [_], ..) => {
@@ -309,11 +308,7 @@ fn self_cmp_call<'tcx>(
             // `else` branch, it must be a method named `cmp` that isn't `Ord::cmp`
             *needs_fully_qualified = true;
 
-            // It's a bit annoying but `typeck_results` only gives us the CURRENT body, which we
-            // have none, not of any `LocalDefId` we want, so we must call the query itself to avoid
-            // an immediate ICE
-            cx.tcx
-                .typeck(def_id)
+            typeck
                 .type_dependent_def_id(cmp_expr.hir_id)
                 .is_some_and(|def_id| cx.tcx.is_diagnostic_item(sym::ord_cmp_method, def_id))
         },

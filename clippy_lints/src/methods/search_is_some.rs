@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
+use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::sugg::deref_closure_args;
-use clippy_utils::ty::is_type_lang_item;
-use clippy_utils::{is_receiver_of_method_call, is_trait_method, strip_pat_refs, sym};
+use clippy_utils::{is_receiver_of_method_call, strip_pat_refs, sym};
 use hir::ExprKind;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -27,7 +27,11 @@ pub(super) fn check<'tcx>(
 ) {
     let option_check_method = if is_some { "is_some" } else { "is_none" };
     // lint if caller of search is an Iterator
-    if is_trait_method(cx, is_some_recv, sym::Iterator) {
+    if cx
+        .ty_based_def(is_some_recv)
+        .opt_parent(cx)
+        .is_diag_item(cx, sym::Iterator)
+    {
         let msg = format!("called `{option_check_method}()` after searching an `Iterator` with `{search_method}`");
         let search_snippet = snippet(cx, search_arg.span, "..");
         if search_snippet.lines().count() <= 1 {
@@ -109,7 +113,7 @@ pub(super) fn check<'tcx>(
     else if search_method == sym::find {
         let is_string_or_str_slice = |e| {
             let self_ty = cx.typeck_results().expr_ty(e).peel_refs();
-            if is_type_lang_item(cx, self_ty, hir::LangItem::String) {
+            if self_ty.is_lang_item(cx, hir::LangItem::String) {
                 true
             } else {
                 self_ty.is_str()

@@ -1,9 +1,10 @@
 use clippy_config::Conf;
 use clippy_utils::consts::{ConstEvalCtxt, FullInt};
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::is_in_const_context;
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::res::MaybeResPath;
 use clippy_utils::source::snippet_with_context;
-use clippy_utils::{is_in_const_context, path_to_local};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, Node, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -64,7 +65,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualRemEuclid {
             && let ExprKind::Binary(rem2_op, rem2_lhs, rem2_rhs) = add_other.kind
             && rem2_op.node == BinOpKind::Rem
             && const1 == const2
-            && let Some(hir_id) = path_to_local(rem2_lhs)
+            && let Some(hir_id) = rem2_lhs.res_local_id()
             && let Some(const3) = check_for_unsigned_int_constant(cx, ctxt, rem2_rhs)
             // Also ensures the const is nonzero since zero can't be a divisor
             && const2 == const3

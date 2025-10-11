@@ -1,7 +1,8 @@
+use crate::get_enclosing_block;
 use crate::msrvs::Msrv;
 use crate::qualify_min_const_fn::is_stable_const_fn;
+use crate::res::MaybeResPath;
 use crate::ty::needs_ordered_drop;
-use crate::{get_enclosing_block, path_to_local_id};
 use core::ops::ControlFlow;
 use rustc_ast::visit::{VisitorResult, try_visit};
 use rustc_hir::def::{CtorKind, DefKind, Res};
@@ -312,7 +313,7 @@ pub fn is_res_used(cx: &LateContext<'_>, res: Res, body: BodyId) -> bool {
 /// Checks if the given local is used.
 pub fn is_local_used<'tcx>(cx: &LateContext<'tcx>, visitable: impl Visitable<'tcx>, id: HirId) -> bool {
     for_each_expr(cx, visitable, |e| {
-        if path_to_local_id(e, id) {
+        if e.res_local_id() == Some(id) {
             ControlFlow::Break(())
         } else {
             ControlFlow::Continue(())
@@ -564,7 +565,7 @@ pub fn for_each_local_use_after_expr<'tcx, B>(
             if self.res.is_break() {
                 return;
             }
-            if path_to_local_id(e, self.local_id) {
+            if e.res_local_id() == Some(self.local_id) {
                 self.res = (self.f)(e);
             } else {
                 walk_expr(self, e);
@@ -740,7 +741,7 @@ pub fn for_each_local_assignment<'tcx, B>(
         fn visit_expr(&mut self, e: &'tcx Expr<'tcx>) {
             if let ExprKind::Assign(lhs, rhs, _) = e.kind
                 && self.res.is_continue()
-                && path_to_local_id(lhs, self.local_id)
+                && lhs.res_local_id() == Some(self.local_id)
             {
                 self.res = (self.f)(rhs);
                 self.visit_expr(rhs);
@@ -785,7 +786,7 @@ pub fn local_used_once<'tcx>(
     let mut expr = None;
 
     let cf = for_each_expr(cx, visitable, |e| {
-        if path_to_local_id(e, id) && expr.replace(e).is_some() {
+        if e.res_local_id() == Some(id) && expr.replace(e).is_some() {
             ControlFlow::Break(())
         } else {
             ControlFlow::Continue(())

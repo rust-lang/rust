@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::macros::{FormatArgsStorage, format_args_inputs_span, root_macro_call_first_node};
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::ty::{is_type_diagnostic_item, is_type_lang_item};
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{contains_return, is_inside_always_const_context, peel_blocks};
 use rustc_errors::Applicability;
@@ -26,9 +26,9 @@ pub(super) fn check<'tcx>(
     let arg_root = get_arg_root(cx, arg);
     if contains_call(cx, arg_root) && !contains_return(arg_root) {
         let receiver_type = cx.typeck_results().expr_ty_adjusted(receiver);
-        let closure_args = if is_type_diagnostic_item(cx, receiver_type, sym::Option) {
+        let closure_args = if receiver_type.is_diag_item(cx, sym::Option) {
             "||"
-        } else if is_type_diagnostic_item(cx, receiver_type, sym::Result) {
+        } else if receiver_type.is_diag_item(cx, sym::Result) {
             "|_|"
         } else {
             return;
@@ -83,7 +83,7 @@ fn get_arg_root<'a>(cx: &LateContext<'_>, arg: &'a hir::Expr<'a>) -> &'a hir::Ex
                 if (method_name.ident.name == sym::as_str || method_name.ident.name == sym::as_ref) && {
                     let arg_type = cx.typeck_results().expr_ty(receiver);
                     let base_type = arg_type.peel_refs();
-                    base_type.is_str() || is_type_lang_item(cx, base_type, hir::LangItem::String)
+                    base_type.is_str() || base_type.is_lang_item(cx, hir::LangItem::String)
                 } {
                     receiver
                 } else {
