@@ -1,5 +1,4 @@
 //@ run-pass
-//@ compile-flags: -Zcontract-checks=yes
 #![feature(contracts_internals)]
 
 fn outer() -> i32

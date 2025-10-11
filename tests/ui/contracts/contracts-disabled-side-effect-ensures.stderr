@@ -1,7 +1,7 @@
 warning: the feature `contracts` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/contract-lang-items.rs:15:12
+  --> $DIR/contracts-disabled-side-effect-ensures.rs:2:12
    |
-LL | #![feature(contracts)] // to access core::contracts
+LL | #![feature(contracts)]
    |            ^^^^^^^^^
    |
    = note: see issue #128044 <https://github.com/rust-lang/rust/issues/128044> for more information
