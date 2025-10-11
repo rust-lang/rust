@@ -221,9 +221,11 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::limit::Limit;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{AllocId, ErrorHandled, GlobalAlloc, Scalar};
-use rustc_middle::mir::mono::{CollectionMode, InstantiationMode, MonoItem};
+use rustc_middle::mir::mono::{
+    CollectionMode, InstantiationMode, MonoItem, NormalizationErrorInMono,
+};
 use rustc_middle::mir::visit::Visitor as MirVisitor;
-use rustc_middle::mir::{self, Location, MentionedItem, traversal};
+use rustc_middle::mir::{self, Body, Location, MentionedItem, traversal};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCoercion};
 use rustc_middle::ty::layout::ValidityRequirement;
@@ -474,25 +476,23 @@ fn collect_items_rec<'tcx>(
                 recursion_limit,
             ));
 
-            // Plenty of code paths later assume that everything can be normalized.
-            // Check normalization here to provide better diagnostics.
-            // Normalization errors here are usually due to trait solving overflow.
-            // FIXME: I assume that there are few type errors at post-analysis stage, but not
-            // entirely sure.
-            if tcx.has_normalization_error_in_mono(instance) {
-                let def_id = instance.def_id();
-                let def_span = tcx.def_span(def_id);
-                let def_path_str = tcx.def_path_str(def_id);
-                tcx.dcx().emit_fatal(RecursionLimit {
-                    span: starting_item.span,
-                    instance,
-                    def_span,
-                    def_path_str,
-                });
-            }
-
             rustc_data_structures::stack::ensure_sufficient_stack(|| {
-                let (used, mentioned) = tcx.items_of_instance((instance, mode));
+                let Ok((used, mentioned)) = tcx.items_of_instance((instance, mode)) else {
+                    // Normalization errors here are usually due to trait solving overflow.
+                    // FIXME: I assume that there are few type errors at post-analysis stage, but not
+                    // entirely sure.
+                    // We have to emit the error outside of `items_of_instance` to access the
+                    // span of the `starting_item`.
+                    let def_id = instance.def_id();
+                    let def_span = tcx.def_span(def_id);
+                    let def_path_str = tcx.def_path_str(def_id);
+                    tcx.dcx().emit_fatal(RecursionLimit {
+                        span: starting_item.span,
+                        instance,
+                        def_span,
+                        def_path_str,
+                    });
+                };
                 used_items.extend(used.into_iter().copied());
                 mentioned_items.extend(mentioned.into_iter().copied());
             });
@@ -621,9 +621,12 @@ fn collect_items_rec<'tcx>(
     }
 }
 
-// Check whether we can normalize the MIR body. Make it a query since decoding MIR from disk cache
-// may be expensive.
-fn has_normalization_error_in_mono<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> bool {
+// Check whether we can normalize every type in the instantiated MIR body.
+fn check_normalization_error<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    instance: Instance<'tcx>,
+    body: &Body<'tcx>,
+) -> Result<(), NormalizationErrorInMono> {
     struct NormalizationChecker<'tcx> {
         tcx: TyCtxt<'tcx>,
         instance: Instance<'tcx>,
@@ -643,9 +646,8 @@ fn has_normalization_error_in_mono<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'
         }
     }
 
-    let body = tcx.instance_mir(instance.def);
     let mut checker = NormalizationChecker { tcx, instance };
-    body.visit_with(&mut checker).is_break()
+    if body.visit_with(&mut checker).is_break() { Err(NormalizationErrorInMono) } else { Ok(()) }
 }
 
 fn check_recursion_limit<'tcx>(
@@ -1304,11 +1306,15 @@ fn collect_items_of_instance<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
     mode: CollectionMode,
-) -> (MonoItems<'tcx>, MonoItems<'tcx>) {
+) -> Result<(MonoItems<'tcx>, MonoItems<'tcx>), NormalizationErrorInMono> {
     // This item is getting monomorphized, do mono-time checks.
+    let body = tcx.instance_mir(instance.def);
+    // Plenty of code paths later assume that everything can be normalized. So we have to check
+    // normalization first.
+    // We choose to emit the error outside to provide helpful diagnostics.
+    check_normalization_error(tcx, instance, body)?;
     tcx.ensure_ok().check_mono_item(instance);
 
-    let body = tcx.instance_mir(instance.def);
     // Naively, in "used" collection mode, all functions get added to *both* `used_items` and
     // `mentioned_items`. Mentioned items processing will then notice that they have already been
     // visited, but at that point each mentioned item has been monomorphized, added to the
@@ -1358,19 +1364,22 @@ fn collect_items_of_instance<'tcx>(
         }
     }
 
-    (used_items, mentioned_items)
+    Ok((used_items, mentioned_items))
 }
 
 fn items_of_instance<'tcx>(
     tcx: TyCtxt<'tcx>,
     (instance, mode): (Instance<'tcx>, CollectionMode),
-) -> (&'tcx [Spanned<MonoItem<'tcx>>], &'tcx [Spanned<MonoItem<'tcx>>]) {
-    let (used_items, mentioned_items) = collect_items_of_instance(tcx, instance, mode);
+) -> Result<
+    (&'tcx [Spanned<MonoItem<'tcx>>], &'tcx [Spanned<MonoItem<'tcx>>]),
+    NormalizationErrorInMono,
+> {
+    let (used_items, mentioned_items) = collect_items_of_instance(tcx, instance, mode)?;
 
     let used_items = tcx.arena.alloc_from_iter(used_items);
     let mentioned_items = tcx.arena.alloc_from_iter(mentioned_items);
 
-    (used_items, mentioned_items)
+    Ok((used_items, mentioned_items))
 }
 
 /// `item` must be already monomorphized.
@@ -1815,5 +1824,4 @@ pub(crate) fn collect_crate_mono_items<'tcx>(
 pub(crate) fn provide(providers: &mut Providers) {
     providers.hooks.should_codegen_locally = should_codegen_locally;
     providers.items_of_instance = items_of_instance;
-    providers.has_normalization_error_in_mono = has_normalization_error_in_mono;
 }
