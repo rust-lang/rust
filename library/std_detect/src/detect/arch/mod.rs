@@ -60,7 +60,7 @@ cfg_select! {
         pub use loongarch::*;
     }
     target_arch = "s390x" => {
-        #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")]
+        #[stable(feature = "stdarch_s390x_feature_detection", since = "CURRENT_RUSTC_VERSION")]
         pub use s390x::*;
     }
     _ => {
