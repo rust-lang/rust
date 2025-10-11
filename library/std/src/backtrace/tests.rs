@@ -44,10 +44,9 @@ fn generate_fake_frames() -> Vec<BacktraceFrame> {
 #[test]
 fn test_debug() {
     let backtrace = Backtrace {
-        inner: Inner::Captured(LazyLock::preinit(Capture {
-            actual_start: 1,
-            frames: generate_fake_frames(),
-        })),
+        inner: Inner::Captured(
+            (Capture { actual_start: 1, frames: generate_fake_frames() }).into(),
+        ),
     };
 
     #[rustfmt::skip]
@@ -66,10 +65,9 @@ fn test_debug() {
 #[test]
 fn test_frames() {
     let backtrace = Backtrace {
-        inner: Inner::Captured(LazyLock::preinit(Capture {
-            actual_start: 1,
-            frames: generate_fake_frames(),
-        })),
+        inner: Inner::Captured(
+            (Capture { actual_start: 1, frames: generate_fake_frames() }).into(),
+        ),
     };
 
     let frames = backtrace.frames();

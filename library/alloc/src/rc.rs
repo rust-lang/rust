@@ -3805,6 +3805,15 @@ impl<T: ?Sized, A: Allocator> AsMut<T> for UniqueRc<T, A> {
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
 impl<T: ?Sized, A: Allocator> Unpin for UniqueRc<T, A> {}
 
+#[cfg(not(no_global_oom_handling))]
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T> From<T> for UniqueRc<T> {
+    #[inline(always)]
+    fn from(value: T) -> Self {
+        Self::new(value)
+    }
+}
+
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
 impl<T: ?Sized + PartialEq, A: Allocator> PartialEq for UniqueRc<T, A> {
     /// Equality for two `UniqueRc`s.
