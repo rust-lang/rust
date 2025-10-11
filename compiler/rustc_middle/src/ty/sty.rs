@@ -920,6 +920,12 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
+    pub fn new_option(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
+        let def_id = tcx.require_lang_item(LangItem::Option, DUMMY_SP);
+        Ty::new_generic_adt(tcx, def_id, ty)
+    }
+
+    #[inline]
     pub fn new_maybe_uninit(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
         let def_id = tcx.require_lang_item(LangItem::MaybeUninit, DUMMY_SP);
         Ty::new_generic_adt(tcx, def_id, ty)
