@@ -53,7 +53,7 @@ For instance, if we want to examine whether an expression `expr` implements
 we can check that the `Ty` of the `expr` implements the trait:
 
 ```rust
-use clippy_utils::implements_trait;
+use clippy_utils::ty::implements_trait;
 use rustc_hir::Expr;
 use rustc_lint::{LateContext, LateLintPass};
 
@@ -79,7 +79,8 @@ If neither diagnostic item nor a language item is available, we can use
 Below, we check if the given `expr` implements [`core::iter::Step`](https://doc.rust-lang.org/std/iter/trait.Step.html):
 
 ```rust
-use clippy_utils::{implements_trait, paths};
+use clippy_utils::paths;
+use clippy_utils::ty::implements_trait;
 use rustc_hir::Expr;
 use rustc_lint::{LateContext, LateLintPass};
 
