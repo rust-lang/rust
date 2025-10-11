@@ -423,19 +423,24 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 constituents.types,
             );
 
-            // FIXME(coroutine_clone): We could uplift this into `collect_predicates_for_types`
-            // and do this for `Copy`/`Clone` too, but that's feature-gated so it doesn't really
-            // matter yet.
-            for assumption in constituents.assumptions {
-                let assumption = normalize_with_depth_to(
-                    self,
-                    obligation.param_env,
-                    cause.clone(),
-                    obligation.recursion_depth + 1,
-                    assumption,
-                    &mut obligations,
-                );
-                self.infcx.register_region_assumption(assumption);
+            // Only normalize these goals if `-Zhigher-ranked-assumptions` is enabled, since
+            // we don't want to cause ourselves to do extra work if we're not even able to
+            // take advantage of these assumption clauses.
+            if self.tcx().sess.opts.unstable_opts.higher_ranked_assumptions {
+                // FIXME(coroutine_clone): We could uplift this into `collect_predicates_for_types`
+                // and do this for `Copy`/`Clone` too, but that's feature-gated so it doesn't really
+                // matter yet.
+                for assumption in constituents.assumptions {
+                    let assumption = normalize_with_depth_to(
+                        self,
+                        obligation.param_env,
+                        cause.clone(),
+                        obligation.recursion_depth + 1,
+                        assumption,
+                        &mut obligations,
+                    );
+                    self.infcx.register_region_assumption(assumption);
+                }
             }
 
             Ok(obligations)
