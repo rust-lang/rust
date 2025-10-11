@@ -281,8 +281,9 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
                         // This avoids generating a zero-sized constant value and actually needing a
                         // real address at runtime.
                         if alloc.inner().len() == 0 {
-                            assert_eq!(offset.bytes(), 0);
-                            let llval = self.const_usize(alloc.inner().align.bytes());
+                            let llval = self.const_usize(
+                                alloc.inner().align.bytes().wrapping_add(offset.bytes()),
+                            );
                             return if matches!(layout.primitive(), Pointer(_)) {
                                 unsafe { llvm::LLVMConstIntToPtr(llval, llty) }
                             } else {
