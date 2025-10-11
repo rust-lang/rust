@@ -5,7 +5,11 @@ features! {
     @CFG: target_arch = "s390x";
     @MACRO_NAME: is_s390x_feature_detected;
     @MACRO_ATTRS:
-    /// Checks if `s390x` feature is enabled.
+    /// Checks whether a `s390x` feature is enabled.
+    ///
+    /// If the feature has been statically enabled for the whole crate (e.g. with
+    /// `-Ctarget-feature`), this macro expands to `true`. Otherwise it performs a
+    /// runtime check.
     #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")]
     @FEATURE: #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")] concurrent_functions: "concurrent-functions";
     /// s390x concurrent-functions facility
