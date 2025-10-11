@@ -685,8 +685,9 @@ fn link_natively(
     codegen_backend: &'static str,
 ) {
     info!("preparing {:?} to {:?}", crate_type, out_filename);
-    let (linker_path, flavor) = linker_and_flavor(sess);
-    let self_contained_components = self_contained_components(sess, crate_type, &linker_path);
+    let self_contained_components = self_contained_components(sess, crate_type);
+    let (linker_path, flavor) =
+        linker_and_flavor(sess, self_contained_components.is_linker_enabled());
 
     // On AIX, we ship all libraries as .a big_af archive
     // the expected format is lib<name>.a(libname.so) for the actual
@@ -1314,7 +1315,7 @@ pub fn ignored_for_lto(sess: &Session, info: &CrateInfo, cnum: CrateNum) -> bool
 }
 
 /// This functions tries to determine the appropriate linker (and corresponding LinkerFlavor) to use
-pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
+pub fn linker_and_flavor(sess: &Session, self_contained: bool) -> (PathBuf, LinkerFlavor) {
     fn infer_from(
         sess: &Session,
         linker: Option<PathBuf>,
@@ -1411,6 +1412,15 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
     };
     if let Some(ret) = infer_from(sess, sess.opts.cg.linker.clone(), linker_flavor, features) {
         return ret;
+    }
+
+    // FIXME: do it better
+    if sess.target.os == "windows"
+        && sess.target.env == "gnu"
+        && sess.target.abi == "llvm"
+        && self_contained
+    {
+        return (PathBuf::from("rust-lld.exe"), LinkerFlavor::Gnu(Cc::No, Lld::Yes));
     }
 
     if let Some(ret) = infer_from(
@@ -1760,7 +1770,21 @@ fn link_output_kind(sess: &Session, crate_type: CrateType) -> LinkOutputKind {
 }
 
 // Returns true if linker is located within sysroot
-fn detect_self_contained_mingw(sess: &Session, linker: &Path) -> bool {
+fn detect_self_contained_mingw(sess: &Session) -> bool {
+    // FIXME: this sort of duplicates `infer_from()` inside `linker_and_flavor()`
+    let path_buf = sess
+        .opts
+        .cg
+        .linker
+        .as_ref()
+        .map(|l| l.as_path())
+        .or_else(|| sess.target.linker.as_ref().map(|linker| Path::new(linker.as_ref())));
+    let linker = if let Some(linker) = path_buf {
+        linker
+    } else {
+        return false;
+    };
+
     // Assume `-C linker=rust-lld` as self-contained mode
     if linker == Path::new("rust-lld") {
         return true;
@@ -1772,7 +1796,7 @@ fn detect_self_contained_mingw(sess: &Session, linker: &Path) -> bool {
     };
     for dir in env::split_paths(&env::var_os("PATH").unwrap_or_default()) {
         let full_path = dir.join(&linker_with_extension);
-        // If linker comes from sysroot assume self-contained mode
+        // If linker doesn't come from sysroot assume non-self-contained mode
         if full_path.is_file() && !full_path.starts_with(sess.opts.sysroot.path()) {
             return false;
         }
@@ -1783,11 +1807,7 @@ fn detect_self_contained_mingw(sess: &Session, linker: &Path) -> bool {
 /// Various toolchain components used during linking are used from rustc distribution
 /// instead of being found somewhere on the host system.
 /// We only provide such support for a very limited number of targets.
-fn self_contained_components(
-    sess: &Session,
-    crate_type: CrateType,
-    linker: &Path,
-) -> LinkSelfContainedComponents {
+fn self_contained_components(sess: &Session, crate_type: CrateType) -> LinkSelfContainedComponents {
     // Turn the backwards compatible bool values for `self_contained` into fully inferred
     // `LinkSelfContainedComponents`.
     let self_contained =
@@ -1816,7 +1836,7 @@ fn self_contained_components(
                 LinkSelfContainedDefault::InferredForMingw => {
                     sess.host == sess.target
                         && sess.target.vendor != "uwp"
-                        && detect_self_contained_mingw(sess, linker)
+                        && detect_self_contained_mingw(sess)
                 }
             }
         };
