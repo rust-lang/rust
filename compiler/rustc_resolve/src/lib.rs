@@ -1841,15 +1841,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         f(self, MacroNS);
     }
 
-    fn per_ns_cm<'r, F: FnMut(&mut CmResolver<'r, 'ra, 'tcx>, Namespace)>(
-        mut self: CmResolver<'r, 'ra, 'tcx>,
-        mut f: F,
-    ) {
-        f(&mut self, TypeNS);
-        f(&mut self, ValueNS);
-        f(&mut self, MacroNS);
-    }
-
     fn is_builtin_macro(&self, res: Res) -> bool {
         self.get_macro(res).is_some_and(|macro_data| macro_data.ext.builtin_name.is_some())
     }
@@ -2567,12 +2558,6 @@ mod ref_mut {
                 true => self.p,
             }
         }
-
-        /// Returns a mutable reference to the inner value without checking if
-        /// it's in a mutable state.
-        pub(crate) fn get_mut_unchecked(&mut self) -> &mut T {
-            self.p
-        }
     }
 
     /// A wrapper around a [`Cell`] that only allows mutation based on a condition in the resolver.
@@ -2609,6 +2594,13 @@ mod ref_mut {
     impl<T> CmCell<T> {
         pub(crate) const fn new(value: T) -> CmCell<T> {
             CmCell(Cell::new(value))
+        }
+
+        pub(crate) fn set<'ra, 'tcx>(&self, val: T, r: &Resolver<'ra, 'tcx>) {
+            if r.assert_speculative {
+                panic!()
+            }
+            self.0.set(val);
         }
 
         pub(crate) fn set_unchecked(&self, val: T) {
