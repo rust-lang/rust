@@ -18,6 +18,7 @@
 //@[rpass2] compile-flags: -C debuginfo=2
 //@[rpass3] compile-flags: -C debuginfo=2 --diagnostic-width=80
 //@[rpass4] compile-flags: -C debuginfo=2 --diagnostic-width=80 --remap-path-prefix=/home/bors/r=src
+//@ ignore-backends: gcc
 
 pub fn main() {
     // empty

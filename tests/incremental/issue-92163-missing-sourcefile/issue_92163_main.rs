@@ -1,6 +1,7 @@
 //@ aux-build:first_crate.rs
 //@ aux-build:second_crate.rs
 //@ revisions:rpass1 rpass2
+//@ ignore-backends: gcc
 
 // Regression test for issue #92163
 // Under certain circumstances, we may end up trying to

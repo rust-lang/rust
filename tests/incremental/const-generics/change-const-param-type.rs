@@ -1,5 +1,6 @@
 //@ revisions: rpass1 rpass2 rpass3
 //@ compile-flags: -Zincremental-ignore-spans
+//@ ignore-backends: gcc
 
 enum Foo<const N: usize> {
     Variant,

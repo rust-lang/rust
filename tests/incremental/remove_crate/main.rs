@@ -2,6 +2,7 @@
 
 //@ revisions:rpass1 rpass2
 //@ aux-build:extern_crate.rs
+//@ ignore-backends: gcc
 
 #[cfg(rpass1)]
 extern crate extern_crate;
