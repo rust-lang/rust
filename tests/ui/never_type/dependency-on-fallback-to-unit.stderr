@@ -1,5 +1,5 @@
-warning: this function depends on never type fallback being `()`
-  --> $DIR/dependency-on-fallback-to-unit.rs:8:1
+error: this function depends on never type fallback being `()`
+  --> $DIR/dependency-on-fallback-to-unit.rs:6:1
    |
 LL | fn def() {
    | ^^^^^^^^
@@ -8,19 +8,19 @@ LL | fn def() {
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `!: Default` will fail
-  --> $DIR/dependency-on-fallback-to-unit.rs:12:19
+  --> $DIR/dependency-on-fallback-to-unit.rs:10:19
    |
 LL |         false => <_>::default(),
    |                   ^
-   = note: `#[warn(dependency_on_unit_never_type_fallback)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
+   = note: `#[deny(dependency_on_unit_never_type_fallback)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
 help: use `()` annotations to avoid fallback changes
    |
 LL -         false => <_>::default(),
 LL +         false => <()>::default(),
    |
 
-warning: this function depends on never type fallback being `()`
-  --> $DIR/dependency-on-fallback-to-unit.rs:19:1
+error: this function depends on never type fallback being `()`
+  --> $DIR/dependency-on-fallback-to-unit.rs:17:1
    |
 LL | fn question_mark() -> Result<(), ()> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -29,7 +29,7 @@ LL | fn question_mark() -> Result<(), ()> {
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `!: Default` will fail
-  --> $DIR/dependency-on-fallback-to-unit.rs:22:5
+  --> $DIR/dependency-on-fallback-to-unit.rs:20:5
    |
 LL |     deserialize()?;
    |     ^^^^^^^^^^^^^
@@ -38,11 +38,11 @@ help: use `()` annotations to avoid fallback changes
 LL |     deserialize::<()>()?;
    |                ++++++
 
-warning: 2 warnings emitted
+error: aborting due to 2 previous errors
 
 Future incompatibility report: Future breakage diagnostic:
-warning: this function depends on never type fallback being `()`
-  --> $DIR/dependency-on-fallback-to-unit.rs:8:1
+error: this function depends on never type fallback being `()`
+  --> $DIR/dependency-on-fallback-to-unit.rs:6:1
    |
 LL | fn def() {
    | ^^^^^^^^
@@ -51,11 +51,11 @@ LL | fn def() {
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `!: Default` will fail
-  --> $DIR/dependency-on-fallback-to-unit.rs:12:19
+  --> $DIR/dependency-on-fallback-to-unit.rs:10:19
    |
 LL |         false => <_>::default(),
    |                   ^
-   = note: `#[warn(dependency_on_unit_never_type_fallback)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
+   = note: `#[deny(dependency_on_unit_never_type_fallback)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
 help: use `()` annotations to avoid fallback changes
    |
 LL -         false => <_>::default(),
@@ -63,8 +63,8 @@ LL +         false => <()>::default(),
    |
 
 Future breakage diagnostic:
-warning: this function depends on never type fallback being `()`
-  --> $DIR/dependency-on-fallback-to-unit.rs:19:1
+error: this function depends on never type fallback being `()`
+  --> $DIR/dependency-on-fallback-to-unit.rs:17:1
    |
 LL | fn question_mark() -> Result<(), ()> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -73,11 +73,11 @@ LL | fn question_mark() -> Result<(), ()> {
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `!: Default` will fail
-  --> $DIR/dependency-on-fallback-to-unit.rs:22:5
+  --> $DIR/dependency-on-fallback-to-unit.rs:20:5
    |
 LL |     deserialize()?;
    |     ^^^^^^^^^^^^^
-   = note: `#[warn(dependency_on_unit_never_type_fallback)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
+   = note: `#[deny(dependency_on_unit_never_type_fallback)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
 help: use `()` annotations to avoid fallback changes
    |
 LL |     deserialize::<()>()?;
