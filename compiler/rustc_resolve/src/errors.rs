@@ -1,9 +1,10 @@
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, DiagMessage, ElidedLifetimeInPathSubdiag, EmissionGuarantee, IntoDiagArg,
-    LintDiagnostic, MultiSpan, Subdiagnostic,
+    Applicability, Diag, DiagCtxtHandle, DiagMessage, Diagnostic, ElidedLifetimeInPathSubdiag,
+    EmissionGuarantee, IntoDiagArg, Level, LintDiagnostic, MultiSpan, Subdiagnostic,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
+use rustc_span::source_map::Spanned;
 use rustc_span::{Ident, Span, Symbol};
 
 use crate::late::PatternSource;
@@ -1444,4 +1445,44 @@ pub(crate) struct UnknownDiagnosticAttributeTypoSugg {
     #[primary_span]
     pub span: Span,
     pub typo_name: Symbol,
+}
+
+// FIXME: Make this properly translatable.
+pub(crate) struct Ambiguity {
+    pub ident: Ident,
+    pub kind: &'static str,
+    pub b1_note: Spanned<String>,
+    pub b1_help_msgs: Vec<String>,
+    pub b2_note: Spanned<String>,
+    pub b2_help_msgs: Vec<String>,
+}
+
+impl Ambiguity {
+    fn decorate<'a>(self, diag: &mut Diag<'a, impl EmissionGuarantee>) {
+        diag.primary_message(format!("`{}` is ambiguous", self.ident));
+        diag.span_label(self.ident.span, "ambiguous name");
+        diag.note(format!("ambiguous because of {}", self.kind));
+        diag.span_note(self.b1_note.span, self.b1_note.node);
+        for help_msg in self.b1_help_msgs {
+            diag.help(help_msg);
+        }
+        diag.span_note(self.b2_note.span, self.b2_note.node);
+        for help_msg in self.b2_help_msgs {
+            diag.help(help_msg);
+        }
+    }
+}
+
+impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for Ambiguity {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
+        let mut diag = Diag::new(dcx, level, "").with_span(self.ident.span).with_code(E0659);
+        self.decorate(&mut diag);
+        diag
+    }
+}
+
+impl<'a> LintDiagnostic<'a, ()> for Ambiguity {
+    fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
+        self.decorate(diag);
+    }
 }
