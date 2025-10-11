@@ -88,28 +88,21 @@ impl RawEmitter {
 
         // The inlining in this code works like the following:
         //
-        // The `skip_search` function is always inlined into the parent `lookup` fn,
+        // The `skip_search` function is always inlined into the parent `lookup_slow` fn,
         // thus the compiler can generate optimal code based on the referenced `static`s.
         //
-        // In the case of ASCII optimization, the lower-bounds check is inlined into
-        // the caller, and slower-path `skip_search` is outlined into a separate `lookup_slow` fn.
-        //
-        // Thus, in both cases, the `skip_search` function is specialized for the `static`s,
-        // and outlined into the prebuilt `std`.
-        if first_code_point > 0x7f {
-            writeln!(&mut self.file, "#[inline]").unwrap();
-            writeln!(&mut self.file, "pub fn lookup(c: char) -> bool {{").unwrap();
-            writeln!(&mut self.file, "    debug_assert!(!c.is_ascii());").unwrap();
-            writeln!(&mut self.file, "    (c as u32) >= {first_code_point:#04x} && lookup_slow(c)")
-                .unwrap();
-            writeln!(&mut self.file, "}}").unwrap();
-            writeln!(&mut self.file).unwrap();
-            writeln!(&mut self.file, "#[inline(never)]").unwrap();
-            writeln!(&mut self.file, "fn lookup_slow(c: char) -> bool {{").unwrap();
-        } else {
-            writeln!(&mut self.file, "pub fn lookup(c: char) -> bool {{").unwrap();
-            writeln!(&mut self.file, "    debug_assert!(!c.is_ascii());").unwrap();
-        }
+        // The lower-bounds check is inlined into the caller, and slower-path
+        // `skip_search` is outlined into a separate `lookup_slow` fn.
+        assert!(first_code_point > 0x7f);
+        writeln!(&mut self.file, "#[inline]").unwrap();
+        writeln!(&mut self.file, "pub fn lookup(c: char) -> bool {{").unwrap();
+        writeln!(&mut self.file, "    debug_assert!(!c.is_ascii());").unwrap();
+        writeln!(&mut self.file, "    (c as u32) >= {first_code_point:#04x} && lookup_slow(c)")
+            .unwrap();
+        writeln!(&mut self.file, "}}").unwrap();
+        writeln!(&mut self.file).unwrap();
+        writeln!(&mut self.file, "#[inline(never)]").unwrap();
+        writeln!(&mut self.file, "fn lookup_slow(c: char) -> bool {{").unwrap();
         writeln!(&mut self.file, "    const {{").unwrap();
         writeln!(
             &mut self.file,
