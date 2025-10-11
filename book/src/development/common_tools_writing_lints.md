@@ -68,7 +68,7 @@ impl<'tcx> LateLintPass<'tcx> for MyStructLint {
         // Check our expr is calling a method
         if let hir::ExprKind::MethodCall(path, _, _self_arg, ..) = &expr.kind
             // Check the name of this method is `some_method`
-            && path.ident.name.as_str() == "some_method"
+            && path.ident.name == sym::some_method
             // Optionally, check the type of the self argument.
             // - See "Checking for a specific type"
         {
@@ -85,9 +85,8 @@ to check for. All of these methods only check for the base type, generic
 arguments have to be checked separately.
 
 ```rust
-use clippy_utils::paths;
+use clippy_utils::{paths, sym};
 use clippy_utils::res::MaybeDef;
-use rustc_span::symbol::sym;
 use rustc_hir::LangItem;
 
 impl LateLintPass<'_> for MyStructLint {
@@ -123,8 +122,8 @@ There are three ways to do this, depending on if the target trait has a
 diagnostic item, lang item or neither.
 
 ```rust
+use clippy_utils::sym;
 use clippy_utils::ty::implements_trait;
-use rustc_span::symbol::sym;
 
 impl LateLintPass<'_> for MyStructLint {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
