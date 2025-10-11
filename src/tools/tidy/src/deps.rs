@@ -349,6 +349,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "crossbeam-utils",
     "crypto-common",
     "ctrlc",
+    "cty", // Ideally removed.
     "darling",
     "darling_core",
     "darling_macro",
