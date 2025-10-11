@@ -20,7 +20,7 @@ use crate::ty::TyCtxt;
 
 pub struct DynamicQuery<'tcx, C: QueryCache> {
     pub name: &'static str,
-    pub eval_always: bool,
+    pub no_incremental: bool,
     pub dep_kind: DepKind,
     pub handle_cycle_error: HandleCycleError,
     // Offset of this query's state field in the QueryStates struct
