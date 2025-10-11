@@ -320,6 +320,10 @@ impl<'a> Parser<'a> {
         } else if self.eat(exp!(Bang)) {
             // Never type `!`
             TyKind::Never
+        } else if (self.token.is_keyword(kw::Const) || self.token.is_keyword(kw::Mut))
+            && self.look_ahead(1, |t| *t == token::Star)
+        {
+            self.parse_ty_c_style_pointer()?
         } else if self.eat(exp!(Star)) {
             self.parse_ty_ptr()?
         } else if self.eat(exp!(OpenBracket)) {
@@ -586,6 +590,42 @@ impl<'a> Parser<'a> {
             bounds.append(&mut self.parse_generic_bounds()?);
         }
         Ok(TyKind::TraitObject(bounds, TraitObjectSyntax::None))
+    }
+
+    /// Parses a raw pointer with a C-style typo
+    fn parse_ty_c_style_pointer(&mut self) -> PResult<'a, TyKind> {
+        let kw_span = self.token.span;
+        let mutbl = self.parse_const_or_mut();
+
+        if let Some(mutbl) = mutbl
+            && self.eat(exp!(Star))
+        {
+            let star_span = self.prev_token.span;
+
+            let mutability = match mutbl {
+                Mutability::Not => "const",
+                Mutability::Mut => "mut",
+            };
+
+            let ty = self.parse_ty_no_question_mark_recover()?;
+
+            let _guar = self
+                .dcx()
+                .struct_span_err(
+                    kw_span,
+                    format!("raw pointer types must be written as `*{mutability} T`"),
+                )
+                .with_multipart_suggestion(
+                    format!("put the `*` before `{mutability}`"),
+                    vec![(star_span, String::new()), (kw_span.shrink_to_lo(), "*".to_string())],
+                    Applicability::MachineApplicable,
+                )
+                .emit();
+
+            return Ok(TyKind::Ptr(MutTy { ty, mutbl }));
+        }
+        // This is unreachable because we always get into if above and return from it
+        unreachable!("this should never happen happen")
     }
 
     /// Parses a raw pointer type: `*[const | mut] $type`.
