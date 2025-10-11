@@ -2,6 +2,8 @@
 //@ build-pass
 // Regression test for #56870: Internal compiler error (traits & associated consts)
 
+#![allow(function_casts_as_integer)]
+
 use std::fmt::Debug;
 
 pub trait Foo<T> {
