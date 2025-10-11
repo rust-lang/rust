@@ -113,7 +113,7 @@ impl<'tcx> Children {
                 // Found overlap, but no specialization; error out or report future-compat warning.
 
                 // Do we *still* get overlap if we disable the future-incompatible modes?
-                let should_err = traits::overlapping_impls(
+                let should_err = traits::overlapping_trait_impls(
                     tcx,
                     possible_sibling,
                     impl_def_id,
@@ -137,7 +137,7 @@ impl<'tcx> Children {
             };
 
             let last_lint_mut = &mut last_lint;
-            let (le, ge) = traits::overlapping_impls(
+            let (le, ge) = traits::overlapping_trait_impls(
                 tcx,
                 possible_sibling,
                 impl_def_id,
