@@ -482,7 +482,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "thiserror-impl",
     "thorin-dwp",
     "thread_local",
-    "tikv-jemalloc-sys",
+    "libmimalloc-sys",
     "tinystr",
     "tinyvec",
     "tinyvec_macros",
