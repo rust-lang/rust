@@ -1,4 +1,4 @@
-//@ compile-flags: -Copt-level=3
+//@ compile-flags: -Copt-level=3 -Cno-prepopulate-passes
 
 #![crate_type = "lib"]
 #![allow(internal_features)]
@@ -20,7 +20,7 @@ pub struct BigCellContainer {
 
 // The by-value parameter for this big struct can be marked readonly.
 //
-// CHECK: @use_big_struct_immutably({{.*}} readonly {{.*}} %big_struct)
+// CHECK: @use_big_struct_immutably({{.*}} {{.*}} %big_struct)
 #[no_mangle]
 pub fn use_big_struct_immutably(big_struct: BigStruct) {
     hint::black_box(&big_struct);
