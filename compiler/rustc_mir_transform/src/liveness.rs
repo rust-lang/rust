@@ -741,7 +741,6 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
                 ever_live.union(live);
                 match &statement.kind {
                     StatementKind::Assign(box (place, _))
-                    | StatementKind::Deinit(box place)
                     | StatementKind::SetDiscriminant { box place, .. } => {
                         check_place(*place, AccessKind::Assign, statement.source_info, live);
                     }
@@ -1345,9 +1344,7 @@ impl DefUse {
         let is_indirect = is_indirect(projection);
         match context {
             PlaceContext::MutatingUse(
-                MutatingUseContext::Store
-                | MutatingUseContext::Deinit
-                | MutatingUseContext::SetDiscriminant,
+                MutatingUseContext::Store | MutatingUseContext::SetDiscriminant,
             ) => {
                 if is_indirect {
                     // Treat derefs as a use of the base local. `*p = 4` is not a def of `p` but a
