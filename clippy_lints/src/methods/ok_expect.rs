@@ -1,5 +1,4 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::res::MaybeDef;
 use clippy_utils::ty::has_debug_impl;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
@@ -10,10 +9,9 @@ use super::OK_EXPECT;
 
 /// lint use of `ok().expect()` for `Result`s
 pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr<'_>) {
-    if cx.typeck_results().expr_ty(recv).is_diag_item(cx, sym::Result)
-        // lint if the caller of `ok()` is a `Result`
-        && let result_type = cx.typeck_results().expr_ty(recv)
-        && let Some(error_type) = get_error_type(cx, result_type)
+    let result_ty = cx.typeck_results().expr_ty(recv);
+    // lint if the caller of `ok()` is a `Result`
+    if let Some(error_type) = get_error_type(cx, result_ty)
         && has_debug_impl(cx, error_type)
     {
         span_lint_and_help(
@@ -30,7 +28,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr
 /// Given a `Result<T, E>` type, return its error type (`E`).
 fn get_error_type<'a>(cx: &LateContext<'_>, ty: Ty<'a>) -> Option<Ty<'a>> {
     match ty.kind() {
-        ty::Adt(_, args) if ty.is_diag_item(cx, sym::Result) => args.types().nth(1),
+        ty::Adt(adt, args) if cx.tcx.is_diagnostic_item(sym::Result, adt.did()) => args.types().nth(1),
         _ => None,
     }
 }
