@@ -14,10 +14,8 @@
   
       bb0: {
           StorageLive(_1);
--         StorageLive(_2);
--         StorageLive(_3);
-+         nop;
-+         nop;
+          StorageLive(_2);
+          StorageLive(_3);
           _3 = const {ALLOC0: &u8};
 -         _2 = copy (*_3);
 +         _2 = const 2_u8;
@@ -29,11 +27,9 @@
 +         _4 = const 2_u8;
 +         _1 = const 4_u8;
           StorageDead(_4);
--         StorageDead(_2);
-+         nop;
+          StorageDead(_2);
           StorageDead(_5);
--         StorageDead(_3);
-+         nop;
+          StorageDead(_3);
           _0 = const ();
           StorageDead(_1);
           return;
