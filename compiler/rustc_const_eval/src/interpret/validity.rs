@@ -1261,9 +1261,10 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
                 // When you extend this match, make sure to also add tests to
                 // tests/ui/type/pattern_types/validity.rs((
                 match **pat {
-                    // Range patterns are precisely reflected into `valid_range` and thus
+                    // Range and non-null patterns are precisely reflected into `valid_range` and thus
                     // handled fully by `visit_scalar` (called below).
                     ty::PatternKind::Range { .. } => {},
+                    ty::PatternKind::NotNull => {},
 
                     // FIXME(pattern_types): check that the value is covered by one of the variants.
                     // For now, we rely on layout computation setting the scalar's `valid_range` to

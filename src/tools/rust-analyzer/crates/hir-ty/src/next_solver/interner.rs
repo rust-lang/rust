@@ -9,7 +9,7 @@ use hir_def::{AdtId, BlockId, GenericDefId, TypeAliasId, VariantId};
 use hir_def::{AttrDefId, Lookup};
 use hir_def::{CallableDefId, EnumVariantId, ItemContainerId, StructId, UnionId};
 use intern::sym::non_exhaustive;
-use intern::{Interned, impl_internable, sym};
+use intern::{impl_internable, sym, Interned};
 use la_arena::Idx;
 use rustc_abi::{Align, ReprFlags, ReprOptions};
 use rustc_hash::FxHashSet;
@@ -26,7 +26,7 @@ use rustc_type_ir::{
     ImplPolarity, InferTy, ProjectionPredicate, TraitPredicate, TraitRef, Upcast,
 };
 use salsa::plumbing::AsId;
-use smallvec::{SmallVec, smallvec};
+use smallvec::{smallvec, SmallVec};
 use std::fmt;
 use std::ops::ControlFlow;
 use syntax::ast::SelfParamKind;
@@ -36,31 +36,26 @@ use rustc_ast_ir::visit::VisitorResult;
 use rustc_index::IndexVec;
 use rustc_type_ir::TypeVisitableExt;
 use rustc_type_ir::{
-    BoundVar, CollectAndApply, DebruijnIndex, GenericArgKind, RegionKind, TermKind, UniverseIndex,
-    Variance, WithCachedTypeInfo, elaborate,
+    elaborate,
     inherent::{self, Const as _, Region as _, Ty as _},
-    ir_print, relate,
+    ir_print, relate, BoundVar, CollectAndApply, DebruijnIndex, GenericArgKind, RegionKind,
+    TermKind, UniverseIndex, Variance, WithCachedTypeInfo,
 };
 
 use crate::lower_nextsolver::{self, TyLoweringContext};
-use crate::method_resolution::{ALL_FLOAT_FPS, ALL_INT_FPS, TyFingerprint};
+use crate::method_resolution::{TyFingerprint, ALL_FLOAT_FPS, ALL_INT_FPS};
 use crate::next_solver::infer::InferCtxt;
-use crate::next_solver::util::{ContainsTypeErrors, explicit_item_bounds, for_trait_impls};
+use crate::next_solver::util::{explicit_item_bounds, for_trait_impls, ContainsTypeErrors};
 use crate::next_solver::{
     AdtIdWrapper, BoundConst, CallableIdWrapper, CanonicalVarKind, ClosureIdWrapper,
     CoroutineIdWrapper, Ctor, FnSig, FxIndexMap, ImplIdWrapper, InternedWrapperNoDebug,
     RegionAssumptions, SolverContext, SolverDefIds, TraitIdWrapper, TypeAliasIdWrapper,
 };
-use crate::{ConstScalar, FnAbi, Interner, db::HirDatabase};
+use crate::{db::HirDatabase, ConstScalar, FnAbi, Interner};
 
 use super::generics::generics;
 use super::util::sizedness_constraint_for_ty;
 use super::{
-    Binder, BoundExistentialPredicate, BoundExistentialPredicates, BoundTy, BoundTyKind, Clause,
-    Clauses, Const, ConstKind, ErrorGuaranteed, ExprConst, ExternalConstraints,
-    ExternalConstraintsData, GenericArg, GenericArgs, InternedClausesWrapper, ParamConst, ParamEnv,
-    ParamTy, PlaceholderConst, PlaceholderTy, PredefinedOpaques, PredefinedOpaquesData, Predicate,
-    PredicateKind, Term, Ty, TyKind, Tys, ValueConst,
     abi::Safety,
     fold::{BoundVarReplacer, BoundVarReplacerDelegate, FnMutDelegate},
     generics::Generics,
@@ -68,6 +63,11 @@ use super::{
     region::{
         BoundRegion, BoundRegionKind, EarlyParamRegion, LateParamRegion, PlaceholderRegion, Region,
     },
+    Binder, BoundExistentialPredicate, BoundExistentialPredicates, BoundTy, BoundTyKind, Clause,
+    Clauses, Const, ConstKind, ErrorGuaranteed, ExprConst, ExternalConstraints,
+    ExternalConstraintsData, GenericArg, GenericArgs, InternedClausesWrapper, ParamConst, ParamEnv,
+    ParamTy, PlaceholderConst, PlaceholderTy, PredefinedOpaques, PredefinedOpaquesData, Predicate,
+    PredicateKind, Term, Ty, TyKind, Tys, ValueConst,
 };
 use super::{ClauseKind, SolverDefId, Valtree};
 
@@ -802,6 +802,7 @@ impl<'db> Flags for Pattern<'db> {
                 }
                 flags
             }
+            PatternKind::NotNull => rustc_type_ir::TypeFlags::empty(),
         }
     }
 
@@ -817,6 +818,7 @@ impl<'db> Flags for Pattern<'db> {
                 }
                 idx
             }
+            PatternKind::NotNull => rustc_type_ir::INNERMOST,
         }
     }
 }
@@ -854,7 +856,12 @@ impl<'db> rustc_type_ir::relate::Relate<DbInterner<'db>> for Pattern<'db> {
                 )?;
                 Ok(Pattern::new(tcx, PatternKind::Or(pats)))
             }
-            (PatternKind::Range { .. } | PatternKind::Or(_), _) => Err(TypeError::Mismatch),
+            (PatternKind::NotNull, PatternKind::NotNull) => {
+                Ok(Pattern::new(tcx, PatternKind::NotNull))
+            }
+            (PatternKind::Range { .. } | PatternKind::Or(_) | PatternKind::NotNull, _) => {
+                Err(TypeError::Mismatch)
+            }
         }
     }
 }
