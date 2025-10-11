@@ -1,19 +1,18 @@
 use std::char;
 use std::collections::BTreeMap;
-use std::fmt::{self, Write};
 
-use crate::{UnicodeData, fmt_list};
+use crate::fmt_helpers::Hex;
+use crate::{CharEscape, UnicodeData, fmt_list};
 
 const INDEX_MASK: u32 = 1 << 22;
 
 pub(crate) fn generate_case_mapping(data: &UnicodeData) -> (String, [usize; 2]) {
-    let mut file = String::new();
-
     let (lower_tables, lower_size) = generate_tables("LOWER", &data.to_lower);
-    file.push_str(&lower_tables);
-    file.push_str("\n\n");
     let (upper_tables, upper_size) = generate_tables("UPPER", &data.to_upper);
-    file.push_str(&upper_tables);
+    let file = format!(
+        "{lower_tables}
+        {upper_tables}"
+    );
     (file, [lower_size, upper_size])
 }
 
@@ -43,14 +42,18 @@ fn generate_tables(case: &str, data: &BTreeMap<u32, [u32; 3]>) -> (String, usize
             INDEX_MASK | (u32::try_from(multis.len()).unwrap() - 1)
         };
 
-        mappings.push((CharEscape(key), value));
+        mappings.push((CharEscape(key), Hex(value)));
     }
 
-    let mut size = 0;
-    let mut tables = String::new();
-    writeln!(
-        tables,
-        "\
+    let size = size_of_val(mappings.as_slice()) + size_of_val(multis.as_slice());
+    let file = format!(
+        "
+#[rustfmt::skip]
+static {case}CASE_TABLE: &[(char, u32); {mappings_len}] = &[{mappings}];
+
+#[rustfmt::skip]
+static {case}CASE_TABLE_MULTI: &[[char; 3]; {multis_len}] = &[{multis}];
+
 #[inline]
 pub fn to_{case_lower}(c: char) -> [char; 3] {{
     const {{
@@ -81,40 +84,7 @@ pub fn to_{case_lower}(c: char) -> [char; 3] {{
         mappings_len = mappings.len(),
         multis = fmt_list(&multis),
         multis_len = multis.len(),
-    )
-    .unwrap();
+    );
 
-    size += size_of_val(mappings.as_slice());
-    writeln!(tables, "#[rustfmt::skip]").unwrap();
-    write!(
-        tables,
-        "static {}CASE_TABLE: &[(char, u32); {}] = &[{}];",
-        case,
-        mappings.len(),
-        fmt_list(mappings),
-    )
-    .unwrap();
-
-    tables.push_str("\n\n");
-
-    size += size_of_val(multis.as_slice());
-    writeln!(tables, "#[rustfmt::skip]").unwrap();
-    write!(
-        tables,
-        "static {}CASE_TABLE_MULTI: &[[char; 3]; {}] = &[{}];",
-        case,
-        multis.len(),
-        fmt_list(multis),
-    )
-    .unwrap();
-
-    (tables, size)
-}
-
-struct CharEscape(char);
-
-impl fmt::Debug for CharEscape {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "'{}'", self.0.escape_default())
-    }
+    (file, size)
 }
