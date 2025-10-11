@@ -37,7 +37,7 @@ before emitting suggestions to the end user to avoid false positives.
 
 Several functions are available for working with macros.
 
-### The `Span.from_expansion` method
+### The `Span::from_expansion` method
 
 We could utilize a `span`'s [`from_expansion`] method, which
 detects if the `span` is from a macro expansion / desugaring.
@@ -50,7 +50,7 @@ if expr.span.from_expansion() {
 }
 ```
 
-### `Span.ctxt` method
+### `Span::ctxt` method
 
 The `span`'s context, given by the method [`ctxt`] and returning [SyntaxContext],
 represents if the span is from a macro expansion and, if it is, which
