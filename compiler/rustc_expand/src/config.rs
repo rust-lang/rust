@@ -13,7 +13,7 @@ use rustc_ast::{
 use rustc_attr_parsing as attr;
 use rustc_attr_parsing::validate_attr::deny_builtin_meta_unsafety;
 use rustc_attr_parsing::{
-    AttributeParser, CFG_TEMPLATE, EvalConfigResult, ShouldEmit, eval_config_entry, parse_cfg_attr,
+    AttributeParser, CFG_TEMPLATE, EvalConfigResult, ShouldEmit, eval_config_entry, parse_cfg,
     validate_attr,
 };
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
@@ -303,7 +303,7 @@ impl<'a> StripUnconfigured<'a> {
         let trace_attr = attr_into_trace(cfg_attr.clone(), sym::cfg_attr_trace);
 
         let Some((cfg_predicate, expanded_attrs)) =
-            rustc_parse::parse_cfg_attr(cfg_attr, &self.sess.psess)
+            rustc_attr_parsing::parse_cfg_attr(cfg_attr, &self.sess, self.features)
         else {
             return vec![trace_attr];
         };
@@ -318,7 +318,15 @@ impl<'a> StripUnconfigured<'a> {
             );
         }
 
-        if !attr::cfg_matches(&cfg_predicate, &self.sess, self.lint_node_id, self.features) {
+        if !attr::eval_config_entry(
+            self.sess,
+            &cfg_predicate,
+            ast::CRATE_NODE_ID,
+            self.features,
+            ShouldEmit::ErrorsAndLints,
+        )
+        .as_bool()
+        {
             return vec![trace_attr];
         }
 
@@ -428,7 +436,7 @@ impl<'a> StripUnconfigured<'a> {
             node,
             self.features,
             emit_errors,
-            parse_cfg_attr,
+            parse_cfg,
             &CFG_TEMPLATE,
         ) else {
             // Cfg attribute was not parsable, give up
@@ -488,7 +496,7 @@ impl<'a> StripUnconfigured<'a> {
 }
 
 /// FIXME: Still used by Rustdoc, should be removed after
-pub fn parse_cfg<'a>(meta_item: &'a MetaItem, sess: &Session) -> Option<&'a MetaItemInner> {
+pub fn parse_cfg_old<'a>(meta_item: &'a MetaItem, sess: &Session) -> Option<&'a MetaItemInner> {
     let span = meta_item.span;
     match meta_item.meta_item_list() {
         None => {

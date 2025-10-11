@@ -8,7 +8,7 @@ use std::fmt::{Debug, Display};
 
 use rustc_ast::token::{self, Delimiter, MetaVarKind};
 use rustc_ast::tokenstream::TokenStream;
-use rustc_ast::{AttrArgs, DelimArgs, Expr, ExprKind, LitKind, MetaItemLit, NormalAttr, Path};
+use rustc_ast::{AttrArgs, Expr, ExprKind, LitKind, MetaItemLit, NormalAttr, Path};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Diag, PResult};
 use rustc_hir::{self as hir, AttrPath};
@@ -124,7 +124,11 @@ impl<'a> ArgParser<'a> {
                     return None;
                 }
 
-                Self::List(MetaItemListParser::new(args, psess, should_emit)?)
+                Self::List(
+                    MetaItemListParser::new(&args.tokens, args.dspan.entire(), psess, should_emit)
+                        .map_err(|e| should_emit.emit_err(e))
+                        .ok()?,
+                )
             }
             AttrArgs::Eq { eq_span, expr } => Self::NameValue(NameValueParser {
                 eq_span: *eq_span,
@@ -186,7 +190,15 @@ pub enum MetaItemOrLitParser<'a> {
     Err(Span, ErrorGuaranteed),
 }
 
-impl<'a> MetaItemOrLitParser<'a> {
+impl<'sess> MetaItemOrLitParser<'sess> {
+    pub fn parse_single(
+        parser: &mut Parser<'sess>,
+        should_emit: ShouldEmit,
+    ) -> PResult<'sess, MetaItemOrLitParser<'static>> {
+        let mut this = MetaItemListParserContext { parser, should_emit };
+        this.parse_meta_item_inner()
+    }
+
     pub fn span(&self) -> Span {
         match self {
             MetaItemOrLitParser::MetaItemParser(generic_meta_item_parser) => {
@@ -204,7 +216,7 @@ impl<'a> MetaItemOrLitParser<'a> {
         }
     }
 
-    pub fn meta_item(&self) -> Option<&MetaItemParser<'a>> {
+    pub fn meta_item(&self) -> Option<&MetaItemParser<'sess>> {
         match self {
             MetaItemOrLitParser::MetaItemParser(parser) => Some(parser),
             _ => None,
@@ -542,23 +554,13 @@ pub struct MetaItemListParser<'a> {
 }
 
 impl<'a> MetaItemListParser<'a> {
-    fn new<'sess>(
-        delim: &'a DelimArgs,
+    pub(crate) fn new<'sess>(
+        tokens: &'a TokenStream,
+        span: Span,
         psess: &'sess ParseSess,
         should_emit: ShouldEmit,
-    ) -> Option<Self> {
-        match MetaItemListParserContext::parse(
-            delim.tokens.clone(),
-            psess,
-            delim.dspan.entire(),
-            should_emit,
-        ) {
-            Ok(s) => Some(s),
-            Err(e) => {
-                should_emit.emit_err(e);
-                None
-            }
-        }
+    ) -> Result<Self, Diag<'sess>> {
+        MetaItemListParserContext::parse(tokens.clone(), psess, span, should_emit)
     }
 
     /// Lets you pick and choose as what you want to parse each element in the list

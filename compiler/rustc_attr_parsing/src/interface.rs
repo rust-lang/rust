@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use rustc_ast as ast;
-use rustc_ast::NodeId;
+use rustc_ast::{AttrStyle, NodeId};
 use rustc_errors::DiagCtxtHandle;
 use rustc_feature::{AttributeTemplate, Features};
 use rustc_hir::attrs::AttributeKind;
@@ -121,13 +121,6 @@ impl<'sess> AttributeParser<'sess, Early> {
         parse_fn: fn(cx: &mut AcceptContext<'_, '_, Early>, item: &ArgParser<'_>) -> Option<T>,
         template: &AttributeTemplate,
     ) -> Option<T> {
-        let mut parser = Self {
-            features,
-            tools: Vec::new(),
-            parse_only: None,
-            sess,
-            stage: Early { emit_errors },
-        };
         let ast::AttrKind::Normal(normal_attr) = &attr.kind else {
             panic!("parse_single called on a doc attr")
         };
@@ -136,6 +129,41 @@ impl<'sess> AttributeParser<'sess, Early> {
         let meta_parser = MetaItemParser::from_attr(normal_attr, &parts, &sess.psess, emit_errors)?;
         let path = meta_parser.path();
         let args = meta_parser.args();
+        Self::parse_single_sub(
+            sess,
+            attr.span,
+            attr.style,
+            path.get_attribute_path(),
+            target_span,
+            target_node_id,
+            features,
+            emit_errors,
+            args,
+            parse_fn,
+            template,
+        )
+    }
+
+    pub fn parse_single_sub<T, I>(
+        sess: &'sess Session,
+        attr_span: Span,
+        attr_style: AttrStyle,
+        attr_path: AttrPath,
+        target_span: Span,
+        target_node_id: NodeId,
+        features: Option<&'sess Features>,
+        emit_errors: ShouldEmit,
+        args: &I,
+        parse_fn: fn(cx: &mut AcceptContext<'_, '_, Early>, item: &I) -> Option<T>,
+        template: &AttributeTemplate,
+    ) -> Option<T> {
+        let mut parser = Self {
+            features,
+            tools: Vec::new(),
+            parse_only: None,
+            sess,
+            stage: Early { emit_errors },
+        };
         let mut cx: AcceptContext<'_, 'sess, Early> = AcceptContext {
             shared: SharedContext {
                 cx: &mut parser,
@@ -145,10 +173,10 @@ impl<'sess> AttributeParser<'sess, Early> {
                     crate::lints::emit_attribute_lint(&lint, sess);
                 },
             },
-            attr_span: attr.span,
-            attr_style: attr.style,
+            attr_span,
+            attr_style,
             template,
-            attr_path: path.get_attribute_path(),
+            attr_path,
         };
         parse_fn(&mut cx, args)
     }
