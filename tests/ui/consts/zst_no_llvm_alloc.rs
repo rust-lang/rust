@@ -5,6 +5,16 @@ struct Foo;
 
 static FOO: Foo = Foo;
 
+// This tests for regression of https://github.com/rust-lang/rust/issues/147516
+//
+// THe compiler will codegen `&Zst` without creating a real allocation, just a properly aligned
+// `usize` (i.e., ptr::dangling). However, code can add an arbitrary offset from that base
+// allocation. We confirm here that we correctly codegen that offset combined with the necessary
+// alignment of the base &() as a 1-ZST and &Foo as a 4-ZST.
+const A: *const () = (&() as *const ()).wrapping_byte_add(2);
+const B: *const () = (&Foo as *const _ as *const ()).wrapping_byte_add(usize::MAX);
+const C: *const () = (&Foo as *const _ as *const ()).wrapping_byte_add(2);
+
 fn main() {
     // There's no stable guarantee that these are true.
     // However, we want them to be true so that our LLVM IR and runtime are a bit faster:
@@ -14,6 +24,10 @@ fn main() {
     assert_eq!(x as *const () as usize, 1);
     let x: &'static Foo = &Foo;
     assert_eq!(x as *const Foo as usize, 4);
+
+    assert_eq!(A.addr(), 3);
+    assert_eq!(B.addr(), 3);
+    assert_eq!(C.addr(), 6);
 
     // The exact addresses returned by these library functions are not necessarily stable guarantees
     // but for now we assert that we're still matching.
