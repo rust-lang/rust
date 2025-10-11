@@ -1,0 +1,37 @@
+error[E0005]: refutable pattern in local binding
+  --> $DIR/suggest-with-let-issue-145548.rs:6:5
+   |
+LL |     Some(x) = Some(1);
+   |     ^^^^^^^ pattern `None` not covered
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
+   = note: the matched value is of type `Option<i32>`
+
+error[E0005]: refutable pattern in local binding
+  --> $DIR/suggest-with-let-issue-145548.rs:11:9
+   |
+LL |     let Some(x) = Some(1);
+   |         ^^^^^^^ pattern `None` not covered
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
+   = note: the matched value is of type `Option<i32>`
+help: you might want to use `let else` to handle the variant that isn't matched
+   |
+LL |     let Some(x) = Some(1) else { todo!() };
+   |                           ++++++++++++++++
+
+error[E0005]: refutable pattern in local binding
+  --> $DIR/suggest-with-let-issue-145548.rs:15:5
+   |
+LL |     Some(()) = Some(());
+   |     ^^^^^^^^ pattern `None` not covered
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
+   = note: the matched value is of type `Option<()>`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0005`.
