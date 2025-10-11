@@ -275,7 +275,6 @@ fn main() {
     modules.push((String::from("conversions"), conversions));
 
     for (name, contents) in modules {
-        table_file.push_str("#[rustfmt::skip]\n");
         table_file.push_str(&format!("pub mod {name} {{\n"));
         for line in contents.lines() {
             if !line.trim().is_empty() {
@@ -288,6 +287,7 @@ fn main() {
     }
 
     std::fs::write(&write_location, format!("{}\n", table_file.trim_end())).unwrap();
+    eprintln!("Unicode data was generated. Remember to run \"x fmt\"!");
 }
 
 fn version() -> String {
