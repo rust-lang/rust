@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 #[derive(Clone)]
 enum Either {
     One(X),

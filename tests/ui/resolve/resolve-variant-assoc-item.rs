@@ -1,3 +1,4 @@
+//@ edition:2015
 enum E { V }
 use E::V;
 

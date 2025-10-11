@@ -1,5 +1,5 @@
 error[E0433]: failed to resolve: you might be missing crate `core`
-  --> $DIR/portable-intrinsics-arent-exposed.rs:4:5
+  --> $DIR/portable-intrinsics-arent-exposed.rs:5:5
    |
 LL | use core::simd::intrinsics;
    |     ^^^^
@@ -8,7 +8,7 @@ LL | use core::simd::intrinsics;
    |     help: try using `std` instead of `core`: `std`
 
 error[E0432]: unresolved import `std::simd::intrinsics`
-  --> $DIR/portable-intrinsics-arent-exposed.rs:5:5
+  --> $DIR/portable-intrinsics-arent-exposed.rs:6:5
    |
 LL | use std::simd::intrinsics;
    |     ^^^^^^^^^^^^^^^^^^^^^ no `intrinsics` in `simd`

@@ -1,5 +1,5 @@
 error[E0599]: no method named `method` found for struct `S` in the current scope
-  --> $DIR/unnamed_pub_trait.rs:13:7
+  --> $DIR/unnamed_pub_trait.rs:14:7
    |
 LL |     S.method();
    |       ^^^^^^ method not found in `S`

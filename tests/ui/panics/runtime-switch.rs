@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 // Test for std::panic::set_backtrace_style.
 
 //@ compile-flags: -O

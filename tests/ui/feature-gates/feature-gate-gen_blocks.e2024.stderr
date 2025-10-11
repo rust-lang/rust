@@ -1,5 +1,5 @@
 error[E0658]: gen blocks are experimental
-  --> $DIR/feature-gate-gen_blocks.rs:5:5
+  --> $DIR/feature-gate-gen_blocks.rs:7:5
    |
 LL |     gen {};
    |     ^^^
@@ -9,7 +9,7 @@ LL |     gen {};
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: gen blocks are experimental
-  --> $DIR/feature-gate-gen_blocks.rs:12:5
+  --> $DIR/feature-gate-gen_blocks.rs:15:5
    |
 LL |     async gen {};
    |     ^^^^^^^^^
@@ -19,7 +19,7 @@ LL |     async gen {};
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: gen blocks are experimental
-  --> $DIR/feature-gate-gen_blocks.rs:22:5
+  --> $DIR/feature-gate-gen_blocks.rs:26:5
    |
 LL |     gen {};
    |     ^^^
@@ -29,7 +29,7 @@ LL |     gen {};
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: gen blocks are experimental
-  --> $DIR/feature-gate-gen_blocks.rs:25:5
+  --> $DIR/feature-gate-gen_blocks.rs:29:5
    |
 LL |     async gen {};
    |     ^^^^^^^^^
@@ -39,13 +39,13 @@ LL |     async gen {};
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0282]: type annotations needed
-  --> $DIR/feature-gate-gen_blocks.rs:5:5
+  --> $DIR/feature-gate-gen_blocks.rs:7:5
    |
 LL |     gen {};
    |     ^^^^^^ cannot infer type
 
 error[E0282]: type annotations needed
-  --> $DIR/feature-gate-gen_blocks.rs:12:5
+  --> $DIR/feature-gate-gen_blocks.rs:15:5
    |
 LL |     async gen {};
    |     ^^^^^^^^^^^^ cannot infer type

@@ -1,5 +1,5 @@
 error[E0432]: unresolved import `test`
-  --> $DIR/issue-37887.rs:3:9
+  --> $DIR/issue-37887.rs:4:9
    |
 LL |     use test::*;
    |         ^^^^ use of unresolved module or unlinked crate `test`
@@ -10,7 +10,7 @@ LL + extern crate test;
    |
 
 error[E0658]: use of unstable library feature `test`
-  --> $DIR/issue-37887.rs:2:5
+  --> $DIR/issue-37887.rs:3:5
    |
 LL |     extern crate test;
    |     ^^^^^^^^^^^^^^^^^^

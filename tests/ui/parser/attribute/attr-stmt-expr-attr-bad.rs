@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 fn main() {}
 
 #[cfg(false)] fn e() { let _ = [#[attr]]; }

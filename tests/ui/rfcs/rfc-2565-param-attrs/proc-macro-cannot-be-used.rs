@@ -1,3 +1,4 @@
+//@ edition:2015
 //@ proc-macro: ident-mac.rs
 
 #![feature(c_variadic)]

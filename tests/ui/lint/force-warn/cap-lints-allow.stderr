@@ -1,5 +1,5 @@
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/cap-lints-allow.rs:8:25
+  --> $DIR/cap-lints-allow.rs:9:25
    |
 LL | pub fn function(_x: Box<SomeTrait>) {}
    |                         ^^^^^^^^^

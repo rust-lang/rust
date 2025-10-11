@@ -1,3 +1,4 @@
+//@ edition:2015
 // Testing that we don't fail abnormally after hitting the errors
 
 use unresolved::*;
