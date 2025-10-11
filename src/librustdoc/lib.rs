@@ -65,7 +65,7 @@ extern crate test;
 // See docs in https://github.com/rust-lang/rust/blob/master/compiler/rustc/src/main.rs
 // about jemalloc.
 #[cfg(feature = "jemalloc")]
-extern crate tikv_jemalloc_sys as jemalloc_sys;
+extern crate libmimalloc_sys as mimalloc_sys;
 
 use std::env::{self, VarError};
 use std::io::{self, IsTerminal};
@@ -132,27 +132,29 @@ pub fn main() {
         use std::os::raw::{c_int, c_void};
 
         #[used]
-        static _F1: unsafe extern "C" fn(usize, usize) -> *mut c_void = jemalloc_sys::calloc;
+        static _F1: unsafe extern "C" fn(usize, usize) -> *mut c_void = mimalloc_sys::mi_calloc;
         #[used]
         static _F2: unsafe extern "C" fn(*mut *mut c_void, usize, usize) -> c_int =
-            jemalloc_sys::posix_memalign;
+            mimalloc_sys::mi_posix_memalign;
         #[used]
-        static _F3: unsafe extern "C" fn(usize, usize) -> *mut c_void = jemalloc_sys::aligned_alloc;
+        static _F3: unsafe extern "C" fn(usize, usize) -> *mut c_void =
+            mimalloc_sys::mi_aligned_alloc;
         #[used]
-        static _F4: unsafe extern "C" fn(usize) -> *mut c_void = jemalloc_sys::malloc;
+        static _F4: unsafe extern "C" fn(usize) -> *mut c_void = mimalloc_sys::mi_malloc;
         #[used]
-        static _F5: unsafe extern "C" fn(*mut c_void, usize) -> *mut c_void = jemalloc_sys::realloc;
+        static _F5: unsafe extern "C" fn(*mut c_void, usize) -> *mut c_void =
+            mimalloc_sys::mi_realloc;
         #[used]
-        static _F6: unsafe extern "C" fn(*mut c_void) = jemalloc_sys::free;
+        static _F6: unsafe extern "C" fn(*mut c_void) = mimalloc_sys::mi_free;
 
         #[cfg(target_os = "macos")]
         {
             unsafe extern "C" {
-                fn _rjem_je_zone_register();
+                fn _mi_macos_override_malloc();
             }
 
             #[used]
-            static _F7: unsafe extern "C" fn() = _rjem_je_zone_register;
+            static _F7: unsafe extern "C" fn() = _mi_macos_override_malloc;
         }
     }
 

@@ -43,21 +43,23 @@ fn main() {
     {
         use std::os::raw::{c_int, c_void};
 
-        use tikv_jemalloc_sys as jemalloc_sys;
+        use libmimalloc_sys as mimalloc_sys;
 
         #[used]
-        static _F1: unsafe extern "C" fn(usize, usize) -> *mut c_void = jemalloc_sys::calloc;
+        static _F1: unsafe extern "C" fn(usize, usize) -> *mut c_void = mimalloc_sys::mi_calloc;
         #[used]
         static _F2: unsafe extern "C" fn(*mut *mut c_void, usize, usize) -> c_int =
-            jemalloc_sys::posix_memalign;
+            mimalloc_sys::mi_posix_memalign;
         #[used]
-        static _F3: unsafe extern "C" fn(usize, usize) -> *mut c_void = jemalloc_sys::aligned_alloc;
+        static _F3: unsafe extern "C" fn(usize, usize) -> *mut c_void =
+            mimalloc_sys::mi_aligned_alloc;
         #[used]
-        static _F4: unsafe extern "C" fn(usize) -> *mut c_void = jemalloc_sys::malloc;
+        static _F4: unsafe extern "C" fn(usize) -> *mut c_void = mimalloc_sys::mi_malloc;
         #[used]
-        static _F5: unsafe extern "C" fn(*mut c_void, usize) -> *mut c_void = jemalloc_sys::realloc;
+        static _F5: unsafe extern "C" fn(*mut c_void, usize) -> *mut c_void =
+            mimalloc_sys::mi_realloc;
         #[used]
-        static _F6: unsafe extern "C" fn(*mut c_void) = jemalloc_sys::free;
+        static _F6: unsafe extern "C" fn(*mut c_void) = mimalloc_sys::mi_free;
 
         // On OSX, jemalloc doesn't directly override malloc/free, but instead
         // registers itself with the allocator's zone APIs in a ctor. However,
@@ -66,11 +68,11 @@ fn main() {
         #[cfg(target_os = "macos")]
         {
             unsafe extern "C" {
-                fn _rjem_je_zone_register();
+                fn _mi_macos_override_malloc();
             }
 
             #[used]
-            static _F7: unsafe extern "C" fn() = _rjem_je_zone_register;
+            static _F7: unsafe extern "C" fn() = _mi_macos_override_malloc;
         }
     }
 
