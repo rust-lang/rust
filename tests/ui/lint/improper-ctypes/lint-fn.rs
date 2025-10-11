@@ -1,4 +1,4 @@
-#![allow(private_interfaces)]
+#![allow(private_interfaces, repr_transparent_external_private_fields)]
 #![deny(improper_ctypes_definitions)]
 
 use std::default::Default;
