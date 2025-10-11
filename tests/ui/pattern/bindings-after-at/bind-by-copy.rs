@@ -1,5 +1,6 @@
 //@ run-pass
 #![allow(unused)]
+#![warn(unused_assignments)]
 
 // Test copy
 
@@ -34,10 +35,12 @@ pub fn main() {
     let mut x@B {b, ..} = B {a: 10, b: C {c: 20}};
     assert_eq!(x.a, 10);
     x.b.c = 30;
+    //~^ WARN value assigned to `x` is never read
     assert_eq!(b.c, 20);
     let mut y@D {d, ..} = D {a: 10, d: C {c: 20}};
     assert_eq!(y.a, 10);
     y.d.c = 30;
+    //~^ WARN value assigned to `y` is never read
     assert_eq!(d.c, 20);
 
     match (E::E { a: 10, e: C { c: 20 } }) {
@@ -50,7 +53,9 @@ pub fn main() {
     }
     match (E::E { a: 10, e: C { c: 20 } }) {
         mut x @ E::E{ a, e: C { mut c } } => {
+            //~^ WARN value assigned to `a` is never read
             x = E::NotE;
+            //~^ WARN value assigned to `x` is never read
             c += 30;
             assert_eq!(c, 50);
         }

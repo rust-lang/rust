@@ -24,10 +24,12 @@ use rustc_middle::mir::*;
 use rustc_middle::thir::{self, ExprId, LintLevel, LocalVarId, Param, ParamId, PatKind, Thir};
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt, TypeVisitableExt, TypingMode};
 use rustc_middle::{bug, span_bug};
+use rustc_session::lint;
 use rustc_span::{Span, Symbol, sym};
 
 use crate::builder::expr::as_place::PlaceBuilder;
 use crate::builder::scope::DropKind;
+use crate::errors;
 
 pub(crate) fn closure_saved_names_of_captured_variables<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -66,11 +68,6 @@ pub fn build_mir<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> Body<'tcx> {
                     construct_const(tcx, def, thir, expr, ty)
                 }
             };
-
-            // Checking liveness after building the THIR ensures there were no typeck errors.
-            //
-            // maybe move the check to a MIR pass?
-            tcx.ensure_ok().check_liveness(def);
 
             // Don't steal here, instead steal in unsafeck. This is so that
             // pattern inline constants can be evaluated as part of building the
@@ -531,6 +528,7 @@ fn construct_fn<'tcx>(
         return_block.unit()
     });
 
+    builder.lint_and_remove_uninhabited();
     let mut body = builder.finish();
 
     body.spread_arg = if abi == ExternAbi::RustCall {
@@ -588,6 +586,7 @@ fn construct_const<'a, 'tcx>(
 
     builder.build_drop_trees();
 
+    builder.lint_and_remove_uninhabited();
     builder.finish()
 }
 
@@ -806,6 +805,78 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         writer.write_mir_fn(&body, &mut std::io::stdout()).unwrap();
     }
 
+    fn lint_and_remove_uninhabited(&mut self) {
+        let mut lints = vec![];
+
+        for bbdata in self.cfg.basic_blocks.iter_mut() {
+            let term = bbdata.terminator_mut();
+            let TerminatorKind::Call { ref mut target, destination, .. } = term.kind else {
+                continue;
+            };
+            let Some(target_bb) = *target else { continue };
+
+            let ty = destination.ty(&self.local_decls, self.tcx).ty;
+            let ty_is_inhabited = ty.is_inhabited_from(
+                self.tcx,
+                self.parent_module,
+                self.infcx.typing_env(self.param_env),
+            );
+
+            if !ty_is_inhabited {
+                // Unreachable code warnings are already emitted during type checking.
+                // However, during type checking, full type information is being
+                // calculated but not yet available, so the check for diverging
+                // expressions due to uninhabited result types is pretty crude and
+                // only checks whether ty.is_never(). Here, we have full type
+                // information available and can issue warnings for less obviously
+                // uninhabited types (e.g. empty enums). The check above is used so
+                // that we do not emit the same warning twice if the uninhabited type
+                // is indeed `!`.
+                if !ty.is_never() {
+                    lints.push((target_bb, ty, term.source_info.span));
+                }
+
+                // The presence or absence of a return edge affects control-flow sensitive
+                // MIR checks and ultimately whether code is accepted or not. We can only
+                // omit the return edge if a return type is visibly uninhabited to a module
+                // that makes the call.
+                *target = None;
+            }
+        }
+
+        for (target_bb, orig_ty, orig_span) in lints {
+            if orig_span.in_external_macro(self.tcx.sess.source_map()) {
+                continue;
+            }
+            let target_bb = &self.cfg.basic_blocks[target_bb];
+            let (target_loc, descr) = target_bb
+                .statements
+                .iter()
+                .find_map(|stmt| match stmt.kind {
+                    StatementKind::StorageLive(_) | StatementKind::StorageDead(_) => None,
+                    StatementKind::FakeRead(..) => Some((stmt.source_info, "definition")),
+                    _ => Some((stmt.source_info, "expression")),
+                })
+                .unwrap_or_else(|| (target_bb.terminator().source_info, "expression"));
+            let lint_root = self.source_scopes[target_loc.scope]
+                .local_data
+                .as_ref()
+                .unwrap_crate_local()
+                .lint_root;
+            self.tcx.emit_node_span_lint(
+                lint::builtin::UNREACHABLE_CODE,
+                lint_root,
+                target_loc.span,
+                errors::UnreachableDueToUninhabited {
+                    expr: target_loc.span,
+                    orig: orig_span,
+                    descr,
+                    ty: orig_ty,
+                },
+            );
+        }
+    }
+
     fn finish(self) -> Body<'tcx> {
         let mut body = Body::new(
             MirSource::item(self.def_id.to_def_id()),
@@ -978,6 +1049,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 opt_ty_info: param.ty_span,
                                 opt_match_place: Some((None, span)),
                                 pat_span: span,
+                                introductions: vec![VarBindingIntroduction {
+                                    span,
+                                    is_shorthand: false,
+                                }],
                             }))
                         };
                     self.var_indices.insert(var, LocalsForNode::One(local));

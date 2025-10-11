@@ -21,8 +21,9 @@ fn main() {
 
     call(move || {
         // this mutates a moved copy, and hence doesn't affect original
-        counter += 1; //~  WARN value assigned to `counter` is never read
-                      //~| WARN unused variable: `counter`
+        counter += 1;
+        //~^ WARN value captured by `counter` is never read
+        //~| WARN value assigned to `counter` is never read
     });
     assert_eq!(counter, 88);
 }

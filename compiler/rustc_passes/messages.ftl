@@ -395,8 +395,6 @@ passes_macro_only_attribute =
 passes_may_dangle =
     `#[may_dangle]` must be applied to a lifetime or type generic parameter in `Drop` impl
 
-passes_maybe_string_interpolation = you might have meant to use string interpolation in this string literal
-
 passes_missing_const_err =
     attributes `#[rustc_const_unstable]`, `#[rustc_const_stable]` and `#[rustc_const_stable_indirect]` require the function or method to be `const`
     .help = make the function or method const
@@ -568,8 +566,6 @@ passes_should_be_applied_to_trait =
     attribute should be applied to a trait
     .label = not a trait
 
-passes_string_interpolation_only_works = string interpolation only works in `format!` invocations
-
 passes_trait_impl_const_stability_mismatch = const stability on the impl does not match the const stability on the trait
 passes_trait_impl_const_stability_mismatch_impl_stable = this impl is (implicitly) stable...
 passes_trait_impl_const_stability_mismatch_impl_unstable = this impl is unstable...
@@ -619,11 +615,6 @@ passes_unnecessary_partial_stable_feature = the feature `{$feature}` has been pa
 
 passes_unnecessary_stable_feature = the feature `{$feature}` has been stable since {$since} and no longer requires an attribute to enable
 
-passes_unreachable_due_to_uninhabited = unreachable {$descr}
-    .label = unreachable {$descr}
-    .label_orig = any code following this expression is unreachable
-    .note = this expression has type `{$ty}`, which is uninhabited
-
 passes_unrecognized_argument =
     unrecognized argument
 
@@ -640,18 +631,6 @@ passes_unsupported_attributes_in_where =
 passes_unused =
     unused attribute
     .suggestion = remove this attribute
-
-passes_unused_assign = value assigned to `{$name}` is never read
-    .help = maybe it is overwritten before being read?
-
-passes_unused_assign_passed = value passed to `{$name}` is never read
-    .help = maybe it is overwritten before being read?
-
-passes_unused_assign_suggestion =
-    you might have meant to mutate the pointed at value being passed in, instead of changing the reference in the local binding
-
-passes_unused_capture_maybe_capture_ref = value captured by `{$name}` is never read
-    .help = did you mean to capture by reference instead?
 
 passes_unused_default_method_body_const_note =
     `default_method_body_is_const` has been replaced with `const` on traits
@@ -675,25 +654,6 @@ passes_unused_multiple =
 
 passes_unused_no_lints_note =
     attribute `{$name}` without any lints has no effect
-
-passes_unused_var_assigned_only = variable `{$name}` is assigned to, but never used
-    .note = consider using `_{$name}` instead
-
-passes_unused_var_maybe_capture_ref = unused variable: `{$name}`
-    .help = did you mean to capture by reference instead?
-
-passes_unused_var_remove_field = unused variable: `{$name}`
-passes_unused_var_remove_field_suggestion = try removing the field
-passes_unused_var_typo = you might have meant to pattern match on the similarly named {$kind} `{$item_name}`
-
-passes_unused_variable_args_in_macro = `{$name}` is captured in macro and introduced a unused variable
-
-passes_unused_variable_try_ignore = unused variable: `{$name}`
-    .suggestion = try ignoring the field
-
-passes_unused_variable_try_prefix = unused variable: `{$name}`
-    .label = unused variable
-    .suggestion = if this is intentional, prefix it with an underscore
 
 passes_useless_assignment =
     useless assignment of {$is_field_assign ->

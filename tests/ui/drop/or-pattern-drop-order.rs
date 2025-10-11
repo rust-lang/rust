@@ -25,7 +25,7 @@ fn assert_drop_order(expected_drops: impl IntoIterator<Item = u32>, f: impl Fn(&
     assert_eq!(order, correct_order);
 }
 
-#[expect(unused_variables, unused_assignments, irrefutable_let_patterns)]
+#[expect(unused_variables, irrefutable_let_patterns)]
 fn main() {
     // When bindings are declared with `let pat;`, they're visited in left-to-right order, using the
     // order given by the first occurrence of each variable. They're later dropped in reverse.
