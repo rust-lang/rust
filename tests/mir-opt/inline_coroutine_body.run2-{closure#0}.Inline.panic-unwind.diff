@@ -194,7 +194,7 @@
 +     bb5: {
 +         _33 = deref_copy (_8.0: &mut {async fn body of ActionPermit<'_, T>::perform()});
 +         _34 = deref_copy (_8.0: &mut {async fn body of ActionPermit<'_, T>::perform()});
-+         (((*_33) as variant#3).0: ActionPermit<'_, T>) = move ((*_34).0: ActionPermit<'_, T>);
++         (((*_33) as variant#3).0: ActionPermit<'_, T>) = move (((*_34) as variant#0).0: ActionPermit<'_, T>);
 +         StorageLive(_12);
 +         StorageLive(_13);
 +         StorageLive(_14);

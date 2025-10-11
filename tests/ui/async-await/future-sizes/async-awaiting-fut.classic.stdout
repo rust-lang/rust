@@ -1,53 +1,57 @@
-print-type-size type: `{async fn body of test()}`: 3078 bytes, alignment: 1 bytes
+print-type-size type: `{async fn body of test()}`: 6150 bytes, alignment: 1 bytes
 print-type-size     discriminant: 1 bytes
 print-type-size     variant `Unresumed`: 0 bytes
-print-type-size     variant `Suspend0`: 3077 bytes
-print-type-size         local `.__awaitee`: 3077 bytes, type: {async fn body of calls_fut<{async fn body of big_fut()}>()}
+print-type-size     variant `Suspend0`: 6149 bytes
+print-type-size         local `.__awaitee`: 6149 bytes, type: {async fn body of calls_fut<{async fn body of big_fut()}>()}
 print-type-size     variant `Returned`: 0 bytes
 print-type-size     variant `Panicked`: 0 bytes
-print-type-size type: `std::mem::ManuallyDrop<{async fn body of calls_fut<{async fn body of big_fut()}>()}>`: 3077 bytes, alignment: 1 bytes
-print-type-size     field `.value`: 3077 bytes
-print-type-size type: `std::mem::MaybeUninit<{async fn body of calls_fut<{async fn body of big_fut()}>()}>`: 3077 bytes, alignment: 1 bytes
-print-type-size     variant `MaybeUninit`: 3077 bytes
+print-type-size type: `std::mem::ManuallyDrop<{async fn body of calls_fut<{async fn body of big_fut()}>()}>`: 6149 bytes, alignment: 1 bytes
+print-type-size     field `.value`: 6149 bytes
+print-type-size type: `std::mem::MaybeUninit<{async fn body of calls_fut<{async fn body of big_fut()}>()}>`: 6149 bytes, alignment: 1 bytes
+print-type-size     variant `MaybeUninit`: 6149 bytes
 print-type-size         field `.uninit`: 0 bytes
-print-type-size         field `.value`: 3077 bytes
-print-type-size type: `{async fn body of calls_fut<{async fn body of big_fut()}>()}`: 3077 bytes, alignment: 1 bytes
+print-type-size         field `.value`: 6149 bytes
+print-type-size type: `{async fn body of calls_fut<{async fn body of big_fut()}>()}`: 6149 bytes, alignment: 1 bytes
 print-type-size     discriminant: 1 bytes
-print-type-size     variant `Unresumed`: 1025 bytes
-print-type-size         upvar `.fut`: 1025 bytes
-print-type-size     variant `Suspend0`: 2052 bytes
-print-type-size         upvar `.fut`: 1025 bytes
-print-type-size         local `.fut`: 1025 bytes
+print-type-size     variant `Unresumed`: 2049 bytes
+print-type-size         local `.fut`: 2049 bytes
+print-type-size         upvar `.fut`: 2049 bytes, offset: 1 bytes, alignment: 1 bytes
+print-type-size     variant `Suspend0`: 4100 bytes
+print-type-size         padding: 2049 bytes
+print-type-size         local `.fut`: 2049 bytes, alignment: 1 bytes
 print-type-size         local `..coroutine_field4`: 1 bytes, type: bool
 print-type-size         local `.__awaitee`: 1 bytes, type: {async fn body of wait()}
-print-type-size     variant `Suspend1`: 3076 bytes
-print-type-size         upvar `.fut`: 1025 bytes
-print-type-size         padding: 1025 bytes
+print-type-size     variant `Suspend1`: 6148 bytes
+print-type-size         padding: 4098 bytes
 print-type-size         local `..coroutine_field4`: 1 bytes, alignment: 1 bytes, type: bool
-print-type-size         local `.__awaitee`: 1025 bytes, type: {async fn body of big_fut()}
-print-type-size     variant `Suspend2`: 2052 bytes
-print-type-size         upvar `.fut`: 1025 bytes
-print-type-size         local `.fut`: 1025 bytes
+print-type-size         local `.__awaitee`: 2049 bytes, type: {async fn body of big_fut()}
+print-type-size     variant `Suspend2`: 4100 bytes
+print-type-size         padding: 2049 bytes
+print-type-size         local `.fut`: 2049 bytes, alignment: 1 bytes
 print-type-size         local `..coroutine_field4`: 1 bytes, type: bool
 print-type-size         local `.__awaitee`: 1 bytes, type: {async fn body of wait()}
-print-type-size     variant `Returned`: 1025 bytes
-print-type-size         upvar `.fut`: 1025 bytes
-print-type-size     variant `Panicked`: 1025 bytes
-print-type-size         upvar `.fut`: 1025 bytes
-print-type-size type: `std::mem::ManuallyDrop<{async fn body of big_fut()}>`: 1025 bytes, alignment: 1 bytes
-print-type-size     field `.value`: 1025 bytes
-print-type-size type: `std::mem::MaybeUninit<{async fn body of big_fut()}>`: 1025 bytes, alignment: 1 bytes
-print-type-size     variant `MaybeUninit`: 1025 bytes
+print-type-size     variant `Returned`: 2049 bytes
+print-type-size     variant `Panicked`: 2049 bytes
+print-type-size type: `std::mem::ManuallyDrop<{async fn body of big_fut()}>`: 2049 bytes, alignment: 1 bytes
+print-type-size     field `.value`: 2049 bytes
+print-type-size type: `std::mem::MaybeUninit<{async fn body of big_fut()}>`: 2049 bytes, alignment: 1 bytes
+print-type-size     variant `MaybeUninit`: 2049 bytes
 print-type-size         field `.uninit`: 0 bytes
-print-type-size         field `.value`: 1025 bytes
-print-type-size type: `{async fn body of big_fut()}`: 1025 bytes, alignment: 1 bytes
+print-type-size         field `.value`: 2049 bytes
+print-type-size type: `{async fn body of big_fut()}`: 2049 bytes, alignment: 1 bytes
 print-type-size     discriminant: 1 bytes
 print-type-size     variant `Unresumed`: 1024 bytes
-print-type-size         upvar `.arg`: 1024 bytes
+print-type-size         local `.arg`: 1024 bytes
+print-type-size         upvar `.arg`: 1024 bytes, offset: 1 bytes, alignment: 1 bytes
 print-type-size     variant `Returned`: 1024 bytes
-print-type-size         upvar `.arg`: 1024 bytes
 print-type-size     variant `Panicked`: 1024 bytes
-print-type-size         upvar `.arg`: 1024 bytes
+print-type-size     end padding: 1024 bytes
+print-type-size type: `std::mem::ManuallyDrop<[u8; 1024]>`: 1024 bytes, alignment: 1 bytes
+print-type-size     field `.value`: 1024 bytes
+print-type-size type: `std::mem::MaybeUninit<[u8; 1024]>`: 1024 bytes, alignment: 1 bytes
+print-type-size     variant `MaybeUninit`: 1024 bytes
+print-type-size         field `.uninit`: 0 bytes
+print-type-size         field `.value`: 1024 bytes
 print-type-size type: `std::task::Context<'_>`: 32 bytes, alignment: 8 bytes
 print-type-size     field `.waker`: 8 bytes
 print-type-size     field `.local_waker`: 8 bytes

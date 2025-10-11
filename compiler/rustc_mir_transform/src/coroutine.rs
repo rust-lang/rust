@@ -52,7 +52,9 @@
 
 mod by_move_body;
 mod drop;
-use std::{iter, ops};
+mod relocate_upvars;
+
+use std::ops::Deref;
 
 pub(super) use by_move_body::coroutine_by_move_body_def_id;
 use drop::{
@@ -60,14 +62,16 @@ use drop::{
     create_coroutine_drop_shim_proxy_async, elaborate_coroutine_drops, expand_async_drops,
     has_expandable_async_drops, insert_clean_drop,
 };
+pub(super) use relocate_upvars::RelocateUpvars;
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::unord::UnordMap;
 use rustc_errors::pluralize;
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{CoroutineDesugaring, CoroutineKind};
 use rustc_index::bit_set::{BitMatrix, DenseBitSet, GrowableBitSet};
-use rustc_index::{Idx, IndexVec};
+use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::util::Discr;
@@ -82,13 +86,15 @@ use rustc_mir_dataflow::impls::{
 use rustc_mir_dataflow::{
     Analysis, Results, ResultsCursor, ResultsVisitor, visit_reachable_results,
 };
+use rustc_session::config::PackCoroutineLayout;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::source_map::dummy_spanned;
 use rustc_span::symbol::sym;
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, Symbol, kw};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::TyCtxtInferExt as _;
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode, ObligationCtxt};
+use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument, trace};
 
 use crate::deref_separator::deref_finder;
@@ -101,6 +107,8 @@ struct RenameLocalVisitor<'tcx> {
     to: Local,
     tcx: TyCtxt<'tcx>,
 }
+
+const VARIANT_UNRESUMED: VariantIdx = VariantIdx::from_usize(CoroutineArgs::UNRESUMED);
 
 impl<'tcx> MutVisitor<'tcx> for RenameLocalVisitor<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
@@ -198,8 +206,11 @@ struct TransformVisitor<'tcx> {
     // A map from a suspension point in a block to the locals which have live storage at that point
     storage_liveness: IndexVec<BasicBlock, Option<DenseBitSet<Local>>>,
 
+    // A rev-lookup from basic blocks with yielding terminator to the suspension point index,
+    suspension_point_at_block: UnordMap<BasicBlock, SuspensionPointIdx>,
+
     // A list of suspension points, generated during the transform
-    suspension_points: Vec<SuspensionPoint<'tcx>>,
+    suspension_points: IndexVec<SuspensionPointIdx, Option<SuspensionPoint<'tcx>>>,
 
     // The set of locals that have no `StorageLive`/`StorageDead` annotations.
     always_live_locals: DenseBitSet<Local>,
@@ -402,6 +413,16 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
         // Replace an Local in the remap with a coroutine struct access
         if let Some(&Some((ty, variant_index, idx))) = self.remap.get(place.local) {
             replace_base(place, self.make_field(variant_index, idx, ty), self.tcx);
+        } else if let Place { local: ty::CAPTURE_STRUCT_LOCAL, projection } = *place
+            && let [first @ ProjectionElem::Field(..), rest @ ..] = &**projection
+        {
+            let projections: Vec<_> = [ProjectionElem::Downcast(None, VARIANT_UNRESUMED), *first]
+                .into_iter()
+                .chain(rest.iter().copied())
+                .collect();
+            let new_place =
+                Place::from(ty::CAPTURE_STRUCT_LOCAL).project_deeper(&projections, self.tcx);
+            *place = new_place;
         }
     }
 
@@ -430,8 +451,9 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
             // We must assign the value first in case it gets declared dead below
             self.make_state(v, source_info, is_return, &mut data.statements);
             let state = if let Some((resume, mut resume_arg)) = resume {
-                // Yield
-                let state = CoroutineArgs::RESERVED_VARIANTS + self.suspension_points.len();
+                // This is a `yield`
+                let suspension_point_idx = *self.suspension_point_at_block.get(&block).unwrap();
+                let state = CoroutineArgs::RESERVED_VARIANTS + suspension_point_idx.as_usize();
 
                 // The resume arg target location might itself be remapped if its base local is
                 // live across a yield.
@@ -453,12 +475,8 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
                     }
                 }
 
-                self.suspension_points.push(SuspensionPoint {
-                    state,
-                    resume,
-                    resume_arg,
-                    drop,
-                    storage_liveness,
+                self.suspension_points.get_or_insert_with(suspension_point_idx, || {
+                    SuspensionPoint { state, resume, resume_arg, drop, storage_liveness }
                 });
 
                 VariantIdx::new(state)
@@ -484,19 +502,19 @@ fn make_aggregate_adt<'tcx>(
 }
 
 fn make_coroutine_state_argument_indirect<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let coroutine_ty = body.local_decls.raw[1].ty;
+    let coroutine_ty = body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty;
 
     let ref_coroutine_ty = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, coroutine_ty);
 
     // Replace the by value coroutine argument
-    body.local_decls.raw[1].ty = ref_coroutine_ty;
+    body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty = ref_coroutine_ty;
 
     // Add a deref to accesses of the coroutine state
     SelfArgVisitor::new(tcx, ProjectionElem::Deref).visit_body(body);
 }
 
 fn make_coroutine_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let ref_coroutine_ty = body.local_decls.raw[1].ty;
+    let ref_coroutine_ty = body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty;
 
     let pin_did = tcx.require_lang_item(LangItem::Pin, body.span);
     let pin_adt_ref = tcx.adt_def(pin_did);
@@ -504,7 +522,7 @@ fn make_coroutine_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body
     let pin_ref_coroutine_ty = Ty::new_adt(tcx, pin_adt_ref, args);
 
     // Replace the by ref coroutine argument
-    body.local_decls.raw[1].ty = pin_ref_coroutine_ty;
+    body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty = pin_ref_coroutine_ty;
 
     // Add the Pin field access to accesses of the coroutine state
     SelfArgVisitor::new(tcx, ProjectionElem::Field(FieldIdx::ZERO, ref_coroutine_ty))
@@ -642,15 +660,20 @@ fn transform_gen_context<'tcx>(body: &mut Body<'tcx>) {
     body.arg_count = 1;
 }
 
+#[derive(Debug)]
 struct LivenessInfo {
     /// Which locals are live across any suspension point.
     saved_locals: CoroutineSavedLocals,
 
+    /// Always live locals
+    always_live_locals: DenseBitSet<Local>,
+
     /// The set of saved locals live at each suspension point.
-    live_locals_at_suspension_points: Vec<DenseBitSet<CoroutineSavedLocal>>,
+    live_locals_at_suspension_points:
+        IndexVec<SuspensionPointIdx, DenseBitSet<CoroutineSavedLocal>>,
 
     /// Parallel vec to the above with SourceInfo for each yield terminator.
-    source_info_at_suspension_points: Vec<SourceInfo>,
+    source_info_at_suspension_points: IndexVec<SuspensionPointIdx, SourceInfo>,
 
     /// For every saved local, the set of other saved locals that are
     /// storage-live at the same time as this local. We cannot overlap locals in
@@ -660,6 +683,14 @@ struct LivenessInfo {
     /// For every suspending block, the locals which are storage-live across
     /// that suspension point.
     storage_liveness: IndexVec<BasicBlock, Option<DenseBitSet<Local>>>,
+
+    /// A rev-lookup of basic blocks to the suspension point index
+    suspension_point_at_block: UnordMap<BasicBlock, SuspensionPointIdx>,
+}
+
+rustc_index::newtype_index! {
+    #[debug_format = "suspend_{}"]
+    struct SuspensionPointIdx {}
 }
 
 /// Computes which locals have to be stored in the state-machine for the
@@ -673,12 +704,12 @@ struct LivenessInfo {
 fn locals_live_across_suspend_points<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
-    always_live_locals: &DenseBitSet<Local>,
+    always_live_locals: DenseBitSet<Local>,
     movable: bool,
 ) -> LivenessInfo {
     // Calculate when MIR locals have live storage. This gives us an upper bound of their
     // lifetimes.
-    let mut storage_live = MaybeStorageLive::new(std::borrow::Cow::Borrowed(always_live_locals))
+    let mut storage_live = MaybeStorageLive::new(std::borrow::Cow::Borrowed(&always_live_locals))
         .iterate_to_fixpoint(tcx, body, None)
         .into_results_cursor(body);
 
@@ -711,11 +742,13 @@ fn locals_live_across_suspend_points<'tcx>(
         MaybeLiveLocals.iterate_to_fixpoint(tcx, body, Some("coroutine")).into_results_cursor(body);
 
     let mut storage_liveness_map = IndexVec::from_elem(None, &body.basic_blocks);
-    let mut live_locals_at_suspension_points = Vec::new();
-    let mut source_info_at_suspension_points = Vec::new();
+    let mut live_locals_at_suspension_points = IndexVec::<SuspensionPointIdx, _>::default();
+    let mut source_info_at_suspension_points = IndexVec::default();
     let mut live_locals_at_any_suspension_point = DenseBitSet::new_empty(body.local_decls.len());
+    let mut suspension_point_at_block = UnordMap::default();
 
-    for (block, data) in body.basic_blocks.iter_enumerated() {
+    for &block in body.basic_blocks.reverse_postorder() {
+        let data = &body.basic_blocks[block];
         if let TerminatorKind::Yield { .. } = data.terminator().kind {
             let loc = Location { block, statement_index: data.statements.len() };
 
@@ -749,7 +782,7 @@ fn locals_live_across_suspend_points<'tcx>(
             live_locals.intersect(requires_storage_cursor.get());
 
             // The coroutine argument is ignored.
-            live_locals.remove(SELF_ARG);
+            live_locals.remove(ty::CAPTURE_STRUCT_LOCAL);
 
             debug!("loc = {:?}, live_locals = {:?}", loc, live_locals);
 
@@ -757,8 +790,9 @@ fn locals_live_across_suspend_points<'tcx>(
             // any suspension points
             live_locals_at_any_suspension_point.union(&live_locals);
 
-            live_locals_at_suspension_points.push(live_locals);
+            let idx = live_locals_at_suspension_points.push(live_locals);
             source_info_at_suspension_points.push(data.terminator().source_info);
+            suspension_point_at_block.insert(block, idx);
         }
     }
 
@@ -782,10 +816,12 @@ fn locals_live_across_suspend_points<'tcx>(
 
     LivenessInfo {
         saved_locals,
+        always_live_locals,
         live_locals_at_suspension_points,
         source_info_at_suspension_points,
         storage_conflicts,
         storage_liveness: storage_liveness_map,
+        suspension_point_at_block,
     }
 }
 
@@ -794,6 +830,7 @@ fn locals_live_across_suspend_points<'tcx>(
 /// `CoroutineSavedLocal` is indexed in terms of the elements in this set;
 /// i.e. `CoroutineSavedLocal::new(1)` corresponds to the second local
 /// included in this set.
+#[derive(Debug)]
 struct CoroutineSavedLocals(DenseBitSet<Local>);
 
 impl CoroutineSavedLocals {
@@ -826,7 +863,7 @@ impl CoroutineSavedLocals {
     }
 }
 
-impl ops::Deref for CoroutineSavedLocals {
+impl Deref for CoroutineSavedLocals {
     type Target = DenseBitSet<Local>;
 
     fn deref(&self) -> &Self::Target {
@@ -945,25 +982,46 @@ impl StorageConflictVisitor<'_, '_> {
     }
 }
 
+#[derive(Debug, Copy, Clone)]
+struct UpvarInfo {
+    name: Symbol,
+    span: Span,
+}
+
+#[instrument[level = "debug", skip(body), fields(body = ?body.source)]]
 fn compute_layout<'tcx>(
     liveness: LivenessInfo,
     body: &Body<'tcx>,
+    upvar_tys: &[Ty<'tcx>],
+    upvar_infos: &[UpvarInfo],
+    pack: PackCoroutineLayout,
+    local_upvar_map: &IndexSlice<FieldIdx, Option<Local>>,
 ) -> (
     IndexVec<Local, Option<(Ty<'tcx>, VariantIdx, FieldIdx)>>,
     CoroutineLayout<'tcx>,
     IndexVec<BasicBlock, Option<DenseBitSet<Local>>>,
+    UnordMap<BasicBlock, SuspensionPointIdx>,
 ) {
     let LivenessInfo {
         saved_locals,
+        always_live_locals,
         live_locals_at_suspension_points,
         source_info_at_suspension_points,
         storage_conflicts,
         storage_liveness,
+        suspension_point_at_block,
     } = liveness;
+
+    // We need to later establish the map between upvars in UNRESUMED and locals in other states.
+    let local_upvar_map: UnordMap<_, _> = local_upvar_map
+        .iter_enumerated()
+        .filter_map(|(field, local)| local.map(|local| (local, field)))
+        .collect();
 
     // Gather live local types and their indices.
     let mut locals = IndexVec::<CoroutineSavedLocal, _>::new();
     let mut tys = IndexVec::<CoroutineSavedLocal, _>::new();
+    let mut saved_local_upvar_map = UnordMap::default();
     for (saved_local, local) in saved_locals.iter_enumerated() {
         debug!("coroutine saved local {:?} => {:?}", saved_local, local);
 
@@ -991,7 +1049,52 @@ fn compute_layout<'tcx>(
         debug!(?decl);
 
         tys.push(decl);
+
+        if let Some(&field) = local_upvar_map.get(&local) {
+            saved_local_upvar_map.insert(field, saved_local);
+        }
     }
+    // These are the "saved locals" sourced from the UNRESUMED state.
+    let upvar_saved_locals: IndexVec<FieldIdx, CoroutineSavedLocal> = upvar_tys
+        .iter()
+        .zip(upvar_infos)
+        .map(|(&ty, info)| {
+            tys.push(CoroutineSavedTy {
+                ty,
+                source_info: SourceInfo::outermost(info.span),
+                ignore_for_traits: false,
+            })
+        })
+        .collect();
+    debug!(?upvar_saved_locals);
+    let storage_conflicts = if let Some(&first) = upvar_saved_locals.raw.first()
+        && let Some(&last) = upvar_saved_locals.raw.last()
+    {
+        let mut enlarged_storage_conflicts = BitMatrix::new(tys.len(), tys.len());
+        let mut upvars = DenseBitSet::new_empty(tys.len());
+        let mut ineligibles = upvars.clone();
+        upvars.insert_range(first..=last);
+        for (saved_local, local) in saved_locals.iter_enumerated() {
+            if always_live_locals.contains(local) {
+                ineligibles.insert(saved_local);
+            }
+        }
+        upvars.union(&ineligibles);
+        for row in storage_conflicts.rows() {
+            for column in storage_conflicts.iter(row) {
+                enlarged_storage_conflicts.insert(row, column);
+            }
+        }
+        for &upvar in &upvar_saved_locals {
+            enlarged_storage_conflicts.union_row_with(&upvars, upvar);
+        }
+        for ineligible in ineligibles.iter() {
+            enlarged_storage_conflicts.union_row_with(&upvars, ineligible);
+        }
+        enlarged_storage_conflicts
+    } else {
+        storage_conflicts
+    };
 
     // Leave empty variants for the UNRESUMED, RETURNED, and POISONED states.
     // In debuginfo, these will correspond to the beginning (UNRESUMED) or end
@@ -1008,12 +1111,14 @@ fn compute_layout<'tcx>(
 
     // Build the coroutine variant field list.
     // Create a map from local indices to coroutine struct indices.
+    let variant_fields: [_; CoroutineArgs::RESERVED_VARIANTS] =
+        [upvar_saved_locals.clone(), IndexVec::new(), IndexVec::new()];
     let mut variant_fields: IndexVec<VariantIdx, IndexVec<FieldIdx, CoroutineSavedLocal>> =
-        iter::repeat(IndexVec::new()).take(CoroutineArgs::RESERVED_VARIANTS).collect();
+        variant_fields.into_iter().collect();
     let mut remap = IndexVec::from_elem_n(None, saved_locals.domain_size());
-    for (suspension_point_idx, live_locals) in live_locals_at_suspension_points.iter().enumerate() {
+    for (suspension_point_idx, live_locals) in live_locals_at_suspension_points.iter_enumerated() {
         let variant_index =
-            VariantIdx::from(CoroutineArgs::RESERVED_VARIANTS + suspension_point_idx);
+            VariantIdx::from(CoroutineArgs::RESERVED_VARIANTS + suspension_point_idx.as_usize());
         let mut fields = IndexVec::new();
         for (idx, saved_local) in live_locals.iter().enumerate() {
             fields.push(saved_local);
@@ -1029,29 +1134,43 @@ fn compute_layout<'tcx>(
     }
     debug!("coroutine variant_fields = {:?}", variant_fields);
     debug!("coroutine storage_conflicts = {:#?}", storage_conflicts);
+    debug!(remap = ?remap.debug_map_view_compact());
+    debug!(locals = ?locals.debug_map_view());
 
     let mut field_names = IndexVec::from_elem(None, &tys);
     for var in &body.var_debug_info {
-        let VarDebugInfoContents::Place(place) = &var.value else { continue };
-        let Some(local) = place.as_local() else { continue };
-        let Some(&Some((_, variant, field))) = remap.get(local) else {
-            continue;
-        };
-
-        let saved_local = variant_fields[variant][field];
-        field_names.get_or_insert_with(saved_local, || var.name);
+        debug!(?var);
+        if let VarDebugInfoContents::Place(place) = &var.value
+            && let Some(local) = place.local_or_deref_local()
+            && let Some(&Some((_, variant, field))) = remap.get(local)
+        {
+            let saved_local = variant_fields[variant][field];
+            field_names.get_or_insert_with(saved_local, || var.name);
+        }
     }
+    for (capture, &saved_local) in upvar_infos.iter().zip(&upvar_saved_locals) {
+        field_names.get_or_insert_with(saved_local, || capture.name);
+    }
+    debug!(field_names = ?field_names.debug_map_view());
 
+    let relocated_upvars = upvar_saved_locals
+        .iter_enumerated()
+        .filter_map(|(field, &source)| {
+            saved_local_upvar_map.get(&field).map(|&dest| (source, dest))
+        })
+        .collect();
     let layout = CoroutineLayout {
         field_tys: tys,
         field_names,
         variant_fields,
         variant_source_info,
         storage_conflicts,
+        relocated_upvars,
+        pack,
     };
     debug!(?layout);
 
-    (remap, layout, storage_liveness)
+    (remap, layout, storage_liveness, suspension_point_at_block)
 }
 
 /// Replaces the entry point of `body` with a block that switches on the coroutine discriminant and
@@ -1325,6 +1444,7 @@ fn create_cases<'tcx>(
         .suspension_points
         .iter()
         .filter_map(|point| {
+            let Some(point) = point else { bug!("all suspension points must be resolved now") };
             // Find the target for this suspension point, if applicable
             operation.target_block(point).map(|target| {
                 let mut statements = Vec::new();
@@ -1369,14 +1489,20 @@ pub(crate) fn mir_coroutine_witnesses<'tcx>(
     def_id: LocalDefId,
 ) -> Option<CoroutineLayout<'tcx>> {
     let (body, _) = tcx.mir_promoted(def_id);
-    let body = body.borrow();
-    let body = &*body;
+    let body = &*body.borrow();
 
     // The first argument is the coroutine type passed by value
     let coroutine_ty = body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty;
 
-    let movable = match *coroutine_ty.kind() {
-        ty::Coroutine(def_id, _) => tcx.coroutine_movability(def_id) == hir::Movability::Movable,
+    let (movable, upvar_tys, upvar_infos) = match *coroutine_ty.kind() {
+        ty::Coroutine(def_id, args) => (
+            matches!(tcx.coroutine_movability(def_id), hir::Movability::Movable),
+            args.as_coroutine().upvar_tys(),
+            tcx.closure_captures(def_id.expect_local())
+                .iter()
+                .map(|info| UpvarInfo { name: info.var_ident.name, span: info.var_ident.span })
+                .collect::<SmallVec<[_; 4]>>(),
+        ),
         ty::Error(_) => return None,
         _ => span_bug!(body.span, "unexpected coroutine type {}", coroutine_ty),
     };
@@ -1384,13 +1510,22 @@ pub(crate) fn mir_coroutine_witnesses<'tcx>(
     // The witness simply contains all locals live across suspend points.
 
     let always_live_locals = always_storage_live_locals(body);
-    let liveness_info = locals_live_across_suspend_points(tcx, body, &always_live_locals, movable);
+    debug!(?always_live_locals);
+    let liveness_info = locals_live_across_suspend_points(tcx, body, always_live_locals, movable);
 
     // Extract locals which are live across suspension point into `layout`
     // `remap` gives a mapping from local indices onto coroutine struct indices
     // `storage_liveness` tells us which locals have live storage at suspension points
-    let (_, coroutine_layout, _) = compute_layout(liveness_info, body);
-
+    let (_, coroutine_layout, _, _) = compute_layout(
+        liveness_info,
+        body,
+        upvar_tys,
+        &upvar_infos,
+        // Layout packing only happens at state transformation
+        // and we do not reflect this in analysis
+        PackCoroutineLayout::No,
+        IndexSlice::empty(),
+    );
     check_suspend_tys(tcx, &coroutine_layout, body);
     check_field_tys_sized(tcx, &coroutine_layout, def_id);
 
@@ -1448,20 +1583,51 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
         let old_ret_ty = body.return_ty();
 
         assert!(body.coroutine_drop().is_none() && body.coroutine_drop_async().is_none());
+        let mut local_upvar_map = Default::default();
+        RelocateUpvars::new(!matches!(
+            tcx.sess.opts.unstable_opts.pack_coroutine_layout,
+            rustc_session::config::PackCoroutineLayout::No
+        ))
+        .run(tcx, body, &mut local_upvar_map);
 
         if let Some(dumper) = MirDumper::new(tcx, "coroutine_before", body) {
             dumper.dump_mir(body);
         }
 
         // The first argument is the coroutine type passed by value
-        let coroutine_ty = body.local_decls.raw[1].ty;
+        let coroutine_ty = body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty;
         let coroutine_kind = body.coroutine_kind().unwrap();
 
         // Get the discriminant type and args which typeck computed
-        let ty::Coroutine(_, args) = coroutine_ty.kind() else {
+        let ty::Coroutine(def_id, args) = coroutine_ty.kind() else {
             tcx.dcx().span_bug(body.span, format!("unexpected coroutine type {coroutine_ty}"));
         };
-        let discr_ty = args.as_coroutine().discr_ty(tcx);
+        let upvar_infos = match body.source.instance {
+            ty::InstanceKind::AsyncDropGlue(..) => {
+                smallvec![UpvarInfo { name: kw::SelfLower, span: DUMMY_SP }]
+            }
+            ty::InstanceKind::Item(_) => tcx
+                .closure_captures(def_id.expect_local())
+                .iter()
+                .map(|info| UpvarInfo { name: info.var_ident.name, span: info.var_ident.span })
+                .collect::<SmallVec<[_; 4]>>(),
+            ty::InstanceKind::Intrinsic(..)
+            | ty::InstanceKind::VTableShim(..)
+            | ty::InstanceKind::ReifyShim(..)
+            | ty::InstanceKind::FnPtrShim(..)
+            | ty::InstanceKind::Virtual(..)
+            | ty::InstanceKind::ClosureOnceShim { .. }
+            | ty::InstanceKind::ConstructCoroutineInClosureShim { .. }
+            | ty::InstanceKind::ThreadLocalShim(..)
+            | ty::InstanceKind::FutureDropPollShim(..)
+            | ty::InstanceKind::DropGlue(..)
+            | ty::InstanceKind::CloneShim(..)
+            | ty::InstanceKind::AsyncDropGlueCtorShim(..)
+            | ty::InstanceKind::FnPtrAddrShim(..) => unreachable!(),
+        };
+        let coroutine_args = args.as_coroutine();
+        let discr_ty = coroutine_args.discr_ty(tcx);
+        let upvar_tys = coroutine_args.upvar_tys();
 
         let new_ret_ty = match coroutine_kind {
             CoroutineKind::Desugared(CoroutineDesugaring::Async, _) => {
@@ -1520,9 +1686,9 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
         }
 
         let always_live_locals = always_storage_live_locals(body);
-        let movable = coroutine_kind.movability() == hir::Movability::Movable;
+        let movable = matches!(coroutine_kind.movability(), hir::Movability::Movable);
         let liveness_info =
-            locals_live_across_suspend_points(tcx, body, &always_live_locals, movable);
+            locals_live_across_suspend_points(tcx, body, always_live_locals.clone(), movable);
 
         if tcx.sess.opts.unstable_opts.validate_mir {
             let mut vis = EnsureCoroutineFieldAssignmentsNeverAlias {
@@ -1537,7 +1703,14 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
         // Extract locals which are live across suspension point into `layout`
         // `remap` gives a mapping from local indices onto coroutine struct indices
         // `storage_liveness` tells us which locals have live storage at suspension points
-        let (remap, layout, storage_liveness) = compute_layout(liveness_info, body);
+        let (remap, layout, storage_liveness, suspension_point_at_block) = compute_layout(
+            liveness_info,
+            body,
+            upvar_tys,
+            &upvar_infos,
+            tcx.sess.opts.unstable_opts.pack_coroutine_layout,
+            &local_upvar_map,
+        );
 
         let can_return = can_return(tcx, body, body.typing_env(tcx));
 
@@ -1552,11 +1725,12 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
             remap,
             storage_liveness,
             always_live_locals,
-            suspension_points: Vec::new(),
+            suspension_points: IndexVec::default(),
             old_ret_local,
             discr_ty,
             old_ret_ty,
             old_yield_ty,
+            suspension_point_at_block,
         };
         transform.visit_body(body);
 
