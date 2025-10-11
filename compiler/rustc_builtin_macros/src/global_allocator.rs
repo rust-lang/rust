@@ -151,7 +151,7 @@ impl AllocFnFactory<'_, '_> {
                 self.cx.expr_ident(self.span, ident)
             }
 
-            AllocatorTy::ResultPtr | AllocatorTy::Unit => {
+            AllocatorTy::Never | AllocatorTy::ResultPtr | AllocatorTy::Unit => {
                 panic!("can't convert AllocatorTy to an argument")
             }
         }
@@ -163,7 +163,7 @@ impl AllocFnFactory<'_, '_> {
 
             AllocatorTy::Unit => self.cx.ty(self.span, TyKind::Tup(ThinVec::new())),
 
-            AllocatorTy::Layout | AllocatorTy::Usize | AllocatorTy::Ptr => {
+            AllocatorTy::Layout | AllocatorTy::Never | AllocatorTy::Usize | AllocatorTy::Ptr => {
                 panic!("can't convert `AllocatorTy` to an output")
             }
         }

@@ -7,7 +7,7 @@ LL |     crate::process::abort()
    |
    = note: BACKTRACE:
    = note: inside `std::alloc::rust_oom` at RUSTLIB/std/src/alloc.rs:LL:CC
-   = note: inside `std::alloc::_::__rg_oom` at RUSTLIB/std/src/alloc.rs:LL:CC
+   = note: inside `std::alloc::_::__rust_alloc_error_handler` at RUSTLIB/std/src/alloc.rs:LL:CC
    = note: inside `std::alloc::handle_alloc_error::rt_error` at RUSTLIB/alloc/src/alloc.rs:LL:CC
    = note: inside `std::alloc::handle_alloc_error` at RUSTLIB/alloc/src/alloc.rs:LL:CC
 note: inside `main`

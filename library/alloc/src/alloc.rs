@@ -361,7 +361,7 @@ unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {
 unsafe extern "Rust" {
     // This is the magic symbol to call the global alloc error handler. rustc generates
     // it to call `__rg_oom` if there is a `#[alloc_error_handler]`, or to call the
-    // default implementations below (`__rdl_oom`) otherwise.
+    // default implementations below (`__rdl_alloc_error_handler`) otherwise.
     #[rustc_std_internal_symbol]
     fn __rust_alloc_error_handler(size: usize, align: usize) -> !;
 }
@@ -425,7 +425,7 @@ pub mod __alloc_error_handler {
     // called via generated `__rust_alloc_error_handler` if there is no
     // `#[alloc_error_handler]`.
     #[rustc_std_internal_symbol]
-    pub unsafe fn __rdl_oom(size: usize, _align: usize) -> ! {
+    pub unsafe fn __rdl_alloc_error_handler(size: usize, _align: usize) -> ! {
         unsafe extern "Rust" {
             // This symbol is emitted by rustc next to __rust_alloc_error_handler.
             // Its value depends on the -Zoom={panic,abort} compiler option.

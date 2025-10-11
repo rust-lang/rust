@@ -1,7 +1,9 @@
 use std::collections::hash_map::Entry::*;
 
 use rustc_abi::{CanonAbi, X86Call};
-use rustc_ast::expand::allocator::{ALLOCATOR_METHODS, NO_ALLOC_SHIM_IS_UNSTABLE, global_fn_name};
+use rustc_ast::expand::allocator::{
+    ALLOC_ERROR_HANDLER, ALLOCATOR_METHODS, NO_ALLOC_SHIM_IS_UNSTABLE, global_fn_name,
+};
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE, LocalDefId};
@@ -498,7 +500,7 @@ pub(crate) fn allocator_shim_symbols(
         .iter()
         .map(move |method| mangle_internal_symbol(tcx, global_fn_name(method.name).as_str()))
         .chain([
-            mangle_internal_symbol(tcx, "__rust_alloc_error_handler"),
+            mangle_internal_symbol(tcx, global_fn_name(ALLOC_ERROR_HANDLER).as_str()),
             mangle_internal_symbol(tcx, OomStrategy::SYMBOL),
             mangle_internal_symbol(tcx, NO_ALLOC_SHIM_IS_UNSTABLE),
         ])
