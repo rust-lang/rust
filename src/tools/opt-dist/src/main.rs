@@ -4,7 +4,7 @@ use clap::Parser;
 use log::LevelFilter;
 use utils::io;
 
-use crate::bolt::{bolt_optimize, with_bolt_instrumented};
+use crate::bolt::with_bolt_instrumented;
 use crate::environment::{Environment, EnvironmentBuilder};
 use crate::exec::{Bootstrap, cmd};
 use crate::tests::run_tests;
@@ -341,8 +341,8 @@ fn execute_pipeline(
                 // the final dist build. However, when BOLT optimizes an artifact, it does so *in-place*,
                 // therefore it will actually optimize all the hard links, which means that the final
                 // packaged `libLLVM.so` file *will* be BOLT optimized.
-                bolt_optimize(&llvm_lib, &llvm_profile, env)
-                    .context("Could not optimize LLVM with BOLT")?;
+                // bolt_optimize(&llvm_lib, &llvm_profile, env)
+                //     .context("Could not optimize LLVM with BOLT")?;
 
                 Some(llvm_profile)
             } else {
@@ -362,8 +362,8 @@ fn execute_pipeline(
             print_free_disk_space()?;
 
             // Now optimize the library with BOLT.
-            bolt_optimize(&rustc_lib, &rustc_profile, env)
-                .context("Could not optimize rustc with BOLT")?;
+            // bolt_optimize(&rustc_lib, &rustc_profile, env)
+            //     .context("Could not optimize rustc with BOLT")?;
 
             // LLVM is not being cleared here. Either we built it and we want to use the BOLT-optimized LLVM, or we
             // didn't build it, so we don't want to remove it.
