@@ -5,7 +5,8 @@
 //@ ignore-aarch64: Doesn't work yet.
 //@ ignore-loongarch64: Doesn't work yet.
 //@ ignore-riscv64: Doesn't work yet.
-//@ compile-flags: -g
+// FIXME: It should not be necessary to disable SingleUseConsts
+//@ compile-flags: -g -Zmir-enable-passes=-SingleUseConsts
 
 // gdb-command: run
 // FIXME(#97083): Should we be able to break on initialization of zero-sized types?
@@ -14,12 +15,12 @@
 // gdb-command: next
 // gdb-check:   let d = c = 99;
 // gdb-command: next
-// FIXME(#33013): gdb-check:   let e = "hi bob";
-// FIXME(#33013): gdb-command: next
-// FIXME(#33013): gdb-check:   let f = b"hi bob";
-// FIXME(#33013): gdb-command: next
-// FIXME(#33013): gdb-check:   let g = b'9';
-// FIXME(#33013): gdb-command: next
+// gdb-check:   let e = "hi bob";
+// gdb-command: next
+// gdb-check:   let f = b"hi bob";
+// gdb-command: next
+// gdb-check:   let g = b'9';
+// gdb-command: next
 // FIXME(#33013): gdb-check:   let h = ["whatever"; 8];
 // FIXME(#33013): gdb-command: next
 // gdb-check:   let i = [1,2,3,4];
