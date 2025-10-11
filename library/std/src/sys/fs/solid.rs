@@ -538,6 +538,14 @@ pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {
     Ok(())
 }
 
+pub fn set_times(_p: &Path, _times: FileTimes) -> io::Result<()> {
+    unsupported()
+}
+
+pub fn set_times_nofollow(_p: &Path, _times: FileTimes) -> io::Result<()> {
+    unsupported()
+}
+
 pub fn rmdir(p: &Path) -> io::Result<()> {
     if stat(p)?.file_type().is_dir() {
         error::SolidError::err_if_negative(unsafe { abi::SOLID_FS_Unlink(cstr(p)?.as_ptr()) })
