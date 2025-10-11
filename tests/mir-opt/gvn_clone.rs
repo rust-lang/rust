@@ -1,5 +1,5 @@
 //@ test-mir-pass: GVN
-//@ compile-flags: -Zmir-enable-passes=+InstSimplify-before-inline
+//@ compile-flags: -Zmir-enable-passes=+InstSimplify-before-inline,+SimplifyCfg-after-unreachable-enum-branching
 
 // Check if we have transformed the default clone to copy in the specific pipeline.
 
