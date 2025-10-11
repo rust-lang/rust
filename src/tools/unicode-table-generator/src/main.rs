@@ -264,9 +264,9 @@ fn main() {
     }
     table_file.push_str(&format!("// {:16}: {:5} bytes\n", "Total", total_bytes));
 
-    // Include the range search function
+    // Include the runtime functions
     table_file.push('\n');
-    table_file.push_str(include_str!("range_search.rs"));
+    table_file.push_str("use super::rt::*;");
     table_file.push('\n');
 
     table_file.push_str(&version());

@@ -1,5 +1,7 @@
+//! Runtime support for `unicode_data`.
+
 #[inline(always)]
-const fn bitset_search<
+pub(super) const fn bitset_search<
     const N: usize,
     const CHUNK_SIZE: usize,
     const N1: usize,
@@ -46,10 +48,10 @@ const fn bitset_search<
 }
 
 #[repr(transparent)]
-struct ShortOffsetRunHeader(u32);
+pub(super) struct ShortOffsetRunHeader(pub(super) u32);
 
 impl ShortOffsetRunHeader {
-    const fn new(start_index: usize, prefix_sum: u32) -> Self {
+    pub(super) const fn new(start_index: usize, prefix_sum: u32) -> Self {
         assert!(start_index < (1 << 11));
         assert!(prefix_sum < (1 << 21));
 
@@ -57,12 +59,12 @@ impl ShortOffsetRunHeader {
     }
 
     #[inline]
-    const fn start_index(&self) -> usize {
+    pub(super) const fn start_index(&self) -> usize {
         (self.0 >> 21) as usize
     }
 
     #[inline]
-    const fn prefix_sum(&self) -> u32 {
+    pub(super) const fn prefix_sum(&self) -> u32 {
         self.0 & ((1 << 21) - 1)
     }
 }
@@ -72,7 +74,7 @@ impl ShortOffsetRunHeader {
 /// - The last element of `short_offset_runs` must be greater than `std::char::MAX`.
 /// - The start indices of all elements in `short_offset_runs` must be less than `OFFSETS`.
 #[inline(always)]
-unsafe fn skip_search<const SOR: usize, const OFFSETS: usize>(
+pub(super) unsafe fn skip_search<const SOR: usize, const OFFSETS: usize>(
     needle: char,
     short_offset_runs: &[ShortOffsetRunHeader; SOR],
     offsets: &[u8; OFFSETS],

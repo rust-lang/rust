@@ -18,6 +18,7 @@ pub(crate) use unicode_data::white_space::lookup as White_Space;
 
 pub(crate) mod printable;
 
+mod rt;
 #[allow(unreachable_pub)]
 mod unicode_data;
 
