@@ -1095,8 +1095,13 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                     NullOp::SizeOf => write!(fmt, "SizeOf({t})"),
                     NullOp::AlignOf => write!(fmt, "AlignOf({t})"),
                     NullOp::OffsetOf(fields) => write!(fmt, "OffsetOf({t}, {fields:?})"),
-                    NullOp::UbChecks => write!(fmt, "UbChecks()"),
-                    NullOp::ContractChecks => write!(fmt, "ContractChecks()"),
+                    NullOp::RuntimeChecks(RuntimeChecks::UbChecks) => write!(fmt, "UbChecks()"),
+                    NullOp::RuntimeChecks(RuntimeChecks::ContractChecks) => {
+                        write!(fmt, "ContractChecks()")
+                    }
+                    NullOp::RuntimeChecks(RuntimeChecks::OverflowChecks) => {
+                        write!(fmt, "OverflowChecks()")
+                    }
                 }
             }
             ThreadLocalRef(did) => ty::tls::with(|tcx| {

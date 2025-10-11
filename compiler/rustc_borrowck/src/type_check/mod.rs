@@ -1056,8 +1056,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     ConstraintCategory::SizedBound,
                 );
             }
-            &Rvalue::NullaryOp(NullOp::ContractChecks, _) => {}
-            &Rvalue::NullaryOp(NullOp::UbChecks, _) => {}
+            &Rvalue::NullaryOp(NullOp::RuntimeChecks(_), _) => {}
 
             Rvalue::ShallowInitBox(_operand, ty) => {
                 let trait_ref =
