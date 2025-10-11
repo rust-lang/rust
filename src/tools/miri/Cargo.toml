@@ -32,9 +32,8 @@ serde_json = { version = "1.0", optional = true }
 # Copied from `compiler/rustc/Cargo.toml`.
 # But only for some targets, it fails for others. Rustc configures this in its CI, but we can't
 # easily use that since we support of-tree builds.
-[target.'cfg(any(target_os = "linux", target_os = "macos"))'.dependencies.tikv-jemalloc-sys]
-version = "0.6.0"
-features = ['unprefixed_malloc_on_supported_platforms']
+[target.'cfg(all(target_os = "linux", target_arch = "x86_64"))'.dependencies]
+libtcmalloc-sys = { git = "https://github.com/0xdeafbeef/tcmalloc-better.git", rev = "781a440a0919", default-features = false, features = ["unprefixed_malloc_on_supported_platforms", "32k_pages", "override_cpp_operators"] }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

@@ -493,8 +493,10 @@ checksum = "c469d952047f47f91b68d1cba3f10d63c11d73e4636f24f08daf0278abf01c4d"
 dependencies = [
  "android-tzdata",
  "iana-time-zone",
+ "js-sys",
  "num-traits",
  "serde",
+ "wasm-bindgen",
  "windows-link",
 ]
 
@@ -583,6 +585,7 @@ dependencies = [
  "declare_clippy_lint",
  "filetime",
  "itertools",
+ "libtcmalloc-sys",
  "pulldown-cmark",
  "regex",
  "rustc_tools_util 0.4.2",
@@ -1194,6 +1197,15 @@ name = "dissimilar"
 version = "1.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8975ffdaa0ef3661bfe02dbdcc06c9f829dfafe6a3c474de366a8d5e44276921"
+
+[[package]]
+name = "document-features"
+version = "0.2.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "95249b50c6c185bee49034bcb378a49dc2b5dff0be90ff6616d31d64febab05d"
+dependencies = [
+ "litrs",
+]
 
 [[package]]
 name = "dyn-clone"
@@ -2164,6 +2176,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "libtcmalloc-sys"
+version = "0.1.14"
+source = "git+https://github.com/0xdeafbeef/tcmalloc-better.git?rev=781a440a0919#781a440a091933e35ecbfd082fc0393bea6481ad"
+dependencies = [
+ "cc",
+ "document-features",
+ "libc",
+ "patch",
+ "strum 0.27.2",
+]
+
+[[package]]
 name = "libz-sys"
 version = "1.1.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2214,6 +2238,12 @@ name = "litemap"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "241eaef5fd12c88705a01fc1066c48c4b36e0dd4377dcdc7ec3942cea7a69956"
+
+[[package]]
+name = "litrs"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f5e54036fe321fd421e10d732f155734c4e4afd610dd556d9a82833ab3ee0bed"
 
 [[package]]
 name = "lld-wrapper"
@@ -2394,6 +2424,7 @@ dependencies = [
  "libc",
  "libffi",
  "libloading",
+ "libtcmalloc-sys",
  "measureme",
  "nix",
  "rand 0.9.2",
@@ -2403,7 +2434,6 @@ dependencies = [
  "serde_json",
  "smallvec",
  "tempfile",
- "tikv-jemalloc-sys",
  "ui_test",
 ]
 
@@ -2437,6 +2467,17 @@ checksum = "d273983c5a657a70a3e8f2a01329822f3b8c8172b73826411a55751e404a0a4a"
 dependencies = [
  "memchr",
  "minimal-lexical",
+]
+
+[[package]]
+name = "nom_locate"
+version = "4.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e3c83c053b0713da60c5b8de47fe8e494fe3ece5267b2f23090a07a053ba8f3"
+dependencies = [
+ "bytecount",
+ "memchr",
+ "nom",
 ]
 
 [[package]]
@@ -2752,6 +2793,17 @@ dependencies = [
  "redox_syscall",
  "smallvec",
  "windows-targets 0.52.6",
+]
+
+[[package]]
+name = "patch"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "15c07fdcdd8b05bdcf2a25bc195b6c34cbd52762ada9dba88bf81e7686d14e7a"
+dependencies = [
+ "chrono",
+ "nom",
+ "nom_locate",
 ]
 
 [[package]]
@@ -3287,13 +3339,13 @@ checksum = "e4ee29da77c5a54f42697493cd4c9b9f31b74df666a6c04dfc4fde77abe0438b"
 name = "rustc-main"
 version = "0.0.0"
 dependencies = [
+ "libtcmalloc-sys",
  "rustc_codegen_ssa",
  "rustc_driver",
  "rustc_driver_impl",
  "rustc_public",
  "rustc_public_bridge",
  "rustc_windows_rc",
- "tikv-jemalloc-sys",
 ]
 
 [[package]]
@@ -4783,6 +4835,7 @@ dependencies = [
  "expect-test",
  "indexmap",
  "itertools",
+ "libtcmalloc-sys",
  "minifier",
  "pulldown-cmark-escape",
  "regex",
@@ -5203,8 +5256,8 @@ dependencies = [
  "nom",
  "serde",
  "spdx-expression",
- "strum",
- "strum_macros",
+ "strum 0.24.1",
+ "strum_macros 0.24.3",
  "thiserror 1.0.69",
  "uuid",
 ]
@@ -5281,6 +5334,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "063e6045c0e62079840579a7e47a355ae92f60eb74daaf156fb1e84ba164e63f"
 
 [[package]]
+name = "strum"
+version = "0.27.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "af23d6f6c1a224baef9d3f61e287d2761385a5b88fdab4eb4c6f11aeb54c4bcf"
+dependencies = [
+ "strum_macros 0.27.2",
+]
+
+[[package]]
 name = "strum_macros"
 version = "0.24.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5291,6 +5353,18 @@ dependencies = [
  "quote",
  "rustversion",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "strum_macros"
+version = "0.27.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7695ce3845ea4b33927c055a39dc438a45b059f7c1b3d91d38d10355fb8cbca7"
+dependencies = [
+ "heck 0.5.0",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.106",
 ]
 
 [[package]]
@@ -5522,16 +5596,6 @@ dependencies = [
 [[package]]
 name = "tier-check"
 version = "0.1.0"
-
-[[package]]
-name = "tikv-jemalloc-sys"
-version = "0.6.0+5.3.0-1-ge13ca993e8ccb9ba9847cc330696e02839f328f7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd3c60906412afa9c2b5b5a48ca6a5abe5736aec9eb48ad05037a677e52e4e2d"
-dependencies = [
- "cc",
- "libc",
-]
 
 [[package]]
 name = "tinystr"

@@ -10,8 +10,8 @@ edition = "2024"
 name = "rustdoc_tool_binary"
 path = "main.rs"
 
+[features]
+jemalloc = []
+
 [dependencies]
 rustdoc = { path = "../../librustdoc" }
-
-[features]
-jemalloc = ['rustdoc/jemalloc']

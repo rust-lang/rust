@@ -32,6 +32,9 @@ termize = "0.2"
 color-print = "0.3.4"
 anstream = "0.6.18"
 
+[target.'cfg(all(target_os = "linux", target_arch = "x86_64"))'.dependencies]
+libtcmalloc-sys = { git = "https://github.com/0xdeafbeef/tcmalloc-better.git", rev = "781a440a0919", default-features = false, features = ["unprefixed_malloc_on_supported_platforms", "32k_pages", "override_cpp_operators"] }
+
 [dev-dependencies]
 cargo_metadata = "0.18.1"
 ui_test = "0.30.2"
@@ -56,7 +59,6 @@ rustc_tools_util = { path = "rustc_tools_util", version = "0.4.2" }
 [features]
 integration = ["dep:tempfile"]
 internal = ["dep:clippy_lints_internal", "dep:tempfile"]
-jemalloc = []
 
 [package.metadata.rust-analyzer]
 # This package uses #[feature(rustc_private)]

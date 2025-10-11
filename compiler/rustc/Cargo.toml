@@ -20,15 +20,14 @@ rustc_public = { path = "../rustc_public" }
 rustc_public_bridge = { path = "../rustc_public_bridge" }
 # tidy-alphabetical-end
 
-[dependencies.tikv-jemalloc-sys]
-version = "0.6.0"
-optional = true
-features = ['unprefixed_malloc_on_supported_platforms']
+
+[target.'cfg(all(target_os = "linux", target_arch = "x86_64"))'.dependencies]
+libtcmalloc-sys = { git = "https://github.com/0xdeafbeef/tcmalloc-better.git", rev = "781a440a0919", default-features = false, features = ["unprefixed_malloc_on_supported_platforms", "32k_pages", "override_cpp_operators"] }
 
 [features]
 # tidy-alphabetical-start
 check_only = ['rustc_driver_impl/check_only']
-jemalloc = ['dep:tikv-jemalloc-sys']
+jemalloc = []
 llvm = ['rustc_driver_impl/llvm']
 llvm_enzyme = ['rustc_driver_impl/llvm_enzyme']
 max_level_info = ['rustc_driver_impl/max_level_info']

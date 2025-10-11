@@ -397,47 +397,47 @@ fn parse_range(val: &str) -> Result<Range<u32>, &'static str> {
     Ok(from..to)
 }
 
-#[cfg(any(target_os = "linux", target_os = "macos"))]
-fn jemalloc_magic() {
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+fn tcmalloc_magic() {
     // These magic runes are copied from
     // <https://github.com/rust-lang/rust/blob/e89bd9428f621545c979c0ec686addc6563a394e/compiler/rustc/src/main.rs#L39>.
     // See there for further comments.
     use std::os::raw::{c_int, c_void};
 
-    use tikv_jemalloc_sys as jemalloc_sys;
-
-    #[used]
-    static _F1: unsafe extern "C" fn(usize, usize) -> *mut c_void = jemalloc_sys::calloc;
-    #[used]
-    static _F2: unsafe extern "C" fn(*mut *mut c_void, usize, usize) -> c_int =
-        jemalloc_sys::posix_memalign;
-    #[used]
-    static _F3: unsafe extern "C" fn(usize, usize) -> *mut c_void = jemalloc_sys::aligned_alloc;
-    #[used]
-    static _F4: unsafe extern "C" fn(usize) -> *mut c_void = jemalloc_sys::malloc;
-    #[used]
-    static _F5: unsafe extern "C" fn(*mut c_void, usize) -> *mut c_void = jemalloc_sys::realloc;
-    #[used]
-    static _F6: unsafe extern "C" fn(*mut c_void) = jemalloc_sys::free;
-
-    // On OSX, jemalloc doesn't directly override malloc/free, but instead
-    // registers itself with the allocator's zone APIs in a ctor. However,
-    // the linker doesn't seem to consider ctors as "used" when statically
-    // linking, so we need to explicitly depend on the function.
-    #[cfg(target_os = "macos")]
-    {
-        unsafe extern "C" {
-            fn _rjem_je_zone_register();
-        }
-
-        #[used]
-        static _F7: unsafe extern "C" fn() = _rjem_je_zone_register;
+    extern "C" {
+        fn calloc(count: usize, size: usize) -> *mut c_void;
+        fn posix_memalign(ptr: *mut *mut c_void, alignment: usize, size: usize) -> c_int;
+        fn aligned_alloc(alignment: usize, size: usize) -> *mut c_void;
+        fn malloc(size: usize) -> *mut c_void;
+        fn realloc(ptr: *mut c_void, size: usize) -> *mut c_void;
+        fn free(ptr: *mut c_void);
     }
+
+    #[used]
+    static _TCMALLOC_BRIDGE_ALLOC: unsafe extern "C" fn(usize, usize) -> *mut c_void =
+        libtcmalloc_sys::BridgeTCMallocInternalNewAlignedNothrow;
+    #[used]
+    static _TCMALLOC_BRIDGE_DELETE_ALIGNED: unsafe extern "C" fn(*mut c_void, usize) =
+        libtcmalloc_sys::TCMallocInternalDeleteAligned;
+
+    #[used]
+    static _TCMALLOC_CALLOC: unsafe extern "C" fn(usize, usize) -> *mut c_void = calloc;
+    #[used]
+    static _TCMALLOC_POSIX_MEMALIGN: unsafe extern "C" fn(*mut *mut c_void, usize, usize) -> c_int =
+        posix_memalign;
+    #[used]
+    static _TCMALLOC_ALIGNED_ALLOC: unsafe extern "C" fn(usize, usize) -> *mut c_void = aligned_alloc;
+    #[used]
+    static _TCMALLOC_MALLOC: unsafe extern "C" fn(usize) -> *mut c_void = malloc;
+    #[used]
+    static _TCMALLOC_REALLOC: unsafe extern "C" fn(*mut c_void, usize) -> *mut c_void = realloc;
+    #[used]
+    static _TCMALLOC_FREE: unsafe extern "C" fn(*mut c_void) = free;
 }
 
 fn main() {
-    #[cfg(any(target_os = "linux", target_os = "macos"))]
-    jemalloc_magic();
+    #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+    tcmalloc_magic();
 
     let early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
 
