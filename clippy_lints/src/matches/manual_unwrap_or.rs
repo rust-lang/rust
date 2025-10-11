@@ -32,7 +32,7 @@ fn get_some(cx: &LateContext<'_>, pat: &Pat<'_>) -> Option<HirId> {
     }
 }
 
-fn get_none<'tcx>(cx: &LateContext<'_>, arm: &Arm<'tcx>) -> Option<&'tcx Expr<'tcx>> {
+fn get_none<'tcx>(cx: &LateContext<'_>, arm: &Arm<'tcx>, allow_wildcard: bool) -> Option<&'tcx Expr<'tcx>> {
     if let PatKind::Expr(PatExpr { kind: PatExprKind::Path(QPath::Resolved(_, path)), .. }) = arm.pat.kind
         && let Some(def_id) = path.res.opt_def_id()
         // Since it comes from a pattern binding, we need to get the parent to actually match
@@ -49,7 +49,9 @@ fn get_none<'tcx>(cx: &LateContext<'_>, arm: &Arm<'tcx>) -> Option<&'tcx Expr<'t
         && cx.tcx.lang_items().get(LangItem::ResultErr) == Some(def_id)
     {
         Some(arm.body)
-    } else if let PatKind::Wild = arm.pat.kind {
+    } else if let PatKind::Wild = arm.pat.kind
+        && allow_wildcard
+    {
         // We consider that the `Some` check will filter it out if it's not right.
         Some(arm.body)
     } else {
@@ -63,11 +65,11 @@ fn get_some_and_none_bodies<'tcx>(
     arm2: &'tcx Arm<'tcx>,
 ) -> Option<((&'tcx Expr<'tcx>, HirId), &'tcx Expr<'tcx>)> {
     if let Some(binding_id) = get_some(cx, arm1.pat)
-        && let Some(body_none) = get_none(cx, arm2)
+        && let Some(body_none) = get_none(cx, arm2, true)
     {
         Some(((arm1.body, binding_id), body_none))
-    } else if let Some(binding_id) = get_some(cx, arm2.pat)
-        && let Some(body_none) = get_none(cx, arm1)
+    } else if let Some(body_none) = get_none(cx, arm1, false)
+        && let Some(binding_id) = get_some(cx, arm2.pat)
     {
         Some(((arm2.body, binding_id), body_none))
     } else {
