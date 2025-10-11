@@ -132,9 +132,8 @@ where
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 impl<T: [const] Eq, const N: usize> const Eq for [T; N] {}
 
-#[const_trait]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-trait SpecArrayEq<Other, const N: usize>: Sized {
+const trait SpecArrayEq<Other, const N: usize>: Sized {
     fn spec_eq(a: &[Self; N], b: &[Other; N]) -> bool;
     fn spec_ne(a: &[Self; N], b: &[Other; N]) -> bool;
 }
