@@ -16,7 +16,7 @@ use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_span::{DUMMY_SP, Span};
 use tracing::debug;
 
-use crate::ty::TyCtxt;
+use crate::ty::{self, TyCtxt};
 
 /// Represents a statically-describable scope that can be used to
 /// bound the lifetime/region for values.
@@ -302,8 +302,8 @@ impl ScopeTree {
 
     /// Returns the scope of non-lifetime-extended temporaries within a given scope, as well as
     /// whether we've recorded a potential backwards-incompatible change to lint on.
-    /// Returns `None` when no enclosing temporary scope is found, such as for static items.
-    pub fn default_temporary_scope(&self, inner: Scope) -> (Option<Scope>, Option<Scope>) {
+    /// Panics if no enclosing temporary scope is found.
+    pub fn default_temporary_scope(&self, inner: Scope) -> (Scope, Option<Scope>) {
         let mut id = inner;
         let mut backwards_incompatible = None;
 
@@ -311,11 +311,11 @@ impl ScopeTree {
             match p.data {
                 ScopeData::Destruction => {
                     debug!("temporary_scope({inner:?}) = {id:?} [enclosing]");
-                    return (Some(id), backwards_incompatible);
+                    return (id, backwards_incompatible);
                 }
                 ScopeData::IfThenRescope | ScopeData::MatchGuard => {
                     debug!("temporary_scope({inner:?}) = {p:?} [enclosing]");
-                    return (Some(p), backwards_incompatible);
+                    return (p, backwards_incompatible);
                 }
                 ScopeData::Node
                 | ScopeData::CallSite
@@ -335,7 +335,6 @@ impl ScopeTree {
             }
         }
 
-        debug!("temporary_scope({inner:?}) = None");
-        (None, backwards_incompatible)
+        span_bug!(ty::tls::with(|tcx| inner.span(tcx, self)), "no enclosing temporary scope")
     }
 }
