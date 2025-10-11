@@ -1,11 +1,10 @@
 pub mod cursor;
 
 use self::cursor::{Capture, Cursor};
-use crate::utils::{ErrAction, File, Scoped, expect_action};
+use crate::utils::{ErrAction, File, Scoped, expect_action, walk_dir_no_dot_or_target};
 use core::range::Range;
 use std::fs;
-use std::path::{Path, PathBuf};
-use walkdir::{DirEntry, WalkDir};
+use std::path::{self, Path, PathBuf};
 
 pub struct ParseCxImpl;
 pub type ParseCx<'cx> = &'cx mut ParseCxImpl;
@@ -43,18 +42,38 @@ impl ParseCxImpl {
         let mut contents = String::new();
         for e in expect_action(fs::read_dir("."), ErrAction::Read, ".") {
             let e = expect_action(e, ErrAction::Read, ".");
-            if !expect_action(e.file_type(), ErrAction::Read, ".").is_dir() {
-                continue;
-            }
-            let Ok(mut name) = e.file_name().into_string() else {
+
+            // Skip if this isn't a lint crate's directory.
+            let mut crate_path = if expect_action(e.file_type(), ErrAction::Read, ".").is_dir()
+                && let Ok(crate_path) = e.file_name().into_string()
+                && crate_path.starts_with("clippy_lints")
+                && crate_path != "clippy_lints_internal"
+            {
+                crate_path
+            } else {
                 continue;
             };
-            if name.starts_with("clippy_lints") && name != "clippy_lints_internal" {
-                name.push_str("/src");
-                for (file, module) in read_src_with_module(name.as_ref()) {
+
+            crate_path.push(path::MAIN_SEPARATOR);
+            crate_path.push_str("src");
+            for e in walk_dir_no_dot_or_target(&crate_path) {
+                let e = expect_action(e, ErrAction::Read, &crate_path);
+                if let Some(path) = e.path().to_str()
+                    && let Some(path) = path.strip_suffix(".rs")
+                    && let Some(path) = path.get(crate_path.len() + 1..)
+                {
+                    let module = if path == "lib" {
+                        String::new()
+                    } else {
+                        let path = path
+                            .strip_suffix("mod")
+                            .and_then(|x| x.strip_suffix(path::MAIN_SEPARATOR))
+                            .unwrap_or(path);
+                        path.replace(['/', '\\'], "::")
+                    };
                     parse_clippy_lint_decls(
-                        file.path(),
-                        File::open_read_to_cleared_string(file.path(), &mut contents),
+                        e.path(),
+                        File::open_read_to_cleared_string(e.path(), &mut contents),
                         &module,
                         &mut lints,
                     );
@@ -130,37 +149,6 @@ impl ParseCxImpl {
         renamed.sort_by(|lhs, rhs| lhs.old_name.cmp(&rhs.old_name));
         (deprecated, renamed)
     }
-}
-
-/// Reads the source files from the given root directory
-fn read_src_with_module(src_root: &Path) -> impl use<'_> + Iterator<Item = (DirEntry, String)> {
-    WalkDir::new(src_root).into_iter().filter_map(move |e| {
-        let e = expect_action(e, ErrAction::Read, src_root);
-        let path = e.path().as_os_str().as_encoded_bytes();
-        if let Some(path) = path.strip_suffix(b".rs")
-            && let Some(path) = path.get(src_root.as_os_str().len() + 1..)
-        {
-            if path == b"lib" {
-                Some((e, String::new()))
-            } else {
-                let path = if let Some(path) = path.strip_suffix(b"mod")
-                    && let Some(path) = path.strip_suffix(b"/").or_else(|| path.strip_suffix(b"\\"))
-                {
-                    path
-                } else {
-                    path
-                };
-                if let Ok(path) = str::from_utf8(path) {
-                    let path = path.replace(['/', '\\'], "::");
-                    Some((e, path))
-                } else {
-                    None
-                }
-            }
-        } else {
-            None
-        }
-    })
 }
 
 /// Parse a source file looking for `declare_clippy_lint` macro invocations.

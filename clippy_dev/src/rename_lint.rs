@@ -127,7 +127,7 @@ pub fn rename<'cx>(cx: ParseCx<'cx>, clippy_version: Version, old_name: &'cx str
     }
 
     let mut update_fn = file_update_fn(old_name, new_name, mod_edit);
-    for e in walk_dir_no_dot_or_target() {
+    for e in walk_dir_no_dot_or_target(".") {
         let e = expect_action(e, ErrAction::Read, ".");
         if e.path().as_os_str().as_encoded_bytes().ends_with(b".rs") {
             updater.update_file(e.path(), &mut update_fn);
