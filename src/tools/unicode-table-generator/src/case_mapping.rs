@@ -51,6 +51,7 @@ fn generate_tables(case: &str, data: &BTreeMap<u32, [u32; 3]>) -> (String, usize
     let mut size = 0;
 
     size += size_of_val(mappings.as_slice());
+    writeln!(tables, "#[rustfmt::skip]").unwrap();
     write!(
         tables,
         "static {}CASE_TABLE: &[(char, u32); {}] = &[{}];",
@@ -63,6 +64,7 @@ fn generate_tables(case: &str, data: &BTreeMap<u32, [u32; 3]>) -> (String, usize
     tables.push_str("\n\n");
 
     size += size_of_val(multis.as_slice());
+    writeln!(tables, "#[rustfmt::skip]").unwrap();
     write!(
         tables,
         "static {}CASE_TABLE_MULTI: &[[char; 3]; {}] = &[{}];",
