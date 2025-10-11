@@ -2547,6 +2547,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             "you must specify a type for this binding, like `{concrete_type}`",
                         );
 
+                        // FIXME: Maybe FileName::Anon should also be handled,
+                        // otherwise there would be no suggestion if the source is STDIN for example.
                         match (filename, parent_node) {
                             (
                                 FileName::Real(_),
