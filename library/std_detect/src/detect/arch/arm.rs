@@ -5,7 +5,11 @@ features! {
     @CFG: target_arch = "arm";
     @MACRO_NAME: is_arm_feature_detected;
     @MACRO_ATTRS:
-    /// Checks if `arm` feature is enabled.
+    /// Checks whether an `arm` feature is enabled.
+    ///
+    /// If the feature has been statically enabled for the whole crate (e.g. with
+    /// `-Ctarget-feature`), this macro expands to `true`. Otherwise it performs a
+    /// runtime check.
     #[unstable(feature = "stdarch_arm_feature_detection", issue = "111190")]
     @NO_RUNTIME_DETECTION: "v7";
     @NO_RUNTIME_DETECTION: "vfp2";

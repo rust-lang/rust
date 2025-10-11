@@ -20,13 +20,13 @@ features! {
     @CFG: any(target_arch = "x86", target_arch = "x86_64");
     @MACRO_NAME: is_x86_feature_detected;
     @MACRO_ATTRS:
-    /// A macro to test at *runtime* whether a CPU feature is available on
+    /// A macro to test at whether a CPU feature is available on
     /// x86/x86-64 platforms.
     ///
-    /// This macro is provided in the standard library and will detect at runtime
-    /// whether the specified CPU feature is detected. This does **not** resolve at
-    /// compile time unless the specified feature is already enabled for the entire
-    /// crate. Runtime detection currently relies mostly on the `cpuid` instruction.
+    /// If the feature has been statically enabled for the whole crate (e.g. with
+    /// `-Ctarget-feature`), this macro expands to `true`. Otherwise it performs a
+    /// runtime check. Runtime detection currently relies mostly on the `cpuid`
+    /// instruction.
     ///
     /// This macro only takes one argument which is a string literal of the feature
     /// being tested for. The feature names supported are the lowercase versions of

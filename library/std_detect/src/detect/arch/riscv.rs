@@ -5,8 +5,11 @@ features! {
     @CFG: any(target_arch = "riscv32", target_arch = "riscv64");
     @MACRO_NAME: is_riscv_feature_detected;
     @MACRO_ATTRS:
-    /// A macro to test at *runtime* whether instruction sets are available on
-    /// RISC-V platforms.
+    /// A macro to test whether instruction sets are available on RISC-V platforms.
+    ///
+    /// If the feature has been statically enabled for the whole crate (e.g. with
+    /// `-Ctarget-feature`), this macro expands to `true`. Otherwise it performs a
+    /// runtime check.
     ///
     /// RISC-V standard defined the base sets and the extension sets.
     /// The base sets are RV32I, RV64I, RV32E or RV128I. Any RISC-V platform

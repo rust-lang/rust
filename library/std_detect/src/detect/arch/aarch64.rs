@@ -5,12 +5,17 @@ features! {
     @CFG: any(target_arch = "aarch64", target_arch = "arm64ec");
     @MACRO_NAME: is_aarch64_feature_detected;
     @MACRO_ATTRS:
-    /// This macro tests, at runtime, whether an `aarch64` feature is enabled on aarch64 platforms.
-    /// Currently most features are only supported on linux-based platforms.
+    /// This macro tests whether an `aarch64` feature is enabled on aarch64 platforms.
+    ///
+    /// If the feature has been statically enabled for the whole crate (e.g. with
+    /// `-Ctarget-feature`), this macro expands to `true`. Otherwise it performs a
+    /// runtime check.
     ///
     /// This macro takes one argument which is a string literal of the feature being tested for.
     /// The feature names are mostly taken from their FEAT_* definitions in the [ARM Architecture
     /// Reference Manual][docs].
+    ///
+    /// Currently most features are only supported on linux-based platforms.
     ///
     /// ## Supported arguments
     ///

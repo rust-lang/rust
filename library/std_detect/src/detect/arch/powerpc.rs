@@ -5,7 +5,11 @@ features! {
     @CFG: target_arch = "powerpc";
     @MACRO_NAME: is_powerpc_feature_detected;
     @MACRO_ATTRS:
-    /// Checks if `powerpc` feature is enabled.
+    /// Checks a if `powerpc` feature is enabled.
+    ///
+    /// If the feature has been statically enabled for the whole crate (e.g. with
+    /// `-Ctarget-feature`), this macro expands to `true`. Otherwise it performs a
+    /// runtime check.
     #[unstable(feature = "stdarch_powerpc_feature_detection", issue = "111191")]
     @FEATURE: #[unstable(feature = "stdarch_powerpc_feature_detection", issue = "111191")] altivec: "altivec";
     /// Altivec

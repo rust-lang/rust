@@ -5,7 +5,12 @@ features! {
     @CFG: any(target_arch = "loongarch32", target_arch = "loongarch64");
     @MACRO_NAME: is_loongarch_feature_detected;
     @MACRO_ATTRS:
-    /// Checks if `loongarch` feature is enabled.
+    /// Checks whether a `loongarch` feature is enabled.
+    ///
+    /// If the feature has been statically enabled for the whole crate (e.g. with
+    /// `-Ctarget-feature`), this macro expands to `true`. Otherwise it performs a
+    /// runtime check.
+    ///
     /// Supported arguments are:
     ///
     /// * `"32s"`
