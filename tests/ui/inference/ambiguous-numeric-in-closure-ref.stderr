@@ -1,0 +1,16 @@
+error[E0689]: can't call method `pow` on ambiguous numeric type `{integer}`
+  --> $DIR/ambiguous-numeric-in-closure-ref.rs:6:35
+   |
+LL |     let _ = (0..10).filter(|&v| v.pow(2) > 0);
+   |                              -    ^^^
+   |                              |
+   |                              you must specify a type for this binding
+   |
+help: specify the type in the closure argument list
+   |
+LL |     let _ = (0..10).filter(|&v: &i32| v.pow(2) > 0);
+   |                               ++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0689`.

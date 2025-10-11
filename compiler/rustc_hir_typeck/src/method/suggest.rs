@@ -2568,6 +2568,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     Applicability::MaybeIncorrect,
                                 );
                             }
+                            // For closure parameters with reference patterns (e.g., |&v|), suggest the type annotation
+                            // on the pattern itself, e.g., |&v: &i32|
+                            (FileName::Real(_), Node::Pat(pat))
+                                if let Node::Pat(binding_pat) = self.tcx.hir_node(hir_id)
+                                    && let hir::PatKind::Binding(..) = binding_pat.kind
+                                    && let Node::Pat(parent_pat) = parent_node
+                                    && matches!(parent_pat.kind, hir::PatKind::Ref(..)) =>
+                            {
+                                err.span_label(span, "you must specify a type for this binding");
+                                err.span_suggestion_verbose(
+                                    pat.span.shrink_to_hi(),
+                                    "specify the type in the closure argument list",
+                                    format!(": &{concrete_type}"),
+                                    Applicability::MaybeIncorrect,
+                                );
+                            }
                             _ => {
                                 err.span_label(span, msg);
                             }
