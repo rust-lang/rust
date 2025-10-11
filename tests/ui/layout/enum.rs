@@ -22,3 +22,13 @@ enum ScalarPairDifferingSign { //~ERROR: abi: ScalarPair
     A(u8),
     B(i8),
 }
+
+enum Never {}
+
+// See https://github.com/rust-lang/rust/issues/146984
+#[rustc_layout(size)]
+#[repr(u32)]
+enum DefinedLayoutAllUninhabited { //~ERROR: size: Size(4 bytes)
+    A(Never),
+    B(Never),
+}
