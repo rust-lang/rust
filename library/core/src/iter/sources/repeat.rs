@@ -101,8 +101,9 @@ impl<A: Clone> Iterator for Repeat<A> {
         Some(self.element.clone())
     }
 
+    #[track_caller]
     fn last(self) -> Option<A> {
-        Some(self.element)
+        panic!("iterator is infinite");
     }
 
     #[track_caller]
