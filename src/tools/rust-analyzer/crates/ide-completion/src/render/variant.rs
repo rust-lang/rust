@@ -26,14 +26,23 @@ pub(crate) fn render_record_lit(
         return RenderedLiteral { literal: path.to_owned(), detail: path.to_owned() };
     }
     let completions = fields.iter().enumerate().format_with(", ", |(idx, field), f| {
+        let mut fmt_field = |fill, tab| {
+            let field_name = field.name(ctx.db);
+
+            if let Some(local) = ctx.locals.get(&field_name)
+                && local
+                    .ty(ctx.db)
+                    .could_unify_with_deeply(ctx.db, &field.ty(ctx.db).to_type(ctx.db))
+            {
+                f(&format_args!("{}{tab}", field_name.display(ctx.db, ctx.edition)))
+            } else {
+                f(&format_args!("{}: {fill}", field_name.display(ctx.db, ctx.edition)))
+            }
+        };
         if snippet_cap.is_some() {
-            f(&format_args!(
-                "{}: ${{{}:()}}",
-                field.name(ctx.db).display(ctx.db, ctx.edition),
-                idx + 1
-            ))
+            fmt_field(format_args!("${{{}:()}}", idx + 1), format_args!("${}", idx + 1))
         } else {
-            f(&format_args!("{}: ()", field.name(ctx.db).display(ctx.db, ctx.edition)))
+            fmt_field(format_args!("()"), format_args!(""))
         }
     });
 
