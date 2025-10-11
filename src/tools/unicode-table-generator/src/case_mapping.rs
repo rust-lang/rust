@@ -1,18 +1,18 @@
 use std::char;
 use std::collections::BTreeMap;
-use std::fmt::{self, Write};
 
-use crate::{UnicodeData, fmt_list};
+use crate::UnicodeData;
+use crate::fmt_helpers::{CharEscape, fmt_list};
 
 const INDEX_MASK: u32 = 1 << 22;
 
 pub(crate) fn generate_case_mapping(data: &UnicodeData) -> (String, [usize; 2]) {
-    let mut file = String::new();
     let (lower_tables, lower_size) = generate_tables("LOWER", &data.to_lower);
-    file.push_str(&lower_tables);
-    file.push_str("\n\n");
     let (upper_tables, upper_size) = generate_tables("UPPER", &data.to_upper);
-    file.push_str(&upper_tables);
+    let file = format!(
+        "{lower_tables}
+        {upper_tables}"
+    );
     (file, [lower_size, upper_size])
 }
 
@@ -47,34 +47,15 @@ fn generate_tables(case: &str, data: &BTreeMap<u32, [u32; 3]>) -> (String, usize
         mappings.push((CharEscape(key), value));
     }
 
-    let mut tables = String::new();
-    let mut size = 0;
+    let size = size_of_val(mappings.as_slice()) + size_of_val(multis.as_slice());
+    let tables = format!(
+        "
+#[rustfmt::skip]
+static {table_name}: &[(char, u32); {mappings_len}] = &[{mappings}];
 
-    size += size_of_val(mappings.as_slice());
-    writeln!(tables, "#[rustfmt::skip]").unwrap();
-    write!(
-        tables,
-        "static {table_name}: &[(char, u32); {}] = &[{}];",
-        mappings.len(),
-        fmt_list(mappings),
-    )
-    .unwrap();
+#[rustfmt::skip]
+static {multi_table_name}: &[[char; 3]; {multis_len}] = &[{multis}];
 
-    tables.push_str("\n\n");
-
-    size += size_of_val(multis.as_slice());
-    writeln!(tables, "#[rustfmt::skip]").unwrap();
-    write!(
-        tables,
-        "static {multi_table_name}: &[[char; 3]; {}] = &[{}];",
-        multis.len(),
-        fmt_list(multis),
-    )
-    .unwrap();
-
-    writeln!(
-        tables,
-        "\n
 #[inline]
 pub fn to_{snake_case_name}(c: char) -> [char; 3] {{
     const {{
@@ -100,17 +81,12 @@ pub fn to_{snake_case_name}(c: char) -> [char; 3] {{
             {multi_table_name},
         )
     }}
-}}"
-    )
-    .unwrap();
+}}",
+        mappings = fmt_list(&mappings),
+        mappings_len = mappings.len(),
+        multis = fmt_list(&multis),
+        multis_len = multis.len(),
+    );
 
     (tables, size)
-}
-
-struct CharEscape(char);
-
-impl fmt::Debug for CharEscape {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "'{}'", self.0.escape_default())
-    }
 }
