@@ -305,12 +305,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                     self.assign_operand(state, target, operand);
                 }
             }
-            Rvalue::CopyForDeref(rhs) => {
-                state.flood(target.as_ref(), &self.map);
-                if let Some(target) = self.map.find(target.as_ref()) {
-                    self.assign_operand(state, target, &Operand::Copy(*rhs));
-                }
-            }
+            Rvalue::CopyForDeref(_) => bug!("`CopyForDeref` in runtime MIR"),
             Rvalue::Aggregate(kind, operands) => {
                 // If we assign `target = Enum::Variant#0(operand)`,
                 // we must make sure that all `target as Variant#i` are `Top`.
@@ -484,9 +479,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             }
             Rvalue::Discriminant(place) => state.get_discr(place.as_ref(), &self.map),
             Rvalue::Use(operand) => return self.handle_operand(operand, state),
-            Rvalue::CopyForDeref(place) => {
-                return self.handle_operand(&Operand::Copy(*place), state);
-            }
+            Rvalue::CopyForDeref(_) => bug!("`CopyForDeref` in runtime MIR"),
             Rvalue::Ref(..) | Rvalue::RawPtr(..) => {
                 // We don't track such places.
                 return ValueOrPlace::TOP;

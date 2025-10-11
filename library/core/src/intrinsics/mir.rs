@@ -233,7 +233,7 @@
 //!
 //!  - Operands implicitly convert to `Use` rvalues.
 //!  - `&`, `&mut`, `addr_of!`, and `addr_of_mut!` all work to create their associated rvalue.
-//!  - [`CopyForDeref`], [`CastTransmute`], [`CastPtrToPtr`], [`CastUnsize`], and [`Discriminant`]
+//!  - [`CastTransmute`], [`CastPtrToPtr`], [`CastUnsize`], and [`Discriminant`]
 //!    have associated functions.
 //!  - Unary and binary operations use their normal Rust syntax - `a * b`, `!c`, etc.
 //!  - The binary operation `Offset` can be created via [`Offset`].
@@ -405,7 +405,6 @@ define!(
     "mir_ptr_metadata",
     fn PtrMetadata<P: ?Sized>(place: *const P) -> <P as ::core::ptr::Pointee>::Metadata
 );
-define!("mir_copy_for_deref", fn CopyForDeref<T>(place: T) -> T);
 define!("mir_retag", fn Retag<T>(place: T));
 define!("mir_move", fn Move<T>(place: T) -> T);
 define!("mir_static", fn Static<T>(s: T) -> &'static T);

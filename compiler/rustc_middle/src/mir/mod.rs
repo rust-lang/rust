@@ -1065,7 +1065,11 @@ pub enum LocalInfo<'tcx> {
     /// A temporary created during evaluating `if` predicate, possibly for pattern matching for `let`s,
     /// and subject to Edition 2024 temporary lifetime rules
     IfThenRescopeTemp { if_then: HirId },
-    /// A temporary created during the pass `Derefer` to avoid it's retagging
+    /// A temporary created during the pass `Derefer` treated as a transparent alias
+    /// for the place its copied from by analysis passes such as `AddRetag` and `ElaborateDrops`.
+    ///
+    /// It may only be written to by a `CopyForDeref` and otherwise only accessed through a deref.
+    /// In runtime MIR, it is replaced with a normal `Boring` local.
     DerefTemp,
     /// A temporary created for borrow checking.
     FakeBorrow,

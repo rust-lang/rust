@@ -183,10 +183,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.copy_op(&op, &dest)?;
             }
 
-            CopyForDeref(place) => {
-                let op = self.eval_place_to_op(place, Some(dest.layout))?;
-                self.copy_op(&op, &dest)?;
-            }
+            CopyForDeref(_) => bug!("`CopyForDeref` in runtime MIR"),
 
             BinaryOp(bin_op, box (ref left, ref right)) => {
                 let layout = util::binop_left_homogeneous(bin_op).then_some(dest.layout);
