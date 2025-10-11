@@ -165,20 +165,24 @@ LL |         *b
    |         +
 
 error[E0308]: `if` and `else` have incompatible types
-  --> $DIR/deref-suggestion.rs:69:12
+  --> $DIR/deref-suggestion.rs:71:9
    |
-LL |       let val = if true {
-   |                 ------- `if` and `else` have incompatible types
 LL |           *a
    |           -- expected because of this
 LL |       } else if true {
-   |  ____________^
+   |  ____________-
 LL | |
 LL | |         b
+   | |         ^ expected `i32`, found `&{integer}`
 LL | |     } else {
 LL | |         &0
 LL | |     };
-   | |_____^ expected `i32`, found `&{integer}`
+   | |_____- `if` and `else` have incompatible types
+   |
+help: consider dereferencing the borrow
+   |
+LL |         *b
+   |         +
 
 error[E0308]: mismatched types
   --> $DIR/deref-suggestion.rs:81:15
