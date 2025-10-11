@@ -1,11 +1,16 @@
 error[E0116]: cannot define inherent `impl` for a type outside of the crate where the type is defined
-  --> $DIR/no-other-unrelated-errors.rs:8:1
+  --> $DIR/insufficient-suggestion-issue-141679.rs:6:1
    |
-LL | impl Vec<usize> {}
-   | ^^^^^^^^^^^^^^^ impl for type defined outside of crate
+LL | impl Function {}
+   | ^^^^^^^^^^^^^ impl for type defined outside of crate
    |
    = help: consider defining a trait and implementing it for the type or using a newtype wrapper like `struct MyType(ExternalType);` and implement it
    = note: For more details about orphan rules, see <https://doc.rust-lang.org/reference/items/implementations.html?highlight=orphan#orphan-rules>
+note: `Function` does not define a new type, just alias of `Rc<Foo>` defined here
+  --> $DIR/insufficient-suggestion-issue-141679.rs:4:1
+   |
+LL | pub type Function = Rc<Foo>;
+   | ^^^^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 
