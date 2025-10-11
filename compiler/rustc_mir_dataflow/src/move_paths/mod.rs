@@ -396,6 +396,7 @@ pub enum MoveSubPath {
     Field(FieldIdx),
     ConstantIndex(u64),
     Downcast(VariantIdx),
+    UnwrapUnsafeBinder,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -416,10 +417,12 @@ impl MoveSubPath {
                 MoveSubPath::ConstantIndex(offset)
             }
             ProjectionKind::Downcast(_, idx) => MoveSubPath::Downcast(idx),
+            ProjectionKind::UnwrapUnsafeBinder(_) => MoveSubPath::UnwrapUnsafeBinder,
 
-            // these should be the same move path as their parent
-            // they're fine to skip because they cannot have sibling move paths
-            ProjectionKind::OpaqueCast(_) | ProjectionKind::UnwrapUnsafeBinder(_) => {
+            // this should be the same move path as its parent
+            // its fine to skip because it cannot have sibling move paths
+            // and it is not a user visible path
+            ProjectionKind::OpaqueCast(_) => {
                 return MoveSubPathResult::Skip;
             }
 
