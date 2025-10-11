@@ -687,7 +687,7 @@ impl Builder<'_> {
 
         for (restricted_mode, name, values) in EXTRA_CHECK_CFGS {
             if restricted_mode.is_none() || *restricted_mode == Some(mode) {
-                rustflags.arg(&check_cfg_arg(name, *values));
+                rustflags.arg(&check_cfg_arg(name, values));
 
                 if *name == "bootstrap" {
                     // Cargo doesn't pass RUSTFLAGS to proc_macros:
@@ -695,7 +695,7 @@ impl Builder<'_> {
                     // Thus, if we are on stage 0, we explicitly set `--cfg=bootstrap`.
                     // We also declare that the flag is expected, which we need to do to not
                     // get warnings about it being unexpected.
-                    hostflags.arg(check_cfg_arg(name, *values));
+                    hostflags.arg(check_cfg_arg(name, values));
                 }
             }
         }

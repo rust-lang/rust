@@ -490,22 +490,13 @@ where
     })
 }
 
-/// Create a `--check-cfg` argument invocation for a given name
-/// and it's values.
-pub fn check_cfg_arg(name: &str, values: Option<&[&str]>) -> String {
-    // Creating a string of the values by concatenating each value:
-    // ',values("tvos","watchos")' or '' (nothing) when there are no values.
-    let next = match values {
-        Some(values) => {
-            let mut tmp = values.iter().flat_map(|val| [",", "\"", val, "\""]).collect::<String>();
-
-            tmp.insert_str(1, "values(");
-            tmp.push(')');
-            tmp
-        }
-        None => "".to_string(),
-    };
-    format!("--check-cfg=cfg({name}{next})")
+/// Create a `--check-cfg` argument invocation for a given name and values.
+pub fn check_cfg_arg(name: &str, values: &[&str]) -> String {
+    if values.is_empty() {
+        format!("--check-cfg=cfg({name})")
+    } else {
+        format!("--check-cfg=cfg({name},values(\"{}\"))", values.join("\",\""))
+    }
 }
 
 /// Prepares `BootstrapCommand` that runs git inside the source directory if given.

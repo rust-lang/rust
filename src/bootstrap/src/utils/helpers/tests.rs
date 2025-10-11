@@ -47,13 +47,13 @@ fn test_string_to_hex_encode() {
 
 #[test]
 fn test_check_cfg_arg() {
-    assert_eq!(check_cfg_arg("bootstrap", None), "--check-cfg=cfg(bootstrap)");
+    assert_eq!(check_cfg_arg("bootstrap", &[]), "--check-cfg=cfg(bootstrap)");
     assert_eq!(
-        check_cfg_arg("target_arch", Some(&["s360"])),
+        check_cfg_arg("target_arch", &["s360"]),
         "--check-cfg=cfg(target_arch,values(\"s360\"))"
     );
     assert_eq!(
-        check_cfg_arg("target_os", Some(&["nixos", "nix2"])),
+        check_cfg_arg("target_os", &["nixos", "nix2"]),
         "--check-cfg=cfg(target_os,values(\"nixos\",\"nix2\"))"
     );
 }
