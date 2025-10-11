@@ -31,6 +31,7 @@ use crate::ty::{
 
 thread_local! {
     static FORCE_IMPL_FILENAME_LINE: Cell<bool> = const { Cell::new(false) };
+    static SHOULD_PREFIX_WITH_CRATE_NAME: Cell<bool> = const { Cell::new(false) };
     static SHOULD_PREFIX_WITH_CRATE: Cell<bool> = const { Cell::new(false) };
     static NO_TRIMMED_PATH: Cell<bool> = const { Cell::new(false) };
     static FORCE_TRIMMED_PATH: Cell<bool> = const { Cell::new(false) };
@@ -98,7 +99,18 @@ define_helper!(
     /// cycle errors, this can result in extra or suboptimal error output,
     /// so this variable disables that check.
     fn with_forced_impl_filename_line(ForcedImplGuard, FORCE_IMPL_FILENAME_LINE);
+    /// Adds the crate name prefix to paths where appropriate.
+    /// Unlike `with_crate_prefix`, this unconditionally uses `tcx.crate_name` instead of sometimes
+    /// using `crate::` for local items.
+    ///
+    /// Overrides `with_crate_prefix`.
+
+    // This function is not currently used in-tree, but it's used by a downstream rustc-driver in
+    // Ferrocene. Please check with them before removing it.
+    fn with_resolve_crate_name(CrateNamePrefixGuard, SHOULD_PREFIX_WITH_CRATE_NAME);
     /// Adds the `crate::` prefix to paths where appropriate.
+    ///
+    /// Ignored if `with_resolve_crate_name` is active.
     fn with_crate_prefix(CratePrefixGuard, SHOULD_PREFIX_WITH_CRATE);
     /// Prevent path trimming if it is turned on. Path trimming affects `Display` impl
     /// of various rustc types, for example `std::vec::Vec` would be trimmed to `Vec`,
@@ -2313,7 +2325,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
 
     fn print_crate_name(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
         self.empty_path = true;
-        if cnum == LOCAL_CRATE {
+        if cnum == LOCAL_CRATE && !with_resolve_crate_name() {
             if self.tcx.sess.at_least_rust_2018() {
                 // We add the `crate::` keyword on Rust 2018, only when desired.
                 if with_crate_prefix() {
