@@ -23,15 +23,15 @@ impl fmt::Display for ErrCode {
 rustc_error_messages::into_diag_arg_using_display!(ErrCode);
 
 macro_rules! define_error_code_constants_and_diagnostics_table {
-    ($($name:ident: $num:literal,)*) => (
+    ($($num:literal,)*) => (
         $(
-            pub const $name: $crate::ErrCode = $crate::ErrCode::from_u32($num);
+            pub const ${concat(E, $num)}: $crate::ErrCode = $crate::ErrCode::from_u32($num);
         )*
         pub static DIAGNOSTICS: &[($crate::ErrCode, &str)] = &[
             $( (
-                $name,
+                ${concat(E, $num)},
                 include_str!(
-                    concat!("../../rustc_error_codes/src/error_codes/", stringify!($name), ".md")
+                    concat!("../../rustc_error_codes/src/error_codes/E", stringify!($num), ".md")
                 )
             ), )*
         ];
