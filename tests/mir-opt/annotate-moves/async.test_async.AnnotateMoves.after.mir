@@ -1,0 +1,13 @@
+// MIR for `test_async` after AnnotateMoves
+
+fn test_async(_1: LargeStruct) -> {async fn body of test_async()} {
+    debug s => _1;
+    let mut _0: {async fn body of test_async()};
+    scope 1 (inlined core::profiling::compiler_move::<LargeStruct, 160>) {
+    }
+
+    bb0: {
+        _0 = {coroutine@$DIR/async.rs:13:56: 19:2 (#0)} { s: move _1 };
+        return;
+    }
+}

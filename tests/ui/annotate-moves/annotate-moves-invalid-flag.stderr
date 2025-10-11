@@ -1,0 +1,2 @@
+error: incorrect value `invalid` for unstable option `annotate-moves` - either a boolean (`y`, `yes`, `on`, `true`, `n`, `no`, `off` or `false`), or a number was expected
+
