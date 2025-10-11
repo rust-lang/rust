@@ -30,7 +30,7 @@ use crate::{cfg_select, intrinsics, mem};
 /// let r = f32::RADIX;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[deprecated(since = "TBD", note = "replaced by the `RADIX` associated constant on `f32`")]
+#[deprecated(since = "1.92.0", note = "replaced by the `RADIX` associated constant on `f32`")]
 #[rustc_diagnostic_item = "f32_legacy_const_radix"]
 pub const RADIX: u32 = f32::RADIX;
 
@@ -49,7 +49,7 @@ pub const RADIX: u32 = f32::RADIX;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(
-    since = "TBD",
+    since = "1.92.0",
     note = "replaced by the `MANTISSA_DIGITS` associated constant on `f32`"
 )]
 #[rustc_diagnostic_item = "f32_legacy_const_mantissa_dig"]
@@ -69,7 +69,7 @@ pub const MANTISSA_DIGITS: u32 = f32::MANTISSA_DIGITS;
 /// let d = f32::DIGITS;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[deprecated(since = "TBD", note = "replaced by the `DIGITS` associated constant on `f32`")]
+#[deprecated(since = "1.92.0", note = "replaced by the `DIGITS` associated constant on `f32`")]
 #[rustc_diagnostic_item = "f32_legacy_const_digits"]
 pub const DIGITS: u32 = f32::DIGITS;
 
@@ -91,7 +91,7 @@ pub const DIGITS: u32 = f32::DIGITS;
 /// let e = f32::EPSILON;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[deprecated(since = "TBD", note = "replaced by the `EPSILON` associated constant on `f32`")]
+#[deprecated(since = "1.92.0", note = "replaced by the `EPSILON` associated constant on `f32`")]
 #[rustc_diagnostic_item = "f32_legacy_const_epsilon"]
 pub const EPSILON: f32 = f32::EPSILON;
 
@@ -109,7 +109,7 @@ pub const EPSILON: f32 = f32::EPSILON;
 /// let min = f32::MIN;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[deprecated(since = "TBD", note = "replaced by the `MIN` associated constant on `f32`")]
+#[deprecated(since = "1.92.0", note = "replaced by the `MIN` associated constant on `f32`")]
 #[rustc_diagnostic_item = "f32_legacy_const_min"]
 pub const MIN: f32 = f32::MIN;
 
@@ -127,7 +127,10 @@ pub const MIN: f32 = f32::MIN;
 /// let min = f32::MIN_POSITIVE;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[deprecated(since = "TBD", note = "replaced by the `MIN_POSITIVE` associated constant on `f32`")]
+#[deprecated(
+    since = "1.92.0",
+    note = "replaced by the `MIN_POSITIVE` associated constant on `f32`"
+)]
 #[rustc_diagnostic_item = "f32_legacy_const_min_positive"]
 pub const MIN_POSITIVE: f32 = f32::MIN_POSITIVE;
 
@@ -145,7 +148,7 @@ pub const MIN_POSITIVE: f32 = f32::MIN_POSITIVE;
 /// let max = f32::MAX;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[deprecated(since = "TBD", note = "replaced by the `MAX` associated constant on `f32`")]
+#[deprecated(since = "1.92.0", note = "replaced by the `MAX` associated constant on `f32`")]
 #[rustc_diagnostic_item = "f32_legacy_const_max"]
 pub const MAX: f32 = f32::MAX;
 
@@ -163,7 +166,7 @@ pub const MAX: f32 = f32::MAX;
 /// let min = f32::MIN_EXP;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[deprecated(since = "TBD", note = "replaced by the `MIN_EXP` associated constant on `f32`")]
+#[deprecated(since = "1.92.0", note = "replaced by the `MIN_EXP` associated constant on `f32`")]
 #[rustc_diagnostic_item = "f32_legacy_const_min_exp"]
 pub const MIN_EXP: i32 = f32::MIN_EXP;
 
@@ -181,7 +184,7 @@ pub const MIN_EXP: i32 = f32::MIN_EXP;
 /// let max = f32::MAX_EXP;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[deprecated(since = "TBD", note = "replaced by the `MAX_EXP` associated constant on `f32`")]
+#[deprecated(since = "1.92.0", note = "replaced by the `MAX_EXP` associated constant on `f32`")]
 #[rustc_diagnostic_item = "f32_legacy_const_max_exp"]
 pub const MAX_EXP: i32 = f32::MAX_EXP;
 
@@ -199,7 +202,7 @@ pub const MAX_EXP: i32 = f32::MAX_EXP;
 /// let min = f32::MIN_10_EXP;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[deprecated(since = "TBD", note = "replaced by the `MIN_10_EXP` associated constant on `f32`")]
+#[deprecated(since = "1.92.0", note = "replaced by the `MIN_10_EXP` associated constant on `f32`")]
 #[rustc_diagnostic_item = "f32_legacy_const_min_10_exp"]
 pub const MIN_10_EXP: i32 = f32::MIN_10_EXP;
 
@@ -217,7 +220,7 @@ pub const MIN_10_EXP: i32 = f32::MIN_10_EXP;
 /// let max = f32::MAX_10_EXP;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[deprecated(since = "TBD", note = "replaced by the `MAX_10_EXP` associated constant on `f32`")]
+#[deprecated(since = "1.92.0", note = "replaced by the `MAX_10_EXP` associated constant on `f32`")]
 #[rustc_diagnostic_item = "f32_legacy_const_max_10_exp"]
 pub const MAX_10_EXP: i32 = f32::MAX_10_EXP;
 
@@ -235,7 +238,7 @@ pub const MAX_10_EXP: i32 = f32::MAX_10_EXP;
 /// let nan = f32::NAN;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[deprecated(since = "TBD", note = "replaced by the `NAN` associated constant on `f32`")]
+#[deprecated(since = "1.92.0", note = "replaced by the `NAN` associated constant on `f32`")]
 #[rustc_diagnostic_item = "f32_legacy_const_nan"]
 pub const NAN: f32 = f32::NAN;
 
@@ -253,7 +256,7 @@ pub const NAN: f32 = f32::NAN;
 /// let inf = f32::INFINITY;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[deprecated(since = "TBD", note = "replaced by the `INFINITY` associated constant on `f32`")]
+#[deprecated(since = "1.92.0", note = "replaced by the `INFINITY` associated constant on `f32`")]
 #[rustc_diagnostic_item = "f32_legacy_const_infinity"]
 pub const INFINITY: f32 = f32::INFINITY;
 
@@ -271,7 +274,10 @@ pub const INFINITY: f32 = f32::INFINITY;
 /// let ninf = f32::NEG_INFINITY;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[deprecated(since = "TBD", note = "replaced by the `NEG_INFINITY` associated constant on `f32`")]
+#[deprecated(
+    since = "1.92.0",
+    note = "replaced by the `NEG_INFINITY` associated constant on `f32`"
+)]
 #[rustc_diagnostic_item = "f32_legacy_const_neg_infinity"]
 pub const NEG_INFINITY: f32 = f32::NEG_INFINITY;
 
