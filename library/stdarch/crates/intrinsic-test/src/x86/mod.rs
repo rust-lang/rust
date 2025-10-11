@@ -12,6 +12,8 @@ use crate::common::intrinsic::Intrinsic;
 use crate::common::intrinsic_helpers::TypeKind;
 use intrinsic::X86IntrinsicType;
 use itertools::Itertools;
+use rand::rng;
+use rand::seq::IndexedRandom;
 use xml_parser::get_xml_intrinsics;
 
 pub struct X86ArchitectureTest {
@@ -47,7 +49,10 @@ impl SupportedArchitectureTest for X86ArchitectureTest {
         let intrinsics =
             get_xml_intrinsics(&cli_options.filename).expect("Error parsing input file");
 
-        let mut intrinsics = intrinsics
+        let mut rng = rng();
+        let sample_percentage: usize = cli_options.sample_percentage as usize;
+
+        let intrinsics = intrinsics
             .into_iter()
             // Not sure how we would compare intrinsic that returns void.
             .filter(|i| i.results.kind() != TypeKind::Void)
@@ -60,6 +65,12 @@ impl SupportedArchitectureTest for X86ArchitectureTest {
             .filter(|i| !i.arguments.iter().any(|a| a.ty.inner_size() == 128))
             .filter(|i| !cli_options.skip.contains(&i.name))
             .unique_by(|i| i.name.clone())
+            .collect::<Vec<_>>();
+
+        let sample_size = (intrinsics.len() * sample_percentage) / 100;
+        let mut intrinsics = intrinsics
+            .choose_multiple(&mut rng, sample_size)
+            .cloned()
             .collect::<Vec<_>>();
 
         intrinsics.sort_by(|a, b| a.name.cmp(&b.name));

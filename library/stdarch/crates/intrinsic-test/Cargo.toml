@@ -22,3 +22,4 @@ itertools = "0.14.0"
 quick-xml = { version = "0.37.5", features = ["serialize", "overlapped-lists"] }
 serde-xml-rs = "0.8.0"
 regex = "1.11.1"
+rand = "0.9.2"

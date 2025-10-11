@@ -14,7 +14,6 @@ pub fn compare_outputs(intrinsic_name_list: &Vec<String>, runner: &str, target: 
     let intrinsics = intrinsic_name_list
         .par_iter()
         .filter_map(|intrinsic_name| {
-
             let c = runner_command(runner)
                 .arg("intrinsic-test-programs")
                 .arg(intrinsic_name)

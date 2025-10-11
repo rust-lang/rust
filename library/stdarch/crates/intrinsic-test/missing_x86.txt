@@ -872,3 +872,33 @@ _m_to_int
 _m_to_int64
 _mm512_mask_floor_pd
 _mm512_mask_floor_ps
+
+# SDE ERROR: Cannot execute XGETBV with ECX != 0
+_xgetbv
+
+# Miscellaneous issues that can be fixed first
+_kshiftli_mask16
+_kshiftli_mask32
+_kshiftli_mask64
+_kshiftli_mask8
+_kshiftri_mask16
+_kshiftri_mask32
+_kshiftri_mask64
+_kshiftri_mask8
+_mm256_castsi128_si256
+_mm256_extract_epi16
+_mm256_extract_epi8
+_mm512_castsi128_si512
+_mm512_castsi256_si512
+_mm512_conj_pch
+_mm512_mask_reduce_max_pd
+_mm512_mask_reduce_max_ps
+_mm512_mask_reduce_min_pd
+_mm512_mask_reduce_min_ps
+_mm_comineq_sh
+_mm_extract_epi16
+_mm_extract_epi8
+_mm_mask_cvtepi16_epi8
+_mm_mask_cvtpd_epi32
+_mm_mask_cvtpd_ps
+_mm_ucomineq_sh
