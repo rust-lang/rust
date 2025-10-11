@@ -1722,7 +1722,9 @@ fn check_method_receiver<'tcx>(
             // Report error; would not have worked with `arbitrary_self_types[_pointers]`.
             {
                 match receiver_validity_err {
-                    ReceiverValidityError::DoesNotDeref if arbitrary_self_types_level.is_some() => {
+                    ReceiverValidityError::DoesNotReceive
+                        if arbitrary_self_types_level.is_some() =>
+                    {
                         let hint = match receiver_ty
                             .builtin_deref(false)
                             .unwrap_or(receiver_ty)
@@ -1736,7 +1738,7 @@ fn check_method_receiver<'tcx>(
 
                         tcx.dcx().emit_err(errors::InvalidReceiverTy { span, receiver_ty, hint })
                     }
-                    ReceiverValidityError::DoesNotDeref => {
+                    ReceiverValidityError::DoesNotReceive => {
                         tcx.dcx().emit_err(errors::InvalidReceiverTyNoArbitrarySelfTypes {
                             span,
                             receiver_ty,
@@ -1758,7 +1760,7 @@ fn check_method_receiver<'tcx>(
 enum ReceiverValidityError {
     /// The self type does not get to the receiver type by following the
     /// autoderef chain.
-    DoesNotDeref,
+    DoesNotReceive,
     /// A type was found which is a method type parameter, and that's not allowed.
     MethodGenericParamUsed,
 }
@@ -1817,14 +1819,16 @@ fn receiver_is_valid<'tcx>(
     let mut autoderef = Autoderef::new(infcx, wfcx.param_env, wfcx.body_def_id, span, receiver_ty);
 
     // The `arbitrary_self_types` feature allows custom smart pointer
-    // types to be method receivers, as identified by following the Receiver<Target=T>
+    // types to be method receivers, as identified by following the Receiver<Target = T>
     // chain.
     if arbitrary_self_types_enabled.is_some() {
-        autoderef = autoderef.use_receiver_trait();
+        // We are in the wf check, so we would like to deref the references in the type head.
+        // However, we do not want to walk `Deref` chain.
+        autoderef = autoderef.follow_receiver_chain();
     }
 
     // The `arbitrary_self_types_pointers` feature allows raw pointer receivers like `self: *const Self`.
-    if arbitrary_self_types_enabled == Some(ArbitrarySelfTypesLevel::WithPointers) {
+    if matches!(arbitrary_self_types_enabled, Some(ArbitrarySelfTypesLevel::WithPointers)) {
         autoderef = autoderef.include_raw_pointers();
     }
 
@@ -1878,7 +1882,7 @@ fn receiver_is_valid<'tcx>(
     }
 
     debug!("receiver_is_valid: type `{:?}` does not deref to `{:?}`", receiver_ty, self_ty);
-    Err(ReceiverValidityError::DoesNotDeref)
+    Err(ReceiverValidityError::DoesNotReceive)
 }
 
 fn legacy_receiver_is_implemented<'tcx>(

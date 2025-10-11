@@ -87,6 +87,8 @@
 // tidy-alphabetical-start
 #![feature(alloc_layout_extra)]
 #![feature(allocator_api)]
+#![feature(arbitrary_self_types)]
+#![feature(arbitrary_self_types_pointers)]
 #![feature(array_into_iter_constructors)]
 #![feature(array_windows)]
 #![feature(ascii_char)]

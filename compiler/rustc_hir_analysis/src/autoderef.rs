@@ -80,16 +80,19 @@ impl<'a, 'tcx> Iterator for Autoderef<'a, 'tcx> {
         }
 
         // Otherwise, deref if type is derefable:
-        // NOTE: in the case of self.use_receiver_trait = true, you might think it would
-        // be better to skip this clause and use the Overloaded case only, since &T
-        // and &mut T implement Receiver. But built-in derefs apply equally to Receiver
-        // and Deref, and this has benefits for const and the emitted MIR.
+        // NOTE: in the case of self.use_receiver_trait = true,
+        // Autoderef works only with Receiver trait.
+        // Caller is expecting us to expand the Receiver chain only.
         let (kind, new_ty) =
             if let Some(ty) = self.state.cur_ty.builtin_deref(self.include_raw_pointers) {
                 debug_assert_eq!(ty, self.infcx.resolve_vars_if_possible(ty));
                 // NOTE: we may still need to normalize the built-in deref in case
                 // we have some type like `&<Ty as Trait>::Assoc`, since users of
                 // autoderef expect this type to have been structurally normalized.
+                // NOTE: even when we follow Receiver chain we still unwrap
+                // references and pointers here, but this is only symbolic and
+                // we are not going to really dereferences any references or pointers.
+                // That happens when autoderef is chasing the Deref chain.
                 if self.infcx.next_trait_solver()
                     && let ty::Alias(..) = ty.kind()
                 {
@@ -145,8 +148,8 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip(self), ret)]
     fn overloaded_deref_ty(&mut self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
-        debug!("overloaded_deref_ty({:?})", ty);
         let tcx = self.infcx.tcx;
 
         if ty.references_error() {
@@ -167,18 +170,18 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             self.param_env,
             ty::Binder::dummy(trait_ref),
         );
-        // We detect whether the self type implements `Deref` before trying to
+        // We detect whether the self type implements `Deref`/`Receiver` before trying to
         // structurally normalize. We use `predicate_may_hold_opaque_types_jank`
         // to support not-yet-defined opaque types. It will succeed for `impl Deref`
         // but fail for `impl OtherTrait`.
         if !self.infcx.predicate_may_hold_opaque_types_jank(&obligation) {
-            debug!("overloaded_deref_ty: cannot match obligation");
+            debug!("cannot match obligation");
             return None;
         }
 
         let (normalized_ty, obligations) =
             self.structurally_normalize_ty(Ty::new_projection(tcx, trait_target_def_id, [ty]))?;
-        debug!("overloaded_deref_ty({:?}) = ({:?}, {:?})", ty, normalized_ty, obligations);
+        debug!(?ty, ?normalized_ty, ?obligations);
         self.state.obligations.extend(obligations);
 
         Some(self.infcx.resolve_vars_if_possible(normalized_ty))
@@ -255,11 +258,10 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
     /// Use `core::ops::Receiver` and `core::ops::Receiver::Target` as
     /// the trait and associated type to iterate, instead of
     /// `core::ops::Deref` and `core::ops::Deref::Target`
-    pub fn use_receiver_trait(mut self) -> Self {
+    pub fn follow_receiver_chain(mut self) -> Self {
         self.use_receiver_trait = true;
         self
     }
-
     pub fn silence_errors(mut self) -> Self {
         self.silence_errors = true;
         self
