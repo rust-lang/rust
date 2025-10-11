@@ -3243,9 +3243,9 @@ pub(crate) mod dep_tracking {
         CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug, FunctionReturn,
         InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto, LocationDetail,
         LtoCli, MirStripDebugInfo, NextSolverConfig, Offload, OomStrategy, OptLevel, OutFileName,
-        OutputType, OutputTypes, PatchableFunctionEntry, Polonius, RemapPathScopeComponents,
-        ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath,
-        SymbolManglingVersion, WasiExecModel,
+        OutputType, OutputTypes, PackCoroutineLayout, PatchableFunctionEntry, Polonius,
+        RemapPathScopeComponents, ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind,
+        SwitchWithOptPath, SymbolManglingVersion, WasiExecModel,
     };
     use crate::lint;
     use crate::utils::NativeLib;
@@ -3348,6 +3348,7 @@ pub(crate) mod dep_tracking {
         Polonius,
         InliningThreshold,
         FunctionReturn,
+        PackCoroutineLayout,
         Align,
     );
 
@@ -3600,6 +3601,30 @@ pub enum FunctionReturn {
 
     /// Replace returns with jumps to thunk, without emitting the thunk.
     ThunkExtern,
+}
+
+/// Layout optimisation for Coroutines
+#[derive(
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    HashStable_Generic,
+    Debug,
+    Default,
+    Decodable,
+    Encodable
+)]
+pub enum PackCoroutineLayout {
+    /// Keep coroutine captured variables throughout all states
+    #[default]
+    No,
+
+    /// Allow coroutine captured variables that are used only once
+    /// before the first suspension to be freed up for storage
+    /// in all other suspension states
+    CapturesOnly,
 }
 
 /// Whether extra span comments are included when dumping MIR, via the `-Z mir-include-spans` flag.
