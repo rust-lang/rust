@@ -12,6 +12,7 @@
 // Total           : 31911 bytes
 
 use super::rt::*;
+
 pub const UNICODE_VERSION: (u8, u8, u8) = (17, 0, 0);
 
 pub mod alphabetic {
@@ -129,6 +130,7 @@ pub mod alphabetic {
         1, 10, 1, 17, 5, 3, 1, 5, 1, 17, 0, 26, 6, 26, 6, 26, 0, 0, 32, 0, 2, 0, 2, 0, 15, 0, 0, 0,
         0, 0, 5, 0, 0,
     ];
+
     #[inline]
     pub fn lookup(c: char) -> bool {
         debug_assert!(!c.is_ascii());
@@ -228,6 +230,7 @@ pub mod case_ignorable {
         1, 17, 2, 7, 1, 2, 1, 5, 5, 62, 33, 1, 160, 14, 0, 1, 61, 4, 0, 5, 254, 2, 243, 1, 2, 1, 7,
         2, 5, 1, 9, 1, 0, 7, 109, 8, 0, 5, 0, 1, 30, 96, 128, 240, 0,
     ];
+
     #[inline]
     pub fn lookup(c: char) -> bool {
         debug_assert!(!c.is_ascii());
@@ -291,6 +294,7 @@ pub mod cased {
         7, 1, 0, 2, 25, 1, 25, 1, 31, 1, 25, 1, 31, 1, 25, 1, 31, 1, 25, 1, 31, 1, 25, 1, 8, 0, 10,
         1, 20, 6, 6, 0, 62, 0, 68, 0, 26, 6, 26, 6, 26, 0,
     ];
+
     #[inline]
     pub fn lookup(c: char) -> bool {
         debug_assert!(!c.is_ascii());
@@ -381,6 +385,7 @@ pub mod grapheme_extend {
         4, 50, 8, 1, 14, 1, 22, 5, 1, 15, 0, 7, 1, 17, 2, 7, 1, 2, 1, 5, 100, 1, 160, 7, 0, 1, 61,
         4, 0, 4, 254, 2, 243, 1, 2, 1, 7, 2, 5, 1, 0, 7, 109, 7, 0, 96, 128, 240, 0,
     ];
+
     #[inline]
     pub fn lookup(c: char) -> bool {
         debug_assert!(!c.is_ascii());
@@ -593,6 +598,7 @@ pub mod n {
         50, 0, 10, 0, 10, 0, 10, 247, 10, 0, 9, 128, 10, 0, 59, 1, 3, 1, 4, 76, 45, 1, 15, 0, 13,
         0, 10, 0,
     ];
+
     #[inline]
     pub fn lookup(c: char) -> bool {
         debug_assert!(!c.is_ascii());
@@ -741,6 +747,7 @@ pub mod white_space {
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     ];
+
     #[inline]
     pub const fn lookup(c: char) -> bool {
         debug_assert!(!c.is_ascii());
@@ -755,7 +762,7 @@ pub mod white_space {
 }
 
 pub mod conversions {
-    const INDEX_MASK: u32 = 0x400000;
+    const INDEX_MASK: u32 = 1 << 22;
 
     pub fn to_lower(c: char) -> [char; 3] {
         if c.is_ascii() {
@@ -1152,7 +1159,6 @@ pub mod conversions {
         ('\u{1e91d}', 125247), ('\u{1e91e}', 125248), ('\u{1e91f}', 125249), ('\u{1e920}', 125250),
         ('\u{1e921}', 125251),
     ];
-
     #[rustfmt::skip]
     static LOWERCASE_TABLE_MULTI: &[[char; 3]; 1] = &[
         ['i', '\u{307}', '\u{0}'],
@@ -1538,7 +1544,6 @@ pub mod conversions {
         ('\u{1e93d}', 125211), ('\u{1e93e}', 125212), ('\u{1e93f}', 125213), ('\u{1e940}', 125214),
         ('\u{1e941}', 125215), ('\u{1e942}', 125216), ('\u{1e943}', 125217),
     ];
-
     #[rustfmt::skip]
     static UPPERCASE_TABLE_MULTI: &[[char; 3]; 102] = &[
         ['S', 'S', '\u{0}'], ['\u{2bc}', 'N', '\u{0}'], ['J', '\u{30c}', '\u{0}'],
