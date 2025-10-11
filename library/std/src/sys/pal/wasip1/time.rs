@@ -1,5 +1,6 @@
 #![forbid(unsafe_op_in_unsafe_fn)]
 
+use crate::io;
 use crate::time::Duration;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
@@ -43,12 +44,23 @@ impl SystemTime {
         SystemTime(current_time(wasi::CLOCKID_REALTIME))
     }
 
-    pub fn from_wasi_timestamp(ts: wasi::Timestamp) -> SystemTime {
-        SystemTime(Duration::from_nanos(ts))
+    pub fn from_timespec(ts: libc::timespec) -> SystemTime {
+        SystemTime(Duration::new(ts.tv_sec as u64, ts.tv_nsec as u32))
     }
 
-    pub fn to_wasi_timestamp(&self) -> Option<wasi::Timestamp> {
-        self.0.as_nanos().try_into().ok()
+    pub fn to_timespec(&self) -> io::Result<libc::timespec> {
+        Ok(libc::timespec {
+            tv_sec: self
+                .0
+                .as_secs()
+                .try_into()
+                .map_err(|_| io::Error::from_raw_os_error(libc::EOVERFLOW))?,
+            tv_nsec: self
+                .0
+                .subsec_nanos()
+                .try_into()
+                .map_err(|_| io::Error::from_raw_os_error(libc::EOVERFLOW))?,
+        })
     }
 
     pub fn sub_time(&self, other: &SystemTime) -> Result<Duration, Duration> {

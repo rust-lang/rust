@@ -34,6 +34,7 @@
 #![doc(cfg(target_os = "wasi"))]
 
 pub mod ffi;
+#[cfg(target_env = "p1")]
 pub mod fs;
 pub mod io;
 
@@ -50,9 +51,11 @@ pub mod prelude {
     pub use super::ffi::{OsStrExt, OsStringExt};
     #[doc(no_inline)]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg(target_env = "p1")]
     pub use super::fs::FileTypeExt;
     #[doc(no_inline)]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg(target_env = "p1")]
     pub use super::fs::{DirEntryExt, FileExt, MetadataExt, OpenOptionsExt};
     #[doc(no_inline)]
     #[stable(feature = "rust1", since = "1.0.0")]

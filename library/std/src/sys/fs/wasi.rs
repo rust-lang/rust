@@ -1,7 +1,7 @@
-use crate::ffi::{CStr, OsStr, OsString};
+use crate::ffi::{CStr, CString, OsStr, OsString};
 use crate::fs::TryLockError;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
-use crate::mem::{self, ManuallyDrop};
+use crate::mem::ManuallyDrop;
 use crate::os::raw::c_int;
 use crate::os::wasi::ffi::{OsStrExt, OsStringExt};
 use crate::os::wasi::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
@@ -21,43 +21,25 @@ pub struct File {
 
 #[derive(Clone)]
 pub struct FileAttr {
-    meta: wasi::Filestat,
+    stat: libc::stat,
 }
 
 pub struct ReadDir {
     inner: Arc<ReadDirInner>,
-    state: ReadDirState,
-}
-
-enum ReadDirState {
-    /// Fill `buf` with `buf.len()` bytes starting from `next_read_offset`.
-    FillBuffer {
-        next_read_offset: wasi::Dircookie,
-        buf: Vec<u8>,
-    },
-    ProcessEntry {
-        buf: Vec<u8>,
-        next_read_offset: Option<wasi::Dircookie>,
-        offset: usize,
-    },
-    /// There is no more data to get in [`Self::FillBuffer`]; keep returning
-    /// entries via ProcessEntry until `buf` is exhausted.
-    RunUntilExhaustion {
-        buf: Vec<u8>,
-        offset: usize,
-    },
-    Done,
+    done: bool,
 }
 
 struct ReadDirInner {
     root: PathBuf,
-    dir: File,
+    dirp: c::Dirp,
 }
 
 pub struct DirEntry {
-    meta: wasi::Dirent,
-    name: Vec<u8>,
     inner: Arc<ReadDirInner>,
+    #[cfg(target_env = "p1")]
+    d_ino: libc::ino_t,
+    d_type: libc::c_uchar,
+    name: CString,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -65,11 +47,21 @@ pub struct OpenOptions {
     read: bool,
     write: bool,
     append: bool,
-    dirflags: wasi::Lookupflags,
-    fdflags: wasi::Fdflags,
-    oflags: wasi::Oflags,
-    rights_base: Option<wasi::Rights>,
-    rights_inheriting: Option<wasi::Rights>,
+    truncate: bool,
+    create: bool,
+    create_new: bool,
+    custom_flags: libc::c_int,
+
+    #[cfg(target_env = "p1")]
+    use_wasip1: bool,
+    #[cfg(target_env = "p1")]
+    wasip1_dirflags: Option<wasi::Lookupflags>,
+    #[cfg(target_env = "p1")]
+    wasip1_fdflags: wasi::Fdflags,
+    #[cfg(target_env = "p1")]
+    wasip1_rights_base: Option<wasi::Rights>,
+    #[cfg(target_env = "p1")]
+    wasip1_rights_inheriting: Option<wasi::Rights>,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -85,7 +77,7 @@ pub struct FileTimes {
 
 #[derive(PartialEq, Eq, Hash, Debug, Copy, Clone)]
 pub struct FileType {
-    bits: wasi::Filetype,
+    mode: libc::mode_t,
 }
 
 #[derive(Debug)]
@@ -93,7 +85,7 @@ pub struct DirBuilder {}
 
 impl FileAttr {
     pub fn size(&self) -> u64 {
-        self.meta.size
+        self.stat.st_size as u64
     }
 
     pub fn perm(&self) -> FilePermissions {
@@ -102,23 +94,24 @@ impl FileAttr {
     }
 
     pub fn file_type(&self) -> FileType {
-        FileType { bits: self.meta.filetype }
+        FileType { mode: self.stat.st_mode }
     }
 
     pub fn modified(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::from_wasi_timestamp(self.meta.mtim))
+        Ok(SystemTime::from_timespec(self.stat.st_mtim))
     }
 
     pub fn accessed(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::from_wasi_timestamp(self.meta.atim))
+        Ok(SystemTime::from_timespec(self.stat.st_atim))
     }
 
     pub fn created(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::from_wasi_timestamp(self.meta.ctim))
+        Ok(SystemTime::from_timespec(self.stat.st_ctim))
     }
 
-    pub(crate) fn as_wasi(&self) -> &wasi::Filestat {
-        &self.meta
+    #[cfg(target_env = "p1")]
+    pub(crate) fn as_libc(&self) -> &libc::stat {
+        &self.stat
     }
 }
 
@@ -144,28 +137,27 @@ impl FileTimes {
 
 impl FileType {
     pub fn is_dir(&self) -> bool {
-        self.bits == wasi::FILETYPE_DIRECTORY
+        self.mode == libc::S_IFDIR
     }
 
     pub fn is_file(&self) -> bool {
-        self.bits == wasi::FILETYPE_REGULAR_FILE
+        self.mode == libc::S_IFREG
     }
 
     pub fn is_symlink(&self) -> bool {
-        self.bits == wasi::FILETYPE_SYMBOLIC_LINK
+        self.mode == libc::S_IFLNK
     }
 
-    pub(crate) fn bits(&self) -> wasi::Filetype {
-        self.bits
+    #[cfg(target_env = "p1")]
+    pub(crate) fn mode(&self) -> libc::mode_t {
+        self.mode
     }
 }
 
 impl ReadDir {
-    fn new(dir: File, root: PathBuf) -> ReadDir {
-        ReadDir {
-            inner: Arc::new(ReadDirInner { dir, root }),
-            state: ReadDirState::FillBuffer { next_read_offset: 0, buf: vec![0; 128] },
-        }
+    fn new(dir: File, root: PathBuf) -> io::Result<ReadDir> {
+        let dirp = c::Dirp::new(dir)?;
+        Ok(ReadDir { inner: Arc::new(ReadDirInner { dirp, root }), done: false })
     }
 }
 
@@ -181,125 +173,83 @@ impl Iterator for ReadDir {
     type Item = io::Result<DirEntry>;
 
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
-        match &mut self.state {
-            ReadDirState::FillBuffer { next_read_offset, buf } => {
-                let result = self.inner.dir.fd.readdir(buf, *next_read_offset);
-                match result {
-                    Ok(read_bytes) => {
-                        if read_bytes < buf.len() {
-                            buf.truncate(read_bytes);
-                            self.state =
-                                ReadDirState::RunUntilExhaustion { buf: mem::take(buf), offset: 0 };
-                        } else {
-                            debug_assert_eq!(read_bytes, buf.len());
-                            self.state = ReadDirState::ProcessEntry {
-                                buf: mem::take(buf),
-                                offset: 0,
-                                next_read_offset: Some(*next_read_offset),
-                            };
-                        }
-                        self.next()
-                    }
-                    Err(e) => {
-                        self.state = ReadDirState::Done;
-                        return Some(Err(e));
-                    }
+        if self.done {
+            return None;
+        }
+
+        loop {
+            let entry_ptr = match self.inner.dirp.readdir() {
+                Ok(Some(ptr)) => ptr,
+                Ok(None) => {
+                    self.done = true;
+                    return None;
                 }
-            }
-            ReadDirState::ProcessEntry { buf, next_read_offset, offset } => {
-                let contents = &buf[*offset..];
-                const DIRENT_SIZE: usize = size_of::<wasi::Dirent>();
-                if contents.len() >= DIRENT_SIZE {
-                    let (dirent, data) = contents.split_at(DIRENT_SIZE);
-                    let dirent =
-                        unsafe { ptr::read_unaligned(dirent.as_ptr() as *const wasi::Dirent) };
-                    // If the file name was truncated, then we need to reinvoke
-                    // `readdir` so we truncate our buffer to start over and reread this
-                    // descriptor.
-                    if data.len() < dirent.d_namlen as usize {
-                        if buf.len() < dirent.d_namlen as usize + DIRENT_SIZE {
-                            buf.resize(dirent.d_namlen as usize + DIRENT_SIZE, 0);
-                        }
-                        if let Some(next_read_offset) = *next_read_offset {
-                            self.state =
-                                ReadDirState::FillBuffer { next_read_offset, buf: mem::take(buf) };
-                        } else {
-                            self.state = ReadDirState::Done;
-                        }
-
-                        return self.next();
-                    }
-                    next_read_offset.as_mut().map(|cookie| {
-                        *cookie = dirent.d_next;
-                    });
-                    *offset = *offset + DIRENT_SIZE + dirent.d_namlen as usize;
-
-                    let name = &data[..(dirent.d_namlen as usize)];
-
-                    // These names are skipped on all other platforms, so let's skip
-                    // them here too
-                    if name == b"." || name == b".." {
-                        return self.next();
-                    }
-
-                    return Some(Ok(DirEntry {
-                        meta: dirent,
-                        name: name.to_vec(),
-                        inner: self.inner.clone(),
-                    }));
-                } else if let Some(next_read_offset) = *next_read_offset {
-                    self.state = ReadDirState::FillBuffer { next_read_offset, buf: mem::take(buf) };
-                } else {
-                    self.state = ReadDirState::Done;
+                Err(e) => {
+                    self.done = true;
+                    return Some(Err(e));
                 }
-                self.next()
-            }
-            ReadDirState::RunUntilExhaustion { buf, offset } => {
-                if *offset >= buf.len() {
-                    self.state = ReadDirState::Done;
-                } else {
-                    self.state = ReadDirState::ProcessEntry {
-                        buf: mem::take(buf),
-                        offset: *offset,
-                        next_read_offset: None,
-                    };
+            };
+
+            unsafe {
+                let name = CStr::from_ptr((&raw const (*entry_ptr).d_name).cast());
+                let name_bytes = name.to_bytes();
+                if name_bytes == b"." || name_bytes == b".." {
+                    continue;
                 }
 
-                self.next()
+                return Some(Ok(DirEntry {
+                    d_type: (*entry_ptr).d_type,
+                    #[cfg(target_env = "p1")]
+                    d_ino: (*entry_ptr).d_ino,
+                    name: name.to_owned(),
+                    inner: Arc::clone(&self.inner),
+                }));
             }
-            ReadDirState::Done => None,
         }
     }
 }
 
 impl DirEntry {
     pub fn path(&self) -> PathBuf {
-        let name = OsStr::from_bytes(&self.name);
-        self.inner.root.join(name)
+        self.inner.root.join(self.file_name_os_str())
     }
 
     pub fn file_name(&self) -> OsString {
-        OsString::from_vec(self.name.clone())
+        self.file_name_os_str().to_owned()
+    }
+
+    fn file_name_os_str(&self) -> &OsStr {
+        OsStr::from_bytes(self.name.to_bytes())
     }
 
     pub fn metadata(&self) -> io::Result<FileAttr> {
-        metadata_at(&self.inner.dir.fd, 0, OsStr::from_bytes(&self.name).as_ref())
+        c::fstatat(self.dir_fd(), &self.name, libc::AT_SYMLINK_NOFOLLOW)
     }
 
     pub fn file_type(&self) -> io::Result<FileType> {
-        Ok(FileType { bits: self.meta.d_type })
+        match self.d_type {
+            libc::DT_CHR => Ok(FileType { mode: libc::S_IFCHR }),
+            libc::DT_LNK => Ok(FileType { mode: libc::S_IFLNK }),
+            libc::DT_REG => Ok(FileType { mode: libc::S_IFREG }),
+            libc::DT_DIR => Ok(FileType { mode: libc::S_IFDIR }),
+            libc::DT_BLK => Ok(FileType { mode: libc::S_IFBLK }),
+            _ => self.metadata().map(|m| m.file_type()),
+        }
     }
 
+    #[cfg(target_env = "p1")]
     pub fn ino(&self) -> wasi::Inode {
-        self.meta.d_ino
+        self.d_ino
+    }
+
+    fn dir_fd(&self) -> BorrowedFd<'_> {
+        self.inner.dirp.as_fd()
     }
 }
 
 impl OpenOptions {
     pub fn new() -> OpenOptions {
-        let mut base = OpenOptions::default();
-        base.dirflags = wasi::LOOKUPFLAGS_SYMLINK_FOLLOW;
-        base
+        OpenOptions::default()
     }
 
     pub fn read(&mut self, read: bool) {
@@ -311,69 +261,68 @@ impl OpenOptions {
     }
 
     pub fn truncate(&mut self, truncate: bool) {
-        self.oflag(wasi::OFLAGS_TRUNC, truncate);
+        self.truncate = truncate;
     }
 
     pub fn create(&mut self, create: bool) {
-        self.oflag(wasi::OFLAGS_CREAT, create);
+        self.create = create;
     }
 
     pub fn create_new(&mut self, create_new: bool) {
-        self.oflag(wasi::OFLAGS_EXCL, create_new);
-        self.oflag(wasi::OFLAGS_CREAT, create_new);
-    }
-
-    pub fn directory(&mut self, directory: bool) {
-        self.oflag(wasi::OFLAGS_DIRECTORY, directory);
-    }
-
-    fn oflag(&mut self, bit: wasi::Oflags, set: bool) {
-        if set {
-            self.oflags |= bit;
-        } else {
-            self.oflags &= !bit;
-        }
+        self.create_new = create_new;
     }
 
     pub fn append(&mut self, append: bool) {
         self.append = append;
-        self.fdflag(wasi::FDFLAGS_APPEND, append);
+        #[cfg(target_env = "p1")]
+        self.wasip1_fdflag(wasi::FDFLAGS_APPEND, append);
     }
 
-    pub fn dsync(&mut self, set: bool) {
-        self.fdflag(wasi::FDFLAGS_DSYNC, set);
+    #[cfg(target_env = "p1")]
+    pub fn wasip1_dsync(&mut self, set: bool) {
+        self.wasip1_fdflag(wasi::FDFLAGS_DSYNC, set);
     }
 
-    pub fn nonblock(&mut self, set: bool) {
-        self.fdflag(wasi::FDFLAGS_NONBLOCK, set);
+    #[cfg(target_env = "p1")]
+    pub fn wasip1_nonblock(&mut self, set: bool) {
+        self.wasip1_fdflag(wasi::FDFLAGS_NONBLOCK, set);
     }
 
-    pub fn rsync(&mut self, set: bool) {
-        self.fdflag(wasi::FDFLAGS_RSYNC, set);
+    #[cfg(target_env = "p1")]
+    pub fn wasip1_rsync(&mut self, set: bool) {
+        self.wasip1_fdflag(wasi::FDFLAGS_RSYNC, set);
     }
 
-    pub fn sync(&mut self, set: bool) {
-        self.fdflag(wasi::FDFLAGS_SYNC, set);
+    #[cfg(target_env = "p1")]
+    pub fn wasip1_sync(&mut self, set: bool) {
+        self.wasip1_fdflag(wasi::FDFLAGS_SYNC, set);
     }
 
-    fn fdflag(&mut self, bit: wasi::Fdflags, set: bool) {
+    #[cfg(target_env = "p1")]
+    fn wasip1_fdflag(&mut self, bit: wasi::Fdflags, set: bool) {
+        self.use_wasip1 = true;
         if set {
-            self.fdflags |= bit;
+            self.wasip1_fdflags |= bit;
         } else {
-            self.fdflags &= !bit;
+            self.wasip1_fdflags &= !bit;
         }
     }
 
-    pub fn fs_rights_base(&mut self, rights: wasi::Rights) {
-        self.rights_base = Some(rights);
+    #[cfg(target_env = "p1")]
+    pub fn wasip1_fs_rights_base(&mut self, rights: wasi::Rights) {
+        self.use_wasip1 = true;
+        self.wasip1_rights_base = Some(rights);
     }
 
-    pub fn fs_rights_inheriting(&mut self, rights: wasi::Rights) {
-        self.rights_inheriting = Some(rights);
+    #[cfg(target_env = "p1")]
+    pub fn wasip1_fs_rights_inheriting(&mut self, rights: wasi::Rights) {
+        self.use_wasip1 = true;
+        self.wasip1_rights_inheriting = Some(rights);
     }
 
-    fn rights_base(&self) -> wasi::Rights {
-        if let Some(rights) = self.rights_base {
+    #[cfg(target_env = "p1")]
+    fn wasip1_rights_base(&self) -> wasi::Rights {
+        if let Some(rights) = self.wasip1_rights_base {
             return rights;
         }
 
@@ -419,39 +368,150 @@ impl OpenOptions {
         base
     }
 
-    fn rights_inheriting(&self) -> wasi::Rights {
-        self.rights_inheriting.unwrap_or_else(|| self.rights_base())
+    #[cfg(target_env = "p1")]
+    fn wasip1_rights_inheriting(&self) -> wasi::Rights {
+        self.wasip1_rights_inheriting.unwrap_or_else(|| self.wasip1_rights_base())
     }
 
-    pub fn lookup_flags(&mut self, flags: wasi::Lookupflags) {
-        self.dirflags = flags;
+    #[cfg(target_env = "p1")]
+    pub fn wasip1_lookup_flags(&mut self, flags: wasi::Lookupflags) {
+        self.use_wasip1 = true;
+        self.wasip1_dirflags = Some(flags);
+    }
+
+    #[cfg(target_env = "p1")]
+    pub fn wasip1_directory(&mut self, enable: bool) {
+        if enable {
+            self.custom_flags |= libc::O_DIRECTORY;
+        } else {
+            self.custom_flags &= !libc::O_DIRECTORY;
+        }
+        self.use_wasip1 = true;
+    }
+
+    pub fn custom_flags(&mut self, flags: libc::c_int) {
+        self.custom_flags = flags;
+    }
+
+    fn open_flags(&self) -> io::Result<libc::c_int> {
+        Ok(self.get_access_mode()? | self.get_creation_mode()? | self.custom_flags)
+    }
+
+    fn get_access_mode(&self) -> io::Result<c_int> {
+        match (self.read, self.write, self.append) {
+            (true, false, false) => Ok(libc::O_RDONLY),
+            (false, true, false) => Ok(libc::O_WRONLY),
+            (true, true, false) => Ok(libc::O_RDWR),
+            (false, _, true) => Ok(libc::O_WRONLY | libc::O_APPEND),
+            (true, _, true) => Ok(libc::O_RDWR | libc::O_APPEND),
+            (false, false, false) => {
+                // If no access mode is set, check if any creation flags are set
+                // to provide a more descriptive error message
+                if self.create || self.create_new || self.truncate {
+                    Err(io::Error::new(
+                        io::ErrorKind::InvalidInput,
+                        "creating or truncating a file requires write or append access",
+                    ))
+                } else {
+                    Err(io::Error::new(
+                        io::ErrorKind::InvalidInput,
+                        "must specify at least one of read, write, or append access",
+                    ))
+                }
+            }
+        }
+    }
+
+    fn get_creation_mode(&self) -> io::Result<c_int> {
+        match (self.write, self.append) {
+            (true, false) => {}
+            (false, false) => {
+                if self.truncate || self.create || self.create_new {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidInput,
+                        "creating or truncating a file requires write or append access",
+                    ));
+                }
+            }
+            (_, true) => {
+                if self.truncate && !self.create_new {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidInput,
+                        "creating or truncating a file requires write or append access",
+                    ));
+                }
+            }
+        }
+
+        Ok(match (self.create, self.truncate, self.create_new) {
+            (false, false, false) => 0,
+            (true, false, false) => libc::O_CREAT,
+            (false, true, false) => libc::O_TRUNC,
+            (true, true, false) => libc::O_CREAT | libc::O_TRUNC,
+            (_, _, true) => libc::O_CREAT | libc::O_EXCL,
+        })
+    }
+
+    fn open_mode(&self) -> libc::c_int {
+        0o666
+    }
+
+    #[cfg(target_env = "p1")]
+    pub fn wasip1_oflags(&self) -> wasi::Oflags {
+        let mut flags = 0;
+        if self.create {
+            flags |= wasi::OFLAGS_CREAT;
+        }
+        if self.create_new {
+            flags |= wasi::OFLAGS_CREAT | wasi::OFLAGS_EXCL;
+        }
+        if self.truncate {
+            flags |= wasi::OFLAGS_TRUNC;
+        }
+        if self.custom_flags == libc::O_DIRECTORY {
+            flags |= wasi::OFLAGS_DIRECTORY;
+        }
+        flags
     }
 }
 
 impl File {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
         let (dir, file) = open_parent(path)?;
-        open_at(&dir, &file, opts)
+        run_path_with_cstr(&file, &|file| File::open_c(dir.as_fd(), file, opts))
     }
 
-    pub fn open_at(&self, path: &Path, opts: &OpenOptions) -> io::Result<File> {
-        open_at(&self.fd, path, opts)
+    pub fn open_c(fd: BorrowedFd<'_>, path: &CStr, opts: &OpenOptions) -> io::Result<File> {
+        #[cfg(target_env = "p1")]
+        if opts.use_wasip1 {
+            let fd = unsafe {
+                let fd = wasi::path_open(
+                    fd.as_raw_fd() as wasi::Fd,
+                    opts.wasip1_dirflags.unwrap_or(wasi::LOOKUPFLAGS_SYMLINK_FOLLOW),
+                    path.to_str().map_err(|_| io::ErrorKind::InvalidInput)?,
+                    opts.wasip1_oflags(),
+                    opts.wasip1_rights_base(),
+                    opts.wasip1_rights_inheriting(),
+                    opts.wasip1_fdflags,
+                )
+                .map_err(crate::sys::err2io)?;
+                WasiFd::from_raw_fd(fd as libc::c_int)
+            };
+            return Ok(File { fd });
+        }
+        c::openat(fd, path, opts.open_flags()?, Some(opts.open_mode()))
     }
 
     pub fn file_attr(&self) -> io::Result<FileAttr> {
-        self.fd.filestat_get().map(|meta| FileAttr { meta })
-    }
-
-    pub fn metadata_at(&self, flags: wasi::Lookupflags, path: &Path) -> io::Result<FileAttr> {
-        metadata_at(&self.fd, flags, path)
+        c::fstat(self.as_fd())
     }
 
     pub fn fsync(&self) -> io::Result<()> {
-        self.fd.sync()
+        c::fsync(self.as_fd())
     }
 
     pub fn datasync(&self) -> io::Result<()> {
-        self.fd.datasync()
+        c::fdatasync(self.as_fd())
     }
 
     pub fn lock(&self) -> io::Result<()> {
@@ -475,7 +535,8 @@ impl File {
     }
 
     pub fn truncate(&self, size: u64) -> io::Result<()> {
-        self.fd.filestat_set_size(size)
+        let size = size.try_into().map_err(|_| io::ErrorKind::InvalidInput)?;
+        c::ftruncate(self.as_fd(), size)
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
@@ -513,7 +574,14 @@ impl File {
     }
 
     pub fn seek(&self, pos: SeekFrom) -> io::Result<u64> {
-        self.fd.seek(pos)
+        let (whence, pos) = match pos {
+            // Casting to `i64` is fine, too large values will end up as
+            // negative which will cause an error in `lseek64`.
+            SeekFrom::Start(off) => (libc::SEEK_SET, off as i64),
+            SeekFrom::End(off) => (libc::SEEK_END, off),
+            SeekFrom::Current(off) => (libc::SEEK_CUR, off),
+        };
+        c::lseek(self.as_fd(), pos, whence)
     }
 
     pub fn size(&self) -> Option<io::Result<u64>> {
@@ -521,7 +589,7 @@ impl File {
     }
 
     pub fn tell(&self) -> io::Result<u64> {
-        self.fd.tell()
+        self.seek(SeekFrom::Current(0))
     }
 
     pub fn duplicate(&self) -> io::Result<File> {
@@ -536,24 +604,27 @@ impl File {
     }
 
     pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
-        let to_timestamp = |time: Option<SystemTime>| match time {
-            Some(time) if let Some(ts) = time.to_wasi_timestamp() => Ok(ts),
-            Some(_) => Err(io::const_error!(
-                io::ErrorKind::InvalidInput,
-                "timestamp is too large to set as a file time",
-            )),
-            None => Ok(0),
-        };
-        self.fd.filestat_set_times(
-            to_timestamp(times.accessed)?,
-            to_timestamp(times.modified)?,
-            times.accessed.map_or(0, |_| wasi::FSTFLAGS_ATIM)
-                | times.modified.map_or(0, |_| wasi::FSTFLAGS_MTIM),
-        )
+        let omit = libc::timespec { tv_sec: 0, tv_nsec: libc::UTIME_OMIT };
+        let times = [
+            times.accessed.map(|t| t.to_timespec()).transpose()?.unwrap_or(omit),
+            times.modified.map(|t| t.to_timespec()).transpose()?.unwrap_or(omit),
+        ];
+        c::futimens(self.as_fd(), &times)
     }
 
-    pub fn read_link(&self, file: &Path) -> io::Result<PathBuf> {
-        read_link(&self.fd, file)
+    #[cfg(target_env = "p1")]
+    pub fn metadata_at(&self, flags: i32, path: &Path) -> io::Result<FileAttr> {
+        run_path_with_cstr(path, &|path| c::fstatat(self.as_fd(), path, flags))
+    }
+
+    #[cfg(target_env = "p1")]
+    pub fn readlink_at(&self, path: &Path) -> io::Result<PathBuf> {
+        run_path_with_cstr(path, &|path| read_link(self.as_fd(), path))
+    }
+
+    #[cfg(target_env = "p1")]
+    pub fn open_at(&self, path: &Path, opts: &OpenOptions) -> io::Result<File> {
+        run_path_with_cstr(path, &|path| File::open_c(self.as_fd(), path, opts))
     }
 }
 
@@ -607,8 +678,8 @@ impl DirBuilder {
     }
 
     pub fn mkdir(&self, p: &Path) -> io::Result<()> {
-        let (dir, file) = open_parent(p)?;
-        dir.create_directory(osstr2str(file.as_ref())?)
+        let (dir, path) = open_parent(p)?;
+        run_path_with_cstr(&path, &|path| c::mkdirat(dir.as_fd(), path))
     }
 }
 
@@ -620,21 +691,26 @@ impl fmt::Debug for File {
 
 pub fn readdir(p: &Path) -> io::Result<ReadDir> {
     let mut opts = OpenOptions::new();
-    opts.directory(true);
+    opts.custom_flags(libc::O_DIRECTORY);
     opts.read(true);
     let dir = File::open(p, &opts)?;
-    Ok(ReadDir::new(dir, p.to_path_buf()))
+    ReadDir::new(dir, p.to_path_buf())
 }
 
 pub fn unlink(p: &Path) -> io::Result<()> {
     let (dir, file) = open_parent(p)?;
-    dir.unlink_file(osstr2str(file.as_ref())?)
+    run_path_with_cstr(&file, &|file| c::unlinkat(dir.as_fd(), file, 0))
 }
 
 pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
     let (old, old_file) = open_parent(old)?;
     let (new, new_file) = open_parent(new)?;
-    old.rename(osstr2str(old_file.as_ref())?, &new, osstr2str(new_file.as_ref())?)
+    run_path_with_cstr(&old_file, &|old_file| {
+        run_path_with_cstr(&new_file, &|new_file| {
+            c::renameat(old.as_fd(), old_file, new.as_fd(), new_file)
+        })
+    })?;
+    Ok(())
 }
 
 pub fn set_perm(_p: &Path, _perm: FilePermissions) -> io::Result<()> {
@@ -644,23 +720,23 @@ pub fn set_perm(_p: &Path, _perm: FilePermissions) -> io::Result<()> {
 }
 
 pub fn rmdir(p: &Path) -> io::Result<()> {
-    let (dir, file) = open_parent(p)?;
-    dir.remove_directory(osstr2str(file.as_ref())?)
+    let (dir, path) = open_parent(p)?;
+    run_path_with_cstr(&path, &|path| c::unlinkat(dir.as_fd(), path, libc::AT_REMOVEDIR))
 }
 
 pub fn readlink(p: &Path) -> io::Result<PathBuf> {
     let (dir, file) = open_parent(p)?;
-    read_link(&dir, &file)
+    run_path_with_cstr(&file, &|file| read_link(dir.as_fd(), file))
 }
 
-fn read_link(fd: &WasiFd, file: &Path) -> io::Result<PathBuf> {
+fn read_link(fd: BorrowedFd<'_>, path: &CStr) -> io::Result<PathBuf> {
     // Try to get a best effort initial capacity for the vector we're going to
     // fill. Note that if it's not a symlink we don't use a file to avoid
     // allocating gigabytes if you read_link a huge movie file by accident.
     // Additionally we add 1 to the initial size so if it doesn't change until
     // when we call `readlink` the returned length will be less than the
     // capacity, guaranteeing that we got all the data.
-    let meta = metadata_at(fd, 0, file)?;
+    let meta = c::fstatat(fd, path, libc::AT_SYMLINK_NOFOLLOW)?;
     let initial_size = if meta.file_type().is_symlink() {
         (meta.size() as usize).saturating_add(1)
     } else {
@@ -670,10 +746,9 @@ fn read_link(fd: &WasiFd, file: &Path) -> io::Result<PathBuf> {
     // Now that we have an initial guess of how big to make our buffer, call
     // `readlink` in a loop until it fails or reports it filled fewer bytes than
     // we asked for, indicating we got everything.
-    let file = osstr2str(file.as_ref())?;
     let mut destination = vec![0u8; initial_size];
     loop {
-        let len = fd.readlink(file, &mut destination)?;
+        let len = c::readlinkat(fd, path, &mut destination)?;
         if len < destination.len() {
             destination.truncate(len);
             destination.shrink_to_fit();
@@ -686,47 +761,46 @@ fn read_link(fd: &WasiFd, file: &Path) -> io::Result<PathBuf> {
 
 pub fn symlink(original: &Path, link: &Path) -> io::Result<()> {
     let (link, link_file) = open_parent(link)?;
-    link.symlink(osstr2str(original.as_ref())?, osstr2str(link_file.as_ref())?)
+    run_path_with_cstr(&original, &|original| {
+        run_path_with_cstr(&link_file, &|link_file| c::symlinkat(original, link.as_fd(), link_file))
+    })?;
+    Ok(())
 }
 
 pub fn link(original: &Path, link: &Path) -> io::Result<()> {
     let (original, original_file) = open_parent(original)?;
     let (link, link_file) = open_parent(link)?;
-    // Pass 0 as the flags argument, meaning don't follow symlinks.
-    original.link(0, osstr2str(original_file.as_ref())?, &link, osstr2str(link_file.as_ref())?)
+
+    run_path_with_cstr(&original_file, &|original_file| {
+        run_path_with_cstr(&link_file, &|link_file| {
+            c::linkat(
+                original.as_fd(),
+                original_file,
+                link.as_fd(),
+                link_file,
+                // Pass 0 as the flags argument, meaning don't follow
+                // symlinks.
+                0,
+            )
+        })
+    })?;
+    Ok(())
 }
 
 pub fn stat(p: &Path) -> io::Result<FileAttr> {
     let (dir, file) = open_parent(p)?;
-    metadata_at(&dir, wasi::LOOKUPFLAGS_SYMLINK_FOLLOW, &file)
+    run_path_with_cstr(&file, &|file| c::fstatat(dir.as_fd(), file, libc::AT_SYMLINK_FOLLOW))
 }
 
 pub fn lstat(p: &Path) -> io::Result<FileAttr> {
     let (dir, file) = open_parent(p)?;
-    metadata_at(&dir, 0, &file)
-}
-
-fn metadata_at(fd: &WasiFd, flags: wasi::Lookupflags, path: &Path) -> io::Result<FileAttr> {
-    let meta = fd.path_filestat_get(flags, osstr2str(path.as_ref())?)?;
-    Ok(FileAttr { meta })
+    run_path_with_cstr(&file, &|file| c::fstatat(dir.as_fd(), file, libc::AT_SYMLINK_NOFOLLOW))
 }
 
 pub fn canonicalize(_p: &Path) -> io::Result<PathBuf> {
     // This seems to not be in wasi's API yet, and we may need to end up
     // emulating it ourselves. For now just return an error.
     unsupported()
-}
-
-fn open_at(fd: &WasiFd, path: &Path, opts: &OpenOptions) -> io::Result<File> {
-    let fd = fd.open(
-        opts.dirflags,
-        osstr2str(path.as_ref())?,
-        opts.oflags,
-        opts.rights_base(),
-        opts.rights_inheriting(),
-        opts.fdflags,
-    )?;
-    Ok(File { fd })
 }
 
 /// Attempts to open a bare path `p`.
@@ -761,9 +835,9 @@ fn open_parent(p: &Path) -> io::Result<(ManuallyDrop<WasiFd>, PathBuf)> {
         let mut buf = Vec::<u8>::with_capacity(512);
         loop {
             unsafe {
-                let mut relative_path = buf.as_ptr().cast();
+                let mut relative_path = buf.as_mut_ptr().cast();
                 let mut abs_prefix = ptr::null();
-                let fd = __wasilibc_find_relpath(
+                let fd = libc::__wasilibc_find_relpath(
                     p.as_ptr(),
                     &mut abs_prefix,
                     &mut relative_path,
@@ -792,20 +866,7 @@ fn open_parent(p: &Path) -> io::Result<(ManuallyDrop<WasiFd>, PathBuf)> {
                 ));
             }
         }
-
-        unsafe extern "C" {
-            pub fn __wasilibc_find_relpath(
-                path: *const libc::c_char,
-                abs_prefix: *mut *const libc::c_char,
-                relative_path: *mut *const libc::c_char,
-                relative_path_len: libc::size_t,
-            ) -> libc::c_int;
-        }
     })
-}
-
-pub fn osstr2str(f: &OsStr) -> io::Result<&str> {
-    f.to_str().ok_or_else(|| io::const_error!(io::ErrorKind::Uncategorized, "input must be utf-8"))
 }
 
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
@@ -819,10 +880,11 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
 
 pub fn remove_dir_all(path: &Path) -> io::Result<()> {
     let (parent, path) = open_parent(path)?;
-    remove_dir_all_recursive(&parent, &path)
+
+    run_path_with_cstr(&path, &|path| remove_dir_all_recursive(parent.as_fd(), path))
 }
 
-fn remove_dir_all_recursive(parent: &WasiFd, path: &Path) -> io::Result<()> {
+fn remove_dir_all_recursive(parent: BorrowedFd<'_>, path: &CStr) -> io::Result<()> {
     // Open up a file descriptor for the directory itself. Note that we don't
     // follow symlinks here and we specifically open directories.
     //
@@ -833,13 +895,9 @@ fn remove_dir_all_recursive(parent: &WasiFd, path: &Path) -> io::Result<()> {
     //
     // If the opened file was actually a symlink then the symlink is deleted,
     // not the directory recursively.
-    let mut opts = OpenOptions::new();
-    opts.lookup_flags(0);
-    opts.directory(true);
-    opts.read(true);
-    let fd = open_at(parent, path, &opts)?;
+    let fd = c::openat(parent, path, libc::O_RDONLY | libc::O_DIRECTORY | libc::O_NOFOLLOW, None)?;
     if fd.file_attr()?.file_type().is_symlink() {
-        return parent.unlink_file(osstr2str(path.as_ref())?);
+        return c::unlinkat(parent.as_fd(), path, 0);
     }
 
     // this "root" is only used by `DirEntry::path` which we don't use below so
@@ -855,17 +913,13 @@ fn remove_dir_all_recursive(parent: &WasiFd, path: &Path) -> io::Result<()> {
     // invocations of reading a directory. By reading all the entries at once
     // this ensures that, at least without concurrent modifications, it should
     // be possible to delete everything.
-    for entry in ReadDir::new(fd, dummy_root).collect::<Vec<_>>() {
+    for entry in ReadDir::new(fd, dummy_root)?.collect::<Vec<_>>() {
         let entry = entry?;
-        let path = crate::str::from_utf8(&entry.name).map_err(|_| {
-            io::const_error!(io::ErrorKind::Uncategorized, "invalid utf-8 file name found")
-        })?;
-
         let result: io::Result<()> = try {
             if entry.file_type()?.is_dir() {
-                remove_dir_all_recursive(&entry.inner.dir.fd, path.as_ref())?;
+                remove_dir_all_recursive(entry.dir_fd(), &entry.name)?;
             } else {
-                entry.inner.dir.fd.unlink_file(path)?;
+                c::unlinkat(entry.dir_fd(), &entry.name, 0)?;
             }
         };
         // ignore internal NotFound errors
@@ -878,5 +932,176 @@ fn remove_dir_all_recursive(parent: &WasiFd, path: &Path) -> io::Result<()> {
 
     // Once all this directory's contents are deleted it should be safe to
     // delete the directory tiself.
-    ignore_notfound(parent.remove_directory(osstr2str(path.as_ref())?))
+    ignore_notfound(c::unlinkat(parent, path, libc::AT_REMOVEDIR))
+}
+
+mod c {
+    use super::{File, FileAttr};
+    use crate::ffi::CStr;
+    use crate::io;
+    use crate::mem::MaybeUninit;
+    use crate::os::fd::{FromRawFd, IntoRawFd};
+    use crate::os::wasi::io::{AsRawFd, BorrowedFd};
+    use crate::sys::os::{cvt, errno};
+
+    pub fn ftruncate(fd: BorrowedFd<'_>, size: libc::off_t) -> io::Result<()> {
+        unsafe {
+            cvt(libc::ftruncate(fd.as_raw_fd(), size))?;
+        }
+        Ok(())
+    }
+
+    pub fn linkat(
+        oldfd: BorrowedFd<'_>,
+        oldpath: &CStr,
+        newfd: BorrowedFd<'_>,
+        newpath: &CStr,
+        flags: libc::c_int,
+    ) -> io::Result<()> {
+        cvt(unsafe {
+            libc::linkat(
+                oldfd.as_raw_fd(),
+                oldpath.as_ptr(),
+                newfd.as_raw_fd(),
+                newpath.as_ptr(),
+                flags,
+            )
+        })?;
+        Ok(())
+    }
+
+    pub fn symlinkat(original: &CStr, newfd: BorrowedFd<'_>, newpath: &CStr) -> io::Result<()> {
+        cvt(unsafe { libc::symlinkat(original.as_ptr(), newfd.as_raw_fd(), newpath.as_ptr()) })?;
+        Ok(())
+    }
+
+    pub fn renameat(
+        oldfd: BorrowedFd<'_>,
+        oldpath: &CStr,
+        newfd: BorrowedFd<'_>,
+        newpath: &CStr,
+    ) -> io::Result<()> {
+        cvt(unsafe {
+            libc::renameat(oldfd.as_raw_fd(), oldpath.as_ptr(), newfd.as_raw_fd(), newpath.as_ptr())
+        })?;
+        Ok(())
+    }
+
+    pub fn mkdirat(fd: BorrowedFd<'_>, path: &CStr) -> io::Result<()> {
+        cvt(unsafe { libc::mkdirat(fd.as_raw_fd(), path.as_ptr(), 0o777) })?;
+        Ok(())
+    }
+
+    pub fn futimens(fd: BorrowedFd<'_>, times: &[libc::timespec; 2]) -> io::Result<()> {
+        unsafe {
+            cvt(libc::futimens(fd.as_raw_fd(), times.as_ptr()))?;
+        }
+        Ok(())
+    }
+
+    pub fn lseek(fd: BorrowedFd<'_>, pos: i64, whence: libc::c_int) -> io::Result<u64> {
+        let n = cvt(unsafe { libc::lseek(fd.as_raw_fd(), pos, whence) })?;
+        Ok(n as u64)
+    }
+
+    pub fn fsync(fd: BorrowedFd<'_>) -> io::Result<()> {
+        unsafe {
+            cvt(libc::fsync(fd.as_raw_fd()))?;
+        }
+        Ok(())
+    }
+
+    pub fn fdatasync(fd: BorrowedFd<'_>) -> io::Result<()> {
+        unsafe {
+            cvt(libc::fdatasync(fd.as_raw_fd()))?;
+        }
+        Ok(())
+    }
+
+    pub fn fstat(fd: BorrowedFd<'_>) -> io::Result<FileAttr> {
+        let mut stat = MaybeUninit::uninit();
+        unsafe {
+            cvt(libc::fstat(fd.as_raw_fd(), stat.as_mut_ptr()))?;
+            Ok(FileAttr { stat: stat.assume_init() })
+        }
+    }
+
+    pub fn fstatat(fd: BorrowedFd<'_>, path: &CStr, flags: libc::c_int) -> io::Result<FileAttr> {
+        let mut stat = MaybeUninit::uninit();
+        unsafe {
+            cvt(libc::fstatat(fd.as_raw_fd(), path.as_ptr(), stat.as_mut_ptr(), flags))?;
+            Ok(FileAttr { stat: stat.assume_init() })
+        }
+    }
+
+    pub fn readlinkat(fd: BorrowedFd<'_>, path: &CStr, buf: &mut [u8]) -> io::Result<usize> {
+        let len = cvt(unsafe {
+            libc::readlinkat(fd.as_raw_fd(), path.as_ptr(), buf.as_mut_ptr().cast(), buf.len())
+        })?;
+        Ok(len as usize)
+    }
+
+    pub fn unlinkat(fd: BorrowedFd<'_>, path: &CStr, flags: libc::c_int) -> io::Result<()> {
+        cvt(unsafe { libc::unlinkat(fd.as_raw_fd(), path.as_ptr(), flags) })?;
+        Ok(())
+    }
+
+    pub fn openat(
+        fd: BorrowedFd<'_>,
+        path: &CStr,
+        flags: libc::c_int,
+        mode: Option<libc::c_int>,
+    ) -> io::Result<File> {
+        unsafe {
+            let fd = match mode {
+                Some(mode) => cvt(libc::openat(fd.as_raw_fd(), path.as_ptr(), flags, mode))?,
+                None => cvt(libc::openat(fd.as_raw_fd(), path.as_ptr(), flags))?,
+            };
+            Ok(File::from_raw_fd(fd))
+        }
+    }
+
+    pub struct Dirp {
+        ptr: *mut libc::DIR,
+    }
+
+    impl Dirp {
+        pub fn new(dir: File) -> io::Result<Dirp> {
+            unsafe {
+                let ptr = libc::fdopendir(dir.as_raw_fd());
+                if ptr.is_null() {
+                    return Err(io::Error::last_os_error());
+                }
+                let _ = dir.into_raw_fd(); // `ptr` now owns the fd
+                Ok(Dirp { ptr })
+            }
+        }
+
+        pub fn readdir(&self) -> io::Result<Option<*mut libc::dirent>> {
+            unsafe {
+                let entry = libc::readdir(self.ptr);
+                if entry.is_null() {
+                    let e = errno();
+                    if e == 0 { Ok(None) } else { Err(io::Error::from_raw_os_error(e)) }
+                } else {
+                    Ok(Some(entry))
+                }
+            }
+        }
+
+        pub fn as_fd(&self) -> BorrowedFd<'_> {
+            unsafe { BorrowedFd::borrow_raw(libc::dirfd(self.ptr)) }
+        }
+    }
+
+    unsafe impl Send for Dirp {}
+    unsafe impl Sync for Dirp {}
+
+    impl Drop for Dirp {
+        fn drop(&mut self) {
+            unsafe {
+                libc::closedir(self.ptr);
+            }
+        }
+    }
 }

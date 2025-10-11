@@ -23,13 +23,12 @@ mod common;
 
 pub use common::*;
 
-#[path = "../wasip1/helpers.rs"]
 mod helpers;
 
 // The following exports are listed individually to work around Rust's glob
 // import conflict rules. If we glob export `helpers` and `common` together,
 // then the compiler complains about conflicts.
 
-pub(crate) use helpers::{abort_internal, decode_error_kind, err2io, is_interrupted};
+pub(crate) use helpers::{abort_internal, decode_error_kind, is_interrupted};
 
 mod cabi_realloc;
