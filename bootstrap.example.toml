@@ -758,12 +758,8 @@
 # Currently, the only standard options supported here are `"llvm"`, `"cranelift"` and `"gcc"`.
 #rust.codegen-backends = ["llvm"]
 
-# Indicates whether LLD will be compiled and made available in the sysroot for rustc to execute, and
-# whether to set it as rustc's default linker on `x86_64-unknown-linux-gnu`. This will also only be
-# when *not* building an external LLVM (so only when using `download-ci-llvm` or building LLVM from
-# the in-tree source): setting `llvm-config` in the `[target.x86_64-unknown-linux-gnu]` section will
-# make this default to false.
-#rust.lld = false in all cases, except on `x86_64-unknown-linux-gnu` as described above, where it is true
+# Indicates whether LLD will be compiled and made available in the sysroot for rustc to execute,
+#rust.lld = false, except for targets that opt into LLD (see `target.default-linker-linux-override`)
 
 # Indicates if we should override the linker used to link Rust crates during bootstrap to be LLD.
 # If set to `true` or `"external"`, a global `lld` binary that has to be in $PATH
@@ -1067,3 +1063,17 @@
 # Link the compiler and LLVM against `jemalloc` instead of the default libc allocator.
 # This overrides the global `rust.jemalloc` option. See that option for more info.
 #jemalloc = rust.jemalloc (bool)
+
+# The linker configuration that will *override* the default linker used for Linux
+# targets in the built compiler.
+#
+# The following values are supported:
+# - `off` => do not apply any override and use the default linker. This can be used to opt out of
+#   linker overrides set by bootstrap for specific targets (see below).
+# - `self-contained-lld-cc` => override the default linker to be self-contained LLD (`rust-lld`)
+#   that is invoked through `cc`.
+#
+# Currently, the following targets automatically opt into the self-contained LLD linker, unless you
+# pass `off`:
+# - x86_64-unknown-linux-gnu
+#default-linker-linux-override = "off" (for most targets)

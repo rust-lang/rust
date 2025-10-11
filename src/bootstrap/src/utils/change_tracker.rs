@@ -566,4 +566,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "`compiletest` is now always built with the stage 0 compiler, so `build.compiletest-use-stage0-libtest` has no effect.",
     },
+    ChangeInfo {
+        change_id: 147157,
+        severity: ChangeSeverity::Warning,
+        summary: "`rust.lld = true` no longer automatically causes the `x86_64-unknown-linux-gnu` target to default into using the self-contained LLD linker. This target now uses the LLD linker by default. To opt out, set `target.x86_64-unknown-linux-gnu.default-linker-linux-override = 'off'`.",
+    },
 ];

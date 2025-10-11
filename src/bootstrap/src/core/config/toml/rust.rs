@@ -438,28 +438,3 @@ pub(crate) fn parse_codegen_backends(
     }
     found_backends
 }
-
-#[cfg(not(test))]
-pub fn default_lld_opt_in_targets() -> Vec<String> {
-    vec!["x86_64-unknown-linux-gnu".to_string()]
-}
-
-#[cfg(test)]
-thread_local! {
-    static TEST_LLD_OPT_IN_TARGETS: std::cell::RefCell<Option<Vec<String>>> = std::cell::RefCell::new(None);
-}
-
-#[cfg(test)]
-pub fn default_lld_opt_in_targets() -> Vec<String> {
-    TEST_LLD_OPT_IN_TARGETS.with(|cell| cell.borrow().clone()).unwrap_or_default()
-}
-
-#[cfg(test)]
-pub fn with_lld_opt_in_targets<R>(targets: Vec<String>, f: impl FnOnce() -> R) -> R {
-    TEST_LLD_OPT_IN_TARGETS.with(|cell| {
-        let prev = cell.replace(Some(targets));
-        let result = f();
-        cell.replace(prev);
-        result
-    })
-}
