@@ -57,10 +57,7 @@ pub(crate) fn configure_lldb(config: &Config) -> Option<Arc<Config>> {
 /// Returns `true` if the given target is an Android target for the
 /// purposes of GDB testing.
 pub(crate) fn is_android_gdb_target(target: &str) -> bool {
-    matches!(
-        &target[..],
-        "arm-linux-androideabi" | "armv7-linux-androideabi" | "aarch64-linux-android"
-    )
+    matches!(target, "arm-linux-androideabi" | "armv7-linux-androideabi" | "aarch64-linux-android")
 }
 
 /// Returns `true` if the given target is a MSVC target for the purposes of CDB testing.
@@ -110,12 +107,11 @@ pub(crate) fn analyze_cdb(
     let cdb = cdb.map(Utf8PathBuf::from).or_else(|| find_cdb(target));
 
     let mut version = None;
-    if let Some(cdb) = cdb.as_ref() {
-        if let Ok(output) = Command::new(cdb).arg("/version").output() {
-            if let Some(first_line) = String::from_utf8_lossy(&output.stdout).lines().next() {
-                version = extract_cdb_version(&first_line);
-            }
-        }
+    if let Some(cdb) = cdb.as_ref()
+        && let Ok(output) = Command::new(cdb).arg("/version").output()
+        && let Some(first_line) = String::from_utf8_lossy(&output.stdout).lines().next()
+    {
+        version = extract_cdb_version(first_line);
     }
 
     (cdb, version)
@@ -160,10 +156,10 @@ pub(crate) fn analyze_gdb(
     };
 
     let mut version_line = None;
-    if let Ok(output) = Command::new(&gdb).arg("--version").output() {
-        if let Some(first_line) = String::from_utf8_lossy(&output.stdout).lines().next() {
-            version_line = Some(first_line.to_string());
-        }
+    if let Ok(output) = Command::new(&gdb).arg("--version").output()
+        && let Some(first_line) = String::from_utf8_lossy(&output.stdout).lines().next()
+    {
+        version_line = Some(first_line.to_string());
     }
 
     let version = match version_line {
@@ -250,11 +246,11 @@ pub(crate) fn extract_lldb_version(full_version_line: &str) -> Option<u32> {
             let version: u32 = apple_ver[..idx].parse().unwrap();
             return Some(version);
         }
-    } else if let Some(lldb_ver) = full_version_line.strip_prefix("lldb version ") {
-        if let Some(idx) = lldb_ver.find(not_a_digit) {
-            let version: u32 = lldb_ver[..idx].parse().ok()?;
-            return Some(version * 100);
-        }
+    } else if let Some(lldb_ver) = full_version_line.strip_prefix("lldb version ")
+        && let Some(idx) = lldb_ver.find(not_a_digit)
+    {
+        let version: u32 = lldb_ver[..idx].parse().ok()?;
+        return Some(version * 100);
     }
     None
 }

@@ -50,7 +50,7 @@ pub fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) {
     fn copy_dir_all_inner(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> io::Result<()> {
         let dst = dst.as_ref();
         if !dst.is_dir() {
-            std::fs::create_dir_all(&dst)?;
+            std::fs::create_dir_all(dst)?;
         }
         for entry in std::fs::read_dir(src)? {
             let entry = entry?;
@@ -118,77 +118,83 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) {
 /// A wrapper around [`std::fs::copy`] which includes the file path in the panic message.
 #[track_caller]
 pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) {
-    std::fs::copy(from.as_ref(), to.as_ref()).expect(&format!(
-        "the file \"{}\" could not be copied over to \"{}\"",
-        from.as_ref().display(),
-        to.as_ref().display(),
-    ));
+    std::fs::copy(from.as_ref(), to.as_ref()).unwrap_or_else(|_| {
+        panic!(
+            "the file \"{}\" could not be copied over to \"{}\"",
+            from.as_ref().display(),
+            to.as_ref().display()
+        )
+    });
 }
 
 /// A wrapper around [`std::fs::File::create`] which includes the file path in the panic message.
 #[track_caller]
 pub fn create_file<P: AsRef<Path>>(path: P) {
-    std::fs::File::create(path.as_ref())
-        .expect(&format!("the file in path \"{}\" could not be created", path.as_ref().display()));
+    std::fs::File::create(path.as_ref()).unwrap_or_else(|_| {
+        panic!("the file in path \"{}\" could not be created", path.as_ref().display())
+    });
 }
 
 /// A wrapper around [`std::fs::read`] which includes the file path in the panic message.
 #[track_caller]
 pub fn read<P: AsRef<Path>>(path: P) -> Vec<u8> {
-    std::fs::read(path.as_ref())
-        .expect(&format!("the file in path \"{}\" could not be read", path.as_ref().display()))
+    std::fs::read(path.as_ref()).unwrap_or_else(|_| {
+        panic!("the file in path \"{}\" could not be read", path.as_ref().display())
+    })
 }
 
 /// A wrapper around [`std::fs::read_to_string`] which includes the file path in the panic message.
 #[track_caller]
 pub fn read_to_string<P: AsRef<Path>>(path: P) -> String {
-    std::fs::read_to_string(path.as_ref()).expect(&format!(
-        "the file in path \"{}\" could not be read into a String",
-        path.as_ref().display()
-    ))
+    std::fs::read_to_string(path.as_ref()).unwrap_or_else(|_| {
+        panic!("the file in path \"{}\" could not be read into a String", path.as_ref().display())
+    })
 }
 
 /// A wrapper around [`std::fs::read_dir`] which includes the file path in the panic message.
 #[track_caller]
 pub fn read_dir<P: AsRef<Path>>(path: P) -> std::fs::ReadDir {
-    std::fs::read_dir(path.as_ref())
-        .expect(&format!("the directory in path \"{}\" could not be read", path.as_ref().display()))
+    std::fs::read_dir(path.as_ref()).unwrap_or_else(|_| {
+        panic!("the directory in path \"{}\" could not be read", path.as_ref().display())
+    })
 }
 
 /// A wrapper around [`std::fs::write`] which includes the file path in the panic message.
 #[track_caller]
 pub fn write<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) {
-    std::fs::write(path.as_ref(), contents.as_ref()).expect(&format!(
-        "the file in path \"{}\" could not be written to",
-        path.as_ref().display()
-    ));
+    std::fs::write(path.as_ref(), contents.as_ref()).unwrap_or_else(|_| {
+        panic!("the file in path \"{}\" could not be written to", path.as_ref().display())
+    });
 }
 
 /// A wrapper around [`std::fs::remove_dir_all`] which includes the file path in the panic message.
 #[track_caller]
 pub fn remove_dir_all<P: AsRef<Path>>(path: P) {
-    std::fs::remove_dir_all(path.as_ref()).expect(&format!(
-        "the directory in path \"{}\" could not be removed alongside all its contents",
-        path.as_ref().display(),
-    ));
+    std::fs::remove_dir_all(path.as_ref()).unwrap_or_else(|_| {
+        panic!(
+            "the directory in path \"{}\" could not be removed alongside all its contents",
+            path.as_ref().display()
+        )
+    });
 }
 
 /// A wrapper around [`std::fs::create_dir`] which includes the file path in the panic message.
 #[track_caller]
 pub fn create_dir<P: AsRef<Path>>(path: P) {
-    std::fs::create_dir(path.as_ref()).expect(&format!(
-        "the directory in path \"{}\" could not be created",
-        path.as_ref().display()
-    ));
+    std::fs::create_dir(path.as_ref()).unwrap_or_else(|_| {
+        panic!("the directory in path \"{}\" could not be created", path.as_ref().display())
+    });
 }
 
 /// A wrapper around [`std::fs::create_dir_all`] which includes the file path in the panic message.
 #[track_caller]
 pub fn create_dir_all<P: AsRef<Path>>(path: P) {
-    std::fs::create_dir_all(path.as_ref()).expect(&format!(
-        "the directory (and all its parents) in path \"{}\" could not be created",
-        path.as_ref().display()
-    ));
+    std::fs::create_dir_all(path.as_ref()).unwrap_or_else(|_| {
+        panic!(
+            "the directory (and all its parents) in path \"{}\" could not be created",
+            path.as_ref().display()
+        )
+    });
 }
 
 /// A wrapper around [`std::fs::metadata`] which includes the file path in the panic message. Note
@@ -222,20 +228,24 @@ pub fn symlink_metadata<P: AsRef<Path>>(path: P) -> std::fs::Metadata {
 /// A wrapper around [`std::fs::rename`] which includes the file path in the panic message.
 #[track_caller]
 pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) {
-    std::fs::rename(from.as_ref(), to.as_ref()).expect(&format!(
-        "the file \"{}\" could not be moved over to \"{}\"",
-        from.as_ref().display(),
-        to.as_ref().display(),
-    ));
+    std::fs::rename(from.as_ref(), to.as_ref()).unwrap_or_else(|_| {
+        panic!(
+            "the file \"{}\" could not be moved over to \"{}\"",
+            from.as_ref().display(),
+            to.as_ref().display()
+        )
+    });
 }
 
 /// A wrapper around [`std::fs::set_permissions`] which includes the file path in the panic message.
 #[track_caller]
 pub fn set_permissions<P: AsRef<Path>>(path: P, perm: std::fs::Permissions) {
-    std::fs::set_permissions(path.as_ref(), perm).expect(&format!(
-        "the file's permissions in path \"{}\" could not be changed",
-        path.as_ref().display()
-    ));
+    std::fs::set_permissions(path.as_ref(), perm).unwrap_or_else(|_| {
+        panic!(
+            "the file’s permissions in path \"{}\" could not be changed",
+            path.as_ref().display()
+        )
+    });
 }
 
 /// List directory entries immediately under the given `dir`.

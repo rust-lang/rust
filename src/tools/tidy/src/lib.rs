@@ -182,7 +182,7 @@ pub fn ensure_version_or_cargo_install(
         let Ok(s) = str::from_utf8(&output.stdout) else {
             break 'ck;
         };
-        let Some(v) = s.trim().split_whitespace().last() else {
+        let Some(v) = s.split_whitespace().last() else {
             break 'ck;
         };
         if v == version {

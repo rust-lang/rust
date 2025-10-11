@@ -45,7 +45,7 @@ pub(crate) struct Artifact {
 impl Artifact {
     pub(crate) fn add_file(&mut self, builder: &mut Builder, target: &str, path: &str) {
         if let Some(path) = record_shipped_file(builder, builder.input.join(path)) {
-            self.target.entry(target.into()).or_insert_with(Vec::new).push(ArtifactFile {
+            self.target.entry(target.into()).or_default().push(ArtifactFile {
                 url: builder.url(&path),
                 hash_sha256: FileHash::Missing(path),
             });
@@ -53,7 +53,7 @@ impl Artifact {
     }
 
     pub(crate) fn add_tarball(&mut self, builder: &mut Builder, target: &str, base_path: &str) {
-        let files = self.target.entry(target.into()).or_insert_with(Vec::new);
+        let files = self.target.entry(target.into()).or_default();
         let base_path = builder.input.join(base_path);
         for compression in &["gz", "xz"] {
             if let Some(tarball) = tarball_variant(builder, &base_path, compression) {

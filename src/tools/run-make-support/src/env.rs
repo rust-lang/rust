@@ -38,6 +38,7 @@ pub fn std_debug_assertions_enabled() -> bool {
 /// path in the panic message.
 #[track_caller]
 pub fn set_current_dir<P: AsRef<std::path::Path>>(dir: P) {
-    std::env::set_current_dir(dir.as_ref())
-        .expect(&format!("could not set current directory to \"{}\"", dir.as_ref().display()));
+    std::env::set_current_dir(dir.as_ref()).unwrap_or_else(|_| {
+        panic!("could not set current directory to \"{}\"", dir.as_ref().display())
+    });
 }

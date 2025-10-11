@@ -378,11 +378,11 @@ pub fn quote(stream: TokenStream) -> TokenStream {
                     "`$` must be followed by an ident or `$` or a repetition group in `quote!`"
                 ),
             }
-        } else if let TokenTree::Punct(ref tt) = tree {
-            if tt.as_char() == '$' {
-                after_dollar = true;
-                continue;
-            }
+        } else if let TokenTree::Punct(ref tt) = tree
+            && tt.as_char() == '$'
+        {
+            after_dollar = true;
+            continue;
         }
 
         match tree {

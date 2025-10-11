@@ -14,7 +14,7 @@ impl TestCx<'_> {
         let should_run = self.should_run(pm);
 
         let mut test_info = files_for_miropt_test(
-            &self.testpaths.file.as_std_path(),
+            self.testpaths.file.as_std_path(),
             self.config.get_pointer_width(),
             self.config.target_cfg().panic.for_miropt_test_tools(),
         );

@@ -30,7 +30,7 @@ pub struct Rustdoc {
 // Only fill in the target just before execution, so that it can be overridden.
 crate::macros::impl_common_helpers!(Rustdoc, |rustdoc: &mut Rustdoc| {
     if let Some(target) = &rustdoc.target {
-        rustdoc.cmd.arg(&format!("--target={target}"));
+        rustdoc.cmd.arg(format!("--target={target}"));
     }
 });
 

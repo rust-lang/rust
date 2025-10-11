@@ -133,10 +133,7 @@ impl PkgType {
 
     /// Whether to package these target-specific docs for another similar target.
     pub(crate) fn use_docs_fallback(&self) -> bool {
-        match self {
-            PkgType::JsonDocs | PkgType::HtmlDocs => true,
-            _ => false,
-        }
+        matches!(self, PkgType::JsonDocs | PkgType::HtmlDocs)
     }
 }
 
@@ -198,7 +195,7 @@ impl Versions {
     }
 
     fn load_version_from_tarball_inner(&mut self, tarball: &Path) -> Result<VersionInfo, Error> {
-        let file = match File::open(&tarball) {
+        let file = match File::open(tarball) {
             Ok(file) => file,
             Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
                 // Missing tarballs do not return an error, but return empty data.
@@ -208,9 +205,9 @@ impl Versions {
             Err(err) => return Err(err.into()),
         };
         let mut tar: Archive<Box<dyn std::io::Read>> =
-            Archive::new(if tarball.extension().map_or(false, |e| e == "gz") {
+            Archive::new(if tarball.extension().is_some_and(|e| e == "gz") {
                 Box::new(GzDecoder::new(file))
-            } else if tarball.extension().map_or(false, |e| e == "xz") {
+            } else if tarball.extension().is_some_and(|e| e == "xz") {
                 Box::new(XzDecoder::new(file))
             } else {
                 unimplemented!("tarball extension not recognized: {}", tarball.display())
@@ -221,12 +218,12 @@ impl Versions {
         for entry in tar.entries()? {
             let mut entry = entry?;
 
-            let dest;
-            match entry.path()?.components().nth(1).and_then(|c| c.as_os_str().to_str()) {
-                Some("version") => dest = &mut version,
-                Some("git-commit-hash") => dest = &mut git_commit,
+            let dest = match entry.path()?.components().nth(1).and_then(|c| c.as_os_str().to_str())
+            {
+                Some("version") => &mut version,
+                Some("git-commit-hash") => &mut git_commit,
                 _ => continue,
-            }
+            };
             let mut buf = String::new();
             entry.read_to_string(&mut buf)?;
             *dest = Some(buf);

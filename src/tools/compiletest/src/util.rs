@@ -35,7 +35,7 @@ impl Utf8PathBufExt for Utf8PathBuf {
         } else {
             let mut fname = self.file_name().unwrap().to_string();
             if !extension.starts_with('.') {
-                fname.push_str(".");
+                fname.push('.');
             }
             fname.push_str(extension);
             self.with_file_name(fname)

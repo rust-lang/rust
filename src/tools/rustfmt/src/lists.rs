@@ -136,7 +136,7 @@ impl ListItem {
         ListItem {
             pre_comment: None,
             pre_comment_style: ListItemCommentStyle::None,
-            item: item,
+            item,
             post_comment: None,
             new_lines: false,
         }

@@ -152,10 +152,8 @@ pub(crate) fn version_sort(a: &str, b: &str) -> std::cmp::Ordering {
                 | (VersionChunk::Str(ca), VersionChunk::Number { source: cb, .. })
                 | (VersionChunk::Number { source: ca, .. }, VersionChunk::Str(cb)) => {
                     match ca.cmp(&cb) {
-                        std::cmp::Ordering::Equal => {
-                            continue;
-                        }
-                        order @ _ => return order,
+                        std::cmp::Ordering::Equal => continue,
+                        order => return order,
                     }
                 }
                 (
@@ -182,7 +180,7 @@ pub(crate) fn version_sort(a: &str, b: &str) -> std::cmp::Ordering {
                         }
                         continue;
                     }
-                    order @ _ => return order,
+                    order => return order,
                 },
             },
         }

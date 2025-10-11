@@ -381,7 +381,7 @@ fn test_runner<F: Float, G: Generator<F>>(test: &TestInfo, cfg: &Config) {
         };
 
         // Send periodic updates
-        if executed % checks_per_update == 0 {
+        if executed.is_multiple_of(checks_per_update) {
             let failures = failures.load(Ordering::Relaxed);
             test.progress.as_ref().unwrap().update(executed, failures);
             if started.elapsed() > cfg.timeout {

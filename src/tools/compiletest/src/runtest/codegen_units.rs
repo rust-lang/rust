@@ -26,7 +26,7 @@ impl TestCx<'_> {
             .stdout
             .lines()
             .filter(|line| line.starts_with(PREFIX))
-            .map(|line| line.replace(&self.testpaths.file.as_str(), "TEST_PATH").to_string())
+            .map(|line| line.replace(self.testpaths.file.as_str(), "TEST_PATH").to_string())
             .map(|line| str_to_mono_item(&line, true))
             .collect();
 
@@ -91,7 +91,7 @@ impl TestCx<'_> {
             wrong_cgus.sort_by_key(|pair| pair.0.name.clone());
             writeln!(self.stdout, "\nThe following items were assigned to wrong codegen units:\n");
 
-            for &(ref expected_item, ref actual_item) in &wrong_cgus {
+            for (expected_item, actual_item) in &wrong_cgus {
                 writeln!(self.stdout, "{}", expected_item.name);
                 writeln!(
                     self.stdout,
@@ -120,7 +120,7 @@ impl TestCx<'_> {
 
         // [MONO_ITEM] name [@@ (cgu)+]
         fn str_to_mono_item(s: &str, cgu_has_crate_disambiguator: bool) -> MonoItem {
-            let s = if s.starts_with(PREFIX) { (&s[PREFIX.len()..]).trim() } else { s.trim() };
+            let s = s.strip_prefix(PREFIX).unwrap_or(s).trim();
 
             let full_string = format!("{}{}", PREFIX, s);
 

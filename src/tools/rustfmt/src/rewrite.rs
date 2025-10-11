@@ -73,15 +73,12 @@ impl<T> RewriteErrorExt<T> for Option<T> {
     fn max_width_error(self, width: usize, span: Span) -> Result<T, RewriteError> {
         self.ok_or_else(|| RewriteError::ExceedsMaxWidth {
             configured_width: width,
-            span: span,
+            span,
         })
     }
 
     fn macro_error(self, kind: MacroErrorKind, span: Span) -> Result<T, RewriteError> {
-        self.ok_or_else(|| RewriteError::MacroFailure {
-            kind: kind,
-            span: span,
-        })
+        self.ok_or_else(|| RewriteError::MacroFailure { kind, span })
     }
 
     fn unknown_error(self) -> Result<T, RewriteError> {

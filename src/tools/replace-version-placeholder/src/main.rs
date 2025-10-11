@@ -23,7 +23,7 @@ fn main() {
             }
             let new_contents = contents.replace(VERSION_PLACEHOLDER, version_str);
             let path = entry.path();
-            t!(std::fs::write(&path, new_contents), path);
+            t!(std::fs::write(path, new_contents), path);
         },
     );
 }

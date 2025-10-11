@@ -91,8 +91,7 @@ fn trim_backtrace(full_backtrace: String) -> String {
     // After the short-backtrace state is toggled, skip its associated "at" if present.
     let mut skip_next_at = false;
 
-    let mut lines = full_backtrace.lines();
-    while let Some(line) = lines.next() {
+    for line in full_backtrace.lines() {
         if mem::replace(&mut skip_next_at, false) && line.trim_start().starts_with("at ") {
             continue;
         }

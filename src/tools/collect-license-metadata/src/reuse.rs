@@ -15,7 +15,7 @@ pub(crate) fn collect(
     let raw = &obtain_spdx_document(reuse_exe)?;
     println!("finished gathering the license information from REUSE in {:.2?}", start.elapsed());
 
-    let document = spdx_rs::parsers::spdx_from_tag_value(&raw)?;
+    let document = spdx_rs::parsers::spdx_from_tag_value(raw)?;
 
     let mut result = Vec::new();
     for file in document.file_information {
@@ -34,7 +34,7 @@ pub(crate) fn collect(
 
 fn obtain_spdx_document(reuse_exe: &Path) -> Result<String, Error> {
     let output = Command::new(reuse_exe)
-        .args(&["--include-submodules", "spdx", "--add-license-concluded", "--creator-person=bors"])
+        .args(["--include-submodules", "spdx", "--add-license-concluded", "--creator-person=bors"])
         .stdout(Stdio::piped())
         .spawn()?
         .wait_with_output()?;

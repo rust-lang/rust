@@ -176,7 +176,7 @@ fn bind_socket(addr: SocketAddr) -> TcpListener {
 
 fn handle_push(socket: TcpStream, work: &Path, config: Config) {
     let mut reader = BufReader::new(socket);
-    let dst = recv(&work, &mut reader);
+    let dst = recv(work, &mut reader);
     print_verbose(&format!("push {:#?}", dst), config);
 
     let mut socket = reader.into_inner();
@@ -321,7 +321,7 @@ fn handle_run(socket: TcpStream, work: &Path, tmp: &Path, lock: &Mutex<()>, conf
         (code >> 24) as u8,
         (code >> 16) as u8,
         (code >> 8) as u8,
-        (code >> 0) as u8,
+        code as u8,
     ]));
 }
 
@@ -361,7 +361,7 @@ fn recv<B: BufRead>(dir: &Path, io: &mut B) -> PathBuf {
 
 #[cfg(not(windows))]
 fn set_permissions(path: &Path) {
-    t!(fs::set_permissions(&path, Permissions::from_mode(0o755)));
+    t!(fs::set_permissions(path, Permissions::from_mode(0o755)));
 }
 #[cfg(windows)]
 fn set_permissions(_path: &Path) {}

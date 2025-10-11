@@ -63,10 +63,10 @@ impl NodeLabels<&'static str> {
     }
 
     fn len(&self) -> usize {
-        match self {
-            &UnlabelledNodes(len) => len,
-            &AllNodesLabelled(ref lbls) => lbls.len(),
-            &SomeNodesLabelled(ref lbls) => lbls.len(),
+        match *self {
+            UnlabelledNodes(len) => len,
+            AllNodesLabelled(ref lbls) => lbls.len(),
+            SomeNodesLabelled(ref lbls) => lbls.len(),
         }
     }
 }
@@ -394,17 +394,15 @@ fn left_aligned_text() {
 #[test]
 fn simple_id_construction() {
     let id1 = Id::new("hello");
-    match id1 {
-        Ok(_) => {}
-        Err(..) => panic!("'hello' is not a valid value for id anymore"),
+    if id1.is_err() {
+        panic!("'hello' is not a valid value for id anymore");
     }
 }
 
 #[test]
 fn badly_formatted_id() {
     let id2 = Id::new("Weird { struct : ure } !!!");
-    match id2 {
-        Ok(_) => panic!("graphviz id suddenly allows spaces, brackets and stuff"),
-        Err(..) => {}
+    if id2.is_ok() {
+        panic!("graphviz id suddenly allows spaces, brackets and stuff");
     }
 }

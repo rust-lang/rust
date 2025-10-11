@@ -37,7 +37,7 @@ impl MultiSpan for Vec<Span> {
 }
 
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
-impl<'a> MultiSpan for &'a [Span] {
+impl MultiSpan for &[Span] {
     fn into_spans(self) -> Vec<Span> {
         self.to_vec()
     }

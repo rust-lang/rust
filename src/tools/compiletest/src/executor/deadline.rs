@@ -87,7 +87,7 @@ impl<'a> DeadlineQueue<'a> {
 
         // Also clear out any leading entries that are no longer running, even
         // if their deadline hasn't been reached.
-        while let Some(_) = pop_front_if(&mut self.queue, |entry| !is_running(entry.id)) {}
+        while pop_front_if(&mut self.queue, |entry| !is_running(entry.id)).is_some() {}
 
         if let Some(front) = self.queue.front() {
             assert!(now < front.deadline);

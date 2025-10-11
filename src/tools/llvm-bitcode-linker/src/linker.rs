@@ -97,7 +97,7 @@ impl Session {
 
         // We add an internalize pass as the rust compiler as we require exported symbols to be explicitly marked
         passes.push_str(",internalize,globaldce");
-        let symbol_file_content = self.symbols.iter().fold(String::new(), |s, x| s + &x + "\n");
+        let symbol_file_content = self.symbols.iter().fold(String::new(), |s, x| s + x + "\n");
         std::fs::write(&self.sym_path, symbol_file_content)
             .context(format!("Failed to write symbol file: {}", self.sym_path.display()))?;
 
@@ -142,7 +142,7 @@ impl Session {
         }
 
         if let Some(mattr) = &self.feature {
-            lcc_command.arg(&format!("--mattr={}", mattr));
+            lcc_command.arg(format!("--mattr={}", mattr));
         }
 
         let lcc_output = lcc_command

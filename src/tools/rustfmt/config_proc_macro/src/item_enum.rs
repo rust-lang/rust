@@ -75,7 +75,7 @@ fn impl_doc_hint(ident: &syn::Ident, variants: &Variants) -> TokenStream {
 
     let variant_stables = variants
         .iter()
-        .map(|v| (&v.ident, fields_in_variant(&v), !unstable_of_variant(v)));
+        .map(|v| (&v.ident, fields_in_variant(v), !unstable_of_variant(v)));
     let match_patterns = fold_quote(variant_stables, |(v, fields, stable)| {
         quote! {
             #ident::#v #fields => #stable,
@@ -150,7 +150,7 @@ fn impl_from_str(ident: &syn::Ident, variants: &Variants) -> TokenStream {
 
 fn doc_hint_of_variant(variant: &syn::Variant) -> String {
     let mut text = find_doc_hint(&variant.attrs).unwrap_or(variant.ident.to_string());
-    if unstable_of_variant(&variant) {
+    if unstable_of_variant(variant) {
         text.push_str(" (unstable)")
     };
     text

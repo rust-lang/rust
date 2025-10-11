@@ -326,7 +326,7 @@ impl Builder {
         }
 
         if let Some(path) = std::env::var_os("BUILD_MANIFEST_SHIPPED_FILES_PATH") {
-            self.write_shipped_files(&Path::new(&path));
+            self.write_shipped_files(Path::new(&path));
         }
 
         t!(self.checksums.store_cache());
@@ -435,7 +435,7 @@ impl Builder {
             target: BTreeMap::new(),
         };
         for host in HOSTS {
-            if let Some(target) = self.target_host_combination(host, &manifest) {
+            if let Some(target) = self.target_host_combination(host, manifest) {
                 pkg.target.insert(host.to_string(), target);
             } else {
                 pkg.target.insert(host.to_string(), Target::unavailable());
@@ -556,11 +556,11 @@ impl Builder {
         }
 
         let fallback = if pkg.use_docs_fallback() { DOCS_FALLBACK } else { &[] };
-        let version_info = self.versions.version(&pkg).expect("failed to load package version");
+        let version_info = self.versions.version(pkg).expect("failed to load package version");
         let mut is_present = version_info.present;
 
         // Never ship nightly-only components for other trains.
-        if self.versions.channel() != "nightly" && NIGHTLY_ONLY_COMPONENTS.contains(&pkg) {
+        if self.versions.channel() != "nightly" && NIGHTLY_ONLY_COMPONENTS.contains(pkg) {
             is_present = false; // Pretend the component is entirely missing.
         }
 

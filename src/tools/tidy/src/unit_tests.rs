@@ -43,10 +43,8 @@ pub fn check(root_path: &Path, stdlib: bool, diag_ctx: DiagCtx) {
                 if file_name == "tests" || file_name == "benches" {
                     return true;
                 }
-            } else {
-                if file_name == "tests.rs" || file_name == "benches.rs" {
-                    return true;
-                }
+            } else if file_name == "tests.rs" || file_name == "benches.rs" {
+                return true;
             }
         }
 

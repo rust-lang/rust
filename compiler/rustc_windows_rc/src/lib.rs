@@ -94,7 +94,7 @@ fn write_resource_script_file(
         .replace("@RUSTC_PRODUCTVERSION_QUAD@", &version.to_quad_string())
         .replace("@RUSTC_PRODUCTVERSION_STR@", &descriptive_version);
 
-    fs::write(&rc_path, resource_script)
+    fs::write(rc_path, resource_script)
         .unwrap_or_else(|_| panic!("failed to write resource file {}", rc_path.display()));
 }
 

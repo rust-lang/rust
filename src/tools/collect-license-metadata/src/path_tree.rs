@@ -213,20 +213,12 @@ impl Node<LicenseId> {
                     match child {
                         Node::Directory { name, children, license: Some(license) } => {
                             if children.is_empty() {
-                                grouped
-                                    .entry(*license)
-                                    .or_insert_with(Grouped::default)
-                                    .directories
-                                    .push(name.clone());
+                                grouped.entry(*license).or_default().directories.push(name.clone());
                                 *child = Node::Empty;
                             }
                         }
                         Node::File { name, license } => {
-                            grouped
-                                .entry(*license)
-                                .or_insert_with(Grouped::default)
-                                .files
-                                .push(name.clone());
+                            grouped.entry(*license).or_default().files.push(name.clone());
                             *child = Node::Empty;
                         }
                         _ => {}

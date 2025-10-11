@@ -123,7 +123,7 @@ where
     registry.inject_broadcast(job_refs);
 
     let current_thread_job_id = current_thread
-        .and_then(|worker| (registry.id() == worker.registry.id()).then(|| worker))
+        .and_then(|worker| (registry.id() == worker.registry.id()).then_some(worker))
         .map(|worker| unsafe { jobs[worker.index()].as_job_ref() }.id());
 
     // Wait for all jobs to complete, then collect the results, maybe propagating a panic.

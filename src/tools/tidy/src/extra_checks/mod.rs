@@ -316,7 +316,7 @@ fn check_impl(
         } else {
             eprintln!("spellchecking files");
         }
-        let res = spellcheck_runner(root_path, &outdir, &cargo, &args);
+        let res = spellcheck_runner(root_path, outdir, cargo, &args);
         if res.is_err() {
             rerun_with_bless("spellcheck", "fix typos");
         }

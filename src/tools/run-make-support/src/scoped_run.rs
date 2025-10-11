@@ -34,16 +34,16 @@ where
         );
         panic!("`test_while_readonly` on directory detected while on Windows.");
     }
-    let metadata = fs::metadata(&path);
+    let metadata = fs::metadata(path);
     let original_perms = metadata.permissions();
 
     let mut new_perms = original_perms.clone();
     new_perms.set_readonly(true);
-    fs::set_permissions(&path, new_perms);
+    fs::set_permissions(path, new_perms);
 
     let success = std::panic::catch_unwind(closure);
 
-    fs::set_permissions(&path, original_perms);
+    fs::set_permissions(path, original_perms);
     success.unwrap();
 }
 

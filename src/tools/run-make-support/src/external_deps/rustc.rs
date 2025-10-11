@@ -33,7 +33,7 @@ pub struct Rustc {
 // Only fill in the target just before execution, so that it can be overridden.
 crate::macros::impl_common_helpers!(Rustc, |rustc: &mut Rustc| {
     if let Some(target) = &rustc.target {
-        rustc.cmd.arg(&format!("--target={target}"));
+        rustc.cmd.arg(format!("--target={target}"));
     }
 });
 
@@ -232,7 +232,7 @@ impl Rustc {
 
     /// Specify `-C prefer-dynamic`.
     pub fn prefer_dynamic(&mut self) -> &mut Self {
-        self.cmd.arg(format!("-Cprefer-dynamic"));
+        self.cmd.arg("-Cprefer-dynamic");
         self
     }
 
@@ -250,7 +250,7 @@ impl Rustc {
 
     /// Normalize the line number in the stderr output
     pub fn ui_testing(&mut self) -> &mut Self {
-        self.cmd.arg(format!("-Zui-testing"));
+        self.cmd.arg("-Zui-testing");
         self
     }
 
@@ -405,10 +405,8 @@ impl Rustc {
         } else if is_aix() {
             self.cmd.arg("-lc++");
             self.cmd.arg("-lc++abi");
-        } else {
-            if !matches!(&uname()[..], "FreeBSD" | "SunOS" | "OpenBSD") {
-                self.cmd.arg("-lstdc++");
-            };
+        } else if !matches!(&uname()[..], "FreeBSD" | "SunOS" | "OpenBSD") {
+            self.cmd.arg("-lstdc++");
         };
         self
     }

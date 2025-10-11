@@ -47,7 +47,7 @@ impl TestCx<'_> {
             if path.file_name().is_some_and(|s| s != "rmake.rs") {
                 let target = rmake_out_dir.join(path.strip_prefix(&self.testpaths.file).unwrap());
                 if path.is_dir() {
-                    copy_dir_all(&path, &target).unwrap();
+                    copy_dir_all(path, &target).unwrap();
                 } else {
                     fs::copy(path.as_std_path(), target).unwrap();
                 }
@@ -108,7 +108,7 @@ impl TestCx<'_> {
             .stage0_rustc_path
             .as_ref()
             .expect("stage0 rustc is required to run run-make tests");
-        let mut rustc = Command::new(&stage0_rustc);
+        let mut rustc = Command::new(stage0_rustc);
         rustc
             // `rmake.rs` **must** be buildable by a stable compiler, it may not use *any* unstable
             // library or compiler features. Here, we force the stage 0 rustc to consider itself as
@@ -126,7 +126,7 @@ impl TestCx<'_> {
             .arg("--extern")
             .arg(format!("run_make_support={}", &support_lib_path))
             .arg("--edition=2021")
-            .arg(&self.testpaths.file.join("rmake.rs"))
+            .arg(self.testpaths.file.join("rmake.rs"))
             .arg("-Cprefer-dynamic");
 
         // In test code we want to be very pedantic about values being silently discarded that are
@@ -169,7 +169,7 @@ impl TestCx<'_> {
             .env("LD_LIB_PATH_ENVVAR", dylib_env_var())
             // Provide the dylib search paths.
             // This is required to run the **recipe** itself.
-            .env(dylib_env_var(), &env::join_paths(recipe_dylib_search_paths).unwrap())
+            .env(dylib_env_var(), env::join_paths(recipe_dylib_search_paths).unwrap())
             // Provide the directory to libraries that are needed to run the *compiler* invoked
             // by the recipe.
             .env("HOST_RUSTC_DYLIB_PATH", &self.config.compile_lib_path)

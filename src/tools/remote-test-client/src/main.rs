@@ -132,7 +132,7 @@ fn prepare_rootfs_cpio(rootfs: &Path, rootfs_img: &Path) {
     let mut stdin = child.stdin.take().unwrap();
     let rootfs = rootfs.to_path_buf();
     thread::spawn(move || add_files(&mut stdin, &rootfs, &rootfs));
-    t!(io::copy(&mut child.stdout.take().unwrap(), &mut t!(File::create(&rootfs_img))));
+    t!(io::copy(&mut child.stdout.take().unwrap(), &mut t!(File::create(rootfs_img))));
     assert!(t!(child.wait()).success());
 
     fn add_files(w: &mut dyn Write, root: &Path, cur: &Path) {
@@ -151,7 +151,7 @@ fn prepare_rootfs_cpio(rootfs: &Path, rootfs_img: &Path) {
 fn prepare_rootfs_ext4(rootfs: &Path, rootfs_img: &Path) {
     let mut dd = Command::new("dd");
     dd.arg("if=/dev/zero")
-        .arg(&format!("of={}", rootfs_img.to_string_lossy()))
+        .arg(format!("of={}", rootfs_img.to_string_lossy()))
         .arg("bs=1M")
         .arg("count=1024");
     let mut dd_child = t!(dd.spawn());
@@ -178,7 +178,7 @@ fn start_qemu_emulator(target: &str, rootfs: &Path, server: &Path, tmpdir: &Path
                 .arg("-kernel")
                 .arg("/tmp/zImage")
                 .arg("-initrd")
-                .arg(&rootfs_img)
+                .arg(rootfs_img)
                 .arg("-dtb")
                 .arg("/tmp/vexpress-v2p-ca15-tc1.dtb")
                 .arg("-append")
@@ -201,7 +201,7 @@ fn start_qemu_emulator(target: &str, rootfs: &Path, server: &Path, tmpdir: &Path
                 .arg("-kernel")
                 .arg("/tmp/Image")
                 .arg("-initrd")
-                .arg(&rootfs_img)
+                .arg(rootfs_img)
                 .arg("-append")
                 .arg("console=ttyAMA0 root=/dev/ram rdinit=/sbin/init init=/sbin/init")
                 .arg("-nographic")
@@ -231,7 +231,7 @@ fn start_qemu_emulator(target: &str, rootfs: &Path, server: &Path, tmpdir: &Path
                 .arg("-device")
                 .arg("virtio-blk-device,drive=hd0")
                 .arg("-drive")
-                .arg(&format!("file={},format=raw,id=hd0", &rootfs_img.to_string_lossy()));
+                .arg(format!("file={},format=raw,id=hd0", &rootfs_img.to_string_lossy()));
             t!(cmd.spawn());
         }
         _ => panic!("cannot start emulator for: {}", target),
@@ -288,7 +288,7 @@ fn run(support_lib_count: usize, exe: String, all_args: Vec<String>) {
 
     // Send over support libraries
     for file in support_libs.iter().map(Path::new) {
-        send(&file, &mut client);
+        send(file, &mut client);
     }
     t!(client.write_all(&[0]));
 
@@ -330,7 +330,7 @@ fn run(support_lib_count: usize, exe: String, all_args: Vec<String>) {
     let code = ((status[1] as i32) << 24)
         | ((status[2] as i32) << 16)
         | ((status[3] as i32) << 8)
-        | ((status[4] as i32) << 0);
+        | (status[4] as i32);
     if status[0] == 0 {
         std::process::exit(code);
     } else {
@@ -344,7 +344,7 @@ fn run(support_lib_count: usize, exe: String, all_args: Vec<String>) {
 fn send(path: &Path, dst: &mut dyn Write) {
     t!(dst.write_all(path.file_name().unwrap().to_str().unwrap().as_bytes()));
     t!(dst.write_all(&[0]));
-    let mut file = t!(File::open(&path));
+    let mut file = t!(File::open(path));
     let amt = t!(file.metadata()).len();
 
     t!(dst.write_all(&amt.to_be_bytes()));

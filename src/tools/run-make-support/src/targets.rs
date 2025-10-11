@@ -74,7 +74,7 @@ pub fn apple_os() -> &'static str {
 #[must_use]
 pub fn llvm_components_contain(component: &str) -> bool {
     // `LLVM_COMPONENTS` is a space-separated list of words
-    env_var("LLVM_COMPONENTS").split_whitespace().find(|s| s == &component).is_some()
+    env_var("LLVM_COMPONENTS").split_whitespace().any(|s| s == component)
 }
 
 /// Run `uname`. This assumes that `uname` is available on the platform!
