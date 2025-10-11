@@ -523,8 +523,8 @@ fn parse_mod_file(path: &Path, contents: &str) -> (&'static str, usize) {
     let mut decl_end = None;
     let mut cursor = Cursor::new(contents);
     let mut captures = [Capture::EMPTY];
-    while let Some(name) = cursor.find_capture_pat(CaptureIdent) {
-        match name {
+    while let Some(name) = cursor.find_any_ident() {
+        match cursor.get_text(name) {
             "declare_clippy_lint" => {
                 if cursor.match_all(&[Bang, OpenBrace], &mut []) && cursor.find_pat(CloseBrace) {
                     decl_end = Some(cursor.pos());

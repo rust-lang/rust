@@ -103,15 +103,14 @@ fn parse_clippy_lint_decls(path: &Path, contents: &str, module: &str, lints: &mu
 
     let mut cursor = Cursor::new(contents);
     let mut captures = [Capture::EMPTY; 2];
-    while cursor.find_pat(Ident("declare_clippy_lint")) {
-        let start = cursor.pos() as usize - "declare_clippy_lint".len();
+    while let Some(start) = cursor.find_ident("declare_clippy_lint") {
         if cursor.match_all(DECL_TOKENS, &mut captures) && cursor.find_pat(CloseBrace) {
             lints.push(Lint {
                 name: cursor.get_text(captures[0]).to_lowercase(),
                 group: cursor.get_text(captures[1]).into(),
                 module: module.into(),
                 path: path.into(),
-                declaration_range: start..cursor.pos() as usize,
+                declaration_range: start as usize..cursor.pos() as usize,
             });
         }
     }
@@ -150,11 +149,11 @@ pub fn read_deprecated_lints() -> (Vec<DeprecatedLint>, Vec<RenamedLint>) {
 
     // First instance is the macro definition.
     assert!(
-        cursor.find_pat(Ident("declare_with_version")),
+        cursor.find_ident("declare_with_version").is_some(),
         "error reading deprecated lints"
     );
 
-    if cursor.find_pat(Ident("declare_with_version")) && cursor.match_all(DEPRECATED_TOKENS, &mut []) {
+    if cursor.find_ident("declare_with_version").is_some() && cursor.match_all(DEPRECATED_TOKENS, &mut []) {
         while cursor.match_all(DECL_TOKENS, &mut captures) {
             deprecated.push(DeprecatedLint {
                 name: parse_str_single_line(path.as_ref(), cursor.get_text(captures[1])),
@@ -166,7 +165,7 @@ pub fn read_deprecated_lints() -> (Vec<DeprecatedLint>, Vec<RenamedLint>) {
         panic!("error reading deprecated lints");
     }
 
-    if cursor.find_pat(Ident("declare_with_version")) && cursor.match_all(RENAMED_TOKENS, &mut []) {
+    if cursor.find_ident("declare_with_version").is_some() && cursor.match_all(RENAMED_TOKENS, &mut []) {
         while cursor.match_all(DECL_TOKENS, &mut captures) {
             renamed.push(RenamedLint {
                 old_name: parse_str_single_line(path.as_ref(), cursor.get_text(captures[1])),

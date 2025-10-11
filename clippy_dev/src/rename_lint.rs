@@ -304,17 +304,16 @@ fn file_update_fn<'a, 'b>(
                         // mod lint_name
                         "mod" => {
                             if !matches!(mod_edit, ModEdit::None)
-                                && cursor.match_all(&[cursor::Pat::CaptureIdent], &mut captures)
-                                && cursor.get_text(captures[0]) == old_name
+                                && let Some(pos) = cursor.find_ident(old_name)
                             {
                                 match mod_edit {
                                     ModEdit::Rename => {
-                                        dst.push_str(&src[copy_pos as usize..captures[0].pos as usize]);
+                                        dst.push_str(&src[copy_pos as usize..pos as usize]);
                                         dst.push_str(new_name);
                                         copy_pos = cursor.pos();
                                         changed = true;
                                     },
-                                    ModEdit::Delete if cursor.match_all(&[cursor::Pat::Semi], &mut []) => {
+                                    ModEdit::Delete if cursor.match_pat(cursor::Pat::Semi) => {
                                         let mut start = &src[copy_pos as usize..match_start as usize];
                                         if start.ends_with("\n\n") {
                                             start = &start[..start.len() - 1];
@@ -333,7 +332,7 @@ fn file_update_fn<'a, 'b>(
                         // lint_name::
                         name if matches!(mod_edit, ModEdit::Rename) && name == old_name => {
                             let name_end = cursor.pos();
-                            if cursor.match_all(&[cursor::Pat::DoubleColon], &mut []) {
+                            if cursor.match_pat(cursor::Pat::DoubleColon) {
                                 dst.push_str(&src[copy_pos as usize..match_start as usize]);
                                 dst.push_str(new_name);
                                 copy_pos = name_end;

@@ -1,4 +1,4 @@
-use crate::parse::cursor::{self, Cursor};
+use crate::parse::cursor::Cursor;
 use crate::parse::{DeprecatedLint, Lint, RenamedLint, find_lint_decls, read_deprecated_lints};
 use crate::utils::{FileUpdater, UpdateMode, UpdateStatus, update_text_region_fn};
 use itertools::Itertools;
@@ -78,8 +78,8 @@ pub fn generate_lint_files(
         &mut |_, src, dst| {
             let mut cursor = Cursor::new(src);
             assert!(
-                cursor.find_pat(cursor::Pat::Ident("declare_with_version"))
-                    && cursor.find_pat(cursor::Pat::Ident("declare_with_version")),
+                cursor.find_ident("declare_with_version").is_some()
+                    && cursor.find_ident("declare_with_version").is_some(),
                 "error reading deprecated lints"
             );
             dst.push_str(&src[..cursor.pos() as usize]);

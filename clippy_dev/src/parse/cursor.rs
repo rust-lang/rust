@@ -178,6 +178,47 @@ impl<'txt> Cursor<'txt> {
         }
     }
 
+    /// Consumes all tokens until the specified identifier is found and returns its
+    /// position. Returns `None` if the identifier could not be found.
+    ///
+    /// The cursor will be positioned immediately after the identifier, or at the end if
+    /// it is not.
+    pub fn find_ident(&mut self, ident: &str) -> Option<u32> {
+        loop {
+            match self.next_token.kind {
+                TokenKind::Ident if self.peek_text() == ident => {
+                    let pos = self.pos;
+                    self.step();
+                    return Some(pos);
+                },
+                TokenKind::Eof => return None,
+                _ => self.step(),
+            }
+        }
+    }
+
+    /// Consumes all tokens until the next identifier is found and captures it. Returns
+    /// `None` if no identifier could be found.
+    ///
+    /// The cursor will be positioned immediately after the identifier, or at the end if
+    /// it is not.
+    pub fn find_any_ident(&mut self) -> Option<Capture> {
+        loop {
+            match self.next_token.kind {
+                TokenKind::Ident => {
+                    let res = Capture {
+                        pos: self.pos,
+                        len: self.next_token.len,
+                    };
+                    self.step();
+                    return Some(res);
+                },
+                TokenKind::Eof => return None,
+                _ => self.step(),
+            }
+        }
+    }
+
     /// Continually attempt to match the pattern on subsequent tokens until a match is
     /// found. Returns whether the pattern was successfully matched.
     ///
@@ -195,20 +236,6 @@ impl<'txt> Cursor<'txt> {
         true
     }
 
-    /// The same as [`Self::find_pat`], but returns a capture as well.
-    #[must_use]
-    pub fn find_capture_pat(&mut self, pat: Pat<'_>) -> Option<&'txt str> {
-        let mut capture = Capture::EMPTY;
-        let mut captures = slice::from_mut(&mut capture).iter_mut();
-        while !self.match_impl(pat, &mut captures) {
-            self.step();
-            if self.at_end() {
-                return None;
-            }
-        }
-        Some(self.get_text(capture))
-    }
-
     /// Attempts to match a sequence of patterns at the current position. Returns whether
     /// all patterns were successfully matched.
     ///
@@ -221,6 +248,16 @@ impl<'txt> Cursor<'txt> {
     #[must_use]
     pub fn match_all(&mut self, pats: &[Pat<'_>], captures: &mut [Capture]) -> bool {
         let mut captures = captures.iter_mut();
-        pats.iter().all(|&t| self.match_impl(t, &mut captures))
+        pats.iter().all(|&p| self.match_impl(p, &mut captures))
+    }
+
+    /// Attempts to match a single pattern at the current position. Returns whether the
+    /// pattern was successfully matched.
+    ///
+    /// If the pattern attempts to capture anything this will panic. If the match fails
+    /// the cursor will be positioned at the first failing token.
+    #[must_use]
+    pub fn match_pat(&mut self, pat: Pat<'_>) -> bool {
+        self.match_impl(pat, &mut [].iter_mut())
     }
 }
