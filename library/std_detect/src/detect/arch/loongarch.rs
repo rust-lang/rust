@@ -5,7 +5,11 @@ features! {
     @CFG: any(target_arch = "loongarch32", target_arch = "loongarch64");
     @MACRO_NAME: is_loongarch_feature_detected;
     @MACRO_ATTRS:
-    /// Checks if `loongarch` feature is enabled.
+    /// Check for the presence of a CPU feature at runtime.
+    ///
+    /// When the feature is known to be enabled at compile time (e.g. via `-Ctarget-feature`)
+    /// the macro expands to `true`.
+    ///
     /// Supported arguments are:
     ///
     /// * `"32s"`
