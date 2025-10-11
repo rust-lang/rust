@@ -249,7 +249,7 @@ pub unsafe fn check_four_or_eight_to_nonnull(x: FourOrEight) -> NonNull<u8> {
     // OPT: call void @llvm.assume(i1 %1)
     // CHECK-NOT: icmp
     // CHECK-NOT: assume
-    // CHECK: %[[RET:.+]] = getelementptr i8, ptr null, i64 %x
+    // CHECK: %[[RET:.+]] = inttoptr i64 %x to ptr
     // CHECK-NEXT: ret ptr %[[RET]]
 
     transmute(x)
