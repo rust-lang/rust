@@ -1592,13 +1592,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     && let hir::Node::Stmt(&hir::Stmt { kind: hir::StmtKind::Semi(parent), .. })
                     | hir::Node::Expr(parent) = self.tcx.parent_hir_node(path_expr.hir_id)
                 {
-                    let replacement_span =
-                        if let hir::ExprKind::Call(..) | hir::ExprKind::Struct(..) = parent.kind {
-                            // We want to replace the parts that need to go, like `()` and `{}`.
-                            span.with_hi(parent.span.hi())
-                        } else {
-                            span
-                        };
+                    // We want to also replace variant constructor part like `()` and `{}`.
+                    let replacement_span = match parent.kind {
+                        hir::ExprKind::Call(callee, ..) if callee.hir_id == path_expr.hir_id => {
+                            if span.hi() == callee.span.hi() {
+                                span.with_hi(parent.span.hi())
+                            } else {
+                                // Bail if there are parens around the variant like `(A::B)()`
+                                span
+                            }
+                        }
+                        hir::ExprKind::Struct(..) => span.with_hi(parent.span.hi()),
+                        _ => span,
+                    };
                     match (variant.ctor, parent.kind) {
                         (None, hir::ExprKind::Struct(..)) => {
                             // We want a struct and we have a struct. We won't suggest changing
@@ -1631,7 +1637,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         (
                             Some((hir::def::CtorKind::Fn, def_id)),
                             hir::ExprKind::Call(rcvr, args),
-                        ) => {
+                        ) if rcvr.hir_id == path_expr.hir_id => {
                             let fn_sig = self.tcx.fn_sig(def_id).instantiate_identity();
                             let inputs = fn_sig.inputs().skip_binder();
                             // FIXME: reuse the logic for "change args" suggestion to account for types

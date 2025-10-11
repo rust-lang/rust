@@ -1625,7 +1625,7 @@ pub(crate) fn fn_trait_to_string(
     }
 }
 
-/// Used for generics args error extend.
+/// Extra information for diagnostics of generics args error.
 pub enum GenericsArgsErrExtend<'tcx> {
     EnumVariant {
         qself: &'tcx hir::Ty<'tcx>,
@@ -1652,87 +1652,65 @@ fn generics_args_err_extend<'a>(
 ) {
     match err_extend {
         GenericsArgsErrExtend::EnumVariant { qself, assoc_segment, adt_def } => {
-            err.note("enum variants can't have type parameters");
+            err.note("variants of type-aliased enum can't have type parameters");
             let type_name = tcx.item_name(adt_def.did());
-            let msg = format!(
-                "you might have meant to specify type parameters on enum \
-                `{type_name}`"
-            );
-            let Some(args) = assoc_segment.args else {
+            let Some(variant_args) = assoc_segment.args else {
                 return;
             };
             // Get the span of the generics args *including* the leading `::`.
             // We do so by stretching args.span_ext to the left by 2. Earlier
             // it was done based on the end of assoc segment but that sometimes
             // led to impossible spans and caused issues like #116473
-            let args_span = args.span_ext.with_lo(args.span_ext.lo() - BytePos(2));
+            let variant_args_span =
+                variant_args.span_ext.with_lo(variant_args.span_ext.lo() - BytePos(2));
             if tcx.generics_of(adt_def.did()).is_empty() {
                 // FIXME(estebank): we could also verify that the arguments being
                 // work for the `enum`, instead of just looking if it takes *any*.
                 err.span_suggestion_verbose(
-                    args_span,
+                    variant_args_span,
                     format!("{type_name} doesn't have generic parameters"),
                     "",
                     Applicability::MachineApplicable,
                 );
                 return;
             }
-            let Ok(snippet) = tcx.sess.source_map().span_to_snippet(args_span) else {
+            let msg = "you might have meant to specify type parameters on the enum";
+            let Ok(snippet) = tcx.sess.source_map().span_to_snippet(variant_args_span) else {
                 err.note(msg);
                 return;
             };
-            let (qself_sugg_span, is_self) =
-                if let hir::TyKind::Path(hir::QPath::Resolved(_, path)) = &qself.kind {
-                    // If the path segment already has type params, we want to overwrite
-                    // them.
-                    match &path.segments {
-                        // `segment` is the previous to last element on the path,
-                        // which would normally be the `enum` itself, while the last
-                        // `_` `PathSegment` corresponds to the variant.
-                        [
-                            ..,
-                            hir::PathSegment {
-                                ident, args, res: Res::Def(DefKind::Enum, _), ..
-                            },
-                            _,
-                        ] => (
-                            // We need to include the `::` in `Type::Variant::<Args>`
-                            // to point the span to `::<Args>`, not just `<Args>`.
-                            ident
-                                .span
-                                .shrink_to_hi()
-                                .to(args.map_or(ident.span.shrink_to_hi(), |a| a.span_ext)),
-                            false,
-                        ),
-                        [segment] => {
-                            (
-                                // We need to include the `::` in `Type::Variant::<Args>`
-                                // to point the span to `::<Args>`, not just `<Args>`.
-                                segment.ident.span.shrink_to_hi().to(segment
-                                    .args
-                                    .map_or(segment.ident.span.shrink_to_hi(), |a| a.span_ext)),
-                                kw::SelfUpper == segment.ident.name,
-                            )
-                        }
-                        _ => {
-                            err.note(msg);
-                            return;
-                        }
-                    }
-                } else {
-                    err.note(msg);
-                    return;
-                };
+            // If the path segment already has type params, we want to overwrite them.
+            let hir::TyKind::Path(hir::QPath::Resolved(_, path)) = &qself.kind else {
+                err.note(msg);
+                return;
+            };
+            // The last element of `path.segments` is the previous to last element
+            // on the path and would normally be the enum alias itself.
+            let Some(hir::PathSegment {
+                ident,
+                args: enum_args,
+                res: Res::SelfTyAlias { .. } | Res::Def(DefKind::TyAlias, _),
+                ..
+            }) = &path.segments.last()
+            else {
+                err.note(msg);
+                return;
+            };
             let suggestion = vec![
-                if is_self {
+                if path.segments.len() == 1 && kw::SelfUpper == ident.name {
                     // Account for people writing `Self::Variant::<Args>`, where
                     // `Self` is the enum, and suggest replacing `Self` with the
                     // appropriate type: `Type::<Args>::Variant`.
                     (qself.span, format!("{type_name}{snippet}"))
                 } else {
-                    (qself_sugg_span, snippet)
+                    // We need to include the `::` in `Type::<Args>::Variants`
+                    // to point the span to `::<Args>`, not just `<Args>`.
+                    let enum_args_span = ident.span.shrink_to_hi().to(enum_args
+                        .and_then(|a| a.span_ext())
+                        .unwrap_or(ident.span.shrink_to_hi()));
+                    (enum_args_span, snippet)
                 },
-                (args_span, String::new()),
+                (variant_args_span, String::new()),
             ];
             err.multipart_suggestion_verbose(msg, suggestion, Applicability::MaybeIncorrect);
         }
