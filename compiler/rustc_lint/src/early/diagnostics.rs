@@ -251,12 +251,6 @@ pub fn decorate_builtin_lint(
             }
             .decorate_lint(diag);
         }
-        BuiltinLintDiag::ExternCrateNotIdiomatic { vis_span, ident_span } => {
-            let suggestion_span = vis_span.between(ident_span);
-            let code = if vis_span.is_empty() { "use " } else { " use " };
-
-            lints::ExternCrateNotIdiomatic { span: suggestion_span, code }.decorate_lint(diag);
-        }
         BuiltinLintDiag::AmbiguousGlobImports { diag: ambiguity } => {
             lints::AmbiguousGlobImports { ambiguity }.decorate_lint(diag);
         }
@@ -331,18 +325,6 @@ pub fn decorate_builtin_lint(
         BuiltinLintDiag::PrivateExternCrateReexport { source: ident, extern_crate_span } => {
             lints::PrivateExternCrateReexport { ident, sugg: extern_crate_span.shrink_to_lo() }
                 .decorate_lint(diag);
-        }
-        BuiltinLintDiag::MacroIsPrivate(ident) => {
-            lints::MacroIsPrivate { ident }.decorate_lint(diag);
-        }
-        BuiltinLintDiag::UnusedMacroDefinition(name) => {
-            lints::UnusedMacroDefinition { name }.decorate_lint(diag);
-        }
-        BuiltinLintDiag::MacroRuleNeverUsed(n, name) => {
-            lints::MacroRuleNeverUsed { n: n + 1, name }.decorate_lint(diag);
-        }
-        BuiltinLintDiag::UnstableFeature(msg) => {
-            lints::UnstableFeature { msg }.decorate_lint(diag);
         }
         BuiltinLintDiag::UnusedCrateDependency { extern_crate, local_crate } => {
             lints::UnusedCrateDependency { extern_crate, local_crate }.decorate_lint(diag)
