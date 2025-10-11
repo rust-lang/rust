@@ -714,19 +714,6 @@ pub enum BuiltinLintDiag {
         span: Span,
         lifetimes_in_scope: MultiSpan,
     },
-    RedundantImportVisibility {
-        span: Span,
-        max_vis: String,
-        import_vis: String,
-    },
-    UnknownDiagnosticAttribute {
-        span: Span,
-        typo_name: Option<Symbol>,
-    },
-    PrivateExternCrateReexport {
-        source: Ident,
-        extern_crate_span: Span,
-    },
     UnusedCrateDependency {
         extern_crate: Symbol,
         local_crate: Symbol,
@@ -734,11 +721,6 @@ pub enum BuiltinLintDiag {
     IllFormedAttributeInput {
         suggestions: Vec<String>,
         docs: Option<&'static str>,
-    },
-    OutOfScopeMacroCalls {
-        span: Span,
-        path: String,
-        location: String,
     },
 }
 
