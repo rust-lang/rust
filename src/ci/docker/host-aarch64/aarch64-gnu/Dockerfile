@@ -2,6 +2,7 @@ FROM ubuntu:25.10
 
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
+  coreutils-from-gnu coreutils-from-uutils- --allow-remove-essential \
   g++ \
   make \
   ninja-build \
