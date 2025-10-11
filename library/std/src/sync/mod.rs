@@ -142,7 +142,7 @@
 //!   most one thread at a time is able to access some data.
 //!
 //! - [`Once`]: Used for a thread-safe, one-time global initialization routine.
-//!   Mostly useful for implementing other types like `OnceLock`.
+//!   Mostly useful for implementing other types like [`OnceLock`].
 //!
 //! - [`OnceLock`]: Used for thread-safe, one-time initialization of a
 //!   variable, with potentially different initializers based on the caller.
@@ -181,9 +181,19 @@ pub use alloc_crate::sync::UniqueArc;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::sync::{Arc, Weak};
 
-// FIXME(sync_nonpoison,sync_poison_mod): remove all `#[doc(inline)]` once the modules are stabilized.
+#[unstable(feature = "mpmc_channel", issue = "126840")]
+pub mod mpmc;
+pub mod mpsc;
+
+mod once;
+mod barrier;
+mod lazy_lock;
+mod once_lock;
+mod reentrant_lock;
 
 // These exist only in one flavor: no poisoning.
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use self::once::{Once, OnceState};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::barrier::{Barrier, BarrierWaitResult};
 #[stable(feature = "lazy_cell", since = "1.80.0")]
@@ -193,47 +203,42 @@ pub use self::once_lock::OnceLock;
 #[unstable(feature = "reentrant_lock", issue = "121440")]
 pub use self::reentrant_lock::{ReentrantLock, ReentrantLockGuard};
 
-// These make sense and exist only with poisoning.
+#[stable(feature = "rust1", since = "1.0.0")]
+#[expect(deprecated)]
+pub use self::once::ONCE_INIT;
+
+// Used for `sys::sync::once` implementations and `LazyLock` implementation.
+pub(crate) use self::once::OnceExclusiveState;
+
+// FIXME(sync_poison_mod): remove all `#[doc(inline)]` once the modules are stabilized.
+
+#[unstable(feature = "sync_poison_mod", issue = "134646")]
+pub mod poison;
+#[unstable(feature = "sync_nonpoison", issue = "134645")]
+pub mod nonpoison;
+
+// These exist only with poisoning.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(inline)]
 pub use self::poison::{LockResult, PoisonError};
 
-// These (should) exist in both flavors: with and without poisoning.
-// FIXME(sync_nonpoison): implement nonpoison versions:
-//  * Mutex (nonpoison_mutex)
-//  * Condvar (nonpoison_condvar)
-//  * Once (nonpoison_once)
-//  * RwLock (nonpoison_rwlock)
+// These exist in both flavors: with and without poisoning.
 // The historical default is the version with poisoning.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(inline)]
 pub use self::poison::{
-    Mutex, MutexGuard, TryLockError, TryLockResult,
+    TryLockError, TryLockResult,
+    Mutex, MutexGuard,
     Condvar,
-    Once, OnceState,
     RwLock, RwLockReadGuard, RwLockWriteGuard,
 };
-#[stable(feature = "rust1", since = "1.0.0")]
-#[doc(inline)]
-#[expect(deprecated)]
-pub use self::poison::ONCE_INIT;
+
 #[unstable(feature = "mapped_lock_guards", issue = "117108")]
 #[doc(inline)]
 pub use self::poison::{MappedMutexGuard, MappedRwLockReadGuard, MappedRwLockWriteGuard};
 
-#[unstable(feature = "mpmc_channel", issue = "126840")]
-pub mod mpmc;
-pub mod mpsc;
-
-#[unstable(feature = "sync_nonpoison", issue = "134645")]
-pub mod nonpoison;
-#[unstable(feature = "sync_poison_mod", issue = "134646")]
-pub mod poison;
-
-mod barrier;
-mod lazy_lock;
-mod once_lock;
-mod reentrant_lock;
+// FIXME(sync_nonpoison): Export non-poisoning locks instead of poisoning locks.
+// See: https://github.com/rust-lang/rust/issues/134645#issuecomment-3324577500
 
 /// A type indicating whether a timed wait on a condition variable returned
 /// due to a time out or not.
