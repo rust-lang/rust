@@ -1817,12 +1817,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
         let element_ty = if !args.is_empty() {
+            // This shouldn't happen unless there's another error
+            // (e.g., never patterns in inappropriate contexts).
+            if self.diverges.get() != Diverges::Maybe {
+                self.dcx()
+                    .struct_span_err(expr.span, "unexpected divergence state in checking array")
+                    .delay_as_bug();
+            }
+
             let coerce_to = expected
                 .to_option(self)
                 .and_then(|uty| self.try_structurally_resolve_type(expr.span, uty).builtin_index())
                 .unwrap_or_else(|| self.next_ty_var(expr.span));
             let mut coerce = CoerceMany::with_coercion_sites(coerce_to, args);
-            assert_eq!(self.diverges.get(), Diverges::Maybe);
+
             for e in args {
                 let e_ty = self.check_expr_with_hint(e, coerce_to);
                 let cause = self.misc(e.span);

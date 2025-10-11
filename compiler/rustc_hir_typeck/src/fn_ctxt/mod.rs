@@ -104,8 +104,8 @@ pub(crate) struct FnCtxt<'a, 'tcx> {
     /// the diverges flag is set to something other than `Maybe`.
     pub(super) diverges: Cell<Diverges>,
 
-    /// If one of the function arguments is a never pattern, this counts as diverging code. This
-    /// affect typechecking of the function body.
+    /// If one of the function arguments is a never pattern, this counts as diverging code.
+    /// This affect typechecking of the function body.
     pub(super) function_diverges_because_of_empty_arguments: Cell<Diverges>,
 
     /// Whether the currently checked node is the whole body of the function.
