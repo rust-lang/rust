@@ -30,14 +30,12 @@ where
         );
 
         let actual = if free_alias.kind(cx).is_type() {
-            cx.type_of(free_alias.def_id).instantiate(cx, free_alias.args)
+            cx.type_of(free_alias.def_id).instantiate(cx, free_alias.args).into()
         } else {
-            // FIXME(mgca): once const items are actual aliases defined as equal to type system consts
-            // this should instead return that.
-            panic!("normalizing free const aliases in the type system is unsupported");
+            cx.const_of_item(free_alias.def_id).instantiate(cx, free_alias.args).into()
         };
 
-        self.instantiate_normalizes_to_term(goal, actual.into());
+        self.instantiate_normalizes_to_term(goal, actual);
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 }

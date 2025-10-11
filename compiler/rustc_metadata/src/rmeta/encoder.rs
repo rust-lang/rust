@@ -1350,6 +1350,7 @@ fn should_encode_constness(def_kind: DefKind) -> bool {
 
 fn should_encode_const(def_kind: DefKind) -> bool {
     match def_kind {
+        // FIXME(mgca): should we remove Const and AssocConst here?
         DefKind::Const | DefKind::AssocConst | DefKind::AnonConst | DefKind::InlineConst => true,
 
         DefKind::Struct
@@ -1428,7 +1429,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 && match tcx.hir_node_by_def_id(local_id) {
                     hir::Node::ConstArg(hir::ConstArg { kind, .. }) => match kind {
                         // Skip encoding defs for these as they should not have had a `DefId` created
-                        hir::ConstArgKind::Path(..) | hir::ConstArgKind::Infer(..) => true,
+                        hir::ConstArgKind::Error(..)
+                        | hir::ConstArgKind::Path(..)
+                        | hir::ConstArgKind::Infer(..) => true,
                         hir::ConstArgKind::Anon(..) => false,
                     },
                     _ => false,
@@ -1600,6 +1603,19 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             if let DefKind::AnonConst = def_kind {
                 record!(self.tables.anon_const_kind[def_id] <- self.tcx.anon_const_kind(def_id));
+            }
+            if let DefKind::Const = def_kind {
+                record!(self.tables.const_of_item[def_id] <- self.tcx.const_of_item(def_id));
+            }
+            if let DefKind::AssocConst = def_kind {
+                let assoc_item = tcx.associated_item(def_id);
+                let should_encode = match assoc_item.container {
+                    ty::AssocContainer::InherentImpl | ty::AssocContainer::TraitImpl(_) => true,
+                    ty::AssocContainer::Trait => assoc_item.defaultness(tcx).has_value(),
+                };
+                if should_encode {
+                    record!(self.tables.const_of_item[def_id] <- self.tcx.const_of_item(def_id));
+                }
             }
             if tcx.impl_method_has_trait_impl_trait_tys(def_id)
                 && let Ok(table) = self.tcx.collect_return_position_impl_trait_in_trait_tys(def_id)

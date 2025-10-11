@@ -14,6 +14,5 @@ trait Foo {}
 impl Foo for () {}
 impl<T> Foo for T where T: Bar<ASSOC = 0> {}
 //~^ ERROR associated const equality is incomplete
-//~| ERROR conflicting implementations of trait `Foo` for type `()`
 
 fn main() {}

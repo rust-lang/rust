@@ -36,20 +36,53 @@ LL - fn ty_fn_mixed() -> Bar<_, _> {
 LL + fn ty_fn_mixed() -> Bar<i32, 3> {
    |
 
+error[E0391]: cycle detected when computing type of `ARR_CT`
+  --> $DIR/in-signature.rs:21:1
+   |
+LL | const ARR_CT: [u8; _] = [0; 3];
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: ...which requires computing the value for `ARR_CT`...
+  --> $DIR/in-signature.rs:21:1
+   |
+LL | const ARR_CT: [u8; _] = [0; 3];
+   | ^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which again requires computing type of `ARR_CT`, completing the cycle
+note: cycle used when checking that `ARR_CT` is well-formed
+  --> $DIR/in-signature.rs:21:1
+   |
+LL | const ARR_CT: [u8; _] = [0; 3];
+   | ^^^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error[E0391]: cycle detected when computing type of `ARR_CT`
+  --> $DIR/in-signature.rs:21:1
+   |
+LL | const ARR_CT: [u8; _] = [0; 3];
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: ...which requires computing the value for `ARR_CT`...
+  --> $DIR/in-signature.rs:21:1
+   |
+LL | const ARR_CT: [u8; _] = [0; 3];
+   | ^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which again requires computing type of `ARR_CT`, completing the cycle
+note: cycle used when checking that `ARR_CT` is well-formed
+  --> $DIR/in-signature.rs:21:1
+   |
+LL | const ARR_CT: [u8; _] = [0; 3];
+   | ^^^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
   --> $DIR/in-signature.rs:21:20
    |
 LL | const ARR_CT: [u8; _] = [0; 3];
    |                    ^ not allowed in type signatures
-   |
-help: replace this with a fully-specified type
-   |
-LL - const ARR_CT: [u8; _] = [0; 3];
-LL + const ARR_CT: [u8; 3] = [0; 3];
-   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for static variables
-  --> $DIR/in-signature.rs:23:25
+  --> $DIR/in-signature.rs:25:25
    |
 LL | static ARR_STATIC: [u8; _] = [0; 3];
    |                         ^ not allowed in type signatures
@@ -60,20 +93,53 @@ LL - static ARR_STATIC: [u8; _] = [0; 3];
 LL + static ARR_STATIC: [u8; 3] = [0; 3];
    |
 
+error[E0391]: cycle detected when computing type of `TY_CT`
+  --> $DIR/in-signature.rs:27:1
+   |
+LL | const TY_CT: Bar<i32, _> = Bar::<i32, 3>(0);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: ...which requires computing the value for `TY_CT`...
+  --> $DIR/in-signature.rs:27:1
+   |
+LL | const TY_CT: Bar<i32, _> = Bar::<i32, 3>(0);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which again requires computing type of `TY_CT`, completing the cycle
+note: cycle used when checking that `TY_CT` is well-formed
+  --> $DIR/in-signature.rs:27:1
+   |
+LL | const TY_CT: Bar<i32, _> = Bar::<i32, 3>(0);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error[E0391]: cycle detected when computing type of `TY_CT`
+  --> $DIR/in-signature.rs:27:1
+   |
+LL | const TY_CT: Bar<i32, _> = Bar::<i32, 3>(0);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: ...which requires computing the value for `TY_CT`...
+  --> $DIR/in-signature.rs:27:1
+   |
+LL | const TY_CT: Bar<i32, _> = Bar::<i32, 3>(0);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which again requires computing type of `TY_CT`, completing the cycle
+note: cycle used when checking that `TY_CT` is well-formed
+  --> $DIR/in-signature.rs:27:1
+   |
+LL | const TY_CT: Bar<i32, _> = Bar::<i32, 3>(0);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
-  --> $DIR/in-signature.rs:25:23
+  --> $DIR/in-signature.rs:27:23
    |
 LL | const TY_CT: Bar<i32, _> = Bar::<i32, 3>(0);
    |                       ^ not allowed in type signatures
-   |
-help: replace this with a fully-specified type
-   |
-LL - const TY_CT: Bar<i32, _> = Bar::<i32, 3>(0);
-LL + const TY_CT: Bar<i32, 3> = Bar::<i32, 3>(0);
-   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for static variables
-  --> $DIR/in-signature.rs:27:28
+  --> $DIR/in-signature.rs:31:28
    |
 LL | static TY_STATIC: Bar<i32, _> = Bar::<i32, 3>(0);
    |                            ^ not allowed in type signatures
@@ -84,22 +150,55 @@ LL - static TY_STATIC: Bar<i32, _> = Bar::<i32, 3>(0);
 LL + static TY_STATIC: Bar<i32, 3> = Bar::<i32, 3>(0);
    |
 
+error[E0391]: cycle detected when computing type of `TY_CT_MIXED`
+  --> $DIR/in-signature.rs:33:1
+   |
+LL | const TY_CT_MIXED: Bar<_, _> = Bar::<i32, 3>(0);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: ...which requires computing the value for `TY_CT_MIXED`...
+  --> $DIR/in-signature.rs:33:1
+   |
+LL | const TY_CT_MIXED: Bar<_, _> = Bar::<i32, 3>(0);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which again requires computing type of `TY_CT_MIXED`, completing the cycle
+note: cycle used when checking that `TY_CT_MIXED` is well-formed
+  --> $DIR/in-signature.rs:33:1
+   |
+LL | const TY_CT_MIXED: Bar<_, _> = Bar::<i32, 3>(0);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error[E0391]: cycle detected when computing type of `TY_CT_MIXED`
+  --> $DIR/in-signature.rs:33:1
+   |
+LL | const TY_CT_MIXED: Bar<_, _> = Bar::<i32, 3>(0);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: ...which requires computing the value for `TY_CT_MIXED`...
+  --> $DIR/in-signature.rs:33:1
+   |
+LL | const TY_CT_MIXED: Bar<_, _> = Bar::<i32, 3>(0);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which again requires computing type of `TY_CT_MIXED`, completing the cycle
+note: cycle used when checking that `TY_CT_MIXED` is well-formed
+  --> $DIR/in-signature.rs:33:1
+   |
+LL | const TY_CT_MIXED: Bar<_, _> = Bar::<i32, 3>(0);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
-  --> $DIR/in-signature.rs:29:24
+  --> $DIR/in-signature.rs:33:24
    |
 LL | const TY_CT_MIXED: Bar<_, _> = Bar::<i32, 3>(0);
    |                        ^  ^ not allowed in type signatures
    |                        |
    |                        not allowed in type signatures
-   |
-help: replace this with a fully-specified type
-   |
-LL - const TY_CT_MIXED: Bar<_, _> = Bar::<i32, 3>(0);
-LL + const TY_CT_MIXED: Bar<i32, 3> = Bar::<i32, 3>(0);
-   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for static variables
-  --> $DIR/in-signature.rs:31:29
+  --> $DIR/in-signature.rs:37:29
    |
 LL | static TY_STATIC_MIXED: Bar<_, _> = Bar::<i32, 3>(0);
    |                             ^  ^ not allowed in type signatures
@@ -113,53 +212,54 @@ LL + static TY_STATIC_MIXED: Bar<i32, 3> = Bar::<i32, 3>(0);
    |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated types
-  --> $DIR/in-signature.rs:51:23
+  --> $DIR/in-signature.rs:57:23
    |
 LL |     type Assoc = [u8; _];
    |                       ^ not allowed in type signatures
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated types
-  --> $DIR/in-signature.rs:55:27
+  --> $DIR/in-signature.rs:61:27
    |
 LL |     type Assoc = Bar<i32, _>;
    |                           ^ not allowed in type signatures
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated types
-  --> $DIR/in-signature.rs:59:22
+  --> $DIR/in-signature.rs:65:22
    |
 LL |     type Assoc = Bar<_, _>;
    |                      ^ not allowed in type signatures
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated types
-  --> $DIR/in-signature.rs:59:25
+  --> $DIR/in-signature.rs:65:25
    |
 LL |     type Assoc = Bar<_, _>;
    |                         ^ not allowed in type signatures
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated constants
-  --> $DIR/in-signature.rs:34:21
+  --> $DIR/in-signature.rs:40:21
    |
 LL |     const ARR: [u8; _];
    |                     ^ not allowed in type signatures
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated constants
-  --> $DIR/in-signature.rs:38:25
+  --> $DIR/in-signature.rs:44:25
    |
 LL |     const ARR: Bar<i32, _>;
    |                         ^ not allowed in type signatures
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated constants
-  --> $DIR/in-signature.rs:42:20
+  --> $DIR/in-signature.rs:48:20
    |
 LL |     const ARR: Bar<_, _>;
    |                    ^ not allowed in type signatures
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated constants
-  --> $DIR/in-signature.rs:42:23
+  --> $DIR/in-signature.rs:48:23
    |
 LL |     const ARR: Bar<_, _>;
    |                       ^ not allowed in type signatures
 
-error: aborting due to 17 previous errors
+error: aborting due to 23 previous errors
 
-For more information about this error, try `rustc --explain E0121`.
+Some errors have detailed explanations: E0121, E0391.
+For more information about an error, try `rustc --explain E0121`.

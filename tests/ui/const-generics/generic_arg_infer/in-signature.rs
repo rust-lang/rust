@@ -20,14 +20,20 @@ fn ty_fn_mixed() -> Bar<_, _> {
 
 const ARR_CT: [u8; _] = [0; 3];
 //~^ ERROR the placeholder `_` is not allowed within types on item signatures for constants
+//~| ERROR cycle detected when
+//~| ERROR cycle detected when
 static ARR_STATIC: [u8; _] = [0; 3];
 //~^ ERROR the placeholder `_` is not allowed within types on item signatures for static variables
 const TY_CT: Bar<i32, _> = Bar::<i32, 3>(0);
 //~^ ERROR the placeholder `_` is not allowed within types on item signatures for constants
+//~| ERROR cycle detected when
+//~| ERROR cycle detected when
 static TY_STATIC: Bar<i32, _> = Bar::<i32, 3>(0);
 //~^ ERROR the placeholder `_` is not allowed within types on item signatures for static variables
 const TY_CT_MIXED: Bar<_, _> = Bar::<i32, 3>(0);
 //~^ ERROR the placeholder `_` is not allowed within types on item signatures for constants
+//~| ERROR cycle detected when
+//~| ERROR cycle detected when
 static TY_STATIC_MIXED: Bar<_, _> = Bar::<i32, 3>(0);
 //~^ ERROR the placeholder `_` is not allowed within types on item signatures for static variables
 trait ArrAssocConst {

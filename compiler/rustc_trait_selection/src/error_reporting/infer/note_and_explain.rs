@@ -547,11 +547,18 @@ impl<T> Trait<T> for X {
         &self,
         diag: &mut Diag<'_>,
         msg: impl Fn() -> String,
-        body_owner_def_id: DefId,
+        mut body_owner_def_id: DefId,
         proj_ty: ty::AliasTy<'tcx>,
         ty: Ty<'tcx>,
     ) -> bool {
         let tcx = self.tcx;
+        
+        if let DefKind::AnonConst = tcx.def_kind(body_owner_def_id)
+            && let ty::AnonConstKind::ItemBody = tcx.anon_const_kind(body_owner_def_id)
+        {
+            body_owner_def_id = tcx.parent(body_owner_def_id);
+        }
+
         let assoc = tcx.associated_item(proj_ty.def_id);
         let (trait_ref, assoc_args) = proj_ty.trait_ref_and_own_args(tcx);
         let Some(item) = tcx.hir_get_if_local(body_owner_def_id) else {

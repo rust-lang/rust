@@ -984,6 +984,9 @@ impl<'tcx> TyCtxt<'tcx> {
                 // Ensure that the returned span has the item's SyntaxContext.
                 fn_decl_span.find_ancestor_inside(*span).unwrap_or(*span)
             }
+            Node::AnonConst(anon) if let crate::ty::AnonConstKind::ItemBody = self.anon_const_kind(anon.def_id) => {
+                return self.hir_span(self.parent_hir_id(self.parent_hir_id(hir_id)));
+            }
             _ => self.hir_span_with_body(hir_id),
         };
         debug_assert_eq!(span.ctxt(), self.hir_span_with_body(hir_id).ctxt());
@@ -1001,6 +1004,9 @@ impl<'tcx> TyCtxt<'tcx> {
             Node::ImplItem(impl_item) => impl_item.span,
             Node::Variant(variant) => variant.span,
             Node::Field(field) => field.span,
+            Node::AnonConst(anon) if let crate::ty::AnonConstKind::ItemBody = self.anon_const_kind(anon.def_id) => {
+                return self.hir_span_with_body(self.parent_hir_id(self.parent_hir_id(hir_id)));
+            }
             Node::AnonConst(constant) => constant.span,
             Node::ConstBlock(constant) => self.hir_body(constant.body).value.span,
             Node::ConstArg(const_arg) => const_arg.span(),

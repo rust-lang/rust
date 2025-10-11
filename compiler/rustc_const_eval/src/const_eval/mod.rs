@@ -20,7 +20,7 @@ pub use self::error::*;
 pub use self::eval_queries::*;
 pub use self::fn_queries::*;
 pub use self::machine::*;
-pub(crate) use self::valtrees::{eval_to_valtree, valtree_to_const_value};
+pub(crate) use self::valtrees::{eval_to_valtree, valtree_to_const_alloc, valtree_to_const_value};
 
 // We forbid type-level constants that contain more than `VALTREE_MAX_NODES` nodes.
 const VALTREE_MAX_NODES: usize = 100000;

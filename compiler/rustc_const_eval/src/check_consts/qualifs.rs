@@ -7,6 +7,7 @@
 
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::LangItem;
+use rustc_hir::def::DefKind;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, AdtDef, Ty};
@@ -365,12 +366,27 @@ where
         // check performed after the promotion. Verify that with an assertion.
         assert!(promoted.is_none() || Q::ALLOW_PROMOTED);
 
-        // Don't peek inside trait associated constants.
         if promoted.is_none() && cx.tcx.trait_of_assoc(def).is_none() {
-            let qualifs = cx.tcx.at(constant.span).mir_const_qualif(def);
+            // If we want the qualifs of a const item, fudge the def to be for the
+            // const's body instead.
+            let def_kind = cx.tcx.def_kind(def);
+            let fudged_def = if let DefKind::Const | DefKind::AssocConst = def_kind {
+                let const_body = cx.tcx.const_of_item(def).instantiate_identity();
+                match const_body.kind() {
+                    ty::ConstKind::Unevaluated(uv) => Some(uv.def),
+                    ty::ConstKind::Error(_) => None,
+                    _ => bug!("unexpected non anon const const body"),
+                }
+            } else {
+                Some(def)
+            };
 
-            if !Q::in_qualifs(&qualifs) {
-                return false;
+            if let Some(fudged_def) = fudged_def {
+                let qualifs = cx.tcx.at(constant.span).mir_const_qualif(fudged_def);
+
+                if !Q::in_qualifs(&qualifs) {
+                    return false;
+                }
             }
 
             // Just in case the type is more specific than

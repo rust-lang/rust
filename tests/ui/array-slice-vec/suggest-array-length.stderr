@@ -1,29 +1,95 @@
+error[E0391]: cycle detected when computing type of `main::Foo`
+  --> $DIR/suggest-array-length.rs:4:5
+   |
+LL |     const Foo: [i32; _] = [1, 2, 3];
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+note: ...which requires computing the value for `main::Foo`...
+  --> $DIR/suggest-array-length.rs:4:5
+   |
+LL |     const Foo: [i32; _] = [1, 2, 3];
+   |     ^^^^^^^^^^^^^^^^^^^
+   = note: ...which again requires computing type of `main::Foo`, completing the cycle
+note: cycle used when checking that `main::Foo` is well-formed
+  --> $DIR/suggest-array-length.rs:4:5
+   |
+LL |     const Foo: [i32; _] = [1, 2, 3];
+   |     ^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error[E0391]: cycle detected when computing type of `main::Foo`
+  --> $DIR/suggest-array-length.rs:4:5
+   |
+LL |     const Foo: [i32; _] = [1, 2, 3];
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+note: ...which requires computing the value for `main::Foo`...
+  --> $DIR/suggest-array-length.rs:4:5
+   |
+LL |     const Foo: [i32; _] = [1, 2, 3];
+   |     ^^^^^^^^^^^^^^^^^^^
+   = note: ...which again requires computing type of `main::Foo`, completing the cycle
+note: cycle used when checking that `main::Foo` is well-formed
+  --> $DIR/suggest-array-length.rs:4:5
+   |
+LL |     const Foo: [i32; _] = [1, 2, 3];
+   |     ^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
-  --> $DIR/suggest-array-length.rs:5:22
+  --> $DIR/suggest-array-length.rs:4:22
    |
 LL |     const Foo: [i32; _] = [1, 2, 3];
    |                      ^ not allowed in type signatures
+
+error[E0391]: cycle detected when computing type of `main::REF_FOO`
+  --> $DIR/suggest-array-length.rs:8:5
    |
-help: replace this with a fully-specified type
+LL |     const REF_FOO: &[u8; _] = &[1];
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL -     const Foo: [i32; _] = [1, 2, 3];
-LL +     const Foo: [i32; 3] = [1, 2, 3];
+note: ...which requires computing the value for `main::REF_FOO`...
+  --> $DIR/suggest-array-length.rs:8:5
    |
+LL |     const REF_FOO: &[u8; _] = &[1];
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which again requires computing type of `main::REF_FOO`, completing the cycle
+note: cycle used when checking that `main::REF_FOO` is well-formed
+  --> $DIR/suggest-array-length.rs:8:5
+   |
+LL |     const REF_FOO: &[u8; _] = &[1];
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error[E0391]: cycle detected when computing type of `main::REF_FOO`
+  --> $DIR/suggest-array-length.rs:8:5
+   |
+LL |     const REF_FOO: &[u8; _] = &[1];
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: ...which requires computing the value for `main::REF_FOO`...
+  --> $DIR/suggest-array-length.rs:8:5
+   |
+LL |     const REF_FOO: &[u8; _] = &[1];
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which again requires computing type of `main::REF_FOO`, completing the cycle
+note: cycle used when checking that `main::REF_FOO` is well-formed
+  --> $DIR/suggest-array-length.rs:8:5
+   |
+LL |     const REF_FOO: &[u8; _] = &[1];
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
-  --> $DIR/suggest-array-length.rs:7:26
+  --> $DIR/suggest-array-length.rs:8:26
    |
 LL |     const REF_FOO: &[u8; _] = &[1];
    |                          ^ not allowed in type signatures
-   |
-help: replace this with a fully-specified type
-   |
-LL -     const REF_FOO: &[u8; _] = &[1];
-LL +     const REF_FOO: &[u8; 1] = &[1];
-   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for static variables
-  --> $DIR/suggest-array-length.rs:9:26
+  --> $DIR/suggest-array-length.rs:12:26
    |
 LL |     static Statik: [i32; _] = [1, 2, 3];
    |                          ^ not allowed in type signatures
@@ -35,7 +101,7 @@ LL +     static Statik: [i32; 3] = [1, 2, 3];
    |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for static variables
-  --> $DIR/suggest-array-length.rs:11:30
+  --> $DIR/suggest-array-length.rs:14:30
    |
 LL |     static REF_STATIK: &[u8; _] = &[1];
    |                              ^ not allowed in type signatures
@@ -46,6 +112,7 @@ LL -     static REF_STATIK: &[u8; _] = &[1];
 LL +     static REF_STATIK: &[u8; 1] = &[1];
    |
 
-error: aborting due to 4 previous errors
+error: aborting due to 8 previous errors
 
-For more information about this error, try `rustc --explain E0121`.
+Some errors have detailed explanations: E0121, E0391.
+For more information about an error, try `rustc --explain E0121`.

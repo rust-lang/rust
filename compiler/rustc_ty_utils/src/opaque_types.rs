@@ -82,7 +82,19 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
 
     #[instrument(level = "trace", skip(self))]
     fn collect_taits_declared_in_body(&mut self) {
-        let body = self.tcx.hir_body_owned_by(self.item).value;
+        let body_def_id = if let DefKind::Const | DefKind::AssocConst = self.tcx.def_kind(self.item)
+        {
+            let const_body = self.tcx.const_of_item(self.item).instantiate_identity();
+            match const_body.kind() {
+                ty::ConstKind::Unevaluated(uv) => uv.def.expect_local(),
+                ty::ConstKind::Error(_) => return,
+                _ => bug!("unexpected non anon const const body"),
+            }
+        } else {
+            self.item
+        };
+
+        let body = self.tcx.hir_body_owned_by(body_def_id).value;
         struct TaitInBodyFinder<'a, 'tcx> {
             collector: &'a mut OpaqueTypeCollector<'tcx>,
         }
@@ -306,8 +318,14 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
 
 fn opaque_types_defined_by<'tcx>(
     tcx: TyCtxt<'tcx>,
-    item: LocalDefId,
+    mut item: LocalDefId,
 ) -> &'tcx ty::List<LocalDefId> {
+    if let DefKind::Const | DefKind::AnonConst = tcx.def_kind(item)
+        && let ty::AnonConstKind::ItemBody = tcx.anon_const_kind(item)
+    {
+        item = tcx.parent(item.to_def_id()).expect_local();
+    }
+
     let kind = tcx.def_kind(item);
     trace!(?kind);
     let mut collector = OpaqueTypeCollector::new(tcx, item);
