@@ -30,6 +30,8 @@ fn slice_index_range(_1: &[u32], _2: std::ops::Range<usize>) -> &[u32] {
     }
 
     bb0: {
+        StorageLive(_3);
+        StorageLive(_4);
         _3 = move (_2.0: usize);
         _4 = move (_2.1: usize);
         StorageLive(_5);
@@ -58,8 +60,8 @@ fn slice_index_range(_1: &[u32], _2: std::ops::Range<usize>) -> &[u32] {
         StorageLive(_9);
         _9 = &raw const (*_1);
         StorageLive(_10);
-        StorageLive(_11);
         _10 = copy _9 as *const u32 (PtrToPtr);
+        StorageLive(_11);
         _11 = Offset(copy _10, copy _3);
         _12 = *const [u32] from (copy _11, copy _6);
         StorageDead(_11);
@@ -68,6 +70,8 @@ fn slice_index_range(_1: &[u32], _2: std::ops::Range<usize>) -> &[u32] {
         _0 = &(*_12);
         StorageDead(_12);
         StorageDead(_8);
+        StorageDead(_3);
+        StorageDead(_4);
         return;
     }
 
