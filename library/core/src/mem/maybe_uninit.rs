@@ -1389,8 +1389,12 @@ impl<T> [MaybeUninit<T>] {
     /// non-null. Dropping such a `Vec<T>` however will cause undefined
     /// behaviour.
     #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
+    #[rustc_const_unstable(feature = "maybe_uninit_slice", issue = "63569")]
     #[inline(always)]
-    pub unsafe fn assume_init_drop(&mut self) {
+    pub const unsafe fn assume_init_drop(&mut self)
+    where
+        T: [const] crate::marker::Destruct,
+    {
         if !self.is_empty() {
             // SAFETY: the caller must guarantee that every element of `self`
             // is initialized and satisfies all invariants of `T`.
