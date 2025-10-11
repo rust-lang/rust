@@ -1,7 +1,7 @@
 use crate::iter::adapters::SourceIter;
 use crate::iter::{
-    Cloned, Copied, Empty, Filter, FilterMap, Fuse, FusedIterator, Map, Once, OnceWith,
-    TrustedFused, TrustedLen,
+    Cloned, Copied, Empty, Filter, FilterMap, Fuse, FusedIterator, InfiniteIterator, Map, Once,
+    OnceWith, TrustedFused, TrustedLen,
 };
 use crate::num::NonZero;
 use crate::ops::{ControlFlow, Try};
@@ -170,6 +170,26 @@ where
         // SAFETY: unsafe function forwarding to unsafe function with the same requirements
         unsafe { SourceIter::as_inner(&mut self.inner.iter) }
     }
+}
+
+#[stable(feature = "infinite_iterator_trait", since = "CURRENT_RUSTC_VERSION")]
+impl<I: !ExactSizeIterator, U, F> !ExactSizeIterator for FlatMap<I, U, F> {}
+
+#[stable(feature = "infinite_iterator_trait", since = "CURRENT_RUSTC_VERSION")]
+impl<I, U, F> !ExactSizeIterator for FlatMap<I, U, F>
+where
+    I: ExactSizeIterator<Item = U>,
+    U: !ExactSizeIterator,
+{
+}
+
+#[stable(feature = "infinite_iterator_trait", since = "CURRENT_RUSTC_VERSION")]
+impl<I, U, F> InfiniteIterator for FlatMap<I, U, F>
+where
+    I: InfiniteIterator,
+    U: IntoIterator,
+    F: FnMut(I::Item) -> U,
+{
 }
 
 /// An iterator that flattens one level of nesting in an iterator of things
@@ -348,6 +368,20 @@ where
         Flatten::new(Default::default())
     }
 }
+
+#[stable(feature = "infinite_iterator_trait", since = "CURRENT_RUSTC_VERSION")]
+impl<I: !ExactSizeIterator> !ExactSizeIterator for Flatten<I> {}
+
+#[stable(feature = "infinite_iterator_trait", since = "CURRENT_RUSTC_VERSION")]
+impl<I> !ExactSizeIterator for Flatten<I>
+where
+    I: ExactSizeIterator,
+    I::Item: !ExactSizeIterator,
+{
+}
+
+#[stable(feature = "infinite_iterator_trait", since = "CURRENT_RUSTC_VERSION")]
+impl<I> InfiniteIterator for Flatten<I> where I: InfiniteIterator<Item: IntoIterator> {}
 
 /// Real logic of both `Flatten` and `FlatMap` which simply delegate to
 /// this type.
@@ -709,6 +743,25 @@ unsafe impl<'a, const N: usize, I, T> TrustedLen
     for FlattenCompat<I, <&'a mut [T; N] as IntoIterator>::IntoIter>
 where
     I: TrustedLen<Item = &'a mut [T; N]>,
+{
+}
+
+#[stable(feature = "infinite_iterator_trait", since = "CURRENT_RUSTC_VERSION")]
+impl<I: !ExactSizeIterator, U> !ExactSizeIterator for FlattenCompat<I, U> {}
+
+#[stable(feature = "infinite_iterator_trait", since = "CURRENT_RUSTC_VERSION")]
+impl<I, U> !ExactSizeIterator for FlattenCompat<I, U>
+where
+    I: ExactSizeIterator<Item: IntoIterator<IntoIter = U, Item = U::Item>>,
+    U: Iterator + !ExactSizeIterator,
+{
+}
+
+#[stable(feature = "infinite_iterator_trait", since = "CURRENT_RUSTC_VERSION")]
+impl<I, U> InfiniteIterator for FlattenCompat<I, U>
+where
+    I: InfiniteIterator<Item: IntoIterator<IntoIter = U, Item = U::Item>>,
+    U: Iterator,
 {
 }
 
