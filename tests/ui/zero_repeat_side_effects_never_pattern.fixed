@@ -4,6 +4,7 @@
 
 fn issue_14998() {
     // nameable type thanks to `never_type` being enabled, suggest
-    panic!(); let _data: [!; 0] = [];
+    panic!();
+    let _data: [!; 0] = [];
     //~^ zero_repeat_side_effects
 }
