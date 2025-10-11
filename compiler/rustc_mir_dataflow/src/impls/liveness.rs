@@ -159,8 +159,7 @@ impl DefUse {
                 MutatingUseContext::Call
                 | MutatingUseContext::Yield
                 | MutatingUseContext::AsmOutput
-                | MutatingUseContext::Store
-                | MutatingUseContext::Deinit,
+                | MutatingUseContext::Store,
             ) => {
                 // Treat derefs as a use of the base local. `*p = 4` is not a def of `p` but a use.
                 if place.is_indirect() {
@@ -238,7 +237,7 @@ impl<'a> MaybeTransitiveLiveLocals<'a> {
                 && (!debuginfo_locals.contains(place.local)
                     || (place.as_local().is_some() && stmt_kind.as_debuginfo().is_some())))
             .then_some(*place),
-            StatementKind::SetDiscriminant { place, .. } | StatementKind::Deinit(place) => {
+            StatementKind::SetDiscriminant { place, .. } => {
                 (!debuginfo_locals.contains(place.local)).then_some(**place)
             }
             StatementKind::FakeRead(_)

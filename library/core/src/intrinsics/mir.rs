@@ -227,7 +227,7 @@
 //!
 //! #### Statements
 //!  - Assign statements work via normal Rust assignment.
-//!  - [`Retag`], [`StorageLive`], [`StorageDead`], [`Deinit`] statements have an associated function.
+//!  - [`Retag`], [`StorageLive`], [`StorageDead`] statements have an associated function.
 //!
 //! #### Rvalues
 //!
@@ -400,7 +400,6 @@ define!("mir_unwind_resume",
 define!("mir_storage_live", fn StorageLive<T>(local: T));
 define!("mir_storage_dead", fn StorageDead<T>(local: T));
 define!("mir_assume", fn Assume(operand: bool));
-define!("mir_deinit", fn Deinit<T>(place: T));
 define!("mir_checked", fn Checked<T>(binop: T) -> (T, bool));
 define!(
     "mir_ptr_metadata",

@@ -17,6 +17,7 @@ use rustc_middle::ty::{
     self, CoroutineArgsExt, InstanceKind, ScalarInt, Ty, TyCtxt, TypeVisitableExt, Upcast, Variance,
 };
 use rustc_middle::{bug, span_bug};
+use rustc_mir_dataflow::debuginfo::debuginfo_locals;
 use rustc_trait_selection::traits::ObligationCtxt;
 
 use crate::util::{self, is_within_packed};
@@ -77,6 +78,11 @@ impl<'tcx> crate::MirPass<'tcx> for Validator {
 
         // Also run the TypeChecker.
         for (location, msg) in validate_types(tcx, typing_env, body, body) {
+            cfg_checker.fail(location, msg);
+        }
+
+        // Ensure that debuginfo records are not emitted for locals that are not in debuginfo.
+        for (location, msg) in validate_debuginfos(body) {
             cfg_checker.fail(location, msg);
         }
 
@@ -311,11 +317,6 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
             StatementKind::SetDiscriminant { .. } => {
                 if self.body.phase < MirPhase::Runtime(RuntimePhase::Initial) {
                     self.fail(location, "`SetDiscriminant`is not allowed until deaggregation");
-                }
-            }
-            StatementKind::Deinit(..) => {
-                if self.body.phase < MirPhase::Runtime(RuntimePhase::Initial) {
-                    self.fail(location, "`Deinit`is not allowed until deaggregation");
                 }
             }
             StatementKind::Retag(kind, _) => {
@@ -1501,11 +1502,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
             }
-            StatementKind::Deinit(..) => {
-                if self.body.phase < MirPhase::Runtime(RuntimePhase::Initial) {
-                    self.fail(location, "`Deinit`is not allowed until deaggregation");
-                }
-            }
             StatementKind::Retag(kind, _) => {
                 // FIXME(JakobDegen) The validator should check that `self.body.phase <
                 // DropsLowered`. However, this causes ICEs with generation of drop shims, which
@@ -1593,5 +1589,32 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         }
 
         self.super_terminator(terminator, location);
+    }
+}
+
+pub(super) fn validate_debuginfos<'tcx>(body: &Body<'tcx>) -> Vec<(Location, String)> {
+    let mut debuginfo_checker =
+        DebuginfoChecker { debuginfo_locals: debuginfo_locals(body), failures: Vec::new() };
+    debuginfo_checker.visit_body(body);
+    debuginfo_checker.failures
+}
+
+struct DebuginfoChecker {
+    debuginfo_locals: DenseBitSet<Local>,
+    failures: Vec<(Location, String)>,
+}
+
+impl<'tcx> Visitor<'tcx> for DebuginfoChecker {
+    fn visit_statement_debuginfo(
+        &mut self,
+        stmt_debuginfo: &StmtDebugInfo<'tcx>,
+        location: Location,
+    ) {
+        let local = match stmt_debuginfo {
+            StmtDebugInfo::AssignRef(local, _) | StmtDebugInfo::InvalidAssign(local) => *local,
+        };
+        if !self.debuginfo_locals.contains(local) {
+            self.failures.push((location, format!("{local:?} is not in debuginfo")));
+        }
     }
 }

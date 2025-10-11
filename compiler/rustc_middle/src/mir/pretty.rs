@@ -818,7 +818,6 @@ impl Debug for Statement<'_> {
             SetDiscriminant { ref place, variant_index } => {
                 write!(fmt, "discriminant({place:?}) = {variant_index:?}")
             }
-            Deinit(ref place) => write!(fmt, "Deinit({place:?})"),
             PlaceMention(ref place) => {
                 write!(fmt, "PlaceMention({place:?})")
             }

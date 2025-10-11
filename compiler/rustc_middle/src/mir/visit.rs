@@ -445,13 +445,6 @@ macro_rules! make_mir_visitor {
                             location
                         );
                     }
-                    StatementKind::Deinit(place) => {
-                        self.visit_place(
-                            place,
-                            PlaceContext::MutatingUse(MutatingUseContext::Deinit),
-                            location
-                        )
-                    }
                     StatementKind::StorageLive(local) => {
                         self.visit_local(
                             $(& $mutability)? *local,
@@ -1098,6 +1091,10 @@ macro_rules! super_body {
             }
         }
 
+        for var_debug_info in &$($mutability)? $body.var_debug_info {
+            $self.visit_var_debug_info(var_debug_info);
+        }
+
         for (bb, data) in basic_blocks_iter!($body, $($mutability, $invalidate)?) {
             $self.visit_basic_block_data(bb, data);
         }
@@ -1125,10 +1122,6 @@ macro_rules! super_body {
             $self.visit_user_type_annotation(
                 index, annotation
             );
-        }
-
-        for var_debug_info in &$($mutability)? $body.var_debug_info {
-            $self.visit_var_debug_info(var_debug_info);
         }
 
         $self.visit_span($(& $mutability)? $body.span);
@@ -1372,8 +1365,6 @@ pub enum MutatingUseContext {
     Store,
     /// Appears on `SetDiscriminant`
     SetDiscriminant,
-    /// Appears on `Deinit`
-    Deinit,
     /// Output operand of an inline assembly block.
     AsmOutput,
     /// Destination of a call.

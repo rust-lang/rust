@@ -170,7 +170,6 @@ macro_rules! make_mir_visitor {
                         self.visit_place(place, PlaceContext::NON_MUTATING, location);
                     }
                     StatementKind::SetDiscriminant { place, .. }
-                    | StatementKind::Deinit(place)
                     | StatementKind::Retag(_, place) => {
                         self.visit_place(place, PlaceContext::MUTATING, location);
                     }

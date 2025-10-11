@@ -24,9 +24,6 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
                 let op = self.parse_operand(args[0])?;
                 Ok(StatementKind::Intrinsic(Box::new(NonDivergingIntrinsic::Assume(op))))
             },
-            @call(mir_deinit, args) => {
-                Ok(StatementKind::Deinit(Box::new(self.parse_place(args[0])?)))
-            },
             @call(mir_retag, args) => {
                 Ok(StatementKind::Retag(RetagKind::Default, Box::new(self.parse_place(args[0])?)))
             },
