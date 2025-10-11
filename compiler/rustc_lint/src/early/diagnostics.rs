@@ -251,9 +251,6 @@ pub fn decorate_builtin_lint(
             }
             .decorate_lint(diag);
         }
-        BuiltinLintDiag::AmbiguousGlobImports { diag: ambiguity } => {
-            lints::AmbiguousGlobImports { ambiguity }.decorate_lint(diag);
-        }
         BuiltinLintDiag::AmbiguousGlobReexports {
             name,
             namespace,

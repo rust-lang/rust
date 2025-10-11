@@ -11,7 +11,7 @@ use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, MultiSpan, SuggestionStyle,
-    report_ambiguity_error, struct_span_code_err,
+    struct_span_code_err,
 };
 use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::attrs::{AttributeKind, CfgEntry, StrippedCfgItem};
@@ -22,16 +22,16 @@ use rustc_hir::{PrimTy, Stability, StabilityLevel, find_attr};
 use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
+use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{
     ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE, AMBIGUOUS_GLOB_IMPORTS,
     MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
 };
-use rustc_session::lint::{AmbiguityErrorDiag, BuiltinLintDiag};
 use rustc_session::utils::was_invoked_from_cargo;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
-use rustc_span::source_map::SourceMap;
+use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::{BytePos, Ident, Macros20NormalizedIdent, Span, Symbol, SyntaxContext, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 use tracing::{debug, instrument};
@@ -145,7 +145,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         for ambiguity_error in &self.ambiguity_errors {
-            let diag = self.ambiguity_diagnostics(ambiguity_error);
+            let diag = self.ambiguity_diagnostic(ambiguity_error);
+
             if ambiguity_error.warning {
                 let NameBindingKind::Import { import, .. } = ambiguity_error.b1.0.kind else {
                     unreachable!()
@@ -153,13 +154,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 self.lint_buffer.buffer_lint(
                     AMBIGUOUS_GLOB_IMPORTS,
                     import.root_id,
-                    ambiguity_error.ident.span,
-                    BuiltinLintDiag::AmbiguousGlobImports { diag },
+                    diag.ident.span,
+                    diag,
                 );
             } else {
-                let mut err = struct_span_code_err!(self.dcx(), diag.span, E0659, "{}", diag.msg);
-                report_ambiguity_error(&mut err, diag);
-                err.emit();
+                self.dcx().emit_err(diag);
             }
         }
 
@@ -1995,7 +1994,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
     }
 
-    fn ambiguity_diagnostics(&self, ambiguity_error: &AmbiguityError<'ra>) -> AmbiguityErrorDiag {
+    fn ambiguity_diagnostic(&self, ambiguity_error: &AmbiguityError<'ra>) -> errors::Ambiguity {
         let AmbiguityError { kind, ident, b1, b2, misc1, misc2, .. } = *ambiguity_error;
         let extern_prelude_ambiguity = || {
             self.extern_prelude.get(&Macros20NormalizedIdent::new(ident)).is_some_and(|entry| {
@@ -2038,8 +2037,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
 
             (
-                b.span,
-                note_msg,
+                Spanned { node: note_msg, span: b.span },
                 help_msgs
                     .iter()
                     .enumerate()
@@ -2050,20 +2048,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     .collect::<Vec<_>>(),
             )
         };
-        let (b1_span, b1_note_msg, b1_help_msgs) = could_refer_to(b1, misc1, "");
-        let (b2_span, b2_note_msg, b2_help_msgs) = could_refer_to(b2, misc2, " also");
+        let (b1_note, b1_help_msgs) = could_refer_to(b1, misc1, "");
+        let (b2_note, b2_help_msgs) = could_refer_to(b2, misc2, " also");
 
-        AmbiguityErrorDiag {
-            msg: format!("`{ident}` is ambiguous"),
-            span: ident.span,
-            label_span: ident.span,
-            label_msg: "ambiguous name".to_string(),
-            note_msg: format!("ambiguous because of {}", kind.descr()),
-            b1_span,
-            b1_note_msg,
+        errors::Ambiguity {
+            ident,
+            kind: kind.descr(),
+            b1_note,
             b1_help_msgs,
-            b2_span,
-            b2_note_msg,
+            b2_note,
             b2_help_msgs,
         }
     }

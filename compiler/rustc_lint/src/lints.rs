@@ -15,7 +15,6 @@ use rustc_macros::{LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::inhabitedness::InhabitedPredicate;
 use rustc_middle::ty::{Clause, PolyExistentialTraitRef, Ty, TyCtxt};
 use rustc_session::Session;
-use rustc_session::lint::AmbiguityErrorDiag;
 use rustc_span::edition::Edition;
 use rustc_span::{Ident, Span, Symbol, sym};
 
@@ -2834,18 +2833,6 @@ pub(crate) struct NamedArgumentUsedPositionally {
 
     pub name: String,
     pub named_arg_name: String,
-}
-
-// FIXME: make this translatable
-pub(crate) struct AmbiguousGlobImports {
-    pub ambiguity: AmbiguityErrorDiag,
-}
-
-impl<'a, G: EmissionGuarantee> LintDiagnostic<'a, G> for AmbiguousGlobImports {
-    fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, G>) {
-        diag.primary_message(self.ambiguity.msg.clone());
-        rustc_errors::report_ambiguity_error(diag, self.ambiguity);
-    }
 }
 
 #[derive(LintDiagnostic)]
