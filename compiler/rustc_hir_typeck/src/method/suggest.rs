@@ -2923,7 +2923,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .filter_map(|e| match e.obligation.predicate.kind().skip_binder() {
                 ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) => {
                     match pred.self_ty().kind() {
-                        ty::Adt(_, _) => Some(pred),
+                        ty::Adt(_, _) => Some((
+                            (e.root_obligation.predicate, e.root_obligation.cause.span),
+                            pred,
+                        )),
                         _ => None,
                     }
                 }
@@ -2933,7 +2936,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Note for local items and foreign items respectively.
         let (mut local_preds, mut foreign_preds): (Vec<_>, Vec<_>) =
-            preds.iter().partition(|&pred| {
+            preds.iter().partition(|&(_, pred)| {
                 if let ty::Adt(def, _) = pred.self_ty().kind() {
                     def.did().is_local()
                 } else {
@@ -2941,10 +2944,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             });
 
-        local_preds.sort_by_key(|pred: &&ty::TraitPredicate<'_>| pred.trait_ref.to_string());
+        local_preds.sort_by_key(|(_, pred)| pred.trait_ref.to_string());
         let local_def_ids = local_preds
             .iter()
-            .filter_map(|pred| match pred.self_ty().kind() {
+            .filter_map(|(_, pred)| match pred.self_ty().kind() {
                 ty::Adt(def, _) => Some(def.did()),
                 _ => None,
             })
@@ -2957,7 +2960,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             })
             .collect::<Vec<_>>()
             .into();
-        for pred in &local_preds {
+        for (_, pred) in &local_preds {
             if let ty::Adt(def, _) = pred.self_ty().kind() {
                 local_spans.push_span_label(
                     self.tcx.def_span(def.did()),
@@ -2966,7 +2969,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
         if local_spans.primary_span().is_some() {
-            let msg = if let [local_pred] = local_preds.as_slice() {
+            let msg = if let [(_, local_pred)] = local_preds.as_slice() {
                 format!(
                     "an implementation of `{}` might be missing for `{}`",
                     local_pred.trait_ref.print_trait_sugared(),
@@ -2984,10 +2987,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.span_note(local_spans, msg);
         }
 
-        foreign_preds.sort_by_key(|pred: &&ty::TraitPredicate<'_>| pred.trait_ref.to_string());
+        foreign_preds.sort_by_key(|(_, pred)| pred.trait_ref.to_string());
         let foreign_def_ids = foreign_preds
             .iter()
-            .filter_map(|pred| match pred.self_ty().kind() {
+            .filter_map(|(_, pred)| match pred.self_ty().kind() {
                 ty::Adt(def, _) => Some(def.did()),
                 _ => None,
             })
@@ -3000,7 +3003,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             })
             .collect::<Vec<_>>()
             .into();
-        for pred in &foreign_preds {
+        for (_, pred) in &foreign_preds {
             if let ty::Adt(def, _) = pred.self_ty().kind() {
                 foreign_spans.push_span_label(
                     self.tcx.def_span(def.did()),
@@ -3009,7 +3012,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
         if foreign_spans.primary_span().is_some() {
-            let msg = if let [foreign_pred] = foreign_preds.as_slice() {
+            let msg = if let [(_, foreign_pred)] = foreign_preds.as_slice() {
                 format!(
                     "the foreign item type `{}` doesn't implement `{}`",
                     foreign_pred.self_ty(),
@@ -3025,6 +3028,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 )
             };
             err.span_note(foreign_spans, msg);
+
+            if let Some(span) = foreign_preds.iter().find_map(|&((root_pred, span), pred)| {
+                match root_pred.kind().skip_binder() {
+                    ty::PredicateKind::Clause(ty::ClauseKind::Trait(root_pred))
+                        if let Some(root_adt) = root_pred.self_ty().ty_adt_def()
+                            && self.tcx.is_diagnostic_item(sym::HashSet, root_adt.did())
+                            && self.tcx.is_diagnostic_item(sym::BuildHasher, pred.def_id()) =>
+                    {
+                        Some(span)
+                    }
+                    _ => None,
+                }
+            }) {
+                err.span_help(span, "you might have intended to use a HashMap instead");
+            }
         }
 
         let preds: Vec<_> = errors
