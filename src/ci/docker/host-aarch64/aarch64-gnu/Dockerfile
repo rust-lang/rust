@@ -21,6 +21,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
+# FIXME(#147556): Work around a libffi-sys build failure by telling `configure`
+# that it can use `mkdir -p`.
+ENV MKDIR_P mkdir -p
+
 ENV RUST_CONFIGURE_ARGS \
  --build=aarch64-unknown-linux-gnu \
  --enable-sanitizers \

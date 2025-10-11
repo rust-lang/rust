@@ -34,6 +34,10 @@ ENV RUSTBUILD_FORCE_CLANG_BASED_TESTS 1
 # llvm.use-linker conflicts with downloading CI LLVM
 ENV NO_DOWNLOAD_CI_LLVM 1
 
+# FIXME(#147556): Work around a libffi-sys build failure by telling `configure`
+# that it can use `mkdir -p`.
+ENV MKDIR_P mkdir -p
+
 ENV RUST_CONFIGURE_ARGS \
       --build=aarch64-unknown-linux-gnu \
       --enable-debug \

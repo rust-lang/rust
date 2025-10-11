@@ -40,6 +40,10 @@ RUN sh /scripts/sccache.sh
 ENV NO_DOWNLOAD_CI_LLVM 1
 ENV EXTERNAL_LLVM 1
 
+# FIXME(#147556): Work around a libffi-sys build failure by telling `configure`
+# that it can use `mkdir -p`.
+ENV MKDIR_P mkdir -p
+
 # Using llvm-link-shared due to libffi issues -- see #34486
 ENV RUST_CONFIGURE_ARGS \
       --build=aarch64-unknown-linux-gnu \
