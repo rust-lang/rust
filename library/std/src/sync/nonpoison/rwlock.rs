@@ -700,7 +700,6 @@ impl<'rwlock, T: ?Sized> RwLockWriteGuard<'rwlock, T> {
     ///
     /// ```
     /// #![feature(nonpoison_rwlock)]
-    /// #![feature(rwlock_downgrade)]
     ///
     /// use std::sync::nonpoison::{RwLock, RwLockWriteGuard};
     ///
@@ -719,7 +718,6 @@ impl<'rwlock, T: ?Sized> RwLockWriteGuard<'rwlock, T> {
     ///
     /// ```
     /// #![feature(nonpoison_rwlock)]
-    /// #![feature(rwlock_downgrade)]
     ///
     /// use std::sync::Arc;
     /// use std::sync::nonpoison::{RwLock, RwLockWriteGuard};
@@ -752,8 +750,7 @@ impl<'rwlock, T: ?Sized> RwLockWriteGuard<'rwlock, T> {
     /// # let final_check = rw.read();
     /// # assert_eq!(*final_check, 3);
     /// ```
-    #[unstable(feature = "rwlock_downgrade", issue = "128203")]
-    // #[unstable(feature = "nonpoison_rwlock", issue = "134645")]
+    #[unstable(feature = "nonpoison_rwlock", issue = "134645")]
     pub fn downgrade(s: Self) -> RwLockReadGuard<'rwlock, T> {
         let lock = s.lock;
 
