@@ -1,0 +1,2 @@
+error: invalid `--cfg` argument: `async` (argument key must be an identifier but found keyword `async`, escape it using `r#async`)
+

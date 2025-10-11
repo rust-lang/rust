@@ -428,6 +428,7 @@ impl<'a> StripUnconfigured<'a> {
             node,
             self.features,
             emit_errors,
+            true,
             parse_cfg_attr,
             &CFG_TEMPLATE,
         ) else {

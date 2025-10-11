@@ -181,6 +181,7 @@ pub struct Parser<'a> {
     /// The previous token.
     pub prev_token: Token,
     pub capture_cfg: bool,
+    pub parse_cfg_pred: bool,
     restrictions: Restrictions,
     expected_token_types: TokenTypeSet,
     token_cursor: TokenCursor,
@@ -372,6 +373,7 @@ impl<'a> Parser<'a> {
             },
             current_closure: None,
             recovery: Recovery::Allowed,
+            parse_cfg_pred: false,
         };
 
         // Make parser point to the first token.

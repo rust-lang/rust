@@ -57,6 +57,8 @@ pub enum PathStyle {
     /// anyway, due to macros), but it is used to avoid weird suggestions about expected
     /// tokens when something goes wrong.
     Mod,
+    /// Disallow path segment keywords when parsing cfg preds
+    CfgPred,
 }
 
 impl PathStyle {
@@ -299,7 +301,12 @@ impl<'a> Parser<'a> {
         style: PathStyle,
         ty_generics: Option<&Generics>,
     ) -> PResult<'a, PathSegment> {
-        let ident = self.parse_path_segment_ident()?;
+        let ident = if style == PathStyle::CfgPred {
+            self.parse_ident()?
+        } else {
+            self.parse_path_segment_ident()?
+        };
+
         let is_args_start = |token: &Token| {
             matches!(token.kind, token::Lt | token::Shl | token::OpenParen | token::LArrow)
         };

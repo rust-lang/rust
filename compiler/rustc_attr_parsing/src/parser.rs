@@ -104,6 +104,7 @@ impl<'a> ArgParser<'a> {
         parts: &[Symbol],
         psess: &'sess ParseSess,
         should_emit: ShouldEmit,
+        parsing_cfg: bool,
     ) -> Option<Self> {
         Some(match value {
             AttrArgs::Empty => Self::NoArgs,
@@ -124,7 +125,7 @@ impl<'a> ArgParser<'a> {
                     return None;
                 }
 
-                Self::List(MetaItemListParser::new(args, psess, should_emit)?)
+                Self::List(MetaItemListParser::new(args, psess, should_emit, parsing_cfg)?)
             }
             AttrArgs::Eq { eq_span, expr } => Self::NameValue(NameValueParser {
                 eq_span: *eq_span,
@@ -248,10 +249,17 @@ impl<'a> MetaItemParser<'a> {
         parts: &[Symbol],
         psess: &'sess ParseSess,
         should_emit: ShouldEmit,
+        parsing_cfg: bool,
     ) -> Option<Self> {
         Some(Self {
             path: PathParser(Cow::Borrowed(&attr.item.path)),
-            args: ArgParser::from_attr_args(&attr.item.args, parts, psess, should_emit)?,
+            args: ArgParser::from_attr_args(
+                &attr.item.args,
+                parts,
+                psess,
+                should_emit,
+                parsing_cfg,
+            )?,
         })
     }
 }
@@ -425,7 +433,13 @@ impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
             };
         }
 
-        let path = self.parser.parse_path(PathStyle::Mod)?;
+        let path = if self.parser.parse_cfg_pred {
+            let path = self.parser.parse_path(PathStyle::CfgPred)?;
+            self.parser.parse_cfg_pred = false;
+            path
+        } else {
+            self.parser.parse_path(PathStyle::Mod)?
+        };
 
         // Check style of arguments that this meta item has
         let args = if self.parser.check(exp!(OpenParen)) {
@@ -513,8 +527,11 @@ impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
         psess: &'sess ParseSess,
         span: Span,
         should_emit: ShouldEmit,
+        parsing_cfg: bool,
     ) -> PResult<'sess, MetaItemListParser<'static>> {
         let mut parser = Parser::new(psess, tokens, None);
+        parser.parse_cfg_pred = parsing_cfg;
+
         let mut this = MetaItemListParserContext { parser: &mut parser, should_emit };
 
         // Presumably, the majority of the time there will only be one attr.
@@ -546,12 +563,14 @@ impl<'a> MetaItemListParser<'a> {
         delim: &'a DelimArgs,
         psess: &'sess ParseSess,
         should_emit: ShouldEmit,
+        parsing_cfg: bool,
     ) -> Option<Self> {
         match MetaItemListParserContext::parse(
             delim.tokens.clone(),
             psess,
             delim.dspan.entire(),
             should_emit,
+            parsing_cfg,
         ) {
             Ok(s) => Some(s),
             Err(e) => {

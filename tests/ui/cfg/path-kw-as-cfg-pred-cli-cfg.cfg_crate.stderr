@@ -1,0 +1,2 @@
+error: invalid `--cfg` argument: `crate` (argument key must be an identifier but found keyword `crate`)
+

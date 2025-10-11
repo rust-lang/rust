@@ -42,6 +42,7 @@ fn parse_cfg<'a>(
     tts: TokenStream,
 ) -> PResult<'a, ast::MetaItemInner> {
     let mut p = cx.new_parser_from_tts(tts);
+    p.parse_cfg_pred = true;
 
     if p.token == token::Eof {
         return Err(cx.dcx().create_err(errors::RequiresCfgPattern { span }));

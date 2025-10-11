@@ -1,0 +1,2 @@
+error: invalid `--cfg` argument: `trait` (argument key must be an identifier but found keyword `trait`, escape it using `r#trait`)
+

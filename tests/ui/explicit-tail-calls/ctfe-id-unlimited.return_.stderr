@@ -1,21 +1,21 @@
 error[E0080]: reached the configured maximum number of stack frames
-  --> $DIR/ctfe-id-unlimited.rs:28:20
+  --> $DIR/ctfe-id-unlimited.rs:32:20
    |
 LL | const ID_ED: u32 = rec_id(ORIGINAL);
    |                    ^^^^^^^^^^^^^^^^ evaluation of `ID_ED` failed inside this call
    |
 note: inside `rec_id`
-  --> $DIR/ctfe-id-unlimited.rs:21:5
+  --> $DIR/ctfe-id-unlimited.rs:25:5
    |
 LL |     inner(0, n)
    |     ^^^^^^^^^^^
 note: [... 125 additional calls inside `inner` ...]
-  --> $DIR/ctfe-id-unlimited.rs:17:42
+  --> $DIR/ctfe-id-unlimited.rs:21:42
    |
 LL |             #[cfg(r#return)] _ => return inner(acc + 1, n - 1),
    |                                          ^^^^^^^^^^^^^^^^^^^^^
 note: inside `inner`
-  --> $DIR/ctfe-id-unlimited.rs:17:42
+  --> $DIR/ctfe-id-unlimited.rs:21:42
    |
 LL |             #[cfg(r#return)] _ => return inner(acc + 1, n - 1),
    |                                          ^^^^^^^^^^^^^^^^^^^^^ the failure occurred here
