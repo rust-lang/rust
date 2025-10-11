@@ -116,7 +116,7 @@ fn test_repo(cargo: &Path, out_dir: &Path, test: &Test) {
     println!("testing {}", test.repo);
     let dir = clone_repo(test, out_dir);
     if let Some(lockfile) = test.lock {
-        fs::write(&dir.join("Cargo.lock"), lockfile).unwrap();
+        fs::write(dir.join("Cargo.lock"), lockfile).unwrap();
     }
     if !run_cargo_test(cargo, &dir, test.packages, test.features, test.manifest_path, test.filters)
     {
@@ -140,7 +140,7 @@ fn clone_repo(test: &Test, out_dir: &Path) -> PathBuf {
                 .arg("fetch")
                 .arg(test.repo)
                 .arg(test.sha)
-                .arg(&format!("--depth={}", depth))
+                .arg(format!("--depth={}", depth))
                 .current_dir(&out_dir)
                 .status()
                 .unwrap();

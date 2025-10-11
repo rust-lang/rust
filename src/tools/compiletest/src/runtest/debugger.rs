@@ -42,10 +42,10 @@ impl DebuggerCommands {
                 continue;
             };
 
-            if let Some(command) = parse_name_value(&line, &command_directive) {
+            if let Some(command) = parse_name_value(line, &command_directive) {
                 commands.push(command);
             }
-            if let Some(pattern) = parse_name_value(&line, &check_directive) {
+            if let Some(pattern) = parse_name_value(line, &check_directive) {
                 check_lines.push((line_no, pattern));
             }
         }
@@ -69,7 +69,7 @@ impl DebuggerCommands {
             if let Some(offset) = dbg_lines
                 .iter()
                 .skip(last_idx)
-                .position(|out_line| check_single_line(out_line, &ck_line))
+                .position(|out_line| check_single_line(out_line, ck_line))
             {
                 last_idx += offset;
                 found.push((src_lineno, dbg_lines[last_idx]));

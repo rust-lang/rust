@@ -33,7 +33,7 @@ fn main() -> Result<()> {
     let lang_features_status = collect_lang_features(&compiler_path, &mut RunningCheck::new_noop());
     let lib_features_status = collect_lib_features(&library_path)
         .into_iter()
-        .filter(|&(ref name, _)| !lang_features_status.contains_key(name))
+        .filter(|(name, _)| !lang_features_status.contains_key(name))
         .collect();
     let features_status = FeaturesStatus { lang_features_status, lib_features_status };
 

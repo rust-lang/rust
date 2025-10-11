@@ -160,8 +160,8 @@ fn parse_covfun_line(line: &str) -> anyhow::Result<CovfunLineData> {
     let captures =
         RE.captures(line).with_context(|| format!("couldn't parse covfun line: {line:?}"))?;
     let is_used = captures.name("is_used").is_some();
-    let name_hash = i64::from_str_radix(&captures["name_hash"], 10).unwrap() as u64;
-    let filenames_hash = i64::from_str_radix(&captures["filenames_hash"], 10).unwrap() as u64;
+    let name_hash = captures["name_hash"].parse::<i64>().unwrap() as u64;
+    let filenames_hash = captures["name_hash"].parse::<i64>().unwrap() as u64;
     let payload = unescape_llvm_string_contents(&captures["payload"]);
 
     Ok(CovfunLineData { is_used, name_hash, filenames_hash, payload })

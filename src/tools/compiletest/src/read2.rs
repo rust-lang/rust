@@ -84,7 +84,7 @@ impl ProcOutput {
                     // We start matching `path_bytes - 1` into the previously loaded data,
                     // to account for the fact a path_bytes might be included across multiple
                     // `extend` calls. Starting from `- 1` avoids double-counting paths.
-                    let matches = (&bytes[(old_len.saturating_sub(path_bytes.len() - 1))..])
+                    let matches = (bytes[(old_len.saturating_sub(path_bytes.len() - 1))..])
                         .windows(path_bytes.len())
                         .filter(|window| window == &path_bytes)
                         .count();

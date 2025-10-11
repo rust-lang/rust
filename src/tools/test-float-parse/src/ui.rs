@@ -48,7 +48,7 @@ impl Progress {
     /// Completed a out of b tests.
     pub fn update(&self, completed: u64, failures: u64) {
         // Infrequently update the progress bar.
-        if completed % 5_000 == 0 || failures > 0 {
+        if completed.is_multiple_of(5_000) || failures > 0 {
             self.pb.set_position(completed);
         }
 

@@ -55,7 +55,7 @@ pub fn get_metadata_and_notices(
 
     // Now for each dependency we found, go and grab any important looking files
     for (package, metadata) in output.iter_mut() {
-        load_important_files(package, metadata, &vendor_path)?;
+        load_important_files(package, metadata, vendor_path)?;
     }
 
     Ok(output)

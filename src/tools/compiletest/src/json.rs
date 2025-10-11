@@ -117,10 +117,9 @@ pub fn extract_rendered(output: &str) -> String {
                                 .collect::<String>()
                         ))
                     }
-                } else if serde_json::from_str::<ArtifactNotification>(line).is_ok() {
-                    // Ignore the notification.
-                    None
-                } else if serde_json::from_str::<UnusedExternNotification>(line).is_ok() {
+                } else if serde_json::from_str::<ArtifactNotification>(line).is_ok()
+                    || serde_json::from_str::<UnusedExternNotification>(line).is_ok()
+                {
                     // Ignore the notification.
                     None
                 } else {

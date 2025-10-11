@@ -151,7 +151,7 @@ impl TestCx<'_> {
             let code = proc_res.status.code();
             let run_result = if proc_res.status.success() {
                 RunResult::Pass
-            } else if code.is_some_and(|c| c >= 1 && c <= 127) {
+            } else if code.is_some_and(|c| (1..=127).contains(&c)) {
                 RunResult::Fail
             } else {
                 RunResult::Crash

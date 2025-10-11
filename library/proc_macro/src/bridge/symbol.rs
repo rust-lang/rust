@@ -77,10 +77,7 @@ impl Symbol {
 
     // Mimics the behavior of `Symbol::can_be_raw` from `rustc_span`
     fn can_be_raw(string: &str) -> bool {
-        match string {
-            "_" | "super" | "self" | "Self" | "crate" | "$crate" => false,
-            _ => true,
-        }
+        !matches!(string, "_" | "super" | "self" | "Self" | "crate" | "$crate")
     }
 }
 

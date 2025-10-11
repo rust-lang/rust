@@ -692,7 +692,7 @@ pub fn check(root: &Path, cargo: &Path, bless: bool, diag_ctx: DiagCtx) {
 
         check_license_exceptions(&metadata, path, exceptions, &mut check);
         if let Some((crates, permitted_deps, location)) = crates_and_deps {
-            let descr = crates.get(0).unwrap_or(&path);
+            let descr = crates.first().unwrap_or(&path);
             check_permitted_dependencies(
                 &metadata,
                 descr,

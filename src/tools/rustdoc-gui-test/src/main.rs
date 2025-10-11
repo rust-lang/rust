@@ -24,38 +24,36 @@ fn main() -> Result<(), ()> {
     let config = Arc::new(Config::from_args(env::args().collect()));
 
     let src_path = config.rust_src.join("tests/rustdoc-gui/src");
-    for entry in src_path.read_dir().expect("read_dir call failed") {
-        if let Ok(entry) = entry {
-            let path = entry.path();
+    for entry in src_path.read_dir().expect("read_dir call failed").flatten() {
+        let path = entry.path();
 
-            if !path.is_dir() {
-                continue;
+        if !path.is_dir() {
+            continue;
+        }
+
+        let mut cargo = Command::new(&config.initial_cargo);
+        cargo
+            .arg("doc")
+            .arg("--target-dir")
+            .arg(&config.out_dir)
+            .env("RUSTC_BOOTSTRAP", "1")
+            .env("RUSTDOC", &config.rustdoc)
+            .env("RUSTC", &config.rustc)
+            .current_dir(path);
+
+        if let Some(librs) = find_librs(entry.path()) {
+            let test_props = RustdocGuiTestProps::from_file(&librs);
+
+            if !test_props.compile_flags.is_empty() {
+                cargo.env("RUSTDOCFLAGS", test_props.compile_flags.join(" "));
             }
 
-            let mut cargo = Command::new(&config.initial_cargo);
-            cargo
-                .arg("doc")
-                .arg("--target-dir")
-                .arg(&config.out_dir)
-                .env("RUSTC_BOOTSTRAP", "1")
-                .env("RUSTDOC", &config.rustdoc)
-                .env("RUSTC", &config.rustc)
-                .current_dir(path);
+            cargo.args(&test_props.run_flags);
+        }
 
-            if let Some(librs) = find_librs(entry.path()) {
-                let test_props = RustdocGuiTestProps::from_file(&librs);
-
-                if !test_props.compile_flags.is_empty() {
-                    cargo.env("RUSTDOCFLAGS", test_props.compile_flags.join(" "));
-                }
-
-                cargo.args(&test_props.run_flags);
-            }
-
-            if try_run(&mut cargo, config.verbose).is_err() {
-                eprintln!("failed to document `{}`", entry.path().display());
-                panic!("Cannot run rustdoc-gui tests");
-            }
+        if try_run(&mut cargo, config.verbose).is_err() {
+            eprintln!("failed to document `{}`", entry.path().display());
+            panic!("Cannot run rustdoc-gui tests");
         }
     }
 

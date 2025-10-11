@@ -214,12 +214,13 @@ fn get_one<'a>(matches: &[&'a Value]) -> Result<&'a Value, String> {
 }
 
 fn string_to_value<'a>(s: &str, cache: &'a Cache) -> Cow<'a, Value> {
-    if s.starts_with("$") {
-        Cow::Borrowed(&cache.variables.get(&s[1..]).unwrap_or_else(|| {
+    match s.strip_prefix("$") {
+        Some(s) => Cow::Borrowed(cache.variables.get(s).unwrap_or_else(|| {
             // FIXME(adotinthevoid): Show line number
-            panic!("No variable: `{}`. Current state: `{:?}`", &s[1..], cache.variables)
-        }))
-    } else {
-        Cow::Owned(serde_json::from_str(s).expect(&format!("Cannot convert `{}` to json", s)))
+            panic!("No variable: `{}`. Current state: `{:?}`", s, cache.variables)
+        })),
+        None => Cow::Owned(
+            serde_json::from_str(s).unwrap_or_else(|_| panic!("Cannot convert {} to json", s)),
+        ),
     }
 }

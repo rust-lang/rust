@@ -37,7 +37,7 @@ pub fn run_tests(env: &Environment) -> anyhow::Result<()> {
     let extracted_src_dir = extract_dist_dir(&format!("rust-src-{version}"))?.join("rust-src");
 
     // If we have a Cranelift archive, copy it to the rustc sysroot
-    if let Ok(_) = find_file_in_dir(&dist_dir, "rustc-codegen-cranelift-", ".tar.xz") {
+    if find_file_in_dir(&dist_dir, "rustc-codegen-cranelift-", ".tar.xz").is_ok() {
         let extracted_codegen_dir =
             extract_dist_dir(&format!("rustc-codegen-cranelift-{version}-{host_triple}"))?
                 .join("rustc-codegen-cranelift-preview");

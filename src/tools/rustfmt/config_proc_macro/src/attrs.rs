@@ -51,17 +51,11 @@ pub fn is_unstable_variant(attr: &syn::Attribute) -> bool {
 }
 
 fn is_attr_name_value(attr: &syn::Attribute, name: &str) -> bool {
-    match &attr.meta {
-        syn::Meta::NameValue(syn::MetaNameValue { path, .. }) if path.is_ident(name) => true,
-        _ => false,
-    }
+    matches!(&attr.meta, syn::Meta::NameValue(syn::MetaNameValue { path, .. }) if path.is_ident(name))
 }
 
 fn is_attr_path(attr: &syn::Attribute, name: &str) -> bool {
-    match &attr.meta {
-        syn::Meta::Path(path) if path.is_ident(name) => true,
-        _ => false,
-    }
+    matches!(&attr.meta, syn::Meta::Path(path) if path.is_ident(name))
 }
 
 fn get_name_value_str_lit(attr: &syn::Attribute, name: &str) -> Option<String> {

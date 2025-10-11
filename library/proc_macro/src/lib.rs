@@ -557,7 +557,7 @@ impl Span {
     /// This path should not be embedded in the output of the macro; prefer `file()` instead.
     #[stable(feature = "proc_macro_span_file", since = "1.88.0")]
     pub fn local_file(&self) -> Option<PathBuf> {
-        self.0.local_file().map(|s| PathBuf::from(s))
+        self.0.local_file().map(PathBuf::from)
     }
 
     /// Creates a new span encompassing `self` and `other`.

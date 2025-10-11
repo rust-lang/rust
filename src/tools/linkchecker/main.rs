@@ -306,7 +306,7 @@ impl Checker {
             Some((url, fragment)) => (url, Some(fragment)),
         };
         // NB: the `splitn` always succeeds, even if the delimiter is not present.
-        let url = url.splitn(2, '?').next().unwrap();
+        let url = url.split('?').next().unwrap();
 
         // Once we've plucked out the URL, parse it using our base url and
         // then try to extract a file path.
@@ -417,7 +417,7 @@ impl Checker {
                 return;
             }
 
-            parse_ids(&mut target_ids.borrow_mut(), &pretty_path, target_source, report);
+            parse_ids(&mut target_ids.borrow_mut(), pretty_path, target_source, report);
 
             if target_ids.borrow().contains(*fragment) {
                 return;
@@ -585,11 +585,11 @@ fn maybe_redirect(source: &str) -> Option<String> {
 
 fn parse_html<Sink: TokenSink>(source: &str, sink: Sink) -> Sink {
     let tendril: ByteTendril = source.as_bytes().into();
-    let mut input = BufferQueue::default();
+    let input = BufferQueue::default();
     input.push_back(tendril.try_reinterpret().unwrap());
 
     let tok = Tokenizer::new(sink, TokenizerOpts::default());
-    let _ = tok.feed(&mut input);
+    let _ = tok.feed(&input);
     assert!(input.is_empty());
     tok.end();
     tok.sink
@@ -615,34 +615,32 @@ impl TokenSink for AttrCollector {
     type Handle = ();
 
     fn process_token(&self, token: Token, line_number: u64) -> TokenSinkResult<()> {
-        match token {
-            TagToken(tag) => {
-                let tag_name = tag.name.as_bytes();
-                if tag_name == b"base" {
-                    if let Some(href) =
-                        tag.attrs.iter().find(|attr| attr.name.local.as_bytes() == b"href")
-                    {
-                        self.base.set(Some(href.value.to_string()));
-                    }
-                    return TokenSinkResult::Continue;
-                } else if tag_name == b"script" {
-                    self.in_script.set(!self.in_script.get());
+        if let TagToken(tag) = token {
+            let tag_name = tag.name.as_bytes();
+            if tag_name == b"base" {
+                if let Some(href) =
+                    tag.attrs.iter().find(|attr| attr.name.local.as_bytes() == b"href")
+                {
+                    self.base.set(Some(href.value.to_string()));
                 }
-                if self.in_script.get() {
-                    return TokenSinkResult::Continue;
-                }
-                for attr in tag.attrs.iter() {
-                    let name = attr.name.local.as_bytes();
-                    if name == self.attr_name {
-                        let url = attr.value.to_string();
-                        self.found_attrs.borrow_mut().push((line_number, url));
-                    }
+                return TokenSinkResult::Continue;
+            } else if tag_name == b"script" {
+                self.in_script.set(!self.in_script.get());
+            }
+            if self.in_script.get() {
+                return TokenSinkResult::Continue;
+            }
+            for attr in tag.attrs.iter() {
+                let name = attr.name.local.as_bytes();
+                if name == self.attr_name {
+                    let url = attr.value.to_string();
+                    self.found_attrs.borrow_mut().push((line_number, url));
                 }
             }
-            // Note: ParseError is pretty noisy. It seems html5ever does not
-            // particularly like some kinds of HTML comments.
-            _ => {}
         }
+
+        // Note: ParseError is pretty noisy. It seems html5ever does not
+        // particularly like some kinds of HTML comments.
         TokenSinkResult::Continue
     }
 }

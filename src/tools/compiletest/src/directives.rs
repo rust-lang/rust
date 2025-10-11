@@ -212,54 +212,54 @@ pub struct TestProps {
 }
 
 mod directives {
-    pub const ERROR_PATTERN: &'static str = "error-pattern";
-    pub const REGEX_ERROR_PATTERN: &'static str = "regex-error-pattern";
-    pub const COMPILE_FLAGS: &'static str = "compile-flags";
-    pub const RUN_FLAGS: &'static str = "run-flags";
-    pub const DOC_FLAGS: &'static str = "doc-flags";
-    pub const SHOULD_ICE: &'static str = "should-ice";
-    pub const BUILD_AUX_DOCS: &'static str = "build-aux-docs";
-    pub const UNIQUE_DOC_OUT_DIR: &'static str = "unique-doc-out-dir";
-    pub const FORCE_HOST: &'static str = "force-host";
-    pub const CHECK_STDOUT: &'static str = "check-stdout";
-    pub const CHECK_RUN_RESULTS: &'static str = "check-run-results";
-    pub const DONT_CHECK_COMPILER_STDOUT: &'static str = "dont-check-compiler-stdout";
-    pub const DONT_CHECK_COMPILER_STDERR: &'static str = "dont-check-compiler-stderr";
-    pub const DONT_REQUIRE_ANNOTATIONS: &'static str = "dont-require-annotations";
-    pub const NO_PREFER_DYNAMIC: &'static str = "no-prefer-dynamic";
-    pub const PRETTY_MODE: &'static str = "pretty-mode";
-    pub const PRETTY_COMPARE_ONLY: &'static str = "pretty-compare-only";
-    pub const AUX_BIN: &'static str = "aux-bin";
-    pub const AUX_BUILD: &'static str = "aux-build";
-    pub const AUX_CRATE: &'static str = "aux-crate";
-    pub const PROC_MACRO: &'static str = "proc-macro";
-    pub const AUX_CODEGEN_BACKEND: &'static str = "aux-codegen-backend";
-    pub const EXEC_ENV: &'static str = "exec-env";
-    pub const RUSTC_ENV: &'static str = "rustc-env";
-    pub const UNSET_EXEC_ENV: &'static str = "unset-exec-env";
-    pub const UNSET_RUSTC_ENV: &'static str = "unset-rustc-env";
-    pub const FORBID_OUTPUT: &'static str = "forbid-output";
-    pub const CHECK_TEST_LINE_NUMBERS_MATCH: &'static str = "check-test-line-numbers-match";
-    pub const IGNORE_PASS: &'static str = "ignore-pass";
-    pub const FAILURE_STATUS: &'static str = "failure-status";
-    pub const DONT_CHECK_FAILURE_STATUS: &'static str = "dont-check-failure-status";
-    pub const RUN_RUSTFIX: &'static str = "run-rustfix";
-    pub const RUSTFIX_ONLY_MACHINE_APPLICABLE: &'static str = "rustfix-only-machine-applicable";
-    pub const ASSEMBLY_OUTPUT: &'static str = "assembly-output";
-    pub const STDERR_PER_BITWIDTH: &'static str = "stderr-per-bitwidth";
-    pub const INCREMENTAL: &'static str = "incremental";
-    pub const KNOWN_BUG: &'static str = "known-bug";
-    pub const TEST_MIR_PASS: &'static str = "test-mir-pass";
-    pub const REMAP_SRC_BASE: &'static str = "remap-src-base";
-    pub const LLVM_COV_FLAGS: &'static str = "llvm-cov-flags";
-    pub const FILECHECK_FLAGS: &'static str = "filecheck-flags";
-    pub const NO_AUTO_CHECK_CFG: &'static str = "no-auto-check-cfg";
-    pub const ADD_CORE_STUBS: &'static str = "add-core-stubs";
-    pub const CORE_STUBS_COMPILE_FLAGS: &'static str = "core-stubs-compile-flags";
+    pub const ERROR_PATTERN: &str = "error-pattern";
+    pub const REGEX_ERROR_PATTERN: &str = "regex-error-pattern";
+    pub const COMPILE_FLAGS: &str = "compile-flags";
+    pub const RUN_FLAGS: &str = "run-flags";
+    pub const DOC_FLAGS: &str = "doc-flags";
+    pub const SHOULD_ICE: &str = "should-ice";
+    pub const BUILD_AUX_DOCS: &str = "build-aux-docs";
+    pub const UNIQUE_DOC_OUT_DIR: &str = "unique-doc-out-dir";
+    pub const FORCE_HOST: &str = "force-host";
+    pub const CHECK_STDOUT: &str = "check-stdout";
+    pub const CHECK_RUN_RESULTS: &str = "check-run-results";
+    pub const DONT_CHECK_COMPILER_STDOUT: &str = "dont-check-compiler-stdout";
+    pub const DONT_CHECK_COMPILER_STDERR: &str = "dont-check-compiler-stderr";
+    pub const DONT_REQUIRE_ANNOTATIONS: &str = "dont-require-annotations";
+    pub const NO_PREFER_DYNAMIC: &str = "no-prefer-dynamic";
+    pub const PRETTY_MODE: &str = "pretty-mode";
+    pub const PRETTY_COMPARE_ONLY: &str = "pretty-compare-only";
+    pub const AUX_BIN: &str = "aux-bin";
+    pub const AUX_BUILD: &str = "aux-build";
+    pub const AUX_CRATE: &str = "aux-crate";
+    pub const PROC_MACRO: &str = "proc-macro";
+    pub const AUX_CODEGEN_BACKEND: &str = "aux-codegen-backend";
+    pub const EXEC_ENV: &str = "exec-env";
+    pub const RUSTC_ENV: &str = "rustc-env";
+    pub const UNSET_EXEC_ENV: &str = "unset-exec-env";
+    pub const UNSET_RUSTC_ENV: &str = "unset-rustc-env";
+    pub const FORBID_OUTPUT: &str = "forbid-output";
+    pub const CHECK_TEST_LINE_NUMBERS_MATCH: &str = "check-test-line-numbers-match";
+    pub const IGNORE_PASS: &str = "ignore-pass";
+    pub const FAILURE_STATUS: &str = "failure-status";
+    pub const DONT_CHECK_FAILURE_STATUS: &str = "dont-check-failure-status";
+    pub const RUN_RUSTFIX: &str = "run-rustfix";
+    pub const RUSTFIX_ONLY_MACHINE_APPLICABLE: &str = "rustfix-only-machine-applicable";
+    pub const ASSEMBLY_OUTPUT: &str = "assembly-output";
+    pub const STDERR_PER_BITWIDTH: &str = "stderr-per-bitwidth";
+    pub const INCREMENTAL: &str = "incremental";
+    pub const KNOWN_BUG: &str = "known-bug";
+    pub const TEST_MIR_PASS: &str = "test-mir-pass";
+    pub const REMAP_SRC_BASE: &str = "remap-src-base";
+    pub const LLVM_COV_FLAGS: &str = "llvm-cov-flags";
+    pub const FILECHECK_FLAGS: &str = "filecheck-flags";
+    pub const NO_AUTO_CHECK_CFG: &str = "no-auto-check-cfg";
+    pub const ADD_CORE_STUBS: &str = "add-core-stubs";
+    pub const CORE_STUBS_COMPILE_FLAGS: &str = "core-stubs-compile-flags";
     // This isn't a real directive, just one that is probably mistyped often
-    pub const INCORRECT_COMPILER_FLAGS: &'static str = "compiler-flags";
-    pub const DISABLE_GDB_PRETTY_PRINTERS: &'static str = "disable-gdb-pretty-printers";
-    pub const COMPARE_OUTPUT_BY_LINES: &'static str = "compare-output-by-lines";
+    pub const INCORRECT_COMPILER_FLAGS: &str = "compiler-flags";
+    pub const DISABLE_GDB_PRETTY_PRINTERS: &str = "disable-gdb-pretty-printers";
+    pub const COMPARE_OUTPUT_BY_LINES: &str = "compare-output-by-lines";
 }
 
 impl TestProps {
@@ -698,10 +698,10 @@ impl TestProps {
         }
 
         for key in &["RUST_TEST_NOCAPTURE", "RUST_TEST_THREADS"] {
-            if let Ok(val) = env::var(key) {
-                if !self.exec_env.iter().any(|&(ref x, _)| x == key) {
-                    self.exec_env.push(((*key).to_owned(), val))
-                }
+            if let Ok(val) = env::var(key)
+                && self.exec_env.iter().all(|(x, _)| x != key)
+            {
+                self.exec_env.push(((*key).to_owned(), val))
             }
         }
 
@@ -784,10 +784,11 @@ impl TestProps {
     }
 
     pub fn pass_mode(&self, config: &Config) -> Option<PassMode> {
-        if !self.ignore_pass && self.fail_mode.is_none() {
-            if let mode @ Some(_) = config.force_pass_mode {
-                return mode;
-            }
+        if !self.ignore_pass
+            && self.fail_mode.is_none()
+            && let mode @ Some(_) = config.force_pass_mode
+        {
+            return mode;
         }
         self.pass_mode
     }
@@ -1090,19 +1091,19 @@ fn expand_variables(mut value: String, config: &Config) -> String {
 
     if value.contains(CWD) {
         let cwd = env::current_dir().unwrap();
-        value = value.replace(CWD, &cwd.to_str().unwrap());
+        value = value.replace(CWD, cwd.to_str().unwrap());
     }
 
     if value.contains(SRC_BASE) {
-        value = value.replace(SRC_BASE, &config.src_test_suite_root.as_str());
+        value = value.replace(SRC_BASE, config.src_test_suite_root.as_str());
     }
 
     if value.contains(TEST_SUITE_BUILD_BASE) {
-        value = value.replace(TEST_SUITE_BUILD_BASE, &config.build_test_suite_root.as_str());
+        value = value.replace(TEST_SUITE_BUILD_BASE, config.build_test_suite_root.as_str());
     }
 
     if value.contains(SYSROOT_BASE) {
-        value = value.replace(SYSROOT_BASE, &config.sysroot_base.as_str());
+        value = value.replace(SYSROOT_BASE, config.sysroot_base.as_str());
     }
 
     if value.contains(TARGET_LINKER) {
@@ -1115,9 +1116,9 @@ fn expand_variables(mut value: String, config: &Config) -> String {
 
     if value.contains(RUST_SRC_BASE) {
         let src_base = config.sysroot_base.join("lib/rustlib/src/rust");
-        src_base.try_exists().expect(&*format!("{} should exists", src_base));
+        src_base.try_exists().unwrap_or_else(|_| panic!("{} should exists", src_base));
         let src_base = src_base.read_link_utf8().unwrap_or(src_base);
-        value = value.replace(RUST_SRC_BASE, &src_base.as_str());
+        value = value.replace(RUST_SRC_BASE, src_base.as_str());
     }
 
     value
@@ -1437,21 +1438,20 @@ fn ignore_cdb(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
         return IgnoreDecision::Continue;
     }
 
-    if let Some(actual_version) = config.cdb_version {
-        if line.name == "min-cdb-version"
-            && let Some(rest) = line.value_after_colon().map(str::trim)
-        {
-            let min_version = extract_cdb_version(rest).unwrap_or_else(|| {
-                panic!("couldn't parse version range: {:?}", rest);
-            });
+    if let Some(actual_version) = config.cdb_version
+        && line.name == "min-cdb-version"
+        && let Some(rest) = line.value_after_colon().map(str::trim)
+    {
+        let min_version = extract_cdb_version(rest).unwrap_or_else(|| {
+            panic!("couldn't parse version range: {:?}", rest);
+        });
 
-            // Ignore if actual version is smaller than the minimum
-            // required version
-            if actual_version < min_version {
-                return IgnoreDecision::Ignore {
-                    reason: format!("ignored when the CDB version is lower than {rest}"),
-                };
-            }
+        // Ignore if actual version is smaller than the minimum
+        // required version
+        if actual_version < min_version {
+            return IgnoreDecision::Ignore {
+                reason: format!("ignored when the CDB version is lower than {rest}"),
+            };
         }
     }
     IgnoreDecision::Continue
@@ -1514,20 +1514,19 @@ fn ignore_lldb(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
         return IgnoreDecision::Continue;
     }
 
-    if let Some(actual_version) = config.lldb_version {
-        if line.name == "min-lldb-version"
-            && let Some(rest) = line.value_after_colon().map(str::trim)
-        {
-            let min_version = rest.parse().unwrap_or_else(|e| {
-                panic!("Unexpected format of LLDB version string: {}\n{:?}", rest, e);
-            });
-            // Ignore if actual version is smaller the minimum required
-            // version
-            if actual_version < min_version {
-                return IgnoreDecision::Ignore {
-                    reason: format!("ignored when the LLDB version is {rest}"),
-                };
-            }
+    if let Some(actual_version) = config.lldb_version
+        && line.name == "min-lldb-version"
+        && let Some(rest) = line.value_after_colon().map(str::trim)
+    {
+        let min_version = rest.parse().unwrap_or_else(|e| {
+            panic!("Unexpected format of LLDB version string: {}\n{:?}", rest, e);
+        });
+        // Ignore if actual version is smaller the minimum required
+        // version
+        if actual_version < min_version {
+            return IgnoreDecision::Ignore {
+                reason: format!("ignored when the LLDB version is {rest}"),
+            };
         }
     }
     IgnoreDecision::Continue
@@ -1556,8 +1555,8 @@ fn ignore_backends(config: &Config, path: &Utf8Path, line: &DirectiveLine<'_>) -
 }
 
 fn needs_backends(config: &Config, path: &Utf8Path, line: &DirectiveLine<'_>) -> IgnoreDecision {
-    if let Some(needed_backends) = config.parse_name_value_directive(line, "needs-backends", path) {
-        if !needed_backends
+    if let Some(needed_backends) = config.parse_name_value_directive(line, "needs-backends", path)
+        && !needed_backends
             .split_whitespace()
             .map(|backend| match CodegenBackend::try_from(backend) {
                 Ok(backend) => backend,
@@ -1566,14 +1565,13 @@ fn needs_backends(config: &Config, path: &Utf8Path, line: &DirectiveLine<'_>) ->
                 }
             })
             .any(|backend| config.default_codegen_backend == backend)
-        {
-            return IgnoreDecision::Ignore {
-                reason: format!(
-                    "{} backend is not part of required backends",
-                    config.default_codegen_backend.as_str()
-                ),
-            };
-        }
+    {
+        return IgnoreDecision::Ignore {
+            reason: format!(
+                "{} backend is not part of required backends",
+                config.default_codegen_backend.as_str()
+            ),
+        };
     }
     IgnoreDecision::Continue
 }

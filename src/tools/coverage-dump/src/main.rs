@@ -12,7 +12,7 @@ fn main() -> anyhow::Result<()> {
     // The coverage-dump tool already needs `rustc_demangle` in order to read
     // coverage metadata, so it's very easy to also have a separate mode that
     // turns it into a command-line demangler for use by coverage-run tests.
-    if &args[1..] == &["--demangle"] {
+    if args[1..] == ["--demangle"] {
         return demangle();
     }
 

@@ -261,7 +261,7 @@ impl<S: Encoder> Encodable<S> for str {
 
 impl<S: Encoder> Encodable<S> for String {
     fn encode(&self, s: &mut S) {
-        s.emit_str(&self);
+        s.emit_str(self);
     }
 }
 
@@ -341,8 +341,8 @@ impl<D: Decoder, const N: usize> Decodable<D> for [u8; N] {
         let len = d.read_usize();
         assert!(len == N);
         let mut v = [0u8; N];
-        for i in 0..len {
-            v[i] = Decodable::decode(d);
+        for i in v.iter_mut() {
+            *i = Decodable::decode(d);
         }
         v
     }

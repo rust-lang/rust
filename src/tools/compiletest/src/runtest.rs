@@ -152,7 +152,7 @@ pub fn run(
 
     let cx = TestCx { config: &config, stdout, stderr, props: &props, testpaths, revision };
 
-    if let Err(e) = create_dir_all(&cx.output_base_dir()) {
+    if let Err(e) = create_dir_all(cx.output_base_dir()) {
         panic!("failed to create output base directory {}: {e}", cx.output_base_dir());
     }
 
@@ -442,8 +442,8 @@ impl<'test> TestCx<'test> {
         let mut rustc = Command::new(&self.config.rustc_path);
         rustc
             .arg(input)
-            .args(&["-Z", &format!("unpretty={}", pretty_type)])
-            .args(&["--target", &self.config.target])
+            .args(["-Z", &format!("unpretty={}", pretty_type)])
+            .args(["--target", &self.config.target])
             .arg("-L")
             .arg(&aux_dir)
             .arg("-A")
@@ -530,7 +530,7 @@ impl<'test> TestCx<'test> {
             }
             check_cfg.push(')');
 
-            cmd.args(&["--check-cfg", &check_cfg]);
+            cmd.args(["--check-cfg", &check_cfg]);
         }
     }
 
@@ -551,7 +551,7 @@ impl<'test> TestCx<'test> {
             .arg("-Zno-codegen")
             .arg("--out-dir")
             .arg(&out_dir)
-            .arg(&format!("--target={}", target))
+            .arg(format!("--target={}", target))
             .arg("-L")
             // FIXME(jieyouxu): this search path seems questionable. Is this intended for
             // `rust_test_helpers` in ui tests?
@@ -1018,7 +1018,7 @@ impl<'test> TestCx<'test> {
                 create_dir_all(aux_cx.output_base_dir()).unwrap();
                 // use root_testpaths here, because aux-builds should have the
                 // same --out-dir and auxiliary directory.
-                let auxres = aux_cx.document(&root_out_dir, root_testpaths);
+                let auxres = aux_cx.document(root_out_dir, root_testpaths);
                 if !auxres.status.success() {
                     return auxres;
                 }
@@ -1129,7 +1129,7 @@ impl<'test> TestCx<'test> {
                 let mut test_client =
                     Command::new(self.config.remote_test_client.as_ref().unwrap());
                 test_client
-                    .args(&["run", &support_libs.len().to_string()])
+                    .args(["run", &support_libs.len().to_string()])
                     .arg(&prog)
                     .args(support_libs)
                     .args(args);
@@ -1147,7 +1147,7 @@ impl<'test> TestCx<'test> {
                 let aux_dir = self.aux_output_dir_name();
                 let ProcArgs { prog, args } = self.make_run_args();
                 let mut wr_run = Command::new("wr-run");
-                wr_run.args(&[&prog]).args(args);
+                wr_run.args([&prog]).args(args);
 
                 prepare_env(&mut wr_run);
 
@@ -1162,7 +1162,7 @@ impl<'test> TestCx<'test> {
                 let aux_dir = self.aux_output_dir_name();
                 let ProcArgs { prog, args } = self.make_run_args();
                 let mut program = Command::new(&prog);
-                program.args(args).current_dir(&self.output_base_dir());
+                program.args(args).current_dir(self.output_base_dir());
 
                 prepare_env(&mut program);
 
@@ -1251,11 +1251,11 @@ impl<'test> TestCx<'test> {
 
     fn build_all_auxiliary(&self, of: &TestPaths, aux_dir: &Utf8Path, rustc: &mut Command) {
         for rel_ab in &self.props.aux.builds {
-            self.build_auxiliary(of, rel_ab, &aux_dir, None);
+            self.build_auxiliary(of, rel_ab, aux_dir, None);
         }
 
         for rel_ab in &self.props.aux.bins {
-            self.build_auxiliary(of, rel_ab, &aux_dir, Some(AuxType::Bin));
+            self.build_auxiliary(of, rel_ab, aux_dir, Some(AuxType::Bin));
         }
 
         let path_to_crate_name = |path: &str| -> String {
@@ -1274,12 +1274,12 @@ impl<'test> TestCx<'test> {
             };
 
         for (aux_name, aux_path) in &self.props.aux.crates {
-            let aux_type = self.build_auxiliary(of, &aux_path, &aux_dir, None);
+            let aux_type = self.build_auxiliary(of, aux_path, aux_dir, None);
             add_extern(rustc, aux_name, aux_path, aux_type);
         }
 
         for proc_macro in &self.props.aux.proc_macros {
-            self.build_auxiliary(of, proc_macro, &aux_dir, Some(AuxType::ProcMacro));
+            self.build_auxiliary(of, proc_macro, aux_dir, Some(AuxType::ProcMacro));
             let crate_name = path_to_crate_name(proc_macro);
             add_extern(rustc, &crate_name, proc_macro, AuxType::ProcMacro);
         }
@@ -1306,7 +1306,7 @@ impl<'test> TestCx<'test> {
         if self.props.add_core_stubs {
             let minicore_path = self.build_minicore();
             rustc.arg("--extern");
-            rustc.arg(&format!("minicore={}", minicore_path));
+            rustc.arg(format!("minicore={}", minicore_path));
         }
 
         let aux_dir = self.aux_output_dir();
@@ -1335,7 +1335,7 @@ impl<'test> TestCx<'test> {
             vec![],
         );
 
-        rustc.args(&["--crate-type", "rlib"]);
+        rustc.args(["--crate-type", "rlib"]);
         rustc.arg("-Cpanic=abort");
         rustc.args(self.props.core_stubs_compile_flags.clone());
 
@@ -1438,12 +1438,12 @@ impl<'test> TestCx<'test> {
         };
 
         if let Some(crate_type) = crate_type {
-            aux_rustc.args(&["--crate-type", crate_type]);
+            aux_rustc.args(["--crate-type", crate_type]);
         }
 
         if aux_type == AuxType::ProcMacro {
             // For convenience, but this only works on 2018.
-            aux_rustc.args(&["--extern", "proc_macro"]);
+            aux_rustc.args(["--extern", "proc_macro"]);
         }
 
         aux_rustc.arg("-L").arg(&aux_dir);
@@ -1451,7 +1451,7 @@ impl<'test> TestCx<'test> {
         if aux_props.add_core_stubs {
             let minicore_path = self.build_minicore();
             aux_rustc.arg("--extern");
-            aux_rustc.arg(&format!("minicore={}", minicore_path));
+            aux_rustc.arg(format!("minicore={}", minicore_path));
         }
 
         let auxres = aux_cx.compose_and_run(
@@ -1557,7 +1557,7 @@ impl<'test> TestCx<'test> {
         let mut rustc = if !is_rustdoc {
             Command::new(&self.config.rustc_path)
         } else {
-            Command::new(&self.config.rustdoc_path.clone().expect("no rustdoc built yet"))
+            Command::new(self.config.rustdoc_path.clone().expect("no rustdoc built yet"))
         };
         rustc.arg(input_file);
 
@@ -1611,18 +1611,18 @@ impl<'test> TestCx<'test> {
             let target =
                 if self.props.force_host { &*self.config.host } else { &*self.config.target };
 
-            rustc.arg(&format!("--target={}", target));
+            rustc.arg(format!("--target={}", target));
         }
         self.set_revision_flags(&mut rustc);
 
         if !is_rustdoc {
             if let Some(ref incremental_dir) = self.props.incremental_dir {
-                rustc.args(&["-C", &format!("incremental={}", incremental_dir)]);
-                rustc.args(&["-Z", "incremental-verify-ich"]);
+                rustc.args(["-C", &format!("incremental={}", incremental_dir)]);
+                rustc.args(["-Z", "incremental-verify-ich"]);
             }
 
             if self.config.mode == TestMode::CodegenUnits {
-                rustc.args(&["-Z", "human_readable_cgu_names"]);
+                rustc.args(["-Z", "human_readable_cgu_names"]);
             }
         }
 
@@ -1634,7 +1634,7 @@ impl<'test> TestCx<'test> {
                     // Note: aux libs don't have a pass-mode, so they won't get optimized
                     // unless compile-flags are set in the aux file.
                     if self.config.optimize_tests
-                        && self.props.pass_mode(&self.config) == Some(PassMode::Run)
+                        && self.props.pass_mode(self.config) == Some(PassMode::Run)
                         && !self
                             .props
                             .compile_flags
@@ -1673,16 +1673,16 @@ impl<'test> TestCx<'test> {
                 if self.props.error_patterns.is_empty()
                     && self.props.regex_error_patterns.is_empty()
                 {
-                    rustc.args(&["--error-format", "json"]);
-                    rustc.args(&["--json", "future-incompat"]);
+                    rustc.args(["--error-format", "json"]);
+                    rustc.args(["--json", "future-incompat"]);
                 }
                 rustc.arg("-Zui-testing");
                 rustc.arg("-Zdeduplicate-diagnostics=no");
             }
             TestMode::Ui => {
                 if !self.props.compile_flags.iter().any(|s| s.starts_with("--error-format")) {
-                    rustc.args(&["--error-format", "json"]);
-                    rustc.args(&["--json", "future-incompat"]);
+                    rustc.args(["--error-format", "json"]);
+                    rustc.args(["--json", "future-incompat"]);
                 }
                 rustc.arg("-Ccodegen-units=1");
                 // Hide line numbers to reduce churn
@@ -1702,7 +1702,7 @@ impl<'test> TestCx<'test> {
                     "-Zdump-mir=all".to_string()
                 };
 
-                rustc.args(&[
+                rustc.args([
                     "-Copt-level=1",
                     &zdump_arg,
                     "-Zvalidate-mir",
@@ -1712,9 +1712,9 @@ impl<'test> TestCx<'test> {
                     "--crate-type=rlib",
                 ]);
                 if let Some(pass) = &self.props.mir_unit_test {
-                    rustc.args(&["-Zmir-opt-level=0", &format!("-Zmir-enable-passes=+{}", pass)]);
+                    rustc.args(["-Zmir-opt-level=0", &format!("-Zmir-enable-passes=+{}", pass)]);
                 } else {
-                    rustc.args(&[
+                    rustc.args([
                         "-Zmir-opt-level=4",
                         "-Zmir-enable-passes=+ReorderBasicBlocks,+ReorderLocals",
                     ]);
@@ -1773,19 +1773,19 @@ impl<'test> TestCx<'test> {
             Emit::None => {}
             Emit::Metadata if is_rustdoc => {}
             Emit::Metadata => {
-                rustc.args(&["--emit", "metadata"]);
+                rustc.args(["--emit", "metadata"]);
             }
             Emit::LlvmIr => {
-                rustc.args(&["--emit", "llvm-ir"]);
+                rustc.args(["--emit", "llvm-ir"]);
             }
             Emit::Mir => {
-                rustc.args(&["--emit", "mir"]);
+                rustc.args(["--emit", "mir"]);
             }
             Emit::Asm => {
-                rustc.args(&["--emit", "asm"]);
+                rustc.args(["--emit", "asm"]);
             }
             Emit::LinkArgsAsm => {
-                rustc.args(&["-Clink-args=--emit=asm"]);
+                rustc.args(["-Clink-args=--emit=asm"]);
             }
         }
 
@@ -1793,7 +1793,7 @@ impl<'test> TestCx<'test> {
             if self.config.target == "wasm32-unknown-unknown" || self.is_vxworks_pure_static() {
                 // rustc.arg("-g"); // get any backtrace at all on errors
             } else if !self.props.no_prefer_dynamic {
-                rustc.args(&["-C", "prefer-dynamic"]);
+                rustc.args(["-C", "prefer-dynamic"]);
             }
         }
 
@@ -1816,22 +1816,22 @@ impl<'test> TestCx<'test> {
 
         match self.config.compare_mode {
             Some(CompareMode::Polonius) => {
-                rustc.args(&["-Zpolonius=next"]);
+                rustc.args(["-Zpolonius=next"]);
             }
             Some(CompareMode::NextSolver) => {
-                rustc.args(&["-Znext-solver"]);
+                rustc.args(["-Znext-solver"]);
             }
             Some(CompareMode::NextSolverCoherence) => {
-                rustc.args(&["-Znext-solver=coherence"]);
+                rustc.args(["-Znext-solver=coherence"]);
             }
             Some(CompareMode::SplitDwarf) if self.config.target.contains("windows") => {
-                rustc.args(&["-Csplit-debuginfo=unpacked", "-Zunstable-options"]);
+                rustc.args(["-Csplit-debuginfo=unpacked", "-Zunstable-options"]);
             }
             Some(CompareMode::SplitDwarf) => {
-                rustc.args(&["-Csplit-debuginfo=unpacked"]);
+                rustc.args(["-Csplit-debuginfo=unpacked"]);
             }
             Some(CompareMode::SplitDwarfSingle) => {
-                rustc.args(&["-Csplit-debuginfo=packed"]);
+                rustc.args(["-Csplit-debuginfo=packed"]);
             }
             None => {}
         }
@@ -1839,31 +1839,27 @@ impl<'test> TestCx<'test> {
         // Add `-A unused` before `config` flags and in-test (`props`) flags, so that they can
         // overwrite this.
         if let AllowUnused::Yes = allow_unused {
-            rustc.args(&["-A", "unused"]);
+            rustc.args(["-A", "unused"]);
         }
 
         // Allow tests to use internal features.
-        rustc.args(&["-A", "internal_features"]);
+        rustc.args(["-A", "internal_features"]);
 
         // Allow tests to have unused parens and braces.
         // Add #![deny(unused_parens, unused_braces)] to the test file if you want to
         // test that these lints are working.
-        rustc.args(&["-A", "unused_parens"]);
-        rustc.args(&["-A", "unused_braces"]);
+        rustc.args(["-A", "unused_parens"]);
+        rustc.args(["-A", "unused_braces"]);
 
         if self.props.force_host {
             self.maybe_add_external_args(&mut rustc, &self.config.host_rustcflags);
-            if !is_rustdoc {
-                if let Some(ref linker) = self.config.host_linker {
-                    rustc.arg(format!("-Clinker={}", linker));
-                }
+            if !is_rustdoc && let Some(ref linker) = self.config.host_linker {
+                rustc.arg(format!("-Clinker={}", linker));
             }
         } else {
             self.maybe_add_external_args(&mut rustc, &self.config.target_rustcflags);
-            if !is_rustdoc {
-                if let Some(ref linker) = self.config.target_linker {
-                    rustc.arg(format!("-Clinker={}", linker));
-                }
+            if !is_rustdoc && let Some(ref linker) = self.config.target_linker {
+                rustc.arg(format!("-Clinker={}", linker));
             }
         }
 
@@ -2066,7 +2062,7 @@ impl<'test> TestCx<'test> {
     fn error_prefix(&self) -> String {
         match self.revision {
             Some(rev) => format!("error in revision `{rev}`"),
-            None => format!("error"),
+            None => "error".to_string(),
         }
     }
 
@@ -2150,7 +2146,7 @@ impl<'test> TestCx<'test> {
         filecheck.arg("--allow-unused-prefixes");
 
         // Provide more context on failures.
-        filecheck.args(&["--dump-input-context", "100"]);
+        filecheck.args(["--dump-input-context", "100"]);
 
         // Add custom flags supplied by the `filecheck-flags:` test directive.
         filecheck.args(&self.props.filecheck_flags);
@@ -2200,9 +2196,9 @@ impl<'test> TestCx<'test> {
             Vec::new(),
         );
         let aux_dir = new_rustdoc.aux_output_dir();
-        new_rustdoc.build_all_auxiliary(&new_rustdoc.testpaths, &aux_dir, &mut rustc);
+        new_rustdoc.build_all_auxiliary(new_rustdoc.testpaths, &aux_dir, &mut rustc);
 
-        let proc_res = new_rustdoc.document(&compare_dir, &new_rustdoc.testpaths);
+        let proc_res = new_rustdoc.document(&compare_dir, new_rustdoc.testpaths);
         if !proc_res.status.success() {
             writeln!(self.stderr, "failed to run nightly rustdoc");
             return;
@@ -2226,7 +2222,7 @@ impl<'test> TestCx<'test> {
                     && entry.path().extension().and_then(|p| p.to_str()) == Some("html")
                 {
                     let status =
-                        Command::new("tidy").args(&tidy_args).arg(entry.path()).status().unwrap();
+                        Command::new("tidy").args(tidy_args).arg(entry.path()).status().unwrap();
                     // `tidy` returns 1 if it modified the file.
                     assert!(status.success() || status.code() == Some(1));
                 }
@@ -2236,7 +2232,7 @@ impl<'test> TestCx<'test> {
         tidy_dir(&compare_dir);
 
         let pager = {
-            let output = Command::new("git").args(&["config", "--get", "core.pager"]).output().ok();
+            let output = Command::new("git").args(["config", "--get", "core.pager"]).output().ok();
             output.and_then(|out| {
                 if out.status.success() {
                     Some(String::from_utf8(out.stdout).expect("invalid UTF8 in git pager"))
@@ -2365,7 +2361,7 @@ impl<'test> TestCx<'test> {
         files.insert(normalized, self.get_lines(&self.testpaths.file, Some(&mut other_files)));
         for other_file in other_files {
             let mut path = self.testpaths.file.clone();
-            path.set_file_name(&format!("{}.rs", other_file));
+            path.set_file_name(format!("{}.rs", other_file));
             let path = path.canonicalize_utf8().expect("failed to canonicalize");
             let normalized = path.as_str().replace('\\', "/");
             files.insert(normalized, self.get_lines(&path, None));
@@ -2375,7 +2371,7 @@ impl<'test> TestCx<'test> {
         for _ in res.stdout.split('\n').filter(|s| s.starts_with("test ")).inspect(|s| {
             if let Some((left, right)) = s.split_once(" - ") {
                 let path = left.rsplit("test ").next().unwrap();
-                let path = fs::canonicalize(&path).expect("failed to canonicalize");
+                let path = fs::canonicalize(path).expect("failed to canonicalize");
                 let path = path.to_str().unwrap().replace('\\', "/");
                 if let Some(ref mut v) = files.get_mut(&path) {
                     tested += 1;
@@ -2489,8 +2485,8 @@ impl<'test> TestCx<'test> {
         let mut errors = 0;
         match output_kind {
             TestOutput::Compile => {
-                if !self.props.dont_check_compiler_stdout {
-                    if self
+                if !self.props.dont_check_compiler_stdout
+                    && self
                         .compare_output(
                             stdout_kind,
                             &normalized_stdout,
@@ -2498,17 +2494,16 @@ impl<'test> TestCx<'test> {
                             &expected_stdout,
                         )
                         .should_error()
-                    {
-                        errors += 1;
-                    }
+                {
+                    errors += 1;
                 }
-                if !self.props.dont_check_compiler_stderr {
-                    if self
+
+                if !self.props.dont_check_compiler_stderr
+                    && self
                         .compare_output(stderr_kind, &normalized_stderr, &stderr, &expected_stderr)
                         .should_error()
-                    {
-                        errors += 1;
-                    }
+                {
+                    errors += 1;
                 }
             }
             TestOutput::Run => {
@@ -2578,14 +2573,14 @@ impl<'test> TestCx<'test> {
 
         // Real paths into the libstd/libcore
         let rust_src_dir = &self.config.sysroot_base.join("lib/rustlib/src/rust");
-        rust_src_dir.try_exists().expect(&*format!("{} should exists", rust_src_dir));
+        rust_src_dir.try_exists().unwrap_or_else(|_| panic!("{} should exists", rust_src_dir));
         let rust_src_dir =
             rust_src_dir.read_link_utf8().unwrap_or_else(|_| rust_src_dir.to_path_buf());
         normalize_path(&rust_src_dir.join("library"), "$SRC_DIR_REAL");
 
         // Real paths into the compiler
         let rustc_src_dir = &self.config.sysroot_base.join("lib/rustlib/rustc-src/rust");
-        rustc_src_dir.try_exists().expect(&*format!("{} should exists", rustc_src_dir));
+        rustc_src_dir.try_exists().unwrap_or_else(|_| panic!("{} should exists", rustc_src_dir));
         let rustc_src_dir = rustc_src_dir.read_link_utf8().unwrap_or(rustc_src_dir.to_path_buf());
         normalize_path(&rustc_src_dir.join("compiler"), "$COMPILER_DIR_REAL");
 
@@ -2737,16 +2732,16 @@ impl<'test> TestCx<'test> {
 
     fn expected_output_path(&self, kind: &str) -> Utf8PathBuf {
         let mut path =
-            expected_output_path(&self.testpaths, self.revision, &self.config.compare_mode, kind);
+            expected_output_path(self.testpaths, self.revision, &self.config.compare_mode, kind);
 
-        if !path.exists() {
-            if let Some(CompareMode::Polonius) = self.config.compare_mode {
-                path = expected_output_path(&self.testpaths, self.revision, &None, kind);
-            }
+        if !path.exists()
+            && let Some(CompareMode::Polonius) = self.config.compare_mode
+        {
+            path = expected_output_path(self.testpaths, self.revision, &None, kind);
         }
 
         if !path.exists() {
-            path = expected_output_path(&self.testpaths, self.revision, &None, kind);
+            path = expected_output_path(self.testpaths, self.revision, &None, kind);
         }
 
         path
@@ -2842,7 +2837,7 @@ impl<'test> TestCx<'test> {
             )
             .with_extra_extension(stream);
 
-        if let Err(err) = fs::write(&actual_path, &actual) {
+        if let Err(err) = fs::write(&actual_path, actual) {
             self.fatal(&format!("failed to write {stream} to `{actual_path}`: {err}",));
         }
         writeln!(self.stdout, "Saved the actual {stream} to `{actual_path}`");
@@ -2870,7 +2865,7 @@ impl<'test> TestCx<'test> {
             }
 
             if !actual.is_empty() {
-                if let Err(err) = fs::write(&expected_path, &actual) {
+                if let Err(err) = fs::write(&expected_path, actual) {
                     self.fatal(&format!("failed to write {stream} to `{expected_path}`: {err}"));
                 }
                 writeln!(
@@ -2971,7 +2966,7 @@ impl<'test> TestCx<'test> {
     ) {
         for kind in UI_EXTENSIONS {
             let canon_comparison_path =
-                expected_output_path(&self.testpaths, self.revision, &None, kind);
+                expected_output_path(self.testpaths, self.revision, &None, kind);
 
             let canon = match self.load_expected_output_from_path(&canon_comparison_path) {
                 Ok(canon) => canon,
@@ -2980,7 +2975,7 @@ impl<'test> TestCx<'test> {
             let bless = self.config.bless;
             let check_and_prune_duplicate_outputs = |mode: &CompareMode, require_same: bool| {
                 let examined_path =
-                    expected_output_path(&self.testpaths, self.revision, &Some(mode.clone()), kind);
+                    expected_output_path(self.testpaths, self.revision, &Some(mode.clone()), kind);
 
                 // If there is no output, there is nothing to do
                 let examined_content = match self.load_expected_output_from_path(&examined_path) {
@@ -3016,8 +3011,8 @@ impl<'test> TestCx<'test> {
     }
 
     fn create_stamp(&self) {
-        let stamp_file_path = stamp_file_path(&self.config, self.testpaths, self.revision);
-        fs::write(&stamp_file_path, compute_stamp_hash(&self.config)).unwrap();
+        let stamp_file_path = stamp_file_path(self.config, self.testpaths, self.revision);
+        fs::write(&stamp_file_path, compute_stamp_hash(self.config)).unwrap();
     }
 
     fn init_incremental_test(&self) {
@@ -3034,7 +3029,7 @@ impl<'test> TestCx<'test> {
             let canonicalized = incremental_dir.canonicalize().unwrap();
             fs::remove_dir_all(canonicalized).unwrap();
         }
-        fs::create_dir_all(&incremental_dir).unwrap();
+        fs::create_dir_all(incremental_dir).unwrap();
 
         if self.config.verbose {
             writeln!(self.stdout, "init_incremental_test: incremental_dir={incremental_dir}");

@@ -11,7 +11,7 @@ pub fn count_regex_matches_in_files_with_extension(re: &regex::Regex, ext: &str)
     let mut count = 0;
     for file in fetched_files {
         let content = fs::read_to_string(file);
-        count += content.lines().filter(|line| re.is_match(&line)).count();
+        count += content.lines().filter(|line| re.is_match(line)).count();
     }
 
     count

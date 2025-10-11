@@ -29,10 +29,8 @@ impl DiagCtx {
         let mut ctx = self.0.lock().unwrap();
 
         // Shorten path for shorter diagnostics
-        id.path = match id.path {
-            Some(path) => Some(path.strip_prefix(&ctx.root_path).unwrap_or(&path).to_path_buf()),
-            None => None,
-        };
+        id.path =
+            id.path.map(|path| path.strip_prefix(&ctx.root_path).unwrap_or(&path).to_path_buf());
 
         ctx.start_check(id.clone());
         RunningCheck {

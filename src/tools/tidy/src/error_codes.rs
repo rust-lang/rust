@@ -63,16 +63,16 @@ fn check_removed_error_code_explanation(ci_info: &crate::CiInfo, check: &mut Run
         return;
     };
     let Some(diff) = crate::git_diff(base_commit, "--name-status") else {
-        check.error(format!("removed error code explanation: Failed to run git diff"));
+        check.error("removed error code explanation: Failed to run git diff");
         return;
     };
     if diff.lines().any(|line| {
         line.starts_with('D') && line.contains("compiler/rustc_error_codes/src/error_codes/")
     }) {
-        check.error(format!(
+        check.error(
             r#"Error code explanations should never be removed!
-Take a look at E0001 to see how to handle it."#
-        ));
+Take a look at E0001 to see how to handle it."#,
+        );
         return;
     }
     check.verbose_msg("No error code explanation was removed!");

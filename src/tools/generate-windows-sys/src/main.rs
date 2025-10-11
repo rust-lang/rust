@@ -58,7 +58,7 @@ fn sort_bindings(file_name: &str) -> Result<(), Box<dyn Error>> {
             bindings.push(line);
         }
     }
-    bindings.sort_by(|a, b| a.to_lowercase().cmp(&b.to_lowercase()));
+    bindings.sort_by_key(|a| a.to_lowercase());
     for line in bindings {
         f.write(line.as_bytes())?;
     }

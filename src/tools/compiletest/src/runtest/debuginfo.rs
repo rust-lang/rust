@@ -183,7 +183,7 @@ impl TestCx<'_> {
                 .unwrap_or_else(|e| panic!("failed to exec `{adb_path:?}`: {e:?}"));
 
             Command::new(adb_path)
-                .args(&["forward", "tcp:5039", "tcp:5039"])
+                .args(["forward", "tcp:5039", "tcp:5039"])
                 .status()
                 .unwrap_or_else(|e| panic!("failed to exec `{adb_path:?}`: {e:?}"));
 
@@ -198,7 +198,7 @@ impl TestCx<'_> {
 
             debug!("adb arg: {}", adb_arg);
             let mut adb = Command::new(adb_path)
-                .args(&["shell", &adb_arg])
+                .args(["shell", &adb_arg])
                 .stdout(Stdio::piped())
                 .stderr(Stdio::inherit())
                 .spawn()
@@ -224,12 +224,12 @@ impl TestCx<'_> {
                 &["-quiet".as_ref(), "-batch".as_ref(), "-nx".as_ref(), &debugger_script];
 
             let gdb_path = self.config.gdb.as_ref().unwrap();
-            let Output { status, stdout, stderr } = Command::new(&gdb_path)
+            let Output { status, stdout, stderr } = Command::new(gdb_path)
                 .args(debugger_opts)
                 .output()
                 .unwrap_or_else(|e| panic!("failed to exec `{gdb_path:?}`: {e:?}"));
             let cmdline = {
-                let mut gdb = Command::new(&format!("{}-gdb", self.config.target));
+                let mut gdb = Command::new(format!("{}-gdb", self.config.target));
                 gdb.args(debugger_opts);
                 // FIXME(jieyouxu): don't pass an empty Path
                 let cmdline = self.make_cmdline(&gdb, Utf8Path::new(""));
@@ -502,7 +502,7 @@ impl TestCx<'_> {
         )
     }
 
-    fn cleanup_debug_info_options(&self, options: &Vec<String>) -> Vec<String> {
+    fn cleanup_debug_info_options(&self, options: &[String]) -> Vec<String> {
         // Remove options that are either unwanted (-O) or may lead to duplicates due to RUSTFLAGS.
         let options_to_remove = ["-O".to_owned(), "-g".to_owned(), "--debuginfo".to_owned()];
 

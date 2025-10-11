@@ -729,7 +729,7 @@ impl Config {
     }
 
     pub fn get_pointer_width(&self) -> u32 {
-        *&self.target_cfg().pointer_width
+        self.target_cfg().pointer_width
     }
 
     pub fn can_unwind(&self) -> bool {

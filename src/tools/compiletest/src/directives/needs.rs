@@ -370,8 +370,8 @@ impl CachedNeedsConditions {
                 .join(if config.host.contains("windows") { "rust-lld.exe" } else { "rust-lld" })
                 .exists(),
 
-            llvm_zstd: llvm_has_libzstd(&config),
-            dlltool: find_dlltool(&config),
+            llvm_zstd: llvm_has_libzstd(config),
+            dlltool: find_dlltool(config),
             symlinks: has_symlinks(),
         }
     }

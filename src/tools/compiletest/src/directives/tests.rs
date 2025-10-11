@@ -230,7 +230,7 @@ fn parse_rs(config: &Config, contents: &str) -> EarlyProps {
 fn check_ignore(config: &Config, contents: &str) -> bool {
     let tn = String::new();
     let p = Utf8Path::new("a.rs");
-    let d = make_test_description(&config, tn, p, p, contents, None);
+    let d = make_test_description(config, tn, p, p, contents, None);
     d.ignore
 }
 

@@ -262,17 +262,17 @@ impl<'a> Validator<'a> {
             Type::Generic(_) => {}
             Type::Primitive(_) => {}
             Type::Pat { type_, __pat_unstable_do_not_use: _ } => self.check_type(type_),
-            Type::FunctionPointer(fp) => self.check_function_pointer(&**fp),
+            Type::FunctionPointer(fp) => self.check_function_pointer(fp),
             Type::Tuple(tys) => tys.iter().for_each(|ty| self.check_type(ty)),
-            Type::Slice(inner) => self.check_type(&**inner),
-            Type::Array { type_, len: _ } => self.check_type(&**type_),
+            Type::Slice(inner) => self.check_type(inner),
+            Type::Array { type_, len: _ } => self.check_type(type_),
             Type::ImplTrait(bounds) => bounds.iter().for_each(|b| self.check_generic_bound(b)),
             Type::Infer => {}
-            Type::RawPointer { is_mutable: _, type_ } => self.check_type(&**type_),
-            Type::BorrowedRef { lifetime: _, is_mutable: _, type_ } => self.check_type(&**type_),
+            Type::RawPointer { is_mutable: _, type_ } => self.check_type(type_),
+            Type::BorrowedRef { lifetime: _, is_mutable: _, type_ } => self.check_type(type_),
             Type::QualifiedPath { name: _, args, self_type, trait_ } => {
-                self.check_opt_generic_args(&args);
-                self.check_type(&**self_type);
+                self.check_opt_generic_args(args);
+                self.check_type(self_type);
                 if let Some(trait_) = trait_ {
                     self.check_path(trait_, PathKind::Trait);
                 }
@@ -404,7 +404,7 @@ impl<'a> Validator<'a> {
         // which encodes rustc implementation details.
         if item_info.crate_id == LOCAL_CRATE_ID && !self.krate.index.contains_key(id) {
             self.errs.push(Error {
-                id: id.clone(),
+                id: *id,
                 kind: ErrorKind::Custom(
                     "Id for local item in `paths` but not in `index`".to_owned(),
                 ),
@@ -483,16 +483,14 @@ impl<'a> Validator<'a> {
     }
 
     fn fail(&mut self, id: &Id, kind: ErrorKind) {
-        self.errs.push(Error { id: id.clone(), kind });
+        self.errs.push(Error { id: *id, kind });
     }
 
     fn kind_of(&mut self, id: &Id) -> Option<Kind> {
         if let Some(item) = self.krate.index.get(id) {
             Some(Kind::from_item(item))
-        } else if let Some(summary) = self.krate.paths.get(id) {
-            Some(Kind::from_summary(summary))
         } else {
-            None
+            self.krate.paths.get(id).map(Kind::from_summary)
         }
     }
 }

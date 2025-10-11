@@ -37,7 +37,7 @@ fn rustdoc_js_files(librustdoc_path: &Path) -> Vec<PathBuf> {
             files.push(path.path().into());
         },
     );
-    return files;
+    files
 }
 
 fn run_eslint(

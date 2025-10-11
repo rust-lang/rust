@@ -299,7 +299,7 @@ fn parse_config(args: Vec<String>) -> Config {
             .arg("--version")
             .stdout(Stdio::null())
             .status()
-            .map_or(false, |status| status.success())
+            .is_ok_and(|status| status.success())
     } else {
         // Avoid spawning an external command when we know html-tidy won't be used.
         false
@@ -338,7 +338,7 @@ fn parse_config(args: Vec<String>) -> Config {
     };
     let compare_mode = matches.opt_str("compare-mode").map(|s| {
         s.parse().unwrap_or_else(|_| {
-            let variants: Vec<_> = CompareMode::STR_VARIANTS.iter().copied().collect();
+            let variants: Vec<_> = CompareMode::STR_VARIANTS.to_vec();
             panic!(
                 "`{s}` is not a valid value for `--compare-mode`, it should be one of: {}",
                 variants.join(", ")
@@ -506,10 +506,10 @@ fn run_tests(config: Arc<Config>) {
     if config.rustfix_coverage {
         let mut coverage_file_path = config.build_test_suite_root.clone();
         coverage_file_path.push("rustfix_missing_coverage.txt");
-        if coverage_file_path.exists() {
-            if let Err(e) = fs::remove_file(&coverage_file_path) {
-                panic!("Could not delete {} due to {}", coverage_file_path, e)
-            }
+        if coverage_file_path.exists()
+            && let Err(e) = fs::remove_file(&coverage_file_path)
+        {
+            panic!("Could not delete {} due to {}", coverage_file_path, e)
         }
     }
 
@@ -692,7 +692,7 @@ fn common_inputs_stamp(config: &Config) -> Stamp {
     stamp.add_dir(&config.run_lib_path);
 
     if let Some(ref rustdoc_path) = config.rustdoc_path {
-        stamp.add_path(&rustdoc_path);
+        stamp.add_path(rustdoc_path);
         stamp.add_path(&src_root.join("src/etc/htmldocck.py"));
     }
 
@@ -724,7 +724,7 @@ fn modified_tests(config: &Config, dir: &Utf8Path) -> Result<Vec<Utf8PathBuf>, S
     let files = get_git_modified_files(
         &config.git_config(),
         Some(dir.as_std_path()),
-        &vec!["rs", "stderr", "fixed"],
+        &["rs", "stderr", "fixed"],
     )?;
     // Add new test cases to the list, it will be convenient in daily development.
     let untracked_files = get_git_untracked_files(Some(dir.as_std_path()))?.unwrap_or(vec![]);

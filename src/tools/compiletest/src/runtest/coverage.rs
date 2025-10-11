@@ -47,10 +47,7 @@ impl<'test> TestCx<'test> {
         );
 
         if coverage_dump_compare_outcome.should_error() {
-            self.fatal_proc_rec(
-                &format!("an error occurred comparing coverage output."),
-                &proc_res,
-            );
+            self.fatal_proc_rec("an error occurred comparing coverage output.", &proc_res);
         }
     }
 
@@ -145,10 +142,7 @@ impl<'test> TestCx<'test> {
         );
 
         if coverage_dump_compare_outcome.should_error() {
-            self.fatal_proc_rec(
-                &format!("an error occurred comparing coverage output."),
-                &proc_res,
-            );
+            self.fatal_proc_rec("an error occurred comparing coverage output.", &proc_res);
         }
     }
 
@@ -276,7 +270,7 @@ impl<'test> TestCx<'test> {
         // `  | 1000|`    => `  |   LL|`
         // `  |  | 1000|` => `  |  |   LL|`
         let coverage = static_regex!(r"(?m:^)(?<prefix>(?:  \|)*) *[0-9]+\|")
-            .replace_all(&coverage, "${prefix}   LL|");
+            .replace_all(coverage, "${prefix}   LL|");
 
         // `  |  Branch (1:`     => `  |  Branch (LL:`
         // `  |  |  Branch (10:` => `  |  |  Branch (LL:`
@@ -311,7 +305,7 @@ impl<'test> TestCx<'test> {
 
         // Sort the file sections (not including the final empty "section").
         let except_last = sections.len() - 1;
-        (&mut sections[..except_last]).sort();
+        sections[..except_last].sort();
 
         // Join the file sections back into a flat list of lines, with
         // sections separated by blank lines.
@@ -340,7 +334,7 @@ impl<'test> TestCx<'test> {
             // The last "subview" should be just a boundary line on its own,
             // so exclude it when sorting the other subviews.
             let except_last = subviews.len() - 1;
-            (&mut subviews[..except_last]).sort();
+            subviews[..except_last].sort();
 
             for view in subviews {
                 for line in view {

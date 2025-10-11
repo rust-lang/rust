@@ -27,7 +27,7 @@ pub fn check(tests_path: &Path, diag_ctx: DiagCtx) {
         .start_check(CheckId::new("tests_revision_unpaired_stdout_stderr").path(tests_path));
 
     // Recurse over subdirectories under `tests/`
-    walk_dir(tests_path.as_ref(), filter, &mut |entry| {
+    walk_dir(tests_path, filter, &mut |entry| {
         // We are inspecting a folder. Collect the paths to interesting files `.rs`, `.stderr`,
         // `.stdout` under the current folder (shallow).
         let mut files_under_inspection = BTreeSet::new();
@@ -134,10 +134,9 @@ pub fn check(tests_path: &Path, diag_ctx: DiagCtx) {
                 }
                 [_, _] => return,
                 [_, found_revision, .., extension] => {
-                    if !IGNORES.contains(found_revision)
-                        && !expected_revisions.contains(*found_revision)
-                        // This is from `//@ stderr-per-bitwidth`
-                        && !(*extension == "stderr" && ["32bit", "64bit"].contains(found_revision))
+                    if !(IGNORES.contains(found_revision)
+                        || expected_revisions.contains(*found_revision)
+                        || *extension == "stderr" && ["32bit", "64bit"].contains(found_revision))
                     {
                         // Found some unexpected revision-esque component that is not a known
                         // compare-mode or expected revision.

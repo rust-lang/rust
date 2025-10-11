@@ -133,15 +133,15 @@ where
         if filter(entry.file_type(), extension) {
             let expected_path = compare_dir
                 .as_std_path()
-                .join(entry.path().strip_prefix(&out_dir.as_std_path()).unwrap());
+                .join(entry.path().strip_prefix(out_dir.as_std_path()).unwrap());
             let expected = if let Ok(s) = std::fs::read(&expected_path) { s } else { continue };
             let actual_path = entry.path();
-            let actual = std::fs::read(&actual_path).unwrap();
+            let actual = std::fs::read(actual_path).unwrap();
             let diff = unified_diff::diff(
                 &expected,
-                &expected_path.to_str().unwrap(),
+                expected_path.to_str().unwrap(),
                 &actual,
-                &actual_path.to_str().unwrap(),
+                actual_path.to_str().unwrap(),
                 3,
             );
             wrote_data |= !diff.is_empty();
@@ -157,7 +157,7 @@ where
         writeln!(cx.stderr, "printing diff:");
         let mut buf = Vec::new();
         diff_output.read_to_end(&mut buf).unwrap();
-        std::io::stderr().lock().write_all(&mut buf).unwrap();
+        std::io::stderr().lock().write_all(&buf).unwrap();
     }
     true
 }

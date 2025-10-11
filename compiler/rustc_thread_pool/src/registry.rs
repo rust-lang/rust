@@ -808,7 +808,7 @@ impl WorkerThread {
         latch: &L,
         mut all_jobs_started: impl FnMut() -> bool,
         mut is_job: impl FnMut(&JobRef) -> bool,
-        mut execute_job: impl FnMut(JobRef) -> (),
+        mut execute_job: impl FnMut(JobRef),
     ) {
         let mut jobs = SmallVec::<[JobRef; 8]>::new();
         let mut broadcast_jobs = SmallVec::<[JobRef; 8]>::new();
@@ -897,7 +897,7 @@ impl WorkerThread {
                     // The job might have injected local work, so go back to the outer loop.
                     continue 'outer;
                 } else {
-                    self.registry.sleep.no_work_found(&mut idle_state, latch, &self, true)
+                    self.registry.sleep.no_work_found(&mut idle_state, latch, self, true)
                 }
             }
 

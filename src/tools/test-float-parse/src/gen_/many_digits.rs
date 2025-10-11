@@ -67,10 +67,10 @@ impl<F: Float> Iterator for RandDigits<F> {
             let digit = char::from_digit(self.uniform.sample(&mut self.rng), 10).unwrap();
             s.push(digit);
 
-            if let Some(dec_pos) = dec_pos {
-                if pos == dec_pos {
-                    s.push('.');
-                }
+            if let Some(dec_pos) = dec_pos
+                && pos == dec_pos
+            {
+                s.push('.');
             }
         }
 

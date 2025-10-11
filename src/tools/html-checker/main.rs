@@ -64,10 +64,7 @@ fn find_all_html_files(dir: &Path) -> (usize, usize) {
         .into_iter()
         .filter_entry(|e| {
             e.depth() != 1
-                || e.file_name()
-                    .to_str()
-                    .map(|s| DOCS_TO_CHECK.into_iter().any(|d| *d == s))
-                    .unwrap_or(false)
+                || e.file_name().to_str().map(|s| DOCS_TO_CHECK.contains(&s)).unwrap_or(false)
         })
         .par_bridge()
         .map(|entry| {
@@ -78,7 +75,7 @@ fn find_all_html_files(dir: &Path) -> (usize, usize) {
             let entry = entry.path();
             // (Number of files processed, number of errors)
             if entry.extension().and_then(|s| s.to_str()) == Some("html") {
-                (1, check_html_file(&entry))
+                (1, check_html_file(entry))
             } else {
                 (0, 0)
             }
@@ -117,7 +114,7 @@ fn main() -> Result<(), String> {
 
     println!("Running HTML checker...");
 
-    let (files_read, errors) = find_all_html_files(&Path::new(&args[1]));
+    let (files_read, errors) = find_all_html_files(Path::new(&args[1]));
     println!("Done! Read {} files...", files_read);
     if errors > 0 {
         Err(format!("HTML check failed: {} errors", errors))

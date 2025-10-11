@@ -30,7 +30,7 @@ pub fn with_bolt_instrumented<F: FnOnce(&Utf8Path) -> anyhow::Result<R>, R>(
     cmd(&[env.llvm_bolt().as_str()])
         .arg("-instrument")
         .arg(path)
-        .arg(&format!("--instrumentation-file={profile_prefix}"))
+        .arg(format!("--instrumentation-file={profile_prefix}"))
         // Make sure that each process will write its profiles into a separate file
         .arg("--instrumentation-file-append-pid")
         .arg("-o")
