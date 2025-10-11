@@ -60,6 +60,18 @@ impl [u8] {
             return false;
         }
 
+        #[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
+        if self.len() >= 16 {
+            return self.eq_ignore_ascii_case_chunks(other);
+        }
+
+        self.eq_ignore_ascii_case_simple(other)
+    }
+
+    /// ASCII case-insensitive equality check without chunk-at-a-time
+    /// optimization.
+    #[inline]
+    const fn eq_ignore_ascii_case_simple(&self, other: &[u8]) -> bool {
         // FIXME(const-hack): This implementation can be reverted when
         // `core::iter::zip` is allowed in const. The original implementation:
         //  self.len() == other.len() && iter::zip(self, other).all(|(a, b)| a.eq_ignore_ascii_case(b))
@@ -72,6 +84,53 @@ impl [u8] {
                 b = rest_b;
             } else {
                 return false;
+            }
+        }
+
+        true
+    }
+
+    /// Optimized version of `eq_ignore_ascii_case` for byte lengths of at least
+    /// 16 bytes, which processes chunks at a time.
+    ///
+    /// Platforms that have SIMD instructions may benefit from this
+    /// implementation over `eq_ignore_ascii_case_simple`.
+    #[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
+    #[inline]
+    const fn eq_ignore_ascii_case_chunks(&self, other: &[u8]) -> bool {
+        const N: usize = 16;
+        let (self_chunks, self_rem) = self.as_chunks::<N>();
+        let (other_chunks, _) = other.as_chunks::<N>();
+
+        // Branchless check to encourage auto-vectorization
+        #[inline(always)]
+        const fn eq_ignore_ascii_inner(lhs: &[u8; N], rhs: &[u8; N]) -> bool {
+            let mut equal_ascii = true;
+            let mut j = 0;
+            while j < N {
+                equal_ascii &= lhs[j].eq_ignore_ascii_case(&rhs[j]);
+                j += 1;
+            }
+
+            equal_ascii
+        }
+
+        // Process the chunks, returning early if an inequality is found
+        let mut i = 0;
+        while i < self_chunks.len() && i < other_chunks.len() {
+            if !eq_ignore_ascii_inner(&self_chunks[i], &other_chunks[i]) {
+                return false;
+            }
+            i += 1;
+        }
+
+        // If there are remaining tails, load the last N bytes in the slices to
+        // avoid falling back to per-byte checking.
+        if !self_rem.is_empty() {
+            if let (Some(a_rem), Some(b_rem)) = (self.last_chunk::<N>(), other.last_chunk::<N>()) {
+                if !eq_ignore_ascii_inner(a_rem, b_rem) {
+                    return false;
+                }
             }
         }
 
