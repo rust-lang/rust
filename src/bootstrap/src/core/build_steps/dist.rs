@@ -625,7 +625,7 @@ fn generate_target_spec_json_schema(builder: &Builder<'_>, sysroot: &Path) {
     // We do this by using the stage 1 compiler, which is always compiled for the host,
     // even in a cross build.
     let stage1_host = builder.compiler(1, builder.host_target);
-    let mut rustc = command(builder.rustc(stage1_host)).fail_fast();
+    let mut rustc = builder.rustc_cmd(stage1_host).fail_fast();
     rustc
         .env("RUSTC_BOOTSTRAP", "1")
         .args(["--print=target-spec-json-schema", "-Zunstable-options"]);

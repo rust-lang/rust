@@ -82,7 +82,7 @@ LL |     #[link_section = "x"]
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[link_section]` can be applied to statics and functions
+   = help: `#[link_section]` can be applied to functions and statics
 
 warning: `#[link_ordinal]` attribute cannot be used on macro calls
   --> $DIR/attr-on-mac-call.rs:33:5
