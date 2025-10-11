@@ -841,3 +841,8 @@ tool_check_step!(BumpStage0 {
     mode: Mode::ToolBootstrap,
     default: false
 });
+
+// Tidy is implicitly checked when `./x test tidy` is executed
+// (if you set a pre-push hook, the command is called).
+// So this is mainly for people working on tidy.
+tool_check_step!(Tidy { path: "src/tools/tidy", mode: Mode::ToolBootstrap, default: false });
