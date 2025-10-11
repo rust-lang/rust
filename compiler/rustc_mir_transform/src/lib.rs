@@ -189,6 +189,7 @@ declare_passes! {
             Final
         };
     mod simplify_branches : SimplifyConstCondition {
+        AfterInstSimplify,
         AfterConstProp,
         Final
     };
@@ -708,6 +709,15 @@ pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
             // optimizations. This invalidates CFG caches, so avoid putting between
             // `ReferencePropagation` and `GVN` which both use the dominator tree.
             &instsimplify::InstSimplify::AfterSimplifyCfg,
+            // After `InstSimplify-after-simplifycfg` with `-Zub_checks=false`, simplify
+            // ```
+            // _13 = const false;
+            // assume(copy _13);
+            // Call(precondition_check);
+            // ```
+            // to unreachable to eliminate the call to help later passes.
+            // This invalidates CFG caches also.
+            &o1(simplify_branches::SimplifyConstCondition::AfterInstSimplify),
             &ref_prop::ReferencePropagation,
             &sroa::ScalarReplacementOfAggregates,
             &simplify::SimplifyLocals::BeforeConstProp,
