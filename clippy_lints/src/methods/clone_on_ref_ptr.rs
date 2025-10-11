@@ -3,7 +3,7 @@ use clippy_utils::source::snippet_with_context;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
-use rustc_middle::ty;
+use rustc_middle::ty::{self, IsSuggestable};
 use rustc_span::symbol::sym;
 
 use super::CLONE_ON_REF_PTR;
@@ -30,12 +30,22 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, receiver: &hir::
                 // Sometimes unnecessary ::<_> after Rc/Arc/Weak
                 let mut app = Applicability::Unspecified;
                 let snippet = snippet_with_context(cx, receiver.span, expr.span.ctxt(), "..", &mut app).0;
-                diag.span_suggestion(
-                    expr.span,
-                    "try",
-                    format!("{caller_type}::<{}>::clone(&{snippet})", subst.type_at(0)),
-                    app,
-                );
+                let generic = subst.type_at(0);
+                if generic.is_suggestable(cx.tcx, true) {
+                    diag.span_suggestion(
+                        expr.span,
+                        "try",
+                        format!("{caller_type}::<{generic}>::clone(&{snippet})"),
+                        app,
+                    );
+                } else {
+                    diag.span_suggestion(
+                        expr.span,
+                        "try",
+                        format!("{caller_type}::</* generic */>::clone(&{snippet})"),
+                        Applicability::HasPlaceholders,
+                    );
+                }
             },
         );
     }
