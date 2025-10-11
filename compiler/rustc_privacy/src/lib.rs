@@ -12,6 +12,8 @@ mod errors;
 use std::fmt;
 use std::marker::PhantomData;
 use std::ops::ControlFlow;
+use std::sync::{Mutex, MutexGuard, OnceLock};
+use std::time::{Duration, Instant};
 
 use errors::{
     FieldIsPrivate, FieldIsPrivateLabel, FromPrivateDependencyInPublicInterface, InPublicInterface,
@@ -20,7 +22,7 @@ use errors::{
 };
 use rustc_ast::MacroDef;
 use rustc_ast::visit::{VisitorResult, try_visit};
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{MultiSpan, listify};
 use rustc_hir as hir;
@@ -75,6 +77,8 @@ pub trait DefIdVisitor<'tcx> {
     }
 
     fn tcx(&self) -> TyCtxt<'tcx>;
+    /// NOTE: Def-id visiting should be idempotent, because `DefIdVisitorSkeleton` will avoid
+    /// visiting duplicate def-ids. All the current visitors follow this rule.
     fn visit_def_id(&mut self, def_id: DefId, kind: &str, descr: &dyn fmt::Display)
     -> Self::Result;
 
@@ -82,8 +86,9 @@ pub trait DefIdVisitor<'tcx> {
     fn skeleton(&mut self) -> DefIdVisitorSkeleton<'_, 'tcx, Self> {
         DefIdVisitorSkeleton {
             def_id_visitor: self,
-            visited_opaque_tys: Default::default(),
+            visited_tys: Default::default(),
             dummy: Default::default(),
+            // brrr: Default::default(),
         }
     }
     fn visit(&mut self, ty_fragment: impl TypeVisitable<TyCtxt<'tcx>>) -> Self::Result {
@@ -100,9 +105,85 @@ pub trait DefIdVisitor<'tcx> {
     }
 }
 
+#[derive(PartialEq, Eq, Hash, Debug)]
+pub enum Ty2 {
+    Bool,
+    Char,
+    Int,
+    Uint,
+    Float,
+    Adt,
+    Foreign,
+    Str,
+    Array,
+    Pat,
+    Slice,
+    RawPtr,
+    Ref,
+    FnDef,
+    FnPtr,
+    UnsafeBinder,
+    Dynamic,
+    Closure,
+    CoroutineClosure,
+    Coroutine,
+    CoroutineWitness,
+    Never,
+    Tuple,
+    Alias,
+    Param,
+    Bound,
+    Placeholder,
+    Infer,
+    Error,
+}
+
+use Ty2::*;
+
+impl Ty2 {
+    fn from_ty(ty: Ty<'_>) -> Ty2 {
+        match ty.kind() {
+            ty::Bool => Bool,
+            ty::Char => Char,
+            ty::Int(..) => Int,
+            ty::Uint(..) => Uint,
+            ty::Float(..) => Float,
+            ty::Adt(..) => Adt,
+            ty::Foreign(..) => Foreign,
+            ty::Str => Str,
+            ty::Array(..) => Array,
+            ty::Pat(..) => Pat,
+            ty::Slice(_) => Slice,
+            ty::RawPtr(..) => RawPtr,
+            ty::Ref(..) => Ref,
+            ty::FnDef(..) => FnDef,
+            ty::FnPtr(..) => FnPtr,
+            ty::UnsafeBinder(..) => UnsafeBinder,
+            ty::Dynamic(..) => Dynamic,
+            ty::Closure(..) => Closure,
+            ty::CoroutineClosure(..) => CoroutineClosure,
+            ty::Coroutine(..) => Coroutine,
+            ty::CoroutineWitness(..) => CoroutineWitness,
+            ty::Never => Never,
+            ty::Tuple(..) => Tuple,
+            ty::Alias(..) => Alias,
+            ty::Param(..) => Param,
+            ty::Bound(..) => Bound,
+            ty::Placeholder(..) => Placeholder,
+            ty::Infer(..) => Infer,
+            ty::Error(..) => Error,
+        }
+    }
+}
+
+pub fn brrr() -> MutexGuard<'static, FxHashMap<Ty2, Duration>> {
+    static MAP: OnceLock<Mutex<FxHashMap<Ty2, Duration>>> = OnceLock::new();
+    MAP.get_or_init(Default::default).lock().unwrap()
+}
+
 pub struct DefIdVisitorSkeleton<'v, 'tcx, V: ?Sized> {
     def_id_visitor: &'v mut V,
-    visited_opaque_tys: FxHashSet<DefId>,
+    visited_tys: FxHashSet<Ty<'tcx>>,
     dummy: PhantomData<TyCtxt<'tcx>>,
 }
 
@@ -169,6 +250,14 @@ where
     }
 }
 
+// impl<V: ?Sized> Drop for DefIdVisitorSkeleton<'_, '_, V> {
+//     fn drop(&mut self) {
+//         if !brrr().is_empty() {
+//             dbg!(brrr());
+//         }
+//     }
+// }
+
 impl<'tcx, V> TypeVisitor<TyCtxt<'tcx>> for DefIdVisitorSkeleton<'_, 'tcx, V>
 where
     V: DefIdVisitor<'tcx> + ?Sized,
@@ -180,6 +269,8 @@ where
     }
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
+        let new = self.visited_tys.insert(ty);
+        let instant = Instant::now();
         let tcx = self.def_id_visitor.tcx();
         // GenericArgs are not visited here because they are visited below
         // in `super_visit_with`.
@@ -258,8 +349,7 @@ where
                 }
             }
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) => {
-                // Skip repeated `Opaque`s to avoid infinite recursion.
-                if self.visited_opaque_tys.insert(def_id) {
+                if new {
                     // The intent is to treat `impl Trait1 + Trait2` identically to
                     // `dyn Trait1 + Trait2`. Therefore we ignore def-id of the opaque type itself
                     // (it either has no visibility, or its visibility is insignificant, like
@@ -270,8 +360,7 @@ where
                     try_visit!(self.visit_clauses(tcx.explicit_item_bounds(def_id).skip_binder()));
                 }
             }
-            // These types don't have their own def-ids (but may have subcomponents
-            // with def-ids that should be visited recursively).
+            // These types have neither their own def-ids nor subcomponents.
             ty::Bool
             | ty::Char
             | ty::Int(..)
@@ -279,7 +368,12 @@ where
             | ty::Float(..)
             | ty::Str
             | ty::Never
-            | ty::Array(..)
+            | ty::Bound(..)
+            | ty::Param(..) => return V::Result::output(),
+
+            // These types don't have their own def-ids (but may have subcomponents
+            // with def-ids that should be visited recursively).
+            ty::Array(..)
             | ty::Slice(..)
             | ty::Tuple(..)
             | ty::RawPtr(..)
@@ -287,8 +381,6 @@ where
             | ty::Pat(..)
             | ty::FnPtr(..)
             | ty::UnsafeBinder(_)
-            | ty::Param(..)
-            | ty::Bound(..)
             | ty::Error(_)
             | ty::CoroutineWitness(..) => {}
             ty::Placeholder(..) | ty::Infer(..) => {
@@ -296,7 +388,14 @@ where
             }
         }
 
-        if V::SHALLOW { V::Result::output() } else { ty.super_visit_with(self) }
+        let result = if V::SHALLOW { V::Result::output() } else { ty.super_visit_with(self) };
+
+        if !new {
+            let duration = instant.elapsed();
+            *brrr().entry(Ty2::from_ty(ty)).or_default() += duration;
+        }
+
+        result
     }
 
     fn visit_const(&mut self, c: Const<'tcx>) -> Self::Result {
@@ -923,7 +1022,7 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
 
     // Checks that a field in a struct constructor (expression or pattern) is accessible.
     fn check_field(
-        &mut self,
+        &self,
         hir_id: hir::HirId,    // ID of the field use
         use_ctxt: Span,        // syntax context of the field name at the use site
         def: ty::AdtDef<'tcx>, // definition of the struct or enum
@@ -941,7 +1040,7 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
 
     // Checks that a field in a struct constructor (expression or pattern) is accessible.
     fn emit_unreachable_field_error(
-        &mut self,
+        &self,
         fields: Vec<(Symbol, Span, bool /* field is present */)>,
         def: ty::AdtDef<'tcx>, // definition of the struct or enum
         update_syntax: Option<Span>,
@@ -1004,7 +1103,7 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
     }
 
     fn check_expanded_fields(
-        &mut self,
+        &self,
         adt: ty::AdtDef<'tcx>,
         variant: &'tcx ty::VariantDef,
         fields: &[hir::ExprField<'tcx>],
@@ -1142,7 +1241,7 @@ impl<'tcx> TypePrivacyVisitor<'tcx> {
         result.is_break()
     }
 
-    fn check_def_id(&mut self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool {
+    fn check_def_id(&self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool {
         let is_error = !self.item_is_accessible(def_id);
         if is_error {
             self.tcx.dcx().emit_err(ItemIsPrivate { span: self.span, kind, descr: descr.into() });
@@ -1401,7 +1500,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
         self
     }
 
-    fn check_def_id(&mut self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool {
+    fn check_def_id(&self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool {
         if self.leaks_private_dep(def_id) {
             self.tcx.emit_node_span_lint(
                 lint::builtin::EXPORTED_PRIVATE_DEPENDENCIES,
