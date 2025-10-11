@@ -899,6 +899,14 @@ pub(crate) struct UnnamedCrateRootImport {
 }
 
 #[derive(Diagnostic)]
+#[diag(resolve_unnamed_imports)]
+pub(crate) struct UnnamedImports {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) ident: Ident,
+}
+
+#[derive(Diagnostic)]
 #[diag(resolve_macro_expanded_extern_crate_cannot_shadow_extern_arguments)]
 pub(crate) struct MacroExpandedExternCrateCannotShadowExternArguments {
     #[primary_span]

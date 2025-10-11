@@ -595,8 +595,29 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                         }
                     }
                 } else {
+                    if matches!(source.ident.name, kw::Crate | kw::Super) {
+                        // Disallow `use foo::crate;` and `use crate::crate;`
+                        if !module_path.is_empty() {
+                            // FIXME: use other errors
+                            self.r
+                                .dcx()
+                                .emit_err(errors::UnnamedImports { span: ident.span, ident });
+                            return;
+                        }
+
+                        // Disallow `use crate;` and `use super;`
+                        if rename.is_none() {
+                            self.r
+                                .dcx()
+                                .emit_err(errors::UnnamedImports { span: ident.span, ident });
+                            return;
+                        }
+
+                        // Allow `use super as name;`
+                        type_ns_only = true;
+                    }
                     // Disallow `self`
-                    if source.ident.name == kw::SelfLower {
+                    else if source.ident.name == kw::SelfLower {
                         let parent = module_path.last();
 
                         let span = match parent {
@@ -707,6 +728,12 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                     }
 
                     e.emit();
+                } else if let &[self_span] = &self_spans[..]
+                    && prefix.len() == 1
+                    && prefix[0].ident.name == kw::DollarCrate
+                {
+                    // Disallow `use $crate::{self};`
+                    self.r.dcx().emit_err(errors::CrateImported { span: self_span });
                 }
 
                 for &(ref tree, id) in items {
