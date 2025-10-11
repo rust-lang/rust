@@ -219,6 +219,12 @@ fn typeck_with_inspect<'tcx>(
     // the future.
     fcx.check_repeat_exprs();
 
+    // We need to handle opaque types before emitting ambiguity errors as applying
+    // defining uses may guide type inference.
+    if fcx.next_trait_solver() {
+        fcx.try_handle_opaque_type_uses_next();
+    }
+
     fcx.type_inference_fallback();
 
     // Even though coercion casts provide type hints, we check casts after fallback for
