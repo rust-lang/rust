@@ -52,7 +52,7 @@ use crate::{
     AliasEq, AliasTy, Binders, CallableDefId, CallableSig, ConcreteConst, Const, ConstScalar,
     ConstValue, DomainGoal, FnAbi, GenericArg, ImplTraitId, Interner, Lifetime, LifetimeData,
     LifetimeOutlives, MemoryMap, OpaqueTy, ProjectionTy, ProjectionTyExt, QuantifiedWhereClause,
-    TraitEnvironment, TraitRef, TraitRefExt, Ty, TyExt, WhereClause, consteval_nextsolver,
+    TraitEnvironment, TraitRef, TraitRefExt, Ty, TyExt, WhereClause, consteval,
     db::{HirDatabase, InternedClosure},
     from_assoc_type_id, from_placeholder_idx,
     generics::generics,
@@ -750,8 +750,8 @@ impl<'db> HirDisplay for crate::next_solver::Const<'db> {
             }
             rustc_type_ir::ConstKind::Value(const_bytes) => render_const_scalar_ns(
                 f,
-                &const_bytes.value.inner().0,
-                &const_bytes.value.inner().1,
+                &const_bytes.value.inner().memory,
+                &const_bytes.value.inner().memory_map,
                 const_bytes.ty,
             ),
             rustc_type_ir::ConstKind::Unevaluated(unev) => {
@@ -1025,7 +1025,7 @@ fn render_const_scalar_inner<'db>(
             ty.hir_fmt(f)
         }
         TyKind::Array(ty, len) => {
-            let Some(len) = consteval_nextsolver::try_const_usize(f.db, len) else {
+            let Some(len) = consteval::try_const_usize(f.db, len) else {
                 return f.write_str("<unknown-array-len>");
             };
             let Ok(layout) = f.db.layout_of_ty(ty, trait_env) else {

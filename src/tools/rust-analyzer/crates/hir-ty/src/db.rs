@@ -16,8 +16,8 @@ use smallvec::SmallVec;
 use triomphe::Arc;
 
 use crate::{
-    Binders, Const, ImplTraitId, ImplTraits, InferenceResult, Substitution, TraitEnvironment, Ty,
-    TyDefId, ValueTyDefId, chalk_db,
+    Binders, ImplTraitId, ImplTraits, InferenceResult, TraitEnvironment, Ty, TyDefId, ValueTyDefId,
+    chalk_db,
     consteval::ConstEvalError,
     dyn_compatibility::DynCompatibilityViolation,
     layout::{Layout, LayoutError},
@@ -37,50 +37,56 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
 
     #[salsa::invoke(crate::mir::mir_body_query)]
     #[salsa::cycle(cycle_result = crate::mir::mir_body_cycle_result)]
-    fn mir_body<'db>(&'db self, def: DefWithBodyId) -> Result<Arc<MirBody>, MirLowerError<'db>>;
+    fn mir_body<'db>(
+        &'db self,
+        def: DefWithBodyId,
+    ) -> Result<Arc<MirBody<'db>>, MirLowerError<'db>>;
 
     #[salsa::invoke(crate::mir::mir_body_for_closure_query)]
     fn mir_body_for_closure<'db>(
         &'db self,
         def: InternedClosureId,
-    ) -> Result<Arc<MirBody>, MirLowerError<'db>>;
+    ) -> Result<Arc<MirBody<'db>>, MirLowerError<'db>>;
 
     #[salsa::invoke(crate::mir::monomorphized_mir_body_query)]
     #[salsa::cycle(cycle_result = crate::mir::monomorphized_mir_body_cycle_result)]
     fn monomorphized_mir_body<'db>(
         &'db self,
         def: DefWithBodyId,
-        subst: Substitution,
+        subst: crate::next_solver::GenericArgs<'db>,
         env: Arc<TraitEnvironment<'db>>,
-    ) -> Result<Arc<MirBody>, MirLowerError<'db>>;
+    ) -> Result<Arc<MirBody<'db>>, MirLowerError<'db>>;
 
     #[salsa::invoke(crate::mir::monomorphized_mir_body_for_closure_query)]
     fn monomorphized_mir_body_for_closure<'db>(
         &'db self,
         def: InternedClosureId,
-        subst: Substitution,
+        subst: crate::next_solver::GenericArgs<'db>,
         env: Arc<TraitEnvironment<'db>>,
-    ) -> Result<Arc<MirBody>, MirLowerError<'db>>;
+    ) -> Result<Arc<MirBody<'db>>, MirLowerError<'db>>;
 
     #[salsa::invoke(crate::mir::borrowck_query)]
     #[salsa::lru(2024)]
     fn borrowck<'db>(
         &'db self,
         def: DefWithBodyId,
-    ) -> Result<Arc<[BorrowckResult]>, MirLowerError<'db>>;
+    ) -> Result<Arc<[BorrowckResult<'db>]>, MirLowerError<'db>>;
 
     #[salsa::invoke(crate::consteval::const_eval_query)]
     #[salsa::cycle(cycle_result = crate::consteval::const_eval_cycle_result)]
     fn const_eval<'db>(
         &'db self,
         def: GeneralConstId,
-        subst: Substitution,
+        subst: crate::next_solver::GenericArgs<'db>,
         trait_env: Option<Arc<TraitEnvironment<'db>>>,
-    ) -> Result<Const, ConstEvalError<'db>>;
+    ) -> Result<crate::next_solver::Const<'db>, ConstEvalError<'db>>;
 
     #[salsa::invoke(crate::consteval::const_eval_static_query)]
     #[salsa::cycle(cycle_result = crate::consteval::const_eval_static_cycle_result)]
-    fn const_eval_static<'db>(&'db self, def: StaticId) -> Result<Const, ConstEvalError<'db>>;
+    fn const_eval_static<'db>(
+        &'db self,
+        def: StaticId,
+    ) -> Result<crate::next_solver::Const<'db>, ConstEvalError<'db>>;
 
     #[salsa::invoke(crate::consteval::const_eval_discriminant_variant)]
     #[salsa::cycle(cycle_result = crate::consteval::const_eval_discriminant_cycle_result)]

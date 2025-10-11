@@ -75,7 +75,7 @@ use hir_ty::{
     GenericArgData, Interner, ParamKind, ProjectionTy, QuantifiedWhereClause, Scalar, Substitution,
     TraitEnvironment, TraitRefExt, Ty, TyBuilder, TyDefId, TyExt, TyKind, TyLoweringDiagnostic,
     ValueTyDefId, WhereClause, all_super_traits, autoderef, check_orphan_rules,
-    consteval::{ConstExt, try_const_usize, unknown_const_as_generic},
+    consteval_chalk::{ConstExt, try_const_usize, unknown_const_as_generic},
     diagnostics::BodyValidationDiagnostic,
     direct_super_traits, error_lifetime, known_const_to_ast,
     layout::{Layout as TyLayout, RustcEnumVariantIdx, RustcFieldIdx, TagEncoding},
@@ -2153,8 +2153,11 @@ impl DefWithBody {
                         mir::MirSpan::Unknown => continue,
                     };
                     acc.push(
-                        MovedOutOfRef { ty: Type::new_for_crate(krate, moof.ty.clone()), span }
-                            .into(),
+                        MovedOutOfRef {
+                            ty: Type::new_for_crate(krate, moof.ty.to_chalk(interner)),
+                            span,
+                        }
+                        .into(),
                     )
                 }
                 let mol = &borrowck_result.mutability_of_locals;
@@ -2649,9 +2652,10 @@ impl Function {
         db: &dyn HirDatabase,
         span_formatter: impl Fn(FileId, TextRange) -> String,
     ) -> Result<String, ConstEvalError<'_>> {
+        let interner = DbInterner::new_with(db, None, None);
         let body = db.monomorphized_mir_body(
             self.id.into(),
-            Substitution::empty(Interner),
+            GenericArgs::new_from_iter(interner, []),
             db.trait_environment(self.id.into()),
         )?;
         let (result, output) = interpret_mir(db, body, false, None)?;
@@ -2933,8 +2937,10 @@ impl Const {
 
     /// Evaluate the constant.
     pub fn eval(self, db: &dyn HirDatabase) -> Result<EvaluatedConst, ConstEvalError<'_>> {
-        db.const_eval(self.id.into(), Substitution::empty(Interner), None)
-            .map(|it| EvaluatedConst { const_: it, def: self.id.into() })
+        let interner = DbInterner::new_with(db, None, None);
+        let ty = db.value_ty(self.id.into()).unwrap().instantiate_identity().to_chalk(interner);
+        db.const_eval(self.id.into(), GenericArgs::new_from_iter(interner, []), None)
+            .map(|it| EvaluatedConst { const_: it.to_chalk(interner), def: self.id.into(), ty })
     }
 }
 
@@ -2947,6 +2953,7 @@ impl HasVisibility for Const {
 pub struct EvaluatedConst {
     def: DefWithBodyId,
     const_: hir_ty::Const,
+    ty: hir_ty::Ty,
 }
 
 impl EvaluatedConst {
@@ -2955,6 +2962,7 @@ impl EvaluatedConst {
     }
 
     pub fn render_debug<'db>(&self, db: &'db dyn HirDatabase) -> Result<String, MirEvalError<'db>> {
+        let interner = DbInterner::new_with(db, None, None);
         let data = self.const_.data(Interner);
         if let TyKind::Scalar(s) = data.ty.kind(Interner)
             && matches!(s, Scalar::Int(_) | Scalar::Uint(_))
@@ -2972,7 +2980,12 @@ impl EvaluatedConst {
                 return Ok(result);
             }
         }
-        mir::render_const_using_debug_impl(db, self.def, &self.const_)
+        mir::render_const_using_debug_impl(
+            db,
+            self.def,
+            self.const_.to_nextsolver(interner),
+            self.ty.to_nextsolver(interner),
+        )
     }
 }
 
@@ -3011,8 +3024,10 @@ impl Static {
 
     /// Evaluate the static initializer.
     pub fn eval(self, db: &dyn HirDatabase) -> Result<EvaluatedConst, ConstEvalError<'_>> {
-        db.const_eval(self.id.into(), Substitution::empty(Interner), None)
-            .map(|it| EvaluatedConst { const_: it, def: self.id.into() })
+        let interner = DbInterner::new_with(db, None, None);
+        let ty = db.value_ty(self.id.into()).unwrap().instantiate_identity().to_chalk(interner);
+        db.const_eval(self.id.into(), GenericArgs::new_from_iter(interner, []), None)
+            .map(|it| EvaluatedConst { const_: it.to_chalk(interner), def: self.id.into(), ty })
     }
 }
 

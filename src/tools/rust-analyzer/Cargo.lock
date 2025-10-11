@@ -788,6 +788,7 @@ dependencies = [
  "intern",
  "itertools",
  "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "macros",
  "oorandom",
  "petgraph",
  "project-model",
@@ -1327,6 +1328,16 @@ dependencies = [
  "serde_json",
  "serde_repr",
  "url",
+]
+
+[[package]]
+name = "macros"
+version = "0.0.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+ "synstructure",
 ]
 
 [[package]]

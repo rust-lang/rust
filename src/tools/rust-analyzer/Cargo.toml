@@ -52,6 +52,7 @@ debug = 2
 
 [workspace.dependencies]
 # local crates
+macros = { path = "./crates/macros", version = "0.0.0" }
 base-db = { path = "./crates/base-db", version = "0.0.0" }
 cfg = { path = "./crates/cfg", version = "0.0.0", features = ["tt"] }
 hir = { path = "./crates/hir", version = "0.0.0" }

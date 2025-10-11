@@ -21,6 +21,8 @@ extern crate ra_ap_rustc_type_ir as rustc_type_ir;
 
 extern crate ra_ap_rustc_next_trait_solver as rustc_next_trait_solver;
 
+extern crate self as hir_ty;
+
 mod builder;
 mod chalk_db;
 mod chalk_ext;
@@ -37,7 +39,7 @@ mod utils;
 
 pub mod autoderef;
 pub mod consteval;
-pub mod consteval_nextsolver;
+pub mod consteval_chalk;
 pub mod db;
 pub mod diagnostics;
 pub mod display;
@@ -782,7 +784,12 @@ where
             _var: InferenceVar,
             _outer_binder: DebruijnIndex,
         ) -> Fallible<Const> {
-            if cfg!(debug_assertions) { Err(NoSolution) } else { Ok(unknown_const(ty)) }
+            if cfg!(debug_assertions) {
+                Err(NoSolution)
+            } else {
+                let interner = DbInterner::conjure();
+                Ok(unknown_const(ty.to_nextsolver(interner)).to_chalk(interner))
+            }
         }
 
         fn try_fold_free_var_const(
@@ -791,7 +798,12 @@ where
             _bound_var: BoundVar,
             _outer_binder: DebruijnIndex,
         ) -> Fallible<Const> {
-            if cfg!(debug_assertions) { Err(NoSolution) } else { Ok(unknown_const(ty)) }
+            if cfg!(debug_assertions) {
+                Err(NoSolution)
+            } else {
+                let interner = DbInterner::conjure();
+                Ok(unknown_const(ty.to_nextsolver(interner)).to_chalk(interner))
+            }
         }
 
         fn try_fold_inference_lifetime(

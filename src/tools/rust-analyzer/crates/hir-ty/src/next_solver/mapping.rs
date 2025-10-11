@@ -539,7 +539,7 @@ impl<'db> ChalkToNextSolver<'db, Const<'db>> for chalk_ir::Const<Interner> {
                     ConstScalar::Bytes(bytes, memory) => {
                         rustc_type_ir::ConstKind::Value(ValueConst::new(
                             data.ty.to_nextsolver(interner),
-                            ConstBytes(bytes.clone(), memory.clone()),
+                            ConstBytes { memory: bytes.clone(), memory_map: memory.clone() },
                         ))
                     }
                     ConstScalar::UnevaluatedConst(c, subst) => {
@@ -1710,8 +1710,10 @@ pub fn convert_const_for_result<'db>(
             let bytes = value_const.value.inner();
             let value = chalk_ir::ConstValue::Concrete(chalk_ir::ConcreteConst {
                 // SAFETY: we will never actually use this without a database
-                interned: ConstScalar::Bytes(bytes.0.clone(), unsafe {
-                    std::mem::transmute::<MemoryMap<'db>, MemoryMap<'static>>(bytes.1.clone())
+                interned: ConstScalar::Bytes(bytes.memory.clone(), unsafe {
+                    std::mem::transmute::<MemoryMap<'db>, MemoryMap<'static>>(
+                        bytes.memory_map.clone(),
+                    )
                 }),
             });
             return chalk_ir::ConstData {

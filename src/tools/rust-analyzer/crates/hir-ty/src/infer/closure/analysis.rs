@@ -28,10 +28,7 @@ use crate::{
     db::{HirDatabase, InternedClosure, InternedClosureId},
     infer::InferenceContext,
     mir::{BorrowKind, MirSpan, MutBorrowKind, ProjectionElem},
-    next_solver::{
-        DbInterner, EarlyBinder, GenericArgs, Ty, TyKind,
-        mapping::{ChalkToNextSolver, NextSolverToChalk},
-    },
+    next_solver::{DbInterner, EarlyBinder, GenericArgs, Ty, TyKind},
     traits::FnTrait,
 };
 
@@ -47,16 +44,14 @@ impl<'db> HirPlace<'db> {
     fn ty(&self, ctx: &mut InferenceContext<'_, 'db>) -> Ty<'db> {
         let mut ty = ctx.table.resolve_completely(ctx.result[self.local]);
         for p in &self.projections {
-            ty = p
-                .projected_ty(
-                    ty.to_chalk(ctx.interner()),
-                    ctx.db,
-                    |_, _, _| {
-                        unreachable!("Closure field only happens in MIR");
-                    },
-                    ctx.owner.module(ctx.db).krate(),
-                )
-                .to_nextsolver(ctx.interner());
+            ty = p.projected_ty(
+                &ctx.table.infer_ctxt,
+                ty,
+                |_, _, _| {
+                    unreachable!("Closure field only happens in MIR");
+                },
+                ctx.owner.module(ctx.db).krate(),
+            );
         }
         ty
     }
@@ -865,16 +860,14 @@ impl<'db> InferenceContext<'_, 'db> {
                 continue;
             }
             for (i, p) in capture.place.projections.iter().enumerate() {
-                ty = p
-                    .projected_ty(
-                        ty.to_chalk(self.interner()),
-                        self.db,
-                        |_, _, _| {
-                            unreachable!("Closure field only happens in MIR");
-                        },
-                        self.owner.module(self.db).krate(),
-                    )
-                    .to_nextsolver(self.interner());
+                ty = p.projected_ty(
+                    &self.table.infer_ctxt,
+                    ty,
+                    |_, _, _| {
+                        unreachable!("Closure field only happens in MIR");
+                    },
+                    self.owner.module(self.db).krate(),
+                );
                 if ty.is_raw_ptr() || ty.is_union() {
                     capture.kind = CaptureKind::ByRef(BorrowKind::Shared);
                     self.truncate_capture_spans(capture, i + 1);

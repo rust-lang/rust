@@ -10,7 +10,7 @@ use rustc_type_ir::inherent::{SliceLike, Ty as _};
 use stdx::never;
 
 use crate::{
-    InferenceDiagnostic, ValueTyDefId, consteval_nextsolver,
+    InferenceDiagnostic, ValueTyDefId, consteval,
     generics::generics,
     infer::diagnostics::InferenceTyLoweringContext as TyLoweringContext,
     lower_nextsolver::LifetimeElisionKind,
@@ -128,7 +128,7 @@ impl<'db> InferenceContext<'_, 'db> {
         match id {
             GenericParamId::TypeParamId(_) => self.types.error.into(),
             GenericParamId::ConstParamId(id) => {
-                consteval_nextsolver::unknown_const_as_generic(self.db.const_param_ty_ns(id))
+                consteval::unknown_const_as_generic(self.db.const_param_ty_ns(id))
             }
             GenericParamId::LifetimeParamId(_) => self.types.re_error.into(),
         }

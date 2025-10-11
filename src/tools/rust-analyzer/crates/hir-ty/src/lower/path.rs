@@ -23,7 +23,7 @@ use crate::{
     Interner, ParamLoweringMode, PathGenericsSource, PathLoweringDiagnostic, ProjectionTy,
     QuantifiedWhereClause, Substitution, TraitRef, Ty, TyBuilder, TyDefId, TyKind,
     TyLoweringContext, WhereClause,
-    consteval::{unknown_const, unknown_const_as_generic},
+    consteval_chalk::{unknown_const, unknown_const_as_generic},
     db::HirDatabase,
     error_lifetime,
     generics::{Generics, generics},

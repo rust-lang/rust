@@ -21,7 +21,7 @@ use triomphe::Arc;
 
 use crate::{
     TraitEnvironment,
-    consteval_nextsolver::try_const_usize,
+    consteval::try_const_usize,
     db::HirDatabase,
     next_solver::{
         DbInterner, GenericArgs, ParamEnv, Ty, TyKind, TypingMode,

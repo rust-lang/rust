@@ -8,6 +8,7 @@ use std::{
 };
 
 use hir_def::TraitId;
+use macros::{TypeFoldable, TypeVisitable};
 use rustc_type_ir::elaborate::Elaboratable;
 use rustc_type_ir::{
     PredicatePolarity, Upcast,
@@ -65,8 +66,10 @@ impl ObligationCause {
 /// either identifying an `impl` (e.g., `impl Eq for i32`) that
 /// satisfies the obligation, or else finding a bound that is in
 /// scope. The eventual result is usually a `Selection` (defined below).
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, TypeVisitable, TypeFoldable)]
 pub struct Obligation<'db, T> {
+    #[type_foldable(identity)]
+    #[type_visitable(ignore)]
     /// The reason we have to prove this thing.
     pub cause: ObligationCause,
 
@@ -113,39 +116,6 @@ impl<'db> Elaboratable<DbInterner<'db>> for PredicateObligation<'db> {
             param_env: self.param_env,
             recursion_depth: 0,
             predicate: clause.as_predicate(),
-        }
-    }
-}
-
-impl<'db, T: TypeVisitable<DbInterner<'db>>> TypeVisitable<DbInterner<'db>> for Obligation<'db, T> {
-    fn visit_with<V: rustc_type_ir::TypeVisitor<DbInterner<'db>>>(
-        &self,
-        visitor: &mut V,
-    ) -> V::Result {
-        rustc_ast_ir::try_visit!(self.param_env.visit_with(visitor));
-        self.predicate.visit_with(visitor)
-    }
-}
-
-impl<'db, T: TypeFoldable<DbInterner<'db>>> TypeFoldable<DbInterner<'db>> for Obligation<'db, T> {
-    fn try_fold_with<F: rustc_type_ir::FallibleTypeFolder<DbInterner<'db>>>(
-        self,
-        folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        Ok(Obligation {
-            cause: self.cause.clone(),
-            param_env: self.param_env.try_fold_with(folder)?,
-            predicate: self.predicate.try_fold_with(folder)?,
-            recursion_depth: self.recursion_depth,
-        })
-    }
-
-    fn fold_with<F: rustc_type_ir::TypeFolder<DbInterner<'db>>>(self, folder: &mut F) -> Self {
-        Obligation {
-            cause: self.cause.clone(),
-            param_env: self.param_env.fold_with(folder),
-            predicate: self.predicate.fold_with(folder),
-            recursion_depth: self.recursion_depth,
         }
     }
 }

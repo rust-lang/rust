@@ -8,11 +8,10 @@ use hir_def::{AdtId, GenericDefId, TypeOrConstParamId, TypeParamId};
 use intern::{Interned, Symbol, sym};
 use rustc_abi::{Float, Integer, Size};
 use rustc_ast_ir::{Mutability, try_visit, visit::VisitorResult};
-use rustc_type_ir::TyVid;
 use rustc_type_ir::{
     BoundVar, ClosureKind, CollectAndApply, FlagComputation, Flags, FloatTy, FloatVid, InferTy,
-    IntTy, IntVid, Interner, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt, TypeVisitor, UintTy, WithCachedTypeInfo,
+    IntTy, IntVid, Interner, TyVid, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt, TypeVisitor, UintTy, WithCachedTypeInfo,
     inherent::{
         Abi, AdtDef as _, BoundVarLike, Const as _, GenericArgs as _, IntoKind, ParamLike,
         PlaceholderLike, Safety as _, SliceLike, Ty as _,
@@ -24,14 +23,13 @@ use rustc_type_ir::{
 use salsa::plumbing::{AsId, FromId};
 use smallvec::SmallVec;
 
-use crate::next_solver::{AdtDef, Binder};
 use crate::{
     FnAbi,
     db::HirDatabase,
     interner::InternedWrapperNoDebug,
     next_solver::{
-        CallableIdWrapper, ClosureIdWrapper, Const, CoroutineIdWrapper, FnSig, GenericArg,
-        PolyFnSig, TypeAliasIdWrapper,
+        AdtDef, Binder, CallableIdWrapper, ClosureIdWrapper, Const, CoroutineIdWrapper, FnSig,
+        GenericArg, PolyFnSig, Region, TypeAliasIdWrapper,
         abi::Safety,
         util::{CoroutineArgsExt, IntegerTypeExt},
     },
@@ -392,7 +390,7 @@ impl<'db> Ty<'db> {
 
     /// Whether the type contains some non-lifetime, aka. type or const, error type.
     pub fn references_non_lt_error(self) -> bool {
-        self.references_error() && self.visit_with(&mut ReferencesNonLifetimeError).is_break()
+        references_non_lt_error(&self)
     }
 
     pub fn callable_sig(self, interner: DbInterner<'db>) -> Option<Binder<'db, FnSig<'db>>> {
@@ -409,12 +407,31 @@ impl<'db> Ty<'db> {
         }
     }
 
+    pub fn as_reference(self) -> Option<(Ty<'db>, Region<'db>, Mutability)> {
+        match self.kind() {
+            TyKind::Ref(lifetime, ty, mutability) => Some((ty, lifetime, mutability)),
+            _ => None,
+        }
+    }
+
     pub fn as_reference_or_ptr(self) -> Option<(Ty<'db>, Rawness, Mutability)> {
         match self.kind() {
             TyKind::Ref(_, ty, mutability) => Some((ty, Rawness::Ref, mutability)),
             TyKind::RawPtr(ty, mutability) => Some((ty, Rawness::RawPtr, mutability)),
             _ => None,
         }
+    }
+
+    pub fn strip_references(self) -> Ty<'db> {
+        let mut t = self;
+        while let TyKind::Ref(_lifetime, ty, _mutability) = t.kind() {
+            t = ty;
+        }
+        t
+    }
+
+    pub fn strip_reference(self) -> Ty<'db> {
+        self.as_reference().map_or(self, |(ty, _, _)| ty)
     }
 
     /// Replace infer vars with errors.
@@ -426,6 +443,10 @@ impl<'db> Ty<'db> {
             interner,
         ))
     }
+}
+
+pub fn references_non_lt_error<'db, T: TypeVisitableExt<DbInterner<'db>>>(t: &T) -> bool {
+    t.references_error() && t.visit_with(&mut ReferencesNonLifetimeError).is_break()
 }
 
 struct ReferencesNonLifetimeError;

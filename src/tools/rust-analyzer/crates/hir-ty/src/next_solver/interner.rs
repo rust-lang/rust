@@ -1,77 +1,81 @@
 //! Things related to the Interner in the next-trait-solver.
-#![allow(unused)]
+#![allow(unused)] // FIXME(next-solver): Remove this.
+
+use std::{fmt, ops::ControlFlow};
 
 pub use tls_db::{attach_db, attach_db_allow_change, with_attached_db};
 
 use base_db::Crate;
 use chalk_ir::{ProgramClauseImplication, SeparatorTraitRef, Variances};
-use hir_def::lang_item::LangItem;
-use hir_def::signatures::{FieldData, FnFlags, ImplFlags, StructFlags, TraitFlags};
-use hir_def::{AdtId, BlockId, GenericDefId, TypeAliasId, VariantId};
-use hir_def::{AttrDefId, Lookup};
-use hir_def::{CallableDefId, EnumVariantId, ItemContainerId, StructId, UnionId};
+use hir_def::{
+    AdtId, AttrDefId, BlockId, CallableDefId, EnumVariantId, GenericDefId, ItemContainerId, Lookup,
+    StructId, TypeAliasId, UnionId, VariantId,
+    lang_item::LangItem,
+    signatures::{FieldData, FnFlags, ImplFlags, StructFlags, TraitFlags},
+};
 use intern::sym::non_exhaustive;
 use intern::{Interned, impl_internable, sym};
 use la_arena::Idx;
 use rustc_abi::{Align, ReprFlags, ReprOptions};
+use rustc_ast_ir::visit::VisitorResult;
 use rustc_hash::FxHashSet;
-use rustc_index::bit_set::DenseBitSet;
-use rustc_type_ir::elaborate::elaborate;
-use rustc_type_ir::error::TypeError;
-use rustc_type_ir::inherent::{
-    AdtDef as _, GenericArgs as _, GenericsOf, IntoKind, SliceLike as _, Span as _,
-};
-use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverLangItem, SolverTraitLangItem};
-use rustc_type_ir::solve::SizedTraitKind;
+use rustc_index::{IndexVec, bit_set::DenseBitSet};
 use rustc_type_ir::{
-    AliasTerm, AliasTermKind, AliasTy, AliasTyKind, EarlyBinder, FlagComputation, Flags,
-    ImplPolarity, InferTy, ProjectionPredicate, TraitPredicate, TraitRef, Upcast,
+    AliasTerm, AliasTermKind, AliasTy, AliasTyKind, BoundVar, CollectAndApply, DebruijnIndex,
+    EarlyBinder, FlagComputation, Flags, GenericArgKind, ImplPolarity, InferTy,
+    ProjectionPredicate, RegionKind, TermKind, TraitPredicate, TraitRef, TypeVisitableExt,
+    UniverseIndex, Upcast, Variance, WithCachedTypeInfo,
+    elaborate::{self, elaborate},
+    error::TypeError,
+    inherent::{
+        self, AdtDef as _, Const as _, GenericArgs as _, GenericsOf, IntoKind, ParamEnv as _,
+        Region as _, SliceLike as _, Span as _, Ty as _,
+    },
+    ir_print,
+    lang_items::{SolverAdtLangItem, SolverLangItem, SolverTraitLangItem},
+    relate,
+    solve::SizedTraitKind,
 };
 use salsa::plumbing::AsId;
 use smallvec::{SmallVec, smallvec};
-use std::fmt;
-use std::ops::ControlFlow;
 use syntax::ast::SelfParamKind;
+use tracing::debug;
 use triomphe::Arc;
 
-use rustc_ast_ir::visit::VisitorResult;
-use rustc_index::IndexVec;
-use rustc_type_ir::TypeVisitableExt;
-use rustc_type_ir::{
-    BoundVar, CollectAndApply, DebruijnIndex, GenericArgKind, RegionKind, TermKind, UniverseIndex,
-    Variance, WithCachedTypeInfo, elaborate,
-    inherent::{self, Const as _, Region as _, Ty as _},
-    ir_print, relate,
+use crate::{
+    ConstScalar, FnAbi, Interner,
+    db::HirDatabase,
+    lower_nextsolver::{self, TyLoweringContext},
+    method_resolution::{ALL_FLOAT_FPS, ALL_INT_FPS, TyFingerprint},
+    next_solver::{
+        AdtIdWrapper, BoundConst, CallableIdWrapper, CanonicalVarKind, ClosureIdWrapper,
+        CoroutineIdWrapper, Ctor, FnSig, FxIndexMap, ImplIdWrapper, InternedWrapperNoDebug,
+        RegionAssumptions, SolverContext, SolverDefIds, TraitIdWrapper, TypeAliasIdWrapper,
+        TypingMode,
+        infer::{
+            DbInternerInferExt, InferCtxt,
+            traits::{Obligation, ObligationCause},
+        },
+        obligation_ctxt::ObligationCtxt,
+        util::{ContainsTypeErrors, explicit_item_bounds, for_trait_impls},
+    },
 };
 
-use crate::lower_nextsolver::{self, TyLoweringContext};
-use crate::method_resolution::{ALL_FLOAT_FPS, ALL_INT_FPS, TyFingerprint};
-use crate::next_solver::infer::InferCtxt;
-use crate::next_solver::util::{ContainsTypeErrors, explicit_item_bounds, for_trait_impls};
-use crate::next_solver::{
-    AdtIdWrapper, BoundConst, CallableIdWrapper, CanonicalVarKind, ClosureIdWrapper,
-    CoroutineIdWrapper, Ctor, FnSig, FxIndexMap, ImplIdWrapper, InternedWrapperNoDebug,
-    RegionAssumptions, SolverContext, SolverDefIds, TraitIdWrapper, TypeAliasIdWrapper,
-};
-use crate::{ConstScalar, FnAbi, Interner, db::HirDatabase};
-
-use super::generics::generics;
-use super::util::sizedness_constraint_for_ty;
 use super::{
     Binder, BoundExistentialPredicate, BoundExistentialPredicates, BoundTy, BoundTyKind, Clause,
-    Clauses, Const, ConstKind, ErrorGuaranteed, ExprConst, ExternalConstraints,
+    ClauseKind, Clauses, Const, ConstKind, ErrorGuaranteed, ExprConst, ExternalConstraints,
     ExternalConstraintsData, GenericArg, GenericArgs, InternedClausesWrapper, ParamConst, ParamEnv,
     ParamTy, PlaceholderConst, PlaceholderTy, PredefinedOpaques, PredefinedOpaquesData, Predicate,
-    PredicateKind, Term, Ty, TyKind, Tys, ValueConst,
+    PredicateKind, SolverDefId, Term, Ty, TyKind, Tys, Valtree, ValueConst,
     abi::Safety,
     fold::{BoundVarReplacer, BoundVarReplacerDelegate, FnMutDelegate},
-    generics::Generics,
+    generics::{Generics, generics},
     mapping::ChalkToNextSolver,
     region::{
         BoundRegion, BoundRegionKind, EarlyParamRegion, LateParamRegion, PlaceholderRegion, Region,
     },
+    util::sizedness_constraint_for_ty,
 };
-use super::{ClauseKind, SolverDefId, Valtree};
 
 #[macro_export]
 #[doc(hidden)]
@@ -1102,7 +1106,15 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
     fn alias_ty_kind(self, alias: rustc_type_ir::AliasTy<Self>) -> AliasTyKind {
         match alias.def_id {
             SolverDefId::InternedOpaqueTyId(_) => AliasTyKind::Opaque,
-            SolverDefId::TypeAliasId(_) => AliasTyKind::Projection,
+            SolverDefId::TypeAliasId(type_alias) => match type_alias.loc(self.db).container {
+                ItemContainerId::ImplId(impl_)
+                    if self.db.impl_signature(impl_).target_trait.is_none() =>
+                {
+                    AliasTyKind::Inherent
+                }
+                ItemContainerId::TraitId(_) | ItemContainerId::ImplId(_) => AliasTyKind::Projection,
+                _ => AliasTyKind::Free,
+            },
             _ => unimplemented!("Unexpected alias: {:?}", alias.def_id),
         }
     }
@@ -1113,7 +1125,19 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
     ) -> rustc_type_ir::AliasTermKind {
         match alias.def_id {
             SolverDefId::InternedOpaqueTyId(_) => AliasTermKind::OpaqueTy,
-            SolverDefId::TypeAliasId(_) => AliasTermKind::ProjectionTy,
+            SolverDefId::TypeAliasId(type_alias) => match type_alias.loc(self.db).container {
+                ItemContainerId::ImplId(impl_)
+                    if self.db.impl_signature(impl_).target_trait.is_none() =>
+                {
+                    AliasTermKind::InherentTy
+                }
+                ItemContainerId::TraitId(_) | ItemContainerId::ImplId(_) => {
+                    AliasTermKind::ProjectionTy
+                }
+                _ => AliasTermKind::FreeTy,
+            },
+            // rustc creates an `AnonConst` for consts, and evaluates them with CTFE (normalizing projections
+            // via selection, similar to ours `find_matching_impl()`, and not with the trait solver), so mimic it.
             SolverDefId::ConstId(_) => AliasTermKind::UnevaluatedConst,
             _ => unimplemented!("Unexpected alias: {:?}", alias.def_id),
         }
@@ -1676,8 +1700,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
     }
 
     fn impl_is_default(self, impl_def_id: Self::ImplId) -> bool {
-        // FIXME
-        false
+        self.db.impl_signature(impl_def_id.0).is_default()
     }
 
     #[tracing::instrument(skip(self), ret)]
@@ -1731,7 +1754,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
     }
 
     fn delay_bug(self, msg: impl ToString) -> Self::ErrorGuaranteed {
-        panic!("Bug encountered in next-trait-solver.")
+        panic!("Bug encountered in next-trait-solver: {}", msg.to_string())
     }
 
     fn is_general_coroutine(self, coroutine_def_id: Self::CoroutineId) -> bool {
@@ -1929,7 +1952,12 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
         false
     }
 
-    fn impl_specializes(self, impl_def_id: Self::ImplId, victim_def_id: Self::ImplId) -> bool {
+    // FIXME(next-solver): Make this a query? Can this make cycles?
+    fn impl_specializes(
+        self,
+        specializing_impl_def_id: Self::ImplId,
+        parent_impl_def_id: Self::ImplId,
+    ) -> bool {
         false
     }
 

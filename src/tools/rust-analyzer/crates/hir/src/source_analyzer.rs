@@ -35,7 +35,6 @@ use hir_expand::{
     mod_path::{ModPath, PathKind, path},
     name::{AsName, Name},
 };
-use hir_ty::next_solver::GenericArgs;
 use hir_ty::{
     Adjustment, AliasTy, InferenceResult, Interner, LifetimeElisionKind, ProjectionTy,
     Substitution, ToChalk, TraitEnvironment, Ty, TyKind, TyLoweringContext,
@@ -47,7 +46,8 @@ use hir_ty::{
     lang_items::lang_items_for_bin_op,
     method_resolution,
     next_solver::{
-        DbInterner,
+        DbInterner, GenericArgs, TypingMode,
+        infer::DbInternerInferExt,
         mapping::{ChalkToNextSolver, NextSolverToChalk},
     },
 };
@@ -1439,12 +1439,9 @@ impl<'db> SourceAnalyzer<'db> {
             None => return (const_id, subs),
         };
         let env = db.trait_environment_for_body(owner);
-        method_resolution::lookup_impl_const(
-            DbInterner::new_with(db, None, None),
-            env,
-            const_id,
-            subs,
-        )
+        let interner = DbInterner::new_with(db, Some(env.krate), env.block);
+        let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
+        method_resolution::lookup_impl_const(&infcx, env, const_id, subs)
     }
 
     fn lang_trait_fn(

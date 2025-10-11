@@ -30,7 +30,7 @@ use stdx::never;
 use crate::{
     GenericArgsProhibitedReason, IncorrectGenericsLenKind, PathGenericsSource,
     PathLoweringDiagnostic, TyDefId, ValueTyDefId,
-    consteval_nextsolver::{unknown_const, unknown_const_as_generic},
+    consteval::{unknown_const, unknown_const_as_generic},
     db::HirDatabase,
     generics::{Generics, generics},
     lower::PathDiagnosticCallbackData,
