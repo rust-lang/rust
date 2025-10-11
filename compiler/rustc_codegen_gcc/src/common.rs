@@ -247,8 +247,9 @@ impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
                         // This avoids generating a zero-sized constant value and actually needing a
                         // real address at runtime.
                         if alloc.inner().len() == 0 {
-                            assert_eq!(offset.bytes(), 0);
-                            let val = self.const_usize(alloc.inner().align.bytes());
+                            let val = self.const_usize(
+                                alloc.inner().align.bytes().wrapping_add(offset.bytes()),
+                            );
                             return if matches!(layout.primitive(), Pointer(_)) {
                                 self.context.new_cast(None, val, ty)
                             } else {
