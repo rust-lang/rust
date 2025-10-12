@@ -1,11 +1,11 @@
 //! Various extensions traits for Chalk types.
 
-use hir_def::{FunctionId, ItemContainerId, Lookup, TraitId};
+use hir_def::{ItemContainerId, Lookup, TraitId};
 
 use crate::{
-    Binders, CallableDefId, CallableSig, DynTy, Interner, ProjectionTy, Substitution, ToChalk,
-    TraitRef, Ty, TyKind, db::HirDatabase, from_assoc_type_id, from_chalk_trait_id,
-    generics::generics, to_chalk_trait_id, utils::ClosureSubst,
+    Binders, CallableSig, DynTy, Interner, ProjectionTy, Substitution, TraitRef, Ty, TyKind,
+    db::HirDatabase, from_assoc_type_id, from_chalk_trait_id, generics::generics,
+    to_chalk_trait_id, utils::ClosureSubst,
 };
 
 pub(crate) trait TyExt {
@@ -13,9 +13,7 @@ pub(crate) trait TyExt {
     fn is_unknown(&self) -> bool;
 
     fn as_tuple(&self) -> Option<&Substitution>;
-    fn as_fn_def(&self, db: &dyn HirDatabase) -> Option<FunctionId>;
 
-    fn callable_def(&self, db: &dyn HirDatabase) -> Option<CallableDefId>;
     fn callable_sig(&self, db: &dyn HirDatabase) -> Option<CallableSig>;
 }
 
@@ -31,20 +29,6 @@ impl TyExt for Ty {
     fn as_tuple(&self) -> Option<&Substitution> {
         match self.kind(Interner) {
             TyKind::Tuple(_, substs) => Some(substs),
-            _ => None,
-        }
-    }
-
-    fn as_fn_def(&self, db: &dyn HirDatabase) -> Option<FunctionId> {
-        match self.callable_def(db) {
-            Some(CallableDefId::FunctionId(func)) => Some(func),
-            Some(CallableDefId::StructId(_) | CallableDefId::EnumVariantId(_)) | None => None,
-        }
-    }
-
-    fn callable_def(&self, db: &dyn HirDatabase) -> Option<CallableDefId> {
-        match self.kind(Interner) {
-            &TyKind::FnDef(def, ..) => Some(ToChalk::from_chalk(db, def)),
             _ => None,
         }
     }
