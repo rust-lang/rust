@@ -205,10 +205,144 @@ impl<S: Sip> Hasher<S> {
         self.state.v3 = self.k1 ^ 0x7465646279746573;
         self.ntail = 0;
     }
+
+    // A specialized write function for values with size <= 8.
+    //
+    // The hashing of multi-byte integers depends on endianness. E.g.:
+    // - little-endian: `write_u32(0xDDCCBBAA)` == `write([0xAA, 0xBB, 0xCC, 0xDD])`
+    // - big-endian:    `write_u32(0xDDCCBBAA)` == `write([0xDD, 0xCC, 0xBB, 0xAA])`
+    //
+    // This function does the right thing for little-endian hardware. On
+    // big-endian hardware `x` must be byte-swapped first to give the right
+    // behaviour. After any byte-swapping, the input must be zero-extended to
+    // 64-bits. The caller is responsible for the byte-swapping and
+    // zero-extension.
+    #[inline]
+    fn short_write<T>(&mut self, _x: T, x: u64) {
+        let size = mem::size_of::<T>();
+        self.length += size;
+
+        // The original number must be zero-extended, not sign-extended.
+        debug_assert!(if size < 8 { x >> (8 * size) == 0 } else { true });
+
+        // The number of bytes needed to fill `self.tail`.
+
+        let needed = 8 - self.ntail;
+
+        // SipHash parses the input stream as 8-byte little-endian integers.
+        // Inputs are put into `self.tail` until 8 bytes of data have been
+        // collected, and then that word is processed.
+        //
+        // For example, imagine that `self.tail` is 0x0000_00EE_DDCC_BBAA,
+        // `self.ntail` is 5 (because 5 bytes have been put into `self.tail`),
+        // and `needed` is therefore 3.
+        //
+        // - Scenario 1, `self.write_u8(0xFF)`: we have already zero-extended
+        //   the input to 0x0000_0000_0000_00FF. We now left-shift it five
+        //   bytes, giving 0x0000_FF00_0000_0000. We then bitwise-OR that value
+        //   into `self.tail`, resulting in 0x0000_FFEE_DDCC_BBAA.
+        //   (Zero-extension of the original input is critical in this scenario
+        //   because we don't want the high two bytes of `self.tail` to be
+        //   touched by the bitwise-OR.) `self.tail` is not yet full, so we
+        //   return early, after updating `self.ntail` to 6.
+        //
+        // - Scenario 2, `self.write_u32(0xIIHH_GGFF)`: we have already
+        //   zero-extended the input to 0x0000_0000_IIHH_GGFF. We now
+        //   left-shift it five bytes, giving 0xHHGG_FF00_0000_0000. We then
+        //   bitwise-OR that value into `self.tail`, resulting in
+        //   0xHHGG_FFEE_DDCC_BBAA. `self.tail` is now full, and we can use it
+        //   to update `self.state`. (As mentioned above, this assumes a
+        //   little-endian machine; on a big-endian machine we would have
+        //   byte-swapped 0xIIHH_GGFF in the caller, giving 0xFFGG_HHII, and we
+        //   would then end up bitwise-ORing 0xGGHH_II00_0000_0000 into
+        //   `self.tail`).
+        //
+        self.tail |= x << (8 * self.ntail);
+        if size < needed {
+            self.ntail += size;
+            return;
+        }
+
+        // `self.tail` is full, process it.
+
+        self.state.v3 ^= self.tail;
+        S::c_rounds(&mut self.state);
+        self.state.v0 ^= self.tail;
+
+        // Continuing scenario 2: we have one byte left over from the input. We
+        // set `self.ntail` to 1 and `self.tail` to `0x0000_0000_IIHH_GGFF >>
+        // 8*3`, which is 0x0000_0000_0000_00II. (Or on a big-endian machine
+        // the prior byte-swapping would leave us with 0x0000_0000_0000_00FF.)
+        //
+        // The `if` is needed to avoid shifting by 64 bits, which Rust
+        // complains about.
+        self.ntail = size - needed;
+        self.tail = if needed < 8 { x >> (8 * needed) } else { 0 };
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl super::Hasher for SipHasher {
+    #[inline]
+    fn write_u8(&mut self, i: u8) {
+        self.0.hasher.write_u8(i);
+    }
+
+    #[inline]
+    fn write_u16(&mut self, i: u16) {
+        self.0.hasher.write_u16(i);
+    }
+
+    #[inline]
+    fn write_u32(&mut self, i: u32) {
+        self.0.hasher.write_u32(i);
+    }
+
+    #[inline]
+    fn write_u64(&mut self, i: u64) {
+        self.0.hasher.write_u64(i);
+    }
+
+    #[inline]
+    fn write_u128(&mut self, i: u128) {
+        self.0.hasher.write_u128(i);
+    }
+
+    #[inline]
+    fn write_usize(&mut self, i: usize) {
+        self.0.hasher.write_usize(i);
+    }
+
+    #[inline]
+    fn write_i8(&mut self, i: i8) {
+        self.0.hasher.write_i8(i);
+    }
+
+    #[inline]
+    fn write_i16(&mut self, i: i16) {
+        self.0.hasher.write_i16(i);
+    }
+
+    #[inline]
+    fn write_i32(&mut self, i: i32) {
+        self.0.hasher.write_i32(i);
+    }
+
+    #[inline]
+    fn write_i64(&mut self, i: i64) {
+        self.0.hasher.write_i64(i);
+    }
+
+    #[inline]
+    fn write_i128(&mut self, i: i128) {
+        self.0.hasher.write_i128(i);
+    }
+
+    #[inline]
+    fn write_isize(&mut self, i: isize) {
+        self.0.hasher.write_isize(i);
+    }
+
     #[inline]
     fn write(&mut self, msg: &[u8]) {
         self.0.hasher.write(msg)
@@ -228,6 +362,66 @@ impl super::Hasher for SipHasher {
 #[unstable(feature = "hashmap_internals", issue = "none")]
 impl super::Hasher for SipHasher13 {
     #[inline]
+    fn write_u8(&mut self, i: u8) {
+        self.hasher.write_u8(i);
+    }
+
+    #[inline]
+    fn write_u16(&mut self, i: u16) {
+        self.hasher.write_u16(i);
+    }
+
+    #[inline]
+    fn write_u32(&mut self, i: u32) {
+        self.hasher.write_u32(i);
+    }
+
+    #[inline]
+    fn write_u64(&mut self, i: u64) {
+        self.hasher.write_u64(i);
+    }
+
+    #[inline]
+    fn write_u128(&mut self, i: u128) {
+        self.hasher.write_u128(i);
+    }
+
+    #[inline]
+    fn write_usize(&mut self, i: usize) {
+        self.hasher.write_usize(i);
+    }
+
+    #[inline]
+    fn write_i8(&mut self, i: i8) {
+        self.hasher.write_i8(i);
+    }
+
+    #[inline]
+    fn write_i16(&mut self, i: i16) {
+        self.hasher.write_i16(i);
+    }
+
+    #[inline]
+    fn write_i32(&mut self, i: i32) {
+        self.hasher.write_i32(i);
+    }
+
+    #[inline]
+    fn write_i64(&mut self, i: i64) {
+        self.hasher.write_i64(i);
+    }
+
+    #[inline]
+    fn write_i128(&mut self, i: i128) {
+        self.hasher.write_i128(i);
+    }
+
+    #[inline]
+    fn write_isize(&mut self, i: isize) {
+        self.hasher.write_isize(i);
+    }
+
+    #[inline]
     fn write(&mut self, msg: &[u8]) {
         self.hasher.write(msg)
     }
@@ -244,13 +438,59 @@ impl super::Hasher for SipHasher13 {
 }
 
 impl<S: Sip> super::Hasher for Hasher<S> {
-    // Note: no integer hashing methods (`write_u*`, `write_i*`) are defined
-    // for this type. We could add them, copy the `short_write` implementation
-    // in librustc_data_structures/sip128.rs, and add `write_u*`/`write_i*`
-    // methods to `SipHasher`, `SipHasher13`, and `DefaultHasher`. This would
-    // greatly speed up integer hashing by those hashers, at the cost of
-    // slightly slowing down compile speeds on some benchmarks. See #69152 for
-    // details.
+    #[inline]
+    fn write_u8(&mut self, i: u8) {
+        self.short_write(i, i as u64);
+    }
+
+    #[inline]
+    fn write_u16(&mut self, i: u16) {
+        self.short_write(i, i.to_le() as u64);
+    }
+
+    #[inline]
+    fn write_u32(&mut self, i: u32) {
+        self.short_write(i, i.to_le() as u64);
+    }
+
+    #[inline]
+    fn write_u64(&mut self, i: u64) {
+        self.short_write(i, i.to_le() as u64);
+    }
+
+    // `write_u128` is currently unimplemented.
+
+    #[inline]
+    fn write_usize(&mut self, i: usize) {
+        self.short_write(i, i.to_le() as u64);
+    }
+
+    fn write_i8(&mut self, i: i8) {
+        self.short_write(i, i as u8 as u64);
+    }
+
+    #[inline]
+    fn write_i16(&mut self, i: i16) {
+        self.short_write(i, (i as u16).to_le() as u64);
+    }
+
+    #[inline]
+    fn write_i32(&mut self, i: i32) {
+        self.short_write(i, (i as u32).to_le() as u64);
+    }
+
+    #[inline]
+    fn write_i64(&mut self, i: i64) {
+        self.short_write(i, (i as u64).to_le() as u64);
+    }
+
+    // `write_i128` is currently unimplemented.
+
+    #[inline]
+    fn write_isize(&mut self, i: isize) {
+        self.short_write(i, (i as usize).to_le() as u64);
+    }
+
     #[inline]
     fn write(&mut self, msg: &[u8]) {
         let length = msg.len();

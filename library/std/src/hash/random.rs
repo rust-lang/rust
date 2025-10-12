@@ -125,8 +125,65 @@ impl Default for DefaultHasher {
 
 #[stable(feature = "hashmap_default_hasher", since = "1.13.0")]
 impl Hasher for DefaultHasher {
-    // The underlying `SipHasher13` doesn't override the other
-    // `write_*` methods, so it's ok not to forward them here.
+    #[inline]
+    fn write_u8(&mut self, i: u8) {
+        self.0.write_u8(i);
+    }
+
+    #[inline]
+    fn write_u16(&mut self, i: u16) {
+        self.0.write_u16(i);
+    }
+
+    #[inline]
+    fn write_u32(&mut self, i: u32) {
+        self.0.write_u32(i);
+    }
+
+    #[inline]
+    fn write_u64(&mut self, i: u64) {
+        self.0.write_u64(i);
+    }
+
+    #[inline]
+    fn write_u128(&mut self, i: u128) {
+        self.0.write_u128(i);
+    }
+
+    #[inline]
+    fn write_usize(&mut self, i: usize) {
+        self.0.write_usize(i);
+    }
+
+    #[inline]
+    fn write_i8(&mut self, i: i8) {
+        self.0.write_i8(i);
+    }
+
+    #[inline]
+    fn write_i16(&mut self, i: i16) {
+        self.0.write_i16(i);
+    }
+
+    #[inline]
+    fn write_i32(&mut self, i: i32) {
+        self.0.write_i32(i);
+    }
+
+    #[inline]
+    fn write_i64(&mut self, i: i64) {
+        self.0.write_i64(i);
+    }
+
+    #[inline]
+    fn write_i128(&mut self, i: i128) {
+        self.0.write_i128(i);
+    }
+
+    #[inline]
+    fn write_isize(&mut self, i: isize) {
+        self.0.write_isize(i);
+    }
 
     #[inline]
     fn write(&mut self, msg: &[u8]) {
