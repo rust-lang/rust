@@ -1,5 +1,5 @@
 //@ compile-flags: -O
-//@ run-fail
+//@ run-pass
 
 pub enum Value {
     V0(i32),
