@@ -4,8 +4,8 @@
 
 use clap::{Args, Parser, Subcommand};
 use clippy_dev::{
-    ClippyInfo, UpdateMode, deprecate_lint, dogfood, fmt, lint, new_lint, new_parse_cx, release, rename_lint, serve,
-    setup, sync, update_lints,
+    ClippyInfo, UpdateMode, dogfood, edit_lints, fmt, lint, new_lint, new_parse_cx, release, rename_lint, serve, setup,
+    sync, update_lints,
 };
 use std::env;
 
@@ -78,10 +78,10 @@ fn main() {
             rename_lint::rename(cx, clippy.version, &old_name, &new_name);
         }),
         DevCommand::Uplift { old_name, new_name } => new_parse_cx(|cx| {
-            deprecate_lint::uplift(cx, clippy.version, &old_name, new_name.as_deref().unwrap_or(&old_name));
+            edit_lints::uplift(cx, clippy.version, &old_name, new_name.as_deref().unwrap_or(&old_name));
         }),
         DevCommand::Deprecate { name, reason } => {
-            new_parse_cx(|cx| deprecate_lint::deprecate(cx, clippy.version, &name, &reason));
+            new_parse_cx(|cx| edit_lints::deprecate(cx, clippy.version, &name, &reason));
         },
         DevCommand::Sync(SyncCommand { subcommand }) => match subcommand {
             SyncSubcommand::UpdateNightly => sync::update_nightly(),
