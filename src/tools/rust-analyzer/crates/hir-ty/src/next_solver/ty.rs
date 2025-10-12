@@ -3,18 +3,22 @@
 use std::iter;
 use std::ops::ControlFlow;
 
-use hir_def::type_ref::Rawness;
-use hir_def::{AdtId, GenericDefId, TypeOrConstParamId, TypeParamId};
+use hir_def::{
+    AdtId, DefWithBodyId, GenericDefId, HasModule, TypeOrConstParamId, TypeParamId,
+    hir::generics::{TypeOrConstParamData, TypeParamProvenance},
+    lang_item::LangItem,
+};
+use hir_def::{TraitId, type_ref::Rawness};
 use intern::{Interned, Symbol, sym};
 use rustc_abi::{Float, Integer, Size};
 use rustc_ast_ir::{Mutability, try_visit, visit::VisitorResult};
 use rustc_type_ir::{
-    BoundVar, ClosureKind, CollectAndApply, FlagComputation, Flags, FloatTy, FloatVid, InferTy,
-    IntTy, IntVid, Interner, TyVid, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable,
-    TypeVisitable, TypeVisitableExt, TypeVisitor, UintTy, WithCachedTypeInfo,
+    AliasTyKind, BoundVar, ClosureKind, CollectAndApply, FlagComputation, Flags, FloatTy, FloatVid,
+    InferTy, IntTy, IntVid, Interner, TyVid, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt, TypeVisitor, UintTy, Upcast, WithCachedTypeInfo,
     inherent::{
-        Abi, AdtDef as _, BoundVarLike, Const as _, GenericArgs as _, IntoKind, ParamLike,
-        PlaceholderLike, Safety as _, SliceLike, Ty as _,
+        Abi, AdtDef as _, BoundExistentialPredicates, BoundVarLike, Const as _, GenericArgs as _,
+        IntoKind, ParamLike, PlaceholderLike, Safety as _, SliceLike, Ty as _,
     },
     relate::Relate,
     solve::SizedTraitKind,
@@ -24,13 +28,14 @@ use salsa::plumbing::{AsId, FromId};
 use smallvec::SmallVec;
 
 use crate::{
-    FnAbi,
+    FnAbi, ImplTraitId,
     db::HirDatabase,
     interner::InternedWrapperNoDebug,
     next_solver::{
-        AdtDef, Binder, CallableIdWrapper, ClosureIdWrapper, Const, CoroutineIdWrapper, FnSig,
-        GenericArg, PolyFnSig, Region, TypeAliasIdWrapper,
+        AdtDef, Binder, CallableIdWrapper, Clause, ClauseKind, ClosureIdWrapper, Const,
+        CoroutineIdWrapper, FnSig, GenericArg, PolyFnSig, Region, TraitRef, TypeAliasIdWrapper,
         abi::Safety,
+        mapping::ChalkToNextSolver,
         util::{CoroutineArgsExt, IntegerTypeExt},
     },
 };
@@ -409,7 +414,7 @@ impl<'db> Ty<'db> {
 
     pub fn as_reference(self) -> Option<(Ty<'db>, Region<'db>, Mutability)> {
         match self.kind() {
-            TyKind::Ref(lifetime, ty, mutability) => Some((ty, lifetime, mutability)),
+            TyKind::Ref(region, ty, mutability) => Some((ty, region, mutability)),
             _ => None,
         }
     }
@@ -420,6 +425,18 @@ impl<'db> Ty<'db> {
             TyKind::RawPtr(ty, mutability) => Some((ty, Rawness::RawPtr, mutability)),
             _ => None,
         }
+    }
+
+    pub fn as_tuple(self) -> Option<Tys<'db>> {
+        match self.kind() {
+            TyKind::Tuple(tys) => Some(tys),
+            _ => None,
+        }
+    }
+
+    pub fn dyn_trait(self) -> Option<TraitId> {
+        let TyKind::Dynamic(bounds, _) = self.kind() else { return None };
+        Some(bounds.principal_def_id()?.0)
     }
 
     pub fn strip_references(self) -> Ty<'db> {
@@ -442,6 +459,176 @@ impl<'db> Ty<'db> {
         self.fold_with(&mut crate::next_solver::infer::resolve::ReplaceInferWithError::new(
             interner,
         ))
+    }
+
+    pub fn from_builtin_type(
+        interner: DbInterner<'db>,
+        ty: hir_def::builtin_type::BuiltinType,
+    ) -> Ty<'db> {
+        let kind = match ty {
+            hir_def::builtin_type::BuiltinType::Char => TyKind::Char,
+            hir_def::builtin_type::BuiltinType::Bool => TyKind::Bool,
+            hir_def::builtin_type::BuiltinType::Str => TyKind::Str,
+            hir_def::builtin_type::BuiltinType::Int(int) => TyKind::Int(match int {
+                hir_def::builtin_type::BuiltinInt::Isize => rustc_type_ir::IntTy::Isize,
+                hir_def::builtin_type::BuiltinInt::I8 => rustc_type_ir::IntTy::I8,
+                hir_def::builtin_type::BuiltinInt::I16 => rustc_type_ir::IntTy::I16,
+                hir_def::builtin_type::BuiltinInt::I32 => rustc_type_ir::IntTy::I32,
+                hir_def::builtin_type::BuiltinInt::I64 => rustc_type_ir::IntTy::I64,
+                hir_def::builtin_type::BuiltinInt::I128 => rustc_type_ir::IntTy::I128,
+            }),
+            hir_def::builtin_type::BuiltinType::Uint(uint) => TyKind::Uint(match uint {
+                hir_def::builtin_type::BuiltinUint::Usize => rustc_type_ir::UintTy::Usize,
+                hir_def::builtin_type::BuiltinUint::U8 => rustc_type_ir::UintTy::U8,
+                hir_def::builtin_type::BuiltinUint::U16 => rustc_type_ir::UintTy::U16,
+                hir_def::builtin_type::BuiltinUint::U32 => rustc_type_ir::UintTy::U32,
+                hir_def::builtin_type::BuiltinUint::U64 => rustc_type_ir::UintTy::U64,
+                hir_def::builtin_type::BuiltinUint::U128 => rustc_type_ir::UintTy::U128,
+            }),
+            hir_def::builtin_type::BuiltinType::Float(float) => TyKind::Float(match float {
+                hir_def::builtin_type::BuiltinFloat::F16 => rustc_type_ir::FloatTy::F16,
+                hir_def::builtin_type::BuiltinFloat::F32 => rustc_type_ir::FloatTy::F32,
+                hir_def::builtin_type::BuiltinFloat::F64 => rustc_type_ir::FloatTy::F64,
+                hir_def::builtin_type::BuiltinFloat::F128 => rustc_type_ir::FloatTy::F128,
+            }),
+        };
+        Ty::new(interner, kind)
+    }
+
+    pub fn as_builtin(self) -> Option<hir_def::builtin_type::BuiltinType> {
+        let builtin = match self.kind() {
+            TyKind::Char => hir_def::builtin_type::BuiltinType::Char,
+            TyKind::Bool => hir_def::builtin_type::BuiltinType::Bool,
+            TyKind::Str => hir_def::builtin_type::BuiltinType::Str,
+            TyKind::Int(int) => hir_def::builtin_type::BuiltinType::Int(match int {
+                rustc_type_ir::IntTy::Isize => hir_def::builtin_type::BuiltinInt::Isize,
+                rustc_type_ir::IntTy::I8 => hir_def::builtin_type::BuiltinInt::I8,
+                rustc_type_ir::IntTy::I16 => hir_def::builtin_type::BuiltinInt::I16,
+                rustc_type_ir::IntTy::I32 => hir_def::builtin_type::BuiltinInt::I32,
+                rustc_type_ir::IntTy::I64 => hir_def::builtin_type::BuiltinInt::I64,
+                rustc_type_ir::IntTy::I128 => hir_def::builtin_type::BuiltinInt::I128,
+            }),
+            TyKind::Uint(uint) => hir_def::builtin_type::BuiltinType::Uint(match uint {
+                rustc_type_ir::UintTy::Usize => hir_def::builtin_type::BuiltinUint::Usize,
+                rustc_type_ir::UintTy::U8 => hir_def::builtin_type::BuiltinUint::U8,
+                rustc_type_ir::UintTy::U16 => hir_def::builtin_type::BuiltinUint::U16,
+                rustc_type_ir::UintTy::U32 => hir_def::builtin_type::BuiltinUint::U32,
+                rustc_type_ir::UintTy::U64 => hir_def::builtin_type::BuiltinUint::U64,
+                rustc_type_ir::UintTy::U128 => hir_def::builtin_type::BuiltinUint::U128,
+            }),
+            TyKind::Float(float) => hir_def::builtin_type::BuiltinType::Float(match float {
+                rustc_type_ir::FloatTy::F16 => hir_def::builtin_type::BuiltinFloat::F16,
+                rustc_type_ir::FloatTy::F32 => hir_def::builtin_type::BuiltinFloat::F32,
+                rustc_type_ir::FloatTy::F64 => hir_def::builtin_type::BuiltinFloat::F64,
+                rustc_type_ir::FloatTy::F128 => hir_def::builtin_type::BuiltinFloat::F128,
+            }),
+            _ => return None,
+        };
+        Some(builtin)
+    }
+
+    // FIXME: Should this be here?
+    pub fn impl_trait_bounds(self, db: &'db dyn HirDatabase) -> Option<Vec<Clause<'db>>> {
+        let interner = DbInterner::new_with(db, None, None);
+
+        match self.kind() {
+            TyKind::Alias(AliasTyKind::Opaque, opaque_ty) => {
+                match db.lookup_intern_impl_trait_id(opaque_ty.def_id.expect_opaque_ty()) {
+                    ImplTraitId::ReturnTypeImplTrait(func, idx) => {
+                        db.return_type_impl_traits_ns(func).map(|it| {
+                            let data = (*it).as_ref().map_bound(|rpit| {
+                                &rpit.impl_traits[idx.to_nextsolver(interner)].predicates
+                            });
+                            data.iter_instantiated_copied(interner, opaque_ty.args.as_slice())
+                                .collect()
+                        })
+                    }
+                    ImplTraitId::TypeAliasImplTrait(alias, idx) => {
+                        db.type_alias_impl_traits_ns(alias).map(|it| {
+                            let data = (*it).as_ref().map_bound(|rpit| {
+                                &rpit.impl_traits[idx.to_nextsolver(interner)].predicates
+                            });
+                            data.iter_instantiated_copied(interner, opaque_ty.args.as_slice())
+                                .collect()
+                        })
+                    }
+                    ImplTraitId::AsyncBlockTypeImplTrait(def, _) => {
+                        let krate = def.module(db).krate();
+                        if let Some(future_trait) = LangItem::Future.resolve_trait(db, krate) {
+                            // This is only used by type walking.
+                            // Parameters will be walked outside, and projection predicate is not used.
+                            // So just provide the Future trait.
+                            let impl_bound = TraitRef::new(
+                                interner,
+                                future_trait.into(),
+                                GenericArgs::new_from_iter(interner, []),
+                            )
+                            .upcast(interner);
+                            Some(vec![impl_bound])
+                        } else {
+                            None
+                        }
+                    }
+                }
+            }
+            TyKind::Param(param) => {
+                // FIXME: We shouldn't use `param.id` here.
+                let generic_params = db.generic_params(param.id.parent());
+                let param_data = &generic_params[param.id.local_id()];
+                match param_data {
+                    TypeOrConstParamData::TypeParamData(p) => match p.provenance {
+                        TypeParamProvenance::ArgumentImplTrait => {
+                            let predicates = db
+                                .generic_predicates_ns(param.id.parent())
+                                .instantiate_identity()
+                                .into_iter()
+                                .flatten()
+                                .filter(|wc| match wc.kind().skip_binder() {
+                                    ClauseKind::Trait(tr) => tr.self_ty() == self,
+                                    ClauseKind::Projection(pred) => pred.self_ty() == self,
+                                    ClauseKind::TypeOutlives(pred) => pred.0 == self,
+                                    _ => false,
+                                })
+                                .collect::<Vec<_>>();
+
+                            Some(predicates)
+                        }
+                        _ => None,
+                    },
+                    _ => None,
+                }
+            }
+            _ => None,
+        }
+    }
+
+    /// FIXME: Get rid of this, it's not a good abstraction
+    pub fn equals_ctor(self, other: Ty<'db>) -> bool {
+        match (self.kind(), other.kind()) {
+            (TyKind::Adt(adt, ..), TyKind::Adt(adt2, ..)) => adt.def_id() == adt2.def_id(),
+            (TyKind::Slice(_), TyKind::Slice(_)) | (TyKind::Array(_, _), TyKind::Array(_, _)) => {
+                true
+            }
+            (TyKind::FnDef(def_id, ..), TyKind::FnDef(def_id2, ..)) => def_id == def_id2,
+            (TyKind::Alias(_, alias, ..), TyKind::Alias(_, alias2)) => {
+                alias.def_id == alias2.def_id
+            }
+            (TyKind::Foreign(ty_id, ..), TyKind::Foreign(ty_id2, ..)) => ty_id == ty_id2,
+            (TyKind::Closure(id1, _), TyKind::Closure(id2, _)) => id1 == id2,
+            (TyKind::Ref(.., mutability), TyKind::Ref(.., mutability2))
+            | (TyKind::RawPtr(.., mutability), TyKind::RawPtr(.., mutability2)) => {
+                mutability == mutability2
+            }
+            (TyKind::FnPtr(sig, hdr), TyKind::FnPtr(sig2, hdr2)) => sig == sig2 && hdr == hdr2,
+            (TyKind::Tuple(tys), TyKind::Tuple(tys2)) => tys.len() == tys2.len(),
+            (TyKind::Str, TyKind::Str)
+            | (TyKind::Never, TyKind::Never)
+            | (TyKind::Char, TyKind::Char)
+            | (TyKind::Bool, TyKind::Bool) => true,
+            (TyKind::Int(int), TyKind::Int(int2)) => int == int2,
+            (TyKind::Float(float), TyKind::Float(float2)) => float == float2,
+            _ => false,
+        }
     }
 }
 

@@ -21,18 +21,17 @@ use stdx::never;
 use crate::{
     AliasEq, AliasTy, GenericArgsProhibitedReason, ImplTraitLoweringMode, IncorrectGenericsLenKind,
     Interner, ParamLoweringMode, PathGenericsSource, PathLoweringDiagnostic, ProjectionTy,
-    QuantifiedWhereClause, Substitution, TraitRef, Ty, TyBuilder, TyDefId, TyKind,
-    TyLoweringContext, WhereClause,
+    QuantifiedWhereClause, Substitution, TraitRef, Ty, TyBuilder, TyDefId, TyKind, WhereClause,
     consteval_chalk::{unknown_const, unknown_const_as_generic},
     db::HirDatabase,
     error_lifetime,
     generics::{Generics, generics},
-    lower::{LifetimeElisionKind, named_associated_type_shorthand_candidates},
+    lower::{LifetimeElisionKind, TyLoweringContext, named_associated_type_shorthand_candidates},
     next_solver::{
         DbInterner,
         mapping::{ChalkToNextSolver, NextSolverToChalk},
     },
-    static_lifetime, to_assoc_type_id, to_chalk_trait_id, to_placeholder_idx,
+    to_assoc_type_id, to_chalk_trait_id, to_placeholder_idx,
     utils::associated_type_by_name_including_super_traits,
 };
 
@@ -650,14 +649,6 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                 });
             }
 
-            fn report_elision_failure(&mut self, def: GenericDefId, expected_count: u32) {
-                self.ctx.on_diagnostic(PathLoweringDiagnostic::ElisionFailure {
-                    generics_source: self.generics_source,
-                    def,
-                    expected_count,
-                });
-            }
-
             fn report_missing_lifetime(&mut self, def: GenericDefId, expected_count: u32) {
                 self.ctx.on_diagnostic(PathLoweringDiagnostic::MissingLifetime {
                     generics_source: self.generics_source,
@@ -810,8 +801,6 @@ pub(crate) trait GenericArgsLowerer {
         hard_error: bool,
     );
 
-    fn report_elision_failure(&mut self, def: GenericDefId, expected_count: u32);
-
     fn report_missing_lifetime(&mut self, def: GenericDefId, expected_count: u32);
 
     fn report_len_mismatch(
@@ -883,13 +872,6 @@ fn check_generic_args_len(
             LifetimeElisionKind::AnonymousReportError => {
                 ctx.report_missing_lifetime(def, lifetime_args_len as u32);
                 had_error = true
-            }
-            LifetimeElisionKind::ElisionFailure => {
-                ctx.report_elision_failure(def, lifetime_args_len as u32);
-                had_error = true;
-            }
-            LifetimeElisionKind::StaticIfNoLifetimeInScope { only_lint: _ } => {
-                // FIXME: Check there are other lifetimes in scope, and error/lint.
             }
             LifetimeElisionKind::Elided(_) => {
                 ctx.report_elided_lifetimes_in_path(def, lifetime_args_len as u32, false);
@@ -1099,14 +1081,10 @@ pub(crate) fn substs_from_args_and_bindings(
                 // If there are fewer arguments than parameters, it means we're inferring the remaining arguments.
                 let param = if let GenericParamId::LifetimeParamId(_) = param_id {
                     match &lifetime_elision {
-                        LifetimeElisionKind::ElisionFailure
-                        | LifetimeElisionKind::AnonymousCreateParameter { report_in_path: true }
+                        LifetimeElisionKind::AnonymousCreateParameter { report_in_path: true }
                         | LifetimeElisionKind::AnonymousReportError => {
                             assert!(had_count_error);
                             ctx.inferred_kind(def, param_id, param, infer_args, &substs)
-                        }
-                        LifetimeElisionKind::StaticIfNoLifetimeInScope { only_lint: _ } => {
-                            static_lifetime().cast(Interner)
                         }
                         LifetimeElisionKind::Elided(lifetime) => lifetime.clone().cast(Interner),
                         LifetimeElisionKind::AnonymousCreateParameter { report_in_path: false }

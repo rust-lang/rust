@@ -7,8 +7,8 @@ use intern::{Interned, Symbol};
 use macros::{TypeFoldable, TypeVisitable};
 use rustc_ast_ir::{try_visit, visit::VisitorResult};
 use rustc_type_ir::{
-    BoundVar, FlagComputation, Flags, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable,
-    TypeVisitable, TypeVisitableExt, WithCachedTypeInfo,
+    BoundVar, DebruijnIndex, FlagComputation, Flags, TypeFoldable, TypeSuperFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, WithCachedTypeInfo,
     inherent::{IntoKind, ParamEnv as _, PlaceholderLike, SliceLike},
     relate::Relate,
 };
@@ -60,6 +60,10 @@ impl<'db> Const<'db> {
 
     pub fn new_placeholder(interner: DbInterner<'db>, placeholder: PlaceholderConst) -> Self {
         Const::new(interner, ConstKind::Placeholder(placeholder))
+    }
+
+    pub fn new_bound(interner: DbInterner<'db>, index: DebruijnIndex, bound: BoundConst) -> Self {
+        Const::new(interner, ConstKind::Bound(index, bound))
     }
 
     pub fn new_valtree(
@@ -159,11 +163,11 @@ impl ParamConst {
 /// Represents a typed, fully evaluated constant.
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, TypeFoldable, TypeVisitable)]
 pub struct ValueConst<'db> {
-    pub(crate) ty: Ty<'db>,
+    pub ty: Ty<'db>,
     // FIXME: Should we ignore this for TypeVisitable, TypeFoldable?
     #[type_visitable(ignore)]
     #[type_foldable(identity)]
-    pub(crate) value: Valtree<'db>,
+    pub value: Valtree<'db>,
 }
 
 impl<'db> ValueConst<'db> {

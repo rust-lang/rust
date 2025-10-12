@@ -86,7 +86,7 @@ impl ImplTraitLoweringState {
 pub(crate) struct PathDiagnosticCallbackData(pub(crate) TypeRefId);
 
 #[derive(Debug, Clone)]
-pub enum LifetimeElisionKind {
+pub(crate) enum LifetimeElisionKind {
     /// Create a new anonymous lifetime parameter and reference it.
     ///
     /// If `report_in_path`, report an error when encountering lifetime elision in a path:
@@ -111,14 +111,6 @@ pub enum LifetimeElisionKind {
     /// error on default object bounds (e.g., `Box<dyn Foo>`).
     AnonymousReportError,
 
-    /// Resolves elided lifetimes to `'static` if there are no other lifetimes in scope,
-    /// otherwise give a warning that the previous behavior of introducing a new early-bound
-    /// lifetime is a bug and will be removed (if `only_lint` is enabled).
-    StaticIfNoLifetimeInScope { only_lint: bool },
-
-    /// Signal we cannot find which should be the anonymous lifetime.
-    ElisionFailure,
-
     /// Infer all elided lifetimes.
     Infer,
 }
@@ -132,7 +124,7 @@ impl LifetimeElisionKind {
 }
 
 #[derive(Debug)]
-pub struct TyLoweringContext<'db> {
+pub(crate) struct TyLoweringContext<'db> {
     pub db: &'db dyn HirDatabase,
     resolver: &'db Resolver<'db>,
     store: &'db ExpressionStore,
@@ -152,7 +144,7 @@ pub struct TyLoweringContext<'db> {
 }
 
 impl<'db> TyLoweringContext<'db> {
-    pub fn new(
+    pub(crate) fn new(
         db: &'db dyn HirDatabase,
         resolver: &'db Resolver<'db>,
         store: &'db ExpressionStore,
@@ -177,7 +169,7 @@ impl<'db> TyLoweringContext<'db> {
         }
     }
 
-    pub fn with_debruijn<T>(
+    pub(crate) fn with_debruijn<T>(
         &mut self,
         debruijn: DebruijnIndex,
         f: impl FnOnce(&mut TyLoweringContext<'_>) -> T,
@@ -188,7 +180,7 @@ impl<'db> TyLoweringContext<'db> {
         result
     }
 
-    pub fn with_shifted_in<T>(
+    pub(crate) fn with_shifted_in<T>(
         &mut self,
         debruijn: DebruijnIndex,
         f: impl FnOnce(&mut TyLoweringContext<'_>) -> T,
@@ -207,25 +199,15 @@ impl<'db> TyLoweringContext<'db> {
         result
     }
 
-    pub fn with_impl_trait_mode(self, impl_trait_mode: ImplTraitLoweringMode) -> Self {
+    pub(crate) fn with_impl_trait_mode(self, impl_trait_mode: ImplTraitLoweringMode) -> Self {
         Self { impl_trait_mode: ImplTraitLoweringState::new(impl_trait_mode), ..self }
     }
 
-    pub fn with_type_param_mode(self, type_param_mode: ParamLoweringMode) -> Self {
+    pub(crate) fn with_type_param_mode(self, type_param_mode: ParamLoweringMode) -> Self {
         Self { type_param_mode, ..self }
     }
 
-    pub fn impl_trait_mode(&mut self, impl_trait_mode: ImplTraitLoweringMode) -> &mut Self {
-        self.impl_trait_mode = ImplTraitLoweringState::new(impl_trait_mode);
-        self
-    }
-
-    pub fn type_param_mode(&mut self, type_param_mode: ParamLoweringMode) -> &mut Self {
-        self.type_param_mode = type_param_mode;
-        self
-    }
-
-    pub fn push_diagnostic(&mut self, type_ref: TypeRefId, kind: TyLoweringDiagnosticKind) {
+    pub(crate) fn push_diagnostic(&mut self, type_ref: TypeRefId, kind: TyLoweringDiagnosticKind) {
         self.diagnostics.push(TyLoweringDiagnostic { source: type_ref, kind });
     }
 }
@@ -249,11 +231,11 @@ pub enum ParamLoweringMode {
 }
 
 impl<'db> TyLoweringContext<'db> {
-    pub fn lower_ty(&mut self, type_ref: TypeRefId) -> Ty {
+    pub(crate) fn lower_ty(&mut self, type_ref: TypeRefId) -> Ty {
         self.lower_ty_ext(type_ref).0
     }
 
-    pub fn lower_const(&mut self, const_ref: &ConstRef, const_type: Ty) -> Const {
+    pub(crate) fn lower_const(&mut self, const_ref: &ConstRef, const_type: Ty) -> Const {
         let const_ref = &self.store[const_ref.expr];
         match const_ref {
             hir_def::hir::Expr::Path(path) => path_to_const(
@@ -308,7 +290,7 @@ impl<'db> TyLoweringContext<'db> {
         }
     }
 
-    pub fn lower_path_as_const(&mut self, path: &Path, const_type: Ty) -> Const {
+    pub(crate) fn lower_path_as_const(&mut self, path: &Path, const_type: Ty) -> Const {
         path_to_const(
             self.db,
             self.resolver,
@@ -325,7 +307,7 @@ impl<'db> TyLoweringContext<'db> {
         self.generics.get_or_init(|| generics(self.db, self.def))
     }
 
-    pub fn lower_ty_ext(&mut self, type_ref_id: TypeRefId) -> (Ty, Option<TypeNs>) {
+    pub(crate) fn lower_ty_ext(&mut self, type_ref_id: TypeRefId) -> (Ty, Option<TypeNs>) {
         let mut res = None;
         let type_ref = &self.store[type_ref_id];
         let ty = match type_ref {
@@ -774,7 +756,7 @@ impl<'db> TyLoweringContext<'db> {
         ImplTrait { bounds: crate::make_single_type_binders(predicates) }
     }
 
-    pub fn lower_lifetime(&self, lifetime: LifetimeRefId) -> Lifetime {
+    pub(crate) fn lower_lifetime(&self, lifetime: LifetimeRefId) -> Lifetime {
         match self.resolver.resolve_lifetime(&self.store[lifetime]) {
             Some(resolution) => match resolution {
                 LifetimeNs::Static => static_lifetime(),

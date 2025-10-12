@@ -19,7 +19,6 @@ use hir_ty::{
     PathLoweringDiagnostic, TyLoweringDiagnostic, TyLoweringDiagnosticKind,
     db::HirDatabase,
     diagnostics::{BodyValidationDiagnostic, UnsafetyReason},
-    next_solver::{DbInterner, mapping::NextSolverToChalk},
 };
 use syntax::{
     AstNode, AstPtr, SyntaxError, SyntaxNodePtr, TextRange,
@@ -641,7 +640,6 @@ impl<'db> AnyDiagnostic<'db> {
             ExprOrPatId::ExprId(expr) => expr_syntax(expr),
             ExprOrPatId::PatId(pat) => pat_syntax(pat),
         };
-        let interner = DbInterner::new_with(db, None, None);
         Some(match d {
             &InferenceDiagnostic::NoSuchField { field: expr, private, variant } => {
                 let expr_or_pat = match expr {
@@ -668,11 +666,7 @@ impl<'db> AnyDiagnostic<'db> {
             }
             InferenceDiagnostic::ExpectedFunction { call_expr, found } => {
                 let call_expr = expr_syntax(*call_expr)?;
-                ExpectedFunction {
-                    call: call_expr,
-                    found: Type::new(db, def, found.to_chalk(interner)),
-                }
-                .into()
+                ExpectedFunction { call: call_expr, found: Type::new(db, def, *found) }.into()
             }
             InferenceDiagnostic::UnresolvedField {
                 expr,
@@ -684,7 +678,7 @@ impl<'db> AnyDiagnostic<'db> {
                 UnresolvedField {
                     expr,
                     name: name.clone(),
-                    receiver: Type::new(db, def, receiver.to_chalk(interner)),
+                    receiver: Type::new(db, def, *receiver),
                     method_with_same_name_exists: *method_with_same_name_exists,
                 }
                 .into()
@@ -700,9 +694,8 @@ impl<'db> AnyDiagnostic<'db> {
                 UnresolvedMethodCall {
                     expr,
                     name: name.clone(),
-                    receiver: Type::new(db, def, receiver.to_chalk(interner)),
-                    field_with_same_name: (*field_with_same_name)
-                        .map(|ty| Type::new(db, def, ty.to_chalk(interner))),
+                    receiver: Type::new(db, def, *receiver),
+                    field_with_same_name: (*field_with_same_name).map(|ty| Type::new(db, def, ty)),
                     assoc_func_with_same_name: assoc_func_with_same_name.map(Into::into),
                 }
                 .into()
@@ -729,7 +722,7 @@ impl<'db> AnyDiagnostic<'db> {
             }
             InferenceDiagnostic::TypedHole { expr, expected } => {
                 let expr = expr_syntax(*expr)?;
-                TypedHole { expr, expected: Type::new(db, def, expected.to_chalk(interner)) }.into()
+                TypedHole { expr, expected: Type::new(db, def, *expected) }.into()
             }
             &InferenceDiagnostic::MismatchedTupleStructPatArgCount { pat, expected, found } => {
                 let expr_or_pat = match pat {
@@ -746,13 +739,12 @@ impl<'db> AnyDiagnostic<'db> {
             }
             InferenceDiagnostic::CastToUnsized { expr, cast_ty } => {
                 let expr = expr_syntax(*expr)?;
-                CastToUnsized { expr, cast_ty: Type::new(db, def, cast_ty.to_chalk(interner)) }
-                    .into()
+                CastToUnsized { expr, cast_ty: Type::new(db, def, *cast_ty) }.into()
             }
             InferenceDiagnostic::InvalidCast { expr, error, expr_ty, cast_ty } => {
                 let expr = expr_syntax(*expr)?;
-                let expr_ty = Type::new(db, def, expr_ty.to_chalk(interner));
-                let cast_ty = Type::new(db, def, cast_ty.to_chalk(interner));
+                let expr_ty = Type::new(db, def, *expr_ty);
+                let cast_ty = Type::new(db, def, *cast_ty);
                 InvalidCast { expr, error: *error, expr_ty, cast_ty }.into()
             }
             InferenceDiagnostic::TyDiagnostic { source, diag } => {

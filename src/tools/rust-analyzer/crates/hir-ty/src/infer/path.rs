@@ -1,7 +1,7 @@
 //! Path expression resolution.
 
 use hir_def::{
-    AdtId, AssocItemId, GenericDefId, GenericParamId, ItemContainerId, Lookup,
+    AdtId, AssocItemId, GenericDefId, ItemContainerId, Lookup,
     expr_store::path::{Path, PathSegment},
     resolver::{ResolveValueResult, TypeNs, ValueNs},
 };
@@ -10,7 +10,7 @@ use rustc_type_ir::inherent::{SliceLike, Ty as _};
 use stdx::never;
 
 use crate::{
-    InferenceDiagnostic, ValueTyDefId, consteval,
+    InferenceDiagnostic, ValueTyDefId,
     generics::generics,
     infer::diagnostics::InferenceTyLoweringContext as TyLoweringContext,
     lower_nextsolver::LifetimeElisionKind,
@@ -118,20 +118,10 @@ impl<'db> InferenceContext<'_, 'db> {
             self.interner(),
             generic_def.into(),
             self_subst.iter().flat_map(|it| it.iter()).chain(substs.iter().skip(parent_substs_len)),
-            |_, _, id, _| self.error_param(id),
+            |_, _, id, _| GenericArg::error_from_id(self.interner(), id),
         );
 
         Some(ValuePathResolution::GenericDef(value_def, generic_def, substs))
-    }
-
-    fn error_param(&mut self, id: GenericParamId) -> GenericArg<'db> {
-        match id {
-            GenericParamId::TypeParamId(_) => self.types.error.into(),
-            GenericParamId::ConstParamId(id) => {
-                consteval::unknown_const_as_generic(self.db.const_param_ty_ns(id))
-            }
-            GenericParamId::LifetimeParamId(_) => self.types.re_error.into(),
-        }
     }
 
     pub(super) fn resolve_value_path_inner(

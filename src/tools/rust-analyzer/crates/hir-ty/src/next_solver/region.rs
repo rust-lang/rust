@@ -3,7 +3,8 @@
 use hir_def::LifetimeParamId;
 use intern::{Interned, Symbol};
 use rustc_type_ir::{
-    BoundVar, Flags, INNERMOST, RegionVid, TypeFlags, TypeFoldable, TypeVisitable, VisitorResult,
+    BoundVar, DebruijnIndex, Flags, INNERMOST, RegionVid, TypeFlags, TypeFoldable, TypeVisitable,
+    VisitorResult,
     inherent::{IntoKind, PlaceholderLike, SliceLike},
     relate::Relate,
 };
@@ -60,6 +61,14 @@ impl<'db> Region<'db> {
 
     pub fn new_erased(interner: DbInterner<'db>) -> Region<'db> {
         Region::new(interner, RegionKind::ReErased)
+    }
+
+    pub fn new_bound(
+        interner: DbInterner<'db>,
+        index: DebruijnIndex,
+        bound: BoundRegion,
+    ) -> Region<'db> {
+        Region::new(interner, RegionKind::ReBound(index, bound))
     }
 
     pub fn is_placeholder(&self) -> bool {

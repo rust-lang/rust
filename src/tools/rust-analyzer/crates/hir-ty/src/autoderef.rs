@@ -5,23 +5,21 @@
 
 use std::fmt;
 
-use hir_def::TraitId;
-use hir_def::{TypeAliasId, lang_item::LangItem};
+use hir_def::{TraitId, TypeAliasId, lang_item::LangItem};
 use rustc_type_ir::inherent::{IntoKind, Ty as _};
 use tracing::debug;
 use triomphe::Arc;
 
-use crate::next_solver::TraitRef;
-use crate::next_solver::infer::InferOk;
-use crate::next_solver::infer::traits::Obligation;
 use crate::{
     TraitEnvironment,
     db::HirDatabase,
     infer::unify::InferenceTable,
     next_solver::{
-        Ty, TyKind,
-        infer::traits::{ObligationCause, PredicateObligations},
-        mapping::{ChalkToNextSolver, NextSolverToChalk},
+        Canonical, TraitRef, Ty, TyKind,
+        infer::{
+            InferOk,
+            traits::{Obligation, ObligationCause, PredicateObligations},
+        },
         obligation_ctxt::ObligationCtxt,
     },
 };
@@ -38,17 +36,16 @@ const AUTODEREF_RECURSION_LIMIT: usize = 20;
 pub fn autoderef<'db>(
     db: &'db dyn HirDatabase,
     env: Arc<TraitEnvironment<'db>>,
-    ty: crate::Canonical<crate::Ty>,
-) -> impl Iterator<Item = crate::Ty> + use<> {
+    ty: Canonical<'db, Ty<'db>>,
+) -> impl Iterator<Item = Ty<'db>> + use<'db> {
     let mut table = InferenceTable::new(db, env);
-    let interner = table.interner();
-    let ty = table.instantiate_canonical(ty.to_nextsolver(interner));
+    let ty = table.instantiate_canonical(ty);
     let mut autoderef = Autoderef::new_no_tracking(&mut table, ty);
     let mut v = Vec::new();
     while let Some((ty, _steps)) = autoderef.next() {
         // `ty` may contain unresolved inference variables. Since there's no chance they would be
         // resolved, just replace with fallback type.
-        let resolved = autoderef.table.resolve_completely(ty).to_chalk(interner);
+        let resolved = autoderef.table.resolve_completely(ty);
 
         // If the deref chain contains a cycle (e.g. `A` derefs to `B` and `B` derefs to `A`), we
         // would revisit some already visited types. Stop here to avoid duplication.
