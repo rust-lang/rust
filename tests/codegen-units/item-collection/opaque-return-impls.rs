@@ -87,3 +87,6 @@ pub fn foo3() -> Box<dyn Iterator<Item = usize>> {
 //~ MONO_ITEM fn Counter::new
 //~ MONO_ITEM fn std::fmt::Arguments::<'_>::from_str
 //~ MONO_ITEM fn std::boxed::box_new_uninit
+//~ MONO_ITEM fn <core::displaywrapper::DisplayWrapper<*mut ()> as std::fmt::Display>::fmt
+//~ MONO_ITEM fn core::displaywrapper::format_ptr
+//~ MONO_ITEM fn core::displaywrapper::format_with_radix
