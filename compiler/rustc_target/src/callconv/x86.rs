@@ -2,7 +2,7 @@ use rustc_abi::{
     AddressSpace, Align, BackendRepr, HasDataLayout, Primitive, Reg, RegKind, TyAndLayout,
 };
 
-use crate::callconv::{ArgAttribute, FnAbi, PassMode, TyAbiInterface};
+use crate::callconv::{ArgAttribute, FnAbi, PassMode, TyAbiInterface, Uniform};
 use crate::spec::{HasTargetSpec, RustcAbi};
 
 #[derive(PartialEq)]
@@ -58,6 +58,13 @@ where
         }
     }
 
+    // Some calling conversions pass arguments in registers.
+    // This is set with -Zregparm, or the fastcall/vectorcall (always 2 registers)
+    let mut free_regs = opts.regparm.unwrap_or(0).into();
+    if opts.flavor == Flavor::FastcallOrVectorcall {
+        free_regs = 2;
+    }
+
     for arg in fn_abi.args.iter_mut() {
         if arg.is_ignore() || !arg.layout.is_sized() {
             continue;
@@ -72,7 +79,21 @@ where
         let align_4 = Align::from_bytes(4).unwrap();
         let align_16 = Align::from_bytes(16).unwrap();
 
+        let size_in_regs = arg.layout.size.bits().div_ceil(32);
+        let mut pass_in_reg = free_regs >= size_in_regs;
+
+        // In fastcall/vectorcall only 32-bit integers can be passed in registers.
+        if opts.flavor == Flavor::FastcallOrVectorcall && size_in_regs > 1 {
+            pass_in_reg = false;
+            // Once we've had an argument which doesn't fit, don't try to fit any more.
+            free_regs = 0;
+        }
+
         if arg.layout.is_aggregate() {
+            if opts.flavor == Flavor::FastcallOrVectorcall && size_in_regs > 1 {
+                pass_in_reg = false;
+            }
+
             // We need to compute the alignment of the `byval` argument. The rules can be found in
             // `X86_32ABIInfo::getTypeStackAlignInBytes` in Clang's `TargetInfo.cpp`. Summarized
             // here, they are:
@@ -119,83 +140,40 @@ where
                 align_4
             };
 
-            arg.pass_by_stack_offset(Some(byval_align));
+            if pass_in_reg {
+                arg.cast_to(Uniform::new(Reg::i32(), arg.layout.size));
+            } else {
+                arg.pass_by_stack_offset(Some(byval_align))
+            }
         } else {
+            let unit = arg.layout.homogeneous_aggregate(cx).unwrap().unit().unwrap();
+
+            // Fastcall/regparm won't pass floats in registers
+            // (though regparm _will_ pass f]oat-containing structs in registers)
+            if unit.kind != RegKind::Integer {
+                pass_in_reg = false;
+            }
+
             arg.extend_integer_width_to(32);
         }
-    }
 
-    fill_inregs(cx, fn_abi, opts, false);
-}
-
-pub(crate) fn fill_inregs<'a, Ty, C>(
-    cx: &C,
-    fn_abi: &mut FnAbi<'a, Ty>,
-    opts: X86Options,
-    rust_abi: bool,
-) where
-    Ty: TyAbiInterface<'a, C> + Copy,
-{
-    if opts.flavor != Flavor::FastcallOrVectorcall && opts.regparm.is_none_or(|x| x == 0) {
-        return;
-    }
-    // Mark arguments as InReg like clang does it,
-    // so our fastcall/vectorcall is compatible with C/C++ fastcall/vectorcall.
-
-    // Clang reference: lib/CodeGen/TargetInfo.cpp
-    // See X86_32ABIInfo::shouldPrimitiveUseInReg(), X86_32ABIInfo::updateFreeRegs()
-
-    // IsSoftFloatABI is only set to true on ARM platforms,
-    // which in turn can't be x86?
-
-    // 2 for fastcall/vectorcall, regparm limited by 3 otherwise
-    let mut free_regs = opts.regparm.unwrap_or(2).into();
-
-    // For types generating PassMode::Cast, InRegs will not be set.
-    // Maybe, this is a FIXME
-    let has_casts = fn_abi.args.iter().any(|arg| matches!(arg.mode, PassMode::Cast { .. }));
-    if has_casts && rust_abi {
-        return;
-    }
-
-    for arg in fn_abi.args.iter_mut() {
-        let attrs = match arg.mode {
-            PassMode::Ignore | PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: _ } => {
-                continue;
-            }
-            PassMode::Direct(ref mut attrs) => attrs,
-            PassMode::Pair(..)
-            | PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ }
-            | PassMode::Cast { .. } => {
-                unreachable!("x86 shouldn't be passing arguments by {:?}", arg.mode)
-            }
-        };
-
-        // At this point we know this must be a primitive of sorts.
-        let unit = arg.layout.homogeneous_aggregate(cx).unwrap().unit().unwrap();
-        assert_eq!(unit.size, arg.layout.size);
-        if matches!(unit.kind, RegKind::Float | RegKind::Vector { .. }) {
-            continue;
-        }
-
-        let size_in_regs = arg.layout.size.bits().div_ceil(32);
-
-        if size_in_regs == 0 {
-            continue;
-        }
-
-        if size_in_regs > free_regs {
-            break;
-        }
-
-        free_regs -= size_in_regs;
-
-        if arg.layout.size.bits() <= 32 && unit.kind == RegKind::Integer {
-            attrs.set(ArgAttribute::InReg);
-        }
-
-        if free_regs == 0 {
-            break;
+        // Set the InReg annotation if we're passing by register
+        if pass_in_reg {
+            match arg.mode {
+                PassMode::Ignore
+                | PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: _ } => {}
+                PassMode::Cast { pad_i32: _, ref mut cast } => {
+                    cast.attrs.set(ArgAttribute::InReg);
+                }
+                PassMode::Direct(ref mut attrs) => {
+                    attrs.set(ArgAttribute::InReg);
+                }
+                PassMode::Pair(..)
+                | PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ } => {
+                    unreachable!("x86 shouldn't be passing arguments by {:?}", arg.mode)
+                }
+            };
+            free_regs -= size_in_regs;
         }
     }
 }

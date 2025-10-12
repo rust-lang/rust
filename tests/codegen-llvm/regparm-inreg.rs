@@ -121,4 +121,31 @@ pub mod tests {
     // regparm3-SAME: i32 inreg noundef %_4)
     #[no_mangle]
     pub extern "C" fn f12(_: i32, _: __m256, _: i32, _: i32) {}
+
+    // regparm0: @f13(i64 noundef %_1)
+    // regparm1: @f13(i64 noundef %_1)
+    // regparm2: @f13(i64 inreg noundef %_1)
+    // regparm3: @f13(i64 inreg noundef %_1)
+    #[no_mangle]
+    pub extern "C" fn f13(_: i64) {}
+
+    // regparm0: @f14(ptr noalias nofree noundef byval([8 x i8]) align 4 captures(address) dereferenceable(8) %_1)
+    // regparm1: @f14(ptr noalias nofree noundef byval([8 x i8]) align 4 captures(address) dereferenceable(8) %_1)
+    // regparm2: @f14([2 x i32] inreg %0)
+    // regparm3: @f14([2 x i32] inreg %0)
+    #[no_mangle]
+    pub extern "C" fn f14(_: S2) {}
+
+    #[repr(C)]
+    struct S3 {
+        x1: i32,
+        x2: i32,
+        x3: i32,
+    }
+    // regparm0: @f15(ptr noalias nofree noundef byval([12 x i8]) align 4 captures(address) dereferenceable(12) %_1)
+    // regparm1: @f15(ptr noalias nofree noundef byval([12 x i8]) align 4 captures(address) dereferenceable(12) %_1)
+    // regparm2: @f15(ptr noalias nofree noundef byval([12 x i8]) align 4 captures(address) dereferenceable(12) %_1)
+    // regparm3: @f15([3 x i32] inreg %0)
+    #[no_mangle]
+    pub extern "C" fn f15(_: S3) {}
 }
