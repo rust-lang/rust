@@ -54,7 +54,7 @@ impl FromStableHash for Hash64 {
     type Hash = StableHasherHash;
 
     #[inline]
-    fn from(StableHasherHash([_0, __1]): Self::Hash) -> Self {
+    fn from(StableHasherHash([_0, _]): Self::Hash) -> Self {
         Self { inner: _0 }
     }
 }

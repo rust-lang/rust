@@ -266,10 +266,7 @@ impl Step for Std {
                 target,
                 Kind::Build,
             );
-            std_cargo(builder, target, &mut cargo);
-            for krate in &*self.crates {
-                cargo.arg("-p").arg(krate);
-            }
+            std_cargo(builder, target, &mut cargo, &self.crates);
             cargo
         };
 
@@ -507,7 +504,12 @@ fn compiler_rt_for_profiler(builder: &Builder<'_>) -> PathBuf {
 
 /// Configure cargo to compile the standard library, adding appropriate env vars
 /// and such.
-pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, cargo: &mut Cargo) {
+pub fn std_cargo(
+    builder: &Builder<'_>,
+    target: TargetSelection,
+    cargo: &mut Cargo,
+    crates: &[String],
+) {
     // rustc already ensures that it builds with the minimum deployment
     // target, so ideally we shouldn't need to do anything here.
     //
@@ -620,6 +622,10 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, cargo: &mut Car
         cargo.env("CFG_DISABLE_UNSTABLE_FEATURES", "1");
     }
 
+    for krate in crates {
+        cargo.args(["-p", krate]);
+    }
+
     let mut features = String::new();
 
     if builder.no_std(target) == Some(true) {
@@ -629,8 +635,10 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, cargo: &mut Car
         }
 
         // for no-std targets we only compile a few no_std crates
+        if crates.is_empty() {
+            cargo.args(["-p", "alloc"]);
+        }
         cargo
-            .args(["-p", "alloc"])
             .arg("--manifest-path")
             .arg(builder.src.join("library/alloc/Cargo.toml"))
             .arg("--features")

@@ -61,6 +61,9 @@ impl Step for Std {
             return;
         }
 
+        // Explicitly pass -p for all dependencies crates -- this will force cargo
+        // to also check the tests/benches/examples for these crates, rather
+        // than just the leaf crate.
         let crates = std_crates_for_run_make(&run);
         run.builder.ensure(Std {
             build_compiler: prepare_compiler_for_check(run.builder, run.target, Mode::Std)
@@ -83,14 +86,10 @@ impl Step for Std {
             Kind::Check,
         );
 
-        std_cargo(builder, target, &mut cargo);
+        std_cargo(builder, target, &mut cargo, &self.crates);
         if matches!(builder.config.cmd, Subcommand::Fix) {
             // By default, cargo tries to fix all targets. Tell it not to fix tests until we've added `test` to the sysroot.
             cargo.arg("--lib");
-        }
-
-        for krate in &*self.crates {
-            cargo.arg("-p").arg(krate);
         }
 
         let _guard = builder.msg(
@@ -135,14 +134,7 @@ impl Step for Std {
             Kind::Check,
         );
 
-        std_cargo(builder, target, &mut cargo);
-
-        // Explicitly pass -p for all dependencies krates -- this will force cargo
-        // to also check the tests/benches/examples for these crates, rather
-        // than just the leaf crate.
-        for krate in &*self.crates {
-            cargo.arg("-p").arg(krate);
-        }
+        std_cargo(builder, target, &mut cargo, &self.crates);
 
         let stamp =
             build_stamp::libstd_stamp(builder, build_compiler, target).with_prefix("check-test");
@@ -841,3 +833,8 @@ tool_check_step!(BumpStage0 {
     mode: Mode::ToolBootstrap,
     default: false
 });
+
+// Tidy is implicitly checked when `./x test tidy` is executed
+// (if you set a pre-push hook, the command is called).
+// So this is mainly for people working on tidy.
+tool_check_step!(Tidy { path: "src/tools/tidy", mode: Mode::ToolBootstrap, default: false });
