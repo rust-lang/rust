@@ -214,6 +214,9 @@ fn lint_map_unit_fn(
     };
     let fn_arg = &map_args.1[0];
 
+    #[expect(clippy::items_after_statements, reason = "the const is only used below")]
+    const SUGG_MSG: &str = "use `if let` instead";
+
     if is_unit_function(cx, fn_arg) {
         let mut applicability = Applicability::MachineApplicable;
         let msg = suggestion_msg("function", map_type);
@@ -226,7 +229,7 @@ fn lint_map_unit_fn(
         );
 
         span_lint_and_then(cx, lint, expr.span, msg, |diag| {
-            diag.span_suggestion(stmt.span, "try", suggestion, applicability);
+            diag.span_suggestion_verbose(stmt.span, SUGG_MSG, suggestion, applicability);
         });
     } else if let Some((binding, closure_expr)) = unit_closure(cx, fn_arg) {
         let msg = suggestion_msg("closure", map_type);
@@ -242,7 +245,7 @@ fn lint_map_unit_fn(
                     snippet_with_applicability(cx, var_arg.span, "_", &mut applicability),
                     snippet_with_context(cx, reduced_expr_span, var_arg.span.ctxt(), "_", &mut applicability).0,
                 );
-                diag.span_suggestion(stmt.span, "try", suggestion, applicability);
+                diag.span_suggestion_verbose(stmt.span, SUGG_MSG, suggestion, applicability);
             } else {
                 let suggestion = format!(
                     "if let {0}({1}) = {2} {{ ... }}",
@@ -250,7 +253,7 @@ fn lint_map_unit_fn(
                     snippet(cx, binding.pat.span, "_"),
                     snippet(cx, var_arg.span, "_"),
                 );
-                diag.span_suggestion(stmt.span, "try", suggestion, Applicability::HasPlaceholders);
+                diag.span_suggestion_verbose(stmt.span, SUGG_MSG, suggestion, Applicability::HasPlaceholders);
             }
         });
     }
