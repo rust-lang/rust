@@ -284,8 +284,7 @@ impl<'tcx> MutVisitor<'tcx> for Merger<'tcx> {
         match &statement.kind {
             StatementKind::Assign(box (dest, rvalue)) => {
                 match rvalue {
-                    Rvalue::CopyForDeref(place)
-                    | Rvalue::Use(Operand::Copy(place) | Operand::Move(place)) => {
+                    Rvalue::Use(Operand::Copy(place) | Operand::Move(place)) => {
                         // These might've been turned into self-assignments by the replacement
                         // (this includes the original statement we wanted to eliminate).
                         if dest == place {
@@ -399,7 +398,7 @@ impl<'tcx> Visitor<'tcx> for FindAssignments<'_, 'tcx> {
     fn visit_statement(&mut self, statement: &Statement<'tcx>, _: Location) {
         if let StatementKind::Assign(box (
             lhs,
-            Rvalue::CopyForDeref(rhs) | Rvalue::Use(Operand::Copy(rhs) | Operand::Move(rhs)),
+            Rvalue::Use(Operand::Copy(rhs) | Operand::Move(rhs)),
         )) = &statement.kind
             && let Some(src) = lhs.as_local()
             && let Some(dest) = rhs.as_local()

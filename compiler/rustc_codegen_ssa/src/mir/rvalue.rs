@@ -504,9 +504,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 self.codegen_place_to_pointer(bx, place, mk_ref)
             }
 
-            mir::Rvalue::CopyForDeref(place) => {
-                self.codegen_operand(bx, &mir::Operand::Copy(place))
-            }
             mir::Rvalue::RawPtr(kind, place) => {
                 let mk_ptr = move |tcx: TyCtxt<'tcx>, ty: Ty<'tcx>| {
                     Ty::new_ptr(tcx, ty, kind.to_mutbl_lossy())
@@ -742,6 +739,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let layout = bx.cx().layout_of(binder_ty);
                 OperandRef { val: operand.val, layout }
             }
+            mir::Rvalue::CopyForDeref(_) => bug!("`CopyForDeref` in codegen"),
         }
     }
 

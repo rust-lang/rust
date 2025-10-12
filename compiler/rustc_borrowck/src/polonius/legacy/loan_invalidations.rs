@@ -300,11 +300,6 @@ impl<'a, 'tcx> LoanInvalidationsGenerator<'a, 'tcx> {
             | Rvalue::Cast(_ /*cast_kind*/, operand, _ /*ty*/)
             | Rvalue::ShallowInitBox(operand, _ /*ty*/) => self.consume_operand(location, operand),
 
-            &Rvalue::CopyForDeref(place) => {
-                let op = &Operand::Copy(place);
-                self.consume_operand(location, op);
-            }
-
             &Rvalue::Discriminant(place) => {
                 self.access_place(
                     location,
@@ -330,6 +325,8 @@ impl<'a, 'tcx> LoanInvalidationsGenerator<'a, 'tcx> {
             Rvalue::WrapUnsafeBinder(op, _) => {
                 self.consume_operand(location, op);
             }
+
+            Rvalue::CopyForDeref(_) => bug!("`CopyForDeref` in borrowck"),
         }
     }
 
