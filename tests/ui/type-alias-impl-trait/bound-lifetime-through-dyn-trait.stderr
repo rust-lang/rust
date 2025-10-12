@@ -1,8 +1,8 @@
 error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from `dyn` type
-  --> $DIR/bound-lifetime-through-dyn-trait.rs:6:71
+  --> $DIR/bound-lifetime-through-dyn-trait.rs:6:57
    |
 LL | fn dyn_hoops<T: Sized>() -> dyn for<'a> Iterator<Item = impl Captures<'a>> {
-   |                                                                       ^^
+   |                                                         ^^^^^^^^^^^^^^--^ `impl Trait` implicitly captures all lifetimes in scope
    |
 note: lifetime declared here
   --> $DIR/bound-lifetime-through-dyn-trait.rs:6:37

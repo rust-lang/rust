@@ -1,6 +1,7 @@
 //@revisions: edition2015 edition2024
 //@[edition2015] edition:2015
 //@[edition2024] edition:2024
+
 trait Trait<'a> {
     type Out;
     fn call(&'a self) -> Self::Out;
@@ -15,7 +16,7 @@ impl<'a> Trait<'a> for X {
     }
 }
 
-fn f() -> impl for<'a> Trait<'a, Out = impl Sized + 'a> {
+fn f() -> impl for<'a, 'b> Trait<'a, Out = impl Sized + 'a + 'b> {
     //~^ ERROR `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
     X(())
 }
